@@ -1,0 +1,2600 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#14201C" />
+<title>Control de Compras y Almac&eacute;n</title>
+
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+
+<style>
+  html, body, #root { height: 100%; margin: 0; }
+  body { background: #F4F5F3; -webkit-tap-highlight-color: transparent; }
+  .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+  a { text-decoration: none; }
+</style>
+
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.3.1",
+    "react-dom": "https://esm.sh/react-dom@18.3.1",
+    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+    "lucide-react": "https://esm.sh/lucide-react@0.383.0?deps=react@18.3.1"
+  }
+}
+</script>
+
+<script>
+  // Guardado local en el propio tel&eacute;fono (sustituye a window.storage de Claude)
+  window.storage = {
+    async get(key) {
+      const v = localStorage.getItem("almacen:" + key);
+      if (v === null) throw new Error("no existe");
+      return { key: key, value: v, shared: false };
+    },
+    async set(key, value) {
+      localStorage.setItem("almacen:" + key, value);
+      return { key: key, value: value, shared: false };
+    },
+    async delete(key) {
+      localStorage.removeItem("almacen:" + key);
+      return { key: key, deleted: true, shared: false };
+    },
+    async list(prefix) {
+      const keys = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith("almacen:")) keys.push(k.slice(8));
+      }
+      return { keys: keys, shared: false };
+    }
+  };
+</script>
+
+<script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-type="module" data-presets="react">
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  Package, Truck, ShoppingCart, ClipboardList, BarChart3, Boxes,
+  AlertTriangle, Mail, MessageCircle, Plus, X, Trash2, CheckCircle2,
+  ArrowUpCircle, ArrowDownCircle, Search, Eye, EyeOff, Loader2, ChevronRight,
+  Calculator, Download, Upload, History
+} from "lucide-react";
+
+/* ============ TOKENS DE DISEÑO ============
+Fondo: #F4F5F3 (gris-hueso neutro)
+Superficie: #FFFFFF
+Tinta: #14201C (verde-negro, tono "libro mayor")
+Acento primario: #2F6F4E (verde contable, confianza/dinero)
+Acento ámbar (alertas de stock): #B45309
+Acento rojo (faltantes/errores): #B91C1C
+Tipografía: IBM Plex Sans (UI) + IBM Plex Mono (cifras, como un libro de almacén)
+Firma visual: los números clave siempre en mono, alineados como una columna de libro mayor
+=========================================== */
+
+const C = {
+  bg: "#F4F5F3",
+  surface: "#FFFFFF",
+  ink: "#14201C",
+  inkSoft: "#4B5A54",
+  line: "#DFE3DF",
+  accent: "#2F6F4E",
+  accentSoft: "#E7F0EA",
+  amber: "#B45309",
+  amberSoft: "#FBEEE0",
+  red: "#B91C1C",
+  redSoft: "#FBEAEA",
+};
+
+const LOGO = "data:image/jpeg;base64,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";
+
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+// Conteo final de un ítem: usa CF si está puesto; si no, el último conteo con valor.
+// Soporta el formato antiguo (cantidadContada) de conteos ya guardados.
+function valorCF(item) {
+  if (!item) return null;
+  const candidatos = [item.conteo, item.cf, item.c3, item.c2, item.c1, item.cantidadContada];
+  for (const v of candidatos) {
+    if (v !== "" && v !== null && v !== undefined && !isNaN(Number(v))) return Number(v);
+  }
+  return null;
+}
+const fmt = (n) => (Number(n) || 0).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
+async function loadKey(key, fallback, retries = 2) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await window.storage.get(key, false);
+      if (res && res.value) return JSON.parse(res.value);
+      return fallback; // la clave genuinamente no existe todavía (primer uso)
+    } catch (e) {
+      if (attempt === retries) {
+        console.error("No se pudo cargar", key, "tras varios intentos:", e);
+        return fallback;
+      }
+      await new Promise((r) => setTimeout(r, 350));
+    }
+  }
+  return fallback;
+}
+async function saveKey(key, value) {
+  try {
+    await window.storage.set(key, JSON.stringify(value), false);
+  } catch (e) {
+    console.error("Error guardando", key, e);
+  }
+}
+
+function GestionAlmacen() {
+  const [ready, setReady] = useState(false);
+  const [tab, setTab] = useState("dashboard");
+  const skipSaveRef = React.useRef(true); // evita guardar en el primer instante tras cargar
+  const autoSnapshotRef = React.useRef(false); // evita crear más de una copia automática por sesión
+
+  const [proveedores, setProveedores] = useState([]);
+  const [productos, setProductos] = useState([]);
+  const [pedidos, setPedidos] = useState([]);
+  const [movimientos, setMovimientos] = useState([]);
+  const [conteos, setConteos] = useState([]);
+  const [fichasCosto, setFichasCosto] = useState([]);
+  const [historial, setHistorial] = useState([]);
+
+  useEffect(() => {
+    (async () => {
+      const [p, pr, pe, mo, co, fc, hi] = await Promise.all([
+        loadKey("proveedores", []),
+        loadKey("productos", []),
+        loadKey("pedidos", []),
+        loadKey("movimientos", []),
+        loadKey("conteos", []),
+        loadKey("fichasCosto", []),
+        loadKey("historialRespaldos", []),
+      ]);
+      setProveedores(p);
+      setProductos(pr);
+      setPedidos(pe);
+      setMovimientos(mo);
+      setConteos(co);
+      setFichasCosto(fc);
+      setHistorial(hi);
+      setReady(true);
+      // Solo después de que el estado ya se pintó con los datos cargados
+      // habilitamos el guardado automático, para no sobrescribir nada
+      // por un fallo de lectura pasajero.
+      setTimeout(() => { skipSaveRef.current = false; }, 400);
+
+      // Copia de seguridad automática: una por sesión, para poder recuperar
+      // el estado con el que se abrió el programa si algo sale mal después.
+      if (!autoSnapshotRef.current) {
+        autoSnapshotRef.current = true;
+        const tieneDatos = p.length || pr.length || pe.length || mo.length || co.length || fc.length;
+        if (tieneDatos) {
+          const snapshot = {
+            id: uid(),
+            fecha: new Date().toISOString(),
+            automatica: true,
+            data: { proveedores: p, productos: pr, pedidos: pe, movimientos: mo, conteos: co, fichasCosto: fc },
+          };
+          setHistorial((s) => [snapshot, ...hi].slice(0, 12));
+        }
+      }
+    })();
+  }, []);
+
+  useEffect(() => { if (ready && !skipSaveRef.current) saveKey("proveedores", proveedores); }, [proveedores, ready]);
+  useEffect(() => { if (ready && !skipSaveRef.current) saveKey("productos", productos); }, [productos, ready]);
+  useEffect(() => { if (ready && !skipSaveRef.current) saveKey("pedidos", pedidos); }, [pedidos, ready]);
+  useEffect(() => { if (ready && !skipSaveRef.current) saveKey("movimientos", movimientos); }, [movimientos, ready]);
+  useEffect(() => { if (ready && !skipSaveRef.current) saveKey("conteos", conteos); }, [conteos, ready]);
+  useEffect(() => { if (ready && !skipSaveRef.current) saveKey("fichasCosto", fichasCosto); }, [fichasCosto, ready]);
+  useEffect(() => { if (ready && !skipSaveRef.current) saveKey("historialRespaldos", historial); }, [historial, ready]);
+
+  const productoPorId = (id) => productos.find((p) => p.id === id);
+  const proveedorPorId = (id) => proveedores.find((p) => p.id === id);
+
+  const [pendingRestore, setPendingRestore] = useState(null);
+  const [restoreError, setRestoreError] = useState("");
+  const [showBackupView, setShowBackupView] = useState(false);
+  const [backupText, setBackupText] = useState("");
+  const [showRestoreInput, setShowRestoreInput] = useState(false);
+  const [restoreText, setRestoreText] = useState("");
+  const [copiado, setCopiado] = useState(false);
+
+  function crearPuntoDeGuardado() {
+    const snapshot = {
+      id: uid(),
+      fecha: new Date().toISOString(),
+      automatica: false,
+      data: { proveedores, productos, pedidos, movimientos, conteos, fichasCosto },
+    };
+    setHistorial((s) => [snapshot, ...s].slice(0, 12));
+  }
+  function restaurarDesdeHistorial(snapshot) {
+    setPendingRestore({ ...snapshot.data, exportadoEl: snapshot.fecha });
+  }
+
+  function abrirRespaldo() {
+    const data = {
+      version: 1,
+      exportadoEl: new Date().toISOString(),
+      proveedores, productos, pedidos, movimientos, conteos, fichasCosto,
+    };
+    setBackupText(JSON.stringify(data));
+    setCopiado(false);
+    setShowBackupView(true);
+  }
+
+  function copiarRespaldo() {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(backupText).then(() => setCopiado(true)).catch(() => setCopiado(false));
+    }
+  }
+
+  function abrirRestaurar() {
+    setRestoreText("");
+    setRestoreError("");
+    setShowRestoreInput(true);
+  }
+
+  function analizarTextoRestauracion() {
+    try {
+      const data = JSON.parse(restoreText.trim());
+      const tieneAlgo = data && (data.proveedores || data.productos || data.pedidos || data.movimientos || data.conteos || data.fichasCosto);
+      if (!tieneAlgo) throw new Error("Formato no reconocido");
+      setRestoreError("");
+      setShowRestoreInput(false);
+      setPendingRestore(data);
+    } catch (err) {
+      setRestoreError("Ese texto no parece un respaldo válido. Revisa que lo hayas copiado completo.");
+    }
+  }
+
+  function confirmarRestauracion() {
+    if (!pendingRestore) return;
+    if (pendingRestore.proveedores) setProveedores(pendingRestore.proveedores);
+    if (pendingRestore.productos) setProductos(pendingRestore.productos);
+    if (pendingRestore.pedidos) setPedidos(pendingRestore.pedidos);
+    if (pendingRestore.movimientos) setMovimientos(pendingRestore.movimientos);
+    if (pendingRestore.conteos) setConteos(pendingRestore.conteos);
+    if (pendingRestore.fichasCosto) setFichasCosto(pendingRestore.fichasCosto);
+    setPendingRestore(null);
+  }
+
+  /* ---------- ACCIONES DE NEGOCIO ---------- */
+
+  function addProveedor(data) {
+    setProveedores((s) => [...s, { id: uid(), ...data }]);
+  }
+  function updateProveedor(id, data) {
+    setProveedores((s) => s.map((p) => (p.id === id ? { ...p, ...data } : p)));
+  }
+  function deleteProveedor(id) {
+    setProveedores((s) => s.filter((p) => p.id !== id));
+  }
+  function addProducto(data) {
+    setProductos((s) => [...s, { id: uid(), stock: Number(data.stock) || 0, ...data }]);
+  }
+  function updateProducto(id, data) {
+    setProductos((s) => s.map((p) => (p.id === id ? { ...p, ...data } : p)));
+  }
+  function deleteProducto(id) {
+    setProductos((s) => s.filter((p) => p.id !== id));
+  }
+
+  function crearPedido({ proveedorId, fechaEsperada, items }) {
+    const pedido = {
+      id: uid(),
+      proveedorId,
+      fecha: todayISO(),
+      fechaEsperada,
+      estado: "Pendiente",
+      items: items.map((it) => ({ ...it, cantidadRecibida: 0 })),
+    };
+    setPedidos((s) => [pedido, ...s]);
+    return pedido;
+  }
+
+  function actualizarPedido(pedidoId, { proveedorId, fechaEsperada, items }) {
+    setPedidos((s) =>
+      s.map((pe) =>
+        pe.id === pedidoId
+          ? { ...pe, proveedorId, fechaEsperada, items: items.map((it) => ({ ...it, cantidadRecibida: 0 })) }
+          : pe
+      )
+    );
+  }
+
+  function eliminarPedido(pedidoId) {
+    setPedidos((s) => s.filter((pe) => pe.id !== pedidoId));
+  }
+
+  function recibirPedido(pedidoId, recepciones) {
+    if (almacenCongelado) return false;
+    // recepciones: { [productoId]: cantidadRecibidaAhora }
+    setPedidos((s) =>
+      s.map((pe) => {
+        if (pe.id !== pedidoId) return pe;
+        const items = pe.items.map((it) => {
+          const nueva = Number(recepciones[it.productoId] || 0);
+          return { ...it, cantidadRecibida: it.cantidadRecibida + nueva };
+        });
+        const completo = items.every((it) => it.cantidadRecibida >= it.cantidad);
+        const algo = items.some((it) => it.cantidadRecibida > 0);
+        return { ...pe, items, estado: completo ? "Recibido" : algo ? "Parcial" : "Pendiente" };
+      })
+    );
+    // Actualizar stock y movimientos
+    const nuevosMov = [];
+    setProductos((s) =>
+      s.map((p) => {
+        const cant = Number(recepciones[p.id] || 0);
+        if (cant > 0) {
+          nuevosMov.push({ id: uid(), productoId: p.id, tipo: "entrada", cantidad: cant, fecha: todayISO(), referencia: "Recepción pedido" });
+          return { ...p, stock: p.stock + cant };
+        }
+        return p;
+      })
+    );
+    if (nuevosMov.length) setMovimientos((s) => [...nuevosMov, ...s]);
+    return true;
+  }
+
+  function registrarSalida(productoId, cantidad, referencia) {
+    if (almacenCongelado) return false;
+    const cant = Number(cantidad);
+    if (!cant || cant <= 0) return false;
+    setProductos((s) => s.map((p) => (p.id === productoId ? { ...p, stock: Math.max(0, p.stock - cant) } : p)));
+    setMovimientos((s) => [{ id: uid(), productoId, tipo: "salida", cantidad: cant, fecha: todayISO(), referencia: referencia || "Salida manual" }, ...s]);
+    return true;
+  }
+
+  function addFichaCosto(data) {
+    setFichasCosto((s) => [...s, { id: uid(), ...data }]);
+  }
+  function updateFichaCosto(id, data) {
+    setFichasCosto((s) => s.map((f) => (f.id === id ? { ...f, ...data } : f)));
+  }
+  function deleteFichaCosto(id) {
+    setFichasCosto((s) => s.filter((f) => f.id !== id));
+  }
+
+  function crearProductoEnConteo(conteoId, datos, cantidadContada) {
+    const nuevoId = uid();
+    const nuevoProducto = {
+      id: nuevoId,
+      stock: 0,
+      codigo: datos.codigo || "",
+      nombre: datos.nombre,
+      categoria: datos.categoria || "",
+      unidad: datos.unidad || "unidad",
+      costo: Number(datos.costo) || 0,
+      precioVenta: Number(datos.precioVenta) || 0,
+      stockMinimo: Number(datos.stockMinimo) || 0,
+      ubicacion: datos.ubicacion || "",
+      proveedorId: datos.proveedorId || "",
+    };
+    setProductos((s) => [...s, nuevoProducto]);
+    setConteos((s) =>
+      s.map((c) =>
+        c.id === conteoId ? { ...c, items: [...c.items, { productoId: nuevoId, cantidadContada }] } : c
+      )
+    );
+  }
+
+  function iniciarConteo() {
+    const conteo = {
+      id: uid(),
+      fecha: todayISO(),
+      completado: false,
+      responsables: { contadoPor: "", revisor: "" },
+      items: productos.map((p) => ({ productoId: p.id, conteo: "" })),
+    };
+    setConteos((s) => [conteo, ...s]);
+    return conteo.id;
+  }
+  function actualizarConteoItem(conteoId, productoId, campo, valor) {
+    setConteos((s) =>
+      s.map((c) =>
+        c.id === conteoId
+          ? { ...c, items: c.items.map((it) => (it.productoId === productoId ? { ...it, [campo]: valor } : it)) }
+          : c
+      )
+    );
+  }
+  function actualizarResponsable(conteoId, campo, valor) {
+    setConteos((s) =>
+      s.map((c) => (c.id === conteoId ? { ...c, responsables: { ...(c.responsables || {}), [campo]: valor } } : c))
+    );
+  }
+  function finalizarConteo(conteoId) {
+    setConteos((s) => s.map((c) => (c.id === conteoId ? { ...c, completado: true } : c)));
+  }
+  function aplicarAjustes(conteoId, motivos = {}) {
+    const conteo = conteos.find((c) => c.id === conteoId);
+    if (!conteo) return;
+    const nuevosMov = [];
+    setProductos((s) =>
+      s.map((p) => {
+        const item = conteo.items.find((it) => it.productoId === p.id);
+        const valorFinal = item ? valorCF(item) : null;
+        if (valorFinal === null) return p;
+        const dif = valorFinal - Number(p.stock || 0);
+        if (dif !== 0) {
+          nuevosMov.push({
+            id: uid(), productoId: p.id, tipo: "ajuste", cantidad: dif,
+            fecha: todayISO(),
+            motivo: motivos[p.id] || "Sin especificar",
+            referencia: `Ajuste por inventario · ${motivos[p.id] || "Sin especificar"}`,
+          });
+        }
+        return { ...p, stock: valorFinal };
+      })
+    );
+    if (nuevosMov.length) setMovimientos((s) => [...nuevosMov, ...s]);
+  }
+
+  // Hay un conteo abierto: el almacén queda congelado para no falsear el descuadre
+  const conteoAbierto = useMemo(() => conteos.find((c) => !c.completado) || null, [conteos]);
+  const almacenCongelado = !!conteoAbierto;
+
+  /* ---------- CÁLCULOS ---------- */
+
+  const valorInventario = useMemo(
+    () => productos.reduce((acc, p) => acc + p.stock * Number(p.costo || 0), 0),
+    [productos]
+  );
+  const stockBajo = useMemo(() => productos.filter((p) => p.stock <= Number(p.stockMinimo || 0)), [productos]);
+
+  // Clasificación ABC por VALOR DE CONSUMO: lo que realmente mueve dinero.
+  // valorConsumo = unidades que han salido en los últimos 12 meses × costo unitario.
+  // Si todavía no hay histórico de salidas, se usa el valor en stock como aproximación
+  // provisional y se avisa de ello en la interfaz.
+  const analisisABC = useMemo(() => {
+    const hace12meses = new Date();
+    hace12meses.setMonth(hace12meses.getMonth() - 12);
+
+    const consumo = {};
+    movimientos.forEach((m) => {
+      if (m.tipo !== "salida") return;
+      if (new Date(m.fecha) < hace12meses) return;
+      consumo[m.productoId] = (consumo[m.productoId] || 0) + Math.abs(Number(m.cantidad) || 0);
+    });
+
+    const totalSalidas = Object.values(consumo).reduce((a, x) => a + x, 0);
+    const baseConsumo = totalSalidas > 0;
+
+    const conValor = productos.map((p) => {
+      const unidades = consumo[p.id] || 0;
+      const costo = Number(p.costo) || 0;
+      const valor = baseConsumo ? unidades * costo : (Number(p.stock) || 0) * costo;
+      return { id: p.id, valor, unidades, rotacion: (Number(p.stock) || 0) > 0 ? unidades / (Number(p.stock) || 1) : null };
+    });
+
+    const total = conValor.reduce((a, x) => a + x.valor, 0);
+    const mapa = {};
+    const detalle = {};
+
+    if (total <= 0) {
+      productos.forEach((p) => { mapa[p.id] = "C"; detalle[p.id] = { valor: 0, unidades: 0, rotacion: null }; });
+      return { mapa, detalle, baseConsumo };
+    }
+
+    const ordenados = [...conValor].sort((a, b) => b.valor - a.valor);
+    let acumulado = 0;
+    ordenados.forEach((x) => {
+      acumulado += x.valor;
+      const pct = (acumulado / total) * 100;
+      mapa[x.id] = pct <= 80 ? "A" : pct <= 95 ? "B" : "C";
+      detalle[x.id] = { valor: x.valor, unidades: x.unidades, rotacion: x.rotacion };
+    });
+    return { mapa, detalle, baseConsumo };
+  }, [productos, movimientos]);
+
+  const clasificacionABC = analisisABC.mapa;
+  const pedidosPendientes = useMemo(() => pedidos.filter((p) => p.estado !== "Recibido"), [pedidos]);
+  const margenPromedio = useMemo(() => {
+    const conPrecio = productos.filter((p) => Number(p.precioVenta) > 0);
+    if (!conPrecio.length) return 0;
+    const total = conPrecio.reduce((acc, p) => acc + ((p.precioVenta - p.costo) / p.precioVenta) * 100, 0);
+    return total / conPrecio.length;
+  }, [productos]);
+
+  const rotacionPorProducto = useMemo(() => {
+    return productos.map((p) => {
+      const salidas = movimientos.filter((m) => m.productoId === p.id && m.tipo === "salida");
+      const cantSalidas = salidas.reduce((a, m) => a + m.cantidad, 0);
+      const costoVentas = cantSalidas * Number(p.costo || 0);
+      const inventarioPromedio = p.stock * Number(p.costo || 0);
+      const rotacion = inventarioPromedio > 0 ? costoVentas / inventarioPromedio : null;
+      const dias = rotacion ? 365 / rotacion : null;
+      return { ...p, cantSalidas, rotacion, dias };
+    });
+  }, [productos, movimientos]);
+
+  const gastoPorProveedor = useMemo(() => {
+    const map = {};
+    pedidos.forEach((pe) => {
+      const total = pe.items.reduce((a, it) => a + it.cantidad * it.costoUnitario, 0);
+      map[pe.proveedorId] = (map[pe.proveedorId] || 0) + total;
+    });
+    return Object.entries(map)
+      .map(([proveedorId, total]) => ({ proveedor: proveedorPorId(proveedorId), total }))
+      .sort((a, b) => b.total - a.total);
+  }, [pedidos, proveedores]);
+
+  const productosSinMovimiento = useMemo(
+    () => productos.filter((p) => !movimientos.some((m) => m.productoId === p.id && m.tipo === "salida")),
+    [productos, movimientos]
+  );
+
+  if (!ready) {
+    return (
+      <div style={{ background: C.bg, color: C.ink }} className="w-full h-full min-h-[600px] flex items-center justify-center font-sans">
+        <Loader2 className="animate-spin" size={22} />
+        <span className="ml-2 text-sm">Cargando almacén…</span>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ background: C.bg, color: C.ink, fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui" }} className="w-full min-h-[700px] flex flex-col md:flex-row text-[14px]">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+        .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+        input, select { font-family: inherit; }
+        ::placeholder { color: #9AA5A0; }
+
+        @media print {
+          @page { size: A4; margin: 12mm; }
+          body * { visibility: hidden !important; }
+          .zona-impresion, .zona-impresion * { visibility: visible !important; }
+          .zona-impresion {
+            position: absolute !important;
+            left: 0; top: 0; width: 100%;
+            background: #fff !important;
+          }
+          .no-imprimir { display: none !important; }
+          .zona-impresion table { page-break-inside: auto; }
+          .zona-impresion tr { page-break-inside: avoid; page-break-after: auto; }
+          .zona-impresion thead { display: table-header-group; }
+        }
+      `}</style>
+
+      <Sidebar
+        tab={tab}
+        setTab={setTab}
+        pendientes={pedidosPendientes.length}
+        bajos={stockBajo.length}
+      />
+
+      <main className="flex-1 p-4 md:p-7 overflow-y-auto" style={{ maxHeight: "900px" }}>
+        {tab === "dashboard" && (
+          <Dashboard
+            valorInventario={valorInventario}
+            stockBajo={stockBajo}
+            pedidosPendientes={pedidosPendientes}
+            margenPromedio={margenPromedio}
+            movimientos={movimientos}
+            productos={productos}
+          />
+        )}
+        {tab === "proveedores" && (
+          <Proveedores proveedores={proveedores} addProveedor={addProveedor} updateProveedor={updateProveedor} deleteProveedor={deleteProveedor} pedidos={pedidos} />
+        )}
+        {tab === "productos" && (
+          <Productos
+            productos={productos}
+            proveedores={proveedores}
+            proveedorPorId={proveedorPorId}
+            addProducto={addProducto}
+            updateProducto={updateProducto}
+            deleteProducto={deleteProducto}
+            registrarSalida={registrarSalida}
+            clasificacionABC={clasificacionABC}
+            almacenCongelado={almacenCongelado}
+          />
+        )}
+        {tab === "pedidos" && (
+          <Pedidos
+            pedidos={pedidos}
+            proveedores={proveedores}
+            productos={productos}
+            crearPedido={crearPedido}
+            actualizarPedido={actualizarPedido}
+            eliminarPedido={eliminarPedido}
+            proveedorPorId={proveedorPorId}
+            productoPorId={productoPorId}
+          />
+        )}
+        {tab === "recepcion" && (
+          <Recepcion pedidos={pedidos} proveedorPorId={proveedorPorId} productoPorId={productoPorId} recibirPedido={recibirPedido} almacenCongelado={almacenCongelado} />
+        )}
+        {tab === "conteo" && (
+          <InventarioCiego
+            productos={productos}
+            proveedores={proveedores}
+            conteos={conteos}
+            iniciarConteo={iniciarConteo}
+            actualizarConteoItem={actualizarConteoItem}
+            actualizarResponsable={actualizarResponsable}
+            finalizarConteo={finalizarConteo}
+            aplicarAjustes={aplicarAjustes}
+            productoPorId={productoPorId}
+            crearProductoEnConteo={crearProductoEnConteo}
+            clasificacionABC={clasificacionABC}
+            almacenCongelado={almacenCongelado}
+          />
+        )}
+        {tab === "reportes" && (
+          <Reportes
+            rotacionPorProducto={rotacionPorProducto}
+            gastoPorProveedor={gastoPorProveedor}
+            productosSinMovimiento={productosSinMovimiento}
+            valorInventario={valorInventario}
+          />
+        )}
+        {tab === "fichas" && (
+          <FichasCosto
+            fichasCosto={fichasCosto}
+            productos={productos}
+            addFichaCosto={addFichaCosto}
+            updateFichaCosto={updateFichaCosto}
+            deleteFichaCosto={deleteFichaCosto}
+          />
+        )}
+        {tab === "saldo" && (
+          <SaldoAlmacen productos={productos} valorInventario={valorInventario} proveedorPorId={proveedorPorId} clasificacionABC={clasificacionABC} analisisABC={analisisABC} />
+        )}
+        {tab === "respaldos" && (
+          <Respaldos
+            historial={historial}
+            crearPuntoDeGuardado={crearPuntoDeGuardado}
+            restaurarDesdeHistorial={restaurarDesdeHistorial}
+            abrirRespaldo={abrirRespaldo}
+            abrirRestaurar={abrirRestaurar}
+          />
+        )}
+      </main>
+
+      {showBackupView && (
+        <Modal onClose={() => setShowBackupView(false)} title="Tu respaldo">
+          <div className="text-[12.5px] mb-2" style={{ color: C.ink }}>
+            Copia este texto y guárdalo en algún lugar seguro (notas, correo, Google Drive). Para restaurarlo más adelante, pégalo en "Restaurar respaldo".
+          </div>
+          <textarea
+            readOnly
+            value={backupText}
+            onFocus={(e) => e.target.select()}
+            className="w-full rounded-lg p-2 text-[11px] mono mb-3"
+            style={{ border: `1px solid ${C.line}`, height: 160, resize: "none" }}
+          />
+          <div className="flex items-center gap-2">
+            <Btn onClick={copiarRespaldo}>{copiado ? "¡Copiado!" : "Copiar al portapapeles"}</Btn>
+            <Btn variant="ghost" onClick={() => setShowBackupView(false)}>Cerrar</Btn>
+          </div>
+          <div className="text-[11px] mt-2" style={{ color: C.inkSoft }}>
+            Si el botón no copia solo, toca dentro del recuadro de texto, selecciona todo y cópialo manualmente.
+          </div>
+        </Modal>
+      )}
+
+      {showRestoreInput && (
+        <Modal onClose={() => setShowRestoreInput(false)} title="Restaurar respaldo">
+          <div className="text-[12.5px] mb-2" style={{ color: C.ink }}>
+            Pega aquí el texto completo del respaldo que copiaste anteriormente.
+          </div>
+          <textarea
+            value={restoreText}
+            onChange={(e) => setRestoreText(e.target.value)}
+            placeholder="Pega aquí el texto del respaldo…"
+            className="w-full rounded-lg p-2 text-[11px] mono mb-3"
+            style={{ border: `1px solid ${C.line}`, height: 160, resize: "none" }}
+          />
+          {restoreError && <div className="text-[12px] mb-2" style={{ color: C.red }}>{restoreError}</div>}
+          <div className="flex gap-2">
+            <Btn onClick={analizarTextoRestauracion}>Continuar</Btn>
+            <Btn variant="ghost" onClick={() => setShowRestoreInput(false)}>Cancelar</Btn>
+          </div>
+        </Modal>
+      )}
+
+      {pendingRestore && (
+        <Modal onClose={() => setPendingRestore(null)} title="Restaurar respaldo">
+          <div className="text-[12.5px] mb-3" style={{ color: C.ink }}>
+            Vas a reemplazar los datos actuales del programa con lo que contiene este archivo:
+          </div>
+          <div className="text-[12.5px] mb-4 space-y-1" style={{ color: C.inkSoft }}>
+            <div>Proveedores: <span className="mono">{(pendingRestore.proveedores || []).length}</span></div>
+            <div>Productos: <span className="mono">{(pendingRestore.productos || []).length}</span></div>
+            <div>Pedidos: <span className="mono">{(pendingRestore.pedidos || []).length}</span></div>
+            <div>Movimientos: <span className="mono">{(pendingRestore.movimientos || []).length}</span></div>
+            <div>Conteos: <span className="mono">{(pendingRestore.conteos || []).length}</span></div>
+            <div>Fichas de costo: <span className="mono">{(pendingRestore.fichasCosto || []).length}</span></div>
+            {pendingRestore.exportadoEl && <div>Respaldo generado el: {new Date(pendingRestore.exportadoEl).toLocaleString("es-ES")}</div>}
+          </div>
+          <div className="text-[12px] mb-4" style={{ color: C.red }}>
+            Esta acción reemplaza todo lo que tengas cargado ahora mismo en el programa. Si quieres conservarlo, cancela y descarga primero un respaldo del estado actual.
+          </div>
+          <div className="flex gap-2">
+            <Btn onClick={confirmarRestauracion}>Sí, restaurar este respaldo</Btn>
+            <Btn variant="ghost" onClick={() => setPendingRestore(null)}>Cancelar</Btn>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ================= SIDEBAR ================= */
+function Sidebar({ tab, setTab, pendientes, bajos }) {
+  const items = [
+    { id: "dashboard", label: "Panel general", icon: BarChart3 },
+    { id: "proveedores", label: "Proveedores", icon: Truck },
+    { id: "productos", label: "Productos", icon: Package },
+    { id: "pedidos", label: "Pedidos", icon: ShoppingCart, badge: pendientes },
+    { id: "recepcion", label: "Recepción", icon: ClipboardList },
+    { id: "conteo", label: "Inventario ciego", icon: Boxes, badge: bajos, badgeColor: C.amber },
+    { id: "saldo", label: "Saldo de almacén", icon: ClipboardList },
+    { id: "fichas", label: "Fichas de costo", icon: Calculator },
+    { id: "reportes", label: "Reportes y rotación", icon: BarChart3 },
+    { id: "respaldos", label: "Respaldos", icon: History },
+  ];
+  return (
+    <aside style={{ background: C.ink, color: "#fff" }} className="w-full md:w-60 shrink-0 p-4 md:p-5 flex md:flex-col gap-1 overflow-x-auto md:overflow-visible">
+      <div className="hidden md:block mb-5">
+        <div className="text-[11px] tracking-widest uppercase" style={{ color: "#9CB6A9" }}>Libro de almacén</div>
+        <div className="text-lg font-semibold mt-0.5">Control de Compras</div>
+      </div>
+      {items.map((it) => {
+        const Icon = it.icon;
+        const active = tab === it.id;
+        return (
+          <button
+            key={it.id}
+            onClick={() => setTab(it.id)}
+            className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left shrink-0 md:shrink"
+            style={{
+              background: active ? "rgba(255,255,255,0.12)" : "transparent",
+              color: active ? "#fff" : "#B9C7C0",
+            }}
+          >
+            <Icon size={17} />
+            <span className="text-[13px] font-medium whitespace-nowrap">{it.label}</span>
+            {!!it.badge && (
+              <span
+                className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full mono"
+                style={{ background: it.badgeColor || C.accent, color: "#fff" }}
+              >
+                {it.badge}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </aside>
+  );
+}
+
+/* ================= UI HELPERS ================= */
+function Card({ children, className = "", style = {} }) {
+  return (
+    <div className={`rounded-xl p-4 ${className}`} style={{ background: C.surface, border: `1px solid ${C.line}`, ...style }}>
+      {children}
+    </div>
+  );
+}
+function SectionTitle({ children, action }) {
+  return (
+    <div className="flex items-center justify-between mb-4">
+      <h2 className="text-[18px] font-semibold">{children}</h2>
+      {action}
+    </div>
+  );
+}
+function Btn({ children, onClick, variant = "primary", type = "button", small }) {
+  const styles = {
+    primary: { background: C.accent, color: "#fff" },
+    ghost: { background: "transparent", color: C.ink, border: `1px solid ${C.line}` },
+    danger: { background: C.redSoft, color: C.red },
+  };
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      className={`inline-flex items-center gap-1.5 rounded-lg font-medium ${small ? "px-2.5 py-1.5 text-[12px]" : "px-3.5 py-2 text-[13px]"}`}
+      style={styles[variant]}
+    >
+      {children}
+    </button>
+  );
+}
+function LinkBtn({ children, href, variant = "ghost", small, newTab = true }) {
+  const styles = {
+    primary: { background: C.accent, color: "#fff" },
+    ghost: { background: "transparent", color: C.ink, border: `1px solid ${C.line}` },
+    danger: { background: C.redSoft, color: C.red },
+  };
+  return (
+    <a
+      href={href}
+      {...(newTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+      className={`inline-flex items-center gap-1.5 rounded-lg font-medium no-underline ${small ? "px-2.5 py-1.5 text-[12px]" : "px-3.5 py-2 text-[13px]"}`}
+      style={styles[variant]}
+    >
+      {children}
+    </a>
+  );
+}
+function Input(props) {
+  return (
+    <input
+      {...props}
+      className={`w-full rounded-lg px-3 py-2 text-[13px] outline-none ${props.className || ""}`}
+      style={{ border: `1px solid ${C.line}`, background: "#fff", ...(props.style || {}) }}
+    />
+  );
+}
+function Field({ label, children }) {
+  return (
+    <label className="block mb-3">
+      <div className="text-[12px] font-medium mb-1" style={{ color: C.inkSoft }}>{label}</div>
+      {children}
+    </label>
+  );
+}
+function Empty({ text }) {
+  return (
+    <div className="text-center py-10 text-[13px]" style={{ color: C.inkSoft }}>
+      {text}
+    </div>
+  );
+}
+function Pill({ children, color }) {
+  return (
+    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: color + "22", color }}>
+      {children}
+    </span>
+  );
+}
+
+/* ================= DASHBOARD ================= */
+function Dashboard({ valorInventario, stockBajo, pedidosPendientes, margenPromedio, movimientos, productos }) {
+  const entradas30 = movimientos.filter((m) => m.tipo === "entrada").reduce((a, m) => a + m.cantidad, 0);
+  const salidas30 = movimientos.filter((m) => m.tipo === "salida").reduce((a, m) => a + m.cantidad, 0);
+
+  return (
+    <div>
+      <SectionTitle>Panel general</SectionTitle>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <Card>
+          <div className="text-[11px]" style={{ color: C.inkSoft }}>Saldo de almacén</div>
+          <div className="text-2xl font-semibold mono mt-1">€{fmt(valorInventario)}</div>
+        </Card>
+        <Card>
+          <div className="text-[11px]" style={{ color: C.inkSoft }}>Margen promedio</div>
+          <div className="text-2xl font-semibold mono mt-1" style={{ color: C.accent }}>{fmt(margenPromedio)}%</div>
+        </Card>
+        <Card>
+          <div className="text-[11px]" style={{ color: C.inkSoft }}>Pedidos pendientes</div>
+          <div className="text-2xl font-semibold mono mt-1">{pedidosPendientes.length}</div>
+        </Card>
+        <Card>
+          <div className="text-[11px]" style={{ color: C.inkSoft }}>Productos en stock bajo</div>
+          <div className="text-2xl font-semibold mono mt-1" style={{ color: stockBajo.length ? C.red : C.ink }}>{stockBajo.length}</div>
+        </Card>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card>
+          <div className="text-[13px] font-semibold mb-3 flex items-center gap-1.5"><AlertTriangle size={15} color={C.amber} /> Alertas de reposición</div>
+          {stockBajo.length === 0 ? <Empty text="No hay productos por debajo de su stock mínimo." /> : (
+            <div className="space-y-2">
+              {stockBajo.map((p) => (
+                <div key={p.id} className="flex items-center justify-between py-1.5 border-b last:border-0" style={{ borderColor: C.line }}>
+                  <span>{p.nombre}</span>
+                  <span className="mono text-[12px]" style={{ color: C.amber }}>{p.stock} / mín. {p.stockMinimo}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+        <Card>
+          <div className="text-[13px] font-semibold mb-3">Movimiento reciente de almacén</div>
+          <div className="flex gap-6 mb-3">
+            <div>
+              <div className="flex items-center gap-1 text-[12px]" style={{ color: C.accent }}><ArrowUpCircle size={14} /> Entradas totales</div>
+              <div className="text-xl font-semibold mono">{entradas30}</div>
+            </div>
+            <div>
+              <div className="flex items-center gap-1 text-[12px]" style={{ color: C.red }}><ArrowDownCircle size={14} /> Salidas totales</div>
+              <div className="text-xl font-semibold mono">{salidas30}</div>
+            </div>
+          </div>
+          {movimientos.length === 0 ? <Empty text="Aún no hay movimientos registrados." /> : (
+            <div className="space-y-1.5 max-h-40 overflow-y-auto">
+              {movimientos.slice(0, 8).map((m) => {
+                const p = productos.find((x) => x.id === m.productoId);
+                return (
+                  <div key={m.id} className="flex items-center justify-between text-[12px]">
+                    <span>{p ? p.nombre : "—"} · {m.referencia}</span>
+                    <span className="mono" style={{ color: m.tipo === "entrada" ? C.accent : m.tipo === "salida" ? C.red : C.inkSoft }}>
+                      {m.tipo === "entrada" ? "+" : m.tipo === "salida" ? "-" : "±"}{Math.abs(m.cantidad)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ================= PROVEEDORES ================= */
+function Proveedores({ proveedores, addProveedor, updateProveedor, deleteProveedor, pedidos }) {
+  const blankProv = { nombre: "", contacto: "", telefono: "", email: "", condiciones: "", leadTime: "" };
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(blankProv);
+  const [error, setError] = useState("");
+  const [editFor, setEditFor] = useState(null);
+  const [editForm, setEditForm] = useState(blankProv);
+  const [editError, setEditError] = useState("");
+
+  function submit() {
+    if (!form.nombre.trim()) {
+      setError("Escribe el nombre del proveedor.");
+      return;
+    }
+    setError("");
+    addProveedor(form);
+    setForm(blankProv);
+    setShowForm(false);
+  }
+
+  function openEdit(pv) {
+    setEditFor(pv.id);
+    setEditForm({
+      nombre: pv.nombre || "", contacto: pv.contacto || "", telefono: pv.telefono || "",
+      email: pv.email || "", condiciones: pv.condiciones || "", leadTime: pv.leadTime || "",
+    });
+    setEditError("");
+  }
+  function submitEdit() {
+    if (!editForm.nombre.trim()) {
+      setEditError("Escribe el nombre del proveedor.");
+      return;
+    }
+    updateProveedor(editFor, editForm);
+    setEditFor(null);
+  }
+
+  return (
+    <div>
+      <SectionTitle action={<Btn onClick={() => setShowForm((s) => !s)}><Plus size={15} /> Nuevo proveedor</Btn>}>
+        Proveedores
+      </SectionTitle>
+
+      {showForm && (
+        <Card className="mb-4">
+          <div className="grid md:grid-cols-3 gap-x-4">
+            <Field label="Nombre del proveedor"><Input value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Distribuidora del Norte" /></Field>
+            <Field label="Persona de contacto"><Input value={form.contacto} onChange={(e) => setForm({ ...form, contacto: e.target.value })} placeholder="Nombre" /></Field>
+            <Field label="Teléfono (WhatsApp)"><Input value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} placeholder="+34 600 000 000" /></Field>
+            <Field label="Correo electrónico"><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="pedidos@proveedor.com" /></Field>
+            <Field label="Condiciones de pago"><Input value={form.condiciones} onChange={(e) => setForm({ ...form, condiciones: e.target.value })} placeholder="Contado / 30 días" /></Field>
+            <Field label="Tiempo de entrega (días)"><Input type="number" value={form.leadTime} onChange={(e) => setForm({ ...form, leadTime: e.target.value })} placeholder="5" /></Field>
+          </div>
+          {error && <div className="text-[12px] mb-2" style={{ color: C.red }}>{error}</div>}
+          <div className="flex gap-2 mt-1">
+            <Btn onClick={submit}>Guardar proveedor</Btn>
+            <Btn variant="ghost" onClick={() => { setShowForm(false); setError(""); }}>Cancelar</Btn>
+          </div>
+        </Card>
+      )}
+
+      {proveedores.length === 0 ? <Empty text="Todavía no has añadido proveedores." /> : (
+        <div className="grid md:grid-cols-2 gap-3">
+          {proveedores.map((pv) => {
+            const nPedidos = pedidos.filter((p) => p.proveedorId === pv.id).length;
+            return (
+              <Card key={pv.id}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="font-semibold">{pv.nombre}</div>
+                    <div className="text-[12px] mt-0.5" style={{ color: C.inkSoft }}>{pv.contacto}</div>
+                  </div>
+                  <button onClick={() => deleteProveedor(pv.id)}><Trash2 size={15} color={C.inkSoft} /></button>
+                </div>
+                <div className="mt-3 text-[12px] space-y-1" style={{ color: C.inkSoft }}>
+                  {pv.email && <div>✉ {pv.email}</div>}
+                  {pv.telefono && <div>☎ {pv.telefono}</div>}
+                  {pv.condiciones && <div>Condiciones: {pv.condiciones}</div>}
+                  {pv.leadTime && <div>Entrega estimada: {pv.leadTime} días</div>}
+                  <div className="mono">{nPedidos} pedido(s) registrados</div>
+                </div>
+                <div className="mt-3">
+                  <Btn small variant="ghost" onClick={() => openEdit(pv)}>Editar</Btn>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {editFor && (
+        <Modal onClose={() => setEditFor(null)} title="Editar proveedor">
+          <Field label="Nombre del proveedor"><Input value={editForm.nombre} onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })} autoFocus /></Field>
+          <Field label="Persona de contacto"><Input value={editForm.contacto} onChange={(e) => setEditForm({ ...editForm, contacto: e.target.value })} /></Field>
+          <Field label="Teléfono (WhatsApp)"><Input value={editForm.telefono} onChange={(e) => setEditForm({ ...editForm, telefono: e.target.value })} /></Field>
+          <Field label="Correo electrónico"><Input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} /></Field>
+          <Field label="Condiciones de pago"><Input value={editForm.condiciones} onChange={(e) => setEditForm({ ...editForm, condiciones: e.target.value })} /></Field>
+          <Field label="Tiempo de entrega (días)"><Input type="number" value={editForm.leadTime} onChange={(e) => setEditForm({ ...editForm, leadTime: e.target.value })} /></Field>
+          {editError && <div className="text-[12px] mb-2" style={{ color: C.red }}>{editError}</div>}
+          <div className="flex gap-2 mt-1">
+            <Btn onClick={submitEdit}>Guardar cambios</Btn>
+            <Btn variant="ghost" onClick={() => setEditFor(null)}>Cancelar</Btn>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ================= PRODUCTOS ================= */
+function Productos({ productos, proveedores, proveedorPorId, addProducto, updateProducto, deleteProducto, registrarSalida, clasificacionABC, almacenCongelado }) {
+  const [showForm, setShowForm] = useState(false);
+  const blank = { codigo: "", nombre: "", categoria: "", unidad: "unidad", costo: "", precioVenta: "", stock: "", stockMinimo: "", ubicacion: "", proveedorId: "" };
+  const [form, setForm] = useState(blank);
+  const [salidaFor, setSalidaFor] = useState(null);
+  const [salidaCant, setSalidaCant] = useState("");
+  const [error, setError] = useState("");
+
+  const [editFor, setEditFor] = useState(null);
+  const [editForm, setEditForm] = useState(blank);
+  const [editError, setEditError] = useState("");
+  const [busqueda, setBusqueda] = useState("");
+
+  const productosFiltrados = productos.filter((p) => {
+    const q = busqueda.trim().toLowerCase();
+    if (!q) return true;
+    return [p.nombre, p.codigo, p.categoria, p.ubicacion]
+      .filter(Boolean)
+      .some((campo) => String(campo).toLowerCase().includes(q));
+  });
+
+  function submit() {
+    if (!form.nombre.trim()) {
+      setError("Escribe el nombre del producto.");
+      return;
+    }
+    setError("");
+    addProducto({ ...form, costo: Number(form.costo) || 0, precioVenta: Number(form.precioVenta) || 0, stockMinimo: Number(form.stockMinimo) || 0 });
+    setForm(blank);
+    setShowForm(false);
+  }
+
+  function openEdit(p) {
+    setEditFor(p.id);
+    setEditForm({
+      codigo: p.codigo || "", nombre: p.nombre || "", categoria: p.categoria || "",
+      unidad: p.unidad || "unidad", costo: p.costo ?? "", precioVenta: p.precioVenta ?? "",
+      stock: p.stock ?? "", stockMinimo: p.stockMinimo ?? "", ubicacion: p.ubicacion || "", proveedorId: p.proveedorId || "",
+    });
+    setEditError("");
+  }
+  function submitEdit() {
+    if (!editForm.nombre.trim()) {
+      setEditError("Escribe el nombre del producto.");
+      return;
+    }
+    updateProducto(editFor, {
+      ...editForm,
+      costo: Number(editForm.costo) || 0,
+      precioVenta: Number(editForm.precioVenta) || 0,
+      stock: Number(editForm.stock) || 0,
+      stockMinimo: Number(editForm.stockMinimo) || 0,
+    });
+    setEditFor(null);
+  }
+
+  return (
+    <div>
+      <SectionTitle action={<Btn onClick={() => setShowForm((s) => !s)}><Plus size={15} /> Nuevo producto</Btn>}>
+        Productos
+      </SectionTitle>
+      {almacenCongelado && (
+        <Card className="mb-4" style={{ background: C.amberSoft, border: "none" }}>
+          <div className="flex items-start gap-2 text-[12.5px]">
+            <AlertTriangle size={16} color={C.amber} style={{ marginTop: 2, flexShrink: 0 }} />
+            <span><b>Almacén congelado por conteo en curso.</b> Las entradas y salidas están bloqueadas hasta que finalices el conteo en Inventario ciego.</span>
+          </div>
+        </Card>
+      )}
+
+      {showForm && (
+        <Card className="mb-4">
+          <div className="grid md:grid-cols-3 gap-x-4">
+            <Field label="Nombre"><Input value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} /></Field>
+            <Field label="Código / SKU (opcional)"><Input value={form.codigo} onChange={(e) => setForm({ ...form, codigo: e.target.value })} placeholder="Interno o de proveedor" /></Field>
+            <Field label="Categoría"><Input value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value })} /></Field>
+            <Field label="Unidad de medida"><Input value={form.unidad} onChange={(e) => setForm({ ...form, unidad: e.target.value })} placeholder="unidad, kg, caja…" /></Field>
+            <Field label="Costo de compra (€)"><Input type="number" step="0.01" value={form.costo} onChange={(e) => setForm({ ...form, costo: e.target.value })} /></Field>
+            <Field label="Precio de venta (€)"><Input type="number" step="0.01" value={form.precioVenta} onChange={(e) => setForm({ ...form, precioVenta: e.target.value })} /></Field>
+            <Field label="Stock inicial"><Input type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} /></Field>
+            <Field label="Stock mínimo (reorden)"><Input type="number" value={form.stockMinimo} onChange={(e) => setForm({ ...form, stockMinimo: e.target.value })} /></Field>
+            <Field label="Ubicación en almacén (opcional)"><Input value={form.ubicacion} onChange={(e) => setForm({ ...form, ubicacion: e.target.value })} placeholder="Estante 3, pasillo B…" /></Field>
+            <Field label="Proveedor principal (opcional)">
+              <select value={form.proveedorId} onChange={(e) => setForm({ ...form, proveedorId: e.target.value })} className="w-full rounded-lg px-3 py-2 text-[13px]" style={{ border: `1px solid ${C.line}` }}>
+                <option value="">Sin asignar</option>
+                {proveedores.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+              </select>
+            </Field>
+          </div>
+          {error && <div className="text-[12px] mb-2" style={{ color: C.red }}>{error}</div>}
+          <div className="flex gap-2 mt-1">
+            <Btn onClick={submit}>Guardar producto</Btn>
+            <Btn variant="ghost" onClick={() => { setShowForm(false); setError(""); }}>Cancelar</Btn>
+          </div>
+        </Card>
+      )}
+
+      {productos.length === 0 ? <Empty text="Todavía no has añadido productos." /> : (
+        <>
+          <div className="relative mb-3">
+            <Search size={15} color={C.inkSoft} style={{ position: "absolute", left: 10, top: 10 }} />
+            <Input
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Buscar por nombre, código, categoría o ubicación…"
+              style={{ paddingLeft: 32 }}
+            />
+          </div>
+          {productosFiltrados.length === 0 ? <Empty text={`Ningún producto coincide con "${busqueda}".`} /> : (
+        <Card style={{ padding: 0 }}>
+          <table className="w-full text-[12.5px]">
+            <thead>
+              <tr style={{ color: C.inkSoft, borderBottom: `1px solid ${C.line}` }}>
+                <th className="text-left font-medium py-2.5 px-3">Producto</th>
+                <th className="text-left font-medium py-2.5 px-3">Stock</th>
+                <th className="text-left font-medium py-2.5 px-3">Costo</th>
+                <th className="text-left font-medium py-2.5 px-3">Venta</th>
+                <th className="text-left font-medium py-2.5 px-3">Margen</th>
+                <th className="text-center font-medium py-2.5 px-3">ABC</th>
+                <th className="text-left font-medium py-2.5 px-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {productosFiltrados.map((p) => {
+                const margen = p.precioVenta > 0 ? ((p.precioVenta - p.costo) / p.precioVenta) * 100 : null;
+                const bajo = p.stock <= Number(p.stockMinimo || 0);
+                return (
+                  <tr key={p.id} style={{ borderBottom: `1px solid ${C.line}` }}>
+                    <td className="py-2.5 px-3">
+                      <div className="font-medium">{p.nombre}</div>
+                      <div className="text-[11px]" style={{ color: C.inkSoft }}>
+                        {[p.codigo, p.categoria, p.ubicacion].filter(Boolean).join(" · ")}
+                        {p.proveedorId && proveedorPorId(p.proveedorId) ? ` · ${proveedorPorId(p.proveedorId).nombre}` : ""}
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-3 mono">
+                      {p.stock} {p.unidad}
+                      {bajo && <div><Pill color={C.amber}>bajo mínimo</Pill></div>}
+                    </td>
+                    <td className="py-2.5 px-3 mono">€{fmt(p.costo)}</td>
+                    <td className="py-2.5 px-3 mono">€{fmt(p.precioVenta)}</td>
+                    <td className="py-2.5 px-3 mono" style={{ color: margen == null ? C.inkSoft : margen < 15 ? C.red : C.accent }}>
+                      {margen == null ? "—" : `${fmt(margen)}%`}
+                    </td>
+                    <td className="py-2.5 px-3 text-center">
+                      <Pill color={(clasificacionABC[p.id] || "C") === "A" ? C.red : (clasificacionABC[p.id] || "C") === "B" ? C.amber : C.inkSoft}>
+                        {clasificacionABC[p.id] || "C"}
+                      </Pill>
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <div className="flex gap-2 justify-end">
+                        <Btn small variant="ghost" onClick={() => openEdit(p)}>Editar</Btn>
+                        {!almacenCongelado && <Btn small variant="ghost" onClick={() => setSalidaFor(p.id)}>Registrar salida</Btn>}
+                        <button onClick={() => deleteProducto(p.id)}><Trash2 size={14} color={C.inkSoft} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </Card>
+          )}
+        </>
+      )}
+
+      {salidaFor && (
+        <Modal onClose={() => { setSalidaFor(null); setSalidaCant(""); }} title="Registrar salida de almacén">
+          <Field label="Cantidad a retirar">
+            <Input type="number" value={salidaCant} onChange={(e) => setSalidaCant(e.target.value)} autoFocus />
+          </Field>
+          <Btn onClick={() => { registrarSalida(salidaFor, salidaCant, "Venta / consumo"); setSalidaFor(null); setSalidaCant(""); }}>Confirmar salida</Btn>
+        </Modal>
+      )}
+
+      {editFor && (
+        <Modal onClose={() => setEditFor(null)} title="Editar producto">
+          <div className="grid grid-cols-2 gap-x-3">
+            <Field label="Nombre"><Input value={editForm.nombre} onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })} /></Field>
+            <Field label="Código / SKU"><Input value={editForm.codigo} onChange={(e) => setEditForm({ ...editForm, codigo: e.target.value })} /></Field>
+            <Field label="Categoría"><Input value={editForm.categoria} onChange={(e) => setEditForm({ ...editForm, categoria: e.target.value })} /></Field>
+            <Field label="Unidad de medida"><Input value={editForm.unidad} onChange={(e) => setEditForm({ ...editForm, unidad: e.target.value })} /></Field>
+            <Field label="Costo de compra (€)">
+              <Input type="number" step="0.01" value={editForm.costo} onChange={(e) => setEditForm({ ...editForm, costo: e.target.value })} autoFocus />
+            </Field>
+            <Field label="Precio de venta (€)">
+              <Input type="number" step="0.01" value={editForm.precioVenta} onChange={(e) => setEditForm({ ...editForm, precioVenta: e.target.value })} />
+            </Field>
+            <Field label="Stock actual"><Input type="number" value={editForm.stock} onChange={(e) => setEditForm({ ...editForm, stock: e.target.value })} /></Field>
+            <Field label="Stock mínimo"><Input type="number" value={editForm.stockMinimo} onChange={(e) => setEditForm({ ...editForm, stockMinimo: e.target.value })} /></Field>
+            <Field label="Ubicación"><Input value={editForm.ubicacion} onChange={(e) => setEditForm({ ...editForm, ubicacion: e.target.value })} /></Field>
+            <Field label="Proveedor principal">
+              <select value={editForm.proveedorId} onChange={(e) => setEditForm({ ...editForm, proveedorId: e.target.value })} className="w-full rounded-lg px-3 py-2 text-[13px]" style={{ border: `1px solid ${C.line}` }}>
+                <option value="">Sin asignar</option>
+                {proveedores.map((pv) => <option key={pv.id} value={pv.id}>{pv.nombre}</option>)}
+              </select>
+            </Field>
+          </div>
+          {editError && <div className="text-[12px] mb-2" style={{ color: C.red }}>{editError}</div>}
+          <div className="flex gap-2 mt-1">
+            <Btn onClick={submitEdit}>Guardar cambios</Btn>
+            <Btn variant="ghost" onClick={() => setEditFor(null)}>Cancelar</Btn>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ================= MODAL ================= */
+function Modal({ children, onClose, title }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,32,28,0.45)" }}>
+      <div className="rounded-xl p-5 w-full max-w-md" style={{ background: C.surface }}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="font-semibold text-[15px]">{title}</div>
+          <button onClick={onClose}><X size={17} /></button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ================= PEDIDOS ================= */
+function Pedidos({ pedidos, proveedores, productos, crearPedido, actualizarPedido, eliminarPedido, proveedorPorId, productoPorId }) {
+  const [showForm, setShowForm] = useState(false);
+  const [proveedorId, setProveedorId] = useState("");
+  const [fechaEsperada, setFechaEsperada] = useState("");
+  const [items, setItems] = useState([]);
+  const [enviarPedido, setEnviarPedido] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+
+  function addItemRow() {
+    if (!productos.length) return;
+    setItems((s) => [...s, { productoId: productos[0].id, cantidad: 1, costoUnitario: productos[0].costo }]);
+  }
+  function updateItem(idx, field, value) {
+    setItems((s) =>
+      s.map((it, i) => {
+        if (i !== idx) return it;
+        if (field === "productoId") {
+          const p = productos.find((pr) => pr.id === value);
+          return { ...it, productoId: value, costoUnitario: p ? p.costo : it.costoUnitario };
+        }
+        return { ...it, [field]: value };
+      })
+    );
+  }
+  function removeItem(idx) {
+    setItems((s) => s.filter((_, i) => i !== idx));
+  }
+  const [error, setError] = useState("");
+
+  function resetForm() {
+    setItems([]);
+    setProveedorId("");
+    setFechaEsperada("");
+    setEditingId(null);
+    setError("");
+  }
+
+  function openEdit(pedido) {
+    setEditingId(pedido.id);
+    setProveedorId(pedido.proveedorId);
+    setFechaEsperada(pedido.fechaEsperada || "");
+    setItems(pedido.items.map((it) => ({ productoId: it.productoId, cantidad: it.cantidad, costoUnitario: it.costoUnitario })));
+    setError("");
+    setShowForm(true);
+  }
+
+  function submit() {
+    if (!proveedorId) {
+      setError("Selecciona un proveedor.");
+      return;
+    }
+    if (items.length === 0) {
+      setError("Añade al menos un producto al pedido.");
+      return;
+    }
+    setError("");
+    const itemsLimpios = items.map((it) => ({ productoId: it.productoId, cantidad: Number(it.cantidad), costoUnitario: Number(it.costoUnitario) }));
+    if (editingId) {
+      actualizarPedido(editingId, { proveedorId, fechaEsperada, items: itemsLimpios });
+      setShowForm(false);
+      resetForm();
+    } else {
+      const pedido = crearPedido({ proveedorId, fechaEsperada, items: itemsLimpios });
+      setShowForm(false);
+      resetForm();
+      setEnviarPedido(pedido);
+    }
+  }
+
+  function textoPedido(pedido) {
+    const prov = proveedorPorId(pedido.proveedorId);
+    const lineas = pedido.items.map((it) => {
+      const p = productoPorId(it.productoId);
+      return `- ${p ? p.nombre : "?"} x${it.cantidad} @ €${fmt(it.costoUnitario)} = €${fmt(it.cantidad * it.costoUnitario)}`;
+    });
+    const total = pedido.items.reduce((a, it) => a + it.cantidad * it.costoUnitario, 0);
+    return `Pedido para ${prov ? prov.nombre : ""}\nFecha: ${pedido.fecha}\nEntrega esperada: ${pedido.fechaEsperada || "por confirmar"}\n\nProductos:\n${lineas.join("\n")}\n\nTotal: €${fmt(total)}`;
+  }
+
+  function mailtoHref(pedido) {
+    const prov = proveedorPorId(pedido.proveedorId);
+    const texto = textoPedido(pedido);
+    return `mailto:${prov?.email || ""}?subject=${encodeURIComponent("Pedido - " + (prov?.nombre || ""))}&body=${encodeURIComponent(texto)}`;
+  }
+  function gmailAppHref(pedido) {
+    const prov = proveedorPorId(pedido.proveedorId);
+    const texto = textoPedido(pedido);
+    return `googlegmail:///co?to=${encodeURIComponent(prov?.email || "")}&subject=${encodeURIComponent("Pedido - " + (prov?.nombre || ""))}&body=${encodeURIComponent(texto)}`;
+  }
+  function gmailWebHref(pedido) {
+    const prov = proveedorPorId(pedido.proveedorId);
+    const texto = textoPedido(pedido);
+    const params = new URLSearchParams({
+      view: "cm", fs: "1",
+      to: prov?.email || "",
+      su: "Pedido - " + (prov?.nombre || ""),
+      body: texto,
+    });
+    return `https://mail.google.com/mail/?${params.toString()}`;
+  }
+
+  const [compartirError, setCompartirError] = useState("");
+  async function compartirPedido(pedido) {
+    const prov = proveedorPorId(pedido.proveedorId);
+    const texto = textoPedido(pedido);
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Pedido - ${prov?.nombre || ""}`,
+          text: texto,
+        });
+        setCompartirError("");
+      } catch (e) {
+        if (e && e.name !== "AbortError") setCompartirError("No se pudo abrir el menú de compartir.");
+      }
+    } else {
+      setCompartirError("Tu navegador no permite compartir. Usa las otras opciones o copia el texto.");
+    }
+  }
+  function whatsappHref(pedido) {
+    const prov = proveedorPorId(pedido.proveedorId);
+    const texto = textoPedido(pedido);
+    const numero = (prov?.telefono || "").replace(/[^0-9]/g, "");
+    return `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
+  }
+
+  const [correoPedido, setCorreoPedido] = useState(null);
+
+  const estadoColor = { Pendiente: C.amber, Parcial: C.accent, Recibido: C.inkSoft };
+
+  return (
+    <div>
+      <SectionTitle action={<Btn onClick={() => { if (showForm) { resetForm(); } setShowForm((s) => !s); }}><Plus size={15} /> Nuevo pedido</Btn>}>
+        Pedidos de compra
+      </SectionTitle>
+
+      {showForm && (
+        <Card className="mb-4">
+          <div className="text-[13px] font-semibold mb-3">{editingId ? "Editando pedido pendiente" : "Nuevo pedido"}</div>
+          <div>
+            <div className="grid md:grid-cols-2 gap-x-4">
+              <Field label="Proveedor">
+                <select value={proveedorId} onChange={(e) => setProveedorId(e.target.value)} className="w-full rounded-lg px-3 py-2 text-[13px]" style={{ border: `1px solid ${C.line}` }}>
+                  <option value="">Selecciona un proveedor</option>
+                  {proveedores.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                </select>
+              </Field>
+              <Field label="Fecha esperada de entrega">
+                <Input type="date" value={fechaEsperada} onChange={(e) => setFechaEsperada(e.target.value)} />
+              </Field>
+            </div>
+
+            <div className="mb-2 text-[12px] font-medium" style={{ color: C.inkSoft }}>Productos del pedido</div>
+            {items.map((it, idx) => (
+              <div key={idx} className="flex gap-2 items-center mb-2">
+                <select value={it.productoId} onChange={(e) => updateItem(idx, "productoId", e.target.value)} className="flex-1 rounded-lg px-2 py-2 text-[12.5px]" style={{ border: `1px solid ${C.line}` }}>
+                  {productos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                </select>
+                <Input type="number" style={{ width: 80 }} value={it.cantidad} onChange={(e) => updateItem(idx, "cantidad", e.target.value)} placeholder="Cant." />
+                <Input type="number" step="0.01" style={{ width: 100 }} value={it.costoUnitario} onChange={(e) => updateItem(idx, "costoUnitario", e.target.value)} placeholder="Costo u." />
+                <button type="button" onClick={() => removeItem(idx)}><X size={16} color={C.inkSoft} /></button>
+              </div>
+            ))}
+            <button type="button" onClick={addItemRow} className="text-[12.5px] font-medium mb-4" style={{ color: C.accent }}>+ Añadir producto al pedido</button>
+
+            {error && <div className="text-[12px] mb-3" style={{ color: C.red }}>{error}</div>}
+            <div className="flex gap-2">
+              <Btn onClick={submit}>{editingId ? "Guardar cambios" : "Crear pedido"}</Btn>
+              <Btn variant="ghost" onClick={() => { setShowForm(false); resetForm(); }}>Cancelar</Btn>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {pedidos.length === 0 ? <Empty text="No hay pedidos registrados todavía." /> : (
+        <div className="space-y-2">
+          {pedidos.map((pe) => {
+            const prov = proveedorPorId(pe.proveedorId);
+            const total = pe.items.reduce((a, it) => a + it.cantidad * it.costoUnitario, 0);
+            return (
+              <Card key={pe.id}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-semibold">{prov ? prov.nombre : "Proveedor eliminado"}</div>
+                    <div className="text-[12px]" style={{ color: C.inkSoft }}>
+                      Pedido {pe.fecha} · Entrega esperada {pe.fechaEsperada || "—"}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Pill color={estadoColor[pe.estado]}>{pe.estado}</Pill>
+                    <div className="mono font-semibold">€{fmt(total)}</div>
+                  </div>
+                </div>
+                <div className="mt-2 flex gap-2 flex-wrap">
+                  <Btn small variant="ghost" onClick={() => { setCorreoPedido(pe); }}><Mail size={13} /> Enviar por correo</Btn>
+                  <LinkBtn small href={whatsappHref(pe)}><MessageCircle size={13} /> Enviar por WhatsApp</LinkBtn>
+                  {pe.estado === "Pendiente" && (
+                    <>
+                      <Btn small variant="ghost" onClick={() => openEdit(pe)}>Editar</Btn>
+                      <Btn small variant="danger" onClick={() => setConfirmDeleteId(pe.id)}><Trash2 size={13} /> Eliminar</Btn>
+                    </>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {confirmDeleteId && (
+        <Modal onClose={() => setConfirmDeleteId(null)} title="Eliminar pedido">
+          <div className="text-[12.5px] mb-4" style={{ color: C.ink }}>
+            ¿Seguro que quieres eliminar este pedido? Esta acción no se puede deshacer.
+          </div>
+          <div className="flex gap-2">
+            <Btn variant="danger" onClick={() => { eliminarPedido(confirmDeleteId); setConfirmDeleteId(null); }}>Sí, eliminar</Btn>
+            <Btn variant="ghost" onClick={() => setConfirmDeleteId(null)}>Cancelar</Btn>
+          </div>
+        </Modal>
+      )}
+
+      {correoPedido && (
+        <Modal onClose={() => setCorreoPedido(null)} title="Enviar pedido por correo">
+          <div className="text-[12.5px] mb-3" style={{ color: C.ink }}>
+            Prueba los botones de Gmail. Si no se abren, más abajo tienes el correo listo para copiar y pegar.
+          </div>
+          <div className="flex flex-col gap-2 mb-4">
+            <Btn onClick={() => compartirPedido(correoPedido)}><Mail size={14} /> Compartir con Gmail u otra app</Btn>
+            <LinkBtn href={gmailWebHref(correoPedido)}><Mail size={14} /> Abrir en Gmail (navegador)</LinkBtn>
+            <LinkBtn href={mailtoHref(correoPedido)} newTab={false}><Mail size={14} /> App de correo del sistema</LinkBtn>
+          </div>
+          {compartirError && <div className="text-[12px] mb-3" style={{ color: C.red }}>{compartirError}</div>}
+          <div className="text-[11.5px] mb-2 pt-3" style={{ color: C.inkSoft, borderTop: `1px solid ${C.line}` }}>
+            Si ninguno abre, toca cada campo (se selecciona solo) y cópialo:
+          </div>
+          <Field label="Destinatario">
+            <Input readOnly value={proveedorPorId(correoPedido.proveedorId)?.email || ""} onFocus={(e) => e.target.select()} />
+          </Field>
+          <Field label="Asunto">
+            <Input readOnly value={`Pedido - ${proveedorPorId(correoPedido.proveedorId)?.nombre || ""}`} onFocus={(e) => e.target.select()} />
+          </Field>
+          <Field label="Mensaje">
+            <textarea
+              readOnly
+              value={textoPedido(correoPedido)}
+              onFocus={(e) => e.target.select()}
+              className="w-full rounded-lg p-2 text-[12px] mono"
+              style={{ border: `1px solid ${C.line}`, height: 160, resize: "none" }}
+            />
+          </Field>
+          <Btn variant="ghost" onClick={() => setCorreoPedido(null)}>Cerrar</Btn>
+        </Modal>
+      )}
+
+      {enviarPedido && (
+        <Modal onClose={() => setEnviarPedido(null)} title="Pedido creado — ¿cómo quieres enviarlo?">
+          <p className="text-[12.5px] mb-4" style={{ color: C.inkSoft }}>Puedes enviarlo ahora al proveedor o hacerlo más tarde desde la lista de pedidos.</p>
+          <div className="flex gap-2">
+            <Btn onClick={() => { setCorreoPedido(enviarPedido); setEnviarPedido(null); }}><Mail size={14} /> Correo</Btn>
+            <LinkBtn variant="primary" href={whatsappHref(enviarPedido)}><MessageCircle size={14} /> WhatsApp</LinkBtn>
+            <Btn variant="ghost" onClick={() => setEnviarPedido(null)}>Ahora no</Btn>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ================= RECEPCIÓN ================= */
+function Recepcion({ pedidos, proveedorPorId, productoPorId, recibirPedido, almacenCongelado }) {
+  const [activos, setActivos] = useState({});
+  const pendientes = pedidos.filter((p) => p.estado !== "Recibido");
+
+  function setCant(pedidoId, productoId, val) {
+    setActivos((s) => ({ ...s, [pedidoId]: { ...(s[pedidoId] || {}), [productoId]: val } }));
+  }
+
+  return (
+    <div>
+      <SectionTitle>Recepción de mercancía</SectionTitle>
+      {almacenCongelado && (
+        <Card className="mb-4" style={{ background: C.amberSoft, border: "none" }}>
+          <div className="flex items-start gap-2 text-[12.5px]">
+            <AlertTriangle size={16} color={C.amber} style={{ marginTop: 2, flexShrink: 0 }} />
+            <span><b>Almacén congelado por conteo en curso.</b> Las entradas y salidas están bloqueadas hasta que finalices el conteo en Inventario ciego.</span>
+          </div>
+        </Card>
+      )}
+      {pendientes.length === 0 ? <Empty text="No hay pedidos pendientes de recibir." /> : (
+        <div className="space-y-3">
+          {pendientes.map((pe) => {
+            const prov = proveedorPorId(pe.proveedorId);
+            return (
+              <Card key={pe.id}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="font-semibold">{prov ? prov.nombre : "—"}</div>
+                  <Pill color={C.amber}>{pe.estado}</Pill>
+                </div>
+                {pe.items.map((it) => {
+                  const p = productoPorId(it.productoId);
+                  const pendiente = it.cantidad - it.cantidadRecibida;
+                  return (
+                    <div key={it.productoId} className="flex items-center justify-between py-1.5 border-b last:border-0" style={{ borderColor: C.line }}>
+                      <div>
+                        <div>{p ? p.nombre : "—"}</div>
+                        <div className="text-[11px] mono" style={{ color: C.inkSoft }}>Pedido: {it.cantidad} · Recibido: {it.cantidadRecibida} · Pendiente: {pendiente}</div>
+                      </div>
+                      <Input
+                        type="number"
+                        style={{ width: 90 }}
+                        placeholder="Cant. hoy"
+                        value={(activos[pe.id] || {})[it.productoId] || ""}
+                        onChange={(e) => setCant(pe.id, it.productoId, e.target.value)}
+                        disabled={pendiente <= 0}
+                      />
+                    </div>
+                  );
+                })}
+                <div className="mt-3">
+                  {!almacenCongelado && (
+                    <Btn onClick={() => { recibirPedido(pe.id, activos[pe.id] || {}); setActivos((s) => ({ ...s, [pe.id]: {} })); }}>
+                      <CheckCircle2 size={14} /> Confirmar recepción
+                    </Btn>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ================= INVENTARIO CIEGO ================= */
+// Texto plano de la hoja de conteo, para enviar por WhatsApp
+function textoHojaConteo(productos) {
+  const fecha = new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const ordenados = [...productos].sort(
+    (a, b) => (a.ubicacion || "").localeCompare(b.ubicacion || "") || (a.nombre || "").localeCompare(b.nombre || "")
+  );
+  const lineas = ordenados.map((p, i) => `${i + 1}. ${p.nombre} (${p.unidad})\n   Conteo: _____________`);
+  return `HOJA DE CONTEO DE INVENTARIO\nFecha: ${fecha}\n\n${lineas.join("\n\n")}\n\nContado por: ____________________`;
+}
+
+function InventarioCiego({ productos, proveedores, conteos, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, productoPorId, crearProductoEnConteo, clasificacionABC, almacenCongelado }) {
+  const [activoId, setActivoId] = useState(null);
+  const activo = conteos.find((c) => c.id === activoId);
+  const [showNuevo, setShowNuevo] = useState(false);
+  const blankNuevo = { codigo: "", nombre: "", categoria: "", unidad: "unidad", costo: "", precioVenta: "", stockMinimo: "", ubicacion: "", proveedorId: "", cantidadContada: "" };
+  const [nuevo, setNuevo] = useState(blankNuevo);
+  const [errorNuevo, setErrorNuevo] = useState("");
+  const [motivos, setMotivos] = useState({});
+  const [verHoja, setVerHoja] = useState(false);
+
+  const MOTIVOS = ["Rotura", "Merma / caducidad", "Robo o pérdida", "Error de captura", "Devolución no registrada", "Otro"];
+
+  function submitNuevo() {
+    if (!nuevo.nombre.trim()) {
+      setErrorNuevo("Escribe el nombre del producto.");
+      return;
+    }
+    if (nuevo.cantidadContada === "" || isNaN(Number(nuevo.cantidadContada))) {
+      setErrorNuevo("Escribe la cantidad que contaste.");
+      return;
+    }
+    setErrorNuevo("");
+    const { cantidadContada, ...datosProducto } = nuevo;
+    crearProductoEnConteo(activo.id, datosProducto, cantidadContada);
+    setNuevo(blankNuevo);
+    setShowNuevo(false);
+  }
+
+  // Diferencias valoradas del conteo activo, ordenadas por impacto económico
+  const diferencias = !activo ? [] : activo.items
+    .map((it) => {
+      const p = productoPorId(it.productoId);
+      if (!p) return null;
+      const cf = valorCF(it);
+      if (cf === null) return null;
+      const dif = cf - Number(p.stock || 0);
+      const impacto = dif * (Number(p.costo) || 0);
+      return { producto: p, item: it, cf, dif, impacto };
+    })
+    .filter(Boolean)
+    .sort((a, b) => Math.abs(b.impacto) - Math.abs(a.impacto));
+
+  const impactoTotal = diferencias.reduce((a, d) => a + d.impacto, 0);
+  const conDescuadre = diferencias.filter((d) => d.dif !== 0);
+
+  const abcColor = { A: C.red, B: C.amber, C: C.inkSoft };
+
+  return (
+    <div>
+      <SectionTitle
+        action={
+          <div className="flex gap-2">
+            <Btn variant="ghost" onClick={() => setVerHoja(true)}><ClipboardList size={15} /> Hoja para contar</Btn>
+            {!activo && <Btn onClick={() => setActivoId(iniciarConteo())}><Plus size={15} /> Iniciar conteo</Btn>}
+          </div>
+        }
+      >
+        Inventario ciego
+      </SectionTitle>
+
+      {almacenCongelado && (
+        <Card className="mb-4" style={{ background: C.amberSoft, border: "none" }}>
+          <div className="flex items-start gap-2 text-[12.5px]">
+            <AlertTriangle size={16} color={C.amber} style={{ marginTop: 2, flexShrink: 0 }} />
+            <span>
+              <b>Almacén congelado.</b> Mientras haya un conteo abierto no se pueden registrar entradas ni salidas, para que el descuadre no salga falseado. Finaliza el conteo para desbloquearlo.
+            </span>
+          </div>
+        </Card>
+      )}
+
+      {!activo && (
+        <Card className="mb-4" style={{ background: C.accentSoft, border: "none" }}>
+          <div className="flex items-start gap-2 text-[12.5px]" style={{ color: C.ink }}>
+            <EyeOff size={16} style={{ marginTop: 2, flexShrink: 0 }} />
+            <span>
+              Durante el conteo no se muestra la existencia del sistema: cuentas físicamente y anotas la cantidad. Al finalizar verás las diferencias contra el stock registrado, valoradas en euros.
+            </span>
+          </div>
+        </Card>
+      )}
+
+      {activo && !activo.completado && (
+        <Card className="mb-4">
+          <div className="text-[13px] font-semibold mb-3 flex items-center gap-1.5"><Eye size={15} /> Captura de conteos</div>
+
+          <div className="grid grid-cols-2 gap-x-3 mb-4">
+            <Field label="Contado por"><Input value={(activo.responsables || {}).contadoPor || ""} onChange={(e) => actualizarResponsable(activo.id, "contadoPor", e.target.value)} placeholder="Nombre" /></Field>
+            <Field label="Revisado por (opcional)"><Input value={(activo.responsables || {}).revisor || ""} onChange={(e) => actualizarResponsable(activo.id, "revisor", e.target.value)} placeholder="Responsable" /></Field>
+          </div>
+
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-[12px]" style={{ borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <th className="py-2 px-2 text-left" style={{ background: C.ink, color: "#fff", width: 30 }}>Nº</th>
+                  <th className="py-2 px-2 text-left" style={{ background: C.ink, color: "#fff" }}>Descripción del producto</th>
+                  <th className="py-2 px-2 text-center" style={{ background: C.ink, color: "#fff", width: 58 }}>U/M</th>
+                  <th className="py-2 px-2 text-center" style={{ background: C.ink, color: "#fff", width: 96 }}>Conteo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activo.items.map((it, idx) => {
+                  const p = productoPorId(it.productoId);
+                  if (!p) return null;
+                  const abc = clasificacionABC[p.id] || "C";
+                  const sinContar = (it.conteo ?? valorCF(it) ?? "") === "";
+                  return (
+                    <tr key={it.productoId} style={{ background: idx % 2 ? C.bg : "#fff" }}>
+                      <td className="py-2 px-2 mono" style={{ border: `1px solid ${C.line}` }}>{idx + 1}</td>
+                      <td className="py-2 px-2" style={{ border: `1px solid ${C.line}` }}>
+                        <div className="flex items-center gap-1.5">
+                          <span>{p.nombre}</span>
+                          <Pill color={abcColor[abc]}>{abc}</Pill>
+                        </div>
+                        {p.codigo && <div className="mono text-[10.5px]" style={{ color: C.inkSoft }}>{p.codigo}</div>}
+                      </td>
+                      <td className="py-2 px-2 text-center" style={{ border: `1px solid ${C.line}` }}>{p.unidad}</td>
+                      <td className="p-1" style={{ border: `1px solid ${C.line}` }}>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          value={it.conteo ?? valorCF(it) ?? ""}
+                          onChange={(e) => actualizarConteoItem(activo.id, it.productoId, "conteo", e.target.value)}
+                          className="w-full rounded px-2 py-1.5 text-[13px] text-center outline-none mono"
+                          style={{
+                            border: `1px solid ${sinContar ? C.line : C.accent}`,
+                            background: sinContar ? "#fff" : C.accentSoft,
+                            fontWeight: 600,
+                          }}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="text-[11.5px] mt-2" style={{ color: C.inkSoft }}>
+            Las casillas en verde ya tienen conteo capturado. Las que quedan en blanco están pendientes.
+          </div>
+
+          <div className="mt-4 flex gap-2 items-center flex-wrap">
+            <Btn onClick={() => finalizarConteo(activo.id)}>Finalizar conteo</Btn>
+            <Btn variant="ghost" onClick={() => setShowNuevo((s) => !s)}><Plus size={14} /> Encontré un producto que no está en el sistema</Btn>
+          </div>
+
+          {showNuevo && (
+            <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${C.line}` }}>
+              <div className="text-[12.5px] font-medium mb-3" style={{ color: C.inkSoft }}>
+                Da de alta el producto encontrado y captura la cantidad contada. Se añadirá al catálogo y a este conteo.
+              </div>
+              <div className="grid md:grid-cols-3 gap-x-4">
+                <Field label="Nombre"><Input value={nuevo.nombre} onChange={(e) => setNuevo({ ...nuevo, nombre: e.target.value })} /></Field>
+                <Field label="Código / SKU (opcional)"><Input value={nuevo.codigo} onChange={(e) => setNuevo({ ...nuevo, codigo: e.target.value })} /></Field>
+                <Field label="Categoría"><Input value={nuevo.categoria} onChange={(e) => setNuevo({ ...nuevo, categoria: e.target.value })} /></Field>
+                <Field label="Unidad de medida"><Input value={nuevo.unidad} onChange={(e) => setNuevo({ ...nuevo, unidad: e.target.value })} placeholder="unidad, kg, caja…" /></Field>
+                <Field label="Costo de compra (€)"><Input type="number" step="0.01" value={nuevo.costo} onChange={(e) => setNuevo({ ...nuevo, costo: e.target.value })} /></Field>
+                <Field label="Precio de venta (€)"><Input type="number" step="0.01" value={nuevo.precioVenta} onChange={(e) => setNuevo({ ...nuevo, precioVenta: e.target.value })} /></Field>
+                <Field label="Stock mínimo (reorden)"><Input type="number" value={nuevo.stockMinimo} onChange={(e) => setNuevo({ ...nuevo, stockMinimo: e.target.value })} /></Field>
+                <Field label="Ubicación en almacén (opcional)"><Input value={nuevo.ubicacion} onChange={(e) => setNuevo({ ...nuevo, ubicacion: e.target.value })} /></Field>
+                <Field label="Proveedor principal (opcional)">
+                  <select value={nuevo.proveedorId} onChange={(e) => setNuevo({ ...nuevo, proveedorId: e.target.value })} className="w-full rounded-lg px-3 py-2 text-[13px]" style={{ border: `1px solid ${C.line}` }}>
+                    <option value="">Sin asignar</option>
+                    {proveedores.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                  </select>
+                </Field>
+                <Field label="Cantidad contada físicamente">
+                  <Input type="number" value={nuevo.cantidadContada} onChange={(e) => setNuevo({ ...nuevo, cantidadContada: e.target.value })} />
+                </Field>
+              </div>
+              {errorNuevo && <div className="text-[12px] mb-2" style={{ color: C.red }}>{errorNuevo}</div>}
+              <div className="flex gap-2 mt-1">
+                <Btn onClick={submitNuevo}>Añadir al conteo</Btn>
+                <Btn variant="ghost" onClick={() => { setShowNuevo(false); setErrorNuevo(""); }}>Cancelar</Btn>
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {activo && activo.completado && (
+        <Card className="mb-4">
+          <div className="text-[13px] font-semibold mb-1">Resultado del conteo — {activo.fecha}</div>
+          <div className="text-[11.5px] mb-3" style={{ color: C.inkSoft }}>
+            Ordenado por impacto económico: lo que más dinero mueve aparece primero.
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <Card style={{ background: C.bg }}>
+              <div className="text-[11px]" style={{ color: C.inkSoft }}>Productos descuadrados</div>
+              <div className="text-xl font-semibold mono mt-1" style={{ color: conDescuadre.length ? C.amber : C.accent }}>
+                {conDescuadre.length}
+              </div>
+            </Card>
+            <Card style={{ background: C.bg }}>
+              <div className="text-[11px]" style={{ color: C.inkSoft }}>Impacto económico neto</div>
+              <div className="text-xl font-semibold mono mt-1" style={{ color: impactoTotal < 0 ? C.red : impactoTotal > 0 ? C.accent : C.ink }}>
+                {impactoTotal >= 0 ? "+" : "−"}€{fmt(Math.abs(impactoTotal))}
+              </div>
+            </Card>
+          </div>
+
+          <div className="space-y-2">
+            {diferencias.length === 0 ? <Empty text="No se capturó ningún conteo." /> : diferencias.map((d) => (
+              <Card key={d.producto.id} style={{ background: d.dif === 0 ? "#fff" : C.bg }}>
+                <div className="flex items-start justify-between mb-1">
+                  <div className="text-[13px] font-medium">{d.producto.nombre}</div>
+                  <Pill color={abcColor[clasificacionABC[d.producto.id] || "C"]}>{clasificacionABC[d.producto.id] || "C"}</Pill>
+                </div>
+                <div className="grid grid-cols-4 gap-2 text-[12px] mb-2">
+                  <div>
+                    <div style={{ color: C.inkSoft }} className="text-[10.5px]">Sistema</div>
+                    <div className="mono">{d.producto.stock}</div>
+                  </div>
+                  <div>
+                    <div style={{ color: C.inkSoft }} className="text-[10.5px]">Conteo final</div>
+                    <div className="mono font-semibold">{d.cf}</div>
+                  </div>
+                  <div>
+                    <div style={{ color: C.inkSoft }} className="text-[10.5px]">Diferencia</div>
+                    <div className="mono font-semibold" style={{ color: d.dif === 0 ? C.inkSoft : d.dif < 0 ? C.red : C.accent }}>
+                      {d.dif > 0 ? `+${d.dif}` : d.dif}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ color: C.inkSoft }} className="text-[10.5px]">Impacto</div>
+                    <div className="mono font-semibold" style={{ color: d.impacto === 0 ? C.inkSoft : d.impacto < 0 ? C.red : C.accent }}>
+                      {d.impacto >= 0 ? "" : "−"}€{fmt(Math.abs(d.impacto))}
+                    </div>
+                  </div>
+                </div>
+                {d.dif !== 0 && (
+                  <Field label="Motivo del descuadre">
+                    <select
+                      value={motivos[d.producto.id] || ""}
+                      onChange={(e) => setMotivos({ ...motivos, [d.producto.id]: e.target.value })}
+                      className="w-full rounded-lg px-3 py-2 text-[13px]"
+                      style={{ border: `1px solid ${C.line}`, background: "#fff" }}
+                    >
+                      <option value="">— Selecciona un motivo —</option>
+                      {MOTIVOS.map((m) => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </Field>
+                )}
+              </Card>
+            ))}
+          </div>
+
+          <div className="mt-4 flex gap-2 flex-wrap">
+            <Btn onClick={() => { aplicarAjustes(activo.id, motivos); setMotivos({}); setActivoId(null); }}>
+              Aplicar ajustes al stock
+            </Btn>
+            <Btn variant="ghost" onClick={() => setActivoId(null)}>Cerrar sin ajustar</Btn>
+          </div>
+        </Card>
+      )}
+
+      {verHoja && (
+        <div className="fixed inset-0 z-50 overflow-y-auto" style={{ background: "rgba(20,32,28,0.45)" }}>
+          <div className="min-h-full p-3">
+            <div className="rounded-xl p-4 mx-auto" style={{ background: "#fff", maxWidth: 820 }}>
+              <div className="flex items-center justify-between mb-3 no-imprimir">
+                <div className="font-semibold text-[15px]">Hoja para contar</div>
+                <button onClick={() => setVerHoja(false)}><X size={18} /></button>
+              </div>
+
+              <div className="flex flex-wrap gap-2 mb-4 no-imprimir">
+                <Btn onClick={() => window.print()}>Imprimir / Guardar PDF</Btn>
+                <LinkBtn href={`https://wa.me/?text=${encodeURIComponent(textoHojaConteo(productos))}`}><MessageCircle size={14} /> WhatsApp</LinkBtn>
+                <Btn variant="ghost" onClick={() => setVerHoja(false)}>Cerrar</Btn>
+              </div>
+
+              <div className="zona-impresion">
+                <div className="flex items-end justify-between mb-3 pb-3" style={{ borderBottom: `2px solid ${C.accent}` }}>
+                  <div>
+                    <div className="text-[17px] font-semibold">Hoja de conteo de inventario</div>
+                    <div className="text-[11.5px]" style={{ color: C.inkSoft }}>
+                      Fecha: {new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                    </div>
+                  </div>
+                  <img src={LOGO} alt="" style={{ height: 44, width: "auto" }} />
+                </div>
+                <div className="text-[11px] mb-3" style={{ color: C.inkSoft }}>
+                  Cuenta físicamente cada producto y anota la cantidad en la columna "Conteo".
+                </div>
+
+                <table className="w-full text-[11.5px]" style={{ borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr>
+                      <th className="py-2 px-2 text-left" style={{ background: C.ink, color: "#fff", width: 28 }}>Nº</th>
+                      <th className="py-2 px-2 text-left" style={{ background: C.ink, color: "#fff" }}>Descripción del producto</th>
+                      <th className="py-2 px-2 text-center" style={{ background: C.ink, color: "#fff", width: 60 }}>U/M</th>
+                      <th className="py-2 px-2 text-center" style={{ background: C.ink, color: "#fff", width: 90 }}>Conteo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...productos]
+                      .sort((a, b) => (a.ubicacion || "").localeCompare(b.ubicacion || "") || (a.nombre || "").localeCompare(b.nombre || ""))
+                      .map((p, i) => (
+                        <tr key={p.id} style={{ background: i % 2 ? C.bg : "#fff" }}>
+                          <td className="py-2 px-2 mono" style={{ border: `1px solid ${C.line}` }}>{i + 1}</td>
+                          <td className="py-2 px-2" style={{ border: `1px solid ${C.line}` }}>
+                            {p.nombre}
+                            {p.codigo && <span className="mono" style={{ color: C.inkSoft }}> · {p.codigo}</span>}
+                          </td>
+                          <td className="py-2 px-2 text-center" style={{ border: `1px solid ${C.line}` }}>{p.unidad}</td>
+                          <td style={{ border: `1px solid ${C.line}`, height: 32, background: "#F0F4F1" }}></td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+
+                <div className="mt-6 text-[11px] grid grid-cols-2 gap-6" style={{ color: C.inkSoft }}>
+                  <div>Contado por: _________________________</div>
+                  <div>Fecha y firma: _________________________</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="text-[12px] font-medium mb-2" style={{ color: C.inkSoft }}>Historial de conteos</div>
+      <div className="space-y-2">
+        {conteos.filter((c) => c.id !== activoId).length === 0 ? <Empty text="Sin conteos anteriores." /> : (
+          conteos.filter((c) => c.id !== activoId).map((c) => (
+            <Card key={c.id}>
+              <div className="flex items-center justify-between">
+                <span>Conteo del {c.fecha}</span>
+                <div className="flex items-center gap-2">
+                  <Pill color={c.completado ? C.accent : C.amber}>{c.completado ? "Completado" : "En curso"}</Pill>
+                  <Btn small variant="ghost" onClick={() => setActivoId(c.id)}>Ver <ChevronRight size={13} /></Btn>
+                </div>
+              </div>
+            </Card>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ================= REPORTES ================= */
+function Reportes({ rotacionPorProducto, gastoPorProveedor, productosSinMovimiento, valorInventario }) {
+  return (
+    <div>
+      <SectionTitle>Reportes y rotación</SectionTitle>
+
+      <Card className="mb-4" style={{ padding: 0 }}>
+        <div className="p-4 pb-2 text-[13px] font-semibold">Rotación de inventario por producto</div>
+        <div className="px-4 pb-2 text-[11.5px]" style={{ color: C.inkSoft }}>
+          Rotación = costo de salidas registradas ÷ valor del inventario actual. Días de inventario = 365 ÷ rotación.
+        </div>
+        <table className="w-full text-[12.5px]">
+          <thead>
+            <tr style={{ color: C.inkSoft, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
+              <th className="text-left font-medium py-2 px-4">Producto</th>
+              <th className="text-left font-medium py-2 px-4">Salidas registradas</th>
+              <th className="text-left font-medium py-2 px-4">Rotación</th>
+              <th className="text-left font-medium py-2 px-4">Días de inventario</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rotacionPorProducto.map((p) => (
+              <tr key={p.id} style={{ borderBottom: `1px solid ${C.line}` }}>
+                <td className="py-2 px-4">{p.nombre}</td>
+                <td className="py-2 px-4 mono">{p.cantSalidas}</td>
+                <td className="py-2 px-4 mono" style={{ color: p.rotacion == null ? C.inkSoft : p.rotacion < 2 ? C.amber : C.accent }}>
+                  {p.rotacion == null ? "—" : fmt(p.rotacion)}
+                </td>
+                <td className="py-2 px-4 mono">{p.dias == null ? "—" : Math.round(p.dias)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {rotacionPorProducto.length === 0 && <Empty text="Añade productos para ver su rotación." />}
+      </Card>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card>
+          <div className="text-[13px] font-semibold mb-3">Gasto total por proveedor</div>
+          {gastoPorProveedor.length === 0 ? <Empty text="Aún no hay pedidos registrados." /> : (
+            <div className="space-y-2">
+              {gastoPorProveedor.map((g, i) => (
+                <div key={i} className="flex items-center justify-between">
+                  <span>{g.proveedor ? g.proveedor.nombre : "Proveedor eliminado"}</span>
+                  <span className="mono font-medium">€{fmt(g.total)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+        <Card>
+          <div className="text-[13px] font-semibold mb-3">Productos sin ninguna salida</div>
+          {productosSinMovimiento.length === 0 ? <Empty text="Todos los productos tienen movimiento de salida." /> : (
+            <div className="space-y-1.5">
+              {productosSinMovimiento.map((p) => (
+                <div key={p.id} className="flex items-center justify-between text-[12.5px]">
+                  <span>{p.nombre}</span>
+                  <Pill color={C.amber}>sin rotación</Pill>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ================= FICHAS DE COSTO ================= */
+function fichaVacia() {
+  return {
+    nombre: "",
+    productoVinculadoId: "",
+    rendimiento: 1,
+    componentes: [],
+    empaque: "",
+    manoObra: "",
+    otros: "",
+    precioVenta: "",
+  };
+}
+
+function FichasCosto({ fichasCosto, productos, addFichaCosto, updateFichaCosto, deleteFichaCosto }) {
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(fichaVacia());
+  const [error, setError] = useState("");
+  const [editingId, setEditingId] = useState(null);
+
+  function addComponente() {
+    setForm((f) => ({
+      ...f,
+      componentes: [...f.componentes, { productoId: "", nombre: "", unidad: "unidad", cantidad: 1, costoUnitario: 0 }],
+    }));
+  }
+  function updateComponente(idx, campo, valor) {
+    setForm((f) => ({
+      ...f,
+      componentes: f.componentes.map((c, i) => {
+        if (i !== idx) return c;
+        if (campo === "productoId") {
+          const p = productos.find((pr) => pr.id === valor);
+          if (p) return { ...c, productoId: valor, nombre: p.nombre, unidad: p.unidad, costoUnitario: p.costo };
+          return { ...c, productoId: "" };
+        }
+        return { ...c, [campo]: valor };
+      }),
+    }));
+  }
+  function removeComponente(idx) {
+    setForm((f) => ({ ...f, componentes: f.componentes.filter((_, i) => i !== idx) }));
+  }
+
+  // Si el ingrediente está enlazado a un producto del catálogo, su costo se lee
+  // en vivo desde ahí. Si es un ingrediente libre, se usa el costo escrito a mano.
+  function costoDe(c) {
+    if (c.productoId) {
+      const p = productos.find((pr) => pr.id === c.productoId);
+      if (p) return Number(p.costo) || 0;
+    }
+    return Number(c.costoUnitario) || 0;
+  }
+  function estaEnlazado(c) {
+    return !!(c.productoId && productos.some((pr) => pr.id === c.productoId));
+  }
+
+  const costoComponentes = form.componentes.reduce((a, c) => a + (Number(c.cantidad) || 0) * costoDe(c), 0);
+  const costoAdicionales = (Number(form.empaque) || 0) + (Number(form.manoObra) || 0) + (Number(form.otros) || 0);
+  const costoTotal = costoComponentes + costoAdicionales;
+  const rendimiento = Number(form.rendimiento) || 1;
+  const costoPorUnidad = costoTotal / rendimiento;
+  const precioVentaNum = Number(form.precioVenta) || 0;
+  const margen = precioVentaNum > 0 ? ((precioVentaNum - costoPorUnidad) / precioVentaNum) * 100 : null;
+
+  function resetFicha() {
+    setForm(fichaVacia());
+    setEditingId(null);
+    setError("");
+  }
+
+  function openEdit(f) {
+    setEditingId(f.id);
+    setForm({
+      nombre: f.nombre || "",
+      productoVinculadoId: f.productoVinculadoId || "",
+      rendimiento: f.rendimiento || 1,
+      componentes: (f.componentes || []).map((c) => ({ ...c })),
+      empaque: f.empaque ?? "",
+      manoObra: f.manoObra ?? "",
+      otros: f.otros ?? "",
+      precioVenta: f.precioVenta ?? "",
+    });
+    setError("");
+    setShowForm(true);
+  }
+
+  function submit() {
+    if (!form.nombre.trim()) {
+      setError("Escribe el nombre del producto o receta.");
+      return;
+    }
+    if (form.componentes.length === 0) {
+      setError("Añade al menos un ingrediente o insumo.");
+      return;
+    }
+    setError("");
+    if (editingId) {
+      updateFichaCosto(editingId, { ...form, rendimiento });
+    } else {
+      addFichaCosto({ ...form, rendimiento });
+    }
+    resetFicha();
+    setShowForm(false);
+  }
+
+  return (
+    <div>
+      <SectionTitle action={<Btn onClick={() => { if (showForm) resetFicha(); setShowForm((s) => !s); }}><Plus size={15} /> Nueva ficha de costo</Btn>}>
+        Fichas de costo
+      </SectionTitle>
+
+      {!showForm && (
+        <Card className="mb-4" style={{ background: C.accentSoft, border: "none" }}>
+          <div className="text-[12.5px]" style={{ color: C.ink }}>
+            Una ficha de costo desglosa todos los ingredientes o insumos de un producto que vendes, para saber exactamente cuánto cuesta producirlo y qué margen real deja frente a tu precio de venta.
+          </div>
+        </Card>
+      )}
+
+      {showForm && (
+        <Card className="mb-4">
+          <div className="text-[13px] font-semibold mb-3">{editingId ? "Editando ficha de costo" : "Nueva ficha de costo"}</div>
+          <div className="grid md:grid-cols-3 gap-x-4">
+            <Field label="Nombre del producto / receta">
+              <Input value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Ej. Caja de bombones x12" />
+            </Field>
+            <Field label="¿A qué producto del catálogo corresponde? (opcional)">
+              <select value={form.productoVinculadoId} onChange={(e) => setForm({ ...form, productoVinculadoId: e.target.value })} className="w-full rounded-lg px-3 py-2 text-[13px]" style={{ border: `1px solid ${C.line}` }}>
+                <option value="">Sin vincular</option>
+                {productos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+              </select>
+            </Field>
+            <Field label="Rendimiento (unidades que produce esta receta)">
+              <Input type="number" value={form.rendimiento} onChange={(e) => setForm({ ...form, rendimiento: e.target.value })} placeholder="1" />
+            </Field>
+          </div>
+
+          <div className="mb-2 text-[12px] font-medium" style={{ color: C.inkSoft }}>Ingredientes / insumos</div>
+          {form.componentes.map((c, idx) => {
+            const enlazado = estaEnlazado(c);
+            return (
+              <Card key={idx} className="mb-3" style={{ background: C.bg }}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[12px] font-semibold">Ingrediente {idx + 1}</span>
+                  <div className="flex items-center gap-2">
+                    {enlazado && <Pill color={C.accent}>enlazado al catálogo</Pill>}
+                    <button type="button" onClick={() => removeComponente(idx)}><X size={16} color={C.inkSoft} /></button>
+                  </div>
+                </div>
+
+                <Field label="Elegir del catálogo (recomendado)">
+                  <select
+                    value={c.productoId}
+                    onChange={(e) => updateComponente(idx, "productoId", e.target.value)}
+                    className="w-full rounded-lg px-3 py-2 text-[13px]"
+                    style={{ border: `1px solid ${C.line}`, background: "#fff" }}
+                  >
+                    <option value="">— Escribirlo a mano —</option>
+                    {productos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                  </select>
+                </Field>
+
+                {!enlazado && (
+                  <Field label="Nombre del ingrediente">
+                    <Input value={c.nombre} onChange={(e) => updateComponente(idx, "nombre", e.target.value)} placeholder="Ej. cacao en polvo" />
+                  </Field>
+                )}
+
+                <div className="grid grid-cols-3 gap-x-2">
+                  <Field label="Unidad">
+                    <Input value={c.unidad} onChange={(e) => updateComponente(idx, "unidad", e.target.value)} readOnly={enlazado} style={enlazado ? { background: C.accentSoft } : {}} />
+                  </Field>
+                  <Field label="Cantidad">
+                    <Input type="number" step="0.001" value={c.cantidad} onChange={(e) => updateComponente(idx, "cantidad", e.target.value)} />
+                  </Field>
+                  <Field label="Costo unidad">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={enlazado ? costoDe(c) : c.costoUnitario}
+                      onChange={(e) => updateComponente(idx, "costoUnitario", e.target.value)}
+                      readOnly={enlazado}
+                      style={enlazado ? { background: C.accentSoft, color: C.inkSoft } : {}}
+                    />
+                  </Field>
+                </div>
+
+                <div className="flex items-center justify-between pt-2" style={{ borderTop: `1px solid ${C.line}` }}>
+                  <span className="text-[12px]" style={{ color: C.inkSoft }}>Subtotal de este ingrediente</span>
+                  <span className="mono font-semibold text-[13px]">€{fmt((Number(c.cantidad) || 0) * costoDe(c))}</span>
+                </div>
+              </Card>
+            );
+          })}
+          <button type="button" onClick={addComponente} className="text-[12.5px] font-medium mb-2" style={{ color: C.accent }}>+ Añadir ingrediente / insumo</button>
+          <div className="text-[11.5px] mb-4" style={{ color: C.inkSoft }}>
+            Si eliges el ingrediente del catálogo, su costo se toma automáticamente y se actualiza solo cuando cambies el precio en Productos.
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-x-4">
+            <Field label="Empaque (€, opcional)"><Input type="number" step="0.01" value={form.empaque} onChange={(e) => setForm({ ...form, empaque: e.target.value })} /></Field>
+            <Field label="Mano de obra (€, opcional)"><Input type="number" step="0.01" value={form.manoObra} onChange={(e) => setForm({ ...form, manoObra: e.target.value })} /></Field>
+            <Field label="Otros costos (€, opcional)"><Input type="number" step="0.01" value={form.otros} onChange={(e) => setForm({ ...form, otros: e.target.value })} /></Field>
+          </div>
+          <Field label="Precio de venta al público (€)">
+            <Input type="number" step="0.01" value={form.precioVenta} onChange={(e) => setForm({ ...form, precioVenta: e.target.value })} placeholder="Opcional, para calcular el margen" />
+          </Field>
+
+          <Card style={{ background: C.bg, border: `1px solid ${C.line}` }} className="mb-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+              <div>
+                <div className="text-[11px]" style={{ color: C.inkSoft }}>Costo total</div>
+                <div className="mono font-semibold text-[15px]">€{fmt(costoTotal)}</div>
+              </div>
+              <div>
+                <div className="text-[11px]" style={{ color: C.inkSoft }}>Costo por unidad</div>
+                <div className="mono font-semibold text-[15px]">€{fmt(costoPorUnidad)}</div>
+              </div>
+              <div>
+                <div className="text-[11px]" style={{ color: C.inkSoft }}>Precio de venta</div>
+                <div className="mono font-semibold text-[15px]">{precioVentaNum > 0 ? `€${fmt(precioVentaNum)}` : "—"}</div>
+              </div>
+              <div>
+                <div className="text-[11px]" style={{ color: C.inkSoft }}>Margen</div>
+                <div className="mono font-semibold text-[15px]" style={{ color: margen == null ? C.ink : margen < 15 ? C.red : C.accent }}>
+                  {margen == null ? "—" : `${fmt(margen)}%`}
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {error && <div className="text-[12px] mb-2" style={{ color: C.red }}>{error}</div>}
+          <div className="flex gap-2">
+            <Btn onClick={submit}>{editingId ? "Guardar cambios" : "Guardar ficha de costo"}</Btn>
+            <Btn variant="ghost" onClick={() => { setShowForm(false); resetFicha(); }}>Cancelar</Btn>
+          </div>
+        </Card>
+      )}
+
+      {fichasCosto.length === 0 ? <Empty text="Todavía no has creado ninguna ficha de costo." /> : (
+        <div className="grid md:grid-cols-2 gap-3">
+          {fichasCosto.map((f) => {
+            const costoComp = f.componentes.reduce((a, c) => a + (Number(c.cantidad) || 0) * costoDe(c), 0);
+            const costoAdi = (Number(f.empaque) || 0) + (Number(f.manoObra) || 0) + (Number(f.otros) || 0);
+            const total = costoComp + costoAdi;
+            const rend = Number(f.rendimiento) || 1;
+            const porUnidad = total / rend;
+            const pv = Number(f.precioVenta) || 0;
+            const marg = pv > 0 ? ((pv - porUnidad) / pv) * 100 : null;
+            return (
+              <Card key={f.id}>
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <div className="font-semibold">{f.nombre}</div>
+                    <div className="text-[11px]" style={{ color: C.inkSoft }}>Rinde {rend} unidad(es)</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Btn small variant="ghost" onClick={() => openEdit(f)}>Editar</Btn>
+                    <button onClick={() => deleteFichaCosto(f.id)}><Trash2 size={15} color={C.inkSoft} /></button>
+                  </div>
+                </div>
+                <div className="space-y-1 mb-2">
+                  {f.componentes.map((c, i) => (
+                    <div key={i} className="flex items-center justify-between text-[12px]">
+                      <span>
+                        {c.nombre} <span style={{ color: C.inkSoft }}>({c.cantidad} {c.unidad})</span>
+                        {estaEnlazado(c) && <span className="ml-1" style={{ color: C.accent }} title="Costo enlazado al catálogo">•</span>}
+                      </span>
+                      <span className="mono">€{fmt((Number(c.cantidad) || 0) * costoDe(c))}</span>
+                    </div>
+                  ))}
+                  {costoAdi > 0 && (
+                    <div className="flex items-center justify-between text-[12px]">
+                      <span>Costos adicionales</span>
+                      <span className="mono">€{fmt(costoAdi)}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="pt-2 flex items-center justify-between text-[13px]" style={{ borderTop: `1px solid ${C.line}` }}>
+                  <span className="font-medium">Costo por unidad</span>
+                  <span className="mono font-semibold">€{fmt(porUnidad)}</span>
+                </div>
+                {pv > 0 && (
+                  <div className="flex items-center justify-between text-[13px] mt-1">
+                    <span className="font-medium">Margen sobre €{fmt(pv)}</span>
+                    <span className="mono font-semibold" style={{ color: marg < 15 ? C.red : C.accent }}>{fmt(marg)}%</span>
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ================= RESPALDOS ================= */
+function Respaldos({ historial, crearPuntoDeGuardado, restaurarDesdeHistorial, abrirRespaldo, abrirRestaurar }) {
+  const [guardado, setGuardado] = useState(false);
+
+  function guardarAhora() {
+    crearPuntoDeGuardado();
+    setGuardado(true);
+    setTimeout(() => setGuardado(false), 2000);
+  }
+
+  function contar(data) {
+    return (data.proveedores?.length || 0) + (data.productos?.length || 0) + (data.pedidos?.length || 0);
+  }
+
+  return (
+    <div>
+      <SectionTitle>Respaldos</SectionTitle>
+
+      <Card className="mb-4" style={{ background: C.accentSoft, border: "none" }}>
+        <div className="text-[12.5px]" style={{ color: C.ink }}>
+          Todo lo que capturas en este programa ya se guarda automáticamente en tu cuenta, no solo en este teléfono — si abres esta misma conversación desde otro dispositivo, verás la misma información. Aquí además puedes crear copias de seguridad puntuales, para poder volver atrás si algo se borra o se modifica por error.
+        </div>
+      </Card>
+
+      <Card className="mb-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="font-semibold text-[14px]">Crear copia de seguridad ahora</div>
+            <div className="text-[12px]" style={{ color: C.inkSoft }}>Guarda el estado actual de todo el programa como un punto al que podrás volver.</div>
+          </div>
+          <Btn onClick={guardarAhora}><History size={14} /> {guardado ? "¡Guardada!" : "Guardar copia"}</Btn>
+        </div>
+      </Card>
+
+      <div className="text-[12px] font-medium mb-2" style={{ color: C.inkSoft }}>Historial de copias guardadas</div>
+      {historial.length === 0 ? <Empty text="Todavía no hay copias de seguridad guardadas." /> : (
+        <div className="space-y-2 mb-6">
+          {historial.map((h) => (
+            <Card key={h.id}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-[13px] font-medium">{new Date(h.fecha).toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" })}</div>
+                  <div className="text-[11px]" style={{ color: C.inkSoft }}>
+                    {h.automatica ? "Copia automática de inicio de sesión" : "Copia manual"} · {contar(h.data)} registros principales
+                  </div>
+                </div>
+                <Btn small variant="ghost" onClick={() => restaurarDesdeHistorial(h)}>Restaurar esta copia</Btn>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <div className="text-[12px] font-medium mb-2" style={{ color: C.inkSoft }}>Copia portátil (para guardar fuera del programa)</div>
+      <Card>
+        <div className="text-[12.5px] mb-3" style={{ color: C.inkSoft }}>
+          Si quieres una copia que puedas guardar tú mismo fuera de aquí (en tus notas, correo, etc.), puedes verla como texto y copiarla, o pegar una que hayas guardado antes.
+        </div>
+        <div className="flex gap-2">
+          <Btn variant="ghost" onClick={abrirRespaldo}><Download size={14} /> Ver / copiar respaldo</Btn>
+          <Btn variant="ghost" onClick={abrirRestaurar}><Upload size={14} /> Restaurar desde texto</Btn>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* ================= SALDO DE ALMACÉN ================= */
+function SaldoAlmacen({ productos, valorInventario, proveedorPorId, clasificacionABC, analisisABC }) {
+  const [vista, setVista] = useState("saldo"); // saldo | conteo
+  const [copiado, setCopiado] = useState(false);
+  const fecha = new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+  const ordenados = [...productos].sort((a, b) =>
+    (a.ubicacion || "").localeCompare(b.ubicacion || "") || (a.nombre || "").localeCompare(b.nombre || "")
+  );
+
+  const totalUnidades = productos.reduce((a, p) => a + (Number(p.stock) || 0), 0);
+
+  function textoSaldo() {
+    const lineas = ordenados.map((p) => {
+      const importe = (Number(p.stock) || 0) * (Number(p.costo) || 0);
+      return `${p.nombre} | ${p.unidad} | ${p.stock} | €${fmt(importe)}`;
+    });
+    return `SALDO DE ALMACÉN — ${fecha}\n\nProducto | U/M | Existencia | Importe\n${lineas.join("\n")}\n\nTOTAL: €${fmt(valorInventario)}`;
+  }
+
+  function textoConteo() {
+    const lineas = ordenados.map((p, i) => `${i + 1}. ${p.nombre} (${p.unidad})\n   Conteo: _____________`);
+    return `HOJA DE CONTEO — ${fecha}\n\n${lineas.join("\n\n")}\n\nContado por: ____________________\nRevisado por: ____________________`;
+  }
+
+  function copiar() {
+    const texto = vista === "saldo" ? textoSaldo() : textoConteo();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texto).then(() => setCopiado(true)).catch(() => setCopiado(false));
+    }
+  }
+
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(vista === "saldo" ? textoSaldo() : textoConteo())}`;
+  const correoUrl = `mailto:?subject=${encodeURIComponent(vista === "saldo" ? `Saldo de almacén ${fecha}` : `Hoja de conteo ${fecha}`)}&body=${encodeURIComponent(vista === "saldo" ? textoSaldo() : textoConteo())}`;
+
+  const thStyle = { color: "#fff", background: C.ink, fontWeight: 600 };
+
+  return (
+    <div>
+      <div className="no-imprimir">
+        <SectionTitle>Saldo de almacén</SectionTitle>
+
+        <div className="flex gap-2 mb-4">
+          <Btn variant={vista === "saldo" ? "primary" : "ghost"} onClick={() => setVista("saldo")}>Saldo valorado</Btn>
+          <Btn variant={vista === "conteo" ? "primary" : "ghost"} onClick={() => setVista("conteo")}>Hoja de conteo</Btn>
+        </div>
+
+        {vista === "saldo" && (
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <Card>
+              <div className="text-[11px]" style={{ color: C.inkSoft }}>Referencias</div>
+              <div className="text-xl font-semibold mono mt-1">{productos.length}</div>
+            </Card>
+            <Card>
+              <div className="text-[11px]" style={{ color: C.inkSoft }}>Unidades totales</div>
+              <div className="text-xl font-semibold mono mt-1">{fmt(totalUnidades)}</div>
+            </Card>
+            <Card>
+              <div className="text-[11px]" style={{ color: C.inkSoft }}>Valor del almacén</div>
+              <div className="text-xl font-semibold mono mt-1" style={{ color: C.accent }}>€{fmt(valorInventario)}</div>
+            </Card>
+          </div>
+        )}
+
+        {vista === "saldo" && (
+          <Card className="mb-4" style={{ background: C.accentSoft, border: "none" }}>
+            <div className="text-[12px] font-semibold mb-1">Clasificación ABC y frecuencia de conteo sugerida</div>
+            <div className="text-[11.5px] space-y-0.5" style={{ color: C.ink }}>
+              <div>Se calcula por <b>valor de consumo</b>: lo que ha salido en los últimos 12 meses × su costo. Un producto barato que rota mucho pesa más que uno caro parado.</div>
+              <div className="pt-1"><b>A</b> — mueven el 80% del dinero. Cuéntalos <b>cada mes</b>.</div>
+              <div><b>B</b> — hasta el 95%. Cuéntalos <b>cada trimestre</b>.</div>
+              <div><b>C</b> — el resto. Cuéntalos <b>una o dos veces al año</b>.</div>
+            </div>
+            {analisisABC && !analisisABC.baseConsumo && (
+              <div className="text-[11.5px] mt-2 pt-2" style={{ color: C.amber, borderTop: `1px solid rgba(0,0,0,0.08)` }}>
+                Todavía no hay salidas registradas, así que de momento se clasifica por valor en stock. En cuanto empieces a registrar salidas, el ABC pasará a medir consumo real.
+              </div>
+            )}
+          </Card>
+        )}
+
+        <div className="flex flex-wrap gap-2 mb-4">
+          <Btn onClick={() => window.print()}>Imprimir / Guardar PDF</Btn>
+          <LinkBtn href={whatsappUrl}><MessageCircle size={14} /> WhatsApp</LinkBtn>
+          <LinkBtn href={correoUrl} newTab={false}><Mail size={14} /> Correo</LinkBtn>
+          <Btn variant="ghost" onClick={copiar}>{copiado ? "¡Copiado!" : "Copiar texto"}</Btn>
+        </div>
+      </div>
+
+      {productos.length === 0 ? <Empty text="No hay productos en el almacén todavía." /> : (
+        <div className="zona-impresion">
+          <div className="flex items-end justify-between mb-3 pb-3" style={{ borderBottom: `2px solid ${C.accent}` }}>
+            <div>
+              <div className="text-[17px] font-semibold">{vista === "saldo" ? "Saldo de almacén" : "Hoja de conteo de inventario"}</div>
+              <div className="text-[11.5px]" style={{ color: C.inkSoft }}>Fecha: {fecha}</div>
+            </div>
+            <img src={LOGO} alt="" style={{ height: 44, width: "auto" }} />
+          </div>
+
+          {vista === "conteo" && (
+            <div className="text-[11px] mb-3" style={{ color: C.inkSoft }}>
+Cuenta físicamente cada producto y anota la cantidad en la columna "Conteo". No se muestra la existencia del sistema.
+            </div>
+          )}
+
+          <table className="w-full text-[11.5px]" style={{ borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                <th className="py-2 px-2 text-left" style={{ ...thStyle, width: 28 }}>Nº</th>
+                <th className="py-2 px-2 text-left" style={thStyle}>Descripción del producto</th>
+                <th className="py-2 px-2 text-center" style={{ ...thStyle, width: 52 }}>U/M</th>
+                {vista === "saldo" ? (
+                  <>
+                    <th className="py-2 px-2 text-right" style={{ ...thStyle, width: 70 }}>Existencia</th>
+                    <th className="py-2 px-2 text-right" style={{ ...thStyle, width: 70 }}>Costo</th>
+                    <th className="py-2 px-2 text-right" style={{ ...thStyle, width: 80 }}>Importe</th>
+                    <th className="py-2 px-2 text-right" style={{ ...thStyle, width: 66 }}>Salidas 12m</th>
+                    <th className="py-2 px-2 text-center" style={{ ...thStyle, width: 34 }}>ABC</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="py-2 px-2 text-center" style={{ ...thStyle, width: 90 }}>Conteo</th>
+                  </>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {ordenados.map((p, i) => {
+                const importe = (Number(p.stock) || 0) * (Number(p.costo) || 0);
+                return (
+                  <tr key={p.id} style={{ background: i % 2 ? C.bg : "#fff" }}>
+                    <td className="py-2 px-2 mono" style={{ border: `1px solid ${C.line}` }}>{i + 1}</td>
+                    <td className="py-2 px-2" style={{ border: `1px solid ${C.line}` }}>
+                      {p.nombre}
+                      {p.codigo && <span className="mono" style={{ color: C.inkSoft }}> · {p.codigo}</span>}
+                    </td>
+                    <td className="py-2 px-2 text-center" style={{ border: `1px solid ${C.line}` }}>{p.unidad}</td>
+                    {vista === "saldo" ? (
+                      <>
+                        <td className="py-2 px-2 text-right mono" style={{ border: `1px solid ${C.line}` }}>{p.stock}</td>
+                        <td className="py-2 px-2 text-right mono" style={{ border: `1px solid ${C.line}` }}>€{fmt(p.costo)}</td>
+                        <td className="py-2 px-2 text-right mono font-semibold" style={{ border: `1px solid ${C.line}` }}>€{fmt(importe)}</td>
+                        <td className="py-2 px-2 text-right mono" style={{ border: `1px solid ${C.line}` }}>
+                          {analisisABC && analisisABC.detalle[p.id] ? analisisABC.detalle[p.id].unidades : 0}
+                        </td>
+                        <td className="py-2 px-2 text-center mono font-semibold" style={{ border: `1px solid ${C.line}` }}>{clasificacionABC[p.id] || "C"}</td>
+                      </>
+                    ) : (
+                      <>
+                        <td style={{ border: `1px solid ${C.line}`, height: 32, background: "#F0F4F1" }}></td>
+                      </>
+                    )}
+                  </tr>
+                );
+              })}
+              {vista === "saldo" && (
+                <tr>
+                  <td colSpan={5} className="py-2 px-2 text-right font-semibold" style={{ border: `1px solid ${C.line}`, background: C.accentSoft }}>
+                    TOTAL VALOR DEL ALMACÉN
+                  </td>
+                  <td className="py-2 px-2 text-right mono font-semibold" style={{ border: `1px solid ${C.line}`, background: C.accentSoft }}>
+                    €{fmt(valorInventario)}
+                  </td>
+                  <td style={{ border: `1px solid ${C.line}`, background: C.accentSoft }}></td>
+                  <td style={{ border: `1px solid ${C.line}`, background: C.accentSoft }}></td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+
+          <div className="mt-6 text-[11px]" style={{ color: C.inkSoft }}>
+            {vista === "conteo" ? (
+              <div className="grid grid-cols-2 gap-6">
+                <div>Contado por: _________________________</div>
+                <div>Fecha y firma: _________________________</div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-6">
+                <div>Responsable de almacén: _________________________</div>
+                <div>Fecha y firma: _________________________</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+import { createRoot } from "react-dom/client";
+createRoot(document.getElementById("root")).render(<GestionAlmacen />);
+</script>
+</body>
+</html>
