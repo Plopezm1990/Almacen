@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0C2714" />
+<title>Control de Compras y Almacen</title>
+
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+<link rel="preconnect" href="https://esm.sh" />
+<link rel="preconnect" href="https://cdn.tailwindcss.com" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+
+<style>
+  html, body, #root { height: 100%; margin: 0; }
+  body { background: #F7F3E9; -webkit-tap-highlight-color: transparent;
+         font-family: 'IBM Plex Sans', ui-sans-serif, system-ui; }
+  .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+  a { text-decoration: none; }
+
+  #cargando {
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px;
+    background: #F7F3E9; color: #17241C; z-index: 9999;
+  }
+  #cargando .marca { font-size: 15px; font-weight: 600; }
+  #cargando .paso { font-size: 12.5px; color: #6B7A6E; }
+  #cargando .barra { width: 190px; height: 4px; border-radius: 4px; background: #E2DBC7; overflow: hidden; }
+  #cargando .barra i { display: block; height: 100%; width: 30%; background: #8C6D2A; border-radius: 4px;
+                       animation: desliza 1.1s ease-in-out infinite; }
+  @keyframes desliza { 0% { margin-left: -30%; } 100% { margin-left: 100%; } }
+</style>
+
+<script>
+  // Antes había aquí un mapa de importaciones apuntando a esm.sh para
+  // React, Supabase, jsPDF, etc. Ya no hace falta: esas librerías vienen
+  // empaquetadas de verdad junto al código de la app (ver reconstruir.sh),
+  // no se cargan desde ningún CDN en tiempo real.
+</script>
+
+<script>
+  /* ==========================================================
+     ALMACENAMIENTO: PRIMERO LOCAL, NUBE OPCIONAL
+     ----------------------------------------------------------
+     El programa guarda SIEMPRE en el propio dispositivo. Así
+     funciona sin internet y en cualquier país, sin depender de
+     que un servicio extranjero esté accesible.
+
+     Si además hay nube configurada y se puede llegar a ella, se
+     sincroniza en segundo plano para poder trabajar desde varios
+     dispositivos. Si la nube falla, se bloquea o no hay conexión,
+     el programa sigue funcionando igual: nada se pierde, y lo
+     pendiente se sube solo en cuanto vuelva a haber acceso.
+     ========================================================== */
+
+  var NUBE_URL = "https://flqercbgpgmmfaakrwkc.supabase.co";
+  var NUBE_CLAVE = "sb_publishable_dDpJoqnVG8Axmk2QqCCX1g_4h5keXWJ";
+  var ESPERA_NUBE_MS = 6000; // si tarda más que esto, se trabaja en local
+  // Expuestas en window para que fuente.jsx (que ahora lleva el SDK de
+  // Supabase empaquetado dentro, sin depender de esm.sh) pueda leerlas y
+  // conectar por sí mismo — ver conectarNube más abajo.
+  window.NUBE_URL = NUBE_URL;
+  window.NUBE_CLAVE = NUBE_CLAVE;
+  window.ESPERA_NUBE_MS = ESPERA_NUBE_MS;
+
+  window.__nubeActiva = false;   // ¿se pudo contactar con la nube?
+  window.__nubeCliente = null;
+
+  function conTiempoLimite(promesa, ms) {
+    return Promise.race([
+      promesa,
+      new Promise(function (_, rechazar) {
+        setTimeout(function () { rechazar(new Error("La nube tarda demasiado en responder")); }, ms);
+      })
+    ]);
+  }
+
+  // --- Guardado en el propio dispositivo (nunca falla, no necesita red) ---
+  var LOCAL = {
+    get: function (key) {
+      var v = localStorage.getItem("almacen:" + key);
+      if (v === null) throw new Error("no existe");
+      return v;
+    },
+    set: function (key, value) { localStorage.setItem("almacen:" + key, value); },
+    delete: function (key) { localStorage.removeItem("almacen:" + key); },
+    list: function () {
+      var keys = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf("almacen:") === 0) keys.push(k.slice(8));
+      }
+      return keys;
+    }
+  };
+
+  // --- Cola de lo que falta subir a la nube ---
+  function pendientes() {
+    try { return JSON.parse(localStorage.getItem("almacen__pendientes") || "[]"); }
+    catch (e) { return []; }
+  }
+  function marcarPendiente(key) {
+    var lista = pendientes();
+    if (lista.indexOf(key) === -1) {
+      lista.push(key);
+      localStorage.setItem("almacen__pendientes", JSON.stringify(lista));
+    }
+    actualizarIndicador();
+  }
+  function quitarPendiente(key) {
+    var lista = pendientes().filter(function (k) { return k !== key; });
+    localStorage.setItem("almacen__pendientes", JSON.stringify(lista));
+    actualizarIndicador();
+  }
+
+  /* ----------------------------------------------------------
+     REGISTRO DE BORRADOS DE ESTE DISPOSITIVO
+     ------------------------------------------------------------
+     Antes, para saber qué borrar en la nube se comparaba la lista
+     de este equipo contra la de la nube: lo que no estuviera aquí,
+     se borraba allí. Eso da por hecho que este equipo tiene el
+     histórico completo, y no siempre es verdad — si el móvil ha
+     apuntado ventas mientras el ordenador estaba abierto, el
+     ordenador no las tiene, y al guardar las borraba de la nube.
+
+     Ahora se anota explícitamente lo que ESTE equipo ha quitado.
+     Solo se borra eso. Lo que este equipo nunca llegó a ver, no
+     se toca: si el otro dispositivo lo añadió, ahí sigue.
+     ---------------------------------------------------------- */
+  // La auditoría solo crece: nunca se borra nada desde el programa. Además,
+  // en el equipo se conservan únicamente los 500 apuntes más recientes, así
+  // que "lo que ya no está en local" NO significa "borrado" — significa
+  // "más antiguo de 500". Si se tratara como borrado, cada apunte nuevo
+  // iría eliminando el histórico de la nube. Por eso se excluye.
+  var NUNCA_BORRAR = { auditoria: true };
+
+  function borradosDe(key) {
+    if (NUNCA_BORRAR[key]) return [];
+    try { return JSON.parse(localStorage.getItem("almacen__borrados:" + key) || "[]"); }
+    catch (e) { return []; }
+  }
+  function guardarBorrados(key, ids) {
+    try { localStorage.setItem("almacen__borrados:" + key, JSON.stringify(ids)); }
+    catch (e) { /* si no cabe, se reintenta en el próximo guardado */ }
+  }
+  // Compara lo que había guardado en este equipo con lo que se va a guardar
+  // ahora, y apunta los identificadores que han desaparecido.
+  function anotarBorradosLocales(key, textoAnterior, textoNuevo) {
+    if (NUNCA_BORRAR[key]) return;
+    var antes, ahora;
+    try { antes = JSON.parse(textoAnterior || "[]"); } catch (e) { return; }
+    try { ahora = JSON.parse(textoNuevo || "[]"); } catch (e) { return; }
+    if (!Array.isArray(antes) || !Array.isArray(ahora)) return;
+    var vivos = {};
+    ahora.forEach(function (x) { if (x && x.id) vivos[x.id] = true; });
+    var lista = borradosDe(key);
+    var cambia = false;
+    antes.forEach(function (x) {
+      if (x && x.id && !vivos[x.id] && lista.indexOf(x.id) === -1) { lista.push(x.id); cambia = true; }
+    });
+    if (cambia) guardarBorrados(key, lista);
+  }
+
+  // --- Aviso discreto del estado (sin molestar) ---
+  function actualizarIndicador() {
+    var el = document.getElementById("estado-guardado");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "estado-guardado";
+      el.style.cssText = "position:fixed;bottom:8px;right:8px;padding:5px 11px;border-radius:14px;font-family:sans-serif;font-size:11px;z-index:9998;pointer-events:none;opacity:0.9;";
+      document.body.appendChild(el);
+    }
+    var sinSubir = pendientes().length;
+    if (window.__nubeActiva && sinSubir === 0) {
+      el.style.display = "none";
+      return;
+    }
+    el.style.display = "block";
+    if (!window.__nubeActiva) {
+      el.style.background = "#4B5A54";
+      el.style.color = "#fff";
+      el.textContent = sinSubir > 0
+        ? "Guardado en este equipo · " + sinSubir + " sin subir"
+        : "Guardado en este equipo";
+    } else {
+      el.style.background = "#B08228";
+      el.style.color = "#fff";
+      el.textContent = "Subiendo " + sinSubir + "…";
+    }
+  }
+  window.actualizarIndicador = actualizarIndicador;
+
+  // conectarNube y getSupabaseClient ahora viven en fuente.jsx (que lleva
+  // el SDK de Supabase empaquetado dentro) — antes vivían aquí, importando
+  // el SDK dinámicamente desde esm.sh en cada conexión. Esta es la
+  // corrección de un fallo real encontrado el 26 de agosto de 2026:
+  // "window.getSupabaseClient" se llamaba desde fuente.jsx pero nunca se
+  // había definido en ningún sitio — el camino atómico de venta (con
+  // bloqueo de fila real en la base de datos) nunca se había ejecutado en
+  // producción, aunque el programa seguía funcionando por el camino local.
+
+  // --- Subir a la nube lo que quedó pendiente ---
+  window.subirPendientes = async function () {
+    if (!window.__nubeActiva || !window.__nubeCliente) return;
+    var lista = pendientes();
+    for (var i = 0; i < lista.length; i++) {
+      var key = lista[i];
+      try {
+        var valor = LOCAL.get(key);
+        var tablaEspecial = TABLAS_POR_FILA[key];
+        if (tablaEspecial) {
+          await encolarPorClave(key, function () { return sincronizarColeccionPorFila(tablaEspecial, JSON.parse(valor), key); });
+        } else {
+          // Sin referencia de "lo que había antes" no se puede saber qué quitó
+          // este equipo, así que no se borra nada: solo se añade y se corrige.
+          await encolarPorClave(key, function () { return guardarBloque(key, null, valor); });
+        }
+        quitarPendiente(key);
+      } catch (e) { /* se reintenta la próxima vez */ }
+    }
+    actualizarIndicador();
+  };
+
+  /* ----------------------------------------------------------
+     MOVIMIENTOS, FICHAJES Y AUDITORÍA: una fila por registro
+     ------------------------------------------------------------
+     Estas tres colecciones crecen sin parar (cada venta, cada
+     fichaje, cada acción registrada) — guardarlas como un bloque
+     único significaba reescribir el historial entero en cada
+     guardado. Aquí cada registro es su propia fila: se añade o
+     se corrige solo lo que cambió, nunca todo.
+
+     El resto de colecciones (productos, proveedores, clientes...)
+     siguen exactamente igual que antes — son pequeñas y cambian
+     poco, así que no ganan nada con este cambio y no se tocan.
+     ---------------------------------------------------------- */
+  var TABLAS_POR_FILA = {
+    movimientos: "movimientos_registro",
+    fichajes: "fichajes_registro",
+    auditoria: "auditoria_registro",
+  };
+  var LIMITE_LECTURA = { auditoria: 500 }; // truncamiento DELIBERADO: la auditoría solo se consulta, no alimenta cálculos
+  var PAGINA_LECTURA = 1000; // tamaño de página de PostgREST
+
+  // PostgREST devuelve como máximo 1000 filas por consulta y NO avisa de que
+  // ha cortado: simplemente llegan menos datos. Como movimientos y fichajes
+  // alimentan cálculos que necesitan el histórico completo (coste, margen,
+  // saldos, ABC, rotación), un corte silencioso daría cifras incorrectas sin
+  // ninguna señal de error. Por eso se pide por páginas hasta agotar la tabla.
+  //
+  // LIMITACIÓN CONOCIDA: esto elimina el límite artificial de PostgREST, pero
+  // los cálculos siguen ejecutándose en el navegador sobre la lista completa
+  // en memoria. Existe por tanto un límite práctico del dispositivo (memoria
+  // y tiempo), no de la consulta. Para volúmenes muy grandes haría falta mover
+  // las agregaciones al servidor, que es un rediseño de arquitectura, no un
+  // ajuste de esta función.
+  async function leerColeccionPorFila(tabla, key) {
+    if (LIMITE_LECTURA[key]) {
+      var rLim = await window.__nubeCliente.from(tabla).select("datos")
+        .order("creado_en", { ascending: false }).limit(LIMITE_LECTURA[key]);
+      if (rLim.error) throw rLim.error;
+      return (rLim.data || []).map(function (fila) { return fila.datos; });
+    }
+    var todas = [];
+    var desde = 0;
+    for (;;) {
+      var r = await window.__nubeCliente.from(tabla).select("datos")
+        .order("creado_en", { ascending: false })
+        .range(desde, desde + PAGINA_LECTURA - 1);
+      if (r.error) throw r.error;
+      var lote = r.data || [];
+      todas = todas.concat(lote.map(function (fila) { return fila.datos; }));
+      // Última página: ha venido incompleta, así que ya no queda nada más.
+      if (lote.length < PAGINA_LECTURA) break;
+      desde += PAGINA_LECTURA;
+    }
+    return todas;
+  }
+
+  // Lee la tabla entera POR PÁGINAS. Antes esta consulta no paginaba, y
+  // PostgREST devuelve como mucho 1000 filas sin avisar: a partir del
+  // movimiento 1001 el programa creía que la nube estaba medio vacía, así
+  // que resubía miles de filas en cada guardado (lento, y se pasaba del
+  // tiempo límite) y daba por inexistente lo que sí estaba.
+  async function leerFilasCompletas(tabla) {
+    var todas = [];
+    var desde = 0;
+    for (;;) {
+      var r = await window.__nubeCliente.from(tabla).select("id, datos")
+        .order("creado_en", { ascending: false })
+        .range(desde, desde + PAGINA_LECTURA - 1);
+      if (r.error) throw r.error;
+      var lote = r.data || [];
+      todas = todas.concat(lote);
+      if (lote.length < PAGINA_LECTURA) break;
+      desde += PAGINA_LECTURA;
+    }
+    return todas;
+  }
+
+  // Sube a la nube lo que ha cambiado en este equipo, y borra únicamente lo
+  // que este equipo ha quitado a propósito (una venta anulada, un albarán
+  // anulado). Lo que no conoce, no lo toca: puede venir del otro dispositivo.
+  async function sincronizarColeccionPorFila(tabla, listaLocal, claveColeccion) {
+    var filasRemotas = await leerFilasCompletas(tabla);
+    var remotoPorId = {};
+    filasRemotas.forEach(function (fila) { remotoPorId[fila.id] = fila.datos; });
+
+    var filasParaGuardar = [];
+    listaLocal.forEach(function (x) {
+      if (!x || !x.id) return;
+      var enNube = remotoPorId[x.id];
+      if (!enNube || JSON.stringify(enNube) !== JSON.stringify(x)) {
+        filasParaGuardar.push({
+          id: x.id,
+          fecha: x.fecha || new Date().toISOString().slice(0, 10),
+          datos: x,
+        });
+      }
+    });
+
+    // Solo se borra lo que este equipo apuntó como borrado, y solo si de
+    // verdad sigue estando en la nube.
+    var apuntados = claveColeccion ? borradosDe(claveColeccion) : [];
+    var idsParaBorrar = apuntados.filter(function (id) {
+      return Object.prototype.hasOwnProperty.call(remotoPorId, id);
+    });
+
+    if (filasParaGuardar.length > 0) {
+      if (tabla === "auditoria_registro") {
+        // auditoria_registro no admite escritura directa a propósito — cada
+        // fila nueva tiene que pasar por la RPC controlada, una por una,
+        // para que ninguna entrada pueda fabricarse sin pasar por ahí.
+        for (var i = 0; i < filasParaGuardar.length; i++) {
+          var d = filasParaGuardar[i].datos;
+          var rRpc = await window.__nubeCliente.rpc("registrar_auditoria", {
+            p_id: d.id, p_usuario: d.usuario, p_accion: d.accion, p_detalle: d.detalle,
+            p_fecha: d.fecha, p_hora: d.hora,
+          });
+          if (rRpc.error) throw rRpc.error;
+        }
+      } else {
+        var rUp = await window.__nubeCliente.from(tabla).upsert(filasParaGuardar);
+        if (rUp.error) throw rUp.error;
+      }
+    }
+    if (idsParaBorrar.length > 0) {
+      var rDel = await window.__nubeCliente.from(tabla).delete().in("id", idsParaBorrar);
+      if (rDel.error) throw rDel.error;
+    }
+    // Los borrados ya aplicados (y los que ya no estaban en la nube porque
+    // otro dispositivo se adelantó) dejan de estar pendientes.
+    if (claveColeccion && apuntados.length > 0) guardarBorrados(claveColeccion, []);
+  }
+
+  /* ----------------------------------------------------------
+     COLECCIONES GUARDADAS EN BLOQUE (productos, clientes, ...)
+     ------------------------------------------------------------
+     Estas no van fila a fila: se guardan como un bloque entero.
+     Antes, el último equipo en guardar machacaba el bloque: si
+     tenías el programa abierto en el ordenador y dabas de alta un
+     producto en el móvil, en cuanto el ordenador guardara
+     cualquier otra cosa, ese producto desaparecía.
+
+     Ahora no se sube el bloque tal cual. Se mira qué ha cambiado
+     en ESTE equipo (comparando con lo que tenía guardado antes) y
+     solo ese cambio se aplica sobre lo que hay en la nube. Lo que
+     haya hecho el otro dispositivo se queda donde está.
+     ---------------------------------------------------------- */
+
+  // Los respaldos NO se fusionan: cada equipo guarda los suyos y son muy
+  // grandes (llevan una copia entera del negocio). Juntar los de dos equipos
+  // multiplicaría el tamaño sin aportar nada.
+  var SIN_FUSION = { historialRespaldos: true };
+
+  function esListaConId(v) {
+    return Array.isArray(v) && v.length > 0 && v.every(function (x) {
+      return x && typeof x === "object" && !Array.isArray(x) && x.id;
+    });
+  }
+  function esMapa(v) {
+    return v && typeof v === "object" && !Array.isArray(v);
+  }
+  function igual(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+
+  function fusionarListas(enNube, antes, ahora) {
+    var mapaAntes = {}, mapaAhora = {}, mapaNube = {};
+    antes.forEach(function (x) { if (x && x.id) mapaAntes[x.id] = x; });
+    ahora.forEach(function (x) { if (x && x.id) mapaAhora[x.id] = x; });
+    enNube.forEach(function (x) { if (x && x.id) mapaNube[x.id] = x; });
+
+    var resultado = [];
+    var colocados = {};
+    var conflictos = []; // los dos dispositivos cambiaron el MISMO registro, cada uno a su manera
+
+    ahora.forEach(function (x) {
+      if (!x || !x.id) { resultado.push(x); return; }
+      colocados[x.id] = true;
+      var previo = mapaAntes[x.id];
+      var enLaNube = mapaNube[x.id];
+      var yoLoCambie = !previo || !igual(previo, x);
+      var elOtroTambienLoCambio = previo && enLaNube && !igual(previo, enLaNube) && !igual(enLaNube, x);
+      if (yoLoCambie && elOtroTambienLoCambio) {
+        conflictos.push({ id: x.id, nombre: x.nombre || x.id, mio: x, delOtro: enLaNube });
+      }
+      if (!previo || !igual(previo, x)) {
+        resultado.push(x);                 // lo he creado o modificado yo: mando yo
+      } else if (Object.prototype.hasOwnProperty.call(mapaNube, x.id)) {
+        resultado.push(mapaNube[x.id]);    // no lo he tocado: manda la nube
+      }
+      // Si no lo he tocado y ya no está en la nube, lo borró el otro equipo:
+      // se respeta ese borrado y no se repone.
+    });
+
+    // Lo que hay en la nube y este equipo no ha llegado a ver nunca: lo ha
+    // dado de alta el otro dispositivo, así que se conserva.
+    enNube.forEach(function (x) {
+      if (!x || !x.id) return;
+      if (colocados[x.id]) return;
+      if (Object.prototype.hasOwnProperty.call(mapaAntes, x.id)) return; // lo borré yo
+      resultado.push(x);
+    });
+
+    return { resultado: resultado, conflictos: conflictos };
+  }
+
+  function fusionarMapas(enNube, antes, ahora) {
+    var res = {};
+    var conflictos = [];
+    Object.keys(enNube).forEach(function (k) { res[k] = enNube[k]; });
+    Object.keys(ahora).forEach(function (k) {
+      var previo = antes[k];
+      var yoLoCambie = !(k in antes) || !igual(previo, ahora[k]);
+      var elOtroTambienLoCambio = (k in antes) && (k in enNube) && !igual(previo, enNube[k]) && !igual(enNube[k], ahora[k]);
+      if (yoLoCambie && elOtroTambienLoCambio) conflictos.push({ id: k, nombre: k, mio: ahora[k], delOtro: enNube[k] });
+      if (yoLoCambie) res[k] = ahora[k];
+    });
+    Object.keys(antes).forEach(function (k) { if (!(k in ahora)) delete res[k]; });
+    return { resultado: res, conflictos: conflictos };
+  }
+
+  function fusionarValor(enNube, antes, ahora) {
+    if (enNube === null || enNube === undefined) return { resultado: ahora, conflictos: [] };
+    if (Array.isArray(ahora) && Array.isArray(enNube) && (esListaConId(ahora) || esListaConId(enNube))) {
+      return fusionarListas(enNube, Array.isArray(antes) ? antes : [], ahora);
+    }
+    if (esMapa(ahora) && esMapa(enNube)) {
+      return fusionarMapas(enNube, esMapa(antes) ? antes : {}, ahora);
+    }
+    return { resultado: ahora, conflictos: [] }; // números, textos y preferencias del propio equipo
+  }
+
+  async function guardarBloque(key, textoAnterior, textoNuevo) {
+    var nuevo = JSON.parse(textoNuevo);
+    var aSubir = nuevo;
+
+    if (!SIN_FUSION[key]) {
+      var rLee = await window.__nubeCliente.from("almacen_kv")
+        .select("value").eq("key", key).maybeSingle();
+      if (rLee.error) throw rLee.error;
+      var enNube = rLee.data ? rLee.data.value : null;
+      var antes = null;
+      try { antes = textoAnterior === null ? null : JSON.parse(textoAnterior); } catch (e) { antes = null; }
+      var fusion = fusionarValor(enNube, antes, nuevo);
+      aSubir = fusion.resultado;
+      // Conflicto real: los dos dispositivos cambiaron el MISMO registro de
+      // forma distinta mientras el otro no lo veía. La fusión ya decidió
+      // (gana lo de este equipo, por ser la corrección más reciente que se
+      // conoce), pero esto avisa de que el cambio del otro dispositivo se
+      // ha perdido — para que se pueda revisar, no para bloquear el guardado.
+      if (fusion.conflictos && fusion.conflictos.length > 0 && typeof window !== "undefined" && window.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent("conflicto-fusion", { detail: { key: key, conflictos: fusion.conflictos } }));
+      }
+    }
+
+    var rSube = await window.__nubeCliente.from("almacen_kv").upsert({ key: key, value: aSubir });
+    if (rSube.error) throw rSube.error;
+  }
+
+  // --- Cola de subidas por clave ---
+  // Dos guardados seguidos de la misma clave (ej. ajustar dos productos
+  // sin esperar entre uno y otro) lanzaban dos subidas A LA VEZ. Si la
+  // segunda empezaba a leer la nube antes de que la primera terminara de
+  // escribir, la segunda no veía el cambio de la primera todavía — y como
+  // para ella ese dato "no lo he tocado yo en esta subida", dejaba mandar
+  // a la nube... que en ese instante seguía teniendo el valor viejo. El
+  // primer ajuste se perdía, incluso en el mismo equipo tras recargar.
+  //
+  // Esto pone las subidas de una misma clave en fila: la segunda siempre
+  // espera a que la primera termine de verdad (leer, combinar y escribir)
+  // antes de empezar la suya. El guardado en el equipo sigue siendo
+  // instantáneo — esto solo ordena las subidas a la nube.
+  var colaSubidaPorClave = {};
+  function encolarPorClave(key, tarea) {
+    var anterior = colaSubidaPorClave[key] || Promise.resolve();
+    var actual = anterior.then(tarea, tarea); // se ejecuta pase lo que pase con la anterior
+    colaSubidaPorClave[key] = actual.catch(function () {}); // un fallo no debe atascar la cola futura
+    return actual;
+  }
+
+  window.storage = {
+    // Leer: si hay nube, se prefiere (trae lo que hayan hecho en otro
+    // dispositivo) y se deja copia local. Si no, se lee de local.
+    async get(key) {
+      var tablaEspecial = TABLAS_POR_FILA[key];
+      if (window.__nubeActiva && window.__nubeCliente && pendientes().indexOf(key) === -1) {
+        try {
+          var lista;
+          if (tablaEspecial) {
+            lista = await conTiempoLimite(leerColeccionPorFila(tablaEspecial, key), ESPERA_NUBE_MS);
+          } else {
+            var r = await conTiempoLimite(
+              window.__nubeCliente.from("almacen_kv").select("value").eq("key", key).maybeSingle(),
+              ESPERA_NUBE_MS
+            );
+            if (r.error || !r.data) throw new Error("sin datos en la nube para " + key);
+            lista = r.data.value;
+          }
+          var texto = JSON.stringify(lista);
+          LOCAL.set(key, texto); // copia local, para poder trabajar sin red
+          return { key: key, value: texto, shared: false };
+        } catch (e) { /* si falla la nube, seguimos con lo local */ }
+      }
+      return { key: key, value: LOCAL.get(key), shared: false };
+    },
+
+    // Guardar: primero en el dispositivo (instantáneo y sin fallo posible),
+    // y después se intenta subir. Si no sube, queda en la cola de pendientes.
+    async set(key, value) {
+      var tablaEspecial = TABLAS_POR_FILA[key];
+
+      // Qué había guardado antes en este equipo. Sirve para saber qué se ha
+      // quitado y para poder dejarlo como estaba si el guardado no cabe.
+      var anterior = null;
+      try { anterior = LOCAL.get(key); } catch (e) { anterior = null; }
+
+      // El almacenamiento del navegador tiene un tope (unos 5 MB en total).
+      // Antes se daba por hecho que guardar en local "no puede fallar"; si
+      // se llenaba, saltaba el error aquí mismo y ni se guardaba ni se
+      // apuntaba para subir: el cambio se perdía entero.
+      var falloLocal = null;
+      try {
+        LOCAL.set(key, value);
+      } catch (e) {
+        falloLocal = e;
+        try { if (anterior !== null) LOCAL.set(key, anterior); } catch (e2) {}
+      }
+
+      if (tablaEspecial && !falloLocal) anotarBorradosLocales(key, anterior, value);
+
+      if (window.__nubeActiva && window.__nubeCliente) {
+        try {
+          if (tablaEspecial) {
+            await conTiempoLimite(
+              encolarPorClave(key, function () { return sincronizarColeccionPorFila(tablaEspecial, JSON.parse(value), key); }),
+              ESPERA_NUBE_MS
+            );
+          } else {
+            await conTiempoLimite(
+              encolarPorClave(key, function () { return guardarBloque(key, anterior, value); }),
+              ESPERA_NUBE_MS
+            );
+          }
+          quitarPendiente(key);
+        } catch (e) {
+          marcarPendiente(key);
+        }
+      } else {
+        marcarPendiente(key);
+      }
+
+      // Si no cupo en el equipo, se avisa AHORA — pero después de haber
+      // intentado subirlo, para no perderlo por partida doble.
+      if (falloLocal) {
+        throw new Error(
+          "No cabe en el almacenamiento de este equipo (" + key + "). " +
+          "Suele significar que hay algo muy grande guardado, como una foto."
+        );
+      }
+      return { key: key, value: value, shared: false };
+    },
+
+    async delete(key) {
+      LOCAL.delete(key);
+      if (window.__nubeActiva && window.__nubeCliente) {
+        try {
+          var tablaEspecial = TABLAS_POR_FILA[key];
+          if (tablaEspecial) {
+            await conTiempoLimite(window.__nubeCliente.from(tablaEspecial).delete().neq("id", ""), ESPERA_NUBE_MS);
+          } else {
+            await conTiempoLimite(window.__nubeCliente.from("almacen_kv").delete().eq("key", key), ESPERA_NUBE_MS);
+          }
+        } catch (e) { /* el borrado local ya está hecho */ }
+      }
+      return { key: key, deleted: true, shared: false };
+    },
+
+    async list() {
+      return { keys: LOCAL.list(), shared: false };
+    }
+  };
+</script>
+</head>
+<body>
+
+<div id="cargando">
+  <div class="marca">Control de Compras y Almacen</div>
+  <div class="barra"><i></i></div>
+  <div class="paso" id="paso">Abriendo…</div>
+</div>
+
+<div id="root"></div>
+
+<script>
+  // VERSION es solo una marca visible de qué entrega es esta, para cuando
+  // se compara una versión con otra — no participa en el arranque.
+  var VERSION = "reparto-en-varios-archivos-1";
+
+  var paso = document.getElementById("paso");
+  function di(t) { if (paso) paso.textContent = t; }
+  di("Cargando…");
+
+  // Antes, aquí se ensamblaba el código en un blob y se cargaba con
+  // import() dinámico — hacía falta porque el código llegaba embebido como
+  // texto plano dentro del propio HTML (primero sin compilar, con Babel
+  // desde unpkg.com; después ya compilado, pero seguía embebido). Ahora
+  // fuente.js es un archivo de verdad, servido tal cual junto al HTML, así
+  // que basta con un <script type="module"> normal — es más simple y dejar
+  // que el navegador lo cachee con las reglas HTTP normales, en vez de
+  // gestionar la caché a mano con localStorage.
+  window.addEventListener("error", function (e) {
+    if (e && e.filename && e.filename.indexOf("fuente.js") !== -1) {
+      console.error("Fallo al arrancar:", e.message);
+      di("Error al arrancar. Recarga la página.");
+    }
+  });
+</script>
+<script type="module" src="./fuente.js"></script>
+<script>
+  // Una vez que el módulo se ha importado y ejecutado, React ya habrá
+  // montado algo dentro de #root — se quita el indicador de "Cargando…".
+  // (Un observador simple, en vez de encadenar una promesa al import, ya
+  // que un <script type="module" src="..."> no da un gancho directo de
+  // "terminé" desde fuera de sí mismo.)
+  (function comprobar() {
+    var root = document.getElementById("root");
+    if (root && root.firstChild) {
+      var c = document.getElementById("cargando");
+      if (c) c.remove();
+    } else {
+      setTimeout(comprobar, 50);
+    }
+  })();
+</script>
+</body>
+</html>
