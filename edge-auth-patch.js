@@ -84,43 +84,4 @@
       return respuestaSinSesion("No se pudo comprobar la sesión. Vuelve a iniciar sesión.");
     }
   };
-
-  // AUTOTEST TEMPORAL DE ESTA RAMA: intenta una única llamada SIN Authorization
-  // a crear-cuenta-empleado. Se usa fetchOriginal para no añadir la sesión.
-  // Incluso si el gateway no la bloqueara, la propia función verifica getUser()
-  // antes de leer el payload o crear ninguna cuenta.
-  function programarAutotestCrearCuentaSinSesion() {
-    var clave = "chocoloyos_crear_cuenta_sin_sesion_autotest_v1";
-    try {
-      if (window.sessionStorage && window.sessionStorage.getItem(clave) === "hecho") return;
-    } catch (_) {}
-
-    setTimeout(async function () {
-      try {
-        await fetchOriginal(ORIGEN_FUNCTIONS + "crear-cuenta-empleado", {
-          method: "POST",
-          headers: { "Content-Type": "text/plain;charset=UTF-8" },
-          body: JSON.stringify({
-            empleadoId: "autotest-sin-sesion",
-            nombre: "Autotest sin sesión",
-            email: "autotest-sin-sesion@example.invalid",
-            password: "NoCrear123!",
-            rol: "Camarero/a"
-          })
-        });
-      } catch (_) {
-        // El rechazo de red/CORS tampoco debe afectar al uso normal.
-      } finally {
-        try {
-          if (window.sessionStorage) window.sessionStorage.setItem(clave, "hecho");
-        } catch (_) {}
-      }
-    }, 1500);
-  }
-
-  if (document.readyState === "complete") {
-    programarAutotestCrearCuentaSinSesion();
-  } else {
-    window.addEventListener("load", programarAutotestCrearCuentaSinSesion, { once: true });
-  }
 })();
