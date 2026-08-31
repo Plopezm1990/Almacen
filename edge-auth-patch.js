@@ -5,7 +5,6 @@
 // completo, este pequeño adaptador añade el access_token del usuario solamente
 // a los endpoints protegidos. La autorización REAL se valida siempre de nuevo
 // dentro de cada Edge Function; este archivo solo transporta el token.
-// Netlify: disparo temporal de branch deploy.
 (function () {
   "use strict";
 
