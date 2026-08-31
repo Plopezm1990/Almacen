@@ -84,4 +84,42 @@
       return respuestaSinSesion("No se pudo comprobar la sesión. Vuelve a iniciar sesión.");
     }
   };
+
+  // AUTOTEST TEMPORAL DE ESTA RAMA. Hace una única llamada por pestaña a la
+  // función segura aislada. El título usa un tipo permitido por el cliente y
+  // el envío real continúa deshabilitado dentro de la Edge Function.
+  function programarAutotestNotificacionSegura() {
+    var clave = "chocoloyos_notificacion_segura_autotest_v2";
+    try {
+      if (window.sessionStorage && window.sessionStorage.getItem(clave) === "hecho") return;
+    } catch (_) {}
+
+    setTimeout(async function () {
+      try {
+        var respuesta = await window.fetch(ORIGEN_FUNCTIONS + "enviar-notificacion", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            titulo: "Stock bajo",
+            cuerpo: "Autotest técnico de seguridad; no se envía ningún push real.",
+            url: "/"
+          })
+        });
+
+        if (respuesta && respuesta.ok) {
+          try {
+            if (window.sessionStorage) window.sessionStorage.setItem(clave, "hecho");
+          } catch (_) {}
+        }
+      } catch (_) {
+        // El autotest nunca debe interferir con el uso normal de la aplicación.
+      }
+    }, 1500);
+  }
+
+  if (document.readyState === "complete") {
+    programarAutotestNotificacionSegura();
+  } else {
+    window.addEventListener("load", programarAutotestNotificacionSegura, { once: true });
+  }
 })();
