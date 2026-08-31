@@ -17,9 +17,10 @@
   };
 
   // SOLO EN ESTA RAMA DE PRUEBAS: las notificaciones del navegador se envían
-  // a una Edge Function de simulación que no lee suscripciones ni manda push.
+  // a la versión segura aislada. Esa función valida sesión/rol/payload y tiene
+  // el envío push real deshabilitado, así que no avisa a ningún dispositivo.
   var REDIRECCIONES_PRUEBA = {
-    "enviar-notificacion": "enviar-notificacion-prueba"
+    "enviar-notificacion": "enviar-notificacion-segura"
   };
 
   function respuestaSinSesion(mensaje) {
