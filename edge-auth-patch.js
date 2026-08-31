@@ -83,43 +83,4 @@
       return respuestaSinSesion("No se pudo comprobar la sesión. Vuelve a iniciar sesión.");
     }
   };
-
-  // AUTOTEST TEMPORAL DE ESTA RAMA. Se ejecuta como máximo una vez por pestaña
-  // y pasa por window.fetch para comprobar el mismo transporte de JWT que usaría
-  // una notificación real. El destino se redirige arriba a la función de prueba,
-  // que no lee suscripciones, no usa VAPID y no envía push reales.
-  function programarAutotestNotificacion() {
-    var clave = "chocoloyos_notificacion_autotest_v1";
-    try {
-      if (window.sessionStorage && window.sessionStorage.getItem(clave) === "hecho") return;
-    } catch (_) {}
-
-    setTimeout(async function () {
-      try {
-        var respuesta = await window.fetch(ORIGEN_FUNCTIONS + "enviar-notificacion", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            titulo: "Autotest de seguridad",
-            cuerpo: "Simulación técnica sin envío push real.",
-            url: "/"
-          })
-        });
-
-        if (respuesta && respuesta.ok) {
-          try {
-            if (window.sessionStorage) window.sessionStorage.setItem(clave, "hecho");
-          } catch (_) {}
-        }
-      } catch (_) {
-        // El autotest nunca debe interferir con el uso normal de la aplicación.
-      }
-    }, 1500);
-  }
-
-  if (document.readyState === "complete") {
-    programarAutotestNotificacion();
-  } else {
-    window.addEventListener("load", programarAutotestNotificacion, { once: true });
-  }
 })();
