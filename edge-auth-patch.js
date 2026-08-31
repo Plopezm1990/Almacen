@@ -12,7 +12,14 @@
   var ORIGEN_FUNCTIONS = "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/";
   var PROTEGIDAS = {
     "importar-albaran": true,
-    "importar-nomina": true
+    "importar-nomina": true,
+    "enviar-notificacion": true
+  };
+
+  // SOLO EN ESTA RAMA DE PRUEBAS: las notificaciones del navegador se envían
+  // a una Edge Function de simulación que no lee suscripciones ni manda push.
+  var REDIRECCIONES_PRUEBA = {
+    "enviar-notificacion": "enviar-notificacion-prueba"
   };
 
   function respuestaSinSesion(mensaje) {
@@ -64,6 +71,13 @@
       }
 
       opciones.headers = headers;
+
+      var destino = REDIRECCIONES_PRUEBA[nombreFuncion];
+      if (destino && typeof input === "string") {
+        var resto = url.slice((ORIGEN_FUNCTIONS + nombreFuncion).length);
+        return fetchOriginal(ORIGEN_FUNCTIONS + destino + resto, opciones);
+      }
+
       return fetchOriginal(input, opciones);
     } catch (e) {
       return respuestaSinSesion("No se pudo comprobar la sesión. Vuelve a iniciar sesión.");
