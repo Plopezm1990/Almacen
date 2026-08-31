@@ -13,6 +13,11 @@
   var PROTEGIDAS = {
     "importar-albaran": true
   };
+  // Solo en esta rama de pruebas: la llamada normal se redirige a la función
+  // segura temporal. Producción sigue usando importar-albaran sin cambios.
+  var REDIRECCIONES_PRUEBA = {
+    "importar-albaran": "importar-albaran-prueba"
+  };
 
   function respuestaSinSesion(mensaje) {
     return new Response(
@@ -31,7 +36,8 @@
       return fetchOriginal(input, init);
     }
 
-    var nombreFuncion = url.slice(ORIGEN_FUNCTIONS.length).split(/[?#]/)[0];
+    var resto = url.slice(ORIGEN_FUNCTIONS.length);
+    var nombreFuncion = resto.split(/[?#]/)[0];
     if (!PROTEGIDAS[nombreFuncion]) {
       return fetchOriginal(input, init);
     }
@@ -63,7 +69,13 @@
       }
 
       opciones.headers = headers;
-      return fetchOriginal(input, opciones);
+
+      var destino = REDIRECCIONES_PRUEBA[nombreFuncion];
+      var urlDestino = destino
+        ? ORIGEN_FUNCTIONS + destino + resto.slice(nombreFuncion.length)
+        : url;
+
+      return fetchOriginal(urlDestino, opciones);
     } catch (e) {
       return respuestaSinSesion("No se pudo comprobar la sesión. Vuelve a iniciar sesión.");
     }
