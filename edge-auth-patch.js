@@ -11,7 +11,8 @@
   var fetchOriginal = window.fetch.bind(window);
   var ORIGEN_FUNCTIONS = "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/";
   var PROTEGIDAS = {
-    "importar-albaran": true
+    "importar-albaran": true,
+    "importar-nomina": true
   };
 
   function respuestaSinSesion(mensaje) {
