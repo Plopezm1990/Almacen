@@ -15,12 +15,6 @@
     "importar-nomina": true
   };
 
-  // Solo en esta rama de pruebas: la importación de nóminas se envía a la
-  // función temporal protegida. Producción continúa usando importar-nomina.
-  var REDIRECCIONES_PRUEBA = {
-    "importar-nomina": "importar-nomina-prueba"
-  };
-
   function respuestaSinSesion(mensaje) {
     return new Response(
       JSON.stringify({ ok: false, error: mensaje }),
@@ -38,8 +32,7 @@
       return fetchOriginal(input, init);
     }
 
-    var resto = url.slice(ORIGEN_FUNCTIONS.length);
-    var nombreFuncion = resto.split(/[?#]/)[0];
+    var nombreFuncion = url.slice(ORIGEN_FUNCTIONS.length).split(/[?#]/)[0];
     if (!PROTEGIDAS[nombreFuncion]) {
       return fetchOriginal(input, init);
     }
@@ -71,13 +64,7 @@
       }
 
       opciones.headers = headers;
-
-      var destino = REDIRECCIONES_PRUEBA[nombreFuncion];
-      var urlDestino = destino
-        ? ORIGEN_FUNCTIONS + destino + resto.slice(nombreFuncion.length)
-        : url;
-
-      return fetchOriginal(urlDestino, opciones);
+      return fetchOriginal(input, opciones);
     } catch (e) {
       return respuestaSinSesion("No se pudo comprobar la sesión. Vuelve a iniciar sesión.");
     }
