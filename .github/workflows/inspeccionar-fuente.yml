@@ -21,28 +21,20 @@ jobs:
           const src = fs.readFileSync('fuente.js','utf8');
           fs.rmSync('tmp-inspeccion', { recursive: true, force: true });
           fs.mkdirSync('tmp-inspeccion', { recursive: true });
-          function extractAll(term, before=900, after=1400, max=120) {
-            let out = '', from = 0, n = 0;
-            while (n < max) {
-              const i = src.indexOf(term, from);
-              if (i < 0) break;
-              n++;
-              out += `\n===== HIT ${n}: ${term} @ ${i} =====\n` + src.slice(Math.max(0,i-before), Math.min(src.length,i+term.length+after)) + '\n';
-              from = i + term.length;
-            }
-            return `TOTAL ${n}\n` + out;
-          }
           function functionBlock(name) {
             const start = src.indexOf(`function ${name}(`);
             if (start < 0) return `NOT FOUND function ${name}\n`;
             const next = src.indexOf('\nfunction ', start + 10);
-            const end = next < 0 ? Math.min(src.length, start + 120000) : next;
+            const end = next < 0 ? Math.min(src.length, start + 150000) : next;
             return `START ${start} END ${end} LEN ${end-start}\n` + src.slice(start, end);
           }
           fs.writeFileSync('tmp-inspeccion/meta.txt', `SIZE ${src.length}\n`);
-          fs.writeFileSync('tmp-inspeccion/localid.txt', extractAll('localId'));
-          fs.writeFileSync('tmp-inspeccion/localactivo.txt', extractAll('localActivoId'));
-          const funcs = ['Dashboard','Resultados','LibroIva','Productos','VentaRapida','Personal','ArqueoCaja','Pedidos','Recepcion','PanelDireccion','GestionAlmacen'];
+          const funcs = [
+            'Dashboard','Resultados','LibroIva','GestionAlmacen',
+            'crearLogicaGastos','crearLogicaPersonal','crearLogicaFacturasDirectas',
+            'crearLogicaAlbaranes','crearLogicaPedidos','crearLogicaVenta',
+            'crearLogicaEncargos','crearLogicaFichaje','crearLogicaAppcc'
+          ];
           for (const name of funcs) fs.writeFileSync(path.join('tmp-inspeccion', `fn-${name}.txt`), functionBlock(name));
           const contenido = src.indexOf('const contenido =');
           fs.writeFileSync('tmp-inspeccion/contenido.txt', contenido < 0 ? 'NOT FOUND' : src.slice(contenido, Math.min(src.length, contenido + 52000)));
