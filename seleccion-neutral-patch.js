@@ -113,8 +113,6 @@
     var contenedor = details && details.parentElement;
     if (!contenedor) return;
 
-    // Elimina cualquier inyección anterior para que una rerenderización de
-    // React no deje duplicados.
     Array.prototype.slice.call(contenedor.querySelectorAll('[data-neutral-interview="1"]')).forEach(function (x) { x.remove(); });
 
     [
@@ -225,13 +223,30 @@
     var resumen = fila && fila.resumen ? fila.resumen : null;
     if (!resumen) return;
 
+    var esFormatoAntiguo = Object.prototype.hasOwnProperty.call(resumen, "puntuacion_orientativa") ||
+      Object.prototype.hasOwnProperty.call(resumen, "recomendacion") ||
+      Object.prototype.hasOwnProperty.call(resumen, "avisos");
+
     var nuevos = [];
-    if (Array.isArray(resumen.evidencias_aportadas)) {
-      nuevos.push(cardSimple("Evidencias aportadas", resumen.evidencias_aportadas, true));
+
+    if (esFormatoAntiguo) {
+      ["Resumen", "Experiencia", "Disponibilidad", "Motivación"].forEach(function (titulo) {
+        exactos(modal, titulo).forEach(function (el) { ocultar(cardDesdeTitulo(el)); });
+      });
+      nuevos.push(cardSimple(
+        "Análisis anterior",
+        "Este análisis se generó con el formato anterior. Por seguridad, el resumen, las puntuaciones y las recomendaciones automáticas están ocultos. Revisa las respuestas completas para realizar la valoración de forma humana.",
+        false
+      ));
+    } else {
+      if (Array.isArray(resumen.evidencias_aportadas)) {
+        nuevos.push(cardSimple("Evidencias aportadas", resumen.evidencias_aportadas, true));
+      }
+      if (Array.isArray(resumen.cuestiones_a_aclarar)) {
+        nuevos.push(cardSimple("Cuestiones a aclarar", resumen.cuestiones_a_aclarar, true));
+      }
     }
-    if (Array.isArray(resumen.cuestiones_a_aclarar)) {
-      nuevos.push(cardSimple("Cuestiones a aclarar", resumen.cuestiones_a_aclarar, true));
-    }
+
     nuevos.forEach(function (nodo) {
       nodo.setAttribute("data-neutral-prefiltro", "1");
       respuestasCard.parentElement.insertBefore(nodo, respuestasCard);
