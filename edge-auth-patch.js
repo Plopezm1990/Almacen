@@ -12,7 +12,12 @@
   var ORIGEN_FUNCTIONS = "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/";
   var PROTEGIDAS = {
     "importar-albaran": true,
-    "importar-nomina": true
+    "importar-nomina": true,
+    "enviar-notificacion": true,
+    "entrevista-personal": true
+  };
+  var REDIRECCIONES_RAMA = {
+    "entrevista-personal": "entrevista-personal-neutral"
   };
 
   function respuestaSinSesion(mensaje) {
@@ -64,9 +69,49 @@
       }
 
       opciones.headers = headers;
-      return fetchOriginal(input, opciones);
+
+      // Solo en la rama de pruebas: la interfaz antigua sigue llamando a
+      // entrevista-personal, pero aquí se envía al endpoint neutral nuevo.
+      // En producción/main este adaptador no tiene esta redirección.
+      var destino = input;
+      var nuevoNombre = REDIRECCIONES_RAMA[nombreFuncion];
+      if (nuevoNombre) {
+        var urlDestino = ORIGEN_FUNCTIONS + nuevoNombre + url.slice((ORIGEN_FUNCTIONS + nombreFuncion).length);
+        // El bundle actual llama a estas funciones con URL string + init.
+        // Si en el futuro llega un Request, se conserva sin redirigir antes
+        // que arriesgarse a alterar su body de forma incorrecta.
+        if (typeof input === "string") destino = urlDestino;
+      }
+
+      return fetchOriginal(destino, opciones);
     } catch (e) {
       return respuestaSinSesion("No se pudo comprobar la sesión. Vuelve a iniciar sesión.");
     }
   };
+})();
+
+// Solo en esta rama: capa visual temporal para que Prefiltros y Entrevistas
+// no muestren puntuaciones ni recomendaciones automáticas mientras se adapta
+// el bundle principal. No guarda ni modifica datos.
+(function () {
+  "use strict";
+  if (document.querySelector('script[data-seleccion-neutral="1"]')) return;
+  var script = document.createElement("script");
+  script.src = "./seleccion-neutral-patch.js?v=2";
+  script.defer = true;
+  script.setAttribute("data-seleccion-neutral", "1");
+  (document.head || document.documentElement).appendChild(script);
+})();
+
+// Prueba push real aislada: SOLO se carga con ?push-test=1 en la rama.
+// El script muestra un botón; no envía nada automáticamente.
+(function () {
+  "use strict";
+  if (new URLSearchParams(window.location.search).get("push-test") !== "1") return;
+  if (document.querySelector('script[data-push-dispositivo-prueba="1"]')) return;
+  var script = document.createElement("script");
+  script.src = "./push-dispositivo-prueba.js?v=2";
+  script.defer = true;
+  script.setAttribute("data-push-dispositivo-prueba", "1");
+  (document.head || document.documentElement).appendChild(script);
 })();
