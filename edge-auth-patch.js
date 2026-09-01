@@ -102,3 +102,15 @@
   script.setAttribute("data-seleccion-neutral", "1");
   (document.head || document.documentElement).appendChild(script);
 })();
+
+// Prueba temporal de un único push real al dispositivo actual. El script
+// solo muestra un botón; no envía nada automáticamente.
+(function () {
+  "use strict";
+  if (document.querySelector('script[data-push-dispositivo-prueba="1"]')) return;
+  var script = document.createElement("script");
+  script.src = "./push-dispositivo-prueba.js?v=1";
+  script.defer = true;
+  script.setAttribute("data-push-dispositivo-prueba", "1");
+  (document.head || document.documentElement).appendChild(script);
+})();
