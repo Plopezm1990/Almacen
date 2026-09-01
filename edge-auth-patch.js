@@ -16,31 +16,23 @@
     "enviar-notificacion": true,
     "entrevista-personal": true
   };
-  var REDIRECCIONES_RAMA = {
+  var REDIRECCIONES = {
     "entrevista-personal": "entrevista-personal-neutral"
   };
 
   function respuestaSinSesion(mensaje) {
     return new Response(
       JSON.stringify({ ok: false, error: mensaje }),
-      {
-        status: 401,
-        headers: { "Content-Type": "application/json" }
-      }
+      { status: 401, headers: { "Content-Type": "application/json" } }
     );
   }
 
   window.fetch = async function (input, init) {
     var url = typeof input === "string" ? input : (input && input.url) || "";
-
-    if (url.indexOf(ORIGEN_FUNCTIONS) !== 0) {
-      return fetchOriginal(input, init);
-    }
+    if (url.indexOf(ORIGEN_FUNCTIONS) !== 0) return fetchOriginal(input, init);
 
     var nombreFuncion = url.slice(ORIGEN_FUNCTIONS.length).split(/[?#]/)[0];
-    if (!PROTEGIDAS[nombreFuncion]) {
-      return fetchOriginal(input, init);
-    }
+    if (!PROTEGIDAS[nombreFuncion]) return fetchOriginal(input, init);
 
     try {
       if (typeof window.getSupabaseClient !== "function") {
@@ -50,37 +42,21 @@
       var supabase = await window.getSupabaseClient();
       var resultadoSesion = await supabase.auth.getSession();
       var token = resultadoSesion && resultadoSesion.data && resultadoSesion.data.session
-        ? resultadoSesion.data.session.access_token
-        : null;
+        ? resultadoSesion.data.session.access_token : null;
 
-      if (!token) {
-        return respuestaSinSesion("No hay sesión activa — vuelve a iniciar sesión.");
-      }
+      if (!token) return respuestaSinSesion("No hay sesión activa — vuelve a iniciar sesión.");
 
       var opciones = Object.assign({}, init || {});
       var headers = new Headers(
         opciones.headers || (typeof Request !== "undefined" && input instanceof Request ? input.headers : undefined)
       );
-
-      // Si la propia llamada ya trae Authorization, se respeta. Esto hace que
-      // el adaptador sea compatible con una futura recompilación de fuente.jsx.
-      if (!headers.has("Authorization")) {
-        headers.set("Authorization", "Bearer " + token);
-      }
-
+      if (!headers.has("Authorization")) headers.set("Authorization", "Bearer " + token);
       opciones.headers = headers;
 
-      // Solo en la rama de pruebas: la interfaz antigua sigue llamando a
-      // entrevista-personal, pero aquí se envía al endpoint neutral nuevo.
-      // En producción/main este adaptador no tiene esta redirección.
       var destino = input;
-      var nuevoNombre = REDIRECCIONES_RAMA[nombreFuncion];
-      if (nuevoNombre) {
-        var urlDestino = ORIGEN_FUNCTIONS + nuevoNombre + url.slice((ORIGEN_FUNCTIONS + nombreFuncion).length);
-        // El bundle actual llama a estas funciones con URL string + init.
-        // Si en el futuro llega un Request, se conserva sin redirigir antes
-        // que arriesgarse a alterar su body de forma incorrecta.
-        if (typeof input === "string") destino = urlDestino;
+      var nuevoNombre = REDIRECCIONES[nombreFuncion];
+      if (nuevoNombre && typeof input === "string") {
+        destino = ORIGEN_FUNCTIONS + nuevoNombre + url.slice((ORIGEN_FUNCTIONS + nombreFuncion).length);
       }
 
       return fetchOriginal(destino, opciones);
@@ -90,9 +66,9 @@
   };
 })();
 
-// Solo en esta rama: capa visual temporal para que Prefiltros y Entrevistas
-// no muestren puntuaciones ni recomendaciones automáticas mientras se adapta
-// el bundle principal. No guarda ni modifica datos.
+// Capa visual temporal para que Prefiltros y Entrevistas no muestren
+// puntuaciones ni recomendaciones automáticas mientras se adapta el bundle
+// principal. No guarda ni modifica datos.
 (function () {
   "use strict";
   if (document.querySelector('script[data-seleccion-neutral="1"]')) return;
@@ -100,18 +76,5 @@
   script.src = "./seleccion-neutral-patch.js?v=2";
   script.defer = true;
   script.setAttribute("data-seleccion-neutral", "1");
-  (document.head || document.documentElement).appendChild(script);
-})();
-
-// Prueba push real aislada: SOLO se carga con ?push-test=1 en la rama.
-// El script muestra un botón; no envía nada automáticamente.
-(function () {
-  "use strict";
-  if (new URLSearchParams(window.location.search).get("push-test") !== "1") return;
-  if (document.querySelector('script[data-push-dispositivo-prueba="1"]')) return;
-  var script = document.createElement("script");
-  script.src = "./push-dispositivo-prueba.js?v=2";
-  script.defer = true;
-  script.setAttribute("data-push-dispositivo-prueba", "1");
   (document.head || document.documentElement).appendChild(script);
 })();
