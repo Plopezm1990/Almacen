@@ -1,0 +1,1746 @@
+
+===== HIT 1: Resultados @ 4422006 =====
+facturasPorPagar]);
+  const vencenPronto = (0, import_react4.useMemo)(() => pendientesPago.filter((f2) => f2.dias !== null && f2.dias <= 7), [pendientesPago]);
+  const totalPendientePago = (0, import_react4.useMemo)(() => pendientesPago.reduce((a2, f2) => a2 + f2.total, 0), [pendientesPago]);
+  const promedioDiarioVentas = (0, import_react4.useMemo)(() => {
+    const hace30 = /* @__PURE__ */ new Date();
+    hace30.setDate(hace30.getDate() - 30);
+    const ventas = movimientos.filter((m2) => esVenta(m2) && new Date(m2.fecha) >= hace30);
+    const total = ventas.reduce(
+      (a2, m2) => a2 + Math.abs(Number(m2.cantidad) || 0) * (Number(m2.ingresoUnitario) || 0) * (1 + (Number(m2.ivaVentaAplicado) || 0) / 100),
+      0
+    );
+    return total / 30;
+  }, [movimientos]);
+  const proyeccionTesoreria = (0, import_react4.useMemo)(() => {
+    const hoy = /* @__PURE__ */ new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const dias = [];
+    for (let i3 = 0; i3 < 30; i3++) {
+      const d2 = new Date(hoy);
+      d2.setDate(d2.getDate() + i3);
+      const fechaISO = aISO(d2);
+      const pagosDia = pendientesPago.filter((f2) => f2.vencimiento === fechaISO).reduce((a2, f2) => a2 + f2.total, 0);
+      const encargosDia = encargos.filter((e) => e.estado !== "Entregado" && e.estado !== "Cancelado" && e.fechaEntrega === fechaISO).reduce((a2, e) => {
+        const total = (e.lineas || []).reduce((x3, l2) => x3 + (Number(l2.cantidad) || 0) * (Number(l2.precioUnitario) || 0), 0);
+        return a2 + Math.max(0, total - (Number(e.se\u00F1al) || 0));
+      }, 0);
+      const ingresosDia = promedioDiarioVentas + encargosDia;
+      dias.push({ fecha: fechaISO, ingresosDia, pagosDia, netoDia: ingresosDia - pagosDia });
+    }
+    return dias;
+  }, [pendientesPago, encargos, promedioDiarioVentas]);
+  const ingresosPorMes = (0, import_react4.useMemo)(() => {
+    const mapa = {};
+    movimientos.forEach((m2) => {
+      if (!esVenta(m2)) return;
+      const key = m2.fecha.slice(0, 7);
+      const importe = Math.abs(Number(m2.cantidad) || 0) * (Number(m2.ingresoUnitario) || 0);
+      mapa[key] = (mapa[key] || 0) + importe;
+    });
+    return mapa;
+  }, [movimientos]);
+  const gastoPorProveedor = (0, import_react4.useMemo)(() => {
+    const map = {};
+    pedidos.forEach((pe2) => {
+      const total = pe2.items.reduce((a2, it2) => a2 + it2.cantidad * it2.costoUnitario, 0);
+      map[pe2.proveedorId] = (map[pe2.proveedorId] || 0) + total;
+    });
+    return Object.entries(map).map(([proveedorId, total]) => ({ proveedor: proveedorPorId(proveedorId), total })).sort((a2, b2) => b2.total - a2.total);
+  }, [pedidos, proveedores]);
+  const productosSinMovimiento = (0, import_react4.useMemo)(
+    () => productos.filter((p2) => !esUtillaje(p2) && !movimientos.some((m2) => m2.productoId === p2.id && esSalida(m2))),
+    [productos, movimientos]
+  );
+  if (!ready) {
+    return /* @__PURE__ */ import_react4.default.createElement("div", { style: { background: C2.bg, color: C2.ink }, className: "w-full h-full min-h-[600px] flex items-center justify-center font-sans" }, /* @__PURE__ */ import_react4.default.createElement(LoaderCircle, { className: "animate-spin", size: 22 }), /* @__PURE__ */ import_react4.default.createElement("span", { className: "ml-2 text-sm" }, "Cargando almac\xE9n\u2026"));
+  }
+  const contenido = /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, tab === "dashboard" && /* @__PURE__ */ import_react4.default.createElement(
+    Dashboard,
+    {
+      valorInventario,
+      valorUtillaje,
+      stockBajo,
+      pedidosPendientes,
+      margenPromedio,
+      movimientos,
+      productos,
+      caducanPronto,
+      proveedorPorId,
+      vencenPronto,
+      totalPendientePago,
+      documentosPersonalPronto,
+      fichajesAbiertos,
+      encargosUrgentes,
+      pisoVentaBajo,
+      sugerenciasPedido,
+      setTab,
+      recordatorioConteo,
+      alertasAppcc,
+      fallosGuardado,
+      diagnosticoStock,
+      registrarSalida
+    }
+  ), tab === "direccion" && /* @__PURE__ */ import_react4.default.createElement(
+    PanelDireccion,
+    {
+      movimientos,
+      gastosGenerales,
+      nominas,
+      empleados,
+      promedioDiarioVentas,
+      proyeccionTesoreria,
+      stockBajo,
+      descuadresStock: diagnosticoStock.filter((d2) => !d2.coincide)
+    }
+  ), tab === "proveedores" && /* @__PURE__ */ import_react4.default.createElement(Proveedores, { proveedores, addProveedor, updateProveedor, deleteProveedor, pedidos }), tab === "productos" && /* @__PURE__ */ import_react4.default.createElement(
+    Productos,
+    {
+      productos,
+      proveedores,
+      proveedorPorId,
+      addProducto,
+      updateProducto,
+      deleteProducto,
+      reactivarProducto,
+      registrarSalida,
+      clasificacionABC,
+      almacenCongelado,
+      movimientos,
+      fichasCosto,
+      updateFichaCosto,
+      ajustarProductoPorOtro
+    }
+  ), tab === "historial_producto" && /* @__PURE__ */ import_react4.default.createElement(
+    HistorialProducto,
+    {
+      productos,
+      movimientos,
+      pedidos,
+      albaranes,
+      traspasos,
+      proveedorPorId
+    }
+  ), tab === "aceite" && /* @__PURE__ */ import_react4.default.createElement(
+    AceiteFreidoras,
+    {
+      freidoras,
+      registrosAceite,
+      productos,
+      addFreidora,
+      updateFreidora,
+      deleteFreidora,
+      registrarCambio,
+      registrarRelleno,
+      eliminarRegistroAceite,
+      consumoPorCiclo
+    }
+  ), tab === "buscar" && /* @__PURE__ */ import_react4.default.createElement(
+    BusquedaGlobal,
+    {
+      productos,
+      proveedores,
+      clientes,
+      fichasCosto,
+      empleados,
+      setTab
+    }
+  ), tab === "pedidos" && /* @__PURE__ */ import_react4.default.createElement(
+    Pedidos,
+    {
+      pedidos,
+      proveedores,
+      productos,
+      crearPedido,
+      actualizarPedido,
+      eliminarPedido,
+      proveedorPorId,
+      productoPorId,
+      sugerenciasPedido,
+      addProducto
+    }
+  ), tab === "recepcion" && /* @__PURE__ */ import_react4.default.createElement(Recepcion, { pedidos, proveedorPorId, productoPorId, recibirPedido, almacenCongelado, recibirConAlbaran, recibirConFotoIA, cerrarPedido }), tab === "conteo" && /* @__PURE__ */ import_react4.default.createElement(
+    InventarioCiego,
+    {
+      productos,
+      proveedores,
+      conteos,
+      iniciarConteo,
+      actualizarConteoItem,
+      actualizarResponsable,
+      finalizarConteo,
+      aplicarAjustes,
+      eliminarConteo,
+      revertirUltimaAplicacion,
+      productoPorId,
+      crearProductoEnConteo,
+      clasificacionABC,
+      almacenCongelado
+    }
+  ), tab === "reportes" && /* @__PURE__ */ import_react4.default.createElement(
+    Reportes,
+    {
+      rotacionPorProducto,
+      gastoPorProveedor,
+      productosSinMovimiento,
+      valorInventario,
+      margenPorProducto,
+      patronesDesviacionConteo
+    }
+  ), tab === "resultados" && /* @__PURE__ */ import_react4.default.createElement(
+    Resultados,
+    {
+      movimientos,
+      productos,
+      productoPorId,
+      gastosGenerales,
+      addGasto,
+      deleteGasto,
+      empleados
+    }
+  ), tab === "fichas" && /* @__PURE__ */ import_react4.default.createElement(
+    FichasCosto,
+    {
+      fichasCosto,
+      productos,
+      addFichaCosto,
+      updateFichaCosto,
+      deleteFichaCosto,
+      updateProducto,
+      addProducto,
+      ordenesProduccion,
+      nominas,
+      fichajes
+    }
+  ), tab === "produccion" && /* @__PURE__ */ import_react4.default.createElement(Produccion, { fichasCosto, productos, ordenesProduccion, producir, anularProduccion, traspasarStock }), tab === "mermas" && /* @__PURE__ */ import_react4.default.createElement(Mermas, { productos, movimientos, registrarSalida, almacenCongelado }), tab === "etiquetas" && /* @__PURE__ */ import_react4.default.createElement(EtiquetasCatalogo, { productos, fichasCosto, alergenosDeFicha }), tab === "albaranes" && /* @__PURE__ */ import_react4.default.createElement(
+    Albaranes,
+    {
+      albaranes,
+      proveedores,
+      productos,
+      proveedorPorId,
+      buscarEnCatalogo,
+      guardarAlbaran,
+      eliminarAlbaran,
+      confirmarAlbaran,
+      anularAlbaran,
+      marcarPagada,
+      duplicadosDe,
+      desviacionesDePrecio,
+      prefill: prefillAlbaran,
+      limpiarPrefill: () => setPrefillAlbaran(null),
+      pedidoParaFotoIA,
+      limpiarPedidoParaFotoIA: () => setPedidoParaFotoIA(null),
+      pedidos
+    }
+  ), tab === "pagos" && /* @__PURE__ */ import_react4.default.createElement(
+    CuentasPorPagar,
+    {
+      facturasPorPagar,
+      totalPendientePago,
+      marcarPagada,
+      marcarPagadaFacturaDirecta,
+      addFacturaDirecta,
+      deleteFacturaDirecta,
+      proveedores,
+      resaltadaId: facturaDirectaResaltada,
+      limpiarResaltada: () => setFacturaDirectaResaltada(null)
+    }
+  ), tab === "personal" && /* @__PURE__ */ import_react4.default.createElement(
+    Personal,
+    {
+      empleados,
+      addEmpleado,
+      updateEmpleado,
+      deleteEmpleado,
+      anonimizarEmpleado,
+      registrarAusencia,
+      eliminarAusencia,
+      registrarEpi,
+      eliminarEpi,
+      documentosPersonalCaducan,
+      fichajes,
+      nominas,
+      entrevistas,
+      crearEntrevista,
+      actualizarEntrevista,
+      finalizarEntrevista,
+      eliminarEntrevista,
+      crearPrefiltro,
+      listarPrefiltros,
+      eliminarPrefiltro,
+      crearCuentaEmpleado
+    }
+  ), tab === "fichaje" && /* @__PURE__ */ import_react4.default.createElement(
+    RegistroHorario,
+    {
+      empleados,
+      fichajes,
+      fichar,
+      addFichajeManual,
+      updateFichaje,
+      eliminarFichaje,
+      fichajesAbiertos
+    }
+  ), tab === "nominas" && /* @__PURE__ */ import_react4.default.createElement(
+    CostePersonal,
+    {
+      empleados,
+      nominas,
+      addNomina,
+      updateNomina,
+      deleteNomina,
+      fichajes,
+      movimientos
+    }
+  ), tab === "venta" && /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos, venderCarrito, anularVenta, movimientos, registrarAuditoria }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+    Encargos,
+    {
+      encargosPendientes,
+      encargos,
+      clientes,
+      productos,
+      addEncargo,
+      updateEncargo,
+      deleteEncargo,
+      entregarEncargo,
+      addCliente
+    }
+  ), tab === "clientes" && /* @__PURE__ */ import_react4.default.createElement(
+    Clientes,
+    {
+      analisisClientes,
+      clientesDormidos,
+      ventaCruzada,
+      addCliente,
+      updateCliente,
+      deleteCliente,
+      anonimizarCliente
+    }
+  ), tab === "devoluciones" && /* @__PURE__ */ import_react4.default.createElement(
+    Devoluciones,
+    { productos, proveedores, devoluciones, registrarDevolucionCliente, registrarDevolucionProveedor }
+  ), tab === "facturas" && /* @__PURE__ */ import_react4.default.createElement(
+    Facturas,
+    {
+      albaranes,
+      facturasDirectas,
+      proveedorPorId,
+      irAAlbaran: (albId) => {
+        const a2 = albaranes.find((x3) => x3.id === albId);
+        if (a2) {
+          setPrefillAlbaran(a2);
+          setTab("albaranes");
+        }
+      },
+      irAFacturaDirecta: (fdId) => {
+        setFacturaDirectaResaltada(fdId);
+        setTab("pagos");
+      }
+    }
+  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos, productos, albaranes, proveedorPorId, facturasDirectas }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { movimientos, arqueos, addArqueo, deleteArqueo, encargos, movimientosCaja, registrarMovimientoCaja, eliminarMovimientoCaja }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
+    Turnos,
+    {
+      empleados,
+      turnos,
+      addTurno,
+      updateTurno,
+      deleteTurno,
+      copiarSemana
+    }
+  ), tab === "mapa" && /* @__PURE__ */ import_react4.default.createElement(MapaAlmacen, { productos, proveedorPorId }), tab === "traspasos" && /* @__PURE__ */ import_react4.default.createElement(Traspasos, { productos, traspasos, traspasarStock, pisoVentaBajo, fichasCosto }), tab === "appcc" && /* @__PURE__ */ import_react4.default.createElement(
+    Appcc,
+    {
+      puntosControl,
+      registrosAppcc,
+      addPuntoControl,
+      updatePuntoControl,
+      deletePuntoControl,
+      registrarAppcc,
+      eliminarRegistroAppcc,
+      appccPendientesHoy,
+      productos,
+      fichasCosto,
+      alergenosDeFicha
+    }
+  ), tab === "saldo" && /* @__PURE__ */ import_react4.default.createElement(SaldoAlmacen, { productos, proveedores, valorInventario, valorUtillaje, proveedorPorId, clasificacionABC, analisisABC }), tab === "respaldos" && /* @__PURE__ */ import_react4.default.createElement(
+    Respaldos,
+    {
+      historial,
+      crearPuntoDeGuardado,
+      restaurarDesdeHistorial,
+      abrirRespaldo,
+      abrirRestaurar,
+      exportarExcelGeneral,
+      pinPropietario,
+      establecerPin,
+      activarModoEmpleado
+    }
+  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStock, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, null), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo }));
+  const itemsMeta = [
+    { id: "dashboard", label: "Panel general", icon: ChartColumn },
+    { id: "direccion", label: "Panel de direcci\xF3n", icon: TrendingUp },
+    { id: "proveedores", label: "Proveedores", icon: Truck },
+    { id: "productos", label: "Productos", icon: Package },
+    { id: "buscar", label: "Buscar", icon: Search },
+    { id: "historial_producto", label: "Historial de producto", icon: RotateCcwClock },
+    { id: "pedidos", label: "Pedidos", icon: ShoppingCart, badge: pedidosPendientes.length },
+    { id: "recepcion", label: "Recepci\xF3n", icon: ClipboardList },
+    { id: "albaranes", label: "Albaranes", icon: FileText },
+    { id: "facturas", label: "Facturas", icon: Files },
+    { id: "pagos", label: "Cuentas por pagar", icon: Coins, badge: vencenPronto.length, badgeColor: C2.red },
+    { id: "conteo", label: "Inventario ciego", icon: Boxes, badge: stockBajo.length, badgeColor: C2.amber },
+    { id: "saldo", label: "Saldo de almac\xE9n", icon: ClipboardList },
+    { id: "mapa", label: "Mapa de almac\xE9n", icon: Map2 },
+    { id: "traspasos", label: "Traspasos", icon: ArrowLeftRight, badge: pisoVentaBajo.length, badgeColor: C2.amber },
+    { id: "fichas", label: "Fichas de costo", icon: Calculator },
+    { id: "produccion", label: "Producci\xF3n", icon: Factory },
+    { id: "mermas", label: "Mermas", icon: Trash2 },
+    { id: "etiquetas", label: "Etiquetas y cat\xE1logo", icon: Tags },
+    { id: "reportes", label: "Reportes y rotaci\xF3n", icon: ChartColumn },
+    { id: "resultados", label: "Resultados", icon: TrendingUp },
+    { id: "personal", label: "Personal", icon: Users, badge: documentosPersonalPronto.length, badgeColor: C2.amber },
+    { id: "fichaje", label: "Registro horario", icon: Clock, badge: fichajesAbiertos.length, badgeColor: C2.amber },
+    { id: "nominas", label: "Coste de personal", icon: Coins },
+    { id: "turnos", label: "Cuadrante de turnos", icon: CalendarClock },
+    { id: "appcc", label: "Control sanitario", icon: ShieldCheck, badge: appccPendientesHoy.length, badgeColor: C2.amber },
+    { id: "aceite", label: "Aceite de freidoras", icon: Droplet },
+    { id: "venta", label: "Venta r\xE1pida", icon: ShoppingBag },
+    { id: "encargos", label: "Encargos", icon: CalendarDays, badge: encargosUrgentes.length, badgeColor: C2.red },
+    { id: "clientes", label: "Clientes", icon: UserRound },
+    { id: "libroiva", label: "Libro de IVA", icon: Receipt },
+    { id: "caja", label: "Arqueo de caja", icon: Wallet },
+    { id: "devoluciones", label: "Devoluciones", icon: ArrowLeftRight },
+    { id: "tesoreria", label: "Tesorer\xEDa", icon: ChartLine },
+    { id: "estacionalidad", label: "Estacionalidad", icon: CalendarRange },
+    { id: "auditoria", label: "Auditor\xEDa", icon: RotateCcwClock },
+    { id: "diagnostico", label: "Reconciliaci\xF3n de stock", icon: Stethoscope, badge: descuadresPendientes, badgeColor: C2.red },
+    { id: "respaldos", label: "Respaldos", icon: Cog },
+    { id: "notificaciones", label: "Notificaciones", icon: Bell },
+    { id: "locales", label: "Locales", icon: Map2 },
+    { id: "errores_sistema", label: "Errores del sistema", icon: TriangleAlert }
+  ];
+  const porId = (id) => itemsMeta.find((x3) => x3.id === id);
+  const pick = (ids) => {
+    const filtrados = modoEmpleado ? ids.filter((id) => itemsPermitidosEmpleado.includes(id)) : ids;
+    return filtrados.map(porId).filter(Boolean);
+  };
+  const gruposA = [
+    { titulo: null, items: pick(["dashboard", "buscar"]) },
+    { titulo: "Compras", items: pick(["proveedores", "pedidos", "recepcion", "albaranes"]) },
+    { titulo: "Almac\xE9n", items: pick(["productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos"]) },
+    { titulo: "Ventas", items: pick(["venta", "encargos", "clientes", "devoluciones"]) },
+    { titulo: "Costes y producci\xF3n", items: pick(["fichas", "produccion", "mermas", "etiquetas"]) },
+    { titulo: "Finanzas", items: pick(["direccion", "resultados", "pagos", "facturas", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"
+
+
+===== HIT 2: Resultados @ 4430501 =====
+gos" && /* @__PURE__ */ import_react4.default.createElement(
+    CuentasPorPagar,
+    {
+      facturasPorPagar,
+      totalPendientePago,
+      marcarPagada,
+      marcarPagadaFacturaDirecta,
+      addFacturaDirecta,
+      deleteFacturaDirecta,
+      proveedores,
+      resaltadaId: facturaDirectaResaltada,
+      limpiarResaltada: () => setFacturaDirectaResaltada(null)
+    }
+  ), tab === "personal" && /* @__PURE__ */ import_react4.default.createElement(
+    Personal,
+    {
+      empleados,
+      addEmpleado,
+      updateEmpleado,
+      deleteEmpleado,
+      anonimizarEmpleado,
+      registrarAusencia,
+      eliminarAusencia,
+      registrarEpi,
+      eliminarEpi,
+      documentosPersonalCaducan,
+      fichajes,
+      nominas,
+      entrevistas,
+      crearEntrevista,
+      actualizarEntrevista,
+      finalizarEntrevista,
+      eliminarEntrevista,
+      crearPrefiltro,
+      listarPrefiltros,
+      eliminarPrefiltro,
+      crearCuentaEmpleado
+    }
+  ), tab === "fichaje" && /* @__PURE__ */ import_react4.default.createElement(
+    RegistroHorario,
+    {
+      empleados,
+      fichajes,
+      fichar,
+      addFichajeManual,
+      updateFichaje,
+      eliminarFichaje,
+      fichajesAbiertos
+    }
+  ), tab === "nominas" && /* @__PURE__ */ import_react4.default.createElement(
+    CostePersonal,
+    {
+      empleados,
+      nominas,
+      addNomina,
+      updateNomina,
+      deleteNomina,
+      fichajes,
+      movimientos
+    }
+  ), tab === "venta" && /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos, venderCarrito, anularVenta, movimientos, registrarAuditoria }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+    Encargos,
+    {
+      encargosPendientes,
+      encargos,
+      clientes,
+      productos,
+      addEncargo,
+      updateEncargo,
+      deleteEncargo,
+      entregarEncargo,
+      addCliente
+    }
+  ), tab === "clientes" && /* @__PURE__ */ import_react4.default.createElement(
+    Clientes,
+    {
+      analisisClientes,
+      clientesDormidos,
+      ventaCruzada,
+      addCliente,
+      updateCliente,
+      deleteCliente,
+      anonimizarCliente
+    }
+  ), tab === "devoluciones" && /* @__PURE__ */ import_react4.default.createElement(
+    Devoluciones,
+    { productos, proveedores, devoluciones, registrarDevolucionCliente, registrarDevolucionProveedor }
+  ), tab === "facturas" && /* @__PURE__ */ import_react4.default.createElement(
+    Facturas,
+    {
+      albaranes,
+      facturasDirectas,
+      proveedorPorId,
+      irAAlbaran: (albId) => {
+        const a2 = albaranes.find((x3) => x3.id === albId);
+        if (a2) {
+          setPrefillAlbaran(a2);
+          setTab("albaranes");
+        }
+      },
+      irAFacturaDirecta: (fdId) => {
+        setFacturaDirectaResaltada(fdId);
+        setTab("pagos");
+      }
+    }
+  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos, productos, albaranes, proveedorPorId, facturasDirectas }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { movimientos, arqueos, addArqueo, deleteArqueo, encargos, movimientosCaja, registrarMovimientoCaja, eliminarMovimientoCaja }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
+    Turnos,
+    {
+      empleados,
+      turnos,
+      addTurno,
+      updateTurno,
+      deleteTurno,
+      copiarSemana
+    }
+  ), tab === "mapa" && /* @__PURE__ */ import_react4.default.createElement(MapaAlmacen, { productos, proveedorPorId }), tab === "traspasos" && /* @__PURE__ */ import_react4.default.createElement(Traspasos, { productos, traspasos, traspasarStock, pisoVentaBajo, fichasCosto }), tab === "appcc" && /* @__PURE__ */ import_react4.default.createElement(
+    Appcc,
+    {
+      puntosControl,
+      registrosAppcc,
+      addPuntoControl,
+      updatePuntoControl,
+      deletePuntoControl,
+      registrarAppcc,
+      eliminarRegistroAppcc,
+      appccPendientesHoy,
+      productos,
+      fichasCosto,
+      alergenosDeFicha
+    }
+  ), tab === "saldo" && /* @__PURE__ */ import_react4.default.createElement(SaldoAlmacen, { productos, proveedores, valorInventario, valorUtillaje, proveedorPorId, clasificacionABC, analisisABC }), tab === "respaldos" && /* @__PURE__ */ import_react4.default.createElement(
+    Respaldos,
+    {
+      historial,
+      crearPuntoDeGuardado,
+      restaurarDesdeHistorial,
+      abrirRespaldo,
+      abrirRestaurar,
+      exportarExcelGeneral,
+      pinPropietario,
+      establecerPin,
+      activarModoEmpleado
+    }
+  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStock, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, null), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo }));
+  const itemsMeta = [
+    { id: "dashboard", label: "Panel general", icon: ChartColumn },
+    { id: "direccion", label: "Panel de direcci\xF3n", icon: TrendingUp },
+    { id: "proveedores", label: "Proveedores", icon: Truck },
+    { id: "productos", label: "Productos", icon: Package },
+    { id: "buscar", label: "Buscar", icon: Search },
+    { id: "historial_producto", label: "Historial de producto", icon: RotateCcwClock },
+    { id: "pedidos", label: "Pedidos", icon: ShoppingCart, badge: pedidosPendientes.length },
+    { id: "recepcion", label: "Recepci\xF3n", icon: ClipboardList },
+    { id: "albaranes", label: "Albaranes", icon: FileText },
+    { id: "facturas", label: "Facturas", icon: Files },
+    { id: "pagos", label: "Cuentas por pagar", icon: Coins, badge: vencenPronto.length, badgeColor: C2.red },
+    { id: "conteo", label: "Inventario ciego", icon: Boxes, badge: stockBajo.length, badgeColor: C2.amber },
+    { id: "saldo", label: "Saldo de almac\xE9n", icon: ClipboardList },
+    { id: "mapa", label: "Mapa de almac\xE9n", icon: Map2 },
+    { id: "traspasos", label: "Traspasos", icon: ArrowLeftRight, badge: pisoVentaBajo.length, badgeColor: C2.amber },
+    { id: "fichas", label: "Fichas de costo", icon: Calculator },
+    { id: "produccion", label: "Producci\xF3n", icon: Factory },
+    { id: "mermas", label: "Mermas", icon: Trash2 },
+    { id: "etiquetas", label: "Etiquetas y cat\xE1logo", icon: Tags },
+    { id: "reportes", label: "Reportes y rotaci\xF3n", icon: ChartColumn },
+    { id: "resultados", label: "Resultados", icon: TrendingUp },
+    { id: "personal", label: "Personal", icon: Users, badge: documentosPersonalPronto.length, badgeColor: C2.amber },
+    { id: "fichaje", label: "Registro horario", icon: Clock, badge: fichajesAbiertos.length, badgeColor: C2.amber },
+    { id: "nominas", label: "Coste de personal", icon: Coins },
+    { id: "turnos", label: "Cuadrante de turnos", icon: CalendarClock },
+    { id: "appcc", label: "Control sanitario", icon: ShieldCheck, badge: appccPendientesHoy.length, badgeColor: C2.amber },
+    { id: "aceite", label: "Aceite de freidoras", icon: Droplet },
+    { id: "venta", label: "Venta r\xE1pida", icon: ShoppingBag },
+    { id: "encargos", label: "Encargos", icon: CalendarDays, badge: encargosUrgentes.length, badgeColor: C2.red },
+    { id: "clientes", label: "Clientes", icon: UserRound },
+    { id: "libroiva", label: "Libro de IVA", icon: Receipt },
+    { id: "caja", label: "Arqueo de caja", icon: Wallet },
+    { id: "devoluciones", label: "Devoluciones", icon: ArrowLeftRight },
+    { id: "tesoreria", label: "Tesorer\xEDa", icon: ChartLine },
+    { id: "estacionalidad", label: "Estacionalidad", icon: CalendarRange },
+    { id: "auditoria", label: "Auditor\xEDa", icon: RotateCcwClock },
+    { id: "diagnostico", label: "Reconciliaci\xF3n de stock", icon: Stethoscope, badge: descuadresPendientes, badgeColor: C2.red },
+    { id: "respaldos", label: "Respaldos", icon: Cog },
+    { id: "notificaciones", label: "Notificaciones", icon: Bell },
+    { id: "locales", label: "Locales", icon: Map2 },
+    { id: "errores_sistema", label: "Errores del sistema", icon: TriangleAlert }
+  ];
+  const porId = (id) => itemsMeta.find((x3) => x3.id === id);
+  const pick = (ids) => {
+    const filtrados = modoEmpleado ? ids.filter((id) => itemsPermitidosEmpleado.includes(id)) : ids;
+    return filtrados.map(porId).filter(Boolean);
+  };
+  const gruposA = [
+    { titulo: null, items: pick(["dashboard", "buscar"]) },
+    { titulo: "Compras", items: pick(["proveedores", "pedidos", "recepcion", "albaranes"]) },
+    { titulo: "Almac\xE9n", items: pick(["productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos"]) },
+    { titulo: "Ventas", items: pick(["venta", "encargos", "clientes", "devoluciones"]) },
+    { titulo: "Costes y producci\xF3n", items: pick(["fichas", "produccion", "mermas", "etiquetas"]) },
+    { titulo: "Finanzas", items: pick(["direccion", "resultados", "pagos", "facturas", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
+    { titulo: "RRHH", items: pick(["personal", "fichaje", "turnos", "nominas"]) },
+    { titulo: "Calidad", items: pick(["appcc", "aceite"]) },
+    { titulo: "Sistema", items: pick(["auditoria", "diagnostico", "respaldos", "notificaciones", "errores_sistema", "locales"]) }
+  ];
+  const gruposB = [
+    { titulo: null, items: pick(["dashboard", "buscar"]) },
+    { titulo: "Ciclo de compra", items: pick(["proveedores", "pedidos", "recepcion", "albaranes", "pagos", "facturas"]) },
+    { titulo: "Ciclo de almac\xE9n", items: pick(["productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos"]) },
+    { titulo: "Ciclo de venta", items: pick(["venta", "encargos", "clientes", "devoluciones"]) },
+    { titulo: "Ciclo de coste y an\xE1lisis", items: pick(["fichas", "produccion", "mermas", "etiquetas", "resultados", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
+    { titulo: "Ciclo de personal", items: pick(["personal", "fichaje", "turnos", "nominas"]) },
+    { titulo: "Ciclo de calidad", items: pick(["appcc", "aceite"]) },
+    { titulo: "Ajustes", items: pick(["auditoria", "respaldos", "notificaciones", "errores_sistema", "locales"]) }
+  ];
+  const categoriasC = {
+    comprar: { titulo: "Comprar", items: pick(["proveedores", "pedidos", "recepcion", "albaranes", "pagos"]) },
+    almacen: { titulo: "Almac\xE9n", items: pick(["productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos"]) },
+    mas: [
+      { titulo: "Vender", items: pick(["venta", "encargos", "clientes", "devoluciones"]) },
+      { titulo: "Dinero", items: pick(["resultados", "facturas", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
+      { titulo: "Producto", items: pick(["fichas", "produccion", "mermas", "etiquetas"]) },
+      { titulo: "Equipo", items: pick(["personal", "fichaje", "turnos", "nominas"]) },
+      { titulo: "Calidad", items: pick(["appcc", "aceite"]) },
+      { titulo: "Ajustes", items: pick(["auditoria", "respaldos", "notificaciones", "errores_sistema", "locales"]) }
+    ]
+  };
+  return /* @__PURE__ */ import_react4.default.createElement("div", { "data-tema": temaOscuro ? "oscuro" : "claro", style: { background: C2.bg, color: C2.ink, fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui" }, className: disenoMenu === "C" ? "w-full min-h-[700px] flex flex-col text-[14px]" : "w-full min-h-[700px] flex flex-col md:flex-row text-[14px]" }, fallosGuardado.length > 0 && /* @__PURE__ */ import_react4.default.createElement(
+    "div",
+    {
+      className: "text-[12.5px] px-3 py-2 flex items-center justify-between gap-2",
+      style: { background: C2.red, color: "#fff", position: "sticky", top: 0, zIndex: 40 }
+    },
+    /* @__PURE__ */ import_react4.default.createElement("span", null, "\u26A0 Un cambio no se ha podido guardar (", fallosGuardado[0].key, "). Comprueba tu conexi\xF3n \u2014 si sigue as\xED, haz una copia desde Respaldos antes de seguir trabajando."),
+    /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setFallosGuardado([]), style: { color: "#fff", fontWeight: 600 } }, "\u2715")
+  ), /* @__PURE__ */ import_react4.default.createElement("style", null, `
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+        :root, [data-tema="claro"] {
+          --c-bg: #F7F3E9;
+          --c-surface: #FFFFFF;
+          --c-ink: #17241C;
+          --c-ink-soft: #647267;
+          --c-line: #E2DBC7;
+          --c-accent: #8C6D2A;
+          --c-accent-soft: #F1E7CE;
+          --c-amber: #977022;
+          --c-amber-soft: #F6EAD2;
+          --c-red: #B5473A;
+          --c-red-soft: #F7E5E1;
+        }
+        [data-tema="oscuro"] {
+          --c-bg: #081A10;
+          --c-surface: #0F2818;
+          --c-ink: #F0E6D0;
+          --c-ink-soft: #93A692;
+          --c-line: #1E3A26;
+          --c-accent: #D8B876;
+          --c-accent-soft: #1C3322;
+          --c-amber: #E8C066;
+          --c-amber-soft: #2B2312;
+          --c-red: #E37A69;
+          --c-red-soft: #2B1712;
+        }
+        .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+        input, select { font-family: inherit; }
+        ::placeholder { color: #9AA5A0; }
+
+        @media print {
+          @page { size: A4; margin: 12mm; }
+          body * { visibility: hidden !important; }
+          .zona-impresion, .zona-impresion * { visibility: visible !important; }
+          .zona-impresion {
+            position: absolute !important;
+            left: 0; top: 0; width: 100%;
+            background: #fff !important;
+          }
+          .no-imprimir { display: none !important; }
+          .zona-impresion table { page-break-inside: auto; }
+          .zona-impresion tr { page-break-inside: avoid; page-break-after: auto; }
+          .zona-impresion thead { display: table-header-group; }
+          /* Lo impreso siempre en claro, sin importar el tema activo en pantalla */
+          :root, [data-tema="oscuro"], [data-tema="claro"] {
+            --c-bg: #F7F3E9 !important;
+            --c-surface: #FFFFFF !important;
+            --c-ink: #17241C !important;
+            --c-ink-soft: #647267 !important;
+            --c-line: #E2DBC7 !important;
+            --c-accent: #8C6D2A !important;
+            --c-accent-soft: #F1E7CE !important;
+            --c-amber: #977022 !important;
+            --c-amber-soft: #F6EAD2 !important;
+            --c-red: #B5473A !important;
+            --c-red-soft: #F7E5E1 !important;
+          }
+        }
+      `), disenoMenu === "C" ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(TopBarC, { disenoMenu, setDisenoMenu, tab, setTab, pendientes: pedidosPendientes.length, temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil }), /* @__PURE__ */ import_react4.default.createElement("main", { className: "flex-1 p-4 overflow-y-auto", style: { maxHeight: "900px" } }, contenido), /* @__PURE__ */ import_react4.default.createElement(BottomNavC, { tab, setTab, categorias: categoriasC, dashboardItem: porId("dashboard") })) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(
+    SidebarGrupos,
+    {
+      grupos: disenoMenu === "A" ? gruposA : gruposB,
+      tab,
+      setTab,
+      disenoMenu,
+      setDisenoMenu,
+      temaOscuro,
+      setTemaOscuro,
+      modoEmpleado,
+      salirModoEmpleado,
+      empleados,
+      usuarioActivoId,
+      entrarComoEmpleado,
+      pinPropietario,
+      miPerfil
+    }
+  ), /* @__PURE__ */ import_react4.default.createElement("main", { className: "flex-1 p-4 md:p-7 overflow-y-auto", style: { maxHeight: "900px" } }, contenido)), showBackupView && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowBackupView(false), title: "Tu respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2", style: { color: C2.ink } }, 'Copia este texto y gu\xE1rdalo en alg\xFAn lugar seguro (notas, correo, Google Drive). Para restaurarlo m\xE1s adelante, p\xE9galo en "Restaurar respaldo".'), /* @__PURE__ */ import_react4.default.createElement(
+    "textarea",
+    {
+      readOnly: true,
+      value: backupText,
+      onFocus: (e) => e.target.select(),
+      className: "w-full rounded-lg p-2 text-[11px] mono mb-3",
+      style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, height: 160, resize: "none" }
+    }
+  ), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: copiarRespaldo }, copiado ? "\xA1Copiado!" : "Copiar al portapapeles"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowBackupView(false) }, "Cerrar")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Si el bot\xF3n no copia solo, toca dentro del recuadro de texto, selecciona todo y c\xF3pialo manualmente.")), showRestoreInput && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowRestoreInput(false), title: "Restaurar respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { cla
+
+
+===== HIT 3: Resultados @ 4575022 =====
+heet, { key: it2.id, it: it2, tab, onPick: () => {
+    setTab(it2.id);
+    setSheet(null);
+  } }))))));
+}
+function Card({ children, className = "", style = {} }) {
+  return /* @__PURE__ */ import_react4.default.createElement("div", { className: `rounded-xl p-4 ${className}`, style: { background: C2.surface, border: `1px solid ${C2.line}`, ...style } }, children);
+}
+function SectionTitle({ children, action }) {
+  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-4" }, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[18px] font-semibold" }, children), action);
+}
+function Btn({ children, onClick, variant = "primary", type = "button", small, disabled = false }) {
+  const styles = {
+    primary: { background: C2.accent, color: "#fff" },
+    ghost: { background: "transparent", color: C2.ink, border: `1px solid ${C2.line}` },
+    danger: { background: C2.redSoft, color: C2.red }
+  };
+  return /* @__PURE__ */ import_react4.default.createElement(
+    "button",
+    {
+      type,
+      onClick,
+      disabled,
+      className: `inline-flex items-center gap-1.5 rounded-lg font-medium ${small ? "px-2.5 py-1.5 text-[12px]" : "px-3.5 py-2 text-[13px]"}`,
+      style: { ...styles[variant], opacity: disabled ? 0.45 : 1, cursor: disabled ? "not-allowed" : "pointer" }
+    },
+    children
+  );
+}
+function LinkBtn({ children, href, variant = "ghost", small, newTab = true }) {
+  const styles = {
+    primary: { background: C2.accent, color: "#fff" },
+    ghost: { background: "transparent", color: C2.ink, border: `1px solid ${C2.line}` },
+    danger: { background: C2.redSoft, color: C2.red }
+  };
+  return /* @__PURE__ */ import_react4.default.createElement(
+    "a",
+    {
+      href,
+      ...newTab ? { target: "_blank", rel: "noopener noreferrer" } : {},
+      className: `inline-flex items-center gap-1.5 rounded-lg font-medium no-underline ${small ? "px-2.5 py-1.5 text-[12px]" : "px-3.5 py-2 text-[13px]"}`,
+      style: styles[variant]
+    },
+    children
+  );
+}
+function Input(props) {
+  return /* @__PURE__ */ import_react4.default.createElement(
+    "input",
+    {
+      ...props,
+      className: `w-full rounded-lg px-3 py-2 text-[13px] outline-none ${props.className || ""}`,
+      style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, ...props.style || {} }
+    }
+  );
+}
+function archivoABase64(file) {
+  return new Promise((resolve, reject) => {
+    const lector = new FileReader();
+    lector.onload = () => {
+      const [cabecera, base64] = lector.result.split(",");
+      const mediaType = cabecera.match(/data:(.*?);/)[1];
+      resolve({ base64, mediaType, previsualizacion: lector.result });
+    };
+    lector.onerror = reject;
+    lector.readAsDataURL(file);
+  });
+}
+function Field({ label, children }) {
+  return /* @__PURE__ */ import_react4.default.createElement("label", { className: "block mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, label), children);
+}
+var CATEGORIAS_GASTO = [
+  "Alquiler",
+  "Suministros (luz, agua, gas)",
+  "Gestor\xEDa y asesor\xEDa",
+  "Seguros",
+  "Mantenimiento y reparaciones",
+  "Marketing y publicidad",
+  "Suscripciones y software",
+  "Comisiones bancarias y TPV",
+  "Transporte y log\xEDstica",
+  "Limpieza y qu\xEDmicos",
+  "Otra"
+];
+function CampoCategoria({ value, onChange, opciones = CATEGORIAS_PRODUCTO }) {
+  const [modoLibre, setModoLibre] = (0, import_react4.useState)(() => !!value && !opciones.includes(value));
+  const seleccionado = modoLibre ? "Otra" : value || "";
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(
+    "select",
+    {
+      value: seleccionado,
+      onChange: (e) => {
+        const v2 = e.target.value;
+        if (v2 === "Otra") {
+          setModoLibre(true);
+        } else {
+          setModoLibre(false);
+          onChange(v2);
+        }
+      },
+      className: "w-full rounded-lg px-3 py-2 text-[13px]",
+      style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink }
+    },
+    /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin categor\xEDa"),
+    opciones.filter((c2) => c2 !== "Otra").map((c2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: c2, value: c2 }, c2)),
+    /* @__PURE__ */ import_react4.default.createElement("option", { value: "Otra" }, "Otra\u2026")
+  ), modoLibre && /* @__PURE__ */ import_react4.default.createElement(
+    Input,
+    {
+      className: "mt-1.5",
+      value,
+      onChange: (e) => onChange(e.target.value),
+      placeholder: "Escribe la categor\xEDa"
+    }
+  ));
+}
+function Empty({ text }) {
+  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-center py-10 text-[13px]", style: { color: C2.inkSoft } }, text);
+}
+function Pill2({ children, color }) {
+  return /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px] font-semibold px-2 py-0.5 rounded-full", style: { background: color + "22", color } }, children);
+}
+function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendientes, margenPromedio, movimientos, productos, caducanPronto = [], proveedorPorId, vencenPronto = [], totalPendientePago = 0, documentosPersonalPronto = [], fichajesAbiertos = [], encargosUrgentes = [], pisoVentaBajo = [], sugerenciasPedido = [], setTab, recordatorioConteo = [], alertasAppcc = { pendientes: [], desviaciones: [] }, fallosGuardado = [], diagnosticoStock = [], registrarSalida }) {
+  const entradas30 = movimientos.filter((m2) => esEntrada(m2)).reduce((a2, m2) => a2 + Math.abs(cantidadConSigno(m2)), 0);
+  const salidas30 = movimientos.filter((m2) => esSalida(m2)).reduce((a2, m2) => a2 + Math.abs(cantidadConSigno(m2)), 0);
+  const [abierta, setAbierta] = (0, import_react4.useState)(null);
+  const [confirmarMermaLote, setConfirmarMermaLote] = (0, import_react4.useState)(null);
+  const [procesandoMermaLote, setProcesandoMermaLote] = (0, import_react4.useState)(false);
+  const diasTexto = (d2) => d2 < 0 ? `vencido hace ${Math.abs(d2)} d` : d2 === 0 ? "hoy" : `en ${d2} d`;
+  const diasColor = (d2) => d2 < 0 ? C2.red : d2 <= 7 ? C2.amber : C2.inkSoft;
+  const descuadresStock = diagnosticoStock.filter((d2) => !d2.coincide).sort((a2, b2) => Math.abs(b2.diferencia) - Math.abs(a2.diferencia));
+  const tarjetas = [
+    {
+      id: "saldo",
+      titulo: "Saldo de almac\xE9n",
+      valor: `\u20AC${fmt(valorInventario)}`,
+      nota: valorUtillaje > 0 ? `+ \u20AC${fmt(valorUtillaje)} en utillaje y limpieza (aparte, no es mercanc\xEDa)` : null,
+      tab: "saldo",
+      tabNombre: "Saldo de almac\xE9n",
+      items: []
+    },
+    {
+      id: "margen",
+      titulo: "Margen promedio",
+      valor: `${fmt(margenPromedio)}%`,
+      color: C2.accent,
+      tab: "resultados",
+      tabNombre: "Resultados",
+      items: []
+    },
+    {
+      id: "pedidos",
+      titulo: "Pedidos pendientes",
+      valor: pedidosPendientes.length,
+      tab: "pedidos",
+      tabNombre: "Pedidos",
+      items: pedidosPendientes.map((pe2) => ({
+        clave: pe2.id,
+        principal: (proveedorPorId(pe2.proveedorId) || {}).nombre || "Proveedor eliminado",
+        secundario: `${(pe2.items || []).length} producto(s) \xB7 ${pe2.estado}`,
+        derecha: pe2.fechaEsperada ? `llega ${new Date(pe2.fechaEsperada).toLocaleDateString("es-ES")}` : "sin fecha"
+      }))
+    },
+    {
+      id: "stockbajo",
+      titulo: "Productos en stock bajo",
+      valor: stockBajo.length,
+      color: stockBajo.length ? C2.red : C2.ink,
+      tab: "productos",
+      tabNombre: "Productos",
+      items: stockBajo.map((p2) => ({
+        clave: p2.id,
+        principal: p2.nombre,
+        secundario: p2.zona || "",
+        derecha: `${fmt(p2.stock)} / m\xEDn. ${fmt(p2.stockMinimo)}`,
+        derechaColor: C2.red
+      }))
+    },
+    {
+      id: "caducidades",
+      titulo: "Lotes que caducan (30 d)",
+      valor: caducanPronto.length,
+      color: caducanPronto.some((l2) => l2.dias < 0) ? C2.red : caducanPronto.length ? C2.amber : C2.ink,
+      tab: "productos",
+      tabNombre: "Productos",
+      items: caducanPronto.map((l2) => ({
+        clave: l2.id,
+        principal: l2.nombre,
+        secundario: `${l2.lote ? `lote ${l2.lote} \xB7 ` : ""}${l2.caducidad}${l2.unidades ? ` \xB7 ${l2.parcial ? "quedan aprox. " : ""}${fmt(l2.unidades)} uds` : ""}`,
+        derecha: diasTexto(l2.dias),
+        derechaColor: diasColor(l2.dias)
+      }))
+    },
+    {
+      id: "facturas",
+      titulo: "Facturas por pagar (7 d)",
+      valor: vencenPronto.length,
+      color: vencenPronto.some((f2) => f2.dias < 0) ? C2.red : vencenPronto.length ? C2.amber : C2.ink,
+      nota: totalPendientePago > 0 ? `\u20AC${fmt(totalPendientePago)} pendiente en total` : null,
+      tab: "pagos",
+      tabNombre: "Cuentas por pagar",
+      items: vencenPronto.map((f2) => ({
+        clave: f2.id,
+        principal: f2.proveedor && f2.proveedor.nombre || "Sin proveedor",
+        secundario: `${f2.concepto || ""} \xB7 \u20AC${fmt(f2.total)}`,
+        derecha: diasTexto(f2.dias),
+        derechaColor: diasColor(f2.dias)
+      }))
+    },
+    {
+      id: "encargos",
+      titulo: "Encargos urgentes",
+      valor: encargosUrgentes.length,
+      color: encargosUrgentes.some((e) => e.dias < 0) ? C2.red : encargosUrgentes.length ? C2.amber : C2.ink,
+      nota: encargosUrgentes.length > 0 ? "en 2 d\xEDas o menos" : null,
+      tab: "encargos",
+      tabNombre: "Encargos",
+      items: encargosUrgentes.map((e) => ({
+        clave: e.id,
+        principal: `Encargo ${e.numero || "s/n"}`,
+        secundario: `${(e.lineas || []).length} producto(s)${e.horaEntrega ? ` \xB7 ${e.horaEntrega}` : ""}`,
+        derecha: diasTexto(e.dias),
+        derechaColor: diasColor(e.dias)
+      }))
+    },
+    {
+      id: "reponer",
+      titulo: "Reponer piso de venta",
+      valor: pisoVentaBajo.length,
+      color: pisoVentaBajo.length ? C2.amber : C2.ink,
+      nota: pisoVentaBajo.length > 0 ? "sacar del almac\xE9n al mostrador" : null,
+      tab: "traspasos",
+      tabNombre: "Traspasos",
+      items: pisoVentaBajo.map((p2) => ({
+        clave: p2.id,
+        principal: p2.nombre,
+        secundario: `${fmt((Number(p2.stock) || 0) - (Number(p2.stockPisoVenta) || 0))} en el almac\xE9n`,
+        derecha: `${fmt(p2.stockPisoVenta || 0)} / m\xEDn. ${fmt(p2.stockMinimoPisoVenta)}`,
+        derechaColor: C2.amber
+      }))
+    },
+    {
+      id: "fallos_guardado",
+      titulo: "Guardado: cambios sin confirmar",
+      valor: fallosGuardado.length,
+      color: fallosGuardado.length ? C2.red : C2.ink,
+      nota: fallosGuardado.length > 0 ? "algo no se ha podido guardar \u2014 revisa la conexi\xF3n antes de seguir" : null,
+      tab: "respaldos",
+      tabNombre: "Respaldos",
+      items: fallosGuardado.slice(0, 10).map((f2) => ({
+        clave: f2.id,
+        principal: f2.key,
+        secundario: f2.mensaje || "Error al guardar",
+        derecha: new Date(f2.fecha).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
+        derechaColor: C2.red
+      }))
+    },
+    {
+      id: "appcc_desviaciones",
+      titulo: "APPCC: desviaciones sin resolver",
+      valor: alertasAppcc.desviaciones.length,
+      color: alertasAppcc.desviaciones.length ? C2.red : C2.ink,
+      nota: alertasAppcc.desviaciones.length > 0 ? "un valor sali\xF3 fuera de rango y no se ha vuelto a medir bien" : null,
+      tab: "appcc",
+      tabNombre: "APPCC",
+      items: alertasAppcc.desviaciones.slice(0, 10).map((r) => ({
+        clave: r.id,
+        principal: r.puntoNombre || "Punto de control",
+        secundario: `${r.fecha}${r.hora ? " " + r.hora : ""}${r.observaciones ? " \xB7 " + r.observaciones : ""}`,
+        derecha: r.valor != null && r.valor !== "" ? String(r.valor) : "no conforme",
+        derechaColor: C2.red
+      }))
+    },
+    {
+      id: "appcc_pendientes",
+      titulo: "APPCC: controles de hoy",
+      valor: alertasAppcc.pendientes.length,
+      color: alertasAppcc.pendientes.length ? C2.amber : C2.ink,
+      nota: alertasAppcc.pendientes.length > 0 ? "pendientes de registrar" : null,
+      tab: "appcc",
+      tabNombre: "APPCC",
+      items: alertasAppcc.pendientes.map((p2) => ({
+        clave: p2.id,
+        principal: p2.nombre,
+        secundario: p2.frecuencia,
+        derecha: p2.faltan > 1 ? `faltan ${p2.faltan}` : "pendiente",
+        derechaColor: C2.amber
+      }))
+    },
+    {
+      id: "pedirya",
+      titulo: "Pedir ya",
+      valor: sugerenciasPedido.length,
+      color: sugerenciasPedido.length ? C2.red : C2.ink,
+      nota: sugerenciasPedido.length > 0 ? "se agotan antes de que llegue el pedido" : null,
+      tab: "pedidos",
+      tabNombre: "Pedidos",
+      items: sugerenciasPedido.map((p2) => ({
+        clave: p2.id,
+        principal: p2.nombre,
+        secundario: `${p2.proveedorNombre} \xB7 pide ${fmt(p2.cantidadSugerida)} ${p2.unidad}${p2.cajasSugeridas ? ` (${p2.cajasSugeridas} caja${p2.cajasSugeridas > 1 ? "s" : ""})` : ""}`,
+        derecha: `${Math.round(p2.dias)} d de stock \xB7 llega en ${p2.diasHastaEntrega}`,
+        derechaColor: C2.red
+      }))
+    },
+    {
+      id: "descuadresstock",
+      titulo: "Descuadres de stock",
+      valor: descuadresStock.length,
+      color: descuadresStock.length ? C2.red : C2.ink,
+      nota: descuadresStock.length > 0 ? "la cach\xE9 no coincide con el hist\xF3rico de movimientos" : null,
+      tab: "diagnostico",
+      tabNombre: "Reconciliaci\xF3n de stock",
+      items: descuadresStock.map((d2) => ({
+        clave: d2.productoId,
+        principal: d2.nombre,
+        secundario: `Cach\xE9 ${fmt(d2.teoricoCache)} \xB7 hist\xF3rico ${fmt(d2.teoricoReal)}`,
+        derecha: `${d2.diferencia > 0 ? "+" : ""}${fmt(d2.diferencia)}`,
+        derechaColor: C2.red
+      }))
+    },
+    {
+      id: "personal",
+      titulo: "Personal: avisos",
+      valor: documentosPersonalPronto.length,
+      color: documentosPersonalPronto.some((d2) => d2.dias < 0) ? C2.red : documentosPersonalPronto.length ? C2.amber : C2.ink,
+      nota: fichajesAbiertos.length > 0 ? `${fichajesAbiertos.length} fichaje(s) sin cerrar` : null,
+      notaColor: fichajesAbiertos.length > 0 ? C2.amber : null,
+      tab: "personal",
+      tabNombre: "Personal",
+      items: documentosPersonalPronto.map((d2) => ({
+        clave: d2.id,
+        principal: d2.empleado,
+        secundario: `${d2.concepto} \xB7 ${d2.fecha}`,
+        derecha: diasTexto(d2.dias),
+        derechaColor: diasColor(d2.dias)
+      }))
+    },
+    {
+      id: "conteos",
+      titulo: "Conteos atrasados",
+      valor: recordatorioConteo.filter((a2) => a2.atrasado).length,
+      color: recordatorioConteo.some((a2) => a2.atrasado) ? C2.amber : C2.ink,
+      tab: "conteo",
+      tabNombre: "Inventario ciego",
+      items: recordatorioConteo.filter((a2) => a2.atrasado).map((a2) => ({
+        clave: a2.id,
+        principal: a2.nombre,
+        secundario: a2.ultimaFecha ? `\xFAltimo conteo: ${a2.ultimaFecha}` : "todav\xEDa no se ha contado nunca",
+        derecha: a2.diasDesde === null ? "sin datos" : `hace ${a2.diasDesde} d`,
+        derechaColor: C2.amber
+      }))
+    }
+  ];
+  const tarjetaAbierta = tarjetas.find((t2) => t2.id === abierta);
+  return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-4 pb-3", style: { borderBottom: `2px solid ${C2.accent}` } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[18px] font-semibold" }, "Panel general"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, (/* @__PURE__ */ new Date()).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" }))), /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO, alt: "", style: { height: 56, width: "auto" } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Toca cualquier cifra para ver el detalle."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-3 mb-3" }, tarjetas.map((t2) => {
+    const activa = abierta === t2.id;
+    return /* @__PURE__ */ import_react4.default.createElement(
+      "button",
+      {
+        key: t2.id,
+        onClick: () => setAbierta(activa ? null : t2.id),
+        className: "text-left rounded-xl p-4",
+        style: {
+          background: C2.surface,
+          border: `1px solid ${activa ? C2.accent : C2.line}`,
+          boxShadow: activa ? `0 0 0 1px ${C2.accent}` : "none"
+        }
+      },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, t2.titulo),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-2xl font-semibold mono mt-1", style: { color: t2.color || C2.ink } }, t2.valor),
+      t2.nota && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-0.5", style: { color: t2.notaColor || C2.inkSoft } }, t2.nota)
+    );
+  })), tarjetaAbierta && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-6", style: { borderColor: C2.accent } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold" }, tarjetaAbierta.titulo), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setAbierta(null),
+
+
+===== HIT 4: Resultados @ 4639844 =====
+stock, " ", p2.unidad, bajo && /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.amber }, "bajo m\xEDnimo")), (p2.tipo === "elaborado" || Number(p2.precioVenta) > 0) && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-0.5", style: { color: C2.inkSoft } }, fmt(p2.stockPisoVenta || 0), " en piso \xB7 ", fmt((Number(p2.stock) || 0) - (Number(p2.stockPisoVenta) || 0)), " en almac\xE9n")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono" }, "\u20AC", fmt(p2.costo), Number(p2.costo) > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "c/IVA \u20AC", fmt(costoConIva(p2)), " \xB7 ", ivaCompraDe(p2), "%", udsPorCaja(p2) > 1 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " \xB7 caja ", udsPorCaja(p2), " = \u20AC", fmt(costoCaja(p2))))), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono" }, "\u20AC", fmt(p2.precioVenta), Number(p2.precioVenta) > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "neto \u20AC", fmt(precioNeto(p2)), " \xB7 IVA ", ivaDe(p2), "%")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono", style: { color: margen == null ? C2.inkSoft : margen < 15 ? C2.red : C2.accent } }, margen == null ? "\u2014" : `${fmt(margen)}%`), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 text-center" }, esNoMercancia(p2) ? /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "\u2014") : /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: (clasificacionABC[p2.id] || "C") === "A" ? C2.red : (clasificacionABC[p2.id] || "C") === "B" ? C2.amber : C2.inkSoft }, clasificacionABC[p2.id] || "C")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 justify-end" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setKardexId(p2.id) }, "Kardex"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(p2) }, "Editar"), !almacenCongelado && /* @__PURE__ */ import_react4.default.createElement(
+      Btn,
+      {
+        small: true,
+        variant: "ghost",
+        onClick: () => {
+          setSalidaFor(p2.id);
+          setSalidaMotivo("Venta");
+          setSalidaPrecio(Number(p2.precioVenta) > 0 ? String(precioNeto(p2).toFixed(2)) : "");
+        }
+      },
+      "Registrar salida"
+    ), p2.activo === false ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => reactivarProducto(p2.id) }, "Reactivar") : /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setConfirmarEliminarProducto(p2), "aria-label": "Eliminar producto" }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 14, color: C2.inkSoft })))));
+  }))))), salidaFor && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => {
+    setSalidaFor(null);
+    setSalidaCant("");
+  }, title: "Registrar salida de almac\xE9n" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo" }, /* @__PURE__ */ import_react4.default.createElement(
+    "select",
+    {
+      value: salidaMotivo,
+      onChange: (e) => setSalidaMotivo(e.target.value),
+      className: "w-full rounded-lg px-3 py-2 text-[13px]",
+      style: { border: `1px solid ${C2.line}`, background: C2.surface }
+    },
+    /* @__PURE__ */ import_react4.default.createElement("option", { value: "Venta" }, "Venta"),
+    /* @__PURE__ */ import_react4.default.createElement("option", { value: "Merma" }, "Merma / caducidad"),
+    /* @__PURE__ */ import_react4.default.createElement("option", { value: "Autoconsumo" }, "Autoconsumo"),
+    /* @__PURE__ */ import_react4.default.createElement("option", { value: "Rotura" }, "Rotura / rechazo"),
+    /* @__PURE__ */ import_react4.default.createElement("option", { value: "Producci\xF3n" }, "Merma de producci\xF3n"),
+    /* @__PURE__ */ import_react4.default.createElement("option", { value: "Caducidad" }, "Caducidad"),
+    /* @__PURE__ */ import_react4.default.createElement("option", { value: "Deterioro" }, "Deterioro"),
+    /* @__PURE__ */ import_react4.default.createElement("option", { value: "Robo o p\xE9rdida" }, "Robo o p\xE9rdida"),
+    /* @__PURE__ */ import_react4.default.createElement("option", { value: "Error de registro" }, "Error de registro"),
+    /* @__PURE__ */ import_react4.default.createElement("option", { value: "Devoluci\xF3n no registrada" }, "Devoluci\xF3n no registrada"),
+    /* @__PURE__ */ import_react4.default.createElement("option", { value: "Consumo interno" }, "Consumo interno"),
+    /* @__PURE__ */ import_react4.default.createElement("option", { value: "Degustaci\xF3n" }, "Degustaci\xF3n"),
+    /* @__PURE__ */ import_react4.default.createElement("option", { value: "Producto defectuoso" }, "Producto defectuoso"),
+    /* @__PURE__ */ import_react4.default.createElement("option", { value: "Otro" }, "Otro")
+  )), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Cantidad a retirar" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: salidaCant, onChange: (e) => setSalidaCant(e.target.value), autoFocus: true })), salidaMotivo === "Venta" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio de venta unitario, sin IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: salidaPrecio, onChange: (e) => setSalidaPrecio(e.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Medio de pago" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: salidaMedioPago, onChange: (e) => setSalidaMedioPago(e.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", null, "Efectivo"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro")))), salidaMotivo !== "Venta" && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Esto se contar\xE1 como p\xE9rdida al coste, no como venta, cuando mires Resultados."), /* @__PURE__ */ import_react4.default.createElement(
+    Btn,
+    {
+      onClick: () => {
+        registrarSalida(salidaFor, salidaCant, { motivo: salidaMotivo, precioVentaUnitario: salidaMotivo === "Venta" ? salidaPrecio : 0, medioPago: salidaMedioPago });
+        setSalidaFor(null);
+        setSalidaCant("");
+      }
+    },
+    "Confirmar salida"
+  )), editFor && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setEditFor(null), title: "Editar producto", ancho: "max-w-2xl" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.nombre, onChange: (e) => setEditForm({ ...editForm, nombre: e.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "C\xF3digo / SKU" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.codigo, onChange: (e) => setEditForm({ ...editForm, codigo: e.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Categor\xEDa" }, /* @__PURE__ */ import_react4.default.createElement(CampoCategoria, { value: editForm.categoria, onChange: (v2) => setEditForm({ ...editForm, categoria: v2 }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Departamento" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: editForm.departamento, onChange: (e) => setEditForm({ ...editForm, departamento: e.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, DEPARTAMENTOS.map((d2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: d2, value: d2 }, d2)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Unidad de medida" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.unidad, onChange: (e) => setEditForm({ ...editForm, unidad: e.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tipo de producto" }, /* @__PURE__ */ import_react4.default.createElement(
+    "select",
+    {
+      value: editForm.tipo || "materia_prima",
+      onChange: (e) => setEditForm({ ...editForm, tipo: e.target.value }),
+      className: "w-full rounded-lg px-3 py-2 text-[13px]",
+      style: { border: `1px solid ${C2.line}`, background: C2.surface }
+    },
+    /* @__PURE__ */ import_react4.default.createElement("option", { value: "materia_prima" }, "Materia prima (se transforma)"),
+    /* @__PURE__ */ import_react4.default.createElement("option", { value: "consumible" }, "Consumible / desechable"),
+    /* @__PURE__ */ import_react4.default.createElement("option", { value: "utillaje" }, "Utillaje / menaje (no se consume)"),
+    /* @__PURE__ */ import_react4.default.createElement("option", { value: "limpieza" }, "Limpieza / qu\xEDmicos (no es mercanc\xEDa)"),
+    /* @__PURE__ */ import_react4.default.createElement("option", { value: "elaborado" }, "Elaborado (venta al cliente)")
+  )), !esNoMercancia(editForm) && /* @__PURE__ */ import_react4.default.createElement("div", { className: "col-span-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "Al\xE9rgenos"), /* @__PURE__ */ import_react4.default.createElement(
+    SelectorAlergenos,
+    {
+      seleccionados: editForm.alergenos || [],
+      onCambio: (lista) => setEditForm({ ...editForm, alergenos: lista }),
+      nombreParaSugerir: editForm.nombre
+    }
+  )), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "IVA de compra de ESTE producto (%)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: editForm.ivaCompra, onChange: (e) => setEditForm({ ...editForm, ivaCompra: e.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, TIPOS_IVA.map((t2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: t2, value: t2 }, t2, "%", t2 === 4 ? " \u2014 pan, harina, leche, huevos" : t2 === 10 ? " \u2014 resto de alimentos" : t2 === 21 ? " \u2014 general, limpieza" : "")))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "col-span-2" }, /* @__PURE__ */ import_react4.default.createElement(CompraPorCaja, { form: editForm, setForm: setEditForm })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "IVA de venta de ESTE producto (%)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: editForm.ivaVenta, onChange: (e) => setEditForm({ ...editForm, ivaVenta: e.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, TIPOS_IVA.map((t2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: t2, value: t2 }, t2, "%")))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio de venta CON IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: editForm.precioVenta, onChange: (e) => setEditForm({ ...editForm, precioVenta: e.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Stock actual" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: editForm.stock, onChange: (e) => setEditForm({ ...editForm, stock: e.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Stock m\xEDnimo" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: editForm.stockMinimo, onChange: (e) => setEditForm({ ...editForm, stockMinimo: e.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Zona del almac\xE9n" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: editForm.zona, onChange: (e) => setEditForm({ ...editForm, zona: e.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin asignar"), ZONAS_ALMACEN.filter((z2) => z2 !== "Sin asignar").map((z2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: z2, value: z2 }, z2)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Ubicaci\xF3n" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.ubicacion, onChange: (e) => setEditForm({ ...editForm, ubicacion: e.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "C\xF3digo de barras (EAN)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.codigoBarras, onChange: (e) => setEditForm({ ...editForm, codigoBarras: e.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Proveedor principal" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: editForm.proveedorId, onChange: (e) => setEditForm({ ...editForm, proveedorId: e.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin asignar"), proveedores.map((pv) => /* @__PURE__ */ import_react4.default.createElement("option", { key: pv.id, value: pv.id }, pv.nombre)))), (editForm.tipo === "elaborado" || Number(editForm.precioVenta) > 0) && /* @__PURE__ */ import_react4.default.createElement(Field, { label: "M\xEDnimo en piso de venta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: editForm.stockMinimoPisoVenta, onChange: (e) => setEditForm({ ...editForm, stockMinimoPisoVenta: e.target.value }) })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Contenido de cada bulto" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: editForm.contenido, onChange: (e) => setEditForm({ ...editForm, contenido: e.target.value }), placeholder: "Ej. 300" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Unidad del contenido" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.unidadContenido, onChange: (e) => setEditForm({ ...editForm, unidadContenido: e.target.value }), placeholder: "Ej. g, kg, ml" })))), editError && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, editError), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-1" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitEdit }, "Guardar cambios"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setEditFor(null) }, "Cancelar"))), kardexId && (() => {
+    const p2 = productos.find((x3) => x3.id === kardexId);
+    if (!p2) return null;
+    const suyos = [...movimientos.filter((m2) => m2.productoId === kardexId)].sort((a2, b2) => (a2.fecha + (a2.id || "")).localeCompare(b2.fecha + (b2.id || "")));
+    let saldo = 0;
+    const filas = suyos.map((m2) => {
+      const delta = cantidadConSigno(m2);
+      saldo += delta;
+      return { ...m2, delta, saldo };
+    });
+    return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setKardexId(null), title: `Kardex \u2014 ${p2.nombre}`, ancho: "max-w-2xl" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Stock actual: ", /* @__PURE__ */ import_react4.default.createElement("b", { className: "mono" }, p2.stock, " ", p2.unidad), " \xB7 Hist\xF3rico de ", filas.length, " movimiento(s)"), filas.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin movimientos registrados todav\xEDa." }) : /* @__PURE__ */ import_react4.default.createElement("div", { style: { maxHeight: 400, overflowY: "auto" } }, /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", { style: { color: C2.inkSoft, borderBottom: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-1.5 px-2" }, "Fecha"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-1.5 px-2" }, "Motivo"), /* @__PURE__ */ import_react4.defaul
+
+
+===== HIT 5: Resultados @ 4812052 =====
+applicationServerKey: base64UrlABytes(CLAVE_PUBLICA_VAPID)
+      });
+      const supabase = await window.getSupabaseClient();
+      const json = suscripcion.toJSON();
+      const { error: errInsert } = await supabase.from("suscripciones_push").upsert({
+        endpoint: json.endpoint,
+        p256dh: json.keys.p256dh,
+        auth: json.keys.auth,
+        dispositivo: navigator.userAgent.slice(0, 200)
+      });
+      if (errInsert) throw errInsert;
+      setSuscrito(true);
+    } catch (e) {
+      setError("No se ha podido activar: " + (e?.message || "error de conexi\xF3n"));
+    } finally {
+      setCargando(false);
+    }
+  }
+  async function desactivar() {
+    setCargando(true);
+    setError("");
+    try {
+      const registro = await navigator.serviceWorker.getRegistration("/sw.js");
+      const sub = registro && await registro.pushManager.getSubscription();
+      if (sub) {
+        const supabase = await window.getSupabaseClient();
+        await supabase.from("suscripciones_push").delete().eq("endpoint", sub.endpoint);
+        await sub.unsubscribe();
+      }
+      setSuscrito(false);
+    } catch (e) {
+      setError("No se ha podido desactivar: " + (e?.message || "error de conexi\xF3n"));
+    } finally {
+      setCargando(false);
+    }
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Notificaciones"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Avisos en este dispositivo cuando: la caja cierra descuadrada, alg\xFAn producto baja del stock m\xEDnimo, un candidato completa el prefiltro, o una entrevista termina con avisos o puntuaci\xF3n baja. Se activa por separado en cada dispositivo (m\xF3vil, ordenador...) donde quieras recibirlas.")), !soportado ? /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Este navegador no admite notificaciones push.")) : esIOS && !instaladaEnInicio ? /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "En iPhone hace falta instalar la app primero"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, 'Las notificaciones en iPhone solo funcionan si la app est\xE1 a\xF1adida a la pantalla de inicio (no basta con tenerla abierta en Safari). Toca el bot\xF3n de compartir de Safari \u2192 "A\xF1adir a pantalla de inicio", abre la app desde ese icono nuevo, y vuelve aqu\xED.')) : permiso === "denied" ? /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Bloqueaste el permiso de notificaciones para esta web antes. Para activarlo, tienes que cambiarlo desde los ajustes del propio navegador (icono del candado junto a la direcci\xF3n web \u2192 Notificaciones).")) : /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, suscrito ? "Activadas en este dispositivo" : "Desactivadas en este dispositivo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "w-2.5 h-2.5 rounded-full", style: { background: suscrito ? C2.accent : C2.inkSoft } })), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: suscrito ? desactivar : activar, disabled: cargando, variant: suscrito ? "ghost" : "primary" }, cargando ? "Un momento\u2026" : suscrito ? "Desactivar en este dispositivo" : "Activar en este dispositivo"), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-2", style: { color: C2.red } }, error)));
+}
+function ErroresSistema() {
+  const [errores, setErrores] = import_react4.default.useState([]);
+  const [cargando, setCargando] = import_react4.default.useState(true);
+  const [error, setError] = import_react4.default.useState("");
+  import_react4.default.useEffect(() => {
+    let activo = true;
+    (async () => {
+      try {
+        const supabase = await window.getSupabaseClient();
+        const { data, error: errLectura } = await supabase.from("errores_sistema").select("*").order("fecha", { ascending: false }).limit(100);
+        if (!activo) return;
+        if (errLectura) {
+          setError("No se ha podido cargar el historial.");
+        } else {
+          setErrores(data || []);
+        }
+      } catch {
+        if (activo) setError("No se ha podido conectar.");
+      } finally {
+        if (activo) setCargando(false);
+      }
+    })();
+    return () => {
+      activo = false;
+    };
+  }, []);
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Errores del sistema"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, 'Registro autom\xE1tico de fallos inesperados del programa (no de los avisos normales tipo "sin conexi\xF3n", esos ya se gestionan aparte). \xDAltimos 100.')), cargando ? null : error ? /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, error)) : errores.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin errores registrados \u2014 buena se\xF1al." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, errores.map((e) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: e.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, new Date(e.fecha).toLocaleString("es-ES"), " \xB7 ", e.pantalla || "\u2014"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium mt-1" }, e.mensaje), e.dispositivo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, e.dispositivo)))));
+}
+function DiagnosticoSincronizacion() {
+  const [abierto, setAbierto] = import_react4.default.useState(false);
+  const [pendientes, setPendientes] = import_react4.default.useState([]);
+  const [resultados, setResultados] = import_react4.default.useState(null);
+  const [reintentando, setReintentando] = import_react4.default.useState(false);
+  function leerPendientes() {
+    try {
+      const lista = JSON.parse(localStorage.getItem("almacen__pendientes") || "[]");
+      setPendientes(lista);
+      return lista;
+    } catch (e) {
+      setPendientes([]);
+      return [];
+    }
+  }
+  async function reintentarConDetalle() {
+    setReintentando(true);
+    setResultados(null);
+    const lista = leerPendientes();
+    const detalle = [];
+    for (const key of lista) {
+      try {
+        const valorLocal = localStorage.getItem("almacen:" + key);
+        if (valorLocal === null) {
+          detalle.push({ key, ok: false, error: "No hay ning\xFAn valor guardado en este dispositivo para esta clave." });
+          continue;
+        }
+        if (!window.__nubeCliente) {
+          detalle.push({ key, ok: false, error: "No hay conexi\xF3n a la nube en este momento." });
+          continue;
+        }
+        const nuevo = JSON.parse(valorLocal);
+        const r = await window.__nubeCliente.from("almacen_kv").upsert({ key, value: nuevo });
+        if (r.error) {
+          detalle.push({ key, ok: false, error: r.error.message });
+        } else {
+          detalle.push({ key, ok: true });
+          const listaActualizada = JSON.parse(localStorage.getItem("almacen__pendientes") || "[]").filter((k2) => k2 !== key);
+          localStorage.setItem("almacen__pendientes", JSON.stringify(listaActualizada));
+        }
+      } catch (e) {
+        detalle.push({ key, ok: false, error: e && e.message ? e.message : String(e) });
+      }
+    }
+    setResultados(detalle);
+    leerPendientes();
+    setReintentando(false);
+  }
+  import_react4.default.useEffect(() => {
+    if (abierto) leerPendientes();
+  }, [abierto]);
+  return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, "Diagn\xF3stico de sincronizaci\xF3n"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAbierto(!abierto) }, abierto ? "Ocultar" : "Ver")), abierto && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.inkSoft } }, pendientes.length === 0 ? "Nada pendiente de subir en este dispositivo ahora mismo." : `${pendientes.length} cosa(s) sin subir todav\xEDa: ${pendientes.join(", ")}`), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: reintentarConDetalle, disabled: reintentando }, reintentando ? "Reintentando\u2026" : "Reintentar ahora y ver el error real"), resultados && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 space-y-1.5" }, resultados.map((r) => /* @__PURE__ */ import_react4.default.createElement("div", { key: r.key, className: "text-[12px]", style: { color: r.ok ? C2.accent : C2.red } }, r.ok ? "\u2713" : "\u2717", " ", r.key, !r.ok && r.error ? `: ${r.error}` : r.ok ? ": subido con \xE9xito" : "")))));
+}
+function Locales({ locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo }) {
+  const [mostrarForm, setMostrarForm] = import_react4.default.useState(false);
+  const [nombre, setNombre] = import_react4.default.useState("");
+  const [direccion, setDireccion] = import_react4.default.useState("");
+  const [error, setError] = import_react4.default.useState("");
+  const [confirmarDesactivar, setConfirmarDesactivar] = import_react4.default.useState(null);
+  const activos = locales.filter((l2) => l2.activo !== false);
+  const inactivos = locales.filter((l2) => l2.activo === false);
+  function enviar() {
+    const r = crearLocal({ nombre, direccion });
+    if (!r.ok) {
+      setError(r.error);
+      return;
+    }
+    setNombre("");
+    setDireccion("");
+    setError("");
+    setMostrarForm(false);
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Locales"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Primer paso de varios locales: por ahora solo gestiona la lista y cu\xE1l est\xE1 activo en este dispositivo. Todav\xEDa no reparte productos, stock ni caja por local \u2014 eso viene despu\xE9s.")), /* @__PURE__ */ import_react4.default.createElement(DiagnosticoSincronizacion, null), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 mb-4" }, activos.map((l2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: l2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium text-[13px] flex items-center gap-1.5" }, l2.nombre, l2.id === localActivoId && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "activo en este dispositivo")), l2.direccion && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, l2.direccion)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, l2.id !== localActivoId && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => cambiarLocalActivo(l2.id) }, "Usar este"), activos.length > 1 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setConfirmarDesactivar(l2) }, "Desactivar")))))), mostrarForm ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre del local" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nombre, onChange: (e) => setNombre(e.target.value), placeholder: "Ej: San Gin\xE9s Centro", autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Direcci\xF3n (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: direccion, onChange: (e) => setDireccion(e.target.value) })), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: enviar }, "Crear local"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+    setMostrarForm(false);
+    setError("");
+  } }, "Cancelar"))) : /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setMostrarForm(true) }, "+ A\xF1adir local nuevo"), inactivos.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-6" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, "Locales desactivados"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, inactivos.map((l2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: l2.id, style: { opacity: 0.6 } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px]" }, l2.nombre))))), confirmarDesactivar && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmarDesactivar(null), title: "Desactivar local" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, '"', confirmarDesactivar.nombre, '" dejar\xE1 de aparecer como local activo. No se borra ning\xFAn dato \u2014 solo se oculta de la lista de "en uso".'), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
+    desactivarLocal(confirmarDesactivar.id);
+    setConfirmarDesactivar(null);
+  } }, "Confirmar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmarDesactivar(null) }, "Cancelar"))));
+}
+function Respaldos({ historial, crearPuntoDeGuardado, restaurarDesdeHistorial, abrirRespaldo, abrirRestaurar, exportarExcelGeneral, pinPropietario, establecerPin, activarModoEmpleado }) {
+  const [nuevoPin, setNuevoPin] = (0, import_react4.useState)("");
+  const [confirmarPin, setConfirmarPin] = (0, import_react4.useState)("");
+  const [pinError, setPinError] = (0, import_react4.useState)("");
+  const [pinGuardado, setPinGuardado] = (0, import_react4.useState)(false);
+  async function guardarPin() {
+    if (!/^\d{4,6}$/.test(nuevoPin)) {
+      setPinError("El PIN debe tener entre 4 y 6 d\xEDgitos.");
+      return;
+    }
+    if (nuevoPin !== confirmarPin) {
+      setPinError("Los dos PIN no coinciden.");
+      return;
+    }
+    setPinError("");
+    await establecerPin(nuevoPin);
+    setNuevoPin("");
+    setConfirmarPin("");
+    setPinGuardado(true);
+    setTimeout(() => setPinGuardado(false), 3e3);
+  }
+  const [guardado, setGuardado] = (0, import_react4.useState)(false);
+  function guardarAhora() {
+    crearPuntoDeGuardado();
+    setGuardado(true);
+    setTimeout(() => setGuardado(false), 2e3);
+  }
+  function contar(data) {
+    return (data.proveedores?.length || 0) + (data.productos?.length || 0) + (data.pedidos?.length || 0);
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Respaldos"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.ink } }, "Todo lo que capturas en este programa ya se guarda autom\xE1ticamente en tu cuenta, no solo en este tel\xE9fono \u2014 si abres esta misma conversaci\xF3n desde otro dispositivo, ver\xE1s la misma informaci\xF3n. Aqu\xED adem\xE1s puedes crear copias de seguridad puntuales, para poder volver atr\xE1s si algo se borra o se modifica por error.")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", 
+
+
+===== HIT 6: Resultados @ 4813695 =====
+2.5px]" }, "Avisos en este dispositivo cuando: la caja cierra descuadrada, alg\xFAn producto baja del stock m\xEDnimo, un candidato completa el prefiltro, o una entrevista termina con avisos o puntuaci\xF3n baja. Se activa por separado en cada dispositivo (m\xF3vil, ordenador...) donde quieras recibirlas.")), !soportado ? /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Este navegador no admite notificaciones push.")) : esIOS && !instaladaEnInicio ? /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "En iPhone hace falta instalar la app primero"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, 'Las notificaciones en iPhone solo funcionan si la app est\xE1 a\xF1adida a la pantalla de inicio (no basta con tenerla abierta en Safari). Toca el bot\xF3n de compartir de Safari \u2192 "A\xF1adir a pantalla de inicio", abre la app desde ese icono nuevo, y vuelve aqu\xED.')) : permiso === "denied" ? /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Bloqueaste el permiso de notificaciones para esta web antes. Para activarlo, tienes que cambiarlo desde los ajustes del propio navegador (icono del candado junto a la direcci\xF3n web \u2192 Notificaciones).")) : /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, suscrito ? "Activadas en este dispositivo" : "Desactivadas en este dispositivo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "w-2.5 h-2.5 rounded-full", style: { background: suscrito ? C2.accent : C2.inkSoft } })), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: suscrito ? desactivar : activar, disabled: cargando, variant: suscrito ? "ghost" : "primary" }, cargando ? "Un momento\u2026" : suscrito ? "Desactivar en este dispositivo" : "Activar en este dispositivo"), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-2", style: { color: C2.red } }, error)));
+}
+function ErroresSistema() {
+  const [errores, setErrores] = import_react4.default.useState([]);
+  const [cargando, setCargando] = import_react4.default.useState(true);
+  const [error, setError] = import_react4.default.useState("");
+  import_react4.default.useEffect(() => {
+    let activo = true;
+    (async () => {
+      try {
+        const supabase = await window.getSupabaseClient();
+        const { data, error: errLectura } = await supabase.from("errores_sistema").select("*").order("fecha", { ascending: false }).limit(100);
+        if (!activo) return;
+        if (errLectura) {
+          setError("No se ha podido cargar el historial.");
+        } else {
+          setErrores(data || []);
+        }
+      } catch {
+        if (activo) setError("No se ha podido conectar.");
+      } finally {
+        if (activo) setCargando(false);
+      }
+    })();
+    return () => {
+      activo = false;
+    };
+  }, []);
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Errores del sistema"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, 'Registro autom\xE1tico de fallos inesperados del programa (no de los avisos normales tipo "sin conexi\xF3n", esos ya se gestionan aparte). \xDAltimos 100.')), cargando ? null : error ? /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, error)) : errores.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin errores registrados \u2014 buena se\xF1al." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, errores.map((e) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: e.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, new Date(e.fecha).toLocaleString("es-ES"), " \xB7 ", e.pantalla || "\u2014"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium mt-1" }, e.mensaje), e.dispositivo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, e.dispositivo)))));
+}
+function DiagnosticoSincronizacion() {
+  const [abierto, setAbierto] = import_react4.default.useState(false);
+  const [pendientes, setPendientes] = import_react4.default.useState([]);
+  const [resultados, setResultados] = import_react4.default.useState(null);
+  const [reintentando, setReintentando] = import_react4.default.useState(false);
+  function leerPendientes() {
+    try {
+      const lista = JSON.parse(localStorage.getItem("almacen__pendientes") || "[]");
+      setPendientes(lista);
+      return lista;
+    } catch (e) {
+      setPendientes([]);
+      return [];
+    }
+  }
+  async function reintentarConDetalle() {
+    setReintentando(true);
+    setResultados(null);
+    const lista = leerPendientes();
+    const detalle = [];
+    for (const key of lista) {
+      try {
+        const valorLocal = localStorage.getItem("almacen:" + key);
+        if (valorLocal === null) {
+          detalle.push({ key, ok: false, error: "No hay ning\xFAn valor guardado en este dispositivo para esta clave." });
+          continue;
+        }
+        if (!window.__nubeCliente) {
+          detalle.push({ key, ok: false, error: "No hay conexi\xF3n a la nube en este momento." });
+          continue;
+        }
+        const nuevo = JSON.parse(valorLocal);
+        const r = await window.__nubeCliente.from("almacen_kv").upsert({ key, value: nuevo });
+        if (r.error) {
+          detalle.push({ key, ok: false, error: r.error.message });
+        } else {
+          detalle.push({ key, ok: true });
+          const listaActualizada = JSON.parse(localStorage.getItem("almacen__pendientes") || "[]").filter((k2) => k2 !== key);
+          localStorage.setItem("almacen__pendientes", JSON.stringify(listaActualizada));
+        }
+      } catch (e) {
+        detalle.push({ key, ok: false, error: e && e.message ? e.message : String(e) });
+      }
+    }
+    setResultados(detalle);
+    leerPendientes();
+    setReintentando(false);
+  }
+  import_react4.default.useEffect(() => {
+    if (abierto) leerPendientes();
+  }, [abierto]);
+  return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, "Diagn\xF3stico de sincronizaci\xF3n"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAbierto(!abierto) }, abierto ? "Ocultar" : "Ver")), abierto && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.inkSoft } }, pendientes.length === 0 ? "Nada pendiente de subir en este dispositivo ahora mismo." : `${pendientes.length} cosa(s) sin subir todav\xEDa: ${pendientes.join(", ")}`), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: reintentarConDetalle, disabled: reintentando }, reintentando ? "Reintentando\u2026" : "Reintentar ahora y ver el error real"), resultados && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 space-y-1.5" }, resultados.map((r) => /* @__PURE__ */ import_react4.default.createElement("div", { key: r.key, className: "text-[12px]", style: { color: r.ok ? C2.accent : C2.red } }, r.ok ? "\u2713" : "\u2717", " ", r.key, !r.ok && r.error ? `: ${r.error}` : r.ok ? ": subido con \xE9xito" : "")))));
+}
+function Locales({ locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo }) {
+  const [mostrarForm, setMostrarForm] = import_react4.default.useState(false);
+  const [nombre, setNombre] = import_react4.default.useState("");
+  const [direccion, setDireccion] = import_react4.default.useState("");
+  const [error, setError] = import_react4.default.useState("");
+  const [confirmarDesactivar, setConfirmarDesactivar] = import_react4.default.useState(null);
+  const activos = locales.filter((l2) => l2.activo !== false);
+  const inactivos = locales.filter((l2) => l2.activo === false);
+  function enviar() {
+    const r = crearLocal({ nombre, direccion });
+    if (!r.ok) {
+      setError(r.error);
+      return;
+    }
+    setNombre("");
+    setDireccion("");
+    setError("");
+    setMostrarForm(false);
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Locales"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Primer paso de varios locales: por ahora solo gestiona la lista y cu\xE1l est\xE1 activo en este dispositivo. Todav\xEDa no reparte productos, stock ni caja por local \u2014 eso viene despu\xE9s.")), /* @__PURE__ */ import_react4.default.createElement(DiagnosticoSincronizacion, null), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 mb-4" }, activos.map((l2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: l2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium text-[13px] flex items-center gap-1.5" }, l2.nombre, l2.id === localActivoId && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "activo en este dispositivo")), l2.direccion && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, l2.direccion)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, l2.id !== localActivoId && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => cambiarLocalActivo(l2.id) }, "Usar este"), activos.length > 1 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setConfirmarDesactivar(l2) }, "Desactivar")))))), mostrarForm ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre del local" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nombre, onChange: (e) => setNombre(e.target.value), placeholder: "Ej: San Gin\xE9s Centro", autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Direcci\xF3n (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: direccion, onChange: (e) => setDireccion(e.target.value) })), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: enviar }, "Crear local"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+    setMostrarForm(false);
+    setError("");
+  } }, "Cancelar"))) : /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setMostrarForm(true) }, "+ A\xF1adir local nuevo"), inactivos.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-6" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, "Locales desactivados"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, inactivos.map((l2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: l2.id, style: { opacity: 0.6 } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px]" }, l2.nombre))))), confirmarDesactivar && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmarDesactivar(null), title: "Desactivar local" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, '"', confirmarDesactivar.nombre, '" dejar\xE1 de aparecer como local activo. No se borra ning\xFAn dato \u2014 solo se oculta de la lista de "en uso".'), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
+    desactivarLocal(confirmarDesactivar.id);
+    setConfirmarDesactivar(null);
+  } }, "Confirmar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmarDesactivar(null) }, "Cancelar"))));
+}
+function Respaldos({ historial, crearPuntoDeGuardado, restaurarDesdeHistorial, abrirRespaldo, abrirRestaurar, exportarExcelGeneral, pinPropietario, establecerPin, activarModoEmpleado }) {
+  const [nuevoPin, setNuevoPin] = (0, import_react4.useState)("");
+  const [confirmarPin, setConfirmarPin] = (0, import_react4.useState)("");
+  const [pinError, setPinError] = (0, import_react4.useState)("");
+  const [pinGuardado, setPinGuardado] = (0, import_react4.useState)(false);
+  async function guardarPin() {
+    if (!/^\d{4,6}$/.test(nuevoPin)) {
+      setPinError("El PIN debe tener entre 4 y 6 d\xEDgitos.");
+      return;
+    }
+    if (nuevoPin !== confirmarPin) {
+      setPinError("Los dos PIN no coinciden.");
+      return;
+    }
+    setPinError("");
+    await establecerPin(nuevoPin);
+    setNuevoPin("");
+    setConfirmarPin("");
+    setPinGuardado(true);
+    setTimeout(() => setPinGuardado(false), 3e3);
+  }
+  const [guardado, setGuardado] = (0, import_react4.useState)(false);
+  function guardarAhora() {
+    crearPuntoDeGuardado();
+    setGuardado(true);
+    setTimeout(() => setGuardado(false), 2e3);
+  }
+  function contar(data) {
+    return (data.proveedores?.length || 0) + (data.productos?.length || 0) + (data.pedidos?.length || 0);
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Respaldos"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.ink } }, "Todo lo que capturas en este programa ya se guarda autom\xE1ticamente en tu cuenta, no solo en este tel\xE9fono \u2014 si abres esta misma conversaci\xF3n desde otro dispositivo, ver\xE1s la misma informaci\xF3n. Aqu\xED adem\xE1s puedes crear copias de seguridad puntuales, para poder volver atr\xE1s si algo se borra o se modifica por error.")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold text-[14px]" }, "Crear copia de seguridad ahora"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Guarda el estado actual de todo el programa como un punto al que podr\xE1s volver.")), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: guardarAhora }, /* @__PURE__ */ import_react4.default.createElement(RotateCcwClock, { size: 14 }), " ", guardado ? "\xA1Guardada!" : "Guardar copia"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Historial de copias guardadas"), historial.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no hay copias de seguridad guardadas." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 mb-6" }, historial.map((h2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: h2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, new Date(h2.fecha).toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, h2.automatica ? "Copia autom\xE1tica de inicio de sesi\xF3n" : "Copia manual", " \xB7 ", contar(h2.data), " registros principales")), /* @__PURE
+
+
+===== HIT 7: Resultados @ 4909182 =====
+(Number(ln2.cantidad) || 0)} ${ln2.unidad || "bultos"} = ${fmt(totalUds)} unidades \xB7 \u20AC${fmt(costoUd)} cada unidad` : `Entran ${fmt(totalUds)} unidades \xB7 \u20AC${fmt(costoUd)} cada unidad`), Number(ln2.contenido) > 0 && ln2.tipoUnidad !== "peso" && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mono", style: { color: C2.accent } }, "Contenido total ", fmt(totalUds * Number(ln2.contenido)), " ", ln2.unidadContenido || "", " \xB7 \u20AC", fmt(costoUd / Number(ln2.contenido)), " por ", ln2.unidadContenido || "unidad de contenido")));
+  }), !bloqueado && /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", onClick: addLinea, className: "text-[12.5px] font-medium mb-4", style: { color: C2.accent } }, "+ A\xF1adir l\xEDnea"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: totalPapel > 0 ? cuadra ? C2.accentSoft : C2.amberSoft : C2.bg, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-3 gap-3 text-center mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Base imponible"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold" }, "\u20AC", fmt(baseTotal)), cargosBase > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mono", style: { color: C2.inkSoft } }, "+ cargos \u20AC", fmt(cargosBase))), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "IVA"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold" }, "\u20AC", fmt(ivaTotal))), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Total calculado"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-bold text-[16px]" }, "\u20AC", fmt(totalCalculado)))), totalPapel > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] text-center pt-2", style: { borderTop: "1px solid rgba(0,0,0,0.08)" } }, cuadra ? /* @__PURE__ */ import_react4.default.createElement("span", { style: { color: C2.accent } }, "Cuadra con el total del papel (\u20AC", fmt(totalPapel), ").") : /* @__PURE__ */ import_react4.default.createElement("span", { style: { color: C2.amber } }, "No cuadra: el papel dice \u20AC", fmt(totalPapel), " y sale \u20AC", fmt(totalCalculado), " ", "(diferencia ", descuadre > 0 ? "+" : "", "\u20AC", fmt(descuadre), "). Revisa descuentos, portes o IVA."))), fotoRevisionIA && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-2" }, "Foto original, para comparar con lo le\xEDdo"), /* @__PURE__ */ import_react4.default.createElement("img", { src: fotoRevisionIA, alt: "Albar\xE1n original", className: "w-full max-h-80 object-contain rounded-lg", style: { border: `1px solid ${C2.line}` } }), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "La foto se ve mientras revisas. No se guarda con el albar\xE1n: ocupa miles de veces m\xE1s que el propio albar\xE1n y llenar\xEDa el almacenamiento del programa.")), confianzaIA && confianzaIA !== "alta" && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold" }, "\u26A0 Confianza ", confianzaIA === "baja" ? "baja" : "media", " en esta lectura \u2014 revisa cada l\xEDnea con m\xE1s cuidado antes de confirmar.")), avisosIA.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "\u26A0 La IA marc\xF3 estas dudas"), avisosIA.map((a2, i3) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i3, className: "text-[11.5px]" }, "\xB7 ", a2))), avisosPegado.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "\u26A0 Revisa estas l\xEDneas del texto pegado"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2" }, "En estas los n\xFAmeros no cuadraban entre s\xED. No he inventado nada: compru\xE9balas contra el albar\xE1n."), avisosPegado.map((a2, i3) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i3, className: "text-[11.5px]" }, "\xB7 ", a2))), desviaciones.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "\u26A0 El precio ha cambiado respecto a la \xFAltima compra"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2" }, "Compru\xE9balo antes de confirmar: una subida que pasa desapercibida se lleva el margen sin que se note."), desviaciones.map((d2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: d2.productoId, className: "text-[11.5px] mono" }, d2.nombre, ": \u20AC", fmt(d2.antes), " \u2192 \u20AC", fmt(d2.ahora), " ", /* @__PURE__ */ import_react4.default.createElement("b", { style: { color: d2.variacion > 0 ? C2.red : C2.accent } }, "(", d2.variacion > 0 ? "+" : "", d2.variacion, "%)")))), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, error), !bloqueado && /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: darEntrada, disabled: procesandoEntrada }, /* @__PURE__ */ import_react4.default.createElement(CircleCheck, { size: 14 }), " ", procesandoEntrada ? "Dando entrada\u2026" : "Dar entrada al almac\xE9n"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: guardarBorrador }, "Guardar como borrador"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+    setModo("lista");
+    setAlb(null);
+    setFotoRevisionIA("");
+  } }, "Cancelar")));
+}
+function Resultados({ movimientos, productos, productoPorId, gastosGenerales, addGasto, deleteGasto, empleados = [] }) {
+  const [desde, setDesde] = (0, import_react4.useState)(primerDiaMes(/* @__PURE__ */ new Date()));
+  const [hasta, setHasta] = (0, import_react4.useState)(ultimoDiaMes(/* @__PURE__ */ new Date()));
+  const [showGasto, setShowGasto] = (0, import_react4.useState)(false);
+  const [gastoForm, setGastoForm] = (0, import_react4.useState)({ concepto: "", importe: "", categoria: "" });
+  const [gastoError, setGastoError] = (0, import_react4.useState)("");
+  function irMesActual() {
+    setDesde(primerDiaMes(/* @__PURE__ */ new Date()));
+    setHasta(ultimoDiaMes(/* @__PURE__ */ new Date()));
+  }
+  function irMesAnterior() {
+    const d2 = /* @__PURE__ */ new Date();
+    d2.setMonth(d2.getMonth() - 1);
+    setDesde(primerDiaMes(d2));
+    setHasta(ultimoDiaMes(d2));
+  }
+  const salidasPeriodo = (0, import_react4.useMemo)(
+    () => movimientos.filter((m2) => esSalida(m2) && m2.motivo && m2.fecha >= desde && m2.fecha <= hasta),
+    [movimientos, desde, hasta]
+  );
+  const ventas = salidasPeriodo.filter((m2) => esVenta(m2));
+  const autoconsumo = salidasPeriodo.filter((m2) => m2.motivo === "Autoconsumo");
+  const roturas = salidasPeriodo.filter((m2) => m2.motivo === "Rotura");
+  const mermas = salidasPeriodo.filter((m2) => esMerma(m2) && m2.motivo !== "Autoconsumo" && m2.motivo !== "Rotura");
+  const aceite = salidasPeriodo.filter((m2) => m2.motivo === "Cambio de aceite" || m2.motivo === "Relleno de aceite");
+  const ingresos = ventas.reduce((a2, m2) => a2 + Math.abs(Number(m2.cantidad) || 0) * (Number(m2.ingresoUnitario) || 0), 0);
+  const costeVentas = ventas.reduce((a2, m2) => a2 + Math.abs(Number(m2.cantidad) || 0) * (Number(m2.costoUnitario) || 0), 0);
+  const margenBruto = ingresos - costeVentas;
+  const margenPct = ingresos > 0 ? margenBruto / ingresos * 100 : null;
+  const valorMermas = mermas.reduce((a2, m2) => a2 + Math.abs(Number(m2.cantidad) || 0) * (Number(m2.costoUnitario) || 0), 0);
+  const valorAutoconsumo = autoconsumo.reduce((a2, m2) => a2 + Math.abs(Number(m2.cantidad) || 0) * (Number(m2.costoUnitario) || 0), 0);
+  const valorRoturas = roturas.reduce((a2, m2) => a2 + Math.abs(Number(m2.cantidad) || 0) * (Number(m2.costoUnitario) || 0), 0);
+  const valorAceite = aceite.reduce((a2, m2) => a2 + Math.abs(Number(m2.cantidad) || 0) * (Number(m2.costoUnitario) || 0), 0);
+  const mermasPorProducto = (0, import_react4.useMemo)(() => {
+    const mapa = {};
+    mermas.forEach((m2) => {
+      mapa[m2.productoId] = (mapa[m2.productoId] || 0) + Math.abs(Number(m2.cantidad) || 0) * (Number(m2.costoUnitario) || 0);
+    });
+    return Object.entries(mapa).map(([id, valor]) => ({ producto: productoPorId(id), valor })).filter((x3) => x3.producto && x3.valor > 0).sort((a2, b2) => b2.valor - a2.valor).slice(0, 5);
+  }, [mermas, productoPorId]);
+  const dias = Math.max(1, Math.round((new Date(hasta) - new Date(desde)) / 864e5) + 1);
+  const gastosFijos = gastosGenerales.filter((g2) => !g2.fecha);
+  const gastosPuntuales = gastosGenerales.filter((g2) => g2.fecha);
+  const gastosGeneralesMensual = gastosFijos.reduce((a2, g2) => a2 + (Number(g2.importe) || 0), 0);
+  const gastosPuntualesPeriodo = gastosPuntuales.filter((g2) => g2.fecha >= desde && g2.fecha <= hasta).reduce((a2, g2) => a2 + (Number(g2.importe) || 0), 0);
+  const desgloseGastosPorCategoria = (() => {
+    const mapa = {};
+    const suma = (cat, importe) => {
+      const clave = cat && cat.trim() ? cat : "Sin categor\xEDa";
+      mapa[clave] = (mapa[clave] || 0) + importe;
+    };
+    gastosFijos.forEach((g2) => suma(g2.categoria, (Number(g2.importe) || 0) * (dias / 30)));
+    gastosPuntuales.filter((g2) => g2.fecha >= desde && g2.fecha <= hasta).forEach((g2) => suma(g2.categoria, Number(g2.importe) || 0));
+    return Object.entries(mapa).map(([categoria, importe]) => ({ categoria, importe })).sort((a2, b2) => b2.importe - a2.importe);
+  })();
+  const costePersonalMensual = empleados.filter((e) => e.activo !== false).reduce((a2, e) => {
+    const bruto = Number(e.salarioBrutoMensual) || 0;
+    const coste = e.costeEmpresaMensual !== "" && e.costeEmpresaMensual != null ? Number(e.costeEmpresaMensual) : bruto * 1.32;
+    return a2 + coste;
+  }, 0);
+  const personalEsEstimado = empleados.some((e) => e.activo !== false && (e.costeEmpresaMensual === "" || e.costeEmpresaMensual == null) && Number(e.salarioBrutoMensual) > 0);
+  const gastosTotalMensual = gastosGeneralesMensual + costePersonalMensual;
+  const gastosPeriodo = gastosTotalMensual * (dias / 30) + gastosPuntualesPeriodo;
+  const costeInventarioSinVenta = valorMermas + valorAutoconsumo + valorRoturas + valorAceite;
+  const resultadoNeto = margenBruto - gastosPeriodo - costeInventarioSinVenta;
+  const huboLegacy = movimientos.some((m2) => m2.tipo === "salida" && !m2.motivo);
+  const margenTeorico = (0, import_react4.useMemo)(() => {
+    const conPrecio = productos.filter((p2) => Number(p2.precioVenta) > 0);
+    if (!conPrecio.length) return null;
+    const total = conPrecio.reduce((a2, p2) => a2 + (margenDe(p2) || 0), 0);
+    return total / conPrecio.length;
+  }, [productos]);
+  const margenParaPE = ingresos > 0 ? margenPct : margenTeorico;
+  const esTeorico = !(ingresos > 0);
+  const peMensual = margenParaPE > 0 ? gastosTotalMensual / (margenParaPE / 100) : null;
+  const pePeriodo = margenParaPE > 0 ? gastosPeriodo / (margenParaPE / 100) : null;
+  function submitGasto() {
+    if (!gastoForm.concepto.trim()) {
+      setGastoError("Escribe el concepto del gasto.");
+      return;
+    }
+    if (!Number(gastoForm.importe) || Number(gastoForm.importe) <= 0) {
+      setGastoError("Escribe un importe mensual mayor que cero.");
+      return;
+    }
+    setGastoError("");
+    addGasto({ concepto: gastoForm.concepto.trim(), importe: Number(gastoForm.importe), categoria: gastoForm.categoria });
+    setGastoForm({ concepto: "", importe: "", categoria: "" });
+    setShowGasto(false);
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-1" }, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Resultados"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => window.print(), className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(FileText, { size: 13 }), " Imprimir / Guardar PDF")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-wrap gap-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irMesActual }, "Este mes"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irMesAnterior }, "Mes anterior")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Desde" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: desde, onChange: (e) => setDesde(e.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hasta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: hasta, onChange: (e) => setHasta(e.target.value) })))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "zona-impresion", style: ESTILO_IMPRESION_CLARO }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end justify-between mb-4 pb-3", style: { borderBottom: "2px solid #9C7A34" } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[17px] font-semibold" }, "Resultados"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: "#6B7A6E" } }, "Del ", desde, " al ", hasta, " \xB7 generado el ", todayISO())), /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO, alt: "", style: { height: 56, width: "auto" } })), huboLegacy && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4 no-imprimir", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "Algunas salidas registradas antes de esta actualizaci\xF3n no tienen motivo ni precio de venta, as\xED que no entran en este c\xE1lculo. A partir de ahora, cada salida que registres desde Productos s\xED alimentar\xE1 estos resultados.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Ingresos por ventas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: C2.accent } }, "\u20AC", fmt(ingresos))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Coste de lo vendido"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1" }, "\u20AC", fmt(costeVentas)))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Margen bruto"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-2xl font-bold mono" }, "\u20AC", fmt(margenBruto))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Sobre ventas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono", style: { color: margenPct == null ? C2.ink : margenPct < 15 ? C2.red : C2.accent } }, margenPct == null ? "\u2014" : `${fmt(margenPct)}%`)))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Lo que se ha perdido (a coste)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null,
+
+
+===== HIT 8: Resultados @ 4915438 =====
+ style: { color: C2.red } }, error), !bloqueado && /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: darEntrada, disabled: procesandoEntrada }, /* @__PURE__ */ import_react4.default.createElement(CircleCheck, { size: 14 }), " ", procesandoEntrada ? "Dando entrada\u2026" : "Dar entrada al almac\xE9n"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: guardarBorrador }, "Guardar como borrador"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+    setModo("lista");
+    setAlb(null);
+    setFotoRevisionIA("");
+  } }, "Cancelar")));
+}
+function Resultados({ movimientos, productos, productoPorId, gastosGenerales, addGasto, deleteGasto, empleados = [] }) {
+  const [desde, setDesde] = (0, import_react4.useState)(primerDiaMes(/* @__PURE__ */ new Date()));
+  const [hasta, setHasta] = (0, import_react4.useState)(ultimoDiaMes(/* @__PURE__ */ new Date()));
+  const [showGasto, setShowGasto] = (0, import_react4.useState)(false);
+  const [gastoForm, setGastoForm] = (0, import_react4.useState)({ concepto: "", importe: "", categoria: "" });
+  const [gastoError, setGastoError] = (0, import_react4.useState)("");
+  function irMesActual() {
+    setDesde(primerDiaMes(/* @__PURE__ */ new Date()));
+    setHasta(ultimoDiaMes(/* @__PURE__ */ new Date()));
+  }
+  function irMesAnterior() {
+    const d2 = /* @__PURE__ */ new Date();
+    d2.setMonth(d2.getMonth() - 1);
+    setDesde(primerDiaMes(d2));
+    setHasta(ultimoDiaMes(d2));
+  }
+  const salidasPeriodo = (0, import_react4.useMemo)(
+    () => movimientos.filter((m2) => esSalida(m2) && m2.motivo && m2.fecha >= desde && m2.fecha <= hasta),
+    [movimientos, desde, hasta]
+  );
+  const ventas = salidasPeriodo.filter((m2) => esVenta(m2));
+  const autoconsumo = salidasPeriodo.filter((m2) => m2.motivo === "Autoconsumo");
+  const roturas = salidasPeriodo.filter((m2) => m2.motivo === "Rotura");
+  const mermas = salidasPeriodo.filter((m2) => esMerma(m2) && m2.motivo !== "Autoconsumo" && m2.motivo !== "Rotura");
+  const aceite = salidasPeriodo.filter((m2) => m2.motivo === "Cambio de aceite" || m2.motivo === "Relleno de aceite");
+  const ingresos = ventas.reduce((a2, m2) => a2 + Math.abs(Number(m2.cantidad) || 0) * (Number(m2.ingresoUnitario) || 0), 0);
+  const costeVentas = ventas.reduce((a2, m2) => a2 + Math.abs(Number(m2.cantidad) || 0) * (Number(m2.costoUnitario) || 0), 0);
+  const margenBruto = ingresos - costeVentas;
+  const margenPct = ingresos > 0 ? margenBruto / ingresos * 100 : null;
+  const valorMermas = mermas.reduce((a2, m2) => a2 + Math.abs(Number(m2.cantidad) || 0) * (Number(m2.costoUnitario) || 0), 0);
+  const valorAutoconsumo = autoconsumo.reduce((a2, m2) => a2 + Math.abs(Number(m2.cantidad) || 0) * (Number(m2.costoUnitario) || 0), 0);
+  const valorRoturas = roturas.reduce((a2, m2) => a2 + Math.abs(Number(m2.cantidad) || 0) * (Number(m2.costoUnitario) || 0), 0);
+  const valorAceite = aceite.reduce((a2, m2) => a2 + Math.abs(Number(m2.cantidad) || 0) * (Number(m2.costoUnitario) || 0), 0);
+  const mermasPorProducto = (0, import_react4.useMemo)(() => {
+    const mapa = {};
+    mermas.forEach((m2) => {
+      mapa[m2.productoId] = (mapa[m2.productoId] || 0) + Math.abs(Number(m2.cantidad) || 0) * (Number(m2.costoUnitario) || 0);
+    });
+    return Object.entries(mapa).map(([id, valor]) => ({ producto: productoPorId(id), valor })).filter((x3) => x3.producto && x3.valor > 0).sort((a2, b2) => b2.valor - a2.valor).slice(0, 5);
+  }, [mermas, productoPorId]);
+  const dias = Math.max(1, Math.round((new Date(hasta) - new Date(desde)) / 864e5) + 1);
+  const gastosFijos = gastosGenerales.filter((g2) => !g2.fecha);
+  const gastosPuntuales = gastosGenerales.filter((g2) => g2.fecha);
+  const gastosGeneralesMensual = gastosFijos.reduce((a2, g2) => a2 + (Number(g2.importe) || 0), 0);
+  const gastosPuntualesPeriodo = gastosPuntuales.filter((g2) => g2.fecha >= desde && g2.fecha <= hasta).reduce((a2, g2) => a2 + (Number(g2.importe) || 0), 0);
+  const desgloseGastosPorCategoria = (() => {
+    const mapa = {};
+    const suma = (cat, importe) => {
+      const clave = cat && cat.trim() ? cat : "Sin categor\xEDa";
+      mapa[clave] = (mapa[clave] || 0) + importe;
+    };
+    gastosFijos.forEach((g2) => suma(g2.categoria, (Number(g2.importe) || 0) * (dias / 30)));
+    gastosPuntuales.filter((g2) => g2.fecha >= desde && g2.fecha <= hasta).forEach((g2) => suma(g2.categoria, Number(g2.importe) || 0));
+    return Object.entries(mapa).map(([categoria, importe]) => ({ categoria, importe })).sort((a2, b2) => b2.importe - a2.importe);
+  })();
+  const costePersonalMensual = empleados.filter((e) => e.activo !== false).reduce((a2, e) => {
+    const bruto = Number(e.salarioBrutoMensual) || 0;
+    const coste = e.costeEmpresaMensual !== "" && e.costeEmpresaMensual != null ? Number(e.costeEmpresaMensual) : bruto * 1.32;
+    return a2 + coste;
+  }, 0);
+  const personalEsEstimado = empleados.some((e) => e.activo !== false && (e.costeEmpresaMensual === "" || e.costeEmpresaMensual == null) && Number(e.salarioBrutoMensual) > 0);
+  const gastosTotalMensual = gastosGeneralesMensual + costePersonalMensual;
+  const gastosPeriodo = gastosTotalMensual * (dias / 30) + gastosPuntualesPeriodo;
+  const costeInventarioSinVenta = valorMermas + valorAutoconsumo + valorRoturas + valorAceite;
+  const resultadoNeto = margenBruto - gastosPeriodo - costeInventarioSinVenta;
+  const huboLegacy = movimientos.some((m2) => m2.tipo === "salida" && !m2.motivo);
+  const margenTeorico = (0, import_react4.useMemo)(() => {
+    const conPrecio = productos.filter((p2) => Number(p2.precioVenta) > 0);
+    if (!conPrecio.length) return null;
+    const total = conPrecio.reduce((a2, p2) => a2 + (margenDe(p2) || 0), 0);
+    return total / conPrecio.length;
+  }, [productos]);
+  const margenParaPE = ingresos > 0 ? margenPct : margenTeorico;
+  const esTeorico = !(ingresos > 0);
+  const peMensual = margenParaPE > 0 ? gastosTotalMensual / (margenParaPE / 100) : null;
+  const pePeriodo = margenParaPE > 0 ? gastosPeriodo / (margenParaPE / 100) : null;
+  function submitGasto() {
+    if (!gastoForm.concepto.trim()) {
+      setGastoError("Escribe el concepto del gasto.");
+      return;
+    }
+    if (!Number(gastoForm.importe) || Number(gastoForm.importe) <= 0) {
+      setGastoError("Escribe un importe mensual mayor que cero.");
+      return;
+    }
+    setGastoError("");
+    addGasto({ concepto: gastoForm.concepto.trim(), importe: Number(gastoForm.importe), categoria: gastoForm.categoria });
+    setGastoForm({ concepto: "", importe: "", categoria: "" });
+    setShowGasto(false);
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-1" }, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Resultados"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => window.print(), className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(FileText, { size: 13 }), " Imprimir / Guardar PDF")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-wrap gap-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irMesActual }, "Este mes"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irMesAnterior }, "Mes anterior")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Desde" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: desde, onChange: (e) => setDesde(e.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hasta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: hasta, onChange: (e) => setHasta(e.target.value) })))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "zona-impresion", style: ESTILO_IMPRESION_CLARO }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end justify-between mb-4 pb-3", style: { borderBottom: "2px solid #9C7A34" } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[17px] font-semibold" }, "Resultados"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: "#6B7A6E" } }, "Del ", desde, " al ", hasta, " \xB7 generado el ", todayISO())), /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO, alt: "", style: { height: 56, width: "auto" } })), huboLegacy && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4 no-imprimir", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "Algunas salidas registradas antes de esta actualizaci\xF3n no tienen motivo ni precio de venta, as\xED que no entran en este c\xE1lculo. A partir de ahora, cada salida que registres desde Productos s\xED alimentar\xE1 estos resultados.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Ingresos por ventas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: C2.accent } }, "\u20AC", fmt(ingresos))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Coste de lo vendido"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1" }, "\u20AC", fmt(costeVentas)))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Margen bruto"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-2xl font-bold mono" }, "\u20AC", fmt(margenBruto))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Sobre ventas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono", style: { color: margenPct == null ? C2.ink : margenPct < 15 ? C2.red : C2.accent } }, margenPct == null ? "\u2014" : `${fmt(margenPct)}%`)))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Lo que se ha perdido (a coste)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Mermas (caducidad, deterioro, roturas de proceso...)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-lg font-semibold mono mt-1", style: { color: valorMermas > 0 ? C2.red : C2.ink } }, "\u20AC", fmt(valorMermas))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Autoconsumo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-lg font-semibold mono mt-1" }, "\u20AC", fmt(valorAutoconsumo))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Roturas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-lg font-semibold mono mt-1", style: { color: valorRoturas > 0 ? C2.red : C2.ink } }, "\u20AC", fmt(valorRoturas))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Aceite de freidoras"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-lg font-semibold mono mt-1", style: { color: valorAceite > 0 ? C2.red : C2.ink } }, "\u20AC", fmt(valorAceite)))), mermasPorProducto.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2" }, "D\xF3nde m\xE1s se pierde por mermas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, mermasPorProducto.map((x3, i3) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i3, className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, x3.producto.nombre), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold", style: { color: C2.red } }, "\u20AC", fmt(x3.valor)))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-2 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium", style: { color: C2.inkSoft } }, "Gastos generales del negocio (mensuales)"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setShowGasto(true) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 13 }), " A\xF1adir gasto")), gastosFijos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No has a\xF1adido gastos fijos (alquiler, luz, seguros\u2026)." })) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 mb-4 no-imprimir" }, gastosFijos.map((g2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: g2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12.5px]" }, g2.concepto), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono text-[12.5px]" }, "\u20AC", fmt(g2.importe), "/mes"), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => deleteGasto(g2.id), "aria-label": "Eliminar gasto" }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 14, color: C2.inkSoft }))))))), gastosPuntuales.filter((g2) => g2.fecha >= desde && g2.fecha <= hasta).length > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2 no-imprimir", style: { color: C2.inkSoft } }, "Facturas pagadas y ajustes de este periodo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 mb-4 no-imprimir" }, gastosPuntuales.filter((g2) => g2.fecha >= desde && g2.fecha <= hasta).map((g2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: g2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12.5px]" }, g2.concepto), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mono", style: { color: C2.inkSoft } }, g2.fecha)), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono text-[12.5px]" }, "\u20AC", fmt(g2.importe))))))), desgloseGastosPorCategoria.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Desglose de gastos por categor\xEDa"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, desgloseGastosPorCategoria.map(({ categoria, importe }) => {
+    const totalDesglose = desgloseGastosPorCategoria.reduce((a2, x3) => a2 + x3.importe, 0);
+    const pct = totalDesglose > 0 ? importe / totalDesglose * 100 : 0;
+    return /* @__PURE__ */ import_react4.default.createElement("div", { key: categoria }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px] mb-0.5" }, /* @__PURE__ */ import_react4.default.createElement("span", null, categoria), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, "\u20AC", fmt(importe), " ", /* @__PURE__ */ import_react4.default.createElement("span", { style: { color: C2.inkSoft } }, "(", fmt(pct), "%)"))), /
