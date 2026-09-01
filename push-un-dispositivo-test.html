@@ -5,20 +5,27 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Prueba push · un dispositivo</title>
 <style>
-body{font-family:system-ui,sans-serif;background:#f7f3e9;color:#17241c;padding:24px;max-width:720px;margin:auto}.card{background:#fff;border:1px solid #ddd3bf;border-radius:14px;padding:16px;margin:12px 0}button{font-size:18px;padding:14px 18px;border:0;border-radius:12px;background:#176b3a;color:#fff;font-weight:700}button:disabled{opacity:.45}.ok{color:#176b3a}.bad{color:#9b1c1c}.wait{color:#6b6255}
+body{font-family:system-ui,sans-serif;background:#f7f3e9;color:#17241c;padding:24px;max-width:720px;margin:auto}.card{background:#fff;border:1px solid #ddd3bf;border-radius:14px;padding:16px;margin:12px 0}.acciones{display:grid;gap:10px;margin:14px 0}button{font-size:17px;padding:14px 16px;border:0;border-radius:12px;background:#176b3a;color:#fff;font-weight:700}button.secundario{background:#4b5a54}button:disabled{opacity:.45}.ok{color:#176b3a}.bad{color:#9b1c1c}.wait{color:#6b6255}
 </style>
 </head>
 <body>
 <h1>Prueba push · este dispositivo</h1>
-<p>Esta página no crea suscripciones nuevas. Solo usa la suscripción push que ya exista en este navegador y, al pulsar el botón, envía una única notificación de prueba a este dispositivo.</p>
+<p>Esta prueba puede crear una suscripción <b>temporal solo en este navegador</b>. No la guarda en Supabase y no toca las otras suscripciones registradas. Después podrás enviar una única notificación de prueba y eliminar la suscripción temporal.</p>
 <div class="card"><b>Sesión</b><div id="sesion" class="wait">Comprobando…</div></div>
 <div class="card"><b>Service Worker</b><div id="sw" class="wait">Comprobando…</div></div>
 <div class="card"><b>Suscripción push de este navegador</b><div id="push" class="wait">Comprobando…</div></div>
-<button id="enviar" disabled>Enviar una notificación de prueba</button>
+<div class="acciones">
+  <button id="crear" disabled>Crear suscripción temporal en este móvil</button>
+  <button id="enviar" disabled>Enviar una notificación de prueba</button>
+  <button id="eliminar" class="secundario" disabled>Eliminar suscripción temporal</button>
+</div>
 <div class="card"><b>Resultado</b><div id="resultado" class="wait">Aún no enviada.</div></div>
 <script>
 const FN='https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/push-prueba-un-dispositivo';
-let accessToken=null, subscription=null, enviado=false;
+const VAPID_PUBLIC='BGxg9Sns4OUC7vWY5RoabwUGK0Q4G3E8BYjmd363yKsPG_9HhltxJG30563-zpQRpAJqnmu6fdiBqNZ-JZsm1D4';
+const MARCA_TEMP='chocoloyos_push_test_temporal';
+let accessToken=null, subscription=null, registro=null, enviado=false;
+
 function leerToken(){
   for(let i=0;i<localStorage.length;i++){
     const k=localStorage.key(i)||'';
@@ -31,37 +38,109 @@ function leerToken(){
   }
   return null;
 }
+function base64UrlABytes(base64){
+  const padding='='.repeat((4-base64.length%4)%4);
+  const base64Normal=(base64+padding).replace(/-/g,'+').replace(/_/g,'/');
+  const raw=atob(base64Normal);
+  return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
+}
 function conTimeout(promesa,ms,mensaje){
   return Promise.race([promesa,new Promise((_,rechazar)=>setTimeout(()=>rechazar(new Error(mensaje)),ms))]);
 }
+function actualizarBotones(){
+  const crear=document.getElementById('crear');
+  const enviar=document.getElementById('enviar');
+  const eliminar=document.getElementById('eliminar');
+  crear.disabled=!(accessToken&&registro&&!subscription);
+  enviar.disabled=!(accessToken&&subscription)||enviado;
+  eliminar.disabled=!(subscription&&localStorage.getItem(MARCA_TEMP)==='1');
+}
 async function iniciar(){
-  const s=document.getElementById('sesion'), sw=document.getElementById('sw'), p=document.getElementById('push'), b=document.getElementById('enviar');
+  const s=document.getElementById('sesion'), sw=document.getElementById('sw'), p=document.getElementById('push');
   accessToken=leerToken();
   if(accessToken){s.textContent='OK · sesión encontrada';s.className='ok'}else{s.textContent='No hay sesión en esta rama. Abre primero la app e inicia sesión.';s.className='bad'}
   try{
     if(!('serviceWorker' in navigator)) throw new Error('Este navegador no admite Service Worker.');
-    let reg=await navigator.serviceWorker.getRegistration('./');
-    if(!reg){
-      reg=await navigator.serviceWorker.register('./sw.js',{scope:'./'});
-    }
+    registro=await navigator.serviceWorker.getRegistration('./');
+    if(!registro) registro=await navigator.serviceWorker.register('./sw.js',{scope:'./'});
     await conTimeout(navigator.serviceWorker.ready,8000,'El Service Worker no llegó a activarse a tiempo.');
     sw.textContent='OK · Service Worker activo';sw.className='ok';
-    subscription=await reg.pushManager.getSubscription();
-    if(subscription){p.textContent='OK · este navegador ya tiene una suscripción push';p.className='ok'}else{p.textContent='Este navegador no tiene una suscripción push existente en esta rama. No se ha creado ninguna.';p.className='bad'}
-  }catch(e){sw.textContent='No se pudo activar el Service Worker: '+e.message;sw.className='bad';p.textContent='No se pudo comprobar la suscripción.';p.className='bad'}
-  b.disabled=!(accessToken&&subscription);
+    subscription=await registro.pushManager.getSubscription();
+    if(subscription){
+      p.textContent=localStorage.getItem(MARCA_TEMP)==='1'?'OK · suscripción temporal creada en este navegador':'OK · este navegador ya tiene una suscripción push';
+      p.className='ok';
+    }else{
+      localStorage.removeItem(MARCA_TEMP);
+      p.textContent='No hay suscripción push en esta rama. Puedes crear una temporal solo para esta prueba.';
+      p.className='bad';
+    }
+  }catch(e){
+    sw.textContent='No se pudo activar el Service Worker: '+e.message;sw.className='bad';
+    p.textContent='No se pudo comprobar la suscripción.';p.className='bad';
+  }
+  actualizarBotones();
 }
+
+document.getElementById('crear').addEventListener('click',async()=>{
+  const p=document.getElementById('push'), r=document.getElementById('resultado');
+  if(!registro||subscription)return;
+  document.getElementById('crear').disabled=true;
+  r.textContent='Preparando la suscripción temporal…';r.className='wait';
+  try{
+    if(!('Notification' in window)) throw new Error('Este navegador no admite notificaciones.');
+    let permiso=Notification.permission;
+    if(permiso!=='granted') permiso=await Notification.requestPermission();
+    if(permiso!=='granted') throw new Error('No se concedió permiso para mostrar notificaciones.');
+    subscription=await registro.pushManager.subscribe({
+      userVisibleOnly:true,
+      applicationServerKey:base64UrlABytes(VAPID_PUBLIC)
+    });
+    localStorage.setItem(MARCA_TEMP,'1');
+    p.textContent='OK · suscripción temporal creada solo en este navegador. No se ha guardado en Supabase.';p.className='ok';
+    r.textContent='Suscripción temporal lista. Todavía no se ha enviado ninguna notificación.';r.className='ok';
+  }catch(e){
+    p.textContent='No se pudo crear la suscripción temporal: '+e.message;p.className='bad';
+    r.textContent='No se envió ninguna notificación.';r.className='bad';
+  }
+  actualizarBotones();
+});
+
 document.getElementById('enviar').addEventListener('click',async()=>{
   if(enviado||!accessToken||!subscription)return;
-  const b=document.getElementById('enviar'), r=document.getElementById('resultado');
-  b.disabled=true; r.textContent='Enviando una única prueba…'; r.className='wait';
+  const r=document.getElementById('resultado');
+  document.getElementById('enviar').disabled=true;
+  r.textContent='Enviando una única prueba…';r.className='wait';
   try{
     const resp=await fetch(FN,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+accessToken},body:JSON.stringify({subscription:subscription.toJSON()})});
     const data=await resp.json().catch(()=>({}));
-    if(resp.ok&&data.ok){enviado=true;r.textContent='OK · el servidor confirmó el envío a este dispositivo.';r.className='ok'}
-    else{r.textContent='Fallo · '+(data.error||('status '+resp.status));r.className='bad';b.disabled=false}
-  }catch(e){r.textContent='Fallo · '+e.message;r.className='bad';b.disabled=false}
+    if(resp.ok&&data.ok){
+      enviado=true;
+      r.textContent='OK · el servidor confirmó el envío a este dispositivo.';r.className='ok';
+    }else{
+      r.textContent='Fallo · '+(data.error||('status '+resp.status));r.className='bad';
+    }
+  }catch(e){
+    r.textContent='Fallo · '+e.message;r.className='bad';
+  }
+  actualizarBotones();
 });
+
+document.getElementById('eliminar').addEventListener('click',async()=>{
+  const p=document.getElementById('push'), r=document.getElementById('resultado');
+  if(!subscription||localStorage.getItem(MARCA_TEMP)!=='1')return;
+  document.getElementById('eliminar').disabled=true;
+  try{
+    await subscription.unsubscribe();
+    subscription=null;
+    localStorage.removeItem(MARCA_TEMP);
+    p.textContent='Suscripción temporal eliminada de este navegador.';p.className='ok';
+    r.textContent='Prueba limpiada. No se guardó esta suscripción en Supabase.';r.className='ok';
+  }catch(e){
+    r.textContent='No se pudo eliminar la suscripción temporal: '+e.message;r.className='bad';
+  }
+  actualizarBotones();
+});
+
 iniciar();
 </script>
 </body>
