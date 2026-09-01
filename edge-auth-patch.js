@@ -79,7 +79,7 @@
   "use strict";
   if (document.querySelector('script[data-seleccion-neutral="1"]')) return;
   var script = document.createElement("script");
-  script.src = "./seleccion-neutral-patch.js?v=1";
+  script.src = "./seleccion-neutral-patch.js?v=2";
   script.defer = true;
   script.setAttribute("data-seleccion-neutral", "1");
   (document.head || document.documentElement).appendChild(script);
