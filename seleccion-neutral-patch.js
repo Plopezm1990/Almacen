@@ -1,3 +1,126 @@
+// Compatibilidad temporal de seguridad para la rama de pruebas.
+//
+// PROTECCIÓN DE SUSCRIPCIONES PUSH
+// - Si el navegador crea una suscripción nueva y el alta en Supabase falla,
+//   se deshace esa suscripción local para no dejar un estado "activado" falso.
+// - Al desactivar, solo se permite unsubscribe() cuando se ha comprobado que
+//   el endpoint ya no existe en suscripciones_push.
+//
+// Este bloque no crea, borra ni modifica suscripciones por sí solo: únicamente
+// protege los flujos que inicia el usuario desde la interfaz.
+(function () {
+  "use strict";
+
+  if (window.__pushSubscriptionSafetyPatched) return;
+  window.__pushSubscriptionSafetyPatched = true;
+
+  if (!window.fetch || !window.PushManager || !window.PushSubscription) return;
+
+  var subscribeOriginal = window.PushManager.prototype.subscribe;
+  var unsubscribeOriginal = window.PushSubscription.prototype.unsubscribe;
+  if (typeof subscribeOriginal !== "function" || typeof unsubscribeOriginal !== "function") return;
+
+  var fetchOriginal = window.fetch.bind(window);
+  var pendiente = null;
+  var temporizadorPendiente = null;
+  var rollbackEnCurso = false;
+
+  function limpiarPendiente() {
+    if (temporizadorPendiente) {
+      clearTimeout(temporizadorPendiente);
+      temporizadorPendiente = null;
+    }
+    pendiente = null;
+  }
+
+  async function deshacerPendiente() {
+    var sub = pendiente;
+    limpiarPendiente();
+    if (!sub) return;
+    rollbackEnCurso = true;
+    try {
+      await unsubscribeOriginal.call(sub);
+    } catch (_) {
+      // El alta ya ha fallado; si el navegador también falla al deshacerla,
+      // no se oculta el error original de Supabase.
+    } finally {
+      rollbackEnCurso = false;
+    }
+  }
+
+  window.PushManager.prototype.subscribe = async function () {
+    var sub = await subscribeOriginal.apply(this, arguments);
+    pendiente = sub;
+
+    if (temporizadorPendiente) clearTimeout(temporizadorPendiente);
+    temporizadorPendiente = setTimeout(function () {
+      // Si después de crear la suscripción no llegó a completarse ningún alta
+      // en Supabase (por caída de red, sesión, etc.), se limpia el navegador.
+      deshacerPendiente().catch(function () {});
+    }, 45000);
+
+    return sub;
+  };
+
+  function esPeticionSuscripciones(input) {
+    var url = typeof input === "string" ? input : (input && input.url) || "";
+    return url.indexOf("/rest/v1/suscripciones_push") !== -1;
+  }
+
+  function metodoPeticion(input, init) {
+    return String(
+      (init && init.method) ||
+      (typeof Request !== "undefined" && input instanceof Request ? input.method : "GET") ||
+      "GET"
+    ).toUpperCase();
+  }
+
+  window.fetch = async function (input, init) {
+    var esAlta = pendiente && esPeticionSuscripciones(input) && metodoPeticion(input, init) === "POST";
+    if (!esAlta) return fetchOriginal(input, init);
+
+    try {
+      var respuesta = await fetchOriginal(input, init);
+      if (respuesta && respuesta.ok) {
+        limpiarPendiente();
+      } else {
+        await deshacerPendiente();
+      }
+      return respuesta;
+    } catch (e) {
+      await deshacerPendiente();
+      throw e;
+    }
+  };
+
+  window.PushSubscription.prototype.unsubscribe = async function () {
+    if (rollbackEnCurso) return unsubscribeOriginal.apply(this, arguments);
+
+    var endpoint = this && this.endpoint ? this.endpoint : "";
+    if (!endpoint) throw new Error("No se pudo identificar esta suscripción push.");
+
+    if (typeof window.getSupabaseClient !== "function") {
+      throw new Error("No se pudo comprobar la nube. La suscripción no se ha desactivado en este navegador.");
+    }
+
+    var supabase = await window.getSupabaseClient();
+    var comprobacion = await supabase
+      .from("suscripciones_push")
+      .select("endpoint")
+      .eq("endpoint", endpoint)
+      .maybeSingle();
+
+    if (comprobacion.error) {
+      throw new Error("No se pudo comprobar el borrado en la nube. La suscripción sigue activa en este navegador.");
+    }
+    if (comprobacion.data) {
+      throw new Error("No se pudo eliminar la suscripción de la nube. La suscripción sigue activa en este navegador.");
+    }
+
+    return unsubscribeOriginal.apply(this, arguments);
+  };
+})();
+
 // Compatibilidad temporal de interfaz para la rama de seguridad.
 //
 // Objetivo: mientras el bundle principal todavía usa el formato antiguo de
