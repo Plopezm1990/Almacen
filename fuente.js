@@ -117260,6 +117260,11 @@ async function saveKey(key, value) {
     }
   }
 }
+function SelectorLocalInformes({ locales = [], valor = "", onChange }) {
+  const activos = locales.filter((l2) => l2 && l2.activo !== false && !l2.fusionadoEn);
+  const seleccionado = activos.find((l2) => l2.id === valor);
+  return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-3 items-end" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Local" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: valor, onChange: (e) => onChange(e.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Todos los locales"), activos.map((l2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: l2.id, value: l2.id }, l2.nombre)))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] pb-2", style: { color: C2.inkSoft } }, seleccionado ? `Mostrando solo ${seleccionado.nombre}.` : "Mostrando datos consolidados de todos los locales.")));
+}
 function GestionAlmacen() {
   const [ready, setReady] = (0, import_react4.useState)(false);
   const [fallosGuardado, setFallosGuardado] = (0, import_react4.useState)([]);
@@ -117345,6 +117350,7 @@ function GestionAlmacen() {
   const [devoluciones, setDevoluciones] = (0, import_react4.useState)([]);
   const [locales, setLocales] = (0, import_react4.useState)([]);
   const [localActivoId, setLocalActivoId] = (0, import_react4.useState)(null);
+  const [localInformeId, setLocalInformeId] = (0, import_react4.useState)("");
   const productosDelLocalActivo = (0, import_react4.useMemo)(() => {
     if (!localActivoId) return productos;
     return productos.filter((p2) => !p2.localId || p2.localId === localActivoId);
@@ -117437,28 +117443,76 @@ function GestionAlmacen() {
       setEntrevistas(entr);
       setMovimientosCaja(mc || []);
       setDevoluciones(dev || []);
-      let localesFinales = loc || [];
+      let localesFinales = Array.isArray(loc) ? [...loc] : [];
       let localActivoFinal = lai || null;
+      const productosBase = Array.isArray(pr) ? pr : [];
+      const normalizarNombreLocal = (v2) => String(v2 || "").trim().toLowerCase();
+      const idsProductoConLocal = [...new Set(productosBase.map((prod) => prod && prod.localId).filter(Boolean))];
+      const idsLocalesIniciales = new Set(localesFinales.map((l2) => l2 && l2.id).filter(Boolean));
+      const idsLocalesHuerfanos = idsProductoConLocal.filter((id) => !idsLocalesIniciales.has(id));
+      if (idsLocalesHuerfanos.length === 1 && localesFinales.length > 0) {
+        const nombresLocales = new Set(localesFinales.map((l2) => normalizarNombreLocal(l2 && l2.nombre)).filter(Boolean));
+        if (nombresLocales.size === 1) {
+          const idCanonico = idsLocalesHuerfanos[0];
+          const baseLocal = localesFinales.find((l2) => l2 && l2.activo !== false) || localesFinales[0];
+          const duplicadosAnteriores = localesFinales.map((l2) => ({ ...l2, activo: false, fusionadoEn: idCanonico }));
+          localesFinales = [{ ...baseLocal, id: idCanonico, activo: true, fusionadoEn: null, recuperadoDeProductos: true }, ...duplicadosAnteriores];
+          localActivoFinal = idCanonico;
+        }
+      }
       if (localesFinales.length === 0) {
         const primerLocal = { id: uid(), nombre: "Chocoloyos S.L", direccion: "", activo: true, creadoEn: (/* @__PURE__ */ new Date()).toISOString() };
         localesFinales = [primerLocal];
         localActivoFinal = primerLocal.id;
-        await saveKey("locales", localesFinales);
-        await saveKey("localActivoId", localActivoFinal);
-      } else if (!localActivoFinal || !localesFinales.some((l2) => l2.id === localActivoFinal)) {
-        localActivoFinal = localesFinales[0]?.id || null;
       }
+      const idsLocalesTrasReparar = new Set(localesFinales.map((l2) => l2 && l2.id).filter(Boolean));
+      idsProductoConLocal.forEach((id) => {
+        if (!idsLocalesTrasReparar.has(id)) {
+          localesFinales.push({ id, nombre: "Local recuperado", direccion: "", activo: true, creadoEn: (/* @__PURE__ */ new Date()).toISOString(), recuperadoDeProductos: true });
+          idsLocalesTrasReparar.add(id);
+        }
+      });
+      if (!localActivoFinal || !localesFinales.some((l2) => l2.id === localActivoFinal && l2.activo !== false && !l2.fusionadoEn)) {
+        localActivoFinal = localesFinales.find((l2) => l2.activo !== false && !l2.fusionadoEn)?.id || localesFinales[0]?.id || null;
+      }
+      let productosFinales = productosBase;
+      if (localActivoFinal && productosFinales.some((prod) => !prod.localId)) {
+        productosFinales = productosFinales.map((prod) => prod.localId ? prod : { ...prod, localId: localActivoFinal });
+      }
+      const localPorProductoMigracion = new Map(productosFinales.map((prod) => [prod.id, prod.localId || localActivoFinal || null]));
+      const inferirLocalLineasMigracion = (lineas) => {
+        const ids = [...new Set((lineas || []).map((ln2) => localPorProductoMigracion.get(ln2 && ln2.productoId)).filter(Boolean))];
+        return ids.length === 1 ? ids[0] : localActivoFinal || null;
+      };
+      const movimientosFinales = (mo || []).map((m2) => m2.localId ? m2 : { ...m2, localId: localPorProductoMigracion.get(m2.productoId) || localActivoFinal || null });
+      const albaranesFinales = (alLimpios || []).map((a2) => a2.localId ? a2 : { ...a2, localId: inferirLocalLineasMigracion(a2.lineas) });
+      const pedidosFinales = (pe2 || []).map((pedido) => pedido.localId ? pedido : { ...pedido, localId: inferirLocalLineasMigracion(pedido.items) });
+      const encargosFinales = (en || []).map((encargo) => encargo.localId ? encargo : { ...encargo, localId: inferirLocalLineasMigracion(encargo.lineas) });
+      const gastosFinales = (gg || []).map((g2) => g2.localId ? g2 : { ...g2, localId: localActivoFinal || null });
+      const facturasDirectasFinales = (fd2 || []).map((f2) => f2.localId ? f2 : { ...f2, localId: localActivoFinal || null });
+      const empleadosFinales = (em || []).map((e) => e.localId ? e : { ...e, localId: localActivoFinal || null });
       setLocales(localesFinales);
       setLocalActivoId(localActivoFinal);
-      const productosSinLocal = (pr || []).filter((prod) => !prod.localId);
-      let productosFinales = pr || [];
-      if (productosSinLocal.length > 0 && localActivoFinal) {
-        productosFinales = productosFinales.map((prod) => prod.localId ? prod : { ...prod, localId: localActivoFinal });
-        await saveKey("productos", productosFinales);
-      }
       setProductos(productosFinales);
+      setMovimientos(movimientosFinales);
+      setAlbaranes(albaranesFinales);
+      setPedidos(pedidosFinales);
+      setEncargos(encargosFinales);
+      setGastosGenerales(gastosFinales);
+      setFacturasDirectas(facturasDirectasFinales);
+      setEmpleados(empleadosFinales);
+      await saveKey("locales", localesFinales);
+      await saveKey("localActivoId", localActivoFinal);
+      if (JSON.stringify(productosFinales) !== JSON.stringify(pr || [])) await saveKey("productos", productosFinales);
+      if (JSON.stringify(movimientosFinales) !== JSON.stringify(mo || [])) await saveKey("movimientos", movimientosFinales);
+      if (JSON.stringify(albaranesFinales) !== JSON.stringify(alLimpios || [])) await saveKey("albaranes", albaranesFinales);
+      if (JSON.stringify(pedidosFinales) !== JSON.stringify(pe2 || [])) await saveKey("pedidos", pedidosFinales);
+      if (JSON.stringify(encargosFinales) !== JSON.stringify(en || [])) await saveKey("encargos", encargosFinales);
+      if (JSON.stringify(gastosFinales) !== JSON.stringify(gg || [])) await saveKey("gastosGenerales", gastosFinales);
+      if (JSON.stringify(facturasDirectasFinales) !== JSON.stringify(fd2 || [])) await saveKey("facturasDirectas", facturasDirectasFinales);
+      if (JSON.stringify(empleadosFinales) !== JSON.stringify(em || [])) await saveKey("empleados", empleadosFinales);
       setReady(true);
-      if (habiaFotos) await saveKey("albaranes", alLimpios);
+      if (habiaFotos) await saveKey("albaranes", albaranesFinales);
       setTimeout(() => {
         skipSaveRef.current = false;
       }, 400);
@@ -117687,13 +117741,13 @@ function GestionAlmacen() {
     registrarAuditoria
   });
   const { addProveedor, updateProveedor, deleteProveedor } = crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria });
-  const { addGasto, deleteGasto } = crearLogicaGastos({ setGastosGenerales });
-  const { addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas });
+  const { addGasto, deleteGasto } = crearLogicaGastos({ setGastosGenerales, localActivoId });
+  const { addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria });
   const { venderCarrito, venderLocal, anularVenta, venderLineas } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria });
-  const { addEncargo, updateEncargo, deleteEncargo, entregarEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, setProductos, setMovimientos, venderLineas });
+  const { addEncargo, updateEncargo, deleteEncargo, entregarEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, setProductos, setMovimientos, venderLineas, localActivoId });
   const { traspasarStock } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria });
   const { addArqueo, deleteArqueo } = crearLogicaCaja({ setArqueos });
   const { registrarMovimientoCaja, eliminarMovimientoCaja } = crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, registrarAuditoria });
@@ -117723,10 +117777,11 @@ function GestionAlmacen() {
     proveedorPorId,
     setPrefillAlbaran,
     setPedidoParaFotoIA,
-    setTab
+    setTab,
+    localActivoId
   });
-  const { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido } = crearLogicaPedidos({ pedidos, setPedidos, productos, setProductos, setMovimientos, almacenCongelado, procesarRecepcion });
-  const { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta } = crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, addGasto, deleteGasto, gastosGenerales });
+  const { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido } = crearLogicaPedidos({ pedidos, setPedidos, productos, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId });
+  const { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta } = crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, addGasto, deleteGasto, gastosGenerales, localActivoId });
   const { addNomina, updateNomina, deleteNomina } = crearLogicaNominas({ setNominas, registrarAuditoria });
   const { crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista } = crearLogicaEntrevistas({ entrevistas, setEntrevistas, registrarAuditoria });
   const { crearPrefiltro, listarPrefiltros, eliminarPrefiltro } = crearLogicaPrefiltros({ registrarAuditoria });
@@ -118256,30 +118311,61 @@ function GestionAlmacen() {
   if (!ready) {
     return /* @__PURE__ */ import_react4.default.createElement("div", { style: { background: C2.bg, color: C2.ink }, className: "w-full h-full min-h-[600px] flex items-center justify-center font-sans" }, /* @__PURE__ */ import_react4.default.createElement(LoaderCircle, { className: "animate-spin", size: 22 }), /* @__PURE__ */ import_react4.default.createElement("span", { className: "ml-2 text-sm" }, "Cargando almac\xE9n\u2026"));
   }
-  const contenido = /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, tab === "dashboard" && /* @__PURE__ */ import_react4.default.createElement(
+  const localPorProductoInforme = new Map(productos.map((p2) => [p2.id, p2.localId || null]));
+  const inferirLocalLineasInforme = (lineas) => {
+    const ids = [...new Set((lineas || []).map((ln2) => localPorProductoInforme.get(ln2 && ln2.productoId)).filter(Boolean))];
+    return ids.length === 1 ? ids[0] : null;
+  };
+  const productosInforme = localInformeId ? productos.filter((p2) => p2.localId === localInformeId) : productos;
+  const movimientosInforme = localInformeId ? movimientos.filter((m2) => (m2.localId || localPorProductoInforme.get(m2.productoId) || null) === localInformeId) : movimientos;
+  const albaranesInforme = localInformeId ? albaranes.filter((a2) => (a2.localId || inferirLocalLineasInforme(a2.lineas)) === localInformeId) : albaranes;
+  const facturasDirectasInforme = localInformeId ? facturasDirectas.filter((f2) => f2.localId === localInformeId) : facturasDirectas;
+  const gastosGeneralesInforme = localInformeId ? gastosGenerales.filter((g2) => g2.localId === localInformeId) : gastosGenerales;
+  const empleadosInforme = localInformeId ? empleados.filter((e) => e.localId === localInformeId) : empleados;
+  const pedidosInforme = localInformeId ? pedidos.filter((pe2) => (pe2.localId || inferirLocalLineasInforme(pe2.items)) === localInformeId) : pedidos;
+  const encargosInforme = localInformeId ? encargos.filter((e) => (e.localId || inferirLocalLineasInforme(e.lineas)) === localInformeId) : encargos;
+  const idsFacturasInforme = new Set([...albaranesInforme.map((a2) => a2.id), ...facturasDirectasInforme.map((f2) => f2.id)]);
+  const pendientesPagoInforme = localInformeId ? pendientesPago.filter((f2) => idsFacturasInforme.has(f2.id)) : pendientesPago;
+  const vencenProntoInforme = pendientesPagoInforme.filter((f2) => f2.dias !== null && f2.dias <= 7);
+  const totalPendientePagoInforme = pendientesPagoInforme.reduce((a2, f2) => a2 + f2.total, 0);
+  const valorInventarioInforme = productosInforme.filter((p2) => !esUtillaje(p2)).reduce((acc, p2) => acc + (Number(p2.stock) || 0) * Number(p2.costo || 0), 0);
+  const valorUtillajeInforme = productosInforme.filter(esUtillaje).reduce((acc, p2) => acc + (Number(p2.stock) || 0) * Number(p2.costo || 0), 0);
+  const stockBajoInforme = productosInforme.filter((p2) => p2.tipo !== "elaborado" && p2.stock <= Number(p2.stockMinimo || 0));
+  const productosConPrecioInforme = productosInforme.filter((p2) => Number(p2.precioVenta) > 0);
+  const margenPromedioInforme = productosConPrecioInforme.length ? productosConPrecioInforme.reduce((acc, p2) => acc + (margenDe(p2) || 0), 0) / productosConPrecioInforme.length : 0;
+  const pedidosPendientesInforme = pedidosInforme.filter((p2) => p2.estado !== "Recibido");
+  const caducanProntoInforme = localInformeId ? caducanPronto.filter((l2) => localPorProductoInforme.get(l2.productoId) === localInformeId) : caducanPronto;
+  const idsEncargosInforme = new Set(encargosInforme.map((e) => e.id));
+  const encargosUrgentesInforme = localInformeId ? encargosUrgentes.filter((e) => idsEncargosInforme.has(e.id)) : encargosUrgentes;
+  const pisoVentaBajoInforme = localInformeId ? pisoVentaBajo.filter((p2) => p2.localId === localInformeId) : pisoVentaBajo;
+  const sugerenciasPedidoInforme = localInformeId ? sugerenciasPedido.filter((p2) => p2.localId === localInformeId) : sugerenciasPedido;
+  const recordatorioConteoInforme = localInformeId ? recordatorioConteo.filter((a2) => localPorProductoInforme.get(a2.productoId || a2.id) === localInformeId) : recordatorioConteo;
+  const diagnosticoStockInforme = localInformeId ? diagnosticoStock.filter((d2) => localPorProductoInforme.get(d2.productoId) === localInformeId) : diagnosticoStock;
+  const addGastoInforme = (data) => addGasto({ ...data, localId: localInformeId || localActivoId || null });
+  const contenido = /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, (tab === "dashboard" || tab === "resultados" || tab === "libroiva") && /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales, valor: localInformeId, onChange: setLocalInformeId }), tab === "dashboard" && /* @__PURE__ */ import_react4.default.createElement(
     Dashboard,
     {
-      valorInventario,
-      valorUtillaje,
-      stockBajo,
-      pedidosPendientes,
-      margenPromedio,
-      movimientos,
-      productos,
-      caducanPronto,
+      valorInventario: valorInventarioInforme,
+      valorUtillaje: valorUtillajeInforme,
+      stockBajo: stockBajoInforme,
+      pedidosPendientes: pedidosPendientesInforme,
+      margenPromedio: margenPromedioInforme,
+      movimientos: movimientosInforme,
+      productos: productosInforme,
+      caducanPronto: caducanProntoInforme,
       proveedorPorId,
-      vencenPronto,
-      totalPendientePago,
+      vencenPronto: vencenProntoInforme,
+      totalPendientePago: totalPendientePagoInforme,
       documentosPersonalPronto,
       fichajesAbiertos,
-      encargosUrgentes,
-      pisoVentaBajo,
-      sugerenciasPedido,
+      encargosUrgentes: encargosUrgentesInforme,
+      pisoVentaBajo: pisoVentaBajoInforme,
+      sugerenciasPedido: sugerenciasPedidoInforme,
       setTab,
-      recordatorioConteo,
+      recordatorioConteo: recordatorioConteoInforme,
       alertasAppcc,
       fallosGuardado,
-      diagnosticoStock,
+      diagnosticoStock: diagnosticoStockInforme,
       registrarSalida
     }
   ), tab === "direccion" && /* @__PURE__ */ import_react4.default.createElement(
@@ -118391,13 +118477,13 @@ function GestionAlmacen() {
   ), tab === "resultados" && /* @__PURE__ */ import_react4.default.createElement(
     Resultados,
     {
-      movimientos,
-      productos,
+      movimientos: movimientosInforme,
+      productos: productosInforme,
       productoPorId,
-      gastosGenerales,
-      addGasto,
+      gastosGenerales: gastosGeneralesInforme,
+      addGasto: addGastoInforme,
       deleteGasto,
-      empleados
+      empleados: empleadosInforme
     }
   ), tab === "fichas" && /* @__PURE__ */ import_react4.default.createElement(
     FichasCosto,
@@ -118539,7 +118625,7 @@ function GestionAlmacen() {
         setTab("pagos");
       }
     }
-  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos, productos, albaranes, proveedorPorId, facturasDirectas }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { movimientos, arqueos, addArqueo, deleteArqueo, encargos, movimientosCaja, registrarMovimientoCaja, eliminarMovimientoCaja }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { movimientos, arqueos, addArqueo, deleteArqueo, encargos, movimientosCaja, registrarMovimientoCaja, eliminarMovimientoCaja }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
     Turnos,
     {
       empleados,
@@ -118784,9 +118870,9 @@ function crearLogicaProveedores({ proveedores, setProveedores, registrarAuditori
   }
   return { addProveedor, updateProveedor, deleteProveedor };
 }
-function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas }) {
+function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId }) {
   function addEmpleado(data) {
-    setEmpleados((s2) => [...s2, { id: uid(), activo: true, documentos: [], ...data }]);
+    setEmpleados((s2) => [...s2, { id: uid(), activo: true, documentos: [], ...data, localId: data.localId || localActivoId || null }]);
   }
   async function crearCuentaEmpleado(empleadoId, { nombre, email, password, rol }) {
     try {
@@ -118916,9 +119002,9 @@ function crearLogicaFichaje({ setFichajes }) {
   }
   return { fichar, addFichajeManual, updateFichaje, eliminarFichaje };
 }
-function crearLogicaGastos({ setGastosGenerales }) {
+function crearLogicaGastos({ setGastosGenerales, localActivoId }) {
   function addGasto(data) {
-    setGastosGenerales((s2) => [...s2, { id: uid(), ...data }]);
+    setGastosGenerales((s2) => [...s2, { id: uid(), ...data, localId: data.localId || localActivoId || null }]);
   }
   function deleteGasto(id) {
     setGastosGenerales((s2) => s2.filter((g2) => g2.id !== id));
@@ -119180,6 +119266,7 @@ function crearMotorStock({ productos, setProductos, movimientos, setMovimientos,
       id,
       operationId: operationId || id,
       productoId,
+      localId: producto.localId || null,
       cantidad: cantidadNum,
       tipo,
       motivo: motivo || "",
@@ -119330,7 +119417,8 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
       addGasto({
         concepto: `Ajuste ${origen.nombre} \u2192 ${destino.nombre}${motivo ? " \xB7 " + motivo : ""}`,
         importe: Number((-diferencia).toFixed(2)),
-        fecha: todayISO()
+        fecha: todayISO(),
+        localId: origen.localId || destino.localId || localActivoId || null
       });
     }
     registrarAuditoria(
@@ -119349,6 +119437,7 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
           id: uid(),
           operationId: uid(),
           productoId: nuevo.id,
+          localId: nuevo.localId || null,
           cantidad: stockInicial,
           tipo: "OTRO",
           motivo: "Alta de producto con stock inicial",
@@ -119434,10 +119523,11 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
   }
   return { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro };
 }
-function crearLogicaPedidos({ pedidos, setPedidos, productos, setProductos, setMovimientos, almacenCongelado, procesarRecepcion }) {
+function crearLogicaPedidos({ pedidos, setPedidos, productos, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId }) {
   function crearPedido({ proveedorId, fechaEsperada, items }) {
     const pedido = {
       id: uid(),
+      localId: localActivoId || null,
       proveedorId,
       fecha: todayISO(),
       fechaEsperada,
@@ -119933,11 +120023,13 @@ function sincronizarCobroSe\u00F1al(cobros, se\u00F1al, se\u00F1alMedioPago, fec
     ...resto
   ];
 }
-function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, setProductos, setMovimientos, venderLineas }) {
+function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, setProductos, setMovimientos, venderLineas, localActivoId }) {
   function addEncargo(data) {
     const fecha = todayISO();
     const cobros = sincronizarCobroSe\u00F1al([], data.se\u00F1al, data.se\u00F1alMedioPago, fecha);
-    setEncargos((s2) => [{ id: uid(), estado: "Pendiente", fechaCreacion: fecha, cobros, ...data }, ...s2]);
+    const idsLocalesLineas = [...new Set((data.lineas || []).map((ln2) => productos.find((p2) => p2.id === ln2.productoId)?.localId).filter(Boolean))];
+    const localId = data.localId || (idsLocalesLineas.length === 1 ? idsLocalesLineas[0] : null) || localActivoId || null;
+    setEncargos((s2) => [{ id: uid(), estado: "Pendiente", fechaCreacion: fecha, cobros, ...data, localId }, ...s2]);
   }
   function updateEncargo(id, data) {
     setEncargos(
@@ -120069,6 +120161,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       const ivaAplicado = prod ? ivaDe(prod) : 0;
       const datosLinea = {
         productoId: ln2.productoId,
+        localId: prod ? prod.localId || null : null,
         cantidad: cant,
         motivo: "Venta",
         costoUnitario,
@@ -120282,7 +120375,8 @@ function crearLogicaAlbaranes({
   proveedorPorId,
   setPrefillAlbaran,
   setPedidoParaFotoIA,
-  setTab
+  setTab,
+  localActivoId
 }) {
   const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
   const claveCat = (proveedorId, codigo) => `${proveedorId}::${String(codigo || "").trim().toUpperCase()}`;
@@ -120309,7 +120403,9 @@ function crearLogicaAlbaranes({
     return copia;
   }
   function guardarAlbaran(alb) {
-    const limpio = sinFotoIncrustada(alb);
+    const limpioBase = sinFotoIncrustada(alb);
+    const idsLocalesLineas = [...new Set((limpioBase.lineas || []).map((ln2) => productos.find((p2) => p2.id === ln2.productoId)?.localId).filter(Boolean))];
+    const limpio = { ...limpioBase, localId: limpioBase.localId || (idsLocalesLineas.length === 1 ? idsLocalesLineas[0] : null) || localActivoId || null };
     setAlbaranes((s2) => {
       const existe = s2.some((a2) => a2.id === limpio.id);
       return existe ? s2.map((a2) => a2.id === limpio.id ? limpio : a2) : [limpio, ...s2];
@@ -120452,6 +120548,7 @@ function crearLogicaAlbaranes({
         const nuevoId = uid();
         const nuevo = {
           id: nuevoId,
+          localId: localActivoId || null,
           codigo: ln2.codigoProveedor || "",
           nombre: ln2.descripcion || "Sin descripci\xF3n",
           categoria: "",
@@ -120474,6 +120571,7 @@ function crearLogicaAlbaranes({
             id: uid(),
             operationId: uid(),
             productoId: nuevoId,
+            localId: nuevo.localId || localActivoId || null,
             cantidad: unidadesTotales,
             tipo: "COMPRA",
             motivo: `${motivoDoc} \xB7 alta autom\xE1tica`,
@@ -121107,14 +121205,14 @@ function crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegist
   }
   return { addFreidora, updateFreidora, deleteFreidora, registrarCambio, registrarRelleno, eliminarRegistroAceite, consumoPorCiclo };
 }
-function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, addGasto, deleteGasto, gastosGenerales }) {
+function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, addGasto, deleteGasto, gastosGenerales, localActivoId }) {
   function addFacturaDirecta(data) {
     const base = Number(data.importeBase) || 0;
     const ivaPct = Number(data.ivaPct) || 0;
     const importeIva = base * (ivaPct / 100);
     const importeTotal = base + importeIva;
     setFacturasDirectas((s2) => [
-      { id: uid(), pagada: false, ...data, importeBase: base, ivaPct, importeIva, importeTotal },
+      { id: uid(), pagada: false, ...data, localId: data.localId || localActivoId || null, importeBase: base, ivaPct, importeIva, importeTotal },
       ...s2
     ]);
   }
@@ -121151,7 +121249,8 @@ function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, re
           importe: Number(f2.importeTotal) || 0,
           fecha: todayISO(),
           facturaDirectaId: id,
-          categoria: f2.categoria || ""
+          categoria: f2.categoria || "",
+          localId: f2.localId || localActivoId || null
         });
       }
     } else if (deleteGasto && gastosGenerales) {
@@ -123603,7 +123702,7 @@ function Locales({ locales, localActivoId, crearLocal, actualizarLocal, desactiv
     setError("");
     setMostrarForm(false);
   }
-  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Locales"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Primer paso de varios locales: por ahora solo gestiona la lista y cu\xE1l est\xE1 activo en este dispositivo. Todav\xEDa no reparte productos, stock ni caja por local \u2014 eso viene despu\xE9s.")), /* @__PURE__ */ import_react4.default.createElement(DiagnosticoSincronizacion, null), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 mb-4" }, activos.map((l2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: l2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium text-[13px] flex items-center gap-1.5" }, l2.nombre, l2.id === localActivoId && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "activo en este dispositivo")), l2.direccion && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, l2.direccion)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, l2.id !== localActivoId && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => cambiarLocalActivo(l2.id) }, "Usar este"), activos.length > 1 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setConfirmarDesactivar(l2) }, "Desactivar")))))), mostrarForm ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre del local" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nombre, onChange: (e) => setNombre(e.target.value), placeholder: "Ej: San Gin\xE9s Centro", autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Direcci\xF3n (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: direccion, onChange: (e) => setDireccion(e.target.value) })), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: enviar }, "Crear local"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Locales"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "La separaci\xF3n por local ya est\xE1 activa en Panel general, Resultados y Libro de IVA. El resto de m\xF3dulos mantiene de momento la vista conjunta mientras se completa la separaci\xF3n por local.")), /* @__PURE__ */ import_react4.default.createElement(DiagnosticoSincronizacion, null), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 mb-4" }, activos.map((l2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: l2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium text-[13px] flex items-center gap-1.5" }, l2.nombre, l2.id === localActivoId && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "activo en este dispositivo")), l2.direccion && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, l2.direccion)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, l2.id !== localActivoId && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => cambiarLocalActivo(l2.id) }, "Usar este"), activos.length > 1 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setConfirmarDesactivar(l2) }, "Desactivar")))))), mostrarForm ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre del local" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nombre, onChange: (e) => setNombre(e.target.value), placeholder: "Ej: San Gin\xE9s Centro", autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Direcci\xF3n (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: direccion, onChange: (e) => setDireccion(e.target.value) })), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: enviar }, "Crear local"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
     setMostrarForm(false);
     setError("");
   } }, "Cancelar"))) : /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setMostrarForm(true) }, "+ A\xF1adir local nuevo"), inactivos.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-6" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, "Locales desactivados"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, inactivos.map((l2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: l2.id, style: { opacity: 0.6 } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px]" }, l2.nombre))))), confirmarDesactivar && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmarDesactivar(null), title: "Desactivar local" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, '"', confirmarDesactivar.nombre, '" dejar\xE1 de aparecer como local activo. No se borra ning\xFAn dato \u2014 solo se oculta de la lista de "en uso".'), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {

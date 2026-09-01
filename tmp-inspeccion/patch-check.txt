@@ -1,0 +1,42 @@
+CAMBIOS 33
+componente selector informes
+estado local de informes
+migración segura de locales y registros
+persistencia albaranes migrados
+localId en motor de stock
+localId stock inicial producto
+localId gasto ajuste productos
+lógica gastos por local
+firma personal local
+empleado nuevo con local
+firma facturas directas local
+factura directa nueva con local
+gasto de factura conserva local
+firma albaranes local
+guardar albarán con local
+producto automático recepción con local
+movimiento alta automática con local
+firma pedidos local
+pedido nuevo con local
+venta atómica transporta local
+firma encargos local
+encargo nuevo con local
+conectar gastos local
+conectar personal local
+conectar encargos local
+conectar albaranes local
+conectar pedidos local
+conectar facturas directas local
+aviso locales actualizado
+datos filtrados y selector solo en tres módulos
+props dashboard filtradas
+props resultados filtradas
+props libro IVA filtradas
+SIZE_ANTES 5414678
+SIZE_DESPUES 5426150
+OK SelectorLocalInformes
+OK Todos los locales
+OK localInformeId
+OK movimientos con localId
+OK Resultados filtrados
+OK Libro IVA filtrado
