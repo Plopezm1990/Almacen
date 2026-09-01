@@ -40,3 +40,10 @@ OK localInformeId
 OK movimientos con localId
 OK Resultados filtrados
 OK Libro IVA filtrado
+OK SelectorLocalInformes
+OK Todos los locales
+OK localInformeId
+OK movimientos con localId
+OK Resultados filtrados
+OK Libro IVA filtrado
+OK Duplicados fusionados ocultos

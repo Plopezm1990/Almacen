@@ -123689,8 +123689,8 @@ function Locales({ locales, localActivoId, crearLocal, actualizarLocal, desactiv
   const [direccion, setDireccion] = import_react4.default.useState("");
   const [error, setError] = import_react4.default.useState("");
   const [confirmarDesactivar, setConfirmarDesactivar] = import_react4.default.useState(null);
-  const activos = locales.filter((l2) => l2.activo !== false);
-  const inactivos = locales.filter((l2) => l2.activo === false);
+  const activos = locales.filter((l2) => l2.activo !== false && !l2.fusionadoEn);
+  const inactivos = locales.filter((l2) => l2.activo === false && !l2.fusionadoEn);
   function enviar() {
     const r = crearLocal({ nombre, direccion });
     if (!r.ok) {
