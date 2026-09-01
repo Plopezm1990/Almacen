@@ -1,0 +1,55 @@
+START 4545400 END 4547743 LEN 2343
+function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, addGasto, deleteGasto, gastosGenerales }) {
+  function addFacturaDirecta(data) {
+    const base = Number(data.importeBase) || 0;
+    const ivaPct = Number(data.ivaPct) || 0;
+    const importeIva = base * (ivaPct / 100);
+    const importeTotal = base + importeIva;
+    setFacturasDirectas((s2) => [
+      { id: uid(), pagada: false, ...data, importeBase: base, ivaPct, importeIva, importeTotal },
+      ...s2
+    ]);
+  }
+  function updateFacturaDirecta(id, data) {
+    setFacturasDirectas(
+      (s2) => s2.map((f2) => {
+        if (f2.id !== id) return f2;
+        const actualizada = { ...f2, ...data };
+        const base = Number(actualizada.importeBase) || 0;
+        const ivaPct = Number(actualizada.ivaPct) || 0;
+        return { ...actualizada, importeBase: base, ivaPct, importeIva: base * (ivaPct / 100), importeTotal: base + base * (ivaPct / 100) };
+      })
+    );
+  }
+  function deleteFacturaDirecta(id) {
+    setFacturasDirectas((s2) => {
+      const f2 = s2.find((x3) => x3.id === id);
+      registrarAuditoria("Eliminar factura directa", f2 ? `${f2.concepto} \xB7 \u20AC${(Number(f2.importeTotal) || 0).toFixed(2)}` : id);
+      return s2.filter((x3) => x3.id !== id);
+    });
+    if (deleteGasto && gastosGenerales) {
+      const previo = gastosGenerales.find((g2) => g2.facturaDirectaId === id);
+      if (previo) deleteGasto(previo.id);
+    }
+  }
+  function marcarPagadaFacturaDirecta(id, pagada) {
+    const f2 = facturasDirectas.find((x3) => x3.id === id);
+    setFacturasDirectas((s2) => s2.map((x3) => x3.id === id ? { ...x3, pagada, fechaPago: pagada ? todayISO() : "" } : x3));
+    if (pagada) {
+      registrarAuditoria("Marcar factura directa como pagada", id);
+      if (f2 && addGasto) {
+        addGasto({
+          concepto: f2.concepto || "Factura directa",
+          importe: Number(f2.importeTotal) || 0,
+          fecha: todayISO(),
+          facturaDirectaId: id,
+          categoria: f2.categoria || ""
+        });
+      }
+    } else if (deleteGasto && gastosGenerales) {
+      const previo = gastosGenerales.find((g2) => g2.facturaDirectaId === id);
+      if (previo) deleteGasto(previo.id);
+    }
+  }
+  return { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta };
+}

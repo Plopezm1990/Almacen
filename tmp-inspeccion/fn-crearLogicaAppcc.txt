@@ -1,0 +1,19 @@
+START 4450654 END 4451473 LEN 819
+function crearLogicaAppcc({ setPuntosControl, setRegistrosAppcc }) {
+  function addPuntoControl(data) {
+    setPuntosControl((s2) => [...s2, { id: uid(), activo: true, ...data }]);
+  }
+  function updatePuntoControl(id, data) {
+    setPuntosControl((s2) => s2.map((p2) => p2.id === id ? { ...p2, ...data } : p2));
+  }
+  function deletePuntoControl(id) {
+    setPuntosControl((s2) => s2.filter((p2) => p2.id !== id));
+  }
+  function registrarAppcc(data) {
+    setRegistrosAppcc((s2) => [{ id: uid(), fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), ...data }, ...s2]);
+  }
+  function eliminarRegistroAppcc(id) {
+    setRegistrosAppcc((s2) => s2.filter((r) => r.id !== id));
+  }
+  return { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, eliminarRegistroAppcc };
+}

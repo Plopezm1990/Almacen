@@ -1,0 +1,218 @@
+START 4500225 END 4509542 LEN 9317
+function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos }) {
+  const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos });
+  function venderLineas(lineas, opciones = {}) {
+    const {
+      tipo = "VENTA",
+      medioPago = "Efectivo",
+      detallePago = null,
+      operationId = null,
+      origen = "venderLocal",
+      documentoOrigenId = null,
+      motivoBase = "Venta r\xE1pida",
+      extraPorLinea = () => ({})
+    } = opciones;
+    const ventaId = operationId || uid();
+    let totalVenta = 0;
+    if (detallePago) {
+      (lineas || []).forEach((ln2) => {
+        const cant = Number(ln2.cantidad) || 0;
+        const prod = productos.find((p2) => p2.id === ln2.productoId);
+        if (!prod || cant <= 0) return;
+        const precio = Number(ln2.precioUnitario) || precioNeto(prod);
+        totalVenta += cant * precio * (1 + ivaDe(prod) / 100);
+      });
+    }
+    const movimientosGenerados = [];
+    (lineas || []).forEach((ln2) => {
+      if (!ln2.productoId) return;
+      const cant = Number(ln2.cantidad) || 0;
+      if (cant <= 0) return;
+      const prod = productos.find((p2) => p2.id === ln2.productoId);
+      if (!prod) return;
+      const costoUnitario = Number(prod.costo) || 0;
+      const ingresoUnitario = Number(ln2.precioUnitario) || precioNeto(prod);
+      const camposExtra = {
+        costoUnitario,
+        ingresoUnitario,
+        ivaVentaAplicado: ivaDe(prod),
+        medioPago,
+        ...extraPorLinea(ln2, prod)
+      };
+      if (detallePago && totalVenta > 0) {
+        const importeLinea = cant * ingresoUnitario * (1 + ivaDe(prod) / 100);
+        const proporcion = importeLinea / totalVenta;
+        camposExtra.detallePago = {
+          efectivo: Number((detallePago.efectivo * proporcion).toFixed(4)),
+          tarjeta: Number((detallePago.tarjeta * proporcion).toFixed(4))
+        };
+      }
+      const r = aplicarMovimientoStock({
+        productoId: prod.id,
+        cantidad: -cant,
+        tipo,
+        operationId: ventaId,
+        movimientoId: uid(),
+        origen,
+        documentoOrigenId: documentoOrigenId || ventaId,
+        afectaStockTotal: true,
+        afectaStockPisoVenta: true,
+        permitirDeficit: true,
+        motivo: motivoBase,
+        camposExtra
+      });
+      if (r.ok) movimientosGenerados.push(r.movimiento);
+    });
+    return { ok: true, n: movimientosGenerados.length, modo: "local", ventaId, movimientos: movimientosGenerados };
+  }
+  function venderLocal(lineas, medioPago, detallePago) {
+    return venderLineas(lineas, { tipo: "VENTA", medioPago, detallePago, origen: "venderLocal", motivoBase: "Venta r\xE1pida" });
+  }
+  async function venderCarrito(lineas, medioPago = "Efectivo", detallePago = null) {
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) {
+      return venderLocal(lineas, medioPago, detallePago);
+    }
+    const ventaId = uid();
+    let totalVenta = 0;
+    (lineas || []).forEach((ln2) => {
+      const cant = Number(ln2.cantidad) || 0;
+      const prod = productos.find((p2) => p2.id === ln2.productoId);
+      if (!prod || cant <= 0) return;
+      totalVenta += cant * precioNeto(prod) * (1 + ivaDe(prod) / 100);
+    });
+    const lineasParaRpc = (lineas || []).filter((ln2) => ln2.productoId && Number(ln2.cantidad) > 0).map((ln2) => {
+      const prod = productos.find((p2) => p2.id === ln2.productoId);
+      const cant = Number(ln2.cantidad);
+      const costoUnitario = prod ? Number(prod.costo) || 0 : 0;
+      const ingresoUnitario = prod ? precioNeto(prod) : 0;
+      const ivaAplicado = prod ? ivaDe(prod) : 0;
+      const datosLinea = {
+        productoId: ln2.productoId,
+        cantidad: cant,
+        motivo: "Venta",
+        costoUnitario,
+        ingresoUnitario,
+        ivaVentaAplicado: ivaAplicado,
+        medioPago,
+        referencia: "Venta r\xE1pida"
+      };
+      if (detallePago && totalVenta > 0 && prod) {
+        const importeLinea = cant * ingresoUnitario * (1 + ivaAplicado / 100);
+        const proporcion = importeLinea / totalVenta;
+        datosLinea.detallePago = {
+          efectivo: Number((detallePago.efectivo * proporcion).toFixed(4)),
+          tarjeta: Number((detallePago.tarjeta * proporcion).toFixed(4))
+        };
+      }
+      return datosLinea;
+    });
+    if (lineasParaRpc.length === 0) return { ok: false, error: "Carrito vac\xEDo" };
+    async function intentarRpc(msTimeout) {
+      const supabase = await window.getSupabaseClient();
+      const r = await Promise.race([
+        supabase.rpc("descontar_stock_carrito", { p_lineas: lineasParaRpc, p_venta_id: ventaId }),
+        new Promise((_2, reject) => setTimeout(() => reject(new Error("El RPC tard\xF3 demasiado en responder")), msTimeout))
+      ]);
+      if (r.error) throw r.error;
+      return r;
+    }
+    async function sincronizarTrasExito() {
+      const supabase = await window.getSupabaseClient();
+      const [rProd, movLeidos] = await Promise.all([
+        supabase.from("almacen_kv").select("value").eq("key", "productos").maybeSingle(),
+        window.storage.get("movimientos")
+      ]);
+      if (!rProd.error && rProd.data && Array.isArray(rProd.data.value)) {
+        const idsVendidos = new Set(lineasParaRpc.map((l2) => l2.productoId));
+        const porIdEnNube = {};
+        rProd.data.value.forEach((p2) => {
+          if (p2 && p2.id) porIdEnNube[p2.id] = p2;
+        });
+        setProductos((s2) => s2.map((p2) => idsVendidos.has(p2.id) && porIdEnNube[p2.id] ? porIdEnNube[p2.id] : p2));
+      }
+      if (movLeidos && movLeidos.value) {
+        try {
+          setMovimientos(JSON.parse(movLeidos.value));
+        } catch {
+        }
+      }
+    }
+    try {
+      const r = await intentarRpc(6e3);
+      if (r.data && r.data.ok === false) {
+        return { ok: false, error: r.data.error, productoId: r.data.productoId };
+      }
+      await sincronizarTrasExito();
+      return { ok: true, n: lineasParaRpc.length, modo: "atomico" };
+    } catch (primerError) {
+      try {
+        const r2 = await intentarRpc(4e3);
+        if (r2.data && r2.data.ok === false) {
+          return { ok: false, error: r2.data.error, productoId: r2.data.productoId };
+        }
+        await sincronizarTrasExito();
+        return { ok: true, n: lineasParaRpc.length, modo: "atomico", reintentada: true };
+      } catch (segundoError) {
+        return venderLocal(lineas, medioPago, detallePago);
+      }
+    }
+  }
+  function anularVenta(ventaId, movimientosActuales, motivo = "") {
+    if (!ventaId) return { ok: false, error: "Esa venta no tiene identificador y no se puede anular." };
+    const lineas = (movimientosActuales || []).filter((m2) => m2.ventaId === ventaId || m2.operationId === ventaId).filter((m2) => esVenta(m2) || esSalida(m2));
+    if (lineas.length === 0) {
+      return { ok: false, error: "No se han encontrado las l\xEDneas de esa venta." };
+    }
+    const yaAnulada = (movimientosActuales || []).some((m2) => m2.anulaVentaId === ventaId || m2.revierteMovimientoId && lineas.some((l2) => l2.id === m2.revierteMovimientoId));
+    if (yaAnulada) {
+      return { ok: false, error: "Esa venta ya estaba anulada." };
+    }
+    let aplicadas = 0;
+    lineas.forEach((l2) => {
+      const cantidadOriginal = Math.abs(cantidadConSigno(l2));
+      if (cantidadOriginal <= 0) return;
+      const r = aplicarMovimientoStock({
+        productoId: l2.productoId,
+        cantidad: cantidadOriginal,
+        tipo: l2.tipo === "salida" ? "VENTA" : l2.tipo,
+        operationId: uid(),
+        movimientoId: uid(),
+        origen: "anularVenta",
+        documentoOrigenId: ventaId,
+        afectaStockTotal: true,
+        afectaStockPisoVenta: true,
+        permitirDeficit: true,
+        revierteMovimientoId: l2.id,
+        motivo: `Anulaci\xF3n de venta${motivo ? " \xB7 " + motivo : ""}`,
+        camposExtra: {
+          anulaVentaId: ventaId,
+          costoUnitario: l2.costoUnitario,
+          // El ingreso se anota en negativo para que los informes de ventas
+          // resten esta operación en vez de contarla como un ingreso nuevo.
+          ingresoUnitario: l2.ingresoUnitario != null ? -Math.abs(Number(l2.ingresoUnitario)) : null,
+          ivaVentaAplicado: l2.ivaVentaAplicado,
+          medioPago: l2.medioPago,
+          detallePago: l2.detallePago
+        }
+      });
+      if (r.ok) aplicadas++;
+    });
+    const fechaVenta = lineas[0]?.fecha;
+    const arqueoDelDia = fechaVenta && (arqueos || []).find((a2) => a2.fecha === fechaVenta);
+    if (arqueoDelDia && typeof window !== "undefined" && window.__nubeActiva) {
+      fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titulo: "Caja cerrada, ahora desactualizada",
+          cuerpo: `Se anul\xF3 una venta del ${fechaVenta}, d\xEDa que ya ten\xEDa la caja cerrada \u2014 revisa ese arqueo, puede que ya no cuadre.`,
+          url: "/"
+        })
+      }).catch(() => {
+      });
+    }
+    return { ok: true, lineasAnuladas: aplicadas, arqueoAfectado: !!arqueoDelDia };
+  }
+  return { venderCarrito, venderLocal, anularVenta, venderLineas };
+}

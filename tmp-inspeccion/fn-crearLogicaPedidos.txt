@@ -1,0 +1,71 @@
+START 4475762 END 4478832 LEN 3070
+function crearLogicaPedidos({ pedidos, setPedidos, productos, setProductos, setMovimientos, almacenCongelado, procesarRecepcion }) {
+  function crearPedido({ proveedorId, fechaEsperada, items }) {
+    const pedido = {
+      id: uid(),
+      proveedorId,
+      fecha: todayISO(),
+      fechaEsperada,
+      estado: "Pendiente",
+      items: items.map((it2) => ({ ...it2, cantidadRecibida: 0 }))
+    };
+    setPedidos((s2) => [pedido, ...s2]);
+    return pedido;
+  }
+  function actualizarPedido(pedidoId, { proveedorId, fechaEsperada, items }) {
+    setPedidos(
+      (s2) => s2.map(
+        (pe2) => pe2.id === pedidoId ? { ...pe2, proveedorId, fechaEsperada, items: items.map((it2) => ({ ...it2, cantidadRecibida: 0 })) } : pe2
+      )
+    );
+  }
+  function eliminarPedido(pedidoId) {
+    setPedidos((s2) => s2.filter((pe2) => pe2.id !== pedidoId));
+  }
+  function cerrarPedido(pedidoId) {
+    setPedidos((s2) => s2.map((pe2) => pe2.id === pedidoId ? { ...pe2, estado: "Recibido", cerradoManualmente: true } : pe2));
+  }
+  function recibirPedido(pedidoId, lineas) {
+    if (almacenCongelado) return false;
+    const pedido = pedidos.find((pe2) => pe2.id === pedidoId);
+    if (!pedido) return false;
+    const lineasConDatos = lineas.filter((ln2) => Number(ln2.cantidad) > 0).map((ln2) => {
+      const prod = productos.find((p2) => p2.id === ln2.productoId);
+      return {
+        productoId: ln2.productoId,
+        cantidad: Number(ln2.cantidad),
+        precioBruto: Number(ln2.precioBruto) || 0,
+        importe: (Number(ln2.precioBruto) || 0) * Number(ln2.cantidad),
+        ivaPct: Number(ln2.ivaPct) || (prod ? prod.ivaCompra : 10) || 10,
+        udsPorCaja: Number(ln2.udsPorCaja) || (prod ? prod.udsPorCaja : 1) || 1,
+        descripcion: prod ? prod.nombre : "",
+        unidad: prod ? prod.unidad : "unidad"
+      };
+    });
+    if (!lineasConDatos.length) return false;
+    const { lineasResueltas, avisos } = procesarRecepcion({
+      lineas: lineasConDatos,
+      proveedorId: pedido.proveedorId,
+      fecha: todayISO(),
+      documentoTipo: "pedido",
+      documentoId: pedido.id,
+      documentoNumero: pedido.id.slice(-6)
+    });
+    setPedidos(
+      (s2) => s2.map((pe2) => {
+        if (pe2.id !== pedidoId) return pe2;
+        const items = pe2.items.map((it2) => {
+          const suyas = lineasResueltas.filter((ln2) => ln2.productoId === it2.productoId);
+          if (!suyas.length) return it2;
+          const recibidas = suyas.reduce((a2, ln2) => a2 + (Number(ln2.unidadesEntradas) || 0), 0);
+          return { ...it2, cantidadRecibida: (Number(it2.cantidadRecibida) || 0) + recibidas };
+        });
+        const completo = items.every((it2) => (Number(it2.cantidadRecibida) || 0) >= (Number(it2.cantidad) || 0));
+        const algo = items.some((it2) => (Number(it2.cantidadRecibida) || 0) > 0);
+        return { ...pe2, items, estado: completo ? "Recibido" : algo ? "Parcial" : "Pendiente" };
+      })
+    );
+    return { ok: true, avisos };
+  }
+  return { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido };
+}

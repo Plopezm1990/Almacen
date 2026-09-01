@@ -1,0 +1,357 @@
+START 4512529 END 4527677 LEN 15148
+function crearLogicaAlbaranes({
+  catalogoProv,
+  setCatalogoProv,
+  albaranes,
+  setAlbaranes,
+  productos,
+  setProductos,
+  movimientos,
+  setMovimientos,
+  setPedidos,
+  registrarAuditoria,
+  proveedorPorId,
+  setPrefillAlbaran,
+  setPedidoParaFotoIA,
+  setTab
+}) {
+  const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+  const claveCat = (proveedorId, codigo) => `${proveedorId}::${String(codigo || "").trim().toUpperCase()}`;
+  const normalizarDescripcion = (t2) => String(t2 || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
+  const claveCatDesc = (proveedorId, descripcion) => `${proveedorId}::DESC::${normalizarDescripcion(descripcion)}`;
+  function buscarEnCatalogo(proveedorId, codigo, descripcion) {
+    if (codigo) {
+      const porCodigo = catalogoProv[claveCat(proveedorId, codigo)];
+      if (porCodigo) return porCodigo;
+    }
+    if (descripcion && normalizarDescripcion(descripcion)) {
+      return catalogoProv[claveCatDesc(proveedorId, descripcion)] || null;
+    }
+    return null;
+  }
+  function aprenderReferencia(proveedorId, codigo, datos) {
+    if (!codigo) return;
+    setCatalogoProv((s2) => ({ ...s2, [claveCat(proveedorId, codigo)]: { ...s2[claveCat(proveedorId, codigo)] || {}, ...datos } }));
+  }
+  function sinFotoIncrustada(a2) {
+    if (!a2 || a2.fotoOrigenIA === void 0) return a2;
+    const copia = { ...a2 };
+    delete copia.fotoOrigenIA;
+    return copia;
+  }
+  function guardarAlbaran(alb) {
+    const limpio = sinFotoIncrustada(alb);
+    setAlbaranes((s2) => {
+      const existe = s2.some((a2) => a2.id === limpio.id);
+      return existe ? s2.map((a2) => a2.id === limpio.id ? limpio : a2) : [limpio, ...s2];
+    });
+  }
+  function duplicadosDe(alb) {
+    if (!alb || !alb.proveedorId) return { albaran: null, factura: null };
+    const otros = albaranes.filter((a2) => a2.id !== alb.id && a2.proveedorId === alb.proveedorId);
+    const norm = (v2) => String(v2 || "").trim().toLowerCase();
+    const numero = norm(alb.numero);
+    const numFactura = norm(alb.numeroFactura);
+    return {
+      albaran: numero ? otros.find((a2) => norm(a2.numero) === numero) || null : null,
+      factura: numFactura ? otros.find((a2) => norm(a2.numeroFactura) === numFactura) || null : null
+    };
+  }
+  function desviacionesDePrecio(alb, umbralPct = 10) {
+    if (!alb || !alb.lineas) return [];
+    const avisos = [];
+    alb.lineas.forEach((ln2) => {
+      const prod = ln2.productoId ? productos.find((p2) => p2.id === ln2.productoId) : null;
+      if (!prod) return;
+      const costoAnterior = Number(prod.costo) || 0;
+      if (costoAnterior <= 0) return;
+      const unidades = Number(ln2.unidadesEntradas) || Number(ln2.unidades) || 0;
+      const importe = Number(ln2.importe) || 0;
+      if (unidades <= 0 || importe <= 0) return;
+      const precioNuevo = importe / unidades;
+      const variacion = (precioNuevo - costoAnterior) / costoAnterior * 100;
+      if (Math.abs(variacion) >= umbralPct) {
+        avisos.push({
+          productoId: prod.id,
+          nombre: prod.nombre,
+          antes: costoAnterior,
+          ahora: precioNuevo,
+          variacion: Math.round(variacion * 10) / 10
+        });
+      }
+    });
+    return avisos.sort((a2, b2) => Math.abs(b2.variacion) - Math.abs(a2.variacion));
+  }
+  function eliminarAlbaran(id) {
+    const a2 = albaranes.find((x3) => x3.id === id);
+    if (!a2) return;
+    registrarAuditoria("Eliminar albar\xE1n", `${proveedorPorId(a2.proveedorId)?.nombre || "\u2014"} \xB7 ${a2.numero || "s/n"}`);
+    if (a2.estado === "confirmado") {
+      a2.lineas.forEach((ln2) => {
+        const restar = Number(ln2.unidadesEntradas) || 0;
+        if (!ln2.productoId || restar <= 0) return;
+        const original = movimientos.find(
+          (m2) => (m2.documentoOrigenId === a2.id || m2.albaranId === a2.id) && m2.productoId === ln2.productoId
+        );
+        aplicarMovimientoStock({
+          productoId: ln2.productoId,
+          cantidad: -restar,
+          tipo: "COMPRA",
+          operationId: uid(),
+          movimientoId: uid(),
+          origen: "eliminarAlbaran",
+          documentoOrigenId: a2.id,
+          afectaStockTotal: true,
+          permitirDeficit: true,
+          revierteMovimientoId: original ? original.id : null,
+          motivo: `Eliminaci\xF3n del albar\xE1n ${a2.numero || "s/n"}`
+        });
+      });
+      if (a2.pedidoId) {
+        setPedidos(
+          (prev) => prev.map((pe2) => {
+            if (pe2.id !== a2.pedidoId) return pe2;
+            const items = pe2.items.map((it2) => {
+              const suyas = a2.lineas.filter((ln2) => ln2.productoId === it2.productoId);
+              if (!suyas.length) return it2;
+              const restar = suyas.reduce((acc, ln2) => acc + (Number(ln2.unidadesEntradas) || 0), 0);
+              return { ...it2, cantidadRecibida: Math.max(0, (Number(it2.cantidadRecibida) || 0) - restar) };
+            });
+            const completo = items.every((it2) => (Number(it2.cantidadRecibida) || 0) >= (Number(it2.cantidad) || 0));
+            const algo = items.some((it2) => (Number(it2.cantidadRecibida) || 0) > 0);
+            return { ...pe2, items, estado: completo ? "Recibido" : algo ? "Parcial" : "Pendiente" };
+          })
+        );
+      }
+    }
+    setAlbaranes((s2) => s2.filter((x3) => x3.id !== id));
+  }
+  function marcarPagada(id, pagada) {
+    const a2 = albaranes.find((x3) => x3.id === id);
+    registrarAuditoria(pagada ? "Marcar factura pagada" : "Marcar factura pendiente", a2 ? `${proveedorPorId(a2.proveedorId)?.nombre || "\u2014"} \xB7 ${a2.numeroFactura || a2.numero || "s/n"}` : id);
+    setAlbaranes((s2) => s2.map((a22) => a22.id === id ? { ...a22, pagada, fechaPago: pagada ? todayISO() : "" } : a22));
+  }
+  function procesarRecepcion({ lineas, proveedorId, fecha, documentoTipo, documentoId, documentoNumero }) {
+    const avisos = [];
+    const lineasResueltas = [];
+    lineas.forEach((ln2) => {
+      const uds = Number(ln2.udsPorCaja) > 0 ? Number(ln2.udsPorCaja) : 1;
+      const cantidad = Number(ln2.cantidad) || 0;
+      const importe = Number(ln2.importe) || (Number(ln2.precioBruto) || 0) * cantidad;
+      const unidadesTotales = ln2.tipoUnidad === "peso" ? cantidad : cantidad * uds;
+      const costoUnitario = unidadesTotales > 0 ? importe / unidadesTotales : 0;
+      const cat = buscarEnCatalogo(proveedorId, ln2.codigoProveedor, ln2.descripcion);
+      let prod = null;
+      if (ln2.productoId) prod = productos.find((p2) => p2.id === ln2.productoId);
+      if (!prod && cat && cat.productoId) prod = productos.find((p2) => p2.id === cat.productoId);
+      const motivoDoc = `${documentoTipo === "albaran" ? "Albar\xE1n" : "Pedido"} ${documentoNumero || "s/n"}`;
+      if (prod) {
+        const stockAnterior = Number(prod.stock) || 0;
+        const costoAnterior = Number(prod.costo) || 0;
+        if (costoAnterior > 0 && costoUnitario > 0) {
+          const variacion = (costoUnitario - costoAnterior) / costoAnterior * 100;
+          if (Math.abs(variacion) >= 3) {
+            avisos.push({ nombre: prod.nombre, anterior: costoAnterior, nuevo: costoUnitario, variacion });
+          }
+        }
+        const stockTotal = stockAnterior + unidadesTotales;
+        const costoPonderado = stockTotal > 0 ? (stockAnterior * costoAnterior + unidadesTotales * costoUnitario) / stockTotal : costoUnitario;
+        aplicarMovimientoStock({
+          productoId: prod.id,
+          cantidad: unidadesTotales,
+          tipo: "COMPRA",
+          movimientoId: uid(),
+          origen: "procesarRecepcion",
+          documentoOrigenId: documentoId,
+          afectaStockTotal: true,
+          permitirDeficit: true,
+          motivo: `${motivoDoc}${ln2.lote ? " \xB7 lote " + ln2.lote : ""}`
+        });
+        setProductos((s2) => s2.map(
+          (p2) => p2.id === prod.id ? {
+            ...p2,
+            costo: costoUnitario > 0 ? Number(costoPonderado.toFixed(4)) : p2.costo,
+            ivaCompra: Number(ln2.ivaPct) || p2.ivaCompra || 10,
+            udsPorCaja: uds,
+            proveedorId: p2.proveedorId || proveedorId,
+            contenido: ln2.contenido || p2.contenido || "",
+            unidadContenido: ln2.unidadContenido || p2.unidadContenido || ""
+          } : p2
+        ));
+        lineasResueltas.push({ ...ln2, productoId: prod.id, unidadesEntradas: unidadesTotales });
+      } else {
+        const nuevoId = uid();
+        const nuevo = {
+          id: nuevoId,
+          codigo: ln2.codigoProveedor || "",
+          nombre: ln2.descripcion || "Sin descripci\xF3n",
+          categoria: "",
+          unidad: ln2.unidad || "unidad",
+          costo: Number(costoUnitario.toFixed(4)),
+          ivaCompra: Number(ln2.ivaPct) || 10,
+          udsPorCaja: uds,
+          precioVenta: 0,
+          ivaVenta: 10,
+          stock: unidadesTotales,
+          stockMinimo: 0,
+          ubicacion: "",
+          proveedorId,
+          contenido: ln2.contenido || "",
+          unidadContenido: ln2.unidadContenido || ""
+        };
+        setProductos((s2) => [...s2, nuevo]);
+        setMovimientos((s2) => [
+          {
+            id: uid(),
+            operationId: uid(),
+            productoId: nuevoId,
+            cantidad: unidadesTotales,
+            tipo: "COMPRA",
+            motivo: `${motivoDoc} \xB7 alta autom\xE1tica`,
+            fecha: fecha || todayISO(),
+            origen: "procesarRecepcion",
+            documentoOrigenId: documentoId,
+            stockAnterior: 0,
+            stockPosterior: unidadesTotales,
+            afectaStockTotal: true,
+            afectaStockPisoVenta: false,
+            revierteMovimientoId: null
+          },
+          ...s2
+        ]);
+        lineasResueltas.push({ ...ln2, productoId: nuevoId, unidadesEntradas: unidadesTotales });
+      }
+    });
+    setCatalogoProv((prev) => {
+      const copia = { ...prev };
+      lineasResueltas.forEach((ln2) => {
+        if (!ln2.productoId) return;
+        const datos = {
+          descripcion: ln2.descripcion,
+          unidad: ln2.unidad,
+          udsPorCaja: Number(ln2.udsPorCaja) || 1,
+          ivaPct: Number(ln2.ivaPct) || 10,
+          tipoUnidad: ln2.tipoUnidad || "unidad",
+          precioPor: ln2.precioPor || "bulto",
+          contenido: ln2.contenido || "",
+          unidadContenido: ln2.unidadContenido || "",
+          productoId: ln2.productoId,
+          ultimoPrecio: Number(ln2.precioBruto) || 0,
+          ultimoDto: Number(ln2.dtoPct) || 0
+        };
+        if (ln2.codigoProveedor) copia[claveCat(proveedorId, ln2.codigoProveedor)] = datos;
+        if (ln2.descripcion && normalizarDescripcion(ln2.descripcion)) copia[claveCatDesc(proveedorId, ln2.descripcion)] = datos;
+      });
+      return copia;
+    });
+    return { lineasResueltas, avisos };
+  }
+  function confirmarAlbaran(alb) {
+    const { lineasResueltas, avisos } = procesarRecepcion({
+      lineas: alb.lineas,
+      proveedorId: alb.proveedorId,
+      fecha: alb.fecha,
+      documentoTipo: "albaran",
+      documentoId: alb.id,
+      documentoNumero: alb.numero
+    });
+    if (alb.pedidoId) {
+      setPedidos(
+        (prev) => prev.map((pe2) => {
+          if (pe2.id !== alb.pedidoId) return pe2;
+          const items = pe2.items.map((it2) => {
+            const suyas = lineasResueltas.filter((ln2) => ln2.productoId === it2.productoId);
+            if (!suyas.length) return it2;
+            const recibidas = suyas.reduce((a2, ln2) => a2 + (Number(ln2.unidadesEntradas) || 0), 0);
+            return { ...it2, cantidadRecibida: (Number(it2.cantidadRecibida) || 0) + recibidas };
+          });
+          const completo = items.every((it2) => (Number(it2.cantidadRecibida) || 0) >= (Number(it2.cantidad) || 0));
+          const algo = items.some((it2) => (Number(it2.cantidadRecibida) || 0) > 0);
+          return { ...pe2, items, estado: completo ? "Recibido" : algo ? "Parcial" : "Pendiente" };
+        })
+      );
+    }
+    guardarAlbaran({ ...alb, lineas: lineasResueltas, estado: "confirmado", avisosPrecio: avisos });
+    if (avisos.length) {
+      registrarAuditoria(
+        "Variaci\xF3n de precio en albar\xE1n",
+        `${proveedorPorId(alb.proveedorId)?.nombre || "\u2014"} \xB7 ${avisos.map((a2) => `${a2.nombre} ${a2.variacion > 0 ? "+" : ""}${fmt(a2.variacion)}%`).join(", ")}`
+      );
+    }
+    return avisos;
+  }
+  function anularAlbaran(alb) {
+    registrarAuditoria("Anular entrada de albar\xE1n", `${proveedorPorId(alb.proveedorId)?.nombre || "\u2014"} \xB7 ${alb.numero || "s/n"}`);
+    alb.lineas.forEach((ln2) => {
+      const restar = Number(ln2.unidadesEntradas) || 0;
+      if (!ln2.productoId || restar <= 0) return;
+      const original = movimientos.find(
+        (m2) => (m2.documentoOrigenId === alb.id || m2.albaranId === alb.id) && m2.productoId === ln2.productoId
+      );
+      aplicarMovimientoStock({
+        productoId: ln2.productoId,
+        cantidad: -restar,
+        tipo: "COMPRA",
+        operationId: uid(),
+        movimientoId: uid(),
+        origen: "anularAlbaran",
+        documentoOrigenId: alb.id,
+        afectaStockTotal: true,
+        permitirDeficit: true,
+        revierteMovimientoId: original ? original.id : null,
+        motivo: `Anulaci\xF3n del albar\xE1n ${alb.numero || "s/n"}`
+      });
+    });
+    guardarAlbaran({ ...alb, estado: "borrador", avisosPrecio: [] });
+  }
+  function recibirConAlbaran(pedido) {
+    const lineas = pedido.items.map((it2) => {
+      const prod = productos.find((x3) => x3.id === it2.productoId);
+      const pendiente = Math.max(0, (Number(it2.cantidad) || 0) - (Number(it2.cantidadRecibida) || 0));
+      const uds = prod && Number(prod.udsPorCaja) > 0 ? Number(prod.udsPorCaja) : 1;
+      return {
+        codigoProveedor: prod ? prod.codigo || "" : "",
+        descripcion: prod ? prod.nombre : "",
+        unidad: prod ? prod.unidad : "unidad",
+        tipoUnidad: "unidad",
+        cantidad: uds > 1 ? pendiente / uds : pendiente,
+        udsPorCaja: uds,
+        precioPor: "unidad",
+        precioBruto: it2.costoUnitario,
+        dtoPct: "",
+        importe: "",
+        ivaPct: prod ? ivaCompraDe(prod) : 10,
+        lote: "",
+        caducidad: "",
+        contenido: "",
+        unidadContenido: "",
+        productoId: it2.productoId,
+        cantidadPedida: pendiente
+      };
+    });
+    setPrefillAlbaran({
+      id: uid(),
+      proveedorId: pedido.proveedorId,
+      numero: "",
+      fecha: todayISO(),
+      totalPapel: "",
+      cargos: "",
+      cargosConcepto: "",
+      cargosIva: 21,
+      esFactura: true,
+      numeroFactura: "",
+      fechaFactura: todayISO(),
+      pagada: false,
+      fechaPago: "",
+      pedidoId: pedido.id,
+      lineas: lineas.length ? lineas : [],
+      estado: "borrador"
+    });
+    setTab("albaranes");
+  }
+  function recibirConFotoIA(pedido) {
+    setPedidoParaFotoIA(pedido);
+    setTab("albaranes");
+  }
+  return { buscarEnCatalogo, aprenderReferencia, guardarAlbaran, eliminarAlbaran, marcarPagada, confirmarAlbaran, anularAlbaran, recibirConAlbaran, recibirConFotoIA, duplicadosDe, desviacionesDePrecio, procesarRecepcion };
+}

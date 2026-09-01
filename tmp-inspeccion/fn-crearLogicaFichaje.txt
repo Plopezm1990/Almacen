@@ -1,0 +1,20 @@
+START 4451474 END 4452172 LEN 698
+function crearLogicaFichaje({ setFichajes }) {
+  function fichar(empleadoId, tipo) {
+    const ahora = /* @__PURE__ */ new Date();
+    setFichajes((s2) => [
+      { id: uid(), empleadoId, tipo, fecha: todayISO(), hora: ahora.toTimeString().slice(0, 5), timestamp: ahora.toISOString() },
+      ...s2
+    ]);
+  }
+  function addFichajeManual(data) {
+    setFichajes((s2) => [{ id: uid(), ...data }, ...s2]);
+  }
+  function updateFichaje(id, data) {
+    setFichajes((s2) => s2.map((f2) => f2.id === id ? { ...f2, ...data } : f2));
+  }
+  function eliminarFichaje(id) {
+    setFichajes((s2) => s2.filter((f2) => f2.id !== id));
+  }
+  return { fichar, addFichajeManual, updateFichaje, eliminarFichaje };
+}
