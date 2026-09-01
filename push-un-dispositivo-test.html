@@ -12,6 +12,7 @@ body{font-family:system-ui,sans-serif;background:#f7f3e9;color:#17241c;padding:2
 <h1>Prueba push · este dispositivo</h1>
 <p>Esta página no crea suscripciones nuevas. Solo usa la suscripción push que ya exista en este navegador y, al pulsar el botón, envía una única notificación de prueba a este dispositivo.</p>
 <div class="card"><b>Sesión</b><div id="sesion" class="wait">Comprobando…</div></div>
+<div class="card"><b>Service Worker</b><div id="sw" class="wait">Comprobando…</div></div>
 <div class="card"><b>Suscripción push de este navegador</b><div id="push" class="wait">Comprobando…</div></div>
 <button id="enviar" disabled>Enviar una notificación de prueba</button>
 <div class="card"><b>Resultado</b><div id="resultado" class="wait">Aún no enviada.</div></div>
@@ -30,16 +31,24 @@ function leerToken(){
   }
   return null;
 }
+function conTimeout(promesa,ms,mensaje){
+  return Promise.race([promesa,new Promise((_,rechazar)=>setTimeout(()=>rechazar(new Error(mensaje)),ms))]);
+}
 async function iniciar(){
-  const s=document.getElementById('sesion'), p=document.getElementById('push'), b=document.getElementById('enviar');
+  const s=document.getElementById('sesion'), sw=document.getElementById('sw'), p=document.getElementById('push'), b=document.getElementById('enviar');
   accessToken=leerToken();
   if(accessToken){s.textContent='OK · sesión encontrada';s.className='ok'}else{s.textContent='No hay sesión en esta rama. Abre primero la app e inicia sesión.';s.className='bad'}
   try{
-    if(!('serviceWorker' in navigator)){throw new Error('Este navegador no admite Service Worker.')}
-    const reg=await navigator.serviceWorker.ready;
+    if(!('serviceWorker' in navigator)) throw new Error('Este navegador no admite Service Worker.');
+    let reg=await navigator.serviceWorker.getRegistration('./');
+    if(!reg){
+      reg=await navigator.serviceWorker.register('./sw.js',{scope:'./'});
+    }
+    await conTimeout(navigator.serviceWorker.ready,8000,'El Service Worker no llegó a activarse a tiempo.');
+    sw.textContent='OK · Service Worker activo';sw.className='ok';
     subscription=await reg.pushManager.getSubscription();
-    if(subscription){p.textContent='OK · este navegador ya tiene una suscripción push';p.className='ok'}else{p.textContent='Este navegador no tiene una suscripción push existente. No se creará ninguna desde esta página.';p.className='bad'}
-  }catch(e){p.textContent='No se pudo comprobar la suscripción: '+e.message;p.className='bad'}
+    if(subscription){p.textContent='OK · este navegador ya tiene una suscripción push';p.className='ok'}else{p.textContent='Este navegador no tiene una suscripción push existente en esta rama. No se ha creado ninguna.';p.className='bad'}
+  }catch(e){sw.textContent='No se pudo activar el Service Worker: '+e.message;sw.className='bad';p.textContent='No se pudo comprobar la suscripción.';p.className='bad'}
   b.disabled=!(accessToken&&subscription);
 }
 document.getElementById('enviar').addEventListener('click',async()=>{
