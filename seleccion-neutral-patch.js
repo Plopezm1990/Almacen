@@ -388,6 +388,10 @@
         ocultar(el);
         return;
       }
+      if (t.indexOf("entrevista termina con avisos o puntuación baja") !== -1) {
+        el.textContent = "Recibe avisos importantes del sistema, como stock bajo, caducidades, descuadres de caja y otros eventos que requieren tu atención.";
+        return;
+      }
       if (t === "Manda un enlace corto antes de citar al candidato — responde unas preguntas cortas por su cuenta, desde su móvil, sin necesitar la app. No sustituye a la entrevista de verdad: es solo para descartar rápido a quien claramente no encaja, antes de invertir tiempo en persona.") {
         el.textContent = "Manda un enlace corto antes de la entrevista. El candidato responde unas preguntas por su cuenta y la IA organiza la información para que una persona la revise después. No puntúa, no recomienda y no sustituye la entrevista.";
         return;
