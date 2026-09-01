@@ -1,11 +1,11 @@
-name: Inspeccionar fuente temporal
+name: Aplicar filtro por local temporal
 on:
   push:
     branches: [inspeccion-fuente-locales]
     paths:
       - .github/workflows/inspeccionar-fuente.yml
 jobs:
-  inspect:
+  patch:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -13,36 +13,417 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: inspeccion-fuente-locales
-      - name: Extraer fragmentos relevantes
+      - name: Aplicar cambios acotados
         shell: node {0}
         run: |
           const fs = require('fs');
-          const path = require('path');
-          const src = fs.readFileSync('fuente.js','utf8');
-          fs.rmSync('tmp-inspeccion', { recursive: true, force: true });
-          fs.mkdirSync('tmp-inspeccion', { recursive: true });
-          function functionBlock(name) {
-            const start = src.indexOf(`function ${name}(`);
-            if (start < 0) return `NOT FOUND function ${name}\n`;
-            const next = src.indexOf('\nfunction ', start + 10);
-            const end = next < 0 ? Math.min(src.length, start + 150000) : next;
-            return `START ${start} END ${end} LEN ${end-start}\n` + src.slice(start, end);
+          let src = fs.readFileSync('fuente.js','utf8');
+          const original = src;
+          const cambios = [];
+          function replaceOnce(oldText, newText, label) {
+            const first = src.indexOf(oldText);
+            if (first < 0) throw new Error(`No se encontró ancla: ${label}`);
+            const second = src.indexOf(oldText, first + oldText.length);
+            if (second >= 0) throw new Error(`Ancla duplicada: ${label}`);
+            src = src.slice(0, first) + newText + src.slice(first + oldText.length);
+            cambios.push(label);
           }
-          fs.writeFileSync('tmp-inspeccion/meta.txt', `SIZE ${src.length}\n`);
-          const funcs = [
-            'Dashboard','Resultados','LibroIva','GestionAlmacen','crearMotorStock',
-            'crearLogicaGastos','crearLogicaPersonal','crearLogicaFacturasDirectas',
-            'crearLogicaAlbaranes','crearLogicaPedidos','crearLogicaVenta','crearLogicaProductos',
-            'crearLogicaEncargos','crearLogicaFichaje','crearLogicaAppcc','crearLogicaNominas'
+          function replaceRegexOnce(regex, newText, label) {
+            const matches = [...src.matchAll(regex)];
+            if (matches.length !== 1) throw new Error(`Regex ${label}: esperada 1 coincidencia, hay ${matches.length}`);
+            src = src.replace(regex, newText);
+            cambios.push(label);
+          }
+
+          replaceOnce(
+            'function GestionAlmacen() {',
+            `function SelectorLocalInformes({ locales = [], valor = "", onChange }) {
+  const activos = locales.filter((l2) => l2 && l2.activo !== false && !l2.fusionadoEn);
+  const seleccionado = activos.find((l2) => l2.id === valor);
+  return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-3 items-end" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Local" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: valor, onChange: (e) => onChange(e.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: \`1px solid \${C2.line}\`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Todos los locales"), activos.map((l2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: l2.id, value: l2.id }, l2.nombre)))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] pb-2", style: { color: C2.inkSoft } }, seleccionado ? \`Mostrando solo \${seleccionado.nombre}.\` : "Mostrando datos consolidados de todos los locales.")));
+}
+function GestionAlmacen() {`,
+            'componente selector informes'
+          );
+
+          replaceOnce(
+            '  const [localActivoId, setLocalActivoId] = (0, import_react4.useState)(null);\n  const productosDelLocalActivo =',
+            '  const [localActivoId, setLocalActivoId] = (0, import_react4.useState)(null);\n  const [localInformeId, setLocalInformeId] = (0, import_react4.useState)("");\n  const productosDelLocalActivo =',
+            'estado local de informes'
+          );
+
+          replaceRegexOnce(
+            /      let localesFinales = loc \|\| \[\];[\s\S]*?      setProductos\(productosFinales\);/g,
+            `      let localesFinales = Array.isArray(loc) ? [...loc] : [];
+      let localActivoFinal = lai || null;
+      const productosBase = Array.isArray(pr) ? pr : [];
+      const normalizarNombreLocal = (v2) => String(v2 || "").trim().toLowerCase();
+      const idsProductoConLocal = [...new Set(productosBase.map((prod) => prod && prod.localId).filter(Boolean))];
+      const idsLocalesIniciales = new Set(localesFinales.map((l2) => l2 && l2.id).filter(Boolean));
+      const idsLocalesHuerfanos = idsProductoConLocal.filter((id) => !idsLocalesIniciales.has(id));
+      if (idsLocalesHuerfanos.length === 1 && localesFinales.length > 0) {
+        const nombresLocales = new Set(localesFinales.map((l2) => normalizarNombreLocal(l2 && l2.nombre)).filter(Boolean));
+        if (nombresLocales.size === 1) {
+          const idCanonico = idsLocalesHuerfanos[0];
+          const baseLocal = localesFinales.find((l2) => l2 && l2.activo !== false) || localesFinales[0];
+          const duplicadosAnteriores = localesFinales.map((l2) => ({ ...l2, activo: false, fusionadoEn: idCanonico }));
+          localesFinales = [{ ...baseLocal, id: idCanonico, activo: true, fusionadoEn: null, recuperadoDeProductos: true }, ...duplicadosAnteriores];
+          localActivoFinal = idCanonico;
+        }
+      }
+      if (localesFinales.length === 0) {
+        const primerLocal = { id: uid(), nombre: "Chocoloyos S.L", direccion: "", activo: true, creadoEn: (/* @__PURE__ */ new Date()).toISOString() };
+        localesFinales = [primerLocal];
+        localActivoFinal = primerLocal.id;
+      }
+      const idsLocalesTrasReparar = new Set(localesFinales.map((l2) => l2 && l2.id).filter(Boolean));
+      idsProductoConLocal.forEach((id) => {
+        if (!idsLocalesTrasReparar.has(id)) {
+          localesFinales.push({ id, nombre: "Local recuperado", direccion: "", activo: true, creadoEn: (/* @__PURE__ */ new Date()).toISOString(), recuperadoDeProductos: true });
+          idsLocalesTrasReparar.add(id);
+        }
+      });
+      if (!localActivoFinal || !localesFinales.some((l2) => l2.id === localActivoFinal && l2.activo !== false && !l2.fusionadoEn)) {
+        localActivoFinal = localesFinales.find((l2) => l2.activo !== false && !l2.fusionadoEn)?.id || localesFinales[0]?.id || null;
+      }
+      let productosFinales = productosBase;
+      if (localActivoFinal && productosFinales.some((prod) => !prod.localId)) {
+        productosFinales = productosFinales.map((prod) => prod.localId ? prod : { ...prod, localId: localActivoFinal });
+      }
+      const localPorProductoMigracion = new Map(productosFinales.map((prod) => [prod.id, prod.localId || localActivoFinal || null]));
+      const inferirLocalLineasMigracion = (lineas) => {
+        const ids = [...new Set((lineas || []).map((ln2) => localPorProductoMigracion.get(ln2 && ln2.productoId)).filter(Boolean))];
+        return ids.length === 1 ? ids[0] : localActivoFinal || null;
+      };
+      const movimientosFinales = (mo || []).map((m2) => m2.localId ? m2 : { ...m2, localId: localPorProductoMigracion.get(m2.productoId) || localActivoFinal || null });
+      const albaranesFinales = (alLimpios || []).map((a2) => a2.localId ? a2 : { ...a2, localId: inferirLocalLineasMigracion(a2.lineas) });
+      const pedidosFinales = (pe2 || []).map((pedido) => pedido.localId ? pedido : { ...pedido, localId: inferirLocalLineasMigracion(pedido.items) });
+      const encargosFinales = (en || []).map((encargo) => encargo.localId ? encargo : { ...encargo, localId: inferirLocalLineasMigracion(encargo.lineas) });
+      const gastosFinales = (gg || []).map((g2) => g2.localId ? g2 : { ...g2, localId: localActivoFinal || null });
+      const facturasDirectasFinales = (fd2 || []).map((f2) => f2.localId ? f2 : { ...f2, localId: localActivoFinal || null });
+      const empleadosFinales = (em || []).map((e) => e.localId ? e : { ...e, localId: localActivoFinal || null });
+      setLocales(localesFinales);
+      setLocalActivoId(localActivoFinal);
+      setProductos(productosFinales);
+      setMovimientos(movimientosFinales);
+      setAlbaranes(albaranesFinales);
+      setPedidos(pedidosFinales);
+      setEncargos(encargosFinales);
+      setGastosGenerales(gastosFinales);
+      setFacturasDirectas(facturasDirectasFinales);
+      setEmpleados(empleadosFinales);
+      await saveKey("locales", localesFinales);
+      await saveKey("localActivoId", localActivoFinal);
+      if (JSON.stringify(productosFinales) !== JSON.stringify(pr || [])) await saveKey("productos", productosFinales);
+      if (JSON.stringify(movimientosFinales) !== JSON.stringify(mo || [])) await saveKey("movimientos", movimientosFinales);
+      if (JSON.stringify(albaranesFinales) !== JSON.stringify(alLimpios || [])) await saveKey("albaranes", albaranesFinales);
+      if (JSON.stringify(pedidosFinales) !== JSON.stringify(pe2 || [])) await saveKey("pedidos", pedidosFinales);
+      if (JSON.stringify(encargosFinales) !== JSON.stringify(en || [])) await saveKey("encargos", encargosFinales);
+      if (JSON.stringify(gastosFinales) !== JSON.stringify(gg || [])) await saveKey("gastosGenerales", gastosFinales);
+      if (JSON.stringify(facturasDirectasFinales) !== JSON.stringify(fd2 || [])) await saveKey("facturasDirectas", facturasDirectasFinales);
+      if (JSON.stringify(empleadosFinales) !== JSON.stringify(em || [])) await saveKey("empleados", empleadosFinales);`,
+            'migración segura de locales y registros'
+          );
+
+          replaceOnce(
+            '      if (habiaFotos) await saveKey("albaranes", alLimpios);',
+            '      if (habiaFotos) await saveKey("albaranes", albaranesFinales);',
+            'persistencia albaranes migrados'
+          );
+
+          replaceOnce(
+            '    const movimiento = {\n      id,\n      operationId: operationId || id,\n      productoId,\n      cantidad: cantidadNum,',
+            '    const movimiento = {\n      id,\n      operationId: operationId || id,\n      productoId,\n      localId: producto.localId || null,\n      cantidad: cantidadNum,',
+            'localId en motor de stock'
+          );
+
+          replaceOnce(
+            '          productoId: nuevo.id,\n          cantidad: stockInicial,',
+            '          productoId: nuevo.id,\n          localId: nuevo.localId || null,\n          cantidad: stockInicial,',
+            'localId stock inicial producto'
+          );
+
+          replaceOnce(
+            '        importe: Number((-diferencia).toFixed(2)),\n        fecha: todayISO()\n      });',
+            '        importe: Number((-diferencia).toFixed(2)),\n        fecha: todayISO(),\n        localId: origen.localId || destino.localId || localActivoId || null\n      });',
+            'localId gasto ajuste productos'
+          );
+
+          replaceOnce(
+            `function crearLogicaGastos({ setGastosGenerales }) {
+  function addGasto(data) {
+    setGastosGenerales((s2) => [...s2, { id: uid(), ...data }]);
+  }
+  function deleteGasto(id) {
+    setGastosGenerales((s2) => s2.filter((g2) => g2.id !== id));
+  }
+  return { addGasto, deleteGasto };
+}`,
+            `function crearLogicaGastos({ setGastosGenerales, localActivoId }) {
+  function addGasto(data) {
+    setGastosGenerales((s2) => [...s2, { id: uid(), ...data, localId: data.localId || localActivoId || null }]);
+  }
+  function deleteGasto(id) {
+    setGastosGenerales((s2) => s2.filter((g2) => g2.id !== id));
+  }
+  return { addGasto, deleteGasto };
+}`,
+            'lógica gastos por local'
+          );
+
+          replaceOnce(
+            'function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas }) {',
+            'function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId }) {',
+            'firma personal local'
+          );
+          replaceOnce(
+            '    setEmpleados((s2) => [...s2, { id: uid(), activo: true, documentos: [], ...data }]);',
+            '    setEmpleados((s2) => [...s2, { id: uid(), activo: true, documentos: [], ...data, localId: data.localId || localActivoId || null }]);',
+            'empleado nuevo con local'
+          );
+
+          replaceOnce(
+            'function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, addGasto, deleteGasto, gastosGenerales }) {',
+            'function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, addGasto, deleteGasto, gastosGenerales, localActivoId }) {',
+            'firma facturas directas local'
+          );
+          replaceOnce(
+            '      { id: uid(), pagada: false, ...data, importeBase: base, ivaPct, importeIva, importeTotal },',
+            '      { id: uid(), pagada: false, ...data, localId: data.localId || localActivoId || null, importeBase: base, ivaPct, importeIva, importeTotal },',
+            'factura directa nueva con local'
+          );
+          replaceOnce(
+            '          categoria: f2.categoria || ""\n        });',
+            '          categoria: f2.categoria || "",\n          localId: f2.localId || localActivoId || null\n        });',
+            'gasto de factura conserva local'
+          );
+
+          replaceOnce(
+            '  setPedidoParaFotoIA,\n  setTab\n}) {',
+            '  setPedidoParaFotoIA,\n  setTab,\n  localActivoId\n}) {',
+            'firma albaranes local'
+          );
+          replaceOnce(
+            '    const limpio = sinFotoIncrustada(alb);\n    setAlbaranes((s2) => {',
+            '    const limpioBase = sinFotoIncrustada(alb);\n    const idsLocalesLineas = [...new Set((limpioBase.lineas || []).map((ln2) => productos.find((p2) => p2.id === ln2.productoId)?.localId).filter(Boolean))];\n    const limpio = { ...limpioBase, localId: limpioBase.localId || (idsLocalesLineas.length === 1 ? idsLocalesLineas[0] : null) || localActivoId || null };\n    setAlbaranes((s2) => {',
+            'guardar albarán con local'
+          );
+          replaceOnce(
+            '        const nuevo = {\n          id: nuevoId,\n          codigo: ln2.codigoProveedor || "",',
+            '        const nuevo = {\n          id: nuevoId,\n          localId: localActivoId || null,\n          codigo: ln2.codigoProveedor || "",',
+            'producto automático recepción con local'
+          );
+          replaceOnce(
+            '            productoId: nuevoId,\n            cantidad: unidadesTotales,',
+            '            productoId: nuevoId,\n            localId: nuevo.localId || localActivoId || null,\n            cantidad: unidadesTotales,',
+            'movimiento alta automática con local'
+          );
+
+          replaceOnce(
+            'function crearLogicaPedidos({ pedidos, setPedidos, productos, setProductos, setMovimientos, almacenCongelado, procesarRecepcion }) {',
+            'function crearLogicaPedidos({ pedidos, setPedidos, productos, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId }) {',
+            'firma pedidos local'
+          );
+          replaceOnce(
+            '    const pedido = {\n      id: uid(),\n      proveedorId,',
+            '    const pedido = {\n      id: uid(),\n      localId: localActivoId || null,\n      proveedorId,',
+            'pedido nuevo con local'
+          );
+
+          replaceOnce(
+            '      const datosLinea = {\n        productoId: ln2.productoId,\n        cantidad: cant,',
+            '      const datosLinea = {\n        productoId: ln2.productoId,\n        localId: prod ? prod.localId || null : null,\n        cantidad: cant,',
+            'venta atómica transporta local'
+          );
+
+          replaceOnce(
+            'function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, setProductos, setMovimientos, venderLineas }) {',
+            'function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, setProductos, setMovimientos, venderLineas, localActivoId }) {',
+            'firma encargos local'
+          );
+          replaceOnce(
+            '    setEncargos((s2) => [{ id: uid(), estado: "Pendiente", fechaCreacion: fecha, cobros, ...data }, ...s2]);',
+            '    const idsLocalesLineas = [...new Set((data.lineas || []).map((ln2) => productos.find((p2) => p2.id === ln2.productoId)?.localId).filter(Boolean))];\n    const localId = data.localId || (idsLocalesLineas.length === 1 ? idsLocalesLineas[0] : null) || localActivoId || null;\n    setEncargos((s2) => [{ id: uid(), estado: "Pendiente", fechaCreacion: fecha, cobros, ...data, localId }, ...s2]);',
+            'encargo nuevo con local'
+          );
+
+          replaceOnce(
+            '  const { addGasto, deleteGasto } = crearLogicaGastos({ setGastosGenerales });',
+            '  const { addGasto, deleteGasto } = crearLogicaGastos({ setGastosGenerales, localActivoId });',
+            'conectar gastos local'
+          );
+          replaceOnce(
+            '  const { addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas });',
+            '  const { addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId });',
+            'conectar personal local'
+          );
+          replaceOnce(
+            '  const { addEncargo, updateEncargo, deleteEncargo, entregarEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, setProductos, setMovimientos, venderLineas });',
+            '  const { addEncargo, updateEncargo, deleteEncargo, entregarEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, setProductos, setMovimientos, venderLineas, localActivoId });',
+            'conectar encargos local'
+          );
+          replaceOnce(
+            '    setPedidoParaFotoIA,\n    setTab\n  });',
+            '    setPedidoParaFotoIA,\n    setTab,\n    localActivoId\n  });',
+            'conectar albaranes local'
+          );
+          replaceOnce(
+            '  const { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido } = crearLogicaPedidos({ pedidos, setPedidos, productos, setProductos, setMovimientos, almacenCongelado, procesarRecepcion });',
+            '  const { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido } = crearLogicaPedidos({ pedidos, setPedidos, productos, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId });',
+            'conectar pedidos local'
+          );
+          replaceOnce(
+            '  const { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta } = crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, addGasto, deleteGasto, gastosGenerales });',
+            '  const { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta } = crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, addGasto, deleteGasto, gastosGenerales, localActivoId });',
+            'conectar facturas directas local'
+          );
+
+          replaceOnce(
+            '"Primer paso de varios locales: por ahora solo gestiona la lista y cu\\xE1l est\\xE1 activo en este dispositivo. Todav\\xEDa no reparte productos, stock ni caja por local \\u2014 eso viene despu\\xE9s."',
+            '"La separaci\\xF3n por local ya est\\xE1 activa en Panel general, Resultados y Libro de IVA. El resto de m\\xF3dulos mantiene de momento la vista conjunta mientras se completa la separaci\\xF3n por local."',
+            'aviso locales actualizado'
+          );
+
+          replaceOnce(
+            '  const contenido = /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, tab === "dashboard" &&',
+            `  const localPorProductoInforme = new Map(productos.map((p2) => [p2.id, p2.localId || null]));
+  const inferirLocalLineasInforme = (lineas) => {
+    const ids = [...new Set((lineas || []).map((ln2) => localPorProductoInforme.get(ln2 && ln2.productoId)).filter(Boolean))];
+    return ids.length === 1 ? ids[0] : null;
+  };
+  const productosInforme = localInformeId ? productos.filter((p2) => p2.localId === localInformeId) : productos;
+  const movimientosInforme = localInformeId ? movimientos.filter((m2) => (m2.localId || localPorProductoInforme.get(m2.productoId) || null) === localInformeId) : movimientos;
+  const albaranesInforme = localInformeId ? albaranes.filter((a2) => (a2.localId || inferirLocalLineasInforme(a2.lineas)) === localInformeId) : albaranes;
+  const facturasDirectasInforme = localInformeId ? facturasDirectas.filter((f2) => f2.localId === localInformeId) : facturasDirectas;
+  const gastosGeneralesInforme = localInformeId ? gastosGenerales.filter((g2) => g2.localId === localInformeId) : gastosGenerales;
+  const empleadosInforme = localInformeId ? empleados.filter((e) => e.localId === localInformeId) : empleados;
+  const pedidosInforme = localInformeId ? pedidos.filter((pe2) => (pe2.localId || inferirLocalLineasInforme(pe2.items)) === localInformeId) : pedidos;
+  const encargosInforme = localInformeId ? encargos.filter((e) => (e.localId || inferirLocalLineasInforme(e.lineas)) === localInformeId) : encargos;
+  const idsFacturasInforme = new Set([...albaranesInforme.map((a2) => a2.id), ...facturasDirectasInforme.map((f2) => f2.id)]);
+  const pendientesPagoInforme = localInformeId ? pendientesPago.filter((f2) => idsFacturasInforme.has(f2.id)) : pendientesPago;
+  const vencenProntoInforme = pendientesPagoInforme.filter((f2) => f2.dias !== null && f2.dias <= 7);
+  const totalPendientePagoInforme = pendientesPagoInforme.reduce((a2, f2) => a2 + f2.total, 0);
+  const valorInventarioInforme = productosInforme.filter((p2) => !esUtillaje(p2)).reduce((acc, p2) => acc + (Number(p2.stock) || 0) * Number(p2.costo || 0), 0);
+  const valorUtillajeInforme = productosInforme.filter(esUtillaje).reduce((acc, p2) => acc + (Number(p2.stock) || 0) * Number(p2.costo || 0), 0);
+  const stockBajoInforme = productosInforme.filter((p2) => p2.tipo !== "elaborado" && p2.stock <= Number(p2.stockMinimo || 0));
+  const productosConPrecioInforme = productosInforme.filter((p2) => Number(p2.precioVenta) > 0);
+  const margenPromedioInforme = productosConPrecioInforme.length ? productosConPrecioInforme.reduce((acc, p2) => acc + (margenDe(p2) || 0), 0) / productosConPrecioInforme.length : 0;
+  const pedidosPendientesInforme = pedidosInforme.filter((p2) => p2.estado !== "Recibido");
+  const caducanProntoInforme = localInformeId ? caducanPronto.filter((l2) => localPorProductoInforme.get(l2.productoId) === localInformeId) : caducanPronto;
+  const idsEncargosInforme = new Set(encargosInforme.map((e) => e.id));
+  const encargosUrgentesInforme = localInformeId ? encargosUrgentes.filter((e) => idsEncargosInforme.has(e.id)) : encargosUrgentes;
+  const pisoVentaBajoInforme = localInformeId ? pisoVentaBajo.filter((p2) => p2.localId === localInformeId) : pisoVentaBajo;
+  const sugerenciasPedidoInforme = localInformeId ? sugerenciasPedido.filter((p2) => p2.localId === localInformeId) : sugerenciasPedido;
+  const recordatorioConteoInforme = localInformeId ? recordatorioConteo.filter((a2) => localPorProductoInforme.get(a2.productoId || a2.id) === localInformeId) : recordatorioConteo;
+  const diagnosticoStockInforme = localInformeId ? diagnosticoStock.filter((d2) => localPorProductoInforme.get(d2.productoId) === localInformeId) : diagnosticoStock;
+  const addGastoInforme = (data) => addGasto({ ...data, localId: localInformeId || localActivoId || null });
+  const contenido = /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, (tab === "dashboard" || tab === "resultados" || tab === "libroiva") && /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales, valor: localInformeId, onChange: setLocalInformeId }), tab === "dashboard" &&`,
+            'datos filtrados y selector solo en tres módulos'
+          );
+
+          replaceOnce(
+            `      valorInventario,
+      valorUtillaje,
+      stockBajo,
+      pedidosPendientes,
+      margenPromedio,
+      movimientos,
+      productos,
+      caducanPronto,
+      proveedorPorId,
+      vencenPronto,
+      totalPendientePago,
+      documentosPersonalPronto,
+      fichajesAbiertos,
+      encargosUrgentes,
+      pisoVentaBajo,
+      sugerenciasPedido,
+      setTab,
+      recordatorioConteo,
+      alertasAppcc,
+      fallosGuardado,
+      diagnosticoStock,
+      registrarSalida`,
+            `      valorInventario: valorInventarioInforme,
+      valorUtillaje: valorUtillajeInforme,
+      stockBajo: stockBajoInforme,
+      pedidosPendientes: pedidosPendientesInforme,
+      margenPromedio: margenPromedioInforme,
+      movimientos: movimientosInforme,
+      productos: productosInforme,
+      caducanPronto: caducanProntoInforme,
+      proveedorPorId,
+      vencenPronto: vencenProntoInforme,
+      totalPendientePago: totalPendientePagoInforme,
+      documentosPersonalPronto,
+      fichajesAbiertos,
+      encargosUrgentes: encargosUrgentesInforme,
+      pisoVentaBajo: pisoVentaBajoInforme,
+      sugerenciasPedido: sugerenciasPedidoInforme,
+      setTab,
+      recordatorioConteo: recordatorioConteoInforme,
+      alertasAppcc,
+      fallosGuardado,
+      diagnosticoStock: diagnosticoStockInforme,
+      registrarSalida`,
+            'props dashboard filtradas'
+          );
+
+          replaceOnce(
+            `      movimientos,
+      productos,
+      productoPorId,
+      gastosGenerales,
+      addGasto,
+      deleteGasto,
+      empleados
+    }
+  ), tab === "fichas"`,
+            `      movimientos: movimientosInforme,
+      productos: productosInforme,
+      productoPorId,
+      gastosGenerales: gastosGeneralesInforme,
+      addGasto: addGastoInforme,
+      deleteGasto,
+      empleados: empleadosInforme
+    }
+  ), tab === "fichas"`,
+            'props resultados filtradas'
+          );
+
+          replaceOnce(
+            '  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos, productos, albaranes, proveedorPorId, facturasDirectas }),',
+            '  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }),',
+            'props libro IVA filtradas'
+          );
+
+          if (src === original) throw new Error('No se aplicó ningún cambio');
+          fs.writeFileSync('fuente.js', src);
+          fs.mkdirSync('tmp-inspeccion', { recursive: true });
+          fs.writeFileSync('tmp-inspeccion/patch-check.txt', `CAMBIOS ${cambios.length}\n${cambios.join('\n')}\nSIZE_ANTES ${original.length}\nSIZE_DESPUES ${src.length}\n`);
+      - name: Validar sintaxis
+        run: node --check fuente.js
+      - name: Validar marcadores del filtro
+        shell: node {0}
+        run: |
+          const fs = require('fs');
+          const s = fs.readFileSync('fuente.js','utf8');
+          const checks = [
+            ['SelectorLocalInformes', s.includes('function SelectorLocalInformes(')],
+            ['Todos los locales', s.includes('Todos los locales')],
+            ['localInformeId', s.includes('localInformeId')],
+            ['movimientos con localId', s.includes('localId: producto.localId || null')],
+            ['Resultados filtrados', s.includes('gastosGenerales: gastosGeneralesInforme')],
+            ['Libro IVA filtrado', s.includes('facturasDirectas: facturasDirectasInforme')]
           ];
-          for (const name of funcs) fs.writeFileSync(path.join('tmp-inspeccion', `fn-${name}.txt`), functionBlock(name));
-          const contenido = src.indexOf('const contenido =');
-          fs.writeFileSync('tmp-inspeccion/contenido.txt', contenido < 0 ? 'NOT FOUND' : src.slice(contenido, Math.min(src.length, contenido + 52000)));
-      - name: Guardar inspección en rama temporal
+          const fallos = checks.filter(([,ok]) => !ok);
+          if (fallos.length) throw new Error('Fallan marcadores: ' + fallos.map(([n])=>n).join(', '));
+          fs.appendFileSync('tmp-inspeccion/patch-check.txt', checks.map(([n,ok]) => `${ok?'OK':'FAIL'} ${n}`).join('\n') + '\n');
+      - name: Guardar parche solo en rama temporal
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add tmp-inspeccion
+          git add fuente.js tmp-inspeccion/patch-check.txt
           git diff --cached --quiet && exit 0
-          git commit -m "Resultados temporales de inspección [skip ci]"
+          git commit -m "Filtro por local en informes [skip ci]"
           git push origin HEAD:inspeccion-fuente-locales
