@@ -28,7 +28,8 @@ jobs:
             ['localInformeId', s.includes('localInformeId')],
             ['movimientos con localId', s.includes('localId: producto.localId || null')],
             ['Resultados filtrados', s.includes('gastosGenerales: gastosGeneralesInforme')],
-            ['Libro IVA filtrado', s.includes('facturasDirectas: facturasDirectasInforme')]
+            ['Libro IVA filtrado', s.includes('facturasDirectas: facturasDirectasInforme')],
+            ['Duplicados fusionados ocultos', s.includes('l2.activo === false && !l2.fusionadoEn')]
           ];
           const fallos = checks.filter(([, ok]) => !ok);
           if (fallos.length) throw new Error('Fallan marcadores: ' + fallos.map(([n]) => n).join(', '));
@@ -37,7 +38,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add fuente.js tmp-inspeccion/patch-check.txt
+          git add fuente.js tmp-inspeccion/patch-check.txt tmp-inspeccion/locales-check.txt
           git diff --cached --quiet && exit 0
-          git commit -m "Filtro por local en informes [skip ci]"
+          git commit -m "Ocultar duplicados técnicos de locales [skip ci]"
           git push origin HEAD:inspeccion-fuente-locales
