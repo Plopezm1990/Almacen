@@ -1,0 +1,111 @@
+START 4460520 END 4465328 LEN 4808
+function crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria }) {
+  const idsConocidos = new Set(movimientos.map((m2) => m2.id));
+  const porId = new Map(movimientos.map((m2) => [m2.id, m2]));
+  const snapshotLocal = /* @__PURE__ */ new Map();
+  function productoActual(productoId) {
+    if (snapshotLocal.has(productoId)) return snapshotLocal.get(productoId);
+    return productos.find((p2) => p2.id === productoId);
+  }
+  function calcularStockTeorico(productoId, campo = "stock") {
+    return movimientos.filter((m2) => m2.productoId === productoId).filter((m2) => m2.origen !== "reconciliacionStock").filter((m2) => {
+      if (esMovimientoNuevo(m2)) {
+        return !!m2[campo === "stockPisoVenta" ? "afectaStockPisoVenta" : "afectaStockTotal"];
+      }
+      return campo !== "stockPisoVenta";
+    }).reduce((suma, m2) => suma + cantidadConSigno(m2), 0);
+  }
+  function aplicarMovimientoStock({
+    productoId,
+    cantidad,
+    tipo,
+    operationId,
+    movimientoId,
+    origen,
+    documentoOrigenId,
+    usuario,
+    dispositivo,
+    motivo,
+    permitirDeficit = false,
+    afectaStockTotal = true,
+    afectaStockPisoVenta = false,
+    revierteMovimientoId = null,
+    camposExtra = null
+    // campos económicos que el motor no conoce (ingresoUnitario,
+    // medioPago...) — se escriben en el mismo momento de crear
+    // el movimiento, nunca como un parche después.
+  }) {
+    const id = movimientoId || uid();
+    if (idsConocidos.has(id)) {
+      const existente = porId.get(id);
+      if (existente && Number(existente.cantidad) !== Number(cantidad)) {
+        return { ok: false, error: `El movimiento ${id} ya existe con una cantidad distinta (${existente.cantidad} \u2260 ${cantidad}). No se sobrescribe.` };
+      }
+      return { ok: true, movimiento: existente, yaExistia: true };
+    }
+    const producto = productoActual(productoId);
+    if (!producto) return { ok: false, error: "Producto no encontrado." };
+    const cantidadNum = Number(cantidad) || 0;
+    const resultadoCampos = {};
+    let deficitGenerado = 0;
+    if (afectaStockTotal) {
+      const stockActual = Number(producto.stock) || 0;
+      const deficitActual = Number(producto.deficitPendiente) || 0;
+      const teoricoAntes = stockActual - deficitActual;
+      const teoricoDespues = teoricoAntes + cantidadNum;
+      const deficitNuevo = Math.max(0, -teoricoDespues);
+      if (deficitNuevo > deficitActual && !permitirDeficit) {
+        return { ok: false, error: `Stock insuficiente: hay ${Math.max(0, teoricoAntes)}, se piden ${-cantidadNum}.` };
+      }
+      resultadoCampos.stock = Math.max(0, teoricoDespues);
+      resultadoCampos.deficitPendiente = deficitNuevo;
+      deficitGenerado = Math.max(0, deficitNuevo - deficitActual);
+      const minimo = Number(producto.stockMinimo) || 0;
+      if (minimo > 0 && teoricoAntes >= minimo && teoricoDespues < minimo && typeof window !== "undefined" && window.__nubeActiva) {
+        fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            titulo: "Stock bajo",
+            cuerpo: `${producto.nombre} baj\xF3 del m\xEDnimo (quedan ${fmt(Math.max(0, teoricoDespues))}).`,
+            url: "/"
+          })
+        }).catch(() => {
+        });
+      }
+    }
+    if (afectaStockPisoVenta) {
+      const pisoActual = Number(producto.stockPisoVenta) || 0;
+      resultadoCampos.stockPisoVenta = Math.max(0, pisoActual + cantidadNum);
+    }
+    const movimiento = {
+      id,
+      operationId: operationId || id,
+      productoId,
+      cantidad: cantidadNum,
+      tipo,
+      motivo: motivo || "",
+      fecha: todayISO(),
+      origen: origen || "",
+      documentoOrigenId: documentoOrigenId || null,
+      usuario: usuario || "",
+      dispositivo: dispositivo || "",
+      stockAnterior: Number(producto.stock) || 0,
+      stockPosterior: resultadoCampos.stock !== void 0 ? resultadoCampos.stock : Number(producto.stock) || 0,
+      afectaStockTotal,
+      afectaStockPisoVenta,
+      revierteMovimientoId,
+      ...camposExtra || {}
+    };
+    setProductos((s2) => s2.map((p2) => p2.id === productoId ? { ...p2, ...resultadoCampos } : p2));
+    snapshotLocal.set(productoId, { ...producto, ...resultadoCampos });
+    setMovimientos((s2) => [movimiento, ...s2]);
+    idsConocidos.add(id);
+    porId.set(id, movimiento);
+    if (deficitGenerado > 0 && registrarAuditoria) {
+      registrarAuditoria("deficit_stock_detectado", `${producto.nombre}: ${deficitGenerado} sin cobertura (${tipo}, operaci\xF3n ${movimiento.operationId})`);
+    }
+    return { ok: true, movimiento, yaExistia: false };
+  }
+  return { aplicarMovimientoStock, calcularStockTeorico };
+}
