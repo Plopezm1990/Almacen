@@ -32,8 +32,8 @@ jobs:
           const funcs = [
             'Dashboard','Resultados','LibroIva','GestionAlmacen','crearMotorStock',
             'crearLogicaGastos','crearLogicaPersonal','crearLogicaFacturasDirectas',
-            'crearLogicaAlbaranes','crearLogicaPedidos','crearLogicaVenta',
-            'crearLogicaEncargos','crearLogicaFichaje','crearLogicaAppcc'
+            'crearLogicaAlbaranes','crearLogicaPedidos','crearLogicaVenta','crearLogicaProductos',
+            'crearLogicaEncargos','crearLogicaFichaje','crearLogicaAppcc','crearLogicaNominas'
           ];
           for (const name of funcs) fs.writeFileSync(path.join('tmp-inspeccion', `fn-${name}.txt`), functionBlock(name));
           const contenido = src.indexOf('const contenido =');
