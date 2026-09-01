@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Prueba CORS enviar-notificacion</title>
+<style>
+body{font-family:system-ui,sans-serif;background:#f7f3e9;color:#17241c;padding:24px;max-width:720px;margin:auto}
+.card{background:#fff;border:1px solid #ddd3bf;border-radius:14px;padding:16px;margin:12px 0}.ok{color:#176b3a}.bad{color:#9b1c1c}.wait{color:#6b6255}
+</style>
+</head>
+<body>
+<h1>Prueba CORS · enviar-notificacion</h1>
+<p>Esta página solo envía solicitudes <b>OPTIONS</b>. No envía POST y no puede enviar ninguna notificación.</p>
+<div class="card"><b>Rama permitida</b><div id="rama" class="wait">Comprobando…</div></div>
+<div class="card"><b>Origen no permitido (sandbox / Origin: null)</b><div id="externo" class="wait">Comprobando…</div></div>
+<script>
+const URL='https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion';
+(async()=>{
+  const out=document.getElementById('rama');
+  try{
+    const r=await fetch(URL,{method:'OPTIONS'});
+    if(r.status===200){out.textContent='OK · OPTIONS 200';out.className='ok'}
+    else{out.textContent='FALLO · status '+r.status;out.className='bad'}
+  }catch(e){out.textContent='FALLO · '+e.message;out.className='bad'}
+})();
+window.addEventListener('message',(e)=>{
+  if(!e.data||e.data.tipo!=='cors-externo-notificacion')return;
+  const out=document.getElementById('externo');
+  if(e.data.bloqueado){out.textContent='OK · origen externo bloqueado por CORS';out.className='ok'}
+  else{out.textContent='FALLO · el origen externo pudo leer status '+e.data.status;out.className='bad'}
+});
+const f=document.createElement('iframe');
+f.sandbox='allow-scripts';
+f.style.display='none';
+f.srcdoc=`<script>
+(async()=>{try{const r=await fetch('${URL}',{method:'OPTIONS'});parent.postMessage({tipo:'cors-externo-notificacion',bloqueado:false,status:r.status},'*')}catch(e){parent.postMessage({tipo:'cors-externo-notificacion',bloqueado:true},'*')}})();
+<\/script>`;
+document.body.appendChild(f);
+</script>
+</body>
+</html>
