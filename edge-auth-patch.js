@@ -84,4 +84,86 @@
       return respuestaSinSesion("No se pudo comprobar la sesión. Vuelve a iniciar sesión.");
     }
   };
+
+  // AUTOTEST TEMPORAL POSITIVO DE ESTA RAMA.
+  // Crea una única cuenta real temporal con rol Básico usando la sesión activa
+  // del Propietario. El correo fijo evita duplicados si la prueba se repite.
+  async function probarCreacionBasico() {
+    var clave = "chocoloyos_crear_basico_positivo_v1";
+    try {
+      var estado = window.sessionStorage ? window.sessionStorage.getItem(clave) : null;
+      if (estado === "hecho" || estado === "intentando") return true;
+    } catch (_) {}
+
+    if (typeof window.getSupabaseClient !== "function") return false;
+
+    try {
+      var supabase = await window.getSupabaseClient();
+      var resultadoSesion = await supabase.auth.getSession();
+      var sesion = resultadoSesion && resultadoSesion.data ? resultadoSesion.data.session : null;
+      if (!sesion || !sesion.access_token) return false;
+
+      try {
+        if (window.sessionStorage) window.sessionStorage.setItem(clave, "intentando");
+      } catch (_) {}
+
+      var aleatorio = new Uint32Array(4);
+      window.crypto.getRandomValues(aleatorio);
+      var passwordTemporal = "Tmp!" + Array.from(aleatorio).map(function (n) {
+        return n.toString(36);
+      }).join("");
+
+      var resultado = await supabase.functions.invoke("crear-cuenta-empleado", {
+        body: {
+          empleadoId: "autotest-basico-positivo-20260901",
+          nombre: "Autotest Básico Positivo",
+          email: "autotest-basico-positivo-20260901@example.com",
+          password: passwordTemporal,
+          rol: "Básico"
+        }
+      });
+
+      var mensaje = "";
+      if (resultado && resultado.data && typeof resultado.data.error === "string") {
+        mensaje = resultado.data.error;
+      } else if (resultado && resultado.error && resultado.error.context) {
+        try {
+          var respuesta = resultado.error.context.clone ? resultado.error.context.clone() : resultado.error.context;
+          var cuerpo = await respuesta.json();
+          mensaje = cuerpo && cuerpo.error ? cuerpo.error : "";
+        } catch (_) {}
+      }
+
+      if (resultado && resultado.data && resultado.data.ok === true && resultado.data.userId) {
+        try {
+          if (window.sessionStorage) {
+            window.sessionStorage.setItem(clave, "hecho");
+            window.sessionStorage.setItem("chocoloyos_crear_basico_user_id_v1", resultado.data.userId);
+          }
+        } catch (_) {}
+        window.alert("PRUEBA POSITIVA OK: cuenta temporal Básico creada correctamente.");
+        return true;
+      }
+
+      try {
+        if (window.sessionStorage) window.sessionStorage.setItem(clave, "hecho");
+      } catch (_) {}
+      window.alert("PRUEBA POSITIVA: respuesta recibida: " + (mensaje || "sin mensaje legible"));
+      return true;
+    } catch (_) {
+      try {
+        if (window.sessionStorage) window.sessionStorage.removeItem(clave);
+      } catch (_) {}
+      return false;
+    }
+  }
+
+  var intentosAutotest = 0;
+  var temporizadorAutotest = window.setInterval(async function () {
+    intentosAutotest++;
+    var terminado = await probarCreacionBasico();
+    if (terminado || intentosAutotest >= 60) {
+      window.clearInterval(temporizadorAutotest);
+    }
+  }, 1000);
 })();
