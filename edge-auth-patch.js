@@ -71,3 +71,16 @@
     }
   };
 })();
+
+// Solo en esta rama: capa visual temporal para que Prefiltros y Entrevistas
+// no muestren puntuaciones ni recomendaciones automáticas mientras se adapta
+// el bundle principal. No guarda ni modifica datos.
+(function () {
+  "use strict";
+  if (document.querySelector('script[data-seleccion-neutral="1"]')) return;
+  var script = document.createElement("script");
+  script.src = "./seleccion-neutral-patch.js?v=1";
+  script.defer = true;
+  script.setAttribute("data-seleccion-neutral", "1");
+  (document.head || document.documentElement).appendChild(script);
+})();
