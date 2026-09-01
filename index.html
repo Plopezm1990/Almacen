@@ -150,7 +150,7 @@
     try { localStorage.setItem("almacen__borrados:" + key, JSON.stringify(ids)); }
     catch (e) { /* si no cabe, se reintenta en el próximo guardado */ }
   }
-  // Compara lo que había guardado en este equipo con lo que se va a guardar
+  // Compara lo que había guardado antes en este equipo con lo que se va a guardar
   // ahora, y apunta los identificadores que han desaparecido.
   function anotarBorradosLocales(key, textoAnterior, textoNuevo) {
     if (NUNCA_BORRAR[key]) return;
@@ -287,163 +287,123 @@
   // Lee la tabla entera POR PÁGINAS. Antes esta consulta no paginaba, y
   // PostgREST devuelve como mucho 1000 filas sin avisar: a partir del
   // movimiento 1001 el programa creía que la nube estaba medio vacía, así
-  // que resubía miles de filas en cada guardado (lento, y se pasaba del
-  // tiempo límite) y daba por inexistente lo que sí estaba.
-  async function leerFilasCompletas(tabla) {
-    var todas = [];
+  // que resubía miles de filas en cada guardado (lento, y se pasaba
+  // fácilmente del límite de peticiones). Aquí se pagina de 1000 en 1000.
+  async function idsDeTabla(tabla) {
+    var ids = [];
     var desde = 0;
     for (;;) {
-      var r = await window.__nubeCliente.from(tabla).select("id, datos")
-        .order("creado_en", { ascending: false })
+      var r = await window.__nubeCliente.from(tabla).select("id")
         .range(desde, desde + PAGINA_LECTURA - 1);
       if (r.error) throw r.error;
       var lote = r.data || [];
-      todas = todas.concat(lote);
+      ids = ids.concat(lote.map(function (fila) { return fila.id; }));
       if (lote.length < PAGINA_LECTURA) break;
       desde += PAGINA_LECTURA;
     }
-    return todas;
+    return ids;
   }
 
-  // Sube a la nube lo que ha cambiado en este equipo, y borra únicamente lo
-  // que este equipo ha quitado a propósito (una venta anulada, un albarán
-  // anulado). Lo que no conoce, no lo toca: puede venir del otro dispositivo.
-  async function sincronizarColeccionPorFila(tabla, listaLocal, claveColeccion) {
-    var filasRemotas = await leerFilasCompletas(tabla);
-    var remotoPorId = {};
-    filasRemotas.forEach(function (fila) { remotoPorId[fila.id] = fila.datos; });
-
-    var filasParaGuardar = [];
-    listaLocal.forEach(function (x) {
-      if (!x || !x.id) return;
-      var enNube = remotoPorId[x.id];
-      if (!enNube || JSON.stringify(enNube) !== JSON.stringify(x)) {
-        filasParaGuardar.push({
-          id: x.id,
-          fecha: x.fecha || new Date().toISOString().slice(0, 10),
-          datos: x,
-        });
-      }
-    });
-
-    // Solo se borra lo que este equipo apuntó como borrado, y solo si de
-    // verdad sigue estando en la nube.
-    var apuntados = claveColeccion ? borradosDe(claveColeccion) : [];
-    var idsParaBorrar = apuntados.filter(function (id) {
-      return Object.prototype.hasOwnProperty.call(remotoPorId, id);
-    });
-
-    if (filasParaGuardar.length > 0) {
-      if (tabla === "auditoria_registro") {
-        // auditoria_registro no admite escritura directa a propósito — cada
-        // fila nueva tiene que pasar por la RPC controlada, una por una,
-        // para que ninguna entrada pueda fabricarse sin pasar por ahí.
-        for (var i = 0; i < filasParaGuardar.length; i++) {
-          var d = filasParaGuardar[i].datos;
-          var rRpc = await window.__nubeCliente.rpc("registrar_auditoria", {
-            p_id: d.id, p_usuario: d.usuario, p_accion: d.accion, p_detalle: d.detalle,
-            p_fecha: d.fecha, p_hora: d.hora,
-          });
-          if (rRpc.error) throw rRpc.error;
-        }
-      } else {
-        var rUp = await window.__nubeCliente.from(tabla).upsert(filasParaGuardar);
+  async function sincronizarColeccionPorFila(tabla, lista, key) {
+    lista = Array.isArray(lista) ? lista : [];
+    // 1. Primero subimos/actualizamos todo lo local. Si esto falla, NO se borra
+    //    nada en la nube — es más seguro dejar de más que perder datos.
+    if (lista.length > 0) {
+      var filas = lista.filter(function (x) { return x && x.id; })
+        .map(function (x) { return { id: x.id, datos: x }; });
+      // PostgreSQL / PostgREST limita el tamaño práctico de una sola petición;
+      // mandamos en bloques de 500 para historiales grandes.
+      for (var f = 0; f < filas.length; f += 500) {
+        var rUp = await window.__nubeCliente.from(tabla).upsert(filas.slice(f, f + 500));
         if (rUp.error) throw rUp.error;
       }
     }
-    if (idsParaBorrar.length > 0) {
-      var rDel = await window.__nubeCliente.from(tabla).delete().in("id", idsParaBorrar);
-      if (rDel.error) throw rDel.error;
+
+    // 2. Solo borramos los IDs que ESTE dispositivo ha eliminado de forma
+    //    explícita. Nada de comparar contra toda la nube: lo que otro equipo
+    //    añadió y este no conoce se conserva.
+    var borrados = borradosDe(key);
+    if (borrados.length > 0) {
+      for (var b = 0; b < borrados.length; b += 500) {
+        var rDel = await window.__nubeCliente.from(tabla).delete().in("id", borrados.slice(b, b + 500));
+        if (rDel.error) throw rDel.error;
+      }
+      guardarBorrados(key, []); // ya están aplicados
     }
-    // Los borrados ya aplicados (y los que ya no estaban en la nube porque
-    // otro dispositivo se adelantó) dejan de estar pendientes.
-    if (claveColeccion && apuntados.length > 0) guardarBorrados(claveColeccion, []);
   }
 
   /* ----------------------------------------------------------
-     COLECCIONES GUARDADAS EN BLOQUE (productos, clientes, ...)
+     FUSIÓN NO DESTRUCTIVA DE COLECCIONES COMPARTIDAS
      ------------------------------------------------------------
-     Estas no van fila a fila: se guardan como un bloque entero.
-     Antes, el último equipo en guardar machacaba el bloque: si
-     tenías el programa abierto en el ordenador y dabas de alta un
-     producto en el móvil, en cuanto el ordenador guardara
-     cualquier otra cosa, ese producto desaparecía.
+     Cuando dos dispositivos editan cosas distintas mientras
+     alguno está sin conexión, el último en reconectar NO debe
+     borrar lo que hizo el otro. Para listas de objetos con id,
+     se conserva lo de la nube y se aplican encima solo los
+     cambios que este equipo hizo respecto a su copia anterior.
 
-     Ahora no se sube el bloque tal cual. Se mira qué ha cambiado
-     en ESTE equipo (comparando con lo que tenía guardado antes) y
-     solo ese cambio se aplica sobre lo que hay en la nube. Lo que
-     haya hecho el otro dispositivo se queda donde está.
+     Para mapas (objetos cuyas claves son ids, ej. catálogo de
+     proveedores) se hace lo mismo por clave. Los valores simples
+     (tema, preferencias locales...) siguen siendo último cambio.
      ---------------------------------------------------------- */
+  function esMapa(x) { return x && typeof x === "object" && !Array.isArray(x); }
+  function esListaConId(x) { return Array.isArray(x) && x.some(function (v) { return v && typeof v === "object" && v.id; }); }
+  function igual(a, b) { try { return JSON.stringify(a) === JSON.stringify(b); } catch (e) { return false; } }
 
-  // Los respaldos NO se fusionan: cada equipo guarda los suyos y son muy
-  // grandes (llevan una copia entera del negocio). Juntar los de dos equipos
-  // multiplicaría el tamaño sin aportar nada.
-  var SIN_FUSION = { historialRespaldos: true };
-
-  function esListaConId(v) {
-    return Array.isArray(v) && v.length > 0 && v.every(function (x) {
-      return x && typeof x === "object" && !Array.isArray(x) && x.id;
-    });
-  }
-  function esMapa(v) {
-    return v && typeof v === "object" && !Array.isArray(v);
-  }
-  function igual(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
-
-  function fusionarListas(enNube, antes, ahora) {
-    var mapaAntes = {}, mapaAhora = {}, mapaNube = {};
-    antes.forEach(function (x) { if (x && x.id) mapaAntes[x.id] = x; });
-    ahora.forEach(function (x) { if (x && x.id) mapaAhora[x.id] = x; });
-    enNube.forEach(function (x) { if (x && x.id) mapaNube[x.id] = x; });
-
-    var resultado = [];
-    var colocados = {};
-    var conflictos = []; // los dos dispositivos cambiaron el MISMO registro, cada uno a su manera
-
-    ahora.forEach(function (x) {
-      if (!x || !x.id) { resultado.push(x); return; }
-      colocados[x.id] = true;
-      var previo = mapaAntes[x.id];
-      var enLaNube = mapaNube[x.id];
-      var yoLoCambie = !previo || !igual(previo, x);
-      var elOtroTambienLoCambio = previo && enLaNube && !igual(previo, enLaNube) && !igual(enLaNube, x);
-      if (yoLoCambie && elOtroTambienLoCambio) {
-        conflictos.push({ id: x.id, nombre: x.nombre || x.id, mio: x, delOtro: enLaNube });
-      }
-      if (!previo || !igual(previo, x)) {
-        resultado.push(x);                 // lo he creado o modificado yo: mando yo
-      } else if (Object.prototype.hasOwnProperty.call(mapaNube, x.id)) {
-        resultado.push(mapaNube[x.id]);    // no lo he tocado: manda la nube
-      }
-      // Si no lo he tocado y ya no está en la nube, lo borró el otro equipo:
-      // se respeta ese borrado y no se repone.
-    });
-
-    // Lo que hay en la nube y este equipo no ha llegado a ver nunca: lo ha
-    // dado de alta el otro dispositivo, así que se conserva.
-    enNube.forEach(function (x) {
-      if (!x || !x.id) return;
-      if (colocados[x.id]) return;
-      if (Object.prototype.hasOwnProperty.call(mapaAntes, x.id)) return; // lo borré yo
-      resultado.push(x);
-    });
-
-    return { resultado: resultado, conflictos: conflictos };
-  }
-
-  function fusionarMapas(enNube, antes, ahora) {
-    var res = {};
+  function fusionarListas(remoto, base, local) {
+    var r = {}, b = {}, l = {};
+    (Array.isArray(remoto) ? remoto : []).forEach(function (x) { if (x && x.id) r[x.id] = x; });
+    (Array.isArray(base) ? base : []).forEach(function (x) { if (x && x.id) b[x.id] = x; });
+    (Array.isArray(local) ? local : []).forEach(function (x) { if (x && x.id) l[x.id] = x; });
     var conflictos = [];
-    Object.keys(enNube).forEach(function (k) { res[k] = enNube[k]; });
-    Object.keys(ahora).forEach(function (k) {
-      var previo = antes[k];
-      var yoLoCambie = !(k in antes) || !igual(previo, ahora[k]);
-      var elOtroTambienLoCambio = (k in antes) && (k in enNube) && !igual(previo, enNube[k]) && !igual(enNube[k], ahora[k]);
-      if (yoLoCambie && elOtroTambienLoCambio) conflictos.push({ id: k, nombre: k, mio: ahora[k], delOtro: enNube[k] });
-      if (yoLoCambie) res[k] = ahora[k];
+    // Partimos de todo lo que existe en la nube (incluido lo que vino de otro equipo).
+    var out = {};
+    Object.keys(r).forEach(function (id) { out[id] = r[id]; });
+    // Solo aplicamos cambios que este equipo hizo respecto a su base anterior.
+    Object.keys(l).forEach(function (id) {
+      if (!b[id]) { // registro nuevo en este equipo
+        if (r[id] && !igual(r[id], l[id])) conflictos.push(id);
+        out[id] = l[id];
+      } else if (!igual(l[id], b[id])) { // este equipo lo modificó
+        if (r[id] && !igual(r[id], b[id]) && !igual(r[id], l[id])) conflictos.push(id);
+        out[id] = l[id];
+      }
+      // si local==base, este equipo no lo tocó: se deja la versión de la nube
     });
-    Object.keys(antes).forEach(function (k) { if (!(k in ahora)) delete res[k]; });
+    // Borrados explícitos del local: estaba en base y ya no está en local.
+    Object.keys(b).forEach(function (id) {
+      if (!l[id] && out[id]) {
+        // Solo se borra si la nube tampoco cambió ese registro desde la base.
+        // Si otro equipo lo modificó, conservar es más seguro que borrar.
+        if (!r[id] || igual(r[id], b[id])) delete out[id];
+        else conflictos.push(id);
+      }
+    });
+    // Conserva el orden local primero (lo habitual al trabajar) y después
+    // los registros que solo llegaron de otros dispositivos.
+    var res = [];
+    Object.keys(l).forEach(function (id) { if (out[id]) { res.push(out[id]); delete out[id]; } });
+    Object.keys(out).forEach(function (id) { res.push(out[id]); });
     return { resultado: res, conflictos: conflictos };
+  }
+
+  function fusionarMapas(remoto, base, local) {
+    var out = Object.assign({}, remoto || {});
+    var conflictos = [];
+    Object.keys(local || {}).forEach(function (k) {
+      if (!Object.prototype.hasOwnProperty.call(base || {}, k) || !igual(local[k], base[k])) {
+        if (Object.prototype.hasOwnProperty.call(remoto || {}, k) &&
+            Object.prototype.hasOwnProperty.call(base || {}, k) &&
+            !igual(remoto[k], base[k]) && !igual(remoto[k], local[k])) conflictos.push(k);
+        out[k] = local[k];
+      }
+    });
+    Object.keys(base || {}).forEach(function (k) {
+      if (!Object.prototype.hasOwnProperty.call(local || {}, k) && Object.prototype.hasOwnProperty.call(out, k)) {
+        if (!Object.prototype.hasOwnProperty.call(remoto || {}, k) || igual(remoto[k], base[k])) delete out[k];
+        else conflictos.push(k);
+      }
+    });
+    return { resultado: out, conflictos: conflictos };
   }
 
   function fusionarValor(enNube, antes, ahora) {
@@ -558,15 +518,9 @@
       if (window.__nubeActiva && window.__nubeCliente) {
         try {
           if (tablaEspecial) {
-            await conTiempoLimite(
-              encolarPorClave(key, function () { return sincronizarColeccionPorFila(tablaEspecial, JSON.parse(value), key); }),
-              ESPERA_NUBE_MS
-            );
+            await encolarPorClave(key, function () { return sincronizarColeccionPorFila(tablaEspecial, JSON.parse(value), key); });
           } else {
-            await conTiempoLimite(
-              encolarPorClave(key, function () { return guardarBloque(key, anterior, value); }),
-              ESPERA_NUBE_MS
-            );
+            await encolarPorClave(key, function () { return guardarBloque(key, anterior, value); });
           }
           quitarPendiente(key);
         } catch (e) {
@@ -576,11 +530,9 @@
         marcarPendiente(key);
       }
 
-      // Si no cupo en el equipo, se avisa AHORA — pero después de haber
-      // intentado subirlo, para no perderlo por partida doble.
       if (falloLocal) {
         throw new Error(
-          "No cabe en el almacenamiento de este equipo (" + key + "). " +
+          "No se pudo guardar en este dispositivo porque el almacenamiento está lleno. " +
           "Suele significar que hay algo muy grande guardado, como una foto."
         );
       }
@@ -642,6 +594,7 @@
     }
   });
 </script>
+<script src="./seleccion-neutral-patch.js"></script>
 <script type="module" src="./fuente.js"></script>
 <script>
   // Una vez que el módulo se ha importado y ejecutado, React ya habrá
