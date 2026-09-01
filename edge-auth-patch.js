@@ -16,13 +16,6 @@
     "enviar-notificacion": true
   };
 
-  // SOLO EN ESTA RAMA DE PRUEBAS: las notificaciones del navegador se envían
-  // a la versión segura aislada. Esa función valida sesión/rol/payload y tiene
-  // el envío push real deshabilitado, así que no avisa a ningún dispositivo.
-  var REDIRECCIONES_PRUEBA = {
-    "enviar-notificacion": "enviar-notificacion-segura"
-  };
-
   function respuestaSinSesion(mensaje) {
     return new Response(
       JSON.stringify({ ok: false, error: mensaje }),
@@ -72,16 +65,67 @@
       }
 
       opciones.headers = headers;
-
-      var destino = REDIRECCIONES_PRUEBA[nombreFuncion];
-      if (destino && typeof input === "string") {
-        var resto = url.slice((ORIGEN_FUNCTIONS + nombreFuncion).length);
-        return fetchOriginal(ORIGEN_FUNCTIONS + destino + resto, opciones);
-      }
-
       return fetchOriginal(input, opciones);
     } catch (e) {
       return respuestaSinSesion("No se pudo comprobar la sesión. Vuelve a iniciar sesión.");
     }
   };
+
+  // AUTOTEST TEMPORAL SOLO EN ESTA RAMA.
+  // Llama al endpoint definitivo enviar-notificacion con la sesión real del
+  // usuario, pero el servidor mantiene ENVIO_REAL_HABILITADO=false, por lo que
+  // no lee suscripciones ni envía ningún push.
+  async function probarEndpointDefinitivoNotificacion() {
+    var clave = "chocoloyos_notificacion_definitiva_simulacion_v1";
+    try {
+      if (window.sessionStorage && window.sessionStorage.getItem(clave) === "hecho") return true;
+    } catch (_) {}
+
+    if (typeof window.getSupabaseClient !== "function") return false;
+
+    try {
+      var supabase = await window.getSupabaseClient();
+      var resultadoSesion = await supabase.auth.getSession();
+      var sesion = resultadoSesion && resultadoSesion.data ? resultadoSesion.data.session : null;
+      if (!sesion || !sesion.access_token) return false;
+
+      var respuesta = await fetchOriginal(ORIGEN_FUNCTIONS + "enviar-notificacion", {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + sesion.access_token,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          titulo: "Error en el programa",
+          cuerpo: "Prueba segura del endpoint definitivo de notificaciones.",
+          url: "/"
+        })
+      });
+
+      var datos = {};
+      try { datos = await respuesta.json(); } catch (_) {}
+
+      try {
+        if (window.sessionStorage) window.sessionStorage.setItem(clave, "hecho");
+      } catch (_) {}
+
+      if (respuesta.status === 200 && datos && datos.ok === true && datos.simulacion === true && datos.enviado === false) {
+        window.alert("PRUEBA SEGURA OK: endpoint definitivo validado en simulación. No se envió ninguna notificación.");
+      } else {
+        window.alert("PRUEBA SEGURA: respuesta inesperada del endpoint definitivo (HTTP " + respuesta.status + ").");
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  var intentosAutotest = 0;
+  var temporizadorAutotest = window.setInterval(async function () {
+    intentosAutotest++;
+    var terminado = await probarEndpointDefinitivoNotificacion();
+    if (terminado || intentosAutotest >= 60) {
+      window.clearInterval(temporizadorAutotest);
+    }
+  }, 1000);
 })();
