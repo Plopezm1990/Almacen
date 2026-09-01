@@ -1,0 +1,281 @@
+START 4573225 END 4594447 LEN 21222
+function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendientes, margenPromedio, movimientos, productos, caducanPronto = [], proveedorPorId, vencenPronto = [], totalPendientePago = 0, documentosPersonalPronto = [], fichajesAbiertos = [], encargosUrgentes = [], pisoVentaBajo = [], sugerenciasPedido = [], setTab, recordatorioConteo = [], alertasAppcc = { pendientes: [], desviaciones: [] }, fallosGuardado = [], diagnosticoStock = [], registrarSalida }) {
+  const entradas30 = movimientos.filter((m2) => esEntrada(m2)).reduce((a2, m2) => a2 + Math.abs(cantidadConSigno(m2)), 0);
+  const salidas30 = movimientos.filter((m2) => esSalida(m2)).reduce((a2, m2) => a2 + Math.abs(cantidadConSigno(m2)), 0);
+  const [abierta, setAbierta] = (0, import_react4.useState)(null);
+  const [confirmarMermaLote, setConfirmarMermaLote] = (0, import_react4.useState)(null);
+  const [procesandoMermaLote, setProcesandoMermaLote] = (0, import_react4.useState)(false);
+  const diasTexto = (d2) => d2 < 0 ? `vencido hace ${Math.abs(d2)} d` : d2 === 0 ? "hoy" : `en ${d2} d`;
+  const diasColor = (d2) => d2 < 0 ? C2.red : d2 <= 7 ? C2.amber : C2.inkSoft;
+  const descuadresStock = diagnosticoStock.filter((d2) => !d2.coincide).sort((a2, b2) => Math.abs(b2.diferencia) - Math.abs(a2.diferencia));
+  const tarjetas = [
+    {
+      id: "saldo",
+      titulo: "Saldo de almac\xE9n",
+      valor: `\u20AC${fmt(valorInventario)}`,
+      nota: valorUtillaje > 0 ? `+ \u20AC${fmt(valorUtillaje)} en utillaje y limpieza (aparte, no es mercanc\xEDa)` : null,
+      tab: "saldo",
+      tabNombre: "Saldo de almac\xE9n",
+      items: []
+    },
+    {
+      id: "margen",
+      titulo: "Margen promedio",
+      valor: `${fmt(margenPromedio)}%`,
+      color: C2.accent,
+      tab: "resultados",
+      tabNombre: "Resultados",
+      items: []
+    },
+    {
+      id: "pedidos",
+      titulo: "Pedidos pendientes",
+      valor: pedidosPendientes.length,
+      tab: "pedidos",
+      tabNombre: "Pedidos",
+      items: pedidosPendientes.map((pe2) => ({
+        clave: pe2.id,
+        principal: (proveedorPorId(pe2.proveedorId) || {}).nombre || "Proveedor eliminado",
+        secundario: `${(pe2.items || []).length} producto(s) \xB7 ${pe2.estado}`,
+        derecha: pe2.fechaEsperada ? `llega ${new Date(pe2.fechaEsperada).toLocaleDateString("es-ES")}` : "sin fecha"
+      }))
+    },
+    {
+      id: "stockbajo",
+      titulo: "Productos en stock bajo",
+      valor: stockBajo.length,
+      color: stockBajo.length ? C2.red : C2.ink,
+      tab: "productos",
+      tabNombre: "Productos",
+      items: stockBajo.map((p2) => ({
+        clave: p2.id,
+        principal: p2.nombre,
+        secundario: p2.zona || "",
+        derecha: `${fmt(p2.stock)} / m\xEDn. ${fmt(p2.stockMinimo)}`,
+        derechaColor: C2.red
+      }))
+    },
+    {
+      id: "caducidades",
+      titulo: "Lotes que caducan (30 d)",
+      valor: caducanPronto.length,
+      color: caducanPronto.some((l2) => l2.dias < 0) ? C2.red : caducanPronto.length ? C2.amber : C2.ink,
+      tab: "productos",
+      tabNombre: "Productos",
+      items: caducanPronto.map((l2) => ({
+        clave: l2.id,
+        principal: l2.nombre,
+        secundario: `${l2.lote ? `lote ${l2.lote} \xB7 ` : ""}${l2.caducidad}${l2.unidades ? ` \xB7 ${l2.parcial ? "quedan aprox. " : ""}${fmt(l2.unidades)} uds` : ""}`,
+        derecha: diasTexto(l2.dias),
+        derechaColor: diasColor(l2.dias)
+      }))
+    },
+    {
+      id: "facturas",
+      titulo: "Facturas por pagar (7 d)",
+      valor: vencenPronto.length,
+      color: vencenPronto.some((f2) => f2.dias < 0) ? C2.red : vencenPronto.length ? C2.amber : C2.ink,
+      nota: totalPendientePago > 0 ? `\u20AC${fmt(totalPendientePago)} pendiente en total` : null,
+      tab: "pagos",
+      tabNombre: "Cuentas por pagar",
+      items: vencenPronto.map((f2) => ({
+        clave: f2.id,
+        principal: f2.proveedor && f2.proveedor.nombre || "Sin proveedor",
+        secundario: `${f2.concepto || ""} \xB7 \u20AC${fmt(f2.total)}`,
+        derecha: diasTexto(f2.dias),
+        derechaColor: diasColor(f2.dias)
+      }))
+    },
+    {
+      id: "encargos",
+      titulo: "Encargos urgentes",
+      valor: encargosUrgentes.length,
+      color: encargosUrgentes.some((e) => e.dias < 0) ? C2.red : encargosUrgentes.length ? C2.amber : C2.ink,
+      nota: encargosUrgentes.length > 0 ? "en 2 d\xEDas o menos" : null,
+      tab: "encargos",
+      tabNombre: "Encargos",
+      items: encargosUrgentes.map((e) => ({
+        clave: e.id,
+        principal: `Encargo ${e.numero || "s/n"}`,
+        secundario: `${(e.lineas || []).length} producto(s)${e.horaEntrega ? ` \xB7 ${e.horaEntrega}` : ""}`,
+        derecha: diasTexto(e.dias),
+        derechaColor: diasColor(e.dias)
+      }))
+    },
+    {
+      id: "reponer",
+      titulo: "Reponer piso de venta",
+      valor: pisoVentaBajo.length,
+      color: pisoVentaBajo.length ? C2.amber : C2.ink,
+      nota: pisoVentaBajo.length > 0 ? "sacar del almac\xE9n al mostrador" : null,
+      tab: "traspasos",
+      tabNombre: "Traspasos",
+      items: pisoVentaBajo.map((p2) => ({
+        clave: p2.id,
+        principal: p2.nombre,
+        secundario: `${fmt((Number(p2.stock) || 0) - (Number(p2.stockPisoVenta) || 0))} en el almac\xE9n`,
+        derecha: `${fmt(p2.stockPisoVenta || 0)} / m\xEDn. ${fmt(p2.stockMinimoPisoVenta)}`,
+        derechaColor: C2.amber
+      }))
+    },
+    {
+      id: "fallos_guardado",
+      titulo: "Guardado: cambios sin confirmar",
+      valor: fallosGuardado.length,
+      color: fallosGuardado.length ? C2.red : C2.ink,
+      nota: fallosGuardado.length > 0 ? "algo no se ha podido guardar \u2014 revisa la conexi\xF3n antes de seguir" : null,
+      tab: "respaldos",
+      tabNombre: "Respaldos",
+      items: fallosGuardado.slice(0, 10).map((f2) => ({
+        clave: f2.id,
+        principal: f2.key,
+        secundario: f2.mensaje || "Error al guardar",
+        derecha: new Date(f2.fecha).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
+        derechaColor: C2.red
+      }))
+    },
+    {
+      id: "appcc_desviaciones",
+      titulo: "APPCC: desviaciones sin resolver",
+      valor: alertasAppcc.desviaciones.length,
+      color: alertasAppcc.desviaciones.length ? C2.red : C2.ink,
+      nota: alertasAppcc.desviaciones.length > 0 ? "un valor sali\xF3 fuera de rango y no se ha vuelto a medir bien" : null,
+      tab: "appcc",
+      tabNombre: "APPCC",
+      items: alertasAppcc.desviaciones.slice(0, 10).map((r) => ({
+        clave: r.id,
+        principal: r.puntoNombre || "Punto de control",
+        secundario: `${r.fecha}${r.hora ? " " + r.hora : ""}${r.observaciones ? " \xB7 " + r.observaciones : ""}`,
+        derecha: r.valor != null && r.valor !== "" ? String(r.valor) : "no conforme",
+        derechaColor: C2.red
+      }))
+    },
+    {
+      id: "appcc_pendientes",
+      titulo: "APPCC: controles de hoy",
+      valor: alertasAppcc.pendientes.length,
+      color: alertasAppcc.pendientes.length ? C2.amber : C2.ink,
+      nota: alertasAppcc.pendientes.length > 0 ? "pendientes de registrar" : null,
+      tab: "appcc",
+      tabNombre: "APPCC",
+      items: alertasAppcc.pendientes.map((p2) => ({
+        clave: p2.id,
+        principal: p2.nombre,
+        secundario: p2.frecuencia,
+        derecha: p2.faltan > 1 ? `faltan ${p2.faltan}` : "pendiente",
+        derechaColor: C2.amber
+      }))
+    },
+    {
+      id: "pedirya",
+      titulo: "Pedir ya",
+      valor: sugerenciasPedido.length,
+      color: sugerenciasPedido.length ? C2.red : C2.ink,
+      nota: sugerenciasPedido.length > 0 ? "se agotan antes de que llegue el pedido" : null,
+      tab: "pedidos",
+      tabNombre: "Pedidos",
+      items: sugerenciasPedido.map((p2) => ({
+        clave: p2.id,
+        principal: p2.nombre,
+        secundario: `${p2.proveedorNombre} \xB7 pide ${fmt(p2.cantidadSugerida)} ${p2.unidad}${p2.cajasSugeridas ? ` (${p2.cajasSugeridas} caja${p2.cajasSugeridas > 1 ? "s" : ""})` : ""}`,
+        derecha: `${Math.round(p2.dias)} d de stock \xB7 llega en ${p2.diasHastaEntrega}`,
+        derechaColor: C2.red
+      }))
+    },
+    {
+      id: "descuadresstock",
+      titulo: "Descuadres de stock",
+      valor: descuadresStock.length,
+      color: descuadresStock.length ? C2.red : C2.ink,
+      nota: descuadresStock.length > 0 ? "la cach\xE9 no coincide con el hist\xF3rico de movimientos" : null,
+      tab: "diagnostico",
+      tabNombre: "Reconciliaci\xF3n de stock",
+      items: descuadresStock.map((d2) => ({
+        clave: d2.productoId,
+        principal: d2.nombre,
+        secundario: `Cach\xE9 ${fmt(d2.teoricoCache)} \xB7 hist\xF3rico ${fmt(d2.teoricoReal)}`,
+        derecha: `${d2.diferencia > 0 ? "+" : ""}${fmt(d2.diferencia)}`,
+        derechaColor: C2.red
+      }))
+    },
+    {
+      id: "personal",
+      titulo: "Personal: avisos",
+      valor: documentosPersonalPronto.length,
+      color: documentosPersonalPronto.some((d2) => d2.dias < 0) ? C2.red : documentosPersonalPronto.length ? C2.amber : C2.ink,
+      nota: fichajesAbiertos.length > 0 ? `${fichajesAbiertos.length} fichaje(s) sin cerrar` : null,
+      notaColor: fichajesAbiertos.length > 0 ? C2.amber : null,
+      tab: "personal",
+      tabNombre: "Personal",
+      items: documentosPersonalPronto.map((d2) => ({
+        clave: d2.id,
+        principal: d2.empleado,
+        secundario: `${d2.concepto} \xB7 ${d2.fecha}`,
+        derecha: diasTexto(d2.dias),
+        derechaColor: diasColor(d2.dias)
+      }))
+    },
+    {
+      id: "conteos",
+      titulo: "Conteos atrasados",
+      valor: recordatorioConteo.filter((a2) => a2.atrasado).length,
+      color: recordatorioConteo.some((a2) => a2.atrasado) ? C2.amber : C2.ink,
+      tab: "conteo",
+      tabNombre: "Inventario ciego",
+      items: recordatorioConteo.filter((a2) => a2.atrasado).map((a2) => ({
+        clave: a2.id,
+        principal: a2.nombre,
+        secundario: a2.ultimaFecha ? `\xFAltimo conteo: ${a2.ultimaFecha}` : "todav\xEDa no se ha contado nunca",
+        derecha: a2.diasDesde === null ? "sin datos" : `hace ${a2.diasDesde} d`,
+        derechaColor: C2.amber
+      }))
+    }
+  ];
+  const tarjetaAbierta = tarjetas.find((t2) => t2.id === abierta);
+  return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-4 pb-3", style: { borderBottom: `2px solid ${C2.accent}` } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[18px] font-semibold" }, "Panel general"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, (/* @__PURE__ */ new Date()).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" }))), /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO, alt: "", style: { height: 56, width: "auto" } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Toca cualquier cifra para ver el detalle."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-3 mb-3" }, tarjetas.map((t2) => {
+    const activa = abierta === t2.id;
+    return /* @__PURE__ */ import_react4.default.createElement(
+      "button",
+      {
+        key: t2.id,
+        onClick: () => setAbierta(activa ? null : t2.id),
+        className: "text-left rounded-xl p-4",
+        style: {
+          background: C2.surface,
+          border: `1px solid ${activa ? C2.accent : C2.line}`,
+          boxShadow: activa ? `0 0 0 1px ${C2.accent}` : "none"
+        }
+      },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, t2.titulo),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-2xl font-semibold mono mt-1", style: { color: t2.color || C2.ink } }, t2.valor),
+      t2.nota && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-0.5", style: { color: t2.notaColor || C2.inkSoft } }, t2.nota)
+    );
+  })), tarjetaAbierta && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-6", style: { borderColor: C2.accent } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold" }, tarjetaAbierta.titulo), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setAbierta(null), "aria-label": "Cerrar" }, /* @__PURE__ */ import_react4.default.createElement(X, { size: 16, color: C2.inkSoft }))), tarjetaAbierta.items.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "No hay nada pendiente aqu\xED ahora mismo.") : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 mb-3 max-h-72 overflow-y-auto" }, tarjetaAbierta.items.map((it2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: it2.clave, className: "flex items-start justify-between py-1.5 border-b last:border-0", style: { borderColor: C2.line } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "pr-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, it2.principal), it2.secundario && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, it2.secundario)), /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11.5px] mono font-semibold whitespace-nowrap", style: { color: it2.derechaColor || C2.inkSoft } }, it2.derecha)))), setTab && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => {
+    setTab(tarjetaAbierta.tab);
+    setAbierta(null);
+  } }, "Ir a ", tarjetaAbierta.tabNombre, " ", /* @__PURE__ */ import_react4.default.createElement(ChevronRight, { size: 13 }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3 flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { size: 15, color: C2.amber }), " Alertas de reposici\xF3n"), stockBajo.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay productos por debajo de su stock m\xEDnimo." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, stockBajo.map((p2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: p2.id, className: "flex items-center justify-between py-1.5 border-b last:border-0", style: { borderColor: C2.line } }, /* @__PURE__ */ import_react4.default.createElement("span", null, p2.nombre), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono text-[12px]", style: { color: C2.amber } }, p2.stock, " / m\xEDn. ", p2.stockMinimo))))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3 flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { size: 15, color: caducanPronto.some((l2) => l2.dias < 0) ? C2.red : C2.amber }), "Caducidades pr\xF3ximas"), caducanPronto.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Ning\xFAn lote caduca en los pr\xF3ximos 30 d\xEDas." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 max-h-48 overflow-y-auto" }, caducanPronto.slice(0, 12).map((l2) => {
+    const vencido = l2.dias < 0;
+    const urgente = l2.dias >= 0 && l2.dias <= 7;
+    return /* @__PURE__ */ import_react4.default.createElement("div", { key: l2.id, className: "flex items-center justify-between py-1 border-b last:border-0", style: { borderColor: C2.line } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, l2.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mono", style: { color: C2.inkSoft } }, l2.lote ? `lote ${l2.lote} \xB7 ` : "", l2.caducidad, l2.unidades ? ` \xB7 ${l2.parcial ? "quedan aprox. " : ""}${fmt(l2.unidades)} uds` : "")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, (vencido || urgente) && l2.unidades > 0 && registrarSalida && /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setConfirmarMermaLote(l2), className: "text-[10.5px] font-medium px-2 py-1 rounded-full", style: { background: C2.redSoft, color: C2.red } }, "Registrar merma"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11.5px] mono font-semibold", style: { color: vencido ? C2.red : urgente ? C2.amber : C2.inkSoft } }, vencido ? `caducado hace ${Math.abs(l2.dias)} d` : l2.dias === 0 ? "caduca hoy" : `${l2.dias} d\xEDas`)));
+  }))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3" }, "Movimiento reciente de almac\xE9n"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-6 mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1 text-[12px]", style: { color: C2.accent } }, /* @__PURE__ */ import_react4.default.createElement(CircleArrowUp, { size: 14 }), " Entradas totales"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono" }, entradas30)), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1 text-[12px]", style: { color: C2.red } }, /* @__PURE__ */ import_react4.default.createElement(CircleArrowDown, { size: 14 }), " Salidas totales"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono" }, salidas30))), movimientos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "A\xFAn no hay movimientos registrados." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 max-h-40 overflow-y-auto" }, movimientos.slice(0, 8).map((m2) => {
+    const p2 = productos.find((x3) => x3.id === m2.productoId);
+    return /* @__PURE__ */ import_react4.default.createElement("div", { key: m2.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, p2 ? p2.nombre : "\u2014", " \xB7 ", m2.motivo || m2.referencia), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: esEntrada(m2) ? C2.accent : esSalida(m2) ? C2.red : C2.inkSoft } }, esEntrada(m2) ? "+" : esSalida(m2) ? "-" : "\xB1", Math.abs(cantidadConSigno(m2))));
+  })))), confirmarMermaLote && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => !procesandoMermaLote && setConfirmarMermaLote(null), title: "Registrar como merma" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, "Vas a registrar ", /* @__PURE__ */ import_react4.default.createElement("b", null, fmt(confirmarMermaLote.unidades), " ud. de ", confirmarMermaLote.nombre), confirmarMermaLote.lote ? ` (lote ${confirmarMermaLote.lote})` : "", " como merma por caducidad."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmarMermaLote(null), disabled: procesandoMermaLote }, "Cancelar"), /* @__PURE__ */ import_react4.default.createElement(Btn, {
+    onClick: () => {
+      setProcesandoMermaLote(true);
+      registrarSalida(confirmarMermaLote.productoId, confirmarMermaLote.unidades, { motivo: "Merma / caducidad", referencia: confirmarMermaLote.lote ? `lote ${confirmarMermaLote.lote}` : "" });
+      setConfirmarMermaLote(null);
+      setProcesandoMermaLote(false);
+    },
+    disabled: procesandoMermaLote
+  }, procesandoMermaLote ? "Registrando\u2026" : "Confirmar merma")))));
+}
+var DIAS_REPARTO = [
+  { valor: 1, corta: "L", nombre: "Lunes" },
+  { valor: 2, corta: "M", nombre: "Martes" },
+  { valor: 3, corta: "X", nombre: "Mi\xE9rcoles" },
+  { valor: 4, corta: "J", nombre: "Jueves" },
+  { valor: 5, corta: "V", nombre: "Viernes" },
+  { valor: 6, corta: "S", nombre: "S\xE1bado" },
+  { valor: 0, corta: "D", nombre: "Domingo" }
+];

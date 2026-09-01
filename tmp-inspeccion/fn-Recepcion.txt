@@ -1,0 +1,72 @@
+START 4693175 END 4701945 LEN 8770
+function Recepcion({ pedidos, proveedorPorId, productoPorId, recibirPedido, almacenCongelado, recibirConAlbaran, recibirConFotoIA, cerrarPedido }) {
+  const [activos, setActivos] = (0, import_react4.useState)({});
+  const [cerrando, setCerrando] = (0, import_react4.useState)(null);
+  const pendientes = pedidos.filter((p2) => p2.estado !== "Recibido");
+  function setCampo(pedidoId, productoId, campo, val) {
+    setActivos((s2) => ({
+      ...s2,
+      [pedidoId]: { ...s2[pedidoId] || {}, [productoId]: { ...(s2[pedidoId] || {})[productoId] || {}, [campo]: val } }
+    }));
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Recepci\xF3n de mercanc\xEDa"), almacenCongelado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start gap-2 text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { size: 16, color: C2.amber, style: { marginTop: 2, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement("span", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Almac\xE9n congelado por conteo en curso."), " Las entradas y salidas est\xE1n bloqueadas hasta que finalices el conteo en Inventario ciego."))), pendientes.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay pedidos pendientes de recibir." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-3" }, pendientes.map((pe2) => {
+    const prov = proveedorPorId(pe2.proveedorId);
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: pe2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold" }, prov ? prov.nombre : "\u2014"), /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.amber }, pe2.estado)), pe2.items.map((it2) => {
+      const p2 = productoPorId(it2.productoId);
+      const pendiente = it2.cantidad - it2.cantidadRecibida;
+      const campo = (activos[pe2.id] || {})[it2.productoId] || {};
+      const precioPrecargado = campo.precio !== void 0 ? campo.precio : p2 ? p2.costo || "" : "";
+      const ivaPrecargado = campo.iva !== void 0 ? campo.iva : p2 ? p2.ivaCompra || 10 : 10;
+      return /* @__PURE__ */ import_react4.default.createElement("div", { key: it2.productoId, className: "py-1.5 border-b last:border-0", style: { borderColor: C2.line } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", null, p2 ? p2.nombre : "\u2014"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mono", style: { color: C2.inkSoft } }, "Pedido: ", it2.cantidad, " \xB7 Recibido: ", it2.cantidadRecibida, " \xB7 Pendiente: ", pendiente)), /* @__PURE__ */ import_react4.default.createElement(
+        Input,
+        {
+          type: "number",
+          style: { width: 90 },
+          placeholder: "Cant. hoy",
+          value: campo.cantidad || "",
+          onChange: (e) => setCampo(pe2.id, it2.productoId, "cantidad", e.target.value),
+          disabled: pendiente <= 0
+        }
+      )), Number(campo.cantidad) > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2 mt-1.5" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Precio/ud (\u20AC)"), /* @__PURE__ */ import_react4.default.createElement(
+        Input,
+        {
+          type: "number",
+          step: "0.01",
+          style: { width: 80 },
+          value: precioPrecargado,
+          onChange: (e) => setCampo(pe2.id, it2.productoId, "precio", e.target.value)
+        }
+      ), /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, "IVA %"), /* @__PURE__ */ import_react4.default.createElement(
+        Input,
+        {
+          type: "number",
+          style: { width: 60 },
+          value: ivaPrecargado,
+          onChange: (e) => setCampo(pe2.id, it2.productoId, "iva", e.target.value)
+        }
+      )));
+    }), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 flex flex-wrap gap-2" }, !almacenCongelado && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => recibirConAlbaran(pe2) }, /* @__PURE__ */ import_react4.default.createElement(FileText, { size: 14 }), " Recibir con albar\xE1n"), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => recibirConFotoIA(pe2) }, /* @__PURE__ */ import_react4.default.createElement(Camera, { size: 14 }), " Recibir con foto IA"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+      const lineas = pe2.items.filter((it2) => Number((activos[pe2.id] || {})[it2.productoId]?.cantidad) > 0).map((it2) => {
+        const campo = (activos[pe2.id] || {})[it2.productoId] || {};
+        const p2 = productoPorId(it2.productoId);
+        return {
+          productoId: it2.productoId,
+          cantidad: campo.cantidad,
+          // Si no se tocó el precio, se usa el precargado
+          // (el coste actual del producto) — así confirmar
+          // sin escribir nada sigue siendo "llegó igual".
+          precioBruto: campo.precio !== void 0 ? campo.precio : p2 ? p2.costo : 0,
+          ivaPct: campo.iva !== void 0 ? campo.iva : p2 ? p2.ivaCompra : 10
+        };
+      });
+      recibirPedido(pe2.id, lineas);
+      setActivos((s2) => ({ ...s2, [pe2.id]: {} }));
+    } }, /* @__PURE__ */ import_react4.default.createElement(CircleCheck, { size: 14 }), " Recibir sin albar\xE1n")), cerrarPedido && /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setCerrando(pe2) }, "Cerrar pedido")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Con albar\xE1n registras adem\xE1s precios, descuentos, lotes y caducidades, y el pedido se cierra solo. Con foto IA, haces una foto del papel del proveedor y ella rellena el borrador por ti. La otra opci\xF3n solo suma stock, sin dejar rastro del papel."));
+  })), cerrando && (() => {
+    const faltan = cerrando.items.map((it2) => ({ ...it2, producto: productoPorId(it2.productoId), pendiente: (Number(it2.cantidad) || 0) - (Number(it2.cantidadRecibida) || 0) })).filter((it2) => it2.pendiente > 0);
+    return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setCerrando(null), title: "\xBFDar el pedido por cerrado?" }, faltan.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, "Ha llegado todo lo pedido. Se marcar\xE1 como recibido.") : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2" }, "Todav\xEDa falta por llegar:"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1 mb-3" }, faltan.map((it2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: it2.productoId, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, it2.producto ? it2.producto.nombre : "\u2014"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: C2.amber } }, "faltan ", fmt(it2.pendiente))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Ci\xE9rralo si el proveedor ya no va a servir el resto. ", /* @__PURE__ */ import_react4.default.createElement("b", null, "No suma nada al stock"), " \u2014 solo saca el pedido de esta lista para que deje de aparecer como pendiente.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
+      cerrarPedido(cerrando.id);
+      setCerrando(null);
+    } }, "S\xED, cerrar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setCerrando(null) }, "Cancelar")));
+  })());
+}

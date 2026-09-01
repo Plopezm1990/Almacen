@@ -1,0 +1,287 @@
+START 4666975 END 4693174 LEN 26199
+function Pedidos({ pedidos, proveedores, productos, crearPedido, actualizarPedido, eliminarPedido, proveedorPorId, productoPorId, sugerenciasPedido = [], addProducto }) {
+  const [showForm, setShowForm] = (0, import_react4.useState)(false);
+  const [proveedorId, setProveedorId] = (0, import_react4.useState)("");
+  const [verTodosProductos, setVerTodosProductos] = (0, import_react4.useState)(false);
+  const [fechaEsperada, setFechaEsperada] = (0, import_react4.useState)("");
+  const [items, setItems] = (0, import_react4.useState)([]);
+  const [enviarPedido, setEnviarPedido] = (0, import_react4.useState)(null);
+  const [editingId, setEditingId] = (0, import_react4.useState)(null);
+  const [confirmDeleteId, setConfirmDeleteId] = (0, import_react4.useState)(null);
+  const [creandoNuevoIdx, setCreandoNuevoIdx] = (0, import_react4.useState)(null);
+  const [nuevoProd, setNuevoProd] = (0, import_react4.useState)({ nombre: "", unidad: "unidad", costo: "" });
+  function addItemRow() {
+    if (!productos.length) return;
+    setItems((s2) => [...s2, { productoId: productos[0].id, cantidad: 1, costoUnitario: productos[0].costo }]);
+  }
+  function updateItem(idx, field, value) {
+    setItems(
+      (s2) => s2.map((it2, i3) => {
+        if (i3 !== idx) return it2;
+        if (field === "productoId") {
+          if (value === "__nuevo__") {
+            setNuevoProd({ nombre: "", unidad: "unidad", costo: "" });
+            setCreandoNuevoIdx(idx);
+            return it2;
+          }
+          const p2 = productos.find((pr) => pr.id === value);
+          return { ...it2, productoId: value, costoUnitario: p2 ? p2.costo : it2.costoUnitario };
+        }
+        return { ...it2, [field]: value };
+      })
+    );
+  }
+  function guardarProductoNuevo() {
+    if (!nuevoProd.nombre.trim()) return;
+    const creado = addProducto({
+      nombre: nuevoProd.nombre.trim(),
+      unidad: nuevoProd.unidad || "unidad",
+      tipo: "materia_prima",
+      costo: Number(nuevoProd.costo) || 0,
+      ivaCompra: 10,
+      proveedorId: proveedorId || "",
+      stock: 0,
+      stockMinimo: 0
+    });
+    setItems((s2) => s2.map((it2, i3) => i3 === creandoNuevoIdx ? { ...it2, productoId: creado.id, costoUnitario: creado.costo } : it2));
+    setCreandoNuevoIdx(null);
+  }
+  function removeItem(idx) {
+    setItems((s2) => s2.filter((_2, i3) => i3 !== idx));
+  }
+  const [error, setError] = (0, import_react4.useState)("");
+  function resetForm() {
+    setItems([]);
+    setProveedorId("");
+    setFechaEsperada("");
+    setEditingId(null);
+    setError("");
+    setVerTodosProductos(false);
+  }
+  function openEdit(pedido) {
+    setEditingId(pedido.id);
+    setProveedorId(pedido.proveedorId);
+    setFechaEsperada(pedido.fechaEsperada || "");
+    setItems(pedido.items.map((it2) => ({ productoId: it2.productoId, cantidad: it2.cantidad, costoUnitario: it2.costoUnitario })));
+    setError("");
+    setVerTodosProductos(false);
+    setShowForm(true);
+  }
+  function prepararPedidoDesdeSugerencias(proveedorId2, sugerenciasDelProveedor) {
+    setEditingId(null);
+    setProveedorId(proveedorId2);
+    setFechaEsperada("");
+    setItems(
+      sugerenciasDelProveedor.map((p2) => ({
+        productoId: p2.id,
+        // Usa la cantidad ya calculada centralizadamente, que sí resta el
+        // stock que todavía queda — pedir la cobertura completa sin restarlo
+        // significaba pedir de más cada vez que quedaba algo en el almacén.
+        cantidad: Math.max(1, p2.cantidadSugerida ?? Math.ceil((p2.consumoDiario || 0) * (p2.diasHastaEntrega + 7))),
+        costoUnitario: p2.costo
+      }))
+    );
+    setError("");
+    setVerTodosProductos(false);
+    setShowForm(true);
+  }
+  function submit() {
+    if (!proveedorId) {
+      setError("Selecciona un proveedor.");
+      return;
+    }
+    if (items.length === 0) {
+      setError("A\xF1ade al menos un producto al pedido.");
+      return;
+    }
+    setError("");
+    const itemsLimpios = items.map((it2) => ({ productoId: it2.productoId, cantidad: Number(it2.cantidad), costoUnitario: Number(it2.costoUnitario) }));
+    if (editingId) {
+      actualizarPedido(editingId, { proveedorId, fechaEsperada, items: itemsLimpios });
+      setShowForm(false);
+      resetForm();
+    } else {
+      const pedido = crearPedido({ proveedorId, fechaEsperada, items: itemsLimpios });
+      setShowForm(false);
+      resetForm();
+      setEnviarPedido(pedido);
+    }
+  }
+  function textoPedido(pedido) {
+    const prov = proveedorPorId(pedido.proveedorId);
+    const lineas = pedido.items.map((it2, i3) => {
+      const p2 = productoPorId(it2.productoId);
+      const unidad = p2 ? p2.unidad : "";
+      return `${i3 + 1}. ${p2 ? p2.nombre : "Producto eliminado"} \u2014 ${fmt(it2.cantidad)} ${unidad} (a \u20AC${fmt(it2.costoUnitario)}/${unidad})`;
+    });
+    const total = pedido.items.reduce((a2, it2) => a2 + it2.cantidad * it2.costoUnitario, 0);
+    const ivaTotal = pedido.items.reduce((a2, it2) => {
+      const prod = productoPorId(it2.productoId);
+      return a2 + it2.cantidad * it2.costoUnitario * (ivaCompraDe(prod) / 100);
+    }, 0);
+    const separador = "\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014";
+    return [
+      `PEDIDO \u2014 ${prov ? prov.nombre : "Proveedor"}`,
+      `Fecha del pedido: ${new Date(pedido.fecha).toLocaleDateString("es-ES")}`,
+      `Entrega esperada: ${pedido.fechaEsperada ? new Date(pedido.fechaEsperada).toLocaleDateString("es-ES") : "por confirmar"}`,
+      "",
+      "Productos pedidos:",
+      lineas.join("\n"),
+      "",
+      separador,
+      `Base imponible: \u20AC${fmt(total)}`,
+      `IVA: \u20AC${fmt(ivaTotal)}`,
+      `TOTAL: \u20AC${fmt(total + ivaTotal)}`,
+      separador,
+      "",
+      "Gracias."
+    ].join("\n");
+  }
+  function mailtoHref(pedido) {
+    const prov = proveedorPorId(pedido.proveedorId);
+    const texto = textoPedido(pedido);
+    return `mailto:${prov?.email || ""}?subject=${encodeURIComponent("Pedido - " + (prov?.nombre || ""))}&body=${encodeURIComponent(texto)}`;
+  }
+  function gmailAppHref(pedido) {
+    const prov = proveedorPorId(pedido.proveedorId);
+    const texto = textoPedido(pedido);
+    return `googlegmail:///co?to=${encodeURIComponent(prov?.email || "")}&subject=${encodeURIComponent("Pedido - " + (prov?.nombre || ""))}&body=${encodeURIComponent(texto)}`;
+  }
+  function gmailWebHref(pedido) {
+    const prov = proveedorPorId(pedido.proveedorId);
+    const texto = textoPedido(pedido);
+    const params = new URLSearchParams({
+      view: "cm",
+      fs: "1",
+      to: prov?.email || "",
+      su: "Pedido - " + (prov?.nombre || ""),
+      body: texto
+    });
+    return `https://mail.google.com/mail/?${params.toString()}`;
+  }
+  const [compartirError, setCompartirError] = (0, import_react4.useState)("");
+  async function compartirPedido(pedido) {
+    const prov = proveedorPorId(pedido.proveedorId);
+    const texto = textoPedido(pedido);
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Pedido - ${prov?.nombre || ""}`,
+          text: texto
+        });
+        setCompartirError("");
+      } catch (e) {
+        if (e && e.name !== "AbortError") setCompartirError("No se pudo abrir el men\xFA de compartir.");
+      }
+    } else {
+      setCompartirError("Tu navegador no permite compartir. Usa las otras opciones o copia el texto.");
+    }
+  }
+  function whatsappHref(pedido) {
+    const prov = proveedorPorId(pedido.proveedorId);
+    const texto = textoPedido(pedido);
+    const numero = (prov?.telefono || "").replace(/[^0-9]/g, "");
+    return `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
+  }
+  function llamarHref(pedido) {
+    const prov = proveedorPorId(pedido.proveedorId);
+    const numero = (prov?.telefono || "").replace(/[^0-9+]/g, "");
+    return `tel:${numero}`;
+  }
+  const [correoPedido, setCorreoPedido] = (0, import_react4.useState)(null);
+  const estadoColor = { Pendiente: C2.amber, Parcial: C2.accent, Recibido: C2.inkSoft };
+  const productosSeleccionables = !proveedorId || verTodosProductos ? productos : productos.filter((p2) => p2.proveedorId === proveedorId);
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
+    if (showForm) {
+      resetForm();
+    }
+    setShowForm((s2) => !s2);
+  } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Nuevo pedido") }, "Pedidos de compra"), sugerenciasPedido.length > 0 && (() => {
+    const porProveedor = {};
+    sugerenciasPedido.forEach((p2) => {
+      if (!porProveedor[p2.proveedorId]) porProveedor[p2.proveedorId] = { nombre: p2.proveedorNombre, items: [] };
+      porProveedor[p2.proveedorId].items.push(p2);
+    });
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2" }, "Punto de pedido: se te va a agotar antes de que llegue"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Al ritmo de venta real de los \xFAltimos d\xEDas, estos productos se agotar\xEDan antes de que llegara un pedido hecho hoy \u2014 seg\xFAn el plazo de entrega que tienes puesto en cada proveedor."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, Object.entries(porProveedor).map(([provId, { nombre, items: items2 }]) => /* @__PURE__ */ import_react4.default.createElement("div", { key: provId, className: "rounded-lg p-2.5", style: { background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-1.5" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12.5px] font-medium" }, nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5" }, proveedorPorId(provId)?.telefono && /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { small: true, href: `tel:${(proveedorPorId(provId).telefono || "").replace(/[^0-9+]/g, "")}` }, /* @__PURE__ */ import_react4.default.createElement(Phone, { size: 13 }), " Llamar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => prepararPedidoDesdeSugerencias(provId, items2) }, "Preparar pedido"))), items2.map((p2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: p2.id, className: "flex items-center justify-between text-[11.5px]", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement("span", null, p2.nombre), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, Math.round(p2.dias), " d\xEDa(s) de stock \xB7 pide ", fmt(p2.cantidadSugerida), " ", p2.unidad, p2.cajasSugeridas ? ` (${p2.cajasSugeridas} caja${p2.cajasSugeridas > 1 ? "s" : ""})` : "")))))));
+  })(), showForm && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3" }, editingId ? "Editando pedido pendiente" : "Nuevo pedido"), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Proveedor" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: proveedorId, onChange: (e) => {
+    setProveedorId(e.target.value);
+    setVerTodosProductos(false);
+  }, className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Selecciona un proveedor"), proveedores.map((p2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: p2.id, value: p2.id }, p2.nombre)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Fecha esperada de entrega" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: fechaEsperada, onChange: (e) => setFechaEsperada(e.target.value) }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2 flex items-center justify-between flex-wrap gap-1" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium", style: { color: C2.inkSoft } }, "Productos del pedido"), proveedorId && /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", onClick: () => setVerTodosProductos((s2) => !s2), className: "text-[11.5px] font-medium", style: { color: C2.accent } }, verTodosProductos ? "Ver solo los de este proveedor" : "No lo encuentro, ver todos los productos")), productosSeleccionables.length === 0 && proveedorId && !verTodosProductos && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2 p-2 rounded-lg", style: { background: C2.amberSoft, color: C2.ink } }, 'Ning\xFAn producto tiene este proveedor asignado todav\xEDa. Ponlo en la ficha de cada producto, o toca "ver todos los productos" arriba para elegir de todas formas.'), items.map((it2, idx) => /* @__PURE__ */ import_react4.default.createElement("div", { key: idx }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 items-center mb-2" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: it2.productoId, onChange: (e) => updateItem(idx, "productoId", e.target.value), className: "flex-1 rounded-lg px-2 py-2 text-[12.5px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "\u2014 Elige un producto \u2014"), productosSeleccionables.map((p2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: p2.id, value: p2.id }, p2.nombre)), /* @__PURE__ */ import_react4.default.createElement("option", { value: "__nuevo__" }, "+ Es un producto nuevo, nunca ha entrado\u2026")), /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", style: { width: 80 }, value: it2.cantidad, onChange: (e) => updateItem(idx, "cantidad", e.target.value), placeholder: "Cant." }), /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", style: { width: 100 }, value: it2.costoUnitario, onChange: (e) => updateItem(idx, "costoUnitario", e.target.value), placeholder: "Costo u." }), /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", onClick: () => removeItem(idx), "aria-label": "Quitar de la lista" }, /* @__PURE__ */ import_react4.default.createElement(X, { size: 16, color: C2.inkSoft }))), creandoNuevoIdx === idx && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-2", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2" }, "Nuevo producto \u2014 se dar\xE1 de alta en el cat\xE1logo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-3 gap-2 mb-2" }, /* @__PURE__ */ import_react4.default.createElement(
+    Input,
+    {
+      value: nuevoProd.nombre,
+      onChange: (e) => setNuevoProd({ ...nuevoProd, nombre: e.target.value }),
+      placeholder: "Nombre del producto",
+      style: { gridColumn: "span 3" }
+    }
+  ), /* @__PURE__ */ import_react4.default.createElement(
+    Input,
+    {
+      value: nuevoProd.unidad,
+      onChange: (e) => setNuevoProd({ ...nuevoProd, unidad: e.target.value }),
+      placeholder: "Unidad (kg, unidad\u2026)"
+    }
+  ), /* @__PURE__ */ import_react4.default.createElement(
+    Input,
+    {
+      type: "number",
+      step: "0.01",
+      value: nuevoProd.costo,
+      onChange: (e) => setNuevoProd({ ...nuevoProd, costo: e.target.value }),
+      placeholder: "Precio de compra",
+      style: { gridColumn: "span 2" }
+    }
+  )), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => guardarProductoNuevo(idx), disabled: !nuevoProd.nombre.trim() }, "Crear y a\xF1adir al pedido"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
+    setCreandoNuevoIdx(null);
+    updateItem(idx, "productoId", "");
+  } }, "Cancelar"))), (() => {
+    const prod = productos.find((pr) => pr.id === it2.productoId);
+    const uds = udsPorCaja(prod);
+    if (!prod || uds <= 1) return null;
+    const cajas = Number(it2.cantidad) / uds;
+    const enteras = Number.isInteger(cajas);
+    return /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2 flex items-center gap-2 flex-wrap", style: { color: enteras ? C2.accent : C2.amber } }, /* @__PURE__ */ import_react4.default.createElement("span", null, fmt(cajas), " caja(s) de ", uds, " ", prod.unidad, !enteras && " \u2014 no es un n\xFAmero exacto de cajas"), /* @__PURE__ */ import_react4.default.createElement(
+      "button",
+      {
+        type: "button",
+        onClick: () => updateItem(idx, "cantidad", String(Math.ceil(cajas) * uds)),
+        className: "underline",
+        style: { color: C2.accent }
+      },
+      "redondear a ",
+      Math.ceil(cajas),
+      " caja(s) = ",
+      Math.ceil(cajas) * uds,
+      " ",
+      prod.unidad
+    ));
+  })())), /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", onClick: addItemRow, className: "text-[12.5px] font-medium mb-4", style: { color: C2.accent } }, "+ A\xF1adir producto al pedido"), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submit }, editingId ? "Guardar cambios" : "Crear pedido"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+    setShowForm(false);
+    resetForm();
+  } }, "Cancelar")))), pedidos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay pedidos registrados todav\xEDa." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, pedidos.map((pe2) => {
+    const prov = proveedorPorId(pe2.proveedorId);
+    const total = pe2.items.reduce((a2, it2) => a2 + it2.cantidad * it2.costoUnitario, 0);
+    const ivaPedido = pe2.items.reduce((a2, it2) => {
+      const prod = productoPorId(it2.productoId);
+      return a2 + it2.cantidad * it2.costoUnitario * (ivaCompraDe(prod) / 100);
+    }, 0);
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: pe2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold" }, prov ? prov.nombre : "Proveedor eliminado"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Pedido ", pe2.fecha, " \xB7 Entrega esperada ", pe2.fechaEsperada || "\u2014")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: estadoColor[pe2.estado] }, pe2.estado), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold" }, "\u20AC", fmt(total + ivaPedido)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mono", style: { color: C2.inkSoft } }, "base \u20AC", fmt(total), " + IVA \u20AC", fmt(ivaPedido))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 flex gap-2 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
+      setCorreoPedido(pe2);
+    } }, /* @__PURE__ */ import_react4.default.createElement(Mail, { size: 13 }), " Enviar por correo"), /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { small: true, href: whatsappHref(pe2) }, /* @__PURE__ */ import_react4.default.createElement(MessageCircle, { size: 13 }), " Enviar por WhatsApp"), proveedorPorId(pe2.proveedorId)?.telefono && /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { small: true, href: llamarHref(pe2) }, /* @__PURE__ */ import_react4.default.createElement(Phone, { size: 13 }), " Llamar"), pe2.estado === "Pendiente" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(pe2) }, "Editar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", onClick: () => setConfirmDeleteId(pe2.id) }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 13 }), " Eliminar"))));
+  })), confirmDeleteId && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmDeleteId(null), title: "Eliminar pedido" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-4", style: { color: C2.ink } }, "\xBFSeguro que quieres eliminar este pedido? Esta acci\xF3n no se puede deshacer."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: () => {
+    eliminarPedido(confirmDeleteId);
+    setConfirmDeleteId(null);
+  } }, "S\xED, eliminar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmDeleteId(null) }, "Cancelar"))), correoPedido && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setCorreoPedido(null), title: "Enviar pedido por correo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.ink } }, "Prueba los botones de Gmail. Si no se abren, m\xE1s abajo tienes el correo listo para copiar y pegar."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-col gap-2 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => compartirPedido(correoPedido) }, /* @__PURE__ */ import_react4.default.createElement(Mail, { size: 14 }), " Compartir con Gmail u otra app"), /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { href: gmailWebHref(correoPedido) }, /* @__PURE__ */ import_react4.default.createElement(Mail, { size: 14 }), " Abrir en Gmail (navegador)"), /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { href: mailtoHref(correoPedido), newTab: false }, /* @__PURE__ */ import_react4.default.createElement(Mail, { size: 14 }), " App de correo del sistema")), compartirError && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", style: { color: C2.red } }, compartirError), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2 pt-3", style: { color: C2.inkSoft, borderTop: `1px solid ${C2.line}` } }, "Si ninguno abre, toca cada campo (se selecciona solo) y c\xF3pialo:"), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Destinatario" }, /* @__PURE__ */ import_react4.default.createElement(Input, { readOnly: true, value: proveedorPorId(correoPedido.proveedorId)?.email || "", onFocus: (e) => e.target.select() })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Asunto" }, /* @__PURE__ */ import_react4.default.createElement(Input, { readOnly: true, value: `Pedido - ${proveedorPorId(correoPedido.proveedorId)?.nombre || ""}`, onFocus: (e) => e.target.select() })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Mensaje" }, /* @__PURE__ */ import_react4.default.createElement(
+    "textarea",
+    {
+      readOnly: true,
+      value: textoPedido(correoPedido),
+      onFocus: (e) => e.target.select(),
+      className: "w-full rounded-lg p-2 text-[12px] mono",
+      style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, height: 160, resize: "none" }
+    }
+  )), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setCorreoPedido(null) }, "Cerrar")), enviarPedido && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setEnviarPedido(null), title: "Pedido creado \u2014 \xBFc\xF3mo quieres enviarlo?" }, /* @__PURE__ */ import_react4.default.createElement("p", { className: "text-[12.5px] mb-4", style: { color: C2.inkSoft } }, "Puedes enviarlo ahora al proveedor o hacerlo m\xE1s tarde desde la lista de pedidos."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
+    setCorreoPedido(enviarPedido);
+    setEnviarPedido(null);
+  } }, /* @__PURE__ */ import_react4.default.createElement(Mail, { size: 14 }), " Correo"), /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { variant: "primary", href: whatsappHref(enviarPedido) }, /* @__PURE__ */ import_react4.default.createElement(MessageCircle, { size: 14 }), " WhatsApp"), proveedorPorId(enviarPedido.proveedorId)?.telefono && /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { href: llamarHref(enviarPedido) }, /* @__PURE__ */ import_react4.default.createElement(Phone, { size: 14 }), " Llamar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setEnviarPedido(null) }, "Ahora no"))));
+}

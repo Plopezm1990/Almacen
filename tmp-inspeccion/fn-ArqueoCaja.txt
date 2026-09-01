@@ -1,0 +1,56 @@
+START 5117035 END 5125082 LEN 8047
+function ArqueoCaja({ movimientos, arqueos, addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja }) {
+  const [fecha, setFecha] = (0, import_react4.useState)(todayISO());
+  const [contado, setContado] = (0, import_react4.useState)("");
+  const [notas, setNotas] = (0, import_react4.useState)("");
+  const [error, setError] = (0, import_react4.useState)("");
+  const ventasDelDia = movimientos.filter((m2) => esVenta(m2) && m2.fecha === fecha && !m2.encargoId);
+  const porMedio = { Efectivo: 0, Tarjeta: 0, Transferencia: 0, Otro: 0 };
+  ventasDelDia.forEach((m2) => {
+    const medio = m2.medioPago || "Efectivo";
+    const importe = Math.abs(Number(m2.cantidad) || 0) * (Number(m2.ingresoUnitario) || 0) * (1 + (Number(m2.ivaVentaAplicado) || 0) / 100);
+    if (medio === "Mixto" && m2.detallePago) {
+      porMedio.Efectivo += Number(m2.detallePago.efectivo) || 0;
+      porMedio.Tarjeta += Number(m2.detallePago.tarjeta) || 0;
+    } else {
+      porMedio[medio] = (porMedio[medio] || 0) + importe;
+    }
+  });
+  encargos.forEach((e) => {
+    (e.cobros || []).forEach((c2) => {
+      if (c2.fecha !== fecha) return;
+      const medio = c2.medioPago || "Efectivo";
+      porMedio[medio] = (porMedio[medio] || 0) + (Number(c2.importe) || 0);
+    });
+  });
+  const movimientosCajaDelDia = movimientosCaja.filter((m2) => m2.fecha === fecha);
+  const netoEntradasSalidas = movimientosCajaDelDia.reduce((acc, m2) => acc + (m2.tipo === "entrada" ? m2.importe : -m2.importe), 0);
+  const efectivoEsperado = (porMedio.Efectivo || 0) + netoEntradasSalidas;
+  const diferencia = contado === "" ? null : Number(contado) - efectivoEsperado;
+  const yaArqueado = arqueos.find((a2) => a2.fecha === fecha);
+  function submit() {
+    if (contado === "") {
+      setError("Escribe cu\xE1nto efectivo hay en caja.");
+      return;
+    }
+    setError("");
+    addArqueo({ fecha, efectivoEsperado, efectivoContado: Number(contado), diferencia, notas });
+    setContado("");
+    setNotas("");
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Arqueo de caja"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Compara el efectivo que hay f\xEDsicamente en el caj\xF3n con lo que el programa dice que se ha vendido en efectivo ese d\xEDa. Las ventas con tarjeta o transferencia no se cuadran aqu\xED, solo se muestran como referencia.")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Fecha" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: fecha, onChange: (e) => setFecha(e.target.value) })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-3 my-3" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Efectivo esperado"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono" }, "\u20AC", fmt(efectivoEsperado))), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Otras ventas (tarjeta, transf.)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono", style: { color: C2.inkSoft } }, "\u20AC", fmt((porMedio.Tarjeta || 0) + (porMedio.Transferencia || 0) + (porMedio.Otro || 0))))), /* @__PURE__ */ import_react4.default.createElement(BloqueEntradasSalidas, { fecha, movimientosCajaDelDia, registrarMovimientoCaja, eliminarMovimientoCaja }), yaArqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg text-[12.5px]", style: { background: C2.bg } }, "Ya arqueaste este d\xEDa: contaste \u20AC", fmt(yaArqueado.efectivoContado), " ", "(", yaArqueado.diferencia === 0 ? "cuadra" : yaArqueado.diferencia > 0 ? `sobran \u20AC${fmt(yaArqueado.diferencia)}` : `faltan \u20AC${fmt(Math.abs(yaArqueado.diferencia))}`, ").", /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", onClick: () => deleteArqueo(yaArqueado.id) }, "Borrar y repetir"))) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo contado en caja (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: contado, onChange: (e) => setContado(e.target.value), autoFocus: true })), diferencia !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2", style: { color: diferencia === 0 ? C2.accent : Math.abs(diferencia) < 1 ? C2.amber : C2.red } }, diferencia === 0 ? "Cuadra exacto." : diferencia > 0 ? `Sobran \u20AC${fmt(diferencia)}` : `Faltan \u20AC${fmt(Math.abs(diferencia))}`), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Notas (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: notas, onChange: (e) => setNotas(e.target.value), placeholder: "Motivo del descuadre, si lo sabes" })), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submit }, "Guardar arqueo"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Historial de arqueos"), arqueos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has hecho ning\xFAn arqueo." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, arqueos.slice(0, 30).map((a2) => {
+    const tieneAnulacionPosterior = movimientos.some((m2) => m2.origen === "anularVenta" && (() => {
+      const ventaOriginal = movimientos.find((v2) => (v2.ventaId === m2.documentoOrigenId || v2.operationId === m2.documentoOrigenId) && esVenta(v2) && v2.id !== m2.id);
+      return ventaOriginal && ventaOriginal.fecha === a2.fecha;
+    })());
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: a2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, a2.fecha), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold", style: { color: a2.diferencia === 0 ? C2.accent : Math.abs(a2.diferencia) < 1 ? C2.amber : C2.red } }, a2.diferencia === 0 ? "Cuadra" : a2.diferencia > 0 ? `+\u20AC${fmt(a2.diferencia)}` : `\u2212\u20AC${fmt(Math.abs(a2.diferencia))}`)), tieneAnulacionPosterior && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-1", style: { color: C2.red } }, "\u26A0 Se anul\xF3 una venta de este d\xEDa despu\xE9s de cerrar \u2014 puede que ya no cuadre."));
+  })));
+}
+var PLANTILLAS_TURNO = [
+  { id: "manana", label: "Ma\xF1ana", horaInicio: "08:00", horaFin: "14:00" },
+  { id: "tarde", label: "Tarde", horaInicio: "16:00", horaFin: "20:00" },
+  { id: "cierre", label: "Cierre", horaInicio: "14:00", horaFin: "21:00" },
+  { id: "libre", label: "Libre / descanso", horaInicio: "", horaFin: "" },
+  { id: "personalizado", label: "Personalizado", horaInicio: "", horaFin: "" }
+];
+var DIAS_SEMANA = ["Lunes", "Martes", "Mi\xE9rcoles", "Jueves", "Viernes", "S\xE1bado", "Domingo"];

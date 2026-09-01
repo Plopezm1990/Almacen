@@ -1,0 +1,740 @@
+TOTAL 18
+
+===== HIT 1: localActivoId @ 4371436 =====
+import_react4.useState)([]);
+  const [empleados, setEmpleados] = (0, import_react4.useState)([]);
+  const [fichajes, setFichajes] = (0, import_react4.useState)([]);
+  const [registrosAppcc, setRegistrosAppcc] = (0, import_react4.useState)([]);
+  const [freidoras, setFreidoras] = (0, import_react4.useState)([]);
+  const [registrosAceite, setRegistrosAceite] = (0, import_react4.useState)([]);
+  const [puntosControl, setPuntosControl] = (0, import_react4.useState)([]);
+  const [clientes, setClientes] = (0, import_react4.useState)([]);
+  const [encargos, setEncargos] = (0, import_react4.useState)([]);
+  const [arqueos, setArqueos] = (0, import_react4.useState)([]);
+  const [movimientosCaja, setMovimientosCaja] = (0, import_react4.useState)([]);
+  const [devoluciones, setDevoluciones] = (0, import_react4.useState)([]);
+  const [locales, setLocales] = (0, import_react4.useState)([]);
+  const [localActivoId, setLocalActivoId] = (0, import_react4.useState)(null);
+  const productosDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return productos;
+    return productos.filter((p2) => !p2.localId || p2.localId === localActivoId);
+  }, [productos, localActivoId]);
+  const [turnos, setTurnos] = (0, import_react4.useState)([]);
+  const [historial, setHistorial] = (0, import_react4.useState)([]);
+  (0, import_react4.useEffect)(() => {
+    (async () => {
+      const [p2, pr, pe2, mo, co, fc, hi, al, cp, gg, em, fj, dm, ra, pc, cl, en, aq, tu, to, me2, pin, au, op, tr, ua, fd2, nom, fre, rac, entr, mc, dev, loc, lai] = await Promise.all([
+        loadKey("proveedores", []),
+        loadKey("productos", []),
+        loadKey("pedidos", []),
+        loadKey("movimientos", []),
+        loadKey("conteos", []),
+        loadKey("fichasCosto", []),
+        loadKey("historialRespaldos", []),
+        loadKey("albaranes", []),
+        loadKey("catalogoProv", {}),
+        loadKey("gastosGenerales", []),
+        loadKey("empleados", []),
+        loadKey("fichajes", []),
+        loadKey("disenoMenu", "B"),
+        loadKey("registrosAppcc", []),
+        loadKey("puntosControl", []),
+        loadKey("clientes", []),
+        loadKey("encargos", []),
+        loadKey("arqueos", []),
+        loadKey("turnos", []),
+        loadKey("temaOscuro", false),
+        loadKey("modoEmpleado", 
+
+===== HIT 2: localActivoId @ 4371584 =====
+4.useState)([]);
+  const [registrosAppcc, setRegistrosAppcc] = (0, import_react4.useState)([]);
+  const [freidoras, setFreidoras] = (0, import_react4.useState)([]);
+  const [registrosAceite, setRegistrosAceite] = (0, import_react4.useState)([]);
+  const [puntosControl, setPuntosControl] = (0, import_react4.useState)([]);
+  const [clientes, setClientes] = (0, import_react4.useState)([]);
+  const [encargos, setEncargos] = (0, import_react4.useState)([]);
+  const [arqueos, setArqueos] = (0, import_react4.useState)([]);
+  const [movimientosCaja, setMovimientosCaja] = (0, import_react4.useState)([]);
+  const [devoluciones, setDevoluciones] = (0, import_react4.useState)([]);
+  const [locales, setLocales] = (0, import_react4.useState)([]);
+  const [localActivoId, setLocalActivoId] = (0, import_react4.useState)(null);
+  const productosDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return productos;
+    return productos.filter((p2) => !p2.localId || p2.localId === localActivoId);
+  }, [productos, localActivoId]);
+  const [turnos, setTurnos] = (0, import_react4.useState)([]);
+  const [historial, setHistorial] = (0, import_react4.useState)([]);
+  (0, import_react4.useEffect)(() => {
+    (async () => {
+      const [p2, pr, pe2, mo, co, fc, hi, al, cp, gg, em, fj, dm, ra, pc, cl, en, aq, tu, to, me2, pin, au, op, tr, ua, fd2, nom, fre, rac, entr, mc, dev, loc, lai] = await Promise.all([
+        loadKey("proveedores", []),
+        loadKey("productos", []),
+        loadKey("pedidos", []),
+        loadKey("movimientos", []),
+        loadKey("conteos", []),
+        loadKey("fichasCosto", []),
+        loadKey("historialRespaldos", []),
+        loadKey("albaranes", []),
+        loadKey("catalogoProv", {}),
+        loadKey("gastosGenerales", []),
+        loadKey("empleados", []),
+        loadKey("fichajes", []),
+        loadKey("disenoMenu", "B"),
+        loadKey("registrosAppcc", []),
+        loadKey("puntosControl", []),
+        loadKey("clientes", []),
+        loadKey("encargos", []),
+        loadKey("arqueos", []),
+        loadKey("turnos", []),
+        loadKey("temaOscuro", false),
+        loadKey("modoEmpleado", false),
+        loadKey("pinPropietario", ""),
+        loadKey("auditoria", []),
+        loadKey("ordenesProduccion", []),
+        loadKey("traspaso
+
+===== HIT 3: localActivoId @ 4371683 =====
+onst [freidoras, setFreidoras] = (0, import_react4.useState)([]);
+  const [registrosAceite, setRegistrosAceite] = (0, import_react4.useState)([]);
+  const [puntosControl, setPuntosControl] = (0, import_react4.useState)([]);
+  const [clientes, setClientes] = (0, import_react4.useState)([]);
+  const [encargos, setEncargos] = (0, import_react4.useState)([]);
+  const [arqueos, setArqueos] = (0, import_react4.useState)([]);
+  const [movimientosCaja, setMovimientosCaja] = (0, import_react4.useState)([]);
+  const [devoluciones, setDevoluciones] = (0, import_react4.useState)([]);
+  const [locales, setLocales] = (0, import_react4.useState)([]);
+  const [localActivoId, setLocalActivoId] = (0, import_react4.useState)(null);
+  const productosDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return productos;
+    return productos.filter((p2) => !p2.localId || p2.localId === localActivoId);
+  }, [productos, localActivoId]);
+  const [turnos, setTurnos] = (0, import_react4.useState)([]);
+  const [historial, setHistorial] = (0, import_react4.useState)([]);
+  (0, import_react4.useEffect)(() => {
+    (async () => {
+      const [p2, pr, pe2, mo, co, fc, hi, al, cp, gg, em, fj, dm, ra, pc, cl, en, aq, tu, to, me2, pin, au, op, tr, ua, fd2, nom, fre, rac, entr, mc, dev, loc, lai] = await Promise.all([
+        loadKey("proveedores", []),
+        loadKey("productos", []),
+        loadKey("pedidos", []),
+        loadKey("movimientos", []),
+        loadKey("conteos", []),
+        loadKey("fichasCosto", []),
+        loadKey("historialRespaldos", []),
+        loadKey("albaranes", []),
+        loadKey("catalogoProv", {}),
+        loadKey("gastosGenerales", []),
+        loadKey("empleados", []),
+        loadKey("fichajes", []),
+        loadKey("disenoMenu", "B"),
+        loadKey("registrosAppcc", []),
+        loadKey("puntosControl", []),
+        loadKey("clientes", []),
+        loadKey("encargos", []),
+        loadKey("arqueos", []),
+        loadKey("turnos", []),
+        loadKey("temaOscuro", false),
+        loadKey("modoEmpleado", false),
+        loadKey("pinPropietario", ""),
+        loadKey("auditoria", []),
+        loadKey("ordenesProduccion", []),
+        loadKey("traspasos", []),
+        loadKey("usuarioActivoId", null),
+        loadKey("facturasDirectas", []),
+       
+
+===== HIT 4: localActivoId @ 4371716 =====
+(0, import_react4.useState)([]);
+  const [registrosAceite, setRegistrosAceite] = (0, import_react4.useState)([]);
+  const [puntosControl, setPuntosControl] = (0, import_react4.useState)([]);
+  const [clientes, setClientes] = (0, import_react4.useState)([]);
+  const [encargos, setEncargos] = (0, import_react4.useState)([]);
+  const [arqueos, setArqueos] = (0, import_react4.useState)([]);
+  const [movimientosCaja, setMovimientosCaja] = (0, import_react4.useState)([]);
+  const [devoluciones, setDevoluciones] = (0, import_react4.useState)([]);
+  const [locales, setLocales] = (0, import_react4.useState)([]);
+  const [localActivoId, setLocalActivoId] = (0, import_react4.useState)(null);
+  const productosDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return productos;
+    return productos.filter((p2) => !p2.localId || p2.localId === localActivoId);
+  }, [productos, localActivoId]);
+  const [turnos, setTurnos] = (0, import_react4.useState)([]);
+  const [historial, setHistorial] = (0, import_react4.useState)([]);
+  (0, import_react4.useEffect)(() => {
+    (async () => {
+      const [p2, pr, pe2, mo, co, fc, hi, al, cp, gg, em, fj, dm, ra, pc, cl, en, aq, tu, to, me2, pin, au, op, tr, ua, fd2, nom, fre, rac, entr, mc, dev, loc, lai] = await Promise.all([
+        loadKey("proveedores", []),
+        loadKey("productos", []),
+        loadKey("pedidos", []),
+        loadKey("movimientos", []),
+        loadKey("conteos", []),
+        loadKey("fichasCosto", []),
+        loadKey("historialRespaldos", []),
+        loadKey("albaranes", []),
+        loadKey("catalogoProv", {}),
+        loadKey("gastosGenerales", []),
+        loadKey("empleados", []),
+        loadKey("fichajes", []),
+        loadKey("disenoMenu", "B"),
+        loadKey("registrosAppcc", []),
+        loadKey("puntosControl", []),
+        loadKey("clientes", []),
+        loadKey("encargos", []),
+        loadKey("arqueos", []),
+        loadKey("turnos", []),
+        loadKey("temaOscuro", false),
+        loadKey("modoEmpleado", false),
+        loadKey("pinPropietario", ""),
+        loadKey("auditoria", []),
+        loadKey("ordenesProduccion", []),
+        loadKey("traspasos", []),
+        loadKey("usuarioActivoId", null),
+        loadKey("facturasDirectas", []),
+        loadKey("nominas", []),
+        
+
+===== HIT 5: localActivoId @ 4373357 =====
+rales", []),
+        loadKey("empleados", []),
+        loadKey("fichajes", []),
+        loadKey("disenoMenu", "B"),
+        loadKey("registrosAppcc", []),
+        loadKey("puntosControl", []),
+        loadKey("clientes", []),
+        loadKey("encargos", []),
+        loadKey("arqueos", []),
+        loadKey("turnos", []),
+        loadKey("temaOscuro", false),
+        loadKey("modoEmpleado", false),
+        loadKey("pinPropietario", ""),
+        loadKey("auditoria", []),
+        loadKey("ordenesProduccion", []),
+        loadKey("traspasos", []),
+        loadKey("usuarioActivoId", null),
+        loadKey("facturasDirectas", []),
+        loadKey("nominas", []),
+        loadKey("freidoras", []),
+        loadKey("registrosAceite", []),
+        loadKey("entrevistas", []),
+        loadKey("movimientosCaja", []),
+        loadKey("devoluciones", []),
+        loadKey("locales", []),
+        loadKey("localActivoId", null)
+      ]);
+      const alLimpios = (al || []).map((a2) => {
+        if (!a2 || a2.fotoOrigenIA === void 0) return a2;
+        const copia = { ...a2 };
+        delete copia.fotoOrigenIA;
+        return copia;
+      });
+      setProveedores(p2);
+      setPedidos(pe2);
+      setMovimientos(mo);
+      const coMigrado = (co || []).map((c2) => {
+        if (c2.ajustesAplicados) return c2;
+        const tieneAjustesYa = (mo || []).some((m2) => m2.documentoOrigenId === c2.id && m2.origen === "aplicarAjustes");
+        return tieneAjustesYa ? { ...c2, ajustesAplicados: true } : c2;
+      });
+      if (coMigrado.some((c2, i3) => c2 !== (co || [])[i3])) {
+        await saveKey("conteos", coMigrado);
+      }
+      setConteos(coMigrado);
+      setFichasCosto(fc);
+      setHistorial(hi);
+      setAlbaranes(alLimpios);
+      const habiaFotos = (al || []).some((a2) => a2 && a2.fotoOrigenIA !== void 0);
+      setCatalogoProv(cp);
+      setGastosGenerales(gg);
+      setEmpleados(em);
+      setFichajes(fj);
+      setDisenoMenu(dm || "B");
+      setRegistrosAppcc(ra);
+      setFreidoras(fre || []);
+      setRegistrosAceite(rac || []);
+      setPuntosControl(pc);
+      setClientes(cl);
+      setEncargos(en);
+      setArqueos(aq);
+      setTurnos(tu);
+      setTemaOscuro(!!to);
+      setModoEmpleado(!!me2);
+      setPinPropietario(pin || "");
+      setAuditoria(au);
+      setOrdenesProduccio
+
+===== HIT 6: localActivoId @ 4375421 =====
+untosControl(pc);
+      setClientes(cl);
+      setEncargos(en);
+      setArqueos(aq);
+      setTurnos(tu);
+      setTemaOscuro(!!to);
+      setModoEmpleado(!!me2);
+      setPinPropietario(pin || "");
+      setAuditoria(au);
+      setOrdenesProduccion(op);
+      setTraspasos(tr);
+      setUsuarioActivoId(ua || null);
+      setFacturasDirectas(fd2);
+      setNominas(nom);
+      setEntrevistas(entr);
+      setMovimientosCaja(mc || []);
+      setDevoluciones(dev || []);
+      let localesFinales = loc || [];
+      let localActivoFinal = lai || null;
+      if (localesFinales.length === 0) {
+        const primerLocal = { id: uid(), nombre: "Chocoloyos S.L", direccion: "", activo: true, creadoEn: (/* @__PURE__ */ new Date()).toISOString() };
+        localesFinales = [primerLocal];
+        localActivoFinal = primerLocal.id;
+        await saveKey("locales", localesFinales);
+        await saveKey("localActivoId", localActivoFinal);
+      } else if (!localActivoFinal || !localesFinales.some((l2) => l2.id === localActivoFinal)) {
+        localActivoFinal = localesFinales[0]?.id || null;
+      }
+      setLocales(localesFinales);
+      setLocalActivoId(localActivoFinal);
+      const productosSinLocal = (pr || []).filter((prod) => !prod.localId);
+      let productosFinales = pr || [];
+      if (productosSinLocal.length > 0 && localActivoFinal) {
+        productosFinales = productosFinales.map((prod) => prod.localId ? prod : { ...prod, localId: localActivoFinal });
+        await saveKey("productos", productosFinales);
+      }
+      setProductos(productosFinales);
+      setReady(true);
+      if (habiaFotos) await saveKey("albaranes", alLimpios);
+      setTimeout(() => {
+        skipSaveRef.current = false;
+      }, 400);
+      if (!autoSnapshotRef.current) {
+        autoSnapshotRef.current = true;
+        const tieneDatos = p2.length || pr.length || pe2.length || mo.length || co.length || fc.length || al.length || em.length;
+        const hoy = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+        const yaHayUnoDeHoy = hi.some((h2) => h2.automatica && (h2.fecha || "").slice(0, 10) === hoy);
+        if (tieneDatos && !yaHayUnoDeHoy) {
+          const snapshot = {
+            id: uid(),
+            fecha: (/* @__PURE__ */ new Date()).toISOString(),
+            automatica: true,
+   
+
+===== HIT 7: localActivoId @ 4380879 =====
+4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("clientes", clientes);
+  }, [clientes, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("encargos", encargos);
+  }, [encargos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("arqueos", arqueos);
+  }, [arqueos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("movimientosCaja", movimientosCaja);
+  }, [movimientosCaja, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("devoluciones", devoluciones);
+  }, [devoluciones, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("locales", locales);
+  }, [locales, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("localActivoId", localActivoId);
+  }, [localActivoId, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("turnos", turnos);
+  }, [turnos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("temaOscuro", temaOscuro);
+  }, [temaOscuro, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("modoEmpleado", modoEmpleado);
+  }, [modoEmpleado, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("pinPropietario", pinPropietario);
+  }, [pinPropietario, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("auditoria", auditoria);
+  }, [auditoria, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("ordenesProduccion", ordenesProduccion);
+  }, [ordenesProduccion, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("traspasos", traspasos);
+  }, [traspasos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("usuarioActivoId", usuarioActivoId);
+  }, [usuarioActivoId, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("facturasDirectas", facturasDirectas);
+  }, [facturasDirectas, ready]);
+  (0, import_react4.useEffect)(() => 
+
+===== HIT 8: localActivoId @ 4380895 =====
+=> {
+    if (ready && !skipSaveRef.current) saveKey("clientes", clientes);
+  }, [clientes, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("encargos", encargos);
+  }, [encargos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("arqueos", arqueos);
+  }, [arqueos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("movimientosCaja", movimientosCaja);
+  }, [movimientosCaja, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("devoluciones", devoluciones);
+  }, [devoluciones, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("locales", locales);
+  }, [locales, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("localActivoId", localActivoId);
+  }, [localActivoId, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("turnos", turnos);
+  }, [turnos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("temaOscuro", temaOscuro);
+  }, [temaOscuro, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("modoEmpleado", modoEmpleado);
+  }, [modoEmpleado, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("pinPropietario", pinPropietario);
+  }, [pinPropietario, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("auditoria", auditoria);
+  }, [auditoria, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("ordenesProduccion", ordenesProduccion);
+  }, [ordenesProduccion, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("traspasos", traspasos);
+  }, [traspasos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("usuarioActivoId", usuarioActivoId);
+  }, [usuarioActivoId, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("facturasDirectas", facturasDirectas);
+  }, [facturasDirectas, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready 
+
+===== HIT 9: localActivoId @ 4380917 =====
+!skipSaveRef.current) saveKey("clientes", clientes);
+  }, [clientes, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("encargos", encargos);
+  }, [encargos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("arqueos", arqueos);
+  }, [arqueos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("movimientosCaja", movimientosCaja);
+  }, [movimientosCaja, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("devoluciones", devoluciones);
+  }, [devoluciones, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("locales", locales);
+  }, [locales, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("localActivoId", localActivoId);
+  }, [localActivoId, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("turnos", turnos);
+  }, [turnos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("temaOscuro", temaOscuro);
+  }, [temaOscuro, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("modoEmpleado", modoEmpleado);
+  }, [modoEmpleado, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("pinPropietario", pinPropietario);
+  }, [pinPropietario, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("auditoria", auditoria);
+  }, [auditoria, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("ordenesProduccion", ordenesProduccion);
+  }, [ordenesProduccion, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("traspasos", traspasos);
+  }, [traspasos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("usuarioActivoId", usuarioActivoId);
+  }, [usuarioActivoId, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("facturasDirectas", facturasDirectas);
+  }, [facturasDirectas, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.curren
+
+===== HIT 10: localActivoId @ 4387245 =====
+icaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos });
+  const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria });
+  const { addEncargo, updateEncargo, deleteEncargo, entregarEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, setProductos, setMovimientos, venderLineas });
+  const { traspasarStock } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria });
+  const { addArqueo, deleteArqueo } = crearLogicaCaja({ setArqueos });
+  const { registrarMovimientoCaja, eliminarMovimientoCaja } = crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, registrarAuditoria });
+  const { crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo } = crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivoId, registrarAuditoria });
+  const { registrarDevolucionCliente, registrarDevolucionProveedor } = crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, registrarAuditoria, registrarMovimientoCaja });
+  const { activarModoEmpleado, entrarComoEmpleado, salirModoEmpleado, establecerPin } = crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, setModoEmpleado, setUsuarioActivoId });
+  const { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, eliminarRegistroAppcc } = crearLogicaAppcc({ setPuntosControl, setRegistrosAppcc });
+  const { fichar, addFichajeManual, updateFichaje, eliminarFichaje } = crearLogicaFichaje({ setFichajes });
+  const { addFreidora, updateFreidora, deleteFreidora, registrarCambio, registrarRelleno, eliminarRegistroAceite, consumoPorCiclo } = crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegistrosAceite, productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+  const { addFichaCosto, updateFichaCosto, deleteFichaCosto, alergenosDeFicha } = crearLogicaFichasCosto({ productos, setFichasCosto });
+  const { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion } = crearLogicaConteos({ productos, setProductos, conteos
+
+===== HIT 11: localActivoId @ 4389126 =====
+tos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+  const { addFichaCosto, updateFichaCosto, deleteFichaCosto, alergenosDeFicha } = crearLogicaFichasCosto({ productos, setFichasCosto });
+  const { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion } = crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria });
+  const conteoAbierto = (0, import_react4.useMemo)(() => conteos.find((c2) => !c2.completado) || null, [conteos]);
+  const almacenCongelado = !!conteoAbierto;
+  const { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro } = crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId });
+  const { diagnosticarStock, corregirProducto, movimientosParaReconciliar } = crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+  const { buscarEnCatalogo, aprenderReferencia, guardarAlbaran, eliminarAlbaran, marcarPagada, confirmarAlbaran, anularAlbaran, recibirConAlbaran, recibirConFotoIA, duplicadosDe, desviacionesDePrecio, procesarRecepcion } = crearLogicaAlbaranes({
+    catalogoProv,
+    setCatalogoProv,
+    albaranes,
+    setAlbaranes,
+    productos,
+    setProductos,
+    movimientos,
+    setMovimientos,
+    setPedidos,
+    registrarAuditoria,
+    proveedorPorId,
+    setPrefillAlbaran,
+    setPedidoParaFotoIA,
+    setTab
+  });
+  const { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido } = crearLogicaPedidos({ pedidos, setPedidos, productos, setProductos, setMovimientos, almacenCongelado, procesarRecepcion });
+  const { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta } = crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, addGasto, deleteGasto, gastosGenerales });
+  const { addNomina, updateNomina, deleteNomina } = crearLogicaNominas({ setNominas, registrarAuditoria });
+  const { crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista } = crearLogicaEntrevistas({ entrevistas, setEntrevist
+
+===== HIT 12: localActivoId @ 4428875 =====
+ === "respaldos" && /* @__PURE__ */ import_react4.default.createElement(
+    Respaldos,
+    {
+      historial,
+      crearPuntoDeGuardado,
+      restaurarDesdeHistorial,
+      abrirRespaldo,
+      abrirRestaurar,
+      exportarExcelGeneral,
+      pinPropietario,
+      establecerPin,
+      activarModoEmpleado
+    }
+  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStock, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, null), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo }));
+  const itemsMeta = [
+    { id: "dashboard", label: "Panel general", icon: ChartColumn },
+    { id: "direccion", label: "Panel de direcci\xF3n", icon: TrendingUp },
+    { id: "proveedores", label: "Proveedores", icon: Truck },
+    { id: "productos", label: "Productos", icon: Package },
+    { id: "buscar", label: "Buscar", icon: Search },
+    { id: "historial_producto", label: "Historial de producto", icon: RotateCcwClock },
+    { id: "pedidos", label: "Pedidos", icon: ShoppingCart, badge: pedidosPendientes.length },
+    { id: "recepcion", label: "Recepci\xF3n", icon: ClipboardList },
+    { id: "albaranes", label: "Albaranes", icon: FileText },
+    { id: "facturas", label: "Facturas", icon: Files },
+    { id: "pagos", label: "Cuentas por pagar", icon: Coins, badge: vencenPronto.length, badgeColor: C2.red },
+    { id: "conteo", label: "Inventario ciego", icon: Boxes, badge: stockBajo.length, badgeColor: C2.amber },
+    { id: "saldo", label: "Saldo de almac\xE9n", icon: ClipboardList },
+    { id: "mapa", label: "Mapa de almac\xE9n", icon: Map2 },
+    { id: "traspasos", label: "Traspasos", icon: ArrowLeftRight, badge: pisoVentaBajo.length, badgeColor: C2.amber },
+    { id: "fichas", label: "Fichas de costo", icon: Calculator },
+    { id: "produccion", label: "Producci\xF3n", icon: Factory },
+    { id: "mermas",
+
+===== HIT 13: localActivoId @ 4453381 =====
+ja({ setArqueos }) {
+  function addArqueo(data) {
+    setArqueos((s2) => [{ id: uid(), fecha: todayISO(), ...data }, ...s2]);
+    const diferencia = Number(data.diferencia) || 0;
+    if (diferencia !== 0 && typeof window !== "undefined" && window.__nubeActiva) {
+      const signo = diferencia > 0 ? "sobran" : "faltan";
+      fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titulo: "Caja descuadrada",
+          cuerpo: `Al cerrar caja, ${signo} ${fmt(Math.abs(diferencia))} \u20AC.`,
+          url: "/"
+        })
+      }).catch(() => {
+      });
+    }
+  }
+  function deleteArqueo(id) {
+    setArqueos((s2) => s2.filter((a2) => a2.id !== id));
+  }
+  return { addArqueo, deleteArqueo };
+}
+function crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivoId, registrarAuditoria }) {
+  function crearLocal({ nombre, direccion }) {
+    const nombreLimpio = (nombre || "").trim();
+    if (!nombreLimpio) return { ok: false, error: "Ponle un nombre al local." };
+    if (locales.some((l2) => l2.nombre.toLowerCase() === nombreLimpio.toLowerCase())) {
+      return { ok: false, error: "Ya existe un local con ese nombre." };
+    }
+    const nuevo = { id: uid(), nombre: nombreLimpio, direccion: (direccion || "").trim(), activo: true, creadoEn: (/* @__PURE__ */ new Date()).toISOString() };
+    setLocales((s2) => [...s2, nuevo]);
+    registrarAuditoria("Crear local", nombreLimpio);
+    return { ok: true, local: nuevo };
+  }
+  function actualizarLocal(id, datos) {
+    setLocales((s2) => s2.map((l2) => l2.id === id ? { ...l2, ...datos } : l2));
+  }
+  function desactivarLocal(id) {
+    const l2 = locales.find((x3) => x3.id === id);
+    setLocales((s2) => s2.map((x3) => x3.id === id ? { ...x3, activo: false } : x3));
+    registrarAuditoria("Desactivar local", l2 ? l2.nombre : id);
+  }
+  function cambiarLocalActivo(id) {
+    if (!locales.some((l2) => l2.id === id)) return;
+    setLocalActivoId(id);
+  }
+  return { crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo };
+}
+function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, registrarAuditoria }) {
+  function registrarMovimientoCaja(tipo, importe, moti
+
+===== HIT 14: localActivoId @ 4469144 =====
+  operationId: uid(),
+      movimientoId: uid(),
+      origen: "reconciliacionStock",
+      documentoOrigenId: null,
+      afectaStockTotal: true,
+      afectaStockPisoVenta: false,
+      permitirDeficit: true,
+      motivo: `Reconciliaci\xF3n: la cach\xE9 dec\xEDa ${fmt(teoricoCache)}, el hist\xF3rico dec\xEDa ${fmt(teoricoReal)}`
+    });
+    if (!r.ok) return r;
+    registrarAuditoria(
+      "Reconciliaci\xF3n de stock",
+      `${p2.nombre}: la cach\xE9 dec\xEDa ${fmt(teoricoCache)}, los movimientos reales dicen ${fmt(teoricoReal)} \u2014 corregido a ${fmt(teoricoReal)}.`
+    );
+    return { ok: true, antes: teoricoCache, despues: teoricoReal, movimiento: r.movimiento };
+  }
+  return { diagnosticarStock, corregirProducto, movimientosParaReconciliar };
+}
+function crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId }) {
+  const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+  function ajustarProductoPorOtro({ productoOrigenId, productoDestinoId, cantidadOrigen, cantidadDestino, motivo }) {
+    if (almacenCongelado) return { ok: false, error: "El almac\xE9n est\xE1 congelado por un conteo en curso." };
+    if (!productoOrigenId || !productoDestinoId) return { ok: false, error: "Elige los dos productos." };
+    if (productoOrigenId === productoDestinoId) return { ok: false, error: "Elige dos productos distintos." };
+    const origen = productos.find((p2) => p2.id === productoOrigenId);
+    const destino = productos.find((p2) => p2.id === productoDestinoId);
+    if (!origen || !destino) return { ok: false, error: "Alguno de los productos ya no existe." };
+    const cantSale = Number(cantidadOrigen) || 0;
+    const cantEntra = Number(cantidadDestino) || 0;
+    if (cantSale <= 0 || cantEntra <= 0) return { ok: false, error: "Indica cu\xE1nto sale y cu\xE1nto entra." };
+    if (cantSale > (Number(origen.stock) || 0)) {
+      return { ok: false, error: `No hay tanto stock de ${origen.nombre}: quedan ${fmt(origen.stock)}.` };
+    }
+    const costoSale = cantSale * (Number(origen.costo) || 0);
+    const costoEntra = cantEntra * (Number(destino.costo) || 0);
+    const diferencia = costoEntra - costoSale;
+    const operati
+
+===== HIT 15: localActivoId @ 4472030 =====
+     operationId,
+      movimientoId: uid(),
+      origen: "ajustarProductoPorOtro",
+      afectaStockTotal: true,
+      permitirDeficit: true,
+      motivo: `Viene de ${origen.nombre}${motivo ? " \xB7 " + motivo : ""}`
+    });
+    if (Math.abs(diferencia) >= 0.01 && addGasto) {
+      addGasto({
+        concepto: `Ajuste ${origen.nombre} \u2192 ${destino.nombre}${motivo ? " \xB7 " + motivo : ""}`,
+        importe: Number((-diferencia).toFixed(2)),
+        fecha: todayISO()
+      });
+    }
+    registrarAuditoria(
+      "Ajuste entre productos",
+      `${fmt(cantSale)} de ${origen.nombre} \u2192 ${fmt(cantEntra)} de ${destino.nombre} \xB7 diferencia \u20AC${fmt(Math.abs(diferencia))}${motivo ? " \xB7 " + motivo : ""}`
+    );
+    return { ok: true, costoSale, costoEntra, diferencia };
+  }
+  function addProducto(data) {
+    const nuevo = { id: uid(), stock: Number(data.stock) || 0, localId: localActivoId || null, ...data };
+    setProductos((s2) => [...s2, nuevo]);
+    const stockInicial = Number(data.stock) || 0;
+    if (stockInicial > 0) {
+      setMovimientos((s2) => [
+        {
+          id: uid(),
+          operationId: uid(),
+          productoId: nuevo.id,
+          cantidad: stockInicial,
+          tipo: "OTRO",
+          motivo: "Alta de producto con stock inicial",
+          fecha: todayISO(),
+          origen: "addProducto",
+          documentoOrigenId: null,
+          stockAnterior: 0,
+          stockPosterior: stockInicial,
+          afectaStockTotal: true,
+          afectaStockPisoVenta: false,
+          revierteMovimientoId: null
+        },
+        ...s2
+      ]);
+    }
+    return nuevo;
+  }
+  function updateProducto(id, data) {
+    const anterior = productos.find((p2) => p2.id === id);
+    const { stock: stockNuevoForm, ...restoDatos } = data;
+    if (Object.keys(restoDatos).length > 0) {
+      setProductos((s2) => s2.map((p2) => p2.id === id ? { ...p2, ...restoDatos } : p2));
+    }
+    if (anterior && stockNuevoForm !== void 0) {
+      const stockActual = Number(anterior.stock) || 0;
+      const deficitActual = Number(anterior.deficitPendiente) || 0;
+      const stockTeoricoAntes = stockActual - deficitActual;
+      const valorNuevo = Number(stockNuevoForm) || 0;
+      const dif = valorNuevo - stockTeoricoAntes;
+      if (dif !== 0) {
+        const { aplicarMo
+
+===== HIT 16: localActivoId @ 4815382 =====
+react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.inkSoft } }, pendientes.length === 0 ? "Nada pendiente de subir en este dispositivo ahora mismo." : `${pendientes.length} cosa(s) sin subir todav\xEDa: ${pendientes.join(", ")}`), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: reintentarConDetalle, disabled: reintentando }, reintentando ? "Reintentando\u2026" : "Reintentar ahora y ver el error real"), resultados && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 space-y-1.5" }, resultados.map((r) => /* @__PURE__ */ import_react4.default.createElement("div", { key: r.key, className: "text-[12px]", style: { color: r.ok ? C2.accent : C2.red } }, r.ok ? "\u2713" : "\u2717", " ", r.key, !r.ok && r.error ? `: ${r.error}` : r.ok ? ": subido con \xE9xito" : "")))));
+}
+function Locales({ locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo }) {
+  const [mostrarForm, setMostrarForm] = import_react4.default.useState(false);
+  const [nombre, setNombre] = import_react4.default.useState("");
+  const [direccion, setDireccion] = import_react4.default.useState("");
+  const [error, setError] = import_react4.default.useState("");
+  const [confirmarDesactivar, setConfirmarDesactivar] = import_react4.default.useState(null);
+  const activos = locales.filter((l2) => l2.activo !== false);
+  const inactivos = locales.filter((l2) => l2.activo === false);
+  function enviar() {
+    const r = crearLocal({ nombre, direccion });
+    if (!r.ok) {
+      setError(r.error);
+      return;
+    }
+    setNombre("");
+    setDireccion("");
+    setError("");
+    setMostrarForm(false);
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Locales"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Primer paso de varios locales: por ahora solo gestiona la lista y cu\xE1l est\xE1 activo en este dispositivo. Todav\xEDa no reparte productos, stock ni caja por local \u2014 eso viene despu\xE9s.")), /* @__PURE__ */ im
+
+===== HIT 17: localActivoId @ 4817373 =====
+"none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Primer paso de varios locales: por ahora solo gestiona la lista y cu\xE1l est\xE1 activo en este dispositivo. Todav\xEDa no reparte productos, stock ni caja por local \u2014 eso viene despu\xE9s.")), /* @__PURE__ */ import_react4.default.createElement(DiagnosticoSincronizacion, null), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 mb-4" }, activos.map((l2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: l2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium text-[13px] flex items-center gap-1.5" }, l2.nombre, l2.id === localActivoId && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "activo en este dispositivo")), l2.direccion && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, l2.direccion)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, l2.id !== localActivoId && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => cambiarLocalActivo(l2.id) }, "Usar este"), activos.length > 1 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setConfirmarDesactivar(l2) }, "Desactivar")))))), mostrarForm ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre del local" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nombre, onChange: (e) => setNombre(e.target.value), placeholder: "Ej: San Gin\xE9s Centro", autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Direcci\xF3n (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: direccion, onChange: (e) => setDireccion(e.target.value) })), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] m
+
+===== HIT 18: localActivoId @ 4817754 =====
+, null), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 mb-4" }, activos.map((l2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: l2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium text-[13px] flex items-center gap-1.5" }, l2.nombre, l2.id === localActivoId && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "activo en este dispositivo")), l2.direccion && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, l2.direccion)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, l2.id !== localActivoId && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => cambiarLocalActivo(l2.id) }, "Usar este"), activos.length > 1 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setConfirmarDesactivar(l2) }, "Desactivar")))))), mostrarForm ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre del local" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nombre, onChange: (e) => setNombre(e.target.value), placeholder: "Ej: San Gin\xE9s Centro", autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Direcci\xF3n (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: direccion, onChange: (e) => setDireccion(e.target.value) })), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: enviar }, "Crear local"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+    setMostrarForm(false);
+    setError("");
+  } }, "Cancelar")

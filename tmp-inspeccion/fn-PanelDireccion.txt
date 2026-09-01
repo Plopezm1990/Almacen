@@ -1,0 +1,41 @@
+START 5233741 END 5240828 LEN 7087
+function PanelDireccion({ movimientos, gastosGenerales, nominas, empleados, promedioDiarioVentas, proyeccionTesoreria, stockBajo = [], descuadresStock = [] }) {
+  const hoy = todayISO();
+  const mesActual = hoy.slice(0, 7);
+  const [anio, mes] = mesActual.split("-").map(Number);
+  const diaDelMes = (/* @__PURE__ */ new Date()).getDate();
+  const diasEnMes = new Date(anio, mes, 0).getDate();
+  function resumenDe(movsDelPeriodo) {
+    const ventas = movsDelPeriodo.filter((m2) => esVenta(m2));
+    const ingresos = ventas.reduce((a2, m2) => a2 + Math.abs(Number(m2.cantidad) || 0) * (Number(m2.ingresoUnitario) || 0) * (1 + (Number(m2.ivaVentaAplicado) || 0) / 100), 0);
+    const coste = ventas.reduce((a2, m2) => a2 + Math.abs(Number(m2.cantidad) || 0) * (Number(m2.costoUnitario) || 0), 0);
+    const tickets = new Set(ventas.map((m2) => m2.operationId || m2.ventaId || m2.id)).size;
+    const compras = movsDelPeriodo.filter((m2) => m2.tipo === "COMPRA" && Number(m2.cantidad) > 0).reduce((a2, m2) => a2 + Number(m2.cantidad) * (Number(m2.costoUnitario) || 0), 0);
+    const merma = movsDelPeriodo.filter((m2) => esMerma(m2)).reduce((a2, m2) => a2 + Math.abs(Number(m2.cantidad) || 0) * (Number(m2.costoUnitario) || 0), 0);
+    return { ingresos, coste, margen: ingresos - coste, tickets, compras, merma };
+  }
+  const movHoy = (0, import_react4.useMemo)(() => movimientos.filter((m2) => m2.fecha === hoy), [movimientos, hoy]);
+  const movMes = (0, import_react4.useMemo)(() => movimientos.filter((m2) => (m2.fecha || "").slice(0, 7) === mesActual), [movimientos, mesActual]);
+  const rHoy = (0, import_react4.useMemo)(() => resumenDe(movHoy), [movHoy]);
+  const rMes = (0, import_react4.useMemo)(() => resumenDe(movMes), [movMes]);
+  const nominasDelMes = nominas.filter((n) => n.mes === mesActual);
+  const costePersonalMes = nominasDelMes.reduce((a2, n) => a2 + (Number(n.costeTotalEmpresa) || 0), 0);
+  const porcentajePersonal = rMes.ingresos > 0 ? costePersonalMes / rMes.ingresos * 100 : null;
+  const gastosFijosMes = gastosGenerales.filter((g2) => !g2.fecha).reduce((a2, g2) => a2 + (Number(g2.importe) || 0), 0) * (diasEnMes / 30);
+  const gastosPuntualesMes = gastosGenerales.filter((g2) => g2.fecha && (g2.fecha || "").slice(0, 7) === mesActual).reduce((a2, g2) => a2 + (Number(g2.importe) || 0), 0);
+  const beneficioMes = rMes.margen - costePersonalMes - gastosFijosMes - gastosPuntualesMes;
+  const factorExtrapolacion = diaDelMes > 0 ? diasEnMes / diaDelMes : 1;
+  const ventasFinMes = rMes.ingresos * factorExtrapolacion;
+  const resultadoEstimadoFinMes = beneficioMes * factorExtrapolacion;
+  const cajaFutura30d = (proyeccionTesoreria || []).reduce((a2, d2) => a2 + d2.netoDia, 0);
+  const Bloque2 = ({ titulo, children }) => /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-5" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-2", style: { color: C2.inkSoft } }, titulo), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-2" }, children));
+  const Dato = ({ label, valor, color, nota }) => /* @__PURE__ */ import_react4.default.createElement(Card, { className: "py-2.5" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, label), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mono mt-0.5", style: { color: color || C2.ink } }, valor), nota && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mt-0.5", style: { color: C2.inkSoft } }, nota));
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Panel de direcci\xF3n"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "C\xF3mo va el negocio, sin entrar en diez pantallas distintas \u2014 reutiliza los mismos n\xFAmeros que ya ves en Resultados, Tesorer\xEDa y Coste de Personal.")), /* @__PURE__ */ import_react4.default.createElement(Bloque2, { titulo: "HOY" }, /* @__PURE__ */ import_react4.default.createElement(Dato, { label: "Ventas", valor: `\u20AC${fmt(rHoy.ingresos)}` }), /* @__PURE__ */ import_react4.default.createElement(Dato, { label: "Tickets", valor: rHoy.tickets, nota: rHoy.tickets > 0 ? `ticket medio \u20AC${fmt(rHoy.ingresos / rHoy.tickets)}` : null }), /* @__PURE__ */ import_react4.default.createElement(Dato, { label: "Margen", valor: `\u20AC${fmt(rHoy.margen)}`, color: C2.accent }), /* @__PURE__ */ import_react4.default.createElement(Dato, { label: "Stock cr\xEDtico", valor: stockBajo.length, color: stockBajo.length ? C2.red : C2.ink })), /* @__PURE__ */ import_react4.default.createElement(Bloque2, { titulo: "ESTE MES" }, /* @__PURE__ */ import_react4.default.createElement(Dato, { label: "Ventas del mes", valor: `\u20AC${fmt(rMes.ingresos)}` }), /* @__PURE__ */ import_react4.default.createElement(Dato, { label: "Margen del mes", valor: `\u20AC${fmt(rMes.margen)}`, color: C2.accent }), /* @__PURE__ */ import_react4.default.createElement(
+    Dato,
+    {
+      label: "Personal sobre ventas",
+      valor: porcentajePersonal === null ? "\u2014" : `${fmt(porcentajePersonal)}%`,
+      color: porcentajePersonal === null ? C2.ink : porcentajePersonal <= 35 ? C2.accent : porcentajePersonal <= 40 ? C2.amber : C2.red
+    }
+  ), /* @__PURE__ */ import_react4.default.createElement(Dato, { label: "Compras del mes", valor: `\u20AC${fmt(rMes.compras)}` }), /* @__PURE__ */ import_react4.default.createElement(Dato, { label: "Merma del mes", valor: `\u20AC${fmt(rMes.merma)}`, color: rMes.merma > 0 ? C2.amber : C2.ink }), /* @__PURE__ */ import_react4.default.createElement(Dato, { label: "Beneficio estimado", valor: `\u20AC${fmt(beneficioMes)}`, color: beneficioMes >= 0 ? C2.accent : C2.red, nota: "ventas \u2212 coste \u2212 personal \u2212 gastos" })), /* @__PURE__ */ import_react4.default.createElement(Bloque2, { titulo: "PREVISI\xD3N (estimaci\xF3n, no un hecho)" }, /* @__PURE__ */ import_react4.default.createElement(Dato, { label: "Ventas fin de mes", valor: `\u20AC${fmt(ventasFinMes)}`, nota: `llevas ${diaDelMes} de ${diasEnMes} d\xEDas` }), /* @__PURE__ */ import_react4.default.createElement(Dato, { label: "Resultado estimado fin de mes", valor: `\u20AC${fmt(resultadoEstimadoFinMes)}`, color: resultadoEstimadoFinMes >= 0 ? C2.accent : C2.red }), /* @__PURE__ */ import_react4.default.createElement(Dato, { label: "Caja a 30 d\xEDas", valor: `${cajaFutura30d >= 0 ? "+" : ""}\u20AC${fmt(cajaFutura30d)}`, color: cajaFutura30d >= 0 ? C2.accent : C2.red, nota: `\u20AC${fmt(promedioDiarioVentas)}/d\xEDa de media` }), /* @__PURE__ */ import_react4.default.createElement(Dato, { label: "Descuadres de stock sin resolver", valor: descuadresStock.length, color: descuadresStock.length ? C2.red : C2.ink })));
+}

@@ -1,0 +1,1042 @@
+const contenido = /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, tab === "dashboard" && /* @__PURE__ */ import_react4.default.createElement(
+    Dashboard,
+    {
+      valorInventario,
+      valorUtillaje,
+      stockBajo,
+      pedidosPendientes,
+      margenPromedio,
+      movimientos,
+      productos,
+      caducanPronto,
+      proveedorPorId,
+      vencenPronto,
+      totalPendientePago,
+      documentosPersonalPronto,
+      fichajesAbiertos,
+      encargosUrgentes,
+      pisoVentaBajo,
+      sugerenciasPedido,
+      setTab,
+      recordatorioConteo,
+      alertasAppcc,
+      fallosGuardado,
+      diagnosticoStock,
+      registrarSalida
+    }
+  ), tab === "direccion" && /* @__PURE__ */ import_react4.default.createElement(
+    PanelDireccion,
+    {
+      movimientos,
+      gastosGenerales,
+      nominas,
+      empleados,
+      promedioDiarioVentas,
+      proyeccionTesoreria,
+      stockBajo,
+      descuadresStock: diagnosticoStock.filter((d2) => !d2.coincide)
+    }
+  ), tab === "proveedores" && /* @__PURE__ */ import_react4.default.createElement(Proveedores, { proveedores, addProveedor, updateProveedor, deleteProveedor, pedidos }), tab === "productos" && /* @__PURE__ */ import_react4.default.createElement(
+    Productos,
+    {
+      productos,
+      proveedores,
+      proveedorPorId,
+      addProducto,
+      updateProducto,
+      deleteProducto,
+      reactivarProducto,
+      registrarSalida,
+      clasificacionABC,
+      almacenCongelado,
+      movimientos,
+      fichasCosto,
+      updateFichaCosto,
+      ajustarProductoPorOtro
+    }
+  ), tab === "historial_producto" && /* @__PURE__ */ import_react4.default.createElement(
+    HistorialProducto,
+    {
+      productos,
+      movimientos,
+      pedidos,
+      albaranes,
+      traspasos,
+      proveedorPorId
+    }
+  ), tab === "aceite" && /* @__PURE__ */ import_react4.default.createElement(
+    AceiteFreidoras,
+    {
+      freidoras,
+      registrosAceite,
+      productos,
+      addFreidora,
+      updateFreidora,
+      deleteFreidora,
+      registrarCambio,
+      registrarRelleno,
+      eliminarRegistroAceite,
+      consumoPorCiclo
+    }
+  ), tab === "buscar" && /* @__PURE__ */ import_react4.default.createElement(
+    BusquedaGlobal,
+    {
+      productos,
+      proveedores,
+      clientes,
+      fichasCosto,
+      empleados,
+      setTab
+    }
+  ), tab === "pedidos" && /* @__PURE__ */ import_react4.default.createElement(
+    Pedidos,
+    {
+      pedidos,
+      proveedores,
+      productos,
+      crearPedido,
+      actualizarPedido,
+      eliminarPedido,
+      proveedorPorId,
+      productoPorId,
+      sugerenciasPedido,
+      addProducto
+    }
+  ), tab === "recepcion" && /* @__PURE__ */ import_react4.default.createElement(Recepcion, { pedidos, proveedorPorId, productoPorId, recibirPedido, almacenCongelado, recibirConAlbaran, recibirConFotoIA, cerrarPedido }), tab === "conteo" && /* @__PURE__ */ import_react4.default.createElement(
+    InventarioCiego,
+    {
+      productos,
+      proveedores,
+      conteos,
+      iniciarConteo,
+      actualizarConteoItem,
+      actualizarResponsable,
+      finalizarConteo,
+      aplicarAjustes,
+      eliminarConteo,
+      revertirUltimaAplicacion,
+      productoPorId,
+      crearProductoEnConteo,
+      clasificacionABC,
+      almacenCongelado
+    }
+  ), tab === "reportes" && /* @__PURE__ */ import_react4.default.createElement(
+    Reportes,
+    {
+      rotacionPorProducto,
+      gastoPorProveedor,
+      productosSinMovimiento,
+      valorInventario,
+      margenPorProducto,
+      patronesDesviacionConteo
+    }
+  ), tab === "resultados" && /* @__PURE__ */ import_react4.default.createElement(
+    Resultados,
+    {
+      movimientos,
+      productos,
+      productoPorId,
+      gastosGenerales,
+      addGasto,
+      deleteGasto,
+      empleados
+    }
+  ), tab === "fichas" && /* @__PURE__ */ import_react4.default.createElement(
+    FichasCosto,
+    {
+      fichasCosto,
+      productos,
+      addFichaCosto,
+      updateFichaCosto,
+      deleteFichaCosto,
+      updateProducto,
+      addProducto,
+      ordenesProduccion,
+      nominas,
+      fichajes
+    }
+  ), tab === "produccion" && /* @__PURE__ */ import_react4.default.createElement(Produccion, { fichasCosto, productos, ordenesProduccion, producir, anularProduccion, traspasarStock }), tab === "mermas" && /* @__PURE__ */ import_react4.default.createElement(Mermas, { productos, movimientos, registrarSalida, almacenCongelado }), tab === "etiquetas" && /* @__PURE__ */ import_react4.default.createElement(EtiquetasCatalogo, { productos, fichasCosto, alergenosDeFicha }), tab === "albaranes" && /* @__PURE__ */ import_react4.default.createElement(
+    Albaranes,
+    {
+      albaranes,
+      proveedores,
+      productos,
+      proveedorPorId,
+      buscarEnCatalogo,
+      guardarAlbaran,
+      eliminarAlbaran,
+      confirmarAlbaran,
+      anularAlbaran,
+      marcarPagada,
+      duplicadosDe,
+      desviacionesDePrecio,
+      prefill: prefillAlbaran,
+      limpiarPrefill: () => setPrefillAlbaran(null),
+      pedidoParaFotoIA,
+      limpiarPedidoParaFotoIA: () => setPedidoParaFotoIA(null),
+      pedidos
+    }
+  ), tab === "pagos" && /* @__PURE__ */ import_react4.default.createElement(
+    CuentasPorPagar,
+    {
+      facturasPorPagar,
+      totalPendientePago,
+      marcarPagada,
+      marcarPagadaFacturaDirecta,
+      addFacturaDirecta,
+      deleteFacturaDirecta,
+      proveedores,
+      resaltadaId: facturaDirectaResaltada,
+      limpiarResaltada: () => setFacturaDirectaResaltada(null)
+    }
+  ), tab === "personal" && /* @__PURE__ */ import_react4.default.createElement(
+    Personal,
+    {
+      empleados,
+      addEmpleado,
+      updateEmpleado,
+      deleteEmpleado,
+      anonimizarEmpleado,
+      registrarAusencia,
+      eliminarAusencia,
+      registrarEpi,
+      eliminarEpi,
+      documentosPersonalCaducan,
+      fichajes,
+      nominas,
+      entrevistas,
+      crearEntrevista,
+      actualizarEntrevista,
+      finalizarEntrevista,
+      eliminarEntrevista,
+      crearPrefiltro,
+      listarPrefiltros,
+      eliminarPrefiltro,
+      crearCuentaEmpleado
+    }
+  ), tab === "fichaje" && /* @__PURE__ */ import_react4.default.createElement(
+    RegistroHorario,
+    {
+      empleados,
+      fichajes,
+      fichar,
+      addFichajeManual,
+      updateFichaje,
+      eliminarFichaje,
+      fichajesAbiertos
+    }
+  ), tab === "nominas" && /* @__PURE__ */ import_react4.default.createElement(
+    CostePersonal,
+    {
+      empleados,
+      nominas,
+      addNomina,
+      updateNomina,
+      deleteNomina,
+      fichajes,
+      movimientos
+    }
+  ), tab === "venta" && /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos, venderCarrito, anularVenta, movimientos, registrarAuditoria }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+    Encargos,
+    {
+      encargosPendientes,
+      encargos,
+      clientes,
+      productos,
+      addEncargo,
+      updateEncargo,
+      deleteEncargo,
+      entregarEncargo,
+      addCliente
+    }
+  ), tab === "clientes" && /* @__PURE__ */ import_react4.default.createElement(
+    Clientes,
+    {
+      analisisClientes,
+      clientesDormidos,
+      ventaCruzada,
+      addCliente,
+      updateCliente,
+      deleteCliente,
+      anonimizarCliente
+    }
+  ), tab === "devoluciones" && /* @__PURE__ */ import_react4.default.createElement(
+    Devoluciones,
+    { productos, proveedores, devoluciones, registrarDevolucionCliente, registrarDevolucionProveedor }
+  ), tab === "facturas" && /* @__PURE__ */ import_react4.default.createElement(
+    Facturas,
+    {
+      albaranes,
+      facturasDirectas,
+      proveedorPorId,
+      irAAlbaran: (albId) => {
+        const a2 = albaranes.find((x3) => x3.id === albId);
+        if (a2) {
+          setPrefillAlbaran(a2);
+          setTab("albaranes");
+        }
+      },
+      irAFacturaDirecta: (fdId) => {
+        setFacturaDirectaResaltada(fdId);
+        setTab("pagos");
+      }
+    }
+  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos, productos, albaranes, proveedorPorId, facturasDirectas }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { movimientos, arqueos, addArqueo, deleteArqueo, encargos, movimientosCaja, registrarMovimientoCaja, eliminarMovimientoCaja }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
+    Turnos,
+    {
+      empleados,
+      turnos,
+      addTurno,
+      updateTurno,
+      deleteTurno,
+      copiarSemana
+    }
+  ), tab === "mapa" && /* @__PURE__ */ import_react4.default.createElement(MapaAlmacen, { productos, proveedorPorId }), tab === "traspasos" && /* @__PURE__ */ import_react4.default.createElement(Traspasos, { productos, traspasos, traspasarStock, pisoVentaBajo, fichasCosto }), tab === "appcc" && /* @__PURE__ */ import_react4.default.createElement(
+    Appcc,
+    {
+      puntosControl,
+      registrosAppcc,
+      addPuntoControl,
+      updatePuntoControl,
+      deletePuntoControl,
+      registrarAppcc,
+      eliminarRegistroAppcc,
+      appccPendientesHoy,
+      productos,
+      fichasCosto,
+      alergenosDeFicha
+    }
+  ), tab === "saldo" && /* @__PURE__ */ import_react4.default.createElement(SaldoAlmacen, { productos, proveedores, valorInventario, valorUtillaje, proveedorPorId, clasificacionABC, analisisABC }), tab === "respaldos" && /* @__PURE__ */ import_react4.default.createElement(
+    Respaldos,
+    {
+      historial,
+      crearPuntoDeGuardado,
+      restaurarDesdeHistorial,
+      abrirRespaldo,
+      abrirRestaurar,
+      exportarExcelGeneral,
+      pinPropietario,
+      establecerPin,
+      activarModoEmpleado
+    }
+  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStock, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, null), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo }));
+  const itemsMeta = [
+    { id: "dashboard", label: "Panel general", icon: ChartColumn },
+    { id: "direccion", label: "Panel de direcci\xF3n", icon: TrendingUp },
+    { id: "proveedores", label: "Proveedores", icon: Truck },
+    { id: "productos", label: "Productos", icon: Package },
+    { id: "buscar", label: "Buscar", icon: Search },
+    { id: "historial_producto", label: "Historial de producto", icon: RotateCcwClock },
+    { id: "pedidos", label: "Pedidos", icon: ShoppingCart, badge: pedidosPendientes.length },
+    { id: "recepcion", label: "Recepci\xF3n", icon: ClipboardList },
+    { id: "albaranes", label: "Albaranes", icon: FileText },
+    { id: "facturas", label: "Facturas", icon: Files },
+    { id: "pagos", label: "Cuentas por pagar", icon: Coins, badge: vencenPronto.length, badgeColor: C2.red },
+    { id: "conteo", label: "Inventario ciego", icon: Boxes, badge: stockBajo.length, badgeColor: C2.amber },
+    { id: "saldo", label: "Saldo de almac\xE9n", icon: ClipboardList },
+    { id: "mapa", label: "Mapa de almac\xE9n", icon: Map2 },
+    { id: "traspasos", label: "Traspasos", icon: ArrowLeftRight, badge: pisoVentaBajo.length, badgeColor: C2.amber },
+    { id: "fichas", label: "Fichas de costo", icon: Calculator },
+    { id: "produccion", label: "Producci\xF3n", icon: Factory },
+    { id: "mermas", label: "Mermas", icon: Trash2 },
+    { id: "etiquetas", label: "Etiquetas y cat\xE1logo", icon: Tags },
+    { id: "reportes", label: "Reportes y rotaci\xF3n", icon: ChartColumn },
+    { id: "resultados", label: "Resultados", icon: TrendingUp },
+    { id: "personal", label: "Personal", icon: Users, badge: documentosPersonalPronto.length, badgeColor: C2.amber },
+    { id: "fichaje", label: "Registro horario", icon: Clock, badge: fichajesAbiertos.length, badgeColor: C2.amber },
+    { id: "nominas", label: "Coste de personal", icon: Coins },
+    { id: "turnos", label: "Cuadrante de turnos", icon: CalendarClock },
+    { id: "appcc", label: "Control sanitario", icon: ShieldCheck, badge: appccPendientesHoy.length, badgeColor: C2.amber },
+    { id: "aceite", label: "Aceite de freidoras", icon: Droplet },
+    { id: "venta", label: "Venta r\xE1pida", icon: ShoppingBag },
+    { id: "encargos", label: "Encargos", icon: CalendarDays, badge: encargosUrgentes.length, badgeColor: C2.red },
+    { id: "clientes", label: "Clientes", icon: UserRound },
+    { id: "libroiva", label: "Libro de IVA", icon: Receipt },
+    { id: "caja", label: "Arqueo de caja", icon: Wallet },
+    { id: "devoluciones", label: "Devoluciones", icon: ArrowLeftRight },
+    { id: "tesoreria", label: "Tesorer\xEDa", icon: ChartLine },
+    { id: "estacionalidad", label: "Estacionalidad", icon: CalendarRange },
+    { id: "auditoria", label: "Auditor\xEDa", icon: RotateCcwClock },
+    { id: "diagnostico", label: "Reconciliaci\xF3n de stock", icon: Stethoscope, badge: descuadresPendientes, badgeColor: C2.red },
+    { id: "respaldos", label: "Respaldos", icon: Cog },
+    { id: "notificaciones", label: "Notificaciones", icon: Bell },
+    { id: "locales", label: "Locales", icon: Map2 },
+    { id: "errores_sistema", label: "Errores del sistema", icon: TriangleAlert }
+  ];
+  const porId = (id) => itemsMeta.find((x3) => x3.id === id);
+  const pick = (ids) => {
+    const filtrados = modoEmpleado ? ids.filter((id) => itemsPermitidosEmpleado.includes(id)) : ids;
+    return filtrados.map(porId).filter(Boolean);
+  };
+  const gruposA = [
+    { titulo: null, items: pick(["dashboard", "buscar"]) },
+    { titulo: "Compras", items: pick(["proveedores", "pedidos", "recepcion", "albaranes"]) },
+    { titulo: "Almac\xE9n", items: pick(["productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos"]) },
+    { titulo: "Ventas", items: pick(["venta", "encargos", "clientes", "devoluciones"]) },
+    { titulo: "Costes y producci\xF3n", items: pick(["fichas", "produccion", "mermas", "etiquetas"]) },
+    { titulo: "Finanzas", items: pick(["direccion", "resultados", "pagos", "facturas", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
+    { titulo: "RRHH", items: pick(["personal", "fichaje", "turnos", "nominas"]) },
+    { titulo: "Calidad", items: pick(["appcc", "aceite"]) },
+    { titulo: "Sistema", items: pick(["auditoria", "diagnostico", "respaldos", "notificaciones", "errores_sistema", "locales"]) }
+  ];
+  const gruposB = [
+    { titulo: null, items: pick(["dashboard", "buscar"]) },
+    { titulo: "Ciclo de compra", items: pick(["proveedores", "pedidos", "recepcion", "albaranes", "pagos", "facturas"]) },
+    { titulo: "Ciclo de almac\xE9n", items: pick(["productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos"]) },
+    { titulo: "Ciclo de venta", items: pick(["venta", "encargos", "clientes", "devoluciones"]) },
+    { titulo: "Ciclo de coste y an\xE1lisis", items: pick(["fichas", "produccion", "mermas", "etiquetas", "resultados", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
+    { titulo: "Ciclo de personal", items: pick(["personal", "fichaje", "turnos", "nominas"]) },
+    { titulo: "Ciclo de calidad", items: pick(["appcc", "aceite"]) },
+    { titulo: "Ajustes", items: pick(["auditoria", "respaldos", "notificaciones", "errores_sistema", "locales"]) }
+  ];
+  const categoriasC = {
+    comprar: { titulo: "Comprar", items: pick(["proveedores", "pedidos", "recepcion", "albaranes", "pagos"]) },
+    almacen: { titulo: "Almac\xE9n", items: pick(["productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos"]) },
+    mas: [
+      { titulo: "Vender", items: pick(["venta", "encargos", "clientes", "devoluciones"]) },
+      { titulo: "Dinero", items: pick(["resultados", "facturas", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
+      { titulo: "Producto", items: pick(["fichas", "produccion", "mermas", "etiquetas"]) },
+      { titulo: "Equipo", items: pick(["personal", "fichaje", "turnos", "nominas"]) },
+      { titulo: "Calidad", items: pick(["appcc", "aceite"]) },
+      { titulo: "Ajustes", items: pick(["auditoria", "respaldos", "notificaciones", "errores_sistema", "locales"]) }
+    ]
+  };
+  return /* @__PURE__ */ import_react4.default.createElement("div", { "data-tema": temaOscuro ? "oscuro" : "claro", style: { background: C2.bg, color: C2.ink, fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui" }, className: disenoMenu === "C" ? "w-full min-h-[700px] flex flex-col text-[14px]" : "w-full min-h-[700px] flex flex-col md:flex-row text-[14px]" }, fallosGuardado.length > 0 && /* @__PURE__ */ import_react4.default.createElement(
+    "div",
+    {
+      className: "text-[12.5px] px-3 py-2 flex items-center justify-between gap-2",
+      style: { background: C2.red, color: "#fff", position: "sticky", top: 0, zIndex: 40 }
+    },
+    /* @__PURE__ */ import_react4.default.createElement("span", null, "\u26A0 Un cambio no se ha podido guardar (", fallosGuardado[0].key, "). Comprueba tu conexi\xF3n \u2014 si sigue as\xED, haz una copia desde Respaldos antes de seguir trabajando."),
+    /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setFallosGuardado([]), style: { color: "#fff", fontWeight: 600 } }, "\u2715")
+  ), /* @__PURE__ */ import_react4.default.createElement("style", null, `
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+        :root, [data-tema="claro"] {
+          --c-bg: #F7F3E9;
+          --c-surface: #FFFFFF;
+          --c-ink: #17241C;
+          --c-ink-soft: #647267;
+          --c-line: #E2DBC7;
+          --c-accent: #8C6D2A;
+          --c-accent-soft: #F1E7CE;
+          --c-amber: #977022;
+          --c-amber-soft: #F6EAD2;
+          --c-red: #B5473A;
+          --c-red-soft: #F7E5E1;
+        }
+        [data-tema="oscuro"] {
+          --c-bg: #081A10;
+          --c-surface: #0F2818;
+          --c-ink: #F0E6D0;
+          --c-ink-soft: #93A692;
+          --c-line: #1E3A26;
+          --c-accent: #D8B876;
+          --c-accent-soft: #1C3322;
+          --c-amber: #E8C066;
+          --c-amber-soft: #2B2312;
+          --c-red: #E37A69;
+          --c-red-soft: #2B1712;
+        }
+        .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+        input, select { font-family: inherit; }
+        ::placeholder { color: #9AA5A0; }
+
+        @media print {
+          @page { size: A4; margin: 12mm; }
+          body * { visibility: hidden !important; }
+          .zona-impresion, .zona-impresion * { visibility: visible !important; }
+          .zona-impresion {
+            position: absolute !important;
+            left: 0; top: 0; width: 100%;
+            background: #fff !important;
+          }
+          .no-imprimir { display: none !important; }
+          .zona-impresion table { page-break-inside: auto; }
+          .zona-impresion tr { page-break-inside: avoid; page-break-after: auto; }
+          .zona-impresion thead { display: table-header-group; }
+          /* Lo impreso siempre en claro, sin importar el tema activo en pantalla */
+          :root, [data-tema="oscuro"], [data-tema="claro"] {
+            --c-bg: #F7F3E9 !important;
+            --c-surface: #FFFFFF !important;
+            --c-ink: #17241C !important;
+            --c-ink-soft: #647267 !important;
+            --c-line: #E2DBC7 !important;
+            --c-accent: #8C6D2A !important;
+            --c-accent-soft: #F1E7CE !important;
+            --c-amber: #977022 !important;
+            --c-amber-soft: #F6EAD2 !important;
+            --c-red: #B5473A !important;
+            --c-red-soft: #F7E5E1 !important;
+          }
+        }
+      `), disenoMenu === "C" ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(TopBarC, { disenoMenu, setDisenoMenu, tab, setTab, pendientes: pedidosPendientes.length, temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil }), /* @__PURE__ */ import_react4.default.createElement("main", { className: "flex-1 p-4 overflow-y-auto", style: { maxHeight: "900px" } }, contenido), /* @__PURE__ */ import_react4.default.createElement(BottomNavC, { tab, setTab, categorias: categoriasC, dashboardItem: porId("dashboard") })) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(
+    SidebarGrupos,
+    {
+      grupos: disenoMenu === "A" ? gruposA : gruposB,
+      tab,
+      setTab,
+      disenoMenu,
+      setDisenoMenu,
+      temaOscuro,
+      setTemaOscuro,
+      modoEmpleado,
+      salirModoEmpleado,
+      empleados,
+      usuarioActivoId,
+      entrarComoEmpleado,
+      pinPropietario,
+      miPerfil
+    }
+  ), /* @__PURE__ */ import_react4.default.createElement("main", { className: "flex-1 p-4 md:p-7 overflow-y-auto", style: { maxHeight: "900px" } }, contenido)), showBackupView && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowBackupView(false), title: "Tu respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2", style: { color: C2.ink } }, 'Copia este texto y gu\xE1rdalo en alg\xFAn lugar seguro (notas, correo, Google Drive). Para restaurarlo m\xE1s adelante, p\xE9galo en "Restaurar respaldo".'), /* @__PURE__ */ import_react4.default.createElement(
+    "textarea",
+    {
+      readOnly: true,
+      value: backupText,
+      onFocus: (e) => e.target.select(),
+      className: "w-full rounded-lg p-2 text-[11px] mono mb-3",
+      style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, height: 160, resize: "none" }
+    }
+  ), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: copiarRespaldo }, copiado ? "\xA1Copiado!" : "Copiar al portapapeles"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowBackupView(false) }, "Cerrar")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Si el bot\xF3n no copia solo, toca dentro del recuadro de texto, selecciona todo y c\xF3pialo manualmente.")), showRestoreInput && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowRestoreInput(false), title: "Restaurar respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2", style: { color: C2.ink } }, "Pega aqu\xED el texto completo del respaldo que copiaste anteriormente."), /* @__PURE__ */ import_react4.default.createElement(
+    "textarea",
+    {
+      value: restoreText,
+      onChange: (e) => setRestoreText(e.target.value),
+      placeholder: "Pega aqu\xED el texto del respaldo\u2026",
+      className: "w-full rounded-lg p-2 text-[11px] mono mb-3",
+      style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, height: 160, resize: "none" }
+    }
+  ), restoreError && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, restoreError), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: analizarTextoRestauracion }, "Continuar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowRestoreInput(false) }, "Cancelar"))), pendingRestore && (() => {
+    const comparacion = compararConEstadoActual(pendingRestore);
+    const seConservan = coleccionesQueSeConservan(pendingRestore);
+    const perdidas = comparacion.filter((c2) => c2.diferencia < 0);
+    return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setPendingRestore(null), title: "Restaurar respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-1", style: { color: C2.ink } }, pendingRestore.exportadoEl ? `Respaldo del ${new Date(pendingRestore.exportadoEl).toLocaleString("es-ES")}` : "Respaldo sin fecha registrada"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Formato ", pendingRestore.backupVersion || pendingRestore.version || "antiguo"), perdidas.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "\u26A0 Este respaldo tiene menos datos que lo que hay ahora"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2" }, "Al restaurarlo desaparecer\xEDa lo creado despu\xE9s. Se guardar\xE1 un punto de recuperaci\xF3n antes, por si te arrepientes."), perdidas.map((c2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: c2.clave, className: "text-[11.5px] mono" }, c2.nombre, ": ", c2.actual, " \u2192 ", c2.respaldo, " (", c2.diferencia, ")"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "Qu\xE9 contiene, comparado con ahora"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3 space-y-0.5", style: { color: C2.inkSoft } }, comparacion.map((c2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: c2.clave, className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", null, c2.nombre), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: c2.diferencia < 0 ? C2.red : C2.inkSoft } }, c2.actual, " \u2192 ", c2.respaldo)))), seConservan.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.bg, border: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]" }, "Este respaldo es anterior y no incluye: ", /* @__PURE__ */ import_react4.default.createElement("b", null, seConservan.join(", ")), ". Esos datos", /* @__PURE__ */ import_react4.default.createElement("b", null, " se conservan tal como est\xE1n ahora"), " \u2014 no se borran.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-4", style: { color: C2.red } }, "Restaurar sustituye lo que tengas cargado ahora por el contenido de este respaldo."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: confirmarRestauracion }, "Restaurar respaldo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setPendingRestore(null) }, "Cancelar")));
+  })());
+}
+function crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria }) {
+  function addProveedor(data) {
+    setProveedores((s2) => [...s2, { id: uid(), ...data }]);
+  }
+  function updateProveedor(id, data) {
+    setProveedores((s2) => s2.map((p2) => p2.id === id ? { ...p2, ...data } : p2));
+  }
+  function deleteProveedor(id) {
+    const p2 = proveedores.find((x3) => x3.id === id);
+    registrarAuditoria("Eliminar proveedor", p2 ? p2.nombre : id);
+    setProveedores((s2) => s2.filter((p22) => p22.id !== id));
+  }
+  return { addProveedor, updateProveedor, deleteProveedor };
+}
+function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas }) {
+  function addEmpleado(data) {
+    setEmpleados((s2) => [...s2, { id: uid(), activo: true, documentos: [], ...data }]);
+  }
+  async function crearCuentaEmpleado(empleadoId, { nombre, email, password, rol }) {
+    try {
+      const supabase = await window.getSupabaseClient();
+      const { data: sesion } = await supabase.auth.getSession();
+      const token = sesion?.session?.access_token;
+      if (!token) return { ok: false, error: "No hay sesi\xF3n activa \u2014 vuelve a iniciar sesi\xF3n." };
+      const resp = await fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/crear-cuenta-empleado", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ empleadoId, nombre, email, password, rol })
+      });
+      const r = await resp.json();
+      if (!r.ok) return r;
+      setEmpleados((s2) => s2.map((e) => e.id === empleadoId ? { ...e, tieneCuenta: true, rolCuenta: rol, emailCuenta: email } : e));
+      registrarAuditoria("Crear cuenta de empleado", `${nombre} \xB7 ${rol} \xB7 ${email}`);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: "No se ha podido conectar: " + (e?.message || "error de red") };
+    }
+  }
+  function updateEmpleado(id, data) {
+    setEmpleados((s2) => s2.map((e) => e.id === id ? { ...e, ...data } : e));
+  }
+  function deleteEmpleado(id) {
+    const e = empleados.find((x3) => x3.id === id);
+    registrarAuditoria("Eliminar empleado", e ? e.nombre : id);
+    setEmpleados((s2) => s2.filter((e2) => e2.id !== id));
+    if (setNominas) setNominas((s2) => s2.filter((n) => n.empleadoId !== id));
+  }
+  function anonimizarEmpleado(id) {
+    const e = empleados.find((x3) => x3.id === id);
+    registrarAuditoria("Anonimizar empleado", e ? e.nombre : id);
+    setEmpleados(
+      (s2) => s2.map(
+        (emp) => emp.id === id ? {
+          ...emp,
+          nombre: "Empleado anonimizado",
+          dni: "",
+          pin: "",
+          documentos: [],
+          ausencias: [],
+          anonimizado: true,
+          activo: false
+        } : emp
+      )
+    );
+  }
+  function registrarAusencia(empleadoId, ausencia) {
+    setEmpleados(
+      (s2) => s2.map((e) => e.id === empleadoId ? { ...e, ausencias: [...e.ausencias || [], { id: uid(), ...ausencia }] } : e)
+    );
+  }
+  function eliminarAusencia(empleadoId, ausenciaId) {
+    setEmpleados(
+      (s2) => s2.map((e) => e.id === empleadoId ? { ...e, ausencias: (e.ausencias || []).filter((a2) => a2.id !== ausenciaId) } : e)
+    );
+  }
+  function registrarEpi(empleadoId, epi) {
+    setEmpleados(
+      (s2) => s2.map((e) => e.id === empleadoId ? { ...e, epis: [...e.epis || [], { id: uid(), fecha: todayISO(), ...epi }] } : e)
+    );
+  }
+  function eliminarEpi(empleadoId, epiId) {
+    setEmpleados(
+      (s2) => s2.map((e) => e.id === empleadoId ? { ...e, epis: (e.epis || []).filter((x3) => x3.id !== epiId) } : e)
+    );
+  }
+  return { addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado };
+}
+function crearLogicaTurnos({ turnos, setTurnos }) {
+  function addTurno(data) {
+    setTurnos((s2) => [...s2, { id: uid(), ...data }]);
+  }
+  function updateTurno(id, data) {
+    setTurnos((s2) => s2.map((t2) => t2.id === id ? { ...t2, ...data } : t2));
+  }
+  function deleteTurno(id) {
+    setTurnos((s2) => s2.filter((t2) => t2.id !== id));
+  }
+  function copiarSemana(desdeFechas, haciaFechas) {
+    const nuevos = [];
+    turnos.forEach((t2) => {
+      const idx = desdeFechas.indexOf(t2.fecha);
+      if (idx === -1) return;
+      nuevos.push({ id: uid(), empleadoId: t2.empleadoId, fecha: haciaFechas[idx], tipo: t2.tipo, horaInicio: t2.horaInicio, horaFin: t2.horaFin, notas: t2.notas });
+    });
+    if (nuevos.length) setTurnos((s2) => [...s2, ...nuevos]);
+    return nuevos.length;
+  }
+  return { addTurno, updateTurno, deleteTurno, copiarSemana };
+}
+function crearLogicaAppcc({ setPuntosControl, setRegistrosAppcc }) {
+  function addPuntoControl(data) {
+    setPuntosControl((s2) => [...s2, { id: uid(), activo: true, ...data }]);
+  }
+  function updatePuntoControl(id, data) {
+    setPuntosControl((s2) => s2.map((p2) => p2.id === id ? { ...p2, ...data } : p2));
+  }
+  function deletePuntoControl(id) {
+    setPuntosControl((s2) => s2.filter((p2) => p2.id !== id));
+  }
+  function registrarAppcc(data) {
+    setRegistrosAppcc((s2) => [{ id: uid(), fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), ...data }, ...s2]);
+  }
+  function eliminarRegistroAppcc(id) {
+    setRegistrosAppcc((s2) => s2.filter((r) => r.id !== id));
+  }
+  return { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, eliminarRegistroAppcc };
+}
+function crearLogicaFichaje({ setFichajes }) {
+  function fichar(empleadoId, tipo) {
+    const ahora = /* @__PURE__ */ new Date();
+    setFichajes((s2) => [
+      { id: uid(), empleadoId, tipo, fecha: todayISO(), hora: ahora.toTimeString().slice(0, 5), timestamp: ahora.toISOString() },
+      ...s2
+    ]);
+  }
+  function addFichajeManual(data) {
+    setFichajes((s2) => [{ id: uid(), ...data }, ...s2]);
+  }
+  function updateFichaje(id, data) {
+    setFichajes((s2) => s2.map((f2) => f2.id === id ? { ...f2, ...data } : f2));
+  }
+  function eliminarFichaje(id) {
+    setFichajes((s2) => s2.filter((f2) => f2.id !== id));
+  }
+  return { fichar, addFichajeManual, updateFichaje, eliminarFichaje };
+}
+function crearLogicaGastos({ setGastosGenerales }) {
+  function addGasto(data) {
+    setGastosGenerales((s2) => [...s2, { id: uid(), ...data }]);
+  }
+  function deleteGasto(id) {
+    setGastosGenerales((s2) => s2.filter((g2) => g2.id !== id));
+  }
+  return { addGasto, deleteGasto };
+}
+function crearLogicaCaja({ setArqueos }) {
+  function addArqueo(data) {
+    setArqueos((s2) => [{ id: uid(), fecha: todayISO(), ...data }, ...s2]);
+    const diferencia = Number(data.diferencia) || 0;
+    if (diferencia !== 0 && typeof window !== "undefined" && window.__nubeActiva) {
+      const signo = diferencia > 0 ? "sobran" : "faltan";
+      fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titulo: "Caja descuadrada",
+          cuerpo: `Al cerrar caja, ${signo} ${fmt(Math.abs(diferencia))} \u20AC.`,
+          url: "/"
+        })
+      }).catch(() => {
+      });
+    }
+  }
+  function deleteArqueo(id) {
+    setArqueos((s2) => s2.filter((a2) => a2.id !== id));
+  }
+  return { addArqueo, deleteArqueo };
+}
+function crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivoId, registrarAuditoria }) {
+  function crearLocal({ nombre, direccion }) {
+    const nombreLimpio = (nombre || "").trim();
+    if (!nombreLimpio) return { ok: false, error: "Ponle un nombre al local." };
+    if (locales.some((l2) => l2.nombre.toLowerCase() === nombreLimpio.toLowerCase())) {
+      return { ok: false, error: "Ya existe un local con ese nombre." };
+    }
+    const nuevo = { id: uid(), nombre: nombreLimpio, direccion: (direccion || "").trim(), activo: true, creadoEn: (/* @__PURE__ */ new Date()).toISOString() };
+    setLocales((s2) => [...s2, nuevo]);
+    registrarAuditoria("Crear local", nombreLimpio);
+    return { ok: true, local: nuevo };
+  }
+  function actualizarLocal(id, datos) {
+    setLocales((s2) => s2.map((l2) => l2.id === id ? { ...l2, ...datos } : l2));
+  }
+  function desactivarLocal(id) {
+    const l2 = locales.find((x3) => x3.id === id);
+    setLocales((s2) => s2.map((x3) => x3.id === id ? { ...x3, activo: false } : x3));
+    registrarAuditoria("Desactivar local", l2 ? l2.nombre : id);
+  }
+  function cambiarLocalActivo(id) {
+    if (!locales.some((l2) => l2.id === id)) return;
+    setLocalActivoId(id);
+  }
+  return { crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo };
+}
+function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, registrarAuditoria }) {
+  function registrarMovimientoCaja(tipo, importe, motivo, fecha) {
+    const importeNum = Number(importe);
+    if (!importeNum || importeNum <= 0) return { ok: false, error: "Pon un importe mayor que cero." };
+    if (tipo !== "entrada" && tipo !== "salida") return { ok: false, error: "Tipo de movimiento no v\xE1lido." };
+    const nuevo = { id: uid(), fecha: fecha || todayISO(), tipo, importe: importeNum, motivo: (motivo || "").trim(), creadoEn: (/* @__PURE__ */ new Date()).toISOString() };
+    setMovimientosCaja((s2) => [nuevo, ...s2]);
+    registrarAuditoria(
+      tipo === "entrada" ? "Entrada de caja" : "Retirada de caja",
+      `\u20AC${fmt(importeNum)} \xB7 ${nuevo.motivo || "sin motivo especificado"} \xB7 ${nuevo.fecha}`
+    );
+    return { ok: true, movimiento: nuevo };
+  }
+  function eliminarMovimientoCaja(id) {
+    const m2 = movimientosCaja.find((x3) => x3.id === id);
+    setMovimientosCaja((s2) => s2.filter((x3) => x3.id !== id));
+    if (m2) registrarAuditoria("Eliminar movimiento de caja", `${m2.tipo === "entrada" ? "Entrada" : "Retirada"} de \u20AC${fmt(m2.importe)} \xB7 ${m2.fecha}`);
+  }
+  return { registrarMovimientoCaja, eliminarMovimientoCaja };
+}
+function crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, registrarAuditoria, registrarMovimientoCaja }) {
+  const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos });
+  function registrarDevolucionCliente({ productoId, cantidad, motivo, reembolso, ventaId, fecha }) {
+    const cant = Number(cantidad);
+    if (!productoId) return { ok: false, error: "Elige un producto." };
+    if (!cant || cant <= 0) return { ok: false, error: "Pon una cantidad mayor que cero." };
+    const producto = productos.find((p2) => p2.id === productoId);
+    if (!producto) return { ok: false, error: "Producto no encontrado." };
+    const fechaReal = fecha || todayISO();
+    const r = aplicarMovimientoStock({
+      productoId,
+      cantidad: cant,
+      tipo: "DEVOLUCION_CLIENTE",
+      operationId: uid(),
+      movimientoId: uid(),
+      origen: "devolucionCliente",
+      documentoOrigenId: ventaId || null,
+      afectaStockTotal: true,
+      afectaStockPisoVenta: true,
+      motivo: `Devoluci\xF3n de cliente${motivo ? " \xB7 " + motivo : ""}`
+    });
+    if (!r.ok) return { ok: false, error: r.error || "No se ha podido aplicar al stock." };
+    const reembolsoNum = Number(reembolso) || 0;
+    if (reembolsoNum > 0 && typeof registrarMovimientoCaja === "function") {
+      registrarMovimientoCaja("salida", reembolsoNum, `Reembolso por devoluci\xF3n \xB7 ${producto.nombre}`, fechaReal);
+    }
+    const registro = {
+      id: uid(),
+      tipo: "cliente",
+      fecha: fechaReal,
+      productoId,
+      productoNombre: producto.nombre,
+      cantidad: cant,
+      motivo: (motivo || "").trim(),
+      reembolso: reembolsoNum,
+      ventaId: ventaId || null
+    };
+    setDevoluciones((s2) => [registro, ...s2]);
+    registrarAuditoria("Devoluci\xF3n de cliente", `${producto.nombre} \xD7${cant}${reembolsoNum > 0 ? ` \xB7 reembolso \u20AC${fmt(reembolsoNum)}` : ""}`);
+    return { ok: true, registro };
+  }
+  function registrarDevolucionProveedor({ productoId, cantidad, motivo, proveedorId, proveedorNombre, fecha }) {
+    const cant = Number(cantidad);
+    if (!productoId) return { ok: false, error: "Elige un producto." };
+    if (!cant || cant <= 0) return { ok: false, error: "Pon una cantidad mayor que cero." };
+    const producto = productos.find((p2) => p2.id === productoId);
+    if (!producto) return { ok: false, error: "Producto no encontrado." };
+    const fechaReal = fecha || todayISO();
+    const r = aplicarMovimientoStock({
+      productoId,
+      cantidad: -cant,
+      tipo: "DEVOLUCION_PROVEEDOR",
+      operationId: uid(),
+      movimientoId: uid(),
+      origen: "devolucionProveedor",
+      documentoOrigenId: proveedorId || null,
+      afectaStockTotal: true,
+      permitirDeficit: true,
+      motivo: `Devoluci\xF3n a proveedor${motivo ? " \xB7 " + motivo : ""}`
+    });
+    if (!r.ok) return { ok: false, error: r.error || "No se ha podido aplicar al stock." };
+    const registro = {
+      id: uid(),
+      tipo: "proveedor",
+      fecha: fechaReal,
+      productoId,
+      productoNombre: producto.nombre,
+      cantidad: cant,
+      motivo: (motivo || "").trim(),
+      proveedorId: proveedorId || null,
+      proveedorNombre: proveedorNombre || ""
+    };
+    setDevoluciones((s2) => [registro, ...s2]);
+    registrarAuditoria("Devoluci\xF3n a proveedor", `${producto.nombre} \xD7${cant}${proveedorNombre ? ` \xB7 ${proveedorNombre}` : ""}`);
+    return { ok: true, registro };
+  }
+  return { registrarDevolucionCliente, registrarDevolucionProveedor };
+}
+function crearLogicaClientes({ clientes, setClientes, registrarAuditoria }) {
+  function addCliente(data) {
+    const nuevo = { id: uid(), fechaAlta: todayISO(), ...data };
+    setClientes((s2) => [...s2, nuevo]);
+    return nuevo;
+  }
+  function updateCliente(id, data) {
+    setClientes((s2) => s2.map((c2) => c2.id === id ? { ...c2, ...data } : c2));
+  }
+  function deleteCliente(id) {
+    const c2 = clientes.find((x3) => x3.id === id);
+    registrarAuditoria("Eliminar cliente", c2 ? c2.nombre : id);
+    setClientes((s2) => s2.filter((c22) => c22.id !== id));
+  }
+  function anonimizarCliente(id) {
+    const c2 = clientes.find((x3) => x3.id === id);
+    registrarAuditoria("Anonimizar cliente", c2 ? c2.nombre : id);
+    setClientes(
+      (s2) => s2.map(
+        (cli) => cli.id === id ? { ...cli, nombre: "Cliente anonimizado", telefono: "", email: "", notas: "", anonimizado: true } : cli
+      )
+    );
+  }
+  return { addCliente, updateCliente, deleteCliente, anonimizarCliente };
+}
+function crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria }) {
+  const idsConocidos = new Set(movimientos.map((m2) => m2.id));
+  const porId = new Map(movimientos.map((m2) => [m2.id, m2]));
+  const snapshotLocal = /* @__PURE__ */ new Map();
+  function productoActual(productoId) {
+    if (snapshotLocal.has(productoId)) return snapshotLocal.get(productoId);
+    return productos.find((p2) => p2.id === productoId);
+  }
+  function calcularStockTeorico(productoId, campo = "stock") {
+    return movimientos.filter((m2) => m2.productoId === productoId).filter((m2) => m2.origen !== "reconciliacionStock").filter((m2) => {
+      if (esMovimientoNuevo(m2)) {
+        return !!m2[campo === "stockPisoVenta" ? "afectaStockPisoVenta" : "afectaStockTotal"];
+      }
+      return campo !== "stockPisoVenta";
+    }).reduce((suma, m2) => suma + cantidadConSigno(m2), 0);
+  }
+  function aplicarMovimientoStock({
+    productoId,
+    cantidad,
+    tipo,
+    operationId,
+    movimientoId,
+    origen,
+    documentoOrigenId,
+    usuario,
+    dispositivo,
+    motivo,
+    permitirDeficit = false,
+    afectaStockTotal = true,
+    afectaStockPisoVenta = false,
+    revierteMovimientoId = null,
+    camposExtra = null
+    // campos económicos que el motor no conoce (ingresoUnitario,
+    // medioPago...) — se escriben en el mismo momento de crear
+    // el movimiento, nunca como un parche después.
+  }) {
+    const id = movimientoId || uid();
+    if (idsConocidos.has(id)) {
+      const existente = porId.get(id);
+      if (existente && Number(existente.cantidad) !== Number(cantidad)) {
+        return { ok: false, error: `El movimiento ${id} ya existe con una cantidad distinta (${existente.cantidad} \u2260 ${cantidad}). No se sobrescribe.` };
+      }
+      return { ok: true, movimiento: existente, yaExistia: true };
+    }
+    const producto = productoActual(productoId);
+    if (!producto) return { ok: false, error: "Producto no encontrado." };
+    const cantidadNum = Number(cantidad) || 0;
+    const resultadoCampos = {};
+    let deficitGenerado = 0;
+    if (afectaStockTotal) {
+      const stockActual = Number(producto.stock) || 0;
+      const deficitActual = Number(producto.deficitPendiente) || 0;
+      const teoricoAntes = stockActual - deficitActual;
+      const teoricoDespues = teoricoAntes + cantidadNum;
+      const deficitNuevo = Math.max(0, -teoricoDespues);
+      if (deficitNuevo > deficitActual && !permitirDeficit) {
+        return { ok: false, error: `Stock insuficiente: hay ${Math.max(0, teoricoAntes)}, se piden ${-cantidadNum}.` };
+      }
+      resultadoCampos.stock = Math.max(0, teoricoDespues);
+      resultadoCampos.deficitPendiente = deficitNuevo;
+      deficitGenerado = Math.max(0, deficitNuevo - deficitActual);
+      const minimo = Number(producto.stockMinimo) || 0;
+      if (minimo > 0 && teoricoAntes >= minimo && teoricoDespues < minimo && typeof window !== "undefined" && window.__nubeActiva) {
+        fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            titulo: "Stock bajo",
+            cuerpo: `${producto.nombre} baj\xF3 del m\xEDnimo (quedan ${fmt(Math.max(0, teoricoDespues))}).`,
+            url: "/"
+          })
+        }).catch(() => {
+        });
+      }
+    }
+    if (afectaStockPisoVenta) {
+      const pisoActual = Number(producto.stockPisoVenta) || 0;
+      resultadoCampos.stockPisoVenta = Math.max(0, pisoActual + cantidadNum);
+    }
+    const movimiento = {
+      id,
+      operationId: operationId || id,
+      productoId,
+      cantidad: cantidadNum,
+      tipo,
+      motivo: motivo || "",
+      fecha: todayISO(),
+      origen: origen || "",
+      documentoOrigenId: documentoOrigenId || null,
+      usuario: usuario || "",
+      dispositivo: dispositivo || "",
+      stockAnterior: Number(producto.stock) || 0,
+      stockPosterior: resultadoCampos.stock !== void 0 ? resultadoCampos.stock : Number(producto.stock) || 0,
+      afectaStockTotal,
+      afectaStockPisoVenta,
+      revierteMovimientoId,
+      ...camposExtra || {}
+    };
+    setProductos((s2) => s2.map((p2) => p2.id === productoId ? { ...p2, ...resultadoCampos } : p2));
+    snapshotLocal.set(productoId, { ...producto, ...resultadoCampos });
+    setMovimientos((s2) => [movimiento, ...s2]);
+    idsConocidos.add(id);
+    porId.set(id, movimiento);
+    if (deficitGenerado > 0 && registrarAuditoria) {
+      registrarAuditoria("deficit_stock_detectado", `${producto.nombre}: ${deficitGenerado} sin cobertura (${tipo}, operaci\xF3n ${movimiento.operationId})`);
+    }
+    return { ok: true, movimiento, yaExistia: false };
+  }
+  return { aplicarMovimientoStock, calcularStockTeorico };
+}
+function crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria }) {
+  const { aplicarMovimientoStock, calcularStockTeorico } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+  function diagnosticarStock() {
+    const porProducto = /* @__PURE__ */ new Map();
+    for (const m2 of movimientos) {
+      if (!porProducto.has(m2.productoId)) porProducto.set(m2.productoId, []);
+      porProducto.get(m2.productoId).push(m2);
+    }
+    return productos.map((p2) => {
+      const movimientosDelProducto = porProducto.get(p2.id) || [];
+      const stockCache = Number(p2.stock) || 0;
+      const deficitCache = Number(p2.deficitPendiente) || 0;
+      const teoricoCache = stockCache - deficitCache;
+      const teoricoReal = movimientosDelProducto.filter((m2) => m2.origen !== "reconciliacionStock").filter((m2) => esMovimientoNuevo(m2) ? !!m2.afectaStockTotal : true).reduce((suma, m2) => suma + cantidadConSigno(m2), 0);
+      const diferencia = Number((teoricoReal - teoricoCache).toFixed(4));
+      const coincide = Math.abs(diferencia) < 0.01;
+      const deficitReal = Math.max(0, -teoricoReal);
+      const tieneDeficit = deficitReal >= 0.01;
+      let estado;
+      if (coincide && !tieneDeficit) estado = "OK";
+      else if (coincide && tieneDeficit) estado = "DEFICIT";
+      else if (!coincide && !tieneDeficit) estado = "DISCREPANCIA";
+      else estado = "DEFICIT_Y_DISCREPANCIA";
+      const ultimoMovimiento = movimientosDelProducto.reduce(
+        (max, m2) => !max || (m2.fecha || "") > max ? m2.fecha : max,
+        null
+      );
+      return {
+        productoId: p2.id,
+        nombre: p2.nombre,
+        stockCache,
+        deficitCache,
+        teoricoCache,
+        teoricoReal,
+        diferencia,
+        coincide,
+        deficitReal,
+        estado,
+        numMovimientos: movimientosDelProducto.length,
+        ultimoMovimiento
+      };
+    }).sort((a2, b2) => Math.abs(b2.diferencia) - Math.abs(a2.diferencia));
+  }
+  function movimientosParaReconciliar(productoId) {
+    return movimientos.filter((m2) => m2.productoId === productoId).slice().sort((a2, b2) => (b2.fecha || "").localeCompare(a2.fecha || ""));
+  }
+  function corregirProducto(productoId) {
+    const p2 = productos.find((pr) => pr.id === productoId);
+    if (!p2) return { ok: false, error: "Producto no encontrado." };
+    const teoricoReal = calcularStockTeorico(productoId, "stock");
+    const stockCache = Number(p2.stock) || 0;
+    const deficitCache = Number(p2.deficitPendiente) || 0;
+    const teoricoCache = stockCache - deficitCache;
+    const cantidadCorreccion = Number((teoricoReal - teoricoCache).toFixed(4));
+    if (Math.abs(cantidadCorreccion) < 0.01) return { ok: true, sinCambios: true };
+    const r = aplicarMovimientoStock({
+      productoId,
+      cantidad: cantidadCorreccion,
+      tipo: "INVENTARIO",
+      operationId: uid(),
+      movimientoId: uid(),
+      origen: "reconciliacionStock",
+      documentoOrigenId: null,
+      afectaStockTotal: true,
+      afectaStockPisoVenta: false,
+      permitirDeficit: true,
+      motivo: `Reconciliaci\xF3n: la cach\xE9 dec\xEDa ${fmt(teoricoCache)}, el hist\xF3rico dec\xEDa ${fmt(teoricoReal)}`
+    });
+    if (!r.ok) return r;
+    registrarAuditoria(
+      "Reconciliaci\xF3n de stock",
+      `${p2.nombre}: la cach\xE9 dec\xEDa ${fmt(teoricoCache)}, los movimientos reales dicen ${fmt(teoricoReal)} \u2014 corregido a ${fmt(teoricoReal)}.`
+    );
+    return { ok: true, antes: teoricoCache, despues: teoricoReal, movimiento: r.movimiento };
+  }
+  return { diagnosticarStock, corregirProducto, movimientosParaReconciliar };
+}
+function crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId }) {
+  const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+  function ajustarProductoPorOtro({ productoOrigenId, productoDestinoId, cantidadOrigen, cantidadDestino, motivo }) {
+    if (almacenCongelado) return { ok: false, error: "El almac\xE9n est\xE1 congelado por un conteo en curso." };
+    if (!productoOrigenId || !productoDestinoId) return { ok: false, error: "Elige los dos productos." };
+    if (productoOrigenId === productoDestinoId) return { ok: false, error: "Elige dos productos distintos." };
+    const origen = productos.find((p2) => p2.id === productoOrigenId);
+    const destino = productos.find((p2) => p2.id === productoDestinoId);
+    if (!origen || !destino) return { ok: false, error: "Alguno de los productos ya no existe." };
+    const cantSale = Number(cantidadOrigen) || 0;
+    const cantEntra = Number(cantidadDestino) || 0;
+    if (cantSale <= 0 || cantEntra <= 0) return { ok: false, error: "Indica cu\xE1nto sale y cu\xE1nto entra." };
+    if (cantSale > (Number(origen.stock) || 0)) {
+      return { ok: false, error: `No hay tanto stock de ${origen

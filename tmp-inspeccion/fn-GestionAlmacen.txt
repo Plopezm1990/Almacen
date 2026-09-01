@@ -1,0 +1,1511 @@
+START 4366757 END 4445989 LEN 79232
+function GestionAlmacen() {
+  const [ready, setReady] = (0, import_react4.useState)(false);
+  const [fallosGuardado, setFallosGuardado] = (0, import_react4.useState)([]);
+  (0, import_react4.useEffect)(() => {
+    function onFalloGuardado(e) {
+      setFallosGuardado((s2) => [
+        { id: uid(), key: e.detail.key, mensaje: e.detail.mensaje || "", fecha: (/* @__PURE__ */ new Date()).toISOString() },
+        ...s2
+      ].slice(0, 20));
+    }
+    window.addEventListener("fallo-guardado", onFalloGuardado);
+    return () => window.removeEventListener("fallo-guardado", onFalloGuardado);
+  }, []);
+  (0, import_react4.useEffect)(() => {
+    function onConflictoFusion(e) {
+      const conflictos = e.detail && e.detail.conflictos || [];
+      const key = e.detail && e.detail.key;
+      conflictos.forEach((c2) => {
+        registrarErrorSistema(
+          `Edici\xF3n simult\xE1nea en "${c2.nombre}" (${key}): dos dispositivos lo cambiaron a la vez sin verse \u2014 se aplic\xF3 el cambio de este dispositivo, se perdi\xF3 el del otro.`,
+          "sincronizaci\xF3n",
+          JSON.stringify({ key, id: c2.id, mio: c2.mio, delOtro: c2.delOtro })
+        );
+      });
+    }
+    window.addEventListener("conflicto-fusion", onConflictoFusion);
+    return () => window.removeEventListener("conflicto-fusion", onConflictoFusion);
+  }, []);
+  const [tab, setTab] = (0, import_react4.useState)("dashboard");
+  const [disenoMenu, setDisenoMenu] = (0, import_react4.useState)("B");
+  const [temaOscuro, setTemaOscuro] = (0, import_react4.useState)(false);
+  const [modoEmpleado, setModoEmpleado] = (0, import_react4.useState)(false);
+  const [miPerfil, setMiPerfil] = (0, import_react4.useState)(null);
+  (0, import_react4.useEffect)(() => {
+    if (!ready || typeof window === "undefined" || !window.__nubeActiva) return;
+    let activo = true;
+    (async () => {
+      try {
+        const supabase = await window.getSupabaseClient();
+        const { data: sesion } = await supabase.auth.getSession();
+        const userId = sesion?.session?.user?.id;
+        if (!userId) return;
+        const { data: perfil } = await supabase.from("perfiles").select("rol, nombre").eq("user_id", userId).maybeSingle();
+        if (!activo || !perfil) return;
+        setMiPerfil(perfil);
+        if (perfil.rol !== "Propietario") setModoEmpleado(true);
+      } catch (e) {
+      }
+    })();
+    return () => {
+      activo = false;
+    };
+  }, [ready]);
+  const [pinPropietario, setPinPropietario] = (0, import_react4.useState)("");
+  const [auditoria, setAuditoria] = (0, import_react4.useState)([]);
+  const [usuarioActivoId, setUsuarioActivoId] = (0, import_react4.useState)(null);
+  const [ordenesProduccion, setOrdenesProduccion] = (0, import_react4.useState)([]);
+  const [traspasos, setTraspasos] = (0, import_react4.useState)([]);
+  const [facturasDirectas, setFacturasDirectas] = (0, import_react4.useState)([]);
+  const [nominas, setNominas] = (0, import_react4.useState)([]);
+  const [entrevistas, setEntrevistas] = (0, import_react4.useState)([]);
+  const skipSaveRef = import_react4.default.useRef(true);
+  const autoSnapshotRef = import_react4.default.useRef(false);
+  const [proveedores, setProveedores] = (0, import_react4.useState)([]);
+  const [productos, setProductos] = (0, import_react4.useState)([]);
+  const [pedidos, setPedidos] = (0, import_react4.useState)([]);
+  const [movimientos, setMovimientos] = (0, import_react4.useState)([]);
+  const [conteos, setConteos] = (0, import_react4.useState)([]);
+  const [fichasCosto, setFichasCosto] = (0, import_react4.useState)([]);
+  const [albaranes, setAlbaranes] = (0, import_react4.useState)([]);
+  const [catalogoProv, setCatalogoProv] = (0, import_react4.useState)({});
+  const [gastosGenerales, setGastosGenerales] = (0, import_react4.useState)([]);
+  const [empleados, setEmpleados] = (0, import_react4.useState)([]);
+  const [fichajes, setFichajes] = (0, import_react4.useState)([]);
+  const [registrosAppcc, setRegistrosAppcc] = (0, import_react4.useState)([]);
+  const [freidoras, setFreidoras] = (0, import_react4.useState)([]);
+  const [registrosAceite, setRegistrosAceite] = (0, import_react4.useState)([]);
+  const [puntosControl, setPuntosControl] = (0, import_react4.useState)([]);
+  const [clientes, setClientes] = (0, import_react4.useState)([]);
+  const [encargos, setEncargos] = (0, import_react4.useState)([]);
+  const [arqueos, setArqueos] = (0, import_react4.useState)([]);
+  const [movimientosCaja, setMovimientosCaja] = (0, import_react4.useState)([]);
+  const [devoluciones, setDevoluciones] = (0, import_react4.useState)([]);
+  const [locales, setLocales] = (0, import_react4.useState)([]);
+  const [localActivoId, setLocalActivoId] = (0, import_react4.useState)(null);
+  const productosDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return productos;
+    return productos.filter((p2) => !p2.localId || p2.localId === localActivoId);
+  }, [productos, localActivoId]);
+  const [turnos, setTurnos] = (0, import_react4.useState)([]);
+  const [historial, setHistorial] = (0, import_react4.useState)([]);
+  (0, import_react4.useEffect)(() => {
+    (async () => {
+      const [p2, pr, pe2, mo, co, fc, hi, al, cp, gg, em, fj, dm, ra, pc, cl, en, aq, tu, to, me2, pin, au, op, tr, ua, fd2, nom, fre, rac, entr, mc, dev, loc, lai] = await Promise.all([
+        loadKey("proveedores", []),
+        loadKey("productos", []),
+        loadKey("pedidos", []),
+        loadKey("movimientos", []),
+        loadKey("conteos", []),
+        loadKey("fichasCosto", []),
+        loadKey("historialRespaldos", []),
+        loadKey("albaranes", []),
+        loadKey("catalogoProv", {}),
+        loadKey("gastosGenerales", []),
+        loadKey("empleados", []),
+        loadKey("fichajes", []),
+        loadKey("disenoMenu", "B"),
+        loadKey("registrosAppcc", []),
+        loadKey("puntosControl", []),
+        loadKey("clientes", []),
+        loadKey("encargos", []),
+        loadKey("arqueos", []),
+        loadKey("turnos", []),
+        loadKey("temaOscuro", false),
+        loadKey("modoEmpleado", false),
+        loadKey("pinPropietario", ""),
+        loadKey("auditoria", []),
+        loadKey("ordenesProduccion", []),
+        loadKey("traspasos", []),
+        loadKey("usuarioActivoId", null),
+        loadKey("facturasDirectas", []),
+        loadKey("nominas", []),
+        loadKey("freidoras", []),
+        loadKey("registrosAceite", []),
+        loadKey("entrevistas", []),
+        loadKey("movimientosCaja", []),
+        loadKey("devoluciones", []),
+        loadKey("locales", []),
+        loadKey("localActivoId", null)
+      ]);
+      const alLimpios = (al || []).map((a2) => {
+        if (!a2 || a2.fotoOrigenIA === void 0) return a2;
+        const copia = { ...a2 };
+        delete copia.fotoOrigenIA;
+        return copia;
+      });
+      setProveedores(p2);
+      setPedidos(pe2);
+      setMovimientos(mo);
+      const coMigrado = (co || []).map((c2) => {
+        if (c2.ajustesAplicados) return c2;
+        const tieneAjustesYa = (mo || []).some((m2) => m2.documentoOrigenId === c2.id && m2.origen === "aplicarAjustes");
+        return tieneAjustesYa ? { ...c2, ajustesAplicados: true } : c2;
+      });
+      if (coMigrado.some((c2, i3) => c2 !== (co || [])[i3])) {
+        await saveKey("conteos", coMigrado);
+      }
+      setConteos(coMigrado);
+      setFichasCosto(fc);
+      setHistorial(hi);
+      setAlbaranes(alLimpios);
+      const habiaFotos = (al || []).some((a2) => a2 && a2.fotoOrigenIA !== void 0);
+      setCatalogoProv(cp);
+      setGastosGenerales(gg);
+      setEmpleados(em);
+      setFichajes(fj);
+      setDisenoMenu(dm || "B");
+      setRegistrosAppcc(ra);
+      setFreidoras(fre || []);
+      setRegistrosAceite(rac || []);
+      setPuntosControl(pc);
+      setClientes(cl);
+      setEncargos(en);
+      setArqueos(aq);
+      setTurnos(tu);
+      setTemaOscuro(!!to);
+      setModoEmpleado(!!me2);
+      setPinPropietario(pin || "");
+      setAuditoria(au);
+      setOrdenesProduccion(op);
+      setTraspasos(tr);
+      setUsuarioActivoId(ua || null);
+      setFacturasDirectas(fd2);
+      setNominas(nom);
+      setEntrevistas(entr);
+      setMovimientosCaja(mc || []);
+      setDevoluciones(dev || []);
+      let localesFinales = loc || [];
+      let localActivoFinal = lai || null;
+      if (localesFinales.length === 0) {
+        const primerLocal = { id: uid(), nombre: "Chocoloyos S.L", direccion: "", activo: true, creadoEn: (/* @__PURE__ */ new Date()).toISOString() };
+        localesFinales = [primerLocal];
+        localActivoFinal = primerLocal.id;
+        await saveKey("locales", localesFinales);
+        await saveKey("localActivoId", localActivoFinal);
+      } else if (!localActivoFinal || !localesFinales.some((l2) => l2.id === localActivoFinal)) {
+        localActivoFinal = localesFinales[0]?.id || null;
+      }
+      setLocales(localesFinales);
+      setLocalActivoId(localActivoFinal);
+      const productosSinLocal = (pr || []).filter((prod) => !prod.localId);
+      let productosFinales = pr || [];
+      if (productosSinLocal.length > 0 && localActivoFinal) {
+        productosFinales = productosFinales.map((prod) => prod.localId ? prod : { ...prod, localId: localActivoFinal });
+        await saveKey("productos", productosFinales);
+      }
+      setProductos(productosFinales);
+      setReady(true);
+      if (habiaFotos) await saveKey("albaranes", alLimpios);
+      setTimeout(() => {
+        skipSaveRef.current = false;
+      }, 400);
+      if (!autoSnapshotRef.current) {
+        autoSnapshotRef.current = true;
+        const tieneDatos = p2.length || pr.length || pe2.length || mo.length || co.length || fc.length || al.length || em.length;
+        const hoy = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+        const yaHayUnoDeHoy = hi.some((h2) => h2.automatica && (h2.fecha || "").slice(0, 10) === hoy);
+        if (tieneDatos && !yaHayUnoDeHoy) {
+          const snapshot = {
+            id: uid(),
+            fecha: (/* @__PURE__ */ new Date()).toISOString(),
+            automatica: true,
+            motivo: "automatico-diario",
+            backupVersion: 3,
+            data: { proveedores: p2, productos: pr, pedidos: pe2, movimientos: mo, conteos: co, fichasCosto: fc, albaranes: alLimpios, catalogoProv: cp, gastosGenerales: gg, empleados: em, fichajes: fj, registrosAppcc: ra, puntosControl: pc, clientes: cl, encargos: en, arqueos: aq, turnos: tu, nominas: nom, facturasDirectas: fd2, ordenesProduccion: op, traspasos: tr, auditoria: au, freidoras: fre, registrosAceite: rac }
+          };
+          const historialFinal = [snapshot, ...hi].slice(0, 30);
+          setHistorial(historialFinal);
+          await saveKey("historialRespaldos", historialFinal);
+        }
+      }
+    })();
+  }, []);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("proveedores", proveedores);
+  }, [proveedores, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("productos", productos);
+  }, [productos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("pedidos", pedidos);
+  }, [pedidos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("movimientos", movimientos);
+  }, [movimientos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("conteos", conteos);
+  }, [conteos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("fichasCosto", fichasCosto);
+  }, [fichasCosto, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("historialRespaldos", historial);
+  }, [historial, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("albaranes", albaranes);
+  }, [albaranes, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("catalogoProv", catalogoProv);
+  }, [catalogoProv, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("gastosGenerales", gastosGenerales);
+  }, [gastosGenerales, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("empleados", empleados);
+  }, [empleados, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("fichajes", fichajes);
+  }, [fichajes, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("disenoMenu", disenoMenu);
+  }, [disenoMenu, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("registrosAppcc", registrosAppcc);
+  }, [registrosAppcc, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("freidoras", freidoras);
+  }, [freidoras, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("registrosAceite", registrosAceite);
+  }, [registrosAceite, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("puntosControl", puntosControl);
+  }, [puntosControl, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("clientes", clientes);
+  }, [clientes, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("encargos", encargos);
+  }, [encargos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("arqueos", arqueos);
+  }, [arqueos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("movimientosCaja", movimientosCaja);
+  }, [movimientosCaja, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("devoluciones", devoluciones);
+  }, [devoluciones, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("locales", locales);
+  }, [locales, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("localActivoId", localActivoId);
+  }, [localActivoId, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("turnos", turnos);
+  }, [turnos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("temaOscuro", temaOscuro);
+  }, [temaOscuro, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("modoEmpleado", modoEmpleado);
+  }, [modoEmpleado, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("pinPropietario", pinPropietario);
+  }, [pinPropietario, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("auditoria", auditoria);
+  }, [auditoria, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("ordenesProduccion", ordenesProduccion);
+  }, [ordenesProduccion, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("traspasos", traspasos);
+  }, [traspasos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("usuarioActivoId", usuarioActivoId);
+  }, [usuarioActivoId, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("facturasDirectas", facturasDirectas);
+  }, [facturasDirectas, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("entrevistas", entrevistas);
+  }, [entrevistas, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("nominas", nominas);
+  }, [nominas, ready]);
+  const itemsPermitidosEmpleado = (0, import_react4.useMemo)(() => {
+    if (miPerfil && miPerfil.rol && ROLES_EMPLEADO[miPerfil.rol]) {
+      return ROLES_EMPLEADO[miPerfil.rol];
+    }
+    const activo = usuarioActivoId ? empleados.find((e) => e.id === usuarioActivoId) : null;
+    const rol = activo?.rol && ROLES_EMPLEADO[activo.rol] ? activo.rol : "Est\xE1ndar";
+    return ROLES_EMPLEADO[rol];
+  }, [usuarioActivoId, empleados, miPerfil]);
+  (0, import_react4.useEffect)(() => {
+    if (modoEmpleado && !itemsPermitidosEmpleado.includes(tab)) setTab("dashboard");
+  }, [modoEmpleado, itemsPermitidosEmpleado]);
+  const productoPorId = (id) => productos.find((p2) => p2.id === id);
+  const proveedorPorId = (id) => proveedores.find((p2) => p2.id === id);
+  const [prefillAlbaran, setPrefillAlbaran] = (0, import_react4.useState)(null);
+  const [facturaDirectaResaltada, setFacturaDirectaResaltada] = (0, import_react4.useState)(null);
+  const [pedidoParaFotoIA, setPedidoParaFotoIA] = (0, import_react4.useState)(null);
+  const [pendingRestore, setPendingRestore] = (0, import_react4.useState)(null);
+  const [restoreError, setRestoreError] = (0, import_react4.useState)("");
+  const [showBackupView, setShowBackupView] = (0, import_react4.useState)(false);
+  const [backupText, setBackupText] = (0, import_react4.useState)("");
+  const [showRestoreInput, setShowRestoreInput] = (0, import_react4.useState)(false);
+  const [restoreText, setRestoreText] = (0, import_react4.useState)("");
+  const [copiado, setCopiado] = (0, import_react4.useState)(false);
+  const {
+    crearPuntoDeGuardado,
+    restaurarDesdeHistorial,
+    abrirRespaldo,
+    copiarRespaldo,
+    abrirRestaurar,
+    analizarTextoRestauracion,
+    confirmarRestauracion,
+    exportarExcelGeneral,
+    compararConEstadoActual,
+    coleccionesQueSeConservan
+  } = crearLogicaRespaldos({
+    proveedores,
+    productos,
+    pedidos,
+    movimientos,
+    conteos,
+    fichasCosto,
+    albaranes,
+    catalogoProv,
+    gastosGenerales,
+    empleados,
+    fichajes,
+    registrosAppcc,
+    puntosControl,
+    clientes,
+    encargos,
+    arqueos,
+    turnos,
+    nominas,
+    facturasDirectas,
+    ordenesProduccion,
+    traspasos,
+    auditoria,
+    freidoras,
+    registrosAceite,
+    setProveedores,
+    setProductos,
+    setPedidos,
+    setMovimientos,
+    setConteos,
+    setFichasCosto,
+    setAlbaranes,
+    setCatalogoProv,
+    setGastosGenerales,
+    setEmpleados,
+    setFichajes,
+    setRegistrosAppcc,
+    setPuntosControl,
+    setClientes,
+    setEncargos,
+    setArqueos,
+    setTurnos,
+    setNominas,
+    setFacturasDirectas,
+    setOrdenesProduccion,
+    setTraspasos,
+    setAuditoria,
+    setFreidoras,
+    setRegistrosAceite,
+    setHistorial,
+    setPendingRestore,
+    pendingRestore,
+    setBackupText,
+    backupText,
+    setCopiado,
+    setShowBackupView,
+    setShowRestoreInput,
+    setRestoreText,
+    restoreText,
+    setRestoreError,
+    proveedorPorId,
+    productoPorId,
+    registrarAuditoria
+  });
+  const { addProveedor, updateProveedor, deleteProveedor } = crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria });
+  const { addGasto, deleteGasto } = crearLogicaGastos({ setGastosGenerales });
+  const { addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas });
+  const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos });
+  const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria });
+  const { venderCarrito, venderLocal, anularVenta, venderLineas } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos });
+  const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria });
+  const { addEncargo, updateEncargo, deleteEncargo, entregarEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, setProductos, setMovimientos, venderLineas });
+  const { traspasarStock } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria });
+  const { addArqueo, deleteArqueo } = crearLogicaCaja({ setArqueos });
+  const { registrarMovimientoCaja, eliminarMovimientoCaja } = crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, registrarAuditoria });
+  const { crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo } = crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivoId, registrarAuditoria });
+  const { registrarDevolucionCliente, registrarDevolucionProveedor } = crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, registrarAuditoria, registrarMovimientoCaja });
+  const { activarModoEmpleado, entrarComoEmpleado, salirModoEmpleado, establecerPin } = crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, setModoEmpleado, setUsuarioActivoId });
+  const { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, eliminarRegistroAppcc } = crearLogicaAppcc({ setPuntosControl, setRegistrosAppcc });
+  const { fichar, addFichajeManual, updateFichaje, eliminarFichaje } = crearLogicaFichaje({ setFichajes });
+  const { addFreidora, updateFreidora, deleteFreidora, registrarCambio, registrarRelleno, eliminarRegistroAceite, consumoPorCiclo } = crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegistrosAceite, productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+  const { addFichaCosto, updateFichaCosto, deleteFichaCosto, alergenosDeFicha } = crearLogicaFichasCosto({ productos, setFichasCosto });
+  const { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion } = crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria });
+  const conteoAbierto = (0, import_react4.useMemo)(() => conteos.find((c2) => !c2.completado) || null, [conteos]);
+  const almacenCongelado = !!conteoAbierto;
+  const { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro } = crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId });
+  const { diagnosticarStock, corregirProducto, movimientosParaReconciliar } = crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+  const { buscarEnCatalogo, aprenderReferencia, guardarAlbaran, eliminarAlbaran, marcarPagada, confirmarAlbaran, anularAlbaran, recibirConAlbaran, recibirConFotoIA, duplicadosDe, desviacionesDePrecio, procesarRecepcion } = crearLogicaAlbaranes({
+    catalogoProv,
+    setCatalogoProv,
+    albaranes,
+    setAlbaranes,
+    productos,
+    setProductos,
+    movimientos,
+    setMovimientos,
+    setPedidos,
+    registrarAuditoria,
+    proveedorPorId,
+    setPrefillAlbaran,
+    setPedidoParaFotoIA,
+    setTab
+  });
+  const { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido } = crearLogicaPedidos({ pedidos, setPedidos, productos, setProductos, setMovimientos, almacenCongelado, procesarRecepcion });
+  const { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta } = crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, addGasto, deleteGasto, gastosGenerales });
+  const { addNomina, updateNomina, deleteNomina } = crearLogicaNominas({ setNominas, registrarAuditoria });
+  const { crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista } = crearLogicaEntrevistas({ entrevistas, setEntrevistas, registrarAuditoria });
+  const { crearPrefiltro, listarPrefiltros, eliminarPrefiltro } = crearLogicaPrefiltros({ registrarAuditoria });
+  function registrarAuditoria(accion, detalle) {
+    const empleadoActivo = usuarioActivoId ? empleados.find((e) => e.id === usuarioActivoId) : null;
+    const usuario = modoEmpleado ? empleadoActivo ? empleadoActivo.nombre : "Empleado sin identificar" : "Propietario/a";
+    const entrada = { id: uid(), fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), usuario, accion, detalle };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) {
+      setAuditoria((s2) => [entrada, ...s2].slice(0, 500));
+      return;
+    }
+    (async () => {
+      try {
+        const supabase = await window.getSupabaseClient();
+        const r = await Promise.race([
+          supabase.rpc("registrar_auditoria", {
+            p_id: entrada.id,
+            p_usuario: usuario,
+            p_accion: accion,
+            p_detalle: detalle,
+            p_fecha: entrada.fecha,
+            p_hora: entrada.hora
+          }),
+          new Promise((_2, reject) => setTimeout(() => reject(new Error("La auditor\xEDa tard\xF3 demasiado en responder")), 6e3))
+        ]);
+        if (r.error) throw r.error;
+        const rAud = await supabase.from("auditoria_registro").select("datos").order("creado_en", { ascending: false }).limit(500);
+        if (!rAud.error && rAud.data) setAuditoria(rAud.data.map((fila) => fila.datos));
+      } catch (e) {
+        setAuditoria((s2) => [entrada, ...s2].slice(0, 500));
+      }
+    })();
+  }
+  const esUtillaje = (p2) => esNoMercancia(p2);
+  const valorInventario = (0, import_react4.useMemo)(
+    () => productos.filter((p2) => !esUtillaje(p2)).reduce((acc, p2) => acc + (Number(p2.stock) || 0) * Number(p2.costo || 0), 0),
+    [productos]
+  );
+  const valorUtillaje = (0, import_react4.useMemo)(
+    () => productos.filter(esUtillaje).reduce((acc, p2) => acc + (Number(p2.stock) || 0) * Number(p2.costo || 0), 0),
+    [productos]
+  );
+  const stockBajo = (0, import_react4.useMemo)(
+    () => productos.filter((p2) => p2.tipo !== "elaborado" && p2.stock <= Number(p2.stockMinimo || 0)),
+    [productos]
+  );
+  const diagnosticoStock = (0, import_react4.useMemo)(() => diagnosticarStock(), [productos, movimientos]);
+  const descuadresPendientes = (0, import_react4.useMemo)(() => diagnosticoStock.filter((d2) => !d2.coincide).length, [diagnosticoStock]);
+  const pisoVentaBajo = (0, import_react4.useMemo)(
+    () => productos.filter((p2) => p2.tipo !== "elaborado" && Number(p2.stockMinimoPisoVenta) > 0 && (Number(p2.stockPisoVenta) || 0) <= Number(p2.stockMinimoPisoVenta)),
+    [productos]
+  );
+  const analisisABC = (0, import_react4.useMemo)(() => {
+    const hace12meses = /* @__PURE__ */ new Date();
+    hace12meses.setMonth(hace12meses.getMonth() - 12);
+    const consumo = {};
+    movimientos.forEach((m2) => {
+      if (!esSalida(m2)) return;
+      if (new Date(m2.fecha) < hace12meses) return;
+      consumo[m2.productoId] = (consumo[m2.productoId] || 0) + Math.abs(Number(m2.cantidad) || 0);
+    });
+    const totalSalidas = Object.values(consumo).reduce((a2, x3) => a2 + x3, 0);
+    const baseConsumo = totalSalidas > 0;
+    const clasificables = productos.filter((p2) => !esUtillaje(p2));
+    const conValor = clasificables.map((p2) => {
+      const unidades = consumo[p2.id] || 0;
+      const costo = Number(p2.costo) || 0;
+      const valor = baseConsumo ? unidades * costo : (Number(p2.stock) || 0) * costo;
+      return { id: p2.id, valor, unidades, rotacion: (Number(p2.stock) || 0) > 0 ? unidades / (Number(p2.stock) || 1) : null };
+    });
+    const total = conValor.reduce((a2, x3) => a2 + x3.valor, 0);
+    const mapa = {};
+    const detalle = {};
+    if (total <= 0) {
+      clasificables.forEach((p2) => {
+        mapa[p2.id] = "C";
+        detalle[p2.id] = { valor: 0, unidades: 0, rotacion: null };
+      });
+      return { mapa, detalle, baseConsumo };
+    }
+    const ordenados = [...conValor].sort((a2, b2) => b2.valor - a2.valor);
+    let acumulado = 0;
+    ordenados.forEach((x3) => {
+      acumulado += x3.valor;
+      const pct = acumulado / total * 100;
+      mapa[x3.id] = pct <= 80 ? "A" : pct <= 95 ? "B" : "C";
+      detalle[x3.id] = { valor: x3.valor, unidades: x3.unidades, rotacion: x3.rotacion };
+    });
+    return { mapa, detalle, baseConsumo };
+  }, [productos, movimientos]);
+  const clasificacionABC = analisisABC.mapa;
+  const pedidosPendientes = (0, import_react4.useMemo)(() => pedidos.filter((p2) => p2.estado !== "Recibido"), [pedidos]);
+  const margenPromedio = (0, import_react4.useMemo)(() => {
+    const conPrecio = productos.filter((p2) => Number(p2.precioVenta) > 0);
+    if (!conPrecio.length) return 0;
+    const total = conPrecio.reduce((acc, p2) => acc + (margenDe(p2) || 0), 0);
+    return total / conPrecio.length;
+  }, [productos]);
+  const margenPorProducto = (0, import_react4.useMemo)(() => {
+    const hace90 = /* @__PURE__ */ new Date();
+    hace90.setDate(hace90.getDate() - 90);
+    return productos.filter((p2) => Number(p2.precioVenta) > 0).map((p2) => {
+      const ventas = movimientos.filter(
+        (m2) => m2.productoId === p2.id && esVenta(m2) && new Date(m2.fecha) >= hace90
+      );
+      const unidadesVendidas = ventas.reduce((a2, m2) => a2 + Math.abs(Number(m2.cantidad) || 0), 0);
+      const ingresos = ventas.reduce((a2, m2) => a2 + Math.abs(Number(m2.cantidad) || 0) * (Number(m2.ingresoUnitario) || 0), 0);
+      const costes = ventas.reduce((a2, m2) => a2 + Math.abs(Number(m2.cantidad) || 0) * (Number(m2.costoUnitario) || 0), 0);
+      return { ...p2, unidadesVendidas, ingresos, beneficio: ingresos - costes, margenPct: margenDe(p2) };
+    }).filter((p2) => p2.unidadesVendidas > 0).sort((a2, b2) => b2.beneficio - a2.beneficio);
+  }, [productos, movimientos]);
+  const rotacionPorProducto = (0, import_react4.useMemo)(() => {
+    const hoy = /* @__PURE__ */ new Date();
+    return productos.map((p2) => {
+      const salidas = movimientos.filter((m2) => m2.productoId === p2.id && esSalida(m2));
+      const cantSalidas = salidas.reduce((a2, m2) => a2 + Math.abs(Number(m2.cantidad) || 0), 0);
+      if (salidas.length === 0) {
+        return { ...p2, cantSalidas: 0, consumoDiario: null, dias: null, rotacion: null };
+      }
+      const primera = salidas.reduce((min, m2) => new Date(m2.fecha) < min ? new Date(m2.fecha) : min, new Date(salidas[0].fecha));
+      const diasTranscurridos = Math.max(1, Math.round((hoy - primera) / 864e5) + 1);
+      const consumoDiario = cantSalidas / diasTranscurridos;
+      const dias = consumoDiario > 0 ? (Number(p2.stock) || 0) / consumoDiario : null;
+      const rotacion = dias ? 365 / dias : null;
+      return { ...p2, cantSalidas, consumoDiario, dias, rotacion, diasConDatos: diasTranscurridos };
+    });
+  }, [productos, movimientos]);
+  const patronesDesviacionConteo = (0, import_react4.useMemo)(() => {
+    const porProducto = {};
+    movimientos.filter((m2) => {
+      if (!m2.productoId) return false;
+      if (esMovimientoNuevo(m2)) return m2.tipo === "INVENTARIO" && m2.origen !== "reconciliacionStock";
+      return m2.tipo === "ajuste";
+    }).forEach((m2) => {
+      if (!porProducto[m2.productoId]) porProducto[m2.productoId] = [];
+      porProducto[m2.productoId].push(m2);
+    });
+    const resultado = [];
+    Object.entries(porProducto).forEach(([productoId, ajustes]) => {
+      if (ajustes.length < 3) return;
+      const negativos = ajustes.filter((a2) => Number(a2.cantidad) < 0).length;
+      const positivos = ajustes.filter((a2) => Number(a2.cantidad) > 0).length;
+      const total = ajustes.length;
+      const proporcionMayor = Math.max(negativos, positivos) / total;
+      if (proporcionMayor < 0.75) return;
+      const prod = productos.find((p2) => p2.id === productoId);
+      const acumulado = ajustes.reduce((a2, m2) => a2 + Number(m2.cantidad), 0);
+      const ultimaFecha = ajustes.reduce((max, m2) => m2.fecha > max ? m2.fecha : max, ajustes[0].fecha);
+      resultado.push({
+        productoId,
+        nombre: prod ? prod.nombre : "Producto eliminado",
+        unidad: prod ? prod.unidad : "",
+        direccion: negativos > positivos ? "falta" : "sobra",
+        numAjustes: total,
+        acumulado,
+        ultimaFecha
+      });
+    });
+    return resultado.sort((a2, b2) => Math.abs(b2.acumulado) - Math.abs(a2.acumulado));
+  }, [movimientos, productos]);
+  function diasHastaProximaEntrega(leadTime, diasReparto) {
+    if (!diasReparto || diasReparto.length === 0) return leadTime;
+    const hoy = /* @__PURE__ */ new Date();
+    hoy.setHours(0, 0, 0, 0);
+    for (let n = leadTime; n <= leadTime + 14; n++) {
+      const fecha = new Date(hoy);
+      fecha.setDate(fecha.getDate() + n);
+      if (diasReparto.includes(fecha.getDay())) return n;
+    }
+    return leadTime;
+  }
+  const productosEnPedidoPendiente = (0, import_react4.useMemo)(() => {
+    const ids = /* @__PURE__ */ new Set();
+    pedidosPendientes.forEach((pe2) => (pe2.items || []).forEach((it2) => ids.add(it2.productoId)));
+    return ids;
+  }, [pedidosPendientes]);
+  const DIAS_SEGURIDAD_PEDIDO = 7;
+  const sugerenciasPedido = (0, import_react4.useMemo)(() => {
+    return rotacionPorProducto.filter((p2) => !esNoMercancia(p2) && p2.tipo !== "elaborado" && p2.proveedorId && p2.dias !== null).map((p2) => {
+      const prov = proveedores.find((pv) => pv.id === p2.proveedorId);
+      const leadTime = prov ? Number(prov.leadTime) || 0 : 0;
+      const diasHastaEntrega = diasHastaProximaEntrega(leadTime, prov ? prov.diasReparto : []);
+      const cantidadCubrir = p2.consumoDiario * (diasHastaEntrega + DIAS_SEGURIDAD_PEDIDO);
+      const cantidadSugerida = Math.max(0, Math.ceil(cantidadCubrir - (Number(p2.stock) || 0)));
+      const cajasSugeridas = p2.udsPorCaja > 1 ? Math.ceil(cantidadSugerida / p2.udsPorCaja) : null;
+      return { ...p2, proveedorNombre: prov ? prov.nombre : "\u2014", leadTime, diasHastaEntrega, margen: p2.dias - diasHastaEntrega, cantidadSugerida, cajasSugeridas };
+    }).filter((p2) => p2.leadTime > 0 && p2.margen <= 1 && !productosEnPedidoPendiente.has(p2.id)).sort((a2, b2) => a2.margen - b2.margen);
+  }, [rotacionPorProducto, proveedores, productosEnPedidoPendiente]);
+  const lotesCaducidad = (0, import_react4.useMemo)(() => {
+    const hoy = /* @__PURE__ */ new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const filas = [];
+    albaranes.forEach((a2) => {
+      if (a2.estado !== "confirmado") return;
+      (a2.lineas || []).forEach((ln2, idx) => {
+        if (!ln2.caducidad) return;
+        const f2 = new Date(ln2.caducidad);
+        if (isNaN(f2)) return;
+        const dias = Math.round((f2 - hoy) / 864e5);
+        const prod = productos.find((x3) => x3.id === ln2.productoId);
+        filas.push({
+          // El índice de línea evita que dos lotes distintos del mismo
+          // producto en el mismo albarán (dos entregas con caducidades
+          // distintas) generen la misma clave y colisionen como key de React.
+          id: `${a2.id}-${idx}-${ln2.codigoProveedor || ln2.descripcion}`,
+          productoId: ln2.productoId,
+          nombre: prod ? prod.nombre : ln2.descripcion,
+          lote: ln2.lote || "",
+          caducidad: ln2.caducidad,
+          dias,
+          unidades: Number(ln2.unidadesEntradas) || 0,
+          albaran: a2.numero,
+          proveedorId: a2.proveedorId
+        });
+      });
+    });
+    const porProducto = {};
+    filas.forEach((l2) => {
+      const key = l2.productoId || l2.nombre;
+      if (!porProducto[key]) porProducto[key] = [];
+      porProducto[key].push(l2);
+    });
+    const filasAjustadas = [];
+    Object.entries(porProducto).forEach(([key, lotes]) => {
+      const prod = productos.find((p2) => p2.id === key);
+      const stockActual = prod ? Number(prod.stock) || 0 : lotes.reduce((a2, l2) => a2 + l2.unidades, 0);
+      const ordenados = [...lotes].sort((x3, y2) => x3.dias - y2.dias);
+      const totalNominal = ordenados.reduce((a2, l2) => a2 + l2.unidades, 0);
+      let porDescontar = Math.max(0, totalNominal - stockActual);
+      ordenados.forEach((l2) => {
+        if (porDescontar >= l2.unidades) {
+          porDescontar -= l2.unidades;
+          return;
+        }
+        const quedan = l2.unidades - porDescontar;
+        porDescontar = 0;
+        filasAjustadas.push({ ...l2, unidades: quedan, parcial: quedan < l2.unidades });
+      });
+    });
+    return filasAjustadas.sort((x3, y2) => x3.dias - y2.dias);
+  }, [albaranes, productos]);
+  const caducanPronto = (0, import_react4.useMemo)(() => lotesCaducidad.filter((l2) => l2.dias <= 30), [lotesCaducidad]);
+  (0, import_react4.useEffect)(() => {
+    if (!ready || typeof window === "undefined" || !window.__nubeActiva) return;
+    const urgentes = caducanPronto.filter((l2) => l2.dias <= 7);
+    if (urgentes.length === 0) return;
+    let yaAvisados = [];
+    try {
+      yaAvisados = JSON.parse(localStorage.getItem("almacen__caducidades_avisadas") || "[]");
+    } catch (e) {
+      yaAvisados = [];
+    }
+    const nuevos = urgentes.filter((l2) => !yaAvisados.includes(l2.id));
+    if (nuevos.length === 0) return;
+    nuevos.forEach((l2) => {
+      fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titulo: l2.dias < 0 ? "Lote caducado" : "Lote a punto de caducar",
+          cuerpo: `${l2.nombre}${l2.lote ? ` (lote ${l2.lote})` : ""} \u2014 ${l2.dias < 0 ? `caduc\xF3 hace ${Math.abs(l2.dias)} d\xEDas` : l2.dias === 0 ? "caduca hoy" : `caduca en ${l2.dias} d\xEDas`}.`,
+          url: "/"
+        })
+      }).catch(() => {
+      });
+    });
+    const actualizados = [...yaAvisados, ...nuevos.map((l2) => l2.id)].slice(-500);
+    try {
+      localStorage.setItem("almacen__caducidades_avisadas", JSON.stringify(actualizados));
+    } catch (e) {
+    }
+  }, [ready, caducanPronto]);
+  const recordatorioConteo = (0, import_react4.useMemo)(() => {
+    const hoy = /* @__PURE__ */ new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const ambitos = [
+      { id: "piso_venta", nombre: "Piso de venta", limiteDias: 14 },
+      { id: "almacen", nombre: "Almac\xE9n (trastienda)", limiteDias: 30 },
+      { id: "total", nombre: "Total (empresa completa)", limiteDias: 30 }
+    ];
+    return ambitos.map((amb) => {
+      const delAmbito = conteos.filter((c2) => c2.completado && (c2.ambito || "total") === amb.id);
+      if (delAmbito.length === 0) {
+        return { ...amb, ultimaFecha: null, diasDesde: null, atrasado: true };
+      }
+      const ultima = delAmbito.reduce((max, c2) => c2.fecha > max ? c2.fecha : max, delAmbito[0].fecha);
+      const diasDesde = Math.round((hoy - new Date(ultima)) / 864e5);
+      return { ...amb, ultimaFecha: ultima, diasDesde, atrasado: diasDesde > amb.limiteDias };
+    });
+  }, [conteos]);
+  const conteosAtrasados = (0, import_react4.useMemo)(() => recordatorioConteo.filter((a2) => a2.atrasado), [recordatorioConteo]);
+  const alertasAppcc = (0, import_react4.useMemo)(() => {
+    const hoy = todayISO();
+    const activos = (puntosControl || []).filter((p2) => p2.activo !== false);
+    const pendientes = activos.filter((p2) => p2.frecuencia !== "En cada recepci\xF3n").map((p2) => {
+      const registrosDelPunto = (registrosAppcc || []).filter((r) => r.puntoId === p2.id);
+      const deHoy = registrosDelPunto.filter((r) => r.fecha === hoy).length;
+      let faltan = 0;
+      if (p2.frecuencia === "Diaria") faltan = deHoy >= 1 ? 0 : 1;
+      else if (p2.frecuencia === "Dos veces al d\xEDa") faltan = Math.max(0, 2 - deHoy);
+      else if (p2.frecuencia === "Semanal") {
+        const hace7 = /* @__PURE__ */ new Date();
+        hace7.setDate(hace7.getDate() - 7);
+        const enLaSemana = registrosDelPunto.some((r) => new Date(r.fecha) >= hace7);
+        faltan = enLaSemana ? 0 : 1;
+      }
+      return { ...p2, faltan };
+    }).filter((p2) => p2.faltan > 0);
+    const desviaciones = (registrosAppcc || []).filter((r) => r.conforme === false).filter((r) => {
+      const posteriorConforme = (registrosAppcc || []).some(
+        (otro) => otro.puntoId === r.puntoId && otro.conforme !== false && `${otro.fecha} ${otro.hora || ""}` > `${r.fecha} ${r.hora || ""}`
+      );
+      return !posteriorConforme;
+    }).sort((a2, b2) => `${b2.fecha} ${b2.hora || ""}`.localeCompare(`${a2.fecha} ${a2.hora || ""}`));
+    return { pendientes, desviaciones };
+  }, [puntosControl, registrosAppcc]);
+  (0, import_react4.useEffect)(() => {
+    const emp = usuarioActivoId ? empleados.find((e) => e.id === usuarioActivoId) : null;
+    window.__usuarioActivoNombre = modoEmpleado ? emp ? emp.nombre : "Empleado sin identificar" : "Propietario/a";
+  }, [usuarioActivoId, empleados, modoEmpleado]);
+  const documentosPersonalCaducan = (0, import_react4.useMemo)(() => {
+    const hoy = /* @__PURE__ */ new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const filas = [];
+    empleados.filter((e) => e.activo !== false).forEach((e) => {
+      (e.documentos || []).forEach((d2) => {
+        if (!d2.fechaCaducidad) return;
+        const f2 = new Date(d2.fechaCaducidad);
+        if (isNaN(f2)) return;
+        const dias = Math.round((f2 - hoy) / 864e5);
+        filas.push({ id: `${e.id}-doc-${d2.id}`, empleado: e.nombre, concepto: d2.nombre, fecha: d2.fechaCaducidad, dias });
+      });
+      if (e.fechaFinContrato) {
+        const f2 = new Date(e.fechaFinContrato);
+        if (!isNaN(f2)) {
+          const dias = Math.round((f2 - hoy) / 864e5);
+          filas.push({ id: `${e.id}-contrato`, empleado: e.nombre, concepto: "Fin de contrato", fecha: e.fechaFinContrato, dias });
+        }
+      }
+    });
+    return filas.sort((a2, b2) => a2.dias - b2.dias);
+  }, [empleados]);
+  const documentosPersonalPronto = (0, import_react4.useMemo)(() => documentosPersonalCaducan.filter((d2) => d2.dias <= 30), [documentosPersonalCaducan]);
+  const encargosPendientes = (0, import_react4.useMemo)(() => {
+    const hoy = /* @__PURE__ */ new Date();
+    hoy.setHours(0, 0, 0, 0);
+    return encargos.filter((e) => e.estado !== "Entregado" && e.estado !== "Cancelado").map((e) => {
+      const f2 = new Date(e.fechaEntrega);
+      const dias = isNaN(f2) ? null : Math.round((f2 - hoy) / 864e5);
+      const total = (e.lineas || []).reduce((a2, ln2) => a2 + (Number(ln2.cantidad) || 0) * (Number(ln2.precioUnitario) || 0), 0);
+      return { ...e, dias, total, cliente: clientes.find((c2) => c2.id === e.clienteId) };
+    }).sort((a2, b2) => (a2.dias ?? 9999) - (b2.dias ?? 9999));
+  }, [encargos, clientes]);
+  const encargosUrgentes = (0, import_react4.useMemo)(() => encargosPendientes.filter((e) => e.dias !== null && e.dias <= 2), [encargosPendientes]);
+  const analisisClientes = (0, import_react4.useMemo)(() => {
+    const hoy = /* @__PURE__ */ new Date();
+    hoy.setHours(0, 0, 0, 0);
+    return clientes.map((c2) => {
+      const susVentas = movimientos.filter((m2) => m2.clienteId === c2.id && esVenta(m2));
+      const facturado = susVentas.reduce((a2, m2) => a2 + Math.abs(Number(m2.cantidad) || 0) * (Number(m2.ingresoUnitario) || 0), 0);
+      const fechas = susVentas.map((m2) => m2.fecha).sort();
+      const ultima = fechas[fechas.length - 1] || null;
+      const diasSinComprar = ultima ? Math.round((hoy - new Date(ultima)) / 864e5) : null;
+      const nEncargos = encargos.filter((e) => e.clienteId === c2.id && e.estado === "Entregado").length;
+      return { ...c2, facturado, ultima, diasSinComprar, nEncargos };
+    }).sort((a2, b2) => b2.facturado - a2.facturado);
+  }, [clientes, movimientos, encargos]);
+  const clientesDormidos = (0, import_react4.useMemo)(
+    () => analisisClientes.filter((c2) => c2.nEncargos > 0 && c2.diasSinComprar !== null && c2.diasSinComprar > 60),
+    [analisisClientes]
+  );
+  const ventaCruzada = (0, import_react4.useMemo)(() => {
+    const entregados = encargos.filter((e) => e.estado === "Entregado");
+    const pares = {};
+    entregados.forEach((e) => {
+      const ids = [...new Set((e.lineas || []).map((l2) => l2.productoId).filter(Boolean))];
+      for (let i3 = 0; i3 < ids.length; i3++) {
+        for (let j2 = i3 + 1; j2 < ids.length; j2++) {
+          const key = [ids[i3], ids[j2]].sort().join("|");
+          pares[key] = (pares[key] || 0) + 1;
+        }
+      }
+    });
+    return {
+      base: entregados.length,
+      filas: Object.entries(pares).map(([key, veces]) => {
+        const [a2, b2] = key.split("|");
+        return { a: productos.find((p2) => p2.id === a2), b: productos.find((p2) => p2.id === b2), veces };
+      }).filter((x3) => x3.a && x3.b).sort((x3, y2) => y2.veces - x3.veces).slice(0, 8)
+    };
+  }, [encargos, productos]);
+  const appccPendientesHoy = alertasAppcc.pendientes;
+  const fichajesAbiertos = (0, import_react4.useMemo)(() => {
+    const hoy = todayISO();
+    const porEmpleadoFecha = {};
+    fichajes.forEach((f2) => {
+      const key = `${f2.empleadoId}-${f2.fecha}`;
+      if (!porEmpleadoFecha[key]) porEmpleadoFecha[key] = [];
+      porEmpleadoFecha[key].push(f2);
+    });
+    const abiertos = [];
+    Object.entries(porEmpleadoFecha).forEach(([key, lista]) => {
+      const fecha = lista[0].fecha;
+      if (fecha === hoy) return;
+      const entradas = lista.filter((f2) => f2.tipo === "entrada").length;
+      const salidas = lista.filter((f2) => f2.tipo === "salida").length;
+      if (entradas > salidas) {
+        const empleadoId = lista[0].empleadoId;
+        const emp = empleados.find((e) => e.id === empleadoId);
+        abiertos.push({ empleadoId, fecha, nombre: emp ? emp.nombre : "\u2014" });
+      }
+    });
+    return abiertos;
+  }, [fichajes, empleados]);
+  const facturasPorPagar = (0, import_react4.useMemo)(() => {
+    const hoy = /* @__PURE__ */ new Date();
+    hoy.setHours(0, 0, 0, 0);
+    function calcularVencimiento(fechaFactura, diasPago) {
+      if (diasPago === null || !fechaFactura) return { vencimiento: null, dias: null };
+      const v2 = new Date(fechaFactura);
+      v2.setDate(v2.getDate() + diasPago);
+      return { vencimiento: aISO(v2), dias: Math.round((v2 - hoy) / 864e5) };
+    }
+    const deAlbaranes = albaranes.filter((a2) => a2.estado === "confirmado" && a2.esFactura !== false).map((a2) => {
+      const prov = proveedorPorId(a2.proveedorId);
+      const base = a2.lineas.reduce((x3, ln2) => x3 + (Number(ln2.importe) || 0), 0);
+      const ivaLineas = a2.lineas.reduce((x3, ln2) => x3 + (Number(ln2.importe) || 0) * ((Number(ln2.ivaPct) || 0) / 100), 0);
+      const cargosBase = Number(a2.cargos) || 0;
+      const cargosIva = cargosBase * ((Number(a2.cargosIva) || 0) / 100);
+      const total = base + ivaLineas + cargosBase + cargosIva;
+      const fechaFactura = a2.fechaFactura || a2.fecha;
+      const diasPago = prov ? Number(prov.diasPago) || null : null;
+      const { vencimiento, dias } = calcularVencimiento(fechaFactura, diasPago);
+      return {
+        id: a2.id,
+        origen: "albaran",
+        concepto: `Mercanc\xEDa \xB7 ${prov ? prov.nombre : "\u2014"}`,
+        proveedor: prov,
+        numeroFactura: a2.numeroFactura || a2.numero || "s/n",
+        fechaFactura,
+        vencimiento,
+        dias,
+        total,
+        pagada: !!a2.pagada
+      };
+    });
+    const deDirectas = facturasDirectas.map((f2) => {
+      const prov = proveedorPorId(f2.proveedorId);
+      const diasPago = prov ? Number(prov.diasPago) || null : null;
+      const auto = calcularVencimiento(f2.fecha, diasPago);
+      const vencimiento = f2.vencimiento || auto.vencimiento;
+      const dias = vencimiento ? Math.round((new Date(vencimiento) - hoy) / 864e5) : null;
+      return {
+        id: f2.id,
+        origen: "directa",
+        concepto: f2.concepto || "Factura directa",
+        proveedor: prov,
+        numeroFactura: f2.numeroFactura || "s/n",
+        fechaFactura: f2.fecha,
+        vencimiento,
+        dias,
+        total: Number(f2.importeTotal) || 0,
+        pagada: !!f2.pagada
+      };
+    });
+    return [...deAlbaranes, ...deDirectas].sort((x3, y2) => {
+      if (x3.pagada !== y2.pagada) return x3.pagada ? 1 : -1;
+      if (x3.dias === null) return 1;
+      if (y2.dias === null) return -1;
+      return x3.dias - y2.dias;
+    });
+  }, [albaranes, proveedores, facturasDirectas]);
+  const pendientesPago = (0, import_react4.useMemo)(() => facturasPorPagar.filter((f2) => !f2.pagada), [facturasPorPagar]);
+  const vencenPronto = (0, import_react4.useMemo)(() => pendientesPago.filter((f2) => f2.dias !== null && f2.dias <= 7), [pendientesPago]);
+  const totalPendientePago = (0, import_react4.useMemo)(() => pendientesPago.reduce((a2, f2) => a2 + f2.total, 0), [pendientesPago]);
+  const promedioDiarioVentas = (0, import_react4.useMemo)(() => {
+    const hace30 = /* @__PURE__ */ new Date();
+    hace30.setDate(hace30.getDate() - 30);
+    const ventas = movimientos.filter((m2) => esVenta(m2) && new Date(m2.fecha) >= hace30);
+    const total = ventas.reduce(
+      (a2, m2) => a2 + Math.abs(Number(m2.cantidad) || 0) * (Number(m2.ingresoUnitario) || 0) * (1 + (Number(m2.ivaVentaAplicado) || 0) / 100),
+      0
+    );
+    return total / 30;
+  }, [movimientos]);
+  const proyeccionTesoreria = (0, import_react4.useMemo)(() => {
+    const hoy = /* @__PURE__ */ new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const dias = [];
+    for (let i3 = 0; i3 < 30; i3++) {
+      const d2 = new Date(hoy);
+      d2.setDate(d2.getDate() + i3);
+      const fechaISO = aISO(d2);
+      const pagosDia = pendientesPago.filter((f2) => f2.vencimiento === fechaISO).reduce((a2, f2) => a2 + f2.total, 0);
+      const encargosDia = encargos.filter((e) => e.estado !== "Entregado" && e.estado !== "Cancelado" && e.fechaEntrega === fechaISO).reduce((a2, e) => {
+        const total = (e.lineas || []).reduce((x3, l2) => x3 + (Number(l2.cantidad) || 0) * (Number(l2.precioUnitario) || 0), 0);
+        return a2 + Math.max(0, total - (Number(e.se\u00F1al) || 0));
+      }, 0);
+      const ingresosDia = promedioDiarioVentas + encargosDia;
+      dias.push({ fecha: fechaISO, ingresosDia, pagosDia, netoDia: ingresosDia - pagosDia });
+    }
+    return dias;
+  }, [pendientesPago, encargos, promedioDiarioVentas]);
+  const ingresosPorMes = (0, import_react4.useMemo)(() => {
+    const mapa = {};
+    movimientos.forEach((m2) => {
+      if (!esVenta(m2)) return;
+      const key = m2.fecha.slice(0, 7);
+      const importe = Math.abs(Number(m2.cantidad) || 0) * (Number(m2.ingresoUnitario) || 0);
+      mapa[key] = (mapa[key] || 0) + importe;
+    });
+    return mapa;
+  }, [movimientos]);
+  const gastoPorProveedor = (0, import_react4.useMemo)(() => {
+    const map = {};
+    pedidos.forEach((pe2) => {
+      const total = pe2.items.reduce((a2, it2) => a2 + it2.cantidad * it2.costoUnitario, 0);
+      map[pe2.proveedorId] = (map[pe2.proveedorId] || 0) + total;
+    });
+    return Object.entries(map).map(([proveedorId, total]) => ({ proveedor: proveedorPorId(proveedorId), total })).sort((a2, b2) => b2.total - a2.total);
+  }, [pedidos, proveedores]);
+  const productosSinMovimiento = (0, import_react4.useMemo)(
+    () => productos.filter((p2) => !esUtillaje(p2) && !movimientos.some((m2) => m2.productoId === p2.id && esSalida(m2))),
+    [productos, movimientos]
+  );
+  if (!ready) {
+    return /* @__PURE__ */ import_react4.default.createElement("div", { style: { background: C2.bg, color: C2.ink }, className: "w-full h-full min-h-[600px] flex items-center justify-center font-sans" }, /* @__PURE__ */ import_react4.default.createElement(LoaderCircle, { className: "animate-spin", size: 22 }), /* @__PURE__ */ import_react4.default.createElement("span", { className: "ml-2 text-sm" }, "Cargando almac\xE9n\u2026"));
+  }
+  const contenido = /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, tab === "dashboard" && /* @__PURE__ */ import_react4.default.createElement(
+    Dashboard,
+    {
+      valorInventario,
+      valorUtillaje,
+      stockBajo,
+      pedidosPendientes,
+      margenPromedio,
+      movimientos,
+      productos,
+      caducanPronto,
+      proveedorPorId,
+      vencenPronto,
+      totalPendientePago,
+      documentosPersonalPronto,
+      fichajesAbiertos,
+      encargosUrgentes,
+      pisoVentaBajo,
+      sugerenciasPedido,
+      setTab,
+      recordatorioConteo,
+      alertasAppcc,
+      fallosGuardado,
+      diagnosticoStock,
+      registrarSalida
+    }
+  ), tab === "direccion" && /* @__PURE__ */ import_react4.default.createElement(
+    PanelDireccion,
+    {
+      movimientos,
+      gastosGenerales,
+      nominas,
+      empleados,
+      promedioDiarioVentas,
+      proyeccionTesoreria,
+      stockBajo,
+      descuadresStock: diagnosticoStock.filter((d2) => !d2.coincide)
+    }
+  ), tab === "proveedores" && /* @__PURE__ */ import_react4.default.createElement(Proveedores, { proveedores, addProveedor, updateProveedor, deleteProveedor, pedidos }), tab === "productos" && /* @__PURE__ */ import_react4.default.createElement(
+    Productos,
+    {
+      productos,
+      proveedores,
+      proveedorPorId,
+      addProducto,
+      updateProducto,
+      deleteProducto,
+      reactivarProducto,
+      registrarSalida,
+      clasificacionABC,
+      almacenCongelado,
+      movimientos,
+      fichasCosto,
+      updateFichaCosto,
+      ajustarProductoPorOtro
+    }
+  ), tab === "historial_producto" && /* @__PURE__ */ import_react4.default.createElement(
+    HistorialProducto,
+    {
+      productos,
+      movimientos,
+      pedidos,
+      albaranes,
+      traspasos,
+      proveedorPorId
+    }
+  ), tab === "aceite" && /* @__PURE__ */ import_react4.default.createElement(
+    AceiteFreidoras,
+    {
+      freidoras,
+      registrosAceite,
+      productos,
+      addFreidora,
+      updateFreidora,
+      deleteFreidora,
+      registrarCambio,
+      registrarRelleno,
+      eliminarRegistroAceite,
+      consumoPorCiclo
+    }
+  ), tab === "buscar" && /* @__PURE__ */ import_react4.default.createElement(
+    BusquedaGlobal,
+    {
+      productos,
+      proveedores,
+      clientes,
+      fichasCosto,
+      empleados,
+      setTab
+    }
+  ), tab === "pedidos" && /* @__PURE__ */ import_react4.default.createElement(
+    Pedidos,
+    {
+      pedidos,
+      proveedores,
+      productos,
+      crearPedido,
+      actualizarPedido,
+      eliminarPedido,
+      proveedorPorId,
+      productoPorId,
+      sugerenciasPedido,
+      addProducto
+    }
+  ), tab === "recepcion" && /* @__PURE__ */ import_react4.default.createElement(Recepcion, { pedidos, proveedorPorId, productoPorId, recibirPedido, almacenCongelado, recibirConAlbaran, recibirConFotoIA, cerrarPedido }), tab === "conteo" && /* @__PURE__ */ import_react4.default.createElement(
+    InventarioCiego,
+    {
+      productos,
+      proveedores,
+      conteos,
+      iniciarConteo,
+      actualizarConteoItem,
+      actualizarResponsable,
+      finalizarConteo,
+      aplicarAjustes,
+      eliminarConteo,
+      revertirUltimaAplicacion,
+      productoPorId,
+      crearProductoEnConteo,
+      clasificacionABC,
+      almacenCongelado
+    }
+  ), tab === "reportes" && /* @__PURE__ */ import_react4.default.createElement(
+    Reportes,
+    {
+      rotacionPorProducto,
+      gastoPorProveedor,
+      productosSinMovimiento,
+      valorInventario,
+      margenPorProducto,
+      patronesDesviacionConteo
+    }
+  ), tab === "resultados" && /* @__PURE__ */ import_react4.default.createElement(
+    Resultados,
+    {
+      movimientos,
+      productos,
+      productoPorId,
+      gastosGenerales,
+      addGasto,
+      deleteGasto,
+      empleados
+    }
+  ), tab === "fichas" && /* @__PURE__ */ import_react4.default.createElement(
+    FichasCosto,
+    {
+      fichasCosto,
+      productos,
+      addFichaCosto,
+      updateFichaCosto,
+      deleteFichaCosto,
+      updateProducto,
+      addProducto,
+      ordenesProduccion,
+      nominas,
+      fichajes
+    }
+  ), tab === "produccion" && /* @__PURE__ */ import_react4.default.createElement(Produccion, { fichasCosto, productos, ordenesProduccion, producir, anularProduccion, traspasarStock }), tab === "mermas" && /* @__PURE__ */ import_react4.default.createElement(Mermas, { productos, movimientos, registrarSalida, almacenCongelado }), tab === "etiquetas" && /* @__PURE__ */ import_react4.default.createElement(EtiquetasCatalogo, { productos, fichasCosto, alergenosDeFicha }), tab === "albaranes" && /* @__PURE__ */ import_react4.default.createElement(
+    Albaranes,
+    {
+      albaranes,
+      proveedores,
+      productos,
+      proveedorPorId,
+      buscarEnCatalogo,
+      guardarAlbaran,
+      eliminarAlbaran,
+      confirmarAlbaran,
+      anularAlbaran,
+      marcarPagada,
+      duplicadosDe,
+      desviacionesDePrecio,
+      prefill: prefillAlbaran,
+      limpiarPrefill: () => setPrefillAlbaran(null),
+      pedidoParaFotoIA,
+      limpiarPedidoParaFotoIA: () => setPedidoParaFotoIA(null),
+      pedidos
+    }
+  ), tab === "pagos" && /* @__PURE__ */ import_react4.default.createElement(
+    CuentasPorPagar,
+    {
+      facturasPorPagar,
+      totalPendientePago,
+      marcarPagada,
+      marcarPagadaFacturaDirecta,
+      addFacturaDirecta,
+      deleteFacturaDirecta,
+      proveedores,
+      resaltadaId: facturaDirectaResaltada,
+      limpiarResaltada: () => setFacturaDirectaResaltada(null)
+    }
+  ), tab === "personal" && /* @__PURE__ */ import_react4.default.createElement(
+    Personal,
+    {
+      empleados,
+      addEmpleado,
+      updateEmpleado,
+      deleteEmpleado,
+      anonimizarEmpleado,
+      registrarAusencia,
+      eliminarAusencia,
+      registrarEpi,
+      eliminarEpi,
+      documentosPersonalCaducan,
+      fichajes,
+      nominas,
+      entrevistas,
+      crearEntrevista,
+      actualizarEntrevista,
+      finalizarEntrevista,
+      eliminarEntrevista,
+      crearPrefiltro,
+      listarPrefiltros,
+      eliminarPrefiltro,
+      crearCuentaEmpleado
+    }
+  ), tab === "fichaje" && /* @__PURE__ */ import_react4.default.createElement(
+    RegistroHorario,
+    {
+      empleados,
+      fichajes,
+      fichar,
+      addFichajeManual,
+      updateFichaje,
+      eliminarFichaje,
+      fichajesAbiertos
+    }
+  ), tab === "nominas" && /* @__PURE__ */ import_react4.default.createElement(
+    CostePersonal,
+    {
+      empleados,
+      nominas,
+      addNomina,
+      updateNomina,
+      deleteNomina,
+      fichajes,
+      movimientos
+    }
+  ), tab === "venta" && /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos, venderCarrito, anularVenta, movimientos, registrarAuditoria }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+    Encargos,
+    {
+      encargosPendientes,
+      encargos,
+      clientes,
+      productos,
+      addEncargo,
+      updateEncargo,
+      deleteEncargo,
+      entregarEncargo,
+      addCliente
+    }
+  ), tab === "clientes" && /* @__PURE__ */ import_react4.default.createElement(
+    Clientes,
+    {
+      analisisClientes,
+      clientesDormidos,
+      ventaCruzada,
+      addCliente,
+      updateCliente,
+      deleteCliente,
+      anonimizarCliente
+    }
+  ), tab === "devoluciones" && /* @__PURE__ */ import_react4.default.createElement(
+    Devoluciones,
+    { productos, proveedores, devoluciones, registrarDevolucionCliente, registrarDevolucionProveedor }
+  ), tab === "facturas" && /* @__PURE__ */ import_react4.default.createElement(
+    Facturas,
+    {
+      albaranes,
+      facturasDirectas,
+      proveedorPorId,
+      irAAlbaran: (albId) => {
+        const a2 = albaranes.find((x3) => x3.id === albId);
+        if (a2) {
+          setPrefillAlbaran(a2);
+          setTab("albaranes");
+        }
+      },
+      irAFacturaDirecta: (fdId) => {
+        setFacturaDirectaResaltada(fdId);
+        setTab("pagos");
+      }
+    }
+  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos, productos, albaranes, proveedorPorId, facturasDirectas }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { movimientos, arqueos, addArqueo, deleteArqueo, encargos, movimientosCaja, registrarMovimientoCaja, eliminarMovimientoCaja }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
+    Turnos,
+    {
+      empleados,
+      turnos,
+      addTurno,
+      updateTurno,
+      deleteTurno,
+      copiarSemana
+    }
+  ), tab === "mapa" && /* @__PURE__ */ import_react4.default.createElement(MapaAlmacen, { productos, proveedorPorId }), tab === "traspasos" && /* @__PURE__ */ import_react4.default.createElement(Traspasos, { productos, traspasos, traspasarStock, pisoVentaBajo, fichasCosto }), tab === "appcc" && /* @__PURE__ */ import_react4.default.createElement(
+    Appcc,
+    {
+      puntosControl,
+      registrosAppcc,
+      addPuntoControl,
+      updatePuntoControl,
+      deletePuntoControl,
+      registrarAppcc,
+      eliminarRegistroAppcc,
+      appccPendientesHoy,
+      productos,
+      fichasCosto,
+      alergenosDeFicha
+    }
+  ), tab === "saldo" && /* @__PURE__ */ import_react4.default.createElement(SaldoAlmacen, { productos, proveedores, valorInventario, valorUtillaje, proveedorPorId, clasificacionABC, analisisABC }), tab === "respaldos" && /* @__PURE__ */ import_react4.default.createElement(
+    Respaldos,
+    {
+      historial,
+      crearPuntoDeGuardado,
+      restaurarDesdeHistorial,
+      abrirRespaldo,
+      abrirRestaurar,
+      exportarExcelGeneral,
+      pinPropietario,
+      establecerPin,
+      activarModoEmpleado
+    }
+  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStock, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, null), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo }));
+  const itemsMeta = [
+    { id: "dashboard", label: "Panel general", icon: ChartColumn },
+    { id: "direccion", label: "Panel de direcci\xF3n", icon: TrendingUp },
+    { id: "proveedores", label: "Proveedores", icon: Truck },
+    { id: "productos", label: "Productos", icon: Package },
+    { id: "buscar", label: "Buscar", icon: Search },
+    { id: "historial_producto", label: "Historial de producto", icon: RotateCcwClock },
+    { id: "pedidos", label: "Pedidos", icon: ShoppingCart, badge: pedidosPendientes.length },
+    { id: "recepcion", label: "Recepci\xF3n", icon: ClipboardList },
+    { id: "albaranes", label: "Albaranes", icon: FileText },
+    { id: "facturas", label: "Facturas", icon: Files },
+    { id: "pagos", label: "Cuentas por pagar", icon: Coins, badge: vencenPronto.length, badgeColor: C2.red },
+    { id: "conteo", label: "Inventario ciego", icon: Boxes, badge: stockBajo.length, badgeColor: C2.amber },
+    { id: "saldo", label: "Saldo de almac\xE9n", icon: ClipboardList },
+    { id: "mapa", label: "Mapa de almac\xE9n", icon: Map2 },
+    { id: "traspasos", label: "Traspasos", icon: ArrowLeftRight, badge: pisoVentaBajo.length, badgeColor: C2.amber },
+    { id: "fichas", label: "Fichas de costo", icon: Calculator },
+    { id: "produccion", label: "Producci\xF3n", icon: Factory },
+    { id: "mermas", label: "Mermas", icon: Trash2 },
+    { id: "etiquetas", label: "Etiquetas y cat\xE1logo", icon: Tags },
+    { id: "reportes", label: "Reportes y rotaci\xF3n", icon: ChartColumn },
+    { id: "resultados", label: "Resultados", icon: TrendingUp },
+    { id: "personal", label: "Personal", icon: Users, badge: documentosPersonalPronto.length, badgeColor: C2.amber },
+    { id: "fichaje", label: "Registro horario", icon: Clock, badge: fichajesAbiertos.length, badgeColor: C2.amber },
+    { id: "nominas", label: "Coste de personal", icon: Coins },
+    { id: "turnos", label: "Cuadrante de turnos", icon: CalendarClock },
+    { id: "appcc", label: "Control sanitario", icon: ShieldCheck, badge: appccPendientesHoy.length, badgeColor: C2.amber },
+    { id: "aceite", label: "Aceite de freidoras", icon: Droplet },
+    { id: "venta", label: "Venta r\xE1pida", icon: ShoppingBag },
+    { id: "encargos", label: "Encargos", icon: CalendarDays, badge: encargosUrgentes.length, badgeColor: C2.red },
+    { id: "clientes", label: "Clientes", icon: UserRound },
+    { id: "libroiva", label: "Libro de IVA", icon: Receipt },
+    { id: "caja", label: "Arqueo de caja", icon: Wallet },
+    { id: "devoluciones", label: "Devoluciones", icon: ArrowLeftRight },
+    { id: "tesoreria", label: "Tesorer\xEDa", icon: ChartLine },
+    { id: "estacionalidad", label: "Estacionalidad", icon: CalendarRange },
+    { id: "auditoria", label: "Auditor\xEDa", icon: RotateCcwClock },
+    { id: "diagnostico", label: "Reconciliaci\xF3n de stock", icon: Stethoscope, badge: descuadresPendientes, badgeColor: C2.red },
+    { id: "respaldos", label: "Respaldos", icon: Cog },
+    { id: "notificaciones", label: "Notificaciones", icon: Bell },
+    { id: "locales", label: "Locales", icon: Map2 },
+    { id: "errores_sistema", label: "Errores del sistema", icon: TriangleAlert }
+  ];
+  const porId = (id) => itemsMeta.find((x3) => x3.id === id);
+  const pick = (ids) => {
+    const filtrados = modoEmpleado ? ids.filter((id) => itemsPermitidosEmpleado.includes(id)) : ids;
+    return filtrados.map(porId).filter(Boolean);
+  };
+  const gruposA = [
+    { titulo: null, items: pick(["dashboard", "buscar"]) },
+    { titulo: "Compras", items: pick(["proveedores", "pedidos", "recepcion", "albaranes"]) },
+    { titulo: "Almac\xE9n", items: pick(["productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos"]) },
+    { titulo: "Ventas", items: pick(["venta", "encargos", "clientes", "devoluciones"]) },
+    { titulo: "Costes y producci\xF3n", items: pick(["fichas", "produccion", "mermas", "etiquetas"]) },
+    { titulo: "Finanzas", items: pick(["direccion", "resultados", "pagos", "facturas", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
+    { titulo: "RRHH", items: pick(["personal", "fichaje", "turnos", "nominas"]) },
+    { titulo: "Calidad", items: pick(["appcc", "aceite"]) },
+    { titulo: "Sistema", items: pick(["auditoria", "diagnostico", "respaldos", "notificaciones", "errores_sistema", "locales"]) }
+  ];
+  const gruposB = [
+    { titulo: null, items: pick(["dashboard", "buscar"]) },
+    { titulo: "Ciclo de compra", items: pick(["proveedores", "pedidos", "recepcion", "albaranes", "pagos", "facturas"]) },
+    { titulo: "Ciclo de almac\xE9n", items: pick(["productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos"]) },
+    { titulo: "Ciclo de venta", items: pick(["venta", "encargos", "clientes", "devoluciones"]) },
+    { titulo: "Ciclo de coste y an\xE1lisis", items: pick(["fichas", "produccion", "mermas", "etiquetas", "resultados", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
+    { titulo: "Ciclo de personal", items: pick(["personal", "fichaje", "turnos", "nominas"]) },
+    { titulo: "Ciclo de calidad", items: pick(["appcc", "aceite"]) },
+    { titulo: "Ajustes", items: pick(["auditoria", "respaldos", "notificaciones", "errores_sistema", "locales"]) }
+  ];
+  const categoriasC = {
+    comprar: { titulo: "Comprar", items: pick(["proveedores", "pedidos", "recepcion", "albaranes", "pagos"]) },
+    almacen: { titulo: "Almac\xE9n", items: pick(["productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos"]) },
+    mas: [
+      { titulo: "Vender", items: pick(["venta", "encargos", "clientes", "devoluciones"]) },
+      { titulo: "Dinero", items: pick(["resultados", "facturas", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
+      { titulo: "Producto", items: pick(["fichas", "produccion", "mermas", "etiquetas"]) },
+      { titulo: "Equipo", items: pick(["personal", "fichaje", "turnos", "nominas"]) },
+      { titulo: "Calidad", items: pick(["appcc", "aceite"]) },
+      { titulo: "Ajustes", items: pick(["auditoria", "respaldos", "notificaciones", "errores_sistema", "locales"]) }
+    ]
+  };
+  return /* @__PURE__ */ import_react4.default.createElement("div", { "data-tema": temaOscuro ? "oscuro" : "claro", style: { background: C2.bg, color: C2.ink, fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui" }, className: disenoMenu === "C" ? "w-full min-h-[700px] flex flex-col text-[14px]" : "w-full min-h-[700px] flex flex-col md:flex-row text-[14px]" }, fallosGuardado.length > 0 && /* @__PURE__ */ import_react4.default.createElement(
+    "div",
+    {
+      className: "text-[12.5px] px-3 py-2 flex items-center justify-between gap-2",
+      style: { background: C2.red, color: "#fff", position: "sticky", top: 0, zIndex: 40 }
+    },
+    /* @__PURE__ */ import_react4.default.createElement("span", null, "\u26A0 Un cambio no se ha podido guardar (", fallosGuardado[0].key, "). Comprueba tu conexi\xF3n \u2014 si sigue as\xED, haz una copia desde Respaldos antes de seguir trabajando."),
+    /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setFallosGuardado([]), style: { color: "#fff", fontWeight: 600 } }, "\u2715")
+  ), /* @__PURE__ */ import_react4.default.createElement("style", null, `
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+        :root, [data-tema="claro"] {
+          --c-bg: #F7F3E9;
+          --c-surface: #FFFFFF;
+          --c-ink: #17241C;
+          --c-ink-soft: #647267;
+          --c-line: #E2DBC7;
+          --c-accent: #8C6D2A;
+          --c-accent-soft: #F1E7CE;
+          --c-amber: #977022;
+          --c-amber-soft: #F6EAD2;
+          --c-red: #B5473A;
+          --c-red-soft: #F7E5E1;
+        }
+        [data-tema="oscuro"] {
+          --c-bg: #081A10;
+          --c-surface: #0F2818;
+          --c-ink: #F0E6D0;
+          --c-ink-soft: #93A692;
+          --c-line: #1E3A26;
+          --c-accent: #D8B876;
+          --c-accent-soft: #1C3322;
+          --c-amber: #E8C066;
+          --c-amber-soft: #2B2312;
+          --c-red: #E37A69;
+          --c-red-soft: #2B1712;
+        }
+        .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+        input, select { font-family: inherit; }
+        ::placeholder { color: #9AA5A0; }
+
+        @media print {
+          @page { size: A4; margin: 12mm; }
+          body * { visibility: hidden !important; }
+          .zona-impresion, .zona-impresion * { visibility: visible !important; }
+          .zona-impresion {
+            position: absolute !important;
+            left: 0; top: 0; width: 100%;
+            background: #fff !important;
+          }
+          .no-imprimir { display: none !important; }
+          .zona-impresion table { page-break-inside: auto; }
+          .zona-impresion tr { page-break-inside: avoid; page-break-after: auto; }
+          .zona-impresion thead { display: table-header-group; }
+          /* Lo impreso siempre en claro, sin importar el tema activo en pantalla */
+          :root, [data-tema="oscuro"], [data-tema="claro"] {
+            --c-bg: #F7F3E9 !important;
+            --c-surface: #FFFFFF !important;
+            --c-ink: #17241C !important;
+            --c-ink-soft: #647267 !important;
+            --c-line: #E2DBC7 !important;
+            --c-accent: #8C6D2A !important;
+            --c-accent-soft: #F1E7CE !important;
+            --c-amber: #977022 !important;
+            --c-amber-soft: #F6EAD2 !important;
+            --c-red: #B5473A !important;
+            --c-red-soft: #F7E5E1 !important;
+          }
+        }
+      `), disenoMenu === "C" ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(TopBarC, { disenoMenu, setDisenoMenu, tab, setTab, pendientes: pedidosPendientes.length, temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil }), /* @__PURE__ */ import_react4.default.createElement("main", { className: "flex-1 p-4 overflow-y-auto", style: { maxHeight: "900px" } }, contenido), /* @__PURE__ */ import_react4.default.createElement(BottomNavC, { tab, setTab, categorias: categoriasC, dashboardItem: porId("dashboard") })) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(
+    SidebarGrupos,
+    {
+      grupos: disenoMenu === "A" ? gruposA : gruposB,
+      tab,
+      setTab,
+      disenoMenu,
+      setDisenoMenu,
+      temaOscuro,
+      setTemaOscuro,
+      modoEmpleado,
+      salirModoEmpleado,
+      empleados,
+      usuarioActivoId,
+      entrarComoEmpleado,
+      pinPropietario,
+      miPerfil
+    }
+  ), /* @__PURE__ */ import_react4.default.createElement("main", { className: "flex-1 p-4 md:p-7 overflow-y-auto", style: { maxHeight: "900px" } }, contenido)), showBackupView && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowBackupView(false), title: "Tu respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2", style: { color: C2.ink } }, 'Copia este texto y gu\xE1rdalo en alg\xFAn lugar seguro (notas, correo, Google Drive). Para restaurarlo m\xE1s adelante, p\xE9galo en "Restaurar respaldo".'), /* @__PURE__ */ import_react4.default.createElement(
+    "textarea",
+    {
+      readOnly: true,
+      value: backupText,
+      onFocus: (e) => e.target.select(),
+      className: "w-full rounded-lg p-2 text-[11px] mono mb-3",
+      style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, height: 160, resize: "none" }
+    }
+  ), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: copiarRespaldo }, copiado ? "\xA1Copiado!" : "Copiar al portapapeles"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowBackupView(false) }, "Cerrar")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Si el bot\xF3n no copia solo, toca dentro del recuadro de texto, selecciona todo y c\xF3pialo manualmente.")), showRestoreInput && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowRestoreInput(false), title: "Restaurar respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2", style: { color: C2.ink } }, "Pega aqu\xED el texto completo del respaldo que copiaste anteriormente."), /* @__PURE__ */ import_react4.default.createElement(
+    "textarea",
+    {
+      value: restoreText,
+      onChange: (e) => setRestoreText(e.target.value),
+      placeholder: "Pega aqu\xED el texto del respaldo\u2026",
+      className: "w-full rounded-lg p-2 text-[11px] mono mb-3",
+      style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, height: 160, resize: "none" }
+    }
+  ), restoreError && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, restoreError), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: analizarTextoRestauracion }, "Continuar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowRestoreInput(false) }, "Cancelar"))), pendingRestore && (() => {
+    const comparacion = compararConEstadoActual(pendingRestore);
+    const seConservan = coleccionesQueSeConservan(pendingRestore);
+    const perdidas = comparacion.filter((c2) => c2.diferencia < 0);
+    return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setPendingRestore(null), title: "Restaurar respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-1", style: { color: C2.ink } }, pendingRestore.exportadoEl ? `Respaldo del ${new Date(pendingRestore.exportadoEl).toLocaleString("es-ES")}` : "Respaldo sin fecha registrada"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Formato ", pendingRestore.backupVersion || pendingRestore.version || "antiguo"), perdidas.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "\u26A0 Este respaldo tiene menos datos que lo que hay ahora"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2" }, "Al restaurarlo desaparecer\xEDa lo creado despu\xE9s. Se guardar\xE1 un punto de recuperaci\xF3n antes, por si te arrepientes."), perdidas.map((c2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: c2.clave, className: "text-[11.5px] mono" }, c2.nombre, ": ", c2.actual, " \u2192 ", c2.respaldo, " (", c2.diferencia, ")"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "Qu\xE9 contiene, comparado con ahora"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3 space-y-0.5", style: { color: C2.inkSoft } }, comparacion.map((c2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: c2.clave, className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", null, c2.nombre), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: c2.diferencia < 0 ? C2.red : C2.inkSoft } }, c2.actual, " \u2192 ", c2.respaldo)))), seConservan.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.bg, border: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]" }, "Este respaldo es anterior y no incluye: ", /* @__PURE__ */ import_react4.default.createElement("b", null, seConservan.join(", ")), ". Esos datos", /* @__PURE__ */ import_react4.default.createElement("b", null, " se conservan tal como est\xE1n ahora"), " \u2014 no se borran.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-4", style: { color: C2.red } }, "Restaurar sustituye lo que tengas cargado ahora por el contenido de este respaldo."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: confirmarRestauracion }, "Restaurar respaldo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setPendingRestore(null) }, "Cancelar")));
+  })());
+}
