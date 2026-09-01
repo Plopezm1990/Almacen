@@ -1,0 +1,29 @@
+name: Inspeccionar fuente temporal
+on:
+  push:
+    branches: [inspeccion-fuente-locales]
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extraer contextos relevantes
+        shell: node {0}
+        run: |
+          const fs = require('fs');
+          const src = fs.readFileSync('fuente.js','utf8');
+          const terms = ['negocioLocalId','Libro IVA','Resultados','Dashboard','localId','Todos los locales','todos los locales'];
+          console.log('SIZE', src.length);
+          for (const term of terms) {
+            console.log('\n===== TERM:', term, '=====');
+            let from = 0, count = 0;
+            while (count < 12) {
+              const i = src.indexOf(term, from);
+              if (i < 0) break;
+              count++;
+              const a = Math.max(0, i - 3500), b = Math.min(src.length, i + term.length + 5500);
+              console.log(`\n--- ${term} occurrence ${count} at ${i} ---\n` + src.slice(a,b));
+              from = i + term.length;
+            }
+            if (!count) console.log('NO MATCH');
+          }
