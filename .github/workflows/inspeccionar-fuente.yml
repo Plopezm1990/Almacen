@@ -30,7 +30,7 @@ jobs:
           }
           fs.writeFileSync('tmp-inspeccion/meta.txt', `SIZE ${src.length}\n`);
           const funcs = [
-            'Dashboard','Resultados','LibroIva','GestionAlmacen',
+            'Dashboard','Resultados','LibroIva','GestionAlmacen','crearMotorStock',
             'crearLogicaGastos','crearLogicaPersonal','crearLogicaFacturasDirectas',
             'crearLogicaAlbaranes','crearLogicaPedidos','crearLogicaVenta',
             'crearLogicaEncargos','crearLogicaFichaje','crearLogicaAppcc'
