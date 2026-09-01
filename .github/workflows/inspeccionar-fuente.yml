@@ -2,6 +2,8 @@ name: Inspeccionar fuente temporal
 on:
   push:
     branches: [inspeccion-fuente-locales]
+  pull_request:
+    branches: [main]
 jobs:
   inspect:
     runs-on: ubuntu-latest
@@ -12,7 +14,7 @@ jobs:
         run: |
           const fs = require('fs');
           const src = fs.readFileSync('fuente.js','utf8');
-          const terms = ['negocioLocalId','Libro IVA','Resultados','Dashboard','localId','Todos los locales','todos los locales'];
+          const terms = ['SelectorVistaInformes','negocioLocalId','localActivoId','Libro IVA','Resultados','Dashboard','localId','Todos los locales','todos los locales'];
           console.log('SIZE', src.length);
           for (const term of terms) {
             console.log('\n===== TERM:', term, '=====');
