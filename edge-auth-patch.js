@@ -13,7 +13,11 @@
   var PROTEGIDAS = {
     "importar-albaran": true,
     "importar-nomina": true,
-    "enviar-notificacion": true
+    "enviar-notificacion": true,
+    "entrevista-personal": true
+  };
+  var REDIRECCIONES_RAMA = {
+    "entrevista-personal": "entrevista-personal-neutral"
   };
 
   function respuestaSinSesion(mensaje) {
@@ -65,7 +69,21 @@
       }
 
       opciones.headers = headers;
-      return fetchOriginal(input, opciones);
+
+      // Solo en la rama de pruebas: la interfaz antigua sigue llamando a
+      // entrevista-personal, pero aquí se envía al endpoint neutral nuevo.
+      // En producción/main este adaptador no tiene esta redirección.
+      var destino = input;
+      var nuevoNombre = REDIRECCIONES_RAMA[nombreFuncion];
+      if (nuevoNombre) {
+        var urlDestino = ORIGEN_FUNCTIONS + nuevoNombre + url.slice((ORIGEN_FUNCTIONS + nombreFuncion).length);
+        // El bundle actual llama a estas funciones con URL string + init.
+        // Si en el futuro llega un Request, se conserva sin redirigir antes
+        // que arriesgarse a alterar su body de forma incorrecta.
+        if (typeof input === "string") destino = urlDestino;
+      }
+
+      return fetchOriginal(destino, opciones);
     } catch (e) {
       return respuestaSinSesion("No se pudo comprobar la sesión. Vuelve a iniciar sesión.");
     }
