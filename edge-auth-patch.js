@@ -103,13 +103,14 @@
   (document.head || document.documentElement).appendChild(script);
 })();
 
-// Prueba temporal de un único push real al dispositivo actual. El script
-// solo muestra un botón; no envía nada automáticamente.
+// Prueba push real aislada: SOLO se carga con ?push-test=1 en la rama.
+// El script muestra un botón; no envía nada automáticamente.
 (function () {
   "use strict";
+  if (new URLSearchParams(window.location.search).get("push-test") !== "1") return;
   if (document.querySelector('script[data-push-dispositivo-prueba="1"]')) return;
   var script = document.createElement("script");
-  script.src = "./push-dispositivo-prueba.js?v=1";
+  script.src = "./push-dispositivo-prueba.js?v=2";
   script.defer = true;
   script.setAttribute("data-push-dispositivo-prueba", "1");
   (document.head || document.documentElement).appendChild(script);
