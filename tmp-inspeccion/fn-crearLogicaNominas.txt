@@ -1,0 +1,30 @@
+START 4547744 END 4549019 LEN 1275
+function crearLogicaNominas({ setNominas, registrarAuditoria }) {
+  function addNomina(data) {
+    const bruto = Number(data.brutoTotal) || 0;
+    const ss = Number(data.seguridadSocialEmpresa) || 0;
+    setNominas((s2) => {
+      const sinEsteMes = s2.filter((n) => !(n.empleadoId === data.empleadoId && n.mes === data.mes));
+      return [
+        { id: uid(), ...data, brutoTotal: bruto, seguridadSocialEmpresa: ss, costeTotalEmpresa: bruto + ss },
+        ...sinEsteMes
+      ];
+    });
+  }
+  function updateNomina(id, data) {
+    const bruto = Number(data.brutoTotal) || 0;
+    const ss = Number(data.seguridadSocialEmpresa) || 0;
+    setNominas(
+      (s2) => s2.map((n) => n.id === id ? { ...n, ...data, brutoTotal: bruto, seguridadSocialEmpresa: ss, costeTotalEmpresa: bruto + ss } : n)
+    );
+    registrarAuditoria("Editar registro de n\xF3mina", `${data.mes || ""} \xB7 \u20AC${(bruto + ss).toFixed(2)}`);
+  }
+  function deleteNomina(id) {
+    setNominas((s2) => {
+      const n = s2.find((x3) => x3.id === id);
+      registrarAuditoria("Eliminar registro de n\xF3mina", n ? `${n.mes} \xB7 \u20AC${(Number(n.costeTotalEmpresa) || 0).toFixed(2)}` : id);
+      return s2.filter((x3) => x3.id !== id);
+    });
+  }
+  return { addNomina, updateNomina, deleteNomina };
+}
