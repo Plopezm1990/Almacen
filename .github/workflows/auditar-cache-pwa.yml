@@ -1,0 +1,29 @@
+name: Auditar caché PWA
+on:
+  push:
+    branches: [auditoria-cache-pr4]
+    paths:
+      - .github/workflows/auditar-cache-pwa.yml
+jobs:
+  auditar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Revisar referencias de service worker y caché
+        shell: python
+        run: |
+          from pathlib import Path
+          for nombre in ['index.html','fuente.js','edge-auth-patch.js','seleccion-neutral-patch.js','sw.js']:
+              p=Path(nombre)
+              if not p.exists():
+                  continue
+              s=p.read_text(encoding='utf-8')
+              print('\n===',nombre,'===')
+              for patron in ['serviceWorker','register(', 'getRegistration', 'caches.', 'caches.open', 'cache.add', 'cache.put', 'skipWaiting', 'clients.claim']:
+                  pos=0
+                  while True:
+                      i=s.find(patron,pos)
+                      if i<0: break
+                      print('\nPATRON',repr(patron),'POS',i)
+                      print(s[max(0,i-700):min(len(s),i+1400)])
+                      pos=i+len(patron)
