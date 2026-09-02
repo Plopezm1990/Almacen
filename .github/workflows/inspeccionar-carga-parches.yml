@@ -1,0 +1,28 @@
+name: Inspeccionar carga de parches PR4
+on:
+  push:
+    branches: [smoke-pr4-global]
+    paths:
+      - .github/workflows/inspeccionar-carga-parches.yml
+jobs:
+  inspeccionar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Buscar referencias de carga
+        run: |
+          git fetch origin preparacion-sin-netlify
+          mkdir -p /tmp/pr4
+          git archive origin/preparacion-sin-netlify | tar -x -C /tmp/pr4
+          cd /tmp/pr4
+          echo '=== edge-auth-patch refs ==='
+          grep -RIn --exclude='edge-auth-patch.js' --exclude-dir='.git' 'edge-auth-patch' . || true
+          echo '=== seleccion-neutral-patch refs ==='
+          grep -RIn --exclude='seleccion-neutral-patch.js' --exclude-dir='.git' 'seleccion-neutral-patch' . || true
+          echo '=== script injection refs ==='
+          grep -nE 'createElement\(["'"']script|appendChild\([^)]*script|script\.src|src *=.*edge-auth' fuente.js | head -80 || true
+          echo '=== patch runtime marker refs ==='
+          grep -n '__contextoRolSeguroInstalado' fuente.js || true
+          echo 'INSPECCION_CARGA_PARCHES_OK=1'
