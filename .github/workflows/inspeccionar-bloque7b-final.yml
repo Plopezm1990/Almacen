@@ -1,0 +1,27 @@
+name: Inspeccionar últimas anclas RRHH
+on:
+  push:
+    branches: [multilocal-fase-3]
+    paths:
+      - .github/workflows/inspeccionar-bloque7b-final.yml
+permissions:
+  contents: read
+jobs:
+  inspeccion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mostrar empleados y fichajes abiertos
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          for t in ['addEmpleado', 'fichajesAbiertos', 'crearLogicaTurnos({', 'crearLogicaFichaje({', 'crearLogicaNominas({']:
+              print('\n===== '+t+' =====')
+              k=0; n=0
+              while True:
+                  i=s.find(t,k)
+                  if i<0: break
+                  n+=1; print(s[max(0,i-1400):min(len(s),i+2200)]); k=i+1
+                  if n>=8: break
+          PY
