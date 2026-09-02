@@ -1,0 +1,29 @@
+name: Auditar claves caja
+on:
+  push:
+    branches: [auditoria-cache-pr4]
+    paths:
+      - .github/workflows/auditar-claves-caja.yml
+jobs:
+  auditar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mostrar usos relevantes
+        shell: python
+        run: |
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          for token in ['movimientosCaja','devoluciones']:
+              print('\n### TOKEN',token,'TOTAL',s.count(token))
+              posiciones=[]
+              p=0
+              while True:
+                  i=s.find(token,p)
+                  if i<0: break
+                  if not posiciones or i-posiciones[-1]>1800:
+                      posiciones.append(i)
+                  p=i+len(token)
+              for i in posiciones:
+                  print('\n===',token,'POS',i,'===')
+                  print(s[max(0,i-1500):min(len(s),i+2500)])
