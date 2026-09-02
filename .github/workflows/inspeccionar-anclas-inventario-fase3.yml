@@ -1,0 +1,32 @@
+name: Inspeccionar anclas Inventario fase 3
+on:
+  push:
+    branches: [multilocal-fase-3]
+    paths:
+      - .github/workflows/inspeccionar-anclas-inventario-fase3.yml
+jobs:
+  inspeccion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extraer anclas exactas
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          def trozo(nombre, marcador, antes, despues):
+              i=s.find(marcador)
+              print(f'\n===== {nombre} @ {i} =====')
+              assert i>=0
+              print(s[max(0,i-antes):min(len(s),i+despues)])
+          trozo('LLAMADA CONTEOS','crearLogicaConteos({ productos, setProductos',800,1800)
+          trozo('PRODUCTOS LOCAL','const productosDelLocalActivo =',800,4200)
+          trozo('STOCK BAJO','const stockBajo =',600,1400)
+          trozo('ABC COMPLETO','const analisisABC =',200,4200)
+          trozo('INICIO CONTEOS','function crearLogicaConteos(',100,6500)
+          trozo('APLICAR AJUSTES','function aplicarAjustes(conteoId',300,7000)
+          trozo('RENDER PRODUCTOS','tab === "productos"',300,1800)
+          trozo('RENDER CONTEO','tab === "conteo"',300,2600)
+          trozo('RENDER SALDO','tab === "saldo"',300,1200)
+          trozo('BADGE CONTEO','{ id: "conteo", label:',300,900)
+          PY
