@@ -1,0 +1,22 @@
+name: Inspeccionar addProducto bloque 5
+on:
+  push:
+    branches: [multilocal-fase-3]
+    paths:
+      - .github/workflows/inspeccionar-addproducto-bloque5.yml
+permissions:
+  contents: read
+jobs:
+  inspeccion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mostrar addProducto exacto
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          i=s.index('function addProducto(')
+          j=s.index('function updateProducto(',i)
+          print(s[i:j])
+          PY
