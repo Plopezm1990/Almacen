@@ -4,159 +4,74 @@ on:
     branches: [multilocal-fase-3]
     paths:
       - .github/workflows/aplicar-multilocal-productos-pedidos-fase3.yml
-  workflow_dispatch:
-
 permissions:
   contents: write
-
 jobs:
-  parche:
+  aplicar:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Aplicar cambios quirúrgicos
-        shell: python
         run: |
+          python3 - <<'PY'
           from pathlib import Path
+          p=Path('fuente.js')
+          s=p.read_text(encoding='utf-8')
 
-          p = Path('fuente.js')
-          s = p.read_text(encoding='utf-8')
-
-          def reemplazar(old, new, nombre):
-              global s
-              n = s.count(old)
-              assert n == 1, f'{nombre}: se esperaba 1 coincidencia y hay {n}'
-              s = s.replace(old, new, 1)
+          def reemplazar_uno(texto, viejo, nuevo, nombre):
+              n=texto.count(viejo)
+              assert n==1, f'{nombre}: se esperaba 1 coincidencia y hay {n}'
               print('OK', nombre)
+              return texto.replace(viejo,nuevo,1)
 
-          old = '''  const productosDelLocalActivo = (0, import_react4.useMemo)(() => {
-    if (!localActivoId) return productos;
-    return productos.filter((p2) => !p2.localId || p2.localId === localActivoId);
-  }, [productos, localActivoId]);
-  const [turnos, setTurnos] = (0, import_react4.useState)([]);'''
-          new = '''  const productosDelLocalActivo = (0, import_react4.useMemo)(() => {
-    if (!localActivoId) return productos;
-    return productos.filter((p2) => !p2.localId || p2.localId === localActivoId);
-  }, [productos, localActivoId]);
-  const movimientosDelLocalActivo = (0, import_react4.useMemo)(() => {
-    if (!localActivoId) return movimientos;
-    const localPorProducto = new Map(productos.map((p2) => [p2.id, p2.localId || null]));
-    return movimientos.filter((m2) => (m2.localId || localPorProducto.get(m2.productoId) || null) === localActivoId);
-  }, [movimientos, productos, localActivoId]);
-  const pedidosDelLocalActivo = (0, import_react4.useMemo)(() => {
-    if (!localActivoId) return pedidos;
-    return pedidos.filter((p2) => !p2.localId || p2.localId === localActivoId);
-  }, [pedidos, localActivoId]);
-  const pedidosPendientesDelLocalActivo = (0, import_react4.useMemo)(() => pedidosDelLocalActivo.filter((p2) => p2.estado !== "Recibido"), [pedidosDelLocalActivo]);
-  const [turnos, setTurnos] = (0, import_react4.useState)([]);'''
-          reemplazar(old, new, 'derivados del local activo')
+          ancla="  const productosDelLocalActivo = (0, import_react4.useMemo)(() => {\n    if (!localActivoId) return productos;\n    return productos.filter((p2) => !p2.localId || p2.localId === localActivoId);\n  }, [productos, localActivoId]);"
+          derivados=ancla+"\n  const movimientosDelLocalActivo = (0, import_react4.useMemo)(() => {\n    if (!localActivoId) return movimientos;\n    const localPorProducto = new Map(productos.map((p2) => [p2.id, p2.localId || null]));\n    return movimientos.filter((m2) => (m2.localId || localPorProducto.get(m2.productoId) || null) === localActivoId);\n  }, [movimientos, productos, localActivoId]);\n  const pedidosDelLocalActivo = (0, import_react4.useMemo)(() => {\n    if (!localActivoId) return pedidos;\n    return pedidos.filter((p2) => !p2.localId || p2.localId === localActivoId);\n  }, [pedidos, localActivoId]);\n  const pedidosPendientesDelLocalActivo = (0, import_react4.useMemo)(() => pedidosDelLocalActivo.filter((p2) => p2.estado !== \"Recibido\"), [pedidosDelLocalActivo]);"
+          s=reemplazar_uno(s,ancla,derivados,'derivados del local activo')
 
-          old = '''  }, [rotacionPorProducto, proveedores, productosEnPedidoPendiente]);
-  const lotesCaducidad ='''
-          new = '''  }, [rotacionPorProducto, proveedores, productosEnPedidoPendiente]);
-  const sugerenciasPedidoDelLocalActivo = (0, import_react4.useMemo)(() => {
-    if (!localActivoId) return sugerenciasPedido;
-    return sugerenciasPedido.filter((p2) => p2.localId === localActivoId);
-  }, [sugerenciasPedido, localActivoId]);
-  const lotesCaducidad ='''
-          reemplazar(old, new, 'sugerencias por local activo')
+          ancla_sug="  }, [rotacionPorProducto, proveedores, productosEnPedidoPendiente]);\n  const lotesCaducidad ="
+          nuevo_sug="  }, [rotacionPorProducto, proveedores, productosEnPedidoPendiente]);\n  const sugerenciasPedidoDelLocalActivo = (0, import_react4.useMemo)(() => {\n    if (!localActivoId) return sugerenciasPedido;\n    return sugerenciasPedido.filter((p2) => p2.localId === localActivoId);\n  }, [sugerenciasPedido, localActivoId]);\n  const lotesCaducidad ="
+          s=reemplazar_uno(s,ancla_sug,nuevo_sug,'sugerencias por local activo')
 
-          old = '''      productos,
-      proveedores,
-      proveedorPorId,
-      addProducto,
-      updateProducto,
-      deleteProducto,
-      reactivarProducto,
-      registrarSalida,
-      clasificacionABC,
-      almacenCongelado,
-      movimientos,
-      fichasCosto,
-      updateFichaCosto,
-      ajustarProductoPorOtro
-    }
-  ), tab === "historial_producto"'''
-          new = '''      productos: productosDelLocalActivo,
-      proveedores,
-      proveedorPorId,
-      addProducto,
-      updateProducto,
-      deleteProducto,
-      reactivarProducto,
-      registrarSalida,
-      clasificacionABC,
-      almacenCongelado,
-      movimientos: movimientosDelLocalActivo,
-      fichasCosto,
-      updateFichaCosto,
-      ajustarProductoPorOtro
-    }
-  ), tab === "historial_producto"'''
-          reemplazar(old, new, 'render Productos')
+          ini=s.index('tab === "productos"')
+          fin=s.index('tab === "historial_producto"',ini)
+          bloque=s[ini:fin]
+          bloque=reemplazar_uno(bloque,'      productos,\n','      productos: productosDelLocalActivo,\n','Productos: productos')
+          bloque=reemplazar_uno(bloque,'      movimientos,\n','      movimientos: movimientosDelLocalActivo,\n','Productos: movimientos')
+          s=s[:ini]+bloque+s[fin:]
 
-          old = '''      pedidos,
-      proveedores,
-      productos,
-      crearPedido,
-      actualizarPedido,
-      eliminarPedido,
-      proveedorPorId,
-      productoPorId,
-      sugerenciasPedido,
-      addProducto
-    }
-  ), tab === "recepcion"'''
-          new = '''      pedidos: pedidosDelLocalActivo,
-      proveedores,
-      productos: productosDelLocalActivo,
-      crearPedido,
-      actualizarPedido,
-      eliminarPedido,
-      proveedorPorId,
-      productoPorId,
-      sugerenciasPedido: sugerenciasPedidoDelLocalActivo,
-      addProducto
-    }
-  ), tab === "recepcion"'''
-          reemplazar(old, new, 'render Pedidos')
+          ini=s.index('tab === "pedidos"')
+          fin=s.index('tab === "recepcion"',ini)
+          bloque=s[ini:fin]
+          bloque=reemplazar_uno(bloque,'      pedidos,\n','      pedidos: pedidosDelLocalActivo,\n','Pedidos: pedidos')
+          bloque=reemplazar_uno(bloque,'      productos,\n','      productos: productosDelLocalActivo,\n','Pedidos: productos')
+          bloque=reemplazar_uno(bloque,'      sugerenciasPedido,\n','      sugerenciasPedido: sugerenciasPedidoDelLocalActivo,\n','Pedidos: sugerencias')
+          s=s[:ini]+bloque+s[fin:]
 
-          reemplazar(
-              '{ id: "pedidos", label: "Pedidos", icon: ShoppingCart, badge: pedidosPendientes.length }',
-              '{ id: "pedidos", label: "Pedidos", icon: ShoppingCart, badge: pedidosPendientesDelLocalActivo.length }',
-              'badge Pedidos'
-          )
+          s=reemplazar_uno(s,'{ id: "pedidos", label: "Pedidos", icon: ShoppingCart, badge: pedidosPendientes.length }','{ id: "pedidos", label: "Pedidos", icon: ShoppingCart, badge: pedidosPendientesDelLocalActivo.length }','badge Pedidos')
+          s=reemplazar_uno(s,'pendientes: pedidosPendientes.length, temaOscuro','pendientes: pedidosPendientesDelLocalActivo.length, temaOscuro','contador TopBar')
 
-          reemplazar(
-              'pendientes: pedidosPendientes.length, temaOscuro',
-              'pendientes: pedidosPendientesDelLocalActivo.length, temaOscuro',
-              'contador TopBar'
-          )
-
-          p.write_text(s, encoding='utf-8')
-
-          # Guardas estructurales: este paso NO debe adelantar módulos aún no adaptados.
+          assert s.count('productos: productosDelLocalActivo')==2
+          assert s.count('pedidos: pedidosDelLocalActivo')==1
+          assert s.count('movimientos: movimientosDelLocalActivo')==1
+          assert s.count('sugerenciasPedido: sugerenciasPedidoDelLocalActivo')==1
           assert 'Recepcion, { pedidos, proveedorPorId' in s
           assert 'InventarioCiego,\n    {\n      productos,' in s
-          assert 'Albaranes' in s
-          assert 'productos: productosDelLocalActivo' in s
-          assert 'pedidos: pedidosDelLocalActivo' in s
+          p.write_text(s,encoding='utf-8')
           print('GUARDAS_OK')
-
+          PY
       - name: Validar JavaScript y diff
         run: |
           node --check fuente.js
           git diff --check
           git diff --stat
-          git diff -- fuente.js | sed -n '1,240p'
-
-      - name: Commit del parche y limpieza de workflows temporales
+          git diff -- fuente.js | sed -n '1,260p'
+      - name: Guardar y retirar workflows temporales
         run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           rm -f .github/workflows/aplicar-multilocal-productos-pedidos-fase3.yml
           rm -f .github/workflows/inspeccionar-multilocal-fase3.yml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add fuente.js .github/workflows/aplicar-multilocal-productos-pedidos-fase3.yml .github/workflows/inspeccionar-multilocal-fase3.yml
           git diff --cached --check
-          git commit -m "Separar productos y pedidos por local activo"
+          git commit -m 'Separar productos y pedidos por local activo'
           git push origin HEAD:multilocal-fase-3
