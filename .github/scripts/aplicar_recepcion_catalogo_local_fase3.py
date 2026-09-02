@@ -12,10 +12,6 @@ def uno(texto, viejo, nuevo, nombre):
 
 
 # 1) Catálogo compatible con datos antiguos, pero con enlace de producto aislado por local.
-inicio = s.index("function crearLogicaAlbaranes({")
-fin = s.index("function crearLogicaPedidos(", inicio)
-b = s[inicio:fin]
-
 viejo = '''  const claveCat = (proveedorId, codigo) => `${proveedorId}::${String(codigo || "").trim().toUpperCase()}`;
   const normalizarDescripcion = (t2) => String(t2 || "").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toUpperCase().replace(/\\s+/g, " ").trim();
   const claveCatDesc = (proveedorId, descripcion) => `${proveedorId}::DESC::${normalizarDescripcion(descripcion)}`;
@@ -68,8 +64,7 @@ nuevo = '''  const claveCat = (proveedorId, codigo) => `${proveedorId}::${String
     const clave = localActivoId ? claveCatLocal(localActivoId, proveedorId, codigo) : claveCat(proveedorId, codigo);
     setCatalogoProv((s2) => ({ ...s2, [clave]: { ...s2[clave] || {}, ...datos, localId: datos.localId || localActivoId || null } }));
   }'''
-
-b = uno(b, viejo, nuevo, "catálogo local con fallback legado")
+s = uno(s, viejo, nuevo, "catálogo local con fallback legado")
 
 viejo = '''      if (ln2.productoId) prod = productos.find((p2) => p2.id === ln2.productoId);
       if (!prod && cat && cat.productoId) prod = productos.find((p2) => p2.id === cat.productoId);
@@ -78,7 +73,7 @@ nuevo = '''      if (ln2.productoId) prod = productos.find((p2) => p2.id === ln2
       if (!prod && cat && cat.productoId) prod = productos.find((p2) => p2.id === cat.productoId);
       if (prod && localActivoId && (!prod.localId || prod.localId !== localActivoId)) prod = null;
       const motivoDoc ='''
-b = uno(b, viejo, nuevo, "rechazo de producto ajeno en recepción")
+s = uno(s, viejo, nuevo, "rechazo de producto ajeno en recepción")
 
 viejo = '''          productoId: ln2.productoId,
           ultimoPrecio: Number(ln2.precioBruto) || 0,
@@ -95,8 +90,7 @@ nuevo = '''          productoId: ln2.productoId,
         const claveDescripcion = localActivoId ? claveCatDescLocal(localActivoId, proveedorId, ln2.descripcion) : claveCatDesc(proveedorId, ln2.descripcion);
         if (ln2.codigoProveedor) copia[claveCodigo] = datos;
         if (ln2.descripcion && normalizarDescripcion(ln2.descripcion)) copia[claveDescripcion] = datos;'''
-b = uno(b, viejo, nuevo, "aprendizaje de catálogo por local")
-s = s[:inicio] + b + s[fin:]
+s = uno(s, viejo, nuevo, "aprendizaje de catálogo por local")
 
 
 # 2) Blindar mutaciones de pedido por local.
