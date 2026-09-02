@@ -9,23 +9,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspeccionar sección fuente.jsx
+      - name: Extraer sección de aplicación
         shell: bash
         run: |
           MARCA=$(grep -n -m1 '^// fuente.jsx$' fuente.js | cut -d: -f1)
-          echo "MARCA=$MARCA"
-          TOTAL=$(wc -l < fuente.js)
-          echo "TOTAL=$TOTAL"
-          echo "LINEAS_APP=$((TOTAL-MARCA+1))"
-          echo '=== INICIO APP (120 líneas) ==='
-          sed -n "${MARCA},$((MARCA+119))p" fuente.js
-          echo '=== PATRONES JSX/REACT EN APP ==='
-          tail -n +"$MARCA" fuente.js | grep -n -m 30 'jsxDEV\|jsx(\|jsxs(\|createElement\|React.createElement' || true
-          echo '=== IMPORTS/REQUIRE EN APP ==='
-          tail -n +"$MARCA" fuente.js | grep -n -m 40 '^import \|require_' || true
-          echo '=== FUNCIONES PRINCIPALES ==='
-          tail -n +"$MARCA" fuente.js | grep -n -m 40 '^function \|^var [A-Za-z_].* = (' || true
-          echo '=== BYTES APP ==='
-          tail -n +"$MARCA" fuente.js | wc -c
-          echo '=== SINTAXIS BUNDLE ==='
-          node --check fuente.js
+          tail -n +"$MARCA" fuente.js > /tmp/fuente-recuperada.js
+          echo "Lineas: $(wc -l < /tmp/fuente-recuperada.js)"
+          echo "Bytes: $(wc -c < /tmp/fuente-recuperada.js)"
+      - name: Detectar identificadores externos
+        shell: bash
+        run: |
+          npx --yes eslint@8.57.1 /tmp/fuente-recuperada.js \
+            --no-eslintrc \
+            --env browser,es2022 \
+            --parser-options '{"ecmaVersion":"latest","sourceType":"module"}' \
+            --rule 'no-undef:error' \
+            -f json > /tmp/eslint.json || true
+          node - <<'NODE'
+          const fs = require('fs');
+          const data = JSON.parse(fs.readFileSync('/tmp/eslint.json','utf8') || '[]');
+          const nombres = new Set();
+          for (const file of data) for (const m of file.messages || []) {
+            if (m.ruleId !== 'no-undef') continue;
+            const x = /^'(.+)' is not defined\.$/.exec(m.message);
+            if (x) nombres.add(x[1]);
+          }
+          console.log('=== IDENTIFICADORES EXTERNOS ===');
+          console.log([...nombres].sort().join('\n'));
+          console.log('TOTAL_EXTERNOS=' + nombres.size);
+          NODE
+      - name: Sintaxis original
+        run: node --check fuente.js
