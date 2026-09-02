@@ -1,0 +1,40 @@
+name: Inspeccionar multilocal fase 2
+on:
+  push:
+    branches: [multilocal-fase-2]
+    paths:
+      - .github/workflows/inspeccionar-multilocal-fase2.yml
+jobs:
+  inspeccion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extraer contextos relevantes
+        shell: python
+        run: |
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          patrones=[
+            'function SelectorLocalInformes',
+            'localInformeId',
+            'localId:',
+            'tab === "caja"',
+            'tab === "pedidos"',
+            'tab === "recepcion"',
+            'tab === "albaranes"',
+            'tab === "personal"',
+            'tab === "fichaje"',
+            'tab === "produccion"',
+            'tab === "encargos"',
+            'tab === "appcc"'
+          ]
+          for pat in patrones:
+            posiciones=[]; pos=0
+            while True:
+              i=s.find(pat,pos)
+              if i<0: break
+              posiciones.append(i); pos=i+1
+            print(f'\n### {pat} :: {len(posiciones)} coincidencias')
+            for i in posiciones[:8]:
+              print(f'--- POS {i} ---')
+              print(s[max(0,i-1800):min(len(s),i+3200)])
