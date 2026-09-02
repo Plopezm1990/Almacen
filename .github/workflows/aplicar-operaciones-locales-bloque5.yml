@@ -1,5 +1,5 @@
 name: Aplicar operaciones locales bloque 5
-# Reintento con render de Devoluciones acotado a su pestaña.
+# Reintento con render compacto de Caja verificado.
 on:
   push:
     branches: [multilocal-fase-3]
