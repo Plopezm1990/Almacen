@@ -1,0 +1,116 @@
+name: Smoke fuente recuperado PR4
+on:
+  push:
+    branches: [inspeccion-build-reproducible]
+    paths:
+      - .github/workflows/smoke-fuente-recuperado-pr4.yml
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compilar con la seguridad actual del PR4
+        run: |
+          git fetch origin preparacion-sin-netlify
+          git show origin/preparacion-sin-netlify:edge-auth-patch.js > edge-auth-patch.js
+          cd source-recovery
+          npm ci --no-audit --no-fund
+          npm run check
+          npm run build
+          node --check dist/fuente.js
+          grep -q 'obtener_contexto_operativo' dist/fuente.js
+          grep -q 'seleccion-neutral-patch.js' dist/fuente.js
+          echo 'SEGURIDAD_INCLUIDA_EN_BUILD=1'
+      - name: Preparar sitio temporal desde PR4
+        run: |
+          mkdir -p /tmp/site-pr4-recuperado
+          git archive origin/preparacion-sin-netlify | tar -x -C /tmp/site-pr4-recuperado
+          cp source-recovery/dist/fuente.js /tmp/site-pr4-recuperado/fuente.js
+          node --check /tmp/site-pr4-recuperado/fuente.js
+          python3 -m http.server 4219 --bind 127.0.0.1 --directory /tmp/site-pr4-recuperado >/tmp/http-recuperado.log 2>&1 &
+          mkdir -p /tmp/nav-recuperado && cd /tmp/nav-recuperado
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+      - name: Probar los 38 módulos desde estado limpio
+        run: |
+          cd /tmp/nav-recuperado
+          cat > nav.cjs <<'NODE'
+          const { chromium } = require('playwright');
+          const URL='http://127.0.0.1:4219/';
+          const TARGETS=[
+            'Panel general','Buscar','Proveedores','Pedidos','Recepción','Albaranes',
+            'Cuentas por pagar','Facturas','Productos','Historial de producto','Inventario ciego',
+            'Saldo de almacén','Mapa de almacén','Traspasos','Venta rápida','Encargos','Clientes',
+            'Devoluciones','Fichas de costo','Producción','Mermas','Etiquetas y catálogo','Resultados',
+            'Reportes y rotación','Libro de IVA','Arqueo de caja','Tesorería','Estacionalidad','Personal',
+            'Registro horario','Cuadrante de turnos','Coste de personal','Control sanitario',
+            'Aceite de freidoras','Auditoría','Respaldos','Errores del sistema','Locales'
+          ];
+          async function prepararPagina(browser){
+            const ctx=await browser.newContext({serviceWorkers:'block',viewport:{width:1440,height:1000}});
+            const page=await ctx.newPage();
+            const pageErrors=[]; const supabase=[];
+            page.on('pageerror',e=>pageErrors.push(e.message));
+            await page.route('https://flqercbgpgmmfaakrwkc.supabase.co/**',r=>{supabase.push(r.request().url());r.abort();});
+            await page.addInitScript(()=>{
+              localStorage.clear();
+              const poner=(k,v)=>localStorage.setItem('almacen:'+k,JSON.stringify(v));
+              poner('locales',[{id:'loc',nombre:'Local Prueba',activo:true}]); poner('localActivoId','loc');
+              poner('productos',[{id:'p1',nombre:'Chocolate prueba',tipo:'materiaPrima',unidad:'kg',stock:10,stockMinimo:2,costo:4,precioVenta:8,ivaPct:10,localId:'loc',activo:true}]);
+              poner('proveedores',[{id:'prov1',nombre:'Proveedor prueba'}]);
+              poner('pedidos',[]); poner('movimientos',[]); poner('conteos',[]); poner('fichasCosto',[]);
+              poner('albaranes',[]); poner('catalogoProv',{}); poner('gastosGenerales',[]); poner('empleados',[]);
+              poner('fichajes',[]); poner('registrosAppcc',[]); poner('puntosControl',[]); poner('clientes',[]);
+              poner('encargos',[]); poner('arqueos',[]); poner('movimientosCaja',[]); poner('devoluciones',[]);
+              poner('turnos',[]); poner('nominas',[]); poner('facturasDirectas',[]); poner('ordenesProduccion',[]);
+              poner('traspasos',[]); poner('auditoria',[]); poner('freidoras',[]); poner('registrosAceite',[]);
+              poner('entrevistas',[]); poner('historialRespaldos',[{id:'hoy',fecha:new Date().toISOString(),automatica:true,motivo:'automatico-diario',data:{}}]);
+              localStorage.setItem('almacen__pendientes','[]');
+            });
+            await page.goto(URL,{waitUntil:'domcontentloaded',timeout:30000});
+            await page.waitForTimeout(900);
+            const b=page.getByText('Trabajar solo en este equipo, sin sincronizar',{exact:false});
+            if(!(await b.count())) throw new Error('No aparece entrada local');
+            await b.first().click(); await page.waitForTimeout(900);
+            if(pageErrors.length) throw new Error('Error inicial: '+pageErrors.join(' | '));
+            const capa=await page.evaluate(()=>({
+              storage:!!(window.storage&&typeof window.storage.get==='function'&&typeof window.storage.set==='function'),
+              nube:window.__nubeActiva
+            }));
+            if(!capa.storage) throw new Error('La capa window.storage no está instalada');
+            if(capa.nube!==false) throw new Error('El modo local no dejó __nubeActiva=false');
+            return {ctx,page,pageErrors,supabase};
+          }
+          async function abrirModulo(page,texto){
+            return page.evaluate((texto)=>{
+              const raiz=document.querySelector('aside') || document.querySelector('nav'); if(!raiz) return false;
+              const norm=v=>(v||'').replace(/\s+/g,' ').trim();
+              const el=[...raiz.querySelectorAll('button,a')].find(e=>norm(e.innerText||e.textContent)===texto);
+              if(!el) return false; el.click(); return true;
+            },texto);
+          }
+          (async()=>{
+            const browser=await chromium.launch({headless:true}); const fallos=[]; let okCount=0;
+            for(const target of TARGETS){ let ctx=null; try{
+              const prep=await prepararPagina(browser); ctx=prep.ctx; const {page,pageErrors,supabase}=prep; const antes=pageErrors.length;
+              if(!(await abrirModulo(page,target))) throw new Error('opción no encontrada en el menú limpio');
+              await page.waitForTimeout(450);
+              if(pageErrors.length>antes) throw new Error('error JavaScript: '+pageErrors.slice(antes).join(' | '));
+              if((await page.locator('#root').innerHTML()).length<500) throw new Error('root quedó vacío');
+              if(supabase.length) throw new Error('contactó Supabase en modo local');
+              okCount++; console.log('MODULO_OK='+target);
+            }catch(e){ fallos.push(target+' :: '+e.message); console.log('MODULO_FALLO='+target+' :: '+e.message); }
+            finally{ if(ctx) await ctx.close(); }}
+            await browser.close();
+            console.log('MODULOS_OBJETIVO='+TARGETS.length);
+            console.log('MODULOS_OK_TOTAL='+okCount);
+            console.log('FALLOS='+JSON.stringify(fallos));
+            if(fallos.length) throw new Error('Fallaron '+fallos.length+' módulos: '+fallos.join(' || '));
+            if(okCount!==TARGETS.length) throw new Error('Cobertura incompleta');
+            console.log('SMOKE_FUENTE_RECUPERADO_PR4_OK=1');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+          node nav.cjs
