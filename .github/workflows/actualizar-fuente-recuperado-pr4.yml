@@ -1,0 +1,83 @@
+name: Actualizar fuente recuperado desde PR4
+on:
+  push:
+    branches: [inspeccion-build-reproducible]
+    paths:
+      - .github/workflows/actualizar-fuente-recuperado-pr4.yml
+permissions:
+  contents: write
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Obtener bundle validado del PR4
+        run: |
+          git fetch origin preparacion-sin-netlify
+          git show origin/preparacion-sin-netlify:fuente.js > /tmp/fuente-pr4.js
+          echo "PR4_BUNDLE_BYTES=$(wc -c < /tmp/fuente-pr4.js)"
+          sha256sum /tmp/fuente-pr4.js
+      - name: Regenerar fuente recuperado con paridad exacta
+        shell: python
+        run: |
+          from pathlib import Path
+          import hashlib
+          s=Path('/tmp/fuente-pr4.js').read_text(encoding='utf-8')
+          lines=s.splitlines()
+          marca=next(i for i,l in enumerate(lines) if l.strip()=='// fuente.jsx')
+          app=lines[marca:]
+          assert app[1].strip()=='var import_react4 = __toESM(require_react());'
+          assert app[2].strip()=='var import_client = __toESM(require_client());'
+          iconos='''ArrowLeftRight Bell Boxes Calculator CalendarClock CalendarDays CalendarRange Camera ChartColumn ChartLine ChevronRight CircleArrowDown CircleArrowUp CircleCheck ClipboardList Clock Cog Coins Download Droplet Ellipsis Eye EyeOff Factory FileText Files LoaderCircle LogIn LogOut Mail MessageCircle Minus Package Pencil Phone Plus Receipt RotateCcwClock ScanBarcode Search ShieldCheck ShoppingBag ShoppingCart Stethoscope Tags Trash2 TrendingUp TriangleAlert Truck Upload UserRound Users Wallet X'''.split()
+          cabecera=[
+            '// FUENTE RECUPERADO DESDE EL BUNDLE DE PROYECTO A.',
+            '// No es el JSX original: es la sección de aplicación conservada por esbuild,',
+            '// con JSX ya transformado a React.createElement y dependencias restauradas.',
+            'import React, * as ReactNS from "react";',
+            'import { createRoot } from "react-dom/client";',
+            'import { createClient } from "@supabase/supabase-js";',
+            'import { jsPDF as E } from "jspdf";',
+            'import autoTable from "jspdf-autotable";',
+            'import * as XLSX from "xlsx";',
+            'import { '+', '.join(iconos)+', Map as Map2 } from "lucide-react";',
+            'const import_react4 = Object.assign({ default: React }, ReactNS);',
+            'const import_client = { createRoot };',
+            'const utils = XLSX.utils;',
+            'const writeFileSync = XLSX.writeFile || XLSX.writeFileSync;',
+          ]
+          cuerpo='\n'.join(app[3:])+'\n'
+          recuperado='\n'.join(cabecera)+'\n'+cuerpo
+          Path('source-recovery/fuente-recuperado.js').write_text(recuperado,encoding='utf-8')
+          cuerpo_rec='\n'.join(recuperado.splitlines()[len(cabecera):])+'\n'
+          assert cuerpo==cuerpo_rec
+          h=hashlib.sha256(cuerpo.encode()).hexdigest()
+          print('MARCA_ORIGEN=',marca+1)
+          print('BYTES_CUERPO=',len(cuerpo.encode()))
+          print('SHA256_CUERPO=',h)
+          print('PARIDAD_EXACTA_PR4=1')
+      - name: Compilar fuente recuperado
+        run: |
+          cd source-recovery
+          npm ci --no-audit --no-fund
+          npm run check
+          npm run build
+          node --check dist/fuente.js
+          grep -q 'function GestionAlmacen' dist/fuente.js
+          grep -q 'function crearLogicaCaja' dist/fuente.js
+          grep -q 'SelectorLocalInformes' dist/fuente.js
+          grep -q 'function ErroresSistema' dist/fuente.js
+          echo "BUILD_RECUPERADO_BYTES=$(wc -c < dist/fuente.js)"
+          echo 'BUILD_PR4_RECUPERADO_OK=1'
+      - name: Guardar solo la fuente actualizada
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add source-recovery/fuente-recuperado.js
+          if git diff --cached --quiet; then
+            echo 'FUENTE_YA_ACTUALIZADA=1'
+            exit 0
+          fi
+          git commit -m 'Actualizar fuente recuperado al bundle validado del PR4 [skip ci]'
+          git push origin HEAD:inspeccion-build-reproducible
