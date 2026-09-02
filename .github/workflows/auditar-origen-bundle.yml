@@ -1,0 +1,28 @@
+name: Auditar origen bundle
+on:
+  push:
+    branches: [auditoria-cache-pr4]
+    paths:
+      - .github/workflows/auditar-origen-bundle.yml
+jobs:
+  auditar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Buscar metadatos del bundle
+        shell: python
+        run: |
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          print('BYTES=',len(s.encode('utf-8')))
+          print('CHARS=',len(s))
+          print('LINES=',s.count('\n')+1)
+          print('INICIO=')
+          print(s[:6000])
+          print('\nFINAL=')
+          print(s[-5000:])
+          for token in ['sourceMappingURL','src/','.jsx','.tsx','esbuild','vite','webpack','node_modules','import_react4','GestionAlmacen','function AppConSesion']:
+              print('TOKEN',repr(token),'COUNT',s.count(token))
+              p=s.find(token)
+              if p>=0:
+                  print(s[max(0,p-700):min(len(s),p+1400)])
