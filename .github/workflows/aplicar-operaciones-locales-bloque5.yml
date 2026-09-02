@@ -34,6 +34,11 @@ jobs:
           reemplazo='''viejo_salida = """    const prod = productos.find((p2) => p2.id === productoId);\n    if (!prod) return false;"""\nnuevo_salida = """    const prod = productos.find((p2) => p2.id === productoId);\n    if (!prod || !productoEsDelLocalActivo(prod)) return false;"""\nb = uno(b, viejo_salida, nuevo_salida, 'Productos: salida protegida')'''
           s=s[:ini]+reemplazo+s[fin:]
 
+          ini=s.index("# Ajuste producto por otro: proteger origen y destino tras ambos lookups.")
+          fin=s.index("s = s[:inicio] + b + s[fin:]", ini)
+          reemplazo='''# Ajuste entre productos: anclas exactas confirmadas en el bundle.\nviejo_ajuste = """    const origen = productos.find((p2) => p2.id === productoOrigenId);\n    const destino = productos.find((p2) => p2.id === productoDestinoId);"""\nnuevo_ajuste = """    const origen = productos.find((p2) => p2.id === productoOrigenId);\n    const destino = productos.find((p2) => p2.id === productoDestinoId);\n    if (origen && destino && (!productoEsDelLocalActivo(origen) || !productoEsDelLocalActivo(destino))) return { ok: false, error: \"Los dos productos deben pertenecer al local activo.\" };"""\nb = uno(b, viejo_ajuste, nuevo_ajuste, 'Productos: ajuste cruzado protegido')\n'''
+          s=s[:ini]+reemplazo+s[fin:]
+
           p.write_text(s,encoding='utf-8')
           print('OK guardas temporales corregidas')
           PY
@@ -44,7 +49,7 @@ jobs:
           node --check fuente.js
           git diff --check
           git diff --stat
-          git diff -- fuente.js | sed -n '1,820p'
+          git diff -- fuente.js | sed -n '1,880p'
       - name: Guardas semánticas mínimas
         run: |
           python3 - <<'PY'
@@ -59,7 +64,8 @@ jobs:
             'productos: productosDelLocalActivo, venderCarrito',
             'Mermas, { productos: productosDelLocalActivo',
             'localId: localActivoId || data.localId || null',
-            'if (!prod || !productoEsDelLocalActivo(prod)) return false;'
+            'if (!prod || !productoEsDelLocalActivo(prod)) return false;',
+            'Los dos productos deben pertenecer al local activo.'
           ]
           for x in requeridos:
               assert x in s, x
