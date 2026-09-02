@@ -1,0 +1,37 @@
+name: Inspeccionar flujos negocio PR4
+on:
+  push:
+    branches: [smoke-pr4-global]
+    paths:
+      - .github/workflows/inspeccionar-flujos-negocio.yml
+jobs:
+  inspeccionar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Obtener fuente del PR4
+        run: |
+          git fetch origin preparacion-sin-netlify
+          git show origin/preparacion-sin-netlify:fuente.js > /tmp/fuente-pr4.js
+      - name: Extraer contexto de flujos
+        shell: python
+        run: |
+          from pathlib import Path
+          s=Path('/tmp/fuente-pr4.js').read_text(encoding='utf-8')
+          tokens=[
+            'Venta rápida','Arqueo de caja','Devoluciones','Productos','Pedidos','Recepción',
+            'Nuevo producto','Nueva venta','Registrar devolución','Nuevo pedido','Abrir caja','Cerrar caja',
+            'crearLogicaCaja','GestionProductos','GestionPedidos','GestionDevoluciones'
+          ]
+          for token in tokens:
+              print('\n'+'='*90)
+              print('TOKEN=',repr(token),'COUNT=',s.count(token))
+              start=0
+              for i in range(min(s.count(token),4)):
+                  p=s.find(token,start)
+                  if p<0: break
+                  print('\n--- OCC',i+1,'POS',p,'---')
+                  print(s[max(0,p-2500):min(len(s),p+4500)])
+                  start=p+len(token)
