@@ -1,5 +1,5 @@
 name: Aplicar operaciones locales bloque 5
-# Reintento con registros exactos de devoluciones verificados.
+# Reintento con caja y movimientos de caja verificados.
 on:
   push:
     branches: [multilocal-fase-3]
@@ -21,7 +21,7 @@ jobs:
           node --check fuente.js
           git diff --check
           git diff --stat
-          git diff -- fuente.js | sed -n '1,1000p'
+          git diff -- fuente.js | sed -n '1,1100p'
       - name: Guardas semánticas mínimas
         run: |
           python3 - <<'PY'
@@ -41,7 +41,9 @@ jobs:
             'La venta incluye productos de otro local.',
             '.filter((m2) => movimientoEsDelLocalActivoVenta(m2));',
             'a2.fecha === fechaVenta && (!localActivoId || a2.localId === localActivoId)',
-            'localId: producto.localId || localActivoId || null'
+            'localId: producto.localId || localActivoId || null',
+            'creadoEn: (/* @__PURE__ */ new Date()).toISOString(), localId: localActivoId || null',
+            'if (!m2 || localActivoId && m2.localId !== localActivoId) return false;'
           ]
           for x in requeridos:
               assert x in s, x
