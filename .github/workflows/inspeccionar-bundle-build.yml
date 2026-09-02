@@ -1,0 +1,30 @@
+name: Inspeccionar bundle build
+on:
+  push:
+    branches: [inspeccion-build-reproducible]
+    paths:
+      - .github/workflows/inspeccionar-bundle-build.yml
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspeccionar fuente.js
+        shell: bash
+        run: |
+          echo '=== TAMANO / LINEAS ==='
+          wc -c -l fuente.js
+          echo '=== PRIMERAS LINEAS ==='
+          head -n 8 fuente.js
+          echo '=== ULTIMAS LINEAS ==='
+          tail -n 8 fuente.js
+          echo '=== SOURCE MAP ==='
+          grep -n -m 5 'sourceMappingURL\|sourcesContent' fuente.js || true
+          echo '=== MARCAS BUNDLER ==='
+          grep -n -m 20 '__commonJS\|__esm\|__toESM\|__require\|vite\|webpack\|rollup\|esbuild' fuente.js || true
+          echo '=== COMENTARIOS DE MODULOS ==='
+          grep -n -m 30 '^// ' fuente.js || true
+          echo '=== IMPORTS/REQUIRES ==='
+          grep -n -m 20 '^import \|require(' fuente.js || true
+          echo '=== SINTAXIS ==='
+          node --check fuente.js
