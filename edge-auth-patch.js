@@ -412,3 +412,16 @@ function modoLocalNoReclamado() {
   script.setAttribute("data-seleccion-neutral", "1");
   (document.head || document.documentElement).appendChild(script);
 })();
+
+// UX de autenticación: recuperación de contraseña y cierre de sesión visible
+// para Propietario. Se carga como un parche separado para mantener esta capa
+// de seguridad pequeña y reversible.
+(function () {
+  "use strict";
+  if (document.querySelector('script[data-auth-ux="1"]')) return;
+  var script = document.createElement("script");
+  script.src = "./auth-ux-patch.js?v=1";
+  script.defer = true;
+  script.setAttribute("data-auth-ux", "1");
+  (document.head || document.documentElement).appendChild(script);
+})();
