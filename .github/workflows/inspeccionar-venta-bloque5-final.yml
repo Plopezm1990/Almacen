@@ -1,4 +1,4 @@
-name: Inspeccionar caja bloque 5 final
+name: Inspeccionar movimientos de caja bloque 5 final
 on:
   push:
     branches: [multilocal-fase-3]
@@ -11,13 +11,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Mostrar funciones exactas de caja
+      - name: Mostrar función exacta de movimientos de caja
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('fuente.js').read_text(encoding='utf-8')
-          i=s.index('function crearLogicaCaja(')
-          j=s.index('function crearLogicaLocales(', i)
-          b=s[i:j]
-          print(b)
+          i=s.index('function crearLogicaMovimientosCaja(')
+          print(s[i:i+7000])
           PY
