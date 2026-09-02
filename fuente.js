@@ -117378,6 +117378,44 @@ function GestionAlmacen() {
     if (!localActivoId) return facturasDirectas;
     return facturasDirectas.filter((f2) => f2.localId === localActivoId);
   }, [facturasDirectas, localActivoId]);
+  const encargosDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return encargos;
+    return encargos.filter((e2) => {
+      if (e2.localId) return e2.localId === localActivoId;
+      const ids = [...new Set((e2.lineas || []).map((ln2) => productos.find((p2) => p2.id === ln2.productoId)?.localId).filter(Boolean))];
+      return ids.length === 1 && ids[0] === localActivoId;
+    });
+  }, [encargos, productos, localActivoId]);
+  const encargosPendientesDelLocalActivo = (0, import_react4.useMemo)(() => encargosDelLocalActivo.filter((e2) => e2.estado !== "Entregado"), [encargosDelLocalActivo]);
+  const encargosUrgentesDelLocalActivo = (0, import_react4.useMemo)(() => {
+    const hoy = todayISO();
+    const manana = new Date();
+    manana.setDate(manana.getDate() + 1);
+    const mananaISO = manana.toISOString().slice(0, 10);
+    return encargosPendientesDelLocalActivo.filter((e2) => e2.fechaEntrega === hoy || e2.fechaEntrega === mananaISO);
+  }, [encargosPendientesDelLocalActivo]);
+  const devolucionesDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return devoluciones;
+    return devoluciones.filter((d2) => {
+      if (d2.localId) return d2.localId === localActivoId;
+      const prod = productos.find((p2) => p2.id === d2.productoId);
+      return !!prod && prod.localId === localActivoId;
+    });
+  }, [devoluciones, productos, localActivoId]);
+  const traspasosDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return traspasos;
+    return traspasos.filter((t2) => {
+      if (t2.localId) return t2.localId === localActivoId;
+      const prod = productos.find((p2) => p2.id === t2.productoId);
+      return !!prod && prod.localId === localActivoId;
+    });
+  }, [traspasos, productos, localActivoId]);
+  const arqueosDelLocalActivo = (0, import_react4.useMemo)(() => localActivoId ? arqueos.filter((a2) => a2.localId === localActivoId) : arqueos, [arqueos, localActivoId]);
+  const movimientosCajaDelLocalActivo = (0, import_react4.useMemo)(() => localActivoId ? movimientosCaja.filter((m2) => m2.localId === localActivoId) : movimientosCaja, [movimientosCaja, localActivoId]);
+  const pisoVentaBajoDelLocalActivo = (0, import_react4.useMemo)(
+    () => productosDelLocalActivo.filter((p2) => p2.tipo !== "elaborado" && Number(p2.stockMinimoPisoVenta) > 0 && (Number(p2.stockPisoVenta) || 0) <= Number(p2.stockMinimoPisoVenta)),
+    [productosDelLocalActivo]
+  );
   const conteosDelLocalActivo = (0, import_react4.useMemo)(() => {
     if (!localActivoId) return conteos;
     return conteos.filter((c2) => {
@@ -117780,14 +117818,14 @@ function GestionAlmacen() {
   const { addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria });
-  const { venderCarrito, venderLocal, anularVenta, venderLineas } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos });
+  const { venderCarrito, venderLocal, anularVenta, venderLineas } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria });
   const { addEncargo, updateEncargo, deleteEncargo, entregarEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, setProductos, setMovimientos, venderLineas, localActivoId });
-  const { traspasarStock } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria });
+  const { traspasarStock } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId });
   const { addArqueo, deleteArqueo } = crearLogicaCaja({ setArqueos, localActivoId });
-  const { registrarMovimientoCaja, eliminarMovimientoCaja } = crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, registrarAuditoria });
+  const { registrarMovimientoCaja, eliminarMovimientoCaja } = crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, registrarAuditoria, localActivoId });
   const { crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo } = crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivoId, registrarAuditoria });
-  const { registrarDevolucionCliente, registrarDevolucionProveedor } = crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, registrarAuditoria, registrarMovimientoCaja });
+  const { registrarDevolucionCliente, registrarDevolucionProveedor } = crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, registrarAuditoria, registrarMovimientoCaja, localActivoId });
   const { activarModoEmpleado, entrarComoEmpleado, salirModoEmpleado, establecerPin } = crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, setModoEmpleado, setUsuarioActivoId });
   const { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, eliminarRegistroAppcc } = crearLogicaAppcc({ setPuntosControl, setRegistrosAppcc });
   const { fichar, addFichajeManual, updateFichaje, eliminarFichaje } = crearLogicaFichaje({ setFichajes });
@@ -118503,11 +118541,11 @@ function GestionAlmacen() {
   ), tab === "historial_producto" && /* @__PURE__ */ import_react4.default.createElement(
     HistorialProducto,
     {
-      productos,
-      movimientos,
-      pedidos,
-      albaranes,
-      traspasos,
+      productos: productosDelLocalActivo,
+      movimientos: movimientosDelLocalActivo,
+      pedidos: pedidosDelLocalActivo,
+      albaranes: albaranesDelLocalActivo,
+      traspasos: traspasosDelLocalActivo,
       proveedorPorId
     }
   ), tab === "aceite" && /* @__PURE__ */ import_react4.default.createElement(
@@ -118601,7 +118639,7 @@ function GestionAlmacen() {
       nominas,
       fichajes
     }
-  ), tab === "produccion" && /* @__PURE__ */ import_react4.default.createElement(Produccion, { fichasCosto, productos, ordenesProduccion, producir, anularProduccion, traspasarStock }), tab === "mermas" && /* @__PURE__ */ import_react4.default.createElement(Mermas, { productos, movimientos, registrarSalida, almacenCongelado }), tab === "etiquetas" && /* @__PURE__ */ import_react4.default.createElement(EtiquetasCatalogo, { productos, fichasCosto, alergenosDeFicha }), tab === "albaranes" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "produccion" && /* @__PURE__ */ import_react4.default.createElement(Produccion, { fichasCosto, productos, ordenesProduccion, producir, anularProduccion, traspasarStock }), tab === "mermas" && /* @__PURE__ */ import_react4.default.createElement(Mermas, { productos: productosDelLocalActivo, movimientos: movimientosDelLocalActivo, registrarSalida, almacenCongelado }), tab === "etiquetas" && /* @__PURE__ */ import_react4.default.createElement(EtiquetasCatalogo, { productos, fichasCosto, alergenosDeFicha }), tab === "albaranes" && /* @__PURE__ */ import_react4.default.createElement(
     Albaranes,
     {
       albaranes: albaranesDelLocalActivo,
@@ -118682,13 +118720,13 @@ function GestionAlmacen() {
       fichajes,
       movimientos
     }
-  ), tab === "venta" && /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos, venderCarrito, anularVenta, movimientos, registrarAuditoria }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito, anularVenta, movimientos: movimientosDelLocalActivo, registrarAuditoria }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
-      encargosPendientes,
-      encargos,
+      encargosPendientes: encargosPendientesDelLocalActivo,
+      encargos: encargosDelLocalActivo,
       clientes,
-      productos,
+      productos: productosDelLocalActivo,
       addEncargo,
       updateEncargo,
       deleteEncargo,
@@ -118708,7 +118746,7 @@ function GestionAlmacen() {
     }
   ), tab === "devoluciones" && /* @__PURE__ */ import_react4.default.createElement(
     Devoluciones,
-    { productos, proveedores, devoluciones, registrarDevolucionCliente, registrarDevolucionProveedor }
+    { productos: productosDelLocalActivo, proveedores, devoluciones: devolucionesDelLocalActivo, registrarDevolucionCliente, registrarDevolucionProveedor }
   ), tab === "facturas" && /* @__PURE__ */ import_react4.default.createElement(
     Facturas,
     {
@@ -118728,7 +118766,7 @@ function GestionAlmacen() {
         setTab("pagos");
       }
     }
-  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { movimientos, arqueos, addArqueo, deleteArqueo, encargos, movimientosCaja, registrarMovimientoCaja, eliminarMovimientoCaja }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
     Turnos,
     {
       empleados,
@@ -118738,7 +118776,7 @@ function GestionAlmacen() {
       deleteTurno,
       copiarSemana
     }
-  ), tab === "mapa" && /* @__PURE__ */ import_react4.default.createElement(MapaAlmacen, { productos, proveedorPorId }), tab === "traspasos" && /* @__PURE__ */ import_react4.default.createElement(Traspasos, { productos, traspasos, traspasarStock, pisoVentaBajo, fichasCosto }), tab === "appcc" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "mapa" && /* @__PURE__ */ import_react4.default.createElement(MapaAlmacen, { productos, proveedorPorId }), tab === "traspasos" && /* @__PURE__ */ import_react4.default.createElement(Traspasos, { productos: productosDelLocalActivo, traspasos: traspasosDelLocalActivo, traspasarStock, pisoVentaBajo: pisoVentaBajoDelLocalActivo, fichasCosto }), tab === "appcc" && /* @__PURE__ */ import_react4.default.createElement(
     Appcc,
     {
       puntosControl,
@@ -118796,7 +118834,7 @@ function GestionAlmacen() {
     { id: "appcc", label: "Control sanitario", icon: ShieldCheck, badge: appccPendientesHoy.length, badgeColor: C2.amber },
     { id: "aceite", label: "Aceite de freidoras", icon: Droplet },
     { id: "venta", label: "Venta r\xE1pida", icon: ShoppingBag },
-    { id: "encargos", label: "Encargos", icon: CalendarDays, badge: encargosUrgentes.length, badgeColor: C2.red },
+    { id: "encargos", label: "Encargos", icon: CalendarDays, badge: encargosUrgentesDelLocalActivo.length, badgeColor: C2.red },
     { id: "clientes", label: "Clientes", icon: UserRound },
     { id: "libroiva", label: "Libro de IVA", icon: Receipt },
     { id: "caja", label: "Arqueo de caja", icon: Wallet },
@@ -119116,7 +119154,7 @@ function crearLogicaGastos({ setGastosGenerales, localActivoId }) {
 }
 function crearLogicaCaja({ setArqueos, localActivoId }) {
   function addArqueo(data) {
-    setArqueos((s2) => [{ id: uid(), fecha: todayISO(), ...data, localId: data.localId || localActivoId || null }, ...s2]);
+    setArqueos((s2) => [{ id: uid(), fecha: todayISO(), ...data, localId: localActivoId || data.localId || null }, ...s2]);
     const diferencia = Number(data.diferencia) || 0;
     if (diferencia !== 0 && typeof window !== "undefined" && window.__nubeActiva) {
       const signo = diferencia > 0 ? "sobran" : "faltan";
@@ -119126,7 +119164,7 @@ function crearLogicaCaja({ setArqueos, localActivoId }) {
         body: JSON.stringify({
           titulo: "Caja descuadrada",
           cuerpo: `Al cerrar caja, ${signo} ${fmt(Math.abs(diferencia))} \u20AC.`,
-          localId: data.localId || localActivoId || null,
+          localId: localActivoId || data.localId || null,
           url: "/"
         })
       }).catch(() => {
@@ -119134,7 +119172,11 @@ function crearLogicaCaja({ setArqueos, localActivoId }) {
     }
   }
   function deleteArqueo(id) {
-    setArqueos((s2) => s2.filter((a2) => a2.id !== id));
+    setArqueos((s2) => {
+      const actual = s2.find((a2) => a2.id === id);
+      if (!actual || localActivoId && actual.localId !== localActivoId) return s2;
+      return s2.filter((a2) => a2.id !== id);
+    });
   }
   return { addArqueo, deleteArqueo };
 }
@@ -119164,12 +119206,12 @@ function crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivo
   }
   return { crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo };
 }
-function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, registrarAuditoria }) {
+function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, registrarAuditoria, localActivoId }) {
   function registrarMovimientoCaja(tipo, importe, motivo, fecha) {
     const importeNum = Number(importe);
     if (!importeNum || importeNum <= 0) return { ok: false, error: "Pon un importe mayor que cero." };
     if (tipo !== "entrada" && tipo !== "salida") return { ok: false, error: "Tipo de movimiento no v\xE1lido." };
-    const nuevo = { id: uid(), fecha: fecha || todayISO(), tipo, importe: importeNum, motivo: (motivo || "").trim(), creadoEn: (/* @__PURE__ */ new Date()).toISOString() };
+    const nuevo = { id: uid(), fecha: fecha || todayISO(), tipo, importe: importeNum, motivo: (motivo || "").trim(), creadoEn: (/* @__PURE__ */ new Date()).toISOString(), localId: localActivoId || null };
     setMovimientosCaja((s2) => [nuevo, ...s2]);
     registrarAuditoria(
       tipo === "entrada" ? "Entrada de caja" : "Retirada de caja",
@@ -119179,18 +119221,25 @@ function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, regis
   }
   function eliminarMovimientoCaja(id) {
     const m2 = movimientosCaja.find((x3) => x3.id === id);
+    if (!m2 || localActivoId && m2.localId !== localActivoId) return false;
     setMovimientosCaja((s2) => s2.filter((x3) => x3.id !== id));
     if (m2) registrarAuditoria("Eliminar movimiento de caja", `${m2.tipo === "entrada" ? "Entrada" : "Retirada"} de \u20AC${fmt(m2.importe)} \xB7 ${m2.fecha}`);
   }
   return { registrarMovimientoCaja, eliminarMovimientoCaja };
 }
-function crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, registrarAuditoria, registrarMovimientoCaja }) {
+function crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, registrarAuditoria, registrarMovimientoCaja, localActivoId }) {
+  function productoEsDelLocalActivoDevolucion(prod) {
+    if (!prod) return false;
+    if (!localActivoId) return true;
+    return !prod.localId || prod.localId === localActivoId;
+  }
   const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos });
   function registrarDevolucionCliente({ productoId, cantidad, motivo, reembolso, ventaId, fecha }) {
     const cant = Number(cantidad);
     if (!productoId) return { ok: false, error: "Elige un producto." };
     if (!cant || cant <= 0) return { ok: false, error: "Pon una cantidad mayor que cero." };
     const producto = productos.find((p2) => p2.id === productoId);
+    if (!productoEsDelLocalActivoDevolucion(producto)) return false;
     if (!producto) return { ok: false, error: "Producto no encontrado." };
     const fechaReal = fecha || todayISO();
     const r = aplicarMovimientoStock({
@@ -119212,6 +119261,7 @@ function crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovi
     }
     const registro = {
       id: uid(),
+      localId: producto.localId || localActivoId || null,
       tipo: "cliente",
       fecha: fechaReal,
       productoId,
@@ -119230,6 +119280,7 @@ function crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovi
     if (!productoId) return { ok: false, error: "Elige un producto." };
     if (!cant || cant <= 0) return { ok: false, error: "Pon una cantidad mayor que cero." };
     const producto = productos.find((p2) => p2.id === productoId);
+    if (!productoEsDelLocalActivoDevolucion(producto)) return false;
     if (!producto) return { ok: false, error: "Producto no encontrado." };
     const fechaReal = fecha || todayISO();
     const r = aplicarMovimientoStock({
@@ -119247,6 +119298,7 @@ function crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovi
     if (!r.ok) return { ok: false, error: r.error || "No se ha podido aplicar al stock." };
     const registro = {
       id: uid(),
+      localId: producto.localId || localActivoId || null,
       tipo: "proveedor",
       fecha: fechaReal,
       productoId,
@@ -119477,6 +119529,11 @@ function crearLogicaReconciliacion({ productos, setProductos, movimientos, setMo
   return { diagnosticarStock, corregirProducto, movimientosParaReconciliar };
 }
 function crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId }) {
+  function productoEsDelLocalActivo(prod) {
+    if (!prod) return false;
+    if (!localActivoId) return true;
+    return !prod.localId || prod.localId === localActivoId;
+  }
   const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
   function ajustarProductoPorOtro({ productoOrigenId, productoDestinoId, cantidadOrigen, cantidadDestino, motivo }) {
     if (almacenCongelado) return { ok: false, error: "El almac\xE9n est\xE1 congelado por un conteo en curso." };
@@ -119484,6 +119541,7 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
     if (productoOrigenId === productoDestinoId) return { ok: false, error: "Elige dos productos distintos." };
     const origen = productos.find((p2) => p2.id === productoOrigenId);
     const destino = productos.find((p2) => p2.id === productoDestinoId);
+    if (origen && destino && (!productoEsDelLocalActivo(origen) || !productoEsDelLocalActivo(destino))) return { ok: false, error: "Los dos productos deben pertenecer al local activo." };
     if (!origen || !destino) return { ok: false, error: "Alguno de los productos ya no existe." };
     const cantSale = Number(cantidadOrigen) || 0;
     const cantEntra = Number(cantidadDestino) || 0;
@@ -119533,7 +119591,7 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
     return { ok: true, costoSale, costoEntra, diferencia };
   }
   function addProducto(data) {
-    const nuevo = { id: uid(), stock: Number(data.stock) || 0, localId: localActivoId || null, ...data };
+    const nuevo = { id: uid(), stock: Number(data.stock) || 0, ...data, localId: localActivoId || data.localId || null };
     setProductos((s2) => [...s2, nuevo]);
     const stockInicial = Number(data.stock) || 0;
     if (stockInicial > 0) {
@@ -119562,6 +119620,7 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
   }
   function updateProducto(id, data) {
     const anterior = productos.find((p2) => p2.id === id);
+    if (!productoEsDelLocalActivo(anterior)) return false;
     const { stock: stockNuevoForm, ...restoDatos } = data;
     if (Object.keys(restoDatos).length > 0) {
       setProductos((s2) => s2.map((p2) => p2.id === id ? { ...p2, ...restoDatos } : p2));
@@ -119589,11 +119648,13 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
   }
   function deleteProducto(id) {
     const p2 = productos.find((x3) => x3.id === id);
+    if (!productoEsDelLocalActivo(p2)) return false;
     registrarAuditoria("Eliminar producto (borrado l\xF3gico)", p2 ? p2.nombre : id);
     setProductos((s2) => s2.map((pr) => pr.id === id ? { ...pr, activo: false, eliminadoEn: todayISO() } : pr));
   }
   function reactivarProducto(id) {
     const p2 = productos.find((x3) => x3.id === id);
+    if (!productoEsDelLocalActivo(p2)) return false;
     registrarAuditoria("Reactivar producto", p2 ? p2.nombre : id);
     setProductos((s2) => s2.map((pr) => pr.id === id ? { ...pr, activo: true, eliminadoEn: null } : pr));
   }
@@ -119603,7 +119664,7 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
     if (!cant || cant <= 0) return false;
     const { motivo = "Venta", precioVentaUnitario = null, referencia = "", medioPago = "Efectivo" } = opciones;
     const prod = productos.find((p2) => p2.id === productoId);
-    if (!prod) return false;
+    if (!prod || !productoEsDelLocalActivo(prod)) return false;
     const esVenta2 = motivo === "Venta";
     const esMermaMotivo = MOTIVOS_MERMA.includes(motivo);
     const tipo = esVenta2 ? "VENTA" : esMermaMotivo ? "MERMA" : "OTRO";
@@ -120176,7 +120237,19 @@ function sincronizarCobroSe\u00F1al(cobros, se\u00F1al, se\u00F1alMedioPago, fec
   ];
 }
 function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, setProductos, setMovimientos, venderLineas, localActivoId }) {
+  function localDeEncargo(e2) {
+    if (!e2) return null;
+    if (e2.localId) return e2.localId;
+    const ids = [...new Set((e2.lineas || []).map((ln2) => productos.find((p2) => p2.id === ln2.productoId)?.localId).filter(Boolean))];
+    return ids.length === 1 ? ids[0] : null;
+  }
+  function encargoEsDelLocalActivo(e2) {
+    if (!e2) return false;
+    if (!localActivoId) return true;
+    return localDeEncargo(e2) === localActivoId;
+  }
   function addEncargo(data) {
+    if (localActivoId && (data.lineas || []).some((ln2) => { const p2 = productos.find((x3) => x3.id === ln2.productoId); return p2 && p2.localId && p2.localId !== localActivoId; })) return false;
     const fecha = todayISO();
     const cobros = sincronizarCobroSe\u00F1al([], data.se\u00F1al, data.se\u00F1alMedioPago, fecha);
     const idsLocalesLineas = [...new Set((data.lineas || []).map((ln2) => productos.find((p2) => p2.id === ln2.productoId)?.localId).filter(Boolean))];
@@ -120184,6 +120257,8 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
     setEncargos((s2) => [{ id: uid(), estado: "Pendiente", fechaCreacion: fecha, cobros, ...data, localId }, ...s2]);
   }
   function updateEncargo(id, data) {
+    const actual = encargos.find((e2) => e2.id === id);
+    if (!encargoEsDelLocalActivo(actual)) return false;
     setEncargos(
       (s2) => s2.map((e) => {
         if (e.id !== id) return e;
@@ -120196,11 +120271,15 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
     );
   }
   function deleteEncargo(id) {
+    const actual = encargos.find((e2) => e2.id === id);
+    if (!encargoEsDelLocalActivo(actual)) return false;
     const e = encargos.find((x3) => x3.id === id);
     registrarAuditoria("Eliminar encargo", e ? `${e.numero || "s/n"}` : id);
     setEncargos((s2) => s2.filter((e2) => e2.id !== id));
   }
   function entregarEncargo(encargo, medioPago = "Efectivo") {
+    const actual = encargos.find((e2) => e2.id === encargo);
+    if (!encargoEsDelLocalActivo(actual)) return false;
     const lineasParaVender = (encargo.lineas || []).map((ln2) => ({
       productoId: ln2.productoId,
       cantidad: ln2.cantidad,
@@ -120223,9 +120302,25 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
   }
   return { addEncargo, updateEncargo, deleteEncargo, entregarEncargo };
 }
-function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos }) {
+function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId }) {
+  function productoEsDelLocalActivoVenta(prod) {
+    if (!prod) return false;
+    if (!localActivoId) return true;
+    return !prod.localId || prod.localId === localActivoId;
+  }
+  function movimientoEsDelLocalActivoVenta(m2) {
+    if (!localActivoId) return true;
+    if (m2.localId) return m2.localId === localActivoId;
+    const prod = productos.find((p2) => p2.id === m2.productoId);
+    return !!prod && (!prod.localId || prod.localId === localActivoId);
+  }
   const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos });
   function venderLineas(lineas, opciones = {}) {
+    const incluyeOtroLocal = (lineas || []).some((ln2) => {
+      const p2 = productos.find((x3) => x3.id === ln2.productoId);
+      return !!p2 && !productoEsDelLocalActivoVenta(p2);
+    });
+    if (incluyeOtroLocal) return { ok: false, error: "La venta incluye productos de otro local." };
     const {
       tipo = "VENTA",
       medioPago = "Efectivo",
@@ -120293,6 +120388,11 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     return venderLineas(lineas, { tipo: "VENTA", medioPago, detallePago, origen: "venderLocal", motivoBase: "Venta r\xE1pida" });
   }
   async function venderCarrito(lineas, medioPago = "Efectivo", detallePago = null) {
+    const incluyeOtroLocal = (lineas || []).some((ln2) => {
+      const p2 = productos.find((x3) => x3.id === ln2.productoId);
+      return !!p2 && !productoEsDelLocalActivoVenta(p2);
+    });
+    if (incluyeOtroLocal) return { ok: false, error: "La venta incluye productos de otro local." };
     const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
     if (!hayConexion) {
       return venderLocal(lineas, medioPago, detallePago);
@@ -120313,7 +120413,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       const ivaAplicado = prod ? ivaDe(prod) : 0;
       const datosLinea = {
         productoId: ln2.productoId,
-        localId: prod ? prod.localId || null : null,
+        localId: prod ? prod.localId || localActivoId || null : localActivoId || null,
         cantidad: cant,
         motivo: "Venta",
         costoUnitario,
@@ -120385,7 +120485,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   }
   function anularVenta(ventaId, movimientosActuales, motivo = "") {
     if (!ventaId) return { ok: false, error: "Esa venta no tiene identificador y no se puede anular." };
-    const lineas = (movimientosActuales || []).filter((m2) => m2.ventaId === ventaId || m2.operationId === ventaId).filter((m2) => esVenta(m2) || esSalida(m2));
+    const lineas = (movimientosActuales || []).filter((m2) => m2.ventaId === ventaId || m2.operationId === ventaId).filter((m2) => esVenta(m2) || esSalida(m2)).filter((m2) => movimientoEsDelLocalActivoVenta(m2));
     if (lineas.length === 0) {
       return { ok: false, error: "No se han encontrado las l\xEDneas de esa venta." };
     }
@@ -120424,7 +120524,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       if (r.ok) aplicadas++;
     });
     const fechaVenta = lineas[0]?.fecha;
-    const arqueoDelDia = fechaVenta && (arqueos || []).find((a2) => a2.fecha === fechaVenta);
+    const arqueoDelDia = fechaVenta && (arqueos || []).find((a2) => a2.fecha === fechaVenta && (!localActivoId || a2.localId === localActivoId));
     if (arqueoDelDia && typeof window !== "undefined" && window.__nubeActiva) {
       fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
         method: "POST",
@@ -120442,12 +120542,18 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   }
   return { venderCarrito, venderLocal, anularVenta, venderLineas };
 }
-function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria }) {
+function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId }) {
+  function productoEsDelLocalActivoTraspaso(prod) {
+    if (!prod) return false;
+    if (!localActivoId) return true;
+    return !prod.localId || prod.localId === localActivoId;
+  }
   const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
   function traspasarStock(productoId, cantidad, direccion) {
     const cant = Number(cantidad) || 0;
     if (cant <= 0) return { ok: false, error: "Indica una cantidad mayor que cero." };
     const prod = productos.find((p2) => p2.id === productoId);
+    if (!productoEsDelLocalActivoTraspaso(prod)) return false;
     if (!prod) return { ok: false, error: "Producto no encontrado." };
     const enPiso = Number(prod.stockPisoVenta) || 0;
     const total = Number(prod.stock) || 0;
@@ -120473,7 +120579,7 @@ function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimie
     });
     if (!r.ok) return r;
     setTraspasos((s2) => [
-      { id: uid(), productoId, nombre: prod.nombre, cantidad: cant, direccion, fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), movimientoId },
+      { id: uid(), localId: localActivoId || p2.localId || null, productoId, nombre: prod.nombre, cantidad: cant, direccion, fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), movimientoId },
       ...s2
     ]);
     return { ok: true };
