@@ -54,6 +54,11 @@ jobs:
             await b.first().click(); await page.waitForTimeout(1800);
             if(pageErrors.length) throw new Error('Error inicial: '+pageErrors.join(' | '));
 
+            async function raizNav(){
+              const aside=page.locator('aside').first();
+              if(await aside.count()) return aside;
+              return page.locator('nav').first();
+            }
             async function textosNav(){
               return page.evaluate(()=>{
                 const raiz=document.querySelector('aside') || document.querySelector('nav');
@@ -63,29 +68,34 @@ jobs:
                   .filter(Boolean);
               });
             }
-            const excluir=/cerrar sesi[oó]n|salir|notificaciones|activar notificaciones|desactivar notificaciones/i;
-            const visitados=new Set();
-            for(let ronda=0;ronda<4;ronda++){
+
+            const excluir=/cerrar sesi[oó]n|salir|notificaciones|activar notificaciones|desactivar notificaciones|borrar|eliminar|restaurar|importar|exportar/i;
+            const detectados=new Set(); const clicados=new Set(); const omitidos=new Set();
+            for(let ronda=0;ronda<5;ronda++){
               const textos=[...new Set(await textosNav())].filter(t=>!excluir.test(t));
-              let nuevo=false;
+              let aparecioNuevo=false;
               for(const texto of textos){
-                if(visitados.has(texto)) continue;
-                visitados.add(texto); nuevo=true;
-                const raiz=page.locator('aside, nav').first();
+                if(detectados.has(texto)) continue;
+                detectados.add(texto); aparecioNuevo=true;
+                const raiz=await raizNav();
                 const candidato=raiz.getByText(texto,{exact:true}).first();
-                if(!(await candidato.count())) continue;
+                if(!(await candidato.count())) { omitidos.add(texto); continue; }
                 const antes=pageErrors.length;
-                try { await candidato.click({timeout:2500}); } catch(e) { console.log('OMITIDO_CLICK='+texto+' :: '+e.message.split('\n')[0]); continue; }
-                await page.waitForTimeout(220);
+                try { await candidato.click({timeout:3000}); }
+                catch(e) { omitidos.add(texto); console.log('OMITIDO_CLICK='+texto); continue; }
+                await page.waitForTimeout(250);
                 if(pageErrors.length>antes) throw new Error('Módulo '+texto+' produjo: '+pageErrors.slice(antes).join(' | '));
-                const rootLen=(await page.locator('#root').innerHTML()).length;
-                if(rootLen<500) throw new Error('Módulo '+texto+' dejó root vacío');
+                if((await page.locator('#root').innerHTML()).length<500) throw new Error('Módulo '+texto+' dejó root vacío');
+                clicados.add(texto);
                 console.log('MODULO_OK='+texto);
               }
-              if(!nuevo) break;
+              if(!aparecioNuevo) break;
             }
             if(supabase.length) throw new Error('El modo local contactó Supabase: '+supabase.join(' | '));
-            console.log('MODULOS_VISITADOS='+visitados.size);
+            console.log('ETIQUETAS_DETECTADAS='+detectados.size);
+            console.log('CLICS_EFECTIVOS='+clicados.size);
+            console.log('OMITIDOS='+JSON.stringify([...omitidos]));
+            if(clicados.size<20) throw new Error('Cobertura insuficiente: solo '+clicados.size+' clics efectivos de '+detectados.size+' etiquetas');
             console.log('SMOKE_NAVEGACION_OK=1');
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
