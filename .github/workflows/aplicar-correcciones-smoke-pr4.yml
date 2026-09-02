@@ -62,17 +62,14 @@ jobs:
               return { key: key, value: value, shared: false };
             }''', 1)
 
-          viejo = '''if (!contexto || contexto.rol !== "Propietario") {
-                return { key: key, shared: false };
-              }
-              return deleteOriginal(key, shared);'''
-          if s.count(viejo) != 1:
-            raise SystemExit(f'Guard borrado inesperado: {s.count(viejo)}')
-          s = s.replace(viejo, '''if (!contexto || contexto.rol !== "Propietario") {
-                if (!contexto && modoLocalNoReclamado()) return deleteOriginal(key, shared);
-                return { key: key, shared: false };
-              }
-              return deleteOriginal(key, shared);''', 1)
+          marcador_borrado = '      if (!contexto || contexto.rol !== "Propietario") {'
+          if s.count(marcador_borrado) != 1:
+            raise SystemExit(f'Guard borrado inesperado: {s.count(marcador_borrado)}')
+          s = s.replace(
+            marcador_borrado,
+            marcador_borrado + '\n        if (!contexto && modoLocalNoReclamado()) return deleteOriginal(key, shared);',
+            1
+          )
           edge.write_text(s, encoding='utf-8')
 
           fuente = Path('fuente.js')
