@@ -15,25 +15,22 @@ jobs:
         run: |
           git fetch origin preparacion-sin-netlify
           git show origin/preparacion-sin-netlify:fuente.js > /tmp/fuente-pr4.js
-      - name: Extraer contexto exacto de venta devoluciones y caja
+      - name: Extraer solo controles necesarios
         shell: python
         run: |
           from pathlib import Path
           s=Path('/tmp/fuente-pr4.js').read_text(encoding='utf-8')
           tokens=[
-            'function VentaRapida','function Venta','venderCarrito','venderLocal','Añadir al carrito','Cobrar','Finalizar venta','Confirmar venta','Efectivo','Tarjeta','Mixto',
-            'function Devoluciones','registrarDevolucionCliente','Devolución de cliente','Devolución a proveedor','Reembolso','Motivo de la devolución',
-            'function BloqueEntradasSalidas','Entrada de caja','Retirada de caja','Registrar entrada','Registrar salida','Añadir entrada','Añadir retirada'
+            'carritoValido && efectivoSuficiente',
+            'function Devoluciones',
+            'registrarDevolucionCliente',
+            'Devolución de cliente',
+            'Motivo de la devolución',
+            'reembolso',
           ]
           for token in tokens:
-              posiciones=[]
-              start=0
-              while len(posiciones)<3:
-                  p=s.find(token,start)
-                  if p<0: break
-                  posiciones.append(p); start=p+len(token)
-              print('\n'+'='*100)
-              print('TOKEN=',repr(token),'COUNT=',s.count(token),'POS=',posiciones)
-              for i,p in enumerate(posiciones,1):
-                  print('\n--- OCC',i,'POS',p,'---')
-                  print(s[max(0,p-5000):min(len(s),p+9000)])
+              p=s.find(token)
+              print('\n'+'='*90)
+              print('TOKEN=',repr(token),'COUNT=',s.count(token),'POS=',p)
+              if p>=0:
+                  print(s[max(0,p-2200):min(len(s),p+4200)])
