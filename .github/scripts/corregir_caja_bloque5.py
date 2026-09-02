@@ -51,5 +51,11 @@ nuevo_hist = "('      traspasos,\\n','      traspasos: traspasosDelLocalActivo,\
 assert s.count(viejo_hist) == 1, f'Historial traspasos: ancla temporal esperada 1, encontrada {s.count(viejo_hist)}'
 s = s.replace(viejo_hist, nuevo_hist, 1)
 
+# Devoluciones: acotar la sustitución al render de la pestaña, no a la firma del componente.
+viejo_dev = "s=uno(s,'{ productos, proveedores, devoluciones, registrarDevolucionCliente, registrarDevolucionProveedor }','{ productos: productosDelLocalActivo, proveedores, devoluciones: devolucionesDelLocalActivo, registrarDevolucionCliente, registrarDevolucionProveedor }','Devoluciones render local')"
+nuevo_dev = "ini=s.index('tab === \\\"devoluciones\\\"'); fin=s.index('tab === \\\"facturas\\\"',ini); b=s[ini:fin]\nb=uno(b,'{ productos, proveedores, devoluciones, registrarDevolucionCliente, registrarDevolucionProveedor }','{ productos: productosDelLocalActivo, proveedores, devoluciones: devolucionesDelLocalActivo, registrarDevolucionCliente, registrarDevolucionProveedor }','Devoluciones render local')\ns=s[:ini]+b+s[fin:]"
+assert s.count(viejo_dev) == 1, f'Devoluciones render temporal: esperado 1, encontrado {s.count(viejo_dev)}'
+s = s.replace(viejo_dev, nuevo_dev, 1)
+
 p.write_text(s, encoding='utf-8')
 print('CORRECCION_CAJA_BLOQUE5_OK')
