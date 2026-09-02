@@ -1,0 +1,71 @@
+name: Diagnostico PR4 modo local
+on:
+  push:
+    branches: [smoke-pr4-global]
+    paths:
+      - .github/workflows/diagnostico-pr4-local.yml
+jobs:
+  diagnostico:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Servir app
+        run: |
+          python3 -m http.server 4215 --bind 127.0.0.1 >/tmp/http.log 2>&1 &
+          sleep 2
+      - name: Instalar Chromium
+        run: |
+          mkdir -p /tmp/diag && cd /tmp/diag
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+      - name: Comparar localStorage y window.storage
+        run: |
+          cd /tmp/diag
+          cat > diag.cjs <<'NODE'
+          const { chromium } = require('playwright');
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const ctx = await browser.newContext({ serviceWorkers: 'block' });
+            const page = await ctx.newPage();
+            await page.addInitScript(() => {
+              localStorage.clear();
+              localStorage.setItem('almacen:locales', JSON.stringify([
+                {id:'loc-norte',nombre:'Local Norte',activo:true},
+                {id:'loc-sur',nombre:'Local Sur',activo:true}
+              ]));
+              localStorage.setItem('almacen:localActivoId', JSON.stringify('loc-norte'));
+              localStorage.setItem('almacen:productos', JSON.stringify([
+                {id:'p1',nombre:'Producto Norte',stock:1,costo:1,localId:'loc-norte'}
+              ]));
+              localStorage.setItem('almacen__pendientes','[]');
+            });
+            await page.route('https://flqercbgpgmmfaakrwkc.supabase.co/**', r => r.abort());
+            await page.goto('http://127.0.0.1:4215/', {waitUntil:'domcontentloaded'});
+            await page.waitForTimeout(1800);
+            await page.getByText('Trabajar solo en este equipo, sin sincronizar', {exact:false}).first().click();
+            await page.waitForTimeout(1800);
+            const d = await page.evaluate(async () => {
+              let storageLocales = null, storageProductos = null, errorLocales = null;
+              try { storageLocales = await window.storage.get('locales'); } catch(e) { errorLocales = e.message; }
+              try { storageProductos = await window.storage.get('productos'); } catch(e) { storageProductos = {error:e.message}; }
+              return {
+                nubeActiva: window.__nubeActiva,
+                flags: {
+                  contexto: !!window.__contextoRolSeguroInstalado,
+                  guard: !!window.__guardPerfilActivoInstalado
+                },
+                rawLocales: localStorage.getItem('almacen:locales'),
+                rawProductos: localStorage.getItem('almacen:productos'),
+                storageLocales,
+                storageProductos,
+                errorLocales,
+                pendientes: localStorage.getItem('almacen__pendientes'),
+                texto: document.body.innerText.replace(/\s+/g,' ').slice(0,2000)
+              };
+            });
+            console.log('DIAGNOSTICO='+JSON.stringify(d));
+            await browser.close();
+          })().catch(e => { console.error(e); process.exit(1); });
+          NODE
+          node diag.cjs
