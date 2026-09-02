@@ -1,0 +1,136 @@
+name: Validar barrera local por roles
+on:
+  push:
+    branches: [preparacion-sin-netlify]
+    paths:
+      - .github/workflows/validar-barrera-local-roles.yml
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: preparacion-sin-netlify
+      - name: Validar sintaxis
+        run: node --check edge-auth-patch.js
+      - name: Probar permisos simulados
+        shell: node {0}
+        run: |
+          const fs = require('fs');
+          const vm = require('vm');
+          const codigo = fs.readFileSync('edge-auth-patch.js','utf8');
+
+          function crearContexto(rol) {
+            const datos = {
+              productos: [{ id:'p1', nombre:'Producto' }],
+              clientes: [{ id:'c1', nombre:'Cliente privado' }],
+              empleados: [{ id:'e1', nombre:'Empleado privado' }, { id:'e2', nombre:'Otro' }],
+              proveedores: [{ id:'prov1', nombre:'Proveedor privado', email:'x@y.es' }],
+              fichasCosto: [{ id:'f1', nombre:'Ficha privada', margenObjetivo:40 }],
+              encargos: [{ id:'enc1', cliente:'Privado', cobros:[{ fecha:'2026-09-01', importe:10 }] }],
+              arqueos: [{ id:'a1' }],
+              pedidos: [{ id:'ped1' }],
+              gastosGenerales: [{ id:'g1', importe:999 }],
+              nominas: [{ id:'n1', bruto:999 }],
+              auditoria: [{ id:'au1', detalle:'privado' }],
+              movimientos: [{ id:'m1' }],
+              fichajes: [{ id:'fi1', empleadoId:'e1' }, { id:'fi2', empleadoId:'e2' }]
+            };
+            const safe = {
+              rol,
+              empleado: rol === 'Encargado' || rol === 'Propietario' ? null : { id:'e1', nombre:'Empleado Uno' },
+              empleadosFichaje: rol === 'Encargado' ? [{id:'e1',nombre:'Uno'},{id:'e2',nombre:'Dos'}] : [{id:'e1',nombre:'Empleado Uno'}],
+              proveedores: [{id:'prov1',nombre:'Proveedor seguro'}],
+              fichasProduccion: [{id:'f1',nombre:'Ficha segura'}],
+              cobrosEncargos: [{fecha:'2026-09-01',importe:10,medioPago:'Efectivo'}]
+            };
+            const llamadas = { set:[], del:[] };
+            const local = new Map();
+            const storage = {
+              async get(key) { return { key, value: datos[key] === undefined ? '' : JSON.stringify(datos[key]), shared:false }; },
+              async set(key, value) { llamadas.set.push(key); return {key,value,shared:false}; },
+              async delete(key) { llamadas.del.push(key); return {key,shared:false}; }
+            };
+            const supabase = {
+              auth: { async getSession(){ return {data:{session:{user:{id:'u1'},access_token:'tok'}}}; }, async signOut(){ return {}; } },
+              async rpc(){ return {data:safe,error:null}; },
+              from(){ return { select(){ return this; }, eq(){ return this; }, async maybeSingle(){ return {data:{activo:true},error:null}; } }; }
+            };
+            const sandbox = {
+              console,
+              Response,
+              Headers,
+              fetch: async () => new Response('{}',{status:200}),
+              localStorage: { getItem(k){return local.get(k)||null;}, setItem(k,v){local.set(k,String(v));}, removeItem(k){local.delete(k);} },
+              setTimeout,
+              clearTimeout,
+              Promise,
+              JSON,
+              Date,
+              Object,
+              Array,
+              String,
+              Map,
+              window: null,
+              document: { querySelector(){ return {}; }, addEventListener(){}, visibilityState:'visible' }
+            };
+            sandbox.window = {
+              fetch: sandbox.fetch,
+              storage,
+              __nubeActiva:true,
+              getSupabaseClient: async () => supabase,
+              setInterval(){ return 1; },
+              addEventListener(){},
+              location:{ reload(){} }
+            };
+            vm.createContext(sandbox);
+            vm.runInContext(codigo, sandbox);
+            return { sandbox, llamadas };
+          }
+
+          function valor(res){ return res && res.value ? JSON.parse(res.value) : null; }
+          function assert(cond,msg){ if(!cond) throw new Error(msg); }
+
+          async function probar(rol) {
+            const {sandbox,llamadas} = crearContexto(rol);
+            const st = sandbox.window.storage;
+            if (rol === 'Propietario') {
+              assert(valor(await st.get('clientes'))[0].nombre === 'Cliente privado','Propietario debe ver clientes');
+              await st.delete('productos');
+              assert(llamadas.del.includes('productos'),'Propietario debe poder borrar clave controlada');
+              return;
+            }
+            assert((await st.get('nominas')).value === '','Empleado no debe recibir nominas locales');
+            assert((await st.get('auditoria')).value === '','Empleado no debe leer auditoria local');
+            await st.set('auditoria', JSON.stringify([{id:'nuevo'}]));
+            assert(llamadas.set.includes('auditoria'),'Empleado debe poder registrar auditoria');
+            await st.delete('productos');
+            assert(!llamadas.del.includes('productos'),'Empleado no debe borrar colecciones completas');
+
+            if (rol === 'Cajero/a') {
+              assert(valor(await st.get('arqueos')).length === 1,'Cajero debe leer arqueos');
+              assert(valor(await st.get('clientes')) === null,'Cajero no debe leer clientes');
+              assert(valor(await st.get('encargos'))[0].id === 'contexto-caja','Cajero recibe solo cobros de encargos');
+            }
+            if (rol === 'Churrero/a') {
+              assert(valor(await st.get('pedidos')).length === 1,'Churrero debe leer pedidos');
+              assert(valor(await st.get('fichasCosto'))[0].nombre === 'Ficha segura','Churrero recibe ficha reducida');
+              assert((await st.get('gastosGenerales')).value === '','Churrero no debe leer gastos');
+            }
+            if (rol === 'Encargado') {
+              assert(valor(await st.get('proveedores'))[0].email === 'x@y.es','Encargado conserva proveedores completos');
+              assert(valor(await st.get('empleados')).length === 2,'Encargado recibe roster mínimo de empleados');
+            }
+            if (rol === 'Camarero/a') {
+              const fichajes = valor(await st.get('fichajes'));
+              assert(fichajes.length === 1 && fichajes[0].empleadoId === 'e1','Camarero solo ve sus fichajes');
+              assert((await st.get('clientes')).value === '','Camarero no debe leer clientes');
+              await st.set('productos', JSON.stringify([]));
+              assert(llamadas.set.includes('productos'),'Camarero mantiene escritura actualmente permitida de productos');
+            }
+          }
+
+          (async () => {
+            for (const rol of ['Propietario','Encargado','Cajero/a','Churrero/a','Camarero/a']) await probar(rol);
+            console.log('OK: matriz local por rol validada');
+          })().catch(e => { console.error(e); process.exit(1); });
