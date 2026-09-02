@@ -9,68 +9,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Compilar recuperado
-        shell: bash
+      - name: Mostrar imports y cabeceras del build original
+        shell: python
         run: |
-          cd source-recovery
-          npm ci --no-audit --no-fund
-          npm run build
-      - name: Preparar sitios
-        shell: bash
-        run: |
-          mkdir -p /tmp/o /tmp/r
-          cp -a . /tmp/o/repo
-          cp -a . /tmp/r/repo
-          cp source-recovery/dist/fuente.js /tmp/r/repo/fuente.js
-          cd /tmp/o/repo && python3 -m http.server 4201 --bind 127.0.0.1 >/tmp/o.log 2>&1 &
-          cd /tmp/r/repo && python3 -m http.server 4202 --bind 127.0.0.1 >/tmp/r.log 2>&1 &
-          sleep 2
-      - name: Instalar navegador
-        shell: bash
-        run: |
-          mkdir -p /tmp/t && cd /tmp/t
-          npm init -y >/dev/null
-          npm install --no-audit --no-fund playwright@1.55.0
-          npx playwright install chromium
-      - name: Registrar scripts y peticiones
-        shell: bash
-        run: |
-          cd /tmp/t
-          cat > test.cjs <<'NODE'
-          const {chromium}=require('playwright');
-          async function uno(browser,url,nombre){
-            const c=await browser.newContext({serviceWorkers:'block'});
-            const p=await c.newPage();
-            const requests=[];
-            p.on('request',r=>{
-              const u=r.url();
-              if (r.resourceType()==='script' || /\.js(?:[?#]|$)/i.test(u)) requests.push({type:r.resourceType(),url:u});
-            });
-            await p.route('https://flqercbgpgmmfaakrwkc.supabase.co/**',r=>r.abort());
-            await p.goto(url,{waitUntil:'domcontentloaded'});
-            await p.waitForTimeout(1800);
-            const x=await p.evaluate(()=>({
-              scripts:[...document.scripts].map(s=>({src:s.src||'',type:s.type||'',defer:!!s.defer,attrs:[...s.attributes].reduce((o,a)=>(o[a.name]=a.value,o),{})})),
-              resources:performance.getEntriesByType('resource').map(e=>e.name).filter(x=>/\.js(?:[?#]|$)/i.test(x)),
-              contextoRolSeguro:!!window.__contextoRolSeguroInstalado,
-              guardPerfilActivo:!!window.__guardPerfilActivoInstalado,
-              seleccionNeutral:!!document.querySelector('script[data-seleccion-neutral="1"]'),
-              storageHead:String(window.storage?.get).slice(0,220)
-            }));
-            console.log('\n=== '+nombre+' ===');
-            console.log('REQUESTS='+JSON.stringify(requests,null,2));
-            console.log('SCRIPTS='+JSON.stringify(x.scripts,null,2));
-            console.log('RESOURCES='+JSON.stringify(x.resources,null,2));
-            console.log('FLAGS='+JSON.stringify({contextoRolSeguro:x.contextoRolSeguro,guardPerfilActivo:x.guardPerfilActivo,seleccionNeutral:x.seleccionNeutral}));
-            console.log('STORAGE_HEAD='+JSON.stringify(x.storageHead));
-            await c.close();
-          }
-          (async()=>{
-            const b=await chromium.launch({headless:true});
-            await uno(b,'http://127.0.0.1:4201/','ORIGINAL');
-            await uno(b,'http://127.0.0.1:4202/','RECUPERADO');
-            await b.close();
-            console.log('TRACE_SCRIPTS_OK=1');
-          })().catch(e=>{console.error(e);process.exit(1)});
-          NODE
-          node test.cjs
+          from pathlib import Path
+          import re
+          for nombre in ['fuente.js','chunk-WNPC2SID.js','chunk-43ACCR2P.js','chunk-CZ7CSFO4.js']:
+            p=Path(nombre)
+            lines=p.read_text(encoding='utf-8').splitlines()
+            print(f'\n=== {nombre} | {len(lines)} líneas ===')
+            print('--- PRIMERAS 120 ---')
+            for i,l in enumerate(lines[:120],1):
+              x=l if len(l)<=800 else l[:800]+' ...'
+              print(f'{i}: {x}')
+            print('--- IMPORTS ESTÁTICOS/DINÁMICOS ---')
+            for i,l in enumerate(lines,1):
+              if re.match(r'^\s*import\b',l) or 'import(' in l or re.search(r'from\s+["\']\.\/',l):
+                x=l if len(l)<=1000 else l[:1000]+' ...'
+                print(f'{i}: {x}')
+          print('\n=== RELACIONES CHUNK ===')
+          fuente=Path('fuente.js').read_text(encoding='utf-8')
+          for n in ['chunk-WNPC2SID.js','chunk-43ACCR2P.js','chunk-CZ7CSFO4.js','edge-auth-patch.js']:
+            print(n, '=>', fuente.count(n))
