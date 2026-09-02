@@ -20,7 +20,7 @@ jobs:
             raise SystemExit('Bootstrap React inesperado')
           if app[2].strip()!='var import_client = __toESM(require_client());':
             raise SystemExit('Bootstrap ReactDOM inesperado')
-          iconos = '''ArrowLeftRight Bell Boxes Calculator CalendarClock CalendarDays CalendarRange Camera ChartColumn ChartLine ChevronRight CircleArrowDown CircleArrowUp CircleCheck ClipboardList Clock Cog Coins Download Droplet Ellipsis Eye EyeOff Factory FileText Files LoaderCircle LogIn LogOut Mail Map2 MessageCircle Minus Package Pencil Phone Plus Receipt RotateCcwClock ScanBarcode Search ShieldCheck ShoppingBag ShoppingCart Stethoscope Tags Trash2 TrendingUp TriangleAlert Truck Upload UserRound Users Wallet X'''.split()
+          iconos = '''ArrowLeftRight Bell Boxes Calculator CalendarClock CalendarDays CalendarRange Camera ChartColumn ChartLine ChevronRight CircleArrowDown CircleArrowUp CircleCheck ClipboardList Clock Cog Coins Download Droplet Ellipsis Eye EyeOff Factory FileText Files LoaderCircle LogIn LogOut Mail MessageCircle Minus Package Pencil Phone Plus Receipt RotateCcwClock ScanBarcode Search ShieldCheck ShoppingBag ShoppingCart Stethoscope Tags Trash2 TrendingUp TriangleAlert Truck Upload UserRound Users Wallet X'''.split()
           cabecera = [
             '// FUENTE RECUPERADO AUTOMATICAMENTE DESDE EL BUNDLE - PRUEBA, NO PRODUCCION',
             'import React, * as ReactNS from "react";',
@@ -29,7 +29,7 @@ jobs:
             'import { jsPDF as E } from "jspdf";',
             'import autoTable from "jspdf-autotable";',
             'import * as XLSX from "xlsx";',
-            'import { ' + ', '.join(iconos) + ' } from "lucide-react";',
+            'import { ' + ', '.join(iconos) + ', Map as Map2 } from "lucide-react";',
             'const import_react4 = Object.assign({ default: React }, ReactNS);',
             'const import_client = { createRoot };',
             'const utils = XLSX.utils;',
