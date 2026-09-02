@@ -11,53 +11,41 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspeccionar puntos exactos del bundle
+      - name: Verificar dependencias exactas de Productos y Pedidos
         shell: python
         run: |
           from pathlib import Path
-          import re
 
           s = Path('fuente.js').read_text(encoding='utf-8')
           print('FUENTE_LEN', len(s))
 
-          tabs = sorted(set(re.findall(r'tab === "([^"]+)"', s)))
-          print('TABS', tabs)
+          def posiciones(marcador):
+              out=[]; i=0
+              while True:
+                  j=s.find(marcador,i)
+                  if j < 0: break
+                  out.append(j); i=j+1
+              return out
 
-          def contexto(etiqueta, marcador, antes=1200, despues=4200):
-              i = s.find(marcador)
+          def contexto(etiqueta, marcador, antes=1800, despues=6000):
+              ps=posiciones(marcador)
               print(f'\n===== {etiqueta} =====')
-              if i < 0:
-                  print('NO ENCONTRADO:', marcador)
-                  return
-              print('POS', i)
-              print(s[max(0, i-antes):min(len(s), i+despues)])
+              print('MARCADOR', marcador, 'POSICIONES', ps)
+              for i in ps[-3:]:
+                  print('\n--- POS',i,'---')
+                  print(s[max(0,i-antes):min(len(s),i+despues)])
 
-          # Render principal: qué datos recibe cada módulo operativo.
-          for marcador in [
-              'tab === "productos"',
-              'tab === "caducidades"',
-              'tab === "comprar"',
-              'tab === "pedidos"',
-              'tab === "albaranes"',
-              'tab === "almacen"',
-              'tab === "conteos"'
+          for etiqueta, marcador in [
+              ('ABC','clasificacionABC'),
+              ('SUGERENCIAS','sugerenciasPedido'),
+              ('PEDIDOS PENDIENTES','pedidosPendientes'),
+              ('PRODUCTO POR ID','productoPorId'),
+              ('LOGICA PRODUCTOS CALL','crearLogicaProductos({'),
+              ('LOGICA PEDIDOS CALL','crearLogicaPedidos({'),
+              ('RENDER PRODUCTOS','tab === "productos"'),
+              ('RENDER PEDIDOS','tab === "pedidos"'),
+              ('MENU COMPRAR','"Comprar"'),
+              ('MENU CADUCIDADES','"Caducidades"'),
+              ('ITEMS META','const itemsMeta = [')
           ]:
-              contexto('RENDER ' + marcador, marcador)
-
-          # Componentes/funciones que participan en el primer bloque multilocal.
-          for nombre in [
-              'crearLogicaProductos',
-              'crearLogicaPedidos',
-              'crearLogicaAlbaranes',
-              'crearLogicaConteos',
-              'Productos',
-              'Caducidades',
-              'Comprar',
-              'Pedidos',
-              'Albaranes'
-          ]:
-              contexto('DEF ' + nombre, 'function ' + nombre + '(', 200, 9000)
-
-          # Estado y derivados locales ya existentes alrededor de localActivoId.
-          contexto('ESTADO localActivoId', 'const [localActivoId', 2500, 7000)
-          contexto('DERIVADO productosDelLocalActivo', 'productosDelLocalActivo', 2500, 7000)
+              contexto(etiqueta, marcador)
