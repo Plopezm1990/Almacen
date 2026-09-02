@@ -1,0 +1,70 @@
+name: Aplicar migración histórica de caja bloque 5
+on:
+  push:
+    branches: [multilocal-fase-3]
+    paths:
+      - .github/workflows/aplicar-migracion-caja-historica-bloque5.yml
+permissions:
+  contents: write
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Migrar arqueos y movimientos de caja antiguos
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('fuente.js')
+          s=p.read_text(encoding='utf-8')
+
+          ancla='''      const empleadosFinales = (em || []).map((e) => e.localId ? e : { ...e, localId: localActivoFinal || null });\n'''
+          assert s.count(ancla)==1, f'ancla empleadosFinales: {s.count(ancla)}'
+          nuevo=ancla+'''      const arqueosFinales = (aq || []).map((a2) => a2.localId ? a2 : { ...a2, localId: localActivoFinal || null });\n      const movimientosCajaFinales = (mc || []).map((m2) => m2.localId ? m2 : { ...m2, localId: localActivoFinal || null });\n'''
+          s=s.replace(ancla,nuevo,1)
+
+          ancla='''      setEmpleados(empleadosFinales);\n'''
+          assert s.count(ancla)==1, f'ancla setEmpleados: {s.count(ancla)}'
+          nuevo=ancla+'''      setArqueos(arqueosFinales);\n      setMovimientosCaja(movimientosCajaFinales);\n'''
+          s=s.replace(ancla,nuevo,1)
+
+          ancla='''      if (JSON.stringify(empleadosFinales) !== JSON.stringify(em || [])) await saveKey("empleados", empleadosFinales);\n'''
+          assert s.count(ancla)==1, f'ancla save empleados: {s.count(ancla)}'
+          nuevo=ancla+'''      if (JSON.stringify(arqueosFinales) !== JSON.stringify(aq || [])) await saveKey("arqueos", arqueosFinales);\n      if (JSON.stringify(movimientosCajaFinales) !== JSON.stringify(mc || [])) await saveKey("movimientosCaja", movimientosCajaFinales);\n'''
+          s=s.replace(ancla,nuevo,1)
+
+          p.write_text(s,encoding='utf-8')
+          print('MIGRACION_CAJA_HISTORICA_APLICADA')
+          PY
+      - name: Validar sintaxis diff y guardas
+        run: |
+          node --check fuente.js
+          git diff --check
+          git diff --stat
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          req=[
+            'const arqueosFinales = (aq || []).map((a2) => a2.localId ? a2 : { ...a2, localId: localActivoFinal || null });',
+            'const movimientosCajaFinales = (mc || []).map((m2) => m2.localId ? m2 : { ...m2, localId: localActivoFinal || null });',
+            'setArqueos(arqueosFinales);',
+            'setMovimientosCaja(movimientosCajaFinales);',
+            'await saveKey("arqueos", arqueosFinales);',
+            'await saveKey("movimientosCaja", movimientosCajaFinales);'
+          ]
+          for x in req: assert x in s, x
+          assert s.index('setArqueos(arqueosFinales);') < s.index('setReady(true)')
+          assert s.index('setMovimientosCaja(movimientosCajaFinales);') < s.index('setReady(true)')
+          print('GUARDAS_MIGRACION_CAJA_OK')
+          PY
+      - name: Guardar y limpiar inspecciones
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm -f .github/workflows/inspeccionar-migracion-caja-bloque5.yml
+          rm -f .github/workflows/inspeccionar-tramo-migracion-caja-bloque5.yml
+          rm -f .github/workflows/aplicar-migracion-caja-historica-bloque5.yml
+          git add fuente.js .github/workflows/inspeccionar-migracion-caja-bloque5.yml .github/workflows/inspeccionar-tramo-migracion-caja-bloque5.yml .github/workflows/aplicar-migracion-caja-historica-bloque5.yml
+          git diff --cached --check
+          git commit -m 'Migrar caja histórica al local activo'
+          git push origin HEAD:multilocal-fase-3
