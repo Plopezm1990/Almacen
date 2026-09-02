@@ -18,14 +18,23 @@ jobs:
           npm init -y >/dev/null
           npm install --no-audit --no-fund playwright@1.55.0
           npx playwright install chromium
-      - name: Recorrer navegación visible sin Supabase
+      - name: Probar cada módulo desde una página limpia
         run: |
           cd /tmp/nav-smoke
           cat > nav.cjs <<'NODE'
           const { chromium } = require('playwright');
           const URL='http://127.0.0.1:4218/';
-          (async()=>{
-            const browser=await chromium.launch({headless:true});
+          const TARGETS=[
+            'Panel general','Buscar','Proveedores','Pedidos','Recepción','Albaranes',
+            'Cuentas por pagar','Facturas','Productos','Historial de producto','Inventario ciego',
+            'Saldo de almacén','Mapa de almacén','Traspasos','Venta rápida','Encargos','Clientes',
+            'Devoluciones','Fichas de costo','Producción','Mermas','Etiquetas y catálogo','Resultados',
+            'Reportes y rotación','Libro de IVA','Arqueo de caja','Tesorería','Estacionalidad','Personal',
+            'Registro horario','Cuadrante de turnos','Coste de personal','Control sanitario',
+            'Aceite de freidoras','Auditoría','Respaldos','Errores del sistema','Locales'
+          ];
+
+          async function prepararPagina(browser){
             const ctx=await browser.newContext({serviceWorkers:'block',viewport:{width:1440,height:1000}});
             const page=await ctx.newPage();
             const pageErrors=[]; const supabase=[];
@@ -48,61 +57,60 @@ jobs:
               localStorage.setItem('almacen__pendientes','[]');
             });
             await page.goto(URL,{waitUntil:'domcontentloaded',timeout:30000});
-            await page.waitForTimeout(1800);
+            await page.waitForTimeout(900);
             const b=page.getByText('Trabajar solo en este equipo, sin sincronizar',{exact:false});
             if(!(await b.count())) throw new Error('No aparece entrada local');
-            await b.first().click(); await page.waitForTimeout(1800);
+            await b.first().click();
+            await page.waitForTimeout(900);
             if(pageErrors.length) throw new Error('Error inicial: '+pageErrors.join(' | '));
+            return {ctx,page,pageErrors,supabase};
+          }
 
-            async function textosNav(){
-              return page.evaluate(()=>{
-                const raiz=document.querySelector('aside') || document.querySelector('nav');
-                if(!raiz) return [];
-                return [...raiz.querySelectorAll('button,a')]
-                  .map(e=>(e.innerText||e.textContent||'').replace(/\s+/g,' ').trim())
-                  .filter(Boolean);
-              });
-            }
-            async function clickTexto(texto){
-              return page.evaluate((texto)=>{
-                const raiz=document.querySelector('aside') || document.querySelector('nav');
-                if(!raiz) return false;
-                const norm=v=>(v||'').replace(/\s+/g,' ').trim();
-                const el=[...raiz.querySelectorAll('button,a')].find(e=>norm(e.innerText||e.textContent)===texto);
-                if(!el) return false;
-                el.click();
-                return true;
-              },texto);
-            }
+          async function abrirModulo(page,texto){
+            return page.evaluate((texto)=>{
+              const raiz=document.querySelector('aside') || document.querySelector('nav');
+              if(!raiz) return false;
+              const norm=v=>(v||'').replace(/\s+/g,' ').trim();
+              const el=[...raiz.querySelectorAll('button,a')].find(e=>norm(e.innerText||e.textContent)===texto);
+              if(!el) return false;
+              el.click();
+              return true;
+            },texto);
+          }
 
-            const excluir=/cerrar sesi[oó]n|salir|notificaciones|activar notificaciones|desactivar notificaciones|borrar|eliminar|restaurar|importar|exportar|oscuro|modo empleado/i;
-            const detectados=new Set(); const clicados=new Set(); const omitidos=new Set();
-            for(let ronda=0;ronda<5;ronda++){
-              const textos=[...new Set(await textosNav())].filter(t=>!excluir.test(t));
-              let aparecioNuevo=false;
-              for(const texto of textos){
-                if(detectados.has(texto)) continue;
-                detectados.add(texto); aparecioNuevo=true;
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const fallos=[];
+            let okCount=0;
+            for(const target of TARGETS){
+              let ctx=null;
+              try{
+                const prep=await prepararPagina(browser);
+                ctx=prep.ctx;
+                const {page,pageErrors,supabase}=prep;
                 const antes=pageErrors.length;
-                let ok=false;
-                try { ok=await clickTexto(texto); }
-                catch(e) { ok=false; }
-                if(!ok){ omitidos.add(texto); console.log('OMITIDO_CLICK='+texto); continue; }
-                await page.waitForTimeout(300);
-                if(pageErrors.length>antes) throw new Error('Módulo '+texto+' produjo: '+pageErrors.slice(antes).join(' | '));
-                if((await page.locator('#root').innerHTML()).length<500) throw new Error('Módulo '+texto+' dejó root vacío');
-                clicados.add(texto);
-                console.log('MODULO_OK='+texto);
+                const encontrado=await abrirModulo(page,target);
+                if(!encontrado) throw new Error('opción no encontrada en el menú limpio');
+                await page.waitForTimeout(450);
+                if(pageErrors.length>antes) throw new Error('error JavaScript: '+pageErrors.slice(antes).join(' | '));
+                if((await page.locator('#root').innerHTML()).length<500) throw new Error('root quedó vacío');
+                if(supabase.length) throw new Error('contactó Supabase en modo local');
+                okCount++;
+                console.log('MODULO_OK='+target);
+              }catch(e){
+                fallos.push(target+' :: '+e.message);
+                console.log('MODULO_FALLO='+target+' :: '+e.message);
+              }finally{
+                if(ctx) await ctx.close();
               }
-              if(!aparecioNuevo) break;
             }
-            if(supabase.length) throw new Error('El modo local contactó Supabase: '+supabase.join(' | '));
-            console.log('ETIQUETAS_DETECTADAS='+detectados.size);
-            console.log('CLICS_EFECTIVOS='+clicados.size);
-            console.log('OMITIDOS='+JSON.stringify([...omitidos]));
-            if(clicados.size<30) throw new Error('Cobertura insuficiente: solo '+clicados.size+' clics efectivos de '+detectados.size+' etiquetas');
-            console.log('SMOKE_NAVEGACION_OK=1');
             await browser.close();
+            console.log('MODULOS_OBJETIVO='+TARGETS.length);
+            console.log('MODULOS_OK_TOTAL='+okCount);
+            console.log('FALLOS='+JSON.stringify(fallos));
+            if(fallos.length) throw new Error('Fallaron '+fallos.length+' módulos: '+fallos.join(' || '));
+            if(okCount!==TARGETS.length) throw new Error('Cobertura incompleta');
+            console.log('SMOKE_NAVEGACION_LIMPIA_OK=1');
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
           node nav.cjs
