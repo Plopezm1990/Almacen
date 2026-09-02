@@ -15,23 +15,25 @@ jobs:
         run: |
           git fetch origin preparacion-sin-netlify
           git show origin/preparacion-sin-netlify:fuente.js > /tmp/fuente-pr4.js
-      - name: Extraer contexto de flujos
+      - name: Extraer contexto exacto de venta devoluciones y caja
         shell: python
         run: |
           from pathlib import Path
           s=Path('/tmp/fuente-pr4.js').read_text(encoding='utf-8')
           tokens=[
-            'Venta rápida','Arqueo de caja','Devoluciones','Productos','Pedidos','Recepción',
-            'Nuevo producto','Nueva venta','Registrar devolución','Nuevo pedido','Abrir caja','Cerrar caja',
-            'crearLogicaCaja','GestionProductos','GestionPedidos','GestionDevoluciones'
+            'function VentaRapida','function Venta','venderCarrito','venderLocal','Añadir al carrito','Cobrar','Finalizar venta','Confirmar venta','Efectivo','Tarjeta','Mixto',
+            'function Devoluciones','registrarDevolucionCliente','Devolución de cliente','Devolución a proveedor','Reembolso','Motivo de la devolución',
+            'function BloqueEntradasSalidas','Entrada de caja','Retirada de caja','Registrar entrada','Registrar salida','Añadir entrada','Añadir retirada'
           ]
           for token in tokens:
-              print('\n'+'='*90)
-              print('TOKEN=',repr(token),'COUNT=',s.count(token))
+              posiciones=[]
               start=0
-              for i in range(min(s.count(token),4)):
+              while len(posiciones)<3:
                   p=s.find(token,start)
                   if p<0: break
-                  print('\n--- OCC',i+1,'POS',p,'---')
-                  print(s[max(0,p-2500):min(len(s),p+4500)])
-                  start=p+len(token)
+                  posiciones.append(p); start=p+len(token)
+              print('\n'+'='*100)
+              print('TOKEN=',repr(token),'COUNT=',s.count(token),'POS=',posiciones)
+              for i,p in enumerate(posiciones,1):
+                  print('\n--- OCC',i,'POS',p,'---')
+                  print(s[max(0,p-5000):min(len(s),p+9000)])
