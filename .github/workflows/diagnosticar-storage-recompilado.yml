@@ -9,40 +9,68 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Localizar capa de seguridad
-        shell: python
+      - name: Compilar recuperado
+        shell: bash
         run: |
-          from pathlib import Path
-          archivos=['fuente.js','index.html','edge-auth-patch.js','seleccion-neutral-patch.js']
-          terminos=[
-            'CLAVES_CONTROLADAS',
-            '__contextoRolSeguroInstalado',
-            'Contexto operativo mínimo',
-            'edge-auth-patch',
-            'seleccion-neutral-patch',
-            '__guardPerfilActivoInstalado',
-            'respuestaVacia'
-          ]
-          for nombre in archivos:
-            p=Path(nombre)
-            if not p.exists():
-              print(f'=== {nombre}: NO EXISTE ===')
-              continue
-            lines=p.read_text(encoding='utf-8').splitlines()
-            print(f'\n=== {nombre} | lineas={len(lines)} bytes={p.stat().st_size} ===')
-            for t in terminos:
-              hits=[i for i,l in enumerate(lines) if t in l]
-              print(f'{t}: {[i+1 for i in hits[:20]]}')
-              for i in hits[:3]:
-                for j in range(max(0,i-3),min(len(lines),i+5)):
-                  x=lines[j]
-                  if len(x)>500: x=x[:500]+' ...'
-                  print(f'  {j+1}: {x}')
-          # Marcas de módulos que esbuild preservó justo antes de fuente.jsx.
-          lines=Path('fuente.js').read_text(encoding='utf-8').splitlines()
-          marca=next(i for i,l in enumerate(lines) if l.strip()=='// fuente.jsx')
-          print('\n=== 120 líneas antes de // fuente.jsx ===')
-          for j in range(max(0,marca-120),marca+4):
-            x=lines[j]
-            if len(x)>600: x=x[:600]+' ...'
-            print(f'{j+1}: {x}')
+          cd source-recovery
+          npm ci --no-audit --no-fund
+          npm run build
+      - name: Preparar sitios
+        shell: bash
+        run: |
+          mkdir -p /tmp/o /tmp/r
+          cp -a . /tmp/o/repo
+          cp -a . /tmp/r/repo
+          cp source-recovery/dist/fuente.js /tmp/r/repo/fuente.js
+          cd /tmp/o/repo && python3 -m http.server 4201 --bind 127.0.0.1 >/tmp/o.log 2>&1 &
+          cd /tmp/r/repo && python3 -m http.server 4202 --bind 127.0.0.1 >/tmp/r.log 2>&1 &
+          sleep 2
+      - name: Instalar navegador
+        shell: bash
+        run: |
+          mkdir -p /tmp/t && cd /tmp/t
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+      - name: Registrar scripts y peticiones
+        shell: bash
+        run: |
+          cd /tmp/t
+          cat > test.cjs <<'NODE'
+          const {chromium}=require('playwright');
+          async function uno(browser,url,nombre){
+            const c=await browser.newContext({serviceWorkers:'block'});
+            const p=await c.newPage();
+            const requests=[];
+            p.on('request',r=>{
+              const u=r.url();
+              if (r.resourceType()==='script' || /\.js(?:[?#]|$)/i.test(u)) requests.push({type:r.resourceType(),url:u});
+            });
+            await p.route('https://flqercbgpgmmfaakrwkc.supabase.co/**',r=>r.abort());
+            await p.goto(url,{waitUntil:'domcontentloaded'});
+            await p.waitForTimeout(1800);
+            const x=await p.evaluate(()=>({
+              scripts:[...document.scripts].map(s=>({src:s.src||'',type:s.type||'',defer:!!s.defer,attrs:[...s.attributes].reduce((o,a)=>(o[a.name]=a.value,o),{})})),
+              resources:performance.getEntriesByType('resource').map(e=>e.name).filter(x=>/\.js(?:[?#]|$)/i.test(x)),
+              contextoRolSeguro:!!window.__contextoRolSeguroInstalado,
+              guardPerfilActivo:!!window.__guardPerfilActivoInstalado,
+              seleccionNeutral:!!document.querySelector('script[data-seleccion-neutral="1"]'),
+              storageHead:String(window.storage?.get).slice(0,220)
+            }));
+            console.log('\n=== '+nombre+' ===');
+            console.log('REQUESTS='+JSON.stringify(requests,null,2));
+            console.log('SCRIPTS='+JSON.stringify(x.scripts,null,2));
+            console.log('RESOURCES='+JSON.stringify(x.resources,null,2));
+            console.log('FLAGS='+JSON.stringify({contextoRolSeguro:x.contextoRolSeguro,guardPerfilActivo:x.guardPerfilActivo,seleccionNeutral:x.seleccionNeutral}));
+            console.log('STORAGE_HEAD='+JSON.stringify(x.storageHead));
+            await c.close();
+          }
+          (async()=>{
+            const b=await chromium.launch({headless:true});
+            await uno(b,'http://127.0.0.1:4201/','ORIGINAL');
+            await uno(b,'http://127.0.0.1:4202/','RECUPERADO');
+            await b.close();
+            console.log('TRACE_SCRIPTS_OK=1');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+          node test.cjs
