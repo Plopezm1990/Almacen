@@ -9,34 +9,42 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Extraer sección de aplicación
-        shell: bash
+      - name: Localizar dependencias ambiguas
+        shell: python
         run: |
-          MARCA=$(grep -n -m1 '^// fuente.jsx$' fuente.js | cut -d: -f1)
-          tail -n +"$MARCA" fuente.js > /tmp/fuente-recuperada.js
-          echo "Lineas: $(wc -l < /tmp/fuente-recuperada.js)"
-          echo "Bytes: $(wc -c < /tmp/fuente-recuperada.js)"
-      - name: Detectar identificadores externos
-        shell: bash
-        run: |
-          npx --yes eslint@8.57.1 /tmp/fuente-recuperada.js \
-            --no-eslintrc \
-            --env browser,es2022 \
-            --parser-options '{"ecmaVersion":"latest","sourceType":"module"}' \
-            --rule 'no-undef:error' \
-            -f json > /tmp/eslint.json || true
-          node - <<'NODE'
-          const fs = require('fs');
-          const data = JSON.parse(fs.readFileSync('/tmp/eslint.json','utf8') || '[]');
-          const nombres = new Set();
-          for (const file of data) for (const m of file.messages || []) {
-            if (m.ruleId !== 'no-undef') continue;
-            const x = /^'(.+)' is not defined\.$/.exec(m.message);
-            if (x) nombres.add(x[1]);
+          from pathlib import Path
+          import re
+          lines = Path('fuente.js').read_text(encoding='utf-8').splitlines()
+          marca = next(i for i,l in enumerate(lines) if l.strip() == '// fuente.jsx')
+          pre = lines[:marca]
+          objetivos = {
+            'E': [r'\b(?:var|let|const|class)\s+E\b', r'\bE\s*='],
+            'autoTable': [r'\b(?:var|let|const|function)\s+autoTable\b', r'\bautoTable\s*='],
+            'createClient': [r'\b(?:var|let|const|function)\s+createClient\b', r'\bcreateClient\s*='],
+            'utils': [r'\b(?:var|let|const)\s+utils\b', r'\butils\s*='],
+            'writeFileSync': [r'\b(?:var|let|const|function)\s+writeFileSync\b', r'\bwriteFileSync\s*='],
+            'Bell': [r'\b(?:var|let|const)\s+Bell\b', r'\bBell\s*='],
+            'require_react': [r'\bvar\s+require_react\b'],
+            'require_client': [r'\bvar\s+require_client\b'],
           }
-          console.log('=== IDENTIFICADORES EXTERNOS ===');
-          console.log([...nombres].sort().join('\n'));
-          console.log('TOTAL_EXTERNOS=' + nombres.size);
-          NODE
-      - name: Sintaxis original
+          for nombre, pats in objetivos.items():
+            print(f'=== {nombre} ===')
+            hits=[]
+            for i,line in enumerate(pre):
+              if any(re.search(p,line) for p in pats): hits.append(i)
+            if not hits:
+              print('SIN DEFINICION DIRECTA')
+              continue
+            for i in hits[:3]:
+              a=max(0,i-6); b=min(len(pre),i+9)
+              print(f'--- linea {i+1} ---')
+              for j in range(a,b):
+                txt=pre[j]
+                if len(txt)>500: txt=txt[:500]+' ...[cortado]'
+                print(f'{j+1}: {txt}')
+      - name: Buscar comentarios de librerias cercanos
+        shell: bash
+        run: |
+          grep -n -m 30 'jspdf\|jsPDF\|autotable\|xlsx\|sheetjs\|supabase\|lucide\|react-dom\|react.development' fuente.js || true
+      - name: Validar bundle
         run: node --check fuente.js
