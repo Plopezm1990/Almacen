@@ -1,5 +1,5 @@
 name: Aplicar operaciones locales bloque 5
-# Reintento con alta de producto localizada por contexto de addProducto.
+# Reintento con ancla exacta de addProducto confirmada por inspección.
 on:
   push:
     branches: [multilocal-fase-3]
@@ -24,7 +24,7 @@ jobs:
           s=s.replace(viejo,"localId: localActivoId || null,",1)
           ini=s.index("# Alta: el caller no puede imponer otro local.")
           fin=s.index("# Guardas en update/delete/reactivar/salida.",ini)
-          reemplazo='''# Alta: localizar la asignación dentro de addProducto sin depender del espaciado del bundle.\nadd_i = b.index('function addProducto(data) {')\nadd_f = b.index('function updateProducto(', add_i)\nsub = b[add_i:add_f]\nlineas = [ln for ln in sub.splitlines() if 'setProductos((s2) =>' in ln and 'uid()' in ln and 'data' in ln]\nassert len(lineas) == 1, f'Productos: alta, esperada 1 línea y hay {len(lineas)}'\nvieja_linea = lineas[0]\nindent = vieja_linea[:len(vieja_linea)-len(vieja_linea.lstrip())]\nnueva_linea = indent + 'setProductos((s2) => [...s2, { id: uid(), stock: Number(data.stock) || 0, ...data, localId: localActivoId || data.localId || null }]);'\nsub = sub.replace(vieja_linea, nueva_linea, 1)\nb = b[:add_i] + sub + b[add_f:]\nprint('OK Productos: alta fuerza local')\n\n'''
+          reemplazo='''# Alta: ancla exacta confirmada en el bundle actual.\nviejo_alta = '    const nuevo = { id: uid(), stock: Number(data.stock) || 0, localId: localActivoId || null, ...data };'\nnuevo_alta = '    const nuevo = { id: uid(), stock: Number(data.stock) || 0, ...data, localId: localActivoId || data.localId || null };'\nb = uno(b, viejo_alta, nuevo_alta, 'Productos: alta fuerza local')\n\n'''
           s=s[:ini]+reemplazo+s[fin:]
           p.write_text(s,encoding='utf-8')
           print('OK guardas temporales corregidas')
@@ -36,7 +36,7 @@ jobs:
           node --check fuente.js
           git diff --check
           git diff --stat
-          git diff -- fuente.js | sed -n '1,700p'
+          git diff -- fuente.js | sed -n '1,760p'
       - name: Guardas semánticas mínimas
         run: |
           python3 - <<'PY'
@@ -66,7 +66,8 @@ jobs:
           rm -f .github/workflows/auditar-modulos-locales-restantes-fase3.yml
           rm -f .github/workflows/inspeccionar-operaciones-locales-bloque5.yml
           rm -f .github/workflows/inspeccionar-anclas-bloque5-final.yml
-          git add fuente.js .github/scripts/aplicar_operaciones_locales_bloque5.py .github/workflows/aplicar-operaciones-locales-bloque5.yml .github/workflows/auditar-modulos-locales-restantes-fase3.yml .github/workflows/inspeccionar-operaciones-locales-bloque5.yml .github/workflows/inspeccionar-anclas-bloque5-final.yml
+          rm -f .github/workflows/inspeccionar-addproducto-bloque5.yml
+          git add fuente.js .github/scripts/aplicar_operaciones_locales_bloque5.py .github/workflows/aplicar-operaciones-locales-bloque5.yml .github/workflows/auditar-modulos-locales-restantes-fase3.yml .github/workflows/inspeccionar-operaciones-locales-bloque5.yml .github/workflows/inspeccionar-anclas-bloque5-final.yml .github/workflows/inspeccionar-addproducto-bloque5.yml
           git diff --cached --check
           git commit -m 'Aislar operaciones de stock y caja por local'
           git push origin HEAD:multilocal-fase-3
