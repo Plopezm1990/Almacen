@@ -9,13 +9,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Compilar fuente recuperado
+      - name: Compilar fuente recuperado completo
         shell: bash
         run: |
           cd source-recovery
           npm ci --no-audit --no-fund
+          npm run check
           npm run build
           node --check dist/fuente.js
+          grep -q '__contextoRolSeguroInstalado' dist/fuente.js
+          grep -q '__guardPerfilActivoInstalado' dist/fuente.js
+          grep -q 'seleccion-neutral-patch.js?v=2' dist/fuente.js
       - name: Preparar dos sitios aislados
         shell: bash
         run: |
@@ -23,131 +27,135 @@ jobs:
           cp -a . /tmp/site-original/repo
           cp -a . /tmp/site-recuperado/repo
           cp source-recovery/dist/fuente.js /tmp/site-recuperado/repo/fuente.js
-          cd /tmp/site-original/repo && python3 -m http.server 4171 --bind 127.0.0.1 >/tmp/original-http.log 2>&1 &
-          cd /tmp/site-recuperado/repo && python3 -m http.server 4172 --bind 127.0.0.1 >/tmp/recuperado-http.log 2>&1 &
+          cd /tmp/site-original/repo && python3 -m http.server 4211 --bind 127.0.0.1 >/tmp/original-http.log 2>&1 &
+          cd /tmp/site-recuperado/repo && python3 -m http.server 4212 --bind 127.0.0.1 >/tmp/recuperado-http.log 2>&1 &
           sleep 2
-          curl -fsS http://127.0.0.1:4171/index.html >/dev/null
-          curl -fsS http://127.0.0.1:4172/index.html >/dev/null
       - name: Instalar navegador de prueba
         shell: bash
         run: |
           mkdir -p /tmp/browser-test && cd /tmp/browser-test
           npm init -y >/dev/null
           npm install --no-audit --no-fund playwright@1.55.0
-          npx playwright install --with-deps chromium
-      - name: Comparar modo local y navegación sin Supabase
+          npx playwright install chromium
+      - name: Comparar seguridad y modo local sin Supabase
         shell: bash
         run: |
           cd /tmp/browser-test
           cat > smoke.cjs <<'NODE'
           const { chromium } = require('playwright');
 
-          function normalizarError(t) {
-            return t.replace(/http:\/\/127\.0\.0\.1:\d+/g, 'http://LOCAL')
-                    .replace(/fuente\.js:\d+:\d+/g, 'fuente.js:X:X')
-                    .replace(/:\d+:\d+\)/g, ':X:X)');
-          }
-
           async function probar(browser, url, nombre) {
             const context = await browser.newContext({ serviceWorkers: 'block' });
             const page = await context.newPage();
-            const pageErrors = [];
-            const avisosEsperados = [];
-            const erroresInesperados = [];
-            const peticionesSupabase = [];
+            const errores = [];
+            const supabase = [];
+            const scripts = [];
 
-            page.on('pageerror', e => pageErrors.push(e.message));
+            page.on('pageerror', e => errores.push('pageerror: ' + e.message));
             page.on('console', m => {
               if (m.type() !== 'error') return;
               const t = m.text();
               if (/ERR_FAILED|Failed to load resource/i.test(t)) return;
-              if (/No se pudo cargar .* tras varios intentos: Error: no existe/i.test(t)) {
-                avisosEsperados.push(normalizarError(t));
-              } else {
-                erroresInesperados.push(normalizarError(t));
-              }
+              errores.push('console: ' + t);
             });
-
+            page.on('request', r => {
+              const u = r.url();
+              if (r.resourceType() === 'script' || /\.js(?:[?#]|$)/i.test(u)) scripts.push(u);
+            });
             await page.route('https://flqercbgpgmmfaakrwkc.supabase.co/**', r => {
-              peticionesSupabase.push(r.request().method() + ' ' + r.request().url());
+              supabase.push(r.request().method() + ' ' + r.request().url());
               r.abort();
             });
 
             await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-            await page.waitForTimeout(2500);
+            await page.waitForTimeout(2200);
+
+            const flagsAntes = await page.evaluate(() => ({
+              contextoRolSeguro: !!window.__contextoRolSeguroInstalado,
+              guardPerfilActivo: !!window.__guardPerfilActivoInstalado,
+              seleccionNeutral: !!document.querySelector('script[data-seleccion-neutral="1"]'),
+              storageSeguro: /CLAVES_CONTROLADAS/.test(String(window.storage && window.storage.get))
+            }));
+
+            if (!flagsAntes.contextoRolSeguro) throw new Error(nombre + ': falta barrera segura por rol');
+            if (!flagsAntes.guardPerfilActivo) throw new Error(nombre + ': falta guard de perfil activo');
+            if (!flagsAntes.seleccionNeutral) throw new Error(nombre + ': falta parche de selección neutral');
+            if (!flagsAntes.storageSeguro) throw new Error(nombre + ': storage.get no está protegido');
+
             const boton = page.getByText('Trabajar solo en este equipo, sin sincronizar', { exact: false });
             if (!(await boton.count())) throw new Error(nombre + ': no aparece opción local');
             await boton.first().click();
+            await page.waitForTimeout(1800);
 
-            // Damos tiempo suficiente para que terminen los reintentos de claves
-            // inexistentes en un localStorage nuevo y vacío.
-            await page.waitForTimeout(8000);
+            const estado = await page.evaluate(() => ({
+              texto: document.body.innerText.replace(/\s+/g, ' ').trim(),
+              root: document.querySelector('#root')?.innerHTML || '',
+              almacenKeys: Object.keys(localStorage).filter(k => k.startsWith('almacen:')).sort(),
+              pendientes: localStorage.getItem('almacen__pendientes'),
+              indicador: document.getElementById('estado-guardado')?.textContent || ''
+            }));
 
-            const titulo = await page.title();
-            const textoInicial = (await page.locator('body').innerText()).replace(/\s+/g,' ').trim();
-            const rootInicial = await page.locator('#root').innerHTML().catch(()=>'');
             const marcadores = ['Panel general','Productos','Pedidos','Proveedores','Resultados','Libro de IVA','Stock'];
-            const presentes = marcadores.filter(x => textoInicial.toLowerCase().includes(x.toLowerCase()));
-
-            if (!rootInicial || rootInicial.length < 1000) throw new Error(nombre + ': app local no renderizó');
-            if (pageErrors.length) throw new Error(nombre + ': pageerror: ' + pageErrors.join(' | '));
-            if (erroresInesperados.length) throw new Error(nombre + ': errores JS inesperados: ' + erroresInesperados.join(' | '));
-            if (presentes.length < 5) throw new Error(nombre + ': faltan marcadores de la app local');
-            if (peticionesSupabase.length) throw new Error(nombre + ': intentó acceder a Supabase en modo local');
+            const presentes = marcadores.filter(x => estado.texto.toLowerCase().includes(x.toLowerCase()));
+            if (presentes.length < 5) throw new Error(nombre + ': faltan marcadores locales');
+            if (!estado.root || estado.root.length < 1000) throw new Error(nombre + ': app local no renderizó');
+            if (estado.almacenKeys.length) throw new Error(nombre + ': creó claves almacen:* al arrancar vacío: ' + estado.almacenKeys.join(','));
+            if (estado.indicador.includes('sin subir')) throw new Error(nombre + ': generó pendientes artificiales');
+            if (supabase.length) throw new Error(nombre + ': accedió a Supabase en modo local');
+            if (errores.length) throw new Error(nombre + ': errores JS: ' + errores.join(' | '));
 
             const navegacion = {};
             for (const destino of ['Productos','Pedidos','Resultados','Libro de IVA']) {
               const link = page.getByText(destino, { exact: true });
-              if (!(await link.count())) throw new Error(nombre + ': no aparece navegación ' + destino);
+              if (!(await link.count())) throw new Error(nombre + ': no aparece ' + destino);
               await link.first().click();
-              await page.waitForTimeout(350);
+              await page.waitForTimeout(300);
               const texto = (await page.locator('body').innerText()).replace(/\s+/g,' ').trim();
               const root = await page.locator('#root').innerHTML();
-              if (root.length < 1000) throw new Error(nombre + ': root vacío tras navegar a ' + destino);
               if (!texto.toLowerCase().includes(destino.toLowerCase())) throw new Error(nombre + ': pantalla ' + destino + ' no visible');
               navegacion[destino] = { textoLen: texto.length, rootLen: root.length };
             }
 
-            console.log(`=== ${nombre} LOCAL ===`);
-            console.log('TITLE='+titulo);
-            console.log('TEXT_LEN='+textoInicial.length);
-            console.log('ROOT_LEN='+rootInicial.length);
-            console.log('MARCADORES='+JSON.stringify(presentes));
-            console.log('AVISOS_ESPERADOS='+avisosEsperados.length);
-            console.log('ERRORES_INESPERADOS='+JSON.stringify(erroresInesperados));
-            console.log('PAGE_ERRORS='+JSON.stringify(pageErrors));
-            console.log('SUPABASE_REQUESTS='+peticionesSupabase.length);
+            console.log(`=== ${nombre} ===`);
+            console.log('FLAGS='+JSON.stringify(flagsAntes));
+            console.log('TEXT_LEN='+estado.texto.length);
+            console.log('ROOT_LEN='+estado.root.length);
+            console.log('ALMACEN_KEYS='+JSON.stringify(estado.almacenKeys));
+            console.log('INDICADOR='+JSON.stringify(estado.indicador));
+            console.log('SUPABASE='+supabase.length);
+            console.log('ERRORES='+JSON.stringify(errores));
+            console.log('SCRIPTS='+JSON.stringify(scripts));
             console.log('NAVEGACION='+JSON.stringify(navegacion));
 
             await context.close();
-            return { titulo, textoInicial, rootInicial, presentes, avisosEsperados, navegacion };
+            return { estado, presentes, navegacion, flagsAntes };
           }
 
-          (async()=>{
-            const browser = await chromium.launch({headless:true});
-            const a = await probar(browser, 'http://127.0.0.1:4171/', 'ORIGINAL');
-            const b = await probar(browser, 'http://127.0.0.1:4172/', 'RECUPERADO');
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const original = await probar(browser, 'http://127.0.0.1:4211/', 'ORIGINAL');
+            const recuperado = await probar(browser, 'http://127.0.0.1:4212/', 'RECUPERADO');
             await browser.close();
 
-            if (a.titulo !== b.titulo) throw new Error('Título distinto');
-            const comunes = a.presentes.filter(x => b.presentes.includes(x));
-            if (comunes.length < 5) throw new Error('Pocos marcadores locales comunes');
-            if (Math.abs(a.textoInicial.length-b.textoInicial.length) > 100) throw new Error('Contenido textual inicial diverge demasiado');
+            if (original.estado.texto !== recuperado.estado.texto) {
+              throw new Error('Texto inicial local distinto tras restaurar seguridad');
+            }
+            const comunes = original.presentes.filter(x => recuperado.presentes.includes(x));
+            if (comunes.length < 5) throw new Error('Pocos marcadores comunes');
 
-            for (const destino of Object.keys(a.navegacion)) {
-              const da = a.navegacion[destino];
-              const db = b.navegacion[destino];
-              if (!db) throw new Error('Falta navegación recuperada a ' + destino);
-              if (Math.abs(da.textoLen-db.textoLen) > 150) throw new Error('Texto diverge en ' + destino);
-              if (Math.abs(da.rootLen-db.rootLen) > 500) throw new Error('DOM diverge en ' + destino);
+            for (const destino of Object.keys(original.navegacion)) {
+              const a = original.navegacion[destino];
+              const b = recuperado.navegacion[destino];
+              if (!b) throw new Error('Falta navegación recuperada: ' + destino);
+              if (a.textoLen !== b.textoLen) throw new Error('Texto distinto en ' + destino);
+              // El SVG de Lucide puede diferir por la versión de compatibilidad,
+              // pero el DOM funcional debe permanecer muy próximo.
+              if (Math.abs(a.rootLen - b.rootLen) > 500) throw new Error('DOM diverge en ' + destino);
             }
 
-            console.log('MARCADORES_LOCALES_COMUNES='+JSON.stringify(comunes));
-            console.log('DELTA_TEXT_LEN='+Math.abs(a.textoInicial.length-b.textoInicial.length));
-            console.log('DELTA_ROOT_LEN='+Math.abs(a.rootInicial.length-b.rootInicial.length));
-            console.log('AVISOS_ORIGINAL='+a.avisosEsperados.length);
-            console.log('AVISOS_RECUPERADO='+b.avisosEsperados.length);
-            console.log('SMOKE_LOCAL_NAVEGACION_OK=1');
-          })().catch(e=>{ console.error(e); process.exit(1); });
+            console.log('DELTA_TEXT=0');
+            console.log('DELTA_ROOT='+Math.abs(original.estado.root.length-recuperado.estado.root.length));
+            console.log('SMOKE_RECUPERACION_COMPLETA_OK=1');
+          })().catch(e => { console.error(e); process.exit(1); });
           NODE
           node smoke.cjs
