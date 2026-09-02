@@ -1,0 +1,35 @@
+name: Inspeccionar mutaciones documentos fase 3
+on:
+  push:
+    branches: [multilocal-fase-3]
+    paths:
+      - .github/workflows/inspeccionar-mutaciones-documentos-fase3.yml
+  workflow_dispatch:
+
+jobs:
+  inspeccion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extraer funciones exactas
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          def f(nombre, inicio, siguiente, antes=100):
+              i=s.find(inicio)
+              print('\n=====',nombre,'@',i,'=====')
+              assert i>=0
+              j=s.find(siguiente,i+len(inicio))
+              assert j>=0
+              print(s[max(0,i-antes):j])
+          f('ELIMINAR ALBARAN','  function eliminarAlbaran(id) {','  function marcarPagada(')
+          f('MARCAR PAGADA ALBARAN','  function marcarPagada(id, pagada) {','  function procesarRecepcion(')
+          f('CONFIRMAR ALBARAN','  function confirmarAlbaran(alb) {','  function anularAlbaran(')
+          f('ANULAR ALBARAN','  function anularAlbaran(','  function recibirConAlbaran(')
+          f('RECIBIR CON ALBARAN','  function recibirConAlbaran(','  function recibirConFotoIA(')
+          f('RECIBIR CON FOTO IA','  function recibirConFotoIA(','  return { buscarEnCatalogo')
+          f('UPDATE FACTURA DIRECTA','  function updateFacturaDirecta(id, data) {','  function deleteFacturaDirecta(')
+          f('DELETE FACTURA DIRECTA','  function deleteFacturaDirecta(id) {','  function marcarPagadaFacturaDirecta(')
+          f('MARCAR FACTURA DIRECTA','  function marcarPagadaFacturaDirecta(id, pagada) {','  return { addFacturaDirecta')
+          PY
