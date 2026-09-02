@@ -1,0 +1,77 @@
+name: Aplicar local a avisos operativos
+on:
+  push:
+    branches: [preparacion-sin-netlify]
+    paths:
+      - .github/workflows/aplicar-local-a-avisos.yml
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: preparacion-sin-netlify
+      - name: Aplicar localId a avisos
+        shell: node {0}
+        run: |
+          const fs=require('fs');
+          let s=fs.readFileSync('fuente.js','utf8');
+          function once(a,b,n){
+            const i=s.indexOf(a); if(i<0) throw new Error('No encontrado: '+n);
+            if(s.indexOf(a,i+a.length)>=0) throw new Error('Duplicado: '+n);
+            s=s.slice(0,i)+b+s.slice(i+a.length);
+          }
+
+          once(
+            '          cuerpo: `${l2.nombre}${l2.lote ? ` (lote ${l2.lote})` : ""} \\u2014 ${l2.dias < 0 ? `caduc\\xF3 hace ${Math.abs(l2.dias)} d\\xEDas` : l2.dias === 0 ? "caduca hoy" : `caduca en ${l2.dias} d\\xEDas`}.`,\n          url: "/"',
+            '          cuerpo: `${l2.nombre}${l2.lote ? ` (lote ${l2.lote})` : ""} \\u2014 ${l2.dias < 0 ? `caduc\\xF3 hace ${Math.abs(l2.dias)} d\\xEDas` : l2.dias === 0 ? "caduca hoy" : `caduca en ${l2.dias} d\\xEDas`}.`,\n          localId: productos.find((p2) => p2.id === l2.productoId)?.localId || null,\n          url: "/"',
+            'local en caducidades'
+          );
+
+          once(
+            '            cuerpo: `${producto.nombre} baj\\xF3 del m\\xEDnimo (quedan ${fmt(Math.max(0, teoricoDespues))}).`,\n            url: "/"',
+            '            cuerpo: `${producto.nombre} baj\\xF3 del m\\xEDnimo (quedan ${fmt(Math.max(0, teoricoDespues))}).`,\n            localId: producto.localId || null,\n            url: "/"',
+            'local en stock bajo'
+          );
+
+          once('function crearLogicaCaja({ setArqueos }) {','function crearLogicaCaja({ setArqueos, localActivoId }) {','firma caja local');
+          once(
+            '    setArqueos((s2) => [{ id: uid(), fecha: todayISO(), ...data }, ...s2]);',
+            '    setArqueos((s2) => [{ id: uid(), fecha: todayISO(), ...data, localId: data.localId || localActivoId || null }, ...s2]);',
+            'arqueo con local'
+          );
+          once(
+            '          cuerpo: `Al cerrar caja, ${signo} ${fmt(Math.abs(diferencia))} \\u20AC.`,\n          url: "/"',
+            '          cuerpo: `Al cerrar caja, ${signo} ${fmt(Math.abs(diferencia))} \\u20AC.`,\n          localId: data.localId || localActivoId || null,\n          url: "/"',
+            'aviso caja con local'
+          );
+
+          const call='crearLogicaCaja({ setArqueos })';
+          if((s.match(/crearLogicaCaja\(\{ setArqueos \}\)/g)||[]).length!==1) throw new Error('Llamada crearLogicaCaja inesperada');
+          s=s.replace(call,'crearLogicaCaja({ setArqueos, localActivoId })');
+
+          once(
+            '          cuerpo: `Se anul\\xF3 una venta del ${fechaVenta}, d\\xEDa que ya ten\\xEDa la caja cerrada \\u2014 revisa ese arqueo, puede que ya no cuadre.`,\n          url: "/"',
+            '          cuerpo: `Se anul\\xF3 una venta del ${fechaVenta}, d\\xEDa que ya ten\\xEDa la caja cerrada \\u2014 revisa ese arqueo, puede que ya no cuadre.`,\n          localId: lineas[0]?.localId || null,\n          url: "/"',
+            'caja desactualizada con local'
+          );
+
+          fs.writeFileSync('fuente.js',s);
+      - name: Validar sintaxis y marcadores
+        run: |
+          node --check fuente.js
+          grep -q 'localId: productos.find((p2) => p2.id === l2.productoId)?.localId || null' fuente.js
+          grep -q 'localId: producto.localId || null' fuente.js
+          grep -q 'function crearLogicaCaja({ setArqueos, localActivoId })' fuente.js
+          grep -q 'crearLogicaCaja({ setArqueos, localActivoId })' fuente.js
+          grep -q 'localId: lineas\[0\]?.localId || null' fuente.js
+      - name: Guardar cambio
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fuente.js
+          git diff --cached --quiet && exit 0
+          git commit -m "Añadir local a avisos operativos [skip ci]"
+          git push origin HEAD:preparacion-sin-netlify
