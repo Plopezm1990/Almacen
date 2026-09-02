@@ -1,0 +1,89 @@
+name: Smoke browser fuente recuperado
+on:
+  push:
+    branches: [inspeccion-build-reproducible]
+    paths:
+      - .github/workflows/smoke-browser-fuente-recuperado.yml
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compilar fuente recuperado
+        shell: bash
+        run: |
+          cd source-recovery
+          npm ci --no-audit --no-fund
+          npm run build
+          node --check dist/fuente.js
+      - name: Preparar dos sitios aislados
+        shell: bash
+        run: |
+          mkdir -p /tmp/site-original /tmp/site-recuperado
+          cp -a . /tmp/site-original/repo
+          cp -a . /tmp/site-recuperado/repo
+          cp source-recovery/dist/fuente.js /tmp/site-recuperado/repo/fuente.js
+          cd /tmp/site-original/repo && python3 -m http.server 4171 --bind 127.0.0.1 >/tmp/original-http.log 2>&1 &
+          cd /tmp/site-recuperado/repo && python3 -m http.server 4172 --bind 127.0.0.1 >/tmp/recuperado-http.log 2>&1 &
+          sleep 2
+          curl -fsS http://127.0.0.1:4171/index.html >/dev/null
+          curl -fsS http://127.0.0.1:4172/index.html >/dev/null
+      - name: Instalar navegador de prueba
+        shell: bash
+        run: |
+          mkdir -p /tmp/browser-test && cd /tmp/browser-test
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Comparar arranque en Chromium sin Supabase
+        shell: bash
+        run: |
+          cd /tmp/browser-test
+          cat > smoke.cjs <<'NODE'
+          const { chromium } = require('playwright');
+
+          async function probar(browser, url, nombre) {
+            const context = await browser.newContext({ serviceWorkers: 'block' });
+            const page = await context.newPage();
+            const errores = [];
+            page.on('pageerror', e => errores.push('pageerror: ' + e.message));
+            page.on('console', m => {
+              if (m.type() === 'error') {
+                const t = m.text();
+                if (!/ERR_FAILED|Failed to load resource/i.test(t)) errores.push('console: ' + t);
+              }
+            });
+            await page.route('https://flqercbgpgmmfaakrwkc.supabase.co/**', r => r.abort());
+            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+            await page.waitForTimeout(5000);
+            const titulo = await page.title();
+            const texto = (await page.locator('body').innerText()).replace(/\s+/g,' ').trim();
+            const rootHtml = await page.locator('#root').innerHTML().catch(()=>'');
+            const cargando = await page.locator('#cargando').count();
+            console.log(`=== ${nombre} ===`);
+            console.log('TITLE='+titulo);
+            console.log('TEXT_LEN='+texto.length);
+            console.log('ROOT_LEN='+rootHtml.length);
+            console.log('LOADING_COUNT='+cargando);
+            console.log('TEXT_HEAD='+texto.slice(0,700));
+            console.log('ERRORS='+JSON.stringify(errores));
+            if (!rootHtml || rootHtml.length < 100) throw new Error(nombre + ': #root no renderizó');
+            if (errores.length) throw new Error(nombre + ': errores JS: ' + errores.join(' | '));
+            await context.close();
+            return { titulo, texto, rootHtml };
+          }
+
+          (async()=>{
+            const browser = await chromium.launch({headless:true});
+            const a = await probar(browser, 'http://127.0.0.1:4171/', 'ORIGINAL');
+            const b = await probar(browser, 'http://127.0.0.1:4172/', 'RECUPERADO');
+            await browser.close();
+            if (a.titulo !== b.titulo) throw new Error('Título distinto');
+            const tokens = ['Iniciar sesión','Trabajar solo','Almac','CHOCOLOYOS'];
+            const coincidencias = tokens.filter(x => a.texto.toLowerCase().includes(x.toLowerCase()) && b.texto.toLowerCase().includes(x.toLowerCase()));
+            console.log('MARCADORES_COMUNES='+JSON.stringify(coincidencias));
+            if (!coincidencias.length) throw new Error('No se encontraron marcadores comunes de arranque');
+            console.log('SMOKE_BROWSER_OK=1');
+          })().catch(e=>{ console.error(e); process.exit(1); });
+          NODE
+          node smoke.cjs
