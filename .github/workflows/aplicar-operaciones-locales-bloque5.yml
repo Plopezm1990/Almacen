@@ -1,4 +1,5 @@
 name: Aplicar operaciones locales bloque 5
+# Reintento con registros exactos de devoluciones verificados.
 on:
   push:
     branches: [multilocal-fase-3]
@@ -39,7 +40,8 @@ jobs:
             'Los dos productos deben pertenecer al local activo.',
             'La venta incluye productos de otro local.',
             '.filter((m2) => movimientoEsDelLocalActivoVenta(m2));',
-            'a2.fecha === fechaVenta && (!localActivoId || a2.localId === localActivoId)'
+            'a2.fecha === fechaVenta && (!localActivoId || a2.localId === localActivoId)',
+            'localId: producto.localId || localActivoId || null'
           ]
           for x in requeridos:
               assert x in s, x
