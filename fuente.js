@@ -117378,6 +117378,18 @@ function GestionAlmacen() {
     if (!localActivoId) return facturasDirectas;
     return facturasDirectas.filter((f2) => f2.localId === localActivoId);
   }, [facturasDirectas, localActivoId]);
+  const conteosDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return conteos;
+    return conteos.filter((c2) => {
+      if (c2.localId) return c2.localId === localActivoId;
+      const items = c2.items || [];
+      if (!items.length) return false;
+      const idsLocales = items.map((it2) => productos.find((p2) => p2.id === it2.productoId)?.localId || null);
+      if (idsLocales.some((id) => !id)) return false;
+      const unicos = [...new Set(idsLocales)];
+      return unicos.length === 1 && unicos[0] === localActivoId;
+    });
+  }, [conteos, productos, localActivoId]);
   const [turnos, setTurnos] = (0, import_react4.useState)([]);
   const [historial, setHistorial] = (0, import_react4.useState)([]);
   (0, import_react4.useEffect)(() => {
@@ -117781,8 +117793,8 @@ function GestionAlmacen() {
   const { fichar, addFichajeManual, updateFichaje, eliminarFichaje } = crearLogicaFichaje({ setFichajes });
   const { addFreidora, updateFreidora, deleteFreidora, registrarCambio, registrarRelleno, eliminarRegistroAceite, consumoPorCiclo } = crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegistrosAceite, productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
   const { addFichaCosto, updateFichaCosto, deleteFichaCosto, alergenosDeFicha } = crearLogicaFichasCosto({ productos, setFichasCosto });
-  const { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion } = crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria });
-  const conteoAbierto = (0, import_react4.useMemo)(() => conteos.find((c2) => !c2.completado) || null, [conteos]);
+  const { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion } = crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
+  const conteoAbierto = (0, import_react4.useMemo)(() => conteosDelLocalActivo.find((c2) => !c2.completado) || null, [conteosDelLocalActivo]);
   const almacenCongelado = !!conteoAbierto;
   const { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro } = crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId });
   const { diagnosticarStock, corregirProducto, movimientosParaReconciliar } = crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
@@ -117848,9 +117860,21 @@ function GestionAlmacen() {
     () => productos.filter(esUtillaje).reduce((acc, p2) => acc + (Number(p2.stock) || 0) * Number(p2.costo || 0), 0),
     [productos]
   );
+  const valorInventarioDelLocalActivo = (0, import_react4.useMemo)(
+    () => productosDelLocalActivo.filter((p2) => !esUtillaje(p2)).reduce((acc, p2) => acc + (Number(p2.stock) || 0) * Number(p2.costo || 0), 0),
+    [productosDelLocalActivo]
+  );
+  const valorUtillajeDelLocalActivo = (0, import_react4.useMemo)(
+    () => productosDelLocalActivo.filter(esUtillaje).reduce((acc, p2) => acc + (Number(p2.stock) || 0) * Number(p2.costo || 0), 0),
+    [productosDelLocalActivo]
+  );
   const stockBajo = (0, import_react4.useMemo)(
     () => productos.filter((p2) => p2.tipo !== "elaborado" && p2.stock <= Number(p2.stockMinimo || 0)),
     [productos]
+  );
+  const stockBajoDelLocalActivo = (0, import_react4.useMemo)(
+    () => productosDelLocalActivo.filter((p2) => p2.tipo !== "elaborado" && p2.stock <= Number(p2.stockMinimo || 0)),
+    [productosDelLocalActivo]
   );
   const diagnosticoStock = (0, import_react4.useMemo)(() => diagnosticarStock(), [productos, movimientos]);
   const descuadresPendientes = (0, import_react4.useMemo)(() => diagnosticoStock.filter((d2) => !d2.coincide).length, [diagnosticoStock]);
@@ -117897,6 +117921,46 @@ function GestionAlmacen() {
     return { mapa, detalle, baseConsumo };
   }, [productos, movimientos]);
   const clasificacionABC = analisisABC.mapa;
+  const analisisABCDelLocalActivo = (0, import_react4.useMemo)(() => {
+    const hace12meses = /* @__PURE__ */ new Date();
+    hace12meses.setMonth(hace12meses.getMonth() - 12);
+    const consumo = {};
+    movimientosDelLocalActivo.forEach((m2) => {
+      if (!esSalida(m2)) return;
+      if (new Date(m2.fecha) < hace12meses) return;
+      consumo[m2.productoId] = (consumo[m2.productoId] || 0) + Math.abs(Number(m2.cantidad) || 0);
+    });
+    const totalSalidas = Object.values(consumo).reduce((a2, x3) => a2 + x3, 0);
+    const baseConsumo = totalSalidas > 0;
+    const clasificables = productosDelLocalActivo.filter((p2) => !esUtillaje(p2));
+    const conValor = clasificables.map((p2) => {
+      const unidades = consumo[p2.id] || 0;
+      const costo = Number(p2.costo) || 0;
+      const valor = baseConsumo ? unidades * costo : (Number(p2.stock) || 0) * costo;
+      return { id: p2.id, valor, unidades, rotacion: (Number(p2.stock) || 0) > 0 ? unidades / (Number(p2.stock) || 1) : null };
+    });
+    const total = conValor.reduce((a2, x3) => a2 + x3.valor, 0);
+    const mapa = {};
+    const detalle = {};
+    if (total <= 0) {
+      clasificables.forEach((p2) => {
+        mapa[p2.id] = "C";
+        detalle[p2.id] = { valor: 0, unidades: 0, rotacion: null };
+      });
+      return { mapa, detalle, baseConsumo };
+    }
+    const ordenados = [...conValor].sort((a2, b2) => b2.valor - a2.valor);
+    let acumulado = 0;
+    ordenados.forEach((x3) => {
+      acumulado += x3.valor;
+      const pct = acumulado / total * 100;
+      mapa[x3.id] = pct <= 80 ? "A" : pct <= 95 ? "B" : "C";
+      detalle[x3.id] = { valor: x3.valor, unidades: x3.unidades, rotacion: x3.rotacion };
+    });
+    return { mapa, detalle, baseConsumo };
+  }, [productosDelLocalActivo, movimientosDelLocalActivo]);
+  const clasificacionABCDelLocalActivo = analisisABCDelLocalActivo.mapa;
+
   const pedidosPendientes = (0, import_react4.useMemo)(() => pedidos.filter((p2) => p2.estado !== "Recibido"), [pedidos]);
   const margenPromedio = (0, import_react4.useMemo)(() => {
     const conPrecio = productos.filter((p2) => Number(p2.precioVenta) > 0);
@@ -118429,7 +118493,7 @@ function GestionAlmacen() {
       deleteProducto,
       reactivarProducto,
       registrarSalida,
-      clasificacionABC,
+      clasificacionABC: clasificacionABCDelLocalActivo,
       almacenCongelado,
       movimientos: movimientosDelLocalActivo,
       fichasCosto,
@@ -118487,9 +118551,9 @@ function GestionAlmacen() {
   ), tab === "recepcion" && /* @__PURE__ */ import_react4.default.createElement(Recepcion, { pedidos: pedidosDelLocalActivo, proveedorPorId, productoPorId, recibirPedido, almacenCongelado, recibirConAlbaran, recibirConFotoIA, cerrarPedido }), tab === "conteo" && /* @__PURE__ */ import_react4.default.createElement(
     InventarioCiego,
     {
-      productos,
+      productos: productosDelLocalActivo,
       proveedores,
-      conteos,
+      conteos: conteosDelLocalActivo,
       iniciarConteo,
       actualizarConteoItem,
       actualizarResponsable,
@@ -118497,9 +118561,9 @@ function GestionAlmacen() {
       aplicarAjustes,
       eliminarConteo,
       revertirUltimaAplicacion,
-      productoPorId,
+      productoPorId: (id) => productosDelLocalActivo.find((p2) => p2.id === id),
       crearProductoEnConteo,
-      clasificacionABC,
+      clasificacionABC: clasificacionABCDelLocalActivo,
       almacenCongelado
     }
   ), tab === "reportes" && /* @__PURE__ */ import_react4.default.createElement(
@@ -118689,7 +118753,7 @@ function GestionAlmacen() {
       fichasCosto,
       alergenosDeFicha
     }
-  ), tab === "saldo" && /* @__PURE__ */ import_react4.default.createElement(SaldoAlmacen, { productos, proveedores, valorInventario, valorUtillaje, proveedorPorId, clasificacionABC, analisisABC }), tab === "respaldos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "saldo" && /* @__PURE__ */ import_react4.default.createElement(SaldoAlmacen, { productos: productosDelLocalActivo, proveedores, valorInventario: valorInventarioDelLocalActivo, valorUtillaje: valorUtillajeDelLocalActivo, proveedorPorId, clasificacionABC: clasificacionABCDelLocalActivo, analisisABC: analisisABCDelLocalActivo }), tab === "respaldos" && /* @__PURE__ */ import_react4.default.createElement(
     Respaldos,
     {
       historial,
@@ -118715,7 +118779,7 @@ function GestionAlmacen() {
     { id: "albaranes", label: "Albaranes", icon: FileText },
     { id: "facturas", label: "Facturas", icon: Files },
     { id: "pagos", label: "Cuentas por pagar", icon: Coins, badge: vencenProntoDelLocalActivo.length, badgeColor: C2.red },
-    { id: "conteo", label: "Inventario ciego", icon: Boxes, badge: stockBajo.length, badgeColor: C2.amber },
+    { id: "conteo", label: "Inventario ciego", icon: Boxes, badge: stockBajoDelLocalActivo.length, badgeColor: C2.amber },
     { id: "saldo", label: "Saldo de almac\xE9n", icon: ClipboardList },
     { id: "mapa", label: "Mapa de almac\xE9n", icon: Map2 },
     { id: "traspasos", label: "Traspasos", icon: ArrowLeftRight, badge: pisoVentaBajo.length, badgeColor: C2.amber },
@@ -119671,12 +119735,36 @@ function crearLogicaFichasCosto({ productos, setFichasCosto }) {
   }
   return { addFichaCosto, updateFichaCosto, deleteFichaCosto, alergenosDeFicha };
 }
-function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria }) {
+function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId }) {
   const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+  function localDeConteo(conteo) {
+    if (!conteo) return null;
+    if (conteo.localId) return conteo.localId;
+    const items = conteo.items || [];
+    if (!items.length) return null;
+    const idsLocales = items.map((it2) => productos.find((p2) => p2.id === it2.productoId)?.localId || null);
+    if (idsLocales.some((id) => !id)) return null;
+    const unicos = [...new Set(idsLocales)];
+    return unicos.length === 1 ? unicos[0] : null;
+  }
+  function conteoEsDelLocalActivo(conteo) {
+    if (!conteo) return false;
+    if (!localActivoId) return true;
+    return localDeConteo(conteo) === localActivoId;
+  }
+  function movimientoEsDelLocalActivo(m2) {
+    if (!localActivoId) return true;
+    if (m2.localId) return m2.localId === localActivoId;
+    const prod = productos.find((p2) => p2.id === m2.productoId);
+    return !!prod && prod.localId === localActivoId;
+  }
   function crearProductoEnConteo(conteoId, datos, cantidadContada) {
+    const conteo = conteos.find((c2) => c2.id === conteoId);
+    if (!conteoEsDelLocalActivo(conteo)) return false;
     const nuevoId = uid();
     const nuevoProducto = {
       id: nuevoId,
+      localId: localActivoId || localDeConteo(conteo) || null,
       stock: 0,
       codigo: datos.codigo || "",
       nombre: datos.nombre,
@@ -119696,16 +119784,18 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
     );
   }
   function iniciarConteo(ambito = "total") {
+    const productosBase = localActivoId ? productos.filter((p2) => p2.localId === localActivoId) : productos;
     let productosDelConteo;
     if (ambito === "piso_venta") {
-      productosDelConteo = productos.filter((p2) => p2.tipo === "elaborado" || Number(p2.precioVenta) > 0);
+      productosDelConteo = productosBase.filter((p2) => p2.tipo === "elaborado" || Number(p2.precioVenta) > 0);
     } else if (ambito === "almacen") {
-      productosDelConteo = productos.filter((p2) => p2.tipo !== "elaborado");
+      productosDelConteo = productosBase.filter((p2) => p2.tipo !== "elaborado");
     } else {
-      productosDelConteo = productos;
+      productosDelConteo = productosBase;
     }
     const conteo = {
       id: uid(),
+      localId: localActivoId || null,
       fecha: todayISO(),
       completado: false,
       ambito,
@@ -119716,6 +119806,8 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
     return conteo.id;
   }
   function actualizarConteoItem(conteoId, productoId, campo, valor) {
+    const conteo = conteos.find((c2) => c2.id === conteoId);
+    if (!conteoEsDelLocalActivo(conteo)) return false;
     setConteos(
       (s2) => s2.map(
         (c2) => c2.id === conteoId ? { ...c2, items: c2.items.map((it2) => it2.productoId === productoId ? { ...it2, [campo]: valor } : it2) } : c2
@@ -119723,17 +119815,21 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
     );
   }
   function actualizarResponsable(conteoId, campo, valor) {
+    const conteo = conteos.find((c2) => c2.id === conteoId);
+    if (!conteoEsDelLocalActivo(conteo)) return false;
     setConteos(
       (s2) => s2.map((c2) => c2.id === conteoId ? { ...c2, responsables: { ...c2.responsables || {}, [campo]: valor } } : c2)
     );
   }
   function finalizarConteo(conteoId) {
+    const conteo = conteos.find((c2) => c2.id === conteoId);
+    if (!conteoEsDelLocalActivo(conteo)) return false;
     setConteos((s2) => s2.map((c2) => c2.id === conteoId ? { ...c2, completado: true } : c2));
   }
   function eliminarConteo(conteoId) {
     const conteo = conteos.find((c2) => c2.id === conteoId);
-    if (!conteo) return { ok: false, error: "Conteo no encontrado." };
-    const generados = movimientos.filter((m2) => m2.documentoOrigenId === conteoId && m2.origen === "aplicarAjustes");
+    if (!conteoEsDelLocalActivo(conteo)) return { ok: false, error: "Conteo no disponible en el local activo." };
+    const generados = movimientos.filter((m2) => m2.documentoOrigenId === conteoId && m2.origen === "aplicarAjustes" && movimientoEsDelLocalActivo(m2));
     const operationIdDeEstaAnulacion = uid();
     let revertidos = 0;
     generados.forEach((m2) => {
@@ -119762,8 +119858,8 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
   }
   function revertirUltimaAplicacion(conteoId) {
     const conteo = conteos.find((c2) => c2.id === conteoId);
-    if (!conteo) return { ok: false, error: "Conteo no encontrado." };
-    const generados = movimientos.filter((m2) => m2.documentoOrigenId === conteoId && m2.origen === "aplicarAjustes");
+    if (!conteoEsDelLocalActivo(conteo)) return { ok: false, error: "Conteo no disponible en el local activo." };
+    const generados = movimientos.filter((m2) => m2.documentoOrigenId === conteoId && m2.origen === "aplicarAjustes" && movimientoEsDelLocalActivo(m2));
     if (generados.length === 0) {
       return { ok: false, error: "Este conteo no tiene ning\xFAn ajuste aplicado." };
     }
@@ -119805,7 +119901,7 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
   }
   function aplicarAjustes(conteoId, motivos = {}) {
     const conteo = conteos.find((c2) => c2.id === conteoId);
-    if (!conteo) return { ok: false, ajustados: 0, traspasados: [] };
+    if (!conteoEsDelLocalActivo(conteo)) return { ok: false, error: "Conteo no disponible en el local activo.", ajustados: 0, traspasados: [] };
     if (conteo.ajustesAplicados) {
       return { ok: false, error: "Los ajustes de este conteo ya se aplicaron antes \u2014 no se puede repetir.", ajustados: 0, traspasados: [] };
     }
@@ -119816,7 +119912,7 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
     const operationIdDeEsteAjuste = uid();
     conteo.items.forEach((item) => {
       const p2 = productos.find((pr) => pr.id === item.productoId);
-      if (!p2) return;
+      if (!p2 || localActivoId && p2.localId !== localActivoId) return;
       const valorFinal = valorCF(item);
       if (valorFinal === null) return;
       const stockActual = Number(p2.stock) || 0;
@@ -123033,7 +123129,7 @@ Contado por: ${contadoPor}
 ${bloques.join("\n\n")}`;
   }
   function textoResultadoConteo() {
-    const ambito = esPisoVenta ? "Piso de venta" : esAlmacen ? "Almac\xE9n (trastienda)" : "Todo (empresa completa)";
+    const ambito = esPisoVenta ? "Piso de venta" : esAlmacen ? "Almac\xE9n (trastienda)" : "Todo el local";
     const lineas = diferencias.filter((d2) => d2.dif !== 0).map((d2) => {
       const motivo = motivos[d2.producto.id] ? ` \xB7 ${motivos[d2.producto.id]}` : "";
       return `${d2.producto.nombre}: sistema ${fmt(referenciaSistema(d2.producto))}, contado ${d2.cf} (${d2.dif > 0 ? "+" : ""}${d2.dif}) \xB7 \u20AC${fmt(Math.abs(d2.impacto))}${motivo}`;
@@ -123070,10 +123166,10 @@ ${cuerpo}`;
   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(
     SectionTitle,
     {
-      action: /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setVerHoja(true) }, /* @__PURE__ */ import_react4.default.createElement(ClipboardList, { size: 15 }), " Hoja para contar"), !activo && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setActivoId(iniciarConteo("total")) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Contar todo (empresa completa)"), !activo && /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setActivoId(iniciarConteo("piso_venta")) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Contar solo el piso de venta"), !activo && /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setActivoId(iniciarConteo("almacen")) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Contar solo el almac\xE9n (trastienda, sin elaborados)"))
+      action: /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setVerHoja(true) }, /* @__PURE__ */ import_react4.default.createElement(ClipboardList, { size: 15 }), " Hoja para contar"), !activo && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setActivoId(iniciarConteo("total")) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Contar todo el local"), !activo && /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setActivoId(iniciarConteo("piso_venta")) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Contar solo el piso de venta"), !activo && /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setActivoId(iniciarConteo("almacen")) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Contar solo el almac\xE9n (trastienda, sin elaborados)"))
     },
     "Inventario ciego"
-  ), resumenCierre && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between gap-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, resumenCierre.ajustados === 0 ? "Todo coincid\xEDa \u2014 no hizo falta ning\xFAn ajuste." : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, resumenCierre.ajustados, " producto(s) ajustado(s).", resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "sobra").length > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " ", "De ellos, ", resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "sobra").length, " ten\xEDan sobrante y se traspasaron solos al piso de venta:", " ", resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "sobra").map((t2) => `${t2.nombre} (+${fmt(t2.cantidad)})`).join(", "), "."), resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "falta").length > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " ", resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "falta").length, " ten\xEDan menos de lo esperado en almac\xE9n \u2014 se asume que ya estaban en el piso de venta sin registrar, y se traspasaron ah\xED (el total no cambi\xF3, no se cuenta como merma):", " ", resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "falta").map((t2) => `${t2.nombre} (+${fmt(t2.cantidad)})`).join(", "), "."))), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setResumenCierre(null), className: "shrink-0", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement(X, { size: 16 })))), almacenCongelado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start gap-2 text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { size: 16, color: C2.amber, style: { marginTop: 2, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement("span", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Almac\xE9n congelado."), " Mientras haya un conteo abierto no se pueden registrar entradas ni salidas, para que el descuadre no salga falseado. Finaliza el conteo para desbloquearlo."))), !activo && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start gap-2 text-[12.5px]", style: { color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement(EyeOff, { size: 16, style: { marginTop: 2, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement("span", null, "Durante el conteo no se muestra la existencia del sistema: cuentas f\xEDsicamente y anotas la cantidad. Al finalizar ver\xE1s las diferencias contra el stock registrado, valoradas en euros."))), activo && !activo.completado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3 flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement(Eye, { size: 15 }), " Captura de conteos", /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: esPisoVenta || esAlmacen ? C2.amber : C2.inkSoft }, esPisoVenta ? "Solo piso de venta" : esAlmacen ? "Solo almac\xE9n (trastienda)" : "Todo (empresa completa)")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Contado por" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: (activo.responsables || {}).contadoPor || "", onChange: (e) => actualizarResponsable(activo.id, "contadoPor", e.target.value), placeholder: "Nombre" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Revisado por (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: (activo.responsables || {}).revisor || "", onChange: (e) => actualizarResponsable(activo.id, "revisor", e.target.value), placeholder: "Responsable" }))), /* @__PURE__ */ import_react4.default.createElement("div", { style: { overflowX: "auto" } }, /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[12px]", style: { borderCollapse: "collapse" } }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", null, /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff", width: 30 } }, "N\xBA"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Descripci\xF3n del producto"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff", width: 58 } }, "U/M"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff", width: 96 } }, "Conteo"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, (() => {
+  ), resumenCierre && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between gap-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, resumenCierre.ajustados === 0 ? "Todo coincid\xEDa \u2014 no hizo falta ning\xFAn ajuste." : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, resumenCierre.ajustados, " producto(s) ajustado(s).", resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "sobra").length > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " ", "De ellos, ", resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "sobra").length, " ten\xEDan sobrante y se traspasaron solos al piso de venta:", " ", resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "sobra").map((t2) => `${t2.nombre} (+${fmt(t2.cantidad)})`).join(", "), "."), resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "falta").length > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " ", resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "falta").length, " ten\xEDan menos de lo esperado en almac\xE9n \u2014 se asume que ya estaban en el piso de venta sin registrar, y se traspasaron ah\xED (el total no cambi\xF3, no se cuenta como merma):", " ", resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "falta").map((t2) => `${t2.nombre} (+${fmt(t2.cantidad)})`).join(", "), "."))), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setResumenCierre(null), className: "shrink-0", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement(X, { size: 16 })))), almacenCongelado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start gap-2 text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { size: 16, color: C2.amber, style: { marginTop: 2, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement("span", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Almac\xE9n congelado."), " Mientras haya un conteo abierto no se pueden registrar entradas ni salidas, para que el descuadre no salga falseado. Finaliza el conteo para desbloquearlo."))), !activo && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start gap-2 text-[12.5px]", style: { color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement(EyeOff, { size: 16, style: { marginTop: 2, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement("span", null, "Durante el conteo no se muestra la existencia del sistema: cuentas f\xEDsicamente y anotas la cantidad. Al finalizar ver\xE1s las diferencias contra el stock registrado, valoradas en euros."))), activo && !activo.completado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3 flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement(Eye, { size: 15 }), " Captura de conteos", /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: esPisoVenta || esAlmacen ? C2.amber : C2.inkSoft }, esPisoVenta ? "Solo piso de venta" : esAlmacen ? "Solo almac\xE9n (trastienda)" : "Todo el local")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Contado por" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: (activo.responsables || {}).contadoPor || "", onChange: (e) => actualizarResponsable(activo.id, "contadoPor", e.target.value), placeholder: "Nombre" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Revisado por (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: (activo.responsables || {}).revisor || "", onChange: (e) => actualizarResponsable(activo.id, "revisor", e.target.value), placeholder: "Responsable" }))), /* @__PURE__ */ import_react4.default.createElement("div", { style: { overflowX: "auto" } }, /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[12px]", style: { borderCollapse: "collapse" } }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", null, /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff", width: 30 } }, "N\xBA"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Descripci\xF3n del producto"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff", width: 58 } }, "U/M"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff", width: 96 } }, "Conteo"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, (() => {
     const enConteo = activo.items.map((it2) => ({ it: it2, p: productoPorId(it2.productoId) })).filter((x3) => x3.p);
     const grupos = agruparPorProveedor(enConteo.map((x3) => x3.p), proveedores);
     const porId = new Map(enConteo.map((x3) => [x3.p.id, x3.it]));
@@ -123167,7 +123263,7 @@ ${cuerpo}`;
   })()))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-2", style: { color: C2.inkSoft } }, "Las casillas en verde ya tienen conteo capturado. Las que quedan en blanco est\xE1n pendientes. El orden es el mismo que el de la hoja impresa, agrupado por proveedor."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 flex gap-2 items-center flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => finalizarConteo(activo.id) }, "Finalizar conteo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowNuevo((s2) => !s2) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 14 }), " Encontr\xE9 un producto que no est\xE1 en el sistema")), showNuevo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 pt-4", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium mb-3", style: { color: C2.inkSoft } }, "Da de alta el producto encontrado y captura la cantidad contada. Se a\xF1adir\xE1 al cat\xE1logo y a este conteo."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nuevo.nombre, onChange: (e) => setNuevo({ ...nuevo, nombre: e.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "C\xF3digo / SKU (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nuevo.codigo, onChange: (e) => setNuevo({ ...nuevo, codigo: e.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Categor\xEDa" }, /* @__PURE__ */ import_react4.default.createElement(CampoCategoria, { value: nuevo.categoria, onChange: (v2) => setNuevo({ ...nuevo, categoria: v2 }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Unidad de medida" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nuevo.unidad, onChange: (e) => setNuevo({ ...nuevo, unidad: e.target.value }), placeholder: "unidad, kg, caja\u2026" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Costo de compra (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: nuevo.costo, onChange: (e) => setNuevo({ ...nuevo, costo: e.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio de venta (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: nuevo.precioVenta, onChange: (e) => setNuevo({ ...nuevo, precioVenta: e.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Stock m\xEDnimo (reorden)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: nuevo.stockMinimo, onChange: (e) => setNuevo({ ...nuevo, stockMinimo: e.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Ubicaci\xF3n en almac\xE9n (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nuevo.ubicacion, onChange: (e) => setNuevo({ ...nuevo, ubicacion: e.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Proveedor principal (opcional)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: nuevo.proveedorId, onChange: (e) => setNuevo({ ...nuevo, proveedorId: e.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin asignar"), proveedores.map((p2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: p2.id, value: p2.id }, p2.nombre)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Cantidad contada f\xEDsicamente" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: nuevo.cantidadContada, onChange: (e) => setNuevo({ ...nuevo, cantidadContada: e.target.value }) }))), errorNuevo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, errorNuevo), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-1" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitNuevo }, "A\xF1adir al conteo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
     setShowNuevo(false);
     setErrorNuevo("");
-  } }, "Cancelar")))), activo && activo.completado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between flex-wrap gap-2 mb-1 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold" }, "Resultado del conteo \u2014 ", activo.fecha), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => window.print() }, "Imprimir / Guardar PDF"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: compartirPdfWhatsApp }, /* @__PURE__ */ import_react4.default.createElement(FileText, { size: 13 }), " Enviar PDF por WhatsApp"), /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { href: `https://wa.me/?text=${encodeURIComponent(textoResultadoConteo())}` }, /* @__PURE__ */ import_react4.default.createElement(MessageCircle, { size: 13 }), " WhatsApp (solo texto)"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3 no-imprimir", style: { color: C2.inkSoft } }, "Ordenado por impacto econ\xF3mico: lo que m\xE1s dinero mueve aparece primero."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "zona-impresion", style: ESTILO_IMPRESION_CLARO }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end justify-between mb-3 pb-3", style: { borderBottom: "2px solid #9C7A34" } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold" }, "Resultado del conteo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: "#6B7A6E" } }, activo.fecha, " \xB7 ", esPisoVenta ? "Piso de venta" : esAlmacen ? "Almac\xE9n (trastienda)" : "Todo (empresa completa)")), /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO, alt: "", style: { height: 48, width: "auto" } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Productos descuadrados"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: conDescuadre.length ? C2.amber : C2.accent } }, conDescuadre.length)), /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Impacto econ\xF3mico neto"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: impactoTotal < 0 ? C2.red : impactoTotal > 0 ? C2.accent : C2.ink } }, impactoTotal >= 0 ? "+" : "\u2212", "\u20AC", fmt(Math.abs(impactoTotal))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, diferencias.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No se captur\xF3 ning\xFAn conteo." }) : diferencias.map((d2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: d2.producto.id, style: { background: d2.dif === 0 ? C2.surface : C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between mb-1" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, d2.producto.nombre), /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: abcColor[esNoMercancia(d2.producto) ? "\u2014" : clasificacionABC[d2.producto.id] || "C"] || C2.inkSoft }, esNoMercancia(d2.producto) ? "\u2014" : clasificacionABC[d2.producto.id] || "C")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-4 gap-2 text-[12px] mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft }, className: "text-[10.5px]" }, esPisoVenta ? "Sistema (piso)" : esAlmacen ? "Sistema (almac\xE9n)" : "Sistema"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, fmt(referenciaSistema(d2.producto)))), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft }, className: "text-[10.5px]" }, "Conteo final"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold" }, d2.cf)), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft }, className: "text-[10.5px]" }, "Diferencia"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold", style: { color: d2.dif === 0 ? C2.inkSoft : d2.dif < 0 ? C2.red : C2.accent } }, d2.dif > 0 ? `+${d2.dif}` : d2.dif)), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft }, className: "text-[10.5px]" }, "Impacto"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold", style: { color: d2.impacto === 0 ? C2.inkSoft : d2.impacto < 0 ? C2.red : C2.accent } }, d2.impacto >= 0 ? "" : "\u2212", "\u20AC", fmt(Math.abs(d2.impacto))))), d2.dif !== 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo del descuadre" }, /* @__PURE__ */ import_react4.default.createElement(
+  } }, "Cancelar")))), activo && activo.completado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between flex-wrap gap-2 mb-1 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold" }, "Resultado del conteo \u2014 ", activo.fecha), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => window.print() }, "Imprimir / Guardar PDF"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: compartirPdfWhatsApp }, /* @__PURE__ */ import_react4.default.createElement(FileText, { size: 13 }), " Enviar PDF por WhatsApp"), /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { href: `https://wa.me/?text=${encodeURIComponent(textoResultadoConteo())}` }, /* @__PURE__ */ import_react4.default.createElement(MessageCircle, { size: 13 }), " WhatsApp (solo texto)"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3 no-imprimir", style: { color: C2.inkSoft } }, "Ordenado por impacto econ\xF3mico: lo que m\xE1s dinero mueve aparece primero."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "zona-impresion", style: ESTILO_IMPRESION_CLARO }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end justify-between mb-3 pb-3", style: { borderBottom: "2px solid #9C7A34" } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold" }, "Resultado del conteo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: "#6B7A6E" } }, activo.fecha, " \xB7 ", esPisoVenta ? "Piso de venta" : esAlmacen ? "Almac\xE9n (trastienda)" : "Todo el local")), /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO, alt: "", style: { height: 48, width: "auto" } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Productos descuadrados"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: conDescuadre.length ? C2.amber : C2.accent } }, conDescuadre.length)), /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Impacto econ\xF3mico neto"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: impactoTotal < 0 ? C2.red : impactoTotal > 0 ? C2.accent : C2.ink } }, impactoTotal >= 0 ? "+" : "\u2212", "\u20AC", fmt(Math.abs(impactoTotal))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, diferencias.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No se captur\xF3 ning\xFAn conteo." }) : diferencias.map((d2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: d2.producto.id, style: { background: d2.dif === 0 ? C2.surface : C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between mb-1" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, d2.producto.nombre), /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: abcColor[esNoMercancia(d2.producto) ? "\u2014" : clasificacionABC[d2.producto.id] || "C"] || C2.inkSoft }, esNoMercancia(d2.producto) ? "\u2014" : clasificacionABC[d2.producto.id] || "C")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-4 gap-2 text-[12px] mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft }, className: "text-[10.5px]" }, esPisoVenta ? "Sistema (piso)" : esAlmacen ? "Sistema (almac\xE9n)" : "Sistema"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, fmt(referenciaSistema(d2.producto)))), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft }, className: "text-[10.5px]" }, "Conteo final"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold" }, d2.cf)), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft }, className: "text-[10.5px]" }, "Diferencia"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold", style: { color: d2.dif === 0 ? C2.inkSoft : d2.dif < 0 ? C2.red : C2.accent } }, d2.dif > 0 ? `+${d2.dif}` : d2.dif)), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft }, className: "text-[10.5px]" }, "Impacto"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold", style: { color: d2.impacto === 0 ? C2.inkSoft : d2.impacto < 0 ? C2.red : C2.accent } }, d2.impacto >= 0 ? "" : "\u2212", "\u20AC", fmt(Math.abs(d2.impacto))))), d2.dif !== 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo del descuadre" }, /* @__PURE__ */ import_react4.default.createElement(
     "select",
     {
       value: motivos[d2.producto.id] || "",
