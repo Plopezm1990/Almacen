@@ -9,71 +9,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Compilar fuente recuperado
-        shell: bash
+      - name: Localizar capa de seguridad
+        shell: python
         run: |
-          cd source-recovery
-          npm ci --no-audit --no-fund
-          npm run build
-      - name: Preparar sitios
-        shell: bash
-        run: |
-          mkdir -p /tmp/o /tmp/r
-          cp -a . /tmp/o/repo
-          cp -a . /tmp/r/repo
-          cp source-recovery/dist/fuente.js /tmp/r/repo/fuente.js
-          cd /tmp/o/repo && python3 -m http.server 4191 --bind 127.0.0.1 >/tmp/o.log 2>&1 &
-          cd /tmp/r/repo && python3 -m http.server 4192 --bind 127.0.0.1 >/tmp/r.log 2>&1 &
-          sleep 2
-      - name: Instalar navegador
-        shell: bash
-        run: |
-          mkdir -p /tmp/t && cd /tmp/t
-          npm init -y >/dev/null
-          npm install --no-audit --no-fund playwright@1.55.0
-          npx playwright install chromium
-      - name: Comparar funciones antes del modo local
-        shell: bash
-        run: |
-          cd /tmp/t
-          cat > test.cjs <<'NODE'
-          const {chromium}=require('playwright');
-          async function uno(browser,url,nombre){
-            const c=await browser.newContext({serviceWorkers:'block'});
-            const p=await c.newPage();
-            await p.route('https://flqercbgpgmmfaakrwkc.supabase.co/**',r=>r.abort());
-            await p.goto(url,{waitUntil:'domcontentloaded'});
-            await p.waitForTimeout(1200);
-            const x=await p.evaluate(async()=>{
-              const resultado={
-                keys:Object.keys(localStorage),
-                storageGet:String(window.storage?.get),
-                localGet:String(window.LOCAL?.get),
-                nativeGet:String(Storage.prototype.getItem),
-                storageGetOwn:window.storage?.hasOwnProperty('get'),
-                localGetOwn:window.LOCAL?.hasOwnProperty('get'),
-                localEsWindow:typeof LOCAL!=='undefined' && LOCAL===window.LOCAL
-              };
-              try{ resultado.directLocal=window.LOCAL.get('__diag_inexistente__'); }
-              catch(e){ resultado.directLocalError=e?.message; }
-              try{ resultado.directStorage=await window.storage.get('__diag_inexistente__',false); }
-              catch(e){ resultado.directStorageError=e?.message; }
-              return resultado;
-            });
-            console.log('=== '+nombre+' ===');
-            console.log(JSON.stringify(x,null,2));
-            await c.close();
-            return x;
-          }
-          (async()=>{
-            const b=await chromium.launch({headless:true});
-            const o=await uno(b,'http://127.0.0.1:4191/','ORIGINAL');
-            const r=await uno(b,'http://127.0.0.1:4192/','RECUPERADO');
-            await b.close();
-            console.log('STORAGE_GET_IGUAL='+(o.storageGet===r.storageGet?1:0));
-            console.log('LOCAL_GET_IGUAL='+(o.localGet===r.localGet?1:0));
-            console.log('NATIVE_GET_IGUAL='+(o.nativeGet===r.nativeGet?1:0));
-            console.log('DIAG_FUNCIONES_OK=1');
-          })().catch(e=>{console.error(e);process.exit(1)});
-          NODE
-          node test.cjs
+          from pathlib import Path
+          archivos=['fuente.js','index.html','edge-auth-patch.js','seleccion-neutral-patch.js']
+          terminos=[
+            'CLAVES_CONTROLADAS',
+            '__contextoRolSeguroInstalado',
+            'Contexto operativo mínimo',
+            'edge-auth-patch',
+            'seleccion-neutral-patch',
+            '__guardPerfilActivoInstalado',
+            'respuestaVacia'
+          ]
+          for nombre in archivos:
+            p=Path(nombre)
+            if not p.exists():
+              print(f'=== {nombre}: NO EXISTE ===')
+              continue
+            lines=p.read_text(encoding='utf-8').splitlines()
+            print(f'\n=== {nombre} | lineas={len(lines)} bytes={p.stat().st_size} ===')
+            for t in terminos:
+              hits=[i for i,l in enumerate(lines) if t in l]
+              print(f'{t}: {[i+1 for i in hits[:20]]}')
+              for i in hits[:3]:
+                for j in range(max(0,i-3),min(len(lines),i+5)):
+                  x=lines[j]
+                  if len(x)>500: x=x[:500]+' ...'
+                  print(f'  {j+1}: {x}')
+          # Marcas de módulos que esbuild preservó justo antes de fuente.jsx.
+          lines=Path('fuente.js').read_text(encoding='utf-8').splitlines()
+          marca=next(i for i,l in enumerate(lines) if l.strip()=='// fuente.jsx')
+          print('\n=== 120 líneas antes de // fuente.jsx ===')
+          for j in range(max(0,marca-120),marca+4):
+            x=lines[j]
+            if len(x)>600: x=x[:600]+' ...'
+            print(f'{j+1}: {x}')
