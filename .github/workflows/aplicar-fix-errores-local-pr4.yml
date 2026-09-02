@@ -1,0 +1,43 @@
+name: Aplicar fix errores local PR4
+on:
+  push:
+    branches: [preparacion-sin-netlify]
+    paths:
+      - .github/workflows/aplicar-fix-errores-local-pr4.yml
+permissions:
+  contents: write
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar exactamente el fix validado
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('fuente.js')
+          s=p.read_text(encoding='utf-8')
+          inicio=s.index('function ErroresSistema() {')
+          fin=s.index('function DiagnosticoSincronizacion()', inicio)
+          bloque=s[inicio:fin]
+          viejo="      try {\n        const supabase = await window.getSupabaseClient();"
+          nuevo="      if (!window.__nubeActiva) {\n        if (activo) {\n          setError(\"El historial de errores en la nube no está disponible mientras trabajas solo en este equipo.\");\n          setCargando(false);\n        }\n        return;\n      }\n      try {\n        const supabase = await window.getSupabaseClient();"
+          assert bloque.count(viejo)==1, f'Patrón esperado {bloque.count(viejo)} veces'
+          bloque=bloque.replace(viejo,nuevo,1)
+          s=s[:inicio]+bloque+s[fin:]
+          assert s.count('El historial de errores en la nube no está disponible mientras trabajas solo en este equipo.')==1
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Validar
+        run: |
+          node --check fuente.js
+          node --check edge-auth-patch.js
+          git diff --check
+      - name: Guardar y retirar workflow temporal
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm .github/workflows/aplicar-fix-errores-local-pr4.yml
+          git add fuente.js .github/workflows/aplicar-fix-errores-local-pr4.yml
+          git commit -m 'Evitar conexión de errores del sistema en modo local'
+          git push origin HEAD:preparacion-sin-netlify
