@@ -1,0 +1,40 @@
+name: Diagnosticar storage recompilado
+on:
+  push:
+    branches: [inspeccion-build-reproducible]
+    paths:
+      - .github/workflows/diagnosticar-storage-recompilado.yml
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspeccionar símbolos de almacenamiento
+        shell: python
+        run: |
+          from pathlib import Path
+          for nombre in ['fuente.js','source-recovery/fuente-recuperado.js']:
+            p=Path(nombre)
+            lines=p.read_text(encoding='utf-8').splitlines()
+            print('\n===',nombre,'===')
+            terms=['No se pudo cargar','loadKey','storage.get','window.storage','var storage','const storage','let storage']
+            for term in terms:
+              hits=[i for i,l in enumerate(lines) if term in l]
+              print(f'--- {term}: {len(hits)} hits ---')
+              for i in hits[:20]:
+                a=max(0,i-5); b=min(len(lines),i+12)
+                print(f'CONTEXT {i+1}:')
+                for j in range(a,b):
+                  x=lines[j]
+                  if len(x)>700: x=x[:700]+' ...[cortado]'
+                  print(f'{j+1}: {x}')
+          # También identificar usos directos del identificador storage dentro de la sección app original.
+          import re
+          lines=Path('fuente.js').read_text(encoding='utf-8').splitlines()
+          marca=next(i for i,l in enumerate(lines) if l.strip()=='// fuente.jsx')
+          app=lines[marca:]
+          pat=re.compile(r'(?<![.$\w])storage\b')
+          hits=[i for i,l in enumerate(app) if pat.search(l)]
+          print('\n=== storage identifier en app original:',len(hits),'===')
+          for i in hits[:50]:
+            print(f'{marca+i+1}: {app[i][:1000]}')
