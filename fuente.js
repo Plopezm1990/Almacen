@@ -117868,7 +117868,7 @@ function GestionAlmacen() {
   const conteoAbierto = (0, import_react4.useMemo)(() => conteosDelLocalActivo.find((c2) => !c2.completado) || null, [conteosDelLocalActivo]);
   const almacenCongelado = !!conteoAbierto;
   const { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro } = crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId });
-  const { diagnosticarStock, corregirProducto, movimientosParaReconciliar } = crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+  const { diagnosticarStock, corregirProducto, movimientosParaReconciliar } = crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
   const { buscarEnCatalogo, aprenderReferencia, guardarAlbaran, eliminarAlbaran, marcarPagada, confirmarAlbaran, anularAlbaran, recibirConAlbaran, recibirConFotoIA, duplicadosDe, desviacionesDePrecio, procesarRecepcion } = crearLogicaAlbaranes({
     catalogoProv,
     setCatalogoProv,
@@ -117948,7 +117948,10 @@ function GestionAlmacen() {
     [productosDelLocalActivo]
   );
   const diagnosticoStock = (0, import_react4.useMemo)(() => diagnosticarStock(), [productos, movimientos]);
+  const idsProductosDelLocalActivo = (0, import_react4.useMemo)(() => new Set(productosDelLocalActivo.map((p2) => p2.id)), [productosDelLocalActivo]);
+  const diagnosticoStockDelLocalActivo = (0, import_react4.useMemo)(() => diagnosticoStock.filter((d2) => idsProductosDelLocalActivo.has(d2.productoId)), [diagnosticoStock, idsProductosDelLocalActivo]);
   const descuadresPendientes = (0, import_react4.useMemo)(() => diagnosticoStock.filter((d2) => !d2.coincide).length, [diagnosticoStock]);
+  const descuadresPendientesDelLocalActivo = (0, import_react4.useMemo)(() => diagnosticoStockDelLocalActivo.filter((d2) => !d2.coincide).length, [diagnosticoStockDelLocalActivo]);
   const pisoVentaBajo = (0, import_react4.useMemo)(
     () => productos.filter((p2) => p2.tipo !== "elaborado" && Number(p2.stockMinimoPisoVenta) > 0 && (Number(p2.stockPisoVenta) || 0) <= Number(p2.stockMinimoPisoVenta)),
     [productos]
@@ -118218,24 +118221,24 @@ function GestionAlmacen() {
     } catch (e) {
     }
   }, [ready, caducanPronto]);
-  const recordatorioConteo = (0, import_react4.useMemo)(() => {
+  function calcularRecordatorioConteo(conteosBase, nombreTotal = "Total (empresa completa)") {
     const hoy = /* @__PURE__ */ new Date();
     hoy.setHours(0, 0, 0, 0);
     const ambitos = [
       { id: "piso_venta", nombre: "Piso de venta", limiteDias: 14 },
       { id: "almacen", nombre: "Almac\xE9n (trastienda)", limiteDias: 30 },
-      { id: "total", nombre: "Total (empresa completa)", limiteDias: 30 }
+      { id: "total", nombre: nombreTotal, limiteDias: 30 }
     ];
     return ambitos.map((amb) => {
-      const delAmbito = conteos.filter((c2) => c2.completado && (c2.ambito || "total") === amb.id);
-      if (delAmbito.length === 0) {
-        return { ...amb, ultimaFecha: null, diasDesde: null, atrasado: true };
-      }
+      const delAmbito = (conteosBase || []).filter((c2) => c2.completado && (c2.ambito || "total") === amb.id);
+      if (delAmbito.length === 0) return { ...amb, ultimaFecha: null, diasDesde: null, atrasado: true };
       const ultima = delAmbito.reduce((max, c2) => c2.fecha > max ? c2.fecha : max, delAmbito[0].fecha);
       const diasDesde = Math.round((hoy - new Date(ultima)) / 864e5);
       return { ...amb, ultimaFecha: ultima, diasDesde, atrasado: diasDesde > amb.limiteDias };
     });
-  }, [conteos]);
+  }
+  const recordatorioConteo = (0, import_react4.useMemo)(() => calcularRecordatorioConteo(conteos), [conteos]);
+  const recordatorioConteoDelLocalActivo = (0, import_react4.useMemo)(() => calcularRecordatorioConteo(conteosDelLocalActivo, "Total del local"), [conteosDelLocalActivo]);
   const conteosAtrasados = (0, import_react4.useMemo)(() => recordatorioConteo.filter((a2) => a2.atrasado), [recordatorioConteo]);
   const fichasCostoDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? fichasCosto : fichasCosto.filter((f2) => f2.localId === localActivoId), [fichasCosto, localActivoId]);
   const ordenesProduccionDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? ordenesProduccion : ordenesProduccion.filter((o2) => o2.localId === localActivoId), [ordenesProduccion, localActivoId]);
@@ -118486,6 +118489,18 @@ function GestionAlmacen() {
     () => productos.filter((p2) => !esUtillaje(p2) && !movimientos.some((m2) => m2.productoId === p2.id && esSalida(m2))),
     [productos, movimientos]
   );
+  const rotacionPorProductoDelLocalActivo = (0, import_react4.useMemo)(() => rotacionPorProducto.filter((p2) => idsProductosDelLocalActivo.has(p2.id)), [rotacionPorProducto, idsProductosDelLocalActivo]);
+  const margenPorProductoDelLocalActivo = (0, import_react4.useMemo)(() => margenPorProducto.filter((p2) => idsProductosDelLocalActivo.has(p2.id)), [margenPorProducto, idsProductosDelLocalActivo]);
+  const productosSinMovimientoDelLocalActivo = (0, import_react4.useMemo)(() => productosSinMovimiento.filter((p2) => idsProductosDelLocalActivo.has(p2.id)), [productosSinMovimiento, idsProductosDelLocalActivo]);
+  const patronesDesviacionConteoDelLocalActivo = (0, import_react4.useMemo)(() => patronesDesviacionConteo.filter((x3) => idsProductosDelLocalActivo.has(x3.productoId)), [patronesDesviacionConteo, idsProductosDelLocalActivo]);
+  const gastoPorProveedorDelLocalActivo = (0, import_react4.useMemo)(() => {
+    const map = {};
+    pedidosDelLocalActivo.forEach((pe2) => {
+      const total = (pe2.items || []).reduce((a2, it2) => a2 + (Number(it2.cantidad) || 0) * (Number(it2.costoUnitario) || 0), 0);
+      map[pe2.proveedorId] = (map[pe2.proveedorId] || 0) + total;
+    });
+    return Object.entries(map).map(([proveedorId, total]) => ({ proveedor: proveedorPorId(proveedorId), total })).sort((a2, b2) => b2.total - a2.total);
+  }, [pedidosDelLocalActivo, proveedores]);
   if (!ready) {
     return /* @__PURE__ */ import_react4.default.createElement("div", { style: { background: C2.bg, color: C2.ink }, className: "w-full h-full min-h-[600px] flex items-center justify-center font-sans" }, /* @__PURE__ */ import_react4.default.createElement(LoaderCircle, { className: "animate-spin", size: 22 }), /* @__PURE__ */ import_react4.default.createElement("span", { className: "ml-2 text-sm" }, "Cargando almac\xE9n\u2026"));
   }
@@ -118517,9 +118532,11 @@ function GestionAlmacen() {
   const encargosUrgentesInforme = localInformeId ? encargosUrgentes.filter((e) => idsEncargosInforme.has(e.id)) : encargosUrgentes;
   const pisoVentaBajoInforme = localInformeId ? pisoVentaBajo.filter((p2) => p2.localId === localInformeId) : pisoVentaBajo;
   const sugerenciasPedidoInforme = localInformeId ? sugerenciasPedido.filter((p2) => p2.localId === localInformeId) : sugerenciasPedido;
-  const recordatorioConteoInforme = localInformeId ? recordatorioConteo.filter((a2) => localPorProductoInforme.get(a2.productoId || a2.id) === localInformeId) : recordatorioConteo;
+  const conteosInforme = localInformeId ? conteos.filter((c2) => c2.localId === localInformeId) : conteos;
+  const recordatorioConteoInforme = calcularRecordatorioConteo(conteosInforme, localInformeId ? "Total del local" : "Total (empresa completa)");
   const diagnosticoStockInforme = localInformeId ? diagnosticoStock.filter((d2) => localPorProductoInforme.get(d2.productoId) === localInformeId) : diagnosticoStock;
   const addGastoInforme = (data) => addGasto({ ...data, localId: localInformeId || localActivoId || null });
+  const deleteGastoInforme = (id) => deleteGasto(id, localInformeId || localActivoId || null);
   const contenido = /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, (tab === "dashboard" || tab === "resultados" || tab === "libroiva") && /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales, valor: localInformeId, onChange: setLocalInformeId }), tab === "dashboard" && /* @__PURE__ */ import_react4.default.createElement(
     Dashboard,
     {
@@ -118573,7 +118590,7 @@ function GestionAlmacen() {
       clasificacionABC: clasificacionABCDelLocalActivo,
       almacenCongelado,
       movimientos: movimientosDelLocalActivo,
-      fichasCosto,
+      fichasCosto: fichasCostoDelLocalActivo,
       updateFichaCosto,
       ajustarProductoPorOtro
     }
@@ -118646,12 +118663,12 @@ function GestionAlmacen() {
   ), tab === "reportes" && /* @__PURE__ */ import_react4.default.createElement(
     Reportes,
     {
-      rotacionPorProducto,
-      gastoPorProveedor,
-      productosSinMovimiento,
-      valorInventario,
-      margenPorProducto,
-      patronesDesviacionConteo
+      rotacionPorProducto: rotacionPorProductoDelLocalActivo,
+      gastoPorProveedor: gastoPorProveedorDelLocalActivo,
+      productosSinMovimiento: productosSinMovimientoDelLocalActivo,
+      valorInventario: valorInventarioDelLocalActivo,
+      margenPorProducto: margenPorProductoDelLocalActivo,
+      patronesDesviacionConteo: patronesDesviacionConteoDelLocalActivo
     }
   ), tab === "resultados" && /* @__PURE__ */ import_react4.default.createElement(
     Resultados,
@@ -118661,7 +118678,7 @@ function GestionAlmacen() {
       productoPorId,
       gastosGenerales: gastosGeneralesInforme,
       addGasto: addGastoInforme,
-      deleteGasto,
+      deleteGasto: deleteGastoInforme,
       empleados: empleadosInforme
     }
   ), tab === "fichas" && /* @__PURE__ */ import_react4.default.createElement(
@@ -118815,7 +118832,7 @@ function GestionAlmacen() {
       deleteTurno,
       copiarSemana
     }
-  ), tab === "mapa" && /* @__PURE__ */ import_react4.default.createElement(MapaAlmacen, { productos, proveedorPorId }), tab === "traspasos" && /* @__PURE__ */ import_react4.default.createElement(Traspasos, { productos: productosDelLocalActivo, traspasos: traspasosDelLocalActivo, traspasarStock, pisoVentaBajo: pisoVentaBajoDelLocalActivo, fichasCosto }), tab === "appcc" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "mapa" && /* @__PURE__ */ import_react4.default.createElement(MapaAlmacen, { productos: productosDelLocalActivo, proveedorPorId }), tab === "traspasos" && /* @__PURE__ */ import_react4.default.createElement(Traspasos, { productos: productosDelLocalActivo, traspasos: traspasosDelLocalActivo, traspasarStock, pisoVentaBajo: pisoVentaBajoDelLocalActivo, fichasCosto: fichasCostoDelLocalActivo }), tab === "appcc" && /* @__PURE__ */ import_react4.default.createElement(
     Appcc,
     {
       puntosControl: puntosControlDelLocalActivo,
@@ -118843,7 +118860,7 @@ function GestionAlmacen() {
       establecerPin,
       activarModoEmpleado
     }
-  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStock, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo }));
+  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo }));
   const itemsMeta = [
     { id: "dashboard", label: "Panel general", icon: ChartColumn },
     { id: "direccion", label: "Panel de direcci\xF3n", icon: TrendingUp },
@@ -118859,7 +118876,7 @@ function GestionAlmacen() {
     { id: "conteo", label: "Inventario ciego", icon: Boxes, badge: stockBajoDelLocalActivo.length, badgeColor: C2.amber },
     { id: "saldo", label: "Saldo de almac\xE9n", icon: ClipboardList },
     { id: "mapa", label: "Mapa de almac\xE9n", icon: Map2 },
-    { id: "traspasos", label: "Traspasos", icon: ArrowLeftRight, badge: pisoVentaBajo.length, badgeColor: C2.amber },
+    { id: "traspasos", label: "Traspasos", icon: ArrowLeftRight, badge: pisoVentaBajoDelLocalActivo.length, badgeColor: C2.amber },
     { id: "fichas", label: "Fichas de costo", icon: Calculator },
     { id: "produccion", label: "Producci\xF3n", icon: Factory },
     { id: "mermas", label: "Mermas", icon: Trash2 },
@@ -118881,7 +118898,7 @@ function GestionAlmacen() {
     { id: "tesoreria", label: "Tesorer\xEDa", icon: ChartLine },
     { id: "estacionalidad", label: "Estacionalidad", icon: CalendarRange },
     { id: "auditoria", label: "Auditor\xEDa", icon: RotateCcwClock },
-    { id: "diagnostico", label: "Reconciliaci\xF3n de stock", icon: Stethoscope, badge: descuadresPendientes, badgeColor: C2.red },
+    { id: "diagnostico", label: "Reconciliaci\xF3n de stock", icon: Stethoscope, badge: descuadresPendientesDelLocalActivo, badgeColor: C2.red },
     { id: "respaldos", label: "Respaldos", icon: Cog },
     { id: "notificaciones", label: "Notificaciones", icon: Bell },
     { id: "locales", label: "Locales", icon: Map2 },
@@ -119194,8 +119211,12 @@ function crearLogicaGastos({ setGastosGenerales, localActivoId }) {
   function addGasto(data) {
     setGastosGenerales((s2) => [...s2, { id: uid(), ...data, localId: data.localId || localActivoId || null }]);
   }
-  function deleteGasto(id) {
-    setGastosGenerales((s2) => s2.filter((g2) => g2.id !== id));
+  function deleteGasto(id, localIdEsperado = localActivoId) {
+    setGastosGenerales((s2) => {
+      const actual = s2.find((g2) => g2.id === id);
+      if (!actual || localIdEsperado && actual.localId !== localIdEsperado) return s2;
+      return s2.filter((g2) => g2.id !== id);
+    });
   }
   return { addGasto, deleteGasto };
 }
@@ -119498,7 +119519,7 @@ function crearMotorStock({ productos, setProductos, movimientos, setMovimientos,
   }
   return { aplicarMovimientoStock, calcularStockTeorico };
 }
-function crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria }) {
+function crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId }) {
   const { aplicarMovimientoStock, calcularStockTeorico } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
   function diagnosticarStock() {
     const porProducto = /* @__PURE__ */ new Map();
@@ -119542,11 +119563,14 @@ function crearLogicaReconciliacion({ productos, setProductos, movimientos, setMo
     }).sort((a2, b2) => Math.abs(b2.diferencia) - Math.abs(a2.diferencia));
   }
   function movimientosParaReconciliar(productoId) {
+    const producto = productos.find((p2) => p2.id === productoId);
+    if (!producto || localActivoId && producto.localId !== localActivoId) return [];
     return movimientos.filter((m2) => m2.productoId === productoId).slice().sort((a2, b2) => (b2.fecha || "").localeCompare(a2.fecha || ""));
   }
   function corregirProducto(productoId) {
     const p2 = productos.find((pr) => pr.id === productoId);
     if (!p2) return { ok: false, error: "Producto no encontrado." };
+    if (localActivoId && p2.localId !== localActivoId) return { ok: false, error: "El producto no pertenece al local activo." };
     const teoricoReal = calcularStockTeorico(productoId, "stock");
     const stockCache = Number(p2.stock) || 0;
     const deficitCache = Number(p2.deficitPendiente) || 0;
