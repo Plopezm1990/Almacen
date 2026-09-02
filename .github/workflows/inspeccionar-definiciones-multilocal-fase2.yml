@@ -1,0 +1,27 @@
+name: Inspeccionar definiciones multilocal fase 2
+on:
+  push:
+    branches: [multilocal-fase-2]
+    paths:
+      - .github/workflows/inspeccionar-definiciones-multilocal-fase2.yml
+jobs:
+  inspeccion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mostrar definiciones exactas
+        shell: python
+        run: |
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          nombres=['crearLogicaConteos','crearLogicaProduccion','crearLogicaMovimientosCaja','crearLogicaDevoluciones','crearLogicaFichaje','crearLogicaAppcc','crearLogicaAceite','crearLogicaTraspasos']
+          for nombre in nombres:
+            i=s.find('function '+nombre+'(')
+            if i<0:
+              print(f'\n===== {nombre} NO ENCONTRADA =====')
+              continue
+            prox=[s.find('\nfunction ',i+10),s.find('\nvar ',i+10)]
+            prox=[x for x in prox if x>i]
+            fin=min(prox) if prox else min(len(s),i+14000)
+            print(f'\n===== {nombre} @ {i} =====')
+            print(s[i:min(fin,i+12000)])
