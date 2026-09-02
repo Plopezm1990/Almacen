@@ -1,0 +1,52 @@
+name: Auditar módulos locales restantes fase 3
+on:
+  push:
+    branches: [multilocal-fase-3]
+    paths:
+      - .github/workflows/auditar-modulos-locales-restantes-fase3.yml
+jobs:
+  auditoria:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resumir modelos y renders restantes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          def bloque_func(nombre, marcador, siguiente, maxlen=18000):
+              i=s.find(marcador)
+              print(f'\n===== {nombre} @ {i} =====')
+              if i<0: return
+              j=s.find(siguiente,i+len(marcador))
+              if j<0: j=min(len(s),i+maxlen)
+              b=s[i:min(j,i+maxlen)]
+              print('localId occurrences:',b.count('localId'))
+              print(b[:maxlen])
+          def render(nombre, marcador, siguiente, maxlen=5000):
+              i=s.find(marcador)
+              print(f'\n===== RENDER {nombre} @ {i} =====')
+              if i<0: return
+              j=s.find(siguiente,i+len(marcador))
+              if j<0: j=i+maxlen
+              print(s[i:min(j,i+maxlen)])
+          bloque_func('VENTA','function crearLogicaVentas(','function crearLogicaEncargos(')
+          bloque_func('ENCARGOS','function crearLogicaEncargos(','function crearLogicaClientes(')
+          bloque_func('DEVOLUCIONES','function crearLogicaDevoluciones(','function crearLogicaFacturasDirectas(')
+          bloque_func('TRASPASOS','function crearLogicaTraspasos(','function crearLogicaAppcc(')
+          bloque_func('PRODUCCION','function crearLogicaProduccion(','function crearLogicaMermas(')
+          bloque_func('MERMAS','function crearLogicaMermas(','function crearLogicaTraspasos(')
+          bloque_func('CAJA','function crearLogicaCaja(','function crearLogicaTurnos(')
+          bloque_func('APPCC','function crearLogicaAppcc(','function crearLogicaFichaje(')
+          bloque_func('ACEITE','function crearLogicaAceite(','function crearLogicaFichasCosto(')
+          render('HISTORIAL','tab === "historial_producto"','tab === "aceite"')
+          render('ACEITE','tab === "aceite"','tab === "buscar"')
+          render('PRODUCCION','tab === "produccion"','tab === "mermas"')
+          render('MERMAS','tab === "mermas"','tab === "etiquetas"')
+          render('VENTA','tab === "venta"','tab === "encargos"')
+          render('ENCARGOS','tab === "encargos"','tab === "clientes"')
+          render('DEVOLUCIONES','tab === "devoluciones"','tab === "facturas"')
+          render('CAJA','tab === "caja"','tab === "tesoreria"')
+          render('TRASPASOS','tab === "traspasos"','tab === "appcc"')
+          render('APPCC','tab === "appcc"','tab === "saldo"')
+          PY
