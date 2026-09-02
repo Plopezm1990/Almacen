@@ -21,67 +21,22 @@ jobs:
           npm init -y >/dev/null
           npm install --no-audit --no-fund playwright@1.55.0
           npx playwright install chromium
-      - name: Inspeccionar formulario de Pedidos
+      - name: Inspeccionar fallback de productos en Pedidos
         run: |
           cd /tmp/ui-inspect
           cat > inspect.cjs <<'NODE'
           const { chromium } = require('playwright');
           const URL='http://127.0.0.1:4230/';
-          async function abrirModulo(page,texto){
-            return page.evaluate((texto)=>{
-              const raiz=document.querySelector('aside') || document.querySelector('nav');
-              const n=v=>(v||'').replace(/\s+/g,' ').trim();
-              const el=raiz && [...raiz.querySelectorAll('button,a')].find(e=>n(e.innerText||e.textContent)===texto);
-              if(!el) return false; el.click(); return true;
-            },texto);
-          }
-          async function dump(page,tag){
-            const data=await page.evaluate(()=>({
-              text:(document.body.innerText||'').replace(/\s+/g,' ').trim().slice(-5000),
-              buttons:[...document.querySelectorAll('button')].map(x=>(x.innerText||x.textContent||'').replace(/\s+/g,' ').trim()).filter(Boolean).slice(-50),
-              inputs:[...document.querySelectorAll('input')].map((x,i)=>({i,type:x.type,placeholder:x.placeholder,value:x.value,name:x.name||'',aria:x.getAttribute('aria-label')||''})),
-              selects:[...document.querySelectorAll('select')].map((x,i)=>({i,value:x.value,options:[...x.options].map(o=>({text:o.text,value:o.value}))})),
-              textareas:[...document.querySelectorAll('textarea')].map((x,i)=>({i,placeholder:x.placeholder,value:x.value})),
-              labels:[...document.querySelectorAll('label')].map(x=>(x.innerText||x.textContent||'').replace(/\s+/g,' ').trim()).filter(Boolean)
-            }));
-            console.log('=== '+tag+' ==='); console.log(JSON.stringify(data,null,2));
-          }
+          async function abrirModulo(page,texto){return page.evaluate((texto)=>{const raiz=document.querySelector('aside')||document.querySelector('nav');const n=v=>(v||'').replace(/\s+/g,' ').trim();const el=raiz&&[...raiz.querySelectorAll('button,a')].find(e=>n(e.innerText||e.textContent)===texto);if(!el)return false;el.click();return true;},texto)}
+          async function dump(page,tag){const data=await page.evaluate(()=>({text:(document.body.innerText||'').replace(/\s+/g,' ').trim().slice(-5000),buttons:[...document.querySelectorAll('button')].map(x=>(x.innerText||x.textContent||'').replace(/\s+/g,' ').trim()).filter(Boolean).slice(-60),inputs:[...document.querySelectorAll('input')].map((x,i)=>({i,type:x.type,placeholder:x.placeholder,value:x.value,name:x.name||'',aria:x.getAttribute('aria-label')||''})),selects:[...document.querySelectorAll('select')].map((x,i)=>({i,value:x.value,options:[...x.options].map(o=>({text:o.text,value:o.value}))})),labels:[...document.querySelectorAll('label')].map(x=>(x.innerText||x.textContent||'').replace(/\s+/g,' ').trim()).filter(Boolean)}));console.log('=== '+tag+' ===');console.log(JSON.stringify(data,null,2));}
           (async()=>{
-            const browser=await chromium.launch({headless:true});
-            const ctx=await browser.newContext({serviceWorkers:'block',viewport:{width:1440,height:1100}});
-            const page=await ctx.newPage();
-            const supabase=[]; const errors=[];
-            page.on('pageerror',e=>errors.push(e.message));
-            await page.route('https://flqercbgpgmmfaakrwkc.supabase.co/**',r=>{supabase.push(r.request().url());r.abort();});
-            await page.addInitScript(()=>{
-              localStorage.clear(); const put=(k,v)=>localStorage.setItem('almacen:'+k,JSON.stringify(v));
-              put('locales',[{id:'loc',nombre:'Local Prueba',activo:true}]); put('localActivoId','loc');
-              put('productos',[{id:'p1',nombre:'Chocolate prueba',tipo:'final',unidad:'ud',stock:10,stockPisoVenta:5,stockMinimo:2,costo:4,precioVenta:8,ivaPct:10,localId:'loc',activo:true}]);
-              put('proveedores',[{id:'prov1',nombre:'Proveedor prueba',activo:true}]);
-              for(const k of ['pedidos','movimientos','conteos','fichasCosto','albaranes','gastosGenerales','empleados','fichajes','registrosAppcc','puntosControl','clientes','encargos','arqueos','movimientosCaja','devoluciones','turnos','nominas','facturasDirectas','ordenesProduccion','traspasos','auditoria','freidoras','registrosAceite','entrevistas']) put(k,[]);
-              put('catalogoProv',{}); put('historialRespaldos',[]); localStorage.setItem('almacen__pendientes','[]');
-            });
-            await page.goto(URL,{waitUntil:'domcontentloaded'}); await page.waitForTimeout(900);
-            await page.getByText('Trabajar solo en este equipo, sin sincronizar',{exact:false}).first().click(); await page.waitForTimeout(900);
-            if(!(await abrirModulo(page,'Pedidos'))) throw new Error('No abre Pedidos');
-            await page.waitForTimeout(400);
-            await dump(page,'PEDIDOS_ANTES');
-            const nuevo=page.getByRole('button',{name:'Nuevo pedido'});
-            if(!(await nuevo.count())) throw new Error('No aparece Nuevo pedido');
-            await nuevo.first().click(); await page.waitForTimeout(350);
-            await dump(page,'PEDIDOS_NUEVO');
-            const selects=page.locator('select');
-            for(let i=0;i<await selects.count();i++){
-              const vals=await selects.nth(i).locator('option').evaluateAll(opts=>opts.map(o=>o.value));
-              if(vals.includes('prov1')){ await selects.nth(i).selectOption('prov1'); break; }
-            }
-            await page.waitForTimeout(350);
-            await dump(page,'PEDIDOS_PROVEEDOR_ELEGIDO');
-            console.log('SUPABASE_COUNT='+supabase.length); console.log('ERRORS='+JSON.stringify(errors));
-            await browser.close();
-            if(supabase.length) throw new Error('Hubo llamadas a Supabase');
-            if(errors.length) throw new Error('Errores JS: '+errors.join(' | '));
-            console.log('INSPECCION_PEDIDOS_OK=1');
+            const browser=await chromium.launch({headless:true}); const ctx=await browser.newContext({serviceWorkers:'block',viewport:{width:1440,height:1100}}); const page=await ctx.newPage(); const supabase=[]; const errors=[];
+            page.on('pageerror',e=>errors.push(e.message)); await page.route('https://flqercbgpgmmfaakrwkc.supabase.co/**',r=>{supabase.push(r.request().url());r.abort();});
+            await page.addInitScript(()=>{localStorage.clear();const put=(k,v)=>localStorage.setItem('almacen:'+k,JSON.stringify(v));put('locales',[{id:'loc',nombre:'Local Prueba',activo:true}]);put('localActivoId','loc');put('productos',[{id:'p1',nombre:'Chocolate prueba',tipo:'final',unidad:'ud',stock:10,stockPisoVenta:5,stockMinimo:2,costo:4,precioVenta:8,ivaPct:10,localId:'loc',activo:true}]);put('proveedores',[{id:'prov1',nombre:'Proveedor prueba',activo:true}]);for(const k of ['pedidos','movimientos','conteos','fichasCosto','albaranes','gastosGenerales','empleados','fichajes','registrosAppcc','puntosControl','clientes','encargos','arqueos','movimientosCaja','devoluciones','turnos','nominas','facturasDirectas','ordenesProduccion','traspasos','auditoria','freidoras','registrosAceite','entrevistas'])put(k,[]);put('catalogoProv',{});put('historialRespaldos',[]);localStorage.setItem('almacen__pendientes','[]');});
+            await page.goto(URL,{waitUntil:'domcontentloaded'});await page.waitForTimeout(900);await page.getByText('Trabajar solo en este equipo, sin sincronizar',{exact:false}).first().click();await page.waitForTimeout(900);if(!(await abrirModulo(page,'Pedidos')))throw new Error('No abre Pedidos');await page.waitForTimeout(350);await page.getByRole('button',{name:'Nuevo pedido'}).first().click();await page.waitForTimeout(300);
+            const selects=page.locator('select');for(let i=0;i<await selects.count();i++){const vals=await selects.nth(i).locator('option').evaluateAll(opts=>opts.map(o=>o.value));if(vals.includes('prov1')){await selects.nth(i).selectOption('prov1');break;}}
+            await page.waitForTimeout(250);const verTodos=page.getByRole('button',{name:'No lo encuentro, ver todos los productos'});console.log('VER_TODOS_COUNT='+(await verTodos.count()));if(!(await verTodos.count()))throw new Error('No aparece ver todos');await verTodos.first().click();await page.waitForTimeout(350);await dump(page,'PEDIDOS_VER_TODOS');
+            console.log('SUPABASE_COUNT='+supabase.length);console.log('ERRORS='+JSON.stringify(errors));await browser.close();if(supabase.length)throw new Error('Hubo llamadas a Supabase');if(errors.length)throw new Error('Errores JS: '+errors.join(' | '));console.log('INSPECCION_PEDIDOS_FALLBACK_OK=1');
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
           node inspect.cjs
