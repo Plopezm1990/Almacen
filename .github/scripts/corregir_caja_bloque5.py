@@ -58,7 +58,7 @@ assert s.count(viejo_dev) == 1, f'Devoluciones render temporal: esperado 1, enco
 s = s.replace(viejo_dev, nuevo_dev, 1)
 
 # Caja: el render está compilado en una sola línea.
-ini_caja = s.index("# Caja\nini=s.index('tab === \\\"caja\\\"')")
+ini_caja = s.index("# Caja\n")
 fin_caja = s.index("# Traspasos", ini_caja)
 nuevo_caja = r'''# Caja compacta.
 s=uno(s,
