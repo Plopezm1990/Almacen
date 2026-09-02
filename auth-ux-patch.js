@@ -9,6 +9,8 @@
   var CLASE_OLVIDO = "chocoloyos-auth-forgot";
   var CLASE_LOGOUT = "chocoloyos-auth-owner-logout";
   var CLASE_LOGOUT_MENU = "chocoloyos-auth-owner-logout-menu";
+  var CLASE_ICONO_MENU = "chocoloyos-auth-menu-logout-icon";
+  var ID_CONFIRM = "chocoloyos-auth-logout-confirm";
   var clienteCache = null;
   var refrescoProgramado = false;
 
@@ -45,8 +47,21 @@
       "." + CLASE_LOGOUT + ":focus-visible{outline:2px solid #e4c77b;outline-offset:2px}",
       "." + CLASE_LOGOUT + ":disabled,." + CLASE_LOGOUT_MENU + ":disabled{opacity:.55;cursor:default;transform:none}",
       "." + CLASE_LOGOUT + " svg{display:block;width:18px;height:18px;flex:0 0 18px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}",
-      "." + CLASE_LOGOUT_MENU + " svg{stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}",
-      "@media (max-width:760px){." + CLASE_LOGOUT + "{display:none!important}}"
+      "." + CLASE_LOGOUT_MENU + " ." + CLASE_ICONO_MENU + "{display:block!important;width:22px!important;height:22px!important;min-width:22px!important;max-width:22px!important;flex:0 0 22px!important;stroke:currentColor!important;fill:none!important;stroke-width:2!important;stroke-linecap:round!important;stroke-linejoin:round!important}",
+      "@media (max-width:760px){." + CLASE_LOGOUT + "{display:none!important}}",
+      "#" + ID_CONFIRM + "{position:fixed;inset:0;z-index:2147483600;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(3,18,11,.76);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}",
+      "#" + ID_CONFIRM + " .choco-logout-card{box-sizing:border-box;width:min(390px,100%);padding:22px;background:#123621;color:#f8f1df;border:1px solid rgba(229,199,123,.24);border-radius:20px;box-shadow:0 22px 70px rgba(0,0,0,.46)}",
+      "#" + ID_CONFIRM + " .choco-logout-mark{display:flex;align-items:center;justify-content:center;width:44px;height:44px;margin:0 0 14px;border-radius:13px;background:rgba(229,199,123,.12);color:#e5c77b}",
+      "#" + ID_CONFIRM + " .choco-logout-mark svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}",
+      "#" + ID_CONFIRM + " h2{margin:0 0 8px;font-size:20px;line-height:1.2;font-weight:800;color:#fff8e8}",
+      "#" + ID_CONFIRM + " p{margin:0;color:#bfd0c5;font-size:14px;line-height:1.5}",
+      "#" + ID_CONFIRM + " .choco-logout-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px}",
+      "#" + ID_CONFIRM + " button{box-sizing:border-box;min-height:46px;border-radius:12px;padding:0 14px;font:inherit;font-size:14px;font-weight:800;cursor:pointer}",
+      "#" + ID_CONFIRM + " .choco-logout-cancel{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.07);color:#edf3ef}",
+      "#" + ID_CONFIRM + " .choco-logout-confirm{border:1px solid #b08a37;background:#a77d29;color:#fffaf0}",
+      "#" + ID_CONFIRM + " button:focus-visible{outline:2px solid #e5c77b;outline-offset:2px}",
+      "#" + ID_CONFIRM + " button:disabled{opacity:.55;cursor:default}",
+      "#" + ID_CONFIRM + " .choco-logout-error{min-height:18px;margin-top:10px;color:#ffb1a7;font-size:12px;line-height:1.35}"
     ].join("\n");
     (document.head || document.documentElement).appendChild(style);
   }
@@ -87,23 +102,31 @@
     for (var i = 0; i < botones.length; i++) botones[i].remove();
   }
 
+  function quitarConfirmacion() {
+    var modal = document.getElementById(ID_CONFIRM);
+    if (modal) modal.remove();
+  }
+
   function quitarLogoutPropietario() {
     quitarLogoutCabecera();
     quitarLogoutMenu();
+    quitarConfirmacion();
   }
 
-  function iconoLogout() {
+  function rutasIconoLogout() {
     return [
-      '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">',
       '<path d="M10 5H6.8A1.8 1.8 0 0 0 5 6.8v10.4A1.8 1.8 0 0 0 6.8 19H10"></path>',
       '<path d="M14 8l4 4-4 4"></path>',
-      '<path d="M9 12h9"></path>',
-      '</svg>'
+      '<path d="M9 12h9"></path>'
     ].join("");
   }
 
+  function iconoLogout(clase) {
+    return '<svg' + (clase ? ' class="' + clase + '"' : '') + ' viewBox="0 0 24 24" aria-hidden="true" focusable="false">' + rutasIconoLogout() + '</svg>';
+  }
+
   function contenidoBotonLogout() {
-    return iconoLogout() + '<span class="chocoloyos-auth-logout-text">Cerrar sesión</span>';
+    return iconoLogout("") + '<span class="chocoloyos-auth-logout-text">Cerrar sesión</span>';
   }
 
   function reemplazarTexto(root, anterior, nuevo) {
@@ -119,11 +142,66 @@
     return false;
   }
 
-  async function cerrarSesion(supabase, boton) {
-    if (!window.confirm("¿Cerrar la sesión de Propietario en este dispositivo?")) return;
-    if (boton) boton.disabled = true;
-    try { await supabase.auth.signOut({ scope: "local" }); } catch (e) {}
-    window.location.reload();
+  function mostrarConfirmacionCerrarSesion(supabase, botonOrigen) {
+    if (document.getElementById(ID_CONFIRM)) return;
+    aplicarEstilos();
+
+    var modal = document.createElement("div");
+    modal.id = ID_CONFIRM;
+    modal.setAttribute("role", "presentation");
+    modal.innerHTML = [
+      '<div class="choco-logout-card" role="dialog" aria-modal="true" aria-labelledby="choco-logout-title" aria-describedby="choco-logout-text">',
+      '<div class="choco-logout-mark">' + iconoLogout("") + '</div>',
+      '<h2 id="choco-logout-title">Cerrar sesión</h2>',
+      '<p id="choco-logout-text">Vas a cerrar la sesión de Propietario solo en este dispositivo. Los datos del negocio no se modificarán.</p>',
+      '<div class="choco-logout-error" aria-live="polite"></div>',
+      '<div class="choco-logout-actions">',
+      '<button type="button" class="choco-logout-cancel">Cancelar</button>',
+      '<button type="button" class="choco-logout-confirm">Cerrar sesión</button>',
+      '</div>',
+      '</div>'
+    ].join("");
+    document.body.appendChild(modal);
+
+    var cancelar = modal.querySelector(".choco-logout-cancel");
+    var confirmar = modal.querySelector(".choco-logout-confirm");
+    var error = modal.querySelector(".choco-logout-error");
+
+    function cancelarModal() {
+      modal.remove();
+      if (botonOrigen && document.body.contains(botonOrigen)) {
+        try { botonOrigen.focus({ preventScroll: true }); } catch (e) { try { botonOrigen.focus(); } catch (_) {} }
+      }
+    }
+
+    cancelar.addEventListener("click", cancelarModal);
+    modal.addEventListener("click", function (evento) {
+      if (evento.target === modal) cancelarModal();
+    });
+
+    modal.addEventListener("keydown", function (evento) {
+      if (evento.key === "Escape") {
+        evento.preventDefault();
+        cancelarModal();
+      }
+    });
+
+    confirmar.addEventListener("click", async function () {
+      confirmar.disabled = true;
+      cancelar.disabled = true;
+      error.textContent = "Cerrando sesión…";
+      try {
+        var resultado = await supabase.auth.signOut({ scope: "local" });
+        if (resultado && resultado.error) throw resultado.error;
+        window.location.reload();
+      } catch (e) {
+        confirmar.disabled = false;
+        cancelar.disabled = false;
+        error.textContent = e && e.message ? e.message : "No se pudo cerrar la sesión. Inténtalo de nuevo.";
+      }
+    });
+
+    setTimeout(function () { try { cancelar.focus(); } catch (e) {} }, 30);
   }
 
   function asegurarLogoutEnMenu(supabase) {
@@ -144,13 +222,19 @@
     for (var i = 0; i < ids.length; i++) ids[i].removeAttribute("id");
 
     var svg = boton.querySelector("svg");
-    if (svg) svg.outerHTML = iconoLogout();
+    if (svg) {
+      svg.setAttribute("viewBox", "0 0 24 24");
+      svg.setAttribute("aria-hidden", "true");
+      svg.setAttribute("focusable", "false");
+      svg.classList.add(CLASE_ICONO_MENU);
+      svg.innerHTML = rutasIconoLogout();
+    }
     reemplazarTexto(boton, "Locales", "Cerrar sesión");
 
     boton.addEventListener("click", function (evento) {
       evento.preventDefault();
       evento.stopPropagation();
-      cerrarSesion(supabase, boton);
+      mostrarConfirmacionCerrarSesion(supabase, boton);
     });
 
     referencia.insertAdjacentElement("afterend", boton);
@@ -173,7 +257,7 @@
     modoEmpleado.insertAdjacentElement("afterend", boton);
 
     boton.addEventListener("click", function () {
-      cerrarSesion(supabase, boton);
+      mostrarConfirmacionCerrarSesion(supabase, boton);
     });
   }
 
