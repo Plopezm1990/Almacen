@@ -9,22 +9,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspeccionar fuente.js
+      - name: Inspeccionar sección fuente.jsx
         shell: bash
         run: |
-          echo '=== TAMANO / LINEAS ==='
-          wc -c -l fuente.js
-          echo '=== PRIMERAS LINEAS ==='
-          head -n 8 fuente.js
-          echo '=== ULTIMAS LINEAS ==='
-          tail -n 8 fuente.js
-          echo '=== SOURCE MAP ==='
-          grep -n -m 5 'sourceMappingURL\|sourcesContent' fuente.js || true
-          echo '=== MARCAS BUNDLER ==='
-          grep -n -m 20 '__commonJS\|__esm\|__toESM\|__require\|vite\|webpack\|rollup\|esbuild' fuente.js || true
-          echo '=== COMENTARIOS DE MODULOS ==='
-          grep -n -m 30 '^// ' fuente.js || true
-          echo '=== IMPORTS/REQUIRES ==='
-          grep -n -m 20 '^import \|require(' fuente.js || true
-          echo '=== SINTAXIS ==='
+          MARCA=$(grep -n -m1 '^// fuente.jsx$' fuente.js | cut -d: -f1)
+          echo "MARCA=$MARCA"
+          TOTAL=$(wc -l < fuente.js)
+          echo "TOTAL=$TOTAL"
+          echo "LINEAS_APP=$((TOTAL-MARCA+1))"
+          echo '=== INICIO APP (120 líneas) ==='
+          sed -n "${MARCA},$((MARCA+119))p" fuente.js
+          echo '=== PATRONES JSX/REACT EN APP ==='
+          tail -n +"$MARCA" fuente.js | grep -n -m 30 'jsxDEV\|jsx(\|jsxs(\|createElement\|React.createElement' || true
+          echo '=== IMPORTS/REQUIRE EN APP ==='
+          tail -n +"$MARCA" fuente.js | grep -n -m 40 '^import \|require_' || true
+          echo '=== FUNCIONES PRINCIPALES ==='
+          tail -n +"$MARCA" fuente.js | grep -n -m 40 '^function \|^var [A-Za-z_].* = (' || true
+          echo '=== BYTES APP ==='
+          tail -n +"$MARCA" fuente.js | wc -c
+          echo '=== SINTAXIS BUNDLE ==='
           node --check fuente.js
