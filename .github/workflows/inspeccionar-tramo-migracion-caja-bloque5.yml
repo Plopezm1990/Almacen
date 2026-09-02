@@ -1,0 +1,22 @@
+name: Inspeccionar tramo final migración caja bloque 5
+on:
+  push:
+    branches: [multilocal-fase-3]
+    paths:
+      - .github/workflows/inspeccionar-tramo-migracion-caja-bloque5.yml
+permissions:
+  contents: read
+jobs:
+  inspeccion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mostrar tramo final de migración
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          i=s.index('const idsLocalesTrasReparar')
+          j=s.index('setReady(true)', i)
+          print(s[i:j+300])
+          PY
