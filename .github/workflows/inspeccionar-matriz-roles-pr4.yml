@@ -1,0 +1,39 @@
+name: Inspeccionar matriz roles PR4
+on:
+  push:
+    branches: [smoke-pr4-global]
+    paths:
+      - .github/workflows/inspeccionar-matriz-roles-pr4.yml
+jobs:
+  inspeccionar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Extraer matriz de roles y navegación
+        shell: python
+        run: |
+          import subprocess, re
+          subprocess.run(['git','fetch','origin','preparacion-sin-netlify'],check=True)
+          s=subprocess.check_output(['git','show','origin/preparacion-sin-netlify:fuente.js'],text=True)
+          tokens=[
+            'itemsPermitidosEmpleado',
+            'rol === "Propietario"',
+            'rol === "Encargado"',
+            'Camarero/a',
+            'Cajero/a',
+            'Churrero/a',
+            'Básico',
+            'itemsMeta.filter',
+            'menuItems',
+            'permisosRol'
+          ]
+          for token in tokens:
+              print('\n'+'='*100)
+              poss=[m.start() for m in re.finditer(re.escape(token),s)][:8]
+              print('TOKEN=',repr(token),'COUNT=',s.count(token),'POS=',poss)
+              for i,p in enumerate(poss,1):
+                  print('\n--- OCC',i,'---')
+                  print(s[max(0,p-3000):min(len(s),p+6500)])
+          print('INSPECCION_MATRIZ_ROLES_OK=1')
