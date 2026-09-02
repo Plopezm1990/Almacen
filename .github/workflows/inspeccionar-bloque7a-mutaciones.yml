@@ -1,0 +1,31 @@
+name: Inspeccionar mutaciones bloque 7A
+on:
+  push:
+    branches: [multilocal-fase-3]
+    paths:
+      - .github/workflows/inspeccionar-bloque7a-mutaciones.yml
+permissions:
+  contents: read
+jobs:
+  inspeccion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mostrar reconciliación y recordatorio informe
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          i=s.index('function crearLogicaReconciliacion(')
+          j=s.index('function crearLogica', i+30)
+          print('===== RECONCILIACION =====')
+          print(s[i:j])
+          for t in ['recordatorioConteoInforme', 'descuadresPendientes', 'crearLogicaReconciliacion({']:
+              print('\n===== '+t+' =====')
+              k=0
+              while True:
+                  x=s.find(t,k)
+                  if x<0: break
+                  print(s[max(0,x-700):min(len(s),x+1300)])
+                  k=x+1
+          PY
