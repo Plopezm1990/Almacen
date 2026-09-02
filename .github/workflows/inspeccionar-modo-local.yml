@@ -1,0 +1,25 @@
+name: Inspeccionar señal modo local
+on:
+  push:
+    branches: [smoke-pr4-global]
+    paths:
+      - .github/workflows/inspeccionar-modo-local.yml
+jobs:
+  inspeccion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mostrar contexto del botón local
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('fuente.js')
+          s=p.read_text(encoding='utf-8')
+          objetivo='Trabajar solo en este equipo'
+          i=s.find(objetivo)
+          print('POS=',i)
+          if i<0:
+              raise SystemExit('Texto no encontrado')
+          a=max(0,i-7000); b=min(len(s),i+7000)
+          print(s[a:b])
+          PY
