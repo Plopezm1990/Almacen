@@ -118462,7 +118462,7 @@ function GestionAlmacen() {
       sugerenciasPedido: sugerenciasPedidoDelLocalActivo,
       addProducto
     }
-  ), tab === "recepcion" && /* @__PURE__ */ import_react4.default.createElement(Recepcion, { pedidos, proveedorPorId, productoPorId, recibirPedido, almacenCongelado, recibirConAlbaran, recibirConFotoIA, cerrarPedido }), tab === "conteo" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "recepcion" && /* @__PURE__ */ import_react4.default.createElement(Recepcion, { pedidos: pedidosDelLocalActivo, proveedorPorId, productoPorId, recibirPedido, almacenCongelado, recibirConAlbaran, recibirConFotoIA, cerrarPedido }), tab === "conteo" && /* @__PURE__ */ import_react4.default.createElement(
     InventarioCiego,
     {
       productos,
@@ -119542,6 +119542,11 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
   return { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro };
 }
 function crearLogicaPedidos({ pedidos, setPedidos, productos, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId }) {
+  function pedidoEsDelLocalActivo(pedido) {
+    if (!pedido) return false;
+    if (!localActivoId) return true;
+    return !pedido.localId || pedido.localId === localActivoId;
+  }
   function crearPedido({ proveedorId, fechaEsperada, items }) {
     const pedido = {
       id: uid(),
@@ -119556,24 +119561,34 @@ function crearLogicaPedidos({ pedidos, setPedidos, productos, setProductos, setM
     return pedido;
   }
   function actualizarPedido(pedidoId, { proveedorId, fechaEsperada, items }) {
+    const actual = pedidos.find((pe2) => pe2.id === pedidoId);
+    if (!pedidoEsDelLocalActivo(actual)) return false;
     setPedidos(
       (s2) => s2.map(
         (pe2) => pe2.id === pedidoId ? { ...pe2, proveedorId, fechaEsperada, items: items.map((it2) => ({ ...it2, cantidadRecibida: 0 })) } : pe2
       )
     );
+    return true;
   }
   function eliminarPedido(pedidoId) {
+    const actual = pedidos.find((pe2) => pe2.id === pedidoId);
+    if (!pedidoEsDelLocalActivo(actual)) return false;
     setPedidos((s2) => s2.filter((pe2) => pe2.id !== pedidoId));
+    return true;
   }
   function cerrarPedido(pedidoId) {
+    const actual = pedidos.find((pe2) => pe2.id === pedidoId);
+    if (!pedidoEsDelLocalActivo(actual)) return false;
     setPedidos((s2) => s2.map((pe2) => pe2.id === pedidoId ? { ...pe2, estado: "Recibido", cerradoManualmente: true } : pe2));
+    return true;
   }
   function recibirPedido(pedidoId, lineas) {
     if (almacenCongelado) return false;
     const pedido = pedidos.find((pe2) => pe2.id === pedidoId);
-    if (!pedido) return false;
+    if (!pedidoEsDelLocalActivo(pedido)) return false;
     const lineasConDatos = lineas.filter((ln2) => Number(ln2.cantidad) > 0).map((ln2) => {
       const prod = productos.find((p2) => p2.id === ln2.productoId);
+      if (!prod || localActivoId && (!prod.localId || prod.localId !== localActivoId)) return null;
       return {
         productoId: ln2.productoId,
         cantidad: Number(ln2.cantidad),
@@ -119584,7 +119599,7 @@ function crearLogicaPedidos({ pedidos, setPedidos, productos, setProductos, setM
         descripcion: prod ? prod.nombre : "",
         unidad: prod ? prod.unidad : "unidad"
       };
-    });
+    }).filter(Boolean);
     if (!lineasConDatos.length) return false;
     const { lineasResueltas, avisos } = procesarRecepcion({
       lineas: lineasConDatos,
@@ -120401,19 +120416,36 @@ function crearLogicaAlbaranes({
   const claveCat = (proveedorId, codigo) => `${proveedorId}::${String(codigo || "").trim().toUpperCase()}`;
   const normalizarDescripcion = (t2) => String(t2 || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
   const claveCatDesc = (proveedorId, descripcion) => `${proveedorId}::DESC::${normalizarDescripcion(descripcion)}`;
+  const claveCatLocal = (localId, proveedorId, codigo) => `${localId}::${claveCat(proveedorId, codigo)}`;
+  const claveCatDescLocal = (localId, proveedorId, descripcion) => `${localId}::${claveCatDesc(proveedorId, descripcion)}`;
+  function catalogoSeguroPorLocal(datos) {
+    if (!datos || !datos.productoId || !localActivoId) return datos || null;
+    const prod = productos.find((p2) => p2.id === datos.productoId);
+    if (!prod || !prod.localId || prod.localId !== localActivoId) return { ...datos, productoId: "" };
+    return datos;
+  }
   function buscarEnCatalogo(proveedorId, codigo, descripcion) {
     if (codigo) {
+      if (localActivoId) {
+        const porCodigoLocal = catalogoProv[claveCatLocal(localActivoId, proveedorId, codigo)];
+        if (porCodigoLocal) return catalogoSeguroPorLocal(porCodigoLocal);
+      }
       const porCodigo = catalogoProv[claveCat(proveedorId, codigo)];
-      if (porCodigo) return porCodigo;
+      if (porCodigo) return catalogoSeguroPorLocal(porCodigo);
     }
     if (descripcion && normalizarDescripcion(descripcion)) {
-      return catalogoProv[claveCatDesc(proveedorId, descripcion)] || null;
+      if (localActivoId) {
+        const porDescLocal = catalogoProv[claveCatDescLocal(localActivoId, proveedorId, descripcion)];
+        if (porDescLocal) return catalogoSeguroPorLocal(porDescLocal);
+      }
+      return catalogoSeguroPorLocal(catalogoProv[claveCatDesc(proveedorId, descripcion)] || null);
     }
     return null;
   }
   function aprenderReferencia(proveedorId, codigo, datos) {
     if (!codigo) return;
-    setCatalogoProv((s2) => ({ ...s2, [claveCat(proveedorId, codigo)]: { ...s2[claveCat(proveedorId, codigo)] || {}, ...datos } }));
+    const clave = localActivoId ? claveCatLocal(localActivoId, proveedorId, codigo) : claveCat(proveedorId, codigo);
+    setCatalogoProv((s2) => ({ ...s2, [clave]: { ...s2[clave] || {}, ...datos, localId: datos.localId || localActivoId || null } }));
   }
   function sinFotoIncrustada(a2) {
     if (!a2 || a2.fotoOrigenIA === void 0) return a2;
@@ -120528,6 +120560,7 @@ function crearLogicaAlbaranes({
       let prod = null;
       if (ln2.productoId) prod = productos.find((p2) => p2.id === ln2.productoId);
       if (!prod && cat && cat.productoId) prod = productos.find((p2) => p2.id === cat.productoId);
+      if (prod && localActivoId && (!prod.localId || prod.localId !== localActivoId)) prod = null;
       const motivoDoc = `${documentoTipo === "albaran" ? "Albar\xE1n" : "Pedido"} ${documentoNumero || "s/n"}`;
       if (prod) {
         const stockAnterior = Number(prod.stock) || 0;
@@ -120622,11 +120655,14 @@ function crearLogicaAlbaranes({
           contenido: ln2.contenido || "",
           unidadContenido: ln2.unidadContenido || "",
           productoId: ln2.productoId,
+          localId: productos.find((p2) => p2.id === ln2.productoId)?.localId || localActivoId || null,
           ultimoPrecio: Number(ln2.precioBruto) || 0,
           ultimoDto: Number(ln2.dtoPct) || 0
         };
-        if (ln2.codigoProveedor) copia[claveCat(proveedorId, ln2.codigoProveedor)] = datos;
-        if (ln2.descripcion && normalizarDescripcion(ln2.descripcion)) copia[claveCatDesc(proveedorId, ln2.descripcion)] = datos;
+        const claveCodigo = localActivoId ? claveCatLocal(localActivoId, proveedorId, ln2.codigoProveedor) : claveCat(proveedorId, ln2.codigoProveedor);
+        const claveDescripcion = localActivoId ? claveCatDescLocal(localActivoId, proveedorId, ln2.descripcion) : claveCatDesc(proveedorId, ln2.descripcion);
+        if (ln2.codigoProveedor) copia[claveCodigo] = datos;
+        if (ln2.descripcion && normalizarDescripcion(ln2.descripcion)) copia[claveDescripcion] = datos;
       });
       return copia;
     });
