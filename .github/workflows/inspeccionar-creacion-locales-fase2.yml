@@ -1,0 +1,29 @@
+name: Inspeccionar creación multilocal fase 2
+on:
+  push:
+    branches: [multilocal-fase-2]
+    paths:
+      - .github/workflows/inspeccionar-creacion-locales-fase2.yml
+jobs:
+  inspeccion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mostrar funciones de creación relevantes
+        shell: python
+        run: |
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          patrones=[
+            'function crearPedido(', 'function iniciarConteo(', 'function guardarAlbaran(',
+            'function producir(', 'function registrarMovimientoCaja(', 'function addArqueo(',
+            'function registrarDevolucionCliente(', 'function registrarDevolucionProveedor(',
+            'function addEncargo(', 'function fichar(', 'function addFichajeManual(',
+            'function registrarAppcc(', 'function addFreidora(', 'function registrarCambio(',
+            'function registrarRelleno(', 'function traspasarStock('
+          ]
+          for pat in patrones:
+            i=s.find(pat)
+            print(f'\n### {pat} :: {i}')
+            if i>=0:
+              print(s[i:min(len(s),i+5000)])
