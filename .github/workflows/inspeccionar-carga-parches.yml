@@ -11,18 +11,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Buscar referencias de carga
+      - name: Confirmar cadena de imports
         run: |
           git fetch origin preparacion-sin-netlify
           mkdir -p /tmp/pr4
           git archive origin/preparacion-sin-netlify | tar -x -C /tmp/pr4
           cd /tmp/pr4
-          echo '=== edge-auth-patch refs ==='
-          grep -RIn --exclude='edge-auth-patch.js' --exclude-dir='.git' 'edge-auth-patch' . || true
-          echo '=== seleccion-neutral-patch refs ==='
-          grep -RIn --exclude='seleccion-neutral-patch.js' --exclude-dir='.git' 'seleccion-neutral-patch' . || true
-          echo '=== script injection refs ==='
-          grep -nE 'createElement\(["'"']script|appendChild\([^)]*script|script\.src|src *=.*edge-auth' fuente.js | head -80 || true
-          echo '=== patch runtime marker refs ==='
-          grep -n '__contextoRolSeguroInstalado' fuente.js || true
+          echo '=== fuente -> chunk ==='
+          grep -n 'chunk-CZ7CSFO4' fuente.js | head -20
+          echo '=== chunk -> edge patch ==='
+          grep -n 'edge-auth-patch' chunk-CZ7CSFO4.js | head -20
+          echo '=== edge patch -> seleccion patch ==='
+          grep -n 'seleccion-neutral-patch' edge-auth-patch.js | head -20
           echo 'INSPECCION_CARGA_PARCHES_OK=1'
