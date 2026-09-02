@@ -1,0 +1,32 @@
+name: Inspeccionar Fichas y APPCC bloque 6
+on:
+  push:
+    branches: [multilocal-fase-3]
+    paths:
+      - .github/workflows/inspeccionar-fichas-appcc-bloque6.yml
+permissions:
+  contents: read
+jobs:
+  inspeccion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mostrar dependencias exactas
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          for nombre in ['crearLogicaFichasCosto']:
+              i=s.index('function '+nombre+'(')
+              j=s.index('\nfunction ',i+10)
+              print('\n===== '+nombre+' =====\n'+s[i:j])
+          for termino in ['appccPendientesHoy =','appccPendientesHoy','function FichasCosto(','function Produccion(']:
+              print('\n===== '+termino+' =====')
+              pos=[]; k=0
+              while True:
+                  i=s.find(termino,k)
+                  if i<0: break
+                  pos.append(i); k=i+1
+              print('POS',pos[:12])
+              for i in pos[:6]: print(s[max(0,i-1200):min(len(s),i+5000)])
+          PY
