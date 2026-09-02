@@ -122,8 +122,6 @@
         return respuestaStorage(key, encargosSoloCaja(contexto.cobrosEncargos));
       }
     } catch (e) {
-      // Si hay nube activa y no podemos verificar el contexto, una colección
-      // sensible no cae a una copia local potencialmente perteneciente a otro rol.
       return respuestaStorage(key, []);
     }
 
@@ -141,9 +139,7 @@
           (key === "fichasCosto" && rol === "Churrero/a") ||
           (key === "encargos" && rol === "Cajero/a");
         if (soloLectura) return { key: key, value: value, shared: false };
-      } catch (e) {
-        // Si no se pudo verificar el rol, se conserva el comportamiento original.
-      }
+      } catch (e) {}
     }
     return setOriginal(key, value, shared);
   };
@@ -155,8 +151,6 @@
   };
 })();
 
-// Un perfil desactivado debe salir también del frontend, no solo ser rechazado
-// por RLS/Edge Functions. Se comprueba al volver a la pestaña y cada 30 s.
 (function () {
   "use strict";
   if (window.__guardPerfilActivoInstalado) return;
@@ -178,9 +172,7 @@
         try { await supabase.auth.signOut({ scope: "local" }); } catch (e) {}
         window.location.reload();
       }
-    } catch (e) {
-      // Un fallo de red no expulsa al usuario; el backend seguirá aplicando RLS.
-    }
+    } catch (e) {}
   }
 
   window.setInterval(comprobarPerfilActivo, 30000);
@@ -191,9 +183,6 @@
   setTimeout(comprobarPerfilActivo, 1000);
 })();
 
-// Capa visual temporal para que Prefiltros y Entrevistas no muestren
-// puntuaciones ni recomendaciones automáticas mientras se adapta el bundle
-// principal. No guarda ni modifica datos.
 (function () {
   "use strict";
   if (document.querySelector('script[data-seleccion-neutral="1"]')) return;
