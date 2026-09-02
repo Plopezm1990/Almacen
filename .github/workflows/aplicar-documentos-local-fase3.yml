@@ -1,4 +1,5 @@
 name: Aplicar documentos por local fase 3
+# Reintento con aplicador corregido: derivados de pagos después de facturasPorPagar.
 on:
   push:
     branches: [multilocal-fase-3]
