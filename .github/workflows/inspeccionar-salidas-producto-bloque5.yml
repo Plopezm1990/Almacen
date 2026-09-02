@@ -11,16 +11,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Mostrar funciones exactas
+      - name: Mostrar contextos exactos
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('fuente.js').read_text(encoding='utf-8')
-          i=s.index('function registrarSalida(')
-          j=s.index('function ajustarProductoPorOtro(',i)
-          print('===== REGISTRAR SALIDA =====')
-          print(s[i:j])
-          k=s.index('return { addProducto',j)
-          print('===== AJUSTAR PRODUCTO POR OTRO =====')
-          print(s[j:k])
+          for termino in ['registrarSalida','ajustarProductoPorOtro']:
+              pos=[]; i=0
+              while True:
+                  j=s.find(termino,i)
+                  if j<0: break
+                  pos.append(j); i=j+1
+              print('\n=====',termino,pos,'=====')
+              for j in pos[:8]:
+                  print('\n---',j,'---')
+                  print(s[max(0,j-700):min(len(s),j+3200)])
           PY
