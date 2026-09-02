@@ -1,5 +1,5 @@
 name: Aplicar operaciones locales bloque 5
-# Reintento con caja y movimientos de caja verificados.
+# Reintento con corrector de caja separado para evitar conflictos de sintaxis temporales.
 on:
   push:
     branches: [multilocal-fase-3]
@@ -14,6 +14,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Preparar aplicador con anclas verificadas
         run: python3 .github/scripts/corregir_aplicador_bloque5.py
+      - name: Preparar caja con anclas verificadas
+        run: python3 .github/scripts/corregir_caja_bloque5.py
       - name: Aplicar parche con guardas
         run: python3 .github/scripts/aplicar_operaciones_locales_bloque5.py
       - name: Validar JavaScript y diff
@@ -56,6 +58,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           rm -f .github/scripts/aplicar_operaciones_locales_bloque5.py
           rm -f .github/scripts/corregir_aplicador_bloque5.py
+          rm -f .github/scripts/corregir_caja_bloque5.py
           rm -f .github/workflows/aplicar-operaciones-locales-bloque5.yml
           rm -f .github/workflows/auditar-modulos-locales-restantes-fase3.yml
           rm -f .github/workflows/inspeccionar-operaciones-locales-bloque5.yml
@@ -63,7 +66,7 @@ jobs:
           rm -f .github/workflows/inspeccionar-addproducto-bloque5.yml
           rm -f .github/workflows/inspeccionar-salidas-producto-bloque5.yml
           rm -f .github/workflows/inspeccionar-venta-bloque5-final.yml
-          git add fuente.js .github/scripts/aplicar_operaciones_locales_bloque5.py .github/scripts/corregir_aplicador_bloque5.py .github/workflows/aplicar-operaciones-locales-bloque5.yml .github/workflows/auditar-modulos-locales-restantes-fase3.yml .github/workflows/inspeccionar-operaciones-locales-bloque5.yml .github/workflows/inspeccionar-anclas-bloque5-final.yml .github/workflows/inspeccionar-addproducto-bloque5.yml .github/workflows/inspeccionar-salidas-producto-bloque5.yml .github/workflows/inspeccionar-venta-bloque5-final.yml
+          git add fuente.js .github/scripts/aplicar_operaciones_locales_bloque5.py .github/scripts/corregir_aplicador_bloque5.py .github/scripts/corregir_caja_bloque5.py .github/workflows/aplicar-operaciones-locales-bloque5.yml .github/workflows/auditar-modulos-locales-restantes-fase3.yml .github/workflows/inspeccionar-operaciones-locales-bloque5.yml .github/workflows/inspeccionar-anclas-bloque5-final.yml .github/workflows/inspeccionar-addproducto-bloque5.yml .github/workflows/inspeccionar-salidas-producto-bloque5.yml .github/workflows/inspeccionar-venta-bloque5-final.yml
           git diff --cached --check
           git commit -m 'Aislar operaciones de stock y caja por local'
           git push origin HEAD:multilocal-fase-3
