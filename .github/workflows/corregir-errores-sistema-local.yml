@@ -12,34 +12,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Aplicar corrección controlada
-        shell: python
         run: |
+          python3 - <<'PY'
           from pathlib import Path
           p=Path('fuente.js')
           s=p.read_text(encoding='utf-8')
           inicio=s.index('function ErroresSistema() {')
           fin=s.index('function DiagnosticoSincronizacion()', inicio)
           bloque=s[inicio:fin]
-          viejo='''    (async () => {
-      try {
-        const supabase = await window.getSupabaseClient();
-'''
-          nuevo='''    (async () => {
-      if (!window.__nubeActiva) {
-        if (activo) {
-          setError("El historial de errores en la nube no está disponible mientras trabajas solo en este equipo.");
-          setCargando(false);
-        }
-        return;
-      }
-      try {
-        const supabase = await window.getSupabaseClient();
-'''
+          viejo="      try {\n        const supabase = await window.getSupabaseClient();"
+          nuevo="      if (!window.__nubeActiva) {\n        if (activo) {\n          setError(\"El historial de errores en la nube no está disponible mientras trabajas solo en este equipo.\");\n          setCargando(false);\n        }\n        return;\n      }\n      try {\n        const supabase = await window.getSupabaseClient();"
           assert bloque.count(viejo)==1, f'Patrón esperado {bloque.count(viejo)} veces'
           bloque=bloque.replace(viejo,nuevo,1)
           s=s[:inicio]+bloque+s[fin:]
           assert s.count('El historial de errores en la nube no está disponible mientras trabajas solo en este equipo.')==1
           p.write_text(s,encoding='utf-8')
+          PY
       - name: Validar sintaxis y diff
         run: |
           node --check fuente.js
