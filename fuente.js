@@ -117749,7 +117749,7 @@ function GestionAlmacen() {
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria });
   const { addEncargo, updateEncargo, deleteEncargo, entregarEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, setProductos, setMovimientos, venderLineas, localActivoId });
   const { traspasarStock } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria });
-  const { addArqueo, deleteArqueo } = crearLogicaCaja({ setArqueos });
+  const { addArqueo, deleteArqueo } = crearLogicaCaja({ setArqueos, localActivoId });
   const { registrarMovimientoCaja, eliminarMovimientoCaja } = crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, registrarAuditoria });
   const { crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo } = crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivoId, registrarAuditoria });
   const { registrarDevolucionCliente, registrarDevolucionProveedor } = crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, registrarAuditoria, registrarMovimientoCaja });
@@ -118044,6 +118044,7 @@ function GestionAlmacen() {
         body: JSON.stringify({
           titulo: l2.dias < 0 ? "Lote caducado" : "Lote a punto de caducar",
           cuerpo: `${l2.nombre}${l2.lote ? ` (lote ${l2.lote})` : ""} \u2014 ${l2.dias < 0 ? `caduc\xF3 hace ${Math.abs(l2.dias)} d\xEDas` : l2.dias === 0 ? "caduca hoy" : `caduca en ${l2.dias} d\xEDas`}.`,
+          localId: productos.find((p2) => p2.id === l2.productoId)?.localId || null,
           url: "/"
         })
       }).catch(() => {
@@ -119012,9 +119013,9 @@ function crearLogicaGastos({ setGastosGenerales, localActivoId }) {
   }
   return { addGasto, deleteGasto };
 }
-function crearLogicaCaja({ setArqueos }) {
+function crearLogicaCaja({ setArqueos, localActivoId }) {
   function addArqueo(data) {
-    setArqueos((s2) => [{ id: uid(), fecha: todayISO(), ...data }, ...s2]);
+    setArqueos((s2) => [{ id: uid(), fecha: todayISO(), ...data, localId: data.localId || localActivoId || null }, ...s2]);
     const diferencia = Number(data.diferencia) || 0;
     if (diferencia !== 0 && typeof window !== "undefined" && window.__nubeActiva) {
       const signo = diferencia > 0 ? "sobran" : "faltan";
@@ -119024,6 +119025,7 @@ function crearLogicaCaja({ setArqueos }) {
         body: JSON.stringify({
           titulo: "Caja descuadrada",
           cuerpo: `Al cerrar caja, ${signo} ${fmt(Math.abs(diferencia))} \u20AC.`,
+          localId: data.localId || localActivoId || null,
           url: "/"
         })
       }).catch(() => {
@@ -119253,6 +119255,7 @@ function crearMotorStock({ productos, setProductos, movimientos, setMovimientos,
           body: JSON.stringify({
             titulo: "Stock bajo",
             cuerpo: `${producto.nombre} baj\xF3 del m\xEDnimo (quedan ${fmt(Math.max(0, teoricoDespues))}).`,
+            localId: producto.localId || null,
             url: "/"
           })
         }).catch(() => {
@@ -120281,6 +120284,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         body: JSON.stringify({
           titulo: "Caja cerrada, ahora desactualizada",
           cuerpo: `Se anul\xF3 una venta del ${fechaVenta}, d\xEDa que ya ten\xEDa la caja cerrada \u2014 revisa ese arqueo, puede que ya no cuadre.`,
+          localId: lineas[0]?.localId || null,
           url: "/"
         })
       }).catch(() => {
