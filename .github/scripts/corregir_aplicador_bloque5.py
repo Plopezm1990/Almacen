@@ -92,48 +92,5 @@ print('OK Devoluciones: registros con localId')
 '''
 s = s[:ini] + reemplazo + s[fin:]
 
-# Caja y movimientos de caja: formas exactas confirmadas en el bundle.
-ini = s.index("# ------------------------------------------------------------------\n# 7) Caja y movimientos de caja.")
-fin = s.index("# ------------------------------------------------------------------\n# 8) Render local de las pantallas del bloque 5.", ini)
-reemplazo = r'''# ------------------------------------------------------------------
-# 7) Caja y movimientos de caja.
-# ------------------------------------------------------------------
-inicio=s.index('function crearLogicaCaja('); fin=s.index('function crearLogicaMovimientosCaja(',inicio); b=s[inicio:fin]
-b=uno(b,
-'    setArqueos((s2) => [{ id: uid(), fecha: todayISO(), ...data, localId: data.localId || localActivoId || null }, ...s2]);',
-'    setArqueos((s2) => [{ id: uid(), fecha: todayISO(), ...data, localId: localActivoId || data.localId || null }, ...s2]);',
-'Caja: alta de arqueo fuerza local')
-b=uno(b,
-'          localId: data.localId || localActivoId || null,',
-'          localId: localActivoId || data.localId || null,',
-'Caja: notificación fuerza local')
-b=uno(b,'  function deleteArqueo(id) {\n    setArqueos((s2) => s2.filter((a2) => a2.id !== id));\n  }','''  function deleteArqueo(id) {
-    setArqueos((s2) => {
-      const actual = s2.find((a2) => a2.id === id);
-      if (!actual || localActivoId && actual.localId !== localActivoId) return s2;
-      return s2.filter((a2) => a2.id !== id);
-    });
-  }''','Caja: borrar arqueo protegido')
-s=s[:inicio]+b+s[fin:]
-
-s=uno(s,'function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, registrarAuditoria }) {','function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, registrarAuditoria, localActivoId }) {','Caja: movimientos firma local')
-inicio=s.index('function crearLogicaMovimientosCaja('); fin=s.index('function crearLogicaDevoluciones(',inicio); b=s[inicio:fin]
-b=uno(b,
-'    const nuevo = { id: uid(), fecha: fecha || todayISO(), tipo, importe: importeNum, motivo: (motivo || "").trim(), creadoEn: (/* @__PURE__ */ new Date()).toISOString() };',
-'    const nuevo = { id: uid(), fecha: fecha || todayISO(), tipo, importe: importeNum, motivo: (motivo || "").trim(), creadoEn: (/* @__PURE__ */ new Date()).toISOString(), localId: localActivoId || null };',
-'Caja: movimiento con localId')
-b=uno(b,
-'  function eliminarMovimientoCaja(id) {\n    const m2 = movimientosCaja.find((x3) => x3.id === id);',
-'  function eliminarMovimientoCaja(id) {\n    const m2 = movimientosCaja.find((x3) => x3.id === id);\n    if (!m2 || localActivoId && m2.localId !== localActivoId) return false;',
-'Caja: eliminar movimiento protegido')
-s=s[:inicio]+b+s[fin:]
-pat=r'(crearLogicaMovimientosCaja\(\{[^}]+)(\}\);)'; m=re.search(pat,s,re.S); assert m
-inv=m.group(1)
-if 'localActivoId' not in inv: inv=inv.rstrip()+', localActivoId '
-s=s[:m.start()]+inv+m.group(2)+s[m.end():]
-
-'''
-s = s[:ini] + reemplazo + s[fin:]
-
 p.write_text(s, encoding='utf-8')
 print('CORRECCIONES_APLICADOR_BLOQUE5_OK')
