@@ -1,4 +1,5 @@
 name: Aplicar Inventario y ABC por local fase 3
+# Reintento: las tres etiquetas "Todo (empresa completa)" pertenecen al inventario total.
 on:
   push:
     branches: [multilocal-fase-3]
@@ -11,6 +12,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Ajustar guarda de textos temporal
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('.github/scripts/aplicar_inventario_abc_local_fase3.py')
+          s=p.read_text(encoding='utf-8')
+          viejo="s = uno(s, 'Todo (empresa completa)', 'Todo el local', 'texto ámbito conteo total')"
+          nuevo="n_textos = s.count('Todo (empresa completa)')\nassert n_textos == 3, f'textos ámbito total: esperados 3, encontrados {n_textos}'\nprint('OK textos ámbito conteo total', n_textos)\ns = s.replace('Todo (empresa completa)', 'Todo el local')"
+          assert s.count(viejo)==1
+          p.write_text(s.replace(viejo,nuevo,1),encoding='utf-8')
+          PY
       - name: Aplicar parche con guardas
         run: python3 .github/scripts/aplicar_inventario_abc_local_fase3.py
       - name: Validar JavaScript y diff
