@@ -9,42 +9,39 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Localizar dependencias ambiguas
+      - name: Inspeccionar alias E y versiones
         shell: python
         run: |
           from pathlib import Path
           import re
-          lines = Path('fuente.js').read_text(encoding='utf-8').splitlines()
-          marca = next(i for i,l in enumerate(lines) if l.strip() == '// fuente.jsx')
-          pre = lines[:marca]
-          objetivos = {
-            'E': [r'\b(?:var|let|const|class)\s+E\b', r'\bE\s*='],
-            'autoTable': [r'\b(?:var|let|const|function)\s+autoTable\b', r'\bautoTable\s*='],
-            'createClient': [r'\b(?:var|let|const|function)\s+createClient\b', r'\bcreateClient\s*='],
-            'utils': [r'\b(?:var|let|const)\s+utils\b', r'\butils\s*='],
-            'writeFileSync': [r'\b(?:var|let|const|function)\s+writeFileSync\b', r'\bwriteFileSync\s*='],
-            'Bell': [r'\b(?:var|let|const)\s+Bell\b', r'\bBell\s*='],
-            'require_react': [r'\bvar\s+require_react\b'],
-            'require_client': [r'\bvar\s+require_client\b'],
-          }
-          for nombre, pats in objetivos.items():
-            print(f'=== {nombre} ===')
-            hits=[]
-            for i,line in enumerate(pre):
-              if any(re.search(p,line) for p in pats): hits.append(i)
-            if not hits:
-              print('SIN DEFINICION DIRECTA')
-              continue
-            for i in hits[:3]:
-              a=max(0,i-6); b=min(len(pre),i+9)
-              print(f'--- linea {i+1} ---')
-              for j in range(a,b):
-                txt=pre[j]
-                if len(txt)>500: txt=txt[:500]+' ...[cortado]'
-                print(f'{j+1}: {txt}')
-      - name: Buscar comentarios de librerias cercanos
-        shell: bash
-        run: |
-          grep -n -m 30 'jspdf\|jsPDF\|autotable\|xlsx\|sheetjs\|supabase\|lucide\|react-dom\|react.development' fuente.js || true
+          lines=Path('fuente.js').read_text(encoding='utf-8').splitlines()
+          marca=next(i for i,l in enumerate(lines) if l.strip()=='// fuente.jsx')
+          app=lines[marca:]
+          print('=== USOS DE new E ===')
+          for i,l in enumerate(app):
+            if re.search(r'\bnew E\s*\(',l):
+              print(f'{marca+i+1}: {l[:600]}')
+          print('=== USOS XLSX ===')
+          for nombre in ('utils.','writeFileSync('):
+            print('--- '+nombre+' ---')
+            c=0
+            for i,l in enumerate(app):
+              if nombre in l:
+                print(f'{marca+i+1}: {l[:600]}'); c+=1
+                if c>=12: break
+          print('=== VERSIONES / FIRMAS ===')
+          patrones=[
+            r'18\.\d+\.\d+', r'19\.\d+\.\d+', r'@supabase/supabase-js',
+            r'jspdf', r'jsPDF', r'AutoTable', r'0\.18\.\d+', r'XLSX',
+            r'lucide-react', r'Version', r'version\s*[:=]'
+          ]
+          vistos=0
+          for i,l in enumerate(lines):
+            if any(re.search(p,l,re.I) for p in patrones):
+              t=l.strip()
+              if len(t)>400: t=t[:400]+' ...[cortado]'
+              print(f'{i+1}: {t}')
+              vistos+=1
+              if vistos>=100: break
       - name: Validar bundle
         run: node --check fuente.js
