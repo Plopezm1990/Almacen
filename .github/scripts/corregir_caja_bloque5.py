@@ -57,5 +57,16 @@ nuevo_dev = "ini=s.index('tab === \\\"devoluciones\\\"'); fin=s.index('tab === \
 assert s.count(viejo_dev) == 1, f'Devoluciones render temporal: esperado 1, encontrado {s.count(viejo_dev)}'
 s = s.replace(viejo_dev, nuevo_dev, 1)
 
+# Caja: el render está compilado en una sola línea.
+ini_caja = s.index("# Caja\nini=s.index('tab === \\\"caja\\\"')")
+fin_caja = s.index("# Traspasos", ini_caja)
+nuevo_caja = r'''# Caja compacta.
+s=uno(s,
+'tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { movimientos, arqueos, addArqueo, deleteArqueo, encargos, movimientosCaja, registrarMovimientoCaja, eliminarMovimientoCaja })',
+'tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja })',
+'Caja render local')
+'''
+s = s[:ini_caja] + nuevo_caja + s[fin_caja:]
+
 p.write_text(s, encoding='utf-8')
 print('CORRECCION_CAJA_BLOQUE5_OK')
