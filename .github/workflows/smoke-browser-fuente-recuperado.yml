@@ -35,7 +35,7 @@ jobs:
           npm init -y >/dev/null
           npm install --no-audit --no-fund playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Comparar arranque en Chromium sin Supabase
+      - name: Comparar modo local en Chromium sin Supabase
         shell: bash
         run: |
           cd /tmp/browser-test
@@ -46,6 +46,7 @@ jobs:
             const context = await browser.newContext({ serviceWorkers: 'block' });
             const page = await context.newPage();
             const errores = [];
+            const peticionesSupabase = [];
             page.on('pageerror', e => errores.push('pageerror: ' + e.message));
             page.on('console', m => {
               if (m.type() === 'error') {
@@ -53,24 +54,34 @@ jobs:
                 if (!/ERR_FAILED|Failed to load resource/i.test(t)) errores.push('console: ' + t);
               }
             });
-            await page.route('https://flqercbgpgmmfaakrwkc.supabase.co/**', r => r.abort());
+            await page.route('https://flqercbgpgmmfaakrwkc.supabase.co/**', r => {
+              peticionesSupabase.push(r.request().method() + ' ' + r.request().url());
+              r.abort();
+            });
             await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-            await page.waitForTimeout(5000);
+            await page.waitForTimeout(2500);
+            const boton = page.getByText('Trabajar solo en este equipo, sin sincronizar', { exact: false });
+            if (!(await boton.count())) throw new Error(nombre + ': no aparece opción local');
+            await boton.first().click();
+            await page.waitForTimeout(3500);
             const titulo = await page.title();
             const texto = (await page.locator('body').innerText()).replace(/\s+/g,' ').trim();
             const rootHtml = await page.locator('#root').innerHTML().catch(()=>'');
-            const cargando = await page.locator('#cargando').count();
-            console.log(`=== ${nombre} ===`);
+            console.log(`=== ${nombre} LOCAL ===`);
             console.log('TITLE='+titulo);
             console.log('TEXT_LEN='+texto.length);
             console.log('ROOT_LEN='+rootHtml.length);
-            console.log('LOADING_COUNT='+cargando);
-            console.log('TEXT_HEAD='+texto.slice(0,700));
+            console.log('TEXT_HEAD='+texto.slice(0,1400));
             console.log('ERRORS='+JSON.stringify(errores));
-            if (!rootHtml || rootHtml.length < 100) throw new Error(nombre + ': #root no renderizó');
+            console.log('SUPABASE_BLOCKED='+peticionesSupabase.length);
+            if (!rootHtml || rootHtml.length < 1000) throw new Error(nombre + ': app local no renderizó');
             if (errores.length) throw new Error(nombre + ': errores JS: ' + errores.join(' | '));
+            const marcadores = ['Panel general','Productos','Pedidos','Proveedores','Resultados','Libro IVA','Stock'];
+            const presentes = marcadores.filter(x => texto.toLowerCase().includes(x.toLowerCase()));
+            console.log('MARCADORES='+JSON.stringify(presentes));
+            if (presentes.length < 3) throw new Error(nombre + ': faltan marcadores de la app local');
             await context.close();
-            return { titulo, texto, rootHtml };
+            return { titulo, texto, rootHtml, presentes };
           }
 
           (async()=>{
@@ -79,11 +90,13 @@ jobs:
             const b = await probar(browser, 'http://127.0.0.1:4172/', 'RECUPERADO');
             await browser.close();
             if (a.titulo !== b.titulo) throw new Error('Título distinto');
-            const tokens = ['Iniciar sesión','Trabajar solo','Almac','CHOCOLOYOS'];
-            const coincidencias = tokens.filter(x => a.texto.toLowerCase().includes(x.toLowerCase()) && b.texto.toLowerCase().includes(x.toLowerCase()));
-            console.log('MARCADORES_COMUNES='+JSON.stringify(coincidencias));
-            if (!coincidencias.length) throw new Error('No se encontraron marcadores comunes de arranque');
-            console.log('SMOKE_BROWSER_OK=1');
+            const comunes = a.presentes.filter(x => b.presentes.includes(x));
+            console.log('MARCADORES_LOCALES_COMUNES='+JSON.stringify(comunes));
+            console.log('DELTA_TEXT_LEN='+Math.abs(a.texto.length-b.texto.length));
+            console.log('DELTA_ROOT_LEN='+Math.abs(a.rootHtml.length-b.rootHtml.length));
+            if (comunes.length < 3) throw new Error('Pocos marcadores comunes');
+            if (Math.abs(a.texto.length-b.texto.length) > 100) throw new Error('Contenido textual diverge demasiado');
+            console.log('SMOKE_LOCAL_OK=1');
           })().catch(e=>{ console.error(e); process.exit(1); });
           NODE
           node smoke.cjs
