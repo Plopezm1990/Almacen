@@ -1,17 +1,15 @@
 // Compatibilidad UX de autenticación para Chocoloyos Almacén.
-// Añade recuperación/cambio de contraseña y un cierre de sesión visible
-// para Propietario sin romper la barra superior en pantallas pequeñas.
+// Mantiene acceso a recuperación de contraseña y cierre de sesión de Propietario.
+// En móvil la cabecera desplaza sus controles internamente sin ensanchar la página.
 (function () {
   "use strict";
   if (window.__authUxPatchInstalado) return;
   window.__authUxPatchInstalado = true;
 
-  var RECOVERY_KEY = "chocoloyos_recuperacion_pendiente_v1";
-  var ID_MODAL = "chocoloyos-auth-recovery-modal";
   var CLASE_OLVIDO = "chocoloyos-auth-forgot";
   var CLASE_LOGOUT = "chocoloyos-auth-owner-logout";
+  var CLASE_BARRA = "chocoloyos-auth-topbar";
   var clienteCache = null;
-  var observador = null;
   var refrescoProgramado = false;
 
   function esperar(ms) {
@@ -35,136 +33,41 @@
     var style = document.createElement("style");
     style.id = "chocoloyos-auth-ux-style";
     style.textContent = [
+      "html,body,#root{box-sizing:border-box;width:100%;max-width:100%;overflow-x:hidden!important}",
       "." + CLASE_OLVIDO + "{display:block;width:100%;margin:10px 0 0;padding:7px 8px;border:0;background:transparent;color:#6f6654;text-decoration:underline;font:inherit;font-size:13px;cursor:pointer}",
-      "." + CLASE_LOGOUT + "{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:7px;flex:0 0 auto;min-height:40px;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:0 12px;background:rgba(255,255,255,.09);color:#dce6df;font:inherit;font-size:12px;font-weight:700;line-height:1;white-space:nowrap;cursor:pointer;transition:background .16s ease,border-color .16s ease,transform .12s ease}",
-      "." + CLASE_LOGOUT + ":hover{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.12)}",
+      "." + CLASE_BARRA + "{box-sizing:border-box!important;min-width:0!important;max-width:100%!important}",
+      "." + CLASE_LOGOUT + "{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:7px;flex:0 0 auto;min-height:40px;border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:0 12px;background:rgba(255,255,255,.10);color:#e7eee9;font:inherit;font-size:12px;font-weight:700;line-height:1;white-space:nowrap;cursor:pointer;transition:background .16s ease,border-color .16s ease,transform .12s ease}",
       "." + CLASE_LOGOUT + ":active{transform:scale(.97)}",
       "." + CLASE_LOGOUT + ":focus-visible{outline:2px solid #e4c77b;outline-offset:2px}",
       "." + CLASE_LOGOUT + ":disabled{opacity:.55;cursor:default;transform:none}",
-      "." + CLASE_LOGOUT + " .chocoloyos-auth-logout-icon{display:block;width:18px;height:18px;flex:0 0 18px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}",
-      "." + CLASE_LOGOUT + " .chocoloyos-auth-logout-text{display:inline-block}",
-      "@media (max-width:640px){." + CLASE_LOGOUT + "{width:42px;min-width:42px;height:40px;min-height:40px;padding:0;margin-left:2px;border-radius:12px}." + CLASE_LOGOUT + " .chocoloyos-auth-logout-text{display:none}." + CLASE_LOGOUT + " .chocoloyos-auth-logout-icon{width:19px;height:19px;flex-basis:19px}}",
-      "#" + ID_MODAL + "{position:fixed;inset:0;z-index:2147483000;background:rgba(10,24,17,.72);display:flex;align-items:center;justify-content:center;padding:18px}",
-      "#" + ID_MODAL + " .choco-auth-card{width:min(440px,100%);background:#f8f5ec;color:#15271f;border-radius:18px;padding:22px;box-shadow:0 18px 60px rgba(0,0,0,.35)}",
-      "#" + ID_MODAL + " h2{margin:0 0 8px;font-size:22px}",
-      "#" + ID_MODAL + " p{margin:0 0 16px;color:#68736d;font-size:14px;line-height:1.45}",
-      "#" + ID_MODAL + " label{display:block;margin:10px 0 5px;font-size:13px;font-weight:700}",
-      "#" + ID_MODAL + " input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #cfc8b8;border-radius:10px;background:#fff;color:#15271f;font:inherit}",
-      "#" + ID_MODAL + " .choco-auth-error{min-height:18px;margin-top:9px;color:#a63d32;font-size:12px}",
-      "#" + ID_MODAL + " .choco-auth-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}",
-      "#" + ID_MODAL + " button{border:0;border-radius:10px;padding:11px 14px;font:inherit;font-weight:700;cursor:pointer}",
-      "#" + ID_MODAL + " .choco-auth-primary{background:#9a7729;color:#fff;flex:1}",
-      "#" + ID_MODAL + " .choco-auth-secondary{background:#e8e3d8;color:#26352e}",
-      "#" + ID_MODAL + " button:disabled{opacity:.55;cursor:default}"
+      "." + CLASE_LOGOUT + " svg{display:block;width:19px;height:19px;flex:0 0 19px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}",
+      "@media (max-width:640px){",
+      "html,body,#root{width:100%!important;max-width:100vw!important;overflow-x:hidden!important}",
+      "." + CLASE_BARRA + "{display:flex!important;flex-wrap:nowrap!important;width:100%!important;max-width:100vw!important;min-width:0!important;overflow-x:auto!important;overflow-y:hidden!important;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-right:58px!important}",
+      "." + CLASE_BARRA + "::-webkit-scrollbar{display:none}",
+      "." + CLASE_BARRA + ">*{flex-shrink:0!important}",
+      "." + CLASE_LOGOUT + "{position:absolute;right:8px;top:50%;transform:translateY(-50%);z-index:30;width:44px;min-width:44px;height:44px;min-height:44px;padding:0;border-radius:13px;background:#21452f;box-shadow:-10px 0 16px #0b321d}",
+      "." + CLASE_LOGOUT + ":active{transform:translateY(-50%) scale(.97)}",
+      "." + CLASE_LOGOUT + " .chocoloyos-auth-logout-text{display:none}",
+      "." + CLASE_BARRA + "{position:relative!important}",
+      "}"
     ].join("\n");
     (document.head || document.documentElement).appendChild(style);
   }
 
-  function mensajeCerca(elemento, texto, esError) {
-    if (!elemento || !elemento.parentNode) return;
-    var id = "chocoloyos-auth-mensaje";
-    var anterior = document.getElementById(id);
-    if (anterior) anterior.remove();
-    var div = document.createElement("div");
-    div.id = id;
-    div.textContent = texto;
-    div.style.marginTop = "8px";
-    div.style.fontSize = "12px";
-    div.style.lineHeight = "1.35";
-    div.style.color = esError ? "#a63d32" : "#52675c";
-    elemento.insertAdjacentElement("afterend", div);
-  }
-
-  function marcarRecuperacion(valor) {
+  function normalizarViewport() {
     try {
-      if (valor) localStorage.setItem(RECOVERY_KEY, String(valor));
-      else localStorage.removeItem(RECOVERY_KEY);
+      document.documentElement.scrollLeft = 0;
+      document.body.scrollLeft = 0;
+      window.scrollTo(0, window.scrollY || 0);
     } catch (e) {}
   }
 
-  function hayRecuperacionPendiente() {
-    try { return !!localStorage.getItem(RECOVERY_KEY); } catch (e) { return false; }
-  }
-
-  async function mostrarModalNuevaPassword() {
-    if (document.getElementById(ID_MODAL)) return;
-    aplicarEstilos();
-
-    var supabase;
-    try { supabase = await clienteSupabase(); } catch (e) { return; }
-    var sesion;
-    try { sesion = await supabase.auth.getSession(); } catch (e) { return; }
-    if (!sesion || !sesion.data || !sesion.data.session) return;
-
-    var overlay = document.createElement("div");
-    overlay.id = ID_MODAL;
-    overlay.innerHTML = [
-      '<div class="choco-auth-card" role="dialog" aria-modal="true" aria-label="Restablecer contraseña">',
-      '<h2>Crear nueva contraseña</h2>',
-      '<p>Escribe una contraseña nueva para esta cuenta. No se modificará ningún dato del negocio.</p>',
-      '<label for="choco-auth-pass1">Nueva contraseña</label>',
-      '<input id="choco-auth-pass1" type="password" autocomplete="new-password" minlength="8">',
-      '<label for="choco-auth-pass2">Repetir contraseña</label>',
-      '<input id="choco-auth-pass2" type="password" autocomplete="new-password" minlength="8">',
-      '<div class="choco-auth-error" aria-live="polite"></div>',
-      '<div class="choco-auth-actions">',
-      '<button type="button" class="choco-auth-secondary">Cancelar</button>',
-      '<button type="button" class="choco-auth-primary">Guardar contraseña</button>',
-      '</div>',
-      '</div>'
-    ].join("");
-    document.body.appendChild(overlay);
-
-    var pass1 = overlay.querySelector("#choco-auth-pass1");
-    var pass2 = overlay.querySelector("#choco-auth-pass2");
-    var error = overlay.querySelector(".choco-auth-error");
-    var cancelar = overlay.querySelector(".choco-auth-secondary");
-    var guardar = overlay.querySelector(".choco-auth-primary");
-
-    cancelar.addEventListener("click", function () { overlay.remove(); });
-
-    guardar.addEventListener("click", async function () {
-      var p1 = pass1.value || "";
-      var p2 = pass2.value || "";
-      if (p1.length < 8) {
-        error.textContent = "Usa al menos 8 caracteres.";
-        pass1.focus();
-        return;
-      }
-      if (p1 !== p2) {
-        error.textContent = "Las dos contraseñas no coinciden.";
-        pass2.focus();
-        return;
-      }
-
-      guardar.disabled = true;
-      cancelar.disabled = true;
-      error.textContent = "Guardando…";
-      try {
-        var resultado = await supabase.auth.updateUser({ password: p1 });
-        if (resultado.error) throw resultado.error;
-        marcarRecuperacion(null);
-        error.style.color = "#2f6b4f";
-        error.textContent = "Contraseña actualizada. Volviendo al inicio de sesión…";
-        pass1.value = "";
-        pass2.value = "";
-        try { await supabase.auth.signOut({ scope: "local" }); } catch (e) {}
-        setTimeout(function () { window.location.reload(); }, 900);
-      } catch (e) {
-        guardar.disabled = false;
-        cancelar.disabled = false;
-        error.style.color = "#a63d32";
-        error.textContent = e && e.message ? e.message : "No se pudo actualizar la contraseña.";
-      }
-    });
-
-    setTimeout(function () { pass1.focus(); }, 50);
-  }
-
-  function buscarBotonEntrar() {
+  function buscarBotonPorTexto(textoBuscado) {
     var botones = document.querySelectorAll("button");
     for (var i = 0; i < botones.length; i++) {
-      if ((botones[i].textContent || "").trim() === "Entrar") return botones[i];
+      var texto = (botones[i].textContent || "").replace(/\s+/g, " ").trim();
+      if (texto.indexOf(textoBuscado) !== -1) return botones[i];
     }
     return null;
   }
@@ -173,44 +76,17 @@
     if (document.querySelector("." + CLASE_OLVIDO)) return;
     var email = document.querySelector('input[placeholder="Correo"]');
     var password = document.querySelector('input[placeholder="Contraseña"]');
-    var entrar = buscarBotonEntrar();
+    var entrar = buscarBotonPorTexto("Entrar");
     if (!email || !password || !entrar || !entrar.parentNode) return;
 
     var boton = document.createElement("button");
     boton.type = "button";
     boton.className = CLASE_OLVIDO;
     boton.textContent = "¿Olvidaste tu contraseña?";
-    entrar.insertAdjacentElement("afterend", boton);
-
-    boton.addEventListener("click", async function () {
-      var correo = (email.value || "").trim();
-      if (!correo) {
-        mensajeCerca(boton, "Escribe primero el correo de la cuenta.", true);
-        email.focus();
-        return;
-      }
-
-      boton.disabled = true;
-      mensajeCerca(boton, "Enviando correo de recuperación…", false);
-      try {
-        var supabase = await clienteSupabase();
-        marcarRecuperacion(correo);
-        var resultado = await supabase.auth.resetPasswordForEmail(correo, {
-          redirectTo: window.location.origin
-        });
-        if (resultado.error) throw resultado.error;
-        mensajeCerca(
-          boton,
-          "Si la cuenta existe, recibirás un correo. Ábrelo en este mismo navegador para crear la nueva contraseña.",
-          false
-        );
-      } catch (e) {
-        marcarRecuperacion(null);
-        mensajeCerca(boton, e && e.message ? e.message : "No se pudo enviar el correo de recuperación.", true);
-      } finally {
-        boton.disabled = false;
-      }
+    boton.addEventListener("click", function () {
+      window.location.href = "./restablecer-contrasena.html";
     });
+    entrar.insertAdjacentElement("afterend", boton);
   }
 
   function quitarLogoutPropietario() {
@@ -218,18 +94,15 @@
     for (var i = 0; i < botones.length; i++) botones[i].remove();
   }
 
-  function buscarBotonModoEmpleado() {
-    var botones = document.querySelectorAll("button");
-    for (var i = 0; i < botones.length; i++) {
-      var texto = (botones[i].textContent || "").replace(/\s+/g, " ").trim();
-      if (texto.indexOf("Modo empleado") !== -1) return botones[i];
-    }
-    return null;
+  function prepararBarra(modoEmpleado) {
+    if (!modoEmpleado || !modoEmpleado.parentElement) return;
+    modoEmpleado.parentElement.classList.add(CLASE_BARRA);
+    normalizarViewport();
   }
 
   function contenidoBotonLogout() {
     return [
-      '<svg class="chocoloyos-auth-logout-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">',
+      '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">',
       '<path d="M10 5H6.8A1.8 1.8 0 0 0 5 6.8v10.4A1.8 1.8 0 0 0 6.8 19H10"></path>',
       '<path d="M14 8l4 4-4 4"></path>',
       '<path d="M9 12h9"></path>',
@@ -239,7 +112,6 @@
   }
 
   async function asegurarLogoutPropietario() {
-    var existente = document.querySelector("." + CLASE_LOGOUT);
     var supabase;
     try { supabase = await clienteSupabase(); } catch (e) { return; }
 
@@ -254,17 +126,22 @@
 
     var perfil;
     try {
-      perfil = await supabase.from("perfiles").select("rol, nombre, activo").eq("user_id", userId).maybeSingle();
+      perfil = await supabase.from("perfiles").select("rol, activo").eq("user_id", userId).maybeSingle();
     } catch (e) { return; }
     if (perfil.error || !perfil.data || perfil.data.activo !== true || perfil.data.rol !== "Propietario") {
       quitarLogoutPropietario();
       return;
     }
-    if (existente && document.body.contains(existente)) return;
 
-    var modoEmpleado = buscarBotonModoEmpleado();
+    var modoEmpleado = buscarBotonPorTexto("Modo empleado");
     if (!modoEmpleado || !modoEmpleado.parentNode) return;
-    aplicarEstilos();
+    prepararBarra(modoEmpleado);
+
+    var existente = document.querySelector("." + CLASE_LOGOUT);
+    if (existente && document.body.contains(existente)) {
+      normalizarViewport();
+      return;
+    }
 
     var boton = document.createElement("button");
     boton.type = "button";
@@ -280,6 +157,8 @@
       try { await supabase.auth.signOut({ scope: "local" }); } catch (e) {}
       window.location.reload();
     });
+
+    prepararBarra(modoEmpleado);
   }
 
   function programarRefresco() {
@@ -289,39 +168,32 @@
       refrescoProgramado = false;
       asegurarOlvidePassword();
       asegurarLogoutPropietario();
-    }, 80);
+    }, 100);
   }
 
   async function iniciar() {
     aplicarEstilos();
-    var supabase;
-    try { supabase = await clienteSupabase(); } catch (e) { return; }
+    normalizarViewport();
 
     try {
+      var supabase = await clienteSupabase();
       supabase.auth.onAuthStateChange(function (evento) {
-        if (evento === "PASSWORD_RECOVERY") {
-          marcarRecuperacion("recovery");
-          setTimeout(mostrarModalNuevaPassword, 0);
-        }
         if (evento === "SIGNED_OUT") quitarLogoutPropietario();
         programarRefresco();
       });
     } catch (e) {}
 
-    try {
-      var sesion = await supabase.auth.getSession();
-      if (sesion && sesion.data && sesion.data.session && hayRecuperacionPendiente()) {
-        setTimeout(mostrarModalNuevaPassword, 0);
-      }
-    } catch (e) {}
-
-    asegurarOlvidePassword();
-    asegurarLogoutPropietario();
+    programarRefresco();
 
     if (typeof MutationObserver !== "undefined") {
-      observador = new MutationObserver(programarRefresco);
+      var observador = new MutationObserver(programarRefresco);
       observador.observe(document.documentElement, { childList: true, subtree: true });
     }
+
+    window.addEventListener("resize", programarRefresco);
+    window.addEventListener("orientationchange", function () {
+      setTimeout(programarRefresco, 150);
+    });
   }
 
   if (document.readyState === "loading") {
