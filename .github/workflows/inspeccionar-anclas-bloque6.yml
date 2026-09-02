@@ -1,0 +1,44 @@
+name: Inspeccionar anclas exactas bloque 6
+on:
+  push:
+    branches: [multilocal-fase-3]
+    paths:
+      - .github/workflows/inspeccionar-anclas-bloque6.yml
+permissions:
+  contents: read
+jobs:
+  inspeccion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mostrar bloques exactos
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          nombres=['crearLogicaProduccion','crearLogicaAppcc','crearLogicaAceite','crearLogicaFreidoras']
+          for nombre in nombres:
+              print('\n===== '+nombre+' =====')
+              i=s.find('function '+nombre+'(')
+              if i<0:
+                  print('NO_ENCONTRADA')
+                  continue
+              j=s.find('\nfunction ',i+10)
+              if j<0: j=min(len(s),i+16000)
+              print(s[i:j])
+          print('\n===== INVOCACIONES =====')
+          for nombre in nombres:
+              k=0
+              while True:
+                  i=s.find(nombre+'({',k)
+                  if i<0: break
+                  if i==0 or s[max(0,i-12):i] != 'function ':
+                      print('\n--',nombre,i,'--')
+                      print(s[max(0,i-500):min(len(s),i+2200)])
+                  k=i+1
+          print('\n===== RENDERS =====')
+          for tab in ['produccion','appcc','aceite']:
+              i=s.find('tab === "'+tab+'"')
+              print('\n--',tab,i,'--')
+              if i>=0: print(s[max(0,i-500):min(len(s),i+4000)])
+          PY
