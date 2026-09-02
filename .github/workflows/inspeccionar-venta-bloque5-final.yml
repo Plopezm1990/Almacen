@@ -1,4 +1,4 @@
-name: Inspeccionar venta rápida bloque 5 final
+name: Inspeccionar devoluciones bloque 5 final
 on:
   push:
     branches: [multilocal-fase-3]
@@ -11,15 +11,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Mostrar contextos exactos de venta
+      - name: Mostrar funciones exactas de devoluciones
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('fuente.js').read_text(encoding='utf-8')
-          i=s.index('function crearLogicaVenta(')
-          j=s.index('function crearLogicaTraspasos(', i)
+          i=s.index('function crearLogicaDevoluciones(')
+          j=s.index('function crearLogicaFacturasDirectas(', i)
           b=s[i:j]
-          for termino in ['function venderLineas', 'function anularVenta', 'ventaId', 'movimientosActuales', 'arqueos.find']:
+          for termino in ['function registrarDevolucionCliente', 'function registrarDevolucionProveedor', 'setDevoluciones', 'productoId']:
               print('\n=====', termino, '=====')
               pos=[]; k=0
               while True:
@@ -29,5 +29,5 @@ jobs:
               print('POS',pos)
               for x in pos[:8]:
                   print('\n--- contexto',x,'---')
-                  print(b[max(0,x-900):min(len(b),x+4200)])
+                  print(b[max(0,x-650):min(len(b),x+3200)])
           PY
