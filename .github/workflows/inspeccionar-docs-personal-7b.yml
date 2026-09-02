@@ -1,0 +1,23 @@
+name: Inspeccionar avisos personal 7B
+on:
+  push:
+    branches: [multilocal-fase-3]
+    paths:
+      - .github/workflows/inspeccionar-docs-personal-7b.yml
+permissions:
+  contents: read
+jobs:
+  inspeccion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mostrar definición documentos personal
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          for t in ['const documentosPersonalCaducan =', 'const documentosPersonalPronto =']:
+              print('\n===== '+t+' =====')
+              i=s.index(t)
+              print(s[i:i+3500])
+          PY
