@@ -117564,6 +117564,10 @@ function GestionAlmacen() {
       const gastosFinales = (gg || []).map((g2) => g2.localId ? g2 : { ...g2, localId: localActivoFinal || null });
       const facturasDirectasFinales = (fd2 || []).map((f2) => f2.localId ? f2 : { ...f2, localId: localActivoFinal || null });
       const empleadosFinales = (em || []).map((e) => e.localId ? e : { ...e, localId: localActivoFinal || null });
+      const localPorEmpleadoMigracion = new Map(empleadosFinales.map((e) => [e.id, e.localId || localActivoFinal || null]));
+      const fichajesFinales = (fj || []).map((f2) => f2.localId ? f2 : { ...f2, localId: localPorEmpleadoMigracion.get(f2.empleadoId) || localActivoFinal || null });
+      const turnosFinales = (tu || []).map((t2) => t2.localId ? t2 : { ...t2, localId: localPorEmpleadoMigracion.get(t2.empleadoId) || localActivoFinal || null });
+      const nominasFinales = (nom || []).map((n) => n.localId ? n : { ...n, localId: localPorEmpleadoMigracion.get(n.empleadoId) || localActivoFinal || null });
       const arqueosFinales = (aq || []).map((a2) => a2.localId ? a2 : { ...a2, localId: localActivoFinal || null });
       const movimientosCajaFinales = (mc || []).map((m2) => m2.localId ? m2 : { ...m2, localId: localActivoFinal || null });
       const inferirLocalFichaMigracion = (ficha) => {
@@ -117591,6 +117595,9 @@ function GestionAlmacen() {
       setGastosGenerales(gastosFinales);
       setFacturasDirectas(facturasDirectasFinales);
       setEmpleados(empleadosFinales);
+      setFichajes(fichajesFinales);
+      setTurnos(turnosFinales);
+      setNominas(nominasFinales);
       setArqueos(arqueosFinales);
       setMovimientosCaja(movimientosCajaFinales);
       setFichasCosto(fichasCostoFinales);
@@ -117609,6 +117616,9 @@ function GestionAlmacen() {
       if (JSON.stringify(gastosFinales) !== JSON.stringify(gg || [])) await saveKey("gastosGenerales", gastosFinales);
       if (JSON.stringify(facturasDirectasFinales) !== JSON.stringify(fd2 || [])) await saveKey("facturasDirectas", facturasDirectasFinales);
       if (JSON.stringify(empleadosFinales) !== JSON.stringify(em || [])) await saveKey("empleados", empleadosFinales);
+      if (JSON.stringify(fichajesFinales) !== JSON.stringify(fj || [])) await saveKey("fichajes", fichajesFinales);
+      if (JSON.stringify(turnosFinales) !== JSON.stringify(tu || [])) await saveKey("turnos", turnosFinales);
+      if (JSON.stringify(nominasFinales) !== JSON.stringify(nom || [])) await saveKey("nominas", nominasFinales);
       if (JSON.stringify(arqueosFinales) !== JSON.stringify(aq || [])) await saveKey("arqueos", arqueosFinales);
       if (JSON.stringify(movimientosCajaFinales) !== JSON.stringify(mc || [])) await saveKey("movimientosCaja", movimientosCajaFinales);
       if (JSON.stringify(fichasCostoFinales) !== JSON.stringify(fc || [])) await saveKey("fichasCosto", fichasCostoFinales);
@@ -117849,7 +117859,7 @@ function GestionAlmacen() {
   const { addProveedor, updateProveedor, deleteProveedor } = crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria });
   const { addGasto, deleteGasto } = crearLogicaGastos({ setGastosGenerales, localActivoId });
   const { addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId });
-  const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos });
+  const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId });
   const { venderCarrito, venderLocal, anularVenta, venderLineas } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria });
@@ -117861,7 +117871,7 @@ function GestionAlmacen() {
   const { registrarDevolucionCliente, registrarDevolucionProveedor } = crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, registrarAuditoria, registrarMovimientoCaja, localActivoId });
   const { activarModoEmpleado, entrarComoEmpleado, salirModoEmpleado, establecerPin } = crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, setModoEmpleado, setUsuarioActivoId });
   const { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, eliminarRegistroAppcc } = crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId });
-  const { fichar, addFichajeManual, updateFichaje, eliminarFichaje } = crearLogicaFichaje({ setFichajes });
+  const { fichar, addFichajeManual, updateFichaje, eliminarFichaje } = crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId });
   const { addFreidora, updateFreidora, deleteFreidora, registrarCambio, registrarRelleno, eliminarRegistroAceite, consumoPorCiclo } = crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegistrosAceite, productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
   const { addFichaCosto, updateFichaCosto, deleteFichaCosto, alergenosDeFicha } = crearLogicaFichasCosto({ productos, setFichasCosto, localActivoId });
   const { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion } = crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
@@ -117888,7 +117898,7 @@ function GestionAlmacen() {
   });
   const { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido } = crearLogicaPedidos({ pedidos, setPedidos, productos, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId });
   const { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta } = crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, addGasto, deleteGasto, gastosGenerales, localActivoId });
-  const { addNomina, updateNomina, deleteNomina } = crearLogicaNominas({ setNominas, registrarAuditoria });
+  const { addNomina, updateNomina, deleteNomina } = crearLogicaNominas({ nominas, setNominas, registrarAuditoria, empleados, localActivoId });
   const { crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista } = crearLogicaEntrevistas({ entrevistas, setEntrevistas, registrarAuditoria });
   const { crearPrefiltro, listarPrefiltros, eliminarPrefiltro } = crearLogicaPrefiltros({ registrarAuditoria });
   function registrarAuditoria(accion, detalle) {
@@ -118285,19 +118295,25 @@ function GestionAlmacen() {
         const f2 = new Date(d2.fechaCaducidad);
         if (isNaN(f2)) return;
         const dias = Math.round((f2 - hoy) / 864e5);
-        filas.push({ id: `${e.id}-doc-${d2.id}`, empleado: e.nombre, concepto: d2.nombre, fecha: d2.fechaCaducidad, dias });
+        filas.push({ id: `${e.id}-doc-${d2.id}`, empleadoId: e.id, empleado: e.nombre, concepto: d2.nombre, fecha: d2.fechaCaducidad, dias });
       });
       if (e.fechaFinContrato) {
         const f2 = new Date(e.fechaFinContrato);
         if (!isNaN(f2)) {
           const dias = Math.round((f2 - hoy) / 864e5);
-          filas.push({ id: `${e.id}-contrato`, empleado: e.nombre, concepto: "Fin de contrato", fecha: e.fechaFinContrato, dias });
+          filas.push({ id: `${e.id}-contrato`, empleadoId: e.id, empleado: e.nombre, concepto: "Fin de contrato", fecha: e.fechaFinContrato, dias });
         }
       }
     });
     return filas.sort((a2, b2) => a2.dias - b2.dias);
   }, [empleados]);
   const documentosPersonalPronto = (0, import_react4.useMemo)(() => documentosPersonalCaducan.filter((d2) => d2.dias <= 30), [documentosPersonalCaducan]);
+  const empleadosDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? empleados : empleados.filter((e) => e.localId === localActivoId), [empleados, localActivoId]);
+  const idsEmpleadosDelLocalActivo = (0, import_react4.useMemo)(() => new Set(empleadosDelLocalActivo.map((e) => e.id)), [empleadosDelLocalActivo]);
+  const fichajesDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? fichajes : fichajes.filter((f2) => f2.localId === localActivoId), [fichajes, localActivoId]);
+  const turnosDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? turnos : turnos.filter((t2) => t2.localId === localActivoId), [turnos, localActivoId]);
+  const nominasDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? nominas : nominas.filter((n) => n.localId === localActivoId), [nominas, localActivoId]);
+  const documentosPersonalProntoDelLocalActivo = (0, import_react4.useMemo)(() => documentosPersonalPronto.filter((d2) => idsEmpleadosDelLocalActivo.has(d2.empleadoId)), [documentosPersonalPronto, idsEmpleadosDelLocalActivo]);
   const encargosPendientes = (0, import_react4.useMemo)(() => {
     const hoy = /* @__PURE__ */ new Date();
     hoy.setHours(0, 0, 0, 0);
@@ -118369,6 +118385,7 @@ function GestionAlmacen() {
     });
     return abiertos;
   }, [fichajes, empleados]);
+  const fichajesAbiertosDelLocalActivo = (0, import_react4.useMemo)(() => fichajesAbiertos.filter((f2) => idsEmpleadosDelLocalActivo.has(f2.empleadoId)), [fichajesAbiertos, idsEmpleadosDelLocalActivo]);
   const facturasPorPagar = (0, import_react4.useMemo)(() => {
     const hoy = /* @__PURE__ */ new Date();
     hoy.setHours(0, 0, 0, 0);
@@ -118515,6 +118532,9 @@ function GestionAlmacen() {
   const facturasDirectasInforme = localInformeId ? facturasDirectas.filter((f2) => f2.localId === localInformeId) : facturasDirectas;
   const gastosGeneralesInforme = localInformeId ? gastosGenerales.filter((g2) => g2.localId === localInformeId) : gastosGenerales;
   const empleadosInforme = localInformeId ? empleados.filter((e) => e.localId === localInformeId) : empleados;
+  const idsEmpleadosInforme = new Set(empleadosInforme.map((e) => e.id));
+  const fichajesAbiertosInforme = localInformeId ? fichajesAbiertos.filter((f2) => idsEmpleadosInforme.has(f2.empleadoId)) : fichajesAbiertos;
+  const documentosPersonalProntoInforme = localInformeId ? documentosPersonalPronto.filter((d2) => idsEmpleadosInforme.has(d2.empleadoId)) : documentosPersonalPronto;
   const pedidosInforme = localInformeId ? pedidos.filter((pe2) => (pe2.localId || inferirLocalLineasInforme(pe2.items)) === localInformeId) : pedidos;
   const encargosInforme = localInformeId ? encargos.filter((e) => (e.localId || inferirLocalLineasInforme(e.lineas)) === localInformeId) : encargos;
   const idsFacturasInforme = new Set([...albaranesInforme.map((a2) => a2.id), ...facturasDirectasInforme.map((f2) => f2.id)]);
@@ -118552,8 +118572,8 @@ function GestionAlmacen() {
       proveedorPorId,
       vencenPronto: vencenProntoInforme,
       totalPendientePago: totalPendientePagoInforme,
-      documentosPersonalPronto,
-      fichajesAbiertos,
+      documentosPersonalPronto: documentosPersonalProntoInforme,
+      fichajesAbiertos: fichajesAbiertosInforme,
       encargosUrgentes: encargosUrgentesInforme,
       pisoVentaBajo: pisoVentaBajoInforme,
       sugerenciasPedido: sugerenciasPedidoInforme,
@@ -118732,7 +118752,7 @@ function GestionAlmacen() {
   ), tab === "personal" && /* @__PURE__ */ import_react4.default.createElement(
     Personal,
     {
-      empleados,
+      empleados: empleadosDelLocalActivo,
       addEmpleado,
       updateEmpleado,
       deleteEmpleado,
@@ -118742,8 +118762,8 @@ function GestionAlmacen() {
       registrarEpi,
       eliminarEpi,
       documentosPersonalCaducan,
-      fichajes,
-      nominas,
+      fichajes: fichajesDelLocalActivo,
+      nominas: nominasDelLocalActivo,
       entrevistas,
       crearEntrevista,
       actualizarEntrevista,
@@ -118757,24 +118777,24 @@ function GestionAlmacen() {
   ), tab === "fichaje" && /* @__PURE__ */ import_react4.default.createElement(
     RegistroHorario,
     {
-      empleados,
-      fichajes,
+      empleados: empleadosDelLocalActivo,
+      fichajes: fichajesDelLocalActivo,
       fichar,
       addFichajeManual,
       updateFichaje,
       eliminarFichaje,
-      fichajesAbiertos
+      fichajesAbiertos: fichajesAbiertosDelLocalActivo
     }
   ), tab === "nominas" && /* @__PURE__ */ import_react4.default.createElement(
     CostePersonal,
     {
-      empleados,
-      nominas,
+      empleados: empleadosDelLocalActivo,
+      nominas: nominasDelLocalActivo,
       addNomina,
       updateNomina,
       deleteNomina,
-      fichajes,
-      movimientos
+      fichajes: fichajesDelLocalActivo,
+      movimientos: movimientosDelLocalActivo
     }
   ), tab === "venta" && /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito, anularVenta, movimientos: movimientosDelLocalActivo, registrarAuditoria }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
@@ -118825,8 +118845,8 @@ function GestionAlmacen() {
   ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
     Turnos,
     {
-      empleados,
-      turnos,
+      empleados: empleadosDelLocalActivo,
+      turnos: turnosDelLocalActivo,
       addTurno,
       updateTurno,
       deleteTurno,
@@ -118883,8 +118903,8 @@ function GestionAlmacen() {
     { id: "etiquetas", label: "Etiquetas y cat\xE1logo", icon: Tags },
     { id: "reportes", label: "Reportes y rotaci\xF3n", icon: ChartColumn },
     { id: "resultados", label: "Resultados", icon: TrendingUp },
-    { id: "personal", label: "Personal", icon: Users, badge: documentosPersonalPronto.length, badgeColor: C2.amber },
-    { id: "fichaje", label: "Registro horario", icon: Clock, badge: fichajesAbiertos.length, badgeColor: C2.amber },
+    { id: "personal", label: "Personal", icon: Users, badge: documentosPersonalProntoDelLocalActivo.length, badgeColor: C2.amber },
+    { id: "fichaje", label: "Registro horario", icon: Clock, badge: fichajesAbiertosDelLocalActivo.length, badgeColor: C2.amber },
     { id: "nominas", label: "Coste de personal", icon: Coins },
     { id: "turnos", label: "Cuadrante de turnos", icon: CalendarClock },
     { id: "appcc", label: "Control sanitario", icon: ShieldCheck, badge: appccPendientesHoy.length, badgeColor: C2.amber },
@@ -119068,10 +119088,13 @@ function crearLogicaProveedores({ proveedores, setProveedores, registrarAuditori
   return { addProveedor, updateProveedor, deleteProveedor };
 }
 function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId }) {
+  const empleadoEsDelLocalActivoPersonal = (e) => !!e && (!localActivoId || e.localId === localActivoId);
   function addEmpleado(data) {
-    setEmpleados((s2) => [...s2, { id: uid(), activo: true, documentos: [], ...data, localId: data.localId || localActivoId || null }]);
+    setEmpleados((s2) => [...s2, { id: uid(), activo: true, documentos: [], ...data, localId: localActivoId || data.localId || null }]);
   }
   async function crearCuentaEmpleado(empleadoId, { nombre, email, password, rol }) {
+    const empleadoLocal = empleados.find((e) => e.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return { ok: false, error: "El empleado no pertenece al local activo." };
     try {
       const supabase = await window.getSupabaseClient();
       const { data: sesion } = await supabase.auth.getSession();
@@ -119092,17 +119115,20 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
     }
   }
   function updateEmpleado(id, data) {
-    setEmpleados((s2) => s2.map((e) => e.id === id ? { ...e, ...data } : e));
+    setEmpleados((s2) => s2.map((e) => e.id === id && empleadoEsDelLocalActivoPersonal(e) ? { ...e, ...data, localId: e.localId || localActivoId || null } : e));
   }
   function deleteEmpleado(id) {
     const e = empleados.find((x3) => x3.id === id);
-    registrarAuditoria("Eliminar empleado", e ? e.nombre : id);
+    if (!empleadoEsDelLocalActivoPersonal(e)) return false;
+    registrarAuditoria("Eliminar empleado", e.nombre);
     setEmpleados((s2) => s2.filter((e2) => e2.id !== id));
     if (setNominas) setNominas((s2) => s2.filter((n) => n.empleadoId !== id));
+    return true;
   }
   function anonimizarEmpleado(id) {
     const e = empleados.find((x3) => x3.id === id);
-    registrarAuditoria("Anonimizar empleado", e ? e.nombre : id);
+    if (!empleadoEsDelLocalActivoPersonal(e)) return false;
+    registrarAuditoria("Anonimizar empleado", e.nombre);
     setEmpleados(
       (s2) => s2.map(
         (emp) => emp.id === id ? {
@@ -119119,43 +119145,56 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
     );
   }
   function registrarAusencia(empleadoId, ausencia) {
+    const empleadoLocal = empleados.find((e) => e.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
     setEmpleados(
       (s2) => s2.map((e) => e.id === empleadoId ? { ...e, ausencias: [...e.ausencias || [], { id: uid(), ...ausencia }] } : e)
     );
   }
   function eliminarAusencia(empleadoId, ausenciaId) {
+    const empleadoLocal = empleados.find((e) => e.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
     setEmpleados(
       (s2) => s2.map((e) => e.id === empleadoId ? { ...e, ausencias: (e.ausencias || []).filter((a2) => a2.id !== ausenciaId) } : e)
     );
   }
   function registrarEpi(empleadoId, epi) {
+    const empleadoLocal = empleados.find((e) => e.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
     setEmpleados(
       (s2) => s2.map((e) => e.id === empleadoId ? { ...e, epis: [...e.epis || [], { id: uid(), fecha: todayISO(), ...epi }] } : e)
     );
   }
   function eliminarEpi(empleadoId, epiId) {
+    const empleadoLocal = empleados.find((e) => e.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
     setEmpleados(
       (s2) => s2.map((e) => e.id === empleadoId ? { ...e, epis: (e.epis || []).filter((x3) => x3.id !== epiId) } : e)
     );
   }
   return { addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado };
 }
-function crearLogicaTurnos({ turnos, setTurnos }) {
+function crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId }) {
+  const empleadoTurnoLocal = (id) => empleados.find((e) => e.id === id && (!localActivoId || e.localId === localActivoId));
+  const turnoEsLocal = (t2) => !!t2 && (!localActivoId || t2.localId === localActivoId);
   function addTurno(data) {
-    setTurnos((s2) => [...s2, { id: uid(), ...data }]);
+    const emp = empleadoTurnoLocal(data.empleadoId);
+    if (!emp) return false;
+    setTurnos((s2) => [...s2, { id: uid(), ...data, localId: emp.localId || localActivoId || null }]);
+    return true;
   }
   function updateTurno(id, data) {
-    setTurnos((s2) => s2.map((t2) => t2.id === id ? { ...t2, ...data } : t2));
+    setTurnos((s2) => s2.map((t2) => t2.id === id && turnoEsLocal(t2) ? { ...t2, ...data, localId: t2.localId || localActivoId || null } : t2));
   }
   function deleteTurno(id) {
-    setTurnos((s2) => s2.filter((t2) => t2.id !== id));
+    setTurnos((s2) => s2.filter((t2) => t2.id !== id || !turnoEsLocal(t2)));
   }
   function copiarSemana(desdeFechas, haciaFechas) {
     const nuevos = [];
-    turnos.forEach((t2) => {
+    turnos.filter(turnoEsLocal).forEach((t2) => {
       const idx = desdeFechas.indexOf(t2.fecha);
       if (idx === -1) return;
-      nuevos.push({ id: uid(), empleadoId: t2.empleadoId, fecha: haciaFechas[idx], tipo: t2.tipo, horaInicio: t2.horaInicio, horaFin: t2.horaFin, notas: t2.notas });
+      nuevos.push({ id: uid(), empleadoId: t2.empleadoId, fecha: haciaFechas[idx], tipo: t2.tipo, horaInicio: t2.horaInicio, horaFin: t2.horaFin, notas: t2.notas, localId: t2.localId || localActivoId || null });
     });
     if (nuevos.length) setTurnos((s2) => [...s2, ...nuevos]);
     return nuevos.length;
@@ -119188,22 +119227,30 @@ function crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, set
   }
   return { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, eliminarRegistroAppcc };
 }
-function crearLogicaFichaje({ setFichajes }) {
+function crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId }) {
+  const empleadoFichajeLocal = (id) => empleados.find((e) => e.id === id && (!localActivoId || e.localId === localActivoId));
+  const fichajeEsLocal = (f2) => !!f2 && (!localActivoId || f2.localId === localActivoId);
   function fichar(empleadoId, tipo) {
+    const emp = empleadoFichajeLocal(empleadoId);
+    if (!emp) return false;
     const ahora = /* @__PURE__ */ new Date();
     setFichajes((s2) => [
-      { id: uid(), empleadoId, tipo, fecha: todayISO(), hora: ahora.toTimeString().slice(0, 5), timestamp: ahora.toISOString() },
+      { id: uid(), empleadoId, tipo, fecha: todayISO(), hora: ahora.toTimeString().slice(0, 5), timestamp: ahora.toISOString(), localId: emp.localId || localActivoId || null },
       ...s2
     ]);
+    return true;
   }
   function addFichajeManual(data) {
-    setFichajes((s2) => [{ id: uid(), ...data }, ...s2]);
+    const emp = empleadoFichajeLocal(data.empleadoId);
+    if (!emp) return false;
+    setFichajes((s2) => [{ id: uid(), ...data, localId: emp.localId || localActivoId || null }, ...s2]);
+    return true;
   }
   function updateFichaje(id, data) {
-    setFichajes((s2) => s2.map((f2) => f2.id === id ? { ...f2, ...data } : f2));
+    setFichajes((s2) => s2.map((f2) => f2.id === id && fichajeEsLocal(f2) ? { ...f2, ...data, localId: f2.localId || localActivoId || null } : f2));
   }
   function eliminarFichaje(id) {
-    setFichajes((s2) => s2.filter((f2) => f2.id !== id));
+    setFichajes((s2) => s2.filter((f2) => f2.id !== id || !fichajeEsLocal(f2)));
   }
   return { fichar, addFichajeManual, updateFichaje, eliminarFichaje };
 }
@@ -121680,32 +121727,38 @@ function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, re
   }
   return { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta };
 }
-function crearLogicaNominas({ setNominas, registrarAuditoria }) {
+function crearLogicaNominas({ nominas, setNominas, registrarAuditoria, empleados, localActivoId }) {
+  const empleadoNominaLocal = (id) => empleados.find((e) => e.id === id && (!localActivoId || e.localId === localActivoId));
+  const nominaEsLocal = (n) => !!n && (!localActivoId || n.localId === localActivoId);
   function addNomina(data) {
+    const emp = empleadoNominaLocal(data.empleadoId);
+    if (!emp) return false;
     const bruto = Number(data.brutoTotal) || 0;
     const ss = Number(data.seguridadSocialEmpresa) || 0;
     setNominas((s2) => {
       const sinEsteMes = s2.filter((n) => !(n.empleadoId === data.empleadoId && n.mes === data.mes));
-      return [
-        { id: uid(), ...data, brutoTotal: bruto, seguridadSocialEmpresa: ss, costeTotalEmpresa: bruto + ss },
-        ...sinEsteMes
-      ];
+      return [{ id: uid(), ...data, brutoTotal: bruto, seguridadSocialEmpresa: ss, costeTotalEmpresa: bruto + ss, localId: emp.localId || localActivoId || null }, ...sinEsteMes];
     });
+    return true;
   }
   function updateNomina(id, data) {
+    const actual = nominas.find((n) => n.id === id);
+    if (!nominaEsLocal(actual)) return false;
     const bruto = Number(data.brutoTotal) || 0;
     const ss = Number(data.seguridadSocialEmpresa) || 0;
-    setNominas(
-      (s2) => s2.map((n) => n.id === id ? { ...n, ...data, brutoTotal: bruto, seguridadSocialEmpresa: ss, costeTotalEmpresa: bruto + ss } : n)
-    );
+    setNominas((s2) => s2.map((n) => n.id === id ? { ...n, ...data, brutoTotal: bruto, seguridadSocialEmpresa: ss, costeTotalEmpresa: bruto + ss, localId: n.localId || localActivoId || null } : n));
     registrarAuditoria("Editar registro de n\xF3mina", `${data.mes || ""} \xB7 \u20AC${(bruto + ss).toFixed(2)}`);
+    return true;
   }
   function deleteNomina(id) {
+    const actual = nominas.find((n) => n.id === id);
+    if (!nominaEsLocal(actual)) return false;
     setNominas((s2) => {
       const n = s2.find((x3) => x3.id === id);
       registrarAuditoria("Eliminar registro de n\xF3mina", n ? `${n.mes} \xB7 \u20AC${(Number(n.costeTotalEmpresa) || 0).toFixed(2)}` : id);
       return s2.filter((x3) => x3.id !== id);
     });
+    return true;
   }
   return { addNomina, updateNomina, deleteNomina };
 }
