@@ -117365,6 +117365,19 @@ function GestionAlmacen() {
     return pedidos.filter((p2) => !p2.localId || p2.localId === localActivoId);
   }, [pedidos, localActivoId]);
   const pedidosPendientesDelLocalActivo = (0, import_react4.useMemo)(() => pedidosDelLocalActivo.filter((p2) => p2.estado !== "Recibido"), [pedidosDelLocalActivo]);
+  const albaranesDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return albaranes;
+    const localPorProducto = new Map(productos.map((p2) => [p2.id, p2.localId || null]));
+    return albaranes.filter((a2) => {
+      if (a2.localId) return a2.localId === localActivoId;
+      const ids = [...new Set((a2.lineas || []).map((ln2) => localPorProducto.get(ln2.productoId)).filter(Boolean))];
+      return ids.length === 1 && ids[0] === localActivoId;
+    });
+  }, [albaranes, productos, localActivoId]);
+  const facturasDirectasDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return facturasDirectas;
+    return facturasDirectas.filter((f2) => f2.localId === localActivoId);
+  }, [facturasDirectas, localActivoId]);
   const [turnos, setTurnos] = (0, import_react4.useState)([]);
   const [historial, setHistorial] = (0, import_react4.useState)([]);
   (0, import_react4.useEffect)(() => {
@@ -118270,6 +118283,15 @@ function GestionAlmacen() {
       return x3.dias - y2.dias;
     });
   }, [albaranes, proveedores, facturasDirectas]);
+  const facturasPorPagarDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return facturasPorPagar;
+    const idsAlbaranes = new Set(albaranesDelLocalActivo.map((a2) => a2.id));
+    const idsDirectas = new Set(facturasDirectasDelLocalActivo.map((f2) => f2.id));
+    return facturasPorPagar.filter((f2) => f2.origen === "albaran" ? idsAlbaranes.has(f2.id) : idsDirectas.has(f2.id));
+  }, [facturasPorPagar, albaranesDelLocalActivo, facturasDirectasDelLocalActivo, localActivoId]);
+  const pendientesPagoDelLocalActivo = (0, import_react4.useMemo)(() => facturasPorPagarDelLocalActivo.filter((f2) => !f2.pagada), [facturasPorPagarDelLocalActivo]);
+  const totalPendientePagoDelLocalActivo = (0, import_react4.useMemo)(() => pendientesPagoDelLocalActivo.reduce((a2, f2) => a2 + f2.total, 0), [pendientesPagoDelLocalActivo]);
+  const vencenProntoDelLocalActivo = (0, import_react4.useMemo)(() => pendientesPagoDelLocalActivo.filter((f2) => f2.dias !== null && f2.dias <= 7), [pendientesPagoDelLocalActivo]);
   const pendientesPago = (0, import_react4.useMemo)(() => facturasPorPagar.filter((f2) => !f2.pagada), [facturasPorPagar]);
   const vencenPronto = (0, import_react4.useMemo)(() => pendientesPago.filter((f2) => f2.dias !== null && f2.dias <= 7), [pendientesPago]);
   const totalPendientePago = (0, import_react4.useMemo)(() => pendientesPago.reduce((a2, f2) => a2 + f2.total, 0), [pendientesPago]);
@@ -118518,9 +118540,9 @@ function GestionAlmacen() {
   ), tab === "produccion" && /* @__PURE__ */ import_react4.default.createElement(Produccion, { fichasCosto, productos, ordenesProduccion, producir, anularProduccion, traspasarStock }), tab === "mermas" && /* @__PURE__ */ import_react4.default.createElement(Mermas, { productos, movimientos, registrarSalida, almacenCongelado }), tab === "etiquetas" && /* @__PURE__ */ import_react4.default.createElement(EtiquetasCatalogo, { productos, fichasCosto, alergenosDeFicha }), tab === "albaranes" && /* @__PURE__ */ import_react4.default.createElement(
     Albaranes,
     {
-      albaranes,
+      albaranes: albaranesDelLocalActivo,
       proveedores,
-      productos,
+      productos: productosDelLocalActivo,
       proveedorPorId,
       buscarEnCatalogo,
       guardarAlbaran,
@@ -118534,13 +118556,13 @@ function GestionAlmacen() {
       limpiarPrefill: () => setPrefillAlbaran(null),
       pedidoParaFotoIA,
       limpiarPedidoParaFotoIA: () => setPedidoParaFotoIA(null),
-      pedidos
+      pedidos: pedidosDelLocalActivo
     }
   ), tab === "pagos" && /* @__PURE__ */ import_react4.default.createElement(
     CuentasPorPagar,
     {
-      facturasPorPagar,
-      totalPendientePago,
+      facturasPorPagar: facturasPorPagarDelLocalActivo,
+      totalPendientePago: totalPendientePagoDelLocalActivo,
       marcarPagada,
       marcarPagadaFacturaDirecta,
       addFacturaDirecta,
@@ -118626,17 +118648,18 @@ function GestionAlmacen() {
   ), tab === "facturas" && /* @__PURE__ */ import_react4.default.createElement(
     Facturas,
     {
-      albaranes,
-      facturasDirectas,
+      albaranes: albaranesDelLocalActivo,
+      facturasDirectas: facturasDirectasDelLocalActivo,
       proveedorPorId,
       irAAlbaran: (albId) => {
-        const a2 = albaranes.find((x3) => x3.id === albId);
+        const a2 = albaranesDelLocalActivo.find((x3) => x3.id === albId);
         if (a2) {
           setPrefillAlbaran(a2);
           setTab("albaranes");
         }
       },
       irAFacturaDirecta: (fdId) => {
+        if (!facturasDirectasDelLocalActivo.some((f2) => f2.id === fdId)) return;
         setFacturaDirectaResaltada(fdId);
         setTab("pagos");
       }
@@ -118691,7 +118714,7 @@ function GestionAlmacen() {
     { id: "recepcion", label: "Recepci\xF3n", icon: ClipboardList },
     { id: "albaranes", label: "Albaranes", icon: FileText },
     { id: "facturas", label: "Facturas", icon: Files },
-    { id: "pagos", label: "Cuentas por pagar", icon: Coins, badge: vencenPronto.length, badgeColor: C2.red },
+    { id: "pagos", label: "Cuentas por pagar", icon: Coins, badge: vencenProntoDelLocalActivo.length, badgeColor: C2.red },
     { id: "conteo", label: "Inventario ciego", icon: Boxes, badge: stockBajo.length, badgeColor: C2.amber },
     { id: "saldo", label: "Saldo de almac\xE9n", icon: ClipboardList },
     { id: "mapa", label: "Mapa de almac\xE9n", icon: Map2 },
@@ -120413,6 +120436,27 @@ function crearLogicaAlbaranes({
   localActivoId
 }) {
   const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+  function localDeAlbaran(doc) {
+    if (!doc) return null;
+    if (doc.localId) return doc.localId;
+    const ids = [...new Set((doc.lineas || []).map((ln2) => productos.find((p2) => p2.id === ln2.productoId)?.localId).filter(Boolean))];
+    return ids.length === 1 ? ids[0] : null;
+  }
+  function albaranEsDelLocalActivo(doc, permitirNuevo = false) {
+    if (!doc) return false;
+    if (!localActivoId) return true;
+    const existente = albaranes.find((a2) => a2.id === doc.id);
+    const localId = localDeAlbaran(existente || doc);
+    if (localId) return localId === localActivoId;
+    return !existente && permitirNuevo;
+  }
+  function pedidoEsDelLocalActivoAlbaran(pedido) {
+    if (!pedido) return false;
+    if (!localActivoId) return true;
+    if (pedido.localId) return pedido.localId === localActivoId;
+    const ids = [...new Set((pedido.items || []).map((it2) => productos.find((p2) => p2.id === it2.productoId)?.localId).filter(Boolean))];
+    return ids.length === 1 && ids[0] === localActivoId;
+  }
   const claveCat = (proveedorId, codigo) => `${proveedorId}::${String(codigo || "").trim().toUpperCase()}`;
   const normalizarDescripcion = (t2) => String(t2 || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
   const claveCatDesc = (proveedorId, descripcion) => `${proveedorId}::DESC::${normalizarDescripcion(descripcion)}`;
@@ -120454,6 +120498,7 @@ function crearLogicaAlbaranes({
     return copia;
   }
   function guardarAlbaran(alb) {
+    if (!albaranEsDelLocalActivo(alb, true)) return false;
     const limpioBase = sinFotoIncrustada(alb);
     const idsLocalesLineas = [...new Set((limpioBase.lineas || []).map((ln2) => productos.find((p2) => p2.id === ln2.productoId)?.localId).filter(Boolean))];
     const limpio = { ...limpioBase, localId: limpioBase.localId || (idsLocalesLineas.length === 1 ? idsLocalesLineas[0] : null) || localActivoId || null };
@@ -120464,7 +120509,7 @@ function crearLogicaAlbaranes({
   }
   function duplicadosDe(alb) {
     if (!alb || !alb.proveedorId) return { albaran: null, factura: null };
-    const otros = albaranes.filter((a2) => a2.id !== alb.id && a2.proveedorId === alb.proveedorId);
+    const otros = albaranes.filter((a2) => a2.id !== alb.id && a2.proveedorId === alb.proveedorId && albaranEsDelLocalActivo(a2));
     const norm = (v2) => String(v2 || "").trim().toLowerCase();
     const numero = norm(alb.numero);
     const numFactura = norm(alb.numeroFactura);
@@ -120500,7 +120545,7 @@ function crearLogicaAlbaranes({
   }
   function eliminarAlbaran(id) {
     const a2 = albaranes.find((x3) => x3.id === id);
-    if (!a2) return;
+    if (!a2 || !albaranEsDelLocalActivo(a2)) return false;
     registrarAuditoria("Eliminar albar\xE1n", `${proveedorPorId(a2.proveedorId)?.nombre || "\u2014"} \xB7 ${a2.numero || "s/n"}`);
     if (a2.estado === "confirmado") {
       a2.lineas.forEach((ln2) => {
@@ -120544,6 +120589,7 @@ function crearLogicaAlbaranes({
   }
   function marcarPagada(id, pagada) {
     const a2 = albaranes.find((x3) => x3.id === id);
+    if (!a2 || !albaranEsDelLocalActivo(a2)) return false;
     registrarAuditoria(pagada ? "Marcar factura pagada" : "Marcar factura pendiente", a2 ? `${proveedorPorId(a2.proveedorId)?.nombre || "\u2014"} \xB7 ${a2.numeroFactura || a2.numero || "s/n"}` : id);
     setAlbaranes((s2) => s2.map((a22) => a22.id === id ? { ...a22, pagada, fechaPago: pagada ? todayISO() : "" } : a22));
   }
@@ -120669,6 +120715,11 @@ function crearLogicaAlbaranes({
     return { lineasResueltas, avisos };
   }
   function confirmarAlbaran(alb) {
+    if (!albaranEsDelLocalActivo(alb, true)) return false;
+    if (alb.pedidoId) {
+      const pedido = pedidos.find((pe2) => pe2.id === alb.pedidoId);
+      if (!pedidoEsDelLocalActivoAlbaran(pedido)) return false;
+    }
     const { lineasResueltas, avisos } = procesarRecepcion({
       lineas: alb.lineas,
       proveedorId: alb.proveedorId,
@@ -120703,6 +120754,7 @@ function crearLogicaAlbaranes({
     return avisos;
   }
   function anularAlbaran(alb) {
+    if (!albaranEsDelLocalActivo(alb)) return false;
     registrarAuditoria("Anular entrada de albar\xE1n", `${proveedorPorId(alb.proveedorId)?.nombre || "\u2014"} \xB7 ${alb.numero || "s/n"}`);
     alb.lineas.forEach((ln2) => {
       const restar = Number(ln2.unidadesEntradas) || 0;
@@ -120727,6 +120779,7 @@ function crearLogicaAlbaranes({
     guardarAlbaran({ ...alb, estado: "borrador", avisosPrecio: [] });
   }
   function recibirConAlbaran(pedido) {
+    if (!pedidoEsDelLocalActivoAlbaran(pedido)) return false;
     const lineas = pedido.items.map((it2) => {
       const prod = productos.find((x3) => x3.id === it2.productoId);
       const pendiente = Math.max(0, (Number(it2.cantidad) || 0) - (Number(it2.cantidadRecibida) || 0));
@@ -120766,12 +120819,14 @@ function crearLogicaAlbaranes({
       pagada: false,
       fechaPago: "",
       pedidoId: pedido.id,
+      localId: localActivoId || pedido.localId || null,
       lineas: lineas.length ? lineas : [],
       estado: "borrador"
     });
     setTab("albaranes");
   }
   function recibirConFotoIA(pedido) {
+    if (!pedidoEsDelLocalActivoAlbaran(pedido)) return false;
     setPedidoParaFotoIA(pedido);
     setTab("albaranes");
   }
@@ -121261,6 +121316,11 @@ function crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegist
   return { addFreidora, updateFreidora, deleteFreidora, registrarCambio, registrarRelleno, eliminarRegistroAceite, consumoPorCiclo };
 }
 function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, addGasto, deleteGasto, gastosGenerales, localActivoId }) {
+  function facturaDirectaEsDelLocalActivo(f2) {
+    if (!f2) return false;
+    if (!localActivoId) return true;
+    return f2.localId === localActivoId;
+  }
   function addFacturaDirecta(data) {
     const base = Number(data.importeBase) || 0;
     const ivaPct = Number(data.ivaPct) || 0;
@@ -121272,6 +121332,8 @@ function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, re
     ]);
   }
   function updateFacturaDirecta(id, data) {
+    const actual = facturasDirectas.find((f2) => f2.id === id);
+    if (!facturaDirectaEsDelLocalActivo(actual)) return false;
     setFacturasDirectas(
       (s2) => s2.map((f2) => {
         if (f2.id !== id) return f2;
@@ -121283,6 +121345,8 @@ function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, re
     );
   }
   function deleteFacturaDirecta(id) {
+    const actual = facturasDirectas.find((f2) => f2.id === id);
+    if (!facturaDirectaEsDelLocalActivo(actual)) return false;
     setFacturasDirectas((s2) => {
       const f2 = s2.find((x3) => x3.id === id);
       registrarAuditoria("Eliminar factura directa", f2 ? `${f2.concepto} \xB7 \u20AC${(Number(f2.importeTotal) || 0).toFixed(2)}` : id);
@@ -121295,6 +121359,7 @@ function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, re
   }
   function marcarPagadaFacturaDirecta(id, pagada) {
     const f2 = facturasDirectas.find((x3) => x3.id === id);
+    if (!facturaDirectaEsDelLocalActivo(f2)) return false;
     setFacturasDirectas((s2) => s2.map((x3) => x3.id === id ? { ...x3, pagada, fechaPago: pagada ? todayISO() : "" } : x3));
     if (pagada) {
       registrarAuditoria("Marcar factura directa como pagada", id);
