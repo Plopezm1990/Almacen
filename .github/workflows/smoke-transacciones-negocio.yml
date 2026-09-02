@@ -29,7 +29,6 @@ jobs:
           cat > negocio.cjs <<'NODE'
           const { chromium } = require('playwright');
           const URL='http://127.0.0.1:4232/';
-          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
           async function abrirModulo(page,texto){
             const ok=await page.evaluate((texto)=>{
               const raiz=document.querySelector('aside') || document.querySelector('nav');
@@ -39,6 +38,16 @@ jobs:
             },texto);
             if(!ok) throw new Error('No se encontró módulo: '+texto);
             await page.waitForTimeout(450);
+          }
+          async function selectConValor(page,value){
+            const selects=page.locator('select');
+            const n=await selects.count();
+            for(let i=0;i<n;i++){
+              const loc=selects.nth(i);
+              const values=await loc.locator('option').evaluateAll(opts=>opts.map(o=>o.value));
+              if(values.includes(value)) return loc;
+            }
+            return null;
           }
           async function leer(page,key){
             return page.evaluate(k=>JSON.parse(localStorage.getItem('almacen:'+k)||'null'),key);
@@ -73,11 +82,12 @@ jobs:
             const nuevoPedido=page.getByRole('button',{name:'Nuevo pedido'});
             assert(await nuevoPedido.count(),'No aparece Nuevo pedido');
             await nuevoPedido.first().click(); await page.waitForTimeout(300);
-            const selProv=page.locator('select').filter({hasText:'Proveedor prueba'}).first();
-            const selProd=page.locator('select').filter({hasText:'Chocolate prueba'}).last();
-            assert(await selProv.count(),'No aparece selector de proveedor');
-            assert(await selProd.count(),'No aparece selector de producto en pedido');
+            const selProv=await selectConValor(page,'prov1');
+            assert(selProv,'No aparece selector de proveedor');
             await selProv.selectOption('prov1');
+            await page.waitForTimeout(200);
+            const selProd=await selectConValor(page,'p1');
+            assert(selProd,'No aparece selector de producto en pedido');
             await selProd.selectOption('p1');
             await page.getByPlaceholder('Cant.').fill('2');
             await page.getByPlaceholder('Costo u.').fill('3.5');
@@ -99,8 +109,8 @@ jobs:
             const cobrar=page.getByRole('button',{name:/Cobrar €8,00/});
             assert(await cobrar.count(),'No aparece botón Cobrar €8,00');
             await cobrar.first().click(); await page.waitForTimeout(250);
-            const modalSelect=page.locator('select').filter({hasText:'Efectivo'}).last();
-            assert(await modalSelect.count(),'No aparece selector de medio de pago');
+            const modalSelect=await selectConValor(page,'Efectivo');
+            assert(modalSelect,'No aparece selector de medio de pago');
             await modalSelect.selectOption('Efectivo');
             const nums=page.locator('input[type=number]');
             assert(await nums.count()>=2,'No aparece efectivo entregado');
@@ -121,8 +131,8 @@ jobs:
 
             // 3) Devolución cliente + reembolso parcial
             await abrirModulo(page,'Devoluciones');
-            const selDev=page.locator('select').filter({hasText:'Chocolate prueba'}).first();
-            assert(await selDev.count(),'No aparece producto en Devoluciones');
+            const selDev=await selectConValor(page,'p1');
+            assert(selDev,'No aparece producto en Devoluciones');
             await selDev.selectOption('p1');
             const devNums=page.locator('input[type=number]');
             assert(await devNums.count()>=2,'Faltan campos numéricos de devolución');
