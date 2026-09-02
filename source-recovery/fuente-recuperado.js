@@ -663,8 +663,8 @@ function GestionAlmacen() {
       setGastosGenerales(gastosFinales);
       setFacturasDirectas(facturasDirectasFinales);
       setEmpleados(empleadosFinales);
-      await saveKey("locales", localesFinales);
-      await saveKey("localActivoId", localActivoFinal);
+      if (JSON.stringify(localesFinales) !== JSON.stringify(Array.isArray(loc) ? loc : [])) await saveKey("locales", localesFinales);
+      if (localActivoFinal !== (lai || null)) await saveKey("localActivoId", localActivoFinal);
       if (JSON.stringify(productosFinales) !== JSON.stringify(pr || [])) await saveKey("productos", productosFinales);
       if (JSON.stringify(movimientosFinales) !== JSON.stringify(mo || [])) await saveKey("movimientos", movimientosFinales);
       if (JSON.stringify(albaranesFinales) !== JSON.stringify(alLimpios || [])) await saveKey("albaranes", albaranesFinales);
@@ -6778,6 +6778,13 @@ function ErroresSistema() {
   import_react4.default.useEffect(() => {
     let activo = true;
     (async () => {
+      if (!window.__nubeActiva) {
+        if (activo) {
+          setError("El historial de errores en la nube no está disponible mientras trabajas solo en este equipo.");
+          setCargando(false);
+        }
+        return;
+      }
       try {
         const supabase = await window.getSupabaseClient();
         const { data, error: errLectura } = await supabase.from("errores_sistema").select("*").order("fecha", { ascending: false }).limit(100);
