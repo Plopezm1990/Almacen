@@ -16,9 +16,6 @@
     "enviar-notificacion": true,
     "entrevista-personal": true
   };
-  var REDIRECCIONES = {
-    "entrevista-personal": "entrevista-personal-neutral"
-  };
 
   function respuestaSinSesion(mensaje) {
     return new Response(
@@ -53,13 +50,7 @@
       if (!headers.has("Authorization")) headers.set("Authorization", "Bearer " + token);
       opciones.headers = headers;
 
-      var destino = input;
-      var nuevoNombre = REDIRECCIONES[nombreFuncion];
-      if (nuevoNombre && typeof input === "string") {
-        destino = ORIGEN_FUNCTIONS + nuevoNombre + url.slice((ORIGEN_FUNCTIONS + nombreFuncion).length);
-      }
-
-      return fetchOriginal(destino, opciones);
+      return fetchOriginal(input, opciones);
     } catch (e) {
       return respuestaSinSesion("No se pudo comprobar la sesión. Vuelve a iniciar sesión.");
     }
