@@ -1,9 +1,6 @@
 // Compatibilidad UX de autenticación para Chocoloyos Almacén.
-// Añade dos piezas que el bundle actual todavía no incluye:
-// 1) recuperación/cambio de contraseña con Supabase Auth;
-// 2) cierre de sesión visible para el perfil Propietario.
-//
-// La autorización de datos sigue estando en Supabase/RLS y edge-auth-patch.js.
+// Añade recuperación/cambio de contraseña y un cierre de sesión visible
+// para Propietario sin romper la barra superior en pantallas pequeñas.
 (function () {
   "use strict";
   if (window.__authUxPatchInstalado) return;
@@ -39,7 +36,14 @@
     style.id = "chocoloyos-auth-ux-style";
     style.textContent = [
       "." + CLASE_OLVIDO + "{display:block;width:100%;margin:10px 0 0;padding:7px 8px;border:0;background:transparent;color:#6f6654;text-decoration:underline;font:inherit;font-size:13px;cursor:pointer}",
-      "." + CLASE_LOGOUT + "{border:0;border-radius:10px;padding:8px 11px;background:rgba(255,255,255,.10);color:#d9e3dd;font:inherit;font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer}",
+      "." + CLASE_LOGOUT + "{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:7px;flex:0 0 auto;min-height:40px;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:0 12px;background:rgba(255,255,255,.09);color:#dce6df;font:inherit;font-size:12px;font-weight:700;line-height:1;white-space:nowrap;cursor:pointer;transition:background .16s ease,border-color .16s ease,transform .12s ease}",
+      "." + CLASE_LOGOUT + ":hover{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.12)}",
+      "." + CLASE_LOGOUT + ":active{transform:scale(.97)}",
+      "." + CLASE_LOGOUT + ":focus-visible{outline:2px solid #e4c77b;outline-offset:2px}",
+      "." + CLASE_LOGOUT + ":disabled{opacity:.55;cursor:default;transform:none}",
+      "." + CLASE_LOGOUT + " .chocoloyos-auth-logout-icon{display:block;width:18px;height:18px;flex:0 0 18px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}",
+      "." + CLASE_LOGOUT + " .chocoloyos-auth-logout-text{display:inline-block}",
+      "@media (max-width:640px){." + CLASE_LOGOUT + "{width:42px;min-width:42px;height:40px;min-height:40px;padding:0;margin-left:2px;border-radius:12px}." + CLASE_LOGOUT + " .chocoloyos-auth-logout-text{display:none}." + CLASE_LOGOUT + " .chocoloyos-auth-logout-icon{width:19px;height:19px;flex-basis:19px}}",
       "#" + ID_MODAL + "{position:fixed;inset:0;z-index:2147483000;background:rgba(10,24,17,.72);display:flex;align-items:center;justify-content:center;padding:18px}",
       "#" + ID_MODAL + " .choco-auth-card{width:min(440px,100%);background:#f8f5ec;color:#15271f;border-radius:18px;padding:22px;box-shadow:0 18px 60px rgba(0,0,0,.35)}",
       "#" + ID_MODAL + " h2{margin:0 0 8px;font-size:22px}",
@@ -117,9 +121,7 @@
     var cancelar = overlay.querySelector(".choco-auth-secondary");
     var guardar = overlay.querySelector(".choco-auth-primary");
 
-    cancelar.addEventListener("click", function () {
-      overlay.remove();
-    });
+    cancelar.addEventListener("click", function () { overlay.remove(); });
 
     guardar.addEventListener("click", async function () {
       var p1 = pass1.value || "";
@@ -225,6 +227,17 @@
     return null;
   }
 
+  function contenidoBotonLogout() {
+    return [
+      '<svg class="chocoloyos-auth-logout-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">',
+      '<path d="M10 5H6.8A1.8 1.8 0 0 0 5 6.8v10.4A1.8 1.8 0 0 0 6.8 19H10"></path>',
+      '<path d="M14 8l4 4-4 4"></path>',
+      '<path d="M9 12h9"></path>',
+      '</svg>',
+      '<span class="chocoloyos-auth-logout-text">Cerrar sesión</span>'
+    ].join("");
+  }
+
   async function asegurarLogoutPropietario() {
     var existente = document.querySelector("." + CLASE_LOGOUT);
     var supabase;
@@ -256,7 +269,8 @@
     var boton = document.createElement("button");
     boton.type = "button";
     boton.className = CLASE_LOGOUT;
-    boton.textContent = "Cerrar sesión";
+    boton.innerHTML = contenidoBotonLogout();
+    boton.setAttribute("aria-label", "Cerrar sesión");
     boton.title = "Cerrar sesión de Propietario en este dispositivo";
     modoEmpleado.insertAdjacentElement("afterend", boton);
 
