@@ -117501,8 +117501,8 @@ function GestionAlmacen() {
       setGastosGenerales(gastosFinales);
       setFacturasDirectas(facturasDirectasFinales);
       setEmpleados(empleadosFinales);
-      await saveKey("locales", localesFinales);
-      await saveKey("localActivoId", localActivoFinal);
+      if (JSON.stringify(localesFinales) !== JSON.stringify(Array.isArray(loc) ? loc : [])) await saveKey("locales", localesFinales);
+      if (localActivoFinal !== (lai || null)) await saveKey("localActivoId", localActivoFinal);
       if (JSON.stringify(productosFinales) !== JSON.stringify(pr || [])) await saveKey("productos", productosFinales);
       if (JSON.stringify(movimientosFinales) !== JSON.stringify(mo || [])) await saveKey("movimientos", movimientosFinales);
       if (JSON.stringify(albaranesFinales) !== JSON.stringify(alLimpios || [])) await saveKey("albaranes", albaranesFinales);

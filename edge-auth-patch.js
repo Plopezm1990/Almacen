@@ -177,6 +177,24 @@
     }
   }
 
+  // Compatibilidad con instalaciones que siempre han trabajado sin cuenta:
+// si este navegador nunca ha guardado un contexto autenticado, sus datos
+// locales siguen siendo un espacio local legítimo. En cuanto una cuenta se
+// verifica aquí, CACHE_LOCAL reclama el navegador y cerrar sesión no permite
+// saltarse el aislamiento de roles.
+function hayContextoAutenticadoGuardado() {
+  try {
+    var guardado = JSON.parse(localStorage.getItem(CACHE_LOCAL) || "null");
+    return !!(guardado && guardado.userId && guardado.contexto && guardado.contexto.rol);
+  } catch (e) {
+    return false;
+  }
+}
+
+function modoLocalNoReclamado() {
+  return window.__nubeActiva === false && !hayContextoAutenticadoGuardado();
+}
+
   async function sesionActual(supabase) {
     try {
       var resultado = await supabase.auth.getSession();
@@ -273,7 +291,10 @@
     // Si hay una sesión pero no se ha podido verificar su rol, se falla
     // cerrado para las colecciones empresariales controladas. loadKey aplicará
     // el fallback del módulo sin borrar la copia local.
-    if (!rol) return respuestaVacia(key);
+    if (!rol) {
+    if (modoLocalNoReclamado()) return getOriginal(key, shared);
+    return respuestaVacia(key);
+  }
 
     if (rol === "Propietario") return getOriginal(key, shared);
 
@@ -305,7 +326,10 @@
     var contexto = null;
     try { contexto = await obtenerContexto(false); } catch (e) {}
     var rol = contexto && contexto.rol;
-    if (!rol) return { key: key, value: value, shared: false };
+    if (!rol) {
+    if (modoLocalNoReclamado()) return setOriginal(key, value, shared);
+    return { key: key, value: value, shared: false };
+  }
 
     if (rol !== "Propietario") {
       var resumenSoloLectura =
@@ -327,6 +351,7 @@
       var contexto = null;
       try { contexto = await obtenerContexto(false); } catch (e) {}
       if (!contexto || contexto.rol !== "Propietario") {
+        if (!contexto && modoLocalNoReclamado()) return deleteOriginal(key, shared);
         return { key: key, shared: false };
       }
       return deleteOriginal(key, shared);
