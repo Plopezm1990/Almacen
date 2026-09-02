@@ -1,4 +1,4 @@
-name: Inspeccionar historial bloque 5 final
+name: Inspeccionar devoluciones render bloque 5
 on:
   push:
     branches: [multilocal-fase-3]
@@ -11,12 +11,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Mostrar render exacto de historial
+      - name: Mostrar los dos contextos de props de devoluciones
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('fuente.js').read_text(encoding='utf-8')
-          i=s.index('tab === "historial_producto"')
-          j=s.index('tab === "aceite"', i)
-          print(s[i:j])
+          t='{ productos, proveedores, devoluciones, registrarDevolucionCliente, registrarDevolucionProveedor }'
+          posiciones=[]
+          k=0
+          while True:
+              i=s.find(t,k)
+              if i<0: break
+              posiciones.append(i)
+              k=i+1
+          print('POSICIONES',posiciones)
+          for i in posiciones:
+              print('\n===== CONTEXTO',i,'=====')
+              print(s[max(0,i-900):min(len(s),i+1300)])
           PY
