@@ -86,6 +86,11 @@ jobs:
             assert(selProv,'No aparece selector de proveedor');
             await selProv.selectOption('prov1');
             await page.waitForTimeout(200);
+            const verTodos=page.getByRole('button',{name:'No lo encuentro, ver todos los productos'});
+            if(await verTodos.count()){
+              await verTodos.first().click();
+              await page.waitForTimeout(250);
+            }
             const selProd=await selectConValor(page,'p1');
             assert(selProd,'No aparece selector de producto en pedido');
             await selProd.selectOption('p1');
