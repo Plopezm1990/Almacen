@@ -1,0 +1,141 @@
+name: Aplicar correcciones aisladas PR4
+on:
+  push:
+    branches: [smoke-pr4-global]
+    paths:
+      - .github/workflows/aplicar-correcciones-smoke-pr4.yml
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: smoke-pr4-global
+      - name: Aplicar correcciones exactas
+        shell: python
+        run: |
+          from pathlib import Path
+
+          edge = Path('edge-auth-patch.js')
+          s = edge.read_text(encoding='utf-8')
+
+          viejo = '''  function leerContextoLocal(userId) {
+            if (!userId) return null;
+            try {
+              var guardado = JSON.parse(localStorage.getItem(CACHE_LOCAL) || "null");
+              if (!guardado || guardado.userId !== userId || !guardado.contexto || !guardado.contexto.rol) return null;
+              return guardado.contexto;
+            } catch (e) {
+              return null;
+            }
+          }
+          '''
+          nuevo = '''  function leerContextoLocal(userId) {
+            if (!userId) return null;
+            try {
+              var guardado = JSON.parse(localStorage.getItem(CACHE_LOCAL) || "null");
+              if (!guardado || guardado.userId !== userId || !guardado.contexto || !guardado.contexto.rol) return null;
+              return guardado.contexto;
+            } catch (e) {
+              return null;
+            }
+          }
+
+          // Compatibilidad con instalaciones que siempre han trabajado sin cuenta:
+          // si este navegador NUNCA ha guardado un contexto autenticado, sus datos
+          // locales siguen siendo un espacio local legítimo. En cuanto una cuenta se
+          // verifica aquí, el marcador CACHE_LOCAL reclama el navegador y ya no se
+          // puede saltar el aislamiento cerrando sesión y entrando "solo local".
+          function hayContextoAutenticadoGuardado() {
+            try {
+              var guardado = JSON.parse(localStorage.getItem(CACHE_LOCAL) || "null");
+              return !!(guardado && guardado.userId && guardado.contexto && guardado.contexto.rol);
+            } catch (e) {
+              return false;
+            }
+          }
+
+          function modoLocalNoReclamado() {
+            return window.__nubeActiva === false && !hayContextoAutenticadoGuardado();
+          }
+          '''
+          if viejo not in s:
+            raise SystemExit('No se encontró bloque leerContextoLocal esperado')
+          s = s.replace(viejo, nuevo, 1)
+
+          viejo = '''    // Si hay una sesión pero no se ha podido verificar su rol, se falla
+              // cerrado para las colecciones empresariales controladas. loadKey aplicará
+              // el fallback del módulo sin borrar la copia local.
+              if (!rol) return respuestaVacia(key);
+          '''
+          nuevo = '''    // Sin rol verificado se falla cerrado, salvo en un espacio puramente
+              // local que nunca haya sido asociado a una cuenta autenticada. Esto conserva
+              // el modo local histórico sin permitir que cerrar sesión revele datos de otro rol.
+              if (!rol) {
+                if (modoLocalNoReclamado()) return getOriginal(key, shared);
+                return respuestaVacia(key);
+              }
+          '''
+          if viejo not in s:
+            raise SystemExit('No se encontró guard de lectura esperado')
+          s = s.replace(viejo, nuevo, 1)
+
+          viejo = '''    var rol = contexto && contexto.rol;
+              if (!rol) return { key: key, value: value, shared: false };
+          '''
+          nuevo = '''    var rol = contexto && contexto.rol;
+              if (!rol) {
+                if (modoLocalNoReclamado()) return setOriginal(key, value, shared);
+                return { key: key, value: value, shared: false };
+              }
+          '''
+          if viejo not in s:
+            raise SystemExit('No se encontró guard de escritura esperado')
+          s = s.replace(viejo, nuevo, 1)
+
+          viejo = '''      try { contexto = await obtenerContexto(false); } catch (e) {}
+                if (!contexto || contexto.rol !== "Propietario") {
+                  return { key: key, shared: false };
+                }
+                return deleteOriginal(key, shared);
+          '''
+          nuevo = '''      try { contexto = await obtenerContexto(false); } catch (e) {}
+                if (!contexto || contexto.rol !== "Propietario") {
+                  if (!contexto && modoLocalNoReclamado()) return deleteOriginal(key, shared);
+                  return { key: key, shared: false };
+                }
+                return deleteOriginal(key, shared);
+          '''
+          if viejo not in s:
+            raise SystemExit('No se encontró guard de borrado esperado')
+          s = s.replace(viejo, nuevo, 1)
+          edge.write_text(s, encoding='utf-8')
+
+          fuente = Path('fuente.js')
+          f = fuente.read_text(encoding='utf-8')
+          viejo = '''      await saveKey("locales", localesFinales);
+              await saveKey("localActivoId", localActivoFinal);
+          '''
+          nuevo = '''      if (JSON.stringify(localesFinales) !== JSON.stringify(Array.isArray(loc) ? loc : [])) await saveKey("locales", localesFinales);
+              if (localActivoFinal !== (lai || null)) await saveKey("localActivoId", localActivoFinal);
+          '''
+          if viejo not in f:
+            raise SystemExit('No se encontró guardado incondicional de locales esperado')
+          f = f.replace(viejo, nuevo, 1)
+          fuente.write_text(f, encoding='utf-8')
+      - name: Verificar sintaxis y cambios
+        run: |
+          node --check edge-auth-patch.js
+          node --check fuente.js
+          grep -q 'modoLocalNoReclamado' edge-auth-patch.js
+          grep -q 'localActivoFinal !== (lai || null)' fuente.js
+          git diff --check
+      - name: Guardar solo las dos correcciones en rama temporal
+        run: |
+          git config user.name "Plopezm1990"
+          git config user.email "pedroroger1990@gmail.com"
+          git add edge-auth-patch.js fuente.js
+          git commit -m "Corregir aislamiento del modo local y guardados redundantes"
+          git push origin HEAD:smoke-pr4-global
