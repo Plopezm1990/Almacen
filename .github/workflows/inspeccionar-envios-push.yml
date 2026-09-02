@@ -1,0 +1,26 @@
+name: Inspeccionar envíos push
+on:
+  push:
+    branches: [preparacion-sin-netlify]
+    paths:
+      - .github/workflows/inspeccionar-envios-push.yml
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: preparacion-sin-netlify
+      - name: Mostrar llamadas a enviar-notificacion
+        shell: node {0}
+        run: |
+          const fs = require('fs');
+          const s = fs.readFileSync('fuente.js','utf8');
+          for (const term of ['enviar-notificacion','Lote caducado','Lote a punto de caducar','Caja descuadrada','Stock bajo','Caja cerrada, ahora desactualizada','Error en el programa']) {
+            let from=0,n=0;
+            while(n<12){
+              const i=s.indexOf(term,from); if(i<0) break; n++;
+              console.log(`\n--- ${term} #${n} at ${i} ---\n`+s.slice(Math.max(0,i-1600),Math.min(s.length,i+4200)));
+              from=i+term.length;
+            }
+          }
