@@ -11,26 +11,72 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Obtener fuente del PR4
+      - name: Preparar sitio PR4 y Chromium
         run: |
           git fetch origin preparacion-sin-netlify
-          git show origin/preparacion-sin-netlify:fuente.js > /tmp/fuente-pr4.js
-      - name: Extraer solo controles necesarios
-        shell: python
+          mkdir -p /tmp/site
+          git archive origin/preparacion-sin-netlify | tar -x -C /tmp/site
+          cd /tmp/site && python3 -m http.server 4230 --bind 127.0.0.1 >/tmp/http-ui.log 2>&1 &
+          mkdir -p /tmp/ui-inspect && cd /tmp/ui-inspect
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+      - name: Inspeccionar Venta rápida y Devoluciones
         run: |
-          from pathlib import Path
-          s=Path('/tmp/fuente-pr4.js').read_text(encoding='utf-8')
-          tokens=[
-            'carritoValido && efectivoSuficiente',
-            'function Devoluciones',
-            'registrarDevolucionCliente',
-            'Devolución de cliente',
-            'Motivo de la devolución',
-            'reembolso',
-          ]
-          for token in tokens:
-              p=s.find(token)
-              print('\n'+'='*90)
-              print('TOKEN=',repr(token),'COUNT=',s.count(token),'POS=',p)
-              if p>=0:
-                  print(s[max(0,p-2200):min(len(s),p+4200)])
+          cd /tmp/ui-inspect
+          cat > inspect.cjs <<'NODE'
+          const { chromium } = require('playwright');
+          const URL='http://127.0.0.1:4230/';
+          const norm=s=>(s||'').replace(/\s+/g,' ').trim();
+          async function abrirModulo(page,texto){
+            return page.evaluate((texto)=>{
+              const raiz=document.querySelector('aside') || document.querySelector('nav');
+              const n=v=>(v||'').replace(/\s+/g,' ').trim();
+              const el=raiz && [...raiz.querySelectorAll('button,a')].find(e=>n(e.innerText||e.textContent)===texto);
+              if(!el) return false; el.click(); return true;
+            },texto);
+          }
+          async function dump(page,tag){
+            const data=await page.evaluate(()=>({
+              text:(document.body.innerText||'').replace(/\s+/g,' ').trim().slice(0,4500),
+              buttons:[...document.querySelectorAll('button')].map(x=>(x.innerText||x.textContent||'').replace(/\s+/g,' ').trim()).filter(Boolean),
+              inputs:[...document.querySelectorAll('input')].map(x=>({type:x.type,placeholder:x.placeholder,value:x.value})),
+              selects:[...document.querySelectorAll('select')].map(x=>({value:x.value,options:[...x.options].map(o=>({text:o.text,value:o.value}))})),
+              labels:[...document.querySelectorAll('label')].map(x=>(x.innerText||x.textContent||'').replace(/\s+/g,' ').trim()).filter(Boolean)
+            }));
+            console.log('=== '+tag+' ==='); console.log(JSON.stringify(data,null,2));
+          }
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const ctx=await browser.newContext({serviceWorkers:'block',viewport:{width:1440,height:1100}});
+            const page=await ctx.newPage();
+            const supabase=[]; const errors=[];
+            page.on('pageerror',e=>errors.push(e.message));
+            await page.route('https://flqercbgpgmmfaakrwkc.supabase.co/**',r=>{supabase.push(r.request().url());r.abort();});
+            await page.addInitScript(()=>{
+              localStorage.clear(); const put=(k,v)=>localStorage.setItem('almacen:'+k,JSON.stringify(v));
+              put('locales',[{id:'loc',nombre:'Local Prueba',activo:true}]); put('localActivoId','loc');
+              put('productos',[{id:'p1',nombre:'Chocolate prueba',tipo:'final',unidad:'ud',stock:10,stockMinimo:2,costo:4,precioVenta:8,ivaPct:10,localId:'loc',activo:true}]);
+              put('proveedores',[{id:'prov1',nombre:'Proveedor prueba'}]);
+              for(const k of ['pedidos','movimientos','conteos','fichasCosto','albaranes','gastosGenerales','empleados','fichajes','registrosAppcc','puntosControl','clientes','encargos','arqueos','movimientosCaja','devoluciones','turnos','nominas','facturasDirectas','ordenesProduccion','traspasos','auditoria','freidoras','registrosAceite','entrevistas']) put(k,[]);
+              put('catalogoProv',{}); put('historialRespaldos',[]); localStorage.setItem('almacen__pendientes','[]');
+            });
+            await page.goto(URL,{waitUntil:'domcontentloaded'}); await page.waitForTimeout(900);
+            const local=page.getByText('Trabajar solo en este equipo, sin sincronizar',{exact:false});
+            if(!(await local.count())) throw new Error('No aparece entrada local');
+            await local.first().click(); await page.waitForTimeout(900);
+            if(!(await abrirModulo(page,'Venta rápida'))) throw new Error('No abre Venta rápida');
+            await page.waitForTimeout(500); await dump(page,'VENTA_ANTES');
+            const prod=page.getByText('Chocolate prueba',{exact:true});
+            if(await prod.count()){ await prod.first().click(); await page.waitForTimeout(400); }
+            await dump(page,'VENTA_DESPUES_PRODUCTO');
+            if(!(await abrirModulo(page,'Devoluciones'))) throw new Error('No abre Devoluciones');
+            await page.waitForTimeout(500); await dump(page,'DEVOLUCIONES');
+            console.log('SUPABASE_COUNT='+supabase.length); console.log('ERRORS='+JSON.stringify(errors));
+            await browser.close();
+            if(supabase.length) throw new Error('Hubo llamadas a Supabase');
+            if(errors.length) throw new Error('Errores JS: '+errors.join(' | '));
+            console.log('INSPECCION_UI_TRANSACCIONAL_OK=1');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+          node inspect.cjs
