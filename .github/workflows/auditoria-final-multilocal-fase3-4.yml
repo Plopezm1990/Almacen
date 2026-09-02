@@ -1,0 +1,47 @@
+name: Auditoría final multilocal fase 3 cuarta pasada
+on:
+  push:
+    branches: [multilocal-fase-3]
+    paths:
+      - .github/workflows/auditoria-final-multilocal-fase3-4.yml
+permissions:
+  contents: read
+jobs:
+  auditar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mostrar últimos cuatro puntos exactos
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          def contexts(term, before=1400, after=5000, maxn=8):
+              print('\n===== '+term+' =====')
+              pos=[]; k=0
+              while True:
+                  i=s.find(term,k)
+                  if i<0: break
+                  pos.append(i); k=i+1
+              print('POS',pos[:20])
+              for i in pos[:maxn]:
+                  print('\n--- contexto',i,'---')
+                  print(s[max(0,i-before):min(len(s),i+after)])
+          # Gastos: componente, render e invocación lógica.
+          for t in ['function GastosGenerales(', 'GastosGenerales, {', 'crearLogicaGastos({', 'deleteGasto,', 'gastosGenerales:']:
+              contexts(t)
+          # Indicadores visibles de operación.
+          for t in ['const fichajesAbiertos =', 'const appccPendientesHoy =', 'const caducanPronto =', '{ id: "fichaje"', '{ id: "appcc"', '{ id: "caducidades"', 'tab === "dashboard"']:
+              contexts(t)
+          # Reportes: cálculo y render exacto.
+          for t in ['const margenPorProducto =', 'const gastoPorProveedor =', 'const rotacionPorProducto =', 'const productosSinMovimiento =', 'const patronesDesviacionConteo =', 'tab === "reportes"']:
+              contexts(t)
+          # Reconciliación completa + invocación.
+          i=s.find('function crearLogicaReconciliacion(')
+          print('\n===== crearLogicaReconciliacion '+str(i)+' =====')
+          if i>=0:
+              j=s.find('\nfunction ', i+10)
+              if j<0: j=min(len(s),i+24000)
+              print(s[i:j])
+          contexts('crearLogicaReconciliacion({')
+          PY
