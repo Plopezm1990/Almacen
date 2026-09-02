@@ -1,0 +1,47 @@
+name: Inspeccionar anclas exactas bloque 7
+on:
+  push:
+    branches: [multilocal-fase-3]
+    paths:
+      - .github/workflows/auditoria-final-anclas-bloque7.yml
+permissions:
+  contents: read
+jobs:
+  inspeccion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mostrar anclas exactas finales
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          def bloque(nombre):
+              i=s.find('function '+nombre+'(')
+              print('\n===== FUNC '+nombre+' '+str(i)+' =====')
+              if i>=0:
+                  j=s.find('\nfunction ',i+10)
+                  if j<0: j=min(len(s),i+26000)
+                  print(s[i:j])
+          def ctx(term,before=1000,after=4000,maxn=5):
+              print('\n===== '+term+' =====')
+              pos=[]; k=0
+              while True:
+                  i=s.find(term,k)
+                  if i<0: break
+                  pos.append(i); k=i+1
+              print('POS',pos[:12])
+              for i in pos[:maxn]: print(s[max(0,i-before):min(len(s),i+after)])
+          bloque('crearLogicaReconciliacion')
+          for t in [
+            'GastosGenerales, {', 'function GastosGenerales(',
+            'const fichajesAbiertos =', 'const appccPendientesHoy =', 'const caducanPronto =',
+            '{ id: "fichaje"', '{ id: "appcc"', '{ id: "caducidades"',
+            'const margenPorProducto =', 'const gastoPorProveedor =', 'const rotacionPorProducto =',
+            'const productosSinMovimiento =', 'const patronesDesviacionConteo =', 'tab === "reportes"',
+            'const empleadosFinales =', 'setFichajes(fj);', 'setTurnos(tu);',
+            'const recordatorioConteo =', 'const descuadresPendientes =',
+            '{ id: "traspasos", label:', 'tab === "mapa"',
+            'crearLogicaFichaje({', 'crearLogicaTurnos({', 'crearLogicaReconciliacion({' ]:
+              ctx(t)
+          PY
