@@ -1,0 +1,213 @@
+name: Smoke PR4 global aislado
+on:
+  push:
+    branches: [smoke-pr4-global]
+    paths:
+      - .github/workflows/smoke-pr4-global.yml
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Comprobar sintaxis y marcadores de seguridad
+        shell: bash
+        run: |
+          node --check fuente.js
+          node --check edge-auth-patch.js
+          grep -q '__contextoRolSeguroInstalado' edge-auth-patch.js
+          grep -q '__guardPerfilActivoInstalado' edge-auth-patch.js
+          grep -q 'SelectorLocalInformes' fuente.js
+          grep -q 'local_id: localActivoId' fuente.js
+          grep -q 'Cache-Control: no-cache' _headers
+      - name: Servir PR4 localmente
+        shell: bash
+        run: |
+          python3 -m http.server 4214 --bind 127.0.0.1 >/tmp/pr4-http.log 2>&1 &
+          sleep 2
+      - name: Instalar Chromium
+        shell: bash
+        run: |
+          mkdir -p /tmp/pr4-browser && cd /tmp/pr4-browser
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+      - name: Probar modo local, locales e informes sin Supabase
+        shell: bash
+        run: |
+          cd /tmp/pr4-browser
+          cat > smoke.cjs <<'NODE'
+          const { chromium } = require('playwright');
+
+          const baseMulti = {
+            locales: [
+              { id: 'loc-norte', nombre: 'Local Norte', direccion: 'Norte', activo: true },
+              { id: 'loc-sur', nombre: 'Local Sur', direccion: 'Sur', activo: true }
+            ],
+            localActivoId: 'loc-norte',
+            productos: [
+              { id: 'p-norte', nombre: 'Producto Norte', tipo: 'materiaPrima', unidad: 'ud', stock: 10, stockMinimo: 2, costo: 1, precioVenta: 3, ivaPct: 10, localId: 'loc-norte', activo: true },
+              { id: 'p-sur', nombre: 'Producto Sur', tipo: 'materiaPrima', unidad: 'ud', stock: 8, stockMinimo: 2, costo: 5, precioVenta: 9, ivaPct: 10, localId: 'loc-sur', activo: true }
+            ],
+            movimientos: [
+              { id: 'm-norte', operationId: 'm-norte', productoId: 'p-norte', localId: 'loc-norte', cantidad: -2, tipo: 'VENTA', motivo: 'Venta', fecha: '2026-09-01', costoUnitario: 1, precioUnitario: 3, ivaPct: 10 },
+              { id: 'm-sur', operationId: 'm-sur', productoId: 'p-sur', localId: 'loc-sur', cantidad: -1, tipo: 'VENTA', motivo: 'Venta', fecha: '2026-09-01', costoUnitario: 5, precioUnitario: 9, ivaPct: 10 }
+            ],
+            gastosGenerales: [
+              { id: 'g-norte', concepto: 'Gasto Norte', importe: 2, fecha: '2026-09-01', localId: 'loc-norte' },
+              { id: 'g-sur', concepto: 'Gasto Sur', importe: 4, fecha: '2026-09-01', localId: 'loc-sur' }
+            ],
+            albaranes: [], pedidos: [], encargos: [], facturasDirectas: [], empleados: []
+          };
+
+          const baseReparar = {
+            locales: [
+              { id: 'dup-1', nombre: 'Chocoloyos S.L', direccion: '', activo: true },
+              { id: 'dup-2', nombre: 'Chocoloyos S.L', direccion: '', activo: true }
+            ],
+            localActivoId: 'dup-1',
+            productos: [
+              { id: 'p-real', nombre: 'Producto histórico', tipo: 'materiaPrima', unidad: 'ud', stock: 5, stockMinimo: 1, costo: 2, precioVenta: 4, ivaPct: 10, localId: 'local-historico', activo: true }
+            ],
+            movimientos: [], gastosGenerales: [], albaranes: [], pedidos: [], encargos: [], facturasDirectas: [], empleados: []
+          };
+
+          async function selectorLocal(page) {
+            const sels = page.locator('select');
+            for (let i = 0; i < await sels.count(); i++) {
+              const s = sels.nth(i);
+              const opciones = await s.locator('option').allTextContents();
+              if (opciones.some(x => x.includes('Todos los locales'))) return s;
+            }
+            return null;
+          }
+
+          async function abrir(browser, nombre, seed) {
+            const context = await browser.newContext({ serviceWorkers: 'block' });
+            const page = await context.newPage();
+            const errores = [];
+            const supabase = [];
+
+            await page.addInitScript((datos) => {
+              localStorage.clear();
+              for (const [k, v] of Object.entries(datos)) {
+                localStorage.setItem('almacen:' + k, JSON.stringify(v));
+              }
+              localStorage.setItem('almacen__pendientes', '[]');
+            }, seed);
+
+            page.on('pageerror', e => errores.push('pageerror: ' + e.message));
+            page.on('console', m => {
+              if (m.type() !== 'error') return;
+              const t = m.text();
+              if (/ERR_FAILED|Failed to load resource/i.test(t)) return;
+              errores.push('console: ' + t);
+            });
+            await page.route('https://flqercbgpgmmfaakrwkc.supabase.co/**', r => {
+              supabase.push(r.request().method() + ' ' + r.request().url());
+              r.abort();
+            });
+
+            await page.goto('http://127.0.0.1:4214/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+            await page.waitForTimeout(2000);
+
+            const flags = await page.evaluate(() => ({
+              contextoRolSeguro: !!window.__contextoRolSeguroInstalado,
+              guardPerfilActivo: !!window.__guardPerfilActivoInstalado,
+              seleccionNeutral: !!document.querySelector('script[data-seleccion-neutral="1"]')
+            }));
+            if (!flags.contextoRolSeguro || !flags.guardPerfilActivo || !flags.seleccionNeutral) {
+              throw new Error(nombre + ': faltan barreras de seguridad ' + JSON.stringify(flags));
+            }
+
+            const local = page.getByText('Trabajar solo en este equipo, sin sincronizar', { exact: false });
+            if (!(await local.count())) throw new Error(nombre + ': no aparece modo local');
+            await local.first().click();
+            await page.waitForTimeout(2200);
+
+            const texto = (await page.locator('body').innerText()).replace(/\s+/g, ' ').trim();
+            const rootLen = (await page.locator('#root').innerHTML()).length;
+            if (!texto.includes('Panel general') || rootLen < 1000) throw new Error(nombre + ': panel no renderizó');
+            if (supabase.length) throw new Error(nombre + ': contactó Supabase: ' + supabase.join(' | '));
+            if (errores.length) throw new Error(nombre + ': errores JS: ' + errores.join(' | '));
+
+            return { context, page, flags };
+          }
+
+          async function probarMulti(browser) {
+            const { context, page } = await abrir(browser, 'MULTILOCAL', baseMulti);
+            let sel = await selectorLocal(page);
+            if (!sel) throw new Error('MULTILOCAL: no aparece selector en Dashboard');
+            const opts = await sel.locator('option').allTextContents();
+            for (const esperado of ['Todos los locales', 'Local Norte', 'Local Sur']) {
+              if (!opts.some(x => x.includes(esperado))) throw new Error('MULTILOCAL: falta opción ' + esperado);
+            }
+            await sel.selectOption('loc-norte');
+            await page.waitForTimeout(250);
+            if (!(await page.locator('body').innerText()).includes('Mostrando solo Local Norte.')) throw new Error('MULTILOCAL: no confirma filtro Norte');
+
+            for (const destino of ['Resultados', 'Libro de IVA']) {
+              const link = page.getByText(destino, { exact: true });
+              if (!(await link.count())) throw new Error('MULTILOCAL: no aparece ' + destino);
+              await link.first().click();
+              await page.waitForTimeout(350);
+              sel = await selectorLocal(page);
+              if (!sel) throw new Error('MULTILOCAL: falta selector en ' + destino);
+              if (await sel.inputValue() !== 'loc-norte') throw new Error('MULTILOCAL: filtro no persiste en ' + destino);
+              if (!(await page.locator('body').innerText()).includes('Mostrando solo Local Norte.')) throw new Error('MULTILOCAL: resumen de filtro ausente en ' + destino);
+            }
+
+            const productos = page.getByText('Productos', { exact: true });
+            await productos.first().click();
+            await page.waitForTimeout(300);
+            if ((await page.locator('body').innerText()).includes('Mostrando solo Local Norte.')) throw new Error('MULTILOCAL: selector apareció fuera de informes');
+
+            const estado = await page.evaluate(() => ({
+              locales: JSON.parse(localStorage.getItem('almacen:locales') || '[]'),
+              productos: JSON.parse(localStorage.getItem('almacen:productos') || '[]'),
+              pendientes: JSON.parse(localStorage.getItem('almacen__pendientes') || '[]')
+            }));
+            if (estado.locales.filter(x => x.activo !== false && !x.fusionadoEn).length !== 2) throw new Error('MULTILOCAL: alteró locales válidos');
+            if (estado.productos.some(x => !x.localId)) throw new Error('MULTILOCAL: perdió localId de producto');
+            if (estado.pendientes.length !== 0) throw new Error('MULTILOCAL: generó pendientes al abrir datos ya válidos: ' + estado.pendientes.join(','));
+
+            console.log('MULTILOCAL_OK=1');
+            console.log('MULTILOCAL_PENDIENTES=' + JSON.stringify(estado.pendientes));
+            await context.close();
+          }
+
+          async function probarReparacion(browser) {
+            const { context, page } = await abrir(browser, 'REPARACION', baseReparar);
+            const estado = await page.evaluate(() => ({
+              locales: JSON.parse(localStorage.getItem('almacen:locales') || '[]'),
+              localActivoId: JSON.parse(localStorage.getItem('almacen:localActivoId') || 'null'),
+              productos: JSON.parse(localStorage.getItem('almacen:productos') || '[]')
+            }));
+            const canon = estado.locales.find(x => x.id === 'local-historico');
+            const fusionados = estado.locales.filter(x => x.fusionadoEn === 'local-historico');
+            if (!canon || canon.activo === false || canon.fusionadoEn) throw new Error('REPARACION: no preservó ID histórico como canónico');
+            if (fusionados.length !== 2 || fusionados.some(x => x.activo !== false)) throw new Error('REPARACION: duplicados no quedaron fusionados/inactivos');
+            if (estado.localActivoId !== 'local-historico') throw new Error('REPARACION: local activo no apunta al canónico');
+            if (estado.productos[0]?.localId !== 'local-historico') throw new Error('REPARACION: reescribió local histórico del producto');
+
+            const localesLink = page.getByText('Locales', { exact: true });
+            if (await localesLink.count()) {
+              await localesLink.first().click();
+              await page.waitForTimeout(250);
+              const body = await page.locator('body').innerText();
+              if (!body.includes('La separación por local ya está activa')) throw new Error('REPARACION: pantalla Locales no actualizada');
+            }
+
+            console.log('REPARACION_OK=1');
+            console.log('REPARACION_LOCALES=' + JSON.stringify(estado.locales));
+            await context.close();
+          }
+
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            await probarMulti(browser);
+            await probarReparacion(browser);
+            await browser.close();
+            console.log('SMOKE_PR4_GLOBAL_OK=1');
+          })().catch(e => { console.error(e); process.exit(1); });
+          NODE
+          node smoke.cjs
