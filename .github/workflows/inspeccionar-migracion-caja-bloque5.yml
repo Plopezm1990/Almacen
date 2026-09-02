@@ -1,0 +1,30 @@
+name: Inspeccionar migración histórica de caja bloque 5
+on:
+  push:
+    branches: [multilocal-fase-3]
+    paths:
+      - .github/workflows/inspeccionar-migracion-caja-bloque5.yml
+permissions:
+  contents: read
+jobs:
+  inspeccion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mostrar carga y migración de arqueos y movimientos de caja
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          for termino in ['setArqueos(', 'setMovimientosCaja(', 'loadKey("arqueos"', 'loadKey("movimientosCaja"']:
+              print('\n=====',termino,'=====')
+              pos=[]; k=0
+              while True:
+                  i=s.find(termino,k)
+                  if i<0: break
+                  pos.append(i); k=i+1
+              print('POS',pos[:20])
+              for i in pos[:8]:
+                  print('\n--- contexto',i,'---')
+                  print(s[max(0,i-1300):min(len(s),i+2300)])
+          PY
