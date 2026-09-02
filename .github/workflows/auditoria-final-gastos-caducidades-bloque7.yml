@@ -1,0 +1,28 @@
+name: Verificar Gastos y Caducidades bloque 7
+on:
+  push:
+    branches: [multilocal-fase-3]
+    paths:
+      - .github/workflows/auditoria-final-gastos-caducidades-bloque7.yml
+permissions:
+  contents: read
+jobs:
+  inspeccion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mostrar contextos exactos
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          for t in ['addGastoInforme', 'deleteGasto', 'Caducidades', 'caducanPronto', 'lotesCaducidad', 'tab === "caducidades"']:
+              print('\n===== '+t+' =====')
+              pos=[]; k=0
+              while True:
+                  i=s.find(t,k)
+                  if i<0: break
+                  pos.append(i); k=i+1
+              print('POS',pos[:20])
+              for i in pos[:10]: print(s[max(0,i-1400):min(len(s),i+4200)])
+          PY
