@@ -1,0 +1,51 @@
+name: Aplicar bloque 7A multilocal
+on:
+  push:
+    branches: [multilocal-fase-3]
+    paths:
+      - .github/workflows/aplicar-bloque7a-multilocal.yml
+permissions:
+  contents: write
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar parche protegido
+        run: python3 .github/scripts/aplicar_bloque7a_multilocal.py
+      - name: Validar JavaScript y diff
+        run: |
+          node --check fuente.js
+          git diff --check
+          git diff --stat
+      - name: Guardas semánticas
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          req=[
+            'productos: productosDelLocalActivo, proveedorPorId',
+            'badge: pisoVentaBajoDelLocalActivo.length',
+            'diagnostico: diagnosticoStockDelLocalActivo',
+            'badge: descuadresPendientesDelLocalActivo',
+            'rotacionPorProducto: rotacionPorProductoDelLocalActivo',
+            'gastoPorProveedor: gastoPorProveedorDelLocalActivo',
+            'const recordatorioConteoInforme = calcularRecordatorioConteo(conteosInforme',
+            'deleteGasto: deleteGastoInforme',
+            'El producto no pertenece al local activo.'
+          ]
+          for x in req: assert x in s, x
+          print('SEMANTICA_BLOQUE7A_OK')
+          PY
+      - name: Guardar cambio funcional y retirar herramientas 7A
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm -f .github/scripts/aplicar_bloque7a_multilocal.py
+          rm -f .github/workflows/aplicar-bloque7a-multilocal.yml
+          rm -f .github/workflows/inspeccionar-bloque7a-final.yml
+          rm -f .github/workflows/inspeccionar-bloque7a-mutaciones.yml
+          git add fuente.js .github/scripts/aplicar_bloque7a_multilocal.py .github/workflows/aplicar-bloque7a-multilocal.yml .github/workflows/inspeccionar-bloque7a-final.yml .github/workflows/inspeccionar-bloque7a-mutaciones.yml
+          git diff --cached --check
+          git commit -m 'Cerrar operaciones y reportes por local'
+          git push origin HEAD:multilocal-fase-3
