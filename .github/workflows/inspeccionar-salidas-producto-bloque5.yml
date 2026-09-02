@@ -1,0 +1,26 @@
+name: Inspeccionar salidas producto bloque 5
+on:
+  push:
+    branches: [multilocal-fase-3]
+    paths:
+      - .github/workflows/inspeccionar-salidas-producto-bloque5.yml
+permissions:
+  contents: read
+jobs:
+  inspeccion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mostrar funciones exactas
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          i=s.index('function registrarSalida(')
+          j=s.index('function ajustarProductoPorOtro(',i)
+          print('===== REGISTRAR SALIDA =====')
+          print(s[i:j])
+          k=s.index('return { addProducto',j)
+          print('===== AJUSTAR PRODUCTO POR OTRO =====')
+          print(s[j:k])
+          PY
