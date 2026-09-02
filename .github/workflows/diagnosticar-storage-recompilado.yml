@@ -9,32 +9,138 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspeccionar símbolos de almacenamiento
-        shell: python
+      - name: Compilar fuente recuperado
+        shell: bash
         run: |
-          from pathlib import Path
-          for nombre in ['fuente.js','source-recovery/fuente-recuperado.js']:
-            p=Path(nombre)
-            lines=p.read_text(encoding='utf-8').splitlines()
-            print('\n===',nombre,'===')
-            terms=['No se pudo cargar','loadKey','storage.get','window.storage','var storage','const storage','let storage']
-            for term in terms:
-              hits=[i for i,l in enumerate(lines) if term in l]
-              print(f'--- {term}: {len(hits)} hits ---')
-              for i in hits[:20]:
-                a=max(0,i-5); b=min(len(lines),i+12)
-                print(f'CONTEXT {i+1}:')
-                for j in range(a,b):
-                  x=lines[j]
-                  if len(x)>700: x=x[:700]+' ...[cortado]'
-                  print(f'{j+1}: {x}')
-          # También identificar usos directos del identificador storage dentro de la sección app original.
-          import re
-          lines=Path('fuente.js').read_text(encoding='utf-8').splitlines()
-          marca=next(i for i,l in enumerate(lines) if l.strip()=='// fuente.jsx')
-          app=lines[marca:]
-          pat=re.compile(r'(?<![.$\w])storage\b')
-          hits=[i for i,l in enumerate(app) if pat.search(l)]
-          print('\n=== storage identifier en app original:',len(hits),'===')
-          for i in hits[:50]:
-            print(f'{marca+i+1}: {app[i][:1000]}')
+          cd source-recovery
+          npm ci --no-audit --no-fund
+          npm run build
+      - name: Preparar sitios aislados
+        shell: bash
+        run: |
+          mkdir -p /tmp/site-original /tmp/site-recuperado
+          cp -a . /tmp/site-original/repo
+          cp -a . /tmp/site-recuperado/repo
+          cp source-recovery/dist/fuente.js /tmp/site-recuperado/repo/fuente.js
+          cd /tmp/site-original/repo && python3 -m http.server 4181 --bind 127.0.0.1 >/tmp/o-http.log 2>&1 &
+          cd /tmp/site-recuperado/repo && python3 -m http.server 4182 --bind 127.0.0.1 >/tmp/r-http.log 2>&1 &
+          sleep 2
+      - name: Instalar Playwright
+        shell: bash
+        run: |
+          mkdir -p /tmp/runtime-test && cd /tmp/runtime-test
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+      - name: Instrumentar almacenamiento y comparar texto
+        shell: bash
+        run: |
+          cd /tmp/runtime-test
+          cat > diagnostico.cjs <<'NODE'
+          const { chromium } = require('playwright');
+
+          function diferencia(a,b) {
+            let p=0;
+            while (p<a.length && p<b.length && a[p]===b[p]) p++;
+            let sa=a.length-1, sb=b.length-1;
+            while (sa>=p && sb>=p && a[sa]===b[sb]) { sa--; sb--; }
+            return {
+              prefijo:p,
+              a:a.slice(Math.max(0,p-80), Math.min(a.length,sa+81)),
+              b:b.slice(Math.max(0,p-80), Math.min(b.length,sb+81)),
+              soloA:a.slice(p,sa+1),
+              soloB:b.slice(p,sb+1)
+            };
+          }
+
+          async function probar(browser,url,nombre) {
+            const context=await browser.newContext({serviceWorkers:'block'});
+            const page=await context.newPage();
+            const consola=[];
+            const supabase=[];
+            page.on('console',m=>{ if(m.type()==='error') consola.push(m.text()); });
+            await page.route('https://flqercbgpgmmfaakrwkc.supabase.co/**',r=>{ supabase.push(r.request().url()); r.abort(); });
+            await page.goto(url,{waitUntil:'domcontentloaded'});
+            await page.waitForTimeout(1200);
+
+            const pre=await page.evaluate(()=>({
+              keys:Object.keys(localStorage).sort(),
+              storageGet: String(window.storage && window.storage.get).slice(0,500),
+              storageKeys: window.storage ? Object.keys(window.storage).sort() : []
+            }));
+
+            await page.evaluate(()=>{
+              window.__diag={gets:[],sets:[],t0:performance.now()};
+              const originalGet=window.storage.get.bind(window.storage);
+              window.storage.get=async function(key,...rest){
+                const t=performance.now()-window.__diag.t0;
+                try {
+                  const r=await originalGet(key,...rest);
+                  window.__diag.gets.push({key,t:Math.round(t),ok:true,value:!!(r&&r.value)});
+                  return r;
+                } catch(e) {
+                  window.__diag.gets.push({key,t:Math.round(t),ok:false,error:e&&e.message});
+                  throw e;
+                }
+              };
+              const origSet=Storage.prototype.setItem;
+              Storage.prototype.setItem=function(k,v){
+                if(String(k).startsWith('almacen:')) window.__diag.sets.push({key:String(k),t:Math.round(performance.now()-window.__diag.t0),len:String(v).length});
+                return origSet.call(this,k,v);
+              };
+            });
+
+            const boton=page.getByText('Trabajar solo en este equipo, sin sincronizar',{exact:false});
+            await boton.first().click();
+
+            const snapshots=[];
+            for (const espera of [100,400,800,1200,2000,3500,6000]) {
+              await page.waitForTimeout(espera-(snapshots.length?snapshots[snapshots.length-1].espera:0));
+              snapshots.push(await page.evaluate((espera)=>({
+                espera,
+                keys:Object.keys(localStorage).filter(k=>k.startsWith('almacen:')).sort(),
+                gets:window.__diag.gets.length,
+                sets:window.__diag.sets.length
+              }),espera));
+            }
+
+            const out=await page.evaluate(()=>({
+              texto:document.body.innerText.replace(/\s+/g,' ').trim(),
+              root:document.querySelector('#root')?.innerHTML||'',
+              keys:Object.keys(localStorage).filter(k=>k.startsWith('almacen:')).sort(),
+              diag:window.__diag
+            }));
+            out.pre=pre;
+            out.snapshots=snapshots;
+            out.consola=consola;
+            out.supabase=supabase;
+            console.log('=== '+nombre+' ===');
+            console.log('PRE_KEYS='+JSON.stringify(pre.keys));
+            console.log('SNAPSHOTS='+JSON.stringify(snapshots));
+            console.log('GET_TOTAL='+out.diag.gets.length);
+            console.log('GET_FAIL='+out.diag.gets.filter(x=>!x.ok).length);
+            console.log('GET_OK='+out.diag.gets.filter(x=>x.ok).length);
+            console.log('GET_FIRST='+JSON.stringify(out.diag.gets.slice(0,18)));
+            console.log('SETS_TOTAL='+out.diag.sets.length);
+            console.log('SETS_FIRST='+JSON.stringify(out.diag.sets.slice(0,18)));
+            console.log('FINAL_KEYS='+out.keys.length);
+            console.log('CONSOLE_ERRORS='+consola.length);
+            console.log('SUPABASE='+supabase.length);
+            await context.close();
+            return out;
+          }
+
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const a=await probar(browser,'http://127.0.0.1:4181/','ORIGINAL');
+            const b=await probar(browser,'http://127.0.0.1:4182/','RECUPERADO');
+            await browser.close();
+            console.log('=== DIFERENCIA TEXTO ===');
+            console.log(JSON.stringify(diferencia(a.texto,b.texto)));
+            console.log('=== DIFERENCIA ROOT ===');
+            const dr=diferencia(a.root,b.root);
+            console.log(JSON.stringify({prefijo:dr.prefijo,soloA:dr.soloA.slice(0,500),soloB:dr.soloB.slice(0,500),a:dr.a.slice(0,900),b:dr.b.slice(0,900)}));
+            console.log('DIAG_RUNTIME_OK=1');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+          node diagnostico.cjs
