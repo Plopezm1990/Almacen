@@ -117355,6 +117355,16 @@ function GestionAlmacen() {
     if (!localActivoId) return productos;
     return productos.filter((p2) => !p2.localId || p2.localId === localActivoId);
   }, [productos, localActivoId]);
+  const movimientosDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return movimientos;
+    const localPorProducto = new Map(productos.map((p2) => [p2.id, p2.localId || null]));
+    return movimientos.filter((m2) => (m2.localId || localPorProducto.get(m2.productoId) || null) === localActivoId);
+  }, [movimientos, productos, localActivoId]);
+  const pedidosDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return pedidos;
+    return pedidos.filter((p2) => !p2.localId || p2.localId === localActivoId);
+  }, [pedidos, localActivoId]);
+  const pedidosPendientesDelLocalActivo = (0, import_react4.useMemo)(() => pedidosDelLocalActivo.filter((p2) => p2.estado !== "Recibido"), [pedidosDelLocalActivo]);
   const [turnos, setTurnos] = (0, import_react4.useState)([]);
   const [historial, setHistorial] = (0, import_react4.useState)([]);
   (0, import_react4.useEffect)(() => {
@@ -117971,6 +117981,10 @@ function GestionAlmacen() {
       return { ...p2, proveedorNombre: prov ? prov.nombre : "\u2014", leadTime, diasHastaEntrega, margen: p2.dias - diasHastaEntrega, cantidadSugerida, cajasSugeridas };
     }).filter((p2) => p2.leadTime > 0 && p2.margen <= 1 && !productosEnPedidoPendiente.has(p2.id)).sort((a2, b2) => a2.margen - b2.margen);
   }, [rotacionPorProducto, proveedores, productosEnPedidoPendiente]);
+  const sugerenciasPedidoDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return sugerenciasPedido;
+    return sugerenciasPedido.filter((p2) => p2.localId === localActivoId);
+  }, [sugerenciasPedido, localActivoId]);
   const lotesCaducidad = (0, import_react4.useMemo)(() => {
     const hoy = /* @__PURE__ */ new Date();
     hoy.setHours(0, 0, 0, 0);
@@ -118385,7 +118399,7 @@ function GestionAlmacen() {
   ), tab === "proveedores" && /* @__PURE__ */ import_react4.default.createElement(Proveedores, { proveedores, addProveedor, updateProveedor, deleteProveedor, pedidos }), tab === "productos" && /* @__PURE__ */ import_react4.default.createElement(
     Productos,
     {
-      productos,
+      productos: productosDelLocalActivo,
       proveedores,
       proveedorPorId,
       addProducto,
@@ -118395,7 +118409,7 @@ function GestionAlmacen() {
       registrarSalida,
       clasificacionABC,
       almacenCongelado,
-      movimientos,
+      movimientos: movimientosDelLocalActivo,
       fichasCosto,
       updateFichaCosto,
       ajustarProductoPorOtro
@@ -118437,15 +118451,15 @@ function GestionAlmacen() {
   ), tab === "pedidos" && /* @__PURE__ */ import_react4.default.createElement(
     Pedidos,
     {
-      pedidos,
+      pedidos: pedidosDelLocalActivo,
       proveedores,
-      productos,
+      productos: productosDelLocalActivo,
       crearPedido,
       actualizarPedido,
       eliminarPedido,
       proveedorPorId,
       productoPorId,
-      sugerenciasPedido,
+      sugerenciasPedido: sugerenciasPedidoDelLocalActivo,
       addProducto
     }
   ), tab === "recepcion" && /* @__PURE__ */ import_react4.default.createElement(Recepcion, { pedidos, proveedorPorId, productoPorId, recibirPedido, almacenCongelado, recibirConAlbaran, recibirConFotoIA, cerrarPedido }), tab === "conteo" && /* @__PURE__ */ import_react4.default.createElement(
@@ -118673,7 +118687,7 @@ function GestionAlmacen() {
     { id: "productos", label: "Productos", icon: Package },
     { id: "buscar", label: "Buscar", icon: Search },
     { id: "historial_producto", label: "Historial de producto", icon: RotateCcwClock },
-    { id: "pedidos", label: "Pedidos", icon: ShoppingCart, badge: pedidosPendientes.length },
+    { id: "pedidos", label: "Pedidos", icon: ShoppingCart, badge: pedidosPendientesDelLocalActivo.length },
     { id: "recepcion", label: "Recepci\xF3n", icon: ClipboardList },
     { id: "albaranes", label: "Albaranes", icon: FileText },
     { id: "facturas", label: "Facturas", icon: Files },
@@ -118815,7 +118829,7 @@ function GestionAlmacen() {
             --c-red-soft: #F7E5E1 !important;
           }
         }
-      `), disenoMenu === "C" ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(TopBarC, { disenoMenu, setDisenoMenu, tab, setTab, pendientes: pedidosPendientes.length, temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil }), /* @__PURE__ */ import_react4.default.createElement("main", { className: "flex-1 p-4 overflow-y-auto", style: { maxHeight: "900px" } }, contenido), /* @__PURE__ */ import_react4.default.createElement(BottomNavC, { tab, setTab, categorias: categoriasC, dashboardItem: porId("dashboard") })) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(
+      `), disenoMenu === "C" ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(TopBarC, { disenoMenu, setDisenoMenu, tab, setTab, pendientes: pedidosPendientesDelLocalActivo.length, temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil }), /* @__PURE__ */ import_react4.default.createElement("main", { className: "flex-1 p-4 overflow-y-auto", style: { maxHeight: "900px" } }, contenido), /* @__PURE__ */ import_react4.default.createElement(BottomNavC, { tab, setTab, categorias: categoriasC, dashboardItem: porId("dashboard") })) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(
     SidebarGrupos,
     {
       grupos: disenoMenu === "A" ? gruposA : gruposB,
