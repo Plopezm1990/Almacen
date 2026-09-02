@@ -1,0 +1,33 @@
+name: Inspeccionar loadKey
+on:
+  push:
+    branches: [preparacion-sin-netlify]
+    paths:
+      - .github/workflows/inspeccionar-loadkey.yml
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: preparacion-sin-netlify
+      - name: Mostrar loadKey
+        shell: node {0}
+        run: |
+          const fs = require('fs');
+          const s = fs.readFileSync('fuente.js','utf8');
+          const terms = ['function loadKey', 'async function loadKey', 'loadKey =', 'const loadKey'];
+          let found = false;
+          for (const term of terms) {
+            let i = s.indexOf(term);
+            if (i >= 0) {
+              found = true;
+              console.log('TERM', term, 'AT', i);
+              console.log(s.slice(Math.max(0, i - 800), Math.min(s.length, i + 5000)));
+            }
+          }
+          if (!found) {
+            const i = s.indexOf('window.storage.get');
+            console.log('FALLBACK AT', i);
+            console.log(s.slice(Math.max(0, i - 1500), Math.min(s.length, i + 4500)));
+          }
