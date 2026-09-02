@@ -1,4 +1,4 @@
-name: Inspeccionar devoluciones bloque 5 final
+name: Inspeccionar caja bloque 5 final
 on:
   push:
     branches: [multilocal-fase-3]
@@ -11,23 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Mostrar funciones exactas de devoluciones
+      - name: Mostrar funciones exactas de caja
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('fuente.js').read_text(encoding='utf-8')
-          i=s.index('function crearLogicaDevoluciones(')
-          j=s.index('function crearLogicaFacturasDirectas(', i)
+          i=s.index('function crearLogicaCaja(')
+          j=s.index('function crearLogicaLocales(', i)
           b=s[i:j]
-          for termino in ['function registrarDevolucionCliente', 'function registrarDevolucionProveedor', 'setDevoluciones', 'productoId']:
-              print('\n=====', termino, '=====')
-              pos=[]; k=0
-              while True:
-                  x=b.find(termino,k)
-                  if x<0: break
-                  pos.append(x); k=x+1
-              print('POS',pos)
-              for x in pos[:8]:
-                  print('\n--- contexto',x,'---')
-                  print(b[max(0,x-650):min(len(b),x+3200)])
+          print(b)
           PY
