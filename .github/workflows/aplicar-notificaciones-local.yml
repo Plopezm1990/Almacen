@@ -1,0 +1,57 @@
+name: Aplicar notificaciones por local
+on:
+  push:
+    branches: [preparacion-sin-netlify]
+    paths:
+      - .github/workflows/aplicar-notificaciones-local.yml
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: preparacion-sin-netlify
+      - name: Aplicar cambio mínimo
+        shell: node {0}
+        run: |
+          const fs = require('fs');
+          let s = fs.readFileSync('fuente.js','utf8');
+          function once(a,b,n) {
+            const i=s.indexOf(a); if(i<0) throw new Error('No encontrado: '+n);
+            if(s.indexOf(a,i+a.length)>=0) throw new Error('Duplicado: '+n);
+            s=s.slice(0,i)+b+s.slice(i+a.length);
+          }
+          once('function Notificaciones() {','function Notificaciones({ localActivoId = null }) {','firma Notificaciones');
+          once(
+            '        auth: json.keys.auth,\n        dispositivo: navigator.userAgent.slice(0, 200)\n      });',
+            '        auth: json.keys.auth,\n        dispositivo: navigator.userAgent.slice(0, 200),\n        local_id: localActivoId || null\n      });',
+            'local_id en suscripción'
+          );
+          once(
+            'tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, null)',
+            'tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId })',
+            'prop localActivoId'
+          );
+          once(
+            'un candidato completa el prefiltro, o una entrevista termina con avisos o puntuaci\\xF3n baja.',
+            'un candidato completa el prefiltro, o una entrevista termina y requiere revisi\\xF3n.',
+            'texto neutral notificaciones'
+          );
+          fs.writeFileSync('fuente.js',s);
+      - name: Validar
+        run: |
+          node --check fuente.js
+          grep -q 'function Notificaciones({ localActivoId = null })' fuente.js
+          grep -q 'local_id: localActivoId || null' fuente.js
+          grep -q 'createElement(Notificaciones, { localActivoId })' fuente.js
+          ! grep -q 'puntuaci\\xF3n baja' fuente.js
+      - name: Guardar
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fuente.js
+          git diff --cached --quiet && exit 0
+          git commit -m "Vincular suscripciones push al local [skip ci]"
+          git push origin HEAD:preparacion-sin-netlify
