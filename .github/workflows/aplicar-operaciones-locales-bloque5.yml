@@ -1,4 +1,5 @@
 name: Aplicar operaciones locales bloque 5
+# Reintento con alta de producto localizada por contexto de addProducto.
 on:
   push:
     branches: [multilocal-fase-3]
@@ -11,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Hacer conservador el localId de devoluciones
+      - name: Ajustar guardas temporales del aplicador
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -20,8 +21,13 @@ jobs:
           viejo="localId: prod.localId || localActivoId || null,"
           n=s.count(viejo)
           assert n == 1, f'esperado 1 patrón de devolución, encontrado {n}'
-          p.write_text(s.replace(viejo,"localId: localActivoId || null,",1),encoding='utf-8')
-          print('OK devolución localId conservador')
+          s=s.replace(viejo,"localId: localActivoId || null,",1)
+          ini=s.index("# Alta: el caller no puede imponer otro local.")
+          fin=s.index("# Guardas en update/delete/reactivar/salida.",ini)
+          reemplazo='''# Alta: localizar la asignación dentro de addProducto sin depender del espaciado del bundle.\nadd_i = b.index('function addProducto(data) {')\nadd_f = b.index('function updateProducto(', add_i)\nsub = b[add_i:add_f]\nlineas = [ln for ln in sub.splitlines() if 'setProductos((s2) =>' in ln and 'uid()' in ln and 'data' in ln]\nassert len(lineas) == 1, f'Productos: alta, esperada 1 línea y hay {len(lineas)}'\nvieja_linea = lineas[0]\nindent = vieja_linea[:len(vieja_linea)-len(vieja_linea.lstrip())]\nnueva_linea = indent + 'setProductos((s2) => [...s2, { id: uid(), stock: Number(data.stock) || 0, ...data, localId: localActivoId || data.localId || null }]);'\nsub = sub.replace(vieja_linea, nueva_linea, 1)\nb = b[:add_i] + sub + b[add_f:]\nprint('OK Productos: alta fuerza local')\n\n'''
+          s=s[:ini]+reemplazo+s[fin:]
+          p.write_text(s,encoding='utf-8')
+          print('OK guardas temporales corregidas')
           PY
       - name: Aplicar parche con guardas
         run: python3 .github/scripts/aplicar_operaciones_locales_bloque5.py
@@ -30,7 +36,7 @@ jobs:
           node --check fuente.js
           git diff --check
           git diff --stat
-          git diff -- fuente.js | sed -n '1,620p'
+          git diff -- fuente.js | sed -n '1,700p'
       - name: Guardas semánticas mínimas
         run: |
           python3 - <<'PY'
@@ -43,7 +49,8 @@ jobs:
             'movimientosCaja: movimientosCajaDelLocalActivo',
             'badge: encargosUrgentesDelLocalActivo.length',
             'productos: productosDelLocalActivo, venderCarrito',
-            'Mermas, { productos: productosDelLocalActivo'
+            'Mermas, { productos: productosDelLocalActivo',
+            'localId: localActivoId || data.localId || null'
           ]
           for x in requeridos:
               assert x in s, x
