@@ -91,12 +91,15 @@ jobs:
               await verTodos.first().click();
               await page.waitForTimeout(250);
             }
+            const anadirLinea=page.getByRole('button',{name:/Añadir producto al pedido/});
+            assert(await anadirLinea.count(),'No aparece Añadir producto al pedido');
+            await anadirLinea.first().click();
+            await page.waitForTimeout(250);
             const selProd=await selectConValor(page,'p1');
             assert(selProd,'No aparece selector de producto en pedido');
             await selProd.selectOption('p1');
             await page.getByPlaceholder('Cant.').fill('2');
             await page.getByPlaceholder('Costo u.').fill('3.5');
-            await page.getByRole('button',{name:/Añadir producto al pedido/}).click();
             await page.getByRole('button',{name:'Crear pedido'}).click();
             await page.waitForTimeout(700);
             const pedidos=await leer(page,'pedidos');
