@@ -123616,6 +123616,13 @@ function ErroresSistema() {
   import_react4.default.useEffect(() => {
     let activo = true;
     (async () => {
+      if (!window.__nubeActiva) {
+        if (activo) {
+          setError("El historial de errores en la nube no está disponible mientras trabajas solo en este equipo.");
+          setCargando(false);
+        }
+        return;
+      }
       try {
         const supabase = await window.getSupabaseClient();
         const { data, error: errLectura } = await supabase.from("errores_sistema").select("*").order("fecha", { ascending: false }).limit(100);
