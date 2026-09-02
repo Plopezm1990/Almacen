@@ -1,0 +1,172 @@
+name: Smoke transacciones negocio PR4
+on:
+  push:
+    branches: [smoke-pr4-global]
+    paths:
+      - .github/workflows/smoke-transacciones-negocio.yml
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Preparar sitio PR4 y Chromium
+        run: |
+          git fetch origin preparacion-sin-netlify
+          mkdir -p /tmp/site
+          git archive origin/preparacion-sin-netlify | tar -x -C /tmp/site
+          node --check /tmp/site/fuente.js
+          node --check /tmp/site/edge-auth-patch.js
+          cd /tmp/site && python3 -m http.server 4232 --bind 127.0.0.1 >/tmp/http-negocio.log 2>&1 &
+          mkdir -p /tmp/negocio-smoke && cd /tmp/negocio-smoke
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+      - name: Ejecutar flujo pedido venta devolución arqueo
+        run: |
+          cd /tmp/negocio-smoke
+          cat > negocio.cjs <<'NODE'
+          const { chromium } = require('playwright');
+          const URL='http://127.0.0.1:4232/';
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          async function abrirModulo(page,texto){
+            const ok=await page.evaluate((texto)=>{
+              const raiz=document.querySelector('aside') || document.querySelector('nav');
+              const norm=v=>(v||'').replace(/\s+/g,' ').trim();
+              const el=raiz && [...raiz.querySelectorAll('button,a')].find(e=>norm(e.innerText||e.textContent)===texto);
+              if(!el) return false; el.click(); return true;
+            },texto);
+            if(!ok) throw new Error('No se encontró módulo: '+texto);
+            await page.waitForTimeout(450);
+          }
+          async function leer(page,key){
+            return page.evaluate(k=>JSON.parse(localStorage.getItem('almacen:'+k)||'null'),key);
+          }
+          function assert(cond,msg){ if(!cond) throw new Error(msg); }
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const ctx=await browser.newContext({serviceWorkers:'block',viewport:{width:1440,height:1100}});
+            const page=await ctx.newPage();
+            const supabase=[]; const pageErrors=[];
+            page.on('pageerror',e=>pageErrors.push(e.message));
+            await page.route('https://flqercbgpgmmfaakrwkc.supabase.co/**',r=>{supabase.push(r.request().url());r.abort();});
+            await page.addInitScript(()=>{
+              localStorage.clear();
+              const put=(k,v)=>localStorage.setItem('almacen:'+k,JSON.stringify(v));
+              put('locales',[{id:'loc',nombre:'Local Prueba',activo:true}]);
+              put('localActivoId','loc');
+              put('productos',[{id:'p1',nombre:'Chocolate prueba',tipo:'final',unidad:'ud',stock:10,stockPisoVenta:5,stockMinimo:2,costo:4,precioVenta:8,ivaPct:10,localId:'loc',activo:true}]);
+              put('proveedores',[{id:'prov1',nombre:'Proveedor prueba',activo:true}]);
+              for(const k of ['pedidos','movimientos','conteos','fichasCosto','albaranes','gastosGenerales','empleados','fichajes','registrosAppcc','puntosControl','clientes','encargos','arqueos','movimientosCaja','devoluciones','turnos','nominas','facturasDirectas','ordenesProduccion','traspasos','auditoria','freidoras','registrosAceite','entrevistas']) put(k,[]);
+              put('catalogoProv',{}); put('historialRespaldos',[]); localStorage.setItem('almacen__pendientes','[]');
+            });
+            await page.goto(URL,{waitUntil:'domcontentloaded',timeout:30000});
+            await page.waitForTimeout(900);
+            const entrada=page.getByText('Trabajar solo en este equipo, sin sincronizar',{exact:false});
+            assert(await entrada.count(),'No aparece entrada local');
+            await entrada.first().click(); await page.waitForTimeout(900);
+            assert(await page.evaluate(()=>window.__nubeActiva===false),'No quedó en modo local');
+
+            // 1) Pedido de compra ficticio
+            await abrirModulo(page,'Pedidos');
+            const nuevoPedido=page.getByRole('button',{name:'Nuevo pedido'});
+            assert(await nuevoPedido.count(),'No aparece Nuevo pedido');
+            await nuevoPedido.first().click(); await page.waitForTimeout(300);
+            const selProv=page.locator('select').filter({hasText:'Proveedor prueba'}).first();
+            const selProd=page.locator('select').filter({hasText:'Chocolate prueba'}).last();
+            assert(await selProv.count(),'No aparece selector de proveedor');
+            assert(await selProd.count(),'No aparece selector de producto en pedido');
+            await selProv.selectOption('prov1');
+            await selProd.selectOption('p1');
+            await page.getByPlaceholder('Cant.').fill('2');
+            await page.getByPlaceholder('Costo u.').fill('3.5');
+            await page.getByRole('button',{name:/Añadir producto al pedido/}).click();
+            await page.getByRole('button',{name:'Crear pedido'}).click();
+            await page.waitForTimeout(700);
+            const pedidos=await leer(page,'pedidos');
+            assert(Array.isArray(pedidos)&&pedidos.length===1,'El pedido no se persistió');
+            assert(pedidos[0].localId==='loc','El pedido no quedó ligado al local activo');
+            const pedidoJson=JSON.stringify(pedidos[0]);
+            assert(pedidoJson.includes('prov1')&&pedidoJson.includes('p1'),'El pedido no conserva proveedor/producto');
+            console.log('PEDIDO_LOCAL_OK=1');
+
+            // 2) Venta en efectivo desde piso de venta
+            await abrirModulo(page,'Venta rápida');
+            const productoCard=page.getByText('Chocolate prueba',{exact:true});
+            assert(await productoCard.count(),'Producto no visible en Venta rápida');
+            await productoCard.first().click(); await page.waitForTimeout(300);
+            const cobrar=page.getByRole('button',{name:/Cobrar €8,00/});
+            assert(await cobrar.count(),'No aparece botón Cobrar €8,00');
+            await cobrar.first().click(); await page.waitForTimeout(250);
+            const modalSelect=page.locator('select').filter({hasText:'Efectivo'}).last();
+            assert(await modalSelect.count(),'No aparece selector de medio de pago');
+            await modalSelect.selectOption('Efectivo');
+            const nums=page.locator('input[type=number]');
+            assert(await nums.count()>=2,'No aparece efectivo entregado');
+            await nums.last().fill('10');
+            await page.getByRole('button',{name:'Confirmar venta'}).click();
+            await page.waitForTimeout(900);
+            const cerrarTicket=page.getByRole('button',{name:'Cerrar ticket'});
+            if(await cerrarTicket.count()){await cerrarTicket.first().click();await page.waitForTimeout(250);}
+            const productosTrasVenta=await leer(page,'productos');
+            const pVenta=productosTrasVenta.find(x=>x.id==='p1');
+            const movTrasVenta=await leer(page,'movimientos');
+            const venta=movTrasVenta.find(x=>x.tipo==='VENTA'&&x.productoId==='p1');
+            assert(!!venta,'No se registró movimiento VENTA');
+            assert(Number(pVenta.stockPisoVenta)<5,'La venta no descontó stock del piso');
+            const pisoTrasVenta=Number(pVenta.stockPisoVenta);
+            console.log('VENTA_LOCAL_OK=1');
+            console.log('STOCK_PISO_TRAS_VENTA='+pisoTrasVenta);
+
+            // 3) Devolución cliente + reembolso parcial
+            await abrirModulo(page,'Devoluciones');
+            const selDev=page.locator('select').filter({hasText:'Chocolate prueba'}).first();
+            assert(await selDev.count(),'No aparece producto en Devoluciones');
+            await selDev.selectOption('p1');
+            const devNums=page.locator('input[type=number]');
+            assert(await devNums.count()>=2,'Faltan campos numéricos de devolución');
+            await devNums.nth(0).fill('1');
+            const motivo=page.getByPlaceholder('Ej: no era lo que esperaba');
+            assert(await motivo.count(),'No aparece campo Motivo');
+            await motivo.fill('Prueba automática local');
+            await devNums.nth(1).fill('3');
+            await page.getByRole('button',{name:'Registrar devolución'}).click();
+            await page.waitForTimeout(900);
+            const devoluciones=await leer(page,'devoluciones');
+            const movsFinal=await leer(page,'movimientos');
+            const caja=await leer(page,'movimientosCaja');
+            const productosTrasDev=await leer(page,'productos');
+            const pDev=productosTrasDev.find(x=>x.id==='p1');
+            assert(Array.isArray(devoluciones)&&devoluciones.length===1,'No se persistió la devolución');
+            assert(devoluciones[0].tipo==='cliente'&&Number(devoluciones[0].reembolso)===3,'Datos incorrectos en devolución cliente');
+            assert(movsFinal.some(x=>x.tipo==='DEVOLUCION_CLIENTE'&&x.productoId==='p1'),'No existe movimiento DEVOLUCION_CLIENTE');
+            assert(Array.isArray(caja)&&caja.some(x=>x.tipo==='salida'&&Number(x.importe)===3),'El reembolso no generó salida de caja');
+            assert(Number(pDev.stockPisoVenta)>pisoTrasVenta,'La devolución no repuso stock de piso');
+            console.log('DEVOLUCION_REEMBOLSO_OK=1');
+
+            // 4) Arqueo de caja
+            await abrirModulo(page,'Arqueo de caja');
+            const bodyArqueo=(await page.locator('body').innerText()).replace(/\s+/g,' ');
+            assert(bodyArqueo.includes('Efectivo esperado'),'No aparece Efectivo esperado');
+            const arqueoNums=page.locator('input[type=number]');
+            assert(await arqueoNums.count()>=1,'No aparece efectivo contado');
+            await arqueoNums.last().fill('5');
+            const guardar=page.getByRole('button',{name:'Guardar arqueo'});
+            assert(await guardar.count(),'No aparece Guardar arqueo');
+            await guardar.first().click(); await page.waitForTimeout(700);
+            const arqueos=await leer(page,'arqueos');
+            assert(Array.isArray(arqueos)&&arqueos.length===1,'El arqueo no se persistió');
+            assert(arqueos[0].localId==='loc','El arqueo no quedó ligado al local');
+            console.log('ARQUEO_LOCAL_OK=1');
+            console.log('ARQUEO='+JSON.stringify(arqueos[0]));
+
+            console.log('SUPABASE_COUNT='+supabase.length);
+            console.log('PAGE_ERRORS='+JSON.stringify(pageErrors));
+            assert(supabase.length===0,'El flujo local contactó Supabase');
+            assert(pageErrors.length===0,'Errores JavaScript: '+pageErrors.join(' | '));
+            await browser.close();
+            console.log('SMOKE_TRANSACCIONES_NEGOCIO_OK=1');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+          node negocio.cjs
