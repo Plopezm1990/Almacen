@@ -11,15 +11,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Mostrar cálculo exacto
+      - name: Mostrar cálculo completo
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('fuente.js').read_text(encoding='utf-8')
           i=s.index('const fichajesAbiertos =')
-          j=s.find('  const ', i+25)
-          while j>0 and j<i+300:
-              j=s.find('  const ',j+7)
-          if j<0: j=i+5000
-          print(s[i:min(j,i+6000)])
+          candidatos=[]
+          for marcador in ['  const documentosPersonal', '  const caducanPronto', '  const encargosPendientes', '  const stockBajo', '  const appccPendientesHoy']:
+              j=s.find(marcador,i+40)
+              if j>i: candidatos.append(j)
+          j=min(candidatos) if candidatos else i+8000
+          print(s[i:j])
           PY
