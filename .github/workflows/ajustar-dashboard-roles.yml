@@ -1,0 +1,58 @@
+name: Ajustar dashboard por rol
+on:
+  push:
+    branches: [preparacion-sin-netlify]
+    paths:
+      - .github/workflows/ajustar-dashboard-roles.yml
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: preparacion-sin-netlify
+      - name: Aplicar filtro de tarjetas por rol
+        shell: node {0}
+        run: |
+          const fs = require('fs');
+          let s = fs.readFileSync('fuente.js','utf8');
+          const start = s.indexOf('function Dashboard(');
+          const end = s.indexOf('\nfunction ', start + 10);
+          if (start < 0 || end < 0) throw new Error('No se localizó Dashboard');
+          let b = s.slice(start, end);
+          const firma = 'function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendientes, margenPromedio, movimientos, productos, caducanPronto = [], proveedorPorId, vencenPronto = [], totalPendientePago = 0, documentosPersonalPronto = [], fichajesAbiertos = [], encargosUrgentes = [], pisoVentaBajo = [], sugerenciasPedido = [], setTab, recordatorioConteo = [], alertasAppcc = { pendientes: [], desviaciones: [] }, fallosGuardado = [], diagnosticoStock = [], registrarSalida }) {';
+          const firmaNueva = firma.slice(0, -4) + ', itemsPermitidos = null }) {';
+          if (!b.includes(firma)) throw new Error('Firma Dashboard no coincide');
+          b = b.replace(firma, firmaNueva);
+          const anclaTarjeta = '  const tarjetaAbierta = tarjetas.find((t2) => t2.id === abierta);';
+          if (!b.includes(anclaTarjeta)) throw new Error('No se encontró tarjetaAbierta');
+          b = b.replace(anclaTarjeta, '  const tarjetasVisibles = Array.isArray(itemsPermitidos) ? tarjetas.filter((t2) => itemsPermitidos.includes(t2.tab)) : tarjetas;\n  const tarjetaAbierta = tarjetasVisibles.find((t2) => t2.id === abierta);');
+          const mapas = (b.match(/tarjetas\.map\(/g) || []).length;
+          if (mapas !== 1) throw new Error('Se esperaba un tarjetas.map, hay ' + mapas);
+          b = b.replace('tarjetas.map((t2) => {', 'tarjetasVisibles.map((t2) => {');
+          s = s.slice(0,start) + b + s.slice(end);
+          const d = s.indexOf('tab === "dashboard" &&');
+          if (d < 0) throw new Error('No se encontró llamada Dashboard');
+          const marker = 'Dashboard,\n    {';
+          const m = s.indexOf(marker, d);
+          if (m < 0 || m > d + 3000) throw new Error('No se encontró objeto de props de Dashboard');
+          const pos = m + marker.length;
+          const prop = '\n      itemsPermitidos: typeof window !== "undefined" && window.__nubeActiva ? miPerfil?.rol === "Propietario" ? null : itemsPermitidosEmpleado : modoEmpleado ? itemsPermitidosEmpleado : null,';
+          s = s.slice(0,pos) + prop + s.slice(pos);
+          fs.writeFileSync('fuente.js',s);
+          console.log('Dashboard filtrado por permisos de rol');
+      - name: Validar sintaxis y marcadores
+        run: |
+          node --check fuente.js
+          grep -q 'tarjetasVisibles' fuente.js
+          grep -q 'itemsPermitidos: typeof window' fuente.js
+      - name: Guardar cambio en rama
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fuente.js
+          git diff --cached --quiet && exit 0
+          git commit -m "Restringir dashboard según rol [skip ci]"
+          git push origin HEAD:preparacion-sin-netlify
