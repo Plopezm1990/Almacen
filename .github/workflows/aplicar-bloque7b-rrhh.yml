@@ -1,0 +1,60 @@
+name: Aplicar bloque 7B RRHH multilocal
+on:
+  push:
+    branches: [multilocal-fase-3]
+    paths:
+      - .github/workflows/aplicar-bloque7b-rrhh.yml
+permissions:
+  contents: write
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar RRHH protegido
+        run: python3 .github/scripts/aplicar_bloque7b_rrhh.py
+      - name: Validar JavaScript y diff
+        run: |
+          node --check fuente.js
+          git diff --check
+          git diff --stat
+      - name: Guardas semánticas RRHH
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          req=[
+            'empleados: empleadosDelLocalActivo',
+            'fichajes: fichajesDelLocalActivo',
+            'nominas: nominasDelLocalActivo',
+            'turnos: turnosDelLocalActivo',
+            'badge: documentosPersonalProntoDelLocalActivo.length',
+            'badge: fichajesAbiertosDelLocalActivo.length',
+            'const fichajesFinales =',
+            'const turnosFinales =',
+            'const nominasFinales =',
+            'saveKey("fichajes", fichajesFinales)',
+            'saveKey("turnos", turnosFinales)',
+            'saveKey("nominas", nominasFinales)',
+            'El empleado no pertenece al local activo.'
+          ]
+          for x in req: assert x in s, x
+          print('SEMANTICA_RRHH_OK')
+          PY
+      - name: Guardar RRHH y limpiar auditorías temporales
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm -f .github/scripts/aplicar_bloque7b_rrhh.py
+          rm -f .github/workflows/aplicar-bloque7b-rrhh.yml
+          rm -f .github/workflows/inspeccionar-bloque7b-rrhh.yml
+          rm -f .github/workflows/inspeccionar-bloque7b-final.yml
+          rm -f .github/workflows/inspeccionar-docs-personal-7b.yml
+          rm -f .github/workflows/auditoria-final-multilocal-fase3.yml
+          rm -f .github/workflows/auditoria-final-multilocal-fase3-2.yml
+          rm -f .github/workflows/auditoria-final-multilocal-fase3-3.yml
+          rm -f .github/workflows/auditoria-final-multilocal-fase3-4.yml
+          git add -A
+          git diff --cached --check
+          git commit -m 'Aislar RRHH por local y cerrar fase 3'
+          git push origin HEAD:multilocal-fase-3
