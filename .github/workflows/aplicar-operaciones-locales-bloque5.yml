@@ -1,0 +1,65 @@
+name: Aplicar operaciones locales bloque 5
+on:
+  push:
+    branches: [multilocal-fase-3]
+    paths:
+      - .github/workflows/aplicar-operaciones-locales-bloque5.yml
+permissions:
+  contents: write
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Hacer conservador el localId de devoluciones
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('.github/scripts/aplicar_operaciones_locales_bloque5.py')
+          s=p.read_text(encoding='utf-8')
+          viejo="localId: prod.localId || localActivoId || null,"
+          n=s.count(viejo)
+          assert n == 1, f'esperado 1 patrón de devolución, encontrado {n}'
+          p.write_text(s.replace(viejo,"localId: localActivoId || null,",1),encoding='utf-8')
+          print('OK devolución localId conservador')
+          PY
+      - name: Aplicar parche con guardas
+        run: python3 .github/scripts/aplicar_operaciones_locales_bloque5.py
+      - name: Validar JavaScript y diff
+        run: |
+          node --check fuente.js
+          git diff --check
+          git diff --stat
+          git diff -- fuente.js | sed -n '1,620p'
+      - name: Guardas semánticas mínimas
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          requeridos=[
+            'encargos: encargosDelLocalActivo',
+            'devoluciones: devolucionesDelLocalActivo',
+            'traspasos: traspasosDelLocalActivo',
+            'movimientosCaja: movimientosCajaDelLocalActivo',
+            'badge: encargosUrgentesDelLocalActivo.length',
+            'productos: productosDelLocalActivo, venderCarrito',
+            'Mermas, { productos: productosDelLocalActivo'
+          ]
+          for x in requeridos:
+              assert x in s, x
+          assert 'localId: prod.localId || localActivoId || null' not in s
+          print('GUARDAS_SEMANTICAS_OK')
+          PY
+      - name: Guardar y retirar herramientas temporales
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm -f .github/scripts/aplicar_operaciones_locales_bloque5.py
+          rm -f .github/workflows/aplicar-operaciones-locales-bloque5.yml
+          rm -f .github/workflows/auditar-modulos-locales-restantes-fase3.yml
+          rm -f .github/workflows/inspeccionar-operaciones-locales-bloque5.yml
+          rm -f .github/workflows/inspeccionar-anclas-bloque5-final.yml
+          git add fuente.js .github/scripts/aplicar_operaciones_locales_bloque5.py .github/workflows/aplicar-operaciones-locales-bloque5.yml .github/workflows/auditar-modulos-locales-restantes-fase3.yml .github/workflows/inspeccionar-operaciones-locales-bloque5.yml .github/workflows/inspeccionar-anclas-bloque5-final.yml
+          git diff --cached --check
+          git commit -m 'Aislar operaciones de stock y caja por local'
+          git push origin HEAD:multilocal-fase-3
