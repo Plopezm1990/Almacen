@@ -67,5 +67,30 @@ b = uno(b, viejo_arqueo, nuevo_arqueo, 'Venta: arqueo por local')
 '''
 s = s[:ini] + reemplazo + s[fin:]
 
+# Devoluciones: los objetos reales se llaman `registro` y usan `producto`.
+ini = s.index("# Añadir localId a cada registro de devolución justo después del id.")
+fin = s.index("s=s[:inicio]+b+s[fin:]", ini)
+reemplazo = r'''# Añadir localId a los dos registros exactos de devolución.
+viejo_cliente = """    const registro = {
+      id: uid(),
+      tipo: "cliente","""
+nuevo_cliente = """    const registro = {
+      id: uid(),
+      localId: producto.localId || localActivoId || null,
+      tipo: "cliente","""
+b = uno(b, viejo_cliente, nuevo_cliente, 'Devoluciones: registro cliente con localId')
+
+viejo_proveedor = """    const registro = {
+      id: uid(),
+      tipo: "proveedor","""
+nuevo_proveedor = """    const registro = {
+      id: uid(),
+      localId: producto.localId || localActivoId || null,
+      tipo: "proveedor","""
+b = uno(b, viejo_proveedor, nuevo_proveedor, 'Devoluciones: registro proveedor con localId')
+print('OK Devoluciones: registros con localId')
+'''
+s = s[:ini] + reemplazo + s[fin:]
+
 p.write_text(s, encoding='utf-8')
 print('CORRECCIONES_APLICADOR_BLOQUE5_OK')
