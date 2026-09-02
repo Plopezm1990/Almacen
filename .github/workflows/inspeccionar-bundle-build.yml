@@ -9,39 +9,72 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspeccionar alias E y versiones
+      - name: Construir fuente recuperado temporal
         shell: python
         run: |
           from pathlib import Path
-          import re
           lines=Path('fuente.js').read_text(encoding='utf-8').splitlines()
           marca=next(i for i,l in enumerate(lines) if l.strip()=='// fuente.jsx')
           app=lines[marca:]
-          print('=== USOS DE new E ===')
-          for i,l in enumerate(app):
-            if re.search(r'\bnew E\s*\(',l):
-              print(f'{marca+i+1}: {l[:600]}')
-          print('=== USOS XLSX ===')
-          for nombre in ('utils.','writeFileSync('):
-            print('--- '+nombre+' ---')
-            c=0
-            for i,l in enumerate(app):
-              if nombre in l:
-                print(f'{marca+i+1}: {l[:600]}'); c+=1
-                if c>=12: break
-          print('=== VERSIONES / FIRMAS ===')
-          patrones=[
-            r'18\.\d+\.\d+', r'19\.\d+\.\d+', r'@supabase/supabase-js',
-            r'jspdf', r'jsPDF', r'AutoTable', r'0\.18\.\d+', r'XLSX',
-            r'lucide-react', r'Version', r'version\s*[:=]'
+          if app[1].strip()!='var import_react4 = __toESM(require_react());':
+            raise SystemExit('Bootstrap React inesperado')
+          if app[2].strip()!='var import_client = __toESM(require_client());':
+            raise SystemExit('Bootstrap ReactDOM inesperado')
+          iconos = '''ArrowLeftRight Bell Boxes Calculator CalendarClock CalendarDays CalendarRange Camera ChartColumn ChartLine ChevronRight CircleArrowDown CircleArrowUp CircleCheck ClipboardList Clock Cog Coins Download Droplet Ellipsis Eye EyeOff Factory FileText Files LoaderCircle LogIn LogOut Mail Map2 MessageCircle Minus Package Pencil Phone Plus Receipt RotateCcwClock ScanBarcode Search ShieldCheck ShoppingBag ShoppingCart Stethoscope Tags Trash2 TrendingUp TriangleAlert Truck Upload UserRound Users Wallet X'''.split()
+          cabecera = [
+            '// FUENTE RECUPERADO AUTOMATICAMENTE DESDE EL BUNDLE - PRUEBA, NO PRODUCCION',
+            'import React, * as ReactNS from "react";',
+            'import { createRoot } from "react-dom/client";',
+            'import { createClient } from "@supabase/supabase-js";',
+            'import { jsPDF as E } from "jspdf";',
+            'import autoTable from "jspdf-autotable";',
+            'import * as XLSX from "xlsx";',
+            'import { ' + ', '.join(iconos) + ' } from "lucide-react";',
+            'const import_react4 = Object.assign({ default: React }, ReactNS);',
+            'const import_client = { createRoot };',
+            'const utils = XLSX.utils;',
+            'const writeFileSync = XLSX.writeFile || XLSX.writeFileSync;',
           ]
-          vistos=0
-          for i,l in enumerate(lines):
-            if any(re.search(p,l,re.I) for p in patrones):
-              t=l.strip()
-              if len(t)>400: t=t[:400]+' ...[cortado]'
-              print(f'{i+1}: {t}')
-              vistos+=1
-              if vistos>=100: break
-      - name: Validar bundle
-        run: node --check fuente.js
+          Path('/tmp/fuente-recuperado.js').write_text('\n'.join(cabecera + app[3:])+'\n', encoding='utf-8')
+          print('Lineas fuente recuperado:', sum(1 for _ in open('/tmp/fuente-recuperado.js', encoding='utf-8')))
+          print('Bytes fuente recuperado:', Path('/tmp/fuente-recuperado.js').stat().st_size)
+      - name: Instalar dependencias de prueba
+        shell: bash
+        run: |
+          cd /tmp
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund --save-exact \
+            react@18.3.1 react-dom@18.3.1 \
+            @supabase/supabase-js@2.112.4 \
+            lucide-react jspdf jspdf-autotable xlsx esbuild
+      - name: Comprobar identificadores e imports
+        shell: bash
+        run: |
+          cd /tmp
+          npx eslint@8.57.1 fuente-recuperado.js \
+            --no-eslintrc \
+            --env browser,es2022 \
+            --parser-options '{"ecmaVersion":"latest","sourceType":"module"}' \
+            --rule 'no-undef:error' \
+            -f compact > /tmp/eslint.txt || true
+          echo '=== NO-UNDEF ==='
+          grep 'no-undef' /tmp/eslint.txt || true
+          echo "TOTAL_NO_UNDEF=$(grep -c 'no-undef' /tmp/eslint.txt || true)"
+      - name: Recompilar con esbuild
+        shell: bash
+        run: |
+          cd /tmp
+          npx esbuild fuente-recuperado.js \
+            --bundle \
+            --platform=browser \
+            --format=esm \
+            --target=es2020 \
+            --outfile=fuente-recompilado.js \
+            --log-level=warning
+          node --check fuente-recompilado.js
+          echo "RECOMPILADO_BYTES=$(wc -c < fuente-recompilado.js)"
+          echo "RECOMPILADO_LINEAS=$(wc -l < fuente-recompilado.js)"
+          grep -q 'function GestionAlmacen' fuente-recompilado.js
+          grep -q 'function crearLogicaCaja' fuente-recompilado.js
+          grep -q 'SelectorLocalInformes' fuente-recompilado.js
+          echo 'BUILD_RECUPERADO_OK=1'
