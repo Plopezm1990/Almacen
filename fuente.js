@@ -117564,6 +117564,8 @@ function GestionAlmacen() {
       const gastosFinales = (gg || []).map((g2) => g2.localId ? g2 : { ...g2, localId: localActivoFinal || null });
       const facturasDirectasFinales = (fd2 || []).map((f2) => f2.localId ? f2 : { ...f2, localId: localActivoFinal || null });
       const empleadosFinales = (em || []).map((e) => e.localId ? e : { ...e, localId: localActivoFinal || null });
+      const arqueosFinales = (aq || []).map((a2) => a2.localId ? a2 : { ...a2, localId: localActivoFinal || null });
+      const movimientosCajaFinales = (mc || []).map((m2) => m2.localId ? m2 : { ...m2, localId: localActivoFinal || null });
       setLocales(localesFinales);
       setLocalActivoId(localActivoFinal);
       setProductos(productosFinales);
@@ -117574,6 +117576,8 @@ function GestionAlmacen() {
       setGastosGenerales(gastosFinales);
       setFacturasDirectas(facturasDirectasFinales);
       setEmpleados(empleadosFinales);
+      setArqueos(arqueosFinales);
+      setMovimientosCaja(movimientosCajaFinales);
       if (JSON.stringify(localesFinales) !== JSON.stringify(Array.isArray(loc) ? loc : [])) await saveKey("locales", localesFinales);
       if (localActivoFinal !== (lai || null)) await saveKey("localActivoId", localActivoFinal);
       if (JSON.stringify(productosFinales) !== JSON.stringify(pr || [])) await saveKey("productos", productosFinales);
@@ -117584,6 +117588,8 @@ function GestionAlmacen() {
       if (JSON.stringify(gastosFinales) !== JSON.stringify(gg || [])) await saveKey("gastosGenerales", gastosFinales);
       if (JSON.stringify(facturasDirectasFinales) !== JSON.stringify(fd2 || [])) await saveKey("facturasDirectas", facturasDirectasFinales);
       if (JSON.stringify(empleadosFinales) !== JSON.stringify(em || [])) await saveKey("empleados", empleadosFinales);
+      if (JSON.stringify(arqueosFinales) !== JSON.stringify(aq || [])) await saveKey("arqueos", arqueosFinales);
+      if (JSON.stringify(movimientosCajaFinales) !== JSON.stringify(mc || [])) await saveKey("movimientosCaja", movimientosCajaFinales);
       setReady(true);
       if (habiaFotos) await saveKey("albaranes", albaranesFinales);
       setTimeout(() => {
