@@ -57,6 +57,140 @@
   };
 })();
 
+// Contexto operativo mínimo por rol.
+// Evita cargar en el navegador blobs completos de Personal, proveedores,
+// fichas de coste o encargos cuando el puesto solo necesita un resumen.
+(function () {
+  "use strict";
+  if (window.__contextoRolSeguroInstalado || !window.storage) return;
+  window.__contextoRolSeguroInstalado = true;
+
+  var getOriginal = window.storage.get.bind(window.storage);
+  var setOriginal = window.storage.set.bind(window.storage);
+  var contextoCache = null;
+  var contextoFecha = 0;
+  var CONTEXTO_TTL_MS = 30000;
+
+  async function clienteSupabase() {
+    for (var i = 0; i < 40; i++) {
+      if (typeof window.getSupabaseClient === "function") return window.getSupabaseClient();
+      await new Promise(function (resolve) { setTimeout(resolve, 25); });
+    }
+    throw new Error("Cliente Supabase no disponible");
+  }
+
+  async function obtenerContexto(forzar) {
+    if (!window.__nubeActiva) return null;
+    var ahora = Date.now();
+    if (!forzar && contextoCache && ahora - contextoFecha < CONTEXTO_TTL_MS) return contextoCache;
+    var supabase = await clienteSupabase();
+    var respuesta = await supabase.rpc("obtener_contexto_operativo");
+    if (respuesta.error) throw respuesta.error;
+    contextoCache = respuesta.data || null;
+    contextoFecha = ahora;
+    return contextoCache;
+  }
+
+  function respuestaStorage(key, valor) {
+    return { key: key, value: JSON.stringify(valor), shared: false };
+  }
+
+  function encargosSoloCaja(cobros) {
+    if (!Array.isArray(cobros) || cobros.length === 0) return [];
+    return [{ id: "contexto-caja", cobros: cobros }];
+  }
+
+  window.storage.get = async function (key, shared) {
+    if (!window.__nubeActiva) return getOriginal(key, shared);
+    var sensible = key === "empleados" || key === "proveedores" || key === "fichasCosto" || key === "encargos";
+    if (!sensible) return getOriginal(key, shared);
+
+    try {
+      var contexto = await obtenerContexto(false);
+      var rol = contexto && contexto.rol;
+
+      if (key === "empleados" && rol && rol !== "Propietario") {
+        return respuestaStorage(key, Array.isArray(contexto.empleadosFichaje) ? contexto.empleadosFichaje : []);
+      }
+      if (key === "proveedores" && (rol === "Cajero/a" || rol === "Churrero/a")) {
+        return respuestaStorage(key, Array.isArray(contexto.proveedores) ? contexto.proveedores : []);
+      }
+      if (key === "fichasCosto" && rol === "Churrero/a") {
+        return respuestaStorage(key, Array.isArray(contexto.fichasProduccion) ? contexto.fichasProduccion : []);
+      }
+      if (key === "encargos" && rol === "Cajero/a") {
+        return respuestaStorage(key, encargosSoloCaja(contexto.cobrosEncargos));
+      }
+    } catch (e) {
+      // Si hay nube activa y no podemos verificar el contexto, una colección
+      // sensible no cae a una copia local potencialmente perteneciente a otro rol.
+      return respuestaStorage(key, []);
+    }
+
+    return getOriginal(key, shared);
+  };
+
+  window.storage.set = async function (key, value, shared) {
+    if (window.__nubeActiva) {
+      try {
+        var contexto = await obtenerContexto(false);
+        var rol = contexto && contexto.rol;
+        var soloLectura =
+          (key === "empleados" && rol && rol !== "Propietario") ||
+          (key === "proveedores" && (rol === "Cajero/a" || rol === "Churrero/a")) ||
+          (key === "fichasCosto" && rol === "Churrero/a") ||
+          (key === "encargos" && rol === "Cajero/a");
+        if (soloLectura) return { key: key, value: value, shared: false };
+      } catch (e) {
+        // Si no se pudo verificar el rol, se conserva el comportamiento original.
+      }
+    }
+    return setOriginal(key, value, shared);
+  };
+
+  window.__recargarContextoOperativo = function () {
+    contextoCache = null;
+    contextoFecha = 0;
+    return obtenerContexto(true);
+  };
+})();
+
+// Un perfil desactivado debe salir también del frontend, no solo ser rechazado
+// por RLS/Edge Functions. Se comprueba al volver a la pestaña y cada 30 s.
+(function () {
+  "use strict";
+  if (window.__guardPerfilActivoInstalado) return;
+  window.__guardPerfilActivoInstalado = true;
+  var bloqueando = false;
+
+  async function comprobarPerfilActivo() {
+    if (bloqueando || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return;
+    try {
+      var supabase = await window.getSupabaseClient();
+      var sesion = await supabase.auth.getSession();
+      var userId = sesion && sesion.data && sesion.data.session && sesion.data.session.user
+        ? sesion.data.session.user.id : null;
+      if (!userId) return;
+      var perfil = await supabase.from("perfiles").select("activo").eq("user_id", userId).maybeSingle();
+      if (perfil.error) return;
+      if (!perfil.data || perfil.data.activo !== true) {
+        bloqueando = true;
+        try { await supabase.auth.signOut({ scope: "local" }); } catch (e) {}
+        window.location.reload();
+      }
+    } catch (e) {
+      // Un fallo de red no expulsa al usuario; el backend seguirá aplicando RLS.
+    }
+  }
+
+  window.setInterval(comprobarPerfilActivo, 30000);
+  window.addEventListener("focus", comprobarPerfilActivo);
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") comprobarPerfilActivo();
+  });
+  setTimeout(comprobarPerfilActivo, 1000);
+})();
+
 // Capa visual temporal para que Prefiltros y Entrevistas no muestren
 // puntuaciones ni recomendaciones automáticas mientras se adapta el bundle
 // principal. No guarda ni modifica datos.
