@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Corregir ancla APPCC verificada
+        run: python3 .github/scripts/corregir_bloque6_ancla.py
       - name: Aplicar parche con guardas
         run: python3 .github/scripts/aplicar_bloque6_multilocal.py
       - name: Validar JavaScript y diff
@@ -42,7 +44,7 @@ jobs:
             'const freidorasFinales =',
             'const registrosAceiteFinales =',
             'const activos = (puntosControlDelLocalActivo || []).filter',
-            '], [puntosControlDelLocalActivo, registrosAppccDelLocalActivo]);'
+            '}, [puntosControlDelLocalActivo, registrosAppccDelLocalActivo]);'
           ]
           for x in requeridos:
               assert x in s, x
@@ -59,12 +61,13 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           rm -f .github/scripts/aplicar_bloque6_multilocal.py
+          rm -f .github/scripts/corregir_bloque6_ancla.py
           rm -f .github/workflows/aplicar-bloque6-multilocal.yml
           rm -f .github/workflows/inspeccionar-produccion-appcc-aceite-bloque6.yml
           rm -f .github/workflows/inspeccionar-anclas-bloque6.yml
           rm -f .github/workflows/inspeccionar-fichas-appcc-bloque6.yml
           rm -f .github/workflows/inspeccionar-alertas-migracion-bloque6.yml
-          git add fuente.js .github/scripts/aplicar_bloque6_multilocal.py .github/workflows/aplicar-bloque6-multilocal.yml .github/workflows/inspeccionar-produccion-appcc-aceite-bloque6.yml .github/workflows/inspeccionar-anclas-bloque6.yml .github/workflows/inspeccionar-fichas-appcc-bloque6.yml .github/workflows/inspeccionar-alertas-migracion-bloque6.yml
+          git add fuente.js .github/scripts/aplicar_bloque6_multilocal.py .github/scripts/corregir_bloque6_ancla.py .github/workflows/aplicar-bloque6-multilocal.yml .github/workflows/inspeccionar-produccion-appcc-aceite-bloque6.yml .github/workflows/inspeccionar-anclas-bloque6.yml .github/workflows/inspeccionar-fichas-appcc-bloque6.yml .github/workflows/inspeccionar-alertas-migracion-bloque6.yml
           git diff --cached --check
           git commit -m 'Aislar producción APPCC y aceite por local'
           git push origin HEAD:multilocal-fase-3
