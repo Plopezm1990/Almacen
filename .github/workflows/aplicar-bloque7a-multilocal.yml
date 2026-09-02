@@ -1,0 +1,55 @@
+name: Aplicar bloque 7A multilocal
+on:
+  push:
+    branches: [multilocal-fase-3]
+    paths:
+      - .github/workflows/aplicar-bloque7a-multilocal.yml
+permissions:
+  contents: write
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar parche con guardas
+        run: python3 .github/scripts/aplicar_bloque7a_multilocal.py
+      - name: Validar JavaScript y diff
+        run: |
+          node --check fuente.js
+          git diff --check
+          git diff --stat
+          git diff -- fuente.js | sed -n '1,1400p'
+      - name: Guardas semánticas 7A
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          req=[
+            'const empleadosDelLocalActivo =',
+            'const fichajesDelLocalActivo =',
+            'const turnosDelLocalActivo =',
+            'empleados: empleadosDelLocalActivo',
+            'fichajes: fichajesDelLocalActivo',
+            'turnos: turnosDelLocalActivo',
+            'localId: empleado.localId || localActivoId || null',
+            'turnos.filter(turnoEsDelLocalActivo)',
+            'deleteGasto: deleteGastoInforme',
+            'productos: productosDelLocalActivo, proveedorPorId',
+            'badge: pisoVentaBajoDelLocalActivo.length',
+            'fichasCosto: fichasCostoDelLocalActivo',
+            'const fichajesFinales =',
+            'const turnosFinales ='
+          ]
+          for x in req: assert x in s, x
+          print('GUARDAS_SEMANTICAS_7A_OK')
+          PY
+      - name: Guardar y retirar herramientas 7A
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm -f .github/scripts/aplicar_bloque7a_multilocal.py
+          rm -f .github/workflows/aplicar-bloque7a-multilocal.yml
+          git add fuente.js .github/scripts/aplicar_bloque7a_multilocal.py .github/workflows/aplicar-bloque7a-multilocal.yml
+          git diff --cached --check
+          git commit -m 'Cerrar operaciones RRHH y auxiliares por local'
+          git push origin HEAD:multilocal-fase-3
