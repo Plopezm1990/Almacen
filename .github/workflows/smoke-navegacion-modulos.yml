@@ -54,11 +54,6 @@ jobs:
             await b.first().click(); await page.waitForTimeout(1800);
             if(pageErrors.length) throw new Error('Error inicial: '+pageErrors.join(' | '));
 
-            async function raizNav(){
-              const aside=page.locator('aside').first();
-              if(await aside.count()) return aside;
-              return page.locator('nav').first();
-            }
             async function textosNav(){
               return page.evaluate(()=>{
                 const raiz=document.querySelector('aside') || document.querySelector('nav');
@@ -68,8 +63,19 @@ jobs:
                   .filter(Boolean);
               });
             }
+            async function clickTexto(texto){
+              return page.evaluate((texto)=>{
+                const raiz=document.querySelector('aside') || document.querySelector('nav');
+                if(!raiz) return false;
+                const norm=v=>(v||'').replace(/\s+/g,' ').trim();
+                const el=[...raiz.querySelectorAll('button,a')].find(e=>norm(e.innerText||e.textContent)===texto);
+                if(!el) return false;
+                el.click();
+                return true;
+              },texto);
+            }
 
-            const excluir=/cerrar sesi[oó]n|salir|notificaciones|activar notificaciones|desactivar notificaciones|borrar|eliminar|restaurar|importar|exportar/i;
+            const excluir=/cerrar sesi[oó]n|salir|notificaciones|activar notificaciones|desactivar notificaciones|borrar|eliminar|restaurar|importar|exportar|oscuro|modo empleado/i;
             const detectados=new Set(); const clicados=new Set(); const omitidos=new Set();
             for(let ronda=0;ronda<5;ronda++){
               const textos=[...new Set(await textosNav())].filter(t=>!excluir.test(t));
@@ -77,13 +83,12 @@ jobs:
               for(const texto of textos){
                 if(detectados.has(texto)) continue;
                 detectados.add(texto); aparecioNuevo=true;
-                const raiz=await raizNav();
-                const candidato=raiz.getByText(texto,{exact:true}).first();
-                if(!(await candidato.count())) { omitidos.add(texto); continue; }
                 const antes=pageErrors.length;
-                try { await candidato.click({timeout:3000}); }
-                catch(e) { omitidos.add(texto); console.log('OMITIDO_CLICK='+texto); continue; }
-                await page.waitForTimeout(250);
+                let ok=false;
+                try { ok=await clickTexto(texto); }
+                catch(e) { ok=false; }
+                if(!ok){ omitidos.add(texto); console.log('OMITIDO_CLICK='+texto); continue; }
+                await page.waitForTimeout(300);
                 if(pageErrors.length>antes) throw new Error('Módulo '+texto+' produjo: '+pageErrors.slice(antes).join(' | '));
                 if((await page.locator('#root').innerHTML()).length<500) throw new Error('Módulo '+texto+' dejó root vacío');
                 clicados.add(texto);
@@ -95,7 +100,7 @@ jobs:
             console.log('ETIQUETAS_DETECTADAS='+detectados.size);
             console.log('CLICS_EFECTIVOS='+clicados.size);
             console.log('OMITIDOS='+JSON.stringify([...omitidos]));
-            if(clicados.size<20) throw new Error('Cobertura insuficiente: solo '+clicados.size+' clics efectivos de '+detectados.size+' etiquetas');
+            if(clicados.size<30) throw new Error('Cobertura insuficiente: solo '+clicados.size+' clics efectivos de '+detectados.size+' etiquetas');
             console.log('SMOKE_NAVEGACION_OK=1');
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
