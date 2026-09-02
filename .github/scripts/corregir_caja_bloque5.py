@@ -44,5 +44,12 @@ s=s[:m.start()]+inv+m.group(2)+s[m.end():]
 """
 
 s = s[:ini] + reemplazo + s[fin:]
+
+# Historial: la prop `traspasos` lleva coma en el bundle compilado.
+viejo_hist = "('      traspasos\\n','      traspasos: traspasosDelLocalActivo\\n','Historial traspasos')"
+nuevo_hist = "('      traspasos,\\n','      traspasos: traspasosDelLocalActivo,\\n','Historial traspasos')"
+assert s.count(viejo_hist) == 1, f'Historial traspasos: ancla temporal esperada 1, encontrada {s.count(viejo_hist)}'
+s = s.replace(viejo_hist, nuevo_hist, 1)
+
 p.write_text(s, encoding='utf-8')
 print('CORRECCION_CAJA_BLOQUE5_OK')
