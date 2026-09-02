@@ -30,3 +30,4 @@ jobs:
           git diff --cached --check
           git commit -m 'Aislar recepción y catálogo de proveedor por local'
           git push origin HEAD:multilocal-fase-3
+# reintento 2: el script usa coincidencias globales únicas para catálogo
