@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Preparar renders RRHH acotados
+        run: python3 .github/scripts/corregir_render_bloque7b.py
       - name: Aplicar RRHH protegido
         run: python3 .github/scripts/aplicar_bloque7b_rrhh.py
       - name: Validar JavaScript y diff
@@ -46,6 +48,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           rm -f .github/scripts/aplicar_bloque7b_rrhh.py
+          rm -f .github/scripts/corregir_render_bloque7b.py
           rm -f .github/workflows/aplicar-bloque7b-rrhh.yml
           rm -f .github/workflows/inspeccionar-bloque7b-rrhh.yml
           rm -f .github/workflows/inspeccionar-bloque7b-final.yml
