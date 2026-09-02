@@ -1,5 +1,5 @@
 name: Aplicar operaciones locales bloque 5
-# Reintento con ancla exacta de addProducto confirmada por inspección.
+# Reintento con anclas exactas confirmadas por inspección.
 on:
   push:
     branches: [multilocal-fase-3]
@@ -18,14 +18,22 @@ jobs:
           from pathlib import Path
           p=Path('.github/scripts/aplicar_operaciones_locales_bloque5.py')
           s=p.read_text(encoding='utf-8')
+
           viejo="localId: prod.localId || localActivoId || null,"
           n=s.count(viejo)
           assert n == 1, f'esperado 1 patrón de devolución, encontrado {n}'
           s=s.replace(viejo,"localId: localActivoId || null,",1)
+
           ini=s.index("# Alta: el caller no puede imponer otro local.")
           fin=s.index("# Guardas en update/delete/reactivar/salida.",ini)
           reemplazo='''# Alta: ancla exacta confirmada en el bundle actual.\nviejo_alta = '    const nuevo = { id: uid(), stock: Number(data.stock) || 0, localId: localActivoId || null, ...data };'\nnuevo_alta = '    const nuevo = { id: uid(), stock: Number(data.stock) || 0, ...data, localId: localActivoId || data.localId || null };'\nb = uno(b, viejo_alta, nuevo_alta, 'Productos: alta fuerza local')\n\n'''
           s=s[:ini]+reemplazo+s[fin:]
+
+          ini=s.index("b = rx_uno(b, r'(function registrarSalida")
+          fin=s.index("\n\n# Ajuste producto por otro", ini)
+          reemplazo='''viejo_salida = """    const prod = productos.find((p2) => p2.id === productoId);\n    if (!prod) return false;"""\nnuevo_salida = """    const prod = productos.find((p2) => p2.id === productoId);\n    if (!prod || !productoEsDelLocalActivo(prod)) return false;"""\nb = uno(b, viejo_salida, nuevo_salida, 'Productos: salida protegida')'''
+          s=s[:ini]+reemplazo+s[fin:]
+
           p.write_text(s,encoding='utf-8')
           print('OK guardas temporales corregidas')
           PY
@@ -36,7 +44,7 @@ jobs:
           node --check fuente.js
           git diff --check
           git diff --stat
-          git diff -- fuente.js | sed -n '1,760p'
+          git diff -- fuente.js | sed -n '1,820p'
       - name: Guardas semánticas mínimas
         run: |
           python3 - <<'PY'
@@ -50,7 +58,8 @@ jobs:
             'badge: encargosUrgentesDelLocalActivo.length',
             'productos: productosDelLocalActivo, venderCarrito',
             'Mermas, { productos: productosDelLocalActivo',
-            'localId: localActivoId || data.localId || null'
+            'localId: localActivoId || data.localId || null',
+            'if (!prod || !productoEsDelLocalActivo(prod)) return false;'
           ]
           for x in requeridos:
               assert x in s, x
@@ -67,7 +76,8 @@ jobs:
           rm -f .github/workflows/inspeccionar-operaciones-locales-bloque5.yml
           rm -f .github/workflows/inspeccionar-anclas-bloque5-final.yml
           rm -f .github/workflows/inspeccionar-addproducto-bloque5.yml
-          git add fuente.js .github/scripts/aplicar_operaciones_locales_bloque5.py .github/workflows/aplicar-operaciones-locales-bloque5.yml .github/workflows/auditar-modulos-locales-restantes-fase3.yml .github/workflows/inspeccionar-operaciones-locales-bloque5.yml .github/workflows/inspeccionar-anclas-bloque5-final.yml .github/workflows/inspeccionar-addproducto-bloque5.yml
+          rm -f .github/workflows/inspeccionar-salidas-producto-bloque5.yml
+          git add fuente.js .github/scripts/aplicar_operaciones_locales_bloque5.py .github/workflows/aplicar-operaciones-locales-bloque5.yml .github/workflows/auditar-modulos-locales-restantes-fase3.yml .github/workflows/inspeccionar-operaciones-locales-bloque5.yml .github/workflows/inspeccionar-anclas-bloque5-final.yml .github/workflows/inspeccionar-addproducto-bloque5.yml .github/workflows/inspeccionar-salidas-producto-bloque5.yml
           git diff --cached --check
           git commit -m 'Aislar operaciones de stock y caja por local'
           git push origin HEAD:multilocal-fase-3
