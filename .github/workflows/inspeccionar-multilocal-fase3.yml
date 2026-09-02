@@ -11,41 +11,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verificar dependencias exactas de Productos y Pedidos
+      - name: Extraer fragmentos exactos para el primer parche
         shell: python
         run: |
           from pathlib import Path
-
           s = Path('fuente.js').read_text(encoding='utf-8')
-          print('FUENTE_LEN', len(s))
 
-          def posiciones(marcador):
-              out=[]; i=0
-              while True:
-                  j=s.find(marcador,i)
-                  if j < 0: break
-                  out.append(j); i=j+1
-              return out
+          def trozo(nombre, marcador, antes, despues):
+              i = s.find(marcador)
+              assert i >= 0, f'No encontrado: {marcador}'
+              print(f'\n===== {nombre} @ {i} =====')
+              print(s[max(0,i-antes):min(len(s),i+despues)])
 
-          def contexto(etiqueta, marcador, antes=1800, despues=6000):
-              ps=posiciones(marcador)
-              print(f'\n===== {etiqueta} =====')
-              print('MARCADOR', marcador, 'POSICIONES', ps)
-              for i in ps[-3:]:
-                  print('\n--- POS',i,'---')
-                  print(s[max(0,i-antes):min(len(s),i+despues)])
-
-          for etiqueta, marcador in [
-              ('ABC','clasificacionABC'),
-              ('SUGERENCIAS','sugerenciasPedido'),
-              ('PEDIDOS PENDIENTES','pedidosPendientes'),
-              ('PRODUCTO POR ID','productoPorId'),
-              ('LOGICA PRODUCTOS CALL','crearLogicaProductos({'),
-              ('LOGICA PEDIDOS CALL','crearLogicaPedidos({'),
-              ('RENDER PRODUCTOS','tab === "productos"'),
-              ('RENDER PEDIDOS','tab === "pedidos"'),
-              ('MENU COMPRAR','"Comprar"'),
-              ('MENU CADUCIDADES','"Caducidades"'),
-              ('ITEMS META','const itemsMeta = [')
-          ]:
-              contexto(etiqueta, marcador)
+          trozo('DERIVADOS LOCALES', 'const productosDelLocalActivo =', 500, 1800)
+          trozo('DECLARACION SUGERENCIAS', 'const sugerenciasPedido =', 700, 2200)
+          trozo('PEDIDOS PENDIENTES', 'const pedidosPendientes =', 300, 900)
+          trozo('RENDER PRODUCTOS', '), tab === "proveedores"', 0, 2400)
+          trozo('RENDER PEDIDOS', '), tab === "buscar"', 0, 1800)
+          trozo('BADGE PEDIDOS', '{ id: "pedidos", label: "Pedidos"', 250, 500)
+          trozo('TOPBAR CONTADOR', 'TopBarC, {', 300, 900)
