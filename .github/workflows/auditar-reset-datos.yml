@@ -15,23 +15,30 @@ jobs:
           import re, pathlib
           s=pathlib.Path('fuente.js').read_text(encoding='utf-8', errors='ignore')
           pats=[
-            r'storage\.getItem\(\s*["\']([^"\']+)',
-            r'storage\.setItem\(\s*["\']([^"\']+)',
+            r'(?:window\.)?storage\.get\(\s*["\']([^"\']+)',
+            r'(?:window\.)?storage\.set\(\s*["\']([^"\']+)',
+            r'(?:window\.)?storage\.delete\(\s*["\']([^"\']+)',
             r'localStorage\.getItem\(\s*["\']almacen:([^"\']+)',
             r'localStorage\.setItem\(\s*["\']almacen:([^"\']+)',
-            r'getItem\(\s*["\']([^"\']+)["\']\s*\)',
-            r'setItem\(\s*["\']([^"\']+)["\']\s*,'
+            r'localStorage\.removeItem\(\s*["\']almacen:([^"\']+)',
           ]
           keys=set()
           for p in pats:
             keys.update(re.findall(p,s))
-          print('=== CLAVES DETECTADAS ===')
+          print('=== CLAVES STORAGE DETECTADAS ===')
           for k in sorted(keys):
             if len(k)<100: print(k)
-          print('\n=== CONTEXTOS RESET/LIMPIAR/BORRAR ===')
-          for term in ['reset','restablecer','limpiar datos','borrar datos','localStorage.clear','almacen__pendientes']:
+          print('TOTAL=',len(keys))
+          print('\n=== CONTEXTO DE CARGA PRINCIPAL ===')
+          for term in ['empresas', 'productos', 'ventasTPV', 'movimientos', 'pedidos', 'albaranes', 'traspasos', 'arqueos', 'empleados', 'encargos']:
+            matches=list(re.finditer(r'["\']'+re.escape(term)+r'["\']',s))
+            if not matches: continue
+            m=matches[-1]
+            a=max(0,m.start()-600); b=min(len(s),m.end()+1000)
             print('\n---',term,'---')
-            for m in list(re.finditer(re.escape(term),s,re.I))[:12]:
-              a=max(0,m.start()-500); b=min(len(s),m.end()+1000)
-              print(s[a:b].replace('\n',' ')[:1600])
+            print(s[a:b].replace('\n',' ')[:1700])
+          print('\n=== RESET EXISTENTE ===')
+          for term in ['restablecer','limpiar datos','borrar datos','localStorage.clear']:
+            found=list(re.finditer(re.escape(term),s,re.I))
+            print(term, len(found))
           PY
