@@ -1,25 +1,33 @@
 from pathlib import Path
+import re
 
 p = Path('fuente.js')
 s = p.read_text(encoding='utf-8')
 
 
+def pattern_for(text):
+    parts = re.split(r'\s+', text.strip())
+    return r'\s+'.join(re.escape(part) for part in parts)
+
+
 def one(old, new, label):
     global s
-    n = s.count(old)
-    if n != 1:
-        raise SystemExit(f'{label}: esperaba 1 coincidencia y hay {n}')
-    s = s.replace(old, new, 1)
+    pat = pattern_for(old)
+    matches = list(re.finditer(pat, s))
+    if len(matches) != 1:
+        raise SystemExit(f'{label}: esperaba 1 coincidencia y hay {len(matches)}')
+    s = re.sub(pat, lambda _: new, s, count=1)
     print('OK', label)
 
 
 def many(old, new, label):
     global s
-    n = s.count(old)
-    if n < 1:
+    pat = pattern_for(old)
+    matches = list(re.finditer(pat, s))
+    if not matches:
         raise SystemExit(f'{label}: no se encontró el patrón')
-    s = s.replace(old, new)
-    print('OK', label, n)
+    s = re.sub(pat, lambda _: new, s)
+    print('OK', label, len(matches))
 
 one(
     'let localesFinales = Array.isArray(loc) ? [...loc] : []; let localActivoFinal = lai || null;',
