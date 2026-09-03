@@ -1,0 +1,62 @@
+name: Inspeccionar bloques exactos de traspasos multi-local
+on:
+  push:
+    branches: [la-suite-identidad]
+    paths: ['.github/workflows/inspeccionar-traspasos-exacto.yml']
+  workflow_dispatch:
+jobs:
+  inspeccionar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extraer bloques exactos relevantes
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('fuente.js').read_text(encoding='utf-8', errors='ignore')
+
+          def function_block(name):
+              marker=f'function {name}('
+              i=s.find(marker)
+              print(f'\n===== FUNCTION {name} @ {i} =====')
+              if i<0: return
+              j=i
+              brace=s.find('{',i)
+              depth=0
+              in_str=None
+              esc=False
+              k=brace
+              while k<len(s):
+                  c=s[k]
+                  if in_str:
+                      if esc: esc=False
+                      elif c=='\\': esc=True
+                      elif c==in_str: in_str=None
+                  else:
+                      if c in ('"',"'",'`'): in_str=c
+                      elif c=='{': depth+=1
+                      elif c=='}':
+                          depth-=1
+                          if depth==0:
+                              print(s[i:k+1])
+                              return
+                  k+=1
+              print('NO CERRADO')
+
+          function_block('crearLogicaTraspasos')
+          function_block('Traspasos')
+
+          for term in [
+              'const logicaTraspasos',
+              'traspasarStock } = logicaTraspasos',
+              'traspasarStock,',
+              'function fusionarProducto(',
+              'const traspasosDelProducto =',
+              'seccion === "traspasos"',
+              'const traspasosDelLocalActivo =',
+          ]:
+              print(f'\n===== TERM {term} =====')
+              for m in list(re.finditer(re.escape(term),s))[:8]:
+                  print(s[max(0,m.start()-1400):min(len(s),m.end()+4200)])
+          PY
