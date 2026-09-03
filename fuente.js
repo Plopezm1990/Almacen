@@ -124322,10 +124322,42 @@ function FichaDatosLocal({ local, actualizarLocal }) {
     )
   );
 }
+async function prepararLogoEmpresa(file) {
+  if (!file) return "";
+  const tiposPermitidos = ["image/png", "image/jpeg", "image/webp"];
+  if (!tiposPermitidos.includes(file.type)) throw new Error("El logo debe ser PNG, JPG o WEBP.");
+  if (file.size > 8 * 1024 * 1024) throw new Error("El archivo es demasiado grande. Elige una imagen de menos de 8 MB.");
+  const original = await new Promise((resolve, reject) => {
+    const lector = new FileReader();
+    lector.onload = () => resolve(String(lector.result || ""));
+    lector.onerror = () => reject(new Error("No se pudo leer la imagen."));
+    lector.readAsDataURL(file);
+  });
+  const imagen = await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("La imagen seleccionada no es válida."));
+    img.src = original;
+  });
+  const maximo = 512;
+  const anchoNatural = Number(imagen.naturalWidth || imagen.width || 1);
+  const altoNatural = Number(imagen.naturalHeight || imagen.height || 1);
+  const escala = Math.min(1, maximo / Math.max(anchoNatural, altoNatural));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(anchoNatural * escala));
+  canvas.height = Math.max(1, Math.round(altoNatural * escala));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("No se pudo preparar el logo.");
+  ctx.drawImage(imagen, 0, 0, canvas.width, canvas.height);
+  const webp = canvas.toDataURL("image/webp", 0.88);
+  return webp.startsWith("data:image/webp") ? webp : canvas.toDataURL("image/png");
+}
 function FichaEmpresaBasica({ empresa, actualizarEmpresa }) {
   const [abierto, setAbierto] = import_react4.default.useState(false);
   const [form, setForm] = import_react4.default.useState(null);
   const [guardado, setGuardado] = import_react4.default.useState(false);
+  const [logoError, setLogoError] = import_react4.default.useState("");
+  const [logoCargando, setLogoCargando] = import_react4.default.useState(false);
   function abrir() {
     const c = empresa || {};
     setForm({
@@ -124335,7 +124367,8 @@ function FichaEmpresaBasica({ empresa, actualizarEmpresa }) {
       nif: c.nif || "",
       web: c.web || "",
       redSocial: c.redSocial || "",
-      pieDocumentos: c.pieDocumentos || ""
+      pieDocumentos: c.pieDocumentos || "",
+      logo: c.logo || ""
     });
     setGuardado(false);
     setAbierto(true);
@@ -124343,6 +124376,21 @@ function FichaEmpresaBasica({ empresa, actualizarEmpresa }) {
   function campo(k, v) {
     setForm((f2) => ({ ...f2, [k]: v }));
     setGuardado(false);
+  }
+  async function cambiarLogo(e) {
+    const file = e.target.files?.[0] || null;
+    if (!file) return;
+    setLogoError("");
+    setLogoCargando(true);
+    try {
+      const preparado = await prepararLogoEmpresa(file);
+      campo("logo", preparado);
+    } catch (err) {
+      setLogoError(err?.message || "No se pudo preparar el logo.");
+    } finally {
+      setLogoCargando(false);
+      e.target.value = "";
+    }
   }
   function guardar() {
     if (!form || !empresa?.id) return;
@@ -124356,6 +124404,15 @@ function FichaEmpresaBasica({ empresa, actualizarEmpresa }) {
     /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: abrir }, "Ficha de empresa"),
     abierto && form && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setAbierto(false), title: `Ficha de empresa · ${empresa?.razonSocial || empresa?.marca || "Empresa"}` },
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Identidad legal y comercial de esta empresa. Sus locales mantienen aparte nombre, dirección, teléfono y correo."),
+      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Logo de la empresa (opcional)" },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" },
+          form.logo && /* @__PURE__ */ import_react4.default.createElement("img", { src: form.logo, alt: "Logo de la empresa", className: "h-20 max-w-[180px] object-contain rounded-lg border bg-white p-2", style: { borderColor: C2.line } }),
+          /* @__PURE__ */ import_react4.default.createElement("input", { type: "file", accept: "image/png,image/jpeg,image/webp", onChange: cambiarLogo, disabled: logoCargando, className: "block w-full text-[12px]" }),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, logoCargando ? "Preparando logo…" : "PNG, JPG o WEBP. Se optimiza automáticamente."),
+          logoError && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.red } }, logoError),
+          form.logo && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => { campo("logo", ""); setLogoError(""); } }, "Quitar logo")
+        )
+      ),
       /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Marca" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.marca, onChange: (e) => campo("marca", e.target.value) })),
       /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Lema / subtítulo" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.lema, onChange: (e) => campo("lema", e.target.value) })),
       /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Razón social" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.razonSocial, onChange: (e) => campo("razonSocial", e.target.value) })),
@@ -124376,9 +124433,26 @@ function GestorEmpresas({ empresas, setEmpresas }) {
   const [razonSocial, setRazonSocial] = import_react4.default.useState("");
   const [nif, setNif] = import_react4.default.useState("");
   const [marca, setMarca] = import_react4.default.useState("");
+  const [logo, setLogo] = import_react4.default.useState("");
+  const [logoErrorNueva, setLogoErrorNueva] = import_react4.default.useState("");
+  const [logoCargandoNueva, setLogoCargandoNueva] = import_react4.default.useState(false);
   const [error, setError] = import_react4.default.useState("");
   function actualizarEmpresa(id, datos) {
     setEmpresas((s2) => s2.map((e2) => e2.id === id ? { ...e2, ...datos } : e2));
+  }
+  async function cambiarLogoNueva(e) {
+    const file = e.target.files?.[0] || null;
+    if (!file) return;
+    setLogoErrorNueva("");
+    setLogoCargandoNueva(true);
+    try {
+      setLogo(await prepararLogoEmpresa(file));
+    } catch (err) {
+      setLogoErrorNueva(err?.message || "No se pudo preparar el logo.");
+    } finally {
+      setLogoCargandoNueva(false);
+      e.target.value = "";
+    }
   }
   function crear() {
     const razon = String(razonSocial || "").trim();
@@ -124394,6 +124468,7 @@ function GestorEmpresas({ empresas, setEmpresas }) {
     const nueva = {
       id: uid(),
       marca: String(marca || "").trim() || razon,
+      logo,
       lema: "",
       razonSocial: razon,
       nif: nifLimpio,
@@ -124407,6 +124482,8 @@ function GestorEmpresas({ empresas, setEmpresas }) {
     setRazonSocial("");
     setNif("");
     setMarca("");
+    setLogo("");
+    setLogoErrorNueva("");
     setError("");
     setMostrarNueva(false);
   }
@@ -124417,9 +124494,12 @@ function GestorEmpresas({ empresas, setEmpresas }) {
     ),
     /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, empresas.map((e2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: e2.id, className: "rounded-xl border p-3", style: { borderColor: C2.line } },
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2" },
-        /* @__PURE__ */ import_react4.default.createElement("div", null,
-          /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold text-[13px]" }, e2.razonSocial || e2.marca || "Empresa sin nombre"),
-          e2.nif && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, `NIF/CIF: ${e2.nif}`)
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-3 min-w-0" },
+          e2.logo && /* @__PURE__ */ import_react4.default.createElement("img", { src: e2.logo, alt: "", className: "w-12 h-12 shrink-0 object-contain rounded-lg border bg-white p-1", style: { borderColor: C2.line } }),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "min-w-0" },
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold text-[13px]" }, e2.razonSocial || e2.marca || "Empresa sin nombre"),
+            e2.nif && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, `NIF/CIF: ${e2.nif}`)
+          )
         ),
         /* @__PURE__ */ import_react4.default.createElement(FichaEmpresaBasica, { empresa: e2, actualizarEmpresa })
       )
@@ -124429,6 +124509,15 @@ function GestorEmpresas({ empresas, setEmpresas }) {
       /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Razón social" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: razonSocial, onChange: (e) => setRazonSocial(e.target.value), autoFocus: true })),
       /* @__PURE__ */ import_react4.default.createElement(Field, { label: "NIF / CIF" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nif, onChange: (e) => setNif(e.target.value) })),
       /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Marca / nombre comercial (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: marca, onChange: (e) => setMarca(e.target.value) })),
+      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Logo de la empresa (opcional)" },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" },
+          logo && /* @__PURE__ */ import_react4.default.createElement("img", { src: logo, alt: "Vista previa del logo", className: "h-20 max-w-[180px] object-contain rounded-lg border bg-white p-2", style: { borderColor: C2.line } }),
+          /* @__PURE__ */ import_react4.default.createElement("input", { type: "file", accept: "image/png,image/jpeg,image/webp", onChange: cambiarLogoNueva, disabled: logoCargandoNueva, className: "block w-full text-[12px]" }),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, logoCargandoNueva ? "Preparando logo…" : "PNG, JPG o WEBP. Se optimiza automáticamente."),
+          logoErrorNueva && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.red } }, logoErrorNueva),
+          logo && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => { setLogo(""); setLogoErrorNueva(""); } }, "Quitar logo")
+        )
+      ),
       error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.red } }, error),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" },
         /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: crear }, "Crear empresa"),
