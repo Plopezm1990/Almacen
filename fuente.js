@@ -127218,6 +127218,74 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
     else if (tipo === "mes") { setFiltroVentasDesde(primerDiaMes(hoy)); setFiltroVentasHasta(ultimoDiaMes(hoy)); }
     else { setFiltroVentasDesde(""); setFiltroVentasHasta(""); }
   }
+  function fechaHoraTicketVista(v2) {
+    const raw = v2 && v2.marcaTiempo;
+    if (raw) {
+      const d2 = new Date(raw);
+      if (!isNaN(d2.getTime())) return d2.toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    }
+    return v2 && v2.fecha ? v2.fecha : "—";
+  }
+  function desgloseIvaTicketVista(v2) {
+    const mapa = new Map();
+    (v2 && v2.lineas || []).forEach((l2) => {
+      const cantidad = Math.abs(cantidadConSigno(l2));
+      const base = cantidad * Math.abs(Number(l2.ingresoUnitario) || 0);
+      const pct = Number(l2.ivaVentaAplicado) || 0;
+      const actual = mapa.get(pct) || { pct, base: 0, iva: 0 };
+      actual.base += base;
+      actual.iva += base * pct / 100;
+      mapa.set(pct, actual);
+    });
+    return [...mapa.values()].sort((a2, b2) => a2.pct - b2.pct);
+  }
+  function renderTicketVenta() {
+    if (!ticketVenta) return null;
+    const h = import_react4.default.createElement;
+    const v2 = ticketVenta;
+    return h(Modal, { onClose: () => setTicketVenta(null), title: `Ticket ${v2.referencia}` },
+      h("div", { className: "rounded-xl p-4", style: { background: C2.surface, border: `1px solid ${C2.line}` } },
+        h("div", { className: "text-center mb-3" },
+          h("div", { className: "text-[15px] font-bold" }, local?.nombre || "TPV"),
+          h("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "TICKET / RECIBO INTERNO")
+        ),
+        v2.anulada ? h("div", { className: "text-center text-[11px] font-bold rounded-lg py-2 mb-3", style: { background: C2.redSoft || "#FCE8E6", color: C2.red } }, "VENTA ANULADA") : null,
+        h("div", { className: "text-[11px] mb-3 pb-3", style: { borderBottom: `1px dashed ${C2.line}` } },
+          h("div", { className: "flex justify-between gap-3" }, h("span", { style: { color: C2.inkSoft } }, "Referencia"), h("span", { className: "mono font-semibold text-right" }, v2.referencia)),
+          h("div", { className: "flex justify-between gap-3 mt-1" }, h("span", { style: { color: C2.inkSoft } }, "Fecha"), h("span", { className: "text-right" }, fechaHoraTicketVista(v2))),
+          v2.usuario ? h("div", { className: "flex justify-between gap-3 mt-1" }, h("span", { style: { color: C2.inkSoft } }, "Atendido por"), h("span", { className: "text-right" }, v2.usuario)) : null
+        ),
+        h("div", { className: "space-y-2 mb-3" }, (v2.lineas || []).map((l2, i3) => {
+          const prod = productos.find((x3) => x3.id === l2.productoId);
+          const cantidad = Math.abs(cantidadConSigno(l2));
+          const iva = Number(l2.ivaVentaAplicado) || 0;
+          const precio = Math.abs(Number(l2.ingresoUnitario) || 0) * (1 + iva / 100);
+          return h("div", { key: l2.id || i3, className: "pb-2", style: { borderBottom: `1px dotted ${C2.line}` } },
+            h("div", { className: "text-[12px] font-medium" }, prod?.nombre || "Producto"),
+            h("div", { className: "flex justify-between gap-3 text-[11px] mt-1" },
+              h("span", { className: "mono", style: { color: C2.inkSoft } }, `${fmt(cantidad)} × €${fmt(precio)} · IVA ${fmt(iva)}%`),
+              h("span", { className: "mono font-semibold" }, `€${fmt(cantidad * precio)}`)
+            )
+          );
+        })),
+        h("div", { className: "py-2 mb-2", style: { borderTop: `1px dashed ${C2.line}`, borderBottom: `1px dashed ${C2.line}` } },
+          desgloseIvaTicketVista(v2).map((r2) => h("div", { key: r2.pct, className: "text-[10.5px]" },
+            h("div", { className: "flex justify-between gap-3" }, h("span", { style: { color: C2.inkSoft } }, `Base ${fmt(r2.pct)}%`), h("span", { className: "mono" }, `€${fmt(r2.base)}`)),
+            h("div", { className: "flex justify-between gap-3" }, h("span", { style: { color: C2.inkSoft } }, `IVA ${fmt(r2.pct)}%`), h("span", { className: "mono" }, `€${fmt(r2.iva)}`))
+          ))
+        ),
+        h("div", { className: "flex justify-between items-end mb-3" }, h("span", { className: "font-bold" }, "TOTAL"), h("span", { className: "mono font-bold text-[19px]" }, `€${fmt(v2.importe)}`)),
+        h("div", { className: "flex justify-between gap-3 text-[11.5px] mb-3" }, h("span", { style: { color: C2.inkSoft } }, "Pago"), h("span", { className: "font-semibold" }, v2.medioPago || "—")),
+        v2.medioPago === "Mixto" && v2.detallePago ? h("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, `Tarjeta €${fmt(v2.detallePago.tarjeta || 0)} + Efectivo €${fmt(v2.detallePago.efectivo || 0)}`) : null,
+        h("div", { className: "text-center pt-2", style: { borderTop: `1px dashed ${C2.line}` } },
+          h("div", { className: "text-[11px] font-medium" }, "Gracias por su compra"),
+          h("div", { className: "text-[9.5px] mono mt-2 break-all", style: { color: C2.inkSoft } }, `ID operación: ${v2.ventaId}`),
+          h("div", { className: "text-[9.5px] mt-1", style: { color: C2.inkSoft } }, "Recibo interno del TPV")
+        )
+      ),
+      h("div", { className: "mt-3" }, h(Btn, { variant: "ghost", onClick: () => setTicketVenta(null) }, "Cerrar ticket"))
+    );
+  }
   function renderHistorialVentas() {
     const h = import_react4.default.createElement;
     const controles = h(Card, { className: "mt-5" },
@@ -127254,7 +127322,7 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
         h("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, v2.resumen)
       )))
     );
-    if (!ventaDetalle) return controles;
+    if (!ventaDetalle) return h(import_react4.default.Fragment, null, controles, renderTicketVenta());
     const v2 = ventaDetalle;
     const detalle = h(Modal, { onClose: () => setVentaDetalle(null), title: `Venta ${v2.referencia}` },
       h("div", { className: "flex items-center justify-between mb-3" }, h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, `${v2.fecha || "Sin fecha"} · ${v2.medioPago}`), v2.anulada ? h(Pill2, { color: C2.red }, "ANULADA") : h(Pill2, { color: C2.accent }, "ACTIVA")),
@@ -127262,9 +127330,10 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
       h("div", { className: "flex justify-between py-2 mb-2 font-bold", style: { borderTop: `1px solid ${C2.line}` } }, h("span", null, "Total"), h("span", { className: "mono" }, "€", fmt(v2.importe))),
       v2.medioPago === "Mixto" && (v2.detallePago.efectivo > 0 || v2.detallePago.tarjeta > 0) ? h("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, `Tarjeta €${fmt(v2.detallePago.tarjeta)} + Efectivo €${fmt(v2.detallePago.efectivo)}`) : null,
       h("div", { className: "text-[10px] mb-3 break-all", style: { color: C2.inkSoft } }, `ID interno: ${v2.ventaId}`),
+      h("div", { className: "flex gap-2 flex-wrap mb-3" }, h(Btn, { onClick: () => { setVentaDetalle(null); setTicketVenta(v2); } }, "Ver ticket / reimprimir")),
       !v2.anulada && anularVenta ? h(Btn, { variant: "danger", onClick: () => { setVentaDetalle(null); setConfirmAnular(v2); } }, "Anular venta") : null
     );
-    return h(import_react4.default.Fragment, null, controles, detalle);
+    return h(import_react4.default.Fragment, null, controles, detalle, renderTicketVenta());
   }
   async function confirmarAnulacion() {
     if (procesandoAnulacion) return;
