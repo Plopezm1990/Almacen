@@ -1,29 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 640" role="img" aria-labelledby="title desc">
   <title id="title">L&amp;A Suite</title>
-  <desc id="desc">Identidad general de L&amp;A Suite en oro oscuro sobrio</desc>
+  <desc id="desc">Logo maestro L&amp;A Suite, oro oscuro sobre fondo verde</desc>
   <defs>
     <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#D2AD68"/>
-      <stop offset="0.28" stop-color="#A97B36"/>
-      <stop offset="0.55" stop-color="#C69A52"/>
-      <stop offset="0.78" stop-color="#7F5823"/>
-      <stop offset="1" stop-color="#B88B45"/>
+      <stop offset="0" stop-color="#F0CE82"/>
+      <stop offset="0.22" stop-color="#D1A65B"/>
+      <stop offset="0.5" stop-color="#A9742D"/>
+      <stop offset="0.76" stop-color="#D2A957"/>
+      <stop offset="1" stop-color="#8B5D21"/>
     </linearGradient>
-    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="#000" flood-opacity=".28"/>
+    <filter id="depth" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000" flood-opacity=".32"/>
     </filter>
   </defs>
-  <g fill="url(#gold)" filter="url(#soft)">
-    <text x="320" y="190" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="205" font-weight="400" letter-spacing="-12">L&amp;A</text>
+  <g fill="url(#gold)" filter="url(#depth)" font-family="Georgia, 'Times New Roman', serif">
+    <text x="82" y="408" font-size="360" font-weight="400">L</text>
+    <text x="444" y="408" font-size="360" font-weight="400">A</text>
+    <text x="278" y="367" font-size="250" font-weight="400">&amp;</text>
   </g>
-  <g stroke="url(#gold)" stroke-width="5" stroke-linecap="round" fill="none" opacity=".96">
-    <path d="M303 135v53"/>
-    <path d="M290 135v21c0 12 6 18 13 18s13-6 13-18v-21"/>
-    <path d="M295 135v22M303 135v24M311 135v22" stroke-width="3.2"/>
+  <g stroke="url(#gold)" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#depth)">
+    <path d="M343 301v86" stroke-width="8"/>
+    <path d="M320 300v35c0 21 10 31 23 31s23-10 23-31v-35" stroke-width="8"/>
+    <path d="M327 301v39M343 301v42M359 301v39" stroke-width="4.8"/>
   </g>
   <g fill="url(#gold)">
-    <rect x="136" y="226" width="82" height="2.4" rx="1.2"/>
-    <rect x="422" y="226" width="82" height="2.4" rx="1.2"/>
-    <text x="320" y="242" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="39" letter-spacing="12">SUITE</text>
+    <rect x="103" y="492" width="145" height="3" rx="1.5"/>
+    <rect x="512" y="492" width="145" height="3" rx="1.5"/>
+    <text x="380" y="523" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="58" letter-spacing="20">SUITE</text>
   </g>
 </svg>
