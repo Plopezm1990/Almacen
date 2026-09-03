@@ -1,0 +1,229 @@
+name: Aplicar multiempresa fase 1
+
+on:
+  push:
+    branches:
+      - multiempresa-fase-1
+    paths:
+      - .github/workflows/aplicar-multiempresa-fase1.yml
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: multiempresa-fase-1
+          fetch-depth: 0
+
+      - name: Aplicar migracion interna empresas-locales
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          fuente_path = Path('fuente.js')
+          edge_path = Path('edge-auth-patch.js')
+          fuente = fuente_path.read_text(encoding='utf-8')
+          edge = edge_path.read_text(encoding='utf-8')
+
+          def replace_once(text, old, new, label):
+              n = text.count(old)
+              if n != 1:
+                  raise SystemExit(f'{label}: se esperaba 1 coincidencia y hay {n}')
+              return text.replace(old, new, 1)
+
+          fuente = replace_once(
+              fuente,
+              '  const [devoluciones, setDevoluciones] = (0, import_react4.useState)([]);\n  const [locales, setLocales] = (0, import_react4.useState)([]);',
+              '  const [devoluciones, setDevoluciones] = (0, import_react4.useState)([]);\n  const [empresas, setEmpresas] = (0, import_react4.useState)([]);\n  const [empresaActivaId, setEmpresaActivaId] = (0, import_react4.useState)(null);\n  const [locales, setLocales] = (0, import_react4.useState)([]);',
+              'estado empresas'
+          )
+
+          fuente = replace_once(
+              fuente,
+              'dev, loc, lai] = await Promise.all([',
+              'dev, loc, lai, emp, eai, cfgEmp] = await Promise.all([',
+              'desestructuracion carga'
+          )
+
+          fuente = replace_once(
+              fuente,
+              '        loadKey("devoluciones", []),\n        loadKey("locales", []),\n        loadKey("localActivoId", null)\n',
+              '        loadKey("devoluciones", []),\n        loadKey("locales", []),\n        loadKey("localActivoId", null),\n        loadKey("empresas", []),\n        loadKey("empresaActivaId", null),\n        loadKey("configEmpresa", null)\n',
+              'carga claves multiempresa'
+          )
+
+          anchor = '''      if (!localActivoFinal || !localesFinales.some((l2) => l2.id === localActivoFinal && l2.activo !== false && !l2.fusionadoEn)) {
+        localActivoFinal = localesFinales.find((l2) => l2.activo !== false && !l2.fusionadoEn)?.id || localesFinales[0]?.id || null;
+      }
+      let productosFinales = productosBase;
+'''
+          multiempresa = '''      if (!localActivoFinal || !localesFinales.some((l2) => l2.id === localActivoFinal && l2.activo !== false && !l2.fusionadoEn)) {
+        localActivoFinal = localesFinales.find((l2) => l2.activo !== false && !l2.fusionadoEn)?.id || localesFinales[0]?.id || null;
+      }
+      let empresasFinales = Array.isArray(emp) ? [...emp] : [];
+      const configEmpresaLegacy = cfgEmp && typeof cfgEmp === "object" && !Array.isArray(cfgEmp) ? cfgEmp : null;
+      if (empresasFinales.length === 0) {
+        const razonSocialLegacy = String(configEmpresaLegacy?.razonSocial || configEmpresaLegacy?.nombreFiscal || configEmpresaLegacy?.nombre || "CHOCOLOYOS, S.L.").trim() || "CHOCOLOYOS, S.L.";
+        const nombreComercialLegacy = String(configEmpresaLegacy?.nombreComercial || configEmpresaLegacy?.marca || "Chocoloyos").trim() || "Chocoloyos";
+        empresasFinales = [{
+          ...(configEmpresaLegacy || {}),
+          id: "empresa-chocoloyos-principal",
+          razonSocial: razonSocialLegacy,
+          nombreComercial: nombreComercialLegacy,
+          marca: String(configEmpresaLegacy?.marca || nombreComercialLegacy).trim(),
+          nif: String(configEmpresaLegacy?.nif || configEmpresaLegacy?.NIF || "").trim(),
+          logo: configEmpresaLegacy?.logo || "",
+          web: configEmpresaLegacy?.web || "",
+          redes: configEmpresaLegacy?.redes && typeof configEmpresaLegacy.redes === "object" ? configEmpresaLegacy.redes : {},
+          datosFiscales: configEmpresaLegacy?.datosFiscales && typeof configEmpresaLegacy.datosFiscales === "object" ? configEmpresaLegacy.datosFiscales : {},
+          configuracionFacturacion: configEmpresaLegacy?.configuracionFacturacion && typeof configEmpresaLegacy.configuracionFacturacion === "object" ? configEmpresaLegacy.configuracionFacturacion : configEmpresaLegacy?.facturacion && typeof configEmpresaLegacy.facturacion === "object" ? configEmpresaLegacy.facturacion : {},
+          activo: configEmpresaLegacy?.activo !== false,
+          creadoEn: configEmpresaLegacy?.creadoEn || (/* @__PURE__ */ new Date()).toISOString(),
+          migradaDesdeConfigEmpresa: !!configEmpresaLegacy
+        }];
+      }
+      const idsEmpresasFinales = new Set(empresasFinales.map((e) => e && e.id).filter(Boolean));
+      const empresaIdsHuerfanos = [...new Set(localesFinales.map((l2) => l2 && l2.empresaId).filter((id) => id && !idsEmpresasFinales.has(id)))];
+      empresaIdsHuerfanos.forEach((empresaId) => {
+        empresasFinales.push({
+          id: empresaId,
+          razonSocial: "Empresa recuperada",
+          nombreComercial: "Empresa recuperada",
+          marca: "",
+          nif: "",
+          logo: "",
+          web: "",
+          redes: {},
+          datosFiscales: {},
+          configuracionFacturacion: {},
+          activo: true,
+          creadoEn: (/* @__PURE__ */ new Date()).toISOString(),
+          recuperadaDeLocales: true
+        });
+        idsEmpresasFinales.add(empresaId);
+      });
+      let empresaActivaFinal = eai || null;
+      if (!empresaActivaFinal || !empresasFinales.some((e) => e.id === empresaActivaFinal && e.activo !== false)) {
+        empresaActivaFinal = empresasFinales.find((e) => e.activo !== false)?.id || empresasFinales[0]?.id || null;
+      }
+      if (empresaActivaFinal && localesFinales.some((l2) => !l2.empresaId)) {
+        localesFinales = localesFinales.map((l2) => l2.empresaId ? l2 : { ...l2, empresaId: empresaActivaFinal });
+      }
+      const empresaDelLocalActivo = localesFinales.find((l2) => l2.id === localActivoFinal)?.empresaId || null;
+      if (empresaDelLocalActivo && idsEmpresasFinales.has(empresaDelLocalActivo)) empresaActivaFinal = empresaDelLocalActivo;
+      let productosFinales = productosBase;
+'''
+          fuente = replace_once(fuente, anchor, multiempresa, 'migracion empresas-locales')
+
+          fuente = replace_once(
+              fuente,
+              '      setLocales(localesFinales);\n      setLocalActivoId(localActivoFinal);',
+              '      setEmpresas(empresasFinales);\n      setEmpresaActivaId(empresaActivaFinal);\n      setLocales(localesFinales);\n      setLocalActivoId(localActivoFinal);',
+              'estado tras migracion'
+          )
+
+          fuente = replace_once(
+              fuente,
+              '      if (JSON.stringify(localesFinales) !== JSON.stringify(Array.isArray(loc) ? loc : [])) await saveKey("locales", localesFinales);\n      if (localActivoFinal !== (lai || null)) await saveKey("localActivoId", localActivoFinal);',
+              '      if (JSON.stringify(empresasFinales) !== JSON.stringify(Array.isArray(emp) ? emp : [])) await saveKey("empresas", empresasFinales);\n      if (empresaActivaFinal !== (eai || null)) await saveKey("empresaActivaId", empresaActivaFinal);\n      if (JSON.stringify(localesFinales) !== JSON.stringify(Array.isArray(loc) ? loc : [])) await saveKey("locales", localesFinales);\n      if (localActivoFinal !== (lai || null)) await saveKey("localActivoId", localActivoFinal);',
+              'guardado inicial empresas'
+          )
+
+          fuente = replace_once(
+              fuente,
+              '  (0, import_react4.useEffect)(() => {\n    if (ready && !skipSaveRef.current) saveKey("locales", locales);\n  }, [locales, ready]);',
+              '  (0, import_react4.useEffect)(() => {\n    if (ready && !skipSaveRef.current) saveKey("empresas", empresas);\n  }, [empresas, ready]);\n  (0, import_react4.useEffect)(() => {\n    if (ready && !skipSaveRef.current) saveKey("empresaActivaId", empresaActivaId);\n  }, [empresaActivaId, ready]);\n  (0, import_react4.useEffect)(() => {\n    if (ready && !skipSaveRef.current) saveKey("locales", locales);\n  }, [locales, ready]);',
+              'efectos persistencia empresas'
+          )
+
+          fuente = replace_once(
+              fuente,
+              'crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivoId, registrarAuditoria })',
+              'crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivoId, empresaActivaId, setEmpresaActivaId, registrarAuditoria })',
+              'conexion logica locales'
+          )
+
+          patron_locales = re.compile(r'function crearLogicaLocales\(\{ locales, setLocales, localActivoId, setLocalActivoId, registrarAuditoria \}\) \{.*?return \{ crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo \};\n\}', re.S)
+          nueva_logica_locales = '''function crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivoId, empresaActivaId, setEmpresaActivaId, registrarAuditoria }) {
+  function crearLocal({ nombre, direccion }) {
+    const nombreLimpio = (nombre || "").trim();
+    if (!nombreLimpio) return { ok: false, error: "Ponle un nombre al local." };
+    if (!empresaActivaId) return { ok: false, error: "No hay una empresa activa para crear el local." };
+    if (locales.some((l2) => l2.empresaId === empresaActivaId && l2.nombre.toLowerCase() === nombreLimpio.toLowerCase())) {
+      return { ok: false, error: "Ya existe un local con ese nombre dentro de esta empresa." };
+    }
+    const nuevo = { id: uid(), empresaId: empresaActivaId, nombre: nombreLimpio, direccion: (direccion || "").trim(), activo: true, creadoEn: (/* @__PURE__ */ new Date()).toISOString() };
+    setLocales((s2) => [...s2, nuevo]);
+    registrarAuditoria("Crear local", nombreLimpio);
+    return { ok: true, local: nuevo };
+  }
+  function actualizarLocal(id, datos) {
+    setLocales((s2) => s2.map((l2) => l2.id === id ? { ...l2, ...datos, empresaId: l2.empresaId || empresaActivaId || null } : l2));
+  }
+  function desactivarLocal(id) {
+    const l2 = locales.find((x3) => x3.id === id);
+    setLocales((s2) => s2.map((x3) => x3.id === id ? { ...x3, activo: false } : x3));
+    registrarAuditoria("Desactivar local", l2 ? l2.nombre : id);
+  }
+  function cambiarLocalActivo(id) {
+    const local = locales.find((l2) => l2.id === id);
+    if (!local) return;
+    setLocalActivoId(id);
+    if (local.empresaId) setEmpresaActivaId(local.empresaId);
+  }
+  return { crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo };
+}'''
+          fuente, n_locales = patron_locales.subn(nueva_logica_locales, fuente, count=1)
+          if n_locales != 1:
+              raise SystemExit(f'logica locales: se esperaba 1 sustitucion y hay {n_locales}')
+
+          edge = replace_once(
+              edge,
+              '  var CLAVES_SOLO_PROPIETARIO = [\n    "historialRespaldos", "gastosGenerales", "empleados", "clientes",',
+              '  var CLAVES_SOLO_PROPIETARIO = [\n    "empresas", "empresaActivaId", "configEmpresa",\n    "historialRespaldos", "gastosGenerales", "empleados", "clientes",',
+              'proteccion claves empresa'
+          )
+
+          fuente_path.write_text(fuente, encoding='utf-8')
+          edge_path.write_text(edge, encoding='utf-8')
+
+          checks = {
+              'estado empresas': 'const [empresas, setEmpresas]',
+              'empresa activa': 'const [empresaActivaId, setEmpresaActivaId]',
+              'carga empresas': 'loadKey("empresas", [])',
+              'compatibilidad configEmpresa': 'loadKey("configEmpresa", null)',
+              'empresaId en locales': 'empresaId: empresaActivaId',
+              'guardado empresas': 'saveKey("empresas", empresasFinales)',
+              'sin borrar config legacy': 'migradaDesdeConfigEmpresa: !!configEmpresaLegacy'
+          }
+          for nombre, texto in checks.items():
+              if texto not in fuente:
+                  raise SystemExit(f'Falta comprobacion semantica: {nombre}')
+          if '"empresas", "empresaActivaId", "configEmpresa"' not in edge:
+              raise SystemExit('Las claves multiempresa no quedaron protegidas en edge-auth-patch.js')
+          print('MULTIEMPRESA_FASE1_PATCH_OK=1')
+          PY
+
+      - name: Validar sintaxis y diff
+        shell: bash
+        run: |
+          node --check fuente.js
+          node --check edge-auth-patch.js
+          git diff --check
+          test "$(git diff --name-only | sort | tr '\n' ' ')" = "edge-auth-patch.js fuente.js "
+          echo "MULTIEMPRESA_FASE1_VALIDACION_OK=1"
+
+      - name: Guardar cambios en la rama
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fuente.js edge-auth-patch.js
+          git commit -m "Añadir base multiempresa compatible"
+          git push origin HEAD:multiempresa-fase-1
