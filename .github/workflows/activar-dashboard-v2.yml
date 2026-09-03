@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: la-suite-identidad
-      - name: Enlazar capa v2 y validar
+      - name: Dejar una sola capa premium y validar
         shell: bash
         run: |
           set -euo pipefail
@@ -20,16 +20,22 @@ jobs:
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          tag='<script defer src="./dashboard-premium-v2.js"></script>'
-          if tag not in s:
+          old='<script src="./dashboard-premium-patch.js"></script>'
+          s=s.replace(old, '')
+          new='<script defer src="./dashboard-premium-v2.js"></script>'
+          if new not in s:
               marker='<script type="module" src="./fuente.js"></script>'
               if marker not in s:
-                  raise SystemExit('No se encontró el marcador fuente.js')
-              s=s.replace(marker, marker+'\n'+tag, 1)
-              p.write_text(s,encoding='utf-8')
+                  raise SystemExit('No se encontró fuente.js')
+              s=s.replace(marker, marker+'\n'+new, 1)
+          p.write_text(s,encoding='utf-8')
           PY
           node --check dashboard-premium-v2.js
           grep -q 'dashboard-premium-v2.js' index.html
+          if grep -q 'dashboard-premium-patch.js' index.html; then
+            echo 'ERROR: sigue cargándose la capa antigua'
+            exit 1
+          fi
           grep -q 'la-suite-logo.svg' index.html
       - name: Guardar cambio
         run: |
@@ -37,6 +43,5 @@ jobs:
           git config user.email "pedroroger1990@gmail.com"
           git add index.html
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m "Activar dashboard premium v2 y logo maestro"
+          git commit -m "Eliminar dashboard premium antiguo del arranque"
           git push origin HEAD:la-suite-identidad
-# activacion 2
