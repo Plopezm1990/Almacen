@@ -9,36 +9,57 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inventariar claves y lógica de limpieza
+      - name: Inventariar claves y helpers de almacenamiento
         run: |
           python3 <<'PY'
           import re, pathlib
           s=pathlib.Path('fuente.js').read_text(encoding='utf-8', errors='ignore')
-          pats=[
-            r'(?:window\.)?storage\.get\(\s*["\']([^"\']+)',
-            r'(?:window\.)?storage\.set\(\s*["\']([^"\']+)',
-            r'(?:window\.)?storage\.delete\(\s*["\']([^"\']+)',
-            r'localStorage\.getItem\(\s*["\']almacen:([^"\']+)',
-            r'localStorage\.setItem\(\s*["\']almacen:([^"\']+)',
-            r'localStorage\.removeItem\(\s*["\']almacen:([^"\']+)',
-          ]
           keys=set()
-          for p in pats:
-            keys.update(re.findall(p,s))
-          print('=== CLAVES STORAGE DETECTADAS ===')
+          pats=[
+            r'\bsaveKey\(\s*["\']([^"\']+)["\']',
+            r'\bloadKey\(\s*["\']([^"\']+)["\']',
+            r'\bloadArray\(\s*["\']([^"\']+)["\']',
+            r'\bloadObject\(\s*["\']([^"\']+)["\']',
+            r'\breadKey\(\s*["\']([^"\']+)["\']',
+            r'\bgetKey\(\s*["\']([^"\']+)["\']',
+            r'(?:window\.)?storage\.(?:get|set|delete)\(\s*["\']([^"\']+)["\']',
+            r'localStorage\.(?:getItem|setItem|removeItem)\(\s*["\']almacen:([^"\']+)["\']',
+          ]
+          for p in pats: keys.update(re.findall(p,s))
+          print('=== CLAVES LITERALES DETECTADAS ===')
           for k in sorted(keys):
             if len(k)<100: print(k)
           print('TOTAL=',len(keys))
-          print('\n=== CONTEXTO DE CARGA PRINCIPAL ===')
-          for term in ['empresas', 'productos', 'ventasTPV', 'movimientos', 'pedidos', 'albaranes', 'traspasos', 'arqueos', 'empleados', 'encargos']:
-            matches=list(re.finditer(r'["\']'+re.escape(term)+r'["\']',s))
-            if not matches: continue
-            m=matches[-1]
-            a=max(0,m.start()-600); b=min(len(s),m.end()+1000)
-            print('\n---',term,'---')
-            print(s[a:b].replace('\n',' ')[:1700])
-          print('\n=== RESET EXISTENTE ===')
-          for term in ['restablecer','limpiar datos','borrar datos','localStorage.clear']:
-            found=list(re.finditer(re.escape(term),s,re.I))
-            print(term, len(found))
+
+          print('\n=== LLAMADAS saveKey ===')
+          savekeys=sorted(set(re.findall(r'\bsaveKey\(\s*["\']([^"\']+)["\']',s)))
+          for k in savekeys: print(k)
+          print('TOTAL saveKey=',len(savekeys))
+
+          print('\n=== LLAMADAS loadKey ===')
+          loadkeys=sorted(set(re.findall(r'\bloadKey\(\s*["\']([^"\']+)["\']',s)))
+          for k in loadkeys: print(k)
+          print('TOTAL loadKey=',len(loadkeys))
+
+          print('\n=== HELPERS STORAGE ===')
+          for term in ['function saveKey','const saveKey','function loadKey','const loadKey','async function saveKey','async function loadKey','function loadAll','Promise.all']:
+            matches=list(re.finditer(re.escape(term),s))
+            print('\n---',term,'matches=',len(matches),'---')
+            for m in matches[:4]:
+              a=max(0,m.start()-600); b=min(len(s),m.end()+2400)
+              print(s[a:b].replace('\n',' ')[:3000])
+
+          print('\n=== useEffect saveKey CONTEXT ===')
+          idx=s.find('saveKey("proveedores"')
+          if idx<0: idx=s.find('saveKey("productos"')
+          if idx>=0:
+            print(s[max(0,idx-2500):min(len(s),idx+15000)].replace('\n',' ')[:18000])
+
+          print('\n=== CARGA INICIAL CONTEXT ===')
+          for needle in ['loadKey("proveedores"','loadKey("empresas"','loadKey("locales"']:
+            idx=s.find(needle)
+            if idx>=0:
+              print('\n---',needle,'---')
+              print(s[max(0,idx-3000):min(len(s),idx+18000)].replace('\n',' ')[:21000])
+              break
           PY
