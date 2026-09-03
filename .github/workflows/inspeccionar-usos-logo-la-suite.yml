@@ -1,0 +1,19 @@
+name: Inspeccionar usos de logo L&A Suite
+on:
+  push:
+    paths:
+      - '.github/workflows/inspeccionar-usos-logo-la-suite.yml'
+jobs:
+  inspeccionar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Localizar todos los usos del logo general
+        run: |
+          set -euo pipefail
+          echo '=== SRC LOGO ==='
+          grep -n -A10 -B10 'src: LOGO' fuente.js || true
+          echo '=== LOGO_BLANCO ==='
+          grep -n -A10 -B10 'LOGO_BLANCO' fuente.js | head -n 140 || true
+          echo '=== ALT / CONTROL DE ALMACEN ==='
+          grep -n -A10 -B10 'Control de almac\\xE9n\|Control de almacén' fuente.js || true
