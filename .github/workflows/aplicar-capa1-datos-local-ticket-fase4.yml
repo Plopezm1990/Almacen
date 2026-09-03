@@ -1,0 +1,35 @@
+name: Aplicar capa 1 datos local ticket fase 4
+on:
+  push:
+    branches: [tpv-ventas-fase-4]
+    paths:
+      - '.github/workflows/aplicar-capa1-datos-local-ticket-fase4.yml'
+      - '.github/scripts/aplicar_capa1_datos_local_ticket_fase4.py'
+permissions:
+  contents: write
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar capa 1
+        run: python3 .github/scripts/aplicar_capa1_datos_local_ticket_fase4.py
+      - name: Validar
+        run: |
+          node --check fuente.js
+          git diff --check
+          grep -q 'function DatosBasicosTicketLocal' fuente.js
+          grep -q 'nombreComercialTicket' fuente.js
+          grep -q 'telefonoLocal' fuente.js
+          grep -q 'emailLocal' fuente.js
+      - name: Limpiar temporales y guardar
+        run: |
+          rm -f .github/scripts/aplicar_capa1_datos_local_ticket_fase4.py
+          rm -f .github/workflows/aplicar-capa1-datos-local-ticket-fase4.yml
+          rm -f .github/workflows/inspeccionar-capa1-datos-local-ticket-fase4.yml
+          git config user.name 'Plopezm1990'
+          git config user.email 'pedroroger1990@gmail.com'
+          git add fuente.js .github/scripts .github/workflows
+          git diff --cached --check
+          git commit -m 'Añadir datos básicos de ticket editables por local'
+          git push origin HEAD:tpv-ventas-fase-4
