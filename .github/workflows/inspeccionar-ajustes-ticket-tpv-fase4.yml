@@ -1,0 +1,25 @@
+name: Inspeccionar ajustes ticket TPV fase 4
+
+on:
+  push:
+    branches: [tpv-ventas-fase-4]
+    paths:
+      - '.github/workflows/inspeccionar-ajustes-ticket-tpv-fase4.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspeccionar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Revisar local, fecha y pie del ticket
+        run: |
+          set -euo pipefail
+          echo '=== INVOCACION TPV ==='
+          grep -n -A10 -B5 'createElement(VentaRapida' fuente.js | head -n 40 || true
+          echo '=== HISTORIAL NORMALIZADO ==='
+          grep -n -A45 -B3 'return Object.entries(porVenta).map' fuente.js | head -n 60
+          echo '=== TICKET ACTUAL ==='
+          grep -n -A90 -B10 'TICKET / RECIBO INTERNO' fuente.js | head -n 120
