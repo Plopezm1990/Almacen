@@ -4,55 +4,62 @@ path = Path('fuente.js')
 text = path.read_text(encoding='utf-8')
 
 replacements = {
-    'addArqueo': '''function addArqueo(arqueo) {
+    'addArqueo': '''function addArqueo(data, denomConfig) {
     if (!localActivoId) return null;
-    const arqueoConLocal = { ...arqueo, localId: localActivoId };
-    setArqueos((prev) => [arqueoConLocal, ...prev]);
-    return arqueoConLocal;
+    const id = uid();
+    const fecha = todayISO();
+    const hora = nowTime();
+    const denominaciones = { ...(data.denominaciones || {}) };
+    const useConfig = denomConfig || DENOMINACIONES_CAJA;
+    const efectivoContado = useConfig.reduce((acc, d) => acc + (Number(denominaciones[d.key]) || 0) * d.valor, 0);
+    const efectivoReal = Math.round((efectivoContado + Number.EPSILON) * 100) / 100;
+    const esperado = Number(data.efectivoEsperado || 0);
+    const diferencia = Math.round((efectivoReal - esperado + Number.EPSILON) * 100) / 100;
+    const arqueo = {
+      id,
+      localId: localActivoId,
+      fecha,
+      hora,
+      efectivoEsperado: esperado,
+      efectivoReal,
+      diferencia,
+      denominaciones,
+      notas: data.notas || ""
+    };
+    setArqueos((prev) => [arqueo, ...prev]);
+    return arqueo;
   }''',
     'deleteArqueo': '''function deleteArqueo(id) {
-    if (!localActivoId) return false;
-    let eliminado = false;
-    setArqueos((prev) => prev.filter((a2) => {
-      if (a2.id === id && a2.localId === localActivoId) {
-        eliminado = true;
-        return false;
-      }
-      return true;
-    }));
-    return eliminado;
+    if (!localActivoId) return;
+    setArqueos((prev) => prev.filter((a2) => !(a2.id === id && a2.localId === localActivoId)));
   }''',
-    'registrarMovimientoCaja': '''function registrarMovimientoCaja({ tipo, importe, concepto, origen, referenciaId }) {
-    if (!localActivoId) return null;
+    'registrarMovimientoCaja': '''function registrarMovimientoCaja(tipo, importe, concepto, origen = "MANUAL", referenciaId = null) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local antes de registrar movimientos de caja." };
+    const imp = Number(importe);
+    if (!["ENTRADA", "SALIDA"].includes(tipo)) return { ok: false, error: "Tipo de movimiento no válido." };
+    if (!Number.isFinite(imp) || imp <= 0) return { ok: false, error: "El importe debe ser mayor que 0." };
     const mov = {
       id: uid(),
       localId: localActivoId,
       fecha: todayISO(),
       hora: nowTime(),
       tipo,
-      importe: nnum(importe),
-      concepto: concepto || "",
-      origen: origen || "MANUAL",
-      referenciaId: referenciaId || ""
+      importe: Math.round((imp + Number.EPSILON) * 100) / 100,
+      concepto: concepto?.trim() || (tipo === "ENTRADA" ? "Entrada manual" : "Salida manual"),
+      origen,
+      referenciaId
     };
     setMovimientosCaja((prev) => [mov, ...prev]);
-    try {
-      registrarAuditoria && registrarAuditoria("MOVIMIENTO_CAJA", `${tipo} ${fmt(nnum(importe))}€ · ${concepto || "Sin concepto"}`);
-    } catch {
-    }
-    return mov;
+    registrarAuditoria?.(
+      "MOVIMIENTO_CAJA",
+      `${tipo} de ${money(mov.importe)} · ${mov.concepto}`,
+      { movimientoCajaId: mov.id, origen: mov.origen }
+    );
+    return { ok: true, movimiento: mov };
   }''',
-    'deleteMovimientoCaja': '''function deleteMovimientoCaja(id) {
-    if (!localActivoId) return false;
-    let eliminado = false;
-    setMovimientosCaja((prev) => prev.filter((m2) => {
-      if (m2.id === id && m2.localId === localActivoId) {
-        eliminado = true;
-        return false;
-      }
-      return true;
-    }));
-    return eliminado;
+    'eliminarMovimientoCaja': '''function eliminarMovimientoCaja(id) {
+    if (!localActivoId) return;
+    setMovimientosCaja((prev) => prev.filter((m2) => !(m2.id === id && m2.localId === localActivoId)));
   }'''
 }
 
@@ -132,12 +139,16 @@ for name in replacements:
     if text.count(f'function {name}(') != 1:
         raise SystemExit(f'{name}: cantidad inesperada tras reemplazo')
 
-# Comprobaciones semánticas mínimas del endurecimiento.
 required = [
-    'const arqueoConLocal = { ...arqueo, localId: localActivoId };',
-    'a2.id === id && a2.localId === localActivoId',
+    'function addArqueo(data, denomConfig)',
     'localId: localActivoId,',
-    'm2.id === id && m2.localId === localActivoId'
+    '!(a2.id === id && a2.localId === localActivoId)',
+    'function registrarMovimientoCaja(tipo, importe, concepto, origen = "MANUAL", referenciaId = null)',
+    'Selecciona un local antes de registrar movimientos de caja.',
+    'if (!["ENTRADA", "SALIDA"].includes(tipo))',
+    'return { ok: true, movimiento: mov };',
+    'function eliminarMovimientoCaja(id)',
+    '!(m2.id === id && m2.localId === localActivoId)'
 ]
 for token in required:
     if token not in text:
