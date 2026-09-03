@@ -32,7 +32,12 @@ const productos = [
 const browser = await chromium.launch({headless:true});
 const context = await browser.newContext({viewport:{width:412,height:915}, locale:'es-ES'});
 const page = await context.newPage();
-page.on('pageerror', e => log('[pageerror]', e.message));
+await page.addInitScript(() => {
+  window.addEventListener('error', e => {
+    console.error('[audit-window-error]', e.message, e.filename, e.lineno, e.colno, e.error?.stack || '');
+  });
+});
+page.on('pageerror', e => log('[pageerror]', e.stack || e.message));
 page.on('console', msg => { if (msg.type()==='error') log('[console error]', msg.text()); });
 
 async function enterLocal() {
@@ -178,8 +183,6 @@ p1=await product('pa1');
 check(Number(p1?.stock)===8, 'movimiento interno no cambia stock total');
 check(Number(p1?.stockPisoVenta)===4, 'movimiento interno sigue sumando al piso de venta');
 
-// La navegación global A1↔A2 ya está cubierta por la batería A-E. Aquí validamos
-// específicamente que el mismo registro persista y se interprete como entrada en A2.
 await page.evaluate(() => localStorage.setItem('almacen:localActivoId', JSON.stringify('a2')));
 await page.reload({waitUntil:'domcontentloaded'});
 await enterLocal();
