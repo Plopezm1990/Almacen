@@ -1,0 +1,22 @@
+name: Inspeccionar locales y ticket fase 4
+on:
+  push:
+    branches: [tpv-ventas-fase-4]
+    paths:
+      - '.github/workflows/inspeccionar-locales-ticket-fase4.yml'
+jobs:
+  inspeccionar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mostrar estructura locales y ticket
+        run: |
+          set -euo pipefail
+          echo '=== LOGICA LOCALES ==='
+          grep -n -A180 -B10 'function crearLogicaLocales' fuente.js | head -n 220 || true
+          echo '=== COMPONENTE LOCALES ==='
+          grep -n -A220 -B10 'function Locales' fuente.js | head -n 260 || true
+          echo '=== TICKET ACTUAL ==='
+          grep -n -A170 -B10 'function renderTicketVenta' fuente.js | head -n 210 || true
+          echo '=== LOCAL INICIAL / DATOS ==='
+          grep -n -E 'CHOCOLOYOS|locales.*useState|setLocales|direccionTicket|telefonoTicket|logo' fuente.js | head -n 180 || true
