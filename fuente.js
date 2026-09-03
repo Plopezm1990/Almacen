@@ -117349,6 +117349,15 @@ function GestionAlmacen() {
   const [movimientosCaja, setMovimientosCaja] = (0, import_react4.useState)([]);
   const [devoluciones, setDevoluciones] = (0, import_react4.useState)([]);
   const [locales, setLocales] = (0, import_react4.useState)([]);
+  const [configEmpresa, setConfigEmpresa] = (0, import_react4.useState)({
+    marca: "Chocolatería San Ginés",
+    lema: "MADRID 1894",
+    razonSocial: "CHOCOLOYOS, S.L.",
+    nif: "B87342077",
+    web: "",
+    redSocial: "@ChocoSanGines",
+    pieDocumentos: "GRACIAS POR SU VISITA"
+  });
   const [localActivoId, setLocalActivoId] = (0, import_react4.useState)(null);
   const [localInformeId, setLocalInformeId] = (0, import_react4.useState)("");
   const productosDelLocalActivo = (0, import_react4.useMemo)(() => {
@@ -117432,7 +117441,7 @@ function GestionAlmacen() {
   const [historial, setHistorial] = (0, import_react4.useState)([]);
   (0, import_react4.useEffect)(() => {
     (async () => {
-      const [p2, pr, pe2, mo, co, fc, hi, al, cp, gg, em, fj, dm, ra, pc, cl, en, aq, tu, to, me2, pin, au, op, tr, ua, fd2, nom, fre, rac, entr, mc, dev, loc, lai] = await Promise.all([
+      const [p2, pr, pe2, mo, co, fc, hi, al, cp, gg, em, fj, dm, ra, pc, cl, en, aq, tu, to, me2, pin, au, op, tr, ua, fd2, nom, fre, rac, entr, mc, dev, ce, loc, lai] = await Promise.all([
         loadKey("proveedores", []),
         loadKey("productos", []),
         loadKey("pedidos", []),
@@ -117466,6 +117475,15 @@ function GestionAlmacen() {
         loadKey("entrevistas", []),
         loadKey("movimientosCaja", []),
         loadKey("devoluciones", []),
+        loadKey("configEmpresa", {
+            marca: "Chocolatería San Ginés",
+            lema: "MADRID 1894",
+            razonSocial: "CHOCOLOYOS, S.L.",
+            nif: "B87342077",
+            web: "",
+            redSocial: "@ChocoSanGines",
+            pieDocumentos: "GRACIAS POR SU VISITA"
+          }),
         loadKey("locales", []),
         loadKey("localActivoId", null)
       ]);
@@ -117516,6 +117534,15 @@ function GestionAlmacen() {
       setEntrevistas(entr);
       setMovimientosCaja(mc || []);
       setDevoluciones(dev || []);
+      setConfigEmpresa(ce && typeof ce === "object" ? ce : {
+          marca: "Chocolatería San Ginés",
+          lema: "MADRID 1894",
+          razonSocial: "CHOCOLOYOS, S.L.",
+          nif: "B87342077",
+          web: "",
+          redSocial: "@ChocoSanGines",
+          pieDocumentos: "GRACIAS POR SU VISITA"
+        });
       let localesFinales = Array.isArray(loc) ? [...loc] : [];
       let localActivoFinal = lai || null;
       const productosBase = Array.isArray(pr) ? pr : [];
@@ -117722,6 +117749,9 @@ function GestionAlmacen() {
   (0, import_react4.useEffect)(() => {
     if (ready && !skipSaveRef.current) saveKey("locales", locales);
   }, [locales, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("configEmpresa", configEmpresa);
+  }, [configEmpresa, ready]);
   (0, import_react4.useEffect)(() => {
     if (ready && !skipSaveRef.current) saveKey("localActivoId", localActivoId);
   }, [localActivoId, ready]);
@@ -118807,7 +118837,7 @@ function GestionAlmacen() {
       fichajes: fichajesDelLocalActivo,
       movimientos: movimientosDelLocalActivo
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito, anularVenta, movimientos: movimientosDelLocalActivo, registrarAuditoria, local: locales.find((l2) => l2.id === localActivoId) || null }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito, anularVenta, movimientos: movimientosDelLocalActivo, registrarAuditoria, local: locales.find((l2) => l2.id === localActivoId) || null, configEmpresa }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -118891,7 +118921,7 @@ function GestionAlmacen() {
       establecerPin,
       activarModoEmpleado
     }
-  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista }));
+  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, setConfigEmpresa }));
   const itemsMeta = [
     { id: "dashboard", label: "Panel general", icon: ChartColumn },
     { id: "direccion", label: "Panel de direcci\xF3n", icon: TrendingUp },
@@ -124267,7 +124297,56 @@ function FichaDatosLocal({ local, actualizarLocal }) {
     )
   );
 }
-function Locales({ locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo }) {
+function FichaEmpresaBasica({ configEmpresa, setConfigEmpresa }) {
+  const [abierto, setAbierto] = import_react4.default.useState(false);
+  const [form, setForm] = import_react4.default.useState(null);
+  const [guardado, setGuardado] = import_react4.default.useState(false);
+  function abrir() {
+    const c = configEmpresa || {};
+    setForm({
+      marca: c.marca || "Chocolatería San Ginés",
+      lema: c.lema || "MADRID 1894",
+      razonSocial: c.razonSocial || "CHOCOLOYOS, S.L.",
+      nif: c.nif || "B87342077",
+      web: c.web || "",
+      redSocial: c.redSocial || "@ChocoSanGines",
+      pieDocumentos: c.pieDocumentos || "GRACIAS POR SU VISITA"
+    });
+    setGuardado(false);
+    setAbierto(true);
+  }
+  function campo(k, v) {
+    setForm((f2) => ({ ...f2, [k]: v }));
+    setGuardado(false);
+  }
+  function guardar() {
+    if (!form) return;
+    const limpio = {};
+    Object.entries(form).forEach(([k, v]) => limpio[k] = String(v || "").trim());
+    setConfigEmpresa(limpio);
+    setForm(limpio);
+    setGuardado(true);
+  }
+  return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null,
+    /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: abrir }, "Ficha de empresa"),
+    abierto && form && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setAbierto(false), title: "Ficha de empresa" },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Identidad general compartida por todos los locales. Razón social y NIF son de la empresa; cada local conserva aparte nombre, dirección, teléfono y correo."),
+      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Marca" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.marca, onChange: (e) => campo("marca", e.target.value) })),
+      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Lema / subtítulo" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.lema, onChange: (e) => campo("lema", e.target.value) })),
+      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Razón social" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.razonSocial, onChange: (e) => campo("razonSocial", e.target.value) })),
+      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "NIF / CIF" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.nif, onChange: (e) => campo("nif", e.target.value) })),
+      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Web (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.web, onChange: (e) => campo("web", e.target.value) })),
+      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Red social (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.redSocial, onChange: (e) => campo("redSocial", e.target.value) })),
+      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Texto final de documentos" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.pieDocumentos, onChange: (e) => campo("pieDocumentos", e.target.value) })),
+      guardado && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.accent } }, "Datos de empresa guardados."),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" },
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: guardar }, "Guardar"),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setAbierto(false) }, "Cerrar")
+      )
+    )
+  );
+}
+function Locales({ locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo, configEmpresa, setConfigEmpresa }) {
   const [mostrarForm, setMostrarForm] = import_react4.default.useState(false);
   const [nombre, setNombre] = import_react4.default.useState("");
   const [direccion, setDireccion] = import_react4.default.useState("");
@@ -124286,7 +124365,7 @@ function Locales({ locales, localActivoId, crearLocal, actualizarLocal, desactiv
     setError("");
     setMostrarForm(false);
   }
-  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Locales"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "La separaci\xF3n por local ya est\xE1 activa en Panel general, Resultados y Libro de IVA. El resto de m\xF3dulos mantiene de momento la vista conjunta mientras se completa la separaci\xF3n por local.")), /* @__PURE__ */ import_react4.default.createElement(DiagnosticoSincronizacion, null), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 mb-4" }, activos.map((l2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: l2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium text-[13px] flex items-center gap-1.5" }, l2.nombre, l2.id === localActivoId && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "activo en este dispositivo")), l2.direccion && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, l2.direccion)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, l2.id !== localActivoId && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => cambiarLocalActivo(l2.id) }, "Usar este"), /* @__PURE__ */ import_react4.default.createElement(FichaDatosLocal, { local: l2, actualizarLocal }), activos.length > 1 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setConfirmarDesactivar(l2) }, "Desactivar")))))), mostrarForm ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre del local" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nombre, onChange: (e) => setNombre(e.target.value), placeholder: "Ej: San Gin\xE9s Centro", autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Direcci\xF3n (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: direccion, onChange: (e) => setDireccion(e.target.value) })), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: enviar }, "Crear local"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Locales"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "La separaci\xF3n por local ya est\xE1 activa en Panel general, Resultados y Libro de IVA. El resto de m\xF3dulos mantiene de momento la vista conjunta mientras se completa la separaci\xF3n por local.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement(FichaEmpresaBasica, { configEmpresa, setConfigEmpresa })), /* @__PURE__ */ import_react4.default.createElement(DiagnosticoSincronizacion, null), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 mb-4" }, activos.map((l2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: l2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium text-[13px] flex items-center gap-1.5" }, l2.nombre, l2.id === localActivoId && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "activo en este dispositivo")), l2.direccion && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, l2.direccion)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, l2.id !== localActivoId && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => cambiarLocalActivo(l2.id) }, "Usar este"), /* @__PURE__ */ import_react4.default.createElement(FichaDatosLocal, { local: l2, actualizarLocal }), activos.length > 1 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setConfirmarDesactivar(l2) }, "Desactivar")))))), mostrarForm ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre del local" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nombre, onChange: (e) => setNombre(e.target.value), placeholder: "Ej: San Gin\xE9s Centro", autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Direcci\xF3n (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: direccion, onChange: (e) => setDireccion(e.target.value) })), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: enviar }, "Crear local"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
     setMostrarForm(false);
     setError("");
   } }, "Cancelar"))) : /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setMostrarForm(true) }, "+ A\xF1adir local nuevo"), inactivos.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-6" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, "Locales desactivados"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, inactivos.map((l2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: l2.id, style: { opacity: 0.6 } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px]" }, l2.nombre))))), confirmarDesactivar && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmarDesactivar(null), title: "Desactivar local" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, '"', confirmarDesactivar.nombre, '" dejar\xE1 de aparecer como local activo. No se borra ning\xFAn dato \u2014 solo se oculta de la lista de "en uso".'), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
@@ -127191,7 +127270,7 @@ function EtiquetasCatalogo({ productos, fichasCosto, alergenosDeFicha }) {
     return a2 ? `${a2.icono} ${a2.nombre}` : "";
   }).join(" \xB7 "))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[13px]" }, "\u20AC", fmt(precioNeto(v2.producto) * (1 + ivaDe(v2.producto) / 100))))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mt-4", style: { color: "#6B7A6E" } }, "Precios con IVA incluido. Puede haber trazas de otros al\xE9rgenos por manipulaci\xF3n en el mismo obrador."))));
 }
-function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], registrarAuditoria, local = null }) {
+function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], registrarAuditoria, local = null, configEmpresa }) {
   const [carrito, setCarrito] = (0, import_react4.useState)([]);
   const [categoria, setCategoria] = (0, import_react4.useState)("Todos");
   const [busqueda, setBusqueda] = (0, import_react4.useState)("");
@@ -127294,6 +127373,14 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
     const direccionLocal = local?.direccion || local?.direccionTicket || "";
     const telefonoLocal = local?.telefono || local?.telefonoTicket || "";
     const emailLocal = local?.email || local?.emailTicket || "";
+    const empresa = configEmpresa || {};
+    const marcaEmpresa = empresa.marca || "Chocolatería San Ginés";
+    const lemaEmpresa = empresa.lema || "MADRID 1894";
+    const razonSocialEmpresa = empresa.razonSocial || "CHOCOLOYOS, S.L.";
+    const nifEmpresa = empresa.nif || "B87342077";
+    const redSocialEmpresa = empresa.redSocial || "";
+    const webEmpresa = empresa.web || "";
+    const pieEmpresa = empresa.pieDocumentos || "GRACIAS POR SU VISITA";
     const numeroDocumento = v2.numeroFiscal || v2.referencia;
     const tieneNumeroFiscal = !!v2.numeroFiscal;
     const entregado = v2.entregado == null ? null : Number(v2.entregado);
@@ -127301,13 +127388,13 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
     return h(Modal, { onClose: () => setTicketVenta(null), title: `Ticket ${v2.referencia}` },
       h("div", { className: "rounded-xl p-4 mono", style: { background: C2.surface, border: `1px solid ${C2.line}` } },
         h("div", { className: "text-center mb-3" },
-          h("div", { className: "text-[10px] font-bold tracking-[0.18em]" }, "CHOCOLATERÍA"),
-          h("div", { className: "text-[27px] font-black leading-none mt-1" }, "San Ginés"),
-          h("div", { className: "text-[10px] font-bold tracking-[0.22em] mt-1" }, "MADRID 1894")
+          h("div", { className: "text-[10px] font-bold tracking-[0.18em]" }, "EMPRESA"),
+          h("div", { className: "text-[22px] font-black leading-tight mt-1" }, marcaEmpresa),
+          lemaEmpresa ? h("div", { className: "text-[10px] font-bold tracking-[0.18em] mt-1" }, lemaEmpresa) : null
         ),
         h("div", { className: "text-center text-[10.5px] leading-5 mb-3" },
-          h("div", { className: "font-bold" }, "CHOCOLOYOS, S.L."),
-          h("div", null, "N.I.F.: B87342077"),
+          h("div", { className: "font-bold" }, razonSocialEmpresa),
+          nifEmpresa ? h("div", null, `N.I.F.: ${nifEmpresa}`) : null,
           direccionLocal ? h("div", null, direccionLocal) : null,
           telefonoLocal ? h("div", null, `Tfno.: ${telefonoLocal}`) : null,
           emailLocal ? h("div", null, emailLocal) : null,
@@ -127350,10 +127437,12 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
           v2.medioPago === "Mixto" && v2.detallePago ? h("div", { className: "mt-2 text-center" }, `TARJETA €${fmt(v2.detallePago.tarjeta || 0)} · EFECTIVO €${fmt(v2.detallePago.efectivo || 0)}`) : null
         ),
         h("div", { className: "text-center text-[10px] pt-3", style: { borderTop: `1px dashed ${C2.line}` } },
-          h("div", null, "Si quieres obtener ofertas especiales"),
-          h("div", null, "y comunicarte con nosotros"),
-          h("div", null, "síguenos en @ChocoSanGines"),
-          h("div", { className: "font-bold text-[12px] mt-3" }, v2.anulada ? "VENTA ANULADA" : "GRACIAS POR SU VISITA"),
+          (redSocialEmpresa || webEmpresa) ? h("div", null,
+            h("div", null, "Contacto"),
+            redSocialEmpresa ? h("div", null, redSocialEmpresa) : null,
+            webEmpresa ? h("div", null, webEmpresa) : null
+          ) : null,
+          h("div", { className: "font-bold text-[12px] mt-3" }, v2.anulada ? "VENTA ANULADA" : pieEmpresa),
           h("div", { className: "font-semibold mt-1" }, "I.V.A. INCLUIDO"),
           h("div", { className: "text-[8.5px] mt-3 break-all", style: { color: C2.inkSoft } }, `ID operación: ${v2.ventaId}`),
           !tieneNumeroFiscal ? h("div", { className: "text-[8.5px] mt-1", style: { color: C2.inkSoft } }, "Documento interno del TPV · pendiente de numeración fiscal") : null
