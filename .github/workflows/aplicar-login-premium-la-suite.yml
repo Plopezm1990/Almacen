@@ -1,0 +1,83 @@
+name: Aplicar login premium L&A Suite
+on:
+  push:
+    paths:
+      - '.github/workflows/aplicar-login-premium-la-suite.yml'
+permissions:
+  contents: write
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar estilo premium
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p=Path('fuente.js')
+          s=p.read_text(encoding='utf-8')
+
+          old_base='  const estiloBase = { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F3E9", fontFamily: "\'IBM Plex Sans\', ui-sans-serif, system-ui", padding: 20 };'
+          new_base='  const estiloBase = { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "radial-gradient(circle at 50% 26%, #153D27 0%, #0C2714 44%, #06170E 100%)", fontFamily: "\'IBM Plex Sans\', ui-sans-serif, system-ui", padding: 20 };'
+          if old_base not in s:
+              raise SystemExit('No se encontró estiloBase esperado')
+          s=s.replace(old_base,new_base,1)
+
+          inicio=s.index('  if (fase === "login") {')
+          fin=s.index('  return /* @__PURE__ */ import_react4.default.createElement(GestionAlmacen, null);', inicio)
+          bloque='''  if (fase === "login") {\n    const campoAcceso = { width: "100%", padding: "13px 14px", marginBottom: 12, border: "1px solid rgba(198,154,82,.30)", borderRadius: 12, fontSize: 14, boxSizing: "border-box", fontFamily: "inherit", background: "rgba(2,18,11,.52)", color: "#F4EBDD", outline: "none" };\n    return /* @__PURE__ */ import_react4.default.createElement("div", { style: estiloBase }, /* @__PURE__ */ import_react4.default.createElement("form", { onSubmit: entrar, style: { background: "linear-gradient(180deg, rgba(16,49,30,.985), rgba(5,27,16,.985))", padding: "30px 28px 26px", borderRadius: 24, width: "100%", maxWidth: 390, border: "1px solid rgba(198,154,82,.55)", boxShadow: "0 24px 70px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.03)", backdropFilter: "blur(10px)" } }, /* @__PURE__ */ import_react4.default.createElement("div", { style: { display: "flex", justifyContent: "center", marginBottom: 4 } }, /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO_PROYECTO, alt: "L&A Suite", style: { width: "72%", maxWidth: 225, height: "auto", display: "block", filter: "drop-shadow(0 8px 18px rgba(0,0,0,.28))" } })), /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontFamily: "Georgia, 'Times New Roman', serif", fontSize: 27, fontWeight: 600, textAlign: "center", marginBottom: 6, color: "#F7F0E3", letterSpacing: ".01em" } }, "L&A Suite"), /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontSize: 12.5, color: "#AEBBB2", textAlign: "center", marginBottom: 24, lineHeight: 1.45 } }, "Inicia sesi\\xF3n para sincronizar entre dispositivos"), /* @__PURE__ */ import_react4.default.createElement(\n      "input",\n      {\n        type: "email",\n        required: true,\n        autoFocus: true,\n        placeholder: "Correo",\n        value: email,\n        onChange: (e) => setEmail(e.target.value),\n        style: campoAcceso\n      }\n    ), /* @__PURE__ */ import_react4.default.createElement(\n      "input",\n      {\n        type: "password",\n        required: true,\n        placeholder: "Contrase\\xF1a",\n        value: password,\n        onChange: (e) => setPassword(e.target.value),\n        style: { ...campoAcceso, marginBottom: 16 }\n      }\n    ), error && /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: "#FFB9AE", fontSize: 12.5, marginBottom: 12, lineHeight: 1.4 } }, error), /* @__PURE__ */ import_react4.default.createElement("button", { type: "submit", disabled: cargando, style: { width: "100%", padding: "13px", background: "linear-gradient(135deg, #8A6028 0%, #C69A52 52%, #9B7132 100%)", color: "#071D12", border: "1px solid rgba(232,199,130,.66)", borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: "pointer", boxShadow: "0 8px 20px rgba(0,0,0,.22)" } }, cargando ? "Entrando\\u2026" : "Entrar"), /* @__PURE__ */ import_react4.default.createElement("div", { onClick: entrarSinNube, style: { marginTop: 17, textAlign: "center", fontSize: 12.5, color: "#C69A52", textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer" } }, "Trabajar solo en este equipo, sin sincronizar")));\n  }\n'''
+          s=s[:inicio]+bloque+s[fin:]
+          p.write_text(s,encoding='utf-8')
+
+          # Estilo del enlace Olvidaste tu contraseña, insertado por auth-ux-patch.js
+          p=Path('auth-ux-patch.js')
+          a=p.read_text(encoding='utf-8')
+          old='." + CLASE_OLVIDO + "{display:block;width:100%;margin:10px 0 0;padding:7px 8px;border:0;background:transparent;color:#6f6654;text-decoration:underline;font:inherit;font-size:13px;cursor:pointer}'
+          new='." + CLASE_OLVIDO + "{display:block;width:100%;margin:12px 0 0;padding:7px 8px;border:0;background:transparent;color:#C69A52;text-decoration:underline;text-underline-offset:3px;font:inherit;font-size:13px;cursor:pointer}'
+          if old not in a:
+              raise SystemExit('No se encontró estilo de olvido')
+          a=a.replace(old,new,1)
+          p.write_text(a,encoding='utf-8')
+
+          # Recuperación de contraseña con la misma identidad premium.
+          p=Path('restablecer-contrasena.html')
+          h=p.read_text(encoding='utf-8')
+          ini=h.index('  <style>')
+          end=h.index('  </style>',ini)+len('  </style>')
+          estilo='''  <style>\n    *{box-sizing:border-box}\n    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 50% 26%,#153D27 0%,#0C2714 44%,#06170E 100%);color:#f5eddf;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}\n    .card{width:min(440px,100%);background:linear-gradient(180deg,rgba(16,49,30,.985),rgba(5,27,16,.985));border:1px solid rgba(198,154,82,.55);border-radius:24px;padding:28px;box-shadow:0 24px 70px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.03)}\n    .brand{display:block;width:min(70%,230px);height:auto;margin:0 auto 4px;filter:drop-shadow(0 8px 18px rgba(0,0,0,.28))}\n    h1{font-family:Georgia,"Times New Roman",serif;text-align:center;font-size:27px;margin:0 0 7px;color:#f7f0e3}\n    .sub{color:#aebbb2;line-height:1.5;font-size:14px;margin:0 0 22px;text-align:center}\n    label{display:block;font-weight:700;font-size:13px;margin:13px 0 7px;color:#e9ddc9}\n    input{width:100%;padding:13px 14px;border:1px solid rgba(198,154,82,.30);border-radius:12px;background:rgba(2,18,11,.52);color:#f4ebdd;font:inherit;outline:none}\n    input:focus{border-color:#c69a52;box-shadow:0 0 0 3px rgba(198,154,82,.12)}\n    button{width:100%;margin-top:17px;padding:13px;border:1px solid rgba(232,199,130,.66);border-radius:12px;background:linear-gradient(135deg,#8A6028 0%,#C69A52 52%,#9B7132 100%);color:#071D12;font:inherit;font-weight:800;cursor:pointer;box-shadow:0 8px 20px rgba(0,0,0,.22)}\n    button:disabled{opacity:.55;cursor:default}.msg{margin-top:12px;min-height:20px;font-size:13px;line-height:1.4;color:#b9c8be}.msg.error{color:#ffb9ae}.ok{padding:13px;border-radius:12px;background:rgba(73,133,95,.18);border:1px solid rgba(122,178,143,.24);color:#d9eadf;margin-top:14px;font-size:13px;line-height:1.5}.volver{display:block;margin-top:18px;text-align:center;color:#c69a52;font-size:13px;text-underline-offset:3px}.hidden{display:none!important}\n  </style>'''
+          h=h[:ini]+estilo+h[end:]
+          if '<main class="card">\n    <h1>L&amp;A Suite</h1>' in h:
+              h=h.replace('<main class="card">\n    <h1>L&amp;A Suite</h1>','<main class="card">\n    <img class="brand" src="la-suite-logo.svg" alt="L&amp;A Suite">\n    <h1>L&amp;A Suite</h1>',1)
+          elif 'class="brand"' not in h:
+              raise SystemExit('No se encontró cabecera de recuperación')
+          p.write_text(h,encoding='utf-8')
+
+          # Afinar pantalla de carga para usar la misma profundidad de verde.
+          p=Path('index.html')
+          x=p.read_text(encoding='utf-8')
+          x=x.replace('background: radial-gradient(circle at 50% 34%, #143A24 0%, #0C2714 48%, #071D12 100%); color: #E7D1A5; z-index: 9999;', 'background: radial-gradient(circle at 50% 26%, #153D27 0%, #0C2714 44%, #06170E 100%); color: #E7D1A5; z-index: 9999;',1)
+          x=x.replace('#cargando .logo-suite { width: min(72vw, 330px);', '#cargando .logo-suite { width: min(68vw, 300px);',1)
+          p.write_text(x,encoding='utf-8')
+          PY
+      - name: Validar cambios
+        run: |
+          set -euo pipefail
+          node --check fuente.js
+          node --check auth-ux-patch.js
+          git diff --check
+          grep -q 'radial-gradient(circle at 50% 26%' fuente.js
+          grep -q 'linear-gradient(180deg, rgba(16,49,30' fuente.js
+          grep -q 'class="brand" src="la-suite-logo.svg"' restablecer-contrasena.html
+          grep -q '#C69A52' auth-ux-patch.js
+          grep -q 'L&A Suite' fuente.js
+      - name: Guardar y limpiar temporal
+        run: |
+          rm -f .github/workflows/aplicar-login-premium-la-suite.yml
+          rm -f .github/workflows/inspeccionar-login-la-suite.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '4189826+github-actions[bot]@users.noreply.github.com'
+          git add fuente.js auth-ux-patch.js restablecer-contrasena.html index.html .github
+          git diff --cached --check
+          git commit -m 'Aplicar estilo verde premium a acceso L&A Suite'
+          git push origin HEAD:la-suite-identidad
