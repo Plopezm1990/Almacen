@@ -1,0 +1,37 @@
+name: Auditar reset seguro de datos
+on:
+  push:
+    branches: [la-suite-identidad]
+    paths: ['.github/workflows/auditar-reset-datos.yml']
+  workflow_dispatch:
+jobs:
+  auditar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inventariar claves y lógica de limpieza
+        run: |
+          python3 <<'PY'
+          import re, pathlib
+          s=pathlib.Path('fuente.js').read_text(encoding='utf-8', errors='ignore')
+          pats=[
+            r'storage\.getItem\(\s*["\']([^"\']+)',
+            r'storage\.setItem\(\s*["\']([^"\']+)',
+            r'localStorage\.getItem\(\s*["\']almacen:([^"\']+)',
+            r'localStorage\.setItem\(\s*["\']almacen:([^"\']+)',
+            r'getItem\(\s*["\']([^"\']+)["\']\s*\)',
+            r'setItem\(\s*["\']([^"\']+)["\']\s*,'
+          ]
+          keys=set()
+          for p in pats:
+            keys.update(re.findall(p,s))
+          print('=== CLAVES DETECTADAS ===')
+          for k in sorted(keys):
+            if len(k)<100: print(k)
+          print('\n=== CONTEXTOS RESET/LIMPIAR/BORRAR ===')
+          for term in ['reset','restablecer','limpiar datos','borrar datos','localStorage.clear','almacen__pendientes']:
+            print('\n---',term,'---')
+            for m in list(re.finditer(re.escape(term),s,re.I))[:12]:
+              a=max(0,m.start()-500); b=min(len(s),m.end()+1000)
+              print(s[a:b].replace('\n',' ')[:1600])
+          PY
