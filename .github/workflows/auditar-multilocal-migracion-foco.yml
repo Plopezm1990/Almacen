@@ -1,0 +1,39 @@
+name: Precisar migración de locales y pedidos
+
+on:
+  push:
+    branches:
+      - la-suite-identidad
+    paths:
+      - .github/workflows/auditar-multilocal-migracion-foco.yml
+  workflow_dispatch:
+
+jobs:
+  inspeccionar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mostrar bloque de migración multi-local
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const src=fs.readFileSync('fuente.js','utf8');
+          const start=src.indexOf('let localesFinales = Array.isArray(loc) ? [...loc] : []');
+          const end=src.indexOf('setLocales(localesFinales);', start);
+          if(start<0||end<0){console.error('No se encontró el bloque esperado');process.exit(1)}
+          console.log('=== BLOQUE MIGRACION LOCALES Y COLECCIONES ===');
+          console.log(src.slice(start,end+260).replace(/\s+/g,' '));
+          console.log('\n=== CONTEXTO EMPRESA DEL LOCAL ACTIVO ===');
+          const ep=src.indexOf('const empresaDelLocalActivo');
+          console.log(src.slice(ep,ep+1200).replace(/\s+/g,' '));
+          console.log('\n=== PREDICADOS A ENDURECER ===');
+          for(const needle of ['const productosDelLocalActivo','const pedidosDelLocalActivo','function productoEsDelLocalActivo(prod)','function pedidoEsDelLocalActivo(pedido)']){
+            let p=0,i=0;
+            while((p=src.indexOf(needle,p))!==-1 && i<8){
+              console.log(`\n-- ${needle} #${++i} --`);
+              console.log(src.slice(p,p+650).replace(/\s+/g,' '));
+              p+=needle.length;
+            }
+          }
+          NODE
