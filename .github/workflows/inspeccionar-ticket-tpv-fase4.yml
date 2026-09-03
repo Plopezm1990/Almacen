@@ -1,0 +1,32 @@
+name: Inspeccionar ticket TPV fase 4
+on:
+  push:
+    branches: [tpv-ventas-fase-4]
+    paths:
+      - .github/workflows/inspeccionar-ticket-tpv-fase4.yml
+permissions:
+  contents: read
+jobs:
+  inspeccion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspeccionar historial y detalle de venta
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          needles=['function VentaRapida(', 'Historial de ventas', 'Detalle de venta', 'Anular venta', 'ventaSeleccionada', 'ventasAgrupadas']
+          for needle in needles:
+              print('\n===', needle, '===')
+              start=0; n=0
+              while True:
+                  i=s.find(needle,start)
+                  if i<0: break
+                  n+=1
+                  print(s[max(0,i-2200):i+6500])
+                  print('\n---')
+                  start=i+len(needle)
+                  if n>=8: break
+              print('COUNT', n)
+          PY
