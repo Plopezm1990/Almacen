@@ -1,0 +1,34 @@
+name: Preparar ticket TPV fase 4 capa 1
+
+on:
+  push:
+    branches: [tpv-ventas-fase-4]
+    paths:
+      - '.github/workflows/preparar-ticket-tpv-fase4-capa1.yml'
+      - '.github/scripts/preparar_ticket_tpv_fase4_capa1.py'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar capa mínima
+        run: python3 .github/scripts/preparar_ticket_tpv_fase4_capa1.py
+      - name: Validar
+        run: |
+          node --check fuente.js
+          git diff --check
+          test "$(grep -c 'const \[ticketVenta, setTicketVenta\]' fuente.js)" -eq 1
+      - name: Limpiar y guardar
+        run: |
+          rm -f .github/scripts/preparar_ticket_tpv_fase4_capa1.py
+          rm -f .github/workflows/preparar-ticket-tpv-fase4-capa1.yml
+          git config user.name 'Plopezm1990'
+          git config user.email 'pedroroger1990@gmail.com'
+          git add fuente.js .github/scripts .github/workflows
+          git diff --cached --check
+          git commit -m 'Preparar estado aislado para ticket TPV'
+          git push origin HEAD:tpv-ventas-fase-4
