@@ -118796,7 +118796,7 @@ function GestionAlmacen() {
       fichajes: fichajesDelLocalActivo,
       movimientos: movimientosDelLocalActivo
     }
-  ), tab === "venta" && /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito, anularVenta, movimientos: movimientosDelLocalActivo, registrarAuditoria }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localActivoId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito, anularVenta, movimientos: movimientosDelLocalActivo, registrarAuditoria }) : /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "Selecciona un local concreto para abrir el TPV. Las ventas, el stock y la caja siempre deben registrarse en un único local."))), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -118909,7 +118909,7 @@ function GestionAlmacen() {
     { id: "turnos", label: "Cuadrante de turnos", icon: CalendarClock },
     { id: "appcc", label: "Control sanitario", icon: ShieldCheck, badge: appccPendientesHoy.length, badgeColor: C2.amber },
     { id: "aceite", label: "Aceite de freidoras", icon: Droplet },
-    { id: "venta", label: "Venta r\xE1pida", icon: ShoppingBag },
+    { id: "venta", label: "TPV", icon: ShoppingBag },
     { id: "encargos", label: "Encargos", icon: CalendarDays, badge: encargosUrgentesDelLocalActivo.length, badgeColor: C2.red },
     { id: "clientes", label: "Clientes", icon: UserRound },
     { id: "libroiva", label: "Libro de IVA", icon: Receipt },
@@ -120446,6 +120446,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   }
   const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos });
   function venderLineas(lineas, opciones = {}) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para abrir el TPV." };
     const incluyeOtroLocal = (lineas || []).some((ln2) => {
       const p2 = productos.find((x3) => x3.id === ln2.productoId);
       return !!p2 && !productoEsDelLocalActivoVenta(p2);
@@ -120458,7 +120459,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       operationId = null,
       origen = "venderLocal",
       documentoOrigenId = null,
-      motivoBase = "Venta r\xE1pida",
+      motivoBase = "TPV",
       extraPorLinea = () => ({})
     } = opciones;
     const ventaId = operationId || uid();
@@ -120515,9 +120516,10 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     return { ok: true, n: movimientosGenerados.length, modo: "local", ventaId, movimientos: movimientosGenerados };
   }
   function venderLocal(lineas, medioPago, detallePago) {
-    return venderLineas(lineas, { tipo: "VENTA", medioPago, detallePago, origen: "venderLocal", motivoBase: "Venta r\xE1pida" });
+    return venderLineas(lineas, { tipo: "VENTA", medioPago, detallePago, origen: "venderLocal", motivoBase: "TPV" });
   }
   async function venderCarrito(lineas, medioPago = "Efectivo", detallePago = null) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para abrir el TPV." };
     const incluyeOtroLocal = (lineas || []).some((ln2) => {
       const p2 = productos.find((x3) => x3.id === ln2.productoId);
       return !!p2 && !productoEsDelLocalActivoVenta(p2);
@@ -120550,7 +120552,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         ingresoUnitario,
         ivaVentaAplicado: ivaAplicado,
         medioPago,
-        referencia: "Venta r\xE1pida"
+        referencia: "TPV"
       };
       if (detallePago && totalVenta > 0 && prod) {
         const importeLinea = cant * ingresoUnitario * (1 + ivaAplicado / 100);
@@ -120671,6 +120673,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     return { ok: true, lineasAnuladas: aplicadas, arqueoAfectado: !!arqueoDelDia };
   }
   async function anularVenta(ventaId, movimientosActuales, motivo = "") {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para gestionar ventas del TPV." };
     if (!ventaId) return { ok: false, error: "Esa venta no tiene identificador y no se puede anular." };
     const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
     if (!hayConexion) return anularVentaLocal(ventaId, movimientosActuales, motivo);
@@ -126985,7 +126988,7 @@ function Produccion({ fichasCosto, productos, ordenesProduccion, producir, anula
   ))), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submit, disabled: procesandoProduccion }, procesandoProduccion ? "Registrando\u2026" : "Confirmar producci\xF3n"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: cancelarFormulario, disabled: procesandoProduccion }, "Cancelar")))), resultado && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => {
     setResultado(null);
     setEnviadoAPiso(false);
-  }, title: "Producci\xF3n registrada" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, resultado.fichaNombre, ": ", fmt(resultado.unidadesBuenas), " unidad(es) a \u20AC", fmt(resultado.costoUnitarioLote), "/ud. Ya se ha descontado el stock de ingredientes y dado entrada al producto elaborado."), enviadoAPiso ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Enviadas al piso de venta. Ya aparecen en ", /* @__PURE__ */ import_react4.default.createElement("b", null, "Venta r\xE1pida"), " para cobrarlas.")) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Est\xE1n en el almac\xE9n, todav\xEDa no en el mostrador. Para poder venderlas en Venta r\xE1pida hay que pasarlas al piso de venta.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => enviarAPisoDeVenta(resultado) }, "Enviar las ", fmt(resultado.unidadesBuenas), " al piso de venta")), errorEnvio && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, errorEnvio)), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+  }, title: "Producci\xF3n registrada" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, resultado.fichaNombre, ": ", fmt(resultado.unidadesBuenas), " unidad(es) a \u20AC", fmt(resultado.costoUnitarioLote), "/ud. Ya se ha descontado el stock de ingredientes y dado entrada al producto elaborado."), enviadoAPiso ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Enviadas al piso de venta. Ya aparecen en ", /* @__PURE__ */ import_react4.default.createElement("b", null, "TPV"), " para cobrarlas.")) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Est\xE1n en el almac\xE9n, todav\xEDa no en el mostrador. Para poder venderlas en Venta r\xE1pida hay que pasarlas al piso de venta.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => enviarAPisoDeVenta(resultado) }, "Enviar las ", fmt(resultado.unidadesBuenas), " al piso de venta")), errorEnvio && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, errorEnvio)), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
     setResultado(null);
     setEnviadoAPiso(false);
   } }, "Cerrar")), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setVerHistorial((s2) => !s2), className: "text-[12.5px] font-medium mt-4 mb-2", style: { color: C2.accent } }, verHistorial ? "Ocultar" : "Ver", " historial de producci\xF3n (", ordenesProduccion.length, ")"), verHistorial && /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, ordenesProduccion.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has registrado ninguna producci\xF3n." }) : ordenesProduccion.map((o2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: o2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, o2.fechaHora || `${o2.fecha} ${o2.hora}`, " \xB7 ", o2.fichaNombre), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, fmt(o2.unidadesBuenas), " ud \xB7 \u20AC", fmt(o2.costoUnitarioLote), "/ud")), o2.notas && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, o2.notas), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAnulando(o2) }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 13 }), " Anular"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => rehacer(o2) }, "Corregir"))))), anulando && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setAnulando(null), title: "\xBFAnular esta producci\xF3n?" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, /* @__PURE__ */ import_react4.default.createElement("b", null, anulando.fichaNombre), " \xB7 ", fmt(anulando.unidadesBuenas), " unidad(es) del ", anulando.fecha), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, "Se devolver\xE1n los ingredientes al almac\xE9n y se quitar\xE1n las unidades elaboradas. Se borran tambi\xE9n sus movimientos, para que no cuenten dos veces en los informes."), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "El coste del producto elaborado vuelve al que ten\xEDa antes de esta tanda. Ese c\xE1lculo es exacto si no has producido ni recibido m\xE1s de ese producto desde entonces; si s\xED, quedar\xE1 aproximado \u2014 conviene revisar su coste en Productos despu\xE9s de anular.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: () => {
@@ -127384,7 +127387,7 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
     setCarrito([]);
     setShowCobro(false);
   }
-  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[16px] font-semibold" }, "Venta r\xE1pida"), carrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: vaciarCarrito }, "Vaciar carrito")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "Esto registra la venta y descuenta el stock para tu control interno \u2014 ", /* @__PURE__ */ import_react4.default.createElement("b", null, "no emite ning\xFAn tique fiscal"), ". Para lo que le das al cliente, sigue usando tu caja o TPV habitual.")), vendibles.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay nada en el piso de venta ahora mismo. Ponle precio a un producto en Productos, o haz un traspaso desde el almac\xE9n en la pesta\xF1a Traspasos." }) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "relative mb-3" }, /* @__PURE__ */ import_react4.default.createElement(
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[16px] font-semibold" }, "TPV"), carrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: vaciarCarrito }, "Vaciar carrito")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "Esto registra la venta y descuenta el stock para tu control interno \u2014 ", /* @__PURE__ */ import_react4.default.createElement("b", null, "no emite ning\xFAn tique fiscal"), ". Para lo que le das al cliente, sigue usando tu caja o TPV habitual.")), vendibles.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay nada en el piso de venta ahora mismo. Ponle precio a un producto en Productos, o haz un traspaso desde el almac\xE9n en la pesta\xF1a Traspasos." }) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "relative mb-3" }, /* @__PURE__ */ import_react4.default.createElement(
     "input",
     {
       ref: inputEscaneoRef,
