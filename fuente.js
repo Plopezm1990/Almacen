@@ -127146,7 +127146,7 @@ function EtiquetasCatalogo({ productos, fichasCosto, alergenosDeFicha }) {
     return a2 ? `${a2.icono} ${a2.nombre}` : "";
   }).join(" \xB7 "))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[13px]" }, "\u20AC", fmt(precioNeto(v2.producto) * (1 + ivaDe(v2.producto) / 100))))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mt-4", style: { color: "#6B7A6E" } }, "Precios con IVA incluido. Puede haber trazas de otros al\xE9rgenos por manipulaci\xF3n en el mismo obrador."))));
 }
-function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], registrarAuditoria }) {
+function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], registrarAuditoria, local = null }) {
   const [carrito, setCarrito] = (0, import_react4.useState)([]);
   const [categoria, setCategoria] = (0, import_react4.useState)("Todos");
   const [busqueda, setBusqueda] = (0, import_react4.useState)("");
@@ -127156,6 +127156,7 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
   const [errorAnular, setErrorAnular] = (0, import_react4.useState)("");
   const [procesandoAnulacion, setProcesandoAnulacion] = (0, import_react4.useState)(false);
   const [ventaDetalle, setVentaDetalle] = (0, import_react4.useState)(null);
+  const [ticketVenta, setTicketVenta] = (0, import_react4.useState)(null);
   const [filtroVentasTexto, setFiltroVentasTexto] = (0, import_react4.useState)("");
   const [filtroVentasDesde, setFiltroVentasDesde] = (0, import_react4.useState)("");
   const [filtroVentasHasta, setFiltroVentasHasta] = (0, import_react4.useState)("");
