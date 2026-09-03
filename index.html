@@ -45,6 +45,7 @@
   // empaquetadas de verdad junto al código de la app (ver reconstruir.sh),
   // no se cargan desde ningún CDN en tiempo real.
 </script>
+<script src="./reset-pruebas-preview.js"></script>
 
 <script>
   /* ==========================================================
@@ -70,6 +71,11 @@
   window.NUBE_URL = NUBE_URL;
   window.NUBE_CLAVE = NUBE_CLAVE;
   window.ESPERA_NUBE_MS = ESPERA_NUBE_MS;
+  if (window.__modoPruebasLocal) {
+    // Deploy Preview: aislamiento total. No leer ni escribir Supabase.
+    window.NUBE_URL = "";
+    window.NUBE_CLAVE = "";
+  }
 
   window.__nubeActiva = false;   // ¿se pudo contactar con la nube?
   window.__nubeCliente = null;
@@ -573,7 +579,7 @@
         } catch (e) {
           marcarPendiente(key);
         }
-      } else {
+      } else if (!window.__modoPruebasLocal) {
         marcarPendiente(key);
       }
 
