@@ -1,4 +1,4 @@
-name: Precisar migración de locales y pedidos
+name: Auditar consolidación multi-local
 
 on:
   push:
@@ -13,47 +13,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Mostrar empresa-local, creación y usos
+      - name: Inspeccionar bloque de informes y aislamiento aplicado
         shell: bash
         run: |
           node <<'NODE'
           const fs=require('fs');
           const src=fs.readFileSync('fuente.js','utf8');
-          const lower=src.toLowerCase();
           const clean=s=>s.replace(/\s+/g,' ');
 
-          const start=src.indexOf('let localesFinales = Array.isArray(loc) ? [...loc] : []');
-          const end=src.indexOf('setLocales(localesFinales);', start);
-          if(start<0||end<0){console.error('No se encontró el bloque esperado');process.exit(1)}
-          console.log('=== BLOQUE MIGRACION LOCALES Y COLECCIONES ===');
-          console.log(clean(src.slice(start,end+260)));
-
-          const needles=[
-            'const empresaDelLocalActivo',
-            'empresaDelLocalActivo',
-            'function crearLocal(',
-            'crearLocal({',
-            'empresaId:',
-            '.empresaId',
-            'locales.filter(',
-            'localesPorEmpresa',
-            'empresasYLocales',
-            'Empresas y locales',
-            'setLocalActivoId(',
-            'localInformeId',
-            'BusquedaGlobal'
+          const checks = [
+            ['empresa legacy única', 'const empresaLegacyUnicaId = empresasFinales.length === 1'],
+            ['empresa local exacta', 'const empresaDelLocalActivo'],
+            ['locales empresa activa', 'const localesEmpresaActiva'],
+            ['productos estrictos', 'return productos.filter((p2) => p2.localId === localActivoId)'],
+            ['pedidos estrictos', 'return pedidos.filter((p2) => p2.localId === localActivoId)'],
+            ['buscar acotado', 'BusquedaGlobal, { productos: productosDelLocalActivo'],
+            ['pedidos lookup local', 'productoPorId: (id) => productosDelLocalActivo.find'],
           ];
-
-          for(const raw of needles){
-            const needle=raw.toLowerCase();
-            let p=0,i=0;
-            console.log(`\n===== ${raw} =====`);
-            while((p=lower.indexOf(needle,p))!==-1 && i<20){
-              i++;
-              console.log(`--- ${i} @${p} ---`);
-              console.log(clean(src.slice(Math.max(0,p-1000),Math.min(src.length,p+2200))));
-              p+=needle.length;
-            }
-            console.log(`TOTAL MOSTRADAS: ${i}`);
+          for (const [name, needle] of checks) {
+            const count = src.split(needle).length - 1;
+            console.log(`${name}: ${count}`);
+            if (!count) process.exitCode = 1;
           }
+
+          const start=src.indexOf('const localPorProductoInforme');
+          if(start<0){console.error('No se encontró localPorProductoInforme');process.exit(1)}
+          const endCandidates=[
+            src.indexOf('const panelDatos', start),
+            src.indexOf('return /* @__PURE__ */ import_react4.default.createElement', start),
+            src.indexOf('return /* @__PURE__ */', start)
+          ].filter(x=>x>start);
+          const end=endCandidates.length ? Math.min(...endCandidates) : Math.min(src.length,start+30000);
+          console.log('\n=== BLOQUE DE CONSOLIDACIÓN ACTUAL ===');
+          console.log(clean(src.slice(start, Math.min(end, start+30000))));
           NODE
