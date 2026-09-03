@@ -4,11 +4,11 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0C2714" />
-<title>Control de Compras y Almacen</title>
+<title>L&amp;A Suite</title>
 
 <link rel="manifest" href="manifest.json" />
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
-<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="icon" type="image/svg+xml" href="la-suite-icon.svg" />
+<link rel="apple-touch-icon" href="la-suite-icon.svg" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
@@ -28,12 +28,13 @@
   #cargando {
     position: fixed; inset: 0; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 14px;
-    background: #F7F3E9; color: #17241C; z-index: 9999;
+    background: radial-gradient(circle at 50% 34%, #143A24 0%, #0C2714 48%, #071D12 100%); color: #E7D1A5; z-index: 9999;
   }
-  #cargando .marca { font-size: 15px; font-weight: 600; }
-  #cargando .paso { font-size: 12.5px; color: #6B7A6E; }
-  #cargando .barra { width: 190px; height: 4px; border-radius: 4px; background: #E2DBC7; overflow: hidden; }
-  #cargando .barra i { display: block; height: 100%; width: 30%; background: #8C6D2A; border-radius: 4px;
+  #cargando .logo-suite { width: min(72vw, 330px); height: auto; display: block; filter: drop-shadow(0 6px 12px rgba(0,0,0,.28)); }
+  #cargando .sub { margin-top: -4px; font-size: 12px; letter-spacing: .035em; color: #B8AC91; }
+  #cargando .paso { font-size: 12px; color: #9FB0A5; }
+  #cargando .barra { width: 210px; height: 3px; border-radius: 4px; background: rgba(207,172,105,.18); overflow: hidden; }
+  #cargando .barra i { display: block; height: 100%; width: 30%; background: linear-gradient(90deg,#7F5823,#C69A52,#D2AD68); border-radius: 4px;
                        animation: desliza 1.1s ease-in-out infinite; }
   @keyframes desliza { 0% { margin-left: -30%; } 100% { margin-left: 100%; } }
 </style>
@@ -611,7 +612,8 @@
 <body>
 
 <div id="cargando">
-  <div class="marca">Control de Compras y Almacen</div>
+  <img class="logo-suite" src="la-suite-logo.svg" alt="L&A Suite" />
+  <div class="sub">Gestión integral para tu negocio</div>
   <div class="barra"><i></i></div>
   <div class="paso" id="paso">Abriendo…</div>
 </div>
