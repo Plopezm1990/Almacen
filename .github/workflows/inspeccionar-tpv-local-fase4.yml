@@ -1,29 +1,34 @@
-name: Inspeccionar TPV por local fase 4
+name: Aplicar TPV por local fase 4
 on:
   push:
     branches: [tpv-ventas-fase-4]
     paths:
       - .github/workflows/inspeccionar-tpv-local-fase4.yml
+      - .github/scripts/aplicar_tpv_por_local_fase4.py
 permissions:
-  contents: read
+  contents: write
 jobs:
-  inspeccion:
+  aplicar:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Localizar etiqueta navegacion TPV
+        with:
+          fetch-depth: 0
+      - name: Aplicar cambio
+        run: python3 .github/scripts/aplicar_tpv_por_local_fase4.py
+      - name: Validar
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          s=Path('fuente.js').read_text(encoding='utf-8')
-          patterns=[r'id:\s*"venta"',r'key:\s*"venta"',r'"venta"\s*,',r'venta.{0,120}icon',r'icon.{0,120}venta',r'Venta\\x',r'venta\\x']
-          for pat in patterns:
-              print('\n=== PATTERN',pat,'===')
-              hits=list(re.finditer(pat,s,re.I))
-              print('COUNT',len(hits))
-              for m in hits[:20]:
-                  i=m.start()
-                  print(s[max(0,i-700):i+1200])
-                  print('\n---')
-          PY
+          node --check fuente.js
+          git diff --check
+          test "$(grep -o 'label: \"TPV\"' fuente.js | wc -l)" -eq 1
+          test "$(grep -o 'Selecciona un local concreto para abrir el TPV' fuente.js | wc -l)" -eq 1
+      - name: Limpiar y guardar
+        run: |
+          git rm -f .github/workflows/inspeccionar-tpv-local-fase4.yml .github/scripts/aplicar_tpv_por_local_fase4.py
+          node --check fuente.js
+          git diff --check
+          git config user.name "Plopezm1990"
+          git config user.email "pedroroger1990@gmail.com"
+          git add fuente.js
+          git commit -m "Exigir local concreto para usar el TPV"
+          git push origin HEAD:tpv-ventas-fase-4
