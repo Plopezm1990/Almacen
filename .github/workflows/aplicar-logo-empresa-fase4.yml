@@ -1,0 +1,33 @@
+name: Aplicar logo por empresa fase 4
+on:
+  push:
+    paths:
+      - '.github/workflows/aplicar-logo-empresa-fase4.yml'
+permissions:
+  contents: write
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar soporte de logo por empresa
+        run: python3 .github/scripts/anadir_logo_empresa_fase4.py
+      - name: Validar JavaScript y guardas
+        run: |
+          node --check fuente.js
+          git diff --check
+          grep -q 'async function prepararLogoEmpresa(file)' fuente.js
+          grep -q 'Logo de la empresa (opcional)' fuente.js
+          grep -q 'image/png,image/jpeg,image/webp' fuente.js
+          grep -q 'logo: c.logo' fuente.js
+          grep -q 'e2.logo &&' fuente.js
+      - name: Limpiar temporales y guardar
+        run: |
+          rm -f .github/workflows/aplicar-logo-empresa-fase4.yml
+          rm -f .github/scripts/anadir_logo_empresa_fase4.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add fuente.js .github
+          git diff --cached --check
+          git commit -m 'Añadir logo independiente a cada empresa'
+          git push origin HEAD:tpv-ventas-fase-4
