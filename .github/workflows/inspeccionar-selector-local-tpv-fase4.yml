@@ -1,0 +1,32 @@
+name: Inspeccionar selector local TPV fase 4
+on:
+  push:
+    branches: [tpv-ventas-fase-4]
+    paths:
+      - .github/workflows/inspeccionar-selector-local-tpv-fase4.yml
+permissions:
+  contents: read
+jobs:
+  inspeccion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspeccionar selector de local
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          needles=['Todos los locales','setLocalActivoId','localActivoId ===','localActivoId ?','value: localActivoId','value={localActivoId']
+          for needle in needles:
+              print('\n===', needle, '===')
+              start=0; n=0
+              while True:
+                  i=s.find(needle,start)
+                  if i<0: break
+                  n+=1
+                  print(s[max(0,i-900):i+1500])
+                  print('\n---')
+                  start=i+len(needle)
+                  if n>=20: break
+              print('COUNT', n)
+          PY
