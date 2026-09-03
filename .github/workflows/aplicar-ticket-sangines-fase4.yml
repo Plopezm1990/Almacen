@@ -1,0 +1,41 @@
+name: Aplicar ticket San Gines fase 4
+
+on:
+  push:
+    branches: [tpv-ventas-fase-4]
+    paths:
+      - '.github/workflows/aplicar-ticket-sangines-fase4.yml'
+      - '.github/scripts/aplicar_ticket_sangines_fase4.py'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar diseño San Gines
+        run: python3 .github/scripts/aplicar_ticket_sangines_fase4.py
+      - name: Validar
+        run: |
+          node --check fuente.js
+          git diff --check
+          grep -q 'CHOCOLOYOS, S.L.' fuente.js
+          grep -q 'B87342077' fuente.js
+          grep -q 'CONCEPTO' fuente.js
+          grep -q 'ENTREGADO:' fuente.js
+          grep -q 'CAMBIO:' fuente.js
+          grep -q '@ChocoSanGines' fuente.js
+      - name: Limpiar y guardar
+        run: |
+          rm -f .github/scripts/aplicar_ticket_sangines_fase4.py
+          rm -f .github/workflows/aplicar-ticket-sangines-fase4.yml
+          rm -f .github/workflows/inspeccionar-campo-nombre-local-fase4.yml
+          rm -f .github/workflows/inspeccionar-ticket-datos-local-hora-fase4.yml
+          git config user.name 'Plopezm1990'
+          git config user.email 'pedroroger1990@gmail.com'
+          git add fuente.js .github/scripts .github/workflows
+          git diff --cached --check
+          git commit -m 'Completar diseño del ticket TPV con datos San Gines'
+          git push origin HEAD:tpv-ventas-fase-4
