@@ -1,0 +1,45 @@
+name: Inspeccionar TPV ventas fase 4
+on:
+  push:
+    branches: [tpv-ventas-fase-4]
+    paths:
+      - .github/workflows/inspeccionar-tpv-ventas-fase4.yml
+permissions:
+  contents: read
+jobs:
+  inspeccion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extraer estructura actual de ventas
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          terms=[
+            'function crearLogicaVentaRapida(',
+            'function VentaRapida(',
+            'anularVenta',
+            'ventaId',
+            'ticket',
+            'formaPago',
+            'Venta registrada',
+            'venta registrada',
+            'registrarArqueo',
+            'movimientosDelLocalActivo'
+          ]
+          seen=[]
+          for t in terms:
+            print('\n===== '+t+' =====')
+            start=0; hits=0
+            while True:
+              i=s.find(t,start)
+              if i<0 or hits>=4: break
+              a=max(0,i-1200); b=min(len(s),i+5000)
+              key=(a,b)
+              if key not in seen:
+                print(s[a:b])
+                seen.append(key)
+              hits+=1; start=i+len(t)
+            if hits==0: print('NO ENCONTRADO')
+          PY
