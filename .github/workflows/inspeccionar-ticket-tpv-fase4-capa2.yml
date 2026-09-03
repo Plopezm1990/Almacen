@@ -1,0 +1,25 @@
+name: Inspeccionar ticket TPV fase 4 capa 2
+
+on:
+  push:
+    branches: [tpv-ventas-fase-4]
+    paths:
+      - '.github/workflows/inspeccionar-ticket-tpv-fase4-capa2.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspeccionar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mostrar anclas exactas del TPV
+        run: |
+          set -euo pipefail
+          echo '=== FIRMA Y ESTADOS ==='
+          grep -n -A28 -B3 'function VentaRapida' fuente.js | head -n 45
+          echo '=== RENDER HISTORIAL ==='
+          grep -n -A95 -B5 'function renderHistorialVentas' fuente.js | head -n 115
+          echo '=== RETORNO / CONFIRM ANULAR ==='
+          grep -n -A45 -B15 'renderHistorialVentas()' fuente.js | tail -n 75
