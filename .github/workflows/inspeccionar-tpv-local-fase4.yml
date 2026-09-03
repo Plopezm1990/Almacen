@@ -11,22 +11,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Localizar etiquetas y render TPV
+      - name: Localizar etiqueta navegacion TPV
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           s=Path('fuente.js').read_text(encoding='utf-8')
-          for needle in ['Venta rápida','Venta Rapida','VentaRapida','tab === "venta"','tab === "venta-rapida"','localActivoId']:
-              print('\n===',needle,'===')
-              start=0
-              n=0
-              while True:
-                  i=s.find(needle,start)
-                  if i<0: break
-                  n+=1
-                  print(s[max(0,i-500):i+900])
+          patterns=[r'id:\s*"venta"',r'key:\s*"venta"',r'"venta"\s*,',r'venta.{0,120}icon',r'icon.{0,120}venta',r'Venta\\x',r'venta\\x']
+          for pat in patterns:
+              print('\n=== PATTERN',pat,'===')
+              hits=list(re.finditer(pat,s,re.I))
+              print('COUNT',len(hits))
+              for m in hits[:20]:
+                  i=m.start()
+                  print(s[max(0,i-700):i+1200])
                   print('\n---')
-                  start=i+len(needle)
-                  if n>=12: break
-              print('COUNT',n)
           PY
