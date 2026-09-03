@@ -1,24 +1,44 @@
-name: Inspeccionar modelo ticket TPV fase 4
+name: Aplicar ticket TPV fase 4
 on:
   push:
     branches: [tpv-ventas-fase-4]
     paths:
       - .github/workflows/inspeccionar-ticket-tpv-fase4.yml
+      - .github/scripts/aplicar_ticket_tpv_fase4_v2.py
 permissions:
-  contents: read
+  contents: write
 jobs:
-  inspeccion:
+  aplicar:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Mostrar modelo normalizado del historial
+      - name: Normalizar aplicador temporal
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          s=Path('fuente.js').read_text(encoding='utf-8')
-          for needle in ['function renderHistorialVentas', 'const ventasAgrupadas', 'const historialVentas', 'ventaId:', 'importe:', 'resumen:']:
-              print('\n===', needle, '===')
-              i=s.find(needle)
-              print('POS',i)
-              if i>=0: print(s[max(0,i-3000):i+9000])
+          p=Path('.github/scripts/aplicar_ticket_tpv_fase4_v2.py')
+          s=p.read_text(encoding='utf-8').replace(r'\"', '"')
+          p.write_text(s, encoding='utf-8')
           PY
+      - name: Aplicar ticket profesional
+        run: python3 .github/scripts/aplicar_ticket_tpv_fase4_v2.py
+      - name: Validar JavaScript y semántica
+        run: |
+          node --check fuente.js
+          git diff --check
+          grep -q 'TICKET / RECIBO INTERNO' fuente.js
+          grep -q 'Ver ticket / reimprimir' fuente.js
+          grep -q 'Imprimir / PDF' fuente.js
+          grep -q 'Térmica 80 mm' fuente.js
+          grep -q 'ticket-tpv-impresion' fuente.js
+      - name: Limpiar herramientas temporales y guardar
+        run: |
+          rm -f .github/workflows/inspeccionar-ticket-tpv-fase4.yml
+          rm -f .github/scripts/aplicar_ticket_tpv_fase4.py
+          rm -f .github/scripts/aplicar_ticket_tpv_fase4_v2.py
+          git config user.name 'Plopezm1990'
+          git config user.email 'pedroroger1990@gmail.com'
+          git add fuente.js .github
+          git diff --cached --check
+          git commit -m 'Añadir ticket y reimpresion al TPV'
+          git push origin HEAD:tpv-ventas-fase-4
