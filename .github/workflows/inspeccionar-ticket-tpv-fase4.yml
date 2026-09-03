@@ -1,32 +1,33 @@
-name: Inspeccionar ticket TPV fase 4
+name: Aplicar ticket TPV fase 4
 on:
   push:
     branches: [tpv-ventas-fase-4]
     paths:
       - .github/workflows/inspeccionar-ticket-tpv-fase4.yml
+      - .github/scripts/aplicar_ticket_tpv_fase4.py
 permissions:
-  contents: read
+  contents: write
 jobs:
-  inspeccion:
+  aplicar:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspeccionar impresion existente
+      - name: Aplicar ticket profesional
+        run: python3 .github/scripts/aplicar_ticket_tpv_fase4.py
+      - name: Validar JavaScript y diff
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          s=Path('fuente.js').read_text(encoding='utf-8')
-          needles=['window.print(', 'zona-impresion', 'no-imprimir', 'ESTILO_IMPRESION_CLARO', '@media print']
-          for needle in needles:
-              print('\n===', needle, '===')
-              start=0; n=0
-              while True:
-                  i=s.find(needle,start)
-                  if i<0: break
-                  n+=1
-                  print(s[max(0,i-1500):i+3500])
-                  print('\n---')
-                  start=i+len(needle)
-                  if n>=12: break
-              print('COUNT', n)
-          PY
+          node --check fuente.js
+          git diff --check
+          grep -q 'TICKET / RECIBO INTERNO' fuente.js
+          grep -q 'ticket-tpv-impresion' fuente.js
+          grep -q 'Ver ticket / reimprimir' fuente.js
+      - name: Limpiar herramientas temporales y guardar
+        run: |
+          rm -f .github/workflows/inspeccionar-ticket-tpv-fase4.yml
+          rm -f .github/scripts/aplicar_ticket_tpv_fase4.py
+          git config user.name 'Plopezm1990'
+          git config user.email 'pedroroger1990@gmail.com'
+          git add fuente.js .github
+          git diff --cached --check
+          git commit -m 'Añadir ticket y reimpresion al TPV'
+          git push origin HEAD:tpv-ventas-fase-4
