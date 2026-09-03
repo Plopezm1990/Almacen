@@ -182,6 +182,7 @@ check(Number(p1?.stockPisoVenta)===4, 'movimiento interno sigue sumando al piso 
 // específicamente que el mismo registro persista y se interprete como entrada en A2.
 await page.evaluate(() => localStorage.setItem('almacen:localActivoId', JSON.stringify('a2')));
 await page.reload({waitUntil:'domcontentloaded'});
+await enterLocal();
 await sleep(1000);
 check(await navExact('Traspasos'), 'A2 puede abrir Traspasos tras recargar como local activo');
 txt=await body();
