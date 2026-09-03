@@ -101,9 +101,12 @@ jobs:
           npm install acorn@8 >/dev/null 2>&1
           node -e "const fs=require('fs'),a=require('acorn');a.parse(fs.readFileSync('fuente.js','utf8'),{ecmaVersion:'latest',sourceType:'module'});console.log('ACORN_OK')"
           git diff --stat -- fuente.js
+          rm -rf node_modules
+          git clean -f -- package.json package-lock.json >/dev/null 2>&1 || true
+          git checkout -- package.json package-lock.json 2>/dev/null || true
       - name: Guardar corrección funcional
         run: |
-          CAMBIOS=$(git status --short | awk '{print $2}' | grep -v '^package-lock.json$' | grep -v '^package.json$' || true)
+          CAMBIOS=$(git status --short | awk '{print $2}' || true)
           if [ "$CAMBIOS" != "fuente.js" ]; then
             echo "Cambio inesperado: $CAMBIOS"
             exit 1
