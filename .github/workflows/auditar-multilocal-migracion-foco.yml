@@ -13,27 +13,47 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Mostrar bloque de migración multi-local
+      - name: Mostrar empresa-local, creación y usos
         shell: bash
         run: |
           node <<'NODE'
           const fs=require('fs');
           const src=fs.readFileSync('fuente.js','utf8');
+          const lower=src.toLowerCase();
+          const clean=s=>s.replace(/\s+/g,' ');
+
           const start=src.indexOf('let localesFinales = Array.isArray(loc) ? [...loc] : []');
           const end=src.indexOf('setLocales(localesFinales);', start);
           if(start<0||end<0){console.error('No se encontró el bloque esperado');process.exit(1)}
           console.log('=== BLOQUE MIGRACION LOCALES Y COLECCIONES ===');
-          console.log(src.slice(start,end+260).replace(/\s+/g,' '));
-          console.log('\n=== CONTEXTO EMPRESA DEL LOCAL ACTIVO ===');
-          const ep=src.indexOf('const empresaDelLocalActivo');
-          console.log(src.slice(ep,ep+1200).replace(/\s+/g,' '));
-          console.log('\n=== PREDICADOS A ENDURECER ===');
-          for(const needle of ['const productosDelLocalActivo','const pedidosDelLocalActivo','function productoEsDelLocalActivo(prod)','function pedidoEsDelLocalActivo(pedido)']){
+          console.log(clean(src.slice(start,end+260)));
+
+          const needles=[
+            'const empresaDelLocalActivo',
+            'empresaDelLocalActivo',
+            'function crearLocal(',
+            'crearLocal({',
+            'empresaId:',
+            '.empresaId',
+            'locales.filter(',
+            'localesPorEmpresa',
+            'empresasYLocales',
+            'Empresas y locales',
+            'setLocalActivoId(',
+            'localInformeId',
+            'BusquedaGlobal'
+          ];
+
+          for(const raw of needles){
+            const needle=raw.toLowerCase();
             let p=0,i=0;
-            while((p=src.indexOf(needle,p))!==-1 && i<8){
-              console.log(`\n-- ${needle} #${++i} --`);
-              console.log(src.slice(p,p+650).replace(/\s+/g,' '));
+            console.log(`\n===== ${raw} =====`);
+            while((p=lower.indexOf(needle,p))!==-1 && i<20){
+              i++;
+              console.log(`--- ${i} @${p} ---`);
+              console.log(clean(src.slice(Math.max(0,p-1000),Math.min(src.length,p+2200))));
               p+=needle.length;
             }
+            console.log(`TOTAL MOSTRADAS: ${i}`);
           }
           NODE
