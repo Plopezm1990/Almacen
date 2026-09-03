@@ -9,57 +9,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inventariar claves y helpers de almacenamiento
+      - name: Inventariar claves y arranque del modo local
         run: |
           python3 <<'PY'
           import re, pathlib
-          s=pathlib.Path('fuente.js').read_text(encoding='utf-8', errors='ignore')
+          fuente=pathlib.Path('fuente.js').read_text(encoding='utf-8', errors='ignore')
+          index=pathlib.Path('index.html').read_text(encoding='utf-8', errors='ignore')
           keys=set()
-          pats=[
+          for p in [
             r'\bsaveKey\(\s*["\']([^"\']+)["\']',
             r'\bloadKey\(\s*["\']([^"\']+)["\']',
-            r'\bloadArray\(\s*["\']([^"\']+)["\']',
-            r'\bloadObject\(\s*["\']([^"\']+)["\']',
-            r'\breadKey\(\s*["\']([^"\']+)["\']',
-            r'\bgetKey\(\s*["\']([^"\']+)["\']',
             r'(?:window\.)?storage\.(?:get|set|delete)\(\s*["\']([^"\']+)["\']',
             r'localStorage\.(?:getItem|setItem|removeItem)\(\s*["\']almacen:([^"\']+)["\']',
-          ]
-          for p in pats: keys.update(re.findall(p,s))
-          print('=== CLAVES LITERALES DETECTADAS ===')
-          for k in sorted(keys):
-            if len(k)<100: print(k)
+          ]:
+            keys.update(re.findall(p,fuente))
+          print('=== CLAVES APP ===')
+          print('\n'.join(sorted(keys)))
           print('TOTAL=',len(keys))
 
-          print('\n=== LLAMADAS saveKey ===')
-          savekeys=sorted(set(re.findall(r'\bsaveKey\(\s*["\']([^"\']+)["\']',s)))
-          for k in savekeys: print(k)
-          print('TOTAL saveKey=',len(savekeys))
+          print('\n=== INDEX: MODO LOCAL/NUBE ===')
+          for term in ['Trabajar solo en este equipo','solo en este equipo','__nubeActiva','conectarNube','almacen__pendientes','sessionStorage','localStorage','continuarLocal','modoLocal','sin nube']:
+            ms=list(re.finditer(re.escape(term),index,re.I))
+            print('\n---',term,'matches=',len(ms),'---')
+            for m in ms[:8]:
+              print(index[max(0,m.start()-900):min(len(index),m.end()+1800)].replace('\n',' ')[:2800])
 
-          print('\n=== LLAMADAS loadKey ===')
-          loadkeys=sorted(set(re.findall(r'\bloadKey\(\s*["\']([^"\']+)["\']',s)))
-          for k in loadkeys: print(k)
-          print('TOTAL loadKey=',len(loadkeys))
+          print('\n=== INDEX: ORDEN DE SCRIPTS ===')
+          for m in re.finditer(r'<script[^>]*?(?:src=["\']([^"\']+)["\'])?[^>]*>',index,re.I):
+            start=m.start()
+            print(start, m.group(0)[:300])
 
-          print('\n=== HELPERS STORAGE ===')
-          for term in ['function saveKey','const saveKey','function loadKey','const loadKey','async function saveKey','async function loadKey','function loadAll','Promise.all']:
-            matches=list(re.finditer(re.escape(term),s))
-            print('\n---',term,'matches=',len(matches),'---')
-            for m in matches[:4]:
-              a=max(0,m.start()-600); b=min(len(s),m.end()+2400)
-              print(s[a:b].replace('\n',' ')[:3000])
-
-          print('\n=== useEffect saveKey CONTEXT ===')
-          idx=s.find('saveKey("proveedores"')
-          if idx<0: idx=s.find('saveKey("productos"')
-          if idx>=0:
-            print(s[max(0,idx-2500):min(len(s),idx+15000)].replace('\n',' ')[:18000])
-
-          print('\n=== CARGA INICIAL CONTEXT ===')
-          for needle in ['loadKey("proveedores"','loadKey("empresas"','loadKey("locales"']:
-            idx=s.find(needle)
-            if idx>=0:
-              print('\n---',needle,'---')
-              print(s[max(0,idx-3000):min(len(s),idx+18000)].replace('\n',' ')[:21000])
-              break
+          print('\n=== FUENTE: CONEXION NUBE ===')
+          for term in ['function conectarNube','async function conectarNube','getSupabaseClient','__nubeActiva']:
+            ms=list(re.finditer(re.escape(term),fuente))
+            print('\n---',term,'matches=',len(ms),'---')
+            for m in ms[:5]:
+              print(fuente[max(0,m.start()-900):min(len(fuente),m.end()+2600)].replace('\n',' ')[:3600])
           PY
