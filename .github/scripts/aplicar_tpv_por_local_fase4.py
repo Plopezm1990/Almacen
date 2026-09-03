@@ -6,7 +6,7 @@ s = p.read_text(encoding="utf-8")
 # 1) Renombrar la denominación visible/operativa futura sin tocar el id interno "venta".
 old_label = '"Venta r\\xE1pida"'
 count_label = s.count(old_label)
-assert count_label == 4, f"Se esperaban 4 referencias exactas a Venta rápida y hay {count_label}"
+assert count_label == 6, f"Se esperaban 6 referencias exactas a Venta rápida y hay {count_label}"
 s = s.replace(old_label, '"TPV"')
 
 # 2) El TPV no puede vender sin un local concreto seleccionado.
@@ -46,6 +46,7 @@ assert s.count('Selecciona un local para abrir el TPV.') == 2
 assert s.count('Selecciona un local para gestionar ventas del TPV.') == 1
 assert s.count('Selecciona un local concreto para abrir el TPV.') == 1
 assert 'label: "Venta r\\xE1pida"' not in s
+assert s.count('"Venta r\\xE1pida"') == 0
 assert 'motivoBase = "TPV"' in s
 assert 'referencia: "TPV"' in s
 
