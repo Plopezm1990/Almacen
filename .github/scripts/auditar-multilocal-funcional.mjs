@@ -27,11 +27,15 @@ const productos=[
   {id:'p-a-old',nombre:'Producto A histórico',localId:'a-old',stock:7,costo:1,stockMinimo:0,tipo:'materia_prima',activo:true},
   {id:'p-b1',nombre:'Producto B1',localId:'b1',stock:99,costo:1,stockMinimo:0,tipo:'materia_prima',activo:true},
 ];
-const proveedores=[{id:'prov',nombre:'Proveedor Test'}];
+const proveedores=[
+  {id:'prov-a1',nombre:'Proveedor A1'},
+  {id:'prov-a2',nombre:'Proveedor A2'},
+  {id:'prov-b1',nombre:'Proveedor B1'},
+];
 const pedidos=[
-  {id:'ped-a1',numero:'PED-A1',localId:'a1',proveedorId:'prov',estado:'Pendiente',fecha:'2026-09-01',items:[{productoId:'p-a1',cantidad:1}]},
-  {id:'ped-a2',numero:'PED-A2',localId:'a2',proveedorId:'prov',estado:'Pendiente',fecha:'2026-09-01',items:[{productoId:'p-a2',cantidad:1}]},
-  {id:'ped-b1',numero:'PED-B1',localId:'b1',proveedorId:'prov',estado:'Pendiente',fecha:'2026-09-01',items:[{productoId:'p-b1',cantidad:1}]},
+  {id:'ped-a1',localId:'a1',proveedorId:'prov-a1',estado:'Pendiente',fecha:'2026-09-01',fechaEsperada:'2026-09-05',items:[{productoId:'p-a1',cantidad:1,costoUnitario:11,cantidadRecibida:0}]},
+  {id:'ped-a2',localId:'a2',proveedorId:'prov-a2',estado:'Pendiente',fecha:'2026-09-02',fechaEsperada:'2026-09-06',items:[{productoId:'p-a2',cantidad:1,costoUnitario:22,cantidadRecibida:0}]},
+  {id:'ped-b1',localId:'b1',proveedorId:'prov-b1',estado:'Pendiente',fecha:'2026-09-03',fechaEsperada:'2026-09-07',items:[{productoId:'p-b1',cantidad:1,costoUnitario:99,cantidadRecibida:0}]},
 ];
 const movimientos=[
   {id:'m-a1',productoId:'p-a1',localId:'a1',tipo:'Entrada',cantidad:11,fecha:'2026-09-01T10:00:00Z'},
@@ -105,8 +109,8 @@ check(txt.includes('Producto A2'),'Productos muestra producto del local A2');
 check(!txt.includes('Producto A1')&&!txt.includes('Producto B1'),'Productos oculta otros locales');
 
 await navExact('Pedidos'); txt=await body();
-check(txt.includes('PED-A2')||txt.includes('Producto A2'),'Pedidos muestra pedido/producto de A2');
-check(!txt.includes('PED-A1')&&!txt.includes('PED-B1')&&!txt.includes('Producto B1'),'Pedidos oculta otros locales');
+check(txt.includes('Proveedor A2')&&txt.includes('Pedido 2026-09-02'),'Pedidos muestra pedido de A2');
+check(!txt.includes('Proveedor A1')&&!txt.includes('Proveedor B1'),'Pedidos oculta pedidos de otros locales');
 
 await navExact('Buscar');
 const search=page.locator('input').filter({has:undefined}).first();
