@@ -11,12 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspeccionar historial y detalle de venta
+      - name: Inspeccionar impresion existente
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('fuente.js').read_text(encoding='utf-8')
-          needles=['function VentaRapida(', 'Historial de ventas', 'Detalle de venta', 'Anular venta', 'ventaSeleccionada', 'ventasAgrupadas']
+          needles=['window.print(', 'zona-impresion', 'no-imprimir', 'ESTILO_IMPRESION_CLARO', '@media print']
           for needle in needles:
               print('\n===', needle, '===')
               start=0; n=0
@@ -24,9 +24,9 @@ jobs:
                   i=s.find(needle,start)
                   if i<0: break
                   n+=1
-                  print(s[max(0,i-2200):i+6500])
+                  print(s[max(0,i-1500):i+3500])
                   print('\n---')
                   start=i+len(needle)
-                  if n>=8: break
+                  if n>=12: break
               print('COUNT', n)
           PY
