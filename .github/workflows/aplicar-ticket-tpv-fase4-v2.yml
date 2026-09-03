@@ -1,60 +1,44 @@
-name: Aplicar ticket TPV fase 4 v2
+name: Diagnosticar baseline TPV fase 4
 
 on:
   push:
     branches: [tpv-ventas-fase-4]
     paths:
       - '.github/workflows/aplicar-ticket-tpv-fase4-v2.yml'
-      - '.github/scripts/aplicar_ticket_tpv_fase4_v2.py'
 
 permissions:
   contents: write
 
 jobs:
-  aplicar:
+  baseline:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
-      - name: Aplicar ticket aislado
-        run: python3 .github/scripts/aplicar_ticket_tpv_fase4_v2.py
+      - name: Validar fuente estable sin aplicar ticket
+        run: node --check fuente.js
 
-      - name: Validar JavaScript y diff
+      - name: Comparar arranque local de la versión estable
         run: |
-          node --check fuente.js
-          git diff --check
-          grep -q 'function renderTicketVenta()' fuente.js
-          grep -q 'TICKET / RECIBO INTERNO' fuente.js
-
-      - name: Smoke real de arranque en Chrome
-        run: |
-          set -euo pipefail
+          set -u
           python3 -m http.server 8765 >/tmp/tpv-http.log 2>&1 &
           SERVER_PID=$!
           trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
           sleep 2
           google-chrome --headless --no-sandbox --disable-gpu --disable-dev-shm-usage --virtual-time-budget=9000 --dump-dom http://127.0.0.1:8765/ >/tmp/tpv-dom.html 2>/tmp/tpv-chrome.log || true
-          if grep -q 'Error al arrancar' /tmp/tpv-dom.html; then
-            echo 'RUNTIME_SMOKE_ERROR_AL_ARRANCAR=1'
-            tail -n 80 /tmp/tpv-chrome.log || true
-            exit 1
-          fi
-          if grep -Eiq 'Uncaught.*(ReferenceError|TypeError|SyntaxError)' /tmp/tpv-chrome.log; then
-            echo 'RUNTIME_SMOKE_UNCAUGHT_JS=1'
-            grep -Ei 'Uncaught|ReferenceError|TypeError|SyntaxError' /tmp/tpv-chrome.log | tail -n 80
-            exit 1
-          fi
-          echo 'RUNTIME_SMOKE_TPV_OK=1'
+          if grep -q 'Error al arrancar' /tmp/tpv-dom.html; then echo 'BASELINE_LOCAL_TAMBIEN_ERROR_AL_ARRANCAR=1'; else echo 'BASELINE_LOCAL_ARRANCA=1'; fi
+          grep -Ei 'Uncaught|ReferenceError|TypeError|SyntaxError' /tmp/tpv-chrome.log | tail -n 80 || true
+          grep -o 'Error al arrancar[^<]*' /tmp/tpv-dom.html | head -n 5 || true
 
-      - name: Limpiar temporales y guardar
+      - name: Limpiar herramientas temporales
         run: |
           rm -f .github/scripts/aplicar_ticket_tpv_fase4_v2.py
           rm -f .github/workflows/aplicar-ticket-tpv-fase4-v2.yml
           git config user.name 'Plopezm1990'
           git config user.email 'pedroroger1990@gmail.com'
-          git add fuente.js .github/scripts .github/workflows
+          git add .github/scripts .github/workflows
           git diff --cached --check
-          git commit -m 'Añadir ticket aislado al TPV'
+          git commit -m 'Limpiar diagnostico temporal del ticket TPV'
           git push origin HEAD:tpv-ventas-fase-4
