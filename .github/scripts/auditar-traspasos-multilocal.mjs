@@ -178,16 +178,15 @@ p1=await product('pa1');
 check(Number(p1?.stock)===8, 'movimiento interno no cambia stock total');
 check(Number(p1?.stockPisoVenta)===4, 'movimiento interno sigue sumando al piso de venta');
 
-// Igual que en la batería A-E: el selector global de local es el primer select de la aplicación.
-const globalSelect=page.locator('select').first();
-const globalOpts=await optionTexts(globalSelect);
-check(globalOpts.some(x=>x.includes('Local A1')) && globalOpts.some(x=>x.includes('Local A2')), 'selector global permite cambiar entre A1 y A2');
-if (globalOpts.some(x=>x.includes('Local A2'))) {
-  await globalSelect.selectOption('a2'); await sleep(900);
-  txt=await body();
-  check(txt.includes('Local A1 → Local A2'), 'A2 ve la ruta del traspaso en su historial');
-  check(/Entrada .*Harina origen A1 .*Harina destino A2/i.test(txt), 'A2 identifica el traspaso como entrada');
-}
+// La navegación global A1↔A2 ya está cubierta por la batería A-E. Aquí validamos
+// específicamente que el mismo registro persista y se interprete como entrada en A2.
+await page.evaluate(() => localStorage.setItem('almacen:localActivoId', JSON.stringify('a2')));
+await page.reload({waitUntil:'domcontentloaded'});
+await sleep(1000);
+check(await navExact('Traspasos'), 'A2 puede abrir Traspasos tras recargar como local activo');
+txt=await body();
+check(txt.includes('Local A1 → Local A2'), 'A2 ve la ruta del traspaso en su historial');
+check(/Entrada .*Harina origen A1 .*Harina destino A2/i.test(txt), 'A2 identifica el traspaso como entrada');
 
 await page.screenshot({path:'traspasos-multilocal-audit.png',fullPage:true});
 fs.writeFileSync('traspasos-multilocal-audit.txt', out.join('\n'));
