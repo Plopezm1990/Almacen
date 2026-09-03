@@ -1,0 +1,34 @@
+name: Generalizar ficha del local fase 4
+on:
+  push:
+    branches: [tpv-ventas-fase-4]
+    paths:
+      - '.github/workflows/generalizar-ficha-local-fase4.yml'
+      - '.github/scripts/generalizar_ficha_local_fase4.py'
+permissions:
+  contents: write
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generalizar ficha
+        run: python3 .github/scripts/generalizar_ficha_local_fase4.py
+      - name: Validar
+        run: |
+          node --check fuente.js
+          git diff --check
+          grep -q 'function FichaDatosLocal' fuente.js
+          grep -q 'Ficha del local' fuente.js
+          grep -q 'nombreComercial' fuente.js
+          grep -q 'local?.telefono || local?.telefonoTicket' fuente.js
+      - name: Limpiar y guardar
+        run: |
+          rm -f .github/scripts/generalizar_ficha_local_fase4.py
+          rm -f .github/workflows/generalizar-ficha-local-fase4.yml
+          git config user.name 'Plopezm1990'
+          git config user.email 'pedroroger1990@gmail.com'
+          git add fuente.js .github/scripts .github/workflows
+          git diff --cached --check
+          git commit -m 'Convertir datos TPV en ficha general del local'
+          git push origin HEAD:tpv-ventas-fase-4
