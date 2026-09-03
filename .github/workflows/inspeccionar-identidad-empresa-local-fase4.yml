@@ -1,0 +1,22 @@
+name: Inspeccionar identidad empresa y local fase 4
+on:
+  push:
+    branches: [tpv-ventas-fase-4]
+    paths:
+      - '.github/workflows/inspeccionar-identidad-empresa-local-fase4.yml'
+permissions:
+  contents: read
+jobs:
+  inspeccionar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Revisar identidad de empresa y local
+        run: |
+          set -euo pipefail
+          echo '=== EMPRESA / IDENTIDAD / CONFIGURACION ==='
+          grep -n -E -i 'razonSocial|razón social|nif|cif|logo|nombreEmpresa|empresaNombre|datosEmpresa|configuracionEmpresa|configuración empresa|empresa' fuente.js | head -n 260 || true
+          echo '=== AJUSTES / CONFIGURACION ==='
+          grep -n -E 'function (Ajustes|Configuracion|Configuración)|SectionTitle[^\n]*(Ajustes|Configur)' fuente.js | head -n 120 || true
+          echo '=== CLAVES KV RELACIONADAS ==='
+          grep -n -E 'useKV|almacen_kv|empresa|configuracion|branding|logo' fuente.js | head -n 220 || true
