@@ -1,47 +1,30 @@
-name: Aplicar ticket TPV fase 4
+name: Precisar anclas ticket TPV fase 4
 on:
   push:
     branches: [tpv-ventas-fase-4]
     paths:
       - .github/workflows/inspeccionar-ticket-tpv-fase4.yml
-      - .github/scripts/aplicar_ticket_tpv_fase4.py
 permissions:
-  contents: write
+  contents: read
 jobs:
-  aplicar:
+  inspeccion:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Corregir guardas del aplicador temporal
+      - name: Mostrar contexto exacto del detalle
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('.github/scripts/aplicar_ticket_tpv_fase4.py')
-          s=p.read_text(encoding='utf-8')
-          s=s.replace(r'\"', '"')
-          inicio=s.index('# 4) Desde el detalle')
-          fin=s.index('# 5) Modal de ticket', inicio)
-          bloque='''# 4) Desde el detalle se puede abrir/reimprimir el recibo sin modificar la venta.\nid_anchor = '\"ID interno: \", ventaDetalle.id)'\nif s.count(id_anchor) != 1:\n    raise RuntimeError(f'anchor ID interno: {s.count(id_anchor)}')\npos = s.index(id_anchor) + len(id_anchor)\nboton = ', /* @__PURE__ */ import_react4.default.createElement(\"div\", { className: \"flex gap-2 flex-wrap mt-3\" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setTicketVenta(ventaDetalle) }, \"Ver ticket / reimprimir\"))'\ns = s[:pos] + boton + s[pos:]\n\n'''
-          s=s[:inicio]+bloque+s[fin:]
-          p.write_text(s, encoding='utf-8')
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          for needle in ['ID interno', 'confirmAnular &&', 'ventaDetalle.id', 'Anular venta']:
+              print('\n===', needle, '===')
+              pos=[]; start=0
+              while True:
+                  i=s.find(needle,start)
+                  if i<0: break
+                  pos.append(i); start=i+len(needle)
+              print('COUNT',len(pos))
+              for i in pos[-5:]:
+                  print(repr(s[max(0,i-700):i+1100]))
+                  print('---')
           PY
-      - name: Aplicar ticket profesional
-        run: python3 .github/scripts/aplicar_ticket_tpv_fase4.py
-      - name: Validar JavaScript y diff
-        run: |
-          node --check fuente.js
-          git diff --check
-          grep -q 'TICKET / RECIBO INTERNO' fuente.js
-          grep -q 'ticket-tpv-impresion' fuente.js
-          grep -q 'Ver ticket / reimprimir' fuente.js
-          grep -q 'Imprimir / Guardar PDF' fuente.js
-      - name: Limpiar herramientas temporales y guardar
-        run: |
-          rm -f .github/workflows/inspeccionar-ticket-tpv-fase4.yml
-          rm -f .github/scripts/aplicar_ticket_tpv_fase4.py
-          git config user.name 'Plopezm1990'
-          git config user.email 'pedroroger1990@gmail.com'
-          git add fuente.js .github
-          git diff --cached --check
-          git commit -m 'Añadir ticket y reimpresion al TPV'
-          git push origin HEAD:tpv-ventas-fase-4
