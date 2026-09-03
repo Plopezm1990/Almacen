@@ -9,21 +9,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Extraer componente y creación de pedido
+      - name: Extraer render y esquema visible de Pedidos
         shell: bash
         run: |
           node <<'NODE'
           const fs=require('fs');
           const src=fs.readFileSync('fuente.js','utf8');
-          const needles=['function Pedidos(', 'function crearPedido(', 'const crearPedido', 'addPedido', 'pedido.numero', 'pedido.items', 'p2.items'];
+          const needles=['pedidos.map(', 'pedidos.length', 'pedido.estado', 'pedido.fecha', 'pedido.items.reduce', 'cantidadRecibida'];
           const clean=s=>s.replace(/\s+/g,' ');
           for(const needle of needles){
             console.log(`\n===== ${needle} =====`);
             let p=0,i=0;
-            while((p=src.indexOf(needle,p))!==-1 && i<8){
+            while((p=src.indexOf(needle,p))!==-1 && i<12){
               i++;
               console.log(`--- ${i} @${p} ---`);
-              console.log(clean(src.slice(Math.max(0,p-1800),Math.min(src.length,p+6500))));
+              console.log(clean(src.slice(Math.max(0,p-1800),Math.min(src.length,p+5000))));
               p+=needle.length;
             }
             console.log('TOTAL',i);
