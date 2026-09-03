@@ -1,4 +1,4 @@
-# reintento seguro tras acotar el parche a los componentes de empresa
+# reintento 2: formulario de empresa acotado y reinicio corregido
 name: Aplicar logo por empresa fase 4
 on:
   push:
