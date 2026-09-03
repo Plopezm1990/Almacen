@@ -118807,7 +118807,7 @@ function GestionAlmacen() {
       fichajes: fichajesDelLocalActivo,
       movimientos: movimientosDelLocalActivo
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito, anularVenta, movimientos: movimientosDelLocalActivo, registrarAuditoria }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito, anularVenta, movimientos: movimientosDelLocalActivo, registrarAuditoria, local: locales.find((l2) => l2.id === localActivoId) || null }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -127175,7 +127175,7 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
     });
     return Object.entries(porVenta).map(([ventaId, lineas]) => {
       const fecha = lineas.map((l2) => l2.fecha || "").filter(Boolean).sort().slice(-1)[0] || "";
-      const marcaTiempo = lineas.map((l2) => l2.timestamp || l2.createdAt || l2.fechaHora || "").filter(Boolean).sort().slice(-1)[0] || "";
+      const marcaTiempo = lineas.map((l2) => l2.timestamp || l2.createdAt || l2.created_at || l2.fechaHora || l2.fecha_hora || l2.marcaTiempo || "").filter(Boolean).sort().slice(-1)[0] || "";
       const importe = lineas.reduce((a2, l2) => a2 + Math.abs(cantidadConSigno(l2)) * Math.abs(Number(l2.ingresoUnitario) || 0) * (1 + (Number(l2.ivaVentaAplicado) || 0) / 100), 0);
       const nombres = lineas.map((l2) => {
         const p2 = productos.find((x3) => x3.id === l2.productoId);
@@ -127278,7 +127278,7 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
         h("div", { className: "flex justify-between gap-3 text-[11.5px] mb-3" }, h("span", { style: { color: C2.inkSoft } }, "Pago"), h("span", { className: "font-semibold" }, v2.medioPago || "—")),
         v2.medioPago === "Mixto" && v2.detallePago ? h("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, `Tarjeta €${fmt(v2.detallePago.tarjeta || 0)} + Efectivo €${fmt(v2.detallePago.efectivo || 0)}`) : null,
         h("div", { className: "text-center pt-2", style: { borderTop: `1px dashed ${C2.line}` } },
-          h("div", { className: "text-[11px] font-medium" }, "Gracias por su compra"),
+          h("div", { className: "text-[11px] font-medium" }, v2.anulada ? "Venta anulada · recibo sin validez de cobro" : "Gracias por su compra"),
           h("div", { className: "text-[9.5px] mono mt-2 break-all", style: { color: C2.inkSoft } }, `ID operación: ${v2.ventaId}`),
           h("div", { className: "text-[9.5px] mt-1", style: { color: C2.inkSoft } }, "Recibo interno del TPV")
         )
