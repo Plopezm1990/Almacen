@@ -117358,8 +117358,15 @@ function GestionAlmacen() {
     redSocial: "@ChocoSanGines",
     pieDocumentos: "GRACIAS POR SU VISITA"
   });
+  const [empresas, setEmpresas] = (0, import_react4.useState)([]);
   const [localActivoId, setLocalActivoId] = (0, import_react4.useState)(null);
   const [localInformeId, setLocalInformeId] = (0, import_react4.useState)("");
+  const empresaDelLocalActivo = (0, import_react4.useMemo)(() => {
+    const principal = empresas[0] || null;
+    const localActual = locales.find((l2) => l2.id === localActivoId) || null;
+    const empresaId = localActual?.empresaId || principal?.id || null;
+    return empresas.find((e2) => e2.id === empresaId) || principal || configEmpresa || null;
+  }, [empresas, locales, localActivoId, configEmpresa]);
   const productosDelLocalActivo = (0, import_react4.useMemo)(() => {
     if (!localActivoId) return productos;
     return productos.filter((p2) => !p2.localId || p2.localId === localActivoId);
@@ -117441,7 +117448,7 @@ function GestionAlmacen() {
   const [historial, setHistorial] = (0, import_react4.useState)([]);
   (0, import_react4.useEffect)(() => {
     (async () => {
-      const [p2, pr, pe2, mo, co, fc, hi, al, cp, gg, em, fj, dm, ra, pc, cl, en, aq, tu, to, me2, pin, au, op, tr, ua, fd2, nom, fre, rac, entr, mc, dev, ce, loc, lai] = await Promise.all([
+      const [p2, pr, pe2, mo, co, fc, hi, al, cp, gg, em, fj, dm, ra, pc, cl, en, aq, tu, to, me2, pin, au, op, tr, ua, fd2, nom, fre, rac, entr, mc, dev, ce, emps, loc, lai] = await Promise.all([
         loadKey("proveedores", []),
         loadKey("productos", []),
         loadKey("pedidos", []),
@@ -117484,6 +117491,7 @@ function GestionAlmacen() {
             redSocial: "@ChocoSanGines",
             pieDocumentos: "GRACIAS POR SU VISITA"
           }),
+        loadKey("empresas", []),
         loadKey("locales", []),
         loadKey("localActivoId", null)
       ]);
@@ -117543,6 +117551,20 @@ function GestionAlmacen() {
           redSocial: "@ChocoSanGines",
           pieDocumentos: "GRACIAS POR SU VISITA"
         });
+      const empresaLegacy = ce && typeof ce === "object" ? ce : {
+        marca: "Chocolatería San Ginés",
+        lema: "MADRID 1894",
+        razonSocial: "CHOCOLOYOS, S.L.",
+        nif: "B87342077",
+        web: "",
+        redSocial: "@ChocoSanGines",
+        pieDocumentos: "GRACIAS POR SU VISITA"
+      };
+      let empresasFinales = Array.isArray(emps) ? emps.filter((e2) => e2 && e2.id) : [];
+      if (empresasFinales.length === 0) {
+        empresasFinales = [{ id: "empresa-principal", ...empresaLegacy, activo: true, creadoEn: null, migradaDesdeConfigEmpresa: true }];
+      }
+      setEmpresas(empresasFinales);
       let localesFinales = Array.isArray(loc) ? [...loc] : [];
       let localActivoFinal = lai || null;
       const productosBase = Array.isArray(pr) ? pr : [];
@@ -117749,6 +117771,9 @@ function GestionAlmacen() {
   (0, import_react4.useEffect)(() => {
     if (ready && !skipSaveRef.current) saveKey("locales", locales);
   }, [locales, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("empresas", empresas);
+  }, [empresas, ready]);
   (0, import_react4.useEffect)(() => {
     if (ready && !skipSaveRef.current) saveKey("configEmpresa", configEmpresa);
   }, [configEmpresa, ready]);
@@ -118837,7 +118862,7 @@ function GestionAlmacen() {
       fichajes: fichajesDelLocalActivo,
       movimientos: movimientosDelLocalActivo
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito, anularVenta, movimientos: movimientosDelLocalActivo, registrarAuditoria, local: locales.find((l2) => l2.id === localActivoId) || null, configEmpresa }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito, anularVenta, movimientos: movimientosDelLocalActivo, registrarAuditoria, local: locales.find((l2) => l2.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -118921,7 +118946,7 @@ function GestionAlmacen() {
       establecerPin,
       activarModoEmpleado
     }
-  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, setConfigEmpresa }));
+  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas }));
   const itemsMeta = [
     { id: "dashboard", label: "Panel general", icon: ChartColumn },
     { id: "direccion", label: "Panel de direcci\xF3n", icon: TrendingUp },
@@ -119337,13 +119362,13 @@ function crearLogicaCaja({ setArqueos, localActivoId }) {
   return { addArqueo, deleteArqueo };
 }
 function crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivoId, registrarAuditoria }) {
-  function crearLocal({ nombre, direccion }) {
+  function crearLocal({ nombre, direccion, empresaId }) {
     const nombreLimpio = (nombre || "").trim();
     if (!nombreLimpio) return { ok: false, error: "Ponle un nombre al local." };
     if (locales.some((l2) => l2.nombre.toLowerCase() === nombreLimpio.toLowerCase())) {
       return { ok: false, error: "Ya existe un local con ese nombre." };
     }
-    const nuevo = { id: uid(), nombre: nombreLimpio, direccion: (direccion || "").trim(), activo: true, creadoEn: (/* @__PURE__ */ new Date()).toISOString() };
+    const nuevo = { id: uid(), nombre: nombreLimpio, direccion: (direccion || "").trim(), empresaId: empresaId || null, activo: true, creadoEn: (/* @__PURE__ */ new Date()).toISOString() };
     setLocales((s2) => [...s2, nuevo]);
     registrarAuditoria("Crear local", nombreLimpio);
     return { ok: true, local: nuevo };
@@ -124297,20 +124322,20 @@ function FichaDatosLocal({ local, actualizarLocal }) {
     )
   );
 }
-function FichaEmpresaBasica({ configEmpresa, setConfigEmpresa }) {
+function FichaEmpresaBasica({ empresa, actualizarEmpresa }) {
   const [abierto, setAbierto] = import_react4.default.useState(false);
   const [form, setForm] = import_react4.default.useState(null);
   const [guardado, setGuardado] = import_react4.default.useState(false);
   function abrir() {
-    const c = configEmpresa || {};
+    const c = empresa || {};
     setForm({
-      marca: c.marca || "Chocolatería San Ginés",
-      lema: c.lema || "MADRID 1894",
-      razonSocial: c.razonSocial || "CHOCOLOYOS, S.L.",
-      nif: c.nif || "B87342077",
+      marca: c.marca || "",
+      lema: c.lema || "",
+      razonSocial: c.razonSocial || "",
+      nif: c.nif || "",
       web: c.web || "",
-      redSocial: c.redSocial || "@ChocoSanGines",
-      pieDocumentos: c.pieDocumentos || "GRACIAS POR SU VISITA"
+      redSocial: c.redSocial || "",
+      pieDocumentos: c.pieDocumentos || ""
     });
     setGuardado(false);
     setAbierto(true);
@@ -124320,17 +124345,17 @@ function FichaEmpresaBasica({ configEmpresa, setConfigEmpresa }) {
     setGuardado(false);
   }
   function guardar() {
-    if (!form) return;
+    if (!form || !empresa?.id) return;
     const limpio = {};
     Object.entries(form).forEach(([k, v]) => limpio[k] = String(v || "").trim());
-    setConfigEmpresa(limpio);
+    actualizarEmpresa(empresa.id, limpio);
     setForm(limpio);
     setGuardado(true);
   }
   return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null,
-    /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: abrir }, "Ficha de empresa"),
-    abierto && form && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setAbierto(false), title: "Ficha de empresa" },
-      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Identidad general compartida por todos los locales. Razón social y NIF son de la empresa; cada local conserva aparte nombre, dirección, teléfono y correo."),
+    /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: abrir }, "Ficha de empresa"),
+    abierto && form && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setAbierto(false), title: `Ficha de empresa · ${empresa?.razonSocial || empresa?.marca || "Empresa"}` },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Identidad legal y comercial de esta empresa. Sus locales mantienen aparte nombre, dirección, teléfono y correo."),
       /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Marca" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.marca, onChange: (e) => campo("marca", e.target.value) })),
       /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Lema / subtítulo" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.lema, onChange: (e) => campo("lema", e.target.value) })),
       /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Razón social" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.razonSocial, onChange: (e) => campo("razonSocial", e.target.value) })),
@@ -124346,16 +124371,85 @@ function FichaEmpresaBasica({ configEmpresa, setConfigEmpresa }) {
     )
   );
 }
-function Locales({ locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo, configEmpresa, setConfigEmpresa }) {
+function GestorEmpresas({ empresas, setEmpresas }) {
+  const [mostrarNueva, setMostrarNueva] = import_react4.default.useState(false);
+  const [razonSocial, setRazonSocial] = import_react4.default.useState("");
+  const [nif, setNif] = import_react4.default.useState("");
+  const [marca, setMarca] = import_react4.default.useState("");
+  const [error, setError] = import_react4.default.useState("");
+  function actualizarEmpresa(id, datos) {
+    setEmpresas((s2) => s2.map((e2) => e2.id === id ? { ...e2, ...datos } : e2));
+  }
+  function crear() {
+    const razon = String(razonSocial || "").trim();
+    const nifLimpio = String(nif || "").trim().toUpperCase();
+    if (!razon) {
+      setError("Indica la razón social de la empresa.");
+      return;
+    }
+    if (nifLimpio && empresas.some((e2) => String(e2.nif || "").trim().toUpperCase() === nifLimpio)) {
+      setError("Ya existe una empresa con ese NIF/CIF.");
+      return;
+    }
+    const nueva = {
+      id: uid(),
+      marca: String(marca || "").trim() || razon,
+      lema: "",
+      razonSocial: razon,
+      nif: nifLimpio,
+      web: "",
+      redSocial: "",
+      pieDocumentos: "",
+      activo: true,
+      creadoEn: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    setEmpresas((s2) => [...s2, nueva]);
+    setRazonSocial("");
+    setNif("");
+    setMarca("");
+    setError("");
+    setMostrarNueva(false);
+  }
+  return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
+    /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold text-[14px]" }, "Empresas"),
+      /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setMostrarNueva(true) }, "+ Añadir empresa")
+    ),
+    /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, empresas.map((e2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: e2.id, className: "rounded-xl border p-3", style: { borderColor: C2.line } },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2" },
+        /* @__PURE__ */ import_react4.default.createElement("div", null,
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold text-[13px]" }, e2.razonSocial || e2.marca || "Empresa sin nombre"),
+          e2.nif && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, `NIF/CIF: ${e2.nif}`)
+        ),
+        /* @__PURE__ */ import_react4.default.createElement(FichaEmpresaBasica, { empresa: e2, actualizarEmpresa })
+      )
+    ))),
+    mostrarNueva && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setMostrarNueva(false), title: "Añadir empresa" },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Crea una sociedad/empresa independiente. Después podrás asignarle uno o varios locales."),
+      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Razón social" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: razonSocial, onChange: (e) => setRazonSocial(e.target.value), autoFocus: true })),
+      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "NIF / CIF" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nif, onChange: (e) => setNif(e.target.value) })),
+      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Marca / nombre comercial (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: marca, onChange: (e) => setMarca(e.target.value) })),
+      error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.red } }, error),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" },
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: crear }, "Crear empresa"),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setMostrarNueva(false) }, "Cancelar")
+      )
+    )
+  );
+}
+function Locales({ locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo, configEmpresa, empresas, setEmpresas }) {
   const [mostrarForm, setMostrarForm] = import_react4.default.useState(false);
   const [nombre, setNombre] = import_react4.default.useState("");
   const [direccion, setDireccion] = import_react4.default.useState("");
   const [error, setError] = import_react4.default.useState("");
   const [confirmarDesactivar, setConfirmarDesactivar] = import_react4.default.useState(null);
+  const [empresaNuevaId, setEmpresaNuevaId] = import_react4.default.useState("");
   const activos = locales.filter((l2) => l2.activo !== false && !l2.fusionadoEn);
   const inactivos = locales.filter((l2) => l2.activo === false && !l2.fusionadoEn);
+  const empresaPrincipalId = empresas[0]?.id || null;
+  const empresaDeLocal = (l2) => empresas.find((e2) => e2.id === (l2?.empresaId || empresaPrincipalId)) || empresas[0] || null;
   function enviar() {
-    const r = crearLocal({ nombre, direccion });
+    const r = crearLocal({ nombre, direccion, empresaId: empresaNuevaId || empresaPrincipalId });
     if (!r.ok) {
       setError(r.error);
       return;
@@ -124365,7 +124459,7 @@ function Locales({ locales, localActivoId, crearLocal, actualizarLocal, desactiv
     setError("");
     setMostrarForm(false);
   }
-  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Locales"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "La separaci\xF3n por local ya est\xE1 activa en Panel general, Resultados y Libro de IVA. El resto de m\xF3dulos mantiene de momento la vista conjunta mientras se completa la separaci\xF3n por local.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement(FichaEmpresaBasica, { configEmpresa, setConfigEmpresa })), /* @__PURE__ */ import_react4.default.createElement(DiagnosticoSincronizacion, null), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 mb-4" }, activos.map((l2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: l2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium text-[13px] flex items-center gap-1.5" }, l2.nombre, l2.id === localActivoId && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "activo en este dispositivo")), l2.direccion && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, l2.direccion)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, l2.id !== localActivoId && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => cambiarLocalActivo(l2.id) }, "Usar este"), /* @__PURE__ */ import_react4.default.createElement(FichaDatosLocal, { local: l2, actualizarLocal }), activos.length > 1 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setConfirmarDesactivar(l2) }, "Desactivar")))))), mostrarForm ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre del local" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nombre, onChange: (e) => setNombre(e.target.value), placeholder: "Ej: San Gin\xE9s Centro", autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Direcci\xF3n (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: direccion, onChange: (e) => setDireccion(e.target.value) })), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: enviar }, "Crear local"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Empresas y locales"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "La separaci\xF3n por local ya est\xE1 activa en Panel general, Resultados y Libro de IVA. El resto de m\xF3dulos mantiene de momento la vista conjunta mientras se completa la separaci\xF3n por local.")), /* @__PURE__ */ import_react4.default.createElement(GestorEmpresas, { empresas, setEmpresas }), /* @__PURE__ */ import_react4.default.createElement(DiagnosticoSincronizacion, null), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 mb-4" }, activos.map((l2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: l2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium text-[13px] flex items-center gap-1.5" }, l2.nombre, l2.id === localActivoId && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "activo en este dispositivo")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, `Empresa: ${empresaDeLocal(l2)?.razonSocial || empresaDeLocal(l2)?.marca || "Sin asignar"}`), l2.direccion && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, l2.direccion)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, l2.id !== localActivoId && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => cambiarLocalActivo(l2.id) }, "Usar este"), /* @__PURE__ */ import_react4.default.createElement(FichaDatosLocal, { local: l2, actualizarLocal }), activos.length > 1 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setConfirmarDesactivar(l2) }, "Desactivar")))))), mostrarForm ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre del local" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nombre, onChange: (e) => setNombre(e.target.value), placeholder: "Ej: San Gin\xE9s Centro", autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Empresa" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: empresaNuevaId || empresaPrincipalId || "", onChange: (e) => setEmpresaNuevaId(e.target.value), className: "w-full rounded-xl border px-3 py-2 bg-transparent", style: { borderColor: C2.line, color: C2.ink } }, empresas.map((e2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: e2.id, value: e2.id }, e2.razonSocial || e2.marca || "Empresa")))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Direcci\xF3n (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: direccion, onChange: (e) => setDireccion(e.target.value) })), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: enviar }, "Crear local"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
     setMostrarForm(false);
     setError("");
   } }, "Cancelar"))) : /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setMostrarForm(true) }, "+ A\xF1adir local nuevo"), inactivos.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-6" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, "Locales desactivados"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, inactivos.map((l2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: l2.id, style: { opacity: 0.6 } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px]" }, l2.nombre))))), confirmarDesactivar && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmarDesactivar(null), title: "Desactivar local" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, '"', confirmarDesactivar.nombre, '" dejar\xE1 de aparecer como local activo. No se borra ning\xFAn dato \u2014 solo se oculta de la lista de "en uso".'), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
