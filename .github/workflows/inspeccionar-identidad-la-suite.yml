@@ -1,0 +1,19 @@
+name: Inspeccionar identidad L&A Suite
+on:
+  push:
+    paths:
+      - '.github/workflows/inspeccionar-identidad-la-suite.yml'
+jobs:
+  inspeccionar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Localizar puntos de marca
+        run: |
+          set -euo pipefail
+          echo '=== TITULOS / MARCA EN HTML ==='
+          grep -n -A12 -B4 '<title>\|id="cargando"\|class="marca"\|class="paso"' index.html | head -n 160 || true
+          echo '=== REFERENCIAS DE LOGO / CABECERA EN FUENTE ==='
+          grep -n -A25 -B12 'configEmpresa.logo\|logoEmpresa\|Chocolatería San Ginés\|MADRID 1894\|Modo empleado\|Depart\.\|Rápido' fuente.js | head -n 300 || true
+          echo '=== POSIBLES NOMBRES DE APP ==='
+          grep -n -A8 -B8 'Control de Compras\|Almacén\|Proyecto A' fuente.js index.html manifest.json | head -n 180 || true
