@@ -118578,24 +118578,23 @@ function GestionAlmacen() {
   if (!ready) {
     return /* @__PURE__ */ import_react4.default.createElement("div", { style: { background: C2.bg, color: C2.ink }, className: "w-full h-full min-h-[600px] flex items-center justify-center font-sans" }, /* @__PURE__ */ import_react4.default.createElement(LoaderCircle, { className: "animate-spin", size: 22 }), /* @__PURE__ */ import_react4.default.createElement("span", { className: "ml-2 text-sm" }, "Cargando almac\xE9n\u2026"));
   }
-  const localPorProductoInforme = new Map(productos.map((p2) => [p2.id, p2.localId || null]));
-  const inferirLocalLineasInforme = (lineas) => {
+  const localPorProductoInforme = new Map(productos.map((p2) => [p2.id, p2.localId || null])); const idsLocalesEmpresaInforme = new Set(locales.filter((l2) => l2 && l2.empresaId === empresaDelLocalActivo?.id).map((l2) => l2.id)); const localEsDeEmpresaInforme = (id) => !!id && idsLocalesEmpresaInforme.has(id); const inferirLocalLineasInforme = (lineas) => {
     const ids = [...new Set((lineas || []).map((ln2) => localPorProductoInforme.get(ln2 && ln2.productoId)).filter(Boolean))];
     return ids.length === 1 ? ids[0] : null;
   };
-  const productosInforme = localInformeId ? productos.filter((p2) => p2.localId === localInformeId) : productos;
-  const movimientosInforme = localInformeId ? movimientos.filter((m2) => (m2.localId || localPorProductoInforme.get(m2.productoId) || null) === localInformeId) : movimientos;
-  const albaranesInforme = localInformeId ? albaranes.filter((a2) => (a2.localId || inferirLocalLineasInforme(a2.lineas)) === localInformeId) : albaranes;
-  const facturasDirectasInforme = localInformeId ? facturasDirectas.filter((f2) => f2.localId === localInformeId) : facturasDirectas;
-  const gastosGeneralesInforme = localInformeId ? gastosGenerales.filter((g2) => g2.localId === localInformeId) : gastosGenerales;
-  const empleadosInforme = localInformeId ? empleados.filter((e) => e.localId === localInformeId) : empleados;
+  const productosInforme = localInformeId ? productos.filter((p2) => p2.localId === localInformeId) : productos.filter((p2) => localEsDeEmpresaInforme(p2.localId));
+  const movimientosInforme = localInformeId ? movimientos.filter((m2) => (m2.localId || localPorProductoInforme.get(m2.productoId) || null) === localInformeId) : movimientos.filter((m2) => localEsDeEmpresaInforme(m2.localId || localPorProductoInforme.get(m2.productoId) || null));
+  const albaranesInforme = localInformeId ? albaranes.filter((a2) => (a2.localId || inferirLocalLineasInforme(a2.lineas)) === localInformeId) : albaranes.filter((a2) => localEsDeEmpresaInforme(a2.localId || inferirLocalLineasInforme(a2.lineas)));
+  const facturasDirectasInforme = localInformeId ? facturasDirectas.filter((f2) => f2.localId === localInformeId) : facturasDirectas.filter((f2) => localEsDeEmpresaInforme(f2.localId));
+  const gastosGeneralesInforme = localInformeId ? gastosGenerales.filter((g2) => g2.localId === localInformeId) : gastosGenerales.filter((g2) => localEsDeEmpresaInforme(g2.localId));
+  const empleadosInforme = localInformeId ? empleados.filter((e) => e.localId === localInformeId) : empleados.filter((e) => localEsDeEmpresaInforme(e.localId));
   const idsEmpleadosInforme = new Set(empleadosInforme.map((e) => e.id));
-  const fichajesAbiertosInforme = localInformeId ? fichajesAbiertos.filter((f2) => idsEmpleadosInforme.has(f2.empleadoId)) : fichajesAbiertos;
-  const documentosPersonalProntoInforme = localInformeId ? documentosPersonalPronto.filter((d2) => idsEmpleadosInforme.has(d2.empleadoId)) : documentosPersonalPronto;
-  const pedidosInforme = localInformeId ? pedidos.filter((pe2) => (pe2.localId || inferirLocalLineasInforme(pe2.items)) === localInformeId) : pedidos;
-  const encargosInforme = localInformeId ? encargos.filter((e) => (e.localId || inferirLocalLineasInforme(e.lineas)) === localInformeId) : encargos;
+  const fichajesAbiertosInforme = fichajesAbiertos.filter((f2) => idsEmpleadosInforme.has(f2.empleadoId));
+  const documentosPersonalProntoInforme = documentosPersonalPronto.filter((d2) => idsEmpleadosInforme.has(d2.empleadoId));
+  const pedidosInforme = localInformeId ? pedidos.filter((pe2) => (pe2.localId || inferirLocalLineasInforme(pe2.items)) === localInformeId) : pedidos.filter((pe2) => localEsDeEmpresaInforme(pe2.localId || inferirLocalLineasInforme(pe2.items)));
+  const encargosInforme = localInformeId ? encargos.filter((e) => (e.localId || inferirLocalLineasInforme(e.lineas)) === localInformeId) : encargos.filter((e) => localEsDeEmpresaInforme(e.localId || inferirLocalLineasInforme(e.lineas)));
   const idsFacturasInforme = new Set([...albaranesInforme.map((a2) => a2.id), ...facturasDirectasInforme.map((f2) => f2.id)]);
-  const pendientesPagoInforme = localInformeId ? pendientesPago.filter((f2) => idsFacturasInforme.has(f2.id)) : pendientesPago;
+  const pendientesPagoInforme = pendientesPago.filter((f2) => idsFacturasInforme.has(f2.id));
   const vencenProntoInforme = pendientesPagoInforme.filter((f2) => f2.dias !== null && f2.dias <= 7);
   const totalPendientePagoInforme = pendientesPagoInforme.reduce((a2, f2) => a2 + f2.total, 0);
   const valorInventarioInforme = productosInforme.filter((p2) => !esUtillaje(p2)).reduce((acc, p2) => acc + (Number(p2.stock) || 0) * Number(p2.costo || 0), 0);
@@ -118604,14 +118603,14 @@ function GestionAlmacen() {
   const productosConPrecioInforme = productosInforme.filter((p2) => Number(p2.precioVenta) > 0);
   const margenPromedioInforme = productosConPrecioInforme.length ? productosConPrecioInforme.reduce((acc, p2) => acc + (margenDe(p2) || 0), 0) / productosConPrecioInforme.length : 0;
   const pedidosPendientesInforme = pedidosInforme.filter((p2) => p2.estado !== "Recibido");
-  const caducanProntoInforme = localInformeId ? caducanPronto.filter((l2) => localPorProductoInforme.get(l2.productoId) === localInformeId) : caducanPronto;
+  const caducanProntoInforme = localInformeId ? caducanPronto.filter((l2) => localPorProductoInforme.get(l2.productoId) === localInformeId) : caducanPronto.filter((l2) => localEsDeEmpresaInforme(localPorProductoInforme.get(l2.productoId)));
   const idsEncargosInforme = new Set(encargosInforme.map((e) => e.id));
-  const encargosUrgentesInforme = localInformeId ? encargosUrgentes.filter((e) => idsEncargosInforme.has(e.id)) : encargosUrgentes;
-  const pisoVentaBajoInforme = localInformeId ? pisoVentaBajo.filter((p2) => p2.localId === localInformeId) : pisoVentaBajo;
-  const sugerenciasPedidoInforme = localInformeId ? sugerenciasPedido.filter((p2) => p2.localId === localInformeId) : sugerenciasPedido;
-  const conteosInforme = localInformeId ? conteos.filter((c2) => c2.localId === localInformeId) : conteos;
+  const encargosUrgentesInforme = encargosUrgentes.filter((e) => idsEncargosInforme.has(e.id));
+  const pisoVentaBajoInforme = localInformeId ? pisoVentaBajo.filter((p2) => p2.localId === localInformeId) : pisoVentaBajo.filter((p2) => localEsDeEmpresaInforme(p2.localId));
+  const sugerenciasPedidoInforme = localInformeId ? sugerenciasPedido.filter((p2) => p2.localId === localInformeId) : sugerenciasPedido.filter((p2) => localEsDeEmpresaInforme(p2.localId));
+  const conteosInforme = localInformeId ? conteos.filter((c2) => c2.localId === localInformeId) : conteos.filter((c2) => localEsDeEmpresaInforme(c2.localId));
   const recordatorioConteoInforme = calcularRecordatorioConteo(conteosInforme, localInformeId ? "Total del local" : "Total (empresa completa)");
-  const diagnosticoStockInforme = localInformeId ? diagnosticoStock.filter((d2) => localPorProductoInforme.get(d2.productoId) === localInformeId) : diagnosticoStock;
+  const diagnosticoStockInforme = localInformeId ? diagnosticoStock.filter((d2) => localPorProductoInforme.get(d2.productoId) === localInformeId) : diagnosticoStock.filter((d2) => localEsDeEmpresaInforme(localPorProductoInforme.get(d2.productoId)));
   const addGastoInforme = (data) => addGasto({ ...data, localId: localInformeId || localActivoId || null });
   const deleteGastoInforme = (id) => deleteGasto(id, localInformeId || localActivoId || null);
   const contenido = /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, (tab === "dashboard" || tab === "resultados" || tab === "libroiva") && /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, valor: localInformeId, onChange: seleccionarContextoLocal }), tab === "dashboard" && /* @__PURE__ */ import_react4.default.createElement(
@@ -118726,13 +118725,7 @@ function GestionAlmacen() {
       margenPorProducto: margenPorProductoDelLocalActivo,
       patronesDesviacionConteo: patronesDesviacionConteoDelLocalActivo
     }
-  ), tab === "resultados" && /* @__PURE__ */ import_react4.default.createElement(
-    Resultados,
-    {
-      movimientos: movimientosInforme,
-      productos: productosInforme,
-      productoPorId,
-      gastosGenerales: gastosGeneralesInforme,
+  ), tab === "resultados" && /* @__PURE__ */ import_react4.default.createElement( Resultados, { movimientos: movimientosInforme, productos: productosInforme, productoPorId: (id) => productosInforme.find((p2) => p2.id === id), gastosGenerales: gastosGeneralesInforme,
       addGasto: addGastoInforme,
       deleteGasto: deleteGastoInforme,
       empleados: empleadosInforme
