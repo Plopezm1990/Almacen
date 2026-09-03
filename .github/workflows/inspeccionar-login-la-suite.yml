@@ -10,8 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Buscar textos del login
+      - name: Buscar textos exactos del login
         run: |
           set -euo pipefail
-          echo '=== CHOCOLOYOS / LOGIN ==='
-          grep -Rni -A12 -B12 --exclude-dir=.git -E 'Chocoloyos|CHOCOLOYOS|Inicia sesi[oó]n para sincronizar|Trabajar solo en este equipo' . | head -n 260 || true
+          echo '=== LOGIN EXACTO ==='
+          grep -Rni -A18 -B18 --exclude-dir=.git -E 'Inicia sesi[oó]n para sincronizar entre dispositivos|Trabajar solo en este equipo' . || true
