@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title">
+  <title id="title">L&amp;A Suite</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#071D12"/><stop offset="1" stop-color="#0C2714"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#D2AD68"/><stop offset=".32" stop-color="#A97B36"/><stop offset=".65" stop-color="#7F5823"/><stop offset="1" stop-color="#BF914A"/></linearGradient>
+  </defs>
+  <rect x="5" y="5" width="246" height="246" rx="52" fill="url(#bg)" stroke="#9C7335" stroke-width="4"/>
+  <text x="128" y="155" text-anchor="middle" fill="url(#gold)" font-family="Georgia, 'Times New Roman', serif" font-size="112" letter-spacing="-8">L&amp;A</text>
+  <g stroke="url(#gold)" stroke-linecap="round" fill="none">
+    <path d="M121 99v40" stroke-width="4"/>
+    <path d="M111 99v15c0 10 5 15 10 15s10-5 10-15V99" stroke-width="4"/>
+    <path d="M115 99v17M121 99v18M127 99v17" stroke-width="2.5"/>
+  </g>
+  <text x="128" y="201" text-anchor="middle" fill="#B98B46" font-family="Georgia, 'Times New Roman', serif" font-size="23" letter-spacing="7">SUITE</text>
+</svg>
