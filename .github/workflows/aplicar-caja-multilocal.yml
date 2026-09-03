@@ -1,0 +1,42 @@
+name: Aplicar Caja multi-local segura
+on:
+  push:
+    branches: [la-suite-identidad]
+    paths:
+      - '.github/workflows/aplicar-caja-multilocal.yml'
+      - 'tools/corregir_caja_multilocal.py'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: la-suite-identidad
+          fetch-depth: 0
+      - name: Aplicar transformación controlada
+        run: python3 tools/corregir_caja_multilocal.py
+      - name: Validar fuente completa
+        run: |
+          git diff --check
+          node --input-type=module --check < fuente.js
+          npm install acorn@8 >/dev/null 2>&1
+          node -e "const fs=require('fs'),a=require('acorn');a.parse(fs.readFileSync('fuente.js','utf8'),{ecmaVersion:'latest',sourceType:'module'});console.log('ACORN_OK')"
+          git diff --stat -- fuente.js
+          rm -rf node_modules
+          git clean -f -- package.json package-lock.json >/dev/null 2>&1 || true
+          git checkout -- package.json package-lock.json 2>/dev/null || true
+      - name: Guardar cambio funcional
+        run: |
+          CAMBIOS=$(git status --short | awk '{print $2}' || true)
+          if [ "$CAMBIOS" != "fuente.js" ]; then
+            echo "Cambio inesperado: $CAMBIOS"
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fuente.js
+          git commit -m "Aislar altas y borrados de Caja por local"
+          git push origin HEAD:la-suite-identidad
