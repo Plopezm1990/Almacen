@@ -128757,12 +128757,13 @@ function AppConSesion() {
     window.actualizarIndicador();
     setFase("dentro");
   }
-  const estiloBase = { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F3E9", fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui", padding: 20 };
+  const estiloBase = { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "radial-gradient(circle at 50% 26%, #153D27 0%, #0C2714 44%, #06170E 100%)", fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui", padding: 20 };
   if (fase === "comprobando") {
     return /* @__PURE__ */ import_react4.default.createElement("div", { style: { ...estiloBase, color: "#6B7A6E", fontSize: 13.5 } }, "Comprobando conexi\xF3n\u2026");
   }
   if (fase === "login") {
-    return /* @__PURE__ */ import_react4.default.createElement("div", { style: estiloBase }, /* @__PURE__ */ import_react4.default.createElement("form", { onSubmit: entrar, style: { background: "#fff", padding: 28, borderRadius: 14, width: "100%", maxWidth: 340, border: "1px solid #E2DBC7", boxShadow: "0 4px 20px rgba(23,36,28,0.06)" } }, /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO_PROYECTO, alt: "L&A Suite", style: { width: "min(210px,72%)", height: "auto", display: "block", marginBottom: 10 } }), /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontSize: 12.5, color: "#6B7A6E", marginBottom: 22 } }, "Inicia sesi\xF3n para sincronizar entre dispositivos"), /* @__PURE__ */ import_react4.default.createElement(
+    const campoAcceso = { width: "100%", padding: "13px 14px", marginBottom: 12, border: "1px solid rgba(198,154,82,.30)", borderRadius: 12, fontSize: 14, boxSizing: "border-box", fontFamily: "inherit", background: "rgba(2,18,11,.52)", color: "#F4EBDD", outline: "none" };
+    return /* @__PURE__ */ import_react4.default.createElement("div", { style: estiloBase }, /* @__PURE__ */ import_react4.default.createElement("form", { onSubmit: entrar, style: { background: "linear-gradient(180deg, rgba(16,49,30,.985), rgba(5,27,16,.985))", padding: "30px 28px 26px", borderRadius: 24, width: "100%", maxWidth: 390, border: "1px solid rgba(198,154,82,.55)", boxShadow: "0 24px 70px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.03)", backdropFilter: "blur(10px)" } }, /* @__PURE__ */ import_react4.default.createElement("div", { style: { display: "flex", justifyContent: "center", marginBottom: 4 } }, /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO_PROYECTO, alt: "L&A Suite", style: { width: "72%", maxWidth: 225, height: "auto", display: "block", filter: "drop-shadow(0 8px 18px rgba(0,0,0,.28))" } })), /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontFamily: "Georgia, 'Times New Roman', serif", fontSize: 27, fontWeight: 600, textAlign: "center", marginBottom: 6, color: "#F7F0E3", letterSpacing: ".01em" } }, "L&A Suite"), /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontSize: 12.5, color: "#AEBBB2", textAlign: "center", marginBottom: 24, lineHeight: 1.45 } }, "Inicia sesi\xF3n para sincronizar entre dispositivos"), /* @__PURE__ */ import_react4.default.createElement(
       "input",
       {
         type: "email",
@@ -128771,7 +128772,7 @@ function AppConSesion() {
         placeholder: "Correo",
         value: email,
         onChange: (e) => setEmail(e.target.value),
-        style: { width: "100%", padding: "10px 12px", marginBottom: 10, border: "1px solid #E2DBC7", borderRadius: 8, fontSize: 14, boxSizing: "border-box", fontFamily: "inherit" }
+        style: campoAcceso
       }
     ), /* @__PURE__ */ import_react4.default.createElement(
       "input",
@@ -128781,9 +128782,9 @@ function AppConSesion() {
         placeholder: "Contrase\xF1a",
         value: password,
         onChange: (e) => setPassword(e.target.value),
-        style: { width: "100%", padding: "10px 12px", marginBottom: 16, border: "1px solid #E2DBC7", borderRadius: 8, fontSize: 14, boxSizing: "border-box", fontFamily: "inherit" }
+        style: { ...campoAcceso, marginBottom: 16 }
       }
-    ), error && /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: "#B5473A", fontSize: 12.5, marginBottom: 12 } }, error), /* @__PURE__ */ import_react4.default.createElement("button", { type: "submit", disabled: cargando, style: { width: "100%", padding: "11px", background: "#8C6D2A", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: "pointer" } }, cargando ? "Entrando\u2026" : "Entrar"), /* @__PURE__ */ import_react4.default.createElement("div", { onClick: entrarSinNube, style: { marginTop: 16, textAlign: "center", fontSize: 12, color: "#6B7A6E", textDecoration: "underline", cursor: "pointer" } }, "Trabajar solo en este equipo, sin sincronizar")));
+    ), error && /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: "#FFB9AE", fontSize: 12.5, marginBottom: 12, lineHeight: 1.4 } }, error), /* @__PURE__ */ import_react4.default.createElement("button", { type: "submit", disabled: cargando, style: { width: "100%", padding: "13px", background: "linear-gradient(135deg, #8A6028 0%, #C69A52 52%, #9B7132 100%)", color: "#071D12", border: "1px solid rgba(232,199,130,.66)", borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: "pointer", boxShadow: "0 8px 20px rgba(0,0,0,.22)" } }, cargando ? "Entrando\u2026" : "Entrar"), /* @__PURE__ */ import_react4.default.createElement("div", { onClick: entrarSinNube, style: { marginTop: 17, textAlign: "center", fontSize: 12.5, color: "#C69A52", textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer" } }, "Trabajar solo en este equipo, sin sincronizar")));
   }
   return /* @__PURE__ */ import_react4.default.createElement(GestionAlmacen, null);
 }

@@ -6,11 +6,22 @@
   <meta name="theme-color" content="#0C2714">
   <title>Restablecer contraseña · L&A Suite</title>
   <style>
-    *{box-sizing:border-box}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:#f7f3e9;color:#17241c;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.card{width:min(440px,100%);background:#fff;border:1px solid #ded7c5;border-radius:18px;padding:24px;box-shadow:0 12px 40px rgba(22,38,29,.10)}h1{font-size:25px;margin:0 0 8px}.sub{color:#6b756f;line-height:1.45;font-size:14px;margin:0 0 20px}label{display:block;font-weight:700;font-size:13px;margin:12px 0 6px}input{width:100%;padding:13px 12px;border:1px solid #cfc8b8;border-radius:10px;background:#fff;color:#17241c;font:inherit}button{width:100%;margin-top:16px;padding:13px;border:0;border-radius:10px;background:#9a7729;color:#fff;font:inherit;font-weight:700;cursor:pointer}button:disabled{opacity:.55;cursor:default}.msg{margin-top:12px;min-height:20px;font-size:13px;line-height:1.4;color:#52675c}.msg.error{color:#a63d32}.ok{padding:12px;border-radius:10px;background:#e7f2eb;color:#285b42;margin-top:14px;font-size:13px;line-height:1.45}.volver{display:block;margin-top:16px;text-align:center;color:#6b6250;font-size:13px}.hidden{display:none!important}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 50% 26%,#153D27 0%,#0C2714 44%,#06170E 100%);color:#f5eddf;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    .card{width:min(440px,100%);background:linear-gradient(180deg,rgba(16,49,30,.985),rgba(5,27,16,.985));border:1px solid rgba(198,154,82,.55);border-radius:24px;padding:28px;box-shadow:0 24px 70px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.03)}
+    .brand{display:block;width:min(70%,230px);height:auto;margin:0 auto 4px;filter:drop-shadow(0 8px 18px rgba(0,0,0,.28))}
+    h1{font-family:Georgia,"Times New Roman",serif;text-align:center;font-size:27px;margin:0 0 7px;color:#f7f0e3}
+    .sub{color:#aebbb2;line-height:1.5;font-size:14px;margin:0 0 22px;text-align:center}
+    label{display:block;font-weight:700;font-size:13px;margin:13px 0 7px;color:#e9ddc9}
+    input{width:100%;padding:13px 14px;border:1px solid rgba(198,154,82,.30);border-radius:12px;background:rgba(2,18,11,.52);color:#f4ebdd;font:inherit;outline:none}
+    input:focus{border-color:#c69a52;box-shadow:0 0 0 3px rgba(198,154,82,.12)}
+    button{width:100%;margin-top:17px;padding:13px;border:1px solid rgba(232,199,130,.66);border-radius:12px;background:linear-gradient(135deg,#8A6028 0%,#C69A52 52%,#9B7132 100%);color:#071D12;font:inherit;font-weight:800;cursor:pointer;box-shadow:0 8px 20px rgba(0,0,0,.22)}
+    button:disabled{opacity:.55;cursor:default}.msg{margin-top:12px;min-height:20px;font-size:13px;line-height:1.4;color:#b9c8be}.msg.error{color:#ffb9ae}.ok{padding:13px;border-radius:12px;background:rgba(73,133,95,.18);border:1px solid rgba(122,178,143,.24);color:#d9eadf;margin-top:14px;font-size:13px;line-height:1.5}.volver{display:block;margin-top:18px;text-align:center;color:#c69a52;font-size:13px;text-underline-offset:3px}.hidden{display:none!important}
   </style>
 </head>
 <body>
   <main class="card">
+    <img class="brand" src="la-suite-logo.svg" alt="L&amp;A Suite">
     <h1>L&amp;A Suite</h1>
     <p class="sub" id="intro">Recupera el acceso a tu cuenta sin modificar ningún dato del negocio.</p>
 
