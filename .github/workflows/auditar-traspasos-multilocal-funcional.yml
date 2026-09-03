@@ -1,4 +1,5 @@
 name: Auditar traspasos multi-local funcional
+# Reejecución tras corregir la sintaxis de la UI de Traspasos.
 on:
   push:
     branches: [la-suite-identidad]
