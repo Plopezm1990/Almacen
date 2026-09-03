@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0C2714">
+  <title>Restablecer contraseña · Chocoloyos</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:#f7f3e9;color:#17241c;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.card{width:min(440px,100%);background:#fff;border:1px solid #ded7c5;border-radius:18px;padding:24px;box-shadow:0 12px 40px rgba(22,38,29,.10)}h1{font-size:25px;margin:0 0 8px}.sub{color:#6b756f;line-height:1.45;font-size:14px;margin:0 0 20px}label{display:block;font-weight:700;font-size:13px;margin:12px 0 6px}input{width:100%;padding:13px 12px;border:1px solid #cfc8b8;border-radius:10px;background:#fff;color:#17241c;font:inherit}button{width:100%;margin-top:16px;padding:13px;border:0;border-radius:10px;background:#9a7729;color:#fff;font:inherit;font-weight:700;cursor:pointer}button:disabled{opacity:.55;cursor:default}.msg{margin-top:12px;min-height:20px;font-size:13px;line-height:1.4;color:#52675c}.msg.error{color:#a63d32}.ok{padding:12px;border-radius:10px;background:#e7f2eb;color:#285b42;margin-top:14px;font-size:13px;line-height:1.45}.volver{display:block;margin-top:16px;text-align:center;color:#6b6250;font-size:13px}.hidden{display:none!important}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Chocoloyos</h1>
+    <p class="sub" id="intro">Recupera el acceso a tu cuenta sin modificar ningún dato del negocio.</p>
+
+    <section id="solicitar">
+      <label for="email">Correo de la cuenta</label>
+      <input id="email" type="email" autocomplete="email" placeholder="correo@ejemplo.com">
+      <button id="enviar" type="button">Enviar enlace de recuperación</button>
+      <div id="msgEnviar" class="msg" aria-live="polite"></div>
+    </section>
+
+    <section id="cambiar" class="hidden">
+      <label for="pass1">Nueva contraseña</label>
+      <input id="pass1" type="password" autocomplete="new-password" minlength="8">
+      <label for="pass2">Repetir contraseña</label>
+      <input id="pass2" type="password" autocomplete="new-password" minlength="8">
+      <button id="guardar" type="button">Guardar nueva contraseña</button>
+      <div id="msgGuardar" class="msg" aria-live="polite"></div>
+    </section>
+
+    <section id="final" class="hidden">
+      <div class="ok">Contraseña actualizada correctamente. Ya puedes volver a Chocoloyos e iniciar sesión con la nueva contraseña.</div>
+    </section>
+
+    <a class="volver" href="./">Volver a Chocoloyos</a>
+  </main>
+
+<script>
+(function(){
+  "use strict";
+  var SUPABASE_URL="https://flqercbgpgmmfaakrwkc.supabase.co";
+  var ANON_KEY="sb_publishable_dDpJoqnVG8Axmk2QqCCX1g_4h5keXWJ";
+  var accessToken=null;
+
+  var solicitar=document.getElementById("solicitar");
+  var cambiar=document.getElementById("cambiar");
+  var final=document.getElementById("final");
+  var intro=document.getElementById("intro");
+  var email=document.getElementById("email");
+  var enviar=document.getElementById("enviar");
+  var guardar=document.getElementById("guardar");
+  var pass1=document.getElementById("pass1");
+  var pass2=document.getElementById("pass2");
+  var msgEnviar=document.getElementById("msgEnviar");
+  var msgGuardar=document.getElementById("msgGuardar");
+
+  function mensaje(el,texto,error){el.textContent=texto||"";el.className="msg"+(error?" error":"");}
+  function limpiarTokenURL(){try{history.replaceState(null,"",location.pathname+location.search);}catch(e){}}
+  function leerHash(){
+    var h=(location.hash||"").replace(/^#/,"");
+    if(!h)return {};
+    var p=new URLSearchParams(h);
+    var o={};p.forEach(function(v,k){o[k]=v;});return o;
+  }
+
+  var hash=leerHash();
+  if(hash.error_description){
+    mensaje(msgEnviar,decodeURIComponent(hash.error_description),true);
+    limpiarTokenURL();
+  }else if(hash.access_token && (hash.type==="recovery" || hash.refresh_token)){
+    accessToken=hash.access_token;
+    limpiarTokenURL();
+    solicitar.classList.add("hidden");
+    cambiar.classList.remove("hidden");
+    intro.textContent="El enlace es válido. Elige ahora una contraseña nueva para esta cuenta.";
+    setTimeout(function(){pass1.focus();},50);
+  }
+
+  enviar.addEventListener("click",async function(){
+    var correo=(email.value||"").trim();
+    if(!correo){mensaje(msgEnviar,"Escribe el correo de la cuenta.",true);email.focus();return;}
+    enviar.disabled=true;mensaje(msgEnviar,"Enviando…",false);
+    try{
+      var redirect=location.origin+location.pathname;
+      var r=await fetch(SUPABASE_URL+"/auth/v1/recover?redirect_to="+encodeURIComponent(redirect),{
+        method:"POST",
+        headers:{"apikey":ANON_KEY,"Content-Type":"application/json"},
+        body:JSON.stringify({email:correo})
+      });
+      var data={};try{data=await r.json();}catch(e){}
+      if(!r.ok)throw new Error(data.msg||data.message||data.error_description||"No se pudo enviar el correo.");
+      mensaje(msgEnviar,"Si la cuenta existe, recibirás un correo de recuperación. Ábrelo en este mismo navegador.",false);
+    }catch(e){mensaje(msgEnviar,e&&e.message?e.message:"No se pudo enviar el correo.",true);}finally{enviar.disabled=false;}
+  });
+
+  guardar.addEventListener("click",async function(){
+    var p1=pass1.value||"",p2=pass2.value||"";
+    if(!accessToken){mensaje(msgGuardar,"El enlace de recuperación ya no es válido. Solicita uno nuevo.",true);return;}
+    if(p1.length<8){mensaje(msgGuardar,"Usa al menos 8 caracteres.",true);pass1.focus();return;}
+    if(p1!==p2){mensaje(msgGuardar,"Las dos contraseñas no coinciden.",true);pass2.focus();return;}
+    guardar.disabled=true;mensaje(msgGuardar,"Guardando…",false);
+    try{
+      var r=await fetch(SUPABASE_URL+"/auth/v1/user",{
+        method:"PUT",
+        headers:{"apikey":ANON_KEY,"Authorization":"Bearer "+accessToken,"Content-Type":"application/json"},
+        body:JSON.stringify({password:p1})
+      });
+      var data={};try{data=await r.json();}catch(e){}
+      if(!r.ok)throw new Error(data.msg||data.message||data.error_description||"No se pudo actualizar la contraseña.");
+      accessToken=null;pass1.value="";pass2.value="";
+      cambiar.classList.add("hidden");final.classList.remove("hidden");
+      intro.textContent="Acceso recuperado.";
+    }catch(e){mensaje(msgGuardar,e&&e.message?e.message:"No se pudo actualizar la contraseña.",true);guardar.disabled=false;}
+  });
+})();
+</script>
+</body>
+</html>
