@@ -1,0 +1,36 @@
+name: Aplicar ficha empresa texto fase 4
+on:
+  push:
+    branches: [tpv-ventas-fase-4]
+    paths:
+      - '.github/workflows/aplicar-ficha-empresa-texto-fase4.yml'
+      - '.github/scripts/aplicar_ficha_empresa_texto_fase4.py'
+permissions:
+  contents: write
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar ficha de empresa
+        run: python3 .github/scripts/aplicar_ficha_empresa_texto_fase4.py
+      - name: Validar
+        run: |
+          node --check fuente.js
+          git diff --check
+          grep -q 'function FichaEmpresaBasica' fuente.js
+          grep -q 'loadKey("configEmpresa"' fuente.js
+          grep -q 'saveKey("configEmpresa", configEmpresa)' fuente.js
+          grep -q 'razonSocialEmpresa' fuente.js
+      - name: Limpiar temporales y guardar
+        run: |
+          rm -f .github/scripts/aplicar_ficha_empresa_texto_fase4.py
+          rm -f .github/workflows/aplicar-ficha-empresa-texto-fase4.yml
+          rm -f .github/workflows/inspeccionar-identidad-empresa-local-fase4.yml
+          rm -f .github/workflows/inspeccionar-plumbing-empresa-fase4.yml
+          git config user.name 'Plopezm1990'
+          git config user.email 'pedroroger1990@gmail.com'
+          git add fuente.js .github/scripts .github/workflows
+          git diff --cached --check
+          git commit -m 'Añadir ficha de empresa compartida'
+          git push origin HEAD:tpv-ventas-fase-4
