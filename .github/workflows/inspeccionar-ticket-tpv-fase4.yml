@@ -1,4 +1,4 @@
-name: Precisar anclas ticket TPV fase 4
+name: Inspeccionar modelo ticket TPV fase 4
 on:
   push:
     branches: [tpv-ventas-fase-4]
@@ -11,20 +11,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Mostrar contexto exacto del detalle
+      - name: Mostrar modelo normalizado del historial
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('fuente.js').read_text(encoding='utf-8')
-          for needle in ['ID interno', 'confirmAnular &&', 'ventaDetalle.id', 'Anular venta']:
+          for needle in ['function renderHistorialVentas', 'const ventasAgrupadas', 'const historialVentas', 'ventaId:', 'importe:', 'resumen:']:
               print('\n===', needle, '===')
-              pos=[]; start=0
-              while True:
-                  i=s.find(needle,start)
-                  if i<0: break
-                  pos.append(i); start=i+len(needle)
-              print('COUNT',len(pos))
-              for i in pos[-5:]:
-                  print(repr(s[max(0,i-700):i+1100]))
-                  print('---')
+              i=s.find(needle)
+              print('POS',i)
+              if i>=0: print(s[max(0,i-3000):i+9000])
           PY
