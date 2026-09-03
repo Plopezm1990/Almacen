@@ -1,0 +1,35 @@
+name: Restaurar bloque Locales fase 4
+
+on:
+  push:
+    branches: [tpv-ventas-fase-4]
+    paths:
+      - '.github/workflows/restaurar-locales-fase4.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  restaurar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Restaurar fuente al último estado previo validado
+        run: |
+          set -euo pipefail
+          git checkout 6c769aba571c6409ef9f78ba0c229341ea6696fd -- fuente.js
+          node --check fuente.js
+          git diff --check
+      - name: Limpiar temporal y guardar restauración
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/restaurar-locales-fase4.yml
+          rm -f .github/workflows/inspeccionar-locales-ticket-fase4.yml
+          git config user.name 'Plopezm1990'
+          git config user.email 'pedroroger1990@gmail.com'
+          git add fuente.js .github/workflows
+          git diff --cached --check
+          git commit -m 'Restaurar estado estable antes de configuración de Locales'
+          git push origin HEAD:tpv-ventas-fase-4
