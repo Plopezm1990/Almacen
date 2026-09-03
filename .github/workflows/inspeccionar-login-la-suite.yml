@@ -10,8 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Buscar textos exactos del login
+      - name: Mostrar bloque del login
         run: |
           set -euo pipefail
-          echo '=== LOGIN EXACTO ==='
-          grep -Rni -A18 -B18 --exclude-dir=.git -E 'Inicia sesi[oó]n para sincronizar entre dispositivos|Trabajar solo en este equipo' . || true
+          sed -n '128720,128790p' fuente.js
