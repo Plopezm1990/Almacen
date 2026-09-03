@@ -1,0 +1,43 @@
+name: Aplicar identidad L&A Suite
+on:
+  push:
+    paths:
+      - '.github/workflows/aplicar-identidad-la-suite.yml'
+permissions:
+  contents: write
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar identidad general
+        run: python3 .github/scripts/aplicar_identidad_la_suite.py
+      - name: Validar código y activos
+        run: |
+          set -euo pipefail
+          node --check fuente.js
+          python3 -m json.tool manifest.json >/dev/null
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          ET.parse('la-suite-logo.svg')
+          ET.parse('la-suite-icon.svg')
+          print('SVG válidos')
+          PY
+          git diff --check
+          grep -q '<title>L&amp;A Suite</title>' index.html
+          grep -q 'Gestión integral para tu negocio' index.html
+          grep -q 'var LOGO_PROYECTO = "la-suite-logo.svg"' fuente.js
+          grep -q 'var LOGO = "data:image/png;base64' fuente.js
+          grep -q 'var LOGO_BLANCO = "data:image/png;base64' fuente.js
+      - name: Limpiar utilidades temporales y guardar
+        run: |
+          rm -f .github/workflows/aplicar-identidad-la-suite.yml
+          rm -f .github/scripts/aplicar_identidad_la_suite.py
+          rm -f .github/workflows/inspeccionar-identidad-la-suite.yml
+          rm -f .github/workflows/inspeccionar-usos-logo-la-suite.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html fuente.js manifest.json la-suite-logo.svg la-suite-icon.svg .github
+          git diff --cached --check
+          git commit -m 'Aplicar identidad general L&A Suite'
+          git push origin HEAD:la-suite-identidad
