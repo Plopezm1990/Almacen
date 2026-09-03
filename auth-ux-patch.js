@@ -40,7 +40,7 @@
     var style = document.createElement("style");
     style.id = "chocoloyos-auth-ux-style";
     style.textContent = [
-      "." + CLASE_OLVIDO + "{display:block;width:100%;margin:10px 0 0;padding:7px 8px;border:0;background:transparent;color:#6f6654;text-decoration:underline;font:inherit;font-size:13px;cursor:pointer}",
+      "." + CLASE_OLVIDO + "{display:block;width:100%;margin:12px 0 0;padding:7px 8px;border:0;background:transparent;color:#C69A52;text-decoration:underline;text-underline-offset:3px;font:inherit;font-size:13px;cursor:pointer}",
       "." + CLASE_LOGOUT + "{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:7px;flex:0 0 auto;min-height:40px;border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:0 12px;background:rgba(255,255,255,.10);color:#e7eee9;font:inherit;font-size:12px;font-weight:700;line-height:1;white-space:nowrap;cursor:pointer;transition:background .16s ease,border-color .16s ease,transform .12s ease}",
       "." + CLASE_LOGOUT + ":hover{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.16)}",
       "." + CLASE_LOGOUT + ":active{transform:scale(.97)}",

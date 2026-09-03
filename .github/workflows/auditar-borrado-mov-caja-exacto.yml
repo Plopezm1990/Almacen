@@ -1,0 +1,28 @@
+name: Precisar borrado movimiento Caja
+on:
+  push:
+    branches: [la-suite-identidad]
+    paths:
+      - '.github/workflows/auditar-borrado-mov-caja-exacto.yml'
+  workflow_dispatch:
+jobs:
+  auditar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Buscar función exacta
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          lines=s.splitlines()
+          pats=['setMovimientosCaja((prev) => prev.filter', 'movimientosCaja.filter', 'ELIMINAR_MOVIMIENTO_CAJA', 'BORRAR_MOVIMIENTO_CAJA', 'movimiento de caja', 'deleteMovimiento', 'eliminarMovimiento']
+          for pat in pats:
+            print('\n===',pat,'===')
+            hits=[i for i,l in enumerate(lines,1) if pat.lower() in l.lower()]
+            print('HITS',hits[:80])
+            for n in hits[:20]:
+              a=max(1,n-16); b=min(len(lines),n+28)
+              print(f'--- {a}:{b} ---')
+              for j in range(a,b+1): print(f'{j:06d}: {lines[j-1]}')
+          PY
