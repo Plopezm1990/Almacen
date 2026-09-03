@@ -1,15 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title">
-  <title id="title">L&amp;A Suite</title>
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#071D12"/><stop offset="1" stop-color="#0C2714"/></linearGradient>
-    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#D2AD68"/><stop offset=".32" stop-color="#A97B36"/><stop offset=".65" stop-color="#7F5823"/><stop offset="1" stop-color="#BF914A"/></linearGradient>
-  </defs>
-  <rect x="5" y="5" width="246" height="246" rx="52" fill="url(#bg)" stroke="#9C7335" stroke-width="4"/>
-  <text x="128" y="155" text-anchor="middle" fill="url(#gold)" font-family="Georgia, 'Times New Roman', serif" font-size="112" letter-spacing="-8">L&amp;A</text>
-  <g stroke="url(#gold)" stroke-linecap="round" fill="none">
-    <path d="M121 99v40" stroke-width="4"/>
-    <path d="M111 99v15c0 10 5 15 10 15s10-5 10-15V99" stroke-width="4"/>
-    <path d="M115 99v17M121 99v18M127 99v17" stroke-width="2.5"/>
-  </g>
-  <text x="128" y="201" text-anchor="middle" fill="#B98B46" font-family="Georgia, 'Times New Roman', serif" font-size="23" letter-spacing="7">SUITE</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title"><title id="title">L&amp;A Suite</title><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#06170E"/><stop offset="1" stop-color="#0C2714"/></linearGradient><linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#E7C574"/><stop offset=".35" stop-color="#B9873C"/><stop offset=".7" stop-color="#7F5823"/><stop offset="1" stop-color="#C89D50"/></linearGradient></defs><rect x="5" y="5" width="246" height="246" rx="48" fill="url(#bg)" stroke="#9A7133" stroke-width="4"/><g fill="url(#gold)" font-family="Georgia, 'Times New Roman', serif"><text x="29" y="159" font-size="124">L</text><text x="137" y="159" font-size="124">A</text><text x="89" y="149" font-size="86">&amp;</text></g><g stroke="url(#gold)" stroke-linecap="round" fill="none"><path d="M113 115v34" stroke-width="3.8"/><path d="M104 115v13c0 8 4 12 9 12s9-4 9-12v-13" stroke-width="3.8"/><path d="M107 115v14M113 115v15M119 115v14" stroke-width="2.2"/></g><g fill="url(#gold)"><rect x="48" y="190" width="45" height="2"/><rect x="163" y="190" width="45" height="2"/><text x="128" y="205" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="19" letter-spacing="5">SUITE</text></g></svg>
