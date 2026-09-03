@@ -120599,7 +120599,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         return { ok: false, error: r.data.error, productoId: r.data.productoId };
       }
       await sincronizarTrasExito();
-      return { ok: true, n: lineasParaRpc.length, modo: "atomico" };
+      return { ok: true, n: lineasParaRpc.length, modo: "atomico", ventaId };
     } catch (primerError) {
       try {
         const r2 = await intentarRpc(4e3);
@@ -120607,7 +120607,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           return { ok: false, error: r2.data.error, productoId: r2.data.productoId };
         }
         await sincronizarTrasExito();
-        return { ok: true, n: lineasParaRpc.length, modo: "atomico", reintentada: true };
+        return { ok: true, n: lineasParaRpc.length, modo: "atomico", reintentada: true, ventaId };
       } catch (segundoError) {
         return venderLocal(lineas, medioPago, detallePago);
       }
@@ -127098,35 +127098,116 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
   const [motivoAnular, setMotivoAnular] = (0, import_react4.useState)("");
   const [errorAnular, setErrorAnular] = (0, import_react4.useState)("");
   const [procesandoAnulacion, setProcesandoAnulacion] = (0, import_react4.useState)(false);
-  const ventasDeHoy = (0, import_react4.useMemo)(() => {
-    const hoy = todayISO();
-    const anuladas = new Set(
-      (movimientos || []).filter((m2) => m2.anulaVentaId).map((m2) => m2.anulaVentaId)
-    );
+  const [ventaDetalle, setVentaDetalle] = (0, import_react4.useState)(null);
+  const [filtroVentasTexto, setFiltroVentasTexto] = (0, import_react4.useState)("");
+  const [filtroVentasDesde, setFiltroVentasDesde] = (0, import_react4.useState)("");
+  const [filtroVentasHasta, setFiltroVentasHasta] = (0, import_react4.useState)("");
+  const [filtroVentasPago, setFiltroVentasPago] = (0, import_react4.useState)("Todos");
+  const [filtroVentasEstado, setFiltroVentasEstado] = (0, import_react4.useState)("Todas");
+  const historialVentas = (0, import_react4.useMemo)(() => {
+    const todos = movimientos || [];
+    const anuladasPorId = new Set(todos.filter((m2) => m2.anulaVentaId).map((m2) => m2.anulaVentaId));
+    const reversiones = new Set(todos.filter((m2) => m2.revierteMovimientoId).map((m2) => m2.revierteMovimientoId));
     const porVenta = {};
-    (movimientos || []).filter((m2) => m2.fecha === hoy && m2.ventaId && m2.tipo === "salida").forEach((m2) => {
-      if (!porVenta[m2.ventaId]) porVenta[m2.ventaId] = [];
-      porVenta[m2.ventaId].push(m2);
+    todos.filter((m2) => esVenta(m2) && !m2.anulaVentaId && cantidadConSigno(m2) < 0).forEach((m2) => {
+      const ventaId = m2.ventaId || m2.operationId || m2.documentoOrigenId;
+      if (!ventaId) return;
+      if (!porVenta[ventaId]) porVenta[ventaId] = [];
+      porVenta[ventaId].push(m2);
     });
     return Object.entries(porVenta).map(([ventaId, lineas]) => {
-      const importe = lineas.reduce(
-        (a2, l2) => a2 + (Number(l2.cantidad) || 0) * (Number(l2.ingresoUnitario) || 0) * (1 + (Number(l2.ivaVentaAplicado) || 0) / 100),
-        0
-      );
+      const fecha = lineas.map((l2) => l2.fecha || "").filter(Boolean).sort().slice(-1)[0] || "";
+      const marcaTiempo = lineas.map((l2) => l2.timestamp || l2.createdAt || l2.fechaHora || "").filter(Boolean).sort().slice(-1)[0] || "";
+      const importe = lineas.reduce((a2, l2) => a2 + Math.abs(cantidadConSigno(l2)) * Math.abs(Number(l2.ingresoUnitario) || 0) * (1 + (Number(l2.ivaVentaAplicado) || 0) / 100), 0);
       const nombres = lineas.map((l2) => {
         const p2 = productos.find((x3) => x3.id === l2.productoId);
-        return `${fmt(l2.cantidad)}\xD7 ${p2 ? p2.nombre : "\u2014"}`;
+        return `${fmt(Math.abs(cantidadConSigno(l2)))}× ${p2 ? p2.nombre : "Producto"}`;
       });
-      return {
-        ventaId,
-        resumen: nombres.slice(0, 3).join(", ") + (nombres.length > 3 ? ` y ${nombres.length - 3} m\xE1s` : ""),
-        importe,
-        medioPago: lineas[0].medioPago || "\u2014",
-        usuario: lineas[0].usuario || "",
-        anulada: anuladas.has(ventaId)
-      };
-    });
+      const detallePago = lineas.reduce((acc, l2) => {
+        if (!l2.detallePago) return acc;
+        acc.efectivo += Number(l2.detallePago.efectivo) || 0;
+        acc.tarjeta += Number(l2.detallePago.tarjeta) || 0;
+        return acc;
+      }, { efectivo: 0, tarjeta: 0 });
+      const anulada = anuladasPorId.has(ventaId) || lineas.some((l2) => reversiones.has(l2.id));
+      const medioPago = lineas[0]?.medioPago || "—";
+      const usuario = lineas[0]?.usuario || lineas[0]?.empleado || "";
+      const referencia = `V-${(fecha || "SINFECHA").replaceAll("-", "")}-${String(ventaId).replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`;
+      return { ventaId, referencia, fecha, marcaTiempo, lineas, resumen: nombres.slice(0, 3).join(", ") + (nombres.length > 3 ? ` y ${nombres.length - 3} más` : ""), importe, medioPago, detallePago, usuario, anulada };
+    }).sort((a2, b2) => `${b2.fecha} ${b2.marcaTiempo}`.localeCompare(`${a2.fecha} ${a2.marcaTiempo}`));
   }, [movimientos, productos]);
+  const ventasFiltradas = (0, import_react4.useMemo)(() => {
+    const q2 = filtroVentasTexto.trim().toLowerCase();
+    return historialVentas.filter((v2) => {
+      if (filtroVentasDesde && v2.fecha < filtroVentasDesde) return false;
+      if (filtroVentasHasta && v2.fecha > filtroVentasHasta) return false;
+      if (filtroVentasPago !== "Todos" && v2.medioPago !== filtroVentasPago) return false;
+      if (filtroVentasEstado === "Activas" && v2.anulada) return false;
+      if (filtroVentasEstado === "Anuladas" && !v2.anulada) return false;
+      if (!q2) return true;
+      const productosTexto = v2.lineas.map((l2) => productos.find((p2) => p2.id === l2.productoId)?.nombre || "").join(" ");
+      return `${v2.referencia} ${v2.ventaId} ${v2.fecha} ${v2.medioPago} ${v2.usuario} ${productosTexto}`.toLowerCase().includes(q2);
+    });
+  }, [historialVentas, filtroVentasTexto, filtroVentasDesde, filtroVentasHasta, filtroVentasPago, filtroVentasEstado, productos]);
+  const resumenHistorialVentas = (0, import_react4.useMemo)(() => {
+    const activas = ventasFiltradas.filter((v2) => !v2.anulada);
+    const total = activas.reduce((a2, v2) => a2 + v2.importe, 0);
+    return { n: ventasFiltradas.length, activas: activas.length, total, ticketMedio: activas.length ? total / activas.length : 0 };
+  }, [ventasFiltradas]);
+  function aplicarPeriodoVentas(tipo) {
+    const hoy = todayISO();
+    if (tipo === "hoy") { setFiltroVentasDesde(hoy); setFiltroVentasHasta(hoy); }
+    else if (tipo === "mes") { setFiltroVentasDesde(primerDiaMes(hoy)); setFiltroVentasHasta(ultimoDiaMes(hoy)); }
+    else { setFiltroVentasDesde(""); setFiltroVentasHasta(""); }
+  }
+  function renderHistorialVentas() {
+    const h = import_react4.default.createElement;
+    const controles = h(Card, { className: "mt-5" },
+      h("div", { className: "flex items-center justify-between gap-2 mb-1" },
+        h("div", { className: "text-[14px] font-semibold" }, "Historial de ventas"),
+        h("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, `${historialVentas.length} registrada(s)`)
+      ),
+      h("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Registro interno del TPV. Las anulaciones permanecen visibles y el histórico nunca se borra."),
+      h("div", { className: "grid grid-cols-3 gap-2 mb-3" },
+        h("div", { className: "rounded-lg p-2", style: { background: C2.surface2 || C2.surface } }, h("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Ventas"), h("div", { className: "font-bold mono text-[14px]" }, resumenHistorialVentas.activas)),
+        h("div", { className: "rounded-lg p-2", style: { background: C2.surface2 || C2.surface } }, h("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Total vigente"), h("div", { className: "font-bold mono text-[14px]" }, "€", fmt(resumenHistorialVentas.total))),
+        h("div", { className: "rounded-lg p-2", style: { background: C2.surface2 || C2.surface } }, h("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Ticket medio"), h("div", { className: "font-bold mono text-[14px]" }, "€", fmt(resumenHistorialVentas.ticketMedio)))
+      ),
+      h("div", { className: "flex gap-1.5 mb-3 flex-wrap" },
+        h(Btn, { small: true, variant: "ghost", onClick: () => aplicarPeriodoVentas("hoy") }, "Hoy"),
+        h(Btn, { small: true, variant: "ghost", onClick: () => aplicarPeriodoVentas("mes") }, "Este mes"),
+        h(Btn, { small: true, variant: "ghost", onClick: () => aplicarPeriodoVentas("todo") }, "Todo")
+      ),
+      h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2" },
+        h(Input, { value: filtroVentasTexto, onChange: (e) => setFiltroVentasTexto(e.target.value), placeholder: "Buscar venta, producto, pago o empleado…" }),
+        h("select", { value: filtroVentasPago, onChange: (e) => setFiltroVentasPago(e.target.value), className: "w-full rounded-lg px-3 py-2 text-[12.5px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, ["Todos", "Efectivo", "Tarjeta", "Mixto", "Transferencia", "Otro"].map((x3) => h("option", { key: x3, value: x3 }, x3 === "Todos" ? "Todos los pagos" : x3)))
+      ),
+      h("div", { className: "grid grid-cols-3 gap-2 mb-3" },
+        h(Input, { type: "date", value: filtroVentasDesde, onChange: (e) => setFiltroVentasDesde(e.target.value) }),
+        h(Input, { type: "date", value: filtroVentasHasta, onChange: (e) => setFiltroVentasHasta(e.target.value) }),
+        h("select", { value: filtroVentasEstado, onChange: (e) => setFiltroVentasEstado(e.target.value), className: "w-full rounded-lg px-2 py-2 text-[12px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, ["Todas", "Activas", "Anuladas"].map((x3) => h("option", { key: x3, value: x3 }, x3)))
+      ),
+      ventasFiltradas.length === 0 ? h(Empty, { text: historialVentas.length ? "No hay ventas que coincidan con estos filtros." : "Todavía no hay ventas registradas en este local." }) :
+      h("div", { className: "space-y-1.5" }, ventasFiltradas.slice(0, 100).map((v2) => h("button", { key: v2.ventaId, onClick: () => setVentaDetalle(v2), className: "w-full text-left rounded-lg p-2.5", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+        h("div", { className: "flex items-center justify-between gap-2" },
+          h("div", null, h("div", { className: "text-[12.5px] font-semibold" }, v2.referencia, v2.anulada ? h(Pill2, { color: C2.red }, "anulada") : null), h("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, `${v2.fecha || "Sin fecha"} · ${v2.medioPago}${v2.usuario ? " · " + v2.usuario : ""}`)),
+          h("div", { className: "mono font-bold text-[13px]" }, "€", fmt(v2.importe))
+        ),
+        h("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, v2.resumen)
+      )))
+    );
+    if (!ventaDetalle) return controles;
+    const v2 = ventaDetalle;
+    const detalle = h(Modal, { onClose: () => setVentaDetalle(null), title: `Venta ${v2.referencia}` },
+      h("div", { className: "flex items-center justify-between mb-3" }, h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, `${v2.fecha || "Sin fecha"} · ${v2.medioPago}`), v2.anulada ? h(Pill2, { color: C2.red }, "ANULADA") : h(Pill2, { color: C2.accent }, "ACTIVA")),
+      h("div", { className: "space-y-2 mb-3" }, v2.lineas.map((l2) => { const p2 = productos.find((x3) => x3.id === l2.productoId); const cant = Math.abs(cantidadConSigno(l2)); const precio = Math.abs(Number(l2.ingresoUnitario) || 0) * (1 + (Number(l2.ivaVentaAplicado) || 0) / 100); return h("div", { key: l2.id || `${l2.productoId}-${cant}`, className: "flex justify-between gap-3 text-[12.5px]" }, h("div", null, h("div", { className: "font-medium" }, p2?.nombre || "Producto"), h("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, `${fmt(cant)} × €${fmt(precio)} · IVA ${fmt(Number(l2.ivaVentaAplicado) || 0)}%`)), h("div", { className: "mono font-semibold" }, "€", fmt(cant * precio))); })),
+      h("div", { className: "flex justify-between py-2 mb-2 font-bold", style: { borderTop: `1px solid ${C2.line}` } }, h("span", null, "Total"), h("span", { className: "mono" }, "€", fmt(v2.importe))),
+      v2.medioPago === "Mixto" && (v2.detallePago.efectivo > 0 || v2.detallePago.tarjeta > 0) ? h("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, `Tarjeta €${fmt(v2.detallePago.tarjeta)} + Efectivo €${fmt(v2.detallePago.efectivo)}`) : null,
+      h("div", { className: "text-[10px] mb-3 break-all", style: { color: C2.inkSoft } }, `ID interno: ${v2.ventaId}`),
+      !v2.anulada && anularVenta ? h(Btn, { variant: "danger", onClick: () => { setVentaDetalle(null); setConfirmAnular(v2); } }, "Anular venta") : null
+    );
+    return h(import_react4.default.Fragment, null, controles, detalle);
+  }
   function confirmarAnulacion() {
     if (procesandoAnulacion) return;
     if (!confirmAnular || !anularVenta) return;
@@ -127256,7 +127337,7 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
       );
       return;
     }
-    setConfirmacion({ total, n: resultado.n, medioPago, cambio, detallePago });
+    setConfirmacion({ total, n: resultado.n, medioPago, cambio, detallePago, ventaId: resultado.ventaId || null });
     setCarrito([]);
     setShowCobro(false);
   }
@@ -127350,7 +127431,7 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
       disabled: enviandoVenta || medioPago === "Efectivo" && cambio !== null && cambio < 0 || medioPago === "Mixto" && (Number(importeTarjetaMixto) < 0 || Number(importeTarjetaMixto) > total || restoEfectivoMixto > 0 && cambio !== null && cambio < 0)
     },
     enviandoVenta ? "Cobrando\u2026" : "Confirmar venta"
-  ), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowCobro(false), disabled: enviandoVenta }, "Cancelar"))), confirmacion && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmacion(null), title: "Venta registrada" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-2" }, "\u20AC", fmt(confirmacion.total), " \xB7 ", confirmacion.medioPago, " \xB7 ", confirmacion.n, " l\xEDnea(s)"), confirmacion.detallePago && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2", style: { color: C2.inkSoft } }, "Tarjeta \u20AC", fmt(confirmacion.detallePago.tarjeta), " + Efectivo \u20AC", fmt(confirmacion.detallePago.efectivo)), confirmacion.cambio > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: C2.accent } }, "Entrega \u20AC", fmt(confirmacion.cambio), " de cambio."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Ya se ha descontado el stock y entra en Resultados. Recuerda: esto no sustituye el tique que le des al cliente."), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setConfirmacion(null) }, "Aceptar")), ventasDeHoy.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mt-5" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-1" }, "Ventas de hoy"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Si te has equivocado al cobrar, puedes anular una venta. El stock vuelve y queda constancia de la anulaci\xF3n \u2014 el hist\xF3rico no se borra."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, ventasDeHoy.map((v2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: v2.ventaId, className: "flex items-center justify-between py-1.5", style: { borderBottom: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, v2.anulada ? /* @__PURE__ */ import_react4.default.createElement("s", null, v2.resumen) : v2.resumen, v2.anulada && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.red }, "anulada")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, v2.medioPago, v2.usuario ? ` \xB7 ${v2.usuario}` : "")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono text-[12.5px]" }, "\u20AC", fmt(v2.importe)), !v2.anulada && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setConfirmAnular(v2) }, "Anular")))))), confirmAnular && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmAnular(null), title: "Anular esta venta" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, /* @__PURE__ */ import_react4.default.createElement("b", null, confirmAnular.resumen), " \xB7 \u20AC", fmt(confirmAnular.importe)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "El stock de esos productos volver\xE1 al piso de venta, y quedar\xE1 registrada la anulaci\xF3n. La venta original no se borra: se ve que existi\xF3 y que se anul\xF3."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivoAnular, onChange: (e) => setMotivoAnular(e.target.value), placeholder: "Cobro duplicado, importe incorrecto\u2026" })), errorAnular && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, errorAnular), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: confirmarAnulacion, disabled: procesandoAnulacion }, procesandoAnulacion ? "Anulando\u2026" : "S\xED, anular la venta"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmAnular(null), disabled: procesandoAnulacion }, "Cancelar"))));
+  ), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowCobro(false), disabled: enviandoVenta }, "Cancelar"))), confirmacion && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmacion(null), title: "Venta registrada" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-2" }, "\u20AC", fmt(confirmacion.total), " \xB7 ", confirmacion.medioPago, " \xB7 ", confirmacion.n, " l\xEDnea(s)"), confirmacion.detallePago && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2", style: { color: C2.inkSoft } }, "Tarjeta \u20AC", fmt(confirmacion.detallePago.tarjeta), " + Efectivo \u20AC", fmt(confirmacion.detallePago.efectivo)), confirmacion.cambio > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: C2.accent } }, "Entrega \u20AC", fmt(confirmacion.cambio), " de cambio."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Ya se ha descontado el stock y entra en Resultados. Recuerda: esto no sustituye el tique que le des al cliente."), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setConfirmacion(null) }, "Aceptar")), renderHistorialVentas(), confirmAnular && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmAnular(null), title: "Anular esta venta" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, /* @__PURE__ */ import_react4.default.createElement("b", null, confirmAnular.resumen), " \xB7 \u20AC", fmt(confirmAnular.importe)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "El stock de esos productos volver\xE1 al piso de venta, y quedar\xE1 registrada la anulaci\xF3n. La venta original no se borra: se ve que existi\xF3 y que se anul\xF3."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivoAnular, onChange: (e) => setMotivoAnular(e.target.value), placeholder: "Cobro duplicado, importe incorrecto\u2026" })), errorAnular && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, errorAnular), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: confirmarAnulacion, disabled: procesandoAnulacion }, procesandoAnulacion ? "Anulando\u2026" : "S\xED, anular la venta"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmAnular(null), disabled: procesandoAnulacion }, "Cancelar"))));
 }
 function Traspasos({ productos, traspasos, traspasarStock, pisoVentaBajo, fichasCosto = [] }) {
   const [verTodos, setVerTodos] = (0, import_react4.useState)(false);
