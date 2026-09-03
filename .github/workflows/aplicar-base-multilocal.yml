@@ -2,7 +2,9 @@ name: Aplicar base multi-local
 on:
   push:
     branches: [la-suite-identidad]
-    paths: ['.github/workflows/aplicar-base-multilocal.yml']
+    paths:
+      - '.github/workflows/aplicar-base-multilocal.yml'
+      - 'tools/corregir_multilocal_base.py'
 permissions:
   contents: write
 jobs:
