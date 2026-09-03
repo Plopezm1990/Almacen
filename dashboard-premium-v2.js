@@ -3,7 +3,6 @@
 if(window.__laDashboardV2)return;window.__laDashboardV2=true;
 const MASTER='./la-suite-logo.svg';
 const ICON='./la-suite-icon.svg';
-const GOLD='#C99A4B';
 const css=`
 .la-dashboard-v2{position:relative}
 .la-dashboard-v2 .la-kpi-grid{display:grid!important;gap:12px!important}
@@ -13,17 +12,18 @@ const css=`
 .la-dashboard-v2 .la-kpi-card[data-la-alert='critical'] .mono{color:#EF7467!important}
 .la-premium-section-title{font-size:15px;font-weight:700;margin:22px 0 10px;color:#F5EAD4;letter-spacing:-.01em}
 .la-quick-actions{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-bottom:20px}
-.la-quick-action{border:1px solid rgba(201,154,75,.24);background:linear-gradient(145deg,#0D351F,#092819);border-radius:14px;min-height:74px;padding:9px 4px;color:#E9DDBF;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-size:10px;font-weight:600;text-align:center}
+.la-quick-action{border:1px solid rgba(201,154,75,.24);background:linear-gradient(145deg,#0D351F,#092819);border-radius:14px;min-height:74px;padding:9px 4px;color:#E9DDBF;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-size:10px;font-weight:600;text-align:center;cursor:pointer}
 .la-quick-action .la-qa-icon{font-size:21px;line-height:1;color:#D9A84F}
 .la-premium-alerts{display:grid;gap:8px;margin-bottom:14px}
-.la-alert-row{width:100%;display:flex;align-items:center;gap:10px;padding:12px 13px;border-radius:14px;background:linear-gradient(145deg,#0D351F,#092819);border:1px solid rgba(201,154,75,.22);text-align:left;color:#F1E8D5}
+.la-alert-row{width:100%;display:flex;align-items:center;gap:10px;padding:12px 13px;border-radius:14px;background:linear-gradient(145deg,#0D351F,#092819);border:1px solid rgba(201,154,75,.22);text-align:left;color:#F1E8D5;cursor:pointer}
 .la-alert-row .la-alert-icon{width:31px;height:31px;flex:0 0 31px;border-radius:50%;display:grid;place-items:center;background:rgba(201,154,75,.12);color:#DFAE52;font-size:16px}
 .la-alert-row.critical{border-color:rgba(232,91,79,.35)}
 .la-alert-row.critical .la-alert-icon{background:rgba(232,91,79,.13);color:#EE6D61}
 .la-alert-copy{min-width:0;flex:1}.la-alert-copy b{display:block;font-size:12.5px;margin-bottom:1px}.la-alert-copy span{display:block;font-size:10.5px;color:#99AB9F;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.la-alert-chevron{color:#DFAE52;font-size:22px}
-.la-report-cta{width:100%;border:0;border-radius:15px;background:linear-gradient(100deg,#A8742F,#E3B75F,#BE8A3C);color:#102A1B;font-size:13px;font-weight:800;padding:14px 16px;display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 8px 22px rgba(169,116,47,.18);margin:12px 0 22px}
+.la-report-cta{width:100%;border:0;border-radius:15px;background:linear-gradient(100deg,#A8742F,#E3B75F,#BE8A3C);color:#102A1B;font-size:13px;font-weight:800;padding:14px 16px;display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 8px 22px rgba(169,116,47,.18);margin:12px 0 22px;cursor:pointer}
 .la-dashboard-v2 .la-dashboard-brand{object-fit:contain!important;filter:drop-shadow(0 5px 10px rgba(0,0,0,.22))}
 .la-brand-master{object-fit:contain!important;filter:drop-shadow(0 6px 12px rgba(0,0,0,.24))}
+.la-nav-toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);z-index:10050;background:#102F20;color:#F5EAD4;border:1px solid rgba(201,154,75,.5);border-radius:13px;padding:10px 14px;font:600 12px/1.25 'IBM Plex Sans',sans-serif;box-shadow:0 10px 28px rgba(0,0,0,.28);max-width:min(88vw,380px);text-align:center;opacity:0;transition:opacity .18s ease;pointer-events:none}.la-nav-toast.show{opacity:1}
 @media(max-width:767px){
   .la-dashboard-v2 .la-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
   .la-dashboard-v2 .la-kpi-card{padding:14px!important;min-height:126px!important}
@@ -46,96 +46,108 @@ const css=`
 `;
 const style=document.createElement('style');style.id='la-dashboard-v2-style';style.textContent=css;document.head.appendChild(style);
 
-function textEq(el,t){return (el&&el.textContent||'').trim().replace(/\s+/g,' ')===t}
+function norm(v){return String(v||'').trim().replace(/\s+/g,' ').toLowerCase()}
+function textEq(el,t){return norm(el&&el.textContent)===norm(t)}
 function all(sel){return Array.from(document.querySelectorAll(sel))}
+function wait(ms){return new Promise(r=>setTimeout(r,ms))}
+function isVisible(el){if(!el||!el.isConnected)return false;const s=getComputedStyle(el);return s.display!=='none'&&s.visibility!=='hidden'&&s.pointerEvents!=='none'&&el.getClientRects().length>0}
+function isInjected(el){return !!(el&&el.closest&&el.closest('.la-quick-actions,.la-premium-alerts,.la-report-cta,.la-dashboard-extra,[data-la-injected="1"],.la-nav-toast'))}
+function originalControls(){return all('button,a,[role="button"]').filter(el=>isVisible(el)&&!isInjected(el))}
+function findOriginal(labels){
+  const controls=originalControls();
+  for(const raw of labels){const label=norm(raw);let n=controls.find(el=>norm(el.textContent)===label);if(n)return n}
+  for(const raw of labels){const label=norm(raw);let n=controls.find(el=>norm(el.textContent).startsWith(label));if(n)return n}
+  for(const raw of labels){const label=norm(raw);let n=controls.find(el=>norm(el.textContent).includes(label));if(n)return n}
+  return null;
+}
+async function clickOriginal(labels,tries=4,gap=180){
+  for(let i=0;i<tries;i++){const n=findOriginal(labels);if(n){n.click();await wait(gap);return true}await wait(gap)}
+  return false;
+}
+function toast(msg){let t=document.querySelector('.la-nav-toast');if(!t){t=document.createElement('div');t.className='la-nav-toast';document.body.appendChild(t)}t.textContent=msg;t.classList.add('show');clearTimeout(t.__timer);t.__timer=setTimeout(()=>t.classList.remove('show'),1800)}
+async function tryDirect(labels){return clickOriginal(labels,2,140)}
+async function via(section,targets){
+  if(await tryDirect(targets))return true;
+  if(section&&await clickOriginal([section],3,160)){await wait(220);if(await clickOriginal(targets,4,180))return true;return true}
+  return false;
+}
+async function goToModule(name){
+  const key=norm(name);let ok=false;
+  if(key==='inicio')ok=await clickOriginal(['Hoy','Inicio'],3,150);
+  else if(key==='ventas'){
+    ok=await tryDirect(['TPV','Ventas','Nueva venta','Historial de ventas']);
+    if(!ok){await clickOriginal(['Hoy'],2,140);await wait(220);ok=await tryDirect(['TPV','Ventas','Nueva venta','Historial de ventas'])}
+    if(!ok){await clickOriginal(['Más'],2,140);await wait(220);ok=await tryDirect(['TPV','Ventas','Nueva venta','Historial de ventas'])}
+  }else if(key==='caja'){
+    ok=await tryDirect(['Arqueo de caja','Cierre de caja','Caja','Abrir caja']);
+    if(!ok){await clickOriginal(['Más'],2,140);await wait(220);ok=await tryDirect(['Arqueo de caja','Cierre de caja','Caja','Abrir caja'])}
+  }else if(key==='productos')ok=await via('Almacén',['Productos','Catálogo de productos']);
+  else if(key==='inventario')ok=await via('Almacén',['Inventario ciego','Inventario','Stock']);
+  else if(key==='compras')ok=await via('Comprar',['Pedidos','Compras','Nuevo pedido']);
+  else if(key==='informes'){
+    ok=await tryDirect(['Resultados','Informes','Reportes y rotación','Libro de IVA','Panel de dirección']);
+    if(!ok){await clickOriginal(['Más'],2,140);await wait(220);ok=await tryDirect(['Resultados','Informes','Reportes y rotación','Libro de IVA','Panel de dirección'])}
+  }else if(key==='lotes')ok=await via('Almacén',['Lotes','Caducidades','Caducidades próximas']);
+  if(!ok)toast('No pude abrir '+name+' desde esta vista. Voy a conservar el acceso original del programa.');
+  return ok;
+}
+window.__laGoToModule=goToModule;
+
 function nearestCardFromText(label){
   const node=all('div,span').find(el=>textEq(el,label));
   if(!node)return null;
   let p=node;
-  for(let i=0;i<6&&p;i++,p=p.parentElement){if(p.tagName==='BUTTON')return p}
-  return node.closest('button');
-}
-function clickExisting(labels){
-  for(const label of labels){
-    const candidates=all('button').filter(b=>!b.closest('.la-quick-actions')&&!b.closest('.la-premium-alerts'));
-    const exact=candidates.find(b=>textEq(b,label));if(exact){exact.click();return true}
-    const partial=candidates.find(b=>(b.textContent||'').trim().toLowerCase().startsWith(label.toLowerCase()));if(partial){partial.click();return true}
-  }
-  return false;
+  for(let i=0;i<6&&p;i++,p=p.parentElement){if(p.tagName==='BUTTON'&&!isInjected(p))return p}
+  const b=node.closest('button');return b&&!isInjected(b)?b:null;
 }
 function loginRoot(){
-  const marker=all('div,p').find(el=>(el.textContent||'').trim()==='Inicia sesión para sincronizar entre dispositivos');
+  const marker=all('div,p').find(el=>norm(el.textContent)==='inicia sesión para sincronizar entre dispositivos');
   if(!marker)return null;
   let p=marker;for(let i=0;i<7&&p;i++,p=p.parentElement){if(p.querySelector&&p.querySelector('input[type="password"]'))return p}
   return marker.parentElement;
 }
 function replaceBrand(){
   const loading=document.querySelector('#cargando .logo-suite');if(loading){loading.src=MASTER;loading.classList.add('la-brand-master')}
-  const lr=loginRoot();if(lr){
-    const img=lr.querySelector('img');if(img){img.src=MASTER;img.alt='L&A Suite';img.classList.add('la-brand-master');img.style.width='min(72vw,300px)';img.style.height='auto'}
-  }
+  const lr=loginRoot();if(lr){const img=lr.querySelector('img');if(img){img.src=MASTER;img.alt='L&A Suite';img.classList.add('la-brand-master');img.style.width='min(72vw,300px)';img.style.height='auto'}}
   all('aside img').forEach((img,i)=>{if(i===0){img.src=MASTER;img.alt='L&A Suite';img.classList.add('la-brand-master');img.style.maxHeight='150px'}});
-  all('img').forEach(img=>{
-    const alt=(img.getAttribute('alt')||'').toLowerCase();const src=(img.getAttribute('src')||'').toLowerCase();
-    if(alt.includes('l&a suite')||src.includes('la-suite-logo')||src.includes('la-suite-icon')){
-      const small=(img.width&&img.width<=48)||(img.style.width&&parseInt(img.style.width,10)<=48);
-      img.src=small?ICON:MASTER;img.classList.add('la-brand-master');
-    }
-  });
+  all('img').forEach(img=>{const alt=norm(img.getAttribute('alt'));const src=norm(img.getAttribute('src'));if(alt.includes('l&a suite')||src.includes('la-suite-logo')||src.includes('la-suite-icon')){const small=(img.width&&img.width<=48)||(img.style.width&&parseInt(img.style.width,10)<=48);img.src=small?ICON:MASTER;img.classList.add('la-brand-master')}});
 }
 function findDashboard(){
-  const heading=all('h1,h2,h3,div').find(el=>['Panel general','Resumen general'].includes((el.textContent||'').trim())&&el.children.length===0);
+  const heading=all('h1,h2,h3,div').find(el=>['panel general','resumen general'].includes(norm(el.textContent))&&el.children.length===0);
   if(!heading)return null;
-  let p=heading;
-  for(let i=0;i<7&&p;i++,p=p.parentElement){
-    const txt=(p.textContent||'');
-    if(txt.includes('Margen promedio')&&txt.includes('Pedidos pendientes')&&txt.includes('Productos en stock bajo'))return {root:p,heading};
-  }
+  let p=heading;for(let i=0;i<7&&p;i++,p=p.parentElement){const txt=norm(p.textContent);if(txt.includes('margen promedio')&&txt.includes('pedidos pendientes')&&txt.includes('productos en stock bajo'))return {root:p,heading}}
   return null;
 }
-const kpis=[
-  ['Saldo de almacén','saldo'],['Margen promedio','margen'],['Pedidos pendientes','pedidos'],['Productos en stock bajo','stock'],
-  ['Lotes que caducan (30 d)','lotes'],['Facturas por pagar (7 d)','facturas'],['Encargos urgentes','encargos'],['Reponer piso de venta','reponer']
-];
+const kpis=[['Saldo de almacén','saldo'],['Margen promedio','margen'],['Pedidos pendientes','pedidos'],['Productos en stock bajo','stock'],['Lotes que caducan (30 d)','lotes'],['Facturas por pagar (7 d)','facturas'],['Encargos urgentes','encargos'],['Reponer piso de venta','reponer']];
 function addQuickActions(root,grid){
   if(root.querySelector('.la-quick-actions'))return;
-  const title=document.createElement('div');title.className='la-premium-section-title';title.textContent='Acciones rápidas';
-  const wrap=document.createElement('div');wrap.className='la-quick-actions';
-  const defs=[['📈','Ventas',['TPV','Ventas']],['▣','Caja',['Arqueo de caja','Caja']],['◇','Productos',['Productos']],['▤','Inventario',['Inventario ciego','Inventario']],['🛒','Compras',['Pedidos','Compras']],['▥','Informes',['Reportes y rotación','Resultados','Informes']]];
-  defs.forEach(([ico,label,targets])=>{const b=document.createElement('button');b.className='la-quick-action';b.innerHTML=`<span class="la-qa-icon">${ico}</span><span>${label}</span>`;b.onclick=()=>clickExisting(targets);wrap.appendChild(b)});
+  const title=document.createElement('div');title.className='la-premium-section-title';title.dataset.laInjected='1';title.textContent='Acciones rápidas';
+  const wrap=document.createElement('div');wrap.className='la-quick-actions';wrap.dataset.laInjected='1';
+  const defs=[['↗','Ventas','ventas'],['▣','Caja','caja'],['◇','Productos','productos'],['▤','Inventario','inventario'],['🛒','Compras','compras'],['▥','Informes','informes']];
+  defs.forEach(([ico,label,target])=>{const b=document.createElement('button');b.type='button';b.className='la-quick-action';b.dataset.laInjected='1';b.innerHTML=`<span class="la-qa-icon">${ico}</span><span>${label}</span>`;b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();goToModule(target)});wrap.appendChild(b)});
   grid.insertAdjacentElement('afterend',title);title.insertAdjacentElement('afterend',wrap);
 }
-function metricInfo(label){
-  const b=nearestCardFromText(label);if(!b)return null;
-  const mono=b.querySelector('.mono');const val=(mono?mono.textContent:'').trim();return {button:b,value:val};
-}
+function metricInfo(label){const b=nearestCardFromText(label);if(!b)return null;const mono=b.querySelector('.mono');return {button:b,value:(mono?mono.textContent:'').trim()}}
+function numberOf(v){const m=String(v||'').replace(/\./g,'').replace(',','.').match(/-?\d+(?:\.\d+)?/);return m?Number(m[0]):0}
 function addAlerts(root){
-  let title=root.querySelector('.la-alerts-title');let wrap=root.querySelector('.la-premium-alerts');
-  if(!title){title=document.createElement('div');title.className='la-premium-section-title la-alerts-title';title.textContent='Alertas importantes'}
-  if(!wrap){wrap=document.createElement('div');wrap.className='la-premium-alerts'}
+  let title=root.querySelector('.la-alerts-title'),wrap=root.querySelector('.la-premium-alerts');
+  if(!title){title=document.createElement('div');title.className='la-premium-section-title la-alerts-title';title.dataset.laInjected='1';title.textContent='Alertas importantes'}
+  if(!wrap){wrap=document.createElement('div');wrap.className='la-premium-alerts';wrap.dataset.laInjected='1'}
   wrap.innerHTML='';
   const stock=metricInfo('Productos en stock bajo'),ped=metricInfo('Pedidos pendientes'),lot=metricInfo('Lotes que caducan (30 d)'),fac=metricInfo('Facturas por pagar (7 d)');
   const defs=[];
-  if(stock&&Number((stock.value||'').replace(',','.'))>0)defs.push(['critical','●',`${stock.value} productos en stock bajo`,'Revisa y repón para evitar quiebres.',stock.button]);
-  if(ped&&Number((ped.value||'').replace(',','.'))>0)defs.push(['warn','△',`${ped.value} pedidos pendientes`,'Hay pedidos pendientes de procesar.',ped.button]);
-  if(lot)defs.push(['ok','◷',Number((lot.value||'').replace(',','.'))>0?`${lot.value} lotes por revisar`:'No hay lotes por caducar en 30 días',Number((lot.value||'').replace(',','.'))>0?'Revisa las caducidades próximas.':'Todo bajo control.',lot.button]);
-  if(fac&&Number((fac.value||'').replace(',','.'))>0)defs.push(['warn','▤',`${fac.value} facturas próximas`,'Revisa los próximos vencimientos.',fac.button]);
-  defs.slice(0,4).forEach(([kind,ico,ttl,sub,target])=>{const b=document.createElement('button');b.className='la-alert-row '+(kind==='critical'?'critical':'');b.innerHTML=`<span class="la-alert-icon">${ico}</span><span class="la-alert-copy"><b>${ttl}</b><span>${sub}</span></span><span class="la-alert-chevron">›</span>`;b.onclick=()=>target&&target.click();wrap.appendChild(b)});
+  if(stock&&numberOf(stock.value)>0)defs.push(['critical','●',`${stock.value} productos en stock bajo`,'Revisa y repón para evitar quiebres.',()=>goToModule('productos')]);
+  if(ped&&numberOf(ped.value)>0)defs.push(['warn','△',`${ped.value} pedidos pendientes`,'Hay pedidos pendientes de procesar.',()=>goToModule('compras')]);
+  if(lot)defs.push(['ok','◷',numberOf(lot.value)>0?`${lot.value} lotes por revisar`:'No hay lotes por caducar en 30 días',numberOf(lot.value)>0?'Revisa las caducidades próximas.':'Todo bajo control.',()=>goToModule('lotes')]);
+  if(fac&&numberOf(fac.value)>0)defs.push(['warn','▤',`${fac.value} facturas próximas`,'Revisa los próximos vencimientos.',()=>goToModule('informes')]);
+  defs.slice(0,4).forEach(([kind,ico,ttl,sub,action])=>{const b=document.createElement('button');b.type='button';b.className='la-alert-row '+(kind==='critical'?'critical':'');b.dataset.laInjected='1';b.innerHTML=`<span class="la-alert-icon">${ico}</span><span class="la-alert-copy"><b>${ttl}</b><span>${sub}</span></span><span class="la-alert-chevron">›</span>`;b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();action()});wrap.appendChild(b)});
   const qa=root.querySelector('.la-quick-actions');if(qa){qa.insertAdjacentElement('afterend',title);title.insertAdjacentElement('afterend',wrap)}
-  if(!root.querySelector('.la-report-cta')){const cta=document.createElement('button');cta.className='la-report-cta';cta.innerHTML='<span>▥</span><span>Ver informe completo</span><span>›</span>';cta.onclick=()=>clickExisting(['Resultados','Panel de dirección','Informes']);wrap.insertAdjacentElement('afterend',cta)}
+  if(!root.querySelector('.la-report-cta')){const cta=document.createElement('button');cta.type='button';cta.className='la-report-cta';cta.dataset.laInjected='1';cta.innerHTML='<span>▥</span><span>Ver informe completo</span><span>›</span>';cta.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();goToModule('informes')});wrap.insertAdjacentElement('afterend',cta)}
 }
-function hideOldMobileBlocks(root){
-  if(window.innerWidth>767)return;
-  ['Alertas de reposición','Caducidades próximas','Movimiento reciente de almacén'].forEach(label=>{
-    const n=all('div').find(el=>textEq(el,label));if(n){let p=n;for(let i=0;i<4&&p;i++,p=p.parentElement){if(p.parentElement===root||p.className&&String(p.className).includes('rounded')){p.dataset.laOldBlock='1';break}}}
-  });
-  root.querySelectorAll('[data-la-old-block="1"]').forEach(el=>el.style.display='none');
-}
+function hideOldMobileBlocks(root){if(window.innerWidth>767)return;['Alertas de reposición','Caducidades próximas','Movimiento reciente de almacén'].forEach(label=>{const n=all('div').find(el=>textEq(el,label));if(n){let p=n;for(let i=0;i<4&&p;i++,p=p.parentElement){if(p.parentElement===root||(p.className&&String(p.className).includes('rounded'))){p.dataset.laOldBlock='1';break}}}});root.querySelectorAll('[data-la-old-block="1"]').forEach(el=>el.style.display='none')}
 function enhanceDashboard(){
-  const d=findDashboard();if(!d)return;
-  const {root,heading}=d;root.classList.add('la-dashboard-v2');heading.textContent='Resumen general';
-  let first=null;
-  kpis.forEach(([label,id])=>{const b=nearestCardFromText(label);if(b&&root.contains(b)){b.classList.add('la-kpi-card');b.dataset.laKpi=id;if(id==='stock'){const m=b.querySelector('.mono');if(m&&Number((m.textContent||'').trim())>0)b.dataset.laAlert='critical'}if(!first)first=b}});
+  const d=findDashboard();if(!d)return;const {root,heading}=d;root.classList.add('la-dashboard-v2');heading.textContent='Resumen general';let first=null;
+  kpis.forEach(([label,id])=>{const b=nearestCardFromText(label);if(b&&root.contains(b)){b.classList.add('la-kpi-card');b.dataset.laKpi=id;if(id==='stock'){const m=b.querySelector('.mono');if(m&&numberOf(m.textContent)>0)b.dataset.laAlert='critical'}if(!first)first=b}});
   if(first&&first.parentElement){const grid=first.parentElement;grid.classList.add('la-kpi-grid');addQuickActions(root,grid);addAlerts(root)}
   const headerImg=heading.parentElement&&heading.parentElement.parentElement&&heading.parentElement.parentElement.querySelector('img');if(headerImg){headerImg.src=MASTER;headerImg.alt='L&A Suite';headerImg.classList.add('la-dashboard-brand')}
   hideOldMobileBlocks(root);
