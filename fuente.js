@@ -117355,6 +117355,79 @@ function GestionAlmacen() {
     if (!localActivoId) return productos;
     return productos.filter((p2) => !p2.localId || p2.localId === localActivoId);
   }, [productos, localActivoId]);
+  const movimientosDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return movimientos;
+    const localPorProducto = new Map(productos.map((p2) => [p2.id, p2.localId || null]));
+    return movimientos.filter((m2) => (m2.localId || localPorProducto.get(m2.productoId) || null) === localActivoId);
+  }, [movimientos, productos, localActivoId]);
+  const pedidosDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return pedidos;
+    return pedidos.filter((p2) => !p2.localId || p2.localId === localActivoId);
+  }, [pedidos, localActivoId]);
+  const pedidosPendientesDelLocalActivo = (0, import_react4.useMemo)(() => pedidosDelLocalActivo.filter((p2) => p2.estado !== "Recibido"), [pedidosDelLocalActivo]);
+  const albaranesDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return albaranes;
+    const localPorProducto = new Map(productos.map((p2) => [p2.id, p2.localId || null]));
+    return albaranes.filter((a2) => {
+      if (a2.localId) return a2.localId === localActivoId;
+      const ids = [...new Set((a2.lineas || []).map((ln2) => localPorProducto.get(ln2.productoId)).filter(Boolean))];
+      return ids.length === 1 && ids[0] === localActivoId;
+    });
+  }, [albaranes, productos, localActivoId]);
+  const facturasDirectasDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return facturasDirectas;
+    return facturasDirectas.filter((f2) => f2.localId === localActivoId);
+  }, [facturasDirectas, localActivoId]);
+  const encargosDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return encargos;
+    return encargos.filter((e2) => {
+      if (e2.localId) return e2.localId === localActivoId;
+      const ids = [...new Set((e2.lineas || []).map((ln2) => productos.find((p2) => p2.id === ln2.productoId)?.localId).filter(Boolean))];
+      return ids.length === 1 && ids[0] === localActivoId;
+    });
+  }, [encargos, productos, localActivoId]);
+  const encargosPendientesDelLocalActivo = (0, import_react4.useMemo)(() => encargosDelLocalActivo.filter((e2) => e2.estado !== "Entregado"), [encargosDelLocalActivo]);
+  const encargosUrgentesDelLocalActivo = (0, import_react4.useMemo)(() => {
+    const hoy = todayISO();
+    const manana = new Date();
+    manana.setDate(manana.getDate() + 1);
+    const mananaISO = manana.toISOString().slice(0, 10);
+    return encargosPendientesDelLocalActivo.filter((e2) => e2.fechaEntrega === hoy || e2.fechaEntrega === mananaISO);
+  }, [encargosPendientesDelLocalActivo]);
+  const devolucionesDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return devoluciones;
+    return devoluciones.filter((d2) => {
+      if (d2.localId) return d2.localId === localActivoId;
+      const prod = productos.find((p2) => p2.id === d2.productoId);
+      return !!prod && prod.localId === localActivoId;
+    });
+  }, [devoluciones, productos, localActivoId]);
+  const traspasosDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return traspasos;
+    return traspasos.filter((t2) => {
+      if (t2.localId) return t2.localId === localActivoId;
+      const prod = productos.find((p2) => p2.id === t2.productoId);
+      return !!prod && prod.localId === localActivoId;
+    });
+  }, [traspasos, productos, localActivoId]);
+  const arqueosDelLocalActivo = (0, import_react4.useMemo)(() => localActivoId ? arqueos.filter((a2) => a2.localId === localActivoId) : arqueos, [arqueos, localActivoId]);
+  const movimientosCajaDelLocalActivo = (0, import_react4.useMemo)(() => localActivoId ? movimientosCaja.filter((m2) => m2.localId === localActivoId) : movimientosCaja, [movimientosCaja, localActivoId]);
+  const pisoVentaBajoDelLocalActivo = (0, import_react4.useMemo)(
+    () => productosDelLocalActivo.filter((p2) => p2.tipo !== "elaborado" && Number(p2.stockMinimoPisoVenta) > 0 && (Number(p2.stockPisoVenta) || 0) <= Number(p2.stockMinimoPisoVenta)),
+    [productosDelLocalActivo]
+  );
+  const conteosDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return conteos;
+    return conteos.filter((c2) => {
+      if (c2.localId) return c2.localId === localActivoId;
+      const items = c2.items || [];
+      if (!items.length) return false;
+      const idsLocales = items.map((it2) => productos.find((p2) => p2.id === it2.productoId)?.localId || null);
+      if (idsLocales.some((id) => !id)) return false;
+      const unicos = [...new Set(idsLocales)];
+      return unicos.length === 1 && unicos[0] === localActivoId;
+    });
+  }, [conteos, productos, localActivoId]);
   const [turnos, setTurnos] = (0, import_react4.useState)([]);
   const [historial, setHistorial] = (0, import_react4.useState)([]);
   (0, import_react4.useEffect)(() => {
@@ -117491,6 +117564,27 @@ function GestionAlmacen() {
       const gastosFinales = (gg || []).map((g2) => g2.localId ? g2 : { ...g2, localId: localActivoFinal || null });
       const facturasDirectasFinales = (fd2 || []).map((f2) => f2.localId ? f2 : { ...f2, localId: localActivoFinal || null });
       const empleadosFinales = (em || []).map((e) => e.localId ? e : { ...e, localId: localActivoFinal || null });
+      const localPorEmpleadoMigracion = new Map(empleadosFinales.map((e) => [e.id, e.localId || localActivoFinal || null]));
+      const fichajesFinales = (fj || []).map((f2) => f2.localId ? f2 : { ...f2, localId: localPorEmpleadoMigracion.get(f2.empleadoId) || localActivoFinal || null });
+      const turnosFinales = (tu || []).map((t2) => t2.localId ? t2 : { ...t2, localId: localPorEmpleadoMigracion.get(t2.empleadoId) || localActivoFinal || null });
+      const nominasFinales = (nom || []).map((n) => n.localId ? n : { ...n, localId: localPorEmpleadoMigracion.get(n.empleadoId) || localActivoFinal || null });
+      const arqueosFinales = (aq || []).map((a2) => a2.localId ? a2 : { ...a2, localId: localActivoFinal || null });
+      const movimientosCajaFinales = (mc || []).map((m2) => m2.localId ? m2 : { ...m2, localId: localActivoFinal || null });
+      const inferirLocalFichaMigracion = (ficha) => {
+        const ids = [...new Set([
+          localPorProductoMigracion.get(ficha && ficha.productoVinculadoId),
+          ...((ficha && ficha.componentes) || []).map((c2) => localPorProductoMigracion.get(c2 && c2.productoId))
+        ].filter(Boolean))];
+        return ids.length === 1 ? ids[0] : localActivoFinal || null;
+      };
+      const fichasCostoFinales = (fc || []).map((f2) => f2.localId ? f2 : { ...f2, localId: inferirLocalFichaMigracion(f2) });
+      const ordenesProduccionFinales = (op || []).map((o2) => o2.localId ? o2 : { ...o2, localId: localPorProductoMigracion.get(o2.productoVinculadoId) || inferirLocalLineasMigracion(o2.ingredientes) });
+      const puntosControlFinales = (pc || []).map((p2) => p2.localId ? p2 : { ...p2, localId: localActivoFinal || null });
+      const localPorPuntoMigracion = new Map(puntosControlFinales.map((p2) => [p2.id, p2.localId || localActivoFinal || null]));
+      const registrosAppccFinales = (ra || []).map((r2) => r2.localId ? r2 : { ...r2, localId: localPorPuntoMigracion.get(r2.puntoId) || localActivoFinal || null });
+      const freidorasFinales = (fre || []).map((f2) => f2.localId ? f2 : { ...f2, localId: localPorProductoMigracion.get(f2.productoAceiteId) || localActivoFinal || null });
+      const localPorFreidoraMigracion = new Map(freidorasFinales.map((f2) => [f2.id, f2.localId || localActivoFinal || null]));
+      const registrosAceiteFinales = (rac || []).map((r2) => r2.localId ? r2 : { ...r2, localId: localPorFreidoraMigracion.get(r2.freidoraId) || localPorProductoMigracion.get(r2.productoAceiteId) || localActivoFinal || null });
       setLocales(localesFinales);
       setLocalActivoId(localActivoFinal);
       setProductos(productosFinales);
@@ -117501,6 +117595,17 @@ function GestionAlmacen() {
       setGastosGenerales(gastosFinales);
       setFacturasDirectas(facturasDirectasFinales);
       setEmpleados(empleadosFinales);
+      setFichajes(fichajesFinales);
+      setTurnos(turnosFinales);
+      setNominas(nominasFinales);
+      setArqueos(arqueosFinales);
+      setMovimientosCaja(movimientosCajaFinales);
+      setFichasCosto(fichasCostoFinales);
+      setOrdenesProduccion(ordenesProduccionFinales);
+      setPuntosControl(puntosControlFinales);
+      setRegistrosAppcc(registrosAppccFinales);
+      setFreidoras(freidorasFinales);
+      setRegistrosAceite(registrosAceiteFinales);
       if (JSON.stringify(localesFinales) !== JSON.stringify(Array.isArray(loc) ? loc : [])) await saveKey("locales", localesFinales);
       if (localActivoFinal !== (lai || null)) await saveKey("localActivoId", localActivoFinal);
       if (JSON.stringify(productosFinales) !== JSON.stringify(pr || [])) await saveKey("productos", productosFinales);
@@ -117511,6 +117616,17 @@ function GestionAlmacen() {
       if (JSON.stringify(gastosFinales) !== JSON.stringify(gg || [])) await saveKey("gastosGenerales", gastosFinales);
       if (JSON.stringify(facturasDirectasFinales) !== JSON.stringify(fd2 || [])) await saveKey("facturasDirectas", facturasDirectasFinales);
       if (JSON.stringify(empleadosFinales) !== JSON.stringify(em || [])) await saveKey("empleados", empleadosFinales);
+      if (JSON.stringify(fichajesFinales) !== JSON.stringify(fj || [])) await saveKey("fichajes", fichajesFinales);
+      if (JSON.stringify(turnosFinales) !== JSON.stringify(tu || [])) await saveKey("turnos", turnosFinales);
+      if (JSON.stringify(nominasFinales) !== JSON.stringify(nom || [])) await saveKey("nominas", nominasFinales);
+      if (JSON.stringify(arqueosFinales) !== JSON.stringify(aq || [])) await saveKey("arqueos", arqueosFinales);
+      if (JSON.stringify(movimientosCajaFinales) !== JSON.stringify(mc || [])) await saveKey("movimientosCaja", movimientosCajaFinales);
+      if (JSON.stringify(fichasCostoFinales) !== JSON.stringify(fc || [])) await saveKey("fichasCosto", fichasCostoFinales);
+      if (JSON.stringify(ordenesProduccionFinales) !== JSON.stringify(op || [])) await saveKey("ordenesProduccion", ordenesProduccionFinales);
+      if (JSON.stringify(puntosControlFinales) !== JSON.stringify(pc || [])) await saveKey("puntosControl", puntosControlFinales);
+      if (JSON.stringify(registrosAppccFinales) !== JSON.stringify(ra || [])) await saveKey("registrosAppcc", registrosAppccFinales);
+      if (JSON.stringify(freidorasFinales) !== JSON.stringify(fre || [])) await saveKey("freidoras", freidorasFinales);
+      if (JSON.stringify(registrosAceiteFinales) !== JSON.stringify(rac || [])) await saveKey("registrosAceite", registrosAceiteFinales);
       setReady(true);
       if (habiaFotos) await saveKey("albaranes", albaranesFinales);
       setTimeout(() => {
@@ -117743,26 +117859,26 @@ function GestionAlmacen() {
   const { addProveedor, updateProveedor, deleteProveedor } = crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria });
   const { addGasto, deleteGasto } = crearLogicaGastos({ setGastosGenerales, localActivoId });
   const { addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId });
-  const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos });
-  const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria });
-  const { venderCarrito, venderLocal, anularVenta, venderLineas } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos });
+  const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
+  const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId });
+  const { venderCarrito, venderLocal, anularVenta, venderLineas } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria });
   const { addEncargo, updateEncargo, deleteEncargo, entregarEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, setProductos, setMovimientos, venderLineas, localActivoId });
-  const { traspasarStock } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria });
+  const { traspasarStock } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId });
   const { addArqueo, deleteArqueo } = crearLogicaCaja({ setArqueos, localActivoId });
-  const { registrarMovimientoCaja, eliminarMovimientoCaja } = crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, registrarAuditoria });
+  const { registrarMovimientoCaja, eliminarMovimientoCaja } = crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, registrarAuditoria, localActivoId });
   const { crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo } = crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivoId, registrarAuditoria });
-  const { registrarDevolucionCliente, registrarDevolucionProveedor } = crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, registrarAuditoria, registrarMovimientoCaja });
+  const { registrarDevolucionCliente, registrarDevolucionProveedor } = crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, registrarAuditoria, registrarMovimientoCaja, localActivoId });
   const { activarModoEmpleado, entrarComoEmpleado, salirModoEmpleado, establecerPin } = crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, setModoEmpleado, setUsuarioActivoId });
-  const { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, eliminarRegistroAppcc } = crearLogicaAppcc({ setPuntosControl, setRegistrosAppcc });
-  const { fichar, addFichajeManual, updateFichaje, eliminarFichaje } = crearLogicaFichaje({ setFichajes });
-  const { addFreidora, updateFreidora, deleteFreidora, registrarCambio, registrarRelleno, eliminarRegistroAceite, consumoPorCiclo } = crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegistrosAceite, productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
-  const { addFichaCosto, updateFichaCosto, deleteFichaCosto, alergenosDeFicha } = crearLogicaFichasCosto({ productos, setFichasCosto });
-  const { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion } = crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria });
-  const conteoAbierto = (0, import_react4.useMemo)(() => conteos.find((c2) => !c2.completado) || null, [conteos]);
+  const { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, eliminarRegistroAppcc } = crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId });
+  const { fichar, addFichajeManual, updateFichaje, eliminarFichaje } = crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId });
+  const { addFreidora, updateFreidora, deleteFreidora, registrarCambio, registrarRelleno, eliminarRegistroAceite, consumoPorCiclo } = crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegistrosAceite, productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
+  const { addFichaCosto, updateFichaCosto, deleteFichaCosto, alergenosDeFicha } = crearLogicaFichasCosto({ productos, setFichasCosto, localActivoId });
+  const { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion } = crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
+  const conteoAbierto = (0, import_react4.useMemo)(() => conteosDelLocalActivo.find((c2) => !c2.completado) || null, [conteosDelLocalActivo]);
   const almacenCongelado = !!conteoAbierto;
   const { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro } = crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId });
-  const { diagnosticarStock, corregirProducto, movimientosParaReconciliar } = crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+  const { diagnosticarStock, corregirProducto, movimientosParaReconciliar } = crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
   const { buscarEnCatalogo, aprenderReferencia, guardarAlbaran, eliminarAlbaran, marcarPagada, confirmarAlbaran, anularAlbaran, recibirConAlbaran, recibirConFotoIA, duplicadosDe, desviacionesDePrecio, procesarRecepcion } = crearLogicaAlbaranes({
     catalogoProv,
     setCatalogoProv,
@@ -117782,7 +117898,7 @@ function GestionAlmacen() {
   });
   const { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido } = crearLogicaPedidos({ pedidos, setPedidos, productos, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId });
   const { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta } = crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, addGasto, deleteGasto, gastosGenerales, localActivoId });
-  const { addNomina, updateNomina, deleteNomina } = crearLogicaNominas({ setNominas, registrarAuditoria });
+  const { addNomina, updateNomina, deleteNomina } = crearLogicaNominas({ nominas, setNominas, registrarAuditoria, empleados, localActivoId });
   const { crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista } = crearLogicaEntrevistas({ entrevistas, setEntrevistas, registrarAuditoria });
   const { crearPrefiltro, listarPrefiltros, eliminarPrefiltro } = crearLogicaPrefiltros({ registrarAuditoria });
   function registrarAuditoria(accion, detalle) {
@@ -117825,12 +117941,27 @@ function GestionAlmacen() {
     () => productos.filter(esUtillaje).reduce((acc, p2) => acc + (Number(p2.stock) || 0) * Number(p2.costo || 0), 0),
     [productos]
   );
+  const valorInventarioDelLocalActivo = (0, import_react4.useMemo)(
+    () => productosDelLocalActivo.filter((p2) => !esUtillaje(p2)).reduce((acc, p2) => acc + (Number(p2.stock) || 0) * Number(p2.costo || 0), 0),
+    [productosDelLocalActivo]
+  );
+  const valorUtillajeDelLocalActivo = (0, import_react4.useMemo)(
+    () => productosDelLocalActivo.filter(esUtillaje).reduce((acc, p2) => acc + (Number(p2.stock) || 0) * Number(p2.costo || 0), 0),
+    [productosDelLocalActivo]
+  );
   const stockBajo = (0, import_react4.useMemo)(
     () => productos.filter((p2) => p2.tipo !== "elaborado" && p2.stock <= Number(p2.stockMinimo || 0)),
     [productos]
   );
+  const stockBajoDelLocalActivo = (0, import_react4.useMemo)(
+    () => productosDelLocalActivo.filter((p2) => p2.tipo !== "elaborado" && p2.stock <= Number(p2.stockMinimo || 0)),
+    [productosDelLocalActivo]
+  );
   const diagnosticoStock = (0, import_react4.useMemo)(() => diagnosticarStock(), [productos, movimientos]);
+  const idsProductosDelLocalActivo = (0, import_react4.useMemo)(() => new Set(productosDelLocalActivo.map((p2) => p2.id)), [productosDelLocalActivo]);
+  const diagnosticoStockDelLocalActivo = (0, import_react4.useMemo)(() => diagnosticoStock.filter((d2) => idsProductosDelLocalActivo.has(d2.productoId)), [diagnosticoStock, idsProductosDelLocalActivo]);
   const descuadresPendientes = (0, import_react4.useMemo)(() => diagnosticoStock.filter((d2) => !d2.coincide).length, [diagnosticoStock]);
+  const descuadresPendientesDelLocalActivo = (0, import_react4.useMemo)(() => diagnosticoStockDelLocalActivo.filter((d2) => !d2.coincide).length, [diagnosticoStockDelLocalActivo]);
   const pisoVentaBajo = (0, import_react4.useMemo)(
     () => productos.filter((p2) => p2.tipo !== "elaborado" && Number(p2.stockMinimoPisoVenta) > 0 && (Number(p2.stockPisoVenta) || 0) <= Number(p2.stockMinimoPisoVenta)),
     [productos]
@@ -117874,6 +118005,46 @@ function GestionAlmacen() {
     return { mapa, detalle, baseConsumo };
   }, [productos, movimientos]);
   const clasificacionABC = analisisABC.mapa;
+  const analisisABCDelLocalActivo = (0, import_react4.useMemo)(() => {
+    const hace12meses = /* @__PURE__ */ new Date();
+    hace12meses.setMonth(hace12meses.getMonth() - 12);
+    const consumo = {};
+    movimientosDelLocalActivo.forEach((m2) => {
+      if (!esSalida(m2)) return;
+      if (new Date(m2.fecha) < hace12meses) return;
+      consumo[m2.productoId] = (consumo[m2.productoId] || 0) + Math.abs(Number(m2.cantidad) || 0);
+    });
+    const totalSalidas = Object.values(consumo).reduce((a2, x3) => a2 + x3, 0);
+    const baseConsumo = totalSalidas > 0;
+    const clasificables = productosDelLocalActivo.filter((p2) => !esUtillaje(p2));
+    const conValor = clasificables.map((p2) => {
+      const unidades = consumo[p2.id] || 0;
+      const costo = Number(p2.costo) || 0;
+      const valor = baseConsumo ? unidades * costo : (Number(p2.stock) || 0) * costo;
+      return { id: p2.id, valor, unidades, rotacion: (Number(p2.stock) || 0) > 0 ? unidades / (Number(p2.stock) || 1) : null };
+    });
+    const total = conValor.reduce((a2, x3) => a2 + x3.valor, 0);
+    const mapa = {};
+    const detalle = {};
+    if (total <= 0) {
+      clasificables.forEach((p2) => {
+        mapa[p2.id] = "C";
+        detalle[p2.id] = { valor: 0, unidades: 0, rotacion: null };
+      });
+      return { mapa, detalle, baseConsumo };
+    }
+    const ordenados = [...conValor].sort((a2, b2) => b2.valor - a2.valor);
+    let acumulado = 0;
+    ordenados.forEach((x3) => {
+      acumulado += x3.valor;
+      const pct = acumulado / total * 100;
+      mapa[x3.id] = pct <= 80 ? "A" : pct <= 95 ? "B" : "C";
+      detalle[x3.id] = { valor: x3.valor, unidades: x3.unidades, rotacion: x3.rotacion };
+    });
+    return { mapa, detalle, baseConsumo };
+  }, [productosDelLocalActivo, movimientosDelLocalActivo]);
+  const clasificacionABCDelLocalActivo = analisisABCDelLocalActivo.mapa;
+
   const pedidosPendientes = (0, import_react4.useMemo)(() => pedidos.filter((p2) => p2.estado !== "Recibido"), [pedidos]);
   const margenPromedio = (0, import_react4.useMemo)(() => {
     const conPrecio = productos.filter((p2) => Number(p2.precioVenta) > 0);
@@ -117971,6 +118142,10 @@ function GestionAlmacen() {
       return { ...p2, proveedorNombre: prov ? prov.nombre : "\u2014", leadTime, diasHastaEntrega, margen: p2.dias - diasHastaEntrega, cantidadSugerida, cajasSugeridas };
     }).filter((p2) => p2.leadTime > 0 && p2.margen <= 1 && !productosEnPedidoPendiente.has(p2.id)).sort((a2, b2) => a2.margen - b2.margen);
   }, [rotacionPorProducto, proveedores, productosEnPedidoPendiente]);
+  const sugerenciasPedidoDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return sugerenciasPedido;
+    return sugerenciasPedido.filter((p2) => p2.localId === localActivoId);
+  }, [sugerenciasPedido, localActivoId]);
   const lotesCaducidad = (0, import_react4.useMemo)(() => {
     const hoy = /* @__PURE__ */ new Date();
     hoy.setHours(0, 0, 0, 0);
@@ -118056,30 +118231,36 @@ function GestionAlmacen() {
     } catch (e) {
     }
   }, [ready, caducanPronto]);
-  const recordatorioConteo = (0, import_react4.useMemo)(() => {
+  function calcularRecordatorioConteo(conteosBase, nombreTotal = "Total (empresa completa)") {
     const hoy = /* @__PURE__ */ new Date();
     hoy.setHours(0, 0, 0, 0);
     const ambitos = [
       { id: "piso_venta", nombre: "Piso de venta", limiteDias: 14 },
       { id: "almacen", nombre: "Almac\xE9n (trastienda)", limiteDias: 30 },
-      { id: "total", nombre: "Total (empresa completa)", limiteDias: 30 }
+      { id: "total", nombre: nombreTotal, limiteDias: 30 }
     ];
     return ambitos.map((amb) => {
-      const delAmbito = conteos.filter((c2) => c2.completado && (c2.ambito || "total") === amb.id);
-      if (delAmbito.length === 0) {
-        return { ...amb, ultimaFecha: null, diasDesde: null, atrasado: true };
-      }
+      const delAmbito = (conteosBase || []).filter((c2) => c2.completado && (c2.ambito || "total") === amb.id);
+      if (delAmbito.length === 0) return { ...amb, ultimaFecha: null, diasDesde: null, atrasado: true };
       const ultima = delAmbito.reduce((max, c2) => c2.fecha > max ? c2.fecha : max, delAmbito[0].fecha);
       const diasDesde = Math.round((hoy - new Date(ultima)) / 864e5);
       return { ...amb, ultimaFecha: ultima, diasDesde, atrasado: diasDesde > amb.limiteDias };
     });
-  }, [conteos]);
+  }
+  const recordatorioConteo = (0, import_react4.useMemo)(() => calcularRecordatorioConteo(conteos), [conteos]);
+  const recordatorioConteoDelLocalActivo = (0, import_react4.useMemo)(() => calcularRecordatorioConteo(conteosDelLocalActivo, "Total del local"), [conteosDelLocalActivo]);
   const conteosAtrasados = (0, import_react4.useMemo)(() => recordatorioConteo.filter((a2) => a2.atrasado), [recordatorioConteo]);
+  const fichasCostoDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? fichasCosto : fichasCosto.filter((f2) => f2.localId === localActivoId), [fichasCosto, localActivoId]);
+  const ordenesProduccionDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? ordenesProduccion : ordenesProduccion.filter((o2) => o2.localId === localActivoId), [ordenesProduccion, localActivoId]);
+  const puntosControlDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? puntosControl : puntosControl.filter((p2) => p2.localId === localActivoId), [puntosControl, localActivoId]);
+  const registrosAppccDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? registrosAppcc : registrosAppcc.filter((r2) => r2.localId === localActivoId), [registrosAppcc, localActivoId]);
+  const freidorasDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? freidoras : freidoras.filter((f2) => f2.localId === localActivoId), [freidoras, localActivoId]);
+  const registrosAceiteDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? registrosAceite : registrosAceite.filter((r2) => r2.localId === localActivoId), [registrosAceite, localActivoId]);
   const alertasAppcc = (0, import_react4.useMemo)(() => {
     const hoy = todayISO();
-    const activos = (puntosControl || []).filter((p2) => p2.activo !== false);
+    const activos = (puntosControlDelLocalActivo || []).filter((p2) => p2.activo !== false);
     const pendientes = activos.filter((p2) => p2.frecuencia !== "En cada recepci\xF3n").map((p2) => {
-      const registrosDelPunto = (registrosAppcc || []).filter((r) => r.puntoId === p2.id);
+      const registrosDelPunto = (registrosAppccDelLocalActivo || []).filter((r) => r.puntoId === p2.id);
       const deHoy = registrosDelPunto.filter((r) => r.fecha === hoy).length;
       let faltan = 0;
       if (p2.frecuencia === "Diaria") faltan = deHoy >= 1 ? 0 : 1;
@@ -118092,14 +118273,14 @@ function GestionAlmacen() {
       }
       return { ...p2, faltan };
     }).filter((p2) => p2.faltan > 0);
-    const desviaciones = (registrosAppcc || []).filter((r) => r.conforme === false).filter((r) => {
-      const posteriorConforme = (registrosAppcc || []).some(
+    const desviaciones = (registrosAppccDelLocalActivo || []).filter((r) => r.conforme === false).filter((r) => {
+      const posteriorConforme = (registrosAppccDelLocalActivo || []).some(
         (otro) => otro.puntoId === r.puntoId && otro.conforme !== false && `${otro.fecha} ${otro.hora || ""}` > `${r.fecha} ${r.hora || ""}`
       );
       return !posteriorConforme;
     }).sort((a2, b2) => `${b2.fecha} ${b2.hora || ""}`.localeCompare(`${a2.fecha} ${a2.hora || ""}`));
     return { pendientes, desviaciones };
-  }, [puntosControl, registrosAppcc]);
+  }, [puntosControlDelLocalActivo, registrosAppccDelLocalActivo]);
   (0, import_react4.useEffect)(() => {
     const emp = usuarioActivoId ? empleados.find((e) => e.id === usuarioActivoId) : null;
     window.__usuarioActivoNombre = modoEmpleado ? emp ? emp.nombre : "Empleado sin identificar" : "Propietario/a";
@@ -118114,19 +118295,25 @@ function GestionAlmacen() {
         const f2 = new Date(d2.fechaCaducidad);
         if (isNaN(f2)) return;
         const dias = Math.round((f2 - hoy) / 864e5);
-        filas.push({ id: `${e.id}-doc-${d2.id}`, empleado: e.nombre, concepto: d2.nombre, fecha: d2.fechaCaducidad, dias });
+        filas.push({ id: `${e.id}-doc-${d2.id}`, empleadoId: e.id, empleado: e.nombre, concepto: d2.nombre, fecha: d2.fechaCaducidad, dias });
       });
       if (e.fechaFinContrato) {
         const f2 = new Date(e.fechaFinContrato);
         if (!isNaN(f2)) {
           const dias = Math.round((f2 - hoy) / 864e5);
-          filas.push({ id: `${e.id}-contrato`, empleado: e.nombre, concepto: "Fin de contrato", fecha: e.fechaFinContrato, dias });
+          filas.push({ id: `${e.id}-contrato`, empleadoId: e.id, empleado: e.nombre, concepto: "Fin de contrato", fecha: e.fechaFinContrato, dias });
         }
       }
     });
     return filas.sort((a2, b2) => a2.dias - b2.dias);
   }, [empleados]);
   const documentosPersonalPronto = (0, import_react4.useMemo)(() => documentosPersonalCaducan.filter((d2) => d2.dias <= 30), [documentosPersonalCaducan]);
+  const empleadosDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? empleados : empleados.filter((e) => e.localId === localActivoId), [empleados, localActivoId]);
+  const idsEmpleadosDelLocalActivo = (0, import_react4.useMemo)(() => new Set(empleadosDelLocalActivo.map((e) => e.id)), [empleadosDelLocalActivo]);
+  const fichajesDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? fichajes : fichajes.filter((f2) => f2.localId === localActivoId), [fichajes, localActivoId]);
+  const turnosDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? turnos : turnos.filter((t2) => t2.localId === localActivoId), [turnos, localActivoId]);
+  const nominasDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? nominas : nominas.filter((n) => n.localId === localActivoId), [nominas, localActivoId]);
+  const documentosPersonalProntoDelLocalActivo = (0, import_react4.useMemo)(() => documentosPersonalPronto.filter((d2) => idsEmpleadosDelLocalActivo.has(d2.empleadoId)), [documentosPersonalPronto, idsEmpleadosDelLocalActivo]);
   const encargosPendientes = (0, import_react4.useMemo)(() => {
     const hoy = /* @__PURE__ */ new Date();
     hoy.setHours(0, 0, 0, 0);
@@ -118198,6 +118385,7 @@ function GestionAlmacen() {
     });
     return abiertos;
   }, [fichajes, empleados]);
+  const fichajesAbiertosDelLocalActivo = (0, import_react4.useMemo)(() => fichajesAbiertos.filter((f2) => idsEmpleadosDelLocalActivo.has(f2.empleadoId)), [fichajesAbiertos, idsEmpleadosDelLocalActivo]);
   const facturasPorPagar = (0, import_react4.useMemo)(() => {
     const hoy = /* @__PURE__ */ new Date();
     hoy.setHours(0, 0, 0, 0);
@@ -118256,6 +118444,15 @@ function GestionAlmacen() {
       return x3.dias - y2.dias;
     });
   }, [albaranes, proveedores, facturasDirectas]);
+  const facturasPorPagarDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return facturasPorPagar;
+    const idsAlbaranes = new Set(albaranesDelLocalActivo.map((a2) => a2.id));
+    const idsDirectas = new Set(facturasDirectasDelLocalActivo.map((f2) => f2.id));
+    return facturasPorPagar.filter((f2) => f2.origen === "albaran" ? idsAlbaranes.has(f2.id) : idsDirectas.has(f2.id));
+  }, [facturasPorPagar, albaranesDelLocalActivo, facturasDirectasDelLocalActivo, localActivoId]);
+  const pendientesPagoDelLocalActivo = (0, import_react4.useMemo)(() => facturasPorPagarDelLocalActivo.filter((f2) => !f2.pagada), [facturasPorPagarDelLocalActivo]);
+  const totalPendientePagoDelLocalActivo = (0, import_react4.useMemo)(() => pendientesPagoDelLocalActivo.reduce((a2, f2) => a2 + f2.total, 0), [pendientesPagoDelLocalActivo]);
+  const vencenProntoDelLocalActivo = (0, import_react4.useMemo)(() => pendientesPagoDelLocalActivo.filter((f2) => f2.dias !== null && f2.dias <= 7), [pendientesPagoDelLocalActivo]);
   const pendientesPago = (0, import_react4.useMemo)(() => facturasPorPagar.filter((f2) => !f2.pagada), [facturasPorPagar]);
   const vencenPronto = (0, import_react4.useMemo)(() => pendientesPago.filter((f2) => f2.dias !== null && f2.dias <= 7), [pendientesPago]);
   const totalPendientePago = (0, import_react4.useMemo)(() => pendientesPago.reduce((a2, f2) => a2 + f2.total, 0), [pendientesPago]);
@@ -118309,6 +118506,18 @@ function GestionAlmacen() {
     () => productos.filter((p2) => !esUtillaje(p2) && !movimientos.some((m2) => m2.productoId === p2.id && esSalida(m2))),
     [productos, movimientos]
   );
+  const rotacionPorProductoDelLocalActivo = (0, import_react4.useMemo)(() => rotacionPorProducto.filter((p2) => idsProductosDelLocalActivo.has(p2.id)), [rotacionPorProducto, idsProductosDelLocalActivo]);
+  const margenPorProductoDelLocalActivo = (0, import_react4.useMemo)(() => margenPorProducto.filter((p2) => idsProductosDelLocalActivo.has(p2.id)), [margenPorProducto, idsProductosDelLocalActivo]);
+  const productosSinMovimientoDelLocalActivo = (0, import_react4.useMemo)(() => productosSinMovimiento.filter((p2) => idsProductosDelLocalActivo.has(p2.id)), [productosSinMovimiento, idsProductosDelLocalActivo]);
+  const patronesDesviacionConteoDelLocalActivo = (0, import_react4.useMemo)(() => patronesDesviacionConteo.filter((x3) => idsProductosDelLocalActivo.has(x3.productoId)), [patronesDesviacionConteo, idsProductosDelLocalActivo]);
+  const gastoPorProveedorDelLocalActivo = (0, import_react4.useMemo)(() => {
+    const map = {};
+    pedidosDelLocalActivo.forEach((pe2) => {
+      const total = (pe2.items || []).reduce((a2, it2) => a2 + (Number(it2.cantidad) || 0) * (Number(it2.costoUnitario) || 0), 0);
+      map[pe2.proveedorId] = (map[pe2.proveedorId] || 0) + total;
+    });
+    return Object.entries(map).map(([proveedorId, total]) => ({ proveedor: proveedorPorId(proveedorId), total })).sort((a2, b2) => b2.total - a2.total);
+  }, [pedidosDelLocalActivo, proveedores]);
   if (!ready) {
     return /* @__PURE__ */ import_react4.default.createElement("div", { style: { background: C2.bg, color: C2.ink }, className: "w-full h-full min-h-[600px] flex items-center justify-center font-sans" }, /* @__PURE__ */ import_react4.default.createElement(LoaderCircle, { className: "animate-spin", size: 22 }), /* @__PURE__ */ import_react4.default.createElement("span", { className: "ml-2 text-sm" }, "Cargando almac\xE9n\u2026"));
   }
@@ -118323,6 +118532,9 @@ function GestionAlmacen() {
   const facturasDirectasInforme = localInformeId ? facturasDirectas.filter((f2) => f2.localId === localInformeId) : facturasDirectas;
   const gastosGeneralesInforme = localInformeId ? gastosGenerales.filter((g2) => g2.localId === localInformeId) : gastosGenerales;
   const empleadosInforme = localInformeId ? empleados.filter((e) => e.localId === localInformeId) : empleados;
+  const idsEmpleadosInforme = new Set(empleadosInforme.map((e) => e.id));
+  const fichajesAbiertosInforme = localInformeId ? fichajesAbiertos.filter((f2) => idsEmpleadosInforme.has(f2.empleadoId)) : fichajesAbiertos;
+  const documentosPersonalProntoInforme = localInformeId ? documentosPersonalPronto.filter((d2) => idsEmpleadosInforme.has(d2.empleadoId)) : documentosPersonalPronto;
   const pedidosInforme = localInformeId ? pedidos.filter((pe2) => (pe2.localId || inferirLocalLineasInforme(pe2.items)) === localInformeId) : pedidos;
   const encargosInforme = localInformeId ? encargos.filter((e) => (e.localId || inferirLocalLineasInforme(e.lineas)) === localInformeId) : encargos;
   const idsFacturasInforme = new Set([...albaranesInforme.map((a2) => a2.id), ...facturasDirectasInforme.map((f2) => f2.id)]);
@@ -118340,9 +118552,11 @@ function GestionAlmacen() {
   const encargosUrgentesInforme = localInformeId ? encargosUrgentes.filter((e) => idsEncargosInforme.has(e.id)) : encargosUrgentes;
   const pisoVentaBajoInforme = localInformeId ? pisoVentaBajo.filter((p2) => p2.localId === localInformeId) : pisoVentaBajo;
   const sugerenciasPedidoInforme = localInformeId ? sugerenciasPedido.filter((p2) => p2.localId === localInformeId) : sugerenciasPedido;
-  const recordatorioConteoInforme = localInformeId ? recordatorioConteo.filter((a2) => localPorProductoInforme.get(a2.productoId || a2.id) === localInformeId) : recordatorioConteo;
+  const conteosInforme = localInformeId ? conteos.filter((c2) => c2.localId === localInformeId) : conteos;
+  const recordatorioConteoInforme = calcularRecordatorioConteo(conteosInforme, localInformeId ? "Total del local" : "Total (empresa completa)");
   const diagnosticoStockInforme = localInformeId ? diagnosticoStock.filter((d2) => localPorProductoInforme.get(d2.productoId) === localInformeId) : diagnosticoStock;
   const addGastoInforme = (data) => addGasto({ ...data, localId: localInformeId || localActivoId || null });
+  const deleteGastoInforme = (id) => deleteGasto(id, localInformeId || localActivoId || null);
   const contenido = /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, (tab === "dashboard" || tab === "resultados" || tab === "libroiva") && /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales, valor: localInformeId, onChange: setLocalInformeId }), tab === "dashboard" && /* @__PURE__ */ import_react4.default.createElement(
     Dashboard,
     {
@@ -118358,8 +118572,8 @@ function GestionAlmacen() {
       proveedorPorId,
       vencenPronto: vencenProntoInforme,
       totalPendientePago: totalPendientePagoInforme,
-      documentosPersonalPronto,
-      fichajesAbiertos,
+      documentosPersonalPronto: documentosPersonalProntoInforme,
+      fichajesAbiertos: fichajesAbiertosInforme,
       encargosUrgentes: encargosUrgentesInforme,
       pisoVentaBajo: pisoVentaBajoInforme,
       sugerenciasPedido: sugerenciasPedidoInforme,
@@ -118385,7 +118599,7 @@ function GestionAlmacen() {
   ), tab === "proveedores" && /* @__PURE__ */ import_react4.default.createElement(Proveedores, { proveedores, addProveedor, updateProveedor, deleteProveedor, pedidos }), tab === "productos" && /* @__PURE__ */ import_react4.default.createElement(
     Productos,
     {
-      productos,
+      productos: productosDelLocalActivo,
       proveedores,
       proveedorPorId,
       addProducto,
@@ -118393,29 +118607,29 @@ function GestionAlmacen() {
       deleteProducto,
       reactivarProducto,
       registrarSalida,
-      clasificacionABC,
+      clasificacionABC: clasificacionABCDelLocalActivo,
       almacenCongelado,
-      movimientos,
-      fichasCosto,
+      movimientos: movimientosDelLocalActivo,
+      fichasCosto: fichasCostoDelLocalActivo,
       updateFichaCosto,
       ajustarProductoPorOtro
     }
   ), tab === "historial_producto" && /* @__PURE__ */ import_react4.default.createElement(
     HistorialProducto,
     {
-      productos,
-      movimientos,
-      pedidos,
-      albaranes,
-      traspasos,
+      productos: productosDelLocalActivo,
+      movimientos: movimientosDelLocalActivo,
+      pedidos: pedidosDelLocalActivo,
+      albaranes: albaranesDelLocalActivo,
+      traspasos: traspasosDelLocalActivo,
       proveedorPorId
     }
   ), tab === "aceite" && /* @__PURE__ */ import_react4.default.createElement(
     AceiteFreidoras,
     {
-      freidoras,
-      registrosAceite,
-      productos,
+      freidoras: freidorasDelLocalActivo,
+      registrosAceite: registrosAceiteDelLocalActivo,
+      productos: productosDelLocalActivo,
       addFreidora,
       updateFreidora,
       deleteFreidora,
@@ -118437,23 +118651,23 @@ function GestionAlmacen() {
   ), tab === "pedidos" && /* @__PURE__ */ import_react4.default.createElement(
     Pedidos,
     {
-      pedidos,
+      pedidos: pedidosDelLocalActivo,
       proveedores,
-      productos,
+      productos: productosDelLocalActivo,
       crearPedido,
       actualizarPedido,
       eliminarPedido,
       proveedorPorId,
       productoPorId,
-      sugerenciasPedido,
+      sugerenciasPedido: sugerenciasPedidoDelLocalActivo,
       addProducto
     }
-  ), tab === "recepcion" && /* @__PURE__ */ import_react4.default.createElement(Recepcion, { pedidos, proveedorPorId, productoPorId, recibirPedido, almacenCongelado, recibirConAlbaran, recibirConFotoIA, cerrarPedido }), tab === "conteo" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "recepcion" && /* @__PURE__ */ import_react4.default.createElement(Recepcion, { pedidos: pedidosDelLocalActivo, proveedorPorId, productoPorId, recibirPedido, almacenCongelado, recibirConAlbaran, recibirConFotoIA, cerrarPedido }), tab === "conteo" && /* @__PURE__ */ import_react4.default.createElement(
     InventarioCiego,
     {
-      productos,
+      productos: productosDelLocalActivo,
       proveedores,
-      conteos,
+      conteos: conteosDelLocalActivo,
       iniciarConteo,
       actualizarConteoItem,
       actualizarResponsable,
@@ -118461,20 +118675,20 @@ function GestionAlmacen() {
       aplicarAjustes,
       eliminarConteo,
       revertirUltimaAplicacion,
-      productoPorId,
+      productoPorId: (id) => productosDelLocalActivo.find((p2) => p2.id === id),
       crearProductoEnConteo,
-      clasificacionABC,
+      clasificacionABC: clasificacionABCDelLocalActivo,
       almacenCongelado
     }
   ), tab === "reportes" && /* @__PURE__ */ import_react4.default.createElement(
     Reportes,
     {
-      rotacionPorProducto,
-      gastoPorProveedor,
-      productosSinMovimiento,
-      valorInventario,
-      margenPorProducto,
-      patronesDesviacionConteo
+      rotacionPorProducto: rotacionPorProductoDelLocalActivo,
+      gastoPorProveedor: gastoPorProveedorDelLocalActivo,
+      productosSinMovimiento: productosSinMovimientoDelLocalActivo,
+      valorInventario: valorInventarioDelLocalActivo,
+      margenPorProducto: margenPorProductoDelLocalActivo,
+      patronesDesviacionConteo: patronesDesviacionConteoDelLocalActivo
     }
   ), tab === "resultados" && /* @__PURE__ */ import_react4.default.createElement(
     Resultados,
@@ -118484,29 +118698,29 @@ function GestionAlmacen() {
       productoPorId,
       gastosGenerales: gastosGeneralesInforme,
       addGasto: addGastoInforme,
-      deleteGasto,
+      deleteGasto: deleteGastoInforme,
       empleados: empleadosInforme
     }
   ), tab === "fichas" && /* @__PURE__ */ import_react4.default.createElement(
     FichasCosto,
     {
-      fichasCosto,
-      productos,
+      fichasCosto: fichasCostoDelLocalActivo,
+      productos: productosDelLocalActivo,
       addFichaCosto,
       updateFichaCosto,
       deleteFichaCosto,
       updateProducto,
       addProducto,
-      ordenesProduccion,
+      ordenesProduccion: ordenesProduccionDelLocalActivo,
       nominas,
       fichajes
     }
-  ), tab === "produccion" && /* @__PURE__ */ import_react4.default.createElement(Produccion, { fichasCosto, productos, ordenesProduccion, producir, anularProduccion, traspasarStock }), tab === "mermas" && /* @__PURE__ */ import_react4.default.createElement(Mermas, { productos, movimientos, registrarSalida, almacenCongelado }), tab === "etiquetas" && /* @__PURE__ */ import_react4.default.createElement(EtiquetasCatalogo, { productos, fichasCosto, alergenosDeFicha }), tab === "albaranes" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "produccion" && /* @__PURE__ */ import_react4.default.createElement(Produccion, { fichasCosto: fichasCostoDelLocalActivo, productos: productosDelLocalActivo, ordenesProduccion: ordenesProduccionDelLocalActivo, producir, anularProduccion, traspasarStock }), tab === "mermas" && /* @__PURE__ */ import_react4.default.createElement(Mermas, { productos: productosDelLocalActivo, movimientos: movimientosDelLocalActivo, registrarSalida, almacenCongelado }), tab === "etiquetas" && /* @__PURE__ */ import_react4.default.createElement(EtiquetasCatalogo, { productos: productosDelLocalActivo, fichasCosto: fichasCostoDelLocalActivo, alergenosDeFicha }), tab === "albaranes" && /* @__PURE__ */ import_react4.default.createElement(
     Albaranes,
     {
-      albaranes,
+      albaranes: albaranesDelLocalActivo,
       proveedores,
-      productos,
+      productos: productosDelLocalActivo,
       proveedorPorId,
       buscarEnCatalogo,
       guardarAlbaran,
@@ -118520,13 +118734,13 @@ function GestionAlmacen() {
       limpiarPrefill: () => setPrefillAlbaran(null),
       pedidoParaFotoIA,
       limpiarPedidoParaFotoIA: () => setPedidoParaFotoIA(null),
-      pedidos
+      pedidos: pedidosDelLocalActivo
     }
   ), tab === "pagos" && /* @__PURE__ */ import_react4.default.createElement(
     CuentasPorPagar,
     {
-      facturasPorPagar,
-      totalPendientePago,
+      facturasPorPagar: facturasPorPagarDelLocalActivo,
+      totalPendientePago: totalPendientePagoDelLocalActivo,
       marcarPagada,
       marcarPagadaFacturaDirecta,
       addFacturaDirecta,
@@ -118538,7 +118752,7 @@ function GestionAlmacen() {
   ), tab === "personal" && /* @__PURE__ */ import_react4.default.createElement(
     Personal,
     {
-      empleados,
+      empleados: empleadosDelLocalActivo,
       addEmpleado,
       updateEmpleado,
       deleteEmpleado,
@@ -118548,8 +118762,8 @@ function GestionAlmacen() {
       registrarEpi,
       eliminarEpi,
       documentosPersonalCaducan,
-      fichajes,
-      nominas,
+      fichajes: fichajesDelLocalActivo,
+      nominas: nominasDelLocalActivo,
       entrevistas,
       crearEntrevista,
       actualizarEntrevista,
@@ -118563,32 +118777,32 @@ function GestionAlmacen() {
   ), tab === "fichaje" && /* @__PURE__ */ import_react4.default.createElement(
     RegistroHorario,
     {
-      empleados,
-      fichajes,
+      empleados: empleadosDelLocalActivo,
+      fichajes: fichajesDelLocalActivo,
       fichar,
       addFichajeManual,
       updateFichaje,
       eliminarFichaje,
-      fichajesAbiertos
+      fichajesAbiertos: fichajesAbiertosDelLocalActivo
     }
   ), tab === "nominas" && /* @__PURE__ */ import_react4.default.createElement(
     CostePersonal,
     {
-      empleados,
-      nominas,
+      empleados: empleadosDelLocalActivo,
+      nominas: nominasDelLocalActivo,
       addNomina,
       updateNomina,
       deleteNomina,
-      fichajes,
-      movimientos
+      fichajes: fichajesDelLocalActivo,
+      movimientos: movimientosDelLocalActivo
     }
-  ), tab === "venta" && /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos, venderCarrito, anularVenta, movimientos, registrarAuditoria }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito, anularVenta, movimientos: movimientosDelLocalActivo, registrarAuditoria }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
-      encargosPendientes,
-      encargos,
+      encargosPendientes: encargosPendientesDelLocalActivo,
+      encargos: encargosDelLocalActivo,
       clientes,
-      productos,
+      productos: productosDelLocalActivo,
       addEncargo,
       updateEncargo,
       deleteEncargo,
@@ -118608,51 +118822,52 @@ function GestionAlmacen() {
     }
   ), tab === "devoluciones" && /* @__PURE__ */ import_react4.default.createElement(
     Devoluciones,
-    { productos, proveedores, devoluciones, registrarDevolucionCliente, registrarDevolucionProveedor }
+    { productos: productosDelLocalActivo, proveedores, devoluciones: devolucionesDelLocalActivo, registrarDevolucionCliente, registrarDevolucionProveedor }
   ), tab === "facturas" && /* @__PURE__ */ import_react4.default.createElement(
     Facturas,
     {
-      albaranes,
-      facturasDirectas,
+      albaranes: albaranesDelLocalActivo,
+      facturasDirectas: facturasDirectasDelLocalActivo,
       proveedorPorId,
       irAAlbaran: (albId) => {
-        const a2 = albaranes.find((x3) => x3.id === albId);
+        const a2 = albaranesDelLocalActivo.find((x3) => x3.id === albId);
         if (a2) {
           setPrefillAlbaran(a2);
           setTab("albaranes");
         }
       },
       irAFacturaDirecta: (fdId) => {
+        if (!facturasDirectasDelLocalActivo.some((f2) => f2.id === fdId)) return;
         setFacturaDirectaResaltada(fdId);
         setTab("pagos");
       }
     }
-  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { movimientos, arqueos, addArqueo, deleteArqueo, encargos, movimientosCaja, registrarMovimientoCaja, eliminarMovimientoCaja }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
     Turnos,
     {
-      empleados,
-      turnos,
+      empleados: empleadosDelLocalActivo,
+      turnos: turnosDelLocalActivo,
       addTurno,
       updateTurno,
       deleteTurno,
       copiarSemana
     }
-  ), tab === "mapa" && /* @__PURE__ */ import_react4.default.createElement(MapaAlmacen, { productos, proveedorPorId }), tab === "traspasos" && /* @__PURE__ */ import_react4.default.createElement(Traspasos, { productos, traspasos, traspasarStock, pisoVentaBajo, fichasCosto }), tab === "appcc" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "mapa" && /* @__PURE__ */ import_react4.default.createElement(MapaAlmacen, { productos: productosDelLocalActivo, proveedorPorId }), tab === "traspasos" && /* @__PURE__ */ import_react4.default.createElement(Traspasos, { productos: productosDelLocalActivo, traspasos: traspasosDelLocalActivo, traspasarStock, pisoVentaBajo: pisoVentaBajoDelLocalActivo, fichasCosto: fichasCostoDelLocalActivo }), tab === "appcc" && /* @__PURE__ */ import_react4.default.createElement(
     Appcc,
     {
-      puntosControl,
-      registrosAppcc,
+      puntosControl: puntosControlDelLocalActivo,
+      registrosAppcc: registrosAppccDelLocalActivo,
       addPuntoControl,
       updatePuntoControl,
       deletePuntoControl,
       registrarAppcc,
       eliminarRegistroAppcc,
       appccPendientesHoy,
-      productos,
-      fichasCosto,
+      productos: productosDelLocalActivo,
+      fichasCosto: fichasCostoDelLocalActivo,
       alergenosDeFicha
     }
-  ), tab === "saldo" && /* @__PURE__ */ import_react4.default.createElement(SaldoAlmacen, { productos, proveedores, valorInventario, valorUtillaje, proveedorPorId, clasificacionABC, analisisABC }), tab === "respaldos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "saldo" && /* @__PURE__ */ import_react4.default.createElement(SaldoAlmacen, { productos: productosDelLocalActivo, proveedores, valorInventario: valorInventarioDelLocalActivo, valorUtillaje: valorUtillajeDelLocalActivo, proveedorPorId, clasificacionABC: clasificacionABCDelLocalActivo, analisisABC: analisisABCDelLocalActivo }), tab === "respaldos" && /* @__PURE__ */ import_react4.default.createElement(
     Respaldos,
     {
       historial,
@@ -118665,7 +118880,7 @@ function GestionAlmacen() {
       establecerPin,
       activarModoEmpleado
     }
-  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStock, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo }));
+  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo }));
   const itemsMeta = [
     { id: "dashboard", label: "Panel general", icon: ChartColumn },
     { id: "direccion", label: "Panel de direcci\xF3n", icon: TrendingUp },
@@ -118673,29 +118888,29 @@ function GestionAlmacen() {
     { id: "productos", label: "Productos", icon: Package },
     { id: "buscar", label: "Buscar", icon: Search },
     { id: "historial_producto", label: "Historial de producto", icon: RotateCcwClock },
-    { id: "pedidos", label: "Pedidos", icon: ShoppingCart, badge: pedidosPendientes.length },
+    { id: "pedidos", label: "Pedidos", icon: ShoppingCart, badge: pedidosPendientesDelLocalActivo.length },
     { id: "recepcion", label: "Recepci\xF3n", icon: ClipboardList },
     { id: "albaranes", label: "Albaranes", icon: FileText },
     { id: "facturas", label: "Facturas", icon: Files },
-    { id: "pagos", label: "Cuentas por pagar", icon: Coins, badge: vencenPronto.length, badgeColor: C2.red },
-    { id: "conteo", label: "Inventario ciego", icon: Boxes, badge: stockBajo.length, badgeColor: C2.amber },
+    { id: "pagos", label: "Cuentas por pagar", icon: Coins, badge: vencenProntoDelLocalActivo.length, badgeColor: C2.red },
+    { id: "conteo", label: "Inventario ciego", icon: Boxes, badge: stockBajoDelLocalActivo.length, badgeColor: C2.amber },
     { id: "saldo", label: "Saldo de almac\xE9n", icon: ClipboardList },
     { id: "mapa", label: "Mapa de almac\xE9n", icon: Map2 },
-    { id: "traspasos", label: "Traspasos", icon: ArrowLeftRight, badge: pisoVentaBajo.length, badgeColor: C2.amber },
+    { id: "traspasos", label: "Traspasos", icon: ArrowLeftRight, badge: pisoVentaBajoDelLocalActivo.length, badgeColor: C2.amber },
     { id: "fichas", label: "Fichas de costo", icon: Calculator },
     { id: "produccion", label: "Producci\xF3n", icon: Factory },
     { id: "mermas", label: "Mermas", icon: Trash2 },
     { id: "etiquetas", label: "Etiquetas y cat\xE1logo", icon: Tags },
     { id: "reportes", label: "Reportes y rotaci\xF3n", icon: ChartColumn },
     { id: "resultados", label: "Resultados", icon: TrendingUp },
-    { id: "personal", label: "Personal", icon: Users, badge: documentosPersonalPronto.length, badgeColor: C2.amber },
-    { id: "fichaje", label: "Registro horario", icon: Clock, badge: fichajesAbiertos.length, badgeColor: C2.amber },
+    { id: "personal", label: "Personal", icon: Users, badge: documentosPersonalProntoDelLocalActivo.length, badgeColor: C2.amber },
+    { id: "fichaje", label: "Registro horario", icon: Clock, badge: fichajesAbiertosDelLocalActivo.length, badgeColor: C2.amber },
     { id: "nominas", label: "Coste de personal", icon: Coins },
     { id: "turnos", label: "Cuadrante de turnos", icon: CalendarClock },
     { id: "appcc", label: "Control sanitario", icon: ShieldCheck, badge: appccPendientesHoy.length, badgeColor: C2.amber },
     { id: "aceite", label: "Aceite de freidoras", icon: Droplet },
     { id: "venta", label: "Venta r\xE1pida", icon: ShoppingBag },
-    { id: "encargos", label: "Encargos", icon: CalendarDays, badge: encargosUrgentes.length, badgeColor: C2.red },
+    { id: "encargos", label: "Encargos", icon: CalendarDays, badge: encargosUrgentesDelLocalActivo.length, badgeColor: C2.red },
     { id: "clientes", label: "Clientes", icon: UserRound },
     { id: "libroiva", label: "Libro de IVA", icon: Receipt },
     { id: "caja", label: "Arqueo de caja", icon: Wallet },
@@ -118703,7 +118918,7 @@ function GestionAlmacen() {
     { id: "tesoreria", label: "Tesorer\xEDa", icon: ChartLine },
     { id: "estacionalidad", label: "Estacionalidad", icon: CalendarRange },
     { id: "auditoria", label: "Auditor\xEDa", icon: RotateCcwClock },
-    { id: "diagnostico", label: "Reconciliaci\xF3n de stock", icon: Stethoscope, badge: descuadresPendientes, badgeColor: C2.red },
+    { id: "diagnostico", label: "Reconciliaci\xF3n de stock", icon: Stethoscope, badge: descuadresPendientesDelLocalActivo, badgeColor: C2.red },
     { id: "respaldos", label: "Respaldos", icon: Cog },
     { id: "notificaciones", label: "Notificaciones", icon: Bell },
     { id: "locales", label: "Locales", icon: Map2 },
@@ -118815,7 +119030,7 @@ function GestionAlmacen() {
             --c-red-soft: #F7E5E1 !important;
           }
         }
-      `), disenoMenu === "C" ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(TopBarC, { disenoMenu, setDisenoMenu, tab, setTab, pendientes: pedidosPendientes.length, temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil }), /* @__PURE__ */ import_react4.default.createElement("main", { className: "flex-1 p-4 overflow-y-auto", style: { maxHeight: "900px" } }, contenido), /* @__PURE__ */ import_react4.default.createElement(BottomNavC, { tab, setTab, categorias: categoriasC, dashboardItem: porId("dashboard") })) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(
+      `), disenoMenu === "C" ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(TopBarC, { disenoMenu, setDisenoMenu, tab, setTab, pendientes: pedidosPendientesDelLocalActivo.length, temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil }), /* @__PURE__ */ import_react4.default.createElement("main", { className: "flex-1 p-4 overflow-y-auto", style: { maxHeight: "900px" } }, contenido), /* @__PURE__ */ import_react4.default.createElement(BottomNavC, { tab, setTab, categorias: categoriasC, dashboardItem: porId("dashboard") })) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(
     SidebarGrupos,
     {
       grupos: disenoMenu === "A" ? gruposA : gruposB,
@@ -118873,10 +119088,13 @@ function crearLogicaProveedores({ proveedores, setProveedores, registrarAuditori
   return { addProveedor, updateProveedor, deleteProveedor };
 }
 function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId }) {
+  const empleadoEsDelLocalActivoPersonal = (e) => !!e && (!localActivoId || e.localId === localActivoId);
   function addEmpleado(data) {
-    setEmpleados((s2) => [...s2, { id: uid(), activo: true, documentos: [], ...data, localId: data.localId || localActivoId || null }]);
+    setEmpleados((s2) => [...s2, { id: uid(), activo: true, documentos: [], ...data, localId: localActivoId || data.localId || null }]);
   }
   async function crearCuentaEmpleado(empleadoId, { nombre, email, password, rol }) {
+    const empleadoLocal = empleados.find((e) => e.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return { ok: false, error: "El empleado no pertenece al local activo." };
     try {
       const supabase = await window.getSupabaseClient();
       const { data: sesion } = await supabase.auth.getSession();
@@ -118897,17 +119115,20 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
     }
   }
   function updateEmpleado(id, data) {
-    setEmpleados((s2) => s2.map((e) => e.id === id ? { ...e, ...data } : e));
+    setEmpleados((s2) => s2.map((e) => e.id === id && empleadoEsDelLocalActivoPersonal(e) ? { ...e, ...data, localId: e.localId || localActivoId || null } : e));
   }
   function deleteEmpleado(id) {
     const e = empleados.find((x3) => x3.id === id);
-    registrarAuditoria("Eliminar empleado", e ? e.nombre : id);
+    if (!empleadoEsDelLocalActivoPersonal(e)) return false;
+    registrarAuditoria("Eliminar empleado", e.nombre);
     setEmpleados((s2) => s2.filter((e2) => e2.id !== id));
     if (setNominas) setNominas((s2) => s2.filter((n) => n.empleadoId !== id));
+    return true;
   }
   function anonimizarEmpleado(id) {
     const e = empleados.find((x3) => x3.id === id);
-    registrarAuditoria("Anonimizar empleado", e ? e.nombre : id);
+    if (!empleadoEsDelLocalActivoPersonal(e)) return false;
+    registrarAuditoria("Anonimizar empleado", e.nombre);
     setEmpleados(
       (s2) => s2.map(
         (emp) => emp.id === id ? {
@@ -118924,83 +119145,112 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
     );
   }
   function registrarAusencia(empleadoId, ausencia) {
+    const empleadoLocal = empleados.find((e) => e.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
     setEmpleados(
       (s2) => s2.map((e) => e.id === empleadoId ? { ...e, ausencias: [...e.ausencias || [], { id: uid(), ...ausencia }] } : e)
     );
   }
   function eliminarAusencia(empleadoId, ausenciaId) {
+    const empleadoLocal = empleados.find((e) => e.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
     setEmpleados(
       (s2) => s2.map((e) => e.id === empleadoId ? { ...e, ausencias: (e.ausencias || []).filter((a2) => a2.id !== ausenciaId) } : e)
     );
   }
   function registrarEpi(empleadoId, epi) {
+    const empleadoLocal = empleados.find((e) => e.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
     setEmpleados(
       (s2) => s2.map((e) => e.id === empleadoId ? { ...e, epis: [...e.epis || [], { id: uid(), fecha: todayISO(), ...epi }] } : e)
     );
   }
   function eliminarEpi(empleadoId, epiId) {
+    const empleadoLocal = empleados.find((e) => e.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
     setEmpleados(
       (s2) => s2.map((e) => e.id === empleadoId ? { ...e, epis: (e.epis || []).filter((x3) => x3.id !== epiId) } : e)
     );
   }
   return { addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado };
 }
-function crearLogicaTurnos({ turnos, setTurnos }) {
+function crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId }) {
+  const empleadoTurnoLocal = (id) => empleados.find((e) => e.id === id && (!localActivoId || e.localId === localActivoId));
+  const turnoEsLocal = (t2) => !!t2 && (!localActivoId || t2.localId === localActivoId);
   function addTurno(data) {
-    setTurnos((s2) => [...s2, { id: uid(), ...data }]);
+    const emp = empleadoTurnoLocal(data.empleadoId);
+    if (!emp) return false;
+    setTurnos((s2) => [...s2, { id: uid(), ...data, localId: emp.localId || localActivoId || null }]);
+    return true;
   }
   function updateTurno(id, data) {
-    setTurnos((s2) => s2.map((t2) => t2.id === id ? { ...t2, ...data } : t2));
+    setTurnos((s2) => s2.map((t2) => t2.id === id && turnoEsLocal(t2) ? { ...t2, ...data, localId: t2.localId || localActivoId || null } : t2));
   }
   function deleteTurno(id) {
-    setTurnos((s2) => s2.filter((t2) => t2.id !== id));
+    setTurnos((s2) => s2.filter((t2) => t2.id !== id || !turnoEsLocal(t2)));
   }
   function copiarSemana(desdeFechas, haciaFechas) {
     const nuevos = [];
-    turnos.forEach((t2) => {
+    turnos.filter(turnoEsLocal).forEach((t2) => {
       const idx = desdeFechas.indexOf(t2.fecha);
       if (idx === -1) return;
-      nuevos.push({ id: uid(), empleadoId: t2.empleadoId, fecha: haciaFechas[idx], tipo: t2.tipo, horaInicio: t2.horaInicio, horaFin: t2.horaFin, notas: t2.notas });
+      nuevos.push({ id: uid(), empleadoId: t2.empleadoId, fecha: haciaFechas[idx], tipo: t2.tipo, horaInicio: t2.horaInicio, horaFin: t2.horaFin, notas: t2.notas, localId: t2.localId || localActivoId || null });
     });
     if (nuevos.length) setTurnos((s2) => [...s2, ...nuevos]);
     return nuevos.length;
   }
   return { addTurno, updateTurno, deleteTurno, copiarSemana };
 }
-function crearLogicaAppcc({ setPuntosControl, setRegistrosAppcc }) {
+function crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId }) {
+  const puntoEsDelLocalActivoAppcc = (p2) => !!p2 && (!localActivoId || p2.localId === localActivoId);
+  const registroEsDelLocalActivoAppcc = (r2) => !!r2 && (!localActivoId || r2.localId === localActivoId);
   function addPuntoControl(data) {
-    setPuntosControl((s2) => [...s2, { id: uid(), activo: true, ...data }]);
+    setPuntosControl((s2) => [...s2, { id: uid(), activo: true, ...data, localId: localActivoId || data.localId || null }]);
   }
   function updatePuntoControl(id, data) {
-    setPuntosControl((s2) => s2.map((p2) => p2.id === id ? { ...p2, ...data } : p2));
+    setPuntosControl((s2) => s2.map((p2) => p2.id === id && puntoEsDelLocalActivoAppcc(p2) ? { ...p2, ...data, localId: p2.localId || localActivoId || null } : p2));
   }
   function deletePuntoControl(id) {
-    setPuntosControl((s2) => s2.filter((p2) => p2.id !== id));
+    setPuntosControl((s2) => s2.filter((p2) => p2.id !== id || !puntoEsDelLocalActivoAppcc(p2)));
   }
   function registrarAppcc(data) {
-    setRegistrosAppcc((s2) => [{ id: uid(), fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), ...data }, ...s2]);
+    const punto = puntosControl.find((p2) => p2.id === data.puntoId);
+    if (data.puntoId && !puntoEsDelLocalActivoAppcc(punto)) return false;
+    setRegistrosAppcc((s2) => [{ id: uid(), fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), ...data, localId: localActivoId || (punto && punto.localId) || null }, ...s2]);
+    return true;
   }
   function eliminarRegistroAppcc(id) {
+    const registro = registrosAppcc.find((r2) => r2.id === id);
+    if (!registroEsDelLocalActivoAppcc(registro)) return false;
     setRegistrosAppcc((s2) => s2.filter((r) => r.id !== id));
+    return true;
   }
   return { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, eliminarRegistroAppcc };
 }
-function crearLogicaFichaje({ setFichajes }) {
+function crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId }) {
+  const empleadoFichajeLocal = (id) => empleados.find((e) => e.id === id && (!localActivoId || e.localId === localActivoId));
+  const fichajeEsLocal = (f2) => !!f2 && (!localActivoId || f2.localId === localActivoId);
   function fichar(empleadoId, tipo) {
+    const emp = empleadoFichajeLocal(empleadoId);
+    if (!emp) return false;
     const ahora = /* @__PURE__ */ new Date();
     setFichajes((s2) => [
-      { id: uid(), empleadoId, tipo, fecha: todayISO(), hora: ahora.toTimeString().slice(0, 5), timestamp: ahora.toISOString() },
+      { id: uid(), empleadoId, tipo, fecha: todayISO(), hora: ahora.toTimeString().slice(0, 5), timestamp: ahora.toISOString(), localId: emp.localId || localActivoId || null },
       ...s2
     ]);
+    return true;
   }
   function addFichajeManual(data) {
-    setFichajes((s2) => [{ id: uid(), ...data }, ...s2]);
+    const emp = empleadoFichajeLocal(data.empleadoId);
+    if (!emp) return false;
+    setFichajes((s2) => [{ id: uid(), ...data, localId: emp.localId || localActivoId || null }, ...s2]);
+    return true;
   }
   function updateFichaje(id, data) {
-    setFichajes((s2) => s2.map((f2) => f2.id === id ? { ...f2, ...data } : f2));
+    setFichajes((s2) => s2.map((f2) => f2.id === id && fichajeEsLocal(f2) ? { ...f2, ...data, localId: f2.localId || localActivoId || null } : f2));
   }
   function eliminarFichaje(id) {
-    setFichajes((s2) => s2.filter((f2) => f2.id !== id));
+    setFichajes((s2) => s2.filter((f2) => f2.id !== id || !fichajeEsLocal(f2)));
   }
   return { fichar, addFichajeManual, updateFichaje, eliminarFichaje };
 }
@@ -119008,14 +119258,18 @@ function crearLogicaGastos({ setGastosGenerales, localActivoId }) {
   function addGasto(data) {
     setGastosGenerales((s2) => [...s2, { id: uid(), ...data, localId: data.localId || localActivoId || null }]);
   }
-  function deleteGasto(id) {
-    setGastosGenerales((s2) => s2.filter((g2) => g2.id !== id));
+  function deleteGasto(id, localIdEsperado = localActivoId) {
+    setGastosGenerales((s2) => {
+      const actual = s2.find((g2) => g2.id === id);
+      if (!actual || localIdEsperado && actual.localId !== localIdEsperado) return s2;
+      return s2.filter((g2) => g2.id !== id);
+    });
   }
   return { addGasto, deleteGasto };
 }
 function crearLogicaCaja({ setArqueos, localActivoId }) {
   function addArqueo(data) {
-    setArqueos((s2) => [{ id: uid(), fecha: todayISO(), ...data, localId: data.localId || localActivoId || null }, ...s2]);
+    setArqueos((s2) => [{ id: uid(), fecha: todayISO(), ...data, localId: localActivoId || data.localId || null }, ...s2]);
     const diferencia = Number(data.diferencia) || 0;
     if (diferencia !== 0 && typeof window !== "undefined" && window.__nubeActiva) {
       const signo = diferencia > 0 ? "sobran" : "faltan";
@@ -119025,7 +119279,7 @@ function crearLogicaCaja({ setArqueos, localActivoId }) {
         body: JSON.stringify({
           titulo: "Caja descuadrada",
           cuerpo: `Al cerrar caja, ${signo} ${fmt(Math.abs(diferencia))} \u20AC.`,
-          localId: data.localId || localActivoId || null,
+          localId: localActivoId || data.localId || null,
           url: "/"
         })
       }).catch(() => {
@@ -119033,7 +119287,11 @@ function crearLogicaCaja({ setArqueos, localActivoId }) {
     }
   }
   function deleteArqueo(id) {
-    setArqueos((s2) => s2.filter((a2) => a2.id !== id));
+    setArqueos((s2) => {
+      const actual = s2.find((a2) => a2.id === id);
+      if (!actual || localActivoId && actual.localId !== localActivoId) return s2;
+      return s2.filter((a2) => a2.id !== id);
+    });
   }
   return { addArqueo, deleteArqueo };
 }
@@ -119063,12 +119321,12 @@ function crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivo
   }
   return { crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo };
 }
-function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, registrarAuditoria }) {
+function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, registrarAuditoria, localActivoId }) {
   function registrarMovimientoCaja(tipo, importe, motivo, fecha) {
     const importeNum = Number(importe);
     if (!importeNum || importeNum <= 0) return { ok: false, error: "Pon un importe mayor que cero." };
     if (tipo !== "entrada" && tipo !== "salida") return { ok: false, error: "Tipo de movimiento no v\xE1lido." };
-    const nuevo = { id: uid(), fecha: fecha || todayISO(), tipo, importe: importeNum, motivo: (motivo || "").trim(), creadoEn: (/* @__PURE__ */ new Date()).toISOString() };
+    const nuevo = { id: uid(), fecha: fecha || todayISO(), tipo, importe: importeNum, motivo: (motivo || "").trim(), creadoEn: (/* @__PURE__ */ new Date()).toISOString(), localId: localActivoId || null };
     setMovimientosCaja((s2) => [nuevo, ...s2]);
     registrarAuditoria(
       tipo === "entrada" ? "Entrada de caja" : "Retirada de caja",
@@ -119078,18 +119336,25 @@ function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, regis
   }
   function eliminarMovimientoCaja(id) {
     const m2 = movimientosCaja.find((x3) => x3.id === id);
+    if (!m2 || localActivoId && m2.localId !== localActivoId) return false;
     setMovimientosCaja((s2) => s2.filter((x3) => x3.id !== id));
     if (m2) registrarAuditoria("Eliminar movimiento de caja", `${m2.tipo === "entrada" ? "Entrada" : "Retirada"} de \u20AC${fmt(m2.importe)} \xB7 ${m2.fecha}`);
   }
   return { registrarMovimientoCaja, eliminarMovimientoCaja };
 }
-function crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, registrarAuditoria, registrarMovimientoCaja }) {
+function crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, registrarAuditoria, registrarMovimientoCaja, localActivoId }) {
+  function productoEsDelLocalActivoDevolucion(prod) {
+    if (!prod) return false;
+    if (!localActivoId) return true;
+    return !prod.localId || prod.localId === localActivoId;
+  }
   const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos });
   function registrarDevolucionCliente({ productoId, cantidad, motivo, reembolso, ventaId, fecha }) {
     const cant = Number(cantidad);
     if (!productoId) return { ok: false, error: "Elige un producto." };
     if (!cant || cant <= 0) return { ok: false, error: "Pon una cantidad mayor que cero." };
     const producto = productos.find((p2) => p2.id === productoId);
+    if (!productoEsDelLocalActivoDevolucion(producto)) return false;
     if (!producto) return { ok: false, error: "Producto no encontrado." };
     const fechaReal = fecha || todayISO();
     const r = aplicarMovimientoStock({
@@ -119111,6 +119376,7 @@ function crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovi
     }
     const registro = {
       id: uid(),
+      localId: producto.localId || localActivoId || null,
       tipo: "cliente",
       fecha: fechaReal,
       productoId,
@@ -119129,6 +119395,7 @@ function crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovi
     if (!productoId) return { ok: false, error: "Elige un producto." };
     if (!cant || cant <= 0) return { ok: false, error: "Pon una cantidad mayor que cero." };
     const producto = productos.find((p2) => p2.id === productoId);
+    if (!productoEsDelLocalActivoDevolucion(producto)) return false;
     if (!producto) return { ok: false, error: "Producto no encontrado." };
     const fechaReal = fecha || todayISO();
     const r = aplicarMovimientoStock({
@@ -119146,6 +119413,7 @@ function crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovi
     if (!r.ok) return { ok: false, error: r.error || "No se ha podido aplicar al stock." };
     const registro = {
       id: uid(),
+      localId: producto.localId || localActivoId || null,
       tipo: "proveedor",
       fecha: fechaReal,
       productoId,
@@ -119298,7 +119566,7 @@ function crearMotorStock({ productos, setProductos, movimientos, setMovimientos,
   }
   return { aplicarMovimientoStock, calcularStockTeorico };
 }
-function crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria }) {
+function crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId }) {
   const { aplicarMovimientoStock, calcularStockTeorico } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
   function diagnosticarStock() {
     const porProducto = /* @__PURE__ */ new Map();
@@ -119342,11 +119610,14 @@ function crearLogicaReconciliacion({ productos, setProductos, movimientos, setMo
     }).sort((a2, b2) => Math.abs(b2.diferencia) - Math.abs(a2.diferencia));
   }
   function movimientosParaReconciliar(productoId) {
+    const producto = productos.find((p2) => p2.id === productoId);
+    if (!producto || localActivoId && producto.localId !== localActivoId) return [];
     return movimientos.filter((m2) => m2.productoId === productoId).slice().sort((a2, b2) => (b2.fecha || "").localeCompare(a2.fecha || ""));
   }
   function corregirProducto(productoId) {
     const p2 = productos.find((pr) => pr.id === productoId);
     if (!p2) return { ok: false, error: "Producto no encontrado." };
+    if (localActivoId && p2.localId !== localActivoId) return { ok: false, error: "El producto no pertenece al local activo." };
     const teoricoReal = calcularStockTeorico(productoId, "stock");
     const stockCache = Number(p2.stock) || 0;
     const deficitCache = Number(p2.deficitPendiente) || 0;
@@ -119376,6 +119647,11 @@ function crearLogicaReconciliacion({ productos, setProductos, movimientos, setMo
   return { diagnosticarStock, corregirProducto, movimientosParaReconciliar };
 }
 function crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId }) {
+  function productoEsDelLocalActivo(prod) {
+    if (!prod) return false;
+    if (!localActivoId) return true;
+    return !prod.localId || prod.localId === localActivoId;
+  }
   const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
   function ajustarProductoPorOtro({ productoOrigenId, productoDestinoId, cantidadOrigen, cantidadDestino, motivo }) {
     if (almacenCongelado) return { ok: false, error: "El almac\xE9n est\xE1 congelado por un conteo en curso." };
@@ -119383,6 +119659,7 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
     if (productoOrigenId === productoDestinoId) return { ok: false, error: "Elige dos productos distintos." };
     const origen = productos.find((p2) => p2.id === productoOrigenId);
     const destino = productos.find((p2) => p2.id === productoDestinoId);
+    if (origen && destino && (!productoEsDelLocalActivo(origen) || !productoEsDelLocalActivo(destino))) return { ok: false, error: "Los dos productos deben pertenecer al local activo." };
     if (!origen || !destino) return { ok: false, error: "Alguno de los productos ya no existe." };
     const cantSale = Number(cantidadOrigen) || 0;
     const cantEntra = Number(cantidadDestino) || 0;
@@ -119432,7 +119709,7 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
     return { ok: true, costoSale, costoEntra, diferencia };
   }
   function addProducto(data) {
-    const nuevo = { id: uid(), stock: Number(data.stock) || 0, localId: localActivoId || null, ...data };
+    const nuevo = { id: uid(), stock: Number(data.stock) || 0, ...data, localId: localActivoId || data.localId || null };
     setProductos((s2) => [...s2, nuevo]);
     const stockInicial = Number(data.stock) || 0;
     if (stockInicial > 0) {
@@ -119461,6 +119738,7 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
   }
   function updateProducto(id, data) {
     const anterior = productos.find((p2) => p2.id === id);
+    if (!productoEsDelLocalActivo(anterior)) return false;
     const { stock: stockNuevoForm, ...restoDatos } = data;
     if (Object.keys(restoDatos).length > 0) {
       setProductos((s2) => s2.map((p2) => p2.id === id ? { ...p2, ...restoDatos } : p2));
@@ -119488,11 +119766,13 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
   }
   function deleteProducto(id) {
     const p2 = productos.find((x3) => x3.id === id);
+    if (!productoEsDelLocalActivo(p2)) return false;
     registrarAuditoria("Eliminar producto (borrado l\xF3gico)", p2 ? p2.nombre : id);
     setProductos((s2) => s2.map((pr) => pr.id === id ? { ...pr, activo: false, eliminadoEn: todayISO() } : pr));
   }
   function reactivarProducto(id) {
     const p2 = productos.find((x3) => x3.id === id);
+    if (!productoEsDelLocalActivo(p2)) return false;
     registrarAuditoria("Reactivar producto", p2 ? p2.nombre : id);
     setProductos((s2) => s2.map((pr) => pr.id === id ? { ...pr, activo: true, eliminadoEn: null } : pr));
   }
@@ -119502,7 +119782,7 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
     if (!cant || cant <= 0) return false;
     const { motivo = "Venta", precioVentaUnitario = null, referencia = "", medioPago = "Efectivo" } = opciones;
     const prod = productos.find((p2) => p2.id === productoId);
-    if (!prod) return false;
+    if (!prod || !productoEsDelLocalActivo(prod)) return false;
     const esVenta2 = motivo === "Venta";
     const esMermaMotivo = MOTIVOS_MERMA.includes(motivo);
     const tipo = esVenta2 ? "VENTA" : esMermaMotivo ? "MERMA" : "OTRO";
@@ -119528,6 +119808,11 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
   return { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro };
 }
 function crearLogicaPedidos({ pedidos, setPedidos, productos, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId }) {
+  function pedidoEsDelLocalActivo(pedido) {
+    if (!pedido) return false;
+    if (!localActivoId) return true;
+    return !pedido.localId || pedido.localId === localActivoId;
+  }
   function crearPedido({ proveedorId, fechaEsperada, items }) {
     const pedido = {
       id: uid(),
@@ -119542,24 +119827,34 @@ function crearLogicaPedidos({ pedidos, setPedidos, productos, setProductos, setM
     return pedido;
   }
   function actualizarPedido(pedidoId, { proveedorId, fechaEsperada, items }) {
+    const actual = pedidos.find((pe2) => pe2.id === pedidoId);
+    if (!pedidoEsDelLocalActivo(actual)) return false;
     setPedidos(
       (s2) => s2.map(
         (pe2) => pe2.id === pedidoId ? { ...pe2, proveedorId, fechaEsperada, items: items.map((it2) => ({ ...it2, cantidadRecibida: 0 })) } : pe2
       )
     );
+    return true;
   }
   function eliminarPedido(pedidoId) {
+    const actual = pedidos.find((pe2) => pe2.id === pedidoId);
+    if (!pedidoEsDelLocalActivo(actual)) return false;
     setPedidos((s2) => s2.filter((pe2) => pe2.id !== pedidoId));
+    return true;
   }
   function cerrarPedido(pedidoId) {
+    const actual = pedidos.find((pe2) => pe2.id === pedidoId);
+    if (!pedidoEsDelLocalActivo(actual)) return false;
     setPedidos((s2) => s2.map((pe2) => pe2.id === pedidoId ? { ...pe2, estado: "Recibido", cerradoManualmente: true } : pe2));
+    return true;
   }
   function recibirPedido(pedidoId, lineas) {
     if (almacenCongelado) return false;
     const pedido = pedidos.find((pe2) => pe2.id === pedidoId);
-    if (!pedido) return false;
+    if (!pedidoEsDelLocalActivo(pedido)) return false;
     const lineasConDatos = lineas.filter((ln2) => Number(ln2.cantidad) > 0).map((ln2) => {
       const prod = productos.find((p2) => p2.id === ln2.productoId);
+      if (!prod || localActivoId && (!prod.localId || prod.localId !== localActivoId)) return null;
       return {
         productoId: ln2.productoId,
         cantidad: Number(ln2.cantidad),
@@ -119570,7 +119865,7 @@ function crearLogicaPedidos({ pedidos, setPedidos, productos, setProductos, setM
         descripcion: prod ? prod.nombre : "",
         unidad: prod ? prod.unidad : "unidad"
       };
-    });
+    }).filter(Boolean);
     if (!lineasConDatos.length) return false;
     const { lineasResueltas, avisos } = procesarRecepcion({
       lineas: lineasConDatos,
@@ -119598,33 +119893,59 @@ function crearLogicaPedidos({ pedidos, setPedidos, productos, setProductos, setM
   }
   return { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido };
 }
-function crearLogicaFichasCosto({ productos, setFichasCosto }) {
+function crearLogicaFichasCosto({ productos, setFichasCosto, localActivoId }) {
+  const fichaEsDelLocalActivo = (f2) => !!f2 && (!localActivoId || f2.localId === localActivoId);
+  const productoEsDelLocalActivoFicha = (p2) => !!p2 && (!localActivoId || p2.localId === localActivoId);
   function addFichaCosto(data) {
-    setFichasCosto((s2) => [...s2, { id: uid(), ...data }]);
+    setFichasCosto((s2) => [...s2, { id: uid(), ...data, localId: localActivoId || data.localId || null }]);
   }
   function updateFichaCosto(id, data) {
-    setFichasCosto((s2) => s2.map((f2) => f2.id === id ? { ...f2, ...data } : f2));
+    setFichasCosto((s2) => s2.map((f2) => f2.id === id && fichaEsDelLocalActivo(f2) ? { ...f2, ...data, localId: f2.localId || localActivoId || null } : f2));
   }
   function deleteFichaCosto(id) {
-    setFichasCosto((s2) => s2.filter((f2) => f2.id !== id));
+    setFichasCosto((s2) => s2.filter((f2) => f2.id !== id || !fichaEsDelLocalActivo(f2)));
   }
   function alergenosDeFicha(f2) {
     const set = new Set(f2.alergenosExtra || []);
     (f2.componentes || []).forEach((c2) => {
       if (!c2.productoId) return;
-      const p2 = productos.find((x3) => x3.id === c2.productoId);
+      const p2 = productos.find((x3) => x3.id === c2.productoId && productoEsDelLocalActivoFicha(x3));
       (p2?.alergenos || []).forEach((a2) => set.add(a2));
     });
     return [...set];
   }
   return { addFichaCosto, updateFichaCosto, deleteFichaCosto, alergenosDeFicha };
 }
-function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria }) {
+function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId }) {
   const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+  function localDeConteo(conteo) {
+    if (!conteo) return null;
+    if (conteo.localId) return conteo.localId;
+    const items = conteo.items || [];
+    if (!items.length) return null;
+    const idsLocales = items.map((it2) => productos.find((p2) => p2.id === it2.productoId)?.localId || null);
+    if (idsLocales.some((id) => !id)) return null;
+    const unicos = [...new Set(idsLocales)];
+    return unicos.length === 1 ? unicos[0] : null;
+  }
+  function conteoEsDelLocalActivo(conteo) {
+    if (!conteo) return false;
+    if (!localActivoId) return true;
+    return localDeConteo(conteo) === localActivoId;
+  }
+  function movimientoEsDelLocalActivo(m2) {
+    if (!localActivoId) return true;
+    if (m2.localId) return m2.localId === localActivoId;
+    const prod = productos.find((p2) => p2.id === m2.productoId);
+    return !!prod && prod.localId === localActivoId;
+  }
   function crearProductoEnConteo(conteoId, datos, cantidadContada) {
+    const conteo = conteos.find((c2) => c2.id === conteoId);
+    if (!conteoEsDelLocalActivo(conteo)) return false;
     const nuevoId = uid();
     const nuevoProducto = {
       id: nuevoId,
+      localId: localActivoId || localDeConteo(conteo) || null,
       stock: 0,
       codigo: datos.codigo || "",
       nombre: datos.nombre,
@@ -119644,16 +119965,18 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
     );
   }
   function iniciarConteo(ambito = "total") {
+    const productosBase = localActivoId ? productos.filter((p2) => p2.localId === localActivoId) : productos;
     let productosDelConteo;
     if (ambito === "piso_venta") {
-      productosDelConteo = productos.filter((p2) => p2.tipo === "elaborado" || Number(p2.precioVenta) > 0);
+      productosDelConteo = productosBase.filter((p2) => p2.tipo === "elaborado" || Number(p2.precioVenta) > 0);
     } else if (ambito === "almacen") {
-      productosDelConteo = productos.filter((p2) => p2.tipo !== "elaborado");
+      productosDelConteo = productosBase.filter((p2) => p2.tipo !== "elaborado");
     } else {
-      productosDelConteo = productos;
+      productosDelConteo = productosBase;
     }
     const conteo = {
       id: uid(),
+      localId: localActivoId || null,
       fecha: todayISO(),
       completado: false,
       ambito,
@@ -119664,6 +119987,8 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
     return conteo.id;
   }
   function actualizarConteoItem(conteoId, productoId, campo, valor) {
+    const conteo = conteos.find((c2) => c2.id === conteoId);
+    if (!conteoEsDelLocalActivo(conteo)) return false;
     setConteos(
       (s2) => s2.map(
         (c2) => c2.id === conteoId ? { ...c2, items: c2.items.map((it2) => it2.productoId === productoId ? { ...it2, [campo]: valor } : it2) } : c2
@@ -119671,17 +119996,21 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
     );
   }
   function actualizarResponsable(conteoId, campo, valor) {
+    const conteo = conteos.find((c2) => c2.id === conteoId);
+    if (!conteoEsDelLocalActivo(conteo)) return false;
     setConteos(
       (s2) => s2.map((c2) => c2.id === conteoId ? { ...c2, responsables: { ...c2.responsables || {}, [campo]: valor } } : c2)
     );
   }
   function finalizarConteo(conteoId) {
+    const conteo = conteos.find((c2) => c2.id === conteoId);
+    if (!conteoEsDelLocalActivo(conteo)) return false;
     setConteos((s2) => s2.map((c2) => c2.id === conteoId ? { ...c2, completado: true } : c2));
   }
   function eliminarConteo(conteoId) {
     const conteo = conteos.find((c2) => c2.id === conteoId);
-    if (!conteo) return { ok: false, error: "Conteo no encontrado." };
-    const generados = movimientos.filter((m2) => m2.documentoOrigenId === conteoId && m2.origen === "aplicarAjustes");
+    if (!conteoEsDelLocalActivo(conteo)) return { ok: false, error: "Conteo no disponible en el local activo." };
+    const generados = movimientos.filter((m2) => m2.documentoOrigenId === conteoId && m2.origen === "aplicarAjustes" && movimientoEsDelLocalActivo(m2));
     const operationIdDeEstaAnulacion = uid();
     let revertidos = 0;
     generados.forEach((m2) => {
@@ -119710,8 +120039,8 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
   }
   function revertirUltimaAplicacion(conteoId) {
     const conteo = conteos.find((c2) => c2.id === conteoId);
-    if (!conteo) return { ok: false, error: "Conteo no encontrado." };
-    const generados = movimientos.filter((m2) => m2.documentoOrigenId === conteoId && m2.origen === "aplicarAjustes");
+    if (!conteoEsDelLocalActivo(conteo)) return { ok: false, error: "Conteo no disponible en el local activo." };
+    const generados = movimientos.filter((m2) => m2.documentoOrigenId === conteoId && m2.origen === "aplicarAjustes" && movimientoEsDelLocalActivo(m2));
     if (generados.length === 0) {
       return { ok: false, error: "Este conteo no tiene ning\xFAn ajuste aplicado." };
     }
@@ -119753,7 +120082,7 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
   }
   function aplicarAjustes(conteoId, motivos = {}) {
     const conteo = conteos.find((c2) => c2.id === conteoId);
-    if (!conteo) return { ok: false, ajustados: 0, traspasados: [] };
+    if (!conteoEsDelLocalActivo(conteo)) return { ok: false, error: "Conteo no disponible en el local activo.", ajustados: 0, traspasados: [] };
     if (conteo.ajustesAplicados) {
       return { ok: false, error: "Los ajustes de este conteo ya se aplicaron antes \u2014 no se puede repetir.", ajustados: 0, traspasados: [] };
     }
@@ -119764,7 +120093,7 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
     const operationIdDeEsteAjuste = uid();
     conteo.items.forEach((item) => {
       const p2 = productos.find((pr) => pr.id === item.productoId);
-      if (!p2) return;
+      if (!p2 || localActivoId && p2.localId !== localActivoId) return;
       const valorFinal = valorCF(item);
       if (valorFinal === null) return;
       const stockActual = Number(p2.stock) || 0;
@@ -119869,13 +120198,16 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
   }
   return { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion };
 }
-function crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria }) {
+function crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId }) {
+  const productoEsDelLocalActivoProduccion = (p2) => !!p2 && (!localActivoId || p2.localId === localActivoId);
+  const ordenEsDelLocalActivoProduccion = (o2) => !!o2 && (!localActivoId || o2.localId === localActivoId);
   const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
   function producir({ fichaId, unidadesDeseadas, unidadesBuenas, ingredientesReales, empaqueReal, manoObraReal, gastosGeneralesReal, notas }) {
     const ficha = fichasCosto.find((f2) => f2.id === fichaId);
     if (!ficha) return { ok: false, error: "No se encontr\xF3 la ficha de costo." };
     if (!ficha.productoVinculadoId) return { ok: false, error: "Esta ficha no tiene un producto de venta enlazado todav\xEDa." };
     const elaboradoOriginal = productos.find((p2) => p2.id === ficha.productoVinculadoId);
+    if (elaboradoOriginal && !productoEsDelLocalActivoProduccion(elaboradoOriginal)) return { ok: false, error: "El producto elaborado pertenece a otro local." };
     if (!elaboradoOriginal) {
       return {
         ok: false,
@@ -119885,6 +120217,8 @@ function crearLogicaProduccion({ fichasCosto, productos, setProductos, movimient
     const buenas = Number(unidadesBuenas) || 0;
     if (buenas <= 0) return { ok: false, error: "Indica cu\xE1ntas unidades buenas salieron." };
     const ordenId = uid();
+    const ingredienteFueraDeLocal = ingredientesReales.find((ing) => ing.productoId && Number(ing.cantidadReal) > 0 && !productoEsDelLocalActivoProduccion(productos.find((p2) => p2.id === ing.productoId)));
+    if (ingredienteFueraDeLocal) return { ok: false, error: "La producción incluye un ingrediente inexistente o de otro local." };
     let costoIngredientes = 0;
     ingredientesReales.forEach((ing) => {
       if (!ing.productoId || !(Number(ing.cantidadReal) > 0)) return;
@@ -119908,6 +120242,7 @@ function crearLogicaProduccion({ fichasCosto, productos, setProductos, movimient
     const costoLoteTotal = costoIngredientes + (Number(empaqueReal) || 0) + (Number(manoObraReal) || 0) + (Number(gastosGeneralesReal) || 0);
     const costoUnitarioLote = costoLoteTotal / buenas;
     const elaborado = productos.find((p2) => p2.id === ficha.productoVinculadoId);
+    if (elaborado && !productoEsDelLocalActivoProduccion(elaborado)) return { ok: false, error: "El producto elaborado pertenece a otro local." };
     if (elaborado) {
       const stockAnterior = Number(elaborado.stock) || 0;
       const costoAnterior = Number(elaborado.costo) || 0;
@@ -119930,6 +120265,7 @@ function crearLogicaProduccion({ fichasCosto, productos, setProductos, movimient
     }
     const orden = {
       id: ordenId,
+      localId: localActivoId || elaboradoOriginal.localId || null,
       fecha: todayISO(),
       hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5),
       fichaId,
@@ -119950,9 +120286,12 @@ function crearLogicaProduccion({ fichasCosto, productos, setProductos, movimient
     return { ok: true, orden };
   }
   function anularProduccion(orden) {
+    if (!ordenEsDelLocalActivoProduccion(orden)) return { ok: false, error: "La producción pertenece a otro local." };
+    const idsProductosOrden = [...(orden.ingredientes || []).map((ing) => ing.productoId), orden.productoVinculadoId].filter(Boolean);
+    if (idsProductosOrden.some((id) => !productoEsDelLocalActivoProduccion(productos.find((p2) => p2.id === id)))) return { ok: false, error: "La producción contiene productos de otro local." };
     function movimientoOriginalDe(productoId, tipo) {
       return movimientos.find(
-        (m2) => (m2.documentoOrigenId === orden.id || m2.ordenId === orden.id) && m2.productoId === productoId && (m2.tipo === tipo || m2.tipo === "salida" || m2.tipo === "entrada")
+        (m2) => (!localActivoId || m2.localId === localActivoId) && (m2.documentoOrigenId === orden.id || m2.ordenId === orden.id) && m2.productoId === productoId && (m2.tipo === tipo || m2.tipo === "salida" || m2.tipo === "entrada")
       );
     }
     (orden.ingredientes || []).forEach((ing) => {
@@ -120028,7 +120367,19 @@ function sincronizarCobroSe\u00F1al(cobros, se\u00F1al, se\u00F1alMedioPago, fec
   ];
 }
 function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, setProductos, setMovimientos, venderLineas, localActivoId }) {
+  function localDeEncargo(e2) {
+    if (!e2) return null;
+    if (e2.localId) return e2.localId;
+    const ids = [...new Set((e2.lineas || []).map((ln2) => productos.find((p2) => p2.id === ln2.productoId)?.localId).filter(Boolean))];
+    return ids.length === 1 ? ids[0] : null;
+  }
+  function encargoEsDelLocalActivo(e2) {
+    if (!e2) return false;
+    if (!localActivoId) return true;
+    return localDeEncargo(e2) === localActivoId;
+  }
   function addEncargo(data) {
+    if (localActivoId && (data.lineas || []).some((ln2) => { const p2 = productos.find((x3) => x3.id === ln2.productoId); return p2 && p2.localId && p2.localId !== localActivoId; })) return false;
     const fecha = todayISO();
     const cobros = sincronizarCobroSe\u00F1al([], data.se\u00F1al, data.se\u00F1alMedioPago, fecha);
     const idsLocalesLineas = [...new Set((data.lineas || []).map((ln2) => productos.find((p2) => p2.id === ln2.productoId)?.localId).filter(Boolean))];
@@ -120036,6 +120387,8 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
     setEncargos((s2) => [{ id: uid(), estado: "Pendiente", fechaCreacion: fecha, cobros, ...data, localId }, ...s2]);
   }
   function updateEncargo(id, data) {
+    const actual = encargos.find((e2) => e2.id === id);
+    if (!encargoEsDelLocalActivo(actual)) return false;
     setEncargos(
       (s2) => s2.map((e) => {
         if (e.id !== id) return e;
@@ -120048,11 +120401,15 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
     );
   }
   function deleteEncargo(id) {
+    const actual = encargos.find((e2) => e2.id === id);
+    if (!encargoEsDelLocalActivo(actual)) return false;
     const e = encargos.find((x3) => x3.id === id);
     registrarAuditoria("Eliminar encargo", e ? `${e.numero || "s/n"}` : id);
     setEncargos((s2) => s2.filter((e2) => e2.id !== id));
   }
   function entregarEncargo(encargo, medioPago = "Efectivo") {
+    const actual = encargos.find((e2) => e2.id === encargo);
+    if (!encargoEsDelLocalActivo(actual)) return false;
     const lineasParaVender = (encargo.lineas || []).map((ln2) => ({
       productoId: ln2.productoId,
       cantidad: ln2.cantidad,
@@ -120075,9 +120432,25 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
   }
   return { addEncargo, updateEncargo, deleteEncargo, entregarEncargo };
 }
-function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos }) {
+function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId }) {
+  function productoEsDelLocalActivoVenta(prod) {
+    if (!prod) return false;
+    if (!localActivoId) return true;
+    return !prod.localId || prod.localId === localActivoId;
+  }
+  function movimientoEsDelLocalActivoVenta(m2) {
+    if (!localActivoId) return true;
+    if (m2.localId) return m2.localId === localActivoId;
+    const prod = productos.find((p2) => p2.id === m2.productoId);
+    return !!prod && (!prod.localId || prod.localId === localActivoId);
+  }
   const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos });
   function venderLineas(lineas, opciones = {}) {
+    const incluyeOtroLocal = (lineas || []).some((ln2) => {
+      const p2 = productos.find((x3) => x3.id === ln2.productoId);
+      return !!p2 && !productoEsDelLocalActivoVenta(p2);
+    });
+    if (incluyeOtroLocal) return { ok: false, error: "La venta incluye productos de otro local." };
     const {
       tipo = "VENTA",
       medioPago = "Efectivo",
@@ -120145,6 +120518,11 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     return venderLineas(lineas, { tipo: "VENTA", medioPago, detallePago, origen: "venderLocal", motivoBase: "Venta r\xE1pida" });
   }
   async function venderCarrito(lineas, medioPago = "Efectivo", detallePago = null) {
+    const incluyeOtroLocal = (lineas || []).some((ln2) => {
+      const p2 = productos.find((x3) => x3.id === ln2.productoId);
+      return !!p2 && !productoEsDelLocalActivoVenta(p2);
+    });
+    if (incluyeOtroLocal) return { ok: false, error: "La venta incluye productos de otro local." };
     const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
     if (!hayConexion) {
       return venderLocal(lineas, medioPago, detallePago);
@@ -120165,7 +120543,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       const ivaAplicado = prod ? ivaDe(prod) : 0;
       const datosLinea = {
         productoId: ln2.productoId,
-        localId: prod ? prod.localId || null : null,
+        localId: prod ? prod.localId || localActivoId || null : localActivoId || null,
         cantidad: cant,
         motivo: "Venta",
         costoUnitario,
@@ -120237,7 +120615,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   }
   function anularVenta(ventaId, movimientosActuales, motivo = "") {
     if (!ventaId) return { ok: false, error: "Esa venta no tiene identificador y no se puede anular." };
-    const lineas = (movimientosActuales || []).filter((m2) => m2.ventaId === ventaId || m2.operationId === ventaId).filter((m2) => esVenta(m2) || esSalida(m2));
+    const lineas = (movimientosActuales || []).filter((m2) => m2.ventaId === ventaId || m2.operationId === ventaId).filter((m2) => esVenta(m2) || esSalida(m2)).filter((m2) => movimientoEsDelLocalActivoVenta(m2));
     if (lineas.length === 0) {
       return { ok: false, error: "No se han encontrado las l\xEDneas de esa venta." };
     }
@@ -120276,7 +120654,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       if (r.ok) aplicadas++;
     });
     const fechaVenta = lineas[0]?.fecha;
-    const arqueoDelDia = fechaVenta && (arqueos || []).find((a2) => a2.fecha === fechaVenta);
+    const arqueoDelDia = fechaVenta && (arqueos || []).find((a2) => a2.fecha === fechaVenta && (!localActivoId || a2.localId === localActivoId));
     if (arqueoDelDia && typeof window !== "undefined" && window.__nubeActiva) {
       fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
         method: "POST",
@@ -120294,12 +120672,18 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   }
   return { venderCarrito, venderLocal, anularVenta, venderLineas };
 }
-function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria }) {
+function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId }) {
+  function productoEsDelLocalActivoTraspaso(prod) {
+    if (!prod) return false;
+    if (!localActivoId) return true;
+    return !prod.localId || prod.localId === localActivoId;
+  }
   const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
   function traspasarStock(productoId, cantidad, direccion) {
     const cant = Number(cantidad) || 0;
     if (cant <= 0) return { ok: false, error: "Indica una cantidad mayor que cero." };
     const prod = productos.find((p2) => p2.id === productoId);
+    if (!productoEsDelLocalActivoTraspaso(prod)) return false;
     if (!prod) return { ok: false, error: "Producto no encontrado." };
     const enPiso = Number(prod.stockPisoVenta) || 0;
     const total = Number(prod.stock) || 0;
@@ -120325,7 +120709,7 @@ function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimie
     });
     if (!r.ok) return r;
     setTraspasos((s2) => [
-      { id: uid(), productoId, nombre: prod.nombre, cantidad: cant, direccion, fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), movimientoId },
+      { id: uid(), localId: localActivoId || p2.localId || null, productoId, nombre: prod.nombre, cantidad: cant, direccion, fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), movimientoId },
       ...s2
     ]);
     return { ok: true };
@@ -120384,22 +120768,60 @@ function crearLogicaAlbaranes({
   localActivoId
 }) {
   const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+  function localDeAlbaran(doc) {
+    if (!doc) return null;
+    if (doc.localId) return doc.localId;
+    const ids = [...new Set((doc.lineas || []).map((ln2) => productos.find((p2) => p2.id === ln2.productoId)?.localId).filter(Boolean))];
+    return ids.length === 1 ? ids[0] : null;
+  }
+  function albaranEsDelLocalActivo(doc, permitirNuevo = false) {
+    if (!doc) return false;
+    if (!localActivoId) return true;
+    const existente = albaranes.find((a2) => a2.id === doc.id);
+    const localId = localDeAlbaran(existente || doc);
+    if (localId) return localId === localActivoId;
+    return !existente && permitirNuevo;
+  }
+  function pedidoEsDelLocalActivoAlbaran(pedido) {
+    if (!pedido) return false;
+    if (!localActivoId) return true;
+    if (pedido.localId) return pedido.localId === localActivoId;
+    const ids = [...new Set((pedido.items || []).map((it2) => productos.find((p2) => p2.id === it2.productoId)?.localId).filter(Boolean))];
+    return ids.length === 1 && ids[0] === localActivoId;
+  }
   const claveCat = (proveedorId, codigo) => `${proveedorId}::${String(codigo || "").trim().toUpperCase()}`;
   const normalizarDescripcion = (t2) => String(t2 || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
   const claveCatDesc = (proveedorId, descripcion) => `${proveedorId}::DESC::${normalizarDescripcion(descripcion)}`;
+  const claveCatLocal = (localId, proveedorId, codigo) => `${localId}::${claveCat(proveedorId, codigo)}`;
+  const claveCatDescLocal = (localId, proveedorId, descripcion) => `${localId}::${claveCatDesc(proveedorId, descripcion)}`;
+  function catalogoSeguroPorLocal(datos) {
+    if (!datos || !datos.productoId || !localActivoId) return datos || null;
+    const prod = productos.find((p2) => p2.id === datos.productoId);
+    if (!prod || !prod.localId || prod.localId !== localActivoId) return { ...datos, productoId: "" };
+    return datos;
+  }
   function buscarEnCatalogo(proveedorId, codigo, descripcion) {
     if (codigo) {
+      if (localActivoId) {
+        const porCodigoLocal = catalogoProv[claveCatLocal(localActivoId, proveedorId, codigo)];
+        if (porCodigoLocal) return catalogoSeguroPorLocal(porCodigoLocal);
+      }
       const porCodigo = catalogoProv[claveCat(proveedorId, codigo)];
-      if (porCodigo) return porCodigo;
+      if (porCodigo) return catalogoSeguroPorLocal(porCodigo);
     }
     if (descripcion && normalizarDescripcion(descripcion)) {
-      return catalogoProv[claveCatDesc(proveedorId, descripcion)] || null;
+      if (localActivoId) {
+        const porDescLocal = catalogoProv[claveCatDescLocal(localActivoId, proveedorId, descripcion)];
+        if (porDescLocal) return catalogoSeguroPorLocal(porDescLocal);
+      }
+      return catalogoSeguroPorLocal(catalogoProv[claveCatDesc(proveedorId, descripcion)] || null);
     }
     return null;
   }
   function aprenderReferencia(proveedorId, codigo, datos) {
     if (!codigo) return;
-    setCatalogoProv((s2) => ({ ...s2, [claveCat(proveedorId, codigo)]: { ...s2[claveCat(proveedorId, codigo)] || {}, ...datos } }));
+    const clave = localActivoId ? claveCatLocal(localActivoId, proveedorId, codigo) : claveCat(proveedorId, codigo);
+    setCatalogoProv((s2) => ({ ...s2, [clave]: { ...s2[clave] || {}, ...datos, localId: datos.localId || localActivoId || null } }));
   }
   function sinFotoIncrustada(a2) {
     if (!a2 || a2.fotoOrigenIA === void 0) return a2;
@@ -120408,6 +120830,7 @@ function crearLogicaAlbaranes({
     return copia;
   }
   function guardarAlbaran(alb) {
+    if (!albaranEsDelLocalActivo(alb, true)) return false;
     const limpioBase = sinFotoIncrustada(alb);
     const idsLocalesLineas = [...new Set((limpioBase.lineas || []).map((ln2) => productos.find((p2) => p2.id === ln2.productoId)?.localId).filter(Boolean))];
     const limpio = { ...limpioBase, localId: limpioBase.localId || (idsLocalesLineas.length === 1 ? idsLocalesLineas[0] : null) || localActivoId || null };
@@ -120418,7 +120841,7 @@ function crearLogicaAlbaranes({
   }
   function duplicadosDe(alb) {
     if (!alb || !alb.proveedorId) return { albaran: null, factura: null };
-    const otros = albaranes.filter((a2) => a2.id !== alb.id && a2.proveedorId === alb.proveedorId);
+    const otros = albaranes.filter((a2) => a2.id !== alb.id && a2.proveedorId === alb.proveedorId && albaranEsDelLocalActivo(a2));
     const norm = (v2) => String(v2 || "").trim().toLowerCase();
     const numero = norm(alb.numero);
     const numFactura = norm(alb.numeroFactura);
@@ -120454,7 +120877,7 @@ function crearLogicaAlbaranes({
   }
   function eliminarAlbaran(id) {
     const a2 = albaranes.find((x3) => x3.id === id);
-    if (!a2) return;
+    if (!a2 || !albaranEsDelLocalActivo(a2)) return false;
     registrarAuditoria("Eliminar albar\xE1n", `${proveedorPorId(a2.proveedorId)?.nombre || "\u2014"} \xB7 ${a2.numero || "s/n"}`);
     if (a2.estado === "confirmado") {
       a2.lineas.forEach((ln2) => {
@@ -120498,6 +120921,7 @@ function crearLogicaAlbaranes({
   }
   function marcarPagada(id, pagada) {
     const a2 = albaranes.find((x3) => x3.id === id);
+    if (!a2 || !albaranEsDelLocalActivo(a2)) return false;
     registrarAuditoria(pagada ? "Marcar factura pagada" : "Marcar factura pendiente", a2 ? `${proveedorPorId(a2.proveedorId)?.nombre || "\u2014"} \xB7 ${a2.numeroFactura || a2.numero || "s/n"}` : id);
     setAlbaranes((s2) => s2.map((a22) => a22.id === id ? { ...a22, pagada, fechaPago: pagada ? todayISO() : "" } : a22));
   }
@@ -120514,6 +120938,7 @@ function crearLogicaAlbaranes({
       let prod = null;
       if (ln2.productoId) prod = productos.find((p2) => p2.id === ln2.productoId);
       if (!prod && cat && cat.productoId) prod = productos.find((p2) => p2.id === cat.productoId);
+      if (prod && localActivoId && (!prod.localId || prod.localId !== localActivoId)) prod = null;
       const motivoDoc = `${documentoTipo === "albaran" ? "Albar\xE1n" : "Pedido"} ${documentoNumero || "s/n"}`;
       if (prod) {
         const stockAnterior = Number(prod.stock) || 0;
@@ -120608,17 +121033,25 @@ function crearLogicaAlbaranes({
           contenido: ln2.contenido || "",
           unidadContenido: ln2.unidadContenido || "",
           productoId: ln2.productoId,
+          localId: productos.find((p2) => p2.id === ln2.productoId)?.localId || localActivoId || null,
           ultimoPrecio: Number(ln2.precioBruto) || 0,
           ultimoDto: Number(ln2.dtoPct) || 0
         };
-        if (ln2.codigoProveedor) copia[claveCat(proveedorId, ln2.codigoProveedor)] = datos;
-        if (ln2.descripcion && normalizarDescripcion(ln2.descripcion)) copia[claveCatDesc(proveedorId, ln2.descripcion)] = datos;
+        const claveCodigo = localActivoId ? claveCatLocal(localActivoId, proveedorId, ln2.codigoProveedor) : claveCat(proveedorId, ln2.codigoProveedor);
+        const claveDescripcion = localActivoId ? claveCatDescLocal(localActivoId, proveedorId, ln2.descripcion) : claveCatDesc(proveedorId, ln2.descripcion);
+        if (ln2.codigoProveedor) copia[claveCodigo] = datos;
+        if (ln2.descripcion && normalizarDescripcion(ln2.descripcion)) copia[claveDescripcion] = datos;
       });
       return copia;
     });
     return { lineasResueltas, avisos };
   }
   function confirmarAlbaran(alb) {
+    if (!albaranEsDelLocalActivo(alb, true)) return false;
+    if (alb.pedidoId) {
+      const pedido = pedidos.find((pe2) => pe2.id === alb.pedidoId);
+      if (!pedidoEsDelLocalActivoAlbaran(pedido)) return false;
+    }
     const { lineasResueltas, avisos } = procesarRecepcion({
       lineas: alb.lineas,
       proveedorId: alb.proveedorId,
@@ -120653,6 +121086,7 @@ function crearLogicaAlbaranes({
     return avisos;
   }
   function anularAlbaran(alb) {
+    if (!albaranEsDelLocalActivo(alb)) return false;
     registrarAuditoria("Anular entrada de albar\xE1n", `${proveedorPorId(alb.proveedorId)?.nombre || "\u2014"} \xB7 ${alb.numero || "s/n"}`);
     alb.lineas.forEach((ln2) => {
       const restar = Number(ln2.unidadesEntradas) || 0;
@@ -120677,6 +121111,7 @@ function crearLogicaAlbaranes({
     guardarAlbaran({ ...alb, estado: "borrador", avisosPrecio: [] });
   }
   function recibirConAlbaran(pedido) {
+    if (!pedidoEsDelLocalActivoAlbaran(pedido)) return false;
     const lineas = pedido.items.map((it2) => {
       const prod = productos.find((x3) => x3.id === it2.productoId);
       const pendiente = Math.max(0, (Number(it2.cantidad) || 0) - (Number(it2.cantidadRecibida) || 0));
@@ -120716,12 +121151,14 @@ function crearLogicaAlbaranes({
       pagada: false,
       fechaPago: "",
       pedidoId: pedido.id,
+      localId: localActivoId || pedido.localId || null,
       lineas: lineas.length ? lineas : [],
       estado: "borrador"
     });
     setTab("albaranes");
   }
   function recibirConFotoIA(pedido) {
+    if (!pedidoEsDelLocalActivoAlbaran(pedido)) return false;
     setPedidoParaFotoIA(pedido);
     setTab("albaranes");
   }
@@ -121052,7 +121489,10 @@ function litrosDisponibles(producto) {
   if (!producto) return 0;
   return (Number(producto.stock) || 0) * litrosPorUnidadDeStock(producto);
 }
-function crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegistrosAceite, productos, setProductos, movimientos, setMovimientos, registrarAuditoria }) {
+function crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegistrosAceite, productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId }) {
+  const productoEsDelLocalActivoAceite = (p2) => !!p2 && (!localActivoId || p2.localId === localActivoId);
+  const freidoraEsDelLocalActivoAceite = (f2) => !!f2 && (!localActivoId || f2.localId === localActivoId);
+  const registroEsDelLocalActivoAceite = (r2) => !!r2 && (!localActivoId || r2.localId === localActivoId);
   const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
   function addFreidora(data) {
     const nueva = {
@@ -121060,17 +121500,23 @@ function crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegist
       nombre: data.nombre,
       litrosCarga: Number(data.litrosCarga) || 0,
       rellenoHabitual: Number(data.rellenoHabitual) || 5,
-      productoAceiteId: data.productoAceiteId || "",
-      activa: true
+      productoAceiteId: productoEsDelLocalActivoAceite(productos.find((p2) => p2.id === data.productoAceiteId)) ? data.productoAceiteId : "",
+      activa: true,
+      localId: localActivoId || null
     };
     setFreidoras((s2) => [...s2, nueva]);
     return nueva;
   }
   function updateFreidora(id, data) {
-    setFreidoras((s2) => s2.map((f2) => f2.id === id ? { ...f2, ...data } : f2));
+    const actual = freidoras.find((f2) => f2.id === id);
+    if (!freidoraEsDelLocalActivoAceite(actual)) return false;
+    if (data.productoAceiteId && !productoEsDelLocalActivoAceite(productos.find((p2) => p2.id === data.productoAceiteId))) return false;
+    setFreidoras((s2) => s2.map((f2) => f2.id === id ? { ...f2, ...data, localId: f2.localId || localActivoId || null } : f2));
+    return true;
   }
   function deleteFreidora(id) {
     const f2 = freidoras.find((x3) => x3.id === id);
+    if (!freidoraEsDelLocalActivoAceite(f2)) return false;
     registrarAuditoria("Eliminar freidora", f2 ? f2.nombre : id);
     setFreidoras((s2) => s2.filter((f22) => f22.id !== id));
   }
@@ -121078,6 +121524,7 @@ function crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegist
     if (!productoAceiteId || !(litros > 0)) return { ok: false, error: "Falta el aceite o los litros." };
     const prod = productos.find((p2) => p2.id === productoAceiteId);
     if (!prod) return { ok: false, error: "El aceite enlazado ya no existe en el cat\xE1logo." };
+    if (!productoEsDelLocalActivoAceite(prod)) return { ok: false, error: "El aceite pertenece a otro local." };
     const costoUnitario = Number(prod.costo) || 0;
     const factor = litrosPorUnidadDeStock(prod);
     const unidadesARestar = litros / factor;
@@ -121099,6 +121546,7 @@ function crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegist
   function registrarCambio({ freidoraId, litros, tipoCambio, observaciones, responsable }) {
     const f2 = freidoras.find((x3) => x3.id === freidoraId);
     if (!f2) return { ok: false, error: "Selecciona una freidora." };
+    if (!freidoraEsDelLocalActivoAceite(f2)) return { ok: false, error: "La freidora pertenece a otro local." };
     const litrosUsados = Number(litros) || Number(f2.litrosCarga) || 0;
     if (!(litrosUsados > 0)) return { ok: false, error: "Indica cu\xE1ntos litros lleva el cambio." };
     const registroId = uid();
@@ -121106,6 +121554,7 @@ function crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegist
     if (!r.ok) return r;
     const registro = {
       id: registroId,
+      localId: localActivoId || f2.localId || null,
       freidoraId,
       freidoraNombre: f2.nombre,
       productoAceiteId: f2.productoAceiteId,
@@ -121125,6 +121574,7 @@ function crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegist
   function registrarRelleno({ freidoraId, litros, responsable }) {
     const f2 = freidoras.find((x3) => x3.id === freidoraId);
     if (!f2) return { ok: false, error: "Selecciona una freidora." };
+    if (!freidoraEsDelLocalActivoAceite(f2)) return { ok: false, error: "La freidora pertenece a otro local." };
     const litrosUsados = Number(litros) || Number(f2.rellenoHabitual) || 0;
     if (!(litrosUsados > 0)) return { ok: false, error: "Indica cu\xE1ntos litros se han rellenado." };
     const registroId = uid();
@@ -121132,6 +121582,7 @@ function crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegist
     if (!r.ok) return r;
     const registro = {
       id: registroId,
+      localId: localActivoId || f2.localId || null,
       freidoraId,
       freidoraNombre: f2.nombre,
       productoAceiteId: f2.productoAceiteId,
@@ -121146,11 +121597,12 @@ function crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegist
     return { ok: true, registro, stockRestante: r.stockRestante };
   }
   function eliminarRegistroAceite(registro) {
-    const freidoraDelRegistro = freidoras.find((f2) => f2.id === registro.freidoraId);
+    if (!registroEsDelLocalActivoAceite(registro)) return { ok: false, error: "El registro pertenece a otro local." };
+    const freidoraDelRegistro = freidoras.find((f2) => f2.id === registro.freidoraId && freidoraEsDelLocalActivoAceite(f2));
     const productoAceiteId = registro.productoAceiteId || (freidoraDelRegistro ? freidoraDelRegistro.productoAceiteId : null);
     if (productoAceiteId) {
       const movimientoOriginal = movimientos.find(
-        (m2) => m2.documentoOrigenId === registro.id || m2.registroAceiteId === registro.id
+        (m2) => (!localActivoId || m2.localId === localActivoId) && (m2.documentoOrigenId === registro.id || m2.registroAceiteId === registro.id)
       );
       if (movimientoOriginal) {
         aplicarMovimientoStock({
@@ -121190,7 +121642,7 @@ function crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegist
     return { ok: true, stockDevuelto: !!productoAceiteId };
   }
   function consumoPorCiclo(freidoraId, registros) {
-    const lista = registros || registrosAceite || [];
+    const lista = (registros || registrosAceite || []).filter((r2) => registroEsDelLocalActivoAceite(r2));
     const suyos = lista.filter((r) => r.freidoraId === freidoraId);
     const posCambio = suyos.findIndex((r) => r.tipo === "cambio");
     if (posCambio === -1) return null;
@@ -121211,6 +121663,11 @@ function crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegist
   return { addFreidora, updateFreidora, deleteFreidora, registrarCambio, registrarRelleno, eliminarRegistroAceite, consumoPorCiclo };
 }
 function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, addGasto, deleteGasto, gastosGenerales, localActivoId }) {
+  function facturaDirectaEsDelLocalActivo(f2) {
+    if (!f2) return false;
+    if (!localActivoId) return true;
+    return f2.localId === localActivoId;
+  }
   function addFacturaDirecta(data) {
     const base = Number(data.importeBase) || 0;
     const ivaPct = Number(data.ivaPct) || 0;
@@ -121222,6 +121679,8 @@ function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, re
     ]);
   }
   function updateFacturaDirecta(id, data) {
+    const actual = facturasDirectas.find((f2) => f2.id === id);
+    if (!facturaDirectaEsDelLocalActivo(actual)) return false;
     setFacturasDirectas(
       (s2) => s2.map((f2) => {
         if (f2.id !== id) return f2;
@@ -121233,6 +121692,8 @@ function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, re
     );
   }
   function deleteFacturaDirecta(id) {
+    const actual = facturasDirectas.find((f2) => f2.id === id);
+    if (!facturaDirectaEsDelLocalActivo(actual)) return false;
     setFacturasDirectas((s2) => {
       const f2 = s2.find((x3) => x3.id === id);
       registrarAuditoria("Eliminar factura directa", f2 ? `${f2.concepto} \xB7 \u20AC${(Number(f2.importeTotal) || 0).toFixed(2)}` : id);
@@ -121245,6 +121706,7 @@ function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, re
   }
   function marcarPagadaFacturaDirecta(id, pagada) {
     const f2 = facturasDirectas.find((x3) => x3.id === id);
+    if (!facturaDirectaEsDelLocalActivo(f2)) return false;
     setFacturasDirectas((s2) => s2.map((x3) => x3.id === id ? { ...x3, pagada, fechaPago: pagada ? todayISO() : "" } : x3));
     if (pagada) {
       registrarAuditoria("Marcar factura directa como pagada", id);
@@ -121265,32 +121727,38 @@ function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, re
   }
   return { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta };
 }
-function crearLogicaNominas({ setNominas, registrarAuditoria }) {
+function crearLogicaNominas({ nominas, setNominas, registrarAuditoria, empleados, localActivoId }) {
+  const empleadoNominaLocal = (id) => empleados.find((e) => e.id === id && (!localActivoId || e.localId === localActivoId));
+  const nominaEsLocal = (n) => !!n && (!localActivoId || n.localId === localActivoId);
   function addNomina(data) {
+    const emp = empleadoNominaLocal(data.empleadoId);
+    if (!emp) return false;
     const bruto = Number(data.brutoTotal) || 0;
     const ss = Number(data.seguridadSocialEmpresa) || 0;
     setNominas((s2) => {
       const sinEsteMes = s2.filter((n) => !(n.empleadoId === data.empleadoId && n.mes === data.mes));
-      return [
-        { id: uid(), ...data, brutoTotal: bruto, seguridadSocialEmpresa: ss, costeTotalEmpresa: bruto + ss },
-        ...sinEsteMes
-      ];
+      return [{ id: uid(), ...data, brutoTotal: bruto, seguridadSocialEmpresa: ss, costeTotalEmpresa: bruto + ss, localId: emp.localId || localActivoId || null }, ...sinEsteMes];
     });
+    return true;
   }
   function updateNomina(id, data) {
+    const actual = nominas.find((n) => n.id === id);
+    if (!nominaEsLocal(actual)) return false;
     const bruto = Number(data.brutoTotal) || 0;
     const ss = Number(data.seguridadSocialEmpresa) || 0;
-    setNominas(
-      (s2) => s2.map((n) => n.id === id ? { ...n, ...data, brutoTotal: bruto, seguridadSocialEmpresa: ss, costeTotalEmpresa: bruto + ss } : n)
-    );
+    setNominas((s2) => s2.map((n) => n.id === id ? { ...n, ...data, brutoTotal: bruto, seguridadSocialEmpresa: ss, costeTotalEmpresa: bruto + ss, localId: n.localId || localActivoId || null } : n));
     registrarAuditoria("Editar registro de n\xF3mina", `${data.mes || ""} \xB7 \u20AC${(bruto + ss).toFixed(2)}`);
+    return true;
   }
   function deleteNomina(id) {
+    const actual = nominas.find((n) => n.id === id);
+    if (!nominaEsLocal(actual)) return false;
     setNominas((s2) => {
       const n = s2.find((x3) => x3.id === id);
       registrarAuditoria("Eliminar registro de n\xF3mina", n ? `${n.mes} \xB7 \u20AC${(Number(n.costeTotalEmpresa) || 0).toFixed(2)}` : id);
       return s2.filter((x3) => x3.id !== id);
     });
+    return true;
   }
   return { addNomina, updateNomina, deleteNomina };
 }
@@ -122918,7 +123386,7 @@ Contado por: ${contadoPor}
 ${bloques.join("\n\n")}`;
   }
   function textoResultadoConteo() {
-    const ambito = esPisoVenta ? "Piso de venta" : esAlmacen ? "Almac\xE9n (trastienda)" : "Todo (empresa completa)";
+    const ambito = esPisoVenta ? "Piso de venta" : esAlmacen ? "Almac\xE9n (trastienda)" : "Todo el local";
     const lineas = diferencias.filter((d2) => d2.dif !== 0).map((d2) => {
       const motivo = motivos[d2.producto.id] ? ` \xB7 ${motivos[d2.producto.id]}` : "";
       return `${d2.producto.nombre}: sistema ${fmt(referenciaSistema(d2.producto))}, contado ${d2.cf} (${d2.dif > 0 ? "+" : ""}${d2.dif}) \xB7 \u20AC${fmt(Math.abs(d2.impacto))}${motivo}`;
@@ -122955,10 +123423,10 @@ ${cuerpo}`;
   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(
     SectionTitle,
     {
-      action: /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setVerHoja(true) }, /* @__PURE__ */ import_react4.default.createElement(ClipboardList, { size: 15 }), " Hoja para contar"), !activo && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setActivoId(iniciarConteo("total")) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Contar todo (empresa completa)"), !activo && /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setActivoId(iniciarConteo("piso_venta")) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Contar solo el piso de venta"), !activo && /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setActivoId(iniciarConteo("almacen")) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Contar solo el almac\xE9n (trastienda, sin elaborados)"))
+      action: /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setVerHoja(true) }, /* @__PURE__ */ import_react4.default.createElement(ClipboardList, { size: 15 }), " Hoja para contar"), !activo && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setActivoId(iniciarConteo("total")) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Contar todo el local"), !activo && /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setActivoId(iniciarConteo("piso_venta")) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Contar solo el piso de venta"), !activo && /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setActivoId(iniciarConteo("almacen")) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Contar solo el almac\xE9n (trastienda, sin elaborados)"))
     },
     "Inventario ciego"
-  ), resumenCierre && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between gap-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, resumenCierre.ajustados === 0 ? "Todo coincid\xEDa \u2014 no hizo falta ning\xFAn ajuste." : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, resumenCierre.ajustados, " producto(s) ajustado(s).", resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "sobra").length > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " ", "De ellos, ", resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "sobra").length, " ten\xEDan sobrante y se traspasaron solos al piso de venta:", " ", resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "sobra").map((t2) => `${t2.nombre} (+${fmt(t2.cantidad)})`).join(", "), "."), resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "falta").length > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " ", resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "falta").length, " ten\xEDan menos de lo esperado en almac\xE9n \u2014 se asume que ya estaban en el piso de venta sin registrar, y se traspasaron ah\xED (el total no cambi\xF3, no se cuenta como merma):", " ", resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "falta").map((t2) => `${t2.nombre} (+${fmt(t2.cantidad)})`).join(", "), "."))), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setResumenCierre(null), className: "shrink-0", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement(X, { size: 16 })))), almacenCongelado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start gap-2 text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { size: 16, color: C2.amber, style: { marginTop: 2, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement("span", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Almac\xE9n congelado."), " Mientras haya un conteo abierto no se pueden registrar entradas ni salidas, para que el descuadre no salga falseado. Finaliza el conteo para desbloquearlo."))), !activo && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start gap-2 text-[12.5px]", style: { color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement(EyeOff, { size: 16, style: { marginTop: 2, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement("span", null, "Durante el conteo no se muestra la existencia del sistema: cuentas f\xEDsicamente y anotas la cantidad. Al finalizar ver\xE1s las diferencias contra el stock registrado, valoradas en euros."))), activo && !activo.completado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3 flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement(Eye, { size: 15 }), " Captura de conteos", /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: esPisoVenta || esAlmacen ? C2.amber : C2.inkSoft }, esPisoVenta ? "Solo piso de venta" : esAlmacen ? "Solo almac\xE9n (trastienda)" : "Todo (empresa completa)")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Contado por" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: (activo.responsables || {}).contadoPor || "", onChange: (e) => actualizarResponsable(activo.id, "contadoPor", e.target.value), placeholder: "Nombre" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Revisado por (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: (activo.responsables || {}).revisor || "", onChange: (e) => actualizarResponsable(activo.id, "revisor", e.target.value), placeholder: "Responsable" }))), /* @__PURE__ */ import_react4.default.createElement("div", { style: { overflowX: "auto" } }, /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[12px]", style: { borderCollapse: "collapse" } }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", null, /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff", width: 30 } }, "N\xBA"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Descripci\xF3n del producto"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff", width: 58 } }, "U/M"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff", width: 96 } }, "Conteo"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, (() => {
+  ), resumenCierre && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between gap-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, resumenCierre.ajustados === 0 ? "Todo coincid\xEDa \u2014 no hizo falta ning\xFAn ajuste." : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, resumenCierre.ajustados, " producto(s) ajustado(s).", resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "sobra").length > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " ", "De ellos, ", resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "sobra").length, " ten\xEDan sobrante y se traspasaron solos al piso de venta:", " ", resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "sobra").map((t2) => `${t2.nombre} (+${fmt(t2.cantidad)})`).join(", "), "."), resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "falta").length > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " ", resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "falta").length, " ten\xEDan menos de lo esperado en almac\xE9n \u2014 se asume que ya estaban en el piso de venta sin registrar, y se traspasaron ah\xED (el total no cambi\xF3, no se cuenta como merma):", " ", resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "falta").map((t2) => `${t2.nombre} (+${fmt(t2.cantidad)})`).join(", "), "."))), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setResumenCierre(null), className: "shrink-0", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement(X, { size: 16 })))), almacenCongelado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start gap-2 text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { size: 16, color: C2.amber, style: { marginTop: 2, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement("span", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Almac\xE9n congelado."), " Mientras haya un conteo abierto no se pueden registrar entradas ni salidas, para que el descuadre no salga falseado. Finaliza el conteo para desbloquearlo."))), !activo && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start gap-2 text-[12.5px]", style: { color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement(EyeOff, { size: 16, style: { marginTop: 2, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement("span", null, "Durante el conteo no se muestra la existencia del sistema: cuentas f\xEDsicamente y anotas la cantidad. Al finalizar ver\xE1s las diferencias contra el stock registrado, valoradas en euros."))), activo && !activo.completado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3 flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement(Eye, { size: 15 }), " Captura de conteos", /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: esPisoVenta || esAlmacen ? C2.amber : C2.inkSoft }, esPisoVenta ? "Solo piso de venta" : esAlmacen ? "Solo almac\xE9n (trastienda)" : "Todo el local")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Contado por" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: (activo.responsables || {}).contadoPor || "", onChange: (e) => actualizarResponsable(activo.id, "contadoPor", e.target.value), placeholder: "Nombre" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Revisado por (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: (activo.responsables || {}).revisor || "", onChange: (e) => actualizarResponsable(activo.id, "revisor", e.target.value), placeholder: "Responsable" }))), /* @__PURE__ */ import_react4.default.createElement("div", { style: { overflowX: "auto" } }, /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[12px]", style: { borderCollapse: "collapse" } }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", null, /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff", width: 30 } }, "N\xBA"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Descripci\xF3n del producto"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff", width: 58 } }, "U/M"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff", width: 96 } }, "Conteo"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, (() => {
     const enConteo = activo.items.map((it2) => ({ it: it2, p: productoPorId(it2.productoId) })).filter((x3) => x3.p);
     const grupos = agruparPorProveedor(enConteo.map((x3) => x3.p), proveedores);
     const porId = new Map(enConteo.map((x3) => [x3.p.id, x3.it]));
@@ -123052,7 +123520,7 @@ ${cuerpo}`;
   })()))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-2", style: { color: C2.inkSoft } }, "Las casillas en verde ya tienen conteo capturado. Las que quedan en blanco est\xE1n pendientes. El orden es el mismo que el de la hoja impresa, agrupado por proveedor."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 flex gap-2 items-center flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => finalizarConteo(activo.id) }, "Finalizar conteo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowNuevo((s2) => !s2) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 14 }), " Encontr\xE9 un producto que no est\xE1 en el sistema")), showNuevo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 pt-4", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium mb-3", style: { color: C2.inkSoft } }, "Da de alta el producto encontrado y captura la cantidad contada. Se a\xF1adir\xE1 al cat\xE1logo y a este conteo."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nuevo.nombre, onChange: (e) => setNuevo({ ...nuevo, nombre: e.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "C\xF3digo / SKU (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nuevo.codigo, onChange: (e) => setNuevo({ ...nuevo, codigo: e.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Categor\xEDa" }, /* @__PURE__ */ import_react4.default.createElement(CampoCategoria, { value: nuevo.categoria, onChange: (v2) => setNuevo({ ...nuevo, categoria: v2 }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Unidad de medida" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nuevo.unidad, onChange: (e) => setNuevo({ ...nuevo, unidad: e.target.value }), placeholder: "unidad, kg, caja\u2026" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Costo de compra (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: nuevo.costo, onChange: (e) => setNuevo({ ...nuevo, costo: e.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio de venta (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: nuevo.precioVenta, onChange: (e) => setNuevo({ ...nuevo, precioVenta: e.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Stock m\xEDnimo (reorden)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: nuevo.stockMinimo, onChange: (e) => setNuevo({ ...nuevo, stockMinimo: e.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Ubicaci\xF3n en almac\xE9n (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nuevo.ubicacion, onChange: (e) => setNuevo({ ...nuevo, ubicacion: e.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Proveedor principal (opcional)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: nuevo.proveedorId, onChange: (e) => setNuevo({ ...nuevo, proveedorId: e.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin asignar"), proveedores.map((p2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: p2.id, value: p2.id }, p2.nombre)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Cantidad contada f\xEDsicamente" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: nuevo.cantidadContada, onChange: (e) => setNuevo({ ...nuevo, cantidadContada: e.target.value }) }))), errorNuevo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, errorNuevo), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-1" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitNuevo }, "A\xF1adir al conteo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
     setShowNuevo(false);
     setErrorNuevo("");
-  } }, "Cancelar")))), activo && activo.completado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between flex-wrap gap-2 mb-1 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold" }, "Resultado del conteo \u2014 ", activo.fecha), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => window.print() }, "Imprimir / Guardar PDF"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: compartirPdfWhatsApp }, /* @__PURE__ */ import_react4.default.createElement(FileText, { size: 13 }), " Enviar PDF por WhatsApp"), /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { href: `https://wa.me/?text=${encodeURIComponent(textoResultadoConteo())}` }, /* @__PURE__ */ import_react4.default.createElement(MessageCircle, { size: 13 }), " WhatsApp (solo texto)"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3 no-imprimir", style: { color: C2.inkSoft } }, "Ordenado por impacto econ\xF3mico: lo que m\xE1s dinero mueve aparece primero."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "zona-impresion", style: ESTILO_IMPRESION_CLARO }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end justify-between mb-3 pb-3", style: { borderBottom: "2px solid #9C7A34" } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold" }, "Resultado del conteo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: "#6B7A6E" } }, activo.fecha, " \xB7 ", esPisoVenta ? "Piso de venta" : esAlmacen ? "Almac\xE9n (trastienda)" : "Todo (empresa completa)")), /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO, alt: "", style: { height: 48, width: "auto" } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Productos descuadrados"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: conDescuadre.length ? C2.amber : C2.accent } }, conDescuadre.length)), /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Impacto econ\xF3mico neto"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: impactoTotal < 0 ? C2.red : impactoTotal > 0 ? C2.accent : C2.ink } }, impactoTotal >= 0 ? "+" : "\u2212", "\u20AC", fmt(Math.abs(impactoTotal))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, diferencias.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No se captur\xF3 ning\xFAn conteo." }) : diferencias.map((d2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: d2.producto.id, style: { background: d2.dif === 0 ? C2.surface : C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between mb-1" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, d2.producto.nombre), /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: abcColor[esNoMercancia(d2.producto) ? "\u2014" : clasificacionABC[d2.producto.id] || "C"] || C2.inkSoft }, esNoMercancia(d2.producto) ? "\u2014" : clasificacionABC[d2.producto.id] || "C")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-4 gap-2 text-[12px] mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft }, className: "text-[10.5px]" }, esPisoVenta ? "Sistema (piso)" : esAlmacen ? "Sistema (almac\xE9n)" : "Sistema"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, fmt(referenciaSistema(d2.producto)))), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft }, className: "text-[10.5px]" }, "Conteo final"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold" }, d2.cf)), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft }, className: "text-[10.5px]" }, "Diferencia"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold", style: { color: d2.dif === 0 ? C2.inkSoft : d2.dif < 0 ? C2.red : C2.accent } }, d2.dif > 0 ? `+${d2.dif}` : d2.dif)), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft }, className: "text-[10.5px]" }, "Impacto"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold", style: { color: d2.impacto === 0 ? C2.inkSoft : d2.impacto < 0 ? C2.red : C2.accent } }, d2.impacto >= 0 ? "" : "\u2212", "\u20AC", fmt(Math.abs(d2.impacto))))), d2.dif !== 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo del descuadre" }, /* @__PURE__ */ import_react4.default.createElement(
+  } }, "Cancelar")))), activo && activo.completado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between flex-wrap gap-2 mb-1 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold" }, "Resultado del conteo \u2014 ", activo.fecha), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => window.print() }, "Imprimir / Guardar PDF"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: compartirPdfWhatsApp }, /* @__PURE__ */ import_react4.default.createElement(FileText, { size: 13 }), " Enviar PDF por WhatsApp"), /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { href: `https://wa.me/?text=${encodeURIComponent(textoResultadoConteo())}` }, /* @__PURE__ */ import_react4.default.createElement(MessageCircle, { size: 13 }), " WhatsApp (solo texto)"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3 no-imprimir", style: { color: C2.inkSoft } }, "Ordenado por impacto econ\xF3mico: lo que m\xE1s dinero mueve aparece primero."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "zona-impresion", style: ESTILO_IMPRESION_CLARO }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end justify-between mb-3 pb-3", style: { borderBottom: "2px solid #9C7A34" } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold" }, "Resultado del conteo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: "#6B7A6E" } }, activo.fecha, " \xB7 ", esPisoVenta ? "Piso de venta" : esAlmacen ? "Almac\xE9n (trastienda)" : "Todo el local")), /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO, alt: "", style: { height: 48, width: "auto" } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Productos descuadrados"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: conDescuadre.length ? C2.amber : C2.accent } }, conDescuadre.length)), /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Impacto econ\xF3mico neto"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: impactoTotal < 0 ? C2.red : impactoTotal > 0 ? C2.accent : C2.ink } }, impactoTotal >= 0 ? "+" : "\u2212", "\u20AC", fmt(Math.abs(impactoTotal))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, diferencias.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No se captur\xF3 ning\xFAn conteo." }) : diferencias.map((d2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: d2.producto.id, style: { background: d2.dif === 0 ? C2.surface : C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between mb-1" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, d2.producto.nombre), /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: abcColor[esNoMercancia(d2.producto) ? "\u2014" : clasificacionABC[d2.producto.id] || "C"] || C2.inkSoft }, esNoMercancia(d2.producto) ? "\u2014" : clasificacionABC[d2.producto.id] || "C")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-4 gap-2 text-[12px] mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft }, className: "text-[10.5px]" }, esPisoVenta ? "Sistema (piso)" : esAlmacen ? "Sistema (almac\xE9n)" : "Sistema"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, fmt(referenciaSistema(d2.producto)))), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft }, className: "text-[10.5px]" }, "Conteo final"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold" }, d2.cf)), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft }, className: "text-[10.5px]" }, "Diferencia"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold", style: { color: d2.dif === 0 ? C2.inkSoft : d2.dif < 0 ? C2.red : C2.accent } }, d2.dif > 0 ? `+${d2.dif}` : d2.dif)), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft }, className: "text-[10.5px]" }, "Impacto"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold", style: { color: d2.impacto === 0 ? C2.inkSoft : d2.impacto < 0 ? C2.red : C2.accent } }, d2.impacto >= 0 ? "" : "\u2212", "\u20AC", fmt(Math.abs(d2.impacto))))), d2.dif !== 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo del descuadre" }, /* @__PURE__ */ import_react4.default.createElement(
     "select",
     {
       value: motivos[d2.producto.id] || "",
