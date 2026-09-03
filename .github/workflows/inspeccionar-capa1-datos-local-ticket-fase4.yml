@@ -1,0 +1,20 @@
+name: Inspeccionar capa 1 datos local ticket fase 4
+on:
+  push:
+    branches: [tpv-ventas-fase-4]
+    paths:
+      - '.github/workflows/inspeccionar-capa1-datos-local-ticket-fase4.yml'
+permissions:
+  contents: read
+jobs:
+  inspeccionar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ver anclas exactas
+        run: |
+          set -euo pipefail
+          echo '=== LOCALES ==='
+          grep -n -A45 -B2 'function Locales({' fuente.js | head -n 70 || true
+          echo '=== TICKET CABECERA ==='
+          grep -n -A32 -B5 'const nombreLocal = local?.nombre' fuente.js | head -n 50 || true
