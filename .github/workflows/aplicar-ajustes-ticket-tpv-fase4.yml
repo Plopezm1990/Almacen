@@ -1,0 +1,38 @@
+name: Aplicar ajustes ticket TPV fase 4
+
+on:
+  push:
+    branches: [tpv-ventas-fase-4]
+    paths:
+      - '.github/workflows/aplicar-ajustes-ticket-tpv-fase4.yml'
+      - '.github/scripts/ajustar_ticket_tpv_fase4.py'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar ajustes
+        run: python3 .github/scripts/ajustar_ticket_tpv_fase4.py
+      - name: Validar
+        run: |
+          node --check fuente.js
+          git diff --check
+          grep -q 'Venta anulada · recibo sin validez de cobro' fuente.js
+          grep -q 'local: locales.find((l2) => l2.id === localActivoId) || null' fuente.js
+      - name: Limpiar y guardar
+        run: |
+          rm -f .github/scripts/ajustar_ticket_tpv_fase4.py
+          rm -f .github/workflows/aplicar-ajustes-ticket-tpv-fase4.yml
+          rm -f .github/workflows/inspeccionar-ajustes-ticket-tpv-fase4.yml
+          rm -f .github/workflows/extraer-ajustes-ticket-tpv-fase4.yml
+          rm -f .github/tmp-inspeccion-ajustes-ticket.txt
+          git config user.name 'Plopezm1990'
+          git config user.email 'pedroroger1990@gmail.com'
+          git add fuente.js .github/scripts .github/workflows .github/tmp-inspeccion-ajustes-ticket.txt
+          git diff --cached --check
+          git commit -m 'Pulir datos y estado del ticket TPV'
+          git push origin HEAD:tpv-ventas-fase-4
