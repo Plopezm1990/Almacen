@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Aplicar identidad general
-        run: python3 .github/scripts/aplicar_identidad_la_suite.py
+        run: python3 .github/scripts/aplicar_identidad_la_suite_v2.py
       - name: Validar código y activos
         run: |
           set -euo pipefail
@@ -27,12 +27,14 @@ jobs:
           grep -q '<title>L&amp;A Suite</title>' index.html
           grep -q 'Gestión integral para tu negocio' index.html
           grep -q 'var LOGO_PROYECTO = "la-suite-logo.svg"' fuente.js
+          grep -q 'var ICONO_PROYECTO = "la-suite-icon.svg"' fuente.js
           grep -q 'var LOGO = "data:image/png;base64' fuente.js
           grep -q 'var LOGO_BLANCO = "data:image/png;base64' fuente.js
       - name: Limpiar utilidades temporales y guardar
         run: |
           rm -f .github/workflows/aplicar-identidad-la-suite.yml
           rm -f .github/scripts/aplicar_identidad_la_suite.py
+          rm -f .github/scripts/aplicar_identidad_la_suite_v2.py
           rm -f .github/workflows/inspeccionar-identidad-la-suite.yml
           rm -f .github/workflows/inspeccionar-usos-logo-la-suite.yml
           git config user.name 'github-actions[bot]'
