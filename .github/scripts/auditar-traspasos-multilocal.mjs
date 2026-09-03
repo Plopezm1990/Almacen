@@ -76,6 +76,16 @@ async function findSelectByOption(text) {
   }
   return null;
 }
+async function findSelectByAllOptions(texts) {
+  const selects=page.locator('select');
+  for(let i=0;i<await selects.count();i++) {
+    const s=selects.nth(i);
+    if (!(await s.isVisible().catch(()=>false))) continue;
+    const opts=await optionTexts(s);
+    if (texts.every(text => opts.some(x=>x.includes(text)))) return s;
+  }
+  return null;
+}
 async function readData(key) {
   return page.evaluate(k => JSON.parse(localStorage.getItem('almacen:'+k) || '[]'), key);
 }
@@ -95,8 +105,8 @@ if (destSelect) {
   check(!opts.some(x=>x.includes('Local A cerrado')), 'selector de destino excluye local inactivo');
 }
 
-const sourceSelect = await findSelectByOption('Harina origen A1');
-check(!!sourceSelect, 'selector de origen usa productos del local activo');
+const sourceSelect = await findSelectByAllOptions(['Harina origen A1', 'Producto con déficit A1']);
+check(!!sourceSelect, 'selector inter-local de origen usa productos del local activo');
 const targetSelect = await findSelectByOption('Harina destino A2');
 check(!!targetSelect, 'selector de producto destino ofrece producto compatible de A2');
 if (targetSelect) {
@@ -156,18 +166,15 @@ const pdef=await product('pdef'); p2=await product('pa2');
 check(Number(pdef?.stock)===5 && Number(p2?.stock)===6, 'bloqueo por déficit no altera stock');
 
 // El flujo histórico almacén ↔ piso debe seguir funcionando.
-const internalProduct=await findSelectByOption('Harina origen A1');
-if (internalProduct) {
-  // Puede coincidir con el selector inter-local; elegimos el primero cuyo conjunto incluye la dirección interna después.
-  const selects=page.locator('select');
-  let internal=null;
-  for(let i=0;i<await selects.count();i++) {
-    const s=selects.nth(i); if(!(await s.isVisible().catch(()=>false))) continue;
-    const opts=await optionTexts(s);
-    if(opts.some(x=>x.includes('Harina origen A1')) && !opts.some(x=>x.includes('Producto con déficit A1'))) { internal=s; break; }
-  }
-  if (internal) await internal.selectOption('pa1');
+const selects=page.locator('select');
+let internal=null;
+for(let i=0;i<await selects.count();i++) {
+  const s=selects.nth(i); if(!(await s.isVisible().catch(()=>false))) continue;
+  const opts=await optionTexts(s);
+  if(opts.some(x=>x.includes('Harina origen A1')) && !opts.some(x=>x.includes('Producto con déficit A1'))) { internal=s; break; }
 }
+if (internal) await internal.selectOption('pa1');
+check(!!internal, 'localiza selector del movimiento interno');
 if ((await numberInputs.count()) >= 1) await numberInputs.nth(0).fill('1');
 const btnInternal=page.getByRole('button',{name:/Confirmar movimiento/i}).first();
 if (await btnInternal.isVisible().catch(()=>false)) { await btnInternal.click({force:true}); await sleep(700); }
@@ -176,15 +183,13 @@ check(Number(p1?.stock)===8, 'movimiento interno no cambia stock total');
 check(Number(p1?.stockPisoVenta)===4, 'movimiento interno sigue sumando al piso de venta');
 
 // Cambiar al destino: debe ver el historial como entrada.
-const globalSelect=page.locator('select').first();
-const globalOpts=await optionTexts(globalSelect);
-if (globalOpts.some(x=>x.includes('Local A2'))) {
+const globalSelect=await findSelectByAllOptions(['Local A1', 'Local A2']);
+check(!!globalSelect, 'selector global permite cambiar entre A1 y A2');
+if (globalSelect) {
   await globalSelect.selectOption('a2'); await sleep(900);
   txt=await body();
   check(txt.includes('Local A1 → Local A2'), 'A2 ve la ruta del traspaso en su historial');
   check(/Entrada .*Harina origen A1 .*Harina destino A2/i.test(txt), 'A2 identifica el traspaso como entrada');
-} else {
-  check(false, 'selector global permite cambiar a A2');
 }
 
 await page.screenshot({path:'traspasos-multilocal-audit.png',fullPage:true});
