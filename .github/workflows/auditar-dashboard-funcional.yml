@@ -1,0 +1,52 @@
+name: Auditar dashboard funcional
+
+on:
+  push:
+    branches: [la-suite-identidad]
+    paths:
+      - '.github/workflows/auditar-dashboard-funcional.yml'
+      - '.github/scripts/auditar-dashboard.mjs'
+      - 'dashboard-premium-v2.js'
+      - 'index.html'
+      - 'fuente.js'
+  workflow_dispatch:
+
+jobs:
+  auditar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Instalar Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium
+      - name: Esperar Deploy Preview
+        run: |
+          for i in $(seq 1 24); do
+            if curl -fsS --max-time 10 "https://deploy-preview-10--chic-entremet-9107cf.netlify.app/?wait=$i" >/dev/null; then
+              echo "Preview accesible"
+              exit 0
+            fi
+            sleep 5
+          done
+          exit 1
+      - name: Auditar pantalla general
+        env:
+          PREVIEW_URL: https://deploy-preview-10--chic-entremet-9107cf.netlify.app/
+        run: node .github/scripts/auditar-dashboard.mjs
+      - name: Subir informe
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: auditoria-dashboard
+          path: |
+            dashboard-audit.txt
+            dashboard-audit.png
+          if-no-files-found: ignore
