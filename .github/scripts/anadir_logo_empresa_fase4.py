@@ -20,7 +20,6 @@ def obtener_bloque(texto, inicio, fin, label):
         raise SystemExit(f'{label}: fin no encontrado')
     return i, j, texto[i:j]
 
-# 1) Utilidad común: valida y optimiza el logo antes de guardarlo.
 ancla_ficha = 'function FichaEmpresaBasica({ empresa, actualizarEmpresa }) {'
 if 'async function prepararLogoEmpresa(' not in s:
     if s.count(ancla_ficha) != 1:
@@ -28,7 +27,6 @@ if 'async function prepararLogoEmpresa(' not in s:
     helper = '''async function prepararLogoEmpresa(file) {\n  if (!file) return \"\";\n  const tiposPermitidos = [\"image/png\", \"image/jpeg\", \"image/webp\"];\n  if (!tiposPermitidos.includes(file.type)) throw new Error(\"El logo debe ser PNG, JPG o WEBP.\");\n  if (file.size > 8 * 1024 * 1024) throw new Error(\"El archivo es demasiado grande. Elige una imagen de menos de 8 MB.\");\n  const original = await new Promise((resolve, reject) => {\n    const lector = new FileReader();\n    lector.onload = () => resolve(String(lector.result || \"\"));\n    lector.onerror = () => reject(new Error(\"No se pudo leer la imagen.\"));\n    lector.readAsDataURL(file);\n  });\n  const imagen = await new Promise((resolve, reject) => {\n    const img = new Image();\n    img.onload = () => resolve(img);\n    img.onerror = () => reject(new Error(\"La imagen seleccionada no es válida.\"));\n    img.src = original;\n  });\n  const maximo = 512;\n  const anchoNatural = Number(imagen.naturalWidth || imagen.width || 1);\n  const altoNatural = Number(imagen.naturalHeight || imagen.height || 1);\n  const escala = Math.min(1, maximo / Math.max(anchoNatural, altoNatural));\n  const canvas = document.createElement(\"canvas\");\n  canvas.width = Math.max(1, Math.round(anchoNatural * escala));\n  canvas.height = Math.max(1, Math.round(altoNatural * escala));\n  const ctx = canvas.getContext(\"2d\");\n  if (!ctx) throw new Error(\"No se pudo preparar el logo.\");\n  ctx.drawImage(imagen, 0, 0, canvas.width, canvas.height);\n  const webp = canvas.toDataURL(\"image/webp\", 0.88);\n  return webp.startsWith(\"data:image/webp\") ? webp : canvas.toDataURL(\"image/png\");\n}\n'''
     s = s.replace(ancla_ficha, helper + ancla_ficha, 1)
 
-# 2) Modificar únicamente FichaEmpresaBasica.
 i, j, ficha = obtener_bloque(s, ancla_ficha, 'function GestorEmpresas(', 'bloque ficha')
 ficha = reemplaza_en_bloque(
     ficha,
@@ -53,7 +51,6 @@ logo_ficha = '''      /* @__PURE__ */ import_react4.default.createElement(Field,
 ficha = reemplaza_en_bloque(ficha, marca_ficha, logo_ficha + marca_ficha, 'campo logo ficha')
 s = s[:i] + ficha + s[j:]
 
-# 3) Modificar únicamente GestorEmpresas.
 i, j, gestor = obtener_bloque(s, 'function GestorEmpresas(', 'function Locales(', 'bloque gestor empresas')
 gestor = reemplaza_en_bloque(
     gestor,
@@ -75,8 +72,8 @@ gestor = reemplaza_en_bloque(
 )
 gestor = reemplaza_en_bloque(
     gestor,
-    '    setNif(\"\");\n    setMarca(\"\");\n    setMostrarNueva(false);',
-    '    setNif(\"\");\n    setMarca(\"\");\n    setLogo(\"\");\n    setLogoErrorNueva(\"\");\n    setMostrarNueva(false);',
+    '    setNif(\"\");\n    setMarca(\"\");\n    setError(\"\");\n    setMostrarNueva(false);',
+    '    setNif(\"\");\n    setMarca(\"\");\n    setLogo(\"\");\n    setLogoErrorNueva(\"\");\n    setError(\"\");\n    setMostrarNueva(false);',
     'reset logo nueva'
 )
 marca_nueva = '      /* @__PURE__ */ import_react4.default.createElement(Field, { label: \"Marca / nombre comercial (opcional)\" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: marca, onChange: (e) => setMarca(e.target.value) })),\n'
