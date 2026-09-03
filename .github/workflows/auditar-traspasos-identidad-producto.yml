@@ -1,0 +1,38 @@
+name: Auditar identidad de producto para traspasos entre locales
+on:
+  push:
+    branches: [la-suite-identidad]
+    paths: ['.github/workflows/auditar-traspasos-identidad-producto.yml']
+  workflow_dispatch:
+jobs:
+  auditar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspeccionar fusión, duplicados e integración de Traspasos
+        run: |
+          python3 <<'PY'
+          import re, pathlib
+          s=pathlib.Path('fuente.js').read_text(encoding='utf-8', errors='ignore')
+          terms=[
+            'fusionadoEnId',
+            'fusionarProducto',
+            'fusionar',
+            'duplicad',
+            'normalizar',
+            'nombre.trim()',
+            'productos.some',
+            'crearLogicaTraspasos({',
+            'Traspasos, {',
+            'productos: productosDelLocalActivo',
+            'traspasos: traspasosDelLocalActivo',
+            'localesEmpresaActiva',
+          ]
+          for term in terms:
+            ms=list(re.finditer(re.escape(term),s,re.I if term in ['fusionar','duplicad','normalizar'] else 0))
+            print(f'\n===== {term} | matches={len(ms)} =====')
+            for i,m in enumerate(ms[:16]):
+              a=max(0,m.start()-3000); b=min(len(s),m.end()+7000)
+              print(f'--- match {i+1} @ {m.start()} ---')
+              print(s[a:b].replace('\n',' ')[:10000])
+          PY

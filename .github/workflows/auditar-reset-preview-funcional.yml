@@ -1,0 +1,17 @@
+name: Auditar reset funcional del Deploy Preview
+on:
+  push:
+    branches: [la-suite-identidad]
+    paths:
+      - 'reset-pruebas-preview.js'
+      - 'index.html'
+      - '.github/scripts/auditar-reset-preview.mjs'
+      - '.github/workflows/auditar-reset-preview-funcional.yml'
+  workflow_dispatch:
+jobs:
+  auditar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar aislamiento, limpieza y seguridad de producción
+        run: node .github/scripts/auditar-reset-preview.mjs

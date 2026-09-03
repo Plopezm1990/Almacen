@@ -1,0 +1,47 @@
+name: Inspeccionar storage multi-local
+on:
+  push:
+    branches: [la-suite-identidad]
+    paths: ['.github/workflows/inspeccionar-storage-multilocal.yml']
+  workflow_dispatch:
+jobs:
+  inspeccionar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Instalar Chromium
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Levantar app local
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/la-suite-http.log 2>&1 &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:4173/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Inspeccionar almacenamiento tras entrar en modo local
+        run: |
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:412,height:915},locale:'es-ES'});
+            await page.goto('http://127.0.0.1:4173/?storageAudit='+Date.now(),{waitUntil:'domcontentloaded'});
+            await page.waitForTimeout(1800);
+            const local=page.getByText(/Trabajar solo en este equipo|sin sincronizar|solo en este equipo/i).first();
+            if(await local.isVisible().catch(()=>false)){await local.click({force:true});await page.waitForTimeout(2200);}
+            const data=await page.evaluate(async()=>{
+              const ls={}; for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);ls[k]=localStorage.getItem(k)}
+              const ss={}; for(let i=0;i<sessionStorage.length;i++){const k=sessionStorage.key(i);ss[k]=sessionStorage.getItem(k)}
+              let dbs=[]; try{dbs=await indexedDB.databases()}catch{}
+              return {localStorage:ls,sessionStorage:ss,windowStorageType:typeof window.storage,windowStorageKeys:window.storage&&typeof window.storage==='object'?Object.keys(window.storage):[],dbs};
+            });
+            console.log('STORAGE_AUDIT='+JSON.stringify(data));
+            console.log('BODY='+((await page.locator('body').innerText()).replace(/\s+/g,' ').slice(0,2000)));
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
