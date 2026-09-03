@@ -119298,30 +119298,34 @@ function crearLogicaGastos({ setGastosGenerales, localActivoId }) {
   return { addGasto, deleteGasto };
 }
 function crearLogicaCaja({ setArqueos, localActivoId }) {
-  function addArqueo(data) {
-    setArqueos((s2) => [{ id: uid(), fecha: todayISO(), ...data, localId: localActivoId || data.localId || null }, ...s2]);
-    const diferencia = Number(data.diferencia) || 0;
-    if (diferencia !== 0 && typeof window !== "undefined" && window.__nubeActiva) {
-      const signo = diferencia > 0 ? "sobran" : "faltan";
-      fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          titulo: "Caja descuadrada",
-          cuerpo: `Al cerrar caja, ${signo} ${fmt(Math.abs(diferencia))} \u20AC.`,
-          localId: localActivoId || data.localId || null,
-          url: "/"
-        })
-      }).catch(() => {
-      });
-    }
+  function addArqueo(data, denomConfig) {
+    if (!localActivoId) return null;
+    const id = uid();
+    const fecha = todayISO();
+    const hora = nowTime();
+    const denominaciones = { ...(data.denominaciones || {}) };
+    const useConfig = denomConfig || DENOMINACIONES_CAJA;
+    const efectivoContado = useConfig.reduce((acc, d) => acc + (Number(denominaciones[d.key]) || 0) * d.valor, 0);
+    const efectivoReal = Math.round((efectivoContado + Number.EPSILON) * 100) / 100;
+    const esperado = Number(data.efectivoEsperado || 0);
+    const diferencia = Math.round((efectivoReal - esperado + Number.EPSILON) * 100) / 100;
+    const arqueo = {
+      id,
+      localId: localActivoId,
+      fecha,
+      hora,
+      efectivoEsperado: esperado,
+      efectivoReal,
+      diferencia,
+      denominaciones,
+      notas: data.notas || ""
+    };
+    setArqueos((prev) => [arqueo, ...prev]);
+    return arqueo;
   }
   function deleteArqueo(id) {
-    setArqueos((s2) => {
-      const actual = s2.find((a2) => a2.id === id);
-      if (!actual || localActivoId && actual.localId !== localActivoId) return s2;
-      return s2.filter((a2) => a2.id !== id);
-    });
+    if (!localActivoId) return;
+    setArqueos((prev) => prev.filter((a2) => !(a2.id === id && a2.localId === localActivoId)));
   }
   return { addArqueo, deleteArqueo };
 }
@@ -119350,23 +119354,33 @@ function crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivo
   return { crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo };
 }
 function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, registrarAuditoria, localActivoId }) {
-  function registrarMovimientoCaja(tipo, importe, motivo, fecha) {
-    const importeNum = Number(importe);
-    if (!importeNum || importeNum <= 0) return { ok: false, error: "Pon un importe mayor que cero." };
-    if (tipo !== "entrada" && tipo !== "salida") return { ok: false, error: "Tipo de movimiento no v\xE1lido." };
-    const nuevo = { id: uid(), fecha: fecha || todayISO(), tipo, importe: importeNum, motivo: (motivo || "").trim(), creadoEn: (/* @__PURE__ */ new Date()).toISOString(), localId: localActivoId || null };
-    setMovimientosCaja((s2) => [nuevo, ...s2]);
-    registrarAuditoria(
-      tipo === "entrada" ? "Entrada de caja" : "Retirada de caja",
-      `\u20AC${fmt(importeNum)} \xB7 ${nuevo.motivo || "sin motivo especificado"} \xB7 ${nuevo.fecha}`
+  function registrarMovimientoCaja(tipo, importe, concepto, origen = "MANUAL", referenciaId = null) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local antes de registrar movimientos de caja." };
+    const imp = Number(importe);
+    if (!["ENTRADA", "SALIDA"].includes(tipo)) return { ok: false, error: "Tipo de movimiento no válido." };
+    if (!Number.isFinite(imp) || imp <= 0) return { ok: false, error: "El importe debe ser mayor que 0." };
+    const mov = {
+      id: uid(),
+      localId: localActivoId,
+      fecha: todayISO(),
+      hora: nowTime(),
+      tipo,
+      importe: Math.round((imp + Number.EPSILON) * 100) / 100,
+      concepto: concepto?.trim() || (tipo === "ENTRADA" ? "Entrada manual" : "Salida manual"),
+      origen,
+      referenciaId
+    };
+    setMovimientosCaja((prev) => [mov, ...prev]);
+    registrarAuditoria?.(
+      "MOVIMIENTO_CAJA",
+      `${tipo} de ${money(mov.importe)} · ${mov.concepto}`,
+      { movimientoCajaId: mov.id, origen: mov.origen }
     );
-    return { ok: true, movimiento: nuevo };
+    return { ok: true, movimiento: mov };
   }
   function eliminarMovimientoCaja(id) {
-    const m2 = movimientosCaja.find((x3) => x3.id === id);
-    if (!m2 || localActivoId && m2.localId !== localActivoId) return false;
-    setMovimientosCaja((s2) => s2.filter((x3) => x3.id !== id));
-    if (m2) registrarAuditoria("Eliminar movimiento de caja", `${m2.tipo === "entrada" ? "Entrada" : "Retirada"} de \u20AC${fmt(m2.importe)} \xB7 ${m2.fecha}`);
+    if (!localActivoId) return;
+    setMovimientosCaja((prev) => prev.filter((m2) => !(m2.id === id && m2.localId === localActivoId)));
   }
   return { registrarMovimientoCaja, eliminarMovimientoCaja };
 }
