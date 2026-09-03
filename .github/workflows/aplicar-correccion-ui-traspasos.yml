@@ -1,0 +1,115 @@
+name: Aplicar corrección sintáctica de Traspasos
+on:
+  push:
+    branches: [la-suite-identidad]
+    paths:
+      - '.github/workflows/aplicar-correccion-ui-traspasos.yml'
+      - '.github/patches/Traspasos-fixed.js'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: la-suite-identidad
+          fetch-depth: 0
+      - name: Validar componente aislado como módulo
+        run: node --input-type=module --check < .github/patches/Traspasos-fixed.js
+      - name: Reemplazar únicamente function Traspasos
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          source_path = Path('fuente.js')
+          replacement_path = Path('.github/patches/Traspasos-fixed.js')
+          text = source_path.read_text(encoding='utf-8')
+          replacement = replacement_path.read_text(encoding='utf-8').strip()
+
+          def function_span(text, name):
+              marker = f'function {name}('
+              start = text.find(marker)
+              if start < 0:
+                  raise SystemExit(f'No se encontró {marker}')
+              p = text.find('(', start)
+              depth = 0
+              quote = None
+              esc = False
+              i = p
+              while i < len(text):
+                  c = text[i]
+                  if quote:
+                      if esc:
+                          esc = False
+                      elif c == '\\':
+                          esc = True
+                      elif c == quote:
+                          quote = None
+                  else:
+                      if c in ('"', "'", '`'):
+                          quote = c
+                      elif c == '(':
+                          depth += 1
+                      elif c == ')':
+                          depth -= 1
+                          if depth == 0:
+                              break
+                  i += 1
+              brace = text.find('{', i)
+              if brace < 0:
+                  raise SystemExit(f'No se encontró cuerpo de {name}')
+              depth = 0
+              quote = None
+              esc = False
+              j = brace
+              while j < len(text):
+                  c = text[j]
+                  if quote:
+                      if esc:
+                          esc = False
+                      elif c == '\\':
+                          esc = True
+                      elif c == quote:
+                          quote = None
+                  else:
+                      if c in ('"', "'", '`'):
+                          quote = c
+                      elif c == '{':
+                          depth += 1
+                      elif c == '}':
+                          depth -= 1
+                          if depth == 0:
+                              return start, j + 1
+                  j += 1
+              raise SystemExit(f'No se pudo cerrar {name}')
+
+          a, b = function_span(text, 'Traspasos')
+          updated = text[:a] + replacement + text[b:]
+          if updated == text:
+              raise SystemExit('El reemplazo no produjo cambios')
+          if updated.count('function Traspasos(') != 1:
+              raise SystemExit('Cantidad inesperada de function Traspasos')
+          source_path.write_text(updated, encoding='utf-8')
+          print('Traspasos reemplazado:', b-a, '->', len(replacement), 'bytes')
+          PY
+      - name: Validar fuente completa como módulo
+        run: |
+          git diff --check
+          node --input-type=module --check < fuente.js
+          npm install acorn@8 >/dev/null 2>&1
+          node -e "const fs=require('fs'),a=require('acorn');a.parse(fs.readFileSync('fuente.js','utf8'),{ecmaVersion:'latest',sourceType:'module'});console.log('ACORN_OK')"
+          git diff --stat -- fuente.js
+      - name: Guardar corrección funcional
+        run: |
+          CAMBIOS=$(git status --short | awk '{print $2}' | grep -v '^package-lock.json$' | grep -v '^package.json$' || true)
+          if [ "$CAMBIOS" != "fuente.js" ]; then
+            echo "Cambio inesperado: $CAMBIOS"
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fuente.js
+          git commit -m "Corregir sintaxis de la UI de traspasos"
+          git push origin HEAD:la-suite-identidad
