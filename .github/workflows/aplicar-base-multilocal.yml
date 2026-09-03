@@ -1,0 +1,35 @@
+name: Aplicar base multi-local
+on:
+  push:
+    branches: [la-suite-identidad]
+    paths: ['.github/workflows/aplicar-base-multilocal.yml']
+permissions:
+  contents: write
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: la-suite-identidad
+      - name: Transformar y validar
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/corregir_multilocal_base.py
+          node --check fuente.js
+          grep -q 'const empresaLegacyUnicaId = empresasFinales.length === 1' fuente.js
+          grep -q 'const localesEmpresaActiva' fuente.js
+          grep -q 'productos.filter((p2) => p2.localId === localActivoId)' fuente.js
+          grep -q 'pedidos.filter((p2) => p2.localId === localActivoId)' fuente.js
+          grep -q 'locales: localesEmpresaActiva' fuente.js
+      - name: Guardar solo en la rama de pruebas
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Plopezm1990"
+          git config user.email "pedroroger1990@gmail.com"
+          git add fuente.js
+          git diff --cached --quiet && exit 0
+          git commit -m "Aislar empresa y local en la base multi-local"
+          git push origin HEAD:la-suite-identidad
