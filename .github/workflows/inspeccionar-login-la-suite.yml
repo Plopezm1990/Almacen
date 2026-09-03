@@ -1,0 +1,17 @@
+name: Inspeccionar login L&A Suite
+on:
+  push:
+    paths:
+      - '.github/workflows/inspeccionar-login-la-suite.yml'
+permissions:
+  contents: read
+jobs:
+  inspeccionar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Buscar textos del login
+        run: |
+          set -euo pipefail
+          echo '=== CHOCOLOYOS / LOGIN ==='
+          grep -Rni -A12 -B12 --exclude-dir=.git -E 'Chocoloyos|CHOCOLOYOS|Inicia sesi[oó]n para sincronizar|Trabajar solo en este equipo' . | head -n 260 || true
