@@ -115,7 +115,6 @@ if (targetSelect) {
   check(!opts.some(x=>x.includes('Harina empresa B')), 'producto destino excluye productos de otra empresa');
 }
 
-// Transferencia válida: 2 kg A1 -> A2.
 const numberInputs=page.locator('input[type="number"]');
 check((await numberInputs.count()) >= 2, 'hay cantidades separadas para movimiento interno e inter-local');
 if (sourceSelect) await sourceSelect.selectOption('pa1');
@@ -145,7 +144,6 @@ const entrada=movimientos.find(m=>m.tipo==='TRASPASO_ENTRE_LOCALES_ENTRADA');
 check(salida?.localId==='a1' && Number(salida?.cantidad)===-2, 'movimiento de salida queda en A1');
 check(entrada?.localId==='a2' && Number(entrada?.cantidad)===2, 'movimiento de entrada queda en A2');
 
-// Intento por encima del almacén disponible: debe fallar sin tocar stock.
 if ((await numberInputs.count()) >= 2) await numberInputs.nth(1).fill('99');
 if (await btnInter.isVisible().catch(()=>false)) { await btnInter.click({force:true}); await sleep(500); }
 txt=await body();
@@ -153,7 +151,6 @@ check(/Solo hay .* disponibles en el almacén/i.test(txt), 'bloquea cantidad sup
 p1=await product('pa1'); p2=await product('pa2');
 check(Number(p1?.stock)===8 && Number(p2?.stock)===6, 'intento inválido no altera stock');
 
-// Producto con déficit: debe bloquearse antes de mover nada.
 if (sourceSelect) await sourceSelect.selectOption('pdef');
 await sleep(400);
 const targetAfterDef=await findSelectByOption('Harina destino A2');
@@ -165,7 +162,6 @@ check(/déficit de stock pendiente/i.test(txt), 'bloquea traspaso si existe déf
 const pdef=await product('pdef'); p2=await product('pa2');
 check(Number(pdef?.stock)===5 && Number(p2?.stock)===6, 'bloqueo por déficit no altera stock');
 
-// El flujo histórico almacén ↔ piso debe seguir funcionando.
 const selects=page.locator('select');
 let internal=null;
 for(let i=0;i<await selects.count();i++) {
@@ -182,10 +178,11 @@ p1=await product('pa1');
 check(Number(p1?.stock)===8, 'movimiento interno no cambia stock total');
 check(Number(p1?.stockPisoVenta)===4, 'movimiento interno sigue sumando al piso de venta');
 
-// Cambiar al destino: debe ver el historial como entrada.
-const globalSelect=await findSelectByAllOptions(['Local A1', 'Local A2']);
-check(!!globalSelect, 'selector global permite cambiar entre A1 y A2');
-if (globalSelect) {
+// Igual que en la batería A-E: el selector global de local es el primer select de la aplicación.
+const globalSelect=page.locator('select').first();
+const globalOpts=await optionTexts(globalSelect);
+check(globalOpts.some(x=>x.includes('Local A1')) && globalOpts.some(x=>x.includes('Local A2')), 'selector global permite cambiar entre A1 y A2');
+if (globalOpts.some(x=>x.includes('Local A2'))) {
   await globalSelect.selectOption('a2'); await sleep(900);
   txt=await body();
   check(txt.includes('Local A1 → Local A2'), 'A2 ve la ruta del traspaso en su historial');
