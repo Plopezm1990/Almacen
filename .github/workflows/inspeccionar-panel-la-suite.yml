@@ -1,0 +1,19 @@
+name: Inspeccionar panel L&A Suite
+on:
+  push:
+    paths:
+      - '.github/workflows/inspeccionar-panel-la-suite.yml'
+permissions:
+  contents: read
+jobs:
+  inspeccionar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Localizar panel general
+        run: |
+          set -euo pipefail
+          echo '=== PANEL GENERAL ==='
+          grep -n -A45 -B30 -E 'Panel general|Saldo de almac[eé]n|Margen promedio|Pedidos pendientes|Productos en stock bajo|Toca cualquier cifra' fuente.js | head -n 420 || true
+          echo '=== CABECERA / RAPIDO ==='
+          grep -n -A35 -B25 -E 'Depart\.|Ciclos|Rápido|Modo empleado|Todos los locales' fuente.js | head -n 320 || true
