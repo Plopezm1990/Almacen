@@ -1,0 +1,32 @@
+name: Inspeccionar TPV por local fase 4
+on:
+  push:
+    branches: [tpv-ventas-fase-4]
+    paths:
+      - .github/workflows/inspeccionar-tpv-local-fase4.yml
+permissions:
+  contents: read
+jobs:
+  inspeccion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Localizar etiquetas y render TPV
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          for needle in ['Venta rápida','Venta Rapida','VentaRapida','tab === "venta"','tab === "venta-rapida"','localActivoId']:
+              print('\n===',needle,'===')
+              start=0
+              n=0
+              while True:
+                  i=s.find(needle,start)
+                  if i<0: break
+                  n+=1
+                  print(s[max(0,i-500):i+900])
+                  print('\n---')
+                  start=i+len(needle)
+                  if n>=12: break
+              print('COUNT',n)
+          PY
