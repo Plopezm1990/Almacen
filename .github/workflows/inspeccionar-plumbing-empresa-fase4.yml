@@ -1,0 +1,28 @@
+name: Inspeccionar plumbing empresa fase 4
+on:
+  push:
+    branches: [tpv-ventas-fase-4]
+    paths:
+      - '.github/workflows/inspeccionar-plumbing-empresa-fase4.yml'
+permissions:
+  contents: read
+jobs:
+  inspeccionar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ver carga guardado retorno e invocaciones
+        run: |
+          set -euo pipefail
+          echo '=== ESTADOS useData ==='
+          sed -n '117300,117420p' fuente.js
+          echo '=== CARGA ==='
+          sed -n '117420,117540p' fuente.js
+          echo '=== GUARDADO ==='
+          sed -n '117620,117730p' fuente.js
+          echo '=== RETORNO ==='
+          sed -n '117760,117850p' fuente.js
+          echo '=== LOCALES INVOCACION ==='
+          grep -n -A8 -B8 'createElement(Locales' fuente.js | head -n 80 || true
+          echo '=== TPV INVOCACION ==='
+          grep -n -A16 -B8 'createElement(VentaRapida' fuente.js | head -n 100 || true
