@@ -1,0 +1,34 @@
+name: Aplicar multiempresa capa 1 fase 4
+on:
+  push:
+    paths:
+      - '.github/workflows/aplicar-multiempresa-capa1-fase4.yml'
+      - '.github/scripts/aplicar_multiempresa_capa1_fase4.py'
+permissions:
+  contents: write
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar capa 1 multiempresa
+        run: python3 .github/scripts/aplicar_multiempresa_capa1_fase4.py
+      - name: Validar
+        run: |
+          node --check fuente.js
+          git diff --check
+          grep -q 'function GestorEmpresas' fuente.js
+          grep -q 'loadKey("empresas", \[\])' fuente.js
+          grep -q 'configEmpresa: empresaDelLocalActivo' fuente.js
+          grep -q 'empresaId: empresaId || null' fuente.js
+      - name: Limpiar temporales y guardar
+        run: |
+          rm -f .github/workflows/aplicar-multiempresa-capa1-fase4.yml
+          rm -f .github/workflows/inspeccionar-multiempresa-fase4.yml
+          rm -f .github/scripts/aplicar_multiempresa_capa1_fase4.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add fuente.js .github
+          git diff --cached --check
+          git commit -m 'Preparar programa para varias empresas y sus locales'
+          git push origin HEAD:tpv-ventas-fase-4
