@@ -1,14 +1,14 @@
 {
   "pm": "PM-01",
-  "commit_rama_validada": "e8c29fd7a7dc1fc5a713538f17cd1c3f09ac042e",
+  "commit_rama_validada": "54a1fd948700b5343ce9d752579e106ee0c1a7f0",
   "bundle": "fuente.js",
-  "bundle_bytes": 5522095,
+  "bundle_bytes": 5522307,
   "marca_fuente_linea": 116850,
   "lineas_cuerpo_aplicacion": 14117,
-  "bytes_cuerpo_aplicacion": 1212711,
-  "sha256_cuerpo_bundle": "96fb1121e3c57b6b963104e093b93c2508d8706b947b4acc032037647e116d4b",
-  "sha256_cuerpo_recuperado": "96fb1121e3c57b6b963104e093b93c2508d8706b947b4acc032037647e116d4b",
+  "bytes_cuerpo_aplicacion": 1212923,
+  "sha256_cuerpo_bundle": "442247ce42049676794260860966463594c2fe81293a05e9819780812531d033",
+  "sha256_cuerpo_recuperado": "442247ce42049676794260860966463594c2fe81293a05e9819780812531d033",
   "paridad_cuerpo_exacta": true,
-  "fuente_recuperada_bytes": 1213961,
+  "fuente_recuperada_bytes": 1214173,
   "nota": "Se sustituyen únicamente los dos bootstrap de React/ReactDOM por imports normales; la lógica de aplicación se conserva byte a byte por líneas UTF-8 normalizadas con LF."
 }
