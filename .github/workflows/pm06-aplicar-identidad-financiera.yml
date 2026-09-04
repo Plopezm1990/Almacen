@@ -15,23 +15,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 6
+          fetch-depth: 7
 
-      - name: Diagnosticar parche PM-06
+      - name: Diagnosticar guardarAlbaran PM-06
         shell: bash
         run: |
           set -euo pipefail
-
-          git show 9860ccb7a88a1a98a02bf79295cdfafd653b1090:.github/workflows/pm06-aplicar-identidad-financiera.yml \
-            | awk '/^H4sI/{capture=1} capture{if ($0=="B64") exit; print}' \
-            > /tmp/pm06_patch.b64
-
-          base64 -d /tmp/pm06_patch.b64 | gzip -d > /tmp/pm06_patch.py
-
-          echo '=== SELECTOR GUARDAR ALBARAN ==='
-          grep -n -C 14 'identidad guardar albar' /tmp/pm06_patch.py || true
-          echo '=== CONTEXTO FUENTE CANDIDATO ==='
-          grep -n -C 5 -E 'guardarAlbar|albaran|albarán' source-recovery/fuente-recuperado.js | head -n 220 || true
-          echo '=== FIN DIAGNOSTICO ==='
-
+          python3 - <<'PY'
+          from pathlib import Path
+          s = Path('source-recovery/fuente-recuperado.js').read_text(encoding='utf-8')
+          start = s.find('function crearLogicaAlbaranes(')
+          end = s.find('\nfunction ', start + 1)
+          if start < 0 or end < 0:
+              raise SystemExit('crearLogicaAlbaranes no localizada')
+          b = s[start:end]
+          needle = 'guardarAlbaran'
+          p = b.find(needle)
+          print('BLOQUE_LEN=', len(b), 'POS_GUARDAR=', p)
+          if p < 0:
+              raise SystemExit('guardarAlbaran no localizado')
+          print(b[max(0,p-2200):min(len(b),p+6500)])
+          PY
           exit 1
