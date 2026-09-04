@@ -25,11 +25,19 @@ ok(source.includes('empresaId: empresaDelLocalActivo?.id || null, localId: local
 ok(source.includes('p_empresa_id: entrada.empresaId'), 'RPC auditoría no recibe empresa');
 ok(source.includes('p_local_id: entrada.localId'), 'RPC auditoría no recibe local');
 
-ok(backend.live_validation.failed === 0 && backend.live_validation.passed === 15, 'backend live PM05 no está verde');
+ok(backend.live_validation_initial.failed === 0 && backend.live_validation_initial.passed === 15, 'validación inicial PM05 no está verde');
+ok(backend.live_validation_final.failed === 0 && backend.live_validation_final.passed === 18, 'validación final PM05 no está verde');
+ok(backend.live_validation_final.fixture === 'PM05-FINAL-v1', 'fixture final PM05 inesperado');
 ok(backend.pm04_negative_baseline_after_pm05.failed === 0 && backend.pm04_negative_baseline_after_pm05.passed === 5, 'baseline PM04 no quedó cerrado');
 ok(backend.production_touched === false, 'la evidencia indica producción modificada');
-ok(backend.temporary_validator.final_verify_jwt === true && backend.temporary_validator.final_behavior === '410 disabled', 'validador temporal no quedó neutralizado');
+ok(Array.isArray(backend.migrations) && backend.migrations.length === 3, 'migraciones PM05 incompletas');
+ok(backend.temporary_validator.final_version === 4 && backend.temporary_validator.final_verify_jwt === true && backend.temporary_validator.final_behavior === '410 disabled', 'validador temporal no quedó neutralizado');
+ok(backend.temporary_validator.temporary_users_remaining === 0, 'quedan usuarios temporales PM05');
+ok(backend.temporary_validator.temporary_audit_rows_remaining === 0, 'quedan auditorías temporales PM05');
+ok(backend.temporary_validator.temporary_proveedores_remaining === 0, 'quedan proveedores temporales PM05');
+ok(backend.temporary_validator.temporary_clientes_remaining === 0, 'quedan clientes temporales PM05');
 
 console.log('PM05_FRONTEND_CONTRACT_OK=1');
-console.log('PM05_BACKEND_LIVE_15_15=1');
+console.log('PM05_BACKEND_INITIAL_15_15=1');
+console.log('PM05_BACKEND_FINAL_18_18=1');
 console.log('PM05_PM04_NEGATIVOS_5_5=1');
