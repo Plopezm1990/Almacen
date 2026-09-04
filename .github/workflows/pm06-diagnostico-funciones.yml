@@ -19,17 +19,20 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          s=Path('source-recovery/fuente-recuperado.js').read_text(errors='ignore').splitlines()
-          pats=['function crearLogicaFacturasDirectas','function CuentasPorPagar','function Facturas','function crearLogicaAlbaranes']
-          for pat in pats:
-              found=False
-              for i,line in enumerate(s):
-                  if pat in line:
-                      found=True
-                      print(f'===== {pat} @ {i+1} =====')
-                      for j in range(i, min(len(s), i+180)):
-                          print(f'{j+1}: {s[j][:1000]}')
-                      break
-              if not found: print(f'===== {pat} NOT FOUND =====')
+          files=['source-recovery/fuente-recuperado.js','index.html']
+          pats=['function crearLogicaGastos','addGasto','deleteGasto','gastosGenerales','facturasDirectas','albaranes','CLAVES_CACHE_POR_USUARIO','TABLAS_EMPRESA','MAPA_TABLAS','almacen_kv']
+          for fn in files:
+              s=Path(fn).read_text(errors='ignore').splitlines()
+              print(f'######## FILE {fn} ########')
+              shown=0
+              for pat in pats:
+                  for i,line in enumerate(s):
+                      if pat in line:
+                          print(f'===== {pat} @ {i+1} =====')
+                          a=max(0,i-10); b=min(len(s),i+90)
+                          for j in range(a,b): print(f'{j+1}: {s[j][:1000]}')
+                          shown += 1
+                          break
+              print(f'PM06_HITS_{fn.replace("/","_")}={shown}')
           print('PM06_DIAGNOSTICO_BLOQUES_OK=1')
           PY
