@@ -102037,11 +102037,11 @@ function GestionAlmacen() {
     [productosDelLocalActivo]
   );
   const stockBajo = (0, import_react4.useMemo)(
-    () => productos.filter((p22) => p22.tipo !== "elaborado" && p22._pm07Servidor ? p22._pm07BajoMinimo === true : Number(p22.stock) < Number(p22.stockMinimo || 0)),
+    () => productos.filter((p22) => p22.tipo !== "elaborado" && (p22._pm07Servidor ? p22._pm07BajoMinimo === true : Number(p22.stock) < Number(p22.stockMinimo || 0))),
     [productos]
   );
   const stockBajoDelLocalActivo = (0, import_react4.useMemo)(
-    () => productosDelLocalActivo.filter((p22) => p22.tipo !== "elaborado" && p22._pm07Servidor ? p22._pm07BajoMinimo === true : Number(p22.stock) < Number(p22.stockMinimo || 0)),
+    () => productosDelLocalActivo.filter((p22) => p22.tipo !== "elaborado" && (p22._pm07Servidor ? p22._pm07BajoMinimo === true : Number(p22.stock) < Number(p22.stockMinimo || 0))),
     [productosDelLocalActivo]
   );
   const diagnosticoStock = (0, import_react4.useMemo)(() => diagnosticarStock(), [productos, movimientos]);
@@ -102637,7 +102637,7 @@ function GestionAlmacen() {
   const totalPendientePagoInforme = pendientesPagoInforme.reduce((a22, f22) => a22 + f22.total, 0);
   const valorInventarioInforme = productosInforme.filter((p22) => !esUtillaje(p22)).reduce((acc, p22) => acc + (Number(p22.stock) || 0) * Number(p22.costo || 0), 0);
   const valorUtillajeInforme = productosInforme.filter(esUtillaje).reduce((acc, p22) => acc + (Number(p22.stock) || 0) * Number(p22.costo || 0), 0);
-  const stockBajoInforme = productosInforme.filter((p22) => p22.tipo !== "elaborado" && p22._pm07Servidor ? p22._pm07BajoMinimo === true : Number(p22.stock) < Number(p22.stockMinimo || 0));
+  const stockBajoInforme = productosInforme.filter((p22) => p22.tipo !== "elaborado" && (p22._pm07Servidor ? p22._pm07BajoMinimo === true : Number(p22.stock) < Number(p22.stockMinimo || 0)));
   const productosConPrecioInforme = productosInforme.filter((p22) => Number(p22.precioVenta) > 0);
   const margenPromedioInforme = productosConPrecioInforme.length ? productosConPrecioInforme.reduce((acc, p22) => acc + (margenDe(p22) || 0), 0) / productosConPrecioInforme.length : 0;
   const pedidosPendientesInforme = pedidosInforme.filter((p22) => p22.estado !== "Recibido");
