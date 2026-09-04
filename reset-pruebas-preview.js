@@ -11,7 +11,10 @@
   var SUPABASE_QA_URL = "https://" + SUPABASE_QA_HOST;
   var SUPABASE_QA_KEY = "sb_publishable__PApb45EaLdiR4tGcXFrzQ_LtZcxqK8";
 
-  window.__modoPruebasLocal = true;
+  // Deploy Preview usa nube QA real. No debe marcarse a la vez como modo local,
+  // porque varias rutas funcionales interpretan __modoPruebasLocal=true como
+  // "sin sincronización" aunque el cliente Supabase esté conectado.
+  window.__modoPruebasLocal = false;
   window.__modoPruebasQA = true;
   window.__qaNubeUrl = SUPABASE_QA_URL;
   window.__qaNubeClave = SUPABASE_QA_KEY;
@@ -58,10 +61,9 @@
   }
 
   // Reinicio total del estado funcional local, una sola vez por navegador.
-  // v4: refresca el navegador QA después de preparar los fixtures cloud de PM-07,
-  // evitando que una caché/pending vacío creado antes de esos fixtures oculte
-  // los locales ya existentes en Supabase QA. Solo afecta a Deploy Preview.
-  var MARCADOR = "la_suite_reset_total_20260904_v4_qa";
+  // v5: corrige la doble marca QA+local y fuerza una hidratación limpia desde
+  // Supabase QA. Solo afecta a Deploy Preview; producción queda fuera por host.
+  var MARCADOR = "la_suite_reset_total_20260904_v5_qa";
   if (localStorage.getItem(MARCADOR) === "1") return;
 
   var claves = [];
@@ -80,5 +82,5 @@
 
   localStorage.setItem(MARCADOR, "1");
   window.__resetPruebasEjecutado = true;
-  window.__reinicioLocalSeguroVersion = "20260904-v4-qa";
+  window.__reinicioLocalSeguroVersion = "20260904-v5-qa";
 })();
