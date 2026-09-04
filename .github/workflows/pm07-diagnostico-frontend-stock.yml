@@ -1,0 +1,48 @@
+name: PM-07 diagnóstico frontend stock
+
+on:
+  push:
+    branches: [pm07-stock-reversos-ubicacion]
+    paths:
+      - '.github/workflows/pm07-diagnostico-frontend-stock.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostico:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extraer contextos de stock, TPV, traspasos y alertas
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('source-recovery/fuente-recuperado.js')
+          s=p.read_text(encoding='utf-8',errors='ignore')
+          patterns=[
+            'descontarStock','descontar_stock','stockActual','stock actual','stockTotal',
+            'traspas','TRASPAS','almacen','piso','kardex','Kardex','stockMinimo','stock mínimo',
+            'bajo stock','Stock bajo','ventaFinal','confirmarVenta','anularVenta','anular venta',
+            'movimientosStock','movimientos_stock','alertasStock','alertas stock'
+          ]
+          seen=[]
+          for pat in patterns:
+            start=0; n=0
+            while True:
+              i=s.lower().find(pat.lower(),start)
+              if i<0: break
+              n+=1
+              a=max(0,i-1200); b=min(len(s),i+2200)
+              key=(a,b)
+              if all(abs(a-x[0])>500 for x in seen):
+                seen.append(key)
+                print(f'===== {pat} OCC {n} CHAR {i} =====')
+                print(s[a:b])
+              start=i+len(pat)
+              if n>=8: break
+          print(f'PM07_CONTEXTOS={len(seen)}')
+          print('PM07_DIAGNOSTICO_FRONTEND_OK=1')
+          PY
