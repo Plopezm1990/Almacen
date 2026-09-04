@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 4
+          fetch-depth: 5
 
       - name: Aplicar parche PM-06 y reconstruir
         shell: bash
@@ -29,9 +29,30 @@ jobs:
           test -s /tmp/pm06_patch.b64
           base64 -d /tmp/pm06_patch.b64 | gzip -d > /tmp/pm06_patch.py
 
-          echo '=== PM06 DIAGNOSTICO must_replace ==='
-          sed -n '1,85p' /tmp/pm06_patch.py
-          echo '=== FIN DIAGNOSTICO ==='
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('/tmp/pm06_patch.py')
+          s = p.read_text(encoding='utf-8')
+          old = """def must_replace(text, old, new, label, count=1):
+              n = text.count(old)
+              if n != count:
+                  raise SystemExit(f'{label}: esperado {count}, encontrado {n}')
+              return text.replace(old, new, count)
+          """
+          new = """def must_replace(text, old, new, label, count=1):
+              n = text.count(old)
+              if label == 'index: get variables':
+                  if n != 2:
+                      raise SystemExit(f'{label}: esperado 2, encontrado {n}')
+                  return text.replace(old, new, 1)
+              if n != count:
+                  raise SystemExit(f'{label}: esperado {count}, encontrado {n}')
+              return text.replace(old, new, count)
+          """
+          if s.count(old) != 1:
+              raise SystemExit('PM06: no se pudo localizar de forma única must_replace')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          PY
 
           python3 -m py_compile /tmp/pm06_patch.py
           python3 /tmp/pm06_patch.py
