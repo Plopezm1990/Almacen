@@ -8,6 +8,7 @@ on:
       - 'fuente.js'
       - 'source-recovery/fuente-recuperado.js'
       - 'tests/pm05/**'
+      - 'docs/plan-maestro/PM05_*'
       - '.github/workflows/pm05-regresion.yml'
   pull_request:
     paths:
@@ -15,6 +16,7 @@ on:
       - 'fuente.js'
       - 'source-recovery/fuente-recuperado.js'
       - 'tests/pm05/**'
+      - 'docs/plan-maestro/PM05_*'
 
 permissions:
   contents: read
