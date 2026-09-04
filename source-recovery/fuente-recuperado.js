@@ -950,8 +950,10 @@ function GestionAlmacen() {
   }, [usuarioActivoId, ready]);
   (0, import_react4.useEffect)(() => {
     if (ready && !skipSaveRef.current) saveKey("facturasDirectas", facturasDirectas);
-  (0, import_react4.useEffect)(() => { if (ready) saveKey("pagosFacturas", pagosFacturas); }, [pagosFacturas, ready]);
   }, [facturasDirectas, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready) saveKey("pagosFacturas", pagosFacturas);
+  }, [pagosFacturas, ready]);
   (0, import_react4.useEffect)(() => {
     if (ready && !skipSaveRef.current) saveKey("entrevistas", entrevistas);
   }, [entrevistas, ready]);
