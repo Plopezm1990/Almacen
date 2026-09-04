@@ -14,23 +14,45 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Localizar ready y carga inicial PM-07
+      - name: Extraer cuerpos funcionales PM-07
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
+          import re
           s=Path('source-recovery/fuente-recuperado.js').read_text(encoding='utf-8',errors='ignore')
-          for pat in ['const [ready, setReady]', 'setReady(true)', 'if (!ready)', '[ready, localActivoId]', '[localActivoId, ready]', 'const [productos, setProductos]', 'const [movimientos, setMovimientos]']:
-            start=0;n=0
-            while True:
-              i=s.find(pat,start)
-              if i<0: break
-              n+=1
-              print(f'===== {pat} OCC {n} CHAR {i} =====')
-              print(s[max(0,i-2200):min(len(s),i+5000)])
-              start=i+len(pat)
-              if n>=10: break
-            print(f'PM07_COUNT {pat}={n}')
-          print('PM07_READY_CONTEXT_OK=1')
+          def block(name):
+            matches=list(re.finditer(r'(?:async\s+)?function\s+'+re.escape(name)+r'\s*\(',s))
+            print(f'PM07_FUNC_COUNT {name}={len(matches)}')
+            for num,m in enumerate(matches,1):
+              p=s.find('{',m.end())
+              if p<0: continue
+              depth=0; i=p; quote=None; esc=False; line=False; blockc=False
+              while i<len(s):
+                c=s[i]; n=s[i+1] if i+1<len(s) else ''
+                if line:
+                  if c=='\n': line=False
+                elif blockc:
+                  if c=='*' and n=='/': blockc=False; i+=1
+                elif quote:
+                  if esc: esc=False
+                  elif c=='\\': esc=True
+                  elif c==quote: quote=None
+                else:
+                  if c=='/' and n=='/': line=True; i+=1
+                  elif c=='/' and n=='*': blockc=True; i+=1
+                  elif c in ('"',"'",'`'): quote=c
+                  elif c=='{': depth+=1
+                  elif c=='}':
+                    depth-=1
+                    if depth==0:
+                      print(f'===== {name} #{num} INICIO =====')
+                      print(s[m.start():i+1])
+                      print(f'===== {name} #{num} FIN =====')
+                      break
+                i+=1
+          for name in ['venderCarrito','anularVenta','traspasarStock','traspasarEntreLocales','enviarAPisoDeVenta','submit','submitEntreLocales']:
+            block(name)
+          print('PM07_CUERPOS_EXACTOS_OK=1')
           PY
