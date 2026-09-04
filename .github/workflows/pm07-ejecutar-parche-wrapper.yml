@@ -27,8 +27,12 @@ jobs:
           bloque = src[inicio:]
           while bloque and not bloque[-1].strip():
               bloque.pop()
-          # El workflow original tiene un único bloque run y su contenido está indentado 10 espacios.
           script = '\n'.join((l[10:] if l.startswith('          ') else l) for l in bloque) + '\n'
+          viejo="if s.count(frag)!=1: raise SystemExit(f'PM07_DEFICIT_TPV_COUNT={s.count(frag)}')\ns=s.replace(frag,frag.replace('permitirDeficit: true','permitirDeficit: false'),1)"
+          nuevo="if s.count(frag)>1: raise SystemExit(f'PM07_DEFICIT_TPV_COUNT={s.count(frag)}')\nif s.count(frag)==1: s=s.replace(frag,frag.replace('permitirDeficit: true','permitirDeficit: false'),1)\nelse: print('PM07_DEFICIT_TPV_YA_CORREGIDO=1')"
+          if viejo not in script:
+              raise SystemExit('PM07_WRAPPER_SELECTOR_DEFICIT_NO_LOCALIZADO')
+          script = script.replace(viejo, nuevo, 1)
           Path('/tmp/pm07_payload.sh').write_text(script, encoding='utf-8')
           print('PM07_WRAPPER_PAYLOAD_LINES=', len(script.splitlines()))
           PY
