@@ -3058,7 +3058,12 @@ function crearLogicaReconciliacion({ productos, setProductos, movimientos, setMo
       const stockCache = Number(p2.stock) || 0;
       const deficitCache = Number(p2.deficitPendiente) || 0;
       const teoricoCache = stockCache - deficitCache;
-      const teoricoReal = movimientosDelProducto.filter((m2) => m2.origen !== "reconciliacionStock").filter((m2) => esMovimientoNuevo(m2) ? !!m2.afectaStockTotal : true).reduce((suma, m2) => suma + cantidadConSigno(m2), 0);
+      const teoricoHistorico = movimientosDelProducto.filter((m2) => m2.origen !== "reconciliacionStock").filter((m2) => esMovimientoNuevo(m2) ? !!m2.afectaStockTotal : true).reduce((suma, m2) => suma + cantidadConSigno(m2), 0);
+      // PM-07 cloud: stock_estado/stock_ubicacion es la fuente autoritativa. El historial servidor
+      // contiene deltas desde la adopcion de PM-07 y no parte necesariamente de stock cero, por
+      // lo que no puede usarse solo para reconstruir el saldo inicial. Evitamos falsos descuadres
+      // y cualquier reconciliacion local destructiva sobre stock ya confirmado por servidor.
+      const teoricoReal = p2._pm07Servidor ? teoricoCache : teoricoHistorico;
       const diferencia = Number((teoricoReal - teoricoCache).toFixed(4));
       const coincide = Math.abs(diferencia) < 0.01;
       const deficitReal = Math.max(0, -teoricoReal);
@@ -3097,6 +3102,7 @@ function crearLogicaReconciliacion({ productos, setProductos, movimientos, setMo
     const p2 = productos.find((pr) => pr.id === productoId);
     if (!p2) return { ok: false, error: "Producto no encontrado." };
     if (localActivoId && p2.localId !== localActivoId) return { ok: false, error: "El producto no pertenece al local activo." };
+    if (p2._pm07Servidor) return { ok: true, sinCambios: true, autoritativoServidor: true };
     const teoricoReal = calcularStockTeorico(productoId, "stock");
     const stockCache = Number(p2.stock) || 0;
     const deficitCache = Number(p2.deficitPendiente) || 0;

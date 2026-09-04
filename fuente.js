@@ -103904,7 +103904,8 @@ function crearLogicaReconciliacion({ productos, setProductos, movimientos, setMo
       const stockCache = Number(p22.stock) || 0;
       const deficitCache = Number(p22.deficitPendiente) || 0;
       const teoricoCache = stockCache - deficitCache;
-      const teoricoReal = movimientosDelProducto.filter((m22) => m22.origen !== "reconciliacionStock").filter((m22) => esMovimientoNuevo(m22) ? !!m22.afectaStockTotal : true).reduce((suma, m22) => suma + cantidadConSigno(m22), 0);
+      const teoricoHistorico = movimientosDelProducto.filter((m22) => m22.origen !== "reconciliacionStock").filter((m22) => esMovimientoNuevo(m22) ? !!m22.afectaStockTotal : true).reduce((suma, m22) => suma + cantidadConSigno(m22), 0);
+      const teoricoReal = p22._pm07Servidor ? teoricoCache : teoricoHistorico;
       const diferencia = Number((teoricoReal - teoricoCache).toFixed(4));
       const coincide = Math.abs(diferencia) < 0.01;
       const deficitReal = Math.max(0, -teoricoReal);
@@ -103943,6 +103944,7 @@ function crearLogicaReconciliacion({ productos, setProductos, movimientos, setMo
     const p22 = productos.find((pr) => pr.id === productoId);
     if (!p22) return { ok: false, error: "Producto no encontrado." };
     if (localActivoId && p22.localId !== localActivoId) return { ok: false, error: "El producto no pertenece al local activo." };
+    if (p22._pm07Servidor) return { ok: true, sinCambios: true, autoritativoServidor: true };
     const teoricoReal = calcularStockTeorico(productoId, "stock");
     const stockCache = Number(p22.stock) || 0;
     const deficitCache = Number(p22.deficitPendiente) || 0;

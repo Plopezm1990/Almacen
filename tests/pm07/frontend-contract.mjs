@@ -58,6 +58,8 @@ const checks = {
   submit_traspaso_async: s.includes('async function submit() {\n    const res = await traspasarStock('),
   submit_interlocal_async: s.includes('async function submitEntreLocales() {\n    const res = await traspasarEntreLocales('),
   envio_piso_async: s.includes('async function enviarAPisoDeVenta(orden)') && s.includes('await traspasarStock(productoId'),
+  reconciliacion_cloud_autoritativa: s.includes('const teoricoReal = p2._pm07Servidor ? teoricoCache : teoricoHistorico'),
+  reconciliacion_cloud_no_muta_local: s.includes('if (p2._pm07Servidor) return { ok: true, sinCambios: true, autoritativoServidor: true }'),
 };
 
 for (const [k, ok] of Object.entries(checks)) {
