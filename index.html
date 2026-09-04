@@ -5,8 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0C2714" />
 <title>L&amp;A Suite</title>
+<meta name="application-name" content="L&amp;A Suite" />
+<meta name="apple-mobile-web-app-title" content="L&amp;A Suite" />
 
-<link rel="manifest" href="manifest.json" />
+<link rel="manifest" href="manifest.json?v=la-suite-20260904" />
 <link rel="icon" type="image/svg+xml" href="la-suite-icon.svg" />
 <link rel="apple-touch-icon" href="la-suite-icon.svg" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -71,8 +73,12 @@
   window.NUBE_URL = NUBE_URL;
   window.NUBE_CLAVE = NUBE_CLAVE;
   window.ESPERA_NUBE_MS = ESPERA_NUBE_MS;
-  if (window.__modoPruebasLocal) {
-    // Deploy Preview: aislamiento total. No leer ni escribir Supabase.
+  if (window.__modoPruebasQA) {
+    // Deploy Preview: usar exclusivamente el proyecto Supabase de QA.
+    window.NUBE_URL = window.__qaNubeUrl || "";
+    window.NUBE_CLAVE = window.__qaNubeClave || "";
+  } else if (window.__modoPruebasLocal) {
+    // Modo de pruebas sin backend remoto, conservado como salvaguarda.
     window.NUBE_URL = "";
     window.NUBE_CLAVE = "";
   }

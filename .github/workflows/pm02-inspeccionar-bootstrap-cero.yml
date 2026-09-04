@@ -1,0 +1,25 @@
+name: PM-02 inspeccionar bootstrap cero
+
+on:
+  push:
+    branches: [reinicio-local-seguro]
+    paths:
+      - '.github/workflows/pm02-inspeccionar-bootstrap-cero.yml'
+      - 'fuente.js'
+
+permissions:
+  contents: read
+
+jobs:
+  inspeccionar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: reinicio-local-seguro
+      - name: Ver bloque exacto de carga y normalización
+        shell: bash
+        run: |
+          set -e
+          echo '=== BLOQUE 117497-117695 ==='
+          sed -n '117497,117695p' fuente.js
