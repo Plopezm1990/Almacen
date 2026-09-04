@@ -14,30 +14,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Localizar lógica de facturas pagos gastos
+      - name: Extraer funciones PM-06
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('source-recovery/fuente-recuperado.js')
-          s=p.read_text(errors='ignore').splitlines()
-          pats=['factura','Factura','facturas','pago','Pago','pagos','gasto','Gasto','gastos','proveedorId','localId','empresaId']
+          s=Path('source-recovery/fuente-recuperado.js').read_text(errors='ignore').splitlines()
+          pats=['function crearLogicaFacturasDirectas','marcarPagadaFacturaDirecta','addFacturaDirecta','updateFacturaDirecta','function CuentasPorPagar','function Facturas','marcarPagada(','crearLogicaAlbaranes','esFactura','numeroFactura','facturasDirectas.map','proveedorPorId(f2.proveedorId)']
           hits=[]
           for i,line in enumerate(s):
-              if any(x in line for x in pats):
-                  hits.append(i)
-          merged=[]
-          for i in hits[:400]:
-              a=max(0,i-2); b=min(len(s),i+3)
-              for j in range(a,b):
-                  merged.append(j)
-          seen=set()
-          count=0
-          for j in merged:
-              if j in seen: continue
-              seen.add(j)
-              print(f'{j+1}: {s[j][:500]}')
-              count += 1
-              if count>=900: break
-          print('PM06_DIAGNOSTICO_OK=1')
+              if any(x in line for x in pats): hits.append(i)
+          for n,i in enumerate(hits):
+              print(f'--- HIT {n+1} LINE {i+1}: {s[i][:300]}')
+              a=max(0,i-12); b=min(len(s),i+45)
+              for j in range(a,b): print(f'{j+1}: {s[j][:700]}')
+          print('PM06_DIAGNOSTICO_FUNCIONES_OK=1')
           PY
