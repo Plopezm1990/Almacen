@@ -1,0 +1,66 @@
+{
+  "package": "PM-05",
+  "environment": "L&A Suite QA",
+  "project_ref": "qjqorixtkilwsndqayyx",
+  "production_touched": false,
+  "live_validation_initial": {
+    "run_id": 33864746977,
+    "job_id": 100996926513,
+    "fixture": "PM05-RLS-v1",
+    "passed": 15,
+    "failed": 0
+  },
+  "live_validation_final": {
+    "run_id": 33865455179,
+    "job_id": 100999162388,
+    "fixture": "PM05-FINAL-v1",
+    "passed": 18,
+    "failed": 0,
+    "cases": [
+      "LA001 ownerA solo proveedor A",
+      "LA001 ownerB solo proveedor B",
+      "LA002 ownerA solo cliente A",
+      "LA002 ownerB solo cliente B",
+      "NR02 operador A1 proveedor A",
+      "NR02 inactivo no proveedores",
+      "NR02 inactivo no clientes",
+      "LA001 escritura A→B denegada",
+      "LA002 empresaId manipulada denegada",
+      "LA003 auditoría A se registra",
+      "LA003 ownerA ve auditoría A y actor estable",
+      "LA003 ownerB no ve auditoría A",
+      "LA003 cajero no obtiene vista auditoría",
+      "LA003 B no fabrica auditoría A",
+      "LA003 inactivo no registra auditoría",
+      "NR02 helper público antiguo no invocable",
+      "PM04 ownerA no ve marcador B en KV",
+      "PM04 A1 solo ve local A1 en KV"
+    ]
+  },
+  "pm04_negative_baseline_after_pm05": {
+    "passed": 5,
+    "failed": 0,
+    "checks": {
+      "ownerA_no_ve_proveedor_B": true,
+      "operatorA1_ve_A1_no_A2": true,
+      "operatorA1_no_ve_B1": true,
+      "ownerB_no_ve_proveedor_A": true,
+      "inactive_no_ve_business_rows": true
+    }
+  },
+  "migrations": [
+    "20260904104042 pm05_aislamiento_transversal",
+    "20260904104728 pm05_scope_almacen_kv_qa",
+    "20260904105337 pm05_hardening_helpers"
+  ],
+  "temporary_validator": {
+    "slug": "qa-pm05-validar-rls",
+    "final_version": 4,
+    "final_verify_jwt": true,
+    "final_behavior": "410 disabled",
+    "temporary_users_remaining": 0,
+    "temporary_audit_rows_remaining": 0,
+    "temporary_proveedores_remaining": 0,
+    "temporary_clientes_remaining": 0
+  }
+}

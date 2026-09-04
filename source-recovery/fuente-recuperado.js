@@ -1052,13 +1052,13 @@ function GestionAlmacen() {
     productoPorId,
     registrarAuditoria
   });
-  const { addProveedor, updateProveedor, deleteProveedor } = crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria });
+  const { addProveedor, updateProveedor, deleteProveedor } = crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addGasto, deleteGasto } = crearLogicaGastos({ setGastosGenerales, localActivoId });
   const { addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId });
   const { venderCarrito, venderLocal, anularVenta, venderLineas } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId });
-  const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria });
+  const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addEncargo, updateEncargo, deleteEncargo, entregarEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, setProductos, setMovimientos, venderLineas, localActivoId });
   const { traspasarStock, traspasarEntreLocales } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales });
   const { addArqueo, deleteArqueo } = crearLogicaCaja({ setArqueos, localActivoId });
@@ -1111,7 +1111,7 @@ function GestionAlmacen() {
   function registrarAuditoria(accion, detalle) {
     const empleadoActivo = usuarioActivoId ? empleados.find((e) => e.id === usuarioActivoId) : null;
     const usuario = modoEmpleado ? empleadoActivo ? empleadoActivo.nombre : "Empleado sin identificar" : "Propietario/a";
-    const entrada = { id: uid(), fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), usuario, accion, detalle };
+    const entrada = { id: uid(), fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), usuario, accion, detalle, empresaId: empresaDelLocalActivo?.id || null, localId: localActivoId || null };
     const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
     if (!hayConexion) {
       setAuditoria((s2) => [entrada, ...s2].slice(0, 500));
@@ -1127,7 +1127,9 @@ function GestionAlmacen() {
             p_accion: accion,
             p_detalle: detalle,
             p_fecha: entrada.fecha,
-            p_hora: entrada.hora
+            p_hora: entrada.hora,
+            p_empresa_id: entrada.empresaId,
+            p_local_id: entrada.localId
           }),
           new Promise((_2, reject) => setTimeout(() => reject(new Error("La auditor\xEDa tard\xF3 demasiado en responder")), 6e3))
         ]);
@@ -2252,12 +2254,15 @@ function GestionAlmacen() {
     return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setPendingRestore(null), title: "Restaurar respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-1", style: { color: C2.ink } }, pendingRestore.exportadoEl ? `Respaldo del ${new Date(pendingRestore.exportadoEl).toLocaleString("es-ES")}` : "Respaldo sin fecha registrada"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Formato ", pendingRestore.backupVersion || pendingRestore.version || "antiguo"), perdidas.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "\u26A0 Este respaldo tiene menos datos que lo que hay ahora"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2" }, "Al restaurarlo desaparecer\xEDa lo creado despu\xE9s. Se guardar\xE1 un punto de recuperaci\xF3n antes, por si te arrepientes."), perdidas.map((c2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: c2.clave, className: "text-[11.5px] mono" }, c2.nombre, ": ", c2.actual, " \u2192 ", c2.respaldo, " (", c2.diferencia, ")"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "Qu\xE9 contiene, comparado con ahora"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3 space-y-0.5", style: { color: C2.inkSoft } }, comparacion.map((c2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: c2.clave, className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", null, c2.nombre), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: c2.diferencia < 0 ? C2.red : C2.inkSoft } }, c2.actual, " \u2192 ", c2.respaldo)))), seConservan.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.bg, border: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]" }, "Este respaldo es anterior y no incluye: ", /* @__PURE__ */ import_react4.default.createElement("b", null, seConservan.join(", ")), ". Esos datos", /* @__PURE__ */ import_react4.default.createElement("b", null, " se conservan tal como est\xE1n ahora"), " \u2014 no se borran.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-4", style: { color: C2.red } }, "Restaurar sustituye lo que tengas cargado ahora por el contenido de este respaldo."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: confirmarRestauracion }, "Restaurar respaldo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setPendingRestore(null) }, "Cancelar")));
   })());
 }
-function crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria }) {
+function crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria, empresaId }) {
   function addProveedor(data) {
-    setProveedores((s2) => [...s2, { id: uid(), ...data }]);
+    if (!empresaId) return { ok: false, error: "Selecciona una empresa antes de crear el proveedor." };
+    const nuevo = { id: uid(), ...data, empresaId };
+    setProveedores((s2) => [...s2, nuevo]);
+    return { ok: true, proveedor: nuevo };
   }
   function updateProveedor(id, data) {
-    setProveedores((s2) => s2.map((p2) => p2.id === id ? { ...p2, ...data } : p2));
+    setProveedores((s2) => s2.map((p2) => p2.id === id && p2.empresaId === empresaId ? { ...p2, ...data, empresaId: p2.empresaId } : p2));
   }
   function deleteProveedor(id) {
     const p2 = proveedores.find((x3) => x3.id === id);
@@ -2620,14 +2625,15 @@ function crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovi
   }
   return { registrarDevolucionCliente, registrarDevolucionProveedor };
 }
-function crearLogicaClientes({ clientes, setClientes, registrarAuditoria }) {
+function crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId }) {
   function addCliente(data) {
-    const nuevo = { id: uid(), fechaAlta: todayISO(), ...data };
+    if (!empresaId) return null;
+    const nuevo = { id: uid(), fechaAlta: todayISO(), ...data, empresaId };
     setClientes((s2) => [...s2, nuevo]);
     return nuevo;
   }
   function updateCliente(id, data) {
-    setClientes((s2) => s2.map((c2) => c2.id === id ? { ...c2, ...data } : c2));
+    setClientes((s2) => s2.map((c2) => c2.id === id && c2.empresaId === empresaId ? { ...c2, ...data, empresaId: c2.empresaId } : c2));
   }
   function deleteCliente(id) {
     const c2 = clientes.find((x3) => x3.id === id);
