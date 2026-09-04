@@ -39,7 +39,6 @@ jobs:
           import re
           from pathlib import Path
           s = Path('fuente.js').read_text(encoding='utf-8')
-          host = 'flqercbgpgmmfaakrwkc.supabase.co'
           slugs = sorted(set(re.findall(r'flqercbgpgmmfaakrwkc\.supabase\.co/functions/v1/([A-Za-z0-9_-]+)', s)))
           print('RUTAS_DIRECTAS=' + ','.join(slugs))
           permitidas = {'importar-albaran','importar-nomina','entrevista-personal','prefiltro-candidato','enviar-notificacion','crear-cuenta-empleado'}
@@ -49,8 +48,9 @@ jobs:
           print('PM02_INVENTARIO_RUTAS_OK=1')
 
       - name: Probar barrera y redirección sin red productiva
-        shell: node
+        shell: bash
         run: |
+          node <<'NODE'
           const fs = require('fs');
           const vm = require('vm');
           const src = fs.readFileSync('reset-pruebas-preview.js','utf8');
@@ -72,8 +72,13 @@ jobs:
               fetch: async (input)=>{calls.push(String(input)); return {ok:true}}
             }
           };
-          ctx.window.window=ctx.window; ctx.window.localStorage=ctx.localStorage; ctx.window.URL=URL; ctx.window.Promise=Promise; ctx.window.console=console;
-          vm.createContext(ctx); vm.runInContext(src,ctx);
+          ctx.window.window=ctx.window;
+          ctx.window.localStorage=ctx.localStorage;
+          ctx.window.URL=URL;
+          ctx.window.Promise=Promise;
+          ctx.window.console=console;
+          vm.createContext(ctx);
+          vm.runInContext(src,ctx);
           if(!ctx.window.__modoPruebasQA) throw new Error('QA mode no activo');
           if(ctx.window.__qaNubeUrl!=='https://qjqorixtkilwsndqayyx.supabase.co') throw new Error('URL QA incorrecta');
           (async()=>{
@@ -86,6 +91,7 @@ jobs:
             console.log('PM02_REDIRECCION_EDGE_QA_OK=1');
             console.log('PM02_PRODUCCION_BLOQUEADA_OK=1');
           })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
 
       - name: Probar backend QA real
         shell: bash
