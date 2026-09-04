@@ -1,0 +1,101 @@
+name: PM-02 validar aislamiento real de Preview
+
+on:
+  push:
+    branches: [pm02-qa-isolation]
+    paths:
+      - .github/workflows/pm02-validar-preview.yml
+
+permissions:
+  contents: read
+
+jobs:
+  validar-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar navegador aislado
+        shell: bash
+        run: |
+          mkdir -p /tmp/pm02-browser
+          cd /tmp/pm02-browser
+          npm init -y >/dev/null 2>&1
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Probar alias e URL inmutable sin permitir tráfico a producción
+        shell: bash
+        run: |
+          cat > /tmp/pm02-browser/test-preview.mjs <<'EOF'
+          import { chromium } from 'playwright';
+
+          const PROD_HOST = 'flqercbgpgmmfaakrwkc.supabase.co';
+          const urls = [
+            'https://deploy-preview-13--chic-entremet-9107cf.netlify.app',
+            'https://6a9a7afd0fe79b0009cac69b--chic-entremet-9107cf.netlify.app'
+          ];
+
+          const browser = await chromium.launch({ headless: true });
+          const resultados = [];
+
+          try {
+            for (const url of urls) {
+              const context = await browser.newContext();
+              const intentosProd = [];
+
+              // Segunda barrera de seguridad del test: si la protección de la app fallara,
+              // Playwright aborta la petición antes de que salga a Internet.
+              await context.route(`https://${PROD_HOST}/**`, async route => {
+                intentosProd.push(route.request().url());
+                await route.abort('blockedbyclient');
+              });
+
+              const page = await context.newPage();
+              const errores = [];
+              page.on('pageerror', e => errores.push(String(e.message || e)));
+
+              const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+              if (!response || !response.ok()) throw new Error(`No carga ${url}: ${response?.status()}`);
+              await page.waitForTimeout(1200);
+
+              const flags = await page.evaluate(() => ({
+                modoPruebasLocal: window.__modoPruebasLocal === true,
+                fetchBloqueado: window.__qaFetchProduccionBloqueado === true,
+                nubeActiva: window.__nubeActiva === true
+              }));
+
+              if (!flags.modoPruebasLocal) throw new Error(`__modoPruebasLocal no activo en ${url}`);
+              if (!flags.fetchBloqueado) throw new Error(`bloqueo fetch no instalado en ${url}`);
+              if (flags.nubeActiva) throw new Error(`__nubeActiva sigue true en ${url}`);
+
+              // Prueba directa del wrapper. Si funciona, nunca alcanza context.route().
+              const bloqueo = await page.evaluate(async (host) => {
+                try {
+                  await fetch(`https://${host}/rest/v1/__pm02_probe`);
+                  return { bloqueado: false, mensaje: 'fetch resolvió inesperadamente' };
+                } catch (e) {
+                  return { bloqueado: true, mensaje: String(e?.message || e) };
+                }
+              }, PROD_HOST);
+
+              if (!bloqueo.bloqueado || !bloqueo.mensaje.includes('QA_BLOCKED_PRODUCTION_SUPABASE')) {
+                throw new Error(`El wrapper no bloqueó con el error esperado en ${url}: ${bloqueo.mensaje}`);
+              }
+              if (intentosProd.length !== 0) {
+                throw new Error(`Se alcanzó la capa de red hacia producción en ${url}: ${JSON.stringify(intentosProd)}`);
+              }
+
+              resultados.push({ url, flags, bloqueo, intentosProd, pageErrors: errores });
+              await context.close();
+            }
+          } finally {
+            await browser.close();
+          }
+
+          console.log(JSON.stringify(resultados, null, 2));
+          console.log('PM02_PREVIEW_ISOLATION_OK=1');
+          EOF
+
+          cd /tmp/pm02-browser
+          node test-preview.mjs | tee "$GITHUB_WORKSPACE/PM02_PREVIEW_EVIDENCIA.txt"
