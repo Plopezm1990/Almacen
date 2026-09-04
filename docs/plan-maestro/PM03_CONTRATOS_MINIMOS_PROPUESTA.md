@@ -3,7 +3,7 @@
 Fecha: 2026-09-04
 Rama: `pm03-contratos-minimos`
 Base: cierre PM-02 (`f6cd04d7b4616ccbaa1901e7ea0c6b97c0b2b72d`)
-Estado: **PM-03 EN CURSO · DEC-01 Y DEC-02 APROBADOS · DEC-03…05 PENDIENTES**
+Estado: **PM-03 EN CURSO · DEC-01, DEC-02 Y DEC-03 APROBADOS · DEC-04…05 PENDIENTES**
 Producción/main: **sin cambios**
 
 ## Objetivo
@@ -107,7 +107,7 @@ Inválido: traspasar 2 kg hacia un destino medido en unidades sin conversión de
 
 ---
 
-## DEC-03 · Operación sin conexión
+## DEC-03 · Operación sin conexión — APROBADO
 
 L&A Suite distingue dos modos.
 
@@ -115,20 +115,27 @@ L&A Suite distingue dos modos.
 - Un único dispositivo es la autoridad de trabajo.
 - Puede funcionar sin internet.
 - No promete sincronización con otros dispositivos ni concurrencia remota.
+- La interfaz debe diferenciar claramente `Guardado en este equipo` de `Sincronizado en la nube`.
 
 ### B. Modo sincronizado / multi-dispositivo
-- El backend es la autoridad para operaciones que pueden colisionar entre dispositivos.
-- Si no existe conexión confirmable, se pueden consultar datos locales y preparar borradores.
+- El backend es la autoridad para operaciones compartidas y operaciones que pueden colisionar entre dispositivos.
+- Si no existe conexión confirmable, se pueden consultar datos locales y preparar borradores, pero no se confirman mutaciones críticas.
 - Mientras no haya una política demostrada de reserva/sincronización, se bloquean en modo sincronizado las mutaciones críticas que podrían producir sobreventa o duplicidad: venta/stock, recepción, pago, devolución/reembolso, traspaso y cierre/arqueo con efectos compartidos.
+- Una operación crítica enviada al backend utiliza un `operationId` estable e idempotente.
 - Un timeout después de enviar una operación se resuelve consultando/reintentando con el mismo `operationId`; nunca ejecutando un segundo fallback independiente.
+- Reintentar el mismo `operationId` debe devolver/confirmar la misma operación, no duplicar venta, cobro, stock ni movimiento.
 
 ### Regla de comunicación
-La interfaz no puede afirmar `sincronizado/guardado en la cuenta` antes de confirmación. Si queda pendiente, debe decirlo.
+- La interfaz no puede afirmar `sincronizado/guardado en la cuenta` antes de confirmación real del backend.
+- Si queda pendiente, debe mostrarse como pendiente/no confirmado.
+- Un borrador local en modo sincronizado no equivale a una operación compartida confirmada.
 
 ### Ejemplos
 Válido: instalación local de un único equipo vende sin internet y guarda solo en ese equipo.
 Válido: modo sincronizado sin red permite preparar un borrador de pedido sin confirmarlo.
+Válido: una venta enviada cuyo resultado queda incierto por timeout se consulta/reintenta con el mismo `operationId`.
 Inválido: dos TPV sincronizados venden offline simultáneamente la última unidad y ambos se dan por confirmados.
+Inválido: tras un timeout se crea una segunda venta con otro identificador como fallback automático.
 
 ---
 
@@ -213,4 +220,4 @@ Todos los permisos se entienden dentro de empresas/locales expresamente autoriza
 
 ## Criterio de cierre PM-03
 
-PM-03 solo puede pasar a `CERRADO` cuando el usuario apruebe explícitamente DEC-01…05 o indique cambios concretos. DEC-01 y DEC-02 ya están aprobados. Tras aprobar DEC-03…05 se actualizará este documento a `APROBADO`, se registrará el commit final y se preparará PM-04. No se modifica lógica funcional durante PM-03.
+PM-03 solo puede pasar a `CERRADO` cuando el usuario apruebe explícitamente DEC-01…05 o indique cambios concretos. DEC-01, DEC-02 y DEC-03 ya están aprobados. Tras aprobar DEC-04 y DEC-05 se actualizará este documento a `APROBADO`, se registrará el commit final y se preparará PM-04. No se modifica lógica funcional durante PM-03.
