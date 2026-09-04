@@ -1,0 +1,43 @@
+name: PM-06 diagnostico facturas
+
+on:
+  push:
+    branches: [pm06-identidad-factura-pago-gasto]
+    paths:
+      - '.github/workflows/pm06-diagnostico-facturas.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostico:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Localizar lógica de facturas pagos gastos
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('source-recovery/fuente-recuperado.js')
+          s=p.read_text(errors='ignore').splitlines()
+          pats=['factura','Factura','facturas','pago','Pago','pagos','gasto','Gasto','gastos','proveedorId','localId','empresaId']
+          hits=[]
+          for i,line in enumerate(s):
+              if any(x in line for x in pats):
+                  hits.append(i)
+          merged=[]
+          for i in hits[:400]:
+              a=max(0,i-2); b=min(len(s),i+3)
+              for j in range(a,b):
+                  merged.append(j)
+          seen=set()
+          count=0
+          for j in merged:
+              if j in seen: continue
+              seen.add(j)
+              print(f'{j+1}: {s[j][:500]}')
+              count += 1
+              if count>=900: break
+          print('PM06_DIAGNOSTICO_OK=1')
+          PY
