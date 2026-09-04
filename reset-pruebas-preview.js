@@ -58,7 +58,10 @@
   }
 
   // Reinicio total del estado funcional local, una sola vez por navegador.
-  var MARCADOR = "la_suite_reset_total_20260904_v3_qa";
+  // v4: refresca el navegador QA después de preparar los fixtures cloud de PM-07,
+  // evitando que una caché/pending vacío creado antes de esos fixtures oculte
+  // los locales ya existentes en Supabase QA. Solo afecta a Deploy Preview.
+  var MARCADOR = "la_suite_reset_total_20260904_v4_qa";
   if (localStorage.getItem(MARCADOR) === "1") return;
 
   var claves = [];
@@ -77,5 +80,5 @@
 
   localStorage.setItem(MARCADOR, "1");
   window.__resetPruebasEjecutado = true;
-  window.__reinicioLocalSeguroVersion = "20260904-v3-qa";
+  window.__reinicioLocalSeguroVersion = "20260904-v4-qa";
 })();
