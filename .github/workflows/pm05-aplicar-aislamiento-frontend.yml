@@ -1,0 +1,50 @@
+name: PM-05 aplicar aislamiento frontend
+
+on:
+  push:
+    branches: [pm05-aislamiento-transversal]
+    paths:
+      - 'tools/pm05_aislamiento_frontend.py'
+      - '.github/workflows/pm05-aplicar-aislamiento-frontend.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pm05-aislamiento-transversal
+          fetch-depth: 0
+      - name: Aplicar parche de propiedad empresa
+        run: python3 tools/pm05_aislamiento_frontend.py
+      - name: Validar y reconstruir bundle
+        working-directory: source-recovery
+        run: |
+          npm ci --no-audit --no-fund
+          npm run check
+          rm -rf dist
+          npm run build
+          node --check dist/fuente.js
+          cp dist/fuente.js ../fuente.js
+      - name: Verificaciones PM-05
+        run: |
+          grep -q 'TABLAS_EMPRESA' index.html
+          grep -q 'proveedores_empresa' index.html
+          grep -q 'clientes_empresa' index.html
+          grep -q 'p_empresa_id' index.html
+          grep -q 'empresaId: empresaDelLocalActivo' source-recovery/fuente-recuperado.js
+          grep -q 'p_empresa_id: entrada.empresaId' source-recovery/fuente-recuperado.js
+          grep -q 'function crearLogicaProveedores' source-recovery/fuente-recuperado.js
+          grep -q 'function crearLogicaClientes' source-recovery/fuente-recuperado.js
+          echo 'PM05_FRONTEND_BUILD_OK=1'
+      - name: Guardar resultado generado
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html fuente.js source-recovery/fuente-recuperado.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'PM-05: aislar proveedores clientes y auditoria [skip ci]'
+          git push origin HEAD:pm05-aislamiento-transversal
