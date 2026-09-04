@@ -1,0 +1,32 @@
+name: PM-05 regresión aislamiento
+
+on:
+  push:
+    branches: [pm05-aislamiento-transversal]
+    paths:
+      - 'index.html'
+      - 'fuente.js'
+      - 'source-recovery/fuente-recuperado.js'
+      - 'tests/pm05/**'
+      - '.github/workflows/pm05-regresion.yml'
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'fuente.js'
+      - 'source-recovery/fuente-recuperado.js'
+      - 'tests/pm05/**'
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Contratos frontend/backend PM-05
+        run: node tests/pm05/frontend-contract.mjs
+      - name: Sintaxis de fuente recuperada
+        run: node --check source-recovery/fuente-recuperado.js
+      - name: Sintaxis del bundle
+        run: node --check fuente.js
