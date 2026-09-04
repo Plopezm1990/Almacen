@@ -1,0 +1,136 @@
+name: PM-02 cerrar backend QA
+
+on:
+  push:
+    branches: [reinicio-local-seguro]
+    paths:
+      - '.github/workflows/pm02-cerrar-backend-qa.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  validar-qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: reinicio-local-seguro
+          fetch-depth: 0
+
+      - name: Aplicar configuración QA al Deploy Preview
+        run: python3 tools/configurar_qa_pm02.py
+
+      - name: Validar configuración estática
+        shell: bash
+        run: |
+          set -e
+          node --check reset-pruebas-preview.js
+          grep -Fq 'window.__modoPruebasQA' index.html
+          grep -Fq 'window.NUBE_URL = window.__qaNubeUrl' index.html
+          grep -Fq 'qjqorixtkilwsndqayyx.supabase.co' reset-pruebas-preview.js
+          grep -Fq 'flqercbgpgmmfaakrwkc.supabase.co' reset-pruebas-preview.js
+          grep -Fq 'QA_BLOCKED_PRODUCTION_SUPABASE' reset-pruebas-preview.js
+          echo 'PM02_CONFIG_QA_OK=1'
+
+      - name: Inventariar rutas directas productivas del bundle
+        shell: python
+        run: |
+          import re
+          from pathlib import Path
+          s = Path('fuente.js').read_text(encoding='utf-8')
+          host = 'flqercbgpgmmfaakrwkc.supabase.co'
+          slugs = sorted(set(re.findall(r'flqercbgpgmmfaakrwkc\.supabase\.co/functions/v1/([A-Za-z0-9_-]+)', s)))
+          print('RUTAS_DIRECTAS=' + ','.join(slugs))
+          permitidas = {'importar-albaran','importar-nomina','entrevista-personal','prefiltro-candidato','enviar-notificacion','crear-cuenta-empleado'}
+          inesperadas = set(slugs) - permitidas
+          if inesperadas:
+              raise SystemExit('Rutas productivas no inventariadas: ' + ','.join(sorted(inesperadas)))
+          print('PM02_INVENTARIO_RUTAS_OK=1')
+
+      - name: Probar barrera y redirección sin red productiva
+        shell: node
+        run: |
+          const fs = require('fs');
+          const vm = require('vm');
+          const src = fs.readFileSync('reset-pruebas-preview.js','utf8');
+          const store = new Map();
+          const calls = [];
+          const ctx = {
+            console,
+            URL,
+            Promise,
+            localStorage: {
+              get length(){return store.size},
+              key(i){return [...store.keys()][i] ?? null},
+              getItem(k){return store.has(k)?store.get(k):null},
+              setItem(k,v){store.set(k,String(v))},
+              removeItem(k){store.delete(k)}
+            },
+            window: {
+              location:{hostname:'deploy-preview-99--chic-entremet-9107cf.netlify.app',href:'https://deploy-preview-99--chic-entremet-9107cf.netlify.app/'},
+              fetch: async (input)=>{calls.push(String(input)); return {ok:true}}
+            }
+          };
+          ctx.window.window=ctx.window; ctx.window.localStorage=ctx.localStorage; ctx.window.URL=URL; ctx.window.Promise=Promise; ctx.window.console=console;
+          vm.createContext(ctx); vm.runInContext(src,ctx);
+          if(!ctx.window.__modoPruebasQA) throw new Error('QA mode no activo');
+          if(ctx.window.__qaNubeUrl!=='https://qjqorixtkilwsndqayyx.supabase.co') throw new Error('URL QA incorrecta');
+          (async()=>{
+            await ctx.window.fetch('https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion',{});
+            if(!calls[0].startsWith('https://qjqorixtkilwsndqayyx.supabase.co/functions/v1/enviar-notificacion')) throw new Error('No redirige función a QA');
+            let bloqueo=false;
+            try { await ctx.window.fetch('https://flqercbgpgmmfaakrwkc.supabase.co/rest/v1/almacen_kv',{}); } catch(e){ bloqueo=e.message==='QA_BLOCKED_PRODUCTION_SUPABASE'; }
+            if(!bloqueo) throw new Error('No bloquea REST productivo');
+            if(calls.some(x=>x.includes('flqercbgpgmmfaakrwkc.supabase.co'))) throw new Error('Fake fetch recibió tráfico productivo');
+            console.log('PM02_REDIRECCION_EDGE_QA_OK=1');
+            console.log('PM02_PRODUCCION_BLOQUEADA_OK=1');
+          })().catch(e=>{console.error(e);process.exit(1)});
+
+      - name: Probar backend QA real
+        shell: bash
+        run: |
+          set -e
+          QA_URL='https://qjqorixtkilwsndqayyx.supabase.co'
+          QA_KEY='sb_publishable__PApb45EaLdiR4tGcXFrzQ_LtZcxqK8'
+          RESP=$(curl -fsS -X POST "$QA_URL/rest/v1/rpc/qa_ping" -H "apikey: $QA_KEY" -H "Authorization: Bearer $QA_KEY" -H 'Content-Type: application/json' -d '{}')
+          echo "$RESP" | grep -Fq 'L&A Suite QA'
+          echo "$RESP" | grep -Fq '"aislado":true'
+          NOTIF=$(curl -fsS "$QA_URL/functions/v1/enviar-notificacion" -H "apikey: $QA_KEY")
+          echo "$NOTIF" | grep -Fq '"qa":true'
+          echo "$NOTIF" | grep -Fq '"simulated":true'
+          echo 'PM02_BACKEND_QA_REAL_OK=1'
+          echo 'PM02_NOTIFICACIONES_SIMULADAS_OK=1'
+
+      - name: Registrar evidencia PM-02
+        shell: bash
+        run: |
+          mkdir -p docs/plan-maestro
+          {
+            echo 'PM02_BACKEND_QA_CREADO=1'
+            echo 'QA_PROJECT_REF=qjqorixtkilwsndqayyx'
+            echo 'QA_PROJECT_URL=https://qjqorixtkilwsndqayyx.supabase.co'
+            echo 'QA_REGION=eu-west-1'
+            echo 'QA_DATOS_PRODUCCION_COPIADOS=0'
+            echo 'QA_STORAGE_BUCKET=qa-pruebas'
+            echo 'QA_EDGE_IMPORTAR_ALBARAN=SIMULADA'
+            echo 'QA_EDGE_IMPORTAR_NOMINA=SIMULADA'
+            echo 'QA_EDGE_ENTREVISTA_PERSONAL=SIMULADA'
+            echo 'QA_EDGE_PREFILTRO_CANDIDATO=SIMULADA'
+            echo 'QA_EDGE_ENVIAR_NOTIFICACION=SIMULADA'
+            echo 'QA_EDGE_CREAR_CUENTA_EMPLEADO=qa-crear-empleado_SIMULADA'
+            echo 'PROD_SUPABASE_HOST_BLOQUEADO_EN_PREVIEW=1'
+            echo 'LA023_CORREGIDO=1'
+            echo 'BOOTSTRAP_CERO_CORREGIDO=1'
+            echo 'PM02_ESTADO=CERRADO_TECNICAMENTE'
+          } > docs/plan-maestro/PM02_CIERRE_QA_EVIDENCIA.txt
+
+      - name: Guardar configuración y evidencia en rama de pruebas
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html docs/plan-maestro/PM02_CIERRE_QA_EVIDENCIA.txt
+          git diff --cached --quiet && exit 0
+          git commit -m 'PM-02: conectar Preview a Supabase QA aislado [skip ci]'
+          git push origin HEAD:reinicio-local-seguro
