@@ -1,0 +1,31 @@
+name: PM-05 validar RLS QA
+
+on:
+  push:
+    branches: [pm05-aislamiento-transversal]
+    paths:
+      - '.github/workflows/pm05-validar-rls-qa.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ejecutar pruebas reales contra Supabase QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL='https://qjqorixtkilwsndqayyx.supabase.co/functions/v1/qa-pm05-validar-rls'
+          RESP=$(curl -fsS "$URL")
+          printf '%s\n' "$RESP" | tee /tmp/pm05-rls.json
+          python3 - <<'PY'
+          import json
+          d=json.load(open('/tmp/pm05-rls.json'))
+          assert d['fixture']=='PM05-RLS-v1'
+          assert d['failed']==0, d
+          assert d['passed']>=14, d
+          print('PM05_RLS_QA_OK=1')
+          print('PM05_RLS_PASSED=%s' % d['passed'])
+          PY
