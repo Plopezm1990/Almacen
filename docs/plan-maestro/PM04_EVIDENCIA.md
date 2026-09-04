@@ -1,10 +1,11 @@
-# PM-04 · Regresión y fixtures desde el inicio
+# PM-04 · Regresión y fixtures desde el inicio · CERRADO
 
 Fecha: 2026-09-04
 Rama: `pm04-regresion-fixtures`
 Base: cierre PM-03 `7cd75e9672d230ce88625b1a71d82d67d10771db`
 Entorno remoto: Supabase **L&A Suite QA** `qjqorixtkilwsndqayyx`
 Producción: **NO TOCADA**
+Estado: **PM-04 CERRADO**
 
 ## Objetivo del paquete
 
@@ -44,8 +45,7 @@ El bootstrap creó las cuentas mediante Auth Admin del proyecto QA, inició sesi
 
 ## Baseline automatizado de permisos
 
-GitHub Actions:
-- workflow temporal: `PM-04 bootstrap QA`;
+GitHub Actions, bootstrap one-shot:
 - run `33862997547`;
 - job `100991460072`;
 - conclusión: **success**.
@@ -62,13 +62,13 @@ Fallos reproducidos del baseline:
 4. Propietario B puede leer marcador de proveedor A.
 5. Perfil inactivo autenticado puede leer dato de negocio.
 
-Estos cinco resultados **NO se consideran corregidos**. Son exactamente la utilidad de PM-04: dejar pruebas que fallen antes de PM-05/PM-21 y deberán pasar después de endurecer propiedad/RLS/autorización.
+Estos cinco resultados **NO se consideran corregidos**. Son la evidencia “falla antes” exigida por PM-04 y quedan abiertos para PM-05/PM-21. PM-04 monta el fixture y la regresión; no endurece todavía la autorización transversal.
 
-La inspección previa de políticas explica el baseline sin convertir la hipótesis en cierre: `almacen_kv`, `movimientos_registro`, `auditoria_registro`, `fichajes_registro` y `errores_sistema` tienen en QA políticas `authenticated ... ALL` con `qual=true`. PM-05 deberá reemplazar el comportamiento permisivo por contratos compatibles con DEC-01 y probar ambos sentidos A/B y A1/A2.
+La inspección previa de políticas explica el baseline sin convertir la hipótesis en cierre: `almacen_kv`, `movimientos_registro`, `auditoria_registro`, `fichajes_registro` y `errores_sistema` tienen en QA políticas permisivas para `authenticated`. PM-05 deberá reemplazar ese comportamiento por contratos compatibles con DEC-01 y probar ambos sentidos A/B y A1/A2.
 
 ## Contratos de importes y movimientos
 
-El mismo run comprobó automáticamente cinco invariantes del fixture y todas pasaron:
+El bootstrap comprobó automáticamente cinco invariantes del fixture y todas pasaron:
 - total A1 = almacén + piso = 23;
 - 12 € IVA incluido al 10 % → base 10,91 €;
 - IVA = 1,09 €;
@@ -79,7 +79,7 @@ No se afirma aquí que la aplicación ya bloquee la venta 24/23: PM-04 fija el c
 
 ## Regresión persistente en repositorio
 
-Se añaden:
+Se añaden y conservan:
 - `tests/pm04/fixtures.json`;
 - `tests/pm04/contract-tests.mjs`;
 - `tests/pm04/baseline-results.json`;
@@ -88,13 +88,44 @@ Se añaden:
 
 El catálogo conserva los 25 hallazgos del Plan Maestro y los liga a su paquete PM y aceptación mínima. Los casos históricos anteriores siguen siendo evidencia histórica; no se vuelven a contabilizar como progreso por copiarlos.
 
-## Seguridad del bootstrap
+## Validación de la suite permanente
 
-El endpoint temporal `qa-pm04-bootstrap` se usó una vez para crear usuarios/fixtures y ejecutar el baseline. Tras la ejecución se desplegó una versión nueva con `verify_jwt=true` que responde `410 disabled`; no queda un bootstrap anónimo reutilizable. Las contraseñas aleatorias no se imprimieron ni guardaron en el repositorio.
+Workflow permanente: `PM-04 regresión base`.
 
-## Estado PM-04
+Validación sobre el paquete documentado:
+- run `33863264426`;
+- job `100992284672`;
+- SHA ejecutado `c971303d066ef1cf0bcd7e499f5dfc85e09206fb`;
+- conclusión: **success**.
 
-Pendiente únicamente de confirmar que la suite permanente `.github/workflows/pm04-regresion-base.yml` pasa sobre el HEAD final y de limpiar el workflow temporal de bootstrap. Después puede marcarse `PM-04 CERRADO`, manteniendo los cinco negativos como defectos abiertos asignados a PM-05/PM-21, no como fallo del propio PM-04.
+Pasaron:
+- contratos de fixtures;
+- catálogo completo LA-001…LA-025;
+- evidencia de baseline de permisos;
+- comprobación de `productionInteraction=false`.
+
+Tras este run solo se realizó limpieza del workflow temporal y documentación de cierre; no se alteraron fixtures ni lógica de las pruebas permanentes.
+
+## Seguridad y limpieza del bootstrap
+
+El endpoint temporal `qa-pm04-bootstrap` se usó una vez para crear usuarios/fixtures y ejecutar el baseline. Después se desplegó una versión nueva con `verify_jwt=true` que responde `410 disabled`; no queda un bootstrap anónimo reutilizable. Las contraseñas aleatorias no se imprimieron ni guardaron en el repositorio.
+
+El workflow temporal `.github/workflows/pm04-bootstrap-qa.yml` fue eliminado de la rama tras conservar su run y logs como evidencia. La suite permanente de regresión sí permanece.
+
+## Criterio de cierre
+
+PM-04 queda **CERRADO** porque:
+- existen A1/A2/A cerrado/B1 sintéticos en backend QA separado;
+- existen cinco identidades Auth QA separadas y login probado;
+- los datos son sintéticos e inequívocos y no proceden de producción;
+- existe catálogo de regresión LA-001…LA-025;
+- existe suite automática permanente para fixtures, importes, movimientos y baseline;
+- existe evidencia “antes” de cinco negativos de autorización que deberán pasar tras PM-05/PM-21;
+- la suite permanente ha pasado sobre un SHA identificado;
+- el bootstrap temporal quedó neutralizado y su workflow fue retirado;
+- no hubo interacción ni escritura de prueba en producción.
+
+`PM04_ESTADO=CERRADO`
 
 ## Rollback
 
