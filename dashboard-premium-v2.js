@@ -121,7 +121,7 @@ function loginRoot(){
 }
 function replaceBrand(){
   const loading=document.querySelector('#cargando .logo-suite');if(loading){loading.src=MASTER;loading.classList.add('la-brand-master')}
-  const lr=loginRoot();if(lr){const img=lr.querySelector('img');if(img){img.src=MASTER;img.alt='L&A Suite';img.classList.add('la-brand-master');img.style.width='min(72vw,300px)';img.style.height='auto'}}
+  const lr=loginRoot();if(lr){all('h1,h2,h3,strong,b,div,span',lr).forEach(el=>{if(el.children.length===0&&norm(el.textContent)==='chocoloyos')el.textContent='L&A Suite'});const img=lr.querySelector('img');if(img){img.src=MASTER;img.alt='L&A Suite';img.classList.add('la-brand-master');img.style.width='min(72vw,300px)';img.style.height='auto'}}
   all('aside img').forEach((img,i)=>{if(i===0){img.src=MASTER;img.alt='L&A Suite';img.classList.add('la-brand-master');img.style.maxHeight='150px'}});
   all('img').forEach(img=>{const alt=norm(img.getAttribute('alt'));const src=norm(img.getAttribute('src'));if(alt.includes('l&a suite')||src.includes('la-suite-logo')||src.includes('la-suite-icon')){const small=(img.width&&img.width<=48)||(img.style.width&&parseInt(img.style.width,10)<=48);img.src=small?ICON:MASTER;img.classList.add('la-brand-master')}});
 }
