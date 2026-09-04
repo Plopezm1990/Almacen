@@ -48,3 +48,5 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m 'PM-05: aislar proveedores clientes y auditoria [skip ci]'
           git push origin HEAD:pm05-aislamiento-transversal
+
+# Activación deliberada tras crear el workflow en la rama PM-05.
