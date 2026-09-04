@@ -1,14 +1,14 @@
-# PM-03 · Contratos mínimos · PROPUESTA PARA APROBACIÓN
+# PM-03 · Contratos mínimos · APROBADO
 
 Fecha: 2026-09-04
 Rama: `pm03-contratos-minimos`
 Base: cierre PM-02 (`f6cd04d7b4616ccbaa1901e7ea0c6b97c0b2b72d`)
-Estado: **PM-03 EN CURSO · DEC-01, DEC-02 Y DEC-03 APROBADOS · DEC-04…05 PENDIENTES**
+Estado: **PM-03 CERRADO · DEC-01…DEC-05 APROBADOS POR EL USUARIO**
 Producción/main: **sin cambios**
 
 ## Objetivo
 
-Cerrar DEC-01…DEC-05 antes de modificar la lógica funcional. Se elige la opción mínima compatible con el diseño actual de L&A Suite y con las decisiones ya documentadas. Ningún contrato de este documento autoriza por sí mismo una publicación ni una modificación de producción.
+Cerrar DEC-01…DEC-05 antes de modificar la lógica funcional. Estos contratos quedan congelados como criterio funcional y de seguridad para los siguientes paquetes del Plan Maestro. Ningún contrato de este documento autoriza por sí mismo una publicación ni una modificación de producción.
 
 ---
 
@@ -58,12 +58,6 @@ Un proveedor/cliente/producto de Empresa A puede estar disponible en A1 y A2, pe
 - No admite nuevas operaciones ordinarias.
 - Correcciones posteriores requieren un flujo específico, trazable y autorizado.
 
-### Ejemplos
-Válido: proveedor P-A pertenece a Empresa A y puede usarse en pedido A1 y A2.
-Inválido: proveedor P-A aparece, se selecciona o se modifica desde Empresa B.
-Válido: informe `Todos los locales` agrega A1+A2 para un Propietario A autorizado.
-Inválido: crear una venta desde `Todos los locales` sin destino local.
-
 ---
 
 ## DEC-02 · Stock, disponibilidad, unidades y reservas — APROBADO
@@ -78,68 +72,48 @@ Inválido: crear una venta desde `Todos los locales` sin destino local.
 - El stock consolidado de empresa es únicamente informativo; nunca se usa como stock vendible de un local.
 
 ### Unidades
-- Unidades indivisibles (ud, botella, pieza, caja cuando sea unidad de control): cantidades enteras positivas.
-- Unidades fraccionables (kg, g, l, ml u otras declaradas como fraccionables): decimales positivos con precisión definida por el producto/unidad.
+- Unidades indivisibles: cantidades enteras positivas.
+- Unidades fraccionables: decimales positivos con precisión definida por producto/unidad.
 - No se redondea una cantidad inválida a cero para aceptarla.
 - No se admite fraccionar una unidad indivisible salvo configuración expresa del producto.
 
 ### Reservas
 - No existe reserva implícita por abrir carrito, pedido, encargo o formulario.
-- Una reserva solo descuenta disponibilidad si existe un estado de reserva explícito, persistente, identificable e idempotente.
+- Una reserva solo descuenta disponibilidad si existe un estado explícito, persistente, identificable e idempotente.
 - Cuando existan reservas seguras: `disponible = stock físico - reservado`.
-- Hasta implementar reservas seguras, un carrito o formulario abierto no reduce existencias ni se considera stock reservado.
 
 ### Movimientos internos y traspasos
-- Dentro del local: mover almacén ↔ piso tiene efecto neto total 0 sobre el stock total.
-- Entre locales de una misma empresa: la operación es atómica; resta origen y suma destino como una sola operación lógica. Si falla cualquiera de las dos partes, no se confirma ninguna.
-- El producto pertenece al catálogo de la empresa y debe estar habilitado/configurado de forma compatible en el local destino.
-- Ambos locales deben pertenecer a la misma empresa y el usuario debe tener permiso sobre la operación.
-- Si la unidad no coincide, se bloquea salvo que exista una conversión explícita aprobada.
-- No existe excepción automática para permitir negativo. Una futura excepción necesitará decisión expresa y trazabilidad.
-
-### Ejemplos
-Válido: A1 tiene 23 disponibles; vender 2 → total 21.
-Inválido: A1 tiene 23 disponibles; vender 24 → rechazo completo, sin venta, cobro ni movimiento.
-Válido: mover 5 de almacén a piso → total del local no cambia.
-Válido: traspasar 4 unidades A1→A2 → A1 resta 4 y A2 suma 4 en una única operación confirmada.
-Inválido: A1 resta 4 pero A2 no recibe 4 y el sistema considera el traspaso completado.
-Inválido: traspasar 2 kg hacia un destino medido en unidades sin conversión definida.
+- Dentro del local: mover almacén ↔ piso tiene efecto neto total 0.
+- Entre locales de la misma empresa: operación atómica; resta origen y suma destino como una única operación lógica.
+- Si falla cualquiera de las dos partes, no se confirma ninguna.
+- Producto, empresa, local destino, permisos y unidades deben ser compatibles.
+- No existe excepción automática para permitir stock negativo.
 
 ---
 
 ## DEC-03 · Operación sin conexión — APROBADO
 
-L&A Suite distingue dos modos.
-
 ### A. Solo este equipo / local puro
 - Un único dispositivo es la autoridad de trabajo.
 - Puede funcionar sin internet.
 - No promete sincronización con otros dispositivos ni concurrencia remota.
-- La interfaz debe diferenciar claramente `Guardado en este equipo` de `Sincronizado en la nube`.
+- La interfaz diferencia `Guardado en este equipo` de `Sincronizado en la nube`.
 
 ### B. Modo sincronizado / multi-dispositivo
 - El backend es la autoridad para operaciones compartidas y operaciones que pueden colisionar entre dispositivos.
-- Si no existe conexión confirmable, se pueden consultar datos locales y preparar borradores, pero no se confirman mutaciones críticas.
-- Mientras no haya una política demostrada de reserva/sincronización, se bloquean en modo sincronizado las mutaciones críticas que podrían producir sobreventa o duplicidad: venta/stock, recepción, pago, devolución/reembolso, traspaso y cierre/arqueo con efectos compartidos.
-- Una operación crítica enviada al backend utiliza un `operationId` estable e idempotente.
-- Un timeout después de enviar una operación se resuelve consultando/reintentando con el mismo `operationId`; nunca ejecutando un segundo fallback independiente.
-- Reintentar el mismo `operationId` debe devolver/confirmar la misma operación, no duplicar venta, cobro, stock ni movimiento.
+- Sin conexión confirmable se pueden consultar datos locales y preparar borradores, pero no se confirman mutaciones críticas.
+- Se bloquean en modo sincronizado las mutaciones críticas que puedan producir sobreventa o duplicidad: venta/stock, recepción, pago, devolución/reembolso, traspaso y cierre/arqueo con efectos compartidos.
+- Toda operación crítica utiliza un `operationId` estable e idempotente.
+- Un timeout se resuelve consultando/reintentando con el mismo `operationId`; nunca creando un fallback independiente.
+- Reintentar el mismo `operationId` no duplica venta, cobro, stock ni movimiento.
 
 ### Regla de comunicación
 - La interfaz no puede afirmar `sincronizado/guardado en la cuenta` antes de confirmación real del backend.
 - Si queda pendiente, debe mostrarse como pendiente/no confirmado.
-- Un borrador local en modo sincronizado no equivale a una operación compartida confirmada.
-
-### Ejemplos
-Válido: instalación local de un único equipo vende sin internet y guarda solo en ese equipo.
-Válido: modo sincronizado sin red permite preparar un borrador de pedido sin confirmarlo.
-Válido: una venta enviada cuyo resultado queda incierto por timeout se consulta/reintenta con el mismo `operationId`.
-Inválido: dos TPV sincronizados venden offline simultáneamente la última unidad y ambos se dan por confirmados.
-Inválido: tras un timeout se crea una segunda venta con otro identificador como fallback automático.
 
 ---
 
-## DEC-04 · Dinero, devoluciones y documentos
+## DEC-04 · Dinero, devoluciones y documentos — APROBADO
 
 ### Venta / anulación
 - Una venta confirmada nunca se borra físicamente del historial.
@@ -147,52 +121,69 @@ Inválido: tras un timeout se crea una segunda venta con otro identificador como
 - Una venta ya anulada no puede además devolverse como si siguiera activa.
 
 ### Devoluciones
-- Devolución normal: debe vincularse a una venta y no puede superar cantidad/importe pendiente de devolver.
-- Reembolso negativo: siempre inválido y rechazo total.
-- Reembolso 0 €: permitido solo como flujo explícito `sin reembolso/cambio`, con motivo y trazabilidad; puede reponer stock si corresponde, pero no simula una devolución monetaria.
-- Sin ticket/venta identificable: en la primera release no se permite un reembolso monetario automático. Propietario/Encargado podrá registrar, si se implementa, una entrada de mercancía/ajuste excepcional con motivo y auditoría; cualquier devolución de dinero sin venta vinculada requiere una decisión/fiscalidad específica posterior.
+- Deben vincularse a una venta y no pueden superar cantidad/importe pendiente.
+- Reembolso negativo: inválido y rechazo total.
+- Reembolso 0 €: solo como flujo explícito `sin reembolso/cambio`, con motivo y trazabilidad.
+- Sin ticket/venta identificable: no se permite reembolso monetario automático en la primera release.
 
 ### Anticipos / encargos
-- Anticipo permitido: importe > 0 y ≤ total del encargo.
-- Cada anticipo/cobro queda ligado a empresa, local, encargo, medio de pago, fecha e identificador idempotente.
+- Importe > 0 y ≤ total pendiente del encargo.
+- Cada cobro conserva empresa, local, encargo, medio de pago, fecha e identificador idempotente.
 - `pendiente = total - cobros válidos acumulados`.
-- No se acepta cobrar por encima del pendiente salvo flujo de devolución/cambio explícito.
+- No se cobra por encima del pendiente salvo flujo explícito de devolución/cambio.
 
 ### Caja y pagos
-- Importes monetarios no pueden ser negativos salvo que el tipo de operación sea explícitamente una salida/reembolso y el modelo lo represente con signo/tipo controlado.
 - Entrada y Retirada son tipos distintos y afectan al efectivo esperado exactamente una vez.
-- Un pago repetido con el mismo identificador no duplica el efecto.
+- Un pago repetido con el mismo identificador no duplica efecto.
+- Los importes negativos solo son válidos cuando el tipo de operación lo representa expresamente como salida/reembolso controlado.
 
 ### Periodos cerrados
 - Un periodo cerrado no se reescribe con operaciones ordinarias.
-- Una corrección posterior se registra como reverso/ajuste trazable en el periodo permitido y enlazado al original.
+- Correcciones posteriores se registran como reverso/ajuste trazable y enlazado al original.
 
 ### Redondeo
-- Importes de presentación/documento: 2 decimales de euro.
+- Presentación/documento: 2 decimales de euro.
 - Cálculos internos pueden conservar mayor precisión.
-- Repartos de IVA/descuentos/devoluciones parciales deben usar un algoritmo determinista y reconciliar exactamente con el total del documento.
+- IVA, descuentos y devoluciones parciales deben reconciliar exactamente con el total del documento.
 
 ### Ámbito documental/fiscal habilitado ahora
 - El ticket del TPV sigue siendo `TICKET / RECIBO INTERNO`.
-- No se denomina ni se trata como `FACTURA SIMPLIFICADA` hasta completar numeración correlativa segura, identidad fiscal, pruebas y revisión del paquete fiscal correspondiente.
-- L&A Suite puede gestionar documentos y datos contables internos sin afirmar certificación fiscal que aún no haya sido validada.
-
-### Ejemplos
-Válido: encargo 20 €, anticipo 5 €, pendiente 15 €.
-Inválido: anticipo 25 € sobre total 20 €.
-Válido: devolución de 1 unidad de una venta activa de 2, con reembolso hasta el pendiente.
-Inválido: reembolso −5 € o devolver 3 unidades de una venta pendiente de 2.
+- No se denomina ni se trata como `FACTURA SIMPLIFICADA` hasta completar numeración correlativa segura, identidad fiscal, pruebas y revisión fiscal específica.
+- L&A Suite puede gestionar documentos internos sin afirmar certificación fiscal no validada.
 
 ---
 
-## DEC-05 · Alcance de release
+## DEC-05 · Alcance de release — APROBADO
 
-- Se mantienen en cobertura todos los módulos solicitados de L&A Suite; no se elimina trabajo silenciosamente.
-- No hay exclusiones aprobadas en este momento.
-- Un módulo que no supere seguridad/integridad no se presenta como terminado ni se deja operativo por defecto para `cumplir fecha`.
+- Se mantienen en cobertura todos los módulos previstos de L&A Suite; no se elimina trabajo silenciosamente.
+- Un módulo que no supere seguridad, aislamiento o integridad no se presenta como terminado ni se deja operativo por defecto para cumplir una fecha.
+- Cada módulo podrá clasificarse internamente como `APROBADO`, `EN CORRECCIÓN`, `BLOQUEADO` o `PENDIENTE`.
+- Un módulo con fallo crítico permanece en corrección o bloqueado hasta superar las pruebas correspondientes.
 - Cualquier piloto, exclusión o riesgo aceptado necesita decisión expresa del usuario, con impacto, alternativa y condición de salida.
-- La fiscalidad avanzada y la emisión como Factura Simplificada permanecen deshabilitadas hasta cumplir su contrato específico; esto es una limitación explícita, no una certificación pendiente escondida.
-- `GO` solo se considera cuando se superen las puertas del plan maestro; fusionar a `main` o publicar requiere autorización nueva y expresa.
+- La fiscalidad avanzada y la emisión como `FACTURA SIMPLIFICADA` permanecen deshabilitadas hasta cumplir su contrato específico.
+- `GO` solo se considera cuando se superen las puertas del Plan Maestro.
+- Fusionar a `main` o publicar requiere autorización nueva y expresa del usuario.
+
+### Alcance funcional que permanece dentro del proyecto
+- TPV y ventas.
+- Historial de ventas.
+- Caja y arqueos.
+- Inventario y stock.
+- Pedidos, compras y recepción.
+- Traspasos.
+- Proveedores y clientes.
+- Encargos.
+- Personal, fichajes y turnos.
+- Nóminas.
+- APPCC y controles operativos.
+- Gastos.
+- Informes.
+- Auditoría.
+- Multiempresa y multilocal.
+- Roles y permisos.
+- Importaciones con IA.
+- Notificaciones.
+- Fiscalidad prevista.
 
 ---
 
@@ -201,11 +192,11 @@ Inválido: reembolso −5 € o devolver 3 unidades de una venta pendiente de 2.
 Todos los permisos se entienden dentro de empresas/locales expresamente autorizados.
 
 - **Propietario**: administración completa, empresa/local, configuración, auditoría, datos financieros y laborales, altas de cuentas permitidas y operaciones sensibles.
-- **Encargado**: operativa amplia; gestión diaria, movimientos/fichajes y funciones asignadas. No obtiene automáticamente privilegios exclusivos de Propietario ni acceso indiscriminado a datos sensibles que su función no requiera.
-- **Cajero/a**: TPV/caja, arqueos, devoluciones y movimientos de caja dentro de su local; datos reducidos de clientes/proveedores cuando sean necesarios. Sin nóminas, auditoría global ni administración de empresa.
-- **Churrero/a**: producción, pedidos/recepción, conteos, aceite/APPCC y operativa necesaria del local. Sin datos financieros completos, nóminas ni información personal innecesaria.
-- **Camarero/a**: operativa de sala/TPV que le sea asignada y fichaje propio; sin nóminas, gastos, auditoría ni administración.
-- **Básico**: solo las funciones comunes explícitamente habilitadas; sin acceso sensible ni mutaciones privilegiadas.
+- **Encargado**: operativa amplia y gestión diaria; no obtiene automáticamente privilegios exclusivos de Propietario ni acceso indiscriminado a datos sensibles.
+- **Cajero/a**: TPV/caja, arqueos, devoluciones y movimientos de caja dentro de su local; sin nóminas, auditoría global ni administración de empresa.
+- **Churrero/a**: producción, pedidos/recepción, conteos, aceite/APPCC y operativa necesaria del local; sin datos financieros completos ni nóminas.
+- **Camarero/a**: operativa de sala/TPV asignada y fichaje propio; sin nóminas, gastos, auditoría ni administración.
+- **Básico**: solo funciones comunes explícitamente habilitadas; sin acceso sensible ni mutaciones privilegiadas.
 - **Inactivo**: sin acceso funcional aunque conserve un token previo; la sesión debe bloquearse/expulsarse.
 
 ## Relaciones siempre inválidas
@@ -218,6 +209,8 @@ Todos los permisos se entienden dentro de empresas/locales expresamente autoriza
 - Reintento con mismo `operationId` y contenido distinto.
 - Operación crítica marcada como confirmada si solo existe localmente en un modo que exige confirmación remota.
 
-## Criterio de cierre PM-03
+## Cierre PM-03
 
-PM-03 solo puede pasar a `CERRADO` cuando el usuario apruebe explícitamente DEC-01…05 o indique cambios concretos. DEC-01, DEC-02 y DEC-03 ya están aprobados. Tras aprobar DEC-04 y DEC-05 se actualizará este documento a `APROBADO`, se registrará el commit final y se preparará PM-04. No se modifica lógica funcional durante PM-03.
+DEC-01, DEC-02, DEC-03, DEC-04 y DEC-05 han sido aprobados expresamente por el usuario el 2026-09-04. PM-03 queda **CERRADO**. No se ha modificado lógica funcional, `main` ni producción durante este paquete.
+
+El siguiente paquete del Plan Maestro es PM-04, pero no se inicia automáticamente desde este cierre.
