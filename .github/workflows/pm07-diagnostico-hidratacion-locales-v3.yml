@@ -1,26 +1,80 @@
-name: PM07 diagnostico hidratacion locales v3
+name: PM07 aplicar fix hidratacion locales
 on:
   push:
     branches: [pm07-stock-reversos-ubicacion]
     paths:
       - '.github/workflows/pm07-diagnostico-hidratacion-locales-v3.yml'
 permissions:
-  contents: read
+  contents: write
 jobs:
-  diagnostico:
+  aplicar:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Trazar carga y sobrescritura de locales
+        with:
+          fetch-depth: 0
+      - name: Corregir hidratación cloud tras login
         shell: bash
         run: |
           set -euo pipefail
-          SRC=source-recovery/fuente-recuperado.js
-          echo '=== TODAS LAS REFERENCIAS loadKey locales/empresas/localActivo ==='
-          grep -n -B25 -A55 -E 'loadKey\("(locales|empresas|localActivoId)"|setLocales\(|setEmpresas\(|setLocalActivoId\(' "$SRC" | head -n 1800 || true
-          echo '=== READY / CARGA INICIAL ==='
-          grep -n -B40 -A140 -E 'setReady\(|Promise\.all\(|async function cargar|const cargar|function cargar' "$SRC" | head -n 2200 || true
-          echo '=== EMPRESAS Y LOCALES UI ==='
-          grep -n -B30 -A100 -E 'Empresas y locales|Añadir local nuevo|Ficha de empresa|localesEmpresaActiva' "$SRC" | head -n 1600 || true
-          echo '=== RESET PREVIEW ==='
-          cat reset-pruebas-preview.js
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('source-recovery/fuente-recuperado.js')
+          s=p.read_text()
+          anchor='function SelectorLocalInformes({ locales = [], valor = "", onChange }) {'
+          if 'async function sincronizarContextoPm07' not in s:
+              helper='''async function sincronizarContextoPm07({ setEmpresas, setLocales, setLocalActivoId, setProductos }) {
+  if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return { ok: false, offline: true };
+  const supabase = await window.getSupabaseClient();
+  const r = await supabase.from("almacen_kv").select("key,value").in("key", ["empresas", "locales", "localActivoId", "productos"]);
+  if (r.error) throw r.error;
+  const porClave = new Map((r.data || []).map((fila) => [fila.key, fila.value]));
+  const empresasNube = porClave.get("empresas");
+  const localesNube = porClave.get("locales");
+  const localActivoNube = porClave.get("localActivoId");
+  const productosNube = porClave.get("productos");
+  if (Array.isArray(empresasNube) && empresasNube.length && typeof setEmpresas === "function") setEmpresas(empresasNube.filter((e) => e && e.id));
+  if (Array.isArray(localesNube) && localesNube.length && typeof setLocales === "function") setLocales(localesNube.filter((l) => l && l.id));
+  if (typeof localActivoNube === "string" && localActivoNube && typeof setLocalActivoId === "function") setLocalActivoId(localActivoNube);
+  if (Array.isArray(productosNube) && productosNube.length && typeof setProductos === "function") setProductos(productosNube.filter((p) => p && p.id));
+  return { ok: true, empresas: Array.isArray(empresasNube) ? empresasNube.length : 0, locales: Array.isArray(localesNube) ? localesNube.length : 0, productos: Array.isArray(productosNube) ? productosNube.length : 0 };
+}
+
+'''
+              if anchor not in s: raise SystemExit('anchor helper no encontrado')
+              s=s.replace(anchor, helper+anchor, 1)
+          old='''      try {
+        await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
+      } catch (e) {
+        if (activo) console.error("PM-07: no se pudo sincronizar stock autoritativo", e);
+      }'''
+          new='''      try {
+        await sincronizarContextoPm07({ setEmpresas, setLocales, setLocalActivoId, setProductos });
+        await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
+      } catch (e) {
+        if (activo) console.error("PM-07: no se pudo sincronizar contexto/stock autoritativo", e);
+      }'''
+          if old in s:
+              s=s.replace(old,new,1)
+          elif 'await sincronizarContextoPm07({ setEmpresas, setLocales' not in s:
+              raise SystemExit('anchor efecto no encontrado')
+          p.write_text(s)
+          PY
+          bash reconstruir.sh
+          node --check source-recovery/fuente-recuperado.js
+          node --check fuente.js
+          node tests/pm07/frontend-contract.mjs
+          git diff --check
+      - name: Commit y push
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add source-recovery/fuente-recuperado.js fuente.js
+          if git diff --cached --quiet; then
+            echo 'Sin cambios funcionales'
+            exit 0
+          fi
+          git commit -m 'PM07 fix: hidratar empresa y locales desde cloud tras login'
+          git push origin HEAD:pm07-stock-reversos-ubicacion
