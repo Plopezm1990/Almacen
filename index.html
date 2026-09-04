@@ -73,8 +73,12 @@
   window.NUBE_URL = NUBE_URL;
   window.NUBE_CLAVE = NUBE_CLAVE;
   window.ESPERA_NUBE_MS = ESPERA_NUBE_MS;
-  if (window.__modoPruebasLocal) {
-    // Deploy Preview: aislamiento total. No leer ni escribir Supabase.
+  if (window.__modoPruebasQA) {
+    // Deploy Preview: usar exclusivamente el proyecto Supabase de QA.
+    window.NUBE_URL = window.__qaNubeUrl || "";
+    window.NUBE_CLAVE = window.__qaNubeClave || "";
+  } else if (window.__modoPruebasLocal) {
+    // Modo de pruebas sin backend remoto, conservado como salvaguarda.
     window.NUBE_URL = "";
     window.NUBE_CLAVE = "";
   }
