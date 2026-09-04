@@ -2,8 +2,9 @@
   "use strict";
 
   // Este reinicio existe SOLO para los Deploy Preview de L&A Suite.
+  // Cubre tanto el alias deploy-preview-N como el permalink inmutable del deploy.
   // Producción y cualquier otro dominio quedan fuera por diseño.
-  var HOST_PREVIEW = /^deploy-preview-\d+--chic-entremet-9107cf\.netlify\.app$/i;
+  var HOST_PREVIEW = /^(?:deploy-preview-\d+|[a-f0-9]{24})--chic-entremet-9107cf\.netlify\.app$/i;
   if (typeof window === "undefined" || !HOST_PREVIEW.test(window.location.hostname)) return;
 
   // Mientras se prueba desde el Preview, la aplicación debe permanecer
