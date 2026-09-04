@@ -14,23 +14,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Localizar call sites PM-07
+      - name: Localizar ready y carga inicial PM-07
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
           s=Path('source-recovery/fuente-recuperado.js').read_text(encoding='utf-8',errors='ignore')
-          for pat in ['traspasarStock(', 'traspasarEntreLocales(', 'venderCarrito(', 'anularVenta(', 'cantidadConSigno(', 'function esVenta(', 'const stockBajo =', 'const stockBajoDelLocalActivo =']:
+          for pat in ['const [ready, setReady]', 'setReady(true)', 'if (!ready)', '[ready, localActivoId]', '[localActivoId, ready]', 'const [productos, setProductos]', 'const [movimientos, setMovimientos]']:
             start=0;n=0
             while True:
               i=s.find(pat,start)
               if i<0: break
               n+=1
               print(f'===== {pat} OCC {n} CHAR {i} =====')
-              print(s[max(0,i-1800):min(len(s),i+3500)])
+              print(s[max(0,i-2200):min(len(s),i+5000)])
               start=i+len(pat)
-              if n>=12: break
+              if n>=10: break
             print(f'PM07_COUNT {pat}={n}')
-          print('PM07_CALLSITES_OK=1')
+          print('PM07_READY_CONTEXT_OK=1')
           PY
