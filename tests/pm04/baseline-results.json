@@ -1,0 +1,24 @@
+{
+  "fixture":"PM04-v1",
+  "runId":33862997547,
+  "jobId":100991460072,
+  "environment":"Supabase L&A Suite QA / qjqorixtkilwsndqayyx",
+  "usersCreated":5,
+  "permissionCases":8,
+  "permissionPass":3,
+  "permissionFail":5,
+  "contractPass":5,
+  "contractFail":0,
+  "permissionResults":[
+    {"case":"P-A ownerA ve proveedor A","expectedRows":1,"actualRows":1,"pass":true},
+    {"case":"N-A/B ownerA no ve proveedor B","expectedRows":0,"actualRows":1,"pass":false},
+    {"case":"P-A1 operador A1 ve A1","expectedRows":1,"actualRows":1,"pass":true},
+    {"case":"N-A1/A2 operador A1 no ve A2","expectedRows":0,"actualRows":1,"pass":false},
+    {"case":"N-A1/B operador A1 no ve B1","expectedRows":0,"actualRows":1,"pass":false},
+    {"case":"P-B ownerB ve proveedor B","expectedRows":1,"actualRows":1,"pass":true},
+    {"case":"N-B/A ownerB no ve proveedor A","expectedRows":0,"actualRows":1,"pass":false},
+    {"case":"N-INACTIVO no lee negocio","expectedRows":0,"actualRows":1,"pass":false}
+  ],
+  "interpretation":"Los 5 fallos son baseline reproducido y quedan abiertos para PM-05/PM-21. PM-04 no los corrige ni los marca como validados.",
+  "productionInteraction":false
+}
