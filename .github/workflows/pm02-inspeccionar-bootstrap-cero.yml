@@ -1,0 +1,31 @@
+name: PM-02 inspeccionar bootstrap cero
+
+on:
+  push:
+    branches: [reinicio-local-seguro]
+    paths:
+      - '.github/workflows/pm02-inspeccionar-bootstrap-cero.yml'
+      - 'fuente.js'
+
+permissions:
+  contents: read
+
+jobs:
+  inspeccionar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: reinicio-local-seguro
+      - name: Buscar inicializaciones que reconstruyen datos
+        shell: bash
+        run: |
+          set -e
+          echo '=== historialRespaldos ==='
+          grep -n -C 8 'historialRespaldos' fuente.js | head -n 220 || true
+          echo '=== localActivoId ==='
+          grep -n -C 10 'localActivoId' fuente.js | head -n 260 || true
+          echo '=== locales ==='
+          grep -n -C 8 'storage.*locales\|"locales"\|locales:' fuente.js | head -n 300 || true
+          echo '=== temaOscuro ==='
+          grep -n -C 6 'temaOscuro' fuente.js | head -n 160 || true
