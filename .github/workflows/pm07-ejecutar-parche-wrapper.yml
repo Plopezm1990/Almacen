@@ -1,0 +1,35 @@
+name: PM-07 ejecutar parche frontend
+
+on:
+  push:
+    branches: [pm07-stock-reversos-ubicacion]
+    paths:
+      - '.github/workflows/pm07-ejecutar-parche-wrapper.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 5
+      - name: Ejecutar payload PM-07 del workflow original
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('.github/workflows/pm07-aplicar-frontend-stock.yml').read_text(encoding='utf-8').splitlines()
+          inicio = next(i for i,l in enumerate(src) if l.strip() == 'run: |') + 1
+          bloque = src[inicio:]
+          while bloque and not bloque[-1].strip():
+              bloque.pop()
+          # El workflow original tiene un único bloque run y su contenido está indentado 10 espacios.
+          script = '\n'.join((l[10:] if l.startswith('          ') else l) for l in bloque) + '\n'
+          Path('/tmp/pm07_payload.sh').write_text(script, encoding='utf-8')
+          print('PM07_WRAPPER_PAYLOAD_LINES=', len(script.splitlines()))
+          PY
+          bash /tmp/pm07_payload.sh
