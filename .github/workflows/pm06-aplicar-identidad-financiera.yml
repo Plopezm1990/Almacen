@@ -15,80 +15,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 10
-
-      - name: Aplicar parche PM-06 y reconstruir
+          fetch-depth: 12
+      - name: Diagnosticar useEffect pagos PM-06
         shell: bash
         run: |
           set -euo pipefail
-
           git show 9860ccb7a88a1a98a02bf79295cdfafd653b1090:.github/workflows/pm06-aplicar-identidad-financiera.yml \
-            | awk '/^H4sI/{capture=1} capture{if ($0=="B64") exit; print}' \
-            > /tmp/pm06_patch.b64
-          test -s /tmp/pm06_patch.b64
+            | awk '/^H4sI/{capture=1} capture{if ($0=="B64") exit; print}' > /tmp/pm06_patch.b64
           base64 -d /tmp/pm06_patch.b64 | gzip -d > /tmp/pm06_patch.py
-
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('/tmp/pm06_patch.py')
-          s = p.read_text(encoding='utf-8')
-
-          old_fn = """def must_replace(text, old, new, label, count=1):
-              n = text.count(old)
-              if n != count:
-                  raise SystemExit(f'{label}: esperado {count}, encontrado {n}')
-              return text.replace(old, new, count)
-          """
-          new_fn = """def must_replace(text, old, new, label, count=1):
-              n = text.count(old)
-              if label == 'index: get variables':
-                  if n != 2:
-                      raise SystemExit(f'{label}: esperado 2, encontrado {n}')
-                  return text.replace(old, new, 1)
-              if n != count:
-                  raise SystemExit(f'{label}: esperado {count}, encontrado {n}')
-              return text.replace(old, new, count)
-          """
-          if s.count(old_fn) != 1:
-              raise SystemExit('PM06: must_replace no localizado de forma única')
-          s = s.replace(old_fn, new_fn, 1)
-
-          old_pat = "pat_limpio = r'    const limpio = \\{ \\.\\.\\.limpioBase, localId: limpioBase\\.localId \\|\\| localActivoId \\|\\| null \\};'"
-          new_pat = "pat_limpio = r'    const limpio = \\{ \\.\\.\\.limpioBase, localId: limpioBase\\.localId \\|\\| \\(idsLocalesLineas\\.length === 1 \\? idsLocalesLineas\\[0\\] : null\\) \\|\\| localActivoId \\|\\| null \\};'"
-          if s.count(old_pat) != 1:
-              raise SystemExit('PM06: selector guardar albarán no localizado de forma única')
-          s = s.replace(old_pat, new_pat, 1)
-
-          old_export = "src = must_replace(src, 'Proveedor: prov ? prov.nombre : \"—\",', 'Proveedor: a2.proveedorSnapshot?.nombre || (prov ? prov.nombre : \"—\"),', 'source: export snapshot proveedor')"
-          new_export = "src = must_replace(src, 'Proveedor: prov ? prov.nombre : \"\\\\u2014\",', 'Proveedor: a2.proveedorSnapshot?.nombre || (prov ? prov.nombre : \"\\\\u2014\"),', 'source: export snapshot proveedor')"
-          if s.count(old_export) != 1:
-              raise SystemExit('PM06: selector export proveedor no localizado de forma única')
-          s = s.replace(old_export, new_export, 1)
-
-          p.write_text(s, encoding='utf-8')
-          PY
-
-          python3 -m py_compile /tmp/pm06_patch.py
-          python3 /tmp/pm06_patch.py
-
-          cd source-recovery
-          npm ci
-          npm run build
-          cp dist/fuente.js ../fuente.js
-          cd ..
-
-          node --check source-recovery/fuente-recuperado.js
-          node --check fuente.js
-
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add index.html source-recovery/fuente-recuperado.js fuente.js
-
-          if git diff --cached --quiet; then
-            echo 'PM06_APPLY_NO_CHANGES=1'
-          else
-            git commit -m 'PM-06: aplicar identidad documental y pagos idempotentes'
-            git push
-          fi
-
-          echo 'PM06_APPLY_OK=1'
+          grep -n -C 18 -E 'save pagos|pagosFacturas.*ready|saveKey\("pagosFacturas"' /tmp/pm06_patch.py || true
+          exit 1
