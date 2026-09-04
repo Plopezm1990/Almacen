@@ -1,0 +1,20 @@
+name: Validar reinicio local seguro
+
+on:
+  push:
+    branches: [reinicio-local-seguro]
+    paths:
+      - reset-pruebas-preview.js
+      - .github/scripts/validar-reinicio-local-seguro.mjs
+      - .github/workflows/validar-reinicio-local-seguro.yml
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar borrado total local y protección de producción
+        run: node .github/scripts/validar-reinicio-local-seguro.mjs
