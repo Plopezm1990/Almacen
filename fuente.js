@@ -101205,6 +101205,60 @@ async function saveKey(key, value) {
     }
   }
 }
+async function sincronizarStockPm07({ setProductos, setMovimientos, localActivoId = null }) {
+  if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return { ok: false, offline: true };
+  const supabase = await window.getSupabaseClient();
+  let qStock = supabase.from("stock_estado").select("empresa_id,local_id,producto_id,almacen,piso,total,minimo,bajo_minimo,fraccionable,precision_cantidad,local_operable");
+  let qMov = supabase.from("movimientos_stock").select("id,operation_id,tipo,empresa_id,local_id,producto_id,delta_almacen,delta_piso,delta_total,cantidad,movimiento_original_id,datos,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3);
+  const [rStock, rMov] = await Promise.all([qStock, qMov]);
+  if (rStock.error) throw rStock.error;
+  if (rMov.error) throw rMov.error;
+  const stocks = Array.isArray(rStock.data) ? rStock.data : [];
+  const movs = Array.isArray(rMov.data) ? rMov.data : [];
+  if (typeof setProductos === "function") {
+    setProductos((prev) => (prev || []).map((prod) => {
+      const exacto = stocks.find((x3) => x3.producto_id === prod.id && x3.local_id === prod.localId);
+      const activo = !exacto && localActivoId ? stocks.find((x3) => x3.producto_id === prod.id && x3.local_id === localActivoId) : null;
+      const st2 = exacto || activo;
+      if (!st2) return prod;
+      return { ...prod, stock: Number(st2.total) || 0, stockPisoVenta: Number(st2.piso) || 0, stockMinimo: Number(st2.minimo) || 0, _pm07BajoMinimo: !!st2.bajo_minimo, _pm07Servidor: true, _pm07LocalOperable: st2.local_operable !== false };
+    }));
+  }
+  if (typeof setMovimientos === "function") {
+    const server = movs.map((m4) => {
+      const d2 = m4.datos && typeof m4.datos === "object" ? m4.datos : {};
+      const delta = Number(m4.delta_total) || 0;
+      const creado = String(m4.created_at || "");
+      return {
+        id: `pm07-${m4.id}`,
+        operationId: m4.operation_id,
+        ventaId: d2.ventaId || (m4.tipo === "VENTA" ? m4.operation_id : d2.anulaVentaId || null),
+        anulaVentaId: d2.anulaVentaId || null,
+        productoId: m4.producto_id,
+        localId: m4.local_id,
+        empresaId: m4.empresa_id,
+        cantidad: delta,
+        cantidadFisica: Number(m4.cantidad) || Math.abs(delta),
+        tipo: m4.tipo,
+        motivo: d2.motivo || m4.tipo,
+        referencia: d2.referencia || "PM-07",
+        costoUnitario: Number(d2.costoUnitario) || 0,
+        ingresoUnitario: Number(d2.ingresoUnitario) || 0,
+        ivaVentaAplicado: Number(d2.ivaVentaAplicado) || 0,
+        medioPago: d2.medioPago || null,
+        detallePago: d2.detallePago || null,
+        fecha: creado ? creado.slice(0, 10) : todayISO(),
+        hora: creado ? creado.slice(11, 16) : (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5),
+        afectaStockTotal: delta !== 0,
+        afectaStockPisoVenta: Number(m4.delta_piso) !== 0,
+        movimientoOriginalId: m4.movimiento_original_id || null,
+        _pm07Servidor: true
+      };
+    });
+    setMovimientos((prev) => [...server, ...(prev || []).filter((m4) => !m4._pm07Servidor)]);
+  }
+  return { ok: true, stocks: stocks.length, movimientos: movs.length };
+}
 function SelectorLocalInformes({ locales = [], valor = "", onChange }) {
   const activos = locales.filter((l22) => l22 && l22.activo !== false && !l22.fusionadoEn);
   const seleccionado = activos.find((l22) => l22.id === valor);
@@ -101307,6 +101361,20 @@ function GestionAlmacen() {
   const [empresas, setEmpresas] = (0, import_react4.useState)([]);
   const [localActivoId, setLocalActivoId] = (0, import_react4.useState)(null);
   const [localInformeId, setLocalInformeId] = (0, import_react4.useState)("");
+  (0, import_react4.useEffect)(() => {
+    if (!ready || typeof window === "undefined" || !window.__nubeActiva) return;
+    let activo = true;
+    (async () => {
+      try {
+        await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
+      } catch (e2) {
+        if (activo) console.error("PM-07: no se pudo sincronizar stock autoritativo", e2);
+      }
+    })();
+    return () => {
+      activo = false;
+    };
+  }, [ready, localActivoId]);
   const empresaDelLocalActivo = (0, import_react4.useMemo)(() => {
     const principal = empresas[0] || null;
     const localActual = locales.find((l22) => l22.id === localActivoId) || null;
@@ -101969,11 +102037,11 @@ function GestionAlmacen() {
     [productosDelLocalActivo]
   );
   const stockBajo = (0, import_react4.useMemo)(
-    () => productos.filter((p22) => p22.tipo !== "elaborado" && p22.stock <= Number(p22.stockMinimo || 0)),
+    () => productos.filter((p22) => p22.tipo !== "elaborado" && p22._pm07Servidor ? p22._pm07BajoMinimo === true : Number(p22.stock) < Number(p22.stockMinimo || 0)),
     [productos]
   );
   const stockBajoDelLocalActivo = (0, import_react4.useMemo)(
-    () => productosDelLocalActivo.filter((p22) => p22.tipo !== "elaborado" && p22.stock <= Number(p22.stockMinimo || 0)),
+    () => productosDelLocalActivo.filter((p22) => p22.tipo !== "elaborado" && p22._pm07Servidor ? p22._pm07BajoMinimo === true : Number(p22.stock) < Number(p22.stockMinimo || 0)),
     [productosDelLocalActivo]
   );
   const diagnosticoStock = (0, import_react4.useMemo)(() => diagnosticarStock(), [productos, movimientos]);
@@ -102569,7 +102637,7 @@ function GestionAlmacen() {
   const totalPendientePagoInforme = pendientesPagoInforme.reduce((a22, f22) => a22 + f22.total, 0);
   const valorInventarioInforme = productosInforme.filter((p22) => !esUtillaje(p22)).reduce((acc, p22) => acc + (Number(p22.stock) || 0) * Number(p22.costo || 0), 0);
   const valorUtillajeInforme = productosInforme.filter(esUtillaje).reduce((acc, p22) => acc + (Number(p22.stock) || 0) * Number(p22.costo || 0), 0);
-  const stockBajoInforme = productosInforme.filter((p22) => p22.tipo !== "elaborado" && p22.stock <= Number(p22.stockMinimo || 0));
+  const stockBajoInforme = productosInforme.filter((p22) => p22.tipo !== "elaborado" && p22._pm07Servidor ? p22._pm07BajoMinimo === true : Number(p22.stock) < Number(p22.stockMinimo || 0));
   const productosConPrecioInforme = productosInforme.filter((p22) => Number(p22.precioVenta) > 0);
   const margenPromedioInforme = productosConPrecioInforme.length ? productosConPrecioInforme.reduce((acc, p22) => acc + (margenDe(p22) || 0), 0) / productosConPrecioInforme.length : 0;
   const pedidosPendientesInforme = pedidosInforme.filter((p22) => p22.estado !== "Recibido");
@@ -104749,7 +104817,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         documentoOrigenId: documentoOrigenId || ventaId,
         afectaStockTotal: true,
         afectaStockPisoVenta: true,
-        permitirDeficit: true,
+        permitirDeficit: false,
         motivo: motivoBase,
         camposExtra
       });
@@ -104768,9 +104836,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     });
     if (incluyeOtroLocal) return { ok: false, error: "La venta incluye productos de otro local." };
     const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
-    if (!hayConexion) {
-      return venderLocal(lineas, medioPago, detallePago);
-    }
+    if (!hayConexion) return venderLocal(lineas, medioPago, detallePago);
     const ventaId = uid();
     let totalVenta = 0;
     (lineas || []).forEach((ln2) => {
@@ -104785,76 +104851,48 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       const costoUnitario = prod ? Number(prod.costo) || 0 : 0;
       const ingresoUnitario = prod ? precioNeto(prod) : 0;
       const ivaAplicado = prod ? ivaDe(prod) : 0;
-      const datosLinea = {
-        productoId: ln2.productoId,
-        localId: prod ? prod.localId || localActivoId || null : localActivoId || null,
-        cantidad: cant,
-        motivo: "Venta",
-        costoUnitario,
-        ingresoUnitario,
-        ivaVentaAplicado: ivaAplicado,
-        medioPago,
-        referencia: "TPV"
-      };
+      const datosLinea = { productoId: ln2.productoId, localId: prod ? prod.localId || localActivoId || null : localActivoId || null, cantidad: cant, motivo: "Venta", costoUnitario, ingresoUnitario, ivaVentaAplicado: ivaAplicado, medioPago, referencia: "TPV", ventaId };
       if (detallePago && totalVenta > 0 && prod) {
         const importeLinea = cant * ingresoUnitario * (1 + ivaAplicado / 100);
         const proporcion = importeLinea / totalVenta;
-        datosLinea.detallePago = {
-          efectivo: Number((detallePago.efectivo * proporcion).toFixed(4)),
-          tarjeta: Number((detallePago.tarjeta * proporcion).toFixed(4))
-        };
+        datosLinea.detallePago = { efectivo: Number((detallePago.efectivo * proporcion).toFixed(4)), tarjeta: Number((detallePago.tarjeta * proporcion).toFixed(4)) };
       }
       return datosLinea;
     });
     if (lineasParaRpc.length === 0) return { ok: false, error: "Carrito vac\xEDo" };
+    const empresas = [...new Set(lineasParaRpc.map((l22) => productos.find((p22) => p22.id === l22.productoId)?.empresaId).filter(Boolean))];
+    if (empresas.length !== 1) return { ok: false, error: "No se pudo determinar una \xFAnica empresa para la venta." };
+    const empresaId = empresas[0];
+    const params = { p_operation_id: ventaId, p_empresa_id: empresaId, p_local_id: localActivoId, p_lineas: lineasParaRpc, p_datos: { medioPago, detallePago: detallePago || null } };
     async function intentarRpc(msTimeout) {
       const supabase = await window.getSupabaseClient();
       const r2 = await Promise.race([
-        supabase.rpc("descontar_stock_carrito", { p_lineas: lineasParaRpc, p_venta_id: ventaId }),
-        new Promise((_22, reject) => setTimeout(() => reject(new Error("El RPC tard\xF3 demasiado en responder")), msTimeout))
+        supabase.rpc("registrar_venta_stock_carrito", params),
+        new Promise((_22, reject) => setTimeout(() => reject(new Error("El servidor tard\xF3 demasiado en responder")), msTimeout))
       ]);
       if (r2.error) throw r2.error;
       return r2;
     }
-    async function sincronizarTrasExito() {
-      const supabase = await window.getSupabaseClient();
-      const [rProd, movLeidos] = await Promise.all([
-        supabase.from("almacen_kv").select("value").eq("key", "productos").maybeSingle(),
-        window.storage.get("movimientos")
-      ]);
-      if (!rProd.error && rProd.data && Array.isArray(rProd.data.value)) {
-        const idsVendidos = new Set(lineasParaRpc.map((l22) => l22.productoId));
-        const porIdEnNube = {};
-        rProd.data.value.forEach((p22) => {
-          if (p22 && p22.id) porIdEnNube[p22.id] = p22;
-        });
-        setProductos((s22) => s22.map((p22) => idsVendidos.has(p22.id) && porIdEnNube[p22.id] ? porIdEnNube[p22.id] : p22));
-      }
-      if (movLeidos && movLeidos.value) {
-        try {
-          setMovimientos(JSON.parse(movLeidos.value));
-        } catch {
-        }
-      }
+    function errorVisible(error) {
+      const msg = String(error?.message || error || "");
+      if (msg.includes("stock_insuficiente:")) return { error: "Stock insuficiente", productoId: msg.split("stock_insuficiente:").pop().trim() };
+      if (msg.includes("unidad_indivisible")) return { error: "La cantidad debe ser un n\xFAmero entero para este producto." };
+      if (msg.includes("precision_cantidad_excedida")) return { error: "La cantidad tiene m\xE1s decimales de los permitidos." };
+      if (msg.includes("local_inactivo")) return { error: "El local ya no admite operaciones de stock." };
+      if (msg.includes("contexto_no_autorizado") || msg.includes("stock_no_autorizado")) return { error: "No tienes permiso para registrar esta venta en este local." };
+      return { error: "No se pudo confirmar la venta con el servidor. No se ha descontado stock localmente." };
     }
     try {
-      const r2 = await intentarRpc(6e3);
-      if (r2.data && r2.data.ok === false) {
-        return { ok: false, error: r2.data.error, productoId: r2.data.productoId };
-      }
-      await sincronizarTrasExito();
-      return { ok: true, n: lineasParaRpc.length, modo: "atomico", ventaId };
-    } catch (primerError) {
+      let r2;
       try {
-        const r2 = await intentarRpc(4e3);
-        if (r2.data && r2.data.ok === false) {
-          return { ok: false, error: r2.data.error, productoId: r2.data.productoId };
-        }
-        await sincronizarTrasExito();
-        return { ok: true, n: lineasParaRpc.length, modo: "atomico", reintentada: true, ventaId };
-      } catch (segundoError) {
-        return venderLocal(lineas, medioPago, detallePago);
+        r2 = await intentarRpc(6e3);
+      } catch (e1) {
+        r2 = await intentarRpc(4e3);
       }
+      await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
+      return { ok: true, n: lineasParaRpc.length, modo: "pm07-servidor", replayed: !!r2.data?.replayed, ventaId };
+    } catch (error) {
+      return { ok: false, ...errorVisible(error) };
     }
   }
   function anularVentaLocal(ventaId, movimientosActuales, motivo = "") {
@@ -104923,40 +104961,25 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (lineasOriginales.length === 0) return { ok: false, error: "No se han encontrado las l\xEDneas de esa venta." };
     try {
       const supabase = await window.getSupabaseClient();
-      const r2 = await supabase.rpc("anular_venta_tpv", { p_venta_id: ventaId, p_motivo: motivo || "" });
+      const operationId = `rev-${ventaId}`;
+      const r2 = await supabase.rpc("revertir_venta_stock_carrito", { p_operation_id: operationId, p_venta_operation_id: ventaId, p_motivo: motivo || "" });
       if (r2.error) throw r2.error;
-      if (!r2.data || r2.data.ok === false) return { ok: false, error: r2.data?.error || "No se ha podido anular la venta.", yaExistia: !!r2.data?.yaExistia };
-      let sincronizada = false;
-      try {
-        const [rProd, movLeidos] = await Promise.all([
-          supabase.from("almacen_kv").select("value").eq("key", "productos").maybeSingle(),
-          window.storage.get("movimientos")
-        ]);
-        if (!rProd.error && rProd.data && Array.isArray(rProd.data.value)) setProductos(rProd.data.value);
-        if (movLeidos && movLeidos.value) {
-          setMovimientos(JSON.parse(movLeidos.value));
-          sincronizada = true;
-        }
-      } catch {
-      }
+      await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
       const fechaVenta = lineasOriginales[0]?.fecha;
       const arqueoDelDia = fechaVenta && (arqueos || []).find((a22) => a22.fecha === fechaVenta && (!localActivoId || a22.localId === localActivoId));
       if (arqueoDelDia) {
         fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            titulo: "Caja cerrada, ahora desactualizada",
-            cuerpo: `Se anul\xF3 una venta del ${fechaVenta}, d\xEDa que ya ten\xEDa la caja cerrada \u2014 revisa ese arqueo, puede que ya no cuadre.`,
-            localId: r2.data.localId || lineasOriginales[0]?.localId || null,
-            url: "/"
-          })
+          body: JSON.stringify({ titulo: "Caja cerrada, ahora desactualizada", cuerpo: `Se anul\xF3 una venta del ${fechaVenta}, d\xEDa que ya ten\xEDa la caja cerrada \u2014 revisa ese arqueo, puede que ya no cuadre.`, localId: r2.data?.localId || lineasOriginales[0]?.localId || null, url: "/" })
         }).catch(() => {
         });
       }
-      return { ok: true, lineasAnuladas: Number(r2.data.lineasAnuladas) || 0, arqueoAfectado: !!arqueoDelDia, modo: "atomico", sincronizada };
+      return { ok: true, lineasAnuladas: Number(r2.data?.lineasAnuladas) || 0, arqueoAfectado: !!arqueoDelDia, modo: "pm07-servidor", sincronizada: true, replayed: !!r2.data?.replayed };
     } catch (error) {
-      return { ok: false, error: "No se pudo confirmar la anulaci\xF3n con el servidor. Recarga antes de volver a intentarlo para evitar duplicados." };
+      const msg = String(error?.message || "");
+      if (msg.includes("venta_stock_ya_revertida")) return { ok: false, error: "La venta ya estaba anulada.", yaExistia: true };
+      return { ok: false, error: "No se pudo confirmar la anulaci\xF3n con el servidor. No se ha modificado el stock local." };
     }
   }
   return { venderCarrito, venderLocal, anularVenta, venderLineas };
@@ -104968,7 +104991,7 @@ function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimie
     return prod.localId === localActivoId;
   }
   const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
-  function traspasarStock(productoId, cantidad, direccion) {
+  async function traspasarStock(productoId, cantidad, direccion) {
     const cant = Number(cantidad) || 0;
     if (cant <= 0) return { ok: false, error: "Indica una cantidad mayor que cero." };
     const prod = productos.find((p22) => p22.id === productoId);
@@ -104982,6 +105005,24 @@ function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimie
     }
     if (direccion === "a_almacen" && cant > enPiso) {
       return { ok: false, error: `Solo hay ${fmt(enPiso)} ${prod.unidad} en el piso de venta.` };
+    }
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (hayConexion) {
+      const empresaId = prod.empresaId;
+      if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa del producto." };
+      const operationId = uid();
+      try {
+        const supabase = await window.getSupabaseClient();
+        const r3 = await supabase.rpc("trasladar_stock_interno", { p_operation_id: operationId, p_empresa_id: empresaId, p_local_id: localActivoId, p_producto_id: productoId, p_origen: direccion === "a_piso" ? "almacen" : "piso", p_destino: direccion === "a_piso" ? "piso" : "almacen", p_cantidad: cant, p_datos: { direccion, referencia: "L&A Suite" } });
+        if (r3.error) throw r3.error;
+        await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
+        setTraspasos((s22) => [{ id: operationId, operationId, localId: localActivoId || prod.localId || null, productoId, nombre: prod.nombre, cantidad: cant, direccion, fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), _pm07Servidor: true }, ...s22]);
+        return { ok: true, operationId, replayed: !!r3.data?.replayed };
+      } catch (error) {
+        const msg = String(error?.message || "");
+        if (msg.includes("stock_insuficiente_ubicacion")) return { ok: false, error: "No hay stock suficiente en la ubicaci\xF3n de origen." };
+        return { ok: false, error: "No se pudo confirmar el traspaso con el servidor. No se modific\xF3 el stock local." };
+      }
     }
     const cantidadConSigno2 = direccion === "a_piso" ? cant : -cant;
     const movimientoId = uid();
@@ -105002,7 +105043,7 @@ function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimie
     ]);
     return { ok: true };
   }
-  function traspasarEntreLocales(productoOrigenId, productoDestinoId, destinoLocalId, cantidad) {
+  async function traspasarEntreLocales(productoOrigenId, productoDestinoId, destinoLocalId, cantidad) {
     const cant = Number(cantidad) || 0;
     if (!localActivoId) return { ok: false, error: "Selecciona un local de origen concreto." };
     if (cant <= 0) return { ok: false, error: "Indica una cantidad mayor que cero." };
@@ -105036,6 +105077,26 @@ function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimie
     const disponibleAlmacen = Math.max(0, totalOrigen - pisoOrigen);
     if (cant > disponibleAlmacen) {
       return { ok: false, error: `Solo hay ${fmt(disponibleAlmacen)} ${origen.unidad} disponibles en el almac\xE9n de ${localOrigen.nombre}.` };
+    }
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (hayConexion) {
+      const operationId = uid();
+      try {
+        const supabase = await window.getSupabaseClient();
+        const r2 = await supabase.rpc("trasladar_stock_entre_locales", { p_operation_id: operationId, p_empresa_id: localOrigen.empresaId, p_origen_local_id: localActivoId, p_destino_local_id: destinoLocalId, p_producto_origen_id: origen.id, p_producto_destino_id: destino.id, p_cantidad: cant, p_datos: { referencia: "Traspaso entre locales" } });
+        if (r2.error) throw r2.error;
+        await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
+        const registro2 = { id: operationId, operationId, tipo: "ENTRE_LOCALES", origenLocalId: localActivoId, destinoLocalId, origenLocalNombre: localOrigen.nombre, destinoLocalNombre: localDestino.nombre, productoOrigenId: origen.id, productoDestinoId: destino.id, productoOrigenNombre: origen.nombre, productoDestinoNombre: destino.nombre, unidad: origen.unidad, cantidad: cant, fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), estado: "Completado", _pm07Servidor: true };
+        setTraspasos((s22) => [registro2, ...s22]);
+        if (registrarAuditoria) registrarAuditoria("Traspaso entre locales", `${fmt(cant)} ${origen.unidad} \xB7 ${localOrigen.nombre} \u2192 ${localDestino.nombre} \xB7 ${origen.nombre} \u2192 ${destino.nombre}`);
+        return { ok: true, traspaso: registro2, replayed: !!r2.data?.replayed };
+      } catch (error) {
+        const msg = String(error?.message || "");
+        if (msg.includes("stock_insuficiente_ubicacion")) return { ok: false, error: `No hay stock suficiente en el almac\xE9n de ${localOrigen.nombre}.` };
+        if (msg.includes("local_inactivo")) return { ok: false, error: "El local de origen o destino ya no est\xE1 activo." };
+        if (msg.includes("unidad_incompatible")) return { ok: false, error: "Origen y destino deben usar la misma unidad de medida." };
+        return { ok: false, error: "No se pudo completar el traspaso en el servidor. No se modific\xF3 ning\xFAn local." };
+      }
     }
     const traspasoId = uid();
     const salidaId = uid();
@@ -107124,7 +107185,7 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
     numEliminados !== 1 ? "s" : ""
   ), productosFiltrados.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: `Ning\xFAn producto coincide con "${busqueda}".` }) : /* @__PURE__ */ import_react4.default.createElement(Card, { style: { padding: 0 } }, /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", { style: { color: C2.inkSoft, borderBottom: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2.5 px-3" }, "Producto"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2.5 px-3" }, "Stock"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2.5 px-3" }, "Costo s/IVA"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2.5 px-3" }, "PVP c/IVA"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2.5 px-3" }, "Margen"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-center font-medium py-2.5 px-3" }, "ABC"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2.5 px-3" }))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, productosFiltrados.map((p22) => {
     const margen = margenDe(p22);
-    const bajo = p22.stock <= Number(p22.stockMinimo || 0);
+    const bajo = p22._pm07Servidor ? p22._pm07BajoMinimo === true : Number(p22.stock) < Number(p22.stockMinimo || 0);
     return /* @__PURE__ */ import_react4.default.createElement("tr", { key: p22.id, style: { borderBottom: `1px solid ${C2.line}`, opacity: p22.activo === false ? 0.55 : 1 } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium flex items-center gap-1.5" }, p22.nombre, p22.activo === false && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.red }, "Eliminado"), esNoMercancia(p22) && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, p22.tipo), p22.tipo === "consumible" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "consumible"), p22.tipo === "elaborado" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.amber }, "elaborado")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, [p22.codigo, p22.categoria, p22.ubicacion].filter(Boolean).join(" \xB7 "), p22.proveedorId && proveedorPorId(p22.proveedorId) ? ` \xB7 ${proveedorPorId(p22.proveedorId).nombre}` : "")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono" }, p22.stock, " ", p22.unidad, bajo && /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.amber }, "bajo m\xEDnimo")), (p22.tipo === "elaborado" || Number(p22.precioVenta) > 0) && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-0.5", style: { color: C2.inkSoft } }, fmt(p22.stockPisoVenta || 0), " en piso \xB7 ", fmt((Number(p22.stock) || 0) - (Number(p22.stockPisoVenta) || 0)), " en almac\xE9n")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono" }, "\u20AC", fmt(p22.costo), Number(p22.costo) > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "c/IVA \u20AC", fmt(costoConIva(p22)), " \xB7 ", ivaCompraDe(p22), "%", udsPorCaja(p22) > 1 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " \xB7 caja ", udsPorCaja(p22), " = \u20AC", fmt(costoCaja(p22))))), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono" }, "\u20AC", fmt(p22.precioVenta), Number(p22.precioVenta) > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "neto \u20AC", fmt(precioNeto(p22)), " \xB7 IVA ", ivaDe(p22), "%")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono", style: { color: margen == null ? C2.inkSoft : margen < 15 ? C2.red : C2.accent } }, margen == null ? "\u2014" : `${fmt(margen)}%`), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 text-center" }, esNoMercancia(p22) ? /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "\u2014") : /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: (clasificacionABC[p22.id] || "C") === "A" ? C2.red : (clasificacionABC[p22.id] || "C") === "B" ? C2.amber : C2.inkSoft }, clasificacionABC[p22.id] || "C")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 justify-end" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setKardexId(p22.id) }, "Kardex"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(p22) }, "Editar"), !almacenCongelado && /* @__PURE__ */ import_react4.default.createElement(
       Btn,
       {
@@ -111479,13 +111540,13 @@ function Produccion({ fichasCosto, productos, ordenesProduccion, producir, anula
   const [procesandoProduccion, setProcesandoProduccion] = (0, import_react4.useState)(false);
   const [enviadoAPiso, setEnviadoAPiso] = (0, import_react4.useState)(false);
   const [errorEnvio, setErrorEnvio] = (0, import_react4.useState)("");
-  function enviarAPisoDeVenta(orden) {
+  async function enviarAPisoDeVenta(orden) {
     const productoId = orden.productoVinculadoId || (fichasCosto.find((f22) => f22.id === orden.fichaId) || {}).productoVinculadoId;
     if (!productoId) {
       setErrorEnvio("Esta ficha no tiene un producto de venta enlazado.");
       return;
     }
-    const res = traspasarStock(productoId, Number(orden.unidadesBuenas) || 0, "a_piso");
+    const res = await traspasarStock(productoId, Number(orden.unidadesBuenas) || 0, "a_piso");
     if (!res.ok) {
       setErrorEnvio(res.error);
       return;
@@ -112112,7 +112173,7 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
   const [enviandoVenta, setEnviandoVenta] = (0, import_react4.useState)(false);
   const [errorVenta, setErrorVenta] = (0, import_react4.useState)("");
   const vendibles = (0, import_react4.useMemo)(
-    () => productos.filter((p22) => p22.activo !== false && (p22.tipo === "elaborado" || Number(p22.precioVenta) > 0) && (Number(p22.stockPisoVenta) || 0) > 0),
+    () => productos.filter((p22) => p22.activo !== false && (p22.tipo === "elaborado" || Number(p22.precioVenta) > 0) && (p22._pm07Servidor ? Number(p22.stock) || 0 : Number(p22.stockPisoVenta) || 0) > 0),
     [productos]
   );
   const categorias = (0, import_react4.useMemo)(() => {
@@ -112180,7 +112241,7 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
     return { ...l22, cantidadNum: cant, producto: p22, precioUnitario: precioConIva, subtotal: precioConIva * cant };
   }).filter(Boolean);
   const total = lineasCarrito.reduce((a22, l22) => a22 + l22.subtotal, 0);
-  const faltaStock = lineasCarrito.filter((l22) => l22.cantidadNum > (Number(l22.producto.stockPisoVenta) || 0));
+  const faltaStock = lineasCarrito.filter((l22) => l22.cantidadNum > (l22.producto._pm07Servidor ? Number(l22.producto.stock) || 0 : Number(l22.producto.stockPisoVenta) || 0));
   const restoEfectivoMixto = medioPago === "Mixto" ? Math.max(0, total - (Number(importeTarjetaMixto) || 0)) : null;
   const baseParaCambio = medioPago === "Mixto" ? restoEfectivoMixto : total;
   const cambio = (medioPago === "Efectivo" || medioPago === "Mixto") && efectivoRecibido !== "" ? Number(efectivoRecibido) - baseParaCambio : null;
@@ -112328,8 +112389,8 @@ function Traspasos({ productos, productosEmpresa = [], locales = [], localActivo
   const producto = productos.find((p22) => p22.id === productoId);
   const enPiso = producto ? Number(producto.stockPisoVenta) || 0 : 0;
   const enAlmacen = producto ? Math.max(0, (Number(producto.stock) || 0) - enPiso) : 0;
-  function submit() {
-    const res = traspasarStock(productoId, cantidad, direccion);
+  async function submit() {
+    const res = await traspasarStock(productoId, cantidad, direccion);
     if (!res || !res.ok) {
       setError(res?.error || "No se pudo completar el traspaso.");
       setOk("");
@@ -112363,8 +112424,8 @@ function Traspasos({ productos, productosEmpresa = [], locales = [], localActivo
   const localOrigen = locales.find((l22) => l22.id === localActivoId);
   const localDestino = locales.find((l22) => l22.id === destinoLocalId);
   const disponibleInter = productoOrigenInter ? Math.max(0, (Number(productoOrigenInter.stock) || 0) - (Number(productoOrigenInter.stockPisoVenta) || 0)) : 0;
-  function submitEntreLocales() {
-    const res = traspasarEntreLocales(productoOrigenInterId, productoDestinoInterId, destinoLocalId, cantidadInter);
+  async function submitEntreLocales() {
+    const res = await traspasarEntreLocales(productoOrigenInterId, productoDestinoInterId, destinoLocalId, cantidadInter);
     if (!res || !res.ok) {
       setErrorInter(res?.error || "No se pudo completar el traspaso entre locales.");
       setOkInter("");

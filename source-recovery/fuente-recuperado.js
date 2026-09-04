@@ -426,6 +426,61 @@ async function saveKey(key, value) {
     }
   }
 }
+async function sincronizarStockPm07({ setProductos, setMovimientos, localActivoId = null }) {
+  if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return { ok: false, offline: true };
+  const supabase = await window.getSupabaseClient();
+  let qStock = supabase.from("stock_estado").select("empresa_id,local_id,producto_id,almacen,piso,total,minimo,bajo_minimo,fraccionable,precision_cantidad,local_operable");
+  let qMov = supabase.from("movimientos_stock").select("id,operation_id,tipo,empresa_id,local_id,producto_id,delta_almacen,delta_piso,delta_total,cantidad,movimiento_original_id,datos,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2000);
+  const [rStock, rMov] = await Promise.all([qStock, qMov]);
+  if (rStock.error) throw rStock.error;
+  if (rMov.error) throw rMov.error;
+  const stocks = Array.isArray(rStock.data) ? rStock.data : [];
+  const movs = Array.isArray(rMov.data) ? rMov.data : [];
+  if (typeof setProductos === "function") {
+    setProductos((prev) => (prev || []).map((prod) => {
+      const exacto = stocks.find((x) => x.producto_id === prod.id && x.local_id === prod.localId);
+      const activo = !exacto && localActivoId ? stocks.find((x) => x.producto_id === prod.id && x.local_id === localActivoId) : null;
+      const st = exacto || activo;
+      if (!st) return prod;
+      return { ...prod, stock: Number(st.total) || 0, stockPisoVenta: Number(st.piso) || 0, stockMinimo: Number(st.minimo) || 0, _pm07BajoMinimo: !!st.bajo_minimo, _pm07Servidor: true, _pm07LocalOperable: st.local_operable !== false };
+    }));
+  }
+  if (typeof setMovimientos === "function") {
+    const server = movs.map((m) => {
+      const d = m.datos && typeof m.datos === "object" ? m.datos : {};
+      const delta = Number(m.delta_total) || 0;
+      const creado = String(m.created_at || "");
+      return {
+        id: `pm07-${m.id}`,
+        operationId: m.operation_id,
+        ventaId: d.ventaId || (m.tipo === "VENTA" ? m.operation_id : d.anulaVentaId || null),
+        anulaVentaId: d.anulaVentaId || null,
+        productoId: m.producto_id,
+        localId: m.local_id,
+        empresaId: m.empresa_id,
+        cantidad: delta,
+        cantidadFisica: Number(m.cantidad) || Math.abs(delta),
+        tipo: m.tipo,
+        motivo: d.motivo || m.tipo,
+        referencia: d.referencia || "PM-07",
+        costoUnitario: Number(d.costoUnitario) || 0,
+        ingresoUnitario: Number(d.ingresoUnitario) || 0,
+        ivaVentaAplicado: Number(d.ivaVentaAplicado) || 0,
+        medioPago: d.medioPago || null,
+        detallePago: d.detallePago || null,
+        fecha: creado ? creado.slice(0,10) : todayISO(),
+        hora: creado ? creado.slice(11,16) : (new Date()).toTimeString().slice(0,5),
+        afectaStockTotal: delta !== 0,
+        afectaStockPisoVenta: Number(m.delta_piso) !== 0,
+        movimientoOriginalId: m.movimiento_original_id || null,
+        _pm07Servidor: true
+      };
+    });
+    setMovimientos((prev) => [...server, ...(prev || []).filter((m) => !m._pm07Servidor)]);
+  }
+  return { ok: true, stocks: stocks.length, movimientos: movs.length };
+}
+
 function SelectorLocalInformes({ locales = [], valor = "", onChange }) {
   const activos = locales.filter((l2) => l2 && l2.activo !== false && !l2.fusionadoEn);
   const seleccionado = activos.find((l2) => l2.id === valor);
@@ -528,6 +583,18 @@ function GestionAlmacen() {
   const [empresas, setEmpresas] = (0, import_react4.useState)([]);
   const [localActivoId, setLocalActivoId] = (0, import_react4.useState)(null);
   const [localInformeId, setLocalInformeId] = (0, import_react4.useState)("");
+  (0, import_react4.useEffect)(() => {
+    if (!ready || typeof window === "undefined" || !window.__nubeActiva) return;
+    let activo = true;
+    (async () => {
+      try {
+        await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
+      } catch (e) {
+        if (activo) console.error("PM-07: no se pudo sincronizar stock autoritativo", e);
+      }
+    })();
+    return () => { activo = false; };
+  }, [ready, localActivoId]);
   const empresaDelLocalActivo = (0, import_react4.useMemo)(() => { const principal = empresas[0] || null; const localActual = locales.find((l2) => l2.id === localActivoId) || null; if (localActual) { if (localActual.empresaId) return empresas.find((e2) => e2.id === localActual.empresaId) || null; return empresas.length === 1 ? principal || configEmpresa || null : null; } return empresas.length === 1 ? principal || configEmpresa || null : null; }, [empresas, locales, localActivoId, configEmpresa]); const localesEmpresaActiva = (0, import_react4.useMemo)(() => { const empresaId = empresaDelLocalActivo?.id || null; if (!empresaId) return []; return locales.filter((l2) => l2 && l2.empresaId === empresaId && l2.activo !== false && !l2.fusionadoEn); }, [locales, empresaDelLocalActivo]); const productosDelLocalActivo = (0, import_react4.useMemo)(() => { if (!localActivoId) return productos; return productos.filter((p2) => p2.localId === localActivoId); }, [productos, localActivoId]);
   const movimientosDelLocalActivo = (0, import_react4.useMemo)(() => {
     if (!localActivoId) return movimientos;
@@ -1165,11 +1232,11 @@ function GestionAlmacen() {
     [productosDelLocalActivo]
   );
   const stockBajo = (0, import_react4.useMemo)(
-    () => productos.filter((p2) => p2.tipo !== "elaborado" && p2.stock <= Number(p2.stockMinimo || 0)),
+    () => productos.filter((p2) => p2.tipo !== "elaborado" && p2._pm07Servidor ? p2._pm07BajoMinimo === true : Number(p2.stock) < Number(p2.stockMinimo || 0)),
     [productos]
   );
   const stockBajoDelLocalActivo = (0, import_react4.useMemo)(
-    () => productosDelLocalActivo.filter((p2) => p2.tipo !== "elaborado" && p2.stock <= Number(p2.stockMinimo || 0)),
+    () => productosDelLocalActivo.filter((p2) => p2.tipo !== "elaborado" && p2._pm07Servidor ? p2._pm07BajoMinimo === true : Number(p2.stock) < Number(p2.stockMinimo || 0)),
     [productosDelLocalActivo]
   );
   const diagnosticoStock = (0, import_react4.useMemo)(() => diagnosticarStock(), [productos, movimientos]);
@@ -1763,7 +1830,7 @@ function GestionAlmacen() {
   const totalPendientePagoInforme = pendientesPagoInforme.reduce((a2, f2) => a2 + f2.total, 0);
   const valorInventarioInforme = productosInforme.filter((p2) => !esUtillaje(p2)).reduce((acc, p2) => acc + (Number(p2.stock) || 0) * Number(p2.costo || 0), 0);
   const valorUtillajeInforme = productosInforme.filter(esUtillaje).reduce((acc, p2) => acc + (Number(p2.stock) || 0) * Number(p2.costo || 0), 0);
-  const stockBajoInforme = productosInforme.filter((p2) => p2.tipo !== "elaborado" && p2.stock <= Number(p2.stockMinimo || 0));
+  const stockBajoInforme = productosInforme.filter((p2) => p2.tipo !== "elaborado" && p2._pm07Servidor ? p2._pm07BajoMinimo === true : Number(p2.stock) < Number(p2.stockMinimo || 0));
   const productosConPrecioInforme = productosInforme.filter((p2) => Number(p2.precioVenta) > 0);
   const margenPromedioInforme = productosConPrecioInforme.length ? productosConPrecioInforme.reduce((acc, p2) => acc + (margenDe(p2) || 0), 0) / productosConPrecioInforme.length : 0;
   const pedidosPendientesInforme = pedidosInforme.filter((p2) => p2.estado !== "Recibido");
@@ -3892,7 +3959,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         documentoOrigenId: documentoOrigenId || ventaId,
         afectaStockTotal: true,
         afectaStockPisoVenta: true,
-        permitirDeficit: true,
+        permitirDeficit: false,
         motivo: motivoBase,
         camposExtra
       });
@@ -3911,9 +3978,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     });
     if (incluyeOtroLocal) return { ok: false, error: "La venta incluye productos de otro local." };
     const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
-    if (!hayConexion) {
-      return venderLocal(lineas, medioPago, detallePago);
-    }
+    if (!hayConexion) return venderLocal(lineas, medioPago, detallePago);
     const ventaId = uid();
     let totalVenta = 0;
     (lineas || []).forEach((ln2) => {
@@ -3928,76 +3993,45 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       const costoUnitario = prod ? Number(prod.costo) || 0 : 0;
       const ingresoUnitario = prod ? precioNeto(prod) : 0;
       const ivaAplicado = prod ? ivaDe(prod) : 0;
-      const datosLinea = {
-        productoId: ln2.productoId,
-        localId: prod ? prod.localId || localActivoId || null : localActivoId || null,
-        cantidad: cant,
-        motivo: "Venta",
-        costoUnitario,
-        ingresoUnitario,
-        ivaVentaAplicado: ivaAplicado,
-        medioPago,
-        referencia: "TPV"
-      };
+      const datosLinea = { productoId: ln2.productoId, localId: prod ? prod.localId || localActivoId || null : localActivoId || null, cantidad: cant, motivo: "Venta", costoUnitario, ingresoUnitario, ivaVentaAplicado: ivaAplicado, medioPago, referencia: "TPV", ventaId };
       if (detallePago && totalVenta > 0 && prod) {
         const importeLinea = cant * ingresoUnitario * (1 + ivaAplicado / 100);
         const proporcion = importeLinea / totalVenta;
-        datosLinea.detallePago = {
-          efectivo: Number((detallePago.efectivo * proporcion).toFixed(4)),
-          tarjeta: Number((detallePago.tarjeta * proporcion).toFixed(4))
-        };
+        datosLinea.detallePago = { efectivo: Number((detallePago.efectivo * proporcion).toFixed(4)), tarjeta: Number((detallePago.tarjeta * proporcion).toFixed(4)) };
       }
       return datosLinea;
     });
-    if (lineasParaRpc.length === 0) return { ok: false, error: "Carrito vac\xEDo" };
+    if (lineasParaRpc.length === 0) return { ok: false, error: "Carrito vacío" };
+    const empresas = [...new Set(lineasParaRpc.map((l2) => productos.find((p2) => p2.id === l2.productoId)?.empresaId).filter(Boolean))];
+    if (empresas.length !== 1) return { ok: false, error: "No se pudo determinar una única empresa para la venta." };
+    const empresaId = empresas[0];
+    const params = { p_operation_id: ventaId, p_empresa_id: empresaId, p_local_id: localActivoId, p_lineas: lineasParaRpc, p_datos: { medioPago, detallePago: detallePago || null } };
     async function intentarRpc(msTimeout) {
       const supabase = await window.getSupabaseClient();
       const r = await Promise.race([
-        supabase.rpc("descontar_stock_carrito", { p_lineas: lineasParaRpc, p_venta_id: ventaId }),
-        new Promise((_2, reject) => setTimeout(() => reject(new Error("El RPC tard\xF3 demasiado en responder")), msTimeout))
+        supabase.rpc("registrar_venta_stock_carrito", params),
+        new Promise((_2, reject) => setTimeout(() => reject(new Error("El servidor tardó demasiado en responder")), msTimeout))
       ]);
       if (r.error) throw r.error;
       return r;
     }
-    async function sincronizarTrasExito() {
-      const supabase = await window.getSupabaseClient();
-      const [rProd, movLeidos] = await Promise.all([
-        supabase.from("almacen_kv").select("value").eq("key", "productos").maybeSingle(),
-        window.storage.get("movimientos")
-      ]);
-      if (!rProd.error && rProd.data && Array.isArray(rProd.data.value)) {
-        const idsVendidos = new Set(lineasParaRpc.map((l2) => l2.productoId));
-        const porIdEnNube = {};
-        rProd.data.value.forEach((p2) => {
-          if (p2 && p2.id) porIdEnNube[p2.id] = p2;
-        });
-        setProductos((s2) => s2.map((p2) => idsVendidos.has(p2.id) && porIdEnNube[p2.id] ? porIdEnNube[p2.id] : p2));
-      }
-      if (movLeidos && movLeidos.value) {
-        try {
-          setMovimientos(JSON.parse(movLeidos.value));
-        } catch {
-        }
-      }
+    function errorVisible(error) {
+      const msg = String(error?.message || error || "");
+      if (msg.includes("stock_insuficiente:")) return { error: "Stock insuficiente", productoId: msg.split("stock_insuficiente:").pop().trim() };
+      if (msg.includes("unidad_indivisible")) return { error: "La cantidad debe ser un número entero para este producto." };
+      if (msg.includes("precision_cantidad_excedida")) return { error: "La cantidad tiene más decimales de los permitidos." };
+      if (msg.includes("local_inactivo")) return { error: "El local ya no admite operaciones de stock." };
+      if (msg.includes("contexto_no_autorizado") || msg.includes("stock_no_autorizado")) return { error: "No tienes permiso para registrar esta venta en este local." };
+      return { error: "No se pudo confirmar la venta con el servidor. No se ha descontado stock localmente." };
     }
     try {
-      const r = await intentarRpc(6e3);
-      if (r.data && r.data.ok === false) {
-        return { ok: false, error: r.data.error, productoId: r.data.productoId };
-      }
-      await sincronizarTrasExito();
-      return { ok: true, n: lineasParaRpc.length, modo: "atomico", ventaId };
-    } catch (primerError) {
-      try {
-        const r2 = await intentarRpc(4e3);
-        if (r2.data && r2.data.ok === false) {
-          return { ok: false, error: r2.data.error, productoId: r2.data.productoId };
-        }
-        await sincronizarTrasExito();
-        return { ok: true, n: lineasParaRpc.length, modo: "atomico", reintentada: true, ventaId };
-      } catch (segundoError) {
-        return venderLocal(lineas, medioPago, detallePago);
-      }
+      let r;
+      try { r = await intentarRpc(6000); }
+      catch (e1) { r = await intentarRpc(4000); }
+      await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
+      return { ok: true, n: lineasParaRpc.length, modo: "pm07-servidor", replayed: !!r.data?.replayed, ventaId };
+    } catch (error) {
+      return { ok: false, ...errorVisible(error) };
     }
   }
   function anularVentaLocal(ventaId, movimientosActuales, motivo = "") {
@@ -4066,39 +4100,23 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (lineasOriginales.length === 0) return { ok: false, error: "No se han encontrado las líneas de esa venta." };
     try {
       const supabase = await window.getSupabaseClient();
-      const r = await supabase.rpc("anular_venta_tpv", { p_venta_id: ventaId, p_motivo: motivo || "" });
+      const operationId = `rev-${ventaId}`;
+      const r = await supabase.rpc("revertir_venta_stock_carrito", { p_operation_id: operationId, p_venta_operation_id: ventaId, p_motivo: motivo || "" });
       if (r.error) throw r.error;
-      if (!r.data || r.data.ok === false) return { ok: false, error: r.data?.error || "No se ha podido anular la venta.", yaExistia: !!r.data?.yaExistia };
-      let sincronizada = false;
-      try {
-        const [rProd, movLeidos] = await Promise.all([
-          supabase.from("almacen_kv").select("value").eq("key", "productos").maybeSingle(),
-          window.storage.get("movimientos")
-        ]);
-        if (!rProd.error && rProd.data && Array.isArray(rProd.data.value)) setProductos(rProd.data.value);
-        if (movLeidos && movLeidos.value) {
-          setMovimientos(JSON.parse(movLeidos.value));
-          sincronizada = true;
-        }
-      } catch {
-      }
+      await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
       const fechaVenta = lineasOriginales[0]?.fecha;
       const arqueoDelDia = fechaVenta && (arqueos || []).find((a2) => a2.fecha === fechaVenta && (!localActivoId || a2.localId === localActivoId));
       if (arqueoDelDia) {
         fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            titulo: "Caja cerrada, ahora desactualizada",
-            cuerpo: `Se anuló una venta del ${fechaVenta}, día que ya tenía la caja cerrada — revisa ese arqueo, puede que ya no cuadre.`,
-            localId: r.data.localId || lineasOriginales[0]?.localId || null,
-            url: "/"
-          })
+method: "POST", headers: { "Content-Type": "application/json" },
+body: JSON.stringify({ titulo: "Caja cerrada, ahora desactualizada", cuerpo: `Se anuló una venta del ${fechaVenta}, día que ya tenía la caja cerrada — revisa ese arqueo, puede que ya no cuadre.`, localId: r.data?.localId || lineasOriginales[0]?.localId || null, url: "/" })
         }).catch(() => {});
       }
-      return { ok: true, lineasAnuladas: Number(r.data.lineasAnuladas) || 0, arqueoAfectado: !!arqueoDelDia, modo: "atomico", sincronizada };
+      return { ok: true, lineasAnuladas: Number(r.data?.lineasAnuladas) || 0, arqueoAfectado: !!arqueoDelDia, modo: "pm07-servidor", sincronizada: true, replayed: !!r.data?.replayed };
     } catch (error) {
-      return { ok: false, error: "No se pudo confirmar la anulación con el servidor. Recarga antes de volver a intentarlo para evitar duplicados." };
+      const msg=String(error?.message || "");
+      if (msg.includes("venta_stock_ya_revertida")) return { ok: false, error: "La venta ya estaba anulada.", yaExistia: true };
+      return { ok: false, error: "No se pudo confirmar la anulación con el servidor. No se ha modificado el stock local." };
     }
   }
   return { venderCarrito, venderLocal, anularVenta, venderLineas };
@@ -4110,7 +4128,7 @@ function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimie
     return prod.localId === localActivoId;
   }
   const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
-  function traspasarStock(productoId, cantidad, direccion) {
+  async function traspasarStock(productoId, cantidad, direccion) {
     const cant = Number(cantidad) || 0;
     if (cant <= 0) return { ok: false, error: "Indica una cantidad mayor que cero." };
     const prod = productos.find((p2) => p2.id === productoId);
@@ -4124,6 +4142,24 @@ function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimie
     }
     if (direccion === "a_almacen" && cant > enPiso) {
       return { ok: false, error: `Solo hay ${fmt(enPiso)} ${prod.unidad} en el piso de venta.` };
+    }
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (hayConexion) {
+      const empresaId = prod.empresaId;
+      if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa del producto." };
+      const operationId = uid();
+      try {
+        const supabase = await window.getSupabaseClient();
+        const r = await supabase.rpc("trasladar_stock_interno", { p_operation_id: operationId, p_empresa_id: empresaId, p_local_id: localActivoId, p_producto_id: productoId, p_origen: direccion === "a_piso" ? "almacen" : "piso", p_destino: direccion === "a_piso" ? "piso" : "almacen", p_cantidad: cant, p_datos: { direccion, referencia: "L&A Suite" } });
+        if (r.error) throw r.error;
+        await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
+        setTraspasos((s2) => [{ id: operationId, operationId, localId: localActivoId || prod.localId || null, productoId, nombre: prod.nombre, cantidad: cant, direccion, fecha: todayISO(), hora: (new Date()).toTimeString().slice(0,5), _pm07Servidor: true }, ...s2]);
+        return { ok: true, operationId, replayed: !!r.data?.replayed };
+      } catch (error) {
+        const msg=String(error?.message || "");
+        if (msg.includes("stock_insuficiente_ubicacion")) return { ok: false, error: "No hay stock suficiente en la ubicación de origen." };
+        return { ok: false, error: "No se pudo confirmar el traspaso con el servidor. No se modificó el stock local." };
+      }
     }
     const cantidadConSigno2 = direccion === "a_piso" ? cant : -cant;
     const movimientoId = uid();
@@ -4144,7 +4180,7 @@ function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimie
     ]);
     return { ok: true };
   }
-  function traspasarEntreLocales(productoOrigenId, productoDestinoId, destinoLocalId, cantidad) {
+  async function traspasarEntreLocales(productoOrigenId, productoDestinoId, destinoLocalId, cantidad) {
     const cant = Number(cantidad) || 0;
     if (!localActivoId) return { ok: false, error: "Selecciona un local de origen concreto." };
     if (cant <= 0) return { ok: false, error: "Indica una cantidad mayor que cero." };
@@ -4178,6 +4214,26 @@ function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimie
     const disponibleAlmacen = Math.max(0, totalOrigen - pisoOrigen);
     if (cant > disponibleAlmacen) {
       return { ok: false, error: `Solo hay ${fmt(disponibleAlmacen)} ${origen.unidad} disponibles en el almacén de ${localOrigen.nombre}.` };
+    }
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (hayConexion) {
+      const operationId = uid();
+      try {
+        const supabase = await window.getSupabaseClient();
+        const r = await supabase.rpc("trasladar_stock_entre_locales", { p_operation_id: operationId, p_empresa_id: localOrigen.empresaId, p_origen_local_id: localActivoId, p_destino_local_id: destinoLocalId, p_producto_origen_id: origen.id, p_producto_destino_id: destino.id, p_cantidad: cant, p_datos: { referencia: "Traspaso entre locales" } });
+        if (r.error) throw r.error;
+        await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
+        const registro = { id: operationId, operationId, tipo: "ENTRE_LOCALES", origenLocalId: localActivoId, destinoLocalId, origenLocalNombre: localOrigen.nombre, destinoLocalNombre: localDestino.nombre, productoOrigenId: origen.id, productoDestinoId: destino.id, productoOrigenNombre: origen.nombre, productoDestinoNombre: destino.nombre, unidad: origen.unidad, cantidad: cant, fecha: todayISO(), hora: (new Date()).toTimeString().slice(0,5), estado: "Completado", _pm07Servidor: true };
+        setTraspasos((s2) => [registro, ...s2]);
+        if (registrarAuditoria) registrarAuditoria("Traspaso entre locales", `${fmt(cant)} ${origen.unidad} · ${localOrigen.nombre} → ${localDestino.nombre} · ${origen.nombre} → ${destino.nombre}`);
+        return { ok: true, traspaso: registro, replayed: !!r.data?.replayed };
+      } catch (error) {
+        const msg=String(error?.message || "");
+        if (msg.includes("stock_insuficiente_ubicacion")) return { ok: false, error: `No hay stock suficiente en el almacén de ${localOrigen.nombre}.` };
+        if (msg.includes("local_inactivo")) return { ok: false, error: "El local de origen o destino ya no está activo." };
+        if (msg.includes("unidad_incompatible")) return { ok: false, error: "Origen y destino deben usar la misma unidad de medida." };
+        return { ok: false, error: "No se pudo completar el traspaso en el servidor. No se modificó ningún local." };
+      }
     }
     const traspasoId = uid();
     const salidaId = uid();
@@ -6257,7 +6313,7 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
     numEliminados !== 1 ? "s" : ""
   ), productosFiltrados.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: `Ning\xFAn producto coincide con "${busqueda}".` }) : /* @__PURE__ */ import_react4.default.createElement(Card, { style: { padding: 0 } }, /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", { style: { color: C2.inkSoft, borderBottom: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2.5 px-3" }, "Producto"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2.5 px-3" }, "Stock"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2.5 px-3" }, "Costo s/IVA"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2.5 px-3" }, "PVP c/IVA"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2.5 px-3" }, "Margen"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-center font-medium py-2.5 px-3" }, "ABC"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2.5 px-3" }))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, productosFiltrados.map((p2) => {
     const margen = margenDe(p2);
-    const bajo = p2.stock <= Number(p2.stockMinimo || 0);
+    const bajo = p2._pm07Servidor ? p2._pm07BajoMinimo === true : Number(p2.stock) < Number(p2.stockMinimo || 0);
     return /* @__PURE__ */ import_react4.default.createElement("tr", { key: p2.id, style: { borderBottom: `1px solid ${C2.line}`, opacity: p2.activo === false ? 0.55 : 1 } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium flex items-center gap-1.5" }, p2.nombre, p2.activo === false && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.red }, "Eliminado"), esNoMercancia(p2) && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, p2.tipo), p2.tipo === "consumible" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "consumible"), p2.tipo === "elaborado" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.amber }, "elaborado")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, [p2.codigo, p2.categoria, p2.ubicacion].filter(Boolean).join(" \xB7 "), p2.proveedorId && proveedorPorId(p2.proveedorId) ? ` \xB7 ${proveedorPorId(p2.proveedorId).nombre}` : "")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono" }, p2.stock, " ", p2.unidad, bajo && /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.amber }, "bajo m\xEDnimo")), (p2.tipo === "elaborado" || Number(p2.precioVenta) > 0) && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-0.5", style: { color: C2.inkSoft } }, fmt(p2.stockPisoVenta || 0), " en piso \xB7 ", fmt((Number(p2.stock) || 0) - (Number(p2.stockPisoVenta) || 0)), " en almac\xE9n")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono" }, "\u20AC", fmt(p2.costo), Number(p2.costo) > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "c/IVA \u20AC", fmt(costoConIva(p2)), " \xB7 ", ivaCompraDe(p2), "%", udsPorCaja(p2) > 1 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " \xB7 caja ", udsPorCaja(p2), " = \u20AC", fmt(costoCaja(p2))))), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono" }, "\u20AC", fmt(p2.precioVenta), Number(p2.precioVenta) > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "neto \u20AC", fmt(precioNeto(p2)), " \xB7 IVA ", ivaDe(p2), "%")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono", style: { color: margen == null ? C2.inkSoft : margen < 15 ? C2.red : C2.accent } }, margen == null ? "\u2014" : `${fmt(margen)}%`), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 text-center" }, esNoMercancia(p2) ? /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "\u2014") : /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: (clasificacionABC[p2.id] || "C") === "A" ? C2.red : (clasificacionABC[p2.id] || "C") === "B" ? C2.amber : C2.inkSoft }, clasificacionABC[p2.id] || "C")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 justify-end" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setKardexId(p2.id) }, "Kardex"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(p2) }, "Editar"), !almacenCongelado && /* @__PURE__ */ import_react4.default.createElement(
       Btn,
       {
@@ -10560,13 +10616,13 @@ function Produccion({ fichasCosto, productos, ordenesProduccion, producir, anula
   const [procesandoProduccion, setProcesandoProduccion] = (0, import_react4.useState)(false);
   const [enviadoAPiso, setEnviadoAPiso] = (0, import_react4.useState)(false);
   const [errorEnvio, setErrorEnvio] = (0, import_react4.useState)("");
-  function enviarAPisoDeVenta(orden) {
+  async function enviarAPisoDeVenta(orden) {
     const productoId = orden.productoVinculadoId || (fichasCosto.find((f2) => f2.id === orden.fichaId) || {}).productoVinculadoId;
     if (!productoId) {
       setErrorEnvio("Esta ficha no tiene un producto de venta enlazado.");
       return;
     }
-    const res = traspasarStock(productoId, Number(orden.unidadesBuenas) || 0, "a_piso");
+    const res = await traspasarStock(productoId, Number(orden.unidadesBuenas) || 0, "a_piso");
     if (!res.ok) {
       setErrorEnvio(res.error);
       return;
@@ -11131,7 +11187,7 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
   const [enviandoVenta, setEnviandoVenta] = (0, import_react4.useState)(false);
   const [errorVenta, setErrorVenta] = (0, import_react4.useState)("");
   const vendibles = (0, import_react4.useMemo)(
-    () => productos.filter((p2) => p2.activo !== false && (p2.tipo === "elaborado" || Number(p2.precioVenta) > 0) && (Number(p2.stockPisoVenta) || 0) > 0),
+    () => productos.filter((p2) => p2.activo !== false && (p2.tipo === "elaborado" || Number(p2.precioVenta) > 0) && (p2._pm07Servidor ? Number(p2.stock) || 0 : Number(p2.stockPisoVenta) || 0) > 0),
     [productos]
   );
   const categorias = (0, import_react4.useMemo)(() => {
@@ -11199,7 +11255,7 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
     return { ...l2, cantidadNum: cant, producto: p2, precioUnitario: precioConIva, subtotal: precioConIva * cant };
   }).filter(Boolean);
   const total = lineasCarrito.reduce((a2, l2) => a2 + l2.subtotal, 0);
-  const faltaStock = lineasCarrito.filter((l2) => l2.cantidadNum > (Number(l2.producto.stockPisoVenta) || 0));
+  const faltaStock = lineasCarrito.filter((l2) => l2.cantidadNum > (l2.producto._pm07Servidor ? Number(l2.producto.stock) || 0 : Number(l2.producto.stockPisoVenta) || 0));
   const restoEfectivoMixto = medioPago === "Mixto" ? Math.max(0, total - (Number(importeTarjetaMixto) || 0)) : null;
   const baseParaCambio = medioPago === "Mixto" ? restoEfectivoMixto : total;
   const cambio = (medioPago === "Efectivo" || medioPago === "Mixto") && efectivoRecibido !== "" ? Number(efectivoRecibido) - baseParaCambio : null;
@@ -11349,8 +11405,8 @@ function Traspasos({ productos, productosEmpresa = [], locales = [], localActivo
   const enPiso = producto ? Number(producto.stockPisoVenta) || 0 : 0;
   const enAlmacen = producto ? Math.max(0, (Number(producto.stock) || 0) - enPiso) : 0;
 
-  function submit() {
-    const res = traspasarStock(productoId, cantidad, direccion);
+  async function submit() {
+    const res = await traspasarStock(productoId, cantidad, direccion);
     if (!res || !res.ok) {
       setError(res?.error || "No se pudo completar el traspaso.");
       setOk("");
@@ -11389,8 +11445,8 @@ function Traspasos({ productos, productosEmpresa = [], locales = [], localActivo
   const localDestino = locales.find((l2) => l2.id === destinoLocalId);
   const disponibleInter = productoOrigenInter ? Math.max(0, (Number(productoOrigenInter.stock) || 0) - (Number(productoOrigenInter.stockPisoVenta) || 0)) : 0;
 
-  function submitEntreLocales() {
-    const res = traspasarEntreLocales(productoOrigenInterId, productoDestinoInterId, destinoLocalId, cantidadInter);
+  async function submitEntreLocales() {
+    const res = await traspasarEntreLocales(productoOrigenInterId, productoDestinoInterId, destinoLocalId, cantidadInter);
     if (!res || !res.ok) {
       setErrorInter(res?.error || "No se pudo completar el traspaso entre locales.");
       setOkInter("");
