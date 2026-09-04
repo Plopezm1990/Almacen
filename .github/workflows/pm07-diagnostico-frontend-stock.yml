@@ -14,29 +14,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Extraer funciones completas de venta y traspasos
+      - name: Extraer bloques de venta y traspasos
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
+          import re
           s=Path('source-recovery/fuente-recuperado.js').read_text(encoding='utf-8',errors='ignore')
-          markers=[
-            ('VENTA','function crearLogicaVenta(', 'function crearLogicaClientes('),
-            ('TRASPASOS','function crearLogicaTraspasos(', 'function crearLogicaLocales('),
-          ]
-          for label,start_marker,end_marker in markers:
-            a=s.find(start_marker)
-            b=s.find(end_marker,a+1)
-            if a<0 or b<0 or b<=a:
-              raise SystemExit(f'PM07_{label}_NO_LOCALIZADO=1')
+          for label,nombre in [('VENTA','crearLogicaVenta'),('TRASPASOS','crearLogicaTraspasos')]:
+            m=re.search(r'(?:async\s+)?function\s+'+re.escape(nombre)+r'\s*\(',s)
+            if not m:
+              # fallback: localizar la primera aparición y mostrar contexto amplio
+              a=s.find(nombre)
+              if a<0: raise SystemExit(f'PM07_{label}_NO_LOCALIZADO=1')
+              print(f'===== PM07_{label}_FALLBACK_INICIO =====')
+              print(s[max(0,a-3000):min(len(s),a+30000)])
+              print(f'===== PM07_{label}_FALLBACK_FIN =====')
+              continue
+            a=m.start()
+            # siguiente función de primer nivel tras al menos 200 caracteres
+            nxt=re.search(r'\nfunction\s+[A-Za-z0-9_$]+\s*\(',s[a+200:])
+            b=a+200+nxt.start() if nxt else min(len(s),a+40000)
             print(f'===== PM07_{label}_INICIO =====')
             print(s[a:b])
             print(f'===== PM07_{label}_FIN =====')
-          for marker in ['const stockBajo =','const stockBajoDelLocalActivo =','kardexId && (() => {']:
-            i=s.find(marker)
-            if i>=0:
-              print(f'===== PM07_CTX {marker} =====')
-              print(s[max(0,i-800):min(len(s),i+3200)])
           print('PM07_DIAGNOSTICO_FRONTEND_COMPLETO_OK=1')
           PY
