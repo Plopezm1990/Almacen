@@ -226,9 +226,13 @@
     for (var i = 0; i < lista.length; i++) {
       var key = lista[i];
       try {
-        var valor = LOCAL.get(key);
+        var cacheKey = await claveCacheLocal(key);
+        var valor = LOCAL.get(cacheKey);
+        var tablaEmpresa = TABLAS_EMPRESA[key];
         var tablaEspecial = TABLAS_POR_FILA[key];
-        if (tablaEspecial) {
+        if (tablaEmpresa) {
+          await encolarPorClave(key, function () { return sincronizarColeccionEmpresa(tablaEmpresa, JSON.parse(valor)); });
+        } else if (tablaEspecial) {
           await encolarPorClave(key, function () { return sincronizarColeccionPorFila(tablaEspecial, JSON.parse(valor), key); });
         } else {
           // Sin referencia de "lo que había antes" no se puede saber qué quitó
@@ -259,6 +263,54 @@
     fichajes: "fichajes_registro",
     auditoria: "auditoria_registro",
   };
+  // PM-05: proveedores y clientes dejan de compartir un bloque global.
+  // Cada registro conserva empresa_id en una tabla con RLS real.
+  var TABLAS_EMPRESA = {
+    proveedores: "proveedores_empresa",
+    clientes: "clientes_empresa",
+  };
+  var CLAVES_CACHE_POR_USUARIO = { proveedores: true, clientes: true, auditoria: true };
+
+  async function claveCacheLocal(key) {
+    if (!CLAVES_CACHE_POR_USUARIO[key] || !window.__nubeCliente) return key;
+    try {
+      var ses = await window.__nubeCliente.auth.getSession();
+      var uid = ses && ses.data && ses.data.session && ses.data.session.user && ses.data.session.user.id;
+      if (uid) return key + "::usuario:" + uid;
+    } catch (e) {}
+    return key + "::sin-sesion";
+  }
+
+  async function leerColeccionEmpresa(tabla) {
+    var r = await window.__nubeCliente.from(tabla).select("id,empresa_id,datos").order("updated_at", { ascending: true });
+    if (r.error) throw r.error;
+    return (r.data || []).map(function (fila) {
+      var d = fila.datos || {};
+      if (!d.empresaId) d = Object.assign({}, d, { empresaId: fila.empresa_id });
+      return d;
+    });
+  }
+
+  async function sincronizarColeccionEmpresa(tabla, listaLocal) {
+    if (!Array.isArray(listaLocal)) throw new Error("La colección empresarial debe ser una lista");
+    var invalidos = listaLocal.filter(function (x) { return !x || !x.id || !x.empresaId; });
+    if (invalidos.length) throw new Error("Hay registros sin id/empresaId; se bloquea la sincronización para evitar mezcla entre empresas");
+    var rLee = await window.__nubeCliente.from(tabla).select("id,empresa_id,datos");
+    if (rLee.error) throw rLee.error;
+    var remotos = rLee.data || [];
+    var porId = {}; remotos.forEach(function (r) { porId[r.id] = r; });
+    var filas = listaLocal.map(function (x) { return { id: x.id, empresa_id: x.empresaId, datos: x, updated_at: new Date().toISOString() }; });
+    if (filas.length) {
+      var rUp = await window.__nubeCliente.from(tabla).upsert(filas);
+      if (rUp.error) throw rUp.error;
+    }
+    var vivos = {}; listaLocal.forEach(function (x) { vivos[x.id]=true; });
+    var borrar = remotos.filter(function (r) { return !vivos[r.id]; }).map(function (r) { return r.id; });
+    if (borrar.length) {
+      var rDel = await window.__nubeCliente.from(tabla).delete().in("id", borrar);
+      if (rDel.error) throw rDel.error;
+    }
+  }
   var LIMITE_LECTURA = { auditoria: 500 }; // truncamiento DELIBERADO: la auditoría solo se consulta, no alimenta cálculos
   var PAGINA_LECTURA = 1000; // tamaño de página de PostgREST
 
@@ -355,7 +407,7 @@
           var d = filasParaGuardar[i].datos;
           var rRpc = await window.__nubeCliente.rpc("registrar_auditoria", {
             p_id: d.id, p_usuario: d.usuario, p_accion: d.accion, p_detalle: d.detalle,
-            p_fecha: d.fecha, p_hora: d.hora,
+            p_fecha: d.fecha, p_hora: d.hora, p_empresa_id: d.empresaId || null, p_local_id: d.localId || null,
           });
           if (rRpc.error) throw rRpc.error;
         }
@@ -522,11 +574,15 @@
     // Leer: si hay nube, se prefiere (trae lo que hayan hecho en otro
     // dispositivo) y se deja copia local. Si no, se lee de local.
     async get(key) {
+      var tablaEmpresa = TABLAS_EMPRESA[key];
       var tablaEspecial = TABLAS_POR_FILA[key];
+      var cacheKey = await claveCacheLocal(key);
       if (window.__nubeActiva && window.__nubeCliente && pendientes().indexOf(key) === -1) {
         try {
           var lista;
-          if (tablaEspecial) {
+          if (tablaEmpresa) {
+            lista = await conTiempoLimite(leerColeccionEmpresa(tablaEmpresa), ESPERA_NUBE_MS);
+          } else if (tablaEspecial) {
             lista = await conTiempoLimite(leerColeccionPorFila(tablaEspecial, key), ESPERA_NUBE_MS);
           } else {
             var r = await conTiempoLimite(
@@ -537,22 +593,24 @@
             lista = r.data.value;
           }
           var texto = JSON.stringify(lista);
-          LOCAL.set(key, texto); // copia local, para poder trabajar sin red
+          LOCAL.set(cacheKey, texto); // cache segregada por identidad en datos sensibles
           return { key: key, value: texto, shared: false };
-        } catch (e) { /* si falla la nube, seguimos con lo local */ }
+        } catch (e) { /* si falla la nube, seguimos con la cache de ESA identidad */ }
       }
-      return { key: key, value: LOCAL.get(key), shared: false };
+      return { key: key, value: LOCAL.get(cacheKey), shared: false };
     },
 
     // Guardar: primero en el dispositivo (instantáneo y sin fallo posible),
     // y después se intenta subir. Si no sube, queda en la cola de pendientes.
     async set(key, value) {
+      var tablaEmpresa = TABLAS_EMPRESA[key];
       var tablaEspecial = TABLAS_POR_FILA[key];
+      var cacheKey = await claveCacheLocal(key);
 
       // Qué había guardado antes en este equipo. Sirve para saber qué se ha
       // quitado y para poder dejarlo como estaba si el guardado no cabe.
       var anterior = null;
-      try { anterior = LOCAL.get(key); } catch (e) { anterior = null; }
+      try { anterior = LOCAL.get(cacheKey); } catch (e) { anterior = null; }
 
       // El almacenamiento del navegador tiene un tope (unos 5 MB en total).
       // Antes se daba por hecho que guardar en local "no puede fallar"; si
@@ -560,17 +618,22 @@
       // apuntaba para subir: el cambio se perdía entero.
       var falloLocal = null;
       try {
-        LOCAL.set(key, value);
+        LOCAL.set(cacheKey, value);
       } catch (e) {
         falloLocal = e;
-        try { if (anterior !== null) LOCAL.set(key, anterior); } catch (e2) {}
+        try { if (anterior !== null) LOCAL.set(cacheKey, anterior); } catch (e2) {}
       }
 
       if (tablaEspecial && !falloLocal) anotarBorradosLocales(key, anterior, value);
 
       if (window.__nubeActiva && window.__nubeCliente) {
         try {
-          if (tablaEspecial) {
+          if (tablaEmpresa) {
+            await conTiempoLimite(
+              encolarPorClave(key, function () { return sincronizarColeccionEmpresa(tablaEmpresa, JSON.parse(value)); }),
+              ESPERA_NUBE_MS
+            );
+          } else if (tablaEspecial) {
             await conTiempoLimite(
               encolarPorClave(key, function () { return sincronizarColeccionPorFila(tablaEspecial, JSON.parse(value), key); }),
               ESPERA_NUBE_MS
@@ -601,11 +664,16 @@
     },
 
     async delete(key) {
-      LOCAL.delete(key);
+      var cacheKey = await claveCacheLocal(key);
+      LOCAL.delete(cacheKey);
       if (window.__nubeActiva && window.__nubeCliente) {
         try {
+          var tablaEmpresa = TABLAS_EMPRESA[key];
           var tablaEspecial = TABLAS_POR_FILA[key];
-          if (tablaEspecial) {
+          if (tablaEmpresa) {
+            var rEmpDel = await conTiempoLimite(window.__nubeCliente.from(tablaEmpresa).delete().neq("id", ""), ESPERA_NUBE_MS);
+            if (rEmpDel.error) throw rEmpDel.error;
+          } else if (tablaEspecial) {
             await conTiempoLimite(window.__nubeCliente.from(tablaEspecial).delete().neq("id", ""), ESPERA_NUBE_MS);
           } else {
             await conTiempoLimite(window.__nubeCliente.from("almacen_kv").delete().eq("key", key), ESPERA_NUBE_MS);
