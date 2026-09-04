@@ -17,9 +17,14 @@ jobs:
           fetch-depth: 0
       - name: Aplicar parche
         run: python3 .github/scripts/pm07-fix-contexto-cloud.py
-      - name: Reconstruir y validar
+      - name: Reconstruir bundle
+        working-directory: source-recovery
         run: |
-          bash reconstruir.sh
+          npm ci
+          npm run build
+          cp dist/fuente.js ../fuente.js
+      - name: Validar
+        run: |
           node --check source-recovery/fuente-recuperado.js
           node --check fuente.js
           node tests/pm07/frontend-contract.mjs
