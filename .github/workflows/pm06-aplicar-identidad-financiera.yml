@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 3
+          fetch-depth: 4
 
       - name: Aplicar parche PM-06 y reconstruir
         shell: bash
@@ -29,8 +29,8 @@ jobs:
           test -s /tmp/pm06_patch.b64
           base64 -d /tmp/pm06_patch.b64 | gzip -d > /tmp/pm06_patch.py
 
-          echo '=== PM06 DIAGNOSTICO get variables ==='
-          grep -n -C 12 'get variables' /tmp/pm06_patch.py || true
+          echo '=== PM06 DIAGNOSTICO must_replace ==='
+          sed -n '1,85p' /tmp/pm06_patch.py
           echo '=== FIN DIAGNOSTICO ==='
 
           python3 -m py_compile /tmp/pm06_patch.py
