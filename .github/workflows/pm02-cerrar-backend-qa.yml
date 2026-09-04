@@ -100,11 +100,25 @@ jobs:
           QA_URL='https://qjqorixtkilwsndqayyx.supabase.co'
           QA_KEY='sb_publishable__PApb45EaLdiR4tGcXFrzQ_LtZcxqK8'
           RESP=$(curl -fsS -X POST "$QA_URL/rest/v1/rpc/qa_ping" -H "apikey: $QA_KEY" -H "Authorization: Bearer $QA_KEY" -H 'Content-Type: application/json' -d '{}')
-          echo "$RESP" | grep -Fq 'L&A Suite QA'
-          echo "$RESP" | grep -Fq '"aislado":true'
+          export RESP
+          python3 - <<'PY'
+          import json, os
+          d=json.loads(os.environ['RESP'])
+          assert d.get('ok') is True
+          assert d.get('entorno') == 'L&A Suite QA'
+          assert d.get('aislado') is True
+          print('PM02_QA_PING_OK=1')
+          PY
           NOTIF=$(curl -fsS "$QA_URL/functions/v1/enviar-notificacion" -H "apikey: $QA_KEY")
-          echo "$NOTIF" | grep -Fq '"qa":true'
-          echo "$NOTIF" | grep -Fq '"simulated":true'
+          export NOTIF
+          python3 - <<'PY'
+          import json, os
+          d=json.loads(os.environ['NOTIF'])
+          assert d.get('qa') is True
+          assert d.get('simulated') is True
+          assert d.get('sent') == 0
+          print('PM02_QA_NOTIFICACION_SIMULADA_OK=1')
+          PY
           echo 'PM02_BACKEND_QA_REAL_OK=1'
           echo 'PM02_NOTIFICACIONES_SIMULADAS_OK=1'
 
