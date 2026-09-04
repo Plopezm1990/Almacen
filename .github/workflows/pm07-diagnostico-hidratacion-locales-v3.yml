@@ -1,0 +1,26 @@
+name: PM07 diagnostico hidratacion locales v3
+on:
+  push:
+    branches: [pm07-stock-reversos-ubicacion]
+    paths:
+      - '.github/workflows/pm07-diagnostico-hidratacion-locales-v3.yml'
+permissions:
+  contents: read
+jobs:
+  diagnostico:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trazar carga y sobrescritura de locales
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC=source-recovery/fuente-recuperado.js
+          echo '=== TODAS LAS REFERENCIAS loadKey locales/empresas/localActivo ==='
+          grep -n -B25 -A55 -E 'loadKey\("(locales|empresas|localActivoId)"|setLocales\(|setEmpresas\(|setLocalActivoId\(' "$SRC" | head -n 1800 || true
+          echo '=== READY / CARGA INICIAL ==='
+          grep -n -B40 -A140 -E 'setReady\(|Promise\.all\(|async function cargar|const cargar|function cargar' "$SRC" | head -n 2200 || true
+          echo '=== EMPRESAS Y LOCALES UI ==='
+          grep -n -B30 -A100 -E 'Empresas y locales|Añadir local nuevo|Ficha de empresa|localesEmpresaActiva' "$SRC" | head -n 1600 || true
+          echo '=== RESET PREVIEW ==='
+          cat reset-pruebas-preview.js
