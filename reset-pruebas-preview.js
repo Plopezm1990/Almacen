@@ -61,9 +61,11 @@
   }
 
   // Reinicio total del estado funcional local, una sola vez por navegador.
-  // v5: corrige la doble marca QA+local y fuerza una hidratación limpia desde
-  // Supabase QA. Solo afecta a Deploy Preview; producción queda fuera por host.
-  var MARCADOR = "la_suite_reset_total_20260904_v5_qa";
+  // v6: además de limpiar la caché antigua, deja un bootstrap funcional QA
+  // mínimo para que el selector de locales y los productos existan desde el
+  // primer render. El stock autoritativo se sigue sincronizando después desde
+  // Supabase QA mediante PM-07; esto NO afecta a producción.
+  var MARCADOR = "la_suite_reset_total_20260904_v6_qa";
   if (localStorage.getItem(MARCADOR) === "1") return;
 
   var claves = [];
@@ -80,7 +82,26 @@
     }
   });
 
+  var empresas = [
+    { id: "QA-EMP-A", razonSocial: "QA Empresa A, S.L.", nif: "QA000000A", marca: "L&A Suite QA", nombreComercial: "L&A Suite QA", activo: true }
+  ];
+  var locales = [
+    { id: "QA-A1", nombre: "QA Local A1", direccion: "QA A1", empresaId: "QA-EMP-A", activo: true },
+    { id: "QA-A2", nombre: "QA Local A2", direccion: "QA A2", empresaId: "QA-EMP-A", activo: true },
+    { id: "QA-A-CERRADO", nombre: "QA Local A Cerrado", direccion: "QA Cerrado", empresaId: "QA-EMP-A", activo: false }
+  ];
+  var productos = [
+    { id: "QA-PROD-A-AGUA", nombre: "QA Agua A1", localId: "QA-A1", empresaId: "QA-EMP-A", stock: 23, stockPisoVenta: 5, stockMinimo: 3, costo: 3, coste: 3, precio: 6, precioVenta: 6, iva: 10, ivaVenta: 10, unidad: "ud", tipo: "materia_prima", activo: true },
+    { id: "QA-PROD-A-AGUA-A2-SMOKE", nombre: "QA Agua A2", localId: "QA-A2", empresaId: "QA-EMP-A", stock: 10, stockPisoVenta: 2, stockMinimo: 3, costo: 3, coste: 3, precio: 6, precioVenta: 6, iva: 10, ivaVenta: 10, unidad: "ud", tipo: "materia_prima", activo: true }
+  ];
+
+  localStorage.setItem("almacen:empresas", JSON.stringify(empresas));
+  localStorage.setItem("almacen:locales", JSON.stringify(locales));
+  localStorage.setItem("almacen:localActivoId", JSON.stringify("QA-A1"));
+  localStorage.setItem("almacen:productos", JSON.stringify(productos));
+  localStorage.setItem("almacen:movimientos", JSON.stringify([]));
+
   localStorage.setItem(MARCADOR, "1");
   window.__resetPruebasEjecutado = true;
-  window.__reinicioLocalSeguroVersion = "20260904-v5-qa";
+  window.__reinicioLocalSeguroVersion = "20260904-v6-qa";
 })();
