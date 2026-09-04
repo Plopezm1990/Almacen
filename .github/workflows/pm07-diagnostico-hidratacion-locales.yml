@@ -1,0 +1,26 @@
+name: PM07 diagnóstico hidratación locales
+on:
+  push:
+    branches: [pm07-stock-reversos-ubicacion]
+    paths:
+      - '.github/workflows/pm07-diagnostico-hidratacion-locales.yml'
+permissions:
+  contents: read
+jobs:
+  diagnostico:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Localizar carga y filtrado de empresas/locales
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC=source-recovery/fuente-recuperado.js
+          echo '=== ocurrencias datos_app / Supabase / loadKey / saveKey ==='
+          grep -n -E 'datos_app|loadKey|saveKey|from\(".*datos|from\("datos|localesEmpresaActiva|setLocales|useState\(.*locales|"locales"|\x27locales\x27' "$SRC" | head -n 250 || true
+          echo '=== contextos de localesEmpresaActiva ==='
+          grep -n -B8 -A18 'localesEmpresaActiva' "$SRC" | head -n 220 || true
+          echo '=== contextos de empresaDelLocalActivo ==='
+          grep -n -B12 -A22 'empresaDelLocalActivo' "$SRC" | head -n 220 || true
+          echo '=== contextos de Promise/all y carga inicial ==='
+          grep -n -B12 -A30 -E 'Promise\.all|almacen:empresas|almacen:locales|empresaId.*locales|localActivoFinal|localesFinales' "$SRC" | head -n 320 || true
