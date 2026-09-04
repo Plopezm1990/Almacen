@@ -29,3 +29,5 @@ jobs:
           print('PM05_FINAL_QA_OK=1')
           print('PM05_FINAL_PASSED=%s' % d['passed'])
           PY
+
+# Activación deliberada del one-shot final tras hardening de helpers/RLS.
