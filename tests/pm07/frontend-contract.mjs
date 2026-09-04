@@ -32,9 +32,15 @@ const venta = functionBlock('venderCarrito');
 const anular = functionBlock('anularVenta');
 const interno = functionBlock('traspasarStock');
 const interlocal = functionBlock('traspasarEntreLocales');
+const contexto = functionBlock('sincronizarContextoPm07');
 
 const checks = {
   sync_helper_unico: (s.match(/async function sincronizarStockPm07\(/g) || []).length === 1,
+  contexto_cloud_helper_unico: (s.match(/async function sincronizarContextoPm07\(/g) || []).length === 1,
+  contexto_cloud_lee_claves: contexto.includes('.from("almacen_kv")') && contexto.includes('"empresas", "locales", "localActivoId", "productos"'),
+  contexto_cloud_hidrata_locales: contexto.includes('setLocales(localesNube.filter'),
+  contexto_cloud_hidrata_local_activo: contexto.includes('setLocalActivoId(localActivoNube)'),
+  contexto_cloud_se_ejecuta_tras_ready: s.includes('await sincronizarContextoPm07({ setEmpresas, setLocales, setLocalActivoId, setProductos });'),
   venta_rpc_pm07: venta.includes('supabase.rpc("registrar_venta_stock_carrito"'),
   venta_solo_un_fallback_offline: (venta.match(/return venderLocal\(lineas, medioPago, detallePago\);/g) || []).length === 1,
   venta_fallo_cloud_no_muta_local: venta.includes('No se ha descontado stock localmente.'),
