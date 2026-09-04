@@ -1,19 +1,17 @@
 (function () {
   "use strict";
 
-  // Este reinicio existe SOLO para los Deploy Preview de L&A Suite.
-  // Cubre tanto el alias deploy-preview-N como el permalink inmutable del deploy.
+  // Reinicio local seguro de L&A Suite SOLO en Deploy Preview.
   // Producción y cualquier otro dominio quedan fuera por diseño.
   var HOST_PREVIEW = /^(?:deploy-preview-\d+|[a-f0-9]{24})--chic-entremet-9107cf\.netlify\.app$/i;
   if (typeof window === "undefined" || !HOST_PREVIEW.test(window.location.hostname)) return;
 
-  // Mientras se prueba desde el Preview, la aplicación debe permanecer
-  // completamente aislada de Supabase: ni lee datos reales ni sube datos de prueba.
+  // El Preview trabaja aislado de la nube productiva mientras se prepara QA.
   window.__modoPruebasLocal = true;
 
-  // Defensa adicional: el bundle histórico contiene algunas llamadas fetch()
-  // directas a Edge Functions del proyecto real. Vaciar NUBE_URL no las bloquea.
-  // En cualquier Deploy Preview se rechaza toda petición HTTP al host productivo.
+  // Defensa adicional: el bundle contiene algunas llamadas fetch() directas a
+  // Edge Functions del proyecto real. En Preview se bloquea TODO acceso HTTP
+  // al host productivo, aunque una llamada no dependa de NUBE_URL.
   var SUPABASE_PROD_HOST = "flqercbgpgmmfaakrwkc.supabase.co";
   if (typeof window.fetch === "function" && !window.__qaFetchProduccionBloqueado) {
     var fetchOriginal = window.fetch.bind(window);
@@ -26,54 +24,50 @@
           return Promise.reject(new Error("QA_BLOCKED_PRODUCTION_SUPABASE"));
         }
       } catch (e) {
-        // Si no se puede interpretar la URL, conserva el comportamiento normal de fetch.
+        // Si no se puede interpretar la URL, conserva el comportamiento normal.
       }
       return fetchOriginal(input, init);
     };
     window.__qaFetchProduccionBloqueado = true;
   }
 
-  // Marcador de una sola ejecución por navegador/origen. Para repetir el reset
-  // en otra campaña de pruebas bastará con versionar este nombre.
-  var MARCADOR = "la_suite_reset_pruebas_multilocal_v1";
+  // v2 = borrado TOTAL del espacio funcional de L&A Suite. La versión anterior
+  // conservaba empresas/locales/configuración y ya no sirve para el reinicio a cero.
+  var MARCADOR = "la_suite_reset_total_20260904_v2";
   if (localStorage.getItem(MARCADOR) === "1") return;
 
-  // Conservamos únicamente estructura, contexto y preferencias de interfaz.
-  // Todo lo operativo se reconstruirá desde cero durante las pruebas.
-  var CONSERVAR = {
-    empresas: true,
-    locales: true,
-    localActivoId: true,
-    configEmpresa: true,
-    disenoMenu: true,
-    temaOscuro: true,
-    pinPropietario: true
-  };
-
-  // Copiamos primero las claves para poder borrarlas sin alterar el recorrido.
+  // Copiamos las claves antes de borrarlas para no alterar el recorrido.
   var claves = [];
   for (var i = 0; i < localStorage.length; i++) claves.push(localStorage.key(i));
 
   claves.forEach(function (clave) {
     if (!clave) return;
 
+    // Todo el estado funcional de la aplicación vive bajo almacen:*.
+    // Se eliminan también empresa, locales, PIN, diseño, usuario activo y tema:
+    // el objetivo solicitado es un arranque realmente a cero.
     if (clave.indexOf("almacen:") === 0) {
-      var simple = clave.slice(8);
-      if (!CONSERVAR[simple]) localStorage.removeItem(clave);
+      localStorage.removeItem(clave);
       return;
     }
 
-    // Nunca arrastrar a una futura sincronización los IDs que pertenecían
-    // a datos antiguos del dispositivo.
-    if (clave.indexOf("almacen__borrados:") === 0) {
+    // Colas, tombstones y avisos auxiliares pueden reinyectar o reintentar datos
+    // antiguos; por eso también se borran todos los auxiliares almacen__*.
+    if (clave.indexOf("almacen__") === 0) {
+      localStorage.removeItem(clave);
+      return;
+    }
+
+    // Elimina marcadores de campañas de reset antiguas para no dejar estados
+    // contradictorios. El marcador v2 actual se escribe al final.
+    if (clave.indexOf("la_suite_reset_pruebas_") === 0) {
       localStorage.removeItem(clave);
     }
   });
 
-  // La cola anterior podría subir registros antiguos cuando vuelva la nube.
-  localStorage.removeItem("almacen__pendientes");
-  localStorage.removeItem("almacen__caducidades_avisadas");
-
+  // No se hace localStorage.clear(): así se conserva la sesión técnica de
+  // Supabase (sb-*-auth-token) y cualquier otra clave ajena a L&A Suite.
   localStorage.setItem(MARCADOR, "1");
   window.__resetPruebasEjecutado = true;
+  window.__reinicioLocalSeguroVersion = "20260904-v2";
 })();
