@@ -1,4 +1,4 @@
-# PM-07 · Stock y reversos por ubicación — EN CURSO
+# PM-07 · Stock y reversos por ubicación — VALIDACIÓN FINAL
 
 Rama: `pm07-stock-reversos-ubicacion`
 Base exacta: PM-06 cerrado `972d1f022659eac21d223929e08805d537872125`
@@ -8,104 +8,143 @@ Main: NO modificada
 
 ## Alcance
 Resolver LA-005 / LA-006 / LA-015 conforme a DEC-02:
-- stock físico por empresa/local/producto;
+- stock físico autoritativo por empresa/local/producto y ubicación;
 - total = almacén + piso;
 - no stock negativo;
-- venta bloqueada antes de mutar si la disponibilidad es insuficiente;
-- movimiento registra deltas exactos por ubicación;
-- reverso vinculado e idempotente restaura exactamente las ubicaciones originales;
+- venta bloqueada antes de mutar si disponibilidad insuficiente;
+- deltas exactos por ubicación;
+- reverso vinculado e idempotente que restaura las ubicaciones originales;
 - traslado almacén<->piso con efecto neto 0;
+- traslado interlocal atómico con efecto neto empresa 0;
 - unidades indivisibles enteras y fraccionables con precisión explícita;
-- alerta de mínimo coherente por local;
+- alerta de mínimo con regla estricta `total < minimo`;
 - operación ordinaria bloqueada para local inactivo.
 
-## Migraciones aplicadas solo en QA
-1. `20260904135838 pm07_stock_ubicacion_y_reversos`
-2. `20260904140200 pm07_ajustar_roles_venta`
-3. `20260904140526 pm07_bloqueo_local_inactivo_v2`
-4. `pm07_validacion_cantidad_semantica`
-
-Las migraciones están versionadas en `supabase/migrations/` en la rama PM-07. No se han aplicado a producción.
-
-## Estructura QA creada
+## Backend QA implementado
+Tablas/vista principales:
 - `public.stock_ubicacion`
 - `public.stock_operaciones`
 - `public.movimientos_stock`
-- `public.stock_estado`
-- RPC `registrar_venta_stock`
-- RPC `revertir_venta_stock`
-- RPC `trasladar_stock_interno`
+- `public.stock_estado` con `security_invoker=true`
 
-RLS está habilitado en las tres tablas. Escrituras directas de `authenticated` revocadas; lectura autorizada por `private.la_tiene_local`. Mutaciones sensibles se realizan mediante RPC con `auth.uid()`, rol y contexto empresa/local. `movimientos_stock` fuerza `delta_total = delta_almacen + delta_piso` y un índice único impide más de un REVERSO por movimiento original.
+RPC principales:
+- `registrar_venta_stock`
+- `revertir_venta_stock`
+- `trasladar_stock_interno`
+- `registrar_venta_stock_carrito`
+- `revertir_venta_stock_carrito`
+- `trasladar_stock_entre_locales`
 
-## Evidencia ejecutada
+RLS está habilitado en las tablas PM-07. Las escrituras directas de `authenticated` están revocadas; lectura autorizada por `private.la_tiene_local`. Las mutaciones sensibles pasan por RPC con `auth.uid()`, rol y contexto empresa/local. El ledger exige `delta_total = delta_almacen + delta_piso` y protege frente a reversos duplicados.
+
+## Evidencia backend
 ### LA-005 · venta / reverso por ubicación
-Fixture A1: almacén 18, piso 5, total 23.
-- Venta 24 con 23: rechazo `stock_insuficiente`.
-- Tras el rechazo: total permanece 23 y no queda operación huérfana.
-- Venta válida 6: descuenta exactamente piso -5 y almacén -1; saldo 17.
-- Reverso: piso +5 y almacén +1; restaura exactamente 18+5=23.
-- Replay del mismo reverso: `replayed=true` y no duplica efecto.
-- Segundo reverso con otro `operation_id`: rechazo `venta_stock_ya_revertida`.
+Baseline A1 original: almacén 18, piso 5, total 23.
+- Venta 24 con 23: rechazo `stock_insuficiente`, sin operación huérfana ni mutación.
+- Venta válida 6: piso -5 y almacén -1; total 17.
+- Reverso: piso +5 y almacén +1; restaura exactamente 23.
+- Replay del mismo reverso: sin doble efecto.
+- Segundo reverso distinto: `venta_stock_ya_revertida`.
 
-### LA-006 · traslado interno
-- Traslado 5 almacén -> piso: almacén 13, piso 10, total 23.
-- Movimiento: `delta_almacen=-5`, `delta_piso=+5`, `delta_total=0`.
-- Replay con el mismo `operation_id` y payload: `replayed=true`.
-- Mismo `operation_id` con cantidad distinta: `operation_id_conflict`.
-- Sobre-traslado 11 con solo 10 disponibles en almacén: rechazo `stock_insuficiente_ubicacion`.
-- Tras el rechazo el saldo del fixture permanece 10+0=10, sin mutación.
+### Carrito atómico
+- Carrito válido con varias líneas: todas decrementan juntas.
+- Replay del mismo `operation_id`: idempotente.
+- Mismo ID con payload diferente: `operation_id_conflict`.
+- Si una línea es insuficiente: 0 operación, 0 movimientos y 0 mutaciones en todas las líneas.
+- Reverso del carrito restaura todas las líneas conjuntamente y conserva metadatos económicos para Kardex/informes.
+
+### LA-006 · traslados
+Interno almacén -> piso:
+- movimiento exacto `delta_almacen=-5`, `delta_piso=+5`, `delta_total=0`;
+- total físico permanece invariable;
+- replay idempotente;
+- sobretraslado rechazado sin mutación.
+
+Entre locales:
+- origen y destino se modifican en una sola operación atómica con dos patas de movimiento;
+- efecto neto empresa = 0;
+- sobretraslado: `stock_insuficiente_ubicacion`, sin escrituras parciales;
+- destino cerrado: `local_inactivo`, sin escrituras parciales;
+- replay idempotente y conflicto de payload protegido.
 
 ### Unidades / precisión
-- Producto indivisible, cantidad 1.5: rechazo semántico `unidad_indivisible`.
-- Producto fraccionable con precisión 2, cantidad 1.25: venta válida; saldo 10 -> 8.75.
-- Mismo producto, cantidad 1.234: rechazo `precision_cantidad_excedida`.
-- Se corrigió un defecto detectado durante QA: inicialmente 1.5 indivisible devolvía `precision_cantidad_excedida`; ahora la validación comprueba indivisibilidad antes de redondear.
+- Indivisible 1.5: `unidad_indivisible`.
+- Fraccionable precisión 2 acepta 1.25.
+- 1.234 con precisión 2: `precision_cantidad_excedida`.
 
 ### LA-015 · mínimo
 Con mínimo=3:
-- total 0 -> `bajo_minimo=true`
-- total 1 -> `bajo_minimo=true`
-- total 2 -> `bajo_minimo=true`
-- total 3 -> `bajo_minimo=false`
-Fixtures temporales de alerta eliminados (0 residuos).
+- total 0 -> alerta
+- total 1 -> alerta
+- total 2 -> alerta
+- total 3 -> no alerta
+Regla validada: `total < minimo`.
 
-### Roles / empresa / local
-- El rol real QA es `Cajero/a`; se corrigió el literal backend que inicialmente usaba `Cajero`.
-- Cajero/a A1 puede vender en A1.
-- Cajero/a A1 no puede vender en A2: `contexto_no_autorizado`.
-- Cajero/a A1 no puede ejecutar traslado interno: `traslado_no_autorizado`.
-- Propietario B intentando vender en A1: `contexto_no_autorizado`.
-- Usuario inactivo: `stock_no_autorizado`.
-- Propietario A intentando venta ordinaria en A-CERRADO: `local_inactivo`.
-- A-CERRADO conserva su stock histórico y `local_operable=false`.
+### Roles / aislamiento / local cerrado
+- Cajero/a A1 vende en A1 pero no en A2.
+- Cajero/a no gestiona traslados de stock.
+- Propietario B no accede al contexto de empresa A.
+- Usuario inactivo rechazado.
+- Venta ordinaria en A-CERRADO rechazada con `local_inactivo`.
+- El local cerrado conserva historia/stock histórico.
 
-### Idempotencia / última unidad / concurrencia estructural
-- Operaciones sensibles usan `operation_id` durable y payload normalizado.
+### Idempotencia y concurrencia
 - Mismo `operation_id` + mismo payload -> replay sin doble efecto.
-- Mismo `operation_id` + payload distinto -> `operation_id_conflict`.
-- Fixture de última unidad: saldo inicial 1.
-- Primera venta con `PM07-LAST-1`: éxito y saldo 0.
-- Segunda venta con `PM07-LAST-2`: `stock_insuficiente`.
-- Resultado: exactamente 1 operación, 1 movimiento y saldo 0; nunca -1.
-- `registrar_venta_stock` obtiene la fila `stock_ubicacion ... FOR UPDATE` antes de comprobar saldo y mutar, por lo que las sesiones concurrentes quedan serializadas sobre empresa/local/producto.
-- Pendiente para cierre: stress real desde dos sesiones cliente simultáneas si se habilita un arnés seguro; no se instalaron extensiones de concurrencia permanentes solo para el test.
+- Mismo `operation_id` + payload distinto -> conflicto.
+- Prueba determinista de última unidad: primera operación 1 -> 0; segunda operación distinta falla por stock insuficiente; nunca existe saldo negativo.
+- Las RPC bloquean las filas de stock con `SELECT ... FOR UPDATE` antes de validar saldo y mutar.
+- Limitación explícita: no se ha ejecutado un stress real desde dos sesiones cliente simultáneas; la garantía se apoya en prueba determinista + bloqueo transaccional estructural.
 
-## Baseline permanente PM-07 en QA tras limpieza
-- A1 / QA-PROD-A-AGUA: almacén 18, piso 5, total 23, mínimo 3, operable.
-- A2 / QA-PROD-A-AGUA: almacén 8, piso 2, total 10, mínimo 3, operable.
-- A-CERRADO / QA-PROD-A-AGUA: almacén 4, piso 0, total 4, `local_operable=false`.
-- B1 / QA-PROD-B-CAFE: almacén 5, piso 2, total 7, mínimo 3, operable.
-Todos los fixtures `PM07-TEST-*` fueron eliminados: 0 movimientos, 0 operaciones y 0 filas de stock residuales.
+## Frontend PM-07
+Integración realizada sin reescribir módulos cerrados:
+- sincronización de `stock_estado` y `movimientos_stock` al cargar/cambiar local;
+- TPV cloud usa `registrar_venta_stock_carrito`;
+- no existe fallback local de stock cuando falla servidor en nube;
+- fallback local reservado al modo offline y sin déficit;
+- anulación cloud usa `revertir_venta_stock_carrito`;
+- traslado interno usa `trasladar_stock_interno`;
+- traslado interlocal usa `trasladar_stock_entre_locales`;
+- TPV y alertas consumen stock autoritativo cuando está disponible;
+- alerta corregida a `< minimo` y corregida precedencia de expresiones JS.
 
-## Security Advisor
-Sin avisos de RLS ausente para las tablas PM-07. El advisor marca las RPC SECURITY DEFINER expuestas a `authenticated`; es intencional y exige mantener las comprobaciones internas de `auth.uid()`, rol y contexto. Existen avisos preexistentes fuera de PM-07 (p. ej. leaked-password protection y tablas internas sin policies) que no se corrigen dentro de este paquete.
+## Regresión automatizada
+Existe `tests/pm07/frontend-contract.mjs` y `.github/workflows/pm07-regresion.yml`.
+En el HEAD previo a esta actualización documental, las ejecuciones PM-07 y PM-05 asociadas al PR estaban en SUCCESS. La actualización de este documento debe volver a pasar los checks antes del cierre formal.
 
-## Pendiente antes de cierre
-- Probar lectura RLS efectiva por A1/A2/B/inactivo mediante cliente authenticated o arnés seguro; policies ya inspeccionadas y restringen por `private.la_tiene_local`.
-- Ejecutar stress real de última unidad con dos sesiones simultáneas si el entorno permite un arnés seguro.
-- Revisar transferencia interlocal contra DEC-02 y conservar compatibilidad con el flujo ya validado previamente.
-- Conectar frontend/TPV actual a la autoridad PM-07 sin reescribir módulos cerrados.
-- Conectar Dashboard/avisos/Kardex a la misma autoridad `stock_estado`/`movimientos_stock` para LA-015.
-- Build, Deploy Preview, smoke móvil/TPV, regresión dependiente y limpieza final.
-- Crear PR de cierre solo cuando la evidencia final esté verde. NO MERGE / NO PRODUCCIÓN.
+## Deploy Preview y smoke runtime móvil
+Se generó Deploy Preview seguro mediante el PR temporal #22, sin merge a `main` y sin modificar producción.
+
+Smoke ejecutado manualmente en móvil Android sobre el Deploy Preview con identidad QA temporal. Evidencia observada durante la sesión:
+- selector multilocal muestra QA Local A1 y QA Local A2 para la empresa QA;
+- traslado interno almacén -> piso de venta registrado y visible en historial;
+- traslado A1 -> A2 de 3 ud completado y visible en historial;
+- intento de trasladar 11 ud con solo 10 disponibles bloqueado antes de confirmar, mostrando disponibilidad real;
+- Dashboard inicialmente detectó descuadres de caché frente al histórico durante la preparación de fixtures;
+- tras sincronización/corrección QA, `Descuadres de stock` pasó a 0;
+- Productos mostró el stock autoritativo por almacén/piso;
+- TPV mostró producto sin stock de venta cuando correspondía y evitó disponibilidad ficticia;
+- venta runtime descontó stock y actualizó Dashboard;
+- anulación/reverso runtime restauró stock, quedando Dashboard y Productos sincronizados;
+- regla LA-015 comprobada visualmente: con total=3 y mínimo=3 no aparece alerta; al quedar total=2 aparece `1 producto en stock bajo` y detalle `2,00 / mín. 3,00`;
+- no se observó error fatal de React/hooks durante el recorrido móvil.
+
+## Fixtures temporales de smoke
+Para permitir el smoke de una sesión cloud nueva se crearon exclusivamente en QA:
+- usuario Auth temporal `pm07.smoke@qa.invalid` con perfil/membresía Propietario de QA-EMP-A;
+- bootstrap funcional temporal en `almacen_kv` para empresa/locales/productos/movimientos;
+- producto/stock temporal diferenciado para QA Local A2 cuando fue necesario para evitar ambigüedad de IDs en el modelo frontend.
+
+Estos elementos son datos de prueba y deben eliminarse al terminar el cierre. La eliminación del usuario Auth puede requerir acción manual si la herramienta conectada no expone Auth Admin delete-user.
+
+## Observación arquitectónica fuera de alcance
+Durante el bootstrap se observó que `almacen_kv.key` parece actuar como identidad global aunque la tabla contiene `empresa_id/local_id`. Las claves funcionales canónicas podrían no poder coexistir por empresa si la unicidad es solo global. No se modifica este diseño dentro de PM-07: debe tratarse como deuda/arquitectura en un paquete posterior si se confirma.
+
+## Estado de cierre
+PM-07 permanece en VALIDACIÓN FINAL hasta completar:
+1. checks verdes del HEAD documental final;
+2. limpieza de fixtures temporales QA y operaciones de smoke que no deban conservarse;
+3. actualización del PR canónico #21 con esta evidencia;
+4. cierre sin merge del PR temporal #22;
+5. cierre formal del PR canónico según el patrón del proyecto, siempre sin merge a `main` salvo autorización expresa.
+
+NO MERGE A `main`. NO PRODUCCIÓN. NO iniciar PM-08 hasta declarar PM-07 CERRADO.
