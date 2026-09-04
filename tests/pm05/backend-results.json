@@ -1,0 +1,50 @@
+{
+  "package": "PM-05",
+  "environment": "L&A Suite QA",
+  "project_ref": "qjqorixtkilwsndqayyx",
+  "production_touched": false,
+  "live_validation": {
+    "run_id": 33864746977,
+    "job_id": 100996926513,
+    "fixture": "PM05-RLS-v1",
+    "passed": 15,
+    "failed": 0,
+    "cases": [
+      "LA001 ownerA solo proveedor A",
+      "LA001 ownerB solo proveedor B",
+      "LA002 ownerA solo cliente A",
+      "LA002 ownerB solo cliente B",
+      "NR02 operador A1 proveedor A",
+      "NR02 inactivo no proveedores",
+      "NR02 inactivo no clientes",
+      "LA001 escritura A→B denegada",
+      "LA002 empresaId manipulada denegada",
+      "LA003 auditoría A se registra",
+      "LA003 ownerA ve auditoría A y actor estable",
+      "LA003 ownerB no ve auditoría A",
+      "LA003 cajero no obtiene vista auditoría",
+      "LA003 B no fabrica auditoría A",
+      "LA003 inactivo no registra auditoría"
+    ]
+  },
+  "pm04_negative_baseline_after_pm05": {
+    "passed": 5,
+    "failed": 0,
+    "checks": {
+      "ownerA_no_ve_proveedor_B": true,
+      "operatorA1_ve_A1_no_A2": true,
+      "operatorA1_no_ve_B1": true,
+      "ownerB_no_ve_proveedor_A": true,
+      "inactive_no_ve_business_rows": true
+    }
+  },
+  "temporary_validator": {
+    "slug": "qa-pm05-validar-rls",
+    "used_version": 1,
+    "final_version": 2,
+    "final_verify_jwt": true,
+    "final_behavior": "410 disabled",
+    "temporary_users_remaining": 0,
+    "temporary_audit_rows_remaining": 0
+  }
+}
