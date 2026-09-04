@@ -28,11 +28,19 @@ jobs:
           while bloque and not bloque[-1].strip():
               bloque.pop()
           script = '\n'.join((l[10:] if l.startswith('          ') else l) for l in bloque) + '\n'
+
           viejo="if s.count(frag)!=1: raise SystemExit(f'PM07_DEFICIT_TPV_COUNT={s.count(frag)}')\ns=s.replace(frag,frag.replace('permitirDeficit: true','permitirDeficit: false'),1)"
           nuevo="if s.count(frag)>1: raise SystemExit(f'PM07_DEFICIT_TPV_COUNT={s.count(frag)}')\nif s.count(frag)==1: s=s.replace(frag,frag.replace('permitirDeficit: true','permitirDeficit: false'),1)\nelse: print('PM07_DEFICIT_TPV_YA_CORREGIDO=1')"
           if viejo not in script:
               raise SystemExit('PM07_WRAPPER_SELECTOR_DEFICIT_NO_LOCALIZADO')
           script = script.replace(viejo, nuevo, 1)
+
+          viejo2="old='const disponible = Number(p2.stockPisoVenta) || 0;'\nif s.count(old)<1: raise SystemExit('PM07_PRECHECK_STOCK_NO_LOCALIZADO')\ns=s.replace(old,'const disponible = p2._pm07Servidor ? Number(p2.stock) || 0 : Number(p2.stockPisoVenta) || 0;',1)"
+          nuevo2="old='const disponible = Number(p2.stockPisoVenta) || 0;'\nif s.count(old)>=1:\n  s=s.replace(old,'const disponible = p2._pm07Servidor ? Number(p2.stock) || 0 : Number(p2.stockPisoVenta) || 0;',1)\nelif '_pm07Servidor ? Number(' in s:\n  print('PM07_PRECHECK_YA_CORREGIDO=1')\nelse:\n  import re as _pm07re\n  _m=_pm07re.search(r'const disponible = Number\\((\\w+)\\.stockPisoVenta\\) \\|\\| 0;',s)\n  if not _m: raise SystemExit('PM07_PRECHECK_STOCK_NO_LOCALIZADO')\n  _v=_m.group(1)\n  _old=_m.group(0)\n  _new=f'const disponible = {_v}._pm07Servidor ? Number({_v}.stock) || 0 : Number({_v}.stockPisoVenta) || 0;'\n  s=s.replace(_old,_new,1)\n  print('PM07_PRECHECK_ESTRUCTURAL_OK=1')"
+          if viejo2 not in script:
+              raise SystemExit('PM07_WRAPPER_SELECTOR_PRECHECK_NO_LOCALIZADO')
+          script = script.replace(viejo2, nuevo2, 1)
+
           Path('/tmp/pm07_payload.sh').write_text(script, encoding='utf-8')
           print('PM07_WRAPPER_PAYLOAD_LINES=', len(script.splitlines()))
           PY
