@@ -3,7 +3,7 @@
 Fecha: 2026-09-04
 Rama: `pm03-contratos-minimos`
 Base: cierre PM-02 (`f6cd04d7b4616ccbaa1901e7ea0c6b97c0b2b72d`)
-Estado: **PROPUESTA PENDIENTE DE APROBACIÓN DEL USUARIO**
+Estado: **PM-03 EN CURSO · DEC-01 Y DEC-02 APROBADOS · DEC-03…05 PENDIENTES**
 Producción/main: **sin cambios**
 
 ## Objetivo
@@ -12,14 +12,14 @@ Cerrar DEC-01…DEC-05 antes de modificar la lógica funcional. Se elige la opci
 
 ---
 
-## DEC-01 · Alcance de datos y propiedad
+## DEC-01 · Alcance de datos y propiedad — APROBADO
 
 ### Regla general
 - Ningún dato de negocio se comparte entre empresas salvo una futura función explícita y autorizada.
 - El selector de empresa/local es contexto de interfaz, no una credencial. Toda lectura o mutación debe comprobar pertenencia y permiso.
 - Un local siempre pertenece a una empresa. Nunca es válida una relación `empresa A + local B1`.
 
-### Ámbito propuesto por entidad
+### Ámbito aprobado por entidad
 
 **Global de plataforma**
 - Identidad del producto `L&A Suite`.
@@ -29,12 +29,12 @@ Cerrar DEC-01…DEC-05 antes de modificar la lógica funcional. Se elige la opci
 - Ficha de empresa / identidad societaria y branding por defecto.
 - Proveedores.
 - Clientes.
+- Catálogo de productos de la empresa, con habilitación/configuración por local cuando corresponda.
 - Configuraciones empresariales comunes.
 
-Un proveedor/cliente de Empresa A puede estar disponible en A1 y A2, pero nunca en Empresa B. Si en el futuro se necesita restringir un proveedor/cliente a determinados locales, debe ser una asignación explícita dentro de su propia empresa.
+Un proveedor/cliente/producto de Empresa A puede estar disponible en A1 y A2, pero nunca en Empresa B. Si en el futuro se necesita restringir un proveedor/cliente/producto a determinados locales, debe ser una asignación explícita dentro de su propia empresa.
 
 **Propiedad local / operación local**
-- Producto operativo y su identificador actual.
 - Stock total, stock de piso/almacén y movimientos.
 - Pedidos, recepción, albaranes operativos y conteos.
 - TPV, ventas, anulaciones, devoluciones y tickets.
@@ -66,36 +66,44 @@ Inválido: crear una venta desde `Todos los locales` sin destino local.
 
 ---
 
-## DEC-02 · Stock, disponibilidad y unidades
+## DEC-02 · Stock, disponibilidad, unidades y reservas — APROBADO
 
-### Modelo mínimo compatible
-- `stock` = total físico del local.
+### Modelo aprobado
+- El catálogo de productos pertenece a la empresa; las existencias físicas pertenecen siempre al local.
+- `stock` = total físico del producto en el local.
 - `stockPisoVenta` = subconjunto del total que está en piso de venta.
 - `stockAlmacen = stock - stockPisoVenta`.
-- No se permiten saldos negativos por defecto.
-- Venta, consumo, merma o traspaso se rechazan antes de mutar si la disponibilidad es insuficiente.
+- No se permiten saldos negativos.
+- Venta, consumo, merma, ajuste ordinario o traspaso se rechazan antes de mutar si la disponibilidad es insuficiente.
+- El stock consolidado de empresa es únicamente informativo; nunca se usa como stock vendible de un local.
 
 ### Unidades
 - Unidades indivisibles (ud, botella, pieza, caja cuando sea unidad de control): cantidades enteras positivas.
 - Unidades fraccionables (kg, g, l, ml u otras declaradas como fraccionables): decimales positivos con precisión definida por el producto/unidad.
 - No se redondea una cantidad inválida a cero para aceptarla.
+- No se admite fraccionar una unidad indivisible salvo configuración expresa del producto.
 
 ### Reservas
 - No existe reserva implícita por abrir carrito, pedido, encargo o formulario.
 - Una reserva solo descuenta disponibilidad si existe un estado de reserva explícito, persistente, identificable e idempotente.
-- Hasta implementar reservas seguras, `disponible` equivale al saldo físico utilizable no comprometido por una reserva explícita.
+- Cuando existan reservas seguras: `disponible = stock físico - reservado`.
+- Hasta implementar reservas seguras, un carrito o formulario abierto no reduce existencias ni se considera stock reservado.
 
-### Traspasos
-- Dentro del local: mover almacén ↔ piso tiene efecto neto total 0.
-- Entre locales: resta origen y suma destino; requiere destino explícito y producto destino compatible. Se mantiene la decisión actual de no asumir un SKU común entre locales.
+### Movimientos internos y traspasos
+- Dentro del local: mover almacén ↔ piso tiene efecto neto total 0 sobre el stock total.
+- Entre locales de una misma empresa: la operación es atómica; resta origen y suma destino como una sola operación lógica. Si falla cualquiera de las dos partes, no se confirma ninguna.
+- El producto pertenece al catálogo de la empresa y debe estar habilitado/configurado de forma compatible en el local destino.
+- Ambos locales deben pertenecer a la misma empresa y el usuario debe tener permiso sobre la operación.
 - Si la unidad no coincide, se bloquea salvo que exista una conversión explícita aprobada.
 - No existe excepción automática para permitir negativo. Una futura excepción necesitará decisión expresa y trazabilidad.
 
 ### Ejemplos
-Válido: 23 disponibles; vender 2 → total 21.
-Inválido: 23 disponibles; vender 24 → rechazo completo, sin venta, cobro ni movimiento.
+Válido: A1 tiene 23 disponibles; vender 2 → total 21.
+Inválido: A1 tiene 23 disponibles; vender 24 → rechazo completo, sin venta, cobro ni movimiento.
 Válido: mover 5 de almacén a piso → total del local no cambia.
-Inválido: traspasar 2 kg hacia un producto destino medido en unidades sin conversión definida.
+Válido: traspasar 4 unidades A1→A2 → A1 resta 4 y A2 suma 4 en una única operación confirmada.
+Inválido: A1 resta 4 pero A2 no recibe 4 y el sistema considera el traspaso completado.
+Inválido: traspasar 2 kg hacia un destino medido en unidades sin conversión definida.
 
 ---
 
@@ -205,4 +213,4 @@ Todos los permisos se entienden dentro de empresas/locales expresamente autoriza
 
 ## Criterio de cierre PM-03
 
-PM-03 solo puede pasar a `CERRADO` cuando el usuario apruebe explícitamente DEC-01…05 o indique cambios concretos. Después se actualizará este documento a `APROBADO`, se registrará el commit final y se preparará PM-04. No se modifica lógica funcional durante PM-03.
+PM-03 solo puede pasar a `CERRADO` cuando el usuario apruebe explícitamente DEC-01…05 o indique cambios concretos. DEC-01 y DEC-02 ya están aprobados. Tras aprobar DEC-03…05 se actualizará este documento a `APROBADO`, se registrará el commit final y se preparará PM-04. No se modifica lógica funcional durante PM-03.
