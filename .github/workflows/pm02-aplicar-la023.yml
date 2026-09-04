@@ -43,6 +43,7 @@ jobs:
       - name: Registrar evidencia
         shell: bash
         run: |
+          mkdir -p docs/plan-maestro
           {
             echo 'PM02_LA023_OK=1'
             echo 'MODO_LOCAL_TEXTO_HONESTO=1'
