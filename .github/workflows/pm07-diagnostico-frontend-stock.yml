@@ -14,30 +14,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Extraer bloques de venta y traspasos
+      - name: Localizar call sites PM-07
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          import re
           s=Path('source-recovery/fuente-recuperado.js').read_text(encoding='utf-8',errors='ignore')
-          for label,nombre in [('VENTA','crearLogicaVenta'),('TRASPASOS','crearLogicaTraspasos')]:
-            m=re.search(r'(?:async\s+)?function\s+'+re.escape(nombre)+r'\s*\(',s)
-            if not m:
-              # fallback: localizar la primera aparición y mostrar contexto amplio
-              a=s.find(nombre)
-              if a<0: raise SystemExit(f'PM07_{label}_NO_LOCALIZADO=1')
-              print(f'===== PM07_{label}_FALLBACK_INICIO =====')
-              print(s[max(0,a-3000):min(len(s),a+30000)])
-              print(f'===== PM07_{label}_FALLBACK_FIN =====')
-              continue
-            a=m.start()
-            # siguiente función de primer nivel tras al menos 200 caracteres
-            nxt=re.search(r'\nfunction\s+[A-Za-z0-9_$]+\s*\(',s[a+200:])
-            b=a+200+nxt.start() if nxt else min(len(s),a+40000)
-            print(f'===== PM07_{label}_INICIO =====')
-            print(s[a:b])
-            print(f'===== PM07_{label}_FIN =====')
-          print('PM07_DIAGNOSTICO_FRONTEND_COMPLETO_OK=1')
+          for pat in ['traspasarStock(', 'traspasarEntreLocales(', 'venderCarrito(', 'anularVenta(', 'cantidadConSigno(', 'function esVenta(', 'const stockBajo =', 'const stockBajoDelLocalActivo =']:
+            start=0;n=0
+            while True:
+              i=s.find(pat,start)
+              if i<0: break
+              n+=1
+              print(f'===== {pat} OCC {n} CHAR {i} =====')
+              print(s[max(0,i-1800):min(len(s),i+3500)])
+              start=i+len(pat)
+              if n>=12: break
+            print(f'PM07_COUNT {pat}={n}')
+          print('PM07_CALLSITES_OK=1')
           PY
