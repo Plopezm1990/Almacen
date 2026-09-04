@@ -229,9 +229,15 @@
         var cacheKey = await claveCacheLocal(key);
         var valor = LOCAL.get(cacheKey);
         var tablaEmpresa = TABLAS_EMPRESA[key];
+        var tablaEmpresaLocal = TABLAS_EMPRESA_LOCAL[key];
         var tablaEspecial = TABLAS_POR_FILA[key];
-        if (tablaEmpresa) {
+        if (key === "pagosFacturas") {
+          quitarPendiente(key);
+          continue;
+        } else if (tablaEmpresa) {
           await encolarPorClave(key, function () { return sincronizarColeccionEmpresa(tablaEmpresa, JSON.parse(valor)); });
+        } else if (tablaEmpresaLocal) {
+          await encolarPorClave(key, function () { return sincronizarColeccionEmpresaLocal(tablaEmpresaLocal, JSON.parse(valor), key); });
         } else if (tablaEspecial) {
           await encolarPorClave(key, function () { return sincronizarColeccionPorFila(tablaEspecial, JSON.parse(valor), key); });
         } else {
@@ -269,7 +275,16 @@
     proveedores: "proveedores_empresa",
     clientes: "clientes_empresa",
   };
-  var CLAVES_CACHE_POR_USUARIO = { proveedores: true, clientes: true, auditoria: true };
+  // PM-06: documentos financieros con empresa/local explícitos y RLS.
+  var TABLAS_EMPRESA_LOCAL = {
+    albaranes: "albaranes_empresa",
+    facturasDirectas: "facturas_directas_empresa",
+    gastosGenerales: "gastos_empresa",
+  };
+  var CLAVES_CACHE_POR_USUARIO = {
+    proveedores: true, clientes: true, auditoria: true,
+    albaranes: true, facturasDirectas: true, gastosGenerales: true, pagosFacturas: true
+  };
 
   async function claveCacheLocal(key) {
     if (!CLAVES_CACHE_POR_USUARIO[key] || !window.__nubeCliente) return key;
@@ -310,6 +325,63 @@
       var rDel = await window.__nubeCliente.from(tabla).delete().in("id", borrar);
       if (rDel.error) throw rDel.error;
     }
+  }
+
+
+  async function leerColeccionEmpresaLocal(tabla) {
+    var r = await window.__nubeCliente.from(tabla).select("id,empresa_id,local_id,datos").order("updated_at", { ascending: true });
+    if (r.error) throw r.error;
+    return (r.data || []).map(function (fila) {
+      var d = fila.datos || {};
+      return Object.assign({}, d, {
+        id: d.id || fila.id,
+        empresaId: d.empresaId || fila.empresa_id,
+        localId: d.localId || fila.local_id
+      });
+    });
+  }
+
+  async function sincronizarColeccionEmpresaLocal(tabla, listaLocal, key) {
+    if (!Array.isArray(listaLocal)) throw new Error("La colección financiera debe ser una lista");
+    var invalidos = listaLocal.filter(function (x) { return !x || !x.id || !x.empresaId || !x.localId; });
+    if (invalidos.length) throw new Error("Hay documentos sin id/empresaId/localId; se bloquea la sincronización financiera");
+    var rLee = await window.__nubeCliente.from(tabla).select("id,empresa_id,local_id,datos");
+    if (rLee.error) throw rLee.error;
+    var remotos = rLee.data || [];
+    var filas = listaLocal.map(function (x) {
+      var f = { id: x.id, empresa_id: x.empresaId, local_id: x.localId, datos: x, updated_at: new Date().toISOString() };
+      if (tabla === "albaranes_empresa" || tabla === "facturas_directas_empresa") f.proveedor_id = x.proveedorId || null;
+      if (tabla === "gastos_empresa") f.factura_directa_id = x.facturaDirectaId || null;
+      return f;
+    });
+    if (filas.length) {
+      var rUp = await window.__nubeCliente.from(tabla).upsert(filas);
+      if (rUp.error) throw rUp.error;
+    }
+    // Una factura directa confirmada no se borra físicamente: se anula en su propio registro.
+    if (key !== "facturasDirectas") {
+      var vivos = {}; listaLocal.forEach(function (x) { vivos[x.id] = true; });
+      var borrar = remotos.filter(function (r) { return !vivos[r.id]; }).map(function (r) { return r.id; });
+      if (borrar.length) {
+        var rDel = await window.__nubeCliente.from(tabla).delete().in("id", borrar);
+        if (rDel.error) throw rDel.error;
+      }
+    }
+  }
+
+  async function leerPagosFactura() {
+    var r = await window.__nubeCliente.from("pagos_factura")
+      .select("id,operation_id,factura_id,origen_factura,empresa_id,local_id,importe,fecha,estado,revierte_pago_id,medio_pago,datos,actor_user_id,created_at")
+      .order("created_at", { ascending: true });
+    if (r.error) throw r.error;
+    return (r.data || []).map(function (p) {
+      return {
+        id: p.id, operationId: p.operation_id, facturaId: p.factura_id, origenFactura: p.origen_factura,
+        empresaId: p.empresa_id, localId: p.local_id, importe: Number(p.importe) || 0, fecha: p.fecha,
+        estado: p.estado, reviertePagoId: p.revierte_pago_id || null, medioPago: p.medio_pago || "",
+        datos: p.datos || {}, actorUserId: p.actor_user_id || null, createdAt: p.created_at || null
+      };
+    });
   }
   var LIMITE_LECTURA = { auditoria: 500 }; // truncamiento DELIBERADO: la auditoría solo se consulta, no alimenta cálculos
   var PAGINA_LECTURA = 1000; // tamaño de página de PostgREST
@@ -575,13 +647,19 @@
     // dispositivo) y se deja copia local. Si no, se lee de local.
     async get(key) {
       var tablaEmpresa = TABLAS_EMPRESA[key];
+      var tablaEmpresaLocal = TABLAS_EMPRESA_LOCAL[key];
       var tablaEspecial = TABLAS_POR_FILA[key];
+      var esPagosFactura = key === "pagosFacturas";
       var cacheKey = await claveCacheLocal(key);
       if (window.__nubeActiva && window.__nubeCliente && pendientes().indexOf(key) === -1) {
         try {
           var lista;
-          if (tablaEmpresa) {
+          if (esPagosFactura) {
+            lista = await conTiempoLimite(leerPagosFactura(), ESPERA_NUBE_MS);
+          } else if (tablaEmpresa) {
             lista = await conTiempoLimite(leerColeccionEmpresa(tablaEmpresa), ESPERA_NUBE_MS);
+          } else if (tablaEmpresaLocal) {
+            lista = await conTiempoLimite(leerColeccionEmpresaLocal(tablaEmpresaLocal), ESPERA_NUBE_MS);
           } else if (tablaEspecial) {
             lista = await conTiempoLimite(leerColeccionPorFila(tablaEspecial, key), ESPERA_NUBE_MS);
           } else {
@@ -604,7 +682,9 @@
     // y después se intenta subir. Si no sube, queda en la cola de pendientes.
     async set(key, value) {
       var tablaEmpresa = TABLAS_EMPRESA[key];
+      var tablaEmpresaLocal = TABLAS_EMPRESA_LOCAL[key];
       var tablaEspecial = TABLAS_POR_FILA[key];
+      var esPagosFactura = key === "pagosFacturas";
       var cacheKey = await claveCacheLocal(key);
 
       // Qué había guardado antes en este equipo. Sirve para saber qué se ha
@@ -626,11 +706,24 @@
 
       if (tablaEspecial && !falloLocal) anotarBorradosLocales(key, anterior, value);
 
+      // El ledger remoto de pagos solo se escribe mediante RPC transaccional.
+      // El set reactivo conserva la copia local; nunca hace upsert directo ni fallback remoto.
+      if (esPagosFactura) {
+        quitarPendiente(key);
+        if (falloLocal) throw falloLocal;
+        return { key: key, value: value, shared: false };
+      }
+
       if (window.__nubeActiva && window.__nubeCliente) {
         try {
           if (tablaEmpresa) {
             await conTiempoLimite(
               encolarPorClave(key, function () { return sincronizarColeccionEmpresa(tablaEmpresa, JSON.parse(value)); }),
+              ESPERA_NUBE_MS
+            );
+          } else if (tablaEmpresaLocal) {
+            await conTiempoLimite(
+              encolarPorClave(key, function () { return sincronizarColeccionEmpresaLocal(tablaEmpresaLocal, JSON.parse(value), key); }),
               ESPERA_NUBE_MS
             );
           } else if (tablaEspecial) {
@@ -669,10 +762,16 @@
       if (window.__nubeActiva && window.__nubeCliente) {
         try {
           var tablaEmpresa = TABLAS_EMPRESA[key];
+          var tablaEmpresaLocal = TABLAS_EMPRESA_LOCAL[key];
           var tablaEspecial = TABLAS_POR_FILA[key];
-          if (tablaEmpresa) {
+          if (key === "pagosFacturas") {
+            return { key: key, deleted: true, shared: false };
+          } else if (tablaEmpresa) {
             var rEmpDel = await conTiempoLimite(window.__nubeCliente.from(tablaEmpresa).delete().neq("id", ""), ESPERA_NUBE_MS);
             if (rEmpDel.error) throw rEmpDel.error;
+          } else if (tablaEmpresaLocal) {
+            var rFinDel = await conTiempoLimite(window.__nubeCliente.from(tablaEmpresaLocal).delete().neq("id", ""), ESPERA_NUBE_MS);
+            if (rFinDel.error) throw rFinDel.error;
           } else if (tablaEspecial) {
             await conTiempoLimite(window.__nubeCliente.from(tablaEspecial).delete().neq("id", ""), ESPERA_NUBE_MS);
           } else {

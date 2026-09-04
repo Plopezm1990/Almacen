@@ -101269,6 +101269,7 @@ function GestionAlmacen() {
   const [ordenesProduccion, setOrdenesProduccion] = (0, import_react4.useState)([]);
   const [traspasos, setTraspasos] = (0, import_react4.useState)([]);
   const [facturasDirectas, setFacturasDirectas] = (0, import_react4.useState)([]);
+  const [pagosFacturas, setPagosFacturas] = (0, import_react4.useState)([]);
   const [nominas, setNominas] = (0, import_react4.useState)([]);
   const [entrevistas, setEntrevistas] = (0, import_react4.useState)([]);
   const skipSaveRef = import_react4.default.useRef(true);
@@ -101402,7 +101403,7 @@ function GestionAlmacen() {
   const [historial, setHistorial] = (0, import_react4.useState)([]);
   (0, import_react4.useEffect)(() => {
     (async () => {
-      const [p22, pr, pe2, mo, co, fc, hi, al, cp, gg, em, fj, dm, ra, pc, cl, en, aq, tu, to, me2, pin, au, op, tr, ua, fd2, nom, fre, rac, entr, mc, dev, ce2, emps, loc, lai] = await Promise.all([
+      const [p22, pr, pe2, mo, co, fc, hi, al, cp, gg, em, fj, dm, ra, pc, cl, en, aq, tu, to, me2, pin, au, op, tr, ua, fd2, pf, nom, fre, rac, entr, mc, dev, ce2, emps, loc, lai] = await Promise.all([
         loadKey("proveedores", []),
         loadKey("productos", []),
         loadKey("pedidos", []),
@@ -101430,6 +101431,7 @@ function GestionAlmacen() {
         loadKey("traspasos", []),
         loadKey("usuarioActivoId", null),
         loadKey("facturasDirectas", []),
+        loadKey("pagosFacturas", []),
         loadKey("nominas", []),
         loadKey("freidoras", []),
         loadKey("registrosAceite", []),
@@ -101484,6 +101486,7 @@ function GestionAlmacen() {
       setTraspasos(tr);
       setUsuarioActivoId(ua || null);
       setFacturasDirectas(fd2);
+      setPagosFacturas(Array.isArray(pf) ? pf : []);
       setNominas(nom);
       setEntrevistas(entr);
       setMovimientosCaja(mc || []);
@@ -101748,6 +101751,9 @@ function GestionAlmacen() {
   }, [usuarioActivoId, ready]);
   (0, import_react4.useEffect)(() => {
     if (ready && !skipSaveRef.current) saveKey("facturasDirectas", facturasDirectas);
+    (0, import_react4.useEffect)(() => {
+      if (ready) saveKey("pagosFacturas", pagosFacturas);
+    }, [pagosFacturas, ready]);
   }, [facturasDirectas, ready]);
   (0, import_react4.useEffect)(() => {
     if (ready && !skipSaveRef.current) saveKey("entrevistas", entrevistas);
@@ -101854,7 +101860,7 @@ function GestionAlmacen() {
     registrarAuditoria
   });
   const { addProveedor, updateProveedor, deleteProveedor } = crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
-  const { addGasto, deleteGasto } = crearLogicaGastos({ setGastosGenerales, localActivoId });
+  const { addGasto, deleteGasto } = crearLogicaGastos({ setGastosGenerales, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
   const { addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId });
@@ -101902,10 +101908,13 @@ function GestionAlmacen() {
     setPrefillAlbaran,
     setPedidoParaFotoIA,
     setTab,
-    localActivoId
+    localActivoId,
+    empresaId: empresaDelLocalActivo?.id || null,
+    pagosFacturas,
+    setPagosFacturas
   });
   const { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido } = crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId });
-  const { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta } = crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, addGasto, deleteGasto, gastosGenerales, localActivoId });
+  const { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta } = crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, proveedores, pagosFacturas, setPagosFacturas, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
   const { addNomina, updateNomina, deleteNomina } = crearLogicaNominas({ nominas, setNominas, registrarAuditoria, empleados, localActivoId });
   const { crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista } = crearLogicaEntrevistas({ entrevistas, setEntrevistas, registrarAuditoria });
   const { crearPrefiltro, listarPrefiltros, eliminarPrefiltro } = crearLogicaPrefiltros({ registrarAuditoria });
@@ -102405,14 +102414,11 @@ function GestionAlmacen() {
       return { vencimiento: aISO(v22), dias: Math.round((v22 - hoy) / 864e5) };
     }
     const deAlbaranes = albaranes.filter((a22) => a22.estado === "confirmado" && a22.esFactura !== false).map((a22) => {
-      const prov = proveedorPorId(a22.proveedorId);
-      const base = a22.lineas.reduce((x3, ln2) => x3 + (Number(ln2.importe) || 0), 0);
-      const ivaLineas = a22.lineas.reduce((x3, ln2) => x3 + (Number(ln2.importe) || 0) * ((Number(ln2.ivaPct) || 0) / 100), 0);
-      const cargosBase = Number(a22.cargos) || 0;
-      const cargosIva = cargosBase * ((Number(a22.cargosIva) || 0) / 100);
-      const total = base + ivaLineas + cargosBase + cargosIva;
+      const prov = a22.proveedorSnapshot || proveedorPorId(a22.proveedorId);
+      const total = calcularTotalesFacturaAlbaran(a22).total;
       const fechaFactura = a22.fechaFactura || a22.fecha;
-      const diasPago = prov ? Number(prov.diasPago) || null : null;
+      const diasPago = prov && prov.diasPago != null ? Number(prov.diasPago) || null : null;
+      const saldo = calcularSaldoFacturaPM06(pagosFacturas, a22.id, "albaran", total, a22.empresaId, a22.localId, a22.pagada);
       const { vencimiento, dias } = calcularVencimiento(fechaFactura, diasPago);
       return {
         id: a22.id,
@@ -102424,12 +102430,17 @@ function GestionAlmacen() {
         vencimiento,
         dias,
         total,
-        pagada: !!a22.pagada
+        empresaId: a22.empresaId || null,
+        localId: a22.localId || null,
+        pagado: saldo.pagado,
+        pendiente: saldo.pendiente,
+        pagada: saldo.pagada
       };
     });
-    const deDirectas = facturasDirectas.map((f22) => {
-      const prov = proveedorPorId(f22.proveedorId);
-      const diasPago = prov ? Number(prov.diasPago) || null : null;
+    const deDirectas = facturasDirectas.filter((f22) => f22.estado !== "ANULADA").map((f22) => {
+      const prov = f22.proveedorSnapshot || proveedorPorId(f22.proveedorId);
+      const diasPago = prov && prov.diasPago != null ? Number(prov.diasPago) || null : null;
+      const saldo = calcularSaldoFacturaPM06(pagosFacturas, f22.id, "directa", f22.importeTotal, f22.empresaId, f22.localId, f22.pagada);
       const auto = calcularVencimiento(f22.fecha, diasPago);
       const vencimiento = f22.vencimiento || auto.vencimiento;
       const dias = vencimiento ? Math.round((new Date(vencimiento) - hoy) / 864e5) : null;
@@ -102443,7 +102454,11 @@ function GestionAlmacen() {
         vencimiento,
         dias,
         total: Number(f22.importeTotal) || 0,
-        pagada: !!f22.pagada
+        empresaId: f22.empresaId || null,
+        localId: f22.localId || null,
+        pagado: saldo.pagado,
+        pendiente: saldo.pendiente,
+        pagada: saldo.pagada
       };
     });
     return [...deAlbaranes, ...deDirectas].sort((x3, y22) => {
@@ -102452,7 +102467,7 @@ function GestionAlmacen() {
       if (y22.dias === null) return -1;
       return x3.dias - y22.dias;
     });
-  }, [albaranes, proveedores, facturasDirectas]);
+  }, [albaranes, proveedores, facturasDirectas, pagosFacturas]);
   const facturasPorPagarDelLocalActivo = (0, import_react4.useMemo)(() => {
     if (!localActivoId) return facturasPorPagar;
     const idsAlbaranes = new Set(albaranesDelLocalActivo.map((a22) => a22.id));
@@ -102460,11 +102475,11 @@ function GestionAlmacen() {
     return facturasPorPagar.filter((f22) => f22.origen === "albaran" ? idsAlbaranes.has(f22.id) : idsDirectas.has(f22.id));
   }, [facturasPorPagar, albaranesDelLocalActivo, facturasDirectasDelLocalActivo, localActivoId]);
   const pendientesPagoDelLocalActivo = (0, import_react4.useMemo)(() => facturasPorPagarDelLocalActivo.filter((f22) => !f22.pagada), [facturasPorPagarDelLocalActivo]);
-  const totalPendientePagoDelLocalActivo = (0, import_react4.useMemo)(() => pendientesPagoDelLocalActivo.reduce((a22, f22) => a22 + f22.total, 0), [pendientesPagoDelLocalActivo]);
+  const totalPendientePagoDelLocalActivo = (0, import_react4.useMemo)(() => pendientesPagoDelLocalActivo.reduce((a22, f22) => a22 + (f22.pendiente ?? f22.total), 0), [pendientesPagoDelLocalActivo]);
   const vencenProntoDelLocalActivo = (0, import_react4.useMemo)(() => pendientesPagoDelLocalActivo.filter((f22) => f22.dias !== null && f22.dias <= 7), [pendientesPagoDelLocalActivo]);
   const pendientesPago = (0, import_react4.useMemo)(() => facturasPorPagar.filter((f22) => !f22.pagada), [facturasPorPagar]);
   const vencenPronto = (0, import_react4.useMemo)(() => pendientesPago.filter((f22) => f22.dias !== null && f22.dias <= 7), [pendientesPago]);
-  const totalPendientePago = (0, import_react4.useMemo)(() => pendientesPago.reduce((a22, f22) => a22 + f22.total, 0), [pendientesPago]);
+  const totalPendientePago = (0, import_react4.useMemo)(() => pendientesPago.reduce((a22, f22) => a22 + (f22.pendiente ?? f22.total), 0), [pendientesPago]);
   const promedioDiarioVentas = (0, import_react4.useMemo)(() => {
     const hace30 = /* @__PURE__ */ new Date();
     hace30.setDate(hace30.getDate() - 30);
@@ -102483,7 +102498,7 @@ function GestionAlmacen() {
       const d2 = new Date(hoy);
       d2.setDate(d2.getDate() + i33);
       const fechaISO = aISO(d2);
-      const pagosDia = pendientesPago.filter((f22) => f22.vencimiento === fechaISO).reduce((a22, f22) => a22 + f22.total, 0);
+      const pagosDia = pendientesPago.filter((f22) => f22.vencimiento === fechaISO).reduce((a22, f22) => a22 + (f22.pendiente ?? f22.total), 0);
       const encargosDia = encargos.filter((e2) => e2.estado !== "Entregado" && e2.estado !== "Cancelado" && e2.fechaEntrega === fechaISO).reduce((a22, e2) => {
         const total = (e2.lineas || []).reduce((x3, l22) => x3 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
         return a22 + Math.max(0, total - (Number(e2.se\u00F1al) || 0));
@@ -102541,7 +102556,7 @@ function GestionAlmacen() {
   const movimientosInforme = localInformeId ? movimientos.filter((m22) => (m22.localId || localPorProductoInforme.get(m22.productoId) || null) === localInformeId) : movimientos.filter((m22) => localEsDeEmpresaInforme(m22.localId || localPorProductoInforme.get(m22.productoId) || null));
   const albaranesInforme = localInformeId ? albaranes.filter((a22) => (a22.localId || inferirLocalLineasInforme(a22.lineas)) === localInformeId) : albaranes.filter((a22) => localEsDeEmpresaInforme(a22.localId || inferirLocalLineasInforme(a22.lineas)));
   const facturasDirectasInforme = localInformeId ? facturasDirectas.filter((f22) => f22.localId === localInformeId) : facturasDirectas.filter((f22) => localEsDeEmpresaInforme(f22.localId));
-  const gastosGeneralesInforme = localInformeId ? gastosGenerales.filter((g2) => g2.localId === localInformeId) : gastosGenerales.filter((g2) => localEsDeEmpresaInforme(g2.localId));
+  const gastosGeneralesInforme = (localInformeId ? gastosGenerales.filter((g2) => g2.localId === localInformeId) : gastosGenerales.filter((g2) => localEsDeEmpresaInforme(g2.localId))).filter((g2) => g2.estado !== "ANULADO");
   const empleadosInforme = localInformeId ? empleados.filter((e2) => e2.localId === localInformeId) : empleados.filter((e2) => localEsDeEmpresaInforme(e2.localId));
   const idsEmpleadosInforme = new Set(empleadosInforme.map((e2) => e2.id));
   const fichajesAbiertosInforme = fichajesAbiertos.filter((f22) => idsEmpleadosInforme.has(f22.empleadoId));
@@ -103258,16 +103273,220 @@ function crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId })
   }
   return { fichar, addFichajeManual, updateFichaje, eliminarFichaje };
 }
-function crearLogicaGastos({ setGastosGenerales, localActivoId }) {
+function redondearDineroPM06(v3) {
+  return Math.round((Number(v3) || 0) * 100 + Number.EPSILON) / 100;
+}
+function snapshotProveedorPM06(p22) {
+  if (!p22) return null;
+  return {
+    id: p22.id || null,
+    empresaId: p22.empresaId || null,
+    nombre: p22.nombre || "",
+    nif: p22.nif || p22.cif || "",
+    diasPago: p22.diasPago == null || p22.diasPago === "" ? null : Number(p22.diasPago)
+  };
+}
+function calcularTotalesFacturaAlbaran(a22) {
+  const porTipo = {};
+  let base = 0, iva = 0;
+  (a22?.lineas || []).forEach((ln2) => {
+    const baseLinea = (Number(ln2.importe) || 0) + (Number(ln2.canon) || 0);
+    const tipo = Number(ln2.ivaPct) || 0;
+    const cuota = baseLinea * (tipo / 100);
+    base += baseLinea;
+    iva += cuota;
+    if (!porTipo[tipo]) porTipo[tipo] = { base: 0, cuota: 0 };
+    porTipo[tipo].base += baseLinea;
+    porTipo[tipo].cuota += cuota;
+  });
+  const cargos = Number(a22?.cargos) || 0;
+  if (cargos) {
+    const tipo = Number(a22?.cargosIva) || 0;
+    const cuota = cargos * (tipo / 100);
+    base += cargos;
+    iva += cuota;
+    if (!porTipo[tipo]) porTipo[tipo] = { base: 0, cuota: 0 };
+    porTipo[tipo].base += cargos;
+    porTipo[tipo].cuota += cuota;
+  }
+  return { base: redondearDineroPM06(base), iva: redondearDineroPM06(iva), total: redondearDineroPM06(base + iva), porTipo };
+}
+function calcularTotalesFacturaDirecta(f22) {
+  const base = redondearDineroPM06(f22?.importeBase);
+  const tipo = Number(f22?.ivaPct) || 0;
+  const iva = redondearDineroPM06(base * (tipo / 100));
+  return { base, iva, total: redondearDineroPM06(base + iva), porTipo: { [tipo]: { base, cuota: iva } } };
+}
+function normalizarPagoPM06(p22) {
+  if (!p22) return null;
+  return {
+    id: p22.id,
+    operationId: p22.operationId || p22.operation_id,
+    facturaId: p22.facturaId || p22.factura_id,
+    origenFactura: p22.origenFactura || p22.origen_factura,
+    empresaId: p22.empresaId || p22.empresa_id,
+    localId: p22.localId || p22.local_id,
+    importe: Number(p22.importe) || 0,
+    fecha: p22.fecha || todayISO(),
+    estado: p22.estado || "CONFIRMADO",
+    reviertePagoId: p22.reviertePagoId || p22.revierte_pago_id || null,
+    medioPago: p22.medioPago || p22.medio_pago || "",
+    datos: p22.datos || {},
+    createdAt: p22.createdAt || p22.created_at || null
+  };
+}
+function calcularSaldoFacturaPM06(pagos, facturaId, origenFactura, total, empresaId, localId, legacyPagada) {
+  const relacionados = (pagos || []).filter((p22) => p22 && p22.facturaId === facturaId && p22.origenFactura === origenFactura && (!empresaId || p22.empresaId === empresaId) && (!localId || p22.localId === localId));
+  let pagado = relacionados.reduce((a22, p22) => a22 + (p22.estado === "REVERSO" ? -Math.abs(Number(p22.importe) || 0) : p22.estado === "CONFIRMADO" ? Math.abs(Number(p22.importe) || 0) : 0), 0);
+  const total2 = redondearDineroPM06(total);
+  if (!relacionados.length && legacyPagada) pagado = total2;
+  pagado = Math.max(0, redondearDineroPM06(pagado));
+  const pendiente = Math.max(0, redondearDineroPM06(total2 - pagado));
+  return { total: total2, pagado, pendiente, pagada: pendiente <= 1e-3 && total2 > 0 };
+}
+function modoSincronizadoPM06() {
+  return typeof window !== "undefined" && !!window.NUBE_URL && !window.__modoPruebasLocal;
+}
+function claveOperacionPM06(tipo, origen, facturaId) {
+  return `almacen:pm06:${tipo}:${origen}:${facturaId}`;
+}
+function leerPendientePM06(clave) {
+  try {
+    return JSON.parse(localStorage.getItem(clave) || "null");
+  } catch {
+    return null;
+  }
+}
+function guardarPendientePM06(clave, valor) {
+  try {
+    localStorage.setItem(clave, JSON.stringify(valor));
+  } catch {
+  }
+}
+function limpiarPendientePM06(clave) {
+  try {
+    localStorage.removeItem(clave);
+  } catch {
+  }
+}
+var pagosPM06EnCurso = {};
+async function registrarPagoPM06({ factura, origenFactura, importe, pagosFacturas, setPagosFacturas }) {
+  const empresaId = factura?.empresaId || null;
+  const localId = factura?.localId || null;
+  const facturaId = factura?.id || null;
+  const importe2 = redondearDineroPM06(importe);
+  const total = redondearDineroPM06(factura?.total ?? factura?.importeTotal ?? 0);
+  const saldo = calcularSaldoFacturaPM06(pagosFacturas, facturaId, origenFactura, total, empresaId, localId, factura?.pagada);
+  if (!facturaId || !empresaId || !localId) return { ok: false, error: "La factura no tiene empresa/local propios. No se ha registrado el pago." };
+  if (!(importe2 > 0)) return { ok: false, error: "El importe del pago debe ser mayor que cero." };
+  if (importe2 > saldo.pendiente + 1e-3) return { ok: false, error: "El pago supera el saldo pendiente de la factura." };
+  const clave = claveOperacionPM06("pago", origenFactura, facturaId);
+  if (pagosPM06EnCurso[clave]) return pagosPM06EnCurso[clave];
+  const tarea = (async () => {
+    let pendiente = leerPendientePM06(clave);
+    if (pendiente && redondearDineroPM06(pendiente.importe) !== importe2) {
+      return { ok: false, error: "Hay un pago anterior pendiente de confirmar. Recupera la conexi\xF3n antes de registrar otro importe." };
+    }
+    if (!pendiente) {
+      pendiente = { id: uid(), operationId: `pago-${facturaId}-${Date.now()}-${uid()}`, importe: importe2, empresaId, localId, facturaId, origenFactura };
+      guardarPendientePM06(clave, pendiente);
+    }
+    if (modoSincronizadoPM06()) {
+      if (!window.__nubeActiva || !window.__nubeCliente) {
+        return { ok: false, pendiente: true, error: "Sin conexi\xF3n con la cuenta sincronizada. El pago NO se ha confirmado." };
+      }
+      const r2 = await window.__nubeCliente.rpc("registrar_pago_factura", {
+        p_id: pendiente.id,
+        p_operation_id: pendiente.operationId,
+        p_factura_id: facturaId,
+        p_origen_factura: origenFactura,
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_importe: importe2,
+        p_fecha: todayISO(),
+        p_medio_pago: "",
+        p_datos: { origen: "L&A Suite PM-06" }
+      });
+      if (r2.error) return { ok: false, pendiente: true, error: "No se ha podido confirmar el pago: " + (r2.error.message || "error de sincronizaci\xF3n") };
+      const pago2 = normalizarPagoPM06(r2.data?.pago);
+      if (pago2) setPagosFacturas((s22) => s22.some((x3) => x3.operationId === pago2.operationId) ? s22 : [...s22, pago2]);
+      limpiarPendientePM06(clave);
+      return { ok: true, pago: pago2, replayed: !!r2.data?.replayed, pendiente: redondearDineroPM06(r2.data?.pendiente) };
+    }
+    const pago = normalizarPagoPM06({ ...pendiente, fecha: todayISO(), estado: "CONFIRMADO" });
+    setPagosFacturas((s22) => s22.some((x3) => x3.operationId === pago.operationId) ? s22 : [...s22, pago]);
+    limpiarPendientePM06(clave);
+    return { ok: true, pago, replayed: false };
+  })();
+  pagosPM06EnCurso[clave] = tarea;
+  try {
+    return await tarea;
+  } finally {
+    delete pagosPM06EnCurso[clave];
+  }
+}
+async function revertirUltimoPagoPM06({ factura, origenFactura, pagosFacturas, setPagosFacturas, motivo = "Correcci\xF3n de pago" }) {
+  const empresaId = factura?.empresaId || null;
+  const localId = factura?.localId || null;
+  const facturaId = factura?.id || null;
+  const relacionados = (pagosFacturas || []).filter((p22) => p22 && p22.facturaId === facturaId && p22.origenFactura === origenFactura && p22.empresaId === empresaId && p22.localId === localId);
+  const reversados = new Set(relacionados.filter((p22) => p22.estado === "REVERSO" && p22.reviertePagoId).map((p22) => p22.reviertePagoId));
+  const confirmados = relacionados.filter((p22) => p22.estado === "CONFIRMADO" && !reversados.has(p22.id));
+  const original = confirmados[confirmados.length - 1];
+  if (!original) return { ok: false, error: "No hay un pago trazable que se pueda revertir." };
+  const clave = claveOperacionPM06("reverso", origenFactura, original.id);
+  if (pagosPM06EnCurso[clave]) return pagosPM06EnCurso[clave];
+  const tarea = (async () => {
+    let pendiente = leerPendientePM06(clave);
+    if (!pendiente) {
+      pendiente = { id: uid(), operationId: `reverso-${original.id}-${Date.now()}-${uid()}`, pagoId: original.id };
+      guardarPendientePM06(clave, pendiente);
+    }
+    if (modoSincronizadoPM06()) {
+      if (!window.__nubeActiva || !window.__nubeCliente) return { ok: false, pendiente: true, error: "Sin conexi\xF3n. El reverso NO se ha confirmado." };
+      const r2 = await window.__nubeCliente.rpc("revertir_pago_factura", {
+        p_id: pendiente.id,
+        p_operation_id: pendiente.operationId,
+        p_pago_id: original.id,
+        p_motivo: motivo
+      });
+      if (r2.error) return { ok: false, pendiente: true, error: "No se ha podido confirmar el reverso: " + (r2.error.message || "error de sincronizaci\xF3n") };
+      const pago2 = normalizarPagoPM06(r2.data?.pago);
+      if (pago2) setPagosFacturas((s22) => s22.some((x3) => x3.operationId === pago2.operationId) ? s22 : [...s22, pago2]);
+      limpiarPendientePM06(clave);
+      return { ok: true, pago: pago2, replayed: !!r2.data?.replayed };
+    }
+    const pago = normalizarPagoPM06({ id: pendiente.id, operationId: pendiente.operationId, facturaId, origenFactura, empresaId, localId, importe: original.importe, fecha: todayISO(), estado: "REVERSO", reviertePagoId: original.id, datos: { motivo } });
+    setPagosFacturas((s22) => [...s22, pago]);
+    limpiarPendientePM06(clave);
+    return { ok: true, pago, replayed: false };
+  })();
+  pagosPM06EnCurso[clave] = tarea;
+  try {
+    return await tarea;
+  } finally {
+    delete pagosPM06EnCurso[clave];
+  }
+}
+function crearLogicaGastos({ setGastosGenerales, localActivoId, empresaId }) {
   function addGasto(data) {
-    setGastosGenerales((s22) => [...s22, { id: uid(), ...data, localId: data.localId || localActivoId || null }]);
+    const empresaDoc = data?.empresaId || empresaId || null;
+    const localDoc = data?.localId || localActivoId || null;
+    if (!empresaDoc || !localDoc) return { ok: false, error: "Selecciona un local antes de registrar el gasto." };
+    const nuevo = { id: uid(), ...data, empresaId: empresaDoc, localId: localDoc, estado: data?.estado || "ACTIVO" };
+    setGastosGenerales((s22) => [...s22, nuevo]);
+    return { ok: true, gasto: nuevo };
   }
   function deleteGasto(id, localIdEsperado = localActivoId) {
+    let eliminado = false;
     setGastosGenerales((s22) => {
       const actual = s22.find((g2) => g2.id === id);
-      if (!actual || localIdEsperado && actual.localId !== localIdEsperado) return s22;
+      if (!actual || actual.empresaId !== empresaId || localIdEsperado && actual.localId !== localIdEsperado) return s22;
+      if (actual.facturaDirectaId) return s22;
+      eliminado = true;
       return s22.filter((g2) => g2.id !== id);
     });
+    return eliminado;
   }
   return { addGasto, deleteGasto };
 }
@@ -104921,7 +105140,10 @@ function crearLogicaAlbaranes({
   setPrefillAlbaran,
   setPedidoParaFotoIA,
   setTab,
-  localActivoId
+  localActivoId,
+  empresaId,
+  pagosFacturas,
+  setPagosFacturas
 }) {
   const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
   function localDeAlbaran(doc) {
@@ -104989,7 +105211,14 @@ function crearLogicaAlbaranes({
     if (!albaranEsDelLocalActivo(alb, true)) return false;
     const limpioBase = sinFotoIncrustada(alb);
     const idsLocalesLineas = [...new Set((limpioBase.lineas || []).map((ln2) => productos.find((p22) => p22.id === ln2.productoId)?.localId).filter(Boolean))];
-    const limpio = { ...limpioBase, localId: limpioBase.localId || (idsLocalesLineas.length === 1 ? idsLocalesLineas[0] : null) || localActivoId || null };
+    const existente = limpioBase.id ? albaranes.find((x3) => x3.id === limpioBase.id) : null;
+    const empresaIdDoc = existente?.empresaId || empresaId || null;
+    const localIdDoc = existente?.localId || limpioBase.localId || localActivoId || null;
+    const proveedorDoc = limpioBase.proveedorId ? proveedorPorId(limpioBase.proveedorId) : null;
+    if (!empresaIdDoc || !localIdDoc || limpioBase.proveedorId && (!proveedorDoc || proveedorDoc.empresaId !== empresaIdDoc)) return false;
+    const snapPrevio = existente?.proveedorSnapshot;
+    const proveedorSnapshot = proveedorDoc && (!snapPrevio || snapPrevio.id !== proveedorDoc.id) ? snapshotProveedorPM06(proveedorDoc) : snapPrevio || snapshotProveedorPM06(proveedorDoc);
+    const limpio = { ...limpioBase, empresaId: empresaIdDoc, localId: localIdDoc, proveedorSnapshot };
     setAlbaranes((s22) => {
       const existe = s22.some((a22) => a22.id === limpio.id);
       return existe ? s22.map((a22) => a22.id === limpio.id ? limpio : a22) : [limpio, ...s22];
@@ -105075,11 +105304,14 @@ function crearLogicaAlbaranes({
     }
     setAlbaranes((s22) => s22.filter((x3) => x3.id !== id));
   }
-  function marcarPagada(id, pagada) {
+  async function marcarPagada(id, pagada, importe) {
     const a22 = albaranes.find((x3) => x3.id === id);
-    if (!a22 || !albaranEsDelLocalActivo(a22)) return false;
-    registrarAuditoria(pagada ? "Marcar factura pagada" : "Marcar factura pendiente", a22 ? `${proveedorPorId(a22.proveedorId)?.nombre || "\u2014"} \xB7 ${a22.numeroFactura || a22.numero || "s/n"}` : id);
-    setAlbaranes((s22) => s22.map((a222) => a222.id === id ? { ...a222, pagada, fechaPago: pagada ? todayISO() : "" } : a222));
+    if (!a22 || !empresaId || !localActivoId || a22.empresaId !== empresaId || a22.localId !== localActivoId) return { ok: false, error: "Factura fuera del contexto autorizado." };
+    const total = calcularTotalesFacturaAlbaran(a22).total;
+    const doc = { ...a22, total };
+    const r2 = pagada ? await registrarPagoPM06({ factura: doc, origenFactura: "albaran", importe: importe == null ? calcularSaldoFacturaPM06(pagosFacturas, id, "albaran", total, a22.empresaId, a22.localId, a22.pagada).pendiente : importe, pagosFacturas, setPagosFacturas }) : await revertirUltimoPagoPM06({ factura: doc, origenFactura: "albaran", pagosFacturas, setPagosFacturas });
+    if (r2.ok && !r2.replayed) registrarAuditoria(pagada ? "Registrar pago factura" : "Revertir pago factura", `Factura ${a22.numeroFactura || a22.numero || id} \xB7 \u20AC${redondearDineroPM06(r2.pago?.importe || importe || 0).toFixed(2)} \xB7 ${a22.empresaId}/${a22.localId}`);
+    return r2;
   }
   function procesarRecepcion({ lineas, proveedorId, fecha, documentoTipo, documentoId, documentoNumero }) {
     const avisos = [];
@@ -105818,68 +106050,76 @@ function crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegist
   }
   return { addFreidora, updateFreidora, deleteFreidora, registrarCambio, registrarRelleno, eliminarRegistroAceite, consumoPorCiclo };
 }
-function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, addGasto, deleteGasto, gastosGenerales, localActivoId }) {
-  function facturaDirectaEsDelLocalActivo(f22) {
-    if (!f22) return false;
-    if (!localActivoId) return true;
-    return f22.localId === localActivoId;
+function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, proveedores, pagosFacturas, setPagosFacturas, localActivoId, empresaId }) {
+  function facturaDirectaEsDelContexto(f22) {
+    return !!f22 && !!empresaId && !!localActivoId && f22.empresaId === empresaId && f22.localId === localActivoId;
+  }
+  function proveedorCompatible(proveedorId) {
+    if (!proveedorId) return { ok: true, proveedor: null };
+    const p22 = (proveedores || []).find((x3) => x3.id === proveedorId);
+    return { ok: !!p22 && p22.empresaId === empresaId, proveedor: p22 || null };
   }
   function addFacturaDirecta(data) {
-    const base = Number(data.importeBase) || 0;
-    const ivaPct = Number(data.ivaPct) || 0;
-    const importeIva = base * (ivaPct / 100);
-    const importeTotal = base + importeIva;
-    setFacturasDirectas((s22) => [
-      { id: uid(), pagada: false, ...data, localId: data.localId || localActivoId || null, importeBase: base, ivaPct, importeIva, importeTotal },
-      ...s22
-    ]);
+    if (!empresaId || !localActivoId) return { ok: false, error: "Selecciona un local concreto antes de crear la factura." };
+    const comp = proveedorCompatible(data?.proveedorId);
+    if (!comp.ok) return { ok: false, error: "El proveedor no pertenece a la empresa de la factura." };
+    const totales = calcularTotalesFacturaDirecta(data || {});
+    if (!(totales.base > 0) || !(totales.total > 0)) return { ok: false, error: "El importe de la factura debe ser mayor que cero." };
+    const id = uid();
+    const nuevo = {
+      id,
+      ...data,
+      empresaId,
+      localId: localActivoId,
+      proveedorSnapshot: snapshotProveedorPM06(comp.proveedor),
+      importeBase: totales.base,
+      ivaPct: Number(data?.ivaPct) || 0,
+      importeIva: totales.iva,
+      importeTotal: totales.total,
+      estado: "ACTIVA",
+      creadaEn: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    setFacturasDirectas((s22) => [nuevo, ...s22]);
+    registrarAuditoria("Crear factura directa", `${nuevo.concepto || nuevo.numeroFactura || id} \xB7 \u20AC${nuevo.importeTotal.toFixed(2)} \xB7 ${empresaId}/${localActivoId}`);
+    return { ok: true, factura: nuevo };
   }
   function updateFacturaDirecta(id, data) {
     const actual = facturasDirectas.find((f22) => f22.id === id);
-    if (!facturaDirectaEsDelLocalActivo(actual)) return false;
-    setFacturasDirectas(
-      (s22) => s22.map((f22) => {
-        if (f22.id !== id) return f22;
-        const actualizada = { ...f22, ...data };
-        const base = Number(actualizada.importeBase) || 0;
-        const ivaPct = Number(actualizada.ivaPct) || 0;
-        return { ...actualizada, importeBase: base, ivaPct, importeIva: base * (ivaPct / 100), importeTotal: base + base * (ivaPct / 100) };
-      })
-    );
+    if (!facturaDirectaEsDelContexto(actual) || actual.estado === "ANULADA") return false;
+    const comp = proveedorCompatible(data?.proveedorId !== void 0 ? data.proveedorId : actual.proveedorId);
+    if (!comp.ok) return false;
+    const candidata = { ...actual, ...data, id: actual.id, empresaId: actual.empresaId, localId: actual.localId };
+    const totales = calcularTotalesFacturaDirecta(candidata);
+    const saldoActual = calcularSaldoFacturaPM06(pagosFacturas, actual.id, "directa", actual.importeTotal, actual.empresaId, actual.localId, actual.pagada);
+    if (saldoActual.pagado > 1e-3 && redondearDineroPM06(totales.total) !== redondearDineroPM06(actual.importeTotal)) return false;
+    const actualizada = {
+      ...candidata,
+      proveedorSnapshot: candidata.proveedorId ? snapshotProveedorPM06(comp.proveedor) : null,
+      importeBase: totales.base,
+      ivaPct: Number(candidata.ivaPct) || 0,
+      importeIva: totales.iva,
+      importeTotal: totales.total
+    };
+    setFacturasDirectas((s22) => s22.map((f22) => f22.id === id ? actualizada : f22));
+    registrarAuditoria("Editar factura directa", `${actualizada.concepto || actualizada.numeroFactura || id} \xB7 ${actualizada.empresaId}/${actualizada.localId}`);
+    return true;
   }
   function deleteFacturaDirecta(id) {
     const actual = facturasDirectas.find((f22) => f22.id === id);
-    if (!facturaDirectaEsDelLocalActivo(actual)) return false;
-    setFacturasDirectas((s22) => {
-      const f22 = s22.find((x3) => x3.id === id);
-      registrarAuditoria("Eliminar factura directa", f22 ? `${f22.concepto} \xB7 \u20AC${(Number(f22.importeTotal) || 0).toFixed(2)}` : id);
-      return s22.filter((x3) => x3.id !== id);
-    });
-    if (deleteGasto && gastosGenerales) {
-      const previo = gastosGenerales.find((g2) => g2.facturaDirectaId === id);
-      if (previo) deleteGasto(previo.id);
-    }
+    if (!facturaDirectaEsDelContexto(actual) || actual.estado === "ANULADA") return false;
+    const saldo = calcularSaldoFacturaPM06(pagosFacturas, actual.id, "directa", actual.importeTotal, actual.empresaId, actual.localId, actual.pagada);
+    if (saldo.pagado > 1e-3) return false;
+    setFacturasDirectas((s22) => s22.map((f22) => f22.id === id ? { ...f22, estado: "ANULADA", fechaAnulacion: todayISO() } : f22));
+    registrarAuditoria("Anular factura directa", `${actual.concepto || actual.numeroFactura || id} \xB7 sin borrado f\xEDsico`);
+    return true;
   }
-  function marcarPagadaFacturaDirecta(id, pagada) {
+  async function marcarPagadaFacturaDirecta(id, pagada, importe) {
     const f22 = facturasDirectas.find((x3) => x3.id === id);
-    if (!facturaDirectaEsDelLocalActivo(f22)) return false;
-    setFacturasDirectas((s22) => s22.map((x3) => x3.id === id ? { ...x3, pagada, fechaPago: pagada ? todayISO() : "" } : x3));
-    if (pagada) {
-      registrarAuditoria("Marcar factura directa como pagada", id);
-      if (f22 && addGasto) {
-        addGasto({
-          concepto: f22.concepto || "Factura directa",
-          importe: Number(f22.importeTotal) || 0,
-          fecha: todayISO(),
-          facturaDirectaId: id,
-          categoria: f22.categoria || "",
-          localId: f22.localId || localActivoId || null
-        });
-      }
-    } else if (deleteGasto && gastosGenerales) {
-      const previo = gastosGenerales.find((g2) => g2.facturaDirectaId === id);
-      if (previo) deleteGasto(previo.id);
-    }
+    if (!facturaDirectaEsDelContexto(f22) || f22.estado === "ANULADA") return { ok: false, error: "Factura fuera del contexto autorizado." };
+    const doc = { ...f22, total: Number(f22.importeTotal) || 0 };
+    const r2 = pagada ? await registrarPagoPM06({ factura: doc, origenFactura: "directa", importe: importe == null ? calcularSaldoFacturaPM06(pagosFacturas, id, "directa", doc.total, doc.empresaId, doc.localId, doc.pagada).pendiente : importe, pagosFacturas, setPagosFacturas }) : await revertirUltimoPagoPM06({ factura: doc, origenFactura: "directa", pagosFacturas, setPagosFacturas });
+    if (r2.ok && !r2.replayed) registrarAuditoria(pagada ? "Registrar pago factura directa" : "Revertir pago factura directa", `${f22.concepto || f22.numeroFactura || id} \xB7 \u20AC${redondearDineroPM06(r2.pago?.importe || importe || 0).toFixed(2)} \xB7 ${f22.empresaId}/${f22.localId}`);
+    return r2;
   }
   return { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta };
 }
@@ -109601,9 +109841,21 @@ function CuentasPorPagar({ facturasPorPagar, totalPendientePago, marcarPagada, m
     if (f22.dias === 0) return "Vence hoy";
     return `Vence en ${f22.dias} d`;
   };
-  function marcar(f22, pagada) {
-    if (f22.origen === "directa") marcarPagadaFacturaDirecta(f22.id, pagada);
-    else marcarPagada(f22.id, pagada);
+  async function marcar(f22, pagada) {
+    setError("");
+    let importe;
+    if (pagada) {
+      const pendiente = redondearDineroPM06(f22.pendiente ?? f22.total);
+      const entrada = window.prompt(`Importe a pagar (m\xE1ximo \u20AC${pendiente.toFixed(2)})`, pendiente.toFixed(2));
+      if (entrada === null) return;
+      importe = redondearDineroPM06(String(entrada).replace(",", "."));
+      if (!(importe > 0) || importe > pendiente + 1e-3) {
+        setError("El importe debe ser mayor que cero y no superar el saldo pendiente.");
+        return;
+      }
+    }
+    const r2 = f22.origen === "directa" ? await marcarPagadaFacturaDirecta(f22.id, pagada, importe) : await marcarPagada(f22.id, pagada, importe);
+    if (!r2 || r2.ok === false) setError(r2?.error || "No se ha podido confirmar la operaci\xF3n.");
   }
   function submit() {
     if (!form.concepto.trim()) {
@@ -110578,47 +110830,46 @@ function rangoTrimestre(anio, trimestre) {
   const hasta = aISO(new Date(anio, mesIni + 3, 0));
   return { desde, hasta };
 }
-function Facturas({ albaranes, facturasDirectas, proveedorPorId, irAAlbaran, irAFacturaDirecta }) {
+function Facturas({ albaranes, facturasDirectas, pagosFacturas = [], proveedorPorId, irAAlbaran, irAFacturaDirecta }) {
   const [mes, setMes] = (0, import_react4.useState)(aISO(/* @__PURE__ */ new Date()).slice(0, 7));
   const todas = (0, import_react4.useMemo)(() => {
     const deMercancia = albaranes.filter((a22) => a22.estado === "confirmado" && a22.esFactura !== false).map((a22) => {
-      const baseConCanon = a22.lineas.reduce((x3, ln2) => x3 + (Number(ln2.importe) || 0) + (Number(ln2.canon) || 0), 0);
-      const ivaLineas = a22.lineas.reduce((x3, ln2) => x3 + ((Number(ln2.importe) || 0) + (Number(ln2.canon) || 0)) * ((Number(ln2.ivaPct) || 0) / 100), 0);
-      const cargos = Number(a22.cargos) || 0;
-      const ivaCargos = cargos * ((Number(a22.cargosIva) || 0) / 100);
-      const base = baseConCanon + cargos;
-      const iva = ivaLineas + ivaCargos;
+      const totales = calcularTotalesFacturaAlbaran(a22);
+      const saldo = calcularSaldoFacturaPM06(pagosFacturas, a22.id, "albaran", totales.total, a22.empresaId, a22.localId, a22.pagada);
       return {
         id: "alb-" + a22.id,
         idReal: a22.id,
         tipoOrigen: "albaran",
         origen: "Mercanc\xEDa",
         fecha: a22.fechaFactura || a22.fecha,
-        proveedorNombre: proveedorPorId(a22.proveedorId)?.nombre || "Sin proveedor",
+        proveedorNombre: a22.proveedorSnapshot?.nombre || proveedorPorId(a22.proveedorId)?.nombre || "Sin proveedor",
         numero: a22.numeroFactura || a22.numero || "s/n",
         categoria: null,
-        base,
-        iva,
-        total: base + iva,
-        pagada: !!a22.pagada
+        base: totales.base,
+        iva: totales.iva,
+        total: totales.total,
+        pagada: saldo.pagada
       };
     });
-    const directas = (facturasDirectas || []).map((f22) => ({
-      id: "fd-" + f22.id,
-      idReal: f22.id,
-      tipoOrigen: "directa",
-      origen: "Directa",
-      fecha: f22.fecha,
-      proveedorNombre: f22.proveedorId ? proveedorPorId(f22.proveedorId)?.nombre || "Sin proveedor" : f22.concepto || "Sin proveedor",
-      numero: f22.numeroFactura || f22.concepto || "s/n",
-      categoria: f22.categoria || null,
-      base: Number(f22.importeBase) || 0,
-      iva: Number(f22.importeIva) || 0,
-      total: Number(f22.importeTotal) || 0,
-      pagada: !!f22.pagada
-    }));
+    const directas = (facturasDirectas || []).filter((f22) => f22.estado !== "ANULADA").map((f22) => {
+      const saldo = calcularSaldoFacturaPM06(pagosFacturas, f22.id, "directa", f22.importeTotal, f22.empresaId, f22.localId, f22.pagada);
+      return {
+        id: "fd-" + f22.id,
+        idReal: f22.id,
+        tipoOrigen: "directa",
+        origen: "Directa",
+        fecha: f22.fecha,
+        proveedorNombre: f22.proveedorSnapshot?.nombre || (f22.proveedorId ? proveedorPorId(f22.proveedorId)?.nombre || "Sin proveedor" : f22.concepto || "Sin proveedor"),
+        numero: f22.numeroFactura || f22.concepto || "s/n",
+        categoria: f22.categoria || null,
+        base: Number(f22.importeBase) || 0,
+        iva: Number(f22.importeIva) || 0,
+        total: Number(f22.importeTotal) || 0,
+        pagada: saldo.pagada
+      };
+    });
     return [...deMercancia, ...directas];
-  }, [albaranes, facturasDirectas, proveedorPorId]);
+  }, [albaranes, facturasDirectas, pagosFacturas, proveedorPorId]);
   const delMes = (0, import_react4.useMemo)(
     () => todas.filter((f22) => (f22.fecha || "").startsWith(mes)).sort((a22, b2) => (b2.fecha || "").localeCompare(a22.fecha || "")),
     [todas, mes]
@@ -110671,27 +110922,20 @@ function LibroIva({ movimientos, productos, albaranes, proveedorPorId, facturasD
   const soportado = (0, import_react4.useMemo)(() => {
     const porTipo = {};
     albaranes.filter((a22) => a22.estado === "confirmado" && (a22.fechaFactura || a22.fecha) >= desde && (a22.fechaFactura || a22.fecha) <= hasta).forEach((a22) => {
-      (a22.lineas || []).forEach((ln2) => {
-        const base = Number(ln2.importe) || 0;
-        const tipo = Number(ln2.ivaPct) || 0;
+      const t22 = calcularTotalesFacturaAlbaran(a22);
+      Object.entries(t22.porTipo).forEach(([tipo, v22]) => {
         if (!porTipo[tipo]) porTipo[tipo] = { base: 0, cuota: 0 };
-        porTipo[tipo].base += base;
-        porTipo[tipo].cuota += base * (tipo / 100);
+        porTipo[tipo].base += v22.base;
+        porTipo[tipo].cuota += v22.cuota;
       });
-      const cargoBase = Number(a22.cargos) || 0;
-      if (cargoBase > 0) {
-        const tipo = Number(a22.cargosIva) || 21;
-        if (!porTipo[tipo]) porTipo[tipo] = { base: 0, cuota: 0 };
-        porTipo[tipo].base += cargoBase;
-        porTipo[tipo].cuota += cargoBase * (tipo / 100);
-      }
     });
-    facturasDirectas.filter((f22) => f22.fecha >= desde && f22.fecha <= hasta).forEach((f22) => {
-      const base = Number(f22.importeBase) || 0;
-      const tipo = Number(f22.ivaPct) || 0;
-      if (!porTipo[tipo]) porTipo[tipo] = { base: 0, cuota: 0 };
-      porTipo[tipo].base += base;
-      porTipo[tipo].cuota += base * (tipo / 100);
+    facturasDirectas.filter((f22) => f22.estado !== "ANULADA" && f22.fecha >= desde && f22.fecha <= hasta).forEach((f22) => {
+      const t22 = calcularTotalesFacturaDirecta(f22);
+      Object.entries(t22.porTipo).forEach(([tipo, v22]) => {
+        if (!porTipo[tipo]) porTipo[tipo] = { base: 0, cuota: 0 };
+        porTipo[tipo].base += v22.base;
+        porTipo[tipo].cuota += v22.cuota;
+      });
     });
     return porTipo;
   }, [albaranes, facturasDirectas, desde, hasta]);
@@ -110724,7 +110968,7 @@ function LibroIva({ movimientos, productos, albaranes, proveedorPorId, facturasD
       const iva = (a22.lineas || []).reduce((x3, ln2) => x3 + (Number(ln2.importe) || 0) * ((Number(ln2.ivaPct) || 0) / 100), 0) + (Number(a22.cargos) || 0) * ((Number(a22.cargosIva) || 0) / 100);
       return {
         Fecha: a22.fechaFactura || a22.fecha,
-        Proveedor: prov ? prov.nombre : "\u2014",
+        Proveedor: a22.proveedorSnapshot?.nombre || (prov ? prov.nombre : "\u2014"),
         "N\xBA factura": a22.numeroFactura || a22.numero || "",
         Base: Number(base.toFixed(2)),
         IVA: Number(iva.toFixed(2)),
