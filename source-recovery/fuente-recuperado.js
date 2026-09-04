@@ -637,15 +637,7 @@ function GestionAlmacen() {
         loadKey("entrevistas", []),
         loadKey("movimientosCaja", []),
         loadKey("devoluciones", []),
-        loadKey("configEmpresa", {
-            marca: "Chocolatería San Ginés",
-            lema: "MADRID 1894",
-            razonSocial: "CHOCOLOYOS, S.L.",
-            nif: "B87342077",
-            web: "",
-            redSocial: "@ChocoSanGines",
-            pieDocumentos: "GRACIAS POR SU VISITA"
-          }),
+        loadKey("configEmpresa", null),
         loadKey("empresas", []),
         loadKey("locales", []),
         loadKey("localActivoId", null)
@@ -698,26 +690,21 @@ function GestionAlmacen() {
       setMovimientosCaja(mc || []);
       setDevoluciones(dev || []);
       setConfigEmpresa(ce && typeof ce === "object" ? ce : {
-          marca: "Chocolatería San Ginés",
-          lema: "MADRID 1894",
-          razonSocial: "CHOCOLOYOS, S.L.",
-          nif: "B87342077",
+          marca: "",
+          lema: "",
+          razonSocial: "",
+          nif: "",
           web: "",
-          redSocial: "@ChocoSanGines",
-          pieDocumentos: "GRACIAS POR SU VISITA"
+          redSocial: "",
+          pieDocumentos: ""
         });
-      const empresaLegacy = ce && typeof ce === "object" ? ce : {
-        marca: "Chocolatería San Ginés",
-        lema: "MADRID 1894",
-        razonSocial: "CHOCOLOYOS, S.L.",
-        nif: "B87342077",
-        web: "",
-        redSocial: "@ChocoSanGines",
-        pieDocumentos: "GRACIAS POR SU VISITA"
-      };
+      const configLegacyValida = ce && typeof ce === "object" && Object.values(ce).some((v2) => String(v2 ?? "").trim());
+      const empresaLegacy = configLegacyValida ? ce : null;
+      const hayDatosOperativosLegacy = [p2, pr, pe2, mo, co, fc, al, gg, em, fj, ra, pc, cl, en, aq, tu, au, op, tr, fd2, nom, fre, rac, entr, mc, dev].some((lista) => Array.isArray(lista) && lista.length > 0);
       let empresasFinales = Array.isArray(emps) ? emps.filter((e2) => e2 && e2.id) : [];
-      if (empresasFinales.length === 0) {
-        empresasFinales = [{ id: "empresa-principal", ...empresaLegacy, activo: true, creadoEn: null, migradaDesdeConfigEmpresa: true }];
+      if (empresasFinales.length === 0 && (empresaLegacy || hayDatosOperativosLegacy)) {
+        const baseEmpresaLegacy = empresaLegacy || { marca: "", lema: "", razonSocial: "", nif: "", web: "", redSocial: "", pieDocumentos: "" };
+        empresasFinales = [{ id: "empresa-principal", ...baseEmpresaLegacy, activo: true, creadoEn: null, migradaDesdeConfigEmpresa: true }];
       }
       setEmpresas(empresasFinales);
       const empresaLegacyUnicaId = empresasFinales.length === 1 ? empresasFinales[0]?.id || null : null; let localesFinales = Array.isArray(loc) ? loc.map((l2) => l2 && !l2.empresaId && empresaLegacyUnicaId ? { ...l2, empresaId: empresaLegacyUnicaId } : l2) : []; let localActivoFinal = lai || null;
@@ -736,8 +723,8 @@ function GestionAlmacen() {
           localActivoFinal = idCanonico;
         }
       }
-      if (localesFinales.length === 0) {
-        const primerLocal = { id: uid(), nombre: "Chocoloyos S.L", direccion: "", empresaId: empresaLegacyUnicaId, activo: true, creadoEn: (/* @__PURE__ */ new Date()).toISOString() };
+      if (localesFinales.length === 0 && hayDatosOperativosLegacy) {
+        const primerLocal = { id: uid(), nombre: "Local principal", direccion: "", empresaId: empresaLegacyUnicaId, activo: true, creadoEn: (/* @__PURE__ */ new Date()).toISOString(), migradoDesdeDatosLegacy: true };
         localesFinales = [primerLocal];
         localActivoFinal = primerLocal.id;
       }
