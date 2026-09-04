@@ -15,19 +15,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 3
 
       - name: Aplicar parche PM-06 y reconstruir
         shell: bash
         run: |
           set -euo pipefail
 
-          git show HEAD^:.github/workflows/pm06-aplicar-identidad-financiera.yml \
+          git show 9860ccb7a88a1a98a02bf79295cdfafd653b1090:.github/workflows/pm06-aplicar-identidad-financiera.yml \
             | awk '/^H4sI/{capture=1} capture{if ($0=="B64") exit; print}' \
             > /tmp/pm06_patch.b64
 
           test -s /tmp/pm06_patch.b64
           base64 -d /tmp/pm06_patch.b64 | gzip -d > /tmp/pm06_patch.py
+
+          echo '=== PM06 DIAGNOSTICO get variables ==='
+          grep -n -C 12 'get variables' /tmp/pm06_patch.py || true
+          echo '=== FIN DIAGNOSTICO ==='
+
           python3 -m py_compile /tmp/pm06_patch.py
           python3 /tmp/pm06_patch.py
 
