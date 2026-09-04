@@ -481,7 +481,8 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, localActivoI
   return { ok: true, stocks: stocks.length, movimientos: movs.length };
 }
 
-async function sincronizarContextoPm07({ setEmpresas, setLocales, setLocalActivoId, setProductos }) {
+async function sincronizarContextoPm07(args) {
+  const { setEmpresas, setLocales, setLocalActivoId, setProductos } = args || {};
   if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return { ok: false, offline: true };
   const supabase = await window.getSupabaseClient();
   const r = await supabase.from("almacen_kv").select("key,value").in("key", ["empresas", "locales", "localActivoId", "productos"]);
