@@ -101259,6 +101259,22 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, localActivoI
   }
   return { ok: true, stocks: stocks.length, movimientos: movs.length };
 }
+async function sincronizarContextoPm07({ setEmpresas, setLocales, setLocalActivoId, setProductos }) {
+  if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return { ok: false, offline: true };
+  const supabase = await window.getSupabaseClient();
+  const r2 = await supabase.from("almacen_kv").select("key,value").in("key", ["empresas", "locales", "localActivoId", "productos"]);
+  if (r2.error) throw r2.error;
+  const porClave = new Map((r2.data || []).map((fila) => [fila.key, fila.value]));
+  const empresasNube = porClave.get("empresas");
+  const localesNube = porClave.get("locales");
+  const localActivoNube = porClave.get("localActivoId");
+  const productosNube = porClave.get("productos");
+  if (Array.isArray(empresasNube) && empresasNube.length && typeof setEmpresas === "function") setEmpresas(empresasNube.filter((e2) => e2 && e2.id));
+  if (Array.isArray(localesNube) && localesNube.length && typeof setLocales === "function") setLocales(localesNube.filter((l3) => l3 && l3.id));
+  if (typeof localActivoNube === "string" && localActivoNube && typeof setLocalActivoId === "function") setLocalActivoId(localActivoNube);
+  if (Array.isArray(productosNube) && productosNube.length && typeof setProductos === "function") setProductos(productosNube.filter((p3) => p3 && p3.id));
+  return { ok: true, empresas: Array.isArray(empresasNube) ? empresasNube.length : 0, locales: Array.isArray(localesNube) ? localesNube.length : 0, productos: Array.isArray(productosNube) ? productosNube.length : 0 };
+}
 function SelectorLocalInformes({ locales = [], valor = "", onChange }) {
   const activos = locales.filter((l22) => l22 && l22.activo !== false && !l22.fusionadoEn);
   const seleccionado = activos.find((l22) => l22.id === valor);
@@ -101366,9 +101382,10 @@ function GestionAlmacen() {
     let activo = true;
     (async () => {
       try {
+        await sincronizarContextoPm07({ setEmpresas, setLocales, setLocalActivoId, setProductos });
         await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
       } catch (e2) {
-        if (activo) console.error("PM-07: no se pudo sincronizar stock autoritativo", e2);
+        if (activo) console.error("PM-07: no se pudo sincronizar contexto/stock autoritativo", e2);
       }
     })();
     return () => {
