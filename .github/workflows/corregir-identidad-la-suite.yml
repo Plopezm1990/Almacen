@@ -1,0 +1,60 @@
+name: Corregir identidad L&A Suite
+
+on:
+  push:
+    branches:
+      - reinicio-local-seguro
+    paths:
+      - 'tools/corregir_identidad_la_suite.py'
+      - 'dashboard-premium-v2.js'
+      - 'index.html'
+      - 'manifest.json'
+      - '.github/workflows/corregir-identidad-la-suite.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  corregir-y-validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: reinicio-local-seguro
+          fetch-depth: 0
+
+      - name: Aplicar corrección de identidad
+        run: python3 tools/corregir_identidad_la_suite.py
+
+      - name: Validaciones estáticas
+        run: |
+          grep -q '<title>L&amp;A Suite</title>' index.html
+          grep -q 'manifest.json?v=la-suite-20260904' index.html
+          grep -q 'application-name' index.html
+          grep -q 'apple-mobile-web-app-title' index.html
+          grep -q '"name": "L&A Suite"' manifest.json
+          grep -q '"short_name": "L&A Suite"' manifest.json
+          grep -q "el.textContent='L&A Suite'" dashboard-premium-v2.js
+          echo 'VALIDACION_IDENTIDAD_OK=1'
+
+      - name: Comprobar que no se toca producción
+        run: |
+          git diff --name-only
+          if git diff --name-only | grep -Ev '^(index.html|manifest.json|dashboard-premium-v2.js)$' | grep -q .; then
+            echo 'Se modificó un archivo fuera del alcance permitido.' >&2
+            exit 1
+          fi
+          echo 'PRODUCCION_NO_AFECTADA=1'
+
+      - name: Guardar corrección en la rama de pruebas
+        run: |
+          if git diff --quiet; then
+            echo 'Sin cambios pendientes: identidad ya aplicada.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html manifest.json dashboard-premium-v2.js
+          git commit -m 'Identidad: mostrar L&A Suite en login y PWA [skip ci]'
+          git push origin HEAD:reinicio-local-seguro
