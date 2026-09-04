@@ -43,6 +43,13 @@ jobs:
               raise SystemExit('PM07_WRAPPER_SELECTOR_PRECHECK_NO_LOCALIZADO')
           script = script.replace(viejo2, nuevo2, 1)
 
+          # La invariante original confundía el único fallback offline permitido con un fallback cloud.
+          inv_old="'PM07_SIN_FALLBACK_CLOUD': 'return venderLocal(lineas, medioPago, detallePago);' not in s[find_function(s,'venderCarrito')[0]:find_function(s,'venderCarrito')[1]][300:],"
+          inv_new="'PM07_SIN_FALLBACK_CLOUD': s[find_function(s,'venderCarrito')[0]:find_function(s,'venderCarrito')[1]].count('return venderLocal(lineas, medioPago, detallePago);') == 1 and 'No se ha descontado stock localmente.' in s[find_function(s,'venderCarrito')[0]:find_function(s,'venderCarrito')[1]],"
+          if inv_old not in script:
+              raise SystemExit('PM07_WRAPPER_INVARIANTE_FALLBACK_NO_LOCALIZADA')
+          script = script.replace(inv_old, inv_new, 1)
+
           Path('/tmp/pm07_payload.sh').write_text(script, encoding='utf-8')
           print('PM07_WRAPPER_PAYLOAD_LINES=', len(script.splitlines()))
           PY
