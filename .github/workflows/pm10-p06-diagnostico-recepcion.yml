@@ -1,0 +1,34 @@
+name: PM10 P06 diagnostico LA-013 recepcion
+on:
+  push:
+    branches: [pm10-validaciones-altas-datos-legados]
+    paths:
+      - '.github/workflows/pm10-p06-diagnostico-recepcion.yml'
+permissions:
+  contents: read
+jobs:
+  diagnostico:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Diagnosticar recepcion y saldo pendiente
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          queries=[
+            'function recibirPedido(',
+            'function procesarRecepcion(',
+            'procesarRecepcion({',
+            'cantidadRecibida',
+            'pendiente',
+            'function Recepcion',
+            'function Pedidos('
+          ]
+          for q in queries:
+            print('\n===== QUERY',q,'=====')
+            for m in list(re.finditer(re.escape(q),s))[:20]:
+              a=max(0,m.start()-1800); b=min(len(s),m.start()+10000)
+              print('\nOFFSET',m.start(),'\n',s[a:b].replace('\n','\\n'))
+          PY
