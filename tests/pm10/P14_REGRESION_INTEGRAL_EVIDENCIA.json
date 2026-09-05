@@ -1,0 +1,65 @@
+{
+  "pm": "PM10",
+  "punto": 14,
+  "modulo": "Regresión integral tras validaciones de dominio",
+  "estado": "VALIDADO",
+  "fecha": "2026-09-05",
+  "rama": "pm10-validaciones-altas-datos-legados",
+  "sha_probado": "20d8f6c51c6c1485b9e6e64fe3f5805239b66083",
+  "workflow": {
+    "nombre": "PM10 Punto 14 regresion integral",
+    "run_id": 33974519798,
+    "resultado": "SUCCESS",
+    "job": "regresion-integral"
+  },
+  "cobertura_pm10": {
+    "P04_LA011_productos": "OK",
+    "P05_LA012_pedidos": "OK",
+    "P06_LA013_recepcion": "OK",
+    "P07_LA017_personal": "OK",
+    "P08_LA018_encargos": "OK",
+    "P09_transversal_atomicidad_legados_contexto": "OK",
+    "P10_autoridad_persistencia": "OK",
+    "P11_robustez_altas_recepcion": "OK",
+    "P12_datos_legados_ambiguos": "OK",
+    "P13_aislamiento_contexto": "OK",
+    "node_check_fuente": "OK"
+  },
+  "regresiones_heredadas": {
+    "PM05_frontend": "OK",
+    "PM07_frontend": "OK",
+    "PM08_frontend": "OK",
+    "PM08_migration_contract": "OK",
+    "PM08_replay_scope": "OK",
+    "PM09_la007_resultados": "OK",
+    "PM09_la008_rotacion_margen": "OK",
+    "PM09_historial": "OK",
+    "PM09_caja": "OK",
+    "PM09_iva": "OK",
+    "PM09_resultados_margen": "OK",
+    "PM09_casos_economicos": "OK",
+    "PM09_aislamiento_contexto": "OK",
+    "PM09_robustez": "OK"
+  },
+  "aspectos_revalidados": [
+    "validaciones positivas y negativas de Productos, Pedidos, Recepción, Personal y Encargos",
+    "recepciones parciales y acumuladas sin exceder lo pedido",
+    "atomicidad y ausencia de guardado parcial en entradas inválidas",
+    "autoridad de persistencia y separación entre cache/estado local y autoridad sincronizada",
+    "doble clic, replay, operationId, conflicto de payload y recuperación definidos en contratos heredados",
+    "aislamiento A1/A2/B1, Todos los locales solo lectura y bloqueo de local inactivo/fusionado",
+    "datos legados no reparados silenciosamente",
+    "conciliación histórica/económica heredada de PM09"
+  ],
+  "entorno_y_riesgo": {
+    "tipo_prueba": "contratos estáticos y unitarios sobre artefactos del repositorio",
+    "supabase_qa_writes": false,
+    "migraciones_nuevas": false,
+    "fixtures_persistentes_nuevos": false,
+    "datos_reales": false,
+    "netlify_produccion": false,
+    "supabase_produccion": false,
+    "main_sha_verificado": "7f792925d6a3d27334ee0e7335ba635b4ed79b6b",
+    "limitacion": "Este punto no sustituye el cierre final PM10, el Deploy Preview/smoke o la evidencia final de paquete que corresponda al siguiente punto."
+  }
+}
