@@ -55,7 +55,6 @@ function falla(lineas, codigo, campo = null, extra = {}) {
   return r;
 }
 
-// Parcial y exacto al pendiente.
 let r = validar({ ...opts, lineas: [{ productoId: 'p1', cantidad: 3, precioBruto: 3, ivaPct: 10 }] });
 assert.equal(r.ok, true, JSON.stringify(r));
 assert.equal(r.lineas[0].cantidad, 3);
@@ -67,14 +66,12 @@ assert.equal(r.ok, true, JSON.stringify(r));
 assert.equal(r.lineas[0].cantidad, 6);
 assert.equal(r.lineas[0].precioBruto, 3, 'usa coste actual solo como valor por defecto de captura');
 
-// Un mínimo exceso debe bloquear el lote completo.
 falla([{ productoId: 'p1', cantidad: 6.01 }], 'exceso_sobre_cantidad_pendiente', 'lineas');
 falla([
   { productoId: 'p1', cantidad: 2 },
   { productoId: 'p2', cantidad: 5.01 }
 ], 'exceso_sobre_cantidad_pendiente', 'lineas');
 
-// Números y referencias inválidas no se silencian.
 falla([{ productoId: 'p1', cantidad: 0 }], 'valor_fuera_rango', 'lineas.0.cantidad');
 falla([{ productoId: 'p1', cantidad: -1 }], 'valor_fuera_rango', 'lineas.0.cantidad');
 falla([{ productoId: 'p1', cantidad: 'abc' }], 'numero_no_finito', 'lineas.0.cantidad');
@@ -89,13 +86,11 @@ falla([{ productoId: 'p1', cantidad: 1, ivaPct: 101 }], 'valor_fuera_rango', 'li
 falla([], 'campo_obligatorio', 'lineas');
 falla([{ productoId: 'p1', cantidad: 1 }], 'contexto_no_autorizado', 'localId', { localActivoId: null });
 
-// Estado previo incoherente debe fallar antes de cualquier entrada.
 const pedidoCorrupto = { ...pedidoBase, items: [{ productoId: 'p1', cantidad: 5, cantidadRecibida: 6 }] };
 r = validar({ pedido: pedidoCorrupto, lineas: [{ productoId: 'p1', cantidad: 1 }], productos, localActivoId: 'L1', modo: 'directo' });
 assert.equal(r.ok, false);
 assert.equal(r.codigo, 'conflicto_estado_previo');
 
-// En albarán, cantidad * udsPorCaja se compara en unidades contra el pendiente.
 const pedidoCaja = {
   id: 'ped-caja', localId: 'L1', proveedorId: 'prov-1', estado: 'Pendiente',
   items: [{ productoId: 'p1', cantidad: 12, costoUnitario: 3, cantidadRecibida: 0 }]
@@ -108,7 +103,6 @@ r = validar({ pedido: pedidoCaja, lineas: [{ productoId: 'p1', cantidad: 2.01, u
 assert.equal(r.ok, false);
 assert.equal(r.codigo, 'exceso_sobre_cantidad_pendiente');
 
-// Productos repetidos en el pedido: el pendiente se agrega y la recepción se reparte, no se duplica.
 const pedidoDuplicado = {
   id: 'ped-dup', localId: 'L1', proveedorId: 'prov-1', estado: 'Parcial',
   items: [
@@ -122,7 +116,6 @@ let actualizado = aplicar(pedidoDuplicado, [{ productoId: 'p1', unidadesEntradas
 assert.deepEqual(actualizado.items.map(x => x.cantidadRecibida), [5, 5]);
 assert.equal(actualizado.estado, 'Recibido');
 
-// Varias recepciones parciales acumulan exactamente y el exceso posterior se rechaza.
 let pedidoSecuencia = {
   id: 'ped-seq', localId: 'L1', proveedorId: 'prov-1', estado: 'Pendiente',
   items: [{ productoId: 'p2', cantidad: 5, cantidadRecibida: 0 }]
@@ -141,7 +134,6 @@ r = validar({ pedido: pedidoSecuencia, lineas: [{ productoId: 'p2', cantidad: 0.
 assert.equal(r.ok, false);
 assert.equal(r.codigo, 'exceso_sobre_cantidad_pendiente');
 
-// Dominio real de recibirPedido: inválido no llama procesarRecepcion ni setPedidos; válido sí y suma exacto.
 function harness(pedidoInicial) {
   let estado = structuredClone([pedidoInicial]);
   let llamadasProcesar = 0;
@@ -180,14 +172,12 @@ assert.equal(h.ultimaEntrada()[0].cantidad, 2);
 assert.equal(h.ultimaEntrada()[0].udsPorCaja, 1, 'la UI directa no multiplica por uds/caja del producto');
 assert.equal(h.estado()[0].items[0].cantidadRecibida, 6);
 
-// Todo o nada en lote: una segunda línea inválida impide incluso procesar la primera.
 h = harness(pedidoBase);
 res = h.logica.recibirPedido('ped-1', [{ productoId: 'p1', cantidad: 1 }, { productoId: 'p2', cantidad: 6 }]);
 assert.equal(res.ok, false);
 assert.equal(h.llamadasProcesar(), 0);
 assert.equal(h.mutacionesPedidos(), 0);
 
-// Evidencia estática de orden de autoridad en ambas rutas.
 const logicaPedidosTxt = src.slice(pedidosIni, pedidosFin);
 const recibirIni = logicaPedidosTxt.indexOf('function recibirPedido(');
 const recibirFin = logicaPedidosTxt.indexOf('return { crearPedido', recibirIni);
@@ -221,7 +211,10 @@ assert.match(recepcionTxt, /erroresRecepcion/);
 assert.match(recepcionTxt, /const porProducto = new Map\(\)/);
 assert.match(recepcionTxt, /const resultado = recibirPedido/);
 assert.match(recepcionTxt, /if \(!resultado \|\| resultado\.ok === false\)[\s\S]{0,300}setErroresRecepcion/);
-assert.ok(recepcionTxt.indexOf('resultado.ok === false') < recepcionTxt.indexOf('setActivos((s22)'), 'no limpia captura antes de comprobar éxito');
+const resultadoPos = recepcionTxt.indexOf('const resultado = recibirPedido');
+const errorPos = recepcionTxt.indexOf('resultado.ok === false', resultadoPos);
+const limpiarPos = recepcionTxt.indexOf('setActivos((s22)', resultadoPos);
+assert.ok(resultadoPos >= 0 && errorPos > resultadoPos && limpiarPos > errorPos, 'no limpia captura antes de comprobar éxito');
 
 const darIni = src.indexOf('function darEntrada() {');
 const darFin = src.indexOf('if (modo === "lista")', darIni);
