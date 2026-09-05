@@ -1,5 +1,8 @@
 PM09 / PUNTO 11 / DIAGNOSTICO IVA
 
+## FUNCTION LibroIva
+function LibroIva({ movimientos, productos, albaranes, proveedorPorId, facturasDirectas = [] }
+
 ## FUNCTION Resultados
 function Resultados({ movimientos, productos, productoPorId, gastosGenerales, addGasto, deleteGasto, empleados = [] }
 
