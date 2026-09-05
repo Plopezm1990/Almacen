@@ -1,0 +1,356 @@
+PM09 / PUNTO 9 / DIAGNOSTICO HISTORIAL DE VENTAS
+bytes_fuente=5243241
+
+## estado_historial_y_proyeccion
+const [filtroVentasTexto, setFiltroVentasTexto] = (0, import_react4.useState)("");
+  const [filtroVentasDesde, setFiltroVentasDesde] = (0, import_react4.useState)("");
+  const [filtroVentasHasta, setFiltroVentasHasta] = (0, import_react4.useState)("");
+  const [filtroVentasPago, setFiltroVentasPago] = (0, import_react4.useState)("Todos");
+  const [filtroVentasEstado, setFiltroVentasEstado] = (0, import_react4.useState)("Todas");
+  const historialVentas = (0, import_react4.useMemo)(() => {
+    const todos = movimientos || [];
+    const anuladasPorId = new Set(todos.filter((m22) => m22.anulaVentaId).map((m22) => m22.anulaVentaId));
+    const reversiones = new Set(todos.filter((m22) => m22.revierteMovimientoId).map((m22) => m22.revierteMovimientoId));
+    const porVenta = {};
+    todos.filter((m22) => esVenta(m22) && !m22.anulaVentaId && cantidadConSigno(m22) < 0).forEach((m22) => {
+      const ventaId = m22.ventaId || m22.operationId || m22.documentoOrigenId;
+      if (!ventaId) return;
+      if (!porVenta[ventaId]) porVenta[ventaId] = [];
+      porVenta[ventaId].push(m22);
+    });
+    return Object.entries(porVenta).map(([ventaId, lineas]) => {
+      const fecha = lineas.map((l22) => l22.fecha || "").filter(Boolean).sort().slice(-1)[0] || "";
+      const marcaTiempo = lineas.map((l22) => l22.timestamp || l22.createdAt || l22.created_at || l22.fechaHora || l22.fecha_hora || l22.marcaTiempo || "").filter(Boolean).sort().slice(-1)[0] || "";
+      const importe = lineas.reduce((a22, l22) => a22 + Math.abs(cantidadConSigno(l22)) * Math.abs(Number(l22.ingresoUnitario) || 0) * (1 + (Number(l22.ivaVentaAplicado) || 0) / 100), 0);
+      const nombres = lineas.map((l22) => {
+        const p22 = productos.find((x3) => x3.id === l22.productoId);
+        return `${fmt(Math.abs(cantidadConSigno(l22)))}\xD7 ${p22 ? p22.nombre : "Producto"}`;
+      });
+      const detallePago = lineas.reduce((acc, l22) => {
+        if (!l22.detallePago) return acc;
+        acc.efectivo += Number(l22.detallePago.efectivo) || 0;
+        acc.tarjeta += Number(l22.detallePago.tarjeta) || 0;
+        return acc;
+      }, { efectivo: 0, tarjeta: 0 });
+      const anulada = anuladasPorId.has(ventaId) || lineas.some((l22) => reversiones.has(l22.id));
+      const medioPago2 = lineas[0]?.medioPago || "\u2014";
+      const usuario = lineas[0]?.usuario || lineas[0]?.empleado || "";
+      const referencia = `V-${(fecha || "SINFECHA").replaceAll("-", "")}-${String(ventaId).replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`;
+      return { ventaId, referencia, fecha, marcaTiempo, lineas, resumen: nombres.slice(0, 3).join(", ") + (nombres.length > 3 ? ` y ${nombres.length - 3} m\xE1s` : ""), importe, medioPago: medioPago2, detallePago, usuario, anulada, mesa: lineas[0]?.mesa || lineas[0]?.mesaNumero || "", zona: lineas[0]?.zona || lineas[0]?.sala || lineas[0]?.ubicacion || "", numeroFiscal: lineas[0]?.numeroFiscal || lineas[0]?.numeroFactura || "", entregado: lineas[0]?.importeEntregado ?? lineas[0]?.entregado ?? null, cambio: lineas[0]?.cambioEntregado ?? lineas[0]?.cambio ?? null };
+    }).sort((a22, b2) => `${b2.fecha} ${b2.marcaTiempo}`.localeCompare(`${a22.fecha} ${a22.marcaTiempo}`));
+  }, [movimientos, productos]);
+  const ventasFiltradas = (0, import_react4.useMemo)(() => {
+    const q2 = filtroVentasTexto.trim().toLowerCase();
+    return historialVentas.filter((v22) => {
+      if (filtroVentasDesde && v22.fecha < filtroVentasDesde) return false;
+      if (filtroVentasHasta && v22.fecha > filtroVentasHasta) return false;
+      if (filtroVentasPago !== "Todos" && v22.medioPago !== filtroVentasPago) return false;
+      if (filtroVentasEstado === "Activas" && v22.anulada) return false;
+      if (filtroVentasEstado === "Anuladas" && !v22.anulada) return false;
+      if (!q2) return true;
+      const productosTexto = v22.lineas.map((l22) => productos.find((p22) => p22.id === l22.productoId)?.nombre || "").join(" ");
+      return `${v22.referencia} ${v22.ventaId} ${v22.fecha} ${v22.medioPago} ${v22.usuario} ${productosTexto}`.toLowerCase().includes(q2);
+    });
+  }, [historialVentas, filtroVentasTexto, filtroVentasDesde, filtroVentasHasta, filtroVentasPago, filtroVentasEstado, productos]);
+  const resumenHistorialVentas = (0, import_react4.useMemo)(() => {
+    const activas = ventasFiltradas.filter((v22) => !v22.anulada);
+    const total2 = activas.reduce((a22, v22) => a22 + v22.importe, 0);
+    return { n: ventasFiltradas.length, activas: activas.length, total: total2, ticketMedio: activas.length ? total2 / activas.length : 0 };
+  }, [ventasFiltradas]);
+  function aplicarPeriodoVentas(tipo) {
+    const hoy = todayISO();
+    if (tipo === "hoy") {
+      setFiltroVentasDesde(hoy);
+      setFiltroVentasHasta(hoy);
+    } else if (tipo === "mes") {
+      setFiltroVentasDesde(primerDiaMes(hoy));
+      setFiltroVentasHasta(ultimoDiaMes(hoy));
+    } else {
+      setFiltroVentasDesde("");
+      setFiltroVentasHasta("");
+    }
+  }
+  function fechaHoraTicketVista(v22) {
+    const raw = v22 && v22.marcaTiempo;
+    if (raw) {
+      const d2 = new Date(raw);
+      if (!isNaN(d2.getTime())) return d2.toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    }
+    return v22 && v22.fecha ? v22.fecha : "\u2014";
+  }
+  function desgloseIvaTicketVista(v22) {
+    const mapa = /* @__PURE__ */ new Map();
+    (v22 && v22.lineas || []).forEach((l22) => {
+      const cantidad = Math.abs(cantidadConSigno(l22));
+      const base = cantidad * Math.abs(Number(l22.ingresoUnitario) || 0);
+      const pct = Number(l22.ivaVentaAplicado) || 0;
+      const actual = mapa.get(pct) || { pct, base: 0, iva: 0 };
+      actual.base += base;
+      actual.iva += base * pct / 100;
+      mapa.set(pct, actual);
+    });
+    return [...mapa.values()].sort((a22, b2) => a22.pct - b2.pct);
+  }
+  
+
+## function renderTicketVenta
+function renderTicketVenta() {
+    if (!ticketVenta) return null;
+    const h3 = import_react4.default.createElement;
+    const v22 = ticketVenta;
+    const desglose = desgloseIvaTicketVista(v22);
+    const subtotal = desglose.reduce((a22, r2) => a22 + r2.base, 0);
+    const nombreLocal = local?.nombreComercial || local?.nombreComercialTicket || local?.nombre || "Local sin nombre";
+    const direccionLocal = local?.direccion || local?.direccionTicket || "";
+    const telefonoLocal = local?.telefono || local?.telefonoTicket || "";
+    const emailLocal = local?.email || local?.emailTicket || "";
+    const empresa = configEmpresa || {};
+    const marcaEmpresa = empresa.marca || "Chocolater\xEDa San Gin\xE9s";
+    const lemaEmpresa = empresa.lema || "MADRID 1894";
+    const razonSocialEmpresa = empresa.razonSocial || "CHOCOLOYOS, S.L.";
+    const nifEmpresa = empresa.nif || "B87342077";
+    const redSocialEmpresa = empresa.redSocial || "";
+    const webEmpresa = empresa.web || "";
+    const pieEmpresa = empresa.pieDocumentos || "GRACIAS POR SU VISITA";
+    const numeroDocumento = v22.numeroFiscal || v22.referencia;
+    const tieneNumeroFiscal = !!v22.numeroFiscal;
+    const entregado = v22.entregado == null ? null : Number(v22.entregado);
+    const cambioTicket = v22.cambio == null ? null : Number(v22.cambio);
+    return h3(
+      Modal,
+      { onClose: () => setTicketVenta(null), title: `Ticket ${v22.referencia}` },
+      h3(
+        "div",
+        { className: "rounded-xl p-4 mono", style: { background: C2.surface, border: `1px solid ${C2.line}` } },
+        h3(
+          "div",
+          { className: "text-center mb-3" },
+          h3("div", { className: "text-[10px] font-bold tracking-[0.18em]" }, "EMPRESA"),
+          h3("div", { className: "text-[22px] font-black leading-tight mt-1" }, marcaEmpresa),
+          lemaEmpresa ? h3("div", { className: "text-[10px] font-bold tracking-[0.18em] mt-1" }, lemaEmpresa) : null
+        ),
+        h3(
+          "div",
+          { className: "text-center text-[10.5px] leading-5 mb-3" },
+          h3("div", { className: "font-bold" }, razonSocialEmpresa),
+          nifEmpresa ? h3("div", null, `N.I.F.: ${nifEmpresa}`) : null,
+          direccionLocal ? h3("div", null, direccionLocal) : null,
+          telefonoLocal ? h3("div", null, `Tfno.: ${telefonoLocal}`) : null,
+          emailLocal ? h3("div", null, emailLocal) : null,
+          h3("div", { className: "mt-1 font-semibold" }, `LOCAL: ${nombreLocal}`)
+        ),
+        h3("div", { className: "text-center text-[12px] font-bold my-3" }, tieneNumeroFiscal ? "FACTURA SIMPLIFICADA" : "TICKET / RECIBO INTERNO"),
+        v22.anulada ? h3("div", { className: "text-center text-[11px] font-bold rounded-lg py-2 mb-3", style: { background: C2.redSoft || "#FCE8E6", color: C2.red } }, "VENTA ANULADA") : null,
+        h3(
+          "div",
+          { className: "text-[10.5px] mb-3 pb-3", style: { borderBottom: `1px dashed ${C2.line}` } },
+          h3("div", { className: "flex justify-between gap-3" }, h3("span", null, fechaHoraTicketVista(v22)), h3("span", { className: "font-semibold text-right" }, `${tieneNumeroFiscal ? "N.\xBA" : "Ref."} ${numeroDocumento}`)),
+          h3("div", { className: "mt-1" }, `CAMARERO: ${v22.usuario || "\u2014"}`),
+          h3("div", { className: "flex justify-between gap-3 mt-1" }, h3("span", null, `MESA: ${v22.mesa || "\u2014"}`), h3("span", { className: "text-right" }, `ZONA: ${v22.zona || "\u2014"}`))
+        ),
+        h3(
+          "div",
+          { className: "grid grid-cols-[1fr_44px_58px_62px] gap-1 text-[9.5px] font-bold pb-1", style: { borderBottom: `1px dashed ${C2.line}` } },
+          h3("span", null, "CONCEPTO"),
+          h3("span", { className: "text-right" }, "CANT."),
+          h3("span", { className: "text-right" }, "PRECIO"),
+          h3("span", { className: "text-right" }, "TOTAL")
+        ),
+        h3("div", { className: "mb-3" }, (v22.lineas || []).map((l22, i33) => {
+          const prod = productos.find((x3) => x3.id === l22.productoId);
+          const cantidad = Math.abs(cantidadConSigno(l22));
+          const iva = Number(l22.ivaVentaAplicado) || 0;
+          const precio = Math.abs(Number(l22.ingresoUnitario) || 0) * (1 + iva / 100);
+          return h3(
+            "div",
+            { key: l22.id || i33, className: "grid grid-cols-[1fr_44px_58px_62px] gap-1 text-[10.5px] py-1.5", style: { borderBottom: `1px dotted ${C2.line}` } },
+            h3("span", { className: "font-medium break-words" }, prod?.nombre || "Producto"),
+            h3("span", { className: "text-right" }, fmt(cantidad)),
+            h3("span", { className: "text-right" }, fmt(precio)),
+            h3("span", { className: "text-right font-semibold" }, fmt(cantidad * precio))
+          );
+        })),
+        h3(
+          "div",
+          { className: "text-[10.5px] py-2", style: { borderTop: `1px dashed ${C2.line}`, borderBottom: `1px dashed ${C2.line}` } },
+          h3("div", { className: "flex justify-between gap-3" }, h3("span", null, "SUBTOTAL:"), h3("span", null, `\u20AC${fmt(subtotal)}`)),
+          desglose.map((r2) => h3("div", { key: r2.pct, className: "flex justify-between gap-3" }, h3("span", null, `${fmt(r2.pct)}% I.V.A.:`), h3("span", null, `\u20AC${fmt(r2.iva)}`)))
+        ),
+        h3(
+          "div",
+          { className: "flex justify-between items-end py-3", style: { borderBottom: `1px dashed ${C2.line}` } },
+          h3("span", { className: "font-black text-[17px]" }, "TOTAL:"),
+          h3("span", { className: "font-black text-[24px]" }, `\u20AC${fmt(v22.importe)}`)
+        ),
+        h3("div", { className: "text-center text-[11px] font-semibold mt-3" }, `Cobrado en ${(v22.medioPago || "\u2014").toUpperCase()}`),
+        h3(
+          "div",
+          { className: "text-[10.5px] mt-3 mb-3" },
+          h3("div", { className: "flex justify-between gap-3" }, h3("span", null, "ENTREGADO:"), h3("span", null, entregado == null || !Number.isFinite(entregado) ? "\u2014" : `\u20AC${fmt(entregado)}`)),
+          h3("div", { className: "flex justify-between gap-3" }, h3("span", null, "CAMBIO:"), h3("span", null, cambioTicket == null || !Number.isFinite(cambioTicket) ? "\u2014" : `\u20AC${fmt(cambioTicket)}`)),
+          v22.medioPago === "Mixto" && v22.detallePago ? h3("div", { className: "mt-2 text-center" }, `TARJETA \u20AC${fmt(v22.detallePago.tarjeta || 0)} \xB7 EFECTIVO \u20AC${fmt(v22.detallePago.efectivo || 0)}`) : null
+        ),
+        h3(
+          "div",
+          { className: "text-center text-[10px] pt-3", style: { borderTop: `1px dashed ${C2.line}` } },
+          redSocialEmpresa || webEmpresa ? h3(
+            "div",
+            null,
+            h3("div", null, "Contacto"),
+            redSocialEmpresa ? h3("div", null, redSocialEmpresa) : null,
+            webEmpresa ? h3("div", null, webEmpresa) : null
+          ) : null,
+          h3("div", { className: "font-bold text-[12px] mt-3" }, v22.anulada ? "VENTA ANULADA" : pieEmpresa),
+          h3("div", { className: "font-semibold mt-1" }, "I.V.A. INCLUIDO"),
+          h3("div", { className: "text-[8.5px] mt-3 break-all", style: { color: C2.inkSoft } }, `ID operaci\xF3n: ${v22.ventaId}`),
+          !tieneNumeroFiscal ? h3("div", { className: "text-[8.5px] mt-1", style: { color: C2.inkSoft } }, "Documento interno del TPV \xB7 pendiente de numeraci\xF3n fiscal") : null
+        )
+      ),
+      h3("div", { className: "mt-3" }, h3(Btn, { variant: "ghost", onClick: () => setTicketVenta(null) }, "Cerrar ticket"))
+    );
+  }
+
+## function renderHistorialVentas
+function renderHistorialVentas() {
+    const h3 = import_react4.default.createElement;
+    const controles = h3(
+      Card,
+      { className: "mt-5" },
+      h3(
+        "div",
+        { className: "flex items-center justify-between gap-2 mb-1" },
+        h3("div", { className: "text-[14px] font-semibold" }, "Historial de ventas"),
+        h3("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, `${historialVentas.length} registrada(s)`)
+      ),
+      h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Registro interno del TPV. Las anulaciones permanecen visibles y el hist\xF3rico nunca se borra."),
+      h3(
+        "div",
+        { className: "grid grid-cols-3 gap-2 mb-3" },
+        h3("div", { className: "rounded-lg p-2", style: { background: C2.surface2 || C2.surface } }, h3("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Ventas"), h3("div", { className: "font-bold mono text-[14px]" }, resumenHistorialVentas.activas)),
+        h3("div", { className: "rounded-lg p-2", style: { background: C2.surface2 || C2.surface } }, h3("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Total vigente"), h3("div", { className: "font-bold mono text-[14px]" }, "\u20AC", fmt(resumenHistorialVentas.total))),
+        h3("div", { className: "rounded-lg p-2", style: { background: C2.surface2 || C2.surface } }, h3("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Ticket medio"), h3("div", { className: "font-bold mono text-[14px]" }, "\u20AC", fmt(resumenHistorialVentas.ticketMedio)))
+      ),
+      h3(
+        "div",
+        { className: "flex gap-1.5 mb-3 flex-wrap" },
+        h3(Btn, { small: true, variant: "ghost", onClick: () => aplicarPeriodoVentas("hoy") }, "Hoy"),
+        h3(Btn, { small: true, variant: "ghost", onClick: () => aplicarPeriodoVentas("mes") }, "Este mes"),
+        h3(Btn, { small: true, variant: "ghost", onClick: () => aplicarPeriodoVentas("todo") }, "Todo")
+      ),
+      h3(
+        "div",
+        { className: "grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2" },
+        h3(Input, { value: filtroVentasTexto, onChange: (e2) => setFiltroVentasTexto(e2.target.value), placeholder: "Buscar venta, producto, pago o empleado\u2026" }),
+        h3("select", { value: filtroVentasPago, onChange: (e2) => setFiltroVentasPago(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[12.5px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, ["Todos", "Efectivo", "Tarjeta", "Mixto", "Transferencia", "Otro"].map((x3) => h3("option", { key: x3, value: x3 }, x3 === "Todos" ? "Todos los pagos" : x3)))
+      ),
+      h3(
+        "div",
+        { className: "grid grid-cols-3 gap-2 mb-3" },
+        h3(Input, { type: "date", value: filtroVentasDesde, onChange: (e2) => setFiltroVentasDesde(e2.target.value) }),
+        h3(Input, { type: "date", value: filtroVentasHasta, onChange: (e2) => setFiltroVentasHasta(e2.target.value) }),
+        h3("select", { value: filtroVentasEstado, onChange: (e2) => setFiltroVentasEstado(e2.target.value), className: "w-full rounded-lg px-2 py-2 text-[12px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, ["Todas", "Activas", "Anuladas"].map((x3) => h3("option", { key: x3, value: x3 }, x3)))
+      ),
+      ventasFiltradas.length === 0 ? h3(Empty, { text: historialVentas.length ? "No hay ventas que coincidan con estos filtros." : "Todav\xEDa no hay ventas registradas en este local." }) : h3("div", { className: "space-y-1.5" }, ventasFiltradas.slice(0, 100).map((v23) => h3(
+        "button",
+        { key: v23.ventaId, onClick: () => setVentaDetalle(v23), className: "w-full text-left rounded-lg p-2.5", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+        h3(
+          "div",
+          { className: "flex items-center justify-between gap-2" },
+          h3("div", null, h3("div", { className: "text-[12.5px] font-semibold" }, v23.referencia, v23.anulada ? h3(Pill2, { color: C2.red }, "anulada") : null), h3("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, `${v23.fecha || "Sin fecha"} \xB7 ${v23.medioPago}${v23.usuario ? " \xB7 " + v23.usuario : ""}`)),
+          h3("div", { className: "mono font-bold text-[13px]" }, "\u20AC", fmt(v23.importe))
+        ),
+        h3("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, v23.resumen)
+      )))
+    );
+    if (!ventaDetalle) return h3(import_react4.default.Fragment, null, controles, renderTicketVenta());
+    const v22 = ventaDetalle;
+    const detalle = h3(
+      Modal,
+      { onClose: () => setVentaDetalle(null), title: `Venta ${v22.referencia}` },
+      h3("div", { className: "flex items-center justify-between mb-3" }, h3("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, `${v22.fecha || "Sin fecha"} \xB7 ${v22.medioPago}`), v22.anulada ? h3(Pill2, { color: C2.red }, "ANULADA") : h3(Pill2, { color: C2.accent }, "ACTIVA")),
+      h3("div", { className: "space-y-2 mb-3" }, v22.lineas.map((l22) => {
+        const p22 = productos.find((x3) => x3.id === l22.productoId);
+        const cant = Math.abs(cantidadConSigno(l22));
+        const precio = Math.abs(Number(l22.ingresoUnitario) || 0) * (1 + (Number(l22.ivaVentaAplicado) || 0) / 100);
+        return h3("div", { key: l22.id || `${l22.productoId}-${cant}`, className: "flex justify-between gap-3 text-[12.5px]" }, h3("div", null, h3("div", { className: "font-medium" }, p22?.nombre || "Producto"), h3("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, `${fmt(cant)} \xD7 \u20AC${fmt(precio)} \xB7 IVA ${fmt(Number(l22.ivaVentaAplicado) || 0)}%`)), h3("div", { className: "mono font-semibold" }, "\u20AC", fmt(cant * precio)));
+      })),
+      h3("div", { className: "flex justify-between py-2 mb-2 font-bold", style: { borderTop: `1px solid ${C2.line}` } }, h3("span", null, "Total"), h3("span", { className: "mono" }, "\u20AC", fmt(v22.importe))),
+      v22.medioPago === "Mixto" && (v22.detallePago.efectivo > 0 || v22.detallePago.tarjeta > 0) ? h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, `Tarjeta \u20AC${fmt(v22.detallePago.tarjeta)} + Efectivo \u20AC${fmt(v22.detallePago.efectivo)}`) : null,
+      h3("div", { className: "text-[10px] mb-3 break-all", style: { color: C2.inkSoft } }, `ID interno: ${v22.ventaId}`),
+      h3("div", { className: "flex gap-2 flex-wrap mb-3" }, h3(Btn, { onClick: () => {
+        setVentaDetalle(null);
+        setTicketVenta(v22);
+      } }, "Ver ticket / reimprimir")),
+      !v22.anulada && anularVenta ? h3(Btn, { variant: "danger", onClick: () => {
+        setVentaDetalle(null);
+        setConfirmAnular(v22);
+      } }, "Anular venta") : null
+    );
+    return h3(import_react4.default.Fragment, null, controles, detalle, renderTicketVenta());
+  }
+
+## function anularVenta
+function anularVentaLocal(ventaId, movimientosActuales, motivo = "") {
+    if (!ventaId) return { ok: false, error: "Esa venta no tiene identificador y no se puede anular." };
+    const lineas = (movimientosActuales || []).filter((m22) => m22.ventaId === ventaId || m22.operationId === ventaId).filter((m22) => esVenta(m22) || esSalida(m22)).filter((m22) => movimientoEsDelLocalActivoVenta(m22));
+    if (lineas.length === 0) {
+      return { ok: false, error: "No se han encontrado las l\xEDneas de esa venta." };
+    }
+    const yaAnulada = (movimientosActuales || []).some((m22) => m22.anulaVentaId === ventaId || m22.revierteMovimientoId && lineas.some((l22) => l22.id === m22.revierteMovimientoId));
+    if (yaAnulada) {
+      return { ok: false, error: "Esa venta ya estaba anulada." };
+    }
+    let aplicadas = 0;
+    lineas.forEach((l22) => {
+      const cantidadOriginal = Math.abs(cantidadConSigno(l22));
+      if (cantidadOriginal <= 0) return;
+      const r2 = aplicarMovimientoStock({
+        productoId: l22.productoId,
+        cantidad: cantidadOriginal,
+        tipo: l22.tipo === "salida" ? "VENTA" : l22.tipo,
+        operationId: uid(),
+        movimientoId: uid(),
+        origen: "anularVenta",
+        documentoOrigenId: ventaId,
+        afectaStockTotal: true,
+        afectaStockPisoVenta: true,
+        permitirDeficit: true,
+        revierteMovimientoId: l22.id,
+        motivo: `Anulaci\xF3n de venta${motivo ? " \xB7 " + motivo : ""}`,
+        camposExtra: {
+          anulaVentaId: ventaId,
+          costoUnitario: l22.costoUnitario,
+          // El ingreso se anota en negativo para que los informes de ventas
+          // resten esta operación en vez de contarla como un ingreso nuevo.
+          ingresoUnitario: l22.ingresoUnitario != null ? -Math.abs(Number(l22.ingresoUnitario)) : null,
+          ivaVentaAplicado: l22.ivaVentaAplicado,
+          medioPago: l22.medioPago,
+          detallePago: l22.detallePago
+        }
+      });
+      if (r2.ok) aplicadas++;
+    });
+    const fechaVenta = lineas[0]?.fecha;
+    const arqueoDelDia = fechaVenta && (arqueos || []).find((a22) => a22.fecha === fechaVenta && (!localActivoId || a22.localId === localActivoId));
+    if (arqueoDelDia && typeof window !== "undefined" && window.__nubeActiva) {
+      fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titulo: "Caja cerrada, ahora desactualizada",
+          cuerpo: `Se anul\xF3 una venta del ${fechaVenta}, d\xEDa que ya ten\xEDa la caja cerrada \u2014 revisa ese arqueo, puede que ya no cuadre.`,
+          localId: lineas[0]?.localId || null,
+          url: "/"
+        })
+      }).catch(() => {
+      });
+    }
+    return { ok: true, lineasAnuladas: aplicadas, arqueoAfectado: !!arqueoDelDia };
+  }
+
+## registrar_devolucion_cliente
+NO_ENCONTRADO: const registrarDevolucionCliente
+
+## sincronizacion_movimientos_pm07
+async function sincronizarStockPm07({ setProductos, setMovimientos, localActivoId = null }) {
+  if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "
