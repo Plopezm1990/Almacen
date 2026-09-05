@@ -26,12 +26,12 @@ jobs:
             if b<0 or b-a>maxlen: b=min(len(s),a+maxlen)
             out.append(f'===== {label} {a}:{b} =====\n'+s[a:b])
           take('DIAGNOSTICO_SYNC','function DiagnosticoSincronizacion(', 'function ', 50000)
-          # llamadas exactas y estado App cercano
-          for q in ['DiagnosticoSincronizacion', 'empresaDelLocalActivo', 'localActivoId', 'const [productos', 'const [pedidos', 'const [empleados', 'const [encargos', 'const [clientes', 'const [proveedores']:
+          take('LOCALES','function Locales({','function ',70000)
+          for q in ['DiagnosticoSincronizacion', 'createElement(Locales', 'Locales, {', 'empresaDelLocalActivo', 'localActivoId', 'const [productos', 'const [pedidos', 'const [empleados', 'const [encargos', 'const [clientes', 'const [proveedores']:
             hits=list(re.finditer(re.escape(q),s))
             out.append(f'===== HITS {q} {len(hits)} =====')
-            for m in hits[-8:]:
-              out.append(s[max(0,m.start()-1200):min(len(s),m.start()+3000)])
+            for m in hits[-12:]:
+              out.append(s[max(0,m.start()-1800):min(len(s),m.start()+5000)])
           Path('tests/pm10/P12_DIAGNOSTICO_INTEGRACION.txt').write_text('\n\n'.join(out),encoding='utf-8')
           print('bytes',Path('tests/pm10/P12_DIAGNOSTICO_INTEGRACION.txt').stat().st_size)
           PY
