@@ -1,0 +1,66 @@
+name: PM10 Punto 13 aislamiento contexto
+on:
+  push:
+    branches: [pm10-validaciones-altas-datos-legados]
+    paths:
+      - '.github/workflows/pm10-p13-contexto.yml'
+      - 'tools/corregir_pm10_p13_contexto.py'
+      - 'tests/pm10/p13-contexto-aislamiento-contract.mjs'
+permissions:
+  contents: write
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar hardening contexto PM10
+        run: python3 tools/corregir_pm10_p13_contexto.py
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+      - name: Contrato P13 contexto
+        run: node tests/pm10/p13-contexto-aislamiento-contract.mjs
+      - name: Regresión PM10 P12
+        run: node tests/pm10/p12-datos-legados-contract.mjs
+      - name: Regresiones PM10 P11-P04
+        run: |
+          set -e
+          for f in \
+            tests/pm10/p11-robustez-altas-contract.mjs \
+            tests/pm10/p10-autoridad-persistencia-contract.mjs \
+            tests/pm10/p09-transversal-contract.mjs \
+            tests/pm10/p08-encargos-contract.mjs \
+            tests/pm10/p07-personal-contract.mjs \
+            tests/pm10/p06-recepcion-contract.mjs \
+            tests/pm10/p05-pedidos-contract.mjs \
+            tests/pm10/p04-productos-contract.mjs; do
+            if [ -f "$f" ]; then node "$f"; fi
+          done
+      - name: Regresión PM09 aislamiento y robustez
+        run: |
+          set -e
+          node tests/pm09/p16-isolation-context-contract.mjs
+          node tests/pm09/p17-robustness-contract.mjs
+      - name: Verificar fronteras contexto
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          for token in [
+            'function validarContextoEscrituraPM10(',
+            'local.activo === false || local.fusionadoEn',
+            'if (id === localActivoId) setLocalActivoId(null);',
+            'El proveedor pertenece a otra empresa.'
+          ]:
+            print(token, s.count(token))
+          PY
+      - name: Commit funcional
+        run: |
+          if git diff --quiet -- fuente.js; then
+            echo 'Sin cambios funcionales pendientes'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add fuente.js
+          git commit -m 'PM10: aislar contexto y bloquear local inactivo punto 13'
+          git push
