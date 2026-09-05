@@ -11,18 +11,19 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Extraer confirmacion albaran y componente Recepcion
+      - name: Extraer firma albaranes y confirmacion UI
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           s=Path('fuente.js').read_text(encoding='utf-8')
           for label,q,n in [
-            ('CONFIRMAR_ALBARAN','function confirmarAlbaran(',18000),
-            ('COMPONENTE_RECEPCION','function Recepcion(',22000),
-            ('GUARDAR_ALBARAN_UI','function guardar()',10000)
+            ('FIRMA_ALBARANES','function crearLogicaAlbaranes(',3500),
+            ('LLAMADAS_CONFIRMAR_ALBARAN','confirmarAlbaran(alb',7000),
+            ('BOTON_CONFIRMAR','confirmarAlbaran(',7000)
           ]:
             print('\n===== '+label+' =====')
-            i=s.find(q)
-            if i<0: print('NO ENCONTRADO',q)
-            else: print(s[max(0,i-400):min(len(s),i+n)].replace('\n','\\n'))
+            hits=list(re.finditer(re.escape(q),s))
+            for m in hits[:12]:
+              print('\nOFFSET',m.start(),'\n',s[max(0,m.start()-1500):min(len(s),m.start()+n)].replace('\n','\\n'))
           PY
