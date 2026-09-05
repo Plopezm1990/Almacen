@@ -20,17 +20,17 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           p=Path('tests/pm10/p08-encargos-contract.mjs')
-          s=p.read_text(encoding='utf-8')
-          old=r"assert.match(src, /crearLogicaEncargos\\(\\{ encargos, setEncargos, registrarAuditoria, productos, clientes,[\\s\\S]{0,300}empresaId: empresaDelLocalActivo\\?\\.id \\|\\| null \\}\\)/);"
-          new=r"assert.match(src, /crearLogicaEncargos\\(\\{ encargos, setEncargos, registrarAuditoria, productos, clientes,[\\s\\S]{0,360}empresaId: empresaDelLocalActivo\\?\\.id \\|\\| null, locales \\}\\)/);"
-          if old in s:
-            s=s.replace(old,new,1)
-            p.write_text(s,encoding='utf-8')
-            print('P08 actualizado para wiring P13')
-          elif new in s:
+          lines=p.read_text(encoding='utf-8').splitlines()
+          matches=[i for i,line in enumerate(lines) if line.startswith('assert.match(src, /crearLogicaEncargos') and 'empresaDelLocalActivo' in line]
+          if len(matches) != 1:
+            raise SystemExit(f'Se esperaba una única aserción de wiring P08 y se encontraron {len(matches)}')
+          i=matches[0]
+          if ', locales \\}\\)/);' in lines[i]:
             print('P08 ya compatible con P13')
           else:
-            raise SystemExit('Aserción P08 esperada no encontrada')
+            lines[i]=r"assert.match(src, /crearLogicaEncargos\(\{ encargos, setEncargos, registrarAuditoria, productos, clientes,[\s\S]{0,360}empresaId: empresaDelLocalActivo\?\.id \|\| null, locales \}\)/);"
+            p.write_text('\n'.join(lines)+'\n',encoding='utf-8')
+            print('P08 actualizado para wiring P13')
           PY
       - name: Sintaxis bundle
         run: node --check fuente.js
