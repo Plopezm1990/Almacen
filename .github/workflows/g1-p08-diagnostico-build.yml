@@ -1,0 +1,53 @@
+name: G1 P08 diagnostico build
+
+on:
+  push:
+    branches: [g1-nucleo-seguro]
+    paths:
+      - '.github/workflows/g1-p08-diagnostico-build.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostico:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspeccionar limites del cuerpo recuperado
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          root=Path('fuente.js').read_text(encoding='utf-8')
+          src=Path('source-recovery/fuente-recuperado.js').read_text(encoding='utf-8')
+          print('ROOT_BYTES',len(root.encode()))
+          print('SRC_BYTES',len(src.encode()))
+          print('ROOT_LINES',root.count('\n')+1)
+          print('SRC_LINES',src.count('\n')+1)
+          for m in ['// fuente.jsx','// fuente.js','fuente.jsx']:
+              print('MARKER',repr(m),'ROOT',root.find(m),'SRC',src.find(m))
+          i=root.find('// fuente.jsx')
+          if i>=0:
+              print('ROOT_MARKER_CONTEXT_BEGIN')
+              print(root[max(0,i-400):i+1200])
+              print('ROOT_MARKER_CONTEXT_END')
+              tail=root[i:]
+              print('ROOT_TAIL_BYTES',len(tail.encode()))
+              print('ROOT_TAIL_SHA256',hashlib.sha256(tail.encode()).hexdigest())
+          print('SRC_HEAD_BEGIN')
+          print(src[:1600])
+          print('SRC_HEAD_END')
+          print('SRC_TAIL_BEGIN')
+          print(src[-1600:])
+          print('SRC_TAIL_END')
+          # Primer y último punto de divergencia si se comparan desde el marcador.
+          if i>=0:
+              tail=root[i:]
+              n=min(len(tail),len(src))
+              first=next((j for j in range(n) if tail[j]!=src[j]),None)
+              print('FIRST_DIFF_TAIL_VS_SRC',first)
+              if first is not None:
+                  print('ROOT_AT_DIFF',repr(tail[max(0,first-200):first+500]))
+                  print('SRC_AT_DIFF',repr(src[max(0,first-200):first+500]))
+          PY
