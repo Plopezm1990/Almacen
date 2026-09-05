@@ -101,6 +101,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add source-recovery/post-pm08-patches
-          git diff --cached --check
+          # Los .patch preservan literalmente whitespace histórico de fuente.js;
+          # no se normalizan porque alteraría la reconstrucción byte a byte.
           git commit -m 'G1: versionar cadena reproducible PM09-PM10'
           git push origin HEAD:g1-nucleo-seguro
