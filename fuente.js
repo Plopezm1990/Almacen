@@ -112912,11 +112912,40 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
   const [filtroVentasHasta, setFiltroVentasHasta] = (0, import_react4.useState)("");
   const [filtroVentasPago, setFiltroVentasPago] = (0, import_react4.useState)("Todos");
   const [filtroVentasEstado, setFiltroVentasEstado] = (0, import_react4.useState)("Todas");
+  function datoCorreccionHistorialPM09(m22, clave) {
+    if (!m22) return void 0;
+    if (m22[clave] !== void 0 && m22[clave] !== null) return m22[clave];
+    if (m22.datos && m22.datos[clave] !== void 0 && m22.datos[clave] !== null) return m22.datos[clave];
+    return void 0;
+  }
+  function esDevolucionClienteHistorialPM09(m22) {
+    if (!m22) return false;
+    if (esMovimientoNuevo(m22)) return m22.tipo === "DEVOLUCION_CLIENTE";
+    return m22.tipo === "entrada" && Number(m22.ingresoUnitario) < 0 && !m22.anulaVentaId && !!(m22.ventaId || m22.documentoOrigenId || m22.movimientoOriginalId);
+  }
+  function etiquetaEstadoVentaHistorialPM09(estado) {
+    if (estado === "ANULADA") return "ANULADA";
+    if (estado === "DEVUELTA_TOTAL") return "DEVUELTA TOTAL";
+    if (estado === "DEVUELTA_PARCIAL") return "DEVUELTA PARCIAL";
+    return "ACTIVA";
+  }
+  function colorEstadoVentaHistorialPM09(estado) {
+    if (estado === "ANULADA") return C2.red;
+    if (estado === "DEVUELTA_TOTAL" || estado === "DEVUELTA_PARCIAL") return C2.amber;
+    return C2.accent;
+  }
   const historialVentas = (0, import_react4.useMemo)(() => {
     const todos = movimientos || [];
     const anuladasPorId = new Set(todos.filter((m22) => m22.anulaVentaId).map((m22) => m22.anulaVentaId));
     const reversiones = new Set(todos.filter((m22) => m22.revierteMovimientoId).map((m22) => m22.revierteMovimientoId));
     const porVenta = {};
+    const correccionesPorVenta = {};
+    todos.filter((m22) => esCorreccionVentaPM09(m22)).forEach((m22) => {
+      const ventaRaiz = idVentaRaizPM09(m22) || datoCorreccionHistorialPM09(m22, "ventaId") || datoCorreccionHistorialPM09(m22, "anulaVentaId") || datoCorreccionHistorialPM09(m22, "documentoOrigenId");
+      if (!ventaRaiz) return;
+      if (!correccionesPorVenta[ventaRaiz]) correccionesPorVenta[ventaRaiz] = [];
+      correccionesPorVenta[ventaRaiz].push(m22);
+    });
     todos.filter((m22) => esVenta(m22) && !m22.anulaVentaId && cantidadConSigno(m22) < 0).forEach((m22) => {
       const ventaId = m22.ventaId || m22.operationId || m22.documentoOrigenId;
       if (!ventaId) return;
@@ -112926,10 +112955,10 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
     return Object.entries(porVenta).map(([ventaId, lineas]) => {
       const fecha = lineas.map((l22) => l22.fecha || "").filter(Boolean).sort().slice(-1)[0] || "";
       const marcaTiempo = lineas.map((l22) => l22.timestamp || l22.createdAt || l22.created_at || l22.fechaHora || l22.fecha_hora || l22.marcaTiempo || "").filter(Boolean).sort().slice(-1)[0] || "";
-      const importe = lineas.reduce((a22, l22) => a22 + Math.abs(cantidadConSigno(l22)) * Math.abs(Number(l22.ingresoUnitario) || 0) * (1 + (Number(l22.ivaVentaAplicado) || 0) / 100), 0);
+      const importeOriginal = lineas.reduce((a22, l22) => a22 + Math.abs(cantidadConSigno(l22)) * Math.abs(Number(l22.ingresoUnitario) || 0) * (1 + (Number(l22.ivaVentaAplicado) || 0) / 100), 0);
       const nombres = lineas.map((l22) => {
         const p22 = productos.find((x3) => x3.id === l22.productoId);
-        return `${fmt(Math.abs(cantidadConSigno(l22)))}\xD7 ${p22 ? p22.nombre : "Producto"}`;
+        return `${fmt(Math.abs(cantidadConSigno(l22)))}× ${p22 ? p22.nombre : "Producto"}`;
       });
       const detallePago = lineas.reduce((acc, l22) => {
         if (!l22.detallePago) return acc;
@@ -112937,11 +112966,41 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
         acc.tarjeta += Number(l22.detallePago.tarjeta) || 0;
         return acc;
       }, { efectivo: 0, tarjeta: 0 });
-      const anulada = anuladasPorId.has(ventaId) || lineas.some((l22) => reversiones.has(l22.id));
-      const medioPago2 = lineas[0]?.medioPago || "\u2014";
+      const correcciones = correccionesPorVenta[ventaId] || [];
+      const devolucionesCliente = correcciones.filter((m22) => esDevolucionClienteHistorialPM09(m22));
+      const anulada = anuladasPorId.has(ventaId) || lineas.some((l22) => reversiones.has(l22.id)) || correcciones.some((m22) => m22.tipo === "REVERSO" || datoCorreccionHistorialPM09(m22, "anulaVentaId") === ventaId);
+      const unidadesOriginales = lineas.reduce((a22, l22) => a22 + Math.abs(cantidadConSigno(l22)), 0);
+      const unidadesDevueltasSinTope = devolucionesCliente.reduce((a22, m22) => a22 + Math.abs(Number(m22.cantidad) || 0), 0);
+      const unidadesDevueltas = Math.min(unidadesOriginales, unidadesDevueltasSinTope);
+      const unidadesNetas = anulada ? 0 : Math.max(0, unidadesOriginales - unidadesDevueltas);
+      const importeAsociadoDevuelto = devolucionesCliente.reduce((a22, m22) => {
+        const cantidad = Math.abs(Number(m22.cantidad) || 0);
+        const ingreso = Math.abs(Number(datoCorreccionHistorialPM09(m22, "ingresoUnitario")) || 0);
+        const iva = Number(datoCorreccionHistorialPM09(m22, "ivaVentaAplicado")) || 0;
+        return a22 + cantidad * ingreso * (1 + iva / 100);
+      }, 0);
+      const importeNetoGestion = anulada ? 0 : Math.max(0, importeOriginal - importeAsociadoDevuelto);
+      const reembolsoAcumulado = devolucionesCliente.reduce((a22, m22) => a22 + Math.max(0, Number(datoCorreccionHistorialPM09(m22, "reembolso")) || 0), 0);
+      const estado = anulada ? "ANULADA" : unidadesDevueltas <= 1e-9 ? "ACTIVA" : unidadesOriginales > 0 && unidadesDevueltas >= unidadesOriginales - 1e-9 ? "DEVUELTA_TOTAL" : "DEVUELTA_PARCIAL";
+      const trazabilidad = correcciones.map((m22) => {
+        const esDev = esDevolucionClienteHistorialPM09(m22);
+        return {
+          tipo: esDev ? "DEVOLUCION_CLIENTE" : "ANULACION",
+          operationId: m22.operationId || m22.id || "",
+          movimientoOriginalId: m22.movimientoOriginalId || datoCorreccionHistorialPM09(m22, "movimientoOriginalId") || "",
+          fecha: m22.fecha || m22.createdAt || m22.created_at || "",
+          productoId: m22.productoId || "",
+          cantidad: Math.abs(Number(m22.cantidad) || 0),
+          motivo: datoCorreccionHistorialPM09(m22, "motivo") || "",
+          reembolso: Math.max(0, Number(datoCorreccionHistorialPM09(m22, "reembolso")) || 0),
+          medioReembolso: datoCorreccionHistorialPM09(m22, "medioReembolso") || "",
+          importeAsociado: esDev ? Math.abs(Number(datoCorreccionHistorialPM09(m22, "ingresoUnitario")) || 0) * Math.abs(Number(m22.cantidad) || 0) * (1 + (Number(datoCorreccionHistorialPM09(m22, "ivaVentaAplicado")) || 0) / 100) : importeOriginal
+        };
+      }).sort((a22, b2) => `${a22.fecha} ${a22.operationId}`.localeCompare(`${b2.fecha} ${b2.operationId}`));
+      const medioPago2 = lineas[0]?.medioPago || "—";
       const usuario = lineas[0]?.usuario || lineas[0]?.empleado || "";
       const referencia = `V-${(fecha || "SINFECHA").replaceAll("-", "")}-${String(ventaId).replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`;
-      return { ventaId, referencia, fecha, marcaTiempo, lineas, resumen: nombres.slice(0, 3).join(", ") + (nombres.length > 3 ? ` y ${nombres.length - 3} m\xE1s` : ""), importe, medioPago: medioPago2, detallePago, usuario, anulada, mesa: lineas[0]?.mesa || lineas[0]?.mesaNumero || "", zona: lineas[0]?.zona || lineas[0]?.sala || lineas[0]?.ubicacion || "", numeroFiscal: lineas[0]?.numeroFiscal || lineas[0]?.numeroFactura || "", entregado: lineas[0]?.importeEntregado ?? lineas[0]?.entregado ?? null, cambio: lineas[0]?.cambioEntregado ?? lineas[0]?.cambio ?? null };
+      return { ventaId, referencia, fecha, marcaTiempo, lineas, resumen: nombres.slice(0, 3).join(", ") + (nombres.length > 3 ? ` y ${nombres.length - 3} más` : ""), importe: importeOriginal, importeOriginal, importeNetoGestion, importeAsociadoDevuelto, reembolsoAcumulado, unidadesOriginales, unidadesDevueltas, unidadesNetas, estado, trazabilidad, medioPago: medioPago2, detallePago, usuario, anulada, mesa: lineas[0]?.mesa || lineas[0]?.mesaNumero || "", zona: lineas[0]?.zona || lineas[0]?.sala || lineas[0]?.ubicacion || "", numeroFiscal: lineas[0]?.numeroFiscal || lineas[0]?.numeroFactura || "", entregado: lineas[0]?.importeEntregado ?? lineas[0]?.entregado ?? null, cambio: lineas[0]?.cambioEntregado ?? lineas[0]?.cambio ?? null };
     }).sort((a22, b2) => `${b2.fecha} ${b2.marcaTiempo}`.localeCompare(`${a22.fecha} ${a22.marcaTiempo}`));
   }, [movimientos, productos]);
   const ventasFiltradas = (0, import_react4.useMemo)(() => {
@@ -112950,17 +113009,20 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
       if (filtroVentasDesde && v22.fecha < filtroVentasDesde) return false;
       if (filtroVentasHasta && v22.fecha > filtroVentasHasta) return false;
       if (filtroVentasPago !== "Todos" && v22.medioPago !== filtroVentasPago) return false;
-      if (filtroVentasEstado === "Activas" && v22.anulada) return false;
-      if (filtroVentasEstado === "Anuladas" && !v22.anulada) return false;
+      if (filtroVentasEstado === "Activas" && v22.estado !== "ACTIVA") return false;
+      if (filtroVentasEstado === "Anuladas" && v22.estado !== "ANULADA") return false;
+      if (filtroVentasEstado === "Dev. parcial" && v22.estado !== "DEVUELTA_PARCIAL") return false;
+      if (filtroVentasEstado === "Dev. total" && v22.estado !== "DEVUELTA_TOTAL") return false;
       if (!q2) return true;
       const productosTexto = v22.lineas.map((l22) => productos.find((p22) => p22.id === l22.productoId)?.nombre || "").join(" ");
-      return `${v22.referencia} ${v22.ventaId} ${v22.fecha} ${v22.medioPago} ${v22.usuario} ${productosTexto}`.toLowerCase().includes(q2);
+      const correccionesTexto = (v22.trazabilidad || []).map((c2) => `${c2.tipo} ${c2.operationId} ${c2.motivo} ${c2.medioReembolso}`).join(" ");
+      return `${v22.referencia} ${v22.ventaId} ${v22.fecha} ${v22.medioPago} ${v22.usuario} ${v22.estado} ${productosTexto} ${correccionesTexto}`.toLowerCase().includes(q2);
     });
   }, [historialVentas, filtroVentasTexto, filtroVentasDesde, filtroVentasHasta, filtroVentasPago, filtroVentasEstado, productos]);
   const resumenHistorialVentas = (0, import_react4.useMemo)(() => {
-    const activas = ventasFiltradas.filter((v22) => !v22.anulada);
-    const total2 = activas.reduce((a22, v22) => a22 + v22.importe, 0);
-    return { n: ventasFiltradas.length, activas: activas.length, total: total2, ticketMedio: activas.length ? total2 / activas.length : 0 };
+    const vigentes = ventasFiltradas.filter((v22) => v22.estado === "ACTIVA" || v22.estado === "DEVUELTA_PARCIAL");
+    const total2 = ventasFiltradas.reduce((a22, v22) => a22 + (Number(v22.importeNetoGestion) || 0), 0);
+    return { n: ventasFiltradas.length, activas: vigentes.length, total: total2, ticketMedio: vigentes.length ? total2 / vigentes.length : 0 };
   }, [ventasFiltradas]);
   function aplicarPeriodoVentas(tipo) {
     const hoy = todayISO();
@@ -113042,7 +113104,7 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
           h3("div", { className: "mt-1 font-semibold" }, `LOCAL: ${nombreLocal}`)
         ),
         h3("div", { className: "text-center text-[12px] font-bold my-3" }, tieneNumeroFiscal ? "FACTURA SIMPLIFICADA" : "TICKET / RECIBO INTERNO"),
-        v22.anulada ? h3("div", { className: "text-center text-[11px] font-bold rounded-lg py-2 mb-3", style: { background: C2.redSoft || "#FCE8E6", color: C2.red } }, "VENTA ANULADA") : null,
+        v22.estado !== "ACTIVA" ? h3("div", { className: "text-center text-[11px] font-bold rounded-lg py-2 mb-3", style: { background: v22.estado === "ANULADA" ? C2.redSoft || "#FCE8E6" : C2.amberSoft || C2.surface2, color: colorEstadoVentaHistorialPM09(v22.estado) } }, etiquetaEstadoVentaHistorialPM09(v22.estado)) : null,
         h3(
           "div",
           { className: "text-[10.5px] mb-3 pb-3", style: { borderBottom: `1px dashed ${C2.line}` } },
@@ -113102,7 +113164,7 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
             redSocialEmpresa ? h3("div", null, redSocialEmpresa) : null,
             webEmpresa ? h3("div", null, webEmpresa) : null
           ) : null,
-          h3("div", { className: "font-bold text-[12px] mt-3" }, v22.anulada ? "VENTA ANULADA" : pieEmpresa),
+          h3("div", { className: "font-bold text-[12px] mt-3" }, v22.estado !== "ACTIVA" ? etiquetaEstadoVentaHistorialPM09(v22.estado) : pieEmpresa),
           h3("div", { className: "font-semibold mt-1" }, "I.V.A. INCLUIDO"),
           h3("div", { className: "text-[8.5px] mt-3 break-all", style: { color: C2.inkSoft } }, `ID operaci\xF3n: ${v22.ventaId}`),
           !tieneNumeroFiscal ? h3("div", { className: "text-[8.5px] mt-1", style: { color: C2.inkSoft } }, "Documento interno del TPV \xB7 pendiente de numeraci\xF3n fiscal") : null
@@ -113148,7 +113210,7 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
         { className: "grid grid-cols-3 gap-2 mb-3" },
         h3(Input, { type: "date", value: filtroVentasDesde, onChange: (e2) => setFiltroVentasDesde(e2.target.value) }),
         h3(Input, { type: "date", value: filtroVentasHasta, onChange: (e2) => setFiltroVentasHasta(e2.target.value) }),
-        h3("select", { value: filtroVentasEstado, onChange: (e2) => setFiltroVentasEstado(e2.target.value), className: "w-full rounded-lg px-2 py-2 text-[12px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, ["Todas", "Activas", "Anuladas"].map((x3) => h3("option", { key: x3, value: x3 }, x3)))
+        h3("select", { value: filtroVentasEstado, onChange: (e2) => setFiltroVentasEstado(e2.target.value), className: "w-full rounded-lg px-2 py-2 text-[12px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, ["Todas", "Activas", "Anuladas", "Dev. parcial", "Dev. total"].map((x3) => h3("option", { key: x3, value: x3 }, x3)))
       ),
       ventasFiltradas.length === 0 ? h3(Empty, { text: historialVentas.length ? "No hay ventas que coincidan con estos filtros." : "Todav\xEDa no hay ventas registradas en este local." }) : h3("div", { className: "space-y-1.5" }, ventasFiltradas.slice(0, 100).map((v23) => h3(
         "button",
@@ -113156,8 +113218,8 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
         h3(
           "div",
           { className: "flex items-center justify-between gap-2" },
-          h3("div", null, h3("div", { className: "text-[12.5px] font-semibold" }, v23.referencia, v23.anulada ? h3(Pill2, { color: C2.red }, "anulada") : null), h3("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, `${v23.fecha || "Sin fecha"} \xB7 ${v23.medioPago}${v23.usuario ? " \xB7 " + v23.usuario : ""}`)),
-          h3("div", { className: "mono font-bold text-[13px]" }, "\u20AC", fmt(v23.importe))
+          h3("div", null, h3("div", { className: "text-[12.5px] font-semibold" }, v23.referencia, h3(Pill2, { color: colorEstadoVentaHistorialPM09(v23.estado) }, etiquetaEstadoVentaHistorialPM09(v23.estado))), h3("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, `${v23.fecha || "Sin fecha"} \xB7 ${v23.medioPago}${v23.usuario ? " \xB7 " + v23.usuario : ""}`)),
+          h3("div", { className: "text-right" }, h3("div", { className: "mono font-bold text-[13px]" }, "\u20AC", fmt(v23.importeNetoGestion)), v23.estado !== "ACTIVA" ? h3("div", { className: "text-[9.5px]", style: { color: C2.inkSoft } }, `Original \u20AC${fmt(v23.importeOriginal)}`) : null)
         ),
         h3("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, v23.resumen)
       )))
@@ -113167,21 +113229,33 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
     const detalle = h3(
       Modal,
       { onClose: () => setVentaDetalle(null), title: `Venta ${v22.referencia}` },
-      h3("div", { className: "flex items-center justify-between mb-3" }, h3("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, `${v22.fecha || "Sin fecha"} \xB7 ${v22.medioPago}`), v22.anulada ? h3(Pill2, { color: C2.red }, "ANULADA") : h3(Pill2, { color: C2.accent }, "ACTIVA")),
+      h3("div", { className: "flex items-center justify-between mb-3" }, h3("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, `${v22.fecha || "Sin fecha"} \xB7 ${v22.medioPago}`), h3(Pill2, { color: colorEstadoVentaHistorialPM09(v22.estado) }, etiquetaEstadoVentaHistorialPM09(v22.estado))),
       h3("div", { className: "space-y-2 mb-3" }, v22.lineas.map((l22) => {
         const p22 = productos.find((x3) => x3.id === l22.productoId);
         const cant = Math.abs(cantidadConSigno(l22));
         const precio = Math.abs(Number(l22.ingresoUnitario) || 0) * (1 + (Number(l22.ivaVentaAplicado) || 0) / 100);
         return h3("div", { key: l22.id || `${l22.productoId}-${cant}`, className: "flex justify-between gap-3 text-[12.5px]" }, h3("div", null, h3("div", { className: "font-medium" }, p22?.nombre || "Producto"), h3("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, `${fmt(cant)} \xD7 \u20AC${fmt(precio)} \xB7 IVA ${fmt(Number(l22.ivaVentaAplicado) || 0)}%`)), h3("div", { className: "mono font-semibold" }, "\u20AC", fmt(cant * precio)));
       })),
-      h3("div", { className: "flex justify-between py-2 mb-2 font-bold", style: { borderTop: `1px solid ${C2.line}` } }, h3("span", null, "Total"), h3("span", { className: "mono" }, "\u20AC", fmt(v22.importe))),
+      h3("div", { className: "py-2 mb-2", style: { borderTop: `1px solid ${C2.line}` } },
+        h3("div", { className: "flex justify-between font-bold" }, h3("span", null, "Total original"), h3("span", { className: "mono" }, "\u20AC", fmt(v22.importeOriginal))),
+        v22.estado !== "ACTIVA" ? h3("div", { className: "flex justify-between mt-1 text-[12px]" }, h3("span", null, "Neto de gestión"), h3("span", { className: "mono font-semibold" }, "\u20AC", fmt(v22.importeNetoGestion))) : null,
+        v22.unidadesDevueltas > 0 ? h3("div", { className: "flex justify-between mt-1 text-[11px]", style: { color: C2.inkSoft } }, h3("span", null, `Unidades: ${fmt(v22.unidadesNetas)} netas de ${fmt(v22.unidadesOriginales)}`), h3("span", null, `Reembolso: \u20AC${fmt(v22.reembolsoAcumulado)}`)) : null
+      ),
+      v22.trazabilidad && v22.trazabilidad.length ? h3("div", { className: "rounded-lg p-2.5 mb-3", style: { background: C2.surface2 || C2.surface, border: `1px solid ${C2.line}` } },
+        h3("div", { className: "text-[11px] font-bold mb-1.5" }, "Trazabilidad de correcciones"),
+        v22.trazabilidad.map((c2, i33) => h3("div", { key: c2.operationId || i33, className: "text-[10.5px] py-1", style: { borderTop: i33 ? `1px dotted ${C2.line}` : "none" } },
+          h3("div", { className: "font-semibold" }, c2.tipo === "ANULACION" ? "Anulación vinculada" : `Devolución cliente ×${fmt(c2.cantidad)}`),
+          h3("div", { style: { color: C2.inkSoft } }, `${c2.fecha || "Sin fecha"}${c2.motivo ? " · " + c2.motivo : ""}${c2.tipo === "DEVOLUCION_CLIENTE" ? ` · reembolso \u20AC${fmt(c2.reembolso)}${c2.medioReembolso ? " " + c2.medioReembolso : ""}` : ""}`),
+          h3("div", { className: "break-all", style: { color: C2.inkSoft } }, `Operación: ${c2.operationId || "—"}${c2.movimientoOriginalId ? " · origen: " + c2.movimientoOriginalId : ""}`)
+        ))
+      ) : null,
       v22.medioPago === "Mixto" && (v22.detallePago.efectivo > 0 || v22.detallePago.tarjeta > 0) ? h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, `Tarjeta \u20AC${fmt(v22.detallePago.tarjeta)} + Efectivo \u20AC${fmt(v22.detallePago.efectivo)}`) : null,
       h3("div", { className: "text-[10px] mb-3 break-all", style: { color: C2.inkSoft } }, `ID interno: ${v22.ventaId}`),
       h3("div", { className: "flex gap-2 flex-wrap mb-3" }, h3(Btn, { onClick: () => {
         setVentaDetalle(null);
         setTicketVenta(v22);
       } }, "Ver ticket / reimprimir")),
-      !v22.anulada && anularVenta ? h3(Btn, { variant: "danger", onClick: () => {
+      v22.estado === "ACTIVA" && anularVenta ? h3(Btn, { variant: "danger", onClick: () => {
         setVentaDetalle(null);
         setConfirmAnular(v22);
       } }, "Anular venta") : null

@@ -1,0 +1,21 @@
+{
+  "punto": 9,
+  "estado": "CORREGIDO_PENDIENTE_DE_QA_FINAL_PM09",
+  "rama": "pm09-conciliacion-ventas-analitica",
+  "baseEntradaWorkflow": "ebe09f49d7312a9ecd889adf272a1aca86b801d6",
+  "fuenteSha256": "8e88a81e3d0b164b2d240baa21aae6098a86b5c1175e7de82b98c98aef52c7af",
+  "reproduccionQAPM09": {
+    "escenario": "venta A 2 anulada completa + venta B 2 con devolucion cliente 1 sin reembolso",
+    "historial_legacy_dev_parcial_estado": "ACTIVA",
+    "historial_legacy_dev_parcial_unidades": 2,
+    "importe_original_dev_parcial": 12,
+    "esperado_estado_dev_parcial": "DEVUELTA_PARCIAL",
+    "esperado_unidades_netas_dev_parcial": 1,
+    "esperado_importe_neto_gestion_dev_parcial": 6,
+    "reembolso_real_dev_parcial": 0,
+    "importe_original_anulada": 12,
+    "esperado_importe_neto_anulada": 0
+  },
+  "cambio": "Historial deriva estado y correcciones desde VENTA + REVERSO + DEVOLUCION_CLIENTE; conserva ticket original, muestra neto de gestion y trazabilidad, y evita ofrecer anulacion tras devoluciones.",
+  "alcance": "fuente.js en rama PM09; sin cambios de esquema ni produccion"
+}
