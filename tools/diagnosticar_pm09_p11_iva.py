@@ -29,7 +29,6 @@ def skip_balanced(start, open_ch, close_ch):
         i+=1
     return -1
 
-# Extraer funciones completas respetando destructuring en los parámetros.
 def function_block(name):
     m = re.search(r'(?:async\s+)?function\s+' + re.escape(name) + r'\s*\(', src)
     if not m:
@@ -43,22 +42,23 @@ def function_block(name):
     if close_brace < 0: return f'SIN_CIERRE function {name}\n'
     return src[start:close_brace+1]+'\n'
 
-for name in ['LibroIva','Resultados','Reportes','calcularIvaPM06','calcularImpuestosPM06','normalizarFiscalidadPM06']:
+for name in ['LibroIva','sincronizarStockPm07','crearLogicaDevoluciones','Resultados','Reportes','calcularIvaPM06','calcularImpuestosPM06','normalizarFiscalidadPM06']:
     out.append(f'\n## FUNCTION {name}\n')
     b=function_block(name)
-    out.append(b if len(b) < 120000 else b[:120000]+'\n[TRUNCADO]\n')
+    out.append(b if len(b) < 160000 else b[:160000]+'\n[TRUNCADO]\n')
 
 needles = [
     'Libro IVA','libro IVA','IVA repercutido','IVA soportado','ivaRepercutido','ivaSoportado',
     'ivaVentaAplicado','porTipo','fiscal','modelo 303','modelo303','Base imponible','base imponible',
-    'facturasDirectas','albaranes','gastosGenerales','movimientos.filter','DEVOLUCION_CLIENTE','REVERSO'
+    'facturasDirectas','albaranes','gastosGenerales','movimientos.filter','DEVOLUCION_CLIENTE','REVERSO',
+    'reembolso','medioReembolso','setMovimientos((prev)'
 ]
 seen=[]
 for needle in needles:
     matches=list(re.finditer(re.escape(needle),src,re.I if needle.lower()==needle else 0))
     out.append(f'\n## OCC {needle} COUNT={len(matches)}\n')
-    for m in matches[:40]:
-        a=max(0,m.start()-1200); b=min(len(src),m.end()+2200)
+    for m in matches[:50]:
+        a=max(0,m.start()-1200); b=min(len(src),m.end()+2400)
         sig=(a,b)
         if sig in seen: continue
         seen.append(sig)
