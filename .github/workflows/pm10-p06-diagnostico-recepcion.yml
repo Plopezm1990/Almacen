@@ -11,24 +11,22 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Diagnosticar recepcion y saldo pendiente
+      - name: Extraer bloques exactos recepcion
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
           s=Path('fuente.js').read_text(encoding='utf-8')
-          queries=[
-            'function recibirPedido(',
-            'function procesarRecepcion(',
-            'procesarRecepcion({',
-            'cantidadRecibida',
-            'pendiente',
-            'function Recepcion',
-            'function Pedidos('
-          ]
-          for q in queries:
-            print('\n===== QUERY',q,'=====')
-            for m in list(re.finditer(re.escape(q),s))[:20]:
-              a=max(0,m.start()-1800); b=min(len(s),m.start()+10000)
-              print('\nOFFSET',m.start(),'\n',s[a:b].replace('\n','\\n'))
+          i=s.find('function procesarRecepcion(')
+          print('\n===== PROCESAR_RECEPCION =====')
+          if i>=0:
+            print(s[max(0,i-300):min(len(s),i+15000)].replace('\n','\\n'))
+          else: print('NO ENCONTRADO')
+          print('\n===== LLAMADAS recibirPedido =====')
+          for m in re.finditer(r'(?<!function )recibirPedido\s*\(',s):
+            print('\nOFFSET',m.start(),'\n',s[max(0,m.start()-2200):min(len(s),m.start()+6500)].replace('\n','\\n'))
+          print('\n===== COMPONENTES/ESTADO RECEPCION =====')
+          for q in ['lineasRecepcion','cantidadesRecibir','recibirPedido(pedido','setRecibir','pedidoARecibir','showRecepcion','Recibir pedido']:
+            for m in list(re.finditer(re.escape(q),s,re.I))[:15]:
+              print('\nQ',q,'OFFSET',m.start(),'\n',s[max(0,m.start()-1800):min(len(s),m.start()+5000)].replace('\n','\\n'))
           PY
