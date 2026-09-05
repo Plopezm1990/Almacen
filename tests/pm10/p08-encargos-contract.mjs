@@ -220,6 +220,6 @@ assert.ok(resultPos >= 0 && errorPos > resultPos && closePos > errorPos, 'el for
 const logic = src.slice(src.indexOf('function crearLogicaEncargos({'), encFin);
 assert.match(logic, /function addEncargo\(data\)[\s\S]{0,500}validarEncargoPM10/);
 assert.match(logic, /function updateEncargo\(id, data\)[\s\S]{0,900}validarEncargoPM10/);
-assert.match(src, /crearLogicaEncargos\(\{ encargos, setEncargos, registrarAuditoria, productos, clientes,[\s\S]{0,300}empresaId: empresaDelLocalActivo\?\.id \|\| null \}\)/);
+assert.match(src, /crearLogicaEncargos\(\{ encargos, setEncargos, registrarAuditoria, productos, clientes,[\s\S]{0,360}empresaId: empresaDelLocalActivo\?\.id \|\| null, locales \}\)/);
 
 console.log('PM10 P08 LA-018 Encargos: contrato OK');

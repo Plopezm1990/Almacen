@@ -102219,12 +102219,12 @@ function GestionAlmacen() {
   });
   const { addProveedor, updateProveedor, deleteProveedor } = crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addGasto, deleteGasto } = crearLogicaGastos({ setGastosGenerales, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
-  const { addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId });
+  const { addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId });
   const { venderCarrito, venderLocal, anularVenta, venderLineas } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
-  const { addEncargo, updateEncargo, deleteEncargo, entregarEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLineas, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { addEncargo, updateEncargo, deleteEncargo, entregarEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLineas, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
   const { traspasarStock, traspasarEntreLocales } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales });
   const { addArqueo, deleteArqueo, leerBorradorArqueo } = crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosCaja, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
   const { registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja } = crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arqueos, setArqueos, registrarAuditoria, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
@@ -102249,7 +102249,7 @@ function GestionAlmacen() {
   const { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion } = crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
   const conteoAbierto = (0, import_react4.useMemo)(() => conteosDelLocalActivo.find((c22) => !c22.completado) || null, [conteosDelLocalActivo]);
   const almacenCongelado = !!conteoAbierto;
-  const { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro } = crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId });
+  const { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro } = crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId, locales });
   const { diagnosticarStock, corregirProducto, movimientosParaReconciliar } = crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
   const { buscarEnCatalogo, aprenderReferencia, guardarAlbaran, eliminarAlbaran, marcarPagada, confirmarAlbaran, anularAlbaran, recibirConAlbaran, recibirConFotoIA, duplicadosDe, desviacionesDePrecio, procesarRecepcion } = crearLogicaAlbaranes({
     catalogoProv,
@@ -102268,11 +102268,12 @@ function GestionAlmacen() {
     setPedidoParaFotoIA,
     setTab,
     localActivoId,
+    locales,
     empresaId: empresaDelLocalActivo?.id || null,
     pagosFacturas,
     setPagosFacturas
   });
-  const { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido } = crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedores, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId });
+  const { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido } = crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedores, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta } = crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, proveedores, pagosFacturas, setPagosFacturas, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
   const { addNomina, updateNomina, deleteNomina } = crearLogicaNominas({ nominas, setNominas, registrarAuditoria, empleados, localActivoId });
   const { crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista } = crearLogicaEntrevistas({ entrevistas, setEntrevistas, registrarAuditoria });
@@ -103470,8 +103471,9 @@ function crearLogicaProveedores({ proveedores, setProveedores, registrarAuditori
   }
   return { addProveedor, updateProveedor, deleteProveedor };
 }
-function validarEmpleadoPM10(data, { localActivoId = null } = {}) {
-  if (!localActivoId) return errorValidacionPM10("contexto_no_autorizado", "localId", "Selecciona un local activo para modificar personal.");
+function validarEmpleadoPM10(data, { localActivoId = null, locales = [], empresaId = null } = {}) {
+  const contexto = validarContextoEscrituraPM10({ localActivoId, locales, empresaId });
+  if (!contexto.ok) return contexto;
   if (!data || typeof data !== "object" || Array.isArray(data)) return errorValidacionPM10("formato_invalido", "empleado", "La ficha del empleado no es válida.");
   if (data.localId && data.localId !== localActivoId) return errorValidacionPM10("referencia_otro_contexto", "localId", "El empleado pertenece a otro local.");
 
@@ -103505,10 +103507,10 @@ function validarEmpleadoPM10(data, { localActivoId = null } = {}) {
   }
   return { ok: true, datos };
 }
-function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId }) {
+function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId, locales = [], empresaId = null }) {
   const empleadoEsDelLocalActivoPersonal = (e2) => !!e2 && (!localActivoId || e2.localId === localActivoId);
   function addEmpleado(data) {
-    const validacion = validarEmpleadoPM10(data, { localActivoId });
+    const validacion = validarEmpleadoPM10(data, { localActivoId, locales, empresaId });
     if (!validacion.ok) return validacion;
     const nuevo = { id: uid(), activo: true, documentos: [], ...validacion.datos, localId: localActivoId };
     setEmpleados((s22) => [...s22, nuevo]);
@@ -103539,7 +103541,7 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
   function updateEmpleado(id, data) {
     const actual = empleados.find((e2) => e2.id === id);
     if (!empleadoEsDelLocalActivoPersonal(actual) || !localActivoId) return errorValidacionPM10("contexto_no_autorizado", "empleadoId", "El empleado no pertenece al local activo.");
-    const validacion = validarEmpleadoPM10({ ...actual, ...data, localId: actual.localId || localActivoId }, { localActivoId });
+    const validacion = validarEmpleadoPM10({ ...actual, ...data, localId: actual.localId || localActivoId }, { localActivoId, locales, empresaId });
     if (!validacion.ok) return validacion;
     setEmpleados((s22) => s22.map((e2) => e2.id === id ? { ...e2, ...validacion.datos, localId: e2.localId || localActivoId } : e2));
     return true;
@@ -104062,11 +104064,14 @@ function crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivo
   function desactivarLocal(id) {
     const l22 = locales.find((x3) => x3.id === id);
     setLocales((s22) => s22.map((x3) => x3.id === id ? { ...x3, activo: false } : x3));
+    if (id === localActivoId) setLocalActivoId(null);
     registrarAuditoria("Desactivar local", l22 ? l22.nombre : id);
   }
   function cambiarLocalActivo(id) {
-    if (!locales.some((l22) => l22.id === id)) return;
+    const local = locales.find((l22) => l22.id === id);
+    if (!local || local.activo === false || local.fusionadoEn) return false;
     setLocalActivoId(id);
+    return true;
   }
   return { crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo };
 }
@@ -104703,6 +104708,17 @@ function numeroPM10(valor, campo, { minimo = null, maximo = null, estrictoMinimo
   if (maximo !== null && numero > maximo) return errorValidacionPM10("valor_fuera_rango", campo, `${campo} no puede ser mayor que ${maximo}.`);
   return { ok: true, valor: numero };
 }
+function validarContextoEscrituraPM10({ localActivoId = null, locales = [], empresaId = null } = {}) {
+  if (!localActivoId) return errorValidacionPM10("contexto_no_autorizado", "localId", "Selecciona un local activo para realizar esta operación.");
+  if (Array.isArray(locales) && locales.length) {
+    const local = locales.find((l22) => l22 && l22.id === localActivoId) || null;
+    if (!local) return errorValidacionPM10("referencia_inexistente", "localId", "El local seleccionado ya no existe.");
+    if (local.activo === false || local.fusionadoEn) return errorValidacionPM10("local_inactivo", "localId", "El local seleccionado no admite nuevas operaciones.");
+    if (empresaId && local.empresaId && local.empresaId !== empresaId) return errorValidacionPM10("referencia_otro_contexto", "localId", "El local seleccionado pertenece a otra empresa.");
+    return { ok: true, local };
+  }
+  return { ok: true, local: null };
+}
 function validarProductoPM10(data, { parcial = false } = {}) {
   const entrada = data && typeof data === "object" ? data : {};
   const salida = { ...entrada };
@@ -104731,7 +104747,7 @@ function validarProductoPM10(data, { parcial = false } = {}) {
   }
   return { ok: true, datos: salida };
 }
-function crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId }) {
+function crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId, locales = [] }) {
   function productoEsDelLocalActivo(prod) {
     if (!prod) return false;
     if (!localActivoId) return true;
@@ -104796,6 +104812,8 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
   function addProducto(data) {
     const validacion = validarProductoPM10(data, { parcial: false });
     if (!validacion.ok) return validacion;
+    const contexto = validarContextoEscrituraPM10({ localActivoId, locales });
+    if (!contexto.ok) return contexto;
     const datosValidos = validacion.datos;
     const stockInicial = Object.prototype.hasOwnProperty.call(datosValidos, "stock") ? datosValidos.stock : 0;
     const nuevo = { id: uid(), ...datosValidos, stock: stockInicial, localId: localActivoId || datosValidos.localId || null };
@@ -104825,6 +104843,8 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
     return nuevo;
   }
   function updateProducto(id, data) {
+    const contexto = validarContextoEscrituraPM10({ localActivoId, locales });
+    if (!contexto.ok) return contexto;
     const anterior = productos.find((p22) => p22.id === id);
     if (!productoEsDelLocalActivo(anterior)) return errorValidacionPM10("contexto_no_autorizado", "localId", "Producto fuera del local activo.");
     const validacion = validarProductoPM10(data, { parcial: true });
@@ -104905,15 +104925,17 @@ function fechaValidaPedidoPM10(valor) {
   const fecha = new Date(Date.UTC(y, m - 1, d));
   return fecha.getUTCFullYear() === y && fecha.getUTCMonth() === m - 1 && fecha.getUTCDate() === d;
 }
-function validarPedidoPM10(data, { pedidoActual = null, proveedores = [], productos = [], localActivoId = null } = {}) {
+function validarPedidoPM10(data, { pedidoActual = null, proveedores = [], productos = [], localActivoId = null, locales = [], empresaId = null } = {}) {
   const entrada = data && typeof data === "object" ? data : {};
-  if (!localActivoId) return errorValidacionPM10("contexto_no_autorizado", "localId", "Selecciona un local activo para guardar el pedido.");
+  const contexto = validarContextoEscrituraPM10({ localActivoId, locales, empresaId });
+  if (!contexto.ok) return contexto;
   if (pedidoActual && pedidoActual.localId !== localActivoId) return errorValidacionPM10("contexto_no_autorizado", "localId", "El pedido no pertenece al local activo.");
 
   const proveedorId = String(entrada.proveedorId ?? "").trim();
   if (!proveedorId) return errorValidacionPM10("campo_obligatorio", "proveedorId", "Selecciona un proveedor.");
   const proveedor = (proveedores || []).find((p22) => p22 && p22.id === proveedorId);
   if (!proveedor) return errorValidacionPM10("referencia_inexistente", "proveedorId", "El proveedor no existe en el contexto autorizado.");
+  if (empresaId && proveedor.empresaId && proveedor.empresaId !== empresaId) return errorValidacionPM10("referencia_otro_contexto", "proveedorId", "El proveedor pertenece a otra empresa.");
 
   const fechaEsperada = String(entrada.fechaEsperada ?? "").trim();
   if (fechaEsperada && !fechaValidaPedidoPM10(fechaEsperada)) return errorValidacionPM10("fecha_invalida", "fechaEsperada", "La fecha esperada no es válida.");
@@ -104987,8 +105009,9 @@ function unidadesRecepcionLineaPM10(linea, campo, modo = "directo") {
   if (!Number.isFinite(unidades) || unidades <= 0) return errorValidacionPM10("numero_no_finito", `${campo}.cantidad`, "La cantidad total a recibir no es válida.");
   return { ok: true, cantidad: cantidadR.valor, udsPorCaja, unidades };
 }
-function validarRecepcionPedidoPM10({ pedido, lineas, productos = [], localActivoId = null, modo = "directo" } = {}) {
-  if (!localActivoId) return errorValidacionPM10("contexto_no_autorizado", "localId", "Selecciona un local activo para recibir mercancía.");
+function validarRecepcionPedidoPM10({ pedido, lineas, productos = [], localActivoId = null, locales = [], empresaId = null, modo = "directo" } = {}) {
+  const contexto = validarContextoEscrituraPM10({ localActivoId, locales, empresaId });
+  if (!contexto.ok) return contexto;
   if (!pedido || pedido.localId !== localActivoId) return errorValidacionPM10("contexto_no_autorizado", "pedidoId", "El pedido no pertenece al local activo.");
   if (!Array.isArray(lineas) || lineas.length === 0) return errorValidacionPM10("campo_obligatorio", "lineas", "Indica al menos una cantidad a recibir.");
 
@@ -105080,14 +105103,14 @@ function aplicarRecepcionPedidoPM10(pedido, lineasResueltas) {
   const algo = items.some((item) => Number(item.cantidadRecibida ?? 0) > 0);
   return { ...pedido, items, estado: completo ? "Recibido" : algo ? "Parcial" : "Pendiente" };
 }
-function crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedores, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId }) {
+function crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedores, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId, locales = [], empresaId = null }) {
   function pedidoEsDelLocalActivo(pedido) {
     if (!pedido) return false;
     if (!localActivoId) return false;
     return pedido.localId === localActivoId;
   }
   function crearPedido(data) {
-    const validacion = validarPedidoPM10(data, { proveedores, productos, localActivoId });
+    const validacion = validarPedidoPM10(data, { proveedores, productos, localActivoId, locales, empresaId });
     if (!validacion.ok) return validacion;
     const { proveedorId, fechaEsperada, items } = validacion.datos;
     const pedido = {
@@ -105105,7 +105128,7 @@ function crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedo
   function actualizarPedido(pedidoId, data) {
     const actual = pedidos2.find((pe2) => pe2.id === pedidoId);
     if (!pedidoEsDelLocalActivo(actual)) return errorValidacionPM10("contexto_no_autorizado", "localId", "Pedido fuera del local activo.");
-    const validacion = validarPedidoPM10(data, { pedidoActual: actual, proveedores, productos, localActivoId });
+    const validacion = validarPedidoPM10(data, { pedidoActual: actual, proveedores, productos, localActivoId, locales, empresaId });
     if (!validacion.ok) return validacion;
     const { proveedorId, fechaEsperada, items } = validacion.datos;
     setPedidos(
@@ -105131,7 +105154,7 @@ function crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedo
     if (almacenCongelado) return errorValidacionPM10("conflicto_estado_previo", "almacen", "El almacén está congelado por un conteo en curso.");
     const pedido = pedidos2.find((pe2) => pe2.id === pedidoId);
     if (!pedidoEsDelLocalActivo(pedido)) return errorValidacionPM10("contexto_no_autorizado", "pedidoId", "Pedido fuera del local activo.");
-    const validacion = validarRecepcionPedidoPM10({ pedido, lineas, productos, localActivoId, modo: "directo" });
+    const validacion = validarRecepcionPedidoPM10({ pedido, lineas, productos, localActivoId, locales, empresaId, modo: "directo" });
     if (!validacion.ok) return validacion;
     const resultado = procesarRecepcion({
       lineas: validacion.lineas,
@@ -105621,8 +105644,9 @@ function sincronizarCobroSe\u00F1al(cobros, se\u00F1al, se\u00F1alMedioPago, fec
     ...resto
   ];
 }
-function validarEncargoPM10(data, { productos = [], clientes = [], localActivoId = null, empresaId = null, fechaCreacion = null } = {}) {
-  if (!localActivoId) return errorValidacionPM10("contexto_no_autorizado", "localId", "Selecciona un local activo para guardar el encargo.");
+function validarEncargoPM10(data, { productos = [], clientes = [], localActivoId = null, locales = [], empresaId = null, fechaCreacion = null } = {}) {
+  const contexto = validarContextoEscrituraPM10({ localActivoId, locales, empresaId });
+  if (!contexto.ok) return contexto;
   if (!data || typeof data !== "object" || Array.isArray(data)) return errorValidacionPM10("formato_invalido", "encargo", "El encargo no tiene un formato válido.");
   if (data.localId && data.localId !== localActivoId) return errorValidacionPM10("referencia_otro_contexto", "localId", "El encargo pertenece a otro local.");
 
@@ -105707,7 +105731,7 @@ function validarEncargoPM10(data, { productos = [], clientes = [], localActivoId
     }
   };
 }
-function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes = [], setProductos, setMovimientos, venderLineas, localActivoId, empresaId = null }) {
+function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes = [], setProductos, setMovimientos, venderLineas, localActivoId, empresaId = null, locales = [] }) {
   function localDeEncargo(e2) {
     if (!e2) return null;
     if (e2.localId) return e2.localId;
@@ -105721,7 +105745,7 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
   }
   function addEncargo(data) {
     const fecha = todayISO();
-    const validacion = validarEncargoPM10(data, { productos, clientes, localActivoId, empresaId, fechaCreacion: fecha });
+    const validacion = validarEncargoPM10(data, { productos, clientes, localActivoId, locales, empresaId, fechaCreacion: fecha });
     if (!validacion.ok) return validacion;
     const datos = validacion.datos;
     const cobros = sincronizarCobroSe\u00F1al([], datos.se\u00F1al, datos.se\u00F1alMedioPago, fecha);
@@ -105733,7 +105757,7 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
     const actual = encargos.find((e2) => e2.id === id);
     if (!actual || !encargoEsDelLocalActivo(actual)) return errorValidacionPM10("contexto_no_autorizado", "encargoId", "El encargo no pertenece al local activo.");
     const candidato = { ...actual, ...data, id: actual.id, localId: actual.localId || localActivoId };
-    const validacion = validarEncargoPM10(candidato, { productos, clientes, localActivoId, empresaId, fechaCreacion: actual.fechaCreacion || todayISO() });
+    const validacion = validarEncargoPM10(candidato, { productos, clientes, localActivoId, locales, empresaId, fechaCreacion: actual.fechaCreacion || todayISO() });
     if (!validacion.ok) return validacion;
     setEncargos(
       (s22) => s22.map((e2) => {
@@ -106240,6 +106264,7 @@ function crearLogicaAlbaranes({
   setPedidoParaFotoIA,
   setTab,
   localActivoId,
+  locales = [],
   empresaId,
   pagosFacturas,
   setPagosFacturas
@@ -106544,13 +106569,15 @@ function crearLogicaAlbaranes({
     return resultadoRecepcionPM10;
   }
   function confirmarAlbaran(alb) {
+    const contexto = validarContextoEscrituraPM10({ localActivoId, locales, empresaId });
+    if (!contexto.ok) return contexto;
     if (!albaranEsDelLocalActivo(alb, true)) return errorValidacionPM10("contexto_no_autorizado", "localId", "Albarán fuera del local activo.");
     let pedidoLigado = null;
     let lineasEntrada = alb.lineas;
     if (alb.pedidoId) {
       pedidoLigado = (pedidos || []).find((pe2) => pe2.id === alb.pedidoId) || null;
       if (!pedidoEsDelLocalActivoAlbaran(pedidoLigado)) return errorValidacionPM10("contexto_no_autorizado", "pedidoId", "El pedido enlazado no pertenece al local activo.");
-      const validacion = validarRecepcionPedidoPM10({ pedido: pedidoLigado, lineas: alb.lineas, productos, localActivoId, modo: "albaran" });
+      const validacion = validarRecepcionPedidoPM10({ pedido: pedidoLigado, lineas: alb.lineas, productos, localActivoId, locales, empresaId, modo: "albaran" });
       if (!validacion.ok) return validacion;
       lineasEntrada = validacion.lineas;
     }
