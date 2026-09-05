@@ -23,7 +23,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: pm09-conciliacion-ventas-analitica
           fetch-depth: 1
+      - name: Confirmar HEAD exacto PM09
+        run: |
+          set -euo pipefail
+          echo "PM09_HEAD=$(git rev-parse HEAD)"
+          test "$(git branch --show-current)" = "pm09-conciliacion-ventas-analitica"
       - name: Sintaxis bundle actual
         run: node --check fuente.js
       - name: Regresión PM09 completa
