@@ -15,6 +15,23 @@ jobs:
       - uses: actions/checkout@v4
       - name: Aplicar hardening contexto PM10
         run: python3 tools/corregir_pm10_p13_contexto.py
+      - name: Ajustar firma aliased de Pedidos
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('fuente.js')
+          s=p.read_text(encoding='utf-8')
+          old='function crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedores, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId }) {'
+          new='function crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedores, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId, locales = [], empresaId = null }) {'
+          if old in s:
+            s=s.replace(old,new,1)
+            p.write_text(s,encoding='utf-8')
+            print('Firma crearLogicaPedidos actualizada')
+          elif new in s:
+            print('Firma crearLogicaPedidos ya compatible')
+          else:
+            raise SystemExit('Firma crearLogicaPedidos no reconocida')
+          PY
       - name: Ajustar aserción heredada P08 al nuevo wiring
         run: |
           python3 - <<'PY'
@@ -66,7 +83,8 @@ jobs:
             'function validarContextoEscrituraPM10(',
             'local.activo === false || local.fusionadoEn',
             'if (id === localActivoId) setLocalActivoId(null);',
-            'El proveedor pertenece a otra empresa.'
+            'El proveedor pertenece a otra empresa.',
+            'localActivoId, locales = [], empresaId = null }) {'
           ]:
             print(token, s.count(token))
           PY
