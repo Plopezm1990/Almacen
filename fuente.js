@@ -101331,7 +101331,7 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, localActivoI
         detallePago: d2.detallePago || null,
         reembolso: d2.reembolso !== void 0 && d2.reembolso !== null ? Number(d2.reembolso) || 0 : null,
         medioReembolso: d2.medioReembolso || null,
-        fecha: creado ? creado.slice(0, 10) : todayISO(),
+        fecha: d2.fechaOperacion || (creado ? creado.slice(0, 10) : todayISO()),
         hora: creado ? creado.slice(11, 16) : (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5),
         afectaStockTotal: delta !== 0,
         afectaStockPisoVenta: Number(m4.delta_piso) !== 0,
@@ -104224,7 +104224,7 @@ function crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovi
         if (!window.__nubeActiva || !window.__nubeCliente) return { ok: false, pendiente: true, error: "Sin conexi\xF3n con la cuenta sincronizada. No se ha modificado ni stock ni caja; el borrador queda listo para reintentar." };
         try {
           const r3 = await Promise.race([
-            window.__nubeCliente.rpc("registrar_devolucion_venta", {
+            window.__nubeCliente.rpc("registrar_devolucion_venta_pm09", {
               p_operation_id: preparado.pendiente.operationId,
               p_venta_operation_id: ventaId,
               p_empresa_id: empresaId,
@@ -105554,11 +105554,11 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     const empresas = [...new Set(lineasParaRpc.map((l22) => productos.find((p22) => p22.id === l22.productoId)?.empresaId).filter(Boolean))];
     if (empresas.length !== 1) return { ok: false, error: "No se pudo determinar una \xFAnica empresa para la venta." };
     const empresaId = empresas[0];
-    const params = { p_operation_id: ventaId, p_empresa_id: empresaId, p_local_id: localActivoId, p_lineas: lineasParaRpc, p_datos: { medioPago, detallePago: detallePago || null } };
+    const params = { p_operation_id: ventaId, p_empresa_id: empresaId, p_local_id: localActivoId, p_lineas: lineasParaRpc, p_fecha: todayISO(), p_datos: { medioPago, detallePago: detallePago || null } };
     async function intentarRpc(msTimeout) {
       const supabase = await window.getSupabaseClient();
       const r2 = await Promise.race([
-        supabase.rpc("registrar_venta_stock_carrito", params),
+        supabase.rpc("registrar_venta_stock_carrito_pm09", params),
         new Promise((_22, reject) => setTimeout(() => reject(new Error("El servidor tard\xF3 demasiado en responder")), msTimeout))
       ]);
       if (r2.error) throw r2.error;
@@ -105653,7 +105653,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     try {
       const supabase = await window.getSupabaseClient();
       const operationId = `rev-${ventaId}`;
-      const r2 = await supabase.rpc("revertir_venta_stock_carrito", { p_operation_id: operationId, p_venta_operation_id: ventaId, p_motivo: motivo || "" });
+      const r2 = await supabase.rpc("revertir_venta_stock_carrito_pm09", { p_operation_id: operationId, p_venta_operation_id: ventaId, p_fecha: todayISO(), p_motivo: motivo || "" });
       if (r2.error) throw r2.error;
       await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
       const fechaVenta = lineasOriginales[0]?.fecha;

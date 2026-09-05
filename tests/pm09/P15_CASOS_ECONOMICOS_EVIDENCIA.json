@@ -1,0 +1,10 @@
+{
+  "punto": 15,
+  "estado": "CORREGIDO_PENDIENTE_DE_QA",
+  "rama": "pm09-conciliacion-ventas-analitica",
+  "baseEntradaWorkflow": "f1f620b83e1269b764661b29284ab755b561cbc3",
+  "fuenteSha256": "cfe6512d4036c3f31dee6350a3b5ba213ac60f5336178edaf4ac85aaa564182d",
+  "riesgoReproducido": "La devolución aceptaba fecha económica explícita pero movimientos_stock se sincronizaba por created_at UTC; venta y REVERSO tampoco tenían fecha económica explícita, pudiendo caer en periodos distintos según UTC.",
+  "cambio": "RPC PM09 conservan fechaOperacion en el ledger de movimientos; Caja PM09 usa esa fecha con fallback UTC solo para legacy; frontend sincroniza fechaOperacion. Se mantienen separados medios de pago, reembolso 0, redondeo y snapshots históricos.",
+  "alcance": "fuente.js + migracion PM09 + pruebas; solo rama PM09 hasta QA"
+}
