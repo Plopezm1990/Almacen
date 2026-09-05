@@ -4,6 +4,7 @@ on:
     branches: [pm09-conciliacion-ventas-analitica]
     paths:
       - 'tools/corregir_pm09_p11_iva.py'
+      - 'tools/corregir_pm09_p11_iva_v2.py'
       - 'tests/pm09/p11-iva-contract.mjs'
       - '.github/workflows/pm09-p11-corregir.yml'
 permissions:
@@ -18,7 +19,7 @@ jobs:
       - name: Aplicar punto 11
         run: |
           set -euo pipefail
-          python tools/corregir_pm09_p11_iva.py
+          python tools/corregir_pm09_p11_iva_v2.py
           node --check fuente.js
       - name: Validar contrato IVA
         run: |
