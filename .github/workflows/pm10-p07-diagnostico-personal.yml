@@ -1,0 +1,40 @@
+name: PM10 P07 diagnostico LA-017 personal
+on:
+  push:
+    branches: [pm10-validaciones-altas-datos-legados]
+    paths:
+      - '.github/workflows/pm10-p07-diagnostico-personal.yml'
+permissions:
+  contents: read
+jobs:
+  diagnostico:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extraer dominio y UI de personal
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          queries = [
+            'function crearLogicaPersonal(',
+            'function Personal(',
+            'function Empleados(',
+            'function Nominas(',
+            'salario',
+            'vacaciones',
+            'pagas',
+            'horasSemanales',
+            'horasSemana',
+            'salarioMensual',
+            'salarioHora',
+            'diasVacaciones'
+          ]
+          for q in queries:
+            print('\n===== '+q+' =====')
+            hits=list(re.finditer(re.escape(q),s,re.I))
+            print('hits',len(hits))
+            for m in hits[:10]:
+              print('\nOFFSET',m.start(),'\n',s[max(0,m.start()-1800):min(len(s),m.start()+6000)].replace('\n','\\n'))
+          PY
