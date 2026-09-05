@@ -14,47 +14,42 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Probar variantes de reextraccion
+        with:
+          fetch-depth: 0
+      - name: Localizar commit que coincide con el build recuperado
         run: |
           cd source-recovery
           npm ci
-          cp fuente-recuperado.js fuente-recuperado.original
-          python - <<'PY'
-          from pathlib import Path
-          root=Path('../fuente.js').read_text(encoding='utf-8')
-          src=Path('fuente-recuperado.original').read_text(encoding='utf-8')
-          anchor='var C2 = {'
-          ri=root.find(anchor); si=src.find(anchor)
-          if ri<0 or si<0: raise SystemExit('anchor_missing')
-          markers=['Bundled license information','/*! Bundled license information','/** Bundled license information']
-          print('ROOT_ANCHOR',ri,'SRC_ANCHOR',si)
-          for m in markers:
-              print('LICENSE_MARKER',repr(m),'ROOT',root.find(m,ri),'SRC',src.find(m,si))
-          rlic=root.find('Bundled license information',ri)
-          slic=src.find('Bundled license information',si)
-          # retroceder al inicio del comentario si existe.
-          def comment_start(text,pos):
-              if pos<0: return -1
-              a=text.rfind('/*!',0,pos)
-              b=text.rfind('/**',0,pos)
-              return max(a,b)
-          rstart=comment_start(root,rlic); sstart=comment_start(src,slic)
-          print('LICENSE_START ROOT',rstart,'SRC',sstart)
-          header=src[:si]
-          variants={
-            'body_only': header + (root[ri:rstart] if rstart>=0 else root[ri:]),
-            'body_plus_old_licenses': header + (root[ri:rstart] if rstart>=0 else root[ri:]) + (src[sstart:] if sstart>=0 else ''),
-            'full_root_tail': header + root[ri:],
-          }
-          for name,data in variants.items():
-              Path(f'{name}.js').write_text(data,encoding='utf-8')
-              print('VARIANT',name,'BYTES',len(data.encode()))
-          PY
-          for v in body_only body_plus_old_licenses full_root_tail; do
-            cp "$v.js" fuente-recuperado.js
-            npx esbuild entrada-recuperada.js --bundle --platform=browser --format=esm --target=es2020 --outfile="dist/$v.js"
-            echo "--- $v ---"
-            sha256sum "dist/$v.js" ../fuente.js
-            if cmp -s "dist/$v.js" ../fuente.js; then echo "VARIANT_MATCH=$v"; else echo "VARIANT_MATCH_${v}=NO"; fi
-          done
-          mv fuente-recuperado.original fuente-recuperado.js
+          npm run check
+          npm run build
+          BASE_SHA=$(sha256sum dist/fuente.js | awk '{print $1}')
+          TARGET_SHA=$(sha256sum ../fuente.js | awk '{print $1}')
+          echo "BASE_BUILD_SHA=$BASE_SHA"
+          echo "TARGET_SHA=$TARGET_SHA"
+          cd ..
+          FOUND=''
+          while read -r c; do
+            if git cat-file -e "$c:fuente.js" 2>/dev/null; then
+              s=$(git show "$c:fuente.js" | sha256sum | awk '{print $1}')
+              if [ "$s" = "$BASE_SHA" ]; then
+                FOUND="$c"
+                break
+              fi
+            fi
+          done < <(git log --all --format=%H -- fuente.js)
+          if [ -z "$FOUND" ]; then
+            echo 'BASELINE_COMMIT=NOT_FOUND'
+          else
+            echo "BASELINE_COMMIT=$FOUND"
+            git show -s --format='BASELINE_MESSAGE=%s%nBASELINE_DATE=%cI' "$FOUND"
+            echo "COMMITS_FUENTE_AFTER_BASE=$(git rev-list --count "$FOUND..HEAD" -- fuente.js)"
+            echo 'COMMITS_FUENTE_AFTER_BASE_LIST_BEGIN'
+            git log --reverse --format='%H|%cI|%s' "$FOUND..HEAD" -- fuente.js
+            echo 'COMMITS_FUENTE_AFTER_BASE_LIST_END'
+          fi
+          echo 'DIFF_STATS_BEGIN'
+          git diff --no-index --numstat source-recovery/dist/fuente.js fuente.js || true
+          echo 'DIFF_STATS_END'
+          git diff --no-index --text --minimal --no-prefix source-recovery/dist/fuente.js fuente.js > /tmp/current-overlay.patch || true
+          echo "OVERLAY_BYTES=$(wc -c < /tmp/current-overlay.patch)"
+          echo "OVERLAY_LINES=$(wc -l < /tmp/current-overlay.patch)"
