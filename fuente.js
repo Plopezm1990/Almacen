@@ -103859,8 +103859,10 @@ function crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosC
     if (!empresaId || !localActivoId) return { ok: false, error: "Selecciona un local concreto antes de guardar el arqueo." };
     const fecha = data?.fecha || todayISO();
     const efectivoBase = redondearDineroPM08(data?.efectivoBase ?? data?.efectivoEsperado ?? 0);
+    const ajustesVentaEfectivo = redondearDineroPM08(data?.ajustesVentaEfectivo ?? 0);
     const efectivoContado = redondearDineroPM08(data?.efectivoContado ?? data?.efectivoReal);
     if (!Number.isFinite(efectivoBase) || efectivoBase < 0) return { ok: false, error: "El efectivo base no es v\xE1lido." };
+    if (!Number.isFinite(ajustesVentaEfectivo)) return { ok: false, error: "El ajuste de anulaciones de venta no es v\xE1lido." };
     if (!Number.isFinite(efectivoContado) || efectivoContado < 0) return { ok: false, error: "El efectivo contado debe ser cero o un importe positivo." };
     if ((arqueos || []).some((a22) => a22.localId === localActivoId && a22.fecha === fecha && a22.estado !== "ANULADO")) {
       return { ok: false, error: "Ya existe un arqueo activo para ese d\xEDa y local." };
@@ -103870,6 +103872,7 @@ function crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosC
       localId: localActivoId,
       fecha,
       efectivoBase,
+      ajustesVentaEfectivo,
       efectivoContado,
       notas: String(data?.notas || "").trim(),
       snapshot: data?.snapshot || {}
@@ -103920,7 +103923,7 @@ function crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosC
         const fallback = m22.tipo === "ENTRADA" || m22.tipo === "entrada" ? Number(m22.importe) || 0 : -(Number(m22.importe) || 0);
         return acc + (Number.isFinite(efecto) ? efecto : fallback);
       }, 0);
-      const esperado = redondearDineroPM08(efectivoBase + efectos);
+      const esperado = redondearDineroPM08(efectivoBase + ajustesVentaEfectivo + efectos);
       const arqueo = normalizarArqueoPM08({
         operationId: preparado.pendiente.operationId,
         empresaId,
@@ -112086,6 +112089,51 @@ function BloqueEntradasSalidas({ fecha, movimientosCajaDelDia = [], registrarMov
     listado
   );
 }
+// PM-09 / Punto 10: una única lectura de medios de pago para Caja.
+// Las ventas brutas suman por su medio; los REVERSO trazables restan en la
+// fecha de la corrección. DEVOLUCION_CLIENTE no entra aquí porque su reembolso
+// ya está representado por caja_operaciones y contarlo otra vez duplicaría caja.
+function esReversoVentaCajaPM09(m22) {
+  if (!m22) return false;
+  if (esMovimientoNuevo(m22)) return m22.tipo === "REVERSO" && !!(m22.anulaVentaId || m22.ventaId || m22.documentoOrigenId || m22.movimientoOriginalId);
+  return m22.tipo === "entrada" && Number(m22.ingresoUnitario) < 0 && !!m22.anulaVentaId;
+}
+function resumenMediosVentaCajaPM09(movs = [], fecha = "") {
+  const cero = () => ({ Efectivo: 0, Tarjeta: 0, Transferencia: 0, Otro: 0 });
+  const ventas = cero();
+  const reversos = cero();
+  let ventasIncluidas = 0;
+  let reversosIncluidos = 0;
+  const sumar = (destino, m22, signo) => {
+    const medio = String(m22.medioPago || "Efectivo").trim().toUpperCase();
+    const bruto = Math.abs(Number(m22.cantidad) || 0) * Math.abs(Number(m22.ingresoUnitario) || 0) * (1 + (Number(m22.ivaVentaAplicado) || 0) / 100);
+    if (medio === "MIXTO" && m22.detallePago) {
+      destino.Efectivo += signo * (Number(m22.detallePago.efectivo) || 0);
+      destino.Tarjeta += signo * (Number(m22.detallePago.tarjeta) || 0);
+      return;
+    }
+    if (medio === "EFECTIVO") destino.Efectivo += signo * bruto;
+    else if (medio === "TARJETA") destino.Tarjeta += signo * bruto;
+    else if (medio === "TRANSFERENCIA") destino.Transferencia += signo * bruto;
+    else destino.Otro += signo * bruto;
+  };
+  (movs || []).forEach((m22) => {
+    if (!m22 || m22.fecha !== fecha || m22.encargoId) return;
+    if (esVenta(m22)) {
+      sumar(ventas, m22, 1);
+      ventasIncluidas++;
+    } else if (esReversoVentaCajaPM09(m22)) {
+      // Se guarda ya con signo negativo para que el consumidor solo tenga que sumar.
+      sumar(reversos, m22, -1);
+      reversosIncluidos++;
+    }
+  });
+  const neto = cero();
+  Object.keys(neto).forEach((k) => neto[k] = redondearDineroPM08((ventas[k] || 0) + (reversos[k] || 0)));
+  Object.keys(ventas).forEach((k) => ventas[k] = redondearDineroPM08(ventas[k] || 0));
+  Object.keys(reversos).forEach((k) => reversos[k] = redondearDineroPM08(reversos[k] || 0));
+  return { ventas, reversos, neto, ventasIncluidas, reversosIncluidos };
+}
 function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja }) {
   const h3 = import_react4.default.createElement;
   const [fecha, setFecha] = (0, import_react4.useState)(todayISO());
@@ -112098,33 +112146,30 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
   const [motivoAnulacion, setMotivoAnulacion] = (0, import_react4.useState)("");
   const [mostrarAnulacion, setMostrarAnulacion] = (0, import_react4.useState)(false);
   const [anulando, setAnulando] = (0, import_react4.useState)(false);
-  const ventasDelDia = movimientos.filter((m22) => esVenta(m22) && m22.fecha === fecha && !m22.encargoId);
-  const porMedio = { Efectivo: 0, Tarjeta: 0, Transferencia: 0, Otro: 0 };
-  ventasDelDia.forEach((m22) => {
-    const medio = m22.medioPago || "Efectivo";
-    const importeVenta = Math.abs(Number(m22.cantidad) || 0) * (Number(m22.ingresoUnitario) || 0) * (1 + (Number(m22.ivaVentaAplicado) || 0) / 100);
-    if (medio === "Mixto" && m22.detallePago) {
-      porMedio.Efectivo += Number(m22.detallePago.efectivo) || 0;
-      porMedio.Tarjeta += Number(m22.detallePago.tarjeta) || 0;
-    } else {
-      porMedio[medio] = (porMedio[medio] || 0) + importeVenta;
-    }
-  });
+  const resumenVentasCaja = resumenMediosVentaCajaPM09(movimientos, fecha);
+  const porMedioOtros = { Efectivo: 0, Tarjeta: 0, Transferencia: 0, Otro: 0 };
   encargos.forEach((e2) => {
     (e2.cobros || []).forEach((c22) => {
       if (c22.fecha !== fecha) return;
-      const medio = c22.medioPago || "Efectivo";
-      porMedio[medio] = (porMedio[medio] || 0) + (Number(c22.importe) || 0);
+      const medioRaw = String(c22.medioPago || "Efectivo").trim().toUpperCase();
+      const claveMedio = medioRaw === "EFECTIVO" ? "Efectivo" : medioRaw === "TARJETA" ? "Tarjeta" : medioRaw === "TRANSFERENCIA" ? "Transferencia" : "Otro";
+      porMedioOtros[claveMedio] = (porMedioOtros[claveMedio] || 0) + (Number(c22.importe) || 0);
     });
   });
+  const porMedio = { Efectivo: 0, Tarjeta: 0, Transferencia: 0, Otro: 0 };
+  Object.keys(porMedio).forEach((k) => porMedio[k] = redondearDineroPM08((resumenVentasCaja.neto[k] || 0) + (porMedioOtros[k] || 0)));
   const movimientosCajaDelDia = movimientosCaja.filter((m22) => m22.fecha === fecha);
   const netoCaja = movimientosCajaDelDia.reduce((acc, m22) => {
     const efecto = Number(m22.efectoEfectivo);
     if (Number.isFinite(efecto)) return acc + efecto;
     return acc + (String(m22.tipo).toUpperCase() === "ENTRADA" ? Number(m22.importe) || 0 : -(Number(m22.importe) || 0));
   }, 0);
-  const efectivoBase = redondearDineroPM08(porMedio.Efectivo || 0);
-  const efectivoEsperado = redondearDineroPM08(efectivoBase + netoCaja);
+  const efectivoOtros = redondearDineroPM08(porMedioOtros.Efectivo || 0);
+  // Base no negativa: ventas brutas en efectivo + fuentes externas declaradas.
+  // Los REVERSO se muestran/aplican aparte, igual que hará el servidor PM09.
+  const efectivoBase = redondearDineroPM08((resumenVentasCaja.ventas.Efectivo || 0) + efectivoOtros);
+  const ajustesVentaEfectivo = redondearDineroPM08(resumenVentasCaja.reversos.Efectivo || 0);
+  const efectivoEsperado = redondearDineroPM08(efectivoBase + ajustesVentaEfectivo + netoCaja);
   const contadoNumero = contado === "" ? NaN : redondearDineroPM08(contado);
   const diferencia = Number.isFinite(contadoNumero) ? redondearDineroPM08(contadoNumero - efectivoEsperado) : null;
   const yaArqueado = arqueos.find((a22) => a22.fecha === fecha && a22.estado !== "ANULADO");
@@ -112157,7 +112202,20 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
         efectivoBase,
         efectivoContado: contadoNumero,
         notas,
-        snapshot: { porMedio, ventasIncluidas: ventasDelDia.length, encargosIncluidos: encargos.filter((e2) => (e2.cobros || []).some((c22) => c22.fecha === fecha)).length }
+        ajustesVentaEfectivo,
+        snapshot: {
+          porMedio,
+          ventasIncluidas: resumenVentasCaja.ventasIncluidas,
+          reversosVentaIncluidos: resumenVentasCaja.reversosIncluidos,
+          encargosIncluidos: encargos.filter((e2) => (e2.cobros || []).some((c22) => c22.fecha === fecha)).length,
+          pm09Caja: {
+            version: 1,
+            efectivoVentasCliente: redondearDineroPM08(resumenVentasCaja.ventas.Efectivo || 0),
+            efectivoReversosCliente: ajustesVentaEfectivo,
+            efectivoOtros,
+            porMedioVentasNeto: resumenVentasCaja.neto
+          }
+        }
       });
       if (!r2?.ok) {
         setError(r2?.error || "No se ha podido guardar el arqueo.");
@@ -112226,7 +112284,7 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
         h3("div", null, h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Efectivo esperado"), h3("div", { className: "text-xl font-semibold mono" }, "\u20AC", fmt(efectivoEsperado))),
         h3("div", null, h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Otras ventas"), h3("div", { className: "text-xl font-semibold mono", style: { color: C2.inkSoft } }, "\u20AC", fmt((porMedio.Tarjeta || 0) + (porMedio.Transferencia || 0) + (porMedio.Otro || 0))))
       ),
-      h3("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, `Base efectivo \u20AC${fmt(efectivoBase)} \xB7 ajustes/reembolsos \u20AC${fmt(netoCaja)}`),
+      h3("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, `Base efectivo €${fmt(efectivoBase)} · anulaciones venta €${fmt(ajustesVentaEfectivo)} · ajustes/reembolsos caja €${fmt(netoCaja)}`),
       h3(BloqueEntradasSalidas, { fecha, movimientosCajaDelDia, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, periodoCerrado: !!yaArqueado }),
       yaArqueado ? h3(
         "div",
