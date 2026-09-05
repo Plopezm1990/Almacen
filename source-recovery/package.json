@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "esbuild entrada-recuperada.js --bundle --platform=browser --format=esm --target=es2020 --outfile=dist/fuente.js",
-    "check": "node --check fuente-recuperado.js && node --check entrada-recuperada.js"
+    "build:current": "node rebuild-current.mjs",
+    "check": "node --check fuente-recuperado.js && node --check entrada-recuperada.js && node --check rebuild-current.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.112.4",
