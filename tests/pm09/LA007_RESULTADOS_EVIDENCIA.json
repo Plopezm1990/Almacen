@@ -1,8 +1,8 @@
 {
   "hallazgo": "LA-007",
-  "estado": "CORREGIDO_PENDIENTE_DE_QA_FINAL_PM09",
+  "estado": "VALIDADO",
   "rama": "pm09-conciliacion-ventas-analitica",
-  "baseEntradaWorkflow": "c730ba2feeb8e3415ef031400127b62129083b16",
+  "commitCorreccion": "df8f6ad101910f2d7282eaa6ab030ae3d2878667",
   "fuenteSha256": "2d02e8a3d890faf606f17e48203b62c2c453ca06f10f673701b81526297e301d",
   "auditoriaHistorica": {
     "cancelada24MasActiva2_obtenido_ingresos": 141.82,
@@ -11,13 +11,34 @@
     "esperado_activa2_coste": 6
   },
   "reproduccionQAPM09": {
+    "fixture": "QA-EMP-A / QA-A1 / QA-PROD-A-AGUA",
+    "stockInicial": 23,
     "cancelada2MasActiva1_legacy_ingresos": 16.36,
     "cancelada2MasActiva1_legacy_coste": 9,
     "esperado_ingresos": 5.45,
-    "esperado_coste": 3
+    "esperado_coste": 3,
+    "resultadoContratoDespuesCorreccion": "5.45 / 3.00",
+    "stockTrasLimpieza": 23,
+    "operacionesTemporalesRestantes": 0
   },
-  "causa": "Resultados solo agregaba VENTA como salida; REVERSO es entrada positiva y quedaba fuera de ventas.",
-  "cambio": "Restar REVERSO trazable del periodo usando ingreso/coste historicos del propio reverso; conservar venta original y su periodo.",
+  "causa": "Resultados agregaba únicamente las VENTA clasificadas como salida. Un REVERSO de PM07 entra con delta positivo, se clasifica como entrada y la venta original seguía sumando ingreso y coste completos.",
+  "cambio": "Resultados conserva la venta original y resta en el periodo del reverso el ingreso y el coste históricos del REVERSO trazable mediante anulaVentaId. No reescribe el periodo original.",
+  "contratoTemporal": {
+    "ventaEnero2": "ingreso 10.91 / coste 6.00",
+    "reversoFebrero2": "ingreso -10.91 / coste -6.00",
+    "acumulado": "0.00 / 0.00"
+  },
+  "regresiones": {
+    "LA007": "OK",
+    "PM05_frontend": "OK",
+    "PM07_frontend": "OK",
+    "PM08_frontend": "OK",
+    "PM08_migration": "OK",
+    "PM08_replay_scope": "OK",
+    "workflowRun": 33959817784
+  },
+  "validacionVisual": "DIFERIDA_AL_SMOKE_GLOBAL_PM09",
   "sourceRecoveryRebuild": false,
-  "notaSourceRecovery": "No se recompila desde source-recovery porque su README acredita paridad con PR4, anterior a PM05-PM08; se modifica el bundle vivo de la rama de forma mínima y verificable."
+  "notaSourceRecovery": "No se recompiló desde source-recovery porque su README acredita paridad con PR4, anterior a PM05-PM08; el cambio mínimo se aplicó al bundle vivo de la rama y se verificó con node --check y contratos heredados.",
+  "produccion": "NO_TOCADA"
 }
