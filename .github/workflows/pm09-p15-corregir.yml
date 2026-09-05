@@ -28,7 +28,7 @@ jobs:
       - name: Regresiones PM09
         run: |
           set -euo pipefail
-          node tests/pm09/p12-results-contract.mjs
+          node tests/pm09/p12-resultados-margin-contract.mjs
           node tests/pm09/p11-iva-contract.mjs
           node tests/pm09/p10-caja-contract.mjs
           node tests/pm09/p09-historial-contract.mjs
