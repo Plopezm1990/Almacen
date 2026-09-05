@@ -1,0 +1,46 @@
+name: PM10 P13 diagnostico aislamiento contexto
+on:
+  push:
+    branches: [pm10-validaciones-altas-datos-legados]
+    paths:
+      - '.github/workflows/pm10-p13-diagnostico-contexto.yml'
+permissions:
+  contents: write
+jobs:
+  diagnostico:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extraer contexto de escritura PM10
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          out=[]
+          def take(label,start,end=None,maxlen=30000):
+            a=s.find(start)
+            if a<0:
+              out.append(f'===== {label} NO ENCONTRADO ====='); return
+            b=s.find(end,a+len(start)) if end else -1
+            if b<0 or b-a>maxlen: b=min(len(s),a+maxlen)
+            out.append(f'===== {label} {a}:{b} =====\n'+s[a:b])
+          take('LOCALES_LOGICA','function crearLogicaLocales({','function crearLogica')
+          for name in ['validarProductoPM10','validarPedidoPM10','validarRecepcionPedidoPM10','validarEmpleadoPM10','validarEncargoPM10']:
+            take(name,'function '+name+'(', 'function ', 15000)
+          for q in ['localActivoId', 'localInformeId', 'activo !== false', 'fusionadoEn', 'Todos los locales', 'cambiarLocalActivo(']:
+            hits=list(re.finditer(re.escape(q),s,re.I))
+            out.append(f'===== HITS {q} {len(hits)} =====')
+            for m in hits[-15:]:
+              out.append(s[max(0,m.start()-900):min(len(s),m.start()+2200)])
+          Path('tests/pm10/P13_DIAGNOSTICO_CONTEXTO.txt').write_text('\n\n'.join(out),encoding='utf-8')
+          print('bytes',Path('tests/pm10/P13_DIAGNOSTICO_CONTEXTO.txt').stat().st_size)
+          PY
+      - name: Commit diagnóstico
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/pm10/P13_DIAGNOSTICO_CONTEXTO.txt
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'PM10: guardar diagnóstico aislamiento contexto punto 13'
+          git push
