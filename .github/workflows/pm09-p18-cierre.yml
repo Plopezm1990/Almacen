@@ -1,0 +1,89 @@
+name: PM09 Punto 18 cierre final
+on:
+  push:
+    branches: [pm09-conciliacion-ventas-analitica]
+    paths:
+      - '.github/workflows/pm09-p18-cierre.yml'
+      - 'fuente.js'
+      - 'tests/pm09/**'
+      - 'tests/pm08/**'
+      - 'tests/pm07/**'
+      - 'tests/pm05/**'
+      - 'source-recovery/**'
+      - 'supabase/migrations/20260905105500_pm09_conciliacion_caja.sql'
+      - 'supabase/migrations/20260905115000_pm09_fecha_operacion_economica.sql'
+      - 'supabase/migrations/20260905120500_pm09_operation_id_global_hardening.sql'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'fuente.js'
+      - 'tests/pm09/**'
+      - 'source-recovery/**'
+      - 'supabase/migrations/20260905105500_pm09_conciliacion_caja.sql'
+      - 'supabase/migrations/20260905115000_pm09_fecha_operacion_economica.sql'
+      - 'supabase/migrations/20260905120500_pm09_operation_id_global_hardening.sql'
+permissions:
+  contents: read
+jobs:
+  cierre:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sintaxis bundle actual
+        run: node --check fuente.js
+      - name: Regresión PM09 completa
+        run: |
+          set -euo pipefail
+          node tests/pm09/p17-robustness-contract.mjs
+          node tests/pm09/p16-isolation-context-contract.mjs
+          node tests/pm09/p15-special-economic-contract.mjs
+          node tests/pm09/p12-resultados-margin-contract.mjs
+          node tests/pm09/p11-iva-contract.mjs
+          node tests/pm09/p10-caja-contract.mjs
+          node tests/pm09/p09-historial-contract.mjs
+          node tests/pm09/la007-results-contract.mjs
+          node tests/pm09/la008-rotation-margin-contract.mjs
+      - name: Regresiones heredadas PM05 PM07 PM08
+        run: |
+          set -euo pipefail
+          node tests/pm05/frontend-contract.mjs
+          node tests/pm07/frontend-contract.mjs
+          node tests/pm08/frontend-contract.mjs
+          node tests/pm08/migration-contract.mjs
+          node tests/pm08/replay-scope-contract.mjs
+      - name: Recuperar fuente desde bundle actual
+        run: python3 source-recovery/recuperar_candidato.py
+      - name: Instalación limpia y check de fuente recuperada
+        working-directory: source-recovery
+        run: |
+          npm ci --no-audit --no-fund
+          npm run check
+      - name: Build reproducible dos veces
+        working-directory: source-recovery
+        run: |
+          set -euo pipefail
+          rm -rf dist
+          npm run build
+          node --check dist/fuente.js
+          SHA1=$(sha256sum dist/fuente.js | awk '{print $1}')
+          BYTES1=$(wc -c < dist/fuente.js)
+          cp dist/fuente.js /tmp/pm09-build-1.js
+          rm -rf dist
+          npm run build
+          node --check dist/fuente.js
+          SHA2=$(sha256sum dist/fuente.js | awk '{print $1}')
+          BYTES2=$(wc -c < dist/fuente.js)
+          test "$SHA1" = "$SHA2"
+          test "$BYTES1" = "$BYTES2"
+          cmp -s /tmp/pm09-build-1.js dist/fuente.js
+          echo "PM09_BUILD_REPRODUCIBLE=1"
+          echo "PM09_BUILD_SHA256=$SHA1"
+          echo "PM09_BUILD_BYTES=$BYTES1"
+          echo "PM09_BUNDLE_SHA256=$(sha256sum ../fuente.js | awk '{print $1}')"
+          echo "PM09_BUNDLE_BYTES=$(wc -c < ../fuente.js)"
+          echo "NODE=$(node --version)"
+          echo "NPM=$(npm --version)"
+      - name: Bundle candidato no modificado
+        run: |
+          git diff --exit-code -- fuente.js
+          echo 'PM09_BUNDLE_CANDIDATO_INTACTO=1'
