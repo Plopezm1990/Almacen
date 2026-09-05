@@ -1,0 +1,23 @@
+{
+  "hallazgo": "LA-007",
+  "estado": "CORREGIDO_PENDIENTE_DE_QA_FINAL_PM09",
+  "rama": "pm09-conciliacion-ventas-analitica",
+  "baseEntradaWorkflow": "c730ba2feeb8e3415ef031400127b62129083b16",
+  "fuenteSha256": "2d02e8a3d890faf606f17e48203b62c2c453ca06f10f673701b81526297e301d",
+  "auditoriaHistorica": {
+    "cancelada24MasActiva2_obtenido_ingresos": 141.82,
+    "cancelada24MasActiva2_obtenido_coste": 78,
+    "esperado_activa2_ingresos": 10.91,
+    "esperado_activa2_coste": 6
+  },
+  "reproduccionQAPM09": {
+    "cancelada2MasActiva1_legacy_ingresos": 16.36,
+    "cancelada2MasActiva1_legacy_coste": 9,
+    "esperado_ingresos": 5.45,
+    "esperado_coste": 3
+  },
+  "causa": "Resultados solo agregaba VENTA como salida; REVERSO es entrada positiva y quedaba fuera de ventas.",
+  "cambio": "Restar REVERSO trazable del periodo usando ingreso/coste historicos del propio reverso; conservar venta original y su periodo.",
+  "sourceRecoveryRebuild": false,
+  "notaSourceRecovery": "No se recompila desde source-recovery porque su README acredita paridad con PR4, anterior a PM05-PM08; se modifica el bundle vivo de la rama de forma mínima y verificable."
+}
