@@ -3,6 +3,9 @@ import fs from 'node:fs';
 const catalog = JSON.parse(fs.readFileSync('tests/pm04/regression-catalog.json','utf8'));
 const migration = fs.readFileSync('supabase/migrations/20260905185935_g1_p08_operation_id_finanzas_global.sql','utf8');
 const evidence = fs.readFileSync('tests/g1/P08_LA004_GATE_EVIDENCIA.md','utf8');
+const patchManifest = JSON.parse(fs.readFileSync('source-recovery/post-pm08-patches/PATCH_SERIES.json','utf8'));
+const rebuildCurrent = fs.readFileSync('source-recovery/rebuild-current.mjs','utf8');
+const sourcePackage = JSON.parse(fs.readFileSync('source-recovery/package.json','utf8'));
 
 function check(name, ok) {
   console.log(`G1_P08_${name}=${ok ? 1 : 0}`);
@@ -34,6 +37,20 @@ check('EVIDENCE_POSTFIX_20_20', evidence.includes('20/20 PASS'));
 check('EVIDENCE_LA004_PASS', evidence.includes('**LA-004 = PASS**'));
 check('EVIDENCE_CLEANUP_ZERO', evidence.includes('claims `private.g1_operation_ids_global` de prueba: 0'));
 check('EVIDENCE_ADVISOR_NOT_CLEAN_CLAIM', evidence.includes('No se declara el asesor globalmente limpio'));
+
+check('PATCH_FORMAT_V1', patchManifest.format === 'la-suite-post-pm08-patch-series-v1');
+check('PATCH_BASE_PM08', patchManifest.baseCommit === '7b2aa0f1500ecfc5dce551196f5434655411a314');
+check('PATCH_BASE_SHA', patchManifest.baseArtifactSha256 === '372813f2230054306b0d37eb3825938832b68f62ea88a484dde0b1dfcdb075ed');
+check('PATCH_TARGET_COMMIT_PM10', patchManifest.targetFuenteCommit === 'a4a1866f4e81c4651162105e33d37515cb53a7f2');
+check('PATCH_TARGET_SHA', patchManifest.targetArtifactSha256 === '8dbd5f9be4c172eaa5b28ce84a668414edcd2ec8c9941a2d748c466aa4bbd48c');
+check('PATCH_COUNT_17', patchManifest.patchCount === 17 && patchManifest.commits?.length === 17);
+check('PATCH_FILES_17', fs.readdirSync('source-recovery/post-pm08-patches').filter(x => x.endsWith('.patch')).length === 17);
+check('PATCH_LAST_PM10_P13', patchManifest.commits?.at(-1)?.commit === 'a4a1866f4e81c4651162105e33d37515cb53a7f2');
+check('REBUILD_DOES_NOT_READ_ROOT_TARGET', !rebuildCurrent.includes("'../fuente.js'") && !rebuildCurrent.includes('..' + '/fuente.js'));
+check('REBUILD_VERIFIES_BASE_SHA', rebuildCurrent.includes('manifest.baseArtifactSha256'));
+check('REBUILD_VERIFIES_TARGET_SHA', rebuildCurrent.includes('manifest.targetArtifactSha256'));
+check('REBUILD_APPLIES_ZERO_FUZZ', rebuildCurrent.includes("'--fuzz=0'"));
+check('PACKAGE_BUILD_CURRENT', sourcePackage.scripts?.['build:current'] === 'node rebuild-current.mjs');
 
 for (const p of ['P02_MAPA_CRITERIOS_EVIDENCIA.md','P03_LA019_EVIDENCIA.md','P04_LA023_EVIDENCIA.md','P05_PERMISOS_AISLAMIENTO_EVIDENCIA.md','P06_CIFRAS_CONCILIACIONES_EVIDENCIA.md','P07_CONCURRENCIA_REPLAY_EVIDENCIA.md']) {
   check(`G1_PRIOR_${p.slice(0,3)}`, fs.existsSync(`tests/g1/${p}`));
