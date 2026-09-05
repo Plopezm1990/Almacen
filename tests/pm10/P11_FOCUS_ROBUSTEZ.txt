@@ -1,0 +1,2192 @@
+FUNCTIONS
+encargosSoloCaja 1882114
+empleadoDelContexto 1882268
+fichajesDelPropioEmpleado 1882562
+productosSimilares 3980310
+aporteConsumoInventarioPM09 3986361
+resumenConsumoProductoPM09 3986649
+horasDeEmpleadoEnMes 3988479
+GestionAlmacen 4008239
+validarEmpleadoPM10 4128441
+crearLogicaPersonal 4129997
+addEmpleado 4130215
+crearCuentaEmpleado 4130538
+updateEmpleado 4131878
+deleteEmpleado 4132482
+anonimizarEmpleado 4132851
+productoEsDelLocalActivoDevolucion 4169366
+productoActual 4186486
+corregirProducto 4193631
+validarProductoPM10 4196506
+crearLogicaProductos 4197808
+productoEsDelLocalActivo 4197963
+ajustarProductoPorOtro 4198252
+addProducto 4201153
+updateProducto 4202270
+deleteProducto 4203685
+reactivarProducto 4204032
+fechaValidaPedidoPM10 4205692
+validarPedidoPM10 4206060
+unidadesRecepcionLineaPM10 4211074
+validarRecepcionPedidoPM10 4212039
+aplicarRecepcionPedidoPM10 4216565
+crearLogicaPedidos 4217738
+pedidoEsDelLocalActivo 4217911
+crearPedido 4218073
+actualizarPedido 4218551
+eliminarPedido 4219192
+cerrarPedido 4219437
+recibirPedido 4219742
+crearProductoEnConteo 4223437
+validarEncargoPM10 4244093
+crearLogicaEncargos 4250203
+localDeEncargo 4250386
+encargoEsDelLocalActivo 4250671
+addEncargo 4250829
+updateEncargo 4251376
+deleteEncargo 4252416
+entregarEncargo 4252758
+productoEsDelLocalActivoVenta 4254212
+productoEsDelLocalActivoTraspaso 4267689
+activarModoEmpleado 4278216
+entrarComoEmpleado 4278344
+salirModoEmpleado 4278713
+pedidoEsDelLocalActivoAlbaran 4280372
+procesarRecepcion 4289145
+BotonModoEmpleado 4329754
+elegirEmpleado 4331004
+Productos 4384753
+Pedidos 4444395
+guardarProductoNuevo 4446140
+prepararPedidoDesdeSugerencias 4447617
+textoPedido 4449219
+compartirPedido 4451599
+Recepcion 4471081
+InventarioCiego 4482707
+productoDe 4542637
+crearProductoDeVenta 4545713
+blankEmpleado 4747604
+SeleccionPersonal 4748549
+Personal 4784017
+exportarDatosEmpleado 4789158
+lineaEncargo 4858455
+Encargos 4858562
+CostePersonal 5102195
+horasDelEmpleadoEnMes 5103674
+empleadoPorNombreLeido 5105326
+HistorialProducto 5123551
+
+===== PEDIDOS_UI 4444395:4471081 =====
+function Pedidos({ pedidos: pedidos2, proveedores, productos, crearPedido, actualizarPedido, eliminarPedido, proveedorPorId, productoPorId, sugerenciasPedido = [], addProducto }) {
+  const [showForm, setShowForm] = (0, import_react4.useState)(false);
+  const [proveedorId, setProveedorId] = (0, import_react4.useState)("");
+  const [verTodosProductos, setVerTodosProductos] = (0, import_react4.useState)(false);
+  const [fechaEsperada, setFechaEsperada] = (0, import_react4.useState)("");
+  const [items, setItems] = (0, import_react4.useState)([]);
+  const [enviarPedido, setEnviarPedido] = (0, import_react4.useState)(null);
+  const [editingId, setEditingId] = (0, import_react4.useState)(null);
+  const [confirmDeleteId, setConfirmDeleteId] = (0, import_react4.useState)(null);
+  const [creandoNuevoIdx, setCreandoNuevoIdx] = (0, import_react4.useState)(null);
+  const [nuevoProd, setNuevoProd] = (0, import_react4.useState)({ nombre: "", unidad: "unidad", costo: "" });
+  function addItemRow() {
+    if (!productos.length) return;
+    setItems((s22) => [...s22, { productoId: productos[0].id, cantidad: 1, costoUnitario: productos[0].costo }]);
+  }
+  function updateItem(idx, field, value) {
+    setItems(
+      (s22) => s22.map((it2, i33) => {
+        if (i33 !== idx) return it2;
+        if (field === "productoId") {
+          if (value === "__nuevo__") {
+            setNuevoProd({ nombre: "", unidad: "unidad", costo: "" });
+            setCreandoNuevoIdx(idx);
+            return it2;
+          }
+          const p22 = productos.find((pr) => pr.id === value);
+          return { ...it2, productoId: value, costoUnitario: p22 ? p22.costo : it2.costoUnitario };
+        }
+        return { ...it2, [field]: value };
+      })
+    );
+  }
+  function guardarProductoNuevo() {
+    if (!nuevoProd.nombre.trim()) {
+      setError("Escribe el nombre del producto.");
+      return;
+    }
+    const creado = addProducto({
+      nombre: nuevoProd.nombre.trim(),
+      unidad: nuevoProd.unidad || "unidad",
+      tipo: "materia_prima",
+      costo: nuevoProd.costo,
+      ivaCompra: 10,
+      proveedorId: proveedorId || "",
+      stock: 0,
+      stockMinimo: 0
+    });
+    if (!creado || creado.ok === false) {
+      setError(creado?.error || "No se pudo crear el producto.");
+      return;
+    }
+    setError("");
+    setItems((s22) => s22.map((it2, i33) => i33 === creandoNuevoIdx ? { ...it2, productoId: creado.id, costoUnitario: creado.costo } : it2));
+    setCreandoNuevoIdx(null);
+  }
+  function removeItem(idx) {
+    setItems((s22) => s22.filter((_22, i33) => i33 !== idx));
+  }
+  const [error, setError] = (0, import_react4.useState)("");
+  function resetForm() {
+    setItems([]);
+    setProveedorId("");
+    setFechaEsperada("");
+    setEditingId(null);
+    setError("");
+    setVerTodosProductos(false);
+  }
+  function openEdit(pedido) {
+    setEditingId(pedido.id);
+    setProveedorId(pedido.proveedorId);
+    setFechaEsperada(pedido.fechaEsperada || "");
+    setItems(pedido.items.map((it2) => ({ productoId: it2.productoId, cantidad: it2.cantidad, costoUnitario: it2.costoUnitario, cantidadRecibida: it2.cantidadRecibida ?? 0 })));
+    setError("");
+    setVerTodosProductos(false);
+    setShowForm(true);
+  }
+  function prepararPedidoDesdeSugerencias(proveedorId2, sugerenciasDelProveedor) {
+    setEditingId(null);
+    setProveedorId(proveedorId2);
+    setFechaEsperada("");
+    setItems(
+      sugerenciasDelProveedor.map((p22) => ({
+        productoId: p22.id,
+        // Usa la cantidad ya calculada centralizadamente, que sí resta el
+        // stock que todavía queda — pedir la cobertura completa sin restarlo
+        // significaba pedir de más cada vez que quedaba algo en el almacén.
+        cantidad: Math.max(1, p22.cantidadSugerida ?? Math.ceil((p22.consumoDiario || 0) * (p22.diasHastaEntrega + 7))),
+        costoUnitario: p22.costo
+      }))
+    );
+    setError("");
+    setVerTodosProductos(false);
+    setShowForm(true);
+  }
+  function submit() {
+    if (!proveedorId) {
+      setError("Selecciona un proveedor.");
+      return;
+    }
+    if (items.length === 0) {
+      setError("Añade al menos un producto al pedido.");
+      return;
+    }
+    const payload = { proveedorId, fechaEsperada, items };
+    if (editingId) {
+      const resultado = actualizarPedido(editingId, payload);
+      if (!resultado || resultado.ok === false) {
+        setError(resultado?.error || "No se pudo actualizar el pedido.");
+        return;
+      }
+      setError("");
+      setShowForm(false);
+      resetForm();
+    } else {
+      const pedido = crearPedido(payload);
+      if (!pedido || pedido.ok === false) {
+        setError(pedido?.error || "No se pudo crear el pedido.");
+        return;
+      }
+      setError("");
+      setShowForm(false);
+      resetForm();
+      setEnviarPedido(pedido);
+    }
+  }
+  function textoPedido(pedido) {
+    const prov = proveedorPorId(pedido.proveedorId);
+    const lineas = pedido.items.map((it2, i33) => {
+      const p22 = productoPorId(it2.productoId);
+      const unidad = p22 ? p22.unidad : "";
+      return `${i33 + 1}. ${p22 ? p22.nombre : "Producto eliminado"} \u2014 ${fmt(it2.cantidad)} ${unidad} (a \u20AC${fmt(it2.costoUnitario)}/${unidad})`;
+    });
+    const total = pedido.items.reduce((a22, it2) => a22 + it2.cantidad * it2.costoUnitario, 0);
+    const ivaTotal = pedido.items.reduce((a22, it2) => {
+      const prod = productoPorId(it2.productoId);
+      return a22 + it2.cantidad * it2.costoUnitario * (ivaCompraDe(prod) / 100);
+    }, 0);
+    const separador = "\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014";
+    return [
+      `PEDIDO \u2014 ${prov ? prov.nombre : "Proveedor"}`,
+      `Fecha del pedido: ${new Date(pedido.fecha).toLocaleDateString("es-ES")}`,
+      `Entrega esperada: ${pedido.fechaEsperada ? new Date(pedido.fechaEsperada).toLocaleDateString("es-ES") : "por confirmar"}`,
+      "",
+      "Productos pedidos:",
+      lineas.join("\n"),
+      "",
+      separador,
+      `Base imponible: \u20AC${fmt(total)}`,
+      `IVA: \u20AC${fmt(ivaTotal)}`,
+      `TOTAL: \u20AC${fmt(total + ivaTotal)}`,
+      separador,
+      "",
+      "Gracias."
+    ].join("\n");
+  }
+  function mailtoHref(pedido) {
+    const prov = proveedorPorId(pedido.proveedorId);
+    const texto = textoPedido(pedido);
+    return `mailto:${prov?.email || ""}?subject=${encodeURIComponent("Pedido - " + (prov?.nombre || ""))}&body=${encodeURIComponent(texto)}`;
+  }
+  function gmailAppHref(pedido) {
+    const prov = proveedorPorId(pedido.proveedorId);
+    const texto = textoPedido(pedido);
+    return `googlegmail:///co?to=${encodeURIComponent(prov?.email || "")}&subject=${encodeURIComponent("Pedido - " + (prov?.nombre || ""))}&body=${encodeURIComponent(texto)}`;
+  }
+  function gmailWebHref(pedido) {
+    const prov = proveedorPorId(pedido.proveedorId);
+    const texto = textoPedido(pedido);
+    const params = new URLSearchParams({
+      view: "cm",
+      fs: "1",
+      to: prov?.email || "",
+      su: "Pedido - " + (prov?.nombre || ""),
+      body: texto
+    });
+    return `https://mail.google.com/mail/?${params.toString()}`;
+  }
+  const [compartirError, setCompartirError] = (0, import_react4.useState)("");
+  async function compartirPedido(pedido) {
+    const prov = proveedorPorId(pedido.proveedorId);
+    const texto = textoPedido(pedido);
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Pedido - ${prov?.nombre || ""}`,
+          text: texto
+        });
+        setCompartirError("");
+      } catch (e2) {
+        if (e2 && e2.name !== "AbortError") setCompartirError("No se pudo abrir el men\xFA de compartir.");
+      }
+    } else {
+      setCompartirError("Tu navegador no permite compartir. Usa las otras opciones o copia el texto.");
+    }
+  }
+  function whatsappHref(pedido) {
+    const prov = proveedorPorId(pedido.proveedorId);
+    const texto = textoPedido(pedido);
+    const numero = (prov?.telefono || "").replace(/[^0-9]/g, "");
+    return `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
+  }
+  function llamarHref(pedido) {
+    const prov = proveedorPorId(pedido.proveedorId);
+    const numero = (prov?.telefono || "").replace(/[^0-9+]/g, "");
+    return `tel:${numero}`;
+  }
+  const [correoPedido, setCorreoPedido] = (0, import_react4.useState)(null);
+  const estadoColor = { Pendiente: C2.amber, Parcial: C2.accent, Recibido: C2.inkSoft };
+  const productosSeleccionables = !proveedorId || verTodosProductos ? productos : productos.filter((p22) => p22.proveedorId === proveedorId);
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
+    if (showForm) {
+      resetForm();
+    }
+    setShowForm((s22) => !s22);
+  } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Nuevo pedido") }, "Pedidos de compra"), sugerenciasPedido.length > 0 && (() => {
+    const porProveedor = {};
+    sugerenciasPedido.forEach((p22) => {
+      if (!porProveedor[p22.proveedorId]) porProveedor[p22.proveedorId] = { nombre: p22.proveedorNombre, items: [] };
+      porProveedor[p22.proveedorId].items.push(p22);
+    });
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2" }, "Punto de pedido: se te va a agotar antes de que llegue"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Al ritmo de venta real de los \xFAltimos d\xEDas, estos productos se agotar\xEDan antes de que llegara un pedido hecho hoy \u2014 seg\xFAn el plazo de entrega que tienes puesto en cada proveedor."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, Object.entries(porProveedor).map(([provId, { nombre, items: items2 }]) => /* @__PURE__ */ import_react4.default.createElement("div", { key: provId, className: "rounded-lg p-2.5", style: { background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-1.5" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12.5px] font-medium" }, nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5" }, proveedorPorId(provId)?.telefono && /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { small: true, href: `tel:${(proveedorPorId(provId).telefono || "").replace(/[^0-9+]/g, "")}` }, /* @__PURE__ */ import_react4.default.createElement(Phone, { size: 13 }), " Llamar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => prepararPedidoDesdeSugerencias(provId, items2) }, "Preparar pedido"))), items2.map((p22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: p22.id, className: "flex items-center justify-between text-[11.5px]", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement("span", null, p22.nombre), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, Math.round(p22.dias), " d\xEDa(s) de stock \xB7 pide ", fmt(p22.cantidadSugerida), " ", p22.unidad, p22.cajasSugeridas ? ` (${p22.cajasSugeridas} caja${p22.cajasSugeridas > 1 ? "s" : ""})` : "")))))));
+  })(), showForm && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3" }, editingId ? "Editando pedido pendiente" : "Nuevo pedido"), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Proveedor" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: proveedorId, onChange: (e2) => {
+    setProveedorId(e2.target.value);
+    setVerTodosProductos(false);
+  }, className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Selecciona un proveedor"), proveedores.map((p22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: p22.id, value: p22.id }, p22.nombre)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Fecha esperada de entrega" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: fechaEsperada, onChange: (e2) => setFechaEsperada(e2.target.value) }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2 flex items-center justify-between flex-wrap gap-1" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium", style: { color: C2.inkSoft } }, "Productos del pedido"), proveedorId && /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", onClick: () => setVerTodosProductos((s22) => !s22), className: "text-[11.5px] font-medium", style: { color: C2.accent } }, verTodosProductos ? "Ver solo los de este proveedor" : "No lo encuentro, ver todos los productos")), productosSeleccionables.length === 0 && proveedorId && !verTodosProductos && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2 p-2 rounded-lg", style: { background: C2.amberSoft, color: C2.ink } }, 'Ning\xFAn producto tiene este proveedor asignado todav\xEDa. Ponlo en la ficha de cada producto, o toca "ver todos los productos" arriba para elegir de todas formas.'), items.map((it2, idx) => /* @__PURE__ */ import_react4.default.createElement("div", { key: idx }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 items-center mb-2" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: it2.productoId, onChange: (e2) => updateItem(idx, "productoId", e2.target.value), className: "flex-1 rounded-lg px-2 py-2 text-[12.5px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "\u2014 Elige un producto \u2014"), productosSeleccionables.map((p22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: p22.id, value: p22.id }, p22.nombre)), /* @__PURE__ */ import_react4.default.createElement("option", { value: "__nuevo__" }, "+ Es un producto nuevo, nunca ha entrado\u2026")), /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", style: { width: 80 }, value: it2.cantidad, onChange: (e2) => updateItem(idx, "cantidad", e2.target.value), placeholder: "Cant." }), /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", style: { width: 100 }, value: it2.costoUnitario, onChange: (e2) => updateItem(idx, "costoUnitario", e2.target.value), placeholder: "Costo u." }), /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", onClick: () => removeItem(idx), "aria-label": "Quitar de la lista" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 16, color: C2.inkSoft }))), creandoNuevoIdx === idx && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-2", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2" }, "Nuevo producto \u2014 se dar\xE1 de alta en el cat\xE1logo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-3 gap-2 mb-2" }, /* @__PURE__ */ import_react4.default.createElement(
+    Input,
+    {
+      value: nuevoProd.nombre,
+      onChange: (e2) => setNuevoProd({ ...nuevoProd, nombre: e2.target.value }),
+      placeholder: "Nombre del producto",
+      style: { gridColumn: "span 3" }
+    }
+  ), /* @__PURE__ */ import_react4.default.createElement(
+    Input,
+    {
+      value: nuevoProd.unidad,
+      onChange: (e2) => setNuevoProd({ ...nuevoProd, unidad: e2.target.value }),
+      placeholder: "Unidad (kg, unidad\u2026)"
+    }
+  ), /* @__PURE__ */ import_react4.default.createElement(
+    Input,
+    {
+      type: "number",
+      step: "0.01",
+      value: nuevoProd.costo,
+      onChange: (e2) => setNuevoProd({ ...nuevoProd, costo: e2.target.value }),
+      placeholder: "Precio de compra",
+      style: { gridColumn: "span 2" }
+    }
+  )), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => guardarProductoNuevo(idx), disabled: !nuevoProd.nombre.trim() }, "Crear y a\xF1adir al pedido"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
+    setCreandoNuevoIdx(null);
+    updateItem(idx, "productoId", "");
+  } }, "Cancelar"))), (() => {
+    const prod = productos.find((pr) => pr.id === it2.productoId);
+    const uds = udsPorCaja(prod);
+    if (!prod || uds <= 1) return null;
+    const cajas = Number(it2.cantidad) / uds;
+    const enteras = Number.isInteger(cajas);
+    return /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2 flex items-center gap-2 flex-wrap", style: { color: enteras ? C2.accent : C2.amber } }, /* @__PURE__ */ import_react4.default.createElement("span", null, fmt(cajas), " caja(s) de ", uds, " ", prod.unidad, !enteras && " \u2014 no es un n\xFAmero exacto de cajas"), /* @__PURE__ */ import_react4.default.createElement(
+      "button",
+      {
+        type: "button",
+        onClick: () => updateItem(idx, "cantidad", String(Math.ceil(cajas) * uds)),
+        className: "underline",
+        style: { color: C2.accent }
+      },
+      "redondear a ",
+      Math.ceil(cajas),
+      " caja(s) = ",
+      Math.ceil(cajas) * uds,
+      " ",
+      prod.unidad
+    ));
+  })())), /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", onClick: addItemRow, className: "text-[12.5px] font-medium mb-4", style: { color: C2.accent } }, "+ A\xF1adir producto al pedido"), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submit }, editingId ? "Guardar cambios" : "Crear pedido"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+    setShowForm(false);
+    resetForm();
+  } }, "Cancelar")))), pedidos2.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay pedidos registrados todav\xEDa." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, pedidos2.map((pe2) => {
+    const prov = proveedorPorId(pe2.proveedorId);
+    const total = pe2.items.reduce((a22, it2) => a22 + it2.cantidad * it2.costoUnitario, 0);
+    const ivaPedido = pe2.items.reduce((a22, it2) => {
+      const prod = productoPorId(it2.productoId);
+      return a22 + it2.cantidad * it2.costoUnitario * (ivaCompraDe(prod) / 100);
+    }, 0);
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: pe2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold" }, prov ? prov.nombre : "Proveedor eliminado"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Pedido ", pe2.fecha, " \xB7 Entrega esperada ", pe2.fechaEsperada || "\u2014")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: estadoColor[pe2.estado] }, pe2.estado), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold" }, "\u20AC", fmt(total + ivaPedido)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mono", style: { color: C2.inkSoft } }, "base \u20AC", fmt(total), " + IVA \u20AC", fmt(ivaPedido))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 flex gap-2 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
+      setCorreoPedido(pe2);
+    } }, /* @__PURE__ */ import_react4.default.createElement(Mail, { size: 13 }), " Enviar por correo"), /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { small: true, href: whatsappHref(pe2) }, /* @__PURE__ */ import_react4.default.createElement(MessageCircle, { size: 13 }), " Enviar por WhatsApp"), proveedorPorId(pe2.proveedorId)?.telefono && /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { small: true, href: llamarHref(pe2) }, /* @__PURE__ */ import_react4.default.createElement(Phone, { size: 13 }), " Llamar"), pe2.estado === "Pendiente" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(pe2) }, "Editar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", onClick: () => setConfirmDeleteId(pe2.id) }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 13 }), " Eliminar"))));
+  })), confirmDeleteId && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmDeleteId(null), title: "Eliminar pedido" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-4", style: { color: C2.ink } }, "\xBFSeguro que quieres eliminar este pedido? Esta acci\xF3n no se puede deshacer."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: () => {
+    eliminarPedido(confirmDeleteId);
+    setConfirmDeleteId(null);
+  } }, "S\xED, eliminar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmDeleteId(null) }, "Cancelar"))), correoPedido && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setCorreoPedido(null), title: "Enviar pedido por correo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.ink } }, "Prueba los botones de Gmail. Si no se abren, m\xE1s abajo tienes el correo listo para copiar y pegar."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-col gap-2 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => compartirPedido(correoPedido) }, /* @__PURE__ */ import_react4.default.createElement(Mail, { size: 14 }), " Compartir con Gmail u otra app"), /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { href: gmailWebHref(correoPedido) }, /* @__PURE__ */ import_react4.default.createElement(Mail, { size: 14 }), " Abrir en Gmail (navegador)"), /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { href: mailtoHref(correoPedido), newTab: false }, /* @__PURE__ */ import_react4.default.createElement(Mail, { size: 14 }), " App de correo del sistema")), compartirError && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", style: { color: C2.red } }, compartirError), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2 pt-3", style: { color: C2.inkSoft, borderTop: `1px solid ${C2.line}` } }, "Si ninguno abre, toca cada campo (se selecciona solo) y c\xF3pialo:"), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Destinatario" }, /* @__PURE__ */ import_react4.default.createElement(Input, { readOnly: true, value: proveedorPorId(correoPedido.proveedorId)?.email || "", onFocus: (e2) => e2.target.select() })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Asunto" }, /* @__PURE__ */ import_react4.default.createElement(Input, { readOnly: true, value: `Pedido - ${proveedorPorId(correoPedido.proveedorId)?.nombre || ""}`, onFocus: (e2) => e2.target.select() })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Mensaje" }, /* @__PURE__ */ import_react4.default.createElement(
+    "textarea",
+    {
+      readOnly: true,
+      value: textoPedido(correoPedido),
+      onFocus: (e2) => e2.target.select(),
+      className: "w-full rounded-lg p-2 text-[12px] mono",
+      style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, height: 160, resize: "none" }
+    }
+  )), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setCorreoPedido(null) }, "Cerrar")), enviarPedido && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setEnviarPedido(null), title: "Pedido creado \u2014 \xBFc\xF3mo quieres enviarlo?" }, /* @__PURE__ */ import_react4.default.createElement("p", { className: "text-[12.5px] mb-4", style: { color: C2.inkSoft } }, "Puedes enviarlo ahora al proveedor o hacerlo m\xE1s tarde desde la lista de pedidos."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
+    setCorreoPedido(enviarPedido);
+    setEnviarPedido(null);
+  } }, /* @__PURE__ */ import_react4.default.createElement(Mail, { size: 14 }), " Correo"), /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { variant: "primary", href: whatsappHref(enviarPedido) }, /* @__PURE__ */ import_react4.default.createElement(MessageCircle, { size: 14 }), " WhatsApp"), proveedorPorId(enviarPedido.proveedorId)?.telefono && /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { href: llamarHref(enviarPedido) }, /* @__PURE__ */ import_react4.default.createElement(Phone, { size: 14 }), " Llamar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setEnviarPedido(null) }, "Ahora no"))));
+}
+
+
+===== RECEPCION_UI 4471081:4480351 =====
+function Recepcion({ pedidos: pedidos2, proveedorPorId, productoPorId, recibirPedido, almacenCongelado, recibirConAlbaran, recibirConFotoIA, cerrarPedido }) {
+  const [activos, setActivos] = (0, import_react4.useState)({});
+  const [cerrando, setCerrando] = (0, import_react4.useState)(null);
+  const [erroresRecepcion, setErroresRecepcion] = (0, import_react4.useState)({});
+  const pendientes = pedidos2.filter((p22) => p22.estado !== "Recibido");
+  function setCampo(pedidoId, productoId, campo, val) {
+    setActivos((s22) => ({
+      ...s22,
+      [pedidoId]: { ...s22[pedidoId] || {}, [productoId]: { ...(s22[pedidoId] || {})[productoId] || {}, [campo]: val } }
+    }));
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Recepci\xF3n de mercanc\xEDa"), almacenCongelado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start gap-2 text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { size: 16, color: C2.amber, style: { marginTop: 2, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement("span", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Almac\xE9n congelado por conteo en curso."), " Las entradas y salidas est\xE1n bloqueadas hasta que finalices el conteo en Inventario ciego."))), pendientes.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay pedidos pendientes de recibir." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-3" }, pendientes.map((pe2) => {
+    const prov = proveedorPorId(pe2.proveedorId);
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: pe2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold" }, prov ? prov.nombre : "\u2014"), /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.amber }, pe2.estado)), pe2.items.map((it2) => {
+      const p22 = productoPorId(it2.productoId);
+      const pendiente = it2.cantidad - it2.cantidadRecibida;
+      const campo = (activos[pe2.id] || {})[it2.productoId] || {};
+      const precioPrecargado = campo.precio !== void 0 ? campo.precio : p22 ? p22.costo || "" : "";
+      const ivaPrecargado = campo.iva !== void 0 ? campo.iva : p22 ? p22.ivaCompra || 10 : 10;
+      return /* @__PURE__ */ import_react4.default.createElement("div", { key: it2.productoId, className: "py-1.5 border-b last:border-0", style: { borderColor: C2.line } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", null, p22 ? p22.nombre : "\u2014"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mono", style: { color: C2.inkSoft } }, "Pedido: ", it2.cantidad, " \xB7 Recibido: ", it2.cantidadRecibida, " \xB7 Pendiente: ", pendiente)), /* @__PURE__ */ import_react4.default.createElement(
+        Input,
+        {
+          type: "number",
+          style: { width: 90 },
+          placeholder: "Cant. hoy",
+          value: campo.cantidad || "",
+          onChange: (e2) => setCampo(pe2.id, it2.productoId, "cantidad", e2.target.value),
+          disabled: pendiente <= 0
+        }
+      )), Number(campo.cantidad) > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2 mt-1.5" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Precio/ud (\u20AC)"), /* @__PURE__ */ import_react4.default.createElement(
+        Input,
+        {
+          type: "number",
+          step: "0.01",
+          style: { width: 80 },
+          value: precioPrecargado,
+          onChange: (e2) => setCampo(pe2.id, it2.productoId, "precio", e2.target.value)
+        }
+      ), /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, "IVA %"), /* @__PURE__ */ import_react4.default.createElement(
+        Input,
+        {
+          type: "number",
+          style: { width: 60 },
+          value: ivaPrecargado,
+          onChange: (e2) => setCampo(pe2.id, it2.productoId, "iva", e2.target.value)
+        }
+      )));
+    }), erroresRecepcion[pe2.id] && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mt-2", style: { color: C2.red } }, erroresRecepcion[pe2.id]), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 flex flex-wrap gap-2" }, !almacenCongelado && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => recibirConAlbaran(pe2) }, /* @__PURE__ */ import_react4.default.createElement(FileText, { size: 14 }), " Recibir con albar\xE1n"), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => recibirConFotoIA(pe2) }, /* @__PURE__ */ import_react4.default.createElement(Camera, { size: 14 }), " Recibir con foto IA"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+      const porProducto = new Map();
+      pe2.items.forEach((it2) => {
+        if (porProducto.has(it2.productoId)) return;
+        const campo = (activos[pe2.id] || {})[it2.productoId] || {};
+        if (String(campo.cantidad ?? "").trim() === "") return;
+        const p22 = productoPorId(it2.productoId);
+        porProducto.set(it2.productoId, {
+          productoId: it2.productoId,
+          cantidad: campo.cantidad,
+          precioBruto: campo.precio !== void 0 ? campo.precio : p22 ? p22.costo : 0,
+          ivaPct: campo.iva !== void 0 ? campo.iva : p22 ? p22.ivaCompra : 10
+        });
+      });
+      const resultado = recibirPedido(pe2.id, [...porProducto.values()]);
+      if (!resultado || resultado.ok === false) {
+        setErroresRecepcion((s22) => ({ ...s22, [pe2.id]: resultado?.error || "No se pudo registrar la recepción." }));
+        return;
+      }
+      setErroresRecepcion((s22) => ({ ...s22, [pe2.id]: "" }));
+      setActivos((s22) => ({ ...s22, [pe2.id]: {} }));
+    } }, /* @__PURE__ */ import_react4.default.createElement(CircleCheck, { size: 14 }), " Recibir sin albarán")), cerrarPedido && /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setCerrando(pe2) }, "Cerrar pedido")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Con albar\xE1n registras adem\xE1s precios, descuentos, lotes y caducidades, y el pedido se cierra solo. Con foto IA, haces una foto del papel del proveedor y ella rellena el borrador por ti. La otra opci\xF3n solo suma stock, sin dejar rastro del papel."));
+  })), cerrando && (() => {
+    const faltan = cerrando.items.map((it2) => ({ ...it2, producto: productoPorId(it2.productoId), pendiente: (Number(it2.cantidad) || 0) - (Number(it2.cantidadRecibida) || 0) })).filter((it2) => it2.pendiente > 0);
+    return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setCerrando(null), title: "\xBFDar el pedido por cerrado?" }, faltan.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, "Ha llegado todo lo pedido. Se marcar\xE1 como recibido.") : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2" }, "Todav\xEDa falta por llegar:"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1 mb-3" }, faltan.map((it2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: it2.productoId, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, it2.producto ? it2.producto.nombre : "\u2014"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: C2.amber } }, "faltan ", fmt(it2.pendiente))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Ci\xE9rralo si el proveedor ya no va a servir el resto. ", /* @__PURE__ */ import_react4.default.createElement("b", null, "No suma nada al stock"), " \u2014 solo saca el pedido de esta lista para que deje de aparecer como pendiente.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
+      cerrarPedido(cerrando.id);
+      setCerrando(null);
+    } }, "S\xED, cerrar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setCerrando(null) }, "Cancelar")));
+  })());
+}
+
+
+===== PERSONAL_UI 4784017:4839017 =====
+function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, documentosPersonalCaducan, fichajes = [], nominas = [], entrevistas = [], crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista, crearPrefiltro, listarPrefiltros, eliminarPrefiltro, crearCuentaEmpleado }) {
+  const [vista, setVista] = (0, import_react4.useState)("empleados");
+  const [showForm, setShowForm] = (0, import_react4.useState)(false);
+  const [form, setForm] = (0, import_react4.useState)(blankEmpleado());
+  const [error, setError] = (0, import_react4.useState)("");
+  const [editingId, setEditingId] = (0, import_react4.useState)(null);
+  const [confirmDeleteId, setConfirmDeleteId] = (0, import_react4.useState)(null);
+  const [ausenciaFor, setAusenciaFor] = (0, import_react4.useState)(null);
+  const [ausenciaForm, setAusenciaForm] = (0, import_react4.useState)({ tipo: "Vacaciones", fechaInicio: todayISO(), fechaFin: todayISO() });
+  const [epiFor, setEpiFor] = (0, import_react4.useState)(null);
+  const [epiForm, setEpiForm] = (0, import_react4.useState)({ nombre: "", firmado: false });
+  const [cuentaFor, setCuentaFor] = (0, import_react4.useState)(null);
+  const [cuentaForm, setCuentaForm] = (0, import_react4.useState)({ nombre: "", email: "", password: "", rol: "Camarero/a" });
+  const [errorCuenta, setErrorCuenta] = (0, import_react4.useState)("");
+  const [creandoCuenta, setCreandoCuenta] = (0, import_react4.useState)(false);
+  const [cuentaCreadaOk, setCuentaCreadaOk] = (0, import_react4.useState)(false);
+  const [detalleId, setDetalleId] = (0, import_react4.useState)(null);
+  function resetForm() {
+    setForm(blankEmpleado());
+    setEditingId(null);
+    setError("");
+  }
+  function openEdit(e2) {
+    setEditingId(e2.id);
+    setForm({
+      nombre: e2.nombre || "",
+      dni: e2.dni || "",
+      puesto: e2.puesto || "",
+      rol: e2.rol && ROLES_EMPLEADO[e2.rol] ? e2.rol : "Est\xE1ndar",
+      diasDisponibles: e2.diasDisponibles || [],
+      tipoContrato: e2.tipoContrato || "Indefinido",
+      fechaAlta: e2.fechaAlta || todayISO(),
+      fechaFinContrato: e2.fechaFinContrato || "",
+      horasSemanales: e2.horasSemanales ?? 40,
+      pagas: e2.pagas ?? 14,
+      salarioBrutoMensual: e2.salarioBrutoMensual ?? "",
+      costeEmpresaMensual: e2.costeEmpresaMensual ?? "",
+      diasVacacionesAnuales: e2.diasVacacionesAnuales ?? 30,
+      pin: "",
+      documentos: (e2.documentos || []).map((d2) => ({ ...d2 })),
+      activo: e2.activo !== false
+    });
+    setError("");
+    setShowForm(true);
+  }
+  function addDocumento() {
+    setForm((f22) => ({ ...f22, documentos: [...f22.documentos, { id: uid(), nombre: "", fechaCaducidad: "" }] }));
+  }
+  function updateDocumento(idx, campo, valor) {
+    setForm((f22) => ({ ...f22, documentos: f22.documentos.map((d2, i33) => i33 === idx ? { ...d2, [campo]: valor } : d2) }));
+  }
+  function quitarDocumento(idx) {
+    setForm((f22) => ({ ...f22, documentos: f22.documentos.filter((_22, i33) => i33 !== idx) }));
+  }
+  async function submit() {
+    if (!form.nombre.trim()) {
+      setError("Escribe el nombre del empleado.");
+      return;
+    }
+    if (form.pin && !/^\d{4,6}$/.test(form.pin)) {
+      setError("El c\xF3digo de acceso debe tener entre 4 y 6 d\xEDgitos.");
+      return;
+    }
+    let hashNuevoPin = null;
+    if (form.pin) {
+      hashNuevoPin = await hashPin(form.pin);
+      if (empleados.some((e2) => e2.id !== editingId && e2.pin === hashNuevoPin)) {
+        setError("Ese c\xF3digo ya lo usa otro empleado. Ponle uno distinto.");
+        return;
+      }
+    }
+    setError("");
+    const datos = { ...form };
+    if (hashNuevoPin) {
+      datos.pin = hashNuevoPin;
+    } else {
+      delete datos.pin;
+    }
+    const resultado = editingId ? updateEmpleado(editingId, datos) : addEmpleado(datos);
+    if (!resultado || resultado.ok === false) {
+      setError(resultado?.error || "No se pudo guardar la ficha del empleado.");
+      return;
+    }
+    resetForm();
+    setShowForm(false);
+  }
+  function diasAusencia(ini, fin) {
+    const a22 = new Date(ini), b2 = new Date(fin);
+    if (isNaN(a22) || isNaN(b2)) return 0;
+    return Math.max(1, Math.round((b2 - a22) / 864e5) + 1);
+  }
+  function submitAusencia() {
+    registrarAusencia(ausenciaFor, {
+      tipo: ausenciaForm.tipo,
+      fechaInicio: ausenciaForm.fechaInicio,
+      fechaFin: ausenciaForm.fechaFin,
+      dias: diasAusencia(ausenciaForm.fechaInicio, ausenciaForm.fechaFin)
+    });
+    setAusenciaFor(null);
+    setAusenciaForm({ tipo: "Vacaciones", fechaInicio: todayISO(), fechaFin: todayISO() });
+  }
+  const anioActual = (/* @__PURE__ */ new Date()).getFullYear();
+  function descargarComoArchivo(nombreArchivo, texto) {
+    const blob = new Blob([texto], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a22 = document.createElement("a");
+    a22.href = url;
+    a22.download = nombreArchivo;
+    document.body.appendChild(a22);
+    a22.click();
+    document.body.removeChild(a22);
+    URL.revokeObjectURL(url);
+  }
+  function exportarDatosEmpleado(e2) {
+    const fichajesDelEmpleado = fichajes.filter((f22) => f22.empleadoId === e2.id);
+    const nominasDelEmpleado = nominas.filter((n2) => n2.empleadoId === e2.id);
+    const lineas = [
+      `DATOS GUARDADOS SOBRE: ${e2.nombre}`,
+      `Generado el ${todayISO()}`,
+      "",
+      "=== FICHA ===",
+      `Nombre: ${e2.nombre}`,
+      `DNI: ${e2.dni || "\u2014"}`,
+      `Puesto: ${e2.puesto || "\u2014"}`,
+      `Tipo de contrato: ${e2.tipoContrato || "\u2014"}`,
+      `Fecha de alta: ${e2.fechaAlta || "\u2014"}`,
+      `Fecha de fin de contrato: ${e2.fechaFinContrato || "\u2014"}`,
+      `Horas semanales: ${e2.horasSemanales ?? "\u2014"}`,
+      `Estado: ${e2.activo === false ? "de baja" : "activo"}`,
+      "",
+      "=== AUSENCIAS ===",
+      ...(e2.ausencias || []).length === 0 ? ["Ninguna registrada."] : (e2.ausencias || []).map((a22) => `${a22.tipo}: ${a22.fechaInicio} a ${a22.fechaFin} (${a22.dias} d\xEDa/s)`),
+      "",
+      "=== DOCUMENTOS ===",
+      ...(e2.documentos || []).length === 0 ? ["Ninguno registrado."] : (e2.documentos || []).map((d2) => `${d2.nombre}${d2.fechaCaducidad ? ` \u2014 caduca ${d2.fechaCaducidad}` : ""}`),
+      "",
+      `=== FICHAJES (${fichajesDelEmpleado.length} registrados) ===`,
+      ...fichajesDelEmpleado.length === 0 ? ["Ninguno registrado."] : fichajesDelEmpleado.slice(0, 200).map((f22) => `${f22.fecha} ${f22.hora} \u2014 ${f22.tipo}`),
+      fichajesDelEmpleado.length > 200 ? `\u2026 y ${fichajesDelEmpleado.length - 200} m\xE1s (se han omitido por espacio).` : "",
+      "",
+      `=== N\xD3MINAS REGISTRADAS (${nominasDelEmpleado.length}) ===`,
+      ...nominasDelEmpleado.length === 0 ? ["Ninguna registrada."] : nominasDelEmpleado.map((n2) => `${n2.mes}: bruto \u20AC${fmt(n2.brutoTotal)} + SS empresa \u20AC${fmt(n2.seguridadSocialEmpresa)}`)
+    ];
+    descargarComoArchivo(`datos-${e2.nombre.replace(/\s+/g, "-").toLowerCase()}.txt`, lineas.filter((l22) => l22 !== "").join("\n"));
+  }
+  function vacacionesUsadas(e2) {
+    return (e2.ausencias || []).filter((a22) => a22.tipo === "Vacaciones" && new Date(a22.fechaInicio).getFullYear() === anioActual).reduce((acc, a22) => acc + (Number(a22.dias) || 0), 0);
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: vista === "empleados" ? /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
+    if (showForm) resetForm();
+    setShowForm((s22) => !s22);
+  } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Nuevo empleado") : null }, "Personal"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(
+    "button",
+    {
+      onClick: () => setVista("empleados"),
+      className: "text-[12px] font-medium px-3 py-1.5 rounded-full",
+      style: vista === "empleados" ? { background: C2.accent, color: "#fff" } : { background: C2.surface, border: `1px solid ${C2.line}`, color: C2.inkSoft }
+    },
+    "Empleados"
+  ), /* @__PURE__ */ import_react4.default.createElement(
+    "button",
+    {
+      onClick: () => setVista("seleccion"),
+      className: "text-[12px] font-medium px-3 py-1.5 rounded-full",
+      style: vista === "seleccion" ? { background: C2.accent, color: "#fff" } : { background: C2.surface, border: `1px solid ${C2.line}`, color: C2.inkSoft }
+    },
+    "Selecci\xF3n de personal"
+  )), vista === "seleccion" ? /* @__PURE__ */ import_react4.default.createElement(
+    SeleccionPersonal,
+    {
+      entrevistas,
+      crearEntrevista,
+      actualizarEntrevista,
+      finalizarEntrevista,
+      eliminarEntrevista,
+      crearPrefiltro,
+      listarPrefiltros,
+      eliminarPrefiltro
+    }
+  ) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Aqu\xED llevas la ficha de cada empleado, sus documentos y sus vacaciones. Este programa ", /* @__PURE__ */ import_react4.default.createElement("b", null, "no calcula n\xF3minas"), "(retenciones de IRPF, cotizaciones a la Seguridad Social): eso debe hacerlo tu gestor\xEDa o un programa de n\xF3minas certificado, porque las cifras cambian cada a\xF1o y un error tiene consecuencias legales reales.")), documentosPersonalCaducan.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2 flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { size: 15, color: C2.red }), " Documentos y contratos que necesitan atenci\xF3n"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1" }, documentosPersonalCaducan.slice(0, 8).map((d2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: d2.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, d2.empleado, " \xB7 ", d2.concepto), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold", style: { color: d2.dias < 0 ? C2.red : d2.dias <= 7 ? C2.amber : C2.inkSoft } }, d2.dias < 0 ? `venci\xF3 hace ${Math.abs(d2.dias)} d` : d2.dias === 0 ? "hoy" : `en ${d2.dias} d`))))), showForm && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3" }, editingId ? "Editando empleado" : "Nuevo empleado"), /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "1 \xB7 Identificaci\xF3n" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre completo" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.nombre, onChange: (e2) => setForm({ ...form, nombre: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "DNI / NIE (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.dni, onChange: (e2) => setForm({ ...form, dni: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Puesto / categor\xEDa" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.puesto, onChange: (e2) => setForm({ ...form, puesto: e2.target.value }), placeholder: "Dependienta, obrador\u2026" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nivel de acceso en modo empleado" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.rol, onChange: (e2) => setForm({ ...form, rol: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, NOMBRES_ROLES.map((r2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: r2, value: r2 }, r2))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, form.rol === "B\xE1sico" && "Solo panel, venta y fichaje \u2014 para alguien que empieza.", form.rol === "Est\xE1ndar" && "A\xF1ade recepci\xF3n, conteo, APPCC, mapa y traspasos.", form.rol === "Encargado" && "A\xF1ade adem\xE1s pedidos, productos y proveedores.")), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "D\xEDas que suele poder trabajar (opcional)" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5 flex-wrap" }, DIAS_REPARTO.map((d2) => {
+    const activo = (form.diasDisponibles || []).includes(d2.valor);
+    return /* @__PURE__ */ import_react4.default.createElement(
+      "button",
+      {
+        key: d2.valor,
+        type: "button",
+        onClick: () => setForm((f22) => ({
+          ...f22,
+          diasDisponibles: (f22.diasDisponibles || []).includes(d2.valor) ? f22.diasDisponibles.filter((x3) => x3 !== d2.valor) : [...f22.diasDisponibles || [], d2.valor]
+        })),
+        className: "w-9 h-9 rounded-full text-[12.5px] font-semibold",
+        style: {
+          background: activo ? C2.accent : C2.surface,
+          color: activo ? "#fff" : C2.inkSoft,
+          border: `1px solid ${activo ? C2.accent : C2.line}`
+        }
+      },
+      d2.corta
+    );
+  })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, "Sin marcar ninguno, Turnos no avisa de nada \u2014 solo avisa si marcas algo y luego se le asigna un turno un d\xEDa que no est\xE1 entre los marcados.")))), /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "2 \xB7 Contrato" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tipo de contrato" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.tipoContrato, onChange: (e2) => setForm({ ...form, tipoContrato: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, TIPOS_CONTRATO.map((t22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: t22, value: t22 }, t22)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Fecha de alta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: form.fechaAlta, onChange: (e2) => setForm({ ...form, fechaAlta: e2.target.value }) })), form.tipoContrato.startsWith("Temporal") || form.tipoContrato.startsWith("Formaci\xF3n") || form.tipoContrato.startsWith("Obtenci\xF3n") ? /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Fecha de fin de contrato" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: form.fechaFinContrato, onChange: (e2) => setForm({ ...form, fechaFinContrato: e2.target.value }) })) : /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Horas semanales" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.horasSemanales, onChange: (e2) => setForm({ ...form, horasSemanales: e2.target.value }) }))), (form.tipoContrato.startsWith("Temporal") || form.tipoContrato.startsWith("Formaci\xF3n") || form.tipoContrato.startsWith("Obtenci\xF3n")) && /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Horas semanales" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.horasSemanales, onChange: (e2) => setForm({ ...form, horasSemanales: e2.target.value }) }))), /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "3 \xB7 Retribuci\xF3n" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Salario bruto mensual (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: form.salarioBrutoMensual, onChange: (e2) => setForm({ ...form, salarioBrutoMensual: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "N\xBA de pagas al a\xF1o" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.pagas, onChange: (e2) => setForm({ ...form, pagas: e2.target.value }), placeholder: "12 o 14" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Coste total mensual para la empresa (\u20AC, opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: form.costeEmpresaMensual, onChange: (e2) => setForm({ ...form, costeEmpresaMensual: e2.target.value }), placeholder: "Bruto + Seg. Social, seg\xFAn tu gestor\xEDa" }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Si dejas el coste para la empresa en blanco, se usar\xE1 una estimaci\xF3n aproximada (bruto \xD7 1,32) para calcular resultados \u2014 p\xEDdele la cifra exacta a tu gestor\xEDa cuando la tengas.")), /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "4 \xB7 Vacaciones" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "D\xEDas de vacaciones al a\xF1o" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.diasVacacionesAnuales, onChange: (e2) => setForm({ ...form, diasVacacionesAnuales: e2.target.value }) }))), /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "5 \xB7 Acceso al programa (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "C\xF3digo de acceso (4 a 6 d\xEDgitos)" }, /* @__PURE__ */ import_react4.default.createElement(
+    Input,
+    {
+      type: "password",
+      inputMode: "numeric",
+      value: form.pin,
+      onChange: (e2) => setForm({ ...form, pin: e2.target.value }),
+      placeholder: editingId && empleados.find((e2) => e2.id === editingId)?.pin ? "Ya tiene un c\xF3digo \u2014 d\xE9jalo en blanco para no cambiarlo" : "Para que entre en modo empleado con su propio c\xF3digo"
+    }
+  )), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-1", style: { color: C2.inkSoft } }, 'Si le pones un c\xF3digo, podr\xE1 entrar en modo empleado identific\xE1ndose con su nombre \u2014 y quedar\xE1 su nombre, no solo "Empleado", en la Auditor\xEDa. Es opcional: sin c\xF3digo, no podr\xE1 entrar por su cuenta.')), /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "6 \xB7 Documentos con caducidad (opcional)" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.inkSoft } }, "Certificado m\xE9dico, formaci\xF3n en manipulaci\xF3n de alimentos, permiso de trabajo\u2026"), form.documentos.map((d2, idx) => /* @__PURE__ */ import_react4.default.createElement("div", { key: d2.id, className: "grid grid-cols-5 gap-2 items-center mb-2" }, /* @__PURE__ */ import_react4.default.createElement(Input, { className: "col-span-3", value: d2.nombre, onChange: (e2) => updateDocumento(idx, "nombre", e2.target.value), placeholder: "Formaci\xF3n manipulador de alimentos" }), /* @__PURE__ */ import_react4.default.createElement(Input, { className: "col-span-1", type: "date", value: d2.fechaCaducidad, onChange: (e2) => updateDocumento(idx, "fechaCaducidad", e2.target.value) }), /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", onClick: () => quitarDocumento(idx), "aria-label": "Quitar documento" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 16, color: C2.inkSoft })))), /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", onClick: addDocumento, className: "text-[12.5px] font-medium", style: { color: C2.accent } }, "+ A\xF1adir documento"), " \xB7 ", /* @__PURE__ */ import_react4.default.createElement(
+    "button",
+    {
+      type: "button",
+      onClick: () => setForm((f22) => ({ ...f22, documentos: [...f22.documentos, { id: uid(), nombre: "Formaci\xF3n PRL", fechaCaducidad: "" }] })),
+      className: "text-[12.5px] font-medium",
+      style: { color: C2.amber }
+    },
+    "+ Formaci\xF3n PRL (obligatoria)"
+  )), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submit }, editingId ? "Guardar cambios" : "Guardar empleado"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+    setShowForm(false);
+    resetForm();
+  } }, "Cancelar"))), empleados.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has a\xF1adido a nadie." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-3" }, empleados.map((e2) => {
+    const usados = vacacionesUsadas(e2);
+    const total = Number(e2.diasVacacionesAnuales) || 0;
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold flex items-center gap-1.5" }, e2.nombre, e2.activo === false && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "baja"), e2.pin && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "con acceso"), e2.pin && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, e2.rol && ROLES_EMPLEADO[e2.rol] ? e2.rol : "Est\xE1ndar"), e2.tieneCuenta && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "cuenta: ", e2.rolCuenta)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mt-0.5", style: { color: C2.inkSoft } }, e2.puesto, " \xB7 ", e2.tipoContrato)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => exportarDatosEmpleado(e2), title: "Exportar sus datos" }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 15, color: C2.inkSoft })), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setConfirmDeleteId(e2.id), "aria-label": "Eliminar empleado" }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 15, color: C2.inkSoft })))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 text-[12px] space-y-1", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement("div", null, "Alta: ", e2.fechaAlta, e2.fechaFinContrato && ` \xB7 Fin de contrato: ${e2.fechaFinContrato}`), e2.salarioBrutoMensual > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, "Bruto: \u20AC", fmt(e2.salarioBrutoMensual), "/mes (", e2.pagas, " pagas)"), /* @__PURE__ */ import_react4.default.createElement("div", null, "Vacaciones: ", usados, " / ", total, " d\xEDas usados este a\xF1o"), (e2.documentos || []).length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", null, e2.documentos.map((d2) => d2.nombre).filter(Boolean).join(" \xB7 "))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 flex gap-2 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(e2) }, "Editar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAusenciaFor(e2.id) }, "Registrar ausencia"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setEpiFor(e2.id) }, "Entregar EPI"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setDetalleId(detalleId === e2.id ? null : e2.id) }, detalleId === e2.id ? "Ocultar historial" : "Ver historial"), crearCuentaEmpleado && !e2.tieneCuenta && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
+      setCuentaFor(e2.id);
+      setCuentaForm({ nombre: e2.nombre || "", email: "", password: "", rol: "Camarero/a" });
+    } }, "Crear cuenta de acceso")), detalleId === e2.id && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 pt-3", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, "Ausencias"), (e2.ausencias || []).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin ausencias registradas." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1 mb-3" }, [...e2.ausencias || []].reverse().map((a22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: a22.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, a22.tipo, ": ", a22.fechaInicio, " \u2192 ", a22.fechaFin, " (", a22.dias, " d)"), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => eliminarAusencia(e2.id, a22.id), "aria-label": "Eliminar ausencia" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft }))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1 pt-2", style: { color: C2.inkSoft, borderTop: `1px solid ${C2.line}` } }, "EPIs entregados"), (e2.epis || []).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin EPIs registrados." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1" }, [...e2.epis || []].reverse().map((epi) => /* @__PURE__ */ import_react4.default.createElement("div", { key: epi.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, epi.nombre, " \xB7 ", epi.fecha, " ", epi.firmado ? "\xB7 firmado" : "\xB7 sin firmar"), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => eliminarEpi(e2.id, epi.id), "aria-label": "Eliminar EPI" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))));
+  })), ausenciaFor && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setAusenciaFor(null), title: "Registrar ausencia" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tipo" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: ausenciaForm.tipo, onChange: (e2) => setAusenciaForm({ ...ausenciaForm, tipo: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "Vacaciones" }, "Vacaciones"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "Baja m\xE9dica" }, "Baja m\xE9dica"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "Otro" }, "Otro permiso"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Desde" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: ausenciaForm.fechaInicio, onChange: (e2) => setAusenciaForm({ ...ausenciaForm, fechaInicio: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hasta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: ausenciaForm.fechaFin, onChange: (e2) => setAusenciaForm({ ...ausenciaForm, fechaFin: e2.target.value }) }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, diasAusencia(ausenciaForm.fechaInicio, ausenciaForm.fechaFin), " d\xEDa(s) naturales, contando ambos extremos."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitAusencia }, "Guardar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setAusenciaFor(null) }, "Cancelar"))), epiFor && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setEpiFor(null), title: "Entregar EPI" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "Deja constancia de qu\xE9 equipo de protecci\xF3n le has dado. Es parte de la obligaci\xF3n de PRL."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Equipo entregado" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: epiForm.nombre, onChange: (e2) => setEpiForm({ ...epiForm, nombre: e2.target.value }), placeholder: "Guantes t\xE9rmicos, calzado antideslizante\u2026" })), /* @__PURE__ */ import_react4.default.createElement("label", { className: "flex items-center gap-2 mb-3 text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("input", { type: "checkbox", checked: epiForm.firmado, onChange: (e2) => setEpiForm({ ...epiForm, firmado: e2.target.checked }) }), "El empleado ha firmado el recib\xED"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
+    if (epiForm.nombre.trim()) {
+      registrarEpi(epiFor, epiForm);
+      setEpiFor(null);
+      setEpiForm({ nombre: "", firmado: false });
+    }
+  } }, "Guardar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setEpiFor(null) }, "Cancelar"))), cuentaFor && /* @__PURE__ */ import_react4.default.createElement(ModalCrearCuenta, {
+    empleado: empleados.find((e2) => e2.id === cuentaFor),
+    cuentaForm,
+    setCuentaForm,
+    error: errorCuenta,
+    creando: creandoCuenta,
+    creadaOk: cuentaCreadaOk,
+    onCancelar: () => {
+      if (creandoCuenta) return;
+      setCuentaFor(null);
+      setErrorCuenta("");
+      setCuentaCreadaOk(false);
+    },
+    onCrear: async () => {
+      if (!cuentaForm.email || !cuentaForm.password) {
+        setErrorCuenta("Rellena correo y contrase\xF1a.");
+        return;
+      }
+      setCreandoCuenta(true);
+      setErrorCuenta("");
+      const r2 = await crearCuentaEmpleado(cuentaFor, cuentaForm);
+      setCreandoCuenta(false);
+      if (!r2.ok) {
+        setErrorCuenta(r2.error || "No se ha podido crear la cuenta.");
+        return;
+      }
+      setCuentaCreadaOk(true);
+    }
+  }), confirmDeleteId && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmDeleteId(null), title: "Eliminar empleado" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, "Se borra la ficha completa, incluidas sus ausencias y documentos. Si solo ha causado baja, mejor ed\xEDtalo y desm\xE1rcalo como activo en vez de borrarlo, para conservar el historial."), nominas.some((n2) => n2.empleadoId === confirmDeleteId) && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "Este empleado tiene n\xF3minas registradas. La legislaci\xF3n laboral obliga a conservar esos documentos varios a\xF1os. Mejor usa ", /* @__PURE__ */ import_react4.default.createElement("b", null, '"Anonimizar"'), " \u2014 quita su nombre y datos personales, pero conserva fichajes y n\xF3minas con a qui\xE9n pertenecen, sin decir qui\xE9n era.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" }, anonimizarEmpleado && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
+    anonimizarEmpleado(confirmDeleteId);
+    setConfirmDeleteId(null);
+  } }, "Anonimizar (recomendado)"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: () => {
+    deleteEmpleado(confirmDeleteId);
+    setConfirmDeleteId(null);
+  } }, "Eliminar del todo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmDeleteId(null) }, "Cancelar")))));
+}
+function inicioSemana(fecha) {
+  const d2 = new Date(fecha);
+  const dia = d2.getDay();
+  const diff = dia === 0 ? -6 : 1 - dia;
+  const l22 = new Date(d2);
+  l22.setDate(d2.getDate() + diff);
+  return aISO(l22);
+}
+function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, updateFichaje, eliminarFichaje, fichajesAbiertos }) {
+  const activos = empleados.filter((e2) => e2.activo !== false);
+  const [desde, setDesde] = (0, import_react4.useState)(inicioSemana(/* @__PURE__ */ new Date()));
+  const [hasta, setHasta] = (0, import_react4.useState)(todayISO());
+  const [showManual, setShowManual] = (0, import_react4.useState)(false);
+  const [manual, setManual] = (0, import_react4.useState)({ empleadoId: activos[0]?.id || "", fecha: todayISO(), tipo: "entrada", hora: "09:00" });
+  const [manualError, setManualError] = (0, import_react4.useState)("");
+  const [showExportar, setShowExportar] = (0, import_react4.useState)(false);
+  const [copiado, setCopiado] = (0, import_react4.useState)(false);
+  function irEstaSemana() {
+    setDesde(inicioSemana(/* @__PURE__ */ new Date()));
+    setHasta(todayISO());
+  }
+  function irSemanaAnterior() {
+    const d2 = /* @__PURE__ */ new Date();
+    d2.setDate(d2.getDate() - 7);
+    const ini = inicioSemana(d2);
+    const fin = new Date(ini);
+    fin.setDate(fin.getDate() + 6);
+    setDesde(ini);
+    setHasta(aISO(fin));
+  }
+  const estadoHoy = activos.map((e2) => {
+    const deHoy = fichajes.filter((f22) => f22.empleadoId === e2.id && f22.fecha === todayISO()).sort((a22, b2) => (a22.hora || "").localeCompare(b2.hora || ""));
+    const entradas = deHoy.filter((f22) => f22.tipo === "entrada");
+    const salidas = deHoy.filter((f22) => f22.tipo === "salida");
+    const abierto = entradas.length > salidas.length;
+    return { empleado: e2, ultimaEntrada: entradas[entradas.length - 1], abierto, totalFichajesHoy: deHoy.length };
+  });
+  const filasHistorial = (0, import_react4.useMemo)(() => {
+    const grupos = {};
+    fichajes.filter((f22) => f22.fecha >= desde && f22.fecha <= hasta).forEach((f22) => {
+      const key = `${f22.empleadoId}-${f22.fecha}`;
+      if (!grupos[key]) grupos[key] = { empleadoId: f22.empleadoId, fecha: f22.fecha, entradas: [], salidas: [] };
+      if (f22.tipo === "entrada") grupos[key].entradas.push(f22);
+      else grupos[key].salidas.push(f22);
+    });
+    return Object.values(grupos).map((g2) => {
+      const emp = empleados.find((e2) => e2.id === g2.empleadoId);
+      const entrada = g2.entradas.sort((a22, b2) => a22.hora.localeCompare(b2.hora))[0];
+      const salida = g2.salidas.sort((a22, b2) => a22.hora.localeCompare(b2.hora)).slice(-1)[0];
+      let horas = null;
+      if (entrada && salida) {
+        const [h1, m1] = entrada.hora.split(":").map(Number);
+        const [h22, m22] = salida.hora.split(":").map(Number);
+        horas = (h22 * 60 + m22 - (h1 * 60 + m1)) / 60;
+      }
+      return { ...g2, nombre: emp ? emp.nombre : "\u2014", entrada, salida, horas };
+    });
+  }, [fichajes, desde, hasta, empleados]);
+  function textoRegistro() {
+    const lineas = filasHistorial.sort((a22, b2) => a22.fecha.localeCompare(b2.fecha) || a22.nombre.localeCompare(b2.nombre)).map((f22) => `${f22.fecha} \xB7 ${f22.nombre} \xB7 Entrada ${f22.entrada ? f22.entrada.hora : "\u2014"} \xB7 Salida ${f22.salida ? f22.salida.hora : "sin fichar"} \xB7 ${f22.horas !== null ? f22.horas.toFixed(2) + " h" : ""}`);
+    return `REGISTRO HORARIO
+Del ${desde} al ${hasta}
+
+${lineas.join("\n")}
+
+Generado el ${(/* @__PURE__ */ new Date()).toLocaleString("es-ES")}`;
+  }
+  function copiarRegistro() {
+    const texto = textoRegistro();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texto).then(() => setCopiado(true)).catch(() => setCopiado(false));
+    }
+  }
+  function submitManual() {
+    if (!manual.empleadoId) {
+      setManualError("Selecciona un empleado.");
+      return;
+    }
+    setManualError("");
+    addFichajeManual({
+      empleadoId: manual.empleadoId,
+      fecha: manual.fecha,
+      tipo: manual.tipo,
+      hora: manual.hora,
+      timestamp: (/* @__PURE__ */ new Date(`${manual.fecha}T${manual.hora}:00`)).toISOString(),
+      manual: true
+    });
+    setShowManual(false);
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Registro horario"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Desde 2019, todas las empresas en Espa\xF1a est\xE1n obligadas a llevar un registro diario de la jornada de cada persona trabajadora, sea cual sea su tama\xF1o. Este registro se debe conservar 4 a\xF1os y estar disponible para la Inspecci\xF3n de Trabajo si lo pide.")), fichajesAbiertos.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "Fichajes sin cerrar"), fichajesAbiertos.map((f22, i33) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i33, className: "text-[12px]" }, f22.nombre, " \u2014 entr\xF3 el ", f22.fecha, " y no consta salida"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Hoy"), activos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "A\xF1ade empleados activos en Personal para poder ficharles." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-3 mb-4" }, estadoHoy.map(({ empleado, ultimaEntrada, abierto }) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: empleado.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium text-[13.5px]" }, empleado.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, abierto ? `Entr\xF3 a las ${ultimaEntrada.hora}` : ultimaEntrada ? "Jornada cerrada" : "Sin fichar hoy")), /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: abierto ? C2.accent : C2.inkSoft }, abierto ? "Trabajando" : "Fuera")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, disabled: abierto, onClick: () => fichar(empleado.id, "entrada") }, /* @__PURE__ */ import_react4.default.createElement(LogIn, { size: 13 }), " Entrada"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", disabled: !abierto, onClick: () => fichar(empleado.id, "salida") }, /* @__PURE__ */ import_react4.default.createElement(LogOut, { size: 13 }), " Salida"))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium", style: { color: C2.inkSoft } }, "Historial"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setShowManual(true) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 13 }), " Correcci\xF3n manual"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setShowExportar(true) }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 13 }), " Exportar"))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-wrap gap-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irEstaSemana }, "Esta semana"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irSemanaAnterior }, "Semana anterior")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Desde" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: desde, onChange: (e2) => setDesde(e2.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hasta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: hasta, onChange: (e2) => setHasta(e2.target.value) })))), filasHistorial.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin fichajes en este periodo." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, filasHistorial.sort((a22, b2) => b2.fecha.localeCompare(a22.fecha) || a22.nombre.localeCompare(b2.nombre)).map((f22, i33) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: i33 }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium" }, f22.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, f22.fecha)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, f22.entrada ? f22.entrada.hora : "\u2014", " \u2192 ", f22.salida ? f22.salida.hora : "sin salida"), f22.horas !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mono", style: { color: C2.accent } }, f22.horas.toFixed(2), " h")))))), showManual && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowManual(false), title: "Correcci\xF3n manual de fichaje" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Empleado" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: manual.empleadoId, onChange: (e2) => setManual({ ...manual, empleadoId: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, activos.map((e2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: e2.id, value: e2.id }, e2.nombre)))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-3 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Fecha" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: manual.fecha, onChange: (e2) => setManual({ ...manual, fecha: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tipo" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: manual.tipo, onChange: (e2) => setManual({ ...manual, tipo: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "entrada" }, "Entrada"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "salida" }, "Salida"))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hora" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "time", value: manual.hora, onChange: (e2) => setManual({ ...manual, hora: e2.target.value }) }))), manualError && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, manualError), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitManual }, "Guardar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowManual(false) }, "Cancelar"))), showExportar && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowExportar(false), title: "Exportar registro horario" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2" }, "Copia este texto y gu\xE1rdalo (o p\xE9galo en un documento). Es tu justificante del registro horario del periodo seleccionado, por si te lo pide la Inspecci\xF3n de Trabajo."), /* @__PURE__ */ import_react4.default.createElement(
+    "textarea",
+    {
+      readOnly: true,
+      value: textoRegistro(),
+      onFocus: (e2) => e2.target.select(),
+      className: "w-full rounded-lg p-2 text-[11px] mono mb-3",
+      style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, height: 180, resize: "none" }
+    }
+  ), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: copiarRegistro }, copiado ? "\xA1Copiado!" : "Copiar texto"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowExportar(false) }, "Cerrar"))));
+}
+function SelectorAlergenos({ seleccionados = [], onCambio, soloLectura = false, nombreParaSugerir = "" }) {
+  function alternar(id) {
+    if (soloLectura) return;
+    onCambio(seleccionados.includes(id) ? seleccionados.filter((x3) => x3 !== id) : [...seleccionados, id]);
+  }
+  const sugeridos = soloLectura ? [] : sugerirAlergenosDeTexto(nombreParaSugerir).filter((id) => !seleccionados.includes(id));
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, sugeridos.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "rounded-lg p-2.5 mb-2.5", style: { background: C2.amberSoft, border: `1px solid ${C2.amber}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-1.5", style: { color: C2.ink } }, "Por el nombre, podr\xEDa llevar (rev\xEDsalo, no se marca solo):"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-wrap gap-1.5" }, sugeridos.map((id) => {
+    const a22 = alergenoPorId(id);
+    if (!a22) return null;
+    return /* @__PURE__ */ import_react4.default.createElement(
+      "button",
+      {
+        key: id,
+        type: "button",
+        onClick: () => alternar(id),
+        className: "text-[11.5px] font-medium px-2.5 py-1.5 rounded-lg flex items-center gap-1",
+        style: { background: C2.surface, border: `1px dashed ${C2.amber}`, color: C2.ink }
+      },
+      /* @__PURE__ */ import_react4.default.createElement("span", null, a22.icono),
+      /* @__PURE__ */ import_react4.default.createElement("span", null, a22.nombre),
+      /* @__PURE__ */ import_react4.default.createElement("span", { style: { color: C2.accent } }, "+")
+    );
+  }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-wrap gap-1.5" }, ALERGENOS.map((a22) => {
+    const activo = seleccionados.includes(a22.id);
+    return /* @__PURE__ */ import_react4.default.createElement(
+      "button",
+      {
+        key: a22.id,
+        type: "button",
+        onClick: () => alternar(a22.id),
+        className: "text-[11.5px] font-medium px-2.5 py-1.5 rounded-lg flex items-center gap-1",
+        style: {
+          background: activo ? C2.amberSoft : C2.surface,
+          border: `1px solid ${activo ? C2.amber : C2.line}`,
+          color: activo ? C2.ink : C2.inkSoft,
+          cursor: soloLectura ? "default" : "pointer"
+        }
+      },
+      /* @__PURE__ */ import_react4.default.createElement("span", null, a22.icono),
+      /* @__PURE__ */ import_react4.default.createElement("span", null, a22.nombre)
+    );
+  })), !soloLectura && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Marca los que contenga este producto. Son los 14 de declaraci\xF3n obligatoria (Reglamento UE 1169/2011)."));
+}
+var TIPOS_PUNTO = [
+  { id: "temperatura", label: "Temperatura (c\xE1mara, nevera, congelador)", unidad: "\xB0C" },
+  { id: "limpieza", label: "Limpieza y desinfecci\xF3n", unidad: "" },
+  { id: "recepcion", label: "Control en recepci\xF3n de mercanc\xEDa", unidad: "\xB0C" },
+  { id: "otro", label: "Otro control", unidad: "" }
+];
+function Appcc({
+  puntosControl,
+  registrosAppcc,
+  addPuntoControl,
+  updatePuntoControl,
+  deletePuntoControl,
+  registrarAppcc,
+  eliminarRegistroAppcc,
+  appccPendientesHoy,
+  productos,
+  fichasCosto,
+  alergenosDeFicha
+}) {
+  const [vista, setVista] = (0, import_react4.useState)("hoy");
+  const [showPunto, setShowPunto] = (0, import_react4.useState)(false);
+  const [puntoForm, setPuntoForm] = (0, import_react4.useState)({ nombre: "", tipo: "temperatura", tempMin: "", tempMax: "", frecuencia: "Diaria" });
+  const [puntoError, setPuntoError] = (0, import_react4.useState)("");
+  const [registroPara, setRegistroPara] = (0, import_react4.useState)(null);
+  const [registroForm, setRegistroForm] = (0, import_react4.useState)({ valor: "", conforme: true, observaciones: "", responsable: "" });
+  const [desde, setDesde] = (0, import_react4.useState)(primerDiaMes(/* @__PURE__ */ new Date()));
+  const [hasta, setHasta] = (0, import_react4.useState)(todayISO());
+  const [copiado, setCopiado] = (0, import_react4.useState)(false);
+  function submitPunto() {
+    if (!puntoForm.nombre.trim()) {
+      setPuntoError("Ponle nombre al punto de control.");
+      return;
+    }
+    setPuntoError("");
+    addPuntoControl({
+      nombre: puntoForm.nombre.trim(),
+      tipo: puntoForm.tipo,
+      tempMin: puntoForm.tempMin === "" ? null : Number(puntoForm.tempMin),
+      tempMax: puntoForm.tempMax === "" ? null : Number(puntoForm.tempMax),
+      frecuencia: puntoForm.frecuencia
+    });
+    setPuntoForm({ nombre: "", tipo: "temperatura", tempMin: "", tempMax: "", frecuencia: "Diaria" });
+    setShowPunto(false);
+  }
+  function abrirRegistro(punto) {
+    setRegistroPara(punto);
+    setRegistroForm({ valor: "", conforme: true, observaciones: "", responsable: "" });
+  }
+  function evaluarConformidad(punto, valor) {
+    if (punto.tipo !== "temperatura" && punto.tipo !== "recepcion") return null;
+    const v22 = Number(valor);
+    if (valor === "" || isNaN(v22)) return null;
+    if (punto.tempMin != null && v22 < punto.tempMin) return false;
+    if (punto.tempMax != null && v22 > punto.tempMax) return false;
+    return true;
+  }
+  function submitRegistro() {
+    const auto = evaluarConformidad(registroPara, registroForm.valor);
+    registrarAppcc({
+      puntoId: registroPara.id,
+      puntoNombre: registroPara.nombre,
+      tipo: registroPara.tipo,
+      valor: registroForm.valor,
+      conforme: auto === null ? registroForm.conforme : auto,
+      observaciones: registroForm.observaciones,
+      responsable: registroForm.responsable
+    });
+    setRegistroPara(null);
+  }
+  const registrosPeriodo = registrosAppcc.filter((r2) => r2.fecha >= desde && r2.fecha <= hasta).sort((a22, b2) => (b2.fecha + b2.hora).localeCompare(a22.fecha + a22.hora));
+  const noConformes = registrosPeriodo.filter((r2) => r2.conforme === false);
+  const cartaAlergenos = (0, import_react4.useMemo)(() => {
+    const filas = [];
+    (fichasCosto || []).forEach((f22) => {
+      filas.push({ id: "f-" + f22.id, nombre: f22.nombre, alergenos: alergenosDeFicha(f22), origen: "ficha" });
+    });
+    (productos || []).filter((p22) => p22.tipo === "elaborado" && !(fichasCosto || []).some((f22) => f22.productoVinculadoId === p22.id)).forEach((p22) => {
+      filas.push({ id: "p-" + p22.id, nombre: p22.nombre, alergenos: p22.alergenos || [], origen: "producto" });
+    });
+    return filas.sort((a22, b2) => a22.nombre.localeCompare(b2.nombre));
+  }, [fichasCosto, productos, alergenosDeFicha]);
+  function textoRegistroAppcc() {
+    const lineas = registrosPeriodo.map(
+      (r2) => `${r2.fecha} ${r2.hora} \xB7 ${r2.puntoNombre} \xB7 ${r2.valor || "\u2014"} \xB7 ${r2.conforme ? "CONFORME" : "NO CONFORME"}${r2.observaciones ? " \xB7 " + r2.observaciones : ""}${r2.responsable ? " \xB7 " + r2.responsable : ""}`
+    );
+    return `REGISTRO APPCC
+Del ${desde} al ${hasta}
+
+${lineas.join("\n")}
+
+No conformidades: ${noConformes.length}
+Generado el ${(/* @__PURE__ */ new Date()).toLocaleString("es-ES")}`;
+  }
+  function copiar() {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(textoRegistroAppcc()).then(() => setCopiado(true)).catch(() => setCopiado(false));
+    }
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Control sanitario (APPCC)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mb-4 overflow-x-auto" }, [
+
+
+===== ENCARGOS_UI 4858562:4877919 =====
+function Encargos({ encargosPendientes, encargos, clientes, productos, addEncargo, updateEncargo, deleteEncargo, entregarEncargo, addCliente }) {
+  const [showForm, setShowForm] = (0, import_react4.useState)(false);
+  const [editingId, setEditingId] = (0, import_react4.useState)(null);
+  const [form, setForm] = (0, import_react4.useState)(null);
+  const [error, setError] = (0, import_react4.useState)("");
+  const [confirmDeleteId, setConfirmDeleteId] = (0, import_react4.useState)(null);
+  const [entregarId, setEntregarId] = (0, import_react4.useState)(null);
+  const [medioPagoEntrega, setMedioPagoEntrega] = (0, import_react4.useState)("Efectivo");
+  const [verEntregados, setVerEntregados] = (0, import_react4.useState)(false);
+  const [clienteNuevo, setClienteNuevo] = (0, import_react4.useState)("");
+  const vendibles = productos.filter((p22) => p22.tipo === "elaborado" || Number(p22.precioVenta) > 0);
+  function nuevo() {
+    setForm({
+      clienteId: clientes[0]?.id || "",
+      numero: "",
+      fechaEntrega: todayISO(),
+      horaEntrega: "",
+      notas: "",
+      se\u00F1al: "",
+      se\u00F1alMedioPago: "Efectivo",
+      lineas: [lineaEncargo()]
+    });
+    setEditingId(null);
+    setError("");
+    setShowForm(true);
+  }
+  function abrirEdicion(e2) {
+    setForm({
+      clienteId: e2.clienteId || "",
+      numero: e2.numero || "",
+      fechaEntrega: e2.fechaEntrega || todayISO(),
+      horaEntrega: e2.horaEntrega || "",
+      notas: e2.notas || "",
+      se\u00F1al: e2.se\u00F1al ?? "",
+      se\u00F1alMedioPago: e2.se\u00F1alMedioPago || "Efectivo",
+      lineas: (e2.lineas || []).map((l22) => ({ ...l22 }))
+    });
+    setEditingId(e2.id);
+    setError("");
+    setShowForm(true);
+  }
+  function setLinea(idx, campo, valor) {
+    setForm((f22) => ({
+      ...f22,
+      lineas: f22.lineas.map((l22, i33) => {
+        if (i33 !== idx) return l22;
+        if (campo === "productoId") {
+          const p22 = productos.find((x3) => x3.id === valor);
+          return { ...l22, productoId: valor, descripcion: p22 ? p22.nombre : l22.descripcion, precioUnitario: p22 ? precioNeto(p22).toFixed(2) : l22.precioUnitario };
+        }
+        return { ...l22, [campo]: valor };
+      })
+    }));
+  }
+  const addLinea = () => setForm((f22) => ({ ...f22, lineas: [...f22.lineas, lineaEncargo()] }));
+  const quitarLinea = (idx) => setForm((f22) => ({ ...f22, lineas: f22.lineas.filter((_22, i33) => i33 !== idx) }));
+  const totalForm = !form ? 0 : form.lineas.reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
+  function submit() {
+    if (!form.clienteId) {
+      setError("Selecciona o crea un cliente.");
+      return;
+    }
+    setError("");
+    const datos = { ...form, lineas: form.lineas.map((l22) => ({ ...l22 })) };
+    const resultado = editingId ? updateEncargo(editingId, datos) : addEncargo(datos);
+    if (!resultado || resultado.ok === false) {
+      setError(resultado?.error || "No se pudo guardar el encargo.");
+      return;
+    }
+    setShowForm(false);
+    setForm(null);
+    setEditingId(null);
+  }
+  function crearClienteRapido() {
+    if (!clienteNuevo.trim()) return;
+    const c22 = addCliente({ nombre: clienteNuevo.trim() });
+    setForm((f22) => ({ ...f22, clienteId: c22.id }));
+    setClienteNuevo("");
+  }
+  const entregados = encargos.filter((e2) => e2.estado === "Entregado");
+  function colorDias(d2) {
+    if (d2 === null) return C2.inkSoft;
+    if (d2 < 0) return C2.red;
+    if (d2 <= 2) return C2.amber;
+    return C2.ink;
+  }
+  function textoDias(d2) {
+    if (d2 === null) return "Sin fecha";
+    if (d2 < 0) return `Se pas\xF3 hace ${Math.abs(d2)} d`;
+    if (d2 === 0) return "\xA1Hoy!";
+    if (d2 === 1) return "Ma\xF1ana";
+    return `En ${d2} d\xEDas`;
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: nuevo }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Nuevo encargo") }, "Encargos"), showForm && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3" }, editingId ? "Editando encargo" : "Nuevo encargo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Cliente" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.clienteId, onChange: (e2) => setForm({ ...form, clienteId: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Selecciona\u2026"), clientes.map((c22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: c22.id, value: c22.id }, c22.nombre)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Referencia del encargo (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.numero, onChange: (e2) => setForm({ ...form, numero: e2.target.value }), placeholder: "E-001" }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 items-end mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex-1" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "\xBFCliente nuevo? Cr\xE9alo aqu\xED mismo"), /* @__PURE__ */ import_react4.default.createElement(Input, { value: clienteNuevo, onChange: (e2) => setClienteNuevo(e2.target.value), placeholder: "Nombre del cliente" })), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: crearClienteRapido }, "Crear")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Fecha de entrega" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: form.fechaEntrega, onChange: (e2) => setForm({ ...form, fechaEntrega: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hora (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "time", value: form.horaEntrega, onChange: (e2) => setForm({ ...form, horaEntrega: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Se\xF1al / anticipo (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: form.se\u00F1al, onChange: (e2) => setForm({ ...form, se\u00F1al: e2.target.value }) }))), Number(form.se\u00F1al) > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "C\xF3mo se ha cobrado la se\xF1al" }, /* @__PURE__ */ import_react4.default.createElement(
+    "select",
+    {
+      value: form.se\u00F1alMedioPago || "Efectivo",
+      onChange: (e2) => setForm({ ...form, se\u00F1alMedioPago: e2.target.value }),
+      className: "w-full rounded-lg px-3 py-2 text-[13px]",
+      style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink }
+    },
+    /* @__PURE__ */ import_react4.default.createElement("option", null, "Efectivo"),
+    /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"),
+    /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"),
+    /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro")
+  ))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Productos del encargo"), form.lineas.map((l22, idx) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: idx, className: "mb-2", style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12px] font-semibold" }, "L\xEDnea ", idx + 1), /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", onClick: () => quitarLinea(idx), "aria-label": "Quitar l\xEDnea" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 16, color: C2.inkSoft }))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Producto del cat\xE1logo" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: l22.productoId, onChange: (e2) => setLinea(idx, "productoId", e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "\u2014 Escribirlo a mano \u2014"), vendibles.map((p22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: p22.id, value: p22.id }, p22.nombre)))), !l22.productoId && /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Descripci\xF3n" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: l22.descripcion, onChange: (e2) => setLinea(idx, "descripcion", e2.target.value), placeholder: "Tarta personalizada 6 personas" })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-3 gap-x-2" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Cantidad" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: l22.cantidad, onChange: (e2) => setLinea(idx, "cantidad", e2.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio ud. (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: l22.precioUnitario, onChange: (e2) => setLinea(idx, "precioUnitario", e2.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Subtotal" }, /* @__PURE__ */ import_react4.default.createElement(Input, { readOnly: true, value: fmt((Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0)), style: { background: C2.bg } }))))), /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", onClick: addLinea, className: "text-[12.5px] font-medium mb-3", style: { color: C2.accent } }, "+ A\xF1adir producto"), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Notas para el obrador" }, /* @__PURE__ */ import_react4.default.createElement("textarea", { value: form.notas, onChange: (e2) => setForm({ ...form, notas: e2.target.value }), className: "w-full rounded-lg p-2 text-[12.5px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, height: 70, resize: "vertical" }, placeholder: "Sin gluten, felicitaci\xF3n 'Feliz cumplea\xF1os Ana'\u2026" })), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12.5px] font-medium" }, "Total del encargo"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-bold text-[17px]" }, "\u20AC", fmt(totalForm))), Number(form.se\u00F1al) > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12px] mt-1", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement("span", null, "Pendiente de cobrar al entregar"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, "\u20AC", fmt(totalForm - Number(form.se\u00F1al))))), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submit }, editingId ? "Guardar cambios" : "Guardar encargo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+    setShowForm(false);
+    setForm(null);
+    setEditingId(null);
+  } }, "Cancelar"))), encargosPendientes.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay encargos pendientes." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, encargosPendientes.map((e2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id, style: { borderLeft: `3px solid ${colorDias(e2.dias)}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold" }, e2.cliente ? e2.cliente.nombre : "Sin cliente"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, e2.fechaEntrega, e2.horaEntrega && ` \xB7 ${e2.horaEntrega}`, e2.numero && ` \xB7 ${e2.numero}`)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold", style: { color: colorDias(e2.dias) } }, textoDias(e2.dias)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold mt-0.5" }, "\u20AC", fmt(e2.total)))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 text-[12px] space-y-0.5" }, (e2.lineas || []).map((l22, i33) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i33 }, "\xB7 ", l22.cantidad, " \xD7 ", l22.descripcion || "\u2014"))), e2.notas && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 text-[11.5px] p-2 rounded-lg", style: { background: C2.amberSoft } }, e2.notas), Number(e2.se\u00F1al) > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-2", style: { color: C2.inkSoft } }, "Se\xF1al cobrada \u20AC", fmt(e2.se\u00F1al), " \xB7 pendiente \u20AC", fmt(e2.total - Number(e2.se\u00F1al))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 flex gap-2 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => {
+    setEntregarId(e2.id);
+    setMedioPagoEntrega("Efectivo");
+  } }, /* @__PURE__ */ import_react4.default.createElement(CircleCheck, { size: 13 }), " Entregar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => abrirEdicion(e2) }, "Editar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", onClick: () => setConfirmDeleteId(e2.id) }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 13 }), " Eliminar"))))), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setVerEntregados((s22) => !s22), className: "text-[12.5px] font-medium mt-4 mb-2", style: { color: C2.accent } }, verEntregados ? "Ocultar" : "Ver", " encargos entregados (", entregados.length, ")"), verEntregados && /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, entregados.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has entregado ninguno." }) : entregados.map((e2) => {
+    const cliente = clientes.find((c22) => c22.id === e2.clienteId);
+    const total = (e2.lineas || []).reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id, style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, cliente ? cliente.nombre : "\u2014", " \xB7 ", e2.fechaEntregaReal || e2.fechaEntrega), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, "\u20AC", fmt(total))));
+  })), entregarId && (() => {
+    const e2 = encargos.find((x3) => x3.id === entregarId);
+    if (!e2) return null;
+    const total = (e2.lineas || []).reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
+    const resto = Math.max(0, total - (Number(e2.se\u00F1al) || 0));
+    return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setEntregarId(null), title: "Entregar encargo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-4" }, "Al entregar, se descuenta el stock de los productos del cat\xE1logo y se registra la venta, as\xED que entrar\xE1 en tus Resultados. Los productos escritos a mano no descuentan stock."), resto > 9e-3 && /* @__PURE__ */ import_react4.default.createElement(Field, { label: `C\xF3mo se cobra el resto (\u20AC${fmt(resto)})` }, /* @__PURE__ */ import_react4.default.createElement(
+      "select",
+      {
+        value: medioPagoEntrega,
+        onChange: (ev) => setMedioPagoEntrega(ev.target.value),
+        className: "w-full rounded-lg px-3 py-2 text-[13px]",
+        style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink }
+      },
+      /* @__PURE__ */ import_react4.default.createElement("option", null, "Efectivo"),
+      /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"),
+      /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"),
+      /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro")
+    )), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
+      entregarEncargo(e2, medioPagoEntrega);
+      setEntregarId(null);
+    } }, "Confirmar entrega"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setEntregarId(null) }, "Cancelar")));
+  })(), confirmDeleteId && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmDeleteId(null), title: "Eliminar encargo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-4" }, "Se borra el encargo. Esta acci\xF3n no se puede deshacer."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: () => {
+    deleteEncargo(confirmDeleteId);
+    setConfirmDeleteId(null);
+  } }, "S\xED, eliminar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmDeleteId(null) }, "Cancelar"))));
+}
+
+
+===== LOGICA_PEDIDOS 4217738:4221041 =====
+function crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedores, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId }) {
+  function pedidoEsDelLocalActivo(pedido) {
+    if (!pedido) return false;
+    if (!localActivoId) return false;
+    return pedido.localId === localActivoId;
+  }
+  function crearPedido(data) {
+    const validacion = validarPedidoPM10(data, { proveedores, productos, localActivoId });
+    if (!validacion.ok) return validacion;
+    const { proveedorId, fechaEsperada, items } = validacion.datos;
+    const pedido = {
+      id: uid(),
+      localId: localActivoId,
+      proveedorId,
+      fecha: todayISO(),
+      fechaEsperada,
+      estado: "Pendiente",
+      items
+    };
+    setPedidos((s22) => [pedido, ...s22]);
+    return pedido;
+  }
+  function actualizarPedido(pedidoId, data) {
+    const actual = pedidos2.find((pe2) => pe2.id === pedidoId);
+    if (!pedidoEsDelLocalActivo(actual)) return errorValidacionPM10("contexto_no_autorizado", "localId", "Pedido fuera del local activo.");
+    const validacion = validarPedidoPM10(data, { pedidoActual: actual, proveedores, productos, localActivoId });
+    if (!validacion.ok) return validacion;
+    const { proveedorId, fechaEsperada, items } = validacion.datos;
+    setPedidos(
+      (s22) => s22.map(
+        (pe2) => pe2.id === pedidoId ? { ...pe2, proveedorId, fechaEsperada, items } : pe2
+      )
+    );
+    return true;
+  }
+  function eliminarPedido(pedidoId) {
+    const actual = pedidos2.find((pe2) => pe2.id === pedidoId);
+    if (!pedidoEsDelLocalActivo(actual)) return false;
+    setPedidos((s22) => s22.filter((pe2) => pe2.id !== pedidoId));
+    return true;
+  }
+  function cerrarPedido(pedidoId) {
+    const actual = pedidos2.find((pe2) => pe2.id === pedidoId);
+    if (!pedidoEsDelLocalActivo(actual)) return false;
+    setPedidos((s22) => s22.map((pe2) => pe2.id === pedidoId ? { ...pe2, estado: "Recibido", cerradoManualmente: true } : pe2));
+    return true;
+  }
+  function recibirPedido(pedidoId, lineas) {
+    if (almacenCongelado) return errorValidacionPM10("conflicto_estado_previo", "almacen", "El almacén está congelado por un conteo en curso.");
+    const pedido = pedidos2.find((pe2) => pe2.id === pedidoId);
+    if (!pedidoEsDelLocalActivo(pedido)) return errorValidacionPM10("contexto_no_autorizado", "pedidoId", "Pedido fuera del local activo.");
+    const validacion = validarRecepcionPedidoPM10({ pedido, lineas, productos, localActivoId, modo: "directo" });
+    if (!validacion.ok) return validacion;
+    const resultado = procesarRecepcion({
+      lineas: validacion.lineas,
+      proveedorId: pedido.proveedorId,
+      fecha: todayISO(),
+      documentoTipo: "pedido",
+      documentoId: pedido.id,
+      documentoNumero: pedido.id.slice(-6)
+    });
+    if (!resultado || !Array.isArray(resultado.lineasResueltas)) return errorValidacionPM10("conflicto_estado_previo", "recepcion", "No se pudo completar la recepción.");
+    setPedidos((s22) => s22.map((pe2) => pe2.id === pedidoId ? aplicarRecepcionPedidoPM10(pe2, resultado.lineasResueltas) : pe2));
+    return { ok: true, avisos: resultado.avisos || [], lineasResueltas: resultado.lineasResueltas };
+  }
+  return { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido };
+}
+
+
+===== LOGICA_PERSONAL 4129997:4134961 =====
+function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId }) {
+  const empleadoEsDelLocalActivoPersonal = (e2) => !!e2 && (!localActivoId || e2.localId === localActivoId);
+  function addEmpleado(data) {
+    const validacion = validarEmpleadoPM10(data, { localActivoId });
+    if (!validacion.ok) return validacion;
+    const nuevo = { id: uid(), activo: true, documentos: [], ...validacion.datos, localId: localActivoId };
+    setEmpleados((s22) => [...s22, nuevo]);
+    return nuevo;
+  }
+  async function crearCuentaEmpleado(empleadoId, { nombre, email, password, rol }) {
+    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return { ok: false, error: "El empleado no pertenece al local activo." };
+    try {
+      const supabase = await window.getSupabaseClient();
+      const { data: sesion } = await supabase.auth.getSession();
+      const token = sesion?.session?.access_token;
+      if (!token) return { ok: false, error: "No hay sesi\xF3n activa \u2014 vuelve a iniciar sesi\xF3n." };
+      const resp = await fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/crear-cuenta-empleado", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ empleadoId, nombre, email, password, rol })
+      });
+      const r2 = await resp.json();
+      if (!r2.ok) return r2;
+      setEmpleados((s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, tieneCuenta: true, rolCuenta: rol, emailCuenta: email } : e2));
+      registrarAuditoria("Crear cuenta de empleado", `${nombre} \xB7 ${rol} \xB7 ${email}`);
+      return { ok: true };
+    } catch (e2) {
+      return { ok: false, error: "No se ha podido conectar: " + (e2?.message || "error de red") };
+    }
+  }
+  function updateEmpleado(id, data) {
+    const actual = empleados.find((e2) => e2.id === id);
+    if (!empleadoEsDelLocalActivoPersonal(actual) || !localActivoId) return errorValidacionPM10("contexto_no_autorizado", "empleadoId", "El empleado no pertenece al local activo.");
+    const validacion = validarEmpleadoPM10({ ...actual, ...data, localId: actual.localId || localActivoId }, { localActivoId });
+    if (!validacion.ok) return validacion;
+    setEmpleados((s22) => s22.map((e2) => e2.id === id ? { ...e2, ...validacion.datos, localId: e2.localId || localActivoId } : e2));
+    return true;
+  }
+  function deleteEmpleado(id) {
+    const e2 = empleados.find((x3) => x3.id === id);
+    if (!empleadoEsDelLocalActivoPersonal(e2)) return false;
+    registrarAuditoria("Eliminar empleado", e2.nombre);
+    setEmpleados((s22) => s22.filter((e22) => e22.id !== id));
+    if (setNominas) setNominas((s22) => s22.filter((n2) => n2.empleadoId !== id));
+    return true;
+  }
+  function anonimizarEmpleado(id) {
+    const e2 = empleados.find((x3) => x3.id === id);
+    if (!empleadoEsDelLocalActivoPersonal(e2)) return false;
+    registrarAuditoria("Anonimizar empleado", e2.nombre);
+    setEmpleados(
+      (s22) => s22.map(
+        (emp) => emp.id === id ? {
+          ...emp,
+          nombre: "Empleado anonimizado",
+          dni: "",
+          pin: "",
+          documentos: [],
+          ausencias: [],
+          anonimizado: true,
+          activo: false
+        } : emp
+      )
+    );
+  }
+  function registrarAusencia(empleadoId, ausencia) {
+    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
+    setEmpleados(
+      (s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, ausencias: [...e2.ausencias || [], { id: uid(), ...ausencia }] } : e2)
+    );
+  }
+  function eliminarAusencia(empleadoId, ausenciaId) {
+    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
+    setEmpleados(
+      (s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, ausencias: (e2.ausencias || []).filter((a22) => a22.id !== ausenciaId) } : e2)
+    );
+  }
+  function registrarEpi(empleadoId, epi) {
+    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
+    setEmpleados(
+      (s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, epis: [...e2.epis || [], { id: uid(), fecha: todayISO(), ...epi }] } : e2)
+    );
+  }
+  function eliminarEpi(empleadoId, epiId) {
+    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
+    setEmpleados(
+      (s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, epis: (e2.epis || []).filter((x3) => x3.id !== epiId) } : e2)
+    );
+  }
+  return { addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado };
+}
+
+
+===== LOGICA_ENCARGOS 4250203:4254100 =====
+function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes = [], setProductos, setMovimientos, venderLineas, localActivoId, empresaId = null }) {
+  function localDeEncargo(e2) {
+    if (!e2) return null;
+    if (e2.localId) return e2.localId;
+    const ids = [...new Set((e2.lineas || []).map((ln2) => productos.find((p22) => p22.id === ln2.productoId)?.localId).filter(Boolean))];
+    return ids.length === 1 ? ids[0] : null;
+  }
+  function encargoEsDelLocalActivo(e2) {
+    if (!e2) return false;
+    if (!localActivoId) return true;
+    return localDeEncargo(e2) === localActivoId;
+  }
+  function addEncargo(data) {
+    const fecha = todayISO();
+    const validacion = validarEncargoPM10(data, { productos, clientes, localActivoId, empresaId, fechaCreacion: fecha });
+    if (!validacion.ok) return validacion;
+    const datos = validacion.datos;
+    const cobros = sincronizarCobroSe\u00F1al([], datos.se\u00F1al, datos.se\u00F1alMedioPago, fecha);
+    const nuevo = { ...datos, id: uid(), estado: "Pendiente", fechaCreacion: fecha, cobros, localId: localActivoId };
+    setEncargos((s22) => [nuevo, ...s22]);
+    return nuevo;
+  }
+  function updateEncargo(id, data) {
+    const actual = encargos.find((e2) => e2.id === id);
+    if (!actual || !encargoEsDelLocalActivo(actual)) return errorValidacionPM10("contexto_no_autorizado", "encargoId", "El encargo no pertenece al local activo.");
+    const candidato = { ...actual, ...data, id: actual.id, localId: actual.localId || localActivoId };
+    const validacion = validarEncargoPM10(candidato, { productos, clientes, localActivoId, empresaId, fechaCreacion: actual.fechaCreacion || todayISO() });
+    if (!validacion.ok) return validacion;
+    setEncargos(
+      (s22) => s22.map((e2) => {
+        if (e2.id !== id) return e2;
+        const actualizado = { ...e2, ...validacion.datos, id: e2.id, localId: e2.localId || localActivoId };
+        if ("se\xF1al" in data || "se\xF1alMedioPago" in data) {
+          actualizado.cobros = sincronizarCobroSe\u00F1al(e2.cobros, actualizado.se\u00F1al, actualizado.se\u00F1alMedioPago, e2.fechaCreacion);
+        }
+        return actualizado;
+      })
+    );
+    return true;
+  }
+  function deleteEncargo(id) {
+    const actual = encargos.find((e22) => e22.id === id);
+    if (!encargoEsDelLocalActivo(actual)) return false;
+    const e2 = encargos.find((x3) => x3.id === id);
+    registrarAuditoria("Eliminar encargo", e2 ? `${e2.numero || "s/n"}` : id);
+    setEncargos((s22) => s22.filter((e22) => e22.id !== id));
+  }
+  function entregarEncargo(encargo, medioPago = "Efectivo") {
+    const actual = encargos.find((e2) => e2.id === encargo);
+    if (!encargoEsDelLocalActivo(actual)) return false;
+    const lineasParaVender = (encargo.lineas || []).map((ln2) => ({
+      productoId: ln2.productoId,
+      cantidad: ln2.cantidad,
+      precioUnitario: ln2.precioUnitario
+    }));
+    venderLineas(lineasParaVender, {
+      tipo: "VENTA_ENCARGO",
+      medioPago,
+      origen: "entregarEncargo",
+      documentoOrigenId: encargo.id,
+      motivoBase: `Encargo ${encargo.numero || ""}`.trim(),
+      extraPorLinea: () => ({ encargoId: encargo.id, clienteId: encargo.clienteId })
+    });
+    const total = (encargo.lineas || []).reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
+    const se\u00F1al = Number(encargo.se\u00F1al) || 0;
+    const resto = Math.max(0, total - se\u00F1al);
+    const cobrosSinResto = (encargo.cobros || []).filter((c22) => c22.concepto !== "Resto entrega");
+    const cobros = resto > 9e-3 ? [...cobrosSinResto, { id: uid(), concepto: "Resto entrega", importe: resto, medioPago, fecha: todayISO() }] : cobrosSinResto;
+    updateEncargo(encargo.id, { estado: "Entregado", fechaEntregaReal: todayISO(), cobros });
+  }
+  return { addEncargo, updateEncargo, deleteEncargo, entregarEncargo };
+}
+
+
+===== SAVE productos 4032638 =====
+r2 : { ...r2, localId: localPorPuntoMigracion.get(r2.puntoId) || localActivoFinal || null });
+      const freidorasFinales = (fre || []).map((f22) => f22.localId ? f22 : { ...f22, localId: localPorProductoMigracion.get(f22.productoAceiteId) || localActivoFinal || null });
+      const localPorFreidoraMigracion = new Map(freidorasFinales.map((f22) => [f22.id, f22.localId || localActivoFinal || null]));
+      const registrosAceiteFinales = (rac || []).map((r2) => r2.localId ? r2 : { ...r2, localId: localPorFreidoraMigracion.get(r2.freidoraId) || localPorProductoMigracion.get(r2.productoAceiteId) || localActivoFinal || null });
+      setLocales(localesFinales);
+      setLocalActivoId(localActivoFinal);
+      setProductos(productosFinales);
+      setMovimientos(movimientosFinales);
+      setAlbaranes(albaranesFinales);
+      setPedidos(pedidosFinales);
+      setEncargos(encargosFinales);
+      setGastosGenerales(gastosFinales);
+      setFacturasDirectas(facturasDirectasFinales);
+      setEmpleados(empleadosFinales);
+      setFichajes(fichajesFinales);
+      setTurnos(turnosFinales);
+      setNominas(nominasFinales);
+      setArqueos(arqueosFinales);
+      setMovimientosCaja(movimientosCajaFinales);
+      setFichasCosto(fichasCostoFinales);
+      setOrdenesProduccion(ordenesProduccionFinales);
+      setPuntosControl(puntosControlFinales);
+      setRegistrosAppcc(registrosAppccFinales);
+      setFreidoras(freidorasFinales);
+      setRegistrosAceite(registrosAceiteFinales);
+      if (JSON.stringify(localesFinales) !== JSON.stringify(Array.isArray(loc) ? loc : [])) await saveKey("locales", localesFinales);
+      if (localActivoFinal !== (lai || null)) await saveKey("localActivoId", localActivoFinal);
+      if (JSON.stringify(productosFinales) !== JSON.stringify(pr || [])) await saveKey("productos", productosFinales);
+      if (JSON.stringify(movimientosFinales) !== JSON.stringify(mo || [])) await saveKey("movimientos", movimientosFinales);
+      if (JSON.stringify(albaranesFinales) !== JSON.stringify(alLimpios || [])) await saveKey("albaranes", albaranesFinales);
+      if (JSON.stringify(pedidosFinales) !== JSON.stringify(pe2 || [])) await saveKey("pedidos", pedidosFinales);
+      if (JSON.stringify(encargosFinales) !== JSON.stringify(en || [])) await saveKey("encargos", encargosFinales);
+      if (JSON.stringify(gastosFinales) !== JSON.stringify(gg || [])) await saveKey("gastosGenerales", gastosFinales);
+      if (JSON.stringify(facturasDirectasFinales) !== JSON.stringify(fd2 || [])) await saveKey("facturasDirectas", facturasDirectasFinales);
+      if (JSON.stringify(empleadosFinales) !== JSON.stringify(em || [])) await saveKey("empleados", empleadosFinales);
+      if (JSON.stringify(fichajesFinales) !== JSON.stringify(fj || [])) await saveKey("fichajes", fichajesFinales);
+      if (JSON.stringify(turnosFinales) !== JSON.stringify(tu || [])) await saveKey("turnos", turnosFinales);
+      if (JSON.stringify(nominasFinales) !== JSON.stringify(nom || [])) await saveKey("nominas", nominasFinales);
+      if (JSON.stringify(arqueosFinales) !== JSON.stringify(aq || [])) await saveKey("arqueos", arqueosFinales);
+      if (JSON.stringify(movimientosCajaFinales) !== JSON.stringify(mc || [])) await saveKey("movimientosCaja", movimientosCajaFinales);
+      if (JSON.stringify(fichasCostoFinales) !== JSON.stringify(fc || [])) await saveKey("fichasCosto", fichasCostoFinales);
+      if (JSON.stringify(ordenesProduccionFinales) !== JSON.stringify(op || [])) await saveKey("ordenesProduccion", ordenesProduccionFinales);
+      if (JSON.stringify(puntosControlFinales) !== JSON.stringify(pc || [])) await saveKey("puntosControl", puntosControlFinales);
+      if (JSON.stringify(registrosAppccFinales) !== JSON.stringify(ra || [])) await saveKey("registrosAppcc", registrosAppccFinales);
+      if (JSON.stringify(freidorasFinales) !== JSON.stringify(fre || [])) await saveKey("freidoras", freidorasFinales);
+      if (JSON.stringify(registrosAceiteFinales) !== JSON.stringify(rac || [])) await saveKey("registrosAceite", registrosAceiteFinales);
+      setReady(true);
+      if (habiaFotos) await saveKey("albaranes", albaranesFinales);
+      setTimeout(() => {
+        skipSaveRef.current = false;
+      }, 400);
+      if (!autoSnapshotRef.current) {
+        autoSnapshotRef.current = true;
+        const tieneDatos = p22.length || pr.length || pe2.length || mo.length || co.length || fc.length || al.length || em.length;
+        const hoy = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+        const yaHayUnoDeHoy = hi.some((h22) => h22.automatica && (h22.fecha || "").slice(0, 10) === hoy);
+        if (tieneDatos && !yaHayUnoDeHoy) {
+          const snapshot = {
+            id: uid(),
+            fecha: (/* @__PURE__ */ new Date()).toISOString(),
+ 
+
+===== SAVE productos 4036603 =====
+fy(registrosAceiteFinales) !== JSON.stringify(rac || [])) await saveKey("registrosAceite", registrosAceiteFinales);
+      setReady(true);
+      if (habiaFotos) await saveKey("albaranes", albaranesFinales);
+      setTimeout(() => {
+        skipSaveRef.current = false;
+      }, 400);
+      if (!autoSnapshotRef.current) {
+        autoSnapshotRef.current = true;
+        const tieneDatos = p22.length || pr.length || pe2.length || mo.length || co.length || fc.length || al.length || em.length;
+        const hoy = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+        const yaHayUnoDeHoy = hi.some((h22) => h22.automatica && (h22.fecha || "").slice(0, 10) === hoy);
+        if (tieneDatos && !yaHayUnoDeHoy) {
+          const snapshot = {
+            id: uid(),
+            fecha: (/* @__PURE__ */ new Date()).toISOString(),
+            automatica: true,
+            motivo: "automatico-diario",
+            backupVersion: 3,
+            data: { proveedores: p22, productos: pr, pedidos: pe2, movimientos: mo, conteos: co, fichasCosto: fc, albaranes: alLimpios, catalogoProv: cp, gastosGenerales: gg, empleados: em, fichajes: fj, registrosAppcc: ra, puntosControl: pc, clientes: cl, encargos: en, arqueos: aq, turnos: tu, nominas: nom, facturasDirectas: fd2, ordenesProduccion: op, traspasos: tr, auditoria: au, freidoras: fre, registrosAceite: rac }
+          };
+          const historialFinal = [snapshot, ...hi].slice(0, 30);
+          setHistorial(historialFinal);
+          await saveKey("historialRespaldos", historialFinal);
+        }
+      }
+    })();
+  }, []);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("proveedores", proveedores);
+  }, [proveedores, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("productos", productos);
+  }, [productos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("pedidos", pedidos2);
+  }, [pedidos2, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("movimientos", movimientos);
+  }, [movimientos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("conteos", conteos);
+  }, [conteos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("fichasCosto", fichasCosto);
+  }, [fichasCosto, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("historialRespaldos", historial);
+  }, [historial, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("albaranes", albaranes);
+  }, [albaranes, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("catalogoProv", catalogoProv);
+  }, [catalogoProv, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("gastosGenerales", gastosGenerales);
+  }, [gastosGenerales, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("empleados", empleados);
+  }, [empleados, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("fichajes", fichajes);
+  }, [fichajes, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("disenoMenu", disenoMenu);
+  }, [disenoMenu, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("registrosAppcc", registrosAppcc);
+  }, [registrosAppcc, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("freidoras", freidoras);
+  }, [freidoras, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("registrosAceite", registrosAceite);
+  }, [registrosAceite, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("puntosControl", puntosControl);
+  }, [puntosControl, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("clientes", clientes);
+  }, [clientes, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("encargos", encargos);
+  }, [encargos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("arqueos", arqueos);
+  }, [arqueos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("movimientosCaja", movimientosCaja);
+  }, [movimientosCaja, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("devoluciones", devoluciones);
+  }, [devoluciones, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("locales", locale
+
+===== SAVE pedidos 4033007 =====
+Id || localActivoFinal || null]));
+      const registrosAceiteFinales = (rac || []).map((r2) => r2.localId ? r2 : { ...r2, localId: localPorFreidoraMigracion.get(r2.freidoraId) || localPorProductoMigracion.get(r2.productoAceiteId) || localActivoFinal || null });
+      setLocales(localesFinales);
+      setLocalActivoId(localActivoFinal);
+      setProductos(productosFinales);
+      setMovimientos(movimientosFinales);
+      setAlbaranes(albaranesFinales);
+      setPedidos(pedidosFinales);
+      setEncargos(encargosFinales);
+      setGastosGenerales(gastosFinales);
+      setFacturasDirectas(facturasDirectasFinales);
+      setEmpleados(empleadosFinales);
+      setFichajes(fichajesFinales);
+      setTurnos(turnosFinales);
+      setNominas(nominasFinales);
+      setArqueos(arqueosFinales);
+      setMovimientosCaja(movimientosCajaFinales);
+      setFichasCosto(fichasCostoFinales);
+      setOrdenesProduccion(ordenesProduccionFinales);
+      setPuntosControl(puntosControlFinales);
+      setRegistrosAppcc(registrosAppccFinales);
+      setFreidoras(freidorasFinales);
+      setRegistrosAceite(registrosAceiteFinales);
+      if (JSON.stringify(localesFinales) !== JSON.stringify(Array.isArray(loc) ? loc : [])) await saveKey("locales", localesFinales);
+      if (localActivoFinal !== (lai || null)) await saveKey("localActivoId", localActivoFinal);
+      if (JSON.stringify(productosFinales) !== JSON.stringify(pr || [])) await saveKey("productos", productosFinales);
+      if (JSON.stringify(movimientosFinales) !== JSON.stringify(mo || [])) await saveKey("movimientos", movimientosFinales);
+      if (JSON.stringify(albaranesFinales) !== JSON.stringify(alLimpios || [])) await saveKey("albaranes", albaranesFinales);
+      if (JSON.stringify(pedidosFinales) !== JSON.stringify(pe2 || [])) await saveKey("pedidos", pedidosFinales);
+      if (JSON.stringify(encargosFinales) !== JSON.stringify(en || [])) await saveKey("encargos", encargosFinales);
+      if (JSON.stringify(gastosFinales) !== JSON.stringify(gg || [])) await saveKey("gastosGenerales", gastosFinales);
+      if (JSON.stringify(facturasDirectasFinales) !== JSON.stringify(fd2 || [])) await saveKey("facturasDirectas", facturasDirectasFinales);
+      if (JSON.stringify(empleadosFinales) !== JSON.stringify(em || [])) await saveKey("empleados", empleadosFinales);
+      if (JSON.stringify(fichajesFinales) !== JSON.stringify(fj || [])) await saveKey("fichajes", fichajesFinales);
+      if (JSON.stringify(turnosFinales) !== JSON.stringify(tu || [])) await saveKey("turnos", turnosFinales);
+      if (JSON.stringify(nominasFinales) !== JSON.stringify(nom || [])) await saveKey("nominas", nominasFinales);
+      if (JSON.stringify(arqueosFinales) !== JSON.stringify(aq || [])) await saveKey("arqueos", arqueosFinales);
+      if (JSON.stringify(movimientosCajaFinales) !== JSON.stringify(mc || [])) await saveKey("movimientosCaja", movimientosCajaFinales);
+      if (JSON.stringify(fichasCostoFinales) !== JSON.stringify(fc || [])) await saveKey("fichasCosto", fichasCostoFinales);
+      if (JSON.stringify(ordenesProduccionFinales) !== JSON.stringify(op || [])) await saveKey("ordenesProduccion", ordenesProduccionFinales);
+      if (JSON.stringify(puntosControlFinales) !== JSON.stringify(pc || [])) await saveKey("puntosControl", puntosControlFinales);
+      if (JSON.stringify(registrosAppccFinales) !== JSON.stringify(ra || [])) await saveKey("registrosAppcc", registrosAppccFinales);
+      if (JSON.stringify(freidorasFinales) !== JSON.stringify(fre || [])) await saveKey("freidoras", freidorasFinales);
+      if (JSON.stringify(registrosAceiteFinales) !== JSON.stringify(rac || [])) await saveKey("registrosAceite", registrosAceiteFinales);
+      setReady(true);
+      if (habiaFotos) await saveKey("albaranes", albaranesFinales);
+      setTimeout(() => {
+        skipSaveRef.current = false;
+      }, 400);
+      if (!autoSnapshotRef.current) {
+        autoSnapshotRef.current = true;
+        const tieneDatos = p22.length || pr.length || pe2.length || mo.length || co.length || fc.length || al.length || em.length;
+        const hoy = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+        const yaHayUnoDeHoy = hi.some((h22) => h22.automatica && (h22.fecha || "").slice(0, 10) === hoy);
+        if (tieneDatos && !yaHayUnoDeHoy) {
+          const snapshot = {
+            id: uid(),
+            fecha: (/* @__PURE__ */ new Date()).toISOString(),
+            automatica: true,
+            motivo: "automatico-diario",
+            backupVersion: 3,
+            data: { proveedores: p22, productos: pr, pedidos: pe2, movimientos: mo, conteos: co, fichasCosto: fc, albaranes: alLimpios, catalogoProv: cp, gastosGenerales: gg, empleados: em, fichajes: fj, registrosAppcc: ra, puntosControl: pc, clientes: cl, encargos: en
+
+===== SAVE pedidos 4036740 =====
+
+      if (habiaFotos) await saveKey("albaranes", albaranesFinales);
+      setTimeout(() => {
+        skipSaveRef.current = false;
+      }, 400);
+      if (!autoSnapshotRef.current) {
+        autoSnapshotRef.current = true;
+        const tieneDatos = p22.length || pr.length || pe2.length || mo.length || co.length || fc.length || al.length || em.length;
+        const hoy = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+        const yaHayUnoDeHoy = hi.some((h22) => h22.automatica && (h22.fecha || "").slice(0, 10) === hoy);
+        if (tieneDatos && !yaHayUnoDeHoy) {
+          const snapshot = {
+            id: uid(),
+            fecha: (/* @__PURE__ */ new Date()).toISOString(),
+            automatica: true,
+            motivo: "automatico-diario",
+            backupVersion: 3,
+            data: { proveedores: p22, productos: pr, pedidos: pe2, movimientos: mo, conteos: co, fichasCosto: fc, albaranes: alLimpios, catalogoProv: cp, gastosGenerales: gg, empleados: em, fichajes: fj, registrosAppcc: ra, puntosControl: pc, clientes: cl, encargos: en, arqueos: aq, turnos: tu, nominas: nom, facturasDirectas: fd2, ordenesProduccion: op, traspasos: tr, auditoria: au, freidoras: fre, registrosAceite: rac }
+          };
+          const historialFinal = [snapshot, ...hi].slice(0, 30);
+          setHistorial(historialFinal);
+          await saveKey("historialRespaldos", historialFinal);
+        }
+      }
+    })();
+  }, []);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("proveedores", proveedores);
+  }, [proveedores, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("productos", productos);
+  }, [productos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("pedidos", pedidos2);
+  }, [pedidos2, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("movimientos", movimientos);
+  }, [movimientos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("conteos", conteos);
+  }, [conteos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("fichasCosto", fichasCosto);
+  }, [fichasCosto, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("historialRespaldos", historial);
+  }, [historial, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("albaranes", albaranes);
+  }, [albaranes, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("catalogoProv", catalogoProv);
+  }, [catalogoProv, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("gastosGenerales", gastosGenerales);
+  }, [gastosGenerales, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("empleados", empleados);
+  }, [empleados, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("fichajes", fichajes);
+  }, [fichajes, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("disenoMenu", disenoMenu);
+  }, [disenoMenu, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("registrosAppcc", registrosAppcc);
+  }, [registrosAppcc, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("freidoras", freidoras);
+  }, [freidoras, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("registrosAceite", registrosAceite);
+  }, [registrosAceite, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("puntosControl", puntosControl);
+  }, [puntosControl, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("clientes", clientes);
+  }, [clientes, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("encargos", encargos);
+  }, [encargos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("arqueos", arqueos);
+  }, [arqueos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("movimientosCaja", movimientosCaja);
+  }, [movimientosCaja, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("devoluciones", devoluciones);
+  }, [devoluciones, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("locales", locales);
+  }, [locales, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("empresas", empresas);
+
+
+===== SAVE empleados 4033498 =====
+      setEncargos(encargosFinales);
+      setGastosGenerales(gastosFinales);
+      setFacturasDirectas(facturasDirectasFinales);
+      setEmpleados(empleadosFinales);
+      setFichajes(fichajesFinales);
+      setTurnos(turnosFinales);
+      setNominas(nominasFinales);
+      setArqueos(arqueosFinales);
+      setMovimientosCaja(movimientosCajaFinales);
+      setFichasCosto(fichasCostoFinales);
+      setOrdenesProduccion(ordenesProduccionFinales);
+      setPuntosControl(puntosControlFinales);
+      setRegistrosAppcc(registrosAppccFinales);
+      setFreidoras(freidorasFinales);
+      setRegistrosAceite(registrosAceiteFinales);
+      if (JSON.stringify(localesFinales) !== JSON.stringify(Array.isArray(loc) ? loc : [])) await saveKey("locales", localesFinales);
+      if (localActivoFinal !== (lai || null)) await saveKey("localActivoId", localActivoFinal);
+      if (JSON.stringify(productosFinales) !== JSON.stringify(pr || [])) await saveKey("productos", productosFinales);
+      if (JSON.stringify(movimientosFinales) !== JSON.stringify(mo || [])) await saveKey("movimientos", movimientosFinales);
+      if (JSON.stringify(albaranesFinales) !== JSON.stringify(alLimpios || [])) await saveKey("albaranes", albaranesFinales);
+      if (JSON.stringify(pedidosFinales) !== JSON.stringify(pe2 || [])) await saveKey("pedidos", pedidosFinales);
+      if (JSON.stringify(encargosFinales) !== JSON.stringify(en || [])) await saveKey("encargos", encargosFinales);
+      if (JSON.stringify(gastosFinales) !== JSON.stringify(gg || [])) await saveKey("gastosGenerales", gastosFinales);
+      if (JSON.stringify(facturasDirectasFinales) !== JSON.stringify(fd2 || [])) await saveKey("facturasDirectas", facturasDirectasFinales);
+      if (JSON.stringify(empleadosFinales) !== JSON.stringify(em || [])) await saveKey("empleados", empleadosFinales);
+      if (JSON.stringify(fichajesFinales) !== JSON.stringify(fj || [])) await saveKey("fichajes", fichajesFinales);
+      if (JSON.stringify(turnosFinales) !== JSON.stringify(tu || [])) await saveKey("turnos", turnosFinales);
+      if (JSON.stringify(nominasFinales) !== JSON.stringify(nom || [])) await saveKey("nominas", nominasFinales);
+      if (JSON.stringify(arqueosFinales) !== JSON.stringify(aq || [])) await saveKey("arqueos", arqueosFinales);
+      if (JSON.stringify(movimientosCajaFinales) !== JSON.stringify(mc || [])) await saveKey("movimientosCaja", movimientosCajaFinales);
+      if (JSON.stringify(fichasCostoFinales) !== JSON.stringify(fc || [])) await saveKey("fichasCosto", fichasCostoFinales);
+      if (JSON.stringify(ordenesProduccionFinales) !== JSON.stringify(op || [])) await saveKey("ordenesProduccion", ordenesProduccionFinales);
+      if (JSON.stringify(puntosControlFinales) !== JSON.stringify(pc || [])) await saveKey("puntosControl", puntosControlFinales);
+      if (JSON.stringify(registrosAppccFinales) !== JSON.stringify(ra || [])) await saveKey("registrosAppcc", registrosAppccFinales);
+      if (JSON.stringify(freidorasFinales) !== JSON.stringify(fre || [])) await saveKey("freidoras", freidorasFinales);
+      if (JSON.stringify(registrosAceiteFinales) !== JSON.stringify(rac || [])) await saveKey("registrosAceite", registrosAceiteFinales);
+      setReady(true);
+      if (habiaFotos) await saveKey("albaranes", albaranesFinales);
+      setTimeout(() => {
+        skipSaveRef.current = false;
+      }, 400);
+      if (!autoSnapshotRef.current) {
+        autoSnapshotRef.current = true;
+        const tieneDatos = p22.length || pr.length || pe2.length || mo.length || co.length || fc.length || al.length || em.length;
+        const hoy = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+        const yaHayUnoDeHoy = hi.some((h22) => h22.automatica && (h22.fecha || "").slice(0, 10) === hoy);
+        if (tieneDatos && !yaHayUnoDeHoy) {
+          const snapshot = {
+            id: uid(),
+            fecha: (/* @__PURE__ */ new Date()).toISOString(),
+            automatica: true,
+            motivo: "automatico-diario",
+            backupVersion: 3,
+            data: { proveedores: p22, productos: pr, pedidos: pe2, movimientos: mo, conteos: co, fichasCosto: fc, albaranes: alLimpios, catalogoProv: cp, gastosGenerales: gg, empleados: em, fichajes: fj, registrosAppcc: ra, puntosControl: pc, clientes: cl, encargos: en, arqueos: aq, turnos: tu, nominas: nom, facturasDirectas: fd2, ordenesProduccion: op, traspasos: tr, auditoria: au, freidoras: fre, registrosAceite: rac }
+          };
+          const historialFinal = [snapshot, ...hi].slice(0, 30);
+          setHistorial(historialFinal);
+          await saveKey("historialRespaldos", historialFinal);
+        }
+      }
+    })();
+  }, []);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("proveedores", proveedores);
+ 
+
+===== SAVE empleados 4037874 =====
+enesProduccion: op, traspasos: tr, auditoria: au, freidoras: fre, registrosAceite: rac }
+          };
+          const historialFinal = [snapshot, ...hi].slice(0, 30);
+          setHistorial(historialFinal);
+          await saveKey("historialRespaldos", historialFinal);
+        }
+      }
+    })();
+  }, []);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("proveedores", proveedores);
+  }, [proveedores, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("productos", productos);
+  }, [productos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("pedidos", pedidos2);
+  }, [pedidos2, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("movimientos", movimientos);
+  }, [movimientos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("conteos", conteos);
+  }, [conteos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("fichasCosto", fichasCosto);
+  }, [fichasCosto, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("historialRespaldos", historial);
+  }, [historial, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("albaranes", albaranes);
+  }, [albaranes, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("catalogoProv", catalogoProv);
+  }, [catalogoProv, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("gastosGenerales", gastosGenerales);
+  }, [gastosGenerales, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("empleados", empleados);
+  }, [empleados, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("fichajes", fichajes);
+  }, [fichajes, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("disenoMenu", disenoMenu);
+  }, [disenoMenu, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("registrosAppcc", registrosAppcc);
+  }, [registrosAppcc, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("freidoras", freidoras);
+  }, [freidoras, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("registrosAceite", registrosAceite);
+  }, [registrosAceite, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("puntosControl", puntosControl);
+  }, [puntosControl, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("clientes", clientes);
+  }, [clientes, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("encargos", encargos);
+  }, [encargos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("arqueos", arqueos);
+  }, [arqueos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("movimientosCaja", movimientosCaja);
+  }, [movimientosCaja, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("devoluciones", devoluciones);
+  }, [devoluciones, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("locales", locales);
+  }, [locales, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("empresas", empresas);
+  }, [empresas, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("configEmpresa", configEmpresa);
+  }, [configEmpresa, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("localActivoId", localActivoId);
+  }, [localActivoId, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("turnos", turnos);
+  }, [turnos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("temaOscuro", temaOscuro);
+  }, [temaOscuro, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("modoEmpleado", modoEmpleado);
+  }, [modoEmpleado, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("pinPropietario", pinPropietario);
+  }, [pinPropietario, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("auditoria", auditoria);
+  }, [auditoria, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("ordenesProduccion", o
+
+===== SAVE encargos 4033121 =====
+{ ...r2, localId: localPorFreidoraMigracion.get(r2.freidoraId) || localPorProductoMigracion.get(r2.productoAceiteId) || localActivoFinal || null });
+      setLocales(localesFinales);
+      setLocalActivoId(localActivoFinal);
+      setProductos(productosFinales);
+      setMovimientos(movimientosFinales);
+      setAlbaranes(albaranesFinales);
+      setPedidos(pedidosFinales);
+      setEncargos(encargosFinales);
+      setGastosGenerales(gastosFinales);
+      setFacturasDirectas(facturasDirectasFinales);
+      setEmpleados(empleadosFinales);
+      setFichajes(fichajesFinales);
+      setTurnos(turnosFinales);
+      setNominas(nominasFinales);
+      setArqueos(arqueosFinales);
+      setMovimientosCaja(movimientosCajaFinales);
+      setFichasCosto(fichasCostoFinales);
+      setOrdenesProduccion(ordenesProduccionFinales);
+      setPuntosControl(puntosControlFinales);
+      setRegistrosAppcc(registrosAppccFinales);
+      setFreidoras(freidorasFinales);
+      setRegistrosAceite(registrosAceiteFinales);
+      if (JSON.stringify(localesFinales) !== JSON.stringify(Array.isArray(loc) ? loc : [])) await saveKey("locales", localesFinales);
+      if (localActivoFinal !== (lai || null)) await saveKey("localActivoId", localActivoFinal);
+      if (JSON.stringify(productosFinales) !== JSON.stringify(pr || [])) await saveKey("productos", productosFinales);
+      if (JSON.stringify(movimientosFinales) !== JSON.stringify(mo || [])) await saveKey("movimientos", movimientosFinales);
+      if (JSON.stringify(albaranesFinales) !== JSON.stringify(alLimpios || [])) await saveKey("albaranes", albaranesFinales);
+      if (JSON.stringify(pedidosFinales) !== JSON.stringify(pe2 || [])) await saveKey("pedidos", pedidosFinales);
+      if (JSON.stringify(encargosFinales) !== JSON.stringify(en || [])) await saveKey("encargos", encargosFinales);
+      if (JSON.stringify(gastosFinales) !== JSON.stringify(gg || [])) await saveKey("gastosGenerales", gastosFinales);
+      if (JSON.stringify(facturasDirectasFinales) !== JSON.stringify(fd2 || [])) await saveKey("facturasDirectas", facturasDirectasFinales);
+      if (JSON.stringify(empleadosFinales) !== JSON.stringify(em || [])) await saveKey("empleados", empleadosFinales);
+      if (JSON.stringify(fichajesFinales) !== JSON.stringify(fj || [])) await saveKey("fichajes", fichajesFinales);
+      if (JSON.stringify(turnosFinales) !== JSON.stringify(tu || [])) await saveKey("turnos", turnosFinales);
+      if (JSON.stringify(nominasFinales) !== JSON.stringify(nom || [])) await saveKey("nominas", nominasFinales);
+      if (JSON.stringify(arqueosFinales) !== JSON.stringify(aq || [])) await saveKey("arqueos", arqueosFinales);
+      if (JSON.stringify(movimientosCajaFinales) !== JSON.stringify(mc || [])) await saveKey("movimientosCaja", movimientosCajaFinales);
+      if (JSON.stringify(fichasCostoFinales) !== JSON.stringify(fc || [])) await saveKey("fichasCosto", fichasCostoFinales);
+      if (JSON.stringify(ordenesProduccionFinales) !== JSON.stringify(op || [])) await saveKey("ordenesProduccion", ordenesProduccionFinales);
+      if (JSON.stringify(puntosControlFinales) !== JSON.stringify(pc || [])) await saveKey("puntosControl", puntosControlFinales);
+      if (JSON.stringify(registrosAppccFinales) !== JSON.stringify(ra || [])) await saveKey("registrosAppcc", registrosAppccFinales);
+      if (JSON.stringify(freidorasFinales) !== JSON.stringify(fre || [])) await saveKey("freidoras", freidorasFinales);
+      if (JSON.stringify(registrosAceiteFinales) !== JSON.stringify(rac || [])) await saveKey("registrosAceite", registrosAceiteFinales);
+      setReady(true);
+      if (habiaFotos) await saveKey("albaranes", albaranesFinales);
+      setTimeout(() => {
+        skipSaveRef.current = false;
+      }, 400);
+      if (!autoSnapshotRef.current) {
+        autoSnapshotRef.current = true;
+        const tieneDatos = p22.length || pr.length || pe2.length || mo.length || co.length || fc.length || al.length || em.length;
+        const hoy = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+        const yaHayUnoDeHoy = hi.some((h22) => h22.automatica && (h22.fecha || "").slice(0, 10) === hoy);
+        if (tieneDatos && !yaHayUnoDeHoy) {
+          const snapshot = {
+            id: uid(),
+            fecha: (/* @__PURE__ */ new Date()).toISOString(),
+            automatica: true,
+            motivo: "automatico-diario",
+            backupVersion: 3,
+            data: { proveedores: p22, productos: pr, pedidos: pe2, movimientos: mo, conteos: co, fichasCosto: fc, albaranes: alLimpios, catalogoProv: cp, gastosGenerales: gg, empleados: em, fichajes: fj, registrosAppcc: ra, puntosControl: pc, clientes: cl, encargos: en, arqueos: aq, turnos: tu, nominas: nom, facturasDirectas: fd2, ordenesProduccion: op, traspasos: tr, auditoria: a
+
+===== SAVE encargos 4039012 =====
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("historialRespaldos", historial);
+  }, [historial, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("albaranes", albaranes);
+  }, [albaranes, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("catalogoProv", catalogoProv);
+  }, [catalogoProv, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("gastosGenerales", gastosGenerales);
+  }, [gastosGenerales, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("empleados", empleados);
+  }, [empleados, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("fichajes", fichajes);
+  }, [fichajes, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("disenoMenu", disenoMenu);
+  }, [disenoMenu, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("registrosAppcc", registrosAppcc);
+  }, [registrosAppcc, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("freidoras", freidoras);
+  }, [freidoras, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("registrosAceite", registrosAceite);
+  }, [registrosAceite, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("puntosControl", puntosControl);
+  }, [puntosControl, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("clientes", clientes);
+  }, [clientes, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("encargos", encargos);
+  }, [encargos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("arqueos", arqueos);
+  }, [arqueos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("movimientosCaja", movimientosCaja);
+  }, [movimientosCaja, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("devoluciones", devoluciones);
+  }, [devoluciones, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("locales", locales);
+  }, [locales, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("empresas", empresas);
+  }, [empresas, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("configEmpresa", configEmpresa);
+  }, [configEmpresa, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("localActivoId", localActivoId);
+  }, [localActivoId, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("turnos", turnos);
+  }, [turnos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("temaOscuro", temaOscuro);
+  }, [temaOscuro, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("modoEmpleado", modoEmpleado);
+  }, [modoEmpleado, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("pinPropietario", pinPropietario);
+  }, [pinPropietario, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("auditoria", auditoria);
+  }, [auditoria, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("ordenesProduccion", ordenesProduccion);
+  }, [ordenesProduccion, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("traspasos", traspasos);
+  }, [traspasos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("usuarioActivoId", usuarioActivoId);
+  }, [usuarioActivoId, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("facturasDirectas", facturasDirectas);
+  }, [facturasDirectas, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready) saveKey("pagosFacturas", pagosFacturas);
+  }, [pagosFacturas, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("entrevistas", entrevistas);
+  }, [entrevistas, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("nominas", nominas);
+  }, [nominas, ready]);
+  const itemsPermitidosEmpleado = (0, import_react4.useMemo)(() => {
+    if (miPerfil && miPerfil.rol && ROLES_EMPLEADO[miPerfil.rol]) {
+      return ROLES_EMPLEADO[miPerfil.rol];
+    }
+    const activo = usuarioActivoId ? empleados.fin
+
+===== SAVE movimientos 4032759 =====
+s = (fre || []).map((f22) => f22.localId ? f22 : { ...f22, localId: localPorProductoMigracion.get(f22.productoAceiteId) || localActivoFinal || null });
+      const localPorFreidoraMigracion = new Map(freidorasFinales.map((f22) => [f22.id, f22.localId || localActivoFinal || null]));
+      const registrosAceiteFinales = (rac || []).map((r2) => r2.localId ? r2 : { ...r2, localId: localPorFreidoraMigracion.get(r2.freidoraId) || localPorProductoMigracion.get(r2.productoAceiteId) || localActivoFinal || null });
+      setLocales(localesFinales);
+      setLocalActivoId(localActivoFinal);
+      setProductos(productosFinales);
+      setMovimientos(movimientosFinales);
+      setAlbaranes(albaranesFinales);
+      setPedidos(pedidosFinales);
+      setEncargos(encargosFinales);
+      setGastosGenerales(gastosFinales);
+      setFacturasDirectas(facturasDirectasFinales);
+      setEmpleados(empleadosFinales);
+      setFichajes(fichajesFinales);
+      setTurnos(turnosFinales);
+      setNominas(nominasFinales);
+      setArqueos(arqueosFinales);
+      setMovimientosCaja(movimientosCajaFinales);
+      setFichasCosto(fichasCostoFinales);
+      setOrdenesProduccion(ordenesProduccionFinales);
+      setPuntosControl(puntosControlFinales);
+      setRegistrosAppcc(registrosAppccFinales);
+      setFreidoras(freidorasFinales);
+      setRegistrosAceite(registrosAceiteFinales);
+      if (JSON.stringify(localesFinales) !== JSON.stringify(Array.isArray(loc) ? loc : [])) await saveKey("locales", localesFinales);
+      if (localActivoFinal !== (lai || null)) await saveKey("localActivoId", localActivoFinal);
+      if (JSON.stringify(productosFinales) !== JSON.stringify(pr || [])) await saveKey("productos", productosFinales);
+      if (JSON.stringify(movimientosFinales) !== JSON.stringify(mo || [])) await saveKey("movimientos", movimientosFinales);
+      if (JSON.stringify(albaranesFinales) !== JSON.stringify(alLimpios || [])) await saveKey("albaranes", albaranesFinales);
+      if (JSON.stringify(pedidosFinales) !== JSON.stringify(pe2 || [])) await saveKey("pedidos", pedidosFinales);
+      if (JSON.stringify(encargosFinales) !== JSON.stringify(en || [])) await saveKey("encargos", encargosFinales);
+      if (JSON.stringify(gastosFinales) !== JSON.stringify(gg || [])) await saveKey("gastosGenerales", gastosFinales);
+      if (JSON.stringify(facturasDirectasFinales) !== JSON.stringify(fd2 || [])) await saveKey("facturasDirectas", facturasDirectasFinales);
+      if (JSON.stringify(empleadosFinales) !== JSON.stringify(em || [])) await saveKey("empleados", empleadosFinales);
+      if (JSON.stringify(fichajesFinales) !== JSON.stringify(fj || [])) await saveKey("fichajes", fichajesFinales);
+      if (JSON.stringify(turnosFinales) !== JSON.stringify(tu || [])) await saveKey("turnos", turnosFinales);
+      if (JSON.stringify(nominasFinales) !== JSON.stringify(nom || [])) await saveKey("nominas", nominasFinales);
+      if (JSON.stringify(arqueosFinales) !== JSON.stringify(aq || [])) await saveKey("arqueos", arqueosFinales);
+      if (JSON.stringify(movimientosCajaFinales) !== JSON.stringify(mc || [])) await saveKey("movimientosCaja", movimientosCajaFinales);
+      if (JSON.stringify(fichasCostoFinales) !== JSON.stringify(fc || [])) await saveKey("fichasCosto", fichasCostoFinales);
+      if (JSON.stringify(ordenesProduccionFinales) !== JSON.stringify(op || [])) await saveKey("ordenesProduccion", ordenesProduccionFinales);
+      if (JSON.stringify(puntosControlFinales) !== JSON.stringify(pc || [])) await saveKey("puntosControl", puntosControlFinales);
+      if (JSON.stringify(registrosAppccFinales) !== JSON.stringify(ra || [])) await saveKey("registrosAppcc", registrosAppccFinales);
+      if (JSON.stringify(freidorasFinales) !== JSON.stringify(fre || [])) await saveKey("freidoras", freidorasFinales);
+      if (JSON.stringify(registrosAceiteFinales) !== JSON.stringify(rac || [])) await saveKey("registrosAceite", registrosAceiteFinales);
+      setReady(true);
+      if (habiaFotos) await saveKey("albaranes", albaranesFinales);
+      setTimeout(() => {
+        skipSaveRef.current = false;
+      }, 400);
+      if (!autoSnapshotRef.current) {
+        autoSnapshotRef.current = true;
+        const tieneDatos = p22.length || pr.length || pe2.length || mo.length || co.length || fc.length || al.length || em.length;
+        const hoy = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+        const yaHayUnoDeHoy = hi.some((h22) => h22.automatica && (h22.fecha || "").slice(0, 10) === hoy);
+        if (tieneDatos && !yaHayUnoDeHoy) {
+          const snapshot = {
+            id: uid(),
+            fecha: (/* @__PURE__ */ new Date()).toISOString(),
+            automatica: true,
+            motivo: "automatico-diario",
+            backupVersion: 3,
+            data: { p
+
+===== SAVE movimientos 4036873 =====
+    }, 400);
+      if (!autoSnapshotRef.current) {
+        autoSnapshotRef.current = true;
+        const tieneDatos = p22.length || pr.length || pe2.length || mo.length || co.length || fc.length || al.length || em.length;
+        const hoy = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+        const yaHayUnoDeHoy = hi.some((h22) => h22.automatica && (h22.fecha || "").slice(0, 10) === hoy);
+        if (tieneDatos && !yaHayUnoDeHoy) {
+          const snapshot = {
+            id: uid(),
+            fecha: (/* @__PURE__ */ new Date()).toISOString(),
+            automatica: true,
+            motivo: "automatico-diario",
+            backupVersion: 3,
+            data: { proveedores: p22, productos: pr, pedidos: pe2, movimientos: mo, conteos: co, fichasCosto: fc, albaranes: alLimpios, catalogoProv: cp, gastosGenerales: gg, empleados: em, fichajes: fj, registrosAppcc: ra, puntosControl: pc, clientes: cl, encargos: en, arqueos: aq, turnos: tu, nominas: nom, facturasDirectas: fd2, ordenesProduccion: op, traspasos: tr, auditoria: au, freidoras: fre, registrosAceite: rac }
+          };
+          const historialFinal = [snapshot, ...hi].slice(0, 30);
+          setHistorial(historialFinal);
+          await saveKey("historialRespaldos", historialFinal);
+        }
+      }
+    })();
+  }, []);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("proveedores", proveedores);
+  }, [proveedores, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("productos", productos);
+  }, [productos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("pedidos", pedidos2);
+  }, [pedidos2, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("movimientos", movimientos);
+  }, [movimientos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("conteos", conteos);
+  }, [conteos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("fichasCosto", fichasCosto);
+  }, [fichasCosto, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("historialRespaldos", historial);
+  }, [historial, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("albaranes", albaranes);
+  }, [albaranes, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("catalogoProv", catalogoProv);
+  }, [catalogoProv, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("gastosGenerales", gastosGenerales);
+  }, [gastosGenerales, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("empleados", empleados);
+  }, [empleados, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("fichajes", fichajes);
+  }, [fichajes, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("disenoMenu", disenoMenu);
+  }, [disenoMenu, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("registrosAppcc", registrosAppcc);
+  }, [registrosAppcc, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("freidoras", freidoras);
+  }, [freidoras, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("registrosAceite", registrosAceite);
+  }, [registrosAceite, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("puntosControl", puntosControl);
+  }, [puntosControl, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("clientes", clientes);
+  }, [clientes, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("encargos", encargos);
+  }, [encargos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("arqueos", arqueos);
+  }, [arqueos, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("movimientosCaja", movimientosCaja);
+  }, [movimientosCaja, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("devoluciones", devoluciones);
+  }, [devoluciones, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("locales", locales);
+  }, [locales, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("empresas", empresas);
+  }, [empresas, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (ready && !skipSaveRef.current) saveKey("configEmpresa", confi
