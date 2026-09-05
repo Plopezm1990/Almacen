@@ -7,13 +7,17 @@ s = SRC.read_text(encoding='utf-8')
 
 markers = [
     r'function\s+Resultados\w*\s*\(',
-    r'\bResultados\s*=\s*',
-    r'Punto de equilibrio',
-    r'Coste de ventas',
-    r'Coste de venta',
-    r'Ingresos',
-    r'beneficio',
+    r'function\s+esVenta\s*\(',
+    r'function\s+esSalida\s*\(',
+    r'function\s+sincronizarStockPm07\s*\(',
+    r'function\s+anularVenta\s*\(',
+    r'REVERSO',
+    r'DEVOLUCION_CLIENTE',
     r'ingresoUnitario',
+    r'costoUnitario',
+    r'ventaOperationId',
+    r'movimiento_original_id',
+    r'movimientoOriginalId',
 ]
 
 lines = [
@@ -27,9 +31,9 @@ seen = set()
 for pat in markers:
     matches = list(re.finditer(pat, s, re.I))
     lines.append(f'PATRON {pat!r}: {len(matches)} coincidencias')
-    for i, m in enumerate(matches[:12], 1):
-        start = max(0, m.start() - 1800)
-        end = min(len(s), m.end() + 4200)
+    for i, m in enumerate(matches[:20], 1):
+        start = max(0, m.start() - 2200)
+        end = min(len(s), m.end() + 5200)
         key = (start, end)
         if key in seen:
             continue
@@ -42,7 +46,7 @@ for pat in markers:
             '',
         ]
 
-# Extrae el bloque completo si el componente mantiene nombre de función.
+# Extrae bloques completos de funciones relevantes cuando conservan nombre.
 def function_block(name):
     rx = re.compile(r'(?:async\s+)?function\s+' + re.escape(name) + r'\s*\(')
     ms = list(rx.finditer(s))
@@ -91,12 +95,12 @@ def function_block(name):
                 return s[start:pos + 1], 1
     return None, 1
 
-block, count = function_block('Resultados')
-lines += ['', f'BLOQUE function Resultados: coincidencias={count}']
-if block is not None:
-    # Evita generar un artefacto desproporcionado.
-    lines.append(block[:60000])
-    lines.append(f'BLOQUE_TRUNCADO={1 if len(block) > 60000 else 0}; longitud={len(block)}')
+for name in ('Resultados', 'esVenta', 'esSalida', 'sincronizarStockPm07', 'anularVenta'):
+    block, count = function_block(name)
+    lines += ['', f'BLOQUE function {name}: coincidencias={count}']
+    if block is not None:
+        lines.append(block[:90000])
+        lines.append(f'BLOQUE_TRUNCADO={1 if len(block) > 90000 else 0}; longitud={len(block)}')
 
 OUT.parent.mkdir(parents=True, exist_ok=True)
 OUT.write_text('\n'.join(lines), encoding='utf-8')
