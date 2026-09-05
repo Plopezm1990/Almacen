@@ -3,8 +3,9 @@ from pathlib import Path
 p = Path('fuente.js')
 s = p.read_text(encoding='utf-8')
 
-anchor = 'function crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, addGasto, localActivoId, almacenCongelado }) {'
-if anchor not in s:
+anchor = 'function crearLogicaProductos('
+idx = s.find(anchor)
+if idx < 0:
     raise SystemExit('No se encontró crearLogicaProductos')
 
 helper = r'''function errorValidacionPM10(codigo, campo, error) {
@@ -49,7 +50,7 @@ function validarProductoPM10(data, { parcial = false } = {}) {
   return { ok: true, datos: salida };
 }
 '''
-s = s.replace(anchor, helper + anchor, 1)
+s = s[:idx] + helper + s[idx:]
 
 old_add = '''  function addProducto(data) {\n    const nuevo = { id: uid(), stock: Number(data.stock) || 0, ...data, localId: localActivoId || data.localId || null };\n    setProductos((s22) => [...s22, nuevo]);\n    const stockInicial = Number(data.stock) || 0;'''
 new_add = '''  function addProducto(data) {\n    const validacion = validarProductoPM10(data, { parcial: false });\n    if (!validacion.ok) return validacion;\n    const datosValidos = validacion.datos;\n    const stockInicial = Object.prototype.hasOwnProperty.call(datosValidos, "stock") ? datosValidos.stock : 0;\n    const nuevo = { id: uid(), ...datosValidos, stock: stockInicial, localId: localActivoId || datosValidos.localId || null };\n    setProductos((s22) => [...s22, nuevo]);'''
@@ -63,8 +64,10 @@ if old_update not in s:
     raise SystemExit('No se encontró bloque updateProducto')
 s = s.replace(old_update, new_update, 1)
 
-# El stock ya está validado y no debe usar fallback que convierta NaN/negativos.
-s = s.replace('      const valorNuevo = Number(stockNuevoForm) || 0;\n      const dif = valorNuevo - stockTeoricoAntes;', '      const valorNuevo = stockNuevoForm;\n      const dif = valorNuevo - stockTeoricoAntes;', 1)
+old_stock = '      const valorNuevo = Number(stockNuevoForm) || 0;\n      const dif = valorNuevo - stockTeoricoAntes;'
+if old_stock not in s:
+    raise SystemExit('No se encontró normalización de stock updateProducto')
+s = s.replace(old_stock, '      const valorNuevo = stockNuevoForm;\n      const dif = valorNuevo - stockTeoricoAntes;', 1)
 
 old_quick = '''  function guardarProductoNuevo() {\n    if (!nuevoProd.nombre.trim()) return;\n    const creado = addProducto({\n      nombre: nuevoProd.nombre.trim(),\n      unidad: nuevoProd.unidad || "unidad",\n      tipo: "materia_prima",\n      costo: Number(nuevoProd.costo) || 0,\n      ivaCompra: 10,\n      proveedorId: proveedorId || "",\n      stock: 0,\n      stockMinimo: 0\n    });\n    setItems((s22) => s22.map((it2, i33) => i33 === creandoNuevoIdx ? { ...it2, productoId: creado.id, costoUnitario: creado.costo } : it2));\n    setCreandoNuevoIdx(null);\n  }'''
 new_quick = '''  function guardarProductoNuevo() {\n    if (!nuevoProd.nombre.trim()) {\n      setError("Escribe el nombre del producto.");\n      return;\n    }\n    const creado = addProducto({\n      nombre: nuevoProd.nombre.trim(),\n      unidad: nuevoProd.unidad || "unidad",\n      tipo: "materia_prima",\n      costo: nuevoProd.costo,\n      ivaCompra: 10,\n      proveedorId: proveedorId || "",\n      stock: 0,\n      stockMinimo: 0\n    });\n    if (!creado || creado.ok === false) {\n      setError(creado?.error || "No se pudo crear el producto.");\n      return;\n    }\n    setError("");\n    setItems((s22) => s22.map((it2, i33) => i33 === creandoNuevoIdx ? { ...it2, productoId: creado.id, costoUnitario: creado.costo } : it2));\n    setCreandoNuevoIdx(null);\n  }'''
