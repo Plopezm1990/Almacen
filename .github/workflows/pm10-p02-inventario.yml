@@ -1,0 +1,40 @@
+name: PM10 Punto 2 inventario validaciones
+on:
+  push:
+    branches: [pm10-validaciones-altas-datos-legados]
+    paths:
+      - '.github/workflows/pm10-p02-inventario.yml'
+      - 'fuente.js'
+permissions:
+  contents: read
+jobs:
+  inventario:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extraer validaciones actuales del bundle exacto
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('fuente.js')
+          s=p.read_text(encoding='utf-8')
+          print('PM10_P02_BYTES=',len(s.encode()))
+          patterns={
+            'PRODUCTOS':['unidadesPorCaja','stockMinimo','stockMin','precioVenta','pvp','coste'],
+            'PEDIDOS':['pedidos','pedido','cantidadPedida','cantidadPedido','crearPedido'],
+            'RECEPCION':['recepcion','recibirPedido','cantidadRecibida','recibido'],
+            'PERSONAL':['salario','vacaciones','pagas','horasSemanales','horas'],
+            'ENCARGOS':['encargo','anticipo','fechaEntrega','clienteId','Sin cliente']
+          }
+          for grupo, terms in patterns.items():
+            print(f'\n===== {grupo} =====')
+            seen=[]
+            for term in terms:
+              matches=list(re.finditer(re.escape(term),s,re.I))[:12]
+              print(f'-- TERM {term} MATCHES_TOTAL_CAP={len(matches)}')
+              for i,m in enumerate(matches,1):
+                a=max(0,m.start()-900); b=min(len(s),m.end()+1200)
+                snippet=s[a:b].replace('\n','\\n')
+                print(f'[{grupo}:{term}:{i}] OFFSET={m.start()} :: {snippet}')
+          PY
