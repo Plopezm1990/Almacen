@@ -8,7 +8,7 @@ const contrato = fs.readFileSync('tests/pm10/P03_CONTRATO_VALIDACION.md','utf8')
 for (const texto of [
   'parsear → validar → resolver contexto/referencias → mutar → persistir',
   'Toda operación cubierta por PM10 debe validar el objeto completo antes de la primera mutación.',
-  'No se normalizarán masivamente datos históricos en silencio',
+  'no se normalizarán masivamente datos históricos en silencio',
   '“Todos los locales” es consolidación de lectura, no contexto de escritura'
 ]) assert.ok(contrato.includes(texto), `falta contrato congelado: ${texto}`);
 
@@ -70,7 +70,7 @@ assert.match(tests.p08,/legado/i);
 assert.match(tests.p08,/cero mutaciones|mutaciones\(\), 0/);
 assert.match(tests.p08,/otra empresa|cliente de otra empresa|referencia_otro_contexto/i);
 
-// 6) Evidencias de cierre presentes y LA-017/LA-018 marcadas VALIDADO.
+// 6) Evidencias de cierre presentes y cierres JSON marcados VALIDADO.
 for (const path of [
   'tests/pm10/P04_LA011_PRODUCTOS_EVIDENCIA.md',
   'tests/pm10/P05_PEDIDOS_EVIDENCIA.json',
