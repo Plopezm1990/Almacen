@@ -1,0 +1,23 @@
+name: PM09 Punto 11 debug IVA
+on:
+  push:
+    branches: [pm09-conciliacion-ventas-analitica]
+    paths:
+      - 'tools/debug_pm09_p11_patch.py'
+      - '.github/workflows/pm09-p11-debug.yml'
+permissions:
+  contents: write
+jobs:
+  debug:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pm09-conciliacion-ventas-analitica
+      - run: python tools/debug_pm09_p11_patch.py
+      - run: |
+          git config user.name "Plopezm1990"
+          git config user.email "pedroroger1990@gmail.com"
+          git add tests/pm09/P11_PATCH_DEBUG.txt
+          git commit -m "PM09: conservar depuracion IVA punto 11" || exit 0
+          git push origin HEAD:pm09-conciliacion-ventas-analitica
