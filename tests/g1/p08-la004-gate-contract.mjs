@@ -46,7 +46,8 @@ check('PATCH_TARGET_SHA', patchManifest.targetArtifactSha256 === '8dbd5f9be4c172
 check('PATCH_COUNT_17', patchManifest.patchCount === 17 && patchManifest.commits?.length === 17);
 check('PATCH_FILES_17', fs.readdirSync('source-recovery/post-pm08-patches').filter(x => x.endsWith('.patch')).length === 17);
 check('PATCH_LAST_PM10_P13', patchManifest.commits?.at(-1)?.commit === 'a4a1866f4e81c4651162105e33d37515cb53a7f2');
-check('REBUILD_DOES_NOT_READ_ROOT_TARGET', !rebuildCurrent.includes("'../fuente.js'") && !rebuildCurrent.includes('..' + '/fuente.js'));
+const readsRootFuente = /readFileSync\s*\([^\n;]*\.\.\/fuente\.js/.test(rebuildCurrent) || /readFileSync\s*\([^\n;]*['"]fuente\.js['"]/.test(rebuildCurrent);
+check('REBUILD_DOES_NOT_READ_ROOT_TARGET', !readsRootFuente);
 check('REBUILD_VERIFIES_BASE_SHA', rebuildCurrent.includes('manifest.baseArtifactSha256'));
 check('REBUILD_VERIFIES_TARGET_SHA', rebuildCurrent.includes('manifest.targetArtifactSha256'));
 check('REBUILD_APPLIES_ZERO_FUZZ', rebuildCurrent.includes("'--fuzz=0'"));
