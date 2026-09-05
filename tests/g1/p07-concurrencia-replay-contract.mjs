@@ -11,7 +11,7 @@ function check(name, ok) {
   if (!ok) process.exitCode = 1;
 }
 
-check('DEC03_STABLE_OPERATION_ID', /operationId/i.test(dec) && /mismo operationId/i.test(dec));
+check('DEC03_STABLE_OPERATION_ID', dec.includes('Toda operación crítica utiliza un `operationId` estable e idempotente.') && dec.includes('mismo `operationId`'));
 check('DEC03_NO_INDEPENDENT_FALLBACK', /sin.*fallback|no.*fallback|fallback independiente/i.test(dec));
 check('ADVISORY_XACT_LOCK', p08.includes("pg_advisory_xact_lock(hashtextextended('la-suite-pm08:' || p_operation_id, 0))"));
 check('PM09_GLOBAL_HELPER', p17.includes('private.pm09_bloquear_operation_id_stock'));
