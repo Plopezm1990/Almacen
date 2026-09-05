@@ -103470,10 +103470,46 @@ function crearLogicaProveedores({ proveedores, setProveedores, registrarAuditori
   }
   return { addProveedor, updateProveedor, deleteProveedor };
 }
+function validarEmpleadoPM10(data, { localActivoId = null } = {}) {
+  if (!localActivoId) return errorValidacionPM10("contexto_no_autorizado", "localId", "Selecciona un local activo para modificar personal.");
+  if (!data || typeof data !== "object" || Array.isArray(data)) return errorValidacionPM10("formato_invalido", "empleado", "La ficha del empleado no es válida.");
+  if (data.localId && data.localId !== localActivoId) return errorValidacionPM10("referencia_otro_contexto", "localId", "El empleado pertenece a otro local.");
+
+  const datos = { ...data, localId: data.localId || localActivoId };
+  const validarNumero = (campo, { defecto = 0, estrictoMinimo = false, permitirVacio = false } = {}) => {
+    const raw = datos[campo];
+    if (raw === void 0) return { ok: true };
+    if (permitirVacio && (raw === null || String(raw).trim() === "")) {
+      datos[campo] = "";
+      return { ok: true };
+    }
+    const valorEntrada = raw === null || String(raw).trim() === "" ? defecto : raw;
+    const r2 = numeroPM10(valorEntrada, campo, { minimo: 0, estrictoMinimo });
+    if (!r2.ok) return r2;
+    datos[campo] = r2.valor;
+    return { ok: true };
+  };
+
+  for (const [campo, opciones] of [
+    ["horasSemanales", { defecto: 0 }],
+    ["pagas", { defecto: 14, estrictoMinimo: true }],
+    ["salarioBrutoMensual", { defecto: 0 }],
+    ["costeEmpresaMensual", { permitirVacio: true }],
+    ["diasVacacionesAnuales", { defecto: 0 }]
+  ]) {
+    const r2 = validarNumero(campo, opciones);
+    if (!r2.ok) return r2;
+  }
+  return { ok: true, datos };
+}
 function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId }) {
   const empleadoEsDelLocalActivoPersonal = (e2) => !!e2 && (!localActivoId || e2.localId === localActivoId);
   function addEmpleado(data) {
-    setEmpleados((s22) => [...s22, { id: uid(), activo: true, documentos: [], ...data, localId: localActivoId || data.localId || null }]);
+    const validacion = validarEmpleadoPM10(data, { localActivoId });
+    if (!validacion.ok) return validacion;
+    const nuevo = { id: uid(), activo: true, documentos: [], ...validacion.datos, localId: localActivoId };
+    setEmpleados((s22) => [...s22, nuevo]);
+    return nuevo;
   }
   async function crearCuentaEmpleado(empleadoId, { nombre, email, password, rol }) {
     const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
@@ -103498,7 +103534,12 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
     }
   }
   function updateEmpleado(id, data) {
-    setEmpleados((s22) => s22.map((e2) => e2.id === id && empleadoEsDelLocalActivoPersonal(e2) ? { ...e2, ...data, localId: e2.localId || localActivoId || null } : e2));
+    const actual = empleados.find((e2) => e2.id === id);
+    if (!empleadoEsDelLocalActivoPersonal(actual) || !localActivoId) return errorValidacionPM10("contexto_no_autorizado", "empleadoId", "El empleado no pertenece al local activo.");
+    const validacion = validarEmpleadoPM10({ ...actual, ...data, localId: actual.localId || localActivoId }, { localActivoId });
+    if (!validacion.ok) return validacion;
+    setEmpleados((s22) => s22.map((e2) => e2.id === id ? { ...e2, ...validacion.datos, localId: e2.localId || localActivoId } : e2));
+    return true;
   }
   function deleteEmpleado(id) {
     const e2 = empleados.find((x3) => x3.id === id);
@@ -111145,21 +111186,17 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, anon
       }
     }
     setError("");
-    const datos = {
-      ...form,
-      horasSemanales: Number(form.horasSemanales) || 0,
-      pagas: Number(form.pagas) || 14,
-      salarioBrutoMensual: Number(form.salarioBrutoMensual) || 0,
-      costeEmpresaMensual: form.costeEmpresaMensual === "" ? "" : Number(form.costeEmpresaMensual),
-      diasVacacionesAnuales: Number(form.diasVacacionesAnuales) || 0
-    };
+    const datos = { ...form };
     if (hashNuevoPin) {
       datos.pin = hashNuevoPin;
     } else {
       delete datos.pin;
     }
-    if (editingId) updateEmpleado(editingId, datos);
-    else addEmpleado(datos);
+    const resultado = editingId ? updateEmpleado(editingId, datos) : addEmpleado(datos);
+    if (!resultado || resultado.ok === false) {
+      setError(resultado?.error || "No se pudo guardar la ficha del empleado.");
+      return;
+    }
     resetForm();
     setShowForm(false);
   }
