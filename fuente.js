@@ -101140,6 +101140,88 @@ function cantidadConSigno(m22) {
   const base = Number(m22.cantidad) || 0;
   return m22.tipo === "salida" ? -base : base;
 }
+// PM-09 / LA-008: contrato comun de unidades economicas de venta.
+// VENTA suma; REVERSO y DEVOLUCION_CLIENTE trazables restan. La operacion
+// original se conserva: no se borra ni se reescribe para cuadrar informes.
+function esCorreccionVentaPM09(m22) {
+  if (!m22) return false;
+  if (esMovimientoNuevo(m22)) {
+    if (m22.tipo === "DEVOLUCION_CLIENTE") return !!(m22.ventaId || m22.documentoOrigenId || m22.movimientoOriginalId);
+    if (m22.tipo === "REVERSO") return !!(m22.anulaVentaId || m22.ventaId || m22.documentoOrigenId || m22.movimientoOriginalId);
+    return false;
+  }
+  return m22.tipo === "entrada" && Number(m22.ingresoUnitario) < 0 && !!(m22.anulaVentaId || m22.ventaId || m22.documentoOrigenId || m22.movimientoOriginalId);
+}
+function unidadesVentaConSignoPM09(m22) {
+  const unidades = Math.abs(Number(m22?.cantidad) || 0);
+  if (esVenta(m22)) return unidades;
+  if (esCorreccionVentaPM09(m22)) return -unidades;
+  return 0;
+}
+function idVentaRaizPM09(m22) {
+  if (!m22) return null;
+  if (esVenta(m22)) return m22.operationId || m22.ventaId || m22.id || null;
+  if (esCorreccionVentaPM09(m22)) return m22.anulaVentaId || m22.ventaId || m22.documentoOrigenId || null;
+  return null;
+}
+function costoUnitarioHistoricoVentaPM09(m22, movimientos = []) {
+  if (!m22) return 0;
+  if (m22.costoUnitario !== "" && m22.costoUnitario !== null && m22.costoUnitario !== void 0 && Number.isFinite(Number(m22.costoUnitario))) {
+    return Math.abs(Number(m22.costoUnitario));
+  }
+  if (m22.movimientoOriginalId !== "" && m22.movimientoOriginalId !== null && m22.movimientoOriginalId !== void 0) {
+    const originalPorId = movimientos.find((x3) => x3 && (x3.id === m22.movimientoOriginalId || x3.id === `pm07-${m22.movimientoOriginalId}`));
+    if (originalPorId && originalPorId.costoUnitario !== "" && originalPorId.costoUnitario !== null && originalPorId.costoUnitario !== void 0 && Number.isFinite(Number(originalPorId.costoUnitario))) {
+      return Math.abs(Number(originalPorId.costoUnitario));
+    }
+  }
+  const raiz = idVentaRaizPM09(m22);
+  if (raiz) {
+    const originalVenta = movimientos.find((x3) => x3 && esVenta(x3) && x3.productoId === m22.productoId && (x3.operationId || x3.ventaId || x3.id) === raiz);
+    if (originalVenta && originalVenta.costoUnitario !== "" && originalVenta.costoUnitario !== null && originalVenta.costoUnitario !== void 0 && Number.isFinite(Number(originalVenta.costoUnitario))) {
+      return Math.abs(Number(originalVenta.costoUnitario));
+    }
+  }
+  return 0;
+}
+function aporteConsumoInventarioPM09(m22) {
+  if (!m22) return 0;
+  if (esVenta(m22)) return Math.abs(Number(m22.cantidad) || 0);
+  if (esCorreccionVentaPM09(m22)) return -Math.abs(Number(m22.cantidad) || 0);
+  if (esSalida(m22)) return Math.abs(Number(m22.cantidad) || 0);
+  return 0;
+}
+function resumenConsumoProductoPM09(movs = []) {
+  const familias = /* @__PURE__ */ new Map();
+  let otrasSalidas = 0;
+  const fechas = [];
+  movs.forEach((m22) => {
+    if (esVenta(m22) || esCorreccionVentaPM09(m22)) {
+      const raiz = idVentaRaizPM09(m22) || `sin-raiz-${m22.id || m22.operationId || Math.random()}`;
+      const actual = familias.get(raiz) || { unidades: 0, fecha: null };
+      actual.unidades += unidadesVentaConSignoPM09(m22);
+      if (esVenta(m22) && m22.fecha && (!actual.fecha || new Date(m22.fecha) < new Date(actual.fecha))) actual.fecha = m22.fecha;
+      familias.set(raiz, actual);
+      return;
+    }
+    if (esSalida(m22)) {
+      otrasSalidas += Math.abs(Number(m22.cantidad) || 0);
+      if (m22.fecha) fechas.push(m22.fecha);
+    }
+  });
+  let cantidad = otrasSalidas;
+  familias.forEach((f2) => {
+    const netas = Math.max(0, Number(f2.unidades) || 0);
+    if (netas <= 0) return;
+    cantidad += netas;
+    if (f2.fecha) fechas.push(f2.fecha);
+  });
+  let primeraFecha = null;
+  fechas.forEach((fecha) => {
+    if (!primeraFecha || new Date(fecha) < new Date(primeraFecha)) primeraFecha = fecha;
+  });
+  return { cantidad, primeraFecha };
+}
 var TIPOS_NO_MERCANCIA = ["utillaje", "limpieza"];
 var esNoMercancia = (p22) => TIPOS_NO_MERCANCIA.includes(p22?.tipo || "materia_prima");
 var aISO = (d2) => {
@@ -102264,15 +102346,16 @@ function GestionAlmacen() {
     hace12meses.setMonth(hace12meses.getMonth() - 12);
     const consumo = {};
     movimientos.forEach((m22) => {
-      if (!esSalida(m22)) return;
       if (new Date(m22.fecha) < hace12meses) return;
-      consumo[m22.productoId] = (consumo[m22.productoId] || 0) + Math.abs(Number(m22.cantidad) || 0);
+      const aporte = aporteConsumoInventarioPM09(m22);
+      if (!aporte) return;
+      consumo[m22.productoId] = (consumo[m22.productoId] || 0) + aporte;
     });
     const totalSalidas = Object.values(consumo).reduce((a22, x3) => a22 + x3, 0);
     const baseConsumo = totalSalidas > 0;
     const clasificables = productos.filter((p22) => !esUtillaje(p22));
     const conValor = clasificables.map((p22) => {
-      const unidades = consumo[p22.id] || 0;
+      const unidades = Math.max(0, consumo[p22.id] || 0);
       const costo = Number(p22.costo) || 0;
       const valor = baseConsumo ? unidades * costo : (Number(p22.stock) || 0) * costo;
       return { id: p22.id, valor, unidades, rotacion: (Number(p22.stock) || 0) > 0 ? unidades / (Number(p22.stock) || 1) : null };
@@ -102303,15 +102386,16 @@ function GestionAlmacen() {
     hace12meses.setMonth(hace12meses.getMonth() - 12);
     const consumo = {};
     movimientosDelLocalActivo.forEach((m22) => {
-      if (!esSalida(m22)) return;
       if (new Date(m22.fecha) < hace12meses) return;
-      consumo[m22.productoId] = (consumo[m22.productoId] || 0) + Math.abs(Number(m22.cantidad) || 0);
+      const aporte = aporteConsumoInventarioPM09(m22);
+      if (!aporte) return;
+      consumo[m22.productoId] = (consumo[m22.productoId] || 0) + aporte;
     });
     const totalSalidas = Object.values(consumo).reduce((a22, x3) => a22 + x3, 0);
     const baseConsumo = totalSalidas > 0;
     const clasificables = productosDelLocalActivo.filter((p22) => !esUtillaje(p22));
     const conValor = clasificables.map((p22) => {
-      const unidades = consumo[p22.id] || 0;
+      const unidades = Math.max(0, consumo[p22.id] || 0);
       const costo = Number(p22.costo) || 0;
       const valor = baseConsumo ? unidades * costo : (Number(p22.stock) || 0) * costo;
       return { id: p22.id, valor, unidades, rotacion: (Number(p22.stock) || 0) > 0 ? unidades / (Number(p22.stock) || 1) : null };
@@ -102347,25 +102431,28 @@ function GestionAlmacen() {
   const margenPorProducto = (0, import_react4.useMemo)(() => {
     const hace90 = /* @__PURE__ */ new Date();
     hace90.setDate(hace90.getDate() - 90);
-    return productos.filter((p22) => Number(p22.precioVenta) > 0).map((p22) => {
-      const ventas = movimientos.filter(
-        (m22) => m22.productoId === p22.id && esVenta(m22) && new Date(m22.fecha) >= hace90
+    return productos.map((p22) => {
+      const operacionesVenta = movimientos.filter(
+        (m22) => m22.productoId === p22.id && (esVenta(m22) || esCorreccionVentaPM09(m22)) && new Date(m22.fecha) >= hace90
       );
-      const unidadesVendidas = ventas.reduce((a22, m22) => a22 + Math.abs(Number(m22.cantidad) || 0), 0);
-      const ingresos = ventas.reduce((a22, m22) => a22 + Math.abs(Number(m22.cantidad) || 0) * (Number(m22.ingresoUnitario) || 0), 0);
-      const costes = ventas.reduce((a22, m22) => a22 + Math.abs(Number(m22.cantidad) || 0) * (Number(m22.costoUnitario) || 0), 0);
-      return { ...p22, unidadesVendidas, ingresos, beneficio: ingresos - costes, margenPct: margenDe(p22) };
-    }).filter((p22) => p22.unidadesVendidas > 0).sort((a22, b2) => b2.beneficio - a22.beneficio);
+      const unidadesVendidas = operacionesVenta.reduce((a22, m22) => a22 + unidadesVentaConSignoPM09(m22), 0);
+      const ingresos = operacionesVenta.reduce((a22, m22) => a22 + unidadesVentaConSignoPM09(m22) * Math.abs(Number(m22.ingresoUnitario) || 0), 0);
+      const costes = operacionesVenta.reduce((a22, m22) => a22 + unidadesVentaConSignoPM09(m22) * costoUnitarioHistoricoVentaPM09(m22, movimientos), 0);
+      const beneficio = ingresos - costes;
+      const margenPct = ingresos > 0 ? beneficio / ingresos * 100 : null;
+      return { ...p22, unidadesVendidas, ingresos, beneficio, margenPct, _pm09OperacionesVenta: operacionesVenta.length };
+    }).filter((p22) => p22._pm09OperacionesVenta > 0 && (Math.abs(p22.unidadesVendidas) > 1e-9 || Math.abs(p22.ingresos) > 1e-9 || Math.abs(p22.beneficio) > 1e-9)).sort((a22, b2) => b2.beneficio - a22.beneficio);
   }, [productos, movimientos]);
   const rotacionPorProducto = (0, import_react4.useMemo)(() => {
     const hoy = /* @__PURE__ */ new Date();
     return productos.map((p22) => {
-      const salidas = movimientos.filter((m22) => m22.productoId === p22.id && esSalida(m22));
-      const cantSalidas = salidas.reduce((a22, m22) => a22 + Math.abs(Number(m22.cantidad) || 0), 0);
-      if (salidas.length === 0) {
+      const movimientosProducto = movimientos.filter((m22) => m22.productoId === p22.id);
+      const resumen = resumenConsumoProductoPM09(movimientosProducto);
+      const cantSalidas = resumen.cantidad;
+      if (cantSalidas <= 0 || !resumen.primeraFecha) {
         return { ...p22, cantSalidas: 0, consumoDiario: null, dias: null, rotacion: null };
       }
-      const primera = salidas.reduce((min, m22) => new Date(m22.fecha) < min ? new Date(m22.fecha) : min, new Date(salidas[0].fecha));
+      const primera = new Date(resumen.primeraFecha);
       const diasTranscurridos = Math.max(1, Math.round((hoy - primera) / 864e5) + 1);
       const consumoDiario = cantSalidas / diasTranscurridos;
       const dias = consumoDiario > 0 ? (Number(p22.stock) || 0) / consumoDiario : null;

@@ -1,0 +1,23 @@
+{
+  "hallazgo": "LA-008",
+  "estado": "CORREGIDO_PENDIENTE_DE_QA_FINAL_PM09",
+  "rama": "pm09-conciliacion-ventas-analitica",
+  "baseEntradaWorkflow": "43d95952e38e8d2d965e36edce8b3ff425111ef7",
+  "fuenteSha256": "d3deb9cd0e0e03d177743faa688ebcff96b91a302426b12e108ca8c763cdc021",
+  "reproduccionQAPM09": {
+    "escenario": "venta A 2 anulada completa + venta B 2 con devolucion cliente 1",
+    "legacy_unidades": 4,
+    "legacy_ingresos": 21.82,
+    "legacy_costes": 12,
+    "legacy_rotacion_salidas": 4,
+    "esperado_unidades_netas": 1,
+    "esperado_ingresos": 5.45,
+    "esperado_costes": 3,
+    "esperado_beneficio": 2.45,
+    "esperado_margen_pct": 45,
+    "esperado_rotacion_unidades": 1
+  },
+  "causa": "margenPorProducto solo agregaba VENTA y rotacionPorProducto solo salidas negativas; REVERSO y DEVOLUCION_CLIENTE quedaban fuera. Ademas el margen porcentual dependia del precio/coste actual del producto.",
+  "cambio": "Unificar ventas y correcciones con signo; recuperar coste historico desde el movimiento original cuando la devolucion no lo copia; agrupar la rotacion por familia de venta y aplicar el mismo signo al ABC.",
+  "alcance": "fuente.js en rama PM09; sin cambios de esquema ni produccion"
+}
