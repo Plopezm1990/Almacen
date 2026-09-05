@@ -1,0 +1,48 @@
+name: PM10 Punto 9 transversal
+on:
+  push:
+    branches: [pm10-validaciones-altas-datos-legados]
+    paths:
+      - '.github/workflows/pm10-p09-transversal.yml'
+      - 'tests/pm10/p09-transversal-contract.mjs'
+permissions:
+  contents: write
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+      - name: Contrato transversal P09
+        run: node tests/pm10/p09-transversal-contract.mjs
+      - name: LA-011 Productos
+        run: node tests/pm10/p04-productos-contract.mjs
+      - name: LA-012 Pedidos
+        run: node tests/pm10/p05-pedidos-contract.mjs
+      - name: LA-013 Recepción
+        run: node tests/pm10/p06-recepcion-contract.mjs
+      - name: LA-017 Personal
+        run: node tests/pm10/p07-personal-contract.mjs
+      - name: LA-018 Encargos
+        run: node tests/pm10/p08-encargos-contract.mjs
+      - name: Regresiones PM09 disponibles
+        run: |
+          set -e
+          for f in \
+            tests/pm09/p17-robustez-contract.mjs \
+            tests/pm09/p16-aislamiento-contexto-contract.mjs \
+            tests/pm09/p15-casos-economicos-contract.mjs \
+            tests/pm09/p14-escenario-maestro-contract.mjs \
+            tests/pm09/p13-rotacion-unidades-contract.mjs \
+            tests/pm09/p12-resultados-margin-contract.mjs \
+            tests/pm09/p11-iva-contract.mjs \
+            tests/pm09/p10-caja-contract.mjs \
+            tests/pm09/p09-historial-contract.mjs \
+            tests/pm09/la007-resultados-contract.mjs \
+            tests/pm09/la008-unidades-rotacion-margen-contract.mjs; do
+            if [ -f "$f" ]; then node "$f"; fi
+          done
+      - name: Verificar que P09 no requiere corrección funcional
+        run: |
+          git diff --exit-code -- fuente.js
