@@ -481,6 +481,194 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, localActivoI
   return { ok: true, stocks: stocks.length, movimientos: movs.length };
 }
 
+function redondearDineroPM08(valor) {
+  const n = Number(valor);
+  return Number.isFinite(n) ? Math.round((n + Number.EPSILON) * 100) / 100 : NaN;
+}
+function modoSincronizadoPM08() {
+  return typeof window !== "undefined" && !!window.NUBE_URL && !window.__modoPruebasLocal;
+}
+function horaActualPM08() {
+  return (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5);
+}
+function clavePendientePM08(tipo, empresaId, localId, extra = "") {
+  return `almacen:pm08:${tipo}:${empresaId || "sin-empresa"}:${localId || "todos"}${extra ? `:${extra}` : ""}`;
+}
+function leerPendientePM08(clave) {
+  try {
+    return JSON.parse(localStorage.getItem(clave) || "null");
+  } catch {
+    return null;
+  }
+}
+function guardarPendientePM08(clave, valor) {
+  try {
+    localStorage.setItem(clave, JSON.stringify(valor));
+    return true;
+  } catch {
+    return false;
+  }
+}
+function limpiarPendientePM08(clave) {
+  try {
+    localStorage.removeItem(clave);
+  } catch {
+  }
+}
+function prepararPendientePM08(clave, prefijo, payload) {
+  const existente = leerPendientePM08(clave);
+  if (existente) {
+    if (JSON.stringify(existente.payload) !== JSON.stringify(payload)) {
+      return { ok: false, pendiente: existente, error: "Hay una operación anterior pendiente en este local. Reinténtala con sus mismos datos antes de iniciar otra." };
+    }
+    return { ok: true, pendiente: existente, recuperada: true };
+  }
+  const pendiente = { operationId: `${prefijo}-${Date.now()}-${uid()}`, payload, creadoEn: (/* @__PURE__ */ new Date()).toISOString() };
+  if (!guardarPendientePM08(clave, pendiente)) {
+    return { ok: false, error: "No se ha podido conservar el borrador de la operación en este dispositivo." };
+  }
+  return { ok: true, pendiente, recuperada: false };
+}
+const operacionesPM08EnCurso = {};
+function esErrorTransitorioPM08(error) {
+  const codigo = String(error?.code || "").toLowerCase();
+  const mensaje = String(error?.message || error || "").toLowerCase();
+  return !codigo && /failed to fetch|fetch failed|network|conexi[oó]n|timeout|load failed|offline/.test(mensaje);
+}
+function mensajeErrorPM08(error, fallback = "No se ha podido confirmar la operación.") {
+  const mensaje = String(error?.message || error || "");
+  const mensajes = [
+    ["operation_id_conflict", "El identificador de reintento ya existe con datos distintos. La operación no se ha repetido."],
+    ["contexto_no_autorizado", "La empresa o el local no pertenecen al ámbito autorizado de esta cuenta."],
+    ["venta_fuera_de_contexto", "La venta pertenece a otra empresa o a otro local."],
+    ["local_inactivo", "El local está cerrado o inactivo y no admite nuevas operaciones."],
+    ["periodo_caja_cerrado", "Ese día ya tiene un arqueo activo. Anula el arqueo de forma trazable antes de modificar la caja."],
+    ["arqueo_ya_existe", "Ya existe un arqueo activo para ese día y local."],
+    ["arqueo_ya_anulado", "El arqueo ya estaba anulado."],
+    ["movimiento_caja_ya_revertido", "Ese movimiento de caja ya tiene un reverso."],
+    ["devolucion_supera_cantidad_pendiente", "La cantidad supera lo que queda pendiente de devolver en la venta."],
+    ["reembolso_supera_importe_pendiente", "El reembolso supera el importe permitido por la cantidad devuelta."],
+    ["venta_ya_anulada", "La venta está anulada y ya no admite devoluciones."],
+    ["venta_con_devoluciones", "La venta ya tiene devoluciones; no puede anularse por completo."],
+    ["venta_no_encontrada", "No se ha encontrado la venta original."],
+    ["producto_no_pertenece_a_venta", "El producto no pertenece a la venta seleccionada."],
+    ["importe_venta_no_disponible", "La venta no conserva un importe verificable para autorizar el reembolso."],
+    ["stock_insuficiente", "No hay stock suficiente para completar la devolución al proveedor."],
+    ["cantidad_invalida", "La cantidad debe ser mayor que cero y respetar la unidad del producto."],
+    ["unidad_indivisible", "Este producto solo admite cantidades enteras."],
+    ["precision_cantidad_excedida", "La cantidad tiene más decimales de los permitidos para este producto."],
+    ["importe_negativo", "El importe no puede ser negativo."],
+    ["importe_cero", "El importe debe ser mayor que cero."],
+    ["importe_invalido", "Escribe un importe válido."],
+    ["importe_fuera_rango", "El importe está fuera del rango permitido."],
+    ["importe_precision_invalida", "El importe solo puede tener dos decimales."],
+    ["medio_reembolso_invalido", "Elige un medio de reintegro coherente con el importe."],
+    ["motivo_requerido", "Escribe el motivo de la operación."],
+    ["caja_no_autorizada", "Tu rol no tiene permiso para operar la caja."],
+    ["arqueo_no_autorizado", "Tu rol no tiene permiso para realizar arqueos."],
+    ["devolucion_no_autorizada", "Tu rol no tiene permiso para registrar devoluciones."],
+    ["devolucion_proveedor_no_autorizada", "Tu rol no tiene permiso para devolver mercancía a proveedores."],
+    ["reverso_caja_no_autorizado", "Solo Propietario o Encargado pueden revertir movimientos de caja."],
+    ["anulacion_arqueo_no_autorizada", "Solo Propietario o Encargado pueden anular un arqueo."]
+  ];
+  const encontrado = mensajes.find(([codigo]) => mensaje.includes(codigo));
+  return encontrado ? encontrado[1] : mensaje ? `${fallback} ${mensaje}` : fallback;
+}
+function normalizarMovimientoCajaPM08(fila) {
+  if (!fila) return null;
+  const creado = String(fila.created_at || fila.createdAt || "");
+  return {
+    id: fila.operation_id || fila.operationId || fila.id,
+    operationId: fila.operation_id || fila.operationId || fila.id,
+    empresaId: fila.empresa_id || fila.empresaId,
+    localId: fila.local_id || fila.localId,
+    fecha: fila.fecha || (creado ? creado.slice(0, 10) : todayISO()),
+    hora: creado ? creado.slice(11, 16) : fila.hora || horaActualPM08(),
+    tipo: String(fila.tipo || "").toUpperCase(),
+    importe: Number(fila.importe) || 0,
+    efectoEfectivo: Number(fila.efecto_efectivo ?? fila.efectoEfectivo) || 0,
+    medioPago: fila.medio_pago || fila.medioPago || "EFECTIVO",
+    concepto: fila.concepto || fila.motivo || "",
+    motivo: fila.concepto || fila.motivo || "",
+    origen: fila.origen_tipo || fila.origen || "MANUAL",
+    referenciaId: fila.origen_id || fila.referenciaId || null,
+    refOperationId: fila.ref_operation_id || fila.refOperationId || null,
+    actorUserId: fila.actor_user_id || fila.actorUserId || null,
+    createdAt: creado || null,
+    _pm08Servidor: !!(fila.operation_id || fila.actor_user_id)
+  };
+}
+function normalizarArqueoPM08(fila) {
+  if (!fila) return null;
+  const creado = String(fila.created_at || fila.createdAt || "");
+  return {
+    id: fila.operation_id || fila.operationId || fila.id,
+    operationId: fila.operation_id || fila.operationId || fila.id,
+    empresaId: fila.empresa_id || fila.empresaId,
+    localId: fila.local_id || fila.localId,
+    fecha: fila.fecha || todayISO(),
+    hora: creado ? creado.slice(11, 16) : fila.hora || horaActualPM08(),
+    alcance: fila.alcance || "DIA",
+    efectivoBase: Number(fila.efectivo_base ?? fila.efectivoBase) || 0,
+    efectivoEsperado: Number(fila.efectivo_esperado ?? fila.efectivoEsperado) || 0,
+    efectivoContado: Number(fila.efectivo_contado ?? fila.efectivoContado ?? fila.efectivoReal) || 0,
+    efectivoReal: Number(fila.efectivo_contado ?? fila.efectivoContado ?? fila.efectivoReal) || 0,
+    diferencia: Number(fila.diferencia) || 0,
+    notas: fila.notas || "",
+    estado: fila.estado || "ACTIVO",
+    anuladoPorOperationId: fila.anulado_por_operation_id || fila.anuladoPorOperationId || null,
+    anuladoMotivo: fila.anulado_motivo || fila.anuladoMotivo || null,
+    actorUserId: fila.actor_user_id || fila.actorUserId || null,
+    createdAt: creado || null,
+    _pm08Servidor: !!(fila.operation_id || fila.actor_user_id)
+  };
+}
+function normalizarDevolucionPM08(fila, tipo) {
+  if (!fila) return null;
+  const payload = fila.payload && typeof fila.payload === "object" ? fila.payload : {};
+  const datos = payload.datos && typeof payload.datos === "object" ? payload.datos : {};
+  return {
+    id: fila.operation_id || fila.operationId || fila.id,
+    operationId: fila.operation_id || fila.operationId || fila.id,
+    empresaId: fila.empresa_id || fila.empresaId,
+    localId: fila.local_id || fila.localId,
+    tipo,
+    fecha: fila.fecha || todayISO(),
+    productoId: fila.producto_id || fila.productoId,
+    productoNombre: datos.productoNombre || fila.producto_nombre || fila.productoNombre || fila.producto_id || fila.productoId,
+    cantidad: Number(fila.cantidad) || 0,
+    motivo: fila.motivo || "",
+    reembolso: Number(fila.reembolso) || 0,
+    medioReembolso: fila.medio_reembolso || fila.medioReembolso || "SIN_REEMBOLSO",
+    ventaId: fila.venta_operation_id || fila.ventaId || null,
+    proveedorId: fila.proveedor_id || fila.proveedorId || null,
+    proveedorNombre: fila.proveedor_nombre || fila.proveedorNombre || datos.proveedorNombre || "",
+    actorUserId: fila.actor_user_id || fila.actorUserId || null,
+    createdAt: fila.created_at || fila.createdAt || null,
+    _pm08Servidor: !!(fila.operation_id || fila.actor_user_id)
+  };
+}
+async function sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones }) {
+  if (!modoSincronizadoPM08() || !window.__nubeActiva || !window.__nubeCliente) return { ok: false, offline: true };
+  const supabase = window.__nubeCliente;
+  const [rCaja, rArqueos, rCliente, rProveedor] = await Promise.all([
+    supabase.from("caja_operaciones").select("operation_id,tipo,empresa_id,local_id,fecha,importe,efecto_efectivo,medio_pago,concepto,origen_tipo,origen_id,ref_operation_id,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3),
+    supabase.from("arqueos_caja").select("operation_id,empresa_id,local_id,fecha,alcance,efectivo_base,efectivo_esperado,efectivo_contado,diferencia,notas,estado,anulado_por_operation_id,anulado_motivo,actor_user_id,created_at").order("created_at", { ascending: false }).limit(1e3),
+    supabase.from("devoluciones_venta").select("operation_id,venta_operation_id,empresa_id,local_id,producto_id,cantidad,reembolso,medio_reembolso,motivo,fecha,payload,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3),
+    supabase.from("devoluciones_proveedor").select("operation_id,empresa_id,local_id,producto_id,cantidad,proveedor_id,proveedor_nombre,motivo,fecha,payload,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3)
+  ]);
+  const fallo = [rCaja, rArqueos, rCliente, rProveedor].find((r) => r.error);
+  if (fallo) throw fallo.error;
+  const caja = (rCaja.data || []).map(normalizarMovimientoCajaPM08).filter(Boolean);
+  const arqueos = (rArqueos.data || []).map(normalizarArqueoPM08).filter(Boolean);
+  const clientes = (rCliente.data || []).map((fila) => normalizarDevolucionPM08(fila, "cliente")).filter(Boolean);
+  const proveedores = (rProveedor.data || []).map((fila) => normalizarDevolucionPM08(fila, "proveedor")).filter(Boolean);
+  if (typeof setMovimientosCaja === "function") setMovimientosCaja(caja);
+  if (typeof setArqueos === "function") setArqueos(arqueos);
+  if (typeof setDevoluciones === "function") setDevoluciones([...clientes, ...proveedores].sort((a2, b2) => String(b2.createdAt || b2.fecha).localeCompare(String(a2.createdAt || a2.fecha))));
+  return { ok: true, movimientosCaja: caja.length, arqueos: arqueos.length, devoluciones: clientes.length + proveedores.length };
+}
+
 async function sincronizarContextoPm07(args) {
   const { setEmpresas, setLocales, setLocalActivoId, setProductos } = args || {};
   if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return { ok: false, offline: true };
@@ -608,8 +796,9 @@ function GestionAlmacen() {
       try {
         await sincronizarContextoPm07({ setEmpresas, setLocales, setLocalActivoId, setProductos });
         await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
+        await sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones });
       } catch (e) {
-        if (activo) console.error("PM-07: no se pudo sincronizar contexto/stock autoritativo", e);
+        if (activo) console.error("PM-08: no se pudo sincronizar contexto, stock o caja autoritativos", e);
       }
     })();
     return () => { activo = false; };
@@ -1153,8 +1342,8 @@ function GestionAlmacen() {
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addEncargo, updateEncargo, deleteEncargo, entregarEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, setProductos, setMovimientos, venderLineas, localActivoId });
   const { traspasarStock, traspasarEntreLocales } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales });
-  const { addArqueo, deleteArqueo } = crearLogicaCaja({ setArqueos, localActivoId });
-  const { registrarMovimientoCaja, eliminarMovimientoCaja } = crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, registrarAuditoria, localActivoId });
+  const { addArqueo, deleteArqueo, leerBorradorArqueo } = crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosCaja, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja } = crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arqueos, setArqueos, registrarAuditoria, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
   const { crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo } = crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivoId, registrarAuditoria });
   function seleccionarContextoLocal(id) {
     const siguiente = id || "";
@@ -1167,7 +1356,7 @@ function GestionAlmacen() {
     cambiarLocalActivo(id);
     if (locales.some((l2) => l2.id === id && l2.activo !== false && !l2.fusionadoEn)) setLocalInformeId(id);
   }
-  const { registrarDevolucionCliente, registrarDevolucionProveedor } = crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, registrarAuditoria, registrarMovimientoCaja, localActivoId });
+  const { registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion } = crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, setMovimientosCaja, setArqueos, registrarAuditoria, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
   const { activarModoEmpleado, entrarComoEmpleado, salirModoEmpleado, establecerPin } = crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, setModoEmpleado, setUsuarioActivoId });
   const { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, eliminarRegistroAppcc } = crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId });
   const { fichar, addFichajeManual, updateFichaje, eliminarFichaje } = crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId });
@@ -2101,7 +2290,7 @@ function GestionAlmacen() {
     }
   ), tab === "devoluciones" && /* @__PURE__ */ import_react4.default.createElement(
     Devoluciones,
-    { productos: productosDelLocalActivo, proveedores, devoluciones: devolucionesDelLocalActivo, registrarDevolucionCliente, registrarDevolucionProveedor }
+    { key: localActivoId || "todos", productos: productosDelLocalActivo, proveedores, devoluciones: devolucionesDelLocalActivo, movimientos: movimientosDelLocalActivo, registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion }
   ), tab === "facturas" && /* @__PURE__ */ import_react4.default.createElement(
     Facturas,
     {
@@ -2121,7 +2310,7 @@ function GestionAlmacen() {
         setTab("pagos");
       }
     }
-  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { key: localActivoId || "todos", movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
     Turnos,
     {
       empleados: empleadosDelLocalActivo,
@@ -2733,37 +2922,147 @@ function crearLogicaGastos({ setGastosGenerales, localActivoId, empresaId }) {
   }
   return { addGasto, deleteGasto };
 }
-function crearLogicaCaja({ setArqueos, localActivoId }) {
-  function addArqueo(data, denomConfig) {
-    if (!localActivoId) return null;
-    const id = uid();
-    const fecha = todayISO();
-    const hora = nowTime();
-    const denominaciones = { ...(data.denominaciones || {}) };
-    const useConfig = denomConfig || DENOMINACIONES_CAJA;
-    const efectivoContado = useConfig.reduce((acc, d) => acc + (Number(denominaciones[d.key]) || 0) * d.valor, 0);
-    const efectivoReal = Math.round((efectivoContado + Number.EPSILON) * 100) / 100;
-    const esperado = Number(data.efectivoEsperado || 0);
-    const diferencia = Math.round((efectivoReal - esperado + Number.EPSILON) * 100) / 100;
-    const arqueo = {
-      id,
+function crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosCaja, localActivoId, empresaId }) {
+  function leerBorradorArqueo(fecha) {
+    return leerPendientePM08(clavePendientePM08("arqueo", empresaId, localActivoId, fecha))?.payload || null;
+  }
+  async function addArqueo(data) {
+    if (!empresaId || !localActivoId) return { ok: false, error: "Selecciona un local concreto antes de guardar el arqueo." };
+    const fecha = data?.fecha || todayISO();
+    const efectivoBase = redondearDineroPM08(data?.efectivoBase ?? data?.efectivoEsperado ?? 0);
+    const efectivoContado = redondearDineroPM08(data?.efectivoContado ?? data?.efectivoReal);
+    if (!Number.isFinite(efectivoBase) || efectivoBase < 0) return { ok: false, error: "El efectivo base no es válido." };
+    if (!Number.isFinite(efectivoContado) || efectivoContado < 0) return { ok: false, error: "El efectivo contado debe ser cero o un importe positivo." };
+    if ((arqueos || []).some((a2) => a2.localId === localActivoId && a2.fecha === fecha && a2.estado !== "ANULADO")) {
+      return { ok: false, error: "Ya existe un arqueo activo para ese día y local." };
+    }
+    const payload = {
+      empresaId,
       localId: localActivoId,
       fecha,
-      hora,
-      efectivoEsperado: esperado,
-      efectivoReal,
-      diferencia,
-      denominaciones,
-      notas: data.notas || ""
+      efectivoBase,
+      efectivoContado,
+      notas: String(data?.notas || "").trim(),
+      snapshot: data?.snapshot || {}
     };
-    setArqueos((prev) => [arqueo, ...prev]);
-    return arqueo;
+    const clave = clavePendientePM08("arqueo", empresaId, localActivoId, fecha);
+    const preparado = prepararPendientePM08(clave, "pm08-arqueo", payload);
+    if (!preparado.ok) return preparado;
+    if (operacionesPM08EnCurso[clave]) return operacionesPM08EnCurso[clave];
+    const tarea = (async () => {
+      if (modoSincronizadoPM08()) {
+        if (!window.__nubeActiva || !window.__nubeCliente) {
+          return { ok: false, pendiente: true, error: "Sin conexión con la cuenta sincronizada. El arqueo NO se ha confirmado; el borrador queda listo para reintentar." };
+        }
+        try {
+          const r = await Promise.race([
+            window.__nubeCliente.rpc("registrar_arqueo_caja", {
+              p_operation_id: preparado.pendiente.operationId,
+              p_empresa_id: empresaId,
+              p_local_id: localActivoId,
+              p_fecha: fecha,
+              p_efectivo_base: efectivoBase,
+              p_efectivo_contado: efectivoContado,
+              p_notas: payload.notas,
+              p_snapshot: payload.snapshot
+            }),
+            new Promise((_2, reject) => setTimeout(() => reject(new Error("timeout_pm08")), Number(window.ESPERA_NUBE_MS) || 6e3))
+          ]);
+          if (r.error) {
+            if (esErrorTransitorioPM08(r.error)) return { ok: false, pendiente: true, error: "No se pudo confirmar si el servidor recibió el arqueo. Conservamos el mismo identificador para reintentarlo sin duplicar." };
+            limpiarPendientePM08(clave);
+            return { ok: false, error: mensajeErrorPM08(r.error, "No se ha podido guardar el arqueo.") };
+          }
+          const arqueo = normalizarArqueoPM08(r.data?.arqueo);
+          if (!arqueo) throw new Error("respuesta_arqueo_incompleta");
+          setArqueos((prev) => [arqueo, ...(prev || []).filter((a2) => a2.operationId !== arqueo.operationId && a2.id !== arqueo.id)]);
+          limpiarPendientePM08(clave);
+          try {
+            await sincronizarCajaPm08({ setArqueos, setMovimientosCaja });
+          } catch {
+          }
+          return { ok: true, arqueo, replayed: !!r.data?.replayed };
+        } catch (e) {
+          return { ok: false, pendiente: true, error: "No se pudo confirmar si el servidor recibió el arqueo. Conservamos el mismo identificador para reintentarlo sin duplicar." };
+        }
+      }
+      const efectos = (movimientosCaja || []).filter((m2) => m2.localId === localActivoId && m2.fecha === fecha).reduce((acc, m2) => {
+        const efecto = Number(m2.efectoEfectivo);
+        const fallback = m2.tipo === "ENTRADA" || m2.tipo === "entrada" ? Number(m2.importe) || 0 : -(Number(m2.importe) || 0);
+        return acc + (Number.isFinite(efecto) ? efecto : fallback);
+      }, 0);
+      const esperado = redondearDineroPM08(efectivoBase + efectos);
+      const arqueo = normalizarArqueoPM08({
+        operationId: preparado.pendiente.operationId,
+        empresaId,
+        localId: localActivoId,
+        fecha,
+        alcance: "DIA",
+        efectivoBase,
+        efectivoEsperado: esperado,
+        efectivoContado,
+        diferencia: redondearDineroPM08(efectivoContado - esperado),
+        notas: payload.notas,
+        estado: "ACTIVO",
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+      setArqueos((prev) => [arqueo, ...(prev || []).filter((a2) => a2.operationId !== arqueo.operationId)]);
+      limpiarPendientePM08(clave);
+      return { ok: true, arqueo, replayed: false, local: true };
+    })();
+    operacionesPM08EnCurso[clave] = tarea;
+    try {
+      return await tarea;
+    } finally {
+      delete operacionesPM08EnCurso[clave];
+    }
   }
-  function deleteArqueo(id) {
-    if (!localActivoId) return;
-    setArqueos((prev) => prev.filter((a2) => !(a2.id === id && a2.localId === localActivoId)));
+  async function deleteArqueo(id, motivo) {
+    if (!empresaId || !localActivoId) return { ok: false, error: "Selecciona el local del arqueo." };
+    const original = (arqueos || []).find((a2) => (a2.operationId === id || a2.id === id) && a2.localId === localActivoId);
+    if (!original) return { ok: false, error: "No se ha encontrado el arqueo en este local." };
+    if (original.estado === "ANULADO") return { ok: false, error: "El arqueo ya estaba anulado." };
+    const motivoLimpio = String(motivo || "").trim();
+    if (!motivoLimpio) return { ok: false, error: "Escribe el motivo de la anulación." };
+    const payload = { arqueoOperationId: original.operationId || original.id, motivo: motivoLimpio };
+    const clave = clavePendientePM08("anular-arqueo", empresaId, localActivoId, original.operationId || original.id);
+    const preparado = prepararPendientePM08(clave, "pm08-anular-arqueo", payload);
+    if (!preparado.ok) return preparado;
+    if (operacionesPM08EnCurso[clave]) return operacionesPM08EnCurso[clave];
+    const tarea = (async () => {
+      if (modoSincronizadoPM08()) {
+        if (!window.__nubeActiva || !window.__nubeCliente) return { ok: false, pendiente: true, error: "Sin conexión. La anulación NO se ha confirmado." };
+        try {
+          const r = await Promise.race([
+            window.__nubeCliente.rpc("anular_arqueo_caja", { p_operation_id: preparado.pendiente.operationId, p_arqueo_operation_id: original.operationId || original.id, p_motivo: motivoLimpio }),
+            new Promise((_2, reject) => setTimeout(() => reject(new Error("timeout_pm08")), Number(window.ESPERA_NUBE_MS) || 6e3))
+          ]);
+          if (r.error) {
+            if (esErrorTransitorioPM08(r.error)) return { ok: false, pendiente: true, error: "No se pudo confirmar la anulación. Reintenta: se utilizará el mismo identificador." };
+            limpiarPendientePM08(clave);
+            return { ok: false, error: mensajeErrorPM08(r.error, "No se ha podido anular el arqueo.") };
+          }
+          const arqueo = normalizarArqueoPM08(r.data?.arqueo);
+          setArqueos((prev) => (prev || []).map((a2) => a2.operationId === arqueo.operationId || a2.id === arqueo.id ? arqueo : a2));
+          limpiarPendientePM08(clave);
+          return { ok: true, arqueo, replayed: !!r.data?.replayed };
+        } catch {
+          return { ok: false, pendiente: true, error: "No se pudo confirmar la anulación. Reintenta: se utilizará el mismo identificador." };
+        }
+      }
+      const arqueo = { ...original, estado: "ANULADO", anuladoPorOperationId: preparado.pendiente.operationId, anuladoMotivo: motivoLimpio, anuladoAt: (/* @__PURE__ */ new Date()).toISOString() };
+      setArqueos((prev) => (prev || []).map((a2) => a2.operationId === original.operationId || a2.id === original.id ? arqueo : a2));
+      limpiarPendientePM08(clave);
+      return { ok: true, arqueo, local: true };
+    })();
+    operacionesPM08EnCurso[clave] = tarea;
+    try {
+      return await tarea;
+    } finally {
+      delete operacionesPM08EnCurso[clave];
+    }
   }
-  return { addArqueo, deleteArqueo };
+  return { addArqueo, deleteArqueo, leerBorradorArqueo };
 }
 function crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivoId, registrarAuditoria }) {
   function crearLocal({ nombre, direccion, empresaId }) { const nombreLimpio = (nombre || "").trim(); if (!empresaId) return { ok: false, error: "Selecciona la empresa a la que pertenece el local." }; if (!nombreLimpio) return { ok: false, error: "Ponle un nombre al local." };
@@ -2789,123 +3088,404 @@ function crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivo
   }
   return { crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo };
 }
-function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, registrarAuditoria, localActivoId }) {
-  function registrarMovimientoCaja(tipo, importe, concepto, origen = "MANUAL", referenciaId = null) {
-    if (!localActivoId) return { ok: false, error: "Selecciona un local antes de registrar movimientos de caja." };
-    const imp = Number(importe);
-    if (!["ENTRADA", "SALIDA"].includes(tipo)) return { ok: false, error: "Tipo de movimiento no válido." };
+function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arqueos, setArqueos, registrarAuditoria, localActivoId, empresaId }) {
+  function leerBorradorMovimientoCaja() {
+    return leerPendientePM08(clavePendientePM08("movimiento-caja", empresaId, localActivoId))?.payload || null;
+  }
+  async function registrarMovimientoCaja(tipo, importe, concepto, fecha = todayISO()) {
+    if (!empresaId || !localActivoId) return { ok: false, error: "Selecciona un local concreto antes de registrar movimientos de caja." };
+    const tipoCanonico = String(tipo || "").trim().toUpperCase() === "SALIDA" ? "RETIRADA" : String(tipo || "").trim().toUpperCase();
+    if (!["ENTRADA", "RETIRADA"].includes(tipoCanonico)) return { ok: false, error: "Tipo de movimiento no válido." };
+    const imp = redondearDineroPM08(importe);
     if (!Number.isFinite(imp) || imp <= 0) return { ok: false, error: "El importe debe ser mayor que 0." };
-    const mov = {
-      id: uid(),
-      localId: localActivoId,
-      fecha: todayISO(),
-      hora: nowTime(),
-      tipo,
-      importe: Math.round((imp + Number.EPSILON) * 100) / 100,
-      concepto: concepto?.trim() || (tipo === "ENTRADA" ? "Entrada manual" : "Salida manual"),
-      origen,
-      referenciaId
-    };
-    setMovimientosCaja((prev) => [mov, ...prev]);
-    registrarAuditoria?.(
-      "MOVIMIENTO_CAJA",
-      `${tipo} de ${money(mov.importe)} · ${mov.concepto}`,
-      { movimientoCajaId: mov.id, origen: mov.origen }
-    );
-    return { ok: true, movimiento: mov };
+    if ((arqueos || []).some((a2) => a2.localId === localActivoId && a2.fecha === fecha && a2.estado !== "ANULADO")) return { ok: false, error: "Ese día tiene un arqueo activo. Anúlalo de forma trazable antes de registrar otro movimiento." };
+    const conceptoLimpio = String(concepto || "").trim() || (tipoCanonico === "ENTRADA" ? "Entrada manual" : "Retirada manual");
+    const payload = { empresaId, localId: localActivoId, fecha, tipo: tipoCanonico, importe: imp, concepto: conceptoLimpio };
+    const clave = clavePendientePM08("movimiento-caja", empresaId, localActivoId);
+    const preparado = prepararPendientePM08(clave, "pm08-caja", payload);
+    if (!preparado.ok) return preparado;
+    if (operacionesPM08EnCurso[clave]) return operacionesPM08EnCurso[clave];
+    const tarea = (async () => {
+      if (modoSincronizadoPM08()) {
+        if (!window.__nubeActiva || !window.__nubeCliente) return { ok: false, pendiente: true, error: "Sin conexión con la cuenta sincronizada. El movimiento NO se ha confirmado; el borrador queda listo para reintentar." };
+        try {
+          const r = await Promise.race([
+            window.__nubeCliente.rpc("registrar_movimiento_caja", {
+              p_operation_id: preparado.pendiente.operationId,
+              p_empresa_id: empresaId,
+              p_local_id: localActivoId,
+              p_fecha: fecha,
+              p_tipo: tipoCanonico,
+              p_importe: imp,
+              p_concepto: conceptoLimpio,
+              p_datos: { origen: "L&A Suite PM-08" }
+            }),
+            new Promise((_2, reject) => setTimeout(() => reject(new Error("timeout_pm08")), Number(window.ESPERA_NUBE_MS) || 6e3))
+          ]);
+          if (r.error) {
+            if (esErrorTransitorioPM08(r.error)) return { ok: false, pendiente: true, error: "No se pudo confirmar si el servidor recibió el movimiento. Reintenta: se utilizará el mismo identificador y no se duplicará." };
+            limpiarPendientePM08(clave);
+            return { ok: false, error: mensajeErrorPM08(r.error, "No se ha podido guardar el movimiento de caja.") };
+          }
+          const movimiento = normalizarMovimientoCajaPM08(r.data?.movimiento);
+          if (!movimiento) throw new Error("respuesta_caja_incompleta");
+          setMovimientosCaja((prev) => [movimiento, ...(prev || []).filter((m2) => m2.operationId !== movimiento.operationId && m2.id !== movimiento.id)]);
+          limpiarPendientePM08(clave);
+          if (!r.data?.replayed) registrarAuditoria?.("MOVIMIENTO_CAJA", `${tipoCanonico} de ${money(imp)} · ${conceptoLimpio}`);
+          return { ok: true, movimiento, replayed: !!r.data?.replayed };
+        } catch {
+          return { ok: false, pendiente: true, error: "No se pudo confirmar si el servidor recibió el movimiento. Reintenta: se utilizará el mismo identificador y no se duplicará." };
+        }
+      }
+      const movimiento = normalizarMovimientoCajaPM08({
+        operationId: preparado.pendiente.operationId,
+        empresaId,
+        localId: localActivoId,
+        fecha,
+        hora: horaActualPM08(),
+        tipo: tipoCanonico,
+        importe: imp,
+        efectoEfectivo: tipoCanonico === "ENTRADA" ? imp : -imp,
+        medioPago: "EFECTIVO",
+        concepto: conceptoLimpio,
+        origen: "MANUAL",
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+      setMovimientosCaja((prev) => [movimiento, ...(prev || []).filter((m2) => m2.operationId !== movimiento.operationId)]);
+      limpiarPendientePM08(clave);
+      registrarAuditoria?.("MOVIMIENTO_CAJA", `${tipoCanonico} de ${money(imp)} · ${conceptoLimpio}`);
+      return { ok: true, movimiento, local: true };
+    })();
+    operacionesPM08EnCurso[clave] = tarea;
+    try {
+      return await tarea;
+    } finally {
+      delete operacionesPM08EnCurso[clave];
+    }
   }
-  function eliminarMovimientoCaja(id) {
-    if (!localActivoId) return;
-    setMovimientosCaja((prev) => prev.filter((m2) => !(m2.id === id && m2.localId === localActivoId)));
+  async function eliminarMovimientoCaja(id, motivo) {
+    if (!empresaId || !localActivoId) return { ok: false, error: "Selecciona el local del movimiento." };
+    const original = (movimientosCaja || []).find((m2) => (m2.operationId === id || m2.id === id) && m2.localId === localActivoId);
+    if (!original || !["ENTRADA", "RETIRADA", "entrada", "salida"].includes(original.tipo)) return { ok: false, error: "Solo se pueden revertir entradas o retiradas manuales." };
+    const motivoLimpio = String(motivo || "").trim();
+    if (!motivoLimpio) return { ok: false, error: "Escribe el motivo del reverso." };
+    if ((movimientosCaja || []).some((m2) => m2.refOperationId === (original.operationId || original.id))) return { ok: false, error: "Ese movimiento ya tiene un reverso." };
+    const clave = clavePendientePM08("reverso-caja", empresaId, localActivoId, original.operationId || original.id);
+    const fechaReverso = leerPendientePM08(clave)?.payload?.fecha || todayISO();
+    const payload = { movimientoOperationId: original.operationId || original.id, motivo: motivoLimpio, fecha: fechaReverso };
+    const preparado = prepararPendientePM08(clave, "pm08-reverso-caja", payload);
+    if (!preparado.ok) return preparado;
+    if (operacionesPM08EnCurso[clave]) return operacionesPM08EnCurso[clave];
+    const tarea = (async () => {
+      if (modoSincronizadoPM08()) {
+        if (!window.__nubeActiva || !window.__nubeCliente) return { ok: false, pendiente: true, error: "Sin conexión. El reverso NO se ha confirmado." };
+        try {
+          const r = await Promise.race([
+            window.__nubeCliente.rpc("revertir_movimiento_caja", { p_operation_id: preparado.pendiente.operationId, p_movimiento_operation_id: original.operationId || original.id, p_motivo: motivoLimpio, p_fecha: fechaReverso }),
+            new Promise((_2, reject) => setTimeout(() => reject(new Error("timeout_pm08")), Number(window.ESPERA_NUBE_MS) || 6e3))
+          ]);
+          if (r.error) {
+            if (esErrorTransitorioPM08(r.error)) return { ok: false, pendiente: true, error: "No se pudo confirmar el reverso. Reintenta con el mismo borrador." };
+            limpiarPendientePM08(clave);
+            return { ok: false, error: mensajeErrorPM08(r.error, "No se ha podido revertir el movimiento.") };
+          }
+          const movimiento = normalizarMovimientoCajaPM08(r.data?.movimiento);
+          setMovimientosCaja((prev) => [movimiento, ...(prev || []).filter((m2) => m2.operationId !== movimiento.operationId)]);
+          limpiarPendientePM08(clave);
+          if (!r.data?.replayed) registrarAuditoria?.("REVERSO_CAJA", `${motivoLimpio} · ${original.operationId || original.id}`);
+          return { ok: true, movimiento, replayed: !!r.data?.replayed };
+        } catch {
+          return { ok: false, pendiente: true, error: "No se pudo confirmar el reverso. Reintenta con el mismo borrador." };
+        }
+      }
+      const tipoOriginal = String(original.tipo).toUpperCase() === "ENTRADA" ? "ENTRADA" : "RETIRADA";
+      const movimiento = normalizarMovimientoCajaPM08({
+        operationId: preparado.pendiente.operationId,
+        empresaId,
+        localId: localActivoId,
+        fecha: fechaReverso,
+        tipo: tipoOriginal === "ENTRADA" ? "REVERSO_ENTRADA" : "REVERSO_RETIRADA",
+        importe: original.importe,
+        efectoEfectivo: -(Number(original.efectoEfectivo) || (tipoOriginal === "ENTRADA" ? Number(original.importe) : -Number(original.importe))),
+        medioPago: "EFECTIVO",
+        concepto: `Reverso: ${motivoLimpio}`,
+        origen: "REVERSO_CAJA",
+        referenciaId: original.operationId || original.id,
+        refOperationId: original.operationId || original.id,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+      setMovimientosCaja((prev) => [movimiento, ...(prev || []).filter((m2) => m2.operationId !== movimiento.operationId)]);
+      limpiarPendientePM08(clave);
+      registrarAuditoria?.("REVERSO_CAJA", `${motivoLimpio} · ${original.operationId || original.id}`);
+      return { ok: true, movimiento, local: true };
+    })();
+    operacionesPM08EnCurso[clave] = tarea;
+    try {
+      return await tarea;
+    } finally {
+      delete operacionesPM08EnCurso[clave];
+    }
   }
-  return { registrarMovimientoCaja, eliminarMovimientoCaja };
+  return { registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja };
 }
-function crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, registrarAuditoria, registrarMovimientoCaja, localActivoId }) {
+function crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, setMovimientosCaja, setArqueos, registrarAuditoria, localActivoId, empresaId }) {
   function productoEsDelLocalActivoDevolucion(prod) {
     if (!prod) return false;
-    if (!localActivoId) return true;
+    if (!localActivoId) return false;
     return !prod.localId || prod.localId === localActivoId;
   }
   const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos });
-  function registrarDevolucionCliente({ productoId, cantidad, motivo, reembolso, ventaId, fecha }) {
+  function leerBorradorDevolucion(tipo) {
+    return leerPendientePM08(clavePendientePM08(`devolucion-${tipo}`, empresaId, localActivoId))?.payload || null;
+  }
+  async function registrarDevolucionCliente({ productoId, cantidad, motivo, reembolso, medioReembolso, ventaId, fecha }) {
     const cant = Number(cantidad);
+    const reembolsoNum = redondearDineroPM08(reembolso === "" || reembolso == null ? 0 : reembolso);
+    const medio = String(medioReembolso || (reembolsoNum > 0 ? "EFECTIVO" : "SIN_REEMBOLSO")).trim().toUpperCase();
+    const motivoLimpio = String(motivo || "").trim();
+    if (!empresaId || !localActivoId) return { ok: false, error: "Selecciona un local concreto antes de registrar la devolución." };
+    if (!ventaId) return { ok: false, error: "Elige la venta original." };
     if (!productoId) return { ok: false, error: "Elige un producto." };
-    if (!cant || cant <= 0) return { ok: false, error: "Pon una cantidad mayor que cero." };
+    if (!Number.isFinite(cant) || cant <= 0) return { ok: false, error: "Pon una cantidad mayor que cero." };
+    if (!Number.isFinite(reembolsoNum) || reembolsoNum < 0) return { ok: false, error: "El reembolso no puede ser negativo." };
+    if (!motivoLimpio) return { ok: false, error: "Escribe el motivo de la devolución." };
+    if (reembolsoNum === 0 && medio !== "SIN_REEMBOLSO") return { ok: false, error: "Para 0 € elige “Sin reembolso / cambio”." };
+    if (reembolsoNum > 0 && !["EFECTIVO", "TARJETA", "TRANSFERENCIA", "OTRO"].includes(medio)) return { ok: false, error: "Elige el medio de reintegro." };
     const producto = productos.find((p2) => p2.id === productoId);
-    if (!productoEsDelLocalActivoDevolucion(producto)) return false;
     if (!producto) return { ok: false, error: "Producto no encontrado." };
-    const fechaReal = fecha || todayISO();
-    const r = aplicarMovimientoStock({
-      productoId,
-      cantidad: cant,
-      tipo: "DEVOLUCION_CLIENTE",
-      operationId: uid(),
-      movimientoId: uid(),
-      origen: "devolucionCliente",
-      documentoOrigenId: ventaId || null,
-      afectaStockTotal: true,
-      afectaStockPisoVenta: true,
-      motivo: `Devoluci\xF3n de cliente${motivo ? " \xB7 " + motivo : ""}`
-    });
-    if (!r.ok) return { ok: false, error: r.error || "No se ha podido aplicar al stock." };
-    const reembolsoNum = Number(reembolso) || 0;
-    if (reembolsoNum > 0 && typeof registrarMovimientoCaja === "function") {
-      registrarMovimientoCaja("salida", reembolsoNum, `Reembolso por devoluci\xF3n \xB7 ${producto.nombre}`, fechaReal);
-    }
-    const registro = {
-      id: uid(),
-      localId: producto.localId || localActivoId || null,
-      tipo: "cliente",
-      fecha: fechaReal,
+    if (!productoEsDelLocalActivoDevolucion(producto)) return { ok: false, error: "El producto no pertenece al local activo." };
+    const lineaVenta = (movimientos || []).find((m2) => esVenta(m2) && (m2.operationId || m2.ventaId || m2.id) === ventaId && m2.productoId === productoId && (!m2.localId || m2.localId === localActivoId));
+    if (!lineaVenta) return { ok: false, error: "El producto no pertenece a la venta seleccionada." };
+    if ((movimientos || []).some((m2) => m2.tipo === "REVERSO" && (m2.anulaVentaId === ventaId || m2.documentoOrigenId === ventaId))) return { ok: false, error: "La venta está anulada y ya no admite devoluciones." };
+    const cantidadOriginal = Math.abs(Number(lineaVenta.cantidadFisica ?? lineaVenta.cantidad) || 0);
+    const anteriores = (devoluciones || []).filter((d2) => d2.tipo === "cliente" && d2.ventaId === ventaId && d2.productoId === productoId);
+    const cantidadDevuelta = anteriores.reduce((acc, d2) => acc + (Number(d2.cantidad) || 0), 0);
+    const reembolsado = anteriores.reduce((acc, d2) => acc + (Number(d2.reembolso) || 0), 0);
+    if (cantidadDevuelta + cant > cantidadOriginal + 1e-6) return { ok: false, error: "La cantidad supera lo que queda pendiente de devolver en la venta." };
+    const brutoUnitario = Math.abs(Number(lineaVenta.ingresoUnitario) || 0) * (1 + (Number(lineaVenta.ivaVentaAplicado) || 0) / 100);
+    if (reembolsoNum > 0 && !(brutoUnitario > 0)) return { ok: false, error: "La venta no conserva un importe verificable para autorizar el reembolso." };
+    if (reembolsado + reembolsoNum > redondearDineroPM08((cantidadDevuelta + cant) * brutoUnitario) + 1e-6) return { ok: false, error: "El reembolso supera el importe permitido por la cantidad devuelta." };
+    const clave = clavePendientePM08("devolucion-cliente", empresaId, localActivoId);
+    const fechaReal = fecha || leerPendientePM08(clave)?.payload?.fecha || todayISO();
+    const payload = {
+      ventaId,
+      empresaId,
+      localId: localActivoId,
       productoId,
       productoNombre: producto.nombre,
       cantidad: cant,
-      motivo: (motivo || "").trim(),
       reembolso: reembolsoNum,
-      ventaId: ventaId || null
+      medioReembolso: medio,
+      motivo: motivoLimpio,
+      fecha: fechaReal
     };
-    setDevoluciones((s2) => [registro, ...s2]);
-    registrarAuditoria("Devoluci\xF3n de cliente", `${producto.nombre} \xD7${cant}${reembolsoNum > 0 ? ` \xB7 reembolso \u20AC${fmt(reembolsoNum)}` : ""}`);
-    return { ok: true, registro };
+    const preparado = prepararPendientePM08(clave, "pm08-dev-cliente", payload);
+    if (!preparado.ok) return preparado;
+    if (operacionesPM08EnCurso[clave]) return operacionesPM08EnCurso[clave];
+    const tarea = (async () => {
+      if (modoSincronizadoPM08()) {
+        if (!window.__nubeActiva || !window.__nubeCliente) return { ok: false, pendiente: true, error: "Sin conexión con la cuenta sincronizada. No se ha modificado ni stock ni caja; el borrador queda listo para reintentar." };
+        try {
+          const r = await Promise.race([
+            window.__nubeCliente.rpc("registrar_devolucion_venta", {
+              p_operation_id: preparado.pendiente.operationId,
+              p_venta_operation_id: ventaId,
+              p_empresa_id: empresaId,
+              p_local_id: localActivoId,
+              p_producto_id: productoId,
+              p_cantidad: cant,
+              p_reembolso: reembolsoNum,
+              p_medio_reembolso: medio,
+              p_motivo: motivoLimpio,
+              p_fecha: fechaReal,
+              p_datos: { productoNombre: producto.nombre, origen: "L&A Suite PM-08" }
+            }),
+            new Promise((_2, reject) => setTimeout(() => reject(new Error("timeout_pm08")), Number(window.ESPERA_NUBE_MS) || 6e3))
+          ]);
+          if (r.error) {
+            if (esErrorTransitorioPM08(r.error)) return { ok: false, pendiente: true, error: "No se pudo confirmar si el servidor recibió la devolución. Conservamos el mismo identificador para evitar duplicar stock o reembolso." };
+            limpiarPendientePM08(clave);
+            return { ok: false, error: mensajeErrorPM08(r.error, "No se ha podido registrar la devolución.") };
+          }
+          const registro = normalizarDevolucionPM08(r.data?.devolucion, "cliente");
+          const movimientoCaja = normalizarMovimientoCajaPM08(r.data?.movimientoCaja);
+          if (!registro) throw new Error("respuesta_devolucion_incompleta");
+          setDevoluciones((s2) => [registro, ...(s2 || []).filter((d2) => d2.operationId !== registro.operationId && d2.id !== registro.id)]);
+          if (movimientoCaja) setMovimientosCaja((s2) => [movimientoCaja, ...(s2 || []).filter((m2) => m2.operationId !== movimientoCaja.operationId)]);
+          limpiarPendientePM08(clave);
+          try {
+            await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
+            await sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones });
+          } catch {
+          }
+          if (!r.data?.replayed) registrarAuditoria("Devolución de cliente", `${producto.nombre} ×${cant}${reembolsoNum > 0 ? ` · reembolso €${fmt(reembolsoNum)} (${medio})` : " · sin reembolso"}`);
+          return { ok: true, registro, movimientoCaja, replayed: !!r.data?.replayed };
+        } catch {
+          return { ok: false, pendiente: true, error: "No se pudo confirmar si el servidor recibió la devolución. No repitas con otros datos: usa el mismo borrador para evitar duplicar stock o reembolso." };
+        }
+      }
+      const r = aplicarMovimientoStock({
+        productoId,
+        cantidad: cant,
+        tipo: "DEVOLUCION_CLIENTE",
+        operationId: preparado.pendiente.operationId,
+        movimientoId: `pm08-local-stock-${uid()}`,
+        origen: "devolucionCliente",
+        documentoOrigenId: ventaId,
+        afectaStockTotal: true,
+        afectaStockPisoVenta: true,
+        motivo: `Devolución de cliente · ${motivoLimpio}`,
+        permitirDeficit: false,
+        camposExtra: { reembolso: reembolsoNum, medioReembolso: medio, ingresoUnitario: -(Number(lineaVenta.ingresoUnitario) || 0), ivaVentaAplicado: Number(lineaVenta.ivaVentaAplicado) || 0 }
+      });
+      if (!r.ok) {
+        limpiarPendientePM08(clave);
+        return { ok: false, error: r.error || "No se ha podido aplicar al stock." };
+      }
+      const registro = normalizarDevolucionPM08({
+        operationId: preparado.pendiente.operationId,
+        empresaId,
+        localId: localActivoId,
+        tipo: "cliente",
+        fecha: fechaReal,
+        productoId,
+        productoNombre: producto.nombre,
+        cantidad: cant,
+        motivo: motivoLimpio,
+        reembolso: reembolsoNum,
+        medioReembolso: medio,
+        ventaId,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      }, "cliente");
+      let movimientoCaja = null;
+      if (reembolsoNum > 0) {
+        movimientoCaja = normalizarMovimientoCajaPM08({
+          operationId: preparado.pendiente.operationId,
+          empresaId,
+          localId: localActivoId,
+          fecha: fechaReal,
+          tipo: "REEMBOLSO",
+          importe: reembolsoNum,
+          efectoEfectivo: medio === "EFECTIVO" ? -reembolsoNum : 0,
+          medioPago: medio,
+          concepto: `Reembolso devolución · ${producto.nombre}`,
+          origen: "DEVOLUCION_CLIENTE",
+          referenciaId: preparado.pendiente.operationId,
+          createdAt: (/* @__PURE__ */ new Date()).toISOString()
+        });
+        setMovimientosCaja((s2) => [movimientoCaja, ...(s2 || []).filter((m2) => m2.operationId !== movimientoCaja.operationId)]);
+      }
+      setDevoluciones((s2) => [registro, ...(s2 || []).filter((d2) => d2.operationId !== registro.operationId)]);
+      limpiarPendientePM08(clave);
+      registrarAuditoria("Devolución de cliente", `${producto.nombre} ×${cant}${reembolsoNum > 0 ? ` · reembolso €${fmt(reembolsoNum)} (${medio})` : " · sin reembolso"}`);
+      return { ok: true, registro, movimientoCaja, local: true };
+    })();
+    operacionesPM08EnCurso[clave] = tarea;
+    try {
+      return await tarea;
+    } finally {
+      delete operacionesPM08EnCurso[clave];
+    }
   }
-  function registrarDevolucionProveedor({ productoId, cantidad, motivo, proveedorId, proveedorNombre, fecha }) {
+  async function registrarDevolucionProveedor({ productoId, cantidad, motivo, proveedorId, proveedorNombre, fecha }) {
     const cant = Number(cantidad);
+    const motivoLimpio = String(motivo || "").trim();
+    if (!empresaId || !localActivoId) return { ok: false, error: "Selecciona un local concreto antes de registrar la devolución." };
     if (!productoId) return { ok: false, error: "Elige un producto." };
-    if (!cant || cant <= 0) return { ok: false, error: "Pon una cantidad mayor que cero." };
+    if (!Number.isFinite(cant) || cant <= 0) return { ok: false, error: "Pon una cantidad mayor que cero." };
+    if (!motivoLimpio) return { ok: false, error: "Escribe el motivo de la devolución." };
     const producto = productos.find((p2) => p2.id === productoId);
-    if (!productoEsDelLocalActivoDevolucion(producto)) return false;
     if (!producto) return { ok: false, error: "Producto no encontrado." };
-    const fechaReal = fecha || todayISO();
-    const r = aplicarMovimientoStock({
-      productoId,
-      cantidad: -cant,
-      tipo: "DEVOLUCION_PROVEEDOR",
-      operationId: uid(),
-      movimientoId: uid(),
-      origen: "devolucionProveedor",
-      documentoOrigenId: proveedorId || null,
-      afectaStockTotal: true,
-      permitirDeficit: true,
-      motivo: `Devoluci\xF3n a proveedor${motivo ? " \xB7 " + motivo : ""}`
-    });
-    if (!r.ok) return { ok: false, error: r.error || "No se ha podido aplicar al stock." };
-    const registro = {
-      id: uid(),
-      localId: producto.localId || localActivoId || null,
-      tipo: "proveedor",
-      fecha: fechaReal,
+    if (!productoEsDelLocalActivoDevolucion(producto)) return { ok: false, error: "El producto no pertenece al local activo." };
+    const clave = clavePendientePM08("devolucion-proveedor", empresaId, localActivoId);
+    const fechaReal = fecha || leerPendientePM08(clave)?.payload?.fecha || todayISO();
+    const payload = {
+      empresaId,
+      localId: localActivoId,
       productoId,
       productoNombre: producto.nombre,
       cantidad: cant,
-      motivo: (motivo || "").trim(),
       proveedorId: proveedorId || null,
-      proveedorNombre: proveedorNombre || ""
+      proveedorNombre: proveedorNombre || "",
+      motivo: motivoLimpio,
+      fecha: fechaReal
     };
-    setDevoluciones((s2) => [registro, ...s2]);
-    registrarAuditoria("Devoluci\xF3n a proveedor", `${producto.nombre} \xD7${cant}${proveedorNombre ? ` \xB7 ${proveedorNombre}` : ""}`);
-    return { ok: true, registro };
+    const preparado = prepararPendientePM08(clave, "pm08-dev-proveedor", payload);
+    if (!preparado.ok) return preparado;
+    if (operacionesPM08EnCurso[clave]) return operacionesPM08EnCurso[clave];
+    const tarea = (async () => {
+      if (modoSincronizadoPM08()) {
+        if (!window.__nubeActiva || !window.__nubeCliente) return { ok: false, pendiente: true, error: "Sin conexión con la cuenta sincronizada. No se ha descontado stock; el borrador queda listo para reintentar." };
+        try {
+          const r = await Promise.race([
+            window.__nubeCliente.rpc("registrar_devolucion_proveedor", {
+              p_operation_id: preparado.pendiente.operationId,
+              p_empresa_id: empresaId,
+              p_local_id: localActivoId,
+              p_producto_id: productoId,
+              p_cantidad: cant,
+              p_proveedor_id: proveedorId || null,
+              p_proveedor_nombre: proveedorNombre || "",
+              p_motivo: motivoLimpio,
+              p_fecha: fechaReal,
+              p_datos: { productoNombre: producto.nombre, origen: "L&A Suite PM-08" }
+            }),
+            new Promise((_2, reject) => setTimeout(() => reject(new Error("timeout_pm08")), Number(window.ESPERA_NUBE_MS) || 6e3))
+          ]);
+          if (r.error) {
+            if (esErrorTransitorioPM08(r.error)) return { ok: false, pendiente: true, error: "No se pudo confirmar si el servidor recibió la devolución. Reintenta con el mismo borrador para no duplicar la salida de stock." };
+            limpiarPendientePM08(clave);
+            return { ok: false, error: mensajeErrorPM08(r.error, "No se ha podido registrar la devolución al proveedor.") };
+          }
+          const registro = normalizarDevolucionPM08(r.data?.devolucion, "proveedor");
+          if (!registro) throw new Error("respuesta_devolucion_incompleta");
+          setDevoluciones((s2) => [registro, ...(s2 || []).filter((d2) => d2.operationId !== registro.operationId && d2.id !== registro.id)]);
+          limpiarPendientePM08(clave);
+          try {
+            await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
+            await sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones });
+          } catch {
+          }
+          if (!r.data?.replayed) registrarAuditoria("Devolución a proveedor", `${producto.nombre} ×${cant}${proveedorNombre ? ` · ${proveedorNombre}` : ""}`);
+          return { ok: true, registro, replayed: !!r.data?.replayed };
+        } catch {
+          return { ok: false, pendiente: true, error: "No se pudo confirmar si el servidor recibió la devolución. Reintenta con el mismo borrador para no duplicar la salida de stock." };
+        }
+      }
+      if ((Number(producto.stock) || 0) + 1e-6 < cant) {
+        limpiarPendientePM08(clave);
+        return { ok: false, error: "No hay stock suficiente para devolver esa cantidad al proveedor." };
+      }
+      const r = aplicarMovimientoStock({
+        productoId,
+        cantidad: -cant,
+        tipo: "DEVOLUCION_PROVEEDOR",
+        operationId: preparado.pendiente.operationId,
+        movimientoId: `pm08-local-stock-${uid()}`,
+        origen: "devolucionProveedor",
+        documentoOrigenId: proveedorId || null,
+        afectaStockTotal: true,
+        permitirDeficit: false,
+        motivo: `Devolución a proveedor · ${motivoLimpio}`
+      });
+      if (!r.ok) {
+        limpiarPendientePM08(clave);
+        return { ok: false, error: r.error || "No se ha podido aplicar al stock." };
+      }
+      const registro = normalizarDevolucionPM08({ ...payload, operationId: preparado.pendiente.operationId, tipo: "proveedor", createdAt: (/* @__PURE__ */ new Date()).toISOString() }, "proveedor");
+      setDevoluciones((s2) => [registro, ...(s2 || []).filter((d2) => d2.operationId !== registro.operationId)]);
+      limpiarPendientePM08(clave);
+      registrarAuditoria("Devolución a proveedor", `${producto.nombre} ×${cant}${proveedorNombre ? ` · ${proveedorNombre}` : ""}`);
+      return { ok: true, registro, local: true };
+    })();
+    operacionesPM08EnCurso[clave] = tarea;
+    try {
+      return await tarea;
+    } finally {
+      delete operacionesPM08EnCurso[clave];
+    }
   }
-  return { registrarDevolucionCliente, registrarDevolucionProveedor };
+  return { registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion };
 }
 function crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId }) {
   function addCliente(data) {
@@ -10166,128 +10746,323 @@ function LibroIva({ movimientos, productos, albaranes, proveedorPorId, facturasD
   const filas = [.../* @__PURE__ */ new Set([...Object.keys(repercutido), ...Object.keys(soportado)])].sort((a2, b2) => Number(a2) - Number(b2));
   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Libro de IVA"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Resumen trimestral para tu declaraci\xF3n (modelo 303): IVA repercutido de tus ventas e IVA soportado de tus compras, por tipo. Este programa no presenta el modelo por ti \u2014 te da los n\xFAmeros listos para que tu gestor\xEDa los meta, o para revisarlos t\xFA antes de d\xE1rselos.")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Trimestre" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: trimestre, onChange: (e) => setTrimestre(Number(e.target.value)), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: 1 }, "1T \u2014 Enero a Marzo"), /* @__PURE__ */ import_react4.default.createElement("option", { value: 2 }, "2T \u2014 Abril a Junio"), /* @__PURE__ */ import_react4.default.createElement("option", { value: 3 }, "3T \u2014 Julio a Septiembre"), /* @__PURE__ */ import_react4.default.createElement("option", { value: 4 }, "4T \u2014 Octubre a Diciembre"))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "A\xF1o" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: anio, onChange: (e) => setAnio(Number(e.target.value) || hoy.getFullYear()) }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Del ", desde, " al ", hasta)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "IVA repercutido (ventas)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: C2.accent } }, "\u20AC", fmt(totalRep.cuota))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "IVA soportado (compras)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1" }, "\u20AC", fmt(totalSop.cuota)))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.chrome, color: "#fff" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[13px] font-medium" }, resultado >= 0 ? "A ingresar en Hacienda" : "A compensar / devolver"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-bold text-[19px]" }, "\u20AC", fmt(Math.abs(resultado))))), filas.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay ventas ni compras registradas en este trimestre." }) : /* @__PURE__ */ import_react4.default.createElement(Card, { style: { padding: 0 }, className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", { style: { color: C2.inkSoft, borderBottom: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2 px-3" }, "Tipo"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-right font-medium py-2 px-3" }, "Base repercutida"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-right font-medium py-2 px-3" }, "Base soportada"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, filas.map((tipo) => /* @__PURE__ */ import_react4.default.createElement("tr", { key: tipo, style: { borderBottom: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-3 mono" }, tipo, "%"), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-3 mono text-right" }, repercutido[tipo] ? `\u20AC${fmt(repercutido[tipo].base)}` : "\u2014"), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-3 mono text-right" }, soportado[tipo] ? `\u20AC${fmt(soportado[tipo].base)}` : "\u2014")))))), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: exportarExcel }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 14 }), " Exportar a Excel"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, 'Solo cuentan las ventas registradas con motivo "Venta", los albaranes ya dados de entrada y las facturas directas registradas en Cuentas por pagar. Si falta algo por registrar, este libro tampoco lo ver\xE1.'));
 }
-function Devoluciones({ productos, proveedores, devoluciones, registrarDevolucionCliente, registrarDevolucionProveedor }) {
+function Devoluciones({ productos = [], proveedores = [], devoluciones = [], movimientos = [], registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion }) {
+  const h = import_react4.default.createElement;
   const [vista, setVista] = import_react4.default.useState("cliente");
   const [productoId, setProductoId] = import_react4.default.useState("");
+  const [ventaClave, setVentaClave] = import_react4.default.useState("");
   const [cantidad, setCantidad] = import_react4.default.useState("");
   const [motivo, setMotivo] = import_react4.default.useState("");
   const [reembolso, setReembolso] = import_react4.default.useState("");
+  const [medioReembolso, setMedioReembolso] = import_react4.default.useState("SIN_REEMBOLSO");
   const [proveedorId, setProveedorId] = import_react4.default.useState("");
   const [error, setError] = import_react4.default.useState("");
   const [exito, setExito] = import_react4.default.useState("");
+  const [enviando, setEnviando] = import_react4.default.useState(false);
+  const [borradorRecuperado, setBorradorRecuperado] = import_react4.default.useState(false);
+  const lineasVenta = (0, import_react4.useMemo)(() => {
+    const ventasAnuladas = new Set(movimientos.filter((m2) => m2.tipo === "REVERSO").map((m2) => m2.anulaVentaId || m2.documentoOrigenId).filter(Boolean));
+    const porClave = /* @__PURE__ */ new Map();
+    movimientos.filter((m2) => esVenta(m2)).forEach((m2) => {
+      const ventaId = m2.operationId || m2.ventaId || m2.id;
+      if (!ventaId || ventasAnuladas.has(ventaId)) return;
+      const clave = encodeURIComponent(JSON.stringify([ventaId, m2.productoId]));
+      if (porClave.has(clave)) return;
+      const original = Math.abs(Number(m2.cantidadFisica ?? m2.cantidad) || 0);
+      const yaDevuelta = devoluciones.filter((d2) => d2.tipo === "cliente" && d2.ventaId === ventaId && d2.productoId === m2.productoId).reduce((acc, d2) => acc + (Number(d2.cantidad) || 0), 0);
+      const pendiente = Math.max(0, original - yaDevuelta);
+      if (pendiente <= 1e-6) return;
+      const producto = productos.find((p2) => p2.id === m2.productoId);
+      porClave.set(clave, { clave, ventaId, productoId: m2.productoId, productoNombre: producto?.nombre || m2.productoId, fecha: m2.fecha || "", pendiente });
+    });
+    return [...porClave.values()].sort((a2, b2) => String(b2.fecha).localeCompare(String(a2.fecha)));
+  }, [movimientos, devoluciones, productos]);
+  const lineaSeleccionada = lineasVenta.find((l2) => l2.clave === ventaClave) || null;
   function limpiar() {
     setProductoId("");
+    setVentaClave("");
     setCantidad("");
     setMotivo("");
     setReembolso("");
+    setMedioReembolso("SIN_REEMBOLSO");
     setProveedorId("");
+    setBorradorRecuperado(false);
   }
-  function enviar() {
+  function cambiarVista(siguiente) {
+    if (enviando || siguiente === vista) return;
+    limpiar();
     setError("");
     setExito("");
-    if (vista === "cliente") {
-      const r = registrarDevolucionCliente({ productoId, cantidad, motivo, reembolso });
-      if (!r.ok) {
-        setError(r.error);
-        return;
-      }
-      setExito(`Devoluci\xF3n registrada: ${r.registro.productoNombre} \xD7${r.registro.cantidad}.`);
-    } else {
-      const proveedor = proveedores.find((p2) => p2.id === proveedorId);
-      const r = registrarDevolucionProveedor({ productoId, cantidad, motivo, proveedorId, proveedorNombre: proveedor?.nombre });
-      if (!r.ok) {
-        setError(r.error);
-        return;
-      }
-      setExito(`Devoluci\xF3n registrada: ${r.registro.productoNombre} \xD7${r.registro.cantidad}.`);
-    }
-    limpiar();
+    setVista(siguiente);
   }
-  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Devoluciones"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(
-    "button",
-    {
-      onClick: () => {
-        setVista("cliente");
-        setError("");
-        setExito("");
-        limpiar();
+  (0, import_react4.useEffect)(() => {
+    const pendiente = typeof leerBorradorDevolucion === "function" ? leerBorradorDevolucion(vista) : null;
+    if (!pendiente) return;
+    setBorradorRecuperado(true);
+    setCantidad(String(pendiente.cantidad ?? ""));
+    setMotivo(pendiente.motivo || "");
+    setProductoId(pendiente.productoId || "");
+    if (vista === "cliente") {
+      setReembolso(Number(pendiente.reembolso) > 0 ? String(pendiente.reembolso) : "");
+      setMedioReembolso(pendiente.medioReembolso || "SIN_REEMBOLSO");
+      setVentaClave(encodeURIComponent(JSON.stringify([pendiente.ventaId, pendiente.productoId])));
+    } else {
+      setProveedorId(pendiente.proveedorId || "");
+    }
+  }, [vista]);
+  async function enviar() {
+    if (enviando) return;
+    setError("");
+    setExito("");
+    setEnviando(true);
+    try {
+      let r;
+      if (vista === "cliente") {
+        if (!lineaSeleccionada) {
+          setError("Elige una venta y producto con cantidad pendiente.");
+          return;
+        }
+        r = await registrarDevolucionCliente({ productoId: lineaSeleccionada.productoId, cantidad, motivo, reembolso, medioReembolso, ventaId: lineaSeleccionada.ventaId });
+      } else {
+        const proveedor = proveedores.find((p2) => p2.id === proveedorId);
+        r = await registrarDevolucionProveedor({ productoId, cantidad, motivo, proveedorId, proveedorNombre: proveedor?.nombre });
+      }
+      if (!r?.ok) {
+        setError(r?.error || "No se ha podido registrar la devolución.");
+        setBorradorRecuperado(!!r?.pendiente);
+        return;
+      }
+      setExito(`Devolución confirmada: ${r.registro.productoNombre} ×${r.registro.cantidad}${r.replayed ? " (reintento confirmado sin duplicar)" : ""}.`);
+      limpiar();
+    } finally {
+      setEnviando(false);
+    }
+  }
+  const estiloSelector = { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink };
+  const botonVista = (id, texto) => h("button", {
+    key: id,
+    disabled: enviando,
+    onClick: () => cambiarVista(id),
+    className: "text-[12px] font-medium px-3 py-1.5 rounded-full",
+    style: vista === id ? { background: C2.accent, color: "#fff" } : estiloSelector
+  }, texto);
+  const selectorPrincipal = vista === "cliente" ? h(Field, { label: "Venta original y producto" }, h("select", {
+    value: ventaClave,
+    disabled: enviando,
+    onChange: (e) => {
+      const clave = e.target.value;
+      const linea = lineasVenta.find((l2) => l2.clave === clave);
+      setVentaClave(clave);
+      setProductoId(linea?.productoId || "");
+    },
+    className: "w-full rounded-lg px-3 py-2 text-[13px]",
+    style: estiloSelector
+  }, h("option", { value: "" }, lineasVenta.length ? "Selecciona una venta" : "No hay ventas con cantidad pendiente"), lineasVenta.map((l2) => h("option", { key: l2.clave, value: l2.clave }, `${l2.fecha} · ${l2.productoNombre} · pendiente ${l2.pendiente}`)))) : h(Field, { label: "Producto" }, h("select", {
+    value: productoId,
+    disabled: enviando,
+    onChange: (e) => setProductoId(e.target.value),
+    className: "w-full rounded-lg px-3 py-2 text-[13px]",
+    style: estiloSelector
+  }, h("option", { value: "" }, "Selecciona un producto"), productos.map((p2) => h("option", { key: p2.id, value: p2.id }, `${p2.nombre} · stock ${fmt(p2.stock)}`))));
+  const camposReembolso = vista === "cliente" ? h(import_react4.default.Fragment, null,
+    h(Field, { label: "Importe a reembolsar (€)" }, h(Input, {
+      type: "number", min: "0", step: "0.01", disabled: enviando, value: reembolso,
+      onChange: (e) => {
+        const valor = e.target.value;
+        setReembolso(valor);
+        if (Number(valor) > 0 && medioReembolso === "SIN_REEMBOLSO") setMedioReembolso("EFECTIVO");
+        if (valor === "" || Number(valor) === 0) setMedioReembolso("SIN_REEMBOLSO");
       },
-      className: "text-[12px] font-medium px-3 py-1.5 rounded-full",
-      style: vista === "cliente" ? { background: C2.accent, color: "#fff" } : { background: C2.surface, border: `1px solid ${C2.line}`, color: C2.inkSoft }
-    },
-    "De cliente"
-  ), /* @__PURE__ */ import_react4.default.createElement(
-    "button",
-    {
-      onClick: () => {
-        setVista("proveedor");
-        setError("");
-        setExito("");
-        limpiar();
-      },
-      className: "text-[12px] font-medium px-3 py-1.5 rounded-full",
-      style: vista === "proveedor" ? { background: C2.accent, color: "#fff" } : { background: C2.surface, border: `1px solid ${C2.line}`, color: C2.inkSoft }
-    },
-    "A proveedor"
-  )), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, vista === "cliente" ? "Un cliente devuelve un producto: vuelve al stock, y si le devuelves el dinero, se registra tambi\xE9n como una retirada de caja." : "Devuelves un producto a un proveedor (defectuoso, error en el pedido): sale del stock.")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Producto" }, /* @__PURE__ */ import_react4.default.createElement(
-    "select",
-    {
-      value: productoId,
-      onChange: (e) => setProductoId(e.target.value),
-      className: "w-full rounded-lg px-3 py-2 text-[13px]",
-      style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink }
-    },
-    /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Selecciona un producto"),
-    productos.map((p2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: p2.id, value: p2.id }, p2.nombre))
-  )), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Cantidad" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: cantidad, onChange: (e) => setCantidad(e.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivo, onChange: (e) => setMotivo(e.target.value), placeholder: vista === "cliente" ? "Ej: no era lo que esperaba" : "Ej: lleg\xF3 defectuoso" })), vista === "cliente" ? /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Reembolso en efectivo (\u20AC, opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: reembolso, onChange: (e) => setReembolso(e.target.value), placeholder: "D\xE9jalo en blanco si no hubo reembolso" })) : /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Proveedor (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(
-    "select",
-    {
-      value: proveedorId,
-      onChange: (e) => setProveedorId(e.target.value),
-      className: "w-full rounded-lg px-3 py-2 text-[13px]",
-      style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink }
-    },
-    /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin especificar"),
-    proveedores.map((p2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: p2.id, value: p2.id }, p2.nombre))
-  )), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.red } }, error), exito && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.accent } }, exito), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: enviar }, "Registrar devoluci\xF3n")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Historial"), devoluciones.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin devoluciones registradas todav\xEDa." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, devoluciones.slice(0, 50).map((d2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: d2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: d2.tipo === "cliente" ? C2.accent : C2.amber }, d2.tipo === "cliente" ? "Cliente" : "Proveedor"), " ", d2.productoNombre, " \xD7", d2.cantidad), /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, d2.fecha)), d2.motivo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, d2.motivo), d2.reembolso > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-1", style: { color: C2.red } }, "Reembolso: \u20AC", fmt(d2.reembolso)), d2.proveedorNombre && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, "Proveedor: ", d2.proveedorNombre)))));
+      placeholder: "0,00 si no hubo devolución de dinero"
+    })),
+    h(Field, { label: "Medio de reintegro" }, h("select", { value: medioReembolso, disabled: enviando, onChange: (e) => setMedioReembolso(e.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: estiloSelector },
+      h("option", { value: "SIN_REEMBOLSO" }, "Sin reembolso / cambio"),
+      h("option", { value: "EFECTIVO" }, "Efectivo"),
+      h("option", { value: "TARJETA" }, "Tarjeta"),
+      h("option", { value: "TRANSFERENCIA" }, "Transferencia"),
+      h("option", { value: "OTRO" }, "Otro")
+    ))
+  ) : null;
+  const campoProveedor = vista === "proveedor" ? h(Field, { label: "Proveedor (opcional)" }, h("select", { value: proveedorId, disabled: enviando, onChange: (e) => setProveedorId(e.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: estiloSelector },
+    h("option", { value: "" }, "Sin especificar"),
+    proveedores.map((p2) => h("option", { key: p2.id, value: p2.id }, p2.nombre))
+  )) : null;
+  const historial = devoluciones.length === 0 ? h(Empty, { text: "Sin devoluciones registradas todavía." }) : h("div", { className: "space-y-1.5" }, devoluciones.slice(0, 50).map((d2) => h(Card, { key: d2.operationId || d2.id },
+    h("div", { className: "flex items-center justify-between text-[12.5px]" },
+      h("span", null, h(Pill2, { color: d2.tipo === "cliente" ? C2.accent : C2.amber }, d2.tipo === "cliente" ? "Cliente" : "Proveedor"), " ", d2.productoNombre, " ×", d2.cantidad),
+      h("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, d2.fecha)
+    ),
+    d2.motivo && h("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, d2.motivo),
+    d2.reembolso > 0 && h("div", { className: "text-[11.5px] mt-1", style: { color: C2.red } }, "Reembolso: €", fmt(d2.reembolso), " · ", d2.medioReembolso),
+    d2.tipo === "cliente" && d2.reembolso === 0 && h("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, "Sin reembolso"),
+    d2.proveedorNombre && h("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, "Proveedor: ", d2.proveedorNombre)
+  )));
+  return h("div", null,
+    h(SectionTitle, null, "Devoluciones"),
+    h("div", { className: "flex gap-1.5 mb-4" }, botonVista("cliente", "De cliente"), botonVista("proveedor", "A proveedor")),
+    h(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, h("div", { className: "text-[12.5px]" }, vista === "cliente" ? "Selecciona la venta original. Stock y reembolso se confirman juntos: si una parte falla, no se guarda ninguna." : "La salida se confirma contra el stock real del local y nunca puede dejar existencias negativas.")),
+    h(Card, { className: "mb-4" },
+      borradorRecuperado && h("div", { className: "text-[11.5px] mb-3 p-2 rounded-lg", style: { background: C2.amberSoft, color: C2.ink } }, "Borrador pendiente recuperado. Al reintentar se conserva el mismo identificador para evitar duplicados."),
+      selectorPrincipal,
+      h(Field, { label: vista === "cliente" && lineaSeleccionada ? `Cantidad (máximo ${lineaSeleccionada.pendiente})` : "Cantidad" }, h(Input, { type: "number", min: "0.000001", step: "0.01", disabled: enviando, value: cantidad, onChange: (e) => setCantidad(e.target.value) })),
+      h(Field, { label: "Motivo (obligatorio)" }, h(Input, { disabled: enviando, value: motivo, onChange: (e) => setMotivo(e.target.value), placeholder: vista === "cliente" ? "Ej: producto servido por error" : "Ej: llegó defectuoso" })),
+      camposReembolso,
+      campoProveedor,
+      error && h("div", { className: "text-[11.5px] mb-2", style: { color: C2.red } }, error),
+      exito && h("div", { className: "text-[11.5px] mb-2", style: { color: C2.accent } }, exito),
+      h(Btn, { disabled: enviando, onClick: enviar }, enviando ? "Confirmando…" : "Registrar devolución")
+    ),
+    h("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Historial"),
+    historial
+  );
 }
-function BloqueEntradasSalidas({ fecha, movimientosCajaDelDia, registrarMovimientoCaja, eliminarMovimientoCaja }) {
+function BloqueEntradasSalidas({ fecha, movimientosCajaDelDia = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, periodoCerrado = false }) {
+  const h = import_react4.default.createElement;
   const [mostrarForm, setMostrarForm] = import_react4.default.useState(false);
-  const [tipo, setTipo] = import_react4.default.useState("entrada");
+  const [tipo, setTipo] = import_react4.default.useState("ENTRADA");
   const [importe, setImporte] = import_react4.default.useState("");
   const [motivo, setMotivo] = import_react4.default.useState("");
   const [errorLocal, setErrorLocal] = import_react4.default.useState("");
-  function enviar() {
-    const r = registrarMovimientoCaja(tipo, importe, motivo, fecha);
-    if (!r.ok) {
-      setErrorLocal(r.error);
+  const [exitoLocal, setExitoLocal] = import_react4.default.useState("");
+  const [enviando, setEnviando] = import_react4.default.useState(false);
+  const [borradorRecuperado, setBorradorRecuperado] = import_react4.default.useState(false);
+  const [reversandoId, setReversandoId] = import_react4.default.useState(null);
+  const [motivoReverso, setMotivoReverso] = import_react4.default.useState("");
+  const [revirtiendo, setRevirtiendo] = import_react4.default.useState(false);
+  (0, import_react4.useEffect)(() => {
+    const pendiente = typeof leerBorradorMovimientoCaja === "function" ? leerBorradorMovimientoCaja() : null;
+    if (!pendiente) return;
+    if (pendiente.fecha !== fecha) {
+      setErrorLocal(`Hay un movimiento pendiente del ${pendiente.fecha}. Selecciona esa fecha para reintentarlo sin duplicar.`);
       return;
     }
+    setTipo(pendiente.tipo || "ENTRADA");
+    setImporte(String(pendiente.importe ?? ""));
+    setMotivo(pendiente.concepto || "");
+    setMostrarForm(true);
+    setBorradorRecuperado(true);
+  }, [fecha]);
+  async function enviar() {
+    if (enviando || periodoCerrado) return;
     setErrorLocal("");
-    setImporte("");
-    setMotivo("");
-    setMostrarForm(false);
+    setExitoLocal("");
+    setEnviando(true);
+    try {
+      const r = await registrarMovimientoCaja(tipo, importe, motivo, fecha);
+      if (!r?.ok) {
+        setErrorLocal(r?.error || "No se ha podido registrar el movimiento.");
+        setBorradorRecuperado(!!r?.pendiente);
+        return;
+      }
+      setExitoLocal(`${tipo === "ENTRADA" ? "Entrada" : "Retirada"} confirmada${r.replayed ? " sin duplicar" : ""}.`);
+      setImporte("");
+      setMotivo("");
+      setMostrarForm(false);
+      setBorradorRecuperado(false);
+    } finally {
+      setEnviando(false);
+    }
   }
-  return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium", style: { color: C2.inkSoft } }, "Entradas y retiradas de caja (aparte de ventas)"), !mostrarForm && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setMostrarForm(true) }, "+ A\xF1adir")), mostrarForm && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-3 p-2 rounded-lg", style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mb-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: tipo === "entrada" ? "primary" : "ghost", onClick: () => setTipo("entrada") }, "Entrada"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: tipo === "salida" ? "primary" : "ghost", onClick: () => setTipo("salida") }, "Retirada")), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Importe (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: importe, onChange: (e) => setImporte(e.target.value), autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivo, onChange: (e) => setMotivo(e.target.value), placeholder: "Ej: cambio para la caja, compra de hielo\u2026" })), errorLocal && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.red } }, errorLocal), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: enviar }, "Guardar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
-    setMostrarForm(false);
+  async function confirmarReverso(id) {
+    if (revirtiendo) return;
     setErrorLocal("");
-  } }, "Cancelar"))), movimientosCajaDelDia.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Nada registrado este d\xEDa.") : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1" }, movimientosCajaDelDia.map((m2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: m2.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, m2.tipo === "entrada" ? "+ " : "\u2212 ", m2.motivo || "(sin motivo)"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-medium", style: { color: m2.tipo === "entrada" ? C2.accent : C2.red } }, m2.tipo === "entrada" ? "+" : "\u2212", "\u20AC", fmt(m2.importe)), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => eliminarMovimientoCaja(m2.id), "aria-label": "Eliminar movimiento de caja" }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 13, color: C2.inkSoft })))))));
+    setExitoLocal("");
+    setRevirtiendo(true);
+    try {
+      const r = await eliminarMovimientoCaja(id, motivoReverso);
+      if (!r?.ok) {
+        setErrorLocal(r?.error || "No se ha podido confirmar el reverso.");
+        return;
+      }
+      setExitoLocal(`Reverso confirmado${r.replayed ? " sin duplicar" : ""}. El movimiento original se conserva.`);
+      setReversandoId(null);
+      setMotivoReverso("");
+    } finally {
+      setRevirtiendo(false);
+    }
+  }
+  const referenciasRevertidas = new Set(movimientosCajaDelDia.map((m2) => m2.refOperationId).filter(Boolean));
+  const listado = movimientosCajaDelDia.length === 0 ? h("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Nada registrado este día.") : h("div", { className: "space-y-2" }, movimientosCajaDelDia.map((m2) => {
+    const efecto = Number(m2.efectoEfectivo);
+    const signo = efecto > 0 ? "+" : efecto < 0 ? "−" : "";
+    const esManual = ["ENTRADA", "RETIRADA", "entrada", "salida"].includes(m2.tipo);
+    const yaRevertido = referenciasRevertidas.has(m2.operationId || m2.id);
+    return h("div", { key: m2.operationId || m2.id, className: "py-1.5", style: { borderBottom: `1px solid ${C2.line}` } },
+      h("div", { className: "flex items-center justify-between gap-2 text-[12px]" },
+        h("span", null, h(Pill2, { color: efecto > 0 ? C2.accent : efecto < 0 ? C2.red : C2.inkSoft }, m2.tipo), " ", m2.concepto || m2.motivo || "(sin concepto)"),
+        h("span", { className: "mono font-medium", style: { color: efecto > 0 ? C2.accent : efecto < 0 ? C2.red : C2.inkSoft } }, signo, "€", fmt(Math.abs(Number(m2.importe) || 0)))
+      ),
+      esManual && !yaRevertido && reversandoId !== (m2.operationId || m2.id) && h("div", { className: "mt-1" }, h(Btn, { small: true, variant: "ghost", disabled: revirtiendo, onClick: () => {
+        setReversandoId(m2.operationId || m2.id);
+        setMotivoReverso("");
+        setErrorLocal("");
+      } }, "Revertir con motivo")),
+      esManual && yaRevertido && h("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Movimiento revertido; se conserva para auditoría."),
+      reversandoId === (m2.operationId || m2.id) && h("div", { className: "mt-2 p-2 rounded-lg", style: { background: C2.bg } },
+        h(Field, { label: "Motivo obligatorio del reverso" }, h(Input, { value: motivoReverso, disabled: revirtiendo, onChange: (e) => setMotivoReverso(e.target.value), placeholder: "Ej: importe introducido por error" })),
+        h("div", { className: "flex gap-2" },
+          h(Btn, { small: true, variant: "danger", disabled: revirtiendo, onClick: () => confirmarReverso(m2.operationId || m2.id) }, revirtiendo ? "Confirmando…" : "Confirmar reverso"),
+          h(Btn, { small: true, variant: "ghost", disabled: revirtiendo, onClick: () => {
+            setReversandoId(null);
+            setMotivoReverso("");
+          } }, "Cancelar")
+        )
+      )
+    );
+  }));
+  return h(Card, { className: "mb-4" },
+    h("div", { className: "flex items-center justify-between mb-2" },
+      h("div", { className: "text-[12px] font-medium", style: { color: C2.inkSoft } }, "Entradas, retiradas y reembolsos"),
+      !mostrarForm && !periodoCerrado && h(Btn, { small: true, variant: "ghost", disabled: enviando, onClick: () => {
+        setMostrarForm(true);
+        setErrorLocal("");
+        setExitoLocal("");
+      } }, "+ Añadir")
+    ),
+    periodoCerrado && h("div", { className: "text-[11.5px] mb-3 p-2 rounded-lg", style: { background: C2.amberSoft } }, "Día cerrado por arqueo. Para añadir movimientos o reembolsos en efectivo, primero anula el arqueo indicando el motivo."),
+    mostrarForm && h("div", { className: "mb-3 p-2 rounded-lg", style: { background: C2.bg } },
+      borradorRecuperado && h("div", { className: "text-[11px] mb-2", style: { color: C2.amber } }, "Borrador recuperado: el reintento conserva el mismo identificador."),
+      h("div", { className: "flex gap-2 mb-2" },
+        h(Btn, { small: true, disabled: enviando, variant: tipo === "ENTRADA" ? "primary" : "ghost", onClick: () => setTipo("ENTRADA") }, "Entrada"),
+        h(Btn, { small: true, disabled: enviando, variant: tipo === "RETIRADA" ? "primary" : "ghost", onClick: () => setTipo("RETIRADA") }, "Retirada")
+      ),
+      h(Field, { label: "Importe (€)" }, h(Input, { type: "number", min: "0.01", step: "0.01", value: importe, disabled: enviando, onChange: (e) => setImporte(e.target.value), autoFocus: true })),
+      h(Field, { label: "Concepto" }, h(Input, { value: motivo, disabled: enviando, onChange: (e) => setMotivo(e.target.value), placeholder: "Ej: cambio para la caja, compra de hielo…" })),
+      h("div", { className: "flex gap-2" },
+        h(Btn, { small: true, disabled: enviando || periodoCerrado, onClick: enviar }, enviando ? "Confirmando…" : "Guardar"),
+        h(Btn, { small: true, variant: "ghost", disabled: enviando, onClick: () => {
+          setMostrarForm(false);
+          setErrorLocal("");
+        } }, "Cancelar")
+      )
+    ),
+    errorLocal && h("div", { className: "text-[11.5px] mb-2", style: { color: C2.red } }, errorLocal),
+    exitoLocal && h("div", { className: "text-[11.5px] mb-2", style: { color: C2.accent } }, exitoLocal),
+    listado
+  );
 }
-function ArqueoCaja({ movimientos, arqueos, addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja }) {
+function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja }) {
+  const h = import_react4.default.createElement;
   const [fecha, setFecha] = (0, import_react4.useState)(todayISO());
   const [contado, setContado] = (0, import_react4.useState)("");
   const [notas, setNotas] = (0, import_react4.useState)("");
   const [error, setError] = (0, import_react4.useState)("");
+  const [exito, setExito] = (0, import_react4.useState)("");
+  const [enviando, setEnviando] = (0, import_react4.useState)(false);
+  const [borradorRecuperado, setBorradorRecuperado] = (0, import_react4.useState)(false);
+  const [motivoAnulacion, setMotivoAnulacion] = (0, import_react4.useState)("");
+  const [mostrarAnulacion, setMostrarAnulacion] = (0, import_react4.useState)(false);
+  const [anulando, setAnulando] = (0, import_react4.useState)(false);
   const ventasDelDia = movimientos.filter((m2) => esVenta(m2) && m2.fecha === fecha && !m2.encargoId);
   const porMedio = { Efectivo: 0, Tarjeta: 0, Transferencia: 0, Otro: 0 };
   ventasDelDia.forEach((m2) => {
     const medio = m2.medioPago || "Efectivo";
-    const importe = Math.abs(Number(m2.cantidad) || 0) * (Number(m2.ingresoUnitario) || 0) * (1 + (Number(m2.ivaVentaAplicado) || 0) / 100);
+    const importeVenta = Math.abs(Number(m2.cantidad) || 0) * (Number(m2.ingresoUnitario) || 0) * (1 + (Number(m2.ivaVentaAplicado) || 0) / 100);
     if (medio === "Mixto" && m2.detallePago) {
       porMedio.Efectivo += Number(m2.detallePago.efectivo) || 0;
       porMedio.Tarjeta += Number(m2.detallePago.tarjeta) || 0;
     } else {
-      porMedio[medio] = (porMedio[medio] || 0) + importe;
+      porMedio[medio] = (porMedio[medio] || 0) + importeVenta;
     }
   });
   encargos.forEach((e) => {
@@ -10298,27 +11073,135 @@ function ArqueoCaja({ movimientos, arqueos, addArqueo, deleteArqueo, encargos = 
     });
   });
   const movimientosCajaDelDia = movimientosCaja.filter((m2) => m2.fecha === fecha);
-  const netoEntradasSalidas = movimientosCajaDelDia.reduce((acc, m2) => acc + (m2.tipo === "entrada" ? m2.importe : -m2.importe), 0);
-  const efectivoEsperado = (porMedio.Efectivo || 0) + netoEntradasSalidas;
-  const diferencia = contado === "" ? null : Number(contado) - efectivoEsperado;
-  const yaArqueado = arqueos.find((a2) => a2.fecha === fecha);
-  function submit() {
-    if (contado === "") {
-      setError("Escribe cu\xE1nto efectivo hay en caja.");
+  const netoCaja = movimientosCajaDelDia.reduce((acc, m2) => {
+    const efecto = Number(m2.efectoEfectivo);
+    if (Number.isFinite(efecto)) return acc + efecto;
+    return acc + (String(m2.tipo).toUpperCase() === "ENTRADA" ? Number(m2.importe) || 0 : -(Number(m2.importe) || 0));
+  }, 0);
+  const efectivoBase = redondearDineroPM08(porMedio.Efectivo || 0);
+  const efectivoEsperado = redondearDineroPM08(efectivoBase + netoCaja);
+  const contadoNumero = contado === "" ? NaN : redondearDineroPM08(contado);
+  const diferencia = Number.isFinite(contadoNumero) ? redondearDineroPM08(contadoNumero - efectivoEsperado) : null;
+  const yaArqueado = arqueos.find((a2) => a2.fecha === fecha && a2.estado !== "ANULADO");
+  (0, import_react4.useEffect)(() => {
+    setError("");
+    setExito("");
+    setMostrarAnulacion(false);
+    setMotivoAnulacion("");
+    const pendiente = typeof leerBorradorArqueo === "function" ? leerBorradorArqueo(fecha) : null;
+    if (!pendiente) {
+      setBorradorRecuperado(false);
+      return;
+    }
+    setContado(String(pendiente.efectivoContado ?? ""));
+    setNotas(pendiente.notas || "");
+    setBorradorRecuperado(true);
+  }, [fecha]);
+  async function submit() {
+    if (enviando || yaArqueado) return;
+    if (contado === "" || !Number.isFinite(contadoNumero) || contadoNumero < 0) {
+      setError("Escribe un efectivo contado igual o mayor que cero.");
       return;
     }
     setError("");
-    addArqueo({ fecha, efectivoEsperado, efectivoContado: Number(contado), diferencia, notas });
-    setContado("");
-    setNotas("");
+    setExito("");
+    setEnviando(true);
+    try {
+      const r = await addArqueo({
+        fecha,
+        efectivoBase,
+        efectivoContado: contadoNumero,
+        notas,
+        snapshot: { porMedio, ventasIncluidas: ventasDelDia.length, encargosIncluidos: encargos.filter((e) => (e.cobros || []).some((c2) => c2.fecha === fecha)).length }
+      });
+      if (!r?.ok) {
+        setError(r?.error || "No se ha podido guardar el arqueo.");
+        setBorradorRecuperado(!!r?.pendiente);
+        return;
+      }
+      setExito(`Arqueo confirmado${r.replayed ? " sin duplicar" : ""}: esperado €${fmt(r.arqueo.efectivoEsperado)}, contado €${fmt(r.arqueo.efectivoContado)}.`);
+      setContado("");
+      setNotas("");
+      setBorradorRecuperado(false);
+    } finally {
+      setEnviando(false);
+    }
   }
-  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Arqueo de caja"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Compara el efectivo que hay f\xEDsicamente en el caj\xF3n con lo que el programa dice que se ha vendido en efectivo ese d\xEDa. Las ventas con tarjeta o transferencia no se cuadran aqu\xED, solo se muestran como referencia.")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Fecha" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: fecha, onChange: (e) => setFecha(e.target.value) })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-3 my-3" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Efectivo esperado"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono" }, "\u20AC", fmt(efectivoEsperado))), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Otras ventas (tarjeta, transf.)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono", style: { color: C2.inkSoft } }, "\u20AC", fmt((porMedio.Tarjeta || 0) + (porMedio.Transferencia || 0) + (porMedio.Otro || 0))))), /* @__PURE__ */ import_react4.default.createElement(BloqueEntradasSalidas, { fecha, movimientosCajaDelDia, registrarMovimientoCaja, eliminarMovimientoCaja }), yaArqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg text-[12.5px]", style: { background: C2.bg } }, "Ya arqueaste este d\xEDa: contaste \u20AC", fmt(yaArqueado.efectivoContado), " ", "(", yaArqueado.diferencia === 0 ? "cuadra" : yaArqueado.diferencia > 0 ? `sobran \u20AC${fmt(yaArqueado.diferencia)}` : `faltan \u20AC${fmt(Math.abs(yaArqueado.diferencia))}`, ").", /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", onClick: () => deleteArqueo(yaArqueado.id) }, "Borrar y repetir"))) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo contado en caja (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: contado, onChange: (e) => setContado(e.target.value), autoFocus: true })), diferencia !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2", style: { color: diferencia === 0 ? C2.accent : Math.abs(diferencia) < 1 ? C2.amber : C2.red } }, diferencia === 0 ? "Cuadra exacto." : diferencia > 0 ? `Sobran \u20AC${fmt(diferencia)}` : `Faltan \u20AC${fmt(Math.abs(diferencia))}`), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Notas (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: notas, onChange: (e) => setNotas(e.target.value), placeholder: "Motivo del descuadre, si lo sabes" })), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submit }, "Guardar arqueo"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Historial de arqueos"), arqueos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has hecho ning\xFAn arqueo." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, arqueos.slice(0, 30).map((a2) => {
+  async function anular() {
+    if (!yaArqueado || anulando) return;
+    setError("");
+    setExito("");
+    setAnulando(true);
+    try {
+      const r = await deleteArqueo(yaArqueado.operationId || yaArqueado.id, motivoAnulacion);
+      if (!r?.ok) {
+        setError(r?.error || "No se ha podido anular el arqueo.");
+        return;
+      }
+      setExito(`Arqueo anulado${r.replayed ? " sin duplicar" : ""}. El cierre original se conserva en el historial.`);
+      setMostrarAnulacion(false);
+      setMotivoAnulacion("");
+    } finally {
+      setAnulando(false);
+    }
+  }
+  const estadoDiferencia = (valor) => valor === 0 ? "Cuadra" : valor > 0 ? `+€${fmt(valor)}` : `−€${fmt(Math.abs(valor))}`;
+  const historial = arqueos.length === 0 ? h(Empty, { text: "Todavía no has hecho ningún arqueo." }) : h("div", { className: "space-y-1.5" }, arqueos.slice(0, 30).map((a2) => {
+    const anulada = a2.estado === "ANULADO";
     const tieneAnulacionPosterior = movimientos.some((m2) => m2.origen === "anularVenta" && (() => {
       const ventaOriginal = movimientos.find((v2) => (v2.ventaId === m2.documentoOrigenId || v2.operationId === m2.documentoOrigenId) && esVenta(v2) && v2.id !== m2.id);
       return ventaOriginal && ventaOriginal.fecha === a2.fecha;
     })());
-    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: a2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, a2.fecha), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold", style: { color: a2.diferencia === 0 ? C2.accent : Math.abs(a2.diferencia) < 1 ? C2.amber : C2.red } }, a2.diferencia === 0 ? "Cuadra" : a2.diferencia > 0 ? `+\u20AC${fmt(a2.diferencia)}` : `\u2212\u20AC${fmt(Math.abs(a2.diferencia))}`)), tieneAnulacionPosterior && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-1", style: { color: C2.red } }, "\u26A0 Se anul\xF3 una venta de este d\xEDa despu\xE9s de cerrar \u2014 puede que ya no cuadre."));
-  })));
+    return h(Card, { key: a2.operationId || a2.id },
+      h("div", { className: "flex items-center justify-between text-[12.5px]" },
+        h("span", null, a2.fecha, " · ", h(Pill2, { color: anulada ? C2.inkSoft : C2.accent }, anulada ? "Anulado" : "Activo")),
+        h("span", { className: "mono font-semibold", style: { color: anulada ? C2.inkSoft : a2.diferencia === 0 ? C2.accent : Math.abs(a2.diferencia) < 1 ? C2.amber : C2.red } }, estadoDiferencia(Number(a2.diferencia) || 0))
+      ),
+      h("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, `Base €${fmt(a2.efectivoBase)} · esperado €${fmt(a2.efectivoEsperado)} · contado €${fmt(a2.efectivoContado)}`),
+      anulada && a2.anuladoMotivo && h("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Motivo de anulación: ", a2.anuladoMotivo),
+      !anulada && tieneAnulacionPosterior && h("div", { className: "text-[11px] mt-1", style: { color: C2.red } }, "⚠ Se anuló una venta de este día después de cerrar; revisa y, si procede, anula este arqueo de forma trazable.")
+    );
+  }));
+  return h("div", null,
+    h(SectionTitle, null, "Arqueo de caja"),
+    h(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, h("div", { className: "text-[12.5px]" }, "El cierre es diario y pertenece a un solo local. El servidor calcula el efectivo esperado con la base declarada y el libro de caja; el contado admite 0 € y nunca se borra físicamente.")),
+    h(Card, { className: "mb-4" },
+      h(Field, { label: "Fecha" }, h(Input, { type: "date", value: fecha, disabled: enviando || anulando, onChange: (e) => setFecha(e.target.value) })),
+      h("div", { className: "grid grid-cols-2 gap-3 my-3" },
+        h("div", null, h("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Efectivo esperado"), h("div", { className: "text-xl font-semibold mono" }, "€", fmt(efectivoEsperado))),
+        h("div", null, h("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Otras ventas"), h("div", { className: "text-xl font-semibold mono", style: { color: C2.inkSoft } }, "€", fmt((porMedio.Tarjeta || 0) + (porMedio.Transferencia || 0) + (porMedio.Otro || 0))))
+      ),
+      h("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, `Base efectivo €${fmt(efectivoBase)} · ajustes/reembolsos €${fmt(netoCaja)}`),
+      h(BloqueEntradasSalidas, { fecha, movimientosCajaDelDia, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, periodoCerrado: !!yaArqueado }),
+      yaArqueado ? h("div", { className: "p-2 rounded-lg text-[12.5px]", style: { background: C2.bg } },
+        `Día cerrado: contado €${fmt(yaArqueado.efectivoContado)} (${estadoDiferencia(Number(yaArqueado.diferencia) || 0)}).`,
+        !mostrarAnulacion && h("div", { className: "mt-2" }, h(Btn, { small: true, variant: "danger", disabled: anulando, onClick: () => {
+          setMostrarAnulacion(true);
+          setError("");
+        } }, "Anular cierre con motivo")),
+        mostrarAnulacion && h("div", { className: "mt-2" },
+          h(Field, { label: "Motivo obligatorio" }, h(Input, { value: motivoAnulacion, disabled: anulando, onChange: (e) => setMotivoAnulacion(e.target.value), placeholder: "Ej: faltaba registrar una retirada" })),
+          h("div", { className: "flex gap-2" },
+            h(Btn, { small: true, variant: "danger", disabled: anulando, onClick: anular }, anulando ? "Confirmando…" : "Confirmar anulación"),
+            h(Btn, { small: true, variant: "ghost", disabled: anulando, onClick: () => {
+              setMostrarAnulacion(false);
+              setMotivoAnulacion("");
+            } }, "Cancelar")
+          )
+        )
+      ) : h(import_react4.default.Fragment, null,
+        borradorRecuperado && h("div", { className: "text-[11.5px] mb-2 p-2 rounded-lg", style: { background: C2.amberSoft } }, "Borrador de arqueo recuperado. El reintento conserva el mismo identificador."),
+        h(Field, { label: "Efectivo contado en caja (€)" }, h(Input, { type: "number", min: "0", step: "0.01", value: contado, disabled: enviando, onChange: (e) => setContado(e.target.value), autoFocus: true })),
+        diferencia !== null && h("div", { className: "text-[12.5px] mb-2", style: { color: diferencia === 0 ? C2.accent : Math.abs(diferencia) < 1 ? C2.amber : C2.red } }, diferencia === 0 ? "Cuadra exacto." : diferencia > 0 ? `Sobran €${fmt(diferencia)}` : `Faltan €${fmt(Math.abs(diferencia))}`),
+        h(Field, { label: "Notas (opcional)" }, h(Input, { value: notas, disabled: enviando, onChange: (e) => setNotas(e.target.value), placeholder: "Motivo del descuadre, si lo sabes" })),
+        h(Btn, { disabled: enviando, onClick: submit }, enviando ? "Confirmando…" : "Guardar arqueo")
+      ),
+      error && h("div", { className: "text-[12px] mt-2", style: { color: C2.red } }, error),
+      exito && h("div", { className: "text-[12px] mt-2", style: { color: C2.accent } }, exito)
+    ),
+    h("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Historial de arqueos"),
+    historial
+  );
 }
 var PLANTILLAS_TURNO = [
   { id: "manana", label: "Ma\xF1ana", horaInicio: "08:00", horaFin: "14:00" },

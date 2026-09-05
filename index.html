@@ -231,7 +231,7 @@
         var tablaEmpresa = TABLAS_EMPRESA[key];
         var tablaEmpresaLocal = TABLAS_EMPRESA_LOCAL[key];
         var tablaEspecial = TABLAS_POR_FILA[key];
-        if (key === "pagosFacturas") {
+        if (LEDGERS_RPC[key]) {
           quitarPendiente(key);
           continue;
         } else if (tablaEmpresa) {
@@ -281,9 +281,20 @@
     facturasDirectas: "facturas_directas_empresa",
     gastosGenerales: "gastos_empresa",
   };
+  // PM-06/PM-08: estos historiales críticos son ledgers del servidor. React
+  // mantiene una caché local para pintar sin saltos, pero cada alta, reverso o
+  // anulación se escribe exclusivamente mediante una RPC transaccional. Nunca
+  // deben duplicarse como bloques editables en almacen_kv.
+  var LEDGERS_RPC = {
+    pagosFacturas: true,
+    arqueos: true,
+    movimientosCaja: true,
+    devoluciones: true,
+  };
   var CLAVES_CACHE_POR_USUARIO = {
     proveedores: true, clientes: true, auditoria: true,
-    albaranes: true, facturasDirectas: true, gastosGenerales: true, pagosFacturas: true
+    albaranes: true, facturasDirectas: true, gastosGenerales: true, pagosFacturas: true,
+    arqueos: true, movimientosCaja: true, devoluciones: true
   };
 
   async function claveCacheLocal(key) {
@@ -650,7 +661,14 @@
       var tablaEmpresaLocal = TABLAS_EMPRESA_LOCAL[key];
       var tablaEspecial = TABLAS_POR_FILA[key];
       var esPagosFactura = key === "pagosFacturas";
+      var esLedgerRpc = !!LEDGERS_RPC[key];
       var cacheKey = await claveCacheLocal(key);
+      // Los ledgers PM-08 se hidratan con consultas RLS desde fuente.js cuando
+      // ya existe sesión. Aquí solo se devuelve la última copia segregada del
+      // usuario para no leer el antiguo bloque global de almacen_kv.
+      if (esLedgerRpc && !esPagosFactura) {
+        return { key: key, value: LOCAL.get(cacheKey), shared: false };
+      }
       if (window.__nubeActiva && window.__nubeCliente && pendientes().indexOf(key) === -1) {
         try {
           var lista;
@@ -684,7 +702,7 @@
       var tablaEmpresa = TABLAS_EMPRESA[key];
       var tablaEmpresaLocal = TABLAS_EMPRESA_LOCAL[key];
       var tablaEspecial = TABLAS_POR_FILA[key];
-      var esPagosFactura = key === "pagosFacturas";
+      var esLedgerRpc = !!LEDGERS_RPC[key];
       var cacheKey = await claveCacheLocal(key);
 
       // Qué había guardado antes en este equipo. Sirve para saber qué se ha
@@ -706,9 +724,9 @@
 
       if (tablaEspecial && !falloLocal) anotarBorradosLocales(key, anterior, value);
 
-      // El ledger remoto de pagos solo se escribe mediante RPC transaccional.
-      // El set reactivo conserva la copia local; nunca hace upsert directo ni fallback remoto.
-      if (esPagosFactura) {
+      // Los ledgers remotos solo se escriben mediante RPC transaccional. El set
+      // reactivo conserva la copia local; nunca hace upsert directo ni fallback.
+      if (esLedgerRpc) {
         quitarPendiente(key);
         if (falloLocal) throw falloLocal;
         return { key: key, value: value, shared: false };
@@ -764,7 +782,7 @@
           var tablaEmpresa = TABLAS_EMPRESA[key];
           var tablaEmpresaLocal = TABLAS_EMPRESA_LOCAL[key];
           var tablaEspecial = TABLAS_POR_FILA[key];
-          if (key === "pagosFacturas") {
+          if (LEDGERS_RPC[key]) {
             return { key: key, deleted: true, shared: false };
           } else if (tablaEmpresa) {
             var rEmpDel = await conTiempoLimite(window.__nubeCliente.from(tablaEmpresa).delete().neq("id", ""), ESPERA_NUBE_MS);
