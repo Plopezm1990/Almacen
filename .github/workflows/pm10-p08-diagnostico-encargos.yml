@@ -1,0 +1,44 @@
+name: PM10 P08 diagnostico LA-018 encargos
+on:
+  push:
+    branches: [pm10-validaciones-altas-datos-legados]
+    paths:
+      - '.github/workflows/pm10-p08-diagnostico-encargos.yml'
+permissions:
+  contents: write
+jobs:
+  diagnostico:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generar diagnóstico compacto
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, json
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          funcs=[]
+          for m in re.finditer(r'function\s+([A-Za-z0-9_$]+)\s*\(',s):
+            name=m.group(1)
+            if re.search(r'encarg|pedidoCliente|reserva|anticipo|cobroEncargo',name,re.I):
+              funcs.append({'name':name,'offset':m.start(),'snippet':s[max(0,m.start()-1000):min(len(s),m.start()+12000)]})
+          terms=['encargo','anticipo','senia','seña','clienteId','fechaEntrega','horaEntrega','total','pagado','pendiente','estado','productos','lineas','cantidad','precio','addEncargo','updateEncargo','crearEncargo','guardarEncargo','cobrarEncargo']
+          occ={}
+          for t in terms:
+            hits=[]
+            for m in list(re.finditer(re.escape(t),s,re.I))[:35]:
+              hits.append({'offset':m.start(),'snippet':s[max(0,m.start()-650):min(len(s),m.start()+1800)]})
+            occ[t]=hits
+          out={'functions':funcs,'occurrences':occ}
+          Path('tests/pm10/P08_DIAGNOSTICO_ENCARGOS.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          print('funciones', [x['name'] for x in funcs])
+          print('ocurrencias',{k:len(v) for k,v in occ.items()})
+          PY
+      - name: Commit diagnóstico
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/pm10/P08_DIAGNOSTICO_ENCARGOS.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'PM10: guardar diagnóstico LA-018 encargos'
+          git push
