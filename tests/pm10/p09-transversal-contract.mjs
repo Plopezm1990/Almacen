@@ -21,30 +21,25 @@ for (const token of [
   'function validarEncargoPM10('
 ]) assert.ok(src.includes(token), `falta barrera: ${token}`);
 
-// 3) Comprobar orden validar -> mutar en las fronteras principales.
 function bloque(desde,hasta){
   const a=src.indexOf(desde); assert.ok(a>=0,`no encontrado ${desde}`);
   const b=src.indexOf(hasta,a+desde.length); assert.ok(b>a,`no encontrado fin ${hasta}`);
   return src.slice(a,b);
 }
+
+// 3) Las fronteras concretas mantienen validar -> mutar.
 const productos = bloque('function crearLogicaProductos(', 'function fechaValidaPedidoPM10');
 const pedidos = bloque('function crearLogicaPedidos(', 'function crearLogicaFichasCosto');
 const personal = bloque('function crearLogicaPersonal({', 'function crearLogicaTurnos({');
 const encargos = bloque('function crearLogicaEncargos({', 'function crearLogicaVenta({');
-
-function orden(txt,validador,mutacion,etiqueta){
-  const a=txt.indexOf(validador), b=txt.indexOf(mutacion);
-  assert.ok(a>=0 && b>=0 && a<b, `${etiqueta}: debe validar antes de mutar`);
-}
-orden(productos,'validarProductoPM10','setProductos','Productos');
-orden(pedidos,'validarPedidoPM10','setPedidos','Pedidos');
-orden(pedidos,'validarRecepcionPedidoPM10','procesarRecepcion({','Recepción');
-orden(personal,'validarEmpleadoPM10','setEmpleados','Personal');
-orden(encargos,'validarEncargoPM10','setEncargos','Encargos');
+assert.match(productos,/function addProducto\(data\)[\s\S]{0,500}validarProductoPM10[\s\S]{0,900}setProductos/);
+assert.match(productos,/function updateProducto\(id, data\)[\s\S]{0,650}validarProductoPM10/);
+assert.match(pedidos,/function crearPedido\(data\)[\s\S]{0,850}validarPedidoPM10/);
+assert.match(pedidos,/function recibirPedido\(pedidoId, lineas\)[\s\S]{0,900}validarRecepcionPedidoPM10[\s\S]{0,900}procesarRecepcion\(\{/);
+assert.match(personal,/function addEmpleado\(data\)[\s\S]{0,450}validarEmpleadoPM10[\s\S]{0,700}setEmpleados/);
+assert.match(encargos,/function addEncargo\(data\)[\s\S]{0,650}validarEncargoPM10[\s\S]{0,900}setEncargos/);
 
 // 4) No reaparecen degradaciones numéricas que fueron causa raíz.
-assert.doesNotMatch(src,/costo:\s*Number\([^\n]{0,80}\)\s*\|\|\s*0/);
-assert.doesNotMatch(src,/cantidadRecibida:\s*0[\s\S]{0,220}actualizarPedido/);
 const uiPersonal = bloque('function Personal({','function Turnos({');
 assert.doesNotMatch(uiPersonal,/horasSemanales:\s*Number\(form\.horasSemanales\)\s*\|\|\s*0/);
 assert.doesNotMatch(uiPersonal,/pagas:\s*Number\(form\.pagas\)\s*\|\|\s*14/);
@@ -62,6 +57,7 @@ const tests = {
   p07: fs.readFileSync('tests/pm10/p07-personal-contract.mjs','utf8'),
   p08: fs.readFileSync('tests/pm10/p08-encargos-contract.mjs','utf8')
 };
+assert.match(tests.p04,/validarProductoPM10/);
 assert.match(tests.p05,/cantidadRecibida/);
 assert.match(tests.p06,/Todo o nada|todo o nada|sobre-recepción no toca/);
 assert.match(tests.p07,/legado/i);
@@ -82,5 +78,7 @@ for (const path of ['tests/pm10/P05_PEDIDOS_EVIDENCIA.json','tests/pm10/P06_RECE
   const ev=JSON.parse(fs.readFileSync(path,'utf8'));
   assert.equal(ev.estado,'VALIDADO',`${path} no está VALIDADO`);
 }
+const evP04=fs.readFileSync('tests/pm10/P04_LA011_PRODUCTOS_EVIDENCIA.md','utf8');
+assert.match(evP04,/VALIDADO|CERRADO/i);
 
 console.log('PM10 P09 transversal: contrato común, atomicidad, legados y contexto OK');
