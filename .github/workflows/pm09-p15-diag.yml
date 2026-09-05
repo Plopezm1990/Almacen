@@ -1,0 +1,30 @@
+name: PM09 Punto 15 diagnostico fechas
+on:
+  push:
+    branches: [pm09-conciliacion-ventas-analitica]
+    paths:
+      - '.github/workflows/pm09-p15-diag.yml'
+permissions:
+  contents: read
+jobs:
+  diagnostico:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pm09-conciliacion-ventas-analitica
+      - name: Extraer llamadas relevantes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          needles=['registrar_venta_stock_carrito','revertir_venta_stock_carrito','registrar_devolucion_venta','fecha: creado ? creado.slice(0, 10) : todayISO()']
+          for n in needles:
+              print('\n===',n,'count=',s.count(n),'===')
+              start=0
+              while True:
+                  i=s.find(n,start)
+                  if i<0: break
+                  print(s[max(0,i-900):i+1700])
+                  start=i+len(n)
+          PY
