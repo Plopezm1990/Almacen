@@ -1,0 +1,174 @@
+diff --git a/fuente.js b/fuente.js
+index f2e457e..3a113d4 100644
+--- a/fuente.js
++++ b/fuente.js
+@@ -102271,7 +102271,7 @@ function GestionAlmacen() {
+     pagosFacturas,
+     setPagosFacturas
+   });
+-  const { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido } = crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId });
++  const { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido } = crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedores, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId });
+   const { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta } = crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, proveedores, pagosFacturas, setPagosFacturas, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+   const { addNomina, updateNomina, deleteNomina } = crearLogicaNominas({ nominas, setNominas, registrarAuditoria, empleados, localActivoId });
+   const { crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista } = crearLogicaEntrevistas({ entrevistas, setEntrevistas, registrarAuditoria });
+@@ -104852,31 +104852,111 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
+   }
+   return { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro };
+ }
+-function crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId }) {
++function fechaValidaPedidoPM10(valor) {
++  const texto = String(valor ?? "").trim();
++  if (!texto) return true;
++  if (!/^\d{4}-\d{2}-\d{2}$/.test(texto)) return false;
++  const [y, m, d] = texto.split("-").map(Number);
++  const fecha = new Date(Date.UTC(y, m - 1, d));
++  return fecha.getUTCFullYear() === y && fecha.getUTCMonth() === m - 1 && fecha.getUTCDate() === d;
++}
++function validarPedidoPM10(data, { pedidoActual = null, proveedores = [], productos = [], localActivoId = null } = {}) {
++  const entrada = data && typeof data === "object" ? data : {};
++  if (!localActivoId) return errorValidacionPM10("contexto_no_autorizado", "localId", "Selecciona un local activo para guardar el pedido.");
++  if (pedidoActual && pedidoActual.localId !== localActivoId) return errorValidacionPM10("contexto_no_autorizado", "localId", "El pedido no pertenece al local activo.");
++
++  const proveedorId = String(entrada.proveedorId ?? "").trim();
++  if (!proveedorId) return errorValidacionPM10("campo_obligatorio", "proveedorId", "Selecciona un proveedor.");
++  const proveedor = (proveedores || []).find((p22) => p22 && p22.id === proveedorId);
++  if (!proveedor) return errorValidacionPM10("referencia_inexistente", "proveedorId", "El proveedor no existe en el contexto autorizado.");
++
++  const fechaEsperada = String(entrada.fechaEsperada ?? "").trim();
++  if (fechaEsperada && !fechaValidaPedidoPM10(fechaEsperada)) return errorValidacionPM10("fecha_invalida", "fechaEsperada", "La fecha esperada no es válida.");
++  if (!Array.isArray(entrada.items) || entrada.items.length === 0) return errorValidacionPM10("campo_obligatorio", "items", "Añade al menos un producto al pedido.");
++
++  const anterioresPorProducto = new Map();
++  for (const anterior of pedidoActual?.items || []) {
++    const clave = String(anterior?.productoId ?? "");
++    if (!anterioresPorProducto.has(clave)) anterioresPorProducto.set(clave, []);
++    anterioresPorProducto.get(clave).push(anterior);
++  }
++  const usados = new Set();
++  const items = [];
++
++  for (let i33 = 0; i33 < entrada.items.length; i33 += 1) {
++    const item = entrada.items[i33] && typeof entrada.items[i33] === "object" ? entrada.items[i33] : {};
++    const prefijo = `items.${i33}`;
++    const productoId = String(item.productoId ?? "").trim();
++    if (!productoId) return errorValidacionPM10("campo_obligatorio", `${prefijo}.productoId`, "Cada línea debe tener un producto.");
++    const producto = (productos || []).find((p22) => p22 && p22.id === productoId);
++    if (!producto) return errorValidacionPM10("referencia_inexistente", `${prefijo}.productoId`, "El producto no existe.");
++    if (producto.localId !== localActivoId) return errorValidacionPM10("referencia_otro_contexto", `${prefijo}.productoId`, "El producto no pertenece al local activo.");
++
++    const cantidadR = numeroPM10(item.cantidad, `${prefijo}.cantidad`, { minimo: 0, estrictoMinimo: true });
++    if (!cantidadR.ok) return cantidadR;
++    const costoR = numeroPM10(item.costoUnitario, `${prefijo}.costoUnitario`, { minimo: 0 });
++    if (!costoR.ok) return costoR;
++
++    const cola = anterioresPorProducto.get(productoId) || [];
++    const anterior = cola.find((x3) => !usados.has(x3)) || null;
++    if (anterior) usados.add(anterior);
++    let cantidadRecibida = 0;
++    if (anterior) {
++      const recibidaAnterior = Number(anterior.cantidadRecibida ?? 0);
++      if (!Number.isFinite(recibidaAnterior) || recibidaAnterior < 0) return errorValidacionPM10("conflicto_estado_previo", `${prefijo}.cantidadRecibida`, "La recepción acumulada anterior no es válida.");
++      cantidadRecibida = recibidaAnterior;
++      if (Object.prototype.hasOwnProperty.call(item, "cantidadRecibida") && item.cantidadRecibida !== null && item.cantidadRecibida !== void 0 && String(item.cantidadRecibida).trim() !== "") {
++        const recibidaPayload = Number(item.cantidadRecibida);
++        if (!Number.isFinite(recibidaPayload) || recibidaPayload !== recibidaAnterior) return errorValidacionPM10("conflicto_estado_previo", `${prefijo}.cantidadRecibida`, "La edición no puede modificar manualmente la cantidad ya recibida.");
++      }
++      if (cantidadR.valor < cantidadRecibida) return errorValidacionPM10("exceso_sobre_cantidad_pendiente", `${prefijo}.cantidad`, "La cantidad pedida no puede quedar por debajo de lo ya recibido.");
++    } else if (Object.prototype.hasOwnProperty.call(item, "cantidadRecibida") && item.cantidadRecibida !== null && item.cantidadRecibida !== void 0 && String(item.cantidadRecibida).trim() !== "") {
++      const recibidaNueva = Number(item.cantidadRecibida);
++      if (!Number.isFinite(recibidaNueva) || recibidaNueva !== 0) return errorValidacionPM10("conflicto_estado_previo", `${prefijo}.cantidadRecibida`, "Una línea nueva debe empezar con cantidad recibida igual a cero.");
++    }
++    items.push({ ...item, productoId, cantidad: cantidadR.valor, costoUnitario: costoR.valor, cantidadRecibida });
++  }
++
++  if (pedidoActual) {
++    for (const anterior of pedidoActual.items || []) {
++      if (usados.has(anterior)) continue;
++      const recibidaAnterior = Number(anterior.cantidadRecibida ?? 0);
++      if (Number.isFinite(recibidaAnterior) && recibidaAnterior > 0) return errorValidacionPM10("conflicto_estado_previo", "items", "No puedes eliminar una línea que ya tiene unidades recibidas.");
++    }
++  }
++  return { ok: true, datos: { ...entrada, proveedorId, fechaEsperada, items } };
++}
++function crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedores, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId }) {
+   function pedidoEsDelLocalActivo(pedido) {
+     if (!pedido) return false;
+-    if (!localActivoId) return true;
++    if (!localActivoId) return false;
+     return pedido.localId === localActivoId;
+   }
+-  function crearPedido({ proveedorId, fechaEsperada, items }) {
++  function crearPedido(data) {
++    const validacion = validarPedidoPM10(data, { proveedores, productos, localActivoId });
++    if (!validacion.ok) return validacion;
++    const { proveedorId, fechaEsperada, items } = validacion.datos;
+     const pedido = {
+       id: uid(),
+-      localId: localActivoId || null,
++      localId: localActivoId,
+       proveedorId,
+       fecha: todayISO(),
+       fechaEsperada,
+       estado: "Pendiente",
+-      items: items.map((it2) => ({ ...it2, cantidadRecibida: 0 }))
++      items
+     };
+     setPedidos((s22) => [pedido, ...s22]);
+     return pedido;
+   }
+-  function actualizarPedido(pedidoId, { proveedorId, fechaEsperada, items }) {
++  function actualizarPedido(pedidoId, data) {
+     const actual = pedidos2.find((pe2) => pe2.id === pedidoId);
+-    if (!pedidoEsDelLocalActivo(actual)) return false;
++    if (!pedidoEsDelLocalActivo(actual)) return errorValidacionPM10("contexto_no_autorizado", "localId", "Pedido fuera del local activo.");
++    const validacion = validarPedidoPM10(data, { pedidoActual: actual, proveedores, productos, localActivoId });
++    if (!validacion.ok) return validacion;
++    const { proveedorId, fechaEsperada, items } = validacion.datos;
+     setPedidos(
+       (s22) => s22.map(
+-        (pe2) => pe2.id === pedidoId ? { ...pe2, proveedorId, fechaEsperada, items: items.map((it2) => ({ ...it2, cantidadRecibida: 0 })) } : pe2
++        (pe2) => pe2.id === pedidoId ? { ...pe2, proveedorId, fechaEsperada, items } : pe2
+       )
+     );
+     return true;
+@@ -108183,7 +108263,7 @@ function Pedidos({ pedidos: pedidos2, proveedores, productos, crearPedido, actua
+     setEditingId(pedido.id);
+     setProveedorId(pedido.proveedorId);
+     setFechaEsperada(pedido.fechaEsperada || "");
+-    setItems(pedido.items.map((it2) => ({ productoId: it2.productoId, cantidad: it2.cantidad, costoUnitario: it2.costoUnitario })));
++    setItems(pedido.items.map((it2) => ({ productoId: it2.productoId, cantidad: it2.cantidad, costoUnitario: it2.costoUnitario, cantidadRecibida: it2.cantidadRecibida ?? 0 })));
+     setError("");
+     setVerTodosProductos(false);
+     setShowForm(true);
+@@ -108212,17 +108292,26 @@ function Pedidos({ pedidos: pedidos2, proveedores, productos, crearPedido, actua
+       return;
+     }
+     if (items.length === 0) {
+-      setError("A\xF1ade al menos un producto al pedido.");
++      setError("Añade al menos un producto al pedido.");
+       return;
+     }
+-    setError("");
+-    const itemsLimpios = items.map((it2) => ({ productoId: it2.productoId, cantidad: Number(it2.cantidad), costoUnitario: Number(it2.costoUnitario) }));
++    const payload = { proveedorId, fechaEsperada, items };
+     if (editingId) {
+-      actualizarPedido(editingId, { proveedorId, fechaEsperada, items: itemsLimpios });
++      const resultado = actualizarPedido(editingId, payload);
++      if (!resultado || resultado.ok === false) {
++        setError(resultado?.error || "No se pudo actualizar el pedido.");
++        return;
++      }
++      setError("");
+       setShowForm(false);
+       resetForm();
+     } else {
+-      const pedido = crearPedido({ proveedorId, fechaEsperada, items: itemsLimpios });
++      const pedido = crearPedido(payload);
++      if (!pedido || pedido.ok === false) {
++        setError(pedido?.error || "No se pudo crear el pedido.");
++        return;
++      }
++      setError("");
+       setShowForm(false);
+       resetForm();
+       setEnviarPedido(pedido);

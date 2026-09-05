@@ -1,0 +1,203 @@
+diff --git a/fuente.js b/fuente.js
+index c892507..9b4bb18 100644
+--- a/fuente.js
++++ b/fuente.js
+@@ -105136,10 +105136,11 @@ function crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedo
+       fecha: todayISO(),
+       documentoTipo: "pedido",
+       documentoId: pedido.id,
+-      documentoNumero: pedido.id.slice(-6)
++      documentoNumero: pedido.id.slice(-6),
++      operationId: `pm10-recepcion-pedido:${pedido.id}:${(pedido.items || []).map((it2) => `${it2.productoId}:${Number(it2.cantidadRecibida || 0)}`).join("|")}`
+     });
+     if (!resultado || !Array.isArray(resultado.lineasResueltas)) return errorValidacionPM10("conflicto_estado_previo", "recepcion", "No se pudo completar la recepción.");
+-    setPedidos((s22) => s22.map((pe2) => pe2.id === pedidoId ? aplicarRecepcionPedidoPM10(pe2, resultado.lineasResueltas) : pe2));
++    if (!resultado.replayed) setPedidos((s22) => s22.map((pe2) => pe2.id === pedidoId ? aplicarRecepcionPedidoPM10(pe2, resultado.lineasResueltas) : pe2));
+     return { ok: true, avisos: resultado.avisos || [], lineasResueltas: resultado.lineasResueltas };
+   }
+   return { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido };
+@@ -106408,10 +106409,15 @@ function crearLogicaAlbaranes({
+     if (r2.ok && !r2.replayed) registrarAuditoria(pagada ? "Registrar pago factura" : "Revertir pago factura", `Factura ${a22.numeroFactura || a22.numero || id} \xB7 \u20AC${redondearDineroPM06(r2.pago?.importe || importe || 0).toFixed(2)} \xB7 ${a22.empresaId}/${a22.localId}`);
+     return r2;
+   }
+-  function procesarRecepcion({ lineas, proveedorId, fecha, documentoTipo, documentoId, documentoNumero }) {
++  function procesarRecepcion({ lineas, proveedorId, fecha, documentoTipo, documentoId, documentoNumero, operationId = null }) {
++    const operationIdRecepcionPM10 = operationId || `pm10-recepcion:${documentoTipo || "doc"}:${documentoId || documentoNumero || "sin-id"}`;
++    if (!procesarRecepcion._pm10Resultados) procesarRecepcion._pm10Resultados = /* @__PURE__ */ new Map();
++    const replayInmediatoPM10 = procesarRecepcion._pm10Resultados.get(operationIdRecepcionPM10);
++    if (replayInmediatoPM10) { procesarRecepcion._pm10UltimoReplay = true; return { ...replayInmediatoPM10, replayed: true }; }
++    procesarRecepcion._pm10UltimoReplay = false;
+     const avisos = [];
+     const lineasResueltas = [];
+-    lineas.forEach((ln2) => {
++    lineas.forEach((ln2, idxRecepcionPM10) => {
+       const uds = Number(ln2.udsPorCaja) > 0 ? Number(ln2.udsPorCaja) : 1;
+       const cantidad = Number(ln2.cantidad) || 0;
+       const importe = Number(ln2.importe) || (Number(ln2.precioBruto) || 0) * cantidad;
+@@ -106434,18 +106440,20 @@ function crearLogicaAlbaranes({
+         }
+         const stockTotal = stockAnterior + unidadesTotales;
+         const costoPonderado = stockTotal > 0 ? (stockAnterior * costoAnterior + unidadesTotales * costoUnitario) / stockTotal : costoUnitario;
+-        aplicarMovimientoStock({
++        const resultadoMovimientoPM10 = aplicarMovimientoStock({
+           productoId: prod.id,
+           cantidad: unidadesTotales,
+           tipo: "COMPRA",
+-          movimientoId: uid(),
++          operationId: operationIdRecepcionPM10,
++          movimientoId: `${operationIdRecepcionPM10}:linea:${idxRecepcionPM10}:producto:${prod.id}`,
+           origen: "procesarRecepcion",
+           documentoOrigenId: documentoId,
+           afectaStockTotal: true,
+           permitirDeficit: true,
+           motivo: `${motivoDoc}${ln2.lote ? " \xB7 lote " + ln2.lote : ""}`
+         });
+-        setProductos((s22) => s22.map(
++        if (!resultadoMovimientoPM10.ok) return;
++        if (!resultadoMovimientoPM10.yaExistia) setProductos((s22) => s22.map(
+           (p22) => p22.id === prod.id ? {
+             ...p22,
+             costo: costoUnitario > 0 ? Number(costoPonderado.toFixed(4)) : p22.costo,
+@@ -106458,8 +106466,9 @@ function crearLogicaAlbaranes({
+         ));
+         lineasResueltas.push({ ...ln2, productoId: prod.id, unidadesEntradas: unidadesTotales });
+       } else {
+-        const nuevoId = uid();
+-        const nuevo = {
++        const nuevoId = `${operationIdRecepcionPM10}:producto-auto:${idxRecepcionPM10}`;
++        const nuevoYaCreadoPM10 = productos.find((p22) => p22.id === nuevoId);
++        const nuevo = nuevoYaCreadoPM10 || {
+           id: nuevoId,
+           localId: localActivoId || null,
+           codigo: ln2.codigoProveedor || "",
+@@ -106478,11 +106487,11 @@ function crearLogicaAlbaranes({
+           contenido: ln2.contenido || "",
+           unidadContenido: ln2.unidadContenido || ""
+         };
+-        setProductos((s22) => [...s22, nuevo]);
+-        setMovimientos((s22) => [
++        if (!nuevoYaCreadoPM10) setProductos((s22) => s22.some((p22) => p22.id === nuevoId) ? s22 : [...s22, nuevo]);
++        setMovimientos((s22) => s22.some((m22) => m22.id === `${operationIdRecepcionPM10}:linea:${idxRecepcionPM10}:auto`) ? s22 : [
+           {
+-            id: uid(),
+-            operationId: uid(),
++            id: `${operationIdRecepcionPM10}:linea:${idxRecepcionPM10}:auto`,
++            operationId: operationIdRecepcionPM10,
+             productoId: nuevoId,
+             localId: nuevo.localId || localActivoId || null,
+             cantidad: unidadesTotales,
+@@ -106527,7 +106536,9 @@ function crearLogicaAlbaranes({
+       });
+       return copia;
+     });
+-    return { lineasResueltas, avisos };
++    const resultadoRecepcionPM10 = { lineasResueltas, avisos, operationId: operationIdRecepcionPM10, replayed: false };
++    procesarRecepcion._pm10Resultados.set(operationIdRecepcionPM10, resultadoRecepcionPM10);
++    return resultadoRecepcionPM10;
+   }
+   function confirmarAlbaran(alb) {
+     if (!albaranEsDelLocalActivo(alb, true)) return errorValidacionPM10("contexto_no_autorizado", "localId", "Albarán fuera del local activo.");
+@@ -106546,9 +106557,11 @@ function crearLogicaAlbaranes({
+       fecha: alb.fecha,
+       documentoTipo: "albaran",
+       documentoId: alb.id,
+-      documentoNumero: alb.numero
++      documentoNumero: alb.numero,
++      operationId: `pm10-recepcion-albaran:${alb.id}`
+     });
+-    if (pedidoLigado) {
++    const replayedRecepcionPM10 = !!procesarRecepcion._pm10UltimoReplay;
++    if (pedidoLigado && !replayedRecepcionPM10) {
+       setPedidos((prev) => prev.map((pe2) => pe2.id === alb.pedidoId ? aplicarRecepcionPedidoPM10(pe2, lineasResueltas) : pe2));
+     }
+     guardarAlbaran({ ...alb, lineas: lineasResueltas, estado: "confirmado", avisosPrecio: avisos });
+@@ -107965,6 +107978,7 @@ function Proveedores({ proveedores, addProveedor, updateProveedor, deleteProveed
+   } }, "S\xED, eliminar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmDeleteId(null) }, "Cancelar"))));
+ }
+ function Productos({ productos, proveedores, proveedorPorId, addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, clasificacionABC, almacenCongelado, movimientos = [], fichasCosto = [], updateFichaCosto, ajustarProductoPorOtro }) {
++  const submitBloqueadoProductoPM10 = import_react4.default.useRef(false);
+   const [showForm, setShowForm] = (0, import_react4.useState)(false);
+   const [showAjusteCruce, setShowAjusteCruce] = (0, import_react4.useState)(false);
+   const [cruce, setCruce] = (0, import_react4.useState)({ origenId: "", destinoId: "", cantOrigen: "", cantDestino: "", motivo: "" });
+@@ -108040,6 +108054,9 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
+   });
+   const numEliminados = (0, import_react4.useMemo)(() => productos.filter((p22) => p22.activo === false).length, [productos]);
+   function submit() {
++    if (submitBloqueadoProductoPM10.current) return;
++    submitBloqueadoProductoPM10.current = true;
++    setTimeout(() => { submitBloqueadoProductoPM10.current = false; }, 750);
+     if (!form.nombre.trim()) {
+       setError("Escribe el nombre del producto.");
+       return;
+@@ -108401,6 +108418,7 @@ function Modal({ children, onClose, title, ancho = "max-w-md" }) {
+   ));
+ }
+ function Pedidos({ pedidos: pedidos2, proveedores, productos, crearPedido, actualizarPedido, eliminarPedido, proveedorPorId, productoPorId, sugerenciasPedido = [], addProducto }) {
++  const submitBloqueadoPedidoPM10 = import_react4.default.useRef(false);
+   const [showForm, setShowForm] = (0, import_react4.useState)(false);
+   const [proveedorId, setProveedorId] = (0, import_react4.useState)("");
+   const [verTodosProductos, setVerTodosProductos] = (0, import_react4.useState)(false);
+@@ -108495,6 +108513,9 @@ function Pedidos({ pedidos: pedidos2, proveedores, productos, crearPedido, actua
+     setShowForm(true);
+   }
+   function submit() {
++    if (submitBloqueadoPedidoPM10.current) return;
++    submitBloqueadoPedidoPM10.current = true;
++    setTimeout(() => { submitBloqueadoPedidoPM10.current = false; }, 750);
+     if (!proveedorId) {
+       setError("Selecciona un proveedor.");
+       return;
+@@ -108705,6 +108726,7 @@ function Pedidos({ pedidos: pedidos2, proveedores, productos, crearPedido, actua
+ }
+ function Recepcion({ pedidos: pedidos2, proveedorPorId, productoPorId, recibirPedido, almacenCongelado, recibirConAlbaran, recibirConFotoIA, cerrarPedido }) {
+   const [activos, setActivos] = (0, import_react4.useState)({});
++  const recepcionesEnCursoPM10 = import_react4.default.useRef(/* @__PURE__ */ new Set());
+   const [cerrando, setCerrando] = (0, import_react4.useState)(null);
+   const [erroresRecepcion, setErroresRecepcion] = (0, import_react4.useState)({});
+   const pendientes = pedidos2.filter((p22) => p22.estado !== "Recibido");
+@@ -108751,6 +108773,9 @@ function Recepcion({ pedidos: pedidos2, proveedorPorId, productoPorId, recibirPe
+         }
+       )));
+     }), erroresRecepcion[pe2.id] && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mt-2", style: { color: C2.red } }, erroresRecepcion[pe2.id]), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 flex flex-wrap gap-2" }, !almacenCongelado && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => recibirConAlbaran(pe2) }, /* @__PURE__ */ import_react4.default.createElement(FileText, { size: 14 }), " Recibir con albar\xE1n"), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => recibirConFotoIA(pe2) }, /* @__PURE__ */ import_react4.default.createElement(Camera, { size: 14 }), " Recibir con foto IA"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
++      if (recepcionesEnCursoPM10.current.has(pe2.id)) return;
++      recepcionesEnCursoPM10.current.add(pe2.id);
++      setTimeout(() => recepcionesEnCursoPM10.current.delete(pe2.id), 900);
+       const porProducto = new Map();
+       pe2.items.forEach((it2) => {
+         if (porProducto.has(it2.productoId)) return;
+@@ -111201,6 +111226,7 @@ function ModalCrearCuenta({ empleado, cuentaForm, setCuentaForm, onCancelar, onC
+ }
+ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, documentosPersonalCaducan, fichajes = [], nominas = [], entrevistas = [], crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista, crearPrefiltro, listarPrefiltros, eliminarPrefiltro, crearCuentaEmpleado }) {
+   const [vista, setVista] = (0, import_react4.useState)("empleados");
++  const submitBloqueadoPersonalPM10 = import_react4.default.useRef(false);
+   const [showForm, setShowForm] = (0, import_react4.useState)(false);
+   const [form, setForm] = (0, import_react4.useState)(blankEmpleado());
+   const [error, setError] = (0, import_react4.useState)("");
+@@ -111254,6 +111280,9 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, anon
+     setForm((f22) => ({ ...f22, documentos: f22.documentos.filter((_22, i33) => i33 !== idx) }));
+   }
+   async function submit() {
++    if (submitBloqueadoPersonalPM10.current) return;
++    submitBloqueadoPersonalPM10.current = true;
++    setTimeout(() => { submitBloqueadoPersonalPM10.current = false; }, 750);
+     if (!form.nombre.trim()) {
+       setError("Escribe el nombre del empleado.");
+       return;
+@@ -111730,6 +111759,7 @@ function lineaEncargo() {
+   return { productoId: "", descripcion: "", cantidad: 1, precioUnitario: "" };
+ }
+ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncargo, updateEncargo, deleteEncargo, entregarEncargo, addCliente }) {
++  const submitBloqueadoEncargoPM10 = import_react4.default.useRef(false);
+   const [showForm, setShowForm] = (0, import_react4.useState)(false);
+   const [editingId, setEditingId] = (0, import_react4.useState)(null);
+   const [form, setForm] = (0, import_react4.useState)(null);
+@@ -111787,6 +111817,9 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
+   const quitarLinea = (idx) => setForm((f22) => ({ ...f22, lineas: f22.lineas.filter((_22, i33) => i33 !== idx) }));
+   const totalForm = !form ? 0 : form.lineas.reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
+   function submit() {
++    if (submitBloqueadoEncargoPM10.current) return;
++    submitBloqueadoEncargoPM10.current = true;
++    setTimeout(() => { submitBloqueadoEncargoPM10.current = false; }, 750);
+     if (!form.clienteId) {
+       setError("Selecciona o crea un cliente.");
+       return;
