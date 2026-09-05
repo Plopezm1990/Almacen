@@ -1,0 +1,36 @@
+name: PM10 P13 focus contexto dominio
+on:
+  push:
+    branches: [pm10-validaciones-altas-datos-legados]
+    paths:
+      - '.github/workflows/pm10-p13-focus-contexto.yml'
+permissions:
+  contents: write
+jobs:
+  focus:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extraer firmas y llamadas
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          names=['crearLogicaProductos','crearLogicaPedidos','crearLogicaPersonal','crearLogicaEncargos','crearLogicaAlbaranes','crearLogicaLocales']
+          out=[]
+          for name in names:
+            out.append('\n===== '+name+' =====')
+            for m in list(re.finditer(re.escape(name)+'\\s*\\(',s))[:8]:
+              out.append(f'OFFSET {m.start()}\n'+s[max(0,m.start()-700):min(len(s),m.start()+5000)])
+          Path('tests/pm10/P13_FOCUS_CONTEXTO.txt').write_text('\n'.join(out),encoding='utf-8')
+          print('bytes',Path('tests/pm10/P13_FOCUS_CONTEXTO.txt').stat().st_size)
+          PY
+      - name: Commit focus
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/pm10/P13_FOCUS_CONTEXTO.txt
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'PM10: guardar foco contexto dominio punto 13'
+          git push
