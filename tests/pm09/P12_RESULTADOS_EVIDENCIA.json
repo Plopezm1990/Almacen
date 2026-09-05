@@ -1,0 +1,10 @@
+{
+  "punto": 12,
+  "estado": "CORREGIDO_PENDIENTE_DE_QA",
+  "rama": "pm09-conciliacion-ventas-analitica",
+  "baseEntradaWorkflow": "98d881e88b6679853a7b7797f9e3074b921bdd32",
+  "fuenteSha256": "c3fff702d69521ed6c35df68ba0e9d5516411130061c09cb282f7250f284b218",
+  "riesgoReproducido": "Resultados ya restaba REVERSO por LA-007 pero no restaba DEVOLUCION_CLIENTE en ingresos/coste globales; una devolución podía dejar margen e ingreso superiores al neto real.",
+  "cambio": "Resultados descuenta REVERSO y DEVOLUCION_CLIENTE en su propia fecha; el coste de correcciones usa coste histórico trazable y no ficha actual. El resultado neto mantiene gastos y costes de inventario separados.",
+  "alcance": "fuente.js y pruebas solo en rama PM09; sin esquema, sin main, sin produccion"
+}
