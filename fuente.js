@@ -104644,6 +104644,47 @@ function crearLogicaReconciliacion({ productos, setProductos, movimientos, setMo
   }
   return { diagnosticarStock, corregirProducto, movimientosParaReconciliar };
 }
+function errorValidacionPM10(codigo, campo, error) {
+  return { ok: false, codigo, campo, error };
+}
+function numeroPM10(valor, campo, { minimo = null, maximo = null, estrictoMinimo = false, entero = false, opcional = false } = {}) {
+  if (valor === null || valor === void 0 || typeof valor === "string" && valor.trim() === "") {
+    return opcional ? { ok: true, vacio: true, valor: null } : errorValidacionPM10("campo_obligatorio", campo, `${campo} es obligatorio.`);
+  }
+  const numero = Number(valor);
+  if (!Number.isFinite(numero)) return errorValidacionPM10("numero_no_finito", campo, `${campo} debe ser un número válido.`);
+  if (entero && !Number.isInteger(numero)) return errorValidacionPM10("numero_no_entero", campo, `${campo} debe ser un número entero.`);
+  if (minimo !== null && (estrictoMinimo ? numero <= minimo : numero < minimo)) return errorValidacionPM10("valor_fuera_rango", campo, estrictoMinimo ? `${campo} debe ser mayor que ${minimo}.` : `${campo} no puede ser menor que ${minimo}.`);
+  if (maximo !== null && numero > maximo) return errorValidacionPM10("valor_fuera_rango", campo, `${campo} no puede ser mayor que ${maximo}.`);
+  return { ok: true, valor: numero };
+}
+function validarProductoPM10(data, { parcial = false } = {}) {
+  const entrada = data && typeof data === "object" ? data : {};
+  const salida = { ...entrada };
+  if (!parcial || Object.prototype.hasOwnProperty.call(entrada, "nombre")) {
+    const nombre = String(entrada.nombre ?? "").trim();
+    if (!nombre) return errorValidacionPM10("campo_obligatorio", "nombre", "Escribe el nombre del producto.");
+    salida.nombre = nombre;
+  }
+  const reglas = [
+    ["costo", { minimo: 0 }, !parcial],
+    ["precioVenta", { minimo: 0 }, false],
+    ["stockMinimo", { minimo: 0 }, !parcial],
+    ["udsPorCaja", { minimo: 0, estrictoMinimo: true }, false],
+    ["ivaCompra", { minimo: 0, maximo: 100 }, false],
+    ["ivaVenta", { minimo: 0, maximo: 100 }, false],
+    ["stock", { minimo: 0 }, false]
+  ];
+  for (const [campo, opciones, obligatorioAlta] of reglas) {
+    const presente = Object.prototype.hasOwnProperty.call(entrada, campo);
+    if (!presente && parcial) continue;
+    if (!presente && !obligatorioAlta) continue;
+    const r = numeroPM10(entrada[campo], campo, opciones);
+    if (!r.ok) return r;
+    salida[campo] = r.valor;
+  }
+  return { ok: true, datos: salida };
+}
 function crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId }) {
   function productoEsDelLocalActivo(prod) {
     if (!prod) return false;
@@ -104707,9 +104748,12 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
     return { ok: true, costoSale, costoEntra, diferencia };
   }
   function addProducto(data) {
-    const nuevo = { id: uid(), stock: Number(data.stock) || 0, ...data, localId: localActivoId || data.localId || null };
+    const validacion = validarProductoPM10(data, { parcial: false });
+    if (!validacion.ok) return validacion;
+    const datosValidos = validacion.datos;
+    const stockInicial = Object.prototype.hasOwnProperty.call(datosValidos, "stock") ? datosValidos.stock : 0;
+    const nuevo = { id: uid(), ...datosValidos, stock: stockInicial, localId: localActivoId || datosValidos.localId || null };
     setProductos((s22) => [...s22, nuevo]);
-    const stockInicial = Number(data.stock) || 0;
     if (stockInicial > 0) {
       setMovimientos((s22) => [
         {
@@ -104736,8 +104780,10 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
   }
   function updateProducto(id, data) {
     const anterior = productos.find((p22) => p22.id === id);
-    if (!productoEsDelLocalActivo(anterior)) return false;
-    const { stock: stockNuevoForm, ...restoDatos } = data;
+    if (!productoEsDelLocalActivo(anterior)) return errorValidacionPM10("contexto_no_autorizado", "localId", "Producto fuera del local activo.");
+    const validacion = validarProductoPM10(data, { parcial: true });
+    if (!validacion.ok) return validacion;
+    const { stock: stockNuevoForm, ...restoDatos } = validacion.datos;
     if (Object.keys(restoDatos).length > 0) {
       setProductos((s22) => s22.map((p22) => p22.id === id ? { ...p22, ...restoDatos } : p22));
     }
@@ -104745,7 +104791,7 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
       const stockActual = Number(anterior.stock) || 0;
       const deficitActual = Number(anterior.deficitPendiente) || 0;
       const stockTeoricoAntes = stockActual - deficitActual;
-      const valorNuevo = Number(stockNuevoForm) || 0;
+      const valorNuevo = stockNuevoForm;
       const dif = valorNuevo - stockTeoricoAntes;
       if (dif !== 0) {
         const { aplicarMovimientoStock: aplicarMovimientoStock2 } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
@@ -108098,17 +108144,25 @@ function Pedidos({ pedidos: pedidos2, proveedores, productos, crearPedido, actua
     );
   }
   function guardarProductoNuevo() {
-    if (!nuevoProd.nombre.trim()) return;
+    if (!nuevoProd.nombre.trim()) {
+      setError("Escribe el nombre del producto.");
+      return;
+    }
     const creado = addProducto({
       nombre: nuevoProd.nombre.trim(),
       unidad: nuevoProd.unidad || "unidad",
       tipo: "materia_prima",
-      costo: Number(nuevoProd.costo) || 0,
+      costo: nuevoProd.costo,
       ivaCompra: 10,
       proveedorId: proveedorId || "",
       stock: 0,
       stockMinimo: 0
     });
+    if (!creado || creado.ok === false) {
+      setError(creado?.error || "No se pudo crear el producto.");
+      return;
+    }
+    setError("");
     setItems((s22) => s22.map((it2, i33) => i33 === creandoNuevoIdx ? { ...it2, productoId: creado.id, costoUnitario: creado.costo } : it2));
     setCreandoNuevoIdx(null);
   }
