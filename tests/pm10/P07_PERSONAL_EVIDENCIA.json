@@ -1,0 +1,51 @@
+{
+  "pm": "PM10",
+  "punto": 7,
+  "hallazgo": "LA-017",
+  "modulo": "Personal",
+  "estado": "VALIDADO",
+  "fecha": "2026-09-05",
+  "rama": "pm10-validaciones-altas-datos-legados",
+  "commit_funcional": "ee28f71cc4975c537d1b42102bd74aa179cf7d2e",
+  "workflow_run": 33970458503,
+  "diagnostico": {
+    "causa": [
+      "La UI convertía horasSemanales, salarioBrutoMensual y diasVacacionesAnuales con Number(...) || 0, por lo que entradas no numéricas podían degradarse silenciosamente a cero.",
+      "pagas se convertía con Number(...) || 14, por lo que valores inválidos podían convertirse silenciosamente al valor por defecto.",
+      "addEmpleado y updateEmpleado mutaban setEmpleados sin una barrera numérica autoritativa del dominio."
+    ],
+    "campos_endurecidos": [
+      "horasSemanales",
+      "pagas",
+      "salarioBrutoMensual",
+      "costeEmpresaMensual",
+      "diasVacacionesAnuales"
+    ]
+  },
+  "contrato": {
+    "numeros": "Todos los campos numéricos controlados deben ser finitos.",
+    "horas": "horasSemanales >= 0; se permiten decimales finitos.",
+    "pagas": "pagas > 0; vacío conserva por compatibilidad el valor por defecto histórico 14; no se impone máximo arbitrario.",
+    "salarios": "salarioBrutoMensual y costeEmpresaMensual no pueden ser negativos; costeEmpresaMensual puede permanecer vacío.",
+    "vacaciones": "diasVacacionesAnuales >= 0.",
+    "atomicidad": "Una sola entrada inválida rechaza la ficha completa antes de setEmpleados.",
+    "contexto": "Las altas/ediciones requieren local activo y no permiten cruzar empleados de otro local.",
+    "legado": "Los registros legados no se reescriben al cargarlos; una edición de una ficha ya inválida exige corregirla en lugar de normalizarla silenciosamente.",
+    "ui": "La UI conserva el formulario y muestra el error cuando el dominio rechaza la ficha."
+  },
+  "pruebas": {
+    "node_check_fuente": "OK",
+    "p07_personal_contract": "OK",
+    "p06_recepcion_regresion": "OK",
+    "p05_pedidos_regresion": "OK",
+    "p04_productos_regresion": "OK",
+    "pm09_regresiones_disponibles": "OK"
+  },
+  "riesgo_produccion": {
+    "main_modificado": false,
+    "netlify_produccion": false,
+    "supabase_produccion": false,
+    "migraciones": false,
+    "datos_reales": false
+  }
+}
