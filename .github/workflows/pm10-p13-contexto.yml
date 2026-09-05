@@ -15,6 +15,23 @@ jobs:
       - uses: actions/checkout@v4
       - name: Aplicar hardening contexto PM10
         run: python3 tools/corregir_pm10_p13_contexto.py
+      - name: Ajustar aserción heredada P08 al nuevo wiring
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tests/pm10/p08-encargos-contract.mjs')
+          s=p.read_text(encoding='utf-8')
+          old=r"assert.match(src, /crearLogicaEncargos\\(\\{ encargos, setEncargos, registrarAuditoria, productos, clientes,[\\s\\S]{0,300}empresaId: empresaDelLocalActivo\\?\\.id \\|\\| null \\}\\)/);"
+          new=r"assert.match(src, /crearLogicaEncargos\\(\\{ encargos, setEncargos, registrarAuditoria, productos, clientes,[\\s\\S]{0,360}empresaId: empresaDelLocalActivo\\?\\.id \\|\\| null, locales \\}\\)/);"
+          if old in s:
+            s=s.replace(old,new,1)
+            p.write_text(s,encoding='utf-8')
+            print('P08 actualizado para wiring P13')
+          elif new in s:
+            print('P08 ya compatible con P13')
+          else:
+            raise SystemExit('Aserción P08 esperada no encontrada')
+          PY
       - name: Sintaxis bundle
         run: node --check fuente.js
       - name: Contrato P13 contexto
@@ -55,12 +72,12 @@ jobs:
           PY
       - name: Commit funcional
         run: |
-          if git diff --quiet -- fuente.js; then
+          if git diff --quiet -- fuente.js tests/pm10/p08-encargos-contract.mjs; then
             echo 'Sin cambios funcionales pendientes'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add fuente.js
+          git add fuente.js tests/pm10/p08-encargos-contract.mjs
           git commit -m 'PM10: aislar contexto y bloquear local inactivo punto 13'
           git push
