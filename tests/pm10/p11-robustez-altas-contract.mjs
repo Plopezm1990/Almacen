@@ -8,13 +8,11 @@ function block(a,b,max=120000){
   return src.slice(i,j);
 }
 
-// Motor stock ya es idempotente por movimientoId.
 const motor=block('function crearMotorStock(', 'function crearLogicaReconciliacion');
 assert.match(motor,/idsConocidos\.has\(id\)/);
 assert.match(motor,/yaExistia: true/);
 assert.match(motor,/movimientoId \|\| uid\(\)/);
 
-// Recepción PM10 debe usar un operationId estable, movimientos deterministas y replay explícito.
 const albaranes=block('function crearLogicaAlbaranes({','function crearLogicaRespaldos',180000);
 const procStart=albaranes.indexOf('function procesarRecepcion(');
 assert.ok(procStart>=0,'procesarRecepcion');
@@ -39,7 +37,6 @@ const recibir=pedidos.slice(pedidos.indexOf('function recibirPedido('),pedidos.i
 assert.match(recibir,/operationId: `pm10-recepcion-pedido:\$\{pedido\.id\}:/);
 assert.match(recibir,/if \(!resultado\.replayed\) setPedidos/);
 
-// Los cuatro formularios de alta/edición deben cortar doble click en la propia UI.
 for (const [nombre,a,b,ref] of [
   ['Productos','function Productos({','function Proveedores(','submitBloqueadoProductoPM10'],
   ['Pedidos','function Pedidos({','function Recepcion(','submitBloqueadoPedidoPM10'],
@@ -52,14 +49,14 @@ for (const [nombre,a,b,ref] of [
   assert.match(txt,new RegExp(`${ref}\\.current = true;`),`${nombre}: lock`);
 }
 
-// Recepción directa tiene lock por pedido además de idempotencia del dominio.
-const recUI=block('function Recepcion({','function ',70000);
+const recUI=block('function Recepcion({','function textoHojaConteo(',70000);
 assert.match(recUI,/recepcionesEnCursoPM10/);
 assert.match(recUI,/recepcionesEnCursoPM10\.current\.has\(pe2\.id\)/);
 assert.match(recUI,/recepcionesEnCursoPM10\.current\.add\(pe2\.id\)/);
 
-// P10: reintento de almacenamiento sigue por la vía autorizada, no bypass directo.
-const diag=block('function DiagnosticoSincronizacion()','function ',30000);
+const diagStart=src.indexOf('function DiagnosticoSincronizacion()');
+assert.ok(diagStart>=0,'DiagnosticoSincronizacion presente');
+const diag=src.slice(diagStart,Math.min(src.length,diagStart+30000));
 assert.match(diag,/window\.storage\.set\(key, valorLocal, false\)/);
 assert.doesNotMatch(diag,/from\("almacen_kv"\)\.upsert/);
 
