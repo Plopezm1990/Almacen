@@ -4,6 +4,8 @@ on:
     branches: [pm09-conciliacion-ventas-analitica]
     paths:
       - '.github/workflows/pm09-la007-corregir.yml'
+      - 'tools/corregir_pm09_la007.py'
+      - 'tests/pm09/la007-results-contract.mjs'
 permissions:
   contents: write
 jobs:
