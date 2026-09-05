@@ -86,8 +86,8 @@ jobs:
           cd source-recovery
           npm ci
           npm run check
-          npm run build
-          echo '--- SHA256 build vs candidato ---'
+          npm run build:current
+          echo '--- SHA256 build reconstruido vs candidato ---'
           sha256sum dist/fuente.js ../fuente.js
           cmp -s dist/fuente.js ../fuente.js
           echo 'G1_BUILD_REPRODUCIBLE=PASS'
