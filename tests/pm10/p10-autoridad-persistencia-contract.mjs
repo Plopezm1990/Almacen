@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 
 const src = fs.readFileSync('fuente.js','utf8');
 
-// saveKey debe seguir siendo una capa transparente: serializa y delega; no normaliza dominio.
 const saveIni = src.indexOf('async function saveKey(key, value) {');
 const saveFin = src.indexOf('async function sincronizarStockPm07', saveIni);
 assert.ok(saveIni >= 0 && saveFin > saveIni, 'saveKey presente');
@@ -11,7 +10,6 @@ const save = src.slice(saveIni, saveFin);
 assert.match(save, /window\.storage\.set\(key, JSON\.stringify\(value\), false\)/);
 assert.doesNotMatch(save, /Number\([^)]*\)\s*\|\|/);
 
-// El wrapper de storage mantiene la autoridad de permisos/contexto antes de setOriginal.
 const wrapIni = src.indexOf('window.storage.set = async function(key, value, shared) {');
 assert.ok(wrapIni >= 0, 'wrapper window.storage.set presente');
 const wrap = src.slice(wrapIni, wrapIni + 2600);
@@ -20,7 +18,6 @@ assert.match(wrap, /obtenerContexto\(false\)/);
 assert.match(wrap, /puedeEscribir\(rol, key\)/);
 assert.match(wrap, /setOriginal\(key, value, shared\)/);
 
-// Los cinco dominios PM10 mantienen barrera reutilizable antes de sus mutaciones.
 for (const token of [
   'function validarProductoPM10(',
   'function validarPedidoPM10(',
@@ -44,11 +41,9 @@ assert.match(personal, /function addEmpleado\(data\)[\s\S]*?validarEmpleadoPM10/
 const encargos = bloque('function crearLogicaEncargos({', 'function crearLogicaVenta({');
 assert.match(encargos, /function addEncargo\(data\)[\s\S]*?validarEncargoPM10/);
 
-// PM10 P10: la utilidad de reintento NO puede escribir almacen_kv directamente.
 const diagIni = src.indexOf('function DiagnosticoSincronizacion()');
 assert.ok(diagIni >= 0, 'DiagnosticoSincronizacion presente');
-const diagFin0 = src.indexOf('function ', diagIni + 'function DiagnosticoSincronizacion()'.length);
-const diag = src.slice(diagIni, diagFin0 > diagIni ? diagFin0 : diagIni + 18000);
+const diag = src.slice(diagIni, diagIni + 22000);
 assert.match(diag, /await window\.storage\.set\(key, valorLocal, false\)/);
 assert.doesNotMatch(diag, /from\("almacen_kv"\)\.upsert/);
 assert.match(diag, /JSON\.parse\(valorLocal\)/, 'payload pendiente se parsea antes de delegar');
