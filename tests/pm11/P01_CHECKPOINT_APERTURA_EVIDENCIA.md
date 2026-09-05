@@ -82,18 +82,22 @@ No se mezclarán en este paquete:
 
 Las integraciones futuras pueden dejar referencias preparadas, pero su lógica funcional no se implementa dentro de PM11.
 
-## 6. Criterio de cierre de P01
+## 6. Validación del checkpoint
 
-P01 queda cerrado únicamente cuando un workflow sobre el HEAD exacto de la rama demuestra:
+El workflow `PM11 P01 checkpoint apertura`, run `33989345702`, validó correctamente el primer candidato después de corregir una falsa alarma del propio contrato (`locationId` frente a `localId`).
+
+En PASS:
 
 1. descendencia del SHA final de G1;
-2. sintaxis válida de `fuente.js`;
-3. contrato G1 final en PASS;
-4. contrato heredado PM10 Personal/LA-017 en PASS;
-5. contrato de este checkpoint en PASS;
-6. build actual reproducible y `fuente.js` idéntico byte a byte;
-7. `main` permanece en el SHA registrado al abrir PM11.
+2. `main` en el SHA registrado al abrir PM11;
+3. sintaxis de `fuente.js`;
+4. contrato de este checkpoint;
+5. contrato G1 final;
+6. contrato heredado PM10 Personal/LA-017;
+7. build actual reproducible y `fuente.js` idéntico byte a byte.
 
-**PM11_P01_CHECKPOINT=PREPARADO**  
+El fallo de la primera ejecución fue exclusivamente del test de checkpoint: el fixture usa `locationId`; no fue un fallo funcional ni de datos.
+
+**PM11_P01_CHECKPOINT=PASS**  
 **PM11_ESTADO=ABIERTO**  
 **SIGUIENTE=PM11_P02_MAPA_PERSONAL_ACTUAL**
