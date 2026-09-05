@@ -59,3 +59,4 @@ for needle in needles:
 
 Path('tests/pm09/P11_IVA_DIAGNOSTICO.txt').write_text(''.join(out),encoding='utf-8')
 print('PM09_P11_DIAGNOSTICO_OK=1')
+# trigger workflow PM09 P11
