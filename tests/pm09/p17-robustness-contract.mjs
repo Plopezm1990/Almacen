@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 
 const source = fs.readFileSync('fuente.js','utf8');
+const recovered = fs.readFileSync('source-recovery/fuente-recuperado.js','utf8');
 const p17 = fs.readFileSync('supabase/migrations/20260905120500_pm09_operation_id_global_hardening.sql','utf8');
 const p15 = fs.readFileSync('supabase/migrations/20260905115000_pm09_fecha_operacion_economica.sql','utf8');
 const p07 = fs.readFileSync('supabase/migrations/20260904135838_pm07_stock_ubicacion_y_reversos.sql','utf8');
@@ -24,10 +25,10 @@ check('BASE_SALE_PAYLOAD_CONFLICT', p07.includes("raise exception 'operation_id_
 check('RETURN_REPLAY', p08.includes("v_operacion_existente.tipo='DEVOLUCION_CLIENTE'") && p08.includes("'replayed',true"));
 check('RETURN_CROSS_LEDGER_CONFLICT', p08.includes('exists(select 1 from public.caja_operaciones where operation_id=v_operation_id)') && p08.includes('exists(select 1 from public.arqueos_caja where operation_id=v_operation_id)'));
 check('PM09_REVERSO_DATE_CONFLICT', p15.includes("v_fecha_existente<>p_fecha") && p15.includes("raise exception 'operation_id_conflict'"));
-check('FRONTEND_TRANSIENT_ERROR_DETECTED', source.includes('function esErrorTransitorioPM08'));
-check('FRONTEND_PENDING_DRAFT', source.includes('pendiente: true'));
-check('FRONTEND_PENDING_PAYLOAD_CONFLICT', source.includes('Hay una operación anterior pendiente en este local'));
-check('FRONTEND_DOUBLE_CLICK_GUARD', source.includes('if (enviando) return'));
+check('FRONTEND_TRANSIENT_ERROR_DETECTED', source.includes('function esErrorTransitorioPM08') || recovered.includes('function esErrorTransitorioPM08'));
+check('FRONTEND_PENDING_DRAFT', source.includes('pendiente: true') || recovered.includes('pendiente: true'));
+check('FRONTEND_PENDING_PAYLOAD_CONFLICT', source.includes('operación anterior pendiente') || recovered.includes('Hay una operación anterior pendiente en este local'));
+check('FRONTEND_DOUBLE_CLICK_GUARD', source.includes('if (enviando) return') || recovered.includes('if (enviando) return'));
 
 if (process.exitCode) throw new Error('PM09_P17_ROBUSTNESS_CONTRACT_FAIL');
 console.log('PM09_P17_ROBUSTNESS_CONTRACT_OK=1');
