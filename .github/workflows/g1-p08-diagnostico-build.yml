@@ -14,40 +14,47 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Inspeccionar limites del cuerpo recuperado
+      - name: Probar variantes de reextraccion
         run: |
+          cd source-recovery
+          npm ci
+          cp fuente-recuperado.js fuente-recuperado.original
           python - <<'PY'
           from pathlib import Path
-          import hashlib
-          root=Path('fuente.js').read_text(encoding='utf-8')
-          src=Path('source-recovery/fuente-recuperado.js').read_text(encoding='utf-8')
-          print('ROOT_BYTES',len(root.encode()))
-          print('SRC_BYTES',len(src.encode()))
-          print('ROOT_LINES',root.count('\n')+1)
-          print('SRC_LINES',src.count('\n')+1)
-          keys=['var C2 = {','function GestionAlmacen','GestionAlmacen','var ErroresSistema','ErroresSistema','createRoot']
-          for k in keys:
-              print('KEY',repr(k),'ROOT',root.find(k),'SRC',src.find(k))
+          root=Path('../fuente.js').read_text(encoding='utf-8')
+          src=Path('fuente-recuperado.original').read_text(encoding='utf-8')
           anchor='var C2 = {'
           ri=root.find(anchor); si=src.find(anchor)
-          if ri>=0 and si>=0:
-              rt=root[ri:]; st=src[si:]
-              print('ANCHOR_ROOT_TAIL_CHARS',len(rt),'ANCHOR_SRC_TAIL_CHARS',len(st))
-              n=min(len(rt),len(st))
-              first=next((j for j in range(n) if rt[j]!=st[j]),None)
-              print('FIRST_DIFF_FROM_C2',first)
-              if first is not None:
-                  print('ROOT_AT_FIRST_DIFF',repr(rt[max(0,first-300):first+900]))
-                  print('SRC_AT_FIRST_DIFF',repr(st[max(0,first-300):first+900]))
-              # sufijo común
-              common=0
-              maxs=min(len(rt),len(st))
-              while common < maxs and rt[-1-common] == st[-1-common]: common += 1
-              print('COMMON_SUFFIX_CHARS',common)
-              if common:
-                  print('COMMON_SUFFIX_HEAD',repr(rt[-common:-common+500]))
-              print('ROOT_TAIL_END',repr(rt[-1200:]))
-              print('SRC_TAIL_END',repr(st[-1200:]))
-          print('ROOT_HEAD',repr(root[:1200]))
-          print('SRC_HEAD',repr(src[:1200]))
+          if ri<0 or si<0: raise SystemExit('anchor_missing')
+          markers=['Bundled license information','/*! Bundled license information','/** Bundled license information']
+          print('ROOT_ANCHOR',ri,'SRC_ANCHOR',si)
+          for m in markers:
+              print('LICENSE_MARKER',repr(m),'ROOT',root.find(m,ri),'SRC',src.find(m,si))
+          rlic=root.find('Bundled license information',ri)
+          slic=src.find('Bundled license information',si)
+          # retroceder al inicio del comentario si existe.
+          def comment_start(text,pos):
+              if pos<0: return -1
+              a=text.rfind('/*!',0,pos)
+              b=text.rfind('/**',0,pos)
+              return max(a,b)
+          rstart=comment_start(root,rlic); sstart=comment_start(src,slic)
+          print('LICENSE_START ROOT',rstart,'SRC',sstart)
+          header=src[:si]
+          variants={
+            'body_only': header + (root[ri:rstart] if rstart>=0 else root[ri:]),
+            'body_plus_old_licenses': header + (root[ri:rstart] if rstart>=0 else root[ri:]) + (src[sstart:] if sstart>=0 else ''),
+            'full_root_tail': header + root[ri:],
+          }
+          for name,data in variants.items():
+              Path(f'{name}.js').write_text(data,encoding='utf-8')
+              print('VARIANT',name,'BYTES',len(data.encode()))
           PY
+          for v in body_only body_plus_old_licenses full_root_tail; do
+            cp "$v.js" fuente-recuperado.js
+            npx esbuild entrada-recuperada.js --bundle --platform=browser --format=esm --target=es2020 --outfile="dist/$v.js"
+            echo "--- $v ---"
+            sha256sum "dist/$v.js" ../fuente.js
+            if cmp -s "dist/$v.js" ../fuente.js; then echo "VARIANT_MATCH=$v"; else echo "VARIANT_MATCH_${v}=NO"; fi
+          done
+          mv fuente-recuperado.original fuente-recuperado.js
