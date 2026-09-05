@@ -35,10 +35,10 @@ def function_block(name):
         i+=1
     return f'SIN_CIERRE function {name}\n'
 
-for name in ['Resultados','Reportes','calcularIvaPM06','calcularImpuestosPM06','normalizarFiscalidadPM06']:
+for name in ['LibroIva','Resultados','Reportes','calcularIvaPM06','calcularImpuestosPM06','normalizarFiscalidadPM06']:
     out.append(f'\n## FUNCTION {name}\n')
     b=function_block(name)
-    out.append(b if len(b) < 60000 else b[:60000]+'\n[TRUNCADO]\n')
+    out.append(b if len(b) < 100000 else b[:100000]+'\n[TRUNCADO]\n')
 
 needles = [
     'Libro IVA','libro IVA','IVA repercutido','IVA soportado','ivaRepercutido','ivaSoportado',
@@ -59,4 +59,3 @@ for needle in needles:
 
 Path('tests/pm09/P11_IVA_DIAGNOSTICO.txt').write_text(''.join(out),encoding='utf-8')
 print('PM09_P11_DIAGNOSTICO_OK=1')
-# trigger workflow PM09 P11
