@@ -1,10 +1,63 @@
 {
   "punto": 12,
-  "estado": "CORREGIDO_PENDIENTE_DE_QA",
+  "estado": "VALIDADO",
   "rama": "pm09-conciliacion-ventas-analitica",
-  "baseEntradaWorkflow": "98d881e88b6679853a7b7797f9e3074b921bdd32",
+  "commitFuncional": "e02baa6a7259c8d79cdc77162457162f34744bfb",
+  "workflowRunId": 33963262245,
   "fuenteSha256": "c3fff702d69521ed6c35df68ba0e9d5516411130061c09cb282f7250f284b218",
-  "riesgoReproducido": "Resultados ya restaba REVERSO por LA-007 pero no restaba DEVOLUCION_CLIENTE en ingresos/coste globales; una devolución podía dejar margen e ingreso superiores al neto real.",
-  "cambio": "Resultados descuenta REVERSO y DEVOLUCION_CLIENTE en su propia fecha; el coste de correcciones usa coste histórico trazable y no ficha actual. El resultado neto mantiene gastos y costes de inventario separados.",
-  "alcance": "fuente.js y pruebas solo en rama PM09; sin esquema, sin main, sin produccion"
+  "riesgoReproducidoAntesDeCorregir": {
+    "causa": "Resultados ya descontaba REVERSO por LA-007, pero no descontaba DEVOLUCION_CLIENTE en los totales globales de ingresos y coste de ventas.",
+    "efecto": "Una devolución podía dejar ingreso, coste y margen globales por encima de la venta neta real, aunque la analítica por producto ya conociera correcciones.",
+    "alcance": "Proyección de gestión Resultados; no Caja ni Libro IVA."
+  },
+  "contratoPm09": {
+    "venta": "suma ingreso neto y coste histórico",
+    "reverso": "resta ingreso y coste en su propia fecha sin borrar la venta original",
+    "devolucionCliente": "resta unidades económicas, ingreso y coste en su propia fecha",
+    "devolucionSinReembolso": "en Resultados de gestión corrige igualmente ingreso y coste; el reembolso pertenece a Caja y el tratamiento fiscal específico se gobierna en Libro IVA",
+    "costeHistorico": "las correcciones usan costoUnitarioHistoricoVentaPM09 y no reconstruyen margen con el coste actual del producto",
+    "margenBruto": "ingresos netos menos coste de ventas neto",
+    "margenPct": "margen bruto / ingresos netos cuando ingresos netos > 0",
+    "resultadoNeto": "margen bruto menos gastos del periodo y menos costes de inventario sin venta"
+  },
+  "validacionQAReadOnly": {
+    "metodo": "CTE de cálculo en L&A Suite QA; sin INSERT/UPDATE/DELETE y sin datos persistentes",
+    "escenarioCancelado": {
+      "ingresosNetos": 0.00,
+      "costeVentasNeto": 0.00,
+      "margenBruto": 0.00,
+      "margenPct": null
+    },
+    "escenarioDevolucionParcial": {
+      "venta": "2 unidades a base neta 5.4545454545 y coste 3 por unidad; devolución 1",
+      "ingresosNetos": 5.45,
+      "costeVentasNeto": 3.00,
+      "margenBruto": 2.45,
+      "margenPct": 45.00
+    },
+    "escenarioDevolucionParcialSinReembolso": {
+      "ingresosNetos": 5.45,
+      "costeVentasNeto": 3.00,
+      "margenBruto": 2.45,
+      "margenPct": 45.00,
+      "nota": "Confirma separación entre gestión y Caja/fiscalidad."
+    }
+  },
+  "validacionAutomatica": {
+    "resultado": "success",
+    "contratoP12Resultados": "OK",
+    "contratoP11Iva": "OK",
+    "contratoP10Caja": "OK",
+    "contratoP09Historial": "OK",
+    "contratoLA007": "OK",
+    "contratoLA008": "OK",
+    "pm05Frontend": "OK",
+    "pm07Frontend": "OK",
+    "pm08Frontend": "OK",
+    "pm08Migration": "OK",
+    "pm08ReplayScope": "OK"
+  },
+  "persistencia": "La corrección se aplica sobre movimientos ya normalizados; REVERSO y DEVOLUCION_CLIENTE conservan trazabilidad y fecha propia. No se crea un segundo ledger de Resultados.",
+  "alcance": "fuente.js y pruebas/evidencia solo en rama PM09. Sin migraciones, sin main, sin producción y sin Netlify.",
+  "notaCierrePM09": "Deploy Preview y smoke visual global permanecen reservados para el punto 18."
 }
