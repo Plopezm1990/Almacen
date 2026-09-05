@@ -11,25 +11,15 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Diagnosticar Pedidos y logica
+      - name: Diagnosticar firmas y referencias Pedidos
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
           s=Path('fuente.js').read_text(encoding='utf-8')
-          queries=[
-            'function Pedidos(',
-            'function addPedido(',
-            'function updatePedido(',
-            'function deletePedido(',
-            'function procesarRecepcion(',
-            'function guardarProductoNuevo()',
-            'cantidadRecibida',
-            'fechaEsperada'
-          ]
-          for q in queries:
+          for q in ['function crearLogicaPedidos(', 'crearLogicaPedidos({', 'function Pedidos({', 'function guardarPedido() {']:
             print('\n===== QUERY',q,'=====')
-            for m in list(re.finditer(re.escape(q),s))[:20]:
-              a=max(0,m.start()-1800); b=min(len(s),m.start()+9000)
+            for m in list(re.finditer(re.escape(q),s))[:10]:
+              a=max(0,m.start()-600); b=min(len(s),m.start()+5000)
               print('\nOFFSET',m.start(),'\n',s[a:b].replace('\n','\\n'))
           PY
