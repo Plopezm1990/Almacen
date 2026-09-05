@@ -15,13 +15,6 @@ on:
       - 'supabase/migrations/20260905120500_pm09_operation_id_global_hardening.sql'
   pull_request:
     branches: [main]
-    paths:
-      - 'fuente.js'
-      - 'tests/pm09/**'
-      - 'source-recovery/**'
-      - 'supabase/migrations/20260905105500_pm09_conciliacion_caja.sql'
-      - 'supabase/migrations/20260905115000_pm09_fecha_operacion_economica.sql'
-      - 'supabase/migrations/20260905120500_pm09_operation_id_global_hardening.sql'
 permissions:
   contents: read
 jobs:
@@ -51,17 +44,23 @@ jobs:
           node tests/pm08/frontend-contract.mjs
           node tests/pm08/migration-contract.mjs
           node tests/pm08/replay-scope-contract.mjs
-      - name: Recuperar fuente desde bundle actual
-        run: python3 source-recovery/recuperar_candidato.py
-      - name: Instalación limpia y check de fuente recuperada
-        working-directory: source-recovery
+      - name: Verificar fuente recuperada vigente
         run: |
-          npm ci --no-audit --no-fund
-          npm run check
+          set -euo pipefail
+          node --check source-recovery/fuente-recuperado.js
+          node --check source-recovery/entrada-recuperada.js
+          grep -q 'unidadesVentaConSignoPM09' source-recovery/fuente-recuperado.js
+          grep -q 'registrar_venta_stock_pm09' source-recovery/fuente-recuperado.js
+          grep -q 'registrar_devolucion_venta_pm09' source-recovery/fuente-recuperado.js
+          echo 'PM09_FUENTE_RECUPERADA_CONTIENE_CAMBIOS_PM09=1'
+      - name: Instalación limpia
+        working-directory: source-recovery
+        run: npm ci --no-audit --no-fund
       - name: Build reproducible dos veces
         working-directory: source-recovery
         run: |
           set -euo pipefail
+          npm run check
           rm -rf dist
           npm run build
           node --check dist/fuente.js
