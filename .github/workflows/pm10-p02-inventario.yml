@@ -12,29 +12,68 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Extraer validaciones actuales del bundle exacto
+      - name: Resumen estructural de dominios
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
-          p=Path('fuente.js')
-          s=p.read_text(encoding='utf-8')
-          print('PM10_P02_BYTES=',len(s.encode()))
-          patterns={
-            'PRODUCTOS':['unidadesPorCaja','stockMinimo','stockMin','precioVenta','pvp','coste'],
-            'PEDIDOS':['pedidos','pedido','cantidadPedida','cantidadPedido','crearPedido'],
-            'RECEPCION':['recepcion','recibirPedido','cantidadRecibida','recibido'],
-            'PERSONAL':['salario','vacaciones','pagas','horasSemanales','horas'],
-            'ENCARGOS':['encargo','anticipo','fechaEntrega','clienteId','Sin cliente']
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          print(f'PM10_P02_BYTES={len(s.encode())}')
+          groups={
+            'PRODUCTOS':['ProductoForm','ProductoModal','guardarProducto','saveProducto','unidadesPorCaja','stockMinimo','precioVenta'],
+            'PEDIDOS':['PedidoForm','PedidoModal','crearPedido','guardarPedido','lineasPedido','cantidadPedida'],
+            'RECEPCION':['Recepcion','recibirPedido','confirmarRecepcion','cantidadRecibida','recepcionParcial'],
+            'PERSONAL':['EmpleadoForm','EmpleadoModal','guardarEmpleado','salario','horasSemanales','vacaciones','pagas'],
+            'ENCARGOS':['EncargoForm','EncargoModal','guardarEncargo','crearEncargo','fechaEntrega','anticipo','Sin cliente']
           }
-          for grupo, terms in patterns.items():
-            print(f'\n===== {grupo} =====')
-            seen=[]
+          for group, terms in groups.items():
+            print(f'\n===== {group} =====')
             for term in terms:
-              matches=list(re.finditer(re.escape(term),s,re.I))[:12]
-              print(f'-- TERM {term} MATCHES_TOTAL_CAP={len(matches)}')
-              for i,m in enumerate(matches,1):
-                a=max(0,m.start()-900); b=min(len(s),m.end()+1200)
-                snippet=s[a:b].replace('\n','\\n')
-                print(f'[{grupo}:{term}:{i}] OFFSET={m.start()} :: {snippet}')
+              ms=list(re.finditer(re.escape(term),s,re.I))
+              print(f'{term}:COUNT={len(ms)} OFFSETS={[m.start() for m in ms[:8]]}')
+          # candidatos de funciones/componentes nominales
+          pats=[
+            r'function\s+([A-Za-z0-9_$]*(?:Producto|Pedido|Recep|Empleado|Personal|Encargo)[A-Za-z0-9_$]*)\s*\(',
+            r'(?:const|let|var)\s+([A-Za-z0-9_$]*(?:Producto|Pedido|Recep|Empleado|Personal|Encargo)[A-Za-z0-9_$]*)\s*=\s*[^;]{0,100}=>'
+          ]
+          names=[]
+          for pat in pats:
+            for m in re.finditer(pat,s,re.I):
+              name=m.group(1)
+              if name not in names: names.append(name)
+          print('\nCANDIDATE_NAMES='+','.join(names[:120]))
+          PY
+      - name: Extractos relevantes limitados
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          queries=[
+            ('PRODUCTOS','unidadesPorCaja'),('PRODUCTOS','stockMinimo'),('PRODUCTOS','precioVenta'),
+            ('PEDIDOS','cantidadPedida'),('PEDIDOS','crearPedido'),('PEDIDOS','pedido.productos'),
+            ('RECEPCION','cantidadRecibida'),('RECEPCION','recibirPedido'),('RECEPCION','recepcion'),
+            ('PERSONAL','horasSemanales'),('PERSONAL','salario'),('PERSONAL','vacaciones'),('PERSONAL','pagas'),
+            ('ENCARGOS','fechaEntrega'),('ENCARGOS','anticipo'),('ENCARGOS','Sin cliente')
+          ]
+          for group,q in queries:
+            ms=list(re.finditer(re.escape(q),s,re.I))
+            print(f'\n### {group} :: {q} :: total={len(ms)}')
+            for i,m in enumerate(ms[:4],1):
+              a=max(0,m.start()-1400); b=min(len(s),m.end()+2200)
+              sn=s[a:b].replace('\n','\\n')
+              print(f'[{i}] offset={m.start()} {sn}')
+          PY
+      - name: Persistencia y autoridad aparente
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          for q in ['storage.set','almacen_kv','localStorage','supabase.from','supabase.rpc','setProductos(','setPedidos(','setEmpleados(','setEncargos(']:
+            ms=list(re.finditer(re.escape(q),s,re.I))
+            print(f'\n### PERSIST {q} total={len(ms)}')
+            for i,m in enumerate(ms[:8],1):
+              a=max(0,m.start()-900); b=min(len(s),m.end()+1400)
+              print(f'[{i}] offset={m.start()} '+s[a:b].replace('\n','\\n'))
           PY
