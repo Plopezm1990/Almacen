@@ -22,6 +22,7 @@ function fail(data, campo, codigo, opts) {
 }
 
 ok({ nombre:' Café ', costo:3, stockMinimo:0, stock:5, precioVenta:6, udsPorCaja:12, ivaCompra:10, ivaVenta:21 });
+ok({ nombre:'Materia prima', costo:0, stockMinimo:0, precioVenta:'', stock:'' });
 fail({ nombre:'', costo:3, stockMinimo:0 }, 'nombre', 'campo_obligatorio');
 fail({ nombre:'X', costo:'abc', stockMinimo:0 }, 'costo', 'numero_no_finito');
 fail({ nombre:'X', costo:-0.01, stockMinimo:0 }, 'costo', 'valor_fuera_rango');
@@ -39,8 +40,12 @@ fail({ precioVenta:-1 }, 'precioVenta', 'valor_fuera_rango', { parcial:true });
 fail({ stock:-1 }, 'stock', 'valor_fuera_rango', { parcial:true });
 
 assert.match(src, /function addProducto\(data\) \{\n    const validacion = validarProductoPM10\(data, \{ parcial: false \}\);/);
-assert.match(src, /function updateProducto\(id, data\)[\s\S]{0,400}validarProductoPM10\(data, \{ parcial: true \}\)/);
+assert.match(src, /function updateProducto\(id, data\)[\s\S]{0,500}validarProductoPM10\(data, \{ parcial: true \}\)/);
 assert.doesNotMatch(src, /const nuevo = \{ id: uid\(\), stock: Number\(data\.stock\) \|\| 0, \.\.\.data/);
 assert.doesNotMatch(src, /costo: Number\(nuevoProd\.costo\) \|\| 0/);
-assert.match(src, /if \(!creado \|\| creado\.ok === false\)/);
+assert.doesNotMatch(src, /addProducto\(\{ \.\.\.form, costo: Number\(form\.costo\) \|\| 0/);
+assert.doesNotMatch(src, /costo: Number\(editForm\.costo\) \|\| 0,[\s\S]{0,300}stockMinimo: Number\(editForm\.stockMinimo\) \|\| 0/);
+assert.match(src, /const creado = addProducto\(form\);[\s\S]{0,180}setError\(creado\?\.error/);
+assert.match(src, /const actualizado = updateProducto\(editFor, editForm\);[\s\S]{0,220}setEditError\(actualizado\?\.error/);
+assert.match(src, /function guardarProductoNuevo\(\)[\s\S]{0,900}costo: nuevoProd\.costo/);
 console.log('PM10 P04 LA-011 productos: contrato OK');
