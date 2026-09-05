@@ -17,9 +17,9 @@ check('FIXTURE_TWO_COMPANIES', fixtures.companies?.length === 2);
 check('FIXTURE_FOUR_LOCATIONS', fixtures.locations?.length === 4);
 check('FIXTURE_FIVE_USERS', fixtures.users?.length === 5);
 check('FIXTURE_CLOSED_LOCATION', fixtures.locations?.some(x => x.id === 'QA-A-CERRADO' && x.active === false));
-check('FIXTURE_STOCK_A1_23', fixtures.stock?.some(x => x.localId === 'QA-A1' && x.total === 23));
-check('FIXTURE_STOCK_A2_10', fixtures.stock?.some(x => x.localId === 'QA-A2' && x.total === 10));
-check('FIXTURE_STOCK_B1_7', fixtures.stock?.some(x => x.localId === 'QA-B1' && x.total === 7));
+check('FIXTURE_STOCK_A1_23', fixtures.stock?.some(x => x.locationId === 'QA-A1' && x.total === 23));
+check('FIXTURE_STOCK_A2_10', fixtures.stock?.some(x => x.locationId === 'QA-A2' && x.total === 10));
+check('FIXTURE_STOCK_B1_7', fixtures.stock?.some(x => x.locationId === 'QA-B1' && x.total === 7));
 
 check('G1_GATE_SUPERADO', g1.includes('**G1_GATE_SUPERADO=SI**'));
 check('G1_NEXT_PM11_PERSONAL', g1.includes('**SIGUIENTE=PM11_PERSONAL_EMPLEADOS**'));
