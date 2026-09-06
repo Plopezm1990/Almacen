@@ -31,7 +31,7 @@ jobs:
           echo 'PM11_P01_MAIN_INTACTO=1'
           echo "PM11_P01_SHA=$(git rev-parse HEAD)"
 
-      - name: Sintaxis fuente
+      - name: Sintaxis fuente actual
         run: node --check fuente.js
 
       - name: Contrato checkpoint PM11
@@ -43,14 +43,17 @@ jobs:
       - name: Regresión heredada Personal LA-017
         run: node tests/pm10/p07-personal-contract.mjs
 
-      - name: Build reproducible actual
+      - name: Reproducibilidad histórica congelada P01
         run: |
+          set -e
           cd source-recovery
           npm ci
           npm run check
+          # build:current verifica internamente el SHA base, la serie de 17 parches
+          # y el SHA objetivo histórico. No se compara contra ../fuente.js porque
+          # puntos PM11 posteriores pueden modificar legítimamente la fuente raíz.
           npm run build:current
-          cmp -s dist/fuente.js ../fuente.js
-          echo 'PM11_P01_BUILD_REPRODUCIBLE=PASS'
+          echo 'PM11_P01_BUILD_HISTORICO_REPRODUCIBLE=PASS'
           cd ..
 
       - name: Resumen P01
