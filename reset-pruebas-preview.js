@@ -61,11 +61,11 @@
   }
 
   // Reinicio total del estado funcional local, una sola vez por navegador.
-  // v6: además de limpiar la caché antigua, deja un bootstrap funcional QA
-  // mínimo para que el selector de locales y los productos existan desde el
-  // primer render. El stock autoritativo se sigue sincronizando después desde
-  // Supabase QA mediante PM-07; esto NO afecta a producción.
-  var MARCADOR = "la_suite_reset_total_20260904_v6_qa";
+  // v7 refresca el bootstrap QA tras detectar en el smoke PM11.10 que un
+  // navegador podía conservar el marcador v6 aunque ya no tuviera las claves
+  // funcionales de QA. El cambio solo afecta a Deploy Preview: vuelve a dejar
+  // QA-A1/QA-A2 disponibles y elimina datos temporales locales del smoke previo.
+  var MARCADOR = "la_suite_reset_total_20260906_v7_qa";
   if (localStorage.getItem(MARCADOR) === "1") return;
 
   var claves = [];
@@ -103,5 +103,5 @@
 
   localStorage.setItem(MARCADOR, "1");
   window.__resetPruebasEjecutado = true;
-  window.__reinicioLocalSeguroVersion = "20260904-v6-qa";
+  window.__reinicioLocalSeguroVersion = "20260906-v7-qa";
 })();
