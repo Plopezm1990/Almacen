@@ -7,10 +7,12 @@ on:
       - '.github/workflows/pm11-p10-smoke-acceso.yml'
       - 'supabase/migrations/20260906183000_pm11_contexto_operativo_acceso_smoke.sql'
       - 'pm11-access-patch.js'
+      - 'pm11-session-guard-v4.js'
       - 'pm11-access-runtime-v3.js'
       - 'pm11-mobile-layout-v3.js'
       - 'tools/corregir_pm11_p10_smoke_acceso.py'
       - 'tests/pm11/p10-smoke-acceso-contract.mjs'
+      - 'tests/pm11/p10-session-guard-v4-contract.mjs'
       - 'tests/pm11/p10-runtime-scope-v3-contract.mjs'
       - 'tests/pm11/p10-mobile-layout-v3-contract.mjs'
       - 'tests/pm11/P10_SMOKE_ACCESO_EVIDENCIA.md'
@@ -46,6 +48,7 @@ jobs:
         run: |
           set -e
           node --check pm11-access-patch.js
+          node --check pm11-session-guard-v4.js
           node --check pm11-access-runtime-v3.js
           node --check pm11-mobile-layout-v3.js
           node --check fuente.js
@@ -54,6 +57,7 @@ jobs:
         run: |
           set -e
           node tests/pm11/p10-smoke-acceso-contract.mjs
+          node tests/pm11/p10-session-guard-v4-contract.mjs
           node tests/pm11/p10-runtime-scope-v3-contract.mjs
           node tests/pm11/p10-mobile-layout-v3-contract.mjs
 
@@ -98,18 +102,19 @@ jobs:
         run: |
           set -e
           if git diff --quiet -- index.html; then
-            echo 'index ya contiene acceso, runtime v3 y layout v3; sin commit adicional'
+            echo 'index ya contiene acceso, guard v4, runtime v3 y layout v3; sin commit adicional'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add index.html
-          git commit -m 'PM11 P10: cargar runtime scope v3 antes de fuente'
+          git commit -m 'PM11 P10: cargar guard de sesión v4 antes de runtime'
           git push
 
       - name: Resumen
         run: |
           echo 'PM11_P10_SMOKE_ACCESO_GATE=PASS'
+          echo 'PM11_P10_SESSION_GUARD_V4=PASS'
           echo 'PM11_P10_RUNTIME_SCOPE_V3=PASS'
           echo 'PM11_P10_LAYOUT_MOVIL_V3=PASS'
           echo 'PM11_P10_SMOKE_REPETIR_EN_INCOGNITO=SI'
