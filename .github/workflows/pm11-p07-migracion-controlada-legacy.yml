@@ -62,6 +62,7 @@ jobs:
           npm run build:current
           cd ..
           python3 tools/corregir_pm11_p06_frontend.py source-recovery/dist/fuente.js
+          python3 tools/corregir_pm11_p06_sintaxis.py source-recovery/dist/fuente.js
           node --check source-recovery/dist/fuente.js
           cmp -s source-recovery/dist/fuente.js fuente.js
           echo 'PM11_P07_BUILD_REPRODUCIBLE=PASS'
