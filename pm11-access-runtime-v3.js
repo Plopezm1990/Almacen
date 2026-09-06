@@ -1,9 +1,12 @@
 // PM11 · P10 · Runtime de alcance v3
-// Corrige dos fallos observados en el smoke móvil real del 06/09/2026:
+// Corrige fallos observados en el smoke móvil real del 06/09/2026:
 // 1) una sesión de Camarero/a podía autenticarse después de que React ya hubiera
 //    hidratado el estado global del modo anónimo/propietario;
 // 2) el selector podía seguir en "Todos los locales" y Dashboard podía quedar
-//    visible aunque el contexto autoritativo ya fuera Camarero/a.
+//    visible aunque el contexto autoritativo ya fuera Camarero/a;
+// 3) Registro horario mostraba "Corrección manual", permitiendo a Camarero/a
+//    intentar alterar fecha/tipo/hora de su propio fichaje. Esa acción queda
+//    reservada a perfiles de gestión; el fichaje normal Entrada/Salida se mantiene.
 //
 // Esta capa NO concede permisos. El contexto se obtiene exclusivamente de la
 // RPC autoritativa instalada por pm11-access-patch.js. Producción/main no se toca.
@@ -282,10 +285,61 @@
     });
   }
 
+  function dentroDeModalCorreccion(el) {
+    var p = el;
+    for (var i = 0; p && i < 10; i++, p = p.parentElement) {
+      if (norm(p.textContent).indexOf("corrección manual de fichaje") !== -1) return true;
+    }
+    return false;
+  }
+
+  function bloquearCorreccionManualCamarero() {
+    if (!contexto || contexto.rol !== "Camarero/a") return;
+
+    controles().forEach(function (el) {
+      if (norm(el.textContent) === "corrección manual") {
+        el.dataset.pm11CorreccionManualBloqueada = "1";
+        el.setAttribute("aria-hidden", "true");
+        if ("disabled" in el) el.disabled = true;
+        el.style.setProperty("display", "none", "important");
+      }
+    });
+
+    // Defensa adicional si el modal ya estaba abierto por una carrera de UI:
+    // Guardar queda inutilizado. Cancelar/cerrar siguen disponibles.
+    controles().forEach(function (el) {
+      if (norm(el.textContent) === "guardar" && dentroDeModalCorreccion(el)) {
+        el.dataset.pm11GuardarCorreccionBloqueado = "1";
+        if ("disabled" in el) el.disabled = true;
+        el.setAttribute("aria-disabled", "true");
+        el.style.setProperty("pointer-events", "none", "important");
+        el.style.setProperty("opacity", "0.5", "important");
+      }
+    });
+  }
+
+  // Bloqueo en fase capture: incluso si React vuelve a pintar el botón entre
+  // dos observaciones del DOM, Camarero/a no puede abrir/confirmar correcciones.
+  document.addEventListener("click", function (ev) {
+    if (!contexto || contexto.rol !== "Camarero/a") return;
+    var target = ev.target && ev.target.closest
+      ? ev.target.closest("button,a,[role='button']") : null;
+    if (!target) return;
+    var etiqueta = norm(target.textContent);
+    var bloquear = etiqueta === "corrección manual" ||
+      (etiqueta === "guardar" && dentroDeModalCorreccion(target));
+    if (!bloquear) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (typeof ev.stopImmediatePropagation === "function") ev.stopImmediatePropagation();
+    window.__pm11RuntimeScopeV3CorreccionManualBloqueada = true;
+  }, true);
+
   function aplicar() {
     if (!contexto || contexto.__sesionSinContexto || contexto.rol === "Propietario") return;
     fijarSelectoresLocales(contexto);
     ocultarTodosLocalesResidual();
+    bloquearCorreccionManualCamarero();
 
     if (contexto.rol === "Camarero/a" && estaEnDashboard()) {
       irAModuloPermitido();
@@ -295,6 +349,7 @@
       rol: contexto.rol,
       localFijo: localFijo(contexto),
       dashboard: estaEnDashboard(),
+      correccionManualBloqueada: contexto.rol === "Camarero/a",
       aplicado: true
     };
   }
