@@ -1,4 +1,4 @@
-name: PM11 diagnostico layout movil
+name: PM11 aplicar layout movil v2
 
 on:
   push:
@@ -7,40 +7,28 @@ on:
       - '.github/workflows/pm11-diagnostico-layout-mobile.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  diagnostico-layout:
+  aplicar-layout-v2:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Aislar layout Rápido y navegación móvil
+        with:
+          fetch-depth: 0
+      - name: Aplicar version v2 y validar contrato
         run: |
-          node <<'NODE'
-          const fs = require('fs');
-          const s = fs.readFileSync('source-recovery/fuente-recuperado.js', 'utf8');
-          function chunk(label,a,b){
-            console.log(`\n===== ${label} [${a},${b}] =====`);
-            console.log(s.slice(a,b).replace(/\n/g,'\\n'));
-          }
-          chunk('APP_RETURN_STYLE',181800,190800);
-          chunk('TOOLBAR_COMPONENTS',368800,376800);
-          chunk('BOTTOM_NAV_C',382800,389800);
-          const terms = [
-            'function Top','function Header','function Barra','function Nav',
-            'overflow-x-auto','overflow-x-hidden','overflow-hidden','min-w-0',
-            'max-w-','md:w-','sm:w-','w-screen','w-full','shrink-0','flex-1',
-            'disenoMenu === "C"','BottomNavC','SelectorDiseno'
-          ];
-          for (const term of terms) {
-            console.log('\n===== TERM ' + JSON.stringify(term) + ' =====');
-            let from=0,count=0;
-            while(count<12){
-              const i=s.indexOf(term,from); if(i<0) break;
-              console.log(`--- hit ${++count} @${i} ---`);
-              console.log(s.slice(Math.max(0,i-500),Math.min(s.length,i+term.length+850)).replace(/\n/g,'\\n'));
-              from=i+term.length;
-            }
-            if(!count) console.log('NO_HITS');
-          }
-          NODE
+          python3 tools/corregir_pm11_p10_smoke_acceso.py index.html
+          node --check pm11-access-patch.js
+          node tests/pm11/p10-smoke-acceso-contract.mjs
+      - name: Commit de index si cambia
+        run: |
+          if git diff --quiet -- index.html; then
+            echo 'index.html ya estaba en v2'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'PM11 P10: activar layout movil v2 en preview'
+          git push origin HEAD:pm11-personal-empleados
