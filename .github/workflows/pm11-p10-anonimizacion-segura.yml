@@ -9,6 +9,7 @@ on:
       - 'tools/corregir_pm11_p10_anonimizacion.py'
       - 'tests/pm11/P10_ANONIMIZACION_SEGURA_EVIDENCIA.md'
       - 'tests/pm11/p10-anonimizacion-segura-contract.mjs'
+      - 'tests/pm11/p06-puente-frontend-sql-contract.mjs'
       - 'fuente.js'
 
 permissions:
