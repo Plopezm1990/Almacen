@@ -1,1 +1,0 @@
-PM11 cerrado en rama de pruebas. Documento de respaldo del acta de cierre. No merge; no producción.
