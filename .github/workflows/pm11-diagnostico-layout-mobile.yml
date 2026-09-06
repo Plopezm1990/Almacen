@@ -14,31 +14,33 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Localizar componentes y reglas de geometria
+      - name: Aislar layout Rápido y navegación móvil
         run: |
           node <<'NODE'
           const fs = require('fs');
-          const p = 'source-recovery/fuente-recuperado.js';
-          const s = fs.readFileSync(p, 'utf8');
-          console.log('SOURCE_LEN=' + s.length);
+          const s = fs.readFileSync('source-recovery/fuente-recuperado.js', 'utf8');
+          function chunk(label,a,b){
+            console.log(`\n===== ${label} [${a},${b}] =====`);
+            console.log(s.slice(a,b).replace(/\n/g,'\\n'));
+          }
+          chunk('APP_RETURN_STYLE',181800,190800);
+          chunk('TOOLBAR_COMPONENTS',368800,376800);
+          chunk('BOTTOM_NAV_C',382800,389800);
           const terms = [
-            'Comprar','Almacén','Registro horario','Todos los locales',
-            'Depart.','Ciclos','Rápido','Oscuro','Panel general',
-            'calc(100% - 48px)','calc(100% - 3rem)','48px','w-12','ml-12','mr-12',
-            'paddingRight','paddingLeft','marginRight','marginLeft','100vw','minWidth','maxWidth'
+            'function Top','function Header','function Barra','function Nav',
+            'overflow-x-auto','overflow-x-hidden','overflow-hidden','min-w-0',
+            'max-w-','md:w-','sm:w-','w-screen','w-full','shrink-0','flex-1',
+            'disenoMenu === "C"','BottomNavC','SelectorDiseno'
           ];
           for (const term of terms) {
             console.log('\n===== TERM ' + JSON.stringify(term) + ' =====');
-            let from = 0, count = 0;
-            while (count < 8) {
-              const i = s.indexOf(term, from);
-              if (i < 0) break;
-              const a = Math.max(0, i - 900);
-              const b = Math.min(s.length, i + term.length + 1400);
+            let from=0,count=0;
+            while(count<12){
+              const i=s.indexOf(term,from); if(i<0) break;
               console.log(`--- hit ${++count} @${i} ---`);
-              console.log(s.slice(a,b).replace(/\n/g,'\\n'));
-              from = i + term.length;
+              console.log(s.slice(Math.max(0,i-500),Math.min(s.length,i+term.length+850)).replace(/\n/g,'\\n'));
+              from=i+term.length;
             }
-            if (!count) console.log('NO_HITS');
+            if(!count) console.log('NO_HITS');
           }
           NODE
