@@ -5,11 +5,8 @@ on:
     branches: [pm11-personal-empleados]
     paths:
       - '.github/workflows/pm11-p03-identidad-ciclo-vida.yml'
-      - 'tests/pm11/**'
-      - 'tests/pm10/p07-personal-contract.mjs'
-      - 'source-recovery/**'
-      - 'fuente.js'
-      - 'supabase/migrations/**'
+      - 'tests/pm11/P03_CONTRATO_IDENTIDAD_CICLO_VIDA_PERSONAL.md'
+      - 'tests/pm11/p03-identidad-ciclo-vida-contract.mjs'
 
 permissions:
   contents: read
@@ -22,13 +19,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Verificar origen y que P03 no cambió funcionalidad
+      - name: Verificar cierre histórico P03
         run: |
           git merge-base --is-ancestor 1e21458b48a11302c59911ef966ded0aca3eb639 HEAD
           test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
-          git diff --quiet 1e21458b48a11302c59911ef966ded0aca3eb639 -- fuente.js supabase/migrations
-          echo 'PM11_P03_SIN_CAMBIO_FUNCIONAL=1'
-          echo "PM11_P03_SHA=$(git rev-parse HEAD)"
+          git diff --quiet 1e21458b48a11302c59911ef966ded0aca3eb639..bb77ce9e7bb8c5057f160044a1c5b0201addf119 -- fuente.js supabase/migrations
+          echo 'PM11_P03_CIERRE_HISTORICO_SIN_CAMBIO_FUNCIONAL=1'
 
       - name: Sintaxis fuente
         run: node --check fuente.js
