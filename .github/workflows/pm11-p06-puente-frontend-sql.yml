@@ -1,0 +1,85 @@
+name: PM11 P06 puente frontend SQL empleados
+
+on:
+  push:
+    branches: [pm11-personal-empleados]
+    paths:
+      - '.github/workflows/pm11-p06-puente-frontend-sql.yml'
+      - 'tools/corregir_pm11_p06_frontend.py'
+      - 'tests/pm11/p06-puente-frontend-sql-contract.mjs'
+      - 'tests/pm11/P06_PUENTE_FRONTEND_SQL_EMPLEADOS_EVIDENCIA.md'
+      - 'fuente.js'
+
+permissions:
+  contents: write
+
+jobs:
+  puente-frontend-sql-pm11:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar origen, alcance y main intacto
+        run: |
+          set -e
+          test "$GITHUB_REF_NAME" = "pm11-personal-empleados"
+          git merge-base --is-ancestor 1e21458b48a11302c59911ef966ded0aca3eb639 HEAD
+          git merge-base --is-ancestor ec5f0c07563c36c1893ac6b39912e484cd7a5f3a HEAD
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          git diff --quiet ec5f0c07563c36c1893ac6b39912e484cd7a5f3a -- supabase/migrations
+          git diff --quiet ec5f0c07563c36c1893ac6b39912e484cd7a5f3a -- source-recovery
+          echo 'PM11_P06_ALCANCE=PASS'
+
+      - name: Aplicar puente frontend SQL P06
+        run: python3 tools/corregir_pm11_p06_frontend.py
+
+      - name: Sintaxis fuente
+        run: node --check fuente.js
+
+      - name: Contrato P06 puente frontend SQL
+        run: node tests/pm11/p06-puente-frontend-sql-contract.mjs
+
+      - name: Regresión Personal LA-017
+        run: node tests/pm10/p07-personal-contract.mjs
+
+      - name: Regresiones PM11 P05 a P01
+        run: |
+          set -e
+          node tests/pm11/p05-rpc-ciclo-vida-contract.mjs
+          node tests/pm11/p04-empleados-rls-contract.mjs
+          node tests/pm11/p03-identidad-ciclo-vida-contract.mjs
+          node tests/pm11/p02-mapa-personal-contract.mjs
+          node tests/pm11/p01-checkpoint-contract.mjs
+
+      - name: Reproducibilidad fuente base + parche P06
+        run: |
+          set -e
+          cd source-recovery
+          npm ci
+          npm run check
+          npm run build:current
+          cd ..
+          python3 tools/corregir_pm11_p06_frontend.py source-recovery/dist/fuente.js
+          node --check source-recovery/dist/fuente.js
+          cmp -s source-recovery/dist/fuente.js fuente.js
+          echo 'PM11_P06_BUILD_REPRODUCIBLE=PASS'
+
+      - name: Commit fuente P06 si procede
+        run: |
+          set -e
+          if git diff --quiet -- fuente.js; then
+            echo 'Fuente P06 ya estaba aplicada; sin commit adicional'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add fuente.js
+          git commit -m 'PM11 P06: conectar Personal con empleados SQL'
+          git push
+
+      - name: Resumen P06
+        run: |
+          echo 'PM11_P06_PUENTE_FRONTEND_SQL_EMPLEADOS=PASS'
+          echo 'PM11_SIGUIENTE=P07_MIGRACION_CONTROLADA_FICHAS_LEGACY'
