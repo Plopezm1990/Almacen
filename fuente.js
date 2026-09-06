@@ -103718,9 +103718,17 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
   }
   function anonimizarEmpleado(id) {
     const e2 = empleados.find((x3) => x3.id === id);
-    if (!empleadoEsDelLocalActivoPersonal(e2)) return false;
-    if (pm11UsarSqlPersonal()) return { ok: false, error: "La anonimización SQL se habilitará en su operación transaccional específica." };
-    if (e2.activo !== false) return { ok: false, error: "Da de baja al empleado antes de anonimizarlo." };
+    if (!empleadoEsDelLocalActivoPersonal(e2) || !localActivoId) return errorValidacionPM10("contexto_no_autorizado", "empleadoId", "El empleado no pertenece al local activo.");
+    if (e2.anonimizado || e2.estado === "anonimizado") return errorValidacionPM10("estado_invalido", "empleadoId", "El empleado ya está anonimizado.");
+    if (e2.activo !== false) return errorValidacionPM10("estado_invalido", "empleadoId", "Da de baja al empleado antes de anonimizarlo.");
+    if (pm11UsarSqlPersonal()) {
+      if (!empresaId) return errorValidacionPM10("contexto_no_autorizado", "empresaId", "No se pudo resolver la empresa activa.");
+      return aplicarRpc(pm11RpcPersonal("pm11_anonimizar_empleado", {
+        p_empresa_id: empresaId,
+        p_local_id: e2.localId || localActivoId,
+        p_empleado_id: id
+      }));
+    }
     registrarAuditoria("Anonimizar empleado", e2.nombre);
     setEmpleados(
       (s22) => s22.map(
@@ -103728,12 +103736,20 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
           ...emp,
           nombre: "Empleado anonimizado",
           dni: "",
+          nif: "",
+          nie: "",
+          email: "",
+          telefono: "",
+          movil: "",
+          direccion: "",
           pin: "",
           documentos: [],
           ausencias: [],
+          epis: [],
           anonimizado: true,
           estado: "anonimizado",
-          activo: false
+          activo: false,
+          anonimizadoAt: (/* @__PURE__ */ new Date()).toISOString()
         } : emp
       )
     );
@@ -111765,11 +111781,17 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reac
   } }, "Cancelar"))), errorAccion && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", style: { color: C2.red } }, errorAccion), empleados.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has a\xF1adido a nadie." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-3" }, empleados.map((e2) => {
     const usados = vacacionesUsadas(e2);
     const total = Number(e2.diasVacacionesAnuales) || 0;
-    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold flex items-center gap-1.5" }, e2.nombre, e2.activo === false && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "baja"), e2.pin && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "con acceso"), e2.pin && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, e2.rol && ROLES_EMPLEADO[e2.rol] ? e2.rol : "Est\xE1ndar"), e2.tieneCuenta && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "cuenta: ", e2.rolCuenta)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mt-0.5", style: { color: C2.inkSoft } }, e2.puesto, " \xB7 ", e2.tipoContrato)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => exportarDatosEmpleado(e2), title: "Exportar sus datos" }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 15, color: C2.inkSoft })), e2.activo !== false && /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setConfirmDeleteId(e2.id), "aria-label": "Eliminar empleado" }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 15, color: C2.inkSoft })))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 text-[12px] space-y-1", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement("div", null, "Alta: ", e2.fechaAlta, e2.fechaFinContrato && ` \xB7 Fin de contrato: ${e2.fechaFinContrato}`), e2.salarioBrutoMensual > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, "Bruto: \u20AC", fmt(e2.salarioBrutoMensual), "/mes (", e2.pagas, " pagas)"), /* @__PURE__ */ import_react4.default.createElement("div", null, "Vacaciones: ", usados, " / ", total, " d\xEDas usados este a\xF1o"), (e2.documentos || []).length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", null, e2.documentos.map((d2) => d2.nombre).filter(Boolean).join(" \xB7 "))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 flex gap-2 flex-wrap" }, reactivarEmpleado && e2.activo === false && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: async () => {
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold flex items-center gap-1.5" }, e2.nombre, e2.activo === false && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "baja"), e2.pin && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "con acceso"), e2.pin && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, e2.rol && ROLES_EMPLEADO[e2.rol] ? e2.rol : "Est\xE1ndar"), e2.tieneCuenta && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "cuenta: ", e2.rolCuenta)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mt-0.5", style: { color: C2.inkSoft } }, e2.puesto, " \xB7 ", e2.tipoContrato)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => exportarDatosEmpleado(e2), title: "Exportar sus datos" }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 15, color: C2.inkSoft })), e2.activo !== false && /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setConfirmDeleteId(e2.id), "aria-label": "Eliminar empleado" }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 15, color: C2.inkSoft })))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 text-[12px] space-y-1", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement("div", null, "Alta: ", e2.fechaAlta, e2.fechaFinContrato && ` \xB7 Fin de contrato: ${e2.fechaFinContrato}`), e2.salarioBrutoMensual > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, "Bruto: \u20AC", fmt(e2.salarioBrutoMensual), "/mes (", e2.pagas, " pagas)"), /* @__PURE__ */ import_react4.default.createElement("div", null, "Vacaciones: ", usados, " / ", total, " d\xEDas usados este a\xF1o"), (e2.documentos || []).length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", null, e2.documentos.map((d2) => d2.nombre).filter(Boolean).join(" \xB7 "))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 flex gap-2 flex-wrap" }, reactivarEmpleado && e2.activo === false && !e2.anonimizado && e2.estado !== "anonimizado" && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: async () => {
       setErrorAccion("");
       const resultado = await Promise.resolve(reactivarEmpleado(e2.id));
       if (!resultado || resultado.ok === false) setErrorAccion(resultado?.error || "No se pudo reactivar al empleado.");
-    } }, "Reactivar"), e2.activo !== false && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(e2) }, "Editar"), e2.activo !== false && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAusenciaFor(e2.id) }, "Registrar ausencia"), e2.activo !== false && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setEpiFor(e2.id) }, "Entregar EPI"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setDetalleId(detalleId === e2.id ? null : e2.id) }, detalleId === e2.id ? "Ocultar historial" : "Ver historial"), e2.activo !== false && crearCuentaEmpleado && !e2.tieneCuenta && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
+    } }, "Reactivar"), anonimizarEmpleado && e2.activo === false && !e2.anonimizado && e2.estado !== "anonimizado" && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: async () => {
+      setErrorAccion("");
+      const confirmar = typeof window === "undefined" ? false : window.confirm("Anonimizar es irreversible. Se eliminarán los datos identificativos y, si existe una cuenta vinculada, se retirará su acceso. ¿Continuar?");
+      if (!confirmar) return;
+      const resultado = await Promise.resolve(anonimizarEmpleado(e2.id));
+      if (!resultado || resultado.ok === false) setErrorAccion(resultado?.error || "No se pudo anonimizar al empleado.");
+    } }, "Anonimizar"), e2.activo !== false && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(e2) }, "Editar"), e2.activo !== false && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAusenciaFor(e2.id) }, "Registrar ausencia"), e2.activo !== false && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setEpiFor(e2.id) }, "Entregar EPI"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setDetalleId(detalleId === e2.id ? null : e2.id) }, detalleId === e2.id ? "Ocultar historial" : "Ver historial"), e2.activo !== false && crearCuentaEmpleado && !e2.tieneCuenta && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
       setCuentaFor(e2.id);
       setCuentaForm({ nombre: e2.nombre || "", email: "", password: "", rol: "Camarero/a" });
     } }, "Crear cuenta de acceso")), detalleId === e2.id && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 pt-3", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, "Ausencias"), (e2.ausencias || []).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin ausencias registradas." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1 mb-3" }, [...e2.ausencias || []].reverse().map((a22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: a22.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, a22.tipo, ": ", a22.fechaInicio, " \u2192 ", a22.fechaFin, " (", a22.dias, " d)"), e2.activo !== false && /* @__PURE__ */ import_react4.default.createElement("button", { onClick: async () => {
