@@ -13,46 +13,27 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verificar rama protegida de trabajo
         run: test "$GITHUB_REF_NAME" = "pm11-personal-empleados"
-      - name: Extraer acciones UI y montaje Personal
+      - name: Extraer montaje exacto de Personal
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('fuente.js').read_text(encoding='utf-8')
-          tokens=[
-            'confirmDeleteId',
-            'deleteEmpleado(',
-            'anonimizarEmpleado(',
-            'addEmpleado(',
-            'updateEmpleado(',
-            'createElement(Personal',
-            'Personal, {',
-            'e2.activo === false',
-            'activo !== false',
-            'Dar de baja',
-            'Reactivar',
-            'Eliminar empleado',
-            'setShowForm(false)',
-            'const { addEmpleado, updateEmpleado, deleteEmpleado',
-          ]
-          out=[f'FUENTE_LEN={len(s)}\n']
-          for token in tokens:
-            pos=[]; start=0
+          out=[]
+          for token in ['createElement(Personal', 'crearCuentaEmpleado']:
+            start=0; n=0
             while True:
               i=s.find(token,start)
               if i<0: break
-              pos.append(i); start=i+max(1,len(token))
-              if len(pos)>=20: break
-            out.append(f'\n===== {token!r} HITS={len(pos)} =====\n')
-            for n,i in enumerate(pos,1):
-              a=max(0,i-2600); b=min(len(s),i+5200)
-              out.append(f'\n--- {n} @ {i} ---\n{s[a:b]}\n')
-          Path('tests/pm11/P06_UI_ACCIONES.txt').write_text(''.join(out),encoding='utf-8')
+              n+=1
+              out.append(f'\n===== {token!r} HIT {n} @ {i} =====\n{s[max(0,i-1800):min(len(s),i+4200)]}\n')
+              start=i+len(token)
+          Path('tests/pm11/P06_MONTAJE_PERSONAL.txt').write_text(''.join(out),encoding='utf-8')
           PY
       - name: Commit diagnóstico
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add tests/pm11/P06_UI_ACCIONES.txt
+          git add tests/pm11/P06_MONTAJE_PERSONAL.txt
           git diff --cached --quiet && exit 0
-          git commit -m 'PM11: guardar acciones UI Personal'
+          git commit -m 'PM11: guardar montaje exacto de Personal'
           git push
