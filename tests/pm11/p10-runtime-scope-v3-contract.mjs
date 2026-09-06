@@ -21,6 +21,13 @@ for (const token of [
   'controlExacto(["TPV"])',
   'Registro horario',
   'estaEnDashboard()',
+  'bloquearCorreccionManualCamarero()',
+  'etiqueta === "corrección manual"',
+  'dentroDeModalCorreccion(target)',
+  'pm11CorreccionManualBloqueada',
+  'pm11GuardarCorreccionBloqueado',
+  'stopImmediatePropagation',
+  'correccionManualBloqueada: contexto.rol === "Camarero/a"',
   '__pm11RuntimeScopeV3Estado'
 ]) assert.ok(runtime.includes(token), `falta contrato runtime scope v3: ${token}`);
 
@@ -34,6 +41,11 @@ for (const forbidden of [
   'localStorage.setItem("localId"',
   'supabase.from("membresias_usuario")'
 ]) assert.ok(!runtime.includes(forbidden), `runtime no puede inventar autorización: ${forbidden}`);
+
+// El Camarero mantiene el fichaje ordinario Entrada/Salida. La restricción de
+// este gate es específicamente la corrección manual, no el registro horario.
+assert.ok(!runtime.includes('etiqueta === "entrada"'), 'no debe bloquear Entrada');
+assert.ok(!runtime.includes('etiqueta === "salida"'), 'no debe bloquear Salida');
 
 assert.ok(fixer.includes('pm11-access-runtime-v3.js?v=pm11-runtime-scope-v3'), 'fixer debe cargar runtime v3');
 assert.ok(index.includes('<script src="./pm11-access-runtime-v3.js?v=pm11-runtime-scope-v3"></script>'), 'index corregido debe cargar runtime v3');
