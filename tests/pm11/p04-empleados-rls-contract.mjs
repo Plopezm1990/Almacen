@@ -70,7 +70,7 @@ for (const marker of [
   'Encargado A2',
   'Cajero A1',
   'autoescalada',
-  'empleados restantes al cerrar P04: **0**',
+  '**empleados restantes al cerrar P04: 0**',
   'SIGUIENTE=PM11_P05_RPC_ALTA_EDICION_BAJA_REACTIVACION'
 ]) {
   assert.ok(evidencia.includes(marker), `evidencia P04 incompleta: ${marker}`);
