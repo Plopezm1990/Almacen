@@ -1,0 +1,25 @@
+name: PM11 P06 inspeccion frontend Personal
+
+on:
+  push:
+    branches: [pm11-personal-empleados]
+    paths:
+      - '.github/workflows/pm11-p06-inspeccion-frontend.yml'
+      - 'tests/pm11/p06-inspeccionar-frontend.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  inspeccion-pm11:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verificar punto de partida
+        run: |
+          git merge-base --is-ancestor f81f5c0f7f5d7baf304aef126543c1972c7e9220 HEAD
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+      - name: Inspeccionar frontera Personal
+        run: node tests/pm11/p06-inspeccionar-frontend.mjs
