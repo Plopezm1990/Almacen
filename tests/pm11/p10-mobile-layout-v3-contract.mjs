@@ -13,7 +13,7 @@ for (const token of [
   'gapRight',
   'MIN_GAP = 20',
   'MAX_GAP = 120',
-  'width", "100vw", "important"',
+  'modoViewport ? "100vw" : "100%"',
   'margin-right", "0", "important"',
   'box-sizing", "border-box", "important"',
   'position',
