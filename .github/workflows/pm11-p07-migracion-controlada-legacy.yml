@@ -1,0 +1,72 @@
+name: PM11 P07 migración controlada empleados legacy
+
+on:
+  push:
+    branches: [pm11-personal-empleados]
+    paths:
+      - '.github/workflows/pm11-p07-migracion-controlada-legacy.yml'
+      - 'supabase/migrations/20260906093000_pm11_migracion_controlada_empleados_legacy.sql'
+      - 'tests/pm11/P07_MIGRACION_CONTROLADA_EMPLEADOS_LEGACY_EVIDENCIA.md'
+      - 'tests/pm11/p07-migracion-controlada-legacy-contract.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  migracion-legacy-pm11:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar origen, alcance P07 y main intacto
+        run: |
+          set -e
+          test "$GITHUB_REF_NAME" = "pm11-personal-empleados"
+          git merge-base --is-ancestor 1e21458b48a11302c59911ef966ded0aca3eb639 HEAD
+          git merge-base --is-ancestor 358de7d8d99d0e0504da2e23996582d306562dd2 HEAD
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          git diff --quiet 358de7d8d99d0e0504da2e23996582d306562dd2 -- fuente.js source-recovery
+          test "$(git diff --name-only 358de7d8d99d0e0504da2e23996582d306562dd2 -- supabase/migrations)" = "supabase/migrations/20260906093000_pm11_migracion_controlada_empleados_legacy.sql"
+          echo 'PM11_P07_ALCANCE=PASS'
+          echo "PM11_P07_SHA=$(git rev-parse HEAD)"
+
+      - name: Sintaxis fuente
+        run: node --check fuente.js
+
+      - name: Contrato P07 migración controlada legacy
+        run: node tests/pm11/p07-migracion-controlada-legacy-contract.mjs
+
+      - name: Regresión P06 puente frontend SQL
+        run: node tests/pm11/p06-puente-frontend-sql-contract.mjs
+
+      - name: Regresión Personal LA-017
+        run: node tests/pm10/p07-personal-contract.mjs
+
+      - name: Regresiones PM11 P05 a P01
+        run: |
+          set -e
+          node tests/pm11/p05-rpc-ciclo-vida-contract.mjs
+          node tests/pm11/p04-empleados-rls-contract.mjs
+          node tests/pm11/p03-identidad-ciclo-vida-contract.mjs
+          node tests/pm11/p02-mapa-personal-contract.mjs
+          node tests/pm11/p01-checkpoint-contract.mjs
+
+      - name: Reproducibilidad fuente P06 sin cambios P07
+        run: |
+          set -e
+          cd source-recovery
+          npm ci
+          npm run check
+          npm run build:current
+          cd ..
+          python3 tools/corregir_pm11_p06_frontend.py source-recovery/dist/fuente.js
+          node --check source-recovery/dist/fuente.js
+          cmp -s source-recovery/dist/fuente.js fuente.js
+          echo 'PM11_P07_BUILD_REPRODUCIBLE=PASS'
+
+      - name: Resumen P07
+        run: |
+          echo 'PM11_P07_MIGRACION_CONTROLADA_EMPLEADOS_LEGACY=PASS'
+          echo 'PM11_SIGUIENTE=P08_VINCULO_CUENTA_EMPLEADO_INTEGRIDAD'
