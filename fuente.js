@@ -103648,12 +103648,12 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
       const { data: sesion } = await supabase.auth.getSession();
       const token = sesion?.session?.access_token;
       if (!token) return { ok: false, error: "No hay sesión activa — vuelve a iniciar sesión." };
-      const resp = await fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/crear-cuenta-empleado", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ empleadoId, nombre, email, password, rol })
+      const { data: r2, error: errorCuenta } = await supabase.functions.invoke("crear-cuenta-empleado", {
+        body: { empleadoId, nombre, email, password, rol }
       });
-      const r2 = await resp.json();
+      if (errorCuenta) {
+        return { ok: false, error: errorCuenta?.message || "No se pudo crear la cuenta de empleado." };
+      }
       if (!r2.ok) return r2;
       setEmpleados((s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, tieneCuenta: true, rolCuenta: rol, emailCuenta: email } : e2));
       registrarAuditoria("Crear cuenta de empleado", `${nombre} · ${rol} · ${email}`);
