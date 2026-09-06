@@ -42,8 +42,18 @@ for (const fn of ['registrarAusencia', 'eliminarAusencia', 'registrarEpi', 'elim
   assert.ok(bloque.includes('updateEmpleado('), `${fn} delega en edición autoritativa`);
 }
 
-// La anonimización SQL no se improvisa en P06: permanece cerrada hasta su RPC dedicada.
-assert.match(logic, /La anonimización SQL se habilitará en su operación transaccional específica/);
+// P06 no improvisó anonimización: en su cierre quedó bloqueada hasta una RPC dedicada.
+// Los paquetes posteriores pueden sustituir legítimamente ese bloqueo solo cuando la
+// migración P10 existe y el frontend usa explícitamente la RPC autoritativa.
+const p10Path = 'supabase/migrations/20260906103000_pm11_anonimizacion_segura_empleado.sql';
+if (fs.existsSync(p10Path)) {
+  const p10 = fs.readFileSync(p10Path, 'utf8');
+  assert.ok(p10.includes('public.pm11_anonimizar_empleado'), 'P10 aporta RPC dedicada de anonimización');
+  assert.ok(logic.includes('pm11_anonimizar_empleado'), 'frontend posterior usa RPC dedicada de anonimización');
+  assert.doesNotMatch(logic, /La anonimización SQL se habilitará en su operación transaccional específica/);
+} else {
+  assert.match(logic, /La anonimización SQL se habilitará en su operación transaccional específica/);
+}
 
 // Sincronización SQL hacia el estado React, conservando compatibilidad con legados KV.
 assert.match(src, /pm11CargarEmpleadosSql\(localActivoId\)/);
