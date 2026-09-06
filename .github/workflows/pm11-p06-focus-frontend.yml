@@ -12,55 +12,45 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verificar rama protegida de trabajo
-        run: |
-          test "$GITHUB_REF_NAME" = "pm11-personal-empleados"
-      - name: Extraer contextos necesarios de fuente.js
+        run: test "$GITHUB_REF_NAME" = "pm11-personal-empleados"
+      - name: Extraer contextos exactos de Personal
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('fuente.js').read_text(encoding='utf-8')
           tokens=[
-            'function normalizeEmpleadosList',
-            'normalizeEmpleadosList(',
-            'function reconcileAppEmpleados',
-            'reconcileAppEmpleados(',
-            'function loadRemoteAppData',
-            'loadRemoteAppData',
-            'function saveAll',
-            'saveAll=',
-            'saveAll =',
-            '_pm10_ensurePersonalEmployeeId',
-            '_pm10_normalizePersonalEmpleado',
-            'state.empleados.push',
-            'state.empleados[index]',
-            'splice(index,1)',
-            'splice(index, 1)',
-            '.rpc(',
-            'createClient(',
-            'supabaseClient',
-            'almacen_kv',
-            'Editar empleado',
-            'Nuevo empleado',
-            'Eliminar empleado',
-            'reactivar',
+            'function validarEmpleadoPM10',
+            'function crearLogicaPersonal',
+            'crearLogicaPersonal(',
+            'function Personal(',
+            'deleteEmpleado',
+            'anonimizarEmpleado',
+            'addEmpleado',
+            'updateEmpleado',
+            'localActivoId',
+            'empleados:',
+            'empleados =',
+            'empleados:',
+            'getSupabaseClient',
+            'window.__nubeActiva',
+            'storage.set("empleados"',
+            "storage.set('empleados'",
+            'storage.get("empleados"',
+            "storage.get('empleados'",
           ]
-          out=[]
-          out.append(f'FUENTE_LEN={len(s)}\n')
+          out=[f'FUENTE_LEN={len(s)}\n']
           for token in tokens:
-            positions=[]
-            start=0
+            pos=[]; start=0
             while True:
               i=s.find(token,start)
               if i<0: break
-              positions.append(i)
-              start=i+max(1,len(token))
-              if len(positions)>=12: break
-            out.append(f'\n===== TOKEN {token!r} COUNT_SHOWN={len(positions)} =====\n')
-            for n,i in enumerate(positions,1):
-              a=max(0,i-2200); b=min(len(s),i+5200)
-              out.append(f'\n--- hit {n} @ {i} ---\n{s[a:b]}\n')
+              pos.append(i); start=i+max(1,len(token))
+              if len(pos)>=20: break
+            out.append(f'\n===== {token!r} HITS={len(pos)} =====\n')
+            for n,i in enumerate(pos,1):
+              a=max(0,i-3500); b=min(len(s),i+9000)
+              out.append(f'\n--- {n} @ {i} ---\n{s[a:b]}\n')
           Path('tests/pm11/P06_FRONTEND_FOCUS.txt').write_text(''.join(out),encoding='utf-8')
-          print('Generado tests/pm11/P06_FRONTEND_FOCUS.txt')
           PY
       - name: Commit diagnóstico focalizado
         run: |
@@ -68,5 +58,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add tests/pm11/P06_FRONTEND_FOCUS.txt
           git diff --cached --quiet && exit 0
-          git commit -m 'PM11: guardar foco frontend Personal'
+          git commit -m 'PM11: actualizar foco frontend Personal'
           git push
