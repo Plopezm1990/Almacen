@@ -36,18 +36,33 @@ for (const token of [
   'contexto.rol === "Camarero/a"',
   'ocultarControl(["Inicio", "Hoy", "Panel general", "Resumen general"])',
   'controlExacto(["TPV"] ) || controlExacto(["Fichajes"])',
-  'style.setProperty("visibility", "hidden", "important")',
+  'style.setProperty("display", "none", "important")',
   'style.setProperty("pointer-events", "none", "important")',
-  'pm11LayoutPreservado',
+  'repararLayoutMovilRapido',
+  'pm11-layout-movil-seguro',
+  'data-pm11-topbar-rapido',
+  'data-pm11-topbar-controles',
+  'data-pm11-shell-rapido',
+  'overflow-x: hidden',
+  'flex-wrap: wrap',
+  'document.documentElement.scrollLeft = 0',
+  'document.body.scrollLeft = 0',
   'la-suite-logo.svg',
   'repararLogoDashboard',
   'podarSelectoresLocales'
-]) assert.ok(patch.includes(token), `falta barrera frontend smoke: ${token}`);
+]) assert.ok(patch.includes(token), `falta barrera/frontend layout smoke: ${token}`);
 
-assert.ok(!patch.includes('el.style.display = "none"'), 'PM11 no debe sacar controles del flujo: desplaza el layout');
+// El fallo real era que TopBarC dejaba crecer el ancho intrínseco del grupo
+// Selector + tema + cuenta. El parche debe contener el shell completo y, en
+// móvil, envolver los controles dentro del ancho disponible en vez de ensanchar
+// el documento. Los controles prohibidos sí salen del flujo para no dejar un
+// cuarto hueco fantasma en la navegación inferior.
+assert.ok(!patch.includes('style.setProperty("visibility", "hidden", "important")'), 'no debe conservar huecos fantasma con visibility:hidden');
+assert.ok(patch.includes('max-width: 100%'), 'el shell móvil debe limitarse al viewport');
+assert.ok(patch.includes('@media (max-width: 640px)'), 'debe existir tratamiento específico de móvil');
 
-assert.ok(index.includes('<script src="./pm11-access-patch.js?v=pm11-p10-smoke-v1"></script>'), 'index debe cargar la barrera PM11');
-const acceso = index.indexOf('./pm11-access-patch.js?v=pm11-p10-smoke-v1');
+assert.ok(index.includes('<script src="./pm11-access-patch.js?v=pm11-p10-smoke-v2"></script>'), 'index debe cargar la barrera PM11 v2 sin caché antigua');
+const acceso = index.indexOf('./pm11-access-patch.js?v=pm11-p10-smoke-v2');
 const fuente = index.indexOf('<script type="module" src="./fuente.js"></script>');
 assert.ok(acceso >= 0 && fuente > acceso, 'la barrera debe instalarse antes del bundle React');
 
@@ -61,4 +76,4 @@ for (const forbidden of [
   'localStorage.setItem("localId"'
 ]) assert.ok(!patch.includes(forbidden), `contexto no confiable prohibido: ${forbidden}`);
 
-console.log('PM11 P10 smoke acceso/contexto: contrato OK');
+console.log('PM11 P10 smoke acceso/contexto/layout móvil: contrato OK');
