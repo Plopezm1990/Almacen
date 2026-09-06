@@ -309,17 +309,110 @@
     var wanted = etiquetas.map(norm);
     controles().forEach(function (el) {
       if (wanted.indexOf(norm(el.textContent)) !== -1) {
-        // Mantener el hueco original evita que el shell cambie de ancho o
-        // recalcule la composición al retirar opciones no autorizadas.
-        // visibility:hidden conserva la geometría, pero impide ver/interactuar.
-        el.style.setProperty("visibility", "hidden", "important");
+        // Una vez corregido el desbordamiento real de TopBarC, retirar el
+        // control del flujo es lo correcto: no deja huecos fantasma en el
+        // menú inferior y los elementos visibles se redistribuyen a todo ancho.
+        el.style.setProperty("display", "none", "important");
         el.style.setProperty("pointer-events", "none", "important");
         el.setAttribute("aria-hidden", "true");
         el.tabIndex = -1;
         el.dataset.pm11Oculto = "1";
-        el.dataset.pm11LayoutPreservado = "1";
       }
     });
+  }
+
+  function instalarEstilosLayoutMovil() {
+    if (document.getElementById("pm11-layout-movil-seguro")) return;
+    var style = document.createElement("style");
+    style.id = "pm11-layout-movil-seguro";
+    style.textContent = `
+      html[data-pm11-layout-seguro="1"],
+      html[data-pm11-layout-seguro="1"] body,
+      html[data-pm11-layout-seguro="1"] #root {
+        max-width: 100%;
+        overflow-x: hidden;
+      }
+      [data-pm11-shell-rapido="1"] {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        overflow-x: hidden;
+        box-sizing: border-box;
+      }
+      [data-pm11-main-rapido="1"],
+      [data-pm11-bottomnav-rapido="1"] {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+      }
+      @media (max-width: 640px) {
+        [data-pm11-topbar-rapido="1"] {
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+          flex-wrap: wrap;
+          gap: 6px;
+          padding-left: 12px !important;
+          padding-right: 12px !important;
+          overflow: hidden;
+          box-sizing: border-box;
+        }
+        [data-pm11-topbar-marca="1"] {
+          display: none !important;
+        }
+        [data-pm11-topbar-controles="1"] {
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+          flex: 1 1 100%;
+          flex-wrap: wrap;
+          justify-content: flex-start;
+          box-sizing: border-box;
+        }
+        [data-pm11-topbar-controles="1"] > :last-child {
+          margin-left: auto;
+          max-width: 100%;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function repararLayoutMovilRapido() {
+    instalarEstilosLayoutMovil();
+
+    // TopBarC no tenía contención horizontal: SelectorDiseno, tema y el botón
+    // de cuenta son nowrap/shrink-0. Con un nombre de usuario real la suma es
+    // mayor que un móvil y ensancha todo el documento. Se marca la estructura
+    // real del modo Rápido para contenerla sin tocar el bundle generado.
+    var rapido = controlExacto(["Rápido"]);
+    if (!rapido) return;
+    var selector = rapido.parentElement;
+    var grupoControles = selector && selector.parentElement;
+    var topbar = grupoControles && grupoControles.parentElement;
+    var shell = topbar && topbar.parentElement;
+    if (!shell || !Array.from(shell.children).some(function (x) { return x.tagName === "MAIN"; })) return;
+
+    document.documentElement.dataset.pm11LayoutSeguro = "1";
+    shell.dataset.pm11ShellRapido = "1";
+    topbar.dataset.pm11TopbarRapido = "1";
+    grupoControles.dataset.pm11TopbarControles = "1";
+    if (topbar.firstElementChild && topbar.firstElementChild !== grupoControles) {
+      topbar.firstElementChild.dataset.pm11TopbarMarca = "1";
+    }
+
+    Array.from(shell.children).forEach(function (x) {
+      if (x.tagName === "MAIN") x.dataset.pm11MainRapido = "1";
+    });
+    var main = Array.from(shell.children).find(function (x) { return x.tagName === "MAIN"; });
+    var bottom = main && main.nextElementSibling;
+    if (bottom && bottom.tagName === "DIV") bottom.dataset.pm11BottomnavRapido = "1";
+
+    // Si el navegador conservó scroll horizontal del DOM ancho anterior,
+    // devolver únicamente ese eje al origen sin alterar la posición vertical.
+    if (document.documentElement.scrollLeft) document.documentElement.scrollLeft = 0;
+    if (document.body.scrollLeft) document.body.scrollLeft = 0;
   }
 
   function repararLogoDashboard() {
@@ -398,6 +491,7 @@
   }
 
   function aplicar() {
+    repararLayoutMovilRapido();
     repararMarcasObvias();
     if (contexto && contexto.rol === "Camarero/a") aplicarCamarero(contexto);
   }
