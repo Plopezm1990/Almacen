@@ -194,7 +194,26 @@ P02 **no decide todavía** si la solución final será una nueva tabla SQL `empl
 
 No se debe crear una tabla o migración por intuición antes de P03.
 
-## 11. Estado de P02
+## 11. Validación automática
+
+Se creó:
+
+- `tests/pm11/p02-mapa-personal-contract.mjs`;
+- `.github/workflows/pm11-p02-mapa-personal.yml`.
+
+La primera ejecución `34015038698` falló únicamente en una comprobación estática demasiado rígida del propio contrato P02. El control previo ya había confirmado en esa misma ejecución que `fuente.js` y `supabase/migrations` no habían cambiado desde G1.
+
+Se simplificó el test para comprobar fronteras estructurales estables y delegar LA-017 al contrato heredado específico. El candidato `15d7c2d11dc3f7e16dfc99cefee72d44e0e592e6` pasó el workflow P02 `34015094314` con:
+
+- origen G1 y `main` intacto: PASS;
+- cero cambios funcionales/migraciones desde G1: PASS;
+- sintaxis de `fuente.js`: PASS;
+- contrato mapa Personal: PASS;
+- regresión Personal LA-017: PASS;
+- regresión checkpoint PM11: PASS;
+- build reproducible y comparación byte a byte: PASS.
+
+## 12. Estado de P02
 
 - inspección de frontend: completada;
 - contrato heredado LA-017: identificado y conservado;
