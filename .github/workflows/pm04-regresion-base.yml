@@ -1,0 +1,52 @@
+name: PM-04 regresión base
+
+on:
+  push:
+    branches: [pm04-regresion-fixtures]
+    paths:
+      - 'tests/pm04/**'
+      - '.github/workflows/pm04-regresion-base.yml'
+      - 'docs/plan-maestro/PM04_*'
+  pull_request:
+    branches: [pm03-contratos-minimos]
+    paths:
+      - 'tests/pm04/**'
+      - 'docs/plan-maestro/PM04_*'
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Contratos de fixtures
+        run: node tests/pm04/contract-tests.mjs
+      - name: Catálogo LA-001 a LA-025
+        run: |
+          python3 - <<'PY'
+          import json
+          d=json.load(open('tests/pm04/regression-catalog.json'))
+          ids=[x['id'] for x in d['cases']]
+          expected=[f'LA-{i:03d}' for i in range(1,26)]
+          assert ids==expected, (ids, expected)
+          assert all(x['package'].startswith('PM-') for x in d['cases'])
+          print('PM04_CATALOGO_LA001_LA025_OK=1')
+          print('PM04_CASOS_CATALOGADOS=25')
+          PY
+      - name: Evidencia baseline de permisos
+        run: |
+          python3 - <<'PY'
+          import json
+          d=json.load(open('tests/pm04/baseline-results.json'))
+          assert d['usersCreated']==5
+          assert d['permissionCases']==8
+          assert d['permissionPass']==3
+          assert d['permissionFail']==5
+          assert d['contractFail']==0
+          assert d['productionInteraction'] is False
+          print('PM04_BASELINE_REPRODUCIBLE=1')
+          print('PM04_NEGATIVOS_ABIERTOS=5')
+          print('PM04_PRODUCCION_INTERACCION=0')
+          PY

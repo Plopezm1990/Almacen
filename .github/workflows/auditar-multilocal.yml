@@ -1,0 +1,146 @@
+name: Auditar aislamiento multi-local
+
+on:
+  push:
+    branches:
+      - la-suite-identidad
+    paths:
+      - fuente.js
+      - .github/workflows/auditar-multilocal.yml
+  workflow_dispatch:
+
+jobs:
+  auditar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar rama
+        uses: actions/checkout@v4
+
+      - name: Analizar bundle actual
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'fuente.js';
+          if (!fs.existsSync(path)) {
+            console.error('No existe fuente.js');
+            process.exit(1);
+          }
+
+          const src = fs.readFileSync(path, 'utf8');
+          const lower = src.toLowerCase();
+
+          const empresaTokens = ['empresaid', 'empresa_id', 'empresaactualid', 'empresaseleccionada', 'empresaactual'];
+          const localTokens = ['localid', 'local_id', 'localactualid', 'localseleccionado', 'localactual', 'selectedlocal'];
+
+          const modules = [
+            { name: 'Productos', anchors: ['productos', 'stock bajo'] },
+            { name: 'Movimientos', anchors: ['movimientos', 'entrada', 'salida', 'ajuste'] },
+            { name: 'Pedidos', anchors: ['pedidos pendientes', 'pedidos'] },
+            { name: 'Albaranes y recepción', anchors: ['albaranes', 'recepción', 'recepcion'] },
+            { name: 'Inventarios y conteos', anchors: ['inventario ciego', 'inventario', 'conteo'] },
+            { name: 'Traspasos', anchors: ['traspasos', 'reponer piso de venta'] },
+            { name: 'Caja', anchors: ['arqueo', 'caja'] },
+            { name: 'TPV / Ventas', anchors: ['venta rápida', 'venta rapida', 'tpv'] },
+            { name: 'Historial de ventas', anchors: ['historial de ventas'] },
+            { name: 'Gastos / pagos / facturas', anchors: ['cuentas por pagar', 'pagos', 'facturas por pagar'] },
+            { name: 'Personal', anchors: ['empleados', 'personal', 'modo empleado'] },
+            { name: 'Encargos', anchors: ['encargos urgentes', 'encargos'] },
+            { name: 'Resultados / Informes', anchors: ['resultados', 'reportes y rotación', 'reportes y rotacion'] },
+            { name: 'Libro de IVA', anchors: ['libro de iva'] }
+          ];
+
+          function countToken(token, text = lower) {
+            let count = 0;
+            let pos = 0;
+            while ((pos = text.indexOf(token, pos)) !== -1) {
+              count++;
+              pos += token.length;
+            }
+            return count;
+          }
+
+          function positionsFor(anchor, limit = 12) {
+            const out = [];
+            let pos = 0;
+            while (out.length < limit && (pos = lower.indexOf(anchor.toLowerCase(), pos)) !== -1) {
+              out.push(pos);
+              pos += anchor.length;
+            }
+            return out;
+          }
+
+          function safeSnippet(start, end) {
+            return src.slice(Math.max(0, start), Math.min(src.length, end))
+              .replace(/\s+/g, ' ')
+              .replace(/[^\x20-\x7EÁÉÍÓÚÜÑáéíóúüñ¿¡]/g, ' ')
+              .slice(0, 900);
+          }
+
+          const report = [];
+          report.push('AUDITORÍA MULTI-LOCAL — L&A Suite');
+          report.push(`Bundle: ${path}`);
+          report.push(`Tamaño: ${src.length} caracteres`);
+          report.push('');
+          report.push('=== CONTEO GLOBAL DE TOKENS DE CONTEXTO ===');
+          for (const token of [...empresaTokens, ...localTokens]) {
+            report.push(`${token}: ${countToken(token)}`);
+          }
+          report.push('');
+          report.push('Nota: esta auditoría es heurística. Detecta evidencia textual cercana, no sustituye la prueba funcional por local.');
+          report.push('');
+          report.push('=== MÓDULOS ===');
+
+          const json = { bundleSize: src.length, globalTokens: {}, modules: [] };
+          for (const token of [...empresaTokens, ...localTokens]) json.globalTokens[token] = countToken(token);
+
+          for (const mod of modules) {
+            const positions = [...new Set(mod.anchors.flatMap(a => positionsFor(a, 8)))].sort((a,b) => a-b).slice(0, 16);
+            let empresaHits = 0;
+            let localHits = 0;
+            const snippets = [];
+
+            for (const p of positions) {
+              const start = Math.max(0, p - 3500);
+              const end = Math.min(src.length, p + 3500);
+              const window = lower.slice(start, end);
+              const e = empresaTokens.reduce((n,t) => n + countToken(t, window), 0);
+              const l = localTokens.reduce((n,t) => n + countToken(t, window), 0);
+              empresaHits += e;
+              localHits += l;
+              if ((e || l) && snippets.length < 4) snippets.push(safeSnippet(p - 450, p + 450));
+            }
+
+            const anchorFound = positions.length > 0;
+            const state = !anchorFound ? 'SIN_ANCLA' : (empresaHits > 0 && localHits > 0 ? 'EMPRESA+LOCAL' : empresaHits > 0 ? 'SOLO_EMPRESA' : localHits > 0 ? 'SOLO_LOCAL' : 'SIN_CONTEXTO_CERCANO');
+            report.push(`\n[${mod.name}]`);
+            report.push(`Estado heurístico: ${state}`);
+            report.push(`Anclas encontradas: ${positions.length}`);
+            report.push(`Referencias empresa cercanas: ${empresaHits}`);
+            report.push(`Referencias local cercanas: ${localHits}`);
+            if (snippets.length) {
+              report.push('Fragmentos relevantes:');
+              snippets.forEach((s,i) => report.push(`  ${i+1}. ${s}`));
+            }
+            json.modules.push({ name: mod.name, state, anchorCount: positions.length, empresaHits, localHits, snippets });
+          }
+
+          report.push('\n=== OCURRENCIAS DIRECTAS empresaId/localId ===');
+          for (const token of ['empresaid', 'localid']) {
+            const positions = positionsFor(token, 20);
+            report.push(`\n${token} (${positions.length} primeras ocurrencias):`);
+            positions.forEach((p,i) => report.push(`  ${i+1}. ${safeSnippet(p - 320, p + 520)}`));
+          }
+
+          fs.writeFileSync('multilocal-audit.txt', report.join('\n'));
+          fs.writeFileSync('multilocal-audit.json', JSON.stringify(json, null, 2));
+          console.log(report.join('\n'));
+          NODE
+
+      - name: Guardar informe de auditoría
+        uses: actions/upload-artifact@v4
+        with:
+          name: multilocal-audit
+          path: |
+            multilocal-audit.txt
+            multilocal-audit.json

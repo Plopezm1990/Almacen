@@ -1,0 +1,31 @@
+name: PM09 LA-008 diagnostico previo
+on:
+  push:
+    branches: [pm09-conciliacion-ventas-analitica]
+    paths:
+      - '.github/workflows/pm09-la008-diagnostico.yml'
+permissions:
+  contents: write
+jobs:
+  diagnostico:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pm09-conciliacion-ventas-analitica
+      - name: Extraer diagnostico LA-008
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/diagnosticar_pm09_la008.py
+          test -s tests/pm09/LA008_DIAGNOSTICO_FUENTE.txt
+      - name: Conservar evidencia previa
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Plopezm1990"
+          git config user.email "pedroroger1990@gmail.com"
+          git add tests/pm09/LA008_DIAGNOSTICO_FUENTE.txt
+          git diff --cached --quiet && exit 0
+          git commit -m "PM09: conservar diagnostico previo de LA-008"
+          git push origin HEAD:pm09-conciliacion-ventas-analitica

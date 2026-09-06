@@ -1,0 +1,63 @@
+name: PM11 P01 checkpoint apertura
+
+on:
+  push:
+    branches: [pm11-personal-empleados]
+    paths:
+      - '.github/workflows/pm11-p01-checkpoint.yml'
+      - 'tests/pm11/**'
+      - 'tests/pm10/p07-personal-contract.mjs'
+      - 'tests/g1/**'
+      - 'tests/pm04/fixtures.json'
+      - 'source-recovery/**'
+      - 'fuente.js'
+
+permissions:
+  contents: read
+
+jobs:
+  checkpoint-pm11:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar origen G1 y main intacto
+        run: |
+          git merge-base --is-ancestor 1e21458b48a11302c59911ef966ded0aca3eb639 HEAD
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          echo 'PM11_P01_DESCIENDE_G1=1'
+          echo 'PM11_P01_MAIN_INTACTO=1'
+          echo "PM11_P01_SHA=$(git rev-parse HEAD)"
+
+      - name: Sintaxis fuente actual
+        run: node --check fuente.js
+
+      - name: Contrato checkpoint PM11
+        run: node tests/pm11/p01-checkpoint-contract.mjs
+
+      - name: Regresión G1 final
+        run: node tests/g1/p08-la004-gate-contract.mjs
+
+      - name: Regresión heredada Personal LA-017
+        run: node tests/pm10/p07-personal-contract.mjs
+
+      - name: Reproducibilidad histórica congelada P01
+        run: |
+          set -e
+          cd source-recovery
+          npm ci
+          npm run check
+          # build:current verifica internamente el SHA base, la serie de 17 parches
+          # y el SHA objetivo histórico. No se compara contra ../fuente.js porque
+          # puntos PM11 posteriores pueden modificar legítimamente la fuente raíz.
+          npm run build:current
+          echo 'PM11_P01_BUILD_HISTORICO_REPRODUCIBLE=PASS'
+          cd ..
+
+      - name: Resumen P01
+        run: |
+          echo 'PM11_P01_CHECKPOINT=PASS'
+          echo 'PM11_ESTADO=ABIERTO'
+          echo 'PM11_SIGUIENTE=P02_MAPA_PERSONAL_ACTUAL'

@@ -1,0 +1,67 @@
+name: PM11 P05 RPC ciclo de vida empleados
+
+on:
+  push:
+    branches: [pm11-personal-empleados]
+    paths:
+      - '.github/workflows/pm11-p05-rpc-ciclo-vida.yml'
+      - 'supabase/migrations/20260906084500_pm11_rpc_ciclo_vida_empleados.sql'
+      - 'tests/pm11/P05_RPC_CICLO_VIDA_EMPLEADOS_EVIDENCIA.md'
+      - 'tests/pm11/p05-rpc-ciclo-vida-contract.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  rpc-ciclo-vida-pm11:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar origen, alcance P05 y main intacto
+        run: |
+          git merge-base --is-ancestor 1e21458b48a11302c59911ef966ded0aca3eb639 HEAD
+          git merge-base --is-ancestor f8eac1f16b3587864c82d176950ea5f8aa512e75 HEAD
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          git diff --quiet f8eac1f16b3587864c82d176950ea5f8aa512e75 -- fuente.js source-recovery
+          test "$(git diff --name-only f8eac1f16b3587864c82d176950ea5f8aa512e75 -- supabase/migrations)" = "supabase/migrations/20260906084500_pm11_rpc_ciclo_vida_empleados.sql"
+          echo 'PM11_P05_ALCANCE=PASS'
+          echo "PM11_P05_SHA=$(git rev-parse HEAD)"
+
+      - name: Sintaxis fuente
+        run: node --check fuente.js
+
+      - name: Contrato P05 RPC ciclo de vida
+        run: node tests/pm11/p05-rpc-ciclo-vida-contract.mjs
+
+      - name: Regresión P04 entidad empleados y RLS
+        run: node tests/pm11/p04-empleados-rls-contract.mjs
+
+      - name: Regresión P03 identidad y ciclo de vida
+        run: node tests/pm11/p03-identidad-ciclo-vida-contract.mjs
+
+      - name: Regresión P02 mapa Personal
+        run: node tests/pm11/p02-mapa-personal-contract.mjs
+
+      - name: Regresión Personal LA-017
+        run: node tests/pm10/p07-personal-contract.mjs
+
+      - name: Regresión checkpoint PM11
+        run: node tests/pm11/p01-checkpoint-contract.mjs
+
+      - name: Build reproducible actual
+        run: |
+          cd source-recovery
+          npm ci
+          npm run check
+          npm run build:current
+          cmp -s dist/fuente.js ../fuente.js
+          echo 'PM11_P05_BUILD_REPRODUCIBLE=PASS'
+          cd ..
+
+      - name: Resumen P05
+        run: |
+          echo 'PM11_P05_RPC_CICLO_VIDA_EMPLEADOS=PASS'
+          echo 'PM11_SIGUIENTE=P06_PUENTE_FRONTEND_SQL_EMPLEADOS'

@@ -1,0 +1,175 @@
+iente})` : "Cantidad" }, h3(Input, { type: "number", min: "0.000001", step: "0.01", disabled: enviando, value: cantidad, onChange: (e2) => setCantidad(e2.target.value) })),
+      h3(Field, { label: "Motivo (obligatorio)" }, h3(Input, { disabled: enviando, value: motivo, onChange: (e2) => setMotivo(e2.target.value), placeholder: vista === "cliente" ? "Ej: producto servido por error" : "Ej: lleg\xF3 defectuoso" })),
+      camposReembolso,
+      campoProveedor,
+      error && h3("div", { className: "text-[11.5px] mb-2", style: { color: C2.red } }, error),
+      exito && h3("div", { className: "text-[11.5px] mb-2", style: { color: C2.accent } }, exito),
+      h3(Btn, { disabled: enviando, onClick: enviar }, enviando ? "Confirmando\u2026" : "Registrar devoluci\xF3n")
+    ),
+    h3("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Historial"),
+    historial
+  );
+}
+function BloqueEntradasSalidas({ fecha, movimientosCajaDelDia = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, periodoCerrado = false }) {
+  const h3 = import_react4.default.createElement;
+  const [mostrarForm, setMostrarForm] = import_react4.default.useState(false);
+  const [tipo, setTipo] = import_react4.default.useState("ENTRADA");
+  const [importe, setImporte] = import_react4.default.useState("");
+  const [motivo, setMotivo] = import_react4.default.useState("");
+  const [errorLocal, setErrorLocal] = import_react4.default.useState("");
+  const [exitoLocal, setExitoLocal] = import_react4.default.useState("");
+  const [enviando, setEnviando] = import_react4.default.useState(false);
+  const [borradorRecuperado, setBorradorRecuperado] = import_react4.default.useState(false);
+  const [reversandoId, setReversandoId] = import_react4.default.useState(null);
+  const [motivoReverso, setMotivoReverso] = import_react4.default.useState("");
+  const [revirtiendo, setRevirtiendo] = import_react4.default.useState(false);
+  (0, import_react4.useEffect)(() => {
+    const pendiente = typeof leerBorradorMovimientoCaja === "function" ? leerBorradorMovimientoCaja() : null;
+    if (!pendiente) return;
+    if (pendiente.fecha !== fecha) {
+      setErrorLocal(`Hay un movimiento pendiente del ${pendiente.fecha}. Selecciona esa fecha para reintentarlo sin duplicar.`);
+      return;
+    }
+    setTipo(pendiente.tipo || "ENTRADA");
+    setImporte(String(pendiente.importe ?? ""));
+    setMotivo(pendiente.concepto || "");
+    setMostrarForm(true);
+    setBorradorRecuperado(true);
+  }, [fecha]);
+  async function enviar() {
+    if (enviando || periodoCerrado) return;
+    setErrorLocal("");
+    setExitoLocal("");
+    setEnviando(true);
+    try {
+      const r2 = await registrarMovimientoCaja(tipo, importe, motivo, fecha);
+      if (!r2?.ok) {
+        setErrorLocal(r2?.error || "No se ha podido registrar el movimiento.");
+        setBorradorRecuperado(!!r2?.pendiente);
+        return;
+      }
+      setExitoLocal(`${tipo === "ENTRADA" ? "Entrada" : "Retirada"} confirmada${r2.replayed ? " sin duplicar" : ""}.`);
+      setImporte("");
+      setMotivo("");
+      setMostrarForm(false);
+      setBorradorRecuperado(false);
+    } finally {
+      setEnviando(false);
+    }
+  }
+  async function confirmarReverso(id) {
+    if (revirtiendo) return;
+    setErrorLocal("");
+    setExitoLocal("");
+    setRevirtiendo(true);
+    try {
+      const r2 = await eliminarMovimientoCaja(id, motivoReverso);
+      if (!r2?.ok) {
+        setErrorLocal(r2?.error || "No se ha podido confirmar el reverso.");
+        return;
+      }
+      setExitoLocal(`Reverso confirmado${r2.replayed ? " sin duplicar" : ""}. El movimiento original se conserva.`);
+      setReversandoId(null);
+      setMotivoReverso("");
+    } finally {
+      setRevirtiendo(false);
+    }
+  }
+  const referenciasRevertidas = new Set(movimientosCajaDelDia.map((m22) => m22.refOperationId).filter(Boolean));
+  const listado = movimientosCajaDelDia.length === 0 ? h3("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Nada registrado este d\xEDa.") : h3("div", { className: "space-y-2" }, movimientosCajaDelDia.map((m22) => {
+    const efecto = Number(m22.efectoEfectivo);
+    const signo = efecto > 0 ? "+" : efecto < 0 ? "\u2212" : "";
+    const esManual = ["ENTRADA", "RETIRADA", "entrada", "salida"].includes(m22.tipo);
+    const yaRevertido = referenciasRevertidas.has(m22.operationId || m22.id);
+    return h3(
+      "div",
+      { key: m22.operationId || m22.id, className: "py-1.5", style: { borderBottom: `1px solid ${C2.line}` } },
+      h3(
+        "div",
+        { className: "flex items-center justify-between gap-2 text-[12px]" },
+        h3("span", null, h3(Pill2, { color: efecto > 0 ? C2.accent : efecto < 0 ? C2.red : C2.inkSoft }, m22.tipo), " ", m22.concepto || m22.motivo || "(sin concepto)"),
+        h3("span", { className: "mono font-medium", style: { color: efecto > 0 ? C2.accent : efecto < 0 ? C2.red : C2.inkSoft } }, signo, "\u20AC", fmt(Math.abs(Number(m22.importe) || 0)))
+      ),
+      esManual && !yaRevertido && reversandoId !== (m22.operationId || m22.id) && h3("div", { className: "mt-1" }, h3(Btn, { small: true, variant: "ghost", disabled: revirtiendo, onClick: () => {
+        setReversandoId(m22.operationId || m22.id);
+        setMotivoReverso("");
+        setErrorLocal("");
+      } }, "Revertir con motivo")),
+      esManual && yaRevertido && h3("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Movimiento revertido; se conserva para auditor\xEDa."),
+      reversandoId === (m22.operationId || m22.id) && h3(
+        "div",
+        { className: "mt-2 p-2 rounded-lg", style: { background: C2.bg } },
+        h3(Field, { label: "Motivo obligatorio del reverso" }, h3(Input, { value: motivoReverso, disabled: revirtiendo, onChange: (e2) => setMotivoReverso(e2.target.value), placeholder: "Ej: importe introducido por error" })),
+        h3(
+          "div",
+          { className: "flex gap-2" },
+          h3(Btn, { small: true, variant: "danger", disabled: revirtiendo, onClick: () => confirmarReverso(m22.operationId || m22.id) }, revirtiendo ? "Confirmando\u2026" : "Confirmar reverso"),
+          h3(Btn, { small: true, variant: "ghost", disabled: revirtiendo, onClick: () => {
+            setReversandoId(null);
+            setMotivoReverso("");
+          } }, "Cancelar")
+        )
+      )
+    );
+  }));
+  return h3(
+    Card,
+    { className: "mb-4" },
+    h3(
+      "div",
+      { className: "flex items-center justify-between mb-2" },
+      h3("div", { className: "text-[12px] font-medium", style: { color: C2.inkSoft } }, "Entradas, retiradas y reembolsos"),
+      !mostrarForm && !periodoCerrado && h3(Btn, { small: true, variant: "ghost", disabled: enviando, onClick: () => {
+        setMostrarForm(true);
+        setErrorLocal("");
+        setExitoLocal("");
+      } }, "+ A\xF1adir")
+    ),
+    periodoCerrado && h3("div", { className: "text-[11.5px] mb-3 p-2 rounded-lg", style: { background: C2.amberSoft } }, "D\xEDa cerrado por arqueo. Para a\xF1adir movimientos o reembolsos en efectivo, primero anula el arqueo indicando el motivo."),
+    mostrarForm && h3(
+      "div",
+      { className: "mb-3 p-2 rounded-lg", style: { background: C2.bg } },
+      borradorRecuperado && h3("div", { className: "text-[11px] mb-2", style: { color: C2.amber } }, "Borrador recuperado: el reintento conserva el mismo identificador."),
+      h3(
+        "div",
+        { className: "flex gap-2 mb-2" },
+        h3(Btn, { small: true, disabled: enviando, variant: tipo === "ENTRADA" ? "primary" : "ghost", onClick: () => setTipo("ENTRADA") }, "Entrada"),
+        h3(Btn, { small: true, disabled: enviando, variant: tipo === "RETIRADA" ? "primary" : "ghost", onClick: () => setTipo("RETIRADA") }, "Retirada")
+      ),
+      h3(Field, { label: "Importe (\u20AC)" }, h3(Input, { type: "number", min: "0.01", step: "0.01", value: importe, disabled: enviando, onChange: (e2) => setImporte(e2.target.value), autoFocus: true })),
+      h3(Field, { label: "Concepto" }, h3(Input, { value: motivo, disabled: enviando, onChange: (e2) => setMotivo(e2.target.value), placeholder: "Ej: cambio para la caja, compra de hielo\u2026" })),
+      h3(
+        "div",
+        { className: "flex gap-2" },
+        h3(Btn, { small: true, disabled: enviando || periodoCerrado, onClick: enviar }, enviando ? "Confirmando\u2026" : "Guardar"),
+        h3(Btn, { small: true, variant: "ghost", disabled: enviando, onClick: () => {
+          setMostrarForm(false);
+          setErrorLocal("");
+        } }, "Cancelar")
+      )
+    ),
+    errorLocal && h3("div", { className: "text-[11.5px] mb-2", style: { color: C2.red } }, errorLocal),
+    exitoLocal && h3("div", { className: "text-[11.5px] mb-2", style: { color: C2.accent } }, exitoLocal),
+    listado
+  );
+}
+// PM-09 / Punto 10: una única lectura de medios de pago para Caja.
+// Las ventas brutas suman por su medio; los REVERSO trazables restan en la
+// fecha de la corrección. DEVOLUCION_CLIENTE no entra aquí porque su reembolso
+// ya está representado por caja_operaciones y contarlo otra vez duplicaría caja.
+function esReversoVentaCajaPM09(m22) {
+  if (!m22) return false;
+  if (esMovimientoNuevo(m22)) return m22.tipo === "REVERSO" && !!(m22.anulaVentaId || m22.ventaId || m22.documentoOrigenId || m22.movimientoOriginalId);
+  return m22.tipo === "entrada" && Number(m22.ingresoUnitario) < 0 && !!m22.anulaVentaId;
+}
+function resumenMediosVentaCajaPM09(movs = [], fecha = "") {
+  const cero = () => ({ Efectivo: 0, Tarjeta: 0, Transferencia: 0, Otro: 0 });
+  const ventas = cero();
+  const reversos = cero();
+  let ventasIncluidas = 0;
+  let reversosIncluidos = 0;
+  const sumar = (destino, m22, signo) => {
+    const medio = String(m22.medioPago || "Efectivo").trim().toUpperCase();
+    const bruto = Math.abs(Number(m22.cantidad) || 0) * Math.abs(Number(m22.ingresoUnitario) || 0) * (1 + (Number(m22.ivaVentaAplicado) || 0) / 100);
+    if (medio === "MIXTO" && m22.detallePago) {
+      des

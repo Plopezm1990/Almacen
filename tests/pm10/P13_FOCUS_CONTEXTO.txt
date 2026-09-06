@@ -1,0 +1,1122 @@
+
+===== crearLogicaProductos =====
+OFFSET 4049548
+rgenosDeFicha } = crearLogicaFichasCosto({ productos, setFichasCosto, localActivoId });
+  const { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion } = crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
+  const conteoAbierto = (0, import_react4.useMemo)(() => conteosDelLocalActivo.find((c22) => !c22.completado) || null, [conteosDelLocalActivo]);
+  const almacenCongelado = !!conteoAbierto;
+  const { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro } = crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId });
+  const { diagnosticarStock, corregirProducto, movimientosParaReconciliar } = crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
+  const { buscarEnCatalogo, aprenderReferencia, guardarAlbaran, eliminarAlbaran, marcarPagada, confirmarAlbaran, anularAlbaran, recibirConAlbaran, recibirConFotoIA, duplicadosDe, desviacionesDePrecio, procesarRecepcion } = crearLogicaAlbaranes({
+    catalogoProv,
+    setCatalogoProv,
+    albaranes,
+    setAlbaranes,
+    productos,
+    setProductos,
+    movimientos,
+    setMovimientos,
+    pedidos: pedidos2,
+    setPedidos,
+    registrarAuditoria,
+    proveedorPorId,
+    setPrefillAlbaran,
+    setPedidoParaFotoIA,
+    setTab,
+    localActivoId,
+    empresaId: empresaDelLocalActivo?.id || null,
+    pagosFacturas,
+    setPagosFacturas
+  });
+  const { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido } = crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedores, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId });
+  const { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta } = crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, proveedores, pagosFacturas, setPagosFacturas, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { addNomina, updateNomina, deleteNomina } = crearLogicaNominas({ nominas, setNominas, registrarAuditoria, empleados, localActivoId });
+  const { crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista } = crearLogicaEntrevistas({ entrevistas, setEntrevistas, registrarAuditoria });
+  const { crearPrefiltro, listarPrefiltros, eliminarPrefiltro } = crearLogicaPrefiltros({ registrarAuditoria });
+  function registrarAuditoria(accion, detalle) {
+    const empleadoActivo = usuarioActivoId ? empleados.find((e2) => e2.id === usuarioActivoId) : null;
+    const usuario = modoEmpleado ? empleadoActivo ? empleadoActivo.nombre : "Empleado sin identificar" : "Propietario/a";
+    const entrada = { id: uid(), fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), usuario, accion, detalle, empresaId: empresaDelLocalActivo?.id || null, localId: localActivoId || null };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) {
+      setAuditoria((s22) => [entrada, ...s22].slice(0, 500));
+      return;
+    }
+    (async () => {
+      try {
+        const supabase = await window.getSupabaseClient();
+        const r2 = await Promise.race([
+          supabase.rpc("registrar_auditoria", {
+            p_id: entrada.id,
+            p_usuario: usuario,
+            p_accion: accion,
+            p_detalle: detalle,
+            p_fecha: entrada.fecha,
+            p_hora: entrada.hora,
+            p_empresa_id: entrada.empresaId,
+            p_local_id: entrada.localId
+          }),
+          new Promise((_22, reject) => setTimeout(() => reject(new Error("La auditor\xEDa tard\xF3 demasiado en responder")), 6e3))
+        ]);
+        if (r2.error) throw r2.error;
+        const rAud = await supabase.from("auditoria_registro").select("datos").order("creado_en", { ascending: false }).limit(500);
+        if (!rAud.error && rAud.data) setAuditoria(rAud.data.map((fila) => fila.datos));
+      } catch (e2) {
+        setAuditoria((s22) => [entrada, ...s22].slice(0, 500));
+      }
+    })();
+  }
+  const esUtillaje = (p22) => esNoMercancia(p22);
+  const valorInventario = (0, import_react4.useMemo)(
+    () => productos.filter((p22) => !esUtillaje(p22)).reduce((acc, p22) => acc + (Number(p22.stock) || 0) * Number(p22.costo || 0), 0),
+    [productos]
+  );
+  const valorUtillaje = (0, import_react4.useMemo)(
+    () => productos.filter(esUtillaje).reduce((acc, p22) => acc + (Number(p22.stock) || 0) * Number(p22.costo || 0), 0),
+    [productos]
+  );
+  const valorInventarioDelLocalActivo = (0, import_react4.useMemo)(
+    () => productosDelLocalActivo.filter((p22) => !esUtillaje(p22)).reduce((acc, p22) => acc + (Number(p22.stock) || 0) * Number(p22.costo || 0), 0),
+    [productosDelLocalActivo]
+  );
+  const valorUtillajeDelLocalActivo = (0, import_react4.useMemo)(
+    () => productosDelLocalActivo.filter(esUtillaje).reduce((acc, p22) => acc + (Number(p22.stock) || 0) * Number(p22.costo || 0), 0),
+    [productosDelLocalActivo]
+  );
+  const stockBajo = (0, import_react4.useMemo)(
+    () => productos.filter((p22) => p22.tipo !== "elaborado" && (p22._pm07Servidor ? p22._pm07BajoMinimo === true : Number(p22.stock) < Number(p22.stockMinimo || 0))),
+    [productos]
+  );
+  const stockBajoDelLocalActivo = (0, import_react4.useMemo)(
+    () => productosDelLocalActivo.filter((p22) => p22.tipo !== "elaborado" && (p2
+OFFSET 4198192
+rCaja", { minimo: 0, estrictoMinimo: true, opcional: true }, false],
+    ["ivaCompra", { minimo: 0, maximo: 100, opcional: true }, false],
+    ["ivaVenta", { minimo: 0, maximo: 100, opcional: true }, false],
+    ["stock", { minimo: 0, opcional: true }, false]
+  ];
+  for (const [campo, opciones, obligatorioAlta] of reglas) {
+    const presente = Object.prototype.hasOwnProperty.call(entrada, campo);
+    if (!presente && parcial) continue;
+    if (!presente && !obligatorioAlta) continue;
+    const r = numeroPM10(entrada[campo], campo, opciones);
+    if (!r.ok) return r;
+    if (r.vacio) delete salida[campo];
+    else salida[campo] = r.valor;
+  }
+  return { ok: true, datos: salida };
+}
+function crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId }) {
+  function productoEsDelLocalActivo(prod) {
+    if (!prod) return false;
+    if (!localActivoId) return true;
+    return prod.localId === localActivoId;
+  }
+  const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+  function ajustarProductoPorOtro({ productoOrigenId, productoDestinoId, cantidadOrigen, cantidadDestino, motivo }) {
+    if (almacenCongelado) return { ok: false, error: "El almac\xE9n est\xE1 congelado por un conteo en curso." };
+    if (!productoOrigenId || !productoDestinoId) return { ok: false, error: "Elige los dos productos." };
+    if (productoOrigenId === productoDestinoId) return { ok: false, error: "Elige dos productos distintos." };
+    const origen = productos.find((p22) => p22.id === productoOrigenId);
+    const destino = productos.find((p22) => p22.id === productoDestinoId);
+    if (origen && destino && (!productoEsDelLocalActivo(origen) || !productoEsDelLocalActivo(destino))) return { ok: false, error: "Los dos productos deben pertenecer al local activo." };
+    if (!origen || !destino) return { ok: false, error: "Alguno de los productos ya no existe." };
+    const cantSale = Number(cantidadOrigen) || 0;
+    const cantEntra = Number(cantidadDestino) || 0;
+    if (cantSale <= 0 || cantEntra <= 0) return { ok: false, error: "Indica cu\xE1nto sale y cu\xE1nto entra." };
+    if (cantSale > (Number(origen.stock) || 0)) {
+      return { ok: false, error: `No hay tanto stock de ${origen.nombre}: quedan ${fmt(origen.stock)}.` };
+    }
+    const costoSale = cantSale * (Number(origen.costo) || 0);
+    const costoEntra = cantEntra * (Number(destino.costo) || 0);
+    const diferencia = costoEntra - costoSale;
+    const operationId = uid();
+    const rSale = aplicarMovimientoStock({
+      productoId: productoOrigenId,
+      cantidad: -cantSale,
+      tipo: "AJUSTE_ENTRE_PRODUCTOS",
+      operationId,
+      movimientoId: uid(),
+      origen: "ajustarProductoPorOtro",
+      afectaStockTotal: true,
+      permitirDeficit: false,
+      motivo: `Cambiado por ${destino.nombre}${motivo ? " \xB7 " + motivo : ""}`
+    });
+    if (!rSale.ok) return rSale;
+    const rEntra = aplicarMovimientoStock({
+      productoId: productoDestinoId,
+      cantidad: cantEntra,
+      tipo: "AJUSTE_ENTRE_PRODUCTOS",
+      operationId,
+      movimientoId: uid(),
+      origen: "ajustarProductoPorOtro",
+      afectaStockTotal: true,
+      permitirDeficit: true,
+      motivo: `Viene de ${origen.nombre}${motivo ? " \xB7 " + motivo : ""}`
+    });
+    if (Math.abs(diferencia) >= 0.01 && addGasto) {
+      addGasto({
+        concepto: `Ajuste ${origen.nombre} \u2192 ${destino.nombre}${motivo ? " \xB7 " + motivo : ""}`,
+        importe: Number((-diferencia).toFixed(2)),
+        fecha: todayISO(),
+        localId: origen.localId || destino.localId || localActivoId || null
+      });
+    }
+    registrarAuditoria(
+      "Ajuste entre productos",
+      `${fmt(cantSale)} de ${origen.nombre} \u2192 ${fmt(cantEntra)} de ${destino.nombre} \xB7 diferencia \u20AC${fmt(Math.abs(diferencia))}${motivo ? " \xB7 " + motivo : ""}`
+    );
+    return { ok: true, costoSale, costoEntra, diferencia };
+  }
+  function addProducto(data) {
+    const validacion = validarProductoPM10(data, { parcial: false });
+    if (!validacion.ok) return validacion;
+    const datosValidos = validacion.datos;
+    const stockInicial = Object.prototype.hasOwnProperty.call(datosValidos, "stock") ? datosValidos.stock : 0;
+    const nuevo = { id: uid(), ...datosValidos, stock: stockInicial, localId: localActivoId || datosValidos.localId || null };
+    setProductos((s22) => [...s22, nuevo]);
+    if (stockInicial > 0) {
+      setMovimientos((s22) => [
+        {
+          id: uid(),
+          operationId: uid(),
+          productoId: nuevo.id,
+          localId: nuevo.localId || null,
+          cantidad: stockInicial,
+          tipo: "OTRO",
+          motivo: "Alta de producto con stock inicial",
+          fecha: todayISO(),
+          origen: "addProducto",
+          documentoOrigenId: null,
+          stockAnterior: 0,
+          stockPosterior: stockInicial,
+          afectaStockTotal: true,
+          afectaStockPisoVenta: false,
+          revierteMovimientoId: null
+        },
+        ...s22
+      ]);
+    }
+    return nuevo;
+  }
+  function updateProducto(id, data) {
+    const anterior = productos.find((p22) => p22.id === id);
+    if (!productoEsDelLocalActivo(anterior)) return errorValidacionPM10("contexto_no_autorizado", "localId", "Producto fuera del local activo.");
+    const validacion = validarProductoPM10(data, { parcial: true });
+    if (!validacion.ok) return validacion;
+    const { stock: stockNuevoForm, ...restoDatos } = validacion.datos;
+    if (Object.keys(restoDatos).length > 0) {
+      setProductos((s22) => s22.map((p22) => p22.id === id ? { ...p22, ...r
+
+===== crearLogicaPedidos =====
+OFFSET 4050624
+rReferencia, guardarAlbaran, eliminarAlbaran, marcarPagada, confirmarAlbaran, anularAlbaran, recibirConAlbaran, recibirConFotoIA, duplicadosDe, desviacionesDePrecio, procesarRecepcion } = crearLogicaAlbaranes({
+    catalogoProv,
+    setCatalogoProv,
+    albaranes,
+    setAlbaranes,
+    productos,
+    setProductos,
+    movimientos,
+    setMovimientos,
+    pedidos: pedidos2,
+    setPedidos,
+    registrarAuditoria,
+    proveedorPorId,
+    setPrefillAlbaran,
+    setPedidoParaFotoIA,
+    setTab,
+    localActivoId,
+    empresaId: empresaDelLocalActivo?.id || null,
+    pagosFacturas,
+    setPagosFacturas
+  });
+  const { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido } = crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedores, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId });
+  const { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta } = crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, proveedores, pagosFacturas, setPagosFacturas, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { addNomina, updateNomina, deleteNomina } = crearLogicaNominas({ nominas, setNominas, registrarAuditoria, empleados, localActivoId });
+  const { crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista } = crearLogicaEntrevistas({ entrevistas, setEntrevistas, registrarAuditoria });
+  const { crearPrefiltro, listarPrefiltros, eliminarPrefiltro } = crearLogicaPrefiltros({ registrarAuditoria });
+  function registrarAuditoria(accion, detalle) {
+    const empleadoActivo = usuarioActivoId ? empleados.find((e2) => e2.id === usuarioActivoId) : null;
+    const usuario = modoEmpleado ? empleadoActivo ? empleadoActivo.nombre : "Empleado sin identificar" : "Propietario/a";
+    const entrada = { id: uid(), fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), usuario, accion, detalle, empresaId: empresaDelLocalActivo?.id || null, localId: localActivoId || null };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) {
+      setAuditoria((s22) => [entrada, ...s22].slice(0, 500));
+      return;
+    }
+    (async () => {
+      try {
+        const supabase = await window.getSupabaseClient();
+        const r2 = await Promise.race([
+          supabase.rpc("registrar_auditoria", {
+            p_id: entrada.id,
+            p_usuario: usuario,
+            p_accion: accion,
+            p_detalle: detalle,
+            p_fecha: entrada.fecha,
+            p_hora: entrada.hora,
+            p_empresa_id: entrada.empresaId,
+            p_local_id: entrada.localId
+          }),
+          new Promise((_22, reject) => setTimeout(() => reject(new Error("La auditor\xEDa tard\xF3 demasiado en responder")), 6e3))
+        ]);
+        if (r2.error) throw r2.error;
+        const rAud = await supabase.from("auditoria_registro").select("datos").order("creado_en", { ascending: false }).limit(500);
+        if (!rAud.error && rAud.data) setAuditoria(rAud.data.map((fila) => fila.datos));
+      } catch (e2) {
+        setAuditoria((s22) => [entrada, ...s22].slice(0, 500));
+      }
+    })();
+  }
+  const esUtillaje = (p22) => esNoMercancia(p22);
+  const valorInventario = (0, import_react4.useMemo)(
+    () => productos.filter((p22) => !esUtillaje(p22)).reduce((acc, p22) => acc + (Number(p22.stock) || 0) * Number(p22.costo || 0), 0),
+    [productos]
+  );
+  const valorUtillaje = (0, import_react4.useMemo)(
+    () => productos.filter(esUtillaje).reduce((acc, p22) => acc + (Number(p22.stock) || 0) * Number(p22.costo || 0), 0),
+    [productos]
+  );
+  const valorInventarioDelLocalActivo = (0, import_react4.useMemo)(
+    () => productosDelLocalActivo.filter((p22) => !esUtillaje(p22)).reduce((acc, p22) => acc + (Number(p22.stock) || 0) * Number(p22.costo || 0), 0),
+    [productosDelLocalActivo]
+  );
+  const valorUtillajeDelLocalActivo = (0, import_react4.useMemo)(
+    () => productosDelLocalActivo.filter(esUtillaje).reduce((acc, p22) => acc + (Number(p22.stock) || 0) * Number(p22.costo || 0), 0),
+    [productosDelLocalActivo]
+  );
+  const stockBajo = (0, import_react4.useMemo)(
+    () => productos.filter((p22) => p22.tipo !== "elaborado" && (p22._pm07Servidor ? p22._pm07BajoMinimo === true : Number(p22.stock) < Number(p22.stockMinimo || 0))),
+    [productos]
+  );
+  const stockBajoDelLocalActivo = (0, import_react4.useMemo)(
+    () => productosDelLocalActivo.filter((p22) => p22.tipo !== "elaborado" && (p22._pm07Servidor ? p22._pm07BajoMinimo === true : Number(p22.stock) < Number(p22.stockMinimo || 0))),
+    [productosDelLocalActivo]
+  );
+  const diagnosticoStock = (0, import_react4.useMemo)(() => diagnosticarStock(), [productos, movimientos]);
+  const idsProductosDelLocalActivo = (0, import_react4.useMemo)(() => new Set(productosDelLocalActivo.map((p22) => p22.id)), [productosDelLocalActivo]);
+  const diagnosticoStockDelLocalActivo = (0, import_react4.useMemo)(() => diagnosticoStock.filter((d2) => idsProductosDelLocalActivo.has(d2.productoId)), [diagnosticoStock, idsProductosDelLocalActivo]);
+  const descuadresPendientes = (0, import_react4.useMemo)(() => diagnosticoStock.filter((d2) => !d2.coincide).length, [diagnosticoStock]);
+  const descuadresPendientesDelLocalActivo = (0, import_react4.useMemo)(() => diagnosticoStockDelLocalActivo.filter((d2) => !d2.coincide).length, [diagnosticoStockDelLocalActivo]);
+  const pisoVentaBajo = (0, import_react4.useMemo)(
+    () => productos.filter((p22) => p22.tipo !== "elaborado" && Number(p22.stockMinimoPisoVenta) > 0 && 
+OFFSET 4218122
+ recibida = Number(item.cantidadRecibida ?? 0);
+    const restante = Math.max(0, pedida - recibida);
+    const disponible = disponibles.get(item.productoId) || 0;
+    const aplicar = Math.min(restante, disponible);
+    disponibles.set(item.productoId, Math.max(0, disponible - aplicar));
+    return aplicar > 0 ? { ...item, cantidadRecibida: recibida + aplicar } : item;
+  });
+  const completo = items.length > 0 && items.every((item) => Math.abs(Number(item.cantidadRecibida ?? 0) - Number(item.cantidad)) <= 1e-9);
+  const algo = items.some((item) => Number(item.cantidadRecibida ?? 0) > 0);
+  return { ...pedido, items, estado: completo ? "Recibido" : algo ? "Parcial" : "Pendiente" };
+}
+function crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedores, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId }) {
+  function pedidoEsDelLocalActivo(pedido) {
+    if (!pedido) return false;
+    if (!localActivoId) return false;
+    return pedido.localId === localActivoId;
+  }
+  function crearPedido(data) {
+    const validacion = validarPedidoPM10(data, { proveedores, productos, localActivoId });
+    if (!validacion.ok) return validacion;
+    const { proveedorId, fechaEsperada, items } = validacion.datos;
+    const pedido = {
+      id: uid(),
+      localId: localActivoId,
+      proveedorId,
+      fecha: todayISO(),
+      fechaEsperada,
+      estado: "Pendiente",
+      items
+    };
+    setPedidos((s22) => [pedido, ...s22]);
+    return pedido;
+  }
+  function actualizarPedido(pedidoId, data) {
+    const actual = pedidos2.find((pe2) => pe2.id === pedidoId);
+    if (!pedidoEsDelLocalActivo(actual)) return errorValidacionPM10("contexto_no_autorizado", "localId", "Pedido fuera del local activo.");
+    const validacion = validarPedidoPM10(data, { pedidoActual: actual, proveedores, productos, localActivoId });
+    if (!validacion.ok) return validacion;
+    const { proveedorId, fechaEsperada, items } = validacion.datos;
+    setPedidos(
+      (s22) => s22.map(
+        (pe2) => pe2.id === pedidoId ? { ...pe2, proveedorId, fechaEsperada, items } : pe2
+      )
+    );
+    return true;
+  }
+  function eliminarPedido(pedidoId) {
+    const actual = pedidos2.find((pe2) => pe2.id === pedidoId);
+    if (!pedidoEsDelLocalActivo(actual)) return false;
+    setPedidos((s22) => s22.filter((pe2) => pe2.id !== pedidoId));
+    return true;
+  }
+  function cerrarPedido(pedidoId) {
+    const actual = pedidos2.find((pe2) => pe2.id === pedidoId);
+    if (!pedidoEsDelLocalActivo(actual)) return false;
+    setPedidos((s22) => s22.map((pe2) => pe2.id === pedidoId ? { ...pe2, estado: "Recibido", cerradoManualmente: true } : pe2));
+    return true;
+  }
+  function recibirPedido(pedidoId, lineas) {
+    if (almacenCongelado) return errorValidacionPM10("conflicto_estado_previo", "almacen", "El almacén está congelado por un conteo en curso.");
+    const pedido = pedidos2.find((pe2) => pe2.id === pedidoId);
+    if (!pedidoEsDelLocalActivo(pedido)) return errorValidacionPM10("contexto_no_autorizado", "pedidoId", "Pedido fuera del local activo.");
+    const validacion = validarRecepcionPedidoPM10({ pedido, lineas, productos, localActivoId, modo: "directo" });
+    if (!validacion.ok) return validacion;
+    const resultado = procesarRecepcion({
+      lineas: validacion.lineas,
+      proveedorId: pedido.proveedorId,
+      fecha: todayISO(),
+      documentoTipo: "pedido",
+      documentoId: pedido.id,
+      documentoNumero: pedido.id.slice(-6),
+      operationId: `pm10-recepcion-pedido:${pedido.id}:${(pedido.items || []).map((it2) => `${it2.productoId}:${Number(it2.cantidadRecibida || 0)}`).join("|")}`
+    });
+    if (!resultado || !Array.isArray(resultado.lineasResueltas)) return errorValidacionPM10("conflicto_estado_previo", "recepcion", "No se pudo completar la recepción.");
+    if (!resultado.replayed) setPedidos((s22) => s22.map((pe2) => pe2.id === pedidoId ? aplicarRecepcionPedidoPM10(pe2, resultado.lineasResueltas) : pe2));
+    return { ok: true, avisos: resultado.avisos || [], lineasResueltas: resultado.lineasResueltas };
+  }
+  return { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido };
+}
+function crearLogicaFichasCosto({ productos, setFichasCosto, localActivoId }) {
+  const fichaEsDelLocalActivo = (f22) => !!f22 && (!localActivoId || f22.localId === localActivoId);
+  const productoEsDelLocalActivoFicha = (p22) => !!p22 && (!localActivoId || p22.localId === localActivoId);
+  function addFichaCosto(data) {
+    setFichasCosto((s22) => [...s22, { id: uid(), ...data, localId: localActivoId || data.localId || null }]);
+  }
+  function updateFichaCosto(id, data) {
+    setFichasCosto((s22) => s22.map((f22) => f22.id === id && fichaEsDelLocalActivo(f22) ? { ...f22, ...data, localId: f22.localId || localActivoId || null } : f22));
+  }
+  function deleteFichaCosto(id) {
+    setFichasCosto((s22) => s22.filter((f22) => f22.id !== id || !fichaEsDelLocalActivo(f22)));
+  }
+  function alergenosDeFicha(f22) {
+    const set = new Set(f22.alergenosExtra || []);
+    (f22.componentes || []).forEach((c22) => {
+      if (!c22.productoId) return;
+      const p22 = productos.find((x3) => x3.id === c22.productoId && productoEsDelLocalActivoFicha(x3));
+      (p22?.alergenos || []).forEach((a22) => set.add(a22));
+    });
+    return [...set];
+  }
+  return { addFichaCosto, updateFichaCosto, deleteFichaCosto, alergenosDeFicha };
+}
+function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId }) {
+  const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+  functio
+
+===== crearLogicaPersonal =====
+OFFSET 4045275
+pText,
+    backupText,
+    setCopiado,
+    setShowBackupView,
+    setShowRestoreInput,
+    setRestoreText,
+    restoreText,
+    setRestoreError,
+    proveedorPorId,
+    productoPorId,
+    registrarAuditoria
+  });
+  const { addProveedor, updateProveedor, deleteProveedor } = crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
+  const { addGasto, deleteGasto } = crearLogicaGastos({ setGastosGenerales, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId });
+  const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
+  const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId });
+  const { venderCarrito, venderLocal, anularVenta, venderLineas } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId });
+  const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
+  const { addEncargo, updateEncargo, deleteEncargo, entregarEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLineas, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { traspasarStock, traspasarEntreLocales } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales });
+  const { addArqueo, deleteArqueo, leerBorradorArqueo } = crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosCaja, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja } = crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arqueos, setArqueos, registrarAuditoria, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo } = crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivoId, registrarAuditoria });
+  function seleccionarContextoLocal(id) {
+    const siguiente = id || "";
+    setLocalInformeId(siguiente);
+    if (siguiente && locales.some((l22) => l22.id === siguiente && l22.activo !== false && !l22.fusionadoEn)) {
+      cambiarLocalActivo(siguiente);
+    }
+  }
+  function cambiarLocalActivoConVista(id) {
+    cambiarLocalActivo(id);
+    if (locales.some((l22) => l22.id === id && l22.activo !== false && !l22.fusionadoEn)) setLocalInformeId(id);
+  }
+  const { registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion } = crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, setMovimientosCaja, setArqueos, registrarAuditoria, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { activarModoEmpleado, entrarComoEmpleado, salirModoEmpleado, establecerPin } = crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, setModoEmpleado, setUsuarioActivoId });
+  const { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, eliminarRegistroAppcc } = crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId });
+  const { fichar, addFichajeManual, updateFichaje, eliminarFichaje } = crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId });
+  const { addFreidora, updateFreidora, deleteFreidora, registrarCambio, registrarRelleno, eliminarRegistroAceite, consumoPorCiclo } = crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegistrosAceite, productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
+  const { addFichaCosto, updateFichaCosto, deleteFichaCosto, alergenosDeFicha } = crearLogicaFichasCosto({ productos, setFichasCosto, localActivoId });
+  const { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion } = crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
+  const conteoAbierto = (0, import_react4.useMemo)(() => conteosDelLocalActivo.find((c22) => !c22.completado) || null, [conteosDelLocalActivo]);
+  const almacenCongelado = !!conteoAbierto;
+  const { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro } = crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId });
+  const { diagnosticarStock, corregirProducto, movimientosParaReconciliar } = crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
+  const { buscarEnCatalogo, aprenderReferencia, guardarAlbaran, eliminarAlbaran, marcarPagada, confirmarAlbaran, anularAlbaran, recibirConAlbaran, recibirConFotoIA, duplicadosDe, desviacionesDePrecio, procesarRecepcion } = crearLogicaAlbaranes({
+    catalogoProv,
+    setCatalogoProv,
+    albaranes,
+    setAlbaranes,
+    productos,
+    setProductos,
+    movimientos,
+    setMovimientos
+OFFSET 4130381
+return { ok: true };
+    }
+    const valorEntrada = raw === null || String(raw).trim() === "" ? defecto : raw;
+    const r2 = numeroPM10(valorEntrada, campo, { minimo: 0, estrictoMinimo, entero });
+    if (!r2.ok) return r2;
+    datos[campo] = r2.valor;
+    return { ok: true };
+  };
+
+  for (const [campo, opciones] of [
+    ["horasSemanales", { defecto: 0 }],
+    ["pagas", { defecto: 14, estrictoMinimo: true, entero: true }],
+    ["salarioBrutoMensual", { defecto: 0 }],
+    ["costeEmpresaMensual", { permitirVacio: true }],
+    ["diasVacacionesAnuales", { defecto: 0 }]
+  ]) {
+    const r2 = validarNumero(campo, opciones);
+    if (!r2.ok) return r2;
+  }
+  return { ok: true, datos };
+}
+function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId }) {
+  const empleadoEsDelLocalActivoPersonal = (e2) => !!e2 && (!localActivoId || e2.localId === localActivoId);
+  function addEmpleado(data) {
+    const validacion = validarEmpleadoPM10(data, { localActivoId });
+    if (!validacion.ok) return validacion;
+    const nuevo = { id: uid(), activo: true, documentos: [], ...validacion.datos, localId: localActivoId };
+    setEmpleados((s22) => [...s22, nuevo]);
+    return nuevo;
+  }
+  async function crearCuentaEmpleado(empleadoId, { nombre, email, password, rol }) {
+    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return { ok: false, error: "El empleado no pertenece al local activo." };
+    try {
+      const supabase = await window.getSupabaseClient();
+      const { data: sesion } = await supabase.auth.getSession();
+      const token = sesion?.session?.access_token;
+      if (!token) return { ok: false, error: "No hay sesi\xF3n activa \u2014 vuelve a iniciar sesi\xF3n." };
+      const resp = await fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/crear-cuenta-empleado", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ empleadoId, nombre, email, password, rol })
+      });
+      const r2 = await resp.json();
+      if (!r2.ok) return r2;
+      setEmpleados((s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, tieneCuenta: true, rolCuenta: rol, emailCuenta: email } : e2));
+      registrarAuditoria("Crear cuenta de empleado", `${nombre} \xB7 ${rol} \xB7 ${email}`);
+      return { ok: true };
+    } catch (e2) {
+      return { ok: false, error: "No se ha podido conectar: " + (e2?.message || "error de red") };
+    }
+  }
+  function updateEmpleado(id, data) {
+    const actual = empleados.find((e2) => e2.id === id);
+    if (!empleadoEsDelLocalActivoPersonal(actual) || !localActivoId) return errorValidacionPM10("contexto_no_autorizado", "empleadoId", "El empleado no pertenece al local activo.");
+    const validacion = validarEmpleadoPM10({ ...actual, ...data, localId: actual.localId || localActivoId }, { localActivoId });
+    if (!validacion.ok) return validacion;
+    setEmpleados((s22) => s22.map((e2) => e2.id === id ? { ...e2, ...validacion.datos, localId: e2.localId || localActivoId } : e2));
+    return true;
+  }
+  function deleteEmpleado(id) {
+    const e2 = empleados.find((x3) => x3.id === id);
+    if (!empleadoEsDelLocalActivoPersonal(e2)) return false;
+    registrarAuditoria("Eliminar empleado", e2.nombre);
+    setEmpleados((s22) => s22.filter((e22) => e22.id !== id));
+    if (setNominas) setNominas((s22) => s22.filter((n2) => n2.empleadoId !== id));
+    return true;
+  }
+  function anonimizarEmpleado(id) {
+    const e2 = empleados.find((x3) => x3.id === id);
+    if (!empleadoEsDelLocalActivoPersonal(e2)) return false;
+    registrarAuditoria("Anonimizar empleado", e2.nombre);
+    setEmpleados(
+      (s22) => s22.map(
+        (emp) => emp.id === id ? {
+          ...emp,
+          nombre: "Empleado anonimizado",
+          dni: "",
+          pin: "",
+          documentos: [],
+          ausencias: [],
+          anonimizado: true,
+          activo: false
+        } : emp
+      )
+    );
+  }
+  function registrarAusencia(empleadoId, ausencia) {
+    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
+    setEmpleados(
+      (s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, ausencias: [...e2.ausencias || [], { id: uid(), ...ausencia }] } : e2)
+    );
+  }
+  function eliminarAusencia(empleadoId, ausenciaId) {
+    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
+    setEmpleados(
+      (s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, ausencias: (e2.ausencias || []).filter((a22) => a22.id !== ausenciaId) } : e2)
+    );
+  }
+  function registrarEpi(empleadoId, epi) {
+    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
+    setEmpleados(
+      (s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, epis: [...e2.epis || [], { id: uid(), fecha: todayISO(), ...epi }] } : e2)
+    );
+  }
+  function eliminarEpi(empleadoId, epiId) {
+    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
+    setEmpleados(
+      (s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, epis: (e2.epis || []).filter((x3) => x3.id !== epiId) } : e2)
+    );
+  }
+  return { addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado };
+}
+function crearLogicaTurnos({ turnos, setTurno
+
+===== crearLogicaEncargos =====
+OFFSET 4046123
+rSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
+  const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId });
+  const { venderCarrito, venderLocal, anularVenta, venderLineas } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId });
+  const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
+  const { addEncargo, updateEncargo, deleteEncargo, entregarEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLineas, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { traspasarStock, traspasarEntreLocales } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales });
+  const { addArqueo, deleteArqueo, leerBorradorArqueo } = crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosCaja, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja } = crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arqueos, setArqueos, registrarAuditoria, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo } = crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivoId, registrarAuditoria });
+  function seleccionarContextoLocal(id) {
+    const siguiente = id || "";
+    setLocalInformeId(siguiente);
+    if (siguiente && locales.some((l22) => l22.id === siguiente && l22.activo !== false && !l22.fusionadoEn)) {
+      cambiarLocalActivo(siguiente);
+    }
+  }
+  function cambiarLocalActivoConVista(id) {
+    cambiarLocalActivo(id);
+    if (locales.some((l22) => l22.id === id && l22.activo !== false && !l22.fusionadoEn)) setLocalInformeId(id);
+  }
+  const { registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion } = crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, setMovimientosCaja, setArqueos, registrarAuditoria, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { activarModoEmpleado, entrarComoEmpleado, salirModoEmpleado, establecerPin } = crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, setModoEmpleado, setUsuarioActivoId });
+  const { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, eliminarRegistroAppcc } = crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId });
+  const { fichar, addFichajeManual, updateFichaje, eliminarFichaje } = crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId });
+  const { addFreidora, updateFreidora, deleteFreidora, registrarCambio, registrarRelleno, eliminarRegistroAceite, consumoPorCiclo } = crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegistrosAceite, productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
+  const { addFichaCosto, updateFichaCosto, deleteFichaCosto, alergenosDeFicha } = crearLogicaFichasCosto({ productos, setFichasCosto, localActivoId });
+  const { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion } = crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
+  const conteoAbierto = (0, import_react4.useMemo)(() => conteosDelLocalActivo.find((c22) => !c22.completado) || null, [conteosDelLocalActivo]);
+  const almacenCongelado = !!conteoAbierto;
+  const { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro } = crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId });
+  const { diagnosticarStock, corregirProducto, movimientosParaReconciliar } = crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
+  const { buscarEnCatalogo, aprenderReferencia, guardarAlbaran, eliminarAlbaran, marcarPagada, confirmarAlbaran, anularAlbaran, recibirConAlbaran, recibirConFotoIA, duplicadosDe, desviacionesDePrecio, procesarRecepcion } = crearLogicaAlbaranes({
+    catalogoProv,
+    setCatalogoProv,
+    albaranes,
+    setAlbaranes,
+    productos,
+    setProductos,
+    movimientos,
+    setMovimientos,
+    pedidos: pedidos2,
+    setPedidos,
+    registrarAuditoria,
+    proveedorPorId,
+    setPrefillAlbaran,
+    setPedidoParaFotoIA,
+    setTab,
+    localActivoId,
+    empresaId: empresaDelLocalActivo?.id || null,
+    pagosFacturas,
+    setPagosFacturas
+  });
+  const { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido } = crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedores, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId });
+  const { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta } = crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, proveedores, pagosFacturas, setPagosFacturas, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { addNomina, updateNomina, 
+OFFSET 4250774
+= new Set(["Efectivo", "Tarjeta", "Transferencia", "Otro"]);
+  const señalMedioPago = String(data.señalMedioPago || "").trim();
+  if (señal > 0 && !señalMedioPago) return errorValidacionPM10("campo_obligatorio", "señalMedioPago", "Indica cómo se ha cobrado la señal.");
+  if (señal > 0 && !mediosValidos.has(señalMedioPago)) return errorValidacionPM10("valor_no_permitido", "señalMedioPago", "El medio de pago de la señal no es válido.");
+
+  return {
+    ok: true,
+    total,
+    datos: {
+      ...data,
+      clienteId,
+      fechaEntrega,
+      lineas,
+      señal,
+      señalMedioPago: señal > 0 ? señalMedioPago : señalMedioPago || "Efectivo",
+      localId: localActivoId
+    }
+  };
+}
+function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes = [], setProductos, setMovimientos, venderLineas, localActivoId, empresaId = null }) {
+  function localDeEncargo(e2) {
+    if (!e2) return null;
+    if (e2.localId) return e2.localId;
+    const ids = [...new Set((e2.lineas || []).map((ln2) => productos.find((p22) => p22.id === ln2.productoId)?.localId).filter(Boolean))];
+    return ids.length === 1 ? ids[0] : null;
+  }
+  function encargoEsDelLocalActivo(e2) {
+    if (!e2) return false;
+    if (!localActivoId) return true;
+    return localDeEncargo(e2) === localActivoId;
+  }
+  function addEncargo(data) {
+    const fecha = todayISO();
+    const validacion = validarEncargoPM10(data, { productos, clientes, localActivoId, empresaId, fechaCreacion: fecha });
+    if (!validacion.ok) return validacion;
+    const datos = validacion.datos;
+    const cobros = sincronizarCobroSe\u00F1al([], datos.se\u00F1al, datos.se\u00F1alMedioPago, fecha);
+    const nuevo = { ...datos, id: uid(), estado: "Pendiente", fechaCreacion: fecha, cobros, localId: localActivoId };
+    setEncargos((s22) => [nuevo, ...s22]);
+    return nuevo;
+  }
+  function updateEncargo(id, data) {
+    const actual = encargos.find((e2) => e2.id === id);
+    if (!actual || !encargoEsDelLocalActivo(actual)) return errorValidacionPM10("contexto_no_autorizado", "encargoId", "El encargo no pertenece al local activo.");
+    const candidato = { ...actual, ...data, id: actual.id, localId: actual.localId || localActivoId };
+    const validacion = validarEncargoPM10(candidato, { productos, clientes, localActivoId, empresaId, fechaCreacion: actual.fechaCreacion || todayISO() });
+    if (!validacion.ok) return validacion;
+    setEncargos(
+      (s22) => s22.map((e2) => {
+        if (e2.id !== id) return e2;
+        const actualizado = { ...e2, ...validacion.datos, id: e2.id, localId: e2.localId || localActivoId };
+        if ("se\xF1al" in data || "se\xF1alMedioPago" in data) {
+          actualizado.cobros = sincronizarCobroSe\u00F1al(e2.cobros, actualizado.se\u00F1al, actualizado.se\u00F1alMedioPago, e2.fechaCreacion);
+        }
+        return actualizado;
+      })
+    );
+    return true;
+  }
+  function deleteEncargo(id) {
+    const actual = encargos.find((e22) => e22.id === id);
+    if (!encargoEsDelLocalActivo(actual)) return false;
+    const e2 = encargos.find((x3) => x3.id === id);
+    registrarAuditoria("Eliminar encargo", e2 ? `${e2.numero || "s/n"}` : id);
+    setEncargos((s22) => s22.filter((e22) => e22.id !== id));
+  }
+  function entregarEncargo(encargo, medioPago = "Efectivo") {
+    const actual = encargos.find((e2) => e2.id === encargo);
+    if (!encargoEsDelLocalActivo(actual)) return false;
+    const lineasParaVender = (encargo.lineas || []).map((ln2) => ({
+      productoId: ln2.productoId,
+      cantidad: ln2.cantidad,
+      precioUnitario: ln2.precioUnitario
+    }));
+    venderLineas(lineasParaVender, {
+      tipo: "VENTA_ENCARGO",
+      medioPago,
+      origen: "entregarEncargo",
+      documentoOrigenId: encargo.id,
+      motivoBase: `Encargo ${encargo.numero || ""}`.trim(),
+      extraPorLinea: () => ({ encargoId: encargo.id, clienteId: encargo.clienteId })
+    });
+    const total = (encargo.lineas || []).reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
+    const se\u00F1al = Number(encargo.se\u00F1al) || 0;
+    const resto = Math.max(0, total - se\u00F1al);
+    const cobrosSinResto = (encargo.cobros || []).filter((c22) => c22.concepto !== "Resto entrega");
+    const cobros = resto > 9e-3 ? [...cobrosSinResto, { id: uid(), concepto: "Resto entrega", importe: resto, medioPago, fecha: todayISO() }] : cobrosSinResto;
+    updateEncargo(encargo.id, { estado: "Entregado", fechaEntregaReal: todayISO(), cobros });
+  }
+  return { addEncargo, updateEncargo, deleteEncargo, entregarEncargo };
+}
+function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId }) {
+  function productoEsDelLocalActivoVenta(prod) {
+    if (!prod) return false;
+    if (!localActivoId) return true;
+    return !prod.localId || prod.localId === localActivoId;
+  }
+  function movimientoEsDelLocalActivoVenta(m22) {
+    if (!localActivoId) return true;
+    if (m22.localId) return m22.localId === localActivoId;
+    const prod = productos.find((p22) => p22.id === m22.productoId);
+    return !!prod && (!prod.localId || prod.localId === localActivoId);
+  }
+  const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos });
+  function venderLineas(lineas, opciones = {}) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para abrir el TPV." };
+    const incluyeOtroLocal = (lineas || []).some((ln2) => {
+      const p22 = productos.find((x3) => x3.id === ln2.productoId);
+      return !!p22 && !productoEsDelLocalActivoVenta(p22);
+    });
+    if (incluyeOtroLocal) return { ok: false, error: "La venta incluye productos 
+
+===== crearLogicaAlbaranes =====
+OFFSET 4050112
+ !!conteoAbierto;
+  const { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro } = crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId });
+  const { diagnosticarStock, corregirProducto, movimientosParaReconciliar } = crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
+  const { buscarEnCatalogo, aprenderReferencia, guardarAlbaran, eliminarAlbaran, marcarPagada, confirmarAlbaran, anularAlbaran, recibirConAlbaran, recibirConFotoIA, duplicadosDe, desviacionesDePrecio, procesarRecepcion } = crearLogicaAlbaranes({
+    catalogoProv,
+    setCatalogoProv,
+    albaranes,
+    setAlbaranes,
+    productos,
+    setProductos,
+    movimientos,
+    setMovimientos,
+    pedidos: pedidos2,
+    setPedidos,
+    registrarAuditoria,
+    proveedorPorId,
+    setPrefillAlbaran,
+    setPedidoParaFotoIA,
+    setTab,
+    localActivoId,
+    empresaId: empresaDelLocalActivo?.id || null,
+    pagosFacturas,
+    setPagosFacturas
+  });
+  const { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido } = crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedores, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId });
+  const { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta } = crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, proveedores, pagosFacturas, setPagosFacturas, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { addNomina, updateNomina, deleteNomina } = crearLogicaNominas({ nominas, setNominas, registrarAuditoria, empleados, localActivoId });
+  const { crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista } = crearLogicaEntrevistas({ entrevistas, setEntrevistas, registrarAuditoria });
+  const { crearPrefiltro, listarPrefiltros, eliminarPrefiltro } = crearLogicaPrefiltros({ registrarAuditoria });
+  function registrarAuditoria(accion, detalle) {
+    const empleadoActivo = usuarioActivoId ? empleados.find((e2) => e2.id === usuarioActivoId) : null;
+    const usuario = modoEmpleado ? empleadoActivo ? empleadoActivo.nombre : "Empleado sin identificar" : "Propietario/a";
+    const entrada = { id: uid(), fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), usuario, accion, detalle, empresaId: empresaDelLocalActivo?.id || null, localId: localActivoId || null };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) {
+      setAuditoria((s22) => [entrada, ...s22].slice(0, 500));
+      return;
+    }
+    (async () => {
+      try {
+        const supabase = await window.getSupabaseClient();
+        const r2 = await Promise.race([
+          supabase.rpc("registrar_auditoria", {
+            p_id: entrada.id,
+            p_usuario: usuario,
+            p_accion: accion,
+            p_detalle: detalle,
+            p_fecha: entrada.fecha,
+            p_hora: entrada.hora,
+            p_empresa_id: entrada.empresaId,
+            p_local_id: entrada.localId
+          }),
+          new Promise((_22, reject) => setTimeout(() => reject(new Error("La auditor\xEDa tard\xF3 demasiado en responder")), 6e3))
+        ]);
+        if (r2.error) throw r2.error;
+        const rAud = await supabase.from("auditoria_registro").select("datos").order("creado_en", { ascending: false }).limit(500);
+        if (!rAud.error && rAud.data) setAuditoria(rAud.data.map((fila) => fila.datos));
+      } catch (e2) {
+        setAuditoria((s22) => [entrada, ...s22].slice(0, 500));
+      }
+    })();
+  }
+  const esUtillaje = (p22) => esNoMercancia(p22);
+  const valorInventario = (0, import_react4.useMemo)(
+    () => productos.filter((p22) => !esUtillaje(p22)).reduce((acc, p22) => acc + (Number(p22.stock) || 0) * Number(p22.costo || 0), 0),
+    [productos]
+  );
+  const valorUtillaje = (0, import_react4.useMemo)(
+    () => productos.filter(esUtillaje).reduce((acc, p22) => acc + (Number(p22.stock) || 0) * Number(p22.costo || 0), 0),
+    [productos]
+  );
+  const valorInventarioDelLocalActivo = (0, import_react4.useMemo)(
+    () => productosDelLocalActivo.filter((p22) => !esUtillaje(p22)).reduce((acc, p22) => acc + (Number(p22.stock) || 0) * Number(p22.costo || 0), 0),
+    [productosDelLocalActivo]
+  );
+  const valorUtillajeDelLocalActivo = (0, import_react4.useMemo)(
+    () => productosDelLocalActivo.filter(esUtillaje).reduce((acc, p22) => acc + (Number(p22.stock) || 0) * Number(p22.costo || 0), 0),
+    [productosDelLocalActivo]
+  );
+  const stockBajo = (0, import_react4.useMemo)(
+    () => productos.filter((p22) => p22.tipo !== "elaborado" && (p22._pm07Servidor ? p22._pm07BajoMinimo === true : Number(p22.stock) < Number(p22.stockMinimo || 0))),
+    [productos]
+  );
+  const stockBajoDelLocalActivo = (0, import_react4.useMemo)(
+    () => productosDelLocalActivo.filter((p22) => p22.tipo !== "elaborado" && (p22._pm07Servidor ? p22._pm07BajoMinimo === true : Number(p22.stock) < Number(p22.stockMinimo || 0))),
+    [productosDelLocalActivo]
+  );
+  const diagnosticoStock = (0, import_react4.useMemo)(() => diagnosticarStock(), [productos, movimientos]);
+  const idsProductosDelLocalActivo = (0, import_react4.useMemo)(() => new Set(productosDelLocalActivo.map((p22) => p22.id)), [productosDelLocalActivo]);
+  const diagnosticoStockDelLocalActivo = (0, import_react4.useMemo)(() => diagnosticoStock.filter((d2) => idsProductosDelLocalActivo.has(d2.productoId)), [diagnosticoS
+OFFSET 4279826
+Intento);
+    if (hashIntento !== emp.pin) return false;
+    setModoEmpleado(true);
+    setUsuarioActivoId(empleadoId);
+    return true;
+  }
+  async function salirModoEmpleado(pinIntento) {
+    if (!pinPropietario) {
+      setModoEmpleado(false);
+      setUsuarioActivoId(null);
+      return true;
+    }
+    const hashIntento = await hashPin(pinIntento);
+    if (hashIntento === pinPropietario) {
+      setModoEmpleado(false);
+      setUsuarioActivoId(null);
+      return true;
+    }
+    return false;
+  }
+  async function establecerPin(nuevoPin) {
+    setPinPropietario(await hashPin(nuevoPin));
+  }
+  return { activarModoEmpleado, entrarComoEmpleado, salirModoEmpleado, establecerPin };
+}
+function crearLogicaAlbaranes({
+  catalogoProv,
+  setCatalogoProv,
+  albaranes,
+  setAlbaranes,
+  productos,
+  setProductos,
+  movimientos,
+  setMovimientos,
+  pedidos,
+  setPedidos,
+  registrarAuditoria,
+  proveedorPorId,
+  setPrefillAlbaran,
+  setPedidoParaFotoIA,
+  setTab,
+  localActivoId,
+  empresaId,
+  pagosFacturas,
+  setPagosFacturas
+}) {
+  const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+  function localDeAlbaran(doc) {
+    if (!doc) return null;
+    if (doc.localId) return doc.localId;
+    const ids = [...new Set((doc.lineas || []).map((ln2) => productos.find((p22) => p22.id === ln2.productoId)?.localId).filter(Boolean))];
+    return ids.length === 1 ? ids[0] : null;
+  }
+  function albaranEsDelLocalActivo(doc, permitirNuevo = false) {
+    if (!doc) return false;
+    if (!localActivoId) return true;
+    const existente = albaranes.find((a22) => a22.id === doc.id);
+    const localId = localDeAlbaran(existente || doc);
+    if (localId) return localId === localActivoId;
+    return !existente && permitirNuevo;
+  }
+  function pedidoEsDelLocalActivoAlbaran(pedido) {
+    if (!pedido) return false;
+    if (!localActivoId) return true;
+    if (pedido.localId) return pedido.localId === localActivoId;
+    const ids = [...new Set((pedido.items || []).map((it2) => productos.find((p22) => p22.id === it2.productoId)?.localId).filter(Boolean))];
+    return ids.length === 1 && ids[0] === localActivoId;
+  }
+  const claveCat = (proveedorId, codigo) => `${proveedorId}::${String(codigo || "").trim().toUpperCase()}`;
+  const normalizarDescripcion = (t22) => String(t22 || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
+  const claveCatDesc = (proveedorId, descripcion) => `${proveedorId}::DESC::${normalizarDescripcion(descripcion)}`;
+  const claveCatLocal = (localId, proveedorId, codigo) => `${localId}::${claveCat(proveedorId, codigo)}`;
+  const claveCatDescLocal = (localId, proveedorId, descripcion) => `${localId}::${claveCatDesc(proveedorId, descripcion)}`;
+  function catalogoSeguroPorLocal(datos) {
+    if (!datos || !datos.productoId || !localActivoId) return datos || null;
+    const prod = productos.find((p22) => p22.id === datos.productoId);
+    if (!prod || !prod.localId || prod.localId !== localActivoId) return { ...datos, productoId: "" };
+    return datos;
+  }
+  function buscarEnCatalogo(proveedorId, codigo, descripcion) {
+    if (codigo) {
+      if (localActivoId) {
+        const porCodigoLocal = catalogoProv[claveCatLocal(localActivoId, proveedorId, codigo)];
+        if (porCodigoLocal) return catalogoSeguroPorLocal(porCodigoLocal);
+      }
+      const porCodigo = catalogoProv[claveCat(proveedorId, codigo)];
+      if (porCodigo) return catalogoSeguroPorLocal(porCodigo);
+    }
+    if (descripcion && normalizarDescripcion(descripcion)) {
+      if (localActivoId) {
+        const porDescLocal = catalogoProv[claveCatDescLocal(localActivoId, proveedorId, descripcion)];
+        if (porDescLocal) return catalogoSeguroPorLocal(porDescLocal);
+      }
+      return catalogoSeguroPorLocal(catalogoProv[claveCatDesc(proveedorId, descripcion)] || null);
+    }
+    return null;
+  }
+  function aprenderReferencia(proveedorId, codigo, datos) {
+    if (!codigo) return;
+    const clave = localActivoId ? claveCatLocal(localActivoId, proveedorId, codigo) : claveCat(proveedorId, codigo);
+    setCatalogoProv((s22) => ({ ...s22, [clave]: { ...s22[clave] || {}, ...datos, localId: datos.localId || localActivoId || null } }));
+  }
+  function sinFotoIncrustada(a22) {
+    if (!a22 || a22.fotoOrigenIA === void 0) return a22;
+    const copia = { ...a22 };
+    delete copia.fotoOrigenIA;
+    return copia;
+  }
+  function guardarAlbaran(alb) {
+    if (!albaranEsDelLocalActivo(alb, true)) return false;
+    const limpioBase = sinFotoIncrustada(alb);
+    const idsLocalesLineas = [...new Set((limpioBase.lineas || []).map((ln2) => productos.find((p22) => p22.id === ln2.productoId)?.localId).filter(Boolean))];
+    const existente = limpioBase.id ? albaranes.find((x3) => x3.id === limpioBase.id) : null;
+    const empresaIdDoc = existente?.empresaId || empresaId || null;
+    const localIdDoc = existente?.localId || limpioBase.localId || localActivoId || null;
+    const proveedorDoc = limpioBase.proveedorId ? proveedorPorId(limpioBase.proveedorId) : null;
+    if (!empresaIdDoc || !localIdDoc || limpioBase.proveedorId && (!proveedorDoc || proveedorDoc.empresaId !== empresaIdDoc)) return false;
+    const snapPrevio = existente?.proveedorSnapshot;
+    const proveedorSnapshot = proveedorDoc && (!snapPrevio || snapPrevio.id !== proveedorDoc.id) ? snapshotProveedorPM06(proveedorDoc) : snapPrevio || snapshotProveedorPM06(proveedorDoc);
+    const limpio = { ...limpioBase, empresaId: empresaIdDoc, localId: localIdDoc, proveedorSnapshot };
+    setAlbaranes((s22) => {
+      const existe = s22.some((a22) => a22.id === limpio.id);
+      return existe ? s
+
+===== crearLogicaLocales =====
+OFFSET 4047045
+aspasarEntreLocales } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales });
+  const { addArqueo, deleteArqueo, leerBorradorArqueo } = crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosCaja, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja } = crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arqueos, setArqueos, registrarAuditoria, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo } = crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivoId, registrarAuditoria });
+  function seleccionarContextoLocal(id) {
+    const siguiente = id || "";
+    setLocalInformeId(siguiente);
+    if (siguiente && locales.some((l22) => l22.id === siguiente && l22.activo !== false && !l22.fusionadoEn)) {
+      cambiarLocalActivo(siguiente);
+    }
+  }
+  function cambiarLocalActivoConVista(id) {
+    cambiarLocalActivo(id);
+    if (locales.some((l22) => l22.id === id && l22.activo !== false && !l22.fusionadoEn)) setLocalInformeId(id);
+  }
+  const { registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion } = crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, setMovimientosCaja, setArqueos, registrarAuditoria, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { activarModoEmpleado, entrarComoEmpleado, salirModoEmpleado, establecerPin } = crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, setModoEmpleado, setUsuarioActivoId });
+  const { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, eliminarRegistroAppcc } = crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId });
+  const { fichar, addFichajeManual, updateFichaje, eliminarFichaje } = crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId });
+  const { addFreidora, updateFreidora, deleteFreidora, registrarCambio, registrarRelleno, eliminarRegistroAceite, consumoPorCiclo } = crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegistrosAceite, productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
+  const { addFichaCosto, updateFichaCosto, deleteFichaCosto, alergenosDeFicha } = crearLogicaFichasCosto({ productos, setFichasCosto, localActivoId });
+  const { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion } = crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
+  const conteoAbierto = (0, import_react4.useMemo)(() => conteosDelLocalActivo.find((c22) => !c22.completado) || null, [conteosDelLocalActivo]);
+  const almacenCongelado = !!conteoAbierto;
+  const { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro } = crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId });
+  const { diagnosticarStock, corregirProducto, movimientosParaReconciliar } = crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
+  const { buscarEnCatalogo, aprenderReferencia, guardarAlbaran, eliminarAlbaran, marcarPagada, confirmarAlbaran, anularAlbaran, recibirConAlbaran, recibirConFotoIA, duplicadosDe, desviacionesDePrecio, procesarRecepcion } = crearLogicaAlbaranes({
+    catalogoProv,
+    setCatalogoProv,
+    albaranes,
+    setAlbaranes,
+    productos,
+    setProductos,
+    movimientos,
+    setMovimientos,
+    pedidos: pedidos2,
+    setPedidos,
+    registrarAuditoria,
+    proveedorPorId,
+    setPrefillAlbaran,
+    setPedidoParaFotoIA,
+    setTab,
+    localActivoId,
+    empresaId: empresaDelLocalActivo?.id || null,
+    pagosFacturas,
+    setPagosFacturas
+  });
+  const { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido } = crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedores, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId });
+  const { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta } = crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, proveedores, pagosFacturas, setPagosFacturas, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { addNomina, updateNomina, deleteNomina } = crearLogicaNominas({ nominas, setNominas, registrarAuditoria, empleados, localActivoId });
+  const { crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista } = crearLogicaEntrevistas({ entrevistas, setEntrevistas, registrarAuditoria });
+  const { crearPrefiltro, listarPrefiltros, eliminarPrefiltro } = crearLogicaPrefiltros({ registrarAuditoria });
+  function registrarAuditoria(accion, detalle) {
+    const empleadoActivo = usuarioActivoId ? empleados.find((e2) => e2.id === usuarioActivoId) : null;
+    const usuario = modoEmpleado ? empleadoActivo ? empleadoActivo.nombre : "Empleado sin identificar" : "Propietario/a";
+    const entrada = { id: uid(), fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), usuario, accion, detalle, empresaId: empresaDelLocalActivo?.id || null, localId: localActivoId || null };
+    const hayConexion = typeof windo
+OFFSET 4158852
+zar\xE1 el mismo identificador." };
+        }
+      }
+      const arqueo = { ...original, estado: "ANULADO", anuladoPorOperationId: preparado.pendiente.operationId, anuladoMotivo: motivoLimpio, anuladoAt: (/* @__PURE__ */ new Date()).toISOString() };
+      setArqueos((prev) => (prev || []).map((a22) => a22.operationId === original.operationId || a22.id === original.id ? arqueo : a22));
+      limpiarPendientePM08(clave);
+      return { ok: true, arqueo, local: true };
+    })();
+    operacionesPM08EnCurso[clave] = tarea;
+    try {
+      return await tarea;
+    } finally {
+      delete operacionesPM08EnCurso[clave];
+    }
+  }
+  return { addArqueo, deleteArqueo, leerBorradorArqueo };
+}
+function crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivoId, registrarAuditoria }) {
+  function crearLocal({ nombre, direccion, empresaId }) {
+    const nombreLimpio = (nombre || "").trim();
+    if (!empresaId) return { ok: false, error: "Selecciona la empresa a la que pertenece el local." };
+    if (!nombreLimpio) return { ok: false, error: "Ponle un nombre al local." };
+    if (locales.some((l22) => l22.nombre.toLowerCase() === nombreLimpio.toLowerCase())) {
+      return { ok: false, error: "Ya existe un local con ese nombre." };
+    }
+    const nuevo = { id: uid(), nombre: nombreLimpio, direccion: (direccion || "").trim(), empresaId, activo: true, creadoEn: (/* @__PURE__ */ new Date()).toISOString() };
+    setLocales((s22) => [...s22, nuevo]);
+    registrarAuditoria("Crear local", nombreLimpio);
+    return { ok: true, local: nuevo };
+  }
+  function actualizarLocal(id, datos) {
+    setLocales((s22) => s22.map((l22) => l22.id === id ? { ...l22, ...datos } : l22));
+  }
+  function desactivarLocal(id) {
+    const l22 = locales.find((x3) => x3.id === id);
+    setLocales((s22) => s22.map((x3) => x3.id === id ? { ...x3, activo: false } : x3));
+    registrarAuditoria("Desactivar local", l22 ? l22.nombre : id);
+  }
+  function cambiarLocalActivo(id) {
+    if (!locales.some((l22) => l22.id === id)) return;
+    setLocalActivoId(id);
+  }
+  return { crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo };
+}
+function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arqueos, setArqueos, registrarAuditoria, localActivoId, empresaId }) {
+  function leerBorradorMovimientoCaja() {
+    return leerPendientePM08(clavePendientePM08("movimiento-caja", empresaId, localActivoId))?.payload || null;
+  }
+  async function registrarMovimientoCaja(tipo, importe, concepto, fecha = todayISO()) {
+    if (!empresaId || !localActivoId) return { ok: false, error: "Selecciona un local concreto antes de registrar movimientos de caja." };
+    const tipoCanonico = String(tipo || "").trim().toUpperCase() === "SALIDA" ? "RETIRADA" : String(tipo || "").trim().toUpperCase();
+    if (!["ENTRADA", "RETIRADA"].includes(tipoCanonico)) return { ok: false, error: "Tipo de movimiento no v\xE1lido." };
+    const imp = redondearDineroPM08(importe);
+    if (!Number.isFinite(imp) || imp <= 0) return { ok: false, error: "El importe debe ser mayor que 0." };
+    if ((arqueos || []).some((a22) => a22.localId === localActivoId && a22.fecha === fecha && a22.estado !== "ANULADO")) return { ok: false, error: "Ese d\xEDa tiene un arqueo activo. An\xFAlalo de forma trazable antes de registrar otro movimiento." };
+    const conceptoLimpio = String(concepto || "").trim() || (tipoCanonico === "ENTRADA" ? "Entrada manual" : "Retirada manual");
+    const payload = { empresaId, localId: localActivoId, fecha, tipo: tipoCanonico, importe: imp, concepto: conceptoLimpio };
+    const clave = clavePendientePM08("movimiento-caja", empresaId, localActivoId);
+    const preparado = prepararPendientePM08(clave, "pm08-caja", payload);
+    if (!preparado.ok) return preparado;
+    if (operacionesPM08EnCurso[clave]) return operacionesPM08EnCurso[clave];
+    const tarea = (async () => {
+      if (modoSincronizadoPM08()) {
+        if (!window.__nubeActiva || !window.__nubeCliente) return { ok: false, pendiente: true, error: "Sin conexi\xF3n con la cuenta sincronizada. El movimiento NO se ha confirmado; el borrador queda listo para reintentar." };
+        try {
+          const r2 = await Promise.race([
+            window.__nubeCliente.rpc("registrar_movimiento_caja", {
+              p_operation_id: preparado.pendiente.operationId,
+              p_empresa_id: empresaId,
+              p_local_id: localActivoId,
+              p_fecha: fecha,
+              p_tipo: tipoCanonico,
+              p_importe: imp,
+              p_concepto: conceptoLimpio,
+              p_datos: { origen: "L&A Suite PM-08" }
+            }),
+            new Promise((_22, reject) => setTimeout(() => reject(new Error("timeout_pm08")), Number(window.ESPERA_NUBE_MS) || 6e3))
+          ]);
+          if (r2.error) {
+            if (esErrorTransitorioPM08(r2.error)) return { ok: false, pendiente: true, error: "No se pudo confirmar si el servidor recibi\xF3 el movimiento. Reintenta: se utilizar\xE1 el mismo identificador y no se duplicar\xE1." };
+            limpiarPendientePM08(clave);
+            return { ok: false, error: mensajeErrorPM08(r2.error, "No se ha podido guardar el movimiento de caja.") };
+          }
+          const movimiento2 = normalizarMovimientoCajaPM08(r2.data?.movimiento);
+          if (!movimiento2) throw new Error("respuesta_caja_incompleta");
+          setMovimientosCaja((prev) => [movimiento2, ...(prev || []).filter((m22) => m22.operationId !== movimiento2.operationId && m22.id !== movimiento2.id)]);
+          limpiarPendientePM08(clave);
+          if (!r2.data?.replayed) registrarAuditoria?.("MOVIMIENTO_CAJA", `${tipoCanonico} de ${money(imp)} \xB7 ${conceptoLimpi

@@ -1,0 +1,132 @@
+e qu\xE9 equipo de protecci\xF3n le has dado. Es parte de la obligaci\xF3n de PRL."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Equipo entregado" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: epiForm.nombre, onChange: (e2) => setEpiForm({ ...epiForm, nombre: e2.target.value }), placeholder: "Guantes t\xE9rmicos, calzado antideslizante\u2026" })), /* @__PURE__ */ import_react4.default.createElement("label", { className: "flex items-center gap-2 mb-3 text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("input", { type: "checkbox", checked: epiForm.firmado, onChange: (e2) => setEpiForm({ ...epiForm, firmado: e2.target.checked }) }), "El empleado ha firmado el recib\xED"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
+    if (epiForm.nombre.trim()) {
+      registrarEpi(epiFor, epiForm);
+      setEpiFor(null);
+      setEpiForm({ nombre: "", firmado: false });
+    }
+  } }, "Guardar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setEpiFor(null) }, "Cancelar"))), cuentaFor && /* @__PURE__ */ import_react4.default.createElement(ModalCrearCuenta, {
+    empleado: empleados.find((e2) => e2.id === cuentaFor),
+    cuentaForm,
+    setCuentaForm,
+    error: errorCuenta,
+    creando: creandoCuenta,
+    creadaOk: cuentaCreadaOk,
+    onCancelar: () => {
+      if (creandoCuenta) return;
+      setCuentaFor(null);
+      setErrorCuenta("");
+      setCuentaCreadaOk(false);
+    },
+    onCrear: async () => {
+      if (!cuentaForm.email || !cuentaForm.password) {
+        setErrorCuenta("Rellena correo y contrase\xF1a.");
+        return;
+      }
+      setCreandoCuenta(true);
+      setErrorCuenta("");
+      const r2 = await crearCuentaEmpleado(cuentaFor, cuentaForm);
+      setCreandoCuenta(false);
+      if (!r2.ok) {
+        setErrorCuenta(r2.error || "No se ha podido crear la cuenta.");
+        return;
+      }
+      setCuentaCreadaOk(true);
+    }
+  }), confirmDeleteId && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmDeleteId(null), title: "Eliminar empleado" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, "Se borra la ficha completa, incluidas sus ausencias y documentos. Si solo ha causado baja, mejor ed\xEDtalo y desm\xE1rcalo como activo en vez de borrarlo, para conservar el historial."), nominas.some((n2) => n2.empleadoId === confirmDeleteId) && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "Este empleado tiene n\xF3minas registradas. La legislaci\xF3n laboral obliga a conservar esos documentos varios a\xF1os. Mejor usa ", /* @__PURE__ */ import_react4.default.createElement("b", null, '"Anonimizar"'), " \u2014 quita su nombre y datos personales, pero conserva fichajes y n\xF3minas con a qui\xE9n pertenecen, sin decir qui\xE9n era.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" }, anonimizarEmpleado && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
+    anonimizarEmpleado(confirmDeleteId);
+    setConfirmDeleteId(null);
+  } }, "Anonimizar (recomendado)"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: () => {
+    deleteEmpleado(confirmDeleteId);
+    setConfirmDeleteId(null);
+  } }, "Eliminar del todo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmDeleteId(null) }, "Cancelar")))));
+}
+function inicioSemana(fecha) {
+  const d2 = new Date(fecha);
+  const dia = d2.getDay();
+  const diff = dia === 0 ? -6 : 1 - dia;
+  const l22 = new Date(d2);
+  l22.setDate(d2.getDate() + diff);
+  return aISO(l22);
+}
+function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, updateFichaje, eliminarFichaje, fichajesAbiertos }) {
+  const activos = empleados.filter((e2) => e2.activo !== false);
+  const [desde, setDesde] = (0, import_react4.useState)(inicioSemana(/* @__PURE__ */ new Date()));
+  const [hasta, setHasta] = (0, import_react4.useState)(todayISO());
+  const [showManual, setShowManual] = (0, import_react4.useState)(false);
+  const [manual, setManual] = (0, import_react4.useState)({ empleadoId: activos[0]?.id || "", fecha: todayISO(), tipo: "entrada", hora: "09:00" });
+  const [manualError, setManualError] = (0, import_react4.useState)("");
+  const [showExportar, setShowExportar] = (0, import_react4.useState)(false);
+  const [copiado, setCopiado] = (0, import_react4.useState)(false);
+  function irEstaSemana() {
+    setDesde(inicioSemana(/* @__PURE__ */ new Date()));
+    setHasta(todayISO());
+  }
+  function irSemanaAnterior() {
+    const d2 = /* @__PURE__ */ new Date();
+    d2.setDate(d2.getDate() - 7);
+    const ini = inicioSemana(d2);
+    const fin = new Date(ini);
+    fin.setDate(fin.getDate() + 6);
+    setDesde(ini);
+    setHasta(aISO(fin));
+  }
+  const estadoHoy = activos.map((e2) => {
+    const deHoy = fichajes.filter((f22) => f22.empleadoId === e2.id && f22.fecha === todayISO()).sort((a22, b2) => (a22.hora || "").localeCompare(b2.hora || ""));
+    const entradas = deHoy.filter((f22) => f22.tipo === "entrada");
+    const salidas = deHoy.filter((f22) => f22.tipo === "salida");
+    const abierto = entradas.length > salidas.length;
+    return { empleado: e2, ultimaEntrada: entradas[entradas.length - 1], abierto, totalFichajesHoy: deHoy.length };
+  });
+  const filasHistorial = (0, import_react4.useMemo)(() => {
+    const grupos = {};
+    fichajes.filter((f22) => f22.fecha >= desde && f22.fecha <= hasta).forEach((f22) => {
+      const key = `${f22.empleadoId}-${f22.fecha}`;
+      if (!grupos[key]) grupos[key] = { empleadoId: f22.empleadoId, fecha: f22.fecha, entradas: [], salidas: [] };
+      if (f22.tipo === "entrada") grupos[key].entradas.push(f22);
+      else grupos[key].salidas.push(f22);
+    });
+    return Object.values(grupos).map((g2) => {
+      const emp = empleados.find((e2) => e2.id === g2.empleadoId);
+      const entrada = g2.entradas.sort((a22, b2) => a22.hora.localeCompare(b2.hora))[0];
+      const salida = g2.salidas.sort((a22, b2) => a22.hora.localeCompare(b2.hora)).slice(-1)[0];
+      let horas = null;
+      if (entrada && salida) {
+        const [h1, m1] = entrada.hora.split(":").map(Number);
+        const [h22, m22] = salida.hora.split(":").map(Number);
+        horas = (h22 * 60 + m22 - (h1 * 60 + m1)) / 60;
+      }
+      return { ...g2, nombre: emp ? emp.nombre : "\u2014", entrada, salida, horas };
+    });
+  }, [fichajes, desde, hasta, empleados]);
+  function textoRegistro() {
+    const lineas = filasHistorial.sort((a22, b2) => a22.fecha.localeCompare(b2.fecha) || a22.nombre.localeCompare(b2.nombre)).map((f22) => `${f22.fecha} \xB7 ${f22.nombre} \xB7 Entrada ${f22.entrada ? f22.entrada.hora : "\u2014"} \xB7 Salida ${f22.salida ? f22.salida.hora : "sin fichar"} \xB7 ${f22.horas !== null ? f22.horas.toFixed(2) + " h" : ""}`);
+    return `REGISTRO HORARIO
+Del ${desde} al ${hasta}
+
+${lineas.join("\n")}
+
+Generado el ${(/* @__PURE__ */ new Date()).toLocaleString("es-ES")}`;
+  }
+  function copiarRegistro() {
+    const texto = textoRegistro();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texto).then(() => setCopiado(true)).catch(() => setCopiado(false));
+    }
+  }
+  function submitManual() {
+    if (!manual.empleadoId) {
+      setManualError("Selecciona un empleado.");
+      return;
+    }
+    setManualError("");
+    addFichajeManual({
+      empleadoId: manual.empleadoId,
+      fecha: manual.fecha,
+      tipo: manual.tipo,
+      hora: manual.hora,
+      timestamp: (/* @__PURE__ */ new Date(`${manual.fecha}T${manual.hora}:00`)).toISOString(),
+      manual: true
+    });
+    setShowManual(false);
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Registro horario"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Desde 2019, todas las empresas en Espa\xF1a est\xE1n obligadas a llevar un registro diario de la jornada de cada persona trabajadora, sea cual sea su tama\xF1o. Este registro se debe conservar 4 a\xF1os y estar disponible para la Inspecci\xF3n de Trabajo si lo pide.")), fichajesAbiertos.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "Fichajes sin cerrar"), fichajesAbiertos.map((f22, i33) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i33, className: "text-[12px]" }, f22.nombre, " \u2014 entr\xF3 el ", f22.fecha, " y no consta salida"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Hoy"), activos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "A\xF1ade empleados activos en Personal para poder ficharles." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-3 mb-4" }, estadoHoy.map(({ empleado, ultimaEntrada, abierto }) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: empleado.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("di

@@ -1,0 +1,47 @@
+{
+  "pm": "PM10",
+  "punto": 15,
+  "modulo": "Deploy Preview y smoke",
+  "estado": "VALIDADO_CON_LIMITACION",
+  "fecha": "2026-09-05",
+  "rama": "pm10-validaciones-altas-datos-legados",
+  "pr": {
+    "numero": 25,
+    "estado_durante_punto": "OPEN",
+    "merged": false,
+    "base": "main",
+    "base_sha": "7f792925d6a3d27334ee0e7335ba635b4ed79b6b",
+    "head_sha_pre_evidencia": "a70e681b4b0b7b0694fefefe2f89c739c6ac127a",
+    "uso": "generar Deploy Preview; NO MERGE"
+  },
+  "deploy_preview": {
+    "site_id": "472295da-601a-43df-a4bc-8171f2fc668b",
+    "site": "chic-entremet-9107cf",
+    "deploy_id_pre_evidencia": "6a9c340adb06d20008f1ca3c",
+    "estado": "ready",
+    "context": "deploy-preview",
+    "review_id": 25,
+    "branch": "pm10-validaciones-altas-datos-legados",
+    "commit_ref_pre_evidencia": "a70e681b4b0b7b0694fefefe2f89c739c6ac127a",
+    "url": "https://deploy-preview-25--chic-entremet-9107cf.netlify.app",
+    "status_github": "success"
+  },
+  "smoke": {
+    "resultado": "BLOQUEADO_POR_SSO_NO_PRODUCCION",
+    "motivo": "La configuración viva de Netlify exige login SSO del equipo para contextos non_production.",
+    "desktop_interactivo": "BLOQUEADO",
+    "mobile_interactivo": "BLOQUEADO",
+    "proteccion_desactivada": false,
+    "criterio": "No se reduce ni deshabilita protección de acceso para ejecutar un smoke. El deploy ready y el commit servido quedan verificados por Netlify/GitHub; el smoke autenticado se conserva como limitación explícita."
+  },
+  "entorno": {
+    "netlify_requires_password": false,
+    "netlify_requires_sso_team_login": true,
+    "netlify_sso_scope": "non_production",
+    "produccion_publicada": false,
+    "supabase_produccion_tocado": false,
+    "main_modificado": false,
+    "datos_reales": false
+  },
+  "nota_cierre": "El punto 16 deberá usar el HEAD final, verificar el Deploy Preview final/evidencia, documentar riesgos y cerrar la PR #25 sin merge."
+}

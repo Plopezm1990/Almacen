@@ -1,0 +1,51 @@
+{
+  "pm": "PM10",
+  "punto": 11,
+  "estado": "VALIDADO",
+  "fecha": "2026-09-05",
+  "rama": "pm10-validaciones-altas-datos-legados",
+  "base_diagnostico": "be9da4e6d6cdf013910b68bb326c05769e8cfe89",
+  "commit_funcional": "0624daa6720fc5dcb96d12ed074587c29a631bf7",
+  "workflow_final": 33972910779,
+  "diagnostico": {
+    "formularios": "Productos, Pedidos, Personal y Encargos cerraban el formulario tras éxito, pero no tenían una guarda sincrónica propia contra dos eventos de submit antes del rerender.",
+    "recepcion": "procesarRecepcion generaba movimientoId con uid() en cada ejecución; repetir exactamente la misma recepción podía crear un segundo movimiento de COMPRA y volver a sumar cantidadRecibida.",
+    "motor_stock": "crearMotorStock ya era idempotente cuando se reutiliza el mismo movimientoId, devolviendo yaExistia=true. El gap era que Recepción no proporcionaba una identidad estable.",
+    "persistencia": "El reintento de almacenamiento ya fue endurecido en P10 para pasar por window.storage.set; P11 no introduce una segunda ruta de persistencia."
+  },
+  "correccion": {
+    "ui": "Productos, Pedidos, Personal y Encargos incorporan useRef de bloqueo de submit durante la ventana de doble clic. Recepción directa mantiene un Set de pedidos en curso para evitar doble pulsación inmediata.",
+    "recepcion_operacion": "procesarRecepcion acepta/deriva operationId estable y conserva un resultado de replay inmediato por operación.",
+    "recepcion_movimientos": "Los movimientos de compra de producto existente usan movimientoId determinista por operationId + índice de línea + producto; el motor de stock reutiliza el movimiento existente en replay.",
+    "alta_automatica": "El producto creado automáticamente durante una recepción y su movimiento usan identificadores deterministas para no duplicarse por replay.",
+    "pedido_directo": "El operationId se deriva del pedido y del snapshot de cantidades recibidas. Si el resultado es replayed no se vuelve a aplicar cantidadRecibida.",
+    "albaran": "La recepción ligada a albarán usa operationId estable por alb.id y no vuelve a aplicar el acumulado del pedido en replay."
+  },
+  "semantica": {
+    "doble_click": "La misma interacción inmediata no crea dos altas ni dos recepciones.",
+    "replay_recepcion": "La misma identidad de recepción reutiliza sus movimientos; una repetición no representa mercancía nueva.",
+    "nueva_recepcion_real": "Una recepción posterior real se distingue por el nuevo snapshot de cantidadRecibida o por un nuevo albarán/documento.",
+    "fallo_persistencia_kv": "La arquitectura KV continúa siendo estado + guardado asíncrono. Si falla la sincronización, P10 conserva la vía de reintento autorizada; P11 no promete transacción ACID para metadatos KV."
+  },
+  "pruebas": {
+    "node_check_fuente": "OK",
+    "p11_robustez_altas_contract": "OK",
+    "pm10_p10": "OK",
+    "pm10_p09": "OK",
+    "pm10_p08": "OK",
+    "pm10_p07": "OK",
+    "pm10_p06": "OK",
+    "pm10_p05": "OK",
+    "pm10_p04": "OK",
+    "pm09_regresiones_disponibles": "OK"
+  },
+  "incidencias_test": "La primera ejecución del workflow falló únicamente porque el test recortaba el componente Recepcion al encontrar una función anidada. Se corrigió el extractor del test; la ejecución final terminó success.",
+  "entornos": {
+    "migracion_supabase": false,
+    "supabase_qa_escrituras": false,
+    "main_modificado": false,
+    "netlify_produccion": false,
+    "supabase_produccion": false,
+    "datos_reales": false
+  }
+}

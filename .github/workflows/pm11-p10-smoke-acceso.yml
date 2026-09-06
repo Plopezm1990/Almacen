@@ -1,0 +1,120 @@
+name: PM11 P10 smoke acceso cuenta empleado
+
+on:
+  push:
+    branches: [pm11-personal-empleados]
+    paths:
+      - '.github/workflows/pm11-p10-smoke-acceso.yml'
+      - 'supabase/migrations/20260906183000_pm11_contexto_operativo_acceso_smoke.sql'
+      - 'pm11-access-patch.js'
+      - 'pm11-session-guard-v4.js'
+      - 'pm11-access-runtime-v3.js'
+      - 'pm11-mobile-layout-v3.js'
+      - 'tools/corregir_pm11_p10_smoke_acceso.py'
+      - 'tests/pm11/p10-smoke-acceso-contract.mjs'
+      - 'tests/pm11/p10-session-guard-v4-contract.mjs'
+      - 'tests/pm11/p10-runtime-scope-v3-contract.mjs'
+      - 'tests/pm11/p10-mobile-layout-v3-contract.mjs'
+      - 'tests/pm11/P10_SMOKE_ACCESO_EVIDENCIA.md'
+      - 'index.html'
+
+permissions:
+  contents: write
+
+jobs:
+  smoke-acceso-pm11:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar origen, alcance y main intacto
+        run: |
+          set -e
+          BASE=48abe840a995da9f61796885192020b9c6f30d24
+          test "$GITHUB_REF_NAME" = "pm11-personal-empleados"
+          git merge-base --is-ancestor 1e21458b48a11302c59911ef966ded0aca3eb639 HEAD
+          git merge-base --is-ancestor "$BASE" HEAD
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          git diff --quiet "$BASE" -- fuente.js source-recovery
+          test "$(git diff --name-only "$BASE" -- supabase/migrations)" = "supabase/migrations/20260906183000_pm11_contexto_operativo_acceso_smoke.sql"
+          echo 'PM11_P10_SMOKE_SCOPE=PASS'
+
+      - name: Insertar barreras antes del bundle
+        run: python3 tools/corregir_pm11_p10_smoke_acceso.py index.html
+
+      - name: Sintaxis
+        run: |
+          set -e
+          node --check pm11-access-patch.js
+          node --check pm11-session-guard-v4.js
+          node --check pm11-access-runtime-v3.js
+          node --check pm11-mobile-layout-v3.js
+          node --check fuente.js
+
+      - name: Contrato smoke acceso
+        run: |
+          set -e
+          node tests/pm11/p10-smoke-acceso-contract.mjs
+          node tests/pm11/p10-session-guard-v4-contract.mjs
+          node tests/pm11/p10-runtime-scope-v3-contract.mjs
+          node tests/pm11/p10-mobile-layout-v3-contract.mjs
+
+      - name: Regresión P10 anonimización
+        run: node tests/pm11/p10-anonimizacion-segura-contract.mjs
+
+      - name: Regresiones P09 a P06
+        run: |
+          set -e
+          node tests/pm11/p09-creacion-cuenta-empleado-segura-contract.mjs
+          node tests/pm11/p08-vinculo-cuenta-empleado-contract.mjs
+          node tests/pm11/p07-migracion-controlada-legacy-contract.mjs
+          node tests/pm11/p06-puente-frontend-sql-contract.mjs
+
+      - name: Regresión Personal LA-017 y PM11 P05-P01
+        run: |
+          set -e
+          node tests/pm10/p07-personal-contract.mjs
+          node tests/pm11/p05-rpc-ciclo-vida-contract.mjs
+          node tests/pm11/p04-empleados-rls-contract.mjs
+          node tests/pm11/p03-identidad-ciclo-vida-contract.mjs
+          node tests/pm11/p02-mapa-personal-contract.mjs
+          node tests/pm11/p01-checkpoint-contract.mjs
+
+      - name: Reproducibilidad fuente sin cambios
+        run: |
+          set -e
+          cd source-recovery
+          npm ci
+          npm run check
+          npm run build:current
+          cd ..
+          python3 tools/corregir_pm11_p06_frontend.py source-recovery/dist/fuente.js
+          python3 tools/corregir_pm11_p06_sintaxis.py source-recovery/dist/fuente.js
+          python3 tools/corregir_pm11_p09_cuenta_segura.py source-recovery/dist/fuente.js
+          python3 tools/corregir_pm11_p10_anonimizacion.py source-recovery/dist/fuente.js
+          node --check source-recovery/dist/fuente.js
+          cmp -s source-recovery/dist/fuente.js fuente.js
+          echo 'PM11_P10_SMOKE_FUENTE_REPRODUCIBLE=PASS'
+
+      - name: Commit index si procede
+        run: |
+          set -e
+          if git diff --quiet -- index.html; then
+            echo 'index ya contiene acceso, guard v4, runtime v3 y layout v3; sin commit adicional'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'PM11 P10: cargar guard de sesión v4 antes de runtime'
+          git push
+
+      - name: Resumen
+        run: |
+          echo 'PM11_P10_SMOKE_ACCESO_GATE=PASS'
+          echo 'PM11_P10_SESSION_GUARD_V4=PASS'
+          echo 'PM11_P10_RUNTIME_SCOPE_V3=PASS'
+          echo 'PM11_P10_LAYOUT_MOVIL_V3=PASS'
+          echo 'PM11_P10_SMOKE_REPETIR_EN_INCOGNITO=SI'

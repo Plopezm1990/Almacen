@@ -1,0 +1,107 @@
+name: G1 P08 generar patch series
+
+on:
+  push:
+    branches: [g1-nucleo-seguro]
+    paths:
+      - '.github/workflows/g1-p08-generar-patch-series.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  generar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Construir baseline PM08 y verificar ancla
+        run: |
+          cd source-recovery
+          npm ci
+          npm run check
+          npm run build
+          cd ..
+          BASE=7b2aa0f1500ecfc5dce551196f5434655411a314
+          git show "$BASE:fuente.js" > /tmp/fuente-baseline-git.js
+          cmp -s /tmp/fuente-baseline-git.js source-recovery/dist/fuente.js
+          echo "G1_PATCH_BASELINE=$BASE"
+          echo "G1_PATCH_BASE_SHA=$(sha256sum source-recovery/dist/fuente.js | awk '{print $1}')"
+
+      - name: Generar 17 parches históricos y probar reconstrucción
+        run: |
+          set -euo pipefail
+          BASE=7b2aa0f1500ecfc5dce551196f5434655411a314
+          DIR=source-recovery/post-pm08-patches
+          rm -rf "$DIR"
+          mkdir -p "$DIR"
+          mapfile -t COMMITS < <(git rev-list --reverse "$BASE..HEAD" -- fuente.js)
+          if [ "${#COMMITS[@]}" -ne 17 ]; then
+            echo "Número inesperado de commits fuente.js: ${#COMMITS[@]}" >&2
+            exit 1
+          fi
+          : > /tmp/manifest.tsv
+          n=0
+          for c in "${COMMITS[@]}"; do
+            n=$((n+1))
+            parent=$(git rev-parse "$c^")
+            num=$(printf '%02d' "$n")
+            f="$DIR/${num}-${c}.patch"
+            git diff --binary "$parent" "$c" -- fuente.js > "$f"
+            test -s "$f"
+            msg=$(git show -s --format=%s "$c" | tr '\t\n' '  ')
+            date=$(git show -s --format=%cI "$c")
+            printf '%s\t%s\t%s\t%s\n' "$num" "$c" "$date" "$msg" >> /tmp/manifest.tsv
+          done
+
+          # Rehacer desde el artefacto construido, no desde fuente.js.
+          cp source-recovery/dist/fuente.js /tmp/fuente-reconstruida.js
+          mkdir -p /tmp/g1-rebuild
+          cp /tmp/fuente-reconstruida.js /tmp/g1-rebuild/fuente.js
+          for p in "$DIR"/*.patch; do
+            patch --batch --fuzz=0 -p1 -d /tmp/g1-rebuild < "$p"
+          done
+          cmp -s /tmp/g1-rebuild/fuente.js fuente.js
+          echo "G1_PATCH_SERIES_COUNT=${#COMMITS[@]}"
+          echo "G1_PATCH_REBUILD_SHA=$(sha256sum /tmp/g1-rebuild/fuente.js | awk '{print $1}')"
+          echo "G1_TARGET_SHA=$(sha256sum fuente.js | awk '{print $1}')"
+          echo 'G1_PATCH_REBUILD_MATCH=PASS'
+
+      - name: Crear manifiesto de procedencia
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json, hashlib, subprocess
+          base='7b2aa0f1500ecfc5dce551196f5434655411a314'
+          rows=[]
+          for line in Path('/tmp/manifest.tsv').read_text().splitlines():
+              num,sha,date,msg=line.split('\t',3)
+              rows.append({'order':int(num),'commit':sha,'date':date,'message':msg})
+          target_commit=subprocess.check_output(['git','log','-1','--format=%H','--','fuente.js'],text=True).strip()
+          def sha256(path):
+              return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+          data={
+            'format':'la-suite-post-pm08-patch-series-v1',
+            'baseCommit':base,
+            'baseArtifactSha256':sha256('source-recovery/dist/fuente.js'),
+            'targetFuenteCommit':target_commit,
+            'targetArtifactSha256':sha256('fuente.js'),
+            'patchCount':len(rows),
+            'commits':rows,
+            'rebuildContract':'npm ci + npm run check + npm run build; luego aplicar los parches en orden con patch --batch --fuzz=0 -p1 sobre dist/fuente.js; el SHA final debe coincidir con fuente.js.'
+          }
+          out=Path('source-recovery/post-pm08-patches/PATCH_SERIES.json')
+          out.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+
+      - name: Versionar patch series
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add source-recovery/post-pm08-patches
+          # Los .patch preservan literalmente whitespace histórico de fuente.js;
+          # no se normalizan porque alteraría la reconstrucción byte a byte.
+          git commit -m 'G1: versionar cadena reproducible PM09-PM10'
+          git push origin HEAD:g1-nucleo-seguro

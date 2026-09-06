@@ -1,0 +1,111 @@
+_react4.default.createElement("span", null, a22.nombre)
+    );
+  })), !soloLectura && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Marca los que contenga este producto. Son los 14 de declaraci\xF3n obligatoria (Reglamento UE 1169/2011)."));
+}
+var TIPOS_PUNTO = [
+  { id: "temperatura", label: "Temperatura (c\xE1mara, nevera, congelador)", unidad: "\xB0C" },
+  { id: "limpieza", label: "Limpieza y desinfecci\xF3n", unidad: "" },
+  { id: "recepcion", label: "Control en recepci\xF3n de mercanc\xEDa", unidad: "\xB0C" },
+  { id: "otro", label: "Otro control", unidad: "" }
+];
+function Appcc({
+  puntosControl,
+  registrosAppcc,
+  addPuntoControl,
+  updatePuntoControl,
+  deletePuntoControl,
+  registrarAppcc,
+  eliminarRegistroAppcc,
+  appccPendientesHoy,
+  productos,
+  fichasCosto,
+  alergenosDeFicha
+}) {
+  const [vista, setVista] = (0, import_react4.useState)("hoy");
+  const [showPunto, setShowPunto] = (0, import_react4.useState)(false);
+  const [puntoForm, setPuntoForm] = (0, import_react4.useState)({ nombre: "", tipo: "temperatura", tempMin: "", tempMax: "", frecuencia: "Diaria" });
+  const [puntoError, setPuntoError] = (0, import_react4.useState)("");
+  const [registroPara, setRegistroPara] = (0, import_react4.useState)(null);
+  const [registroForm, setRegistroForm] = (0, import_react4.useState)({ valor: "", conforme: true, observaciones: "", responsable: "" });
+  const [desde, setDesde] = (0, import_react4.useState)(primerDiaMes(/* @__PURE__ */ new Date()));
+  const [hasta, setHasta] = (0, import_react4.useState)(todayISO());
+  const [copiado, setCopiado] = (0, import_react4.useState)(false);
+  function submitPunto() {
+    if (!puntoForm.nombre.trim()) {
+      setPuntoError("Ponle nombre al punto de control.");
+      return;
+    }
+    setPuntoError("");
+    addPuntoControl({
+      nombre: puntoForm.nombre.trim(),
+      tipo: puntoForm.tipo,
+      tempMin: puntoForm.tempMin === "" ? null : Number(puntoForm.tempMin),
+      tempMax: puntoForm.tempMax === "" ? null : Number(puntoForm.tempMax),
+      frecuencia: puntoForm.frecuencia
+    });
+    setPuntoForm({ nombre: "", tipo: "temperatura", tempMin: "", tempMax: "", frecuencia: "Diaria" });
+    setShowPunto(false);
+  }
+  function abrirRegistro(punto) {
+    setRegistroPara(punto);
+    setRegistroForm({ valor: "", conforme: true, observaciones: "", responsable: "" });
+  }
+  function evaluarConformidad(punto, valor) {
+    if (punto.tipo !== "temperatura" && punto.tipo !== "recepcion") return null;
+    const v22 = Number(valor);
+    if (valor === "" || isNaN(v22)) return null;
+    if (punto.tempMin != null && v22 < punto.tempMin) return false;
+    if (punto.tempMax != null && v22 > punto.tempMax) return false;
+    return true;
+  }
+  function submitRegistro() {
+    const auto = evaluarConformidad(registroPara, registroForm.valor);
+    registrarAppcc({
+      puntoId: registroPara.id,
+      puntoNombre: registroPara.nombre,
+      tipo: registroPara.tipo,
+      valor: registroForm.valor,
+      conforme: auto === null ? registroForm.conforme : auto,
+      observaciones: registroForm.observaciones,
+      responsable: registroForm.responsable
+    });
+    setRegistroPara(null);
+  }
+  const registrosPeriodo = registrosAppcc.filter((r2) => r2.fecha >= desde && r2.fecha <= hasta).sort((a22, b2) => (b2.fecha + b2.hora).localeCompare(a22.fecha + a22.hora));
+  const noConformes = registrosPeriodo.filter((r2) => r2.conforme === false);
+  const cartaAlergenos = (0, import_react4.useMemo)(() => {
+    const filas = [];
+    (fichasCosto || []).forEach((f22) => {
+      filas.push({ id: "f-" + f22.id, nombre: f22.nombre, alergenos: alergenosDeFicha(f22), origen: "ficha" });
+    });
+    (productos || []).filter((p22) => p22.tipo === "elaborado" && !(fichasCosto || []).some((f22) => f22.productoVinculadoId === p22.id)).forEach((p22) => {
+      filas.push({ id: "p-" + p22.id, nombre: p22.nombre, alergenos: p22.alergenos || [], origen: "producto" });
+    });
+    return filas.sort((a22, b2) => a22.nombre.localeCompare(b2.nombre));
+  }, [fichasCosto, productos, alergenosDeFicha]);
+  function textoRegistroAppcc() {
+    const lineas = registrosPeriodo.map(
+      (r2) => `${r2.fecha} ${r2.hora} \xB7 ${r2.puntoNombre} \xB7 ${r2.valor || "\u2014"} \xB7 ${r2.conforme ? "CONFORME" : "NO CONFORME"}${r2.observaciones ? " \xB7 " + r2.observaciones : ""}${r2.responsable ? " \xB7 " + r2.responsable : ""}`
+    );
+    return `REGISTRO APPCC
+Del ${desde} al ${hasta}
+
+${lineas.join("\n")}
+
+No conformidades: ${noConformes.length}
+Generado el ${(/* @__PURE__ */ new Date()).toLocaleString("es-ES")}`;
+  }
+  function copiar() {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(textoRegistroAppcc()).then(() => setCopiado(true)).catch(() => setCopiado(false));
+    }
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Control sanitario (APPCC)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mb-4 overflow-x-auto" }, [
+    { id: "hoy", label: "Hoy" },
+    { id: "historial", label: "Historial" },
+    { id: "puntos", label: "Puntos de control" },
+    { id: "alergenos", label: "Cartel de al\xE9rgenos" }
+  ].map((v22) => /* @__PURE__ */ import_react4.default.createElement(Btn, { key: v22.id, small: true, variant: vista === v22.id ? "primary" : "ghost", onClick: () => setVista(v22.id) }, v22.label)))), vista === "hoy" && /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "El sistema APPCC es obligatorio en cualquier negocio que manipule alimentos. Estos registros deben conservarse y estar disponibles si Sanidad los pide. Registra cada control el d\xEDa que lo haces: rellenar una semana de golpe al final no vale.")), puntosControl.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has definido qu\xE9 controlas. Ve a \u201CPuntos de control\u201D para empezar." }) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, appccPendientesHoy.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Te faltan ", appccPendientesHoy.length, " control(es) por registrar hoy")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, puntosControl.filter((p22) => p22.activo !== false).map((p22) => {
+    const hechoHoy = registrosAppcc.find((r2) => r2.fecha === todayISO() && r2.puntoId === p22.id);
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: p22.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium text-[13.5px]" }, p22.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, TIPOS_PUNTO.find((t22) => t22.id === p22.tipo)?.label, p22.tempMin != null && p22.tempMax != null && ` \xB7 rango ${p22.tempMin} a ${p22.tempMax} \xB0C`)), hechoHoy ? /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: hechoHoy.conforme ? C2.accent : C2.red }, hechoHoy.conforme ? `OK ${hechoHoy.valor}` : `Desviaci\xF3n ${hechoHoy.valor}`) : /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.amber }, "pendiente")), !hechoHoy && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => abrirRegistro(p22) }, "Registrar ahora")));
+  })))), vista === "puntos" && /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex justify-end mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setShowPunto(true) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Nuevo punto de control")), puntosControl.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Define qu\xE9 vas a controlar: c\xE1mara de refrigerado, congelador, limpieza del obrador\u2026" }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, puntosControl.map((p22) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: p22.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium" }, p22.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, TIPOS_PUNTO.find((t22) => t22.id === p22.tipo)?.label, " \xB7 ", p22.frecuencia, p22.tempMin != null && p22.tempMax != null && ` \xB7 ${p22.tempMin} a ${p22.tempMax} \xB0C`)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => updatePuntoControl(p22.id, { activo: p22.activo === false }) }, p22.activo === false ? "Activar" : "Desactivar"), /* @__PURE

@@ -1,0 +1,49 @@
+{
+  "hallazgo": "LA-008",
+  "estado": "VALIDADO",
+  "rama": "pm09-conciliacion-ventas-analitica",
+  "baseEntradaWorkflow": "43d95952e38e8d2d965e36edce8b3ff425111ef7",
+  "commitFuncional": "43d5c1ccad0b460da1028d274ed1f1bb668ddf37",
+  "fuenteSha256": "d3deb9cd0e0e03d177743faa688ebcff96b91a302426b12e108ca8c763cdc021",
+  "reproduccionQAPM09": {
+    "escenario": "venta A 2 anulada completa + venta B 2 con devolucion cliente 1",
+    "legacy_unidades": 4,
+    "legacy_ingresos": 21.82,
+    "legacy_costes": 12,
+    "legacy_rotacion_salidas": 4,
+    "esperado_unidades_netas": 1,
+    "esperado_ingresos": 5.45,
+    "esperado_costes": 3,
+    "esperado_beneficio": 2.45,
+    "esperado_margen_pct": 45,
+    "esperado_rotacion_unidades": 1,
+    "devolucion_sin_costo_copiado": true,
+    "costo_historico_recuperado_desde_movimiento_original": 3
+  },
+  "validacionAutomatica": {
+    "workflowRunId": 33960311698,
+    "resultado": "success",
+    "contratoLA008": "OK",
+    "contratoLA007": "OK",
+    "pm05Frontend": "OK",
+    "pm07Frontend": "OK",
+    "pm08Frontend": "OK",
+    "pm08Migration": "OK",
+    "pm08ReplayScope": "OK"
+  },
+  "limpiezaQA": {
+    "stock_operaciones_pm09la008": 0,
+    "movimientos_stock_pm09la008": 0,
+    "devoluciones_venta_pm09la008": 0,
+    "caja_operaciones_pm09la008": 0,
+    "stock_final_QA_A1_QA_PROD_A_AGUA": {
+      "almacen": 18,
+      "piso": 5,
+      "total": 23
+    }
+  },
+  "causa": "margenPorProducto solo agregaba VENTA y rotacionPorProducto solo salidas negativas; REVERSO y DEVOLUCION_CLIENTE quedaban fuera. Ademas el margen porcentual dependia del precio/coste actual del producto.",
+  "cambio": "Unificar ventas y correcciones con signo; recuperar coste historico desde el movimiento original cuando la devolucion no lo copia; agrupar la rotacion por familia de venta y aplicar el mismo signo al ABC.",
+  "alcance": "fuente.js en rama PM09; sin cambios de esquema ni produccion",
+  "notaCierrePM09": "El smoke visual y Deploy Preview global se mantienen para el cierre del paquete PM09; no se adelantan en este punto."
+}

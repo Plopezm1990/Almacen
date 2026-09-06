@@ -1,0 +1,64 @@
+name: PM10 Punto 6 LA-013 recepcion
+on:
+  push:
+    branches: [pm10-validaciones-altas-datos-legados]
+    paths:
+      - '.github/workflows/pm10-p06-recepcion.yml'
+      - 'tools/corregir_pm10_p06_recepcion.py'
+      - 'tests/pm10/p06-recepcion-contract.mjs'
+permissions:
+  contents: write
+jobs:
+  corregir:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar corrección LA-013
+        run: python3 tools/corregir_pm10_p06_recepcion.py
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+      - name: Contrato LA-013
+        run: node tests/pm10/p06-recepcion-contract.mjs
+      - name: Regresión LA-012
+        run: node tests/pm10/p05-pedidos-contract.mjs
+      - name: Regresión LA-011
+        run: node tests/pm10/p04-productos-contract.mjs
+      - name: Regresiones heredadas disponibles
+        run: |
+          set -e
+          for f in \
+            tests/pm09/p17-robustez-contract.mjs \
+            tests/pm09/p16-aislamiento-contexto-contract.mjs \
+            tests/pm09/p15-casos-economicos-contract.mjs \
+            tests/pm09/p12-resultados-margin-contract.mjs \
+            tests/pm09/p11-iva-contract.mjs \
+            tests/pm09/p10-caja-contract.mjs \
+            tests/pm09/p09-historial-contract.mjs \
+            tests/pm09/la007-resultados-contract.mjs \
+            tests/pm09/la008-unidades-rotacion-margen-contract.mjs; do
+            if [ -f "$f" ]; then node "$f"; fi
+          done
+      - name: Resumen de barreras de recepción
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          for token in [
+            'function validarRecepcionPedidoPM10(',
+            'function aplicarRecepcionPedidoPM10(',
+            'const validacion = validarRecepcionPedidoPM10({ pedido, lineas, productos, localActivoId, modo: "directo" });',
+            'const validacion = validarRecepcionPedidoPM10({ pedido: pedidoLigado, lineas: alb.lineas, productos, localActivoId, modo: "albaran" });'
+          ]:
+            print(token, s.count(token))
+          PY
+      - name: Commit corrección funcional
+        run: |
+          if git diff --quiet -- fuente.js; then
+            echo 'Sin cambios funcionales pendientes'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add fuente.js
+          git commit -m 'PM10: corregir LA-013 validaciones de recepción'
+          git push

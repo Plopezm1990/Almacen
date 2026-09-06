@@ -1,0 +1,52 @@
+name: PM10 P07 diagnostico LA-017 personal
+on:
+  push:
+    branches: [pm10-validaciones-altas-datos-legados]
+    paths:
+      - '.github/workflows/pm10-p07-diagnostico-personal.yml'
+permissions:
+  contents: write
+jobs:
+  diagnostico:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generar diagnóstico compacto
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, json
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          terms=['salario','vacaciones','pagasExtra','pagas','horasSemanales','horasSemana','salarioMensual','salarioHora','diasVacaciones','empleados','nominas']
+          funcs=[]
+          for m in re.finditer(r'function\s+([A-Za-z0-9_$]+)\s*\(',s):
+            name=m.group(1)
+            if re.search(r'emple|personal|nomina|vacac|fichaj|turno',name,re.I):
+              funcs.append({'name':name,'offset':m.start(),'snippet':s[m.start():min(len(s),m.start()+9000)]})
+          occ={}
+          for t in terms:
+            hits=[]
+            for m in list(re.finditer(re.escape(t),s,re.I))[:30]:
+              hits.append({'offset':m.start(),'snippet':s[max(0,m.start()-700):min(len(s),m.start()+1500)]})
+            occ[t]=hits
+          # Capturar objetos blank/form con campos de personal y funciones de alta/edición.
+          patterns=['blankEmpleado','nuevoEmpleado','guardarEmpleado','addEmpleado','updateEmpleado','crearEmpleado','editarEmpleado','setEmpleados','contrato','salarioBruto','horasContrato']
+          extra={}
+          for t in patterns:
+            hits=[]
+            for m in list(re.finditer(re.escape(t),s,re.I))[:20]:
+              hits.append({'offset':m.start(),'snippet':s[max(0,m.start()-1000):min(len(s),m.start()+2500)]})
+            extra[t]=hits
+          out={'functions':funcs,'occurrences':occ,'extra':extra}
+          Path('tests/pm10/P07_DIAGNOSTICO_PERSONAL.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          print('funciones', [x['name'] for x in funcs])
+          print('campos',{k:len(v) for k,v in occ.items()})
+          PY
+      - name: Commit diagnóstico
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/pm10/P07_DIAGNOSTICO_PERSONAL.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'PM10: guardar diagnóstico LA-017 personal'
+          git push

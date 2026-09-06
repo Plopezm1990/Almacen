@@ -1,0 +1,76 @@
+{
+  "pm": "PM10",
+  "punto": 12,
+  "modulo": "Datos legados y registros ambiguos",
+  "estado": "VALIDADO",
+  "fecha": "2026-09-05",
+  "rama": "pm10-validaciones-altas-datos-legados",
+  "base_punto": "a6134832b24793db9e0a59363e7de7db43cee304",
+  "commit_funcional": "90235fa862c1d96492143ac9720a30f3295958a3",
+  "workflow_run": 33973361925,
+  "contrato_fuente": "tests/pm10/P03_CONTRATO_VALIDACION.md#12-reglas-para-datos-legados",
+  "diagnostico": {
+    "regla": "Los históricos inválidos se detectan y señalan; no se borran, reescriben, migran ni reasignan automáticamente.",
+    "detector": "diagnosticarDatosLegadosPM10",
+    "ui": "Datos legados · PM10, dentro de Empresas y locales",
+    "categorias": [
+      "validación de contrato actual",
+      "id ausente o duplicado",
+      "contexto/local ambiguo o inexistente",
+      "sobre-recepción histórica",
+      "estado de pedido incoherente con cantidades recibidas",
+      "referencias huérfanas",
+      "total de encargo desfasado respecto a sus líneas"
+    ]
+  },
+  "hallazgo_nuevo": {
+    "origen": "Al contrastar los datos legados contra el contrato congelado P03 se detectó una omisión en el cierre P07.",
+    "detalle": [
+      "validarEmpleadoPM10 no exigía nombre no vacío en la barrera de dominio",
+      "pagas debía ser entero > 0 según P03, pero la barrera P07 solo exigía > 0"
+    ],
+    "correccion": "Se alineó validarEmpleadoPM10 con nombre obligatorio y pagas entero > 0. No se reescriben empleados existentes; la regla solo actúa al validar una alta/edición y en el diagnóstico de legado."
+  },
+  "seguridad_legado": {
+    "solo_lectura": true,
+    "mutaciones_en_detector": false,
+    "persistencia_en_detector": false,
+    "correccion_masiva": false,
+    "reasignacion_automatica_local": false,
+    "borrado_automatico": false,
+    "limite_visual": "100 primeras incidencias; el resumen conserva el total completo"
+  },
+  "pruebas": {
+    "node_check_fuente": "OK",
+    "p12_datos_legados_contract": "OK",
+    "casos": [
+      "dataset limpio = 0 incidencias",
+      "producto inválido y sin local",
+      "id duplicado",
+      "pedido con sobre-recepción",
+      "pedido con estado incoherente",
+      "empleado sin nombre",
+      "empleado con pagas decimales",
+      "encargo con cliente inexistente",
+      "encargo con total desfasado",
+      "encargo sin localId",
+      "el diagnóstico no modifica el objeto de entrada"
+    ],
+    "regresiones_pm10": "OK",
+    "regresiones_pm09": "OK",
+    "verificacion_detector_solo_lectura": "OK"
+  },
+  "supabase_qa": {
+    "proyecto": "qjqorixtkilwsndqayyx",
+    "modo": "SOLO LECTURA",
+    "observacion": "La inspección de almacen_kv mostró 21 filas QA y el listado devuelto correspondía a claves qa_pm04:*; no se usó ni modificó ningún conjunto de datos PM10 para este punto.",
+    "writes": false,
+    "migraciones": false
+  },
+  "produccion": {
+    "main_modificado": false,
+    "netlify_produccion": false,
+    "supabase_produccion": false,
+    "datos_reales": false
+  }
+}

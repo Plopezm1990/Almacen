@@ -1,0 +1,184 @@
+function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, documentosPersonalCaducan, fichajes = [], nominas = [], entrevistas = [], crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista, crearPrefiltro, listarPrefiltros, eliminarPrefiltro, crearCuentaEmpleado }) {
+  const [vista, setVista] = (0, import_react4.useState)("empleados");
+  const submitBloqueadoPersonalPM10 = import_react4.default.useRef(false);
+  const [showForm, setShowForm] = (0, import_react4.useState)(false);
+  const [form, setForm] = (0, import_react4.useState)(blankEmpleado());
+  const [error, setError] = (0, import_react4.useState)("");
+  const [editingId, setEditingId] = (0, import_react4.useState)(null);
+  const [confirmDeleteId, setConfirmDeleteId] = (0, import_react4.useState)(null);
+  const [ausenciaFor, setAusenciaFor] = (0, import_react4.useState)(null);
+  const [ausenciaForm, setAusenciaForm] = (0, import_react4.useState)({ tipo: "Vacaciones", fechaInicio: todayISO(), fechaFin: todayISO() });
+  const [epiFor, setEpiFor] = (0, import_react4.useState)(null);
+  const [epiForm, setEpiForm] = (0, import_react4.useState)({ nombre: "", firmado: false });
+  const [cuentaFor, setCuentaFor] = (0, import_react4.useState)(null);
+  const [cuentaForm, setCuentaForm] = (0, import_react4.useState)({ nombre: "", email: "", password: "", rol: "Camarero/a" });
+  const [errorCuenta, setErrorCuenta] = (0, import_react4.useState)("");
+  const [creandoCuenta, setCreandoCuenta] = (0, import_react4.useState)(false);
+  const [cuentaCreadaOk, setCuentaCreadaOk] = (0, import_react4.useState)(false);
+  const [detalleId, setDetalleId] = (0, import_react4.useState)(null);
+  function resetForm() {
+    setForm(blankEmpleado());
+    setEditingId(null);
+    setError("");
+  }
+  function openEdit(e2) {
+    setEditingId(e2.id);
+    setForm({
+      nombre: e2.nombre || "",
+      dni: e2.dni || "",
+      puesto: e2.puesto || "",
+      rol: e2.rol && ROLES_EMPLEADO[e2.rol] ? e2.rol : "Est\xE1ndar",
+      diasDisponibles: e2.diasDisponibles || [],
+      tipoContrato: e2.tipoContrato || "Indefinido",
+      fechaAlta: e2.fechaAlta || todayISO(),
+      fechaFinContrato: e2.fechaFinContrato || "",
+      horasSemanales: e2.horasSemanales ?? 40,
+      pagas: e2.pagas ?? 14,
+      salarioBrutoMensual: e2.salarioBrutoMensual ?? "",
+      costeEmpresaMensual: e2.costeEmpresaMensual ?? "",
+      diasVacacionesAnuales: e2.diasVacacionesAnuales ?? 30,
+      pin: "",
+      documentos: (e2.documentos || []).map((d2) => ({ ...d2 })),
+      activo: e2.activo !== false
+    });
+    setError("");
+    setShowForm(true);
+  }
+  function addDocumento() {
+    setForm((f22) => ({ ...f22, documentos: [...f22.documentos, { id: uid(), nombre: "", fechaCaducidad: "" }] }));
+  }
+  function updateDocumento(idx, campo, valor) {
+    setForm((f22) => ({ ...f22, documentos: f22.documentos.map((d2, i33) => i33 === idx ? { ...d2, [campo]: valor } : d2) }));
+  }
+  function quitarDocumento(idx) {
+    setForm((f22) => ({ ...f22, documentos: f22.documentos.filter((_22, i33) => i33 !== idx) }));
+  }
+  async function submit() {
+    if (submitBloqueadoPersonalPM10.current) return;
+    submitBloqueadoPersonalPM10.current = true;
+    setTimeout(() => { submitBloqueadoPersonalPM10.current = false; }, 750);
+    if (!form.nombre.trim()) {
+      setError("Escribe el nombre del empleado.");
+      return;
+    }
+    if (form.pin && !/^\d{4,6}$/.test(form.pin)) {
+      setError("El c\xF3digo de acceso debe tener entre 4 y 6 d\xEDgitos.");
+      return;
+    }
+    let hashNuevoPin = null;
+    if (form.pin) {
+      hashNuevoPin = await hashPin(form.pin);
+      if (empleados.some((e2) => e2.id !== editingId && e2.pin === hashNuevoPin)) {
+        setError("Ese c\xF3digo ya lo usa otro empleado. Ponle uno distinto.");
+        return;
+      }
+    }
+    setError("");
+    const datos = { ...form };
+    if (hashNuevoPin) {
+      datos.pin = hashNuevoPin;
+    } else {
+      delete datos.pin;
+    }
+    const resultado = editingId ? updateEmpleado(editingId, datos) : addEmpleado(datos);
+    if (!resultado || resultado.ok === false) {
+      setError(resultado?.error || "No se pudo guardar la ficha del empleado.");
+      return;
+    }
+    resetForm();
+    setShowForm(false);
+  }
+  function diasAusencia(ini, fin) {
+    const a22 = new Date(ini), b2 = new Date(fin);
+    if (isNaN(a22) || isNaN(b2)) return 0;
+    return Math.max(1, Math.round((b2 - a22) / 864e5) + 1);
+  }
+  function submitAusencia() {
+    registrarAusencia(ausenciaFor, {
+      tipo: ausenciaForm.tipo,
+      fechaInicio: ausenciaForm.fechaInicio,
+      fechaFin: ausenciaForm.fechaFin,
+      dias: diasAusencia(ausenciaForm.fechaInicio, ausenciaForm.fechaFin)
+    });
+    setAusenciaFor(null);
+    setAusenciaForm({ tipo: "Vacaciones", fechaInicio: todayISO(), fechaFin: todayISO() });
+  }
+  const anioActual = (/* @__PURE__ */ new Date()).getFullYear();
+  function descargarComoArchivo(nombreArchivo, texto) {
+    const blob = new Blob([texto], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a22 = document.createElement("a");
+    a22.href = url;
+    a22.download = nombreArchivo;
+    document.body.appendChild(a22);
+    a22.click();
+    document.body.removeChild(a22);
+    URL.revokeObjectURL(url);
+  }
+  function exportarDatosEmpleado(e2) {
+    const fichajesDelEmpleado = fichajes.filter((f22) => f22.empleadoId === e2.id);
+    const nominasDelEmpleado = nominas.filter((n2) => n2.empleadoId === e2.id);
+    const lineas = [
+      `DATOS GUARDADOS SOBRE: ${e2.nombre}`,
+      `Generado el ${todayISO()}`,
+      "",
+      "=== FICHA ===",
+      `Nombre: ${e2.nombre}`,
+      `DNI: ${e2.dni || "\u2014"}`,
+      `Puesto: ${e2.puesto || "\u2014"}`,
+      `Tipo de contrato: ${e2.tipoContrato || "\u2014"}`,
+      `Fecha de alta: ${e2.fechaAlta || "\u2014"}`,
+      `Fecha de fin de contrato: ${e2.fechaFinContrato || "\u2014"}`,
+      `Horas semanales: ${e2.horasSemanales ?? "\u2014"}`,
+      `Estado: ${e2.activo === false ? "de baja" : "activo"}`,
+      "",
+      "=== AUSENCIAS ===",
+      ...(e2.ausencias || []).length === 0 ? ["Ninguna registrada."] : (e2.ausencias || []).map((a22) => `${a22.tipo}: ${a22.fechaInicio} a ${a22.fechaFin} (${a22.dias} d\xEDa/s)`),
+      "",
+      "=== DOCUMENTOS ===",
+      ...(e2.documentos || []).length === 0 ? ["Ninguno registrado."] : (e2.documentos || []).map((d2) => `${d2.nombre}${d2.fechaCaducidad ? ` \u2014 caduca ${d2.fechaCaducidad}` : ""}`),
+      "",
+      `=== FICHAJES (${fichajesDelEmpleado.length} registrados) ===`,
+      ...fichajesDelEmpleado.length === 0 ? ["Ninguno registrado."] : fichajesDelEmpleado.slice(0, 200).map((f22) => `${f22.fecha} ${f22.hora} \u2014 ${f22.tipo}`),
+      fichajesDelEmpleado.length > 200 ? `\u2026 y ${fichajesDelEmpleado.length - 200} m\xE1s (se han omitido por espacio).` : "",
+      "",
+      `=== N\xD3MINAS REGISTRADAS (${nominasDelEmpleado.length}) ===`,
+      ...nominasDelEmpleado.length === 0 ? ["Ninguna registrada."] : nominasDelEmpleado.map((n2) => `${n2.mes}: bruto \u20AC${fmt(n2.brutoTotal)} + SS empresa \u20AC${fmt(n2.seguridadSocialEmpresa)}`)
+    ];
+    descargarComoArchivo(`datos-${e2.nombre.replace(/\s+/g, "-").toLowerCase()}.txt`, lineas.filter((l22) => l22 !== "").join("\n"));
+  }
+  function vacacionesUsadas(e2) {
+    return (e2.ausencias || []).filter((a22) => a22.tipo === "Vacaciones" && new Date(a22.fechaInicio).getFullYear() === anioActual).reduce((acc, a22) => acc + (Number(a22.dias) || 0), 0);
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: vista === "empleados" ? /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
+    if (showForm) resetForm();
+    setShowForm((s22) => !s22);
+  } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Nuevo empleado") : null }, "Personal"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(
+    "button",
+    {
+      onClick: () => setVista("empleados"),
+      className: "text-[12px] font-medium px-3 py-1.5 rounded-full",
+      style: vista === "empleados" ? { background: C2.accent, color: "#fff" } : { background: C2.surface, border: `1px solid ${C2.line}`, color: C2.inkSoft }
+    },
+    "Empleados"
+  ), /* @__PURE__ */ import_react4.default.createElement(
+    "button",
+    {
+      onClick: () => setVista("seleccion"),
+      className: "text-[12px] font-medium px-3 py-1.5 rounded-full",
+      style: vista === "seleccion" ? { background: C2.accent, color: "#fff" } : { background: C2.surface, border: `1px solid ${C2.line}`, color: C2.inkSoft }
+    },
+    "Selecci\xF3n de personal"
+  )), vista === "seleccion" ? /* @__PURE__ */ import_react4.default.createElement(
+    SeleccionPersonal,
+    {
+      entrevistas,
+      crearEntrevista,
+      actualizarEntrevista,
+      finalizarEntrevista,
+      eliminarEntrevista,
+      crearPrefiltro,
+      listarPrefiltros,
+      eliminarPrefiltro
+    }
+  ) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Aqu\xED llevas la ficha de cada empleado, sus documentos y sus vacaciones. Este programa ", /* @__PURE__ */ import_react4.default.createElement("b", null, "no calcula n\xF3minas"), "(retenciones de IRPF, cotizaciones a la Seguridad Social): eso debe hacerlo tu gestor\xEDa o un programa de n\xF3minas certificado, porque las cifras cambian cada a\xF1o y un error tiene consecuencias legales reales.")), documentosPersonalCaducan.length > 0 && /* @__PURE__ */ import_rea

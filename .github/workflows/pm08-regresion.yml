@@ -1,0 +1,48 @@
+name: PM-08 regresión caja y devoluciones indivisibles
+
+on:
+  push:
+    branches: [pm08-caja-devolucion-indivisible]
+    paths:
+      - 'index.html'
+      - 'fuente.js'
+      - 'source-recovery/**'
+      - 'supabase/migrations/20260904204500_pm08_caja_devolucion_indivisible.sql'
+      - 'supabase/migrations/20260904234000_pm08_replay_scope_hardening.sql'
+      - 'tests/pm08/**'
+      - '.github/workflows/pm08-regresion.yml'
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'fuente.js'
+      - 'source-recovery/**'
+      - 'supabase/migrations/20260904204500_pm08_caja_devolucion_indivisible.sql'
+      - 'supabase/migrations/20260904234000_pm08_replay_scope_hardening.sql'
+      - 'tests/pm08/**'
+      - '.github/workflows/pm08-regresion.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validar-pm08:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Contrato frontend y almacenamiento PM-08
+        run: node tests/pm08/frontend-contract.mjs
+      - name: Contrato de migración, RLS y atomicidad PM-08
+        run: node tests/pm08/migration-contract.mjs
+      - name: Aislamiento de reintentos idempotentes PM-08
+        run: node tests/pm08/replay-scope-contract.mjs
+      - name: Sintaxis de la fuente canónica
+        run: node --check source-recovery/fuente-recuperado.js
+      - name: Sintaxis del bundle publicado
+        run: node --check fuente.js
+      - name: Build reproducible
+        working-directory: source-recovery
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+          cmp -s dist/fuente.js ../fuente.js || { echo 'PM08_BUNDLE_NO_REPRODUCIBLE=1'; exit 1; }
+          echo 'PM08_BUILD_REPRODUCIBLE_OK=1'

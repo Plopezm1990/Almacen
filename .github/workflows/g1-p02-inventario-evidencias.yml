@@ -1,0 +1,41 @@
+name: G1 Punto 2 inventario evidencias F1
+on:
+  push:
+    branches: [g1-nucleo-seguro]
+    paths:
+      - '.github/workflows/g1-p02-inventario-evidencias.yml'
+      - 'tests/g1/P02_MAPA_EVIDENCIAS_F1.md'
+      - 'tests/g1/p02-evidence-map-contract.mjs'
+permissions:
+  contents: read
+jobs:
+  inventario:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verificar descendencia exacta de PM10
+        run: |
+          git merge-base --is-ancestor 94d37cc7a5176e3a44d00f8f8bfb79a630dae314 HEAD
+          echo "G1_DESCIENDE_PM10_FINAL=1"
+      - name: Verificar que P02 no modifica lógica funcional
+        run: |
+          set -e
+          cambios="$(git diff --name-only 94d37cc7a5176e3a44d00f8f8bfb79a630dae314..HEAD)"
+          printf '%s\n' "$cambios"
+          if printf '%s\n' "$cambios" | grep -Ev '^(tests/g1/|\.github/workflows/g1-p02-inventario-evidencias\.yml$)' | grep -q .; then
+            echo 'P02_MODIFICO_ARCHIVO_FUERA_DE_INVENTARIO=1'
+            exit 1
+          fi
+          echo 'G1_P02_SOLO_EVIDENCIA=1'
+      - name: Contrato del mapa de evidencias
+        run: node tests/g1/p02-evidence-map-contract.mjs
+      - name: Sintaxis del candidato heredado
+        run: node --check fuente.js
+      - name: Resumen
+        run: |
+          echo 'G1_P02_MAPA_16_CRITICOS_ALTOS=OK'
+          echo 'G1_P02_LA019_LOCALIZADO=OK'
+          echo 'G1_P02_LA023_LOCALIZADO=OK'
+          echo 'G1_P02_GATE_SUPERADO=NO'

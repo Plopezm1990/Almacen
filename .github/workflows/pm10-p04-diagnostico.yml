@@ -1,0 +1,29 @@
+name: PM10 P04 diagnostico productos
+on:
+  push:
+    branches: [pm10-validaciones-altas-datos-legados]
+    paths:
+      - '.github/workflows/pm10-p04-diagnostico.yml'
+permissions:
+  contents: read
+jobs:
+  diagnostico:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extraer formularios y llamadas de producto
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          qs=['function Productos(', 'function Producto', 'addProducto({', 'updateProducto(', 'stockMinimo', 'udsPorCaja', 'precioVenta', 'costo: Number(', 'setError(']
+          for q in qs:
+            ms=list(re.finditer(re.escape(q),s))
+            print(f'\n===== {q} total={len(ms)} =====')
+            for i,m in enumerate(ms[:12],1):
+              a=max(0,m.start()-1800); b=min(len(s),m.end()+5000)
+              print(f'[{i}] offset={m.start()} '+s[a:b].replace('\n','\\n'))
+          PY
+      - name: Sintaxis
+        run: node --check fuente.js

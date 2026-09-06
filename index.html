@@ -4,11 +4,13 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0C2714" />
-<title>Control de Compras y Almacen</title>
+<title>L&amp;A Suite</title>
+<meta name="application-name" content="L&amp;A Suite" />
+<meta name="apple-mobile-web-app-title" content="L&amp;A Suite" />
 
-<link rel="manifest" href="manifest.json" />
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
-<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="manifest.json?v=la-suite-20260904" />
+<link rel="icon" type="image/svg+xml" href="la-suite-icon.svg" />
+<link rel="apple-touch-icon" href="la-suite-icon.svg" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
@@ -28,12 +30,13 @@
   #cargando {
     position: fixed; inset: 0; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 14px;
-    background: #F7F3E9; color: #17241C; z-index: 9999;
+    background: radial-gradient(circle at 50% 26%, #153D27 0%, #0C2714 44%, #06170E 100%); color: #E7D1A5; z-index: 9999;
   }
-  #cargando .marca { font-size: 15px; font-weight: 600; }
-  #cargando .paso { font-size: 12.5px; color: #6B7A6E; }
-  #cargando .barra { width: 190px; height: 4px; border-radius: 4px; background: #E2DBC7; overflow: hidden; }
-  #cargando .barra i { display: block; height: 100%; width: 30%; background: #8C6D2A; border-radius: 4px;
+  #cargando .logo-suite { width: min(68vw, 300px); height: auto; display: block; filter: drop-shadow(0 6px 12px rgba(0,0,0,.28)); }
+  #cargando .sub { margin-top: -4px; font-size: 12px; letter-spacing: .035em; color: #B8AC91; }
+  #cargando .paso { font-size: 12px; color: #9FB0A5; }
+  #cargando .barra { width: 210px; height: 3px; border-radius: 4px; background: rgba(207,172,105,.18); overflow: hidden; }
+  #cargando .barra i { display: block; height: 100%; width: 30%; background: linear-gradient(90deg,#7F5823,#C69A52,#D2AD68); border-radius: 4px;
                        animation: desliza 1.1s ease-in-out infinite; }
   @keyframes desliza { 0% { margin-left: -30%; } 100% { margin-left: 100%; } }
 </style>
@@ -44,6 +47,7 @@
   // empaquetadas de verdad junto al código de la app (ver reconstruir.sh),
   // no se cargan desde ningún CDN en tiempo real.
 </script>
+<script src="./reset-pruebas-preview.js"></script>
 
 <script>
   /* ==========================================================
@@ -69,6 +73,15 @@
   window.NUBE_URL = NUBE_URL;
   window.NUBE_CLAVE = NUBE_CLAVE;
   window.ESPERA_NUBE_MS = ESPERA_NUBE_MS;
+  if (window.__modoPruebasQA) {
+    // Deploy Preview: usar exclusivamente el proyecto Supabase de QA.
+    window.NUBE_URL = window.__qaNubeUrl || "";
+    window.NUBE_CLAVE = window.__qaNubeClave || "";
+  } else if (window.__modoPruebasLocal) {
+    // Modo de pruebas sin backend remoto, conservado como salvaguarda.
+    window.NUBE_URL = "";
+    window.NUBE_CLAVE = "";
+  }
 
   window.__nubeActiva = false;   // ¿se pudo contactar con la nube?
   window.__nubeCliente = null;
@@ -213,9 +226,19 @@
     for (var i = 0; i < lista.length; i++) {
       var key = lista[i];
       try {
-        var valor = LOCAL.get(key);
+        var cacheKey = await claveCacheLocal(key);
+        var valor = LOCAL.get(cacheKey);
+        var tablaEmpresa = TABLAS_EMPRESA[key];
+        var tablaEmpresaLocal = TABLAS_EMPRESA_LOCAL[key];
         var tablaEspecial = TABLAS_POR_FILA[key];
-        if (tablaEspecial) {
+        if (LEDGERS_RPC[key]) {
+          quitarPendiente(key);
+          continue;
+        } else if (tablaEmpresa) {
+          await encolarPorClave(key, function () { return sincronizarColeccionEmpresa(tablaEmpresa, JSON.parse(valor)); });
+        } else if (tablaEmpresaLocal) {
+          await encolarPorClave(key, function () { return sincronizarColeccionEmpresaLocal(tablaEmpresaLocal, JSON.parse(valor), key); });
+        } else if (tablaEspecial) {
           await encolarPorClave(key, function () { return sincronizarColeccionPorFila(tablaEspecial, JSON.parse(valor), key); });
         } else {
           // Sin referencia de "lo que había antes" no se puede saber qué quitó
@@ -246,6 +269,131 @@
     fichajes: "fichajes_registro",
     auditoria: "auditoria_registro",
   };
+  // PM-05: proveedores y clientes dejan de compartir un bloque global.
+  // Cada registro conserva empresa_id en una tabla con RLS real.
+  var TABLAS_EMPRESA = {
+    proveedores: "proveedores_empresa",
+    clientes: "clientes_empresa",
+  };
+  // PM-06: documentos financieros con empresa/local explícitos y RLS.
+  var TABLAS_EMPRESA_LOCAL = {
+    albaranes: "albaranes_empresa",
+    facturasDirectas: "facturas_directas_empresa",
+    gastosGenerales: "gastos_empresa",
+  };
+  // PM-06/PM-08: estos historiales críticos son ledgers del servidor. React
+  // mantiene una caché local para pintar sin saltos, pero cada alta, reverso o
+  // anulación se escribe exclusivamente mediante una RPC transaccional. Nunca
+  // deben duplicarse como bloques editables en almacen_kv.
+  var LEDGERS_RPC = {
+    pagosFacturas: true,
+    arqueos: true,
+    movimientosCaja: true,
+    devoluciones: true,
+  };
+  var CLAVES_CACHE_POR_USUARIO = {
+    proveedores: true, clientes: true, auditoria: true,
+    albaranes: true, facturasDirectas: true, gastosGenerales: true, pagosFacturas: true,
+    arqueos: true, movimientosCaja: true, devoluciones: true
+  };
+
+  async function claveCacheLocal(key) {
+    if (!CLAVES_CACHE_POR_USUARIO[key] || !window.__nubeCliente) return key;
+    try {
+      var ses = await window.__nubeCliente.auth.getSession();
+      var uid = ses && ses.data && ses.data.session && ses.data.session.user && ses.data.session.user.id;
+      if (uid) return key + "::usuario:" + uid;
+    } catch (e) {}
+    return key + "::sin-sesion";
+  }
+
+  async function leerColeccionEmpresa(tabla) {
+    var r = await window.__nubeCliente.from(tabla).select("id,empresa_id,datos").order("updated_at", { ascending: true });
+    if (r.error) throw r.error;
+    return (r.data || []).map(function (fila) {
+      var d = fila.datos || {};
+      if (!d.empresaId) d = Object.assign({}, d, { empresaId: fila.empresa_id });
+      return d;
+    });
+  }
+
+  async function sincronizarColeccionEmpresa(tabla, listaLocal) {
+    if (!Array.isArray(listaLocal)) throw new Error("La colección empresarial debe ser una lista");
+    var invalidos = listaLocal.filter(function (x) { return !x || !x.id || !x.empresaId; });
+    if (invalidos.length) throw new Error("Hay registros sin id/empresaId; se bloquea la sincronización para evitar mezcla entre empresas");
+    var rLee = await window.__nubeCliente.from(tabla).select("id,empresa_id,datos");
+    if (rLee.error) throw rLee.error;
+    var remotos = rLee.data || [];
+    var porId = {}; remotos.forEach(function (r) { porId[r.id] = r; });
+    var filas = listaLocal.map(function (x) { return { id: x.id, empresa_id: x.empresaId, datos: x, updated_at: new Date().toISOString() }; });
+    if (filas.length) {
+      var rUp = await window.__nubeCliente.from(tabla).upsert(filas);
+      if (rUp.error) throw rUp.error;
+    }
+    var vivos = {}; listaLocal.forEach(function (x) { vivos[x.id]=true; });
+    var borrar = remotos.filter(function (r) { return !vivos[r.id]; }).map(function (r) { return r.id; });
+    if (borrar.length) {
+      var rDel = await window.__nubeCliente.from(tabla).delete().in("id", borrar);
+      if (rDel.error) throw rDel.error;
+    }
+  }
+
+
+  async function leerColeccionEmpresaLocal(tabla) {
+    var r = await window.__nubeCliente.from(tabla).select("id,empresa_id,local_id,datos").order("updated_at", { ascending: true });
+    if (r.error) throw r.error;
+    return (r.data || []).map(function (fila) {
+      var d = fila.datos || {};
+      return Object.assign({}, d, {
+        id: d.id || fila.id,
+        empresaId: d.empresaId || fila.empresa_id,
+        localId: d.localId || fila.local_id
+      });
+    });
+  }
+
+  async function sincronizarColeccionEmpresaLocal(tabla, listaLocal, key) {
+    if (!Array.isArray(listaLocal)) throw new Error("La colección financiera debe ser una lista");
+    var invalidos = listaLocal.filter(function (x) { return !x || !x.id || !x.empresaId || !x.localId; });
+    if (invalidos.length) throw new Error("Hay documentos sin id/empresaId/localId; se bloquea la sincronización financiera");
+    var rLee = await window.__nubeCliente.from(tabla).select("id,empresa_id,local_id,datos");
+    if (rLee.error) throw rLee.error;
+    var remotos = rLee.data || [];
+    var filas = listaLocal.map(function (x) {
+      var f = { id: x.id, empresa_id: x.empresaId, local_id: x.localId, datos: x, updated_at: new Date().toISOString() };
+      if (tabla === "albaranes_empresa" || tabla === "facturas_directas_empresa") f.proveedor_id = x.proveedorId || null;
+      if (tabla === "gastos_empresa") f.factura_directa_id = x.facturaDirectaId || null;
+      return f;
+    });
+    if (filas.length) {
+      var rUp = await window.__nubeCliente.from(tabla).upsert(filas);
+      if (rUp.error) throw rUp.error;
+    }
+    // Una factura directa confirmada no se borra físicamente: se anula en su propio registro.
+    if (key !== "facturasDirectas") {
+      var vivos = {}; listaLocal.forEach(function (x) { vivos[x.id] = true; });
+      var borrar = remotos.filter(function (r) { return !vivos[r.id]; }).map(function (r) { return r.id; });
+      if (borrar.length) {
+        var rDel = await window.__nubeCliente.from(tabla).delete().in("id", borrar);
+        if (rDel.error) throw rDel.error;
+      }
+    }
+  }
+
+  async function leerPagosFactura() {
+    var r = await window.__nubeCliente.from("pagos_factura")
+      .select("id,operation_id,factura_id,origen_factura,empresa_id,local_id,importe,fecha,estado,revierte_pago_id,medio_pago,datos,actor_user_id,created_at")
+      .order("created_at", { ascending: true });
+    if (r.error) throw r.error;
+    return (r.data || []).map(function (p) {
+      return {
+        id: p.id, operationId: p.operation_id, facturaId: p.factura_id, origenFactura: p.origen_factura,
+        empresaId: p.empresa_id, localId: p.local_id, importe: Number(p.importe) || 0, fecha: p.fecha,
+        estado: p.estado, reviertePagoId: p.revierte_pago_id || null, medioPago: p.medio_pago || "",
+        datos: p.datos || {}, actorUserId: p.actor_user_id || null, createdAt: p.created_at || null
+      };
+    });
+  }
   var LIMITE_LECTURA = { auditoria: 500 }; // truncamiento DELIBERADO: la auditoría solo se consulta, no alimenta cálculos
   var PAGINA_LECTURA = 1000; // tamaño de página de PostgREST
 
@@ -342,7 +490,7 @@
           var d = filasParaGuardar[i].datos;
           var rRpc = await window.__nubeCliente.rpc("registrar_auditoria", {
             p_id: d.id, p_usuario: d.usuario, p_accion: d.accion, p_detalle: d.detalle,
-            p_fecha: d.fecha, p_hora: d.hora,
+            p_fecha: d.fecha, p_hora: d.hora, p_empresa_id: d.empresaId || null, p_local_id: d.localId || null,
           });
           if (rRpc.error) throw rRpc.error;
         }
@@ -509,11 +657,28 @@
     // Leer: si hay nube, se prefiere (trae lo que hayan hecho en otro
     // dispositivo) y se deja copia local. Si no, se lee de local.
     async get(key) {
+      var tablaEmpresa = TABLAS_EMPRESA[key];
+      var tablaEmpresaLocal = TABLAS_EMPRESA_LOCAL[key];
       var tablaEspecial = TABLAS_POR_FILA[key];
+      var esPagosFactura = key === "pagosFacturas";
+      var esLedgerRpc = !!LEDGERS_RPC[key];
+      var cacheKey = await claveCacheLocal(key);
+      // Los ledgers PM-08 se hidratan con consultas RLS desde fuente.js cuando
+      // ya existe sesión. Aquí solo se devuelve la última copia segregada del
+      // usuario para no leer el antiguo bloque global de almacen_kv.
+      if (esLedgerRpc && !esPagosFactura) {
+        return { key: key, value: LOCAL.get(cacheKey), shared: false };
+      }
       if (window.__nubeActiva && window.__nubeCliente && pendientes().indexOf(key) === -1) {
         try {
           var lista;
-          if (tablaEspecial) {
+          if (esPagosFactura) {
+            lista = await conTiempoLimite(leerPagosFactura(), ESPERA_NUBE_MS);
+          } else if (tablaEmpresa) {
+            lista = await conTiempoLimite(leerColeccionEmpresa(tablaEmpresa), ESPERA_NUBE_MS);
+          } else if (tablaEmpresaLocal) {
+            lista = await conTiempoLimite(leerColeccionEmpresaLocal(tablaEmpresaLocal), ESPERA_NUBE_MS);
+          } else if (tablaEspecial) {
             lista = await conTiempoLimite(leerColeccionPorFila(tablaEspecial, key), ESPERA_NUBE_MS);
           } else {
             var r = await conTiempoLimite(
@@ -524,22 +689,26 @@
             lista = r.data.value;
           }
           var texto = JSON.stringify(lista);
-          LOCAL.set(key, texto); // copia local, para poder trabajar sin red
+          LOCAL.set(cacheKey, texto); // cache segregada por identidad en datos sensibles
           return { key: key, value: texto, shared: false };
-        } catch (e) { /* si falla la nube, seguimos con lo local */ }
+        } catch (e) { /* si falla la nube, seguimos con la cache de ESA identidad */ }
       }
-      return { key: key, value: LOCAL.get(key), shared: false };
+      return { key: key, value: LOCAL.get(cacheKey), shared: false };
     },
 
     // Guardar: primero en el dispositivo (instantáneo y sin fallo posible),
     // y después se intenta subir. Si no sube, queda en la cola de pendientes.
     async set(key, value) {
+      var tablaEmpresa = TABLAS_EMPRESA[key];
+      var tablaEmpresaLocal = TABLAS_EMPRESA_LOCAL[key];
       var tablaEspecial = TABLAS_POR_FILA[key];
+      var esLedgerRpc = !!LEDGERS_RPC[key];
+      var cacheKey = await claveCacheLocal(key);
 
       // Qué había guardado antes en este equipo. Sirve para saber qué se ha
       // quitado y para poder dejarlo como estaba si el guardado no cabe.
       var anterior = null;
-      try { anterior = LOCAL.get(key); } catch (e) { anterior = null; }
+      try { anterior = LOCAL.get(cacheKey); } catch (e) { anterior = null; }
 
       // El almacenamiento del navegador tiene un tope (unos 5 MB en total).
       // Antes se daba por hecho que guardar en local "no puede fallar"; si
@@ -547,17 +716,35 @@
       // apuntaba para subir: el cambio se perdía entero.
       var falloLocal = null;
       try {
-        LOCAL.set(key, value);
+        LOCAL.set(cacheKey, value);
       } catch (e) {
         falloLocal = e;
-        try { if (anterior !== null) LOCAL.set(key, anterior); } catch (e2) {}
+        try { if (anterior !== null) LOCAL.set(cacheKey, anterior); } catch (e2) {}
       }
 
       if (tablaEspecial && !falloLocal) anotarBorradosLocales(key, anterior, value);
 
+      // Los ledgers remotos solo se escriben mediante RPC transaccional. El set
+      // reactivo conserva la copia local; nunca hace upsert directo ni fallback.
+      if (esLedgerRpc) {
+        quitarPendiente(key);
+        if (falloLocal) throw falloLocal;
+        return { key: key, value: value, shared: false };
+      }
+
       if (window.__nubeActiva && window.__nubeCliente) {
         try {
-          if (tablaEspecial) {
+          if (tablaEmpresa) {
+            await conTiempoLimite(
+              encolarPorClave(key, function () { return sincronizarColeccionEmpresa(tablaEmpresa, JSON.parse(value)); }),
+              ESPERA_NUBE_MS
+            );
+          } else if (tablaEmpresaLocal) {
+            await conTiempoLimite(
+              encolarPorClave(key, function () { return sincronizarColeccionEmpresaLocal(tablaEmpresaLocal, JSON.parse(value), key); }),
+              ESPERA_NUBE_MS
+            );
+          } else if (tablaEspecial) {
             await conTiempoLimite(
               encolarPorClave(key, function () { return sincronizarColeccionPorFila(tablaEspecial, JSON.parse(value), key); }),
               ESPERA_NUBE_MS
@@ -572,7 +759,7 @@
         } catch (e) {
           marcarPendiente(key);
         }
-      } else {
+      } else if (!window.__modoPruebasLocal) {
         marcarPendiente(key);
       }
 
@@ -588,11 +775,22 @@
     },
 
     async delete(key) {
-      LOCAL.delete(key);
+      var cacheKey = await claveCacheLocal(key);
+      LOCAL.delete(cacheKey);
       if (window.__nubeActiva && window.__nubeCliente) {
         try {
+          var tablaEmpresa = TABLAS_EMPRESA[key];
+          var tablaEmpresaLocal = TABLAS_EMPRESA_LOCAL[key];
           var tablaEspecial = TABLAS_POR_FILA[key];
-          if (tablaEspecial) {
+          if (LEDGERS_RPC[key]) {
+            return { key: key, deleted: true, shared: false };
+          } else if (tablaEmpresa) {
+            var rEmpDel = await conTiempoLimite(window.__nubeCliente.from(tablaEmpresa).delete().neq("id", ""), ESPERA_NUBE_MS);
+            if (rEmpDel.error) throw rEmpDel.error;
+          } else if (tablaEmpresaLocal) {
+            var rFinDel = await conTiempoLimite(window.__nubeCliente.from(tablaEmpresaLocal).delete().neq("id", ""), ESPERA_NUBE_MS);
+            if (rFinDel.error) throw rFinDel.error;
+          } else if (tablaEspecial) {
             await conTiempoLimite(window.__nubeCliente.from(tablaEspecial).delete().neq("id", ""), ESPERA_NUBE_MS);
           } else {
             await conTiempoLimite(window.__nubeCliente.from("almacen_kv").delete().eq("key", key), ESPERA_NUBE_MS);
@@ -611,7 +809,8 @@
 <body>
 
 <div id="cargando">
-  <div class="marca">Control de Compras y Almacen</div>
+  <img class="logo-suite" src="la-suite-logo.svg" alt="L&A Suite" />
+  <div class="sub">Gestión integral para tu negocio</div>
   <div class="barra"><i></i></div>
   <div class="paso" id="paso">Abriendo…</div>
 </div>
@@ -642,7 +841,12 @@
     }
   });
 </script>
+<script src="./pm11-access-patch.js?v=pm11-p10-smoke-v2"></script>
+<script src="./pm11-session-guard-v4.js?v=pm11-session-guard-v4"></script>
+<script src="./pm11-access-runtime-v3.js?v=pm11-runtime-scope-v3"></script>
+<script src="./pm11-mobile-layout-v3.js?v=pm11-mobile-layout-v3"></script>
 <script type="module" src="./fuente.js"></script>
+<script defer src="./dashboard-premium-v2.js"></script>
 <script>
   // Una vez que el módulo se ha importado y ejecutado, React ya habrá
   // montado algo dentro de #root — se quita el indicador de "Cargando…".
@@ -659,5 +863,6 @@
     }
   })();
 </script>
+
 </body>
 </html>

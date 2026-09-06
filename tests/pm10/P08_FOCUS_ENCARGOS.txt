@@ -1,0 +1,462 @@
+===== LOGICA 4244037:4261079 =====
+function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, setProductos, setMovimientos, venderLineas, localActivoId }) {
+  function localDeEncargo(e2) {
+    if (!e2) return null;
+    if (e2.localId) return e2.localId;
+    const ids = [...new Set((e2.lineas || []).map((ln2) => productos.find((p22) => p22.id === ln2.productoId)?.localId).filter(Boolean))];
+    return ids.length === 1 ? ids[0] : null;
+  }
+  function encargoEsDelLocalActivo(e2) {
+    if (!e2) return false;
+    if (!localActivoId) return true;
+    return localDeEncargo(e2) === localActivoId;
+  }
+  function addEncargo(data) {
+    if (localActivoId && (data.lineas || []).some((ln2) => {
+      const p22 = productos.find((x3) => x3.id === ln2.productoId);
+      return p22 && p22.localId && p22.localId !== localActivoId;
+    })) return false;
+    const fecha = todayISO();
+    const cobros = sincronizarCobroSe\u00F1al([], data.se\u00F1al, data.se\u00F1alMedioPago, fecha);
+    const idsLocalesLineas = [...new Set((data.lineas || []).map((ln2) => productos.find((p22) => p22.id === ln2.productoId)?.localId).filter(Boolean))];
+    const localId = data.localId || (idsLocalesLineas.length === 1 ? idsLocalesLineas[0] : null) || localActivoId || null;
+    setEncargos((s22) => [{ id: uid(), estado: "Pendiente", fechaCreacion: fecha, cobros, ...data, localId }, ...s22]);
+  }
+  function updateEncargo(id, data) {
+    const actual = encargos.find((e2) => e2.id === id);
+    if (!encargoEsDelLocalActivo(actual)) return false;
+    setEncargos(
+      (s22) => s22.map((e2) => {
+        if (e2.id !== id) return e2;
+        const actualizado = { ...e2, ...data };
+        if ("se\xF1al" in data || "se\xF1alMedioPago" in data) {
+          actualizado.cobros = sincronizarCobroSe\u00F1al(e2.cobros, actualizado.se\u00F1al, actualizado.se\u00F1alMedioPago, e2.fechaCreacion);
+        }
+        return actualizado;
+      })
+    );
+  }
+  function deleteEncargo(id) {
+    const actual = encargos.find((e22) => e22.id === id);
+    if (!encargoEsDelLocalActivo(actual)) return false;
+    const e2 = encargos.find((x3) => x3.id === id);
+    registrarAuditoria("Eliminar encargo", e2 ? `${e2.numero || "s/n"}` : id);
+    setEncargos((s22) => s22.filter((e22) => e22.id !== id));
+  }
+  function entregarEncargo(encargo, medioPago = "Efectivo") {
+    const actual = encargos.find((e2) => e2.id === encargo);
+    if (!encargoEsDelLocalActivo(actual)) return false;
+    const lineasParaVender = (encargo.lineas || []).map((ln2) => ({
+      productoId: ln2.productoId,
+      cantidad: ln2.cantidad,
+      precioUnitario: ln2.precioUnitario
+    }));
+    venderLineas(lineasParaVender, {
+      tipo: "VENTA_ENCARGO",
+      medioPago,
+      origen: "entregarEncargo",
+      documentoOrigenId: encargo.id,
+      motivoBase: `Encargo ${encargo.numero || ""}`.trim(),
+      extraPorLinea: () => ({ encargoId: encargo.id, clienteId: encargo.clienteId })
+    });
+    const total = (encargo.lineas || []).reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
+    const se\u00F1al = Number(encargo.se\u00F1al) || 0;
+    const resto = Math.max(0, total - se\u00F1al);
+    const cobrosSinResto = (encargo.cobros || []).filter((c22) => c22.concepto !== "Resto entrega");
+    const cobros = resto > 9e-3 ? [...cobrosSinResto, { id: uid(), concepto: "Resto entrega", importe: resto, medioPago, fecha: todayISO() }] : cobrosSinResto;
+    updateEncargo(encargo.id, { estado: "Entregado", fechaEntregaReal: todayISO(), cobros });
+  }
+  return { addEncargo, updateEncargo, deleteEncargo, entregarEncargo };
+}
+function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId }) {
+  function productoEsDelLocalActivoVenta(prod) {
+    if (!prod) return false;
+    if (!localActivoId) return true;
+    return !prod.localId || prod.localId === localActivoId;
+  }
+  function movimientoEsDelLocalActivoVenta(m22) {
+    if (!localActivoId) return true;
+    if (m22.localId) return m22.localId === localActivoId;
+    const prod = productos.find((p22) => p22.id === m22.productoId);
+    return !!prod && (!prod.localId || prod.localId === localActivoId);
+  }
+  const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos });
+  function venderLineas(lineas, opciones = {}) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para abrir el TPV." };
+    const incluyeOtroLocal = (lineas || []).some((ln2) => {
+      const p22 = productos.find((x3) => x3.id === ln2.productoId);
+      return !!p22 && !productoEsDelLocalActivoVenta(p22);
+    });
+    if (incluyeOtroLocal) return { ok: false, error: "La venta incluye productos de otro local." };
+    const {
+      tipo = "VENTA",
+      medioPago = "Efectivo",
+      detallePago = null,
+      operationId = null,
+      origen = "venderLocal",
+      documentoOrigenId = null,
+      motivoBase = "TPV",
+      extraPorLinea = () => ({})
+    } = opciones;
+    const ventaId = operationId || uid();
+    let totalVenta = 0;
+    if (detallePago) {
+      (lineas || []).forEach((ln2) => {
+        const cant = Number(ln2.cantidad) || 0;
+        const prod = productos.find((p22) => p22.id === ln2.productoId);
+        if (!prod || cant <= 0) return;
+        const precio = Number(ln2.precioUnitario) || precioNeto(prod);
+        totalVenta += cant * precio * (1 + ivaDe(prod) / 100);
+      });
+    }
+    const movimientosGenerados = [];
+    (lineas || []).forEach((ln2) => {
+      if (!ln2.productoId) return;
+      const cant = Number(ln2.cantidad) || 0;
+      if (cant <= 0) return;
+      const prod = productos.find((p22) => p22.id === ln2.productoId);
+      if (!prod) return;
+      const costoUnitario = Number(prod.costo) || 0;
+      const ingresoUnitario = Number(ln2.precioUnitario) || precioNeto(prod);
+      const camposExtra = {
+        costoUnitario,
+        ingresoUnitario,
+        ivaVentaAplicado: ivaDe(prod),
+        medioPago,
+        ...extraPorLinea(ln2, prod)
+      };
+      if (detallePago && totalVenta > 0) {
+        const importeLinea = cant * ingresoUnitario * (1 + ivaDe(prod) / 100);
+        const proporcion = importeLinea / totalVenta;
+        camposExtra.detallePago = {
+          efectivo: Number((detallePago.efectivo * proporcion).toFixed(4)),
+          tarjeta: Number((detallePago.tarjeta * proporcion).toFixed(4))
+        };
+      }
+      const r2 = aplicarMovimientoStock({
+        productoId: prod.id,
+        cantidad: -cant,
+        tipo,
+        operationId: ventaId,
+        movimientoId: uid(),
+        origen,
+        documentoOrigenId: documentoOrigenId || ventaId,
+        afectaStockTotal: true,
+        afectaStockPisoVenta: true,
+        permitirDeficit: false,
+        motivo: motivoBase,
+        camposExtra
+      });
+      if (r2.ok) movimientosGenerados.push(r2.movimiento);
+    });
+    return { ok: true, n: movimientosGenerados.length, modo: "local", ventaId, movimientos: movimientosGenerados };
+  }
+  function venderLocal(lineas, medioPago, detallePago) {
+    return venderLineas(lineas, { tipo: "VENTA", medioPago, detallePago, origen: "venderLocal", motivoBase: "TPV" });
+  }
+  async function venderCarrito(lineas, medioPago = "Efectivo", detallePago = null) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para abrir el TPV." };
+    const incluyeOtroLocal = (lineas || []).some((ln2) => {
+      const p22 = productos.find((x3) => x3.id === ln2.productoId);
+      return !!p22 && !productoEsDelLocalActivoVenta(p22);
+    });
+    if (incluyeOtroLocal) return { ok: false, error: "La venta incluye productos de otro local." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return venderLocal(lineas, medioPago, detallePago);
+    const ventaId = uid();
+    let totalVenta = 0;
+    (lineas || []).forEach((ln2) => {
+      const cant = Number(ln2.cantidad) || 0;
+      const prod = productos.find((p22) => p22.id === ln2.productoId);
+      if (!prod || cant <= 0) return;
+      totalVenta += cant * precioNeto(prod) * (1 + ivaDe(prod) / 100);
+    });
+    const lineasParaRpc = (lineas || []).filter((ln2) => ln2.productoId && Number(ln2.cantidad) > 0).map((ln2) => {
+      const prod = productos.find((p22) => p22.id === ln2.productoId);
+      const cant = Number(ln2.cantidad);
+      const costoUnitario = prod ? Number(prod.costo) || 0 : 0;
+      const ingresoUnitario = prod ? precioNeto(prod) : 0;
+      const ivaAplicado = prod ? ivaDe(prod) : 0;
+      const datosLinea = { productoId: ln2.productoId, localId: prod ? prod.localId || localActivoId || null : localActivoId || null, cantidad: cant, motivo: "Venta", costoUnitario, ingresoUnitario, ivaVentaAplicado: ivaAplicado, medioPago, referencia: "TPV", ventaId };
+      if (detallePago && totalVenta > 0 && prod) {
+        const importeLinea = cant * ingresoUnitario * (1 + ivaAplicado / 100);
+        const proporcion = importeLinea / totalVenta;
+        datosLinea.detallePago = { efectivo: Number((detallePago.efectivo * proporcion).toFixed(4)), tarjeta: Number((detallePago.tarjeta * proporcion).toFixed(4)) };
+      }
+      return datosLinea;
+    });
+    if (lineasParaRpc.length === 0) return { ok: false, error: "Carrito vac\xEDo" };
+    const empresas = [...new Set(lineasParaRpc.map((l22) => productos.find((p22) => p22.id === l22.productoId)?.empresaId).filter(Boolean))];
+    if (empresas.length !== 1) return { ok: false, error: "No se pudo determinar una \xFAnica empresa para la venta." };
+    const empresaId = empresas[0];
+    const params = { p_operation_id: ventaId, p_empresa_id: empresaId, p_local_id: localActivoId, p_lineas: lineasParaRpc, p_fecha: todayISO(), p_datos: { medioPago, detallePago: detallePago || null } };
+    async function intentarRpc(msTimeout) {
+      const supabase = await window.getSupabaseClient();
+      const r2 = await Promise.race([
+        supabase.rpc("registrar_venta_stock_carrito_pm09", params),
+        new Promise((_22, reject) => setTimeout(() => reject(new Error("El servidor tard\xF3 demasiado en responder")), msTimeout))
+      ]);
+      if (r2.error) throw r2.error;
+      return r2;
+    }
+    function errorVisible(error) {
+      const msg = String(error?.message || error || "");
+      if (msg.includes("stock_insuficiente:")) return { error: "Stock insuficiente", productoId: msg.split("stock_insuficiente:").pop().trim() };
+      if (msg.includes("unidad_indivisible")) return { error: "La cantidad debe ser un n\xFAmero entero para este producto." };
+      if (msg.includes("precision_cantidad_excedida")) return { error: "La cantidad tiene m\xE1s decimales de los permitidos." };
+      if (msg.includes("local_inactivo")) return { error: "El local ya no admite operaciones de stock." };
+      if (msg.includes("contexto_no_autorizado") || msg.includes("stock_no_autorizado")) return { error: "No tienes permiso para registrar esta venta en este local." };
+      return { error: "No se pudo confirmar la venta con el servidor. No se ha descontado stock localmente." };
+    }
+    try {
+      let r2;
+      try {
+        r2 = await intentarRpc(6e3);
+      } catch (e1) {
+        r2 = await intentarRpc(4e3);
+      }
+      await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
+      return { ok: true, n: lineasParaRpc.length, modo: "pm07-servidor", replayed: !!r2.data?.replayed, ventaId };
+    } catch (error) {
+      return { ok: false, ...errorVisible(error) };
+    }
+  }
+  function anularVentaLocal(ventaId, movimientosActuales, motivo = "") {
+    if (!ventaId) return { ok: false, error: "Esa venta no tiene identificador y no se puede anular." };
+    const lineas = (movimientosActuales || []).filter((m22) => m22.ventaId === ventaId || m22.operationId === ventaId).filter((m22) => esVenta(m22) || esSalida(m22)).filter((m22) => movimientoEsDelLocalActivoVenta(m22));
+    if (lineas.length === 0) {
+      return { ok: false, error: "No se han encontrado las l\xEDneas de esa venta." };
+    }
+    const yaAnulada = (movimientosActuales || []).some((m22) => m22.anulaVentaId === ventaId || m22.revierteMovimientoId && lineas.some((l22) => l22.id === m22.revierteMovimientoId));
+    if (yaAnulada) {
+      return { ok: false, error: "Esa venta ya estaba anulada." };
+    }
+    let aplicadas = 0;
+    lineas.forEach((l22) => {
+      const cantidadOriginal = Math.abs(cantidadConSigno(l22));
+      if (cantidadOriginal <= 0) return;
+      const r2 = aplicarMovimientoStock({
+        productoId: l22.productoId,
+        cantidad: cantidadOriginal,
+        tipo: l22.tipo === "salida" ? "VENTA" : l22.tipo,
+        operationId: uid(),
+        movimientoId: uid(),
+        origen: "anularVenta",
+        documentoOrigenId: ventaId,
+        afectaStockTotal: true,
+        afectaStockPisoVenta: true,
+        permitirDeficit: true,
+        revierteMovimientoId: l22.id,
+        motivo: `Anulaci\xF3n de venta${motivo ? " \xB7 " + motivo : ""}`,
+        camposExtra: {
+          anulaVentaId: ventaId,
+          costoUnitario: l22.costoUnitario,
+          // El ingreso se anota en negativo para que los informes de ventas
+          // resten esta operación en vez de contarla como un ingreso nuevo.
+          ingresoUnitario: l22.ingresoUnitario != null ? -Math.abs(Number(l22.ingresoUnitario)) : null,
+          ivaVentaAplicado: l22.ivaVentaAplicado,
+          medioPago: l22.medioPago,
+          detallePago: l22.detallePago
+        }
+      });
+      if (r2.ok) aplicadas++;
+    });
+    const fechaVenta = lineas[0]?.fecha;
+    const arqueoDelDia = fechaVenta && (arqueos || []).find((a22) => a22.fecha === fechaVenta && (!localActivoId || a22.localId === localActivoId));
+    if (arqueoDelDia && typeof window !== "undefined" && window.__nubeActiva) {
+      fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titulo: "Caja cerrada, ahora desactualizada",
+          cuerpo: `Se anul\xF3 una venta del ${fechaVenta}, d\xEDa que ya ten\xEDa la caja cerrada \u2014 revisa ese arqueo, puede que ya no cuadre.`,
+          localId: lineas[0]?.localId || null,
+          url: "/"
+        })
+      }).catch(() => {
+      });
+    }
+    return { ok: true, lineasAnuladas: aplicadas, arqueoAfectado: !!arqueoDelDia };
+  }
+  async function anularVenta(ventaId, movimientosActuales, motivo = "") {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para gestionar ventas del TPV." };
+    if (!ventaId) return { ok: false, error: "Esa venta no tiene identificador y no se puede anular." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return anularVentaLocal(ventaId, movimientosActuales, motivo);
+    const lineasOriginales = (movimientosActuales || []).filter((m22) => m22.ventaId === ventaId || m22.operationId === ventaId).filter((m22) => esVenta(m22) || esSalida(m22)).filter((m22) => movimientoEsDelLocalActivoVenta(m22));
+    if (lineasOriginales.length === 0) return { ok: false, error: "No se han encontrado las l\xEDneas de esa venta." };
+    try {
+      const supabase = await window.getSupabaseClient();
+      const operationId = `rev-${ventaId}`;
+      const r2 = await supabase.rpc("revertir_venta_stock_carrito_pm09", { p_operation_id: operationId, p_venta_operation_id: ventaId, p_fecha: todayISO(), p_motivo: motivo || "" });
+      if (r2.error) throw r2.error;
+      await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
+      const fechaVenta = lineasOriginales[0]?.fecha;
+      const arqueoDelDia = fechaVenta && (arqueos || []).find((a22) => a22.fecha === fechaVenta && (!localActivoId || a22.localId === localActivoId));
+      if (arqueoDelDia) {
+        fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ titulo: "Caja cerrada, ahora desactualizada", cuerpo: `Se anul\xF3 una venta del ${fechaVenta}, d\xEDa que ya ten\xEDa la caja cerrada \u2014 revisa ese arqueo, puede que ya no cuadre.`, localId: r2.data?.localId || lineasOriginales[0]?.localId || null, url: "/" })
+        }).catch(() => {
+        });
+      }
+      return { ok: true, lineasAnuladas: Number(r2.data?.lineasAnuladas) || 0, arqueoAfectado: !!arqueoDelDia, modo: "pm07-servidor", sincronizada: true, replayed: !!r2.data?.replayed };
+    } catch (error) {
+      const msg = String(error?.message || "");
+      if (msg.includes("venta_stock_ya_revertida")) return { ok: false, error: "La venta ya estaba anulada.", yaExistia: true };
+      return { ok: false, error: "No se pudo confirmar la anulaci\xF3n con el servidor. No se ha modificado el stock local." };
+    }
+  }
+  return { venderCarrito, venderLocal, anularVenta, venderLineas };
+}
+
+
+===== UI 4852126:4871704 =====
+function lineaEncargo() {
+  return { productoId: "", descripcion: "", cantidad: 1, precioUnitario: "" };
+}
+function Encargos({ encargosPendientes, encargos, clientes, productos, addEncargo, updateEncargo, deleteEncargo, entregarEncargo, addCliente }) {
+  const [showForm, setShowForm] = (0, import_react4.useState)(false);
+  const [editingId, setEditingId] = (0, import_react4.useState)(null);
+  const [form, setForm] = (0, import_react4.useState)(null);
+  const [error, setError] = (0, import_react4.useState)("");
+  const [confirmDeleteId, setConfirmDeleteId] = (0, import_react4.useState)(null);
+  const [entregarId, setEntregarId] = (0, import_react4.useState)(null);
+  const [medioPagoEntrega, setMedioPagoEntrega] = (0, import_react4.useState)("Efectivo");
+  const [verEntregados, setVerEntregados] = (0, import_react4.useState)(false);
+  const [clienteNuevo, setClienteNuevo] = (0, import_react4.useState)("");
+  const vendibles = productos.filter((p22) => p22.tipo === "elaborado" || Number(p22.precioVenta) > 0);
+  function nuevo() {
+    setForm({
+      clienteId: clientes[0]?.id || "",
+      numero: "",
+      fechaEntrega: todayISO(),
+      horaEntrega: "",
+      notas: "",
+      se\u00F1al: "",
+      se\u00F1alMedioPago: "Efectivo",
+      lineas: [lineaEncargo()]
+    });
+    setEditingId(null);
+    setError("");
+    setShowForm(true);
+  }
+  function abrirEdicion(e2) {
+    setForm({
+      clienteId: e2.clienteId || "",
+      numero: e2.numero || "",
+      fechaEntrega: e2.fechaEntrega || todayISO(),
+      horaEntrega: e2.horaEntrega || "",
+      notas: e2.notas || "",
+      se\u00F1al: e2.se\u00F1al ?? "",
+      se\u00F1alMedioPago: e2.se\u00F1alMedioPago || "Efectivo",
+      lineas: (e2.lineas || []).map((l22) => ({ ...l22 }))
+    });
+    setEditingId(e2.id);
+    setError("");
+    setShowForm(true);
+  }
+  function setLinea(idx, campo, valor) {
+    setForm((f22) => ({
+      ...f22,
+      lineas: f22.lineas.map((l22, i33) => {
+        if (i33 !== idx) return l22;
+        if (campo === "productoId") {
+          const p22 = productos.find((x3) => x3.id === valor);
+          return { ...l22, productoId: valor, descripcion: p22 ? p22.nombre : l22.descripcion, precioUnitario: p22 ? precioNeto(p22).toFixed(2) : l22.precioUnitario };
+        }
+        return { ...l22, [campo]: valor };
+      })
+    }));
+  }
+  const addLinea = () => setForm((f22) => ({ ...f22, lineas: [...f22.lineas, lineaEncargo()] }));
+  const quitarLinea = (idx) => setForm((f22) => ({ ...f22, lineas: f22.lineas.filter((_22, i33) => i33 !== idx) }));
+  const totalForm = !form ? 0 : form.lineas.reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
+  function submit() {
+    if (!form.clienteId) {
+      setError("Selecciona o crea un cliente.");
+      return;
+    }
+    const validas = form.lineas.filter((l22) => (l22.productoId || l22.descripcion) && Number(l22.cantidad) > 0);
+    if (!validas.length) {
+      setError("A\xF1ade al menos un producto con cantidad.");
+      return;
+    }
+    setError("");
+    const datos = { ...form, lineas: validas, se\u00F1al: form.se\u00F1al === "" ? 0 : Number(form.se\u00F1al) };
+    if (editingId) updateEncargo(editingId, datos);
+    else addEncargo(datos);
+    setShowForm(false);
+    setForm(null);
+    setEditingId(null);
+  }
+  function crearClienteRapido() {
+    if (!clienteNuevo.trim()) return;
+    const c22 = addCliente({ nombre: clienteNuevo.trim() });
+    setForm((f22) => ({ ...f22, clienteId: c22.id }));
+    setClienteNuevo("");
+  }
+  const entregados = encargos.filter((e2) => e2.estado === "Entregado");
+  function colorDias(d2) {
+    if (d2 === null) return C2.inkSoft;
+    if (d2 < 0) return C2.red;
+    if (d2 <= 2) return C2.amber;
+    return C2.ink;
+  }
+  function textoDias(d2) {
+    if (d2 === null) return "Sin fecha";
+    if (d2 < 0) return `Se pas\xF3 hace ${Math.abs(d2)} d`;
+    if (d2 === 0) return "\xA1Hoy!";
+    if (d2 === 1) return "Ma\xF1ana";
+    return `En ${d2} d\xEDas`;
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: nuevo }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Nuevo encargo") }, "Encargos"), showForm && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3" }, editingId ? "Editando encargo" : "Nuevo encargo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Cliente" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.clienteId, onChange: (e2) => setForm({ ...form, clienteId: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Selecciona\u2026"), clientes.map((c22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: c22.id, value: c22.id }, c22.nombre)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Referencia del encargo (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.numero, onChange: (e2) => setForm({ ...form, numero: e2.target.value }), placeholder: "E-001" }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 items-end mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex-1" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "\xBFCliente nuevo? Cr\xE9alo aqu\xED mismo"), /* @__PURE__ */ import_react4.default.createElement(Input, { value: clienteNuevo, onChange: (e2) => setClienteNuevo(e2.target.value), placeholder: "Nombre del cliente" })), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: crearClienteRapido }, "Crear")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Fecha de entrega" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: form.fechaEntrega, onChange: (e2) => setForm({ ...form, fechaEntrega: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hora (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "time", value: form.horaEntrega, onChange: (e2) => setForm({ ...form, horaEntrega: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Se\xF1al / anticipo (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: form.se\u00F1al, onChange: (e2) => setForm({ ...form, se\u00F1al: e2.target.value }) }))), Number(form.se\u00F1al) > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "C\xF3mo se ha cobrado la se\xF1al" }, /* @__PURE__ */ import_react4.default.createElement(
+    "select",
+    {
+      value: form.se\u00F1alMedioPago || "Efectivo",
+      onChange: (e2) => setForm({ ...form, se\u00F1alMedioPago: e2.target.value }),
+      className: "w-full rounded-lg px-3 py-2 text-[13px]",
+      style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink }
+    },
+    /* @__PURE__ */ import_react4.default.createElement("option", null, "Efectivo"),
+    /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"),
+    /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"),
+    /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro")
+  ))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Productos del encargo"), form.lineas.map((l22, idx) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: idx, className: "mb-2", style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12px] font-semibold" }, "L\xEDnea ", idx + 1), /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", onClick: () => quitarLinea(idx), "aria-label": "Quitar l\xEDnea" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 16, color: C2.inkSoft }))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Producto del cat\xE1logo" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: l22.productoId, onChange: (e2) => setLinea(idx, "productoId", e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "\u2014 Escribirlo a mano \u2014"), vendibles.map((p22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: p22.id, value: p22.id }, p22.nombre)))), !l22.productoId && /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Descripci\xF3n" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: l22.descripcion, onChange: (e2) => setLinea(idx, "descripcion", e2.target.value), placeholder: "Tarta personalizada 6 personas" })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-3 gap-x-2" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Cantidad" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: l22.cantidad, onChange: (e2) => setLinea(idx, "cantidad", e2.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio ud. (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: l22.precioUnitario, onChange: (e2) => setLinea(idx, "precioUnitario", e2.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Subtotal" }, /* @__PURE__ */ import_react4.default.createElement(Input, { readOnly: true, value: fmt((Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0)), style: { background: C2.bg } }))))), /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", onClick: addLinea, className: "text-[12.5px] font-medium mb-3", style: { color: C2.accent } }, "+ A\xF1adir producto"), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Notas para el obrador" }, /* @__PURE__ */ import_react4.default.createElement("textarea", { value: form.notas, onChange: (e2) => setForm({ ...form, notas: e2.target.value }), className: "w-full rounded-lg p-2 text-[12.5px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, height: 70, resize: "vertical" }, placeholder: "Sin gluten, felicitaci\xF3n 'Feliz cumplea\xF1os Ana'\u2026" })), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12.5px] font-medium" }, "Total del encargo"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-bold text-[17px]" }, "\u20AC", fmt(totalForm))), Number(form.se\u00F1al) > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12px] mt-1", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement("span", null, "Pendiente de cobrar al entregar"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, "\u20AC", fmt(totalForm - Number(form.se\u00F1al))))), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submit }, editingId ? "Guardar cambios" : "Guardar encargo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+    setShowForm(false);
+    setForm(null);
+    setEditingId(null);
+  } }, "Cancelar"))), encargosPendientes.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay encargos pendientes." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, encargosPendientes.map((e2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id, style: { borderLeft: `3px solid ${colorDias(e2.dias)}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold" }, e2.cliente ? e2.cliente.nombre : "Sin cliente"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, e2.fechaEntrega, e2.horaEntrega && ` \xB7 ${e2.horaEntrega}`, e2.numero && ` \xB7 ${e2.numero}`)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold", style: { color: colorDias(e2.dias) } }, textoDias(e2.dias)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold mt-0.5" }, "\u20AC", fmt(e2.total)))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 text-[12px] space-y-0.5" }, (e2.lineas || []).map((l22, i33) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i33 }, "\xB7 ", l22.cantidad, " \xD7 ", l22.descripcion || "\u2014"))), e2.notas && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 text-[11.5px] p-2 rounded-lg", style: { background: C2.amberSoft } }, e2.notas), Number(e2.se\u00F1al) > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-2", style: { color: C2.inkSoft } }, "Se\xF1al cobrada \u20AC", fmt(e2.se\u00F1al), " \xB7 pendiente \u20AC", fmt(e2.total - Number(e2.se\u00F1al))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 flex gap-2 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => {
+    setEntregarId(e2.id);
+    setMedioPagoEntrega("Efectivo");
+  } }, /* @__PURE__ */ import_react4.default.createElement(CircleCheck, { size: 13 }), " Entregar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => abrirEdicion(e2) }, "Editar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", onClick: () => setConfirmDeleteId(e2.id) }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 13 }), " Eliminar"))))), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setVerEntregados((s22) => !s22), className: "text-[12.5px] font-medium mt-4 mb-2", style: { color: C2.accent } }, verEntregados ? "Ocultar" : "Ver", " encargos entregados (", entregados.length, ")"), verEntregados && /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, entregados.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has entregado ninguno." }) : entregados.map((e2) => {
+    const cliente = clientes.find((c22) => c22.id === e2.clienteId);
+    const total = (e2.lineas || []).reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id, style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, cliente ? cliente.nombre : "\u2014", " \xB7 ", e2.fechaEntregaReal || e2.fechaEntrega), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, "\u20AC", fmt(total))));
+  })), entregarId && (() => {
+    const e2 = encargos.find((x3) => x3.id === entregarId);
+    if (!e2) return null;
+    const total = (e2.lineas || []).reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
+    const resto = Math.max(0, total - (Number(e2.se\u00F1al) || 0));
+    return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setEntregarId(null), title: "Entregar encargo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-4" }, "Al entregar, se descuenta el stock de los productos del cat\xE1logo y se registra la venta, as\xED que entrar\xE1 en tus Resultados. Los productos escritos a mano no descuentan stock."), resto > 9e-3 && /* @__PURE__ */ import_react4.default.createElement(Field, { label: `C\xF3mo se cobra el resto (\u20AC${fmt(resto)})` }, /* @__PURE__ */ import_react4.default.createElement(
+      "select",
+      {
+        value: medioPagoEntrega,
+        onChange: (ev) => setMedioPagoEntrega(ev.target.value),
+        className: "w-full rounded-lg px-3 py-2 text-[13px]",
+        style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink }
+      },
+      /* @__PURE__ */ import_react4.default.createElement("option", null, "Efectivo"),
+      /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"),
+      /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"),
+      /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro")
+    )), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
+      entregarEncargo(e2, medioPagoEntrega);
+      setEntregarId(null);
+    } }, "Confirmar entrega"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setEntregarId(null) }, "Cancelar")));
+  })(), confirmDeleteId && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmDeleteId(null), title: "Eliminar encargo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-4" }, "Se borra el encargo. Esta acci\xF3n no se puede deshacer."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: () => {
+    deleteEncargo(confirmDeleteId);
+    setConfirmDeleteId(null);
+  } }, "S\xED, eliminar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmDeleteId(null) }, "Cancelar"))));
+}

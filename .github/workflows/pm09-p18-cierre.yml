@@ -1,0 +1,92 @@
+name: PM09 Punto 18 cierre final
+on:
+  push:
+    branches: [pm09-conciliacion-ventas-analitica]
+    paths:
+      - '.github/workflows/pm09-p18-cierre.yml'
+      - 'fuente.js'
+      - 'tests/pm09/**'
+      - 'tests/pm08/**'
+      - 'tests/pm07/**'
+      - 'tests/pm05/**'
+      - 'source-recovery/**'
+      - 'supabase/migrations/20260905105500_pm09_conciliacion_caja.sql'
+      - 'supabase/migrations/20260905115000_pm09_fecha_operacion_economica.sql'
+      - 'supabase/migrations/20260905120500_pm09_operation_id_global_hardening.sql'
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  cierre:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pm09-conciliacion-ventas-analitica
+          fetch-depth: 1
+      - name: Confirmar HEAD exacto PM09
+        run: |
+          set -euo pipefail
+          echo "PM09_HEAD=$(git rev-parse HEAD)"
+          test "$(git branch --show-current)" = "pm09-conciliacion-ventas-analitica"
+      - name: Sintaxis bundle actual
+        run: node --check fuente.js
+      - name: Regresión PM09 completa
+        run: |
+          set -euo pipefail
+          node tests/pm09/p17-robustness-contract.mjs
+          node tests/pm09/p16-isolation-context-contract.mjs
+          node tests/pm09/p15-special-economic-contract.mjs
+          node tests/pm09/p12-resultados-margin-contract.mjs
+          node tests/pm09/p11-iva-contract.mjs
+          node tests/pm09/p10-caja-contract.mjs
+          node tests/pm09/p09-historial-contract.mjs
+          node tests/pm09/la007-results-contract.mjs
+          node tests/pm09/la008-rotation-margin-contract.mjs
+      - name: Regresiones heredadas PM05 PM07 PM08
+        run: |
+          set -euo pipefail
+          node tests/pm05/frontend-contract.mjs
+          node tests/pm07/frontend-contract.mjs
+          node tests/pm08/frontend-contract.mjs
+          node tests/pm08/migration-contract.mjs
+          node tests/pm08/replay-scope-contract.mjs
+      - name: Reproducibilidad del artefacto Git exacto
+        run: |
+          set -euo pipefail
+          git show HEAD:fuente.js > /tmp/pm09-fuente-a.js
+          git show HEAD:fuente.js > /tmp/pm09-fuente-b.js
+          node --check /tmp/pm09-fuente-a.js
+          node --check /tmp/pm09-fuente-b.js
+          cmp -s /tmp/pm09-fuente-a.js /tmp/pm09-fuente-b.js
+          SHA_WORKTREE=$(sha256sum fuente.js | awk '{print $1}')
+          SHA_A=$(sha256sum /tmp/pm09-fuente-a.js | awk '{print $1}')
+          SHA_B=$(sha256sum /tmp/pm09-fuente-b.js | awk '{print $1}')
+          BYTES_WORKTREE=$(wc -c < fuente.js)
+          BYTES_A=$(wc -c < /tmp/pm09-fuente-a.js)
+          BYTES_B=$(wc -c < /tmp/pm09-fuente-b.js)
+          test "$SHA_WORKTREE" = "$SHA_A"
+          test "$SHA_A" = "$SHA_B"
+          test "$BYTES_WORKTREE" = "$BYTES_A"
+          test "$BYTES_A" = "$BYTES_B"
+          echo 'PM09_ARTIFACT_REPRODUCIBLE_FROM_GIT=1'
+          echo "PM09_BUNDLE_SHA256=$SHA_WORKTREE"
+          echo "PM09_BUNDLE_BYTES=$BYTES_WORKTREE"
+      - name: Estado de reconstrucción de fuente
+        run: |
+          set -euo pipefail
+          node --check source-recovery/fuente-recuperado.js
+          node --check source-recovery/entrada-recuperada.js
+          MARCAS=$(grep -c '^// fuente.jsx$' fuente.js || true)
+          echo "PM09_CURRENT_BUNDLE_FUENTE_MARKERS=$MARCAS"
+          if [ "$MARCAS" -eq 0 ]; then
+            echo 'PM09_SOURCE_REBUILD_LIMITATION=1'
+            echo 'El script PM01 recuperar_candidato.py no puede reconstruir el bundle PM09 actual porque ya no contiene la marca // fuente.jsx. Se valida el artefacto Git exacto, sintaxis y regresiones; no se declara rebuild fuente->bundle PM09.'
+          else
+            echo 'PM09_SOURCE_REBUILD_LIMITATION=0'
+          fi
+      - name: Bundle candidato no modificado
+        run: |
+          git diff --exit-code -- fuente.js
+          echo 'PM09_BUNDLE_CANDIDATO_INTACTO=1'

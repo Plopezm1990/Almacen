@@ -1,0 +1,40 @@
+name: PM10 P10 focus persistencia
+on:
+  push:
+    branches: [pm10-validaciones-altas-datos-legados]
+    paths:
+      - '.github/workflows/pm10-p10-focus-persistencia.yml'
+permissions:
+  contents: write
+jobs:
+  focus:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generar resumen persistencia
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          out=[]
+          def around(token, before=1200, after=4500, limit=20):
+            out.append(f'\n## {token}\n')
+            for m in list(re.finditer(re.escape(token),s,re.I))[:limit]:
+              out.append(f'\n### offset {m.start()}\n```js\n{s[max(0,m.start()-before):min(len(s),m.start()+after)]}\n```\n')
+          for t in ['async function saveKey(', 'window.storage.set =', 'setOriginal(', 'saveKey(KEYS.', 'saveKey(key', 'productos:', 'pedidos:', 'empleados:', 'encargos:']:
+            around(t)
+          # llamadas saveKey compactas
+          out.append('\n## Llamadas saveKey compactas\n')
+          for m in list(re.finditer(r'saveKey\(([^\n]{0,180})',s))[:200]:
+            out.append(f'- {m.start()}: `{m.group(0)[:220]}`\n')
+          Path('tests/pm10/P10_FOCUS_PERSISTENCIA.md').write_text(''.join(out),encoding='utf-8')
+          print('bytes',Path('tests/pm10/P10_FOCUS_PERSISTENCIA.md').stat().st_size)
+          PY
+      - name: Commit resumen
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/pm10/P10_FOCUS_PERSISTENCIA.md
+          git commit -m 'PM10: guardar foco persistencia punto 10'
+          git push

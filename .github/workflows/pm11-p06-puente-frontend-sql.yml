@@ -1,0 +1,70 @@
+name: PM11 P06 puente frontend SQL empleados
+
+on:
+  push:
+    branches: [pm11-personal-empleados]
+    paths:
+      - '.github/workflows/pm11-p06-puente-frontend-sql.yml'
+      - 'tools/corregir_pm11_p06_frontend.py'
+      - 'tools/corregir_pm11_p06_sintaxis.py'
+      - 'tests/pm11/p06-puente-frontend-sql-contract.mjs'
+      - 'tests/pm11/P06_PUENTE_FRONTEND_SQL_EMPLEADOS_EVIDENCIA.md'
+      - 'fuente.js'
+
+permissions:
+  contents: read
+
+jobs:
+  puente-frontend-sql-pm11:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar cierre histórico P06 y main intacto
+        run: |
+          set -e
+          test "$GITHUB_REF_NAME" = "pm11-personal-empleados"
+          git merge-base --is-ancestor 1e21458b48a11302c59911ef966ded0aca3eb639 HEAD
+          git merge-base --is-ancestor 358de7d8d99d0e0504da2e23996582d306562dd2 HEAD
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          echo 'PM11_P06_CIERRE_HISTORICO=PASS'
+
+      - name: Sintaxis fuente actual
+        run: node --check fuente.js
+
+      - name: Contrato P06 puente frontend SQL
+        run: node tests/pm11/p06-puente-frontend-sql-contract.mjs
+
+      - name: Regresión Personal LA-017
+        run: node tests/pm10/p07-personal-contract.mjs
+
+      - name: Regresiones PM11 P05 a P01
+        run: |
+          set -e
+          node tests/pm11/p05-rpc-ciclo-vida-contract.mjs
+          node tests/pm11/p04-empleados-rls-contract.mjs
+          node tests/pm11/p03-identidad-ciclo-vida-contract.mjs
+          node tests/pm11/p02-mapa-personal-contract.mjs
+          node tests/pm11/p01-checkpoint-contract.mjs
+
+      - name: Reproducibilidad histórica P06
+        run: |
+          set -e
+          cd source-recovery
+          npm ci
+          npm run check
+          npm run build:current
+          cd ..
+          python3 tools/corregir_pm11_p06_frontend.py source-recovery/dist/fuente.js
+          python3 tools/corregir_pm11_p06_sintaxis.py source-recovery/dist/fuente.js
+          node --check source-recovery/dist/fuente.js
+          git show 358de7d8d99d0e0504da2e23996582d306562dd2:fuente.js > /tmp/pm11-p06-fuente.js
+          cmp -s source-recovery/dist/fuente.js /tmp/pm11-p06-fuente.js
+          echo 'PM11_P06_BUILD_HISTORICO_REPRODUCIBLE=PASS'
+
+      - name: Resumen P06
+        run: |
+          echo 'PM11_P06_PUENTE_FRONTEND_SQL_EMPLEADOS=PASS'
+          echo 'PM11_SIGUIENTE=P07_MIGRACION_CONTROLADA_FICHAS_LEGACY'

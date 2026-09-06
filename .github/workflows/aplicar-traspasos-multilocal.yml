@@ -1,0 +1,43 @@
+name: Aplicar traspasos seguros entre locales
+on:
+  push:
+    branches: [la-suite-identidad]
+    paths:
+      - 'tools/corregir_traspasos_multilocal.py'
+      - '.github/workflows/aplicar-traspasos-multilocal.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: la-suite-identidad
+          fetch-depth: 0
+      - name: Aplicar transformación controlada
+        run: python3 tools/corregir_traspasos_multilocal.py
+      - name: Validar cambios
+        run: |
+          git status --short
+          CAMBIOS=$(git status --short | awk '{print $2}')
+          if [ -z "$CAMBIOS" ]; then
+            echo "Sin cambios pendientes"
+            exit 0
+          fi
+          if [ "$CAMBIOS" != "fuente.js" ]; then
+            echo "Cambio inesperado: $CAMBIOS"
+            exit 1
+          fi
+          git diff --check
+          node --check fuente.js
+          git diff --stat -- fuente.js
+      - name: Guardar cambio funcional
+        run: |
+          if git diff --quiet -- fuente.js; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fuente.js
+          git commit -m "Añadir traspasos seguros entre locales"
+          git push origin HEAD:la-suite-identidad

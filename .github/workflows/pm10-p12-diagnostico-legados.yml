@@ -1,0 +1,45 @@
+name: PM10 P12 diagnostico datos legados
+on:
+  push:
+    branches: [pm10-validaciones-altas-datos-legados]
+    paths:
+      - '.github/workflows/pm10-p12-diagnostico-legados.yml'
+permissions:
+  contents: write
+jobs:
+  diagnostico:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extraer diagnóstico y punto de integración
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          out=[]
+          def take(label,start,end=None,maxlen=50000):
+            a=s.find(start)
+            if a<0:
+              out.append(f'===== {label} NO ENCONTRADO ====='); return
+            b=s.find(end,a+len(start)) if end else -1
+            if b<0 or b-a>maxlen: b=min(len(s),a+maxlen)
+            out.append(f'===== {label} {a}:{b} =====\n'+s[a:b])
+          take('DIAGNOSTICO_SYNC','function DiagnosticoSincronizacion(', 'function ', 50000)
+          take('LOCALES','function Locales({','function ',70000)
+          for q in ['DiagnosticoSincronizacion', 'createElement(Locales', 'Locales, {', 'empresaDelLocalActivo', 'localActivoId', 'const [productos', 'const [pedidos', 'const [empleados', 'const [encargos', 'const [clientes', 'const [proveedores']:
+            hits=list(re.finditer(re.escape(q),s))
+            out.append(f'===== HITS {q} {len(hits)} =====')
+            for m in hits[-12:]:
+              out.append(s[max(0,m.start()-1800):min(len(s),m.start()+5000)])
+          Path('tests/pm10/P12_DIAGNOSTICO_INTEGRACION.txt').write_text('\n\n'.join(out),encoding='utf-8')
+          print('bytes',Path('tests/pm10/P12_DIAGNOSTICO_INTEGRACION.txt').stat().st_size)
+          PY
+      - name: Commit diagnóstico
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/pm10/P12_DIAGNOSTICO_INTEGRACION.txt
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'PM10: guardar diagnóstico datos legados punto 12'
+          git push

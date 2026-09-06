@@ -1,0 +1,44 @@
+{
+  "punto": 9,
+  "estado": "VALIDADO",
+  "rama": "pm09-conciliacion-ventas-analitica",
+  "baseEntradaWorkflow": "ebe09f49d7312a9ecd889adf272a1aca86b801d6",
+  "commitFuncional": "1f269ead83d0c132ed6bd764cacf70ce8d415574",
+  "fuenteSha256": "8e88a81e3d0b164b2d240baa21aae6098a86b5c1175e7de82b98c98aef52c7af",
+  "reproduccionQAPM09": {
+    "escenario": "venta A 2 anulada completa + venta B 2 con devolucion cliente 1 sin reembolso",
+    "historial_legacy_dev_parcial_estado": "ACTIVA",
+    "historial_legacy_dev_parcial_unidades": 2,
+    "importe_original_dev_parcial": 12,
+    "esperado_estado_dev_parcial": "DEVUELTA_PARCIAL",
+    "esperado_unidades_netas_dev_parcial": 1,
+    "esperado_importe_neto_gestion_dev_parcial": 6,
+    "reembolso_real_dev_parcial": 0,
+    "importe_original_anulada": 12,
+    "esperado_importe_neto_anulada": 0,
+    "backend_trazabilidad_anulacion": "VENTA -> REVERSO con ref_operation_id y movimiento_original_id",
+    "backend_trazabilidad_devolucion": "VENTA -> DEVOLUCION_CLIENTE con venta_operation_id/ref_operation_id y movimiento_original_id"
+  },
+  "validacionAutomatica": {
+    "workflowRunId": 33960685169,
+    "resultado": "success",
+    "contratoP09Historial": "OK",
+    "contratoLA007": "OK",
+    "contratoLA008": "OK",
+    "pm05Frontend": "OK",
+    "pm07Frontend": "OK",
+    "pm08Frontend": "OK",
+    "pm08Migration": "OK",
+    "pm08ReplayScope": "OK"
+  },
+  "limpiezaQA": {
+    "stock_operaciones_pm09p09": 0,
+    "movimientos_stock_pm09p09": 0,
+    "devoluciones_venta_pm09p09": 0,
+    "caja_operaciones_pm09p09": 0,
+    "stock_final_QA_A1_QA_PROD_A_AGUA": 23
+  },
+  "cambio": "Historial deriva estado y correcciones desde VENTA + REVERSO + DEVOLUCION_CLIENTE; conserva ticket original, muestra neto de gestion y trazabilidad, y evita ofrecer anulacion tras devoluciones.",
+  "alcance": "fuente.js en rama PM09; sin cambios de esquema ni produccion",
+  "notaCierrePM09": "El smoke visual y Deploy Preview global se mantienen para el cierre del paquete PM09; no se adelantan en este punto."
+}

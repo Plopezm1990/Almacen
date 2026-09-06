@@ -1,13 +1,19 @@
 {
-  "name": "Control de Compras y Almacén",
-  "short_name": "Almacén",
-  "description": "Gestión de pedidos a proveedores, compras, inventario y rotación",
+  "name": "L&A Suite",
+  "short_name": "L&A Suite",
+  "description": "Gestión integral para tu negocio",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#F4F5F3",
-  "theme_color": "#14201C",
+  "background_color": "#0C2714",
+  "theme_color": "#0C2714",
   "icons": [
+    {
+      "src": "la-suite-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
     {
       "src": "icon-192.png",
       "sizes": "192x192",
@@ -19,12 +25,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
-    },
-    {
-      "src": "icon-512-maskable.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
     }
   ]
 }

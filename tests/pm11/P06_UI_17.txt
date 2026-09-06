@@ -1,0 +1,64 @@
+${fmt(ajustesVentaEfectivo)} · ajustes/reembolsos caja €${fmt(netoCaja)}`),
+      h3(BloqueEntradasSalidas, { fecha, movimientosCajaDelDia, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, periodoCerrado: !!yaArqueado }),
+      yaArqueado ? h3(
+        "div",
+        { className: "p-2 rounded-lg text-[12.5px]", style: { background: C2.bg } },
+        `D\xEDa cerrado: contado \u20AC${fmt(yaArqueado.efectivoContado)} (${estadoDiferencia(Number(yaArqueado.diferencia) || 0)}).`,
+        !mostrarAnulacion && h3("div", { className: "mt-2" }, h3(Btn, { small: true, variant: "danger", disabled: anulando, onClick: () => {
+          setMostrarAnulacion(true);
+          setError("");
+        } }, "Anular cierre con motivo")),
+        mostrarAnulacion && h3(
+          "div",
+          { className: "mt-2" },
+          h3(Field, { label: "Motivo obligatorio" }, h3(Input, { value: motivoAnulacion, disabled: anulando, onChange: (e2) => setMotivoAnulacion(e2.target.value), placeholder: "Ej: faltaba registrar una retirada" })),
+          h3(
+            "div",
+            { className: "flex gap-2" },
+            h3(Btn, { small: true, variant: "danger", disabled: anulando, onClick: anular }, anulando ? "Confirmando\u2026" : "Confirmar anulaci\xF3n"),
+            h3(Btn, { small: true, variant: "ghost", disabled: anulando, onClick: () => {
+              setMostrarAnulacion(false);
+              setMotivoAnulacion("");
+            } }, "Cancelar")
+          )
+        )
+      ) : h3(
+        import_react4.default.Fragment,
+        null,
+        borradorRecuperado && h3("div", { className: "text-[11.5px] mb-2 p-2 rounded-lg", style: { background: C2.amberSoft } }, "Borrador de arqueo recuperado. El reintento conserva el mismo identificador."),
+        h3(Field, { label: "Efectivo contado en caja (\u20AC)" }, h3(Input, { type: "number", min: "0", step: "0.01", value: contado, disabled: enviando, onChange: (e2) => setContado(e2.target.value), autoFocus: true })),
+        diferencia !== null && h3("div", { className: "text-[12.5px] mb-2", style: { color: diferencia === 0 ? C2.accent : Math.abs(diferencia) < 1 ? C2.amber : C2.red } }, diferencia === 0 ? "Cuadra exacto." : diferencia > 0 ? `Sobran \u20AC${fmt(diferencia)}` : `Faltan \u20AC${fmt(Math.abs(diferencia))}`),
+        h3(Field, { label: "Notas (opcional)" }, h3(Input, { value: notas, disabled: enviando, onChange: (e2) => setNotas(e2.target.value), placeholder: "Motivo del descuadre, si lo sabes" })),
+        h3(Btn, { disabled: enviando, onClick: submit }, enviando ? "Confirmando\u2026" : "Guardar arqueo")
+      ),
+      error && h3("div", { className: "text-[12px] mt-2", style: { color: C2.red } }, error),
+      exito && h3("div", { className: "text-[12px] mt-2", style: { color: C2.accent } }, exito)
+    ),
+    h3("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Historial de arqueos"),
+    historial
+  );
+}
+var PLANTILLAS_TURNO = [
+  { id: "manana", label: "Ma\xF1ana", horaInicio: "08:00", horaFin: "14:00" },
+  { id: "tarde", label: "Tarde", horaInicio: "16:00", horaFin: "20:00" },
+  { id: "cierre", label: "Cierre", horaInicio: "14:00", horaFin: "21:00" },
+  { id: "libre", label: "Libre / descanso", horaInicio: "", horaFin: "" },
+  { id: "personalizado", label: "Personalizado", horaInicio: "", horaFin: "" }
+];
+var DIAS_SEMANA = ["Lunes", "Martes", "Mi\xE9rcoles", "Jueves", "Viernes", "S\xE1bado", "Domingo"];
+function fechasSemana(inicioIso) {
+  const out = [];
+  const d2 = new Date(inicioIso);
+  for (let i33 = 0; i33 < 7; i33++) {
+    const f22 = new Date(d2);
+    f22.setDate(d2.getDate() + i33);
+    out.push(aISO(f22));
+  }
+  return out;
+}
+function horasTurno(t22) {
+  if (!t22.horaInicio || !t22.horaFin) return 0;
+  const [h1, m1] = t22.horaInicio.split(":").map(Number);
+  const [h22, m22] = t22.horaFin.split(":").map(Number);
+  return Math.max(0, (h22 * 60 + m22 - (h1 * 60 + m1)) / 60);
+}

@@ -1,0 +1,90 @@
+} }, /* @__PURE__ */ import_react4.default.createElement(CircleCheck, { size: 13 }), " Entregar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => abrirEdicion(e2) }, "Editar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", onClick: () => setConfirmDeleteId(e2.id) }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 13 }), " Eliminar"))))), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setVerEntregados((s22) => !s22), className: "text-[12.5px] font-medium mt-4 mb-2", style: { color: C2.accent } }, verEntregados ? "Ocultar" : "Ver", " encargos entregados (", entregados.length, ")"), verEntregados && /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, entregados.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has entregado ninguno." }) : entregados.map((e2) => {
+    const cliente = clientes.find((c22) => c22.id === e2.clienteId);
+    const total = (e2.lineas || []).reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id, style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, cliente ? cliente.nombre : "\u2014", " \xB7 ", e2.fechaEntregaReal || e2.fechaEntrega), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, "\u20AC", fmt(total))));
+  })), entregarId && (() => {
+    const e2 = encargos.find((x3) => x3.id === entregarId);
+    if (!e2) return null;
+    const total = (e2.lineas || []).reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
+    const resto = Math.max(0, total - (Number(e2.se\u00F1al) || 0));
+    return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setEntregarId(null), title: "Entregar encargo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-4" }, "Al entregar, se descuenta el stock de los productos del cat\xE1logo y se registra la venta, as\xED que entrar\xE1 en tus Resultados. Los productos escritos a mano no descuentan stock."), resto > 9e-3 && /* @__PURE__ */ import_react4.default.createElement(Field, { label: `C\xF3mo se cobra el resto (\u20AC${fmt(resto)})` }, /* @__PURE__ */ import_react4.default.createElement(
+      "select",
+      {
+        value: medioPagoEntrega,
+        onChange: (ev) => setMedioPagoEntrega(ev.target.value),
+        className: "w-full rounded-lg px-3 py-2 text-[13px]",
+        style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink }
+      },
+      /* @__PURE__ */ import_react4.default.createElement("option", null, "Efectivo"),
+      /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"),
+      /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"),
+      /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro")
+    )), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
+      entregarEncargo(e2, medioPagoEntrega);
+      setEntregarId(null);
+    } }, "Confirmar entrega"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setEntregarId(null) }, "Cancelar")));
+  })(), confirmDeleteId && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmDeleteId(null), title: "Eliminar encargo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-4" }, "Se borra el encargo. Esta acci\xF3n no se puede deshacer."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: () => {
+    deleteEncargo(confirmDeleteId);
+    setConfirmDeleteId(null);
+  } }, "S\xED, eliminar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmDeleteId(null) }, "Cancelar"))));
+}
+function Clientes({ analisisClientes, clientesDormidos, ventaCruzada, addCliente, updateCliente, deleteCliente }) {
+  const blank = { nombre: "", telefono: "", email: "", notas: "" };
+  const [showForm, setShowForm] = (0, import_react4.useState)(false);
+  const [form, setForm] = (0, import_react4.useState)(blank);
+  const [editingId, setEditingId] = (0, import_react4.useState)(null);
+  const [error, setError] = (0, import_react4.useState)("");
+  const [confirmDeleteId, setConfirmDeleteId] = (0, import_react4.useState)(null);
+  function submit() {
+    if (!form.nombre.trim()) {
+      setError("Escribe el nombre del cliente.");
+      return;
+    }
+    setError("");
+    if (editingId) updateCliente(editingId, form);
+    else addCliente(form);
+    setForm(blank);
+    setEditingId(null);
+    setShowForm(false);
+  }
+  function abrirEdicion(c22) {
+    setForm({ nombre: c22.nombre || "", telefono: c22.telefono || "", email: c22.email || "", notas: c22.notas || "" });
+    setEditingId(c22.id);
+    setError("");
+    setShowForm(true);
+  }
+  function exportarDatosCliente(c22) {
+    const lineas = [
+      `DATOS GUARDADOS SOBRE: ${c22.nombre}`,
+      `Generado el ${todayISO()}`,
+      "",
+      "=== FICHA ===",
+      `Nombre: ${c22.nombre}`,
+      `Tel\xE9fono: ${c22.telefono || "\u2014"}`,
+      `Email: ${c22.email || "\u2014"}`,
+      `Notas: ${c22.notas || "\u2014"}`,
+      "",
+      "=== ACTIVIDAD ===",
+      `Total facturado: \u20AC${fmt(c22.facturado || 0)}`,
+      `Encargos entregados: ${c22.nEncargos || 0}`,
+      `\xDAltima compra: ${c22.ultima || "sin compras registradas"}`
+    ];
+    const blob = new Blob([lineas.join("\n")], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a22 = document.createElement("a");
+    a22.href = url;
+    a22.download = `datos-${c22.nombre.replace(/\s+/g, "-").toLowerCase()}.txt`;
+    document.body.appendChild(a22);
+    a22.click();
+    document.body.removeChild(a22);
+    URL.revokeObjectURL(url);
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
+    setForm(blank);
+    setEditingId(null);
+    setShowForm(true);
+  } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Nuevo cliente") }, "Clientes"), showForm && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.nombre, onChange: (e2) => setForm({ ...form, nombre: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tel\xE9fono" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.telefono, onChange: (e2) => setForm({ ...form, telefono: e2.target.value }), placeholder: "+34 600 000 000" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Correo (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "email", value: form.email, onChange: (e2) => setForm({ ...form, email: e2.target.value }) }))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Notas (gustos, alergias, empresa\u2026)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.notas, onChange: (e2) => setForm({ ...form, notas: e2.target.value }) })), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submit }, editingId ? "Guardar cambios" : "Guardar cliente"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+    setShowForm(false);
+    setForm(blank);
+    setEditingId(null);
+  } }, "Cancelar"))), clientesDormidos.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2" }, "Clientes que hace tiempo que no vuelven"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1" }, clientesDormidos.slice(0, 6).map((c22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: c22.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, c22.nombre, c22.telefono && ` \xB7 ${c22.telefono}`), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, c22.diasSinComprar, " d\xEDas")))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Te compraron antes y llevan m\xE1s de 2 meses sin encargar nada. Una llamada o un WhatsApp puede recuperarlos.")), analisisClientes.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no tienes clientes registrados." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 mb-4" }, analisisClientes.map((c22) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: c22.id }, /* @__PURE__ */ import

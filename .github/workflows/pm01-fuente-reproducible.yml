@@ -1,0 +1,72 @@
+name: PM-01 Fuente reproducible actual
+on:
+  push:
+    branches: [pm01-fuente-reproducible]
+    paths:
+      - '.github/workflows/pm01-fuente-reproducible.yml'
+      - 'source-recovery/recuperar_candidato.py'
+permissions:
+  contents: write
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pm01-fuente-reproducible
+          fetch-depth: 0
+
+      - name: Recuperar cuerpo exacto del candidato
+        run: python3 source-recovery/recuperar_candidato.py
+
+      - name: Instalación limpia y comprobación de fuente
+        working-directory: source-recovery
+        run: |
+          npm ci --no-audit --no-fund
+          npm run check
+
+      - name: Build reproducible dos veces
+        working-directory: source-recovery
+        run: |
+          rm -rf dist
+          npm run build
+          node --check dist/fuente.js
+          SHA1=$(sha256sum dist/fuente.js | awk '{print $1}')
+          BYTES1=$(wc -c < dist/fuente.js)
+          cp dist/fuente.js /tmp/pm01-build-1.js
+          rm -rf dist
+          npm run build
+          node --check dist/fuente.js
+          SHA2=$(sha256sum dist/fuente.js | awk '{print $1}')
+          BYTES2=$(wc -c < dist/fuente.js)
+          test "$SHA1" = "$SHA2"
+          test "$BYTES1" = "$BYTES2"
+          cmp -s /tmp/pm01-build-1.js dist/fuente.js
+          grep -q 'function GestionAlmacen' dist/fuente.js
+          grep -q 'function crearLogicaCaja' dist/fuente.js
+          grep -q 'SelectorLocalInformes' dist/fuente.js
+          grep -q 'ErroresSistema' dist/fuente.js
+          grep -q 'obtener_contexto_operativo' dist/fuente.js
+          {
+            echo 'PM01_BUILD_REPRODUCIBLE=1'
+            echo "BUILD_SHA256=$SHA1"
+            echo "BUILD_BYTES=$BYTES1"
+            echo "NODE=$(node --version)"
+            echo "NPM=$(npm --version)"
+          } > PM01_BUILD_EVIDENCIA.txt
+
+      - name: Verificar que el bundle candidato no se modifica
+        run: |
+          git diff --exit-code -- fuente.js
+          echo 'BUNDLE_CANDIDATO_INTACTO=1'
+
+      - name: Guardar fuente actualizada y evidencias
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add source-recovery/fuente-recuperado.js \
+                  source-recovery/PM01_EVIDENCIA.json \
+                  source-recovery/PM01_BUILD_EVIDENCIA.txt
+          git diff --cached --quiet && exit 0
+          git commit -m "PM-01: sincronizar fuente recuperada con candidato actual [skip ci]"
+          git push origin HEAD:pm01-fuente-reproducible

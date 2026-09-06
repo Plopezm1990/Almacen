@@ -1,0 +1,103 @@
+name: PM11 P10 anonimización segura empleado
+
+on:
+  push:
+    branches: [pm11-personal-empleados]
+    paths:
+      - '.github/workflows/pm11-p10-anonimizacion-segura.yml'
+      - 'supabase/migrations/20260906103000_pm11_anonimizacion_segura_empleado.sql'
+      - 'tools/corregir_pm11_p10_anonimizacion.py'
+      - 'tests/pm11/P10_ANONIMIZACION_SEGURA_EVIDENCIA.md'
+      - 'tests/pm11/p10-anonimizacion-segura-contract.mjs'
+      - 'tests/pm11/p06-puente-frontend-sql-contract.mjs'
+      - 'fuente.js'
+
+permissions:
+  contents: write
+
+jobs:
+  anonimizacion-segura-pm11:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar origen, alcance P10 y main intacto
+        run: |
+          set -e
+          test "$GITHUB_REF_NAME" = "pm11-personal-empleados"
+          git merge-base --is-ancestor 1e21458b48a11302c59911ef966ded0aca3eb639 HEAD
+          git merge-base --is-ancestor 6fa5eabb213a39cb06291d106dc616de0d2b5f12 HEAD
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          git diff --quiet 6fa5eabb213a39cb06291d106dc616de0d2b5f12 -- source-recovery
+          test "$(git diff --name-only 6fa5eabb213a39cb06291d106dc616de0d2b5f12 -- supabase/migrations)" = "supabase/migrations/20260906103000_pm11_anonimizacion_segura_empleado.sql"
+          echo 'PM11_P10_ALCANCE=PASS'
+          echo "PM11_P10_SHA=$(git rev-parse HEAD)"
+
+      - name: Aplicar frontend P10 anonimización
+        run: python3 tools/corregir_pm11_p10_anonimizacion.py fuente.js
+
+      - name: Sintaxis fuente
+        run: node --check fuente.js
+
+      - name: Contrato P10 anonimización segura
+        run: node tests/pm11/p10-anonimizacion-segura-contract.mjs
+
+      - name: Regresión P09 creación segura de cuenta
+        run: node tests/pm11/p09-creacion-cuenta-empleado-segura-contract.mjs
+
+      - name: Regresión P08 vínculo cuenta empleado
+        run: node tests/pm11/p08-vinculo-cuenta-empleado-contract.mjs
+
+      - name: Regresiones P07 y P06
+        run: |
+          set -e
+          node tests/pm11/p07-migracion-controlada-legacy-contract.mjs
+          node tests/pm11/p06-puente-frontend-sql-contract.mjs
+
+      - name: Regresión Personal LA-017
+        run: node tests/pm10/p07-personal-contract.mjs
+
+      - name: Regresiones PM11 P05 a P01
+        run: |
+          set -e
+          node tests/pm11/p05-rpc-ciclo-vida-contract.mjs
+          node tests/pm11/p04-empleados-rls-contract.mjs
+          node tests/pm11/p03-identidad-ciclo-vida-contract.mjs
+          node tests/pm11/p02-mapa-personal-contract.mjs
+          node tests/pm11/p01-checkpoint-contract.mjs
+
+      - name: Reproducibilidad fuente P10
+        run: |
+          set -e
+          cd source-recovery
+          npm ci
+          npm run check
+          npm run build:current
+          cd ..
+          python3 tools/corregir_pm11_p06_frontend.py source-recovery/dist/fuente.js
+          python3 tools/corregir_pm11_p06_sintaxis.py source-recovery/dist/fuente.js
+          python3 tools/corregir_pm11_p09_cuenta_segura.py source-recovery/dist/fuente.js
+          python3 tools/corregir_pm11_p10_anonimizacion.py source-recovery/dist/fuente.js
+          node --check source-recovery/dist/fuente.js
+          cmp -s source-recovery/dist/fuente.js fuente.js
+          echo 'PM11_P10_BUILD_REPRODUCIBLE=PASS'
+
+      - name: Commit frontend P10 si procede
+        run: |
+          set -e
+          if git diff --quiet -- fuente.js; then
+            echo 'Fuente P10 ya estaba aplicada; sin commit adicional'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add fuente.js
+          git commit -m 'PM11 P10: conectar anonimización segura en Personal'
+          git push
+
+      - name: Resumen P10
+        run: |
+          echo 'PM11_P10_ANONIMIZACION_SEGURA=PASS'
+          echo 'PM11_P10_SMOKE_PREVIEW=REQUIERE_SESION_QA_REAL'
