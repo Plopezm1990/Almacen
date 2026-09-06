@@ -13,27 +13,45 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verificar rama protegida de trabajo
         run: test "$GITHUB_REF_NAME" = "pm11-personal-empleados"
-      - name: Extraer dominio y UI de Personal en bloques
+      - name: Extraer estado y persistencia de Personal
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('fuente.js').read_text(encoding='utf-8')
-          li=s.find('function crearLogicaPersonal({')
-          lf=s.find('function crearLogicaTurnos({', li)
-          ui=s.find('function Personal({')
-          uf=s.find('function Turnos({', ui)
-          if min(li,lf,ui,uf)<0: raise SystemExit(f'Fronteras no encontradas: {li=} {lf=} {ui=} {uf=}')
-          Path('tests/pm11/P06_FRONTEND_META.txt').write_text(
-            f'FUENTE_LEN={len(s)}\nLOGICA_INI={li}\nLOGICA_FIN={lf}\nLOGICA_LEN={lf-li}\nUI_INI={ui}\nUI_FIN={uf}\nUI_LEN={uf-ui}\n',encoding='utf-8')
-          for pref,seg in [('LOGICA',s[li:lf]),('UI',s[ui:uf])]:
-            for n,a in enumerate(range(0,len(seg),10000),1):
-              Path(f'tests/pm11/P06_{pref}_{n:02d}.txt').write_text(seg[a:a+10000],encoding='utf-8')
+          tokens=[
+            'setEmpleados',
+            'crearLogicaPersonal({',
+            'Personal,',
+            'Personal({',
+            'empleados,',
+            'empleados:',
+            'documentosPersonalCaducan',
+            'localActivoId',
+            'empresaId',
+            'window.storage.get',
+            'window.storage.set',
+            'storage.get(',
+            'storage.set(',
+          ]
+          out=[f'FUENTE_LEN={len(s)}\n']
+          for token in tokens:
+            pos=[]; start=0
+            while True:
+              i=s.find(token,start)
+              if i<0: break
+              pos.append(i); start=i+max(1,len(token))
+              if len(pos)>=35: break
+            out.append(f'\n===== {token!r} HITS={len(pos)} =====\n')
+            for n,i in enumerate(pos,1):
+              a=max(0,i-1800); b=min(len(s),i+4200)
+              out.append(f'\n--- {n} @ {i} ---\n{s[a:b]}\n')
+          Path('tests/pm11/P06_ESTADO_PERSISTENCIA.txt').write_text(''.join(out),encoding='utf-8')
           PY
-      - name: Commit diagnóstico dividido
+      - name: Commit diagnóstico
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add tests/pm11/P06_FRONTEND_META.txt tests/pm11/P06_LOGICA_*.txt tests/pm11/P06_UI_*.txt
+          git add tests/pm11/P06_ESTADO_PERSISTENCIA.txt
           git diff --cached --quiet && exit 0
-          git commit -m 'PM11: guardar bloques de diagnóstico Personal'
+          git commit -m 'PM11: guardar diagnóstico de estado Personal'
           git push
