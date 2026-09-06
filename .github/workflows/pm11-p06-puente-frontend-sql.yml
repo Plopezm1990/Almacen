@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/pm11-p06-puente-frontend-sql.yml'
       - 'tools/corregir_pm11_p06_frontend.py'
+      - 'tools/corregir_pm11_p06_sintaxis.py'
       - 'tests/pm11/p06-puente-frontend-sql-contract.mjs'
       - 'tests/pm11/P06_PUENTE_FRONTEND_SQL_EMPLEADOS_EVIDENCIA.md'
       - 'fuente.js'
@@ -33,7 +34,9 @@ jobs:
           echo 'PM11_P06_ALCANCE=PASS'
 
       - name: Aplicar puente frontend SQL P06
-        run: python3 tools/corregir_pm11_p06_frontend.py
+        run: |
+          python3 tools/corregir_pm11_p06_frontend.py
+          python3 tools/corregir_pm11_p06_sintaxis.py
 
       - name: Sintaxis fuente
         run: node --check fuente.js
@@ -62,6 +65,7 @@ jobs:
           npm run build:current
           cd ..
           python3 tools/corregir_pm11_p06_frontend.py source-recovery/dist/fuente.js
+          python3 tools/corregir_pm11_p06_sintaxis.py source-recovery/dist/fuente.js
           node --check source-recovery/dist/fuente.js
           cmp -s source-recovery/dist/fuente.js fuente.js
           echo 'PM11_P06_BUILD_REPRODUCIBLE=PASS'
