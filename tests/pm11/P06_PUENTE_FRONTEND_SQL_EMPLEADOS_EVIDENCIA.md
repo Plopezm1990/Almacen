@@ -127,29 +127,44 @@ La integridad completa `auth user ↔ perfil ↔ membresía ↔ empleado` contin
 
 ## 11. Reproducibilidad
 
-P06 se aplica mediante:
+P06 se aplica de forma determinista mediante:
 
-- `tools/corregir_pm11_p06_frontend.py`.
+- `tools/corregir_pm11_p06_frontend.py`;
+- `tools/corregir_pm11_p06_sintaxis.py`, corrección mínima e idempotente del cierre del componente `Personal` detectada por el primer gate.
 
-El script es idempotente y puede recibir una ruta alternativa. Esto permite validar reproducibilidad así:
-
-1. reconstruir el `fuente.js` base mediante `source-recovery/rebuild-current.mjs`;
-2. aplicar el parche P06 al artefacto reconstruido;
-3. comparar byte a byte contra `fuente.js` versionado.
+La validación reconstruye el `fuente.js` base desde `source-recovery`, aplica ambos pasos P06 al artefacto reconstruido y lo compara byte a byte contra el `fuente.js` versionado.
 
 P06 no altera la serie congelada PM09/PM10 de `source-recovery`.
 
-## 12. Validación prevista
+## 12. Gate automático y resultado
 
-El gate P06 debe comprobar como mínimo:
+Workflow autoritativo:
 
-- sintaxis de `fuente.js`;
-- contrato P06;
-- regresión LA-017 de Personal;
-- regresiones P05/P04/P03/P02/P01;
-- build reproducible + aplicación determinista del parche P06;
-- ausencia de nuevas migraciones en P06;
-- `main` intacto.
+- `.github/workflows/pm11-p06-puente-frontend-sql.yml`.
+
+Primera ejecución:
+
+- run `34018448677`;
+- resultado: FAIL exclusivamente en `node --check fuente.js`;
+- causa: faltaba la llave final del componente `Personal` después de sustituir el modal destructivo;
+- no se hizo commit de `fuente.js` desde esa ejecución.
+
+Se añadió una corrección determinista/idempotente y se repitió todo el gate.
+
+Ejecución válida de cierre:
+
+- run `34018521174`;
+- resultado: **SUCCESS**;
+- alcance/origen/main: PASS;
+- aplicación P06: PASS;
+- sintaxis `fuente.js`: PASS;
+- contrato P06: PASS;
+- regresión Personal LA-017: PASS;
+- regresiones P05/P04/P03/P02/P01: PASS;
+- build base + parche P06 reproducible byte a byte: PASS;
+- commit funcional generado por el gate: `abd8d64c1aee6fd04aa6d360f5d6a5b0d0d2325e` (`PM11 P06: conectar Personal con empleados SQL`).
+
+Después del cierre se retiró el workflow temporal de diagnóstico `pm11-p06-focus-frontend.yml`; esa limpieza no modifica código funcional.
 
 ## 13. Alcance excluido
 
@@ -164,9 +179,11 @@ No pertenece a P06:
 - nóminas PM14;
 - despliegue o fusión a producción.
 
-## 14. Estado
+## 14. Estado final
 
-Implementación preparada para gate automático. El punto no se considera cerrado hasta que el workflow P06 aplique el parche y termine en verde.
+`main` continúa exactamente en `7f792925d6a3d27334ee0e7335ba635b4ed79b6b`. Producción no se ha tocado.
 
-**PM11_P06_ESTADO=CANDIDATO**  
-**SIGUIENTE_TRAS_PASS=PM11_P07_MIGRACION_CONTROLADA_FICHAS_LEGACY**
+P06 queda cerrado con puente frontend SQL, baja lógica y reactivación funcionalmente integradas y protegidas por regresiones.
+
+**PM11_P06_PUENTE_FRONTEND_SQL_EMPLEADOS=PASS**  
+**SIGUIENTE=PM11_P07_MIGRACION_CONTROLADA_FICHAS_LEGACY**
