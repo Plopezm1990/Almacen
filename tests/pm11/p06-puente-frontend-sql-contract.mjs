@@ -56,8 +56,8 @@ assert.ok(personalIni >= 0 && personalFin > personalIni, 'UI Personal disponible
 const ui = src.slice(personalIni, personalFin);
 assert.match(ui, /reactivarEmpleado/);
 assert.match(ui, /Dar de baja empleado/);
-assert.match(ui, />Dar de baja</);
-assert.match(ui, />Reactivar</);
+assert.ok(ui.includes('}, "Dar de baja")'), 'acción Dar de baja visible');
+assert.ok(ui.includes('}, "Reactivar")'), 'acción Reactivar visible');
 assert.doesNotMatch(ui, /Eliminar del todo/);
 assert.doesNotMatch(ui, /Se borra la ficha completa/);
 
