@@ -1,0 +1,107 @@
+puntoForm.tipo === "recepcion") && /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Temperatura m\xEDnima (\xB0C)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.1", value: puntoForm.tempMin, onChange: (e2) => setPuntoForm({ ...puntoForm, tempMin: e2.target.value }), placeholder: "0" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Temperatura m\xE1xima (\xB0C)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.1", value: puntoForm.tempMax, onChange: (e2) => setPuntoForm({ ...puntoForm, tempMax: e2.target.value }), placeholder: "4" }))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Frecuencia" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: puntoForm.frecuencia, onChange: (e2) => setPuntoForm({ ...puntoForm, frecuencia: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", null, "Diaria"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Dos veces al d\xEDa"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Semanal"), /* @__PURE__ */ import_react4.default.createElement("option", null, "En cada recepci\xF3n"))), puntoError && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, puntoError), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitPunto }, "Guardar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowPunto(false) }, "Cancelar"))), registroPara && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setRegistroPara(null), title: registroPara.nombre }, registroPara.tipo === "temperatura" || registroPara.tipo === "recepcion" ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Temperatura medida (\xB0C)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.1", value: registroForm.valor, onChange: (e2) => setRegistroForm({ ...registroForm, valor: e2.target.value }), autoFocus: true })), (() => {
+    const ev = evaluarConformidad(registroPara, registroForm.valor);
+    if (ev === null) return null;
+    return /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", style: { color: ev ? C2.accent : C2.red } }, ev ? "Dentro del rango correcto." : `Fuera del rango (${registroPara.tempMin} a ${registroPara.tempMax} \xB0C). Se registrar\xE1 como desviaci\xF3n: anota abajo qu\xE9 medida correctora has tomado.`);
+  })()) : /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Resultado" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: registroForm.conforme ? "si" : "no", onChange: (e2) => setRegistroForm({ ...registroForm, conforme: e2.target.value === "si" }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "si" }, "Conforme \u2014 realizado correctamente"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "no" }, "No conforme \u2014 hubo un problema"))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Observaciones / medida correctora" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: registroForm.observaciones, onChange: (e2) => setRegistroForm({ ...registroForm, observaciones: e2.target.value }), placeholder: "Opcional, salvo si hay desviaci\xF3n" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Responsable" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: registroForm.responsable, onChange: (e2) => setRegistroForm({ ...registroForm, responsable: e2.target.value }), placeholder: "Qui\xE9n lo comprueba" })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitRegistro }, "Guardar registro"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setRegistroPara(null) }, "Cancelar"))));
+}
+function lineaEncargo() {
+  return { productoId: "", descripcion: "", cantidad: 1, precioUnitario: "" };
+}
+function Encargos({ encargosPendientes, encargos, clientes, productos, addEncargo, updateEncargo, deleteEncargo, entregarEncargo, addCliente }) {
+  const submitBloqueadoEncargoPM10 = import_react4.default.useRef(false);
+  const [showForm, setShowForm] = (0, import_react4.useState)(false);
+  const [editingId, setEditingId] = (0, import_react4.useState)(null);
+  const [form, setForm] = (0, import_react4.useState)(null);
+  const [error, setError] = (0, import_react4.useState)("");
+  const [confirmDeleteId, setConfirmDeleteId] = (0, import_react4.useState)(null);
+  const [entregarId, setEntregarId] = (0, import_react4.useState)(null);
+  const [medioPagoEntrega, setMedioPagoEntrega] = (0, import_react4.useState)("Efectivo");
+  const [verEntregados, setVerEntregados] = (0, import_react4.useState)(false);
+  const [clienteNuevo, setClienteNuevo] = (0, import_react4.useState)("");
+  const vendibles = productos.filter((p22) => p22.tipo === "elaborado" || Number(p22.precioVenta) > 0);
+  function nuevo() {
+    setForm({
+      clienteId: clientes[0]?.id || "",
+      numero: "",
+      fechaEntrega: todayISO(),
+      horaEntrega: "",
+      notas: "",
+      se\u00F1al: "",
+      se\u00F1alMedioPago: "Efectivo",
+      lineas: [lineaEncargo()]
+    });
+    setEditingId(null);
+    setError("");
+    setShowForm(true);
+  }
+  function abrirEdicion(e2) {
+    setForm({
+      clienteId: e2.clienteId || "",
+      numero: e2.numero || "",
+      fechaEntrega: e2.fechaEntrega || todayISO(),
+      horaEntrega: e2.horaEntrega || "",
+      notas: e2.notas || "",
+      se\u00F1al: e2.se\u00F1al ?? "",
+      se\u00F1alMedioPago: e2.se\u00F1alMedioPago || "Efectivo",
+      lineas: (e2.lineas || []).map((l22) => ({ ...l22 }))
+    });
+    setEditingId(e2.id);
+    setError("");
+    setShowForm(true);
+  }
+  function setLinea(idx, campo, valor) {
+    setForm((f22) => ({
+      ...f22,
+      lineas: f22.lineas.map((l22, i33) => {
+        if (i33 !== idx) return l22;
+        if (campo === "productoId") {
+          const p22 = productos.find((x3) => x3.id === valor);
+          return { ...l22, productoId: valor, descripcion: p22 ? p22.nombre : l22.descripcion, precioUnitario: p22 ? precioNeto(p22).toFixed(2) : l22.precioUnitario };
+        }
+        return { ...l22, [campo]: valor };
+      })
+    }));
+  }
+  const addLinea = () => setForm((f22) => ({ ...f22, lineas: [...f22.lineas, lineaEncargo()] }));
+  const quitarLinea = (idx) => setForm((f22) => ({ ...f22, lineas: f22.lineas.filter((_22, i33) => i33 !== idx) }));
+  const totalForm = !form ? 0 : form.lineas.reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
+  function submit() {
+    if (submitBloqueadoEncargoPM10.current) return;
+    submitBloqueadoEncargoPM10.current = true;
+    setTimeout(() => { submitBloqueadoEncargoPM10.current = false; }, 750);
+    if (!form.clienteId) {
+      setError("Selecciona o crea un cliente.");
+      return;
+    }
+    setError("");
+    const datos = { ...form, lineas: form.lineas.map((l22) => ({ ...l22 })) };
+    const resultado = editingId ? updateEncargo(editingId, datos) : addEncargo(datos);
+    if (!resultado || resultado.ok === false) {
+      setError(resultado?.error || "No se pudo guardar el encargo.");
+      return;
+    }
+    setShowForm(false);
+    setForm(null);
+    setEditingId(null);
+  }
+  function crearClienteRapido() {
+    if (!clienteNuevo.trim()) return;
+    const c22 = addCliente({ nombre: clienteNuevo.trim() });
+    setForm((f22) => ({ ...f22, clienteId: c22.id }));
+    setClienteNuevo("");
+  }
+  const entregados = encargos.filter((e2) => e2.estado === "Entregado");
+  function colorDias(d2) {
+    if (d2 === null) return C2.inkSoft;
+    if (d2 < 0) return C2.red;
+    if (d2 <= 2) return C2.amber;
+    return C2.ink;
+  }
+  function textoDias(d2) {
+    if (d2 === null) return "Sin fecha";
+    if (d2 < 0) return `Se pas\xF3 hace ${Math.abs(d2)} d`;
+    if (d2 === 0) return "\xA1Hoy!";
+    if (d2 === 1) return "Ma\xF1ana";
+    return `En ${d2} d\xEDas`;
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: nuevo }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Nuevo encargo") }, "Encargos"), showForm && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3" }, editingId ? "Editando encargo" : "Nuevo encargo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Cliente" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.clienteId, onChange: (e2) => setForm({ ...form, clienteId: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Selecciona\u2026"), clientes.map((c22) => /* @__

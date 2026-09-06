@@ -1,0 +1,96 @@
+function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId, locales = [], empresaId = null }) {
+  const empleadoEsDelLocalActivoPersonal = (e2) => !!e2 && (!localActivoId || e2.localId === localActivoId);
+  function addEmpleado(data) {
+    const validacion = validarEmpleadoPM10(data, { localActivoId, locales, empresaId });
+    if (!validacion.ok) return validacion;
+    const nuevo = { id: uid(), activo: true, documentos: [], ...validacion.datos, localId: localActivoId };
+    setEmpleados((s22) => [...s22, nuevo]);
+    return nuevo;
+  }
+  async function crearCuentaEmpleado(empleadoId, { nombre, email, password, rol }) {
+    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return { ok: false, error: "El empleado no pertenece al local activo." };
+    try {
+      const supabase = await window.getSupabaseClient();
+      const { data: sesion } = await supabase.auth.getSession();
+      const token = sesion?.session?.access_token;
+      if (!token) return { ok: false, error: "No hay sesi\xF3n activa \u2014 vuelve a iniciar sesi\xF3n." };
+      const resp = await fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/crear-cuenta-empleado", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ empleadoId, nombre, email, password, rol })
+      });
+      const r2 = await resp.json();
+      if (!r2.ok) return r2;
+      setEmpleados((s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, tieneCuenta: true, rolCuenta: rol, emailCuenta: email } : e2));
+      registrarAuditoria("Crear cuenta de empleado", `${nombre} \xB7 ${rol} \xB7 ${email}`);
+      return { ok: true };
+    } catch (e2) {
+      return { ok: false, error: "No se ha podido conectar: " + (e2?.message || "error de red") };
+    }
+  }
+  function updateEmpleado(id, data) {
+    const actual = empleados.find((e2) => e2.id === id);
+    if (!empleadoEsDelLocalActivoPersonal(actual) || !localActivoId) return errorValidacionPM10("contexto_no_autorizado", "empleadoId", "El empleado no pertenece al local activo.");
+    const validacion = validarEmpleadoPM10({ ...actual, ...data, localId: actual.localId || localActivoId }, { localActivoId, locales, empresaId });
+    if (!validacion.ok) return validacion;
+    setEmpleados((s22) => s22.map((e2) => e2.id === id ? { ...e2, ...validacion.datos, localId: e2.localId || localActivoId } : e2));
+    return true;
+  }
+  function deleteEmpleado(id) {
+    const e2 = empleados.find((x3) => x3.id === id);
+    if (!empleadoEsDelLocalActivoPersonal(e2)) return false;
+    registrarAuditoria("Eliminar empleado", e2.nombre);
+    setEmpleados((s22) => s22.filter((e22) => e22.id !== id));
+    if (setNominas) setNominas((s22) => s22.filter((n2) => n2.empleadoId !== id));
+    return true;
+  }
+  function anonimizarEmpleado(id) {
+    const e2 = empleados.find((x3) => x3.id === id);
+    if (!empleadoEsDelLocalActivoPersonal(e2)) return false;
+    registrarAuditoria("Anonimizar empleado", e2.nombre);
+    setEmpleados(
+      (s22) => s22.map(
+        (emp) => emp.id === id ? {
+          ...emp,
+          nombre: "Empleado anonimizado",
+          dni: "",
+          pin: "",
+          documentos: [],
+          ausencias: [],
+          anonimizado: true,
+          activo: false
+        } : emp
+      )
+    );
+  }
+  function registrarAusencia(empleadoId, ausencia) {
+    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
+    setEmpleados(
+      (s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, ausencias: [...e2.ausencias || [], { id: uid(), ...ausencia }] } : e2)
+    );
+  }
+  function eliminarAusencia(empleadoId, ausenciaId) {
+    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
+    setEmpleados(
+      (s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, ausencias: (e2.ausencias || []).filter((a22) => a22.id !== ausenciaId) } : e2)
+    );
+  }
+  function registrarEpi(empleadoId, epi) {
+    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
+    setEmpleados(
+      (s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, epis: [...e2.epis || [], { id: uid(), fecha: todayISO(), ...epi }] } : e2)
+    );
+  }
+  function eliminarEpi(empleadoId, epiId) {
+    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
+    setEmpleados(
+      (s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, epis: (e2.epis || []).filter((x3) => x3.id !== epiId) } : e2)
+    );
+  }
+  return { addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado };
+}

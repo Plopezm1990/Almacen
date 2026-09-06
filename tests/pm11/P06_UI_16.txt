@@ -1,0 +1,177 @@
+tino.Efectivo += signo * (Number(m22.detallePago.efectivo) || 0);
+      destino.Tarjeta += signo * (Number(m22.detallePago.tarjeta) || 0);
+      return;
+    }
+    if (medio === "EFECTIVO") destino.Efectivo += signo * bruto;
+    else if (medio === "TARJETA") destino.Tarjeta += signo * bruto;
+    else if (medio === "TRANSFERENCIA") destino.Transferencia += signo * bruto;
+    else destino.Otro += signo * bruto;
+  };
+  (movs || []).forEach((m22) => {
+    if (!m22 || m22.fecha !== fecha || m22.encargoId) return;
+    if (esVenta(m22)) {
+      sumar(ventas, m22, 1);
+      ventasIncluidas++;
+    } else if (esReversoVentaCajaPM09(m22)) {
+      // Se guarda ya con signo negativo para que el consumidor solo tenga que sumar.
+      sumar(reversos, m22, -1);
+      reversosIncluidos++;
+    }
+  });
+  const neto = cero();
+  Object.keys(neto).forEach((k) => neto[k] = redondearDineroPM08((ventas[k] || 0) + (reversos[k] || 0)));
+  Object.keys(ventas).forEach((k) => ventas[k] = redondearDineroPM08(ventas[k] || 0));
+  Object.keys(reversos).forEach((k) => reversos[k] = redondearDineroPM08(reversos[k] || 0));
+  return { ventas, reversos, neto, ventasIncluidas, reversosIncluidos };
+}
+function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja }) {
+  const h3 = import_react4.default.createElement;
+  const [fecha, setFecha] = (0, import_react4.useState)(todayISO());
+  const [contado, setContado] = (0, import_react4.useState)("");
+  const [notas, setNotas] = (0, import_react4.useState)("");
+  const [error, setError] = (0, import_react4.useState)("");
+  const [exito, setExito] = (0, import_react4.useState)("");
+  const [enviando, setEnviando] = (0, import_react4.useState)(false);
+  const [borradorRecuperado, setBorradorRecuperado] = (0, import_react4.useState)(false);
+  const [motivoAnulacion, setMotivoAnulacion] = (0, import_react4.useState)("");
+  const [mostrarAnulacion, setMostrarAnulacion] = (0, import_react4.useState)(false);
+  const [anulando, setAnulando] = (0, import_react4.useState)(false);
+  const resumenVentasCaja = resumenMediosVentaCajaPM09(movimientos, fecha);
+  const porMedioOtros = { Efectivo: 0, Tarjeta: 0, Transferencia: 0, Otro: 0 };
+  encargos.forEach((e2) => {
+    (e2.cobros || []).forEach((c22) => {
+      if (c22.fecha !== fecha) return;
+      const medioRaw = String(c22.medioPago || "Efectivo").trim().toUpperCase();
+      const claveMedio = medioRaw === "EFECTIVO" ? "Efectivo" : medioRaw === "TARJETA" ? "Tarjeta" : medioRaw === "TRANSFERENCIA" ? "Transferencia" : "Otro";
+      porMedioOtros[claveMedio] = (porMedioOtros[claveMedio] || 0) + (Number(c22.importe) || 0);
+    });
+  });
+  const porMedio = { Efectivo: 0, Tarjeta: 0, Transferencia: 0, Otro: 0 };
+  Object.keys(porMedio).forEach((k) => porMedio[k] = redondearDineroPM08((resumenVentasCaja.neto[k] || 0) + (porMedioOtros[k] || 0)));
+  const movimientosCajaDelDia = movimientosCaja.filter((m22) => m22.fecha === fecha);
+  const netoCaja = movimientosCajaDelDia.reduce((acc, m22) => {
+    const efecto = Number(m22.efectoEfectivo);
+    if (Number.isFinite(efecto)) return acc + efecto;
+    return acc + (String(m22.tipo).toUpperCase() === "ENTRADA" ? Number(m22.importe) || 0 : -(Number(m22.importe) || 0));
+  }, 0);
+  const efectivoOtros = redondearDineroPM08(porMedioOtros.Efectivo || 0);
+  // Base no negativa: ventas brutas en efectivo + fuentes externas declaradas.
+  // Los REVERSO se muestran/aplican aparte, igual que hará el servidor PM09.
+  const efectivoBase = redondearDineroPM08((resumenVentasCaja.ventas.Efectivo || 0) + efectivoOtros);
+  const ajustesVentaEfectivo = redondearDineroPM08(resumenVentasCaja.reversos.Efectivo || 0);
+  const efectivoEsperado = redondearDineroPM08(efectivoBase + ajustesVentaEfectivo + netoCaja);
+  const contadoNumero = contado === "" ? NaN : redondearDineroPM08(contado);
+  const diferencia = Number.isFinite(contadoNumero) ? redondearDineroPM08(contadoNumero - efectivoEsperado) : null;
+  const yaArqueado = arqueos.find((a22) => a22.fecha === fecha && a22.estado !== "ANULADO");
+  (0, import_react4.useEffect)(() => {
+    setError("");
+    setExito("");
+    setMostrarAnulacion(false);
+    setMotivoAnulacion("");
+    const pendiente = typeof leerBorradorArqueo === "function" ? leerBorradorArqueo(fecha) : null;
+    if (!pendiente) {
+      setBorradorRecuperado(false);
+      return;
+    }
+    setContado(String(pendiente.efectivoContado ?? ""));
+    setNotas(pendiente.notas || "");
+    setBorradorRecuperado(true);
+  }, [fecha]);
+  async function submit() {
+    if (enviando || yaArqueado) return;
+    if (contado === "" || !Number.isFinite(contadoNumero) || contadoNumero < 0) {
+      setError("Escribe un efectivo contado igual o mayor que cero.");
+      return;
+    }
+    setError("");
+    setExito("");
+    setEnviando(true);
+    try {
+      const r2 = await addArqueo({
+        fecha,
+        efectivoBase,
+        efectivoContado: contadoNumero,
+        notas,
+        ajustesVentaEfectivo,
+        snapshot: {
+          porMedio,
+          ventasIncluidas: resumenVentasCaja.ventasIncluidas,
+          reversosVentaIncluidos: resumenVentasCaja.reversosIncluidos,
+          encargosIncluidos: encargos.filter((e2) => (e2.cobros || []).some((c22) => c22.fecha === fecha)).length,
+          pm09Caja: {
+            version: 1,
+            efectivoVentasCliente: redondearDineroPM08(resumenVentasCaja.ventas.Efectivo || 0),
+            efectivoReversosCliente: ajustesVentaEfectivo,
+            efectivoOtros,
+            porMedioVentasNeto: resumenVentasCaja.neto
+          }
+        }
+      });
+      if (!r2?.ok) {
+        setError(r2?.error || "No se ha podido guardar el arqueo.");
+        setBorradorRecuperado(!!r2?.pendiente);
+        return;
+      }
+      setExito(`Arqueo confirmado${r2.replayed ? " sin duplicar" : ""}: esperado \u20AC${fmt(r2.arqueo.efectivoEsperado)}, contado \u20AC${fmt(r2.arqueo.efectivoContado)}.`);
+      setContado("");
+      setNotas("");
+      setBorradorRecuperado(false);
+    } finally {
+      setEnviando(false);
+    }
+  }
+  async function anular() {
+    if (!yaArqueado || anulando) return;
+    setError("");
+    setExito("");
+    setAnulando(true);
+    try {
+      const r2 = await deleteArqueo(yaArqueado.operationId || yaArqueado.id, motivoAnulacion);
+      if (!r2?.ok) {
+        setError(r2?.error || "No se ha podido anular el arqueo.");
+        return;
+      }
+      setExito(`Arqueo anulado${r2.replayed ? " sin duplicar" : ""}. El cierre original se conserva en el historial.`);
+      setMostrarAnulacion(false);
+      setMotivoAnulacion("");
+    } finally {
+      setAnulando(false);
+    }
+  }
+  const estadoDiferencia = (valor) => valor === 0 ? "Cuadra" : valor > 0 ? `+\u20AC${fmt(valor)}` : `\u2212\u20AC${fmt(Math.abs(valor))}`;
+  const historial = arqueos.length === 0 ? h3(Empty, { text: "Todav\xEDa no has hecho ning\xFAn arqueo." }) : h3("div", { className: "space-y-1.5" }, arqueos.slice(0, 30).map((a22) => {
+    const anulada = a22.estado === "ANULADO";
+    const tieneAnulacionPosterior = movimientos.some((m22) => m22.origen === "anularVenta" && (() => {
+      const ventaOriginal = movimientos.find((v22) => (v22.ventaId === m22.documentoOrigenId || v22.operationId === m22.documentoOrigenId) && esVenta(v22) && v22.id !== m22.id);
+      return ventaOriginal && ventaOriginal.fecha === a22.fecha;
+    })());
+    return h3(
+      Card,
+      { key: a22.operationId || a22.id },
+      h3(
+        "div",
+        { className: "flex items-center justify-between text-[12.5px]" },
+        h3("span", null, a22.fecha, " \xB7 ", h3(Pill2, { color: anulada ? C2.inkSoft : C2.accent }, anulada ? "Anulado" : "Activo")),
+        h3("span", { className: "mono font-semibold", style: { color: anulada ? C2.inkSoft : a22.diferencia === 0 ? C2.accent : Math.abs(a22.diferencia) < 1 ? C2.amber : C2.red } }, estadoDiferencia(Number(a22.diferencia) || 0))
+      ),
+      h3("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, `Base \u20AC${fmt(a22.efectivoBase)} \xB7 esperado \u20AC${fmt(a22.efectivoEsperado)} \xB7 contado \u20AC${fmt(a22.efectivoContado)}`),
+      anulada && a22.anuladoMotivo && h3("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Motivo de anulaci\xF3n: ", a22.anuladoMotivo),
+      !anulada && tieneAnulacionPosterior && h3("div", { className: "text-[11px] mt-1", style: { color: C2.red } }, "\u26A0 Se anul\xF3 una venta de este d\xEDa despu\xE9s de cerrar; revisa y, si procede, anula este arqueo de forma trazable.")
+    );
+  }));
+  return h3(
+    "div",
+    null,
+    h3(SectionTitle, null, "Arqueo de caja"),
+    h3(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, h3("div", { className: "text-[12.5px]" }, "El cierre es diario y pertenece a un solo local. El servidor calcula el efectivo esperado con la base declarada y el libro de caja; el contado admite 0 \u20AC y nunca se borra f\xEDsicamente.")),
+    h3(
+      Card,
+      { className: "mb-4" },
+      h3(Field, { label: "Fecha" }, h3(Input, { type: "date", value: fecha, disabled: enviando || anulando, onChange: (e2) => setFecha(e2.target.value) })),
+      h3(
+        "div",
+        { className: "grid grid-cols-2 gap-3 my-3" },
+        h3("div", null, h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Efectivo esperado"), h3("div", { className: "text-xl font-semibold mono" }, "\u20AC", fmt(efectivoEsperado))),
+        h3("div", null, h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Otras ventas"), h3("div", { className: "text-xl font-semibold mono", style: { color: C2.inkSoft } }, "\u20AC", fmt((porMedio.Tarjeta || 0) + (porMedio.Transferencia || 0) + (porMedio.Otro || 0))))
+      ),
+      h3("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, `Base efectivo €${fmt(efectivoBase)} · anulaciones venta €

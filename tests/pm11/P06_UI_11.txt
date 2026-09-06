@@ -1,0 +1,70 @@
+_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold" }, c22.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, [c22.telefono, c22.email].filter(Boolean).join(" \xB7 ")), c22.notas && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, c22.notas)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold" }, "\u20AC", fmt(c22.facturado)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, c22.nEncargos, " encargo(s)"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, c22.ultima ? `\xDAltima compra: ${c22.ultima}` : "Sin compras registradas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, c22.telefono && /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { small: true, href: `https://wa.me/${c22.telefono.replace(/[^0-9]/g, "")}` }, /* @__PURE__ */ import_react4.default.createElement(MessageCircle, { size: 13 }), " WhatsApp"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => exportarDatosCliente(c22) }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 13 })), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => abrirEdicion(c22) }, "Editar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", onClick: () => setConfirmDeleteId(c22.id) }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 13 }))))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Productos que se piden juntos"), ventaCruzada.base < 3 ? /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "Con ", ventaCruzada.base, " encargo(s) entregado(s) todav\xEDa no se puede sacar ninguna conclusi\xF3n fiable. A partir de 3 empezar\xE1s a ver qu\xE9 se pide junto; con 20 o 30 el dato ya sirve para decidir qu\xE9 poner cerca en el mostrador.")) : ventaCruzada.filas.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no hay dos productos distintos en un mismo encargo." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, ventaCruzada.filas.map((f22, i33) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: i33 }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, f22.a.nombre, " ", /* @__PURE__ */ import_react4.default.createElement("span", { style: { color: C2.inkSoft } }, "+"), " ", f22.b.nombre), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold" }, f22.veces, "\xD7")))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, "Basado en ", ventaCruzada.base, " encargos entregados. Cuantos m\xE1s acumules, m\xE1s fiable ser\xE1.")), confirmDeleteId && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmDeleteId(null), title: "Eliminar cliente" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-4" }, "Se borra la ficha del cliente. Los encargos que ya le hiciste se conservan, pero quedar\xE1n sin nombre asociado."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: () => {
+    deleteCliente(confirmDeleteId);
+    setConfirmDeleteId(null);
+  } }, "S\xED, eliminar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmDeleteId(null) }, "Cancelar"))));
+}
+function rangoTrimestre(anio, trimestre) {
+  const mesIni = (trimestre - 1) * 3;
+  const desde = aISO(new Date(anio, mesIni, 1));
+  const hasta = aISO(new Date(anio, mesIni + 3, 0));
+  return { desde, hasta };
+}
+function Facturas({ albaranes, facturasDirectas, pagosFacturas = [], proveedorPorId, irAAlbaran, irAFacturaDirecta }) {
+  const [mes, setMes] = (0, import_react4.useState)(aISO(/* @__PURE__ */ new Date()).slice(0, 7));
+  const todas = (0, import_react4.useMemo)(() => {
+    const deMercancia = albaranes.filter((a22) => a22.estado === "confirmado" && a22.esFactura !== false).map((a22) => {
+      const totales = calcularTotalesFacturaAlbaran(a22);
+      const saldo = calcularSaldoFacturaPM06(pagosFacturas, a22.id, "albaran", totales.total, a22.empresaId, a22.localId, a22.pagada);
+      return {
+        id: "alb-" + a22.id,
+        idReal: a22.id,
+        tipoOrigen: "albaran",
+        origen: "Mercanc\xEDa",
+        fecha: a22.fechaFactura || a22.fecha,
+        proveedorNombre: a22.proveedorSnapshot?.nombre || proveedorPorId(a22.proveedorId)?.nombre || "Sin proveedor",
+        numero: a22.numeroFactura || a22.numero || "s/n",
+        categoria: null,
+        base: totales.base,
+        iva: totales.iva,
+        total: totales.total,
+        pagada: saldo.pagada
+      };
+    });
+    const directas = (facturasDirectas || []).filter((f22) => f22.estado !== "ANULADA").map((f22) => {
+      const saldo = calcularSaldoFacturaPM06(pagosFacturas, f22.id, "directa", f22.importeTotal, f22.empresaId, f22.localId, f22.pagada);
+      return {
+        id: "fd-" + f22.id,
+        idReal: f22.id,
+        tipoOrigen: "directa",
+        origen: "Directa",
+        fecha: f22.fecha,
+        proveedorNombre: f22.proveedorSnapshot?.nombre || (f22.proveedorId ? proveedorPorId(f22.proveedorId)?.nombre || "Sin proveedor" : f22.concepto || "Sin proveedor"),
+        numero: f22.numeroFactura || f22.concepto || "s/n",
+        categoria: f22.categoria || null,
+        base: Number(f22.importeBase) || 0,
+        iva: Number(f22.importeIva) || 0,
+        total: Number(f22.importeTotal) || 0,
+        pagada: saldo.pagada
+      };
+    });
+    return [...deMercancia, ...directas];
+  }, [albaranes, facturasDirectas, pagosFacturas, proveedorPorId]);
+  const delMes = (0, import_react4.useMemo)(
+    () => todas.filter((f22) => (f22.fecha || "").startsWith(mes)).sort((a22, b2) => (b2.fecha || "").localeCompare(a22.fecha || "")),
+    [todas, mes]
+  );
+  const totalMes = delMes.reduce(
+    (acc, f22) => ({ base: acc.base + f22.base, iva: acc.iva + f22.iva, total: acc.total + f22.total }),
+    { base: 0, iva: 0, total: 0 }
+  );
+  const porProveedor = (0, import_react4.useMemo)(() => {
+    const mapa = {};
+    delMes.forEach((f22) => {
+      const clave = f22.proveedorNombre;
+      if (!mapa[clave]) mapa[clave] = { proveedor: clave, facturas: [], total: 0 };
+      mapa[clave].facturas.push(f22);
+      mapa[clave].total += f22.total;
+    });
+    return Object.values(mapa).sort((a22, b2) => b2.total - a22.total);
+  }, [delMes]);
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Facturas"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Mes" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "month", value: mes, onChange: (e2) => setMes(e2.target.value) }))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.chrome, color: "#fff" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] tracking-wide uppercase", style: { color: "#9CB6A9" } }, "Total del mes"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-3 gap-2 mt-2" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: "#9CB6A9" } }, "Base"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono text-[16px] font-semibold" }, "\u20AC", fmt(totalMes.base))), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: "#9CB6A9" } }, "IVA"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono text-[16px] font-semibold" }, "\u20AC", fmt(totalMes.iva))), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: "#9CB6A9" } }, "Total"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono text-[18px] font-bold" }, "\u20AC", fmt(totalMes.total)))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: "#9CB6A9" } }, delMes.length, " factura(s) este mes")), delMes.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay facturas en este mes." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-3" }, porProveedor.map((grupo) => /* @__PURE__ */ import_react4.default.create

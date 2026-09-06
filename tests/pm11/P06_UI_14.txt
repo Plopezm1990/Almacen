@@ -1,0 +1,177 @@
+erBorradorDevolucion }) {
+  const h3 = import_react4.default.createElement;
+  const [vista, setVista] = import_react4.default.useState("cliente");
+  const [productoId, setProductoId] = import_react4.default.useState("");
+  const [ventaClave, setVentaClave] = import_react4.default.useState("");
+  const [cantidad, setCantidad] = import_react4.default.useState("");
+  const [motivo, setMotivo] = import_react4.default.useState("");
+  const [reembolso, setReembolso] = import_react4.default.useState("");
+  const [medioReembolso, setMedioReembolso] = import_react4.default.useState("SIN_REEMBOLSO");
+  const [proveedorId, setProveedorId] = import_react4.default.useState("");
+  const [error, setError] = import_react4.default.useState("");
+  const [exito, setExito] = import_react4.default.useState("");
+  const [enviando, setEnviando] = import_react4.default.useState(false);
+  const [borradorRecuperado, setBorradorRecuperado] = import_react4.default.useState(false);
+  const lineasVenta = (0, import_react4.useMemo)(() => {
+    const ventasAnuladas = new Set(movimientos.filter((m22) => m22.tipo === "REVERSO").map((m22) => m22.anulaVentaId || m22.documentoOrigenId).filter(Boolean));
+    const porClave = /* @__PURE__ */ new Map();
+    movimientos.filter((m22) => esVenta(m22)).forEach((m22) => {
+      const ventaId = m22.operationId || m22.ventaId || m22.id;
+      if (!ventaId || ventasAnuladas.has(ventaId)) return;
+      const clave = encodeURIComponent(JSON.stringify([ventaId, m22.productoId]));
+      if (porClave.has(clave)) return;
+      const original = Math.abs(Number(m22.cantidadFisica ?? m22.cantidad) || 0);
+      const yaDevuelta = devoluciones.filter((d2) => d2.tipo === "cliente" && d2.ventaId === ventaId && d2.productoId === m22.productoId).reduce((acc, d2) => acc + (Number(d2.cantidad) || 0), 0);
+      const pendiente = Math.max(0, original - yaDevuelta);
+      if (pendiente <= 1e-6) return;
+      const producto = productos.find((p22) => p22.id === m22.productoId);
+      porClave.set(clave, { clave, ventaId, productoId: m22.productoId, productoNombre: producto?.nombre || m22.productoId, fecha: m22.fecha || "", pendiente });
+    });
+    return [...porClave.values()].sort((a22, b2) => String(b2.fecha).localeCompare(String(a22.fecha)));
+  }, [movimientos, devoluciones, productos]);
+  const lineaSeleccionada = lineasVenta.find((l22) => l22.clave === ventaClave) || null;
+  function limpiar() {
+    setProductoId("");
+    setVentaClave("");
+    setCantidad("");
+    setMotivo("");
+    setReembolso("");
+    setMedioReembolso("SIN_REEMBOLSO");
+    setProveedorId("");
+    setBorradorRecuperado(false);
+  }
+  function cambiarVista(siguiente) {
+    if (enviando || siguiente === vista) return;
+    limpiar();
+    setError("");
+    setExito("");
+    setVista(siguiente);
+  }
+  (0, import_react4.useEffect)(() => {
+    const pendiente = typeof leerBorradorDevolucion === "function" ? leerBorradorDevolucion(vista) : null;
+    if (!pendiente) return;
+    setBorradorRecuperado(true);
+    setCantidad(String(pendiente.cantidad ?? ""));
+    setMotivo(pendiente.motivo || "");
+    setProductoId(pendiente.productoId || "");
+    if (vista === "cliente") {
+      setReembolso(Number(pendiente.reembolso) > 0 ? String(pendiente.reembolso) : "");
+      setMedioReembolso(pendiente.medioReembolso || "SIN_REEMBOLSO");
+      setVentaClave(encodeURIComponent(JSON.stringify([pendiente.ventaId, pendiente.productoId])));
+    } else {
+      setProveedorId(pendiente.proveedorId || "");
+    }
+  }, [vista]);
+  async function enviar() {
+    if (enviando) return;
+    setError("");
+    setExito("");
+    setEnviando(true);
+    try {
+      let r2;
+      if (vista === "cliente") {
+        if (!lineaSeleccionada) {
+          setError("Elige una venta y producto con cantidad pendiente.");
+          return;
+        }
+        r2 = await registrarDevolucionCliente({ productoId: lineaSeleccionada.productoId, cantidad, motivo, reembolso, medioReembolso, ventaId: lineaSeleccionada.ventaId });
+      } else {
+        const proveedor = proveedores.find((p22) => p22.id === proveedorId);
+        r2 = await registrarDevolucionProveedor({ productoId, cantidad, motivo, proveedorId, proveedorNombre: proveedor?.nombre });
+      }
+      if (!r2?.ok) {
+        setError(r2?.error || "No se ha podido registrar la devoluci\xF3n.");
+        setBorradorRecuperado(!!r2?.pendiente);
+        return;
+      }
+      setExito(`Devoluci\xF3n confirmada: ${r2.registro.productoNombre} \xD7${r2.registro.cantidad}${r2.replayed ? " (reintento confirmado sin duplicar)" : ""}.`);
+      limpiar();
+    } finally {
+      setEnviando(false);
+    }
+  }
+  const estiloSelector = { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink };
+  const botonVista = (id, texto) => h3("button", {
+    key: id,
+    disabled: enviando,
+    onClick: () => cambiarVista(id),
+    className: "text-[12px] font-medium px-3 py-1.5 rounded-full",
+    style: vista === id ? { background: C2.accent, color: "#fff" } : estiloSelector
+  }, texto);
+  const selectorPrincipal = vista === "cliente" ? h3(Field, { label: "Venta original y producto" }, h3("select", {
+    value: ventaClave,
+    disabled: enviando,
+    onChange: (e2) => {
+      const clave = e2.target.value;
+      const linea = lineasVenta.find((l22) => l22.clave === clave);
+      setVentaClave(clave);
+      setProductoId(linea?.productoId || "");
+    },
+    className: "w-full rounded-lg px-3 py-2 text-[13px]",
+    style: estiloSelector
+  }, h3("option", { value: "" }, lineasVenta.length ? "Selecciona una venta" : "No hay ventas con cantidad pendiente"), lineasVenta.map((l22) => h3("option", { key: l22.clave, value: l22.clave }, `${l22.fecha} \xB7 ${l22.productoNombre} \xB7 pendiente ${l22.pendiente}`)))) : h3(Field, { label: "Producto" }, h3("select", {
+    value: productoId,
+    disabled: enviando,
+    onChange: (e2) => setProductoId(e2.target.value),
+    className: "w-full rounded-lg px-3 py-2 text-[13px]",
+    style: estiloSelector
+  }, h3("option", { value: "" }, "Selecciona un producto"), productos.map((p22) => h3("option", { key: p22.id, value: p22.id }, `${p22.nombre} \xB7 stock ${fmt(p22.stock)}`))));
+  const camposReembolso = vista === "cliente" ? h3(
+    import_react4.default.Fragment,
+    null,
+    h3(Field, { label: "Importe a reembolsar (\u20AC)" }, h3(Input, {
+      type: "number",
+      min: "0",
+      step: "0.01",
+      disabled: enviando,
+      value: reembolso,
+      onChange: (e2) => {
+        const valor = e2.target.value;
+        setReembolso(valor);
+        if (Number(valor) > 0 && medioReembolso === "SIN_REEMBOLSO") setMedioReembolso("EFECTIVO");
+        if (valor === "" || Number(valor) === 0) setMedioReembolso("SIN_REEMBOLSO");
+      },
+      placeholder: "0,00 si no hubo devoluci\xF3n de dinero"
+    })),
+    h3(Field, { label: "Medio de reintegro" }, h3(
+      "select",
+      { value: medioReembolso, disabled: enviando, onChange: (e2) => setMedioReembolso(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: estiloSelector },
+      h3("option", { value: "SIN_REEMBOLSO" }, "Sin reembolso / cambio"),
+      h3("option", { value: "EFECTIVO" }, "Efectivo"),
+      h3("option", { value: "TARJETA" }, "Tarjeta"),
+      h3("option", { value: "TRANSFERENCIA" }, "Transferencia"),
+      h3("option", { value: "OTRO" }, "Otro")
+    ))
+  ) : null;
+  const campoProveedor = vista === "proveedor" ? h3(Field, { label: "Proveedor (opcional)" }, h3(
+    "select",
+    { value: proveedorId, disabled: enviando, onChange: (e2) => setProveedorId(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: estiloSelector },
+    h3("option", { value: "" }, "Sin especificar"),
+    proveedores.map((p22) => h3("option", { key: p22.id, value: p22.id }, p22.nombre))
+  )) : null;
+  const historial = devoluciones.length === 0 ? h3(Empty, { text: "Sin devoluciones registradas todav\xEDa." }) : h3("div", { className: "space-y-1.5" }, devoluciones.slice(0, 50).map((d2) => h3(
+    Card,
+    { key: d2.operationId || d2.id },
+    h3(
+      "div",
+      { className: "flex items-center justify-between text-[12.5px]" },
+      h3("span", null, h3(Pill2, { color: d2.tipo === "cliente" ? C2.accent : C2.amber }, d2.tipo === "cliente" ? "Cliente" : "Proveedor"), " ", d2.productoNombre, " \xD7", d2.cantidad),
+      h3("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, d2.fecha)
+    ),
+    d2.motivo && h3("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, d2.motivo),
+    d2.reembolso > 0 && h3("div", { className: "text-[11.5px] mt-1", style: { color: C2.red } }, "Reembolso: \u20AC", fmt(d2.reembolso), " \xB7 ", d2.medioReembolso),
+    d2.tipo === "cliente" && d2.reembolso === 0 && h3("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, "Sin reembolso"),
+    d2.proveedorNombre && h3("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, "Proveedor: ", d2.proveedorNombre)
+  )));
+  return h3(
+    "div",
+    null,
+    h3(SectionTitle, null, "Devoluciones"),
+    h3("div", { className: "flex gap-1.5 mb-4" }, botonVista("cliente", "De cliente"), botonVista("proveedor", "A proveedor")),
+    h3(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, h3("div", { className: "text-[12.5px]" }, vista === "cliente" ? "Selecciona la venta original. Stock y reembolso se confirman juntos: si una parte falla, no se guarda ninguna." : "La salida se confirma contra el stock real del local y nunca puede dejar existencias negativas.")),
+    h3(
+      Card,
+      { className: "mb-4" },
+      borradorRecuperado && h3("div", { className: "text-[11.5px] mb-3 p-2 rounded-lg", style: { background: C2.amberSoft, color: C2.ink } }, "Borrador pendiente recuperado. Al reintentar se conserva el mismo identificador para evitar duplicados."),
+      selectorPrincipal,
+      h3(Field, { label: vista === "cliente" && lineaSeleccionada ? `Cantidad (m\xE1ximo ${lineaSeleccionada.pend

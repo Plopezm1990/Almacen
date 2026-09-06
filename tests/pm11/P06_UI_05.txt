@@ -1,0 +1,51 @@
+v", { className: "font-medium text-[13.5px]" }, empleado.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, abierto ? `Entr\xF3 a las ${ultimaEntrada.hora}` : ultimaEntrada ? "Jornada cerrada" : "Sin fichar hoy")), /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: abierto ? C2.accent : C2.inkSoft }, abierto ? "Trabajando" : "Fuera")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, disabled: abierto, onClick: () => fichar(empleado.id, "entrada") }, /* @__PURE__ */ import_react4.default.createElement(LogIn, { size: 13 }), " Entrada"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", disabled: !abierto, onClick: () => fichar(empleado.id, "salida") }, /* @__PURE__ */ import_react4.default.createElement(LogOut, { size: 13 }), " Salida"))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium", style: { color: C2.inkSoft } }, "Historial"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setShowManual(true) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 13 }), " Correcci\xF3n manual"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setShowExportar(true) }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 13 }), " Exportar"))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-wrap gap-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irEstaSemana }, "Esta semana"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irSemanaAnterior }, "Semana anterior")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Desde" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: desde, onChange: (e2) => setDesde(e2.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hasta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: hasta, onChange: (e2) => setHasta(e2.target.value) })))), filasHistorial.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin fichajes en este periodo." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, filasHistorial.sort((a22, b2) => b2.fecha.localeCompare(a22.fecha) || a22.nombre.localeCompare(b2.nombre)).map((f22, i33) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: i33 }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium" }, f22.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, f22.fecha)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, f22.entrada ? f22.entrada.hora : "\u2014", " \u2192 ", f22.salida ? f22.salida.hora : "sin salida"), f22.horas !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mono", style: { color: C2.accent } }, f22.horas.toFixed(2), " h")))))), showManual && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowManual(false), title: "Correcci\xF3n manual de fichaje" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Empleado" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: manual.empleadoId, onChange: (e2) => setManual({ ...manual, empleadoId: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, activos.map((e2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: e2.id, value: e2.id }, e2.nombre)))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-3 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Fecha" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: manual.fecha, onChange: (e2) => setManual({ ...manual, fecha: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tipo" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: manual.tipo, onChange: (e2) => setManual({ ...manual, tipo: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "entrada" }, "Entrada"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "salida" }, "Salida"))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hora" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "time", value: manual.hora, onChange: (e2) => setManual({ ...manual, hora: e2.target.value }) }))), manualError && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, manualError), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitManual }, "Guardar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowManual(false) }, "Cancelar"))), showExportar && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowExportar(false), title: "Exportar registro horario" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2" }, "Copia este texto y gu\xE1rdalo (o p\xE9galo en un documento). Es tu justificante del registro horario del periodo seleccionado, por si te lo pide la Inspecci\xF3n de Trabajo."), /* @__PURE__ */ import_react4.default.createElement(
+    "textarea",
+    {
+      readOnly: true,
+      value: textoRegistro(),
+      onFocus: (e2) => e2.target.select(),
+      className: "w-full rounded-lg p-2 text-[11px] mono mb-3",
+      style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, height: 180, resize: "none" }
+    }
+  ), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: copiarRegistro }, copiado ? "\xA1Copiado!" : "Copiar texto"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowExportar(false) }, "Cerrar"))));
+}
+function SelectorAlergenos({ seleccionados = [], onCambio, soloLectura = false, nombreParaSugerir = "" }) {
+  function alternar(id) {
+    if (soloLectura) return;
+    onCambio(seleccionados.includes(id) ? seleccionados.filter((x3) => x3 !== id) : [...seleccionados, id]);
+  }
+  const sugeridos = soloLectura ? [] : sugerirAlergenosDeTexto(nombreParaSugerir).filter((id) => !seleccionados.includes(id));
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, sugeridos.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "rounded-lg p-2.5 mb-2.5", style: { background: C2.amberSoft, border: `1px solid ${C2.amber}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-1.5", style: { color: C2.ink } }, "Por el nombre, podr\xEDa llevar (rev\xEDsalo, no se marca solo):"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-wrap gap-1.5" }, sugeridos.map((id) => {
+    const a22 = alergenoPorId(id);
+    if (!a22) return null;
+    return /* @__PURE__ */ import_react4.default.createElement(
+      "button",
+      {
+        key: id,
+        type: "button",
+        onClick: () => alternar(id),
+        className: "text-[11.5px] font-medium px-2.5 py-1.5 rounded-lg flex items-center gap-1",
+        style: { background: C2.surface, border: `1px dashed ${C2.amber}`, color: C2.ink }
+      },
+      /* @__PURE__ */ import_react4.default.createElement("span", null, a22.icono),
+      /* @__PURE__ */ import_react4.default.createElement("span", null, a22.nombre),
+      /* @__PURE__ */ import_react4.default.createElement("span", { style: { color: C2.accent } }, "+")
+    );
+  }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-wrap gap-1.5" }, ALERGENOS.map((a22) => {
+    const activo = seleccionados.includes(a22.id);
+    return /* @__PURE__ */ import_react4.default.createElement(
+      "button",
+      {
+        key: a22.id,
+        type: "button",
+        onClick: () => alternar(a22.id),
+        className: "text-[11.5px] font-medium px-2.5 py-1.5 rounded-lg flex items-center gap-1",
+        style: {
+          background: activo ? C2.amberSoft : C2.surface,
+          border: `1px solid ${activo ? C2.amber : C2.line}`,
+          color: activo ? C2.ink : C2.inkSoft,
+          cursor: soloLectura ? "default" : "pointer"
+        }
+      },
+      /* @__PURE__ */ import_react4.default.createElement("span", null, a22.icono),
+      /* @__PURE__ */ import
