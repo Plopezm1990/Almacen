@@ -84,6 +84,23 @@ La transacción terminó con `ROLLBACK`. Verificación posterior:
 
 Así, un navegador no puede saltarse la Edge Function e invocar directamente la finalización privilegiada.
 
+## Gate GitHub y fuente
+
+El primer gate P09 fue `34020618209` y concluyó `success`. En ese mismo gate se aplicó de forma reproducible el parche frontend P09 y GitHub Actions creó el commit funcional:
+
+- `61fcacd79a8d262c4c35b93419da589aeee8f90a`
+- mensaje: `PM11 P09: usar Edge Function del proyecto Supabase activo`
+
+El gate comprobó antes del commit:
+
+- sintaxis de `fuente.js`;
+- contrato P09;
+- regresiones P08 → P01 y LA-017;
+- build base + P06 + P09 reproducible byte a byte;
+- `main` congelado en `7f792925d6a3d27334ee0e7335ba635b4ed79b6b`.
+
+Esta actualización de evidencia fuerza una segunda ejecución del gate sobre el HEAD que ya contiene el commit funcional, de forma que el cierre final no depende solo del worktree previo al commit automático.
+
 ## Limitación de la validación automatizada
 
 Las herramientas de esta sesión permiten desplegar e inspeccionar Edge Functions, pero no proporcionan una sesión JWT de uno de los usuarios QA ni un invocador HTTP autenticado. Por ello no se fabricó ni se alteró una contraseña de fixture para forzar una llamada positiva artificial.
