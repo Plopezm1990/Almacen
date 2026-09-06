@@ -1,0 +1,670 @@
+
+===== 'crearCuentaEmpleado' HIT 1 @ 4045251 =====
+brirRestaurar,
+    analizarTextoRestauracion,
+    confirmarRestauracion,
+    exportarExcelGeneral,
+    compararConEstadoActual,
+    coleccionesQueSeConservan
+  } = crearLogicaRespaldos({
+    proveedores,
+    productos,
+    pedidos: pedidos2,
+    movimientos,
+    conteos,
+    fichasCosto,
+    albaranes,
+    catalogoProv,
+    gastosGenerales,
+    empleados,
+    fichajes,
+    registrosAppcc,
+    puntosControl,
+    clientes,
+    encargos,
+    arqueos,
+    turnos,
+    nominas,
+    facturasDirectas,
+    ordenesProduccion,
+    traspasos,
+    auditoria,
+    freidoras,
+    registrosAceite,
+    setProveedores,
+    setProductos,
+    setPedidos,
+    setMovimientos,
+    setConteos,
+    setFichasCosto,
+    setAlbaranes,
+    setCatalogoProv,
+    setGastosGenerales,
+    setEmpleados,
+    setFichajes,
+    setRegistrosAppcc,
+    setPuntosControl,
+    setClientes,
+    setEncargos,
+    setArqueos,
+    setTurnos,
+    setNominas,
+    setFacturasDirectas,
+    setOrdenesProduccion,
+    setTraspasos,
+    setAuditoria,
+    setFreidoras,
+    setRegistrosAceite,
+    setHistorial,
+    setPendingRestore,
+    pendingRestore,
+    setBackupText,
+    backupText,
+    setCopiado,
+    setShowBackupView,
+    setShowRestoreInput,
+    setRestoreText,
+    restoreText,
+    setRestoreError,
+    proveedorPorId,
+    productoPorId,
+    registrarAuditoria
+  });
+  const { addProveedor, updateProveedor, deleteProveedor } = crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
+  const { addGasto, deleteGasto } = crearLogicaGastos({ setGastosGenerales, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
+  const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
+  const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId });
+  const { venderCarrito, venderLocal, anularVenta, venderLineas } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId });
+  const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
+  const { addEncargo, updateEncargo, deleteEncargo, entregarEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLineas, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
+  const { traspasarStock, traspasarEntreLocales } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales });
+  const { addArqueo, deleteArqueo, leerBorradorArqueo } = crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosCaja, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja } = crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arqueos, setArqueos, registrarAuditoria, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo } = crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivoId, registrarAuditoria });
+  function seleccionarContextoLocal(id) {
+    const siguiente = id || "";
+    setLocalInformeId(siguiente);
+    if (siguiente && locales.some((l22) => l22.id === siguiente && l22.activo !== false && !l22.fusionadoEn)) {
+      cambiarLocalActivo(siguiente);
+    }
+  }
+  function cambiarLocalActivoConVista(id) {
+    cambiarLocalActivo(id);
+    if (locales.some((l22) => l22.id === id && l22.activo !== false && !l22.fusionadoEn)) setLocalInformeId(id);
+  }
+  const { registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion } = crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, setMovimientosCaja, setArqueos, registrarAuditoria, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { activarModoEmpleado, entrarComoEmpleado, salirModoEmpleado, establecerPin } = crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, setModoEmpleado, setUsuarioActivoId });
+  const { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, eliminarRegistroAppcc } = crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId });
+  const { fichar, addFichajeManual, updateFichaje, eliminarFichaje } = crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId });
+  const { addFreidora, updateFreidora, deleteFreidora, registrarCambio, registrarRelleno, eliminarRegistroAceite, consumoPorCiclo } = crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegistrosAceite, productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
+  const { addFichaCosto, updateFichaCosto, deleteFichaCosto, alergenosDeFicha } = crearLogicaFichasCosto({ productos, setFichasCosto, localActivoId });
+  const { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion } = crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
+  const conteoAbierto = (0, import_react4.useMemo)(() => conteosDelLocalActivo.find((c22) => !c22.completado) || null, [conteosDelLocalActivo]);
+ 
+
+===== 'crearCuentaEmpleado' HIT 2 @ 4103594 =====
+ctos: productosDelLocalActivo, fichasCosto: fichasCostoDelLocalActivo, alergenosDeFicha }), tab === "albaranes" && /* @__PURE__ */ import_react4.default.createElement(
+    Albaranes,
+    {
+      albaranes: albaranesDelLocalActivo,
+      proveedores,
+      productos: productosDelLocalActivo,
+      proveedorPorId,
+      buscarEnCatalogo,
+      guardarAlbaran,
+      eliminarAlbaran,
+      confirmarAlbaran,
+      anularAlbaran,
+      marcarPagada,
+      duplicadosDe,
+      desviacionesDePrecio,
+      prefill: prefillAlbaran,
+      limpiarPrefill: () => setPrefillAlbaran(null),
+      pedidoParaFotoIA,
+      limpiarPedidoParaFotoIA: () => setPedidoParaFotoIA(null),
+      pedidos: pedidosDelLocalActivo
+    }
+  ), tab === "pagos" && /* @__PURE__ */ import_react4.default.createElement(
+    CuentasPorPagar,
+    {
+      facturasPorPagar: facturasPorPagarDelLocalActivo,
+      totalPendientePago: totalPendientePagoDelLocalActivo,
+      marcarPagada,
+      marcarPagadaFacturaDirecta,
+      addFacturaDirecta,
+      deleteFacturaDirecta,
+      proveedores,
+      resaltadaId: facturaDirectaResaltada,
+      limpiarResaltada: () => setFacturaDirectaResaltada(null)
+    }
+  ), tab === "personal" && /* @__PURE__ */ import_react4.default.createElement(
+    Personal,
+    {
+      empleados: empleadosDelLocalActivo,
+      addEmpleado,
+      updateEmpleado,
+      deleteEmpleado,
+      anonimizarEmpleado,
+      registrarAusencia,
+      eliminarAusencia,
+      registrarEpi,
+      eliminarEpi,
+      documentosPersonalCaducan,
+      fichajes: fichajesDelLocalActivo,
+      nominas: nominasDelLocalActivo,
+      entrevistas,
+      crearEntrevista,
+      actualizarEntrevista,
+      finalizarEntrevista,
+      eliminarEntrevista,
+      crearPrefiltro,
+      listarPrefiltros,
+      eliminarPrefiltro,
+      crearCuentaEmpleado
+    }
+  ), tab === "fichaje" && /* @__PURE__ */ import_react4.default.createElement(
+    RegistroHorario,
+    {
+      empleados: empleadosDelLocalActivo,
+      fichajes: fichajesDelLocalActivo,
+      fichar,
+      addFichajeManual,
+      updateFichaje,
+      eliminarFichaje,
+      fichajesAbiertos: fichajesAbiertosDelLocalActivo
+    }
+  ), tab === "nominas" && /* @__PURE__ */ import_react4.default.createElement(
+    CostePersonal,
+    {
+      empleados: empleadosDelLocalActivo,
+      nominas: nominasDelLocalActivo,
+      addNomina,
+      updateNomina,
+      deleteNomina,
+      fichajes: fichajesDelLocalActivo,
+      movimientos: movimientosDelLocalActivo
+    }
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito, anularVenta, movimientos: movimientosDelLocalActivo, registrarAuditoria, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un \xFAnico local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+    Encargos,
+    {
+      encargosPendientes: encargosPendientesDelLocalActivo,
+      encargos: encargosDelLocalActivo,
+      clientes,
+      productos: productosDelLocalActivo,
+      addEncargo,
+      updateEncargo,
+      deleteEncargo,
+      entregarEncargo,
+      addCliente
+    }
+  ), tab === "clientes" && /* @__PURE__ */ import_react4.default.createElement(
+    Clientes,
+    {
+      analisisClientes,
+      clientesDormidos,
+      ventaCruzada,
+      addCliente,
+      updateCliente,
+      deleteCliente,
+      anonimizarCliente
+    }
+  ), tab === "devoluciones" && /* @__PURE__ */ import_react4.default.createElement(
+    Devoluciones,
+    { key: localActivoId || "todos", productos: productosDelLocalActivo, proveedores, devoluciones: devolucionesDelLocalActivo, movimientos: movimientosDelLocalActivo, registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion }
+  ), tab === "facturas" && /* @__PURE__ */ import_react4.default.createElement(
+    Facturas,
+    {
+      albaranes: albaranesDelLocalActivo,
+      facturasDirectas: facturasDirectasDelLocalActivo,
+      proveedorPorId,
+      irAAlbaran: (albId) => {
+        const a22 = albaranesDelLocalActivo.find((x3) => x3.id === albId);
+        if (a22) {
+          setPrefillAlbaran(a22);
+          setTab("albaranes");
+        }
+      },
+      irAFacturaDirecta: (fdId) => {
+        if (!facturasDirectasDelLocalActivo.some((f22) => f22.id === fdId)) return;
+        setFacturaDirectaResaltada(fdId);
+        setTab("pagos");
+      }
+    }
+  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { key: localActivoId || "todos", movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.
+
+===== 'crearCuentaEmpleado' HIT 3 @ 4131130 =====
+ || localActivoId };
+  const nombre = String(datos.nombre ?? "").trim();
+  if (!nombre) return errorValidacionPM10("campo_obligatorio", "nombre", "Escribe el nombre del empleado.");
+  datos.nombre = nombre;
+  const validarNumero = (campo, { defecto = 0, estrictoMinimo = false, permitirVacio = false, entero = false } = {}) => {
+    const raw = datos[campo];
+    if (raw === void 0) return { ok: true };
+    if (permitirVacio && (raw === null || String(raw).trim() === "")) {
+      datos[campo] = "";
+      return { ok: true };
+    }
+    const valorEntrada = raw === null || String(raw).trim() === "" ? defecto : raw;
+    const r2 = numeroPM10(valorEntrada, campo, { minimo: 0, estrictoMinimo, entero });
+    if (!r2.ok) return r2;
+    datos[campo] = r2.valor;
+    return { ok: true };
+  };
+
+  for (const [campo, opciones] of [
+    ["horasSemanales", { defecto: 0 }],
+    ["pagas", { defecto: 14, estrictoMinimo: true, entero: true }],
+    ["salarioBrutoMensual", { defecto: 0 }],
+    ["costeEmpresaMensual", { permitirVacio: true }],
+    ["diasVacacionesAnuales", { defecto: 0 }]
+  ]) {
+    const r2 = validarNumero(campo, opciones);
+    if (!r2.ok) return r2;
+  }
+  return { ok: true, datos };
+}
+function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId, locales = [], empresaId = null }) {
+  const empleadoEsDelLocalActivoPersonal = (e2) => !!e2 && (!localActivoId || e2.localId === localActivoId);
+  function addEmpleado(data) {
+    const validacion = validarEmpleadoPM10(data, { localActivoId, locales, empresaId });
+    if (!validacion.ok) return validacion;
+    const nuevo = { id: uid(), activo: true, documentos: [], ...validacion.datos, localId: localActivoId };
+    setEmpleados((s22) => [...s22, nuevo]);
+    return nuevo;
+  }
+  async function crearCuentaEmpleado(empleadoId, { nombre, email, password, rol }) {
+    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return { ok: false, error: "El empleado no pertenece al local activo." };
+    try {
+      const supabase = await window.getSupabaseClient();
+      const { data: sesion } = await supabase.auth.getSession();
+      const token = sesion?.session?.access_token;
+      if (!token) return { ok: false, error: "No hay sesi\xF3n activa \u2014 vuelve a iniciar sesi\xF3n." };
+      const resp = await fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/crear-cuenta-empleado", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ empleadoId, nombre, email, password, rol })
+      });
+      const r2 = await resp.json();
+      if (!r2.ok) return r2;
+      setEmpleados((s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, tieneCuenta: true, rolCuenta: rol, emailCuenta: email } : e2));
+      registrarAuditoria("Crear cuenta de empleado", `${nombre} \xB7 ${rol} \xB7 ${email}`);
+      return { ok: true };
+    } catch (e2) {
+      return { ok: false, error: "No se ha podido conectar: " + (e2?.message || "error de red") };
+    }
+  }
+  function updateEmpleado(id, data) {
+    const actual = empleados.find((e2) => e2.id === id);
+    if (!empleadoEsDelLocalActivoPersonal(actual) || !localActivoId) return errorValidacionPM10("contexto_no_autorizado", "empleadoId", "El empleado no pertenece al local activo.");
+    const validacion = validarEmpleadoPM10({ ...actual, ...data, localId: actual.localId || localActivoId }, { localActivoId, locales, empresaId });
+    if (!validacion.ok) return validacion;
+    setEmpleados((s22) => s22.map((e2) => e2.id === id ? { ...e2, ...validacion.datos, localId: e2.localId || localActivoId } : e2));
+    return true;
+  }
+  function deleteEmpleado(id) {
+    const e2 = empleados.find((x3) => x3.id === id);
+    if (!empleadoEsDelLocalActivoPersonal(e2)) return false;
+    registrarAuditoria("Eliminar empleado", e2.nombre);
+    setEmpleados((s22) => s22.filter((e22) => e22.id !== id));
+    if (setNominas) setNominas((s22) => s22.filter((n2) => n2.empleadoId !== id));
+    return true;
+  }
+  function anonimizarEmpleado(id) {
+    const e2 = empleados.find((x3) => x3.id === id);
+    if (!empleadoEsDelLocalActivoPersonal(e2)) return false;
+    registrarAuditoria("Anonimizar empleado", e2.nombre);
+    setEmpleados(
+      (s22) => s22.map(
+        (emp) => emp.id === id ? {
+          ...emp,
+          nombre: "Empleado anonimizado",
+          dni: "",
+          pin: "",
+          documentos: [],
+          ausencias: [],
+          anonimizado: true,
+          activo: false
+        } : emp
+      )
+    );
+  }
+  function registrarAusencia(empleadoId, ausencia) {
+    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
+    setEmpleados(
+      (s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, ausencias: [...e2.ausencias || [], { id: uid(), ...ausencia }] } : e2)
+    );
+  }
+  function eliminarAusencia(empleadoId, ausenciaId) {
+    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
+    setEmpleados(
+      (s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, ausencias: (e2.ausencias || []).filter((a22) => a22.id !== ausenciaId) } : e2)
+    );
+  }
+  function registrarEpi(empleadoId, epi) {
+    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
+    setEmpleados(
+      (s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, epis: [...e2.epis || [], { id: uid(), fecha: todayISO(), ...epi }] } : e2)
+    );
+  }
+  function eliminarEpi(empleadoId, epiId) {
+    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
+    setEmpleados(
+      (s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, epis
+
+===== 'crearCuentaEmpleado' HIT 4 @ 4135539 =====
+        ...emp,
+          nombre: "Empleado anonimizado",
+          dni: "",
+          pin: "",
+          documentos: [],
+          ausencias: [],
+          anonimizado: true,
+          activo: false
+        } : emp
+      )
+    );
+  }
+  function registrarAusencia(empleadoId, ausencia) {
+    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
+    setEmpleados(
+      (s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, ausencias: [...e2.ausencias || [], { id: uid(), ...ausencia }] } : e2)
+    );
+  }
+  function eliminarAusencia(empleadoId, ausenciaId) {
+    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
+    setEmpleados(
+      (s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, ausencias: (e2.ausencias || []).filter((a22) => a22.id !== ausenciaId) } : e2)
+    );
+  }
+  function registrarEpi(empleadoId, epi) {
+    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
+    setEmpleados(
+      (s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, epis: [...e2.epis || [], { id: uid(), fecha: todayISO(), ...epi }] } : e2)
+    );
+  }
+  function eliminarEpi(empleadoId, epiId) {
+    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
+    setEmpleados(
+      (s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, epis: (e2.epis || []).filter((x3) => x3.id !== epiId) } : e2)
+    );
+  }
+  return { addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado };
+}
+function crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId }) {
+  const empleadoTurnoLocal = (id) => empleados.find((e2) => e2.id === id && (!localActivoId || e2.localId === localActivoId));
+  const turnoEsLocal = (t22) => !!t22 && (!localActivoId || t22.localId === localActivoId);
+  function addTurno(data) {
+    const emp = empleadoTurnoLocal(data.empleadoId);
+    if (!emp) return false;
+    setTurnos((s22) => [...s22, { id: uid(), ...data, localId: emp.localId || localActivoId || null }]);
+    return true;
+  }
+  function updateTurno(id, data) {
+    setTurnos((s22) => s22.map((t22) => t22.id === id && turnoEsLocal(t22) ? { ...t22, ...data, localId: t22.localId || localActivoId || null } : t22));
+  }
+  function deleteTurno(id) {
+    setTurnos((s22) => s22.filter((t22) => t22.id !== id || !turnoEsLocal(t22)));
+  }
+  function copiarSemana(desdeFechas, haciaFechas) {
+    const nuevos = [];
+    turnos.filter(turnoEsLocal).forEach((t22) => {
+      const idx = desdeFechas.indexOf(t22.fecha);
+      if (idx === -1) return;
+      nuevos.push({ id: uid(), empleadoId: t22.empleadoId, fecha: haciaFechas[idx], tipo: t22.tipo, horaInicio: t22.horaInicio, horaFin: t22.horaFin, notas: t22.notas, localId: t22.localId || localActivoId || null });
+    });
+    if (nuevos.length) setTurnos((s22) => [...s22, ...nuevos]);
+    return nuevos.length;
+  }
+  return { addTurno, updateTurno, deleteTurno, copiarSemana };
+}
+function crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId }) {
+  const puntoEsDelLocalActivoAppcc = (p22) => !!p22 && (!localActivoId || p22.localId === localActivoId);
+  const registroEsDelLocalActivoAppcc = (r2) => !!r2 && (!localActivoId || r2.localId === localActivoId);
+  function addPuntoControl(data) {
+    setPuntosControl((s22) => [...s22, { id: uid(), activo: true, ...data, localId: localActivoId || data.localId || null }]);
+  }
+  function updatePuntoControl(id, data) {
+    setPuntosControl((s22) => s22.map((p22) => p22.id === id && puntoEsDelLocalActivoAppcc(p22) ? { ...p22, ...data, localId: p22.localId || localActivoId || null } : p22));
+  }
+  function deletePuntoControl(id) {
+    setPuntosControl((s22) => s22.filter((p22) => p22.id !== id || !puntoEsDelLocalActivoAppcc(p22)));
+  }
+  function registrarAppcc(data) {
+    const punto = puntosControl.find((p22) => p22.id === data.puntoId);
+    if (data.puntoId && !puntoEsDelLocalActivoAppcc(punto)) return false;
+    setRegistrosAppcc((s22) => [{ id: uid(), fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), ...data, localId: localActivoId || punto && punto.localId || null }, ...s22]);
+    return true;
+  }
+  function eliminarRegistroAppcc(id) {
+    const registro = registrosAppcc.find((r2) => r2.id === id);
+    if (!registroEsDelLocalActivoAppcc(registro)) return false;
+    setRegistrosAppcc((s22) => s22.filter((r2) => r2.id !== id));
+    return true;
+  }
+  return { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, eliminarRegistroAppcc };
+}
+function crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId }) {
+  const empleadoFichajeLocal = (id) => empleados.find((e2) => e2.id === id && (!localActivoId || e2.localId === localActivoId));
+  const fichajeEsLocal = (f22) => !!f22 && (!localActivoId || f22.localId === localActivoId);
+  function fichar(empleadoId, tipo) {
+    const emp = empleadoFichajeLocal(empleadoId);
+    if (!emp) return false;
+    const ahora = /* @__PURE__ */ new Date();
+    setFichajes((s22) => [
+      { id: uid(), empleadoId, tipo, fecha: todayISO(), hora: ahora.toTimeString().slice(0, 5), timestamp: ahora.toISOString(), localId: emp.localId || localActivoId || null },
+      ...s22
+    ]);
+    return true;
+  }
+  function addFichajeManual(data) {
+    const emp = empleadoFichajeLocal(data.empleadoId);
+    if (!emp) return false;
+    setFichajes((s22) => [{ id: uid(), ...data, localId: emp.localId || localActivoId || null }, ...s22]);
+    return true;
+  }
+  function updateFichaje(id, data) {
+    setFichajes((s22) => s22.map((f22) => f22.id === id && fichajeEsLocal(f22) ? { ...f22, ...data, localId: f22.localI
+
+===== 'crearCuentaEmpleado' HIT 5 @ 4797868 =====
+ value: cuentaForm.password, onChange: (e2) => setCuentaForm({ ...cuentaForm, password: e2.target.value }), placeholder: "Se la comunicas t\xFA en persona" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Rol" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: cuentaForm.rol, onChange: (e2) => setCuentaForm({ ...cuentaForm, rol: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "Encargado" }, "Encargado"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "Camarero/a" }, "Camarero/a"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "Cajero/a" }, "Cajero/a"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "Churrero/a" }, "Churrero/a"))), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: onCrear, disabled: creando }, creando ? "Creando\u2026" : "Crear cuenta"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: onCancelar, disabled: creando }, "Cancelar"))));
+}
+function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, documentosPersonalCaducan, fichajes = [], nominas = [], entrevistas = [], crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista, crearPrefiltro, listarPrefiltros, eliminarPrefiltro, crearCuentaEmpleado }) {
+  const [vista, setVista] = (0, import_react4.useState)("empleados");
+  const submitBloqueadoPersonalPM10 = import_react4.default.useRef(false);
+  const [showForm, setShowForm] = (0, import_react4.useState)(false);
+  const [form, setForm] = (0, import_react4.useState)(blankEmpleado());
+  const [error, setError] = (0, import_react4.useState)("");
+  const [editingId, setEditingId] = (0, import_react4.useState)(null);
+  const [confirmDeleteId, setConfirmDeleteId] = (0, import_react4.useState)(null);
+  const [ausenciaFor, setAusenciaFor] = (0, import_react4.useState)(null);
+  const [ausenciaForm, setAusenciaForm] = (0, import_react4.useState)({ tipo: "Vacaciones", fechaInicio: todayISO(), fechaFin: todayISO() });
+  const [epiFor, setEpiFor] = (0, import_react4.useState)(null);
+  const [epiForm, setEpiForm] = (0, import_react4.useState)({ nombre: "", firmado: false });
+  const [cuentaFor, setCuentaFor] = (0, import_react4.useState)(null);
+  const [cuentaForm, setCuentaForm] = (0, import_react4.useState)({ nombre: "", email: "", password: "", rol: "Camarero/a" });
+  const [errorCuenta, setErrorCuenta] = (0, import_react4.useState)("");
+  const [creandoCuenta, setCreandoCuenta] = (0, import_react4.useState)(false);
+  const [cuentaCreadaOk, setCuentaCreadaOk] = (0, import_react4.useState)(false);
+  const [detalleId, setDetalleId] = (0, import_react4.useState)(null);
+  function resetForm() {
+    setForm(blankEmpleado());
+    setEditingId(null);
+    setError("");
+  }
+  function openEdit(e2) {
+    setEditingId(e2.id);
+    setForm({
+      nombre: e2.nombre || "",
+      dni: e2.dni || "",
+      puesto: e2.puesto || "",
+      rol: e2.rol && ROLES_EMPLEADO[e2.rol] ? e2.rol : "Est\xE1ndar",
+      diasDisponibles: e2.diasDisponibles || [],
+      tipoContrato: e2.tipoContrato || "Indefinido",
+      fechaAlta: e2.fechaAlta || todayISO(),
+      fechaFinContrato: e2.fechaFinContrato || "",
+      horasSemanales: e2.horasSemanales ?? 40,
+      pagas: e2.pagas ?? 14,
+      salarioBrutoMensual: e2.salarioBrutoMensual ?? "",
+      costeEmpresaMensual: e2.costeEmpresaMensual ?? "",
+      diasVacacionesAnuales: e2.diasVacacionesAnuales ?? 30,
+      pin: "",
+      documentos: (e2.documentos || []).map((d2) => ({ ...d2 })),
+      activo: e2.activo !== false
+    });
+    setError("");
+    setShowForm(true);
+  }
+  function addDocumento() {
+    setForm((f22) => ({ ...f22, documentos: [...f22.documentos, { id: uid(), nombre: "", fechaCaducidad: "" }] }));
+  }
+  function updateDocumento(idx, campo, valor) {
+    setForm((f22) => ({ ...f22, documentos: f22.documentos.map((d2, i33) => i33 === idx ? { ...d2, [campo]: valor } : d2) }));
+  }
+  function quitarDocumento(idx) {
+    setForm((f22) => ({ ...f22, documentos: f22.documentos.filter((_22, i33) => i33 !== idx) }));
+  }
+  async function submit() {
+    if (submitBloqueadoPersonalPM10.current) return;
+    submitBloqueadoPersonalPM10.current = true;
+    setTimeout(() => { submitBloqueadoPersonalPM10.current = false; }, 750);
+    if (!form.nombre.trim()) {
+      setError("Escribe el nombre del empleado.");
+      return;
+    }
+    if (form.pin && !/^\d{4,6}$/.test(form.pin)) {
+      setError("El c\xF3digo de acceso debe tener entre 4 y 6 d\xEDgitos.");
+      return;
+    }
+    let hashNuevoPin = null;
+    if (form.pin) {
+      hashNuevoPin = await hashPin(form.pin);
+      if (empleados.some((e2) => e2.id !== editingId && e2.pin === hashNuevoPin)) {
+        setError("Ese c\xF3digo ya lo usa otro empleado. Ponle uno distinto.");
+        return;
+      }
+    }
+    setError("");
+    const datos = { ...form };
+    if (hashNuevoPin) {
+      datos.pin = hashNuevoPin;
+    } else {
+      delete datos.pin;
+    }
+    const resultado = editingId ? updateEmpleado(editingId, datos) : addEmpleado(datos);
+    if (!resultado || resultado.ok === false) {
+      setError(resultado?.error || "No se pudo guardar la ficha del empleado.");
+      return;
+    }
+    resetForm();
+    setShowForm(false);
+  }
+  function diasAusencia(ini, fin) {
+    const a22 = new Date(ini), b2 = new Date(fin);
+    if (isNaN(a22) || isNaN(b2)) return 0;
+    return Math.max(1, Math.round((b2 - a22) / 864e5) + 1);
+  }
+  function submitAuse
+
+===== 'crearCuentaEmpleado' HIT 6 @ 4822741 =====
+: C2.inkSoft })), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setConfirmDeleteId(e2.id), "aria-label": "Eliminar empleado" }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 15, color: C2.inkSoft })))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 text-[12px] space-y-1", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement("div", null, "Alta: ", e2.fechaAlta, e2.fechaFinContrato && ` \xB7 Fin de contrato: ${e2.fechaFinContrato}`), e2.salarioBrutoMensual > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, "Bruto: \u20AC", fmt(e2.salarioBrutoMensual), "/mes (", e2.pagas, " pagas)"), /* @__PURE__ */ import_react4.default.createElement("div", null, "Vacaciones: ", usados, " / ", total, " d\xEDas usados este a\xF1o"), (e2.documentos || []).length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", null, e2.documentos.map((d2) => d2.nombre).filter(Boolean).join(" \xB7 "))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 flex gap-2 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(e2) }, "Editar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAusenciaFor(e2.id) }, "Registrar ausencia"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setEpiFor(e2.id) }, "Entregar EPI"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setDetalleId(detalleId === e2.id ? null : e2.id) }, detalleId === e2.id ? "Ocultar historial" : "Ver historial"), crearCuentaEmpleado && !e2.tieneCuenta && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
+      setCuentaFor(e2.id);
+      setCuentaForm({ nombre: e2.nombre || "", email: "", password: "", rol: "Camarero/a" });
+    } }, "Crear cuenta de acceso")), detalleId === e2.id && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 pt-3", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, "Ausencias"), (e2.ausencias || []).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin ausencias registradas." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1 mb-3" }, [...e2.ausencias || []].reverse().map((a22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: a22.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, a22.tipo, ": ", a22.fechaInicio, " \u2192 ", a22.fechaFin, " (", a22.dias, " d)"), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => eliminarAusencia(e2.id, a22.id), "aria-label": "Eliminar ausencia" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft }))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1 pt-2", style: { color: C2.inkSoft, borderTop: `1px solid ${C2.line}` } }, "EPIs entregados"), (e2.epis || []).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin EPIs registrados." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1" }, [...e2.epis || []].reverse().map((epi) => /* @__PURE__ */ import_react4.default.createElement("div", { key: epi.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, epi.nombre, " \xB7 ", epi.fecha, " ", epi.firmado ? "\xB7 firmado" : "\xB7 sin firmar"), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => eliminarEpi(e2.id, epi.id), "aria-label": "Eliminar EPI" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))));
+  })), ausenciaFor && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setAusenciaFor(null), title: "Registrar ausencia" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tipo" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: ausenciaForm.tipo, onChange: (e2) => setAusenciaForm({ ...ausenciaForm, tipo: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "Vacaciones" }, "Vacaciones"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "Baja m\xE9dica" }, "Baja m\xE9dica"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "Otro" }, "Otro permiso"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Desde" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: ausenciaForm.fechaInicio, onChange: (e2) => setAusenciaForm({ ...ausenciaForm, fechaInicio: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hasta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: ausenciaForm.fechaFin, onChange: (e2) => setAusenciaForm({ ...ausenciaForm, fechaFin: e2.target.value }) }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, diasAusencia(ausenciaForm.fechaInicio, ausenciaForm.fechaFin), " d\xEDa(s) naturales, contando ambos extremos."), /* @__PURE__ */ import_react4
+
+===== 'crearCuentaEmpleado' HIT 7 @ 4829359 =====
+la obligaci\xF3n de PRL."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Equipo entregado" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: epiForm.nombre, onChange: (e2) => setEpiForm({ ...epiForm, nombre: e2.target.value }), placeholder: "Guantes t\xE9rmicos, calzado antideslizante\u2026" })), /* @__PURE__ */ import_react4.default.createElement("label", { className: "flex items-center gap-2 mb-3 text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("input", { type: "checkbox", checked: epiForm.firmado, onChange: (e2) => setEpiForm({ ...epiForm, firmado: e2.target.checked }) }), "El empleado ha firmado el recib\xED"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
+    if (epiForm.nombre.trim()) {
+      registrarEpi(epiFor, epiForm);
+      setEpiFor(null);
+      setEpiForm({ nombre: "", firmado: false });
+    }
+  } }, "Guardar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setEpiFor(null) }, "Cancelar"))), cuentaFor && /* @__PURE__ */ import_react4.default.createElement(ModalCrearCuenta, {
+    empleado: empleados.find((e2) => e2.id === cuentaFor),
+    cuentaForm,
+    setCuentaForm,
+    error: errorCuenta,
+    creando: creandoCuenta,
+    creadaOk: cuentaCreadaOk,
+    onCancelar: () => {
+      if (creandoCuenta) return;
+      setCuentaFor(null);
+      setErrorCuenta("");
+      setCuentaCreadaOk(false);
+    },
+    onCrear: async () => {
+      if (!cuentaForm.email || !cuentaForm.password) {
+        setErrorCuenta("Rellena correo y contrase\xF1a.");
+        return;
+      }
+      setCreandoCuenta(true);
+      setErrorCuenta("");
+      const r2 = await crearCuentaEmpleado(cuentaFor, cuentaForm);
+      setCreandoCuenta(false);
+      if (!r2.ok) {
+        setErrorCuenta(r2.error || "No se ha podido crear la cuenta.");
+        return;
+      }
+      setCuentaCreadaOk(true);
+    }
+  }), confirmDeleteId && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmDeleteId(null), title: "Eliminar empleado" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, "Se borra la ficha completa, incluidas sus ausencias y documentos. Si solo ha causado baja, mejor ed\xEDtalo y desm\xE1rcalo como activo en vez de borrarlo, para conservar el historial."), nominas.some((n2) => n2.empleadoId === confirmDeleteId) && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "Este empleado tiene n\xF3minas registradas. La legislaci\xF3n laboral obliga a conservar esos documentos varios a\xF1os. Mejor usa ", /* @__PURE__ */ import_react4.default.createElement("b", null, '"Anonimizar"'), " \u2014 quita su nombre y datos personales, pero conserva fichajes y n\xF3minas con a qui\xE9n pertenecen, sin decir qui\xE9n era.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" }, anonimizarEmpleado && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
+    anonimizarEmpleado(confirmDeleteId);
+    setConfirmDeleteId(null);
+  } }, "Anonimizar (recomendado)"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: () => {
+    deleteEmpleado(confirmDeleteId);
+    setConfirmDeleteId(null);
+  } }, "Eliminar del todo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmDeleteId(null) }, "Cancelar")))));
+}
+function inicioSemana(fecha) {
+  const d2 = new Date(fecha);
+  const dia = d2.getDay();
+  const diff = dia === 0 ? -6 : 1 - dia;
+  const l22 = new Date(d2);
+  l22.setDate(d2.getDate() + diff);
+  return aISO(l22);
+}
+function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, updateFichaje, eliminarFichaje, fichajesAbiertos }) {
+  const activos = empleados.filter((e2) => e2.activo !== false);
+  const [desde, setDesde] = (0, import_react4.useState)(inicioSemana(/* @__PURE__ */ new Date()));
+  const [hasta, setHasta] = (0, import_react4.useState)(todayISO());
+  const [showManual, setShowManual] = (0, import_react4.useState)(false);
+  const [manual, setManual] = (0, import_react4.useState)({ empleadoId: activos[0]?.id || "", fecha: todayISO(), tipo: "entrada", hora: "09:00" });
+  const [manualError, setManualError] = (0, import_react4.useState)("");
+  const [showExportar, setShowExportar] = (0, import_react4.useState)(false);
+  const [copiado, setCopiado] = (0, import_react4.useState)(false);
+  function irEstaSemana() {
+    setDesde(inicioSemana(/* @__PURE__ */ new Date()));
+    setHasta(todayISO());
+  }
+  function irSemanaAnterior() {
+    const d2 = /* @__PURE__ */ new Date();
+    d2.setDate(d2.getDate() - 7);
+    const ini = inicioSemana(d2);
+    const fin = new Date(ini);
+    fin.setDate(fin.getDate() + 6);
+    setDesde(ini);
+    setHasta(aISO(fin));
+  }
+  const estadoHoy = activos.map((e2) => {
+    const deHoy = fichajes.filter((f22) => f22.empleadoId === e2.id && f22.fecha === todayISO()).sort((a22, b2) => (a22.hora || "").localeCompare(b2.hora || ""));
+    const entradas = deHoy.filter((f22) => f22.tipo === "entrada");
+    const salidas = deHoy.filter((f22) => f22.tipo === "salida");
+    const abierto = entradas.length > salidas.length;
+    return { empleado: e2, ultimaEntrada: entradas[entradas.length - 1], abierto, totalFichajesHoy: deHoy.length };
+  });
+  const filasHistorial = (0, import_react4.useMemo)(() => {
+    const grupos = {};
+    fichajes.filter((f22) => f22.fecha >= desde && f22.fecha <= hasta).forEach((f22) => {
+      const key = `${f22.empleadoId}-${f22.fecha}`;
+      if (!grupos[key]) grupos[key] = { empleadoId: f22.empleadoId, fecha: f22.fecha, entradas: [], salidas: [] };
+      if (f22.tipo =
