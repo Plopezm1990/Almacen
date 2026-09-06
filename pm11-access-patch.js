@@ -309,9 +309,15 @@
     var wanted = etiquetas.map(norm);
     controles().forEach(function (el) {
       if (wanted.indexOf(norm(el.textContent)) !== -1) {
-        el.style.display = "none";
+        // Mantener el hueco original evita que el shell cambie de ancho o
+        // recalcule la composición al retirar opciones no autorizadas.
+        // visibility:hidden conserva la geometría, pero impide ver/interactuar.
+        el.style.setProperty("visibility", "hidden", "important");
+        el.style.setProperty("pointer-events", "none", "important");
         el.setAttribute("aria-hidden", "true");
+        el.tabIndex = -1;
         el.dataset.pm11Oculto = "1";
+        el.dataset.pm11LayoutPreservado = "1";
       }
     });
   }
