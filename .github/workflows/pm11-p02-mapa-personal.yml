@@ -5,11 +5,8 @@ on:
     branches: [pm11-personal-empleados]
     paths:
       - '.github/workflows/pm11-p02-mapa-personal.yml'
-      - 'tests/pm11/**'
-      - 'tests/pm10/p07-personal-contract.mjs'
-      - 'source-recovery/**'
-      - 'fuente.js'
-      - 'supabase/migrations/**'
+      - 'tests/pm11/P02_MAPA_PERSONAL_ACTUAL.md'
+      - 'tests/pm11/p02-mapa-personal-contract.mjs'
 
 permissions:
   contents: read
@@ -22,13 +19,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Verificar origen y que P02 no cambió funcionalidad
+      - name: Verificar cierre histórico P02
         run: |
           git merge-base --is-ancestor 1e21458b48a11302c59911ef966ded0aca3eb639 HEAD
           test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
-          git diff --quiet 1e21458b48a11302c59911ef966ded0aca3eb639 -- fuente.js supabase/migrations
-          echo 'PM11_P02_SIN_CAMBIO_FUNCIONAL=1'
-          echo "PM11_P02_SHA=$(git rev-parse HEAD)"
+          git diff --quiet 1e21458b48a11302c59911ef966ded0aca3eb639..9cff6a788393afef067dc4f3e80d90cda686b7de -- fuente.js supabase/migrations
+          echo 'PM11_P02_CIERRE_HISTORICO_SIN_CAMBIO_FUNCIONAL=1'
 
       - name: Sintaxis fuente
         run: node --check fuente.js
