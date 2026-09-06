@@ -7,9 +7,11 @@ on:
       - '.github/workflows/pm11-p10-smoke-acceso.yml'
       - 'supabase/migrations/20260906183000_pm11_contexto_operativo_acceso_smoke.sql'
       - 'pm11-access-patch.js'
+      - 'pm11-access-runtime-v3.js'
       - 'pm11-mobile-layout-v3.js'
       - 'tools/corregir_pm11_p10_smoke_acceso.py'
       - 'tests/pm11/p10-smoke-acceso-contract.mjs'
+      - 'tests/pm11/p10-runtime-scope-v3-contract.mjs'
       - 'tests/pm11/p10-mobile-layout-v3-contract.mjs'
       - 'tests/pm11/P10_SMOKE_ACCESO_EVIDENCIA.md'
       - 'index.html'
@@ -37,13 +39,14 @@ jobs:
           test "$(git diff --name-only "$BASE" -- supabase/migrations)" = "supabase/migrations/20260906183000_pm11_contexto_operativo_acceso_smoke.sql"
           echo 'PM11_P10_SMOKE_SCOPE=PASS'
 
-      - name: Insertar barrera antes del bundle
+      - name: Insertar barreras antes del bundle
         run: python3 tools/corregir_pm11_p10_smoke_acceso.py index.html
 
       - name: Sintaxis
         run: |
           set -e
           node --check pm11-access-patch.js
+          node --check pm11-access-runtime-v3.js
           node --check pm11-mobile-layout-v3.js
           node --check fuente.js
 
@@ -51,6 +54,7 @@ jobs:
         run: |
           set -e
           node tests/pm11/p10-smoke-acceso-contract.mjs
+          node tests/pm11/p10-runtime-scope-v3-contract.mjs
           node tests/pm11/p10-mobile-layout-v3-contract.mjs
 
       - name: Regresión P10 anonimización
@@ -94,17 +98,18 @@ jobs:
         run: |
           set -e
           if git diff --quiet -- index.html; then
-            echo 'index ya contiene barrera PM11 y layout v3; sin commit adicional'
+            echo 'index ya contiene acceso, runtime v3 y layout v3; sin commit adicional'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add index.html
-          git commit -m 'PM11 P10: cargar barrera de acceso y layout móvil v3'
+          git commit -m 'PM11 P10: cargar runtime scope v3 antes de fuente'
           git push
 
       - name: Resumen
         run: |
           echo 'PM11_P10_SMOKE_ACCESO_GATE=PASS'
+          echo 'PM11_P10_RUNTIME_SCOPE_V3=PASS'
           echo 'PM11_P10_LAYOUT_MOVIL_V3=PASS'
           echo 'PM11_P10_SMOKE_REPETIR_EN_INCOGNITO=SI'
