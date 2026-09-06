@@ -36,10 +36,15 @@ for (const token of [
   'contexto.rol === "Camarero/a"',
   'ocultarControl(["Inicio", "Hoy", "Panel general", "Resumen general"])',
   'controlExacto(["TPV"] ) || controlExacto(["Fichajes"])',
+  'style.setProperty("visibility", "hidden", "important")',
+  'style.setProperty("pointer-events", "none", "important")',
+  'pm11LayoutPreservado',
   'la-suite-logo.svg',
   'repararLogoDashboard',
   'podarSelectoresLocales'
 ]) assert.ok(patch.includes(token), `falta barrera frontend smoke: ${token}`);
+
+assert.ok(!patch.includes('el.style.display = "none"'), 'PM11 no debe sacar controles del flujo: desplaza el layout');
 
 assert.ok(index.includes('<script src="./pm11-access-patch.js?v=pm11-p10-smoke-v1"></script>'), 'index debe cargar la barrera PM11');
 const acceso = index.indexOf('./pm11-access-patch.js?v=pm11-p10-smoke-v1');
