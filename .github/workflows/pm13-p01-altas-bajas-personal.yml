@@ -6,7 +6,13 @@ on:
     paths:
       - 'fuente.js'
       - 'tools/corregir_pm13_p01_altas_bajas_personal.py'
+      - 'tools/corregir_pm13_p01_compat_sync.py'
       - 'tests/pm13/p01-altas-bajas-personal-contract.mjs'
+      - 'tests/pm13/p01-rpc-personal-contract.mjs'
+      - 'tests/pm13/p01-backend-personal-contract.mjs'
+      - 'tests/pm13/backend/pm13-p01-ciclo-personal-idempotente.sql'
+      - 'supabase/migrations/20260907194803_pm13_p01_ciclo_personal_idempotente.sql'
+      - 'supabase/migrations/20260907195207_pm13_p01_alta_concurrency_lock.sql'
       - '.github/workflows/pm13-p01-altas-bajas-personal.yml'
 
 permissions:
@@ -27,32 +33,34 @@ jobs:
           git fetch origin main --quiet
           test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
           PM13_BASE='5d278f60d8e06e7a43ee9efe0287c1137dee7ebe'
-          test -z "$(git diff --name-only "$PM13_BASE"..HEAD -- supabase/)"
+          mapfile -t supabase_diff < <(git diff --name-only "$PM13_BASE"..HEAD -- supabase/)
+          for f in "${supabase_diff[@]}"; do
+            case "$f" in
+              supabase/migrations/20260907194803_pm13_p01_ciclo_personal_idempotente.sql) ;;
+              supabase/migrations/20260907195207_pm13_p01_alta_concurrency_lock.sql) ;;
+              *) echo "Cambio Supabase fuera de alcance P01: $f" >&2; exit 1 ;;
+            esac
+          done
+          test -f supabase/migrations/20260907194803_pm13_p01_ciclo_personal_idempotente.sql
+          test -f supabase/migrations/20260907195207_pm13_p01_alta_concurrency_lock.sql
           echo 'PM13_P01_MAIN_FROZEN=PASS'
-          echo 'PM13_P01_SUPABASE_DIFF=0'
+          echo 'PM13_P01_SUPABASE_SCOPE=PASS'
 
-      - name: Aplicar corrección P01
-        run: python3 tools/corregir_pm13_p01_altas_bajas_personal.py
+      - name: Aplicar corrección P01 frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/corregir_pm13_p01_altas_bajas_personal.py
+          python3 tools/corregir_pm13_p01_compat_sync.py
 
       - name: Sintaxis bundle
         run: node --check fuente.js
 
-      - name: Contrato PM13 P01
-        shell: bash
-        run: |
-          set +e
-          node tests/pm13/p01-altas-bajas-personal-contract.mjs > tests/pm13/P01_CONTRACT_LOG.txt 2>&1
-          code=$?
-          cat tests/pm13/P01_CONTRACT_LOG.txt
-          if [ "$code" -ne 0 ]; then
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add tests/pm13/P01_CONTRACT_LOG.txt
-            git commit -m 'test(pm13): guardar fallo contrato P01' || true
-            git push || true
-            exit "$code"
-          fi
-          rm -f tests/pm13/P01_CONTRACT_LOG.txt
+      - name: Contrato PM13 P01 RPC híbrido
+        run: node tests/pm13/p01-rpc-personal-contract.mjs
+
+      - name: Contrato PM13 P01 backend
+        run: node tests/pm13/p01-backend-personal-contract.mjs
 
       - name: Regresión Personal PM10 P07
         run: node tests/pm10/p07-personal-contract.mjs
@@ -72,7 +80,7 @@ jobs:
           done
           echo 'PM13_P01_REGRESSION_PM12=PASS'
 
-      - name: Barreras de no borrado
+      - name: Barreras P01 de no borrado y no exposición
         shell: bash
         run: |
           set -euo pipefail
@@ -83,11 +91,21 @@ jobs:
           b=s.index('function crearLogicaTurnos({', a)
           x=s[a:b]
           assert 'function deleteEmpleado(id, baja = {})' in x
-          assert 'const bajasRegistradasPersonalPM13 = new Set' in x
+          assert 'function reactivarEmpleado(id)' in x
+          assert 'pm11_alta_empleado' in x
+          assert 'pm11_editar_empleado' in x
+          assert 'pm11_baja_empleado' in x
+          assert 'pm11_reactivar_empleado' in x
           assert 'setNominas((s22) => s22.filter((n2) => n2.empleadoId !== id))' not in x
           assert 'setEmpleados((s22) => s22.filter((e22) => e22.id !== id))' not in x
           print('PM13_P01_NO_DELETE=PASS')
           PY
+          ! grep -Eq 'service_role|SUPABASE_SERVICE_ROLE_KEY|sb_secret_' \
+            tests/pm13/p01-rpc-personal-contract.mjs \
+            tests/pm13/p01-backend-personal-contract.mjs \
+            supabase/migrations/20260907194803_pm13_p01_ciclo_personal_idempotente.sql \
+            supabase/migrations/20260907195207_pm13_p01_alta_concurrency_lock.sql
+          echo 'PM13_P01_NO_SECRET=PASS'
 
       - name: Commit funcional si procede
         shell: bash
@@ -100,7 +118,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add fuente.js
-          git commit -m 'feat(pm13): convertir eliminación de personal en baja trazable'
+          git commit -m 'feat(pm13): conectar altas y bajas al motor PM11'
           git push
 
   gate-final:
