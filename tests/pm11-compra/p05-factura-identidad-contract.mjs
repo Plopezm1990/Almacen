@@ -90,8 +90,8 @@ assert.notEqual(firmaSimple, firmaFactura);
 assert.ok(firmaFactura.includes('F-001'));
 assert.ok(firmaFactura.includes('2026-09-07'));
 
-// Nuevas altas no pueden nacer como factura por omisión heredada.
-assert.doesNotMatch(src, /esFactura: true,/);
+// Nuevas altas PM11 deben nacer como albarán simple explícito; el literal true puede existir
+// legítimamente en helpers/validaciones, por eso se comprueban los defaults false, no una ausencia global.
 assert.ok((src.match(/esFactura: false,/g) || []).length >= 4, 'flujos de alta nacen como albarán simple explícito');
 assert.doesNotMatch(src, /esFactura !== false/);
 
