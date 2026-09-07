@@ -1,0 +1,63 @@
+name: PM12 P08 repair temp
+
+on:
+  push:
+    branches: [pm12-conteo-estados-honestos]
+    paths:
+      - '.github/workflows/pm12-p08-repair-temp.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reparar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pm12-conteo-estados-honestos
+          fetch-depth: 0
+      - name: Proteger QA y main
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "pm12-conteo-estados-honestos"
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+      - name: Reparar indentacion del workflow P08
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('.github/workflows/pm12-p08-implementation-temp.yml')
+          lines = p.read_text(encoding='utf-8').splitlines()
+          start = next(i for i, line in enumerate(lines) if line == '      - name: Implementar P08')
+          run_idx = next(i for i in range(start, len(lines)) if lines[i] == '        run: |')
+          end = next(i for i in range(run_idx + 1, len(lines)) if lines[i] == '      - name: Validar antes de persistir')
+          for i in range(run_idx + 1, end):
+              if not lines[i].strip():
+                  continue
+              indent = len(lines[i]) - len(lines[i].lstrip(' '))
+              if indent < 10:
+                  lines[i] = (' ' * (10 - indent)) + lines[i]
+          p.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          PY
+          python3 - <<'PY'
+          import yaml
+          from pathlib import Path
+          yaml.safe_load(Path('.github/workflows/pm12-p08-implementation-temp.yml').read_text(encoding='utf-8'))
+          print('WORKFLOW_YAML_PARSE=PASS')
+          PY
+      - name: Commit solo QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- .github/workflows/pm12-p08-implementation-temp.yml; then
+            echo "Sin cambios"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/pm12-p08-implementation-temp.yml
+          git commit -m "PM12 P08: reparar workflow temporal"
+          git push origin HEAD:pm12-conteo-estados-honestos
