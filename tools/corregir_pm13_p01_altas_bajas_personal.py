@@ -57,13 +57,13 @@ ui = ui.replace('\"Eliminar del todo\"', '\"Dar de baja\"')
 ui = ui.replace('\"Anonimizar (recomendado)\"', '\"Anonimizar datos\"')
 ui = re.sub(
     r'\"Se borra la ficha completa,[^\"]*conservar el historial\.\"',
-    '\"La baja desactiva al empleado sin borrar su ficha, ausencias, documentos, fichajes ni n\\xF3minas. La fecha y el motivo quedan registrados y el historial se conserva.\"',
+    lambda _m: '\"La baja desactiva al empleado sin borrar su ficha, ausencias, documentos, fichajes ni n\\xF3minas. La fecha y el motivo quedan registrados y el historial se conserva.\"',
     ui,
     count=1
 )
 ui = re.sub(
     r'\"Este empleado tiene n\\xF3minas registradas\. La legislaci\\xF3n laboral obliga a conservar esos documentos varios a\\xF1os\. Mejor usa \"',
-    '\"Este empleado tiene n\\xF3minas registradas. La baja conservar\\xE1 esas n\\xF3minas y el resto del historial. La anonimizaci\\xF3n queda como una acci\\xF3n de privacidad separada. \"',
+    lambda _m: '\"Este empleado tiene n\\xF3minas registradas. La baja conservar\\xE1 esas n\\xF3minas y el resto del historial. La anonimizaci\\xF3n queda como una acci\\xF3n de privacidad separada. \"',
     ui,
     count=1
 )
