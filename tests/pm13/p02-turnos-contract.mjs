@@ -39,7 +39,6 @@ const turnoBase = {
   notas: ''
 };
 
-// Alta: scope, estado y formato.
 {
   const e = entorno();
   assert.equal(e.nuevaLogica().addTurno({ ...turnoBase, empleadoId: 'inactivo' }), false);
@@ -49,20 +48,17 @@ const turnoBase = {
   assert.equal(e.nuevaLogica().addTurno({ ...turnoBase, horaInicio: '', horaFin: '14:00' }), false);
   assert.equal(e.nuevaLogica().addTurno({ ...turnoBase, horaInicio: '08:00', horaFin: '08:00' }), false);
   assert.equal(e.estado.length, 0);
-
   assert.equal(e.nuevaLogica().addTurno(turnoBase), true);
   assert.equal(e.estado.length, 1);
   assert.equal(e.estado[0].localId, 'local-a');
 }
 
-// Turnos sin tramo horario (p. ej. libre) siguen siendo válidos si ambas horas están vacías.
 {
   const e = entorno();
   assert.equal(e.nuevaLogica().addTurno({ ...turnoBase, tipo: 'Libre', horaInicio: '', horaFin: '' }), true);
   assert.equal(e.estado.length, 1);
 }
 
-// Noches permitidas y solapamientos reales, incluso al cruzar medianoche.
 {
   const e = entorno();
   assert.equal(e.nuevaLogica().addTurno({ ...turnoBase, horaInicio: '22:00', horaFin: '02:00' }), true);
@@ -71,7 +67,6 @@ const turnoBase = {
   assert.equal(e.estado.length, 2);
 }
 
-// Duplicado exacto rechazado.
 {
   const e = entorno();
   assert.equal(e.nuevaLogica().addTurno(turnoBase), true);
@@ -79,7 +74,6 @@ const turnoBase = {
   assert.equal(e.estado.length, 1);
 }
 
-// Edición: no puede saltar de local, usar un empleado de baja ni crear solapamientos.
 {
   const inicial = [
     { id: 't1', ...turnoBase, localId: 'local-a' },
@@ -95,7 +89,6 @@ const turnoBase = {
   assert.equal(e.estado.find((x) => x.id === 't1').horaInicio, '09:00');
 }
 
-// Borrado limitado al local activo.
 {
   const inicial = [
     { id: 'ta', ...turnoBase, localId: 'local-a' },
@@ -108,7 +101,6 @@ const turnoBase = {
   assert.deepEqual(e.estado.map((x) => x.id), ['tb']);
 }
 
-// Copia semanal: idempotente, sin conflictos y sin empleados dados de baja.
 {
   const desde = ['2026-08-31', '2026-09-01', '2026-09-02', '2026-09-03', '2026-09-04', '2026-09-05', '2026-09-06'];
   const hacia = ['2026-09-07', '2026-09-08', '2026-09-09', '2026-09-10', '2026-09-11', '2026-09-12', '2026-09-13'];
@@ -124,7 +116,6 @@ const turnoBase = {
   assert.equal(e.estado.filter((x) => x.fecha === '2026-09-07').length, 1);
 }
 
-// La copia tampoco pisa/solapa un turno ya existente en destino.
 {
   const desde = ['2026-08-31'];
   const hacia = ['2026-09-07'];
@@ -137,14 +128,13 @@ const turnoBase = {
   assert.equal(e.estado.length, 2);
 }
 
-// Contrato de UI: un rechazo no cierra el modal y el mensaje de copia es honesto.
 const uiStart = src.indexOf('function Turnos({ empleados, turnos, addTurno, updateTurno, deleteTurno, copiarSemana }) {');
 const uiEnd = src.indexOf('\nfunction MapaAlmacen(', uiStart);
 assert.ok(uiStart >= 0 && uiEnd > uiStart, 'No se localizó UI Turnos');
 const ui = src.slice(uiStart, uiEnd);
 assert.match(ui, /const guardado = addTurno\(\{/);
 assert.match(ui, /if \(!guardado\) \{[\s\S]*setError\("No se pudo guardar el turno\./);
-assert.match(ui, /No había turnos nuevos que copiar\./);
+assert.match(ui, /No hay turnos nuevos que copiar\./);
 assert.match(ui, /empleados\.filter\(\(e2\) => e2\.activo !== false\)/);
 
 console.log('PM13_P02_TURNOS_SEGUROS=PASS');
