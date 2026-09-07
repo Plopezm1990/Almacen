@@ -74,9 +74,14 @@ assert.notEqual(production.window.__modoPruebasQA, true, 'El dominio productivo 
 assert.equal(production.storage.getItem('almacen:conteos'), JSON.stringify([{ id: 'viejo' }]));
 console.log('P10_PRODUCCION_NO_RESETEADA=PASS');
 
-const localScripts = [...indexSource.matchAll(/<script[^>]+src="(\.\/?[^"?]+|pm[^"?]+\.js)(?:\?[^\"]*)?"/g)]
-  .map(m => m[1].replace(/^\.\//, ''));
+const localScripts = [...indexSource.matchAll(/<script\b[^>]*\bsrc="([^"]+)"[^>]*><\/script>/g)]
+  .map(m => m[1])
+  .filter(src => !/^https?:\/\//i.test(src))
+  .map(src => src.split('?')[0].replace(/^\.\//, ''))
+  .filter(src => src.endsWith('.js'));
+assert.ok(localScripts.length > 0, 'No se detectaron assets JavaScript locales');
 for (const rel of localScripts) {
+  assert.ok(!rel.startsWith('../'), `Asset fuera de la raiz: ${rel}`);
   assert.equal(fs.existsSync(new URL('../../' + rel, import.meta.url)), true, `Asset local ausente: ${rel}`);
 }
 assert.equal((indexSource.match(/pm12-conteo-estados-v1\.js/g) || []).length, 1);
