@@ -135,13 +135,18 @@
           select.setAttribute('data-pm11-product-control', '1');
           labelInput(numeric[0], 'Cantidad', 'Cantidad del producto');
           if (numeric[1]) labelInput(numeric[1], 'Precio unitario (€)', 'Precio unitario en euros');
-          var deleteButton = row.querySelector('button');
+          var candidates = Array.from(row.querySelectorAll('button,[role="button"]'));
+          var deleteButton = candidates.find(function (el) {
+            var current = norm(el.textContent);
+            var aria = norm(el.getAttribute('aria-label'));
+            var title = norm(el.getAttribute('title'));
+            return current === '×' || current === 'x' || current === '✕' || aria.indexOf('eliminar') !== -1 || title.indexOf('eliminar') !== -1;
+          }) || (candidates.length === 1 ? candidates[0] : null);
           if (deleteButton && !deleteButton.dataset.pm11DeleteLabeled) {
             deleteButton.classList.add('pm11-compra-delete-line');
             deleteButton.setAttribute('aria-label', 'Eliminar producto del pedido');
             deleteButton.setAttribute('title', 'Eliminar producto');
-            var current = norm(deleteButton.textContent);
-            if (current === '×' || current === 'x' || current === '✕') deleteButton.textContent = '× Eliminar';
+            deleteButton.textContent = '× Eliminar';
             deleteButton.dataset.pm11DeleteLabeled = '1';
           }
           break;
