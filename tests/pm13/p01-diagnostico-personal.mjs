@@ -65,7 +65,9 @@ const result = {
     bajaMentions: (ui.text.match(/baja/gi) || []).length,
     eliminarMentions: (ui.text.match(/eliminar/gi) || []).length,
     confirmDeleteExcerpts: occurrencesIn(ui.text, 'confirmDeleteId', ui.start, 1800, 8),
-    activoExcerpts: occurrencesIn(ui.text, 'activo', ui.start, 1200, 12),
+    activoExcerpts: occurrencesIn(ui.text, 'activo:', ui.start, 1500, 12),
+    activoLiteralExcerpts: occurrencesIn(ui.text, 'Activo', ui.start, 1500, 12),
+    checkboxExcerpts: occurrencesIn(ui.text, 'type: "checkbox"', ui.start, 1200, 16),
     fechaAltaExcerpts: occurrencesIn(ui.text, 'fechaAlta', ui.start, 1200, 8),
     setFormExcerpts: occurrencesIn(ui.text, 'setForm', ui.start, 1200, 12)
   },
