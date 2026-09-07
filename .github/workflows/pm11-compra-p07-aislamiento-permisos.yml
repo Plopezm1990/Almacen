@@ -1,0 +1,72 @@
+name: PM11 Compra P07 aislamiento y permisos E2E
+
+on:
+  push:
+    branches: [pm11-compra-recepcion-pago-e2e]
+    paths:
+      - 'fuente.js'
+      - 'tests/pm11-compra/p07-aislamiento-permisos-e2e-contract.mjs'
+      - 'tests/pm11-compra/p06-pago-reverso-e2e-contract.mjs'
+      - 'tests/pm11-compra/p05-factura-identidad-contract.mjs'
+      - 'tests/pm11-compra/p04-albaran-trazabilidad-contract.mjs'
+      - 'tests/pm11-compra/p02-contrato-e2e-estados-contract.mjs'
+      - 'tests/pm10/p05-pedidos-contract.mjs'
+      - 'tests/pm10/p06-recepcion-contract.mjs'
+      - 'tests/g1/p05-permisos-aislamiento-contract.mjs'
+      - 'tests/g1/p08-la004-gate-contract.mjs'
+      - 'supabase/migrations/20260905183353_g1_p05_bloquear_todos_locales_mutacion.sql'
+      - 'supabase/migrations/20260905185935_g1_p08_operation_id_finanzas_global.sql'
+      - '.github/workflows/pm11-compra-p07-aislamiento-permisos.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  aislamiento-permisos-e2e:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout completo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar main congelado
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+
+      - name: Contrato P07 aislamiento y permisos E2E
+        run: node tests/pm11-compra/p07-aislamiento-permisos-e2e-contract.mjs
+
+      - name: Regresion G1 permisos y aislamiento
+        run: node tests/g1/p05-permisos-aislamiento-contract.mjs
+
+      - name: Regresion G1 LA-004 finanzas seguras
+        run: node tests/g1/p08-la004-gate-contract.mjs
+
+      - name: Regresion PM10 pedidos
+        run: node tests/pm10/p05-pedidos-contract.mjs
+
+      - name: Regresion PM10 recepcion
+        run: node tests/pm10/p06-recepcion-contract.mjs
+
+      - name: Regresion P06 pago y reverso
+        run: node tests/pm11-compra/p06-pago-reverso-e2e-contract.mjs
+
+      - name: Regresion P05 factura identidad
+        run: node tests/pm11-compra/p05-factura-identidad-contract.mjs
+
+      - name: Regresion P04 albaran trazabilidad
+        run: node tests/pm11-compra/p04-albaran-trazabilidad-contract.mjs
+
+      - name: Contrato E2E P02
+        run: node tests/pm11-compra/p02-contrato-e2e-estados-contract.mjs
+
+      - name: Resultado
+        run: echo 'PM11_COMPRA_P07_AISLAMIENTO_PERMISOS_E2E=PASS'
