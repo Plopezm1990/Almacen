@@ -104634,7 +104634,136 @@ function crearMotorStock({ productos, setProductos, movimientos, setMovimientos,
     }
     return { ok: true, movimiento, yaExistia: false };
   }
-  return { aplicarMovimientoStock, calcularStockTeorico };
+
+  function aplicarLoteMovimientosStock(operaciones = []) {
+    if (!Array.isArray(operaciones) || operaciones.length === 0) {
+      return { ok: false, codigo: "lote_vacio", error: "El lote de movimientos está vacío.", movimientos: [] };
+    }
+    const idsLote = /* @__PURE__ */ new Set();
+    const normalizadas = [];
+    for (const operacion of operaciones) {
+      const id = String(operacion && operacion.movimientoId || "").trim();
+      if (!id) return { ok: false, codigo: "movimiento_id_obligatorio", error: "Cada movimiento del lote necesita un identificador determinista.", movimientos: [] };
+      if (idsLote.has(id)) return { ok: false, codigo: "movimiento_id_duplicado", error: `El lote repite el movimiento ${id}.`, movimientos: [] };
+      idsLote.add(id);
+      const cantidadNum = Number(operacion.cantidad);
+      if (!Number.isFinite(cantidadNum)) return { ok: false, codigo: "cantidad_no_finita", error: `El movimiento ${id} tiene una cantidad no válida.`, movimientos: [] };
+      normalizadas.push({ ...operacion, movimientoId: id, cantidad: cantidadNum });
+    }
+    function coincideMovimiento(existente, operacion) {
+      if (!existente) return false;
+      return String(existente.id || "") === operacion.movimientoId &&
+        String(existente.productoId || "") === String(operacion.productoId || "") &&
+        Number(existente.cantidad) === Number(operacion.cantidad) &&
+        String(existente.tipo || "") === String(operacion.tipo || "") &&
+        String(existente.operationId || existente.id || "") === String(operacion.operationId || operacion.movimientoId) &&
+        String(existente.origen || "") === String(operacion.origen || "") &&
+        String(existente.documentoOrigenId || "") === String(operacion.documentoOrigenId || "") &&
+        !!existente.afectaStockTotal === (operacion.afectaStockTotal !== false) &&
+        !!existente.afectaStockPisoVenta === !!operacion.afectaStockPisoVenta;
+    }
+    let existentes = 0;
+    const movimientosExistentes = [];
+    for (const operacion of normalizadas) {
+      if (!idsConocidos.has(operacion.movimientoId)) continue;
+      const existente = porId.get(operacion.movimientoId);
+      if (!coincideMovimiento(existente, operacion)) {
+        return { ok: false, codigo: "conflicto_movimiento_existente", error: `El movimiento ${operacion.movimientoId} ya existe con otro contenido. No se sobrescribe.`, movimientos: [] };
+      }
+      existentes += 1;
+      movimientosExistentes.push(existente);
+    }
+    if (existentes > 0 && existentes < normalizadas.length) {
+      return { ok: false, codigo: "replay_parcial_inconsistente", error: "Se detectó un lote aplicado solo en parte. No se crearán movimientos adicionales hasta reconciliar el estado.", movimientos: movimientosExistentes };
+    }
+    if (existentes === normalizadas.length) {
+      return { ok: true, replayed: true, yaExistia: true, movimientos: normalizadas.map((o) => porId.get(o.movimientoId)) };
+    }
+
+    const simulados = /* @__PURE__ */ new Map();
+    const movimientosNuevos = [];
+    const deficitsAuditoria = [];
+    const avisosStockBajo = [];
+    for (const operacion of normalizadas) {
+      const productoBase = simulados.has(operacion.productoId) ? simulados.get(operacion.productoId) : productoActual(operacion.productoId);
+      if (!productoBase) return { ok: false, codigo: "producto_no_encontrado", error: "Producto no encontrado.", movimientos: [] };
+      const cantidadNum = operacion.cantidad;
+      const afectaStockTotal = operacion.afectaStockTotal !== false;
+      const afectaStockPisoVenta = !!operacion.afectaStockPisoVenta;
+      const permitirDeficit = !!operacion.permitirDeficit;
+      const resultadoCampos = {};
+      let deficitGenerado = 0;
+      if (afectaStockTotal) {
+        const stockActual = Number(productoBase.stock) || 0;
+        const deficitActual = Number(productoBase.deficitPendiente) || 0;
+        const teoricoAntes = stockActual - deficitActual;
+        const teoricoDespues = teoricoAntes + cantidadNum;
+        const deficitNuevo = Math.max(0, -teoricoDespues);
+        if (deficitNuevo > deficitActual && !permitirDeficit) {
+return { ok: false, codigo: "stock_insuficiente", error: `Stock insuficiente: hay ${Math.max(0, teoricoAntes)}, se piden ${-cantidadNum}.`, movimientos: [] };
+        }
+        resultadoCampos.stock = Math.max(0, teoricoDespues);
+        resultadoCampos.deficitPendiente = deficitNuevo;
+        deficitGenerado = Math.max(0, deficitNuevo - deficitActual);
+        const minimo = Number(productoBase.stockMinimo) || 0;
+        if (minimo > 0 && teoricoAntes >= minimo && teoricoDespues < minimo) {
+avisosStockBajo.push({ producto: productoBase, teoricoDespues });
+        }
+      }
+      if (afectaStockPisoVenta) {
+        const pisoActual = Number(productoBase.stockPisoVenta) || 0;
+        resultadoCampos.stockPisoVenta = Math.max(0, pisoActual + cantidadNum);
+      }
+      const movimiento = {
+        id: operacion.movimientoId,
+        operationId: operacion.operationId || operacion.movimientoId,
+        productoId: operacion.productoId,
+        localId: productoBase.localId || null,
+        cantidad: cantidadNum,
+        tipo: operacion.tipo,
+        motivo: operacion.motivo || "",
+        fecha: todayISO(),
+        origen: operacion.origen || "",
+        documentoOrigenId: operacion.documentoOrigenId || null,
+        usuario: operacion.usuario || "",
+        dispositivo: operacion.dispositivo || "",
+        stockAnterior: Number(productoBase.stock) || 0,
+        stockPosterior: resultadoCampos.stock !== void 0 ? resultadoCampos.stock : Number(productoBase.stock) || 0,
+        afectaStockTotal,
+        afectaStockPisoVenta,
+        revierteMovimientoId: operacion.revierteMovimientoId || null,
+        ...operacion.camposExtra || {}
+      };
+      const productoDespues = { ...productoBase, ...resultadoCampos };
+      simulados.set(operacion.productoId, productoDespues);
+      movimientosNuevos.push(movimiento);
+      if (deficitGenerado > 0) deficitsAuditoria.push({ producto: productoBase, deficitGenerado, tipo: operacion.tipo, operationId: movimiento.operationId });
+    }
+
+    setProductos((s) => s.map((p) => simulados.has(p.id) ? simulados.get(p.id) : p));
+    for (const [productoId, producto] of simulados.entries()) snapshotLocal.set(productoId, producto);
+    setMovimientos((s) => [...movimientosNuevos].reverse().concat(s));
+    for (const movimiento of movimientosNuevos) {
+      idsConocidos.add(movimiento.id);
+      porId.set(movimiento.id, movimiento);
+    }
+    if (registrarAuditoria) {
+      for (const d of deficitsAuditoria) {
+        try { registrarAuditoria("deficit_stock_detectado", `${d.producto.nombre}: ${d.deficitGenerado} sin cobertura (${d.tipo}, operación ${d.operationId})`); } catch {}
+      }
+    }
+    if (typeof window !== "undefined" && window.__nubeActiva) {
+      for (const aviso of avisosStockBajo) {
+        fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+method: "POST",
+headers: { "Content-Type": "application/json" },
+body: JSON.stringify({ titulo: "Stock bajo", cuerpo: `${aviso.producto.nombre} bajó del mínimo (quedan ${fmt(Math.max(0, aviso.teoricoDespues))}).`, localId: aviso.producto.localId || null, url: "/" })
+        }).catch(() => {});
+      }
+    }
+    return { ok: true, replayed: false, yaExistia: false, movimientos: movimientosNuevos };
+  }
+  return { aplicarMovimientoStock, aplicarLoteMovimientosStock, calcularStockTeorico };
 }
 function crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId }) {
   const { aplicarMovimientoStock, calcularStockTeorico } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
@@ -105356,7 +105485,7 @@ function crearLogicaFichasCosto({ productos, setFichasCosto, localActivoId }) {
   return { addFichaCosto, updateFichaCosto, deleteFichaCosto, alergenosDeFicha };
 }
 function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId, empresaActivaId, obtenerContextoActor }) {
-  const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+  const { aplicarMovimientoStock, aplicarLoteMovimientosStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
   function localDeConteo(conteo) {
     if (!conteo) return null;
     if (conteo.localId) return conteo.localId;
@@ -105667,7 +105796,7 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
       return { ok: true, replayed: true, operationId: conteo.ajustesOperationId || null, ajustados: Number(conteo.ajustesCantidad) || 0, traspasados: conteo.ajustesTraspasados || [] };
     }
     const estadosApi = typeof window !== "undefined" ? window.__pm12ConteoEstados : null;
-    if (!estadosApi) return { ok: false, codigo: "motor_no_disponible", error: "No se pudo validar el ajuste. Recarga la p\xE1gina e int\xE9ntalo de nuevo.", ajustados: 0, traspasados: [] };
+    if (!estadosApi) return { ok: false, codigo: "motor_no_disponible", error: "No se pudo validar el ajuste. Recarga la página e inténtalo de nuevo.", ajustados: 0, traspasados: [] };
     const preparados = [];
     for (const item of conteo.items || []) {
       const p22 = productos.find((pr) => pr.id === item.productoId);
@@ -105680,17 +105809,32 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
         precision: Number.isInteger(p22.precisionCantidad) ? p22.precisionCantidad : void 0
       });
       if (!normalizado.valido) {
-        return { ok: false, codigo: "cantidad_invalida", error: `La cantidad de ${p22.nombre || "un producto"} no es v\xE1lida.`, ajustados: 0, traspasados: [] };
+        return { ok: false, codigo: "cantidad_invalida", error: `La cantidad de ${p22.nombre || "un producto"} no es válida.`, ajustados: 0, traspasados: [] };
       }
       if (normalizado.contado) preparados.push({ item, producto: p22, valorFinal: normalizado.valor });
     }
-    if (preparados.length === 0) return { ok: false, codigo: "sin_lineas_contadas", error: "No hay cantidades v\xE1lidas que aplicar.", ajustados: 0, traspasados: [] };
+    if (preparados.length === 0) return { ok: false, codigo: "sin_lineas_contadas", error: "No hay cantidades válidas que aplicar.", ajustados: 0, traspasados: [] };
     const esPisoVenta = conteo.ambito === "piso_venta";
     const esAlmacen = conteo.ambito === "almacen";
-    const idsAplicados = [];
-    const traspasados = [];
     const operationIdDeEsteAjuste = conteo.ajustesOperationId || `pm12-ajuste-conteo:${conteo.id}:${conteo.cerradoEn || conteo.fecha || "sin-corte"}`;
-    preparados.forEach(({ producto: p22, valorFinal }) => {
+    const planAjustes = [];
+    const traspasados = [];
+    const productosAjustados = /* @__PURE__ */ new Set();
+    const crearIdPlan = (productoId, leg) => `${operationIdDeEsteAjuste}:producto:${productoId}:${leg}`;
+    const agregarPlan = (p22, leg, datos) => {
+      productosAjustados.add(p22.id);
+      planAjustes.push({
+        ...datos,
+        productoId: p22.id,
+        operationId: operationIdDeEsteAjuste,
+        movimientoId: crearIdPlan(p22.id, leg),
+        origen: "aplicarAjustes",
+        documentoOrigenId: conteoId,
+        permitirDeficit: true,
+        camposExtra: { ...(datos.camposExtra || {}), pm12PlanVersion: 1, pm12PlanLeg: leg, pm12ConteoId: conteoId }
+      });
+    };
+    for (const { producto: p22, valorFinal } of preparados) {
       const stockActual = Number(p22.stock) || 0;
       const deficitActual = Number(p22.deficitPendiente) || 0;
       const stockTeoricoTotal = stockActual - deficitActual;
@@ -105699,98 +105843,79 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
         const anteriorAlmacenTeoricoFalta = stockTeoricoTotal - enPisoAntes;
         const difAlmacen = valorFinal - anteriorAlmacenTeoricoFalta;
         if (difAlmacen < 0) {
-          const cantidadATraspasar = -difAlmacen;
-          const r22 = aplicarMovimientoStock({
-            productoId: p22.id,
-            cantidad: cantidadATraspasar,
-            tipo: "TRASPASO_A_PISO",
-            operationId: operationIdDeEsteAjuste,
-            movimientoId: uid(),
-            origen: "aplicarAjustes",
-            documentoOrigenId: conteoId,
-            afectaStockTotal: false,
-            afectaStockPisoVenta: true,
-            permitirDeficit: true,
-            motivo: `Faltante de almac\xE9n trasladado al piso de venta (se asume ya expuesto, sin registrar) \xB7 ${motivos[p22.id] || "Sin especificar"}`
-          });
-          if (r22.ok) {
-            idsAplicados.push(r22.movimiento.id);
-            traspasados.push({ productoId: p22.id, nombre: p22.nombre, cantidad: cantidadATraspasar, tipoTraspaso: "falta" });
-          }
-          return;
+const cantidadATraspasar = -difAlmacen;
+agregarPlan(p22, "almacen-falta-a-piso", {
+  cantidad: cantidadATraspasar,
+  tipo: "TRASPASO_A_PISO",
+  afectaStockTotal: false,
+  afectaStockPisoVenta: true,
+  motivo: `Faltante de almacén trasladado al piso de venta (se asume ya expuesto, sin registrar) · ${motivos[p22.id] || "Sin especificar"}`
+});
+traspasados.push({ productoId: p22.id, nombre: p22.nombre, cantidad: cantidadATraspasar, tipoTraspaso: "falta" });
+continue;
         }
       }
       let dif, motivoTexto, afectaStockPisoVenta = false;
       if (esPisoVenta) {
         const anteriorPiso = Number(p22.stockPisoVenta) || 0;
         dif = valorFinal - anteriorPiso;
-        motivoTexto = `Ajuste por inventario (piso de venta) \xB7 ${motivos[p22.id] || "Sin especificar"}`;
+        motivoTexto = `Ajuste por inventario (piso de venta) · ${motivos[p22.id] || "Sin especificar"}`;
         afectaStockPisoVenta = true;
       } else if (esAlmacen) {
         const enPiso = Number(p22.stockPisoVenta) || 0;
         const anteriorAlmacenTeorico = stockTeoricoTotal - enPiso;
         dif = valorFinal - anteriorAlmacenTeorico;
-        motivoTexto = `Ajuste por inventario (almac\xE9n) \xB7 ${motivos[p22.id] || "Sin especificar"}`;
+        motivoTexto = `Ajuste por inventario (almacén) · ${motivos[p22.id] || "Sin especificar"}`;
       } else {
         dif = valorFinal - stockTeoricoTotal;
-        motivoTexto = `Ajuste por inventario \xB7 ${motivos[p22.id] || "Sin especificar"}`;
+        motivoTexto = `Ajuste por inventario · ${motivos[p22.id] || "Sin especificar"}`;
       }
-      if (dif === 0) return;
-      const r2 = aplicarMovimientoStock({
-        productoId: p22.id,
+      if (dif === 0) continue;
+      agregarPlan(p22, esPisoVenta ? "inventario-piso" : esAlmacen ? "inventario-almacen" : "inventario-total", {
         cantidad: dif,
         tipo: "INVENTARIO",
-        operationId: operationIdDeEsteAjuste,
-        movimientoId: uid(),
-        origen: "aplicarAjustes",
-        documentoOrigenId: conteoId,
         afectaStockTotal: true,
         afectaStockPisoVenta,
-        permitirDeficit: true,
         motivo: motivoTexto
       });
-      if (r2.ok) idsAplicados.push(r2.movimiento.id);
-      if (esAlmacen && dif > 0 && r2.ok) {
-        aplicarMovimientoStock({
-          productoId: p22.id,
-          cantidad: dif,
-          tipo: "TRASPASO_A_PISO",
-          operationId: operationIdDeEsteAjuste,
-          movimientoId: uid(),
-          origen: "aplicarAjustes",
-          documentoOrigenId: conteoId,
-          afectaStockTotal: false,
-          afectaStockPisoVenta: true,
-          permitirDeficit: true,
-          motivo: `Sobrante de inventario trasladado al piso de venta \xB7 ${motivos[p22.id] || "Sin especificar"}`
+      if (esAlmacen && dif > 0) {
+        agregarPlan(p22, "almacen-sobra-a-piso", {
+cantidad: dif,
+tipo: "TRASPASO_A_PISO",
+afectaStockTotal: false,
+afectaStockPisoVenta: true,
+motivo: `Sobrante de inventario trasladado al piso de venta · ${motivos[p22.id] || "Sin especificar"}`
         });
         traspasados.push({ productoId: p22.id, nombre: p22.nombre, cantidad: dif, tipoTraspaso: "sobra" });
       }
-      if (!esPisoVenta && !esAlmacen && r2.ok) {
-        const pisoActual = Number(productos.find((pr) => pr.id === p22.id)?.stockPisoVenta) || 0;
+      if (!esPisoVenta && !esAlmacen) {
+        const pisoActual = Number(p22.stockPisoVenta) || 0;
         if (pisoActual > valorFinal) {
-          aplicarMovimientoStock({
-            productoId: p22.id,
-            cantidad: -(pisoActual - valorFinal),
-            tipo: "INVENTARIO",
-            operationId: operationIdDeEsteAjuste,
-            movimientoId: uid(),
-            origen: "aplicarAjustes",
-            documentoOrigenId: conteoId,
-            afectaStockTotal: false,
-            afectaStockPisoVenta: true,
-            permitirDeficit: true,
-            motivo: "El piso no puede superar el nuevo total contado"
-          });
+agregarPlan(p22, "total-limite-piso", {
+  cantidad: -(pisoActual - valorFinal),
+  tipo: "INVENTARIO",
+  afectaStockTotal: false,
+  afectaStockPisoVenta: true,
+  motivo: "El piso no puede superar el nuevo total contado"
+});
         }
       }
-    });
-    if (idsAplicados.length) {
-      registrarAuditoria("Aplicar ajustes de inventario", `${idsAplicados.length} producto(s) ajustado(s) · ${permisoAjuste.rol} · ${permisoAjuste.actorNombre || permisoAjuste.actorId || "sin nombre"} · local ${permisoAjuste.localId}`);
+    }
+
+    let resultadoLote = { ok: true, replayed: false, movimientos: [] };
+    if (planAjustes.length > 0) {
+      resultadoLote = aplicarLoteMovimientosStock(planAjustes);
+      if (!resultadoLote.ok) {
+        return { ok: false, codigo: resultadoLote.codigo || "ajuste_lote_fallido", error: resultadoLote.error || "No se pudo aplicar el lote completo de ajustes.", operationId: operationIdDeEsteAjuste, ajustados: 0, traspasados: [] };
+      }
+    }
+    const ajustados = productosAjustados.size;
+    if (planAjustes.length > 0 && !resultadoLote.replayed) {
+      registrarAuditoria("Aplicar ajustes de inventario", `${ajustados} producto(s) ajustado(s) · ${permisoAjuste.rol} · ${permisoAjuste.actorNombre || permisoAjuste.actorId || "sin nombre"} · local ${permisoAjuste.localId}`);
     }
     const ajustesAplicadosEn = (/* @__PURE__ */ new Date()).toISOString();
-    setConteos((s22) => s22.map((c22) => c22.id === conteoId ? { ...c22, ajustesAplicados: true, ajustesAplicadosEn, ajustesOperationId: operationIdDeEsteAjuste, ajustesCantidad: idsAplicados.length, ajustesTraspasados: traspasados, ajustesActor: { id: permisoAjuste.actorId || null, nombre: permisoAjuste.actorNombre || "", rol: permisoAjuste.rol }, ajustesEmpresaId: permisoAjuste.empresaId, ajustesLocalId: permisoAjuste.localId } : c22));
-    return { ok: true, replayed: false, operationId: operationIdDeEsteAjuste, ajustados: idsAplicados.length, traspasados };
+    setConteos((s22) => s22.map((c22) => c22.id === conteoId ? { ...c22, ajustesAplicados: true, ajustesAplicadosEn, ajustesOperationId: operationIdDeEsteAjuste, ajustesCantidad: ajustados, ajustesTraspasados: traspasados, ajustesActor: { id: permisoAjuste.actorId || null, nombre: permisoAjuste.actorNombre || "", rol: permisoAjuste.rol }, ajustesEmpresaId: permisoAjuste.empresaId, ajustesLocalId: permisoAjuste.localId } : c22));
+    return { ok: true, replayed: !!resultadoLote.replayed, operationId: operationIdDeEsteAjuste, ajustados, traspasados };
   }
   return { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion };
 }
