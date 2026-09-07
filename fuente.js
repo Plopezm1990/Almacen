@@ -101287,6 +101287,23 @@ async function saveKey(key, value) {
     }
   }
 }
+async function sincronizarConteosPm12({ setConteos, localActivoId }) {
+  const cliente = await window.getSupabaseClient();
+  let consulta = cliente.from("stock_operaciones").select("empresa_id,local_id,payload").eq("tipo", "INVENTARIO_PM12");
+  if (localActivoId) consulta = consulta.eq("local_id", localActivoId);
+  const r = await consulta;
+  if (r.error) throw r.error;
+  const documentos = (r.data || []).map((op) => op.payload && op.payload.resultado && op.payload.resultado.conteo).filter(Boolean);
+  setConteos((cs) => {
+    const nuevos = [...cs];
+    for (const documento of documentos) {
+      const i = nuevos.findIndex((c) => c.id === documento.id && c.empresaId === documento.empresaId && c.localId === documento.localId);
+      if (i >= 0) nuevos[i] = { ...nuevos[i], ...documento, _pm12Servidor: true };
+      else if (!nuevos.some((c) => c.id === documento.id)) nuevos.push({ ...documento, _pm12Servidor: true });
+    }
+    return nuevos;
+  });
+}
 async function sincronizarStockPm07({ setProductos, setMovimientos, localActivoId = null }) {
   if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return { ok: false, offline: true };
   const supabase = await window.getSupabaseClient();
@@ -101309,6 +101326,11 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, localActivoI
   if (typeof setMovimientos === "function") {
     const server = movs.map((m4) => {
       const d2 = m4.datos && typeof m4.datos === "object" ? m4.datos : {};
+      const movimientoPM12 = m4;
+      const datosPM12 = movimientoPM12.datos || {};
+      if (movimientoPM12.tipo === "INVENTARIO_PM12" || datosPM12.origen === "cancelarConteo") {
+        return { ...(datosPM12.camposExtra || {}), ...datosPM12, id: datosPM12.movimientoId, operationId: movimientoPM12.operation_id, productoId: movimientoPM12.producto_id, localId: movimientoPM12.local_id, empresaId: movimientoPM12.empresa_id, cantidad: Number(datosPM12.cantidad), _pm07Servidor: true, fecha: String(movimientoPM12.created_at || "").slice(0, 10) };
+      }
       const delta = Number(m4.delta_total) || 0;
       const creado = String(m4.created_at || "");
       return {
@@ -101656,6 +101678,7 @@ function GestionAlmacen() {
       try {
         await sincronizarContextoPm07({ setEmpresas, setLocales, setLocalActivoId, setProductos });
         await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
+        await sincronizarConteosPm12({ setConteos, localActivoId });
         await sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones });
       } catch (e2) {
         if (activo) console.error("PM-08: no se pudo sincronizar contexto, stock o caja autoritativos", e2);
@@ -101812,8 +101835,9 @@ function GestionAlmacen() {
       setMovimientos(mo);
       const coMigrado = (co || []).map((c22) => {
         if (c22.ajustesAplicados) return c22;
-        const tieneAjustesYa = (mo || []).some((m22) => m22.documentoOrigenId === c22.id && m22.origen === "aplicarAjustes");
-        return tieneAjustesYa ? { ...c22, ajustesAplicados: true } : c22;
+        const ajustes = (mo || []).filter((m) => m.documentoOrigenId === c22.id && m.origen === "aplicarAjustes");
+        const completo = ajustes.length > 0 && ajustes.every((m) => m.pm12PlanCantidad === ajustes.length && m.operationId === ajustes[0].operationId && m.pm12Resultado);
+        return completo ? { ...c22, ajustesAplicados: true, ajustesOperationId: ajustes[0].operationId, ajustesCantidad: ajustes[0].pm12Resultado.ajustados, ajustesTraspasados: ajustes[0].pm12Resultado.traspasados } : ajustes.length ? { ...c22, ajustesPendientesRevision: true } : c22;
       });
       if (coMigrado.some((c22, i33) => c22 !== (co || [])[i33])) {
         await saveKey("conteos", coMigrado);
@@ -104525,114 +104549,60 @@ function crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empres
   return { addCliente, updateCliente, deleteCliente, anonimizarCliente };
 }
 function crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria }) {
-  const idsConocidos = new Set(movimientos.map((m22) => m22.id));
-  const porId = new Map(movimientos.map((m22) => [m22.id, m22]));
-  const snapshotLocal = /* @__PURE__ */ new Map();
+  // Share the existing ID/result registry between consumers of the same store.
+  const contextos = crearMotorStock.contextos || (crearMotorStock.contextos = new WeakMap());
+  let porSetter = contextos.get(setProductos);
+  if (!porSetter) contextos.set(setProductos, porSetter = new WeakMap());
+  let contexto = porSetter.get(setMovimientos);
+  if (!contexto) {
+    contexto = { idsConocidos: new Set(), porId: new Map(), snapshotLocal: new Map(), vistos: new WeakSet(), pendiente: null };
+    porSetter.set(setMovimientos, contexto);
+  }
+  const { idsConocidos, porId, snapshotLocal } = contexto;
+  for (const m of movimientos) { idsConocidos.add(m.id); porId.set(m.id, m); }
+  if (!contexto.vistos.has(productos) && !contexto.pendiente) {
+    contexto.vistos.add(productos);
+    snapshotLocal.clear();
+    for (const p of productos) snapshotLocal.set(p.id, p);
+  }
   function productoActual(productoId) {
     if (snapshotLocal.has(productoId)) return snapshotLocal.get(productoId);
-    return productos.find((p22) => p22.id === productoId);
+    return productos.find((p2) => p2.id === productoId);
   }
   function calcularStockTeorico(productoId, campo = "stock") {
-    return movimientos.filter((m22) => m22.productoId === productoId).filter((m22) => m22.origen !== "reconciliacionStock").filter((m22) => {
-      if (esMovimientoNuevo(m22)) {
-        return !!m22[campo === "stockPisoVenta" ? "afectaStockPisoVenta" : "afectaStockTotal"];
+    return movimientos.filter((m2) => m2.productoId === productoId).filter((m2) => m2.origen !== "reconciliacionStock").filter((m2) => {
+      if (esMovimientoNuevo(m2)) {
+        return !!m2[campo === "stockPisoVenta" ? "afectaStockPisoVenta" : "afectaStockTotal"];
       }
       return campo !== "stockPisoVenta";
-    }).reduce((suma, m22) => suma + cantidadConSigno(m22), 0);
+    }).reduce((suma, m2) => suma + cantidadConSigno(m2), 0);
   }
-  function aplicarMovimientoStock({
-    productoId,
-    cantidad,
-    tipo,
-    operationId,
-    movimientoId,
-    origen,
-    documentoOrigenId,
-    usuario,
-    dispositivo,
-    motivo,
-    permitirDeficit = false,
-    afectaStockTotal = true,
-    afectaStockPisoVenta = false,
-    revierteMovimientoId = null,
-    camposExtra = null
-    // campos económicos que el motor no conoce (ingresoUnitario,
-    // medioPago...) — se escriben en el mismo momento de crear
-    // el movimiento, nunca como un parche después.
-  }) {
-    const id = movimientoId || uid();
-    if (idsConocidos.has(id)) {
-      const existente = porId.get(id);
-      if (existente && Number(existente.cantidad) !== Number(cantidad)) {
-        return { ok: false, error: `El movimiento ${id} ya existe con una cantidad distinta (${existente.cantidad} \u2260 ${cantidad}). No se sobrescribe.` };
+  function aplicarMovimientoStock(operacion) {
+    const resultado = aplicarLoteMovimientosStock([{ ...operacion, movimientoId: operacion.movimientoId || uid() }]);
+    return { ...resultado, movimiento: resultado.movimientos && resultado.movimientos[0] };
+  }
+
+  function publicarPendiente() {
+    const p = contexto.pendiente;
+    if (p.publicando) return { ok: false, codigo: "operacion_en_curso", error: "La operación sigue en curso.", movimientos: [] };
+    p.publicando = true;
+    try {
+      // Retry the prepared absolute values, never recompute/apply the delta.
+      if (!p.productosPublicados) {
+        setProductos((s) => s.map((producto) => {
+          const nuevo = p.simulados.get(producto.id);
+          return nuevo ? { ...producto, stock: nuevo.stock, deficitPendiente: nuevo.deficitPendiente, stockPisoVenta: nuevo.stockPisoVenta } : producto;
+        }));
+        p.productosPublicados = true;
       }
-      return { ok: true, movimiento: existente, yaExistia: true };
-    }
-    const producto = productoActual(productoId);
-    if (!producto) return { ok: false, error: "Producto no encontrado." };
-    const cantidadNum = Number(cantidad) || 0;
-    const resultadoCampos = {};
-    let deficitGenerado = 0;
-    if (afectaStockTotal) {
-      const stockActual = Number(producto.stock) || 0;
-      const deficitActual = Number(producto.deficitPendiente) || 0;
-      const teoricoAntes = stockActual - deficitActual;
-      const teoricoDespues = teoricoAntes + cantidadNum;
-      const deficitNuevo = Math.max(0, -teoricoDespues);
-      if (deficitNuevo > deficitActual && !permitirDeficit) {
-        return { ok: false, error: `Stock insuficiente: hay ${Math.max(0, teoricoAntes)}, se piden ${-cantidadNum}.` };
-      }
-      resultadoCampos.stock = Math.max(0, teoricoDespues);
-      resultadoCampos.deficitPendiente = deficitNuevo;
-      deficitGenerado = Math.max(0, deficitNuevo - deficitActual);
-      const minimo = Number(producto.stockMinimo) || 0;
-      if (minimo > 0 && teoricoAntes >= minimo && teoricoDespues < minimo && typeof window !== "undefined" && window.__nubeActiva) {
-        fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            titulo: "Stock bajo",
-            cuerpo: `${producto.nombre} baj\xF3 del m\xEDnimo (quedan ${fmt(Math.max(0, teoricoDespues))}).`,
-            localId: producto.localId || null,
-            url: "/"
-          })
-        }).catch(() => {
-        });
-      }
-    }
-    if (afectaStockPisoVenta) {
-      const pisoActual = Number(producto.stockPisoVenta) || 0;
-      resultadoCampos.stockPisoVenta = Math.max(0, pisoActual + cantidadNum);
-    }
-    const movimiento = {
-      id,
-      operationId: operationId || id,
-      productoId,
-      localId: producto.localId || null,
-      cantidad: cantidadNum,
-      tipo,
-      motivo: motivo || "",
-      fecha: todayISO(),
-      origen: origen || "",
-      documentoOrigenId: documentoOrigenId || null,
-      usuario: usuario || "",
-      dispositivo: dispositivo || "",
-      stockAnterior: Number(producto.stock) || 0,
-      stockPosterior: resultadoCampos.stock !== void 0 ? resultadoCampos.stock : Number(producto.stock) || 0,
-      afectaStockTotal,
-      afectaStockPisoVenta,
-      revierteMovimientoId,
-      ...camposExtra || {}
-    };
-    setProductos((s22) => s22.map((p22) => p22.id === productoId ? { ...p22, ...resultadoCampos } : p22));
-    snapshotLocal.set(productoId, { ...producto, ...resultadoCampos });
-    setMovimientos((s22) => [movimiento, ...s22]);
-    idsConocidos.add(id);
-    porId.set(id, movimiento);
-    if (deficitGenerado > 0 && registrarAuditoria) {
-      registrarAuditoria("deficit_stock_detectado", `${producto.nombre}: ${deficitGenerado} sin cobertura (${tipo}, operaci\xF3n ${movimiento.operationId})`);
-    }
-    return { ok: true, movimiento, yaExistia: false };
+      setMovimientos((s) => [...p.movimientosNuevos].reverse().concat(s.filter((m) => !p.ids.has(m.id))));
+      for (const [id, producto] of p.simulados) snapshotLocal.set(id, producto);
+      for (const m of p.movimientosNuevos) { idsConocidos.add(m.id); porId.set(m.id, m); }
+      contexto.pendiente = null;
+      return { ok: true, replayed: false, yaExistia: false, movimientos: p.movimientosNuevos };
+    } catch {
+      return { ok: false, codigo: "publicacion_pendiente", error: "No se ha confirmado la operación completa. Reintenta la misma intención.", movimientos: [] };
+    } finally { p.publicando = false; }
   }
 
   function aplicarLoteMovimientosStock(operaciones = []) {
@@ -104665,7 +104635,8 @@ function crearMotorStock({ productos, setProductos, movimientos, setMovimientos,
     let existentes = 0;
     const movimientosExistentes = [];
     for (const operacion of normalizadas) {
-      if (!idsConocidos.has(operacion.movimientoId)) continue;
+      const id = operacion.movimientoId;
+      if (!idsConocidos.has(id)) continue;
       const existente = porId.get(operacion.movimientoId);
       if (!coincideMovimiento(existente, operacion)) {
         return { ok: false, codigo: "conflicto_movimiento_existente", error: `El movimiento ${operacion.movimientoId} ya existe con otro contenido. No se sobrescribe.`, movimientos: [] };
@@ -104680,6 +104651,13 @@ function crearMotorStock({ productos, setProductos, movimientos, setMovimientos,
       return { ok: true, replayed: true, yaExistia: true, movimientos: normalizadas.map((o) => porId.get(o.movimientoId)) };
     }
 
+    if (contexto.pendiente) {
+      const p = contexto.pendiente;
+      if (p.movimientosNuevos.length !== normalizadas.length || !normalizadas.every((o) => coincideMovimiento(p.movimientosNuevos.find((m) => m.id === o.movimientoId), o))) {
+        return { ok: false, codigo: "operacion_pendiente", error: "Hay una operación sin confirmar. Reinténtala antes de iniciar otra.", movimientos: [] };
+      }
+      return publicarPendiente();
+    }
     const simulados = /* @__PURE__ */ new Map();
     const movimientosNuevos = [];
     const deficitsAuditoria = [];
@@ -104687,6 +104665,11 @@ function crearMotorStock({ productos, setProductos, movimientos, setMovimientos,
     for (const operacion of normalizadas) {
       const productoBase = simulados.has(operacion.productoId) ? simulados.get(operacion.productoId) : productoActual(operacion.productoId);
       if (!productoBase) return { ok: false, codigo: "producto_no_encontrado", error: "Producto no encontrado.", movimientos: [] };
+      const baseEsperada = operacion.camposExtra && operacion.camposExtra.pm12BaseStock;
+      const baseActual = productoActual(operacion.productoId);
+      if (baseEsperada && ["stock", "stockPisoVenta", "deficitPendiente"].some((campo) => (Number(baseEsperada[campo]) || 0) !== (Number(baseActual[campo]) || 0))) {
+        return { ok: false, codigo: "stock_base_obsoleto", error: "El stock cambió desde que se preparó el ajuste. Actualiza el conteo antes de aplicarlo.", movimientos: [] };
+      }
       const cantidadNum = operacion.cantidad;
       const afectaStockTotal = operacion.afectaStockTotal !== false;
       const afectaStockPisoVenta = !!operacion.afectaStockPisoVenta;
@@ -104715,6 +104698,7 @@ avisosStockBajo.push({ producto: productoBase, teoricoDespues });
         resultadoCampos.stockPisoVenta = Math.max(0, pisoActual + cantidadNum);
       }
       const movimiento = {
+        ...operacion.camposExtra || {},
         id: operacion.movimientoId,
         operationId: operacion.operationId || operacion.movimientoId,
         productoId: operacion.productoId,
@@ -104731,8 +104715,7 @@ avisosStockBajo.push({ producto: productoBase, teoricoDespues });
         stockPosterior: resultadoCampos.stock !== void 0 ? resultadoCampos.stock : Number(productoBase.stock) || 0,
         afectaStockTotal,
         afectaStockPisoVenta,
-        revierteMovimientoId: operacion.revierteMovimientoId || null,
-        ...operacion.camposExtra || {}
+        revierteMovimientoId: operacion.revierteMovimientoId || null
       };
       const productoDespues = { ...productoBase, ...resultadoCampos };
       simulados.set(operacion.productoId, productoDespues);
@@ -104740,13 +104723,9 @@ avisosStockBajo.push({ producto: productoBase, teoricoDespues });
       if (deficitGenerado > 0) deficitsAuditoria.push({ producto: productoBase, deficitGenerado, tipo: operacion.tipo, operationId: movimiento.operationId });
     }
 
-    setProductos((s) => s.map((p) => simulados.has(p.id) ? simulados.get(p.id) : p));
-    for (const [productoId, producto] of simulados.entries()) snapshotLocal.set(productoId, producto);
-    setMovimientos((s) => [...movimientosNuevos].reverse().concat(s));
-    for (const movimiento of movimientosNuevos) {
-      idsConocidos.add(movimiento.id);
-      porId.set(movimiento.id, movimiento);
-    }
+    contexto.pendiente = { simulados, movimientosNuevos, ids: idsLote, productosPublicados: false, publicando: false };
+    const publicado = publicarPendiente();
+    if (!publicado.ok) return publicado;
     if (registrarAuditoria) {
       for (const d of deficitsAuditoria) {
         try { registrarAuditoria("deficit_stock_detectado", `${d.producto.nombre}: ${d.deficitGenerado} sin cobertura (${d.tipo}, operación ${d.operationId})`); } catch {}
@@ -104754,16 +104733,24 @@ avisosStockBajo.push({ producto: productoBase, teoricoDespues });
     }
     if (typeof window !== "undefined" && window.__nubeActiva) {
       for (const aviso of avisosStockBajo) {
-        fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+        try { fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
 method: "POST",
 headers: { "Content-Type": "application/json" },
 body: JSON.stringify({ titulo: "Stock bajo", cuerpo: `${aviso.producto.nombre} bajó del mínimo (quedan ${fmt(Math.max(0, aviso.teoricoDespues))}).`, localId: aviso.producto.localId || null, url: "/" })
-        }).catch(() => {});
+        }).catch(() => {}); } catch {}
       }
     }
     return { ok: true, replayed: false, yaExistia: false, movimientos: movimientosNuevos };
   }
-  return { aplicarMovimientoStock, aplicarLoteMovimientosStock, calcularStockTeorico };
+  function recuperarOperacionStock(operationId, intencion) {
+    if (contexto.pendiente && contexto.pendiente.movimientosNuevos.some((m) => m.operationId === operationId)) {
+      if (intencion && contexto.pendiente.movimientosNuevos.some((m) => m.pm12Intencion !== intencion)) return { ok: false, codigo: "conflicto_movimiento_existente", error: "La intención cambió mientras la publicación estaba pendiente.", movimientos: [] };
+      return publicarPendiente();
+    }
+    const existentes = [...porId.values()].filter((m) => m.operationId === operationId);
+    return existentes.length ? { ok: true, replayed: true, yaExistia: true, movimientos: existentes } : null;
+  }
+  return { aplicarMovimientoStock, aplicarLoteMovimientosStock, recuperarOperacionStock, calcularStockTeorico };
 }
 function crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId }) {
   const { aplicarMovimientoStock, calcularStockTeorico } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
@@ -105485,7 +105472,20 @@ function crearLogicaFichasCosto({ productos, setFichasCosto, localActivoId }) {
   return { addFichaCosto, updateFichaCosto, deleteFichaCosto, alergenosDeFicha };
 }
 function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId, empresaActivaId, obtenerContextoActor }) {
-  const { aplicarMovimientoStock, aplicarLoteMovimientosStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+  const { aplicarMovimientoStock, aplicarLoteMovimientosStock, recuperarOperacionStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+  function remotoAtomico() { return typeof window !== "undefined" && window.__nubeActiva === true; }
+  function sinConexionAtomica() { return { ok: false, codigo: "conexion_atomica_requerida", error: "Conecta para confirmar el ajuste completo. El conteo se conserva sin aplicar stock.", ajustados: 0, traspasados: [] }; }
+  async function publicarResultadoRemoto(promesa) {
+    const r = await promesa;
+    if (!r.ok) return r;
+    try {
+      await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
+      await sincronizarConteosPm12({ setConteos, localActivoId });
+    } catch {
+      return { ok: false, codigo: "resultado_confirmado_actualizacion_pendiente", error: "La operación está confirmada en el servidor; falta actualizar esta pantalla. Reintenta para recuperar el resultado.", resultadoExistente: true, ajustados: 0, traspasados: [] };
+    }
+    return r;
+  }
   function localDeConteo(conteo) {
     if (!conteo) return null;
     if (conteo.localId) return conteo.localId;
@@ -105672,6 +105672,12 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
     if (preparada.replayed) {
       return { ok: true, replayed: true, eliminado: false, cancelado: true, operationId: preparada.operationId, revertidos: preparada.reversos.length, reversos: preparada.reversos };
     }
+    if (typeof window !== "undefined" && window.__nubeActiva === false) return sinConexionAtomica();
+    if (remotoAtomico()) {
+      const permisoRemoto = contextoAjustePara(conteo);
+      if (!window.__pm12StockAtomico) return sinConexionAtomica();
+      return publicarResultadoRemoto(window.__pm12StockAtomico.cancelar(conteo, preparada, permisoRemoto));
+    }
     const generados = movimientos.filter((m) => m.documentoOrigenId === conteoId && m.origen === "aplicarAjustes" && movimientoEsDelLocalActivo(m));
     if (generados.length > 0) {
       const permisoCancelacionStock = autorizarMutacionAjustes(conteo);
@@ -105756,6 +105762,7 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
     if (lotes.length < 2) {
       return { ok: false, error: "Este conteo solo tiene una aplicaci\xF3n \u2014 no hay ning\xFAn duplicado que revertir." };
     }
+    if (remotoAtomico() || (typeof window !== "undefined" && window.__nubeActiva === false)) return { ok: false, codigo: "duplicado_legacy_requiere_revision", error: "Este ajuste antiguo requiere reconciliación antes de revertir stock." };
     const ultimoLoteId = lotes[lotes.length - 1];
     const movimientosARevertir = porLote.get(ultimoLoteId);
     const operationIdDeEstaReversion = uid();
@@ -105792,11 +105799,33 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
     if (estadoConteo !== "PARCIAL" && estadoConteo !== "COMPLETADO") {
       return { ok: false, codigo: "estado_no_ajustable", error: "Solo un conteo parcial o completado puede ajustar el stock.", ajustados: 0, traspasados: [] };
     }
-    if (conteo.ajustesAplicados) {
+    if (conteo.ajustesAplicados && (!remotoAtomico() || !conteo._pm12Servidor)) {
       return { ok: true, replayed: true, operationId: conteo.ajustesOperationId || null, ajustados: Number(conteo.ajustesCantidad) || 0, traspasados: conteo.ajustesTraspasados || [] };
     }
     const estadosApi = typeof window !== "undefined" ? window.__pm12ConteoEstados : null;
     if (!estadosApi) return { ok: false, codigo: "motor_no_disponible", error: "No se pudo validar el ajuste. Recarga la página e inténtalo de nuevo.", ajustados: 0, traspasados: [] };
+    const operationIdDeEsteAjuste = conteo.ajustesOperationId || `pm12-ajuste-conteo:${conteo.id}:${conteo.cerradoEn || conteo.fecha || "sin-corte"}`;
+    function confirmarDocumento(resultado) {
+      const ajustesAplicadosEn = new Date().toISOString();
+      try {
+        setConteos((cs) => cs.map((c) => c.id === conteoId ? { ...c, ajustesAplicados: true, ajustesAplicadosEn, ajustesOperationId: operationIdDeEsteAjuste, ajustesCantidad: resultado.ajustados, ajustesTraspasados: resultado.traspasados, ajustesActor: { id: permisoAjuste.actorId || null, nombre: permisoAjuste.actorNombre || "", rol: permisoAjuste.rol }, ajustesEmpresaId: permisoAjuste.empresaId, ajustesLocalId: permisoAjuste.localId } : c));
+      } catch {
+        return { ok: false, codigo: "confirmacion_conteo_pendiente", error: "El stock se aplicó; falta confirmar el conteo. Reintenta para recuperar el resultado.", operationId: operationIdDeEsteAjuste, ajustados: 0, traspasados: [] };
+      }
+      return { ok: true, operationId: operationIdDeEsteAjuste, ...resultado };
+    }
+    const intencionActual = JSON.stringify({ ambito: conteo.ambito || "total", items: (conteo.items || []).map((i) => ({ productoId: i.productoId, conteo: Object.prototype.hasOwnProperty.call(i, "conteo") ? i.conteo : i.cantidadContada })).sort((a, b) => String(a.productoId).localeCompare(String(b.productoId))) });
+    const recuperado = remotoAtomico() ? null : recuperarOperacionStock(operationIdDeEsteAjuste, intencionActual);
+    if (recuperado) {
+      if (!recuperado.ok) return { ...recuperado, ajustados: 0, traspasados: [] };
+      const registros = recuperado.movimientos;
+      const primero = registros[0];
+      if (!primero || primero.pm12PlanCantidad !== registros.length || registros.some((m) => m.pm12PlanCantidad !== registros.length || m.documentoOrigenId !== conteoId || m.origen !== "aplicarAjustes") || !primero.pm12Resultado) {
+        return { ok: false, codigo: "replay_parcial_inconsistente", error: "El ajuste existente no acredita un lote completo. Requiere revisión.", ajustados: 0, traspasados: [] };
+      }
+      if (primero.pm12Intencion !== intencionActual) return { ok: false, codigo: "conflicto_movimiento_existente", error: "La intención del conteo cambió después de aplicar el ajuste.", ajustados: 0, traspasados: [] };
+      return confirmarDocumento({ ...primero.pm12Resultado, replayed: true });
+    }
     const preparados = [];
     for (const item of conteo.items || []) {
       const p22 = productos.find((pr) => pr.id === item.productoId);
@@ -105816,7 +105845,7 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
     if (preparados.length === 0) return { ok: false, codigo: "sin_lineas_contadas", error: "No hay cantidades válidas que aplicar.", ajustados: 0, traspasados: [] };
     const esPisoVenta = conteo.ambito === "piso_venta";
     const esAlmacen = conteo.ambito === "almacen";
-    const operationIdDeEsteAjuste = conteo.ajustesOperationId || `pm12-ajuste-conteo:${conteo.id}:${conteo.cerradoEn || conteo.fecha || "sin-corte"}`;
+
     const planAjustes = [];
     const traspasados = [];
     const productosAjustados = /* @__PURE__ */ new Set();
@@ -105831,7 +105860,7 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
         origen: "aplicarAjustes",
         documentoOrigenId: conteoId,
         permitirDeficit: true,
-        camposExtra: { ...(datos.camposExtra || {}), pm12PlanVersion: 1, pm12PlanLeg: leg, pm12ConteoId: conteoId }
+        camposExtra: { ...(datos.camposExtra || {}), pm12PlanVersion: 1, pm12PlanLeg: leg, pm12ConteoId: conteoId, pm12BaseStock: { stock: p22.stock, stockPisoVenta: p22.stockPisoVenta, deficitPendiente: p22.deficitPendiente } }
       });
     };
     for (const { producto: p22, valorFinal } of preparados) {
@@ -105902,6 +105931,14 @@ agregarPlan(p22, "total-limite-piso", {
       }
     }
 
+    const resultadoPreparado = { ajustados: productosAjustados.size, traspasados };
+    for (const o of planAjustes) o.camposExtra = { ...o.camposExtra, pm12PlanCantidad: planAjustes.length, pm12Resultado: resultadoPreparado, pm12Intencion: intencionActual };
+    if (typeof window !== "undefined" && window.__nubeActiva === false) return sinConexionAtomica();
+    if (remotoAtomico()) {
+      if (!window.__pm12StockAtomico) return sinConexionAtomica();
+      const bases = preparados.map(({ producto: p, valorFinal }) => ({ productoId: p.id, conteo: valorFinal, stock: Number(p.stock) || 0, stockPisoVenta: Number(p.stockPisoVenta) || 0, deficitPendiente: Number(p.deficitPendiente) || 0 }));
+      return publicarResultadoRemoto(window.__pm12StockAtomico.aplicar(conteo, planAjustes, bases, permisoAjuste, operationIdDeEsteAjuste));
+    }
     let resultadoLote = { ok: true, replayed: false, movimientos: [] };
     if (planAjustes.length > 0) {
       resultadoLote = aplicarLoteMovimientosStock(planAjustes);
@@ -105911,11 +105948,9 @@ agregarPlan(p22, "total-limite-piso", {
     }
     const ajustados = productosAjustados.size;
     if (planAjustes.length > 0 && !resultadoLote.replayed) {
-      registrarAuditoria("Aplicar ajustes de inventario", `${ajustados} producto(s) ajustado(s) · ${permisoAjuste.rol} · ${permisoAjuste.actorNombre || permisoAjuste.actorId || "sin nombre"} · local ${permisoAjuste.localId}`);
+      try { registrarAuditoria("Aplicar ajustes de inventario", `${ajustados} producto(s) ajustado(s) · ${permisoAjuste.rol} · ${permisoAjuste.actorNombre || permisoAjuste.actorId || "sin nombre"} · local ${permisoAjuste.localId}`); } catch {}
     }
-    const ajustesAplicadosEn = (/* @__PURE__ */ new Date()).toISOString();
-    setConteos((s22) => s22.map((c22) => c22.id === conteoId ? { ...c22, ajustesAplicados: true, ajustesAplicadosEn, ajustesOperationId: operationIdDeEsteAjuste, ajustesCantidad: ajustados, ajustesTraspasados: traspasados, ajustesActor: { id: permisoAjuste.actorId || null, nombre: permisoAjuste.actorNombre || "", rol: permisoAjuste.rol }, ajustesEmpresaId: permisoAjuste.empresaId, ajustesLocalId: permisoAjuste.localId } : c22));
-    return { ok: true, replayed: !!resultadoLote.replayed, operationId: operationIdDeEsteAjuste, ajustados, traspasados };
+    return confirmarDocumento({ ...resultadoPreparado, replayed: !!resultadoLote.replayed });
   }
   return { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion };
 }
@@ -109683,7 +109718,7 @@ ${cuerpo}`;
       action: /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setVerHoja(true) }, /* @__PURE__ */ import_react4.default.createElement(ClipboardList, { size: 15 }), " Hoja para contar"), !activo && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setActivoId(iniciarConteo("total")) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Contar todo el local"), !activo && /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setActivoId(iniciarConteo("piso_venta")) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Contar solo el piso de venta"), !activo && /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setActivoId(iniciarConteo("almacen")) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Contar solo el almac\xE9n (trastienda, sin elaborados)"))
     },
     "Inventario ciego"
-  ), confirmarCierreParcial && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => { setConfirmarCierreParcial(false); setMotivoCierreParcial(""); }, title: "Cerrar conteo parcial" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, "Has contado ", /* @__PURE__ */ import_react4.default.createElement("b", null, coberturaActivo.contados, " de ", coberturaActivo.total), " productos. Los ", coberturaActivo.pendientes, " restantes quedarán identificados como pendientes; no se tratarán como cero."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo del cierre parcial" }, /* @__PURE__ */ import_react4.default.createElement("textarea", { value: motivoCierreParcial, onChange: (e2) => setMotivoCierreParcial(e2.target.value), rows: 3, placeholder: "Ej.: faltaba revisar la cámara frigorífica", className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => { setConfirmarCierreParcial(false); setMotivoCierreParcial(""); } }, "Seguir contando"), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarFinalizacionParcial }, "Confirmar cierre parcial"))), resumenCierre && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between gap-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, resumenCierre.ajustados === 0 ? "Todo coincid\xEDa \u2014 no hizo falta ning\xFAn ajuste." : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, resumenCierre.ajustados, " producto(s) ajustado(s).", resumenCierre.traspasados.filter((t22) => t22.tipoTraspaso === "sobra").length > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " ", "De ellos, ", resumenCierre.traspasados.filter((t22) => t22.tipoTraspaso === "sobra").length, " ten\xEDan sobrante y se traspasaron solos al piso de venta:", " ", resumenCierre.traspasados.filter((t22) => t22.tipoTraspaso === "sobra").map((t22) => `${t22.nombre} (+${fmt(t22.cantidad)})`).join(", "), "."), resumenCierre.traspasados.filter((t22) => t22.tipoTraspaso === "falta").length > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " ", resumenCierre.traspasados.filter((t22) => t22.tipoTraspaso === "falta").length, " ten\xEDan menos de lo esperado en almac\xE9n \u2014 se asume que ya estaban en el piso de venta sin registrar, y se traspasaron ah\xED (el total no cambi\xF3, no se cuenta como merma):", " ", resumenCierre.traspasados.filter((t22) => t22.tipoTraspaso === "falta").map((t22) => `${t22.nombre} (+${fmt(t22.cantidad)})`).join(", "), "."))), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setResumenCierre(null), className: "shrink-0", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 16 })))), almacenCongelado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start gap-2 text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { size: 16, color: C2.amber, style: { marginTop: 2, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement("span", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Almac\xE9n congelado."), " Mientras haya un conteo abierto no se pueden registrar entradas ni salidas, para que el descuadre no salga falseado. Finaliza el conteo para desbloquearlo."))), !activo && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start gap-2 text-[12.5px]", style: { color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement(EyeOff, { size: 16, style: { marginTop: 2, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement("span", null, "Durante el conteo no se muestra la existencia del sistema: cuentas f\xEDsicamente y anotas la cantidad. Al finalizar ver\xE1s las diferencias contra el stock registrado, valoradas en euros."))), activo && !activo.completado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3 flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement(Eye, { size: 15 }), " Captura de conteos", /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: esPisoVenta || esAlmacen ? C2.amber : C2.inkSoft }, esPisoVenta ? "Solo piso de venta" : esAlmacen ? "Solo almac\xE9n (trastienda)" : "Todo el local")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Contado por" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: (activo.responsables || {}).contadoPor || "", onChange: (e2) => actualizarResponsable(activo.id, "contadoPor", e2.target.value), placeholder: "Nombre" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Revisado por (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: (activo.responsables || {}).revisor || "", onChange: (e2) => actualizarResponsable(activo.id, "revisor", e2.target.value), placeholder: "Responsable" }))), /* @__PURE__ */ import_react4.default.createElement("div", { style: { overflowX: "auto" } }, /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[12px]", style: { borderCollapse: "collapse" } }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", null, /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff", width: 30 } }, "N\xBA"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Descripci\xF3n del producto"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff", width: 58 } }, "U/M"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff", width: 96 } }, "Conteo"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, (() => {
+  ), confirmarCierreParcial && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => { setConfirmarCierreParcial(false); setMotivoCierreParcial(""); }, title: "Cerrar conteo parcial" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, "Has contado ", /* @__PURE__ */ import_react4.default.createElement("b", null, coberturaActivo.contados, " de ", coberturaActivo.total), " productos. Los ", coberturaActivo.pendientes, " restantes quedarán identificados como pendientes; no se tratarán como cero."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo del cierre parcial" }, /* @__PURE__ */ import_react4.default.createElement("textarea", { value: motivoCierreParcial, onChange: (e2) => setMotivoCierreParcial(e2.target.value), rows: 3, placeholder: "Ej.: faltaba revisar la cámara frigorífica", className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => { setConfirmarCierreParcial(false); setMotivoCierreParcial(""); } }, "Seguir contando"), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarFinalizacionParcial }, "Confirmar cierre parcial"))), resumenCierre && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between gap-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, resumenCierre.ok === false ? resumenCierre.error : resumenCierre.ajustados === 0 ? "Todo coincid\xEDa \u2014 no hizo falta ning\xFAn ajuste." : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, resumenCierre.ajustados, " producto(s) ajustado(s).", resumenCierre.traspasados.filter((t22) => t22.tipoTraspaso === "sobra").length > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " ", "De ellos, ", resumenCierre.traspasados.filter((t22) => t22.tipoTraspaso === "sobra").length, " ten\xEDan sobrante y se traspasaron solos al piso de venta:", " ", resumenCierre.traspasados.filter((t22) => t22.tipoTraspaso === "sobra").map((t22) => `${t22.nombre} (+${fmt(t22.cantidad)})`).join(", "), "."), resumenCierre.traspasados.filter((t22) => t22.tipoTraspaso === "falta").length > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " ", resumenCierre.traspasados.filter((t22) => t22.tipoTraspaso === "falta").length, " ten\xEDan menos de lo esperado en almac\xE9n \u2014 se asume que ya estaban en el piso de venta sin registrar, y se traspasaron ah\xED (el total no cambi\xF3, no se cuenta como merma):", " ", resumenCierre.traspasados.filter((t22) => t22.tipoTraspaso === "falta").map((t22) => `${t22.nombre} (+${fmt(t22.cantidad)})`).join(", "), "."))), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setResumenCierre(null), className: "shrink-0", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 16 })))), almacenCongelado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start gap-2 text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { size: 16, color: C2.amber, style: { marginTop: 2, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement("span", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Almac\xE9n congelado."), " Mientras haya un conteo abierto no se pueden registrar entradas ni salidas, para que el descuadre no salga falseado. Finaliza el conteo para desbloquearlo."))), !activo && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start gap-2 text-[12.5px]", style: { color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement(EyeOff, { size: 16, style: { marginTop: 2, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement("span", null, "Durante el conteo no se muestra la existencia del sistema: cuentas f\xEDsicamente y anotas la cantidad. Al finalizar ver\xE1s las diferencias contra el stock registrado, valoradas en euros."))), activo && !activo.completado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3 flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement(Eye, { size: 15 }), " Captura de conteos", /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: esPisoVenta || esAlmacen ? C2.amber : C2.inkSoft }, esPisoVenta ? "Solo piso de venta" : esAlmacen ? "Solo almac\xE9n (trastienda)" : "Todo el local")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Contado por" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: (activo.responsables || {}).contadoPor || "", onChange: (e2) => actualizarResponsable(activo.id, "contadoPor", e2.target.value), placeholder: "Nombre" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Revisado por (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: (activo.responsables || {}).revisor || "", onChange: (e2) => actualizarResponsable(activo.id, "revisor", e2.target.value), placeholder: "Responsable" }))), /* @__PURE__ */ import_react4.default.createElement("div", { style: { overflowX: "auto" } }, /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[12px]", style: { borderCollapse: "collapse" } }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", null, /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff", width: 30 } }, "N\xBA"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Descripci\xF3n del producto"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff", width: 58 } }, "U/M"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff", width: 96 } }, "Conteo"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, (() => {
     const enConteo = activo.items.map((it2) => ({ it: it2, p: productoPorId(it2.productoId) })).filter((x3) => x3.p);
     const grupos = agruparPorProveedor(enConteo.map((x3) => x3.p), proveedores);
     const porId = new Map(enConteo.map((x3) => [x3.p.id, x3.it]));
@@ -109801,14 +109836,16 @@ ${cuerpo}`;
     activo,
     procesandoCierre,
     puedeAplicar: puedeAplicarAjustes,
-    onAplicar: () => {
+    onAplicar: async () => {
       if (procesandoCierre) return;
       setProcesandoCierre(true);
-      const r2 = aplicarAjustes(activo.id, motivos);
-      setMotivos({});
-      setResumenCierre(r2);
-      setActivoId(null);
-      setProcesandoCierre(false);
+      try {
+        const r = await aplicarAjustes(activo.id, motivos);
+        setResumenCierre(r);
+        if (r.ok) { setMotivos({}); setActivoId(null); }
+      } catch {
+        setResumenCierre({ ok: false, error: "No se confirmó el ajuste. Conserva el conteo y reintenta." });
+      } finally { setProcesandoCierre(false); }
     },
     onCerrarSinAjustar: () => setActivoId(null),
     onPedirRevertir: () => setConfirmarRevertirDuplicado(true)
@@ -109853,10 +109890,10 @@ ${cuerpo}`;
     Btn,
     {
       disabled: procesandoEliminar,
-      onClick: () => {
+      onClick: async () => {
         if (procesandoEliminar) return;
         setProcesandoEliminar(true);
-        const resultadoGestionConteo = eliminarConteo(confirmarEliminar.id, { motivo: motivoCancelacion, responsable: responsableCancelacion });
+        const resultadoGestionConteo = await eliminarConteo(confirmarEliminar.id, { motivo: motivoCancelacion, responsable: responsableCancelacion });
         if (!resultadoGestionConteo || !resultadoGestionConteo.ok) {
           alert(resultadoGestionConteo && resultadoGestionConteo.error ? resultadoGestionConteo.error : "No se pudo gestionar el conteo.");
           setProcesandoEliminar(false);

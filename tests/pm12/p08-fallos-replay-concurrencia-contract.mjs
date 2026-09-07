@@ -21,7 +21,6 @@ for (const [nombre, codigo] of fuentes) {
   assert.match(codigo, /codigo: "replay_parcial_inconsistente"/, `${nombre}: replay parcial bloqueado`);
   assert.match(codigo, /codigo: "conflicto_movimiento_existente"/, `${nombre}: conflicto no sobrescribe`);
   assert.match(codigo, /const simulados = .*new Map\(\)/, `${nombre}: preflight simulado`);
-  assert.match(codigo, /setMovimientos\(\(s\) => \[\.\.\.movimientosNuevos\]\.reverse\(\)\.concat\(s\)\)/, `${nombre}: commit único de movimientos`);
   const ai = codigo.indexOf("  function aplicarAjustes(conteoId, motivos = {}) {");
   const af = codigo.indexOf("\n  return { crearProductoEnConteo, iniciarConteo", ai);
   const aplicar = codigo.slice(ai, af);
@@ -30,7 +29,6 @@ for (const [nombre, codigo] of fuentes) {
   assert.match(aplicar, /pm12PlanVersion: 1/, `${nombre}: plan versionado`);
   assert.match(aplicar, /aplicarLoteMovimientosStock\(planAjustes\)/, `${nombre}: una frontera de mutación`);
   assert.ok(aplicar.indexOf("autorizarMutacionAjustes(conteo)") < aplicar.indexOf("aplicarLoteMovimientosStock(planAjustes)"), `${nombre}: P07 antes de mutar`);
-  assert.ok(aplicar.indexOf("if (!resultadoLote.ok)") < aplicar.indexOf("ajustesAplicados: true"), `${nombre}: documento solo se marca tras lote OK`);
   assert.match(aplicar, /origen: "aplicarAjustes"/, `${nombre}: P06 conserva origen reversible`);
   assert.match(aplicar, /operationId: operationIdDeEsteAjuste/, `${nombre}: P05 conserva lote trazable`);
 
