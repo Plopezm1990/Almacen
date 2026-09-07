@@ -1,0 +1,128 @@
+name: PM13 P04 ausencias
+
+on:
+  push:
+    branches: [pm13-p04-ausencias]
+    paths:
+      - 'fuente.js'
+      - 'tools/corregir_pm13_p04_ausencias.py'
+      - 'tests/pm13/p04-*'
+      - 'tests/pm13/P04_*'
+      - 'supabase/migrations/20260907212000_pm13_p04_ausencias_trazables.sql'
+      - '.github/workflows/pm13-p04-ausencias.yml'
+      - 'tests/pm10/p07-personal-contract.mjs'
+
+permissions:
+  contents: write
+
+jobs:
+  validar-p04:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Proteger main y alcance P04
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          P04_BASE='a0823b032f85b9c35ff65826d65793d4f2428ac9'
+          mapfile -t cambios < <(git diff --name-only "$P04_BASE"..HEAD -- supabase/)
+          if [ "${#cambios[@]}" -ne 1 ] || [ "${cambios[0]:-}" != 'supabase/migrations/20260907212000_pm13_p04_ausencias_trazables.sql' ]; then
+            echo 'P04 solo puede añadir su migración de ausencias' >&2
+            printf '%s\n' "${cambios[@]}" >&2
+            exit 1
+          fi
+          echo 'PM13_P04_MAIN_FROZEN=PASS'
+          echo 'PM13_P04_SUPABASE_SCOPE=PASS'
+
+      - name: Aplicar hardening frontend Ausencias
+        run: python3 tools/corregir_pm13_p04_ausencias.py
+
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+
+      - name: Contratos PM13 P04
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm13/p04-ausencias-contract.mjs
+          node tests/pm13/p04-backend-ausencias-contract.mjs
+
+      - name: Regresión PM13 P01-P03 y Personal PM10
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm13/p01-rpc-personal-contract.mjs
+          node tests/pm13/p01-backend-personal-contract.mjs
+          node tests/pm13/p02-turnos-contract.mjs
+          node tests/pm13/p03-fichajes-contract.mjs
+          node tests/pm13/p03-backend-fichajes-contract.mjs
+          node tests/pm10/p07-personal-contract.mjs
+          echo 'PM13_P04_REGRESSION_P01_P03_PM10=PASS'
+
+      - name: Regresión frontend PM12 P02-P10
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in 02 03 04 05 06 07 08 09 10; do
+            for t in tests/pm12/p${n}-*contract.mjs; do
+              test -f "$t" || continue
+              case "$t" in
+                *postgres*|*supabase*) continue ;;
+              esac
+              node "$t"
+            done
+          done
+          echo 'PM13_P04_REGRESSION_PM12=PASS'
+
+      - name: Barreras P04
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s = Path('fuente.js').read_text(encoding='utf-8')
+          a = s.index('function crearLogicaPersonal({')
+          b = s.index('function crearLogicaTurnos({', a)
+          x = s[a:b]
+          assert 'function validarAusenciaPM13(' in x
+          assert 'pm13_registrar_ausencia' in x
+          assert 'pm13_anular_ausencia' in x
+          assert 'ausencia_solapada' in x
+          assert 'estado: "ANULADA"' in x
+          assert 'ausencias: (e2.ausencias || []).filter((a22) => a22.id !== ausenciaId)' not in x
+          print('PM13_P04_DOMAIN_GUARDS=PASS')
+          PY
+          ! grep -Eqi 'service_role|SUPABASE_SERVICE_ROLE_KEY|sb_secret_' \
+            tools/corregir_pm13_p04_ausencias.py tests/pm13/p04-ausencias-contract.mjs tests/pm13/p04-backend-ausencias-contract.mjs supabase/migrations/20260907212000_pm13_p04_ausencias_trazables.sql
+          git diff --check
+          echo 'PM13_P04_NO_SECRET=PASS'
+
+      - name: Commit funcional si procede
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- fuente.js; then
+            echo 'Fuente ya coincide con P04'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add fuente.js
+          git commit -m 'feat(pm13): cerrar Ausencias seguras P04'
+          git push
+
+  gate-final:
+    runs-on: ubuntu-24.04
+    needs: [validar-p04]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM13 P04
+        run: |
+          echo 'PM13_P04_GATE_FINAL=PASS'
+          echo 'MAIN_NO_TOCADO=1'
+          echo 'PRODUCCION_NO_TOCADA=1'
