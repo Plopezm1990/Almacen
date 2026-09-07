@@ -41,15 +41,17 @@ as $$
   select (select auth.uid()) is not null
      and exists(
        select 1
-         from public.perfiles p
-        where p.user_id=(select auth.uid())
-          and p.activo=true
-     )
-     and exists(
-       select 1
          from public.membresias_usuario m
         where m.user_id=(select auth.uid())
           and m.activo=true
+     )
+     -- Producción conserva perfiles. Un perfil explícitamente inactivo bloquea;
+     -- si aún no existe perfil, una membresía creada deliberadamente sigue siendo suficiente.
+     and not exists(
+       select 1
+         from public.perfiles p
+        where p.user_id=(select auth.uid())
+          and p.activo=false
      );
 $$;
 
@@ -59,11 +61,21 @@ language sql
 stable security definer
 set search_path = ''
 as $$
-  select p.rol
-    from public.perfiles p
-   where p.user_id=(select auth.uid())
-     and p.activo=true
-   limit 1;
+  select coalesce(
+    (
+      select p.rol
+        from public.perfiles p
+       where p.user_id=(select auth.uid()) and p.activo=true
+       limit 1
+    ),
+    (
+      select m.rol
+        from public.membresias_usuario m
+       where m.user_id=(select auth.uid()) and m.activo=true
+       order by m.empresa_id,m.local_id nulls first
+       limit 1
+    )
+  );
 $$;
 
 create or replace function private.la_tiene_empresa(p_empresa text)
