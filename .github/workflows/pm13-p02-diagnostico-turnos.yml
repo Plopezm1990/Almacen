@@ -1,0 +1,42 @@
+name: PM13 P02 diagnostico turnos
+
+on:
+  push:
+    branches: [pm13-p02-turnos]
+    paths:
+      - 'tests/pm13/p02-diagnostico-turnos.mjs'
+      - '.github/workflows/pm13-p02-diagnostico-turnos.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  diagnostico:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+      - name: Sintaxis fuente actual
+        run: node --check fuente.js
+      - name: Diagnosticar Turnos actual
+        run: node tests/pm13/p02-diagnostico-turnos.mjs
+      - name: Guardar evidencia
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/pm13/P02_DIAGNOSTICO_TURNOS.json
+          if git diff --cached --quiet; then
+            echo 'Diagnóstico ya actualizado'
+            exit 0
+          fi
+          git commit -m 'docs(pm13): guardar diagnostico P02 turnos'
+          git push
