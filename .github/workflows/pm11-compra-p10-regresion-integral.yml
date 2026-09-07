@@ -1,0 +1,149 @@
+name: PM11 Compra P10 regresion integral
+
+on:
+  push:
+    branches: [pm11-compra-recepcion-pago-e2e]
+    paths:
+      - 'fuente.js'
+      - 'source-recovery/fuente-recuperado.js'
+      - 'source-recovery/entrada-recuperada.js'
+      - 'tests/pm11-compra/**'
+      - 'tests/pm10/**'
+      - 'tests/pm09/**'
+      - 'tests/pm08/**'
+      - 'tests/pm07/**'
+      - 'tests/pm05/**'
+      - 'tests/g1/**'
+      - '.github/workflows/pm11-compra-p10-regresion-integral.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regresion-integral:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout completo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar rama y main congelado
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "pm11-compra-recepcion-pago-e2e"
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          echo 'PM11_COMPRA_P10_MAIN_CONGELADO=PASS'
+
+      - name: Sintaxis bundle actual
+        run: node --check fuente.js
+
+      - name: Contrato P10 regresion integral
+        run: node tests/pm11-compra/p10-regresion-integral-contract.mjs
+
+      - name: Regresion PM11 Compra P09-P02
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in \
+            tests/pm11-compra/p09-conciliacion-e2e-contract.mjs \
+            tests/pm11-compra/p08-fallos-replay-concurrencia-contract.mjs \
+            tests/pm11-compra/p07-aislamiento-permisos-e2e-contract.mjs \
+            tests/pm11-compra/p06-pago-reverso-e2e-contract.mjs \
+            tests/pm11-compra/p05-factura-identidad-contract.mjs \
+            tests/pm11-compra/p04-albaran-trazabilidad-contract.mjs \
+            tests/pm11-compra/p03-recepciones-multiples-replay-contract.mjs \
+            tests/pm11-compra/p02-contrato-e2e-estados-contract.mjs; do
+            echo "==> $f"
+            node "$f"
+          done
+
+      - name: Regresion PM10 P04-P13
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in \
+            tests/pm10/p04-productos-contract.mjs \
+            tests/pm10/p05-pedidos-contract.mjs \
+            tests/pm10/p06-recepcion-contract.mjs \
+            tests/pm10/p07-personal-contract.mjs \
+            tests/pm10/p08-encargos-contract.mjs \
+            tests/pm10/p09-transversal-contract.mjs \
+            tests/pm10/p10-autoridad-persistencia-contract.mjs \
+            tests/pm10/p11-robustez-altas-contract.mjs \
+            tests/pm10/p12-datos-legados-contract.mjs \
+            tests/pm10/p13-contexto-aislamiento-contract.mjs; do
+            echo "==> $f"
+            node "$f"
+          done
+
+      - name: Regresiones heredadas PM05 PM07 PM08
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm05/frontend-contract.mjs
+          node tests/pm07/frontend-contract.mjs
+          node tests/pm08/frontend-contract.mjs
+          node tests/pm08/migration-contract.mjs
+          node tests/pm08/replay-scope-contract.mjs
+
+      - name: Regresion PM09 completa
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in tests/pm09/*.mjs; do
+            echo "==> $f"
+            node "$f"
+          done
+
+      - name: Regresion G1 concurrencia y finanzas
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/g1/p07-concurrencia-replay-contract.mjs
+          node tests/g1/p08-la004-gate-contract.mjs
+
+      - name: Sintaxis fuente recuperada
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check source-recovery/fuente-recuperado.js
+          node --check source-recovery/entrada-recuperada.js
+          echo 'PM11_COMPRA_P10_SOURCE_RECOVERY_SYNTAX=PASS'
+
+      - name: Reproducibilidad del artefacto Git exacto
+        shell: bash
+        run: |
+          set -euo pipefail
+          git show HEAD:fuente.js > /tmp/pm11-compra-fuente-a.js
+          git show HEAD:fuente.js > /tmp/pm11-compra-fuente-b.js
+          node --check /tmp/pm11-compra-fuente-a.js
+          node --check /tmp/pm11-compra-fuente-b.js
+          cmp -s /tmp/pm11-compra-fuente-a.js /tmp/pm11-compra-fuente-b.js
+          SHA_WORKTREE=$(sha256sum fuente.js | awk '{print $1}')
+          SHA_A=$(sha256sum /tmp/pm11-compra-fuente-a.js | awk '{print $1}')
+          SHA_B=$(sha256sum /tmp/pm11-compra-fuente-b.js | awk '{print $1}')
+          BYTES_WORKTREE=$(wc -c < fuente.js)
+          BYTES_A=$(wc -c < /tmp/pm11-compra-fuente-a.js)
+          BYTES_B=$(wc -c < /tmp/pm11-compra-fuente-b.js)
+          test "$SHA_WORKTREE" = "$SHA_A"
+          test "$SHA_A" = "$SHA_B"
+          test "$BYTES_WORKTREE" = "$BYTES_A"
+          test "$BYTES_A" = "$BYTES_B"
+          echo 'PM11_COMPRA_P10_ARTIFACT_REPRODUCIBLE_FROM_GIT=PASS'
+          echo "PM11_COMPRA_P10_BUNDLE_SHA256=$SHA_WORKTREE"
+          echo "PM11_COMPRA_P10_BUNDLE_BYTES=$BYTES_WORKTREE"
+
+      - name: Bundle candidato intacto
+        run: |
+          git diff --exit-code -- fuente.js
+          echo 'PM11_COMPRA_P10_BUNDLE_INTACTO=PASS'
+
+      - name: Confirmar prueba sin escrituras
+        run: |
+          echo 'PM11_COMPRA_P10_SUPABASE_WRITES=0'
+          echo 'PM11_COMPRA_P10_PRODUCTION_WRITES=0'
+          echo 'PM11_COMPRA_P10_REGRESION_AUTOMATICA=PASS'
