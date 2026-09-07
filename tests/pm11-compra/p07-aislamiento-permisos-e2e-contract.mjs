@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
 const src = fs.readFileSync('fuente.js', 'utf8');
+const p01 = fs.readFileSync('tests/pm11-compra/P01_CHECKPOINT_INVENTARIO.md', 'utf8');
 const p02 = fs.readFileSync('tests/pm11-compra/P02_CONTRATO_E2E_ESTADOS.md', 'utf8');
 const g1 = fs.readFileSync('tests/g1/P05_PERMISOS_AISLAMIENTO_EVIDENCIA.md', 'utf8');
 const dec = fs.readFileSync('docs/plan-maestro/PM03_CONTRATOS_MINIMOS_PROPUESTA.md', 'utf8');
@@ -17,9 +18,9 @@ function contiene(texto, patron, mensaje) {
   assert.match(texto, patron, mensaje);
 }
 
-// Alcance P07 congelado desde P02.
+// Alcance P07 congelado: P02 define la responsabilidad y P01 detalla la matriz objetivo.
 contiene(p02, /P07:\*\* aislamiento y permisos E2E|\*\*P07:\*\* aislamiento y permisos E2E|\*\*P07 — Aislamiento y permisos\*\*|P07 — Aislamiento y permisos/, 'P07 debe estar definido como aislamiento y permisos');
-contiene(p02, /A1\/A2\/B1\/Todos\/inactivo|A1\/A2\/B1|Todos.*inactivo/s, 'P07 debe cubrir A1/A2/B1/Todos/inactivo');
+contiene(p01, /P07 — Aislamiento y permisos:\*\* A1\/A2\/B1\/Todos\/inactivo|P07 — Aislamiento y permisos.*A1\/A2\/B1\/Todos\/inactivo/, 'P07 debe cubrir A1/A2/B1/Todos/inactivo');
 
 // Contrato maestro de contexto y roles.
 for (const patron of [
