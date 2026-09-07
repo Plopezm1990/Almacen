@@ -156,7 +156,9 @@ res = h.logica.updateEmpleado('legacy', { puesto: 'Corregir después' });
 assert.equal(res.ok, false, 'editar una ficha legado inválida obliga a corregirla, no la normaliza silenciosamente');
 assert.equal(h.mutaciones(), 0);
 
-// Evidencia estática: la UI ya no degrada abc/negativos con Number(...)||0/14 y solo cierra tras éxito.
+// Evidencia estática: la UI no degrada abc/negativos, usa la API validada de Personal
+// y solo cierra el formulario después de comprobar el resultado. PM13 puede esperar
+// la RPC y aportar una identidad estable de alta sin debilitar estas invariantes PM10.
 const personalIni = src.indexOf('function Personal({');
 const personalFin = src.indexOf('function Turnos({', personalIni);
 const ui = src.slice(personalIni, personalFin);
@@ -164,14 +166,16 @@ assert.match(ui, /const datos = \{ \.\.\.form \};/);
 assert.doesNotMatch(ui, /horasSemanales: Number\(form\.horasSemanales\) \|\| 0/);
 assert.doesNotMatch(ui, /pagas: Number\(form\.pagas\) \|\| 14/);
 assert.doesNotMatch(ui, /salarioBrutoMensual: Number\(form\.salarioBrutoMensual\) \|\| 0/);
-assert.match(ui, /const resultado = editingId \? updateEmpleado\(editingId, datos\) : addEmpleado\(datos\);/);
+const submitLegacy = /const resultado = editingId \? updateEmpleado\(editingId, datos\) : addEmpleado\(datos\);/;
+const submitPM13 = /const resultado = editingId \? await updateEmpleado\(editingId, datos\) : await addEmpleado\(datos, controlAltaPersonalPM13\);/;
+assert.ok(submitLegacy.test(ui) || submitPM13.test(ui), 'submit usa add/update validados y puede esperar confirmación PM13');
 const resultPos = ui.indexOf('const resultado = editingId ?');
 const errorPos = ui.indexOf('resultado.ok === false', resultPos);
 const closePos = ui.indexOf('setShowForm(false)', resultPos);
 assert.ok(resultPos >= 0 && errorPos > resultPos && closePos > errorPos, 'UI conserva formulario al fallar');
 
 const logic = src.slice(logicIni, logicFin);
-assert.match(logic, /function addEmpleado\(data\)[\s\S]{0,300}validarEmpleadoPM10/);
-assert.match(logic, /function updateEmpleado\(id, data\)[\s\S]{0,600}validarEmpleadoPM10/);
+assert.match(logic, /function addEmpleado\(data(?:, controlPM13 = \{\})?\)[\s\S]{0,500}validarEmpleadoPM10/);
+assert.match(logic, /function updateEmpleado\(id, data\)[\s\S]{0,800}validarEmpleadoPM10/);
 
 console.log('PM10 P07 LA-017 Personal: contrato OK');
