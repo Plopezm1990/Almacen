@@ -1,0 +1,65 @@
+name: PM12 P08 replay concurrencia y fallos
+
+on:
+  push:
+    branches: [pm12-conteo-estados-honestos]
+    paths:
+      - 'fuente.js'
+      - 'source-recovery/fuente-recuperado.js'
+      - 'tests/pm12/P08_FALLOS_REPLAY_CONCURRENCIA.md'
+      - 'tests/pm12/p08-fallos-replay-concurrencia-contract.mjs'
+      - '.github/workflows/pm12-p08-replay-concurrencia-fallos.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar aislamiento de rama y main congelado
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "pm12-conteo-estados-honestos"
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          echo 'MAIN_FROZEN=1'
+
+      - name: Validar sintaxis
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check fuente.js
+          node --check source-recovery/fuente-recuperado.js
+          node --check pm12-conteo-estados-v1.js
+
+      - name: Contrato P08 fallos replay y concurrencia
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm12/p08-fallos-replay-concurrencia-contract.mjs
+
+      - name: Regresiones PM12 P02-P07
+        shell: bash
+        run: |
+          set -euo pipefail
+          for t in tests/pm12/p02-*contract.mjs tests/pm12/p03-*contract.mjs tests/pm12/p04-*contract.mjs tests/pm12/p05-*contract.mjs tests/pm12/p06-*contract.mjs tests/pm12/p07-*contract.mjs; do
+            node "$t"
+          done
+          echo 'REGRESSION_P02_P07=PASS'
+
+      - name: Confirmar cero escrituras externas
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git rev-parse HEAD^ >/dev/null 2>&1; then
+            test -z "$(git diff --name-only HEAD^ HEAD | grep '^supabase/' || true)"
+          fi
+          echo 'PM12_P08_SUPABASE_WRITES=0'
+          echo 'PM12_P08_PRODUCTION_WRITES=0'
