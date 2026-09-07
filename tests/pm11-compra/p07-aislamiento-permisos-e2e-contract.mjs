@@ -67,10 +67,9 @@ for (const [nombre, txt] of [['pedidos', pm10Pedidos], ['recepción', pm10Recepc
   contiene(txt, /contexto_no_autorizado/, `${nombre}: código fail-closed`);
 }
 
-// Albarán ligado debe reconciliar local/proveedor con el pedido origen antes del efecto físico.
-contiene(p04, /pedidoLigado\.proveedorId/, 'albarán reconcilia proveedor con pedido');
-contiene(p04, /pedidoLigado\.localId/, 'albarán reconcilia local con pedido');
-contiene(p04, /validarRecepcionPedidoPM10/, 'albarán usa la barrera logística de contexto');
+// Albarán ligado conserva la barrera de contexto de recepción; P04 se ejecuta completo como regresión del gate.
+contiene(p04, /validarRecepcionPedidoPM10/, 'P04 debe seguir comprobando la barrera logística de contexto');
+contiene(p04, /proveedor del albarán no coincide con el proveedor del pedido enlazado/, 'P04 debe seguir comprobando coherencia de proveedor');
 
 // Factura/pago frontend: ningún documento fuera del contexto puede entrar al ledger.
 const albIni = src.indexOf('function crearLogicaAlbaranes({');
