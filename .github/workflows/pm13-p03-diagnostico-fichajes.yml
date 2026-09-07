@@ -33,7 +33,7 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add tests/pm13/P03_DIAGNOSTICO_FICHAJES.json
+          git add tests/pm13/P03_DIAGNOSTICO_FICHAJES.json tests/pm13/P03_FICHAJES_ABIERTOS.txt
           if git diff --cached --quiet; then
             echo 'Diagnóstico ya actualizado'
             exit 0
