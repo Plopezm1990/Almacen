@@ -1,0 +1,439 @@
+name: PM12 P08 implementation temp
+
+on:
+  push:
+    branches: [pm12-conteo-estados-honestos]
+    paths:
+      - '.github/workflows/pm12-p08-implementation-temp.yml'
+      - 'fuente.js'
+      - 'source-recovery/fuente-recuperado.js'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  implementar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pm12-conteo-estados-honestos
+          fetch-depth: 0
+      - name: Proteger rama y main
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "pm12-conteo-estados-honestos"
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+      - name: Implementar P08
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          fuentes = [Path('fuente.js'), Path('source-recovery/fuente-recuperado.js')]
+
+          batch = r'''
+  function aplicarLoteMovimientosStock(operaciones = []) {
+    if (!Array.isArray(operaciones) || operaciones.length === 0) {
+      return { ok: false, codigo: "lote_vacio", error: "El lote de movimientos está vacío.", movimientos: [] };
+    }
+    const idsLote = /* @__PURE__ */ new Set();
+    const normalizadas = [];
+    for (const operacion of operaciones) {
+      const id = String(operacion && operacion.movimientoId || "").trim();
+      if (!id) return { ok: false, codigo: "movimiento_id_obligatorio", error: "Cada movimiento del lote necesita un identificador determinista.", movimientos: [] };
+      if (idsLote.has(id)) return { ok: false, codigo: "movimiento_id_duplicado", error: `El lote repite el movimiento ${id}.`, movimientos: [] };
+      idsLote.add(id);
+      const cantidadNum = Number(operacion.cantidad);
+      if (!Number.isFinite(cantidadNum)) return { ok: false, codigo: "cantidad_no_finita", error: `El movimiento ${id} tiene una cantidad no válida.`, movimientos: [] };
+      normalizadas.push({ ...operacion, movimientoId: id, cantidad: cantidadNum });
+    }
+    function coincideMovimiento(existente, operacion) {
+      if (!existente) return false;
+      return String(existente.id || "") === operacion.movimientoId &&
+        String(existente.productoId || "") === String(operacion.productoId || "") &&
+        Number(existente.cantidad) === Number(operacion.cantidad) &&
+        String(existente.tipo || "") === String(operacion.tipo || "") &&
+        String(existente.operationId || existente.id || "") === String(operacion.operationId || operacion.movimientoId) &&
+        String(existente.origen || "") === String(operacion.origen || "") &&
+        String(existente.documentoOrigenId || "") === String(operacion.documentoOrigenId || "") &&
+        !!existente.afectaStockTotal === (operacion.afectaStockTotal !== false) &&
+        !!existente.afectaStockPisoVenta === !!operacion.afectaStockPisoVenta;
+    }
+    let existentes = 0;
+    const movimientosExistentes = [];
+    for (const operacion of normalizadas) {
+      if (!idsConocidos.has(operacion.movimientoId)) continue;
+      const existente = porId.get(operacion.movimientoId);
+      if (!coincideMovimiento(existente, operacion)) {
+        return { ok: false, codigo: "conflicto_movimiento_existente", error: `El movimiento ${operacion.movimientoId} ya existe con otro contenido. No se sobrescribe.`, movimientos: [] };
+      }
+      existentes += 1;
+      movimientosExistentes.push(existente);
+    }
+    if (existentes > 0 && existentes < normalizadas.length) {
+      return { ok: false, codigo: "replay_parcial_inconsistente", error: "Se detectó un lote aplicado solo en parte. No se crearán movimientos adicionales hasta reconciliar el estado.", movimientos: movimientosExistentes };
+    }
+    if (existentes === normalizadas.length) {
+      return { ok: true, replayed: true, yaExistia: true, movimientos: normalizadas.map((o) => porId.get(o.movimientoId)) };
+    }
+
+    const simulados = /* @__PURE__ */ new Map();
+    const movimientosNuevos = [];
+    const deficitsAuditoria = [];
+    const avisosStockBajo = [];
+    for (const operacion of normalizadas) {
+      const productoBase = simulados.has(operacion.productoId) ? simulados.get(operacion.productoId) : productoActual(operacion.productoId);
+      if (!productoBase) return { ok: false, codigo: "producto_no_encontrado", error: "Producto no encontrado.", movimientos: [] };
+      const cantidadNum = operacion.cantidad;
+      const afectaStockTotal = operacion.afectaStockTotal !== false;
+      const afectaStockPisoVenta = !!operacion.afectaStockPisoVenta;
+      const permitirDeficit = !!operacion.permitirDeficit;
+      const resultadoCampos = {};
+      let deficitGenerado = 0;
+      if (afectaStockTotal) {
+        const stockActual = Number(productoBase.stock) || 0;
+        const deficitActual = Number(productoBase.deficitPendiente) || 0;
+        const teoricoAntes = stockActual - deficitActual;
+        const teoricoDespues = teoricoAntes + cantidadNum;
+        const deficitNuevo = Math.max(0, -teoricoDespues);
+        if (deficitNuevo > deficitActual && !permitirDeficit) {
+          return { ok: false, codigo: "stock_insuficiente", error: `Stock insuficiente: hay ${Math.max(0, teoricoAntes)}, se piden ${-cantidadNum}.`, movimientos: [] };
+        }
+        resultadoCampos.stock = Math.max(0, teoricoDespues);
+        resultadoCampos.deficitPendiente = deficitNuevo;
+        deficitGenerado = Math.max(0, deficitNuevo - deficitActual);
+        const minimo = Number(productoBase.stockMinimo) || 0;
+        if (minimo > 0 && teoricoAntes >= minimo && teoricoDespues < minimo) {
+          avisosStockBajo.push({ producto: productoBase, teoricoDespues });
+        }
+      }
+      if (afectaStockPisoVenta) {
+        const pisoActual = Number(productoBase.stockPisoVenta) || 0;
+        resultadoCampos.stockPisoVenta = Math.max(0, pisoActual + cantidadNum);
+      }
+      const movimiento = {
+        id: operacion.movimientoId,
+        operationId: operacion.operationId || operacion.movimientoId,
+        productoId: operacion.productoId,
+        localId: productoBase.localId || null,
+        cantidad: cantidadNum,
+        tipo: operacion.tipo,
+        motivo: operacion.motivo || "",
+        fecha: todayISO(),
+        origen: operacion.origen || "",
+        documentoOrigenId: operacion.documentoOrigenId || null,
+        usuario: operacion.usuario || "",
+        dispositivo: operacion.dispositivo || "",
+        stockAnterior: Number(productoBase.stock) || 0,
+        stockPosterior: resultadoCampos.stock !== void 0 ? resultadoCampos.stock : Number(productoBase.stock) || 0,
+        afectaStockTotal,
+        afectaStockPisoVenta,
+        revierteMovimientoId: operacion.revierteMovimientoId || null,
+        ...operacion.camposExtra || {}
+      };
+      const productoDespues = { ...productoBase, ...resultadoCampos };
+      simulados.set(operacion.productoId, productoDespues);
+      movimientosNuevos.push(movimiento);
+      if (deficitGenerado > 0) deficitsAuditoria.push({ producto: productoBase, deficitGenerado, tipo: operacion.tipo, operationId: movimiento.operationId });
+    }
+
+    setProductos((s) => s.map((p) => simulados.has(p.id) ? simulados.get(p.id) : p));
+    for (const [productoId, producto] of simulados.entries()) snapshotLocal.set(productoId, producto);
+    setMovimientos((s) => [...movimientosNuevos].reverse().concat(s));
+    for (const movimiento of movimientosNuevos) {
+      idsConocidos.add(movimiento.id);
+      porId.set(movimiento.id, movimiento);
+    }
+    if (registrarAuditoria) {
+      for (const d of deficitsAuditoria) {
+        try { registrarAuditoria("deficit_stock_detectado", `${d.producto.nombre}: ${d.deficitGenerado} sin cobertura (${d.tipo}, operación ${d.operationId})`); } catch {}
+      }
+    }
+    if (typeof window !== "undefined" && window.__nubeActiva) {
+      for (const aviso of avisosStockBajo) {
+        fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ titulo: "Stock bajo", cuerpo: `${aviso.producto.nombre} bajó del mínimo (quedan ${fmt(Math.max(0, aviso.teoricoDespues))}).`, localId: aviso.producto.localId || null, url: "/" })
+        }).catch(() => {});
+      }
+    }
+    return { ok: true, replayed: false, yaExistia: false, movimientos: movimientosNuevos };
+  }
+'''
+
+          nueva_aplicar = r'''  function aplicarAjustes(conteoId, motivos = {}) {
+    const conteo = conteos.find((c22) => c22.id === conteoId);
+    if (!conteoEsDelLocalActivo(conteo)) return { ok: false, error: "Conteo no disponible en el local activo.", ajustados: 0, traspasados: [] };
+    const permisoAjuste = autorizarMutacionAjustes(conteo);
+    if (!permisoAjuste.ok) return respuestaPermisoAjuste(permisoAjuste);
+    const estadoConteo = conteo.estado || (conteo.completado === true ? "COMPLETADO" : "BORRADOR");
+    if (estadoConteo !== "PARCIAL" && estadoConteo !== "COMPLETADO") {
+      return { ok: false, codigo: "estado_no_ajustable", error: "Solo un conteo parcial o completado puede ajustar el stock.", ajustados: 0, traspasados: [] };
+    }
+    if (conteo.ajustesAplicados) {
+      return { ok: true, replayed: true, operationId: conteo.ajustesOperationId || null, ajustados: Number(conteo.ajustesCantidad) || 0, traspasados: conteo.ajustesTraspasados || [] };
+    }
+    const estadosApi = typeof window !== "undefined" ? window.__pm12ConteoEstados : null;
+    if (!estadosApi) return { ok: false, codigo: "motor_no_disponible", error: "No se pudo validar el ajuste. Recarga la página e inténtalo de nuevo.", ajustados: 0, traspasados: [] };
+    const preparados = [];
+    for (const item of conteo.items || []) {
+      const p22 = productos.find((pr) => pr.id === item.productoId);
+      if (!p22 || localActivoId && p22.localId !== localActivoId) {
+        return { ok: false, codigo: "producto_fuera_de_contexto", error: "El conteo contiene un producto que no pertenece al local activo.", ajustados: 0, traspasados: [] };
+      }
+      const valorCapturado = Object.prototype.hasOwnProperty.call(item, "conteo") ? item.conteo : item.cantidadContada;
+      const normalizado = estadosApi.normalizarCantidad(valorCapturado, {
+        indivisible: p22.indivisible === true || p22.fraccionable === false,
+        precision: Number.isInteger(p22.precisionCantidad) ? p22.precisionCantidad : void 0
+      });
+      if (!normalizado.valido) {
+        return { ok: false, codigo: "cantidad_invalida", error: `La cantidad de ${p22.nombre || "un producto"} no es válida.`, ajustados: 0, traspasados: [] };
+      }
+      if (normalizado.contado) preparados.push({ item, producto: p22, valorFinal: normalizado.valor });
+    }
+    if (preparados.length === 0) return { ok: false, codigo: "sin_lineas_contadas", error: "No hay cantidades válidas que aplicar.", ajustados: 0, traspasados: [] };
+    const esPisoVenta = conteo.ambito === "piso_venta";
+    const esAlmacen = conteo.ambito === "almacen";
+    const operationIdDeEsteAjuste = conteo.ajustesOperationId || `pm12-ajuste-conteo:${conteo.id}:${conteo.cerradoEn || conteo.fecha || "sin-corte"}`;
+    const planAjustes = [];
+    const traspasados = [];
+    const productosAjustados = /* @__PURE__ */ new Set();
+    const crearIdPlan = (productoId, leg) => `${operationIdDeEsteAjuste}:producto:${productoId}:${leg}`;
+    const agregarPlan = (p22, leg, datos) => {
+      productosAjustados.add(p22.id);
+      planAjustes.push({
+        ...datos,
+        productoId: p22.id,
+        operationId: operationIdDeEsteAjuste,
+        movimientoId: crearIdPlan(p22.id, leg),
+        origen: "aplicarAjustes",
+        documentoOrigenId: conteoId,
+        permitirDeficit: true,
+        camposExtra: { ...(datos.camposExtra || {}), pm12PlanVersion: 1, pm12PlanLeg: leg, pm12ConteoId: conteoId }
+      });
+    };
+    for (const { producto: p22, valorFinal } of preparados) {
+      const stockActual = Number(p22.stock) || 0;
+      const deficitActual = Number(p22.deficitPendiente) || 0;
+      const stockTeoricoTotal = stockActual - deficitActual;
+      if (esAlmacen) {
+        const enPisoAntes = Number(p22.stockPisoVenta) || 0;
+        const anteriorAlmacenTeoricoFalta = stockTeoricoTotal - enPisoAntes;
+        const difAlmacen = valorFinal - anteriorAlmacenTeoricoFalta;
+        if (difAlmacen < 0) {
+          const cantidadATraspasar = -difAlmacen;
+          agregarPlan(p22, "almacen-falta-a-piso", {
+            cantidad: cantidadATraspasar,
+            tipo: "TRASPASO_A_PISO",
+            afectaStockTotal: false,
+            afectaStockPisoVenta: true,
+            motivo: `Faltante de almacén trasladado al piso de venta (se asume ya expuesto, sin registrar) · ${motivos[p22.id] || "Sin especificar"}`
+          });
+          traspasados.push({ productoId: p22.id, nombre: p22.nombre, cantidad: cantidadATraspasar, tipoTraspaso: "falta" });
+          continue;
+        }
+      }
+      let dif, motivoTexto, afectaStockPisoVenta = false;
+      if (esPisoVenta) {
+        const anteriorPiso = Number(p22.stockPisoVenta) || 0;
+        dif = valorFinal - anteriorPiso;
+        motivoTexto = `Ajuste por inventario (piso de venta) · ${motivos[p22.id] || "Sin especificar"}`;
+        afectaStockPisoVenta = true;
+      } else if (esAlmacen) {
+        const enPiso = Number(p22.stockPisoVenta) || 0;
+        const anteriorAlmacenTeorico = stockTeoricoTotal - enPiso;
+        dif = valorFinal - anteriorAlmacenTeorico;
+        motivoTexto = `Ajuste por inventario (almacén) · ${motivos[p22.id] || "Sin especificar"}`;
+      } else {
+        dif = valorFinal - stockTeoricoTotal;
+        motivoTexto = `Ajuste por inventario · ${motivos[p22.id] || "Sin especificar"}`;
+      }
+      if (dif === 0) continue;
+      agregarPlan(p22, esPisoVenta ? "inventario-piso" : esAlmacen ? "inventario-almacen" : "inventario-total", {
+        cantidad: dif,
+        tipo: "INVENTARIO",
+        afectaStockTotal: true,
+        afectaStockPisoVenta,
+        motivo: motivoTexto
+      });
+      if (esAlmacen && dif > 0) {
+        agregarPlan(p22, "almacen-sobra-a-piso", {
+          cantidad: dif,
+          tipo: "TRASPASO_A_PISO",
+          afectaStockTotal: false,
+          afectaStockPisoVenta: true,
+          motivo: `Sobrante de inventario trasladado al piso de venta · ${motivos[p22.id] || "Sin especificar"}`
+        });
+        traspasados.push({ productoId: p22.id, nombre: p22.nombre, cantidad: dif, tipoTraspaso: "sobra" });
+      }
+      if (!esPisoVenta && !esAlmacen) {
+        const pisoActual = Number(p22.stockPisoVenta) || 0;
+        if (pisoActual > valorFinal) {
+          agregarPlan(p22, "total-limite-piso", {
+            cantidad: -(pisoActual - valorFinal),
+            tipo: "INVENTARIO",
+            afectaStockTotal: false,
+            afectaStockPisoVenta: true,
+            motivo: "El piso no puede superar el nuevo total contado"
+          });
+        }
+      }
+    }
+
+    let resultadoLote = { ok: true, replayed: false, movimientos: [] };
+    if (planAjustes.length > 0) {
+      resultadoLote = aplicarLoteMovimientosStock(planAjustes);
+      if (!resultadoLote.ok) {
+        return { ok: false, codigo: resultadoLote.codigo || "ajuste_lote_fallido", error: resultadoLote.error || "No se pudo aplicar el lote completo de ajustes.", operationId: operationIdDeEsteAjuste, ajustados: 0, traspasados: [] };
+      }
+    }
+    const ajustados = productosAjustados.size;
+    if (planAjustes.length > 0 && !resultadoLote.replayed) {
+      registrarAuditoria("Aplicar ajustes de inventario", `${ajustados} producto(s) ajustado(s) · ${permisoAjuste.rol} · ${permisoAjuste.actorNombre || permisoAjuste.actorId || "sin nombre"} · local ${permisoAjuste.localId}`);
+    }
+    const ajustesAplicadosEn = (/* @__PURE__ */ new Date()).toISOString();
+    setConteos((s22) => s22.map((c22) => c22.id === conteoId ? { ...c22, ajustesAplicados: true, ajustesAplicadosEn, ajustesOperationId: operationIdDeEsteAjuste, ajustesCantidad: ajustados, ajustesTraspasados: traspasados, ajustesActor: { id: permisoAjuste.actorId || null, nombre: permisoAjuste.actorNombre || "", rol: permisoAjuste.rol }, ajustesEmpresaId: permisoAjuste.empresaId, ajustesLocalId: permisoAjuste.localId } : c22));
+    return { ok: true, replayed: !!resultadoLote.replayed, operationId: operationIdDeEsteAjuste, ajustados, traspasados };
+  }'''
+
+          for ruta in fuentes:
+            texto = ruta.read_text(encoding='utf-8')
+            if 'function aplicarLoteMovimientosStock(operaciones = [])' not in texto:
+              marker = '  return { aplicarMovimientoStock, calcularStockTeorico };\n}'
+              assert texto.count(marker) == 1, f'{ruta}: cierre de crearMotorStock inesperado'
+              texto = texto.replace(marker, batch + '  return { aplicarMovimientoStock, aplicarLoteMovimientosStock, calcularStockTeorico };\n}', 1)
+            old_destruct = '  const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });'
+            if 'const { aplicarMovimientoStock, aplicarLoteMovimientosStock } = crearMotorStock' not in texto:
+              assert texto.count(old_destruct) >= 1, f'{ruta}: destructuring de conteos no encontrado'
+              pos_logic = texto.index('function crearLogicaConteos(')
+              pos_old = texto.index(old_destruct, pos_logic)
+              texto = texto[:pos_old] + old_destruct.replace('{ aplicarMovimientoStock }', '{ aplicarMovimientoStock, aplicarLoteMovimientosStock }') + texto[pos_old + len(old_destruct):]
+            inicio = texto.index('  function aplicarAjustes(conteoId, motivos = {}) {')
+            fin = texto.index('\n  return { crearProductoEnConteo, iniciarConteo', inicio)
+            actual = texto[inicio:fin]
+            if 'aplicarLoteMovimientosStock(planAjustes)' not in actual:
+              texto = texto[:inicio] + nueva_aplicar + texto[fin:]
+            ruta.write_text(texto, encoding='utf-8')
+
+          test = r'''import assert from "node:assert/strict";
+          import fs from "node:fs";
+
+          const fuentes = [
+            ["runtime", fs.readFileSync("fuente.js", "utf8")],
+            ["fuente recuperada", fs.readFileSync("source-recovery/fuente-recuperado.js", "utf8")]
+          ];
+
+          function extraerMotor(codigo) {
+            const inicio = codigo.indexOf("function crearMotorStock(");
+            const fin = codigo.indexOf("\nfunction crearLogicaReconciliacion", inicio);
+            assert.ok(inicio >= 0 && fin > inicio, "motor extraíble");
+            const bloque = codigo.slice(inicio, fin);
+            return new Function("todayISO", "fmt", "window", "fetch", "uid", "esMovimientoNuevo", "cantidadConSigno", `${bloque}; return crearMotorStock;`)(
+              () => "2026-09-07", (x) => String(x), undefined, () => Promise.resolve(), () => "uid-no-usar", () => true, (m) => Number(m.cantidad) || 0
+            );
+          }
+
+          for (const [nombre, codigo] of fuentes) {
+            assert.match(codigo, /function aplicarLoteMovimientosStock\(operaciones = \[\]\)/, `${nombre}: lote atómico local`);
+            assert.match(codigo, /codigo: "replay_parcial_inconsistente"/, `${nombre}: replay parcial bloqueado`);
+            assert.match(codigo, /codigo: "conflicto_movimiento_existente"/, `${nombre}: conflicto no sobrescribe`);
+            assert.match(codigo, /const simulados = .*new Map\(\)/, `${nombre}: preflight simulado`);
+            assert.match(codigo, /setMovimientos\(\(s\) => \[\.\.\.movimientosNuevos\]\.reverse\(\)\.concat\(s\)\)/, `${nombre}: commit único de movimientos`);
+            const ai = codigo.indexOf("  function aplicarAjustes(conteoId, motivos = {}) {");
+            const af = codigo.indexOf("\n  return { crearProductoEnConteo, iniciarConteo", ai);
+            const aplicar = codigo.slice(ai, af);
+            assert.doesNotMatch(aplicar, /movimientoId:\s*uid\(\)/, `${nombre}: P08 no usa ids aleatorios`);
+            assert.match(aplicar, /const planAjustes = \[\]/, `${nombre}: plan completo previo`);
+            assert.match(aplicar, /pm12PlanVersion: 1/, `${nombre}: plan versionado`);
+            assert.match(aplicar, /aplicarLoteMovimientosStock\(planAjustes\)/, `${nombre}: una frontera de mutación`);
+            assert.ok(aplicar.indexOf("autorizarMutacionAjustes(conteo)") < aplicar.indexOf("aplicarLoteMovimientosStock(planAjustes)"), `${nombre}: P07 antes de mutar`);
+            assert.ok(aplicar.indexOf("if (!resultadoLote.ok)") < aplicar.indexOf("ajustesAplicados: true"), `${nombre}: documento solo se marca tras lote OK`);
+            assert.match(aplicar, /origen: "aplicarAjustes"/, `${nombre}: P06 conserva origen reversible`);
+            assert.match(aplicar, /operationId: operationIdDeEsteAjuste/, `${nombre}: P05 conserva lote trazable`);
+
+            const crearMotorStock = extraerMotor(codigo);
+            const base = [{ id: "p1", nombre: "P1", localId: "L1", stock: 10, stockPisoVenta: 2, deficitPendiente: 0, stockMinimo: 0 }];
+            let productos = structuredClone(base), movimientos = [], wp = 0, wm = 0;
+            const motor = crearMotorStock({
+              productos,
+              movimientos,
+              setProductos(fn) { wp += 1; productos = fn(productos); },
+              setMovimientos(fn) { wm += 1; movimientos = fn(movimientos); },
+              registrarAuditoria() {}
+            });
+            const lote = [
+              { productoId: "p1", cantidad: -2, tipo: "INVENTARIO", operationId: "op1", movimientoId: "op1:a", origen: "aplicarAjustes", documentoOrigenId: "c1", afectaStockTotal: true, afectaStockPisoVenta: false, permitirDeficit: true },
+              { productoId: "p1", cantidad: -1, tipo: "INVENTARIO", operationId: "op1", movimientoId: "op1:b", origen: "aplicarAjustes", documentoOrigenId: "c1", afectaStockTotal: false, afectaStockPisoVenta: true, permitirDeficit: true }
+            ];
+            const primera = motor.aplicarLoteMovimientosStock(lote);
+            assert.equal(primera.ok, true, `${nombre}: primera aplicación`);
+            assert.equal(movimientos.length, 2, `${nombre}: dos movimientos exactos`);
+            assert.equal(productos[0].stock, 8, `${nombre}: stock total`);
+            assert.equal(productos[0].stockPisoVenta, 1, `${nombre}: stock piso`);
+            const replay = motor.aplicarLoteMovimientosStock(lote);
+            assert.equal(replay.ok, true, `${nombre}: replay OK`);
+            assert.equal(replay.replayed, true, `${nombre}: replay identificado`);
+            assert.equal(movimientos.length, 2, `${nombre}: replay sin duplicar`);
+            assert.equal(wp, 1, `${nombre}: replay sin reescribir productos`);
+            assert.equal(wm, 1, `${nombre}: replay sin reescribir movimientos`);
+
+            let pFail = structuredClone(base), mFail = [], wpFail = 0, wmFail = 0;
+            const motorFail = crearMotorStock({ productos: pFail, movimientos: mFail, setProductos(fn) { wpFail++; pFail = fn(pFail); }, setMovimientos(fn) { wmFail++; mFail = fn(mFail); }, registrarAuditoria() {} });
+            const fallo = motorFail.aplicarLoteMovimientosStock([lote[0], { ...lote[1], productoId: "no-existe", movimientoId: "op1:missing" }]);
+            assert.equal(fallo.ok, false, `${nombre}: fallo de preflight`);
+            assert.equal(wpFail, 0, `${nombre}: fallo sin mutación producto`);
+            assert.equal(wmFail, 0, `${nombre}: fallo sin mutación movimientos`);
+            assert.equal(pFail[0].stock, 10, `${nombre}: fallo conserva stock`);
+
+            const existente = [{ id: "op1:a", operationId: "op1", productoId: "p1", localId: "L1", cantidad: -2, tipo: "INVENTARIO", origen: "aplicarAjustes", documentoOrigenId: "c1", afectaStockTotal: true, afectaStockPisoVenta: false }];
+            let pParcial = structuredClone(base), mParcial = structuredClone(existente), wpp = 0, wmp = 0;
+            const motorParcial = crearMotorStock({ productos: pParcial, movimientos: mParcial, setProductos(fn) { wpp++; pParcial = fn(pParcial); }, setMovimientos(fn) { wmp++; mParcial = fn(mParcial); }, registrarAuditoria() {} });
+            const parcial = motorParcial.aplicarLoteMovimientosStock(lote);
+            assert.equal(parcial.ok, false, `${nombre}: replay parcial rechazado`);
+            assert.equal(parcial.codigo, "replay_parcial_inconsistente", `${nombre}: código replay parcial`);
+            assert.equal(wpp, 0, `${nombre}: replay parcial no toca producto`);
+            assert.equal(wmp, 0, `${nombre}: replay parcial no añade movimientos`);
+
+            const conflicto = motorParcial.aplicarLoteMovimientosStock([{ ...lote[0], cantidad: -3 }]);
+            assert.equal(conflicto.ok, false, `${nombre}: conflicto rechazado`);
+            assert.equal(conflicto.codigo, "conflicto_movimiento_existente", `${nombre}: código conflicto`);
+          }
+
+          const evidencia = fs.readFileSync("tests/pm12/P08_FALLOS_REPLAY_CONCURRENCIA.md", "utf8");
+          assert.match(evidencia, /PM12_P08_FALLOS_REPLAY_CONCURRENCIA=PASS/);
+          console.log("PM12_P08_FALLOS_REPLAY_CONCURRENCIA=PASS");
+          console.log("OFF1_FALLO_PREVIO_SIN_MUTACION=1");
+          console.log("RW1_REPLAY_DETERMINISTA=1");
+          console.log("C1_SIN_DUPLICADOS=1");
+          console.log("REPLAY_PARCIAL_FAIL_CLOSED=1");
+          '''
+          Path('tests/pm12/p08-fallos-replay-concurrencia-contract.mjs').write_text(test.replace('\n          ', '\n').lstrip(), encoding='utf-8')
+
+          evidencia = '''# PM12–P08 — Fallos, replay y concurrencia\n\nPM12_P08_FALLOS_REPLAY_CONCURRENCIA=PASS\n\n- OFF1: el lote se prevalida completo antes de tocar productos o movimientos.\n- RW1: cada pata del ajuste usa un `movimientoId` determinista derivado del `operationId`, producto y semántica.\n- C1: un replay completo es no-op y no duplica stock.\n- Un replay parcial se bloquea en modo fail-closed; no intenta completar un estado potencialmente incoherente.\n- Un conflicto de mismo ID con payload diferente nunca sobrescribe.\n- El documento de conteo solo se marca `ajustesAplicados` después de que el lote completo resulte OK.\n- Se conservan `operationId`, `documentoOrigenId` y `origen: aplicarAjustes`, por lo que P05/P06 siguen trazables y reversibles.\n- P07 continúa autorizando antes de entrar en la frontera de mutación.\n- Garantía: lote local prevalidado + replay determinista. No se declara transacción ACID de base de datos.\n- Esta implementación y sus pruebas no realizan escrituras en Supabase ni en producción.\n'''
+          Path('tests/pm12/P08_FALLOS_REPLAY_CONCURRENCIA.md').write_text(evidencia, encoding='utf-8')
+
+          workflow = '''name: PM12 P08 fallos replay concurrencia\n\non:\n  push:\n    branches: [pm12-conteo-estados-honestos]\n    paths:\n      - 'fuente.js'\n      - 'source-recovery/fuente-recuperado.js'\n      - 'tests/pm12/p08-fallos-replay-concurrencia-contract.mjs'\n      - 'tests/pm12/P08_FALLOS_REPLAY_CONCURRENCIA.md'\n      - '.github/workflows/pm12-p08-fallos-replay-concurrencia.yml'\n  workflow_dispatch:\n\npermissions:\n  contents: read\n\njobs:\n  gate:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          fetch-depth: 0\n      - name: Rama QA y main congelado\n        shell: bash\n        run: |\n          set -euo pipefail\n          test "$GITHUB_REF_NAME" = "pm12-conteo-estados-honestos"\n          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"\n          echo "MAIN_FROZEN=1"\n      - name: Sintaxis\n        run: |\n          node --check fuente.js\n          node --check source-recovery/fuente-recuperado.js\n      - name: Contrato P08\n        run: node tests/pm12/p08-fallos-replay-concurrencia-contract.mjs\n      - name: Regresión P02-P07\n        shell: bash\n        run: |\n          set -euo pipefail\n          for t in tests/pm12/p02-*contract.mjs tests/pm12/p03-*contract.mjs tests/pm12/p04-*contract.mjs tests/pm12/p05-*contract.mjs tests/pm12/p06-*contract.mjs tests/pm12/p07-*contract.mjs; do\n            node "$t"\n          done\n          echo "REGRESSION_P02_P07=PASS"\n      - name: Cero escrituras externas\n        run: |\n          echo "ZERO_SUPABASE_WRITES=1"\n          echo "ZERO_PRODUCTION_WRITES=1"\n'''
+          Path('.github/workflows/pm12-p08-fallos-replay-concurrencia.yml').write_text(workflow, encoding='utf-8')
+          PY
+      - name: Validar antes de persistir
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check fuente.js
+          node --check source-recovery/fuente-recuperado.js
+          node tests/pm12/p08-fallos-replay-concurrencia-contract.mjs
+          for t in tests/pm12/p02-*contract.mjs tests/pm12/p03-*contract.mjs tests/pm12/p04-*contract.mjs tests/pm12/p05-*contract.mjs tests/pm12/p06-*contract.mjs tests/pm12/p07-*contract.mjs; do node "$t"; done
+      - name: Commit solo QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then echo "Sin cambios"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fuente.js source-recovery/fuente-recuperado.js tests/pm12/p08-fallos-replay-concurrencia-contract.mjs tests/pm12/P08_FALLOS_REPLAY_CONCURRENCIA.md .github/workflows/pm12-p08-fallos-replay-concurrencia.yml
+          git commit -m "PM12 P08: blindar fallos replay y concurrencia"
+          git push origin HEAD:pm12-conteo-estados-honestos
