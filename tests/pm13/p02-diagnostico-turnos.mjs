@@ -2,7 +2,7 @@ import fs from 'node:fs';
 
 const src = fs.readFileSync('fuente.js', 'utf8');
 
-function slice(startToken, endToken, max = 120000) {
+function slice(startToken, endToken, max = 180000) {
   const start = src.indexOf(startToken);
   if (start < 0) return { found: false, start: -1, text: '' };
   let end = endToken ? src.indexOf(endToken, start + startToken.length) : -1;
@@ -20,7 +20,7 @@ function excerpts(text, token, base = 0, context = 1400, limit = 20) {
   return out;
 }
 
-const logic = slice('function crearLogicaTurnos({', 'function crearLogicaProduccion({', 70000);
+const logic = slice('function crearLogicaTurnos({', 'function crearLogicaAppcc({', 50000);
 const ui = slice('function Turnos({', 'function RegistroHorario({', 160000);
 
 const result = {
@@ -33,53 +33,42 @@ const result = {
     update: excerpts(logic.text, 'function updateTurno', logic.start, 2200, 5),
     remove: excerpts(logic.text, 'function deleteTurno', logic.start, 2200, 5),
     copy: excerpts(logic.text, 'copiarSemana', logic.start, 3000, 8),
-    localChecks: excerpts(logic.text, 'localActivoId', logic.start, 1400, 20),
-    employeeRefs: excerpts(logic.text, 'empleadoId', logic.start, 1600, 20),
     validations: {
-      hasDateValidation: /fecha|Date|ISO/.test(logic.text),
-      hasTimeValidation: /hora|inicio|fin/.test(logic.text),
+      hasExplicitDateValidation: /validar.*fecha|fecha.*inval|^\d{4}-\d{2}-\d{2}$/im.test(logic.text),
+      hasExplicitTimeValidation: /validar.*hora|hora.*inval|^\d{2}:\d{2}$/im.test(logic.text),
       hasOverlapWords: /solap|superpu|conflict|coincid/i.test(logic.text),
       hasInactiveCheck: /activo\s*!==\s*false|activo\s*===\s*false/.test(logic.text),
       hasLocalFilter: /localId/.test(logic.text),
       hasPhysicalDelete: /\.filter\([\s\S]{0,120}id\s*!==/.test(logic.text)
-    },
-    returnExcerpt: (() => {
-      const p = logic.text.lastIndexOf('return {');
-      return p >= 0 ? logic.text.slice(p, Math.min(logic.text.length, p + 1500)) : '';
-    })()
+    }
   },
   ui: {
     found: ui.found,
     offset: ui.start,
-    employeeFilters: excerpts(ui.text, 'empleados', ui.start, 2200, 20),
-    formRefs: excerpts(ui.text, 'form', ui.start, 1700, 20),
-    saveRefs: excerpts(ui.text, 'addTurno', ui.start, 2200, 10),
-    updateRefs: excerpts(ui.text, 'updateTurno', ui.start, 2200, 10),
-    copyRefs: excerpts(ui.text, 'copiarSemana', ui.start, 2600, 10),
-    labels: {
-      turno: (ui.text.match(/turno/gi) || []).length,
-      horario: (ui.text.match(/horario/gi) || []).length,
-      copiar: (ui.text.match(/copiar/gi) || []).length,
-      conflicto: (ui.text.match(/conflic|solap/gi) || []).length
-    }
-  },
-  global: {
-    turnoMentions: (src.match(/turno/gi) || []).length,
-    crearLogicaTurnosCalls: excerpts(src, 'crearLogicaTurnos({', 0, 1800, 8),
-    turnosStorageRefs: excerpts(src, 'turnos', 0, 700, 30)
+    activeFilter: /empleados\.filter\(\(e2\) => e2\.activo !== false\)/.test(ui.text),
+    saveRefs: excerpts(ui.text, 'addTurno', ui.start, 2600, 12),
+    updateRefs: excerpts(ui.text, 'updateTurno', ui.start, 2600, 12),
+    deleteRefs: excerpts(ui.text, 'deleteTurno', ui.start, 2200, 12),
+    copyRefs: excerpts(ui.text, 'copiarSemana', ui.start, 3000, 12),
+    errorRefs: excerpts(ui.text, 'setError', ui.start, 2200, 12)
   }
 };
 
 fs.mkdirSync('tests/pm13', { recursive: true });
 fs.writeFileSync('tests/pm13/P02_DIAGNOSTICO_TURNOS.json', JSON.stringify(result, null, 2));
+fs.writeFileSync('tests/pm13/P02_LOGICA_TURNOS_ACTUAL.txt', logic.text);
+fs.writeFileSync('tests/pm13/P02_UI_TURNOS_ACTUAL.txt', ui.text);
 console.log(JSON.stringify({
   sourceLength: result.sourceLength,
   logicFound: result.logic.found,
   uiFound: result.ui.found,
+  logicLength: logic.text.length,
+  uiLength: ui.text.length,
   validations: result.logic.validations,
-  addCount: result.logic.add.length,
-  updateCount: result.logic.update.length,
-  deleteCount: result.logic.remove.length,
-  copyCount: result.logic.copy.length,
-  uiCopyCount: result.ui.copyRefs.length
+  activeFilter: result.ui.activeFilter,
+  saveCount: result.ui.saveRefs.length,
+  updateCount: result.ui.updateRefs.length,
+  deleteCount: result.ui.deleteRefs.length,
+  copyCount: result.ui.copyRefs.length,
+  errorCount: result.ui.errorRefs.length
 }, null, 2));
