@@ -47,16 +47,15 @@ jobs:
           echo 'PM12_P06_SUPABASE_WRITES=0'
           echo 'PM12_P06_PRODUCTION_WRITES=0'
 
-      - name: Registrar P06 y limpiar transporte
+      - name: Registrar P06 sin tocar workflows
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          rm tools/aplicar_pm12_p06.py
-          rm .github/workflows/pm12-p06-apply-authorized.yml
-          git add -A
-          permitidos='^(fuente\.js|source-recovery/fuente-recuperado\.js|pm12-conteo-estados-v1\.js|tests/pm12/P06_CANCELACION_CONSERVADORA\.md|tests/pm12/p06-cancelacion-conservadora-contract\.mjs|\.github/workflows/pm12-p06-cancelacion-conservadora\.yml|tools/aplicar_pm12_p06\.py|\.github/workflows/pm12-p06-apply-authorized\.yml)$'
+          rm .github/workflows/pm12-p06-cancelacion-conservadora.yml
+          git add fuente.js source-recovery/fuente-recuperado.js pm12-conteo-estados-v1.js tests/pm12/P06_CANCELACION_CONSERVADORA.md tests/pm12/p06-cancelacion-conservadora-contract.mjs
+          permitidos='^(fuente\.js|source-recovery/fuente-recuperado\.js|pm12-conteo-estados-v1\.js|tests/pm12/P06_CANCELACION_CONSERVADORA\.md|tests/pm12/p06-cancelacion-conservadora-contract\.mjs)$'
           inesperados="$(git diff --cached --name-only | grep -Ev "$permitidos" || true)"
           test -z "$inesperados"
           git commit -m "PM12 P06: conservar cancelaciones y reversos trazables"
