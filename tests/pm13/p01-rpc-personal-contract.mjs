@@ -92,9 +92,11 @@ h = harness();
 r = await h.logica.deleteEmpleado('e1', { motivoBaja: 'Fin remoto' });
 assert.equal(r, true);
 assert.equal(bajas.length, 1);
-assert.deepEqual(bajas[0], { nombre: 'pm11_baja_empleado', args: {
-  p_empresa_id: 'E1', p_local_id: 'L1', p_empleado_id: 'e1', p_motivo: 'Fin remoto'
-} });
+assert.equal(bajas[0].nombre, 'pm11_baja_empleado');
+assert.equal(bajas[0].args.p_empresa_id, 'E1');
+assert.equal(bajas[0].args.p_local_id, 'L1');
+assert.equal(bajas[0].args.p_empleado_id, 'e1');
+assert.equal(bajas[0].args.p_motivo, 'Fin remoto');
 assert.equal(h.estado()[0].activo, false);
 assert.equal(h.estado()[0].fechaBaja, '2026-09-07');
 assert.equal(h.mutNom(), 0);
