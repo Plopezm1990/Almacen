@@ -45,8 +45,6 @@ as $$
         where m.user_id=(select auth.uid())
           and m.activo=true
      )
-     -- Producción conserva perfiles. Un perfil explícitamente inactivo bloquea;
-     -- si aún no existe perfil, una membresía creada deliberadamente sigue siendo suficiente.
      and not exists(
        select 1
          from public.perfiles p
@@ -119,6 +117,9 @@ revoke all on function private.la_usuario_activo() from public, anon, authentica
 revoke all on function private.la_rol() from public, anon, authenticated;
 revoke all on function private.la_tiene_empresa(text) from public, anon, authenticated;
 revoke all on function private.la_tiene_local(text,text) from public, anon, authenticated;
+-- RLS SELECT policies execute this helper as authenticated. P08 grants schema usage;
+-- the helper itself must therefore be executable, while the underlying table stays hidden.
+grant execute on function private.la_tiene_local(text,text) to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- 2. Ledger físico mínimo heredando el contrato PM07, sin módulos de caja.
