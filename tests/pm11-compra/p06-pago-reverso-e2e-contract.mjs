@@ -10,6 +10,13 @@ function bloqueEntre(inicio, fin) {
   assert.ok(a >= 0 && b > a, `${inicio} localizado`);
   return src.slice(a, b);
 }
+function bloqueHastaSiguienteFuncion(inicio) {
+  const a = src.indexOf(inicio);
+  assert.ok(a >= 0, `${inicio} localizado`);
+  const b = src.indexOf('\nfunction ', a + inicio.length);
+  assert.ok(b > a, `siguiente función tras ${inicio} localizada`);
+  return src.slice(a, b);
+}
 
 // Ejecutamos la función real de saldo, que es la proyección financiera del ledger PM06.
 const saldoIni = src.indexOf('function redondearDineroPM06(');
@@ -74,7 +81,7 @@ assert.match(registrar, /estado: "CONFIRMADO"/);
 assert.match(registrar, /some\(\(x3\) => x3\.operationId === pago\.operationId\)/);
 
 // 7) Contrato real de reverso: elige pago confirmado aún no reversado y enlaza reviertePagoId.
-const revertir = bloqueEntre('async function revertirUltimoPagoPM06(', 'function snapshotProductoPM07(');
+const revertir = bloqueHastaSiguienteFuncion('async function revertirUltimoPagoPM06(');
 assert.match(revertir, /reviertePagoId/);
 assert.match(revertir, /const reversados = new Set/);
 assert.match(revertir, /const confirmados = relacionados\.filter/);
