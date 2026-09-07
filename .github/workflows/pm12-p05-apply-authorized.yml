@@ -18,7 +18,7 @@ jobs:
           fetch-depth: 0
       - name: Verificar base autorizada
         run: |
-          test "$(git rev-parse HEAD^)" = "a617a792a9061a2f7bd4092eb869506d5f2d9d33"
+          test "$(git rev-parse HEAD^)" = "c313289e17b132b6e8c5221713dd37c2fe2fb946"
       - name: Aplicar parche y probar
         run: |
           git apply --check source-recovery/post-pm08-patches/pm12-p05-ajustes.patch
