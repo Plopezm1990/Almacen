@@ -1,0 +1,1095 @@
+### REF 1 @ 4082686
+Number(m22.ingresoUnitario) || 0), 0);
+      const fechas = susVentas.map((m22) => m22.fecha).sort();
+      const ultima = fechas[fechas.length - 1] || null;
+      const diasSinComprar = ultima ? Math.round((hoy - new Date(ultima)) / 864e5) : null;
+      const nEncargos = encargos.filter((e2) => e2.clienteId === c22.id && e2.estado === "Entregado").length;
+      return { ...c22, facturado, ultima, diasSinComprar, nEncargos };
+    }).sort((a22, b2) => b2.facturado - a22.facturado);
+  }, [clientes, movimientos, encargos]);
+  const clientesDormidos = (0, import_react4.useMemo)(
+    () => analisisClientes.filter((c22) => c22.nEncargos > 0 && c22.diasSinComprar !== null && c22.diasSinComprar > 60),
+    [analisisClientes]
+  );
+  const ventaCruzada = (0, import_react4.useMemo)(() => {
+    const entregados = encargos.filter((e2) => e2.estado === "Entregado");
+    const pares = {};
+    entregados.forEach((e2) => {
+      const ids = [...new Set((e2.lineas || []).map((l22) => l22.productoId).filter(Boolean))];
+      for (let i33 = 0; i33 < ids.length; i33++) {
+        for (let j2 = i33 + 1; j2 < ids.length; j2++) {
+          const key = [ids[i33], ids[j2]].sort().join("|");
+          pares[key] = (pares[key] || 0) + 1;
+        }
+      }
+    });
+    return {
+      base: entregados.length,
+      filas: Object.entries(pares).map(([key, veces]) => {
+        const [a22, b2] = key.split("|");
+        return { a: productos.find((p22) => p22.id === a22), b: productos.find((p22) => p22.id === b2), veces };
+      }).filter((x3) => x3.a && x3.b).sort((x3, y22) => y22.veces - x3.veces).slice(0, 8)
+    };
+  }, [encargos, productos]);
+  const appccPendientesHoy = alertasAppcc.pendientes;
+  const fichajesAbiertos = (0, import_react4.useMemo)(() => {
+    const hoy = todayISO();
+    const porEmpleadoFecha = {};
+    fichajes.forEach((f22) => {
+      const key = `${f22.empleadoId}-${f22.fecha}`;
+      if (!porEmpleadoFecha[key]) porEmpleadoFecha[key] = [];
+      porEmpleadoFecha[key].push(f22);
+    });
+    const abiertos = [];
+    Object.entries(porEmpleadoFecha).forEach(([key, lista]) => {
+      const fecha = lista[0].fecha;
+      if (fecha === hoy) return;
+      const entradas = lista.filter((f22) => f22.tipo === "entrada").length;
+      const salidas = lista.filter((f22) => f22.tipo === "salida").length;
+      if (entradas > salidas) {
+        const empleadoId = lista[0].empleadoId;
+        const emp = empleados.find((e2) => e2.id === empleadoId);
+        abiertos.push({ empleadoId, fecha, nombre: emp ? emp.nombre : "\u2014" });
+      }
+    });
+    return abiertos;
+  }, [fichajes, empleados]);
+  const fichajesAbiertosDelLocalActivo = (0, import_react4.useMemo)(() => fichajesAbiertos.filter((f22) => idsEmpleadosDelLocalActivo.has(f22.empleadoId)), [fichajesAbiertos, idsEmpleadosDelLocalActivo]);
+  const facturasPorPagar = (0, import_react4.useMemo)(() => {
+    const hoy = /* @__PURE__ */ new Date();
+    hoy.setHours(0, 0, 0, 0);
+    function calcularVencimiento(fechaFactura, diasPago) {
+      if (diasPago === null || !fechaFactura) return { vencimiento: null, dias: null };
+      const v22 = new Date(fechaFactura);
+      v22.setDate(v22.getDate() + diasPago);
+      return { vencimiento: aISO(v22), dias: Math.round((v22 - hoy) / 864e5) };
+    }
+    const deAlbaranes = albaranes.filter((a22) => albaranEsFacturaOperativaPM11(a22)).map((a22) => {
+      const prov = a22.proveedorSnapshot
+
+### REF 2 @ 4083608
+   const ids = [...new Set((e2.lineas || []).map((l22) => l22.productoId).filter(Boolean))];
+      for (let i33 = 0; i33 < ids.length; i33++) {
+        for (let j2 = i33 + 1; j2 < ids.length; j2++) {
+          const key = [ids[i33], ids[j2]].sort().join("|");
+          pares[key] = (pares[key] || 0) + 1;
+        }
+      }
+    });
+    return {
+      base: entregados.length,
+      filas: Object.entries(pares).map(([key, veces]) => {
+        const [a22, b2] = key.split("|");
+        return { a: productos.find((p22) => p22.id === a22), b: productos.find((p22) => p22.id === b2), veces };
+      }).filter((x3) => x3.a && x3.b).sort((x3, y22) => y22.veces - x3.veces).slice(0, 8)
+    };
+  }, [encargos, productos]);
+  const appccPendientesHoy = alertasAppcc.pendientes;
+  const fichajesAbiertos = (0, import_react4.useMemo)(() => {
+    const hoy = todayISO();
+    const porEmpleadoFecha = {};
+    fichajes.forEach((f22) => {
+      const key = `${f22.empleadoId}-${f22.fecha}`;
+      if (!porEmpleadoFecha[key]) porEmpleadoFecha[key] = [];
+      porEmpleadoFecha[key].push(f22);
+    });
+    const abiertos = [];
+    Object.entries(porEmpleadoFecha).forEach(([key, lista]) => {
+      const fecha = lista[0].fecha;
+      if (fecha === hoy) return;
+      const entradas = lista.filter((f22) => f22.tipo === "entrada").length;
+      const salidas = lista.filter((f22) => f22.tipo === "salida").length;
+      if (entradas > salidas) {
+        const empleadoId = lista[0].empleadoId;
+        const emp = empleados.find((e2) => e2.id === empleadoId);
+        abiertos.push({ empleadoId, fecha, nombre: emp ? emp.nombre : "\u2014" });
+      }
+    });
+    return abiertos;
+  }, [fichajes, empleados]);
+  const fichajesAbiertosDelLocalActivo = (0, import_react4.useMemo)(() => fichajesAbiertos.filter((f22) => idsEmpleadosDelLocalActivo.has(f22.empleadoId)), [fichajesAbiertos, idsEmpleadosDelLocalActivo]);
+  const facturasPorPagar = (0, import_react4.useMemo)(() => {
+    const hoy = /* @__PURE__ */ new Date();
+    hoy.setHours(0, 0, 0, 0);
+    function calcularVencimiento(fechaFactura, diasPago) {
+      if (diasPago === null || !fechaFactura) return { vencimiento: null, dias: null };
+      const v22 = new Date(fechaFactura);
+      v22.setDate(v22.getDate() + diasPago);
+      return { vencimiento: aISO(v22), dias: Math.round((v22 - hoy) / 864e5) };
+    }
+    const deAlbaranes = albaranes.filter((a22) => albaranEsFacturaOperativaPM11(a22)).map((a22) => {
+      const prov = a22.proveedorSnapshot || proveedorPorId(a22.proveedorId);
+      const total = calcularTotalesFacturaAlbaran(a22).total;
+      const fechaFactura = a22.fechaFactura || a22.fecha;
+      const diasPago = prov && prov.diasPago != null ? Number(prov.diasPago) || null : null;
+      const saldo = calcularSaldoFacturaPM06(pagosFacturas, a22.id, "albaran", total, a22.empresaId, a22.localId, a22.pagada);
+      const { vencimiento, dias } = calcularVencimiento(fechaFactura, diasPago);
+      return {
+        id: a22.id,
+        origen: "albaran",
+        concepto: `Mercanc\xEDa \xB7 ${prov ? prov.nombre : "\u2014"}`,
+        proveedor: prov,
+        numeroFactura: a22.numeroFactura || a22.numero || "s/n",
+        fechaFactura,
+        vencimiento,
+        dias,
+        total,
+        empresaId: a22.empresaId || null,
+        localId: a22.localId || null,
+        pagado: saldo.pagado,
+        pendiente: saldo.pendiente,
+        pagada: saldo.
+
+### REF 3 @ 4083674
+uctoId).filter(Boolean))];
+      for (let i33 = 0; i33 < ids.length; i33++) {
+        for (let j2 = i33 + 1; j2 < ids.length; j2++) {
+          const key = [ids[i33], ids[j2]].sort().join("|");
+          pares[key] = (pares[key] || 0) + 1;
+        }
+      }
+    });
+    return {
+      base: entregados.length,
+      filas: Object.entries(pares).map(([key, veces]) => {
+        const [a22, b2] = key.split("|");
+        return { a: productos.find((p22) => p22.id === a22), b: productos.find((p22) => p22.id === b2), veces };
+      }).filter((x3) => x3.a && x3.b).sort((x3, y22) => y22.veces - x3.veces).slice(0, 8)
+    };
+  }, [encargos, productos]);
+  const appccPendientesHoy = alertasAppcc.pendientes;
+  const fichajesAbiertos = (0, import_react4.useMemo)(() => {
+    const hoy = todayISO();
+    const porEmpleadoFecha = {};
+    fichajes.forEach((f22) => {
+      const key = `${f22.empleadoId}-${f22.fecha}`;
+      if (!porEmpleadoFecha[key]) porEmpleadoFecha[key] = [];
+      porEmpleadoFecha[key].push(f22);
+    });
+    const abiertos = [];
+    Object.entries(porEmpleadoFecha).forEach(([key, lista]) => {
+      const fecha = lista[0].fecha;
+      if (fecha === hoy) return;
+      const entradas = lista.filter((f22) => f22.tipo === "entrada").length;
+      const salidas = lista.filter((f22) => f22.tipo === "salida").length;
+      if (entradas > salidas) {
+        const empleadoId = lista[0].empleadoId;
+        const emp = empleados.find((e2) => e2.id === empleadoId);
+        abiertos.push({ empleadoId, fecha, nombre: emp ? emp.nombre : "\u2014" });
+      }
+    });
+    return abiertos;
+  }, [fichajes, empleados]);
+  const fichajesAbiertosDelLocalActivo = (0, import_react4.useMemo)(() => fichajesAbiertos.filter((f22) => idsEmpleadosDelLocalActivo.has(f22.empleadoId)), [fichajesAbiertos, idsEmpleadosDelLocalActivo]);
+  const facturasPorPagar = (0, import_react4.useMemo)(() => {
+    const hoy = /* @__PURE__ */ new Date();
+    hoy.setHours(0, 0, 0, 0);
+    function calcularVencimiento(fechaFactura, diasPago) {
+      if (diasPago === null || !fechaFactura) return { vencimiento: null, dias: null };
+      const v22 = new Date(fechaFactura);
+      v22.setDate(v22.getDate() + diasPago);
+      return { vencimiento: aISO(v22), dias: Math.round((v22 - hoy) / 864e5) };
+    }
+    const deAlbaranes = albaranes.filter((a22) => albaranEsFacturaOperativaPM11(a22)).map((a22) => {
+      const prov = a22.proveedorSnapshot || proveedorPorId(a22.proveedorId);
+      const total = calcularTotalesFacturaAlbaran(a22).total;
+      const fechaFactura = a22.fechaFactura || a22.fecha;
+      const diasPago = prov && prov.diasPago != null ? Number(prov.diasPago) || null : null;
+      const saldo = calcularSaldoFacturaPM06(pagosFacturas, a22.id, "albaran", total, a22.empresaId, a22.localId, a22.pagada);
+      const { vencimiento, dias } = calcularVencimiento(fechaFactura, diasPago);
+      return {
+        id: a22.id,
+        origen: "albaran",
+        concepto: `Mercanc\xEDa \xB7 ${prov ? prov.nombre : "\u2014"}`,
+        proveedor: prov,
+        numeroFactura: a22.numeroFactura || a22.numero || "s/n",
+        fechaFactura,
+        vencimiento,
+        dias,
+        total,
+        empresaId: a22.empresaId || null,
+        localId: a22.localId || null,
+        pagado: saldo.pagado,
+        pendiente: saldo.pendiente,
+        pagada: saldo.pagada
+      };
+    });
+    const deDirectas = facturasDirectas.fi
+
+### REF 4 @ 4083757
+   for (let j2 = i33 + 1; j2 < ids.length; j2++) {
+          const key = [ids[i33], ids[j2]].sort().join("|");
+          pares[key] = (pares[key] || 0) + 1;
+        }
+      }
+    });
+    return {
+      base: entregados.length,
+      filas: Object.entries(pares).map(([key, veces]) => {
+        const [a22, b2] = key.split("|");
+        return { a: productos.find((p22) => p22.id === a22), b: productos.find((p22) => p22.id === b2), veces };
+      }).filter((x3) => x3.a && x3.b).sort((x3, y22) => y22.veces - x3.veces).slice(0, 8)
+    };
+  }, [encargos, productos]);
+  const appccPendientesHoy = alertasAppcc.pendientes;
+  const fichajesAbiertos = (0, import_react4.useMemo)(() => {
+    const hoy = todayISO();
+    const porEmpleadoFecha = {};
+    fichajes.forEach((f22) => {
+      const key = `${f22.empleadoId}-${f22.fecha}`;
+      if (!porEmpleadoFecha[key]) porEmpleadoFecha[key] = [];
+      porEmpleadoFecha[key].push(f22);
+    });
+    const abiertos = [];
+    Object.entries(porEmpleadoFecha).forEach(([key, lista]) => {
+      const fecha = lista[0].fecha;
+      if (fecha === hoy) return;
+      const entradas = lista.filter((f22) => f22.tipo === "entrada").length;
+      const salidas = lista.filter((f22) => f22.tipo === "salida").length;
+      if (entradas > salidas) {
+        const empleadoId = lista[0].empleadoId;
+        const emp = empleados.find((e2) => e2.id === empleadoId);
+        abiertos.push({ empleadoId, fecha, nombre: emp ? emp.nombre : "\u2014" });
+      }
+    });
+    return abiertos;
+  }, [fichajes, empleados]);
+  const fichajesAbiertosDelLocalActivo = (0, import_react4.useMemo)(() => fichajesAbiertos.filter((f22) => idsEmpleadosDelLocalActivo.has(f22.empleadoId)), [fichajesAbiertos, idsEmpleadosDelLocalActivo]);
+  const facturasPorPagar = (0, import_react4.useMemo)(() => {
+    const hoy = /* @__PURE__ */ new Date();
+    hoy.setHours(0, 0, 0, 0);
+    function calcularVencimiento(fechaFactura, diasPago) {
+      if (diasPago === null || !fechaFactura) return { vencimiento: null, dias: null };
+      const v22 = new Date(fechaFactura);
+      v22.setDate(v22.getDate() + diasPago);
+      return { vencimiento: aISO(v22), dias: Math.round((v22 - hoy) / 864e5) };
+    }
+    const deAlbaranes = albaranes.filter((a22) => albaranEsFacturaOperativaPM11(a22)).map((a22) => {
+      const prov = a22.proveedorSnapshot || proveedorPorId(a22.proveedorId);
+      const total = calcularTotalesFacturaAlbaran(a22).total;
+      const fechaFactura = a22.fechaFactura || a22.fecha;
+      const diasPago = prov && prov.diasPago != null ? Number(prov.diasPago) || null : null;
+      const saldo = calcularSaldoFacturaPM06(pagosFacturas, a22.id, "albaran", total, a22.empresaId, a22.localId, a22.pagada);
+      const { vencimiento, dias } = calcularVencimiento(fechaFactura, diasPago);
+      return {
+        id: a22.id,
+        origen: "albaran",
+        concepto: `Mercanc\xEDa \xB7 ${prov ? prov.nombre : "\u2014"}`,
+        proveedor: prov,
+        numeroFactura: a22.numeroFactura || a22.numero || "s/n",
+        fechaFactura,
+        vencimiento,
+        dias,
+        total,
+        empresaId: a22.empresaId || null,
+        localId: a22.localId || null,
+        pagado: saldo.pagado,
+        pendiente: saldo.pendiente,
+        pagada: saldo.pagada
+      };
+    });
+    const deDirectas = facturasDirectas.filter((f22) => f22.estado !== "ANULADA").map((f22) => {
+      const prov = f22.prove
+
+### REF 5 @ 4094668
+2) => l22.id));
+  const localEsDeEmpresaInforme = (id) => !!id && idsLocalesEmpresaInforme.has(id);
+  const inferirLocalLineasInforme = (lineas) => {
+    const ids = [...new Set((lineas || []).map((ln2) => localPorProductoInforme.get(ln2 && ln2.productoId)).filter(Boolean))];
+    return ids.length === 1 ? ids[0] : null;
+  };
+  const productosInforme = localInformeId ? productos.filter((p22) => p22.localId === localInformeId) : productos.filter((p22) => localEsDeEmpresaInforme(p22.localId));
+  const movimientosInforme = localInformeId ? movimientos.filter((m22) => (m22.localId || localPorProductoInforme.get(m22.productoId) || null) === localInformeId) : movimientos.filter((m22) => localEsDeEmpresaInforme(m22.localId || localPorProductoInforme.get(m22.productoId) || null));
+  const albaranesInforme = localInformeId ? albaranes.filter((a22) => (a22.localId || inferirLocalLineasInforme(a22.lineas)) === localInformeId) : albaranes.filter((a22) => localEsDeEmpresaInforme(a22.localId || inferirLocalLineasInforme(a22.lineas)));
+  const facturasDirectasInforme = localInformeId ? facturasDirectas.filter((f22) => f22.localId === localInformeId) : facturasDirectas.filter((f22) => localEsDeEmpresaInforme(f22.localId));
+  const gastosGeneralesInforme = (localInformeId ? gastosGenerales.filter((g2) => g2.localId === localInformeId) : gastosGenerales.filter((g2) => localEsDeEmpresaInforme(g2.localId))).filter((g2) => g2.estado !== "ANULADO");
+  const empleadosInforme = localInformeId ? empleados.filter((e2) => e2.localId === localInformeId) : empleados.filter((e2) => localEsDeEmpresaInforme(e2.localId));
+  const idsEmpleadosInforme = new Set(empleadosInforme.map((e2) => e2.id));
+  const fichajesAbiertosInforme = fichajesAbiertos.filter((f22) => idsEmpleadosInforme.has(f22.empleadoId));
+  const documentosPersonalProntoInforme = documentosPersonalPronto.filter((d2) => idsEmpleadosInforme.has(d2.empleadoId));
+  const pedidosInforme = localInformeId ? pedidos2.filter((pe2) => (pe2.localId || inferirLocalLineasInforme(pe2.items)) === localInformeId) : pedidos2.filter((pe2) => localEsDeEmpresaInforme(pe2.localId || inferirLocalLineasInforme(pe2.items)));
+  const encargosInforme = localInformeId ? encargos.filter((e2) => (e2.localId || inferirLocalLineasInforme(e2.lineas)) === localInformeId) : encargos.filter((e2) => localEsDeEmpresaInforme(e2.localId || inferirLocalLineasInforme(e2.lineas)));
+  const idsFacturasInforme = /* @__PURE__ */ new Set([...albaranesInforme.map((a22) => a22.id), ...facturasDirectasInforme.map((f22) => f22.id)]);
+  const pendientesPagoInforme = pendientesPago.filter((f22) => idsFacturasInforme.has(f22.id));
+  const vencenProntoInforme = pendientesPagoInforme.filter((f22) => f22.dias !== null && f22.dias <= 7);
+  const totalPendientePagoInforme = pendientesPagoInforme.reduce((a22, f22) => a22 + f22.total, 0);
+  const valorInventarioInforme = productosInforme.filter((p22) => !esUtillaje(p22)).reduce((acc, p22) => acc + (Number(p22.stock) || 0) * Number(p22.costo || 0), 0);
+  const valorUtillajeInforme = productosInforme.filter(esUtillaje).reduce((acc, p22) => acc + (Number(p22.stock) || 0) * Number(p22.costo || 0), 0);
+  const stockBajoInforme = productosInforme.filter((p22) => p22.tipo !== "elaborado" && (p22._pm07Servidor ? p22._pm07BajoMinimo === true : Number(p22.stock) < Number(p22.stockMinimo || 0)));
+  const productosConPrecioInforme = productosI
+
+### REF 6 @ 4094694
+calEsDeEmpresaInforme = (id) => !!id && idsLocalesEmpresaInforme.has(id);
+  const inferirLocalLineasInforme = (lineas) => {
+    const ids = [...new Set((lineas || []).map((ln2) => localPorProductoInforme.get(ln2 && ln2.productoId)).filter(Boolean))];
+    return ids.length === 1 ? ids[0] : null;
+  };
+  const productosInforme = localInformeId ? productos.filter((p22) => p22.localId === localInformeId) : productos.filter((p22) => localEsDeEmpresaInforme(p22.localId));
+  const movimientosInforme = localInformeId ? movimientos.filter((m22) => (m22.localId || localPorProductoInforme.get(m22.productoId) || null) === localInformeId) : movimientos.filter((m22) => localEsDeEmpresaInforme(m22.localId || localPorProductoInforme.get(m22.productoId) || null));
+  const albaranesInforme = localInformeId ? albaranes.filter((a22) => (a22.localId || inferirLocalLineasInforme(a22.lineas)) === localInformeId) : albaranes.filter((a22) => localEsDeEmpresaInforme(a22.localId || inferirLocalLineasInforme(a22.lineas)));
+  const facturasDirectasInforme = localInformeId ? facturasDirectas.filter((f22) => f22.localId === localInformeId) : facturasDirectas.filter((f22) => localEsDeEmpresaInforme(f22.localId));
+  const gastosGeneralesInforme = (localInformeId ? gastosGenerales.filter((g2) => g2.localId === localInformeId) : gastosGenerales.filter((g2) => localEsDeEmpresaInforme(g2.localId))).filter((g2) => g2.estado !== "ANULADO");
+  const empleadosInforme = localInformeId ? empleados.filter((e2) => e2.localId === localInformeId) : empleados.filter((e2) => localEsDeEmpresaInforme(e2.localId));
+  const idsEmpleadosInforme = new Set(empleadosInforme.map((e2) => e2.id));
+  const fichajesAbiertosInforme = fichajesAbiertos.filter((f22) => idsEmpleadosInforme.has(f22.empleadoId));
+  const documentosPersonalProntoInforme = documentosPersonalPronto.filter((d2) => idsEmpleadosInforme.has(d2.empleadoId));
+  const pedidosInforme = localInformeId ? pedidos2.filter((pe2) => (pe2.localId || inferirLocalLineasInforme(pe2.items)) === localInformeId) : pedidos2.filter((pe2) => localEsDeEmpresaInforme(pe2.localId || inferirLocalLineasInforme(pe2.items)));
+  const encargosInforme = localInformeId ? encargos.filter((e2) => (e2.localId || inferirLocalLineasInforme(e2.lineas)) === localInformeId) : encargos.filter((e2) => localEsDeEmpresaInforme(e2.localId || inferirLocalLineasInforme(e2.lineas)));
+  const idsFacturasInforme = /* @__PURE__ */ new Set([...albaranesInforme.map((a22) => a22.id), ...facturasDirectasInforme.map((f22) => f22.id)]);
+  const pendientesPagoInforme = pendientesPago.filter((f22) => idsFacturasInforme.has(f22.id));
+  const vencenProntoInforme = pendientesPagoInforme.filter((f22) => f22.dias !== null && f22.dias <= 7);
+  const totalPendientePagoInforme = pendientesPagoInforme.reduce((a22, f22) => a22 + f22.total, 0);
+  const valorInventarioInforme = productosInforme.filter((p22) => !esUtillaje(p22)).reduce((acc, p22) => acc + (Number(p22.stock) || 0) * Number(p22.costo || 0), 0);
+  const valorUtillajeInforme = productosInforme.filter(esUtillaje).reduce((acc, p22) => acc + (Number(p22.stock) || 0) * Number(p22.costo || 0), 0);
+  const stockBajoInforme = productosInforme.filter((p22) => p22.tipo !== "elaborado" && (p22._pm07Servidor ? p22._pm07BajoMinimo === true : Number(p22.stock) < Number(p22.stockMinimo || 0)));
+  const productosConPrecioInforme = productosInforme.filter((p22) => Num
+
+### REF 7 @ 4099434
+onteosInforme, localInformeId ? "Total del local" : "Total (empresa completa)");
+  const diagnosticoStockInforme = localInformeId ? diagnosticoStock.filter((d2) => localPorProductoInforme.get(d2.productoId) === localInformeId) : diagnosticoStock.filter((d2) => localEsDeEmpresaInforme(localPorProductoInforme.get(d2.productoId)));
+  const addGastoInforme = (data) => addGasto({ ...data, localId: localInformeId || localActivoId || null });
+  const deleteGastoInforme = (id) => deleteGasto(id, localInformeId || localActivoId || null);
+  const contenido = /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, (tab === "dashboard" || tab === "resultados" || tab === "libroiva") && /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, valor: localInformeId, onChange: seleccionarContextoLocal }), tab === "dashboard" && /* @__PURE__ */ import_react4.default.createElement(
+    Dashboard,
+    {
+      itemsPermitidos: typeof window !== "undefined" && window.__nubeActiva ? miPerfil?.rol === "Propietario" ? null : itemsPermitidosEmpleado : modoEmpleado ? itemsPermitidosEmpleado : null,
+      valorInventario: valorInventarioInforme,
+      valorUtillaje: valorUtillajeInforme,
+      stockBajo: stockBajoInforme,
+      pedidosPendientes: pedidosPendientesInforme,
+      margenPromedio: margenPromedioInforme,
+      movimientos: movimientosInforme,
+      productos: productosInforme,
+      caducanPronto: caducanProntoInforme,
+      proveedorPorId,
+      vencenPronto: vencenProntoInforme,
+      totalPendientePago: totalPendientePagoInforme,
+      documentosPersonalPronto: documentosPersonalProntoInforme,
+      fichajesAbiertos: fichajesAbiertosInforme,
+      encargosUrgentes: encargosUrgentesInforme,
+      pisoVentaBajo: pisoVentaBajoInforme,
+      sugerenciasPedido: sugerenciasPedidoInforme,
+      setTab,
+      recordatorioConteo: recordatorioConteoInforme,
+      alertasAppcc,
+      fallosGuardado,
+      diagnosticoStock: diagnosticoStockInforme,
+      registrarSalida
+    }
+  ), tab === "direccion" && /* @__PURE__ */ import_react4.default.createElement(
+    PanelDireccion,
+    {
+      movimientos,
+      gastosGenerales,
+      nominas,
+      empleados,
+      promedioDiarioVentas,
+      proyeccionTesoreria,
+      stockBajo,
+      descuadresStock: diagnosticoStock.filter((d2) => !d2.coincide)
+    }
+  ), tab === "proveedores" && /* @__PURE__ */ import_react4.default.createElement(Proveedores, { proveedores, addProveedor, updateProveedor, deleteProveedor, pedidos: pedidos2 }), tab === "productos" && /* @__PURE__ */ import_react4.default.createElement(
+    Productos,
+    {
+      productos: productosDelLocalActivo,
+      proveedores,
+      proveedorPorId,
+      addProducto,
+      updateProducto,
+      deleteProducto,
+      reactivarProducto,
+      registrarSalida,
+      clasificacionABC: clasificacionABCDelLocalActivo,
+      almacenCongelado,
+      movimientos: movimientosDelLocalActivo,
+      fichasCosto: fichasCostoDelLocalActivo,
+      updateFichaCosto,
+      ajustarProductoPorOtro
+    }
+  ), tab === "historial_producto" && /* @__PURE__ */ import_react4.default.createElement(
+    HistorialProducto,
+    {
+      productos: productosDelLocalActivo,
+      movimientos: movimientosDelLocalActivo,
+      pedidos: pedidosDelLocalActivo,
+      albaranes: albaranesDelLocalActivo,
+      traspasos: traspasosD
+
+### REF 8 @ 4099452
+alInformeId ? "Total del local" : "Total (empresa completa)");
+  const diagnosticoStockInforme = localInformeId ? diagnosticoStock.filter((d2) => localPorProductoInforme.get(d2.productoId) === localInformeId) : diagnosticoStock.filter((d2) => localEsDeEmpresaInforme(localPorProductoInforme.get(d2.productoId)));
+  const addGastoInforme = (data) => addGasto({ ...data, localId: localInformeId || localActivoId || null });
+  const deleteGastoInforme = (id) => deleteGasto(id, localInformeId || localActivoId || null);
+  const contenido = /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, (tab === "dashboard" || tab === "resultados" || tab === "libroiva") && /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, valor: localInformeId, onChange: seleccionarContextoLocal }), tab === "dashboard" && /* @__PURE__ */ import_react4.default.createElement(
+    Dashboard,
+    {
+      itemsPermitidos: typeof window !== "undefined" && window.__nubeActiva ? miPerfil?.rol === "Propietario" ? null : itemsPermitidosEmpleado : modoEmpleado ? itemsPermitidosEmpleado : null,
+      valorInventario: valorInventarioInforme,
+      valorUtillaje: valorUtillajeInforme,
+      stockBajo: stockBajoInforme,
+      pedidosPendientes: pedidosPendientesInforme,
+      margenPromedio: margenPromedioInforme,
+      movimientos: movimientosInforme,
+      productos: productosInforme,
+      caducanPronto: caducanProntoInforme,
+      proveedorPorId,
+      vencenPronto: vencenProntoInforme,
+      totalPendientePago: totalPendientePagoInforme,
+      documentosPersonalPronto: documentosPersonalProntoInforme,
+      fichajesAbiertos: fichajesAbiertosInforme,
+      encargosUrgentes: encargosUrgentesInforme,
+      pisoVentaBajo: pisoVentaBajoInforme,
+      sugerenciasPedido: sugerenciasPedidoInforme,
+      setTab,
+      recordatorioConteo: recordatorioConteoInforme,
+      alertasAppcc,
+      fallosGuardado,
+      diagnosticoStock: diagnosticoStockInforme,
+      registrarSalida
+    }
+  ), tab === "direccion" && /* @__PURE__ */ import_react4.default.createElement(
+    PanelDireccion,
+    {
+      movimientos,
+      gastosGenerales,
+      nominas,
+      empleados,
+      promedioDiarioVentas,
+      proyeccionTesoreria,
+      stockBajo,
+      descuadresStock: diagnosticoStock.filter((d2) => !d2.coincide)
+    }
+  ), tab === "proveedores" && /* @__PURE__ */ import_react4.default.createElement(Proveedores, { proveedores, addProveedor, updateProveedor, deleteProveedor, pedidos: pedidos2 }), tab === "productos" && /* @__PURE__ */ import_react4.default.createElement(
+    Productos,
+    {
+      productos: productosDelLocalActivo,
+      proveedores,
+      proveedorPorId,
+      addProducto,
+      updateProducto,
+      deleteProducto,
+      reactivarProducto,
+      registrarSalida,
+      clasificacionABC: clasificacionABCDelLocalActivo,
+      almacenCongelado,
+      movimientos: movimientosDelLocalActivo,
+      fichasCosto: fichasCostoDelLocalActivo,
+      updateFichaCosto,
+      ajustarProductoPorOtro
+    }
+  ), tab === "historial_producto" && /* @__PURE__ */ import_react4.default.createElement(
+    HistorialProducto,
+    {
+      productos: productosDelLocalActivo,
+      movimientos: movimientosDelLocalActivo,
+      pedidos: pedidosDelLocalActivo,
+      albaranes: albaranesDelLocalActivo,
+      traspasos: traspasosDelLocalActivo,
+   
+
+### REF 9 @ 4107201
+
+      marcarPagada,
+      duplicadosDe,
+      desviacionesDePrecio,
+      prefill: prefillAlbaran,
+      limpiarPrefill: () => setPrefillAlbaran(null),
+      pedidoParaFotoIA,
+      limpiarPedidoParaFotoIA: () => setPedidoParaFotoIA(null),
+      pedidos: pedidosDelLocalActivo
+    }
+  ), tab === "pagos" && /* @__PURE__ */ import_react4.default.createElement(
+    CuentasPorPagar,
+    {
+      facturasPorPagar: facturasPorPagarDelLocalActivo,
+      totalPendientePago: totalPendientePagoDelLocalActivo,
+      marcarPagada,
+      marcarPagadaFacturaDirecta,
+      addFacturaDirecta,
+      deleteFacturaDirecta,
+      proveedores,
+      resaltadaId: facturaDirectaResaltada,
+      limpiarResaltada: () => setFacturaDirectaResaltada(null)
+    }
+  ), tab === "personal" && /* @__PURE__ */ import_react4.default.createElement(
+    Personal,
+    {
+      empleados: empleadosDelLocalActivo,
+      addEmpleado,
+      updateEmpleado,
+      deleteEmpleado,
+      reactivarEmpleado,
+      anonimizarEmpleado,
+      registrarAusencia,
+      eliminarAusencia,
+      registrarEpi,
+      eliminarEpi,
+      documentosPersonalCaducan,
+      fichajes: fichajesDelLocalActivo,
+      nominas: nominasDelLocalActivo,
+      entrevistas,
+      crearEntrevista,
+      actualizarEntrevista,
+      finalizarEntrevista,
+      eliminarEntrevista,
+      crearPrefiltro,
+      listarPrefiltros,
+      eliminarPrefiltro,
+      crearCuentaEmpleado
+    }
+  ), tab === "fichaje" && /* @__PURE__ */ import_react4.default.createElement(
+    RegistroHorario,
+    {
+      empleados: empleadosDelLocalActivo,
+      fichajes: fichajesDelLocalActivo,
+      fichar,
+      addFichajeManual,
+      updateFichaje,
+      eliminarFichaje,
+      fichajesAbiertos: fichajesAbiertosDelLocalActivo
+    }
+  ), tab === "nominas" && /* @__PURE__ */ import_react4.default.createElement(
+    CostePersonal,
+    {
+      empleados: empleadosDelLocalActivo,
+      nominas: nominasDelLocalActivo,
+      addNomina,
+      updateNomina,
+      deleteNomina,
+      fichajes: fichajesDelLocalActivo,
+      movimientos: movimientosDelLocalActivo
+    }
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito, anularVenta, movimientos: movimientosDelLocalActivo, registrarAuditoria, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un \xFAnico local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+    Encargos,
+    {
+      encargosPendientes: encargosPendientesDelLocalActivo,
+      encargos: encargosDelLocalActivo,
+      clientes,
+      productos: productosDelLocalActivo,
+    
+
+### REF 10 @ 4107219
+a,
+      duplicadosDe,
+      desviacionesDePrecio,
+      prefill: prefillAlbaran,
+      limpiarPrefill: () => setPrefillAlbaran(null),
+      pedidoParaFotoIA,
+      limpiarPedidoParaFotoIA: () => setPedidoParaFotoIA(null),
+      pedidos: pedidosDelLocalActivo
+    }
+  ), tab === "pagos" && /* @__PURE__ */ import_react4.default.createElement(
+    CuentasPorPagar,
+    {
+      facturasPorPagar: facturasPorPagarDelLocalActivo,
+      totalPendientePago: totalPendientePagoDelLocalActivo,
+      marcarPagada,
+      marcarPagadaFacturaDirecta,
+      addFacturaDirecta,
+      deleteFacturaDirecta,
+      proveedores,
+      resaltadaId: facturaDirectaResaltada,
+      limpiarResaltada: () => setFacturaDirectaResaltada(null)
+    }
+  ), tab === "personal" && /* @__PURE__ */ import_react4.default.createElement(
+    Personal,
+    {
+      empleados: empleadosDelLocalActivo,
+      addEmpleado,
+      updateEmpleado,
+      deleteEmpleado,
+      reactivarEmpleado,
+      anonimizarEmpleado,
+      registrarAusencia,
+      eliminarAusencia,
+      registrarEpi,
+      eliminarEpi,
+      documentosPersonalCaducan,
+      fichajes: fichajesDelLocalActivo,
+      nominas: nominasDelLocalActivo,
+      entrevistas,
+      crearEntrevista,
+      actualizarEntrevista,
+      finalizarEntrevista,
+      eliminarEntrevista,
+      crearPrefiltro,
+      listarPrefiltros,
+      eliminarPrefiltro,
+      crearCuentaEmpleado
+    }
+  ), tab === "fichaje" && /* @__PURE__ */ import_react4.default.createElement(
+    RegistroHorario,
+    {
+      empleados: empleadosDelLocalActivo,
+      fichajes: fichajesDelLocalActivo,
+      fichar,
+      addFichajeManual,
+      updateFichaje,
+      eliminarFichaje,
+      fichajesAbiertos: fichajesAbiertosDelLocalActivo
+    }
+  ), tab === "nominas" && /* @__PURE__ */ import_react4.default.createElement(
+    CostePersonal,
+    {
+      empleados: empleadosDelLocalActivo,
+      nominas: nominasDelLocalActivo,
+      addNomina,
+      updateNomina,
+      deleteNomina,
+      fichajes: fichajesDelLocalActivo,
+      movimientos: movimientosDelLocalActivo
+    }
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito, anularVenta, movimientos: movimientosDelLocalActivo, registrarAuditoria, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un \xFAnico local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+    Encargos,
+    {
+      encargosPendientes: encargosPendientesDelLocalActivo,
+      encargos: encargosDelLocalActivo,
+      clientes,
+      productos: productosDelLocalActivo,
+      addEncargo,
+    
+
+### REF 11 @ 4115844
+direcci\xF3n", icon: TrendingUp },
+    { id: "proveedores", label: "Proveedores", icon: Truck },
+    { id: "productos", label: "Productos", icon: Package },
+    { id: "buscar", label: "Buscar", icon: Search },
+    { id: "historial_producto", label: "Historial de producto", icon: RotateCcwClock },
+    { id: "pedidos", label: "Pedidos", icon: ShoppingCart, badge: pedidosPendientesDelLocalActivo.length },
+    { id: "recepcion", label: "Recepci\xF3n", icon: ClipboardList },
+    { id: "albaranes", label: "Albaranes", icon: FileText },
+    { id: "facturas", label: "Facturas", icon: Files },
+    { id: "pagos", label: "Cuentas por pagar", icon: Coins, badge: vencenProntoDelLocalActivo.length, badgeColor: C2.red },
+    { id: "conteo", label: "Inventario ciego", icon: Boxes, badge: stockBajoDelLocalActivo.length, badgeColor: C2.amber },
+    { id: "saldo", label: "Saldo de almac\xE9n", icon: ClipboardList },
+    { id: "mapa", label: "Mapa de almac\xE9n", icon: Map2 },
+    { id: "traspasos", label: "Traspasos", icon: ArrowLeftRight, badge: pisoVentaBajoDelLocalActivo.length, badgeColor: C2.amber },
+    { id: "fichas", label: "Fichas de costo", icon: Calculator },
+    { id: "produccion", label: "Producci\xF3n", icon: Factory },
+    { id: "mermas", label: "Mermas", icon: Trash2 },
+    { id: "etiquetas", label: "Etiquetas y cat\xE1logo", icon: Tags },
+    { id: "reportes", label: "Reportes y rotaci\xF3n", icon: ChartColumn },
+    { id: "resultados", label: "Resultados", icon: TrendingUp },
+    { id: "personal", label: "Personal", icon: Users, badge: documentosPersonalProntoDelLocalActivo.length, badgeColor: C2.amber },
+    { id: "fichaje", label: "Registro horario", icon: Clock, badge: fichajesAbiertosDelLocalActivo.length, badgeColor: C2.amber },
+    { id: "nominas", label: "Coste de personal", icon: Coins },
+    { id: "turnos", label: "Cuadrante de turnos", icon: CalendarClock },
+    { id: "appcc", label: "Control sanitario", icon: ShieldCheck, badge: appccPendientesHoy.length, badgeColor: C2.amber },
+    { id: "aceite", label: "Aceite de freidoras", icon: Droplet },
+    { id: "venta", label: "TPV", icon: ShoppingBag },
+    { id: "encargos", label: "Encargos", icon: CalendarDays, badge: encargosUrgentesDelLocalActivo.length, badgeColor: C2.red },
+    { id: "clientes", label: "Clientes", icon: UserRound },
+    { id: "libroiva", label: "Libro de IVA", icon: Receipt },
+    { id: "caja", label: "Arqueo de caja", icon: Wallet },
+    { id: "devoluciones", label: "Devoluciones", icon: ArrowLeftRight },
+    { id: "tesoreria", label: "Tesorer\xEDa", icon: ChartLine },
+    { id: "estacionalidad", label: "Estacionalidad", icon: CalendarRange },
+    { id: "auditoria", label: "Auditor\xEDa", icon: RotateCcwClock },
+    { id: "diagnostico", label: "Reconciliaci\xF3n de stock", icon: Stethoscope, badge: descuadresPendientesDelLocalActivo, badgeColor: C2.red },
+    { id: "respaldos", label: "Respaldos", icon: Cog },
+    { id: "notificaciones", label: "Notificaciones", icon: Bell },
+    { id: "locales", label: "Locales", icon: Map2 },
+    { id: "errores_sistema", label: "Errores del sistema", icon: TriangleAlert }
+  ];
+  const porId = (id) => itemsMeta.find((x3) => x3.id === id);
+  const pick = (ids) => {
+    const filtrados = modoEmpleado ? ids.filter((id) => itemsPermitidosEmpleado.includes(id)) : ids;
+    return filtrados.map(porId).filter(Boolean);
+  };
+  const gruposA = [
+    { 
+
+### REF 12 @ 4411056
+t_react4.default.createElement(
+    "select",
+    {
+      value: seleccionado,
+      onChange: (e2) => {
+        const v22 = e2.target.value;
+        if (v22 === "Otra") {
+          setModoLibre(true);
+        } else {
+          setModoLibre(false);
+          onChange(v22);
+        }
+      },
+      className: "w-full rounded-lg px-3 py-2 text-[13px]",
+      style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink }
+    },
+    /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin categor\xEDa"),
+    opciones.filter((c22) => c22 !== "Otra").map((c22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: c22, value: c22 }, c22)),
+    /* @__PURE__ */ import_react4.default.createElement("option", { value: "Otra" }, "Otra\u2026")
+  ), modoLibre && /* @__PURE__ */ import_react4.default.createElement(
+    Input,
+    {
+      className: "mt-1.5",
+      value,
+      onChange: (e2) => onChange(e2.target.value),
+      placeholder: "Escribe la categor\xEDa"
+    }
+  ));
+}
+function Empty({ text: text2 }) {
+  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-center py-10 text-[13px]", style: { color: C2.inkSoft } }, text2);
+}
+function Pill2({ children, color }) {
+  return /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px] font-semibold px-2 py-0.5 rounded-full", style: { background: color + "22", color } }, children);
+}
+function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendientes, margenPromedio, movimientos, productos, caducanPronto = [], proveedorPorId, vencenPronto = [], totalPendientePago = 0, documentosPersonalPronto = [], fichajesAbiertos = [], encargosUrgentes = [], pisoVentaBajo = [], sugerenciasPedido = [], setTab, recordatorioConteo = [], alertasAppcc = { pendientes: [], desviaciones: [] }, fallosGuardado = [], diagnosticoStock = [], registrarSalida, itemsPermitidos = null }) {
+  const entradas30 = movimientos.filter((m22) => esEntrada(m22)).reduce((a22, m22) => a22 + Math.abs(cantidadConSigno(m22)), 0);
+  const salidas30 = movimientos.filter((m22) => esSalida(m22)).reduce((a22, m22) => a22 + Math.abs(cantidadConSigno(m22)), 0);
+  const [abierta, setAbierta] = (0, import_react4.useState)(null);
+  const [confirmarMermaLote, setConfirmarMermaLote] = (0, import_react4.useState)(null);
+  const [procesandoMermaLote, setProcesandoMermaLote] = (0, import_react4.useState)(false);
+  const diasTexto = (d2) => d2 < 0 ? `vencido hace ${Math.abs(d2)} d` : d2 === 0 ? "hoy" : `en ${d2} d`;
+  const diasColor = (d2) => d2 < 0 ? C2.red : d2 <= 7 ? C2.amber : C2.inkSoft;
+  const descuadresStock = diagnosticoStock.filter((d2) => !d2.coincide).sort((a22, b2) => Math.abs(b2.diferencia) - Math.abs(a22.diferencia));
+  const tarjetas = [
+    {
+      id: "saldo",
+      titulo: "Saldo de almac\xE9n",
+      valor: `\u20AC${fmt(valorInventario)}`,
+      nota: valorUtillaje > 0 ? `+ \u20AC${fmt(valorUtillaje)} en utillaje y limpieza (aparte, no es mercanc\xEDa)` : null,
+      tab: "saldo",
+      tabNombre: "Saldo de almac\xE9n",
+      items: []
+    },
+    {
+      id: "margen",
+      titulo: "Margen promedio",
+      valor: `${fmt(margenPromedio)}%`,
+      color: C2.accent,
+      tab: "resultados",
+      tabNombre: "Resultados",
+      items: []
+    },
+    {
+      id: "pedidos",
+      titulo: "Pedidos pendientes",
+      valor: pedido
+
+### REF 13 @ 4419959
+ndiente",
+        derechaColor: C2.amber
+      }))
+    },
+    {
+      id: "pedirya",
+      titulo: "Pedir ya",
+      valor: sugerenciasPedido.length,
+      color: sugerenciasPedido.length ? C2.red : C2.ink,
+      nota: sugerenciasPedido.length > 0 ? "se agotan antes de que llegue el pedido" : null,
+      tab: "pedidos",
+      tabNombre: "Pedidos",
+      items: sugerenciasPedido.map((p22) => ({
+        clave: p22.id,
+        principal: p22.nombre,
+        secundario: `${p22.proveedorNombre} \xB7 pide ${fmt(p22.cantidadSugerida)} ${p22.unidad}${p22.cajasSugeridas ? ` (${p22.cajasSugeridas} caja${p22.cajasSugeridas > 1 ? "s" : ""})` : ""}`,
+        derecha: `${Math.round(p22.dias)} d de stock \xB7 llega en ${p22.diasHastaEntrega}`,
+        derechaColor: C2.red
+      }))
+    },
+    {
+      id: "descuadresstock",
+      titulo: "Descuadres de stock",
+      valor: descuadresStock.length,
+      color: descuadresStock.length ? C2.red : C2.ink,
+      nota: descuadresStock.length > 0 ? "la cach\xE9 no coincide con el hist\xF3rico de movimientos" : null,
+      tab: "diagnostico",
+      tabNombre: "Reconciliaci\xF3n de stock",
+      items: descuadresStock.map((d2) => ({
+        clave: d2.productoId,
+        principal: d2.nombre,
+        secundario: `Cach\xE9 ${fmt(d2.teoricoCache)} \xB7 hist\xF3rico ${fmt(d2.teoricoReal)}`,
+        derecha: `${d2.diferencia > 0 ? "+" : ""}${fmt(d2.diferencia)}`,
+        derechaColor: C2.red
+      }))
+    },
+    {
+      id: "personal",
+      titulo: "Personal: avisos",
+      valor: documentosPersonalPronto.length,
+      color: documentosPersonalPronto.some((d2) => d2.dias < 0) ? C2.red : documentosPersonalPronto.length ? C2.amber : C2.ink,
+      nota: fichajesAbiertos.length > 0 ? `${fichajesAbiertos.length} fichaje(s) sin cerrar` : null,
+      notaColor: fichajesAbiertos.length > 0 ? C2.amber : null,
+      tab: "personal",
+      tabNombre: "Personal",
+      items: documentosPersonalPronto.map((d2) => ({
+        clave: d2.id,
+        principal: d2.empleado,
+        secundario: `${d2.concepto} \xB7 ${d2.fecha}`,
+        derecha: diasTexto(d2.dias),
+        derechaColor: diasColor(d2.dias)
+      }))
+    },
+    {
+      id: "conteos",
+      titulo: "Conteos atrasados",
+      valor: recordatorioConteo.filter((a22) => a22.atrasado).length,
+      color: recordatorioConteo.some((a22) => a22.atrasado) ? C2.amber : C2.ink,
+      tab: "conteo",
+      tabNombre: "Inventario ciego",
+      items: recordatorioConteo.filter((a22) => a22.atrasado).map((a22) => ({
+        clave: a22.id,
+        principal: a22.nombre,
+        secundario: a22.ultimaFecha ? `\xFAltimo conteo: ${a22.ultimaFecha}` : "todav\xEDa no se ha contado nunca",
+        derecha: a22.diasDesde === null ? "sin datos" : `hace ${a22.diasDesde} d`,
+        derechaColor: C2.amber
+      }))
+    }
+  ];
+  const tarjetasVisibles = Array.isArray(itemsPermitidos) ? tarjetas.filter((t22) => itemsPermitidos.includes(t22.tab)) : tarjetas;
+  const tarjetaAbierta = tarjetasVisibles.find((t22) => t22.id === abierta);
+  return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-4 pb-3", style: { borderBottom: `2px solid ${C2.accent}` } }, /* @__PURE__ */ import_react4.default.createElement("di
+
+### REF 14 @ 4419992
+2.amber
+      }))
+    },
+    {
+      id: "pedirya",
+      titulo: "Pedir ya",
+      valor: sugerenciasPedido.length,
+      color: sugerenciasPedido.length ? C2.red : C2.ink,
+      nota: sugerenciasPedido.length > 0 ? "se agotan antes de que llegue el pedido" : null,
+      tab: "pedidos",
+      tabNombre: "Pedidos",
+      items: sugerenciasPedido.map((p22) => ({
+        clave: p22.id,
+        principal: p22.nombre,
+        secundario: `${p22.proveedorNombre} \xB7 pide ${fmt(p22.cantidadSugerida)} ${p22.unidad}${p22.cajasSugeridas ? ` (${p22.cajasSugeridas} caja${p22.cajasSugeridas > 1 ? "s" : ""})` : ""}`,
+        derecha: `${Math.round(p22.dias)} d de stock \xB7 llega en ${p22.diasHastaEntrega}`,
+        derechaColor: C2.red
+      }))
+    },
+    {
+      id: "descuadresstock",
+      titulo: "Descuadres de stock",
+      valor: descuadresStock.length,
+      color: descuadresStock.length ? C2.red : C2.ink,
+      nota: descuadresStock.length > 0 ? "la cach\xE9 no coincide con el hist\xF3rico de movimientos" : null,
+      tab: "diagnostico",
+      tabNombre: "Reconciliaci\xF3n de stock",
+      items: descuadresStock.map((d2) => ({
+        clave: d2.productoId,
+        principal: d2.nombre,
+        secundario: `Cach\xE9 ${fmt(d2.teoricoCache)} \xB7 hist\xF3rico ${fmt(d2.teoricoReal)}`,
+        derecha: `${d2.diferencia > 0 ? "+" : ""}${fmt(d2.diferencia)}`,
+        derechaColor: C2.red
+      }))
+    },
+    {
+      id: "personal",
+      titulo: "Personal: avisos",
+      valor: documentosPersonalPronto.length,
+      color: documentosPersonalPronto.some((d2) => d2.dias < 0) ? C2.red : documentosPersonalPronto.length ? C2.amber : C2.ink,
+      nota: fichajesAbiertos.length > 0 ? `${fichajesAbiertos.length} fichaje(s) sin cerrar` : null,
+      notaColor: fichajesAbiertos.length > 0 ? C2.amber : null,
+      tab: "personal",
+      tabNombre: "Personal",
+      items: documentosPersonalPronto.map((d2) => ({
+        clave: d2.id,
+        principal: d2.empleado,
+        secundario: `${d2.concepto} \xB7 ${d2.fecha}`,
+        derecha: diasTexto(d2.dias),
+        derechaColor: diasColor(d2.dias)
+      }))
+    },
+    {
+      id: "conteos",
+      titulo: "Conteos atrasados",
+      valor: recordatorioConteo.filter((a22) => a22.atrasado).length,
+      color: recordatorioConteo.some((a22) => a22.atrasado) ? C2.amber : C2.ink,
+      tab: "conteo",
+      tabNombre: "Inventario ciego",
+      items: recordatorioConteo.filter((a22) => a22.atrasado).map((a22) => ({
+        clave: a22.id,
+        principal: a22.nombre,
+        secundario: a22.ultimaFecha ? `\xFAltimo conteo: ${a22.ultimaFecha}` : "todav\xEDa no se ha contado nunca",
+        derecha: a22.diasDesde === null ? "sin datos" : `hace ${a22.diasDesde} d`,
+        derechaColor: C2.amber
+      }))
+    }
+  ];
+  const tarjetasVisibles = Array.isArray(itemsPermitidos) ? tarjetas.filter((t22) => itemsPermitidos.includes(t22.tab)) : tarjetas;
+  const tarjetaAbierta = tarjetasVisibles.find((t22) => t22.id === abierta);
+  return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-4 pb-3", style: { borderBottom: `2px solid ${C2.accent}` } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_
+
+### REF 15 @ 4420065
+ya",
+      valor: sugerenciasPedido.length,
+      color: sugerenciasPedido.length ? C2.red : C2.ink,
+      nota: sugerenciasPedido.length > 0 ? "se agotan antes de que llegue el pedido" : null,
+      tab: "pedidos",
+      tabNombre: "Pedidos",
+      items: sugerenciasPedido.map((p22) => ({
+        clave: p22.id,
+        principal: p22.nombre,
+        secundario: `${p22.proveedorNombre} \xB7 pide ${fmt(p22.cantidadSugerida)} ${p22.unidad}${p22.cajasSugeridas ? ` (${p22.cajasSugeridas} caja${p22.cajasSugeridas > 1 ? "s" : ""})` : ""}`,
+        derecha: `${Math.round(p22.dias)} d de stock \xB7 llega en ${p22.diasHastaEntrega}`,
+        derechaColor: C2.red
+      }))
+    },
+    {
+      id: "descuadresstock",
+      titulo: "Descuadres de stock",
+      valor: descuadresStock.length,
+      color: descuadresStock.length ? C2.red : C2.ink,
+      nota: descuadresStock.length > 0 ? "la cach\xE9 no coincide con el hist\xF3rico de movimientos" : null,
+      tab: "diagnostico",
+      tabNombre: "Reconciliaci\xF3n de stock",
+      items: descuadresStock.map((d2) => ({
+        clave: d2.productoId,
+        principal: d2.nombre,
+        secundario: `Cach\xE9 ${fmt(d2.teoricoCache)} \xB7 hist\xF3rico ${fmt(d2.teoricoReal)}`,
+        derecha: `${d2.diferencia > 0 ? "+" : ""}${fmt(d2.diferencia)}`,
+        derechaColor: C2.red
+      }))
+    },
+    {
+      id: "personal",
+      titulo: "Personal: avisos",
+      valor: documentosPersonalPronto.length,
+      color: documentosPersonalPronto.some((d2) => d2.dias < 0) ? C2.red : documentosPersonalPronto.length ? C2.amber : C2.ink,
+      nota: fichajesAbiertos.length > 0 ? `${fichajesAbiertos.length} fichaje(s) sin cerrar` : null,
+      notaColor: fichajesAbiertos.length > 0 ? C2.amber : null,
+      tab: "personal",
+      tabNombre: "Personal",
+      items: documentosPersonalPronto.map((d2) => ({
+        clave: d2.id,
+        principal: d2.empleado,
+        secundario: `${d2.concepto} \xB7 ${d2.fecha}`,
+        derecha: diasTexto(d2.dias),
+        derechaColor: diasColor(d2.dias)
+      }))
+    },
+    {
+      id: "conteos",
+      titulo: "Conteos atrasados",
+      valor: recordatorioConteo.filter((a22) => a22.atrasado).length,
+      color: recordatorioConteo.some((a22) => a22.atrasado) ? C2.amber : C2.ink,
+      tab: "conteo",
+      tabNombre: "Inventario ciego",
+      items: recordatorioConteo.filter((a22) => a22.atrasado).map((a22) => ({
+        clave: a22.id,
+        principal: a22.nombre,
+        secundario: a22.ultimaFecha ? `\xFAltimo conteo: ${a22.ultimaFecha}` : "todav\xEDa no se ha contado nunca",
+        derecha: a22.diasDesde === null ? "sin datos" : `hace ${a22.diasDesde} d`,
+        derechaColor: C2.amber
+      }))
+    }
+  ];
+  const tarjetasVisibles = Array.isArray(itemsPermitidos) ? tarjetas.filter((t22) => itemsPermitidos.includes(t22.tab)) : tarjetas;
+  const tarjetaAbierta = tarjetasVisibles.find((t22) => t22.id === abierta);
+  return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-4 pb-3", style: { borderBottom: `2px solid ${C2.accent}` } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[18px] font-semibol
+
+### REF 16 @ 4897048
+ ficha, ausencias, documentos, fichajes ni n\xF3minas. La fecha y el motivo quedan registrados y el historial se conserva."), nominas.some((n2) => n2.empleadoId === confirmDeleteId) && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "Este empleado tiene n\xF3minas registradas. La baja conservar\xE1 esas n\xF3minas y el resto del historial. La anonimizaci\xF3n queda como una acci\xF3n de privacidad separada. ", /* @__PURE__ */ import_react4.default.createElement("b", null, '"Anonimizar"'), " \u2014 quita su nombre y datos personales, pero conserva fichajes y n\xF3minas con a qui\xE9n pertenecen, sin decir qui\xE9n era.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: async () => {
+    const r2 = await deleteEmpleado(confirmDeleteId);
+    if (!r2 || r2.ok === false) {
+      setError(r2?.error || "No se pudo confirmar la baja del empleado.");
+      return;
+    }
+    setConfirmDeleteId(null);
+  } }, "Dar de baja"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmDeleteId(null) }, "Cancelar")))));
+}
+function inicioSemana(fecha) {
+  const d2 = new Date(fecha);
+  const dia = d2.getDay();
+  const diff = dia === 0 ? -6 : 1 - dia;
+  const l22 = new Date(d2);
+  l22.setDate(d2.getDate() + diff);
+  return aISO(l22);
+}
+function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, updateFichaje, eliminarFichaje, fichajesAbiertos }) {
+  const activos = empleados.filter((e2) => e2.activo !== false);
+  const [desde, setDesde] = (0, import_react4.useState)(inicioSemana(/* @__PURE__ */ new Date()));
+  const [hasta, setHasta] = (0, import_react4.useState)(todayISO());
+  const [showManual, setShowManual] = (0, import_react4.useState)(false);
+  const [manual, setManual] = (0, import_react4.useState)({ empleadoId: activos[0]?.id || "", fecha: todayISO(), tipo: "entrada", hora: "09:00" });
+  const [manualError, setManualError] = (0, import_react4.useState)("");
+  const [showExportar, setShowExportar] = (0, import_react4.useState)(false);
+  const [copiado, setCopiado] = (0, import_react4.useState)(false);
+  function irEstaSemana() {
+    setDesde(inicioSemana(/* @__PURE__ */ new Date()));
+    setHasta(todayISO());
+  }
+  function irSemanaAnterior() {
+    const d2 = /* @__PURE__ */ new Date();
+    d2.setDate(d2.getDate() - 7);
+    const ini = inicioSemana(d2);
+    const fin = new Date(ini);
+    fin.setDate(fin.getDate() + 6);
+    setDesde(ini);
+    setHasta(aISO(fin));
+  }
+  const estadoHoy = activos.map((e2) => {
+    const deHoy = fichajes.filter((f22) => f22.empleadoId === e2.id && f22.fecha === todayISO()).sort((a22, b2) => (a22.hora || "").localeCompare(b2.hora || ""));
+    const entradas = deHoy.filter((f22) => f22.tipo === "entrada");
+    const salidas = deHoy.filter((f22) => f22.tipo === "salida");
+    const abierto = entradas.length > salidas.length;
+    return { empleado: e2, ultimaEntrada: entradas[entradas.length - 1], abierto, totalFichajesHoy: deHoy.length };
+  });
+  const filasHistorial = (0, import_react4.useMemo)(() => {
+    const grupos = {};
+    fichajes.filter((f22) => f22.fecha >= desde &&
+
+### REF 17 @ 4901650
+xB7 ${f22.nombre} \xB7 Entrada ${f22.entrada ? f22.entrada.hora : "\u2014"} \xB7 Salida ${f22.salida ? f22.salida.hora : "sin fichar"} \xB7 ${f22.horas !== null ? f22.horas.toFixed(2) + " h" : ""}`);
+    return `REGISTRO HORARIO
+Del ${desde} al ${hasta}
+
+${lineas.join("\n")}
+
+Generado el ${(/* @__PURE__ */ new Date()).toLocaleString("es-ES")}`;
+  }
+  function copiarRegistro() {
+    const texto = textoRegistro();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texto).then(() => setCopiado(true)).catch(() => setCopiado(false));
+    }
+  }
+  function submitManual() {
+    if (!manual.empleadoId) {
+      setManualError("Selecciona un empleado.");
+      return;
+    }
+    setManualError("");
+    addFichajeManual({
+      empleadoId: manual.empleadoId,
+      fecha: manual.fecha,
+      tipo: manual.tipo,
+      hora: manual.hora,
+      timestamp: (/* @__PURE__ */ new Date(`${manual.fecha}T${manual.hora}:00`)).toISOString(),
+      manual: true
+    });
+    setShowManual(false);
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Registro horario"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Desde 2019, todas las empresas en Espa\xF1a est\xE1n obligadas a llevar un registro diario de la jornada de cada persona trabajadora, sea cual sea su tama\xF1o. Este registro se debe conservar 4 a\xF1os y estar disponible para la Inspecci\xF3n de Trabajo si lo pide.")), fichajesAbiertos.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "Fichajes sin cerrar"), fichajesAbiertos.map((f22, i33) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i33, className: "text-[12px]" }, f22.nombre, " \u2014 entr\xF3 el ", f22.fecha, " y no consta salida"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Hoy"), activos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "A\xF1ade empleados activos en Personal para poder ficharles." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-3 mb-4" }, estadoHoy.map(({ empleado, ultimaEntrada, abierto }) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: empleado.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium text-[13.5px]" }, empleado.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, abierto ? `Entr\xF3 a las ${ultimaEntrada.hora}` : ultimaEntrada ? "Jornada cerrada" : "Sin fichar hoy")), /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: abierto ? C2.accent : C2.inkSoft }, abierto ? "Trabajando" : "Fuera")),
+
+### REF 18 @ 4901949
+URE__ */ new Date()).toLocaleString("es-ES")}`;
+  }
+  function copiarRegistro() {
+    const texto = textoRegistro();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texto).then(() => setCopiado(true)).catch(() => setCopiado(false));
+    }
+  }
+  function submitManual() {
+    if (!manual.empleadoId) {
+      setManualError("Selecciona un empleado.");
+      return;
+    }
+    setManualError("");
+    addFichajeManual({
+      empleadoId: manual.empleadoId,
+      fecha: manual.fecha,
+      tipo: manual.tipo,
+      hora: manual.hora,
+      timestamp: (/* @__PURE__ */ new Date(`${manual.fecha}T${manual.hora}:00`)).toISOString(),
+      manual: true
+    });
+    setShowManual(false);
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Registro horario"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Desde 2019, todas las empresas en Espa\xF1a est\xE1n obligadas a llevar un registro diario de la jornada de cada persona trabajadora, sea cual sea su tama\xF1o. Este registro se debe conservar 4 a\xF1os y estar disponible para la Inspecci\xF3n de Trabajo si lo pide.")), fichajesAbiertos.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "Fichajes sin cerrar"), fichajesAbiertos.map((f22, i33) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i33, className: "text-[12px]" }, f22.nombre, " \u2014 entr\xF3 el ", f22.fecha, " y no consta salida"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Hoy"), activos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "A\xF1ade empleados activos en Personal para poder ficharles." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-3 mb-4" }, estadoHoy.map(({ empleado, ultimaEntrada, abierto }) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: empleado.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium text-[13.5px]" }, empleado.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, abierto ? `Entr\xF3 a las ${ultimaEntrada.hora}` : ultimaEntrada ? "Jornada cerrada" : "Sin fichar hoy")), /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: abierto ? C2.accent : C2.inkSoft }, abierto ? "Trabajando" : "Fuera")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, disabled: abierto, onClick: () => fichar(empleado.id, "entrada") }, /* @__PURE__ */ import_react4.default.createElement(LogIn, { size
