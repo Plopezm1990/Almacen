@@ -97,8 +97,6 @@ for (const patron of [
   /resolverConfirmacionAlbaranPM11/,
   /confirmacionesAlbaranPM11Memoria/,
   /\(albaranes \|\| \[\]\)\.find/,
-  /estado === "confirmado"/,
-  /operation_id_conflict/,
   /pedidoLigado\.proveedorId/,
   /proveedor del albarán no coincide con el proveedor del pedido enlazado/,
   /pedidoLigado\.localId/,
@@ -110,6 +108,10 @@ for (const patron of [
   /guardarAlbaran\(\{ \.\.\.alb, lineas: lineasResueltas, estado: "confirmado"/,
   /resultadoReplayAlbaranPM11/
 ]) assert.match(confirmar, patron);
+
+assert.match(src.slice(helperIni, albIni), /existente && existente\.estado === "confirmado"/);
+assert.match(src.slice(helperIni, albIni), /operation_id_conflict/);
+assert.match(src.slice(helperIni, albIni), /documento_ya_confirmado/);
 
 const guardiaPos = confirmar.indexOf('resolverConfirmacionAlbaranPM11');
 const pedidoPos = confirmar.indexOf('let pedidoLigado');
