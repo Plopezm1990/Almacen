@@ -55,8 +55,28 @@
     max-width: 100% !important;
   }
 
-  .pm11-compra-mobile-line > button {
-    width: 100% !important;
+  .pm11-compra-field-wrap {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+    min-width: 0 !important;
+  }
+
+  .pm11-compra-field-label {
+    display: block !important;
+    color: #b7c2b7 !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+  }
+
+  .pm11-compra-mobile-line > button,
+  .pm11-compra-delete-line {
+    grid-column: 1 / -1 !important;
+    width: fit-content !important;
+    min-height: 36px !important;
+    padding: 6px 10px !important;
+    justify-self: start !important;
   }
 }
 `;
@@ -89,16 +109,41 @@
     return null;
   }
 
+  function labelInput(input, text, aria) {
+    if (!input || input.dataset.pm11Labeled === '1') return;
+    var wrap = document.createElement('div');
+    wrap.className = 'pm11-compra-field-wrap';
+    input.parentNode.insertBefore(wrap, input);
+    var label = document.createElement('span');
+    label.className = 'pm11-compra-field-label';
+    label.textContent = text;
+    wrap.appendChild(label);
+    wrap.appendChild(input);
+    input.setAttribute('aria-label', aria);
+    input.dataset.pm11Labeled = '1';
+  }
+
   function markProductLines(form) {
     var selects = Array.from(form.querySelectorAll('select'));
     selects.forEach(function (select) {
       var row = select.parentElement;
       for (var i = 0; i < 5 && row && row !== form; i += 1, row = row.parentElement) {
-        var numeric = row.querySelectorAll("input[type='number'],input[inputmode='decimal'],input[inputmode='numeric']");
+        var numeric = Array.from(row.querySelectorAll("input[type='number'],input[inputmode='decimal'],input[inputmode='numeric']"));
         var rowSelects = row.querySelectorAll('select');
         if (numeric.length >= 1 && rowSelects.length === 1) {
           row.classList.add('pm11-compra-mobile-line');
           select.setAttribute('data-pm11-product-control', '1');
+          labelInput(numeric[0], 'Cantidad', 'Cantidad del producto');
+          if (numeric[1]) labelInput(numeric[1], 'Precio unitario (€)', 'Precio unitario en euros');
+          var deleteButton = row.querySelector('button');
+          if (deleteButton && !deleteButton.dataset.pm11DeleteLabeled) {
+            deleteButton.classList.add('pm11-compra-delete-line');
+            deleteButton.setAttribute('aria-label', 'Eliminar producto del pedido');
+            deleteButton.setAttribute('title', 'Eliminar producto');
+            var current = norm(deleteButton.textContent);
+            if (current === '×' || current === 'x' || current === '✕') deleteButton.textContent = '× Eliminar';
+            deleteButton.dataset.pm11DeleteLabeled = '1';
+          }
           break;
         }
       }
