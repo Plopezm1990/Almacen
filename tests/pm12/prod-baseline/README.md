@@ -1,50 +1,65 @@
-# PM12 · P08 · Preparación de despliegue productivo seguro
+# PM12 · P08 · Despliegue productivo seguro
 
-Estado: **BASELINE PRODUCTIVA APLICADA · P08 PENDIENTE POR STOP DE DDL DESTRUCTIVO**.
+Estado: **P08 DESPLEGADO Y VALIDADO EN PRODUCCIÓN**.
 
-## Inventario verificado
+## Inventario y límites respetados
 
 - `main` permanece congelado en el checkpoint acordado.
-- La rama parte del cierre remoto de PM12-P08 y no modifica P02-P07.
-- Producción conserva `public.perfiles`, `public.almacen_kv` y `public.movimientos_registro`.
-- Producción conserva cuentas Auth; la baseline no crea, borra ni reasigna usuarios.
-- `almacen_kv` y `movimientos_registro` no contienen datos operativos históricos que reconciliar.
-- QA contiene una cadena mayor y fixtures/base propios; no se usa como baseline de producción.
+- No se rehizo PM12 P02-P07.
+- QA no se utilizó como baseline de producción y no se importaron fixtures.
+- Producción conservó sus usuarios Auth y perfiles existentes.
+- No existían conteos, operaciones ni movimientos históricos de inventario que reconciliar.
+- No se ejecutó smoke mutante en producción.
 
 ## Baseline productiva mínima
 
-`pm12-produccion-baseline-candidate.sql` crea únicamente:
+La baseline específica de producción crea únicamente la frontera necesaria para P08:
 
 1. `membresias_usuario` y helpers privados de usuario/empresa/local/rol;
-2. `stock_ubicacion`, `stock_operaciones` y `movimientos_stock` con RLS y escritura directa denegada;
+2. `stock_ubicacion`, `stock_operaciones` y `movimientos_stock` con RLS;
 3. validación de cantidades PM07;
-4. bloqueo `operation_id` PM08, registro global G1 y bloqueo stock PM09 sin crear ledgers financieros.
+4. bloqueo `operation_id` PM08, registro global G1 y bloqueo stock PM09.
 
-No crea caja, arqueos, devoluciones, empleados, compras ni fixtures. No inserta membresías ni stock. El acceso nuevo queda cerrado hasta que exista una membresía explícita; un perfil productivo explícitamente inactivo continúa bloqueando.
+No crea caja, arqueos, devoluciones, empleados, compras ni fixtures y no inserta membresías, stock, operaciones o movimientos.
 
-## Gate aislado
+La baseline fue aplicada como migración separada `pm12_produccion_baseline_p08`.
 
-La baseline fue validada en PostgreSQL + Supabase Auth + JWT + PostgREST + RLS junto con la migración P08 real, incluyendo replay concurrente, cancelación concurrente, aislamiento, denegación de PATCH directo, grants, constraints, índice único, ausencia de módulos/objetos QA y regresión PM12 P02-P07.
+## Validación aislada previa
 
-Gate de promoción: `34152579612` — **SUCCESS**.
+La cadena baseline + migración P08 real fue validada en PostgreSQL y Supabase desechable con Auth, JWT, PostgREST y RLS. Incluyó replay concurrente, cancelación concurrente, aislamiento de scope, denegación de escritura directa, grants, constraints, índice único y regresión acumulada P02-P07.
 
-## Promoción realizada
+Gate funcional de promoción: `34152579612` — **SUCCESS**.
 
-La baseline aditiva fue aplicada en producción como migración separada `pm12_produccion_baseline_p08`.
+Un gate documental posterior falló inicialmente antes de cargar migraciones por conflicto efímero del puerto local del runner. Se reejecutó el job fallido sin cambios funcionales y terminó en **SUCCESS**: `34152947306`, intento 2.
 
-Validación posterior de solo lectura:
+## P08 productivo
 
+Con autorización explícita se reemplazaron los dos CHECK de tipo y se aplicó la migración P08 real como `pm12_p08_stock_atomico_produccion`.
+
+Validación remota de solo lectura posterior:
+
+- `stock_operaciones_tipo_check` admite `INVENTARIO_PM12`;
+- `movimientos_stock_tipo_check` admite `INVENTARIO_PM12`;
+- índice único `pm12_un_ajuste_por_conteo` presente;
+- RPC `pm12_confirmar_ajuste_stock` presente;
+- RPC `pm12_cancelar_conteo_stock` presente;
+- `anon` sin EXECUTE sobre ambos RPC;
+- `authenticated` con EXECUTE sobre ambos RPC;
+- RLS activo en `stock_ubicacion`, `stock_operaciones` y `movimientos_stock`;
+- escritura INSERT directa denegada a `authenticated` en las tres tablas;
 - 0 filas en `membresias_usuario`;
 - 0 filas en `stock_ubicacion`;
 - 0 filas en `stock_operaciones`;
-- 0 filas en `movimientos_stock`;
-- 0 filas en `almacen_kv` y `movimientos_registro`, sin cambio respecto al preflight;
-- `anon` sin lectura del ledger;
-- `authenticated` con SELECT de ledger, sin INSERT directo;
-- helper RLS de local ejecutable por `authenticated`.
+- 0 filas en `movimientos_stock`.
 
-## Stop obligatorio antes de P08
+El despliegue no creó efectos de negocio.
 
-La migración P08 real necesita sustituir los CHECK `stock_operaciones_tipo_check` y `movimientos_stock_tipo_check`: técnicamente ejecuta `DROP CONSTRAINT` y recrea ambos checks ampliados con `INVENTARIO_PM12`.
+## Advisors
 
-Aunque no implica borrado de filas y el gate aislado demuestra el resultado esperado, esta operación entra en la regla de parada previa a DDL destructivo. Por tanto, **P08 no se declara desplegado ni se continúa a P09** hasta recibir autorización explícita para reemplazar esos dos constraints y completar después las validaciones remotas de P08.
+No apareció un hallazgo nuevo que invalide P08. `membresias_usuario` figura con RLS y sin políticas directas de cliente de forma deliberada porque la tabla permanece cerrada; los demás avisos visibles corresponden a superficies heredadas fuera del alcance de este despliegue.
+
+## Cierre
+
+PM12-P08 queda **CERRADO EN PRODUCCIÓN** con baseline mínima, migración registrada, permisos/RLS verificados, cero efectos secundarios y gate remoto verde.
+
+Siguiente punto documental: **PM12-P09 — historial, informes y móvil**. Se reutiliza el diagnóstico P09 ya existente y no se rehacen P02-P08.
