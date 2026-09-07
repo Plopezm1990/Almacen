@@ -1,17 +1,17 @@
 # PM12 · P08 · Preparación de despliegue productivo seguro
 
-Estado: **EN VALIDACIÓN AISLADA**. No declarar desplegado hasta gate remoto SUCCESS y comprobación posterior del entorno objetivo.
+Estado: **BASELINE PRODUCTIVA APLICADA · P08 PENDIENTE POR STOP DE DDL DESTRUCTIVO**.
 
 ## Inventario verificado
 
 - `main` permanece congelado en el checkpoint acordado.
 - La rama parte del cierre remoto de PM12-P08 y no modifica P02-P07.
-- Producción conserva `public.perfiles`, `public.almacen_kv` y `public.movimientos_registro` y no contiene todavía la frontera PM07/P08/P09 necesaria para P08.
+- Producción conserva `public.perfiles`, `public.almacen_kv` y `public.movimientos_registro`.
 - Producción conserva cuentas Auth; la baseline no crea, borra ni reasigna usuarios.
 - `almacen_kv` y `movimientos_registro` no contienen datos operativos históricos que reconciliar.
 - QA contiene una cadena mayor y fixtures/base propios; no se usa como baseline de producción.
 
-## Baseline candidata
+## Baseline productiva mínima
 
 `pm12-produccion-baseline-candidate.sql` crea únicamente:
 
@@ -22,18 +22,29 @@ Estado: **EN VALIDACIÓN AISLADA**. No declarar desplegado hasta gate remoto SUC
 
 No crea caja, arqueos, devoluciones, empleados, compras ni fixtures. No inserta membresías ni stock. El acceso nuevo queda cerrado hasta que exista una membresía explícita; un perfil productivo explícitamente inactivo continúa bloqueando.
 
-Después de esta baseline, el gate aplica **sin modificar** `supabase/migrations/20260907155028_pm12_p08_stock_atomico.sql`.
-
 ## Gate aislado
 
-El preparador elimina las migraciones del fixture QA y reconstruye la pila efímera con solo:
+La baseline fue validada en PostgreSQL + Supabase Auth + JWT + PostgREST + RLS junto con la migración P08 real, incluyendo replay concurrente, cancelación concurrente, aislamiento, denegación de PATCH directo, grants, constraints, índice único, ausencia de módulos/objetos QA y regresión PM12 P02-P07.
 
-1. un fixture mínimo de objetos productivos ya existentes;
-2. la baseline candidata;
-3. la migración P08 real.
+Gate de promoción: `34152579612` — **SUCCESS**.
 
-Se valida con PostgreSQL + Supabase Auth + JWT + PostgREST + RLS, replay concurrente, cancelación concurrente, aislamiento, denegación de PATCH directo, grants, constraints, índice único y ausencia de módulos/objetos QA. Después ejecuta regresión PM12 P02-P07.
+## Promoción realizada
 
-## Regla de promoción
+La baseline aditiva fue aplicada en producción como migración separada `pm12_produccion_baseline_p08`.
 
-No aplicar nada a producción si el gate no termina `SUCCESS`, si `main` cambió, si aparecen datos históricos inesperados o si el diff previo muestra objetos destructivos. La promoción productiva, si procede, debe constar como migración de baseline separada y luego P08; después se ejecutarán únicamente comprobaciones de metadatos/lectura y advisors, sin fixtures ni smoke mutante.
+Validación posterior de solo lectura:
+
+- 0 filas en `membresias_usuario`;
+- 0 filas en `stock_ubicacion`;
+- 0 filas en `stock_operaciones`;
+- 0 filas en `movimientos_stock`;
+- 0 filas en `almacen_kv` y `movimientos_registro`, sin cambio respecto al preflight;
+- `anon` sin lectura del ledger;
+- `authenticated` con SELECT de ledger, sin INSERT directo;
+- helper RLS de local ejecutable por `authenticated`.
+
+## Stop obligatorio antes de P08
+
+La migración P08 real necesita sustituir los CHECK `stock_operaciones_tipo_check` y `movimientos_stock_tipo_check`: técnicamente ejecuta `DROP CONSTRAINT` y recrea ambos checks ampliados con `INVENTARIO_PM12`.
+
+Aunque no implica borrado de filas y el gate aislado demuestra el resultado esperado, esta operación entra en la regla de parada previa a DDL destructivo. Por tanto, **P08 no se declara desplegado ni se continúa a P09** hasta recibir autorización explícita para reemplazar esos dos constraints y completar después las validaciones remotas de P08.
