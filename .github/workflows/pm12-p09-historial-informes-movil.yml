@@ -1,4 +1,5 @@
 name: PM12 P09 historial informes y movil
+# Gate final sobre el head ya integrado: no debe generar un segundo parche de index.
 
 on:
   push:
