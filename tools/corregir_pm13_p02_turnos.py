@@ -133,12 +133,11 @@ ui = src[turnos_ini:turnos_fin]
 old_submit = re.compile(r'''  function submit\(\) \{\n    if \(!form\.empleadoId\) \{\n      setError\("Selecciona un empleado\."\);\n      return;\n    \}\n    setError\(""\);\n    const plantilla = PLANTILLAS_TURNO\.find\(\(p22\) => p22\.id === form\.plantilla\);\n    addTurno\(\{\n      empleadoId: form\.empleadoId,\n      fecha: form\.fecha,\n      tipo: plantilla \? plantilla\.label : "Personalizado",\n      horaInicio: form\.horaInicio,\n      horaFin: form\.horaFin,\n      notas: form\.notas\n    \}\);\n    setShowForm\(false\);\n    setForm\(null\);\n  \}''')
 new_submit = '''  function submit() {\n    if (!form.empleadoId) {\n      setError("Selecciona un empleado.");\n      return;\n    }\n    setError("");\n    const plantilla = PLANTILLAS_TURNO.find((p22) => p22.id === form.plantilla);\n    const guardado = addTurno({\n      empleadoId: form.empleadoId,\n      fecha: form.fecha,\n      tipo: plantilla ? plantilla.label : "Personalizado",\n      horaInicio: form.horaInicio,\n      horaFin: form.horaFin,\n      notas: form.notas\n    });\n    if (!guardado) {\n      setError("No se pudo guardar el turno. Revisa empleado, fecha, horas y posibles solapamientos.");\n      return;\n    }\n    setShowForm(false);\n    setForm(null);\n  }'''
 ui, n_submit = old_submit.subn(new_submit, ui, count=1)
-if n_submit != 1:
-    if 'const guardado = addTurno({' not in ui:
-        raise SystemExit(f'PM13 P02: no se pudo endurecer submit de Turnos ({n_submit})')
+if n_submit != 1 and 'const guardado = addTurno({' not in ui:
+    raise SystemExit(f'PM13 P02: no se pudo endurecer submit de Turnos ({n_submit})')
 
-ui = ui.replace('setCopiadoMsg(n2 > 0 ? `Copiados ${n2} turno(s) de la semana anterior.` : "La semana anterior no tenía turnos que copiar.");',
-                'setCopiadoMsg(n2 > 0 ? `Copiados ${n2} turno(s) de la semana anterior.` : "No había turnos nuevos que copiar.");')
+ui = ui.replace('"La semana anterior no ten\\xEDa turnos que copiar."', '"No hay turnos nuevos que copiar."')
+ui = ui.replace('"La semana anterior no tenía turnos que copiar."', '"No hay turnos nuevos que copiar."')
 
 src = src[:turnos_ini] + ui + src[turnos_fin:]
 path.write_text(src, encoding='utf-8')
