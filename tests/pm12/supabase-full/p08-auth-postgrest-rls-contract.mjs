@@ -63,7 +63,7 @@ try {
   const results = await Promise.all([call(owner.token), call(owner.token)]);
   assert.ok(results.every(x => x.status === 200), JSON.stringify(results));
   assert.deepEqual(results.map(x => x.data.replayed).sort(), [false, true]);
-  const state = await db.query("select almacen+piso total,(select count(*) from public.movimientos_stock) movements,actor_user_id from public.stock_ubicacion cross join public.stock_operaciones where producto_id='p'");
+  const state = await db.query("select s.almacen+s.piso total,(select count(*) from public.movimientos_stock) movements,o.actor_user_id from public.stock_ubicacion s cross join public.stock_operaciones o where s.producto_id='p' and o.operation_id=$1", [operationId]);
   assert.equal(Number(state.rows[0].total), 8); assert.equal(Number(state.rows[0].movements), 1); assert.equal(state.rows[0].actor_user_id, owner.id);
   console.log('P08_SUPABASE_AUTH_POSTGREST_CONCURRENT_REPLAY=PASS');
 
