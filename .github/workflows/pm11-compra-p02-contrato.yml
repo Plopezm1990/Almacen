@@ -1,0 +1,44 @@
+name: PM11 Compra P02 contrato E2E
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - pm11-compra-recepcion-pago-e2e
+    paths:
+      - 'tests/pm11-compra/**'
+      - '.github/workflows/pm11-compra-p02-contrato.yml'
+      - 'tests/g1/P08_LA004_GATE_EVIDENCIA.md'
+      - 'supabase/migrations/20260905185935_g1_p08_operation_id_finanzas_global.sql'
+
+permissions:
+  contents: read
+
+jobs:
+  contrato-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout completo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar main congelado
+        shell: bash
+        run: |
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+
+      - name: Verificar sintaxis del candidato heredado
+        run: node --check fuente.js
+
+      - name: Ejecutar contrato PM11 Compra P02
+        run: node tests/pm11-compra/p02-contrato-e2e-estados-contract.mjs
+
+      - name: Confirmar que P02 no modifica artefacto funcional
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD^:fuente.js)" = "$(git rev-parse HEAD:fuente.js)"
+
+      - name: Resultado
+        run: echo 'PM11_COMPRA_P02_GATE=PASS'
