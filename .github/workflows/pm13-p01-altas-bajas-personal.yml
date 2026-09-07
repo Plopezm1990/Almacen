@@ -38,7 +38,21 @@ jobs:
         run: node --check fuente.js
 
       - name: Contrato PM13 P01
-        run: node tests/pm13/p01-altas-bajas-personal-contract.mjs
+        shell: bash
+        run: |
+          set +e
+          node tests/pm13/p01-altas-bajas-personal-contract.mjs > tests/pm13/P01_CONTRACT_LOG.txt 2>&1
+          code=$?
+          cat tests/pm13/P01_CONTRACT_LOG.txt
+          if [ "$code" -ne 0 ]; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add tests/pm13/P01_CONTRACT_LOG.txt
+            git commit -m 'test(pm13): guardar fallo contrato P01' || true
+            git push || true
+            exit "$code"
+          fi
+          rm -f tests/pm13/P01_CONTRACT_LOG.txt
 
       - name: Regresión Personal PM10 P07
         run: node tests/pm10/p07-personal-contract.mjs
