@@ -1,0 +1,73 @@
+name: PM12 P08 execute temp
+
+on:
+  push:
+    branches: [pm12-conteo-estados-honestos]
+    paths:
+      - '.github/workflows/pm12-p08-execute-temp.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  ejecutar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pm12-conteo-estados-honestos
+          fetch-depth: 0
+      - name: Proteger QA y main
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "pm12-conteo-estados-honestos"
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          echo "MAIN_FROZEN=1"
+      - name: Ejecutar implementacion P08 recuperada
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          wf = Path('.github/workflows/pm12-p08-implementation-temp.yml').read_text(encoding='utf-8')
+          ini = wf.index("          python3 - <<'PY'\n") + len("          python3 - <<'PY'\n")
+          fin = wf.index("\n          PY\n      - name: Validar antes de persistir", ini)
+          cuerpo = wf[ini:fin]
+          lineas = []
+          for linea in cuerpo.splitlines():
+              if linea.startswith('          '):
+                  linea = linea[10:]
+              lineas.append(linea)
+          codigo = '\n'.join(lineas) + '\n'
+          compile(codigo, 'pm12_p08_impl_extraida.py', 'exec')
+          exec(codigo, {'__name__': '__main__'})
+          print('P08_IMPLEMENTACION_EXTRAIDA=PASS')
+          PY
+      - name: Validar P08 y regresion P02-P07
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check fuente.js
+          node --check source-recovery/fuente-recuperado.js
+          node tests/pm12/p08-fallos-replay-concurrencia-contract.mjs
+          for t in tests/pm12/p02-*contract.mjs tests/pm12/p03-*contract.mjs tests/pm12/p04-*contract.mjs tests/pm12/p05-*contract.mjs tests/pm12/p06-*contract.mjs tests/pm12/p07-*contract.mjs; do
+            node "$t"
+          done
+          echo "REGRESSION_P02_P07=PASS"
+          echo "ZERO_SUPABASE_WRITES=1"
+          echo "ZERO_PRODUCTION_WRITES=1"
+      - name: Commit implementacion sin workflows
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fuente.js source-recovery/fuente-recuperado.js tests/pm12/p08-fallos-replay-concurrencia-contract.mjs tests/pm12/P08_FALLOS_REPLAY_CONCURRENCIA.md
+          if git diff --cached --quiet; then
+            echo "Sin cambios de implementacion"
+            exit 0
+          fi
+          git commit -m "PM12 P08: blindar fallos replay y concurrencia"
+          git push origin HEAD:pm12-conteo-estados-honestos
