@@ -1,0 +1,61 @@
+name: PM12 P07 aplicar autorizado
+
+on:
+  push:
+    branches: [pm12-conteo-estados-honestos]
+    paths:
+      - 'tools/aplicar_pm12_p07.py'
+      - '.github/workflows/pm12-p07-apply-authorized.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar aislamiento y base P06
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          git merge-base --is-ancestor a9962a7c6da030b724942aa7efe2ecd3213b3985 HEAD
+          inesperados="$(git diff --name-only a9962a7c6da030b724942aa7efe2ecd3213b3985 HEAD | grep -Ev '^(tools/aplicar_pm12_p07.py|\.github/workflows/pm12-p07-apply-authorized.yml)$' || true)"
+          test -z "$inesperados"
+
+      - name: Aplicar P07
+        run: python3 tools/aplicar_pm12_p07.py
+
+      - name: Validar sintaxis y regresiones P02-P06
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check fuente.js
+          node --check source-recovery/fuente-recuperado.js
+          node --check pm12-conteo-estados-v1.js
+          node tests/pm12/p02-estados-normalizacion-contract.mjs
+          node tests/pm12/p03-documento-corte-contract.mjs
+          node tests/pm12/p04-cierre-honesto-ux-contract.mjs
+          node tests/pm12/p05-ajustes-trazables-contract.mjs
+          node tests/pm12/p06-cancelacion-conservadora-contract.mjs
+          test -z "$(git diff --name-only | grep '^supabase/' || true)"
+          echo 'PM12_P07_SUPABASE_WRITES=0'
+          echo 'PM12_P07_PRODUCTION_WRITES=0'
+
+      - name: Registrar fuentes P07
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fuente.js source-recovery/fuente-recuperado.js pm12-conteo-estados-v1.js
+          permitidos='^(fuente\.js|source-recovery/fuente-recuperado\.js|pm12-conteo-estados-v1\.js)$'
+          inesperados="$(git diff --cached --name-only | grep -Ev "$permitidos" || true)"
+          test -z "$inesperados"
+          git commit -m "PM12 P07: proteger ajustes por rol empresa y local"
+          git push origin HEAD:pm12-conteo-estados-honestos
