@@ -108379,35 +108379,90 @@ function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, re
 function crearLogicaNominas({ nominas, setNominas, registrarAuditoria, empleados, localActivoId }) {
   const empleadoNominaLocal = (id) => empleados.find((e2) => e2.id === id && (!localActivoId || e2.localId === localActivoId));
   const nominaEsLocal = (n2) => !!n2 && (!localActivoId || n2.localId === localActivoId);
+  const hoyNominaPM13 = () => typeof todayISO === "function" ? todayISO() : "";
+  const altasSesionNominaPM13 = /* @__PURE__ */ new Map();
+  const anuladasSesionNominaPM13 = /* @__PURE__ */ new Set();
+  const errorNominaPM13 = (error) => ({ ok: false, error });
+  const claveNominaPM13 = (empleadoId, mes) => `${empleadoId || ""}|${mes || ""}`;
+  const mesNominaValidoPM13 = (mes) => /^\d{4}-(0[1-9]|1[0-2])$/.test(String(mes || ""));
+  function prepararNominaPM13(data, emp, actual = null) {
+    if (!data || typeof data !== "object") return errorNominaPM13("Los datos de la nómina no son válidos.");
+    const mes = String(data.mes || "").trim();
+    if (!mesNominaValidoPM13(mes)) return errorNominaPM13("El mes de la nómina no es válido.");
+    const bruto = Number(data.brutoTotal);
+    const ss = data.seguridadSocialEmpresa === "" || data.seguridadSocialEmpresa == null ? 0 : Number(data.seguridadSocialEmpresa);
+    if (!Number.isFinite(bruto) || bruto <= 0) return errorNominaPM13("El bruto total debe ser mayor que cero.");
+    if (!Number.isFinite(ss) || ss < 0) return errorNominaPM13("La Seguridad Social de empresa no puede ser negativa.");
+    const origen = actual && actual.origen === "IA" ? "IA" : data.origen === "IA" ? "IA" : "MANUAL";
+    if (origen === "IA" && data.revisionHumanaConfirmada !== true) {
+      return errorNominaPM13("La propuesta de IA requiere revisión humana explícita antes de guardarse.");
+    }
+    return {
+      ok: true,
+      datos: {
+        ...data,
+        empleadoId: emp.id,
+        mes,
+        brutoTotal: bruto,
+        seguridadSocialEmpresa: ss,
+        costeTotalEmpresa: bruto + ss,
+        localId: emp.localId || localActivoId || null,
+        origen,
+        estado: origen === "IA" ? "APROBADA_HUMANO" : "REGISTRADA_MANUAL",
+        requiereRevisionHumana: false,
+        revisionHumanaConfirmada: origen === "IA" ? true : null,
+        fechaRevisionHumana: origen === "IA" ? hoyNominaPM13() : "",
+        fechaRegistro: actual?.fechaRegistro || hoyNominaPM13(),
+        fechaAnulacion: ""
+      }
+    };
+  }
   function addNomina(data) {
-    const emp = empleadoNominaLocal(data.empleadoId);
-    if (!emp) return false;
-    const bruto = Number(data.brutoTotal) || 0;
-    const ss = Number(data.seguridadSocialEmpresa) || 0;
-    setNominas((s22) => {
-      const sinEsteMes = s22.filter((n2) => !(n2.empleadoId === data.empleadoId && n2.mes === data.mes));
-      return [{ id: uid(), ...data, brutoTotal: bruto, seguridadSocialEmpresa: ss, costeTotalEmpresa: bruto + ss, localId: emp.localId || localActivoId || null }, ...sinEsteMes];
-    });
-    return true;
+    const emp = empleadoNominaLocal(data?.empleadoId);
+    if (!emp) return errorNominaPM13("La nómina no pertenece a un empleado del local activo.");
+    const preparada = prepararNominaPM13(data, emp);
+    if (!preparada.ok) return preparada;
+    const clave = claveNominaPM13(preparada.datos.empleadoId, preparada.datos.mes);
+    const existente = nominas.find((n2) => nominaEsLocal(n2) && n2.estado !== "ANULADA" && claveNominaPM13(n2.empleadoId, n2.mes) === clave);
+    if (existente) return errorNominaPM13("Ya existe una nómina activa para este empleado y mes. Edítala o anúlala antes de registrar otra.");
+    if (altasSesionNominaPM13.has(clave)) return { ok: true, replayed: true, id: altasSesionNominaPM13.get(clave) };
+    const nueva = { ...preparada.datos, id: uid() };
+    altasSesionNominaPM13.set(clave, nueva.id);
+    setNominas((s22) => [nueva, ...s22]);
+    registrarAuditoria(
+      nueva.origen === "IA" ? "Aprobar registro de nómina asistido por IA" : "Registrar nómina manual",
+      `${nueva.mes} · €${nueva.costeTotalEmpresa.toFixed(2)} · ${nueva.origen === "IA" ? "revisión humana confirmada" : "entrada manual"}`
+    );
+    return { ok: true, replayed: false, nomina: nueva };
   }
   function updateNomina(id, data) {
     const actual = nominas.find((n2) => n2.id === id);
-    if (!nominaEsLocal(actual)) return false;
-    const bruto = Number(data.brutoTotal) || 0;
-    const ss = Number(data.seguridadSocialEmpresa) || 0;
-    setNominas((s22) => s22.map((n2) => n2.id === id ? { ...n2, ...data, brutoTotal: bruto, seguridadSocialEmpresa: ss, costeTotalEmpresa: bruto + ss, localId: n2.localId || localActivoId || null } : n2));
-    registrarAuditoria("Editar registro de n\xF3mina", `${data.mes || ""} \xB7 \u20AC${(bruto + ss).toFixed(2)}`);
-    return true;
+    if (!nominaEsLocal(actual)) return errorNominaPM13("La nómina está fuera del contexto autorizado.");
+    if (actual.estado === "ANULADA") return errorNominaPM13("Una nómina anulada no se puede editar.");
+    if (actual.origen === "IA" || actual.estado === "APROBADA_HUMANO") {
+      return errorNominaPM13("Una nómina asistida por IA ya revisada es inmutable. Anúlala y registra una corrección nueva.");
+    }
+    const emp = empleadoNominaLocal(data?.empleadoId || actual.empleadoId);
+    if (!emp) return errorNominaPM13("La nómina no pertenece a un empleado del local activo.");
+    const preparada = prepararNominaPM13({ ...data, origen: "MANUAL" }, emp, actual);
+    if (!preparada.ok) return preparada;
+    const duplicada = nominas.find((n2) => n2.id !== id && nominaEsLocal(n2) && n2.estado !== "ANULADA" && n2.empleadoId === preparada.datos.empleadoId && n2.mes === preparada.datos.mes);
+    if (duplicada) return errorNominaPM13("Ya existe otra nómina activa para este empleado y mes.");
+    const sinCambios = actual.empleadoId === preparada.datos.empleadoId && actual.mes === preparada.datos.mes && Number(actual.brutoTotal) === preparada.datos.brutoTotal && Number(actual.seguridadSocialEmpresa || 0) === preparada.datos.seguridadSocialEmpresa && String(actual.notas || "") === String(preparada.datos.notas || "");
+    if (sinCambios) return { ok: true, yaSinCambios: true };
+    const actualizada = { ...actual, ...preparada.datos, id: actual.id, origen: actual.origen || "MANUAL", estado: "REGISTRADA_MANUAL" };
+    setNominas((s22) => s22.map((n2) => n2.id === id ? actualizada : n2));
+    registrarAuditoria("Editar registro manual de nómina", `${actualizada.mes} · €${actualizada.costeTotalEmpresa.toFixed(2)}`);
+    return { ok: true, nomina: actualizada };
   }
   function deleteNomina(id) {
     const actual = nominas.find((n2) => n2.id === id);
-    if (!nominaEsLocal(actual)) return false;
-    setNominas((s22) => {
-      const n2 = s22.find((x3) => x3.id === id);
-      registrarAuditoria("Eliminar registro de n\xF3mina", n2 ? `${n2.mes} \xB7 \u20AC${(Number(n2.costeTotalEmpresa) || 0).toFixed(2)}` : id);
-      return s22.filter((x3) => x3.id !== id);
-    });
-    return true;
+    if (!nominaEsLocal(actual)) return errorNominaPM13("La nómina está fuera del contexto autorizado.");
+    if (actual.estado === "ANULADA" || anuladasSesionNominaPM13.has(id)) return { ok: true, replayed: true };
+    anuladasSesionNominaPM13.add(id);
+    setNominas((s22) => s22.map((n2) => n2.id === id ? { ...n2, estado: "ANULADA", fechaAnulacion: hoyNominaPM13() } : n2));
+    registrarAuditoria("Anular registro de nómina", `${actual.mes || ""} · €${(Number(actual.costeTotalEmpresa) || 0).toFixed(2)} · sin borrado físico`);
+    return { ok: true, replayed: false };
   }
   return { addNomina, updateNomina, deleteNomina };
 }
@@ -115800,7 +115855,8 @@ function CostePersonal({ empleados, nominas, addNomina, updateNomina, deleteNomi
   const [avisosIA, setAvisosIA] = (0, import_react4.useState)([]);
   const activos = empleados.filter((e2) => e2.activo !== false);
   const nominasDelMes = nominas.filter((n2) => n2.mes === mes);
-  const costeTotalMes = nominasDelMes.reduce((a22, n2) => a22 + (Number(n2.costeTotalEmpresa) || 0), 0);
+  const nominasValidasDelMesPM13 = nominasDelMes.filter((n2) => n2.estado !== "ANULADA");
+  const costeTotalMes = nominasValidasDelMesPM13.reduce((a22, n2) => a22 + (Number(n2.costeTotalEmpresa) || 0), 0);
   const ingresosDelMes = movimientos.filter((m22) => esVenta(m22) && (m22.fecha || "").slice(0, 7) === mes).reduce((a22, m22) => a22 + Math.abs(Number(m22.cantidad) || 0) * (Number(m22.ingresoUnitario) || 0), 0);
   const porcentajeSobreVentas = ingresosDelMes > 0 ? costeTotalMes / ingresosDelMes * 100 : null;
   function horasDelEmpleadoEnMes(empleadoId) {
@@ -115881,7 +115937,7 @@ function CostePersonal({ empleados, nominas, addNomina, updateNomina, deleteNomi
       const d2 = r2.datos || {};
       const empMatch = empleadoPorNombreLeido(d2.empleado);
       const mesSaneado = mesLimpio(d2.mes);
-      const avisos = [];
+      const avisos = ["PM13 P07: propuesta IA. Revisa empleado, mes, bruto y Seguridad Social. La IA no emite ni valida una nómina oficial y el guardado exige confirmación humana explícita."];
       if (!empMatch) avisos.push(`No se ha podido emparejar el nombre le\xEDdo ("${d2.empleado || "\u2014"}") con ning\xFAn empleado dado de alta. El\xEDgelo a mano abajo.`);
       if (!d2.mes) avisos.push("No se ha podido leer el mes de la n\xF3mina. Rev\xEDsalo antes de guardar.");
       else if (!mesSaneado) avisos.push(`El mes le\xEDdo ("${d2.mes}") no tiene un formato reconocible. Se ha dejado el mes actual \u2014 rev\xEDsalo antes de guardar.`);
@@ -115890,7 +115946,9 @@ function CostePersonal({ empleados, nominas, addNomina, updateNomina, deleteNomi
         mes: mesSaneado || mes,
         brutoTotal: numeroLimpio(d2.brutoTotal),
         seguridadSocialEmpresa: numeroLimpio(d2.seguridadSocialEmpresa),
-        notas: d2.notas || ""
+        notas: d2.notas || "",
+        origen: "IA",
+        revisionHumanaConfirmada: false
       });
       setEditingId(null);
       setAvisosIA(avisos);
@@ -115913,8 +115971,20 @@ function CostePersonal({ empleados, nominas, addNomina, updateNomina, deleteNomi
       return;
     }
     setError("");
-    if (editingId) updateNomina(editingId, form);
-    else addNomina(form);
+    let datosGuardarPM13 = form;
+    if (!editingId && form.origen === "IA") {
+      const revisionConfirmadaPM13 = typeof window !== "undefined" && typeof window.confirm === "function" && window.confirm("Revisión humana obligatoria: confirma que has comprobado empleado, mes, bruto, Seguridad Social y notas contra la nómina original. La IA solo propone datos y no sustituye tu revisión.");
+      if (!revisionConfirmadaPM13) {
+        setError("La propuesta de IA no se ha guardado porque falta confirmar la revisión humana.");
+        return;
+      }
+      datosGuardarPM13 = { ...form, revisionHumanaConfirmada: true };
+    }
+    const resultadoNominaPM13 = editingId ? updateNomina(editingId, datosGuardarPM13) : addNomina(datosGuardarPM13);
+    if (!resultadoNominaPM13 || resultadoNominaPM13.ok === false) {
+      setError(resultadoNominaPM13?.error || "No se pudo guardar la nómina.");
+      return;
+    }
     if (form.mes && form.mes !== mes) setMes(form.mes);
     setForm({ empleadoId: "", mes: form.mes || mes, brutoTotal: "", seguridadSocialEmpresa: "", notas: "" });
     setEditingId(null);
@@ -115927,7 +115997,9 @@ function CostePersonal({ empleados, nominas, addNomina, updateNomina, deleteNomi
       mes: n2.mes || mes,
       brutoTotal: n2.brutoTotal ?? "",
       seguridadSocialEmpresa: n2.seguridadSocialEmpresa ?? "",
-      notas: n2.notas || ""
+      notas: n2.notas || "",
+      origen: n2.origen || "MANUAL",
+      revisionHumanaConfirmada: false
     });
     setEditingId(n2.id);
     setError("");
@@ -115980,7 +116052,7 @@ function CostePersonal({ empleados, nominas, addNomina, updateNomina, deleteNomi
     setShowForm(false);
     setEditingId(null);
     setAvisosIA([]);
-  } }, "Cancelar"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Coste total del mes"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1" }, "\u20AC", fmt(costeTotalMes))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "% sobre ventas del mes"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: porcentajeSobreVentas === null ? C2.inkSoft : porcentajeSobreVentas > 35 ? C2.red : porcentajeSobreVentas > 30 ? C2.amber : C2.accent } }, porcentajeSobreVentas === null ? "\u2014" : `${fmt(porcentajeSobreVentas)}%`), porcentajeSobreVentas !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-0.5", style: { color: C2.inkSoft } }, "sobre \u20AC", fmt(ingresosDelMes), " vendidos"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-3 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Venta objetivo (no pasar del 35%)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1" }, ventaObjetivo35 === null ? "\u2014" : `\u20AC${fmt(ventaObjetivo35)}`), diferenciaConObjetivo !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-0.5", style: { color: diferenciaConObjetivo >= 0 ? C2.accent : C2.red } }, diferenciaConObjetivo >= 0 ? `ya llevas \u20AC${fmt(diferenciaConObjetivo)} de margen` : `te faltan \u20AC${fmt(Math.abs(diferenciaConObjetivo))} por vender`)), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Coste de personal por hora"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1" }, costePorHoraEquipo === null ? "\u2014" : `\u20AC${fmt(costePorHoraEquipo)}`), horasTotalesMes > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-0.5", style: { color: C2.inkSoft } }, "sobre ", fmt(horasTotalesMes), " h fichadas")), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Ventas por hora trabajada"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1" }, ventasPorHoraEquipo === null ? "\u2014" : `\u20AC${fmt(ventasPorHoraEquipo)}`))), porcentajeSobreVentas !== null && porcentajeSobreVentas > 35 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "El personal se est\xE1 llevando m\xE1s del 35% de lo que vendes. En hosteler\xEDa suele considerarse una se\xF1al de alerta \u2014 puede ser un mes flojo de ventas, o que haga falta revisar turnos o plantilla.")), filas.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: `No has registrado n\xF3minas de ${mes} todav\xEDa.` }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, filas.map((n2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: n2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, n2.empleado ? n2.empleado.nombre : "Empleado eliminado"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Bruto \u20AC", fmt(n2.brutoTotal), " + SS empresa \u20AC", fmt(n2.seguridadSocialEmpresa)), n2.notas && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-0.5", style: { color: C2.inkSoft } }, n2.notas)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold" }, "\u20AC", fmt(n2.costeTotalEmpresa)), n2.costePorHora !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mono", style: { color: C2.inkSoft } }, "\u20AC", fmt(n2.costePorHora), "/h \xB7 ", fmt(n2.horas), " h fichadas"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => abrirEdicion(n2) }, /* @__PURE__ */ import_react4.default.createElement(Pencil, { size: 13 }), " Editar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => deleteNomina(n2.id) }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 13 }), " Eliminar"))))));
+  } }, "Cancelar"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Coste total del mes"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1" }, "\u20AC", fmt(costeTotalMes))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "% sobre ventas del mes"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: porcentajeSobreVentas === null ? C2.inkSoft : porcentajeSobreVentas > 35 ? C2.red : porcentajeSobreVentas > 30 ? C2.amber : C2.accent } }, porcentajeSobreVentas === null ? "\u2014" : `${fmt(porcentajeSobreVentas)}%`), porcentajeSobreVentas !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-0.5", style: { color: C2.inkSoft } }, "sobre \u20AC", fmt(ingresosDelMes), " vendidos"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-3 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Venta objetivo (no pasar del 35%)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1" }, ventaObjetivo35 === null ? "\u2014" : `\u20AC${fmt(ventaObjetivo35)}`), diferenciaConObjetivo !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-0.5", style: { color: diferenciaConObjetivo >= 0 ? C2.accent : C2.red } }, diferenciaConObjetivo >= 0 ? `ya llevas \u20AC${fmt(diferenciaConObjetivo)} de margen` : `te faltan \u20AC${fmt(Math.abs(diferenciaConObjetivo))} por vender`)), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Coste de personal por hora"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1" }, costePorHoraEquipo === null ? "\u2014" : `\u20AC${fmt(costePorHoraEquipo)}`), horasTotalesMes > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-0.5", style: { color: C2.inkSoft } }, "sobre ", fmt(horasTotalesMes), " h fichadas")), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Ventas por hora trabajada"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1" }, ventasPorHoraEquipo === null ? "\u2014" : `\u20AC${fmt(ventasPorHoraEquipo)}`))), porcentajeSobreVentas !== null && porcentajeSobreVentas > 35 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "El personal se est\xE1 llevando m\xE1s del 35% de lo que vendes. En hosteler\xEDa suele considerarse una se\xF1al de alerta \u2014 puede ser un mes flojo de ventas, o que haga falta revisar turnos o plantilla.")), filas.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: `No has registrado n\xF3minas de ${mes} todav\xEDa.` }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, filas.map((n2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: n2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, n2.empleado ? n2.empleado.nombre : "Empleado eliminado"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Bruto \u20AC", fmt(n2.brutoTotal), " + SS empresa \u20AC", fmt(n2.seguridadSocialEmpresa)), n2.notas && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-0.5", style: { color: C2.inkSoft } }, n2.notas)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold" }, "\u20AC", fmt(n2.costeTotalEmpresa)), n2.costePorHora !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mono", style: { color: C2.inkSoft } }, "\u20AC", fmt(n2.costePorHora), "/h \xB7 ", fmt(n2.horas), " h fichadas"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", disabled: n2.origen === "IA" || n2.estado === "ANULADA", onClick: () => abrirEdicion(n2) }, /* @__PURE__ */ import_react4.default.createElement(Pencil, { size: 13 }), n2.origen === "IA" ? " Revisada por humano" : n2.estado === "ANULADA" ? " Anulada" : " Editar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", disabled: n2.estado === "ANULADA", onClick: () => deleteNomina(n2.id) }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 13 }), n2.estado === "ANULADA" ? " Anulada" : " Anular"))))));
 }
 function HistorialProducto({ productos, movimientos, pedidos: pedidos2, albaranes, traspasos, proveedorPorId }) {
   const [busqueda, setBusqueda] = (0, import_react4.useState)("");
