@@ -2,41 +2,34 @@ import fs from 'node:fs';
 
 const src = fs.readFileSync('fuente.js', 'utf8');
 
-function excerpts(token, context = 2200, limit = 20) {
+function slice(startToken, endToken, max = 120000) {
+  const start = src.indexOf(startToken);
+  if (start < 0) return { found: false, start: -1, end: -1, text: '' };
+  let end = src.indexOf(endToken, start + startToken.length);
+  if (end < 0 || end - start > max) end = Math.min(src.length, start + max);
+  return { found: true, start, end, text: src.slice(start, end) };
+}
+
+function excerpts(text, token, base = 0, context = 1800, limit = 12) {
   const out = [];
   let pos = -1;
-  while ((pos = src.indexOf(token, pos + 1)) >= 0) {
-    out.push({ offset: pos, snippet: src.slice(Math.max(0, pos - context), Math.min(src.length, pos + token.length + context)) });
+  while ((pos = text.indexOf(token, pos + 1)) >= 0) {
+    out.push({ offset: base + pos, snippet: text.slice(Math.max(0, pos - context), Math.min(text.length, pos + token.length + context)) });
     if (out.length >= limit) break;
   }
   return out;
 }
 
-function enclosingFunction(token, maxBack = 25000, maxForward = 70000) {
-  const p = src.indexOf(token);
-  if (p < 0) return { found: false, start: -1, end: -1, text: '' };
-  const back = src.slice(Math.max(0, p - maxBack), p);
-  const rel = back.lastIndexOf('function crearLogica');
-  const start = rel >= 0 ? Math.max(0, p - maxBack) + rel : Math.max(0, p - 5000);
-  const next = src.indexOf('\nfunction crearLogica', p + token.length);
-  const end = next > 0 && next - start <= maxForward ? next : Math.min(src.length, start + maxForward);
-  return { found: true, start, end, text: src.slice(start, end) };
+const logic = slice('function crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId }) {', '\nfunction redondearDineroPM06(', 60000);
+const uiStart = src.indexOf('function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, updateFichaje, eliminarFichaje, fichajesAbiertos }) {');
+let uiEnd = -1;
+if (uiStart >= 0) {
+  const m = /^function\s+([A-Za-z0-9_$]+)/gm;
+  m.lastIndex = uiStart + 20;
+  const next = m.exec(src);
+  uiEnd = next ? next.index : Math.min(src.length, uiStart + 160000);
 }
-
-function sliceUi(startToken, endTokens, max = 180000) {
-  const start = src.indexOf(startToken);
-  if (start < 0) return { found: false, start: -1, end: -1, text: '' };
-  let end = -1;
-  for (const token of endTokens) {
-    const x = src.indexOf(token, start + startToken.length);
-    if (x > start && (end < 0 || x < end)) end = x;
-  }
-  if (end < 0 || end - start > max) end = Math.min(src.length, start + max);
-  return { found: true, start, end, text: src.slice(start, end) };
-}
-
-const logic = enclosingFunction('addFichajeManual');
-const ui = sliceUi('function RegistroHorario({', ['\nfunction Personal(', '\nfunction Turnos(', '\nfunction Ausencias(', '\nfunction MapaAlmacen(']);
+const ui = uiStart >= 0 ? { found: true, start: uiStart, end: uiEnd, text: src.slice(uiStart, uiEnd) } : { found: false, start: -1, end: -1, text: '' };
 
 const result = {
   generatedFrom: 'fuente.js actual de pm13-p03-fichajes',
@@ -44,32 +37,33 @@ const result = {
   logic: {
     found: logic.found,
     offset: logic.start,
-    header: logic.text.slice(0, 400),
-    addManual: logic.text.includes('addFichajeManual'),
-    fichar: /fichar|entrada|salida/i.test(logic.text),
-    activeCheck: /activo\s*!==\s*false|activo\s*===\s*false/.test(logic.text),
-    localCheck: /localId/.test(logic.text),
-    dateCheck: /fecha|Date|ISO/.test(logic.text),
-    timeCheck: /hora|inicio|fin/.test(logic.text),
-    orderingCheck: /orden|secuencia|entrada.*salida|salida.*entrada/i.test(logic.text),
-    duplicateCheck: /duplic|replay|idempot|mismo/i.test(logic.text),
-    physicalDelete: /\.filter\([\s\S]{0,150}id\s*!==/.test(logic.text),
-    text: logic.text
+    text: logic.text,
+    fichar: excerpts(logic.text, 'function fichar', logic.start, 2200, 4),
+    addManual: excerpts(logic.text, 'function addFichajeManual', logic.start, 2200, 4),
+    update: excerpts(logic.text, 'function updateFichaje', logic.start, 2200, 4),
+    remove: excerpts(logic.text, 'function eliminarFichaje', logic.start, 2200, 4),
+    validations: {
+      activeEmployee: /empleados\.find\([\s\S]{0,180}activo\s*!==\s*false/.test(logic.text),
+      localScope: /localId/.test(logic.text),
+      validType: /entrada|salida/.test(logic.text),
+      validDate: /\^.*\\d\{4\}.*\\d\{2\}/.test(logic.text) || /Date\.UTC|isNaN|fecha.*valid/i.test(logic.text),
+      validTime: /\^.*[01].*2\[0-3\]/.test(logic.text) || /hora.*valid/i.test(logic.text),
+      sequence: /ultimo|abierto|entrada.*salida|salida.*entrada/i.test(logic.text),
+      duplicateReplay: /duplic|replay|idempot|equivalente|mismo fichaje/i.test(logic.text),
+      updateEmployeeValidation: /updateFichaje[\s\S]{0,1800}empleadoFichajeLocal/.test(logic.text)
+    }
   },
   ui: {
     found: ui.found,
     offset: ui.start,
-    employeeActiveFilter: /empleados\.filter\([\s\S]{0,100}activo\s*!==\s*false/.test(ui.text),
-    callsManual: (ui.text.match(/addFichajeManual/g) || []).length,
-    callsFichar: (ui.text.match(/fichar/g) || []).length,
-    callsDelete: (ui.text.match(/deleteFichaje|eliminarFichaje/g) || []).length,
-    errorMentions: (ui.text.match(/setError/g) || []).length,
-    text: ui.text
-  },
-  global: {
-    addManual: excerpts('addFichajeManual', 2500, 12),
-    registroHorario: excerpts('function RegistroHorario({', 2500, 5),
-    fichajes: excerpts('fichajes', 900, 30)
+    text: ui.text,
+    activeFilter: /empleados\.filter\([\s\S]{0,100}activo\s*!==\s*false/.test(ui.text),
+    manualSubmit: excerpts(ui.text, 'addFichajeManual({', ui.start, 2600, 4),
+    ficharCalls: excerpts(ui.text, 'fichar(', ui.start, 1800, 10),
+    updateCalls: excerpts(ui.text, 'updateFichaje(', ui.start, 1800, 8),
+    removeCalls: excerpts(ui.text, 'eliminarFichaje(', ui.start, 1800, 8),
+    errorManual: excerpts(ui.text, 'setManualError', ui.start, 1800, 10),
+    openLogic: excerpts(ui.text, 'fichajesAbiertos', ui.start, 1800, 10)
   }
 };
 
@@ -78,14 +72,10 @@ fs.writeFileSync('tests/pm13/P03_DIAGNOSTICO_FICHAJES.json', JSON.stringify(resu
 console.log(JSON.stringify({
   sourceLength: result.sourceLength,
   logicFound: result.logic.found,
-  logicHeader: result.logic.header,
-  addManual: result.logic.addManual,
-  activeCheck: result.logic.activeCheck,
-  localCheck: result.logic.localCheck,
-  orderingCheck: result.logic.orderingCheck,
-  duplicateCheck: result.logic.duplicateCheck,
   uiFound: result.ui.found,
-  uiEmployeeActiveFilter: result.ui.employeeActiveFilter,
-  uiManualCalls: result.ui.callsManual,
-  uiFicharCalls: result.ui.callsFichar
+  validations: result.logic.validations,
+  manualCalls: result.ui.manualSubmit.length,
+  ficharCalls: result.ui.ficharCalls.length,
+  updateCalls: result.ui.updateCalls.length,
+  removeCalls: result.ui.removeCalls.length
 }, null, 2));
