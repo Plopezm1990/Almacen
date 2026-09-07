@@ -30,6 +30,7 @@ if (uiStart >= 0) {
   uiEnd = next ? next.index : Math.min(src.length, uiStart + 160000);
 }
 const ui = uiStart >= 0 ? { found: true, start: uiStart, end: uiEnd, text: src.slice(uiStart, uiEnd) } : { found: false, start: -1, end: -1, text: '' };
+const globalOpenRefs = excerpts(src, 'fichajesAbiertos', 0, 1700, 20);
 
 const result = {
   generatedFrom: 'fuente.js actual de pm13-p03-fichajes',
@@ -66,13 +67,14 @@ const result = {
     openLogic: excerpts(ui.text, 'fichajesAbiertos', ui.start, 1800, 10)
   },
   global: {
-    fichajesAbiertosRefs: excerpts(src, 'fichajesAbiertos', 0, 2600, 20),
+    fichajesAbiertosRefs: globalOpenRefs,
     crearLogicaFichajeRefs: excerpts(src, 'crearLogicaFichaje({', 0, 2200, 10)
   }
 };
 
 fs.mkdirSync('tests/pm13', { recursive: true });
 fs.writeFileSync('tests/pm13/P03_DIAGNOSTICO_FICHAJES.json', JSON.stringify(result, null, 2));
+fs.writeFileSync('tests/pm13/P03_FICHAJES_ABIERTOS.txt', globalOpenRefs.map((x, i) => `### REF ${i + 1} @ ${x.offset}\n${x.snippet}\n`).join('\n'));
 console.log(JSON.stringify({
   sourceLength: result.sourceLength,
   logicFound: result.logic.found,
@@ -82,6 +84,6 @@ console.log(JSON.stringify({
   ficharCalls: result.ui.ficharCalls.length,
   updateCalls: result.ui.updateCalls.length,
   removeCalls: result.ui.removeCalls.length,
-  globalOpenRefs: result.global.fichajesAbiertosRefs.length,
+  globalOpenRefs: globalOpenRefs.length,
   logicRefs: result.global.crearLogicaFichajeRefs.length
 }, null, 2));
