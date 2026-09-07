@@ -8,8 +8,8 @@ on:
       - 'tests/pm11-compra/p06-pago-reverso-e2e-contract.mjs'
       - 'tests/pm11-compra/p05-factura-identidad-contract.mjs'
       - 'tests/pm11-compra/p04-albaran-trazabilidad-contract.mjs'
-      - 'tests/pm11-compra/p03-recepciones-multiples-contract.mjs'
-      - 'tests/pm11-compra/p02-contrato-e2e.mjs'
+      - 'tests/pm11-compra/p03-recepciones-multiples-replay-contract.mjs'
+      - 'tests/pm11-compra/p02-contrato-e2e-estados-contract.mjs'
       - '.github/workflows/pm11-compra-p06-pago-reverso.yml'
   workflow_dispatch:
 
@@ -45,10 +45,10 @@ jobs:
         run: node tests/pm11-compra/p04-albaran-trazabilidad-contract.mjs
 
       - name: Regresion P03 recepciones multiples
-        run: node tests/pm11-compra/p03-recepciones-multiples-contract.mjs
+        run: node tests/pm11-compra/p03-recepciones-multiples-replay-contract.mjs
 
       - name: Contrato E2E P02
-        run: node tests/pm11-compra/p02-contrato-e2e.mjs
+        run: node tests/pm11-compra/p02-contrato-e2e-estados-contract.mjs
 
       - name: Resultado
         run: echo 'PM11_COMPRA_P06_PAGO_REVERSO_E2E=PASS'
