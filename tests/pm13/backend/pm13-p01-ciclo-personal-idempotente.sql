@@ -25,7 +25,7 @@ CREATE OR REPLACE FUNCTION public.pm11_alta_empleado(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path TO 'public', 'auth', 'private', 'pg_temp'
+SET search_path = ''
 AS $function$
 DECLARE
   v_empleado public.empleados%rowtype;
@@ -99,7 +99,7 @@ CREATE OR REPLACE FUNCTION public.pm11_editar_empleado(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path TO 'public', 'auth', 'private', 'pg_temp'
+SET search_path = ''
 AS $function$
 DECLARE
   v_empleado public.empleados%rowtype;
@@ -179,7 +179,7 @@ CREATE OR REPLACE FUNCTION public.pm11_baja_empleado(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path TO 'public', 'auth', 'private', 'pg_temp'
+SET search_path = ''
 AS $function$
 DECLARE
   v_empleado public.empleados%rowtype;
@@ -247,7 +247,7 @@ CREATE OR REPLACE FUNCTION public.pm11_reactivar_empleado(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path TO 'public', 'auth', 'private', 'pg_temp'
+SET search_path = ''
 AS $function$
 DECLARE
   v_empleado public.empleados%rowtype;
