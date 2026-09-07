@@ -112714,8 +112714,55 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reac
     ];
     descargarComoArchivo(`datos-${e2.nombre.replace(/\s+/g, "-").toLowerCase()}.txt`, lineas.filter((l22) => l22 !== "").join("\n"));
   }
+  function fechaVacacionesPM13(valor) {
+    const texto = String(valor || "").trim();
+    const m2 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(texto);
+    if (!m2) return null;
+    const anio = Number(m2[1]), mes = Number(m2[2]), dia = Number(m2[3]);
+    const ms = Date.UTC(anio, mes - 1, dia);
+    const d2 = new Date(ms);
+    if (d2.getUTCFullYear() !== anio || d2.getUTCMonth() !== mes - 1 || d2.getUTCDate() !== dia) return null;
+    return { iso: texto, anio, ms };
+  }
+  const diasEntreVacacionesPM13 = (inicioMs, finMs) => finMs < inicioMs ? 0 : Math.round((finMs - inicioMs) / 864e5) + 1;
+  function tramoVacacionesEnAnioPM13(a22, anio, hoyISO) {
+    if (!a22 || a22.tipo !== "Vacaciones" || String(a22.estado || "ACTIVA").toUpperCase() === "ANULADA" || a22.anuladaAt) return { reservados: 0, disfrutados: 0, enCurso: 0, programados: 0 };
+    const inicio = fechaVacacionesPM13(a22.fechaInicio);
+    const fin = fechaVacacionesPM13(a22.fechaFin);
+    if (!inicio || !fin || fin.ms < inicio.ms) return { reservados: 0, disfrutados: 0, enCurso: 0, programados: 0 };
+    const inicioAnio = Date.UTC(anio, 0, 1);
+    const finAnio = Date.UTC(anio, 11, 31);
+    const desde = Math.max(inicio.ms, inicioAnio);
+    const hasta = Math.min(fin.ms, finAnio);
+    if (hasta < desde) return { reservados: 0, disfrutados: 0, enCurso: 0, programados: 0 };
+    const reservados = diasEntreVacacionesPM13(desde, hasta);
+    const hoy = fechaVacacionesPM13(hoyISO);
+    if (!hoy) return { reservados, disfrutados: 0, enCurso: 0, programados: reservados };
+    const ayer = hoy.ms - 864e5;
+    const manana = hoy.ms + 864e5;
+    const disfrutados = diasEntreVacacionesPM13(desde, Math.min(hasta, ayer));
+    const enCurso = hoy.ms >= desde && hoy.ms <= hasta ? 1 : 0;
+    const programados = diasEntreVacacionesPM13(Math.max(desde, manana), hasta);
+    return { reservados, disfrutados, enCurso, programados };
+  }
+  function resumenVacacionesPM13(e2, anio = anioActual, hoyISO = typeof todayISO === "function" ? todayISO() : new Date().toISOString().slice(0, 10)) {
+    const totalRaw = Number(e2?.diasVacacionesAnuales);
+    const total = Number.isFinite(totalRaw) && totalRaw >= 0 ? totalRaw : 0;
+    const resumen = { total, reservados: 0, disfrutados: 0, enCurso: 0, programados: 0, saldo: total, disponibles: total, exceso: 0 };
+    for (const a22 of e2?.ausencias || []) {
+      const tramo = tramoVacacionesEnAnioPM13(a22, Number(anio), hoyISO);
+      resumen.reservados += tramo.reservados;
+      resumen.disfrutados += tramo.disfrutados;
+      resumen.enCurso += tramo.enCurso;
+      resumen.programados += tramo.programados;
+    }
+    resumen.saldo = resumen.total - resumen.reservados;
+    resumen.disponibles = Math.max(0, resumen.saldo);
+    resumen.exceso = Math.max(0, -resumen.saldo);
+    return resumen;
+  }
   function vacacionesUsadas(e2) {
-    return (e2.ausencias || []).filter((a22) => a22.tipo === "Vacaciones" && String(a22.estado || "ACTIVA").toUpperCase() !== "ANULADA" && !a22.anuladaAt && String(a22.fechaInicio || "").startsWith(`${anioActual}-`)).reduce((acc, a22) => acc + (Number(a22.dias) || 0), 0);
+    return resumenVacacionesPM13(e2, anioActual).reservados;
   }
   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: vista === "empleados" ? /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
     if (showForm) resetForm();
@@ -112790,9 +112837,10 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reac
     setShowForm(false);
     resetForm();
   } }, "Cancelar"))), empleados.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has a\xF1adido a nadie." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-3" }, empleados.map((e2) => {
-    const usados = vacacionesUsadas(e2);
-    const total = Number(e2.diasVacacionesAnuales) || 0;
-    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold flex items-center gap-1.5" }, e2.nombre, e2.activo === false && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "baja"), e2.pin && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "con acceso"), e2.pin && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, e2.rol && ROLES_EMPLEADO[e2.rol] ? e2.rol : "Est\xE1ndar"), e2.tieneCuenta && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "cuenta: ", e2.rolCuenta)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mt-0.5", style: { color: C2.inkSoft } }, e2.puesto, " \xB7 ", e2.tipoContrato)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => exportarDatosEmpleado(e2), title: "Exportar sus datos" }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 15, color: C2.inkSoft })), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setConfirmDeleteId(e2.id), "aria-label": "Eliminar empleado" }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 15, color: C2.inkSoft })))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 text-[12px] space-y-1", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement("div", null, "Alta: ", e2.fechaAlta, e2.fechaFinContrato && ` \xB7 Fin de contrato: ${e2.fechaFinContrato}`), e2.activo === false && /* @__PURE__ */ import_react4.default.createElement("div", null, "Baja: ", e2.fechaBaja || "sin fecha (registro legado)", e2.motivoBaja && ` \xB7 ${e2.motivoBaja}`), e2.salarioBrutoMensual > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, "Bruto: \u20AC", fmt(e2.salarioBrutoMensual), "/mes (", e2.pagas, " pagas)"), /* @__PURE__ */ import_react4.default.createElement("div", null, "Vacaciones: ", usados, " / ", total, " d\xEDas usados este a\xF1o"), (e2.documentos || []).length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", null, e2.documentos.map((d2) => d2.nombre).filter(Boolean).join(" \xB7 "))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 flex gap-2 flex-wrap" }, e2.activo !== false && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(e2) }, "Editar"), e2.activo === false && reactivarEmpleado && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: async () => {
+    const resumenVacaciones = resumenVacacionesPM13(e2, anioActual);
+    const usados = resumenVacaciones.reservados;
+    const total = resumenVacaciones.total;
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold flex items-center gap-1.5" }, e2.nombre, e2.activo === false && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "baja"), e2.pin && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "con acceso"), e2.pin && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, e2.rol && ROLES_EMPLEADO[e2.rol] ? e2.rol : "Est\xE1ndar"), e2.tieneCuenta && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "cuenta: ", e2.rolCuenta)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mt-0.5", style: { color: C2.inkSoft } }, e2.puesto, " \xB7 ", e2.tipoContrato)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => exportarDatosEmpleado(e2), title: "Exportar sus datos" }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 15, color: C2.inkSoft })), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setConfirmDeleteId(e2.id), "aria-label": "Eliminar empleado" }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 15, color: C2.inkSoft })))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 text-[12px] space-y-1", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement("div", null, "Alta: ", e2.fechaAlta, e2.fechaFinContrato && ` \xB7 Fin de contrato: ${e2.fechaFinContrato}`), e2.activo === false && /* @__PURE__ */ import_react4.default.createElement("div", null, "Baja: ", e2.fechaBaja || "sin fecha (registro legado)", e2.motivoBaja && ` \xB7 ${e2.motivoBaja}`), e2.salarioBrutoMensual > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, "Bruto: \u20AC", fmt(e2.salarioBrutoMensual), "/mes (", e2.pagas, " pagas)"), /* @__PURE__ */ import_react4.default.createElement("div", null, "Vacaciones ", anioActual, ": ", resumenVacaciones.disfrutados, " disfrutados · ", resumenVacaciones.enCurso, " hoy · ", resumenVacaciones.programados, " programados · saldo ", resumenVacaciones.saldo, " / ", total, resumenVacaciones.exceso > 0 ? ` · exceso ${resumenVacaciones.exceso}` : ""), (e2.documentos || []).length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", null, e2.documentos.map((d2) => d2.nombre).filter(Boolean).join(" \xB7 "))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 flex gap-2 flex-wrap" }, e2.activo !== false && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(e2) }, "Editar"), e2.activo === false && reactivarEmpleado && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: async () => {
     const r2 = await reactivarEmpleado(e2.id);
     if (!r2 || r2.ok === false) setError(r2?.error || "No se pudo reactivar al empleado.");
   } }, "Reactivar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAusenciaFor(e2.id) }, "Registrar ausencia"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setEpiFor(e2.id) }, "Entregar EPI"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setDetalleId(detalleId === e2.id ? null : e2.id) }, detalleId === e2.id ? "Ocultar historial" : "Ver historial"), crearCuentaEmpleado && !e2.tieneCuenta && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
