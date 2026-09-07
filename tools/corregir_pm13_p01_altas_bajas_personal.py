@@ -4,68 +4,68 @@ import re
 p = Path('fuente.js')
 s = p.read_text(encoding='utf-8')
 
-# PM13-P01: el alta debe nacer activa y con identidad temporal explícita.
-old_add = '''  function addEmpleado(data) {\n    const validacion = validarEmpleadoPM10(data, { localActivoId, locales, empresaId });\n    if (!validacion.ok) return validacion;\n    const nuevo = { id: uid(), activo: true, documentos: [], ...validacion.datos, localId: localActivoId };\n    setEmpleados((s22) => [...s22, nuevo]);\n    return nuevo;\n  }'''
-new_add = '''  function addEmpleado(data) {\n    const validacion = validarEmpleadoPM10(data, { localActivoId, locales, empresaId });\n    if (!validacion.ok) return validacion;\n    const nuevo = {\n      documentos: [],\n      ...validacion.datos,\n      id: uid(),\n      localId: localActivoId,\n      activo: true,\n      fechaAlta: validacion.datos.fechaAlta || fechaHoyPersonalPM13(),\n      fechaBaja: \"\",\n      motivoBaja: \"\"\n    };\n    setEmpleados((s22) => [...s22, nuevo]);\n    return nuevo;\n  }'''
-if old_add in s:
-    s = s.replace(old_add, new_add, 1)
-elif 'fechaBaja: "",\n      motivoBaja: ""' not in s:
-    raise SystemExit('PM13 P01: no se encontró addEmpleado esperado')
-elif '...validacion.datos,\n      id: uid(),\n      localId: localActivoId,\n      activo: true' not in s:
-    old_pm13_add = '''    const nuevo = {\n      id: uid(),\n      documentos: [],\n      ...validacion.datos,\n      localId: localActivoId,\n      activo: true,\n      fechaAlta: validacion.datos.fechaAlta || todayISO(),\n      fechaBaja: \"\",\n      motivoBaja: \"\"\n    };'''
-    new_pm13_add = '''    const nuevo = {\n      documentos: [],\n      ...validacion.datos,\n      id: uid(),\n      localId: localActivoId,\n      activo: true,\n      fechaAlta: validacion.datos.fechaAlta || fechaHoyPersonalPM13(),\n      fechaBaja: \"\",\n      motivoBaja: \"\"\n    };'''
-    if old_pm13_add in s:
-        s = s.replace(old_pm13_add, new_pm13_add, 1)
-    else:
-        raise SystemExit('PM13 P01: no se pudo reforzar identidad de addEmpleado')
-else:
-    s = s.replace('fechaAlta: validacion.datos.fechaAlta || todayISO()', 'fechaAlta: validacion.datos.fechaAlta || fechaHoyPersonalPM13()', 1)
-
-# Mantener compatibilidad con la edición existente: si cambia el estado laboral,
-# registrar o limpiar la trazabilidad de baja de forma determinista.
-old_update = '''  function updateEmpleado(id, data) {\n    const actual = empleados.find((e2) => e2.id === id);\n    if (!empleadoEsDelLocalActivoPersonal(actual) || !localActivoId) return errorValidacionPM10(\"contexto_no_autorizado\", \"empleadoId\", \"El empleado no pertenece al local activo.\");\n    const validacion = validarEmpleadoPM10({ ...actual, ...data, localId: actual.localId || localActivoId }, { localActivoId, locales, empresaId });\n    if (!validacion.ok) return validacion;\n    setEmpleados((s22) => s22.map((e2) => e2.id === id ? { ...e2, ...validacion.datos, localId: e2.localId || localActivoId } : e2));\n    return true;\n  }'''
-new_update = '''  function updateEmpleado(id, data) {\n    const actual = empleados.find((e2) => e2.id === id);\n    if (!empleadoEsDelLocalActivoPersonal(actual) || !localActivoId) return errorValidacionPM10(\"contexto_no_autorizado\", \"empleadoId\", \"El empleado no pertenece al local activo.\");\n    const validacion = validarEmpleadoPM10({ ...actual, ...data, localId: actual.localId || localActivoId }, { localActivoId, locales, empresaId });\n    if (!validacion.ok) return validacion;\n    const dandoBaja = actual.activo !== false && validacion.datos.activo === false;\n    const reactivando = actual.activo === false && validacion.datos.activo === true;\n    const cambiosEstado = dandoBaja ? {\n      fechaBaja: validacion.datos.fechaBaja || fechaHoyPersonalPM13(),\n      motivoBaja: String(validacion.datos.motivoBaja || \"Baja registrada desde edición\").trim() || \"Baja registrada desde edición\"\n    } : reactivando ? { fechaBaja: \"\", motivoBaja: \"\" } : {};\n    setEmpleados((s22) => s22.map((e2) => e2.id === id ? { ...e2, ...validacion.datos, ...cambiosEstado, id: e2.id, localId: e2.localId || localActivoId } : e2));\n    if (dandoBaja) {\n      bajasRegistradasPersonalPM13.add(id);\n      registrarAuditoria(\"Dar de baja empleado\", `${actual.nombre} \\xB7 ${cambiosEstado.fechaBaja} \\xB7 ${cambiosEstado.motivoBaja}`);\n    }\n    if (reactivando) {\n      bajasRegistradasPersonalPM13.delete(id);\n      registrarAuditoria(\"Reactivar empleado\", actual.nombre);\n    }\n    return true;\n  }'''
-if old_update in s:
-    s = s.replace(old_update, new_update, 1)
-elif 'const dandoBaja = actual.activo !== false' not in s:
-    raise SystemExit('PM13 P01: no se encontró updateEmpleado esperado')
-else:
-    s = s.replace('fechaBaja: validacion.datos.fechaBaja || todayISO()', 'fechaBaja: validacion.datos.fechaBaja || fechaHoyPersonalPM13()', 1)
-    if '...cambiosEstado, id: e2.id, localId:' not in s:
-        s = s.replace('...validacion.datos, ...cambiosEstado, localId: e2.localId || localActivoId', '...validacion.datos, ...cambiosEstado, id: e2.id, localId: e2.localId || localActivoId', 1)
-    old_audit = '''    if (dandoBaja) registrarAuditoria(\"Dar de baja empleado\", `${actual.nombre} \\xB7 ${cambiosEstado.fechaBaja} \\xB7 ${cambiosEstado.motivoBaja}`);\n    if (reactivando) registrarAuditoria(\"Reactivar empleado\", actual.nombre);'''
-    new_audit = '''    if (dandoBaja) {\n      bajasRegistradasPersonalPM13.add(id);\n      registrarAuditoria(\"Dar de baja empleado\", `${actual.nombre} \\xB7 ${cambiosEstado.fechaBaja} \\xB7 ${cambiosEstado.motivoBaja}`);\n    }\n    if (reactivando) {\n      bajasRegistradasPersonalPM13.delete(id);\n      registrarAuditoria(\"Reactivar empleado\", actual.nombre);\n    }'''
-    if old_audit in s:
-        s = s.replace(old_audit, new_audit, 1)
-
 logic_ini = s.find('function crearLogicaPersonal({')
 logic_fin = s.find('function crearLogicaTurnos({', logic_ini)
 if logic_ini < 0 or logic_fin < 0:
     raise SystemExit('PM13 P01: no se encontró crearLogicaPersonal')
 segment = s[logic_ini:logic_fin]
 
-if 'const fechaHoyPersonalPM13 = () =>' not in segment:
-    anchor = '  const empleadoEsDelLocalActivoPersonal = (e2) => !!e2 && (!localActivoId || e2.localId === localActivoId);\n'
+# La primera fase P01 ya eliminó el borrado físico. No permitir regresión.
+if 'setEmpleados((s22) => s22.filter((e22) => e22.id !== id))' in segment:
+    raise SystemExit('PM13 P01: reapareció borrado físico de empleado')
+if 'setNominas((s22) => s22.filter((n2) => n2.empleadoId !== id))' in segment:
+    raise SystemExit('PM13 P01: reapareció borrado físico de nóminas')
+
+# Helpers locales + adaptador remoto. En navegador con getSupabaseClient la RPC es
+# autoritativa; en contratos aislados sin window se conserva el fallback histórico.
+if 'async function ejecutarRpcPersonalPM13(' not in segment:
+    anchor = '  const bajasRegistradasPersonalPM13 = new Set(empleados.filter((e2) => e2 && e2.activo === false).map((e2) => e2.id));\n'
     if anchor not in segment:
-        raise SystemExit('PM13 P01: no se encontró ancla de contexto Personal')
-    helper = '  const fechaHoyPersonalPM13 = () => typeof todayISO === \"function\" ? todayISO() : \"\";\n'
-    segment = segment.replace(anchor, anchor + helper, 1)
+        raise SystemExit('PM13 P01: falta ancla de bajas lógicas')
+    helpers = '''  const operacionesRemotasPersonalPM13 = new Map();\n  const motorPersonalRemotoDisponiblePM13 = () => typeof window !== \"undefined\" && typeof window.getSupabaseClient === \"function\";\n  async function ejecutarRpcPersonalPM13(nombre, args) {\n    if (!motorPersonalRemotoDisponiblePM13()) return { disponible: false, ok: true, data: null };\n    try {\n      const supabase = await window.getSupabaseClient();\n      if (!supabase || typeof supabase.rpc !== \"function\") return { disponible: true, ok: false, error: \"El motor remoto de Personal no está disponible.\" };\n      const { data, error } = await supabase.rpc(nombre, args);\n      if (error) return { disponible: true, ok: false, error: error.message || String(error) };\n      return { disponible: true, ok: true, data };\n    } catch (error) {\n      return { disponible: true, ok: false, error: error?.message || String(error) };\n    }\n  }\n  function ejecutarUnaVezPersonalPM13(clave, ejecutar) {\n    if (operacionesRemotasPersonalPM13.has(clave)) return operacionesRemotasPersonalPM13.get(clave);\n    const promesa = Promise.resolve().then(ejecutar).finally(() => operacionesRemotasPersonalPM13.delete(clave));\n    operacionesRemotasPersonalPM13.set(clave, promesa);\n    return promesa;\n  }\n  const errorBackendPersonalPM13 = (mensaje) => errorValidacionPM10(\"backend_personal\", \"personal\", mensaje || \"No se pudo confirmar la operación de Personal.\");\n'''
+    segment = segment.replace(anchor, anchor + helpers, 1)
 
-if 'const bajasRegistradasPersonalPM13 = new Set(' not in segment:
-    anchor = '  const fechaHoyPersonalPM13 = () => typeof todayISO === \"function\" ? todayISO() : \"\";\n'
-    segment = segment.replace(anchor, anchor + '  const bajasRegistradasPersonalPM13 = new Set(empleados.filter((e2) => e2 && e2.activo === false).map((e2) => e2.id));\n', 1)
+# Alta: identidad estable durante reintentos de UI, RPC primero y caché local después.
+if 'async function addEmpleado(data, controlPM13 = {})' not in segment:
+    pat = re.compile(r'  function addEmpleado\(data\) \{.*?\n  \}\n  async function crearCuentaEmpleado', re.S)
+    new_add = '''  async function addEmpleado(data, controlPM13 = {}) {\n    const validacion = validarEmpleadoPM10(data, { localActivoId, locales, empresaId });\n    if (!validacion.ok) return validacion;\n    if (!localActivoId || !empresaId) return errorValidacionPM10(\"contexto_no_autorizado\", \"localId\", \"Personal requiere empresa y local concretos.\");\n    const empleadoId = String(controlPM13.empleadoId || uid());\n    const operationId = String(controlPM13.operationId || empleadoId);\n    const nuevo = {\n      documentos: [],\n      ...validacion.datos,\n      id: empleadoId,\n      localId: localActivoId,\n      activo: true,\n      fechaAlta: validacion.datos.fechaAlta || fechaHoyPersonalPM13(),\n      fechaBaja: \"\",\n      motivoBaja: \"\",\n      pm13AltaOperationId: operationId\n    };\n    const remoto = await ejecutarUnaVezPersonalPM13(`alta:${empresaId}:${localActivoId}:${empleadoId}`, () => ejecutarRpcPersonalPM13(\"pm11_alta_empleado\", {\n      p_empresa_id: empresaId,\n      p_local_id: localActivoId,\n      p_empleado_id: empleadoId,\n      p_nombre: nuevo.nombre,\n      p_datos: nuevo\n    }));\n    if (remoto.disponible && !remoto.ok) return errorBackendPersonalPM13(remoto.error);\n    setEmpleados((s22) => s22.some((e2) => e2.id === empleadoId) ? s22 : [...s22, nuevo]);\n    return nuevo;\n  }\n  async function crearCuentaEmpleado'''
+    segment, n = pat.subn(new_add, segment, count=1)
+    if n != 1:
+        raise SystemExit('PM13 P01: no se pudo convertir addEmpleado a RPC')
 
-old_delete = '''  function deleteEmpleado(id) {\n    const e2 = empleados.find((x3) => x3.id === id);\n    if (!empleadoEsDelLocalActivoPersonal(e2)) return false;\n    registrarAuditoria(\"Eliminar empleado\", e2.nombre);\n    setEmpleados((s22) => s22.filter((e22) => e22.id !== id));\n    if (setNominas) setNominas((s22) => s22.filter((n2) => n2.empleadoId !== id));\n    return true;\n  }'''
-new_delete = '''  function deleteEmpleado(id, baja = {}) {\n    const e2 = empleados.find((x3) => x3.id === id);\n    if (!empleadoEsDelLocalActivoPersonal(e2) || !localActivoId) return false;\n    if (bajasRegistradasPersonalPM13.has(id) || e2.activo === false) return true;\n    const fechaSistema = fechaHoyPersonalPM13();\n    const fechaBaja = String(baja.fechaBaja || fechaSistema).trim() || fechaSistema;\n    const motivoBaja = String(baja.motivoBaja || baja.motivo || \"Baja registrada desde Personal\").trim() || \"Baja registrada desde Personal\";\n    bajasRegistradasPersonalPM13.add(id);\n    try {\n      setEmpleados((s22) => s22.map((emp) => emp.id === id ? { ...emp, activo: false, fechaBaja, motivoBaja } : emp));\n      registrarAuditoria(\"Dar de baja empleado\", `${e2.nombre} \\xB7 ${fechaBaja || \"sin fecha\"} \\xB7 ${motivoBaja}`);\n      return true;\n    } catch (error) {\n      bajasRegistradasPersonalPM13.delete(id);\n      throw error;\n    }\n  }'''
-if old_delete in segment:
-    segment = segment.replace(old_delete, new_delete, 1)
-elif 'function deleteEmpleado(id, baja = {})' not in segment:
-    raise SystemExit('PM13 P01: no se encontró deleteEmpleado esperado')
-else:
-    segment = segment.replace('const fechaBaja = String(baja.fechaBaja || todayISO()).trim() || todayISO();', 'const fechaSistema = fechaHoyPersonalPM13();\n    const fechaBaja = String(baja.fechaBaja || fechaSistema).trim() || fechaSistema;', 1)
-    segment = segment.replace('`${e2.nombre} \\xB7 ${fechaBaja} \\xB7 ${motivoBaja}`', '`${e2.nombre} \\xB7 ${fechaBaja || \"sin fecha\"} \\xB7 ${motivoBaja}`', 1)
+# Edición: la RPC PM11 es autoritativa. Cambios de estado en navegador se hacen
+# solo con las acciones dedicadas de baja/reactivación, para evitar dos escrituras parciales.
+if 'async function updateEmpleado(id, data)' not in segment:
+    pat = re.compile(r'  function updateEmpleado\(id, data\) \{.*?\n  \}\n  function deleteEmpleado', re.S)
+    new_update = '''  async function updateEmpleado(id, data) {\n    const actual = empleados.find((e2) => e2.id === id);\n    if (!empleadoEsDelLocalActivoPersonal(actual) || !localActivoId || !empresaId) return errorValidacionPM10(\"contexto_no_autorizado\", \"empleadoId\", \"El empleado no pertenece al local activo.\");\n    const validacion = validarEmpleadoPM10({ ...actual, ...data, localId: actual.localId || localActivoId }, { localActivoId, locales, empresaId });\n    if (!validacion.ok) return validacion;\n    const dandoBaja = actual.activo !== false && validacion.datos.activo === false;\n    const reactivando = actual.activo === false && validacion.datos.activo === true;\n    if (motorPersonalRemotoDisponiblePM13() && (dandoBaja || reactivando)) {\n      return errorValidacionPM10(\"cambio_estado_dedicado\", \"activo\", dandoBaja ? \"Usa Dar de baja para cambiar el estado laboral.\" : \"Usa Reactivar para cambiar el estado laboral.\");\n    }\n    if (motorPersonalRemotoDisponiblePM13()) {\n      const remoto = await ejecutarUnaVezPersonalPM13(`editar:${empresaId}:${localActivoId}:${id}`, () => ejecutarRpcPersonalPM13(\"pm11_editar_empleado\", {\n        p_empresa_id: empresaId,\n        p_local_id: localActivoId,\n        p_empleado_id: id,\n        p_cambios: validacion.datos,\n        p_nombre: validacion.datos.nombre || actual.nombre\n      }));\n      if (!remoto.ok) return errorBackendPersonalPM13(remoto.error);\n      setEmpleados((s22) => s22.map((e2) => e2.id === id ? { ...e2, ...validacion.datos, id: e2.id, localId: e2.localId || localActivoId } : e2));\n      return true;\n    }\n    const cambiosEstado = dandoBaja ? {\n      fechaBaja: validacion.datos.fechaBaja || fechaHoyPersonalPM13(),\n      motivoBaja: String(validacion.datos.motivoBaja || \"Baja registrada desde edición\").trim() || \"Baja registrada desde edición\"\n    } : reactivando ? { fechaBaja: \"\", motivoBaja: \"\" } : {};\n    setEmpleados((s22) => s22.map((e2) => e2.id === id ? { ...e2, ...validacion.datos, ...cambiosEstado, id: e2.id, localId: e2.localId || localActivoId } : e2));\n    if (dandoBaja) {\n      bajasRegistradasPersonalPM13.add(id);\n      registrarAuditoria(\"Dar de baja empleado\", `${actual.nombre} \\xB7 ${cambiosEstado.fechaBaja} \\xB7 ${cambiosEstado.motivoBaja}`);\n    }\n    if (reactivando) {\n      bajasRegistradasPersonalPM13.delete(id);\n      registrarAuditoria(\"Reactivar empleado\", actual.nombre);\n    }\n    return true;\n  }\n  function deleteEmpleado'''
+    segment, n = pat.subn(new_update, segment, count=1)
+    if n != 1:
+        raise SystemExit('PM13 P01: no se pudo convertir updateEmpleado a RPC')
+
+# Baja: nunca mutar caché antes de que backend confirme.
+if 'async function deleteEmpleado(id, baja = {})' not in segment:
+    pat = re.compile(r'  function deleteEmpleado\(id, baja = \{\}\) \{.*?\n  \}\n  function anonimizarEmpleado', re.S)
+    new_delete = '''  async function deleteEmpleado(id, baja = {}) {\n    const e2 = empleados.find((x3) => x3.id === id);\n    if (!empleadoEsDelLocalActivoPersonal(e2) || !localActivoId || !empresaId) return false;\n    const remotoDisponible = motorPersonalRemotoDisponiblePM13();\n    if (!remotoDisponible && (bajasRegistradasPersonalPM13.has(id) || e2.activo === false)) return true;\n    const fechaSistema = fechaHoyPersonalPM13();\n    const fechaBajaSolicitada = String(baja.fechaBaja || fechaSistema).trim() || fechaSistema;\n    const motivoBaja = String(baja.motivoBaja || baja.motivo || \"Baja registrada desde Personal\").trim() || \"Baja registrada desde Personal\";\n    const remoto = await ejecutarUnaVezPersonalPM13(`baja:${empresaId}:${localActivoId}:${id}`, () => ejecutarRpcPersonalPM13(\"pm11_baja_empleado\", {\n      p_empresa_id: empresaId,\n      p_local_id: localActivoId,\n      p_empleado_id: id,\n      p_motivo: motivoBaja\n    }));\n    if (remoto.disponible && !remoto.ok) return errorBackendPersonalPM13(remoto.error);\n    const datosRemotos = remoto.data?.empleado?.datos || {};\n    const fechaBaja = remoto.disponible ? String(datosRemotos.fechaBaja || fechaBajaSolicitada) : fechaBajaSolicitada;\n    const motivoConfirmado = remoto.disponible ? String(datosRemotos.motivoBaja || motivoBaja) : motivoBaja;\n    setEmpleados((s22) => s22.map((emp) => emp.id === id ? { ...emp, activo: false, fechaBaja, motivoBaja: motivoConfirmado } : emp));\n    bajasRegistradasPersonalPM13.add(id);\n    if (!remoto.disponible) registrarAuditoria(\"Dar de baja empleado\", `${e2.nombre} \\xB7 ${fechaBaja || \"sin fecha\"} \\xB7 ${motivoConfirmado}`);\n    return true;\n  }\n  async function reactivarEmpleado(id) {\n    const e2 = empleados.find((x3) => x3.id === id);\n    if (!empleadoEsDelLocalActivoPersonal(e2) || !localActivoId || !empresaId) return false;\n    const remotoDisponible = motorPersonalRemotoDisponiblePM13();\n    if (!remotoDisponible && e2.activo !== false) return true;\n    const remoto = await ejecutarUnaVezPersonalPM13(`reactivar:${empresaId}:${localActivoId}:${id}`, () => ejecutarRpcPersonalPM13(\"pm11_reactivar_empleado\", {\n      p_empresa_id: empresaId,\n      p_local_id: localActivoId,\n      p_empleado_id: id\n    }));\n    if (remoto.disponible && !remoto.ok) return errorBackendPersonalPM13(remoto.error);\n    setEmpleados((s22) => s22.map((emp) => emp.id === id ? { ...emp, activo: true, fechaBaja: \"\", motivoBaja: \"\" } : emp));\n    bajasRegistradasPersonalPM13.delete(id);\n    if (!remoto.disponible) registrarAuditoria(\"Reactivar empleado\", e2.nombre);\n    return true;\n  }\n  function anonimizarEmpleado'''
+    segment, n = pat.subn(new_delete, segment, count=1)
+    if n != 1:
+        raise SystemExit('PM13 P01: no se pudo convertir baja a RPC')
+
+# Exponer reactivación dedicada desde la misma lógica Personal.
+segment = segment.replace(
+    'return { addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado };',
+    'return { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado };'
+)
+if 'return { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado,' not in segment:
+    raise SystemExit('PM13 P01: reactivarEmpleado no quedó expuesto')
 
 s = s[:logic_ini] + segment + s[logic_fin:]
+
+# Conectar destructuring del App.
+s = s.replace(
+    'const { addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal(',
+    'const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal(',
+    1
+)
 
 personal_ini = s.find('function Personal({')
 personal_fin = s.find('function Turnos({', personal_ini)
@@ -73,38 +73,79 @@ if personal_ini < 0 or personal_fin < 0:
     raise SystemExit('PM13 P01: no se encontró componente Personal')
 ui = s[personal_ini:personal_fin]
 
+# Prop dedicada de reactivación.
+ui = ui.replace(
+    'function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, anonimizarEmpleado,',
+    'function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado,',
+    1
+)
+
+# Identidad estable de alta mientras la operación siga pendiente/error.
+ref_anchor = '  const submitBloqueadoPersonalPM10 = import_react4.default.useRef(false);\n'
+if 'altaOperacionPersonalPM13' not in ui:
+    if ref_anchor not in ui:
+        raise SystemExit('PM13 P01: no se encontró ref de submit Personal')
+    ui = ui.replace(ref_anchor, ref_anchor + '  const altaOperacionPersonalPM13 = import_react4.default.useRef(null);\n', 1)
+
+if 'function resetForm() {\n    altaOperacionPersonalPM13.current = null;' not in ui:
+    ui = ui.replace('  function resetForm() {\n', '  function resetForm() {\n    altaOperacionPersonalPM13.current = null;\n', 1)
+
+old_submit = '    const resultado = editingId ? updateEmpleado(editingId, datos) : addEmpleado(datos);'
+if old_submit in ui:
+    new_submit = '''    let controlAltaPersonalPM13 = void 0;\n    if (!editingId) {\n      if (!altaOperacionPersonalPM13.current) altaOperacionPersonalPM13.current = { empleadoId: uid(), operationId: uid() };\n      controlAltaPersonalPM13 = altaOperacionPersonalPM13.current;\n    }\n    const resultado = editingId ? await updateEmpleado(editingId, datos) : await addEmpleado(datos, controlAltaPersonalPM13);'''
+    ui = ui.replace(old_submit, new_submit, 1)
+elif 'await addEmpleado(datos, controlAltaPersonalPM13)' not in ui:
+    raise SystemExit('PM13 P01: no se pudo conectar submit async')
+
+# Un empleado inactivo no se edita como atajo de reactivación: acción explícita.
+edit_btn = '/* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: \"ghost\", onClick: () => openEdit(e2) }, \"Editar\"),'
+if 'reactivarEmpleado(e2.id)' not in ui and edit_btn in ui:
+    repl = '''e2.activo !== false && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: \"ghost\", onClick: () => openEdit(e2) }, \"Editar\"), e2.activo === false && reactivarEmpleado && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: \"ghost\", onClick: async () => {\n    const r2 = await reactivarEmpleado(e2.id);\n    if (!r2 || r2.ok === false) setError(r2?.error || \"No se pudo reactivar al empleado.\");\n  } }, \"Reactivar\"),'''
+    ui = ui.replace(edit_btn, repl, 1)
+
+# La baja modal espera confirmación remota antes de cerrar.
+old_delete_click = '''/* @__PURE__ */ import_react4.default.createElement(Btn, { variant: \"danger\", onClick: () => {\n    deleteEmpleado(confirmDeleteId);\n    setConfirmDeleteId(null);\n  } }, \"Dar de baja\")'''
+if old_delete_click in ui:
+    new_delete_click = '''/* @__PURE__ */ import_react4.default.createElement(Btn, { variant: \"danger\", onClick: async () => {\n    const r2 = await deleteEmpleado(confirmDeleteId);\n    if (!r2 || r2.ok === false) {\n      setError(r2?.error || \"No se pudo confirmar la baja del empleado.\");\n      return;\n    }\n    setConfirmDeleteId(null);\n  } }, \"Dar de baja\")'''
+    ui = ui.replace(old_delete_click, new_delete_click, 1)
+elif 'await deleteEmpleado(confirmDeleteId)' not in ui:
+    raise SystemExit('PM13 P01: modal de baja no quedó async')
+
+# La anonimización tiene un RPC PM11 distinto y no forma parte de P01. Quitar el
+# atajo local del modal de baja para que no borre datos fuera del motor remoto.
+ui = re.sub(
+    r'anonimizarEmpleado && /\* @__PURE__ \*/ import_react4\.default\.createElement\(Btn, \{ onClick: \(\) => \{\n\s*anonimizarEmpleado\(confirmDeleteId\);\n\s*setConfirmDeleteId\(null\);\n\s*\} \}, \"Anonimizar datos\"\),\s*',
+    '',
+    ui,
+    count=1
+)
+
+# Etiquetas y trazabilidad de la primera fase P01 deben mantenerse.
 ui = ui.replace('aria-label: \"Eliminar empleado\"', 'aria-label: \"Dar de baja empleado\"')
 ui = ui.replace('title: \"Eliminar empleado\"', 'title: \"Dar de baja empleado\"')
 ui = ui.replace('\"Eliminar del todo\"', '\"Dar de baja\"')
-ui = ui.replace('\"Anonimizar (recomendado)\"', '\"Anonimizar datos\"')
-ui = re.sub(
-    r'\"Se borra la ficha completa,[^\"]*conservar el historial\.\"',
-    lambda _m: '\"La baja desactiva al empleado sin borrar su ficha, ausencias, documentos, fichajes ni n\\xF3minas. La fecha y el motivo quedan registrados y el historial se conserva.\"',
-    ui,
-    count=1
-)
-ui = re.sub(
-    r'\"Este empleado tiene n\\xF3minas registradas\. La legislaci\\xF3n laboral obliga a conservar esos documentos varios a\\xF1os\. Mejor usa \"',
-    lambda _m: '\"Este empleado tiene n\\xF3minas registradas. La baja conservar\\xE1 esas n\\xF3minas y el resto del historial. La anonimizaci\\xF3n queda como una acci\\xF3n de privacidad separada. \"',
-    ui,
-    count=1
-)
-
-card_anchor = 'import_react4.default.createElement(\"div\", null, \"Alta: \", e2.fechaAlta, e2.fechaFinContrato && ` \\xB7 Fin de contrato: ${e2.fechaFinContrato}`)'
-if 'e2.fechaBaja || "sin fecha (registro legado)"' not in ui:
-    if card_anchor not in ui:
-        raise SystemExit('PM13 P01: no se encontró línea Alta de tarjeta Personal')
-    card_new = card_anchor + ', e2.activo === false && /* @__PURE__ */ import_react4.default.createElement(\"div\", null, \"Baja: \", e2.fechaBaja || \"sin fecha (registro legado)\", e2.motivoBaja && ` \\xB7 ${e2.motivoBaja}`)'
-    ui = ui.replace(card_anchor, card_new, 1)
-
-export_anchor = '      `Fecha de fin de contrato: ${e2.fechaFinContrato || \"\\u2014\"}`,\n'
-if '`Fecha de baja: ${e2.fechaBaja || "\\u2014"}`' not in ui:
-    if export_anchor in ui:
-        ui = ui.replace(export_anchor, export_anchor + '      `Fecha de baja: ${e2.fechaBaja || \"\\u2014\"}`,\n      `Motivo de baja: ${e2.motivoBaja || \"\\u2014\"}`,\n', 1)
-
-if 'Eliminar del todo' in ui:
-    raise SystemExit('PM13 P01: sigue visible Eliminar del todo')
+if 'Eliminar del todo' in ui or 'Se borra la ficha completa' in ui:
+    raise SystemExit('PM13 P01: reapareció UI destructiva')
 
 s = s[:personal_ini] + ui + s[personal_fin:]
+
+# Pasar reactivación al componente Personal. Limitar reemplazo al bloque de props
+# reconocido para no tocar otros módulos.
+if 'reactivarEmpleado,\n      anonimizarEmpleado,' not in s:
+    props_anchor = '      deleteEmpleado,\n      anonimizarEmpleado,\n'
+    if props_anchor not in s:
+        raise SystemExit('PM13 P01: no se encontró props Personal')
+    s = s.replace(props_anchor, '      deleteEmpleado,\n      reactivarEmpleado,\n      anonimizarEmpleado,\n', 1)
+
+# Barreras estáticas finales.
+logic_ini = s.find('function crearLogicaPersonal({')
+logic_fin = s.find('function crearLogicaTurnos({', logic_ini)
+final_logic = s[logic_ini:logic_fin]
+for rpc in ('pm11_alta_empleado', 'pm11_editar_empleado', 'pm11_baja_empleado', 'pm11_reactivar_empleado'):
+    if rpc not in final_logic:
+        raise SystemExit(f'PM13 P01: falta RPC {rpc}')
+if 'setEmpleados((s22) => s22.filter' in final_logic or 'setNominas((s22) => s22.filter' in final_logic:
+    raise SystemExit('PM13 P01: detectado borrado físico final')
+
 p.write_text(s, encoding='utf-8')
-print('PM13 P01: alta/baja lógica aplicada de forma idempotente')
+print('PM13 P01: frontend conectado al ciclo PM11 con RPC autoritativa y fallback aislado')
