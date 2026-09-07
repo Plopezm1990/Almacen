@@ -35,9 +35,17 @@ const encargos = bloque('function crearLogicaEncargos({', 'function crearLogicaV
 assert.match(productos,/function addProducto\(data\)[\s\S]{0,500}validarProductoPM10[\s\S]{0,900}setProductos/);
 assert.match(productos,/function updateProducto\(id, data\)[\s\S]{0,650}validarProductoPM10/);
 assert.match(pedidos,/function crearPedido\(data\)[\s\S]{0,850}validarPedidoPM10/);
-// PM11 amplía la firma con una identidad de intento/replay; la regresión PM10 debe
-// seguir comprobando la misma barrera validar -> procesar sin exigir aridad exacta.
-assert.match(pedidos,/function recibirPedido\(pedidoId, lineas(?:, [^)]*)?\)[\s\S]{0,1400}validarRecepcionPedidoPM10[\s\S]{0,1400}procesarRecepcion\(\{/);
+
+// PM11 amplía recibirPedido con operationId/replay. La regresión PM10 comprueba
+// la misma frontera semántica sin depender de una distancia textual histórica.
+const recibirPos = pedidos.indexOf('function recibirPedido(pedidoId, lineas');
+const validarRecepcionPos = pedidos.indexOf('validarRecepcionPedidoPM10', recibirPos);
+const procesarRecepcionPos = pedidos.indexOf('procesarRecepcion({', validarRecepcionPos);
+assert.ok(recibirPos >= 0, 'recibirPedido sigue presente');
+assert.ok(validarRecepcionPos > recibirPos, 'recibirPedido valida antes de procesar');
+assert.ok(procesarRecepcionPos > validarRecepcionPos, 'procesarRecepcion ocurre después de validar');
+assert.match(pedidos.slice(recibirPos, recibirPos + 160), /function recibirPedido\(pedidoId, lineas, operationId = null\)/);
+
 assert.match(personal,/function addEmpleado\(data\)[\s\S]{0,450}validarEmpleadoPM10[\s\S]{0,700}setEmpleados/);
 assert.match(encargos,/function addEncargo\(data\)[\s\S]{0,650}validarEncargoPM10[\s\S]{0,900}setEncargos/);
 
