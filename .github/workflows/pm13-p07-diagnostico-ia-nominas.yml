@@ -34,7 +34,7 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add tests/pm13/P07_DIAGNOSTICO_IA_NOMINAS.json
+          git add tests/pm13/P07_DIAGNOSTICO_IA_NOMINAS.json tests/pm13/P07_EXTRACT_NOMINAS.txt
           if git diff --cached --quiet; then
             echo 'Diagnostico P07 ya actualizado'
             exit 0
