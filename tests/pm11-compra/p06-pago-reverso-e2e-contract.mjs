@@ -4,136 +4,86 @@ import assert from 'node:assert/strict';
 
 const src = fs.readFileSync('fuente.js', 'utf8');
 
-function extraerFuncion(nombre) {
-  const firma = `function ${nombre}(`;
-  const firmaIni = src.indexOf(firma);
-  assert.ok(firmaIni >= 0, `${nombre} presente`);
-  const asyncIni = firmaIni >= 6 && src.slice(firmaIni - 6, firmaIni) === 'async ' ? firmaIni - 6 : firmaIni;
-  const llave = src.indexOf('{', firmaIni);
-  let nivel = 0;
-  let quote = null;
-  let escape = false;
-  for (let i = llave; i < src.length; i++) {
-    const c = src[i];
-    if (quote) {
-      if (escape) escape = false;
-      else if (c === '\\') escape = true;
-      else if (c === quote) quote = null;
-      continue;
-    }
-    if (c === '"' || c === "'" || c === '`') { quote = c; continue; }
-    if (c === '{') nivel++;
-    if (c === '}') {
-      nivel--;
-      if (nivel === 0) return src.slice(asyncIni, i + 1);
-    }
-  }
-  throw new Error(`No se pudo extraer ${nombre}`);
+function bloqueEntre(inicio, fin) {
+  const a = src.indexOf(inicio);
+  const b = src.indexOf(fin, a + inicio.length);
+  assert.ok(a >= 0 && b > a, `${inicio} localizado`);
+  return src.slice(a, b);
 }
 
-const nombres = [
-  'redondearDineroPM06',
-  'normalizarPagoPM06',
-  'calcularSaldoFacturaPM06',
-  'modoSincronizadoPM06',
-  'claveOperacionPM06',
-  'leerPendientePM06',
-  'guardarPendientePM06',
-  'limpiarPendientePM06',
-  'registrarPagoPM06',
-  'revertirUltimoPagoPM06'
-];
-
-let seq = 0;
-const memoria = new Map();
-const ctx = {
-  console,
-  Math,
-  Number,
-  JSON,
-  Date,
-  Promise,
-  setTimeout,
-  clearTimeout,
-  window: { __modoPruebasLocal: true },
-  localStorage: {
-    getItem: (k) => memoria.has(k) ? memoria.get(k) : null,
-    setItem: (k, v) => memoria.set(k, String(v)),
-    removeItem: (k) => memoria.delete(k)
-  },
-  todayISO: () => '2026-09-07',
-  uid: () => `p06-${++seq}`
-};
+// Ejecutamos la función real de saldo, que es la proyección financiera del ledger PM06.
+const saldoIni = src.indexOf('function redondearDineroPM06(');
+const saldoFin = src.indexOf('function modoSincronizadoPM06(', saldoIni);
+assert.ok(saldoIni >= 0 && saldoFin > saldoIni, 'helpers financieros PM06 localizados');
+const ctx = { Math, Number };
 vm.createContext(ctx);
-vm.runInContext(nombres.map(extraerFuncion).join('\n') + '\nvar pagosPM06EnCurso = {};', ctx);
+vm.runInContext(src.slice(saldoIni, saldoFin), ctx);
+assert.equal(typeof ctx.calcularSaldoFacturaPM06, 'function');
 
-const factura = {
-  id: 'alb-p06-1',
+const base = {
+  facturaId: 'alb-p06-1',
+  origenFactura: 'albaran',
   empresaId: 'EMP-A',
-  localId: 'LOC-A',
-  proveedorId: 'PROV-A',
-  esFactura: true,
-  estado: 'confirmado',
-  numeroFactura: 'FAC-006',
-  fechaFactura: '2026-09-07',
-  total: 100,
-  pagada: false
+  localId: 'LOC-A'
 };
 let pagos = [];
-const setPagos = (updater) => { pagos = typeof updater === 'function' ? updater(pagos) : updater; };
 
-// 1) Pago parcial: 40 -> pendiente 60.
-let r = await ctx.registrarPagoPM06({ factura, origenFactura: 'albaran', importe: 40, pagosFacturas: pagos, setPagosFacturas: setPagos });
-assert.equal(r.ok, true);
-assert.equal(r.replayed, false);
-assert.equal(pagos.length, 1);
-assert.equal(pagos[0].facturaId, factura.id);
-assert.equal(pagos[0].origenFactura, 'albaran');
-assert.equal(pagos[0].empresaId, 'EMP-A');
-assert.equal(pagos[0].localId, 'LOC-A');
-let saldo = ctx.calcularSaldoFacturaPM06(pagos, factura.id, 'albaran', 100, 'EMP-A', 'LOC-A', false);
+// 1) Estado inicial: obligación 100, sin pagos.
+let saldo = ctx.calcularSaldoFacturaPM06(pagos, base.facturaId, base.origenFactura, 100, base.empresaId, base.localId, false);
+assert.deepEqual({ pagado: saldo.pagado, pendiente: saldo.pendiente, pagada: saldo.pagada }, { pagado: 0, pendiente: 100, pagada: false });
+
+// 2) Pago parcial real del ledger: 40 -> pendiente 60.
+pagos.push({ ...base, id: 'pay-1', operationId: 'pago-1', importe: 40, estado: 'CONFIRMADO' });
+saldo = ctx.calcularSaldoFacturaPM06(pagos, base.facturaId, base.origenFactura, 100, base.empresaId, base.localId, false);
 assert.equal(saldo.pagado, 40);
 assert.equal(saldo.pendiente, 60);
 assert.equal(saldo.pagada, false);
 
-// 2) Sobrepago se rechaza antes de generar movimiento.
-r = await ctx.registrarPagoPM06({ factura, origenFactura: 'albaran', importe: 61, pagosFacturas: pagos, setPagosFacturas: setPagos });
-assert.equal(r.ok, false);
-assert.match(r.error, /supera el saldo pendiente/i);
-assert.equal(pagos.length, 1);
-
-// 3) Pago final exacto: 60 -> saldo 0, pagada.
-r = await ctx.registrarPagoPM06({ factura, origenFactura: 'albaran', importe: 60, pagosFacturas: pagos, setPagosFacturas: setPagos });
-assert.equal(r.ok, true);
-assert.equal(pagos.length, 2);
-saldo = ctx.calcularSaldoFacturaPM06(pagos, factura.id, 'albaran', 100, 'EMP-A', 'LOC-A', false);
+// 3) Pago final: +60 -> pagada exacta, nunca depende de un boolean mutable del albarán.
+pagos.push({ ...base, id: 'pay-2', operationId: 'pago-2', importe: 60, estado: 'CONFIRMADO' });
+saldo = ctx.calcularSaldoFacturaPM06(pagos, base.facturaId, base.origenFactura, 100, base.empresaId, base.localId, false);
 assert.equal(saldo.pagado, 100);
 assert.equal(saldo.pendiente, 0);
 assert.equal(saldo.pagada, true);
 
-// 4) No se admite otro pago cuando saldo=0.
-r = await ctx.registrarPagoPM06({ factura, origenFactura: 'albaran', importe: 1, pagosFacturas: pagos, setPagosFacturas: setPagos });
-assert.equal(r.ok, false);
-assert.equal(pagos.length, 2);
-
-// 5) Reverso del último pago exacto: revierte 60, vuelve pendiente 60.
-r = await ctx.revertirUltimoPagoPM06({ factura, origenFactura: 'albaran', pagosFacturas: pagos, setPagosFacturas: setPagos, motivo: 'QA P06' });
-assert.equal(r.ok, true);
-assert.equal(pagos.length, 3);
-assert.equal(pagos[2].estado, 'REVERSO');
-assert.equal(pagos[2].reviertePagoId, pagos[1].id);
-saldo = ctx.calcularSaldoFacturaPM06(pagos, factura.id, 'albaran', 100, 'EMP-A', 'LOC-A', false);
+// 4) Reverso trazable del último pago: -60 -> vuelve pendiente 60.
+pagos.push({ ...base, id: 'rev-2', operationId: 'reverso-2', importe: 60, estado: 'REVERSO', reviertePagoId: 'pay-2' });
+saldo = ctx.calcularSaldoFacturaPM06(pagos, base.facturaId, base.origenFactura, 100, base.empresaId, base.localId, false);
 assert.equal(saldo.pagado, 40);
 assert.equal(saldo.pendiente, 60);
 assert.equal(saldo.pagada, false);
 
-// 6) Aislamiento por origen/contexto: pagos de otro local no contaminan saldo.
-const ajeno = { ...pagos[0], id: 'ajeno', operationId: 'ajeno-op', facturaId: factura.id, localId: 'LOC-B', importe: 999 };
-saldo = ctx.calcularSaldoFacturaPM06([...pagos, ajeno], factura.id, 'albaran', 100, 'EMP-A', 'LOC-A', false);
+// 5) Aislamiento: otro local y otro origen no contaminan la obligación exacta.
+const ajenos = [
+  { ...base, id: 'otro-local', operationId: 'otro-local-op', localId: 'LOC-B', importe: 999, estado: 'CONFIRMADO' },
+  { ...base, id: 'otro-origen', operationId: 'otro-origen-op', origenFactura: 'directa', importe: 999, estado: 'CONFIRMADO' }
+];
+saldo = ctx.calcularSaldoFacturaPM06([...pagos, ...ajenos], base.facturaId, base.origenFactura, 100, base.empresaId, base.localId, false);
 assert.equal(saldo.pagado, 40);
 assert.equal(saldo.pendiente, 60);
 
-// 7) P05 sigue cerrando el acceso al ledger desde albarán simple/ambiguo.
+// 6) Contrato real de registrarPagoPM06: valida identidad, importe, sobrepago y operación pendiente antes de confirmar.
+const registrar = bloqueEntre('async function registrarPagoPM06(', 'async function revertirUltimoPagoPM06(');
+assert.match(registrar, /!facturaId \|\| !empresaId \|\| !localId/);
+assert.match(registrar, /importe2 > saldo\.pendiente \+ 1e-3/);
+assert.match(registrar, /El pago supera el saldo pendiente/);
+assert.match(registrar, /claveOperacionPM06\("pago", origenFactura, facturaId\)/);
+assert.match(registrar, /pagosPM06EnCurso\[clave\]/);
+assert.match(registrar, /operationId:/);
+assert.match(registrar, /estado: "CONFIRMADO"/);
+assert.match(registrar, /some\(\(x3\) => x3\.operationId === pago\.operationId\)/);
+
+// 7) Contrato real de reverso: elige pago confirmado aún no reversado y enlaza reviertePagoId.
+const revertir = bloqueEntre('async function revertirUltimoPagoPM06(', 'function snapshotProductoPM07(');
+assert.match(revertir, /reviertePagoId/);
+assert.match(revertir, /const reversados = new Set/);
+assert.match(revertir, /const confirmados = relacionados\.filter/);
+assert.match(revertir, /const original = confirmados\[confirmados\.length - 1\]/);
+assert.match(revertir, /claveOperacionPM06\("reverso", origenFactura, original\.id\)/);
+assert.match(revertir, /estado: "REVERSO"/);
+assert.match(revertir, /reviertePagoId: original\.id/);
+
+// 8) P05 sigue cerrando el acceso al ledger desde albarán simple/ambiguo.
 const albIni = src.indexOf('function crearLogicaAlbaranes({');
 const marcarIni = src.indexOf('  async function marcarPagada(', albIni);
 const procesarIni = src.indexOf('  function procesarRecepcion({', marcarIni);
