@@ -5,6 +5,7 @@ on:
     branches: [pm12-conteo-estados-honestos]
     paths:
       - 'tools/aplicar_pm12_p07.py'
+      - 'tools/aplicar_pm12_p07_fix.py'
       - '.github/workflows/pm12-p07-apply-authorized.yml'
 
 permissions:
@@ -25,11 +26,11 @@ jobs:
           git fetch origin main --quiet
           test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
           git merge-base --is-ancestor a9962a7c6da030b724942aa7efe2ecd3213b3985 HEAD
-          inesperados="$(git diff --name-only a9962a7c6da030b724942aa7efe2ecd3213b3985 HEAD | grep -Ev '^(tools/aplicar_pm12_p07.py|\.github/workflows/pm12-p07-apply-authorized.yml)$' || true)"
+          inesperados="$(git diff --name-only a9962a7c6da030b724942aa7efe2ecd3213b3985 HEAD | grep -Ev '^(tools/aplicar_pm12_p07.py|tools/aplicar_pm12_p07_fix.py|\.github/workflows/pm12-p07-apply-authorized.yml)$' || true)"
           test -z "$inesperados"
 
       - name: Aplicar P07
-        run: python3 tools/aplicar_pm12_p07.py
+        run: python3 tools/aplicar_pm12_p07_fix.py
 
       - name: Validar sintaxis y regresiones P02-P06
         shell: bash
