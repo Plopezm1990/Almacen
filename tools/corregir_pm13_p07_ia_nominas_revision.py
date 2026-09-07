@@ -104,14 +104,18 @@ nuevo_motor = r'''function crearLogicaNominas({ nominas, setNominas, registrarAu
 
 s = s[:start] + nuevo_motor + s[end:]
 
-def replace_once(old, new, label):
+def replace_once_coste_personal(old, new, label):
     global s
-    count = s.count(old)
+    ui_start = s.index('function CostePersonal({ empleados, nominas, addNomina, updateNomina, deleteNomina, fichajes, movimientos }) {')
+    ui_end = s.index('function HistorialProducto', ui_start)
+    region = s[ui_start:ui_end]
+    count = region.count(old)
     if count != 1:
-        raise RuntimeError(f'{label}: esperado 1, encontrado {count}')
-    s = s.replace(old, new, 1)
+        raise RuntimeError(f'{label}: esperado 1 dentro de CostePersonal, encontrado {count}')
+    region = region.replace(old, new, 1)
+    s = s[:ui_start] + region + s[ui_end:]
 
-replace_once(
+replace_once_coste_personal(
 '''  const nominasDelMes = nominas.filter((n2) => n2.mes === mes);
   const costeTotalMes = nominasDelMes.reduce((a22, n2) => a22 + (Number(n2.costeTotalEmpresa) || 0), 0);''',
 '''  const nominasDelMes = nominas.filter((n2) => n2.mes === mes);
@@ -120,7 +124,7 @@ replace_once(
 'coste excluye anuladas'
 )
 
-replace_once(
+replace_once_coste_personal(
 '''      const mesSaneado = mesLimpio(d2.mes);
       const avisos = [];''',
 '''      const mesSaneado = mesLimpio(d2.mes);
@@ -128,7 +132,7 @@ replace_once(
 'aviso revision IA'
 )
 
-replace_once(
+replace_once_coste_personal(
 '''        seguridadSocialEmpresa: numeroLimpio(d2.seguridadSocialEmpresa),
         notas: d2.notas || ""
       });''',
@@ -140,7 +144,7 @@ replace_once(
 'origen IA en formulario'
 )
 
-replace_once(
+replace_once_coste_personal(
 '''    setError("");
     if (editingId) updateNomina(editingId, form);
     else addNomina(form);
@@ -172,7 +176,7 @@ replace_once(
 'submit fail closed y revision humana'
 )
 
-replace_once(
+replace_once_coste_personal(
 '''      seguridadSocialEmpresa: n2.seguridadSocialEmpresa ?? "",
       notas: n2.notas || ""
     });''',
@@ -184,13 +188,13 @@ replace_once(
 'edicion conserva origen'
 )
 
-replace_once(
+replace_once_coste_personal(
 '''/* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => abrirEdicion(n2) }, /* @__PURE__ */ import_react4.default.createElement(Pencil, { size: 13 }), " Editar")''',
 '''/* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", disabled: n2.origen === "IA" || n2.estado === "ANULADA", onClick: () => abrirEdicion(n2) }, /* @__PURE__ */ import_react4.default.createElement(Pencil, { size: 13 }), n2.origen === "IA" ? " Revisada por humano" : n2.estado === "ANULADA" ? " Anulada" : " Editar")''',
 'bloqueo edicion IA'
 )
 
-replace_once(
+replace_once_coste_personal(
 '''/* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => deleteNomina(n2.id) }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 13 }), " Eliminar")''',
 '''/* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", disabled: n2.estado === "ANULADA", onClick: () => deleteNomina(n2.id) }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 13 }), n2.estado === "ANULADA" ? " Anulada" : " Anular")''',
 'anulacion UI'
