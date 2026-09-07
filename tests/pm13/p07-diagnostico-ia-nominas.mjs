@@ -4,12 +4,14 @@ const source = fs.readFileSync('fuente.js', 'utf8');
 const lower = source.toLowerCase();
 
 const terms = [
-  'nomina', 'nómina', 'nominas', 'nóminas', 'setNominas',
-  'inteligencia artificial', ' ia ', 'generarNomina', 'generar nómina',
-  'aprobar', 'validar', 'revisar', 'borrador', 'sintetic', 'simulad'
+  'function crearLogicaNominas', 'addNomina', 'updateNomina', 'deleteNomina',
+  'importar-nomina', 'function Nominas', 'Nóminas', 'Nominas',
+  'inteligencia artificial', 'generar nómina', 'generar nomina',
+  'aprobar nómina', 'aprobar nomina', 'revisión humana', 'revision humana',
+  'borrador', 'sintétic', 'sintetic', 'simulad'
 ];
 
-function snippets(term, max = 8, radius = 900) {
+function snippets(term, max = 4, radius = 2600) {
   const needle = term.toLowerCase();
   const out = [];
   let pos = 0;
@@ -29,12 +31,13 @@ const result = {
   sourceLength: source.length,
   terms: Object.fromEntries(terms.map(t => [t, snippets(t)])),
   flags: {
-    hasSetNominas: source.includes('setNominas'),
-    hasAprobar: lower.includes('aprobar'),
-    hasBorrador: lower.includes('borrador'),
+    hasCrearLogicaNominas: source.includes('function crearLogicaNominas'),
+    hasImportarNomina: source.includes('importar-nomina'),
+    hasAprobarNominaLiteral: lower.includes('aprobar nómina') || lower.includes('aprobar nomina'),
     hasRevisionHumanaLiteral: lower.includes('revisión humana') || lower.includes('revision humana'),
-    hasGenerarNominaLiteral: lower.includes('generar nómina') || lower.includes('generar nomina'),
+    hasBorrador: lower.includes('borrador'),
     hasSinteticaLiteral: lower.includes('sintétic') || lower.includes('sintetic'),
+    hasSimuladaLiteral: lower.includes('simulad'),
     hasIAVisible: lower.includes('inteligencia artificial') || /(^|[^a-záéíóúñ])ia([^a-záéíóúñ]|$)/i.test(source)
   }
 };
