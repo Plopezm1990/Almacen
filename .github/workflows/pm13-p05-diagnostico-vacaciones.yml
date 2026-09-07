@@ -1,0 +1,53 @@
+name: PM13 P05 diagnostico vacaciones
+
+on:
+  push:
+    branches: [pm13-p05-vacaciones]
+
+permissions:
+  contents: write
+
+jobs:
+  diagnostico:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main y extraer motor vacaciones
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          s = Path('fuente.js').read_text(encoding='utf-8')
+          tokens = [
+            'function vacacionesUsadas(',
+            'diasVacacionesAnuales',
+            'const usados = vacacionesUsadas',
+            'Registrar ausencia',
+            'tipo: ausenciaForm.tipo',
+            'a22.tipo === "Vacaciones"'
+          ]
+          out = {'sourceLength': len(s), 'tokens': {}}
+          for token in tokens:
+            pos = s.find(token)
+            out['tokens'][token] = {
+              'offset': pos,
+              'snippet': s[max(0,pos-900):min(len(s),pos+2200)] if pos >= 0 else None
+            }
+          Path('tests/pm13/P05_DIAGNOSTICO_VACACIONES.json').write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding='utf-8')
+          PY
+      - name: Guardar diagnóstico si cambia
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- tests/pm13/P05_DIAGNOSTICO_VACACIONES.json; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/pm13/P05_DIAGNOSTICO_VACACIONES.json
+          git commit -m 'test(pm13): diagnostico P05 vacaciones'
+          git push
