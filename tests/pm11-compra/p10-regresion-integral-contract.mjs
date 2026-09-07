@@ -57,6 +57,27 @@ assert.match(mobile, /findPedidoForm/);
 assert.match(mobile, /smallestProductRow/);
 assert.match(mobile, /scrollLeft !== 0/);
 
+// Corrección móvil P10 final: valida el parche realmente cargado por index.html.
+assert.ok(fs.existsSync('pm11-compra-mobile-p10-v1.js'), 'parche móvil P10 final presente');
+const mobileP10 = fs.readFileSync('pm11-compra-mobile-p10-v1.js', 'utf8');
+new Function(mobileP10);
+assert.match(mobileP10, /max-width: 767px/);
+assert.match(mobileP10, /pm11-compra-mobile-form/);
+assert.match(mobileP10, /pm11-compra-mobile-line/);
+assert.match(mobileP10, /repeat\(2, minmax\(0, 1fr\)\)/);
+assert.match(mobileP10, /overflow-x: hidden !important/);
+assert.match(mobileP10, /Nuevo pedido/);
+assert.match(mobileP10, /productos del pedido/);
+assert.match(mobileP10, /MutationObserver/);
+
+const indexHtml = fs.readFileSync('index.html', 'utf8');
+const mobileP10Tag = '<script defer src="./pm11-compra-mobile-p10-v1.js"></script>';
+const mobileP10Pos = indexHtml.indexOf(mobileP10Tag);
+const dashboardPos = indexHtml.indexOf('<script defer src="./dashboard-premium-v2.js"></script>');
+assert.ok(mobileP10Pos >= 0, 'parche móvil P10 enlazado en index.html');
+assert.ok(dashboardPos > mobileP10Pos, 'parche móvil P10 carga antes del dashboard');
+assert.equal(indexHtml.split(mobileP10Tag).length - 1, 1, 'parche móvil P10 se carga una sola vez');
+
 const previewLoader = fs.readFileSync('reset-pruebas-preview.js', 'utf8');
 const loaderPos = previewLoader.indexOf('./pm11-compra-mobile-layout-v1.js?v=pm11-p10-mobile-v1');
 const previewGuardPos = previewLoader.indexOf('if (typeof window === "undefined" || !HOST_PREVIEW.test(window.location.hostname)) return;');
