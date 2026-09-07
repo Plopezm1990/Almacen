@@ -1,0 +1,9 @@
+{
+  "name": "pm12-p08-supabase-full-contract",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "pg": "8.16.3",
+    "supabase": "2.39.2"
+  }
+}
