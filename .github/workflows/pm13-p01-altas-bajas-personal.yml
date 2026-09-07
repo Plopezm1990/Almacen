@@ -1,0 +1,105 @@
+name: PM13 P01 altas y bajas personal
+
+on:
+  push:
+    branches: [pm13-p01-altas-bajas-personal]
+    paths:
+      - 'fuente.js'
+      - 'tools/corregir_pm13_p01_altas_bajas_personal.py'
+      - 'tests/pm13/p01-altas-bajas-personal-contract.mjs'
+      - '.github/workflows/pm13-p01-altas-bajas-personal.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  validar-p01:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Proteger main y alcance PM13 P01
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          PM13_BASE='5d278f60d8e06e7a43ee9efe0287c1137dee7ebe'
+          test -z "$(git diff --name-only "$PM13_BASE"..HEAD -- supabase/)"
+          echo 'PM13_P01_MAIN_FROZEN=PASS'
+          echo 'PM13_P01_SUPABASE_DIFF=0'
+
+      - name: Aplicar corrección P01
+        run: python3 tools/corregir_pm13_p01_altas_bajas_personal.py
+
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+
+      - name: Contrato PM13 P01
+        run: node tests/pm13/p01-altas-bajas-personal-contract.mjs
+
+      - name: Regresión Personal PM10 P07
+        run: node tests/pm10/p07-personal-contract.mjs
+
+      - name: Regresión frontend PM12 P02-P10
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in 02 03 04 05 06 07 08 09 10; do
+            for t in tests/pm12/p${n}-*contract.mjs; do
+              test -f "$t" || continue
+              case "$t" in
+                *postgres*|*supabase*) continue ;;
+              esac
+              node "$t"
+            done
+          done
+          echo 'PM13_P01_REGRESSION_PM12=PASS'
+
+      - name: Barreras de no borrado
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          a=s.index('function crearLogicaPersonal({')
+          b=s.index('function crearLogicaTurnos({', a)
+          x=s[a:b]
+          assert 'function deleteEmpleado(id, baja = {})' in x
+          assert 'const bajasRegistradasPersonalPM13 = new Set' in x
+          assert 'setNominas((s22) => s22.filter((n2) => n2.empleadoId !== id))' not in x
+          assert 'setEmpleados((s22) => s22.filter((e22) => e22.id !== id))' not in x
+          print('PM13_P01_NO_DELETE=PASS')
+          PY
+
+      - name: Commit funcional si procede
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- fuente.js; then
+            echo 'Fuente ya coincide con P01'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add fuente.js
+          git commit -m 'feat(pm13): convertir eliminación de personal en baja trazable'
+          git push
+
+  gate-final:
+    needs: [validar-p01]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Gate PM13 P01
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          echo 'PM13_P01_GATE=PASS'
