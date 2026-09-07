@@ -73,6 +73,7 @@ assert.match(mobileP10, /pm11-compra-field-label/);
 assert.match(mobileP10, /labelInput\(numeric\[0\], 'Cantidad', 'Cantidad del producto'\)/);
 assert.match(mobileP10, /labelInput\(numeric\[1\], 'Precio unitario \(€\)', 'Precio unitario en euros'\)/);
 assert.match(mobileP10, /Eliminar producto del pedido/);
+assert.match(mobileP10, /deleteButton\.textContent = '× Eliminar'/);
 
 const indexHtml = fs.readFileSync('index.html', 'utf8');
 const mobileP10Tag = '<script defer src="./pm11-compra-mobile-p10-v1.js"></script>';
