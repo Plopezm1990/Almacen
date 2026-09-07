@@ -1,0 +1,44 @@
+{
+  "version": "PM04-v1",
+  "environment": {
+    "supabaseProjectRef": "qjqorixtkilwsndqayyx",
+    "productionProjectRef": "flqercbgpgmmfaakrwkc",
+    "productionDataCopied": false
+  },
+  "companies": [
+    {"id":"QA-EMP-A","name":"QA Empresa A"},
+    {"id":"QA-EMP-B","name":"QA Empresa B"}
+  ],
+  "locations": [
+    {"id":"QA-A1","companyId":"QA-EMP-A","active":true},
+    {"id":"QA-A2","companyId":"QA-EMP-A","active":true},
+    {"id":"QA-A-CERRADO","companyId":"QA-EMP-A","active":false},
+    {"id":"QA-B1","companyId":"QA-EMP-B","active":true}
+  ],
+  "users": [
+    {"email":"owner.a@qa.invalid","role":"Propietario","active":true,"companyId":"QA-EMP-A","locationIds":["QA-A1","QA-A2","QA-A-CERRADO"]},
+    {"email":"operator.a1@qa.invalid","role":"Cajero/a","active":true,"companyId":"QA-EMP-A","locationIds":["QA-A1"]},
+    {"email":"operator.a2@qa.invalid","role":"Encargado","active":true,"companyId":"QA-EMP-A","locationIds":["QA-A2"]},
+    {"email":"owner.b@qa.invalid","role":"Propietario","active":true,"companyId":"QA-EMP-B","locationIds":["QA-B1"]},
+    {"email":"inactive@qa.invalid","role":"Básico","active":false,"companyId":"QA-EMP-A","locationIds":[]}
+  ],
+  "products": [
+    {"id":"QA-PROD-A-AGUA","companyId":"QA-EMP-A","unit":"ud","price":6,"vatPercent":10,"cost":3},
+    {"id":"QA-PROD-B-CAFE","companyId":"QA-EMP-B","unit":"ud","price":4,"vatPercent":10,"cost":1.5}
+  ],
+  "stock": [
+    {"companyId":"QA-EMP-A","locationId":"QA-A1","productId":"QA-PROD-A-AGUA","warehouse":18,"floor":5,"total":23},
+    {"companyId":"QA-EMP-A","locationId":"QA-A2","productId":"QA-PROD-A-AGUA","warehouse":8,"floor":2,"total":10},
+    {"companyId":"QA-EMP-A","locationId":"QA-A-CERRADO","productId":"QA-PROD-A-AGUA","warehouse":4,"floor":0,"total":4,"historical":true},
+    {"companyId":"QA-EMP-B","locationId":"QA-B1","productId":"QA-PROD-B-CAFE","warehouse":5,"floor":2,"total":7}
+  ],
+  "moneyExample": {
+    "quantity": 2,
+    "unitPrice": 6,
+    "total": 12,
+    "vatPercent": 10,
+    "expectedBase": 10.91,
+    "expectedVat": 1.09,
+    "expectedCost": 6
+  }
+}

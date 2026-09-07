@@ -1,0 +1,94 @@
+{
+  "pm": "PM10",
+  "punto": 8,
+  "hallazgo": "LA-018",
+  "modulo": "Encargos",
+  "estado": "VALIDADO",
+  "fecha": "2026-09-05",
+  "rama": "pm10-validaciones-altas-datos-legados",
+  "base_punto": "35ea6073ba2680bf5adeadf538a9f2542d2271a7",
+  "commit_funcional": "c5ad4872e172680a686fba9adec5c5841c7ed33f",
+  "workflow_run": 33970901981,
+  "contrato_fuente": "tests/pm10/P03_CONTRATO_VALIDACION.md#10-encargos--contrato-para-la-018",
+  "diagnostico": {
+    "causas": [
+      "La UI filtraba form.lineas y conservaba únicamente las líneas que parecían válidas; una línea inválida podía desaparecer y el resto del encargo persistirse parcialmente.",
+      "La UI convertía la señal con Number(...) antes de la barrera de dominio, de forma que la validación real no era autoritativa.",
+      "addEncargo y updateEncargo no validaban de forma completa cliente, fecha, líneas, cantidades, precios, señal ni contexto antes de setEncargos."
+    ],
+    "evidencia_previa": "tests/pm10/P08_FOCUS_ENCARGOS.txt"
+  },
+  "correccion": {
+    "barrera_dominio": "validarEncargoPM10",
+    "cabecera": [
+      "clienteId obligatorio y resoluble",
+      "fechaEntrega obligatoria, ISO real y no anterior a fechaCreacion",
+      "localActivoId obligatorio para escritura",
+      "localId conflictivo rechazado"
+    ],
+    "lineas": [
+      "al menos una línea",
+      "productoId, cuando se informa, debe existir y no pertenecer explícitamente a otro local",
+      "línea manual requiere descripción no vacía",
+      "cantidad finita y > 0",
+      "precioUnitario finito y >= 0",
+      "una línea inválida rechaza el encargo completo; no se filtra silenciosamente"
+    ],
+    "senal": [
+      "vacía se trata como ausencia de señal",
+      "si se informa debe ser finita y >= 0",
+      "no puede superar el total",
+      "si es > 0 exige medio Efectivo/Tarjeta/Transferencia/Otro"
+    ],
+    "persistencia": "addEncargo/updateEncargo validan antes de la primera llamada a setEncargos; la UI solo cierra el formulario tras éxito y conserva el error en fallo.",
+    "legado": "leer un encargo legado inválido no lo reescribe; una edición ordinaria exige que el estado resultante cumpla el contrato."
+  },
+  "pruebas": {
+    "node_check_fuente": "OK",
+    "p08_encargos_contract": "OK",
+    "casos_p08": [
+      "camino feliz",
+      "sin cliente",
+      "cliente inexistente",
+      "cliente de otra empresa",
+      "sin fecha",
+      "fecha inválida",
+      "fecha anterior a creación",
+      "sin líneas",
+      "línea incompleta",
+      "producto inexistente",
+      "producto de otro local",
+      "cantidad 0/negativa/no finita",
+      "precio negativo/no finito",
+      "decimal válido",
+      "valor grande pero finito",
+      "señal vacía",
+      "señal negativa/no finita/mayor que total",
+      "medio de señal ausente/no permitido",
+      "lote con una línea válida y otra inválida = cero mutaciones",
+      "válido inmediatamente después del inválido",
+      "edición inválida = cero mutaciones",
+      "edición de legado obliga a corregir",
+      "otro local bloqueado"
+    ],
+    "p07_personal_regresion": "OK",
+    "p06_recepcion_regresion": "OK",
+    "p05_pedidos_regresion": "OK",
+    "p04_productos_regresion": "OK",
+    "pm09_regresiones_disponibles": "OK"
+  },
+  "alcance": {
+    "alta_edicion_encargo": "CERRADO",
+    "ciclo_entrega_anticipo_devolucion_e2e": "DIFERIDO A PM14 según Plan Maestro",
+    "backend_migration": "NO NECESARIA EN ESTE PUNTO",
+    "datos_sinteticos_persistentes": false,
+    "deploy_preview": "NO EJECUTADO; reservado para cierre/regresión del paquete"
+  },
+  "riesgo_produccion": {
+    "main_modificado": false,
+    "netlify_produccion": false,
+    "supabase_produccion": false,
+    "migraciones_produccion": false,
+    "datos_reales": false
+  }
+}

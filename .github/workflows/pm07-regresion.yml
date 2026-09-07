@@ -1,0 +1,41 @@
+name: PM-07 regresión stock autoritativo
+
+on:
+  push:
+    branches: [pm07-stock-reversos-ubicacion]
+    paths:
+      - 'fuente.js'
+      - 'source-recovery/fuente-recuperado.js'
+      - 'source-recovery/package.json'
+      - 'source-recovery/package-lock.json'
+      - 'tests/pm07/**'
+      - '.github/workflows/pm07-regresion.yml'
+  pull_request:
+    paths:
+      - 'fuente.js'
+      - 'source-recovery/fuente-recuperado.js'
+      - 'source-recovery/package.json'
+      - 'source-recovery/package-lock.json'
+      - 'tests/pm07/**'
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Contrato frontend PM-07
+        run: node tests/pm07/frontend-contract.mjs
+      - name: Sintaxis fuente recuperada
+        run: node --check source-recovery/fuente-recuperado.js
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+      - name: Build reproducible
+        working-directory: source-recovery
+        run: |
+          npm ci
+          npm run build
+          cmp -s dist/fuente.js ../fuente.js || { echo 'PM07_BUNDLE_NO_REPRODUCIBLE=1'; exit 1; }
+          echo 'PM07_BUILD_REPRODUCIBLE_OK=1'

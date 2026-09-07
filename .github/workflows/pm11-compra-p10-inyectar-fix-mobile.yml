@@ -1,0 +1,62 @@
+name: PM11 Compra P10 inyectar fix mobile
+
+on:
+  push:
+    branches: [pm11-compra-recepcion-pago-e2e]
+    paths:
+      - '.github/workflows/pm11-compra-p10-inyectar-fix-mobile.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inyectar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pm11-compra-recepcion-pago-e2e
+          fetch-depth: 0
+
+      - name: Verificar main congelado
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+
+      - name: Inyectar parche móvil antes del dashboard
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          tag = '<script defer src="./pm11-compra-mobile-p10-v1.js"></script>'
+          anchor = '<script defer src="./dashboard-premium-v2.js"></script>'
+          if tag not in s:
+              if anchor not in s:
+                  raise SystemExit('anchor dashboard no encontrado')
+              s = s.replace(anchor, tag + '\n' + anchor, 1)
+              p.write_text(s, encoding='utf-8')
+
+      - name: Verificar resultado
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F '<script defer src="./pm11-compra-mobile-p10-v1.js"></script>' index.html
+          test -f pm11-compra-mobile-p10-v1.js
+
+      - name: Commit solo en rama PM11 Compra
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- index.html; then
+            echo 'PM11_COMPRA_MOBILE_INDEX_YA_INYECTADO=PASS'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'PM11 compra P10: cargar corrección móvil de pedidos'
+          git push origin HEAD:pm11-compra-recepcion-pago-e2e

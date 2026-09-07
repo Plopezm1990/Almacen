@@ -1,0 +1,87 @@
+name: PM-02 corregir bootstrap cero
+
+on:
+  push:
+    branches: [reinicio-local-seguro]
+    paths:
+      - '.github/workflows/pm02-corregir-bootstrap-cero.yml'
+      - 'tools/corregir_bootstrap_cero_pm02.py'
+
+permissions:
+  contents: write
+
+jobs:
+  corregir-validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: reinicio-local-seguro
+          fetch-depth: 0
+
+      - name: Aplicar corrección de bootstrap vacío
+        run: python3 tools/corregir_bootstrap_cero_pm02.py
+
+      - name: Resincronizar fuente recuperada
+        run: python3 source-recovery/recuperar_candidato.py
+
+      - name: Validar sintaxis y build reproducible
+        shell: bash
+        run: |
+          set -e
+          node --check fuente.js
+          grep -Fq 'loadKey("configEmpresa", null)' fuente.js
+          grep -Fq 'empresasFinales.length === 0 && (empresaLegacy || hayDatosOperativosLegacy)' fuente.js
+          grep -Fq 'localesFinales.length === 0 && hayDatosOperativosLegacy' fuente.js
+          if grep -Fq 'nombre: "Chocoloyos S.L"' fuente.js; then
+            echo 'Sigue existiendo el local sintético Chocoloyos S.L' >&2
+            exit 1
+          fi
+          cd source-recovery
+          npm ci --no-audit --no-fund
+          npm run check
+          npm run build
+          node --check dist/fuente.js
+          echo 'PM02_BOOTSTRAP_BUILD_OK=1'
+
+      - name: Pruebas positiva y negativa del criterio de migración
+        shell: python
+        run: |
+          def empresa(empresas, config_legacy, datos):
+              return len(empresas) == 0 and (config_legacy or datos)
+          def local(locales, datos):
+              return len(locales) == 0 and datos
+          assert empresa([], False, False) is False
+          assert local([], False) is False
+          assert empresa([], True, False) is True
+          assert empresa([], False, True) is True
+          assert local([], True) is True
+          assert empresa([{'id':'e1'}], False, False) is False
+          assert local([{'id':'l1'}], False) is False
+          print('PM02_CERO_NO_RECONSTRUYE=1')
+          print('PM02_LEGACY_CON_DATOS_SE_MIGRA=1')
+
+      - name: Registrar evidencia
+        shell: bash
+        run: |
+          mkdir -p docs/plan-maestro
+          {
+            echo 'PM02_BOOTSTRAP_CERO_OK=1'
+            echo 'CERO_NO_CREA_EMPRESA=1'
+            echo 'CERO_NO_CREA_LOCAL=1'
+            echo 'LEGACY_CON_DATOS_MANTIENE_MIGRACION=1'
+            echo 'CONFIG_EMPRESA_SIN_DEFAULT_CHOCOLoyos=1'
+            echo "ROOT_FUENTE_SHA256=$(sha256sum fuente.js | awk '{print $1}')"
+            echo "RECOVERED_SOURCE_SHA256=$(sha256sum source-recovery/fuente-recuperado.js | awk '{print $1}')"
+            echo "RECOVERED_BUILD_SHA256=$(sha256sum source-recovery/dist/fuente.js | awk '{print $1}')"
+          } > docs/plan-maestro/PM02_BOOTSTRAP_CERO_EVIDENCIA.txt
+
+      - name: Guardar corrección solo en rama de pruebas
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add fuente.js source-recovery/fuente-recuperado.js source-recovery/PM01_EVIDENCIA.json docs/plan-maestro/PM02_BOOTSTRAP_CERO_EVIDENCIA.txt
+          git diff --cached --quiet && exit 0
+          git commit -m 'PM-02: evitar reconstrucción de empresa/local en estado cero [skip ci]'
+          git push origin HEAD:reinicio-local-seguro

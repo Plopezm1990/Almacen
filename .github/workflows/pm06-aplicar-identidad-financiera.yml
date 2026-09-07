@@ -1,0 +1,143 @@
+name: PM-06 aplicar identidad financiera
+
+on:
+  push:
+    branches: [pm06-identidad-factura-pago-gasto]
+    paths:
+      - '.github/workflows/pm06-aplicar-identidad-financiera.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 30
+
+      - name: Reaplicar parche PM-06 corregido y reconstruir
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git checkout 5a0a712c49b0dd58420ffb4e193d428824bb9916 -- \
+            index.html source-recovery/fuente-recuperado.js fuente.js
+
+          git show 9860ccb7a88a1a98a02bf79295cdfafd653b1090:.github/workflows/pm06-aplicar-identidad-financiera.yml \
+            | awk '/^H4sI/{capture=1} capture{if ($0=="B64") exit; print}' \
+            > /tmp/pm06_patch.b64
+          test -s /tmp/pm06_patch.b64
+          base64 -d /tmp/pm06_patch.b64 | gzip -d > /tmp/pm06_patch.py
+
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('/tmp/pm06_patch.py')
+          s = p.read_text(encoding='utf-8')
+
+          old_fn = """def must_replace(text, old, new, label, count=1):
+              n = text.count(old)
+              if n != count:
+                  raise SystemExit(f'{label}: esperado {count}, encontrado {n}')
+              return text.replace(old, new, count)
+          """
+          new_fn = """def must_replace(text, old, new, label, count=1):
+              n = text.count(old)
+              if label == 'index: get variables':
+                  if n != 2:
+                      raise SystemExit(f'{label}: esperado 2, encontrado {n}')
+                  return text.replace(old, new, 1)
+              if n != count:
+                  raise SystemExit(f'{label}: esperado {count}, encontrado {n}')
+              return text.replace(old, new, count)
+          """
+          if s.count(old_fn) != 1:
+              raise SystemExit('PM06: must_replace no localizado de forma única')
+          s = s.replace(old_fn, new_fn, 1)
+
+          old_pat = "pat_limpio = r'    const limpio = \\{ \\.\\.\\.limpioBase, localId: limpioBase\\.localId \\|\\| localActivoId \\|\\| null \\};'"
+          new_pat = "pat_limpio = r'    const limpio = \\{ \\.\\.\\.limpioBase, localId: limpioBase\\.localId \\|\\| \\(idsLocalesLineas\\.length === 1 \\? idsLocalesLineas\\[0\\] : null\\) \\|\\| localActivoId \\|\\| null \\};'"
+          if s.count(old_pat) != 1:
+              raise SystemExit('PM06: selector guardar albarán no localizado de forma única')
+          s = s.replace(old_pat, new_pat, 1)
+
+          old_export = "src = must_replace(src, 'Proveedor: prov ? prov.nombre : \"—\",', 'Proveedor: a2.proveedorSnapshot?.nombre || (prov ? prov.nombre : \"—\"),', 'source: export snapshot proveedor')"
+          new_export = "src = must_replace(src, 'Proveedor: prov ? prov.nombre : \"\\\\u2014\",', 'Proveedor: a2.proveedorSnapshot?.nombre || (prov ? prov.nombre : \"\\\\u2014\"),', 'source: export snapshot proveedor')"
+          if s.count(old_export) != 1:
+              raise SystemExit('PM06: selector export proveedor no localizado de forma única')
+          s = s.replace(old_export, new_export, 1)
+
+          old_hook = '''# Persistencia local reactiva del ledger (el adapter evita upsert directo remoto).
+          lines = src.splitlines()
+          inserted = False
+          for i, line in enumerate(lines):
+              if 'saveKey("facturasDirectas", facturasDirectas)' in line:
+                  lines.insert(i+1, '  (0, import_react4.useEffect)(() => { if (ready) saveKey("pagosFacturas", pagosFacturas); }, [pagosFacturas, ready]);')
+                  inserted = True
+                  break
+          if not inserted:
+              raise SystemExit('source: useEffect facturasDirectas no encontrado')
+          src = '\\n'.join(lines) + ('\\n' if src.endswith('\\n') else '')
+          '''
+          new_hook = '''# Persistencia local reactiva del ledger: insertar hook hermano tras el cierre real.
+          lines = src.splitlines()
+          marker_i = next((i for i, line in enumerate(lines) if 'saveKey("facturasDirectas", facturasDirectas)' in line), -1)
+          if marker_i < 0:
+              raise SystemExit('source: save facturasDirectas no encontrado')
+          close_i = next((i for i in range(marker_i + 1, min(len(lines), marker_i + 8)) if '[facturasDirectas, ready]' in lines[i]), -1)
+          if close_i < 0:
+              raise SystemExit('source: cierre useEffect facturasDirectas no encontrado')
+          hook_lines = [
+              '  (0, import_react4.useEffect)(() => {',
+              '    if (ready) saveKey("pagosFacturas", pagosFacturas);',
+              '  }, [pagosFacturas, ready]);'
+          ]
+          lines[close_i + 1:close_i + 1] = hook_lines
+          src = '\\n'.join(lines) + ('\\n' if src.endswith('\\n') else '')
+          '''
+          if s.count(old_hook) != 1:
+              raise SystemExit('PM06: bloque original de inserción hook no localizado de forma única')
+          s = s.replace(old_hook, new_hook, 1)
+
+          p.write_text(s, encoding='utf-8')
+          PY
+
+          python3 -m py_compile /tmp/pm06_patch.py
+          python3 /tmp/pm06_patch.py
+
+          python3 - <<'PY'
+          from pathlib import Path
+          s = Path('source-recovery/fuente-recuperado.js').read_text(encoding='utf-8')
+          marker = 'saveKey("facturasDirectas", facturasDirectas)'
+          p = s.find(marker)
+          if p < 0:
+              raise SystemExit('PM06_FACTURAS_EFFECT_MISSING=1')
+          window = s[p:p+500]
+          if window.find('saveKey("pagosFacturas", pagosFacturas)') < 0:
+              raise SystemExit('PM06_HOOK_PAGOS_MISSING=1')
+          fact_close = window.find('[facturasDirectas, ready]')
+          pago_pos = window.find('saveKey("pagosFacturas", pagosFacturas)')
+          if fact_close < 0 or pago_pos < fact_close:
+              raise SystemExit('PM06_HOOK_ANIDADO=1')
+          if s.count('saveKey("pagosFacturas", pagosFacturas)') != 1:
+              raise SystemExit('PM06_HOOK_PAGOS_DUPLICADO=1')
+          print('PM06_HOOK_PAGOS_OK=1')
+          PY
+
+          cd source-recovery
+          npm ci
+          npm run build
+          cp dist/fuente.js ../fuente.js
+          cd ..
+
+          node --check source-recovery/fuente-recuperado.js
+          node --check fuente.js
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html source-recovery/fuente-recuperado.js fuente.js
+
+          git commit -m 'PM-06: corregir hook y aplicar identidad financiera'
+          git push
+          echo 'PM06_APPLY_OK=1'

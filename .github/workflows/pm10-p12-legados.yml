@@ -1,0 +1,61 @@
+name: PM10 Punto 12 datos legados
+on:
+  push:
+    branches: [pm10-validaciones-altas-datos-legados]
+    paths:
+      - '.github/workflows/pm10-p12-legados.yml'
+      - 'tools/corregir_pm10_p12_legados.py'
+      - 'tests/pm10/p12-datos-legados-contract.mjs'
+permissions:
+  contents: write
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar detector y hardening legado
+        run: python3 tools/corregir_pm10_p12_legados.py
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+      - name: Contrato P12
+        run: node tests/pm10/p12-datos-legados-contract.mjs
+      - name: Regresiones PM10
+        run: |
+          set -e
+          for f in tests/pm10/*.mjs; do
+            [ "$f" = "tests/pm10/p12-datos-legados-contract.mjs" ] && continue
+            echo "== $f =="
+            node "$f"
+          done
+      - name: Regresiones PM09 disponibles
+        run: |
+          set -e
+          for f in tests/pm09/*.mjs; do
+            [ -f "$f" ] || continue
+            echo "== $f =="
+            node "$f"
+          done
+      - name: Verificar solo lectura
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          a=s.index('function diagnosticarDatosLegadosPM10(')
+          b=s.index('function DiagnosticoDatosLegadosPM10(',a)
+          d=s[a:b]
+          prohibidos=['setProductos','setPedidos','setEmpleados','setEncargos','window.storage','localStorage','.upsert(','.insert(','.update(']
+          for x in prohibidos:
+            assert x not in d, x
+          print('Detector legado: SOLO LECTURA OK')
+          PY
+      - name: Commit funcional
+        run: |
+          if git diff --quiet -- fuente.js; then
+            echo 'Sin cambios funcionales pendientes'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add fuente.js
+          git commit -m 'PM10: detectar y señalizar datos legados punto 12'
+          git push

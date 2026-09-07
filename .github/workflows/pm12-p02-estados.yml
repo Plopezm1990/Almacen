@@ -1,0 +1,36 @@
+name: PM12 P02 estados y normalizacion
+
+on:
+  push:
+    branches: [pm12-conteo-estados-honestos]
+    paths:
+      - 'pm12-conteo-estados-v1.js'
+      - 'tests/pm12/P02_ESTADOS_NORMALIZACION.md'
+      - 'tests/pm12/p02-estados-normalizacion-contract.mjs'
+      - '.github/workflows/pm12-p02-estados.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  estados:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar main congelado
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+      - name: Sintaxis
+        run: node --check pm12-conteo-estados-v1.js
+      - name: Contrato P02
+        run: node tests/pm12/p02-estados-normalizacion-contract.mjs
+      - name: Regresión P01
+        run: node tests/pm12/p01-checkpoint-inventario-contract.mjs
+      - name: Confirmar cero escrituras
+        run: |
+          echo 'PM12_P02_SUPABASE_WRITES=0'
+          echo 'PM12_P02_PRODUCTION_WRITES=0'

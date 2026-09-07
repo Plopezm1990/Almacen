@@ -1,0 +1,58 @@
+name: PM10 P11 diagnostico robustez altas guardados
+on:
+  push:
+    branches: [pm10-validaciones-altas-datos-legados]
+    paths:
+      - '.github/workflows/pm10-p11-diagnostico-robustez.yml'
+permissions:
+  contents: write
+jobs:
+  diagnostico:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extraer fronteras robustez
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, json
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          targets=[
+            ('crearLogicaProductos','function crearLogicaProductos(', 'function fechaValidaPedidoPM10'),
+            ('PedidosUI','function Pedidos(', 'function Recepcion('),
+            ('RecepcionUI','function Recepcion(', 'function textoHojaConteo('),
+            ('PersonalUI','function Personal(', 'function Turnos('),
+            ('EncargosUI','function Encargos(', 'function Clientes('),
+            ('GestionAlmacen','function GestionAlmacen()', 'function '),
+            ('DiagnosticoSincronizacion','function DiagnosticoSincronizacion()', None),
+          ]
+          out={}
+          for name,start,end in targets:
+            a=s.find(start)
+            if a<0:
+              out[name]={'found':False}; continue
+            if end:
+              b=s.find(end,a+len(start))
+              if b<0 or b-a>70000: b=min(len(s),a+70000)
+            else:
+              b=min(len(s),a+22000)
+            out[name]={'found':True,'offset':a,'snippet':s[a:b]}
+          # Add exact submit / receive / save-effect snippets by tokens
+          toks=['function submit()', 'function recibirPedido(', 'procesarRecepcion({', 'saveKey("productos"', 'saveKey("pedidos"', 'saveKey("empleados"', 'saveKey("encargos"', 'saveKey("movimientos"', 'setShowForm(false)', 'setProcesandoEntrada', 'disabled:', 'procesando', 'guardando']
+          occ={}
+          for t in toks:
+            arr=[]
+            for m in list(re.finditer(re.escape(t),s))[:25]:
+              arr.append({'offset':m.start(),'snippet':s[max(0,m.start()-1200):min(len(s),m.start()+3800)]})
+            occ[t]=arr
+          Path('tests/pm10/P11_DIAGNOSTICO_ROBUSTEZ.json').write_text(json.dumps({'blocks':out,'occurrences':occ},ensure_ascii=False,indent=2),encoding='utf-8')
+          print('guardado P11_DIAGNOSTICO_ROBUSTEZ.json')
+          PY
+      - name: Commit diagnóstico
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/pm10/P11_DIAGNOSTICO_ROBUSTEZ.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'PM10: guardar diagnóstico robustez punto 11'
+          git push

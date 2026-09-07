@@ -1,0 +1,78 @@
+name: PM09 Punto 9 conciliar Historial
+
+on:
+  push:
+    branches: [pm09-conciliacion-ventas-analitica]
+    paths:
+      - 'tools/corregir_pm09_p09_historial.py'
+      - 'tests/pm09/p09-historial-contract.mjs'
+      - '.github/workflows/pm09-p09-corregir.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  corregir:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pm09-conciliacion-ventas-analitica
+      - name: Aplicar punto 9
+        run: |
+          set -euo pipefail
+          python tools/corregir_pm09_p09_historial.py
+          node --check fuente.js
+      - name: Validar contrato punto 9
+        run: |
+          set -euo pipefail
+          node tests/pm09/p09-historial-contract.mjs
+      - name: Regresiones PM09 previas
+        run: |
+          set -euo pipefail
+          node tests/pm09/la007-results-contract.mjs
+          node tests/pm09/la008-rotation-margin-contract.mjs
+      - name: Regresiones heredadas
+        run: |
+          set -euo pipefail
+          node tests/pm05/frontend-contract.mjs
+          node tests/pm07/frontend-contract.mjs
+          node tests/pm08/frontend-contract.mjs
+          node tests/pm08/migration-contract.mjs
+          node tests/pm08/replay-scope-contract.mjs
+      - name: Generar evidencia punto 9
+        run: |
+          set -euo pipefail
+          SHA256=$(sha256sum fuente.js | awk '{print $1}')
+          cat > tests/pm09/P09_HISTORIAL_EVIDENCIA.json <<EOF
+          {
+            "punto": 9,
+            "estado": "CORREGIDO_PENDIENTE_DE_QA_FINAL_PM09",
+            "rama": "pm09-conciliacion-ventas-analitica",
+            "baseEntradaWorkflow": "${GITHUB_SHA}",
+            "fuenteSha256": "${SHA256}",
+            "reproduccionQAPM09": {
+              "escenario": "venta A 2 anulada completa + venta B 2 con devolucion cliente 1 sin reembolso",
+              "historial_legacy_dev_parcial_estado": "ACTIVA",
+              "historial_legacy_dev_parcial_unidades": 2,
+              "importe_original_dev_parcial": 12,
+              "esperado_estado_dev_parcial": "DEVUELTA_PARCIAL",
+              "esperado_unidades_netas_dev_parcial": 1,
+              "esperado_importe_neto_gestion_dev_parcial": 6,
+              "reembolso_real_dev_parcial": 0,
+              "importe_original_anulada": 12,
+              "esperado_importe_neto_anulada": 0
+            },
+            "cambio": "Historial deriva estado y correcciones desde VENTA + REVERSO + DEVOLUCION_CLIENTE; conserva ticket original, muestra neto de gestion y trazabilidad, y evita ofrecer anulacion tras devoluciones.",
+            "alcance": "fuente.js en rama PM09; sin cambios de esquema ni produccion"
+          }
+          EOF
+      - name: Guardar candidato solo en PM09
+        run: |
+          set -euo pipefail
+          git config user.name "Plopezm1990"
+          git config user.email "pedroroger1990@gmail.com"
+          git add fuente.js tests/pm09/P09_HISTORIAL_EVIDENCIA.json
+          git diff --cached --quiet && exit 0
+          git commit -m "PM09: conciliar Historial de ventas punto 9"
+          git push origin HEAD:pm09-conciliacion-ventas-analitica

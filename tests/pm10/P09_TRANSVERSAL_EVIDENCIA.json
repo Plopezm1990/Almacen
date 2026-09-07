@@ -1,0 +1,48 @@
+{
+  "pm": "PM10",
+  "punto": 9,
+  "estado": "VALIDADO",
+  "fecha": "2026-09-05",
+  "rama": "pm10-validaciones-altas-datos-legados",
+  "base_punto": "c58edee26723d4578f65d7a66b5b1daee62b432c",
+  "workflow_final": 33971245744,
+  "workflow_head": "f2c9731c620bc29361c7624feb24fd06334b071e",
+  "correccion_funcional_nueva": false,
+  "objetivo": "Revalidar transversalmente LA-011, LA-012, LA-013, LA-017 y LA-018 contra el contrato común PM10, incluyendo atomicidad, datos legados, contexto y regresiones heredadas.",
+  "resultado": {
+    "contrato_comun": "OK",
+    "barreras_simultaneas": [
+      "validarProductoPM10",
+      "validarPedidoPM10",
+      "validarRecepcionPedidoPM10",
+      "validarEmpleadoPM10",
+      "validarEncargoPM10"
+    ],
+    "orden_validar_antes_de_mutar": "OK en fronteras de alta/edición/recepción cubiertas",
+    "atomicidad": "OK; los contratos de Pedidos, Recepción, Personal y Encargos prueban efecto cero ante payload inválido; Productos mantiene validación previa a la mutación.",
+    "datos_legados": "No se ejecutó ninguna normalización masiva. Personal y Encargos prueban que un registro legado inválido no se reescribe al cargar y que una edición ordinaria exige un estado resultante válido. Pedidos conserva cantidadRecibida acumulada.",
+    "contexto": "OK; se mantienen bloqueos de local activo, referencias de otro local y cliente de otra empresa donde aplica. 'Todos los locales' continúa siendo solo lectura según contrato congelado.",
+    "regresiones": {
+      "LA-011_productos": "OK",
+      "LA-012_pedidos": "OK",
+      "LA-013_recepcion": "OK",
+      "LA-017_personal": "OK",
+      "LA-018_encargos": "OK",
+      "PM09_disponibles": "OK",
+      "node_check_fuente": "OK"
+    }
+  },
+  "incidencias_de_test": [
+    "Workflow 33971159869 falló por una coincidencia textual de mayúscula/minúscula en el contrato P03; no fue fallo funcional.",
+    "Workflow 33971198838 falló porque el test transversal comparaba la primera aparición genérica de setProductos en todo el bloque en lugar de la frontera addProducto; no fue fallo funcional.",
+    "El test se hizo menos frágil y la ejecución final 33971245744 terminó success sin cambiar fuente.js."
+  ],
+  "persistencia_y_entornos": {
+    "supabase_qa_writes": false,
+    "migraciones": false,
+    "datos_sinteticos_persistentes": false,
+    "deploy_preview": "NO EJECUTADO; reservado para el cierre del paquete",
+    "main_modificado": false,
+    "produccion_modificada": false
+  }
+}

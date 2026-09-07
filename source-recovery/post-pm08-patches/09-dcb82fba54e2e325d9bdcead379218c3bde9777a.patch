@@ -1,0 +1,69 @@
+diff --git a/fuente.js b/fuente.js
+index e33e882..f2e457e 100644
+--- a/fuente.js
++++ b/fuente.js
+@@ -104668,12 +104668,12 @@ function validarProductoPM10(data, { parcial = false } = {}) {
+   }
+   const reglas = [
+     ["costo", { minimo: 0 }, !parcial],
+-    ["precioVenta", { minimo: 0 }, false],
++    ["precioVenta", { minimo: 0, opcional: true }, false],
+     ["stockMinimo", { minimo: 0 }, !parcial],
+-    ["udsPorCaja", { minimo: 0, estrictoMinimo: true }, false],
+-    ["ivaCompra", { minimo: 0, maximo: 100 }, false],
+-    ["ivaVenta", { minimo: 0, maximo: 100 }, false],
+-    ["stock", { minimo: 0 }, false]
++    ["udsPorCaja", { minimo: 0, estrictoMinimo: true, opcional: true }, false],
++    ["ivaCompra", { minimo: 0, maximo: 100, opcional: true }, false],
++    ["ivaVenta", { minimo: 0, maximo: 100, opcional: true }, false],
++    ["stock", { minimo: 0, opcional: true }, false]
+   ];
+   for (const [campo, opciones, obligatorioAlta] of reglas) {
+     const presente = Object.prototype.hasOwnProperty.call(entrada, campo);
+@@ -104681,7 +104681,8 @@ function validarProductoPM10(data, { parcial = false } = {}) {
+     if (!presente && !obligatorioAlta) continue;
+     const r = numeroPM10(entrada[campo], campo, opciones);
+     if (!r.ok) return r;
+-    salida[campo] = r.valor;
++    if (r.vacio) delete salida[campo];
++    else salida[campo] = r.valor;
+   }
+   return { ok: true, datos: salida };
+ }
+@@ -107755,8 +107756,12 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
+       setError("Escribe el nombre del producto.");
+       return;
+     }
++    const creado = addProducto(form);
++    if (!creado || creado.ok === false) {
++      setError(creado?.error || "No se pudo guardar el producto.");
++      return;
++    }
+     setError("");
+-    addProducto({ ...form, costo: Number(form.costo) || 0, ivaCompra: Number(form.ivaCompra) || 0, udsPorCaja: Number(form.udsPorCaja) || 1, precioVenta: Number(form.precioVenta) || 0, ivaVenta: Number(form.ivaVenta) || 0, stockMinimo: Number(form.stockMinimo) || 0 });
+     setForm(blank);
+     setShowForm(false);
+   }
+@@ -107803,16 +107808,12 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
+     const contenidoAhora = Number(editForm.contenido) || 0;
+     const cambioContenido = contenidoAntes > 0 && contenidoAhora > 0 && contenidoAntes !== contenidoAhora;
+     const afectadas = cambioContenido ? fichasQueUsan(editFor) : [];
+-    updateProducto(editFor, {
+-      ...editForm,
+-      costo: Number(editForm.costo) || 0,
+-      ivaCompra: Number(editForm.ivaCompra) || 0,
+-      udsPorCaja: Number(editForm.udsPorCaja) || 1,
+-      precioVenta: Number(editForm.precioVenta) || 0,
+-      ivaVenta: Number(editForm.ivaVenta) || 0,
+-      stock: Number(editForm.stock) || 0,
+-      stockMinimo: Number(editForm.stockMinimo) || 0
+-    });
++    const actualizado = updateProducto(editFor, editForm);
++    if (!actualizado || actualizado.ok === false) {
++      setEditError(actualizado?.error || "No se pudo actualizar el producto.");
++      return;
++    }
++    setEditError("");
+     setEditFor(null);
+     if (afectadas.length > 0) {
+       setAvisoContenido({

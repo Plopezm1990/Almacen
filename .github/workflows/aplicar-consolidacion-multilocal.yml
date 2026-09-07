@@ -1,0 +1,37 @@
+name: Aplicar consolidación multi-local
+on:
+  push:
+    branches: [la-suite-identidad]
+    paths:
+      - '.github/workflows/aplicar-consolidacion-multilocal.yml'
+      - 'tools/corregir_multilocal_informes.py'
+permissions:
+  contents: write
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: la-suite-identidad
+      - name: Transformar y validar
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/corregir_multilocal_informes.py
+          node --check fuente.js
+          grep -q 'const idsLocalesEmpresaInforme = new Set(locales.filter' fuente.js
+          grep -q 'const localEsDeEmpresaInforme' fuente.js
+          grep -q 'productos.filter((p2) => localEsDeEmpresaInforme(p2.localId))' fuente.js
+          grep -q 'pendientesPago.filter((f2) => idsFacturasInforme.has(f2.id))' fuente.js
+          grep -q 'productoPorId: (id) => productosInforme.find' fuente.js
+      - name: Guardar solo en la rama de pruebas
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Plopezm1990"
+          git config user.email "pedroroger1990@gmail.com"
+          git add fuente.js
+          git diff --cached --quiet && exit 0
+          git commit -m "Consolidar todos los locales solo por empresa"
+          git push origin HEAD:la-suite-identidad

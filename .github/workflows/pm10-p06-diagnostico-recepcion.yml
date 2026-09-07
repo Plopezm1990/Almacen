@@ -1,0 +1,29 @@
+name: PM10 P06 diagnostico LA-013 recepcion
+on:
+  push:
+    branches: [pm10-validaciones-altas-datos-legados]
+    paths:
+      - '.github/workflows/pm10-p06-diagnostico-recepcion.yml'
+permissions:
+  contents: read
+jobs:
+  diagnostico:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extraer firma albaranes y confirmacion UI
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          for label,q,n in [
+            ('FIRMA_ALBARANES','function crearLogicaAlbaranes(',3500),
+            ('LLAMADAS_CONFIRMAR_ALBARAN','confirmarAlbaran(alb',7000),
+            ('BOTON_CONFIRMAR','confirmarAlbaran(',7000)
+          ]:
+            print('\n===== '+label+' =====')
+            hits=list(re.finditer(re.escape(q),s))
+            for m in hits[:12]:
+              print('\nOFFSET',m.start(),'\n',s[max(0,m.start()-1500):min(len(s),m.start()+n)].replace('\n','\\n'))
+          PY

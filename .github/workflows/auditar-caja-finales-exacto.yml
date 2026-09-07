@@ -1,0 +1,27 @@
+name: Precisar migración final de Caja
+on:
+  push:
+    branches: [la-suite-identidad]
+    paths:
+      - '.github/workflows/auditar-caja-finales-exacto.yml'
+  workflow_dispatch:
+jobs:
+  auditar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mostrar definiciones finales de arqueos y movimientos de caja
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          lines=s.splitlines()
+          for pat in ['arqueosFinales', 'movimientosCajaFinales', 'const localActivoFinal', 'empresaLegacyUnicaId']:
+            print('\n===== '+pat+' =====')
+            hits=[i for i,l in enumerate(lines,1) if pat in l]
+            print('HITS',hits)
+            for n in hits:
+              a=max(1,n-35); b=min(len(lines),n+45)
+              print(f'--- {a}:{b} ---')
+              for j in range(a,b+1): print(f'{j:06d}: {lines[j-1]}')
+          PY

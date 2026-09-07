@@ -1,0 +1,55 @@
+name: Auditar dashboard funcional
+
+on:
+  push:
+    branches: [la-suite-identidad]
+    paths:
+      - '.github/workflows/auditar-dashboard-funcional.yml'
+      - '.github/scripts/auditar-dashboard.mjs'
+      - 'dashboard-premium-v2.js'
+      - 'index.html'
+      - 'fuente.js'
+  workflow_dispatch:
+
+jobs:
+  auditar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Instalar Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium
+      - name: Levantar copia local aislada
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 > /tmp/la-suite-http.log 2>&1 &
+          echo $! > /tmp/la-suite-http.pid
+          for i in $(seq 1 20); do
+            if curl -fsS --max-time 2 http://127.0.0.1:4173/ >/dev/null; then
+              echo "Copia local accesible"
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/la-suite-http.log || true
+          exit 1
+      - name: Auditar pantalla general
+        env:
+          PREVIEW_URL: http://127.0.0.1:4173/
+        run: node .github/scripts/auditar-dashboard.mjs
+      - name: Subir informe
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: auditoria-dashboard
+          path: |
+            dashboard-audit.txt
+            dashboard-audit.png
+          if-no-files-found: ignore

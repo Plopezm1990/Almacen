@@ -1,0 +1,31 @@
+diff --git a/fuente.js b/fuente.js
+index 5870995..c892507 100644
+--- a/fuente.js
++++ b/fuente.js
+@@ -109645,19 +109645,15 @@ function DiagnosticoSincronizacion() {
+           detalle.push({ key, ok: false, error: "No hay ning\xFAn valor guardado en este dispositivo para esta clave." });
+           continue;
+         }
+-        if (!window.__nubeCliente) {
+-          detalle.push({ key, ok: false, error: "No hay conexi\xF3n a la nube en este momento." });
++        if (!window.storage || typeof window.storage.set !== "function") {
++          detalle.push({ key, ok: false, error: "La capa autorizada de almacenamiento no est\xE1 disponible." });
+           continue;
+         }
+-        const nuevo = JSON.parse(valorLocal);
+-        const r2 = await window.__nubeCliente.from("almacen_kv").upsert({ key, value: nuevo });
+-        if (r2.error) {
+-          detalle.push({ key, ok: false, error: r2.error.message });
+-        } else {
+-          detalle.push({ key, ok: true });
+-          const listaActualizada = JSON.parse(localStorage.getItem("almacen__pendientes") || "[]").filter((k2) => k2 !== key);
+-          localStorage.setItem("almacen__pendientes", JSON.stringify(listaActualizada));
+-        }
++        JSON.parse(valorLocal);
++        await window.storage.set(key, valorLocal, false);
++        detalle.push({ key, ok: true });
++        const listaActualizada = JSON.parse(localStorage.getItem("almacen__pendientes") || "[]").filter((k2) => k2 !== key);
++        localStorage.setItem("almacen__pendientes", JSON.stringify(listaActualizada));
+       } catch (e2) {
+         detalle.push({ key, ok: false, error: e2 && e2.message ? e2.message : String(e2) });
+       }

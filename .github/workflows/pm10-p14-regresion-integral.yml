@@ -1,0 +1,68 @@
+name: PM10 Punto 14 regresion integral
+on:
+  push:
+    branches: [pm10-validaciones-altas-datos-legados]
+    paths:
+      - '.github/workflows/pm10-p14-regresion-integral.yml'
+permissions:
+  contents: read
+jobs:
+  regresion-integral:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sintaxis bundle actual
+        run: node --check fuente.js
+      - name: Contratos PM10 P04-P13
+        run: |
+          set -euo pipefail
+          for f in \
+            tests/pm10/p04-productos-contract.mjs \
+            tests/pm10/p05-pedidos-contract.mjs \
+            tests/pm10/p06-recepcion-contract.mjs \
+            tests/pm10/p07-personal-contract.mjs \
+            tests/pm10/p08-encargos-contract.mjs \
+            tests/pm10/p09-transversal-contract.mjs \
+            tests/pm10/p10-autoridad-persistencia-contract.mjs \
+            tests/pm10/p11-robustez-altas-contract.mjs \
+            tests/pm10/p12-datos-legados-contract.mjs \
+            tests/pm10/p13-contexto-aislamiento-contract.mjs; do
+            echo "==> $f"
+            node "$f"
+          done
+      - name: Regresion heredada PM05
+        run: node tests/pm05/frontend-contract.mjs
+      - name: Regresion heredada PM07
+        run: node tests/pm07/frontend-contract.mjs
+      - name: Regresion heredada PM08
+        run: |
+          set -euo pipefail
+          node tests/pm08/frontend-contract.mjs
+          node tests/pm08/migration-contract.mjs
+          node tests/pm08/replay-scope-contract.mjs
+      - name: Regresion heredada PM09 completa
+        run: |
+          set -euo pipefail
+          for f in tests/pm09/*.mjs; do
+            echo "==> $f"
+            node "$f"
+          done
+      - name: Evidencia estatica de cobertura PM10
+        run: |
+          set -euo pipefail
+          test -f tests/pm10/P04_LA011_PRODUCTOS_EVIDENCIA.md
+          test -f tests/pm10/P05_PEDIDOS_EVIDENCIA.json
+          test -f tests/pm10/P06_RECEPCION_EVIDENCIA.json
+          test -f tests/pm10/P07_PERSONAL_EVIDENCIA.json
+          test -f tests/pm10/P08_ENCARGOS_EVIDENCIA.json
+          test -f tests/pm10/P09_TRANSVERSAL_EVIDENCIA.json
+          test -f tests/pm10/P10_AUTORIDAD_PERSISTENCIA_EVIDENCIA.json
+          test -f tests/pm10/P11_ROBUSTEZ_ALTAS_EVIDENCIA.json
+          test -f tests/pm10/P12_DATOS_LEGADOS_EVIDENCIA.json
+          test -f tests/pm10/P13_CONTEXTO_AISLAMIENTO_EVIDENCIA.json
+          echo 'PM10_P14_EVIDENCIAS_P04_P13=OK'
+      - name: Confirmar que no hay pasos de escritura QA o produccion
+        run: |
+          echo 'PM10_P14_ONLY_STATIC_AND_CONTRACT_TESTS=1'
+          echo 'PM10_P14_SUPABASE_WRITES=0'
+          echo 'PM10_P14_PRODUCTION_WRITES=0'

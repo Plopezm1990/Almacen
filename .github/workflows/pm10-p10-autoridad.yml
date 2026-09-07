@@ -1,0 +1,60 @@
+name: PM10 Punto 10 autoridad persistencia
+on:
+  push:
+    branches: [pm10-validaciones-altas-datos-legados]
+    paths:
+      - '.github/workflows/pm10-p10-autoridad.yml'
+      - 'tools/corregir_pm10_p10_autoridad.py'
+      - 'tests/pm10/p10-autoridad-persistencia-contract.mjs'
+permissions:
+  contents: write
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar hardening autoridad
+        run: python3 tools/corregir_pm10_p10_autoridad.py
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+      - name: Contrato P10 autoridad
+        run: node tests/pm10/p10-autoridad-persistencia-contract.mjs
+      - name: Regresión PM10 P09
+        run: node tests/pm10/p09-transversal-contract.mjs
+      - name: Regresiones PM10 P08 a P04
+        run: |
+          set -e
+          for f in \
+            tests/pm10/p08-encargos-contract.mjs \
+            tests/pm10/p07-personal-contract.mjs \
+            tests/pm10/p06-recepcion-contract.mjs \
+            tests/pm10/p05-pedidos-contract.mjs \
+            tests/pm10/p04-productos-contract.mjs; do
+            node "$f"
+          done
+      - name: Regresiones PM09 disponibles
+        run: |
+          set -e
+          for f in \
+            tests/pm09/p17-robustez-contract.mjs \
+            tests/pm09/p16-aislamiento-contexto-contract.mjs \
+            tests/pm09/p15-casos-economicos-contract.mjs \
+            tests/pm09/p12-resultados-margin-contract.mjs \
+            tests/pm09/p11-iva-contract.mjs \
+            tests/pm09/p10-caja-contract.mjs \
+            tests/pm09/p09-historial-contract.mjs \
+            tests/pm09/la007-resultados-contract.mjs \
+            tests/pm09/la008-unidades-rotacion-margen-contract.mjs; do
+            if [ -f "$f" ]; then node "$f"; fi
+          done
+      - name: Commit funcional
+        run: |
+          if git diff --quiet -- fuente.js; then
+            echo 'Sin cambios funcionales pendientes'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add fuente.js
+          git commit -m 'PM10: cerrar bypass de persistencia en reintentos'
+          git push

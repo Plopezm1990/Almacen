@@ -1,0 +1,33 @@
+name: PM09 LA-007 diagnostico previo
+on:
+  push:
+    branches: [pm09-conciliacion-ventas-analitica]
+    paths:
+      - '.github/workflows/pm09-la007-diagnostico.yml'
+      - 'tools/diagnosticar_pm09_la007.py'
+permissions:
+  contents: write
+jobs:
+  diagnostico:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pm09-conciliacion-ventas-analitica
+      - name: Verificar fuente y extraer diagnostico
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check fuente.js
+          python tools/diagnosticar_pm09_la007.py
+          test -s tests/pm09/LA007_DIAGNOSTICO_FUENTE.txt
+      - name: Conservar evidencia previa a la correccion
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Plopezm1990"
+          git config user.email "pedroroger1990@gmail.com"
+          git add tests/pm09/LA007_DIAGNOSTICO_FUENTE.txt
+          git diff --cached --quiet && exit 0
+          git commit -m "PM09: conservar diagnostico previo de LA-007"
+          git push origin HEAD:pm09-conciliacion-ventas-analitica

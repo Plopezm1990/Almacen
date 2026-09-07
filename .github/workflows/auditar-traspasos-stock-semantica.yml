@@ -1,0 +1,37 @@
+name: Auditar semántica de stock para traspasos entre locales
+on:
+  push:
+    branches: [la-suite-identidad]
+    paths: ['.github/workflows/auditar-traspasos-stock-semantica.yml']
+  workflow_dispatch:
+jobs:
+  auditar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspeccionar stock y props exactas de Traspasos
+        run: |
+          python3 <<'PY'
+          import re, pathlib
+          s=pathlib.Path('fuente.js').read_text(encoding='utf-8', errors='ignore')
+          terms=[
+            'stock - stockPisoVenta',
+            'stock - (p.stockPisoVenta',
+            'stockPisoVenta',
+            'Stock almacén',
+            'Stock total',
+            'Stock en piso',
+            'disponibleAlmacen',
+            'disponible almacén',
+            'function Traspasos(',
+            'React.createElement(Traspasos',
+            'traspasosDelLocalActivo',
+          ]
+          for term in terms:
+            ms=list(re.finditer(re.escape(term),s,re.I if 'stock' in term.lower() or 'disponible' in term.lower() else 0))
+            print(f'\n===== {term} | matches={len(ms)} =====')
+            for i,m in enumerate(ms[:20]):
+              a=max(0,m.start()-3500); b=min(len(s),m.end()+9000)
+              print(f'--- match {i+1} @ {m.start()} ---')
+              print(s[a:b].replace('\n',' ')[:12500])
+          PY

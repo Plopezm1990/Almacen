@@ -1,0 +1,29 @@
+name: Inspeccionar UI exacta de Caja
+on:
+  push:
+    branches: [la-suite-identidad]
+    paths:
+      - '.github/workflows/inspeccionar-caja-ui-exacta.yml'
+  workflow_dispatch:
+jobs:
+  inspeccionar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extraer componentes y llamadas de Caja
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          lines=s.splitlines()
+          pats=['function Caja(', 'function Caja', 'registrarMovimientoCaja', 'eliminarMovimientoCaja', 'addArqueo', 'deleteArqueo', 'Nuevo movimiento', 'Arqueo', 'Efectivo esperado']
+          for pat in pats:
+            print('\n===== '+pat+' =====')
+            hits=[i for i,l in enumerate(lines,1) if pat.lower() in l.lower()]
+            print('HITS', hits[:80])
+            for n in hits[:20]:
+              a=max(1,n-25); b=min(len(lines),n+100)
+              print(f'--- {a}:{b} ---')
+              for j in range(a,b+1): print(f'{j:06d}: {lines[j-1]}')
+          PY

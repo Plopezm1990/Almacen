@@ -1,0 +1,38 @@
+name: Auditar traspasos multi-local
+on:
+  push:
+    branches: [la-suite-identidad]
+    paths: ['.github/workflows/auditar-traspasos-multilocal.yml']
+  workflow_dispatch:
+jobs:
+  auditar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspeccionar lógica y vista de traspasos
+        run: |
+          python3 <<'PY'
+          import re, pathlib
+          s=pathlib.Path('fuente.js').read_text(encoding='utf-8', errors='ignore')
+          terms=[
+            'function crearLogicaTraspasos',
+            'crearLogicaTraspasos',
+            'addTraspaso',
+            'setTraspasos',
+            'direccion === "a_piso"',
+            'direccion:',
+            'Traspasos',
+            'traspasosDelLocalActivo',
+            'origenLocalId',
+            'destinoLocalId',
+            'localOrigenId',
+            'localDestinoId',
+          ]
+          for term in terms:
+            ms=list(re.finditer(re.escape(term),s))
+            print(f'\n===== {term} | matches={len(ms)} =====')
+            for i,m in enumerate(ms[:12]):
+              a=max(0,m.start()-2200); b=min(len(s),m.end()+5200)
+              print(f'--- match {i+1} @ {m.start()} ---')
+              print(s[a:b].replace('\n',' ')[:7400])
+          PY

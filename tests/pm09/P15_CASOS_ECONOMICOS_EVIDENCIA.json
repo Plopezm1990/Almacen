@@ -1,0 +1,90 @@
+{
+  "punto": 15,
+  "estado": "VALIDADO",
+  "rama": "pm09-conciliacion-ventas-analitica",
+  "commitFuncional": "78cfd9416722fda587ae2761a3d738bc2a38df54",
+  "workflowRunId": 33964420412,
+  "fuenteSha256": "cfe6512d4036c3f31dee6350a3b5ba213ac60f5336178edaf4ac85aaa564182d",
+  "riesgoReproducidoAntesDeCorregir": {
+    "fechaDevolucionSolicitada": "2026-10-01",
+    "fechaMovimientoSinCorreccion": "2026-09-05",
+    "causa": "movimientos_stock no conservaba la fecha economica de devolucion y el frontend sincronizaba created_at UTC; venta y REVERSO tampoco tenian fecha economica explicita.",
+    "efecto": "Una operacion podia caer en un periodo distinto del elegido por el negocio, afectando Caja, IVA, Resultados y analitica."
+  },
+  "migracionQA": {
+    "version": "20260905115143",
+    "name": "pm09_fecha_operacion_economica",
+    "proyecto": "L&A Suite QA",
+    "projectId": "qjqorixtkilwsndqayyx"
+  },
+  "contratoPm09": {
+    "venta": "registrar_venta_stock*_pm09 exige p_fecha y conserva fechaOperacion en movimientos_stock",
+    "reverso": "revertir_venta_stock*_pm09 exige p_fecha, conserva fechaOperacion y detecta conflicto si el mismo operationId se reintenta con otra fecha",
+    "devolucion": "registrar_devolucion_venta_pm09 reutiliza la transaccion atomica PM08 y copia p_fecha a fechaOperacion del movimiento",
+    "sincronizacion": "frontend usa d2.fechaOperacion y solo cae a created_at para legacy",
+    "caja": "pm09_resumen_caja_ventas usa fechaOperacion y mantiene fallback UTC solo para movimientos PM07/PM08 sin snapshot temporal"
+  },
+  "validacionQA": {
+    "fechaEconomica": {
+      "venta": "2026-11-30",
+      "reverso": "2026-12-01",
+      "devolucion": "2026-12-01",
+      "createdAtTecnico": "2026-09-05",
+      "resultado": "la fecha economica prevalece sobre created_at tecnico"
+    },
+    "mediosPagoD1": {
+      "ventasEfectivo": 23.00,
+      "ventasTarjeta": 43.00,
+      "ventasTransferencia": 6.00,
+      "detalle": "incluye venta efectivo, tarjeta, transferencia, mixto 5+7 y venta que sera anulada en periodo posterior"
+    },
+    "cambioPeriodoD2": {
+      "reversosEfectivo": -12.00,
+      "resultado": "la anulacion entra en 2026-12-01 y no reescribe 2026-11-30"
+    },
+    "devolucionSinReembolso": {
+      "cajaRows": 0,
+      "unidadesNetas": 1,
+      "ingresoNetoGestion": 5.45,
+      "costeNeto": 3.00
+    },
+    "redondeo": {
+      "brutoUnitarioHistorico": 6.00,
+      "reembolsoAceptado": 6.00,
+      "reembolsoExcesivo": 6.01,
+      "errorExceso": "reembolso_supera_importe_pendiente",
+      "excesoPersistido": false
+    },
+    "snapshotHistorico": {
+      "ingresoUnitario": 5.4545454545,
+      "costoUnitario": 3.00,
+      "ivaVentaAplicado": 10,
+      "valoresActualesSimulados": {"precio": 8.00, "coste": 4.50, "iva": 21},
+      "resultado": "el ledger conserva y usa el snapshot historico"
+    }
+  },
+  "validacionAutomatica": {
+    "resultado": "success",
+    "contratoP15": "OK",
+    "contratoP12": "OK",
+    "contratoP11": "OK",
+    "contratoP10": "OK",
+    "contratoP09": "OK",
+    "contratoLA007": "OK",
+    "contratoLA008": "OK",
+    "pm05Frontend": "OK",
+    "pm07Frontend": "OK",
+    "pm08Frontend": "OK",
+    "pm08Migration": "OK",
+    "pm08ReplayScope": "OK"
+  },
+  "limpiezaQA": {
+    "stock_operaciones_pm09p15v2": 0,
+    "movimientos_stock_pm09p15v2": 0,
+    "devoluciones_venta_pm09p15v2": 0,
+    "caja_operaciones_pm09p15v2": 0,
+    "stock_final_QA_A1_QA_PROD_A_AGUA": {"almacen": 18, "piso": 5, "total": 23}
+  },
+  "alcance": "fuente.js, migracion y pruebas/evidencia solo en rama PM09; migracion aplicada unicamente en Supabase QA. Sin main, sin produccion y sin Netlify.",
+  "notaCierrePM09": "Deploy Preview y smoke visual global permanecen reservados para el punto 18."
+}

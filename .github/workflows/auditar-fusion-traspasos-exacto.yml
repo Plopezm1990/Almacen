@@ -1,0 +1,37 @@
+name: Auditar fusión y referencias de traspasos
+on:
+  push:
+    branches: [la-suite-identidad]
+    paths:
+      - '.github/workflows/auditar-fusion-traspasos-exacto.yml'
+  workflow_dispatch:
+jobs:
+  auditar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Localizar lógica exacta de fusión y referencias
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          lines=s.splitlines()
+          pats=['fusionar','fusionadoEnId','productoOrigenId','productoDestinoId','setTraspasos','traspasos.map']
+          for pat in pats:
+              print('\n===== PATRON',pat,'=====')
+              hits=[i for i,l in enumerate(lines,1) if pat.lower() in l.lower()]
+              print('HITS',hits[:80])
+              for n in hits[:20]:
+                  a=max(1,n-10); b=min(len(lines),n+18)
+                  print(f'--- contexto {a}:{b} ---')
+                  for j in range(a,b+1): print(f'{j:06d}: {lines[j-1]}')
+          # Buscar funciones/callbacks que contengan simultáneamente fusión y actualizaciones de colecciones.
+          print('\n===== BLOQUES CANDIDATOS =====')
+          for m in re.finditer(r'function\s+\w*fusion\w*\s*\(|const\s+\w*fusion\w*\s*=|fusionadoEnId', s, re.I):
+              start=max(0,m.start()-2500); end=min(len(s),m.start()+12000)
+              block=s[start:end]
+              if 'setProductos' in block or 'fusionadoEnId' in block:
+                  print(block[:14500])
+                  print('\n--- FIN CANDIDATO ---\n')
+          PY

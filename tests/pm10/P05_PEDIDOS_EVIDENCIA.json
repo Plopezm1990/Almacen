@@ -1,0 +1,111 @@
+{
+  "pm": "PM10",
+  "punto": 5,
+  "hallazgo": "LA-012",
+  "modulo": "Pedidos",
+  "estado": "VALIDADO",
+  "fecha": "2026-09-05",
+  "rama": "pm10-validaciones-altas-datos-legados",
+  "base_diagnostico": "0b06da6c9a9540bffadaa54c6a8934b044034101",
+  "commit_funcional": "83b45254bdacba34645ce98c895ac4bc007a3fb8",
+  "fuente_blob_sha": "3a113d4a6c92fe34622f2807a3a3cbe8092f2795",
+  "workflow_exitoso": 33969110309,
+  "diagnostico": {
+    "crearPedido_sin_validacion_dominio": true,
+    "actualizarPedido_reiniciaba_cantidadRecibida_a_cero": true,
+    "openEdit_omitía_cantidadRecibida": true,
+    "ui_convertia_numeros_antes_de_validar": true,
+    "referencias_proveedor_producto_no_se_resolvían_en_logica": true
+  },
+  "contrato_congelado": {
+    "proveedorId_obligatorio_y_resoluble": true,
+    "al_menos_una_linea": true,
+    "productoId_resoluble_y_del_local": true,
+    "cantidad_finita_mayor_que_cero": true,
+    "costoUnitario_finito_mayor_o_igual_que_cero": true,
+    "fechaEsperada_opcional_pero_valida_si_se_informa": true,
+    "todo_o_nada": true,
+    "linea_existente_conserva_cantidadRecibida": true,
+    "linea_nueva_empieza_en_cero": true,
+    "cantidad_no_puede_bajar_de_lo_recibido": true,
+    "linea_recibida_no_puede_eliminarse_en_edicion_ordinaria": true,
+    "payload_no_puede_reescribir_cantidadRecibida": true,
+    "todos_los_locales_no_es_contexto_de_escritura": true
+  },
+  "correccion": {
+    "validador": "validarPedidoPM10",
+    "orden": "parsear_validar_resolver_referencias_mutar",
+    "crearPedido_valida_antes_de_setPedidos": true,
+    "actualizarPedido_valida_antes_de_setPedidos": true,
+    "ui_mantiene_formulario_abierto_si_hay_error": true,
+    "ui_conserva_cantidadRecibida_al_editar": true,
+    "proveedores_se_pasan_a_crearLogicaPedidos": true,
+    "productos_otro_local_rechazados": true,
+    "sin_local_activo_rechazado": true
+  },
+  "tests": {
+    "archivo": "tests/pm10/p05-pedidos-contract.mjs",
+    "resultado": "OK",
+    "casos": [
+      "alta_valida",
+      "proveedor_vacio",
+      "proveedor_inexistente",
+      "sin_lineas",
+      "producto_vacio",
+      "producto_inexistente",
+      "producto_otro_local",
+      "cantidad_cero",
+      "cantidad_negativa",
+      "cantidad_no_numerica",
+      "cantidad_infinita",
+      "costo_negativo",
+      "costo_no_numerico",
+      "costo_NaN",
+      "fecha_invalida",
+      "fecha_bisiesta_valida",
+      "decimal_valido",
+      "valor_extremo_finito",
+      "todo_o_nada_multilinea",
+      "edicion_parcial_conserva_recibido",
+      "linea_nueva_recibido_cero",
+      "rechazo_cantidad_menor_que_recibida",
+      "rechazo_eliminar_linea_recibida",
+      "rechazo_bajar_cantidadRecibida",
+      "rechazo_subir_cantidadRecibida_manualmente",
+      "rechazo_linea_nueva_con_recibido_positivo",
+      "efecto_cero_ante_error",
+      "valido_inmediatamente_despues_de_invalido"
+    ]
+  },
+  "regresiones": {
+    "PM10_LA011_productos": "OK",
+    "PM09_heredadas_disponibles": "OK"
+  },
+  "ejecuciones": {
+    "diagnostico": {
+      "run_id": 33968906353,
+      "conclusion": "success"
+    },
+    "primer_intento_correccion": {
+      "run_id": 33969054053,
+      "conclusion": "failure",
+      "causa": "el script inicial buscaba literalmente el bloque submit compilado y no encontró la representación exacta; no se generó commit funcional ni mutación de fuente"
+    },
+    "correccion_final": {
+      "run_id": 33969110309,
+      "conclusion": "success"
+    }
+  },
+  "datos_qa": {
+    "escrituras_persistentes": false,
+    "supabase_migraciones": false,
+    "limpieza_requerida": false
+  },
+  "produccion": {
+    "main_modificado": false,
+    "netlify_modificado": false,
+    "supabase_produccion_modificado": false,
+    "merge_realizado": false
+  },
+  "nota": "LA-012 queda cerrada en alcance de alta y edición de pedidos. La validación de sobre-recepción y saldo pendiente pertenece a LA-013 / siguiente punto y no se adelanta aquí."
+}

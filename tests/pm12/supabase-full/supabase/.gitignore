@@ -1,0 +1,12 @@
+# Supabase
+.branches
+.temp
+
+# dotenvx
+.env.keys
+.env.local
+.env.*.local
+
+# Exact migrations copied by prepare-fixture.mjs before the disposable stack starts.
+migrations/20260904135838_pm07_stock_ubicacion_y_reversos.sql
+migrations/20260907155028_pm12_p08_stock_atomico.sql

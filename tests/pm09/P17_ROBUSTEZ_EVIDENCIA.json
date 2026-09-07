@@ -1,0 +1,80 @@
+{
+  "punto": 17,
+  "estado": "VALIDADO",
+  "rama": "pm09-conciliacion-ventas-analitica",
+  "riesgoReproducidoAntesDeCorregir": {
+    "caso": "Se registró primero una ENTRADA de caja y después una VENTA PM09 usando exactamente el mismo operationId.",
+    "resultadoAnterior": {
+      "cajaRows": 1,
+      "stockRows": 1,
+      "stockA1DurantePrueba": 22
+    },
+    "diagnostico": "Las RPC PM08 de caja comprobaban colisiones contra stock, pero las wrappers PM09 de venta/reverso heredaban PM07 y no comprobaban previamente caja/arqueos. El mismo operationId podía existir en dos ledgers si caja se creaba primero.",
+    "limpieza": "Prueba ejecutada en Supabase QA dentro de transacción con ROLLBACK."
+  },
+  "correccion": {
+    "commitMigracion": "2f3e8262d51385c3fd3220b15e505a7654a7b75e",
+    "archivo": "supabase/migrations/20260905120500_pm09_operation_id_global_hardening.sql",
+    "migracionQA": {
+      "version": "20260905120546",
+      "name": "pm09_operation_id_global_hardening",
+      "projectId": "qjqorixtkilwsndqayyx"
+    },
+    "contrato": "Las cuatro wrappers PM09 de venta/reverso validan operationId, toman el mismo advisory lock PM08 y rechazan colisiones con caja_operaciones, arqueos_caja y arqueos_caja_anulaciones antes de delegar en PM07. El replay legítimo dentro del ledger de stock sigue siendo idempotente."
+  },
+  "validacionQaTransaccional": {
+    "checksTotal": 14,
+    "checksOk": 14,
+    "casos": {
+      "collisionCajaAVenta": "operation_id_conflict y stock sin mutación",
+      "ventaReplayExacto": "replayed=true; 1 operación, 1 movimiento, un solo descuento",
+      "ventaConflictoPayload": "operation_id_conflict",
+      "ventaConflictoFecha": "operation_id_conflict",
+      "reentradaLedger": "dos lecturas sucesivas mantienen exactamente la misma operación",
+      "cambioLocalMismoOperationId": "operation_id_conflict",
+      "cambioEmpresa": "contexto_no_autorizado",
+      "reversoReplayExacto": "replayed=true; una sola restauración de stock",
+      "reversoConflictoFecha": "operation_id_conflict",
+      "devolucionReplayExacto": "replayed=true; 1 devolución, 1 movimiento de stock y 1 movimiento de caja",
+      "devolucionConflictoPayload": "operation_id_conflict",
+      "cajaReplayExacto": "replayed=true; una sola fila",
+      "cajaConflictoPayload": "operation_id_conflict",
+      "timeoutRetryModelado": "La segunda llamada exacta con el mismo operationId representa el reintento tras respuesta perdida/timeout y no duplica efectos."
+    },
+    "nota": "Todas las operaciones sintéticas se ejecutaron dentro de una transacción y se revirtieron con ROLLBACK."
+  },
+  "frontend": {
+    "errorTransitorio": "Se conserva detección de error transitorio PM08.",
+    "borradorPendiente": "Se conserva el borrador pendiente para reintentar la misma operación.",
+    "conflictoPendiente": "Se conserva bloqueo de payload distinto sobre una operación pendiente.",
+    "dobleClick": "Se conservan guards de envío para operaciones críticas PM08."
+  },
+  "validacionAutomatica": {
+    "workflowRunId": 33965167031,
+    "resultado": "success",
+    "p17Robustness": "OK",
+    "p16IsolationContext": "OK",
+    "p15SpecialEconomic": "OK",
+    "p12ResultadosMargin": "OK",
+    "p11Iva": "OK",
+    "p10Caja": "OK",
+    "p09Historial": "OK",
+    "la007": "OK",
+    "la008": "OK",
+    "pm05Frontend": "OK",
+    "pm07Frontend": "OK",
+    "pm08Frontend": "OK",
+    "pm08Migration": "OK",
+    "pm08ReplayScope": "OK"
+  },
+  "limpiezaQa": {
+    "stockOperacionesPm09p17": 0,
+    "movimientosStockPm09p17": 0,
+    "devolucionesVentaPm09p17": 0,
+    "cajaOperacionesPm09p17": 0,
+    "stockFinalA1": {"almacen": 18, "piso": 5, "total": 23}
+  },
+  "notaWorkflow": "La primera ejecución del contrato P17 falló solo por una coincidencia textual demasiado estricta para el mensaje de borrador pendiente. Se robusteció el test; no fue necesario cambiar lógica funcional por ese fallo y la segunda ejecución quedó verde.",
+  "alcance": "Migración aplicada únicamente en Supabase QA. Código y evidencia solo en rama PM09. Sin main, sin producción y sin Netlify.",
+  "siguiente": "Punto 18: regresión final, build reproducible, Deploy Preview QA, smoke si la protección de autenticación lo permite, evidencia y PR de validación sin merge."
+}

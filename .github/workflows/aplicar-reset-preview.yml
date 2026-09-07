@@ -1,0 +1,42 @@
+name: Aplicar reset seguro del Deploy Preview
+on:
+  push:
+    branches: [la-suite-identidad]
+    paths:
+      - 'tools/activar_reset_preview.py'
+      - '.github/workflows/aplicar-reset-preview.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: la-suite-identidad
+          fetch-depth: 0
+      - name: Aplicar transformación controlada
+        run: python3 tools/activar_reset_preview.py
+      - name: Verificar que solo cambia index.html
+        run: |
+          git status --short
+          CAMBIOS=$(git status --short | awk '{print $2}')
+          if [ -z "$CAMBIOS" ]; then
+            echo "Sin cambios pendientes"
+            exit 0
+          fi
+          if [ "$CAMBIOS" != "index.html" ]; then
+            echo "Cambio inesperado: $CAMBIOS"
+            exit 1
+          fi
+          git diff --check
+          git diff -- index.html
+      - name: Guardar activación en la rama
+        run: |
+          if git diff --quiet -- index.html; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Aislar y reiniciar datos del Deploy Preview"
+          git push origin HEAD:la-suite-identidad

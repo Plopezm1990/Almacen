@@ -1,0 +1,1548 @@
+
+===== function crearLogicaConteos =====
+HITS=1
+--- lines 4121-4140 ---
+4121:       if (!c2.productoId) return;
+4122:       const p2 = productos.find((x3) => x3.id === c2.productoId && productoEsDelLocalActivoFicha(x3));
+4123:       (p2?.alergenos || []).forEach((a2) => set.add(a2));
+4124:     });
+4125:     return [...set];
+4126:   }
+4127:   return { addFichaCosto, updateFichaCosto, deleteFichaCosto, alergenosDeFicha };
+4128: }
+4129: function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId, empresaActivaId, obtenerContextoActor }) {
+4130:   const { aplicarMovimientoStock, aplicarLoteMovimientosStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+4131:   function localDeConteo(conteo) {
+4132:     if (!conteo) return null;
+4133:     if (conteo.localId) return conteo.localId;
+4134:     const items = conteo.items || [];
+4135:     if (!items.length) return null;
+4136:     const idsLocales = items.map((it2) => productos.find((p2) => p2.id === it2.productoId)?.localId || null);
+4137:     if (idsLocales.some((id) => !id)) return null;
+4138:     const unicos = [...new Set(idsLocales)];
+4139:     return unicos.length === 1 ? unicos[0] : null;
+4140:   }
+
+===== conteo_vacio: =====
+HITS=1
+--- lines 4254-4273 ---
+4254:     );
+4255:   }
+4256:   function finalizarConteo(conteoId, opciones = {}) {
+4257:     const conteo = conteos.find((c2) => c2.id === conteoId);
+4258:     if (!conteoEsDelLocalActivo(conteo)) return { ok: false, codigo: "fuera_de_contexto", error: "Conteo no disponible en el local activo." };
+4259:     const estadosApi = typeof window !== "undefined" ? window.__pm12ConteoEstados : null;
+4260:     if (!estadosApi) return { ok: false, codigo: "motor_no_disponible", error: "No se pudo validar el cierre. Recarga la página e inténtalo de nuevo." };
+4261:     const cierre = estadosApi.validarCierre(conteo, { responsable: conteo.responsables && conteo.responsables.contadoPor, confirmarParcial: opciones.confirmarParcial === true, motivoParcial: opciones.motivoParcial });
+4262:     const mensajes = { sin_productos: "Este conteo no contiene productos y no se puede cerrar.", cantidades_invalidas: "Hay cantidades inválidas. Corrígelas antes de cerrar.", conteo_vacio: "Aún no has contado ningún producto. Introduce al menos una cantidad.", responsable_obligatorio: "Indica quién realizó el conteo.", cobertura_incompleta: "Faltan productos por contar.", motivo_parcial_obligatorio: "Explica por qué se cierra el conteo incompleto." };
+4263:     if (!cierre.ok) return { ok: false, codigo: cierre.error, error: mensajes[cierre.error] || "No se puede cerrar el conteo.", cobertura: cierre.cobertura };
+4264:     const cerradoEn = (/* @__PURE__ */ new Date()).toISOString();
+4265:     const motivoParcial = cierre.estado === estadosApi.ESTADOS.PARCIAL ? String(opciones.motivoParcial || "").trim() : null;
+4266:     const registroCierre = { actorId: String(opciones.actorId || cierre.responsable).trim(), actorNombre: String(opciones.actorNombre || cierre.responsable).trim(), cerradoEn, motivoParcial, cobertura: cierre.cobertura };
+4267:     setConteos((s2) => s2.map((c2) => c2.id === conteoId ? { ...c2, completado: true, estado: cierre.estado, cerradoEn, motivoParcial, coberturaCierre: cierre.cobertura, cierre: registroCierre } : c2));
+4268:     registrarAuditoria("Finalizar conteo", `${cierre.estado} · ${cierre.cobertura.contados}/${cierre.cobertura.total} producto(s) · responsable: ${cierre.responsable}`);
+4269:     return { ok: true, estado: cierre.estado, cobertura: cierre.cobertura };
+4270:   }
+4271:   function eliminarConteo(conteoId, opciones = {}) {
+4272:     const conteo = conteos.find((c) => c.id === conteoId);
+4273:     if (!conteoEsDelLocalActivo(conteo)) return { ok: false, error: "Conteo no disponible en el local activo." };
+
+===== Cerrar conteo parcial =====
+HITS=1
+--- lines 7944-7963 ---
+7944:     window.open(`https://wa.me/?text=${encodeURIComponent(textoResultadoConteo())}`, "_blank");
+7945:   }
+7946:   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(
+7947:     SectionTitle,
+7948:     {
+7949:       action: /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setVerHoja(true) }, /* @__PURE__ */ import_react4.default.createElement(ClipboardList, { size: 15 }), " Hoja para contar"), !activo && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setActivoId(iniciarConteo("total")) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Contar todo el local"), !activo && /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setActivoId(iniciarConteo("piso_venta")) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Contar solo el piso de venta"), !activo && /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setActivoId(iniciarConteo("almacen")) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Contar solo el almac\xE9n (trastienda, sin elaborados)"))
+7950:     },
+7951:     "Inventario ciego"
+7952:   ), confirmarCierreParcial && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => { setConfirmarCierreParcial(false); setMotivoCierreParcial(""); }, title: "Cerrar conteo parcial" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, "Has contado ", /* @__PURE__ */ import_react4.default.createElement("b", null, coberturaActivo.contados, " de ", coberturaActivo.total), " productos. Los ", coberturaActivo.pendientes, " restantes quedarán identificados como pendientes; no se tratarán como cero."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo del cierre parcial" }, /* @__PURE__ */ import_react4.default.createElement("textarea", { value: motivoCierreParcial, onChange: (e2) => setMotivoCierreParcial(e2.target.value), rows: 3, placeholder: "Ej.: faltaba revisar la cámara frigorífica", className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => { setConfirmarCierreParcial(false); setMotivoCierreParcial(""); } }, "Seguir contando"), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarFinalizacionParcial }, "Confirmar cierre parcial"))), resumenCierre && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between gap-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, resumenCierre.ajustados === 0 ? "Todo coincid\xEDa \u2014 no hizo falta ning\xFAn ajuste." : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, resumenCierre.ajustados, " producto(s) ajustado(s).", resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "sobra").length > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " ", "De ellos, ", resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "sobra").length, " ten\xEDan sobrante y se traspasaron solos al piso de venta:", " ", resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "sobra").map((t2) => `${t2.nombre} (+${fmt(t2.cantidad)})`).join(", "), "."), resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "falta").length > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " ", resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "falta").length, " ten\xEDan menos de lo esperado en almac\xE9n \u2014 se asume que ya estaban en el piso de venta sin registrar, y se traspasaron ah\xED (el total no cambi\xF3, no se cuenta como merma):", " ", resumenCierre.traspasados.filter((t2) => t2.tipoTraspaso === "falta").map((t2) => `${t2.nombre} (+${fmt(t2.cantidad)})`).join(", "), "."))), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setResumenCierre(null), className: "shrink-0", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement(X, { size: 16 })))), almacenCongelado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start gap-2 text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { size: 16, color: C2.amber, style: { marginTop: 2, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement("span", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Almac\xE9n congelado."), " Mientras haya un conteo abierto no se pueden registrar entradas ni salidas, para que el descuadre no salga falseado. Finaliza el conteo para desbloquearlo."))), !activo && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start gap-2 text-[12.5px]", style: { color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement(EyeOff, { size: 16, style: { marginTop: 2, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement("span", null, "Durante el conteo no se muestra la existencia del sistema: cuentas f\xEDsicamente y anotas la cantidad. Al finalizar ver\xE1s las diferencias contra el stock registrado, valoradas en euros."))), activo && !activo.completado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3 flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement(Eye, { size: 15 }), " Captura de conteos", /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: esPisoVenta || esAlmacen ? C2.amber : C2.inkSoft }, esPisoVenta ? "Solo piso de venta" : esAlmacen ? "Solo almac\xE9n (trastienda)" : "Todo el local")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Contado por" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: (activo.responsables || {}).contadoPor || "", onChange: (e) => actualizarResponsable(activo.id, "contadoPor", e.target.value), placeholder: "Nombre" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Revisado por (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: (activo.responsables || {}).revisor || "", onChange: (e) => actualizarResponsable(activo.id, "revisor", e.target.value), placeholder: "Responsable" }))), /* @__PURE__ */ import_react4.default.createElement("div", { style: { overflowX: "auto" } }, /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[12px]", style: { borderCollapse: "collapse" } }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", null, /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff", width: 30 } }, "N\xBA"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Descripci\xF3n del producto"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff", width: 58 } }, "U/M"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff", width: 96 } }, "Conteo"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, (() => {
+7953:     const enConteo = activo.items.map((it2) => ({ it: it2, p: productoPorId(it2.productoId) })).filter((x3) => x3.p);
+7954:     const grupos = agruparPorProveedor(enConteo.map((x3) => x3.p), proveedores);
+7955:     const porId = new Map(enConteo.map((x3) => [x3.p.id, x3.it]));
+7956:     let n = 0;
+7957:     return grupos.map((g2) => /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, { key: g2.id }, /* @__PURE__ */ import_react4.default.createElement("tr", null, /* @__PURE__ */ import_react4.default.createElement("td", { colSpan: 4, className: "py-1.5 px-2 font-semibold text-[11.5px]", style: { background: C2.accentSoft, border: `1px solid ${C2.line}` } }, g2.nombre)), g2.items.map((p2) => {
+7958:       const it2 = porId.get(p2.id);
+7959:       if (!it2) return null;
+7960:       n += 1;
+7961:       const idx = n;
+7962:       const abc = esNoMercancia(p2) ? "\u2014" : clasificacionABC[p2.id] || "C";
+7963:       const sinContar = (it2.conteo ?? valorCF(it2) ?? "") === "";
+
+===== Historial =====
+HITS=37
+--- lines 871-890 ---
+871:       if (!items.length) return false;
+872:       const idsLocales = items.map((it2) => productos.find((p2) => p2.id === it2.productoId)?.localId || null);
+873:       if (idsLocales.some((id) => !id)) return false;
+874:       const unicos = [...new Set(idsLocales)];
+875:       return unicos.length === 1 && unicos[0] === localActivoId;
+876:     });
+877:   }, [conteos, productos, localActivoId]);
+878:   const [turnos, setTurnos] = (0, import_react4.useState)([]);
+879:   const [historial, setHistorial] = (0, import_react4.useState)([]);
+880:   (0, import_react4.useEffect)(() => {
+881:     (async () => {
+882:       const [p2, pr, pe2, mo, co, fc, hi, al, cp, gg, em, fj, dm, ra, pc, cl, en, aq, tu, to, me2, pin, au, op, tr, ua, fd2, pf, nom, fre, rac, entr, mc, dev, ce, emps, loc, lai] = await Promise.all([
+883:         loadKey("proveedores", []),
+884:         loadKey("productos", []),
+885:         loadKey("pedidos", []),
+886:         loadKey("movimientos", []),
+887:         loadKey("conteos", []),
+888:         loadKey("fichasCosto", []),
+889:         loadKey("historialRespaldos", []),
+890:         loadKey("albaranes", []),
+--- lines 933-952 ---
+933:         const tieneAjustesYa = (mo || []).some((m2) => m2.documentoOrigenId === c2.id && m2.origen === "aplicarAjustes");
+934:         return tieneAjustesYa ? { ...c2, ajustesAplicados: true } : c2;
+935:       });
+936:       if (coMigrado.some((c2, i3) => c2 !== (co || [])[i3])) {
+937:         await saveKey("conteos", coMigrado);
+938:       }
+939:       setConteos(coMigrado);
+940:       setFichasCosto(fc);
+941:       setHistorial(hi);
+942:       setAlbaranes(alLimpios);
+943:       const habiaFotos = (al || []).some((a2) => a2 && a2.fotoOrigenIA !== void 0);
+944:       setCatalogoProv(cp);
+945:       setGastosGenerales(gg);
+946:       setEmpleados(em);
+947:       setFichajes(fj);
+948:       setDisenoMenu(dm || "B");
+949:       setRegistrosAppcc(ra);
+950:       setFreidoras(fre || []);
+951:       setRegistrosAceite(rac || []);
+952:       setPuntosControl(pc);
+--- lines 1110-1129 ---
+1110:             id: uid(),
+1111:             fecha: (/* @__PURE__ */ new Date()).toISOString(),
+1112:             automatica: true,
+1113:             motivo: "automatico-diario",
+1114:             backupVersion: 3,
+1115:             data: { proveedores: p2, productos: pr, pedidos: pe2, movimientos: mo, conteos: co, fichasCosto: fc, albaranes: alLimpios, catalogoProv: cp, gastosGenerales: gg, empleados: em, fichajes: fj, registrosAppcc: ra, puntosControl: pc, clientes: cl, encargos: en, arqueos: aq, turnos: tu, nominas: nom, facturasDirectas: fd2, ordenesProduccion: op, traspasos: tr, auditoria: au, freidoras: fre, registrosAceite: rac }
+1116:           };
+1117:           const historialFinal = [snapshot, ...hi].slice(0, 30);
+1118:           setHistorial(historialFinal);
+1119:           await saveKey("historialRespaldos", historialFinal);
+1120:         }
+1121:       }
+1122:     })();
+1123:   }, []);
+1124:   (0, import_react4.useEffect)(() => {
+1125:     if (ready && !skipSaveRef.current) saveKey("proveedores", proveedores);
+1126:   }, [proveedores, ready]);
+1127:   (0, import_react4.useEffect)(() => {
+1128:     if (ready && !skipSaveRef.current) saveKey("productos", productos);
+1129:   }, [productos, ready]);
+--- lines 1255-1274 ---
+1255:   const [restoreError, setRestoreError] = (0, import_react4.useState)("");
+1256:   const [showBackupView, setShowBackupView] = (0, import_react4.useState)(false);
+1257:   const [backupText, setBackupText] = (0, import_react4.useState)("");
+1258:   const [showRestoreInput, setShowRestoreInput] = (0, import_react4.useState)(false);
+1259:   const [restoreText, setRestoreText] = (0, import_react4.useState)("");
+1260:   const [copiado, setCopiado] = (0, import_react4.useState)(false);
+1261:   const {
+1262:     crearPuntoDeGuardado,
+1263:     restaurarDesdeHistorial,
+1264:     abrirRespaldo,
+1265:     copiarRespaldo,
+1266:     abrirRestaurar,
+1267:     analizarTextoRestauracion,
+1268:     confirmarRestauracion,
+1269:     exportarExcelGeneral,
+1270:     compararConEstadoActual,
+1271:     coleccionesQueSeConservan
+1272:   } = crearLogicaRespaldos({
+1273:     proveedores,
+1274:     productos,
+--- lines 1313-1332 ---
+1313:     setTurnos,
+1314:     setNominas,
+1315:     setFacturasDirectas,
+1316:     setOrdenesProduccion,
+1317:     setTraspasos,
+1318:     setAuditoria,
+1319:     setFreidoras,
+1320:     setRegistrosAceite,
+1321:     setHistorial,
+1322:     setPendingRestore,
+1323:     pendingRestore,
+1324:     setBackupText,
+1325:     backupText,
+1326:     setCopiado,
+1327:     setShowBackupView,
+1328:     setShowRestoreInput,
+1329:     setRestoreText,
+1330:     restoreText,
+1331:     setRestoreError,
+1332:     proveedorPorId,
+--- lines 2128-2147 ---
+2128:       clasificacionABC: clasificacionABCDelLocalActivo,
+2129:       almacenCongelado,
+2130:       movimientos: movimientosDelLocalActivo,
+2131:       fichasCosto: fichasCostoDelLocalActivo,
+2132:       updateFichaCosto,
+2133:       ajustarProductoPorOtro
+2134:     }
+2135:   ), tab === "historial_producto" && /* @__PURE__ */ import_react4.default.createElement(
+2136:     HistorialProducto,
+2137:     {
+2138:       productos: productosDelLocalActivo,
+2139:       movimientos: movimientosDelLocalActivo,
+2140:       pedidos: pedidosDelLocalActivo,
+2141:       albaranes: albaranesDelLocalActivo,
+2142:       traspasos: traspasosDelLocalActivo,
+2143:       proveedorPorId
+2144:     }
+2145:   ), tab === "aceite" && /* @__PURE__ */ import_react4.default.createElement(
+2146:     AceiteFreidoras,
+2147:     {
+--- lines 2359-2378 ---
+2359:       fichasCosto: fichasCostoDelLocalActivo,
+2360:       alergenosDeFicha
+2361:     }
+2362:   ), tab === "saldo" && /* @__PURE__ */ import_react4.default.createElement(SaldoAlmacen, { productos: productosDelLocalActivo, proveedores, valorInventario: valorInventarioDelLocalActivo, valorUtillaje: valorUtillajeDelLocalActivo, proveedorPorId, clasificacionABC: clasificacionABCDelLocalActivo, analisisABC: analisisABCDelLocalActivo }), tab === "respaldos" && /* @__PURE__ */ import_react4.default.createElement(
+2363:     Respaldos,
+2364:     {
+2365:       historial,
+2366:       crearPuntoDeGuardado,
+2367:       restaurarDesdeHistorial,
+2368:       abrirRespaldo,
+2369:       abrirRestaurar,
+2370:       exportarExcelGeneral,
+2371:       pinPropietario,
+2372:       establecerPin,
+2373:       activarModoEmpleado
+2374:     }
+2375:   ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas }));
+2376:   const itemsMeta = [
+2377:     { id: "dashboard", label: "Panel general", icon: ChartColumn },
+2378:     { id: "direccion", label: "Panel de direcci\xF3n", icon: TrendingUp },
+--- lines 2374-2393 ---
+2374:     }
+2375:   ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas }));
+2376:   const itemsMeta = [
+2377:     { id: "dashboard", label: "Panel general", icon: ChartColumn },
+2378:     { id: "direccion", label: "Panel de direcci\xF3n", icon: TrendingUp },
+2379:     { id: "proveedores", label: "Proveedores", icon: Truck },
+2380:     { id: "productos", label: "Productos", icon: Package },
+2381:     { id: "buscar", label: "Buscar", icon: Search },
+2382:     { id: "historial_producto", label: "Historial de producto", icon: RotateCcwClock },
+2383:     { id: "pedidos", label: "Pedidos", icon: ShoppingCart, badge: pedidosPendientesDelLocalActivo.length },
+2384:     { id: "recepcion", label: "Recepci\xF3n", icon: ClipboardList },
+2385:     { id: "albaranes", label: "Albaranes", icon: FileText },
+2386:     { id: "facturas", label: "Facturas", icon: Files },
+2387:     { id: "pagos", label: "Cuentas por pagar", icon: Coins, badge: vencenProntoDelLocalActivo.length, badgeColor: C2.red },
+2388:     { id: "conteo", label: "Inventario ciego", icon: Boxes, badge: stockBajoDelLocalActivo.length, badgeColor: C2.amber },
+2389:     { id: "saldo", label: "Saldo de almac\xE9n", icon: ClipboardList },
+2390:     { id: "mapa", label: "Mapa de almac\xE9n", icon: Map2 },
+2391:     { id: "traspasos", label: "Traspasos", icon: ArrowLeftRight, badge: pisoVentaBajoDelLocalActivo.length, badgeColor: C2.amber },
+2392:     { id: "fichas", label: "Fichas de costo", icon: Calculator },
+2393:     { id: "produccion", label: "Producci\xF3n", icon: Factory },
+--- lines 5706-5725 ---
+5706:   setNominas,
+5707:   setFacturasDirectas,
+5708:   setOrdenesProduccion,
+5709:   setTraspasos,
+5710:   setAuditoria,
+5711:   setFreidoras,
+5712:   setRegistrosAceite,
+5713:   // estado propio de la pantalla de respaldos
+5714:   setHistorial,
+5715:   setPendingRestore,
+5716:   pendingRestore,
+5717:   setBackupText,
+5718:   backupText,
+5719:   setCopiado,
+5720:   setShowBackupView,
+5721:   setShowRestoreInput,
+5722:   setRestoreText,
+5723:   restoreText,
+5724:   setRestoreError,
+5725:   // extras para el Excel y la auditoría
+--- lines 5829-5848 ---
+5829:     const snapshot = {
+5830:       id: uid(),
+5831:       fecha: (/* @__PURE__ */ new Date()).toISOString(),
+5832:       automatica: motivo !== "manual",
+5833:       motivo,
+5834:       backupVersion: 3,
+5835:       data: datosDelNegocio()
+5836:     };
+5837:     setHistorial((s2) => [snapshot, ...s2].slice(0, 30));
+5838:     return snapshot;
+5839:   }
+5840:   function restaurarDesdeHistorial(snapshot) {
+5841:     setPendingRestore({ ...snapshot.data, exportadoEl: snapshot.fecha });
+5842:   }
+5843:   function abrirRespaldo() {
+5844:     const data = {
+5845:       version: 2,
+5846:       // se mantiene por compatibilidad con lectores antiguos
+5847:       backupVersion: 3,
+5848:       // 3 = incluye nóminas, facturas, producción, traspasos y auditoría
+--- lines 5832-5851 ---
+5832:       automatica: motivo !== "manual",
+5833:       motivo,
+5834:       backupVersion: 3,
+5835:       data: datosDelNegocio()
+5836:     };
+5837:     setHistorial((s2) => [snapshot, ...s2].slice(0, 30));
+5838:     return snapshot;
+5839:   }
+5840:   function restaurarDesdeHistorial(snapshot) {
+5841:     setPendingRestore({ ...snapshot.data, exportadoEl: snapshot.fecha });
+5842:   }
+5843:   function abrirRespaldo() {
+5844:     const data = {
+5845:       version: 2,
+5846:       // se mantiene por compatibilidad con lectores antiguos
+5847:       backupVersion: 3,
+5848:       // 3 = incluye nóminas, facturas, producción, traspasos y auditoría
+5849:       exportadoEl: (/* @__PURE__ */ new Date()).toISOString(),
+5850:       ...datosDelNegocio()
+5851:     };
+--- lines 5957-5976 ---
+5957:         Pagada: a2.pagada ? "S\xED" : "No"
+5958:       };
+5959:     });
+5960:     utils.book_append_sheet(wb, utils.json_to_sheet(hojaAlb), "Albaranes");
+5961:     writeFileSync(wb, `datos_almacen_${todayISO()}.xlsx`);
+5962:   }
+5963:   return {
+5964:     crearPuntoDeGuardado,
+5965:     restaurarDesdeHistorial,
+5966:     abrirRespaldo,
+5967:     copiarRespaldo,
+5968:     abrirRestaurar,
+5969:     analizarTextoRestauracion,
+5970:     confirmarRestauracion,
+5971:     exportarExcelGeneral,
+5972:     compararConEstadoActual,
+5973:     coleccionesQueSeConservan
+5974:   };
+5975: }
+5976: function litrosPorUnidadDeStock(producto) {
+--- lines 8106-8125 ---
+8106:     },
+8107:     op.label
+8108:   ))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "zona-impresion", style: ESTILO_IMPRESION_CLARO }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end justify-between mb-3 pb-3", style: { borderBottom: `2px solid ${C2.accent}` } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[17px] font-semibold" }, "Hoja de conteo de inventario"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Fecha: ", (/* @__PURE__ */ new Date()).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" }))), /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO, alt: "", style: { height: 62, width: "auto" } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, 'Cuenta f\xEDsicamente cada producto y anota la cantidad en la columna "Conteo".'), /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[11.5px]", style: { borderCollapse: "collapse" } }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", null, /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff", width: 28 } }, "N\xBA"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Descripci\xF3n del producto"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff", width: 60 } }, "U/M"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff", width: 90 } }, "Conteo"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, (() => {
+8109:     let n = 0;
+8110:     return agruparPorProveedor(productosHoja, proveedores).map((g2) => /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, { key: g2.id }, /* @__PURE__ */ import_react4.default.createElement("tr", null, /* @__PURE__ */ import_react4.default.createElement("td", { colSpan: 4, className: "py-1.5 px-2 font-semibold text-[11.5px]", style: { background: C2.accentSoft, border: `1px solid ${C2.line}` } }, g2.nombre, " \xB7 ", g2.items.length, " referencia(s)")), g2.items.map((p2) => {
+8111:       n += 1;
+8112:       return /* @__PURE__ */ import_react4.default.createElement("tr", { key: p2.id, style: { background: n % 2 ? C2.bg : C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 mono", style: { border: `1px solid ${C2.line}` } }, n), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2", style: { border: `1px solid ${C2.line}` } }, p2.nombre, p2.codigo && /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: C2.inkSoft } }, " \xB7 ", p2.codigo)), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-center", style: { border: `1px solid ${C2.line}` } }, p2.unidad), /* @__PURE__ */ import_react4.default.createElement("td", { style: { border: `1px solid ${C2.line}`, height: 32, background: "#F0F4F1" } }));
+8113:     })));
+8114:   })())), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-6 text-[11px] grid grid-cols-2 gap-6", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement("div", null, "Contado por: _________________________"), /* @__PURE__ */ import_react4.default.createElement("div", null, "Fecha y firma: _________________________")))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Historial de conteos"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, conteos.filter((c2) => c2.id !== activoId).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin conteos anteriores." }) : conteos.filter((c2) => c2.id !== activoId).map((c2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: c2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", null, "Conteo del ", c2.fecha, c2.ambito === "piso_venta" && /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, " \xB7 piso de venta"), c2.ambito === "almacen" && /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, " \xB7 almac\xE9n (trastienda)")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: (c2.estado === "CANCELADO" || c2.cancelado === true) ? C2.inkSoft : (c2.estado === "PARCIAL" ? C2.amber : (c2.completado || c2.estado === "COMPLETADO") ? C2.accent : C2.amber) }, (c2.estado === "CANCELADO" || c2.cancelado === true) ? "Cancelado" : c2.estado === "PARCIAL" ? "Parcial" : (c2.completado || c2.estado === "COMPLETADO") ? "Completado" : c2.estado === "BORRADOR" ? "Borrador" : "En curso"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setActivoId(c2.id) }, "Ver ", /* @__PURE__ */ import_react4.default.createElement(ChevronRight, { size: 13 })), eliminarConteo && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
+8115:       setConfirmarEliminar(c2);
+8116:       setMotivoCancelacion("");
+8117:       setResponsableCancelacion(c2.responsables && c2.responsables.contadoPor ? c2.responsables.contadoPor : c2.responsable || "");
+8118:     }, style: { color: C2.red } }, "Eliminar")))))), confirmarEliminar && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmarEliminar(null), title: "Cancelar o eliminar conteo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, "Vas a eliminar el conteo del ", /* @__PURE__ */ import_react4.default.createElement("b", null, confirmarEliminar.fecha), confirmarEliminar.ambito && confirmarEliminar.ambito !== "total" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " (", confirmarEliminar.ambito === "piso_venta" ? "piso de venta" : "almac\xE9n", ")"), "."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-4 p-3 rounded-lg", style: { background: C2.surfaceSoft, color: C2.inkSoft } }, confirmarEliminar.completado ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, "Los conteos iniciados o cerrados no se borran: se conservan como CANCELADO. Si aplicaron ajustes al stock, se crean reversos trazables sin borrar movimientos anteriores.") : "Solo un borrador completamente vac\xEDo se elimina f\xEDsicamente. Cualquier conteo iniciado se conserva como CANCELADO."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("label", { className: "block text-[12px]" }, "Motivo de cancelación", /* @__PURE__ */ import_react4.default.createElement("input", { value: motivoCancelacion, onChange: (e2) => setMotivoCancelacion(e2.target.value), placeholder: "Obligatorio si el conteo ya se inició", className: "mt-1 w-full border rounded-lg px-3 py-2 text-[13px]", style: { borderColor: C2.line, background: C2.bg } })), /* @__PURE__ */ import_react4.default.createElement("label", { className: "block text-[12px]" }, "Responsable", /* @__PURE__ */ import_react4.default.createElement("input", { value: responsableCancelacion, onChange: (e2) => setResponsableCancelacion(e2.target.value), placeholder: "Quién autoriza la cancelación", className: "mt-1 w-full border rounded-lg px-3 py-2 text-[13px]", style: { borderColor: C2.line, background: C2.bg } }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmarEliminar(null), disabled: procesandoEliminar }, "Cancelar"), /* @__PURE__ */ import_react4.default.createElement(
+8119:     Btn,
+8120:     {
+8121:       disabled: procesandoEliminar,
+8122:       onClick: () => {
+8123:         if (procesandoEliminar) return;
+8124:         setProcesandoEliminar(true);
+8125:         const resultadoGestionConteo = eliminarConteo(confirmarEliminar.id, { motivo: motivoCancelacion, responsable: responsableCancelacion });
+--- lines 8972-8991 ---
+8972:   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Empresas y locales"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "La separaci\xF3n por local ya est\xE1 activa en Panel general, Resultados y Libro de IVA. El resto de m\xF3dulos mantiene de momento la vista conjunta mientras se completa la separaci\xF3n por local.")), /* @__PURE__ */ import_react4.default.createElement(GestorEmpresas, { empresas, setEmpresas }), /* @__PURE__ */ import_react4.default.createElement(DiagnosticoSincronizacion, null), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 mb-4" }, activos.map((l2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: l2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium text-[13px] flex items-center gap-1.5" }, l2.nombre, l2.id === localActivoId && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "activo en este dispositivo")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, `Empresa: ${empresaDeLocal(l2)?.razonSocial || empresaDeLocal(l2)?.marca || "Sin asignar"}`), l2.direccion && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, l2.direccion)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, l2.id !== localActivoId && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => cambiarLocalActivo(l2.id) }, "Usar este"), /* @__PURE__ */ import_react4.default.createElement(FichaDatosLocal, { local: l2, actualizarLocal }), activos.length > 1 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setConfirmarDesactivar(l2) }, "Desactivar")))))), mostrarForm ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre del local" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nombre, onChange: (e) => setNombre(e.target.value), placeholder: "Ej: San Gin\xE9s Centro", autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Empresa" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: empresaNuevaId || empresaPrincipalId || "", onChange: (e) => setEmpresaNuevaId(e.target.value), className: "w-full rounded-xl border px-3 py-2 bg-transparent", style: { borderColor: C2.line, color: C2.ink } }, empresas.map((e2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: e2.id, value: e2.id }, e2.razonSocial || e2.marca || "Empresa")))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Direcci\xF3n (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: direccion, onChange: (e) => setDireccion(e.target.value) })), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: enviar }, "Crear local"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+8973:     setMostrarForm(false);
+8974:     setError("");
+8975:   } }, "Cancelar"))) : /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setMostrarForm(true) }, "+ A\xF1adir local nuevo"), inactivos.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-6" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, "Locales desactivados"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, inactivos.map((l2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: l2.id, style: { opacity: 0.6 } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px]" }, l2.nombre))))), confirmarDesactivar && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmarDesactivar(null), title: "Desactivar local" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, '"', confirmarDesactivar.nombre, '" dejar\xE1 de aparecer como local activo. No se borra ning\xFAn dato \u2014 solo se oculta de la lista de "en uso".'), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
+8976:     desactivarLocal(confirmarDesactivar.id);
+8977:     setConfirmarDesactivar(null);
+8978:   } }, "Confirmar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmarDesactivar(null) }, "Cancelar"))));
+8979: }
+8980: function Respaldos({ historial, crearPuntoDeGuardado, restaurarDesdeHistorial, abrirRespaldo, abrirRestaurar, exportarExcelGeneral, pinPropietario, establecerPin, activarModoEmpleado }) {
+8981:   const [nuevoPin, setNuevoPin] = (0, import_react4.useState)("");
+8982:   const [confirmarPin, setConfirmarPin] = (0, import_react4.useState)("");
+8983:   const [pinError, setPinError] = (0, import_react4.useState)("");
+8984:   const [pinGuardado, setPinGuardado] = (0, import_react4.useState)(false);
+8985:   async function guardarPin() {
+8986:     if (!/^\d{4,6}$/.test(nuevoPin)) {
+8987:       setPinError("El PIN debe tener entre 4 y 6 d\xEDgitos.");
+8988:       return;
+8989:     }
+8990:     if (nuevoPin !== confirmarPin) {
+8991:       setPinError("Los dos PIN no coinciden.");
+--- lines 9002-9021 ---
+9002:   function guardarAhora() {
+9003:     crearPuntoDeGuardado();
+9004:     setGuardado(true);
+9005:     setTimeout(() => setGuardado(false), 2e3);
+9006:   }
+9007:   function contar(data) {
+9008:     return (data.proveedores?.length || 0) + (data.productos?.length || 0) + (data.pedidos?.length || 0);
+9009:   }
+9010:   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Respaldos"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.ink } }, (typeof window !== "undefined" && window.__nubeActiva === true ? "La nube est\xE1 activa para esta sesi\xF3n. Los cambios se intentan sincronizar con tu cuenta y, si alguna escritura no se confirma, el programa mostrar\xE1 el error. Las copias de este historial son puntos de restauraci\xF3n adicionales." : "Est\xE1s trabajando solo en este equipo, sin sincronizaci\xF3n. Los cambios y las copias del historial se guardan en este dispositivo. Si quieres una copia fuera del programa, usa la copia port\xE1til y gu\xE1rdala t\xFA mismo en un lugar seguro."))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold text-[14px]" }, "Crear copia de seguridad ahora"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Guarda el estado actual de todo el programa como un punto al que podr\xE1s volver.")), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: guardarAhora }, /* @__PURE__ */ import_react4.default.createElement(RotateCcwClock, { size: 14 }), " ", guardado ? "\xA1Guardada!" : "Guardar copia"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Historial de copias guardadas"), historial.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no hay copias de seguridad guardadas." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 mb-6" }, historial.map((h2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: h2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, new Date(h2.fecha).toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, h2.automatica ? "Copia autom\xE1tica de inicio de sesi\xF3n" : "Copia manual", " \xB7 ", contar(h2.data), " registros principales")), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => restaurarDesdeHistorial(h2) }, "Restaurar esta copia"))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Copia port\xE1til (para guardar fuera del programa)"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "Si quieres una copia que puedas guardar t\xFA mismo fuera de aqu\xED (en tus notas, correo, etc.), puedes verla como texto y copiarla, o pegar una que hayas guardado antes."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: abrirRespaldo }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 14 }), " Ver / copiar respaldo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: abrirRestaurar }, /* @__PURE__ */ import_react4.default.createElement(Upload, { size: 14 }), " Restaurar desde texto"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Para tu gestor\xEDa"), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "Un Excel con productos, movimientos y albaranes, listo para mandar. Para el resumen de IVA trimestral concreto, mejor usa el bot\xF3n de exportar dentro de ", /* @__PURE__ */ import_react4.default.createElement("b", null, "Libro de IVA"), ", que ya viene calculado."), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: exportarExcelGeneral }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 14 }), " Exportar datos a Excel")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2 mt-4", style: { color: C2.inkSoft } }, "Acceso y modo empleado"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Esto son c\xF3digos guardados en este tel\xE9fono, no cuentas de usuario reales: sirven para que un empleado no vea m\xE1rgenes, sueldos ni resultados si coge el m\xF3vil, y para que la Auditor\xEDa diga qui\xE9n hizo qu\xE9 \u2014 pero no protegen los datos frente a alguien con acceso t\xE9cnico al dispositivo. En modo empleado solo quedan visibles: Panel general, Venta r\xE1pida, Registro horario, Recepci\xF3n, Inventario ciego, Control sanitario, Mapa de almac\xE9n y Traspasos.")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2" }, pinPropietario ? "Cambiar tu PIN de propietario" : "Crear tu PIN de propietario"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.inkSoft } }, "Este es el tuyo, el del due\xF1o \u2014 hace falta para volver a modo propietario cuando alguien est\xE9 en modo empleado."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "PIN (4 a 6 d\xEDgitos)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "password", inputMode: "numeric", value: nuevoPin, onChange: (e) => setNuevoPin(e.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Repite el PIN" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "password", inputMode: "numeric", value: confirmarPin, onChange: (e) => setConfirmarPin(e.target.value) }))), pinError && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, pinError), pinGuardado && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.accent } }, "PIN guardado."), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: guardarPin }, pinPropietario ? "Cambiar PIN" : "Guardar PIN")), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2" }, "C\xF3mo entra cada empleado"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Ponle a cada empleado su propio c\xF3digo en ", /* @__PURE__ */ import_react4.default.createElement("b", null, "Personal"), " (al editar su ficha). Con eso, cualquiera puede tocar el bot\xF3n ", /* @__PURE__ */ import_react4.default.createElement("b", null, '"\u{1F513} Modo empleado"'), " junto al men\xFA, elegir su nombre y entrar con su c\xF3digo \u2014 sin que t\xFA tengas que hacerlo por ellos.")));
+9011: }
+9012: function SaldoAlmacen({ productos, proveedores, valorInventario, valorUtillaje = 0, proveedorPorId, clasificacionABC, analisisABC }) {
+9013:   const [vista, setVista] = (0, import_react4.useState)("saldo");
+9014:   const [ubicacion, setUbicacion] = (0, import_react4.useState)("todo");
+9015:   const [copiado, setCopiado] = (0, import_react4.useState)(false);
+9016:   const fecha = (/* @__PURE__ */ new Date()).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
+9017:   const esVendible = (p2) => p2.tipo === "elaborado" || Number(p2.precioVenta) > 0;
+9018:   const productosVista = (0, import_react4.useMemo)(() => {
+9019:     if (ubicacion === "piso") {
+9020:       return productos.filter(esVendible).map((p2) => ({ ...p2, stock: Number(p2.stockPisoVenta) || 0 }));
+9021:     }
+--- lines 10096-10115 ---
+10096:     setNombreNuevo("");
+10097:     setShowNuevo(false);
+10098:     setActivaId(nueva.id);
+10099:     llamarIA(nueva.id, [], false, nueva.candidatoNombre);
+10100:   }
+10101:   function enviarRespuesta(valorDirecto) {
+10102:     const respuesta = (valorDirecto !== void 0 ? valorDirecto : respuestaActual).trim();
+10103:     if (!respuesta || !activa) return;
+10104:     const nuevoHistorial = [...activa.historial, { pregunta: activa.siguientePregunta, respuesta }];
+10105:     actualizarEntrevista(activa.id, { historial: nuevoHistorial, siguientePregunta: null, tipoRespuesta: null });
+10106:     setRespuestaActual("");
+10107:     llamarIA(activa.id, nuevoHistorial, false, activa.candidatoNombre);
+10108:   }
+10109:   function finalizarAhora() {
+10110:     if (!activa || activa.historial.length === 0) return;
+10111:     llamarIA(activa.id, activa.historial, true, activa.candidatoNombre);
+10112:   }
+10113:   if (activa) {
+10114:     return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[15px] font-semibold" }, "Entrevista \xB7 ", activa.candidatoNombre), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setActivaId(null) }, "Pausar (seguir luego)")), activa.historial.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-medium mb-2", style: { color: C2.inkSoft } }, "Ya respondido"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 max-h-[30vh] overflow-y-auto" }, activa.historial.map((h2, i3) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i3, className: "text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft } }, h2.pregunta), /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium" }, h2.respuesta))))), cargando ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4 text-center py-6" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px]", style: { color: C2.inkSoft } }, "La IA est\xE1 pensando la siguiente pregunta\u2026")) : activa.siguientePregunta ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3" }, activa.siguientePregunta), activa.tipoRespuesta === "si_no" ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => enviarRespuesta("S\xED") }, "S\xED"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => enviarRespuesta("No") }, "No")) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(
+10115:       "textarea",
+--- lines 10097-10116 ---
+10097:     setShowNuevo(false);
+10098:     setActivaId(nueva.id);
+10099:     llamarIA(nueva.id, [], false, nueva.candidatoNombre);
+10100:   }
+10101:   function enviarRespuesta(valorDirecto) {
+10102:     const respuesta = (valorDirecto !== void 0 ? valorDirecto : respuestaActual).trim();
+10103:     if (!respuesta || !activa) return;
+10104:     const nuevoHistorial = [...activa.historial, { pregunta: activa.siguientePregunta, respuesta }];
+10105:     actualizarEntrevista(activa.id, { historial: nuevoHistorial, siguientePregunta: null, tipoRespuesta: null });
+10106:     setRespuestaActual("");
+10107:     llamarIA(activa.id, nuevoHistorial, false, activa.candidatoNombre);
+10108:   }
+10109:   function finalizarAhora() {
+10110:     if (!activa || activa.historial.length === 0) return;
+10111:     llamarIA(activa.id, activa.historial, true, activa.candidatoNombre);
+10112:   }
+10113:   if (activa) {
+10114:     return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[15px] font-semibold" }, "Entrevista \xB7 ", activa.candidatoNombre), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setActivaId(null) }, "Pausar (seguir luego)")), activa.historial.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-medium mb-2", style: { color: C2.inkSoft } }, "Ya respondido"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 max-h-[30vh] overflow-y-auto" }, activa.historial.map((h2, i3) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i3, className: "text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft } }, h2.pregunta), /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium" }, h2.respuesta))))), cargando ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4 text-center py-6" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px]", style: { color: C2.inkSoft } }, "La IA est\xE1 pensando la siguiente pregunta\u2026")) : activa.siguientePregunta ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3" }, activa.siguientePregunta), activa.tipoRespuesta === "si_no" ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => enviarRespuesta("S\xED") }, "S\xED"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => enviarRespuesta("No") }, "No")) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(
+10115:       "textarea",
+10116:       {
+--- lines 10099-10118 ---
+10099:     llamarIA(nueva.id, [], false, nueva.candidatoNombre);
+10100:   }
+10101:   function enviarRespuesta(valorDirecto) {
+10102:     const respuesta = (valorDirecto !== void 0 ? valorDirecto : respuestaActual).trim();
+10103:     if (!respuesta || !activa) return;
+10104:     const nuevoHistorial = [...activa.historial, { pregunta: activa.siguientePregunta, respuesta }];
+10105:     actualizarEntrevista(activa.id, { historial: nuevoHistorial, siguientePregunta: null, tipoRespuesta: null });
+10106:     setRespuestaActual("");
+10107:     llamarIA(activa.id, nuevoHistorial, false, activa.candidatoNombre);
+10108:   }
+10109:   function finalizarAhora() {
+10110:     if (!activa || activa.historial.length === 0) return;
+10111:     llamarIA(activa.id, activa.historial, true, activa.candidatoNombre);
+10112:   }
+10113:   if (activa) {
+10114:     return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[15px] font-semibold" }, "Entrevista \xB7 ", activa.candidatoNombre), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setActivaId(null) }, "Pausar (seguir luego)")), activa.historial.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-medium mb-2", style: { color: C2.inkSoft } }, "Ya respondido"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 max-h-[30vh] overflow-y-auto" }, activa.historial.map((h2, i3) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i3, className: "text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft } }, h2.pregunta), /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium" }, h2.respuesta))))), cargando ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4 text-center py-6" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px]", style: { color: C2.inkSoft } }, "La IA est\xE1 pensando la siguiente pregunta\u2026")) : activa.siguientePregunta ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3" }, activa.siguientePregunta), activa.tipoRespuesta === "si_no" ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => enviarRespuesta("S\xED") }, "S\xED"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => enviarRespuesta("No") }, "No")) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(
+10115:       "textarea",
+10116:       {
+10117:         value: respuestaActual,
+10118:         onChange: (e) => setRespuestaActual(e.target.value),
+--- lines 10474-10493 ---
+10474:   }
+10475:   const estadoHoy = activos.map((e) => {
+10476:     const deHoy = fichajes.filter((f2) => f2.empleadoId === e.id && f2.fecha === todayISO()).sort((a2, b2) => (a2.hora || "").localeCompare(b2.hora || ""));
+10477:     const entradas = deHoy.filter((f2) => f2.tipo === "entrada");
+10478:     const salidas = deHoy.filter((f2) => f2.tipo === "salida");
+10479:     const abierto = entradas.length > salidas.length;
+10480:     return { empleado: e, ultimaEntrada: entradas[entradas.length - 1], abierto, totalFichajesHoy: deHoy.length };
+10481:   });
+10482:   const filasHistorial = (0, import_react4.useMemo)(() => {
+10483:     const grupos = {};
+10484:     fichajes.filter((f2) => f2.fecha >= desde && f2.fecha <= hasta).forEach((f2) => {
+10485:       const key = `${f2.empleadoId}-${f2.fecha}`;
+10486:       if (!grupos[key]) grupos[key] = { empleadoId: f2.empleadoId, fecha: f2.fecha, entradas: [], salidas: [] };
+10487:       if (f2.tipo === "entrada") grupos[key].entradas.push(f2);
+10488:       else grupos[key].salidas.push(f2);
+10489:     });
+10490:     return Object.values(grupos).map((g2) => {
+10491:       const emp = empleados.find((e) => e.id === g2.empleadoId);
+10492:       const entrada = g2.entradas.sort((a2, b2) => a2.hora.localeCompare(b2.hora))[0];
+10493:       const salida = g2.salidas.sort((a2, b2) => a2.hora.localeCompare(b2.hora)).slice(-1)[0];
+--- lines 10496-10515 ---
+10496:         const [h1, m1] = entrada.hora.split(":").map(Number);
+10497:         const [h2, m2] = salida.hora.split(":").map(Number);
+10498:         horas = (h2 * 60 + m2 - (h1 * 60 + m1)) / 60;
+10499:       }
+10500:       return { ...g2, nombre: emp ? emp.nombre : "\u2014", entrada, salida, horas };
+10501:     });
+10502:   }, [fichajes, desde, hasta, empleados]);
+10503:   function textoRegistro() {
+10504:     const lineas = filasHistorial.sort((a2, b2) => a2.fecha.localeCompare(b2.fecha) || a2.nombre.localeCompare(b2.nombre)).map((f2) => `${f2.fecha} \xB7 ${f2.nombre} \xB7 Entrada ${f2.entrada ? f2.entrada.hora : "\u2014"} \xB7 Salida ${f2.salida ? f2.salida.hora : "sin fichar"} \xB7 ${f2.horas !== null ? f2.horas.toFixed(2) + " h" : ""}`);
+10505:     return `REGISTRO HORARIO
+10506: Del ${desde} al ${hasta}
+10507: 
+10508: ${lineas.join("\n")}
+10509: 
+10510: Generado el ${(/* @__PURE__ */ new Date()).toLocaleString("es-ES")}`;
+10511:   }
+10512:   function copiarRegistro() {
+10513:     const texto = textoRegistro();
+10514:     if (navigator.clipboard && navigator.clipboard.writeText) {
+10515:       navigator.clipboard.writeText(texto).then(() => setCopiado(true)).catch(() => setCopiado(false));
+--- lines 10526-10545 ---
+10526:       fecha: manual.fecha,
+10527:       tipo: manual.tipo,
+10528:       hora: manual.hora,
+10529:       timestamp: (/* @__PURE__ */ new Date(`${manual.fecha}T${manual.hora}:00`)).toISOString(),
+10530:       manual: true
+10531:     });
+10532:     setShowManual(false);
+10533:   }
+10534:   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Registro horario"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Desde 2019, todas las empresas en Espa\xF1a est\xE1n obligadas a llevar un registro diario de la jornada de cada persona trabajadora, sea cual sea su tama\xF1o. Este registro se debe conservar 4 a\xF1os y estar disponible para la Inspecci\xF3n de Trabajo si lo pide.")), fichajesAbiertos.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "Fichajes sin cerrar"), fichajesAbiertos.map((f2, i3) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i3, className: "text-[12px]" }, f2.nombre, " \u2014 entr\xF3 el ", f2.fecha, " y no consta salida"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Hoy"), activos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "A\xF1ade empleados activos en Personal para poder ficharles." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-3 mb-4" }, estadoHoy.map(({ empleado, ultimaEntrada, abierto }) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: empleado.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium text-[13.5px]" }, empleado.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, abierto ? `Entr\xF3 a las ${ultimaEntrada.hora}` : ultimaEntrada ? "Jornada cerrada" : "Sin fichar hoy")), /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: abierto ? C2.accent : C2.inkSoft }, abierto ? "Trabajando" : "Fuera")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, disabled: abierto, onClick: () => fichar(empleado.id, "entrada") }, /* @__PURE__ */ import_react4.default.createElement(LogIn, { size: 13 }), " Entrada"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", disabled: !abierto, onClick: () => fichar(empleado.id, "salida") }, /* @__PURE__ */ import_react4.default.createElement(LogOut, { size: 13 }), " Salida"))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium", style: { color: C2.inkSoft } }, "Historial"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setShowManual(true) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 13 }), " Correcci\xF3n manual"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setShowExportar(true) }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 13 }), " Exportar"))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-wrap gap-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irEstaSemana }, "Esta semana"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irSemanaAnterior }, "Semana anterior")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Desde" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: desde, onChange: (e) => setDesde(e.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hasta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: hasta, onChange: (e) => setHasta(e.target.value) })))), filasHistorial.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin fichajes en este periodo." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, filasHistorial.sort((a2, b2) => b2.fecha.localeCompare(a2.fecha) || a2.nombre.localeCompare(b2.nombre)).map((f2, i3) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: i3 }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium" }, f2.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, f2.fecha)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, f2.entrada ? f2.entrada.hora : "\u2014", " \u2192 ", f2.salida ? f2.salida.hora : "sin salida"), f2.horas !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mono", style: { color: C2.accent } }, f2.horas.toFixed(2), " h")))))), showManual && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowManual(false), title: "Correcci\xF3n manual de fichaje" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Empleado" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: manual.empleadoId, onChange: (e) => setManual({ ...manual, empleadoId: e.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, activos.map((e) => /* @__PURE__ */ import_react4.default.createElement("option", { key: e.id, value: e.id }, e.nombre)))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-3 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Fecha" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: manual.fecha, onChange: (e) => setManual({ ...manual, fecha: e.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tipo" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: manual.tipo, onChange: (e) => setManual({ ...manual, tipo: e.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "entrada" }, "Entrada"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "salida" }, "Salida"))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hora" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "time", value: manual.hora, onChange: (e) => setManual({ ...manual, hora: e.target.value }) }))), manualError && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, manualError), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitManual }, "Guardar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowManual(false) }, "Cancelar"))), showExportar && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowExportar(false), title: "Exportar registro horario" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2" }, "Copia este texto y gu\xE1rdalo (o p\xE9galo en un documento). Es tu justificante del registro horario del periodo seleccionado, por si te lo pide la Inspecci\xF3n de Trabajo."), /* @__PURE__ */ import_react4.default.createElement(
+10535:     "textarea",
+10536:     {
+10537:       readOnly: true,
+10538:       value: textoRegistro(),
+10539:       onFocus: (e) => e.target.select(),
+10540:       className: "w-full rounded-lg p-2 text-[11px] mono mb-3",
+10541:       style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, height: 180, resize: "none" }
+10542:     }
+10543:   ), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: copiarRegistro }, copiado ? "\xA1Copiado!" : "Copiar texto"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowExportar(false) }, "Cerrar"))));
+10544: }
+10545: function SelectorAlergenos({ seleccionados = [], onCambio, soloLectura = false, nombreParaSugerir = "" }) {
+--- lines 10680-10699 ---
+10680:   }
+10681:   function copiar() {
+10682:     if (navigator.clipboard && navigator.clipboard.writeText) {
+10683:       navigator.clipboard.writeText(textoRegistroAppcc()).then(() => setCopiado(true)).catch(() => setCopiado(false));
+10684:     }
+10685:   }
+10686:   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Control sanitario (APPCC)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mb-4 overflow-x-auto" }, [
+10687:     { id: "hoy", label: "Hoy" },
+10688:     { id: "historial", label: "Historial" },
+10689:     { id: "puntos", label: "Puntos de control" },
+10690:     { id: "alergenos", label: "Cartel de al\xE9rgenos" }
+10691:   ].map((v2) => /* @__PURE__ */ import_react4.default.createElement(Btn, { key: v2.id, small: true, variant: vista === v2.id ? "primary" : "ghost", onClick: () => setVista(v2.id) }, v2.label)))), vista === "hoy" && /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "El sistema APPCC es obligatorio en cualquier negocio que manipule alimentos. Estos registros deben conservarse y estar disponibles si Sanidad los pide. Registra cada control el d\xEDa que lo haces: rellenar una semana de golpe al final no vale.")), puntosControl.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has definido qu\xE9 controlas. Ve a \u201CPuntos de control\u201D para empezar." }) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, appccPendientesHoy.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Te faltan ", appccPendientesHoy.length, " control(es) por registrar hoy")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, puntosControl.filter((p2) => p2.activo !== false).map((p2) => {
+10692:     const hechoHoy = registrosAppcc.find((r) => r.fecha === todayISO() && r.puntoId === p2.id);
+10693:     return /* @__PURE__ */ import_react4.default.createElement(Card, { key: p2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium text-[13.5px]" }, p2.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, TIPOS_PUNTO.find((t2) => t2.id === p2.tipo)?.label, p2.tempMin != null && p2.tempMax != null && ` \xB7 rango ${p2.tempMin} a ${p2.tempMax} \xB0C`)), hechoHoy ? /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: hechoHoy.conforme ? C2.accent : C2.red }, hechoHoy.conforme ? `OK ${hechoHoy.valor}` : `Desviaci\xF3n ${hechoHoy.valor}`) : /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.amber }, "pendiente")), !hechoHoy && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => abrirRegistro(p2) }, "Registrar ahora")));
+10694:   })))), vista === "puntos" && /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex justify-end mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setShowPunto(true) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Nuevo punto de control")), puntosControl.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Define qu\xE9 vas a controlar: c\xE1mara de refrigerado, congelador, limpieza del obrador\u2026" }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, puntosControl.map((p2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: p2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium" }, p2.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, TIPOS_PUNTO.find((t2) => t2.id === p2.tipo)?.label, " \xB7 ", p2.frecuencia, p2.tempMin != null && p2.tempMax != null && ` \xB7 ${p2.tempMin} a ${p2.tempMax} \xB0C`)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => updatePuntoControl(p2.id, { activo: p2.activo === false }) }, p2.activo === false ? "Activar" : "Desactivar"), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => deletePuntoControl(p2.id), "aria-label": "Eliminar punto de control" }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 15, color: C2.inkSoft })))))))), vista === "historial" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Desde" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: desde, onChange: (e) => setDesde(e.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hasta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: hasta, onChange: (e) => setHasta(e.target.value) }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-wrap gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => window.print() }, "Imprimir / Guardar PDF"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: copiar }, copiado ? "\xA1Copiado!" : "Copiar texto"))), noConformes.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, noConformes.length, " desviaci\xF3n(es) en el periodo. Revisa que quede anotada la medida correctora."))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "zona-impresion", style: ESTILO_IMPRESION_CLARO }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end justify-between mb-3 pb-3", style: { borderBottom: `2px solid ${C2.accent}` } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[17px] font-semibold" }, "Registro de control sanitario (APPCC)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Del ", desde, " al ", hasta)), /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO, alt: "", style: { height: 52, width: "auto" } })), registrosPeriodo.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin registros en este periodo." }) : /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[11.5px]", style: { borderCollapse: "collapse" } }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", null, /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Fecha"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Hora"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Punto de control"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff" } }, "Valor"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff" } }, "Conforme"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Observaciones"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Responsable"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, registrosPeriodo.map((r, i3) => /* @__PURE__ */ import_react4.default.createElement("tr", { key: r.id, style: { background: i3 % 2 ? C2.bg : "#fff" } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-1.5 px-2 mono", style: { border: `1px solid ${C2.line}` } }, r.fecha), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-1.5 px-2 mono", style: { border: `1px solid ${C2.line}` } }, r.hora), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-1.5 px-2", style: { border: `1px solid ${C2.line}` } }, r.puntoNombre), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-1.5 px-2 text-center mono", style: { border: `1px solid ${C2.line}` } }, r.valor || "\u2014"), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-1.5 px-2 text-center font-semibold", style: { border: `1px solid ${C2.line}`, color: r.conforme ? C2.accent : C2.red } }, r.conforme ? "S\xED" : "NO"), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-1.5 px-2", style: { border: `1px solid ${C2.line}` } }, r.observaciones || ""), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-1.5 px-2", style: { border: `1px solid ${C2.line}` } }, r.responsable || ""))))))), vista === "alergenos" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Este cartel se genera solo desde tus fichas de costo: hereda los al\xE9rgenos de cada ingrediente enlazado al cat\xE1logo. Impr\xEDmelo y t\xE9nlo visible o a disposici\xF3n del cliente, como exige la ley.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => window.print() }, "Imprimir cartel"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "zona-impresion", style: ESTILO_IMPRESION_CLARO }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end justify-between mb-3 pb-3", style: { borderBottom: `2px solid ${C2.accent}` } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[17px] font-semibold" }, "Informaci\xF3n de al\xE9rgenos"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Reglamento (UE) 1169/2011 \xB7 Actualizado el ", (/* @__PURE__ */ new Date()).toLocaleDateString("es-ES"))), /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO, alt: "", style: { height: 52, width: "auto" } })), cartaAlergenos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Crea fichas de costo o marca productos como elaborados para generar el cartel." }) : /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[11.5px]", style: { borderCollapse: "collapse" } }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", null, /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Producto"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Contiene"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, cartaAlergenos.map((f2, i3) => /* @__PURE__ */ import_react4.default.createElement("tr", { key: f2.id, style: { background: i3 % 2 ? C2.bg : "#fff" } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 font-medium", style: { border: `1px solid ${C2.line}` } }, f2.nombre), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2", style: { border: `1px solid ${C2.line}` } }, f2.alergenos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("span", { style: { color: C2.inkSoft } }, "Sin al\xE9rgenos declarados") : f2.alergenos.map((id) => {
+10695:     const a2 = alergenoPorId(id);
+10696:     return a2 ? `${a2.icono} ${a2.nombre}` : id;
+10697:   }).join(" \xB7 ")))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-4", style: { color: C2.inkSoft } }, "Puede haber trazas de otros al\xE9rgenos por manipulaci\xF3n en el mismo obrador. Consulte al personal si tiene alguna alergia o intolerancia."))), showPunto && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowPunto(false), title: "Nuevo punto de control" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: puntoForm.nombre, onChange: (e) => setPuntoForm({ ...puntoForm, nombre: e.target.value }), placeholder: "C\xE1mara de refrigerado, Congelador obrador\u2026" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tipo" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: puntoForm.tipo, onChange: (e) => setPuntoForm({ ...puntoForm, tipo: e.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, TIPOS_PUNTO.map((t2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: t2.id, value: t2.id }, t2.label)))), (puntoForm.tipo === "temperatura" || puntoForm.tipo === "recepcion") && /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Temperatura m\xEDnima (\xB0C)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.1", value: puntoForm.tempMin, onChange: (e) => setPuntoForm({ ...puntoForm, tempMin: e.target.value }), placeholder: "0" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Temperatura m\xE1xima (\xB0C)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.1", value: puntoForm.tempMax, onChange: (e) => setPuntoForm({ ...puntoForm, tempMax: e.target.value }), placeholder: "4" }))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Frecuencia" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: puntoForm.frecuencia, onChange: (e) => setPuntoForm({ ...puntoForm, frecuencia: e.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", null, "Diaria"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Dos veces al d\xEDa"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Semanal"), /* @__PURE__ */ import_react4.default.createElement("option", null, "En cada recepci\xF3n"))), puntoError && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, puntoError), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitPunto }, "Guardar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowPunto(false) }, "Cancelar"))), registroPara && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setRegistroPara(null), title: registroPara.nombre }, registroPara.tipo === "temperatura" || registroPara.tipo === "recepcion" ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Temperatura medida (\xB0C)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.1", value: registroForm.valor, onChange: (e) => setRegistroForm({ ...registroForm, valor: e.target.value }), autoFocus: true })), (() => {
+10698:     const ev = evaluarConformidad(registroPara, registroForm.valor);
+10699:     if (ev === null) return null;
+--- lines 11252-11271 ---
+11252:       h(Field, { label: vista === "cliente" && lineaSeleccionada ? `Cantidad (máximo ${lineaSeleccionada.pendiente})` : "Cantidad" }, h(Input, { type: "number", min: "0.000001", step: "0.01", disabled: enviando, value: cantidad, onChange: (e) => setCantidad(e.target.value) })),
+11253:       h(Field, { label: "Motivo (obligatorio)" }, h(Input, { disabled: enviando, value: motivo, onChange: (e) => setMotivo(e.target.value), placeholder: vista === "cliente" ? "Ej: producto servido por error" : "Ej: llegó defectuoso" })),
+11254:       camposReembolso,
+11255:       campoProveedor,
+11256:       error && h("div", { className: "text-[11.5px] mb-2", style: { color: C2.red } }, error),
+11257:       exito && h("div", { className: "text-[11.5px] mb-2", style: { color: C2.accent } }, exito),
+11258:       h(Btn, { disabled: enviando, onClick: enviar }, enviando ? "Confirmando…" : "Registrar devolución")
+11259:     ),
+11260:     h("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Historial"),
+11261:     historial
+11262:   );
+11263: }
+11264: function BloqueEntradasSalidas({ fecha, movimientosCajaDelDia = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, periodoCerrado = false }) {
+11265:   const h = import_react4.default.createElement;
+11266:   const [mostrarForm, setMostrarForm] = import_react4.default.useState(false);
+11267:   const [tipo, setTipo] = import_react4.default.useState("ENTRADA");
+11268:   const [importe, setImporte] = import_react4.default.useState("");
+11269:   const [motivo, setMotivo] = import_react4.default.useState("");
+11270:   const [errorLocal, setErrorLocal] = import_react4.default.useState("");
+11271:   const [exitoLocal, setExitoLocal] = import_react4.default.useState("");
+--- lines 11539-11558 ---
+11539:         h(Field, { label: "Efectivo contado en caja (€)" }, h(Input, { type: "number", min: "0", step: "0.01", value: contado, disabled: enviando, onChange: (e) => setContado(e.target.value), autoFocus: true })),
+11540:         diferencia !== null && h("div", { className: "text-[12.5px] mb-2", style: { color: diferencia === 0 ? C2.accent : Math.abs(diferencia) < 1 ? C2.amber : C2.red } }, diferencia === 0 ? "Cuadra exacto." : diferencia > 0 ? `Sobran €${fmt(diferencia)}` : `Faltan €${fmt(Math.abs(diferencia))}`),
+11541:         h(Field, { label: "Notas (opcional)" }, h(Input, { value: notas, disabled: enviando, onChange: (e) => setNotas(e.target.value), placeholder: "Motivo del descuadre, si lo sabes" })),
+11542:         h(Btn, { disabled: enviando, onClick: submit }, enviando ? "Confirmando…" : "Guardar arqueo")
+11543:       ),
+11544:       error && h("div", { className: "text-[12px] mt-2", style: { color: C2.red } }, error),
+11545:       exito && h("div", { className: "text-[12px] mt-2", style: { color: C2.accent } }, exito)
+11546:     ),
+11547:     h("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Historial de arqueos"),
+11548:     historial
+11549:   );
+11550: }
+11551: var PLANTILLAS_TURNO = [
+11552:   { id: "manana", label: "Ma\xF1ana", horaInicio: "08:00", horaFin: "14:00" },
+11553:   { id: "tarde", label: "Tarde", horaInicio: "16:00", horaFin: "20:00" },
+11554:   { id: "cierre", label: "Cierre", horaInicio: "14:00", horaFin: "21:00" },
+11555:   { id: "libre", label: "Libre / descanso", horaInicio: "", horaFin: "" },
+11556:   { id: "personalizado", label: "Personalizado", horaInicio: "", horaFin: "" }
+11557: ];
+11558: var DIAS_SEMANA = ["Lunes", "Martes", "Mi\xE9rcoles", "Jueves", "Viernes", "S\xE1bado", "Domingo"];
+--- lines 11859-11878 ---
+11859:   const [empaqueReal, setEmpaqueReal] = (0, import_react4.useState)("");
+11860:   const [manoObraReal, setManoObraReal] = (0, import_react4.useState)("");
+11861:   const [gastosGeneralesReal, setGastosGeneralesReal] = (0, import_react4.useState)("");
+11862:   const [unidadesBuenas, setUnidadesBuenas] = (0, import_react4.useState)("");
+11863:   const [notas, setNotas] = (0, import_react4.useState)("");
+11864:   const [error, setError] = (0, import_react4.useState)("");
+11865:   const [confirmacionFaltantes, setConfirmacionFaltantes] = (0, import_react4.useState)("");
+11866:   const [resultado, setResultado] = (0, import_react4.useState)(null);
+11867:   const [verHistorial, setVerHistorial] = (0, import_react4.useState)(false);
+11868:   const [anulando, setAnulando] = (0, import_react4.useState)(null);
+11869:   const [procesandoProduccion, setProcesandoProduccion] = (0, import_react4.useState)(false);
+11870:   const [enviadoAPiso, setEnviadoAPiso] = (0, import_react4.useState)(false);
+11871:   const [errorEnvio, setErrorEnvio] = (0, import_react4.useState)("");
+11872:   async function enviarAPisoDeVenta(orden) {
+11873:     const productoId = orden.productoVinculadoId || (fichasCosto.find((f2) => f2.id === orden.fichaId) || {}).productoVinculadoId;
+11874:     if (!productoId) {
+11875:       setErrorEnvio("Esta ficha no tiene un producto de venta enlazado.");
+11876:       return;
+11877:     }
+11878:     const res = await traspasarStock(productoId, Number(orden.unidadesBuenas) || 0, "a_piso");
+
+===== historial =====
+HITS=53
+--- lines 881-900 ---
+881:     (async () => {
+882:       const [p2, pr, pe2, mo, co, fc, hi, al, cp, gg, em, fj, dm, ra, pc, cl, en, aq, tu, to, me2, pin, au, op, tr, ua, fd2, pf, nom, fre, rac, entr, mc, dev, ce, emps, loc, lai] = await Promise.all([
+883:         loadKey("proveedores", []),
+884:         loadKey("productos", []),
+885:         loadKey("pedidos", []),
+886:         loadKey("movimientos", []),
+887:         loadKey("conteos", []),
+888:         loadKey("fichasCosto", []),
+889:         loadKey("historialRespaldos", []),
+890:         loadKey("albaranes", []),
+891:         loadKey("catalogoProv", {}),
+892:         loadKey("gastosGenerales", []),
+893:         loadKey("empleados", []),
+894:         loadKey("fichajes", []),
+895:         loadKey("disenoMenu", "B"),
+896:         loadKey("registrosAppcc", []),
+897:         loadKey("puntosControl", []),
+898:         loadKey("clientes", []),
+899:         loadKey("encargos", []),
+900:         loadKey("arqueos", []),
+--- lines 1109-1128 ---
+1109:           const snapshot = {
+1110:             id: uid(),
+1111:             fecha: (/* @__PURE__ */ new Date()).toISOString(),
+1112:             automatica: true,
+1113:             motivo: "automatico-diario",
+1114:             backupVersion: 3,
+1115:             data: { proveedores: p2, productos: pr, pedidos: pe2, movimientos: mo, conteos: co, fichasCosto: fc, albaranes: alLimpios, catalogoProv: cp, gastosGenerales: gg, empleados: em, fichajes: fj, registrosAppcc: ra, puntosControl: pc, clientes: cl, encargos: en, arqueos: aq, turnos: tu, nominas: nom, facturasDirectas: fd2, ordenesProduccion: op, traspasos: tr, auditoria: au, freidoras: fre, registrosAceite: rac }
+1116:           };
+1117:           const historialFinal = [snapshot, ...hi].slice(0, 30);
+1118:           setHistorial(historialFinal);
+1119:           await saveKey("historialRespaldos", historialFinal);
+1120:         }
+1121:       }
+1122:     })();
+1123:   }, []);
+1124:   (0, import_react4.useEffect)(() => {
+1125:     if (ready && !skipSaveRef.current) saveKey("proveedores", proveedores);
+1126:   }, [proveedores, ready]);
+1127:   (0, import_react4.useEffect)(() => {
+1128:     if (ready && !skipSaveRef.current) saveKey("productos", productos);
+--- lines 1111-1130 ---
+1111:             fecha: (/* @__PURE__ */ new Date()).toISOString(),
+1112:             automatica: true,
+1113:             motivo: "automatico-diario",
+1114:             backupVersion: 3,
+1115:             data: { proveedores: p2, productos: pr, pedidos: pe2, movimientos: mo, conteos: co, fichasCosto: fc, albaranes: alLimpios, catalogoProv: cp, gastosGenerales: gg, empleados: em, fichajes: fj, registrosAppcc: ra, puntosControl: pc, clientes: cl, encargos: en, arqueos: aq, turnos: tu, nominas: nom, facturasDirectas: fd2, ordenesProduccion: op, traspasos: tr, auditoria: au, freidoras: fre, registrosAceite: rac }
+1116:           };
+1117:           const historialFinal = [snapshot, ...hi].slice(0, 30);
+1118:           setHistorial(historialFinal);
+1119:           await saveKey("historialRespaldos", historialFinal);
+1120:         }
+1121:       }
+1122:     })();
+1123:   }, []);
+1124:   (0, import_react4.useEffect)(() => {
+1125:     if (ready && !skipSaveRef.current) saveKey("proveedores", proveedores);
+1126:   }, [proveedores, ready]);
+1127:   (0, import_react4.useEffect)(() => {
+1128:     if (ready && !skipSaveRef.current) saveKey("productos", productos);
+1129:   }, [productos, ready]);
+1130:   (0, import_react4.useEffect)(() => {
+--- lines 1135-1154 ---
+1135:   }, [movimientos, ready]);
+1136:   (0, import_react4.useEffect)(() => {
+1137:     if (ready && !skipSaveRef.current) saveKey("conteos", conteos);
+1138:   }, [conteos, ready]);
+1139:   (0, import_react4.useEffect)(() => {
+1140:     if (ready && !skipSaveRef.current) saveKey("fichasCosto", fichasCosto);
+1141:   }, [fichasCosto, ready]);
+1142:   (0, import_react4.useEffect)(() => {
+1143:     if (ready && !skipSaveRef.current) saveKey("historialRespaldos", historial);
+1144:   }, [historial, ready]);
+1145:   (0, import_react4.useEffect)(() => {
+1146:     if (ready && !skipSaveRef.current) saveKey("albaranes", albaranes);
+1147:   }, [albaranes, ready]);
+1148:   (0, import_react4.useEffect)(() => {
+1149:     if (ready && !skipSaveRef.current) saveKey("catalogoProv", catalogoProv);
+1150:   }, [catalogoProv, ready]);
+1151:   (0, import_react4.useEffect)(() => {
+1152:     if (ready && !skipSaveRef.current) saveKey("gastosGenerales", gastosGenerales);
+1153:   }, [gastosGenerales, ready]);
+1154:   (0, import_react4.useEffect)(() => {
+--- lines 1136-1155 ---
+1136:   (0, import_react4.useEffect)(() => {
+1137:     if (ready && !skipSaveRef.current) saveKey("conteos", conteos);
+1138:   }, [conteos, ready]);
+1139:   (0, import_react4.useEffect)(() => {
+1140:     if (ready && !skipSaveRef.current) saveKey("fichasCosto", fichasCosto);
+1141:   }, [fichasCosto, ready]);
+1142:   (0, import_react4.useEffect)(() => {
+1143:     if (ready && !skipSaveRef.current) saveKey("historialRespaldos", historial);
+1144:   }, [historial, ready]);
+1145:   (0, import_react4.useEffect)(() => {
+1146:     if (ready && !skipSaveRef.current) saveKey("albaranes", albaranes);
+1147:   }, [albaranes, ready]);
+1148:   (0, import_react4.useEffect)(() => {
+1149:     if (ready && !skipSaveRef.current) saveKey("catalogoProv", catalogoProv);
+1150:   }, [catalogoProv, ready]);
+1151:   (0, import_react4.useEffect)(() => {
+1152:     if (ready && !skipSaveRef.current) saveKey("gastosGenerales", gastosGenerales);
+1153:   }, [gastosGenerales, ready]);
+1154:   (0, import_react4.useEffect)(() => {
+1155:     if (ready && !skipSaveRef.current) saveKey("empleados", empleados);
+--- lines 2127-2146 ---
+2127:       registrarSalida,
+2128:       clasificacionABC: clasificacionABCDelLocalActivo,
+2129:       almacenCongelado,
+2130:       movimientos: movimientosDelLocalActivo,
+2131:       fichasCosto: fichasCostoDelLocalActivo,
+2132:       updateFichaCosto,
+2133:       ajustarProductoPorOtro
+2134:     }
+2135:   ), tab === "historial_producto" && /* @__PURE__ */ import_react4.default.createElement(
+2136:     HistorialProducto,
+2137:     {
+2138:       productos: productosDelLocalActivo,
+2139:       movimientos: movimientosDelLocalActivo,
+2140:       pedidos: pedidosDelLocalActivo,
+2141:       albaranes: albaranesDelLocalActivo,
+2142:       traspasos: traspasosDelLocalActivo,
+2143:       proveedorPorId
+2144:     }
+2145:   ), tab === "aceite" && /* @__PURE__ */ import_react4.default.createElement(
+2146:     AceiteFreidoras,
+--- lines 2357-2376 ---
+2357:       appccPendientesHoy,
+2358:       productos: productosDelLocalActivo,
+2359:       fichasCosto: fichasCostoDelLocalActivo,
+2360:       alergenosDeFicha
+2361:     }
+2362:   ), tab === "saldo" && /* @__PURE__ */ import_react4.default.createElement(SaldoAlmacen, { productos: productosDelLocalActivo, proveedores, valorInventario: valorInventarioDelLocalActivo, valorUtillaje: valorUtillajeDelLocalActivo, proveedorPorId, clasificacionABC: clasificacionABCDelLocalActivo, analisisABC: analisisABCDelLocalActivo }), tab === "respaldos" && /* @__PURE__ */ import_react4.default.createElement(
+2363:     Respaldos,
+2364:     {
+2365:       historial,
+2366:       crearPuntoDeGuardado,
+2367:       restaurarDesdeHistorial,
+2368:       abrirRespaldo,
+2369:       abrirRestaurar,
+2370:       exportarExcelGeneral,
+2371:       pinPropietario,
+2372:       establecerPin,
+2373:       activarModoEmpleado
+2374:     }
+2375:   ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas }));
+2376:   const itemsMeta = [
+--- lines 2419-2438 ---
+2419:   const porId = (id) => itemsMeta.find((x3) => x3.id === id);
+2420:   const pick = (ids) => {
+2421:     const filtrados = modoEmpleado ? ids.filter((id) => itemsPermitidosEmpleado.includes(id)) : ids;
+2422:     return filtrados.map(porId).filter(Boolean);
+2423:   };
+2424:   const gruposA = [
+2425:     { titulo: null, items: pick(["dashboard", "buscar"]) },
+2426:     { titulo: "Compras", items: pick(["proveedores", "pedidos", "recepcion", "albaranes"]) },
+2427:     { titulo: "Almac\xE9n", items: pick(["productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos"]) },
+2428:     { titulo: "Ventas", items: pick(["venta", "encargos", "clientes", "devoluciones"]) },
+2429:     { titulo: "Costes y producci\xF3n", items: pick(["fichas", "produccion", "mermas", "etiquetas"]) },
+2430:     { titulo: "Finanzas", items: pick(["direccion", "resultados", "pagos", "facturas", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
+2431:     { titulo: "RRHH", items: pick(["personal", "fichaje", "turnos", "nominas"]) },
+2432:     { titulo: "Calidad", items: pick(["appcc", "aceite"]) },
+2433:     { titulo: "Sistema", items: pick(["auditoria", "diagnostico", "respaldos", "notificaciones", "errores_sistema", "locales"]) }
+2434:   ];
+2435:   const gruposB = [
+2436:     { titulo: null, items: pick(["dashboard", "buscar"]) },
+2437:     { titulo: "Ciclo de compra", items: pick(["proveedores", "pedidos", "recepcion", "albaranes", "pagos", "facturas"]) },
+2438:     { titulo: "Ciclo de almac\xE9n", items: pick(["productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos"]) },
+--- lines 2430-2449 ---
+2430:     { titulo: "Finanzas", items: pick(["direccion", "resultados", "pagos", "facturas", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
+2431:     { titulo: "RRHH", items: pick(["personal", "fichaje", "turnos", "nominas"]) },
+2432:     { titulo: "Calidad", items: pick(["appcc", "aceite"]) },
+2433:     { titulo: "Sistema", items: pick(["auditoria", "diagnostico", "respaldos", "notificaciones", "errores_sistema", "locales"]) }
+2434:   ];
+2435:   const gruposB = [
+2436:     { titulo: null, items: pick(["dashboard", "buscar"]) },
+2437:     { titulo: "Ciclo de compra", items: pick(["proveedores", "pedidos", "recepcion", "albaranes", "pagos", "facturas"]) },
+2438:     { titulo: "Ciclo de almac\xE9n", items: pick(["productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos"]) },
+2439:     { titulo: "Ciclo de venta", items: pick(["venta", "encargos", "clientes", "devoluciones"]) },
+2440:     { titulo: "Ciclo de coste y an\xE1lisis", items: pick(["fichas", "produccion", "mermas", "etiquetas", "resultados", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
+2441:     { titulo: "Ciclo de personal", items: pick(["personal", "fichaje", "turnos", "nominas"]) },
+2442:     { titulo: "Ciclo de calidad", items: pick(["appcc", "aceite"]) },
+2443:     { titulo: "Ajustes", items: pick(["auditoria", "respaldos", "notificaciones", "errores_sistema", "locales"]) }
+2444:   ];
+2445:   const categoriasC = {
+2446:     comprar: { titulo: "Comprar", items: pick(["proveedores", "pedidos", "recepcion", "albaranes", "pagos"]) },
+2447:     almacen: { titulo: "Almac\xE9n", items: pick(["productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos"]) },
+2448:     mas: [
+2449:       { titulo: "Vender", items: pick(["venta", "encargos", "clientes", "devoluciones"]) },
+--- lines 2439-2458 ---
+2439:     { titulo: "Ciclo de venta", items: pick(["venta", "encargos", "clientes", "devoluciones"]) },
+2440:     { titulo: "Ciclo de coste y an\xE1lisis", items: pick(["fichas", "produccion", "mermas", "etiquetas", "resultados", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
+2441:     { titulo: "Ciclo de personal", items: pick(["personal", "fichaje", "turnos", "nominas"]) },
+2442:     { titulo: "Ciclo de calidad", items: pick(["appcc", "aceite"]) },
+2443:     { titulo: "Ajustes", items: pick(["auditoria", "respaldos", "notificaciones", "errores_sistema", "locales"]) }
+2444:   ];
+2445:   const categoriasC = {
+2446:     comprar: { titulo: "Comprar", items: pick(["proveedores", "pedidos", "recepcion", "albaranes", "pagos"]) },
+2447:     almacen: { titulo: "Almac\xE9n", items: pick(["productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos"]) },
+2448:     mas: [
+2449:       { titulo: "Vender", items: pick(["venta", "encargos", "clientes", "devoluciones"]) },
+2450:       { titulo: "Dinero", items: pick(["resultados", "facturas", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
+2451:       { titulo: "Producto", items: pick(["fichas", "produccion", "mermas", "etiquetas"]) },
+2452:       { titulo: "Equipo", items: pick(["personal", "fichaje", "turnos", "nominas"]) },
+2453:       { titulo: "Calidad", items: pick(["appcc", "aceite"]) },
+2454:       { titulo: "Ajustes", items: pick(["auditoria", "respaldos", "notificaciones", "errores_sistema", "locales"]) }
+2455:     ]
+2456:   };
+2457:   return /* @__PURE__ */ import_react4.default.createElement("div", { "data-tema": temaOscuro ? "oscuro" : "claro", style: { background: C2.bg, color: C2.ink, fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui" }, className: disenoMenu === "C" ? "w-full min-h-[700px] flex flex-col text-[14px]" : "w-full min-h-[700px] flex flex-col md:flex-row text-[14px]" }, fallosGuardado.length > 0 && /* @__PURE__ */ import_react4.default.createElement(
+2458:     "div",
+--- lines 3787-3806 ---
+3787:       porProducto.get(m2.productoId).push(m2);
+3788:     }
+3789:     return productos.map((p2) => {
+3790:       const movimientosDelProducto = porProducto.get(p2.id) || [];
+3791:       const stockCache = Number(p2.stock) || 0;
+3792:       const deficitCache = Number(p2.deficitPendiente) || 0;
+3793:       const teoricoCache = stockCache - deficitCache;
+3794:       const teoricoHistorico = movimientosDelProducto.filter((m2) => m2.origen !== "reconciliacionStock").filter((m2) => esMovimientoNuevo(m2) ? !!m2.afectaStockTotal : true).reduce((suma, m2) => suma + cantidadConSigno(m2), 0);
+3795:       // PM-07 cloud: stock_estado/stock_ubicacion es la fuente autoritativa. El historial servidor
+3796:       // contiene deltas desde la adopcion de PM-07 y no parte necesariamente de stock cero, por
+3797:       // lo que no puede usarse solo para reconstruir el saldo inicial. Evitamos falsos descuadres
+3798:       // y cualquier reconciliacion local destructiva sobre stock ya confirmado por servidor.
+3799:       const teoricoReal = p2._pm07Servidor ? teoricoCache : teoricoHistorico;
+3800:       const diferencia = Number((teoricoReal - teoricoCache).toFixed(4));
+3801:       const coincide = Math.abs(diferencia) < 0.01;
+3802:       const deficitReal = Math.max(0, -teoricoReal);
+3803:       const tieneDeficit = deficitReal >= 0.01;
+3804:       let estado;
+3805:       if (coincide && !tieneDeficit) estado = "OK";
+3806:       else if (coincide && tieneDeficit) estado = "DEFICIT";
+--- lines 6261-6280 ---
+6261: function crearLogicaEntrevistas({ entrevistas, setEntrevistas, registrarAuditoria }) {
+6262:   function crearEntrevista(candidatoNombre) {
+6263:     const nueva = {
+6264:       id: uid(),
+6265:       candidatoNombre: candidatoNombre.trim(),
+6266:       fecha: todayISO(),
+6267:       estado: "en_curso",
+6268:       // en_curso | completada
+6269:       historial: [],
+6270:       // [{ pregunta, respuesta }]
+6271:       informe: null
+6272:     };
+6273:     setEntrevistas((s2) => [nueva, ...s2]);
+6274:     return nueva;
+6275:   }
+6276:   function actualizarEntrevista(id, cambios) {
+6277:     setEntrevistas((s2) => s2.map((e) => e.id === id ? { ...e, ...cambios } : e));
+6278:   }
+6279:   function finalizarEntrevista(id, informe) {
+6280:     setEntrevistas((s2) => s2.map((e) => e.id === id ? { ...e, estado: "completada", informe } : e));
+--- lines 6967-6986 ---
+6967:           diasReparto: (f2.diasReparto || []).includes(d2.valor) ? f2.diasReparto.filter((x3) => x3 !== d2.valor) : [...f2.diasReparto || [], d2.valor]
+6968:         })),
+6969:         className: "w-9 h-9 rounded-full text-[12.5px] font-semibold",
+6970:         style: { background: activo ? C2.accent : C2.surface, color: activo ? "#fff" : C2.inkSoft, border: `1px solid ${activo ? C2.accent : C2.line}` },
+6971:         title: d2.nombre
+6972:       },
+6973:       d2.corta
+6974:     );
+6975:   }))), editError && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, editError), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-1" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitEdit }, "Guardar cambios"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setEditFor(null) }, "Cancelar"))), confirmDeleteId && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmDeleteId(null), title: "Eliminar proveedor" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-4" }, "Se borra la ficha del proveedor. Los pedidos y albaranes ya hechos con \xE9l no se tocan, siguen en tu historial."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: () => {
+6976:     deleteProveedor(confirmDeleteId);
+6977:     setConfirmDeleteId(null);
+6978:   } }, "S\xED, eliminar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmDeleteId(null) }, "Cancelar"))));
+6979: }
+6980: function Productos({ productos, proveedores, proveedorPorId, addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, clasificacionABC, almacenCongelado, movimientos = [], fichasCosto = [], updateFichaCosto, ajustarProductoPorOtro }) {
+6981:   const [showForm, setShowForm] = (0, import_react4.useState)(false);
+6982:   const [showAjusteCruce, setShowAjusteCruce] = (0, import_react4.useState)(false);
+6983:   const [cruce, setCruce] = (0, import_react4.useState)({ origenId: "", destinoId: "", cantOrigen: "", cantDestino: "", motivo: "" });
+6984:   const [errorCruce, setErrorCruce] = (0, import_react4.useState)("");
+6985:   const [verEliminados, setVerEliminados] = (0, import_react4.useState)(false);
+6986:   const [confirmarEliminarProducto, setConfirmarEliminarProducto] = (0, import_react4.useState)(null);
+--- lines 7319-7338 ---
+7319:     {
+7320:       value: cruce.destinoId,
+7321:       onChange: (e) => setCruce({ ...cruce, destinoId: e.target.value }),
+7322:       className: "w-full rounded-lg px-3 py-2 text-[13px]",
+7323:       style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink }
+7324:     },
+7325:     /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "\u2014 Elige \u2014"),
+7326:     productos.slice().sort((a2, b2) => a2.nombre.localeCompare(b2.nombre, "es")).map((p2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: p2.id, value: p2.id }, p2.nombre, " (quedan ", fmt(p2.stock), ")"))
+7327:   )), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Cantidad que entra" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: cruce.cantDestino, onChange: (e) => setCruce({ ...cruce, cantDestino: e.target.value }) }))), previoCruce && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.bg, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-1" }, "Sale: ", /* @__PURE__ */ import_react4.default.createElement("b", { className: "mono" }, "\u20AC", fmt(previoCruce.valorSale)), " de ", previoCruce.origen.nombre, /* @__PURE__ */ import_react4.default.createElement("span", { style: { color: C2.inkSoft } }, " (\u20AC", fmt(previoCruce.origen.costo), "/ud)")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2" }, "Entra: ", /* @__PURE__ */ import_react4.default.createElement("b", { className: "mono" }, "\u20AC", fmt(previoCruce.valorEntra)), " de ", previoCruce.destino.nombre, /* @__PURE__ */ import_react4.default.createElement("span", { style: { color: C2.inkSoft } }, " (\u20AC", fmt(previoCruce.destino.costo), "/ud)")), previoCruce.mismoCosto && Math.abs(previoCruce.diferencia) < 0.01 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.accent } }, "\u2713 Mismo coste: el ajuste no genera ninguna diferencia de dinero.") : /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: previoCruce.diferencia < 0 ? C2.red : C2.accent } }, previoCruce.diferencia < 0 ? `Diferencia: se pierden \u20AC${fmt(Math.abs(previoCruce.diferencia))} \u2014 ir\xE1 a gastos generales.` : `Diferencia: se ganan \u20AC${fmt(previoCruce.diferencia)} \u2014 restar\xE1 de gastos generales.`), previoCruce.stockInsuficiente && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mt-2", style: { color: C2.red } }, "\u26A0 No hay tanto stock de ", previoCruce.origen.nombre, ": quedan ", fmt(previoCruce.origen.stock), ".")), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: cruce.motivo, onChange: (e) => setCruce({ ...cruce, motivo: e.target.value }), placeholder: "Se confundieron en el conteo\u2026" })), errorCruce && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, errorCruce), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCruce, disabled: !previoCruce || previoCruce.stockInsuficiente }, "Hacer el ajuste"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowAjusteCruce(false) }, "Cancelar"))), avisoContenido && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setAvisoContenido(null), title: "Ojo: has cambiado el contenido del envase" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, /* @__PURE__ */ import_react4.default.createElement("b", null, avisoContenido.nombre), " pas\xF3 de ", fmt(avisoContenido.contenidoAntes), " a", " ", fmt(avisoContenido.contenidoAhora), " ", avisoContenido.unidadContenido, " por envase."), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "Hay ", avisoContenido.fichas.length, " ficha(s) de costo que usan este producto. Sus cantidades est\xE1n guardadas por envase, as\xED que ahora significan una cantidad real distinta \u2014 y el coste no cambia, as\xED que no se notar\xEDa en ning\xFAn informe.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1 mb-3" }, avisoContenido.fichas.map((f2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: f2.id, className: "text-[12px]", style: { color: C2.inkSoft } }, "\xB7 ", f2.nombre))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Si el envase cambi\xF3 de formato de verdad, convierte para que las recetas sigan usando la misma cantidad real de siempre. Si solo estabas corrigiendo un dato mal metido, deja las fichas como est\xE1n."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: convertirFichasAfectadas }, "Convertir las fichas"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setAvisoContenido(null) }, "Dejarlas como est\xE1n"))), confirmarEliminarProducto && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmarEliminarProducto(null), title: "Eliminar producto" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, "Vas a eliminar ", /* @__PURE__ */ import_react4.default.createElement("b", null, confirmarEliminarProducto.nombre), "."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-4 p-3 rounded-lg", style: { background: C2.surfaceSoft, color: C2.inkSoft } }, movimientos.some((m2) => m2.productoId === confirmarEliminarProducto.id) ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, 'Este producto tiene movimientos en su historial (compras, ventas, ajustes...) \u2014 no se pierden: el producto deja de aparecer en las pantallas normales, pero se conserva para que ese hist\xF3rico siga mostrando su nombre correctamente. Puedes reactivarlo cuando quieras desde "Ver eliminados".') : 'Este producto no tiene ning\xFAn movimiento registrado todav\xEDa. Se puede reactivar en cualquier momento desde "Ver eliminados".'), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmarEliminarProducto(null) }, "Cancelar"), /* @__PURE__ */ import_react4.default.createElement(
+7328:     Btn,
+7329:     {
+7330:       onClick: () => {
+7331:         deleteProducto(confirmarEliminarProducto.id);
+7332:         setConfirmarEliminarProducto(null);
+7333:       }
+7334:     },
+7335:     "Confirmar eliminaci\xF3n"
+7336:   ))));
+7337: }
+7338: function InputCalc({ valor, onEscribir, decimales = 2, ...props }) {
+--- lines 8133-8152 ---
+8133:         setResponsableCancelacion("");
+8134:         setProcesandoEliminar(false);
+8135:       }
+8136:     },
+8137:     procesandoEliminar ? "Procesando\u2026" : "Confirmar"
+8138:   ))));
+8139: }
+8140: function Reportes({ rotacionPorProducto, gastoPorProveedor, productosSinMovimiento, valorInventario, margenPorProducto = [], patronesDesviacionConteo = [] }) {
+8141:   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-1" }, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Reportes y rotaci\xF3n"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => window.print(), className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(FileText, { size: 13 }), " Imprimir / Guardar PDF")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "zona-impresion", style: ESTILO_IMPRESION_CLARO }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end justify-between mb-4 pb-3", style: { borderBottom: "2px solid #9C7A34" } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[17px] font-semibold" }, "Reportes y rotaci\xF3n"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: "#6B7A6E" } }, "Generado el ", todayISO())), /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO, alt: "", style: { height: 56, width: "auto" } })), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { padding: 0 } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-4 pb-2 text-[13px] font-semibold" }, "Qu\xE9 te da m\xE1s beneficio de verdad"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "px-4 pb-2 text-[11.5px]", style: { color: C2.inkSoft } }, "\xDAltimos 90 d\xEDas. Ordenado por beneficio bruto generado, no solo por % de margen \u2014 un producto con margen alt\xEDsimo pero que apenas se vende importa menos que uno normal que se vende sin parar."), margenPorProducto.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-4" }, /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no hay ventas registradas en los \xFAltimos 90 d\xEDas." })) : /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", { style: { color: C2.inkSoft, borderTop: `1px solid ${C2.line}`, borderBottom: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2 px-4" }, "Producto"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2 px-4" }, "Unidades (90d)"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2 px-4" }, "Margen"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2 px-4" }, "Beneficio (90d)"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, margenPorProducto.map((p2, i3) => /* @__PURE__ */ import_react4.default.createElement("tr", { key: p2.id, style: { borderBottom: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-4" }, p2.nombre, i3 === 0 && /* @__PURE__ */ import_react4.default.createElement("span", { className: "ml-1.5", title: "El que m\xE1s beneficio genera" }, "\u{1F3C6}")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-4 mono" }, fmt(p2.unidadesVendidas)), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-4 mono", style: { color: p2.margenPct == null ? C2.inkSoft : p2.margenPct < 20 ? C2.red : p2.margenPct < 40 ? C2.amber : C2.accent } }, p2.margenPct == null ? "\u2014" : `${fmt(p2.margenPct)}%`), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-4 mono font-semibold" }, "\u20AC", fmt(p2.beneficio))))))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { padding: 0 } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-4 pb-2 text-[13px] font-semibold" }, "Rotaci\xF3n de inventario por producto"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "px-4 pb-2 text-[11.5px]", style: { color: C2.inkSoft } }, "D\xEDas de stock = existencia actual \xF7 consumo diario real (desde la primera salida registrada de ese producto hasta hoy). Con pocas semanas de historial, el n\xFAmero mejora seg\xFAn vayas registrando m\xE1s ventas."), /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", { style: { color: C2.inkSoft, borderTop: `1px solid ${C2.line}`, borderBottom: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2 px-4" }, "Producto"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2 px-4" }, "Salidas registradas"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2 px-4" }, "Consumo diario"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2 px-4" }, "D\xEDas de stock"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, [...rotacionPorProducto].sort((a2, b2) => (a2.dias ?? Infinity) - (b2.dias ?? Infinity)).map((p2) => /* @__PURE__ */ import_react4.default.createElement("tr", { key: p2.id, style: { borderBottom: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-4" }, p2.nombre), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-4 mono" }, p2.cantSalidas), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-4 mono" }, p2.consumoDiario == null ? "\u2014" : fmt(p2.consumoDiario), " /d\xEDa"), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-4 mono font-semibold", style: { color: p2.dias == null ? C2.inkSoft : p2.dias < 7 ? C2.red : p2.dias < 21 ? C2.amber : C2.accent } }, p2.dias == null ? "\u2014" : Math.round(p2.dias)))))), rotacionPorProducto.length === 0 && /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "A\xF1ade productos para ver su rotaci\xF3n." })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3" }, "Gasto total por proveedor"), gastoPorProveedor.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "A\xFAn no hay pedidos registrados." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, gastoPorProveedor.map((g2, i3) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i3, className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", null, g2.proveedor ? g2.proveedor.nombre : "Proveedor eliminado"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-medium" }, "\u20AC", fmt(g2.total)))))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3" }, "Productos sin ninguna salida"), productosSinMovimiento.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todos los productos tienen movimiento de salida." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, productosSinMovimiento.map((p2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: p2.id, className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, p2.nombre), /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.amber }, "sin rotaci\xF3n"))))), patronesDesviacionConteo.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-1" }, "Desviaciones que se repiten en conteos"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Estos productos llevan varios conteos desvi\xE1ndose casi siempre para el mismo lado \u2014 la se\xF1al real de un problema recurrente (merma, receta mal calculada), no de un descuadre suelto."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, patronesDesviacionConteo.map((p2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: p2.productoId, className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", null, p2.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft, fontSize: 11 } }, p2.numAjustes, " ajustes \xB7 \xFAltimo el ", p2.ultimaFecha)), /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: p2.direccion === "falta" ? C2.red : C2.amber }, p2.direccion === "falta" ? "\u2212" : "+", fmt(Math.abs(p2.acumulado)), " ", p2.unidad, " acumulado"))))))));
+8142: }
+8143: function fichaVacia() {
+8144:   return {
+8145:     nombre: "",
+8146:     seccion: "Otros",
+8147:     productoVinculadoId: "",
+8148:     rendimiento: 1,
+8149:     componentes: [],
+8150:     empaque: "",
+8151:     manoObra: "",
+8152:     tiempoElaboracionMinutos: "",
+--- lines 8616-8635 ---
+8616:   const [errores, setErrores] = import_react4.default.useState([]);
+8617:   const [cargando, setCargando] = import_react4.default.useState(true);
+8618:   const [error, setError] = import_react4.default.useState("");
+8619:   import_react4.default.useEffect(() => {
+8620:     let activo = true;
+8621:     (async () => {
+8622:       if (!window.__nubeActiva) {
+8623:         if (activo) {
+8624:           setError("El historial de errores en la nube no está disponible mientras trabajas solo en este equipo.");
+8625:           setCargando(false);
+8626:         }
+8627:         return;
+8628:       }
+8629:       try {
+8630:         const supabase = await window.getSupabaseClient();
+8631:         const { data, error: errLectura } = await supabase.from("errores_sistema").select("*").order("fecha", { ascending: false }).limit(100);
+8632:         if (!activo) return;
+8633:         if (errLectura) {
+8634:           setError("No se ha podido cargar el historial.");
+8635:         } else {
+--- lines 8626-8645 ---
+8626:         }
+8627:         return;
+8628:       }
+8629:       try {
+8630:         const supabase = await window.getSupabaseClient();
+8631:         const { data, error: errLectura } = await supabase.from("errores_sistema").select("*").order("fecha", { ascending: false }).limit(100);
+8632:         if (!activo) return;
+8633:         if (errLectura) {
+8634:           setError("No se ha podido cargar el historial.");
+8635:         } else {
+8636:           setErrores(data || []);
+8637:         }
+8638:       } catch {
+8639:         if (activo) setError("No se ha podido conectar.");
+8640:       } finally {
+8641:         if (activo) setCargando(false);
+8642:       }
+8643:     })();
+8644:     return () => {
+8645:       activo = false;
+--- lines 10055-10074 ---
+10055:   async function borrarPrefiltro() {
+10056:     if (!confirmarEliminarPrefiltro) return;
+10057:     await eliminarPrefiltro(confirmarEliminarPrefiltro.token, confirmarEliminarPrefiltro.candidato_nombre);
+10058:     setPrefiltros(await listarPrefiltros());
+10059:     setConfirmarEliminarPrefiltro(null);
+10060:   }
+10061:   const activa = entrevistas.find((e) => e.id === activaId);
+10062:   const verInforme = entrevistas.find((e) => e.id === verInformeId);
+10063:   async function llamarIA(entrevistaId, historial, finalizar, candidatoNombre) {
+10064:     setCargando(true);
+10065:     setError("");
+10066:     try {
+10067:       const resp = await fetch(
+10068:         "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/entrevista-personal",
+10069:         {
+10070:           method: "POST",
+10071:           headers: { "Content-Type": "application/json" },
+10072:           body: JSON.stringify({ historial, finalizar: !!finalizar, candidatoNombre: candidatoNombre || "" })
+10073:         }
+10074:       );
+--- lines 10064-10083 ---
+10064:     setCargando(true);
+10065:     setError("");
+10066:     try {
+10067:       const resp = await fetch(
+10068:         "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/entrevista-personal",
+10069:         {
+10070:           method: "POST",
+10071:           headers: { "Content-Type": "application/json" },
+10072:           body: JSON.stringify({ historial, finalizar: !!finalizar, candidatoNombre: candidatoNombre || "" })
+10073:         }
+10074:       );
+10075:       const r = await resp.json();
+10076:       if (!r.ok) {
+10077:         setError(r.error || "No se ha podido conectar con la IA. Int\xE9ntalo otra vez.");
+10078:         return;
+10079:       }
+10080:       if (r.terminado) {
+10081:         finalizarEntrevista(entrevistaId, r.informe);
+10082:         setActivaId(null);
+10083:         setVerInformeId(entrevistaId);
+
+===== estadoDerivado =====
+HITS=1
+--- lines 4275-4294 ---
+4275:     if (!estadosApi) return { ok: false, error: "No se pudo validar el conteo. Recarga la página e inténtalo de nuevo." };
+4276:     const reglasPorProducto = (productoId) => {
+4277:       const producto = productos.find((p) => p.id === productoId);
+4278:       return producto ? {
+4279:         indivisible: producto.indivisible === true || producto.fraccionable === false,
+4280:         precision: Number.isInteger(producto.precisionCantidad) ? producto.precisionCantidad : void 0
+4281:       } : {};
+4282:     };
+4283:     const estadoActual = estadosApi.estadoDerivado(conteo, reglasPorProducto);
+4284:     if (estadoActual === "CANCELADO" || conteo.cancelado === true) {
+4285:       const reversosPrevios = conteo.cancelacion && Array.isArray(conteo.cancelacion.reversos) ? conteo.cancelacion.reversos : conteo.reversosCancelacion || [];
+4286:       return {
+4287:         ok: true,
+4288:         replayed: true,
+4289:         eliminado: false,
+4290:         cancelado: true,
+4291:         operationId: conteo.cancelacionOperationId || conteo.cancelacion && conteo.cancelacion.operationId || null,
+4292:         revertidos: reversosPrevios.length,
+4293:         reversos: reversosPrevios
+4294:       };
+
+===== ajustesAplicados =====
+HITS=7
+--- lines 924-943 ---
+924:         const copia = { ...a2 };
+925:         delete copia.fotoOrigenIA;
+926:         return copia;
+927:       });
+928:       setProveedores(p2);
+929:       setPedidos(pe2);
+930:       setMovimientos(mo);
+931:       const coMigrado = (co || []).map((c2) => {
+932:         if (c2.ajustesAplicados) return c2;
+933:         const tieneAjustesYa = (mo || []).some((m2) => m2.documentoOrigenId === c2.id && m2.origen === "aplicarAjustes");
+934:         return tieneAjustesYa ? { ...c2, ajustesAplicados: true } : c2;
+935:       });
+936:       if (coMigrado.some((c2, i3) => c2 !== (co || [])[i3])) {
+937:         await saveKey("conteos", coMigrado);
+938:       }
+939:       setConteos(coMigrado);
+940:       setFichasCosto(fc);
+941:       setHistorial(hi);
+942:       setAlbaranes(alLimpios);
+943:       const habiaFotos = (al || []).some((a2) => a2 && a2.fotoOrigenIA !== void 0);
+--- lines 926-945 ---
+926:         return copia;
+927:       });
+928:       setProveedores(p2);
+929:       setPedidos(pe2);
+930:       setMovimientos(mo);
+931:       const coMigrado = (co || []).map((c2) => {
+932:         if (c2.ajustesAplicados) return c2;
+933:         const tieneAjustesYa = (mo || []).some((m2) => m2.documentoOrigenId === c2.id && m2.origen === "aplicarAjustes");
+934:         return tieneAjustesYa ? { ...c2, ajustesAplicados: true } : c2;
+935:       });
+936:       if (coMigrado.some((c2, i3) => c2 !== (co || [])[i3])) {
+937:         await saveKey("conteos", coMigrado);
+938:       }
+939:       setConteos(coMigrado);
+940:       setFichasCosto(fc);
+941:       setHistorial(hi);
+942:       setAlbaranes(alLimpios);
+943:       const habiaFotos = (al || []).some((a2) => a2 && a2.fotoOrigenIA !== void 0);
+944:       setCatalogoProv(cp);
+945:       setGastosGenerales(gg);
+--- lines 4429-4448 ---
+4429:     const conteo = conteos.find((c22) => c22.id === conteoId);
+4430:     if (!conteoEsDelLocalActivo(conteo)) return { ok: false, error: "Conteo no disponible en el local activo.", ajustados: 0, traspasados: [] };
+4431:     const permisoAjuste = autorizarMutacionAjustes(conteo);
+4432:     if (!permisoAjuste.ok) return respuestaPermisoAjuste(permisoAjuste);
+4433:     const estadoConteo = conteo.estado || (conteo.completado === true ? "COMPLETADO" : "BORRADOR");
+4434:     if (estadoConteo !== "PARCIAL" && estadoConteo !== "COMPLETADO") {
+4435:       return { ok: false, codigo: "estado_no_ajustable", error: "Solo un conteo parcial o completado puede ajustar el stock.", ajustados: 0, traspasados: [] };
+4436:     }
+4437:     if (conteo.ajustesAplicados) {
+4438:       return { ok: true, replayed: true, operationId: conteo.ajustesOperationId || null, ajustados: Number(conteo.ajustesCantidad) || 0, traspasados: conteo.ajustesTraspasados || [] };
+4439:     }
+4440:     const estadosApi = typeof window !== "undefined" ? window.__pm12ConteoEstados : null;
+4441:     if (!estadosApi) return { ok: false, codigo: "motor_no_disponible", error: "No se pudo validar el ajuste. Recarga la página e inténtalo de nuevo.", ajustados: 0, traspasados: [] };
+4442:     const preparados = [];
+4443:     for (const item of conteo.items || []) {
+4444:       const p22 = productos.find((pr) => pr.id === item.productoId);
+4445:       if (!p22 || localActivoId && p22.localId !== localActivoId) {
+4446:         return { ok: false, codigo: "producto_fuera_de_contexto", error: "El conteo contiene un producto que no pertenece al local activo.", ajustados: 0, traspasados: [] };
+4447:       }
+4448:       const valorCapturado = Object.prototype.hasOwnProperty.call(item, "conteo") ? item.conteo : item.cantidadContada;
+--- lines 4550-4569 ---
+4550:       if (!resultadoLote.ok) {
+4551:         return { ok: false, codigo: resultadoLote.codigo || "ajuste_lote_fallido", error: resultadoLote.error || "No se pudo aplicar el lote completo de ajustes.", operationId: operationIdDeEsteAjuste, ajustados: 0, traspasados: [] };
+4552:       }
+4553:     }
+4554:     const ajustados = productosAjustados.size;
+4555:     if (planAjustes.length > 0 && !resultadoLote.replayed) {
+4556:       registrarAuditoria("Aplicar ajustes de inventario", `${ajustados} producto(s) ajustado(s) · ${permisoAjuste.rol} · ${permisoAjuste.actorNombre || permisoAjuste.actorId || "sin nombre"} · local ${permisoAjuste.localId}`);
+4557:     }
+4558:     const ajustesAplicadosEn = (/* @__PURE__ */ new Date()).toISOString();
+4559:     setConteos((s22) => s22.map((c22) => c22.id === conteoId ? { ...c22, ajustesAplicados: true, ajustesAplicadosEn, ajustesOperationId: operationIdDeEsteAjuste, ajustesCantidad: ajustados, ajustesTraspasados: traspasados, ajustesActor: { id: permisoAjuste.actorId || null, nombre: permisoAjuste.actorNombre || "", rol: permisoAjuste.rol }, ajustesEmpresaId: permisoAjuste.empresaId, ajustesLocalId: permisoAjuste.localId } : c22));
+4560:     return { ok: true, replayed: !!resultadoLote.replayed, operationId: operationIdDeEsteAjuste, ajustados, traspasados };
+4561:   }
+4562:   return { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion };
+4563: }
+4564: function crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId }) {
+4565:   const productoEsDelLocalActivoProduccion = (p2) => !!p2 && (!localActivoId || p2.localId === localActivoId);
+4566:   const ordenEsDelLocalActivoProduccion = (o2) => !!o2 && (!localActivoId || o2.localId === localActivoId);
+4567:   const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+4568:   function producir({ fichaId, unidadesDeseadas, unidadesBuenas, ingredientesReales, empaqueReal, manoObraReal, gastosGeneralesReal, notas }) {
+4569:     const ficha = fichasCosto.find((f2) => f2.id === fichaId);
+--- lines 4551-4570 ---
+4551:         return { ok: false, codigo: resultadoLote.codigo || "ajuste_lote_fallido", error: resultadoLote.error || "No se pudo aplicar el lote completo de ajustes.", operationId: operationIdDeEsteAjuste, ajustados: 0, traspasados: [] };
+4552:       }
+4553:     }
+4554:     const ajustados = productosAjustados.size;
+4555:     if (planAjustes.length > 0 && !resultadoLote.replayed) {
+4556:       registrarAuditoria("Aplicar ajustes de inventario", `${ajustados} producto(s) ajustado(s) · ${permisoAjuste.rol} · ${permisoAjuste.actorNombre || permisoAjuste.actorId || "sin nombre"} · local ${permisoAjuste.localId}`);
+4557:     }
+4558:     const ajustesAplicadosEn = (/* @__PURE__ */ new Date()).toISOString();
+4559:     setConteos((s22) => s22.map((c22) => c22.id === conteoId ? { ...c22, ajustesAplicados: true, ajustesAplicadosEn, ajustesOperationId: operationIdDeEsteAjuste, ajustesCantidad: ajustados, ajustesTraspasados: traspasados, ajustesActor: { id: permisoAjuste.actorId || null, nombre: permisoAjuste.actorNombre || "", rol: permisoAjuste.rol }, ajustesEmpresaId: permisoAjuste.empresaId, ajustesLocalId: permisoAjuste.localId } : c22));
+4560:     return { ok: true, replayed: !!resultadoLote.replayed, operationId: operationIdDeEsteAjuste, ajustados, traspasados };
+4561:   }
+4562:   return { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion };
+4563: }
+4564: function crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId }) {
+4565:   const productoEsDelLocalActivoProduccion = (p2) => !!p2 && (!localActivoId || p2.localId === localActivoId);
+4566:   const ordenEsDelLocalActivoProduccion = (o2) => !!o2 && (!localActivoId || o2.localId === localActivoId);
+4567:   const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+4568:   function producir({ fichaId, unidadesDeseadas, unidadesBuenas, ingredientesReales, empaqueReal, manoObraReal, gastosGeneralesReal, notas }) {
+4569:     const ficha = fichasCosto.find((f2) => f2.id === fichaId);
+4570:     if (!ficha) return { ok: false, error: "No se encontr\xF3 la ficha de costo." };
+--- lines 7787-7806 ---
+7787:   return `HOJA DE CONTEO DE INVENTARIO
+7788: Fecha: ${fecha}
+7789: 
+7790: ${bloques.join("\n\n")}
+7791: 
+7792: Contado por: ____________________`;
+7793: }
+7794: function BloqueAplicarAjustes({ activo, procesandoCierre, onAplicar, onCerrarSinAjustar, onPedirRevertir, puedeAplicar = false }) {
+7795:   if (activo.ajustesAplicados) {
+7796:     return /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium mb-1" }, "Ajustes ya aplicados"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, activo.ajustesAplicadosEn ? `El ${new Date(activo.ajustesAplicadosEn).toLocaleString("es-ES")} — ` : "", "no se pueden volver a aplicar, para no duplicar la corrección sobre el stock.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", small: true, disabled: !puedeAplicar, title: !puedeAplicar ? "Solo Propietario o Encargado puede revertir ajustes de inventario." : "Revertir únicamente una aplicación duplicada", onClick: onPedirRevertir }, "¿Se aplicó dos veces por error? Revertir la última aplicación"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", small: true, onClick: onCerrarSinAjustar }, "Cerrar")));
+7797:   }
+7798:   if (!puedeAplicar) {
+7799:     return /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium mb-1" }, "Conteo cerrado sin permiso de ajuste"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Puedes cerrar y revisar el conteo, pero solo Propietario o Encargado puede aplicar ajustes al stock.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: onCerrarSinAjustar, disabled: procesandoCierre }, "Cerrar sin ajustar")));
+7800:   }
+7801:   return /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 flex gap-2 flex-wrap no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { disabled: procesandoCierre, onClick: onAplicar }, procesandoCierre ? "Aplicando…" : "Aplicar ajustes al stock"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: onCerrarSinAjustar, disabled: procesandoCierre }, "Cerrar sin ajustar"));
+7802: }
+7803: function InventarioCiego({ productos, proveedores, conteos, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion, productoPorId, crearProductoEnConteo, clasificacionABC, almacenCongelado, puedeAplicarAjustes = false }) {
+7804:   const [activoId, setActivoId] = (0, import_react4.useState)(null);
+7805:   const activo = conteos.find((c2) => c2.id === activoId);
+7806:   const [showNuevo, setShowNuevo] = (0, import_react4.useState)(false);
+--- lines 7788-7807 ---
+7788: Fecha: ${fecha}
+7789: 
+7790: ${bloques.join("\n\n")}
+7791: 
+7792: Contado por: ____________________`;
+7793: }
+7794: function BloqueAplicarAjustes({ activo, procesandoCierre, onAplicar, onCerrarSinAjustar, onPedirRevertir, puedeAplicar = false }) {
+7795:   if (activo.ajustesAplicados) {
+7796:     return /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium mb-1" }, "Ajustes ya aplicados"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, activo.ajustesAplicadosEn ? `El ${new Date(activo.ajustesAplicadosEn).toLocaleString("es-ES")} — ` : "", "no se pueden volver a aplicar, para no duplicar la corrección sobre el stock.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", small: true, disabled: !puedeAplicar, title: !puedeAplicar ? "Solo Propietario o Encargado puede revertir ajustes de inventario." : "Revertir únicamente una aplicación duplicada", onClick: onPedirRevertir }, "¿Se aplicó dos veces por error? Revertir la última aplicación"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", small: true, onClick: onCerrarSinAjustar }, "Cerrar")));
+7797:   }
+7798:   if (!puedeAplicar) {
+7799:     return /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium mb-1" }, "Conteo cerrado sin permiso de ajuste"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Puedes cerrar y revisar el conteo, pero solo Propietario o Encargado puede aplicar ajustes al stock.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: onCerrarSinAjustar, disabled: procesandoCierre }, "Cerrar sin ajustar")));
+7800:   }
+7801:   return /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 flex gap-2 flex-wrap no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { disabled: procesandoCierre, onClick: onAplicar }, procesandoCierre ? "Aplicando…" : "Aplicar ajustes al stock"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: onCerrarSinAjustar, disabled: procesandoCierre }, "Cerrar sin ajustar"));
+7802: }
+7803: function InventarioCiego({ productos, proveedores, conteos, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion, productoPorId, crearProductoEnConteo, clasificacionABC, almacenCongelado, puedeAplicarAjustes = false }) {
+7804:   const [activoId, setActivoId] = (0, import_react4.useState)(null);
+7805:   const activo = conteos.find((c2) => c2.id === activoId);
+7806:   const [showNuevo, setShowNuevo] = (0, import_react4.useState)(false);
+7807:   const [resumenCierre, setResumenCierre] = (0, import_react4.useState)(null);
+
+===== motivoParcial =====
+HITS=5
+--- lines 4253-4272 ---
+4253:       (s2) => s2.map((c2) => c2.id === conteoId ? { ...c2, responsables: { ...c2.responsables || {}, [campo]: valor } } : c2)
+4254:     );
+4255:   }
+4256:   function finalizarConteo(conteoId, opciones = {}) {
+4257:     const conteo = conteos.find((c2) => c2.id === conteoId);
+4258:     if (!conteoEsDelLocalActivo(conteo)) return { ok: false, codigo: "fuera_de_contexto", error: "Conteo no disponible en el local activo." };
+4259:     const estadosApi = typeof window !== "undefined" ? window.__pm12ConteoEstados : null;
+4260:     if (!estadosApi) return { ok: false, codigo: "motor_no_disponible", error: "No se pudo validar el cierre. Recarga la página e inténtalo de nuevo." };
+4261:     const cierre = estadosApi.validarCierre(conteo, { responsable: conteo.responsables && conteo.responsables.contadoPor, confirmarParcial: opciones.confirmarParcial === true, motivoParcial: opciones.motivoParcial });
+4262:     const mensajes = { sin_productos: "Este conteo no contiene productos y no se puede cerrar.", cantidades_invalidas: "Hay cantidades inválidas. Corrígelas antes de cerrar.", conteo_vacio: "Aún no has contado ningún producto. Introduce al menos una cantidad.", responsable_obligatorio: "Indica quién realizó el conteo.", cobertura_incompleta: "Faltan productos por contar.", motivo_parcial_obligatorio: "Explica por qué se cierra el conteo incompleto." };
+4263:     if (!cierre.ok) return { ok: false, codigo: cierre.error, error: mensajes[cierre.error] || "No se puede cerrar el conteo.", cobertura: cierre.cobertura };
+4264:     const cerradoEn = (/* @__PURE__ */ new Date()).toISOString();
+4265:     const motivoParcial = cierre.estado === estadosApi.ESTADOS.PARCIAL ? String(opciones.motivoParcial || "").trim() : null;
+4266:     const registroCierre = { actorId: String(opciones.actorId || cierre.responsable).trim(), actorNombre: String(opciones.actorNombre || cierre.responsable).trim(), cerradoEn, motivoParcial, cobertura: cierre.cobertura };
+4267:     setConteos((s2) => s2.map((c2) => c2.id === conteoId ? { ...c2, completado: true, estado: cierre.estado, cerradoEn, motivoParcial, coberturaCierre: cierre.cobertura, cierre: registroCierre } : c2));
+4268:     registrarAuditoria("Finalizar conteo", `${cierre.estado} · ${cierre.cobertura.contados}/${cierre.cobertura.total} producto(s) · responsable: ${cierre.responsable}`);
+4269:     return { ok: true, estado: cierre.estado, cobertura: cierre.cobertura };
+4270:   }
+4271:   function eliminarConteo(conteoId, opciones = {}) {
+4272:     const conteo = conteos.find((c) => c.id === conteoId);
+--- lines 4257-4276 ---
+4257:     const conteo = conteos.find((c2) => c2.id === conteoId);
+4258:     if (!conteoEsDelLocalActivo(conteo)) return { ok: false, codigo: "fuera_de_contexto", error: "Conteo no disponible en el local activo." };
+4259:     const estadosApi = typeof window !== "undefined" ? window.__pm12ConteoEstados : null;
+4260:     if (!estadosApi) return { ok: false, codigo: "motor_no_disponible", error: "No se pudo validar el cierre. Recarga la página e inténtalo de nuevo." };
+4261:     const cierre = estadosApi.validarCierre(conteo, { responsable: conteo.responsables && conteo.responsables.contadoPor, confirmarParcial: opciones.confirmarParcial === true, motivoParcial: opciones.motivoParcial });
+4262:     const mensajes = { sin_productos: "Este conteo no contiene productos y no se puede cerrar.", cantidades_invalidas: "Hay cantidades inválidas. Corrígelas antes de cerrar.", conteo_vacio: "Aún no has contado ningún producto. Introduce al menos una cantidad.", responsable_obligatorio: "Indica quién realizó el conteo.", cobertura_incompleta: "Faltan productos por contar.", motivo_parcial_obligatorio: "Explica por qué se cierra el conteo incompleto." };
+4263:     if (!cierre.ok) return { ok: false, codigo: cierre.error, error: mensajes[cierre.error] || "No se puede cerrar el conteo.", cobertura: cierre.cobertura };
+4264:     const cerradoEn = (/* @__PURE__ */ new Date()).toISOString();
+4265:     const motivoParcial = cierre.estado === estadosApi.ESTADOS.PARCIAL ? String(opciones.motivoParcial || "").trim() : null;
+4266:     const registroCierre = { actorId: String(opciones.actorId || cierre.responsable).trim(), actorNombre: String(opciones.actorNombre || cierre.responsable).trim(), cerradoEn, motivoParcial, cobertura: cierre.cobertura };
+4267:     setConteos((s2) => s2.map((c2) => c2.id === conteoId ? { ...c2, completado: true, estado: cierre.estado, cerradoEn, motivoParcial, coberturaCierre: cierre.cobertura, cierre: registroCierre } : c2));
+4268:     registrarAuditoria("Finalizar conteo", `${cierre.estado} · ${cierre.cobertura.contados}/${cierre.cobertura.total} producto(s) · responsable: ${cierre.responsable}`);
+4269:     return { ok: true, estado: cierre.estado, cobertura: cierre.cobertura };
+4270:   }
+4271:   function eliminarConteo(conteoId, opciones = {}) {
+4272:     const conteo = conteos.find((c) => c.id === conteoId);
+4273:     if (!conteoEsDelLocalActivo(conteo)) return { ok: false, error: "Conteo no disponible en el local activo." };
+4274:     const estadosApi = typeof window !== "undefined" ? window.__pm12ConteoEstados : null;
+4275:     if (!estadosApi) return { ok: false, error: "No se pudo validar el conteo. Recarga la página e inténtalo de nuevo." };
+4276:     const reglasPorProducto = (productoId) => {
+--- lines 4258-4277 ---
+4258:     if (!conteoEsDelLocalActivo(conteo)) return { ok: false, codigo: "fuera_de_contexto", error: "Conteo no disponible en el local activo." };
+4259:     const estadosApi = typeof window !== "undefined" ? window.__pm12ConteoEstados : null;
+4260:     if (!estadosApi) return { ok: false, codigo: "motor_no_disponible", error: "No se pudo validar el cierre. Recarga la página e inténtalo de nuevo." };
+4261:     const cierre = estadosApi.validarCierre(conteo, { responsable: conteo.responsables && conteo.responsables.contadoPor, confirmarParcial: opciones.confirmarParcial === true, motivoParcial: opciones.motivoParcial });
+4262:     const mensajes = { sin_productos: "Este conteo no contiene productos y no se puede cerrar.", cantidades_invalidas: "Hay cantidades inválidas. Corrígelas antes de cerrar.", conteo_vacio: "Aún no has contado ningún producto. Introduce al menos una cantidad.", responsable_obligatorio: "Indica quién realizó el conteo.", cobertura_incompleta: "Faltan productos por contar.", motivo_parcial_obligatorio: "Explica por qué se cierra el conteo incompleto." };
+4263:     if (!cierre.ok) return { ok: false, codigo: cierre.error, error: mensajes[cierre.error] || "No se puede cerrar el conteo.", cobertura: cierre.cobertura };
+4264:     const cerradoEn = (/* @__PURE__ */ new Date()).toISOString();
+4265:     const motivoParcial = cierre.estado === estadosApi.ESTADOS.PARCIAL ? String(opciones.motivoParcial || "").trim() : null;
+4266:     const registroCierre = { actorId: String(opciones.actorId || cierre.responsable).trim(), actorNombre: String(opciones.actorNombre || cierre.responsable).trim(), cerradoEn, motivoParcial, cobertura: cierre.cobertura };
+4267:     setConteos((s2) => s2.map((c2) => c2.id === conteoId ? { ...c2, completado: true, estado: cierre.estado, cerradoEn, motivoParcial, coberturaCierre: cierre.cobertura, cierre: registroCierre } : c2));
+4268:     registrarAuditoria("Finalizar conteo", `${cierre.estado} · ${cierre.cobertura.contados}/${cierre.cobertura.total} producto(s) · responsable: ${cierre.responsable}`);
+4269:     return { ok: true, estado: cierre.estado, cobertura: cierre.cobertura };
+4270:   }
+4271:   function eliminarConteo(conteoId, opciones = {}) {
+4272:     const conteo = conteos.find((c) => c.id === conteoId);
+4273:     if (!conteoEsDelLocalActivo(conteo)) return { ok: false, error: "Conteo no disponible en el local activo." };
+4274:     const estadosApi = typeof window !== "undefined" ? window.__pm12ConteoEstados : null;
+4275:     if (!estadosApi) return { ok: false, error: "No se pudo validar el conteo. Recarga la página e inténtalo de nuevo." };
+4276:     const reglasPorProducto = (productoId) => {
+4277:       const producto = productos.find((p) => p.id === productoId);
+--- lines 4259-4278 ---
+4259:     const estadosApi = typeof window !== "undefined" ? window.__pm12ConteoEstados : null;
+4260:     if (!estadosApi) return { ok: false, codigo: "motor_no_disponible", error: "No se pudo validar el cierre. Recarga la página e inténtalo de nuevo." };
+4261:     const cierre = estadosApi.validarCierre(conteo, { responsable: conteo.responsables && conteo.responsables.contadoPor, confirmarParcial: opciones.confirmarParcial === true, motivoParcial: opciones.motivoParcial });
+4262:     const mensajes = { sin_productos: "Este conteo no contiene productos y no se puede cerrar.", cantidades_invalidas: "Hay cantidades inválidas. Corrígelas antes de cerrar.", conteo_vacio: "Aún no has contado ningún producto. Introduce al menos una cantidad.", responsable_obligatorio: "Indica quién realizó el conteo.", cobertura_incompleta: "Faltan productos por contar.", motivo_parcial_obligatorio: "Explica por qué se cierra el conteo incompleto." };
+4263:     if (!cierre.ok) return { ok: false, codigo: cierre.error, error: mensajes[cierre.error] || "No se puede cerrar el conteo.", cobertura: cierre.cobertura };
+4264:     const cerradoEn = (/* @__PURE__ */ new Date()).toISOString();
+4265:     const motivoParcial = cierre.estado === estadosApi.ESTADOS.PARCIAL ? String(opciones.motivoParcial || "").trim() : null;
+4266:     const registroCierre = { actorId: String(opciones.actorId || cierre.responsable).trim(), actorNombre: String(opciones.actorNombre || cierre.responsable).trim(), cerradoEn, motivoParcial, cobertura: cierre.cobertura };
+4267:     setConteos((s2) => s2.map((c2) => c2.id === conteoId ? { ...c2, completado: true, estado: cierre.estado, cerradoEn, motivoParcial, coberturaCierre: cierre.cobertura, cierre: registroCierre } : c2));
+4268:     registrarAuditoria("Finalizar conteo", `${cierre.estado} · ${cierre.cobertura.contados}/${cierre.cobertura.total} producto(s) · responsable: ${cierre.responsable}`);
+4269:     return { ok: true, estado: cierre.estado, cobertura: cierre.cobertura };
+4270:   }
+4271:   function eliminarConteo(conteoId, opciones = {}) {
+4272:     const conteo = conteos.find((c) => c.id === conteoId);
+4273:     if (!conteoEsDelLocalActivo(conteo)) return { ok: false, error: "Conteo no disponible en el local activo." };
+4274:     const estadosApi = typeof window !== "undefined" ? window.__pm12ConteoEstados : null;
+4275:     if (!estadosApi) return { ok: false, error: "No se pudo validar el conteo. Recarga la página e inténtalo de nuevo." };
+4276:     const reglasPorProducto = (productoId) => {
+4277:       const producto = productos.find((p) => p.id === productoId);
+4278:       return producto ? {
+--- lines 7857-7876 ---
+7857:     if (resultado.ok) return;
+7858:     if (resultado.codigo === "cobertura_incompleta") { setConfirmarCierreParcial(true); return; }
+7859:     setErrorCierre(resultado.error);
+7860:   }
+7861:   function confirmarFinalizacionParcial() {
+7862:     if (!activo) return;
+7863:     setErrorCierre("");
+7864:     const responsable = String((activo.responsables || {}).contadoPor || "").trim();
+7865:     const resultado = finalizarConteo(activo.id, { confirmarParcial: true, motivoParcial: motivoCierreParcial, actorId: responsable, actorNombre: responsable });
+7866:     if (!resultado.ok) { setErrorCierre(resultado.error); return; }
+7867:     setConfirmarCierreParcial(false);
+7868:     setMotivoCierreParcial("");
+7869:   }
+7870:   function referenciaSistema(p2) {
+7871:     if (esPisoVenta) return Number(p2.stockPisoVenta) || 0;
+7872:     if (esAlmacen) return Math.max(0, (Number(p2.stock) || 0) - (Number(p2.stockPisoVenta) || 0));
+7873:     return Number(p2.stock) || 0;
+7874:   }
+7875:   const diferencias = !activo ? [] : activo.items.map((it2) => {
+7876:     const p2 = productoPorId(it2.productoId);
+
+===== responsables =====
+HITS=9
+--- lines 4226-4245 ---
+4226:       id: uid(),
+4227:       empresaId: empresaActivaId || null,
+4228:       localId: localActivoId || null,
+4229:       fecha: todayISO(),
+4230:       iniciadoEn: (/* @__PURE__ */ new Date()).toISOString(),
+4231:       completado: false,
+4232:       estado: "BORRADOR",
+4233:       ambito,
+4234:       responsables: { contadoPor: "", revisor: "" },
+4235:       items: productosDelConteo.map((p2) => ({ productoId: p2.id, conteo: "" }))
+4236:     };
+4237:     setConteos((s2) => [conteo, ...s2]);
+4238:     return conteo.id;
+4239:   }
+4240:   function actualizarConteoItem(conteoId, productoId, campo, valor) {
+4241:     const conteo = conteos.find((c2) => c2.id === conteoId);
+4242:     if (!conteoEsDelLocalActivo(conteo)) return false;
+4243:     setConteos(
+4244:       (s2) => s2.map(
+4245:         (c2) => c2.id === conteoId ? { ...c2, items: c2.items.map((it2) => it2.productoId === productoId ? { ...it2, [campo]: valor } : it2) } : c2
+--- lines 4245-4264 ---
+4245:         (c2) => c2.id === conteoId ? { ...c2, items: c2.items.map((it2) => it2.productoId === productoId ? { ...it2, [campo]: valor } : it2) } : c2
+4246:       )
+4247:     );
+4248:   }
+4249:   function actualizarResponsable(conteoId, campo, valor) {
+4250:     const conteo = conteos.find((c2) => c2.id === conteoId);
+4251:     if (!conteoEsDelLocalActivo(conteo)) return false;
+4252:     setConteos(
+4253:       (s2) => s2.map((c2) => c2.id === conteoId ? { ...c2, responsables: { ...c2.responsables || {}, [campo]: valor } } : c2)
+4254:     );
+4255:   }
+4256:   function finalizarConteo(conteoId, opciones = {}) {
+4257:     const conteo = conteos.find((c2) => c2.id === conteoId);
+4258:     if (!conteoEsDelLocalActivo(conteo)) return { ok: false, codigo: "fuera_de_contexto", error: "Conteo no disponible en el local activo." };
+4259:     const estadosApi = typeof window !== "undefined" ? window.__pm12ConteoEstados : null;
+4260:     if (!estadosApi) return { ok: false, codigo: "motor_no_disponible", error: "No se pudo validar el cierre. Recarga la página e inténtalo de nuevo." };
+4261:     const cierre = estadosApi.validarCierre(conteo, { responsable: conteo.responsables && conteo.responsables.contadoPor, confirmarParcial: opciones.confirmarParcial === true, motivoParcial: opciones.motivoParcial });
+4262:     const mensajes = { sin_productos: "Este conteo no contiene productos y no se puede cerrar.", cantidades_invalidas: "Hay cantidades inválidas. Corrígelas antes de cerrar.", conteo_vacio: "Aún no has contado ningún producto. Introduce al menos una cantidad.", responsable_obligatorio: "Indica quién realizó el conteo.", cobertura_incompleta: "Faltan productos por contar.", motivo_parcial_obligatorio: "Explica por qué se cierra el conteo incompleto." };
+4263:     if (!cierre.ok) return { ok: false, codigo: cierre.error, error: mensajes[cierre.error] || "No se puede cerrar el conteo.", cobertura: cierre.cobertura };
+4264:     const cerradoEn = (/* @__PURE__ */ new Date()).toISOString();
+--- lines 7847-7866 ---
+7847:     setShowNuevo(false);
+7848:   }
+7849:   const esPisoVenta = activo?.ambito === "piso_venta";
+7850:   const esAlmacen = activo?.ambito === "almacen";
+7851:   const coberturaActivo = activo && typeof window !== "undefined" && window.__pm12ConteoEstados ? window.__pm12ConteoEstados.resumenCobertura(activo.items) : { total: 0, contados: 0, pendientes: 0, invalidos: 0, porcentaje: 0 };
+7852:   function solicitarFinalizacion() {
+7853:     if (!activo) return;
+7854:     setErrorCierre("");
+7855:     const responsable = String((activo.responsables || {}).contadoPor || "").trim();
+7856:     const resultado = finalizarConteo(activo.id, { actorId: responsable, actorNombre: responsable });
+7857:     if (resultado.ok) return;
+7858:     if (resultado.codigo === "cobertura_incompleta") { setConfirmarCierreParcial(true); return; }
+7859:     setErrorCierre(resultado.error);
+7860:   }
+7861:   function confirmarFinalizacionParcial() {
+7862:     if (!activo) return;
+7863:     setErrorCierre("");
+7864:     const responsable = String((activo.responsables || {}).contadoPor || "").trim();
+7865:     const resultado = finalizarConteo(activo.id, { confirmarParcial: true, motivoParcial: motivoCierreParcial, actorId: responsable, actorNombre: responsable });
+7866:     if (!resultado.ok) { setErrorCierre(resultado.error); return; }
+--- lines 7856-7875 ---
+7856:     const resultado = finalizarConteo(activo.id, { actorId: responsable, actorNombre: responsable });
+7857:     if (resultado.ok) return;
+7858:     if (resultado.codigo === "cobertura_incompleta") { setConfirmarCierreParcial(true); return; }
+7859:     setErrorCierre(resultado.error);
+7860:   }
+7861:   function confirmarFinalizacionParcial() {
+7862:     if (!activo) return;
+7863:     setErrorCierre("");
+7864:     const responsable = String((activo.responsables || {}).contadoPor || "").trim();
+7865:     const resultado = finalizarConteo(activo.id, { confirmarParcial: true, motivoParcial: motivoCierreParcial, actorId: responsable, actorNombre: responsable });
+7866:     if (!resultado.ok) { setErrorCierre(resultado.error); return; }
+7867:     setConfirmarCierreParcial(false);
+7868:     setMotivoCierreParcial("");
+7869:   }
+7870:   function referenciaSistema(p2) {
+7871:     if (esPisoVenta) return Number(p2.stockPisoVenta) || 0;
+7872:     if (esAlmacen) return Math.max(0, (Number(p2.stock) || 0) - (Number(p2.stockPisoVenta) || 0));
+7873:     return Number(p2.stock) || 0;
+7874:   }
+7875:   const diferencias = !activo ? [] : activo.items.map((it2) => {
+--- lines 7896-7915 ---
+7896:     const bloques = grupos.map((g2) => {
+7897:       const lineas = g2.items.map((p2) => {
+7898:         n += 1;
+7899:         return `${n}. ${p2.nombre} (${p2.unidad}): ${fmt(cfPorProducto[p2.id])}`;
+7900:       });
+7901:       return `--- ${g2.nombre.toUpperCase()} ---
+7902: ${lineas.join("\n")}`;
+7903:     });
+7904:     const contadoPor = activo.responsables && activo.responsables.contadoPor ? activo.responsables.contadoPor : "\u2014";
+7905:     return `HOJA DE CONTEO \u2014 YA CONTADO
+7906: Fecha: ${fecha}
+7907: Contado por: ${contadoPor}
+7908: 
+7909: ${bloques.join("\n\n")}`;
+7910:   }
+7911:   function textoResultadoConteo() {
+7912:     const ambito = esPisoVenta ? "Piso de venta" : esAlmacen ? "Almac\xE9n (trastienda)" : "Todo el local";
+7913:     const lineas = diferencias.filter((d2) => d2.dif !== 0).map((d2) => {
+7914:       const motivo = motivos[d2.producto.id] ? ` \xB7 ${motivos[d2.producto.id]}` : "";
+7915:       return `${d2.producto.nombre}: sistema ${fmt(referenciaSistema(d2.producto))}, contado ${d2.cf} (${d2.dif > 0 ? "+" : ""}${d2.dif}) \xB7 \u20AC${fmt(Math.abs(d2.impacto))}${motivo}`;
+--- lines 8048-8067 ---
+8048:     {
+8049:       value: motivos[d2.producto.id] || "",
+8050:       onChange: (e) => setMotivos({ ...motivos, [d2.producto.id]: e.target.value }),
+8051:       className: "w-full rounded-lg px-3 py-2 text-[13px]",
+8052:       style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink }
+8053:     },
+8054:     /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "\u2014 Selecciona un motivo \u2014"),
+8055:     MOTIVOS.map((m2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: m2, value: m2 }, m2))
+8056:   ))), d2.dif !== 0 && motivos[d2.producto.id] && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Motivo: ", motivos[d2.producto.id]))))), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setVerHojaCompletada((s2) => !s2), className: "text-[12.5px] font-medium mt-2 mb-2 no-imprimir", style: { color: C2.accent } }, verHojaCompletada ? "Ocultar" : "Ver", " hoja de conteo ya rellena"), verHojaCompletada && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-wrap gap-2 mb-3 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => window.print() }, "Imprimir / Guardar PDF"), /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { href: `https://wa.me/?text=${encodeURIComponent(textoHojaConteoCompletada())}` }, /* @__PURE__ */ import_react4.default.createElement(MessageCircle, { size: 13 }), " WhatsApp")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "zona-impresion", style: ESTILO_IMPRESION_CLARO }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end justify-between mb-3 pb-3", style: { borderBottom: "2px solid #9C7A34" } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[17px] font-semibold" }, "Hoja de conteo \u2014 ya contado"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: "#6B7A6E" } }, "Fecha: ", activo.fecha, " \xB7 Contado por: ", activo.responsables && activo.responsables.contadoPor ? activo.responsables.contadoPor : "\u2014")), /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO, alt: "", style: { height: 62, width: "auto" } })), /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[11.5px]", style: { borderCollapse: "collapse" } }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", null, /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff", width: 28 } }, "N\xBA"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Descripci\xF3n del producto"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff", width: 60 } }, "U/M"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff", width: 90 } }, "Contado"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, (() => {
+8057:     let n = 0;
+8058:     const cfPorProducto = {};
+8059:     diferencias.forEach((d2) => {
+8060:       cfPorProducto[d2.producto.id] = d2.cf;
+8061:     });
+8062:     return agruparPorProveedor(diferencias.map((d2) => d2.producto), proveedores).map((g2) => /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, { key: g2.id }, /* @__PURE__ */ import_react4.default.createElement("tr", null, /* @__PURE__ */ import_react4.default.createElement("td", { colSpan: 4, className: "py-1.5 px-2 font-semibold text-[11.5px]", style: { background: C2.accentSoft, border: `1px solid ${C2.line}` } }, g2.nombre, " \xB7 ", g2.items.length, " referencia(s)")), g2.items.map((p2) => {
+8063:       n += 1;
+8064:       return /* @__PURE__ */ import_react4.default.createElement("tr", { key: p2.id, style: { background: n % 2 ? C2.bg : C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 mono", style: { border: `1px solid ${C2.line}` } }, n), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2", style: { border: `1px solid ${C2.line}` } }, p2.nombre, p2.codigo && /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: C2.inkSoft } }, " \xB7 ", p2.codigo)), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-center", style: { border: `1px solid ${C2.line}` } }, p2.unidad), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-center mono font-semibold", style: { border: `1px solid ${C2.line}` } }, fmt(cfPorProducto[p2.id])));
+8065:     })));
+8066:   })())))), /* @__PURE__ */ import_react4.default.createElement(BloqueAplicarAjustes, {
+8067:     activo,
+--- lines 8109-8128 ---
+8109:     let n = 0;
+8110:     return agruparPorProveedor(productosHoja, proveedores).map((g2) => /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, { key: g2.id }, /* @__PURE__ */ import_react4.default.createElement("tr", null, /* @__PURE__ */ import_react4.default.createElement("td", { colSpan: 4, className: "py-1.5 px-2 font-semibold text-[11.5px]", style: { background: C2.accentSoft, border: `1px solid ${C2.line}` } }, g2.nombre, " \xB7 ", g2.items.length, " referencia(s)")), g2.items.map((p2) => {
+8111:       n += 1;
+8112:       return /* @__PURE__ */ import_react4.default.createElement("tr", { key: p2.id, style: { background: n % 2 ? C2.bg : C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 mono", style: { border: `1px solid ${C2.line}` } }, n), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2", style: { border: `1px solid ${C2.line}` } }, p2.nombre, p2.codigo && /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: C2.inkSoft } }, " \xB7 ", p2.codigo)), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-center", style: { border: `1px solid ${C2.line}` } }, p2.unidad), /* @__PURE__ */ import_react4.default.createElement("td", { style: { border: `1px solid ${C2.line}`, height: 32, background: "#F0F4F1" } }));
+8113:     })));
+8114:   })())), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-6 text-[11px] grid grid-cols-2 gap-6", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement("div", null, "Contado por: _________________________"), /* @__PURE__ */ import_react4.default.createElement("div", null, "Fecha y firma: _________________________")))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Historial de conteos"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, conteos.filter((c2) => c2.id !== activoId).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin conteos anteriores." }) : conteos.filter((c2) => c2.id !== activoId).map((c2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: c2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", null, "Conteo del ", c2.fecha, c2.ambito === "piso_venta" && /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, " \xB7 piso de venta"), c2.ambito === "almacen" && /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, " \xB7 almac\xE9n (trastienda)")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: (c2.estado === "CANCELADO" || c2.cancelado === true) ? C2.inkSoft : (c2.estado === "PARCIAL" ? C2.amber : (c2.completado || c2.estado === "COMPLETADO") ? C2.accent : C2.amber) }, (c2.estado === "CANCELADO" || c2.cancelado === true) ? "Cancelado" : c2.estado === "PARCIAL" ? "Parcial" : (c2.completado || c2.estado === "COMPLETADO") ? "Completado" : c2.estado === "BORRADOR" ? "Borrador" : "En curso"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setActivoId(c2.id) }, "Ver ", /* @__PURE__ */ import_react4.default.createElement(ChevronRight, { size: 13 })), eliminarConteo && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
+8115:       setConfirmarEliminar(c2);
+8116:       setMotivoCancelacion("");
+8117:       setResponsableCancelacion(c2.responsables && c2.responsables.contadoPor ? c2.responsables.contadoPor : c2.responsable || "");
+8118:     }, style: { color: C2.red } }, "Eliminar")))))), confirmarEliminar && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmarEliminar(null), title: "Cancelar o eliminar conteo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, "Vas a eliminar el conteo del ", /* @__PURE__ */ import_react4.default.createElement("b", null, confirmarEliminar.fecha), confirmarEliminar.ambito && confirmarEliminar.ambito !== "total" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " (", confirmarEliminar.ambito === "piso_venta" ? "piso de venta" : "almac\xE9n", ")"), "."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-4 p-3 rounded-lg", style: { background: C2.surfaceSoft, color: C2.inkSoft } }, confirmarEliminar.completado ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, "Los conteos iniciados o cerrados no se borran: se conservan como CANCELADO. Si aplicaron ajustes al stock, se crean reversos trazables sin borrar movimientos anteriores.") : "Solo un borrador completamente vac\xEDo se elimina f\xEDsicamente. Cualquier conteo iniciado se conserva como CANCELADO."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("label", { className: "block text-[12px]" }, "Motivo de cancelación", /* @__PURE__ */ import_react4.default.createElement("input", { value: motivoCancelacion, onChange: (e2) => setMotivoCancelacion(e2.target.value), placeholder: "Obligatorio si el conteo ya se inició", className: "mt-1 w-full border rounded-lg px-3 py-2 text-[13px]", style: { borderColor: C2.line, background: C2.bg } })), /* @__PURE__ */ import_react4.default.createElement("label", { className: "block text-[12px]" }, "Responsable", /* @__PURE__ */ import_react4.default.createElement("input", { value: responsableCancelacion, onChange: (e2) => setResponsableCancelacion(e2.target.value), placeholder: "Quién autoriza la cancelación", className: "mt-1 w-full border rounded-lg px-3 py-2 text-[13px]", style: { borderColor: C2.line, background: C2.bg } }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmarEliminar(null), disabled: procesandoEliminar }, "Cancelar"), /* @__PURE__ */ import_react4.default.createElement(
+8119:     Btn,
+8120:     {
+8121:       disabled: procesandoEliminar,
+8122:       onClick: () => {
+8123:         if (procesandoEliminar) return;
+8124:         setProcesandoEliminar(true);
+8125:         const resultadoGestionConteo = eliminarConteo(confirmarEliminar.id, { motivo: motivoCancelacion, responsable: responsableCancelacion });
+8126:         if (!resultadoGestionConteo || !resultadoGestionConteo.ok) {
+8127:           alert(resultadoGestionConteo && resultadoGestionConteo.error ? resultadoGestionConteo.error : "No se pudo gestionar el conteo.");
+8128:           setProcesandoEliminar(false);
+
+===== COMPLETADO =====
+HITS=3
+--- lines 4425-4444 ---
+4425:     );
+4426:     return { ok: true, revertidos, aplicacionesRestantes: lotes.length - 1 };
+4427:   }
+4428:   function aplicarAjustes(conteoId, motivos = {}) {
+4429:     const conteo = conteos.find((c22) => c22.id === conteoId);
+4430:     if (!conteoEsDelLocalActivo(conteo)) return { ok: false, error: "Conteo no disponible en el local activo.", ajustados: 0, traspasados: [] };
+4431:     const permisoAjuste = autorizarMutacionAjustes(conteo);
+4432:     if (!permisoAjuste.ok) return respuestaPermisoAjuste(permisoAjuste);
+4433:     const estadoConteo = conteo.estado || (conteo.completado === true ? "COMPLETADO" : "BORRADOR");
+4434:     if (estadoConteo !== "PARCIAL" && estadoConteo !== "COMPLETADO") {
+4435:       return { ok: false, codigo: "estado_no_ajustable", error: "Solo un conteo parcial o completado puede ajustar el stock.", ajustados: 0, traspasados: [] };
+4436:     }
+4437:     if (conteo.ajustesAplicados) {
+4438:       return { ok: true, replayed: true, operationId: conteo.ajustesOperationId || null, ajustados: Number(conteo.ajustesCantidad) || 0, traspasados: conteo.ajustesTraspasados || [] };
+4439:     }
+4440:     const estadosApi = typeof window !== "undefined" ? window.__pm12ConteoEstados : null;
+4441:     if (!estadosApi) return { ok: false, codigo: "motor_no_disponible", error: "No se pudo validar el ajuste. Recarga la página e inténtalo de nuevo.", ajustados: 0, traspasados: [] };
+4442:     const preparados = [];
+4443:     for (const item of conteo.items || []) {
+4444:       const p22 = productos.find((pr) => pr.id === item.productoId);
+--- lines 4426-4445 ---
+4426:     return { ok: true, revertidos, aplicacionesRestantes: lotes.length - 1 };
+4427:   }
+4428:   function aplicarAjustes(conteoId, motivos = {}) {
+4429:     const conteo = conteos.find((c22) => c22.id === conteoId);
+4430:     if (!conteoEsDelLocalActivo(conteo)) return { ok: false, error: "Conteo no disponible en el local activo.", ajustados: 0, traspasados: [] };
+4431:     const permisoAjuste = autorizarMutacionAjustes(conteo);
+4432:     if (!permisoAjuste.ok) return respuestaPermisoAjuste(permisoAjuste);
+4433:     const estadoConteo = conteo.estado || (conteo.completado === true ? "COMPLETADO" : "BORRADOR");
+4434:     if (estadoConteo !== "PARCIAL" && estadoConteo !== "COMPLETADO") {
+4435:       return { ok: false, codigo: "estado_no_ajustable", error: "Solo un conteo parcial o completado puede ajustar el stock.", ajustados: 0, traspasados: [] };
+4436:     }
+4437:     if (conteo.ajustesAplicados) {
+4438:       return { ok: true, replayed: true, operationId: conteo.ajustesOperationId || null, ajustados: Number(conteo.ajustesCantidad) || 0, traspasados: conteo.ajustesTraspasados || [] };
+4439:     }
+4440:     const estadosApi = typeof window !== "undefined" ? window.__pm12ConteoEstados : null;
+4441:     if (!estadosApi) return { ok: false, codigo: "motor_no_disponible", error: "No se pudo validar el ajuste. Recarga la página e inténtalo de nuevo.", ajustados: 0, traspasados: [] };
+4442:     const preparados = [];
+4443:     for (const item of conteo.items || []) {
+4444:       const p22 = productos.find((pr) => pr.id === item.productoId);
+4445:       if (!p22 || localActivoId && p22.localId !== localActivoId) {
+
+===== CANCELADO =====
+HITS=4
+--- lines 4276-4295 ---
+4276:     const reglasPorProducto = (productoId) => {
+4277:       const producto = productos.find((p) => p.id === productoId);
+4278:       return producto ? {
+4279:         indivisible: producto.indivisible === true || producto.fraccionable === false,
+4280:         precision: Number.isInteger(producto.precisionCantidad) ? producto.precisionCantidad : void 0
+4281:       } : {};
+4282:     };
+4283:     const estadoActual = estadosApi.estadoDerivado(conteo, reglasPorProducto);
+4284:     if (estadoActual === "CANCELADO" || conteo.cancelado === true) {
+4285:       const reversosPrevios = conteo.cancelacion && Array.isArray(conteo.cancelacion.reversos) ? conteo.cancelacion.reversos : conteo.reversosCancelacion || [];
+4286:       return {
+4287:         ok: true,
+4288:         replayed: true,
+4289:         eliminado: false,
+4290:         cancelado: true,
+4291:         operationId: conteo.cancelacionOperationId || conteo.cancelacion && conteo.cancelacion.operationId || null,
+4292:         revertidos: reversosPrevios.length,
+4293:         reversos: reversosPrevios
+4294:       };
+4295:     }
+--- lines 4359-4378 ---
+4359:       responsable: preparada.responsable,
+4360:       canceladoEn: preparada.canceladoEn,
+4361:       estadoAnterior: preparada.estadoAnterior,
+4362:       operationId: preparada.operationId,
+4363:       reversos
+4364:     };
+4365:     setConteos((s) => s.map((c) => c.id === conteoId ? {
+4366:       ...c,
+4367:       estado: "CANCELADO",
+4368:       cancelado: true,
+4369:       canceladoEn: preparada.canceladoEn,
+4370:       motivoCancelacion: preparada.motivo,
+4371:       responsableCancelacion: preparada.responsable,
+4372:       estadoAnteriorCancelacion: preparada.estadoAnterior,
+4373:       cancelacionOperationId: preparada.operationId,
+4374:       reversosCancelacion: reversos,
+4375:       cancelacion
+4376:     } : c));
+4377:     registrarAuditoria(
+4378:       "Cancelar conteo",
+--- lines 8110-8129 ---
+8110:     return agruparPorProveedor(productosHoja, proveedores).map((g2) => /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, { key: g2.id }, /* @__PURE__ */ import_react4.default.createElement("tr", null, /* @__PURE__ */ import_react4.default.createElement("td", { colSpan: 4, className: "py-1.5 px-2 font-semibold text-[11.5px]", style: { background: C2.accentSoft, border: `1px solid ${C2.line}` } }, g2.nombre, " \xB7 ", g2.items.length, " referencia(s)")), g2.items.map((p2) => {
+8111:       n += 1;
+8112:       return /* @__PURE__ */ import_react4.default.createElement("tr", { key: p2.id, style: { background: n % 2 ? C2.bg : C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 mono", style: { border: `1px solid ${C2.line}` } }, n), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2", style: { border: `1px solid ${C2.line}` } }, p2.nombre, p2.codigo && /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: C2.inkSoft } }, " \xB7 ", p2.codigo)), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-center", style: { border: `1px solid ${C2.line}` } }, p2.unidad), /* @__PURE__ */ import_react4.default.createElement("td", { style: { border: `1px solid ${C2.line}`, height: 32, background: "#F0F4F1" } }));
+8113:     })));
+8114:   })())), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-6 text-[11px] grid grid-cols-2 gap-6", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement("div", null, "Contado por: _________________________"), /* @__PURE__ */ import_react4.default.createElement("div", null, "Fecha y firma: _________________________")))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Historial de conteos"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, conteos.filter((c2) => c2.id !== activoId).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin conteos anteriores." }) : conteos.filter((c2) => c2.id !== activoId).map((c2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: c2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", null, "Conteo del ", c2.fecha, c2.ambito === "piso_venta" && /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, " \xB7 piso de venta"), c2.ambito === "almacen" && /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, " \xB7 almac\xE9n (trastienda)")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: (c2.estado === "CANCELADO" || c2.cancelado === true) ? C2.inkSoft : (c2.estado === "PARCIAL" ? C2.amber : (c2.completado || c2.estado === "COMPLETADO") ? C2.accent : C2.amber) }, (c2.estado === "CANCELADO" || c2.cancelado === true) ? "Cancelado" : c2.estado === "PARCIAL" ? "Parcial" : (c2.completado || c2.estado === "COMPLETADO") ? "Completado" : c2.estado === "BORRADOR" ? "Borrador" : "En curso"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setActivoId(c2.id) }, "Ver ", /* @__PURE__ */ import_react4.default.createElement(ChevronRight, { size: 13 })), eliminarConteo && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
+8115:       setConfirmarEliminar(c2);
+8116:       setMotivoCancelacion("");
+8117:       setResponsableCancelacion(c2.responsables && c2.responsables.contadoPor ? c2.responsables.contadoPor : c2.responsable || "");
+8118:     }, style: { color: C2.red } }, "Eliminar")))))), confirmarEliminar && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmarEliminar(null), title: "Cancelar o eliminar conteo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, "Vas a eliminar el conteo del ", /* @__PURE__ */ import_react4.default.createElement("b", null, confirmarEliminar.fecha), confirmarEliminar.ambito && confirmarEliminar.ambito !== "total" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " (", confirmarEliminar.ambito === "piso_venta" ? "piso de venta" : "almac\xE9n", ")"), "."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-4 p-3 rounded-lg", style: { background: C2.surfaceSoft, color: C2.inkSoft } }, confirmarEliminar.completado ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, "Los conteos iniciados o cerrados no se borran: se conservan como CANCELADO. Si aplicaron ajustes al stock, se crean reversos trazables sin borrar movimientos anteriores.") : "Solo un borrador completamente vac\xEDo se elimina f\xEDsicamente. Cualquier conteo iniciado se conserva como CANCELADO."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("label", { className: "block text-[12px]" }, "Motivo de cancelación", /* @__PURE__ */ import_react4.default.createElement("input", { value: motivoCancelacion, onChange: (e2) => setMotivoCancelacion(e2.target.value), placeholder: "Obligatorio si el conteo ya se inició", className: "mt-1 w-full border rounded-lg px-3 py-2 text-[13px]", style: { borderColor: C2.line, background: C2.bg } })), /* @__PURE__ */ import_react4.default.createElement("label", { className: "block text-[12px]" }, "Responsable", /* @__PURE__ */ import_react4.default.createElement("input", { value: responsableCancelacion, onChange: (e2) => setResponsableCancelacion(e2.target.value), placeholder: "Quién autoriza la cancelación", className: "mt-1 w-full border rounded-lg px-3 py-2 text-[13px]", style: { borderColor: C2.line, background: C2.bg } }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmarEliminar(null), disabled: procesandoEliminar }, "Cancelar"), /* @__PURE__ */ import_react4.default.createElement(
+8119:     Btn,
+8120:     {
+8121:       disabled: procesandoEliminar,
+8122:       onClick: () => {
+8123:         if (procesandoEliminar) return;
+8124:         setProcesandoEliminar(true);
+8125:         const resultadoGestionConteo = eliminarConteo(confirmarEliminar.id, { motivo: motivoCancelacion, responsable: responsableCancelacion });
+8126:         if (!resultadoGestionConteo || !resultadoGestionConteo.ok) {
+8127:           alert(resultadoGestionConteo && resultadoGestionConteo.error ? resultadoGestionConteo.error : "No se pudo gestionar el conteo.");
+8128:           setProcesandoEliminar(false);
+8129:           return;
+
+===== PARCIAL =====
+HITS=3

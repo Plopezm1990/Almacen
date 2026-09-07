@@ -1,0 +1,32 @@
+{
+  "version":"PM04-regression-v1",
+  "source":"Plan Maestro revisión experta 2026-09-04",
+  "statusRule":"Cada caso debe conservar evidencia antes/después sobre SHA y entorno identificados; un fallo esperado de baseline no se considera cerrado.",
+  "cases":[
+    {"id":"LA-001","package":"PM-05","severity":"CRITICO","fixture":"A/B proveedores","expected":"Proveedor A no visible, seleccionable ni modificable desde B; acceso directo denegado."},
+    {"id":"LA-002","package":"PM-05","severity":"CRITICO","fixture":"A/B clientes","expected":"Cliente A aislado de B en listado, detalle, búsqueda, exportación y escritura."},
+    {"id":"LA-003","package":"PM-05","severity":"CRITICO","fixture":"Auditoría A/B","expected":"Actividad de A no visible a B sin permiso; actor/contexto estables."},
+    {"id":"LA-004","package":"PM-06","severity":"CRITICO","fixture":"Factura A2 + proveedor","expected":"Factura conserva empresa/local al editar, recargar y pagar; operador no autorizado no modifica."},
+    {"id":"LA-005","package":"PM-07","severity":"CRITICO","fixture":"A1 stock 23","expected":"Venta 24 bloqueada sin mutaciones; venta válida y reverso restauran ubicación exacta; carrera no sobrevende."},
+    {"id":"LA-006","package":"PM-07","severity":"CRITICO","fixture":"A1 18 almacén/5 piso","expected":"Traslado interno 5 mantiene total 23 y Kardex conciliado."},
+    {"id":"LA-007","package":"PM-09","severity":"CRITICO","fixture":"Venta 12€, IVA10%, coste6","expected":"Venta anulada no aporta ingreso/coste vigente; venta activa concilia base10.91 IVA1.09 coste6."},
+    {"id":"LA-008","package":"PM-09","severity":"ALTO","fixture":"Ventas/reversos/devoluciones","expected":"Unidades, rotación y margen reconcilian por operación, periodo y signo."},
+    {"id":"LA-009","package":"PM-08","severity":"ALTO","fixture":"Arqueo 0 y positivo","expected":"Arqueos persisten tras recarga sin ReferenceError ni duplicación."},
+    {"id":"LA-010","package":"PM-08","severity":"ALTO","fixture":"Entrada/Retirada","expected":"Tipos y signos correctos; efectivo esperado cambia una sola vez y queda auditado."},
+    {"id":"LA-011","package":"PM-10","severity":"ALTO","fixture":"Producto límites","expected":"Cantidades/caja inválidas, coste/PVP/mínimo y precisión se validan antes de persistir."},
+    {"id":"LA-012","package":"PM-10","severity":"ALTO","fixture":"Pedido vacío/cantidad0/precio negativo","expected":"Pedido inválido rechazado; pedido válido persiste y no aparece falsamente en recepción."},
+    {"id":"LA-013","package":"PM-10","severity":"ALTO","fixture":"Pedido 5, recepciones 2+3","expected":"Recepción acumulada cierra exactamente en 5; sexta unidad requiere excepción explícita."},
+    {"id":"LA-014","package":"PM-11","severity":"MEDIO","fixture":"Pedido con fecha esperada","expected":"Fecha esperada persiste al editar cantidad, guardar y recargar sin desplazamiento horario."},
+    {"id":"LA-015","package":"PM-07","severity":"ALTO","fixture":"Mínimo3, stock0/1/2/3","expected":"Alertas coherentes con el mismo saldo/local en dashboard y avisos."},
+    {"id":"LA-016","package":"PM-11","severity":"MEDIO","fixture":"Proveedor contacto/plazo","expected":"Email inválido y días negativos rechazados; datos válidos se conservan al editar."},
+    {"id":"LA-017","package":"PM-10","severity":"ALTO","fixture":"Empleado límites laborales","expected":"Horas/salario/vacaciones negativos y pagas inválidas rechazados; valores válidos se conservan."},
+    {"id":"LA-018","package":"PM-10","severity":"ALTO","fixture":"Encargo cliente total/anticipo","expected":"Precio o señal negativos no crean encargo; alta válida conserva cliente, total, fecha y estado."},
+    {"id":"LA-019","package":"PM-08","severity":"MEDIO","fixture":"Devolución reembolso -5","expected":"Reembolso negativo rechaza toda la operación; cantidad/reembolso no superan pendiente y no hay mitad persistida."},
+    {"id":"LA-020","package":"PM-12","severity":"MEDIO","fixture":"Conteo vacío/cero/parcial","expected":"Vacío no equivale a completado; cero contado es dato; responsable/cobertura trazables."},
+    {"id":"LA-021","package":"PM-18","severity":"MEDIO","fixture":"Empresa fiscal","expected":"Identidad fiscal inválida no se presenta como verificada; habilitación fiscal sigue alcance aprobado."},
+    {"id":"LA-022","package":"PM-15","severity":"BAJO","fixture":"Formulario con error","expected":"Error de campo reactivo, visible y accesible; corregir valor elimina mensaje sin guardar en contexto equivocado."},
+    {"id":"LA-023","package":"PM-02","severity":"BAJO","fixture":"Respaldos local/nube","expected":"Texto refleja con precisión guardado local, sincronización y último estado; no afirma nube sin confirmación."},
+    {"id":"LA-024","package":"PM-17","severity":"BAJO","fixture":"Notificaciones neutral","expected":"Texto neutral integrado y revalidado en candidato; no reimplementar si el cambio existente ya está presente."},
+    {"id":"LA-025","package":"PM-16","severity":"BAJO","fixture":"Arranque colección ausente","expected":"Colección opcional inexistente se trata como vacío, diferenciada de corrupción o fallo de acceso."}
+  ]
+}

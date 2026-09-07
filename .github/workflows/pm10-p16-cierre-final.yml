@@ -1,0 +1,92 @@
+name: PM10 Punto 16 cierre final
+on:
+  push:
+    branches: [pm10-validaciones-altas-datos-legados]
+permissions:
+  contents: read
+jobs:
+  cierre-final:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Verificar main intacta
+        run: |
+          set -euo pipefail
+          git fetch origin main --depth=1
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          echo "PM10_MAIN_INTACTA=1"
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+      - name: Contratos PM10 completos
+        run: |
+          set -euo pipefail
+          for f in \
+            tests/pm10/p04-productos-contract.mjs \
+            tests/pm10/p05-pedidos-contract.mjs \
+            tests/pm10/p06-recepcion-contract.mjs \
+            tests/pm10/p07-personal-contract.mjs \
+            tests/pm10/p08-encargos-contract.mjs \
+            tests/pm10/p09-transversal-contract.mjs \
+            tests/pm10/p10-autoridad-persistencia-contract.mjs \
+            tests/pm10/p11-robustez-altas-contract.mjs \
+            tests/pm10/p12-datos-legados-contract.mjs \
+            tests/pm10/p13-contexto-aislamiento-contract.mjs; do
+            echo "==> $f"
+            node "$f"
+          done
+      - name: Regresiones heredadas PM05 PM07 PM08
+        run: |
+          set -euo pipefail
+          node tests/pm05/frontend-contract.mjs
+          node tests/pm07/frontend-contract.mjs
+          node tests/pm08/frontend-contract.mjs
+          node tests/pm08/migration-contract.mjs
+          node tests/pm08/replay-scope-contract.mjs
+      - name: Regresiones heredadas PM09 completas
+        run: |
+          set -euo pipefail
+          for f in tests/pm09/*.mjs; do
+            echo "==> $f"
+            node "$f"
+          done
+      - name: Evidencias PM10 presentes
+        run: |
+          set -euo pipefail
+          for f in \
+            tests/pm10/P04_LA011_PRODUCTOS_EVIDENCIA.md \
+            tests/pm10/P05_PEDIDOS_EVIDENCIA.json \
+            tests/pm10/P06_RECEPCION_EVIDENCIA.json \
+            tests/pm10/P07_PERSONAL_EVIDENCIA.json \
+            tests/pm10/P08_ENCARGOS_EVIDENCIA.json \
+            tests/pm10/P09_TRANSVERSAL_EVIDENCIA.json \
+            tests/pm10/P10_AUTORIDAD_PERSISTENCIA_EVIDENCIA.json \
+            tests/pm10/P11_ROBUSTEZ_ALTAS_EVIDENCIA.json \
+            tests/pm10/P12_DATOS_LEGADOS_EVIDENCIA.json \
+            tests/pm10/P13_CONTEXTO_AISLAMIENTO_EVIDENCIA.json \
+            tests/pm10/P14_REGRESION_INTEGRAL_EVIDENCIA.json \
+            tests/pm10/P15_DEPLOY_PREVIEW_SMOKE_EVIDENCIA.json; do
+            test -f "$f"
+          done
+          echo "PM10_EVIDENCIAS_P04_P15=1"
+      - name: Confirmar ausencia de migraciones PM10
+        run: |
+          set -euo pipefail
+          if find supabase/migrations -maxdepth 1 -type f -iname '*pm10*' | grep -q .; then
+            echo 'Se encontraron migraciones PM10 inesperadas'
+            find supabase/migrations -maxdepth 1 -type f -iname '*pm10*'
+            exit 1
+          fi
+          echo "PM10_MIGRACIONES_NUEVAS=0"
+      - name: Huella exacta del artefacto
+        run: |
+          set -euo pipefail
+          echo "PM10_FINAL_HEAD=$(git rev-parse HEAD)"
+          echo "PM10_FUENTE_SHA256=$(sha256sum fuente.js | awk '{print $1}')"
+          echo "PM10_FUENTE_BYTES=$(wc -c < fuente.js | tr -d ' ')"
+      - name: Declarar prueba sin escrituras
+        run: |
+          echo "PM10_FINAL_SUPABASE_WRITES=0"
+          echo "PM10_FINAL_PRODUCTION_WRITES=0"
+          echo "PM10_FINAL_MERGE=0"

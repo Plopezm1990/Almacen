@@ -1,0 +1,21 @@
+name: Inspeccionar login y logo L&A Suite
+on:
+  push:
+    branches: [la-suite-identidad]
+permissions:
+  contents: read
+jobs:
+  inspeccionar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Localizar identidad y login
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== CONSTANTES IDENTIDAD ==='
+          grep -n -A12 -B8 -E 'NOMBRE_PROYECTO|LOGO_PROYECTO|ICONO_PROYECTO|LEMA_PROYECTO' fuente.js | head -n 180 || true
+          echo '=== LOGIN ==='
+          grep -n -A90 -B45 -E 'Inicia sesi[oó]n para sincronizar entre dispositivos|Olvidaste tu contrase|Trabajar solo en este equipo' fuente.js | head -n 360 || true
+          echo '=== USOS LOGO ==='
+          grep -n -E 'LOGO_PROYECTO|ICONO_PROYECTO|la-suite-logo' fuente.js index.html | head -n 180 || true

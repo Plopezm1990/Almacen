@@ -1,0 +1,315 @@
+
+## offset 4005758
+```js
+  if (!modoSincronizadoPM08() || !window.__nubeActiva || !window.__nubeCliente) return { ok: false, offline: true };
+  const supabase = window.__nubeCliente;
+  const [rCaja, rArqueos, rCliente, rProveedor] = await Promise.all([
+    supabase.from("caja_operaciones").select("operation_id,tipo,empresa_id,local_id,fecha,importe,efecto_efectivo,medio_pago,concepto,origen_tipo,origen_id,ref_operation_id,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3),
+    supabase.from("arqueos_caja").select("operation_id,empresa_id,local_id,fecha,alcance,efectivo_base,efectivo_esperado,efectivo_contado,diferencia,notas,estado,anulado_por_operation_id,anulado_motivo,actor_user_id,created_at").order("created_at", { ascending: false }).limit(1e3),
+    supabase.from("devoluciones_venta").select("operation_id,venta_operation_id,empresa_id,local_id,producto_id,cantidad,reembolso,medio_reembolso,motivo,fecha,payload,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3),
+    supabase.from("devoluciones_proveedor").select("operation_id,empresa_id,local_id,producto_id,cantidad,proveedor_id,proveedor_nombre,motivo,fecha,payload,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3)
+  ]);
+  const fallo = [rCaja, rArqueos, rCliente, rProveedor].find((r2) => r2.error);
+  if (fallo) throw fallo.error;
+  const caja = (rCaja.data || []).map(normalizarMovimientoCajaPM08).filter(Boolean);
+  const arqueos = (rArqueos.data || []).map(normalizarArqueoPM08).filter(Boolean);
+  const clientes = (rCliente.data || []).map((fila) => normalizarDevolucionPM08(fila, "cliente")).filter(Boolean);
+  const proveedores = (rProveedor.data || []).map((fila) => normalizarDevolucionPM08(fila, "proveedor")).filter(Boolean);
+  if (typeof setMovimientosCaja === "function") setMovimientosCaja(caja);
+  if (typeof setArqueos === "function") setArqueos(arqueos);
+  if (typeof setDevoluciones === "function") setDevoluciones([...clientes, ...proveedores].sort((a22, b2) => String(b2.createdAt || b2.fecha).localeCompare(String(a22.createdAt || a22.fecha))));
+  return { ok: true, movimientosCaja: caja.length, arqueos: arqueos.length, devoluciones: clientes.length + proveedores.length };
+}
+async function sincronizarContextoPm07(args) {
+  const { setEmpresas, setLocales, setLocalActivoId, setProductos } = args || {};
+  if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return { ok: false, offline: true };
+  const supabase = await window.getSupabaseClient();
+  const r2 = await supabase.from("almacen_kv").select("key,value").in("key", ["empresas", "locales", "localActivoId", "productos"]);
+  if (r2.error) throw r2.error;
+  const porClave = new Map((r2.data || []).map((fila) => [fila.key, fila.value]));
+  const empresasNube = porClave.get("empresas");
+  const localesNube = porClave.get("locales");
+  const localActivoNube = porClave.get("localActivoId");
+  const productosNube = porClave.get("productos");
+  if (Array.isArray(empresasNube) && empresasNube.length && typeof setEmpresas === "function") setEmpresas(empresasNube.filter((e2) => e2 && e2.id));
+  if (Array.isArray(localesNube) && localesNube.length && typeof setLocales === "function") setLocales(localesNube.filter((l3) => l3 && l3.id));
+  if (typeof localActivoNube === "string" && localActivoNube && typeof setLocalActivoId === "function") setLocalActivoId(localActivoNube);
+  if (Array.isArray(productosNube) && productosNube.length && typeof setProductos === "function") setProductos(productosNube.filter((p3) => p3 && p3.id));
+  return { ok: true, empresas: Array.isArray(empresasNube) ? empresasNube.length : 0, locales: Array.isArray(localesNube) ? localesNube.length : 0, productos: Array.isArray(productosNube) ? productosNube.length : 0 };
+}
+function SelectorLocalInformes({ locales = [], valor = "", onChange }) {
+  const activos = locales.filter((l22) => l22 && l22.activo !== false && !l22.fusionadoEn);
+  const seleccionado = activos.find((l22) => l22.id === valor);
+  return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-3 items-end" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Local" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: valor, onChange: (e2) => onChange(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Todos los locales"), activos.map((l22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: l22.id, value: l22.id }, l22.nombre)))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] pb-2", style: { color: C2.inkSoft } }, seleccionado ? `Mostrando solo ${seleccionado.nombre}.` : "Mostrando datos consolidados de todos los locales.")));
+}
+function GestionAlmacen() {
+  const [ready, setReady] = (0, import_react4.useState)(false);
+  const [fallosGuardado, setFallosGuardado] = (0, import_react4.useState)([]);
+  (0, import_react4.useEffect)(() => {
+    function onFalloGuardado(e2) {
+      setFallosGuardado((s22) => [
+        { id: uid(), key: e2.detail.key, mensaje: e2.detail.mensaje || "", fecha: (/* @__PURE__ */ new Date()).toISOString() },
+        ...s22
+      ].slice(0, 20));
+    }
+    window.addEventListener("fallo-guardado", onFalloGuardado);
+    return () => window.removeEventListener("fallo-guardado", onFalloGuardado);
+  }, []);
+  (0, import_react4.useEffect)(() => {
+    function onConflictoFusion(e2) {
+      const conflictos = e2.detail && e2.detail.conflictos || [];
+      const key = e2.detail && e2.detail.key;
+      conflictos.forEach((c22) => {
+        registrarErrorSistema(
+          `Edici\xF3n simult\xE1nea en "${c22.nombre}" (${key}): dos dispositivos lo cambiaron a la vez sin verse \u2014 se aplic\xF3 el cambio de este dispositivo, se perdi\xF3 el del otro.`,
+          "sincronizaci\xF3n",
+          JSON.stringify({ key, id: c22.id, mio: c22.mio, delOtro: c22.delOtro })
+        );
+      });
+    }
+    window.addEventListener("conflicto-fusion", onConflictoFusion);
+    return () => window.removeEventListener("conflicto-fusion", onConflictoFusion);
+  }, []);
+  const [tab, setTab] = (0, import_react4.useState)("dashboard");
+  const [disenoMenu, setDisenoMenu] = (0, import_react4.useState)("B");
+  const [temaOscuro, setTemaOscuro] = (0, import_react4.useState)(false);
+  const [modoEmpleado, setModoEmpleado] = (0, import_react4.useState)(false);
+  const [miPerfil, setMiPerfil] = (0, import_react4.useState)(null);
+  (0, import_react4.useEffect)(() => {
+    if (!ready || typeof window === "undefined" || !window.__nubeActiva) return;
+    let activo = true;
+    (async () => {
+      try {
+        const supabase = await window.getSupabaseClient();
+        const { data: sesion } = await supabase.auth.getSession();
+        const userId = sesion?.session?.user?.id;
+        if (!userId) return;
+        const { data: perfil } = await supabase.from("perfiles").select("rol, nombre").eq("user_id", userId).maybeSingle();
+        if (!activo || !perfil) return;
+        setMiPerfil(perfil);
+        if (perfil.rol !== "Propietario") setModoEmpleado(true);
+      } catch (e2) {
+      }
+    })();
+    return () => {
+      activo = false;
+    };
+  }, [ready]);
+  const [pinPropietario, setPinPropietario] = (0, import_react4.useState)("");
+  const [auditoria, setAuditoria] = (0, import_react4.useState)([]);
+  const [usuarioActivoId, setUsuarioActivoId] = (0, import_react4.useState)(null);
+  const [ordenesProduccion, setOrdenesProduccion] = (0, import_react4.useState)([]);
+  const [traspasos, setTraspasos] = (0, import_react4.useState)([]);
+  const [facturasDirectas, setFacturasDirectas] = (0, import_react4.useState)([]);
+  const [pagosFacturas, setPagosFacturas] = (0, import_react4.useState)([]);
+  const [nominas, setNominas] = (0, import_react4.useState)([]);
+  const [entrevistas, setEntrevistas] = (0, import_react4.useState)([]);
+  const skipSaveRef = import_react4.default.useRef(true);
+  const autoSnapshotRef = import_react4.default.useRef(false);
+  const [proveedores, setProveedores] = (0, import_react4.useState)([]);
+  const [productos, setProductos] = (0, import_react4.useState)([]);
+  const [pedidos2, setPedidos] = (0, import_react4.useState)([]);
+  const [movimientos, setMovimientos] = (0, import_react4.useState)([]);
+  const [conteos, setConteos] = (0, import_react4.useState)([]);
+  const [fichasCosto, setFichasCosto] = (0, import_react4.useState)([]);
+  const [albaranes, setAlbaranes] = (0, im
+```
+
+## offset 4592313
+```js
+_PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, 'Registro autom\xE1tico de fallos inesperados del programa (no de los avisos normales tipo "sin conexi\xF3n", esos ya se gestionan aparte). \xDAltimos 100.')), cargando ? null : error ? /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, error)) : errores.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin errores registrados \u2014 buena se\xF1al." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, errores.map((e2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, new Date(e2.fecha).toLocaleString("es-ES"), " \xB7 ", e2.pantalla || "\u2014"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium mt-1" }, e2.mensaje), e2.dispositivo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, e2.dispositivo)))));
+}
+function DiagnosticoSincronizacion() {
+  const [abierto, setAbierto] = import_react4.default.useState(false);
+  const [pendientes, setPendientes] = import_react4.default.useState([]);
+  const [resultados, setResultados] = import_react4.default.useState(null);
+  const [reintentando, setReintentando] = import_react4.default.useState(false);
+  function leerPendientes() {
+    try {
+      const lista = JSON.parse(localStorage.getItem("almacen__pendientes") || "[]");
+      setPendientes(lista);
+      return lista;
+    } catch (e2) {
+      setPendientes([]);
+      return [];
+    }
+  }
+  async function reintentarConDetalle() {
+    setReintentando(true);
+    setResultados(null);
+    const lista = leerPendientes();
+    const detalle = [];
+    for (const key of lista) {
+      try {
+        const valorLocal = localStorage.getItem("almacen:" + key);
+        if (valorLocal === null) {
+          detalle.push({ key, ok: false, error: "No hay ning\xFAn valor guardado en este dispositivo para esta clave." });
+          continue;
+        }
+        if (!window.__nubeCliente) {
+          detalle.push({ key, ok: false, error: "No hay conexi\xF3n a la nube en este momento." });
+          continue;
+        }
+        const nuevo = JSON.parse(valorLocal);
+        const r2 = await window.__nubeCliente.from("almacen_kv").upsert({ key, value: nuevo });
+        if (r2.error) {
+          detalle.push({ key, ok: false, error: r2.error.message });
+        } else {
+          detalle.push({ key, ok: true });
+          const listaActualizada = JSON.parse(localStorage.getItem("almacen__pendientes") || "[]").filter((k2) => k2 !== key);
+          localStorage.setItem("almacen__pendientes", JSON.stringify(listaActualizada));
+        }
+      } catch (e2) {
+        detalle.push({ key, ok: false, error: e2 && e2.message ? e2.message : String(e2) });
+      }
+    }
+    setResultados(detalle);
+    leerPendientes();
+    setReintentando(false);
+  }
+  import_react4.default.useEffect(() => {
+    if (abierto) leerPendientes();
+  }, [abierto]);
+  return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, "Diagn\xF3stico de sincronizaci\xF3n"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAbierto(!abierto) }, abierto ? "Ocultar" : "Ver")), abierto && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.inkSoft } }, pendientes.length === 0 ? "Nada pendiente de subir en este dispositivo ahora mismo." : `${pendientes.length} cosa(s) sin subir todav\xEDa: ${pendientes.join(", ")}`), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: reintentarConDetalle, disabled: reintentando }, reintentando ? "Reintentando\u2026" : "Reintentar ahora y ver el error real"), resultados && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 space-y-1.5" }, resultados.map((r2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: r2.key, className: "text-[12px]", style: { color: r2.ok ? C2.accent : C2.red } }, r2.ok ? "\u2713" : "\u2717", " ", r2.key, !r2.ok && r2.error ? `: ${r2.error}` : r2.ok ? ": subido con \xE9xito" : "")))));
+}
+function FichaDatosLocal({ local, actualizarLocal }) {
+  const [abierto, setAbierto] = import_react4.default.useState(false);
+  const [form, setForm] = import_react4.default.useState(null);
+  const [guardado, setGuardado] = import_react4.default.useState(false);
+  function abrir() {
+    const esChocoloyos = String(local?.nombre || "").trim().toLowerCase().replace(/\.$/, "") === "chocoloyos s.l";
+    setForm({
+      nombreComercial: local?.nombreComercial || local?.nombreComercialTicket || local?.nombre || "",
+      direccion: local?.direccion || local?.direccionTicket || (esChocoloyos ? "L\xD3PEZ DE HOYOS, 81 \xB7 28002 MADRID (ESPA\xD1A)" : ""),
+      telefono: local?.telefono || local?.telefonoTicket || (esChocoloyos ? "91 603 43 19" : ""),
+      email: local?.email || local?.emailTicket || ""
+    });
+    setGuardado(false);
+    setAbierto(true);
+  }
+  function campo(k2, v3) {
+    setForm((f22) => ({ ...f22, [k2]: v3 }));
+    setGuardado(false);
+  }
+  function guardar() {
+    if (!form) return;
+    actualizarLocal(local.id, {
+      nombreComercial: String(form.nombreComercial || "").trim(),
+      direccion: String(form.direccion || "").trim(),
+      telefono: String(form.telefono || "").trim(),
+      email: String(form.email || "").trim()
+    });
+    setGuardado(true);
+  }
+  return /* @__PURE__ */ import_react4.default.createElement(
+    import_react4.default.Fragment,
+    null,
+    /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: abrir }, "Ficha del local"),
+    abierto && form && /* @__PURE__ */ import_react4.default.createElement(
+      Modal,
+      { onClose: () => setAbierto(false), title: `Ficha del local \xB7 ${local.nombre}` },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Esta es la identidad com\xFAn de este local. La usar\xE1n el TPV y, progresivamente, inventarios, pedidos, albaranes, caja, informes y documentos que correspondan."),
+      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre comercial" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.nombreComercial, onChange: (e2) => campo("nombreComercial", e2.target.value) })),
+      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Direcci\xF3n del local" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.direccion, onChange: (e2) => campo("direccion", e2.target.value) })),
+      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tel\xE9fono" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.telefono, onChange: (e2) => campo("telefono", e2.target.value) })),
+      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Correo electr\xF3nico" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "email", value: form.email, onChange: (e2) => campo("email", e2.target.value), placeholder: "correo@local.es" })),
+      guardado && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.accent } }, "Datos guardados."),
+      /* @__PURE__ */ import_react4.default.createElement(
+        "div",
+        { className: "flex gap-2" },
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: guardar }, "Guardar"),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setAbierto(false) }, "Cerrar")
+      )
+    )
+  );
+}
+async function prepararLogoEmpresa(file) {
+  if (!file) return "";
+  const tiposPermitidos = ["image/png", "image/jpeg", "image/webp"];
+  if (!tiposPermitidos.includes(file.type)) throw new Error("El logo debe ser PNG, JPG o WEBP.");
+  if (file.size > 8 * 1024 * 1024) throw new Error("El archivo es demasiado grande. Elige una imagen de menos de 8 MB.");
+  const original = await new Promise((resolve, reject) => {
+    c
+```
+
+## claves literales saveKey/loadKey
+
+saveKey\(\s*["\']([^"\']+)["\']
+- albaranes
+- arqueos
+- auditoria
+- catalogoProv
+- clientes
+- configEmpresa
+- conteos
+- devoluciones
+- disenoMenu
+- empleados
+- empresas
+- encargos
+- entrevistas
+- facturasDirectas
+- fichajes
+- fichasCosto
+- freidoras
+- gastosGenerales
+- historialRespaldos
+- localActivoId
+- locales
+- modoEmpleado
+- movimientos
+- movimientosCaja
+- nominas
+- ordenesProduccion
+- pagosFacturas
+- pedidos
+- pinPropietario
+- productos
+- proveedores
+- puntosControl
+- registrosAceite
+- registrosAppcc
+- temaOscuro
+- traspasos
+- turnos
+- usuarioActivoId
+
+loadKey\(\s*["\']([^"\']+)["\']
+- albaranes
+- arqueos
+- auditoria
+- catalogoProv
+- clientes
+- configEmpresa
+- conteos
+- devoluciones
+- disenoMenu
+- empleados
+- empresas
+- encargos
+- entrevistas
+- facturasDirectas
+- fichajes
+- fichasCosto
+- freidoras
+- gastosGenerales
+- historialRespaldos
+- localActivoId
+- locales
+- modoEmpleado
+- movimientos
+- movimientosCaja
+- nominas
+- ordenesProduccion
+- pagosFacturas
+- pedidos
+- pinPropietario
+- productos
+- proveedores
+- puntosControl
+- registrosAceite
+- registrosAppcc
+- temaOscuro
+- traspasos
+- turnos
+- usuarioActivoId
