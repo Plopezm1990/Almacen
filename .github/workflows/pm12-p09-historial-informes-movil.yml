@@ -1,0 +1,80 @@
+name: PM12 P09 historial informes y movil
+
+on:
+  push:
+    branches: [pm12-p09-historial-informes-movil]
+    paths:
+      - 'index.html'
+      - 'pm12-p09-historial-informes-movil-v1.js'
+      - 'tests/pm12/P09_HISTORIAL_INFORMES_MOVIL.md'
+      - 'tests/pm12/p09-historial-informes-movil-contract.mjs'
+      - 'tests/pm12/p09-aplicar-index.mjs'
+      - '.github/workflows/pm12-p09-historial-informes-movil.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  validar-p09:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar rama P09 y main congelado
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "pm12-p09-historial-informes-movil"
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          echo 'P09_MAIN_FROZEN=PASS'
+
+      - name: Integrar capa P09 exactamente una vez
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm12/p09-aplicar-index.mjs
+          test "$(grep -Fc '<script src="./pm12-p09-historial-informes-movil-v1.js"></script>' index.html)" = 1
+          if ! git diff --quiet -- index.html; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add index.html
+            git commit -m "feat(pm12): integrar P09 en la aplicacion"
+            git push origin HEAD:pm12-p09-historial-informes-movil
+          fi
+          echo 'P09_INDEX_UNICO=PASS'
+
+      - name: Validar sintaxis y contrato P09
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check pm12-p09-historial-informes-movil-v1.js
+          node tests/pm12/p09-historial-informes-movil-contract.mjs
+
+      - name: Regresion acumulada PM12 P02-P08 frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in 02 03 04 05 06 07; do
+            for t in tests/pm12/p${n}-*contract.mjs; do
+              test -f "$t" || continue
+              node "$t"
+            done
+          done
+          node tests/pm12/p08-fallos-replay-concurrencia-contract.mjs
+          node tests/pm12/p08-instancias-fallos-contract.mjs
+          echo 'P09_REGRESSION_P02_P08_FRONTEND=PASS'
+
+      - name: Confirmar cambio exclusivamente de presentacion
+        shell: bash
+        run: |
+          set -euo pipefail
+          P09_BASE='1beede4ee1122d3e9b8552a353d3a7726aece6b9'
+          test -z "$(git diff --name-only "$P09_BASE"..HEAD -- supabase/)"
+          test -z "$(grep -Eio 'https?://[^"'"'"'[:space:]]*supabase[^"'"'"'[:space:]]*|sb_publishable_[A-Za-z0-9_-]+' pm12-p09-historial-informes-movil-v1.js tests/pm12/P09_HISTORIAL_INFORMES_MOVIL.md tests/pm12/p09-historial-informes-movil-contract.mjs || true)"
+          ! grep -Eq 'localStorage\.setItem|fetch[[:space:]]*\(|\.rpc[[:space:]]*\(' pm12-p09-historial-informes-movil-v1.js
+          echo 'P09_REMOTE_WRITES=0'
+          echo 'P09_SUPABASE_CHANGES=0'
