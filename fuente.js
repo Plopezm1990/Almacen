@@ -102796,7 +102796,7 @@ function GestionAlmacen() {
   const fichajesAbiertos = (0, import_react4.useMemo)(() => {
     const hoy = todayISO();
     const porEmpleadoFecha = {};
-    fichajes.forEach((f22) => {
+    fichajes.filter((f22) => f22?.anulado !== true && String(f22?.anulado || "").toLowerCase() !== "true").forEach((f22) => {
       const key = `${f22.empleadoId}-${f22.fecha}`;
       if (!porEmpleadoFecha[key]) porEmpleadoFecha[key] = [];
       porEmpleadoFecha[key].push(f22);
@@ -103916,29 +103916,157 @@ function crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, set
   return { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, eliminarRegistroAppcc };
 }
 function crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId }) {
-  const empleadoFichajeLocal = (id) => empleados.find((e2) => e2.id === id && (!localActivoId || e2.localId === localActivoId));
+  const operacionesRemotasFichajePM13 = new Map();
+  const motorFichajeRemotoDisponiblePM13 = () => typeof window !== "undefined" && typeof window.getSupabaseClient === "function";
   const fichajeEsLocal = (f22) => !!f22 && (!localActivoId || f22.localId === localActivoId);
+  const empleadoFichajeLocal = (id) => empleados.find((e2) => e2.id === id && e2.activo !== false && (!localActivoId || e2.localId === localActivoId));
+  const fichajeVigentePM13 = (f22) => !!f22 && f22.anulado !== true && String(f22.anulado || "").toLowerCase() !== "true";
+  const tipoFichajeValidoPM13 = (tipo) => tipo === "entrada" || tipo === "salida";
+  const fechaFichajeValidaPM13 = (valor) => {
+    const fecha = String(valor || "").trim();
+    const m2 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fecha);
+    if (!m2) return false;
+    const anio = Number(m2[1]), mes = Number(m2[2]), dia = Number(m2[3]);
+    const d2 = new Date(Date.UTC(anio, mes - 1, dia));
+    return d2.getUTCFullYear() === anio && d2.getUTCMonth() === mes - 1 && d2.getUTCDate() === dia;
+  };
+  const horaFichajeValidaPM13 = (valor) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(valor || "").trim());
+  const claveOrdenFichajePM13 = (f22) => `${f22.fecha || ""}T${f22.hora || ""}|${f22.id || ""}`;
+  const secuenciaFichajeValidaPM13 = (candidato, omitirId = null) => {
+    if (!candidato || !empleadoFichajeLocal(candidato.empleadoId) || !fichajeEsLocal(candidato)) return false;
+    if (!tipoFichajeValidoPM13(candidato.tipo) || !fechaFichajeValidaPM13(candidato.fecha) || !horaFichajeValidaPM13(candidato.hora)) return false;
+    const lista = fichajes.filter((f22) => fichajeVigentePM13(f22) && fichajeEsLocal(f22) && f22.empleadoId === candidato.empleadoId && f22.id !== omitirId).map((f22) => ({ ...f22 }));
+    lista.push({ ...candidato, id: candidato.id || "__pm13_candidato__" });
+    lista.sort((a22, b2) => claveOrdenFichajePM13(a22).localeCompare(claveOrdenFichajePM13(b2)));
+    for (let i33 = 0; i33 < lista.length; i33++) {
+      const actual = lista[i33];
+      if (!tipoFichajeValidoPM13(actual.tipo) || !fechaFichajeValidaPM13(actual.fecha) || !horaFichajeValidaPM13(actual.hora)) return false;
+      if (i33 === 0 && actual.tipo !== "entrada") return false;
+      if (i33 > 0) {
+        const anterior = lista[i33 - 1];
+        if (actual.fecha === anterior.fecha && actual.hora === anterior.hora) return false;
+        if (actual.tipo === anterior.tipo) return false;
+      }
+    }
+    return true;
+  };
+  const aplicarConfirmadoFichajePM13 = (fichaje) => {
+    if (!fichaje || !fichaje.id) return false;
+    const normalizado = { ...fichaje, anulado: fichaje.anulado === true || String(fichaje.anulado || "").toLowerCase() === "true" };
+    setFichajes((s22) => [normalizado, ...s22.filter((f22) => f22.id !== normalizado.id)]);
+    return true;
+  };
+  async function ejecutarRpcFichajePM13(nombre, args) {
+    if (!motorFichajeRemotoDisponiblePM13()) return { disponible: false, ok: true, data: null };
+    try {
+      const supabase = await window.getSupabaseClient();
+      if (!supabase || typeof supabase.rpc !== "function") return { disponible: true, ok: false, error: "El motor remoto de fichajes no está disponible." };
+      const { data, error } = await supabase.rpc(nombre, args);
+      if (error) return { disponible: true, ok: false, error: error.message || String(error) };
+      return { disponible: true, ok: data?.ok !== false, data, error: data?.codigo || null };
+    } catch (error) {
+      return { disponible: true, ok: false, error: error?.message || String(error) };
+    }
+  }
+  function ejecutarUnaVezFichajePM13(clave, ejecutar) {
+    if (operacionesRemotasFichajePM13.has(clave)) return operacionesRemotasFichajePM13.get(clave);
+    const promesa = Promise.resolve().then(ejecutar).finally(() => operacionesRemotasFichajePM13.delete(clave));
+    operacionesRemotasFichajePM13.set(clave, promesa);
+    return promesa;
+  }
   function fichar(empleadoId, tipo) {
     const emp = empleadoFichajeLocal(empleadoId);
-    if (!emp) return false;
-    const ahora = /* @__PURE__ */ new Date();
-    setFichajes((s22) => [
-      { id: uid(), empleadoId, tipo, fecha: todayISO(), hora: ahora.toTimeString().slice(0, 5), timestamp: ahora.toISOString(), localId: emp.localId || localActivoId || null },
-      ...s22
-    ]);
-    return true;
+    if (!emp || !localActivoId || !tipoFichajeValidoPM13(tipo)) return false;
+    const ahora = new Date();
+    const fecha = todayISO();
+    const hora = ahora.toTimeString().slice(0, 5);
+    const operationId = `pm13-fichar:${localActivoId}:${empleadoId}:${tipo}:${fecha}:${hora}`;
+    const candidatoLocal = { id: `fichaje-${operationId}`, empleadoId, tipo, fecha, hora, timestamp: ahora.toISOString(), localId: emp.localId || localActivoId, operationId, manual: false, anulado: false };
+    if (!motorFichajeRemotoDisponiblePM13()) {
+      if (!secuenciaFichajeValidaPM13(candidatoLocal)) return false;
+      setFichajes((s22) => [candidatoLocal, ...s22]);
+      return true;
+    }
+    return ejecutarUnaVezFichajePM13(`auto:${empleadoId}:${tipo}`, () => ejecutarRpcFichajePM13("pm13_fichar", {
+      p_empleado_id: empleadoId,
+      p_local_id: localActivoId,
+      p_tipo: tipo,
+      p_operation_id: operationId
+    })).then((remoto) => remoto.ok && remoto.data?.fichaje ? aplicarConfirmadoFichajePM13(remoto.data.fichaje) : false);
   }
   function addFichajeManual(data) {
-    const emp = empleadoFichajeLocal(data.empleadoId);
-    if (!emp) return false;
-    setFichajes((s22) => [{ id: uid(), ...data, localId: emp.localId || localActivoId || null }, ...s22]);
-    return true;
+    const emp = empleadoFichajeLocal(data?.empleadoId);
+    const fecha = String(data?.fecha || "").trim();
+    const hora = String(data?.hora || "").trim();
+    const tipo = data?.tipo;
+    if (!emp || !localActivoId || !tipoFichajeValidoPM13(tipo) || !fechaFichajeValidaPM13(fecha) || !horaFichajeValidaPM13(hora) || fecha > todayISO()) return false;
+    const operationId = String(data?.operationId || `pm13-manual:${localActivoId}:${emp.id}:${fecha}:${hora}:${tipo}`);
+    const candidatoLocal = { id: `fichaje-${operationId}`, empleadoId: emp.id, tipo, fecha, hora, timestamp: `${fecha}T${hora}:00`, localId: emp.localId || localActivoId, operationId, manual: true, motivoManual: String(data?.motivoManual || data?.motivo || "Corrección manual registrada").trim(), anulado: false };
+    if (!motorFichajeRemotoDisponiblePM13()) {
+      if (!secuenciaFichajeValidaPM13(candidatoLocal)) return false;
+      setFichajes((s22) => [candidatoLocal, ...s22]);
+      return true;
+    }
+    return ejecutarUnaVezFichajePM13(`manual:${operationId}`, () => ejecutarRpcFichajePM13("pm13_fichaje_manual", {
+      p_empleado_id: emp.id,
+      p_local_id: localActivoId,
+      p_fecha: fecha,
+      p_hora: hora,
+      p_tipo: tipo,
+      p_operation_id: operationId,
+      p_motivo: candidatoLocal.motivoManual
+    })).then((remoto) => remoto.ok && remoto.data?.fichaje ? aplicarConfirmadoFichajePM13(remoto.data.fichaje) : false);
   }
-  function updateFichaje(id, data) {
-    setFichajes((s22) => s22.map((f22) => f22.id === id && fichajeEsLocal(f22) ? { ...f22, ...data, localId: f22.localId || localActivoId || null } : f22));
+  function updateFichaje(id, data = {}) {
+    const actual = fichajes.find((f22) => f22.id === id);
+    if (!fichajeEsLocal(actual) || !fichajeVigentePM13(actual)) return false;
+    const emp = empleadoFichajeLocal(actual.empleadoId);
+    if (!emp || (data.empleadoId && data.empleadoId !== actual.empleadoId)) return false;
+    const fecha = String(data.fecha ?? actual.fecha ?? "").trim();
+    const hora = String(data.hora ?? actual.hora ?? "").trim();
+    const tipo = data.tipo ?? actual.tipo;
+    const motivo = String(data.motivoCorreccion || data.motivo || "").trim();
+    if (!motivo || !tipoFichajeValidoPM13(tipo) || !fechaFichajeValidaPM13(fecha) || !horaFichajeValidaPM13(hora)) return false;
+    const candidato = { ...actual, ...data, empleadoId: actual.empleadoId, localId: actual.localId || localActivoId, fecha, hora, tipo, timestamp: `${fecha}T${hora}:00` };
+    if (!secuenciaFichajeValidaPM13(candidato, id)) return false;
+    const operationId = String(data.operationId || `pm13-corregir:${id}:${fecha}:${hora}:${tipo}`);
+    if (!motorFichajeRemotoDisponiblePM13()) {
+      const original = actual.original || { fecha: actual.fecha, hora: actual.hora, tipo: actual.tipo, timestamp: actual.timestamp };
+      const historialCorrecciones = [...(actual.historialCorrecciones || []), { fecha: actual.fecha, hora: actual.hora, tipo: actual.tipo, motivo }];
+      setFichajes((s22) => s22.map((f22) => f22.id === id ? { ...candidato, corregido: true, motivoCorreccion: motivo, original, historialCorrecciones, ultimaCorreccionOperationId: operationId } : f22));
+      return true;
+    }
+    return ejecutarUnaVezFichajePM13(`corregir:${id}`, () => ejecutarRpcFichajePM13("pm13_corregir_fichaje", {
+      p_fichaje_id: id,
+      p_fecha: fecha,
+      p_hora: hora,
+      p_tipo: tipo,
+      p_operation_id: operationId,
+      p_motivo: motivo
+    })).then((remoto) => remoto.ok && remoto.data?.fichaje ? aplicarConfirmadoFichajePM13(remoto.data.fichaje) : false);
   }
-  function eliminarFichaje(id) {
-    setFichajes((s22) => s22.filter((f22) => f22.id !== id || !fichajeEsLocal(f22)));
+  function eliminarFichaje(id, controlPM13 = {}) {
+    const actual = fichajes.find((f22) => f22.id === id);
+    if (!fichajeEsLocal(actual)) return false;
+    if (!fichajeVigentePM13(actual)) return true;
+    const motivo = String(controlPM13.motivo || controlPM13.motivoAnulacion || "").trim();
+    if (!motivo) return false;
+    const restantes = fichajes.filter((f22) => f22.id !== id);
+    const vigenteSiguiente = restantes.filter((f22) => fichajeVigentePM13(f22) && fichajeEsLocal(f22) && f22.empleadoId === actual.empleadoId).sort((a22, b2) => claveOrdenFichajePM13(a22).localeCompare(claveOrdenFichajePM13(b2)));
+    for (let i33 = 0; i33 < vigenteSiguiente.length; i33++) {
+      if (i33 === 0 && vigenteSiguiente[i33].tipo !== "entrada") return false;
+      if (i33 > 0 && vigenteSiguiente[i33].tipo === vigenteSiguiente[i33 - 1].tipo) return false;
+    }
+    const operationId = String(controlPM13.operationId || `pm13-anular:${id}`);
+    if (!motorFichajeRemotoDisponiblePM13()) {
+      setFichajes((s22) => s22.map((f22) => f22.id === id ? { ...f22, anulado: true, motivoAnulacion: motivo, anulacionOperationId: operationId } : f22));
+      return true;
+    }
+    return ejecutarUnaVezFichajePM13(`anular:${id}`, () => ejecutarRpcFichajePM13("pm13_anular_fichaje", {
+      p_fichaje_id: id,
+      p_operation_id: operationId,
+      p_motivo: motivo
+    })).then((remoto) => remoto.ok && remoto.data?.fichaje ? aplicarConfirmadoFichajePM13(remoto.data.fichaje) : false);
   }
   return { fichar, addFichajeManual, updateFichaje, eliminarFichaje };
 }
@@ -112625,6 +112753,7 @@ function inicioSemana(fecha) {
 }
 function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, updateFichaje, eliminarFichaje, fichajesAbiertos }) {
   const activos = empleados.filter((e2) => e2.activo !== false);
+  const fichajesVigentesPM13 = (0, import_react4.useMemo)(() => fichajes.filter((f22) => f22?.anulado !== true && String(f22?.anulado || "").toLowerCase() !== "true"), [fichajes]);
   const [desde, setDesde] = (0, import_react4.useState)(inicioSemana(/* @__PURE__ */ new Date()));
   const [hasta, setHasta] = (0, import_react4.useState)(todayISO());
   const [showManual, setShowManual] = (0, import_react4.useState)(false);
@@ -112646,7 +112775,7 @@ function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, update
     setHasta(aISO(fin));
   }
   const estadoHoy = activos.map((e2) => {
-    const deHoy = fichajes.filter((f22) => f22.empleadoId === e2.id && f22.fecha === todayISO()).sort((a22, b2) => (a22.hora || "").localeCompare(b2.hora || ""));
+    const deHoy = fichajesVigentesPM13.filter((f22) => f22.empleadoId === e2.id && f22.fecha === todayISO()).sort((a22, b2) => (a22.hora || "").localeCompare(b2.hora || ""));
     const entradas = deHoy.filter((f22) => f22.tipo === "entrada");
     const salidas = deHoy.filter((f22) => f22.tipo === "salida");
     const abierto = entradas.length > salidas.length;
@@ -112654,7 +112783,7 @@ function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, update
   });
   const filasHistorial = (0, import_react4.useMemo)(() => {
     const grupos = {};
-    fichajes.filter((f22) => f22.fecha >= desde && f22.fecha <= hasta).forEach((f22) => {
+    fichajesVigentesPM13.filter((f22) => f22.fecha >= desde && f22.fecha <= hasta).forEach((f22) => {
       const key = `${f22.empleadoId}-${f22.fecha}`;
       if (!grupos[key]) grupos[key] = { empleadoId: f22.empleadoId, fecha: f22.fecha, entradas: [], salidas: [] };
       if (f22.tipo === "entrada") grupos[key].entradas.push(f22);
@@ -112672,7 +112801,7 @@ function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, update
       }
       return { ...g2, nombre: emp ? emp.nombre : "\u2014", entrada, salida, horas };
     });
-  }, [fichajes, desde, hasta, empleados]);
+  }, [fichajesVigentesPM13, desde, hasta, empleados]);
   function textoRegistro() {
     const lineas = filasHistorial.sort((a22, b2) => a22.fecha.localeCompare(b2.fecha) || a22.nombre.localeCompare(b2.nombre)).map((f22) => `${f22.fecha} \xB7 ${f22.nombre} \xB7 Entrada ${f22.entrada ? f22.entrada.hora : "\u2014"} \xB7 Salida ${f22.salida ? f22.salida.hora : "sin fichar"} \xB7 ${f22.horas !== null ? f22.horas.toFixed(2) + " h" : ""}`);
     return `REGISTRO HORARIO
@@ -112688,20 +112817,25 @@ Generado el ${(/* @__PURE__ */ new Date()).toLocaleString("es-ES")}`;
       navigator.clipboard.writeText(texto).then(() => setCopiado(true)).catch(() => setCopiado(false));
     }
   }
-  function submitManual() {
+  async function submitManual() {
     if (!manual.empleadoId) {
       setManualError("Selecciona un empleado.");
       return;
     }
     setManualError("");
-    addFichajeManual({
+    const guardado = await Promise.resolve(addFichajeManual({
       empleadoId: manual.empleadoId,
       fecha: manual.fecha,
       tipo: manual.tipo,
       hora: manual.hora,
       timestamp: (/* @__PURE__ */ new Date(`${manual.fecha}T${manual.hora}:00`)).toISOString(),
-      manual: true
-    });
+      manual: true,
+      motivoManual: "Corrección manual registrada desde Registro horario"
+    }));
+    if (!guardado) {
+      setManualError("No se pudo guardar el fichaje. Revisa empleado, fecha, hora y secuencia entrada/salida.");
+      return;
+    }
     setShowManual(false);
   }
   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Registro horario"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Desde 2019, todas las empresas en Espa\xF1a est\xE1n obligadas a llevar un registro diario de la jornada de cada persona trabajadora, sea cual sea su tama\xF1o. Este registro se debe conservar 4 a\xF1os y estar disponible para la Inspecci\xF3n de Trabajo si lo pide.")), fichajesAbiertos.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "Fichajes sin cerrar"), fichajesAbiertos.map((f22, i33) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i33, className: "text-[12px]" }, f22.nombre, " \u2014 entr\xF3 el ", f22.fecha, " y no consta salida"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Hoy"), activos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "A\xF1ade empleados activos en Personal para poder ficharles." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-3 mb-4" }, estadoHoy.map(({ empleado, ultimaEntrada, abierto }) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: empleado.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium text-[13.5px]" }, empleado.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, abierto ? `Entr\xF3 a las ${ultimaEntrada.hora}` : ultimaEntrada ? "Jornada cerrada" : "Sin fichar hoy")), /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: abierto ? C2.accent : C2.inkSoft }, abierto ? "Trabajando" : "Fuera")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, disabled: abierto, onClick: () => fichar(empleado.id, "entrada") }, /* @__PURE__ */ import_react4.default.createElement(LogIn, { size: 13 }), " Entrada"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", disabled: !abierto, onClick: () => fichar(empleado.id, "salida") }, /* @__PURE__ */ import_react4.default.createElement(LogOut, { size: 13 }), " Salida"))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium", style: { color: C2.inkSoft } }, "Historial"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setShowManual(true) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 13 }), " Correcci\xF3n manual"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setShowExportar(true) }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 13 }), " Exportar"))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-wrap gap-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irEstaSemana }, "Esta semana"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irSemanaAnterior }, "Semana anterior")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Desde" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: desde, onChange: (e2) => setDesde(e2.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hasta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: hasta, onChange: (e2) => setHasta(e2.target.value) })))), filasHistorial.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin fichajes en este periodo." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, filasHistorial.sort((a22, b2) => b2.fecha.localeCompare(a22.fecha) || a22.nombre.localeCompare(b2.nombre)).map((f22, i33) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: i33 }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium" }, f22.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, f22.fecha)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, f22.entrada ? f22.entrada.hora : "\u2014", " \u2192 ", f22.salida ? f22.salida.hora : "sin salida"), f22.horas !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mono", style: { color: C2.accent } }, f22.horas.toFixed(2), " h")))))), showManual && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowManual(false), title: "Correcci\xF3n manual de fichaje" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Empleado" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: manual.empleadoId, onChange: (e2) => setManual({ ...manual, empleadoId: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, activos.map((e2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: e2.id, value: e2.id }, e2.nombre)))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-3 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Fecha" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: manual.fecha, onChange: (e2) => setManual({ ...manual, fecha: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tipo" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: manual.tipo, onChange: (e2) => setManual({ ...manual, tipo: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "entrada" }, "Entrada"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "salida" }, "Salida"))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hora" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "time", value: manual.hora, onChange: (e2) => setManual({ ...manual, hora: e2.target.value }) }))), manualError && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, manualError), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitManual }, "Guardar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowManual(false) }, "Cancelar"))), showExportar && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowExportar(false), title: "Exportar registro horario" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2" }, "Copia este texto y gu\xE1rdalo (o p\xE9galo en un documento). Es tu justificante del registro horario del periodo seleccionado, por si te lo pide la Inspecci\xF3n de Trabajo."), /* @__PURE__ */ import_react4.default.createElement(
