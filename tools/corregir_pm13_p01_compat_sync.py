@@ -1,5 +1,4 @@
 from pathlib import Path
-import re
 
 p = Path('fuente.js')
 s = p.read_text(encoding='utf-8')
@@ -9,27 +8,34 @@ if a < 0 or b < 0:
     raise SystemExit('PM13 P01 compat: no se encontró crearLogicaPersonal')
 x = s[a:b]
 
-# Alta híbrida: resultado inmediato en tests aislados; Promise solo con motor remoto.
-pat = re.compile(r'  async function addEmpleado\(data, controlPM13 = \{\}\) \{.*?\n  \}\n  async function crearCuentaEmpleado', re.S)
-new = '''  function addEmpleado(data, controlPM13 = {}) {\n    const validacion = validarEmpleadoPM10(data, { localActivoId, locales, empresaId });\n    if (!validacion.ok) return validacion;\n    if (!localActivoId || !empresaId) return errorValidacionPM10(\"contexto_no_autorizado\", \"localId\", \"Personal requiere empresa y local concretos.\");\n    const empleadoId = String(controlPM13.empleadoId || uid());\n    const operationId = String(controlPM13.operationId || empleadoId);\n    const nuevo = {\n      documentos: [],\n      ...validacion.datos,\n      id: empleadoId,\n      localId: localActivoId,\n      activo: true,\n      fechaAlta: validacion.datos.fechaAlta || fechaHoyPersonalPM13(),\n      fechaBaja: \"\",\n      motivoBaja: \"\",\n      pm13AltaOperationId: operationId\n    };\n    const aplicarLocal = () => {\n      setEmpleados((s22) => s22.some((e2) => e2.id === empleadoId) ? s22 : [...s22, nuevo]);\n      return nuevo;\n    };\n    if (!motorPersonalRemotoDisponiblePM13()) return aplicarLocal();\n    return ejecutarUnaVezPersonalPM13(`alta:${empresaId}:${localActivoId}:${empleadoId}`, () => ejecutarRpcPersonalPM13(\"pm11_alta_empleado\", {\n      p_empresa_id: empresaId,\n      p_local_id: localActivoId,\n      p_empleado_id: empleadoId,\n      p_nombre: nuevo.nombre,\n      p_datos: nuevo\n    })).then((remoto) => remoto.ok ? aplicarLocal() : errorBackendPersonalPM13(remoto.error));\n  }\n  async function crearCuentaEmpleado'''
-x, n = pat.subn(new, x, count=1)
-if n == 0 and 'function addEmpleado(data, controlPM13 = {})' not in x:
-    raise SystemExit('PM13 P01 compat: alta no reconocida')
+# El parche principal ya genera directamente el modo híbrido. Este segundo paso
+# existe solo como gate explícito de compatibilidad con los contratos históricos.
+requeridos = [
+    'function addEmpleado(data, controlPM13 = {})',
+    'function updateEmpleado(id, data)',
+    'function deleteEmpleado(id, baja = {})',
+    'function reactivarEmpleado(id)',
+    'async function ejecutarRpcPersonalPM13(nombre, args)',
+    'motorPersonalRemotoDisponiblePM13()',
+    'pm11_alta_empleado',
+    'pm11_editar_empleado',
+    'pm11_baja_empleado',
+    'pm11_reactivar_empleado',
+]
+for token in requeridos:
+    if token not in x:
+        raise SystemExit(f'PM13 P01 compat: falta {token}')
 
-# Update híbrido.
-pat = re.compile(r'  async function updateEmpleado\(id, data\) \{.*?\n  \}\n  async function deleteEmpleado', re.S)
-new = '''  function updateEmpleado(id, data) {\n    const actual = empleados.find((e2) => e2.id === id);\n    if (!empleadoEsDelLocalActivoPersonal(actual) || !localActivoId || !empresaId) return errorValidacionPM10(\"contexto_no_autorizado\", \"empleadoId\", \"El empleado no pertenece al local activo.\");\n    const validacion = validarEmpleadoPM10({ ...actual, ...data, localId: actual.localId || localActivoId }, { localActivoId, locales, empresaId });\n    if (!validacion.ok) return validacion;\n    const dandoBaja = actual.activo !== false && validacion.datos.activo === false;\n    const reactivando = actual.activo === false && validacion.datos.activo === true;\n    if (!motorPersonalRemotoDisponiblePM13()) {\n      const cambiosEstado = dandoBaja ? {\n        fechaBaja: validacion.datos.fechaBaja || fechaHoyPersonalPM13(),\n        motivoBaja: String(validacion.datos.motivoBaja || \"Baja registrada desde edición\").trim() || \"Baja registrada desde edición\"\n      } : reactivando ? { fechaBaja: \"\", motivoBaja: \"\" } : {};\n      setEmpleados((s22) => s22.map((e2) => e2.id === id ? { ...e2, ...validacion.datos, ...cambiosEstado, id: e2.id, localId: e2.localId || localActivoId } : e2));\n      if (dandoBaja) {\n        bajasRegistradasPersonalPM13.add(id);\n        registrarAuditoria(\"Dar de baja empleado\", `${actual.nombre} \\xB7 ${cambiosEstado.fechaBaja} \\xB7 ${cambiosEstado.motivoBaja}`);\n      }\n      if (reactivando) {\n        bajasRegistradasPersonalPM13.delete(id);\n        registrarAuditoria(\"Reactivar empleado\", actual.nombre);\n      }\n      return true;\n    }\n    if (dandoBaja || reactivando) {\n      return errorValidacionPM10(\"cambio_estado_dedicado\", \"activo\", dandoBaja ? \"Usa Dar de baja para cambiar el estado laboral.\" : \"Usa Reactivar para cambiar el estado laboral.\");\n    }\n    return ejecutarUnaVezPersonalPM13(`editar:${empresaId}:${localActivoId}:${id}`, () => ejecutarRpcPersonalPM13(\"pm11_editar_empleado\", {\n      p_empresa_id: empresaId,\n      p_local_id: localActivoId,\n      p_empleado_id: id,\n      p_cambios: validacion.datos,\n      p_nombre: validacion.datos.nombre || actual.nombre\n    })).then((remoto) => {\n      if (!remoto.ok) return errorBackendPersonalPM13(remoto.error);\n      setEmpleados((s22) => s22.map((e2) => e2.id === id ? { ...e2, ...validacion.datos, id: e2.id, localId: e2.localId || localActivoId } : e2));\n      return true;\n    });\n  }\n  function deleteEmpleado'''
-x, n = pat.subn(new, x, count=1)
-if n == 0 and 'function updateEmpleado(id, data)' not in x:
-    raise SystemExit('PM13 P01 compat: update no reconocido')
+# Debe seguir existiendo ruta síncrona sin motor remoto.
+if 'if (!motorPersonalRemotoDisponiblePM13()) return aplicarLocal();' not in x:
+    raise SystemExit('PM13 P01 compat: alta perdió fallback síncrono')
+if 'if (!motorPersonalRemotoDisponiblePM13()) {' not in x:
+    raise SystemExit('PM13 P01 compat: mutaciones perdieron fallback síncrono')
 
-# Baja + reactivación híbridas.
-pat = re.compile(r'  (?:async )?function deleteEmpleado\(id, baja = \{\}\) \{.*?\n  \}\n  async function reactivarEmpleado\(id\) \{.*?\n  \}\n  function anonimizarEmpleado', re.S)
-new = '''  function deleteEmpleado(id, baja = {}) {\n    const e2 = empleados.find((x3) => x3.id === id);\n    if (!empleadoEsDelLocalActivoPersonal(e2) || !localActivoId || !empresaId) return false;\n    const fechaSistema = fechaHoyPersonalPM13();\n    const fechaBajaSolicitada = String(baja.fechaBaja || fechaSistema).trim() || fechaSistema;\n    const motivoBaja = String(baja.motivoBaja || baja.motivo || \"Baja registrada desde Personal\").trim() || \"Baja registrada desde Personal\";\n    if (!motorPersonalRemotoDisponiblePM13()) {\n      if (bajasRegistradasPersonalPM13.has(id) || e2.activo === false) return true;\n      setEmpleados((s22) => s22.map((emp) => emp.id === id ? { ...emp, activo: false, fechaBaja: fechaBajaSolicitada, motivoBaja } : emp));\n      bajasRegistradasPersonalPM13.add(id);\n      registrarAuditoria(\"Dar de baja empleado\", `${e2.nombre} \\xB7 ${fechaBajaSolicitada || \"sin fecha\"} \\xB7 ${motivoBaja}`);\n      return true;\n    }\n    return ejecutarUnaVezPersonalPM13(`baja:${empresaId}:${localActivoId}:${id}`, () => ejecutarRpcPersonalPM13(\"pm11_baja_empleado\", {\n      p_empresa_id: empresaId,\n      p_local_id: localActivoId,\n      p_empleado_id: id,\n      p_motivo: motivoBaja\n    })).then((remoto) => {\n      if (!remoto.ok) return errorBackendPersonalPM13(remoto.error);\n      const datosRemotos = remoto.data?.empleado?.datos || {};\n      const fechaBaja = String(datosRemotos.fechaBaja || fechaBajaSolicitada);\n      const motivoConfirmado = String(datosRemotos.motivoBaja || motivoBaja);\n      setEmpleados((s22) => s22.map((emp) => emp.id === id ? { ...emp, activo: false, fechaBaja, motivoBaja: motivoConfirmado } : emp));\n      bajasRegistradasPersonalPM13.add(id);\n      return true;\n    });\n  }\n  function reactivarEmpleado(id) {\n    const e2 = empleados.find((x3) => x3.id === id);\n    if (!empleadoEsDelLocalActivoPersonal(e2) || !localActivoId || !empresaId) return false;\n    if (!motorPersonalRemotoDisponiblePM13()) {\n      if (e2.activo !== false) return true;\n      setEmpleados((s22) => s22.map((emp) => emp.id === id ? { ...emp, activo: true, fechaBaja: \"\", motivoBaja: \"\" } : emp));\n      bajasRegistradasPersonalPM13.delete(id);\n      registrarAuditoria(\"Reactivar empleado\", e2.nombre);\n      return true;\n    }\n    return ejecutarUnaVezPersonalPM13(`reactivar:${empresaId}:${localActivoId}:${id}`, () => ejecutarRpcPersonalPM13(\"pm11_reactivar_empleado\", {\n      p_empresa_id: empresaId,\n      p_local_id: localActivoId,\n      p_empleado_id: id\n    })).then((remoto) => {\n      if (!remoto.ok) return errorBackendPersonalPM13(remoto.error);\n      setEmpleados((s22) => s22.map((emp) => emp.id === id ? { ...emp, activo: true, fechaBaja: \"\", motivoBaja: \"\" } : emp));\n      bajasRegistradasPersonalPM13.delete(id);\n      return true;\n    });\n  }\n  function anonimizarEmpleado'''
-x, n = pat.subn(new, x, count=1)
-if n == 0 and 'function reactivarEmpleado(id)' not in x:
-    raise SystemExit('PM13 P01 compat: baja/reactivación no reconocidas')
+# Nunca restaurar borrados físicos.
+if 'setEmpleados((s22) => s22.filter' in x:
+    raise SystemExit('PM13 P01 compat: borrado físico de empleados detectado')
+if 'setNominas((s22) => s22.filter' in x:
+    raise SystemExit('PM13 P01 compat: borrado físico de nóminas detectado')
 
-s = s[:a] + x + s[b:]
-p.write_text(s, encoding='utf-8')
-print('PM13 P01: compatibilidad síncrona aislada preservada')
+print('PM13 P01: compatibilidad híbrida verificada')
