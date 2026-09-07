@@ -27,6 +27,12 @@ function snippets(term, max = 4, radius = 2600) {
   return out;
 }
 
+function section(marker, before = 5000, after = 14000) {
+  const i = source.indexOf(marker);
+  if (i < 0) return `NO ENCONTRADO: ${marker}\n`;
+  return source.slice(Math.max(0, i - before), Math.min(source.length, i + marker.length + after));
+}
+
 const result = {
   sourceLength: source.length,
   terms: Object.fromEntries(terms.map(t => [t, snippets(t)])),
@@ -42,6 +48,16 @@ const result = {
   }
 };
 
+const extract = [
+  '===== MOTOR NOMINAS =====',
+  section('function crearLogicaNominas', 1000, 7000),
+  '===== IMPORTACION IA / UI =====',
+  section('async function importarNominaConIA', 7000, 18000),
+  '===== RENDER NOMINAS =====',
+  section('addNomina, updateNomina, deleteNomina', 5000, 16000)
+].join('\n\n');
+
 fs.writeFileSync('tests/pm13/P07_DIAGNOSTICO_IA_NOMINAS.json', JSON.stringify(result, null, 2) + '\n');
+fs.writeFileSync('tests/pm13/P07_EXTRACT_NOMINAS.txt', extract + '\n');
 console.log('PM13_P07_DIAGNOSTICO=PASS');
 console.log(JSON.stringify(result.flags));
