@@ -104,7 +104,8 @@ jobs:
       - name: Preparar Supabase local reproducible
         run: |
           set -euo pipefail
-          npm ci --prefix tests/pm12/supabase-full --ignore-scripts --no-audit --no-fund
+          # The pinned Supabase package installs its platform CLI in postinstall.
+          npm ci --prefix tests/pm12/supabase-full --no-audit --no-fund
           node tests/pm12/supabase-full/prepare-fixture.mjs
 
       - name: Iniciar Auth PostgREST y PostgreSQL desechables
