@@ -52,12 +52,14 @@ jobs:
           node tests/pm12/p05-ajustes-trazables-contract.mjs
           node tests/pm12/p06-cancelacion-conservadora-contract.mjs
 
-      - name: Confirmar cero escrituras fuera de rama
+      - name: Confirmar alcance de archivos Supabase
         shell: bash
         run: |
           set -euo pipefail
           if git rev-parse HEAD^ >/dev/null 2>&1; then
-            test -z "$(git diff --name-only HEAD^ HEAD | grep '^supabase/' || true)"
+            # P08 adds one reviewed migration, executed only in disposable PostgreSQL.
+            # This workflow never applies migrations or connects to Supabase.
+            test -z "$(git diff --name-only HEAD^ HEAD -- supabase/ | grep -v '^supabase/migrations/20260907155028_pm12_p08_stock_atomico.sql$' || true)"
           fi
-          echo 'PM12_P07_SUPABASE_WRITES=0'
+          echo 'PM12_P07_SUPABASE_REMOTE_WRITES=0'
           echo 'PM12_P07_PRODUCTION_WRITES=0'
