@@ -10,17 +10,21 @@ function sliceFunction(startToken, endToken, max = 30000) {
   return { found: true, start: ini, text: src.slice(ini, fin) };
 }
 
-function occurrences(token, context = 1000) {
+function occurrencesIn(text, token, absoluteBase = 0, context = 1000, limit = 20) {
   const out = [];
   let pos = -1;
-  while ((pos = src.indexOf(token, pos + 1)) >= 0) {
+  while ((pos = text.indexOf(token, pos + 1)) >= 0) {
     out.push({
-      offset: pos,
-      snippet: src.slice(Math.max(0, pos - context), Math.min(src.length, pos + token.length + context))
+      offset: absoluteBase + pos,
+      snippet: text.slice(Math.max(0, pos - context), Math.min(text.length, pos + token.length + context))
     });
-    if (out.length >= 20) break;
+    if (out.length >= limit) break;
   }
   return out;
+}
+
+function occurrences(token, context = 1000) {
+  return occurrencesIn(src, token, 0, context);
 }
 
 const logic = sliceFunction('function crearLogicaPersonal({', 'function crearLogicaTurnos({', 40000);
@@ -38,6 +42,14 @@ const result = {
     hasSoftInactive: /activo:\s*false/.test(logic.text),
     deleteExcerpt: (() => {
       const i = logic.text.indexOf('function deleteEmpleado(');
+      return i >= 0 ? logic.text.slice(i, Math.min(logic.text.length, i + 2200)) : '';
+    })(),
+    addExcerpt: (() => {
+      const i = logic.text.indexOf('function addEmpleado(');
+      return i >= 0 ? logic.text.slice(i, Math.min(logic.text.length, i + 1200)) : '';
+    })(),
+    updateExcerpt: (() => {
+      const i = logic.text.indexOf('function updateEmpleado(');
       return i >= 0 ? logic.text.slice(i, Math.min(logic.text.length, i + 1800)) : '';
     })(),
     returnExcerpt: (() => {
@@ -51,7 +63,11 @@ const result = {
     deleteEmpleadoMentions: (ui.text.match(/deleteEmpleado/g) || []).length,
     activoMentions: (ui.text.match(/activo/g) || []).length,
     bajaMentions: (ui.text.match(/baja/gi) || []).length,
-    eliminarMentions: (ui.text.match(/eliminar/gi) || []).length
+    eliminarMentions: (ui.text.match(/eliminar/gi) || []).length,
+    confirmDeleteExcerpts: occurrencesIn(ui.text, 'confirmDeleteId', ui.start, 1800, 8),
+    activoExcerpts: occurrencesIn(ui.text, 'activo', ui.start, 1200, 12),
+    fechaAltaExcerpts: occurrencesIn(ui.text, 'fechaAlta', ui.start, 1200, 8),
+    setFormExcerpts: occurrencesIn(ui.text, 'setForm', ui.start, 1200, 12)
   },
   calls: occurrences('deleteEmpleado', 1400),
   labels: {
@@ -65,6 +81,12 @@ fs.writeFileSync('tests/pm13/P01_DIAGNOSTICO_PERSONAL.json', JSON.stringify(resu
 console.log(JSON.stringify({
   sourceLength: result.sourceLength,
   logic: result.logic,
-  uiSummary: result.ui,
+  uiSummary: {
+    found: result.ui.found,
+    deleteEmpleadoMentions: result.ui.deleteEmpleadoMentions,
+    activoMentions: result.ui.activoMentions,
+    bajaMentions: result.ui.bajaMentions,
+    eliminarMentions: result.ui.eliminarMentions
+  },
   deleteCallCount: result.calls.length
 }, null, 2));
