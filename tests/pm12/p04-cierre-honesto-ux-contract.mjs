@@ -29,7 +29,7 @@ for (const [nombre, codigo] of [["runtime", runtime], ["fuente recuperada", recu
   assert.match(codigo, /conteo_vacio: "Aún no has contado ningún producto/);
   assert.match(codigo, /title: "Cerrar conteo parcial"/);
   assert.match(codigo, /" productos contados"/);
-  assert.match(codigo, /"El valor 0 cuenta como cantidad válida\."/);
+  assert.match(codigo, /El valor 0 cuenta como cantidad válida\./);
   assert.doesNotMatch(codigo, /onClick: \(\) => finalizarConteo\(activo\.id\)/, `${nombre}: no debe quedar el cierre directo antiguo`);
 }
 const motorPos = html.indexOf('<script src="./pm12-conteo-estados-v1.js"></script>');
