@@ -4076,35 +4076,113 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
     registrarAuditoria("Finalizar conteo", `${cierre.estado} · ${cierre.cobertura.contados}/${cierre.cobertura.total} producto(s) · responsable: ${cierre.responsable}`);
     return { ok: true, estado: cierre.estado, cobertura: cierre.cobertura };
   }
-  function eliminarConteo(conteoId) {
-    const conteo = conteos.find((c2) => c2.id === conteoId);
+  function eliminarConteo(conteoId, opciones = {}) {
+    const conteo = conteos.find((c) => c.id === conteoId);
     if (!conteoEsDelLocalActivo(conteo)) return { ok: false, error: "Conteo no disponible en el local activo." };
-    const generados = movimientos.filter((m2) => m2.documentoOrigenId === conteoId && m2.origen === "aplicarAjustes" && movimientoEsDelLocalActivo(m2));
-    const operationIdDeEstaAnulacion = uid();
-    let revertidos = 0;
-    generados.forEach((m2) => {
-      const r = aplicarMovimientoStock({
-        productoId: m2.productoId,
-        cantidad: -(Number(m2.cantidad) || 0),
-        tipo: m2.tipo,
-        operationId: operationIdDeEstaAnulacion,
-        movimientoId: uid(),
-        origen: "eliminarConteo",
-        documentoOrigenId: conteoId,
-        afectaStockTotal: !!m2.afectaStockTotal,
-        afectaStockPisoVenta: !!m2.afectaStockPisoVenta,
-        permitirDeficit: true,
-        revierteMovimientoId: m2.id,
-        motivo: `Eliminaci\xF3n del conteo del ${conteo.fecha}`
-      });
-      if (r.ok) revertidos++;
+    const estadosApi = typeof window !== "undefined" ? window.__pm12ConteoEstados : null;
+    if (!estadosApi) return { ok: false, error: "No se pudo validar el conteo. Recarga la página e inténtalo de nuevo." };
+    const reglasPorProducto = (productoId) => {
+      const producto = productos.find((p) => p.id === productoId);
+      return producto ? {
+        indivisible: producto.indivisible === true || producto.fraccionable === false,
+        precision: Number.isInteger(producto.precisionCantidad) ? producto.precisionCantidad : void 0
+      } : {};
+    };
+    const estadoActual = estadosApi.estadoDerivado(conteo, reglasPorProducto);
+    if (estadoActual === "CANCELADO" || conteo.cancelado === true) {
+      const reversosPrevios = conteo.cancelacion && Array.isArray(conteo.cancelacion.reversos) ? conteo.cancelacion.reversos : conteo.reversosCancelacion || [];
+      return {
+        ok: true,
+        replayed: true,
+        eliminado: false,
+        cancelado: true,
+        operationId: conteo.cancelacionOperationId || conteo.cancelacion && conteo.cancelacion.operationId || null,
+        revertidos: reversosPrevios.length,
+        reversos: reversosPrevios
+      };
+    }
+    if (estadosApi.esBorradorCompletamenteVacio(conteo, reglasPorProducto)) {
+      setConteos((s) => s.filter((c) => c.id !== conteoId));
+      registrarAuditoria("Eliminar borrador de conteo", `Conteo vacío del ${conteo.fecha || "sin fecha"} eliminado sin movimientos de stock`);
+      return { ok: true, replayed: false, eliminado: true, cancelado: false, revertidos: 0, reversos: [] };
+    }
+    const preparada = estadosApi.prepararCancelacion(conteo, {
+      motivo: opciones.motivo,
+      responsable: opciones.responsable,
+      reglasPorProducto
     });
-    setConteos((s2) => s2.filter((c2) => c2.id !== conteoId));
+    if (!preparada.ok) {
+      const mensajes = {
+        motivo_cancelacion_obligatorio: "Escribe el motivo de la cancelación.",
+        responsable_cancelacion_obligatorio: "Indica quién es responsable de la cancelación.",
+        fecha_cancelacion_invalida: "La fecha de cancelación no es válida."
+      };
+      return { ok: false, codigo: preparada.error, error: mensajes[preparada.error] || "No se pudo cancelar el conteo." };
+    }
+    if (preparada.replayed) {
+      return { ok: true, replayed: true, eliminado: false, cancelado: true, operationId: preparada.operationId, revertidos: preparada.reversos.length, reversos: preparada.reversos };
+    }
+    const generados = movimientos.filter((m) => m.documentoOrigenId === conteoId && m.origen === "aplicarAjustes" && movimientoEsDelLocalActivo(m));
+    const reversos = [];
+    for (const movimientoOriginal of generados) {
+      const movimientoReversoId = `pm12-cancelar-conteo:${conteoId}:${movimientoOriginal.id}`;
+      const r = aplicarMovimientoStock({
+        productoId: movimientoOriginal.productoId,
+        cantidad: -(Number(movimientoOriginal.cantidad) || 0),
+        tipo: movimientoOriginal.tipo,
+        operationId: preparada.operationId,
+        movimientoId: movimientoReversoId,
+        origen: "cancelarConteo",
+        documentoOrigenId: conteoId,
+        afectaStockTotal: !!movimientoOriginal.afectaStockTotal,
+        afectaStockPisoVenta: !!movimientoOriginal.afectaStockPisoVenta,
+        permitirDeficit: true,
+        revierteMovimientoId: movimientoOriginal.id,
+        motivo: `Cancelación del conteo del ${conteo.fecha || "sin fecha"} · ${preparada.motivo}`
+      });
+      if (!r.ok) {
+        return {
+          ok: false,
+          codigo: "reverso_cancelacion_fallido",
+          error: r.error || "No se pudo completar un reverso de stock. Reintenta: no se duplicarán los ya creados.",
+          operationId: preparada.operationId,
+          revertidos: reversos.length,
+          reversos
+        };
+      }
+      reversos.push({
+        movimientoOriginalId: movimientoOriginal.id,
+        movimientoReversoId: r.movimiento && r.movimiento.id ? r.movimiento.id : movimientoReversoId,
+        productoId: movimientoOriginal.productoId,
+        cantidad: -(Number(movimientoOriginal.cantidad) || 0),
+        tipo: movimientoOriginal.tipo
+      });
+    }
+    const cancelacion = {
+      motivo: preparada.motivo,
+      responsable: preparada.responsable,
+      canceladoEn: preparada.canceladoEn,
+      estadoAnterior: preparada.estadoAnterior,
+      operationId: preparada.operationId,
+      reversos
+    };
+    setConteos((s) => s.map((c) => c.id === conteoId ? {
+      ...c,
+      estado: "CANCELADO",
+      cancelado: true,
+      canceladoEn: preparada.canceladoEn,
+      motivoCancelacion: preparada.motivo,
+      responsableCancelacion: preparada.responsable,
+      estadoAnteriorCancelacion: preparada.estadoAnterior,
+      cancelacionOperationId: preparada.operationId,
+      reversosCancelacion: reversos,
+      cancelacion
+    } : c));
     registrarAuditoria(
-      "Eliminar conteo",
-      `Conteo del ${conteo.fecha}${conteo.ambito && conteo.ambito !== "total" ? ` (${conteo.ambito})` : ""} \xB7 ${revertidos} movimiento(s) revertido(s)`
+      "Cancelar conteo",
+      `Conteo del ${conteo.fecha || "sin fecha"} · estado anterior ${preparada.estadoAnterior} · responsable: ${preparada.responsable} · ${reversos.length} reverso(s)`
     );
-    return { ok: true, revertidos };
+    return { ok: true, replayed: false, eliminado: false, cancelado: true, operationId: preparada.operationId, revertidos: reversos.length, reversos };
   }
   function revertirUltimaAplicacion(conteoId) {
     const conteo = conteos.find((c2) => c2.id === conteoId);
@@ -7531,6 +7609,8 @@ function InventarioCiego({ productos, proveedores, conteos, iniciarConteo, actua
   const [confirmarEliminar, setConfirmarEliminar] = (0, import_react4.useState)(null);
   const [procesandoCierre, setProcesandoCierre] = (0, import_react4.useState)(false);
   const [procesandoEliminar, setProcesandoEliminar] = (0, import_react4.useState)(false);
+  const [motivoCancelacion, setMotivoCancelacion] = (0, import_react4.useState)("");
+  const [responsableCancelacion, setResponsableCancelacion] = (0, import_react4.useState)("");
   const [confirmarRevertirDuplicado, setConfirmarRevertirDuplicado] = (0, import_react4.useState)(false);
   const [procesandoRevertir, setProcesandoRevertir] = (0, import_react4.useState)(false);
   const [resultadoRevertir, setResultadoRevertir] = (0, import_react4.useState)(null);
@@ -7831,19 +7911,30 @@ ${cuerpo}`;
       n += 1;
       return /* @__PURE__ */ import_react4.default.createElement("tr", { key: p2.id, style: { background: n % 2 ? C2.bg : C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 mono", style: { border: `1px solid ${C2.line}` } }, n), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2", style: { border: `1px solid ${C2.line}` } }, p2.nombre, p2.codigo && /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: C2.inkSoft } }, " \xB7 ", p2.codigo)), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-center", style: { border: `1px solid ${C2.line}` } }, p2.unidad), /* @__PURE__ */ import_react4.default.createElement("td", { style: { border: `1px solid ${C2.line}`, height: 32, background: "#F0F4F1" } }));
     })));
-  })())), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-6 text-[11px] grid grid-cols-2 gap-6", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement("div", null, "Contado por: _________________________"), /* @__PURE__ */ import_react4.default.createElement("div", null, "Fecha y firma: _________________________")))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Historial de conteos"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, conteos.filter((c2) => c2.id !== activoId).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin conteos anteriores." }) : conteos.filter((c2) => c2.id !== activoId).map((c2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: c2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", null, "Conteo del ", c2.fecha, c2.ambito === "piso_venta" && /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, " \xB7 piso de venta"), c2.ambito === "almacen" && /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, " \xB7 almac\xE9n (trastienda)")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: c2.completado ? C2.accent : C2.amber }, c2.completado ? "Completado" : "En curso"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setActivoId(c2.id) }, "Ver ", /* @__PURE__ */ import_react4.default.createElement(ChevronRight, { size: 13 })), eliminarConteo && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setConfirmarEliminar(c2), style: { color: C2.red } }, "Eliminar")))))), confirmarEliminar && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmarEliminar(null), title: "Eliminar conteo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, "Vas a eliminar el conteo del ", /* @__PURE__ */ import_react4.default.createElement("b", null, confirmarEliminar.fecha), confirmarEliminar.ambito && confirmarEliminar.ambito !== "total" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " (", confirmarEliminar.ambito === "piso_venta" ? "piso de venta" : "almac\xE9n", ")"), "."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-4 p-3 rounded-lg", style: { background: C2.surfaceSoft, color: C2.inkSoft } }, confirmarEliminar.completado ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, "Si este conteo lleg\xF3 a aplicar ajustes al stock (incluidos los traspasos autom\xE1ticos al piso de venta), todo eso se revierte \u2014 con un movimiento nuevo por cada uno, sin borrar ning\xFAn movimiento anterior. El conteo desaparece de este historial.") : "Este conteo no lleg\xF3 a aplicarse, as\xED que no hay ning\xFAn ajuste que revertir \u2014 solo desaparecer\xE1 de la lista."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmarEliminar(null), disabled: procesandoEliminar }, "Cancelar"), /* @__PURE__ */ import_react4.default.createElement(
+  })())), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-6 text-[11px] grid grid-cols-2 gap-6", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement("div", null, "Contado por: _________________________"), /* @__PURE__ */ import_react4.default.createElement("div", null, "Fecha y firma: _________________________")))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Historial de conteos"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, conteos.filter((c2) => c2.id !== activoId).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin conteos anteriores." }) : conteos.filter((c2) => c2.id !== activoId).map((c2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: c2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", null, "Conteo del ", c2.fecha, c2.ambito === "piso_venta" && /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, " \xB7 piso de venta"), c2.ambito === "almacen" && /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, " \xB7 almac\xE9n (trastienda)")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: (c2.estado === "CANCELADO" || c2.cancelado === true) ? C2.inkSoft : (c2.estado === "PARCIAL" ? C2.amber : (c2.completado || c2.estado === "COMPLETADO") ? C2.accent : C2.amber) }, (c2.estado === "CANCELADO" || c2.cancelado === true) ? "Cancelado" : c2.estado === "PARCIAL" ? "Parcial" : (c2.completado || c2.estado === "COMPLETADO") ? "Completado" : c2.estado === "BORRADOR" ? "Borrador" : "En curso"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setActivoId(c2.id) }, "Ver ", /* @__PURE__ */ import_react4.default.createElement(ChevronRight, { size: 13 })), eliminarConteo && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
+      setConfirmarEliminar(c2);
+      setMotivoCancelacion("");
+      setResponsableCancelacion(c2.responsables && c2.responsables.contadoPor ? c2.responsables.contadoPor : c2.responsable || "");
+    }, style: { color: C2.red } }, "Eliminar")))))), confirmarEliminar && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmarEliminar(null), title: "Cancelar o eliminar conteo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, "Vas a eliminar el conteo del ", /* @__PURE__ */ import_react4.default.createElement("b", null, confirmarEliminar.fecha), confirmarEliminar.ambito && confirmarEliminar.ambito !== "total" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " (", confirmarEliminar.ambito === "piso_venta" ? "piso de venta" : "almac\xE9n", ")"), "."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-4 p-3 rounded-lg", style: { background: C2.surfaceSoft, color: C2.inkSoft } }, confirmarEliminar.completado ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, "Los conteos iniciados o cerrados no se borran: se conservan como CANCELADO. Si aplicaron ajustes al stock, se crean reversos trazables sin borrar movimientos anteriores.") : "Solo un borrador completamente vac\xEDo se elimina f\xEDsicamente. Cualquier conteo iniciado se conserva como CANCELADO."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("label", { className: "block text-[12px]" }, "Motivo de cancelación", /* @__PURE__ */ import_react4.default.createElement("input", { value: motivoCancelacion, onChange: (e2) => setMotivoCancelacion(e2.target.value), placeholder: "Obligatorio si el conteo ya se inició", className: "mt-1 w-full border rounded-lg px-3 py-2 text-[13px]", style: { borderColor: C2.line, background: C2.bg } })), /* @__PURE__ */ import_react4.default.createElement("label", { className: "block text-[12px]" }, "Responsable", /* @__PURE__ */ import_react4.default.createElement("input", { value: responsableCancelacion, onChange: (e2) => setResponsableCancelacion(e2.target.value), placeholder: "Quién autoriza la cancelación", className: "mt-1 w-full border rounded-lg px-3 py-2 text-[13px]", style: { borderColor: C2.line, background: C2.bg } }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmarEliminar(null), disabled: procesandoEliminar }, "Cancelar"), /* @__PURE__ */ import_react4.default.createElement(
     Btn,
     {
       disabled: procesandoEliminar,
       onClick: () => {
         if (procesandoEliminar) return;
         setProcesandoEliminar(true);
-        eliminarConteo(confirmarEliminar.id);
+        const resultadoGestionConteo = eliminarConteo(confirmarEliminar.id, { motivo: motivoCancelacion, responsable: responsableCancelacion });
+        if (!resultadoGestionConteo || !resultadoGestionConteo.ok) {
+          alert(resultadoGestionConteo && resultadoGestionConteo.error ? resultadoGestionConteo.error : "No se pudo gestionar el conteo.");
+          setProcesandoEliminar(false);
+          return;
+        }
         setConfirmarEliminar(null);
+        setMotivoCancelacion("");
+        setResponsableCancelacion("");
         setProcesandoEliminar(false);
       }
     },
-    procesandoEliminar ? "Eliminando\u2026" : "Confirmar eliminaci\xF3n"
+    procesandoEliminar ? "Procesando\u2026" : "Confirmar"
   ))));
 }
 function Reportes({ rotacionPorProducto, gastoPorProveedor, productosSinMovimiento, valorInventario, margenPorProducto = [], patronesDesviacionConteo = [] }) {

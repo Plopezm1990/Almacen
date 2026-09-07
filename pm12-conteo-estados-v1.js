@@ -71,8 +71,10 @@
 
   function estadoDerivado(conteo, reglasPorProducto) {
     conteo = conteo || {};
-    if (Object.values(ESTADOS).includes(conteo.estado)) return conteo.estado;
+    // En documentos antiguos el flag cancelado puede coexistir con un estado obsoleto.
+    // La cancelación es terminal y tiene prioridad para no reabrir conteos históricos.
     if (conteo.cancelado === true) return ESTADOS.CANCELADO;
+    if (Object.values(ESTADOS).includes(conteo.estado)) return conteo.estado;
     if (conteo.completado === true) return ESTADOS.COMPLETADO;
     var cobertura = resumenCobertura(conteo.items, reglasPorProducto);
     return cobertura.contados === 0 ? ESTADOS.BORRADOR : ESTADOS.EN_CURSO;
@@ -98,12 +100,76 @@
     return { ok: true, estado: ESTADOS.COMPLETADO, cobertura: cobertura, responsable: responsable };
   }
 
+  function esBorradorCompletamenteVacio(conteo, reglasPorProducto) {
+    conteo = conteo || {};
+    if (estadoDerivado(conteo, reglasPorProducto) !== ESTADOS.BORRADOR) return false;
+    var cobertura = resumenCobertura(conteo.items, reglasPorProducto);
+    var responsables = conteo.responsables || {};
+    var contadoPor = String(responsables.contadoPor || conteo.responsable || '').trim();
+    var revisor = String(responsables.revisor || '').trim();
+    return cobertura.contados === 0 &&
+      cobertura.invalidos === 0 &&
+      !contadoPor &&
+      !revisor &&
+      !conteo.cerradoEn &&
+      !conteo.cierre &&
+      !conteo.coberturaCierre &&
+      !conteo.motivoParcial &&
+      conteo.ajustesAplicados !== true &&
+      conteo.cancelado !== true;
+  }
+
+  function prepararCancelacion(conteo, opciones) {
+    conteo = conteo || {};
+    opciones = opciones || {};
+    var estadoAnterior = estadoDerivado(conteo, opciones.reglasPorProducto);
+    var reversosExistentes = (conteo.cancelacion && Array.isArray(conteo.cancelacion.reversos)) ? conteo.cancelacion.reversos :
+      (Array.isArray(conteo.reversosCancelacion) ? conteo.reversosCancelacion : []);
+
+    if (estadoAnterior === ESTADOS.CANCELADO || conteo.cancelado === true) {
+      return {
+        ok: true,
+        replayed: true,
+        estadoAnterior: conteo.estadoAnteriorCancelacion || (conteo.cancelacion && conteo.cancelacion.estadoAnterior) || null,
+        operationId: conteo.cancelacionOperationId || (conteo.cancelacion && conteo.cancelacion.operationId) || null,
+        reversos: reversosExistentes
+      };
+    }
+
+    var motivo = String(opciones.motivo || '').trim();
+    var responsable = String(opciones.responsable || '').trim();
+    if (!motivo) return { ok: false, error: 'motivo_cancelacion_obligatorio' };
+    if (!responsable) return { ok: false, error: 'responsable_cancelacion_obligatorio' };
+
+    var fechaValor = typeof opciones.reloj === 'function' ? opciones.reloj() : new Date().toISOString();
+    var fecha = new Date(fechaValor);
+    if (!Number.isFinite(fecha.getTime())) return { ok: false, error: 'fecha_cancelacion_invalida' };
+    var canceladoEn = fecha.toISOString();
+    var identidadCorte = conteo.cerradoEn || conteo.iniciadoEn || conteo.fecha || 'sin-corte';
+    var operationId = conteo.cancelacionOperationId ||
+      (conteo.cancelacion && conteo.cancelacion.operationId) ||
+      ('pm12-cancelar-conteo:' + String(conteo.id || 'sin-id') + ':' + String(identidadCorte));
+
+    return {
+      ok: true,
+      replayed: false,
+      estadoAnterior: estadoAnterior,
+      motivo: motivo,
+      responsable: responsable,
+      canceladoEn: canceladoEn,
+      operationId: operationId,
+      reversos: reversosExistentes
+    };
+  }
+
   root.__pm12ConteoEstados = Object.freeze({
     ESTADOS: ESTADOS,
     normalizarCantidad: normalizarCantidad,
     resumenCobertura: resumenCobertura,
     estadoDerivado: estadoDerivado,
-    validarCierre: validarCierre
+    validarCierre: validarCierre,
+    esBorradorCompletamenteVacio: esBorradorCompletamenteVacio,
+    prepararCancelacion: prepararCancelacion
   });
 })(typeof window !== 'undefined' ? window : globalThis);
 
