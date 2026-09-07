@@ -33,7 +33,7 @@ jobs:
       postgres:
         image: postgres:17
         env:
-          POSTGRES_DB: pm12_p10_test
+          POSTGRES_DB: pm12_p08_test
           POSTGRES_PASSWORD: pm12-ci-only
         ports: ['5432:5432']
         options: >-
@@ -87,7 +87,7 @@ jobs:
       - name: PostgreSQL P08 en base desechable
         shell: bash
         env:
-          PM12_TEST_DATABASE_URL: postgresql://postgres:pm12-ci-only@127.0.0.1:5432/pm12_p10_test
+          PM12_TEST_DATABASE_URL: postgresql://postgres:pm12-ci-only@127.0.0.1:5432/pm12_p08_test
         run: |
           set -euo pipefail
           npm ci --prefix tests/pm12/db --ignore-scripts --no-audit --no-fund
