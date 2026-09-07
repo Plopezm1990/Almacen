@@ -16,9 +16,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Verificar base autorizada
-        run: |
-          test "$(git rev-parse HEAD^)" = "c313289e17b132b6e8c5221713dd37c2fe2fb946"
+      - name: Verificar base PM12 P04
+        run: git merge-base --is-ancestor da8bf4761afecac4d4633d7846763808a2b3c15b HEAD
       - name: Aplicar parche y probar
         run: |
           git apply --check source-recovery/post-pm08-patches/pm12-p05-ajustes.patch
