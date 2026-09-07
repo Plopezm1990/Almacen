@@ -1,0 +1,149 @@
+name: PM12 P10 regresion preview y cierre
+
+on:
+  push:
+    branches: [pm12-p10-regresion-preview-cierre]
+    paths:
+      - 'index.html'
+      - 'pm12-conteo-estados-v1.js'
+      - 'pm12-stock-atomico-v1.js'
+      - 'pm12-p09-historial-informes-movil-v1.js'
+      - 'reset-pruebas-preview.js'
+      - 'tests/pm12/**'
+      - '.github/workflows/pm12-p10-regresion-preview-cierre.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'pm12-conteo-estados-v1.js'
+      - 'pm12-stock-atomico-v1.js'
+      - 'pm12-p09-historial-informes-movil-v1.js'
+      - 'reset-pruebas-preview.js'
+      - 'tests/pm12/**'
+      - '.github/workflows/pm12-p10-regresion-preview-cierre.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regresion-integral:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: pm12_p10_test
+          POSTGRES_PASSWORD: pm12-ci-only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Proteger main y el alcance P10
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          P10_BASE='8dadb64495d096d873f41ae5d07cf9e75eb9ede8'
+          test -z "$(git diff --name-only "$P10_BASE"..HEAD -- supabase/)"
+          echo 'P10_MAIN_FROZEN=PASS'
+          echo 'P10_SUPABASE_DIFF=0'
+
+      - name: Sintaxis PM12
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check pm12-conteo-estados-v1.js
+          node --check pm12-stock-atomico-v1.js
+          node --check pm12-p09-historial-informes-movil-v1.js
+          node --check reset-pruebas-preview.js
+
+      - name: Contratos PM12 P02-P09
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in 02 03 04 05 06 07 08 09; do
+            for t in tests/pm12/p${n}-*contract.mjs; do
+              test -f "$t" || continue
+              case "$t" in
+                tests/pm12/p08-postgres-contract.mjs) continue ;;
+              esac
+              node "$t"
+            done
+          done
+          echo 'P10_REGRESSION_P02_P09=PASS'
+
+      - name: Smoke seguro de Deploy Preview
+        run: node tests/pm12/p10-preview-smoke-contract.mjs
+
+      - name: PostgreSQL P08 en base desechable
+        shell: bash
+        env:
+          PM12_TEST_DATABASE_URL: postgresql://postgres:pm12-ci-only@127.0.0.1:5432/pm12_p10_test
+        run: |
+          set -euo pipefail
+          npm ci --prefix tests/pm12/db --ignore-scripts --no-audit --no-fund
+          node tests/pm12/db/p08-postgres-contract.mjs
+
+      - name: Confirmar cero secretos o destinos nuevos en P10
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -Eq 'sb_publishable_|service_role|SUPABASE_(URL|KEY)|project[_-]?ref' tests/pm12/p10-preview-smoke-contract.mjs tests/pm12/P10_REGRESION_PREVIEW_CIERRE.md
+          echo 'P10_NUEVOS_IDENTIFICADORES_REMOTOS=0'
+          echo 'P10_PRODUCTION_WRITES=0'
+
+  supabase-completo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar Supabase local reproducible P08
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --prefix tests/pm12/supabase-full --no-audit --no-fund
+          node tests/pm12/supabase-full/prepare-fixture.mjs
+
+      - name: Iniciar Auth PostgREST y PostgreSQL desechables
+        shell: bash
+        run: |
+          set -euo pipefail
+          tests/pm12/supabase-full/node_modules/.bin/supabase start \
+            --workdir tests/pm12/supabase-full \
+            -x realtime,storage-api,imgproxy,studio,mailpit,postgres-meta,edge-runtime,logflare,vector,supavisor
+          tests/pm12/supabase-full/node_modules/.bin/supabase status \
+            --workdir tests/pm12/supabase-full -o env \
+            > tests/pm12/supabase-full/supabase/.temp/status.env
+
+      - name: Contrato P08 Auth JWT PostgREST RLS
+        run: node tests/pm12/supabase-full/p08-auth-postgrest-rls-contract.mjs
+
+      - name: Detener Supabase desechable
+        if: always()
+        run: tests/pm12/supabase-full/node_modules/.bin/supabase stop --workdir tests/pm12/supabase-full --no-backup || true
+
+  gate-final:
+    needs: [regresion-integral, supabase-completo]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Gate PM12 listo para Deploy Preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          echo 'PM12_P10_GATE_FINAL=PASS'
+          echo 'PM12_LISTO_PARA_DEPLOY_PREVIEW=1'
