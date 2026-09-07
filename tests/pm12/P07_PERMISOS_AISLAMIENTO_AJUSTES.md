@@ -28,6 +28,7 @@ Impedir que un conteo modifique stock sin autorización y sin un contexto inequ�
 ## Compatibilidad y seguridad
 
 - P02–P06 deben continuar en verde.
+- El gate remoto permanente queda activado en la rama de PM12.
 - No se modifica `main`.
 - No se ejecutan despliegues de producción.
 - No se realizan escrituras en Supabase.
