@@ -42,6 +42,27 @@ for (const simbolo of [
   assert.ok(src.includes(simbolo), `${simbolo} sigue presente en el bundle`);
 }
 
+// P10 smoke móvil: el formulario de pedido no puede ensanchar el viewport al
+// añadir cantidad/precio. El parche se carga globalmente; solo el reset y la
+// nube QA permanecen detrás del guard de Deploy Preview.
+assert.ok(fs.existsSync('pm11-compra-mobile-layout-v1.js'), 'parche móvil PM11 presente');
+const mobile = fs.readFileSync('pm11-compra-mobile-layout-v1.js', 'utf8');
+new Function(mobile);
+assert.match(mobile, /MAX_MOBILE = 767/);
+assert.match(mobile, /pm11-compra-mobile-form/);
+assert.match(mobile, /pm11-compra-product-row/);
+assert.match(mobile, /grid-template-columns: minmax\(0, 1fr\)/);
+assert.match(mobile, /overflow-x: hidden !important/);
+assert.match(mobile, /findPedidoForm/);
+assert.match(mobile, /smallestProductRow/);
+assert.match(mobile, /scrollLeft !== 0/);
+
+const previewLoader = fs.readFileSync('reset-pruebas-preview.js', 'utf8');
+const loaderPos = previewLoader.indexOf('./pm11-compra-mobile-layout-v1.js?v=pm11-p10-mobile-v1');
+const previewGuardPos = previewLoader.indexOf('if (typeof window === "undefined" || !HOST_PREVIEW.test(window.location.hostname)) return;');
+assert.ok(loaderPos >= 0, 'loader móvil PM11 enlazado');
+assert.ok(previewGuardPos > loaderPos, 'layout móvil se carga antes del guard QA y no queda limitado al preview');
+
 const contratos = fs.readdirSync('tests/pm11-compra');
 for (let p = 2; p <= 9; p += 1) {
   const prefijo = `p${String(p).padStart(2, '0')}-`;
