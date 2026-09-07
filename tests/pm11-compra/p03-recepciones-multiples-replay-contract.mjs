@@ -62,7 +62,6 @@ function crear(snapshot = structuredClone(estado)) {
   });
 }
 
-// Primera recepción real: 2/5.
 let logica = crear();
 let r = logica.recibirPedido('ped-1', [{ productoId: 'p1', cantidad: 2, precioBruto: 2, ivaPct: 10 }], 'rx-1');
 assert.equal(r.ok, true, JSON.stringify(r));
@@ -75,7 +74,6 @@ assert.equal(estado[0].recepcionesPM11.length, 1);
 assert.equal(estado[0].recepcionesPM11[0].operationId, 'rx-1');
 assert.equal(estado[0].recepcionesPM11[0].lineas[0].unidadesEntradas, 2);
 
-// Doble clic/replay en la misma renderización: cero efecto adicional.
 r = logica.recibirPedido('ped-1', [{ productoId: 'p1', cantidad: 2, precioBruto: 2, ivaPct: 10 }], 'rx-1');
 assert.equal(r.ok, true);
 assert.equal(r.replayed, true);
@@ -83,14 +81,12 @@ assert.equal(procesadas, 1, 'replay inmediato no vuelve a tocar stock');
 assert.equal(estado[0].items[0].cantidadRecibida, 2);
 assert.equal(estado[0].recepcionesPM11.length, 1);
 
-// Misma operationId con contenido distinto es conflicto.
 r = logica.recibirPedido('ped-1', [{ productoId: 'p1', cantidad: 3, precioBruto: 2, ivaPct: 10 }], 'rx-1');
 assert.equal(r.ok, false);
 assert.equal(r.codigo, 'operation_id_conflict');
 assert.equal(procesadas, 1);
 assert.equal(estado[0].items[0].cantidadRecibida, 2);
 
-// Segunda recepción física real usa una identidad nueva.
 logica = crear();
 r = logica.recibirPedido('ped-1', [{ productoId: 'p1', cantidad: 2, precioBruto: 2, ivaPct: 10 }], 'rx-2');
 assert.equal(r.ok, true);
@@ -98,9 +94,8 @@ assert.equal(r.replayed, false);
 assert.equal(procesadas, 2);
 assert.equal(estado[0].items[0].cantidadRecibida, 4);
 assert.equal(estado[0].estado, 'Parcial');
-assert.deepEqual(estado[0].recepcionesPM11.map(x => x.operationId), ['rx-1', 'rx-2']);
+assert.equal(Array.from(estado[0].recepcionesPM11, x => x.operationId).join(','), 'rx-1,rx-2');
 
-// Tercera recepción exacta del resto cierra cuantitativamente el pedido.
 logica = crear();
 r = logica.recibirPedido('ped-1', [{ productoId: 'p1', cantidad: 1, precioBruto: 2, ivaPct: 10 }], 'rx-3');
 assert.equal(r.ok, true);
@@ -110,7 +105,6 @@ assert.equal(estado[0].estado, 'Recibido');
 assert.equal(estado[0].recepcionesPM11.length, 3);
 assert.equal(estado[0].recepcionesPM11.reduce((a, ev) => a + ev.lineas.reduce((b, ln) => b + ln.unidadesEntradas, 0), 0), 5);
 
-// Replay persistido sigue siendo inocuo incluso cuando ya no queda pendiente.
 logica = crear();
 r = logica.recibirPedido('ped-1', [{ productoId: 'p1', cantidad: 2, precioBruto: 2, ivaPct: 10 }], 'rx-1');
 assert.equal(r.ok, true);
@@ -118,7 +112,6 @@ assert.equal(r.replayed, true);
 assert.equal(procesadas, 3, 'replay histórico no revalida como nueva recepción ni toca stock');
 assert.equal(estado[0].items[0].cantidadRecibida, 5);
 
-// Una identidad ya usada no puede reinterpretarse para otro pedido.
 const otro = {
   id: 'ped-2', localId: 'L1', proveedorId: 'prov-1', estado: 'Pendiente',
   items: [{ productoId: 'p1', cantidad: 10, costoUnitario: 2, cantidadRecibida: 0 }]
@@ -138,14 +131,12 @@ assert.equal(r.codigo, 'operation_id_conflict');
 assert.equal(procesadas, 3);
 estado = estadoAnterior;
 
-// Un intento inválido no reserva operationId ni crea evento.
 logica = crear();
 r = logica.recibirPedido('ped-1', [{ productoId: 'p1', cantidad: 0 }], 'rx-invalida');
 assert.equal(r.ok, false);
 assert.equal(procesadas, 3);
 assert.equal(estado[0].recepcionesPM11.some(x => x.operationId === 'rx-invalida'), false);
 
-// La ruta nueva exige que la UI entregue una identidad estable por intento.
 const recepcionIni = src.indexOf('function Recepcion({');
 const recepcionFin = src.indexOf('function textoHojaConteo(', recepcionIni);
 const recepcionTxt = src.slice(recepcionIni, recepcionFin);
