@@ -1,6 +1,6 @@
 # PM12–P09 · Historial, informes y móvil
 
-Estado inicial: **EN IMPLEMENTACIÓN**.
+Estado: **EN VALIDACIÓN FINAL**.
 
 ## Objetivo documental
 
@@ -25,6 +25,14 @@ Reglas:
 7. la presentación móvil apila tarjetas, acciones, metadatos y responsables sin retirar el scroll horizontal ya existente de las tablas de captura;
 8. la capa no hace `fetch`, no escribe `localStorage`, no llama RPC y no contiene endpoints o identificadores remotos.
 
+## Integración y primera evidencia
+
+La capa está integrada exactamente una vez en `index.html`, después de los motores PM12 y antes de `fuente.js`. La integración automática quedó en el commit `fe45105302b1729b6e752fa25551602549c413c2`.
+
+El primer gate P09 (`34153794649`) terminó **SUCCESS**: sintaxis, contrato P09, regresión frontend P02–P08, `main` congelado, cero cambios Supabase y cero escrituras remotas.
+
+Este checkpoint provoca un segundo gate para validar el commit integrado exacto antes del cierre.
+
 ## Gate requerido
 
 Antes de cerrar P09 deben pasar:
@@ -36,6 +44,6 @@ Antes de cerrar P09 deben pasar:
 - `main` congelado;
 - cero cambios en `supabase/` desde el inicio de P09;
 - cero identificadores remotos nuevos;
-- gate remoto **SUCCESS**.
+- gate remoto sobre el head integrado **SUCCESS**.
 
 P10 no empieza hasta cumplir este gate.
