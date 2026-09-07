@@ -5,9 +5,11 @@ import assert from 'node:assert/strict';
 const src = fs.readFileSync('fuente.js', 'utf8');
 
 function extraerFuncion(nombre) {
-  const ini = src.indexOf(`function ${nombre}(`);
-  assert.ok(ini >= 0, `${nombre} presente`);
-  const llave = src.indexOf('{', ini);
+  const firma = `function ${nombre}(`;
+  const firmaIni = src.indexOf(firma);
+  assert.ok(firmaIni >= 0, `${nombre} presente`);
+  const asyncIni = firmaIni >= 6 && src.slice(firmaIni - 6, firmaIni) === 'async ' ? firmaIni - 6 : firmaIni;
+  const llave = src.indexOf('{', firmaIni);
   let nivel = 0;
   let quote = null;
   let escape = false;
@@ -23,7 +25,7 @@ function extraerFuncion(nombre) {
     if (c === '{') nivel++;
     if (c === '}') {
       nivel--;
-      if (nivel === 0) return src.slice(ini, i + 1);
+      if (nivel === 0) return src.slice(asyncIni, i + 1);
     }
   }
   throw new Error(`No se pudo extraer ${nombre}`);
@@ -60,8 +62,7 @@ const ctx = {
     removeItem: (k) => memoria.delete(k)
   },
   todayISO: () => '2026-09-07',
-  uid: () => `p06-${++seq}`,
-  pagosPM06EnCurso: {}
+  uid: () => `p06-${++seq}`
 };
 vm.createContext(ctx);
 vm.runInContext(nombres.map(extraerFuncion).join('\n') + '\nvar pagosPM06EnCurso = {};', ctx);
@@ -126,7 +127,7 @@ assert.equal(saldo.pagado, 40);
 assert.equal(saldo.pendiente, 60);
 assert.equal(saldo.pagada, false);
 
-// 6) Aislamiento por origen/contexto: pagos de otra factura/local no contaminan saldo.
+// 6) Aislamiento por origen/contexto: pagos de otro local no contaminan saldo.
 const ajeno = { ...pagos[0], id: 'ajeno', operationId: 'ajeno-op', facturaId: factura.id, localId: 'LOC-B', importe: 999 };
 saldo = ctx.calcularSaldoFacturaPM06([...pagos, ajeno], factura.id, 'albaran', 100, 'EMP-A', 'LOC-A', false);
 assert.equal(saldo.pagado, 40);
