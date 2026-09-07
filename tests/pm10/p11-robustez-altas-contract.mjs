@@ -19,23 +19,36 @@ assert.ok(procStart>=0,'procesarRecepcion');
 const procEnd=albaranes.indexOf('function confirmarAlbaran(',procStart);
 const proc=albaranes.slice(procStart,procEnd);
 assert.match(proc,/operationIdRecepcionPM10/);
-assert.match(proc,/_pm10Resultados/);
+assert.match(proc,/concurrencyKey = null/);
+assert.match(proc,/claveEfectoRecepcionPM11 = concurrencyKey \|\| operationIdRecepcionPM10/);
+assert.match(proc,/_pm10Resultados\.get\(claveEfectoRecepcionPM11\)/);
+assert.match(proc,/operation_id_conflict/);
 assert.match(proc,/replayed: true/);
 assert.match(proc,/operationId: operationIdRecepcionPM10/);
-assert.match(proc,/movimientoId: `\$\{operationIdRecepcionPM10\}:linea:\$\{idxRecepcionPM10\}:producto:\$\{prod\.id\}`/);
-assert.match(proc,/producto-auto:\$\{idxRecepcionPM10\}/);
-assert.match(proc,/s22\.some\(\(m22\) => m22\.id === `\$\{operationIdRecepcionPM10\}:linea:\$\{idxRecepcionPM10\}:auto`\)/);
+assert.match(proc,/movimientoId: `\$\{claveEfectoRecepcionPM11\}:linea:\$\{idxRecepcionPM10\}:producto:\$\{prod\.id\}`/);
+assert.match(proc,/`\$\{claveEfectoRecepcionPM11\}:producto-auto:\$\{idxRecepcionPM10\}`/);
+assert.match(proc,/s22\.some\(\(m22\) => m22\.id === `\$\{claveEfectoRecepcionPM11\}:linea:\$\{idxRecepcionPM10\}:auto`\)/);
 assert.match(proc,/resultadoRecepcionPM10/);
+assert.match(proc,/_pm10Resultados\.set\(claveEfectoRecepcionPM11, resultadoRecepcionPM10\)/);
 
 const confirmar=albaranes.slice(procEnd, albaranes.indexOf('function anularAlbaran(',procEnd));
 assert.match(confirmar,/operationId: `pm10-recepcion-albaran:\$\{alb\.id\}`/);
+assert.match(confirmar,/concurrencyKey: pedidoLigado \? operationIdEfectoRecepcionPedidoPM11\(pedidoLigado\) : null/);
 assert.match(confirmar,/replayedRecepcionPM10/);
-assert.match(confirmar,/if \(pedidoLigado && !replayedRecepcionPM10\)/);
+assert.match(confirmar,/versión del pedido enlazado ya fue usada por otra recepción/);
 
+// PM11 sustituye la identidad implícita por operationId explícito, replay persistido
+// y una clave física versionada. Son garantías más fuertes que el guard histórico PM10.
 const pedidos=block('function crearLogicaPedidos(','function crearLogicaFichasCosto');
 const recibir=pedidos.slice(pedidos.indexOf('function recibirPedido('),pedidos.indexOf('return { crearPedido',pedidos.indexOf('function recibirPedido(')));
-assert.match(recibir,/operationId: `pm10-recepcion-pedido:\$\{pedido\.id\}:/);
-assert.match(recibir,/if \(!resultado\.replayed\) setPedidos/);
+assert.match(recibir,/function recibirPedido\(pedidoId, lineas, operationId = null\)/);
+assert.match(recibir,/resolverOperationIdRecepcionPM11\(operationId\)/);
+assert.match(recibir,/eventoRecepcionPM11EnPedidos\(pedidos2, opId\)/);
+assert.match(recibir,/operation_id_conflict/);
+assert.match(recibir,/operacionesRecepcionPM11Memoria/);
+assert.match(recibir,/operationId: opId/);
+assert.match(recibir,/concurrencyKey: operationIdEfectoRecepcionPedidoPM11\(pedido\)/);
+assert.match(recibir,/recepcionesPM11/);
 
 for (const [nombre,a,b,ref] of [
   ['Productos','function Productos({','function Proveedores(','submitBloqueadoProductoPM10'],
