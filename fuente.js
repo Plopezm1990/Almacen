@@ -103743,19 +103743,111 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
       )
     );
   }
-  function registrarAusencia(empleadoId, ausencia) {
-    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
-    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
-    setEmpleados(
-      (s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, ausencias: [...e2.ausencias || [], { id: uid(), ...ausencia }] } : e2)
-    );
+  const tiposAusenciaPM13 = new Set(["Vacaciones", "Baja médica", "Otro"]);
+  const ausenciasCreadasLocalPM13 = [];
+  const operacionesAusenciaLocalPM13 = new Map();
+  const ausenciaActivaPM13 = (a22) => !!a22 && String(a22.estado || "ACTIVA").toUpperCase() !== "ANULADA" && !a22.anuladaAt;
+  function normalizarTipoAusenciaPM13(tipo) {
+    const limpio = String(tipo || "").trim();
+    if (limpio.toLowerCase() === "baja medica" || limpio.toLowerCase() === "baja médica") return "Baja médica";
+    if (limpio.toLowerCase() === "vacaciones") return "Vacaciones";
+    if (limpio.toLowerCase() === "otro") return "Otro";
+    return limpio;
   }
-  function eliminarAusencia(empleadoId, ausenciaId) {
+  function fechaISOValidaAusenciaPM13(valor) {
+    const texto = String(valor || "").trim();
+    const m2 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(texto);
+    if (!m2) return false;
+    const y = Number(m2[1]), mes = Number(m2[2]), d2 = Number(m2[3]);
+    const fecha = new Date(Date.UTC(y, mes - 1, d2));
+    return fecha.getUTCFullYear() === y && fecha.getUTCMonth() === mes - 1 && fecha.getUTCDate() === d2;
+  }
+  function diasAusenciaPM13(inicio, fin) {
+    if (!fechaISOValidaAusenciaPM13(inicio) || !fechaISOValidaAusenciaPM13(fin) || fin < inicio) return 0;
+    const a22 = new Date(`${inicio}T00:00:00Z`);
+    const b2 = new Date(`${fin}T00:00:00Z`);
+    return Math.round((b2 - a22) / 864e5) + 1;
+  }
+  function validarAusenciaPM13(empleadoLocal, ausencia) {
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal) || !localActivoId || !empresaId) return errorValidacionPM10("contexto_no_autorizado", "empleadoId", "La ausencia requiere un empleado del local activo.");
+    if (empleadoLocal.activo === false) return errorValidacionPM10("empleado_no_activo", "empleadoId", "No se pueden registrar nuevas ausencias a un empleado de baja.");
+    const tipo = normalizarTipoAusenciaPM13(ausencia?.tipo);
+    if (!tiposAusenciaPM13.has(tipo)) return errorValidacionPM10("ausencia_tipo_invalido", "tipo", "Selecciona un tipo de ausencia válido.");
+    const fechaInicio = String(ausencia?.fechaInicio || "").trim();
+    const fechaFin = String(ausencia?.fechaFin || "").trim();
+    if (!fechaISOValidaAusenciaPM13(fechaInicio)) return errorValidacionPM10("fecha_invalida", "fechaInicio", "La fecha de inicio no es válida.");
+    if (!fechaISOValidaAusenciaPM13(fechaFin)) return errorValidacionPM10("fecha_invalida", "fechaFin", "La fecha final no es válida.");
+    if (fechaFin < fechaInicio) return errorValidacionPM10("rango_fechas_invalido", "fechaFin", "La fecha final no puede ser anterior a la inicial.");
+    const candidatas = [...empleadoLocal.ausencias || [], ...ausenciasCreadasLocalPM13.filter((a22) => a22.empleadoId === empleadoLocal.id)];
+    const solapada = candidatas.some((a22) => ausenciaActivaPM13(a22) && String(a22.fechaInicio || "") <= fechaFin && String(a22.fechaFin || "") >= fechaInicio);
+    if (solapada) return errorValidacionPM10("ausencia_solapada", "fechaInicio", "La ausencia se solapa con otra ausencia activa del empleado.");
+    return { ok: true, datos: { tipo, fechaInicio, fechaFin, dias: diasAusenciaPM13(fechaInicio, fechaFin) } };
+  }
+  function registrarAusencia(empleadoId, ausencia, controlPM13 = {}) {
     const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
-    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal)) return false;
-    setEmpleados(
-      (s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, ausencias: (e2.ausencias || []).filter((a22) => a22.id !== ausenciaId) } : e2)
-    );
+    const validacion = validarAusenciaPM13(empleadoLocal, ausencia);
+    if (!validacion.ok) return validacion;
+    const igualesHistoricas = (empleadoLocal.ausencias || []).filter((a22) => a22.tipo === validacion.datos.tipo && a22.fechaInicio === validacion.datos.fechaInicio && a22.fechaFin === validacion.datos.fechaFin).length;
+    const operationId = String(controlPM13.operationId || `pm13-aus:${empleadoId}:${validacion.datos.tipo}:${validacion.datos.fechaInicio}:${validacion.datos.fechaFin}:${igualesHistoricas}`);
+    const ausenciaId = String(controlPM13.ausenciaId || `ausencia:${operationId}`);
+    const nueva = { id: ausenciaId, empleadoId, ...validacion.datos, estado: "ACTIVA", operationId };
+    const aplicarLocal = (confirmada = nueva) => {
+      let final = { ...nueva, ...confirmada, id: confirmada?.id || ausenciaId, empleadoId };
+      setEmpleados((s22) => s22.map((e2) => {
+        if (e2.id !== empleadoId) return e2;
+        const existentes = e2.ausencias || [];
+        const replay = existentes.find((a22) => a22.operationId === operationId || a22.id === final.id);
+        if (replay) { final = replay; return e2; }
+        return { ...e2, ausencias: [...existentes, final] };
+      }));
+      if (!ausenciasCreadasLocalPM13.some((a22) => a22.operationId === operationId)) ausenciasCreadasLocalPM13.push(final);
+      operacionesAusenciaLocalPM13.set(operationId, final);
+      return { ok: true, ausencia: final };
+    };
+    if (!motorPersonalRemotoDisponiblePM13()) {
+      const replay = operacionesAusenciaLocalPM13.get(operationId);
+      return replay ? { ok: true, replay: true, ausencia: replay } : aplicarLocal();
+    }
+    return ejecutarUnaVezPersonalPM13(`ausencia:${empresaId}:${localActivoId}:${operationId}`, () => ejecutarRpcPersonalPM13("pm13_registrar_ausencia", {
+      p_empresa_id: empresaId,
+      p_local_id: localActivoId,
+      p_empleado_id: empleadoId,
+      p_ausencia_id: ausenciaId,
+      p_tipo: validacion.datos.tipo,
+      p_fecha_inicio: validacion.datos.fechaInicio,
+      p_fecha_fin: validacion.datos.fechaFin,
+      p_operation_id: operationId
+    })).then((remoto) => remoto.ok ? aplicarLocal(remoto.data?.ausencia || nueva) : errorBackendPersonalPM13(remoto.error));
+  }
+  function eliminarAusencia(empleadoId, ausenciaId, controlPM13 = {}) {
+    const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
+    if (!empleadoEsDelLocalActivoPersonal(empleadoLocal) || !localActivoId || !empresaId) return errorValidacionPM10("contexto_no_autorizado", "empleadoId", "La ausencia no pertenece al local activo.");
+    const objetivo = (empleadoLocal.ausencias || []).find((a22) => a22.id === ausenciaId);
+    if (!objetivo) return errorValidacionPM10("ausencia_no_encontrada", "ausenciaId", "No se encontró la ausencia.");
+    if (!ausenciaActivaPM13(objetivo)) return { ok: true, replay: true, ausencia: objetivo };
+    const operationId = String(controlPM13.operationId || `pm13-anular-aus:${empleadoId}:${ausenciaId}`);
+    const motivo = String(controlPM13.motivo || "Anulada desde Personal").trim() || "Anulada desde Personal";
+    const aplicarLocal = (confirmada = {}) => {
+      let final = null;
+      setEmpleados((s22) => s22.map((e2) => {
+        if (e2.id !== empleadoId) return e2;
+        return { ...e2, ausencias: (e2.ausencias || []).map((a22) => {
+          if (a22.id !== ausenciaId) return a22;
+          final = { ...a22, estado: "ANULADA", motivoAnulacion: motivo, anulacionOperationId: operationId, ...confirmada };
+          return final;
+        }) };
+      }));
+      return { ok: true, ausencia: final || { ...objetivo, estado: "ANULADA", motivoAnulacion: motivo, anulacionOperationId: operationId, ...confirmada } };
+    };
+    if (!motorPersonalRemotoDisponiblePM13()) return aplicarLocal();
+    return ejecutarUnaVezPersonalPM13(`anular-ausencia:${empresaId}:${localActivoId}:${operationId}`, () => ejecutarRpcPersonalPM13("pm13_anular_ausencia", {
+      p_empresa_id: empresaId,
+      p_local_id: localActivoId,
+      p_empleado_id: empleadoId,
+      p_ausencia_id: ausenciaId,
+      p_operation_id: operationId,
+      p_motivo: motivo
+    })).then((remoto) => remoto.ok ? aplicarLocal(remoto.data?.ausencia || {}) : errorBackendPersonalPM13(remoto.error));
   }
   function registrarEpi(empleadoId, epi) {
     const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
@@ -112555,17 +112647,24 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reac
     setShowForm(false);
   }
   function diasAusencia(ini, fin) {
-    const a22 = new Date(ini), b2 = new Date(fin);
-    if (isNaN(a22) || isNaN(b2)) return 0;
-    return Math.max(1, Math.round((b2 - a22) / 864e5) + 1);
+    const m1 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(ini || ""));
+    const m2 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(fin || ""));
+    if (!m1 || !m2 || fin < ini) return 0;
+    const a22 = new Date(`${ini}T00:00:00Z`), b2 = new Date(`${fin}T00:00:00Z`);
+    return Math.round((b2 - a22) / 864e5) + 1;
   }
-  function submitAusencia() {
-    registrarAusencia(ausenciaFor, {
+  async function submitAusencia() {
+    setError("");
+    const resultado = await registrarAusencia(ausenciaFor, {
       tipo: ausenciaForm.tipo,
       fechaInicio: ausenciaForm.fechaInicio,
       fechaFin: ausenciaForm.fechaFin,
       dias: diasAusencia(ausenciaForm.fechaInicio, ausenciaForm.fechaFin)
     });
+    if (!resultado || resultado.ok === false) {
+      setError(resultado?.error || "No se pudo registrar la ausencia.");
+      return;
+    }
     setAusenciaFor(null);
     setAusenciaForm({ tipo: "Vacaciones", fechaInicio: todayISO(), fechaFin: todayISO() });
   }
@@ -112616,7 +112715,7 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reac
     descargarComoArchivo(`datos-${e2.nombre.replace(/\s+/g, "-").toLowerCase()}.txt`, lineas.filter((l22) => l22 !== "").join("\n"));
   }
   function vacacionesUsadas(e2) {
-    return (e2.ausencias || []).filter((a22) => a22.tipo === "Vacaciones" && new Date(a22.fechaInicio).getFullYear() === anioActual).reduce((acc, a22) => acc + (Number(a22.dias) || 0), 0);
+    return (e2.ausencias || []).filter((a22) => a22.tipo === "Vacaciones" && String(a22.estado || "ACTIVA").toUpperCase() !== "ANULADA" && !a22.anuladaAt && String(a22.fechaInicio || "").startsWith(`${anioActual}-`)).reduce((acc, a22) => acc + (Number(a22.dias) || 0), 0);
   }
   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: vista === "empleados" ? /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
     if (showForm) resetForm();
@@ -112699,7 +112798,7 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reac
   } }, "Reactivar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAusenciaFor(e2.id) }, "Registrar ausencia"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setEpiFor(e2.id) }, "Entregar EPI"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setDetalleId(detalleId === e2.id ? null : e2.id) }, detalleId === e2.id ? "Ocultar historial" : "Ver historial"), crearCuentaEmpleado && !e2.tieneCuenta && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
       setCuentaFor(e2.id);
       setCuentaForm({ nombre: e2.nombre || "", email: "", password: "", rol: "Camarero/a" });
-    } }, "Crear cuenta de acceso")), detalleId === e2.id && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 pt-3", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, "Ausencias"), (e2.ausencias || []).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin ausencias registradas." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1 mb-3" }, [...e2.ausencias || []].reverse().map((a22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: a22.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, a22.tipo, ": ", a22.fechaInicio, " \u2192 ", a22.fechaFin, " (", a22.dias, " d)"), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => eliminarAusencia(e2.id, a22.id), "aria-label": "Eliminar ausencia" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft }))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1 pt-2", style: { color: C2.inkSoft, borderTop: `1px solid ${C2.line}` } }, "EPIs entregados"), (e2.epis || []).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin EPIs registrados." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1" }, [...e2.epis || []].reverse().map((epi) => /* @__PURE__ */ import_react4.default.createElement("div", { key: epi.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, epi.nombre, " \xB7 ", epi.fecha, " ", epi.firmado ? "\xB7 firmado" : "\xB7 sin firmar"), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => eliminarEpi(e2.id, epi.id), "aria-label": "Eliminar EPI" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))));
+    } }, "Crear cuenta de acceso")), detalleId === e2.id && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 pt-3", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, "Ausencias"), (e2.ausencias || []).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin ausencias registradas." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1 mb-3" }, [...e2.ausencias || []].reverse().map((a22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: a22.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, a22.tipo, ": ", a22.fechaInicio, " \u2192 ", a22.fechaFin, " (", a22.dias, " d)", String(a22.estado || "ACTIVA").toUpperCase() === "ANULADA" || a22.anuladaAt ? " · ANULADA" : ""), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: async () => { const r2 = await eliminarAusencia(e2.id, a22.id); if (!r2 || r2.ok === false) setError(r2?.error || "No se pudo anular la ausencia."); }, "aria-label": "Anular ausencia", title: "Anular ausencia" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft }))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1 pt-2", style: { color: C2.inkSoft, borderTop: `1px solid ${C2.line}` } }, "EPIs entregados"), (e2.epis || []).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin EPIs registrados." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1" }, [...e2.epis || []].reverse().map((epi) => /* @__PURE__ */ import_react4.default.createElement("div", { key: epi.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, epi.nombre, " \xB7 ", epi.fecha, " ", epi.firmado ? "\xB7 firmado" : "\xB7 sin firmar"), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => eliminarEpi(e2.id, epi.id), "aria-label": "Eliminar EPI" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))));
   })), ausenciaFor && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setAusenciaFor(null), title: "Registrar ausencia" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tipo" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: ausenciaForm.tipo, onChange: (e2) => setAusenciaForm({ ...ausenciaForm, tipo: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "Vacaciones" }, "Vacaciones"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "Baja m\xE9dica" }, "Baja m\xE9dica"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "Otro" }, "Otro permiso"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Desde" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: ausenciaForm.fechaInicio, onChange: (e2) => setAusenciaForm({ ...ausenciaForm, fechaInicio: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hasta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: ausenciaForm.fechaFin, onChange: (e2) => setAusenciaForm({ ...ausenciaForm, fechaFin: e2.target.value }) }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, diasAusencia(ausenciaForm.fechaInicio, ausenciaForm.fechaFin), " d\xEDa(s) naturales, contando ambos extremos."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitAusencia }, "Guardar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setAusenciaFor(null) }, "Cancelar"))), epiFor && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setEpiFor(null), title: "Entregar EPI" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "Deja constancia de qu\xE9 equipo de protecci\xF3n le has dado. Es parte de la obligaci\xF3n de PRL."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Equipo entregado" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: epiForm.nombre, onChange: (e2) => setEpiForm({ ...epiForm, nombre: e2.target.value }), placeholder: "Guantes t\xE9rmicos, calzado antideslizante\u2026" })), /* @__PURE__ */ import_react4.default.createElement("label", { className: "flex items-center gap-2 mb-3 text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("input", { type: "checkbox", checked: epiForm.firmado, onChange: (e2) => setEpiForm({ ...epiForm, firmado: e2.target.checked }) }), "El empleado ha firmado el recib\xED"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
     if (epiForm.nombre.trim()) {
       registrarEpi(epiFor, epiForm);
