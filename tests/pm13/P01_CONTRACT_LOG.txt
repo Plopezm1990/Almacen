@@ -1,0 +1,18 @@
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: {"documentos":[{"id":"doc-1","nombre":"Contrato"}],"nombre":"Empleado QA","localId":"L1","activo":true,"fechaAlta":"2026-09-07","fechaBaja":"","motivoBaja":"","puesto":"Camarero/a","rol":"Estándar","tipoContrato":"Indefinido","horasSemanales":40,"pagas":14,"salarioBrutoMensual":1500,"costeEmpresaMensual":2100,"diasVacacionesAnuales":30,"ausencias":[{"id":"aus-1","tipo":"Vacaciones"}]}
+    at file:///home/runner/work/Almacen/Almacen/tests/pm13/p01-altas-bajas-personal-contract.mjs:79:8
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: undefined,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v22.23.2
