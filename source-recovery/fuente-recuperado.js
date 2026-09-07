@@ -1362,7 +1362,30 @@ function GestionAlmacen() {
   const { fichar, addFichajeManual, updateFichaje, eliminarFichaje } = crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId });
   const { addFreidora, updateFreidora, deleteFreidora, registrarCambio, registrarRelleno, eliminarRegistroAceite, consumoPorCiclo } = crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegistrosAceite, productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
   const { addFichaCosto, updateFichaCosto, deleteFichaCosto, alergenosDeFicha } = crearLogicaFichasCosto({ productos, setFichasCosto, localActivoId });
-  const { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion } = crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
+  function obtenerContextoAjusteConteo() {
+    const empleadoActivo = usuarioActivoId ? empleados.find((e) => e.id === usuarioActivoId) : null;
+    const rol = miPerfil && miPerfil.rol ? miPerfil.rol : modoEmpleado ? empleadoActivo && empleadoActivo.rol || "" : "Propietario";
+    const actorNombre = miPerfil && miPerfil.nombre ? miPerfil.nombre : modoEmpleado ? empleadoActivo && empleadoActivo.nombre || "" : "Propietario/a";
+    return {
+      rol,
+      actorId: usuarioActivoId || "",
+      actorNombre,
+      empresaId: empresaDelLocalActivo && empresaDelLocalActivo.id || null,
+      localId: localActivoId || null,
+      todosLosLocales: String(localActivoId || "").toLowerCase() === "todos"
+    };
+  }
+  const puedeAplicarAjustesInventario = (() => {
+    const api = typeof window !== "undefined" ? window.__pm12ConteoEstados : null;
+    if (!api || typeof api.autorizarAjusteInventario !== "function") return false;
+    const ctx = obtenerContextoAjusteConteo();
+    return api.autorizarAjusteInventario({
+      ...ctx,
+      conteoEmpresaId: ctx.empresaId,
+      conteoLocalId: ctx.localId
+    }).ok === true;
+  })();
+  const { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion } = crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId, empresaActivaId: empresaDelLocalActivo && empresaDelLocalActivo.id || null, obtenerContextoActor: obtenerContextoAjusteConteo });
   const conteoAbierto = (0, import_react4.useMemo)(() => conteosDelLocalActivo.find((c2) => !c2.completado) || null, [conteosDelLocalActivo]);
   const almacenCongelado = !!conteoAbierto;
   const { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro } = crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId });
@@ -2152,7 +2175,8 @@ function GestionAlmacen() {
       productoPorId: (id) => productosDelLocalActivo.find((p2) => p2.id === id),
       crearProductoEnConteo,
       clasificacionABC: clasificacionABCDelLocalActivo,
-      almacenCongelado
+      almacenCongelado,
+      puedeAplicarAjustes: puedeAplicarAjustesInventario
     }
   ), tab === "reportes" && /* @__PURE__ */ import_react4.default.createElement(
     Reportes,
@@ -3973,7 +3997,7 @@ function crearLogicaFichasCosto({ productos, setFichasCosto, localActivoId }) {
   }
   return { addFichaCosto, updateFichaCosto, deleteFichaCosto, alergenosDeFicha };
 }
-function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId }) {
+function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId, empresaActivaId, obtenerContextoActor }) {
   const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
   function localDeConteo(conteo) {
     if (!conteo) return null;
@@ -3987,6 +4011,7 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
   }
   function conteoEsDelLocalActivo(conteo) {
     if (!conteo) return false;
+    if (empresaActivaId && conteo.empresaId && conteo.empresaId !== empresaActivaId) return false;
     if (!localActivoId) return true;
     return localDeConteo(conteo) === localActivoId;
   }
@@ -3995,6 +4020,43 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
     if (m2.localId) return m2.localId === localActivoId;
     const prod = productos.find((p2) => p2.id === m2.productoId);
     return !!prod && prod.localId === localActivoId;
+  }
+  function contextoAjustePara(conteo) {
+    const base = typeof obtenerContextoActor === "function" ? obtenerContextoActor() || {} : {};
+    const localConteo = localDeConteo(conteo);
+    const empresaContexto = base.empresaId || empresaActivaId || (conteo && conteo.empresaId) || null;
+    const localContexto = base.localId || localActivoId || null;
+    return {
+      rol: base.rol,
+      actorId: base.actorId,
+      actorNombre: base.actorNombre,
+      empresaId: empresaContexto,
+      localId: localContexto,
+      todosLosLocales: base.todosLosLocales === true || String(localContexto || "").toLowerCase() === "todos",
+      conteoEmpresaId: (conteo && conteo.empresaId) || empresaContexto,
+      conteoLocalId: localConteo || (conteo && conteo.localId) || null
+    };
+  }
+  function autorizarMutacionAjustes(conteo) {
+    const estadosApi = typeof window !== "undefined" ? window.__pm12ConteoEstados : null;
+    if (!estadosApi || typeof estadosApi.autorizarAjusteInventario !== "function") {
+      return { ok: false, error: "motor_permisos_no_disponible" };
+    }
+    return estadosApi.autorizarAjusteInventario(contextoAjustePara(conteo));
+  }
+  function respuestaPermisoAjuste(permiso) {
+    const codigo = permiso && permiso.error || "ajuste_no_autorizado";
+    const mensajes = {
+      ajuste_no_autorizado: "Solo Propietario o Encargado puede aplicar o revertir ajustes de inventario.",
+      actor_ajuste_obligatorio: "No se pudo identificar a la persona responsable del ajuste.",
+      contexto_ajuste_incompleto: "Selecciona una empresa y un local concreto antes de ajustar inventario.",
+      todos_no_es_destino: "Todos los locales es una vista de consulta y no puede recibir ajustes de inventario.",
+      identidad_conteo_incompleta: "El conteo no tiene una identidad de empresa y local válida para ajustar stock.",
+      empresa_no_coincide: "El conteo pertenece a otra empresa.",
+      local_no_coincide: "El conteo pertenece a otro local.",
+      motor_permisos_no_disponible: "No se pudo validar el permiso para ajustar inventario. Recarga la página e inténtalo de nuevo."
+    };
+    return { ok: false, codigo, error: mensajes[codigo] || "No tienes permiso para modificar el stock desde este conteo.", ajustados: 0, traspasados: [] };
   }
   function crearProductoEnConteo(conteoId, datos, cantidadContada) {
     const conteo = conteos.find((c2) => c2.id === conteoId);
@@ -4033,6 +4095,7 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
     }
     const conteo = {
       id: uid(),
+      empresaId: empresaActivaId || null,
       localId: localActivoId || null,
       fecha: todayISO(),
       iniciadoEn: (/* @__PURE__ */ new Date()).toISOString(),
@@ -4123,6 +4186,10 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
       return { ok: true, replayed: true, eliminado: false, cancelado: true, operationId: preparada.operationId, revertidos: preparada.reversos.length, reversos: preparada.reversos };
     }
     const generados = movimientos.filter((m) => m.documentoOrigenId === conteoId && m.origen === "aplicarAjustes" && movimientoEsDelLocalActivo(m));
+    if (generados.length > 0) {
+      const permisoCancelacionStock = autorizarMutacionAjustes(conteo);
+      if (!permisoCancelacionStock.ok) return respuestaPermisoAjuste(permisoCancelacionStock);
+    }
     const reversos = [];
     for (const movimientoOriginal of generados) {
       const movimientoReversoId = `pm12-cancelar-conteo:${conteoId}:${movimientoOriginal.id}`;
@@ -4187,6 +4254,8 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
   function revertirUltimaAplicacion(conteoId) {
     const conteo = conteos.find((c2) => c2.id === conteoId);
     if (!conteoEsDelLocalActivo(conteo)) return { ok: false, error: "Conteo no disponible en el local activo." };
+    const permisoAjusteReversion = autorizarMutacionAjustes(conteo);
+    if (!permisoAjusteReversion.ok) return respuestaPermisoAjuste(permisoAjusteReversion);
     const generados = movimientos.filter((m2) => m2.documentoOrigenId === conteoId && m2.origen === "aplicarAjustes" && movimientoEsDelLocalActivo(m2));
     if (generados.length === 0) {
       return { ok: false, error: "Este conteo no tiene ning\xFAn ajuste aplicado." };
@@ -4230,6 +4299,8 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
   function aplicarAjustes(conteoId, motivos = {}) {
     const conteo = conteos.find((c2) => c2.id === conteoId);
     if (!conteoEsDelLocalActivo(conteo)) return { ok: false, error: "Conteo no disponible en el local activo.", ajustados: 0, traspasados: [] };
+    const permisoAjuste = autorizarMutacionAjustes(conteo);
+    if (!permisoAjuste.ok) return respuestaPermisoAjuste(permisoAjuste);
     const estadoConteo = conteo.estado || (conteo.completado === true ? "COMPLETADO" : "BORRADOR");
     if (estadoConteo !== "PARCIAL" && estadoConteo !== "COMPLETADO") {
       return { ok: false, codigo: "estado_no_ajustable", error: "Solo un conteo parcial o completado puede ajustar el stock.", ajustados: 0, traspasados: [] };
@@ -4357,10 +4428,10 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
       }
     });
     if (idsAplicados.length) {
-      registrarAuditoria("Aplicar ajustes de inventario", `${idsAplicados.length} producto(s) ajustado(s)`);
+      registrarAuditoria("Aplicar ajustes de inventario", `${idsAplicados.length} producto(s) ajustado(s) · ${permisoAjuste.rol} · ${permisoAjuste.actorNombre || permisoAjuste.actorId || "sin nombre"} · local ${permisoAjuste.localId}`);
     }
     const ajustesAplicadosEn = (/* @__PURE__ */ new Date()).toISOString();
-    setConteos((s2) => s2.map((c2) => c2.id === conteoId ? { ...c2, ajustesAplicados: true, ajustesAplicadosEn, ajustesOperationId: operationIdDeEsteAjuste, ajustesCantidad: idsAplicados.length, ajustesTraspasados: traspasados } : c2));
+    setConteos((s2) => s2.map((c2) => c2.id === conteoId ? { ...c2, ajustesAplicados: true, ajustesAplicadosEn, ajustesOperationId: operationIdDeEsteAjuste, ajustesCantidad: idsAplicados.length, ajustesTraspasados: traspasados, ajustesActor: { id: permisoAjuste.actorId || null, nombre: permisoAjuste.actorNombre || "", rol: permisoAjuste.rol }, ajustesEmpresaId: permisoAjuste.empresaId, ajustesLocalId: permisoAjuste.localId } : c2));
     return { ok: true, replayed: false, operationId: operationIdDeEsteAjuste, ajustados: idsAplicados.length, traspasados };
   }
   return { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion };
@@ -7595,13 +7666,16 @@ ${bloques.join("\n\n")}
 
 Contado por: ____________________`;
 }
-function BloqueAplicarAjustes({ activo, procesandoCierre, onAplicar, onCerrarSinAjustar, onPedirRevertir }) {
+function BloqueAplicarAjustes({ activo, procesandoCierre, onAplicar, onCerrarSinAjustar, onPedirRevertir, puedeAplicar = false }) {
   if (activo.ajustesAplicados) {
-    return /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium mb-1" }, "Ajustes ya aplicados"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, activo.ajustesAplicadosEn ? `El ${new Date(activo.ajustesAplicadosEn).toLocaleString("es-ES")} \u2014 ` : "", "no se pueden volver a aplicar, para no duplicar la correcci\xF3n sobre el stock.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", small: true, onClick: onPedirRevertir }, "\xBFSe aplic\xF3 dos veces por error? Revertir la \xFAltima aplicaci\xF3n"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", small: true, onClick: onCerrarSinAjustar }, "Cerrar")));
+    return /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium mb-1" }, "Ajustes ya aplicados"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, activo.ajustesAplicadosEn ? `El ${new Date(activo.ajustesAplicadosEn).toLocaleString("es-ES")} — ` : "", "no se pueden volver a aplicar, para no duplicar la corrección sobre el stock.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", small: true, disabled: !puedeAplicar, title: !puedeAplicar ? "Solo Propietario o Encargado puede revertir ajustes de inventario." : "Revertir únicamente una aplicación duplicada", onClick: onPedirRevertir }, "¿Se aplicó dos veces por error? Revertir la última aplicación"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", small: true, onClick: onCerrarSinAjustar }, "Cerrar")));
   }
-  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 flex gap-2 flex-wrap no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { disabled: procesandoCierre, onClick: onAplicar }, procesandoCierre ? "Aplicando\u2026" : "Aplicar ajustes al stock"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: onCerrarSinAjustar, disabled: procesandoCierre }, "Cerrar sin ajustar"));
+  if (!puedeAplicar) {
+    return /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium mb-1" }, "Conteo cerrado sin permiso de ajuste"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Puedes cerrar y revisar el conteo, pero solo Propietario o Encargado puede aplicar ajustes al stock.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: onCerrarSinAjustar, disabled: procesandoCierre }, "Cerrar sin ajustar")));
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 flex gap-2 flex-wrap no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { disabled: procesandoCierre, onClick: onAplicar }, procesandoCierre ? "Aplicando…" : "Aplicar ajustes al stock"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: onCerrarSinAjustar, disabled: procesandoCierre }, "Cerrar sin ajustar"));
 }
-function InventarioCiego({ productos, proveedores, conteos, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion, productoPorId, crearProductoEnConteo, clasificacionABC, almacenCongelado }) {
+function InventarioCiego({ productos, proveedores, conteos, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion, productoPorId, crearProductoEnConteo, clasificacionABC, almacenCongelado, puedeAplicarAjustes = false }) {
   const [activoId, setActivoId] = (0, import_react4.useState)(null);
   const activo = conteos.find((c2) => c2.id === activoId);
   const [showNuevo, setShowNuevo] = (0, import_react4.useState)(false);
@@ -7867,6 +7941,7 @@ ${cuerpo}`;
   })())))), /* @__PURE__ */ import_react4.default.createElement(BloqueAplicarAjustes, {
     activo,
     procesandoCierre,
+    puedeAplicar: puedeAplicarAjustes,
     onAplicar: () => {
       if (procesandoCierre) return;
       setProcesandoCierre(true);

@@ -162,6 +162,40 @@
     };
   }
 
+  var ROLES_AJUSTE_INVENTARIO = Object.freeze(['Propietario', 'Encargado']);
+
+  function autorizarAjusteInventario(contexto) {
+    contexto = contexto || {};
+    var rol = String(contexto.rol || '').trim();
+    var actorId = String(contexto.actorId || '').trim();
+    var actorNombre = String(contexto.actorNombre || '').trim();
+    var empresaId = String(contexto.empresaId || '').trim();
+    var localId = String(contexto.localId || '').trim();
+    var conteoEmpresaId = String(contexto.conteoEmpresaId || '').trim();
+    var conteoLocalId = String(contexto.conteoLocalId || '').trim();
+
+    if (ROLES_AJUSTE_INVENTARIO.indexOf(rol) < 0) {
+      return { ok: false, error: 'ajuste_no_autorizado', rol: rol || null };
+    }
+    if (!actorId && !actorNombre) return { ok: false, error: 'actor_ajuste_obligatorio' };
+    if (!empresaId || !localId) return { ok: false, error: 'contexto_ajuste_incompleto' };
+    if (contexto.todosLosLocales === true || localId.toLowerCase() === 'todos') {
+      return { ok: false, error: 'todos_no_es_destino' };
+    }
+    if (!conteoEmpresaId || !conteoLocalId) return { ok: false, error: 'identidad_conteo_incompleta' };
+    if (conteoEmpresaId !== empresaId) return { ok: false, error: 'empresa_no_coincide' };
+    if (conteoLocalId !== localId) return { ok: false, error: 'local_no_coincide' };
+
+    return {
+      ok: true,
+      rol: rol,
+      actorId: actorId || null,
+      actorNombre: actorNombre,
+      empresaId: empresaId,
+      localId: localId
+    };
+  }
+
   root.__pm12ConteoEstados = Object.freeze({
     ESTADOS: ESTADOS,
     normalizarCantidad: normalizarCantidad,
@@ -169,7 +203,9 @@
     estadoDerivado: estadoDerivado,
     validarCierre: validarCierre,
     esBorradorCompletamenteVacio: esBorradorCompletamenteVacio,
-    prepararCancelacion: prepararCancelacion
+    prepararCancelacion: prepararCancelacion,
+    ROLES_AJUSTE_INVENTARIO: ROLES_AJUSTE_INVENTARIO,
+    autorizarAjusteInventario: autorizarAjusteInventario
   });
 })(typeof window !== 'undefined' ? window : globalThis);
 
