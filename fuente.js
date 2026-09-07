@@ -105510,19 +105510,38 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
   function aplicarAjustes(conteoId, motivos = {}) {
     const conteo = conteos.find((c22) => c22.id === conteoId);
     if (!conteoEsDelLocalActivo(conteo)) return { ok: false, error: "Conteo no disponible en el local activo.", ajustados: 0, traspasados: [] };
-    if (conteo.ajustesAplicados) {
-      return { ok: false, error: "Los ajustes de este conteo ya se aplicaron antes \u2014 no se puede repetir.", ajustados: 0, traspasados: [] };
+    const estadoConteo = conteo.estado || (conteo.completado === true ? "COMPLETADO" : "BORRADOR");
+    if (estadoConteo !== "PARCIAL" && estadoConteo !== "COMPLETADO") {
+      return { ok: false, codigo: "estado_no_ajustable", error: "Solo un conteo parcial o completado puede ajustar el stock.", ajustados: 0, traspasados: [] };
     }
+    if (conteo.ajustesAplicados) {
+      return { ok: true, replayed: true, operationId: conteo.ajustesOperationId || null, ajustados: Number(conteo.ajustesCantidad) || 0, traspasados: conteo.ajustesTraspasados || [] };
+    }
+    const estadosApi = typeof window !== "undefined" ? window.__pm12ConteoEstados : null;
+    if (!estadosApi) return { ok: false, codigo: "motor_no_disponible", error: "No se pudo validar el ajuste. Recarga la p\xE1gina e int\xE9ntalo de nuevo.", ajustados: 0, traspasados: [] };
+    const preparados = [];
+    for (const item of conteo.items || []) {
+      const p22 = productos.find((pr) => pr.id === item.productoId);
+      if (!p22 || localActivoId && p22.localId !== localActivoId) {
+        return { ok: false, codigo: "producto_fuera_de_contexto", error: "El conteo contiene un producto que no pertenece al local activo.", ajustados: 0, traspasados: [] };
+      }
+      const valorCapturado = Object.prototype.hasOwnProperty.call(item, "conteo") ? item.conteo : item.cantidadContada;
+      const normalizado = estadosApi.normalizarCantidad(valorCapturado, {
+        indivisible: p22.indivisible === true || p22.fraccionable === false,
+        precision: Number.isInteger(p22.precisionCantidad) ? p22.precisionCantidad : void 0
+      });
+      if (!normalizado.valido) {
+        return { ok: false, codigo: "cantidad_invalida", error: `La cantidad de ${p22.nombre || "un producto"} no es v\xE1lida.`, ajustados: 0, traspasados: [] };
+      }
+      if (normalizado.contado) preparados.push({ item, producto: p22, valorFinal: normalizado.valor });
+    }
+    if (preparados.length === 0) return { ok: false, codigo: "sin_lineas_contadas", error: "No hay cantidades v\xE1lidas que aplicar.", ajustados: 0, traspasados: [] };
     const esPisoVenta = conteo.ambito === "piso_venta";
     const esAlmacen = conteo.ambito === "almacen";
     const idsAplicados = [];
     const traspasados = [];
-    const operationIdDeEsteAjuste = uid();
-    conteo.items.forEach((item) => {
-      const p22 = productos.find((pr) => pr.id === item.productoId);
-      if (!p22 || localActivoId && p22.localId !== localActivoId) return;
-      const valorFinal = valorCF(item);
-      if (valorFinal === null) return;
+    const operationIdDeEsteAjuste = conteo.ajustesOperationId || `pm12-ajuste-conteo:${conteo.id}:${conteo.cerradoEn || conteo.fecha || "sin-corte"}`;
+    preparados.forEach(({ producto: p22, valorFinal }) => {
       const stockActual = Number(p22.stock) || 0;
       const deficitActual = Number(p22.deficitPendiente) || 0;
       const stockTeoricoTotal = stockActual - deficitActual;
@@ -105620,8 +105639,9 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
     if (idsAplicados.length) {
       registrarAuditoria("Aplicar ajustes de inventario", `${idsAplicados.length} producto(s) ajustado(s)`);
     }
-    setConteos((s22) => s22.map((c22) => c22.id === conteoId ? { ...c22, ajustesAplicados: true, ajustesAplicadosEn: (/* @__PURE__ */ new Date()).toISOString() } : c22));
-    return { ok: true, ajustados: idsAplicados.length, traspasados };
+    const ajustesAplicadosEn = (/* @__PURE__ */ new Date()).toISOString();
+    setConteos((s22) => s22.map((c22) => c22.id === conteoId ? { ...c22, ajustesAplicados: true, ajustesAplicadosEn, ajustesOperationId: operationIdDeEsteAjuste, ajustesCantidad: idsAplicados.length, ajustesTraspasados: traspasados } : c22));
+    return { ok: true, replayed: false, operationId: operationIdDeEsteAjuste, ajustados: idsAplicados.length, traspasados };
   }
   return { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion };
 }
