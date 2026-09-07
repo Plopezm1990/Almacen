@@ -1,0 +1,63 @@
+name: PM12 P06 aplicar autorizado
+
+on:
+  push:
+    branches: [pm12-conteo-estados-honestos]
+    paths:
+      - 'tools/aplicar_pm12_p06.py'
+      - '.github/workflows/pm12-p06-apply-authorized.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar aislamiento y base P05
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          git merge-base --is-ancestor e02091afa1e83fa69e59744d3aa94948e874b049 HEAD
+          inesperados="$(git diff --name-only e02091afa1e83fa69e59744d3aa94948e874b049 HEAD | grep -Ev '^(tools/aplicar_pm12_p06.py|\.github/workflows/pm12-p06-apply-authorized.yml)$' || true)"
+          test -z "$inesperados"
+
+      - name: Aplicar P06
+        run: python3 tools/aplicar_pm12_p06.py
+
+      - name: Validar sintaxis y contratos
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check fuente.js
+          node --check source-recovery/fuente-recuperado.js
+          node --check pm12-conteo-estados-v1.js
+          node tests/pm12/p06-cancelacion-conservadora-contract.mjs
+          node tests/pm12/p02-estados-normalizacion-contract.mjs
+          node tests/pm12/p03-documento-corte-contract.mjs
+          node tests/pm12/p04-cierre-honesto-ux-contract.mjs
+          node tests/pm12/p05-ajustes-trazables-contract.mjs
+          test -z "$(git diff --name-only | grep '^supabase/' || true)"
+          echo 'PM12_P06_SUPABASE_WRITES=0'
+          echo 'PM12_P06_PRODUCTION_WRITES=0'
+
+      - name: Registrar P06 y limpiar transporte
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm tools/aplicar_pm12_p06.py
+          rm .github/workflows/pm12-p06-apply-authorized.yml
+          git add -A
+          permitidos='^(fuente\.js|source-recovery/fuente-recuperado\.js|pm12-conteo-estados-v1\.js|tests/pm12/P06_CANCELACION_CONSERVADORA\.md|tests/pm12/p06-cancelacion-conservadora-contract\.mjs|\.github/workflows/pm12-p06-cancelacion-conservadora\.yml|tools/aplicar_pm12_p06\.py|\.github/workflows/pm12-p06-apply-authorized\.yml)$'
+          inesperados="$(git diff --cached --name-only | grep -Ev "$permitidos" || true)"
+          test -z "$inesperados"
+          git commit -m "PM12 P06: conservar cancelaciones y reversos trazables"
+          git push origin HEAD:pm12-conteo-estados-honestos
