@@ -102778,7 +102778,7 @@ function GestionAlmacen() {
       v22.setDate(v22.getDate() + diasPago);
       return { vencimiento: aISO(v22), dias: Math.round((v22 - hoy) / 864e5) };
     }
-    const deAlbaranes = albaranes.filter((a22) => a22.estado === "confirmado" && a22.esFactura !== false).map((a22) => {
+    const deAlbaranes = albaranes.filter((a22) => albaranEsFacturaOperativaPM11(a22)).map((a22) => {
       const prov = a22.proveedorSnapshot || proveedorPorId(a22.proveedorId);
       const total = calcularTotalesFacturaAlbaran(a22).total;
       const fechaFactura = a22.fechaFactura || a22.fecha;
@@ -106363,6 +106363,9 @@ function firmaConfirmacionAlbaranPM11(alb, empresaIdEfectiva = null, localIdEfec
     proveedorId: String(alb?.proveedorId || "").trim(),
     fecha: String(alb?.fecha || "").trim(),
     numero: String(alb?.numero || "").trim(),
+    esFactura: alb?.esFactura === true,
+    numeroFactura: String(alb?.numeroFactura || "").trim(),
+    fechaFactura: String(alb?.fechaFactura || "").trim(),
     lineas: lineas.map((ln2) => ({
       productoId: String(ln2?.productoId || "").trim(),
       descripcion: String(ln2?.descripcion || "").trim(),
@@ -106402,6 +106405,52 @@ function resultadoReplayAlbaranPM11(avisos, albaranId) {
   salida.replayed = true;
   salida.operationId = `pm11-albaran:${albaranId}`;
   return salida;
+}
+function normalizarNumeroFacturaPM11(valor) {
+  return String(valor == null ? "" : valor).trim().toLowerCase().replace(/\s+/g, " ");
+}
+function fechaFacturaValidaPM11(valor) {
+  const texto = String(valor == null ? "" : valor).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(texto)) return false;
+  const [y, m, d] = texto.split("-").map(Number);
+  const fecha = new Date(Date.UTC(y, m - 1, d));
+  return fecha.getUTCFullYear() === y && fecha.getUTCMonth() === m - 1 && fecha.getUTCDate() === d;
+}
+function albaranEsFacturaOperativaPM11(alb) {
+  return !!alb && alb.estado === "confirmado" && alb.esFactura === true && !!normalizarNumeroFacturaPM11(alb.numeroFactura) && fechaFacturaValidaPM11(alb.fechaFactura);
+}
+function claveObligacionFacturaAlbaranPM11(alb, empresaIdEfectiva = null) {
+  const empresa = String(alb?.empresaId || empresaIdEfectiva || "").trim();
+  const proveedor = String(alb?.proveedorId || "").trim();
+  const numero = normalizarNumeroFacturaPM11(alb?.numeroFactura);
+  return empresa && proveedor && numero ? `${empresa}:${proveedor}:${numero}` : "";
+}
+function validarIdentidadFacturaAlbaranPM11({ alb, albaranes = [], empresaId = null, localActivoId = null, exigirFactura = false } = {}) {
+  if (!alb || alb.esFactura !== true) {
+    if (exigirFactura) return { ok: false, codigo: "no_es_factura", campo: "esFactura", error: "El albarán no está marcado explícitamente como factura." };
+    return { ok: true, esFactura: false, clave: null, numeroFactura: "", fechaFactura: "" };
+  }
+  const id = String(alb.id || "").trim();
+  const empresa = String(alb.empresaId || empresaId || "").trim();
+  const local = String(alb.localId || localActivoId || "").trim();
+  const proveedor = String(alb.proveedorId || "").trim();
+  const numeroFactura = String(alb.numeroFactura || "").trim();
+  const numeroNormalizado = normalizarNumeroFacturaPM11(numeroFactura);
+  const fechaFactura = String(alb.fechaFactura || "").trim();
+  if (!id) return { ok: false, codigo: "campo_obligatorio", campo: "id", error: "La factura necesita la identidad estable del albarán." };
+  if (!empresa || !local || !proveedor) return { ok: false, codigo: "contexto_incompleto", campo: "factura", error: "La factura necesita empresa, local y proveedor explícitos." };
+  if (!numeroNormalizado) return { ok: false, codigo: "campo_obligatorio", campo: "numeroFactura", error: "Indica el número de factura del proveedor." };
+  if (!fechaFacturaValidaPM11(fechaFactura)) return { ok: false, codigo: "fecha_invalida", campo: "fechaFactura", error: "Indica una fecha de factura válida." };
+  const clave = claveObligacionFacturaAlbaranPM11({ ...alb, empresaId: empresa, proveedorId: proveedor, numeroFactura }, empresa);
+  const duplicada = (Array.isArray(albaranes) ? albaranes : []).find((otra) => {
+    if (!otra || String(otra.id || "") === id) return false;
+    if (!albaranEsFacturaOperativaPM11(otra)) return false;
+    return claveObligacionFacturaAlbaranPM11(otra, otra.empresaId) === clave;
+  }) || null;
+  if (duplicada) {
+    return { ok: false, codigo: "factura_duplicada", campo: "numeroFactura", error: "Ya existe otra factura confirmada de este proveedor con el mismo número.", duplicadaId: duplicada.id };
+  }
+  return { ok: true, esFactura: true, id, empresaId: empresa, localId: local, proveedorId: proveedor, numeroFactura, fechaFactura, clave };
 }
 function crearLogicaAlbaranes({
   catalogoProv,
@@ -106489,7 +106538,9 @@ function crearLogicaAlbaranes({
   }
   function guardarAlbaran(alb) {
     if (!albaranEsDelLocalActivo(alb, true)) return false;
-    const limpioBase = sinFotoIncrustada(alb);
+    const limpioOriginalPM11 = sinFotoIncrustada(alb);
+    const existenteEscrituraPM11 = limpioOriginalPM11.id ? albaranes.find((x3) => x3.id === limpioOriginalPM11.id) : null;
+    const limpioBase = !existenteEscrituraPM11 && limpioOriginalPM11.esFactura == null ? { ...limpioOriginalPM11, esFactura: false } : limpioOriginalPM11;
     const idsLocalesLineas = [...new Set((limpioBase.lineas || []).map((ln2) => productos.find((p22) => p22.id === ln2.productoId)?.localId).filter(Boolean))];
     const existente = limpioBase.id ? albaranes.find((x3) => x3.id === limpioBase.id) : null;
     const empresaIdDoc = existente?.empresaId || empresaId || null;
@@ -106512,7 +106563,7 @@ function crearLogicaAlbaranes({
     const numFactura = norm(alb.numeroFactura);
     return {
       albaran: numero ? otros.find((a22) => norm(a22.numero) === numero) || null : null,
-      factura: numFactura ? otros.find((a22) => norm(a22.numeroFactura) === numFactura) || null : null
+      factura: numFactura ? otros.find((a22) => a22.esFactura === true && norm(a22.numeroFactura) === numFactura) || null : null
     };
   }
   function desviacionesDePrecio(alb, umbralPct = 10) {
@@ -106587,10 +106638,35 @@ function crearLogicaAlbaranes({
   async function marcarPagada(id, pagada, importe) {
     const a22 = albaranes.find((x3) => x3.id === id);
     if (!a22 || !empresaId || !localActivoId || a22.empresaId !== empresaId || a22.localId !== localActivoId) return { ok: false, error: "Factura fuera del contexto autorizado." };
+    if (a22.estado !== "confirmado") return { ok: false, codigo: "documento_no_confirmado", campo: "estado", error: "El albarán debe estar confirmado antes de poder pagarse." };
+    const facturaPM11 = validarIdentidadFacturaAlbaranPM11({ alb: a22, albaranes, empresaId, localActivoId, exigirFactura: true });
+    if (!facturaPM11.ok) return { ok: false, codigo: facturaPM11.codigo, campo: facturaPM11.campo, error: facturaPM11.error };
     const total = calcularTotalesFacturaAlbaran(a22).total;
-    const doc = { ...a22, total };
+    const doc = {
+      ...a22,
+      id: a22.id,
+      empresaId: facturaPM11.empresaId,
+      localId: facturaPM11.localId,
+      proveedorId: facturaPM11.proveedorId,
+      numero: facturaPM11.numeroFactura,
+      numeroFactura: facturaPM11.numeroFactura,
+      fecha: facturaPM11.fechaFactura,
+      fechaFactura: facturaPM11.fechaFactura,
+      total,
+      obligacionFacturaPM11: a22.obligacionFacturaPM11 || {
+        version: 1,
+        clave: facturaPM11.clave,
+        facturaId: a22.id,
+        origenFactura: "albaran",
+        empresaId: facturaPM11.empresaId,
+        localId: facturaPM11.localId,
+        proveedorId: facturaPM11.proveedorId,
+        numeroFactura: facturaPM11.numeroFactura,
+        fechaFactura: facturaPM11.fechaFactura
+      }
+    };
     const r2 = pagada ? await registrarPagoPM06({ factura: doc, origenFactura: "albaran", importe: importe == null ? calcularSaldoFacturaPM06(pagosFacturas, id, "albaran", total, a22.empresaId, a22.localId, a22.pagada).pendiente : importe, pagosFacturas, setPagosFacturas }) : await revertirUltimoPagoPM06({ factura: doc, origenFactura: "albaran", pagosFacturas, setPagosFacturas });
-    if (r2.ok && !r2.replayed) registrarAuditoria(pagada ? "Registrar pago factura" : "Revertir pago factura", `Factura ${a22.numeroFactura || a22.numero || id} \xB7 \u20AC${redondearDineroPM06(r2.pago?.importe || importe || 0).toFixed(2)} \xB7 ${a22.empresaId}/${a22.localId}`);
+    if (r2.ok && !r2.replayed) registrarAuditoria(pagada ? "Registrar pago factura" : "Revertir pago factura", `Factura ${facturaPM11.numeroFactura} · €${redondearDineroPM06(r2.pago?.importe || importe || 0).toFixed(2)} · ${a22.empresaId}/${a22.localId}`);
     return r2;
   }
   function procesarRecepcion({ lineas, proveedorId, fecha, documentoTipo, documentoId, documentoNumero, operationId = null }) {
@@ -106731,6 +106807,8 @@ function crearLogicaAlbaranes({
 
     const albaranId = String(alb?.id || "").trim();
     if (!albaranId) return errorValidacionPM10("campo_obligatorio", "id", "El albarán necesita una identidad estable antes de confirmarse.");
+    const facturaPM11 = validarIdentidadFacturaAlbaranPM11({ alb, albaranes, empresaId, localActivoId });
+    if (!facturaPM11.ok) return errorValidacionPM10(facturaPM11.codigo, facturaPM11.campo, facturaPM11.error);
     const clavePM11 = claveConfirmacionAlbaranPM11(alb, empresaId, localActivoId);
     const memoriaPM11 = confirmacionesAlbaranPM11Memoria.get(clavePM11) || null;
     const existentePM11 = (albaranes || []).find((a22) => a22 && a22.id === albaranId) || null;
@@ -106785,7 +106863,28 @@ function crearLogicaAlbaranes({
       localId: alb.localId || localActivoId || null,
       proveedorId: alb.proveedorId || null
     };
-    const guardadoPM11 = guardarAlbaran({ ...alb, lineas: lineasResueltas, estado: "confirmado", avisosPrecio: avisos || [], confirmacionPM11 });
+    const obligacionFacturaPM11 = facturaPM11.esFactura ? {
+      version: 1,
+      clave: facturaPM11.clave,
+      facturaId: albaranId,
+      origenFactura: "albaran",
+      empresaId: facturaPM11.empresaId,
+      localId: facturaPM11.localId,
+      proveedorId: facturaPM11.proveedorId,
+      numeroFactura: facturaPM11.numeroFactura,
+      fechaFactura: facturaPM11.fechaFactura
+    } : null;
+    const guardadoPM11 = guardarAlbaran({
+      ...alb,
+      lineas: lineasResueltas,
+      estado: "confirmado",
+      avisosPrecio: avisos || [],
+      confirmacionPM11,
+      esFactura: facturaPM11.esFactura === true,
+      numeroFactura: facturaPM11.esFactura ? facturaPM11.numeroFactura : (alb.numeroFactura || ""),
+      fechaFactura: facturaPM11.esFactura ? facturaPM11.fechaFactura : (alb.fechaFactura || ""),
+      obligacionFacturaPM11
+    });
     if (guardadoPM11 === false) {
       return errorValidacionPM10("conflicto_persistencia", "albaran", "No se pudo guardar el albarán confirmado.");
     }
@@ -106862,7 +106961,7 @@ function crearLogicaAlbaranes({
       cargos: "",
       cargosConcepto: "",
       cargosIva: 21,
-      esFactura: true,
+      esFactura: false,
       numeroFactura: "",
       fechaFactura: todayISO(),
       pagada: false,
@@ -110685,7 +110784,7 @@ function Albaranes({
       cargos: "",
       cargosConcepto: "",
       cargosIva: 21,
-      esFactura: true,
+      esFactura: false,
       numeroFactura: "",
       fechaFactura: r2.fecha || todayISO(),
       pagada: false,
@@ -110804,7 +110903,7 @@ function Albaranes({
         cargos: "",
         cargosConcepto: "",
         cargosIva: 21,
-        esFactura: true,
+        esFactura: false,
         numeroFactura: "",
         fechaFactura: d2.fecha || todayISO(),
         pagada: false,
@@ -110838,7 +110937,7 @@ function Albaranes({
       cargos: "",
       cargosConcepto: "",
       cargosIva: 21,
-      esFactura: true,
+      esFactura: false,
       numeroFactura: "",
       fechaFactura: todayISO(),
       pagada: false,
@@ -111071,7 +111170,7 @@ function Albaranes({
         const ivaCargos = cargos * ((Number(a22.cargosIva) || 0) / 100);
         const base = baseConCanon;
         const totalConIva = baseConCanon + ivaLineas + cargos + ivaCargos;
-        return /* @__PURE__ */ import_react4.default.createElement(Card, { key: a22.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold" }, prov ? prov.nombre : "Sin proveedor"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Albar\xE1n ", a22.numero || "s/n", " \xB7 ", a22.fecha, " \xB7 ", a22.lineas.length, " l\xEDnea(s)")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: a22.estado === "confirmado" ? C2.accent : C2.amber }, a22.estado === "confirmado" ? "Dado de entrada" : "Borrador"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold mt-1" }, "\u20AC", fmt(totalConIva)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mono", style: { color: C2.inkSoft } }, "base \u20AC", fmt(base), " \xB7 IVA \u20AC", fmt(totalConIva - base)), a22.estado === "confirmado" && a22.esFactura !== false && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-0.5" }, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: a22.pagada ? C2.inkSoft : C2.amber }, a22.pagada ? "Pagada" : "Sin pagar")))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 flex gap-2 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => abrir(a22) }, a22.estado === "confirmado" ? "Ver" : "Continuar editando"), a22.estado === "confirmado" && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAnularId(a22.id) }, "Anular para editar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", onClick: () => setConfirmarId(a22.id) }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 13 }), " Eliminar")));
+        return /* @__PURE__ */ import_react4.default.createElement(Card, { key: a22.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold" }, prov ? prov.nombre : "Sin proveedor"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Albar\xE1n ", a22.numero || "s/n", " \xB7 ", a22.fecha, " \xB7 ", a22.lineas.length, " l\xEDnea(s)")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: a22.estado === "confirmado" ? C2.accent : C2.amber }, a22.estado === "confirmado" ? "Dado de entrada" : "Borrador"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold mt-1" }, "\u20AC", fmt(totalConIva)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mono", style: { color: C2.inkSoft } }, "base \u20AC", fmt(base), " \xB7 IVA \u20AC", fmt(totalConIva - base)), albaranEsFacturaOperativaPM11(a22) && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-0.5" }, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: a22.pagada ? C2.inkSoft : C2.amber }, a22.pagada ? "Pagada" : "Sin pagar")))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 flex gap-2 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => abrir(a22) }, a22.estado === "confirmado" ? "Ver" : "Continuar editando"), a22.estado === "confirmado" && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAnularId(a22.id) }, "Anular para editar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", onClick: () => setConfirmarId(a22.id) }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 13 }), " Eliminar")));
       }));
     })(), anularId && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setAnularId(null), title: "Anular entrada para poder editar" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-4" }, "Se restar\xE1 del stock lo que entr\xF3 con este albar\xE1n y se borrar\xE1n sus movimientos. El albar\xE1n volver\xE1 a estado borrador para que puedas corregirlo y darle entrada otra vez.", /* @__PURE__ */ import_react4.default.createElement("br", null), /* @__PURE__ */ import_react4.default.createElement("br", null), "Los costes de los productos ", /* @__PURE__ */ import_react4.default.createElement("b", null, "no se revierten"), ": quedar\xE1n con el \xFAltimo valor introducido hasta que vuelvas a confirmar el albar\xE1n corregido."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
       const a22 = albaranes.find((x3) => x3.id === anularId);
@@ -111122,16 +111221,16 @@ function Albaranes({
     {
       type: "button",
       disabled: bloqueado,
-      onClick: () => setAlb({ ...alb, esFactura: !(alb.esFactura !== false) }),
+      onClick: () => setAlb({ ...alb, esFactura: !(alb.esFactura === true) }),
       className: "text-[12px] font-medium px-3 py-1.5 rounded-lg",
       style: {
-        background: alb.esFactura !== false ? C2.accentSoft : C2.bg,
-        border: `1px solid ${alb.esFactura !== false ? C2.accent : C2.line}`,
+        background: alb.esFactura === true ? C2.accentSoft : C2.bg,
+        border: `1px solid ${alb.esFactura === true ? C2.accent : C2.line}`,
         color: C2.ink
       }
     },
-    alb.esFactura !== false ? "\u2713 Este albar\xE1n es tambi\xE9n la factura" : "Este albar\xE1n NO es la factura (a\xFAn no ha llegado)"
-  )), alb.esFactura !== false && /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "N\xBA de factura (si es distinto del albar\xE1n)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: alb.numeroFactura || "", onChange: (e2) => setAlb({ ...alb, numeroFactura: e2.target.value }), disabled: bloqueado, placeholder: alb.numero || "s/n" }), duplicados.factura && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-1", style: { color: C2.amber } }, "\u26A0 Ya hay una factura con ese n\xFAmero de este proveedor (del ", duplicados.factura.fechaFactura || duplicados.factura.fecha, ").")), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Fecha de factura" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: alb.fechaFactura || alb.fecha, onChange: (e2) => setAlb({ ...alb, fechaFactura: e2.target.value }), disabled: bloqueado })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: `Vencimiento (${proveedorPorId(alb.proveedorId)?.diasPago ? proveedorPorId(alb.proveedorId).diasPago + " d\xEDas" : "sin d\xEDas de pago"})` }, /* @__PURE__ */ import_react4.default.createElement(
+    alb.esFactura === true ? "\u2713 Este albar\xE1n es tambi\xE9n la factura" : "Este albar\xE1n NO es la factura (a\xFAn no ha llegado)"
+  )), alb.esFactura === true && /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "N\xBA de factura (obligatorio)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: alb.numeroFactura || "", onChange: (e2) => setAlb({ ...alb, numeroFactura: e2.target.value }), disabled: bloqueado, placeholder: alb.numero || "s/n" }), duplicados.factura && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-1", style: { color: C2.amber } }, "\u26A0 Ya hay una factura con ese n\xFAmero de este proveedor (del ", duplicados.factura.fechaFactura || duplicados.factura.fecha, ").")), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Fecha de factura" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: alb.fechaFactura || alb.fecha, onChange: (e2) => setAlb({ ...alb, fechaFactura: e2.target.value }), disabled: bloqueado })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: `Vencimiento (${proveedorPorId(alb.proveedorId)?.diasPago ? proveedorPorId(alb.proveedorId).diasPago + " d\xEDas" : "sin d\xEDas de pago"})` }, /* @__PURE__ */ import_react4.default.createElement(
     Input,
     {
       readOnly: true,
@@ -111144,7 +111243,7 @@ function Albaranes({
       })(),
       style: { background: C2.bg, color: C2.inkSoft }
     }
-  ))), bloqueado && alb.esFactura !== false && /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between pt-2 mt-1", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12.5px]" }, alb.pagada ? `Pagada el ${alb.fechaPago}` : "Pendiente de pago"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: alb.pagada ? "ghost" : "primary", onClick: () => {
+  ))), bloqueado && alb.esFactura === true && /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between pt-2 mt-1", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12.5px]" }, alb.pagada ? `Pagada el ${alb.fechaPago}` : "Pendiente de pago"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: alb.pagada ? "ghost" : "primary", onClick: () => {
     marcarPagada(alb.id, !alb.pagada);
     setAlb({ ...alb, pagada: !alb.pagada });
   } }, alb.pagada ? "Marcar como pendiente" : "Marcar como pagada"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "L\xEDneas del albar\xE1n"), alb.lineas.map((ln2, idx) => {
@@ -112337,7 +112436,7 @@ function rangoTrimestre(anio, trimestre) {
 function Facturas({ albaranes, facturasDirectas, pagosFacturas = [], proveedorPorId, irAAlbaran, irAFacturaDirecta }) {
   const [mes, setMes] = (0, import_react4.useState)(aISO(/* @__PURE__ */ new Date()).slice(0, 7));
   const todas = (0, import_react4.useMemo)(() => {
-    const deMercancia = albaranes.filter((a22) => a22.estado === "confirmado" && a22.esFactura !== false).map((a22) => {
+    const deMercancia = albaranes.filter((a22) => albaranEsFacturaOperativaPM11(a22)).map((a22) => {
       const totales = calcularTotalesFacturaAlbaran(a22);
       const saldo = calcularSaldoFacturaPM06(pagosFacturas, a22.id, "albaran", totales.total, a22.empresaId, a22.localId, a22.pagada);
       return {
