@@ -105,7 +105,7 @@ for (const patron of [
   /replayedRecepcionPM10/,
   /confirmacionPM11/,
   /firma: guardiaPM11\.firma/,
-  /guardarAlbaran\(\{ \.\.\.alb, lineas: lineasResueltas, estado: "confirmado"/,
+  /guardarAlbaran\(\{\s*\.\.\.alb,\s*lineas:\s*lineasResueltas,\s*estado:\s*"confirmado"/,
   /resultadoReplayAlbaranPM11/
 ]) assert.match(confirmar, patron);
 
