@@ -88,7 +88,7 @@ Por tanto P08 **no declara** una transacción ACID multientidad ni una prueba fa
 
 Este límite es exactamente el previsto por P01: endurecer la frontera necesaria y documentar la garantía real, no inventar una garantía inexistente.
 
-## Automatización
+## Automatización y ejecuciones
 
 Fixer:
 
@@ -102,13 +102,9 @@ Workflow:
 
 `.github/workflows/pm11-compra-p08-fallos-replay-concurrencia.yml`
 
-Primera ejecución que aplicó el fixer y pasó toda la batería: `34092689523` — SUCCESS.
-
-Commit funcional generado por el workflow:
-
-`6ae4501229929dafa7ec8f6bf235367d4e6d096c` — `PM11 compra P08: cerrar replay obsoleto de recepciones`.
-
-La revalidación del source ya persistido se ejecuta de nuevo al versionar esta evidencia.
+- Run `34092689523`: **SUCCESS**. Aplicó el fixer, pasó P08 y todas las regresiones del gate y generó el commit funcional.
+- Commit funcional: `6ae4501229929dafa7ec8f6bf235367d4e6d096c` — `PM11 compra P08: cerrar replay obsoleto de recepciones`.
+- Run `34092777101`: **SUCCESS** sobre el source ya persistido. El fixer quedó idempotente (sin cambio funcional pendiente) y volvieron a pasar P08, P07, P06, P05, P04, P03, PM10 autoridad de persistencia, G1 concurrencia/replay, G1 finanzas y P02.
 
 ## Estado
 
