@@ -1,0 +1,84 @@
+name: PM12 P08 despliegue produccion seguro
+
+on:
+  push:
+    branches: [pm12-p08-produccion-segura]
+    paths:
+      - 'tests/pm12/prod-baseline/**'
+      - 'tests/pm12/supabase-full/prepare-production-baseline.mjs'
+      - 'tests/pm12/supabase-full/p08-production-baseline-contract.mjs'
+      - 'supabase/migrations/20260907155028_pm12_p08_stock_atomico.sql'
+      - 'tests/pm12/p02-*'
+      - 'tests/pm12/p03-*'
+      - 'tests/pm12/p04-*'
+      - 'tests/pm12/p05-*'
+      - 'tests/pm12/p06-*'
+      - 'tests/pm12/p07-*'
+      - '.github/workflows/pm12-p08-produccion-segura.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  baseline-supabase-aislada:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar rama dedicada y main congelado
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "pm12-p08-produccion-segura"
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          echo 'MAIN_FROZEN=1'
+
+      - name: Preparar Supabase local sin fixtures QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --prefix tests/pm12/supabase-full --no-audit --no-fund
+          node tests/pm12/supabase-full/prepare-production-baseline.mjs
+
+      - name: Iniciar Auth PostgREST y PostgreSQL desechables
+        shell: bash
+        run: |
+          set -euo pipefail
+          tests/pm12/supabase-full/node_modules/.bin/supabase start \
+            --workdir tests/pm12/supabase-full \
+            -x realtime,storage-api,imgproxy,studio,mailpit,postgres-meta,edge-runtime,logflare,vector,supavisor
+          tests/pm12/supabase-full/node_modules/.bin/supabase status \
+            --workdir tests/pm12/supabase-full -o env \
+            > tests/pm12/supabase-full/supabase/.temp/status.env
+
+      - name: P08 real con Auth JWT PostgREST y RLS
+        run: node tests/pm12/supabase-full/p08-auth-postgrest-rls-contract.mjs
+
+      - name: Contrato de minimalidad permisos y constraints
+        run: node tests/pm12/supabase-full/p08-production-baseline-contract.mjs
+
+      - name: Regresion acumulada P02-P07
+        shell: bash
+        run: |
+          set -euo pipefail
+          for t in tests/pm12/p02-*contract.mjs tests/pm12/p03-*contract.mjs tests/pm12/p04-*contract.mjs tests/pm12/p05-*contract.mjs tests/pm12/p06-*contract.mjs tests/pm12/p07-*contract.mjs; do
+            node "$t"
+          done
+          echo 'REGRESSION_P02_P07=PASS'
+
+      - name: Confirmar cero endpoints o identificadores remotos
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -RIE 'supabase\.co|project[_ -]?ref|service[_ -]?role|postgres(ql)?://[^@]+@[^1]' tests/pm12/prod-baseline .github/workflows/pm12-p08-produccion-segura.yml
+          echo 'PM12_PROD_BASELINE_REMOTE_IDENTIFIERS=0'
+          echo 'PM12_PROD_BASELINE_REMOTE_WRITES=0'
+
+      - name: Detener Supabase desechable
+        if: always()
+        run: tests/pm12/supabase-full/node_modules/.bin/supabase stop --workdir tests/pm12/supabase-full --no-backup || true
