@@ -61,24 +61,26 @@ jobs:
             node "$f"
           done
 
-      - name: Regresion PM10 P04-P13
-        shell: bash
-        run: |
-          set -euo pipefail
-          for f in \
-            tests/pm10/p04-productos-contract.mjs \
-            tests/pm10/p05-pedidos-contract.mjs \
-            tests/pm10/p06-recepcion-contract.mjs \
-            tests/pm10/p07-personal-contract.mjs \
-            tests/pm10/p08-encargos-contract.mjs \
-            tests/pm10/p09-transversal-contract.mjs \
-            tests/pm10/p10-autoridad-persistencia-contract.mjs \
-            tests/pm10/p11-robustez-altas-contract.mjs \
-            tests/pm10/p12-datos-legados-contract.mjs \
-            tests/pm10/p13-contexto-aislamiento-contract.mjs; do
-            echo "==> $f"
-            node "$f"
-          done
+      - name: PM10 P04 productos
+        run: node tests/pm10/p04-productos-contract.mjs
+      - name: PM10 P05 pedidos
+        run: node tests/pm10/p05-pedidos-contract.mjs
+      - name: PM10 P06 recepcion
+        run: node tests/pm10/p06-recepcion-contract.mjs
+      - name: PM10 P07 personal
+        run: node tests/pm10/p07-personal-contract.mjs
+      - name: PM10 P08 encargos
+        run: node tests/pm10/p08-encargos-contract.mjs
+      - name: PM10 P09 transversal
+        run: node tests/pm10/p09-transversal-contract.mjs
+      - name: PM10 P10 autoridad persistencia
+        run: node tests/pm10/p10-autoridad-persistencia-contract.mjs
+      - name: PM10 P11 robustez altas
+        run: node tests/pm10/p11-robustez-altas-contract.mjs
+      - name: PM10 P12 datos legados
+        run: node tests/pm10/p12-datos-legados-contract.mjs
+      - name: PM10 P13 contexto aislamiento
+        run: node tests/pm10/p13-contexto-aislamiento-contract.mjs
 
       - name: Regresiones heredadas PM05 PM07 PM08
         shell: bash
