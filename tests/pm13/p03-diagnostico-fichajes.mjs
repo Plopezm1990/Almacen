@@ -64,6 +64,10 @@ const result = {
     removeCalls: excerpts(ui.text, 'eliminarFichaje(', ui.start, 1800, 8),
     errorManual: excerpts(ui.text, 'setManualError', ui.start, 1800, 10),
     openLogic: excerpts(ui.text, 'fichajesAbiertos', ui.start, 1800, 10)
+  },
+  global: {
+    fichajesAbiertosRefs: excerpts(src, 'fichajesAbiertos', 0, 2600, 20),
+    crearLogicaFichajeRefs: excerpts(src, 'crearLogicaFichaje({', 0, 2200, 10)
   }
 };
 
@@ -77,5 +81,7 @@ console.log(JSON.stringify({
   manualCalls: result.ui.manualSubmit.length,
   ficharCalls: result.ui.ficharCalls.length,
   updateCalls: result.ui.updateCalls.length,
-  removeCalls: result.ui.removeCalls.length
+  removeCalls: result.ui.removeCalls.length,
+  globalOpenRefs: result.global.fichajesAbiertosRefs.length,
+  logicRefs: result.global.crearLogicaFichajeRefs.length
 }, null, 2));
