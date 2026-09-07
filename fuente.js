@@ -105154,6 +105154,33 @@ function eventoRecepcionPM11(operationId, firmaSolicitud, lineasResueltas, fecha
     }))
   };
 }
+function snapshotRecepcionPedidoPM11(pedido) {
+  return (Array.isArray(pedido?.items) ? pedido.items : []).map((it2, idx) => [
+    idx,
+    String(it2?.productoId || ""),
+    Number(it2?.cantidadRecibida) || 0
+  ]);
+}
+function operationIdEfectoRecepcionPedidoPM11(pedido) {
+  return `pm11-efecto-recepcion-pedido:${String(pedido?.id || "sin-id")}:${JSON.stringify(snapshotRecepcionPedidoPM11(pedido))}`;
+}
+function firmaEfectoRecepcionPM11({ lineas, proveedorId, fecha, documentoTipo, documentoId, documentoNumero } = {}) {
+  return JSON.stringify({
+    proveedorId: String(proveedorId || ""),
+    fecha: String(fecha || ""),
+    documentoTipo: String(documentoTipo || ""),
+    documentoId: String(documentoId || ""),
+    documentoNumero: String(documentoNumero || ""),
+    lineas: (Array.isArray(lineas) ? lineas : []).map((ln2) => ({
+      productoId: String(ln2?.productoId || ""),
+      cantidad: valorFirmaRecepcionPM11(ln2?.cantidad),
+      udsPorCaja: valorFirmaRecepcionPM11(ln2?.udsPorCaja),
+      precioBruto: valorFirmaRecepcionPM11(ln2?.precioBruto),
+      ivaPct: valorFirmaRecepcionPM11(ln2?.ivaPct),
+      lote: String(ln2?.lote || "")
+    }))
+  });
+}
 function crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedores, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId, locales = [], empresaId = null }) {
   function pedidoEsDelLocalActivo(pedido) {
     if (!pedido) return false;
@@ -105239,11 +105266,21 @@ function crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedo
         fecha: todayISO(),
         documentoTipo: "pedido",
         documentoId: pedido.id,
-        documentoNumero: pedido.id.slice(-6)
+        documentoNumero: pedido.id.slice(-6),
+        operationId: opId,
+        concurrencyKey: operationIdEfectoRecepcionPedidoPM11(pedido)
       });
     } catch (error) {
       operacionesRecepcionPM11Memoria.delete(opId);
       throw error;
+    }
+    if (resultado?.ok === false) {
+      operacionesRecepcionPM11Memoria.delete(opId);
+      return resultado;
+    }
+    if (resultado?.replayed) {
+      operacionesRecepcionPM11Memoria.delete(opId);
+      return errorValidacionPM10("conflicto_estado_previo", "recepcion", "La versión del pedido usada por esta recepción ya fue procesada. Recarga el pedido antes de registrar una nueva recepción.");
     }
     if (!resultado || !Array.isArray(resultado.lineasResueltas)) {
       operacionesRecepcionPM11Memoria.delete(opId);
@@ -106669,11 +106706,20 @@ function crearLogicaAlbaranes({
     if (r2.ok && !r2.replayed) registrarAuditoria(pagada ? "Registrar pago factura" : "Revertir pago factura", `Factura ${facturaPM11.numeroFactura} · €${redondearDineroPM06(r2.pago?.importe || importe || 0).toFixed(2)} · ${a22.empresaId}/${a22.localId}`);
     return r2;
   }
-  function procesarRecepcion({ lineas, proveedorId, fecha, documentoTipo, documentoId, documentoNumero, operationId = null }) {
+  function procesarRecepcion({ lineas, proveedorId, fecha, documentoTipo, documentoId, documentoNumero, operationId = null, concurrencyKey = null }) {
     const operationIdRecepcionPM10 = operationId || `pm10-recepcion:${documentoTipo || "doc"}:${documentoId || documentoNumero || "sin-id"}`;
+    const claveEfectoRecepcionPM11 = concurrencyKey || operationIdRecepcionPM10;
+    const firmaEfectoPM11 = firmaEfectoRecepcionPM11({ lineas, proveedorId, fecha, documentoTipo, documentoId, documentoNumero });
     if (!procesarRecepcion._pm10Resultados) procesarRecepcion._pm10Resultados = /* @__PURE__ */ new Map();
-    const replayInmediatoPM10 = procesarRecepcion._pm10Resultados.get(operationIdRecepcionPM10);
-    if (replayInmediatoPM10) { procesarRecepcion._pm10UltimoReplay = true; return { ...replayInmediatoPM10, replayed: true }; }
+    const replayInmediatoPM10 = procesarRecepcion._pm10Resultados.get(claveEfectoRecepcionPM11);
+    if (replayInmediatoPM10) {
+      if (replayInmediatoPM10.firmaEfectoPM11 !== firmaEfectoPM11) {
+        procesarRecepcion._pm10UltimoReplay = false;
+        return errorValidacionPM10("operation_id_conflict", "operationId", "La misma versión física de recepción ya fue usada con otro contenido.");
+      }
+      procesarRecepcion._pm10UltimoReplay = true;
+      return { ...replayInmediatoPM10, replayed: true };
+    }
     procesarRecepcion._pm10UltimoReplay = false;
     const avisos = [];
     const lineasResueltas = [];
@@ -106705,7 +106751,7 @@ function crearLogicaAlbaranes({
           cantidad: unidadesTotales,
           tipo: "COMPRA",
           operationId: operationIdRecepcionPM10,
-          movimientoId: `${operationIdRecepcionPM10}:linea:${idxRecepcionPM10}:producto:${prod.id}`,
+          movimientoId: `${claveEfectoRecepcionPM11}:linea:${idxRecepcionPM10}:producto:${prod.id}`,
           origen: "procesarRecepcion",
           documentoOrigenId: documentoId,
           afectaStockTotal: true,
@@ -106726,7 +106772,7 @@ function crearLogicaAlbaranes({
         ));
         lineasResueltas.push({ ...ln2, productoId: prod.id, unidadesEntradas: unidadesTotales });
       } else {
-        const nuevoId = `${operationIdRecepcionPM10}:producto-auto:${idxRecepcionPM10}`;
+        const nuevoId = `${claveEfectoRecepcionPM11}:producto-auto:${idxRecepcionPM10}`;
         const nuevoYaCreadoPM10 = productos.find((p22) => p22.id === nuevoId);
         const nuevo = nuevoYaCreadoPM10 || {
           id: nuevoId,
@@ -106748,9 +106794,9 @@ function crearLogicaAlbaranes({
           unidadContenido: ln2.unidadContenido || ""
         };
         if (!nuevoYaCreadoPM10) setProductos((s22) => s22.some((p22) => p22.id === nuevoId) ? s22 : [...s22, nuevo]);
-        setMovimientos((s22) => s22.some((m22) => m22.id === `${operationIdRecepcionPM10}:linea:${idxRecepcionPM10}:auto`) ? s22 : [
+        setMovimientos((s22) => s22.some((m22) => m22.id === `${claveEfectoRecepcionPM11}:linea:${idxRecepcionPM10}:auto`) ? s22 : [
           {
-            id: `${operationIdRecepcionPM10}:linea:${idxRecepcionPM10}:auto`,
+            id: `${claveEfectoRecepcionPM11}:linea:${idxRecepcionPM10}:auto`,
             operationId: operationIdRecepcionPM10,
             productoId: nuevoId,
             localId: nuevo.localId || localActivoId || null,
@@ -106796,8 +106842,8 @@ function crearLogicaAlbaranes({
       });
       return copia;
     });
-    const resultadoRecepcionPM10 = { lineasResueltas, avisos, operationId: operationIdRecepcionPM10, replayed: false };
-    procesarRecepcion._pm10Resultados.set(operationIdRecepcionPM10, resultadoRecepcionPM10);
+    const resultadoRecepcionPM10 = { lineasResueltas, avisos, operationId: operationIdRecepcionPM10, concurrencyKey: claveEfectoRecepcionPM11, firmaEfectoPM11, replayed: false };
+    procesarRecepcion._pm10Resultados.set(claveEfectoRecepcionPM11, resultadoRecepcionPM10);
     return resultadoRecepcionPM10;
   }
   function confirmarAlbaran(alb) {
@@ -106843,13 +106889,20 @@ function crearLogicaAlbaranes({
       documentoTipo: "albaran",
       documentoId: alb.id,
       documentoNumero: alb.numero,
-      operationId: `pm10-recepcion-albaran:${alb.id}`
+      operationId: `pm10-recepcion-albaran:${alb.id}`,
+      concurrencyKey: pedidoLigado ? operationIdEfectoRecepcionPedidoPM11(pedidoLigado) : null
     });
+    if (resultadoRecepcionPM11?.ok === false) {
+      return errorValidacionPM10(resultadoRecepcionPM11.codigo || "conflicto_estado_previo", resultadoRecepcionPM11.campo || "recepcion", resultadoRecepcionPM11.error || "No se pudo completar la recepción del albarán.");
+    }
     if (!resultadoRecepcionPM11 || !Array.isArray(resultadoRecepcionPM11.lineasResueltas)) {
       return errorValidacionPM10("conflicto_estado_previo", "recepcion", "No se pudo completar la recepción del albarán.");
     }
     const { lineasResueltas, avisos } = resultadoRecepcionPM11;
     const replayedRecepcionPM10 = !!resultadoRecepcionPM11.replayed || !!procesarRecepcion._pm10UltimoReplay;
+    if (replayedRecepcionPM10) {
+      return errorValidacionPM10("conflicto_estado_previo", "recepcion", "La versión del pedido enlazado ya fue usada por otra recepción. Recarga antes de confirmar otro albarán.");
+    }
     if (pedidoLigado && !replayedRecepcionPM10) {
       setPedidos((prev) => prev.map((pe2) => pe2.id === alb.pedidoId ? aplicarRecepcionPedidoPM10(pe2, lineasResueltas) : pe2));
     }
