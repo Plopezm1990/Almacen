@@ -1,0 +1,119 @@
+name: PM13 P07 IA nominas revision humana
+
+on:
+  push:
+    branches: [pm13-p07-ia-nominas-revision]
+    paths:
+      - 'fuente.js'
+      - 'tools/corregir_pm13_p07_ia_nominas_revision.py'
+      - 'tests/pm13/p07-ia-nominas-revision-contract.mjs'
+      - 'tests/pm13/P07_IA_NOMINAS_REVISION.md'
+      - '.github/workflows/pm13-p07-ia-nominas-revision.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  validar-p07:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main y alcance P07
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          P07_BASE='b66853f7af29d6781dc7728ac9e43da63f24104e'
+          if [ -n "$(git diff --name-only "$P07_BASE"..HEAD -- supabase/)" ]; then
+            echo 'P07 no puede modificar Supabase' >&2
+            git diff --name-only "$P07_BASE"..HEAD -- supabase/ >&2
+            exit 1
+          fi
+          echo 'PM13_P07_MAIN_FROZEN=PASS'
+          echo 'PM13_P07_SIN_CAMBIOS_SUPABASE=PASS'
+      - name: Aplicar revisión humana obligatoria
+        run: python3 tools/corregir_pm13_p07_ia_nominas_revision.py
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+      - name: Contrato PM13 P07
+        run: node tests/pm13/p07-ia-nominas-revision-contract.mjs
+      - name: Regresión PM13 P01-P06 y Personal PM10
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm13/p01-rpc-personal-contract.mjs
+          node tests/pm13/p01-backend-personal-contract.mjs
+          node tests/pm13/p02-turnos-contract.mjs
+          node tests/pm13/p03-fichajes-contract.mjs
+          node tests/pm13/p03-backend-fichajes-contract.mjs
+          node tests/pm13/p04-ausencias-contract.mjs
+          node tests/pm13/p04-backend-ausencias-contract.mjs
+          node tests/pm13/p05-vacaciones-contract.mjs
+          node tests/pm13/p06-costes-personal-contract.mjs
+          node tests/pm10/p07-personal-contract.mjs
+          echo 'PM13_P07_REGRESSION_P01_P06_PM10=PASS'
+      - name: Regresión frontend PM12 P02-P10
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in 02 03 04 05 06 07 08 09 10; do
+            for t in tests/pm12/p${n}-*contract.mjs; do
+              test -f "$t" || continue
+              case "$t" in *postgres*|*supabase*) continue ;; esac
+              node "$t"
+            done
+          done
+          echo 'PM13_P07_REGRESSION_PM12=PASS'
+      - name: Barreras P07
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          ini=s.index('function crearLogicaNominas(')
+          fin=s.index('function crearLogicaEntrevistas', ini)
+          b=s[ini:fin]
+          assert 'APROBADA_HUMANO' in b
+          assert 'REGISTRADA_MANUAL' in b
+          assert 'revisionHumanaConfirmada' in b
+          assert 'const sinEsteMes =' not in b
+          assert 'return s22.filter((x3) => x3.id !== id)' not in b
+          assert 'window.confirm("Revisión humana obligatoria:' in s
+          assert 'nominasValidasDelMesPM13' in s
+          print('PM13_P07_DOMAIN_GUARDS=PASS')
+          PY
+          ! grep -Eqi 'service_role|SUPABASE_SERVICE_ROLE_KEY|sb_secret_' \
+            tools/corregir_pm13_p07_ia_nominas_revision.py tests/pm13/p07-ia-nominas-revision-contract.mjs tests/pm13/P07_IA_NOMINAS_REVISION.md
+          git diff --check
+          echo 'PM13_P07_NO_SECRET=PASS'
+      - name: Commit funcional si procede
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- fuente.js; then
+            echo 'Fuente ya coincide con P07'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add fuente.js
+          git commit -m 'feat(pm13): exigir revision humana en nominas IA'
+          git push
+
+  gate-final:
+    needs: validar-p07
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM13 P07
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm13/p07-ia-nominas-revision-contract.mjs
+          node tests/pm13/p06-costes-personal-contract.mjs
+          echo 'PM13_P07_GATE_FINAL=PASS'
