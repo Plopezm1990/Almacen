@@ -106556,6 +106556,7 @@ function sincronizarCobroSe\u00F1al(cobros, se\u00F1al, se\u00F1alMedioPago, fec
 function validarEncargoPM10(data, { productos = [], clientes = [], localActivoId = null, locales = [], empresaId = null, fechaCreacion = null } = {}) {
   const contexto = validarContextoEscrituraPM10({ localActivoId, locales, empresaId });
   if (!contexto.ok) return contexto;
+  if (!empresaId) return errorValidacionPM10("contexto_no_autorizado", "empresaId", "No se pudo determinar la empresa del local activo.");
   if (!data || typeof data !== "object" || Array.isArray(data)) return errorValidacionPM10("formato_invalido", "encargo", "El encargo no tiene un formato válido.");
   if (data.localId && data.localId !== localActivoId) return errorValidacionPM10("referencia_otro_contexto", "localId", "El encargo pertenece a otro local.");
 
@@ -106636,7 +106637,9 @@ function validarEncargoPM10(data, { productos = [], clientes = [], localActivoId
       lineas,
       señal,
       señalMedioPago: señal > 0 ? señalMedioPago : señalMedioPago || "Efectivo",
-      localId: localActivoId
+      localId: localActivoId,
+      empresaId,
+      total
     }
   };
 }
