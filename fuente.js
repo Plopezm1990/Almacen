@@ -103548,15 +103548,42 @@ function GestionAlmacen() {
     return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setPendingRestore(null), title: "Restaurar respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-1", style: { color: C2.ink } }, pendingRestore.exportadoEl ? `Respaldo del ${new Date(pendingRestore.exportadoEl).toLocaleString("es-ES")}` : "Respaldo sin fecha registrada"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Formato ", pendingRestore.backupVersion || pendingRestore.version || "antiguo"), perdidas.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "\u26A0 Este respaldo tiene menos datos que lo que hay ahora"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2" }, "Al restaurarlo desaparecer\xEDa lo creado despu\xE9s. Se guardar\xE1 un punto de recuperaci\xF3n antes, por si te arrepientes."), perdidas.map((c22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: c22.clave, className: "text-[11.5px] mono" }, c22.nombre, ": ", c22.actual, " \u2192 ", c22.respaldo, " (", c22.diferencia, ")"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "Qu\xE9 contiene, comparado con ahora"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3 space-y-0.5", style: { color: C2.inkSoft } }, comparacion.map((c22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: c22.clave, className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", null, c22.nombre), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: c22.diferencia < 0 ? C2.red : C2.inkSoft } }, c22.actual, " \u2192 ", c22.respaldo)))), seConservan.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.bg, border: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]" }, "Este respaldo es anterior y no incluye: ", /* @__PURE__ */ import_react4.default.createElement("b", null, seConservan.join(", ")), ". Esos datos", /* @__PURE__ */ import_react4.default.createElement("b", null, " se conservan tal como est\xE1n ahora"), " \u2014 no se borran.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-4", style: { color: C2.red } }, "Restaurar sustituye lo que tengas cargado ahora por el contenido de este respaldo."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: confirmarRestauracion }, "Restaurar respaldo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setPendingRestore(null) }, "Cancelar")));
   })());
 }
+function validarProveedorPM10(data) {
+  const entrada = data && typeof data === "object" ? data : {};
+  const nombre = String(entrada.nombre ?? "").trim();
+  if (!nombre) return errorValidacionPM10("campo_obligatorio", "nombre", "Escribe el nombre del proveedor.");
+  const datos = { ...entrada, nombre };
+
+  const email = String(entrada.email ?? "").trim();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return errorValidacionPM10("formato_invalido", "email", "El correo electrónico no es válido.");
+  }
+  datos.email = email;
+
+  const leadTime = numeroPM10(entrada.leadTime, "leadTime", { minimo: 0, opcional: true });
+  if (!leadTime.ok) return leadTime;
+  datos.leadTime = leadTime.vacio ? "" : leadTime.valor;
+
+  const diasPago = numeroPM10(entrada.diasPago, "diasPago", { minimo: 0, opcional: true });
+  if (!diasPago.ok) return diasPago;
+  datos.diasPago = diasPago.vacio ? "" : diasPago.valor;
+
+  return { ok: true, datos };
+}
 function crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria, empresaId }) {
   function addProveedor(data) {
     if (!empresaId) return { ok: false, error: "Selecciona una empresa antes de crear el proveedor." };
-    const nuevo = { id: uid(), ...data, empresaId };
+    const validacion = validarProveedorPM10(data);
+    if (!validacion.ok) return validacion;
+    const nuevo = { id: uid(), ...validacion.datos, empresaId };
     setProveedores((s22) => [...s22, nuevo]);
     return { ok: true, proveedor: nuevo };
   }
   function updateProveedor(id, data) {
-    setProveedores((s22) => s22.map((p22) => p22.id === id && p22.empresaId === empresaId ? { ...p22, ...data, empresaId: p22.empresaId } : p22));
+    const validacion = validarProveedorPM10(data);
+    if (!validacion.ok) return validacion;
+    setProveedores((s22) => s22.map((p22) => p22.id === id && p22.empresaId === empresaId ? { ...p22, ...validacion.datos, empresaId: p22.empresaId } : p22));
+    return { ok: true };
   }
   function deleteProveedor(id) {
     const p22 = proveedores.find((x3) => x3.id === id);
@@ -109635,8 +109662,12 @@ function Proveedores({ proveedores, addProveedor, updateProveedor, deleteProveed
       setError("Escribe el nombre del proveedor.");
       return;
     }
+    const res = addProveedor(form);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
     setError("");
-    addProveedor(form);
     setForm(blankProv);
     setShowForm(false);
   }
@@ -109659,7 +109690,11 @@ function Proveedores({ proveedores, addProveedor, updateProveedor, deleteProveed
       setEditError("Escribe el nombre del proveedor.");
       return;
     }
-    updateProveedor(editFor, editForm);
+    const res = updateProveedor(editFor, editForm);
+    if (!res.ok) {
+      setEditError(res.error);
+      return;
+    }
     setEditFor(null);
   }
   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setShowForm((s22) => !s22) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Nuevo proveedor") }, "Proveedores"), showForm && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre del proveedor" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.nombre, onChange: (e2) => setForm({ ...form, nombre: e2.target.value }), placeholder: "Distribuidora del Norte" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Persona de contacto" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.contacto, onChange: (e2) => setForm({ ...form, contacto: e2.target.value }), placeholder: "Nombre" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tel\xE9fono (WhatsApp)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.telefono, onChange: (e2) => setForm({ ...form, telefono: e2.target.value }), placeholder: "+34 600 000 000" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Correo electr\xF3nico" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "email", value: form.email, onChange: (e2) => setForm({ ...form, email: e2.target.value }), placeholder: "pedidos@proveedor.com" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Condiciones de pago (texto libre)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.condiciones, onChange: (e2) => setForm({ ...form, condiciones: e2.target.value }), placeholder: "Transferencia 45 d\xEDas F/F" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "D\xEDas de pago (para calcular vencimientos)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.diasPago, onChange: (e2) => setForm({ ...form, diasPago: e2.target.value }), placeholder: "45" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tiempo de entrega (d\xEDas)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.leadTime, onChange: (e2) => setForm({ ...form, leadTime: e2.target.value }), placeholder: "5" }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "\xBFQu\xE9 d\xEDas reparte? (opcional)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5" }, DIAS_REPARTO.map((d2) => {

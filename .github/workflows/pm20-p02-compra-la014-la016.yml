@@ -1,0 +1,79 @@
+name: PM20 P02 compra LA-014 y LA-016
+
+on:
+  push:
+    branches: [claude/pm20-cobertura-modulos]
+    paths:
+      - 'fuente.js'
+      - 'tests/pm20/**'
+      - '.github/workflows/pm20-p02-compra-la014-la016.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main y alcance (sin cambios en supabase/)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "bdf25591a1e986a04223b399d11d8fe81d41d82d"
+          unexpected="$(git diff --name-only origin/main..HEAD -- supabase/ || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'PM20 P02 es un cambio de frontend puro: no debe tocar supabase/' >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+          echo 'PM20_P02_MAIN_FROZEN=PASS'
+          echo 'PM20_P02_SIN_CAMBIOS_SUPABASE=PASS'
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+      - name: Contratos PM20 P02
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm20/p02-comportamiento-proveedor-contract.mjs
+          node tests/pm20/p02-wiring-proveedores-contract.mjs
+          node tests/pm20/p02-la014-fecha-esperada-pedido-contract.mjs
+      - name: Regresión completa (todas las suites vigentes)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for d in tests/g1 tests/pm04 tests/pm05 tests/pm07 tests/pm08 tests/pm09 tests/pm10 tests/pm11-compra tests/pm12 tests/pm13 tests/pm14 tests/pm15 tests/pm16 tests/pm17 tests/pm18 tests/pm19; do
+            for t in "$d"/*.mjs; do
+              [ -f "$t" ] || continue
+              node "$t"
+            done
+          done
+          for t in tests/pm20/*.mjs; do
+            [ -f "$t" ] || continue
+            node "$t"
+          done
+          echo 'PM20_P02_REGRESION_COMPLETA=PASS'
+      - name: Sin secretos
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -Eqi 'service_role|SUPABASE_SERVICE_ROLE_KEY|sb_secret_' \
+            tests/pm20/*.mjs tests/pm20/*.md
+          echo 'PM20_P02_NO_SECRET=PASS'
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM20 P02
+        run: |
+          set -euo pipefail
+          node tests/pm20/p02-comportamiento-proveedor-contract.mjs
+          node tests/pm20/p02-wiring-proveedores-contract.mjs
+          node tests/pm20/p02-la014-fecha-esperada-pedido-contract.mjs
+          echo 'PM20_P02_GATE_FINAL=PASS'
