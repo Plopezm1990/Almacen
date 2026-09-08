@@ -101261,18 +101261,36 @@ function costePorHoraEquipoEnMes(nominas, fichajes, mes) {
   const horasTotalesMes = nominasDelMes.reduce((a22, n2) => a22 + horasDeEmpleadoEnMes(fichajes, n2.empleadoId, mes), 0);
   return horasTotalesMes > 0 ? costeTotalMes / horasTotalesMes : null;
 }
+function motivoFalloCargaPM16(error) {
+  if (error && (error.name === "QuotaExceededError" || error.code === 22)) return "cuota";
+  return "acceso";
+}
+function notificarFalloCargaPM16(key, motivo, error) {
+  if (typeof window === "undefined" || typeof window.dispatchEvent !== "function") return;
+  window.dispatchEvent(new CustomEvent("fallo-carga", { detail: { key, motivo, mensaje: error && error.message } }));
+}
 async function loadKey(key, fallback, retries = 2) {
   for (let attempt = 0; attempt <= retries; attempt++) {
+    let res;
     try {
-      const res = await window.storage.get(key, false);
-      if (res && res.value) return JSON.parse(res.value);
-      return fallback;
+      res = await window.storage.get(key, false);
     } catch (e2) {
       if (attempt === retries) {
+        const motivo = motivoFalloCargaPM16(e2);
         console.error("No se pudo cargar", key, "tras varios intentos:", e2);
+        notificarFalloCargaPM16(key, motivo, e2);
         return fallback;
       }
       await new Promise((r2) => setTimeout(r2, 350));
+      continue;
+    }
+    if (!res || !res.value) return fallback;
+    try {
+      return JSON.parse(res.value);
+    } catch (e2) {
+      console.error("Respaldo local da\xF1ado para", key, e2);
+      notificarFalloCargaPM16(key, "corrupcion", e2);
+      return fallback;
     }
   }
   return fallback;
@@ -101590,6 +101608,17 @@ function GestionAlmacen() {
     }
     window.addEventListener("fallo-guardado", onFalloGuardado);
     return () => window.removeEventListener("fallo-guardado", onFalloGuardado);
+  }, []);
+  const [fallosCarga, setFallosCarga] = (0, import_react4.useState)([]);
+  (0, import_react4.useEffect)(() => {
+    function onFalloCarga(e2) {
+      setFallosCarga((s22) => [
+        { id: uid(), key: e2.detail.key, motivo: e2.detail.motivo || "acceso", mensaje: e2.detail.mensaje || "", fecha: (/* @__PURE__ */ new Date()).toISOString() },
+        ...s22
+      ].slice(0, 20));
+    }
+    window.addEventListener("fallo-carga", onFalloCarga);
+    return () => window.removeEventListener("fallo-carga", onFalloCarga);
   }, []);
   (0, import_react4.useEffect)(() => {
     function onConflictoFusion(e2) {
@@ -103034,6 +103063,7 @@ function GestionAlmacen() {
       recordatorioConteo: recordatorioConteoInforme,
       alertasAppcc,
       fallosGuardado,
+      fallosCarga,
       diagnosticoStock: diagnosticoStockInforme,
       registrarSalida
     }
@@ -103425,6 +103455,14 @@ function GestionAlmacen() {
     },
     /* @__PURE__ */ import_react4.default.createElement("span", null, "\u26A0 Un cambio no se ha podido guardar (", fallosGuardado[0].key, "). Comprueba tu conexi\xF3n \u2014 si sigue as\xED, haz una copia desde Respaldos antes de seguir trabajando."),
     /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setFallosGuardado([]), style: { color: "#fff", fontWeight: 600 } }, "\u2715")
+  ), fallosCarga.length > 0 && /* @__PURE__ */ import_react4.default.createElement(
+    "div",
+    {
+      className: "text-[12.5px] px-3 py-2 flex items-center justify-between gap-2",
+      style: { background: C2.red, color: "#fff", position: "sticky", top: 0, zIndex: 40 }
+    },
+    /* @__PURE__ */ import_react4.default.createElement("span", null, "\u26A0 No se han podido cargar tus datos guardados (", fallosCarga[0].key, fallosCarga[0].motivo === "corrupcion" ? " \u2014 el archivo local parece da\xF1ado" : fallosCarga[0].motivo === "cuota" ? " \u2014 sin espacio de almacenamiento" : " \u2014 revisa el acceso", "). No se ha sobrescrito nada; si tienes un respaldo, restaura desde Respaldos."),
+    /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setFallosCarga([]), style: { color: "#fff", fontWeight: 600 } }, "\u2715")
   ), /* @__PURE__ */ import_react4.default.createElement("style", null, `
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
         :root, [data-tema="claro"] {
@@ -109206,7 +109244,7 @@ function Empty({ text: text2 }) {
 function Pill2({ children, color }) {
   return /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px] font-semibold px-2 py-0.5 rounded-full", style: { background: color + "22", color } }, children);
 }
-function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendientes, margenPromedio, movimientos, productos, caducanPronto = [], proveedorPorId, vencenPronto = [], totalPendientePago = 0, documentosPersonalPronto = [], fichajesAbiertos = [], encargosUrgentes = [], pisoVentaBajo = [], sugerenciasPedido = [], setTab, recordatorioConteo = [], alertasAppcc = { pendientes: [], desviaciones: [] }, fallosGuardado = [], diagnosticoStock = [], registrarSalida, itemsPermitidos = null }) {
+function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendientes, margenPromedio, movimientos, productos, caducanPronto = [], proveedorPorId, vencenPronto = [], totalPendientePago = 0, documentosPersonalPronto = [], fichajesAbiertos = [], encargosUrgentes = [], pisoVentaBajo = [], sugerenciasPedido = [], setTab, recordatorioConteo = [], alertasAppcc = { pendientes: [], desviaciones: [] }, fallosGuardado = [], fallosCarga = [], diagnosticoStock = [], registrarSalida, itemsPermitidos = null }) {
   const entradas30 = movimientos.filter((m22) => esEntrada(m22)).reduce((a22, m22) => a22 + Math.abs(cantidadConSigno(m22)), 0);
   const salidas30 = movimientos.filter((m22) => esSalida(m22)).reduce((a22, m22) => a22 + Math.abs(cantidadConSigno(m22)), 0);
   const [abierta, setAbierta] = (0, import_react4.useState)(null);
@@ -109337,6 +109375,22 @@ function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendi
         clave: f22.id,
         principal: f22.key,
         secundario: f22.mensaje || "Error al guardar",
+        derecha: new Date(f22.fecha).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
+        derechaColor: C2.red
+      }))
+    },
+    {
+      id: "fallos_carga",
+      titulo: "Arranque: datos que no se pudieron cargar",
+      valor: fallosCarga.length,
+      color: fallosCarga.length ? C2.red : C2.ink,
+      nota: fallosCarga.length > 0 ? "no se ha sobrescrito nada — revisa Respaldos" : null,
+      tab: "respaldos",
+      tabNombre: "Respaldos",
+      items: fallosCarga.slice(0, 10).map((f22) => ({
+        clave: f22.id,
+        principal: f22.key,
+        secundario: f22.motivo === "corrupcion" ? "Archivo local da\xF1ado" : f22.motivo === "cuota" ? "Sin espacio de almacenamiento" : f22.mensaje || "Fallo de acceso",
         derecha: new Date(f22.fecha).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
         derechaColor: C2.red
       }))
