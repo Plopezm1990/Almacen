@@ -1,0 +1,71 @@
+name: PM21 P03 matriz de identidades QA reales
+
+on:
+  push:
+    branches: [claude/pm21-identidad-autorizacion]
+    paths:
+      - 'tests/pm21/**'
+      - '.github/workflows/pm21-p03-matriz-identidades.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main y alcance (solo documentación y contrato, sin código ni esquema)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          unexpected="$(git diff --name-only origin/main..HEAD -- fuente.js supabase/ || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'PM21 P03 no debe tocar fuente.js ni supabase/: solo documenta y verifica pruebas ya ejecutadas contra QA en la sesión que las preparó' >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+          echo 'PM21_P03_MAIN_FROZEN=PASS'
+          echo 'PM21_P03_SIN_CAMBIOS_CODIGO_NI_SUPABASE=PASS'
+      - name: Sintaxis bundle (no debe haber cambiado)
+        run: node --check fuente.js
+      - name: Contrato PM21 P03
+        run: node tests/pm21/p03-matriz-contract.mjs
+      - name: Regresión completa (todas las suites vigentes)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for d in tests/g1 tests/pm04 tests/pm05 tests/pm07 tests/pm08 tests/pm09 tests/pm10 tests/pm11-compra tests/pm12 tests/pm13 tests/pm14 tests/pm15 tests/pm16 tests/pm17 tests/pm18 tests/pm19 tests/pm20; do
+            for t in "$d"/*.mjs; do
+              [ -f "$t" ] || continue
+              node "$t"
+            done
+          done
+          for t in tests/pm21/*.mjs; do
+            [ -f "$t" ] || continue
+            node "$t"
+          done
+          echo 'PM21_P03_REGRESION_COMPLETA=PASS'
+      - name: Sin secretos ni identificadores internos
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -Eqi 'service_role_key|SUPABASE_SERVICE_ROLE_KEY|sb_secret_|qjqorixtkilwsndqayyx|flqercbgpgmmfaakrwkc|cqtghwiuxrqrxupyonqf|[a-z]{20}\.supabase\.co' \
+            tests/pm21/*.mjs tests/pm21/*.md
+          echo 'PM21_P03_NO_SECRET=PASS'
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM21 P03
+        run: |
+          set -euo pipefail
+          node tests/pm21/p03-matriz-contract.mjs
+          echo 'PM21_P03_GATE_FINAL=PASS'
