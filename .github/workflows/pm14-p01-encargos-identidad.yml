@@ -1,0 +1,85 @@
+name: PM14 P01 Encargos identidad estable
+
+on:
+  push:
+    branches: [claude/pm14-encargos-anticipos-i8ye52]
+    paths:
+      - 'fuente.js'
+      - 'tests/pm14/**'
+      - 'tests/pm10/p08-encargos-contract.mjs'
+      - '.github/workflows/pm14-p01-encargos-identidad.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar-p01:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main y alcance P01
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          PM13_P07_BASE='6ee2752a8f6aba882a6fa926892ab5b04aac231d'
+          if [ -n "$(git diff --name-only "$PM13_P07_BASE"..HEAD -- supabase/)" ]; then
+            echo 'PM14 P01 no puede modificar Supabase' >&2
+            git diff --name-only "$PM13_P07_BASE"..HEAD -- supabase/ >&2
+            exit 1
+          fi
+          echo 'PM14_P01_MAIN_FROZEN=PASS'
+          echo 'PM14_P01_SIN_CAMBIOS_SUPABASE=PASS'
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+      - name: Contrato PM14 P01 (identidad empresaId/total)
+        run: node tests/pm14/p01-encargos-identidad-contract.mjs
+      - name: Regresión Encargos PM10 P08
+        run: node tests/pm10/p08-encargos-contract.mjs
+      - name: Regresión PM10 relacionada (productos/pedidos/recepción/personal/legados/contexto)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm10/p04-productos-contract.mjs
+          node tests/pm10/p05-pedidos-contract.mjs
+          node tests/pm10/p06-recepcion-contract.mjs
+          node tests/pm10/p07-personal-contract.mjs
+          node tests/pm10/p11-robustez-altas-contract.mjs
+          node tests/pm10/p12-datos-legados-contract.mjs
+          node tests/pm10/p13-contexto-aislamiento-contract.mjs
+          echo 'PM14_P01_REGRESSION_PM10=PASS'
+      - name: Rojo histórico conocido (no introducido por PM14, no bloquea este gate)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'tests/pm10/p09-transversal-contract.mjs y tests/pm10/p10-autoridad-persistencia-contract.mjs'
+          echo 'ya fallaban en el checkpoint 6ee2752a (PM13/P07) antes de cualquier commit de PM14:'
+          echo 'la aserción de regex sobre addEmpleado quedó desactualizada cuando PM13-P01 movió'
+          echo 'el alta de empleados al RPC pm11_alta_empleado. No forma parte del alcance de'
+          echo 'PM14 (Encargos/anticipos/clientes) y no se oculta: queda documentado aquí y en'
+          echo 'tests/pm14/P01_DIAGNOSTICO_ENCARGOS_ANTICIPOS.md para que otro paquete lo repare.'
+          echo 'PM14_P01_ROJO_HISTORICO_DOCUMENTADO=PASS'
+      - name: Sin secretos
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -Eqi 'service_role|SUPABASE_SERVICE_ROLE_KEY|sb_secret_' \
+            fuente.js tests/pm14/p01-encargos-identidad-contract.mjs tests/pm14/P01_DIAGNOSTICO_ENCARGOS_ANTICIPOS.md
+          echo 'PM14_P01_NO_SECRET=PASS'
+
+  gate-final:
+    needs: validar-p01
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM14 P01
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm14/p01-encargos-identidad-contract.mjs
+          node tests/pm10/p08-encargos-contract.mjs
+          echo 'PM14_P01_GATE_FINAL=PASS'
