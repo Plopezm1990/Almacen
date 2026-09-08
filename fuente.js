@@ -101574,6 +101574,10 @@ function SelectorLocalInformes({ locales = [], valor = "", onChange }) {
   const seleccionado = activos.find((l22) => l22.id === valor);
   return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-3 items-end" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Local" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: valor, onChange: (e2) => onChange(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Todos los locales"), activos.map((l22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: l22.id, value: l22.id }, l22.nombre)))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] pb-2", style: { color: C2.inkSoft } }, seleccionado ? `Mostrando solo ${seleccionado.nombre}.` : "Mostrando datos consolidados de todos los locales.")));
 }
+function decidirCambioTabPM15(formularioAbierto, confirmar) {
+  if (!formularioAbierto) return true;
+  return !!confirmar();
+}
 function GestionAlmacen() {
   const [ready, setReady] = (0, import_react4.useState)(false);
   const [fallosGuardado, setFallosGuardado] = (0, import_react4.useState)([]);
@@ -101603,6 +101607,16 @@ function GestionAlmacen() {
     return () => window.removeEventListener("conflicto-fusion", onConflictoFusion);
   }, []);
   const [tab, setTab] = (0, import_react4.useState)("dashboard");
+  const formularioAbiertoPM15Ref = import_react4.default.useRef(false);
+  function marcarFormularioAbiertoPM15(abierto) {
+    formularioAbiertoPM15Ref.current = !!abierto;
+  }
+  function cambiarTabPM15(nuevaTab) {
+    const confirmar = () => typeof window !== "undefined" && typeof window.confirm === "function" ? window.confirm("Tienes un formulario abierto sin guardar. Si cambias de pantalla se perder\xE1. \xBFQuieres continuar sin guardar?") : true;
+    if (!decidirCambioTabPM15(formularioAbiertoPM15Ref.current, confirmar)) return;
+    formularioAbiertoPM15Ref.current = false;
+    setTab(nuevaTab);
+  }
   const [disenoMenu, setDisenoMenu] = (0, import_react4.useState)("B");
   const [temaOscuro, setTemaOscuro] = (0, import_react4.useState)(false);
   const [modoEmpleado, setModoEmpleado] = (0, import_react4.useState)(false);
@@ -103016,7 +103030,7 @@ function GestionAlmacen() {
       encargosUrgentes: encargosUrgentesInforme,
       pisoVentaBajo: pisoVentaBajoInforme,
       sugerenciasPedido: sugerenciasPedidoInforme,
-      setTab,
+      setTab: cambiarTabPM15,
       recordatorioConteo: recordatorioConteoInforme,
       alertasAppcc,
       fallosGuardado,
@@ -103077,7 +103091,7 @@ function GestionAlmacen() {
       eliminarRegistroAceite,
       consumoPorCiclo
     }
-  ), tab === "buscar" && /* @__PURE__ */ import_react4.default.createElement(BusquedaGlobal, { productos: productosDelLocalActivo, proveedores, clientes, fichasCosto: fichasCostoDelLocalActivo, empleados: empleadosDelLocalActivo, setTab }), tab === "pedidos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "buscar" && /* @__PURE__ */ import_react4.default.createElement(BusquedaGlobal, { productos: productosDelLocalActivo, proveedores, clientes, fichasCosto: fichasCostoDelLocalActivo, empleados: empleadosDelLocalActivo, setTab: cambiarTabPM15 }), tab === "pedidos" && /* @__PURE__ */ import_react4.default.createElement(
     Pedidos,
     {
       pedidos: pedidosDelLocalActivo,
@@ -103204,7 +103218,8 @@ function GestionAlmacen() {
       listarPrefiltros,
       eliminarPrefiltro,
       crearCuentaEmpleado,
-      contextoActivoPM15
+      contextoActivoPM15,
+      marcarFormularioAbiertoPM15
     }
   ), tab === "fichaje" && /* @__PURE__ */ import_react4.default.createElement(
     RegistroHorario,
@@ -103244,7 +103259,8 @@ function GestionAlmacen() {
       registrarAnticipoEncargo,
       revertirAnticipoEncargo,
       addCliente,
-      contextoActivoPM15
+      contextoActivoPM15,
+      marcarFormularioAbiertoPM15
     }
   ), tab === "clientes" && /* @__PURE__ */ import_react4.default.createElement(
     Clientes,
@@ -103256,7 +103272,8 @@ function GestionAlmacen() {
       updateCliente,
       deleteCliente,
       anonimizarCliente,
-      contextoActivoPM15
+      contextoActivoPM15,
+      marcarFormularioAbiertoPM15
     }
   ), tab === "devoluciones" && /* @__PURE__ */ import_react4.default.createElement(
     Devoluciones,
@@ -103318,7 +103335,7 @@ function GestionAlmacen() {
       establecerPin,
       activarModoEmpleado
     }
-  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, diagnosticoLegadosPM10: diagnosticarDatosLegadosPM10({ productos, pedidos: pedidos2, empleados, encargos, proveedores, clientes, locales, empresas }) }));
+  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, diagnosticoLegadosPM10: diagnosticarDatosLegadosPM10({ productos, pedidos: pedidos2, empleados, encargos, proveedores, clientes, locales, empresas }), marcarFormularioAbiertoPM15 }));
   const itemsMeta = [
     { id: "dashboard", label: "Panel general", icon: ChartColumn },
     { id: "direccion", label: "Panel de direcci\xF3n", icon: TrendingUp },
@@ -103468,12 +103485,12 @@ function GestionAlmacen() {
             --c-red-soft: #F7E5E1 !important;
           }
         }
-      `), disenoMenu === "C" ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(TopBarC, { disenoMenu, setDisenoMenu, tab, setTab, pendientes: pedidosPendientesDelLocalActivo.length, temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil }), /* @__PURE__ */ import_react4.default.createElement("main", { className: "flex-1 p-4 overflow-y-auto", style: { maxHeight: "900px" } }, contenido), /* @__PURE__ */ import_react4.default.createElement(BottomNavC, { tab, setTab, categorias: categoriasC, dashboardItem: porId("dashboard") })) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(
+      `), disenoMenu === "C" ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(TopBarC, { disenoMenu, setDisenoMenu, tab, setTab: cambiarTabPM15, pendientes: pedidosPendientesDelLocalActivo.length, temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil }), /* @__PURE__ */ import_react4.default.createElement("main", { className: "flex-1 p-4 overflow-y-auto", style: { maxHeight: "900px" } }, contenido), /* @__PURE__ */ import_react4.default.createElement(BottomNavC, { tab, setTab: cambiarTabPM15, categorias: categoriasC, dashboardItem: porId("dashboard") })) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(
     SidebarGrupos,
     {
       grupos: disenoMenu === "A" ? gruposA : gruposB,
       tab,
-      setTab,
+      setTab: cambiarTabPM15,
       disenoMenu,
       setDisenoMenu,
       temaOscuro,
@@ -111737,8 +111754,11 @@ function GestorEmpresas({ empresas, setEmpresas }) {
 function empresaDestinoParaNuevoLocalPM15(empresaNuevaId, empresaPrincipalId) {
   return empresaNuevaId || empresaPrincipalId || "";
 }
-function Locales({ locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo, configEmpresa, empresas, setEmpresas, diagnosticoLegadosPM10 = null }) {
+function Locales({ locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo, configEmpresa, empresas, setEmpresas, diagnosticoLegadosPM10 = null, marcarFormularioAbiertoPM15 = () => {} }) {
   const [mostrarForm, setMostrarForm] = import_react4.default.useState(false);
+  import_react4.default.useEffect(() => {
+    marcarFormularioAbiertoPM15(mostrarForm);
+  }, [mostrarForm]);
   const [nombre, setNombre] = import_react4.default.useState("");
   const [direccion, setDireccion] = import_react4.default.useState("");
   const [error, setError] = import_react4.default.useState("");
@@ -113055,11 +113075,14 @@ function etiquetaContextoPM15(local, empresa) {
   if (nombreLocal && nombreEmpresa) return `${nombreLocal} \xB7 ${nombreEmpresa}`;
   return nombreLocal || nombreEmpresa || "";
 }
-function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, documentosPersonalCaducan, fichajes = [], nominas = [], entrevistas = [], crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista, crearPrefiltro, listarPrefiltros, eliminarPrefiltro, crearCuentaEmpleado, contextoActivoPM15 = "" }) {
+function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, documentosPersonalCaducan, fichajes = [], nominas = [], entrevistas = [], crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista, crearPrefiltro, listarPrefiltros, eliminarPrefiltro, crearCuentaEmpleado, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {} }) {
   const [vista, setVista] = (0, import_react4.useState)("empleados");
   const submitBloqueadoPersonalPM10 = import_react4.default.useRef(false);
   const altaOperacionPersonalPM13 = import_react4.default.useRef(null);
   const [showForm, setShowForm] = (0, import_react4.useState)(false);
+  import_react4.default.useEffect(() => {
+    marcarFormularioAbiertoPM15(showForm);
+  }, [showForm]);
   const [form, setForm] = (0, import_react4.useState)(blankEmpleado());
   const [error, setError] = (0, import_react4.useState)("");
   const [editingId, setEditingId] = (0, import_react4.useState)(null);
@@ -113663,10 +113686,13 @@ Generado el ${(/* @__PURE__ */ new Date()).toLocaleString("es-ES")}`;
 function lineaEncargo() {
   return { productoId: "", descripcion: "", cantidad: 1, precioUnitario: "" };
 }
-function Encargos({ encargosPendientes, encargos, clientes, productos, addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo, addCliente, contextoActivoPM15 = "" }) {
+function Encargos({ encargosPendientes, encargos, clientes, productos, addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo, addCliente, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {} }) {
   const submitBloqueadoEncargoPM10 = import_react4.default.useRef(false);
   const entregaBloqueadaPM14 = import_react4.default.useRef(false);
   const [showForm, setShowForm] = (0, import_react4.useState)(false);
+  import_react4.default.useEffect(() => {
+    marcarFormularioAbiertoPM15(showForm);
+  }, [showForm]);
   const [editingId, setEditingId] = (0, import_react4.useState)(null);
   const [form, setForm] = (0, import_react4.useState)(null);
   const [error, setError] = (0, import_react4.useState)("");
@@ -113920,9 +113946,12 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
     } }, "S\xED, cancelar encargo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmDeleteId(null) }, "Volver")));
   })());
 }
-function Clientes({ analisisClientes, clientesDormidos, ventaCruzada, addCliente, updateCliente, deleteCliente, anonimizarCliente, contextoActivoPM15 = "" }) {
+function Clientes({ analisisClientes, clientesDormidos, ventaCruzada, addCliente, updateCliente, deleteCliente, anonimizarCliente, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {} }) {
   const blank = { nombre: "", telefono: "", email: "", notas: "" };
   const [showForm, setShowForm] = (0, import_react4.useState)(false);
+  import_react4.default.useEffect(() => {
+    marcarFormularioAbiertoPM15(showForm);
+  }, [showForm]);
   const [form, setForm] = (0, import_react4.useState)(blank);
   const [editingId, setEditingId] = (0, import_react4.useState)(null);
   const [error, setError] = (0, import_react4.useState)("");
