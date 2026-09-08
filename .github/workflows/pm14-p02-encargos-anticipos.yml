@@ -49,8 +49,12 @@ jobs:
           # P02 SÍ introduce migraciones nuevas (encargos_empresa/pagos_encargo, aplicadas
           # solo en L&A Suite QA). Se exige que sean exactamente las tres de este punto
           # y ningún archivo ajeno a PM14 dentro de supabase/.
-          echo "$diff" | grep -vE '^supabase/migrations/20260908(071757|071911|071936)_pm14_p02_.*\.sql$' | (! grep -q .) \
-            || { echo 'Cambio inesperado en supabase/ fuera de las migraciones declaradas de P02' >&2; exit 1; }
+          unexpected="$(echo "$diff" | grep -vE '^supabase/migrations/20260908(071757|071911|071936)_pm14_p02_.*\.sql$' || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'Cambio inesperado en supabase/ fuera de las migraciones declaradas de P02' >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
           echo 'PM14_P02_SUPABASE_DIFF_DECLARADO=PASS'
       - name: Sintaxis bundle
         run: node --check fuente.js
