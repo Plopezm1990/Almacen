@@ -84,6 +84,8 @@ function harness(iniciales = [], conf = {}) {
   let estado = structuredClone(iniciales);
   let mutaciones = 0;
   const setEncargos = (fn) => { mutaciones += 1; estado = fn(estado); };
+  const localActivoId = Object.prototype.hasOwnProperty.call(conf, 'localActivoId') ? conf.localActivoId : 'L1';
+  const empresaId = Object.prototype.hasOwnProperty.call(conf, 'empresaId') ? conf.empresaId : 'E1';
   const logica = crearLogica({
     encargos: iniciales,
     setEncargos,
@@ -93,8 +95,8 @@ function harness(iniciales = [], conf = {}) {
     setProductos: () => {},
     setMovimientos: () => {},
     venderLineas: () => ({ ok: true }),
-    localActivoId: conf.localActivoId ?? 'L1',
-    empresaId: conf.empresaId ?? 'E1',
+    localActivoId,
+    empresaId,
     locales
   });
   return { logica, estado: () => estado, mutaciones: () => mutaciones };
