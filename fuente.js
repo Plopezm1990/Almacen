@@ -43868,24 +43868,6 @@ var init_index_es = __esm({
   });
   setTimeout(comprobarPerfilActivo, 1e3);
 })();
-(function() {
-  "use strict";
-  if (document.querySelector('script[data-seleccion-neutral="1"]')) return;
-  var script = document.createElement("script");
-  script.src = "./seleccion-neutral-patch.js?v=2";
-  script.defer = true;
-  script.setAttribute("data-seleccion-neutral", "1");
-  (document.head || document.documentElement).appendChild(script);
-})();
-(function() {
-  "use strict";
-  if (document.querySelector('script[data-auth-ux="1"]')) return;
-  var script = document.createElement("script");
-  script.src = "./auth-ux-patch.js?v=1";
-  script.defer = true;
-  script.setAttribute("data-auth-ux", "1");
-  (document.head || document.documentElement).appendChild(script);
-})();
 
 // fuente-recuperado.js
 var ReactNS = __toESM(require_react(), 1);
