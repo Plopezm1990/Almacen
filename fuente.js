@@ -102740,6 +102740,9 @@ function GestionAlmacen() {
     const emp = usuarioActivoId ? empleados.find((e2) => e2.id === usuarioActivoId) : null;
     window.__usuarioActivoNombre = modoEmpleado ? emp ? emp.nombre : "Empleado sin identificar" : "Propietario/a";
   }, [usuarioActivoId, empleados, modoEmpleado]);
+  (0, import_react4.useEffect)(() => {
+    window.__contextoErroresPM20 = { empresaId: empresaDelLocalActivo?.id || null, localId: localActivoId || null };
+  }, [empresaDelLocalActivo, localActivoId]);
   const documentosPersonalCaducan = (0, import_react4.useMemo)(() => {
     const hoy = /* @__PURE__ */ new Date();
     hoy.setHours(0, 0, 0, 0);
@@ -103319,7 +103322,7 @@ function GestionAlmacen() {
       deleteTurno,
       copiarSemana
     }
-  ), tab === "mapa" && /* @__PURE__ */ import_react4.default.createElement(MapaAlmacen, { productos: productosDelLocalActivo, proveedorPorId }), tab === "traspasos" && /* @__PURE__ */ import_react4.default.createElement(Traspasos, { productos: productosDelLocalActivo, productosEmpresa: productos.filter((p22) => localesEmpresaActiva.some((l22) => l22.id === p22.localId)), locales: localesEmpresaActiva, localActivoId, traspasos: traspasosDelLocalActivo, traspasarStock, traspasarEntreLocales, pisoVentaBajo: pisoVentaBajoDelLocalActivo, fichasCosto: fichasCostoDelLocalActivo }), tab === "appcc" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "mapa" && /* @__PURE__ */ import_react4.default.createElement(MapaAlmacen, { productos: productosDelLocalActivo, proveedorPorId, stockBajo: stockBajoDelLocalActivo }), tab === "traspasos" && /* @__PURE__ */ import_react4.default.createElement(Traspasos, { productos: productosDelLocalActivo, productosEmpresa: productos.filter((p22) => localesEmpresaActiva.some((l22) => l22.id === p22.localId)), locales: localesEmpresaActiva, localActivoId, traspasos: traspasosDelLocalActivo, traspasarStock, traspasarEntreLocales, pisoVentaBajo: pisoVentaBajoDelLocalActivo, fichasCosto: fichasCostoDelLocalActivo }), tab === "appcc" && /* @__PURE__ */ import_react4.default.createElement(
     Appcc,
     {
       puntosControl: puntosControlDelLocalActivo,
@@ -103548,15 +103551,42 @@ function GestionAlmacen() {
     return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setPendingRestore(null), title: "Restaurar respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-1", style: { color: C2.ink } }, pendingRestore.exportadoEl ? `Respaldo del ${new Date(pendingRestore.exportadoEl).toLocaleString("es-ES")}` : "Respaldo sin fecha registrada"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Formato ", pendingRestore.backupVersion || pendingRestore.version || "antiguo"), perdidas.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "\u26A0 Este respaldo tiene menos datos que lo que hay ahora"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2" }, "Al restaurarlo desaparecer\xEDa lo creado despu\xE9s. Se guardar\xE1 un punto de recuperaci\xF3n antes, por si te arrepientes."), perdidas.map((c22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: c22.clave, className: "text-[11.5px] mono" }, c22.nombre, ": ", c22.actual, " \u2192 ", c22.respaldo, " (", c22.diferencia, ")"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "Qu\xE9 contiene, comparado con ahora"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3 space-y-0.5", style: { color: C2.inkSoft } }, comparacion.map((c22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: c22.clave, className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", null, c22.nombre), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: c22.diferencia < 0 ? C2.red : C2.inkSoft } }, c22.actual, " \u2192 ", c22.respaldo)))), seConservan.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.bg, border: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]" }, "Este respaldo es anterior y no incluye: ", /* @__PURE__ */ import_react4.default.createElement("b", null, seConservan.join(", ")), ". Esos datos", /* @__PURE__ */ import_react4.default.createElement("b", null, " se conservan tal como est\xE1n ahora"), " \u2014 no se borran.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-4", style: { color: C2.red } }, "Restaurar sustituye lo que tengas cargado ahora por el contenido de este respaldo."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: confirmarRestauracion }, "Restaurar respaldo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setPendingRestore(null) }, "Cancelar")));
   })());
 }
+function validarProveedorPM10(data) {
+  const entrada = data && typeof data === "object" ? data : {};
+  const nombre = String(entrada.nombre ?? "").trim();
+  if (!nombre) return errorValidacionPM10("campo_obligatorio", "nombre", "Escribe el nombre del proveedor.");
+  const datos = { ...entrada, nombre };
+
+  const email = String(entrada.email ?? "").trim();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return errorValidacionPM10("formato_invalido", "email", "El correo electrónico no es válido.");
+  }
+  datos.email = email;
+
+  const leadTime = numeroPM10(entrada.leadTime, "leadTime", { minimo: 0, opcional: true });
+  if (!leadTime.ok) return leadTime;
+  datos.leadTime = leadTime.vacio ? "" : leadTime.valor;
+
+  const diasPago = numeroPM10(entrada.diasPago, "diasPago", { minimo: 0, opcional: true });
+  if (!diasPago.ok) return diasPago;
+  datos.diasPago = diasPago.vacio ? "" : diasPago.valor;
+
+  return { ok: true, datos };
+}
 function crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria, empresaId }) {
   function addProveedor(data) {
     if (!empresaId) return { ok: false, error: "Selecciona una empresa antes de crear el proveedor." };
-    const nuevo = { id: uid(), ...data, empresaId };
+    const validacion = validarProveedorPM10(data);
+    if (!validacion.ok) return validacion;
+    const nuevo = { id: uid(), ...validacion.datos, empresaId };
     setProveedores((s22) => [...s22, nuevo]);
     return { ok: true, proveedor: nuevo };
   }
   function updateProveedor(id, data) {
-    setProveedores((s22) => s22.map((p22) => p22.id === id && p22.empresaId === empresaId ? { ...p22, ...data, empresaId: p22.empresaId } : p22));
+    const validacion = validarProveedorPM10(data);
+    if (!validacion.ok) return validacion;
+    setProveedores((s22) => s22.map((p22) => p22.id === id && p22.empresaId === empresaId ? { ...p22, ...validacion.datos, empresaId: p22.empresaId } : p22));
+    return { ok: true };
   }
   function deleteProveedor(id) {
     const p22 = proveedores.find((x3) => x3.id === id);
@@ -109635,8 +109665,12 @@ function Proveedores({ proveedores, addProveedor, updateProveedor, deleteProveed
       setError("Escribe el nombre del proveedor.");
       return;
     }
+    const res = addProveedor(form);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
     setError("");
-    addProveedor(form);
     setForm(blankProv);
     setShowForm(false);
   }
@@ -109659,7 +109693,11 @@ function Proveedores({ proveedores, addProveedor, updateProveedor, deleteProveed
       setEditError("Escribe el nombre del proveedor.");
       return;
     }
-    updateProveedor(editFor, editForm);
+    const res = updateProveedor(editFor, editForm);
+    if (!res.ok) {
+      setEditError(res.error);
+      return;
+    }
     setEditFor(null);
   }
   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setShowForm((s22) => !s22) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Nuevo proveedor") }, "Proveedores"), showForm && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre del proveedor" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.nombre, onChange: (e2) => setForm({ ...form, nombre: e2.target.value }), placeholder: "Distribuidora del Norte" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Persona de contacto" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.contacto, onChange: (e2) => setForm({ ...form, contacto: e2.target.value }), placeholder: "Nombre" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tel\xE9fono (WhatsApp)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.telefono, onChange: (e2) => setForm({ ...form, telefono: e2.target.value }), placeholder: "+34 600 000 000" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Correo electr\xF3nico" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "email", value: form.email, onChange: (e2) => setForm({ ...form, email: e2.target.value }), placeholder: "pedidos@proveedor.com" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Condiciones de pago (texto libre)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.condiciones, onChange: (e2) => setForm({ ...form, condiciones: e2.target.value }), placeholder: "Transferencia 45 d\xEDas F/F" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "D\xEDas de pago (para calcular vencimientos)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.diasPago, onChange: (e2) => setForm({ ...form, diasPago: e2.target.value }), placeholder: "45" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tiempo de entrega (d\xEDas)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.leadTime, onChange: (e2) => setForm({ ...form, leadTime: e2.target.value }), placeholder: "5" }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "\xBFQu\xE9 d\xEDas reparte? (opcional)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5" }, DIAS_REPARTO.map((d2) => {
@@ -115242,7 +115280,8 @@ function Turnos({ empleados, turnos, addTurno, updateTurno, deleteTurno, copiarS
     return /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, e2.nombre), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, fmt(asignadas), " h ", contrato > 0 && /* @__PURE__ */ import_react4.default.createElement("span", { style: { color: C2.inkSoft } }, "/ ", fmt(contrato), " h contrato"))), contrato > 0 && Math.abs(diferencia) >= 1 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-0.5", style: { color: diferencia > 0 ? C2.amber : C2.red } }, diferencia > 0 ? `${fmt(diferencia)} h por encima del contrato` : `${fmt(Math.abs(diferencia))} h por debajo del contrato`));
   }))), showForm && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowForm(false), title: "A\xF1adir turno" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Empleado" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.empleadoId, onChange: (e2) => setForm({ ...form, empleadoId: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, activos.map((e2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: e2.id, value: e2.id }, e2.nombre)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "D\xEDa" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.fecha, onChange: (e2) => setForm({ ...form, fecha: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, dias.map((f22, i33) => /* @__PURE__ */ import_react4.default.createElement("option", { key: f22, value: f22 }, DIAS_SEMANA[i33], " (", f22, ")")))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tipo de turno" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.plantilla, onChange: (e2) => elegirPlantilla(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, PLANTILLAS_TURNO.map((p22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: p22.id, value: p22.id }, p22.label)))), form.plantilla !== "libre" && /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hora inicio" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "time", value: form.horaInicio, onChange: (e2) => setForm({ ...form, horaInicio: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hora fin" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "time", value: form.horaFin, onChange: (e2) => setForm({ ...form, horaFin: e2.target.value }) }))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Notas (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.notas, onChange: (e2) => setForm({ ...form, notas: e2.target.value }) })), avisoDisponibilidad && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3 p-2 rounded-lg", style: { background: C2.amberSoft, color: C2.ink } }, "\u26A0 ", avisoDisponibilidad, " Puedes asignarlo igual si es una excepci\xF3n puntual."), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submit }, "Guardar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowForm(false) }, "Cancelar"))));
 }
-function MapaAlmacen({ productos, proveedorPorId }) {
+function MapaAlmacen({ productos, proveedorPorId, stockBajo = [] }) {
+  const idsStockBajo = (0, import_react4.useMemo)(() => new Set(stockBajo.map((p22) => p22.id)), [stockBajo]);
   const zonas = (0, import_react4.useMemo)(() => {
     const mapa = {};
     ZONAS_ALMACEN.forEach((z2) => {
@@ -115257,9 +115296,9 @@ function MapaAlmacen({ productos, proveedorPorId }) {
   }, [productos]);
   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Mapa de almac\xE9n"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Cada producto se asigna a una zona desde su ficha (Productos \u2192 Editar \u2192 Zona del almac\xE9n). Aqu\xED ves de un vistazo qu\xE9 hay en cada rinc\xF3n del local, sin tener que buscar producto a producto.")), zonas.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has asignado ninguna zona a tus productos." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-3" }, zonas.map((g2) => {
     const valor = g2.items.reduce((a22, p22) => a22 + (Number(p22.stock) || 0) * (Number(p22.costo) || 0), 0);
-    const bajos = g2.items.filter((p22) => (Number(p22.stock) || 0) <= (Number(p22.stockMinimo) || 0)).length;
+    const bajos = g2.items.filter((p22) => idsStockBajo.has(p22.id)).length;
     return /* @__PURE__ */ import_react4.default.createElement(Card, { key: g2.zona }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold text-[14px]" }, g2.zona), /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, g2.items.length, " ref.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Valor: ", /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, "\u20AC", fmt(valor)), bajos > 0 && /* @__PURE__ */ import_react4.default.createElement("span", { style: { color: C2.amber } }, " \xB7 ", bajos, " en stock bajo")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1 max-h-48 overflow-y-auto" }, g2.items.sort((a22, b2) => (a22.ubicacion || "").localeCompare(b2.ubicacion || "") || a22.nombre.localeCompare(b2.nombre)).map((p22) => {
-      const bajo = (Number(p22.stock) || 0) <= (Number(p22.stockMinimo) || 0);
+      const bajo = idsStockBajo.has(p22.id);
       return /* @__PURE__ */ import_react4.default.createElement("div", { key: p22.id, className: "flex items-center justify-between text-[12px] py-0.5" }, /* @__PURE__ */ import_react4.default.createElement("span", null, p22.nombre, p22.ubicacion && /* @__PURE__ */ import_react4.default.createElement("span", { style: { color: C2.inkSoft } }, " \xB7 ", p22.ubicacion)), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: bajo ? C2.red : C2.inkSoft } }, p22.stock, " ", p22.unidad));
     })));
   })));
@@ -117228,12 +117267,15 @@ async function registrarErrorSistema(mensaje, pantalla, pila) {
     if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return;
     const supabase = await window.getSupabaseClient();
     const id = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random();
+    const contexto = window.__contextoErroresPM20 || {};
     await supabase.from("errores_sistema").insert({
       id,
       mensaje: String(mensaje || "").slice(0, 500),
       pantalla: pantalla || "",
       pila: String(pila || "").slice(0, 2e3),
-      dispositivo: navigator.userAgent.slice(0, 200)
+      dispositivo: navigator.userAgent.slice(0, 200),
+      empresa_id: contexto.empresaId || null,
+      local_id: contexto.localId || null
     });
     const clave = String(mensaje || "").slice(0, 200);
     const ahora = Date.now();
