@@ -102248,7 +102248,7 @@ function GestionAlmacen() {
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId });
   const { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
-  const { addEncargo, updateEncargo, deleteEncargo, entregarEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
+  const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
   const { traspasarStock, traspasarEntreLocales } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales });
   const { addArqueo, deleteArqueo, leerBorradorArqueo } = crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosCaja, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
   const { registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja } = crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arqueos, setArqueos, registrarAuditoria, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
@@ -103236,8 +103236,10 @@ function GestionAlmacen() {
       addEncargo,
       updateEncargo,
       deleteEncargo,
+      cancelarEncargo,
       entregarEncargo,
       registrarAnticipoEncargo,
+      revertirAnticipoEncargo,
       addCliente
     }
   ), tab === "clientes" && /* @__PURE__ */ import_react4.default.createElement(
@@ -106692,9 +106694,30 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
     const actual = encargos.find((e22) => e22.id === id);
     if (!encargoEsDelLocalActivo(actual)) return false;
     if (actual.estado === "Entregado") return false;
+    // Un encargo con algún cobro confirmado (señal, resto...) ya es una operación
+    // económica: no se borra en silencio (DEC-04). Hay que cancelarlo primero y
+    // decidir explícitamente qué pasa con lo cobrado (cancelarEncargo).
+    if ((actual.cobros || []).some((c22) => Number(c22.importe) > 0)) return false;
     registrarAuditoria("Eliminar encargo", actual ? `${actual.numero || "s/n"}` : id);
     setEncargos((s22) => s22.filter((e22) => e22.id !== id));
     return true;
+  }
+  function cancelarEncargo(encargoOrId, { motivo } = {}) {
+    const id = typeof encargoOrId === "string" ? encargoOrId : encargoOrId && encargoOrId.id;
+    const actual = encargos.find((e2) => e2.id === id);
+    if (!actual) return { ok: false, codigo: "referencia_inexistente", error: "El encargo no existe o ya no est\xE1 disponible." };
+    if (!encargoEsDelLocalActivo(actual)) return { ok: false, codigo: "contexto_no_autorizado", error: "El encargo no pertenece al local activo." };
+    if (actual.estado === "Cancelado") return { ok: true, replayed: true, yaCancelado: true };
+    if (actual.estado === "Entregado") return { ok: false, codigo: "estado_no_permitido", error: "No se puede cancelar un encargo ya entregado." };
+    const motivoTexto = String(motivo || "").trim();
+    if (!motivoTexto) return { ok: false, codigo: "motivo_requerido", error: "Indica el motivo de la cancelaci\xF3n." };
+    const cobrosConfirmados = (actual.cobros || []).filter((c22) => Number(c22.importe) > 0);
+    const resultado = updateEncargo(actual.id, { estado: "Cancelado", fechaCancelacion: todayISO(), motivoCancelacion: motivoTexto });
+    if (resultado !== true) {
+      return { ok: false, codigo: "encargo_no_actualizado", error: "No se pudo registrar la cancelaci\xF3n del encargo." };
+    }
+    registrarAuditoria("Cancelar encargo", `${actual.numero || actual.id} \xB7 ${motivoTexto}`);
+    return { ok: true, tieneCobrosPendientesDeResolver: cobrosConfirmados.length > 0, cobros: cobrosConfirmados };
   }
   function entregarEncargo(encargoOrId, medioPago = "Efectivo") {
     if (!localActivoId) return { ok: false, codigo: "contexto_no_autorizado", error: "Selecciona un local para gestionar la entrega de encargos." };
@@ -106844,7 +106867,7 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
       return { ok: false, codigo: "error_reverso", error: "No se pudo confirmar la anulaci\xF3n con el servidor." };
     }
   }
-  return { addEncargo, updateEncargo, deleteEncargo, entregarEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo };
+  return { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo };
 }
 function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId }) {
   function productoEsDelLocalActivoVenta(prod) {
@@ -113466,7 +113489,7 @@ Generado el ${(/* @__PURE__ */ new Date()).toLocaleString("es-ES")}`;
 function lineaEncargo() {
   return { productoId: "", descripcion: "", cantidad: 1, precioUnitario: "" };
 }
-function Encargos({ encargosPendientes, encargos, clientes, productos, addEncargo, updateEncargo, deleteEncargo, entregarEncargo, registrarAnticipoEncargo, addCliente }) {
+function Encargos({ encargosPendientes, encargos, clientes, productos, addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo, addCliente }) {
   const submitBloqueadoEncargoPM10 = import_react4.default.useRef(false);
   const entregaBloqueadaPM14 = import_react4.default.useRef(false);
   const [showForm, setShowForm] = (0, import_react4.useState)(false);
@@ -113475,6 +113498,7 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
   const [error, setError] = (0, import_react4.useState)("");
   const [confirmDeleteId, setConfirmDeleteId] = (0, import_react4.useState)(null);
   const [errorEliminar, setErrorEliminar] = (0, import_react4.useState)("");
+  const [motivoCancelar, setMotivoCancelar] = (0, import_react4.useState)("");
   const [entregarId, setEntregarId] = (0, import_react4.useState)(null);
   const [errorEntrega, setErrorEntrega] = (0, import_react4.useState)("");
   const [medioPagoEntrega, setMedioPagoEntrega] = (0, import_react4.useState)("Efectivo");
@@ -113603,8 +113627,9 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
     setMedioPagoEntrega("Efectivo");
   } }, /* @__PURE__ */ import_react4.default.createElement(CircleCheck, { size: 13 }), " Entregar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => abrirEdicion(e2) }, "Editar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", onClick: () => {
     setErrorEliminar("");
+    setMotivoCancelar("");
     setConfirmDeleteId(e2.id);
-  } }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 13 }), " Eliminar"))))), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setVerEntregados((s22) => !s22), className: "text-[12.5px] font-medium mt-4 mb-2", style: { color: C2.accent } }, verEntregados ? "Ocultar" : "Ver", " encargos entregados (", entregados.length, ")"), verEntregados && /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, entregados.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has entregado ninguno." }) : entregados.map((e2) => {
+  } }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 13 }), " Cancelar"))))), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setVerEntregados((s22) => !s22), className: "text-[12.5px] font-medium mt-4 mb-2", style: { color: C2.accent } }, verEntregados ? "Ocultar" : "Ver", " encargos entregados (", entregados.length, ")"), verEntregados && /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, entregados.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has entregado ninguno." }) : entregados.map((e2) => {
     const cliente = clientes.find((c22) => c22.id === e2.clienteId);
     const total = (e2.lineas || []).reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
     return /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id, style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, cliente ? cliente.nombre : "\u2014", " \xB7 ", e2.fechaEntregaReal || e2.fechaEntrega), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, "\u20AC", fmt(total))));
@@ -113647,15 +113672,38 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
         }
       }
     } }, "Confirmar entrega"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setEntregarId(null) }, "Cancelar")));
-  })(), confirmDeleteId && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmDeleteId(null), title: "Eliminar encargo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-4" }, "Se borra el encargo. Esta acci\xF3n no se puede deshacer."), errorEliminar && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, errorEliminar), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: () => {
-    const eliminado = deleteEncargo(confirmDeleteId);
-    if (!eliminado) {
-      setErrorEliminar("No se pudo eliminar: revisa que el encargo siga en el local activo y no esté ya entregado.");
-      return;
-    }
-    setErrorEliminar("");
-    setConfirmDeleteId(null);
-  } }, "S\xED, eliminar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmDeleteId(null) }, "Cancelar"))));
+  })(), confirmDeleteId && (() => {
+    const e2 = encargos.find((x3) => x3.id === confirmDeleteId);
+    const tieneCobros = !!e2 && (e2.cobros || []).some((c22) => Number(c22.importe) > 0);
+    return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmDeleteId(null), title: "Cancelar encargo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, tieneCobros ? "El encargo se marcar\xE1 como cancelado (no se borra) y podr\xE1s decidir si reembolsas lo ya cobrado." : "El encargo se marcar\xE1 como cancelado. No se borra: queda en el historial."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo de la cancelaci\xF3n" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivoCancelar, onChange: (ev) => setMotivoCancelar(ev.target.value), placeholder: "El cliente ya no lo quiere…" })), errorEliminar && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, errorEliminar), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: async () => {
+      const resultado = cancelarEncargo(confirmDeleteId, { motivo: motivoCancelar });
+      if (!resultado || resultado.ok === false) {
+        setErrorEliminar(resultado?.error || "No se pudo cancelar el encargo.");
+        return;
+      }
+      setErrorEliminar("");
+      setConfirmDeleteId(null);
+      if (resultado.tieneCobrosPendientesDeResolver && revertirAnticipoEncargo && typeof window !== "undefined" && window.confirm) {
+        const totalCobrado = resultado.cobros.reduce((a22, c22) => a22 + (Number(c22.importe) || 0), 0);
+        const reembolsar = window.confirm(`Este encargo ten\xEDa €${fmt(totalCobrado)} cobrados. \xBFQuieres reembolsarlos ahora? (Aceptar = reembolsar, Cancelar = quedarte con el importe como se\xF1al perdida)`);
+        if (reembolsar) {
+          const sufijoPorConcepto = { "Se\xF1al": "senal", "Resto entrega": "resto" };
+          for (const cobro of resultado.cobros) {
+            const sufijo = sufijoPorConcepto[cobro.concepto];
+            // El id del cobro en el documento local no siempre coincide con el id de
+            // fila del ledger real (pagos_encargo): se reconstruye a partir del mismo
+            // esquema determinista que usa registrarAnticipoEncargo.
+            if (!sufijo) continue;
+            const pagoId = `pago-encargo:${confirmDeleteId}:${sufijo}`;
+            const reverso = await revertirAnticipoEncargo(pagoId, `Reembolso por cancelaci\xF3n: ${motivoCancelar}`);
+            if (!reverso.ok && reverso.codigo !== "sin_conexion" && typeof window.alert === "function") {
+              window.alert(`No se pudo reembolsar el cobro de €${fmt(Number(cobro.importe) || 0)}: ${reverso.error || "error desconocido"}. Rev\xEDsalo en caja.`);
+            }
+          }
+        }
+      }
+    } }, "S\xED, cancelar encargo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmDeleteId(null) }, "Volver")));
+  })());
 }
 function Clientes({ analisisClientes, clientesDormidos, ventaCruzada, addCliente, updateCliente, deleteCliente }) {
   const blank = { nombre: "", telefono: "", email: "", notas: "" };
