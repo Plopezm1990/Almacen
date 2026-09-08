@@ -1,0 +1,95 @@
+name: PM14 P01 documento e identidad
+
+on:
+  push:
+    branches: [pm14-encargos-anticipos-clientes]
+
+permissions:
+  contents: write
+
+jobs:
+  validar-p01:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Proteger main, base y producción
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          BASE_PM14='6ee2752a8f6aba882a6fa926892ab5b04aac231d'
+          git merge-base --is-ancestor "$BASE_PM14" HEAD
+          if [ -n "$(git diff --name-only "$BASE_PM14"..HEAD -- supabase/)" ]; then
+            echo 'PM14 P01 no autoriza cambios Supabase' >&2
+            git diff --name-only "$BASE_PM14"..HEAD -- supabase/ >&2
+            exit 1
+          fi
+          echo 'PM14_P01_MAIN_FROZEN=PASS'
+          echo 'PM14_P01_BASE_PM13=PASS'
+          echo 'PM14_P01_SIN_CAMBIOS_SUPABASE=PASS'
+
+      - name: Aplicar contrato P01 mínimo
+        run: python3 tools/corregir_pm14_p01_documento_identidad.py
+
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+
+      - name: Contrato PM14 P01
+        run: node tests/pm14/p01-documento-identidad-contract.mjs
+
+      - name: Regresión Encargos PM10 y contexto
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm10/p08-encargos-contract.mjs
+          node tests/pm10/p13-contexto-aislamiento-contract.mjs
+          node tests/pm05/frontend-contract.mjs
+          echo 'PM14_P01_REGRESSION_PM05_PM10=PASS'
+
+      - name: Barreras de alcance
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s = Path('fuente.js').read_text(encoding='utf-8')
+          assert 'function crearLogicaEncargos({' in s
+          assert 'empresaId, localId: localActivoId, estado: "Pendiente"' in s
+          assert 'campo_inmutable", "empresaId"' in s
+          assert 'campo_inmutable", "localId"' in s
+          assert 'campo_inmutable", "fechaCreacion"' in s
+          assert 'total: validacion.total' in s
+          print('PM14_P01_DOMAIN_GUARDS=PASS')
+          PY
+          ! grep -Eqi 'service_role|SUPABASE_SERVICE_ROLE_KEY|sb_secret_' \
+            tools/corregir_pm14_p01_documento_identidad.py \
+            tests/pm14/p01-documento-identidad-contract.mjs \
+            tests/pm14/P01_DOCUMENTO_IDENTIDAD.md
+          git diff --check
+          echo 'PM14_P01_NO_SECRET=PASS'
+
+      - name: Commit funcional si procede
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- fuente.js; then
+            echo 'Fuente ya coincide con PM14 P01'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add fuente.js
+          git commit -m 'feat(pm14): fijar documento e identidad P01'
+          git push
+
+  gate-final:
+    needs: validar-p01
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM14 P01
+        run: echo 'PM14_P01_GATE=SUCCESS'
