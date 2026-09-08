@@ -104958,28 +104958,76 @@ function crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovi
   return { registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion };
 }
 function crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId }) {
+  function hayConexionNubeClientes() {
+    return typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+  }
+  async function sincronizarClienteNube(cliente) {
+    if (!hayConexionNubeClientes() || !empresaId || !cliente) return { ok: false, offline: true };
+    try {
+      const supabase = await window.getSupabaseClient();
+      const r2 = await supabase.from("clientes_empresa").upsert({ id: cliente.id, empresa_id: empresaId, datos: { ...cliente, empresaId } });
+      if (r2.error) throw r2.error;
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: error?.message || "No se pudo sincronizar el cliente con el servidor." };
+    }
+  }
+  async function eliminarClienteNube(id) {
+    if (!hayConexionNubeClientes() || !empresaId || !id) return { ok: false, offline: true };
+    try {
+      const supabase = await window.getSupabaseClient();
+      const r2 = await supabase.from("clientes_empresa").delete().eq("id", id).eq("empresa_id", empresaId);
+      if (r2.error) throw r2.error;
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: error?.message || "No se pudo eliminar el cliente en el servidor." };
+    }
+  }
   function addCliente(data) {
-    if (!empresaId) return null;
+    if (!empresaId) return { ok: false, codigo: "contexto_no_autorizado", error: "No se pudo determinar la empresa activa." };
     const nuevo = { id: uid(), fechaAlta: todayISO(), ...data, empresaId };
     setClientes((s22) => [...s22, nuevo]);
+    sincronizarClienteNube(nuevo).catch(() => {});
     return nuevo;
   }
   function updateCliente(id, data) {
-    setClientes((s22) => s22.map((c22) => c22.id === id && c22.empresaId === empresaId ? { ...c22, ...data, empresaId: c22.empresaId } : c22));
+    const actual = clientes.find((c22) => c22.id === id);
+    if (!actual || actual.empresaId !== empresaId) {
+      return { ok: false, codigo: "contexto_no_autorizado", error: "El cliente no pertenece a la empresa activa." };
+    }
+    let actualizado = null;
+    setClientes(
+      (s22) => s22.map((c22) => {
+        if (c22.id !== id || c22.empresaId !== empresaId) return c22;
+        actualizado = { ...c22, ...data, id: c22.id, empresaId: c22.empresaId };
+        return actualizado;
+      })
+    );
+    if (actualizado) sincronizarClienteNube(actualizado).catch(() => {});
+    return true;
   }
   function deleteCliente(id) {
-    const c22 = clientes.find((x3) => x3.id === id);
-    registrarAuditoria("Eliminar cliente", c22 ? c22.nombre : id);
+    const c22 = clientes.find((x3) => x3.id === id && x3.empresaId === empresaId);
+    if (!c22) return false;
+    registrarAuditoria("Eliminar cliente", c22.nombre);
     setClientes((s22) => s22.filter((c222) => c222.id !== id));
+    eliminarClienteNube(id).catch(() => {});
+    return true;
   }
   function anonimizarCliente(id) {
-    const c22 = clientes.find((x3) => x3.id === id);
-    registrarAuditoria("Anonimizar cliente", c22 ? c22.nombre : id);
+    const c22 = clientes.find((x3) => x3.id === id && x3.empresaId === empresaId);
+    if (!c22) return false;
+    registrarAuditoria("Anonimizar cliente", c22.nombre);
+    let actualizado = null;
     setClientes(
-      (s22) => s22.map(
-        (cli) => cli.id === id ? { ...cli, nombre: "Cliente anonimizado", telefono: "", email: "", notas: "", anonimizado: true } : cli
-      )
+      (s22) => s22.map((cli) => {
+        if (cli.id !== id || cli.empresaId !== empresaId) return cli;
+        actualizado = { ...cli, nombre: "Cliente anonimizado", telefono: "", email: "", notas: "", anonimizado: true };
+        return actualizado;
+      })
     );
+    if (actualizado) sincronizarClienteNube(actualizado).catch(() => {});
+    return true;
   }
   return { addCliente, updateCliente, deleteCliente, anonimizarCliente };
 }
@@ -113691,6 +113739,10 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
   function crearClienteRapido() {
     if (!clienteNuevo.trim()) return;
     const c22 = addCliente({ nombre: clienteNuevo.trim() });
+    if (!c22 || c22.ok === false) {
+      setError(c22?.error || "No se pudo crear el cliente.");
+      return;
+    }
     setForm((f22) => ({ ...f22, clienteId: c22.id }));
     setClienteNuevo("");
   }
@@ -113837,21 +113889,25 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
     } }, "S\xED, cancelar encargo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmDeleteId(null) }, "Volver")));
   })());
 }
-function Clientes({ analisisClientes, clientesDormidos, ventaCruzada, addCliente, updateCliente, deleteCliente }) {
+function Clientes({ analisisClientes, clientesDormidos, ventaCruzada, addCliente, updateCliente, deleteCliente, anonimizarCliente }) {
   const blank = { nombre: "", telefono: "", email: "", notas: "" };
   const [showForm, setShowForm] = (0, import_react4.useState)(false);
   const [form, setForm] = (0, import_react4.useState)(blank);
   const [editingId, setEditingId] = (0, import_react4.useState)(null);
   const [error, setError] = (0, import_react4.useState)("");
   const [confirmDeleteId, setConfirmDeleteId] = (0, import_react4.useState)(null);
+  const [errorEliminar, setErrorEliminar] = (0, import_react4.useState)("");
   function submit() {
     if (!form.nombre.trim()) {
       setError("Escribe el nombre del cliente.");
       return;
     }
     setError("");
-    if (editingId) updateCliente(editingId, form);
-    else addCliente(form);
+    const resultado = editingId ? updateCliente(editingId, form) : addCliente(form);
+    if (!resultado || resultado.ok === false) {
+      setError(resultado?.error || "No se pudo guardar el cliente.");
+      return;
+    }
     setForm(blank);
     setEditingId(null);
     setShowForm(false);
@@ -113896,8 +113952,20 @@ function Clientes({ analisisClientes, clientesDormidos, ventaCruzada, addCliente
     setShowForm(false);
     setForm(blank);
     setEditingId(null);
-  } }, "Cancelar"))), clientesDormidos.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2" }, "Clientes que hace tiempo que no vuelven"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1" }, clientesDormidos.slice(0, 6).map((c22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: c22.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, c22.nombre, c22.telefono && ` \xB7 ${c22.telefono}`), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, c22.diasSinComprar, " d\xEDas")))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Te compraron antes y llevan m\xE1s de 2 meses sin encargar nada. Una llamada o un WhatsApp puede recuperarlos.")), analisisClientes.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no tienes clientes registrados." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 mb-4" }, analisisClientes.map((c22) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: c22.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold" }, c22.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, [c22.telefono, c22.email].filter(Boolean).join(" \xB7 ")), c22.notas && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, c22.notas)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold" }, "\u20AC", fmt(c22.facturado)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, c22.nEncargos, " encargo(s)"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, c22.ultima ? `\xDAltima compra: ${c22.ultima}` : "Sin compras registradas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, c22.telefono && /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { small: true, href: `https://wa.me/${c22.telefono.replace(/[^0-9]/g, "")}` }, /* @__PURE__ */ import_react4.default.createElement(MessageCircle, { size: 13 }), " WhatsApp"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => exportarDatosCliente(c22) }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 13 })), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => abrirEdicion(c22) }, "Editar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", onClick: () => setConfirmDeleteId(c22.id) }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 13 }))))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Productos que se piden juntos"), ventaCruzada.base < 3 ? /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "Con ", ventaCruzada.base, " encargo(s) entregado(s) todav\xEDa no se puede sacar ninguna conclusi\xF3n fiable. A partir de 3 empezar\xE1s a ver qu\xE9 se pide junto; con 20 o 30 el dato ya sirve para decidir qu\xE9 poner cerca en el mostrador.")) : ventaCruzada.filas.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no hay dos productos distintos en un mismo encargo." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, ventaCruzada.filas.map((f22, i33) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: i33 }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, f22.a.nombre, " ", /* @__PURE__ */ import_react4.default.createElement("span", { style: { color: C2.inkSoft } }, "+"), " ", f22.b.nombre), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold" }, f22.veces, "\xD7")))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, "Basado en ", ventaCruzada.base, " encargos entregados. Cuantos m\xE1s acumules, m\xE1s fiable ser\xE1.")), confirmDeleteId && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmDeleteId(null), title: "Eliminar cliente" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-4" }, "Se borra la ficha del cliente. Los encargos que ya le hiciste se conservan, pero quedar\xE1n sin nombre asociado."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: () => {
-    deleteCliente(confirmDeleteId);
+  } }, "Cancelar"))), clientesDormidos.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2" }, "Clientes que hace tiempo que no vuelven"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1" }, clientesDormidos.slice(0, 6).map((c22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: c22.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, c22.nombre, c22.telefono && ` \xB7 ${c22.telefono}`), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, c22.diasSinComprar, " d\xEDas")))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Te compraron antes y llevan m\xE1s de 2 meses sin encargar nada. Una llamada o un WhatsApp puede recuperarlos.")), analisisClientes.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no tienes clientes registrados." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 mb-4" }, analisisClientes.map((c22) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: c22.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold" }, c22.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, [c22.telefono, c22.email].filter(Boolean).join(" \xB7 ")), c22.notas && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, c22.notas)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold" }, "\u20AC", fmt(c22.facturado)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, c22.nEncargos, " encargo(s)"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, c22.ultima ? `\xDAltima compra: ${c22.ultima}` : "Sin compras registradas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, c22.telefono && /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { small: true, href: `https://wa.me/${c22.telefono.replace(/[^0-9]/g, "")}` }, /* @__PURE__ */ import_react4.default.createElement(MessageCircle, { size: 13 }), " WhatsApp"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => exportarDatosCliente(c22) }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 13 })), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => abrirEdicion(c22) }, "Editar"), anonimizarCliente && !c22.anonimizado && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
+    if (typeof window !== "undefined" && window.confirm && !window.confirm(`\xBFAnonimizar a ${c22.nombre}? Se borran nombre, tel\xE9fono, email y notas; el historial de encargos se conserva sin datos identificativos. No se puede deshacer.`)) return;
+    const ok = anonimizarCliente(c22.id);
+    if (!ok && typeof window !== "undefined" && window.alert) window.alert("No se pudo anonimizar el cliente.");
+  } }, "Anonimizar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", onClick: () => {
+    setErrorEliminar("");
+    setConfirmDeleteId(c22.id);
+  } }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 13 }))))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Productos que se piden juntos"), ventaCruzada.base < 3 ? /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "Con ", ventaCruzada.base, " encargo(s) entregado(s) todav\xEDa no se puede sacar ninguna conclusi\xF3n fiable. A partir de 3 empezar\xE1s a ver qu\xE9 se pide junto; con 20 o 30 el dato ya sirve para decidir qu\xE9 poner cerca en el mostrador.")) : ventaCruzada.filas.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no hay dos productos distintos en un mismo encargo." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, ventaCruzada.filas.map((f22, i33) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: i33 }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, f22.a.nombre, " ", /* @__PURE__ */ import_react4.default.createElement("span", { style: { color: C2.inkSoft } }, "+"), " ", f22.b.nombre), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold" }, f22.veces, "\xD7")))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, "Basado en ", ventaCruzada.base, " encargos entregados. Cuantos m\xE1s acumules, m\xE1s fiable ser\xE1.")), confirmDeleteId && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmDeleteId(null), title: "Eliminar cliente" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-4" }, "Se borra la ficha del cliente. Los encargos que ya le hiciste se conservan, pero quedar\xE1n sin nombre asociado."), errorEliminar && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, errorEliminar), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: () => {
+    const eliminado = deleteCliente(confirmDeleteId);
+    if (!eliminado) {
+      setErrorEliminar("No se pudo eliminar: revisa que el cliente siga en la empresa activa.");
+      return;
+    }
+    setErrorEliminar("");
     setConfirmDeleteId(null);
   } }, "S\xED, eliminar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmDeleteId(null) }, "Cancelar"))));
 }

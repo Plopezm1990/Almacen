@@ -1,0 +1,91 @@
+name: PM14 P06 Clientes aislamiento y anonimizacion
+
+on:
+  push:
+    branches: [claude/pm14-encargos-anticipos-i8ye52]
+    paths:
+      - 'fuente.js'
+      - 'tests/pm14/**'
+      - 'tests/pm10/p08-encargos-contract.mjs'
+      - '.github/workflows/pm14-p06-clientes-aislamiento.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar-p06:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main y alcance P06 (sin cambios en supabase/)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          PM05_BASE='10a2c4688d520ab461a42743dfc805d849e79e84'
+          unexpected="$(git diff --name-only "$PM05_BASE"..HEAD -- supabase/ || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'PM14 P06 no necesita ni debe tocar supabase/ (clientes_empresa ya existia)' >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+          echo 'PM14_P06_MAIN_FROZEN=PASS'
+          echo 'PM14_P06_SIN_CAMBIOS_SUPABASE=PASS'
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+      - name: Contrato PM14 P06 (aislamiento de clientes)
+        run: node tests/pm14/p06-clientes-aislamiento-contract.mjs
+      - name: Regresión Encargos (P01-P05, PM10 P08)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm14/p01-encargos-identidad-contract.mjs
+          node tests/pm14/p02-encargos-frontend-contract.mjs
+          node tests/pm14/p03-encargos-entrega-contract.mjs
+          node tests/pm14/p04-encargos-cancelacion-contract.mjs
+          node tests/pm14/p05-encargos-devolucion-contract.mjs
+          node tests/pm10/p08-encargos-contract.mjs
+          echo 'PM14_P06_REGRESION_ENCARGOS=PASS'
+      - name: Regresión TPV/Caja PM07-PM09
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm07/frontend-contract.mjs
+          for t in tests/pm09/*.mjs; do node "$t"; done
+          echo 'PM14_P06_REGRESION_PM07_PM09=PASS'
+      - name: Barreras de dominio P06
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s = Path('fuente.js').read_text(encoding='utf-8')
+          ini = s.index('function crearLogicaClientes({')
+          fin = s.index('function crearMotorStock({', ini)
+          b = s[ini:fin]
+          assert 'contexto_no_autorizado' in b
+          assert 'clientes_empresa' in b
+          assert "actual.empresaId !== empresaId" in b
+          assert 'x3.id === id && x3.empresaId === empresaId' in b
+          print('PM14_P06_DOMAIN_GUARDS=PASS')
+          PY
+          ! grep -Eqi 'service_role|SUPABASE_SERVICE_ROLE_KEY|sb_secret_' \
+            tests/pm14/p06-clientes-aislamiento-contract.mjs tests/pm14/P06_CIERRE_CLIENTES_AISLAMIENTO.md
+          echo 'PM14_P06_NO_SECRET=PASS'
+
+  gate-final:
+    needs: validar-p06
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM14 P06
+        run: |
+          set -euo pipefail
+          node tests/pm14/p06-clientes-aislamiento-contract.mjs
+          node tests/pm14/p01-encargos-identidad-contract.mjs
+          node tests/pm10/p08-encargos-contract.mjs
+          echo 'PM14_P06_GATE_FINAL=PASS'
