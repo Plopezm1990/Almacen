@@ -1,0 +1,75 @@
+name: PM18 P01 LA-021 identidad fiscal
+
+on:
+  push:
+    branches: [claude/pm18-empresa-fiscal]
+    paths:
+      - 'fuente.js'
+      - 'tests/pm18/**'
+      - '.github/workflows/pm18-p01-la021-identidad-fiscal.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar-p01:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main y alcance P01 (sin cambios en supabase/)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "a44f1c71df449a4da98596ffa78a4428992ab539"
+          unexpected="$(git diff --name-only origin/main..HEAD -- supabase/ || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'PM18 P01 es un cambio de frontend puro: no debe tocar supabase/' >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+          echo 'PM18_P01_MAIN_FROZEN=PASS'
+          echo 'PM18_P01_SIN_CAMBIOS_SUPABASE=PASS'
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+      - name: Contrato PM18 P01 (LA-021)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm18/p01-identidad-fiscal-contract.mjs
+          node tests/pm18/p01-wiring-identidad-fiscal-contract.mjs
+      - name: Regresión completa (todas las suites vigentes)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for d in tests/g1 tests/pm04 tests/pm05 tests/pm07 tests/pm08 tests/pm09 tests/pm10 tests/pm11-compra tests/pm12 tests/pm13 tests/pm14 tests/pm15 tests/pm16 tests/pm17; do
+            for t in "$d"/*.mjs; do
+              [ -f "$t" ] || continue
+              node "$t"
+            done
+          done
+          echo 'PM18_P01_REGRESION_COMPLETA=PASS'
+      - name: Sin secretos
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -Eqi 'service_role|SUPABASE_SERVICE_ROLE_KEY|sb_secret_' \
+            tests/pm18/p01-identidad-fiscal-contract.mjs \
+            tests/pm18/p01-wiring-identidad-fiscal-contract.mjs \
+            tests/pm18/P01_CIERRE_LA021_IDENTIDAD_FISCAL.md
+          echo 'PM18_P01_NO_SECRET=PASS'
+
+  gate-final:
+    needs: validar-p01
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM18 P01
+        run: |
+          set -euo pipefail
+          node tests/pm18/p01-identidad-fiscal-contract.mjs
+          node tests/pm18/p01-wiring-identidad-fiscal-contract.mjs
+          echo 'PM18_P01_GATE_FINAL=PASS'
