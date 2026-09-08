@@ -102740,6 +102740,9 @@ function GestionAlmacen() {
     const emp = usuarioActivoId ? empleados.find((e2) => e2.id === usuarioActivoId) : null;
     window.__usuarioActivoNombre = modoEmpleado ? emp ? emp.nombre : "Empleado sin identificar" : "Propietario/a";
   }, [usuarioActivoId, empleados, modoEmpleado]);
+  (0, import_react4.useEffect)(() => {
+    window.__contextoErroresPM20 = { empresaId: empresaDelLocalActivo?.id || null, localId: localActivoId || null };
+  }, [empresaDelLocalActivo, localActivoId]);
   const documentosPersonalCaducan = (0, import_react4.useMemo)(() => {
     const hoy = /* @__PURE__ */ new Date();
     hoy.setHours(0, 0, 0, 0);
@@ -117264,12 +117267,15 @@ async function registrarErrorSistema(mensaje, pantalla, pila) {
     if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return;
     const supabase = await window.getSupabaseClient();
     const id = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random();
+    const contexto = window.__contextoErroresPM20 || {};
     await supabase.from("errores_sistema").insert({
       id,
       mensaje: String(mensaje || "").slice(0, 500),
       pantalla: pantalla || "",
       pila: String(pila || "").slice(0, 2e3),
-      dispositivo: navigator.userAgent.slice(0, 200)
+      dispositivo: navigator.userAgent.slice(0, 200),
+      empresa_id: contexto.empresaId || null,
+      local_id: contexto.localId || null
     });
     const clave = String(mensaje || "").slice(0, 200);
     const ahora = Date.now();
