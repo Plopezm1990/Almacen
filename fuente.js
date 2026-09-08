@@ -106695,6 +106695,14 @@ function validarEncargoPM10(data, { productos = [], clientes = [], localActivoId
     }
   };
 }
+function historialEncargosPM14(encargos) {
+  return (encargos || []).filter((e2) => e2.estado === "Cancelado" || e2.estado === "Devuelto").map((e2) => {
+    const total = Number(e2.total) || (e2.lineas || []).reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
+    const fechaHistorial = e2.estado === "Cancelado" ? e2.fechaCancelacion || null : e2.fechaDevolucion || null;
+    const motivoHistorial = e2.estado === "Cancelado" ? e2.motivoCancelacion || "" : e2.motivoDevolucion || "";
+    return { ...e2, total, fechaHistorial, motivoHistorial };
+  }).sort((a22, b2) => String(b2.fechaHistorial || "").localeCompare(String(a22.fechaHistorial || "")));
+}
 function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes = [], setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId = null, locales = [] }) {
   function localDeEncargo(e2) {
     if (!e2) return null;
@@ -113654,6 +113662,7 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
   const [errorEntrega, setErrorEntrega] = (0, import_react4.useState)("");
   const [medioPagoEntrega, setMedioPagoEntrega] = (0, import_react4.useState)("Efectivo");
   const [verEntregados, setVerEntregados] = (0, import_react4.useState)(false);
+  const [verHistorial, setVerHistorial] = (0, import_react4.useState)(false);
   const [clienteNuevo, setClienteNuevo] = (0, import_react4.useState)("");
   const vendibles = productos.filter((p22) => p22.tipo === "elaborado" || Number(p22.precioVenta) > 0);
   function nuevo() {
@@ -113747,6 +113756,7 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
     setClienteNuevo("");
   }
   const entregados = encargos.filter((e2) => e2.estado === "Entregado");
+  const historial = historialEncargosPM14(encargos);
   function colorDias(d2) {
     if (d2 === null) return C2.inkSoft;
     if (d2 < 0) return C2.red;
@@ -113792,6 +113802,9 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
       setMotivoDevolver("");
       setDevolverId(e2.id);
     } }, "Devolver")));
+  })), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setVerHistorial((s22) => !s22), className: "text-[12.5px] font-medium mt-2 mb-2", style: { color: C2.accent } }, verHistorial ? "Ocultar" : "Ver", " historial (cancelados y devueltos) (", historial.length, ")"), verHistorial && /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, historial.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no hay encargos cancelados ni devueltos." }) : historial.map((e2) => {
+    const cliente = clientes.find((c22) => c22.id === e2.clienteId);
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id, style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, cliente ? cliente.nombre : "—", e2.numero && ` \xB7 ${e2.numero}`), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, "€", fmt(e2.total))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mt-1 text-[11.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", { style: { color: e2.estado === "Cancelado" ? C2.red : C2.amber, fontWeight: 600 } }, e2.estado, e2.fechaHistorial && ` \xB7 ${e2.fechaHistorial}`), null), e2.motivoHistorial && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-1 text-[11.5px]", style: { color: C2.inkSoft } }, e2.motivoHistorial));
   })), devolverId && (() => {
     const e2 = encargos.find((x3) => x3.id === devolverId);
     if (!e2) return null;

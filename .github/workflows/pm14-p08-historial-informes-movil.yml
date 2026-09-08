@@ -1,0 +1,105 @@
+name: PM14 P08 Historial informes movil regresion final
+
+on:
+  push:
+    branches: [claude/pm14-encargos-anticipos-i8ye52]
+    paths:
+      - 'fuente.js'
+      - 'tests/pm14/**'
+      - 'tests/pm10/p08-encargos-contract.mjs'
+      - '.github/workflows/pm14-p08-historial-informes-movil.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar-p08:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main y alcance P08 (sin cambios en supabase/)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          PM07_BASE='1092895bd5fe5d852953c193fc55e60c97782861'
+          unexpected="$(git diff --name-only "$PM07_BASE"..HEAD -- supabase/ || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'PM14 P08 es un cambio de UI de solo lectura: no debe tocar supabase/' >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+          echo 'PM14_P08_MAIN_FROZEN=PASS'
+          echo 'PM14_P08_SIN_CAMBIOS_SUPABASE=PASS'
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+      - name: Contrato PM14 P08 (historial de cancelados/devueltos)
+        run: node tests/pm14/p08-encargos-historial-contract.mjs
+      - name: Regresión completa Encargos/Clientes (P01-P07, PM10 P08)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm14/p01-encargos-identidad-contract.mjs
+          node tests/pm14/p02-encargos-frontend-contract.mjs
+          node tests/pm14/p03-encargos-entrega-contract.mjs
+          node tests/pm14/p04-encargos-cancelacion-contract.mjs
+          node tests/pm14/p05-encargos-devolucion-contract.mjs
+          node tests/pm14/p06-clientes-aislamiento-contract.mjs
+          node tests/pm14/p07-encargos-concurrencia-contract.mjs
+          node tests/pm10/p08-encargos-contract.mjs
+          echo 'PM14_P08_REGRESION_ENCARGOS=PASS'
+      - name: Regresión TPV/Caja PM07-PM09
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm07/frontend-contract.mjs
+          for t in tests/pm09/*.mjs; do node "$t"; done
+          echo 'PM14_P08_REGRESION_PM07_PM09=PASS'
+      - name: Barreras de dominio P08
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s = Path('fuente.js').read_text(encoding='utf-8')
+          ini = s.index('function historialEncargosPM14(')
+          fin = s.index('function crearLogicaEncargos(', ini)
+          b = s[ini:fin]
+          assert '"Cancelado"' in b
+          assert '"Devuelto"' in b
+          assert 'fechaHistorial' in b
+          assert 'motivoHistorial' in b
+          ini2 = s.index('function Encargos({')
+          fin2 = s.index('function Clientes({', ini2)
+          e = s[ini2:fin2]
+          assert 'historialEncargosPM14(encargos)' in e
+          assert 'verHistorial' in e
+          print('PM14_P08_DOMAIN_GUARDS=PASS')
+          PY
+          ! grep -Eqi 'service_role|SUPABASE_SERVICE_ROLE_KEY|sb_secret_' \
+            tests/pm14/p08-encargos-historial-contract.mjs tests/pm14/P08_CIERRE_HISTORIAL_INFORMES_MOVIL_REGRESION.md
+          echo 'PM14_P08_NO_SECRET=PASS'
+
+  gate-final:
+    needs: validar-p08
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM14 P08 (y cierre final de PM14)
+        run: |
+          set -euo pipefail
+          node tests/pm14/p08-encargos-historial-contract.mjs
+          node tests/pm14/p01-encargos-identidad-contract.mjs
+          node tests/pm14/p02-encargos-frontend-contract.mjs
+          node tests/pm14/p03-encargos-entrega-contract.mjs
+          node tests/pm14/p04-encargos-cancelacion-contract.mjs
+          node tests/pm14/p05-encargos-devolucion-contract.mjs
+          node tests/pm14/p06-clientes-aislamiento-contract.mjs
+          node tests/pm14/p07-encargos-concurrencia-contract.mjs
+          node tests/pm10/p08-encargos-contract.mjs
+          echo 'PM14_P08_GATE_FINAL=PASS'
+          echo 'PM14_PAQUETE_COMPLETO_P01_A_P08=PASS'
