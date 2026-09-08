@@ -65,7 +65,7 @@ let r = ok(base);
 assert.equal(r.total, 20);
 assert.equal(r.datos.lineas[0].cantidad, 2);
 assert.equal(r.datos.lineas[0].precioUnitario, 10);
-r = ok({ ...base, señal: '', lineas: [{ productoId: 'p1', descripcion: 'Tarta', cantidad: '1.5', precioUnitario: '9.99' }] });
+r = ok({ ...base, señal: '', lineas: [{ productoId: 'p1', descripcion: 'Tarta personalizada', cantidad: '1.5', precioUnitario: '9.99' }] });
 assert.equal(r.datos.señal, 0, 'señal vacía = ausencia de señal');
 assert.equal(r.datos.lineas[0].cantidad, 1.5);
 assert.equal(r.datos.lineas[0].precioUnitario, 9.99);
@@ -219,7 +219,8 @@ assert.ok(resultPos >= 0 && errorPos > resultPos && closePos > errorPos, 'el for
 
 const logic = src.slice(src.indexOf('function crearLogicaEncargos({'), encFin);
 assert.match(logic, /function addEncargo\(data\)[\s\S]{0,500}validarEncargoPM10/);
-assert.match(logic, /function updateEncargo\(id, data\)[\s\S]{0,900}validarEncargoPM10/);
+// Mantenimiento PM14: P01 añade guardas de identidad antes de la misma barrera de dominio.
+assert.match(logic, /function updateEncargo\(id, data\)[\s\S]{0,1800}validarEncargoPM10/);
 assert.match(src, /crearLogicaEncargos\(\{ encargos, setEncargos, registrarAuditoria, productos, clientes,[\s\S]{0,360}empresaId: empresaDelLocalActivo\?\.id \|\| null, locales \}\)/);
 
 console.log('PM10 P08 LA-018 Encargos: contrato OK');
