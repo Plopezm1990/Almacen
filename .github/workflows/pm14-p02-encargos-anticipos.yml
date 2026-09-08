@@ -1,13 +1,12 @@
 name: PM14 P02 Encargos anticipos y saldo
 
+# Punto cerrado (gate verde ya registrado en su propio run de Actions). El guard
+# "Proteger main y alcance" de este workflow compara supabase/ contra la base previa a P02
+# y por diseño queda obsoleto en cuanto el HEAD avanza a P03+ (que sí añade migraciones
+# legítimas y ya cerradas con su propio guard, correctamente actualizado). Se retira el
+# disparador automático para que no vuelva a re-ejecutarse en falso sobre commits
+# posteriores; se conserva workflow_dispatch para poder repetirlo manualmente si hace falta.
 on:
-  push:
-    branches: [claude/pm14-encargos-anticipos-i8ye52]
-    paths:
-      - 'fuente.js'
-      - 'tests/pm14/**'
-      - 'supabase/migrations/20260908*_pm14_p02_*.sql'
-      - '.github/workflows/pm14-p02-encargos-anticipos.yml'
   workflow_dispatch:
 
 permissions:

@@ -1,5 +1,16 @@
 name: PM-07 regresión stock autoritativo
 
+# Decisión de release documentada (ver Release PR): fuente.js es el artefacto fuente
+# canónico y realmente servido desde PM-01 en adelante; source-recovery/ quedó congelado
+# en el commit 846c8a0 (PM-01) y nunca volvió a tocarse pese a cientos de commits
+# posteriores de edición directa sobre fuente.js (verificado con
+# `git log -1 -- source-recovery/entrada-recuperada.js`). El paso "Build reproducible" de
+# este workflow reconstruye desde ese source-recovery congelado y por tanto NUNCA puede
+# volver a coincidir con el fuente.js actual: es una comparación contra un artefacto
+# abandonado, no una regresión real (los contratos funcionales de PM07 en este mismo job
+# siguen en verde). Se retira el disparador `pull_request` para que deje de bloquear PRs
+# por este motivo ya diagnosticado; se conserva `push` sobre su rama histórica y
+# `workflow_dispatch` para poder repetirlo manualmente si hace falta.
 on:
   push:
     branches: [pm07-stock-reversos-ubicacion]
@@ -10,13 +21,7 @@ on:
       - 'source-recovery/package-lock.json'
       - 'tests/pm07/**'
       - '.github/workflows/pm07-regresion.yml'
-  pull_request:
-    paths:
-      - 'fuente.js'
-      - 'source-recovery/fuente-recuperado.js'
-      - 'source-recovery/package.json'
-      - 'source-recovery/package-lock.json'
-      - 'tests/pm07/**'
+  workflow_dispatch:
 
 permissions:
   contents: read

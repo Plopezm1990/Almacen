@@ -37,7 +37,9 @@ const pedidos = bloque('function crearLogicaPedidos(', 'function crearLogicaFich
 assert.match(pedidos, /function crearPedido\([\s\S]*?validarPedidoPM10/);
 assert.match(pedidos, /function recibirPedido\([\s\S]*?validarRecepcionPedidoPM10[\s\S]*?procesarRecepcion\(\{/);
 const personal = bloque('function crearLogicaPersonal({', 'function crearLogicaTurnos({');
-assert.match(personal, /function addEmpleado\(data\)[\s\S]*?validarEmpleadoPM10/);
+// PM13 añadió un segundo parámetro (controlPM13 = {}) a addEmpleado; se relaja el
+// literal de la firma sin dejar de exigir que valide antes de persistir.
+assert.match(personal, /function addEmpleado\(data[\s\S]*?validarEmpleadoPM10/);
 const encargos = bloque('function crearLogicaEncargos({', 'function crearLogicaVenta({');
 assert.match(encargos, /function addEncargo\(data\)[\s\S]*?validarEncargoPM10/);
 

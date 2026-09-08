@@ -1,18 +1,16 @@
 name: PM12 P10 regresion preview y cierre
 
+# Punto cerrado (gate verde ya registrado en su propio run de Actions, referenciado en el
+# PR #28). El guard "Proteger main y el alcance P10" compara supabase/ contra P10_BASE y
+# por diseño queda obsoleto en cuanto el HEAD avanza más allá de PM12 (PM13/PM14 añaden
+# migraciones legítimas y ya cerradas con sus propios guards, correctamente actualizados).
+# Se retira el disparador `pull_request` (que reactivaba este workflow en cualquier PR a
+# main cuyo diff tocase alguno de estos paths, incluida una consolidación acumulada como
+# esta) para que no vuelva a re-ejecutarse en falso; se conserva `push` sobre su propia
+# rama histórica y `workflow_dispatch` para poder repetirlo manualmente si hace falta.
 on:
   push:
     branches: [pm12-p10-regresion-preview-cierre]
-    paths:
-      - 'index.html'
-      - 'pm12-conteo-estados-v1.js'
-      - 'pm12-stock-atomico-v1.js'
-      - 'pm12-p09-historial-informes-movil-v1.js'
-      - 'reset-pruebas-preview.js'
-      - 'tests/pm12/**'
-      - '.github/workflows/pm12-p10-regresion-preview-cierre.yml'
-  pull_request:
-    branches: [main]
     paths:
       - 'index.html'
       - 'pm12-conteo-estados-v1.js'

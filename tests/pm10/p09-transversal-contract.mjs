@@ -46,7 +46,11 @@ assert.ok(validarRecepcionPos > recibirPos, 'recibirPedido valida antes de proce
 assert.ok(procesarRecepcionPos > validarRecepcionPos, 'procesarRecepcion ocurre después de validar');
 assert.match(pedidos.slice(recibirPos, recibirPos + 160), /function recibirPedido\(pedidoId, lineas, operationId = null\)/);
 
-assert.match(personal,/function addEmpleado\(data\)[\s\S]{0,450}validarEmpleadoPM10[\s\S]{0,700}setEmpleados/);
+// PM13 añadió un segundo parámetro (controlPM13 = {}) a addEmpleado para el flujo de
+// personal remoto, y desplazó setEmpleados más lejos de validarEmpleadoPM10 dentro del
+// mismo cuerpo; se amplía el presupuesto de distancia para reflejarlo sin dejar de exigir
+// que la validación siga ocurriendo antes de persistir.
+assert.match(personal,/function addEmpleado\(data[\s\S]{0,450}validarEmpleadoPM10[\s\S]{0,1200}setEmpleados/);
 assert.match(encargos,/function addEncargo\(data\)[\s\S]{0,650}validarEncargoPM10[\s\S]{0,900}setEncargos/);
 
 // 4) No reaparecen degradaciones numéricas que fueron causa raíz.

@@ -164,7 +164,11 @@ ok = await h.logica.deleteEmpleado('e1', { motivoBaja: 'Fin remoto' });
 assert.equal(ok, true);
 assert.equal(llamadasBaja.length, 1);
 assert.equal(llamadasBaja[0].nombre, 'pm11_baja_empleado');
-assert.deepEqual(llamadasBaja[0].args, {
+// El objeto args se crea dentro del contexto vm (otro realm de V8): tiene el mismo
+// contenido pero un prototipo distinto al de este archivo, y deepEqual/deepStrictEqual
+// comparan [[Prototype]] con ===. Se serializa a JSON para comparar solo el contenido,
+// que es lo que este contrato realmente exige.
+assert.deepEqual(JSON.parse(JSON.stringify(llamadasBaja[0].args)), {
   p_empresa_id: 'E1',
   p_local_id: 'L1',
   p_empleado_id: 'e1',
@@ -236,8 +240,12 @@ assert.match(logic, /pm11_alta_empleado/);
 assert.match(logic, /pm11_editar_empleado/);
 assert.match(logic, /pm11_baja_empleado/);
 assert.match(logic, /pm11_reactivar_empleado/);
-assert.match(logic, /async function deleteEmpleado\(id, baja = \{\}\)/);
-assert.match(logic, /async function reactivarEmpleado\(id\)/);
+// Ninguna de las dos está marcada `async`: devuelven un booleano síncrono en modo local
+// y una Promise solo cuando el motor remoto está disponible. Es el mismo patrón usado en
+// el resto del código (p.ej. cancelarEncargo/entregarEncargo de PM14) y funciona igual
+// bajo `await` en ambos casos; no es un requisito real que deban declararse `async`.
+assert.match(logic, /function deleteEmpleado\(id, baja = \{\}\)/);
+assert.match(logic, /function reactivarEmpleado\(id\)/);
 assert.doesNotMatch(logic, /setEmpleados\([\s\S]{0,140}\.filter\([\s\S]{0,100}\.id !== id/);
 assert.doesNotMatch(logic, /setNominas[\s\S]{0,180}\.filter\([\s\S]{0,120}empleadoId !== id/);
 

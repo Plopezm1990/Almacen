@@ -1,0 +1,150 @@
+name: Release Gate - Consolidacion L&A Suite hasta PM14
+
+# Gate de release definitivo para el PR de consolidacion acumulada hasta PM14 (ver
+# descripcion del PR). No es un gate de un punto aislado: ejecuta de nuevo, desde cero,
+# la regresion real y completa de todo lo que se va a promover, contra el HEAD exacto que
+# se fusionaria. No sustituye a los gates historicos de cada punto (que ya quedaron
+# registrados en su momento); los complementa con una validacion fresca y unica al final.
+
+on:
+  push:
+    branches: [claude/pm14-encargos-anticipos-i8ye52]
+    paths:
+      - 'fuente.js'
+      - 'tests/**'
+      - 'supabase/migrations/**'
+      - '.github/workflows/release-gate-consolidacion-pm14.yml'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  proteger-main:
+    runs-on: ubuntu-24.04
+    outputs:
+      main_sha: ${{ steps.check.outputs.main_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: check
+        name: Confirmar que main sigue congelado
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          MAIN_SHA="$(git rev-parse origin/main)"
+          test "$MAIN_SHA" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          echo "main_sha=$MAIN_SHA" >> "$GITHUB_OUTPUT"
+          echo "RELEASE_GATE_MAIN_FROZEN=PASS"
+
+  sintaxis-y-secretos:
+    needs: proteger-main
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sintaxis del bundle servido
+        run: node --check fuente.js
+      - name: Sin claves/tokens reales embebidos (deteccion por forma, no por palabra)
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Un grep de palabras sueltas (service_role, sb_secret_...) da falsos positivos
+          # constantes: fuente.js documenta esos terminos en comentarios de la libreria de
+          # Supabase que empaqueta, y varios tests afirman explicitamente la AUSENCIA de esas
+          # palabras (assert.doesNotMatch), lo que las contiene literalmente como patron. La
+          # deteccion real y fiable es por FORMA: un JWT autentico son 3 segmentos base64url
+          # separados por puntos; ninguna clave real deberia aparecer embebida asi en el repo.
+          unexpected="$(grep -RIlE 'eyJ[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{10,}' \
+            --exclude-dir=node_modules --exclude-dir=.git . 2>/dev/null || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'Posible JWT/clave embebida encontrada en:' >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+          echo 'RELEASE_GATE_SIN_CLAVES_EMBEBIDAS=PASS'
+      - name: Confirmar alcance Supabase (TPV nunca referenciado como destino de Proyecto A)
+        shell: bash
+        run: |
+          set -euo pipefail
+          unexpected="$(grep -RIlE 'cqtghwiuxrqrxupyonqf' --include='*.js' --include='*.sql' --include='*.mjs' \
+            --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.github . 2>/dev/null || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'Referencia inesperada al proyecto TPV (fuera de Proyecto A) encontrada en:' >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+          echo 'RELEASE_GATE_TPV_NO_REFERENCIADO=PASS'
+
+  regresion-completa:
+    needs: proteger-main
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: release_gate_test
+          POSTGRES_PASSWORD: release-gate-ci-only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Esperar Postgres
+        run: |
+          for i in $(seq 1 20); do pg_isready -h 127.0.0.1 -p 5432 -U postgres && break; sleep 2; done
+        env:
+          PGPASSWORD: release-gate-ci-only
+      - name: Regresion funcional completa (todas las suites vigentes, sin Postgres)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for d in tests/g1 tests/pm04 tests/pm05 tests/pm07 tests/pm08 tests/pm09 tests/pm10 tests/pm11-compra tests/pm12 tests/pm13 tests/pm14; do
+            for t in "$d"/*.mjs; do
+              [ -f "$t" ] || continue
+              echo "== $t =="
+              node "$t"
+            done
+          done
+          echo 'RELEASE_GATE_REGRESION_FUNCIONAL=PASS'
+      - name: Instalar dependencias de los contratos Postgres (PM12, PM14)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --silent --prefix tests/pm12/db
+          npm install --silent --prefix tests/pm14/db
+      - name: Crear bases de pruebas desechables
+        shell: bash
+        env:
+          PGPASSWORD: release-gate-ci-only
+        run: |
+          set -euo pipefail
+          dropdb -h 127.0.0.1 -U postgres --if-exists pm12_p08_test
+          createdb -h 127.0.0.1 -U postgres pm12_p08_test
+          dropdb -h 127.0.0.1 -U postgres --if-exists pm14_p02_test
+          createdb -h 127.0.0.1 -U postgres pm14_p02_test
+      - name: Contratos Postgres reales (PM12 P08, PM14 P02/P05/P07)
+        shell: bash
+        env:
+          PM12_TEST_DATABASE_URL: postgresql://postgres:release-gate-ci-only@127.0.0.1:5432/pm12_p08_test
+          PM14_TEST_DATABASE_URL: postgresql://postgres:release-gate-ci-only@127.0.0.1:5432/pm14_p02_test
+        run: |
+          set -euo pipefail
+          node tests/pm12/db/p08-postgres-contract.mjs
+          node tests/pm14/db/p02-postgres-contract.mjs
+          node tests/pm14/db/p05-postgres-contract.mjs
+          node tests/pm14/db/p07-postgres-concurrencia-contract.mjs
+          echo 'RELEASE_GATE_REGRESION_POSTGRES=PASS'
+
+  gate-final:
+    needs: [proteger-main, sintaxis-y-secretos, regresion-completa]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Release gate consolidado
+        run: echo 'RELEASE_GATE_PM14_CONSOLIDACION=PASS'

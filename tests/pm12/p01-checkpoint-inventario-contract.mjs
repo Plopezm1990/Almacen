@@ -35,9 +35,13 @@ for (const symbol of [
 
 // Baseline LA-020: P01 demuestra el defecto antes de corregirlo.
 // P02 sustituirá esta aserción por el contrato de estados canónicos.
+// PM12 P05 añadió un segundo parámetro (opciones = {}) a finalizarConteo y alejó
+// "completado: true" dentro del cuerpo; se amplía el literal y el presupuesto de
+// distancia sin cambiar lo que este baseline documenta (ya superado por el contrato
+// de estados canónicos de P02).
 assert.match(
   src,
-  /function finalizarConteo\(conteoId\) \{[\s\S]{0,500}completado: true/,
+  /function finalizarConteo\(conteoId[\s\S]{0,2000}completado: true/,
   'baseline: finalizarConteo aún puede marcar completado sin cobertura'
 );
 
