@@ -1,0 +1,26 @@
+name: PM14 P02 diagnostico anticipos
+
+on:
+  push:
+    branches: [pm14-encargos-anticipos-clientes]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostico:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verificar base segura
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          git merge-base --is-ancestor 6ee2752a8f6aba882a6fa926892ab5b04aac231d HEAD
+          echo 'PM14_P02_DIAG_BASE=PASS'
+      - name: Extraer motor real de anticipo y caja
+        run: python3 tools/diagnosticar_pm14_p02_anticipos.py
