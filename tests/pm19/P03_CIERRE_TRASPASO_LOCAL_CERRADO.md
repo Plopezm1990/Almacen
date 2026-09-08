@@ -1,5 +1,16 @@
 # PM19 P03 — Local cerrado bloquea traspasarStock
 
+> **Corrección (P05):** la implementación original de este punto introdujo
+> `localActivoEstaActivoPM19`, una función propia para esta comprobación. Al generalizar
+> el mismo criterio a Productos/Producción/Fichas de coste/APPCC/Aceite en P05 se
+> descubrió que ya existía `validarContextoEscrituraPM10` — función establecida y
+> reutilizada en 7 puntos del proyecto, con más cobertura (local inexistente y
+> empresa/local incompatibles, además de inactivo/"Todos"). `traspasarStock` se corrigió
+> en P05 para usar esa única función, y `localActivoEstaActivoPM19` se retiró por
+> completo. El resto de este documento describe el diagnóstico original, que sigue siendo
+> válido; solo cambió la implementación técnica de la guarda — ver
+> `tests/pm19/P05_CIERRE_CONTEXTO_ESCRITURA_UNICO.md`.
+
 Tercer punto de PM19 (NR-07: "Crear operaciones antes de cerrar local; histórico
 permanece, operaciones ordinarias bloqueadas y Todos no mezcla empresas").
 

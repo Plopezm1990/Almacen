@@ -1,0 +1,79 @@
+name: PM19 P05 contexto de escritura único (NR-07 + Todos)
+
+on:
+  push:
+    branches: [claude/pm19-movimientos-nr07]
+    paths:
+      - 'fuente.js'
+      - 'tests/pm19/**'
+      - '.github/workflows/pm19-p05-contexto-escritura-unico.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main y alcance (sin cambios en supabase/)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "34253537bfa132d56e8338b66832f758a8903c73"
+          unexpected="$(git diff --name-only origin/main..HEAD -- supabase/ || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'PM19 P05 es un cambio de frontend puro: no debe tocar supabase/' >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+          echo 'PM19_P05_MAIN_FROZEN=PASS'
+          echo 'PM19_P05_SIN_CAMBIOS_SUPABASE=PASS'
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+      - name: Contratos PM19 P05
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm19/p05-validar-contexto-escritura-contract.mjs
+          node tests/pm19/p05-inventario-mutaciones-protegidas-contract.mjs
+          node tests/pm19/p05-comportamiento-guardia-contract.mjs
+      - name: Regresión completa (todas las suites vigentes, énfasis PM07/PM12/PM19)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for d in tests/g1 tests/pm04 tests/pm05 tests/pm07 tests/pm08 tests/pm09 tests/pm10 tests/pm11-compra tests/pm12 tests/pm13 tests/pm14 tests/pm15 tests/pm16 tests/pm17 tests/pm18; do
+            for t in "$d"/*.mjs; do
+              [ -f "$t" ] || continue
+              node "$t"
+            done
+          done
+          for t in tests/pm19/*.mjs; do
+            [ -f "$t" ] || continue
+            node "$t"
+          done
+          echo 'PM19_P05_REGRESION_COMPLETA=PASS'
+      - name: Sin secretos
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -Eqi 'service_role|SUPABASE_SERVICE_ROLE_KEY|sb_secret_' \
+            tests/pm19/*.mjs tests/pm19/*.md
+          echo 'PM19_P05_NO_SECRET=PASS'
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM19 P05
+        run: |
+          set -euo pipefail
+          node tests/pm19/p05-validar-contexto-escritura-contract.mjs
+          node tests/pm19/p05-inventario-mutaciones-protegidas-contract.mjs
+          node tests/pm19/p05-comportamiento-guardia-contract.mjs
+          echo 'PM19_P05_GATE_FINAL=PASS'

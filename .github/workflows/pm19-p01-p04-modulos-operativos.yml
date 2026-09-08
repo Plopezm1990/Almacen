@@ -43,7 +43,6 @@ jobs:
           node tests/pm19/p01-wiring-appcc-contract.mjs
           node tests/pm19/p02-aceite-responsable-contract.mjs
           node tests/pm19/p02-wiring-aceite-contract.mjs
-          node tests/pm19/p03-traspaso-local-cerrado-contract.mjs
           node tests/pm19/p03-wiring-traspasos-contract.mjs
           node tests/pm19/p04-merma-descuenta-una-vez-contract.mjs
           node tests/pm19/p04-wiring-merma-contract.mjs
@@ -78,7 +77,6 @@ jobs:
           node tests/pm19/p01-wiring-appcc-contract.mjs
           node tests/pm19/p02-aceite-responsable-contract.mjs
           node tests/pm19/p02-wiring-aceite-contract.mjs
-          node tests/pm19/p03-traspaso-local-cerrado-contract.mjs
           node tests/pm19/p03-wiring-traspasos-contract.mjs
           node tests/pm19/p04-merma-descuenta-una-vez-contract.mjs
           node tests/pm19/p04-wiring-merma-contract.mjs
