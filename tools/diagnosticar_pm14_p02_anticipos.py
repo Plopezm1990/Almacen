@@ -3,15 +3,15 @@ from pathlib import Path
 s = Path('fuente.js').read_text(encoding='utf-8')
 
 
-def bloque_funcion(nombre: str) -> str:
+def bloque_funcion(nombre: str):
     firmas = [f'function {nombre}(', f'async function {nombre}(']
     indices = [s.find(f) for f in firmas if s.find(f) >= 0]
     if not indices:
-        raise SystemExit(f'PM14_P02_FUNCION_AUSENTE={nombre}')
+        return None
     inicio = min(indices)
     apertura = s.find('{', inicio)
     if apertura < 0:
-        raise SystemExit(f'PM14_P02_FUNCION_SIN_APERTURA={nombre}')
+        return None
     profundidad = 0
     quote = None
     escapado = False
@@ -41,17 +41,36 @@ def bloque_funcion(nombre: str) -> str:
             if profundidad == 0:
                 return s[inicio:i + 1]
         i += 1
-    raise SystemExit(f'PM14_P02_FUNCION_SIN_CIERRE={nombre}')
+    return None
+
+
+def vecindad(patron: str, radio: int = 1800):
+    pos = s.find(patron)
+    if pos < 0:
+        return None
+    ini = max(0, pos - radio)
+    fin = min(len(s), pos + len(patron) + radio)
+    return s[ini:fin]
 
 for nombre in [
-    'sincronizarCobroSeñal',
     'crearLogicaMovimientosCaja',
     'crearLogicaEncargos',
     'sincronizarCajaPm08',
 ]:
+    bloque = bloque_funcion(nombre)
     print(f'\n===== PM14_P02_BEGIN_{nombre} =====')
-    print(bloque_funcion(nombre))
+    print(bloque if bloque is not None else f'PM14_P02_FUNCION_AUSENTE={nombre}')
     print(f'===== PM14_P02_END_{nombre} =====\n')
+
+for patron in [
+    'sincronizarCobroSeñal',
+    'getSupabaseClient',
+    '.rpc("registrar_movimiento_caja"',
+    '.from("caja_operaciones")',
+]:
+    print(f'\n===== PM14_P02_NEIGHBOR_{patron} =====')
+    print(vecindad(patron) or f'PM14_P02_PATRON_AUSENTE={patron}')
+    print(f'===== PM14_P02_END_NEIGHBOR_{patron} =====\n')
 
 for patron in [
     'getSupabaseClient',
