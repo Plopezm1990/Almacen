@@ -102291,7 +102291,7 @@ function GestionAlmacen() {
   }
   const { registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion } = crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, setMovimientosCaja, setArqueos, registrarAuditoria, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
   const { activarModoEmpleado, entrarComoEmpleado, salirModoEmpleado, establecerPin } = crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, setModoEmpleado, setUsuarioActivoId });
-  const { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, eliminarRegistroAppcc } = crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId });
+  const { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, cancelarRegistroAppcc } = crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId, registrarAuditoria });
   const { fichar, addFichajeManual, updateFichaje, eliminarFichaje } = crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId });
   const { addFreidora, updateFreidora, deleteFreidora, registrarCambio, registrarRelleno, eliminarRegistroAceite, consumoPorCiclo } = crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegistrosAceite, productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
   const { addFichaCosto, updateFichaCosto, deleteFichaCosto, alergenosDeFicha } = crearLogicaFichasCosto({ productos, setFichasCosto, localActivoId });
@@ -103328,7 +103328,7 @@ function GestionAlmacen() {
       updatePuntoControl,
       deletePuntoControl,
       registrarAppcc,
-      eliminarRegistroAppcc,
+      cancelarRegistroAppcc,
       appccPendientesHoy,
       productos: productosDelLocalActivo,
       fichasCosto: fichasCostoDelLocalActivo,
@@ -104026,7 +104026,21 @@ function crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId }) {
   }
   return { addTurno, updateTurno, deleteTurno, copiarSemana };
 }
-function crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId }) {
+function validarRegistroAppccPM19(data) {
+  const responsable = String(data && data.responsable || "").trim();
+  if (!responsable) return { ok: false, codigo: "responsable_obligatorio", error: "Indica qui\xE9n realiza este control." };
+  return { ok: true, responsable };
+}
+function prepararCancelacionAppccPM19(registro, opciones = {}) {
+  if (!registro) return { ok: false, codigo: "registro_no_encontrado", error: "El registro ya no existe." };
+  if (registro.cancelado === true) return { ok: true, replayed: true };
+  const motivo = String(opciones.motivo || "").trim();
+  if (!motivo) return { ok: false, codigo: "motivo_obligatorio", error: "Explica por qu\xE9 se cancela este registro." };
+  const actorNombre = String(opciones.actorNombre || "").trim();
+  if (!actorNombre) return { ok: false, codigo: "actor_obligatorio", error: "Indica qui\xE9n cancela el registro." };
+  return { ok: true, replayed: false, motivo, actorNombre };
+}
+function crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId, registrarAuditoria }) {
   const puntoEsDelLocalActivoAppcc = (p22) => !!p22 && (!localActivoId || p22.localId === localActivoId);
   const registroEsDelLocalActivoAppcc = (r2) => !!r2 && (!localActivoId || r2.localId === localActivoId);
   function addPuntoControl(data) {
@@ -104040,17 +104054,26 @@ function crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, set
   }
   function registrarAppcc(data) {
     const punto = puntosControl.find((p22) => p22.id === data.puntoId);
-    if (data.puntoId && !puntoEsDelLocalActivoAppcc(punto)) return false;
-    setRegistrosAppcc((s22) => [{ id: uid(), fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), ...data, localId: localActivoId || punto && punto.localId || null }, ...s22]);
-    return true;
+    if (data.puntoId && !puntoEsDelLocalActivoAppcc(punto)) return { ok: false, codigo: "punto_otro_local", error: "El punto de control pertenece a otro local." };
+    const validacion = validarRegistroAppccPM19(data);
+    if (!validacion.ok) return validacion;
+    const registro = { id: uid(), fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), ...data, responsable: validacion.responsable, cancelado: false, localId: localActivoId || punto && punto.localId || null };
+    setRegistrosAppcc((s22) => [registro, ...s22]);
+    if (registrarAuditoria) registrarAuditoria("Registrar control APPCC", `${data.puntoNombre || "Control"} \xB7 ${data.conforme === false ? "NO CONFORME" : "conforme"} \xB7 responsable: ${validacion.responsable}`);
+    return { ok: true, registro };
   }
-  function eliminarRegistroAppcc(id) {
+  function cancelarRegistroAppcc(id, opciones = {}) {
     const registro = registrosAppcc.find((r2) => r2.id === id);
-    if (!registroEsDelLocalActivoAppcc(registro)) return false;
-    setRegistrosAppcc((s22) => s22.filter((r2) => r2.id !== id));
-    return true;
+    if (!registroEsDelLocalActivoAppcc(registro)) return { ok: false, codigo: "fuera_de_contexto", error: "Registro no disponible en el local activo." };
+    const preparada = prepararCancelacionAppccPM19(registro, opciones);
+    if (!preparada.ok) return preparada;
+    if (preparada.replayed) return { ok: true, replayed: true };
+    const canceladoEn = (/* @__PURE__ */ new Date()).toISOString();
+    setRegistrosAppcc((s22) => s22.map((r2) => r2.id === id ? { ...r2, cancelado: true, motivoCancelacion: preparada.motivo, canceladoPor: preparada.actorNombre, canceladoEn } : r2));
+    if (registrarAuditoria) registrarAuditoria("Cancelar control APPCC", `${registro.puntoNombre || "Control"} del ${registro.fecha} \xB7 ${preparada.motivo}`);
+    return { ok: true, replayed: false };
   }
-  return { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, eliminarRegistroAppcc };
+  return { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, cancelarRegistroAppcc };
 }
 function crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId }) {
   const operacionesRemotasFichajePM13 = new Map();
@@ -105072,6 +105095,12 @@ function crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empres
   }
   return { addCliente, updateCliente, deleteCliente, anonimizarCliente };
 }
+function movimientoIdMermaLotePM19(lote) {
+  const productoId = String(lote && lote.productoId || "").trim();
+  const loteCodigo = String(lote && lote.lote || "sinlote").trim();
+  const caducidad = String(lote && lote.caducidad || "sinfecha").trim();
+  return `merma-lote:${productoId}:${loteCodigo}:${caducidad}`;
+}
 function crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria }) {
   // Share the existing ID/result registry between consumers of the same store.
   const contextos = crearMotorStock.contextos || (crearMotorStock.contextos = new WeakMap());
@@ -105554,7 +105583,7 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
     if (almacenCongelado) return false;
     const cant = Number(cantidad);
     if (!cant || cant <= 0) return false;
-    const { motivo = "Venta", precioVentaUnitario = null, referencia = "", medioPago = "Efectivo" } = opciones;
+    const { motivo = "Venta", precioVentaUnitario = null, referencia = "", medioPago = "Efectivo", movimientoId } = opciones;
     const prod = productos.find((p22) => p22.id === productoId);
     if (!prod || !productoEsDelLocalActivo(prod)) return false;
     const esVenta2 = motivo === "Venta";
@@ -105565,7 +105594,7 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
       productoId,
       cantidad: -cant,
       tipo,
-      movimientoId: uid(),
+      movimientoId: movimientoId || uid(),
       origen: "registrarSalida",
       afectaStockTotal: true,
       permitirDeficit: true,
@@ -107362,6 +107391,11 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   }
   return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote };
 }
+function localActivoEstaActivoPM19(locales, localActivoId) {
+  if (!localActivoId) return false;
+  const local = (locales || []).find((l22) => l22 && l22.id === localActivoId);
+  return !!local && local.activo !== false && !local.fusionadoEn;
+}
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
     if (!prod) return false;
@@ -107370,6 +107404,7 @@ function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimie
   }
   const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
   async function traspasarStock(productoId, cantidad, direccion) {
+    if (!localActivoEstaActivoPM19(locales, localActivoId)) return { ok: false, error: "El local activo est\xE1 desactivado y no admite operativa ordinaria." };
     const cant = Number(cantidad) || 0;
     if (cant <= 0) return { ok: false, error: "Indica una cantidad mayor que cero." };
     const prod = productos.find((p22) => p22.id === productoId);
@@ -108538,6 +108573,11 @@ function litrosDisponibles(producto) {
   if (!producto) return 0;
   return (Number(producto.stock) || 0) * litrosPorUnidadDeStock(producto);
 }
+function validarResponsableRegistroAceitePM19(responsable) {
+  const limpio = String(responsable || "").trim();
+  if (!limpio) return { ok: false, codigo: "responsable_obligatorio", error: "Indica qui\xE9n hace el cambio o relleno." };
+  return { ok: true, responsable: limpio };
+}
 function crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegistrosAceite, productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId }) {
   const productoEsDelLocalActivoAceite = (p22) => !!p22 && (!localActivoId || p22.localId === localActivoId);
   const freidoraEsDelLocalActivoAceite = (f22) => !!f22 && (!localActivoId || f22.localId === localActivoId);
@@ -108598,6 +108638,8 @@ function crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegist
     if (!freidoraEsDelLocalActivoAceite(f22)) return { ok: false, error: "La freidora pertenece a otro local." };
     const litrosUsados = Number(litros) || Number(f22.litrosCarga) || 0;
     if (!(litrosUsados > 0)) return { ok: false, error: "Indica cu\xE1ntos litros lleva el cambio." };
+    const validacionResponsable = validarResponsableRegistroAceitePM19(responsable);
+    if (!validacionResponsable.ok) return validacionResponsable;
     const registroId = uid();
     const r2 = descontarAceite(f22.productoAceiteId, litrosUsados, "Cambio de aceite", `Cambio de aceite \xB7 ${f22.nombre}`, registroId);
     if (!r2.ok) return r2;
@@ -108611,13 +108653,13 @@ function crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegist
       tipoCambio: tipoCambio || "Voluntario",
       litros: litrosUsados,
       observaciones: observaciones || "",
-      responsable: responsable || "",
+      responsable: validacionResponsable.responsable,
       fecha: todayISO(),
       hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5),
       coste: r2.coste
     };
     setRegistrosAceite((s22) => [registro, ...s22]);
-    registrarAuditoria("Cambio de aceite", `${f22.nombre} \xB7 ${litrosUsados} L${observaciones ? " \xB7 " + observaciones : ""}`);
+    registrarAuditoria("Cambio de aceite", `${f22.nombre} \xB7 ${litrosUsados} L${observaciones ? " \xB7 " + observaciones : ""} \xB7 responsable: ${validacionResponsable.responsable}`);
     return { ok: true, registro, stockRestante: r2.stockRestante };
   }
   function registrarRelleno({ freidoraId, litros, responsable }) {
@@ -108626,6 +108668,8 @@ function crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegist
     if (!freidoraEsDelLocalActivoAceite(f22)) return { ok: false, error: "La freidora pertenece a otro local." };
     const litrosUsados = Number(litros) || Number(f22.rellenoHabitual) || 0;
     if (!(litrosUsados > 0)) return { ok: false, error: "Indica cu\xE1ntos litros se han rellenado." };
+    const validacionResponsable = validarResponsableRegistroAceitePM19(responsable);
+    if (!validacionResponsable.ok) return validacionResponsable;
     const registroId = uid();
     const r2 = descontarAceite(f22.productoAceiteId, litrosUsados, "Relleno de aceite", `Relleno \xB7 ${f22.nombre}`, registroId);
     if (!r2.ok) return r2;
@@ -108637,12 +108681,13 @@ function crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegist
       productoAceiteId: f22.productoAceiteId,
       tipo: "relleno",
       litros: litrosUsados,
-      responsable: responsable || "",
+      responsable: validacionResponsable.responsable,
       fecha: todayISO(),
       hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5),
       coste: r2.coste
     };
     setRegistrosAceite((s22) => [registro, ...s22]);
+    registrarAuditoria("Relleno de aceite", `${f22.nombre} \xB7 ${litrosUsados} L \xB7 responsable: ${validacionResponsable.responsable}`);
     return { ok: true, registro, stockRestante: r2.stockRestante };
   }
   function eliminarRegistroAceite(registro) {
@@ -109536,7 +109581,7 @@ function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendi
   })))), confirmarMermaLote && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => !procesandoMermaLote && setConfirmarMermaLote(null), title: "Registrar como merma" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, "Vas a registrar ", /* @__PURE__ */ import_react4.default.createElement("b", null, fmt(confirmarMermaLote.unidades), " ud. de ", confirmarMermaLote.nombre), confirmarMermaLote.lote ? ` (lote ${confirmarMermaLote.lote})` : "", " como merma por caducidad."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmarMermaLote(null), disabled: procesandoMermaLote }, "Cancelar"), /* @__PURE__ */ import_react4.default.createElement(Btn, {
     onClick: () => {
       setProcesandoMermaLote(true);
-      registrarSalida(confirmarMermaLote.productoId, confirmarMermaLote.unidades, { motivo: "Merma / caducidad", referencia: confirmarMermaLote.lote ? `lote ${confirmarMermaLote.lote}` : "" });
+      registrarSalida(confirmarMermaLote.productoId, confirmarMermaLote.unidades, { motivo: "Merma / caducidad", referencia: confirmarMermaLote.lote ? `lote ${confirmarMermaLote.lote}` : "", movimientoId: movimientoIdMermaLotePM19(confirmarMermaLote) });
       setConfirmarMermaLote(null);
       setProcesandoMermaLote(false);
     },
@@ -113744,7 +113789,7 @@ function Appcc({
   updatePuntoControl,
   deletePuntoControl,
   registrarAppcc,
-  eliminarRegistroAppcc,
+  cancelarRegistroAppcc,
   appccPendientesHoy,
   productos,
   fichasCosto,
@@ -113756,9 +113801,14 @@ function Appcc({
   const [puntoError, setPuntoError] = (0, import_react4.useState)("");
   const [registroPara, setRegistroPara] = (0, import_react4.useState)(null);
   const [registroForm, setRegistroForm] = (0, import_react4.useState)({ valor: "", conforme: true, observaciones: "", responsable: "" });
+  const [errorRegistro, setErrorRegistro] = (0, import_react4.useState)("");
   const [desde, setDesde] = (0, import_react4.useState)(primerDiaMes(/* @__PURE__ */ new Date()));
   const [hasta, setHasta] = (0, import_react4.useState)(todayISO());
   const [copiado, setCopiado] = (0, import_react4.useState)(false);
+  const [cancelarRegistro, setCancelarRegistro] = (0, import_react4.useState)(null);
+  const [motivoCancelarRegistro, setMotivoCancelarRegistro] = (0, import_react4.useState)("");
+  const [actorCancelarRegistro, setActorCancelarRegistro] = (0, import_react4.useState)("");
+  const [errorCancelarRegistro, setErrorCancelarRegistro] = (0, import_react4.useState)("");
   function submitPunto() {
     if (!puntoForm.nombre.trim()) {
       setPuntoError("Ponle nombre al punto de control.");
@@ -113778,6 +113828,7 @@ function Appcc({
   function abrirRegistro(punto) {
     setRegistroPara(punto);
     setRegistroForm({ valor: "", conforme: true, observaciones: "", responsable: "" });
+    setErrorRegistro("");
   }
   function evaluarConformidad(punto, valor) {
     if (punto.tipo !== "temperatura" && punto.tipo !== "recepcion") return null;
@@ -113789,7 +113840,7 @@ function Appcc({
   }
   function submitRegistro() {
     const auto = evaluarConformidad(registroPara, registroForm.valor);
-    registrarAppcc({
+    const res = registrarAppcc({
       puntoId: registroPara.id,
       puntoNombre: registroPara.nombre,
       tipo: registroPara.tipo,
@@ -113798,10 +113849,32 @@ function Appcc({
       observaciones: registroForm.observaciones,
       responsable: registroForm.responsable
     });
+    if (!res.ok) {
+      setErrorRegistro(res.error);
+      return;
+    }
+    setErrorRegistro("");
     setRegistroPara(null);
   }
+  function abrirCancelarRegistro(registro) {
+    setCancelarRegistro(registro);
+    setMotivoCancelarRegistro("");
+    setActorCancelarRegistro("");
+    setErrorCancelarRegistro("");
+  }
+  function confirmarCancelarRegistro() {
+    const res = cancelarRegistroAppcc(cancelarRegistro.id, {
+      motivo: motivoCancelarRegistro,
+      actorNombre: actorCancelarRegistro
+    });
+    if (!res.ok) {
+      setErrorCancelarRegistro(res.error);
+      return;
+    }
+    setCancelarRegistro(null);
+  }
   const registrosPeriodo = registrosAppcc.filter((r2) => r2.fecha >= desde && r2.fecha <= hasta).sort((a22, b2) => (b2.fecha + b2.hora).localeCompare(a22.fecha + a22.hora));
-  const noConformes = registrosPeriodo.filter((r2) => r2.conforme === false);
+  const noConformes = registrosPeriodo.filter((r2) => r2.conforme === false && r2.cancelado !== true);
   const cartaAlergenos = (0, import_react4.useMemo)(() => {
     const filas = [];
     (fichasCosto || []).forEach((f22) => {
@@ -113837,14 +113910,14 @@ Generado el ${(/* @__PURE__ */ new Date()).toLocaleString("es-ES")}`;
   ].map((v22) => /* @__PURE__ */ import_react4.default.createElement(Btn, { key: v22.id, small: true, variant: vista === v22.id ? "primary" : "ghost", onClick: () => setVista(v22.id) }, v22.label)))), vista === "hoy" && /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "El sistema APPCC es obligatorio en cualquier negocio que manipule alimentos. Estos registros deben conservarse y estar disponibles si Sanidad los pide. Registra cada control el d\xEDa que lo haces: rellenar una semana de golpe al final no vale.")), puntosControl.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has definido qu\xE9 controlas. Ve a \u201CPuntos de control\u201D para empezar." }) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, appccPendientesHoy.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Te faltan ", appccPendientesHoy.length, " control(es) por registrar hoy")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, puntosControl.filter((p22) => p22.activo !== false).map((p22) => {
     const hechoHoy = registrosAppcc.find((r2) => r2.fecha === todayISO() && r2.puntoId === p22.id);
     return /* @__PURE__ */ import_react4.default.createElement(Card, { key: p22.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium text-[13.5px]" }, p22.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, TIPOS_PUNTO.find((t22) => t22.id === p22.tipo)?.label, p22.tempMin != null && p22.tempMax != null && ` \xB7 rango ${p22.tempMin} a ${p22.tempMax} \xB0C`)), hechoHoy ? /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: hechoHoy.conforme ? C2.accent : C2.red }, hechoHoy.conforme ? `OK ${hechoHoy.valor}` : `Desviaci\xF3n ${hechoHoy.valor}`) : /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.amber }, "pendiente")), !hechoHoy && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => abrirRegistro(p22) }, "Registrar ahora")));
-  })))), vista === "puntos" && /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex justify-end mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setShowPunto(true) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Nuevo punto de control")), puntosControl.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Define qu\xE9 vas a controlar: c\xE1mara de refrigerado, congelador, limpieza del obrador\u2026" }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, puntosControl.map((p22) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: p22.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium" }, p22.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, TIPOS_PUNTO.find((t22) => t22.id === p22.tipo)?.label, " \xB7 ", p22.frecuencia, p22.tempMin != null && p22.tempMax != null && ` \xB7 ${p22.tempMin} a ${p22.tempMax} \xB0C`)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => updatePuntoControl(p22.id, { activo: p22.activo === false }) }, p22.activo === false ? "Activar" : "Desactivar"), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => deletePuntoControl(p22.id), "aria-label": "Eliminar punto de control" }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 15, color: C2.inkSoft })))))))), vista === "historial" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Desde" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: desde, onChange: (e2) => setDesde(e2.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hasta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: hasta, onChange: (e2) => setHasta(e2.target.value) }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-wrap gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => window.print() }, "Imprimir / Guardar PDF"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: copiar }, copiado ? "\xA1Copiado!" : "Copiar texto"))), noConformes.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, noConformes.length, " desviaci\xF3n(es) en el periodo. Revisa que quede anotada la medida correctora."))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "zona-impresion", style: ESTILO_IMPRESION_CLARO }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end justify-between mb-3 pb-3", style: { borderBottom: `2px solid ${C2.accent}` } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[17px] font-semibold" }, "Registro de control sanitario (APPCC)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Del ", desde, " al ", hasta)), /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO, alt: "", style: { height: 52, width: "auto" } })), registrosPeriodo.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin registros en este periodo." }) : /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[11.5px]", style: { borderCollapse: "collapse" } }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", null, /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Fecha"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Hora"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Punto de control"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff" } }, "Valor"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff" } }, "Conforme"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Observaciones"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Responsable"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, registrosPeriodo.map((r2, i33) => /* @__PURE__ */ import_react4.default.createElement("tr", { key: r2.id, style: { background: i33 % 2 ? C2.bg : "#fff" } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-1.5 px-2 mono", style: { border: `1px solid ${C2.line}` } }, r2.fecha), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-1.5 px-2 mono", style: { border: `1px solid ${C2.line}` } }, r2.hora), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-1.5 px-2", style: { border: `1px solid ${C2.line}` } }, r2.puntoNombre), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-1.5 px-2 text-center mono", style: { border: `1px solid ${C2.line}` } }, r2.valor || "\u2014"), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-1.5 px-2 text-center font-semibold", style: { border: `1px solid ${C2.line}`, color: r2.conforme ? C2.accent : C2.red } }, r2.conforme ? "S\xED" : "NO"), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-1.5 px-2", style: { border: `1px solid ${C2.line}` } }, r2.observaciones || ""), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-1.5 px-2", style: { border: `1px solid ${C2.line}` } }, r2.responsable || ""))))))), vista === "alergenos" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Este cartel se genera solo desde tus fichas de costo: hereda los al\xE9rgenos de cada ingrediente enlazado al cat\xE1logo. Impr\xEDmelo y t\xE9nlo visible o a disposici\xF3n del cliente, como exige la ley.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => window.print() }, "Imprimir cartel"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "zona-impresion", style: ESTILO_IMPRESION_CLARO }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end justify-between mb-3 pb-3", style: { borderBottom: `2px solid ${C2.accent}` } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[17px] font-semibold" }, "Informaci\xF3n de al\xE9rgenos"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Reglamento (UE) 1169/2011 \xB7 Actualizado el ", (/* @__PURE__ */ new Date()).toLocaleDateString("es-ES"))), /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO, alt: "", style: { height: 52, width: "auto" } })), cartaAlergenos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Crea fichas de costo o marca productos como elaborados para generar el cartel." }) : /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[11.5px]", style: { borderCollapse: "collapse" } }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", null, /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Producto"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Contiene"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, cartaAlergenos.map((f22, i33) => /* @__PURE__ */ import_react4.default.createElement("tr", { key: f22.id, style: { background: i33 % 2 ? C2.bg : "#fff" } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 font-medium", style: { border: `1px solid ${C2.line}` } }, f22.nombre), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2", style: { border: `1px solid ${C2.line}` } }, f22.alergenos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("span", { style: { color: C2.inkSoft } }, "Sin al\xE9rgenos declarados") : f22.alergenos.map((id) => {
+  })))), vista === "puntos" && /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex justify-end mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setShowPunto(true) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Nuevo punto de control")), puntosControl.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Define qu\xE9 vas a controlar: c\xE1mara de refrigerado, congelador, limpieza del obrador\u2026" }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, puntosControl.map((p22) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: p22.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium" }, p22.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, TIPOS_PUNTO.find((t22) => t22.id === p22.tipo)?.label, " \xB7 ", p22.frecuencia, p22.tempMin != null && p22.tempMax != null && ` \xB7 ${p22.tempMin} a ${p22.tempMax} \xB0C`)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => updatePuntoControl(p22.id, { activo: p22.activo === false }) }, p22.activo === false ? "Activar" : "Desactivar"), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => deletePuntoControl(p22.id), "aria-label": "Eliminar punto de control" }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 15, color: C2.inkSoft })))))))), vista === "historial" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Desde" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: desde, onChange: (e2) => setDesde(e2.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hasta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: hasta, onChange: (e2) => setHasta(e2.target.value) }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-wrap gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => window.print() }, "Imprimir / Guardar PDF"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: copiar }, copiado ? "\xA1Copiado!" : "Copiar texto"))), registrosPeriodo.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-2" }, "Cancelar un registro (por error de captura)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, registrosPeriodo.map((r2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: r2.id, className: "flex items-center justify-between text-[11.5px] p-2 rounded-lg", style: { background: C2.surface, opacity: r2.cancelado === true ? 0.55 : 1 } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("span", { className: "font-medium" }, r2.fecha, " ", r2.hora, " \xB7 ", r2.puntoNombre), r2.cancelado === true && /* @__PURE__ */ import_react4.default.createElement("span", { style: { color: C2.red } }, " \xB7 CANCELADO")), r2.cancelado !== true && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => abrirCancelarRegistro(r2) }, "Cancelar"))))), noConformes.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, noConformes.length, " desviaci\xF3n(es) en el periodo. Revisa que quede anotada la medida correctora."))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "zona-impresion", style: ESTILO_IMPRESION_CLARO }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end justify-between mb-3 pb-3", style: { borderBottom: `2px solid ${C2.accent}` } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[17px] font-semibold" }, "Registro de control sanitario (APPCC)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Del ", desde, " al ", hasta)), /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO, alt: "", style: { height: 52, width: "auto" } })), registrosPeriodo.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin registros en este periodo." }) : /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[11.5px]", style: { borderCollapse: "collapse" } }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", null, /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Fecha"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Hora"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Punto de control"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff" } }, "Valor"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff" } }, "Conforme"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Observaciones"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Responsable"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, registrosPeriodo.map((r2, i33) => /* @__PURE__ */ import_react4.default.createElement("tr", { key: r2.id, style: { background: i33 % 2 ? C2.bg : "#fff" } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-1.5 px-2 mono", style: { border: `1px solid ${C2.line}` } }, r2.fecha), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-1.5 px-2 mono", style: { border: `1px solid ${C2.line}` } }, r2.hora), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-1.5 px-2", style: { border: `1px solid ${C2.line}` } }, r2.puntoNombre), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-1.5 px-2 text-center mono", style: { border: `1px solid ${C2.line}` } }, r2.valor || "\u2014"), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-1.5 px-2 text-center font-semibold", style: { border: `1px solid ${C2.line}`, color: r2.conforme ? C2.accent : C2.red } }, r2.conforme ? "S\xED" : "NO"), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-1.5 px-2", style: { border: `1px solid ${C2.line}` } }, r2.cancelado === true ? `CANCELADO \xB7 ${r2.motivoCancelacion || ""}` : r2.observaciones || ""), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-1.5 px-2", style: { border: `1px solid ${C2.line}` } }, r2.responsable || ""))))))), vista === "alergenos" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Este cartel se genera solo desde tus fichas de costo: hereda los al\xE9rgenos de cada ingrediente enlazado al cat\xE1logo. Impr\xEDmelo y t\xE9nlo visible o a disposici\xF3n del cliente, como exige la ley.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => window.print() }, "Imprimir cartel"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "zona-impresion", style: ESTILO_IMPRESION_CLARO }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end justify-between mb-3 pb-3", style: { borderBottom: `2px solid ${C2.accent}` } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[17px] font-semibold" }, "Informaci\xF3n de al\xE9rgenos"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Reglamento (UE) 1169/2011 \xB7 Actualizado el ", (/* @__PURE__ */ new Date()).toLocaleDateString("es-ES"))), /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO, alt: "", style: { height: 52, width: "auto" } })), cartaAlergenos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Crea fichas de costo o marca productos como elaborados para generar el cartel." }) : /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[11.5px]", style: { borderCollapse: "collapse" } }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", null, /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Producto"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Contiene"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, cartaAlergenos.map((f22, i33) => /* @__PURE__ */ import_react4.default.createElement("tr", { key: f22.id, style: { background: i33 % 2 ? C2.bg : "#fff" } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 font-medium", style: { border: `1px solid ${C2.line}` } }, f22.nombre), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2", style: { border: `1px solid ${C2.line}` } }, f22.alergenos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("span", { style: { color: C2.inkSoft } }, "Sin al\xE9rgenos declarados") : f22.alergenos.map((id) => {
     const a22 = alergenoPorId(id);
     return a22 ? `${a22.icono} ${a22.nombre}` : id;
   }).join(" \xB7 ")))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-4", style: { color: C2.inkSoft } }, "Puede haber trazas de otros al\xE9rgenos por manipulaci\xF3n en el mismo obrador. Consulte al personal si tiene alguna alergia o intolerancia."))), showPunto && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowPunto(false), title: "Nuevo punto de control" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: puntoForm.nombre, onChange: (e2) => setPuntoForm({ ...puntoForm, nombre: e2.target.value }), placeholder: "C\xE1mara de refrigerado, Congelador obrador\u2026" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tipo" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: puntoForm.tipo, onChange: (e2) => setPuntoForm({ ...puntoForm, tipo: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, TIPOS_PUNTO.map((t22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: t22.id, value: t22.id }, t22.label)))), (puntoForm.tipo === "temperatura" || puntoForm.tipo === "recepcion") && /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Temperatura m\xEDnima (\xB0C)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.1", value: puntoForm.tempMin, onChange: (e2) => setPuntoForm({ ...puntoForm, tempMin: e2.target.value }), placeholder: "0" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Temperatura m\xE1xima (\xB0C)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.1", value: puntoForm.tempMax, onChange: (e2) => setPuntoForm({ ...puntoForm, tempMax: e2.target.value }), placeholder: "4" }))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Frecuencia" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: puntoForm.frecuencia, onChange: (e2) => setPuntoForm({ ...puntoForm, frecuencia: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", null, "Diaria"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Dos veces al d\xEDa"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Semanal"), /* @__PURE__ */ import_react4.default.createElement("option", null, "En cada recepci\xF3n"))), puntoError && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, puntoError), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitPunto }, "Guardar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowPunto(false) }, "Cancelar"))), registroPara && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setRegistroPara(null), title: registroPara.nombre }, registroPara.tipo === "temperatura" || registroPara.tipo === "recepcion" ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Temperatura medida (\xB0C)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.1", value: registroForm.valor, onChange: (e2) => setRegistroForm({ ...registroForm, valor: e2.target.value }), autoFocus: true })), (() => {
     const ev = evaluarConformidad(registroPara, registroForm.valor);
     if (ev === null) return null;
     return /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", style: { color: ev ? C2.accent : C2.red } }, ev ? "Dentro del rango correcto." : `Fuera del rango (${registroPara.tempMin} a ${registroPara.tempMax} \xB0C). Se registrar\xE1 como desviaci\xF3n: anota abajo qu\xE9 medida correctora has tomado.`);
-  })()) : /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Resultado" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: registroForm.conforme ? "si" : "no", onChange: (e2) => setRegistroForm({ ...registroForm, conforme: e2.target.value === "si" }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "si" }, "Conforme \u2014 realizado correctamente"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "no" }, "No conforme \u2014 hubo un problema"))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Observaciones / medida correctora" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: registroForm.observaciones, onChange: (e2) => setRegistroForm({ ...registroForm, observaciones: e2.target.value }), placeholder: "Opcional, salvo si hay desviaci\xF3n" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Responsable" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: registroForm.responsable, onChange: (e2) => setRegistroForm({ ...registroForm, responsable: e2.target.value }), placeholder: "Qui\xE9n lo comprueba" })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitRegistro }, "Guardar registro"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setRegistroPara(null) }, "Cancelar"))));
+  })()) : /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Resultado" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: registroForm.conforme ? "si" : "no", onChange: (e2) => setRegistroForm({ ...registroForm, conforme: e2.target.value === "si" }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "si" }, "Conforme \u2014 realizado correctamente"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "no" }, "No conforme \u2014 hubo un problema"))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Observaciones / medida correctora" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: registroForm.observaciones, onChange: (e2) => setRegistroForm({ ...registroForm, observaciones: e2.target.value }), placeholder: "Opcional, salvo si hay desviaci\xF3n" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Responsable" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: registroForm.responsable, onChange: (e2) => setRegistroForm({ ...registroForm, responsable: e2.target.value }), placeholder: "Qui\xE9n lo comprueba" })), errorRegistro && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, errorRegistro), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitRegistro }, "Guardar registro"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setRegistroPara(null) }, "Cancelar"))), cancelarRegistro && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setCancelarRegistro(null), title: "Cancelar registro" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, `Vas a cancelar el registro de "${cancelarRegistro.puntoNombre}" del ${cancelarRegistro.fecha}. Queda en el hist\xF3rico marcado como cancelado, no se borra.`), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivoCancelarRegistro, onChange: (e2) => setMotivoCancelarRegistro(e2.target.value), autoFocus: true, placeholder: "Por qu\xE9 se cancela" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Qui\xE9n cancela" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: actorCancelarRegistro, onChange: (e2) => setActorCancelarRegistro(e2.target.value) })), errorCancelarRegistro && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, errorCancelarRegistro), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: confirmarCancelarRegistro }, "Confirmar cancelaci\xF3n"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setCancelarRegistro(null) }, "Cerrar"))));
 }
 function lineaEncargo() {
   return { productoId: "", descripcion: "", cantidad: 1, precioUnitario: "" };
