@@ -1,21 +1,16 @@
 name: Release Gate - Consolidacion L&A Suite hasta PM14
 
-# Gate de release definitivo para el PR de consolidacion acumulada hasta PM14 (ver
-# descripcion del PR). No es un gate de un punto aislado: ejecuta de nuevo, desde cero,
-# la regresion real y completa de todo lo que se va a promover, contra el HEAD exacto que
-# se fusionaria. No sustituye a los gates historicos de cada punto (que ya quedaron
-# registrados en su momento); los complementa con una validacion fresca y unica al final.
+# Gate de release de la consolidacion acumulada hasta PM14 (PR #29), ya fusionada a main
+# (commit 767a2c3163f924b7599338785fe4331f78f0e1ac) con autorizacion expresa del usuario y
+# con este mismo gate en verde sobre el HEAD exacto fusionado. Su guard "Proteger main"
+# compara contra el SHA congelado ANTES de esa fusion (7f792925...) y por diseno queda
+# obsoleto en cuanto main avanza legitimamente mas alla de ese punto (como ya ha ocurrido) --
+# mismo patron que los guards de punto retirados en el propio commit de auditoria de PM14
+# (ver tests/pm14, workflows pm14-p01..p04). Se retira el disparador automatico para que no
+# vuelva a bloquear en falso futuros PRs a main; se conserva workflow_dispatch para poder
+# repetirlo manualmente si hace falta revalidar ese release concreto.
 
 on:
-  push:
-    branches: [claude/pm14-encargos-anticipos-i8ye52]
-    paths:
-      - 'fuente.js'
-      - 'tests/**'
-      - 'supabase/migrations/**'
-      - '.github/workflows/release-gate-consolidacion-pm14.yml'
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
