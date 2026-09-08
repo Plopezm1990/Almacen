@@ -1,0 +1,37 @@
+name: PM10 P10 adapter almacen_kv
+on:
+  push:
+    branches: [pm10-validaciones-altas-datos-legados]
+    paths:
+      - '.github/workflows/pm10-p10-adapter-kv.yml'
+permissions:
+  contents: write
+jobs:
+  adapter:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extraer adapter y claves reales
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          out=[]
+          for m in list(re.finditer(r'almacen_kv',s,re.I))[:50]:
+            out.append(f'\n## offset {m.start()}\n```js\n{s[max(0,m.start()-2600):min(len(s),m.start()+6200)]}\n```\n')
+          out.append('\n## claves literales saveKey/loadKey\n')
+          for pat in [r'saveKey\(\s*["\']([^"\']+)["\']', r'loadKey\(\s*["\']([^"\']+)["\']']:
+            vals=[]
+            for m in re.finditer(pat,s): vals.append(m.group(1))
+            out.append('\n'+pat+'\n'+ '\n'.join(f'- {x}' for x in sorted(set(vals)))+'\n')
+          Path('tests/pm10/P10_ADAPTER_KV.md').write_text(''.join(out),encoding='utf-8')
+          print('bytes',Path('tests/pm10/P10_ADAPTER_KV.md').stat().st_size)
+          PY
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/pm10/P10_ADAPTER_KV.md
+          git commit -m 'PM10: guardar adaptador almacen_kv punto 10'
+          git push

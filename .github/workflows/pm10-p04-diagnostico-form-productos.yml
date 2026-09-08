@@ -1,0 +1,26 @@
+name: PM10 P04 diagnostico formulario productos
+on:
+  push:
+    branches: [pm10-validaciones-altas-datos-legados]
+    paths: ['.github/workflows/pm10-p04-diagnostico-form-productos.yml']
+permissions:
+  contents: read
+jobs:
+  diagnostico:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extractos submit producto
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          for q in ['function submit() {','function submitEdit() {','updateProducto(editFor','addProducto({ ...form']:
+            print('\nQUERY',q)
+            for m in list(re.finditer(re.escape(q),s)):
+              if 4300000 <= m.start() <= 4400000:
+                a=max(0,m.start()-1200); b=min(len(s),m.start()+6500)
+                print('OFFSET',m.start())
+                print(s[a:b].replace('\n','\\n'))
+          PY

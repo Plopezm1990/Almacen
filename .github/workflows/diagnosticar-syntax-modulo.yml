@@ -1,0 +1,38 @@
+name: Localizar error sintaxis modulo ES
+on:
+  push:
+    branches: [la-suite-identidad]
+    paths:
+      - '.github/workflows/diagnosticar-syntax-modulo.yml'
+      - 'fuente.js'
+  workflow_dispatch:
+jobs:
+  diagnosticar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parsear como modulo con Node
+        run: |
+          set +e
+          node --input-type=module --check < fuente.js 2>&1 | tee /tmp/node-module.txt
+          echo "NODE_EXIT=${PIPESTATUS[0]}"
+          set -e
+      - name: Parsear con Acorn y mostrar contexto
+        run: |
+          npm install acorn@8 >/dev/null 2>&1
+          node <<'NODE'
+          const fs=require('fs');
+          const acorn=require('acorn');
+          const s=fs.readFileSync('fuente.js','utf8');
+          try {
+            acorn.parse(s,{ecmaVersion:'latest',sourceType:'module',locations:true});
+            console.log('ACORN_OK');
+          } catch(e) {
+            console.log('ACORN_ERROR',e.message);
+            console.log('LOC',JSON.stringify(e.loc));
+            const lines=s.split(/\n/);
+            const n=e.loc?.line||1;
+            for(let i=Math.max(1,n-8);i<=Math.min(lines.length,n+8);i++) console.log(String(i).padStart(6), lines[i-1]);
+            process.exitCode=0;
+          }
+          NODE

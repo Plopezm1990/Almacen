@@ -1,0 +1,68 @@
+name: PM11 Compra P04 albaran y trazabilidad
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - pm11-compra-recepcion-pago-e2e
+    paths:
+      - 'fuente.js'
+      - 'tools/corregir_pm11_compra_p04_albaran.py'
+      - 'tests/pm11-compra/p04-albaran-trazabilidad-contract.mjs'
+      - 'tests/pm11-compra/P04_ALBARAN_TRAZABILIDAD.md'
+      - '.github/workflows/pm11-compra-p04-albaran.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  albaran-trazabilidad:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout completo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar main congelado
+        shell: bash
+        run: |
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+
+      - name: Aplicar endurecimiento P04
+        run: python3 tools/corregir_pm11_compra_p04_albaran.py
+
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+
+      - name: Contrato P04
+        run: node tests/pm11-compra/p04-albaran-trazabilidad-contract.mjs
+
+      - name: Regresion P03 recepciones multiples
+        run: node tests/pm11-compra/p03-recepciones-multiples-replay-contract.mjs
+
+      - name: Regresion PM10 P06 recepcion
+        run: node tests/pm10/p06-recepcion-contract.mjs
+
+      - name: Regresion PM10 P05 pedidos
+        run: node tests/pm10/p05-pedidos-contract.mjs
+
+      - name: Contrato E2E P02
+        run: node tests/pm11-compra/p02-contrato-e2e-estados-contract.mjs
+
+      - name: Commit funcional generado
+        shell: bash
+        run: |
+          if git diff --quiet -- fuente.js; then
+            echo 'P04 ya aplicado; sin cambios funcionales pendientes'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add fuente.js
+          git commit -m 'PM11 compra P04: hacer idempotente confirmacion de albaran'
+          git push
+
+      - name: Resultado
+        run: echo 'PM11_COMPRA_P04_ALBARAN_TRAZABILIDAD=PASS'

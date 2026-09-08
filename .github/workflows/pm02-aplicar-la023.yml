@@ -1,0 +1,64 @@
+name: PM-02 aplicar y validar LA-023
+
+on:
+  push:
+    branches: [pm02-integrado]
+    paths:
+      - .github/workflows/pm02-aplicar-la023.yml
+
+permissions:
+  contents: write
+
+jobs:
+  corregir-validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pm02-integrado
+          fetch-depth: 0
+
+      - name: Aplicar corrección mínima al bundle candidato
+        run: python3 tools/corregir_la023_destino_guardado.py
+
+      - name: Resincronizar fuente recuperada con el bundle corregido
+        run: python3 source-recovery/recuperar_candidato.py
+
+      - name: Validar bundle y fuente recompilable
+        shell: bash
+        run: |
+          node --check fuente.js
+          cd source-recovery
+          npm ci --no-audit --no-fund
+          npm run check
+          npm run build
+          node --check dist/fuente.js
+          grep -Fq 'Est\xE1s trabajando solo en este equipo, sin sincronizaci\xF3n' ../fuente.js
+          grep -Fq 'Los cambios se intentan sincronizar con tu cuenta' ../fuente.js
+          grep -Fq 'Est\xE1s trabajando solo en este equipo, sin sincronizaci\xF3n' fuente-recuperado.js
+          grep -Fq 'Los cambios se intentan sincronizar con tu cuenta' fuente-recuperado.js
+          if grep -Fq 'Todo lo que capturas en este programa ya se guarda autom\xE1ticamente en tu cuenta' ../fuente.js; then exit 1; fi
+          echo 'LA023_BUILD_OK=1'
+
+      - name: Registrar evidencia
+        shell: bash
+        run: |
+          mkdir -p docs/plan-maestro
+          {
+            echo 'PM02_LA023_OK=1'
+            echo 'MODO_LOCAL_TEXTO_HONESTO=1'
+            echo 'MODO_NUBE_SIN_PROMESA_DE_CONFIRMACION=1'
+            echo "ROOT_FUENTE_SHA256=$(sha256sum fuente.js | awk '{print $1}')"
+            echo "RECOVERED_SOURCE_SHA256=$(sha256sum source-recovery/fuente-recuperado.js | awk '{print $1}')"
+            echo "RECOVERED_BUILD_SHA256=$(sha256sum source-recovery/dist/fuente.js | awk '{print $1}')"
+          } > docs/plan-maestro/PM02_LA023_EVIDENCIA.txt
+
+      - name: Guardar corrección en rama PM-02
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fuente.js source-recovery/fuente-recuperado.js source-recovery/PM01_EVIDENCIA.json docs/plan-maestro/PM02_LA023_EVIDENCIA.txt
+          git diff --cached --quiet && exit 0
+          git commit -m "PM-02: corregir LA-023 y mantener fuente sincronizada [skip ci]"
+          git push origin HEAD:pm02-integrado

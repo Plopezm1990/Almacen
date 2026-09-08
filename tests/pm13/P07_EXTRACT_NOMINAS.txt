@@ -1,0 +1,739 @@
+===== MOTOR NOMINAS =====
+
+cturaDirectaEsDelContexto(f22) || f22.estado === "ANULADA") return { ok: false, error: "Factura fuera del contexto autorizado." };
+    const doc = { ...f22, total: Number(f22.importeTotal) || 0 };
+    const r2 = pagada ? await registrarPagoPM06({ factura: doc, origenFactura: "directa", importe: importe == null ? calcularSaldoFacturaPM06(pagosFacturas, id, "directa", doc.total, doc.empresaId, doc.localId, doc.pagada).pendiente : importe, pagosFacturas, setPagosFacturas }) : await revertirUltimoPagoPM06({ factura: doc, origenFactura: "directa", pagosFacturas, setPagosFacturas });
+    if (r2.ok && !r2.replayed) registrarAuditoria(pagada ? "Registrar pago factura directa" : "Revertir pago factura directa", `${f22.concepto || f22.numeroFactura || id} \xB7 \u20AC${redondearDineroPM06(r2.pago?.importe || importe || 0).toFixed(2)} \xB7 ${f22.empresaId}/${f22.localId}`);
+    return r2;
+  }
+  return { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta };
+}
+function crearLogicaNominas({ nominas, setNominas, registrarAuditoria, empleados, localActivoId }) {
+  const empleadoNominaLocal = (id) => empleados.find((e2) => e2.id === id && (!localActivoId || e2.localId === localActivoId));
+  const nominaEsLocal = (n2) => !!n2 && (!localActivoId || n2.localId === localActivoId);
+  function addNomina(data) {
+    const emp = empleadoNominaLocal(data.empleadoId);
+    if (!emp) return false;
+    const bruto = Number(data.brutoTotal) || 0;
+    const ss = Number(data.seguridadSocialEmpresa) || 0;
+    setNominas((s22) => {
+      const sinEsteMes = s22.filter((n2) => !(n2.empleadoId === data.empleadoId && n2.mes === data.mes));
+      return [{ id: uid(), ...data, brutoTotal: bruto, seguridadSocialEmpresa: ss, costeTotalEmpresa: bruto + ss, localId: emp.localId || localActivoId || null }, ...sinEsteMes];
+    });
+    return true;
+  }
+  function updateNomina(id, data) {
+    const actual = nominas.find((n2) => n2.id === id);
+    if (!nominaEsLocal(actual)) return false;
+    const bruto = Number(data.brutoTotal) || 0;
+    const ss = Number(data.seguridadSocialEmpresa) || 0;
+    setNominas((s22) => s22.map((n2) => n2.id === id ? { ...n2, ...data, brutoTotal: bruto, seguridadSocialEmpresa: ss, costeTotalEmpresa: bruto + ss, localId: n2.localId || localActivoId || null } : n2));
+    registrarAuditoria("Editar registro de n\xF3mina", `${data.mes || ""} \xB7 \u20AC${(bruto + ss).toFixed(2)}`);
+    return true;
+  }
+  function deleteNomina(id) {
+    const actual = nominas.find((n2) => n2.id === id);
+    if (!nominaEsLocal(actual)) return false;
+    setNominas((s22) => {
+      const n2 = s22.find((x3) => x3.id === id);
+      registrarAuditoria("Eliminar registro de n\xF3mina", n2 ? `${n2.mes} \xB7 \u20AC${(Number(n2.costeTotalEmpresa) || 0).toFixed(2)}` : id);
+      return s22.filter((x3) => x3.id !== id);
+    });
+    return true;
+  }
+  return { addNomina, updateNomina, deleteNomina };
+}
+function crearLogicaEntrevistas({ entrevistas, setEntrevistas, registrarAuditoria }) {
+  function crearEntrevista(candidatoNombre) {
+    const nueva = {
+      id: uid(),
+      candidatoNombre: candidatoNombre.trim(),
+      fecha: todayISO(),
+      estado: "en_curso",
+      // en_curso | completada
+      historial: [],
+      // [{ pregunta, respuesta }]
+      informe: null
+    };
+    setEntrevistas((s22) => [nueva, ...s22]);
+    return nueva;
+  }
+  function actualizarEntrevista(id, cambios) {
+    setEntrevistas((s22) => s22.map((e2) => e2.id === id ? { ...e2, ...cambios } : e2));
+  }
+  function finalizarEntrevista(id, informe) {
+    setEntrevistas((s22) => s22.map((e2) => e2.id === id ? { ...e2, estado: "completada", informe } : e2));
+    const ent = entrevistas.find((e2) => e2.id === id);
+    registrarAuditoria(
+      "Entrevista completada",
+      `${ent ? ent.candidatoNombre : id} \xB7 recomendado: ${informe?.puesto_principal || "\u2014"}`
+    );
+  }
+  function eliminarEntrevista(id) {
+    const ent = entrevistas.find((e2) => e2.id === id);
+    registrarAuditoria("Eliminar entrevista", ent ? ent.candidatoNombre : id);
+    setEntrevistas((s22) => s22.filter((e2) => e2.id !== id));
+  }
+  return { crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista };
+}
+function crearLogicaPrefiltros({ registrarAuditoria }) {
+  function generarToken() {
+    if (typeof crypto !== "undefined" && crypto.randomUUID) {
+      return crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
+    }
+    let t22 = "";
+    for (let i33 = 0; i33 < 64; i33++) t22 += Math.floor(Math.random() * 16).toString(16);
+    return t22;
+  }
+  async function crearPrefiltro(candidatoNombre) {
+    const supabase = await window.getSupabaseClient();
+    const token = generarToken();
+    const { error } = await supabase.from("prefiltros_candidatos").insert({ token, candidato_nombre: candidatoNombre.trim(), estado: "pendiente" });
+    if (error) return null;
+    registrarAuditoria("Crear prefiltro de candidato", candidatoNombre.trim());
+    return token;
+  }
+  async function listarPrefiltros() {
+    const supabase = await window.getSupabaseClient();
+    const { data, error } = await supabase.from("prefiltros_candidatos").select("*").order("creado_en", { ascending: false });
+    if (error) return [];
+    return data;
+  }
+  async function eliminarPrefiltro(token, candidatoNombre) {
+    const supabase = await window.getSupabaseClient();
+    const { error } = await supabase.from("prefiltros_candidatos").delete().eq("token", token);
+    if (!error) registrarAuditoria("Eliminar prefiltro de candidato", candidatoNombre || token);
+    return !error;
+  }
+  return { crearPrefiltro, listarPrefiltros, eliminarPrefiltro };
+}
+function SelectorDiseno({ disenoMenu, setDisenoMenu, oscuro = false }) {
+  const opciones = [
+    { id: "A", label: "Depart." },
+    { id: "B", label: "Ciclos" },
+    { id: "C", label: "R\xE1pido" }
+  ];
+  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1 rounded-lg p-0.5 shrink-0", style: { background: oscuro ? "rgba(255,255,255,0.08)" : C2.bg } }, opciones.map((o22) => /* @__PURE__ */ import_react4.default.createElement(
+    "button",
+    {
+      key: o22.id,
+      onClick: () => setDisenoMenu(o22.id),
+      className: "text-[10.5px] font-semibold px-2 py-1 rounded-md whitespace-nowrap",
+      style: {
+        background: disenoMenu === o22.id ? C2.accent : "transparent",
+        color: disenoMenu === o22.id ? "#fff" : oscuro ? "#B9C7C0" : C2.inkSoft
+      }
+    },
+    o22.label
+  )));
+}
+function BotonTema({ temaOscuro, setTemaOscuro }) {
+  return /* @__PURE__ */ import_react4.default.createElement(
+    "button",
+    {
+      onClick: () => setTemaOscuro(!temaOscuro),
+      className: "text-[10.5px] font-semibold px-2 py-1 rounded-md whitespace-nowrap shrink-0",
+      style: { background: "rgba(255,255,255,0.08)", color: "#B9C7C0" },
+      title: temaOscuro ? "Cambiar a modo claro" : "Cambiar a modo oscuro"
+    },
+    temaOscuro ? "\u2600\uFE0F Claro" : "\u{1F319} Oscuro"
+  );
+}
+function BotonModoEmpleado({ modoEmpleado, salirModoEmpleado, empleados = [], usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil }) {
+  const [pantalla, setPantalla] = (0, import_react4.useState)(null);
+  const [empleadoId, setEmpleadoId] = (0, import_react4.useState)("");
+  const [pin, setPin] = (0, import_react4.useState)("");
+  const [error, setError] = (0, import_react4.useState)("");
+  const conAcceso = empleados.filter((e2) => e2.activo !== false && e2.pin);
+  const empleadoActivo = empleados.find((e2) => e2.id === usuarioActivoId);
+  if (miPerfil && miPerfil.rol !== "Propietario") {
+    return /* @__PURE__ */ import_react4.default.createElement(
+      "button",
+      {
+        onClick: async () => {
+          const supabase = await window.getSupabaseClient();
+          await supabase.auth.signOut();
+        },
+        className: "text-[10.5px] font-semibold px-2 py-1 rounded-md whitespace-nowrap shrink-0",
+        style: { background: "rgba(255,255,255,0
+
+===== IMPORTACION IA / UI =====
+
+d2.getMonth() + 1).padStart(2, "0")}`;
+    const keyAnterior = `${d2.getFullYear() - 1}-${String(d2.getMonth() + 1).padStart(2, "0")}`;
+    const actual = ingresosPorMes[key] || 0;
+    const anterior = ingresosPorMes[keyAnterior];
+    const variacion = anterior ? (actual - anterior) / anterior * 100 : null;
+    filas.push({
+      key,
+      etiqueta: `${MESES_NOMBRE[d2.getMonth()]} ${d2.getFullYear()}`,
+      actual,
+      anterior: anterior ?? null,
+      variacion
+    });
+  }
+  filas.reverse();
+  const hayComparacion = filas.some((f22) => f22.anterior !== null);
+  const mesesConDatos = filas.filter((f22) => f22.actual > 0).length;
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Estacionalidad"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Compara cada mes contra el mismo mes del a\xF1o anterior \u2014 para ver si San Valent\xEDn, Navidad o el verano se comportan distinto de un a\xF1o a otro, en vez de comparar solo contra el mes justo antes.")), !hayComparacion && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Todav\xEDa no tienes un a\xF1o completo de ventas registradas, as\xED que no hay ning\xFAn mes con el que comparar. En cuanto pase un a\xF1o desde que empezaste a registrar ventas, aqu\xED aparecer\xE1 la comparaci\xF3n real.", mesesConDatos > 0 && ` Por ahora tienes ${mesesConDatos} mes(es) con datos.`)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, filas.map((f22) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: f22.key }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[13px] font-medium capitalize" }, f22.etiqueta), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold" }, "\u20AC", fmt(f22.actual)), f22.anterior !== null ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mono", style: { color: f22.variacion >= 0 ? C2.accent : C2.red } }, f22.variacion >= 0 ? "+" : "", fmt(f22.variacion), "% vs. \u20AC", fmt(f22.anterior), " el a\xF1o pasado") : /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Sin dato del a\xF1o anterior")))))));
+}
+function CostePersonal({ empleados, nominas, addNomina, updateNomina, deleteNomina, fichajes, movimientos }) {
+  const mesActual = aISO(/* @__PURE__ */ new Date()).slice(0, 7);
+  const [mes, setMes] = (0, import_react4.useState)(mesActual);
+  const [showForm, setShowForm] = (0, import_react4.useState)(false);
+  const [editingId, setEditingId] = (0, import_react4.useState)(null);
+  const [form, setForm] = (0, import_react4.useState)({ empleadoId: "", mes: mesActual, brutoTotal: "", seguridadSocialEmpresa: "", notas: "" });
+  const [error, setError] = (0, import_react4.useState)("");
+  const [mostrarIA, setMostrarIA] = (0, import_react4.useState)(false);
+  const [fotosIA, setFotosIA] = (0, import_react4.useState)([]);
+  const [cargandoIA, setCargandoIA] = (0, import_react4.useState)(false);
+  const [errorIA, setErrorIA] = (0, import_react4.useState)("");
+  const [avisosIA, setAvisosIA] = (0, import_react4.useState)([]);
+  const activos = empleados.filter((e2) => e2.activo !== false);
+  const nominasDelMes = nominas.filter((n2) => n2.mes === mes);
+  const costeTotalMes = nominasDelMes.reduce((a22, n2) => a22 + (Number(n2.costeTotalEmpresa) || 0), 0);
+  const ingresosDelMes = movimientos.filter((m22) => esVenta(m22) && (m22.fecha || "").slice(0, 7) === mes).reduce((a22, m22) => a22 + Math.abs(Number(m22.cantidad) || 0) * (Number(m22.ingresoUnitario) || 0), 0);
+  const porcentajeSobreVentas = ingresosDelMes > 0 ? costeTotalMes / ingresosDelMes * 100 : null;
+  function horasDelEmpleadoEnMes(empleadoId) {
+    return horasDeEmpleadoEnMes(fichajes, empleadoId, mes);
+  }
+  const filas = nominasDelMes.map((n2) => {
+    const emp = empleados.find((e2) => e2.id === n2.empleadoId);
+    const horas = horasDelEmpleadoEnMes(n2.empleadoId);
+    const costePorHora = horas > 0 ? (Number(n2.costeTotalEmpresa) || 0) / horas : null;
+    return { ...n2, empleado: emp, horas, costePorHora };
+  }).sort((a22, b2) => (b2.costeTotalEmpresa || 0) - (a22.costeTotalEmpresa || 0));
+  const LIMITE_COSTE_PERSONAL = 0.35;
+  const ventaObjetivo35 = costeTotalMes > 0 ? costeTotalMes / LIMITE_COSTE_PERSONAL : null;
+  const diferenciaConObjetivo = ventaObjetivo35 !== null ? ingresosDelMes - ventaObjetivo35 : null;
+  const horasTotalesMes = filas.reduce((a22, f22) => a22 + (f22.horas || 0), 0);
+  const costePorHoraEquipo = horasTotalesMes > 0 ? costeTotalMes / horasTotalesMes : null;
+  const ventasPorHoraEquipo = horasTotalesMes > 0 ? ingresosDelMes / horasTotalesMes : null;
+  async function agregarFotosIA(archivos) {
+    setErrorIA("");
+    const validos = Array.from(archivos).filter((f22) => f22.type.startsWith("image/"));
+    if (validos.length === 0) {
+      setErrorIA("Solo se admiten fotos (jpg, png). Si es un PDF, hazle una foto de pantalla o de la hoja impresa.");
+      return;
+    }
+    try {
+      const nuevas = await Promise.all(validos.map(archivoABase64));
+      setFotosIA((s22) => [...s22, ...nuevas]);
+    } catch {
+      setErrorIA("No se ha podido leer ese archivo. Prueba con otra foto.");
+    }
+  }
+  function quitarFotoIA(idx) {
+    setFotosIA((s22) => s22.filter((_22, i33) => i33 !== idx));
+  }
+  function empleadoPorNombreLeido(nombre) {
+    if (!nombre) return null;
+    const normaliza = (t22) => t22.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    const buscado = normaliza(nombre);
+    return activos.find((e2) => normaliza(e2.nombre) === buscado) || activos.find((e2) => normaliza(e2.nombre).includes(buscado) || buscado.includes(normaliza(e2.nombre))) || null;
+  }
+  function numeroLimpio(v22) {
+    if (v22 === null || v22 === void 0 || v22 === "") return "";
+    if (typeof v22 === "number" && !isNaN(v22)) return v22;
+    let s22 = String(v22).trim().replace(/[€\s]/g, "");
+    if (/,/.test(s22) && /\./.test(s22)) s22 = s22.replace(/\./g, "").replace(",", ".");
+    else if (/,/.test(s22)) s22 = s22.replace(",", ".");
+    const n2 = parseFloat(s22);
+    return isNaN(n2) ? "" : n2;
+  }
+  function mesLimpio(v22) {
+    if (!v22) return null;
+    const m22 = String(v22).match(/^(\d{4})-(\d{2})/);
+    return m22 ? `${m22[1]}-${m22[2]}` : null;
+  }
+  async function importarNominaConIA() {
+    if (fotosIA.length === 0) {
+      setErrorIA("Sube al menos una foto de la n\xF3mina.");
+      return;
+    }
+    setCargandoIA(true);
+    setErrorIA("");
+    setAvisosIA([]);
+    try {
+      const resp = await fetch(
+        "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/importar-nomina",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imagenes: fotosIA.map((f22) => ({ base64: f22.base64, mediaType: f22.mediaType })) })
+        }
+      );
+      const r2 = await resp.json();
+      if (!r2.ok) {
+        setErrorIA(r2.error || "No se ha podido leer correctamente esta n\xF3mina. Rev\xEDsala antes de continuar.");
+        setCargandoIA(false);
+        return;
+      }
+      const d2 = r2.datos || {};
+      const empMatch = empleadoPorNombreLeido(d2.empleado);
+      const mesSaneado = mesLimpio(d2.mes);
+      const avisos = [];
+      if (!empMatch) avisos.push(`No se ha podido emparejar el nombre le\xEDdo ("${d2.empleado || "\u2014"}") con ning\xFAn empleado dado de alta. El\xEDgelo a mano abajo.`);
+      if (!d2.mes) avisos.push("No se ha podido leer el mes de la n\xF3mina. Rev\xEDsalo antes de guardar.");
+      else if (!mesSaneado) avisos.push(`El mes le\xEDdo ("${d2.mes}") no tiene un formato reconocible. Se ha dejado el mes actual \u2014 rev\xEDsalo antes de guardar.`);
+      setForm({
+        empleadoId: empMatch ? empMatch.id : "",
+        mes: mesSaneado || mes,
+        brutoTotal: numeroLimpio(d2.brutoTotal),
+        seguridadSocialEmpresa: numeroLimpio(d2.seguridadSocialEmpresa),
+        notas: d2.notas || ""
+      });
+      setEditingId(null);
+      setAvisosIA(avisos);
+      setMostrarIA(false);
+      setFotosIA([]);
+      setShowForm(true);
+    } catch {
+      setErrorIA("No se ha podido conectar con la IA. Comprueba tu conexi\xF3n e int\xE9ntalo otra vez.");
+    } finally {
+      setCargandoIA(false);
+    }
+  }
+  function submit() {
+    if (!form.empleadoId) {
+      setError("Elige de qu\xE9 empleado es la n\xF3mina.");
+      return;
+    }
+    if (!(Number(form.brutoTotal) > 0)) {
+      setError("Pon el bruto total del mes.");
+      return;
+    }
+    setError("");
+    if (editingId) updateNomina(editingId, form);
+    else addNomina(form);
+    if (form.mes && form.mes !== mes) setMes(form.mes);
+    setForm({ empleadoId: "", mes: form.mes || mes, brutoTotal: "", seguridadSocialEmpresa: "", notas: "" });
+    setEditingId(null);
+    setAvisosIA([]);
+    setShowForm(false);
+  }
+  function abrirEdicion(n2) {
+    setForm({
+      empleadoId: n2.empleadoId || "",
+      mes: n2.mes || mes,
+      brutoTotal: n2.brutoTotal ?? "",
+      seguridadSocialEmpresa: n2.seguridadSocialEmpresa ?? "",
+      notas: n2.notas || ""
+    });
+    setEditingId(n2.id);
+    setError("");
+    setAvisosIA([]);
+    setShowForm(true);
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+    setMostrarIA(true);
+    setFotosIA([]);
+    setErrorIA("");
+  } }, /* @__PURE__ */ import_react4.default.createElement(Camera, { size: 15 }), " Foto con IA"), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
+    setForm({ empleadoId: "", mes, brutoTotal: "", seguridadSocialEmpresa: "", notas: "" });
+    setEditingId(null);
+    setError("");
+    setShowForm((s22) => !s22);
+  } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Registrar n\xF3mina")) }, "Coste de personal"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("b", null, "Esto no calcula n\xF3minas"), " \u2014 eso lo hace tu gestor\xEDa, que es quien tiene la autorizaci\xF3n ante la Seguridad Social y responde legalmente. Aqu\xED solo apuntas lo que la gestor\xEDa ya te ha pasado, para cruzarlo con tus ventas reales y saber cu\xE1nto te cuesta de verdad el personal, en vez de una estimaci\xF3n.")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Mes que est\xE1s viendo" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "month", value: mes, onChange: (e2) => setMes(e2.target.value) }))), mostrarIA && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => {
+    if (!cargandoIA) setMostrarIA(false);
+  }, title: "Leer n\xF3mina con foto (IA)", ancho: "max-w-2xl" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Sube una foto de la n\xF3mina (o de la hoja de cotizaci\xF3n, si quieres que lea tambi\xE9n la Seguridad Social). La IA prepara el formulario para que lo revises \u2014 nada se guarda hasta que t\xFA confirmes."), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "Una n\xF3mina lleva datos personales y econ\xF3micos sensibles del trabajador. Revisa bien cada cifra antes de guardar \u2014 la IA puede confundir n\xFAmeros, sobre todo si la foto sale torcida o con poca luz.")), /* @__PURE__ */ import_react4.default.createElement(
+    "label",
+    {
+      className: "flex flex-col items-center justify-center gap-2 rounded-lg py-6 mb-3 cursor-pointer",
+      style: { border: `2px dashed ${C2.line}`, background: C2.surface }
+    },
+    /* @__PURE__ */ import_react4.default.createElement(Camera, { size: 22, color: C2.inkSoft }),
+    /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "Toca para elegir: hacer foto ahora o subir de la galer\xEDa"),
+    /* @__PURE__ */ import_react4.default.createElement(
+      "input",
+      {
+        type: "file",
+        accept: "image/*",
+        multiple: true,
+        disabled: cargandoIA,
+        onChange: (e2) => {
+          agregarFotosIA(e2.target.files);
+          e2.target.value = "";
+        },
+        className: "hidden"
+      }
+    )
+  ), fotosIA.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-wrap gap-2 mb-3" }, fotosIA.map((f22, i33) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i33, className: "relative" }, /* @__PURE__ */ import_react4.default.createElement("img", { src: f22.previsualizacion, alt: "", className: "w-16 h-16 object-cover rounded-lg", style: { border: `1px solid ${C2.line}` } }), !cargandoIA && /* @__PURE__ */ import_react4.default.createElement(
+    "button",
+    {
+      onClick: () => quitarFotoIA(i33),
+      "aria-label": "Quitar esta foto",
+      className: "absolute -top-1.5 -right-1.5 rounded-full flex items-center justify-center",
+      style: { width: 18, height: 18, background: C2.red, color: "#fff" }
+    },
+    /* @__PURE__ */ import_react4.default.createElement(X2, { size: 12 })
+  )))), errorIA && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, errorIA), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Si alg\xFAn dato sale borroso o no se lee bien, la IA lo deja en blanco en vez de inventarlo \u2014 luego lo rellenas t\xFA en la revisi\xF3n."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: importarNominaConIA, disabled: cargandoIA }, cargandoIA ? "Leyendo la n\xF3mina\u2026" : "Leer con IA"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setMostrarIA(false), disabled: cargandoIA }, "Cancelar"))), showForm && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3" }, editingId ? "Editar n\xF3mina" : "Registrar n\xF3mina del mes"), avisosIA.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-3 px-3 py-2 rounded-lg text-[12px]", style: { background: C2.amberSoft } }, avisosIA.map((a22, i33) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i33 }, a22))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Empleado" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.empleadoId, onChange: (e2) => setForm({ ...form, empleadoId: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "\u2014 Elige un empleado \u2014"), activos.map((e2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: e2.id, value: e2.id }, e2.nombre)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Mes" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "month", value: form.mes, onChange: (e2) => setForm({ ...form, mes: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Bruto del mes (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: form.brutoTotal, onChange: (e2) => setForm({ ...form, brutoTotal: e2.target.value }), placeholder: "Lo que pone la n\xF3mina" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Seguridad Social a cargo de la empresa (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: form.seguridadSocialEmpresa, onChange: (e2) => setForm({ ...form, seguridadSocialEmpresa: e2.target.value }), placeholder: "Del bolet\xEDn de cotizaci\xF3n" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Notas (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.notas, onChange: (e2) => setForm({ ...form, notas: e2.target.value }), placeholder: "Incluye paga extra, finiquito\u2026" }))), Number(form.brutoTotal) > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.inkSoft } }, "Coste total para la empresa: ", /* @__PURE__ */ import_react4.default.createElement("b", { className: "mono" }, "\u20AC", fmt(Number(form.brutoTotal) + (Number(form.seguridadSocialEmpresa) || 0)))), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submit }, editingId ? "Guardar cambios" : "Guardar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+    setShowForm(false);
+    setEditingId(null);
+    setAvisosIA([]);
+  } }, "Cancelar"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Coste total del mes"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1" }, "\u20AC", fmt(costeTotalMes))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "% sobre ventas del mes"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: porcentajeSobreVentas === null ? C2.inkSoft : porcentajeSobreVentas > 35 ? C2.red : porcentajeSobreVentas > 30 ? C2.amber : C2.accent } }, porcentajeSobreVentas === null ? "\u2014" : `${fmt(porcentajeSobreVentas)}%`), porcentajeSobreVentas !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-0.5", style: { color: C2.inkSoft } }, "sobre \u20AC", fmt(ingresosDelMes), " vendidos"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-3 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Venta objetivo (no pasar del 35%)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1" }, ventaObjetivo35 === null ? "\u2014" : `\u20AC${fmt(ventaObjetivo35)}`), diferenciaConObjetivo !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-0.5", style: { color: diferenciaConObjetivo >= 0 ? C2.accent : C2.red } }, diferenciaConObjetivo >= 0 ? `ya llevas \u20AC${fmt(diferenciaConObjetivo)} de margen` : `te faltan \u20AC${fmt(Math.abs(diferenciaConObjetivo))} por vender`)), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Coste de personal por hora"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1" }, costePorHoraEquipo === null ? "\u2014" : `\u20AC${fmt(costePorHoraEquipo)}`), horasTotalesMes > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-0.5", style: { color: C2.inkSoft } }, "sobre ", fmt(horasTotalesMes), " h fichadas")), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Ventas por hora trabajada"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1" }, ventasPorHoraEquipo === null ? "\u2014" : `\u20AC${fmt(ventasPorHoraEquipo)}`))), porcentajeSobreVentas !== null && porcentajeSobreVentas > 35 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "El personal se est\xE1 llevando m\xE1s del 35% de lo que vendes. En hosteler\xEDa suele considerarse una se\xF1al de alerta \u2014 puede ser un mes flojo de ventas, o que haga falta revisar turnos o plantilla.")), filas.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: `No has registrado n\xF3minas de ${mes} todav\xEDa.` }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, filas.map((n2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: n2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, n2.empleado ? n2.empleado.nombre : "Empleado eliminado"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Bruto \u20AC", fmt(n2.brutoTotal), " + SS empresa \u20AC", fmt(n2.seguridadSocialEmpresa)), n2.notas && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-0.5", style: { color: C2.inkSoft } }, n2.notas)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold" }, "\u20AC", fmt(n2.costeTotalEmpresa)), n2.costePorHora !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mono", style: { color: C2.inkSoft } }, "\u20AC", fmt(n2.costePorHora), "/h \xB7 ", fmt(n2.horas), " h fichadas"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => abrirEdicion(n2) }, /* @__PURE__ */ import_react4.default.createElement(Pencil, { size: 13 }), " Editar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => deleteNomina(n2.id) }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 13 }), " Eliminar"))))));
+}
+function HistorialProducto({ productos, movimientos, pedidos: pedidos2, albaranes, traspasos, proveedorPorId }) {
+  const [busqueda, setBusqueda] = (0, import_react4.useState)("");
+  const [productoId, setProductoId] = (0, import_react4.useState)("");
+  const [seccion, setSeccion] = (0, import_react4.useState)("movimientos");
+  const coincidencias = (0, import_react4.useMemo)(() => {
+    const q2 = busqueda.trim().toLowerCase();
+    if (!q2) return [];
+    return productos.filter((p22) => p22.nombre.toLowerCase().includes(q2) || (p22.codigoBarras || "").toLowerCase().includes(q2)).slice(0, 8);
+  }, [productos, busqueda]);
+  const producto = productos.find((p22) => p22.id === productoId);
+  const movimientosDelProducto = (0, import_react4.useMemo)(() => {
+    if (!producto) return [];
+    r
+
+===== RENDER NOMINAS =====
+
+lActivoConVista(id) {
+    cambiarLocalActivo(id);
+    if (locales.some((l22) => l22.id === id && l22.activo !== false && !l22.fusionadoEn)) setLocalInformeId(id);
+  }
+  const { registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion } = crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, setMovimientosCaja, setArqueos, registrarAuditoria, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { activarModoEmpleado, entrarComoEmpleado, salirModoEmpleado, establecerPin } = crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, setModoEmpleado, setUsuarioActivoId });
+  const { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, eliminarRegistroAppcc } = crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId });
+  const { fichar, addFichajeManual, updateFichaje, eliminarFichaje } = crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId });
+  const { addFreidora, updateFreidora, deleteFreidora, registrarCambio, registrarRelleno, eliminarRegistroAceite, consumoPorCiclo } = crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegistrosAceite, productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
+  const { addFichaCosto, updateFichaCosto, deleteFichaCosto, alergenosDeFicha } = crearLogicaFichasCosto({ productos, setFichasCosto, localActivoId });
+  function obtenerContextoAjusteConteo() {
+    const empleadoActivo = usuarioActivoId ? empleados.find((e) => e.id === usuarioActivoId) : null;
+    const rol = miPerfil && miPerfil.rol ? miPerfil.rol : modoEmpleado ? empleadoActivo && empleadoActivo.rol || "" : "Propietario";
+    const actorNombre = miPerfil && miPerfil.nombre ? miPerfil.nombre : modoEmpleado ? empleadoActivo && empleadoActivo.nombre || "" : "Propietario/a";
+    return {
+      rol,
+      actorId: usuarioActivoId || "",
+      actorNombre,
+      empresaId: empresaDelLocalActivo && empresaDelLocalActivo.id || null,
+      localId: localActivoId || null,
+      todosLosLocales: String(localActivoId || "").toLowerCase() === "todos"
+    };
+  }
+  const puedeAplicarAjustesInventario = (() => {
+    const api = typeof window !== "undefined" ? window.__pm12ConteoEstados : null;
+    if (!api || typeof api.autorizarAjusteInventario !== "function") return false;
+    const ctx = obtenerContextoAjusteConteo();
+    return api.autorizarAjusteInventario({
+      ...ctx,
+      conteoEmpresaId: ctx.empresaId,
+      conteoLocalId: ctx.localId
+    }).ok === true;
+  })();
+  const { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion } = crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId, empresaActivaId: empresaDelLocalActivo && empresaDelLocalActivo.id || null, obtenerContextoActor: obtenerContextoAjusteConteo });
+  const conteoAbierto = (0, import_react4.useMemo)(() => conteosDelLocalActivo.find((c22) => !c22.completado) || null, [conteosDelLocalActivo]);
+  const almacenCongelado = !!conteoAbierto;
+  const { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro } = crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId, locales });
+  const { diagnosticarStock, corregirProducto, movimientosParaReconciliar } = crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
+  const { buscarEnCatalogo, aprenderReferencia, guardarAlbaran, eliminarAlbaran, marcarPagada, confirmarAlbaran, anularAlbaran, recibirConAlbaran, recibirConFotoIA, duplicadosDe, desviacionesDePrecio, procesarRecepcion } = crearLogicaAlbaranes({
+    catalogoProv,
+    setCatalogoProv,
+    albaranes,
+    setAlbaranes,
+    productos,
+    setProductos,
+    movimientos,
+    setMovimientos,
+    pedidos: pedidos2,
+    setPedidos,
+    registrarAuditoria,
+    proveedorPorId,
+    setPrefillAlbaran,
+    setPedidoParaFotoIA,
+    setTab,
+    localActivoId,
+    locales,
+    empresaId: empresaDelLocalActivo?.id || null,
+    pagosFacturas,
+    setPagosFacturas
+  });
+  const { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido } = crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedores, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
+  const { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta } = crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, proveedores, pagosFacturas, setPagosFacturas, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { addNomina, updateNomina, deleteNomina } = crearLogicaNominas({ nominas, setNominas, registrarAuditoria, empleados, localActivoId });
+  const { crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista } = crearLogicaEntrevistas({ entrevistas, setEntrevistas, registrarAuditoria });
+  const { crearPrefiltro, listarPrefiltros, eliminarPrefiltro } = crearLogicaPrefiltros({ registrarAuditoria });
+  function registrarAuditoria(accion, detalle) {
+    const empleadoActivo = usuarioActivoId ? empleados.find((e2) => e2.id === usuarioActivoId) : null;
+    const usuario = modoEmpleado ? empleadoActivo ? empleadoActivo.nombre : "Empleado sin identificar" : "Propietario/a";
+    const entrada = { id: uid(), fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), usuario, accion, detalle, empresaId: empresaDelLocalActivo?.id || null, localId: localActivoId || null };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) {
+      setAuditoria((s22) => [entrada, ...s22].slice(0, 500));
+      return;
+    }
+    (async () => {
+      try {
+        const supabase = await window.getSupabaseClient();
+        const r2 = await Promise.race([
+          supabase.rpc("registrar_auditoria", {
+            p_id: entrada.id,
+            p_usuario: usuario,
+            p_accion: accion,
+            p_detalle: detalle,
+            p_fecha: entrada.fecha,
+            p_hora: entrada.hora,
+            p_empresa_id: entrada.empresaId,
+            p_local_id: entrada.localId
+          }),
+          new Promise((_22, reject) => setTimeout(() => reject(new Error("La auditor\xEDa tard\xF3 demasiado en responder")), 6e3))
+        ]);
+        if (r2.error) throw r2.error;
+        const rAud = await supabase.from("auditoria_registro").select("datos").order("creado_en", { ascending: false }).limit(500);
+        if (!rAud.error && rAud.data) setAuditoria(rAud.data.map((fila) => fila.datos));
+      } catch (e2) {
+        setAuditoria((s22) => [entrada, ...s22].slice(0, 500));
+      }
+    })();
+  }
+  const esUtillaje = (p22) => esNoMercancia(p22);
+  const valorInventario = (0, import_react4.useMemo)(
+    () => productos.filter((p22) => !esUtillaje(p22)).reduce((acc, p22) => acc + (Number(p22.stock) || 0) * Number(p22.costo || 0), 0),
+    [productos]
+  );
+  const valorUtillaje = (0, import_react4.useMemo)(
+    () => productos.filter(esUtillaje).reduce((acc, p22) => acc + (Number(p22.stock) || 0) * Number(p22.costo || 0), 0),
+    [productos]
+  );
+  const valorInventarioDelLocalActivo = (0, import_react4.useMemo)(
+    () => productosDelLocalActivo.filter((p22) => !esUtillaje(p22)).reduce((acc, p22) => acc + (Number(p22.stock) || 0) * Number(p22.costo || 0), 0),
+    [productosDelLocalActivo]
+  );
+  const valorUtillajeDelLocalActivo = (0, import_react4.useMemo)(
+    () => productosDelLocalActivo.filter(esUtillaje).reduce((acc, p22) => acc + (Number(p22.stock) || 0) * Number(p22.costo || 0), 0),
+    [productosDelLocalActivo]
+  );
+  const stockBajo = (0, import_react4.useMemo)(
+    () => productos.filter((p22) => p22.tipo !== "elaborado" && (p22._pm07Servidor ? p22._pm07BajoMinimo === true : Number(p22.stock) < Number(p22.stockMinimo || 0))),
+    [productos]
+  );
+  const stockBajoDelLocalActivo = (0, import_react4.useMemo)(
+    () => productosDelLocalActivo.filter((p22) => p22.tipo !== "elaborado" && (p22._pm07Servidor ? p22._pm07BajoMinimo === true : Number(p22.stock) < Number(p22.stockMinimo || 0))),
+    [productosDelLocalActivo]
+  );
+  const diagnosticoStock = (0, import_react4.useMemo)(() => diagnosticarStock(), [productos, movimientos]);
+  const idsProductosDelLocalActivo = (0, import_react4.useMemo)(() => new Set(productosDelLocalActivo.map((p22) => p22.id)), [productosDelLocalActivo]);
+  const diagnosticoStockDelLocalActivo = (0, import_react4.useMemo)(() => diagnosticoStock.filter((d2) => idsProductosDelLocalActivo.has(d2.productoId)), [diagnosticoStock, idsProductosDelLocalActivo]);
+  const descuadresPendientes = (0, import_react4.useMemo)(() => diagnosticoStock.filter((d2) => !d2.coincide).length, [diagnosticoStock]);
+  const descuadresPendientesDelLocalActivo = (0, import_react4.useMemo)(() => diagnosticoStockDelLocalActivo.filter((d2) => !d2.coincide).length, [diagnosticoStockDelLocalActivo]);
+  const pisoVentaBajo = (0, import_react4.useMemo)(
+    () => productos.filter((p22) => p22.tipo !== "elaborado" && Number(p22.stockMinimoPisoVenta) > 0 && (Number(p22.stockPisoVenta) || 0) <= Number(p22.stockMinimoPisoVenta)),
+    [productos]
+  );
+  const analisisABC = (0, import_react4.useMemo)(() => {
+    const hace12meses = /* @__PURE__ */ new Date();
+    hace12meses.setMonth(hace12meses.getMonth() - 12);
+    const consumo = {};
+    movimientos.forEach((m22) => {
+      if (new Date(m22.fecha) < hace12meses) return;
+      const aporte = aporteConsumoInventarioPM09(m22);
+      if (!aporte) return;
+      consumo[m22.productoId] = (consumo[m22.productoId] || 0) + aporte;
+    });
+    const totalSalidas = Object.values(consumo).reduce((a22, x3) => a22 + x3, 0);
+    const baseConsumo = totalSalidas > 0;
+    const clasificables = productos.filter((p22) => !esUtillaje(p22));
+    const conValor = clasificables.map((p22) => {
+      const unidades = Math.max(0, consumo[p22.id] || 0);
+      const costo = Number(p22.costo) || 0;
+      const valor = baseConsumo ? unidades * costo : (Number(p22.stock) || 0) * costo;
+      return { id: p22.id, valor, unidades, rotacion: (Number(p22.stock) || 0) > 0 ? unidades / (Number(p22.stock) || 1) : null };
+    });
+    const total = conValor.reduce((a22, x3) => a22 + x3.valor, 0);
+    const mapa = {};
+    const detalle = {};
+    if (total <= 0) {
+      clasificables.forEach((p22) => {
+        mapa[p22.id] = "C";
+        detalle[p22.id] = { valor: 0, unidades: 0, rotacion: null };
+      });
+      return { mapa, detalle, baseConsumo };
+    }
+    const ordenados = [...conValor].sort((a22, b2) => b2.valor - a22.valor);
+    let acumulado = 0;
+    ordenados.forEach((x3) => {
+      acumulado += x3.valor;
+      const pct = acumulado / total * 100;
+      mapa[x3.id] = pct <= 80 ? "A" : pct <= 95 ? "B" : "C";
+      detalle[x3.id] = { valor: x3.valor, unidades: x3.unidades, rotacion: x3.rotacion };
+    });
+    return { mapa, detalle, baseConsumo };
+  }, [productos, movimientos]);
+  const clasificacionABC = analisisABC.mapa;
+  const analisisABCDelLocalActivo = (0, import_react4.useMemo)(() => {
+    const hace12meses = /* @__PURE__ */ new Date();
+    hace12meses.setMonth(hace12meses.getMonth() - 12);
+    const consumo = {};
+    movimientosDelLocalActivo.forEach((m22) => {
+      if (new Date(m22.fecha) < hace12meses) return;
+      const aporte = aporteConsumoInventarioPM09(m22);
+      if (!aporte) return;
+      consumo[m22.productoId] = (consumo[m22.productoId] || 0) + aporte;
+    });
+    const totalSalidas = Object.values(consumo).reduce((a22, x3) => a22 + x3, 0);
+    const baseConsumo = totalSalidas > 0;
+    const clasificables = productosDelLocalActivo.filter((p22) => !esUtillaje(p22));
+    const conValor = clasificables.map((p22) => {
+      const unidades = Math.max(0, consumo[p22.id] || 0);
+      const costo = Number(p22.costo) || 0;
+      const valor = baseConsumo ? unidades * costo : (Number(p22.stock) || 0) * costo;
+      return { id: p22.id, valor, unidades, rotacion: (Number(p22.stock) || 0) > 0 ? unidades / (Number(p22.stock) || 1) : null };
+    });
+    const total = conValor.reduce((a22, x3) => a22 + x3.valor, 0);
+    const mapa = {};
+    const detalle = {};
+    if (total <= 0) {
+      clasificables.forEach((p22) => {
+        mapa[p22.id] = "C";
+        detalle[p22.id] = { valor: 0, unidades: 0, rotacion: null };
+      });
+      return { mapa, detalle, baseConsumo };
+    }
+    const ordenados = [...conValor].sort((a22, b2) => b2.valor - a22.valor);
+    let acumulado = 0;
+    ordenados.forEach((x3) => {
+      acumulado += x3.valor;
+      const pct = acumulado / total * 100;
+      mapa[x3.id] = pct <= 80 ? "A" : pct <= 95 ? "B" : "C";
+      detalle[x3.id] = { valor: x3.valor, unidades: x3.unidades, rotacion: x3.rotacion };
+    });
+    return { mapa, detalle, baseConsumo };
+  }, [productosDelLocalActivo, movimientosDelLocalActivo]);
+  const clasificacionABCDelLocalActivo = analisisABCDelLocalActivo.mapa;
+  const pedidosPendientes = (0, import_react4.useMemo)(() => pedidos2.filter((p22) => p22.estado !== "Recibido"), [pedidos2]);
+  const margenPromedio = (0, import_react4.useMemo)(() => {
+    const conPrecio = productos.filter((p22) => Number(p22.precioVenta) > 0);
+    if (!conPrecio.length) return 0;
+    const total = conPrecio.reduce((acc, p22) => acc + (margenDe(p22) || 0), 0);
+    return total / conPrecio.length;
+  }, [productos]);
+  const margenPorProducto = (0, import_react4.useMemo)(() => {
+    const hace90 = /* @__PURE__ */ new Date();
+    hace90.setDate(hace90.getDate() - 90);
+    return productos.map((p22) => {
+      const operacionesVenta = movimientos.filter(
+        (m22) => m22.productoId === p22.id && (esVenta(m22) || esCorreccionVentaPM09(m22)) && new Date(m22.fecha) >= hace90
+      );
+      const unidadesVendidas = operacionesVenta.reduce((a22, m22) => a22 + unidadesVentaConSignoPM09(m22), 0);
+      const ingresos = operacionesVenta.reduce((a22, m22) => a22 + unidadesVentaConSignoPM09(m22) * Math.abs(Number(m22.ingresoUnitario) || 0), 0);
+      const costes = operacionesVenta.reduce((a22, m22) => a22 + unidadesVentaConSignoPM09(m22) * costoUnitarioHistoricoVentaPM09(m22, movimientos), 0);
+      const beneficio = ingresos - costes;
+      const margenPct = ingresos > 0 ? beneficio / ingresos * 100 : null;
+      return { ...p22, unidadesVendidas, ingresos, beneficio, margenPct, _pm09OperacionesVenta: operacionesVenta.length };
+    }).filter((p22) => p22._pm09OperacionesVenta > 0 && (Math.abs(p22.unidadesVendidas) > 1e-9 || Math.abs(p22.ingresos) > 1e-9 || Math.abs(p22.beneficio) > 1e-9)).sort((a22, b2) => b2.beneficio - a22.beneficio);
+  }, [productos, movimientos]);
+  const rotacionPorProducto = (0, import_react4.useMemo)(() => {
+    const hoy = /* @__PURE__ */ new Date();
+    return productos.map((p22) => {
+      const movimientosProducto = movimientos.filter((m22) => m22.productoId === p22.id);
+      const resumen = resumenConsumoProductoPM09(movimientosProducto);
+      const cantSalidas = resumen.cantidad;
+      if (cantSalidas <= 0 || !resumen.primeraFecha) {
+        return { ...p22, cantSalidas: 0, consumoDiario: null, dias: null, rotacion: null };
+      }
+      const primera = new Date(resumen.primeraFecha);
+      const diasTranscurridos = Math.max(1, Math.round((hoy - primera) / 864e5) + 1);
+      const consumoDiario = cantSalidas / diasTranscurridos;
+      const dias = consumoDiario > 0 ? (Number(p22.stock) || 0) / consumoDiario : null;
+      const rotacion = dias ? 365 / dias : null;
+      return { ...p22, cantSalidas, consumoDiario, dias, rotacion, diasConDatos: diasTranscurridos };
+    });
+  }, [productos, movimientos]);
+  const patronesDesviacionConteo = (0, import_react4.useMemo)(() => {
+    const porProducto = {};
+    movimientos.filter((m22) => {
+      if (!m22.productoId) return false;
+      if (esMovimientoNuevo(m22)) return m22.tipo === "INVENTARIO" && m22.origen !== "reconciliacionStock";
+      return m22.tipo === "ajuste";
+    }).forEach((m22) => {
+      if (!porProducto[m22.productoId]) porProducto[m22.productoId] = [];
+      porProducto[m22.productoId].push(m22);
+    });
+    const resultado = [];
+    Object.entries(porProducto).forEach(([productoId, ajustes]) => {
+      if (ajustes.length < 3) return;
+      const negativos = ajustes.filter((a22) => Number(a22.cantidad) < 0).length;
+      const positivos = ajustes.filter((a22) => Number(a22.cantidad) > 0).length;
+      const total = ajustes.length;
+      const proporcionMayor = Math.max(negativos, positivos) / total;
+      if (proporcionMayor < 0.75) return;
+      const prod = productos.find((p22) => p22.id === productoId);
+      const acumulado = ajustes.reduce((a22, m22) => a22 + Number(m22.cantidad), 0);
+      const ultimaFecha = ajustes.reduce((max, m22) => m22.fecha > max ? m22.fecha : max, ajustes[0].fecha);
+      resultado.push({
+        productoId,
+        nombre: prod ? prod.nombre : "Producto eliminado",
+        unidad: prod ? prod.unidad : "",
+        direccion: negativos > positivos ? "falta" : "sobra",
+        numAjustes: total,
+        acumulado,
+        ultimaFecha
+      });
+    });
+    return resultado.sort((a22, b2) => Math.abs(b2.acumulado) - Math.abs(a22.acumulado));
+  }, [movimientos, productos]);
+  function diasHastaProximaEntrega(leadTime, diasReparto) {
+    if (!diasReparto || diasReparto.length === 0) return leadTime;
+    const hoy = /* @__PURE__ */ new Date();
+    hoy.setHours(0, 0, 0, 0);
+    for (let n2 = leadTime; n2 <= leadTime + 14; n2++) {
+      const fecha = new Date(hoy);
+      fecha.setDate(fecha.getDate() + n2);
+      if (diasReparto.includes(fecha.getDay())) return n2;
+    }
+    return leadTime;
+  }
+  const productosEnPedidoPendiente = (0, import_react4.useMemo)(() => {
+    const ids = /* @__PURE__ */ new Set();
+    pedidosPendientes.forEach((pe2) => (pe2.items || []).forEach((it2) => ids.add(it2.productoId)));
+    return ids;
+  }, [pedidosPendientes]);
+  const DIAS_SEGURIDAD_PEDIDO = 7;
+  const sugerenciasPedido = (0, import_react4.useMemo)(() => {
+    return rotacionPorProducto.filter((p22) => !esNoMercancia(p22) && p22.tipo !== "elaborado" && p22.proveedorId && p22.dias !== null).map((p22) => {
+      const prov = proveedores.find((pv) => pv.id === p22.proveedorId);
+      const leadTime = prov ? Number(prov.leadTime) || 0 : 0;
+      const diasHastaEntrega = diasHastaProximaEntrega(leadTime, prov ? prov.diasReparto : []);
+      const cantidadCubrir = p22.consumoDiario * (diasHastaEntrega + DIAS_SEGURIDAD_PEDIDO);
+      const cantidadSugerida = Math.max(0, Math.ceil(cantidadCubrir - (Number(p22.stock) || 0)));
+      const cajasSugeridas = p22.udsPorCaja > 1 ? Math.ceil(cantidadSugerida / p22.udsPorCaja) : null;
+      return { ...p22, proveedorNombre: prov ? prov.nombre : "\u2014", leadTime, diasHastaEntrega, margen: p22.dias - diasHastaEntrega, cantidadSugerida, cajasSugeridas };
+    }).filter((p22) => p22.leadTime > 0 && p22.margen <= 1 && !productosEnPedidoPendiente.has(p22.id)).sort((a22, b2) => a22.margen - b2.margen);
+  }, [rotacionPorProducto, proveedores, productosEnPedidoPendiente]);
+  const sugerenciasPedidoDelLocalActivo = (0, import_react4.useMemo)(() => {
+    if (!localActivoId) return sugerenciasPedido;
+    return sugerenciasPedido.filter((p22) => p22.localId === localActivoId);
+  }, [sugerenciasPedido, localActivoId]);
+  const lotesCaducidad = (0, import_react4.useMemo)(() => {
+    const hoy = /* @__PURE__ */ new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const filas = [];
+    albaranes.forEach((a22) => {
+      if (a22.estado !== "confirmado") return;
+      (a22.lineas || []).forEach((ln2, idx) => {
+        if (!ln2.caducidad) return;
+        const f22 = new Date(ln2.caducidad);
+        if (isNaN(f22)) return;
+        const dias = Math.round((f22 - hoy) / 864e5);
+        const prod = productos.find((x3) => x3.id === ln2.productoId);
+        filas.push({
+          // El índice de línea evita que dos lotes distintos del mismo
+          // producto en el mismo albarán (dos entregas con caducidades
+          // distintas) generen la misma clave y colisionen como key de React.
+          id: `${a22.id}-${idx}-${ln2.codigoProveedor || ln2.descripcion}`,
+          productoId: ln2.productoId,
+          nombre: prod ? prod.nombre : ln2.descripcion,
+          lote: ln2.lote || "",
+          caducidad: ln2.caducidad,
+          dias,
+          unidades: Number(ln2.unidadesEntradas) || 0,
+          albaran: a22.numero,
+          proveedorId: a22.proveedorId
+        });
+      });
+    });
+    const porProducto = {};
+    filas.forEach((l22) => {
+      const key = l22.productoId || l22.nombre;
+      if (!por

@@ -1,0 +1,89 @@
+name: PM14 P04 Encargos cancelacion trazable
+
+# Punto cerrado (gate verde ya registrado en su propio run de Actions). El guard
+# "Proteger main y alcance" de este workflow compara supabase/ contra la base previa a P04
+# y por diseño queda obsoleto en cuanto el HEAD avanza a P05+ (que sí añade migraciones
+# legítimas y ya cerradas con su propio guard, correctamente actualizado). Se retira el
+# disparador automático para que no vuelva a re-ejecutarse en falso sobre commits
+# posteriores; se conserva workflow_dispatch para poder repetirlo manualmente si hace falta.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar-p04:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main y alcance P04 (sin cambios en supabase/)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          PM02_BASE='3560ac46c1f52c190491d18d54ada318455fcc41'
+          unexpected="$(git diff --name-only "$PM02_BASE"..HEAD -- supabase/ || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'PM14 P04 no necesita ni debe tocar supabase/ (el espejo ya soportaba Cancelado)' >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+          echo 'PM14_P04_MAIN_FROZEN=PASS'
+          echo 'PM14_P04_SIN_CAMBIOS_SUPABASE=PASS'
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+      - name: Contrato PM14 P04 (cancelación)
+        run: node tests/pm14/p04-encargos-cancelacion-contract.mjs
+      - name: Regresión Encargos (P01, P02, P03, PM10 P08)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm14/p01-encargos-identidad-contract.mjs
+          node tests/pm14/p02-encargos-frontend-contract.mjs
+          node tests/pm14/p03-encargos-entrega-contract.mjs
+          node tests/pm10/p08-encargos-contract.mjs
+          echo 'PM14_P04_REGRESION_ENCARGOS=PASS'
+      - name: Regresión TPV/Caja PM07-PM09
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm07/frontend-contract.mjs
+          for t in tests/pm09/*.mjs; do node "$t"; done
+          echo 'PM14_P04_REGRESION_PM07_PM09=PASS'
+      - name: Barreras de dominio P04
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s = Path('fuente.js').read_text(encoding='utf-8')
+          ini = s.index('function crearLogicaEncargos({')
+          fin = s.index('function crearLogicaVenta({', ini)
+          b = s[ini:fin]
+          assert 'function cancelarEncargo(' in b
+          assert '"Cancelado"' in b
+          assert 'motivo_requerido' in b
+          assert 'estado_no_permitido' in b
+          assert 'some((c22) => Number(c22.importe) > 0)) return false' in b, 'deleteEncargo bloqueado con cobros confirmados'
+          print('PM14_P04_DOMAIN_GUARDS=PASS')
+          PY
+          ! grep -Eqi 'service_role|SUPABASE_SERVICE_ROLE_KEY|sb_secret_' \
+            tests/pm14/p04-encargos-cancelacion-contract.mjs tests/pm14/P04_CIERRE_CANCELACION.md
+          echo 'PM14_P04_NO_SECRET=PASS'
+
+  gate-final:
+    needs: validar-p04
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM14 P04
+        run: |
+          set -euo pipefail
+          node tests/pm14/p04-encargos-cancelacion-contract.mjs
+          node tests/pm14/p01-encargos-identidad-contract.mjs
+          node tests/pm14/p03-encargos-entrega-contract.mjs
+          echo 'PM14_P04_GATE_FINAL=PASS'

@@ -1,0 +1,2974 @@
+PM09 / PUNTO 10 / DIAGNOSTICO CAJA
+
+## crearLogicaCaja
+function crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosCaja, localActivoId, empresaId }
+
+## crearLogicaMovimientosCaja
+function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arqueos, setArqueos, registrarAuditoria, localActivoId, empresaId }
+
+## ArqueoCaja
+function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja }
+
+## VentaRapida
+function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], registrarAuditoria, local = null, configEmpresa }
+
+## ocurrencias efectivo_base
+COUNT=3
+rId || null,
+    createdAt: creado || null,
+    _pm08Servidor: !!(fila.operation_id || fila.actor_user_id)
+  };
+}
+function normalizarArqueoPM08(fila) {
+  if (!fila) return null;
+  const creado = String(fila.created_at || fila.createdAt || "");
+  return {
+    id: fila.operation_id || fila.operationId || fila.id,
+    operationId: fila.operation_id || fila.operationId || fila.id,
+    empresaId: fila.empresa_id || fila.empresaId,
+    localId: fila.local_id || fila.localId,
+    fecha: fila.fecha || todayISO(),
+    hora: creado ? creado.slice(11, 16) : fila.hora || horaActualPM08(),
+    alcance: fila.alcance || "DIA",
+    efectivoBase: Number(fila.efectivo_base ?? fila.efectivoBase) || 0,
+    efectivoEsperado: Number(fila.efectivo_esperado ?? fila.efectivoEsperado) || 0,
+    efectivoContado: Number(fila.efectivo_contado ?? fila.efectivoContado ?? fila.efectivoReal) || 0,
+    efectivoReal: Number(fila.efectivo_contado ?? fila.efectivoContado ?? fila.efectivoReal) || 0,
+    diferencia: Number(fila.diferencia) || 0,
+    notas: fila.notas || "",
+    estado: fila.estado || "ACTIVO",
+    anuladoPorOperationId: fila.anulado_por_operation_id || fila.anuladoPorOperationId || null,
+    anuladoMotivo: fila.anulado_motivo || fila.anuladoMotivo || null,
+    actorUserId: fila.actor_user_id || fila.actorUserId || null,
+    createdAt: creado || null,
+    _pm08Servidor: !!(fila.operation_id || fila.actor_user_id)
+  };
+}
+function normalizarDevolucionPM08(fila, tipo) {
+  if (!fila) return null;
+  const payload = fila.payload && typeof fila.payload === "object" ? fila.payload : {};
+  const datos = payload.datos && typeof payload.datos === "object" ? payload.dat
+---
+ion sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones }) {
+  if (!modoSincronizadoPM08() || !window.__nubeActiva || !window.__nubeCliente) return { ok: false, offline: true };
+  const supabase = window.__nubeCliente;
+  const [rCaja, rArqueos, rCliente, rProveedor] = await Promise.all([
+    supabase.from("caja_operaciones").select("operation_id,tipo,empresa_id,local_id,fecha,importe,efecto_efectivo,medio_pago,concepto,origen_tipo,origen_id,ref_operation_id,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3),
+    supabase.from("arqueos_caja").select("operation_id,empresa_id,local_id,fecha,alcance,efectivo_base,efectivo_esperado,efectivo_contado,diferencia,notas,estado,anulado_por_operation_id,anulado_motivo,actor_user_id,created_at").order("created_at", { ascending: false }).limit(1e3),
+    supabase.from("devoluciones_venta").select("operation_id,venta_operation_id,empresa_id,local_id,producto_id,cantidad,reembolso,medio_reembolso,motivo,fecha,payload,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3),
+    supabase.from("devoluciones_proveedor").select("operation_id,empresa_id,local_id,producto_id,cantidad,proveedor_id,proveedor_nombre,motivo,fecha,payload,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3)
+  ]);
+  const fallo = [rCaja, rArqueos, rCliente, rProveedor].find((r2) => r2.error);
+  if (fallo) throw fallo.error;
+  const caja = (rCaja.data || []).map(normalizarMovimientoCajaPM08).filter(Boolean);
+  const arqueos = (rArqueos.data || []).map(normalizarArqueoPM08).filter(Boolean);
+  const clientes = (rCliente.data || []).map((f
+---
+cionesPM08EnCurso[clave];
+    const tarea = (async () => {
+      if (modoSincronizadoPM08()) {
+        if (!window.__nubeActiva || !window.__nubeCliente) {
+          return { ok: false, pendiente: true, error: "Sin conexi\xF3n con la cuenta sincronizada. El arqueo NO se ha confirmado; el borrador queda listo para reintentar." };
+        }
+        try {
+          const r2 = await Promise.race([
+            window.__nubeCliente.rpc("registrar_arqueo_caja", {
+              p_operation_id: preparado.pendiente.operationId,
+              p_empresa_id: empresaId,
+              p_local_id: localActivoId,
+              p_fecha: fecha,
+              p_efectivo_base: efectivoBase,
+              p_efectivo_contado: efectivoContado,
+              p_notas: payload.notas,
+              p_snapshot: payload.snapshot
+            }),
+            new Promise((_22, reject) => setTimeout(() => reject(new Error("timeout_pm08")), Number(window.ESPERA_NUBE_MS) || 6e3))
+          ]);
+          if (r2.error) {
+            if (esErrorTransitorioPM08(r2.error)) return { ok: false, pendiente: true, error: "No se pudo confirmar si el servidor recibi\xF3 el arqueo. Conservamos el mismo identificador para reintentarlo sin duplicar." };
+            limpiarPendientePM08(clave);
+            return { ok: false, error: mensajeErrorPM08(r2.error, "No se ha podido guardar el arqueo.") };
+          }
+          const arqueo2 = normalizarArqueoPM08(r2.data?.arqueo);
+          if (!arqueo2) throw new Error("respuesta_arqueo_incompleta");
+          setArqueos((prev) => [arqueo2, ...(prev || []).filter((a22) => a22.operationId !== arqueo2.operationId && a22.id !== arqueo2.id)]);
+ 
+---
+
+## ocurrencias efectivoBase
+COUNT=15
+r_user_id || fila.actorUserId || null,
+    createdAt: creado || null,
+    _pm08Servidor: !!(fila.operation_id || fila.actor_user_id)
+  };
+}
+function normalizarArqueoPM08(fila) {
+  if (!fila) return null;
+  const creado = String(fila.created_at || fila.createdAt || "");
+  return {
+    id: fila.operation_id || fila.operationId || fila.id,
+    operationId: fila.operation_id || fila.operationId || fila.id,
+    empresaId: fila.empresa_id || fila.empresaId,
+    localId: fila.local_id || fila.localId,
+    fecha: fila.fecha || todayISO(),
+    hora: creado ? creado.slice(11, 16) : fila.hora || horaActualPM08(),
+    alcance: fila.alcance || "DIA",
+    efectivoBase: Number(fila.efectivo_base ?? fila.efectivoBase) || 0,
+    efectivoEsperado: Number(fila.efectivo_esperado ?? fila.efectivoEsperado) || 0,
+    efectivoContado: Number(fila.efectivo_contado ?? fila.efectivoContado ?? fila.efectivoReal) || 0,
+    efectivoReal: Number(fila.efectivo_contado ?? fila.efectivoContado ?? fila.efectivoReal) || 0,
+    diferencia: Number(fila.diferencia) || 0,
+    notas: fila.notas || "",
+    estado: fila.estado || "ACTIVO",
+    anuladoPorOperationId: fila.anulado_por_operation_id || fila.anuladoPorOperationId || null,
+    anuladoMotivo: fila.anulado_motivo || fila.anuladoMotivo || null,
+    actorUserId: fila.actor_user_id || fila.actorUserId || null,
+    createdAt: creado || null,
+    _pm08Servidor: !!(fila.operation_id || fila.actor_user_id)
+  };
+}
+function normalizarDevolucionPM08(fila, tipo) {
+  if (!fila) return null;
+  const payload = fila.payload && typeof fila.payload === "object" ? fila.payload : {};
+  const datos = payload.datos && typeof payload.datos
+---
+edAt: creado || null,
+    _pm08Servidor: !!(fila.operation_id || fila.actor_user_id)
+  };
+}
+function normalizarArqueoPM08(fila) {
+  if (!fila) return null;
+  const creado = String(fila.created_at || fila.createdAt || "");
+  return {
+    id: fila.operation_id || fila.operationId || fila.id,
+    operationId: fila.operation_id || fila.operationId || fila.id,
+    empresaId: fila.empresa_id || fila.empresaId,
+    localId: fila.local_id || fila.localId,
+    fecha: fila.fecha || todayISO(),
+    hora: creado ? creado.slice(11, 16) : fila.hora || horaActualPM08(),
+    alcance: fila.alcance || "DIA",
+    efectivoBase: Number(fila.efectivo_base ?? fila.efectivoBase) || 0,
+    efectivoEsperado: Number(fila.efectivo_esperado ?? fila.efectivoEsperado) || 0,
+    efectivoContado: Number(fila.efectivo_contado ?? fila.efectivoContado ?? fila.efectivoReal) || 0,
+    efectivoReal: Number(fila.efectivo_contado ?? fila.efectivoContado ?? fila.efectivoReal) || 0,
+    diferencia: Number(fila.diferencia) || 0,
+    notas: fila.notas || "",
+    estado: fila.estado || "ACTIVO",
+    anuladoPorOperationId: fila.anulado_por_operation_id || fila.anuladoPorOperationId || null,
+    anuladoMotivo: fila.anulado_motivo || fila.anuladoMotivo || null,
+    actorUserId: fila.actor_user_id || fila.actorUserId || null,
+    createdAt: creado || null,
+    _pm08Servidor: !!(fila.operation_id || fila.actor_user_id)
+  };
+}
+function normalizarDevolucionPM08(fila, tipo) {
+  if (!fila) return null;
+  const payload = fila.payload && typeof fila.payload === "object" ? fila.payload : {};
+  const datos = payload.datos && typeof payload.datos === "object" ? payload.datos : {};
+  return {
+ 
+---
+irectaId) return s22;
+      eliminado = true;
+      return s22.filter((g2) => g2.id !== id);
+    });
+    return eliminado;
+  }
+  return { addGasto, deleteGasto };
+}
+function crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosCaja, localActivoId, empresaId }) {
+  function leerBorradorArqueo(fecha) {
+    return leerPendientePM08(clavePendientePM08("arqueo", empresaId, localActivoId, fecha))?.payload || null;
+  }
+  async function addArqueo(data) {
+    if (!empresaId || !localActivoId) return { ok: false, error: "Selecciona un local concreto antes de guardar el arqueo." };
+    const fecha = data?.fecha || todayISO();
+    const efectivoBase = redondearDineroPM08(data?.efectivoBase ?? data?.efectivoEsperado ?? 0);
+    const efectivoContado = redondearDineroPM08(data?.efectivoContado ?? data?.efectivoReal);
+    if (!Number.isFinite(efectivoBase) || efectivoBase < 0) return { ok: false, error: "El efectivo base no es v\xE1lido." };
+    if (!Number.isFinite(efectivoContado) || efectivoContado < 0) return { ok: false, error: "El efectivo contado debe ser cero o un importe positivo." };
+    if ((arqueos || []).some((a22) => a22.localId === localActivoId && a22.fecha === fecha && a22.estado !== "ANULADO")) {
+      return { ok: false, error: "Ya existe un arqueo activo para ese d\xEDa y local." };
+    }
+    const payload = {
+      empresaId,
+      localId: localActivoId,
+      fecha,
+      efectivoBase,
+      efectivoContado,
+      notas: String(data?.notas || "").trim(),
+      snapshot: data?.snapshot || {}
+    };
+    const clave = clavePendientePM08("arqueo", empresaId, localActivoId, fecha);
+    const preparado = prepararPend
+---
+rue;
+      return s22.filter((g2) => g2.id !== id);
+    });
+    return eliminado;
+  }
+  return { addGasto, deleteGasto };
+}
+function crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosCaja, localActivoId, empresaId }) {
+  function leerBorradorArqueo(fecha) {
+    return leerPendientePM08(clavePendientePM08("arqueo", empresaId, localActivoId, fecha))?.payload || null;
+  }
+  async function addArqueo(data) {
+    if (!empresaId || !localActivoId) return { ok: false, error: "Selecciona un local concreto antes de guardar el arqueo." };
+    const fecha = data?.fecha || todayISO();
+    const efectivoBase = redondearDineroPM08(data?.efectivoBase ?? data?.efectivoEsperado ?? 0);
+    const efectivoContado = redondearDineroPM08(data?.efectivoContado ?? data?.efectivoReal);
+    if (!Number.isFinite(efectivoBase) || efectivoBase < 0) return { ok: false, error: "El efectivo base no es v\xE1lido." };
+    if (!Number.isFinite(efectivoContado) || efectivoContado < 0) return { ok: false, error: "El efectivo contado debe ser cero o un importe positivo." };
+    if ((arqueos || []).some((a22) => a22.localId === localActivoId && a22.fecha === fecha && a22.estado !== "ANULADO")) {
+      return { ok: false, error: "Ya existe un arqueo activo para ese d\xEDa y local." };
+    }
+    const payload = {
+      empresaId,
+      localId: localActivoId,
+      fecha,
+      efectivoBase,
+      efectivoContado,
+      notas: String(data?.notas || "").trim(),
+      snapshot: data?.snapshot || {}
+    };
+    const clave = clavePendientePM08("arqueo", empresaId, localActivoId, fecha);
+    const preparado = prepararPendientePM08(clave, "pm08-arqueo", payload);
+---
+queos, movimientosCaja, setMovimientosCaja, localActivoId, empresaId }) {
+  function leerBorradorArqueo(fecha) {
+    return leerPendientePM08(clavePendientePM08("arqueo", empresaId, localActivoId, fecha))?.payload || null;
+  }
+  async function addArqueo(data) {
+    if (!empresaId || !localActivoId) return { ok: false, error: "Selecciona un local concreto antes de guardar el arqueo." };
+    const fecha = data?.fecha || todayISO();
+    const efectivoBase = redondearDineroPM08(data?.efectivoBase ?? data?.efectivoEsperado ?? 0);
+    const efectivoContado = redondearDineroPM08(data?.efectivoContado ?? data?.efectivoReal);
+    if (!Number.isFinite(efectivoBase) || efectivoBase < 0) return { ok: false, error: "El efectivo base no es v\xE1lido." };
+    if (!Number.isFinite(efectivoContado) || efectivoContado < 0) return { ok: false, error: "El efectivo contado debe ser cero o un importe positivo." };
+    if ((arqueos || []).some((a22) => a22.localId === localActivoId && a22.fecha === fecha && a22.estado !== "ANULADO")) {
+      return { ok: false, error: "Ya existe un arqueo activo para ese d\xEDa y local." };
+    }
+    const payload = {
+      empresaId,
+      localId: localActivoId,
+      fecha,
+      efectivoBase,
+      efectivoContado,
+      notas: String(data?.notas || "").trim(),
+      snapshot: data?.snapshot || {}
+    };
+    const clave = clavePendientePM08("arqueo", empresaId, localActivoId, fecha);
+    const preparado = prepararPendientePM08(clave, "pm08-arqueo", payload);
+    if (!preparado.ok) return preparado;
+    if (operacionesPM08EnCurso[clave]) return operacionesPM08EnCurso[clave];
+    const tarea = (async () => {
+      if (mod
+---
+sCaja, setMovimientosCaja, localActivoId, empresaId }) {
+  function leerBorradorArqueo(fecha) {
+    return leerPendientePM08(clavePendientePM08("arqueo", empresaId, localActivoId, fecha))?.payload || null;
+  }
+  async function addArqueo(data) {
+    if (!empresaId || !localActivoId) return { ok: false, error: "Selecciona un local concreto antes de guardar el arqueo." };
+    const fecha = data?.fecha || todayISO();
+    const efectivoBase = redondearDineroPM08(data?.efectivoBase ?? data?.efectivoEsperado ?? 0);
+    const efectivoContado = redondearDineroPM08(data?.efectivoContado ?? data?.efectivoReal);
+    if (!Number.isFinite(efectivoBase) || efectivoBase < 0) return { ok: false, error: "El efectivo base no es v\xE1lido." };
+    if (!Number.isFinite(efectivoContado) || efectivoContado < 0) return { ok: false, error: "El efectivo contado debe ser cero o un importe positivo." };
+    if ((arqueos || []).some((a22) => a22.localId === localActivoId && a22.fecha === fecha && a22.estado !== "ANULADO")) {
+      return { ok: false, error: "Ya existe un arqueo activo para ese d\xEDa y local." };
+    }
+    const payload = {
+      empresaId,
+      localId: localActivoId,
+      fecha,
+      efectivoBase,
+      efectivoContado,
+      notas: String(data?.notas || "").trim(),
+      snapshot: data?.snapshot || {}
+    };
+    const clave = clavePendientePM08("arqueo", empresaId, localActivoId, fecha);
+    const preparado = prepararPendientePM08(clave, "pm08-arqueo", payload);
+    if (!preparado.ok) return preparado;
+    if (operacionesPM08EnCurso[clave]) return operacionesPM08EnCurso[clave];
+    const tarea = (async () => {
+      if (modoSincronizadoPM08
+---
+ndearDineroPM08(data?.efectivoContado ?? data?.efectivoReal);
+    if (!Number.isFinite(efectivoBase) || efectivoBase < 0) return { ok: false, error: "El efectivo base no es v\xE1lido." };
+    if (!Number.isFinite(efectivoContado) || efectivoContado < 0) return { ok: false, error: "El efectivo contado debe ser cero o un importe positivo." };
+    if ((arqueos || []).some((a22) => a22.localId === localActivoId && a22.fecha === fecha && a22.estado !== "ANULADO")) {
+      return { ok: false, error: "Ya existe un arqueo activo para ese d\xEDa y local." };
+    }
+    const payload = {
+      empresaId,
+      localId: localActivoId,
+      fecha,
+      efectivoBase,
+      efectivoContado,
+      notas: String(data?.notas || "").trim(),
+      snapshot: data?.snapshot || {}
+    };
+    const clave = clavePendientePM08("arqueo", empresaId, localActivoId, fecha);
+    const preparado = prepararPendientePM08(clave, "pm08-arqueo", payload);
+    if (!preparado.ok) return preparado;
+    if (operacionesPM08EnCurso[clave]) return operacionesPM08EnCurso[clave];
+    const tarea = (async () => {
+      if (modoSincronizadoPM08()) {
+        if (!window.__nubeActiva || !window.__nubeCliente) {
+          return { ok: false, pendiente: true, error: "Sin conexi\xF3n con la cuenta sincronizada. El arqueo NO se ha confirmado; el borrador queda listo para reintentar." };
+        }
+        try {
+          const r2 = await Promise.race([
+            window.__nubeCliente.rpc("registrar_arqueo_caja", {
+              p_operation_id: preparado.pendiente.operationId,
+              p_empresa_id: empresaId,
+              p_local_id: localActivoId,
+              p_fecha: fecha,
+ 
+---
+so[clave];
+    const tarea = (async () => {
+      if (modoSincronizadoPM08()) {
+        if (!window.__nubeActiva || !window.__nubeCliente) {
+          return { ok: false, pendiente: true, error: "Sin conexi\xF3n con la cuenta sincronizada. El arqueo NO se ha confirmado; el borrador queda listo para reintentar." };
+        }
+        try {
+          const r2 = await Promise.race([
+            window.__nubeCliente.rpc("registrar_arqueo_caja", {
+              p_operation_id: preparado.pendiente.operationId,
+              p_empresa_id: empresaId,
+              p_local_id: localActivoId,
+              p_fecha: fecha,
+              p_efectivo_base: efectivoBase,
+              p_efectivo_contado: efectivoContado,
+              p_notas: payload.notas,
+              p_snapshot: payload.snapshot
+            }),
+            new Promise((_22, reject) => setTimeout(() => reject(new Error("timeout_pm08")), Number(window.ESPERA_NUBE_MS) || 6e3))
+          ]);
+          if (r2.error) {
+            if (esErrorTransitorioPM08(r2.error)) return { ok: false, pendiente: true, error: "No se pudo confirmar si el servidor recibi\xF3 el arqueo. Conservamos el mismo identificador para reintentarlo sin duplicar." };
+            limpiarPendientePM08(clave);
+            return { ok: false, error: mensajeErrorPM08(r2.error, "No se ha podido guardar el arqueo.") };
+          }
+          const arqueo2 = normalizarArqueoPM08(r2.data?.arqueo);
+          if (!arqueo2) throw new Error("respuesta_arqueo_incompleta");
+          setArqueos((prev) => [arqueo2, ...(prev || []).filter((a22) => a22.operationId !== arqueo2.operationId && a22.id !== arqueo2.id)]);
+          limpi
+---
+{
+          return { ok: false, pendiente: true, error: "No se pudo confirmar si el servidor recibi\xF3 el arqueo. Conservamos el mismo identificador para reintentarlo sin duplicar." };
+        }
+      }
+      const efectos = (movimientosCaja || []).filter((m22) => m22.localId === localActivoId && m22.fecha === fecha).reduce((acc, m22) => {
+        const efecto = Number(m22.efectoEfectivo);
+        const fallback = m22.tipo === "ENTRADA" || m22.tipo === "entrada" ? Number(m22.importe) || 0 : -(Number(m22.importe) || 0);
+        return acc + (Number.isFinite(efecto) ? efecto : fallback);
+      }, 0);
+      const esperado = redondearDineroPM08(efectivoBase + efectos);
+      const arqueo = normalizarArqueoPM08({
+        operationId: preparado.pendiente.operationId,
+        empresaId,
+        localId: localActivoId,
+        fecha,
+        alcance: "DIA",
+        efectivoBase,
+        efectivoEsperado: esperado,
+        efectivoContado,
+        diferencia: redondearDineroPM08(efectivoContado - esperado),
+        notas: payload.notas,
+        estado: "ACTIVO",
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+      setArqueos((prev) => [arqueo, ...(prev || []).filter((a22) => a22.operationId !== arqueo.operationId)]);
+      limpiarPendientePM08(clave);
+      return { ok: true, arqueo, replayed: false, local: true };
+    })();
+    operacionesPM08EnCurso[clave] = tarea;
+    try {
+      return await tarea;
+    } finally {
+      delete operacionesPM08EnCurso[clave];
+    }
+  }
+  async function deleteArqueo(id, motivo) {
+    if (!empresaId || !localActivoId) return { ok: false, error: "Selecciona el local del arqueo." };
+   
+---
+os = (movimientosCaja || []).filter((m22) => m22.localId === localActivoId && m22.fecha === fecha).reduce((acc, m22) => {
+        const efecto = Number(m22.efectoEfectivo);
+        const fallback = m22.tipo === "ENTRADA" || m22.tipo === "entrada" ? Number(m22.importe) || 0 : -(Number(m22.importe) || 0);
+        return acc + (Number.isFinite(efecto) ? efecto : fallback);
+      }, 0);
+      const esperado = redondearDineroPM08(efectivoBase + efectos);
+      const arqueo = normalizarArqueoPM08({
+        operationId: preparado.pendiente.operationId,
+        empresaId,
+        localId: localActivoId,
+        fecha,
+        alcance: "DIA",
+        efectivoBase,
+        efectivoEsperado: esperado,
+        efectivoContado,
+        diferencia: redondearDineroPM08(efectivoContado - esperado),
+        notas: payload.notas,
+        estado: "ACTIVO",
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+      setArqueos((prev) => [arqueo, ...(prev || []).filter((a22) => a22.operationId !== arqueo.operationId)]);
+      limpiarPendientePM08(clave);
+      return { ok: true, arqueo, replayed: false, local: true };
+    })();
+    operacionesPM08EnCurso[clave] = tarea;
+    try {
+      return await tarea;
+    } finally {
+      delete operacionesPM08EnCurso[clave];
+    }
+  }
+  async function deleteArqueo(id, motivo) {
+    if (!empresaId || !localActivoId) return { ok: false, error: "Selecciona el local del arqueo." };
+    const original = (arqueos || []).find((a22) => (a22.operationId === id || a22.id === id) && a22.localId === localActivoId);
+    if (!original) return { ok: false, error: "No se ha encontrado el arqueo en este local." };
+
+---
+   }
+  });
+  encargos.forEach((e2) => {
+    (e2.cobros || []).forEach((c22) => {
+      if (c22.fecha !== fecha) return;
+      const medio = c22.medioPago || "Efectivo";
+      porMedio[medio] = (porMedio[medio] || 0) + (Number(c22.importe) || 0);
+    });
+  });
+  const movimientosCajaDelDia = movimientosCaja.filter((m22) => m22.fecha === fecha);
+  const netoCaja = movimientosCajaDelDia.reduce((acc, m22) => {
+    const efecto = Number(m22.efectoEfectivo);
+    if (Number.isFinite(efecto)) return acc + efecto;
+    return acc + (String(m22.tipo).toUpperCase() === "ENTRADA" ? Number(m22.importe) || 0 : -(Number(m22.importe) || 0));
+  }, 0);
+  const efectivoBase = redondearDineroPM08(porMedio.Efectivo || 0);
+  const efectivoEsperado = redondearDineroPM08(efectivoBase + netoCaja);
+  const contadoNumero = contado === "" ? NaN : redondearDineroPM08(contado);
+  const diferencia = Number.isFinite(contadoNumero) ? redondearDineroPM08(contadoNumero - efectivoEsperado) : null;
+  const yaArqueado = arqueos.find((a22) => a22.fecha === fecha && a22.estado !== "ANULADO");
+  (0, import_react4.useEffect)(() => {
+    setError("");
+    setExito("");
+    setMostrarAnulacion(false);
+    setMotivoAnulacion("");
+    const pendiente = typeof leerBorradorArqueo === "function" ? leerBorradorArqueo(fecha) : null;
+    if (!pendiente) {
+      setBorradorRecuperado(false);
+      return;
+    }
+    setContado(String(pendiente.efectivoContado ?? ""));
+    setNotas(pendiente.notas || "");
+    setBorradorRecuperado(true);
+  }, [fecha]);
+  async function submit() {
+    if (enviando || yaArqueado) return;
+    if (contado === "" || !Number.isFinite(contadoNumero) || contadoNum
+---
+cha) return;
+      const medio = c22.medioPago || "Efectivo";
+      porMedio[medio] = (porMedio[medio] || 0) + (Number(c22.importe) || 0);
+    });
+  });
+  const movimientosCajaDelDia = movimientosCaja.filter((m22) => m22.fecha === fecha);
+  const netoCaja = movimientosCajaDelDia.reduce((acc, m22) => {
+    const efecto = Number(m22.efectoEfectivo);
+    if (Number.isFinite(efecto)) return acc + efecto;
+    return acc + (String(m22.tipo).toUpperCase() === "ENTRADA" ? Number(m22.importe) || 0 : -(Number(m22.importe) || 0));
+  }, 0);
+  const efectivoBase = redondearDineroPM08(porMedio.Efectivo || 0);
+  const efectivoEsperado = redondearDineroPM08(efectivoBase + netoCaja);
+  const contadoNumero = contado === "" ? NaN : redondearDineroPM08(contado);
+  const diferencia = Number.isFinite(contadoNumero) ? redondearDineroPM08(contadoNumero - efectivoEsperado) : null;
+  const yaArqueado = arqueos.find((a22) => a22.fecha === fecha && a22.estado !== "ANULADO");
+  (0, import_react4.useEffect)(() => {
+    setError("");
+    setExito("");
+    setMostrarAnulacion(false);
+    setMotivoAnulacion("");
+    const pendiente = typeof leerBorradorArqueo === "function" ? leerBorradorArqueo(fecha) : null;
+    if (!pendiente) {
+      setBorradorRecuperado(false);
+      return;
+    }
+    setContado(String(pendiente.efectivoContado ?? ""));
+    setNotas(pendiente.notas || "");
+    setBorradorRecuperado(true);
+  }, [fecha]);
+  async function submit() {
+    if (enviando || yaArqueado) return;
+    if (contado === "" || !Number.isFinite(contadoNumero) || contadoNumero < 0) {
+      setError("Escribe un efectivo contado igual o mayor que cero.");
+      return;
+    }
+    s
+---
+adorArqueo === "function" ? leerBorradorArqueo(fecha) : null;
+    if (!pendiente) {
+      setBorradorRecuperado(false);
+      return;
+    }
+    setContado(String(pendiente.efectivoContado ?? ""));
+    setNotas(pendiente.notas || "");
+    setBorradorRecuperado(true);
+  }, [fecha]);
+  async function submit() {
+    if (enviando || yaArqueado) return;
+    if (contado === "" || !Number.isFinite(contadoNumero) || contadoNumero < 0) {
+      setError("Escribe un efectivo contado igual o mayor que cero.");
+      return;
+    }
+    setError("");
+    setExito("");
+    setEnviando(true);
+    try {
+      const r2 = await addArqueo({
+        fecha,
+        efectivoBase,
+        efectivoContado: contadoNumero,
+        notas,
+        snapshot: { porMedio, ventasIncluidas: ventasDelDia.length, encargosIncluidos: encargos.filter((e2) => (e2.cobros || []).some((c22) => c22.fecha === fecha)).length }
+      });
+      if (!r2?.ok) {
+        setError(r2?.error || "No se ha podido guardar el arqueo.");
+        setBorradorRecuperado(!!r2?.pendiente);
+        return;
+      }
+      setExito(`Arqueo confirmado${r2.replayed ? " sin duplicar" : ""}: esperado \u20AC${fmt(r2.arqueo.efectivoEsperado)}, contado \u20AC${fmt(r2.arqueo.efectivoContado)}.`);
+      setContado("");
+      setNotas("");
+      setBorradorRecuperado(false);
+    } finally {
+      setEnviando(false);
+    }
+  }
+  async function anular() {
+    if (!yaArqueado || anulando) return;
+    setError("");
+    setExito("");
+    setAnulando(true);
+    try {
+      const r2 = await deleteArqueo(yaArqueado.operationId || yaArqueado.id, motivoAnulacion);
+      if (!r2?.ok) {
+        setError(r2?.error || "No se h
+---
+));
+    return h3(
+      Card,
+      { key: a22.operationId || a22.id },
+      h3(
+        "div",
+        { className: "flex items-center justify-between text-[12.5px]" },
+        h3("span", null, a22.fecha, " \xB7 ", h3(Pill2, { color: anulada ? C2.inkSoft : C2.accent }, anulada ? "Anulado" : "Activo")),
+        h3("span", { className: "mono font-semibold", style: { color: anulada ? C2.inkSoft : a22.diferencia === 0 ? C2.accent : Math.abs(a22.diferencia) < 1 ? C2.amber : C2.red } }, estadoDiferencia(Number(a22.diferencia) || 0))
+      ),
+      h3("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, `Base \u20AC${fmt(a22.efectivoBase)} \xB7 esperado \u20AC${fmt(a22.efectivoEsperado)} \xB7 contado \u20AC${fmt(a22.efectivoContado)}`),
+      anulada && a22.anuladoMotivo && h3("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Motivo de anulaci\xF3n: ", a22.anuladoMotivo),
+      !anulada && tieneAnulacionPosterior && h3("div", { className: "text-[11px] mt-1", style: { color: C2.red } }, "\u26A0 Se anul\xF3 una venta de este d\xEDa despu\xE9s de cerrar; revisa y, si procede, anula este arqueo de forma trazable.")
+    );
+  }));
+  return h3(
+    "div",
+    null,
+    h3(SectionTitle, null, "Arqueo de caja"),
+    h3(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, h3("div", { className: "text-[12.5px]" }, "El cierre es diario y pertenece a un solo local. El servidor calcula el efectivo esperado con la base declarada y el libro de caja; el contado admite 0 \u20AC y nunca se borra f\xEDsicamente.")),
+    h3(
+      Card,
+      { className: "mb-4" },
+      h3(Field, { l
+---
+"grid grid-cols-2 gap-3 my-3" },
+        h3("div", null, h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Efectivo esperado"), h3("div", { className: "text-xl font-semibold mono" }, "\u20AC", fmt(efectivoEsperado))),
+        h3("div", null, h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Otras ventas"), h3("div", { className: "text-xl font-semibold mono", style: { color: C2.inkSoft } }, "\u20AC", fmt((porMedio.Tarjeta || 0) + (porMedio.Transferencia || 0) + (porMedio.Otro || 0))))
+      ),
+      h3("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, `Base efectivo \u20AC${fmt(efectivoBase)} \xB7 ajustes/reembolsos \u20AC${fmt(netoCaja)}`),
+      h3(BloqueEntradasSalidas, { fecha, movimientosCajaDelDia, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, periodoCerrado: !!yaArqueado }),
+      yaArqueado ? h3(
+        "div",
+        { className: "p-2 rounded-lg text-[12.5px]", style: { background: C2.bg } },
+        `D\xEDa cerrado: contado \u20AC${fmt(yaArqueado.efectivoContado)} (${estadoDiferencia(Number(yaArqueado.diferencia) || 0)}).`,
+        !mostrarAnulacion && h3("div", { className: "mt-2" }, h3(Btn, { small: true, variant: "danger", disabled: anulando, onClick: () => {
+          setMostrarAnulacion(true);
+          setError("");
+        } }, "Anular cierre con motivo")),
+        mostrarAnulacion && h3(
+          "div",
+          { className: "mt-2" },
+          h3(Field, { label: "Motivo obligatorio" }, h3(Input, { value: motivoAnulacion, disabled: anulando, onChange: (e2) => setMotivoAnulacion(e2.target.value), placeholder: "Ej: faltab
+---
+
+## ocurrencias efectivoEsperado
+COUNT=9
+  _pm08Servidor: !!(fila.operation_id || fila.actor_user_id)
+  };
+}
+function normalizarArqueoPM08(fila) {
+  if (!fila) return null;
+  const creado = String(fila.created_at || fila.createdAt || "");
+  return {
+    id: fila.operation_id || fila.operationId || fila.id,
+    operationId: fila.operation_id || fila.operationId || fila.id,
+    empresaId: fila.empresa_id || fila.empresaId,
+    localId: fila.local_id || fila.localId,
+    fecha: fila.fecha || todayISO(),
+    hora: creado ? creado.slice(11, 16) : fila.hora || horaActualPM08(),
+    alcance: fila.alcance || "DIA",
+    efectivoBase: Number(fila.efectivo_base ?? fila.efectivoBase) || 0,
+    efectivoEsperado: Number(fila.efectivo_esperado ?? fila.efectivoEsperado) || 0,
+    efectivoContado: Number(fila.efectivo_contado ?? fila.efectivoContado ?? fila.efectivoReal) || 0,
+    efectivoReal: Number(fila.efectivo_contado ?? fila.efectivoContado ?? fila.efectivoReal) || 0,
+    diferencia: Number(fila.diferencia) || 0,
+    notas: fila.notas || "",
+    estado: fila.estado || "ACTIVO",
+    anuladoPorOperationId: fila.anulado_por_operation_id || fila.anuladoPorOperationId || null,
+    anuladoMotivo: fila.anulado_motivo || fila.anuladoMotivo || null,
+    actorUserId: fila.actor_user_id || fila.actorUserId || null,
+    createdAt: creado || null,
+    _pm08Servidor: !!(fila.operation_id || fila.actor_user_id)
+  };
+}
+function normalizarDevolucionPM08(fila, tipo) {
+  if (!fila) return null;
+  const payload = fila.payload && typeof fila.payload === "object" ? fila.payload : {};
+  const datos = payload.datos && typeof payload.datos === "object" ? payload.datos : {};
+  return {
+    id: fila.operation_id || 
+---
+_id)
+  };
+}
+function normalizarArqueoPM08(fila) {
+  if (!fila) return null;
+  const creado = String(fila.created_at || fila.createdAt || "");
+  return {
+    id: fila.operation_id || fila.operationId || fila.id,
+    operationId: fila.operation_id || fila.operationId || fila.id,
+    empresaId: fila.empresa_id || fila.empresaId,
+    localId: fila.local_id || fila.localId,
+    fecha: fila.fecha || todayISO(),
+    hora: creado ? creado.slice(11, 16) : fila.hora || horaActualPM08(),
+    alcance: fila.alcance || "DIA",
+    efectivoBase: Number(fila.efectivo_base ?? fila.efectivoBase) || 0,
+    efectivoEsperado: Number(fila.efectivo_esperado ?? fila.efectivoEsperado) || 0,
+    efectivoContado: Number(fila.efectivo_contado ?? fila.efectivoContado ?? fila.efectivoReal) || 0,
+    efectivoReal: Number(fila.efectivo_contado ?? fila.efectivoContado ?? fila.efectivoReal) || 0,
+    diferencia: Number(fila.diferencia) || 0,
+    notas: fila.notas || "",
+    estado: fila.estado || "ACTIVO",
+    anuladoPorOperationId: fila.anulado_por_operation_id || fila.anuladoPorOperationId || null,
+    anuladoMotivo: fila.anulado_motivo || fila.anuladoMotivo || null,
+    actorUserId: fila.actor_user_id || fila.actorUserId || null,
+    createdAt: creado || null,
+    _pm08Servidor: !!(fila.operation_id || fila.actor_user_id)
+  };
+}
+function normalizarDevolucionPM08(fila, tipo) {
+  if (!fila) return null;
+  const payload = fila.payload && typeof fila.payload === "object" ? fila.payload : {};
+  const datos = payload.datos && typeof payload.datos === "object" ? payload.datos : {};
+  return {
+    id: fila.operation_id || fila.operationId || fila.id,
+    operationId: fila.opera
+---
+filter((g2) => g2.id !== id);
+    });
+    return eliminado;
+  }
+  return { addGasto, deleteGasto };
+}
+function crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosCaja, localActivoId, empresaId }) {
+  function leerBorradorArqueo(fecha) {
+    return leerPendientePM08(clavePendientePM08("arqueo", empresaId, localActivoId, fecha))?.payload || null;
+  }
+  async function addArqueo(data) {
+    if (!empresaId || !localActivoId) return { ok: false, error: "Selecciona un local concreto antes de guardar el arqueo." };
+    const fecha = data?.fecha || todayISO();
+    const efectivoBase = redondearDineroPM08(data?.efectivoBase ?? data?.efectivoEsperado ?? 0);
+    const efectivoContado = redondearDineroPM08(data?.efectivoContado ?? data?.efectivoReal);
+    if (!Number.isFinite(efectivoBase) || efectivoBase < 0) return { ok: false, error: "El efectivo base no es v\xE1lido." };
+    if (!Number.isFinite(efectivoContado) || efectivoContado < 0) return { ok: false, error: "El efectivo contado debe ser cero o un importe positivo." };
+    if ((arqueos || []).some((a22) => a22.localId === localActivoId && a22.fecha === fecha && a22.estado !== "ANULADO")) {
+      return { ok: false, error: "Ya existe un arqueo activo para ese d\xEDa y local." };
+    }
+    const payload = {
+      empresaId,
+      localId: localActivoId,
+      fecha,
+      efectivoBase,
+      efectivoContado,
+      notas: String(data?.notas || "").trim(),
+      snapshot: data?.snapshot || {}
+    };
+    const clave = clavePendientePM08("arqueo", empresaId, localActivoId, fecha);
+    const preparado = prepararPendientePM08(clave, "pm08-arqueo", payload);
+    if (!preparado.ok) re
+---
+|| []).filter((m22) => m22.localId === localActivoId && m22.fecha === fecha).reduce((acc, m22) => {
+        const efecto = Number(m22.efectoEfectivo);
+        const fallback = m22.tipo === "ENTRADA" || m22.tipo === "entrada" ? Number(m22.importe) || 0 : -(Number(m22.importe) || 0);
+        return acc + (Number.isFinite(efecto) ? efecto : fallback);
+      }, 0);
+      const esperado = redondearDineroPM08(efectivoBase + efectos);
+      const arqueo = normalizarArqueoPM08({
+        operationId: preparado.pendiente.operationId,
+        empresaId,
+        localId: localActivoId,
+        fecha,
+        alcance: "DIA",
+        efectivoBase,
+        efectivoEsperado: esperado,
+        efectivoContado,
+        diferencia: redondearDineroPM08(efectivoContado - esperado),
+        notas: payload.notas,
+        estado: "ACTIVO",
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+      setArqueos((prev) => [arqueo, ...(prev || []).filter((a22) => a22.operationId !== arqueo.operationId)]);
+      limpiarPendientePM08(clave);
+      return { ok: true, arqueo, replayed: false, local: true };
+    })();
+    operacionesPM08EnCurso[clave] = tarea;
+    try {
+      return await tarea;
+    } finally {
+      delete operacionesPM08EnCurso[clave];
+    }
+  }
+  async function deleteArqueo(id, motivo) {
+    if (!empresaId || !localActivoId) return { ok: false, error: "Selecciona el local del arqueo." };
+    const original = (arqueos || []).find((a22) => (a22.operationId === id || a22.id === id) && a22.localId === localActivoId);
+    if (!original) return { ok: false, error: "No se ha encontrado el arqueo en este local." };
+    if (original.estado ==
+---
+h((c22) => {
+      if (c22.fecha !== fecha) return;
+      const medio = c22.medioPago || "Efectivo";
+      porMedio[medio] = (porMedio[medio] || 0) + (Number(c22.importe) || 0);
+    });
+  });
+  const movimientosCajaDelDia = movimientosCaja.filter((m22) => m22.fecha === fecha);
+  const netoCaja = movimientosCajaDelDia.reduce((acc, m22) => {
+    const efecto = Number(m22.efectoEfectivo);
+    if (Number.isFinite(efecto)) return acc + efecto;
+    return acc + (String(m22.tipo).toUpperCase() === "ENTRADA" ? Number(m22.importe) || 0 : -(Number(m22.importe) || 0));
+  }, 0);
+  const efectivoBase = redondearDineroPM08(porMedio.Efectivo || 0);
+  const efectivoEsperado = redondearDineroPM08(efectivoBase + netoCaja);
+  const contadoNumero = contado === "" ? NaN : redondearDineroPM08(contado);
+  const diferencia = Number.isFinite(contadoNumero) ? redondearDineroPM08(contadoNumero - efectivoEsperado) : null;
+  const yaArqueado = arqueos.find((a22) => a22.fecha === fecha && a22.estado !== "ANULADO");
+  (0, import_react4.useEffect)(() => {
+    setError("");
+    setExito("");
+    setMostrarAnulacion(false);
+    setMotivoAnulacion("");
+    const pendiente = typeof leerBorradorArqueo === "function" ? leerBorradorArqueo(fecha) : null;
+    if (!pendiente) {
+      setBorradorRecuperado(false);
+      return;
+    }
+    setContado(String(pendiente.efectivoContado ?? ""));
+    setNotas(pendiente.notas || "");
+    setBorradorRecuperado(true);
+  }, [fecha]);
+  async function submit() {
+    if (enviando || yaArqueado) return;
+    if (contado === "" || !Number.isFinite(contadoNumero) || contadoNumero < 0) {
+      setError("Escribe un efectivo contado igual o mayor que
+---
+tosCaja.filter((m22) => m22.fecha === fecha);
+  const netoCaja = movimientosCajaDelDia.reduce((acc, m22) => {
+    const efecto = Number(m22.efectoEfectivo);
+    if (Number.isFinite(efecto)) return acc + efecto;
+    return acc + (String(m22.tipo).toUpperCase() === "ENTRADA" ? Number(m22.importe) || 0 : -(Number(m22.importe) || 0));
+  }, 0);
+  const efectivoBase = redondearDineroPM08(porMedio.Efectivo || 0);
+  const efectivoEsperado = redondearDineroPM08(efectivoBase + netoCaja);
+  const contadoNumero = contado === "" ? NaN : redondearDineroPM08(contado);
+  const diferencia = Number.isFinite(contadoNumero) ? redondearDineroPM08(contadoNumero - efectivoEsperado) : null;
+  const yaArqueado = arqueos.find((a22) => a22.fecha === fecha && a22.estado !== "ANULADO");
+  (0, import_react4.useEffect)(() => {
+    setError("");
+    setExito("");
+    setMostrarAnulacion(false);
+    setMotivoAnulacion("");
+    const pendiente = typeof leerBorradorArqueo === "function" ? leerBorradorArqueo(fecha) : null;
+    if (!pendiente) {
+      setBorradorRecuperado(false);
+      return;
+    }
+    setContado(String(pendiente.efectivoContado ?? ""));
+    setNotas(pendiente.notas || "");
+    setBorradorRecuperado(true);
+  }, [fecha]);
+  async function submit() {
+    if (enviando || yaArqueado) return;
+    if (contado === "" || !Number.isFinite(contadoNumero) || contadoNumero < 0) {
+      setError("Escribe un efectivo contado igual o mayor que cero.");
+      return;
+    }
+    setError("");
+    setExito("");
+    setEnviando(true);
+    try {
+      const r2 = await addArqueo({
+        fecha,
+        efectivoBase,
+        efectivoContado: contadoNumero,
+        notas,
+      
+---
+   }
+    setError("");
+    setExito("");
+    setEnviando(true);
+    try {
+      const r2 = await addArqueo({
+        fecha,
+        efectivoBase,
+        efectivoContado: contadoNumero,
+        notas,
+        snapshot: { porMedio, ventasIncluidas: ventasDelDia.length, encargosIncluidos: encargos.filter((e2) => (e2.cobros || []).some((c22) => c22.fecha === fecha)).length }
+      });
+      if (!r2?.ok) {
+        setError(r2?.error || "No se ha podido guardar el arqueo.");
+        setBorradorRecuperado(!!r2?.pendiente);
+        return;
+      }
+      setExito(`Arqueo confirmado${r2.replayed ? " sin duplicar" : ""}: esperado \u20AC${fmt(r2.arqueo.efectivoEsperado)}, contado \u20AC${fmt(r2.arqueo.efectivoContado)}.`);
+      setContado("");
+      setNotas("");
+      setBorradorRecuperado(false);
+    } finally {
+      setEnviando(false);
+    }
+  }
+  async function anular() {
+    if (!yaArqueado || anulando) return;
+    setError("");
+    setExito("");
+    setAnulando(true);
+    try {
+      const r2 = await deleteArqueo(yaArqueado.operationId || yaArqueado.id, motivoAnulacion);
+      if (!r2?.ok) {
+        setError(r2?.error || "No se ha podido anular el arqueo.");
+        return;
+      }
+      setExito(`Arqueo anulado${r2.replayed ? " sin duplicar" : ""}. El cierre original se conserva en el historial.`);
+      setMostrarAnulacion(false);
+      setMotivoAnulacion("");
+    } finally {
+      setAnulando(false);
+    }
+  }
+  const estadoDiferencia = (valor) => valor === 0 ? "Cuadra" : valor > 0 ? `+\u20AC${fmt(valor)}` : `\u2212\u20AC${fmt(Math.abs(valor))}`;
+  const historial = arqueos.length === 0 ? h3(Empty, { text: "Todav\xEDa no has hecho ning\xF
+---
+22.operationId || a22.id },
+      h3(
+        "div",
+        { className: "flex items-center justify-between text-[12.5px]" },
+        h3("span", null, a22.fecha, " \xB7 ", h3(Pill2, { color: anulada ? C2.inkSoft : C2.accent }, anulada ? "Anulado" : "Activo")),
+        h3("span", { className: "mono font-semibold", style: { color: anulada ? C2.inkSoft : a22.diferencia === 0 ? C2.accent : Math.abs(a22.diferencia) < 1 ? C2.amber : C2.red } }, estadoDiferencia(Number(a22.diferencia) || 0))
+      ),
+      h3("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, `Base \u20AC${fmt(a22.efectivoBase)} \xB7 esperado \u20AC${fmt(a22.efectivoEsperado)} \xB7 contado \u20AC${fmt(a22.efectivoContado)}`),
+      anulada && a22.anuladoMotivo && h3("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Motivo de anulaci\xF3n: ", a22.anuladoMotivo),
+      !anulada && tieneAnulacionPosterior && h3("div", { className: "text-[11px] mt-1", style: { color: C2.red } }, "\u26A0 Se anul\xF3 una venta de este d\xEDa despu\xE9s de cerrar; revisa y, si procede, anula este arqueo de forma trazable.")
+    );
+  }));
+  return h3(
+    "div",
+    null,
+    h3(SectionTitle, null, "Arqueo de caja"),
+    h3(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, h3("div", { className: "text-[12.5px]" }, "El cierre es diario y pertenece a un solo local. El servidor calcula el efectivo esperado con la base declarada y el libro de caja; el contado admite 0 \u20AC y nunca se borra f\xEDsicamente.")),
+    h3(
+      Card,
+      { className: "mb-4" },
+      h3(Field, { label: "Fecha" }, h3(Input, { type: "date", value:
+---
+rio y pertenece a un solo local. El servidor calcula el efectivo esperado con la base declarada y el libro de caja; el contado admite 0 \u20AC y nunca se borra f\xEDsicamente.")),
+    h3(
+      Card,
+      { className: "mb-4" },
+      h3(Field, { label: "Fecha" }, h3(Input, { type: "date", value: fecha, disabled: enviando || anulando, onChange: (e2) => setFecha(e2.target.value) })),
+      h3(
+        "div",
+        { className: "grid grid-cols-2 gap-3 my-3" },
+        h3("div", null, h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Efectivo esperado"), h3("div", { className: "text-xl font-semibold mono" }, "\u20AC", fmt(efectivoEsperado))),
+        h3("div", null, h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Otras ventas"), h3("div", { className: "text-xl font-semibold mono", style: { color: C2.inkSoft } }, "\u20AC", fmt((porMedio.Tarjeta || 0) + (porMedio.Transferencia || 0) + (porMedio.Otro || 0))))
+      ),
+      h3("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, `Base efectivo \u20AC${fmt(efectivoBase)} \xB7 ajustes/reembolsos \u20AC${fmt(netoCaja)}`),
+      h3(BloqueEntradasSalidas, { fecha, movimientosCajaDelDia, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, periodoCerrado: !!yaArqueado }),
+      yaArqueado ? h3(
+        "div",
+        { className: "p-2 rounded-lg text-[12.5px]", style: { background: C2.bg } },
+        `D\xEDa cerrado: contado \u20AC${fmt(yaArqueado.efectivoContado)} (${estadoDiferencia(Number(yaArqueado.diferencia) || 0)}).`,
+        !mostrarAnulacion && h3("div", { className: "mt-2" }, h3(Btn, { small: true, va
+---
+
+## ocurrencias efectivo esperado
+COUNT=1
+ame: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Motivo de anulaci\xF3n: ", a22.anuladoMotivo),
+      !anulada && tieneAnulacionPosterior && h3("div", { className: "text-[11px] mt-1", style: { color: C2.red } }, "\u26A0 Se anul\xF3 una venta de este d\xEDa despu\xE9s de cerrar; revisa y, si procede, anula este arqueo de forma trazable.")
+    );
+  }));
+  return h3(
+    "div",
+    null,
+    h3(SectionTitle, null, "Arqueo de caja"),
+    h3(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, h3("div", { className: "text-[12.5px]" }, "El cierre es diario y pertenece a un solo local. El servidor calcula el efectivo esperado con la base declarada y el libro de caja; el contado admite 0 \u20AC y nunca se borra f\xEDsicamente.")),
+    h3(
+      Card,
+      { className: "mb-4" },
+      h3(Field, { label: "Fecha" }, h3(Input, { type: "date", value: fecha, disabled: enviando || anulando, onChange: (e2) => setFecha(e2.target.value) })),
+      h3(
+        "div",
+        { className: "grid grid-cols-2 gap-3 my-3" },
+        h3("div", null, h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Efectivo esperado"), h3("div", { className: "text-xl font-semibold mono" }, "\u20AC", fmt(efectivoEsperado))),
+        h3("div", null, h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Otras ventas"), h3("div", { className: "text-xl font-semibold mono", style: { color: C2.inkSoft } }, "\u20AC", fmt((porMedio.Tarjeta || 0) + (porMedio.Transferencia || 0) + (porMedio.Otro || 0))))
+      ),
+      h3("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, `Base efectivo \u2
+---
+
+## ocurrencias ventasEfectivo
+COUNT=0
+
+## ocurrencias detallePago
+COUNT=41
+aId: d2.ventaId || (m4.tipo === "VENTA" ? m4.operation_id : d2.anulaVentaId || null),
+        anulaVentaId: d2.anulaVentaId || null,
+        productoId: m4.producto_id,
+        localId: m4.local_id,
+        empresaId: m4.empresa_id,
+        cantidad: delta,
+        cantidadFisica: Number(m4.cantidad) || Math.abs(delta),
+        tipo: m4.tipo,
+        motivo: d2.motivo || m4.tipo,
+        referencia: d2.referencia || "PM-07",
+        costoUnitario: Number(d2.costoUnitario) || 0,
+        ingresoUnitario: Number(d2.ingresoUnitario) || 0,
+        ivaVentaAplicado: Number(d2.ivaVentaAplicado) || 0,
+        medioPago: d2.medioPago || null,
+        detallePago: d2.detallePago || null,
+        fecha: creado ? creado.slice(0, 10) : todayISO(),
+        hora: creado ? creado.slice(11, 16) : (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5),
+        afectaStockTotal: delta !== 0,
+        afectaStockPisoVenta: Number(m4.delta_piso) !== 0,
+        movimientoOriginalId: m4.movimiento_original_id || null,
+        _pm07Servidor: true
+      };
+    });
+    setMovimientos((prev) => [...server, ...(prev || []).filter((m4) => !m4._pm07Servidor)]);
+  }
+  return { ok: true, stocks: stocks.length, movimientos: movs.length };
+}
+function redondearDineroPM08(valor) {
+  const n2 = Number(valor);
+  return Number.isFinite(n2) ? Math.round((n2 + Number.EPSILON) * 100) / 100 : NaN;
+}
+function modoSincronizadoPM08() {
+  return typeof window !== "undefined" && !!window.NUBE_URL && !window.__modoPruebasLocal;
+}
+function horaActualPM08() {
+  return (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5);
+}
+function clavePendientePM08(tipo, empresaId, localId, extr
+---
+|| (m4.tipo === "VENTA" ? m4.operation_id : d2.anulaVentaId || null),
+        anulaVentaId: d2.anulaVentaId || null,
+        productoId: m4.producto_id,
+        localId: m4.local_id,
+        empresaId: m4.empresa_id,
+        cantidad: delta,
+        cantidadFisica: Number(m4.cantidad) || Math.abs(delta),
+        tipo: m4.tipo,
+        motivo: d2.motivo || m4.tipo,
+        referencia: d2.referencia || "PM-07",
+        costoUnitario: Number(d2.costoUnitario) || 0,
+        ingresoUnitario: Number(d2.ingresoUnitario) || 0,
+        ivaVentaAplicado: Number(d2.ivaVentaAplicado) || 0,
+        medioPago: d2.medioPago || null,
+        detallePago: d2.detallePago || null,
+        fecha: creado ? creado.slice(0, 10) : todayISO(),
+        hora: creado ? creado.slice(11, 16) : (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5),
+        afectaStockTotal: delta !== 0,
+        afectaStockPisoVenta: Number(m4.delta_piso) !== 0,
+        movimientoOriginalId: m4.movimiento_original_id || null,
+        _pm07Servidor: true
+      };
+    });
+    setMovimientos((prev) => [...server, ...(prev || []).filter((m4) => !m4._pm07Servidor)]);
+  }
+  return { ok: true, stocks: stocks.length, movimientos: movs.length };
+}
+function redondearDineroPM08(valor) {
+  const n2 = Number(valor);
+  return Number.isFinite(n2) ? Math.round((n2 + Number.EPSILON) * 100) / 100 : NaN;
+}
+function modoSincronizadoPM08() {
+  return typeof window !== "undefined" && !!window.NUBE_URL && !window.__modoPruebasLocal;
+}
+function horaActualPM08() {
+  return (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5);
+}
+function clavePendientePM08(tipo, empresaId, localId, extra = "") {
+  retu
+---
+alId === localActivoId);
+  }
+  const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos });
+  function venderLineas(lineas, opciones = {}) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para abrir el TPV." };
+    const incluyeOtroLocal = (lineas || []).some((ln2) => {
+      const p22 = productos.find((x3) => x3.id === ln2.productoId);
+      return !!p22 && !productoEsDelLocalActivoVenta(p22);
+    });
+    if (incluyeOtroLocal) return { ok: false, error: "La venta incluye productos de otro local." };
+    const {
+      tipo = "VENTA",
+      medioPago = "Efectivo",
+      detallePago = null,
+      operationId = null,
+      origen = "venderLocal",
+      documentoOrigenId = null,
+      motivoBase = "TPV",
+      extraPorLinea = () => ({})
+    } = opciones;
+    const ventaId = operationId || uid();
+    let totalVenta = 0;
+    if (detallePago) {
+      (lineas || []).forEach((ln2) => {
+        const cant = Number(ln2.cantidad) || 0;
+        const prod = productos.find((p22) => p22.id === ln2.productoId);
+        if (!prod || cant <= 0) return;
+        const precio = Number(ln2.precioUnitario) || precioNeto(prod);
+        totalVenta += cant * precio * (1 + ivaDe(prod) / 100);
+      });
+    }
+    const movimientosGenerados = [];
+    (lineas || []).forEach((ln2) => {
+      if (!ln2.productoId) return;
+      const cant = Number(ln2.cantidad) || 0;
+      if (cant <= 0) return;
+      const prod = productos.find((p22) => p22.id === ln2.productoId);
+      if (!prod) return;
+      const costoUnitario = Number(prod.costo) || 0;
+      const ingresoUnitario = Number(ln2.precioUnita
+---
+al para abrir el TPV." };
+    const incluyeOtroLocal = (lineas || []).some((ln2) => {
+      const p22 = productos.find((x3) => x3.id === ln2.productoId);
+      return !!p22 && !productoEsDelLocalActivoVenta(p22);
+    });
+    if (incluyeOtroLocal) return { ok: false, error: "La venta incluye productos de otro local." };
+    const {
+      tipo = "VENTA",
+      medioPago = "Efectivo",
+      detallePago = null,
+      operationId = null,
+      origen = "venderLocal",
+      documentoOrigenId = null,
+      motivoBase = "TPV",
+      extraPorLinea = () => ({})
+    } = opciones;
+    const ventaId = operationId || uid();
+    let totalVenta = 0;
+    if (detallePago) {
+      (lineas || []).forEach((ln2) => {
+        const cant = Number(ln2.cantidad) || 0;
+        const prod = productos.find((p22) => p22.id === ln2.productoId);
+        if (!prod || cant <= 0) return;
+        const precio = Number(ln2.precioUnitario) || precioNeto(prod);
+        totalVenta += cant * precio * (1 + ivaDe(prod) / 100);
+      });
+    }
+    const movimientosGenerados = [];
+    (lineas || []).forEach((ln2) => {
+      if (!ln2.productoId) return;
+      const cant = Number(ln2.cantidad) || 0;
+      if (cant <= 0) return;
+      const prod = productos.find((p22) => p22.id === ln2.productoId);
+      if (!prod) return;
+      const costoUnitario = Number(prod.costo) || 0;
+      const ingresoUnitario = Number(ln2.precioUnitario) || precioNeto(prod);
+      const camposExtra = {
+        costoUnitario,
+        ingresoUnitario,
+        ivaVentaAplicado: ivaDe(prod),
+        medioPago,
+        ...extraPorLinea(ln2, prod)
+      };
+      if (detallePago && totalVenta > 0) {
+        con
+---
+recio * (1 + ivaDe(prod) / 100);
+      });
+    }
+    const movimientosGenerados = [];
+    (lineas || []).forEach((ln2) => {
+      if (!ln2.productoId) return;
+      const cant = Number(ln2.cantidad) || 0;
+      if (cant <= 0) return;
+      const prod = productos.find((p22) => p22.id === ln2.productoId);
+      if (!prod) return;
+      const costoUnitario = Number(prod.costo) || 0;
+      const ingresoUnitario = Number(ln2.precioUnitario) || precioNeto(prod);
+      const camposExtra = {
+        costoUnitario,
+        ingresoUnitario,
+        ivaVentaAplicado: ivaDe(prod),
+        medioPago,
+        ...extraPorLinea(ln2, prod)
+      };
+      if (detallePago && totalVenta > 0) {
+        const importeLinea = cant * ingresoUnitario * (1 + ivaDe(prod) / 100);
+        const proporcion = importeLinea / totalVenta;
+        camposExtra.detallePago = {
+          efectivo: Number((detallePago.efectivo * proporcion).toFixed(4)),
+          tarjeta: Number((detallePago.tarjeta * proporcion).toFixed(4))
+        };
+      }
+      const r2 = aplicarMovimientoStock({
+        productoId: prod.id,
+        cantidad: -cant,
+        tipo,
+        operationId: ventaId,
+        movimientoId: uid(),
+        origen,
+        documentoOrigenId: documentoOrigenId || ventaId,
+        afectaStockTotal: true,
+        afectaStockPisoVenta: true,
+        permitirDeficit: false,
+        motivo: motivoBase,
+        camposExtra
+      });
+      if (r2.ok) movimientosGenerados.push(r2.movimiento);
+    });
+    return { ok: true, n: movimientosGenerados.length, modo: "local", ventaId, movimientos: movimientosGenerados };
+  }
+  function venderLocal(lineas, medioPago, detallePago)
+---
+n2.cantidad) || 0;
+      if (cant <= 0) return;
+      const prod = productos.find((p22) => p22.id === ln2.productoId);
+      if (!prod) return;
+      const costoUnitario = Number(prod.costo) || 0;
+      const ingresoUnitario = Number(ln2.precioUnitario) || precioNeto(prod);
+      const camposExtra = {
+        costoUnitario,
+        ingresoUnitario,
+        ivaVentaAplicado: ivaDe(prod),
+        medioPago,
+        ...extraPorLinea(ln2, prod)
+      };
+      if (detallePago && totalVenta > 0) {
+        const importeLinea = cant * ingresoUnitario * (1 + ivaDe(prod) / 100);
+        const proporcion = importeLinea / totalVenta;
+        camposExtra.detallePago = {
+          efectivo: Number((detallePago.efectivo * proporcion).toFixed(4)),
+          tarjeta: Number((detallePago.tarjeta * proporcion).toFixed(4))
+        };
+      }
+      const r2 = aplicarMovimientoStock({
+        productoId: prod.id,
+        cantidad: -cant,
+        tipo,
+        operationId: ventaId,
+        movimientoId: uid(),
+        origen,
+        documentoOrigenId: documentoOrigenId || ventaId,
+        afectaStockTotal: true,
+        afectaStockPisoVenta: true,
+        permitirDeficit: false,
+        motivo: motivoBase,
+        camposExtra
+      });
+      if (r2.ok) movimientosGenerados.push(r2.movimiento);
+    });
+    return { ok: true, n: movimientosGenerados.length, modo: "local", ventaId, movimientos: movimientosGenerados };
+  }
+  function venderLocal(lineas, medioPago, detallePago) {
+    return venderLineas(lineas, { tipo: "VENTA", medioPago, detallePago, origen: "venderLocal", motivoBase: "TPV" });
+  }
+  async function venderCarrito(lineas, medioPago = "Efectivo"
+---
+rn;
+      const prod = productos.find((p22) => p22.id === ln2.productoId);
+      if (!prod) return;
+      const costoUnitario = Number(prod.costo) || 0;
+      const ingresoUnitario = Number(ln2.precioUnitario) || precioNeto(prod);
+      const camposExtra = {
+        costoUnitario,
+        ingresoUnitario,
+        ivaVentaAplicado: ivaDe(prod),
+        medioPago,
+        ...extraPorLinea(ln2, prod)
+      };
+      if (detallePago && totalVenta > 0) {
+        const importeLinea = cant * ingresoUnitario * (1 + ivaDe(prod) / 100);
+        const proporcion = importeLinea / totalVenta;
+        camposExtra.detallePago = {
+          efectivo: Number((detallePago.efectivo * proporcion).toFixed(4)),
+          tarjeta: Number((detallePago.tarjeta * proporcion).toFixed(4))
+        };
+      }
+      const r2 = aplicarMovimientoStock({
+        productoId: prod.id,
+        cantidad: -cant,
+        tipo,
+        operationId: ventaId,
+        movimientoId: uid(),
+        origen,
+        documentoOrigenId: documentoOrigenId || ventaId,
+        afectaStockTotal: true,
+        afectaStockPisoVenta: true,
+        permitirDeficit: false,
+        motivo: motivoBase,
+        camposExtra
+      });
+      if (r2.ok) movimientosGenerados.push(r2.movimiento);
+    });
+    return { ok: true, n: movimientosGenerados.length, modo: "local", ventaId, movimientos: movimientosGenerados };
+  }
+  function venderLocal(lineas, medioPago, detallePago) {
+    return venderLineas(lineas, { tipo: "VENTA", medioPago, detallePago, origen: "venderLocal", motivoBase: "TPV" });
+  }
+  async function venderCarrito(lineas, medioPago = "Efectivo", detallePago = null) {
+    if (!localActivo
+---
+      if (!prod) return;
+      const costoUnitario = Number(prod.costo) || 0;
+      const ingresoUnitario = Number(ln2.precioUnitario) || precioNeto(prod);
+      const camposExtra = {
+        costoUnitario,
+        ingresoUnitario,
+        ivaVentaAplicado: ivaDe(prod),
+        medioPago,
+        ...extraPorLinea(ln2, prod)
+      };
+      if (detallePago && totalVenta > 0) {
+        const importeLinea = cant * ingresoUnitario * (1 + ivaDe(prod) / 100);
+        const proporcion = importeLinea / totalVenta;
+        camposExtra.detallePago = {
+          efectivo: Number((detallePago.efectivo * proporcion).toFixed(4)),
+          tarjeta: Number((detallePago.tarjeta * proporcion).toFixed(4))
+        };
+      }
+      const r2 = aplicarMovimientoStock({
+        productoId: prod.id,
+        cantidad: -cant,
+        tipo,
+        operationId: ventaId,
+        movimientoId: uid(),
+        origen,
+        documentoOrigenId: documentoOrigenId || ventaId,
+        afectaStockTotal: true,
+        afectaStockPisoVenta: true,
+        permitirDeficit: false,
+        motivo: motivoBase,
+        camposExtra
+      });
+      if (r2.ok) movimientosGenerados.push(r2.movimiento);
+    });
+    return { ok: true, n: movimientosGenerados.length, modo: "local", ventaId, movimientos: movimientosGenerados };
+  }
+  function venderLocal(lineas, medioPago, detallePago) {
+    return venderLineas(lineas, { tipo: "VENTA", medioPago, detallePago, origen: "venderLocal", motivoBase: "TPV" });
+  }
+  async function venderCarrito(lineas, medioPago = "Efectivo", detallePago = null) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para abrir el TPV." };
+
+---
+)
+        };
+      }
+      const r2 = aplicarMovimientoStock({
+        productoId: prod.id,
+        cantidad: -cant,
+        tipo,
+        operationId: ventaId,
+        movimientoId: uid(),
+        origen,
+        documentoOrigenId: documentoOrigenId || ventaId,
+        afectaStockTotal: true,
+        afectaStockPisoVenta: true,
+        permitirDeficit: false,
+        motivo: motivoBase,
+        camposExtra
+      });
+      if (r2.ok) movimientosGenerados.push(r2.movimiento);
+    });
+    return { ok: true, n: movimientosGenerados.length, modo: "local", ventaId, movimientos: movimientosGenerados };
+  }
+  function venderLocal(lineas, medioPago, detallePago) {
+    return venderLineas(lineas, { tipo: "VENTA", medioPago, detallePago, origen: "venderLocal", motivoBase: "TPV" });
+  }
+  async function venderCarrito(lineas, medioPago = "Efectivo", detallePago = null) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para abrir el TPV." };
+    const incluyeOtroLocal = (lineas || []).some((ln2) => {
+      const p22 = productos.find((x3) => x3.id === ln2.productoId);
+      return !!p22 && !productoEsDelLocalActivoVenta(p22);
+    });
+    if (incluyeOtroLocal) return { ok: false, error: "La venta incluye productos de otro local." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return venderLocal(lineas, medioPago, detallePago);
+    const ventaId = uid();
+    let totalVenta = 0;
+    (lineas || []).forEach((ln2) => {
+      const cant = Number(ln2.cantidad) || 0;
+      const prod = productos.find((p22) => p22.id === ln2.prod
+---
+uctoId: prod.id,
+        cantidad: -cant,
+        tipo,
+        operationId: ventaId,
+        movimientoId: uid(),
+        origen,
+        documentoOrigenId: documentoOrigenId || ventaId,
+        afectaStockTotal: true,
+        afectaStockPisoVenta: true,
+        permitirDeficit: false,
+        motivo: motivoBase,
+        camposExtra
+      });
+      if (r2.ok) movimientosGenerados.push(r2.movimiento);
+    });
+    return { ok: true, n: movimientosGenerados.length, modo: "local", ventaId, movimientos: movimientosGenerados };
+  }
+  function venderLocal(lineas, medioPago, detallePago) {
+    return venderLineas(lineas, { tipo: "VENTA", medioPago, detallePago, origen: "venderLocal", motivoBase: "TPV" });
+  }
+  async function venderCarrito(lineas, medioPago = "Efectivo", detallePago = null) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para abrir el TPV." };
+    const incluyeOtroLocal = (lineas || []).some((ln2) => {
+      const p22 = productos.find((x3) => x3.id === ln2.productoId);
+      return !!p22 && !productoEsDelLocalActivoVenta(p22);
+    });
+    if (incluyeOtroLocal) return { ok: false, error: "La venta incluye productos de otro local." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return venderLocal(lineas, medioPago, detallePago);
+    const ventaId = uid();
+    let totalVenta = 0;
+    (lineas || []).forEach((ln2) => {
+      const cant = Number(ln2.cantidad) || 0;
+      const prod = productos.find((p22) => p22.id === ln2.productoId);
+      if (!prod || cant <= 0) return;
+      totalVenta += cant * p
+---
+igen,
+        documentoOrigenId: documentoOrigenId || ventaId,
+        afectaStockTotal: true,
+        afectaStockPisoVenta: true,
+        permitirDeficit: false,
+        motivo: motivoBase,
+        camposExtra
+      });
+      if (r2.ok) movimientosGenerados.push(r2.movimiento);
+    });
+    return { ok: true, n: movimientosGenerados.length, modo: "local", ventaId, movimientos: movimientosGenerados };
+  }
+  function venderLocal(lineas, medioPago, detallePago) {
+    return venderLineas(lineas, { tipo: "VENTA", medioPago, detallePago, origen: "venderLocal", motivoBase: "TPV" });
+  }
+  async function venderCarrito(lineas, medioPago = "Efectivo", detallePago = null) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para abrir el TPV." };
+    const incluyeOtroLocal = (lineas || []).some((ln2) => {
+      const p22 = productos.find((x3) => x3.id === ln2.productoId);
+      return !!p22 && !productoEsDelLocalActivoVenta(p22);
+    });
+    if (incluyeOtroLocal) return { ok: false, error: "La venta incluye productos de otro local." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return venderLocal(lineas, medioPago, detallePago);
+    const ventaId = uid();
+    let totalVenta = 0;
+    (lineas || []).forEach((ln2) => {
+      const cant = Number(ln2.cantidad) || 0;
+      const prod = productos.find((p22) => p22.id === ln2.productoId);
+      if (!prod || cant <= 0) return;
+      totalVenta += cant * precioNeto(prod) * (1 + ivaDe(prod) / 100);
+    });
+    const lineasParaRpc = (lineas || []).filter((ln2) => ln2.productoId &&
+---
+ion venderCarrito(lineas, medioPago = "Efectivo", detallePago = null) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para abrir el TPV." };
+    const incluyeOtroLocal = (lineas || []).some((ln2) => {
+      const p22 = productos.find((x3) => x3.id === ln2.productoId);
+      return !!p22 && !productoEsDelLocalActivoVenta(p22);
+    });
+    if (incluyeOtroLocal) return { ok: false, error: "La venta incluye productos de otro local." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return venderLocal(lineas, medioPago, detallePago);
+    const ventaId = uid();
+    let totalVenta = 0;
+    (lineas || []).forEach((ln2) => {
+      const cant = Number(ln2.cantidad) || 0;
+      const prod = productos.find((p22) => p22.id === ln2.productoId);
+      if (!prod || cant <= 0) return;
+      totalVenta += cant * precioNeto(prod) * (1 + ivaDe(prod) / 100);
+    });
+    const lineasParaRpc = (lineas || []).filter((ln2) => ln2.productoId && Number(ln2.cantidad) > 0).map((ln2) => {
+      const prod = productos.find((p22) => p22.id === ln2.productoId);
+      const cant = Number(ln2.cantidad);
+      const costoUnitario = prod ? Number(prod.costo) || 0 : 0;
+      const ingresoUnitario = prod ? precioNeto(prod) : 0;
+      const ivaAplicado = prod ? ivaDe(prod) : 0;
+      const datosLinea = { productoId: ln2.productoId, localId: prod ? prod.localId || localActivoId || null : localActivoId || null, cantidad: cant, motivo: "Venta", costoUnitario, ingresoUnitario, ivaVentaAplicado: ivaAplicado, medioPago, referencia: "TPV", ventaId };
+  
+---
+s || []).filter((ln2) => ln2.productoId && Number(ln2.cantidad) > 0).map((ln2) => {
+      const prod = productos.find((p22) => p22.id === ln2.productoId);
+      const cant = Number(ln2.cantidad);
+      const costoUnitario = prod ? Number(prod.costo) || 0 : 0;
+      const ingresoUnitario = prod ? precioNeto(prod) : 0;
+      const ivaAplicado = prod ? ivaDe(prod) : 0;
+      const datosLinea = { productoId: ln2.productoId, localId: prod ? prod.localId || localActivoId || null : localActivoId || null, cantidad: cant, motivo: "Venta", costoUnitario, ingresoUnitario, ivaVentaAplicado: ivaAplicado, medioPago, referencia: "TPV", ventaId };
+      if (detallePago && totalVenta > 0 && prod) {
+        const importeLinea = cant * ingresoUnitario * (1 + ivaAplicado / 100);
+        const proporcion = importeLinea / totalVenta;
+        datosLinea.detallePago = { efectivo: Number((detallePago.efectivo * proporcion).toFixed(4)), tarjeta: Number((detallePago.tarjeta * proporcion).toFixed(4)) };
+      }
+      return datosLinea;
+    });
+    if (lineasParaRpc.length === 0) return { ok: false, error: "Carrito vac\xEDo" };
+    const empresas = [...new Set(lineasParaRpc.map((l22) => productos.find((p22) => p22.id === l22.productoId)?.empresaId).filter(Boolean))];
+    if (empresas.length !== 1) return { ok: false, error: "No se pudo determinar una \xFAnica empresa para la venta." };
+    const empresaId = empresas[0];
+    const params = { p_operation_id: ventaId, p_empresa_id: empresaId, p_local_id: localActivoId, p_lineas: lineasParaRpc, p_datos: { medioPago, detallePago: detallePago || null } };
+    async function intentarRpc(msTimeout) {
+      const supabas
+---
+);
+      const costoUnitario = prod ? Number(prod.costo) || 0 : 0;
+      const ingresoUnitario = prod ? precioNeto(prod) : 0;
+      const ivaAplicado = prod ? ivaDe(prod) : 0;
+      const datosLinea = { productoId: ln2.productoId, localId: prod ? prod.localId || localActivoId || null : localActivoId || null, cantidad: cant, motivo: "Venta", costoUnitario, ingresoUnitario, ivaVentaAplicado: ivaAplicado, medioPago, referencia: "TPV", ventaId };
+      if (detallePago && totalVenta > 0 && prod) {
+        const importeLinea = cant * ingresoUnitario * (1 + ivaAplicado / 100);
+        const proporcion = importeLinea / totalVenta;
+        datosLinea.detallePago = { efectivo: Number((detallePago.efectivo * proporcion).toFixed(4)), tarjeta: Number((detallePago.tarjeta * proporcion).toFixed(4)) };
+      }
+      return datosLinea;
+    });
+    if (lineasParaRpc.length === 0) return { ok: false, error: "Carrito vac\xEDo" };
+    const empresas = [...new Set(lineasParaRpc.map((l22) => productos.find((p22) => p22.id === l22.productoId)?.empresaId).filter(Boolean))];
+    if (empresas.length !== 1) return { ok: false, error: "No se pudo determinar una \xFAnica empresa para la venta." };
+    const empresaId = empresas[0];
+    const params = { p_operation_id: ventaId, p_empresa_id: empresaId, p_local_id: localActivoId, p_lineas: lineasParaRpc, p_datos: { medioPago, detallePago: detallePago || null } };
+    async function intentarRpc(msTimeout) {
+      const supabase = await window.getSupabaseClient();
+      const r2 = await Promise.race([
+        supabase.rpc("registrar_venta_stock_carrito", params),
+        new Promise((_22, reject) => setTimeout(() => 
+---
+d ? Number(prod.costo) || 0 : 0;
+      const ingresoUnitario = prod ? precioNeto(prod) : 0;
+      const ivaAplicado = prod ? ivaDe(prod) : 0;
+      const datosLinea = { productoId: ln2.productoId, localId: prod ? prod.localId || localActivoId || null : localActivoId || null, cantidad: cant, motivo: "Venta", costoUnitario, ingresoUnitario, ivaVentaAplicado: ivaAplicado, medioPago, referencia: "TPV", ventaId };
+      if (detallePago && totalVenta > 0 && prod) {
+        const importeLinea = cant * ingresoUnitario * (1 + ivaAplicado / 100);
+        const proporcion = importeLinea / totalVenta;
+        datosLinea.detallePago = { efectivo: Number((detallePago.efectivo * proporcion).toFixed(4)), tarjeta: Number((detallePago.tarjeta * proporcion).toFixed(4)) };
+      }
+      return datosLinea;
+    });
+    if (lineasParaRpc.length === 0) return { ok: false, error: "Carrito vac\xEDo" };
+    const empresas = [...new Set(lineasParaRpc.map((l22) => productos.find((p22) => p22.id === l22.productoId)?.empresaId).filter(Boolean))];
+    if (empresas.length !== 1) return { ok: false, error: "No se pudo determinar una \xFAnica empresa para la venta." };
+    const empresaId = empresas[0];
+    const params = { p_operation_id: ventaId, p_empresa_id: empresaId, p_local_id: localActivoId, p_lineas: lineasParaRpc, p_datos: { medioPago, detallePago: detallePago || null } };
+    async function intentarRpc(msTimeout) {
+      const supabase = await window.getSupabaseClient();
+      const r2 = await Promise.race([
+        supabase.rpc("registrar_venta_stock_carrito", params),
+        new Promise((_22, reject) => setTimeout(() => reject(new Error("El servidor tard
+---
+od ? precioNeto(prod) : 0;
+      const ivaAplicado = prod ? ivaDe(prod) : 0;
+      const datosLinea = { productoId: ln2.productoId, localId: prod ? prod.localId || localActivoId || null : localActivoId || null, cantidad: cant, motivo: "Venta", costoUnitario, ingresoUnitario, ivaVentaAplicado: ivaAplicado, medioPago, referencia: "TPV", ventaId };
+      if (detallePago && totalVenta > 0 && prod) {
+        const importeLinea = cant * ingresoUnitario * (1 + ivaAplicado / 100);
+        const proporcion = importeLinea / totalVenta;
+        datosLinea.detallePago = { efectivo: Number((detallePago.efectivo * proporcion).toFixed(4)), tarjeta: Number((detallePago.tarjeta * proporcion).toFixed(4)) };
+      }
+      return datosLinea;
+    });
+    if (lineasParaRpc.length === 0) return { ok: false, error: "Carrito vac\xEDo" };
+    const empresas = [...new Set(lineasParaRpc.map((l22) => productos.find((p22) => p22.id === l22.productoId)?.empresaId).filter(Boolean))];
+    if (empresas.length !== 1) return { ok: false, error: "No se pudo determinar una \xFAnica empresa para la venta." };
+    const empresaId = empresas[0];
+    const params = { p_operation_id: ventaId, p_empresa_id: empresaId, p_local_id: localActivoId, p_lineas: lineasParaRpc, p_datos: { medioPago, detallePago: detallePago || null } };
+    async function intentarRpc(msTimeout) {
+      const supabase = await window.getSupabaseClient();
+      const r2 = await Promise.race([
+        supabase.rpc("registrar_venta_stock_carrito", params),
+        new Promise((_22, reject) => setTimeout(() => reject(new Error("El servidor tard\xF3 demasiado en responder")), msTimeout))
+      ]);
+      if (r
+---
+).toFixed(4)), tarjeta: Number((detallePago.tarjeta * proporcion).toFixed(4)) };
+      }
+      return datosLinea;
+    });
+    if (lineasParaRpc.length === 0) return { ok: false, error: "Carrito vac\xEDo" };
+    const empresas = [...new Set(lineasParaRpc.map((l22) => productos.find((p22) => p22.id === l22.productoId)?.empresaId).filter(Boolean))];
+    if (empresas.length !== 1) return { ok: false, error: "No se pudo determinar una \xFAnica empresa para la venta." };
+    const empresaId = empresas[0];
+    const params = { p_operation_id: ventaId, p_empresa_id: empresaId, p_local_id: localActivoId, p_lineas: lineasParaRpc, p_datos: { medioPago, detallePago: detallePago || null } };
+    async function intentarRpc(msTimeout) {
+      const supabase = await window.getSupabaseClient();
+      const r2 = await Promise.race([
+        supabase.rpc("registrar_venta_stock_carrito", params),
+        new Promise((_22, reject) => setTimeout(() => reject(new Error("El servidor tard\xF3 demasiado en responder")), msTimeout))
+      ]);
+      if (r2.error) throw r2.error;
+      return r2;
+    }
+    function errorVisible(error) {
+      const msg = String(error?.message || error || "");
+      if (msg.includes("stock_insuficiente:")) return { error: "Stock insuficiente", productoId: msg.split("stock_insuficiente:").pop().trim() };
+      if (msg.includes("unidad_indivisible")) return { error: "La cantidad debe ser un n\xFAmero entero para este producto." };
+      if (msg.includes("precision_cantidad_excedida")) return { error: "La cantidad tiene m\xE1s decimales de los permitidos." };
+      if (msg.includes("local_inactivo")) return { error: "El local ya no 
+---
+, tarjeta: Number((detallePago.tarjeta * proporcion).toFixed(4)) };
+      }
+      return datosLinea;
+    });
+    if (lineasParaRpc.length === 0) return { ok: false, error: "Carrito vac\xEDo" };
+    const empresas = [...new Set(lineasParaRpc.map((l22) => productos.find((p22) => p22.id === l22.productoId)?.empresaId).filter(Boolean))];
+    if (empresas.length !== 1) return { ok: false, error: "No se pudo determinar una \xFAnica empresa para la venta." };
+    const empresaId = empresas[0];
+    const params = { p_operation_id: ventaId, p_empresa_id: empresaId, p_local_id: localActivoId, p_lineas: lineasParaRpc, p_datos: { medioPago, detallePago: detallePago || null } };
+    async function intentarRpc(msTimeout) {
+      const supabase = await window.getSupabaseClient();
+      const r2 = await Promise.race([
+        supabase.rpc("registrar_venta_stock_carrito", params),
+        new Promise((_22, reject) => setTimeout(() => reject(new Error("El servidor tard\xF3 demasiado en responder")), msTimeout))
+      ]);
+      if (r2.error) throw r2.error;
+      return r2;
+    }
+    function errorVisible(error) {
+      const msg = String(error?.message || error || "");
+      if (msg.includes("stock_insuficiente:")) return { error: "Stock insuficiente", productoId: msg.split("stock_insuficiente:").pop().trim() };
+      if (msg.includes("unidad_indivisible")) return { error: "La cantidad debe ser un n\xFAmero entero para este producto." };
+      if (msg.includes("precision_cantidad_excedida")) return { error: "La cantidad tiene m\xE1s decimales de los permitidos." };
+      if (msg.includes("local_inactivo")) return { error: "El local ya no admite operac
+---
+ockTotal: true,
+        afectaStockPisoVenta: true,
+        permitirDeficit: true,
+        revierteMovimientoId: l22.id,
+        motivo: `Anulaci\xF3n de venta${motivo ? " \xB7 " + motivo : ""}`,
+        camposExtra: {
+          anulaVentaId: ventaId,
+          costoUnitario: l22.costoUnitario,
+          // El ingreso se anota en negativo para que los informes de ventas
+          // resten esta operación en vez de contarla como un ingreso nuevo.
+          ingresoUnitario: l22.ingresoUnitario != null ? -Math.abs(Number(l22.ingresoUnitario)) : null,
+          ivaVentaAplicado: l22.ivaVentaAplicado,
+          medioPago: l22.medioPago,
+          detallePago: l22.detallePago
+        }
+      });
+      if (r2.ok) aplicadas++;
+    });
+    const fechaVenta = lineas[0]?.fecha;
+    const arqueoDelDia = fechaVenta && (arqueos || []).find((a22) => a22.fecha === fechaVenta && (!localActivoId || a22.localId === localActivoId));
+    if (arqueoDelDia && typeof window !== "undefined" && window.__nubeActiva) {
+      fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titulo: "Caja cerrada, ahora desactualizada",
+          cuerpo: `Se anul\xF3 una venta del ${fechaVenta}, d\xEDa que ya ten\xEDa la caja cerrada \u2014 revisa ese arqueo, puede que ya no cuadre.`,
+          localId: lineas[0]?.localId || null,
+          url: "/"
+        })
+      }).catch(() => {
+      });
+    }
+    return { ok: true, lineasAnuladas: aplicadas, arqueoAfectado: !!arqueoDelDia };
+  }
+  async function anularVenta(ventaId, mo
+---
+       afectaStockPisoVenta: true,
+        permitirDeficit: true,
+        revierteMovimientoId: l22.id,
+        motivo: `Anulaci\xF3n de venta${motivo ? " \xB7 " + motivo : ""}`,
+        camposExtra: {
+          anulaVentaId: ventaId,
+          costoUnitario: l22.costoUnitario,
+          // El ingreso se anota en negativo para que los informes de ventas
+          // resten esta operación en vez de contarla como un ingreso nuevo.
+          ingresoUnitario: l22.ingresoUnitario != null ? -Math.abs(Number(l22.ingresoUnitario)) : null,
+          ivaVentaAplicado: l22.ivaVentaAplicado,
+          medioPago: l22.medioPago,
+          detallePago: l22.detallePago
+        }
+      });
+      if (r2.ok) aplicadas++;
+    });
+    const fechaVenta = lineas[0]?.fecha;
+    const arqueoDelDia = fechaVenta && (arqueos || []).find((a22) => a22.fecha === fechaVenta && (!localActivoId || a22.localId === localActivoId));
+    if (arqueoDelDia && typeof window !== "undefined" && window.__nubeActiva) {
+      fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titulo: "Caja cerrada, ahora desactualizada",
+          cuerpo: `Se anul\xF3 una venta del ${fechaVenta}, d\xEDa que ya ten\xEDa la caja cerrada \u2014 revisa ese arqueo, puede que ya no cuadre.`,
+          localId: lineas[0]?.localId || null,
+          url: "/"
+        })
+      }).catch(() => {
+      });
+    }
+    return { ok: true, lineasAnuladas: aplicadas, arqueoAfectado: !!arqueoDelDia };
+  }
+  async function anularVenta(ventaId, movimientosActuales
+---
+ivoAnulacion] = (0, import_react4.useState)("");
+  const [mostrarAnulacion, setMostrarAnulacion] = (0, import_react4.useState)(false);
+  const [anulando, setAnulando] = (0, import_react4.useState)(false);
+  const ventasDelDia = movimientos.filter((m22) => esVenta(m22) && m22.fecha === fecha && !m22.encargoId);
+  const porMedio = { Efectivo: 0, Tarjeta: 0, Transferencia: 0, Otro: 0 };
+  ventasDelDia.forEach((m22) => {
+    const medio = m22.medioPago || "Efectivo";
+    const importeVenta = Math.abs(Number(m22.cantidad) || 0) * (Number(m22.ingresoUnitario) || 0) * (1 + (Number(m22.ivaVentaAplicado) || 0) / 100);
+    if (medio === "Mixto" && m22.detallePago) {
+      porMedio.Efectivo += Number(m22.detallePago.efectivo) || 0;
+      porMedio.Tarjeta += Number(m22.detallePago.tarjeta) || 0;
+    } else {
+      porMedio[medio] = (porMedio[medio] || 0) + importeVenta;
+    }
+  });
+  encargos.forEach((e2) => {
+    (e2.cobros || []).forEach((c22) => {
+      if (c22.fecha !== fecha) return;
+      const medio = c22.medioPago || "Efectivo";
+      porMedio[medio] = (porMedio[medio] || 0) + (Number(c22.importe) || 0);
+    });
+  });
+  const movimientosCajaDelDia = movimientosCaja.filter((m22) => m22.fecha === fecha);
+  const netoCaja = movimientosCajaDelDia.reduce((acc, m22) => {
+    const efecto = Number(m22.efectoEfectivo);
+    if (Number.isFinite(efecto)) return acc + efecto;
+    return acc + (String(m22.tipo).toUpperCase() === "ENTRADA" ? Number(m22.importe) || 0 : -(Number(m22.importe) || 0));
+  }, 0);
+  const efectivoBase = redondearDineroPM08(porMedio.Efectivo || 0);
+  const efectivoEsperado = redondearDineroPM08(efectivoBase + netoCaja);
+  cons
+---
+nst [mostrarAnulacion, setMostrarAnulacion] = (0, import_react4.useState)(false);
+  const [anulando, setAnulando] = (0, import_react4.useState)(false);
+  const ventasDelDia = movimientos.filter((m22) => esVenta(m22) && m22.fecha === fecha && !m22.encargoId);
+  const porMedio = { Efectivo: 0, Tarjeta: 0, Transferencia: 0, Otro: 0 };
+  ventasDelDia.forEach((m22) => {
+    const medio = m22.medioPago || "Efectivo";
+    const importeVenta = Math.abs(Number(m22.cantidad) || 0) * (Number(m22.ingresoUnitario) || 0) * (1 + (Number(m22.ivaVentaAplicado) || 0) / 100);
+    if (medio === "Mixto" && m22.detallePago) {
+      porMedio.Efectivo += Number(m22.detallePago.efectivo) || 0;
+      porMedio.Tarjeta += Number(m22.detallePago.tarjeta) || 0;
+    } else {
+      porMedio[medio] = (porMedio[medio] || 0) + importeVenta;
+    }
+  });
+  encargos.forEach((e2) => {
+    (e2.cobros || []).forEach((c22) => {
+      if (c22.fecha !== fecha) return;
+      const medio = c22.medioPago || "Efectivo";
+      porMedio[medio] = (porMedio[medio] || 0) + (Number(c22.importe) || 0);
+    });
+  });
+  const movimientosCajaDelDia = movimientosCaja.filter((m22) => m22.fecha === fecha);
+  const netoCaja = movimientosCajaDelDia.reduce((acc, m22) => {
+    const efecto = Number(m22.efectoEfectivo);
+    if (Number.isFinite(efecto)) return acc + efecto;
+    return acc + (String(m22.tipo).toUpperCase() === "ENTRADA" ? Number(m22.importe) || 0 : -(Number(m22.importe) || 0));
+  }, 0);
+  const efectivoBase = redondearDineroPM08(porMedio.Efectivo || 0);
+  const efectivoEsperado = redondearDineroPM08(efectivoBase + netoCaja);
+  const contadoNumero = contado === "" ? NaN : redondearDin
+---
+seState)(false);
+  const [anulando, setAnulando] = (0, import_react4.useState)(false);
+  const ventasDelDia = movimientos.filter((m22) => esVenta(m22) && m22.fecha === fecha && !m22.encargoId);
+  const porMedio = { Efectivo: 0, Tarjeta: 0, Transferencia: 0, Otro: 0 };
+  ventasDelDia.forEach((m22) => {
+    const medio = m22.medioPago || "Efectivo";
+    const importeVenta = Math.abs(Number(m22.cantidad) || 0) * (Number(m22.ingresoUnitario) || 0) * (1 + (Number(m22.ivaVentaAplicado) || 0) / 100);
+    if (medio === "Mixto" && m22.detallePago) {
+      porMedio.Efectivo += Number(m22.detallePago.efectivo) || 0;
+      porMedio.Tarjeta += Number(m22.detallePago.tarjeta) || 0;
+    } else {
+      porMedio[medio] = (porMedio[medio] || 0) + importeVenta;
+    }
+  });
+  encargos.forEach((e2) => {
+    (e2.cobros || []).forEach((c22) => {
+      if (c22.fecha !== fecha) return;
+      const medio = c22.medioPago || "Efectivo";
+      porMedio[medio] = (porMedio[medio] || 0) + (Number(c22.importe) || 0);
+    });
+  });
+  const movimientosCajaDelDia = movimientosCaja.filter((m22) => m22.fecha === fecha);
+  const netoCaja = movimientosCajaDelDia.reduce((acc, m22) => {
+    const efecto = Number(m22.efectoEfectivo);
+    if (Number.isFinite(efecto)) return acc + efecto;
+    return acc + (String(m22.tipo).toUpperCase() === "ENTRADA" ? Number(m22.importe) || 0 : -(Number(m22.importe) || 0));
+  }, 0);
+  const efectivoBase = redondearDineroPM08(porMedio.Efectivo || 0);
+  const efectivoEsperado = redondearDineroPM08(efectivoBase + netoCaja);
+  const contadoNumero = contado === "" ? NaN : redondearDineroPM08(contado);
+  const diferencia = Number.isFinite(contadoNum
+---
+sort().slice(-1)[0] || "";
+      const marcaTiempo = lineas.map((l22) => l22.timestamp || l22.createdAt || l22.created_at || l22.fechaHora || l22.fecha_hora || l22.marcaTiempo || "").filter(Boolean).sort().slice(-1)[0] || "";
+      const importeOriginal = lineas.reduce((a22, l22) => a22 + Math.abs(cantidadConSigno(l22)) * Math.abs(Number(l22.ingresoUnitario) || 0) * (1 + (Number(l22.ivaVentaAplicado) || 0) / 100), 0);
+      const nombres = lineas.map((l22) => {
+        const p22 = productos.find((x3) => x3.id === l22.productoId);
+        return `${fmt(Math.abs(cantidadConSigno(l22)))}× ${p22 ? p22.nombre : "Producto"}`;
+      });
+      const detallePago = lineas.reduce((acc, l22) => {
+        if (!l22.detallePago) return acc;
+        acc.efectivo += Number(l22.detallePago.efectivo) || 0;
+        acc.tarjeta += Number(l22.detallePago.tarjeta) || 0;
+        return acc;
+      }, { efectivo: 0, tarjeta: 0 });
+      const correcciones = correccionesPorVenta[ventaId] || [];
+      const devolucionesCliente = correcciones.filter((m22) => esDevolucionClienteHistorialPM09(m22));
+      const anulada = anuladasPorId.has(ventaId) || lineas.some((l22) => reversiones.has(l22.id)) || correcciones.some((m22) => m22.tipo === "REVERSO" || datoCorreccionHistorialPM09(m22, "anulaVentaId") === ventaId);
+      const unidadesOriginales = lineas.reduce((a22, l22) => a22 + Math.abs(cantidadConSigno(l22)), 0);
+      const unidadesDevueltasSinTope = devolucionesCliente.reduce((a22, m22) => a22 + Math.abs(Number(m22.cantidad) || 0), 0);
+      const unidadesDevueltas = Math.min(unidadesOriginales, unidadesDevueltasSinTope);
+      const unidadesNetas = anulada ? 0
+---
+ap((l22) => l22.timestamp || l22.createdAt || l22.created_at || l22.fechaHora || l22.fecha_hora || l22.marcaTiempo || "").filter(Boolean).sort().slice(-1)[0] || "";
+      const importeOriginal = lineas.reduce((a22, l22) => a22 + Math.abs(cantidadConSigno(l22)) * Math.abs(Number(l22.ingresoUnitario) || 0) * (1 + (Number(l22.ivaVentaAplicado) || 0) / 100), 0);
+      const nombres = lineas.map((l22) => {
+        const p22 = productos.find((x3) => x3.id === l22.productoId);
+        return `${fmt(Math.abs(cantidadConSigno(l22)))}× ${p22 ? p22.nombre : "Producto"}`;
+      });
+      const detallePago = lineas.reduce((acc, l22) => {
+        if (!l22.detallePago) return acc;
+        acc.efectivo += Number(l22.detallePago.efectivo) || 0;
+        acc.tarjeta += Number(l22.detallePago.tarjeta) || 0;
+        return acc;
+      }, { efectivo: 0, tarjeta: 0 });
+      const correcciones = correccionesPorVenta[ventaId] || [];
+      const devolucionesCliente = correcciones.filter((m22) => esDevolucionClienteHistorialPM09(m22));
+      const anulada = anuladasPorId.has(ventaId) || lineas.some((l22) => reversiones.has(l22.id)) || correcciones.some((m22) => m22.tipo === "REVERSO" || datoCorreccionHistorialPM09(m22, "anulaVentaId") === ventaId);
+      const unidadesOriginales = lineas.reduce((a22, l22) => a22 + Math.abs(cantidadConSigno(l22)), 0);
+      const unidadesDevueltasSinTope = devolucionesCliente.reduce((a22, m22) => a22 + Math.abs(Number(m22.cantidad) || 0), 0);
+      const unidadesDevueltas = Math.min(unidadesOriginales, unidadesDevueltasSinTope);
+      const unidadesNetas = anulada ? 0 : Math.max(0, unidadesOriginales - unidadesDevueltas);
+     
+---
+ || l22.fechaHora || l22.fecha_hora || l22.marcaTiempo || "").filter(Boolean).sort().slice(-1)[0] || "";
+      const importeOriginal = lineas.reduce((a22, l22) => a22 + Math.abs(cantidadConSigno(l22)) * Math.abs(Number(l22.ingresoUnitario) || 0) * (1 + (Number(l22.ivaVentaAplicado) || 0) / 100), 0);
+      const nombres = lineas.map((l22) => {
+        const p22 = productos.find((x3) => x3.id === l22.productoId);
+        return `${fmt(Math.abs(cantidadConSigno(l22)))}× ${p22 ? p22.nombre : "Producto"}`;
+      });
+      const detallePago = lineas.reduce((acc, l22) => {
+        if (!l22.detallePago) return acc;
+        acc.efectivo += Number(l22.detallePago.efectivo) || 0;
+        acc.tarjeta += Number(l22.detallePago.tarjeta) || 0;
+        return acc;
+      }, { efectivo: 0, tarjeta: 0 });
+      const correcciones = correccionesPorVenta[ventaId] || [];
+      const devolucionesCliente = correcciones.filter((m22) => esDevolucionClienteHistorialPM09(m22));
+      const anulada = anuladasPorId.has(ventaId) || lineas.some((l22) => reversiones.has(l22.id)) || correcciones.some((m22) => m22.tipo === "REVERSO" || datoCorreccionHistorialPM09(m22, "anulaVentaId") === ventaId);
+      const unidadesOriginales = lineas.reduce((a22, l22) => a22 + Math.abs(cantidadConSigno(l22)), 0);
+      const unidadesDevueltasSinTope = devolucionesCliente.reduce((a22, m22) => a22 + Math.abs(Number(m22.cantidad) || 0), 0);
+      const unidadesDevueltas = Math.min(unidadesOriginales, unidadesDevueltasSinTope);
+      const unidadesNetas = anulada ? 0 : Math.max(0, unidadesOriginales - unidadesDevueltas);
+      const importeAsociadoDevuelto = devolucionesCliente.reduce(
+---
+filter(Boolean).sort().slice(-1)[0] || "";
+      const importeOriginal = lineas.reduce((a22, l22) => a22 + Math.abs(cantidadConSigno(l22)) * Math.abs(Number(l22.ingresoUnitario) || 0) * (1 + (Number(l22.ivaVentaAplicado) || 0) / 100), 0);
+      const nombres = lineas.map((l22) => {
+        const p22 = productos.find((x3) => x3.id === l22.productoId);
+        return `${fmt(Math.abs(cantidadConSigno(l22)))}× ${p22 ? p22.nombre : "Producto"}`;
+      });
+      const detallePago = lineas.reduce((acc, l22) => {
+        if (!l22.detallePago) return acc;
+        acc.efectivo += Number(l22.detallePago.efectivo) || 0;
+        acc.tarjeta += Number(l22.detallePago.tarjeta) || 0;
+        return acc;
+      }, { efectivo: 0, tarjeta: 0 });
+      const correcciones = correccionesPorVenta[ventaId] || [];
+      const devolucionesCliente = correcciones.filter((m22) => esDevolucionClienteHistorialPM09(m22));
+      const anulada = anuladasPorId.has(ventaId) || lineas.some((l22) => reversiones.has(l22.id)) || correcciones.some((m22) => m22.tipo === "REVERSO" || datoCorreccionHistorialPM09(m22, "anulaVentaId") === ventaId);
+      const unidadesOriginales = lineas.reduce((a22, l22) => a22 + Math.abs(cantidadConSigno(l22)), 0);
+      const unidadesDevueltasSinTope = devolucionesCliente.reduce((a22, m22) => a22 + Math.abs(Number(m22.cantidad) || 0), 0);
+      const unidadesDevueltas = Math.min(unidadesOriginales, unidadesDevueltasSinTope);
+      const unidadesNetas = anulada ? 0 : Math.max(0, unidadesOriginales - unidadesDevueltas);
+      const importeAsociadoDevuelto = devolucionesCliente.reduce((a22, m22) => {
+        const cantidad = Math.abs(Number(m22.c
+---
+`));
+      const medioPago2 = lineas[0]?.medioPago || "—";
+      const usuario = lineas[0]?.usuario || lineas[0]?.empleado || "";
+      const referencia = `V-${(fecha || "SINFECHA").replaceAll("-", "")}-${String(ventaId).replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`;
+      return { ventaId, referencia, fecha, marcaTiempo, lineas, resumen: nombres.slice(0, 3).join(", ") + (nombres.length > 3 ? ` y ${nombres.length - 3} más` : ""), importe: importeOriginal, importeOriginal, importeNetoGestion, importeAsociadoDevuelto, reembolsoAcumulado, unidadesOriginales, unidadesDevueltas, unidadesNetas, estado, trazabilidad, medioPago: medioPago2, detallePago, usuario, anulada, mesa: lineas[0]?.mesa || lineas[0]?.mesaNumero || "", zona: lineas[0]?.zona || lineas[0]?.sala || lineas[0]?.ubicacion || "", numeroFiscal: lineas[0]?.numeroFiscal || lineas[0]?.numeroFactura || "", entregado: lineas[0]?.importeEntregado ?? lineas[0]?.entregado ?? null, cambio: lineas[0]?.cambioEntregado ?? lineas[0]?.cambio ?? null };
+    }).sort((a22, b2) => `${b2.fecha} ${b2.marcaTiempo}`.localeCompare(`${a22.fecha} ${a22.marcaTiempo}`));
+  }, [movimientos, productos]);
+  const ventasFiltradas = (0, import_react4.useMemo)(() => {
+    const q2 = filtroVentasTexto.trim().toLowerCase();
+    return historialVentas.filter((v22) => {
+      if (filtroVentasDesde && v22.fecha < filtroVentasDesde) return false;
+      if (filtroVentasHasta && v22.fecha > filtroVentasHasta) return false;
+      if (filtroVentasPago !== "Todos" && v22.medioPago !== filtroVentasPago) return false;
+      if (filtroVentasEstado === "Activas" && v22.estado !== "ACTIVA") return false;
+      if (fi
+---
+: "text-center text-[11px] font-semibold mt-3" }, `Cobrado en ${(v22.medioPago || "\u2014").toUpperCase()}`),
+        h3(
+          "div",
+          { className: "text-[10.5px] mt-3 mb-3" },
+          h3("div", { className: "flex justify-between gap-3" }, h3("span", null, "ENTREGADO:"), h3("span", null, entregado == null || !Number.isFinite(entregado) ? "\u2014" : `\u20AC${fmt(entregado)}`)),
+          h3("div", { className: "flex justify-between gap-3" }, h3("span", null, "CAMBIO:"), h3("span", null, cambioTicket == null || !Number.isFinite(cambioTicket) ? "\u2014" : `\u20AC${fmt(cambioTicket)}`)),
+          v22.medioPago === "Mixto" && v22.detallePago ? h3("div", { className: "mt-2 text-center" }, `TARJETA \u20AC${fmt(v22.detallePago.tarjeta || 0)} \xB7 EFECTIVO \u20AC${fmt(v22.detallePago.efectivo || 0)}`) : null
+        ),
+        h3(
+          "div",
+          { className: "text-center text-[10px] pt-3", style: { borderTop: `1px dashed ${C2.line}` } },
+          redSocialEmpresa || webEmpresa ? h3(
+            "div",
+            null,
+            h3("div", null, "Contacto"),
+            redSocialEmpresa ? h3("div", null, redSocialEmpresa) : null,
+            webEmpresa ? h3("div", null, webEmpresa) : null
+          ) : null,
+          h3("div", { className: "font-bold text-[12px] mt-3" }, v22.estado !== "ACTIVA" ? etiquetaEstadoVentaHistorialPM09(v22.estado) : pieEmpresa),
+          h3("div", { className: "font-semibold mt-1" }, "I.V.A. INCLUIDO"),
+          h3("div", { className: "text-[8.5px] mt-3 break-all", style: { color: C2.inkSoft } }, `ID operaci\xF3n: ${v22.ventaId}`),
+          !tieneNumeroFiscal ? h3("div", { classNam
+---
+u2014").toUpperCase()}`),
+        h3(
+          "div",
+          { className: "text-[10.5px] mt-3 mb-3" },
+          h3("div", { className: "flex justify-between gap-3" }, h3("span", null, "ENTREGADO:"), h3("span", null, entregado == null || !Number.isFinite(entregado) ? "\u2014" : `\u20AC${fmt(entregado)}`)),
+          h3("div", { className: "flex justify-between gap-3" }, h3("span", null, "CAMBIO:"), h3("span", null, cambioTicket == null || !Number.isFinite(cambioTicket) ? "\u2014" : `\u20AC${fmt(cambioTicket)}`)),
+          v22.medioPago === "Mixto" && v22.detallePago ? h3("div", { className: "mt-2 text-center" }, `TARJETA \u20AC${fmt(v22.detallePago.tarjeta || 0)} \xB7 EFECTIVO \u20AC${fmt(v22.detallePago.efectivo || 0)}`) : null
+        ),
+        h3(
+          "div",
+          { className: "text-center text-[10px] pt-3", style: { borderTop: `1px dashed ${C2.line}` } },
+          redSocialEmpresa || webEmpresa ? h3(
+            "div",
+            null,
+            h3("div", null, "Contacto"),
+            redSocialEmpresa ? h3("div", null, redSocialEmpresa) : null,
+            webEmpresa ? h3("div", null, webEmpresa) : null
+          ) : null,
+          h3("div", { className: "font-bold text-[12px] mt-3" }, v22.estado !== "ACTIVA" ? etiquetaEstadoVentaHistorialPM09(v22.estado) : pieEmpresa),
+          h3("div", { className: "font-semibold mt-1" }, "I.V.A. INCLUIDO"),
+          h3("div", { className: "text-[8.5px] mt-3 break-all", style: { color: C2.inkSoft } }, `ID operaci\xF3n: ${v22.ventaId}`),
+          !tieneNumeroFiscal ? h3("div", { className: "text-[8.5px] mt-1", style: { color: C2.inkSoft } }, "Documento interno del TPV \
+---
+
+## ocurrencias medioPago
+COUNT=63
+perationId: m4.operation_id,
+        ventaId: d2.ventaId || (m4.tipo === "VENTA" ? m4.operation_id : d2.anulaVentaId || null),
+        anulaVentaId: d2.anulaVentaId || null,
+        productoId: m4.producto_id,
+        localId: m4.local_id,
+        empresaId: m4.empresa_id,
+        cantidad: delta,
+        cantidadFisica: Number(m4.cantidad) || Math.abs(delta),
+        tipo: m4.tipo,
+        motivo: d2.motivo || m4.tipo,
+        referencia: d2.referencia || "PM-07",
+        costoUnitario: Number(d2.costoUnitario) || 0,
+        ingresoUnitario: Number(d2.ingresoUnitario) || 0,
+        ivaVentaAplicado: Number(d2.ivaVentaAplicado) || 0,
+        medioPago: d2.medioPago || null,
+        detallePago: d2.detallePago || null,
+        fecha: creado ? creado.slice(0, 10) : todayISO(),
+        hora: creado ? creado.slice(11, 16) : (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5),
+        afectaStockTotal: delta !== 0,
+        afectaStockPisoVenta: Number(m4.delta_piso) !== 0,
+        movimientoOriginalId: m4.movimiento_original_id || null,
+        _pm07Servidor: true
+      };
+    });
+    setMovimientos((prev) => [...server, ...(prev || []).filter((m4) => !m4._pm07Servidor)]);
+  }
+  return { ok: true, stocks: stocks.length, movimientos: movs.length };
+}
+function redondearDineroPM08(valor) {
+  const n2 = Number(valor);
+  return Number.isFinite(n2) ? Math.round((n2 + Number.EPSILON) * 100) / 100 : NaN;
+}
+function modoSincronizadoPM08() {
+  return typeof window !== "undefined" && !!window.NUBE_URL && !window.__modoPruebasLocal;
+}
+function horaActualPM08() {
+  return (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5);
+}
+function claveP
+---
+.operation_id,
+        ventaId: d2.ventaId || (m4.tipo === "VENTA" ? m4.operation_id : d2.anulaVentaId || null),
+        anulaVentaId: d2.anulaVentaId || null,
+        productoId: m4.producto_id,
+        localId: m4.local_id,
+        empresaId: m4.empresa_id,
+        cantidad: delta,
+        cantidadFisica: Number(m4.cantidad) || Math.abs(delta),
+        tipo: m4.tipo,
+        motivo: d2.motivo || m4.tipo,
+        referencia: d2.referencia || "PM-07",
+        costoUnitario: Number(d2.costoUnitario) || 0,
+        ingresoUnitario: Number(d2.ingresoUnitario) || 0,
+        ivaVentaAplicado: Number(d2.ivaVentaAplicado) || 0,
+        medioPago: d2.medioPago || null,
+        detallePago: d2.detallePago || null,
+        fecha: creado ? creado.slice(0, 10) : todayISO(),
+        hora: creado ? creado.slice(11, 16) : (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5),
+        afectaStockTotal: delta !== 0,
+        afectaStockPisoVenta: Number(m4.delta_piso) !== 0,
+        movimientoOriginalId: m4.movimiento_original_id || null,
+        _pm07Servidor: true
+      };
+    });
+    setMovimientos((prev) => [...server, ...(prev || []).filter((m4) => !m4._pm07Servidor)]);
+  }
+  return { ok: true, stocks: stocks.length, movimientos: movs.length };
+}
+function redondearDineroPM08(valor) {
+  const n2 = Number(valor);
+  return Number.isFinite(n2) ? Math.round((n2 + Number.EPSILON) * 100) / 100 : NaN;
+}
+function modoSincronizadoPM08() {
+  return typeof window !== "undefined" && !!window.NUBE_URL && !window.__modoPruebasLocal;
+}
+function horaActualPM08() {
+  return (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5);
+}
+function clavePendientePM08(t
+---
+aPM08(fila) {
+  if (!fila) return null;
+  const creado = String(fila.created_at || fila.createdAt || "");
+  return {
+    id: fila.operation_id || fila.operationId || fila.id,
+    operationId: fila.operation_id || fila.operationId || fila.id,
+    empresaId: fila.empresa_id || fila.empresaId,
+    localId: fila.local_id || fila.localId,
+    fecha: fila.fecha || (creado ? creado.slice(0, 10) : todayISO()),
+    hora: creado ? creado.slice(11, 16) : fila.hora || horaActualPM08(),
+    tipo: String(fila.tipo || "").toUpperCase(),
+    importe: Number(fila.importe) || 0,
+    efectoEfectivo: Number(fila.efecto_efectivo ?? fila.efectoEfectivo) || 0,
+    medioPago: fila.medio_pago || fila.medioPago || "EFECTIVO",
+    concepto: fila.concepto || fila.motivo || "",
+    motivo: fila.concepto || fila.motivo || "",
+    origen: fila.origen_tipo || fila.origen || "MANUAL",
+    referenciaId: fila.origen_id || fila.referenciaId || null,
+    refOperationId: fila.ref_operation_id || fila.refOperationId || null,
+    actorUserId: fila.actor_user_id || fila.actorUserId || null,
+    createdAt: creado || null,
+    _pm08Servidor: !!(fila.operation_id || fila.actor_user_id)
+  };
+}
+function normalizarArqueoPM08(fila) {
+  if (!fila) return null;
+  const creado = String(fila.created_at || fila.createdAt || "");
+  return {
+    id: fila.operation_id || fila.operationId || fila.id,
+    operationId: fila.operation_id || fila.operationId || fila.id,
+    empresaId: fila.empresa_id || fila.empresaId,
+    localId: fila.local_id || fila.localId,
+    fecha: fila.fecha || todayISO(),
+    hora: creado ? creado.slice(11, 16) : fila.hora || horaActualPM08(),
+    alcance: fila.alc
+---
+ull;
+  const creado = String(fila.created_at || fila.createdAt || "");
+  return {
+    id: fila.operation_id || fila.operationId || fila.id,
+    operationId: fila.operation_id || fila.operationId || fila.id,
+    empresaId: fila.empresa_id || fila.empresaId,
+    localId: fila.local_id || fila.localId,
+    fecha: fila.fecha || (creado ? creado.slice(0, 10) : todayISO()),
+    hora: creado ? creado.slice(11, 16) : fila.hora || horaActualPM08(),
+    tipo: String(fila.tipo || "").toUpperCase(),
+    importe: Number(fila.importe) || 0,
+    efectoEfectivo: Number(fila.efecto_efectivo ?? fila.efectoEfectivo) || 0,
+    medioPago: fila.medio_pago || fila.medioPago || "EFECTIVO",
+    concepto: fila.concepto || fila.motivo || "",
+    motivo: fila.concepto || fila.motivo || "",
+    origen: fila.origen_tipo || fila.origen || "MANUAL",
+    referenciaId: fila.origen_id || fila.referenciaId || null,
+    refOperationId: fila.ref_operation_id || fila.refOperationId || null,
+    actorUserId: fila.actor_user_id || fila.actorUserId || null,
+    createdAt: creado || null,
+    _pm08Servidor: !!(fila.operation_id || fila.actor_user_id)
+  };
+}
+function normalizarArqueoPM08(fila) {
+  if (!fila) return null;
+  const creado = String(fila.created_at || fila.createdAt || "");
+  return {
+    id: fila.operation_id || fila.operationId || fila.id,
+    operationId: fila.operation_id || fila.operationId || fila.id,
+    empresaId: fila.empresa_id || fila.empresaId,
+    localId: fila.local_id || fila.localId,
+    fecha: fila.fecha || todayISO(),
+    hora: creado ? creado.slice(11, 16) : fila.hora || horaActualPM08(),
+    alcance: fila.alcance || "DIA",
+    efectivoBase: Nu
+---
+o / 100));
+  return { base, iva, total: redondearDineroPM06(base + iva), porTipo: { [tipo]: { base, cuota: iva } } };
+}
+function normalizarPagoPM06(p22) {
+  if (!p22) return null;
+  return {
+    id: p22.id,
+    operationId: p22.operationId || p22.operation_id,
+    facturaId: p22.facturaId || p22.factura_id,
+    origenFactura: p22.origenFactura || p22.origen_factura,
+    empresaId: p22.empresaId || p22.empresa_id,
+    localId: p22.localId || p22.local_id,
+    importe: Number(p22.importe) || 0,
+    fecha: p22.fecha || todayISO(),
+    estado: p22.estado || "CONFIRMADO",
+    reviertePagoId: p22.reviertePagoId || p22.revierte_pago_id || null,
+    medioPago: p22.medioPago || p22.medio_pago || "",
+    datos: p22.datos || {},
+    createdAt: p22.createdAt || p22.created_at || null
+  };
+}
+function calcularSaldoFacturaPM06(pagos, facturaId, origenFactura, total, empresaId, localId, legacyPagada) {
+  const relacionados = (pagos || []).filter((p22) => p22 && p22.facturaId === facturaId && p22.origenFactura === origenFactura && (!empresaId || p22.empresaId === empresaId) && (!localId || p22.localId === localId));
+  let pagado = relacionados.reduce((a22, p22) => a22 + (p22.estado === "REVERSO" ? -Math.abs(Number(p22.importe) || 0) : p22.estado === "CONFIRMADO" ? Math.abs(Number(p22.importe) || 0) : 0), 0);
+  const total2 = redondearDineroPM06(total);
+  if (!relacionados.length && legacyPagada) pagado = total2;
+  pagado = Math.max(0, redondearDineroPM06(pagado));
+  const pendiente = Math.max(0, redondearDineroPM06(total2 - pagado));
+  return { total: total2, pagado, pendiente, pagada: pendiente <= 1e-3 && total2 > 0 };
+}
+function modoSincronizadoP
+---
+turn { base, iva, total: redondearDineroPM06(base + iva), porTipo: { [tipo]: { base, cuota: iva } } };
+}
+function normalizarPagoPM06(p22) {
+  if (!p22) return null;
+  return {
+    id: p22.id,
+    operationId: p22.operationId || p22.operation_id,
+    facturaId: p22.facturaId || p22.factura_id,
+    origenFactura: p22.origenFactura || p22.origen_factura,
+    empresaId: p22.empresaId || p22.empresa_id,
+    localId: p22.localId || p22.local_id,
+    importe: Number(p22.importe) || 0,
+    fecha: p22.fecha || todayISO(),
+    estado: p22.estado || "CONFIRMADO",
+    reviertePagoId: p22.reviertePagoId || p22.revierte_pago_id || null,
+    medioPago: p22.medioPago || p22.medio_pago || "",
+    datos: p22.datos || {},
+    createdAt: p22.createdAt || p22.created_at || null
+  };
+}
+function calcularSaldoFacturaPM06(pagos, facturaId, origenFactura, total, empresaId, localId, legacyPagada) {
+  const relacionados = (pagos || []).filter((p22) => p22 && p22.facturaId === facturaId && p22.origenFactura === origenFactura && (!empresaId || p22.empresaId === empresaId) && (!localId || p22.localId === localId));
+  let pagado = relacionados.reduce((a22, p22) => a22 + (p22.estado === "REVERSO" ? -Math.abs(Number(p22.importe) || 0) : p22.estado === "CONFIRMADO" ? Math.abs(Number(p22.importe) || 0) : 0), 0);
+  const total2 = redondearDineroPM06(total);
+  if (!relacionados.length && legacyPagada) pagado = total2;
+  pagado = Math.max(0, redondearDineroPM06(pagado));
+  const pendiente = Math.max(0, redondearDineroPM06(total2 - pagado));
+  return { total: total2, pagado, pendiente, pagada: pendiente <= 1e-3 && total2 > 0 };
+}
+function modoSincronizadoPM06() {
+  retur
+---
+);
+          return { ok: true, movimiento: movimiento2, replayed: !!r2.data?.replayed };
+        } catch {
+          return { ok: false, pendiente: true, error: "No se pudo confirmar si el servidor recibi\xF3 el movimiento. Reintenta: se utilizar\xE1 el mismo identificador y no se duplicar\xE1." };
+        }
+      }
+      const movimiento = normalizarMovimientoCajaPM08({
+        operationId: preparado.pendiente.operationId,
+        empresaId,
+        localId: localActivoId,
+        fecha,
+        hora: horaActualPM08(),
+        tipo: tipoCanonico,
+        importe: imp,
+        efectoEfectivo: tipoCanonico === "ENTRADA" ? imp : -imp,
+        medioPago: "EFECTIVO",
+        concepto: conceptoLimpio,
+        origen: "MANUAL",
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+      setMovimientosCaja((prev) => [movimiento, ...(prev || []).filter((m22) => m22.operationId !== movimiento.operationId)]);
+      limpiarPendientePM08(clave);
+      registrarAuditoria?.("MOVIMIENTO_CAJA", `${tipoCanonico} de ${money(imp)} \xB7 ${conceptoLimpio}`);
+      return { ok: true, movimiento, local: true };
+    })();
+    operacionesPM08EnCurso[clave] = tarea;
+    try {
+      return await tarea;
+    } finally {
+      delete operacionesPM08EnCurso[clave];
+    }
+  }
+  async function eliminarMovimientoCaja(id, motivo) {
+    if (!empresaId || !localActivoId) return { ok: false, error: "Selecciona el local del movimiento." };
+    const original = (movimientosCaja || []).find((m22) => (m22.operationId === id || m22.id === id) && m22.localId === localActivoId);
+    if (!original || !["ENTRADA", "RETIRADA", "entrada", "salida"].includes(ori
+---
+e pudo confirmar el reverso. Reintenta con el mismo borrador." };
+        }
+      }
+      const tipoOriginal = String(original.tipo).toUpperCase() === "ENTRADA" ? "ENTRADA" : "RETIRADA";
+      const movimiento = normalizarMovimientoCajaPM08({
+        operationId: preparado.pendiente.operationId,
+        empresaId,
+        localId: localActivoId,
+        fecha: fechaReverso,
+        tipo: tipoOriginal === "ENTRADA" ? "REVERSO_ENTRADA" : "REVERSO_RETIRADA",
+        importe: original.importe,
+        efectoEfectivo: -(Number(original.efectoEfectivo) || (tipoOriginal === "ENTRADA" ? Number(original.importe) : -Number(original.importe))),
+        medioPago: "EFECTIVO",
+        concepto: `Reverso: ${motivoLimpio}`,
+        origen: "REVERSO_CAJA",
+        referenciaId: original.operationId || original.id,
+        refOperationId: original.operationId || original.id,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+      setMovimientosCaja((prev) => [movimiento, ...(prev || []).filter((m22) => m22.operationId !== movimiento.operationId)]);
+      limpiarPendientePM08(clave);
+      registrarAuditoria?.("REVERSO_CAJA", `${motivoLimpio} \xB7 ${original.operationId || original.id}`);
+      return { ok: true, movimiento, local: true };
+    })();
+    operacionesPM08EnCurso[clave] = tarea;
+    try {
+      return await tarea;
+    } finally {
+      delete operacionesPM08EnCurso[clave];
+    }
+  }
+  return { registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja };
+}
+function crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, setMovimientosCaja, setA
+---
+ productoNombre: producto.nombre,
+        cantidad: cant,
+        motivo: motivoLimpio,
+        reembolso: reembolsoNum,
+        medioReembolso: medio,
+        ventaId,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      }, "cliente");
+      let movimientoCaja = null;
+      if (reembolsoNum > 0) {
+        movimientoCaja = normalizarMovimientoCajaPM08({
+          operationId: preparado.pendiente.operationId,
+          empresaId,
+          localId: localActivoId,
+          fecha: fechaReal,
+          tipo: "REEMBOLSO",
+          importe: reembolsoNum,
+          efectoEfectivo: medio === "EFECTIVO" ? -reembolsoNum : 0,
+          medioPago: medio,
+          concepto: `Reembolso devoluci\xF3n \xB7 ${producto.nombre}`,
+          origen: "DEVOLUCION_CLIENTE",
+          referenciaId: preparado.pendiente.operationId,
+          createdAt: (/* @__PURE__ */ new Date()).toISOString()
+        });
+        setMovimientosCaja((s22) => [movimientoCaja, ...(s22 || []).filter((m22) => m22.operationId !== movimientoCaja.operationId)]);
+      }
+      setDevoluciones((s22) => [registro, ...(s22 || []).filter((d2) => d2.operationId !== registro.operationId)]);
+      limpiarPendientePM08(clave);
+      registrarAuditoria("Devoluci\xF3n de cliente", `${producto.nombre} \xD7${cant}${reembolsoNum > 0 ? ` \xB7 reembolso \u20AC${fmt(reembolsoNum)} (${medio})` : " \xB7 sin reembolso"}`);
+      return { ok: true, registro, movimientoCaja, local: true };
+    })();
+    operacionesPM08EnCurso[clave] = tarea;
+    try {
+      return await tarea;
+    } finally {
+      delete operacionesPM08EnCurso[clave];
+    }
+  }
+  async function registrarDevolucionPro
+---
+f (esMovimientoNuevo(m22)) {
+        return !!m22[campo === "stockPisoVenta" ? "afectaStockPisoVenta" : "afectaStockTotal"];
+      }
+      return campo !== "stockPisoVenta";
+    }).reduce((suma, m22) => suma + cantidadConSigno(m22), 0);
+  }
+  function aplicarMovimientoStock({
+    productoId,
+    cantidad,
+    tipo,
+    operationId,
+    movimientoId,
+    origen,
+    documentoOrigenId,
+    usuario,
+    dispositivo,
+    motivo,
+    permitirDeficit = false,
+    afectaStockTotal = true,
+    afectaStockPisoVenta = false,
+    revierteMovimientoId = null,
+    camposExtra = null
+    // campos económicos que el motor no conoce (ingresoUnitario,
+    // medioPago...) — se escriben en el mismo momento de crear
+    // el movimiento, nunca como un parche después.
+  }) {
+    const id = movimientoId || uid();
+    if (idsConocidos.has(id)) {
+      const existente = porId.get(id);
+      if (existente && Number(existente.cantidad) !== Number(cantidad)) {
+        return { ok: false, error: `El movimiento ${id} ya existe con una cantidad distinta (${existente.cantidad} \u2260 ${cantidad}). No se sobrescribe.` };
+      }
+      return { ok: true, movimiento: existente, yaExistia: true };
+    }
+    const producto = productoActual(productoId);
+    if (!producto) return { ok: false, error: "Producto no encontrado." };
+    const cantidadNum = Number(cantidad) || 0;
+    const resultadoCampos = {};
+    let deficitGenerado = 0;
+    if (afectaStockTotal) {
+      const stockActual = Number(producto.stock) || 0;
+      const deficitActual = Number(producto.deficitPendiente) || 0;
+      const teoricoAntes = stockActual - deficitActual;
+      const teoricoDespues = te
+---
+ id ? { ...pr, activo: false, eliminadoEn: todayISO() } : pr));
+  }
+  function reactivarProducto(id) {
+    const p22 = productos.find((x3) => x3.id === id);
+    if (!productoEsDelLocalActivo(p22)) return false;
+    registrarAuditoria("Reactivar producto", p22 ? p22.nombre : id);
+    setProductos((s22) => s22.map((pr) => pr.id === id ? { ...pr, activo: true, eliminadoEn: null } : pr));
+  }
+  function registrarSalida(productoId, cantidad, opciones = {}) {
+    if (almacenCongelado) return false;
+    const cant = Number(cantidad);
+    if (!cant || cant <= 0) return false;
+    const { motivo = "Venta", precioVentaUnitario = null, referencia = "", medioPago = "Efectivo" } = opciones;
+    const prod = productos.find((p22) => p22.id === productoId);
+    if (!prod || !productoEsDelLocalActivo(prod)) return false;
+    const esVenta2 = motivo === "Venta";
+    const esMermaMotivo = MOTIVOS_MERMA.includes(motivo);
+    const tipo = esVenta2 ? "VENTA" : esMermaMotivo ? "MERMA" : "OTRO";
+    const ingresoUnitario = esVenta2 ? precioVentaUnitario !== null && precioVentaUnitario !== "" ? Number(precioVentaUnitario) || 0 : precioNeto(prod) : 0;
+    const r2 = aplicarMovimientoStock({
+      productoId,
+      cantidad: -cant,
+      tipo,
+      movimientoId: uid(),
+      origen: "registrarSalida",
+      afectaStockTotal: true,
+      permitirDeficit: true,
+      motivo: referencia || motivo,
+      camposExtra: {
+        costoUnitario: Number(prod.costo) || 0,
+        ingresoUnitario,
+        ivaVentaAplicado: ivaDe(prod),
+        medioPago: esVenta2 ? medioPago : null
+      }
+    });
+    return r2.ok;
+  }
+  return { addProducto, updateProducto, deletePro
+---
+MOTIVOS_MERMA.includes(motivo);
+    const tipo = esVenta2 ? "VENTA" : esMermaMotivo ? "MERMA" : "OTRO";
+    const ingresoUnitario = esVenta2 ? precioVentaUnitario !== null && precioVentaUnitario !== "" ? Number(precioVentaUnitario) || 0 : precioNeto(prod) : 0;
+    const r2 = aplicarMovimientoStock({
+      productoId,
+      cantidad: -cant,
+      tipo,
+      movimientoId: uid(),
+      origen: "registrarSalida",
+      afectaStockTotal: true,
+      permitirDeficit: true,
+      motivo: referencia || motivo,
+      camposExtra: {
+        costoUnitario: Number(prod.costo) || 0,
+        ingresoUnitario,
+        ivaVentaAplicado: ivaDe(prod),
+        medioPago: esVenta2 ? medioPago : null
+      }
+    });
+    return r2.ok;
+  }
+  return { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro };
+}
+function crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId }) {
+  function pedidoEsDelLocalActivo(pedido) {
+    if (!pedido) return false;
+    if (!localActivoId) return true;
+    return pedido.localId === localActivoId;
+  }
+  function crearPedido({ proveedorId, fechaEsperada, items }) {
+    const pedido = {
+      id: uid(),
+      localId: localActivoId || null,
+      proveedorId,
+      fecha: todayISO(),
+      fechaEsperada,
+      estado: "Pendiente",
+      items: items.map((it2) => ({ ...it2, cantidadRecibida: 0 }))
+    };
+    setPedidos((s22) => [pedido, ...s22]);
+    return pedido;
+  }
+  function actualizarPedido(pedidoId, { proveedorId, fechaEsperada, items }) {
+    const actual = pedidos2.find((pe2) => 
+---
+(motivo);
+    const tipo = esVenta2 ? "VENTA" : esMermaMotivo ? "MERMA" : "OTRO";
+    const ingresoUnitario = esVenta2 ? precioVentaUnitario !== null && precioVentaUnitario !== "" ? Number(precioVentaUnitario) || 0 : precioNeto(prod) : 0;
+    const r2 = aplicarMovimientoStock({
+      productoId,
+      cantidad: -cant,
+      tipo,
+      movimientoId: uid(),
+      origen: "registrarSalida",
+      afectaStockTotal: true,
+      permitirDeficit: true,
+      motivo: referencia || motivo,
+      camposExtra: {
+        costoUnitario: Number(prod.costo) || 0,
+        ingresoUnitario,
+        ivaVentaAplicado: ivaDe(prod),
+        medioPago: esVenta2 ? medioPago : null
+      }
+    });
+    return r2.ok;
+  }
+  return { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro };
+}
+function crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId }) {
+  function pedidoEsDelLocalActivo(pedido) {
+    if (!pedido) return false;
+    if (!localActivoId) return true;
+    return pedido.localId === localActivoId;
+  }
+  function crearPedido({ proveedorId, fechaEsperada, items }) {
+    const pedido = {
+      id: uid(),
+      localId: localActivoId || null,
+      proveedorId,
+      fecha: todayISO(),
+      fechaEsperada,
+      estado: "Pendiente",
+      items: items.map((it2) => ({ ...it2, cantidadRecibida: 0 }))
+    };
+    setPedidos((s22) => [pedido, ...s22]);
+    return pedido;
+  }
+  function actualizarPedido(pedidoId, { proveedorId, fechaEsperada, items }) {
+    const actual = pedidos2.find((pe2) => pe2.id === pedidoId);
+
+---
+en.id));
+    registrarAuditoria(
+      "Anular producci\xF3n",
+      `${orden.fichaNombre} \xB7 ${orden.unidadesBuenas} unidad(es) del ${orden.fecha}`
+    );
+    return { ok: true };
+  }
+  return { producir, anularProduccion };
+}
+function sincronizarCobroSe\u00F1al(cobros, se\u00F1al, se\u00F1alMedioPago, fecha) {
+  const resto = (cobros || []).filter((c22) => c22.concepto !== "Se\xF1al");
+  const importe = Number(se\u00F1al) || 0;
+  if (importe <= 0) return resto;
+  const previa = (cobros || []).find((c22) => c22.concepto === "Se\xF1al");
+  return [
+    {
+      id: previa ? previa.id : uid(),
+      concepto: "Se\xF1al",
+      importe,
+      medioPago: se\u00F1alMedioPago || (previa ? previa.medioPago : "Efectivo"),
+      fecha: previa ? previa.fecha : fecha || todayISO()
+    },
+    ...resto
+  ];
+}
+function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, setProductos, setMovimientos, venderLineas, localActivoId }) {
+  function localDeEncargo(e2) {
+    if (!e2) return null;
+    if (e2.localId) return e2.localId;
+    const ids = [...new Set((e2.lineas || []).map((ln2) => productos.find((p22) => p22.id === ln2.productoId)?.localId).filter(Boolean))];
+    return ids.length === 1 ? ids[0] : null;
+  }
+  function encargoEsDelLocalActivo(e2) {
+    if (!e2) return false;
+    if (!localActivoId) return true;
+    return localDeEncargo(e2) === localActivoId;
+  }
+  function addEncargo(data) {
+    if (localActivoId && (data.lineas || []).some((ln2) => {
+      const p22 = productos.find((x3) => x3.id === ln2.productoId);
+      return p22 && p22.localId && p22.localId !== localActivoId;
+    })) return false;
+    const f
+---
+ucci\xF3n",
+      `${orden.fichaNombre} \xB7 ${orden.unidadesBuenas} unidad(es) del ${orden.fecha}`
+    );
+    return { ok: true };
+  }
+  return { producir, anularProduccion };
+}
+function sincronizarCobroSe\u00F1al(cobros, se\u00F1al, se\u00F1alMedioPago, fecha) {
+  const resto = (cobros || []).filter((c22) => c22.concepto !== "Se\xF1al");
+  const importe = Number(se\u00F1al) || 0;
+  if (importe <= 0) return resto;
+  const previa = (cobros || []).find((c22) => c22.concepto === "Se\xF1al");
+  return [
+    {
+      id: previa ? previa.id : uid(),
+      concepto: "Se\xF1al",
+      importe,
+      medioPago: se\u00F1alMedioPago || (previa ? previa.medioPago : "Efectivo"),
+      fecha: previa ? previa.fecha : fecha || todayISO()
+    },
+    ...resto
+  ];
+}
+function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, setProductos, setMovimientos, venderLineas, localActivoId }) {
+  function localDeEncargo(e2) {
+    if (!e2) return null;
+    if (e2.localId) return e2.localId;
+    const ids = [...new Set((e2.lineas || []).map((ln2) => productos.find((p22) => p22.id === ln2.productoId)?.localId).filter(Boolean))];
+    return ids.length === 1 ? ids[0] : null;
+  }
+  function encargoEsDelLocalActivo(e2) {
+    if (!e2) return false;
+    if (!localActivoId) return true;
+    return localDeEncargo(e2) === localActivoId;
+  }
+  function addEncargo(data) {
+    if (localActivoId && (data.lineas || []).some((ln2) => {
+      const p22 = productos.find((x3) => x3.id === ln2.productoId);
+      return p22 && p22.localId && p22.localId !== localActivoId;
+    })) return false;
+    const fecha = todayISO();
+    const cobros = sincronizarCo
+---
+ };
+        if ("se\xF1al" in data || "se\xF1alMedioPago" in data) {
+          actualizado.cobros = sincronizarCobroSe\u00F1al(e2.cobros, actualizado.se\u00F1al, actualizado.se\u00F1alMedioPago, e2.fechaCreacion);
+        }
+        return actualizado;
+      })
+    );
+  }
+  function deleteEncargo(id) {
+    const actual = encargos.find((e22) => e22.id === id);
+    if (!encargoEsDelLocalActivo(actual)) return false;
+    const e2 = encargos.find((x3) => x3.id === id);
+    registrarAuditoria("Eliminar encargo", e2 ? `${e2.numero || "s/n"}` : id);
+    setEncargos((s22) => s22.filter((e22) => e22.id !== id));
+  }
+  function entregarEncargo(encargo, medioPago = "Efectivo") {
+    const actual = encargos.find((e2) => e2.id === encargo);
+    if (!encargoEsDelLocalActivo(actual)) return false;
+    const lineasParaVender = (encargo.lineas || []).map((ln2) => ({
+      productoId: ln2.productoId,
+      cantidad: ln2.cantidad,
+      precioUnitario: ln2.precioUnitario
+    }));
+    venderLineas(lineasParaVender, {
+      tipo: "VENTA_ENCARGO",
+      medioPago,
+      origen: "entregarEncargo",
+      documentoOrigenId: encargo.id,
+      motivoBase: `Encargo ${encargo.numero || ""}`.trim(),
+      extraPorLinea: () => ({ encargoId: encargo.id, clienteId: encargo.clienteId })
+    });
+    const total = (encargo.lineas || []).reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
+    const se\u00F1al = Number(encargo.se\u00F1al) || 0;
+    const resto = Math.max(0, total - se\u00F1al);
+    const cobrosSinResto = (encargo.cobros || []).filter((c22) => c22.concepto !== "Resto entrega");
+    const cobros = resto > 9e-3 ?
+---
+ual)) return false;
+    const e2 = encargos.find((x3) => x3.id === id);
+    registrarAuditoria("Eliminar encargo", e2 ? `${e2.numero || "s/n"}` : id);
+    setEncargos((s22) => s22.filter((e22) => e22.id !== id));
+  }
+  function entregarEncargo(encargo, medioPago = "Efectivo") {
+    const actual = encargos.find((e2) => e2.id === encargo);
+    if (!encargoEsDelLocalActivo(actual)) return false;
+    const lineasParaVender = (encargo.lineas || []).map((ln2) => ({
+      productoId: ln2.productoId,
+      cantidad: ln2.cantidad,
+      precioUnitario: ln2.precioUnitario
+    }));
+    venderLineas(lineasParaVender, {
+      tipo: "VENTA_ENCARGO",
+      medioPago,
+      origen: "entregarEncargo",
+      documentoOrigenId: encargo.id,
+      motivoBase: `Encargo ${encargo.numero || ""}`.trim(),
+      extraPorLinea: () => ({ encargoId: encargo.id, clienteId: encargo.clienteId })
+    });
+    const total = (encargo.lineas || []).reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
+    const se\u00F1al = Number(encargo.se\u00F1al) || 0;
+    const resto = Math.max(0, total - se\u00F1al);
+    const cobrosSinResto = (encargo.cobros || []).filter((c22) => c22.concepto !== "Resto entrega");
+    const cobros = resto > 9e-3 ? [...cobrosSinResto, { id: uid(), concepto: "Resto entrega", importe: resto, medioPago, fecha: todayISO() }] : cobrosSinResto;
+    updateEncargo(encargo.id, { estado: "Entregado", fechaEntregaReal: todayISO(), cobros });
+  }
+  return { addEncargo, updateEncargo, deleteEncargo, entregarEncargo };
+}
+function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localAc
+---
+go",
+      documentoOrigenId: encargo.id,
+      motivoBase: `Encargo ${encargo.numero || ""}`.trim(),
+      extraPorLinea: () => ({ encargoId: encargo.id, clienteId: encargo.clienteId })
+    });
+    const total = (encargo.lineas || []).reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
+    const se\u00F1al = Number(encargo.se\u00F1al) || 0;
+    const resto = Math.max(0, total - se\u00F1al);
+    const cobrosSinResto = (encargo.cobros || []).filter((c22) => c22.concepto !== "Resto entrega");
+    const cobros = resto > 9e-3 ? [...cobrosSinResto, { id: uid(), concepto: "Resto entrega", importe: resto, medioPago, fecha: todayISO() }] : cobrosSinResto;
+    updateEncargo(encargo.id, { estado: "Entregado", fechaEntregaReal: todayISO(), cobros });
+  }
+  return { addEncargo, updateEncargo, deleteEncargo, entregarEncargo };
+}
+function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId }) {
+  function productoEsDelLocalActivoVenta(prod) {
+    if (!prod) return false;
+    if (!localActivoId) return true;
+    return !prod.localId || prod.localId === localActivoId;
+  }
+  function movimientoEsDelLocalActivoVenta(m22) {
+    if (!localActivoId) return true;
+    if (m22.localId) return m22.localId === localActivoId;
+    const prod = productos.find((p22) => p22.id === m22.productoId);
+    return !!prod && (!prod.localId || prod.localId === localActivoId);
+  }
+  const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos });
+  function venderLineas(lineas, opciones = {}) {
+    if (!localActivoId) return { ok: false, er
+---
+ && (!prod.localId || prod.localId === localActivoId);
+  }
+  const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos });
+  function venderLineas(lineas, opciones = {}) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para abrir el TPV." };
+    const incluyeOtroLocal = (lineas || []).some((ln2) => {
+      const p22 = productos.find((x3) => x3.id === ln2.productoId);
+      return !!p22 && !productoEsDelLocalActivoVenta(p22);
+    });
+    if (incluyeOtroLocal) return { ok: false, error: "La venta incluye productos de otro local." };
+    const {
+      tipo = "VENTA",
+      medioPago = "Efectivo",
+      detallePago = null,
+      operationId = null,
+      origen = "venderLocal",
+      documentoOrigenId = null,
+      motivoBase = "TPV",
+      extraPorLinea = () => ({})
+    } = opciones;
+    const ventaId = operationId || uid();
+    let totalVenta = 0;
+    if (detallePago) {
+      (lineas || []).forEach((ln2) => {
+        const cant = Number(ln2.cantidad) || 0;
+        const prod = productos.find((p22) => p22.id === ln2.productoId);
+        if (!prod || cant <= 0) return;
+        const precio = Number(ln2.precioUnitario) || precioNeto(prod);
+        totalVenta += cant * precio * (1 + ivaDe(prod) / 100);
+      });
+    }
+    const movimientosGenerados = [];
+    (lineas || []).forEach((ln2) => {
+      if (!ln2.productoId) return;
+      const cant = Number(ln2.cantidad) || 0;
+      if (cant <= 0) return;
+      const prod = productos.find((p22) => p22.id === ln2.productoId);
+      if (!prod) return;
+      const costoUnitario = Number(prod.costo) || 0;
+      const ingresoU
+---
+recioUnitario) || precioNeto(prod);
+        totalVenta += cant * precio * (1 + ivaDe(prod) / 100);
+      });
+    }
+    const movimientosGenerados = [];
+    (lineas || []).forEach((ln2) => {
+      if (!ln2.productoId) return;
+      const cant = Number(ln2.cantidad) || 0;
+      if (cant <= 0) return;
+      const prod = productos.find((p22) => p22.id === ln2.productoId);
+      if (!prod) return;
+      const costoUnitario = Number(prod.costo) || 0;
+      const ingresoUnitario = Number(ln2.precioUnitario) || precioNeto(prod);
+      const camposExtra = {
+        costoUnitario,
+        ingresoUnitario,
+        ivaVentaAplicado: ivaDe(prod),
+        medioPago,
+        ...extraPorLinea(ln2, prod)
+      };
+      if (detallePago && totalVenta > 0) {
+        const importeLinea = cant * ingresoUnitario * (1 + ivaDe(prod) / 100);
+        const proporcion = importeLinea / totalVenta;
+        camposExtra.detallePago = {
+          efectivo: Number((detallePago.efectivo * proporcion).toFixed(4)),
+          tarjeta: Number((detallePago.tarjeta * proporcion).toFixed(4))
+        };
+      }
+      const r2 = aplicarMovimientoStock({
+        productoId: prod.id,
+        cantidad: -cant,
+        tipo,
+        operationId: ventaId,
+        movimientoId: uid(),
+        origen,
+        documentoOrigenId: documentoOrigenId || ventaId,
+        afectaStockTotal: true,
+        afectaStockPisoVenta: true,
+        permitirDeficit: false,
+        motivo: motivoBase,
+        camposExtra
+      });
+      if (r2.ok) movimientosGenerados.push(r2.movimiento);
+    });
+    return { ok: true, n: movimientosGenerados.length, modo: "local", ventaId, movimientos: movimientosGen
+---
+.toFixed(4))
+        };
+      }
+      const r2 = aplicarMovimientoStock({
+        productoId: prod.id,
+        cantidad: -cant,
+        tipo,
+        operationId: ventaId,
+        movimientoId: uid(),
+        origen,
+        documentoOrigenId: documentoOrigenId || ventaId,
+        afectaStockTotal: true,
+        afectaStockPisoVenta: true,
+        permitirDeficit: false,
+        motivo: motivoBase,
+        camposExtra
+      });
+      if (r2.ok) movimientosGenerados.push(r2.movimiento);
+    });
+    return { ok: true, n: movimientosGenerados.length, modo: "local", ventaId, movimientos: movimientosGenerados };
+  }
+  function venderLocal(lineas, medioPago, detallePago) {
+    return venderLineas(lineas, { tipo: "VENTA", medioPago, detallePago, origen: "venderLocal", motivoBase: "TPV" });
+  }
+  async function venderCarrito(lineas, medioPago = "Efectivo", detallePago = null) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para abrir el TPV." };
+    const incluyeOtroLocal = (lineas || []).some((ln2) => {
+      const p22 = productos.find((x3) => x3.id === ln2.productoId);
+      return !!p22 && !productoEsDelLocalActivoVenta(p22);
+    });
+    if (incluyeOtroLocal) return { ok: false, error: "La venta incluye productos de otro local." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return venderLocal(lineas, medioPago, detallePago);
+    const ventaId = uid();
+    let totalVenta = 0;
+    (lineas || []).forEach((ln2) => {
+      const cant = Number(ln2.cantidad) || 0;
+      const prod = productos.find((p22) => p22.id
+---
+       productoId: prod.id,
+        cantidad: -cant,
+        tipo,
+        operationId: ventaId,
+        movimientoId: uid(),
+        origen,
+        documentoOrigenId: documentoOrigenId || ventaId,
+        afectaStockTotal: true,
+        afectaStockPisoVenta: true,
+        permitirDeficit: false,
+        motivo: motivoBase,
+        camposExtra
+      });
+      if (r2.ok) movimientosGenerados.push(r2.movimiento);
+    });
+    return { ok: true, n: movimientosGenerados.length, modo: "local", ventaId, movimientos: movimientosGenerados };
+  }
+  function venderLocal(lineas, medioPago, detallePago) {
+    return venderLineas(lineas, { tipo: "VENTA", medioPago, detallePago, origen: "venderLocal", motivoBase: "TPV" });
+  }
+  async function venderCarrito(lineas, medioPago = "Efectivo", detallePago = null) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para abrir el TPV." };
+    const incluyeOtroLocal = (lineas || []).some((ln2) => {
+      const p22 = productos.find((x3) => x3.id === ln2.productoId);
+      return !!p22 && !productoEsDelLocalActivoVenta(p22);
+    });
+    if (incluyeOtroLocal) return { ok: false, error: "La venta incluye productos de otro local." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return venderLocal(lineas, medioPago, detallePago);
+    const ventaId = uid();
+    let totalVenta = 0;
+    (lineas || []).forEach((ln2) => {
+      const cant = Number(ln2.cantidad) || 0;
+      const prod = productos.find((p22) => p22.id === ln2.productoId);
+      if (!prod || cant <= 0) return;
+      totalVent
+---
+ntoId: uid(),
+        origen,
+        documentoOrigenId: documentoOrigenId || ventaId,
+        afectaStockTotal: true,
+        afectaStockPisoVenta: true,
+        permitirDeficit: false,
+        motivo: motivoBase,
+        camposExtra
+      });
+      if (r2.ok) movimientosGenerados.push(r2.movimiento);
+    });
+    return { ok: true, n: movimientosGenerados.length, modo: "local", ventaId, movimientos: movimientosGenerados };
+  }
+  function venderLocal(lineas, medioPago, detallePago) {
+    return venderLineas(lineas, { tipo: "VENTA", medioPago, detallePago, origen: "venderLocal", motivoBase: "TPV" });
+  }
+  async function venderCarrito(lineas, medioPago = "Efectivo", detallePago = null) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para abrir el TPV." };
+    const incluyeOtroLocal = (lineas || []).some((ln2) => {
+      const p22 = productos.find((x3) => x3.id === ln2.productoId);
+      return !!p22 && !productoEsDelLocalActivoVenta(p22);
+    });
+    if (incluyeOtroLocal) return { ok: false, error: "La venta incluye productos de otro local." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return venderLocal(lineas, medioPago, detallePago);
+    const ventaId = uid();
+    let totalVenta = 0;
+    (lineas || []).forEach((ln2) => {
+      const cant = Number(ln2.cantidad) || 0;
+      const prod = productos.find((p22) => p22.id === ln2.productoId);
+      if (!prod || cant <= 0) return;
+      totalVenta += cant * precioNeto(prod) * (1 + ivaDe(prod) / 100);
+    });
+    const lineasParaRpc = (lineas || []).filter(
+---
+async function venderCarrito(lineas, medioPago = "Efectivo", detallePago = null) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para abrir el TPV." };
+    const incluyeOtroLocal = (lineas || []).some((ln2) => {
+      const p22 = productos.find((x3) => x3.id === ln2.productoId);
+      return !!p22 && !productoEsDelLocalActivoVenta(p22);
+    });
+    if (incluyeOtroLocal) return { ok: false, error: "La venta incluye productos de otro local." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return venderLocal(lineas, medioPago, detallePago);
+    const ventaId = uid();
+    let totalVenta = 0;
+    (lineas || []).forEach((ln2) => {
+      const cant = Number(ln2.cantidad) || 0;
+      const prod = productos.find((p22) => p22.id === ln2.productoId);
+      if (!prod || cant <= 0) return;
+      totalVenta += cant * precioNeto(prod) * (1 + ivaDe(prod) / 100);
+    });
+    const lineasParaRpc = (lineas || []).filter((ln2) => ln2.productoId && Number(ln2.cantidad) > 0).map((ln2) => {
+      const prod = productos.find((p22) => p22.id === ln2.productoId);
+      const cant = Number(ln2.cantidad);
+      const costoUnitario = prod ? Number(prod.costo) || 0 : 0;
+      const ingresoUnitario = prod ? precioNeto(prod) : 0;
+      const ivaAplicado = prod ? ivaDe(prod) : 0;
+      const datosLinea = { productoId: ln2.productoId, localId: prod ? prod.localId || localActivoId || null : localActivoId || null, cantidad: cant, motivo: "Venta", costoUnitario, ingresoUnitario, ivaVentaAplicado: ivaAplicado, medioPago, referencia: "TPV", 
+---
+d) / 100);
+    });
+    const lineasParaRpc = (lineas || []).filter((ln2) => ln2.productoId && Number(ln2.cantidad) > 0).map((ln2) => {
+      const prod = productos.find((p22) => p22.id === ln2.productoId);
+      const cant = Number(ln2.cantidad);
+      const costoUnitario = prod ? Number(prod.costo) || 0 : 0;
+      const ingresoUnitario = prod ? precioNeto(prod) : 0;
+      const ivaAplicado = prod ? ivaDe(prod) : 0;
+      const datosLinea = { productoId: ln2.productoId, localId: prod ? prod.localId || localActivoId || null : localActivoId || null, cantidad: cant, motivo: "Venta", costoUnitario, ingresoUnitario, ivaVentaAplicado: ivaAplicado, medioPago, referencia: "TPV", ventaId };
+      if (detallePago && totalVenta > 0 && prod) {
+        const importeLinea = cant * ingresoUnitario * (1 + ivaAplicado / 100);
+        const proporcion = importeLinea / totalVenta;
+        datosLinea.detallePago = { efectivo: Number((detallePago.efectivo * proporcion).toFixed(4)), tarjeta: Number((detallePago.tarjeta * proporcion).toFixed(4)) };
+      }
+      return datosLinea;
+    });
+    if (lineasParaRpc.length === 0) return { ok: false, error: "Carrito vac\xEDo" };
+    const empresas = [...new Set(lineasParaRpc.map((l22) => productos.find((p22) => p22.id === l22.productoId)?.empresaId).filter(Boolean))];
+    if (empresas.length !== 1) return { ok: false, error: "No se pudo determinar una \xFAnica empresa para la venta." };
+    const empresaId = empresas[0];
+    const params = { p_operation_id: ventaId, p_empresa_id: empresaId, p_local_id: localActivoId, p_lineas: lineasParaRpc, p_datos: { medioPago, detallePago: detallePago || null } };
+    async 
+---
+ proporcion).toFixed(4)), tarjeta: Number((detallePago.tarjeta * proporcion).toFixed(4)) };
+      }
+      return datosLinea;
+    });
+    if (lineasParaRpc.length === 0) return { ok: false, error: "Carrito vac\xEDo" };
+    const empresas = [...new Set(lineasParaRpc.map((l22) => productos.find((p22) => p22.id === l22.productoId)?.empresaId).filter(Boolean))];
+    if (empresas.length !== 1) return { ok: false, error: "No se pudo determinar una \xFAnica empresa para la venta." };
+    const empresaId = empresas[0];
+    const params = { p_operation_id: ventaId, p_empresa_id: empresaId, p_local_id: localActivoId, p_lineas: lineasParaRpc, p_datos: { medioPago, detallePago: detallePago || null } };
+    async function intentarRpc(msTimeout) {
+      const supabase = await window.getSupabaseClient();
+      const r2 = await Promise.race([
+        supabase.rpc("registrar_venta_stock_carrito", params),
+        new Promise((_22, reject) => setTimeout(() => reject(new Error("El servidor tard\xF3 demasiado en responder")), msTimeout))
+      ]);
+      if (r2.error) throw r2.error;
+      return r2;
+    }
+    function errorVisible(error) {
+      const msg = String(error?.message || error || "");
+      if (msg.includes("stock_insuficiente:")) return { error: "Stock insuficiente", productoId: msg.split("stock_insuficiente:").pop().trim() };
+      if (msg.includes("unidad_indivisible")) return { error: "La cantidad debe ser un n\xFAmero entero para este producto." };
+      if (msg.includes("precision_cantidad_excedida")) return { error: "La cantidad tiene m\xE1s decimales de los permitidos." };
+      if (msg.includes("local_inactivo")) return { error: "El
+---
+oOrigenId: ventaId,
+        afectaStockTotal: true,
+        afectaStockPisoVenta: true,
+        permitirDeficit: true,
+        revierteMovimientoId: l22.id,
+        motivo: `Anulaci\xF3n de venta${motivo ? " \xB7 " + motivo : ""}`,
+        camposExtra: {
+          anulaVentaId: ventaId,
+          costoUnitario: l22.costoUnitario,
+          // El ingreso se anota en negativo para que los informes de ventas
+          // resten esta operación en vez de contarla como un ingreso nuevo.
+          ingresoUnitario: l22.ingresoUnitario != null ? -Math.abs(Number(l22.ingresoUnitario)) : null,
+          ivaVentaAplicado: l22.ivaVentaAplicado,
+          medioPago: l22.medioPago,
+          detallePago: l22.detallePago
+        }
+      });
+      if (r2.ok) aplicadas++;
+    });
+    const fechaVenta = lineas[0]?.fecha;
+    const arqueoDelDia = fechaVenta && (arqueos || []).find((a22) => a22.fecha === fechaVenta && (!localActivoId || a22.localId === localActivoId));
+    if (arqueoDelDia && typeof window !== "undefined" && window.__nubeActiva) {
+      fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titulo: "Caja cerrada, ahora desactualizada",
+          cuerpo: `Se anul\xF3 una venta del ${fechaVenta}, d\xEDa que ya ten\xEDa la caja cerrada \u2014 revisa ese arqueo, puede que ya no cuadre.`,
+          localId: lineas[0]?.localId || null,
+          url: "/"
+        })
+      }).catch(() => {
+      });
+    }
+    return { ok: true, lineasAnuladas: aplicadas, arqueoAfectado: !!arqueoDelDia };
+  }
+  
+---
+aId,
+        afectaStockTotal: true,
+        afectaStockPisoVenta: true,
+        permitirDeficit: true,
+        revierteMovimientoId: l22.id,
+        motivo: `Anulaci\xF3n de venta${motivo ? " \xB7 " + motivo : ""}`,
+        camposExtra: {
+          anulaVentaId: ventaId,
+          costoUnitario: l22.costoUnitario,
+          // El ingreso se anota en negativo para que los informes de ventas
+          // resten esta operación en vez de contarla como un ingreso nuevo.
+          ingresoUnitario: l22.ingresoUnitario != null ? -Math.abs(Number(l22.ingresoUnitario)) : null,
+          ivaVentaAplicado: l22.ivaVentaAplicado,
+          medioPago: l22.medioPago,
+          detallePago: l22.detallePago
+        }
+      });
+      if (r2.ok) aplicadas++;
+    });
+    const fechaVenta = lineas[0]?.fecha;
+    const arqueoDelDia = fechaVenta && (arqueos || []).find((a22) => a22.fecha === fechaVenta && (!localActivoId || a22.localId === localActivoId));
+    if (arqueoDelDia && typeof window !== "undefined" && window.__nubeActiva) {
+      fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titulo: "Caja cerrada, ahora desactualizada",
+          cuerpo: `Se anul\xF3 una venta del ${fechaVenta}, d\xEDa que ya ten\xEDa la caja cerrada \u2014 revisa ese arqueo, puede que ya no cuadre.`,
+          localId: lineas[0]?.localId || null,
+          url: "/"
+        })
+      }).catch(() => {
+      });
+    }
+    return { ok: true, lineasAnuladas: aplicadas, arqueoAfectado: !!arqueoDelDia };
+  }
+  async function 
+---
+p22.precioVenta) || 0,
+      "IVA venta %": ivaDe(p22),
+      Stock: Number(p22.stock) || 0,
+      "Stock m\xEDnimo": Number(p22.stockMinimo) || 0,
+      Proveedor: proveedorPorId(p22.proveedorId)?.nombre || ""
+    }));
+    utils2.book_append_sheet(wb, utils2.json_to_sheet(hojaProductos), "Productos");
+    const hojaMov = movimientos.map((m22) => ({
+      Fecha: m22.fecha,
+      Tipo: m22.tipo,
+      Motivo: m22.motivo || "",
+      Producto: productoPorId(m22.productoId)?.nombre || "",
+      Cantidad: m22.cantidad,
+      "Costo unitario": m22.costoUnitario || "",
+      "Ingreso unitario": m22.ingresoUnitario || "",
+      "Medio de pago": m22.medioPago || "",
+      Referencia: m22.referencia || ""
+    }));
+    utils2.book_append_sheet(wb, utils2.json_to_sheet(hojaMov), "Movimientos");
+    const hojaAlb = albaranes.filter((a22) => a22.estado === "confirmado").map((a22) => {
+      const base = (a22.lineas || []).reduce((x3, ln2) => x3 + (Number(ln2.importe) || 0), 0);
+      return {
+        Fecha: a22.fechaFactura || a22.fecha,
+        Proveedor: proveedorPorId(a22.proveedorId)?.nombre || "",
+        "N\xBA albar\xE1n": a22.numero || "",
+        "N\xBA factura": a22.numeroFactura || "",
+        Base: Number(base.toFixed(2)),
+        Pagada: a22.pagada ? "S\xED" : "No"
+      };
+    });
+    utils2.book_append_sheet(wb, utils2.json_to_sheet(hojaAlb), "Albaranes");
+    writeFileSync2(wb, `datos_almacen_${todayISO()}.xlsx`);
+  }
+  return {
+    crearPuntoDeGuardado,
+    restaurarDesdeHistorial,
+    abrirRespaldo,
+    copiarRespaldo,
+    abrirRestaurar,
+    analizarTextoRestauracion,
+    confirmarRestauracion,
+    exportarExcelGeneral,
+    c
+---
+ "Tarjeta"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro")))), salidaMotivo !== "Venta" && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Esto se contar\xE1 como p\xE9rdida al coste, no como venta, cuando mires Resultados."), /* @__PURE__ */ import_react4.default.createElement(
+    Btn,
+    {
+      onClick: () => {
+        registrarSalida(salidaFor, salidaCant, { motivo: salidaMotivo, precioVentaUnitario: salidaMotivo === "Venta" ? salidaPrecio : 0, medioPago: salidaMedioPago });
+        setSalidaFor(null);
+        setSalidaCant("");
+      }
+    },
+    "Confirmar salida"
+  )), editFor && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setEditFor(null), title: "Editar producto", ancho: "max-w-2xl" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.nombre, onChange: (e2) => setEditForm({ ...editForm, nombre: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "C\xF3digo / SKU" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.codigo, onChange: (e2) => setEditForm({ ...editForm, codigo: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Categor\xEDa" }, /* @__PURE__ */ import_react4.default.createE
+---

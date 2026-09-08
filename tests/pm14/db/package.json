@@ -1,0 +1,6 @@
+{
+  "name": "pm14-p02-isolated-contract",
+  "private": true,
+  "type": "module",
+  "dependencies": { "pg": "8.16.3" }
+}

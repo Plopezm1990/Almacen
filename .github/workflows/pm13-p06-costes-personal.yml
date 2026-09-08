@@ -1,0 +1,102 @@
+name: PM13 P06 costes personal
+
+on:
+  push:
+    branches: [pm13-p06-costes-personal]
+
+permissions:
+  contents: write
+
+jobs:
+  validar-p06:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main y alcance P06
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          P06_BASE='1ca001ce16b83e96c2af7c2f2feb90cea9655ed7'
+          if [ -n "$(git diff --name-only "$P06_BASE"..HEAD -- supabase/)" ]; then
+            echo 'P06 no puede modificar Supabase: reutiliza PM11/P01/P04' >&2
+            git diff --name-only "$P06_BASE"..HEAD -- supabase/ >&2
+            exit 1
+          fi
+          echo 'PM13_P06_MAIN_FROZEN=PASS'
+          echo 'PM13_P06_SIN_CAMBIOS_SUPABASE=PASS'
+      - name: Aplicar costes temporales honestos
+        run: python3 tools/corregir_pm13_p06_costes_personal.py
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+      - name: Contrato PM13 P06
+        run: node tests/pm13/p06-costes-personal-contract.mjs
+      - name: Regresión PM13 P01-P05 y Personal PM10
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm13/p01-rpc-personal-contract.mjs
+          node tests/pm13/p01-backend-personal-contract.mjs
+          node tests/pm13/p02-turnos-contract.mjs
+          node tests/pm13/p03-fichajes-contract.mjs
+          node tests/pm13/p03-backend-fichajes-contract.mjs
+          node tests/pm13/p04-ausencias-contract.mjs
+          node tests/pm13/p04-backend-ausencias-contract.mjs
+          node tests/pm13/p05-vacaciones-contract.mjs
+          node tests/pm10/p07-personal-contract.mjs
+          echo 'PM13_P06_REGRESSION_P01_P05_PM10=PASS'
+      - name: Regresión frontend PM12 P02-P10
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in 02 03 04 05 06 07 08 09 10; do
+            for t in tests/pm12/p${n}-*contract.mjs; do
+              test -f "$t" || continue
+              case "$t" in *postgres*|*supabase*) continue ;; esac
+              node "$t"
+            done
+          done
+          echo 'PM13_P06_REGRESSION_PM12=PASS'
+      - name: Barreras P06
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          assert 'const resumenCostePersonalPeriodoPM13 = (lista, desdeISO, hastaISO) => {' in s
+          assert 'bruto * pagas / 12 * 1.32' in s
+          assert 'const costePersonalPeriodo = costePersonalPeriodoInfo.total;' in s
+          assert 'personalCosteIncompleto' in s
+          assert 'fmt(costePersonalPeriodo)' in s
+          assert 'bruto * 1.32;\n    return a22 + coste;' not in s
+          print('PM13_P06_DOMAIN_GUARDS=PASS')
+          PY
+          ! grep -Eqi 'service_role|SUPABASE_SERVICE_ROLE_KEY|sb_secret_' \
+            tools/corregir_pm13_p06_costes_personal.py tests/pm13/p06-costes-personal-contract.mjs tests/pm13/P06_COSTES_PERSONAL.md
+          git diff --check
+          echo 'PM13_P06_NO_SECRET=PASS'
+      - name: Commit funcional si procede
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- fuente.js; then
+            echo 'Fuente ya coincide con P06'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add fuente.js
+          git commit -m 'feat(pm13): cerrar costes temporales P06'
+          git push
+
+  gate-final:
+    needs: validar-p06
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM13 P06
+        run: echo 'PM13_P06_GATE=SUCCESS'

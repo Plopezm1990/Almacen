@@ -1,0 +1,98 @@
+{
+  "punto": 16,
+  "estado": "VALIDADO",
+  "rama": "pm09-conciliacion-ventas-analitica",
+  "workflowRunId": 33964830156,
+  "workflowHeadSha": "13de5c8bdadc2581f5b4bfa9708be4dc2a03283f",
+  "qa": {
+    "proyecto": "L&A Suite QA",
+    "projectId": "qjqorixtkilwsndqayyx"
+  },
+  "lecturaRls": {
+    "operatorA1": {
+      "empresasVisibles": ["QA-EMP-A"],
+      "localesVisibles": ["QA-A1"],
+      "resultado": "aislado a su local"
+    },
+    "ownerA": {
+      "empresasVisibles": ["QA-EMP-A"],
+      "localesVisibles": ["QA-A-CERRADO", "QA-A1", "QA-A2"],
+      "incluyeEmpresaB": false,
+      "resultado": "todos los locales autorizados de la empresa A, incluido el cerrado para lectura/histórico"
+    },
+    "ownerB": {
+      "empresasVisibles": ["QA-EMP-B"],
+      "localesVisibles": ["QA-B1"],
+      "resultado": "empresa B aislada de empresa A"
+    }
+  },
+  "pruebasTransaccionales": {
+    "total": 12,
+    "ok": 12,
+    "casos": {
+      "ventaA1Valida": "OK",
+      "ventaA2ValidaConLocalExplicito": "OK",
+      "ventaB1Valida": "OK",
+      "operatorA1EnA2": "contexto_no_autorizado",
+      "ownerAEnEmpresaB": "contexto_no_autorizado",
+      "ownerBEnEmpresaA": "contexto_no_autorizado",
+      "ventaEnLocalCerrado": "local_inactivo",
+      "todosLocalesComoDestinoMutacion": "stock_no_configurado",
+      "usuarioInactivo": "stock_no_autorizado",
+      "devolucionA1Valida": "OK",
+      "devolucionVentaA2FingiendoA1": "venta_fuera_de_contexto",
+      "devolucionEmpresaADesdeB": "venta_fuera_de_contexto"
+    }
+  },
+  "consolidacionTodosLosLocales": {
+    "empresaA": {
+      "localesIncluidos": ["QA-A1", "QA-A2"],
+      "unidadesNetas": 1,
+      "ingresoNeto": 5.45,
+      "incluyeEmpresaB": false
+    },
+    "empresaB": {
+      "localesIncluidos": ["QA-B1"],
+      "unidadesNetas": 1,
+      "ingresoNeto": 9.09
+    },
+    "regla": "Todos los locales consolida lectura dentro de la empresa activa; las mutaciones requieren un local real y explícito."
+  },
+  "efectoLocalDurantePrueba": {
+    "QA-A1": {"total": 23, "explicacion": "venta 1 + devolución 1, vuelve a su stock inicial"},
+    "QA-A2": {"total": 9, "explicacion": "solo su venta válida reduce 10 a 9"},
+    "QA-B1": {"total": 6, "explicacion": "solo su venta válida reduce 7 a 6"},
+    "QA-A-CERRADO": {"total": 4, "localOperable": false, "explicacion": "permanece visible pero bloquea nuevas ventas"}
+  },
+  "validacionAutomatica": {
+    "resultado": "success",
+    "p16IsolationContext": "OK",
+    "p15SpecialEconomic": "OK",
+    "p12ResultadosMargin": "OK",
+    "p11Iva": "OK",
+    "p10Caja": "OK",
+    "p09Historial": "OK",
+    "la007": "OK",
+    "la008": "OK",
+    "pm05Frontend": "OK",
+    "pm07Frontend": "OK",
+    "pm08Frontend": "OK",
+    "pm08Migration": "OK",
+    "pm08ReplayScope": "OK"
+  },
+  "limpiezaQa": {
+    "stockOperacionesPm09p16": 0,
+    "movimientosStockPm09p16": 0,
+    "devolucionesVentaPm09p16": 0,
+    "cajaOperacionesPm09p16": 0,
+    "stockFinal": {
+      "QA-A1": 23,
+      "QA-A2": 10,
+      "QA-A-CERRADO": 4,
+      "QA-B1": 7
+    }
+  },
+  "cambiosFuncionales": "Ninguno. El contrato existente ya cumple aislamiento y contexto; se añadieron únicamente prueba automática y evidencia.",
+  "alcance": "Solo rama PM09 y Supabase QA con pruebas transaccionales/ROLLBACK. Sin main, sin producción, sin Netlify.",
+  "nota": "El primer intento del contrato estático falló por coincidencias de texto demasiado rígidas; se robusteció el test sin cambiar código funcional y la segunda ejecución quedó verde."
+}

@@ -1,0 +1,43 @@
+name: PM13 P07 diagnostico IA nominas
+
+on:
+  push:
+    branches: [pm13-p07-ia-nominas-revision]
+    paths:
+      - 'fuente.js'
+      - 'tests/pm13/p07-diagnostico-ia-nominas.mjs'
+      - '.github/workflows/pm13-p07-diagnostico-ia-nominas.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  diagnostico:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          echo 'PM13_P07_MAIN_FROZEN=PASS'
+      - name: Diagnosticar IA y nominas
+        run: node tests/pm13/p07-diagnostico-ia-nominas.mjs
+      - name: Guardar evidencia
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/pm13/P07_DIAGNOSTICO_IA_NOMINAS.json tests/pm13/P07_EXTRACT_NOMINAS.txt
+          if git diff --cached --quiet; then
+            echo 'Diagnostico P07 ya actualizado'
+            exit 0
+          fi
+          git commit -m 'test(pm13): guardar diagnostico P07 IA nominas'
+          git push

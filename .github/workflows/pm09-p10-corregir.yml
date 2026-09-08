@@ -1,0 +1,67 @@
+name: PM09 Punto 10 conciliar Caja
+on:
+  push:
+    branches: [pm09-conciliacion-ventas-analitica]
+    paths:
+      - 'tools/corregir_pm09_p10_caja.py'
+      - 'tests/pm09/p10-caja-contract.mjs'
+      - 'supabase/migrations/20260905105500_pm09_conciliacion_caja.sql'
+      - '.github/workflows/pm09-p10-corregir.yml'
+permissions:
+  contents: write
+jobs:
+  corregir:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pm09-conciliacion-ventas-analitica
+      - name: Aplicar punto 10
+        run: |
+          set -euo pipefail
+          python tools/corregir_pm09_p10_caja.py
+          node --check fuente.js
+      - name: Validar contrato Caja
+        run: |
+          set -euo pipefail
+          node tests/pm09/p10-caja-contract.mjs
+      - name: Regresiones PM09 previas
+        run: |
+          set -euo pipefail
+          node tests/pm09/la007-results-contract.mjs
+          node tests/pm09/la008-rotation-margin-contract.mjs
+          node tests/pm09/p09-historial-contract.mjs
+      - name: Regresiones heredadas
+        run: |
+          set -euo pipefail
+          node tests/pm05/frontend-contract.mjs
+          node tests/pm07/frontend-contract.mjs
+          node tests/pm08/frontend-contract.mjs
+          node tests/pm08/migration-contract.mjs
+          node tests/pm08/replay-scope-contract.mjs
+      - name: Generar evidencia punto 10
+        run: |
+          set -euo pipefail
+          SHA256=$(sha256sum fuente.js | awk '{print $1}')
+          cat > tests/pm09/P10_CAJA_EVIDENCIA.json <<EOF
+          {
+            "punto": 10,
+            "estado": "CORREGIDO_PENDIENTE_DE_QA",
+            "rama": "pm09-conciliacion-ventas-analitica",
+            "baseEntradaWorkflow": "${GITHUB_SHA}",
+            "fuenteSha256": "${SHA256}",
+            "riesgoReproducido": "registrar_arqueo_caja aceptaba efectivo_base=999 sin derivarlo de ventas",
+            "cambio": "Caja separa ventas por medio, REVERSO de venta, fuentes legacy declaradas y ledger caja; en modo PM09 el servidor recalcula el efectivo de ventas desde movimientos_stock.",
+            "compatibilidad": "clientes PM08 sin snapshot.pm09Caja mantienen contrato anterior en QA compartida",
+            "alcance": "fuente.js + migracion PM09 en rama; no produccion"
+          }
+          EOF
+      - name: Guardar candidato solo en PM09
+        run: |
+          set -euo pipefail
+          git config user.name "Plopezm1990"
+          git config user.email "pedroroger1990@gmail.com"
+          git add fuente.js tests/pm09/P10_CAJA_EVIDENCIA.json
+          git diff --cached --quiet && exit 0
+          git commit -m "PM09: conciliar Caja punto 10"
+          git push origin HEAD:pm09-conciliacion-ventas-analitica

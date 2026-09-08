@@ -1,0 +1,325 @@
+diff --git a/fuente.js b/fuente.js
+index 3a113d4..e22f8a6 100644
+--- a/fuente.js
++++ b/fuente.js
+@@ -102260,6 +102260,7 @@ function GestionAlmacen() {
+     setProductos,
+     movimientos,
+     setMovimientos,
++    pedidos: pedidos2,
+     setPedidos,
+     registrarAuditoria,
+     proveedorPorId,
+@@ -104926,6 +104927,115 @@ function validarPedidoPM10(data, { pedidoActual = null, proveedores = [], produc
+   }
+   return { ok: true, datos: { ...entrada, proveedorId, fechaEsperada, items } };
+ }
++function unidadesRecepcionLineaPM10(linea, campo, modo = "directo") {
++  const cantidadR = numeroPM10(linea?.cantidad, `${campo}.cantidad`, { minimo: 0, estrictoMinimo: true });
++  if (!cantidadR.ok) return cantidadR;
++  if (modo === "directo" || linea?.tipoUnidad === "peso") {
++    return { ok: true, cantidad: cantidadR.valor, udsPorCaja: 1, unidades: cantidadR.valor };
++  }
++  let udsPorCaja = 1;
++  if (linea?.udsPorCaja !== null && linea?.udsPorCaja !== void 0 && String(linea.udsPorCaja).trim() !== "") {
++    const udsR = numeroPM10(linea.udsPorCaja, `${campo}.udsPorCaja`, { minimo: 0, estrictoMinimo: true });
++    if (!udsR.ok) return udsR;
++    udsPorCaja = udsR.valor;
++  }
++  const unidades = cantidadR.valor * udsPorCaja;
++  if (!Number.isFinite(unidades) || unidades <= 0) return errorValidacionPM10("numero_no_finito", `${campo}.cantidad`, "La cantidad total a recibir no es válida.");
++  return { ok: true, cantidad: cantidadR.valor, udsPorCaja, unidades };
++}
++function validarRecepcionPedidoPM10({ pedido, lineas, productos = [], localActivoId = null, modo = "directo" } = {}) {
++  if (!localActivoId) return errorValidacionPM10("contexto_no_autorizado", "localId", "Selecciona un local activo para recibir mercancía.");
++  if (!pedido || pedido.localId !== localActivoId) return errorValidacionPM10("contexto_no_autorizado", "pedidoId", "El pedido no pertenece al local activo.");
++  if (!Array.isArray(lineas) || lineas.length === 0) return errorValidacionPM10("campo_obligatorio", "lineas", "Indica al menos una cantidad a recibir.");
++
++  const pendientesPorProducto = new Map();
++  for (let i33 = 0; i33 < (pedido.items || []).length; i33 += 1) {
++    const item = pedido.items[i33] || {};
++    const productoId = String(item.productoId ?? "").trim();
++    const pedida = Number(item.cantidad);
++    const recibida = Number(item.cantidadRecibida ?? 0);
++    if (!productoId || !Number.isFinite(pedida) || pedida <= 0 || !Number.isFinite(recibida) || recibida < 0 || recibida > pedida + 1e-9) {
++      return errorValidacionPM10("conflicto_estado_previo", `pedido.items.${i33}`, "El pedido tiene una cantidad pedida/recibida incoherente.");
++    }
++    pendientesPorProducto.set(productoId, (pendientesPorProducto.get(productoId) || 0) + Math.max(0, pedida - recibida));
++  }
++
++  const solicitadasPorProducto = new Map();
++  const normalizadas = [];
++  for (let i33 = 0; i33 < lineas.length; i33 += 1) {
++    const linea = lineas[i33] && typeof lineas[i33] === "object" ? lineas[i33] : {};
++    const campo = `lineas.${i33}`;
++    const productoId = String(linea.productoId ?? "").trim();
++    if (!productoId) return errorValidacionPM10("campo_obligatorio", `${campo}.productoId`, "Cada línea recibida debe estar enlazada a un producto.");
++    const producto = productos.find((p22) => p22 && p22.id === productoId);
++    if (!producto) return errorValidacionPM10("referencia_inexistente", `${campo}.productoId`, "El producto recibido no existe.");
++    if (producto.localId !== localActivoId) return errorValidacionPM10("referencia_otro_contexto", `${campo}.productoId`, "El producto recibido pertenece a otro local.");
++    if (!pendientesPorProducto.has(productoId)) return errorValidacionPM10("referencia_inexistente", `${campo}.productoId`, "El producto no forma parte del pedido enlazado.");
++
++    const unidadesR = unidadesRecepcionLineaPM10(linea, campo, modo);
++    if (!unidadesR.ok) return unidadesR;
++    solicitadasPorProducto.set(productoId, (solicitadasPorProducto.get(productoId) || 0) + unidadesR.unidades);
++
++    if (modo === "directo") {
++      let precio = producto.costo;
++      if (linea.precioBruto !== null && linea.precioBruto !== void 0 && String(linea.precioBruto).trim() !== "") {
++        const precioR = numeroPM10(linea.precioBruto, `${campo}.precioBruto`, { minimo: 0 });
++        if (!precioR.ok) return precioR;
++        precio = precioR.valor;
++      }
++      if (!Number.isFinite(Number(precio)) || Number(precio) < 0) return errorValidacionPM10("numero_no_finito", `${campo}.precioBruto`, "El precio unitario no es válido.");
++      let iva = producto.ivaCompra ?? 10;
++      if (linea.ivaPct !== null && linea.ivaPct !== void 0 && String(linea.ivaPct).trim() !== "") {
++        const ivaR = numeroPM10(linea.ivaPct, `${campo}.ivaPct`, { minimo: 0 });
++        if (!ivaR.ok) return ivaR;
++        iva = ivaR.valor;
++      }
++      if (!Number.isFinite(Number(iva)) || Number(iva) < 0 || Number(iva) > 100) return errorValidacionPM10("valor_fuera_rango", `${campo}.ivaPct`, "El IVA debe estar entre 0 y 100.");
++      normalizadas.push({
++        ...linea,
++        productoId,
++        cantidad: unidadesR.unidades,
++        udsPorCaja: 1,
++        tipoUnidad: "unidad",
++        precioBruto: Number(precio),
++        importe: Number(precio) * unidadesR.unidades,
++        ivaPct: Number(iva),
++        descripcion: producto.nombre || "",
++        unidad: producto.unidad || "unidad"
++      });
++    } else {
++      normalizadas.push({ ...linea, productoId, cantidad: unidadesR.cantidad, udsPorCaja: unidadesR.udsPorCaja });
++    }
++  }
++
++  for (const [productoId, solicitadas] of solicitadasPorProducto.entries()) {
++    const pendiente = pendientesPorProducto.get(productoId) || 0;
++    if (solicitadas > pendiente + 1e-9) {
++      return errorValidacionPM10("exceso_sobre_cantidad_pendiente", "lineas", `No puedes recibir ${solicitadas} unidades: quedan ${pendiente} pendientes para este producto.`);
++    }
++  }
++  return { ok: true, lineas: normalizadas, solicitadasPorProducto, pendientesPorProducto };
++}
++function aplicarRecepcionPedidoPM10(pedido, lineasResueltas) {
++  const disponibles = new Map();
++  for (const linea of lineasResueltas || []) {
++    const unidades = Number(linea?.unidadesEntradas);
++    if (!linea?.productoId || !Number.isFinite(unidades) || unidades <= 0) continue;
++    disponibles.set(linea.productoId, (disponibles.get(linea.productoId) || 0) + unidades);
++  }
++  const items = (pedido.items || []).map((item) => {
++    const pedida = Number(item.cantidad);
++    const recibida = Number(item.cantidadRecibida ?? 0);
++    const restante = Math.max(0, pedida - recibida);
++    const disponible = disponibles.get(item.productoId) || 0;
++    const aplicar = Math.min(restante, disponible);
++    disponibles.set(item.productoId, Math.max(0, disponible - aplicar));
++    return aplicar > 0 ? { ...item, cantidadRecibida: recibida + aplicar } : item;
++  });
++  const completo = items.length > 0 && items.every((item) => Math.abs(Number(item.cantidadRecibida ?? 0) - Number(item.cantidad)) <= 1e-9);
++  const algo = items.some((item) => Number(item.cantidadRecibida ?? 0) > 0);
++  return { ...pedido, items, estado: completo ? "Recibido" : algo ? "Parcial" : "Pendiente" };
++}
+ function crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedores, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId }) {
+   function pedidoEsDelLocalActivo(pedido) {
+     if (!pedido) return false;
+@@ -104974,47 +105084,22 @@ function crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedo
+     return true;
+   }
+   function recibirPedido(pedidoId, lineas) {
+-    if (almacenCongelado) return false;
++    if (almacenCongelado) return errorValidacionPM10("conflicto_estado_previo", "almacen", "El almacén está congelado por un conteo en curso.");
+     const pedido = pedidos2.find((pe2) => pe2.id === pedidoId);
+-    if (!pedidoEsDelLocalActivo(pedido)) return false;
+-    const lineasConDatos = lineas.filter((ln2) => Number(ln2.cantidad) > 0).map((ln2) => {
+-      const prod = productos.find((p22) => p22.id === ln2.productoId);
+-      if (!prod || localActivoId && (!prod.localId || prod.localId !== localActivoId)) return null;
+-      return {
+-        productoId: ln2.productoId,
+-        cantidad: Number(ln2.cantidad),
+-        precioBruto: Number(ln2.precioBruto) || 0,
+-        importe: (Number(ln2.precioBruto) || 0) * Number(ln2.cantidad),
+-        ivaPct: Number(ln2.ivaPct) || (prod ? prod.ivaCompra : 10) || 10,
+-        udsPorCaja: Number(ln2.udsPorCaja) || (prod ? prod.udsPorCaja : 1) || 1,
+-        descripcion: prod ? prod.nombre : "",
+-        unidad: prod ? prod.unidad : "unidad"
+-      };
+-    }).filter(Boolean);
+-    if (!lineasConDatos.length) return false;
+-    const { lineasResueltas, avisos } = procesarRecepcion({
+-      lineas: lineasConDatos,
++    if (!pedidoEsDelLocalActivo(pedido)) return errorValidacionPM10("contexto_no_autorizado", "pedidoId", "Pedido fuera del local activo.");
++    const validacion = validarRecepcionPedidoPM10({ pedido, lineas, productos, localActivoId, modo: "directo" });
++    if (!validacion.ok) return validacion;
++    const resultado = procesarRecepcion({
++      lineas: validacion.lineas,
+       proveedorId: pedido.proveedorId,
+       fecha: todayISO(),
+       documentoTipo: "pedido",
+       documentoId: pedido.id,
+       documentoNumero: pedido.id.slice(-6)
+     });
+-    setPedidos(
+-      (s22) => s22.map((pe2) => {
+-        if (pe2.id !== pedidoId) return pe2;
+-        const items = pe2.items.map((it2) => {
+-          const suyas = lineasResueltas.filter((ln2) => ln2.productoId === it2.productoId);
+-          if (!suyas.length) return it2;
+-          const recibidas = suyas.reduce((a22, ln2) => a22 + (Number(ln2.unidadesEntradas) || 0), 0);
+-          return { ...it2, cantidadRecibida: (Number(it2.cantidadRecibida) || 0) + recibidas };
+-        });
+-        const completo = items.every((it2) => (Number(it2.cantidadRecibida) || 0) >= (Number(it2.cantidad) || 0));
+-        const algo = items.some((it2) => (Number(it2.cantidadRecibida) || 0) > 0);
+-        return { ...pe2, items, estado: completo ? "Recibido" : algo ? "Parcial" : "Pendiente" };
+-      })
+-    );
+-    return { ok: true, avisos };
++    if (!resultado || !Array.isArray(resultado.lineasResueltas)) return errorValidacionPM10("conflicto_estado_previo", "recepcion", "No se pudo completar la recepción.");
++    setPedidos((s22) => s22.map((pe2) => pe2.id === pedidoId ? aplicarRecepcionPedidoPM10(pe2, resultado.lineasResueltas) : pe2));
++    return { ok: true, avisos: resultado.avisos || [], lineasResueltas: resultado.lineasResueltas };
+   }
+   return { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido };
+ }
+@@ -106013,6 +106098,7 @@ function crearLogicaAlbaranes({
+   setProductos,
+   movimientos,
+   setMovimientos,
++  pedidos,
+   setPedidos,
+   registrarAuditoria,
+   proveedorPorId,
+@@ -106314,40 +106400,32 @@ function crearLogicaAlbaranes({
+     return { lineasResueltas, avisos };
+   }
+   function confirmarAlbaran(alb) {
+-    if (!albaranEsDelLocalActivo(alb, true)) return false;
++    if (!albaranEsDelLocalActivo(alb, true)) return errorValidacionPM10("contexto_no_autorizado", "localId", "Albarán fuera del local activo.");
++    let pedidoLigado = null;
++    let lineasEntrada = alb.lineas;
+     if (alb.pedidoId) {
+-      const pedido = pedidos.find((pe2) => pe2.id === alb.pedidoId);
+-      if (!pedidoEsDelLocalActivoAlbaran(pedido)) return false;
++      pedidoLigado = (pedidos || []).find((pe2) => pe2.id === alb.pedidoId) || null;
++      if (!pedidoEsDelLocalActivoAlbaran(pedidoLigado)) return errorValidacionPM10("contexto_no_autorizado", "pedidoId", "El pedido enlazado no pertenece al local activo.");
++      const validacion = validarRecepcionPedidoPM10({ pedido: pedidoLigado, lineas: alb.lineas, productos, localActivoId, modo: "albaran" });
++      if (!validacion.ok) return validacion;
++      lineasEntrada = validacion.lineas;
+     }
+     const { lineasResueltas, avisos } = procesarRecepcion({
+-      lineas: alb.lineas,
++      lineas: lineasEntrada,
+       proveedorId: alb.proveedorId,
+       fecha: alb.fecha,
+       documentoTipo: "albaran",
+       documentoId: alb.id,
+       documentoNumero: alb.numero
+     });
+-    if (alb.pedidoId) {
+-      setPedidos(
+-        (prev) => prev.map((pe2) => {
+-          if (pe2.id !== alb.pedidoId) return pe2;
+-          const items = pe2.items.map((it2) => {
+-            const suyas = lineasResueltas.filter((ln2) => ln2.productoId === it2.productoId);
+-            if (!suyas.length) return it2;
+-            const recibidas = suyas.reduce((a22, ln2) => a22 + (Number(ln2.unidadesEntradas) || 0), 0);
+-            return { ...it2, cantidadRecibida: (Number(it2.cantidadRecibida) || 0) + recibidas };
+-          });
+-          const completo = items.every((it2) => (Number(it2.cantidadRecibida) || 0) >= (Number(it2.cantidad) || 0));
+-          const algo = items.some((it2) => (Number(it2.cantidadRecibida) || 0) > 0);
+-          return { ...pe2, items, estado: completo ? "Recibido" : algo ? "Parcial" : "Pendiente" };
+-        })
+-      );
++    if (pedidoLigado) {
++      setPedidos((prev) => prev.map((pe2) => pe2.id === alb.pedidoId ? aplicarRecepcionPedidoPM10(pe2, lineasResueltas) : pe2));
+     }
+     guardarAlbaran({ ...alb, lineas: lineasResueltas, estado: "confirmado", avisosPrecio: avisos });
+     if (avisos.length) {
+       registrarAuditoria(
+-        "Variaci\xF3n de precio en albar\xE1n",
+-        `${proveedorPorId(alb.proveedorId)?.nombre || "\u2014"} \xB7 ${avisos.map((a22) => `${a22.nombre} ${a22.variacion > 0 ? "+" : ""}${fmt(a22.variacion)}%`).join(", ")}`
++        "Variación de precio en albarán",
++        `${proveedorPorId(alb.proveedorId)?.nombre || "—"} · ${avisos.map((a22) => `${a22.nombre} ${a22.variacion > 0 ? "+" : ""}${fmt(a22.variacion)}%`).join(", ")}`
+       );
+     }
+     return avisos;
+@@ -108498,6 +108576,7 @@ function Pedidos({ pedidos: pedidos2, proveedores, productos, crearPedido, actua
+ function Recepcion({ pedidos: pedidos2, proveedorPorId, productoPorId, recibirPedido, almacenCongelado, recibirConAlbaran, recibirConFotoIA, cerrarPedido }) {
+   const [activos, setActivos] = (0, import_react4.useState)({});
+   const [cerrando, setCerrando] = (0, import_react4.useState)(null);
++  const [erroresRecepcion, setErroresRecepcion] = (0, import_react4.useState)({});
+   const pendientes = pedidos2.filter((p22) => p22.estado !== "Recibido");
+   function setCampo(pedidoId, productoId, campo, val) {
+     setActivos((s22) => ({
+@@ -108541,23 +108620,28 @@ function Recepcion({ pedidos: pedidos2, proveedorPorId, productoPorId, recibirPe
+           onChange: (e2) => setCampo(pe2.id, it2.productoId, "iva", e2.target.value)
+         }
+       )));
+-    }), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 flex flex-wrap gap-2" }, !almacenCongelado && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => recibirConAlbaran(pe2) }, /* @__PURE__ */ import_react4.default.createElement(FileText, { size: 14 }), " Recibir con albar\xE1n"), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => recibirConFotoIA(pe2) }, /* @__PURE__ */ import_react4.default.createElement(Camera, { size: 14 }), " Recibir con foto IA"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+-      const lineas = pe2.items.filter((it2) => Number((activos[pe2.id] || {})[it2.productoId]?.cantidad) > 0).map((it2) => {
++    }), erroresRecepcion[pe2.id] && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mt-2", style: { color: C2.red } }, erroresRecepcion[pe2.id]), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 flex flex-wrap gap-2" }, !almacenCongelado && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => recibirConAlbaran(pe2) }, /* @__PURE__ */ import_react4.default.createElement(FileText, { size: 14 }), " Recibir con albar\xE1n"), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => recibirConFotoIA(pe2) }, /* @__PURE__ */ import_react4.default.createElement(Camera, { size: 14 }), " Recibir con foto IA"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
++      const porProducto = new Map();
++      pe2.items.forEach((it2) => {
++        if (porProducto.has(it2.productoId)) return;
+         const campo = (activos[pe2.id] || {})[it2.productoId] || {};
++        if (String(campo.cantidad ?? "").trim() === "") return;
+         const p22 = productoPorId(it2.productoId);
+-        return {
++        porProducto.set(it2.productoId, {
+           productoId: it2.productoId,
+           cantidad: campo.cantidad,
+-          // Si no se tocó el precio, se usa el precargado
+-          // (el coste actual del producto) — así confirmar
+-          // sin escribir nada sigue siendo "llegó igual".
+           precioBruto: campo.precio !== void 0 ? campo.precio : p22 ? p22.costo : 0,
+           ivaPct: campo.iva !== void 0 ? campo.iva : p22 ? p22.ivaCompra : 10
+-        };
++        });
+       });
+-      recibirPedido(pe2.id, lineas);
++      const resultado = recibirPedido(pe2.id, [...porProducto.values()]);
++      if (!resultado || resultado.ok === false) {
++        setErroresRecepcion((s22) => ({ ...s22, [pe2.id]: resultado?.error || "No se pudo registrar la recepción." }));
++        return;
++      }
++      setErroresRecepcion((s22) => ({ ...s22, [pe2.id]: "" }));
+       setActivos((s22) => ({ ...s22, [pe2.id]: {} }));
+-    } }, /* @__PURE__ */ import_react4.default.createElement(CircleCheck, { size: 14 }), " Recibir sin albar\xE1n")), cerrarPedido && /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setCerrando(pe2) }, "Cerrar pedido")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Con albar\xE1n registras adem\xE1s precios, descuentos, lotes y caducidades, y el pedido se cierra solo. Con foto IA, haces una foto del papel del proveedor y ella rellena el borrador por ti. La otra opci\xF3n solo suma stock, sin dejar rastro del papel."));
++    } }, /* @__PURE__ */ import_react4.default.createElement(CircleCheck, { size: 14 }), " Recibir sin albarán")), cerrarPedido && /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setCerrando(pe2) }, "Cerrar pedido")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Con albar\xE1n registras adem\xE1s precios, descuentos, lotes y caducidades, y el pedido se cierra solo. Con foto IA, haces una foto del papel del proveedor y ella rellena el borrador por ti. La otra opci\xF3n solo suma stock, sin dejar rastro del papel."));
+   })), cerrando && (() => {
+     const faltan = cerrando.items.map((it2) => ({ ...it2, producto: productoPorId(it2.productoId), pendiente: (Number(it2.cantidad) || 0) - (Number(it2.cantidadRecibida) || 0) })).filter((it2) => it2.pendiente > 0);
+     return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setCerrando(null), title: "\xBFDar el pedido por cerrado?" }, faltan.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, "Ha llegado todo lo pedido. Se marcar\xE1 como recibido.") : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2" }, "Todav\xEDa falta por llegar:"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1 mb-3" }, faltan.map((it2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: it2.productoId, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, it2.producto ? it2.producto.nombre : "\u2014"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: C2.amber } }, "faltan ", fmt(it2.pendiente))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Ci\xE9rralo si el proveedor ya no va a servir el resto. ", /* @__PURE__ */ import_react4.default.createElement("b", null, "No suma nada al stock"), " \u2014 solo saca el pedido de esta lista para que deje de aparecer como pendiente.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
+@@ -110348,9 +110432,11 @@ function Albaranes({
+       setError("Selecciona el proveedor.");
+       return;
+     }
++    const pobladas = alb.lineas.filter((ln2) => !!String(ln2.productoId || ln2.descripcion || ln2.codigoProveedor || ln2.cantidad || "").trim());
+     const validas = alb.lineas.filter((ln2) => (ln2.descripcion || ln2.codigoProveedor) && Number(ln2.cantidad) > 0);
+-    if (!validas.length) {
+-      setError("A\xF1ade al menos una l\xEDnea con descripci\xF3n y cantidad.");
++    const candidatas = alb.pedidoId ? pobladas : validas;
++    if (!candidatas.length) {
++      setError("Añade al menos una línea con descripción y cantidad.");
+       return;
+     }
+     setError("");
+@@ -110358,10 +110444,14 @@ function Albaranes({
+     try {
+       const limpio = {
+         ...alb,
+-        lineas: validas.map((ln2) => ({ ...ln2, importe: ln2.importe !== "" ? Number(ln2.importe) : Number(importeCalculado(ln2).toFixed(4)) }))
++        lineas: candidatas.map((ln2) => ({ ...ln2, importe: ln2.importe !== "" ? Number(ln2.importe) : Number(importeCalculado(ln2).toFixed(4)) }))
+       };
+-      const av = confirmarAlbaran(limpio);
+-      setAvisos(av && av.length ? av : []);
++      const resultado = confirmarAlbaran(limpio);
++      if (resultado && resultado.ok === false) {
++        setError(resultado.error || "No se pudo registrar la recepción del pedido.");
++        return;
++      }
++      setAvisos(resultado && resultado.length ? resultado : []);
+       setModo("lista");
+       setAlb(null);
+       setFotoRevisionIA("");

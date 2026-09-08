@@ -1,0 +1,67 @@
+name: PM13 P06 diagnostico costes personal
+
+on:
+  push:
+    branches: [pm13-p06-costes-personal]
+
+permissions:
+  contents: write
+
+jobs:
+  diagnostico:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main y extraer motor costes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, re
+          s = Path('fuente.js').read_text(encoding='utf-8')
+          tokens = [
+            'salarioBrutoMensual',
+            'costeEmpresaMensual',
+            'pagas',
+            '1.32',
+            'coste personal',
+            'Coste personal',
+            'costePersonal',
+            'costeLaboral',
+            'empleados.filter',
+            'empleados.reduce',
+            'nominas',
+            'seguridadSocialEmpresa'
+          ]
+          out = {'sourceLength': len(s), 'tokens': {}, 'counts': {}}
+          for token in tokens:
+            poses=[]; start=0
+            while True:
+              p=s.find(token,start)
+              if p<0: break
+              poses.append(p); start=p+1
+              if len(poses)>=30: break
+            out['counts'][token]=len(poses)
+            out['tokens'][token]=[
+              {'offset':p,'snippet':s[max(0,p-1400):min(len(s),p+3200)]} for p in poses[:12]
+            ]
+          # Extraer funciones/constantes con nombres relacionados a coste/nomina/personal.
+          pats = re.findall(r'(?:function|const|let|var)\s+([A-Za-z0-9_$]*(?:cost|Cost|nomina|Nomina|personal|Personal)[A-Za-z0-9_$]*)', s)
+          out['symbols']=sorted(set(pats))[:300]
+          Path('tests/pm13/P06_DIAGNOSTICO_COSTES.json').write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding='utf-8')
+          PY
+      - name: Guardar diagnóstico si cambia
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$(git status --porcelain -- tests/pm13/P06_DIAGNOSTICO_COSTES.json)" ]; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/pm13/P06_DIAGNOSTICO_COSTES.json
+          git commit -m 'test(pm13): diagnostico P06 costes personal'
+          git push

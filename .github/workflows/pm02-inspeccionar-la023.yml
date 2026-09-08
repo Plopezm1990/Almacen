@@ -1,0 +1,33 @@
+name: PM-02 inspeccionar LA-023
+
+on:
+  push:
+    branches: [pm02-integrado]
+    paths:
+      - .github/workflows/pm02-inspeccionar-la023.yml
+
+permissions:
+  contents: read
+
+jobs:
+  inspeccionar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extraer texto y función Respaldos
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('source-recovery/fuente-recuperado.js')
+          s = p.read_text(encoding='utf-8')
+          ini = s.index('function Respaldos(')
+          fin = s.find('\nfunction ', ini + 20)
+          bloque = s[ini:fin if fin > 0 else len(s)]
+          print('=== FUNCION RESPALDOS ===')
+          print(bloque)
+          print('=== LINEAS RELACIONADAS CON NUBE/GUARDADO/SINCRONIZACION ===')
+          for n, line in enumerate(s.splitlines(), 1):
+            low = line.lower()
+            if any(k in low for k in ('nube', 'sincron', 'guardad', 'respaldo')):
+              if 'respald' in low or 'nube' in low or 'sincron' in low:
+                print(f'{n}: {line}')

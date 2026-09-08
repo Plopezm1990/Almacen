@@ -1,0 +1,54 @@
+name: PM11 Compra P06 pago y reverso E2E
+
+on:
+  push:
+    branches: [pm11-compra-recepcion-pago-e2e]
+    paths:
+      - 'fuente.js'
+      - 'tests/pm11-compra/p06-pago-reverso-e2e-contract.mjs'
+      - 'tests/pm11-compra/p05-factura-identidad-contract.mjs'
+      - 'tests/pm11-compra/p04-albaran-trazabilidad-contract.mjs'
+      - 'tests/pm11-compra/p03-recepciones-multiples-replay-contract.mjs'
+      - 'tests/pm11-compra/p02-contrato-e2e-estados-contract.mjs'
+      - '.github/workflows/pm11-compra-p06-pago-reverso.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pago-reverso-e2e:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout completo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar main congelado
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+
+      - name: Contrato P06 pago parcial total reverso
+        run: node tests/pm11-compra/p06-pago-reverso-e2e-contract.mjs
+
+      - name: Regresion P05 factura identidad
+        run: node tests/pm11-compra/p05-factura-identidad-contract.mjs
+
+      - name: Regresion P04 albaran trazabilidad
+        run: node tests/pm11-compra/p04-albaran-trazabilidad-contract.mjs
+
+      - name: Regresion P03 recepciones multiples
+        run: node tests/pm11-compra/p03-recepciones-multiples-replay-contract.mjs
+
+      - name: Contrato E2E P02
+        run: node tests/pm11-compra/p02-contrato-e2e-estados-contract.mjs
+
+      - name: Resultado
+        run: echo 'PM11_COMPRA_P06_PAGO_REVERSO_E2E=PASS'

@@ -1,0 +1,35 @@
+name: Auditar modelo de producto para traspasos entre locales
+on:
+  push:
+    branches: [la-suite-identidad]
+    paths: ['.github/workflows/auditar-traspasos-modelo-producto.yml']
+  workflow_dispatch:
+jobs:
+  auditar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspeccionar producto y motor de stock
+        run: |
+          python3 <<'PY'
+          import re, pathlib
+          s=pathlib.Path('fuente.js').read_text(encoding='utf-8', errors='ignore')
+          terms=[
+            'function crearMotorStock',
+            'aplicarMovimientoStock',
+            'function crearLogicaProductos',
+            'function addProducto',
+            'addProducto(data',
+            'codigoBarras',
+            'codigo:',
+            'localId: localActivoId',
+            'stockPisoVenta',
+          ]
+          for term in terms:
+            ms=list(re.finditer(re.escape(term),s))
+            print(f'\n===== {term} | matches={len(ms)} =====')
+            for i,m in enumerate(ms[:12]):
+              a=max(0,m.start()-2600); b=min(len(s),m.end()+6200)
+              print(f'--- match {i+1} @ {m.start()} ---')
+              print(s[a:b].replace('\n',' ')[:9000])
+          PY

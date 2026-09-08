@@ -1,0 +1,127 @@
+name: PM13 P03 fichajes
+
+on:
+  push:
+    branches: [pm13-p03-fichajes]
+    paths:
+      - 'fuente.js'
+      - 'tools/corregir_pm13_p03_fichajes.py'
+      - 'tests/pm13/p03-*'
+      - 'tests/pm13/P03_*'
+      - 'supabase/migrations/20260907205000_pm13_p03_fichajes_seguros.sql'
+      - '.github/workflows/pm13-p03-fichajes.yml'
+      - 'tests/pm10/p07-personal-contract.mjs'
+
+permissions:
+  contents: write
+
+jobs:
+  validar-p03:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Proteger main y alcance P03
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          P03_BASE='5f4c9b8371ed640b1ada58cddf45d1c32072cd28'
+          mapfile -t cambios < <(git diff --name-only "$P03_BASE"..HEAD -- supabase/)
+          if [ "${#cambios[@]}" -ne 1 ] || [ "${cambios[0]:-}" != 'supabase/migrations/20260907205000_pm13_p03_fichajes_seguros.sql' ]; then
+            echo 'P03 solo puede añadir su migración de fichajes' >&2
+            printf '%s\n' "${cambios[@]}" >&2
+            exit 1
+          fi
+          echo 'PM13_P03_MAIN_FROZEN=PASS'
+          echo 'PM13_P03_SUPABASE_SCOPE=PASS'
+
+      - name: Aplicar hardening frontend Fichajes
+        run: python3 tools/corregir_pm13_p03_fichajes.py
+
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+
+      - name: Contratos PM13 P03
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm13/p03-fichajes-contract.mjs
+          node tests/pm13/p03-backend-fichajes-contract.mjs
+
+      - name: Regresión PM13 P01-P02 y Personal PM10
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm13/p01-rpc-personal-contract.mjs
+          node tests/pm13/p01-backend-personal-contract.mjs
+          node tests/pm13/p02-turnos-contract.mjs
+          node tests/pm10/p07-personal-contract.mjs
+          echo 'PM13_P03_REGRESSION_P01_P02_PM10=PASS'
+
+      - name: Regresión frontend PM12 P02-P10
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in 02 03 04 05 06 07 08 09 10; do
+            for t in tests/pm12/p${n}-*contract.mjs; do
+              test -f "$t" || continue
+              case "$t" in
+                *postgres*|*supabase*) continue ;;
+              esac
+              node "$t"
+            done
+          done
+          echo 'PM13_P03_REGRESSION_PM12=PASS'
+
+      - name: Barreras P03
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s = Path('fuente.js').read_text(encoding='utf-8')
+          a = s.index('function crearLogicaFichaje({')
+          b = s.index('function redondearDineroPM06(', a)
+          x = s[a:b]
+          assert 'e2.activo !== false' in x
+          assert 'secuenciaFichajeValidaPM13' in x
+          assert 'pm13_fichar' in x
+          assert 'pm13_fichaje_manual' in x
+          assert 'pm13_corregir_fichaje' in x
+          assert 'pm13_anular_fichaje' in x
+          assert 'setFichajes((s22) => s22.filter((f22) => f22.id !== id' not in x
+          print('PM13_P03_DOMAIN_GUARDS=PASS')
+          PY
+          ! grep -Eqi 'service_role|SUPABASE_SERVICE_ROLE_KEY|sb_secret_' \
+            tools/corregir_pm13_p03_fichajes.py tests/pm13/p03-fichajes-contract.mjs tests/pm13/p03-backend-fichajes-contract.mjs supabase/migrations/20260907205000_pm13_p03_fichajes_seguros.sql
+          git diff --check
+          echo 'PM13_P03_NO_SECRET=PASS'
+
+      - name: Commit funcional si procede
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- fuente.js; then
+            echo 'Fuente ya coincide con P03'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add fuente.js
+          git commit -m 'feat(pm13): cerrar Fichajes seguros P03'
+          git push
+
+  gate-final:
+    runs-on: ubuntu-24.04
+    needs: [validar-p03]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM13 P03
+        run: |
+          echo 'PM13_P03_GATE_FINAL=PASS'
+          echo 'MAIN_NO_TOCADO=1'
+          echo 'PRODUCCION_NO_TOCADA=1'

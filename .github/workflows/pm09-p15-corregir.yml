@@ -1,0 +1,69 @@
+name: PM09 Punto 15 casos economicos
+on:
+  push:
+    branches: [pm09-conciliacion-ventas-analitica]
+    paths:
+      - 'tools/corregir_pm09_p15_casos_economicos.py'
+      - 'tests/pm09/p15-special-economic-contract.mjs'
+      - 'supabase/migrations/20260905115000_pm09_fecha_operacion_economica.sql'
+      - '.github/workflows/pm09-p15-corregir.yml'
+permissions:
+  contents: write
+jobs:
+  corregir:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pm09-conciliacion-ventas-analitica
+      - name: Aplicar punto 15
+        run: |
+          set -euo pipefail
+          python tools/corregir_pm09_p15_casos_economicos.py
+          node --check fuente.js
+      - name: Validar casos economicos
+        run: |
+          set -euo pipefail
+          node tests/pm09/p15-special-economic-contract.mjs
+      - name: Regresiones PM09
+        run: |
+          set -euo pipefail
+          node tests/pm09/p12-resultados-margin-contract.mjs
+          node tests/pm09/p11-iva-contract.mjs
+          node tests/pm09/p10-caja-contract.mjs
+          node tests/pm09/p09-historial-contract.mjs
+          node tests/pm09/la007-results-contract.mjs
+          node tests/pm09/la008-rotation-margin-contract.mjs
+      - name: Regresiones heredadas
+        run: |
+          set -euo pipefail
+          node tests/pm05/frontend-contract.mjs
+          node tests/pm07/frontend-contract.mjs
+          node tests/pm08/frontend-contract.mjs
+          node tests/pm08/migration-contract.mjs
+          node tests/pm08/replay-scope-contract.mjs
+      - name: Generar evidencia punto 15
+        run: |
+          set -euo pipefail
+          SHA256=$(sha256sum fuente.js | awk '{print $1}')
+          cat > tests/pm09/P15_CASOS_ECONOMICOS_EVIDENCIA.json <<EOF
+          {
+            "punto": 15,
+            "estado": "CORREGIDO_PENDIENTE_DE_QA",
+            "rama": "pm09-conciliacion-ventas-analitica",
+            "baseEntradaWorkflow": "${GITHUB_SHA}",
+            "fuenteSha256": "${SHA256}",
+            "riesgoReproducido": "La devolución aceptaba fecha económica explícita pero movimientos_stock se sincronizaba por created_at UTC; venta y REVERSO tampoco tenían fecha económica explícita, pudiendo caer en periodos distintos según UTC.",
+            "cambio": "RPC PM09 conservan fechaOperacion en el ledger de movimientos; Caja PM09 usa esa fecha con fallback UTC solo para legacy; frontend sincroniza fechaOperacion. Se mantienen separados medios de pago, reembolso 0, redondeo y snapshots históricos.",
+            "alcance": "fuente.js + migracion PM09 + pruebas; solo rama PM09 hasta QA"
+          }
+          EOF
+      - name: Guardar candidato solo en PM09
+        run: |
+          set -euo pipefail
+          git config user.name "Plopezm1990"
+          git config user.email "pedroroger1990@gmail.com"
+          git add fuente.js tests/pm09/P15_CASOS_ECONOMICOS_EVIDENCIA.json
+          git diff --cached --quiet && exit 0
+          git commit -m "PM09: cerrar candidato casos economicos punto 15"
+          git push origin HEAD:pm09-conciliacion-ventas-analitica

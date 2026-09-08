@@ -1,0 +1,188 @@
+diff --git a/fuente.js b/fuente.js
+index e380ea6..b9f8764 100644
+--- a/fuente.js
++++ b/fuente.js
+@@ -101329,6 +101329,8 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, localActivoI
+         ivaVentaAplicado: Number(d2.ivaVentaAplicado) || 0,
+         medioPago: d2.medioPago || null,
+         detallePago: d2.detallePago || null,
++        reembolso: d2.reembolso !== void 0 && d2.reembolso !== null ? Number(d2.reembolso) || 0 : null,
++        medioReembolso: d2.medioReembolso || null,
+         fecha: creado ? creado.slice(0, 10) : todayISO(),
+         hora: creado ? creado.slice(11, 16) : (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5),
+         afectaStockTotal: delta !== 0,
+@@ -111657,22 +111659,122 @@ function Facturas({ albaranes, facturasDirectas, pagosFacturas = [], proveedorPo
+     );
+   }))))));
+ }
++// PM-09 / Punto 11: proyección fiscal conciliada de ventas.
++// No se usa la ficha actual del producto para reconstruir IVA histórico.
++// REVERSO resta en la fecha de la corrección. Una DEVOLUCION_CLIENTE solo se
++// proyecta fiscalmente cuando existe un reembolso registrado; SIN_REEMBOLSO
++// queda explícitamente pendiente de criterio/documentación fiscal.
++function datoFiscalVentaPM09(m22, clave) {
++  if (!m22) return void 0;
++  if (m22[clave] !== void 0 && m22[clave] !== null) return m22[clave];
++  if (m22.datos && m22.datos[clave] !== void 0 && m22.datos[clave] !== null) return m22.datos[clave];
++  return void 0;
++}
++function esReversoIvaPM09(m22) {
++  if (!m22) return false;
++  if (esMovimientoNuevo(m22)) return m22.tipo === "REVERSO";
++  return m22.tipo === "entrada" && Number(m22.ingresoUnitario) < 0 && !!m22.anulaVentaId;
++}
++function esDevolucionIvaPM09(m22) {
++  if (!m22) return false;
++  if (esMovimientoNuevo(m22)) return m22.tipo === "DEVOLUCION_CLIENTE";
++  return String(m22.motivo || "").toLowerCase().includes("devoluci") && Number(m22.ingresoUnitario) < 0 && !!m22.ventaId;
++}
++function movimientoOriginalFiscalPM09(m22, movimientos = []) {
++  if (!m22) return null;
++  const originalId = m22.movimientoOriginalId ?? datoFiscalVentaPM09(m22, "movimientoOriginalId");
++  if (originalId !== void 0 && originalId !== null && originalId !== "") {
++    const porId = (movimientos || []).find((x3) => String(x3.id) === String(originalId) || String(x3.movimientoId || "") === String(originalId));
++    if (porId) return porId;
++  }
++  const ventaId = m22.anulaVentaId || m22.ventaId || datoFiscalVentaPM09(m22, "anulaVentaId") || datoFiscalVentaPM09(m22, "ventaId") || m22.documentoOrigenId || null;
++  if (ventaId) {
++    return (movimientos || []).find((x3) => esVenta(x3) && String(x3.operationId || x3.ventaId || x3.id) === String(ventaId)) || null;
++  }
++  return null;
++}
++function ivaHistoricoVentaPM09(m22, movimientos = []) {
++  const directo = datoFiscalVentaPM09(m22, "ivaVentaAplicado");
++  if (directo !== "" && directo !== void 0 && directo !== null && Number.isFinite(Number(directo))) return Number(directo);
++  const original = movimientoOriginalFiscalPM09(m22, movimientos);
++  const heredado = datoFiscalVentaPM09(original, "ivaVentaAplicado");
++  if (heredado !== "" && heredado !== void 0 && heredado !== null && Number.isFinite(Number(heredado))) return Number(heredado);
++  return null;
++}
++function ingresoHistoricoVentaPM09(m22, movimientos = []) {
++  const directo = datoFiscalVentaPM09(m22, "ingresoUnitario");
++  if (directo !== "" && directo !== void 0 && directo !== null && Number.isFinite(Number(directo))) return Math.abs(Number(directo));
++  const original = movimientoOriginalFiscalPM09(m22, movimientos);
++  const heredado = datoFiscalVentaPM09(original, "ingresoUnitario");
++  if (heredado !== "" && heredado !== void 0 && heredado !== null && Number.isFinite(Number(heredado))) return Math.abs(Number(heredado));
++  return null;
++}
++function aporteIvaVentaPM09(m22, movimientos = []) {
++  const esV = esVenta(m22);
++  const esR = esReversoIvaPM09(m22);
++  const esD = esDevolucionIvaPM09(m22);
++  if (!esV && !esR && !esD) return null;
++  const tipo = ivaHistoricoVentaPM09(m22, movimientos);
++  const ingreso = ingresoHistoricoVentaPM09(m22, movimientos);
++  const cantidad = Math.abs(Number(m22.cantidad) || 0);
++  const comun = {
++    operationId: m22.operationId || m22.id || "",
++    fecha: m22.fecha || "",
++    tipoOperacion: esV ? "VENTA" : esR ? "REVERSO" : "DEVOLUCION_CLIENTE",
++    medioPago: m22.medioPago || "",
++    tipoIva: tipo
++  };
++  if (tipo === null || ingreso === null) return { ...comun, base: 0, cuota: 0, total: 0, pendiente: true, motivoPendiente: "FALTA_SNAPSHOT_IVA_HISTORICO" };
++  const factor = 1 + tipo / 100;
++  if (!Number.isFinite(factor) || factor <= 0) return { ...comun, base: 0, cuota: 0, total: 0, pendiente: true, motivoPendiente: "IVA_HISTORICO_INVALIDO" };
++  if (esD) {
++    const reembolsoRaw = datoFiscalVentaPM09(m22, "reembolso");
++    const medioReembolso = datoFiscalVentaPM09(m22, "medioReembolso") || "";
++    const reembolso = Number(reembolsoRaw);
++    if (!Number.isFinite(reembolso) || reembolso <= 0 || String(medioReembolso).toUpperCase() === "SIN_REEMBOLSO") {
++      return { ...comun, medioReembolso, base: 0, cuota: 0, total: 0, pendiente: true, motivoPendiente: "DEVOLUCION_SIN_REEMBOLSO" };
++    }
++    const brutoAsociado = cantidad * ingreso * factor;
++    const brutoCorregido = Math.min(Math.max(0, reembolso), Math.max(0, brutoAsociado));
++    const base = -(brutoCorregido / factor);
++    const cuota = -(brutoCorregido + base);
++    const diferencia = Math.abs(brutoAsociado - reembolso);
++    return { ...comun, medioReembolso, base, cuota, total: -brutoCorregido, pendiente: diferencia > 0.01, motivoPendiente: diferencia > 0.01 ? "REEMBOLSO_DIFIERE_IMPORTE_ASOCIADO" : "" };
++  }
++  const baseAbs = cantidad * ingreso;
++  const signo = esR ? -1 : 1;
++  const base = signo * baseAbs;
++  const cuota = signo * baseAbs * (tipo / 100);
++  return { ...comun, base, cuota, total: base + cuota, pendiente: false, motivoPendiente: "" };
++}
++function resumenIvaVentasPM09(movimientos = [], desde = "", hasta = "") {
++  const porTipo = {};
++  const detalle = [];
++  const pendientes = [];
++  (movimientos || []).forEach((m22) => {
++    if (!m22 || m22.fecha < desde || m22.fecha > hasta) return;
++    const aporte = aporteIvaVentaPM09(m22, movimientos);
++    if (!aporte) return;
++    detalle.push(aporte);
++    if (aporte.pendiente) pendientes.push(aporte);
++    // Un ajuste pendiente no altera los totales fiscales hasta que su criterio
++    // o documentación quede resuelto. Venta/REVERSO válidos sí se contabilizan.
++    if (aporte.pendiente && aporte.motivoPendiente !== "REEMBOLSO_DIFIERE_IMPORTE_ASOCIADO") return;
++    if (aporte.tipoIva === null) return;
++    const clave = String(aporte.tipoIva);
++    if (!porTipo[clave]) porTipo[clave] = { base: 0, cuota: 0 };
++    porTipo[clave].base += aporte.base;
++    porTipo[clave].cuota += aporte.cuota;
++  });
++  return { porTipo, detalle, pendientes };
++}
+ function LibroIva({ movimientos, productos, albaranes, proveedorPorId, facturasDirectas = [] }) {
+   const hoy = /* @__PURE__ */ new Date();
+   const [anio, setAnio] = (0, import_react4.useState)(hoy.getFullYear());
+   const [trimestre, setTrimestre] = (0, import_react4.useState)(Math.floor(hoy.getMonth() / 3) + 1);
+   const { desde, hasta } = rangoTrimestre(anio, trimestre);
+-  const repercutido = (0, import_react4.useMemo)(() => {
+-    const porTipo = {};
+-    movimientos.filter((m22) => esVenta(m22) && m22.fecha >= desde && m22.fecha <= hasta).forEach((m22) => {
+-      const base = Math.abs(Number(m22.cantidad) || 0) * (Number(m22.ingresoUnitario) || 0);
+-      const tipo = m22.ivaVentaAplicado != null ? m22.ivaVentaAplicado : productos.find((p22) => p22.id === m22.productoId)?.ivaVenta ?? 10;
+-      if (!porTipo[tipo]) porTipo[tipo] = { base: 0, cuota: 0 };
+-      porTipo[tipo].base += base;
+-      porTipo[tipo].cuota += base * (tipo / 100);
+-    });
+-    return porTipo;
+-  }, [movimientos, productos, desde, hasta]);
++  const resumenIvaVentas = (0, import_react4.useMemo)(() => resumenIvaVentasPM09(movimientos, desde, hasta), [movimientos, desde, hasta]);
++  const repercutido = resumenIvaVentas.porTipo;
+   const soportado = (0, import_react4.useMemo)(() => {
+     const porTipo = {};
+     albaranes.filter((a22) => a22.estado === "confirmado" && (a22.fechaFactura || a22.fecha) >= desde && (a22.fechaFactura || a22.fecha) <= hasta).forEach((a22) => {
+@@ -111732,23 +111834,16 @@ function LibroIva({ movimientos, productos, albaranes, proveedorPorId, facturasD
+     if (detalleCompras.length) {
+       utils2.book_append_sheet(wb, utils2.json_to_sheet(detalleCompras), "Detalle compras");
+     }
+-    const ventasDelPeriodo = movimientos.filter((m22) => esVenta(m22) && m22.fecha >= desde && m22.fecha <= hasta);
+-    const porTicket = /* @__PURE__ */ new Map();
+-    ventasDelPeriodo.forEach((m22) => {
+-      const clave = m22.operationId || m22.ventaId || m22.id;
+-      if (!porTicket.has(clave)) porTicket.set(clave, { fecha: m22.fecha, medioPago: m22.medioPago || "Efectivo", base: 0, iva: 0 });
+-      const fila = porTicket.get(clave);
+-      const base = Math.abs(Number(m22.cantidad) || 0) * (Number(m22.ingresoUnitario) || 0);
+-      const tipo = m22.ivaVentaAplicado != null ? m22.ivaVentaAplicado : productos.find((p22) => p22.id === m22.productoId)?.ivaVenta ?? 10;
+-      fila.base += base;
+-      fila.iva += base * (tipo / 100);
+-    });
+-    const detalleVentas = [...porTicket.values()].sort((a22, b2) => (a22.fecha || "").localeCompare(b2.fecha || "")).map((t22) => ({
++    const detalleVentas = resumenIvaVentas.detalle.slice().sort((a22, b2) => `${a22.fecha} ${a22.operationId}`.localeCompare(`${b2.fecha} ${b2.operationId}`)).map((t22) => ({
+       Fecha: t22.fecha,
+-      "Medio de pago": t22.medioPago,
++      "Tipo operación": t22.tipoOperacion,
++      "ID operación": t22.operationId,
++      "Medio de pago": t22.medioPago || t22.medioReembolso || "—",
++      "Tipo IVA": t22.tipoIva == null ? "REVISAR" : `${t22.tipoIva}%`,
+       Base: Number(t22.base.toFixed(2)),
+-      IVA: Number(t22.iva.toFixed(2)),
+-      Total: Number((t22.base + t22.iva).toFixed(2))
++      IVA: Number(t22.cuota.toFixed(2)),
++      Total: Number(t22.total.toFixed(2)),
++      Estado: t22.pendiente ? `REVISAR: ${t22.motivoPendiente}` : "CONCILIADO"
+     }));
+     if (detalleVentas.length) {
+       utils2.book_append_sheet(wb, utils2.json_to_sheet(detalleVentas), "Detalle ventas");
+@@ -111756,7 +111851,7 @@ function LibroIva({ movimientos, productos, albaranes, proveedorPorId, facturasD
+     writeFileSync2(wb, `libro_iva_T${trimestre}_${anio}.xlsx`);
+   }
+   const filas = [.../* @__PURE__ */ new Set([...Object.keys(repercutido), ...Object.keys(soportado)])].sort((a22, b2) => Number(a22) - Number(b2));
+-  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Libro de IVA"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Resumen trimestral para tu declaraci\xF3n (modelo 303): IVA repercutido de tus ventas e IVA soportado de tus compras, por tipo. Este programa no presenta el modelo por ti \u2014 te da los n\xFAmeros listos para que tu gestor\xEDa los meta, o para revisarlos t\xFA antes de d\xE1rselos.")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Trimestre" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: trimestre, onChange: (e2) => setTrimestre(Number(e2.target.value)), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: 1 }, "1T \u2014 Enero a Marzo"), /* @__PURE__ */ import_react4.default.createElement("option", { value: 2 }, "2T \u2014 Abril a Junio"), /* @__PURE__ */ import_react4.default.createElement("option", { value: 3 }, "3T \u2014 Julio a Septiembre"), /* @__PURE__ */ import_react4.default.createElement("option", { value: 4 }, "4T \u2014 Octubre a Diciembre"))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "A\xF1o" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: anio, onChange: (e2) => setAnio(Number(e2.target.value) || hoy.getFullYear()) }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Del ", desde, " al ", hasta)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "IVA repercutido (ventas)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: C2.accent } }, "\u20AC", fmt(totalRep.cuota))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "IVA soportado (compras)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1" }, "\u20AC", fmt(totalSop.cuota)))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.chrome, color: "#fff" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[13px] font-medium" }, resultado >= 0 ? "A ingresar en Hacienda" : "A compensar / devolver"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-bold text-[19px]" }, "\u20AC", fmt(Math.abs(resultado))))), filas.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay ventas ni compras registradas en este trimestre." }) : /* @__PURE__ */ import_react4.default.createElement(Card, { style: { padding: 0 }, className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", { style: { color: C2.inkSoft, borderBottom: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2 px-3" }, "Tipo"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-right font-medium py-2 px-3" }, "Base repercutida"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-right font-medium py-2 px-3" }, "Base soportada"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, filas.map((tipo) => /* @__PURE__ */ import_react4.default.createElement("tr", { key: tipo, style: { borderBottom: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-3 mono" }, tipo, "%"), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-3 mono text-right" }, repercutido[tipo] ? `\u20AC${fmt(repercutido[tipo].base)}` : "\u2014"), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-3 mono text-right" }, soportado[tipo] ? `\u20AC${fmt(soportado[tipo].base)}` : "\u2014")))))), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: exportarExcel }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 14 }), " Exportar a Excel"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, 'Solo cuentan las ventas registradas con motivo "Venta", los albaranes ya dados de entrada y las facturas directas registradas en Cuentas por pagar. Si falta algo por registrar, este libro tampoco lo ver\xE1.'));
++  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Libro de IVA"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Resumen trimestral de control: concilia IVA repercutido de operaciones de venta e IVA soportado de compras por tipo. Es una proyecci\xF3n interna, no sustituye la documentaci\xF3n fiscal ni la revisi\xF3n de tu gestor\xEDa.")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Trimestre" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: trimestre, onChange: (e2) => setTrimestre(Number(e2.target.value)), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: 1 }, "1T \u2014 Enero a Marzo"), /* @__PURE__ */ import_react4.default.createElement("option", { value: 2 }, "2T \u2014 Abril a Junio"), /* @__PURE__ */ import_react4.default.createElement("option", { value: 3 }, "3T \u2014 Julio a Septiembre"), /* @__PURE__ */ import_react4.default.createElement("option", { value: 4 }, "4T \u2014 Octubre a Diciembre"))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "A\xF1o" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: anio, onChange: (e2) => setAnio(Number(e2.target.value) || hoy.getFullYear()) }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Del ", desde, " al ", hasta)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "IVA repercutido (ventas)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: C2.accent } }, "\u20AC", fmt(totalRep.cuota))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "IVA soportado (compras)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1" }, "\u20AC", fmt(totalSop.cuota)))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.chrome, color: "#fff" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[13px] font-medium" }, resultado >= 0 ? "A ingresar en Hacienda" : "A compensar / devolver"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-bold text-[19px]" }, "\u20AC", fmt(Math.abs(resultado))))), filas.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay ventas ni compras registradas en este trimestre." }) : /* @__PURE__ */ import_react4.default.createElement(Card, { style: { padding: 0 }, className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", { style: { color: C2.inkSoft, borderBottom: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2 px-3" }, "Tipo"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-right font-medium py-2 px-3" }, "Base repercutida"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-right font-medium py-2 px-3" }, "Base soportada"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, filas.map((tipo) => /* @__PURE__ */ import_react4.default.createElement("tr", { key: tipo, style: { borderBottom: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-3 mono" }, tipo, "%"), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-3 mono text-right" }, repercutido[tipo] ? `\u20AC${fmt(repercutido[tipo].base)}` : "\u2014"), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-3 mono text-right" }, soportado[tipo] ? `\u20AC${fmt(soportado[tipo].base)}` : "\u2014")))))), resumenIvaVentas.pendientes.length > 0 ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft || C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold" }, `${resumenIvaVentas.pendientes.length} corrección(es) requieren revisión fiscal`), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Las devoluciones sin reembolso, los importes de reembolso que no coinciden con el valor asociado o las operaciones sin IVA histórico no se convierten silenciosamente en una cifra fiscal definitiva.")) : null, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: exportarExcel }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 14 }), " Exportar a Excel"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Ventas y REVERSO usan su snapshot hist\xF3rico y la fecha de cada operaci\xF3n. Las devoluciones con reembolso se proyectan por el importe realmente corregido; SIN_REEMBOLSO queda pendiente de criterio/documentaci\xF3n fiscal. Caja y medio de pago no determinan por s\xED solos el IVA."));
+ }
+ function Devoluciones({ productos = [], proveedores = [], devoluciones = [], movimientos = [], registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion }) {
+   const h3 = import_react4.default.createElement;

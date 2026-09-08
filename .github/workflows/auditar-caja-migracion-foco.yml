@@ -1,0 +1,44 @@
+name: Auditar Caja migración y llamadas
+on:
+  push:
+    branches: [la-suite-identidad]
+    paths:
+      - '.github/workflows/auditar-caja-migracion-foco.yml'
+  workflow_dispatch:
+jobs:
+  auditar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspeccionar migración y call sites de Caja
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          lines=s.splitlines()
+          pats=[
+            'arqueosSinLocal', 'movimientosCajaSinLocal',
+            'arqueos.map', 'movimientosCaja.map',
+            'guardar("arqueos"', 'guardar("movimientosCaja"',
+            'saveKey("arqueos"', 'saveKey("movimientosCaja"',
+            'addArqueo(', 'deleteArqueo(',
+            'registrarMovimientoCaja(', 'deleteMovimientoCaja(',
+            'arqueosDelLocalActivo', 'movimientosCajaDelLocalActivo'
+          ]
+          for pat in pats:
+            print('\n===== ',pat,' =====')
+            hits=[i for i,l in enumerate(lines,1) if pat.lower() in l.lower()]
+            print('HITS',hits[:80])
+            for n in hits[:24]:
+              a=max(1,n-18); b=min(len(lines),n+40)
+              print(f'--- {a}:{b} ---')
+              for j in range(a,b+1): print(f'{j:06d}: {lines[j-1]}')
+          # Startup loading/migration vicinity for caja collections.
+          for needle in ['"arqueos"', '"movimientosCaja"']:
+            print('\n===== STARTUP',needle,'=====')
+            for i,l in enumerate(lines,1):
+              if needle in l and 116000 <= i <= 118500:
+                a=max(1,i-30); b=min(len(lines),i+55)
+                print(f'--- {a}:{b} ---')
+                for j in range(a,b+1): print(f'{j:06d}: {lines[j-1]}')
+          PY

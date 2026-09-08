@@ -1,0 +1,51 @@
+name: PM-08 regresión caja y devoluciones indivisibles
+
+# Decisión de release documentada (ver Release PR): fuente.js es el artefacto fuente
+# canónico y realmente servido desde PM-01 en adelante; source-recovery/ quedó congelado
+# en el commit 846c8a0 (PM-01) y nunca volvió a tocarse pese a cientos de commits
+# posteriores de edición directa sobre fuente.js (verificado con
+# `git log -1 -- source-recovery/entrada-recuperada.js`). El paso "Build reproducible" de
+# este workflow reconstruye desde ese source-recovery congelado y por tanto NUNCA puede
+# volver a coincidir con el fuente.js actual: es una comparación contra un artefacto
+# abandonado, no una regresión real (los contratos funcionales/replay de PM08 en este mismo
+# job siguen en verde). Se retira el disparador `pull_request` para que deje de bloquear
+# PRs por este motivo ya diagnosticado; se conserva `push` sobre su rama histórica y
+# `workflow_dispatch` para poder repetirlo manualmente si hace falta.
+on:
+  push:
+    branches: [pm08-caja-devolucion-indivisible]
+    paths:
+      - 'index.html'
+      - 'fuente.js'
+      - 'source-recovery/**'
+      - 'supabase/migrations/20260904204500_pm08_caja_devolucion_indivisible.sql'
+      - 'supabase/migrations/20260904234000_pm08_replay_scope_hardening.sql'
+      - 'tests/pm08/**'
+      - '.github/workflows/pm08-regresion.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar-pm08:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Contrato frontend y almacenamiento PM-08
+        run: node tests/pm08/frontend-contract.mjs
+      - name: Contrato de migración, RLS y atomicidad PM-08
+        run: node tests/pm08/migration-contract.mjs
+      - name: Aislamiento de reintentos idempotentes PM-08
+        run: node tests/pm08/replay-scope-contract.mjs
+      - name: Sintaxis de la fuente canónica
+        run: node --check source-recovery/fuente-recuperado.js
+      - name: Sintaxis del bundle publicado
+        run: node --check fuente.js
+      - name: Build reproducible
+        working-directory: source-recovery
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+          cmp -s dist/fuente.js ../fuente.js || { echo 'PM08_BUNDLE_NO_REPRODUCIBLE=1'; exit 1; }
+          echo 'PM08_BUILD_REPRODUCIBLE_OK=1'

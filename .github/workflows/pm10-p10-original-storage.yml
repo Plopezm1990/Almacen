@@ -1,0 +1,34 @@
+name: PM10 P10 original storage
+on:
+  push:
+    branches: [pm10-validaciones-altas-datos-legados]
+    paths:
+      - '.github/workflows/pm10-p10-original-storage.yml'
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extraer implementación original storage
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          terms=['setOriginal =','var setOriginal','const setOriginal','window.storage =','from("almacen_kv").upsert','from("almacen_kv").select','almacen__pendientes','localStorage.setItem("almacen:"']
+          out=[]
+          for t in terms:
+            out.append('\n## '+t+'\n')
+            for m in list(re.finditer(re.escape(t),s,re.I))[:20]:
+              out.append(f'\n### {m.start()}\n```js\n{s[max(0,m.start()-3500):min(len(s),m.start()+8500)]}\n```\n')
+          Path('tests/pm10/P10_STORAGE_ORIGINAL.md').write_text(''.join(out),encoding='utf-8')
+          PY
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/pm10/P10_STORAGE_ORIGINAL.md
+          git commit -m 'PM10: guardar storage original punto 10'
+          git push

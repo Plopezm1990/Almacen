@@ -4,7 +4,7 @@
 // servidor y mostrarlo, aunque la app esté cerrada.
 
 self.addEventListener("push", function (evento) {
-  let datos = { titulo: "Chocoloyos Almacén", cuerpo: "Tienes una notificación nueva.", url: "/" };
+  let datos = { titulo: "L&A Suite", cuerpo: "Tienes una notificación nueva.", url: "/" };
   try {
     if (evento.data) datos = { ...datos, ...evento.data.json() };
   } catch (e) {

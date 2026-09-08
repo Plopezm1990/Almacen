@@ -1,0 +1,82 @@
+name: Auditar escrituras y vistas multi-local A-E
+
+on:
+  push:
+    branches:
+      - la-suite-identidad
+    paths:
+      - .github/workflows/auditar-multilocal-escrituras.yml
+  workflow_dispatch:
+
+jobs:
+  inspeccionar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar rama
+        uses: actions/checkout@v4
+
+      - name: Extraer rutas de lectura y escritura
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const src = fs.readFileSync('fuente.js', 'utf8');
+          const lower = src.toLowerCase();
+
+          const searches = [
+            ['CTX productos filtrados', 'const productosdellocalactivo'],
+            ['CTX movimientos filtrados', 'const movimientosdellocalactivo'],
+            ['CTX pedidos filtrados', 'const pedidosdellocalactivo'],
+            ['CTX albaranes filtrados', 'const albaranesdellocalactivo'],
+            ['CTX facturas filtradas', 'const facturasdirectasdellocalactivo'],
+            ['WRITE aplicarMovimientoStock', 'function aplicarmovimientostock'],
+            ['WRITE crearMotorStock', 'function crearmotorstock'],
+            ['WRITE addProducto', 'function addproducto'],
+            ['WRITE crearProducto', 'function crearproducto'],
+            ['WRITE setProductos', 'setproductos((s2)'],
+            ['WRITE addPedido', 'function addpedido'],
+            ['WRITE crearPedido', 'function crearpedido'],
+            ['WRITE setPedidos', 'setpedidos((s2)'],
+            ['WRITE recibirPedido', 'function recibirpedido'],
+            ['WRITE addAlbaran', 'function addalbaran'],
+            ['WRITE setAlbaranes', 'setalbaranes((s2)'],
+            ['WRITE guardarConteo', 'function guardarconteo'],
+            ['WRITE addConteo', 'function addconteo'],
+            ['WRITE setConteos', 'setconteos((s2)'],
+            ['VIEW tab productos', 'tab === "productos"'],
+            ['VIEW tab movimientos', 'tab === "movimientos"'],
+            ['VIEW tab pedidos', 'tab === "pedidos"'],
+            ['VIEW tab recepcion', 'tab === "recepcion"'],
+            ['VIEW tab inventario', 'tab === "inventario"'],
+            ['ASSIGN localActivo', 'localid: localactivoid'],
+            ['ASSIGN empresa activa', 'empresaid:'],
+          ];
+
+          function allPositions(needle, limit=12) {
+            const out = [];
+            let p = 0;
+            while (out.length < limit && (p = lower.indexOf(needle, p)) !== -1) {
+              out.push(p);
+              p += Math.max(1, needle.length);
+            }
+            return out;
+          }
+
+          function clean(s) {
+            return s.replace(/\s+/g, ' ').replace(/[^\x20-\x7EÁÉÍÓÚÜÑáéíóúüñ¿¡]/g, ' ');
+          }
+
+          console.log('AUDITORÍA ESCRITURAS/VISTAS MULTI-LOCAL A-E');
+          console.log('SHA:', process.env.GITHUB_SHA);
+          for (const [label, needle] of searches) {
+            const ps = allPositions(needle);
+            console.log(`\n===== ${label} | ${needle} | ${ps.length} ocurrencias =====`);
+            if (!ps.length) continue;
+            ps.slice(0, 6).forEach((p,i) => {
+              const before = label.startsWith('VIEW') ? 900 : 1200;
+              const after = label.startsWith('VIEW') ? 2200 : 3200;
+              console.log(`--- ${i+1} @${p} ---`);
+              console.log(clean(src.slice(Math.max(0,p-before), Math.min(src.length,p+after))));
+            });
+          }
+          NODE

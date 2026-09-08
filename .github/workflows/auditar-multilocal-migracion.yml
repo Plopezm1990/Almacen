@@ -1,0 +1,71 @@
+name: Auditar migración legacy multi-local
+
+on:
+  push:
+    branches:
+      - la-suite-identidad
+    paths:
+      - .github/workflows/auditar-multilocal-migracion.yml
+  workflow_dispatch:
+
+jobs:
+  inspeccionar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar rama
+        uses: actions/checkout@v4
+
+      - name: Inspeccionar migración e inicialización
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const src = fs.readFileSync('fuente.js', 'utf8');
+          const lower = src.toLowerCase();
+
+          const searches = [
+            ['LOAD productos', 'loadkey("productos"'],
+            ['LOAD pedidos', 'loadkey("pedidos"'],
+            ['LOAD locales', 'loadkey("locales"'],
+            ['LOAD localActivo', 'loadkey("localactivoid"'],
+            ['SAVE productos', 'savekey("productos"'],
+            ['SAVE pedidos', 'savekey("pedidos"'],
+            ['SAVE locales', 'savekey("locales"'],
+            ['SAVE localActivo', 'savekey("localactivoid"'],
+            ['SET productos carga', 'setproductos(pr'],
+            ['SET pedidos carga', 'setpedidos(pe'],
+            ['SET locales carga', 'setlocales(loc'],
+            ['SET localActivo', 'setlocalactivoid('],
+            ['HELPER productoEsDelLocalActivo', 'function productoesdellocalactivo'],
+            ['HELPER albaranEsDelLocalActivo', 'function albaranesdellocalactivo'],
+            ['HELPER albaranEsDelLocalActivo alt', 'function albaranesdellocal'],
+            ['HELPER exact albaran predicate', 'albaranesdellocalactivo(alb'],
+            ['HELPER pedidoEsDelLocalActivo', 'function pedidoesdellocalactivo'],
+            ['LOOKUP productoPorId', 'const productoporid'],
+            ['LOOKUP productoPorId function', 'function productoporid'],
+            ['COMPONENT Recepcion', 'function recepcion('],
+            ['COMPONENT Productos', 'function productos('],
+            ['COMPONENT Pedidos', 'function pedidos('],
+            ['MIGRACION localId', 'localid: p2.localid ||'],
+            ['MIGRACION pedidos localId', 'localid: pe2.localid ||'],
+            ['MIGRACION general localId null', 'localid || null'],
+          ];
+
+          function positions(needle, limit=20) {
+            const out=[]; let p=0;
+            while(out.length<limit && (p=lower.indexOf(needle,p))!==-1){out.push(p);p+=Math.max(1,needle.length)}
+            return out;
+          }
+          function clean(s){return s.replace(/\s+/g,' ').replace(/[^\x20-\x7EÁÉÍÓÚÜÑáéíóúüñ¿¡]/g,' ')}
+
+          console.log('AUDITORÍA MIGRACIÓN LEGACY MULTI-LOCAL');
+          console.log('SHA:', process.env.GITHUB_SHA);
+          for(const [label,needle] of searches){
+            const ps=positions(needle);
+            console.log(`\n===== ${label} | ${needle} | ${ps.length} ocurrencias =====`);
+            ps.slice(0,8).forEach((p,i)=>{
+              console.log(`--- ${i+1} @${p} ---`);
+              console.log(clean(src.slice(Math.max(0,p-2200),Math.min(src.length,p+5200))));
+            });
+          }
+          NODE

@@ -1,0 +1,121 @@
+{
+  "pm": "PM10",
+  "punto": 6,
+  "hallazgo": "LA-013",
+  "modulo": "Recepción",
+  "estado": "VALIDADO",
+  "fecha": "2026-09-05",
+  "rama": "pm10-validaciones-altas-datos-legados",
+  "base_diagnostico_final": "02431ce93d31c32d492fef50e2345301706fe12c",
+  "commit_funcional": "91860ef67e94fbfe60e498408f61cd2f5d33381d",
+  "fuente_blob_sha": "e22f8a6f70c023cc55e42fafd87b020b42458170",
+  "workflow_exitoso": 33969847361,
+  "diagnostico": {
+    "recibirPedido_no_validaba_saldo_pendiente_antes_de_procesarRecepcion": true,
+    "lineas_invalidas_podian_filtrarse_y_permitir_mutacion_parcial": true,
+    "sobre_recepcion_podia_mutar_stock_antes_de_detectarse": true,
+    "cantidad_directa_podia_multiplicarse_por_udsPorCaja_del_producto": true,
+    "productos_repetidos_en_pedido_podian_duplicar_cantidadRecibida": true,
+    "confirmarAlbaran_ligado_referenciaba_pedidos_sin_recibirlo_en_la_logica": true,
+    "albaran_ligado_no_validaba_exceso_antes_de_procesarRecepcion": true,
+    "ui_directa_limpiaba_captura_sin_comprobar_resultado": true,
+    "ui_albaran_cerraba_editor_sin_comprobar_error_de_dominio": true
+  },
+  "contrato_congelado": {
+    "pendiente": "cantidadPedida - cantidadRecibidaAcumulada",
+    "cantidad_a_recibir_finita_y_mayor_que_cero": true,
+    "cantidad_a_recibir_menor_o_igual_que_pendiente": true,
+    "recepcion_parcial_valida": true,
+    "recepciones_parciales_acumulables": true,
+    "recepcion_exacta_al_pendiente_valida": true,
+    "sobre_recepcion_rechazada_antes_de_procesarRecepcion": true,
+    "lote_todo_o_nada": true,
+    "cantidadRecibida_aumenta_exactamente_por_lo_aceptado": true,
+    "contexto_local_explicito": true
+  },
+  "correccion": {
+    "validador": "validarRecepcionPedidoPM10",
+    "normalizador_unidades": "unidadesRecepcionLineaPM10",
+    "aplicador_acumulado": "aplicarRecepcionPedidoPM10",
+    "ruta_directa_valida_antes_de_procesarRecepcion": true,
+    "ruta_albaran_ligado_valida_antes_de_procesarRecepcion": true,
+    "captura_directa_interpreta_Cant_hoy_como_unidades": true,
+    "albaran_convierte_cantidad_por_udsPorCaja_para_comparar_con_pendiente": true,
+    "productos_repetidos_agregan_pendiente_y_reparten_recepcion_sin_duplicar": true,
+    "pedidos_se_inyecta_en_crearLogicaAlbaranes": true,
+    "ui_directa_conserva_datos_y_muestra_error_si_falla": true,
+    "ui_albaran_ligado_conserva_editor_si_falla": true,
+    "orden": "parsear_validar_resolver_referencias_mutar_persistir"
+  },
+  "tests": {
+    "archivo": "tests/pm10/p06-recepcion-contract.mjs",
+    "resultado": "OK",
+    "casos": [
+      "parcial_dentro_del_pendiente",
+      "exacto_al_pendiente",
+      "exceso_minimo",
+      "lote_multilinea_con_una_linea_excesiva",
+      "cero",
+      "negativo",
+      "texto_no_numerico",
+      "Infinity",
+      "producto_vacio",
+      "producto_inexistente",
+      "producto_otro_local",
+      "producto_no_incluido_en_pedido",
+      "precio_negativo",
+      "precio_no_numerico",
+      "iva_fuera_de_rango",
+      "sin_lineas",
+      "sin_local_activo",
+      "estado_previo_con_recibido_mayor_que_pedido",
+      "albaran_cantidad_por_udsPorCaja",
+      "albaran_exceso_convertido_a_unidades",
+      "producto_repetido_en_pedido_sin_doble_conteo",
+      "varias_recepciones_parciales",
+      "estado_Parcial_y_Recibido",
+      "sobre_recepcion_no_llama_procesarRecepcion",
+      "sobre_recepcion_no_llama_setPedidos",
+      "ruta_valida_incrementa_exactamente",
+      "ui_directa_no_limpia_antes_de_comprobar_exito",
+      "ui_albaran_no_cierra_antes_de_comprobar_exito"
+    ]
+  },
+  "regresiones": {
+    "PM10_LA012_pedidos": "OK",
+    "PM10_LA011_productos": "OK",
+    "PM09_heredadas_disponibles": "OK"
+  },
+  "ejecuciones": {
+    "diagnostico_final": {
+      "run_id": 33969528008,
+      "conclusion": "success"
+    },
+    "primer_intento_correccion": {
+      "run_id": 33969774161,
+      "conclusion": "failure",
+      "causa": "una asercion estatica del test UI comparaba contra un setActivos anterior y ajeno al boton de recepcion; el parche funcional y node --check ya habian pasado, pero no se genero commit funcional por el fallo del test"
+    },
+    "correccion_final": {
+      "run_id": 33969847361,
+      "conclusion": "success"
+    }
+  },
+  "datos_qa": {
+    "escrituras_persistentes": false,
+    "supabase_migraciones": false,
+    "limpieza_requerida": false
+  },
+  "alcance": {
+    "recepcion_ligada_a_pedido_directa": "cerrada",
+    "recepcion_ligada_a_pedido_por_albaran_o_foto_ia": "cerrada_por_barrera_en_confirmarAlbaran",
+    "albaran_generico_no_ligado_a_pedido": "no_ampliado_fuera_de_LA013"
+  },
+  "produccion": {
+    "main_modificado": false,
+    "netlify_modificado": false,
+    "supabase_produccion_modificado": false,
+    "merge_realizado": false
+  },
+  "nota": "LA-013 queda cerrada para la recepción asociada a pedidos: ninguna cantidad puede superar el saldo pendiente y una sola línea inválida bloquea el lote antes de la primera mutación de stock."
+}

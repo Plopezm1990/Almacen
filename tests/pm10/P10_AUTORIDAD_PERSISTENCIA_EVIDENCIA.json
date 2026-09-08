@@ -1,0 +1,50 @@
+{
+  "pm": "PM10",
+  "punto": 10,
+  "mejora": "MEJ-07",
+  "estado": "VALIDADO",
+  "fecha": "2026-09-05",
+  "rama": "pm10-validaciones-altas-datos-legados",
+  "base_punto": "298ad94ca1d0e1a852c9228b1413f866cab16d29",
+  "commit_funcional": "89e7a9135129eed6593764ebfb4ac1febfe81f17",
+  "workflow_final": 33971768153,
+  "diagnostico": {
+    "persistencia_normal": "saveKey serializa con JSON.stringify y delega en window.storage.set; no normaliza ni corrige valores de dominio.",
+    "storage_wrapper": "window.storage.set aplica claves controladas, contexto operativo y permisos antes de delegar en setOriginal.",
+    "backend_qa": "almacen_kv sigue siendo una tabla genérica JSONB. En QA no existen tablas dedicadas de productos, pedidos, recepción, personal o encargos, ni RPC públicas dedicadas a esas altas/ediciones.",
+    "rls_almacen_kv": "Las políticas de almacen_kv limitan SELECT/INSERT/UPDATE/DELETE por empresa_id/local_id, pero no expresan invariantes numéricas o de negocio de los cinco dominios PM10.",
+    "bypass_detectado": "DiagnosticoSincronizacion reintentaba pendientes mediante una escritura directa a public.almacen_kv, saltándose window.storage.set y por tanto la capa autorizada de permisos/contexto."
+  },
+  "correccion": {
+    "ruta_reintento": "El reintento ya no ejecuta supabase.from('almacen_kv').upsert directamente. Parsea el valor pendiente y delega en window.storage.set(key, valorLocal, false).",
+    "autoridad_dominio": "Productos, Pedidos, Recepción, Personal y Encargos mantienen sus validadores PM10 reutilizables antes de la primera mutación.",
+    "decision_backend": "No se añadió un trigger JSON de reglas de negocio a almacen_kv: sería acoplar una tabla genérica a cinco esquemas frontend y podría bloquear datos legados completos. Mientras estos dominios sigan en almacen_kv, la barrera autoritativa de dominio permanece en la lógica programática previa a setState/save, y la autoridad de contexto/permisos permanece en window.storage/RLS. Si se migran a tablas/RPC dedicadas, sus invariantes deberán trasladarse al backend específico.",
+    "migracion": "NO NECESARIA"
+  },
+  "supabase_qa_read_only": {
+    "tablas_relevantes": ["almacen_kv"],
+    "funciones_relevantes": ["pm05_scope_almacen_kv"],
+    "almacen_kv_columnas": ["key text", "value jsonb", "updated_at timestamptz", "empresa_id text", "local_id text"],
+    "constraints_almacen_kv": ["PRIMARY KEY (key)"],
+    "escrituras_realizadas": false
+  },
+  "pruebas": {
+    "node_check_fuente": "OK",
+    "p10_autoridad_persistencia_contract": "OK",
+    "p09_transversal": "OK",
+    "p08_encargos": "OK",
+    "p07_personal": "OK",
+    "p06_recepcion": "OK",
+    "p05_pedidos": "OK",
+    "p04_productos": "OK",
+    "pm09_regresiones_disponibles": "OK"
+  },
+  "incidencia_test": "La primera ejecución P10 falló porque el test recortaba DiagnosticoSincronizacion al encontrar una función anidada; se corrigió solo el test. La ejecución final terminó success y produjo el commit funcional.",
+  "entornos": {
+    "main_modificado": false,
+    "netlify_produccion": false,
+    "supabase_produccion": false,
+    "supabase_qa_migration": false,
+    "datos_reales": false
+  }
+}

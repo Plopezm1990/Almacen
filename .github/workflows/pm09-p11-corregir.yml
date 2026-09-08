@@ -1,0 +1,67 @@
+name: PM09 Punto 11 conciliar IVA
+on:
+  push:
+    branches: [pm09-conciliacion-ventas-analitica]
+    paths:
+      - 'tools/corregir_pm09_p11_iva.py'
+      - 'tools/corregir_pm09_p11_iva_v2.py'
+      - 'tests/pm09/p11-iva-contract.mjs'
+      - '.github/workflows/pm09-p11-corregir.yml'
+permissions:
+  contents: write
+jobs:
+  corregir:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pm09-conciliacion-ventas-analitica
+      - name: Aplicar punto 11
+        run: |
+          set -euo pipefail
+          python tools/corregir_pm09_p11_iva_v2.py
+          node --check fuente.js
+      - name: Validar contrato IVA
+        run: |
+          set -euo pipefail
+          node tests/pm09/p11-iva-contract.mjs
+      - name: Regresiones PM09 previas
+        run: |
+          set -euo pipefail
+          node tests/pm09/p10-caja-contract.mjs
+          node tests/pm09/p09-historial-contract.mjs
+          node tests/pm09/la007-results-contract.mjs
+          node tests/pm09/la008-rotation-margin-contract.mjs
+      - name: Regresiones heredadas
+        run: |
+          set -euo pipefail
+          node tests/pm05/frontend-contract.mjs
+          node tests/pm07/frontend-contract.mjs
+          node tests/pm08/frontend-contract.mjs
+          node tests/pm08/migration-contract.mjs
+          node tests/pm08/replay-scope-contract.mjs
+      - name: Generar evidencia punto 11
+        run: |
+          set -euo pipefail
+          SHA256=$(sha256sum fuente.js | awk '{print $1}')
+          cat > tests/pm09/P11_IVA_EVIDENCIA.json <<EOF
+          {
+            "punto": 11,
+            "estado": "CORREGIDO_PENDIENTE_DE_QA",
+            "rama": "pm09-conciliacion-ventas-analitica",
+            "baseEntradaWorkflow": "${GITHUB_SHA}",
+            "fuenteSha256": "${SHA256}",
+            "riesgoReproducido": "LibroIva sumaba solo VENTA: ignoraba REVERSO y DEVOLUCION_CLIENTE y podia reconstruir IVA desde la ficha actual del producto",
+            "cambio": "IVA repercutido se deriva de VENTA + REVERSO + devoluciones con reembolso usando snapshot historico; SIN_REEMBOLSO y datos historicos insuficientes quedan en revision explicita. Caja/medio de pago no determinan IVA.",
+            "alcance": "fuente.js en rama PM09; sin cambios de esquema ni produccion"
+          }
+          EOF
+      - name: Guardar candidato solo en PM09
+        run: |
+          set -euo pipefail
+          git config user.name "Plopezm1990"
+          git config user.email "pedroroger1990@gmail.com"
+          git add fuente.js tests/pm09/P11_IVA_EVIDENCIA.json
+          git diff --cached --quiet && exit 0
+          git commit -m "PM09: conciliar Libro IVA punto 11"
+          git push origin HEAD:pm09-conciliacion-ventas-analitica

@@ -1,0 +1,113 @@
+{
+  "format": "la-suite-post-pm08-patch-series-v1",
+  "baseCommit": "7b2aa0f1500ecfc5dce551196f5434655411a314",
+  "baseArtifactSha256": "372813f2230054306b0d37eb3825938832b68f62ea88a484dde0b1dfcdb075ed",
+  "targetFuenteCommit": "a4a1866f4e81c4651162105e33d37515cb53a7f2",
+  "targetArtifactSha256": "8dbd5f9be4c172eaa5b28ce84a668414edcd2ec8c9941a2d748c466aa4bbd48c",
+  "patchCount": 17,
+  "commits": [
+    {
+      "order": 1,
+      "commit": "df8f6ad101910f2d7282eaa6ab030ae3d2878667",
+      "date": "2026-09-05T10:07:54Z",
+      "message": "PM09: conciliar anulaciones en Resultados (LA-007) "
+    },
+    {
+      "order": 2,
+      "commit": "43d5c1ccad0b460da1028d274ed1f1bb668ddf37",
+      "date": "2026-09-05T10:18:55Z",
+      "message": "PM09: conciliar unidades rotacion y margen (LA-008) "
+    },
+    {
+      "order": 3,
+      "commit": "1f269ead83d0c132ed6bd764cacf70ce8d415574",
+      "date": "2026-09-05T10:27:04Z",
+      "message": "PM09: conciliar Historial de ventas punto 9 "
+    },
+    {
+      "order": 4,
+      "commit": "caf0304252753be3aebc050cfeba3a21afa2f6a8",
+      "date": "2026-09-05T10:55:44Z",
+      "message": "PM09: conciliar Caja punto 10 "
+    },
+    {
+      "order": 5,
+      "commit": "310d7f9590e676bef104e52e7253eae7707df931",
+      "date": "2026-09-05T11:19:18Z",
+      "message": "PM09: conciliar Libro IVA punto 11 "
+    },
+    {
+      "order": 6,
+      "commit": "e02baa6a7259c8d79cdc77162457162f34744bfb",
+      "date": "2026-09-05T11:24:53Z",
+      "message": "PM09: conciliar Resultados y margen punto 12 "
+    },
+    {
+      "order": 7,
+      "commit": "78cfd9416722fda587ae2761a3d738bc2a38df54",
+      "date": "2026-09-05T11:51:05Z",
+      "message": "PM09: cerrar candidato casos economicos punto 15 "
+    },
+    {
+      "order": 8,
+      "commit": "2ff60ed74005fa86d7fe1115c24ffeb7208ef787",
+      "date": "2026-09-05T13:19:48Z",
+      "message": "PM10: corregir LA-011 validaciones de productos "
+    },
+    {
+      "order": 9,
+      "commit": "dcb82fba54e2e325d9bdcead379218c3bde9777a",
+      "date": "2026-09-05T13:21:28Z",
+      "message": "PM10: corregir LA-011 validaciones de productos "
+    },
+    {
+      "order": 10,
+      "commit": "83b45254bdacba34645ce98c895ac4bc007a3fb8",
+      "date": "2026-09-05T13:31:00Z",
+      "message": "PM10: corregir LA-012 validaciones de pedidos "
+    },
+    {
+      "order": 11,
+      "commit": "91860ef67e94fbfe60e498408f61cd2f5d33381d",
+      "date": "2026-09-05T13:46:09Z",
+      "message": "PM10: corregir LA-013 validaciones de recepción "
+    },
+    {
+      "order": 12,
+      "commit": "ee28f71cc4975c537d1b42102bd74aa179cf7d2e",
+      "date": "2026-09-05T13:59:18Z",
+      "message": "PM10: corregir LA-017 validaciones de personal "
+    },
+    {
+      "order": 13,
+      "commit": "c5ad4872e172680a686fba9adec5c5841c7ed33f",
+      "date": "2026-09-05T14:08:20Z",
+      "message": "PM10: corregir LA-018 validaciones de encargos "
+    },
+    {
+      "order": 14,
+      "commit": "89e7a9135129eed6593764ebfb4ac1febfe81f17",
+      "date": "2026-09-05T14:25:31Z",
+      "message": "PM10: cerrar bypass de persistencia en reintentos "
+    },
+    {
+      "order": 15,
+      "commit": "0624daa6720fc5dcb96d12ed074587c29a631bf7",
+      "date": "2026-09-05T14:48:54Z",
+      "message": "PM10: robustecer altas y recepciones punto 11 "
+    },
+    {
+      "order": 16,
+      "commit": "90235fa862c1d96492143ac9720a30f3295958a3",
+      "date": "2026-09-05T14:58:07Z",
+      "message": "PM10: detectar y señalizar datos legados punto 12 "
+    },
+    {
+      "order": 17,
+      "commit": "a4a1866f4e81c4651162105e33d37515cb53a7f2",
+      "date": "2026-09-05T15:13:19Z",
+      "message": "PM10: aislar contexto y bloquear local inactivo punto 13 "
+    }
+  ],
+  "rebuildContract": "npm ci + npm run check + npm run build; luego aplicar los parches en orden con patch --batch --fuzz=0 -p1 sobre dist/fuente.js; el SHA final debe coincidir con fuente.js."
+}

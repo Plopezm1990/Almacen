@@ -1,0 +1,126 @@
+name: PM14 P07 Fallos replay y concurrencia
+
+on:
+  push:
+    branches: [claude/pm14-encargos-anticipos-i8ye52]
+    paths:
+      - 'fuente.js'
+      - 'tests/pm14/**'
+      - '.github/workflows/pm14-p07-fallos-replay-concurrencia.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar-p07:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: pm14_p02_test
+          POSTGRES_PASSWORD: pm14-ci-only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main y alcance P07 (sin cambios en supabase/ ni en fuente.js de producto)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          PM06_BASE='370cc5ff63b843716c075a20166be8d0b169153e'
+          unexpected="$(git diff --name-only "$PM06_BASE"..HEAD -- supabase/ || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'PM14 P07 es un punto de verificacion: no debe tocar supabase/' >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+          echo 'PM14_P07_MAIN_FROZEN=PASS'
+          echo 'PM14_P07_SIN_CAMBIOS_SUPABASE=PASS'
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+      - name: Instalar dependencias del contrato Postgres
+        run: npm install --silent
+        working-directory: tests/pm14/db
+      - name: Esperar Postgres
+        run: |
+          for i in $(seq 1 20); do pg_isready -h 127.0.0.1 -p 5432 -U postgres && break; sleep 2; done
+        env:
+          PGPASSWORD: pm14-ci-only
+      - name: Crear base de pruebas desechable
+        run: |
+          PGPASSWORD=pm14-ci-only dropdb -h 127.0.0.1 -U postgres --if-exists pm14_p02_test
+          PGPASSWORD=pm14-ci-only createdb -h 127.0.0.1 -U postgres pm14_p02_test
+      - name: Contrato PM14 P07 sobre Postgres real (concurrencia con dos conexiones)
+        env:
+          PM14_TEST_DATABASE_URL: postgresql://postgres:pm14-ci-only@127.0.0.1:5432/pm14_p02_test
+        run: node tests/pm14/db/p07-postgres-concurrencia-contract.mjs
+      - name: Contrato PM14 P07 frontend (carrera real Promise.all + riesgo documentado)
+        run: node tests/pm14/p07-encargos-concurrencia-contract.mjs
+      - name: Regresión completa Encargos/Clientes (P01-P06, PM10 P08)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm14/p01-encargos-identidad-contract.mjs
+          node tests/pm14/p02-encargos-frontend-contract.mjs
+          node tests/pm14/p03-encargos-entrega-contract.mjs
+          node tests/pm14/p04-encargos-cancelacion-contract.mjs
+          node tests/pm14/p05-encargos-devolucion-contract.mjs
+          node tests/pm14/p06-clientes-aislamiento-contract.mjs
+          node tests/pm10/p08-encargos-contract.mjs
+          echo 'PM14_P07_REGRESION_ENCARGOS=PASS'
+      - name: Regresión TPV/Caja PM07-PM09
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm07/frontend-contract.mjs
+          for t in tests/pm09/*.mjs; do node "$t"; done
+          echo 'PM14_P07_REGRESION_PM07_PM09=PASS'
+      - name: Sin secretos
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -Eqi 'service_role|SUPABASE_SERVICE_ROLE_KEY|sb_secret_' \
+            tests/pm14/db/p07-postgres-concurrencia-contract.mjs \
+            tests/pm14/p07-encargos-concurrencia-contract.mjs \
+            tests/pm14/P07_CIERRE_FALLOS_REPLAY_CONCURRENCIA.md
+          echo 'PM14_P07_NO_SECRET=PASS'
+
+  gate-final:
+    needs: validar-p07
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: pm14_p02_test
+          POSTGRES_PASSWORD: pm14-ci-only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar dependencias del contrato Postgres
+        run: npm install --silent
+        working-directory: tests/pm14/db
+      - name: Gate PM14 P07
+        env:
+          PM14_TEST_DATABASE_URL: postgresql://postgres:pm14-ci-only@127.0.0.1:5432/pm14_p02_test
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 20); do pg_isready -h 127.0.0.1 -p 5432 -U postgres && break; sleep 2; done
+          node tests/pm14/db/p07-postgres-concurrencia-contract.mjs
+          node tests/pm14/p07-encargos-concurrencia-contract.mjs
+          echo 'PM14_P07_GATE_FINAL=PASS'

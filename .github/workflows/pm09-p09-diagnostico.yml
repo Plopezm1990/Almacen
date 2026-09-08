@@ -1,0 +1,32 @@
+name: PM09 Punto 9 diagnostico Historial
+
+on:
+  push:
+    branches: [pm09-conciliacion-ventas-analitica]
+    paths:
+      - 'tools/diagnosticar_pm09_p09.py'
+      - '.github/workflows/pm09-p09-diagnostico.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  diagnostico:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pm09-conciliacion-ventas-analitica
+      - name: Extraer Historial actual
+        run: |
+          set -euo pipefail
+          python tools/diagnosticar_pm09_p09.py
+      - name: Guardar diagnostico en PM09
+        run: |
+          set -euo pipefail
+          git config user.name "Plopezm1990"
+          git config user.email "pedroroger1990@gmail.com"
+          git add tests/pm09/P09_HISTORIAL_DIAGNOSTICO.txt
+          git diff --cached --quiet && exit 0
+          git commit -m "PM09: conservar diagnostico Historial punto 9"
+          git push origin HEAD:pm09-conciliacion-ventas-analitica

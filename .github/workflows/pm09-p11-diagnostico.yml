@@ -1,0 +1,30 @@
+name: PM09 Punto 11 diagnostico IVA
+on:
+  push:
+    branches: [pm09-conciliacion-ventas-analitica]
+    paths:
+      - 'tools/diagnosticar_pm09_p11_iva.py'
+      - '.github/workflows/pm09-p11-diagnostico.yml'
+permissions:
+  contents: write
+jobs:
+  diagnostico:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pm09-conciliacion-ventas-analitica
+      - name: Extraer diagnostico IVA
+        run: |
+          set -euo pipefail
+          python tools/diagnosticar_pm09_p11_iva.py
+          node --check fuente.js
+      - name: Guardar diagnostico en PM09
+        run: |
+          set -euo pipefail
+          git config user.name "Plopezm1990"
+          git config user.email "pedroroger1990@gmail.com"
+          git add tests/pm09/P11_IVA_DIAGNOSTICO.txt
+          git diff --cached --quiet && exit 0
+          git commit -m "PM09: conservar diagnostico IVA punto 11"
+          git push origin HEAD:pm09-conciliacion-ventas-analitica

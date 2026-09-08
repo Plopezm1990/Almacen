@@ -1,0 +1,22 @@
+name: Auditar fusión de productos con traspasos entre locales
+on:
+  push:
+    branches: [la-suite-identidad]
+    paths: ['.github/workflows/auditar-fusion-productos-traspasos.yml']
+  workflow_dispatch:
+jobs:
+  auditar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspeccionar referencias al fusionar productos
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('fuente.js').read_text(encoding='utf-8', errors='ignore')
+          for term in ['fusionadoEnId: destino.id','setTraspasos((arr)','productoId === origen.id','productoOrigenId','productoDestinoId']:
+            print(f'\n===== {term} =====')
+            for m in list(re.finditer(re.escape(term),s))[:20]:
+              print(s[max(0,m.start()-3500):min(len(s),m.end()+6500)].replace('\n',' ')[:10000])
+          PY

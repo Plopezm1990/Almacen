@@ -1,0 +1,39 @@
+{
+  "punto": 13,
+  "estado": "VALIDADO",
+  "rama": "pm09-conciliacion-ventas-analitica",
+  "baseValidada": "cb4c85e8e7cc5363bbbf5a7ffcc62861d9382450",
+  "diagnostico": "El punto 13 no requiere una nueva correccion funcional adicional: la semantica de unidades y rotacion fue corregida en LA-008 y ha seguido pasando las regresiones de los puntos 9-12.",
+  "contratoPm09": {
+    "venta": "suma unidades comerciales netas",
+    "reverso": "resta exactamente las unidades de la familia de venta original",
+    "devolucionCliente": "resta unidades de la familia original y nunca se contabiliza como venta nueva",
+    "ventaAnuladaCompleta": "unidades netas 0 y rotacion 0",
+    "ventaDevueltaParcial": "rotacion igual a unidades vendidas menos unidades devueltas",
+    "ventaDevueltaTotal": "unidades netas 0 y rotacion 0",
+    "agrupacion": "la rotacion se calcula por familia de venta original + correcciones trazables",
+    "noNegativa": "una familia completamente corregida no produce rotacion negativa; contribuye 0 al consumo"
+  },
+  "reutilizacionLA008": {
+    "commitFuncional": "43d5c1ccad0b460da1028d274ed1f1bb668ddf37",
+    "evidencia": "tests/pm09/LA008_ROTACION_MARGEN_EVIDENCIA.json",
+    "resultado": "VALIDADO"
+  },
+  "validacionQAReadOnly": {
+    "metodo": "CTE de solo lectura en L&A Suite QA; sin INSERT/UPDATE/DELETE",
+    "escenarios": {
+      "A_venta2_anulada2": {"unidadesNetas": 0, "rotacion": 0},
+      "B_venta2_devuelta1": {"unidadesNetas": 1, "rotacion": 1},
+      "C_venta2_devuelta2": {"unidadesNetas": 0, "rotacion": 0}
+    },
+    "total": {"unidadesNetas": 1, "rotacionNeta": 1}
+  },
+  "regresionActual": {
+    "workflowP12": 33963262245,
+    "resultado": "success",
+    "la008RotationMarginContract": "OK",
+    "nota": "El workflow del punto 12 se ejecuta sobre la fuente actual, incluye LA-008 y finalizo en verde antes del cierre de este punto."
+  },
+  "alcance": "Evidencia de cierre del punto 13. No cambia fuente.js, no crea migraciones, no toca main, produccion ni Netlify.",
+  "notaCierrePM09": "Deploy Preview, smoke visual global y cierre del paquete permanecen para el punto 18."
+}

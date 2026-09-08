@@ -1,0 +1,47 @@
+name: Auditar Caja multi-local
+on:
+  push:
+    branches: [la-suite-identidad]
+    paths:
+      - '.github/workflows/auditar-caja-multilocal.yml'
+  workflow_dispatch:
+jobs:
+  auditar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspeccionar lógica, escrituras y vistas de Caja
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          lines=s.splitlines()
+          patterns=[
+            'function crearLogicaCaja',
+            'function crearLogicaMovimientosCaja',
+            'arqueosDelLocalActivo',
+            'movimientosCajaDelLocalActivo',
+            'setArqueos',
+            'setMovimientosCaja',
+            'registrarMovimientoCaja',
+            'movimientosCaja:',
+            'arqueos:',
+            'Caja',
+            'Arqueo',
+            'localId'
+          ]
+          seen=set()
+          for pat in patterns:
+            print('\n===== PATRON',pat,'=====')
+            hits=[i for i,l in enumerate(lines,1) if pat.lower() in l.lower()]
+            print('HITS',hits[:120])
+            # Para patrones amplios no inundar; priorizar zonas cercanas a caja/arqueos.
+            limit=30 if pat.lower() in ('caja','arqueo','localid') else 60
+            for n in hits[:limit]:
+              key=(pat,n)
+              if key in seen: continue
+              seen.add(key)
+              a=max(1,n-14); b=min(len(lines),n+32)
+              print(f'--- contexto {a}:{b} ---')
+              for j in range(a,b+1): print(f'{j:06d}: {lines[j-1]}')
+          PY

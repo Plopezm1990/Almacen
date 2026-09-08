@@ -1,0 +1,43 @@
+name: PM10 P06 diagnostico LA-013 recepcion target
+on:
+  push:
+    branches: [pm10-validaciones-altas-datos-legados]
+    paths:
+      - '.github/workflows/pm10-p06-diagnostico-recepcion-target.yml'
+permissions:
+  contents: read
+jobs:
+  diagnostico:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extraer bloques exactos recepcion
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          def show(label, start_pat, end_pat=None, before=300, after=9000):
+            print('\n===== '+label+' =====')
+            i=s.find(start_pat)
+            if i<0:
+              print('NO ENCONTRADO', start_pat); return
+            if end_pat:
+              j=s.find(end_pat, i+len(start_pat))
+              if j<0: j=min(len(s), i+after)
+              else: j=min(len(s), j+before)
+              a=max(0,i-before); b=j
+            else:
+              a=max(0,i-before); b=min(len(s),i+after)
+            print(s[a:b].replace('\n','\\n'))
+          show('PROCESAR_RECEPCION','function procesarRecepcion(', 'function ', 400, 12000)
+          print('\n===== LLAMADAS recibirPedido =====')
+          for m in re.finditer(r'(?<!function )recibirPedido\s*\(',s):
+            a=max(0,m.start()-1800); b=min(len(s),m.start()+4500)
+            print('\nOFFSET',m.start(),'\n',s[a:b].replace('\n','\\n'))
+          print('\n===== TEXTOS recepción / Recibir pedido =====')
+          for q in ['Recibir pedido','Recepción','Recibir','cantidad a recibir','Cantidad a recibir']:
+            for m in list(re.finditer(re.escape(q),s,re.I))[:12]:
+              a=max(0,m.start()-1000); b=min(len(s),m.start()+2500)
+              print('\nQ',q,'OFFSET',m.start(),'\n',s[a:b].replace('\n','\\n'))
+          PY

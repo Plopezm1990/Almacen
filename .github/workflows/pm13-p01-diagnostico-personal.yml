@@ -1,0 +1,31 @@
+name: PM13 P01 diagnostico altas y bajas personal
+on:
+  push:
+    branches: [pm13-p01-altas-bajas-personal]
+    paths:
+      - '.github/workflows/pm13-p01-diagnostico-personal.yml'
+      - 'tests/pm13/p01-diagnostico-personal.mjs'
+permissions:
+  contents: write
+jobs:
+  diagnostico:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar main congelado
+        shell: bash
+        run: |
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+      - name: Sintaxis fuente actual
+        run: node --check fuente.js
+      - name: Diagnosticar semantica actual de Personal
+        run: node tests/pm13/p01-diagnostico-personal.mjs
+      - name: Guardar evidencia del diagnostico
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/pm13/P01_DIAGNOSTICO_PERSONAL.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'docs(pm13): guardar diagnostico P01 personal'
+          git push

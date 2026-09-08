@@ -1,0 +1,42 @@
+name: PM13 P03 diagnostico fichajes
+
+on:
+  push:
+    branches: [pm13-p03-fichajes]
+    paths:
+      - 'tests/pm13/p03-diagnostico-fichajes.mjs'
+      - '.github/workflows/pm13-p03-diagnostico-fichajes.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  diagnostico:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+      - name: Sintaxis fuente actual
+        run: node --check fuente.js
+      - name: Diagnosticar Fichajes actual
+        run: node tests/pm13/p03-diagnostico-fichajes.mjs
+      - name: Guardar evidencia
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/pm13/P03_DIAGNOSTICO_FICHAJES.json tests/pm13/P03_FICHAJES_ABIERTOS.txt
+          if git diff --cached --quiet; then
+            echo 'Diagnóstico ya actualizado'
+            exit 0
+          fi
+          git commit -m 'docs(pm13): guardar diagnostico P03 fichajes'
+          git push

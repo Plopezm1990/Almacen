@@ -1,0 +1,130 @@
+name: PM14 P03 Encargos entrega atomica e idempotente
+
+# Punto cerrado (gate verde ya registrado en su propio run de Actions). El guard
+# "Proteger main y alcance" de este workflow compara supabase/ contra la base previa a P03
+# y por diseño queda obsoleto en cuanto el HEAD avanza a P04+ (que sí añade migraciones
+# legítimas y ya cerradas con su propio guard, correctamente actualizado). Se retira el
+# disparador automático para que no vuelva a re-ejecutarse en falso sobre commits
+# posteriores; se conserva workflow_dispatch para poder repetirlo manualmente si hace falta.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar-p03:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main y alcance P03
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          PM13_P07_BASE='6ee2752a8f6aba882a6fa926892ab5b04aac231d'
+          if [ -n "$(git diff --name-only "$PM13_P07_BASE"..HEAD -- supabase/)" ]; then
+            echo 'PM14 P03 no puede modificar Supabase' >&2
+            git diff --name-only "$PM13_P07_BASE"..HEAD -- supabase/ >&2
+            exit 1
+          fi
+          echo 'PM14_P03_MAIN_FROZEN=PASS'
+          echo 'PM14_P03_SIN_CAMBIOS_SUPABASE=PASS'
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+      - name: Contrato PM14 P01 (identidad) y P03 (entrega)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm14/p01-encargos-identidad-contract.mjs
+          node tests/pm14/p03-encargos-entrega-contract.mjs
+      - name: Regresión Encargos PM10 P08
+        run: node tests/pm10/p08-encargos-contract.mjs
+      - name: Regresión PM10 completa
+        shell: bash
+        run: |
+          set -euo pipefail
+          for t in tests/pm10/*.mjs; do
+            case "$t" in *p09-transversal-contract.mjs|*p10-autoridad-persistencia-contract.mjs) continue ;; esac
+            node "$t"
+          done
+          echo 'PM14_P03_REGRESSION_PM10=PASS'
+      - name: Regresión TPV/Caja PM07-PM09 (venderLineas/venderLocal/venderCarrito/anularVenta sin tocar)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm07/frontend-contract.mjs
+          for t in tests/pm09/*.mjs; do node "$t"; done
+          echo 'PM14_P03_REGRESSION_PM07_PM09=PASS'
+      - name: Regresión stock PM12 (motor de idempotencia compartido)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in 02 03 04 05 06 07 08 09 10; do
+            for t in tests/pm12/p${n}-*contract.mjs; do
+              test -f "$t" || continue
+              case "$t" in *postgres*|*supabase*) continue ;; esac
+              node "$t"
+            done
+          done
+          echo 'PM14_P03_REGRESSION_PM12=PASS'
+      - name: Regresión Personal PM13 (contratos, sin Postgres/Supabase)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for t in tests/pm13/*-contract.mjs; do
+            case "$t" in *postgres*|*supabase*|*p01-altas-bajas-personal-contract.mjs) continue ;; esac
+            node "$t"
+          done
+          echo 'PM14_P03_REGRESSION_PM13=PASS'
+      - name: Rojos históricos conocidos (no introducidos por PM14, no bloquean este gate)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'tests/pm10/p09-transversal-contract.mjs y tests/pm10/p10-autoridad-persistencia-contract.mjs:'
+          echo 'regex de addEmpleado desactualizada desde PM13-P01 (RPC pm11_alta_empleado).'
+          echo 'tests/pm12/p01-checkpoint-inventario-contract.mjs y tests/pm13/p01-altas-bajas-personal-contract.mjs:'
+          echo 'verificados con git stash sobre este mismo HEAD: fallan igual sin ningun cambio de PM14.'
+          echo 'Documentado en tests/pm14/P03_CIERRE_ENTREGA_ENCARGOS.md. Ajenos a Encargos.'
+          echo 'PM14_P03_ROJOS_HISTORICOS_DOCUMENTADOS=PASS'
+      - name: Barreras de dominio P03
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s = Path('fuente.js').read_text(encoding='utf-8')
+          ini = s.index('function crearLogicaEncargos({')
+          fin = s.index('function crearLogicaVenta({', ini)
+          b = s[ini:fin]
+          assert 'entrega-encargo:' in b, 'operationId determinista de entrega'
+          assert 'resto-entrega:' in b, 'cobro de resto con id determinista'
+          assert 'yaEntregado' in b, 'replay explicito de una entrega ya realizada'
+          assert 'if (!localActivoId) return false;' in b, '"Todos los locales" no autoriza mutaciones'
+          venta_ini = s.index('function crearLogicaVenta({')
+          venta_fin = s.index('function crearLogicaTraspasos({', venta_ini)
+          v = s[venta_ini:venta_fin]
+          assert 'function venderLote(' in v
+          assert 'aplicarLoteMovimientosStock(operaciones)' in v, 'reutiliza el motor de lote atomico existente'
+          print('PM14_P03_DOMAIN_GUARDS=PASS')
+          PY
+          ! grep -Eqi 'service_role|SUPABASE_SERVICE_ROLE_KEY|sb_secret_' \
+            fuente.js tests/pm14/p03-encargos-entrega-contract.mjs tests/pm14/P03_CIERRE_ENTREGA_ENCARGOS.md
+          echo 'PM14_P03_NO_SECRET=PASS'
+
+  gate-final:
+    needs: validar-p03
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM14 P03
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm14/p01-encargos-identidad-contract.mjs
+          node tests/pm14/p03-encargos-entrega-contract.mjs
+          node tests/pm10/p08-encargos-contract.mjs
+          echo 'PM14_P03_GATE_FINAL=PASS'

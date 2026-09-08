@@ -1,0 +1,36 @@
+name: PM12 P04 cierre honesto UX
+on:
+  push:
+    branches: [pm12-conteo-estados-honestos]
+    paths:
+      - 'fuente.js'
+      - 'source-recovery/fuente-recuperado.js'
+      - 'index.html'
+      - 'pm12-conteo-estados-v1.js'
+      - 'tests/pm12/p04-cierre-honesto-ux-contract.mjs'
+      - 'tests/pm12/P04_CIERRE_HONESTO_UX.md'
+      - '.github/workflows/pm12-p04-cierre-honesto.yml'
+permissions:
+  contents: read
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Sintaxis de fuentes
+        run: |
+          node --check fuente.js
+          node --check source-recovery/fuente-recuperado.js
+          node --check pm12-conteo-estados-v1.js
+      - name: Contrato P04
+        run: node tests/pm12/p04-cierre-honesto-ux-contract.mjs
+      - name: Regresión P02 y P03
+        run: |
+          node tests/pm12/p02-estados-normalizacion-contract.mjs
+          node tests/pm12/p03-documento-corte-contract.mjs
+      - name: Producción congelada
+        run: |
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          echo "MAIN_CONGELADO=1"

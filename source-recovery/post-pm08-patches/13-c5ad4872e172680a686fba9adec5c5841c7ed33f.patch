@@ -1,0 +1,172 @@
+diff --git a/fuente.js b/fuente.js
+index 7a31657..5870995 100644
+--- a/fuente.js
++++ b/fuente.js
+@@ -102224,7 +102224,7 @@ function GestionAlmacen() {
+   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId });
+   const { venderCarrito, venderLocal, anularVenta, venderLineas } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId });
+   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
+-  const { addEncargo, updateEncargo, deleteEncargo, entregarEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, setProductos, setMovimientos, venderLineas, localActivoId });
++  const { addEncargo, updateEncargo, deleteEncargo, entregarEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLineas, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+   const { traspasarStock, traspasarEntreLocales } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales });
+   const { addArqueo, deleteArqueo, leerBorradorArqueo } = crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosCaja, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+   const { registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja } = crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arqueos, setArqueos, registrarAuditoria, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+@@ -105617,7 +105617,93 @@ function sincronizarCobroSe\u00F1al(cobros, se\u00F1al, se\u00F1alMedioPago, fec
+     ...resto
+   ];
+ }
+-function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, setProductos, setMovimientos, venderLineas, localActivoId }) {
++function validarEncargoPM10(data, { productos = [], clientes = [], localActivoId = null, empresaId = null, fechaCreacion = null } = {}) {
++  if (!localActivoId) return errorValidacionPM10("contexto_no_autorizado", "localId", "Selecciona un local activo para guardar el encargo.");
++  if (!data || typeof data !== "object" || Array.isArray(data)) return errorValidacionPM10("formato_invalido", "encargo", "El encargo no tiene un formato válido.");
++  if (data.localId && data.localId !== localActivoId) return errorValidacionPM10("referencia_otro_contexto", "localId", "El encargo pertenece a otro local.");
++
++  const clienteId = String(data.clienteId || "").trim();
++  if (!clienteId) return errorValidacionPM10("campo_obligatorio", "clienteId", "Selecciona o crea un cliente.");
++  const cliente = clientes.find((c22) => c22 && c22.id === clienteId);
++  if (!cliente) return errorValidacionPM10("referencia_inexistente", "clienteId", "El cliente seleccionado ya no existe o no está disponible.");
++  if (empresaId && cliente.empresaId && cliente.empresaId !== empresaId) return errorValidacionPM10("referencia_otro_contexto", "clienteId", "El cliente pertenece a otra empresa.");
++
++  const fechaEntrega = String(data.fechaEntrega || "").trim();
++  if (!fechaEntrega) return errorValidacionPM10("campo_obligatorio", "fechaEntrega", "Indica la fecha de entrega.");
++  function fechaISOValida(fecha) {
++    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return false;
++    const [y2, m22, d2] = fecha.split("-").map(Number);
++    const dt = new Date(Date.UTC(y2, m22 - 1, d2));
++    return dt.getUTCFullYear() === y2 && dt.getUTCMonth() === m22 - 1 && dt.getUTCDate() === d2;
++  }
++  if (!fechaISOValida(fechaEntrega)) return errorValidacionPM10("fecha_invalida", "fechaEntrega", "La fecha de entrega no es válida.");
++  const fechaBase = String(fechaCreacion || todayISO()).slice(0, 10);
++  if (!fechaISOValida(fechaBase)) return errorValidacionPM10("fecha_invalida", "fechaCreacion", "La fecha de creación del encargo no es válida.");
++  if (fechaEntrega < fechaBase) return errorValidacionPM10("valor_fuera_rango", "fechaEntrega", "La fecha de entrega no puede ser anterior a la creación del encargo.");
++
++  if (!Array.isArray(data.lineas) || data.lineas.length === 0) return errorValidacionPM10("campo_obligatorio", "lineas", "Añade al menos una línea al encargo.");
++  const lineas = [];
++  let total = 0;
++  for (let i33 = 0; i33 < data.lineas.length; i33++) {
++    const ln2 = data.lineas[i33];
++    if (!ln2 || typeof ln2 !== "object" || Array.isArray(ln2)) return errorValidacionPM10("formato_invalido", `lineas.${i33}`, "Una línea del encargo no es válida.");
++    const productoId = String(ln2.productoId || "").trim();
++    const descripcion = String(ln2.descripcion || "").trim();
++    let prod = null;
++    if (productoId) {
++      prod = productos.find((p22) => p22 && p22.id === productoId);
++      if (!prod) return errorValidacionPM10("referencia_inexistente", `lineas.${i33}.productoId`, "Uno de los productos del encargo ya no existe.");
++      if (prod.localId && prod.localId !== localActivoId) return errorValidacionPM10("referencia_otro_contexto", `lineas.${i33}.productoId`, "Uno de los productos pertenece a otro local.");
++    } else if (!descripcion) {
++      return errorValidacionPM10("campo_obligatorio", `lineas.${i33}.productoId`, "Selecciona un producto o escribe una descripción.");
++    }
++
++    const cantidadRaw = ln2.cantidad;
++    if (cantidadRaw === null || cantidadRaw === void 0 || String(cantidadRaw).trim() === "") return errorValidacionPM10("campo_obligatorio", `lineas.${i33}.cantidad`, "Indica la cantidad de cada línea.");
++    const cantidad = Number(cantidadRaw);
++    if (!Number.isFinite(cantidad)) return errorValidacionPM10("numero_no_finito", `lineas.${i33}.cantidad`, "La cantidad debe ser un número válido.");
++    if (!(cantidad > 0)) return errorValidacionPM10("valor_fuera_rango", `lineas.${i33}.cantidad`, "La cantidad debe ser mayor que cero.");
++
++    const precioRaw = ln2.precioUnitario;
++    if (precioRaw === null || precioRaw === void 0 || String(precioRaw).trim() === "") return errorValidacionPM10("campo_obligatorio", `lineas.${i33}.precioUnitario`, "Indica el precio unitario de cada línea.");
++    const precioUnitario = Number(precioRaw);
++    if (!Number.isFinite(precioUnitario)) return errorValidacionPM10("numero_no_finito", `lineas.${i33}.precioUnitario`, "El precio unitario debe ser un número válido.");
++    if (precioUnitario < 0) return errorValidacionPM10("valor_fuera_rango", `lineas.${i33}.precioUnitario`, "El precio unitario no puede ser negativo.");
++
++    total += cantidad * precioUnitario;
++    lineas.push({ ...ln2, productoId, descripcion, cantidad, precioUnitario });
++  }
++  if (!Number.isFinite(total) || total < 0) return errorValidacionPM10("numero_no_finito", "total", "El total del encargo no es válido.");
++
++  const señalRaw = data.señal;
++  let señal = 0;
++  if (!(señalRaw === null || señalRaw === void 0 || String(señalRaw).trim() === "")) {
++    señal = Number(señalRaw);
++    if (!Number.isFinite(señal)) return errorValidacionPM10("numero_no_finito", "señal", "La señal debe ser un número válido.");
++    if (señal < 0) return errorValidacionPM10("valor_fuera_rango", "señal", "La señal no puede ser negativa.");
++  }
++  if (señal > total + 1e-9) return errorValidacionPM10("valor_fuera_rango", "señal", "La señal no puede superar el total del encargo.");
++
++  const mediosValidos = new Set(["Efectivo", "Tarjeta", "Transferencia", "Otro"]);
++  const señalMedioPago = String(data.señalMedioPago || "").trim();
++  if (señal > 0 && !señalMedioPago) return errorValidacionPM10("campo_obligatorio", "señalMedioPago", "Indica cómo se ha cobrado la señal.");
++  if (señal > 0 && !mediosValidos.has(señalMedioPago)) return errorValidacionPM10("valor_no_permitido", "señalMedioPago", "El medio de pago de la señal no es válido.");
++
++  return {
++    ok: true,
++    total,
++    datos: {
++      ...data,
++      clienteId,
++      fechaEntrega,
++      lineas,
++      señal,
++      señalMedioPago: señal > 0 ? señalMedioPago : señalMedioPago || "Efectivo",
++      localId: localActivoId
++    }
++  };
++}
++function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes = [], setProductos, setMovimientos, venderLineas, localActivoId, empresaId = null }) {
+   function localDeEncargo(e2) {
+     if (!e2) return null;
+     if (e2.localId) return e2.localId;
+@@ -105630,29 +105716,32 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
+     return localDeEncargo(e2) === localActivoId;
+   }
+   function addEncargo(data) {
+-    if (localActivoId && (data.lineas || []).some((ln2) => {
+-      const p22 = productos.find((x3) => x3.id === ln2.productoId);
+-      return p22 && p22.localId && p22.localId !== localActivoId;
+-    })) return false;
+     const fecha = todayISO();
+-    const cobros = sincronizarCobroSe\u00F1al([], data.se\u00F1al, data.se\u00F1alMedioPago, fecha);
+-    const idsLocalesLineas = [...new Set((data.lineas || []).map((ln2) => productos.find((p22) => p22.id === ln2.productoId)?.localId).filter(Boolean))];
+-    const localId = data.localId || (idsLocalesLineas.length === 1 ? idsLocalesLineas[0] : null) || localActivoId || null;
+-    setEncargos((s22) => [{ id: uid(), estado: "Pendiente", fechaCreacion: fecha, cobros, ...data, localId }, ...s22]);
++    const validacion = validarEncargoPM10(data, { productos, clientes, localActivoId, empresaId, fechaCreacion: fecha });
++    if (!validacion.ok) return validacion;
++    const datos = validacion.datos;
++    const cobros = sincronizarCobroSe\u00F1al([], datos.se\u00F1al, datos.se\u00F1alMedioPago, fecha);
++    const nuevo = { ...datos, id: uid(), estado: "Pendiente", fechaCreacion: fecha, cobros, localId: localActivoId };
++    setEncargos((s22) => [nuevo, ...s22]);
++    return nuevo;
+   }
+   function updateEncargo(id, data) {
+     const actual = encargos.find((e2) => e2.id === id);
+-    if (!encargoEsDelLocalActivo(actual)) return false;
++    if (!actual || !encargoEsDelLocalActivo(actual)) return errorValidacionPM10("contexto_no_autorizado", "encargoId", "El encargo no pertenece al local activo.");
++    const candidato = { ...actual, ...data, id: actual.id, localId: actual.localId || localActivoId };
++    const validacion = validarEncargoPM10(candidato, { productos, clientes, localActivoId, empresaId, fechaCreacion: actual.fechaCreacion || todayISO() });
++    if (!validacion.ok) return validacion;
+     setEncargos(
+       (s22) => s22.map((e2) => {
+         if (e2.id !== id) return e2;
+-        const actualizado = { ...e2, ...data };
++        const actualizado = { ...e2, ...validacion.datos, id: e2.id, localId: e2.localId || localActivoId };
+         if ("se\xF1al" in data || "se\xF1alMedioPago" in data) {
+           actualizado.cobros = sincronizarCobroSe\u00F1al(e2.cobros, actualizado.se\u00F1al, actualizado.se\u00F1alMedioPago, e2.fechaCreacion);
+         }
+         return actualizado;
+       })
+     );
++    return true;
+   }
+   function deleteEncargo(id) {
+     const actual = encargos.find((e22) => e22.id === id);
+@@ -111706,15 +111795,13 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
+       setError("Selecciona o crea un cliente.");
+       return;
+     }
+-    const validas = form.lineas.filter((l22) => (l22.productoId || l22.descripcion) && Number(l22.cantidad) > 0);
+-    if (!validas.length) {
+-      setError("A\xF1ade al menos un producto con cantidad.");
++    setError("");
++    const datos = { ...form, lineas: form.lineas.map((l22) => ({ ...l22 })) };
++    const resultado = editingId ? updateEncargo(editingId, datos) : addEncargo(datos);
++    if (!resultado || resultado.ok === false) {
++      setError(resultado?.error || "No se pudo guardar el encargo.");
+       return;
+     }
+-    setError("");
+-    const datos = { ...form, lineas: validas, se\u00F1al: form.se\u00F1al === "" ? 0 : Number(form.se\u00F1al) };
+-    if (editingId) updateEncargo(editingId, datos);
+-    else addEncargo(datos);
+     setShowForm(false);
+     setForm(null);
+     setEditingId(null);

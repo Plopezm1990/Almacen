@@ -1,0 +1,57 @@
+name: PM10 Punto 4 LA-011 productos
+on:
+  push:
+    branches: [pm10-validaciones-altas-datos-legados]
+    paths:
+      - '.github/workflows/pm10-p04-productos.yml'
+      - 'tools/corregir_pm10_p04_productos.py'
+      - 'tests/pm10/p04-productos-contract.mjs'
+permissions:
+  contents: write
+jobs:
+  corregir:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar corrección LA-011
+        run: python3 tools/corregir_pm10_p04_productos.py
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+      - name: Contrato LA-011
+        run: node tests/pm10/p04-productos-contract.mjs
+      - name: Revisar llamadas addProducto
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          for m in list(re.finditer(r'addProducto\s*\(', s))[:20]:
+            a=max(0,m.start()-500); b=min(len(s),m.start()+1800)
+            print('\n--- addProducto offset',m.start(),'---\n',s[a:b].replace('\n','\\n'))
+          PY
+      - name: Regresiones heredadas disponibles
+        run: |
+          set -e
+          for f in \
+            tests/pm09/p17-robustez-contract.mjs \
+            tests/pm09/p16-aislamiento-contexto-contract.mjs \
+            tests/pm09/p15-casos-economicos-contract.mjs \
+            tests/pm09/p12-resultados-margin-contract.mjs \
+            tests/pm09/p11-iva-contract.mjs \
+            tests/pm09/p10-caja-contract.mjs \
+            tests/pm09/p09-historial-contract.mjs \
+            tests/pm09/la007-resultados-contract.mjs \
+            tests/pm09/la008-unidades-rotacion-margen-contract.mjs; do
+            if [ -f "$f" ]; then node "$f"; fi
+          done
+      - name: Commit corrección funcional
+        run: |
+          if git diff --quiet -- fuente.js; then
+            echo 'Sin cambios funcionales pendientes'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add fuente.js
+          git commit -m 'PM10: corregir LA-011 validaciones de productos'
+          git push

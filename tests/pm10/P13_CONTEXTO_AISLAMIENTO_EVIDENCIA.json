@@ -1,0 +1,95 @@
+{
+  "pm": "PM10",
+  "punto": 13,
+  "modulo": "Aislamiento empresa/local y contexto de escritura",
+  "estado": "VALIDADO",
+  "fecha": "2026-09-05",
+  "rama": "pm10-validaciones-altas-datos-legados",
+  "base_punto": "ce53d3c417c0cac4d8ef3dd627ac56a155e4ebb3",
+  "commit_funcional": "a4a1866f4e81c4651162105e33d37515cb53a7f2",
+  "workflow_final": 33974122210,
+  "hallazgos": [
+    "cambiarLocalActivo permitía seleccionar un local existente aunque estuviera inactivo o fusionado",
+    "desactivarLocal no limpiaba localActivoId cuando se desactivaba el local actualmente seleccionado",
+    "las fronteras PM10 de Productos, Pedidos, Recepción, Personal y Encargos no recibían de forma homogénea la lista de locales para comprobar operabilidad",
+    "Pedidos resolvía proveedor por id pero no rechazaba un proveedor con empresaId explícita de otra empresa",
+    "la firma real de crearLogicaPedidos usa el alias pedidos: pedidos2 y necesitó mantenerse al ampliar el contexto"
+  ],
+  "correccion": {
+    "helper": "validarContextoEscrituraPM10",
+    "reglas": [
+      "toda nueva escritura local exige localActivoId concreto",
+      "si se dispone del catálogo de locales, el local debe existir",
+      "local activo=false o fusionadoEn bloquea nuevas operaciones",
+      "si empresaId y local.empresaId están explícitos deben coincidir",
+      "Todos los locales sigue siendo contexto separado de informe y nunca sustituye el localActivoId de escritura",
+      "al desactivar el local actualmente activo, localActivoId se limpia",
+      "cambiarLocalActivo rechaza local inexistente, inactivo o fusionado",
+      "proveedor con empresaId explícita distinta a la empresa activa se rechaza en Pedidos",
+      "referencias legadas sin empresaId explícita no se reasignan ni se bloquean automáticamente solo por carecer de ese dato"
+    ],
+    "fronteras_endurecidas": [
+      "Productos alta/edición",
+      "Pedidos alta/edición",
+      "Recepción directa de pedido",
+      "Confirmación de albarán/recepción",
+      "Personal alta/edición",
+      "Encargos alta/edición",
+      "selector/desactivación de local"
+    ]
+  },
+  "escenario_sintetico": {
+    "QA-A1": "empresa QA-EMP-A, activo",
+    "QA-A2": "empresa QA-EMP-A, activo",
+    "QA-A-CERRADO": "empresa QA-EMP-A, inactivo",
+    "QA-A-FUSIONADO": "empresa QA-EMP-A, fusionado",
+    "QA-B1": "empresa QA-EMP-B, activo",
+    "Todos": "solo lectura/informe; no se admite como contexto de escritura"
+  },
+  "pruebas": {
+    "p13_contexto_aislamiento": "OK",
+    "a1_a2_mismo_empresa_distinto_local": "OK",
+    "a_vs_b_empresa_distinta": "OK",
+    "proveedor_empresa_explicita": "OK",
+    "recepcion_otro_local": "OK",
+    "local_inactivo": "OK",
+    "local_fusionado": "OK",
+    "todos_no_escritura": "OK",
+    "desactivar_actual_limpia_contexto": "OK",
+    "p12_legados": "OK",
+    "regresiones_pm10_p11_a_p04": "OK",
+    "regresion_pm09_p16_aislamiento": "OK",
+    "regresion_pm09_p17_robustez": "OK",
+    "node_check_fuente": "OK"
+  },
+  "intentos_previos": [
+    {
+      "run": 33973910313,
+      "resultado": "FAIL_TEST_MAINTENANCE",
+      "detalle": "P13 y P12 pasaron; falló una aserción estática heredada P08 que todavía esperaba la llamada de Encargos sin el nuevo argumento locales. No fue una regresión funcional."
+    },
+    {
+      "run": 33973984926,
+      "resultado": "FAIL_WORKFLOW_MAINTENANCE",
+      "detalle": "Falló el script temporal que intentaba actualizar esa aserción por una cadena sobre-escapada. No hubo commit funcional."
+    },
+    {
+      "run": 33974069100,
+      "resultado": "FAIL_REGRESSION_HARNESS",
+      "detalle": "La regresión P06 detectó ReferenceError locales is not defined en crearLogicaPedidos: el parche había ampliado la llamada interna pero no la firma real aliased pedidos: pedidos2. Se corrigió antes de persistir fuente.js."
+    },
+    {
+      "run": 33974122210,
+      "resultado": "SUCCESS",
+      "detalle": "Sintaxis, P13, P12, P11-P04 y PM09 P16/P17 pasaron; se creó el commit funcional a4a1866f4e81c4651162105e33d37515cb53a7f2."
+    }
+  ],
+  "persistencia_y_produccion": {
+    "supabase_qa_writes": false,
+    "migraciones": false,
+    "datos_reales": false,
+    "main_modificado": false,
+    "netlify_produccion": false,
+    "supabase_produccion": false
+  }
+}

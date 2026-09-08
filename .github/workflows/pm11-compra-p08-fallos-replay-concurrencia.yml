@@ -1,0 +1,92 @@
+name: PM11 Compra P08 fallos replay y concurrencia
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [pm11-compra-recepcion-pago-e2e]
+    paths:
+      - 'fuente.js'
+      - 'tools/corregir_pm11_compra_p08_fallos_concurrencia.py'
+      - 'tests/pm11-compra/p08-fallos-replay-concurrencia-contract.mjs'
+      - 'tests/pm11-compra/P08_FALLOS_REPLAY_CONCURRENCIA.md'
+      - 'tests/pm11-compra/p07-aislamiento-permisos-e2e-contract.mjs'
+      - 'tests/pm11-compra/p06-pago-reverso-e2e-contract.mjs'
+      - 'tests/pm11-compra/p05-factura-identidad-contract.mjs'
+      - 'tests/pm11-compra/p04-albaran-trazabilidad-contract.mjs'
+      - 'tests/pm11-compra/p03-recepciones-multiples-replay-contract.mjs'
+      - 'tests/pm11-compra/p02-contrato-e2e-estados-contract.mjs'
+      - 'tests/pm10/p10-autoridad-persistencia-contract.mjs'
+      - 'tests/g1/p07-concurrencia-replay-contract.mjs'
+      - 'tests/g1/p08-la004-gate-contract.mjs'
+      - '.github/workflows/pm11-compra-p08-fallos-replay-concurrencia.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fallos-replay-concurrencia:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout completo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar main congelado
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+
+      - name: Aplicar endurecimiento P08
+        run: python3 tools/corregir_pm11_compra_p08_fallos_concurrencia.py
+
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+
+      - name: Contrato P08 fallos replay concurrencia
+        run: node tests/pm11-compra/p08-fallos-replay-concurrencia-contract.mjs
+
+      - name: Regresion P07 aislamiento permisos
+        run: node tests/pm11-compra/p07-aislamiento-permisos-e2e-contract.mjs
+
+      - name: Regresion P06 pago reverso
+        run: node tests/pm11-compra/p06-pago-reverso-e2e-contract.mjs
+
+      - name: Regresion P05 factura identidad
+        run: node tests/pm11-compra/p05-factura-identidad-contract.mjs
+
+      - name: Regresion P04 albaran trazabilidad
+        run: node tests/pm11-compra/p04-albaran-trazabilidad-contract.mjs
+
+      - name: Regresion P03 recepciones multiples
+        run: node tests/pm11-compra/p03-recepciones-multiples-replay-contract.mjs
+
+      - name: Regresion PM10 autoridad persistencia
+        run: node tests/pm10/p10-autoridad-persistencia-contract.mjs
+
+      - name: Regresion G1 concurrencia replay
+        run: node tests/g1/p07-concurrencia-replay-contract.mjs
+
+      - name: Regresion G1 finanzas seguras
+        run: node tests/g1/p08-la004-gate-contract.mjs
+
+      - name: Contrato E2E P02
+        run: node tests/pm11-compra/p02-contrato-e2e-estados-contract.mjs
+
+      - name: Commit funcional generado
+        shell: bash
+        run: |
+          if git diff --quiet -- fuente.js; then
+            echo 'P08 ya aplicado; sin cambios funcionales pendientes'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add fuente.js
+          git commit -m 'PM11 compra P08: cerrar replay obsoleto de recepciones'
+          git push
+
+      - name: Resultado
+        run: echo 'PM11_COMPRA_P08_FALLOS_REPLAY_CONCURRENCIA=PASS'

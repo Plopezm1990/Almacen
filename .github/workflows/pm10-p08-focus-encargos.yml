@@ -1,0 +1,40 @@
+name: PM10 P08 focus LA-018 encargos
+on:
+  push:
+    branches: [pm10-validaciones-altas-datos-legados]
+    paths:
+      - '.github/workflows/pm10-p08-focus-encargos.yml'
+permissions:
+  contents: write
+jobs:
+  focus:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extraer bloques exactos
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('fuente.js').read_text(encoding='utf-8')
+          out=[]
+          def take(label,start_token,end_token,maxlen=45000):
+            a=s.find(start_token)
+            if a<0:
+              out.append(f'===== {label} NO ENCONTRADO =====')
+              return
+            b=s.find(end_token,a+len(start_token)) if end_token else -1
+            if b<0 or b-a>maxlen: b=min(len(s),a+maxlen)
+            out.append(f'===== {label} {a}:{b} =====\n'+s[a:b])
+          take('LOGICA','function crearLogicaEncargos({','function crearLogicaTraspasos({')
+          take('UI','function lineaEncargo() {','function Clientes(')
+          Path('tests/pm10/P08_FOCUS_ENCARGOS.txt').write_text('\n\n'.join(out),encoding='utf-8')
+          print('bytes',Path('tests/pm10/P08_FOCUS_ENCARGOS.txt').stat().st_size)
+          PY
+      - name: Commit focus
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/pm10/P08_FOCUS_ENCARGOS.txt
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'PM10: guardar foco diagnóstico LA-018 encargos'
+          git push

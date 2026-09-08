@@ -1,0 +1,70 @@
+{
+  "punto": 11,
+  "estado": "VALIDADO",
+  "rama": "pm09-conciliacion-ventas-analitica",
+  "commitFuncional": "310d7f9590e676bef104e52e7253eae7707df931",
+  "workflowRunId": 33963006804,
+  "fuenteSha256": "9a65bf63a11dcd37699f456f577ea409f9a6610493aee56489fe757fbf67aef5",
+  "riesgoReproducidoAntesDeCorregir": {
+    "causa": "LibroIva filtraba exclusivamente esVenta(m), por lo que REVERSO y DEVOLUCION_CLIENTE no reducian IVA repercutido; ademas podia usar el IVA actual del producto si faltaba ivaVentaAplicado historico",
+    "escenarioQA": "venta 2 + anulacion total; venta 2 + devolucion 1 con reembolso 6; venta 1 + devolucion total SIN_REEMBOLSO",
+    "resultadoLegacy": {
+      "baseRepercutida": 27.27,
+      "ivaRepercutido": 2.73
+    },
+    "persistencia": "ROLLBACK; sin datos sinteticos persistentes"
+  },
+  "contratoPm09": {
+    "venta": "suma base y cuota con ingresoUnitario e ivaVentaAplicado historicos",
+    "reverso": "resta base y cuota en la fecha propia del REVERSO usando snapshot historico",
+    "devolucionConReembolso": "reduce la proyeccion fiscal hasta el importe reembolsado, limitado al bruto historico asociado; si difiere del importe asociado queda aviso de revision",
+    "devolucionSinReembolso": "no genera correccion fiscal automatica; queda DEVOLUCION_SIN_REEMBOLSO pendiente de criterio/documentacion fiscal",
+    "ivaHistoricoAusente": "no se sustituye por el IVA actual de la ficha; la operacion queda en revision",
+    "medioPago": "EFECTIVO/TARJETA/TRANSFERENCIA/MIXTO no cambia por si solo base ni cuota IVA",
+    "periodo": "la correccion entra en su propia fecha de operacion; no reescribe retroactivamente la venta original"
+  },
+  "validacionQALedger": {
+    "movimientosObservados": [
+      "VENTA cancelada base 10.91 IVA 10%",
+      "REVERSO base historica 10.91 IVA 10%",
+      "VENTA retorno parcial base 10.91 IVA 10%",
+      "DEVOLUCION_CLIENTE reembolso 6.00 TARJETA base asociada 5.45 IVA 10%",
+      "VENTA sin reembolso base 5.45 IVA 10%",
+      "DEVOLUCION_CLIENTE reembolso 0.00 SIN_REEMBOLSO base asociada 5.45 IVA 10%"
+    ],
+    "proyeccionConciliadaPrudente": {
+      "baseRepercutida": 10.91,
+      "ivaRepercutido": 1.09
+    },
+    "nota": "La cifra es una proyeccion interna de control, no una certificacion legal del modelo 303. SIN_REEMBOLSO queda visible para revision fiscal especializada."
+  },
+  "validacionAutomatica": {
+    "resultado": "success",
+    "contratoP11Iva": "OK",
+    "contratoP10Caja": "OK",
+    "contratoP09Historial": "OK",
+    "contratoLA007": "OK",
+    "contratoLA008": "OK",
+    "pm05Frontend": "OK",
+    "pm07Frontend": "OK",
+    "pm08Frontend": "OK",
+    "pm08Migration": "OK",
+    "pm08ReplayScope": "OK"
+  },
+  "persistenciaFrontend": "La normalizacion sincronizada conserva reembolso y medioReembolso en los movimientos de devolucion para que la conciliacion sobreviva a recarga/reentrada.",
+  "compras": "Se mantiene el lado soportado basado en albaranes confirmados y facturas directas no anuladas con sus datos almacenados; este punto no altera sus contratos PM06.",
+  "limpiezaQA": {
+    "stock_operaciones_pm09p11": 0,
+    "movimientos_stock_pm09p11": 0,
+    "devoluciones_venta_pm09p11": 0,
+    "caja_operaciones_pm09p11": 0,
+    "stock_final_QA_A1_QA_PROD_A_AGUA": {
+      "almacen": 18,
+      "piso": 5,
+      "total": 23
+    }
+  },
+  "alcance": "fuente.js y pruebas/evidencia solo en rama PM09. No se aplico migracion de esquema en este punto; no main, no produccion, no Netlify.",
+  "notaEspecialista": "Fiscalidad, documentacion rectificativa y modelo 303 requieren validacion especializada antes de cualquier uso como declaracion oficial.",
+  "notaCierrePM09": "Deploy Preview y smoke visual global se reservan para el punto 18."
+}

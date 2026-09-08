@@ -1,0 +1,116 @@
+name: PM13 P05 vacaciones
+
+on:
+  push:
+    branches: [pm13-p05-vacaciones]
+
+permissions:
+  contents: write
+
+jobs:
+  validar-p05:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Proteger main y alcance P05
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          P05_BASE='d5276882b12932588aa28865bdfe736695375430'
+          if [ -n "$(git diff --name-only "$P05_BASE"..HEAD -- supabase/)" ]; then
+            echo 'P05 no puede modificar Supabase: reutiliza P04' >&2
+            git diff --name-only "$P05_BASE"..HEAD -- supabase/ >&2
+            exit 1
+          fi
+          echo 'PM13_P05_MAIN_FROZEN=PASS'
+          echo 'PM13_P05_SIN_CAMBIOS_SUPABASE=PASS'
+
+      - name: Aplicar cálculo honesto de vacaciones
+        run: python3 tools/corregir_pm13_p05_vacaciones.py
+
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+
+      - name: Contrato PM13 P05
+        run: node tests/pm13/p05-vacaciones-contract.mjs
+
+      - name: Regresión PM13 P01-P04 y Personal PM10
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm13/p01-rpc-personal-contract.mjs
+          node tests/pm13/p01-backend-personal-contract.mjs
+          node tests/pm13/p02-turnos-contract.mjs
+          node tests/pm13/p03-fichajes-contract.mjs
+          node tests/pm13/p03-backend-fichajes-contract.mjs
+          node tests/pm13/p04-ausencias-contract.mjs
+          node tests/pm13/p04-backend-ausencias-contract.mjs
+          node tests/pm10/p07-personal-contract.mjs
+          echo 'PM13_P05_REGRESSION_P01_P04_PM10=PASS'
+
+      - name: Regresión frontend PM12 P02-P10
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in 02 03 04 05 06 07 08 09 10; do
+            for t in tests/pm12/p${n}-*contract.mjs; do
+              test -f "$t" || continue
+              case "$t" in
+                *postgres*|*supabase*) continue ;;
+              esac
+              node "$t"
+            done
+          done
+          echo 'PM13_P05_REGRESSION_PM12=PASS'
+
+      - name: Barreras P05
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s = Path('fuente.js').read_text(encoding='utf-8')
+          a = s.index('function Personal({')
+          b = s.index('function Turnos({', a)
+          x = s[a:b]
+          assert 'function resumenVacacionesPM13(' in x
+          assert 'function tramoVacacionesEnAnioPM13(' in x
+          assert 'resumenVacaciones.disfrutados' in x
+          assert 'resumenVacaciones.programados' in x
+          assert 'resumenVacaciones.saldo' in x
+          assert 'new Date(a22.fechaInicio).getFullYear() === anioActual' not in x
+          print('PM13_P05_DOMAIN_GUARDS=PASS')
+          PY
+          ! grep -Eqi 'service_role|SUPABASE_SERVICE_ROLE_KEY|sb_secret_' \
+            tools/corregir_pm13_p05_vacaciones.py tests/pm13/p05-vacaciones-contract.mjs tests/pm13/P05_VACACIONES.md
+          git diff --check
+          echo 'PM13_P05_NO_SECRET=PASS'
+
+      - name: Commit funcional si procede
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- fuente.js; then
+            echo 'Fuente ya coincide con P05'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add fuente.js
+          git commit -m 'feat(pm13): cerrar vacaciones honestas P05'
+          git push
+
+  gate-final:
+    runs-on: ubuntu-24.04
+    needs: validar-p05
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM13 P05
+        run: |
+          test '${{ needs.validar-p05.result }}' = 'success'
+          echo 'PM13_P05_GATE=SUCCESS'
