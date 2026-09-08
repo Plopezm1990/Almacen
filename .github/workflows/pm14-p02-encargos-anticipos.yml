@@ -1,0 +1,119 @@
+name: PM14 P02 Encargos anticipos y saldo
+
+on:
+  push:
+    branches: [claude/pm14-encargos-anticipos-i8ye52]
+    paths:
+      - 'fuente.js'
+      - 'tests/pm14/**'
+      - 'supabase/migrations/20260908*_pm14_p02_*.sql'
+      - '.github/workflows/pm14-p02-encargos-anticipos.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar-p02:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: pm14_p02_test
+          POSTGRES_PASSWORD: pm14-ci-only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          echo 'PM14_P02_MAIN_FROZEN=PASS'
+      - name: Declarar el alcance de Supabase de este punto (QA, no producción)
+        shell: bash
+        run: |
+          set -euo pipefail
+          PM13_P07_BASE='6ee2752a8f6aba882a6fa926892ab5b04aac231d'
+          diff="$(git diff --name-only "$PM13_P07_BASE"..HEAD -- supabase/)"
+          echo "$diff"
+          # P02 SÍ introduce migraciones nuevas (encargos_empresa/pagos_encargo, aplicadas
+          # solo en L&A Suite QA). Se exige que sean exactamente las tres de este punto
+          # y ningún archivo ajeno a PM14 dentro de supabase/.
+          echo "$diff" | grep -vE '^supabase/migrations/20260908(071757|071911|071936)_pm14_p02_.*\.sql$' | (! grep -q .) \
+            || { echo 'Cambio inesperado en supabase/ fuera de las migraciones declaradas de P02' >&2; exit 1; }
+          echo 'PM14_P02_SUPABASE_DIFF_DECLARADO=PASS'
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+      - name: Instalar dependencias del contrato Postgres
+        run: npm install --silent
+        working-directory: tests/pm14/db
+      - name: Esperar Postgres
+        run: |
+          for i in $(seq 1 20); do pg_isready -h 127.0.0.1 -p 5432 -U postgres && break; sleep 2; done
+        env:
+          PGPASSWORD: pm14-ci-only
+      - name: Crear base de pruebas desechable
+        run: |
+          PGPASSWORD=pm14-ci-only dropdb -h 127.0.0.1 -U postgres --if-exists pm14_p02_test
+          PGPASSWORD=pm14-ci-only createdb -h 127.0.0.1 -U postgres pm14_p02_test
+      - name: Contrato PM14 P02 sobre Postgres real (pagos_encargo/registrar_pago_encargo/revertir_pago_encargo)
+        env:
+          PM14_TEST_DATABASE_URL: postgresql://postgres:pm14-ci-only@127.0.0.1:5432/pm14_p02_test
+        run: node tests/pm14/db/p02-postgres-contract.mjs
+      - name: Regresión Encargos (identidad P01, entrega P03)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm14/p01-encargos-identidad-contract.mjs
+          node tests/pm14/p03-encargos-entrega-contract.mjs
+          node tests/pm10/p08-encargos-contract.mjs
+          echo 'PM14_P02_REGRESION_ENCARGOS=PASS'
+      - name: Sin secretos
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -Eqi 'service_role|SUPABASE_SERVICE_ROLE_KEY|sb_secret_' \
+            supabase/migrations/20260908071757_pm14_p02_encargos_pagos_encargo.sql \
+            supabase/migrations/20260908071911_pm14_p02_revocar_ejecucion_anonima.sql \
+            supabase/migrations/20260908071936_pm14_p02_revocar_anon_explicito.sql \
+            tests/pm14/db/p02-postgres-contract.mjs
+          echo 'PM14_P02_NO_SECRET=PASS'
+
+  gate-final:
+    needs: validar-p02
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: pm14_p02_test
+          POSTGRES_PASSWORD: pm14-ci-only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar dependencias del contrato Postgres
+        run: npm install --silent
+        working-directory: tests/pm14/db
+      - name: Gate PM14 P02
+        env:
+          PM14_TEST_DATABASE_URL: postgresql://postgres:pm14-ci-only@127.0.0.1:5432/pm14_p02_test
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 20); do pg_isready -h 127.0.0.1 -p 5432 -U postgres && break; sleep 2; done
+          node tests/pm14/db/p02-postgres-contract.mjs
+          echo 'PM14_P02_GATE_FINAL=PASS'
