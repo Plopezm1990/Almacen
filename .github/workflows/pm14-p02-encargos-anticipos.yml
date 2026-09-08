@@ -70,6 +70,8 @@ jobs:
         env:
           PM14_TEST_DATABASE_URL: postgresql://postgres:pm14-ci-only@127.0.0.1:5432/pm14_p02_test
         run: node tests/pm14/db/p02-postgres-contract.mjs
+      - name: Contrato PM14 P02 frontend (enganche RPC anticipo/saldo)
+        run: node tests/pm14/p02-encargos-frontend-contract.mjs
       - name: Regresión Encargos (identidad P01, entrega P03)
         shell: bash
         run: |
@@ -78,6 +80,13 @@ jobs:
           node tests/pm14/p03-encargos-entrega-contract.mjs
           node tests/pm10/p08-encargos-contract.mjs
           echo 'PM14_P02_REGRESION_ENCARGOS=PASS'
+      - name: Regresión TPV/Caja PM07-PM09 (venderLineas/venderLocal/venderCarrito sin tocar)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm07/frontend-contract.mjs
+          for t in tests/pm09/*.mjs; do node "$t"; done
+          echo 'PM14_P02_REGRESION_PM07_PM09=PASS'
       - name: Sin secretos
         shell: bash
         run: |
@@ -86,7 +95,8 @@ jobs:
             supabase/migrations/20260908071757_pm14_p02_encargos_pagos_encargo.sql \
             supabase/migrations/20260908071911_pm14_p02_revocar_ejecucion_anonima.sql \
             supabase/migrations/20260908071936_pm14_p02_revocar_anon_explicito.sql \
-            tests/pm14/db/p02-postgres-contract.mjs
+            tests/pm14/db/p02-postgres-contract.mjs \
+            tests/pm14/p02-encargos-frontend-contract.mjs
           echo 'PM14_P02_NO_SECRET=PASS'
 
   gate-final:
@@ -116,4 +126,7 @@ jobs:
           set -euo pipefail
           for i in $(seq 1 20); do pg_isready -h 127.0.0.1 -p 5432 -U postgres && break; sleep 2; done
           node tests/pm14/db/p02-postgres-contract.mjs
+          node tests/pm14/p02-encargos-frontend-contract.mjs
+          node tests/pm14/p01-encargos-identidad-contract.mjs
+          node tests/pm14/p03-encargos-entrega-contract.mjs
           echo 'PM14_P02_GATE_FINAL=PASS'

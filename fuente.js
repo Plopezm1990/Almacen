@@ -102248,7 +102248,7 @@ function GestionAlmacen() {
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId });
   const { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
-  const { addEncargo, updateEncargo, deleteEncargo, entregarEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
+  const { addEncargo, updateEncargo, deleteEncargo, entregarEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
   const { traspasarStock, traspasarEntreLocales } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales });
   const { addArqueo, deleteArqueo, leerBorradorArqueo } = crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosCaja, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
   const { registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja } = crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arqueos, setArqueos, registrarAuditoria, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
@@ -103237,6 +103237,7 @@ function GestionAlmacen() {
       updateEncargo,
       deleteEncargo,
       entregarEncargo,
+      registrarAnticipoEncargo,
       addCliente
     }
   ), tab === "clientes" && /* @__PURE__ */ import_react4.default.createElement(
@@ -106663,6 +106664,7 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
     const cobros = sincronizarCobroSe\u00F1al([], datos.se\u00F1al, datos.se\u00F1alMedioPago, fecha);
     const nuevo = { ...datos, id: uid(), estado: "Pendiente", fechaCreacion: fecha, cobros, localId: localActivoId };
     setEncargos((s22) => [nuevo, ...s22]);
+    sincronizarEncargoNube(nuevo).catch(() => {});
     return nuevo;
   }
   function updateEncargo(id, data) {
@@ -106671,6 +106673,7 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
     const candidato = { ...actual, ...data, id: actual.id, localId: actual.localId || localActivoId };
     const validacion = validarEncargoPM10(candidato, { productos, clientes, localActivoId, locales, empresaId, fechaCreacion: actual.fechaCreacion || todayISO() });
     if (!validacion.ok) return validacion;
+    let actualizadoParaSincronizar = null;
     setEncargos(
       (s22) => s22.map((e2) => {
         if (e2.id !== id) return e2;
@@ -106678,9 +106681,11 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
         if ("se\u00F1al" in data || "se\u00F1alMedioPago" in data) {
           actualizado.cobros = sincronizarCobroSe\u00F1al(e2.cobros, actualizado.se\u00F1al, actualizado.se\u00F1alMedioPago, e2.fechaCreacion);
         }
+        actualizadoParaSincronizar = actualizado;
         return actualizado;
       })
     );
+    if (actualizadoParaSincronizar) sincronizarEncargoNube(actualizadoParaSincronizar).catch(() => {});
     return true;
   }
   function deleteEncargo(id) {
@@ -106732,7 +106737,114 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
     }
     return { ok: true, replayed: !!resultadoVenta.replayed, ventaId: resultadoVenta.ventaId, movimientos: resultadoVenta.movimientos, n: resultadoVenta.n };
   }
-  return { addEncargo, updateEncargo, deleteEncargo, entregarEncargo };
+  function hayConexionNubeEncargos() {
+    return typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+  }
+  async function sincronizarEncargoNube(encargo) {
+    if (!hayConexionNubeEncargos() || !empresaId || !encargo || !encargo.localId) return { ok: false, offline: true };
+    try {
+      const supabase = await window.getSupabaseClient();
+      const total = Number(encargo.total) || (encargo.lineas || []).reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
+      const r2 = await supabase.rpc("registrar_encargo", {
+        p_id: encargo.id,
+        p_empresa_id: empresaId,
+        p_local_id: encargo.localId,
+        p_cliente_id: encargo.clienteId || null,
+        p_total: total,
+        p_estado: encargo.estado || "Pendiente",
+        p_datos: {}
+      });
+      if (r2.error) throw r2.error;
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: error?.message || "No se pudo sincronizar el encargo con el servidor." };
+    }
+  }
+  async function registrarAnticipoEncargo(encargoOrId, { concepto, importe, medioPago = "Efectivo", fecha } = {}) {
+    const id = typeof encargoOrId === "string" ? encargoOrId : encargoOrId && encargoOrId.id;
+    const encontrado = encargos.find((e2) => e2.id === id);
+    // El encargo puede acabar de crearse/editarse en este mismo render: el array
+    // "encargos" capturado en este cierre todavia no lo refleja. Si no aparece en
+    // el cierre pero el propio llamador nos paso el objeto completo, se usa ese.
+    const actual = encontrado || (encargoOrId && typeof encargoOrId === "object" ? encargoOrId : null);
+    if (!actual) return { ok: false, codigo: "referencia_inexistente", error: "El encargo no existe o ya no est\xE1 disponible." };
+    if (!encargoEsDelLocalActivo(actual)) return { ok: false, codigo: "contexto_no_autorizado", error: "El encargo no pertenece al local activo." };
+    if (!hayConexionNubeEncargos()) return { ok: false, codigo: "sin_conexion", error: "Sin conexi\xF3n con el servidor: el cobro no se ha podido confirmar. Vuelve a intentarlo cuando haya conexi\xF3n." };
+    const importeNum = Number(importe);
+    if (!Number.isFinite(importeNum) || importeNum <= 0) return { ok: false, codigo: "importe_invalido", error: "Indica un importe v\xE1lido." };
+    const conceptoNorm = String(concepto || "").toUpperCase();
+    const sufijos = { "SE\xD1AL": "senal", RESTO_ENTREGA: "resto" };
+    const sufijo = sufijos[conceptoNorm];
+    if (!sufijo) return { ok: false, codigo: "concepto_invalido", error: "Concepto de cobro no v\xE1lido." };
+    const pagoId = `pago-encargo:${actual.id}:${sufijo}`;
+    const operationId = `anticipo-encargo:${actual.id}:${sufijo}`;
+    const fechaCobro = fecha || todayISO();
+    await sincronizarEncargoNube(actual);
+    async function intentarRpc(msTimeout) {
+      const supabase = await window.getSupabaseClient();
+      const r2 = await Promise.race([
+        supabase.rpc("registrar_pago_encargo", {
+          p_id: pagoId,
+          p_operation_id: operationId,
+          p_encargo_id: actual.id,
+          p_empresa_id: empresaId,
+          p_local_id: localActivoId,
+          p_concepto: conceptoNorm,
+          p_importe: importeNum,
+          p_fecha: fechaCobro,
+          p_medio_pago: medioPago,
+          p_datos: {}
+        }),
+        new Promise((_22, reject) => setTimeout(() => reject(new Error("El servidor tard\xF3 demasiado en responder")), msTimeout))
+      ]);
+      if (r2.error) throw r2.error;
+      return r2;
+    }
+    function errorVisible(error) {
+      const msg = String(error?.message || error || "");
+      if (msg.includes("pago_supera_saldo")) return { error: "El importe supera el saldo pendiente del encargo." };
+      if (msg.includes("encargo_ya_liquidado")) return { error: "Este encargo ya est\xE1 completamente cobrado." };
+      if (msg.includes("encargo_no_encontrado_o_no_autorizado")) return { error: "No se pudo confirmar el encargo con el servidor antes de cobrar. Reintenta." };
+      if (msg.includes("local_inactivo")) return { error: "El local ya no admite operaciones de caja." };
+      if (msg.includes("pago_encargo_no_autorizado") || msg.includes("contexto_no_autorizado")) return { error: "No tienes permiso para registrar este cobro." };
+      return { error: "No se pudo confirmar el cobro con el servidor. No se ha registrado ning\xFAn importe." };
+    }
+    try {
+      let r2;
+      try {
+        r2 = await intentarRpc(6e3);
+      } catch (e1) {
+        r2 = await intentarRpc(4e3);
+      }
+      return { ok: true, replayed: !!r2.data?.replayed, pago: r2.data?.pago, pendiente: r2.data?.pendiente, pagado: r2.data?.pagado };
+    } catch (error) {
+      return { ok: false, ...errorVisible(error) };
+    }
+  }
+  async function revertirAnticipoEncargo(pagoId, motivo) {
+    if (!hayConexionNubeEncargos()) return { ok: false, codigo: "sin_conexion", error: "Sin conexi\xF3n con el servidor: no se puede anular el cobro." };
+    if (!pagoId) return { ok: false, codigo: "pago_id_requerido", error: "Falta el identificador del cobro." };
+    const motivoTexto = String(motivo || "").trim();
+    if (!motivoTexto) return { ok: false, codigo: "motivo_requerido", error: "Indica el motivo de la anulaci\xF3n." };
+    const reversoId = `reverso-encargo:${pagoId}`;
+    try {
+      const supabase = await window.getSupabaseClient();
+      const r2 = await supabase.rpc("revertir_pago_encargo", {
+        p_id: reversoId,
+        p_operation_id: reversoId,
+        p_pago_id: pagoId,
+        p_motivo: motivoTexto
+      });
+      if (r2.error) throw r2.error;
+      return { ok: true, replayed: !!r2.data?.replayed, pago: r2.data?.pago };
+    } catch (error) {
+      const msg = String(error?.message || "");
+      if (msg.includes("pago_ya_revertido")) return { ok: false, codigo: "pago_ya_revertido", error: "Ese cobro ya estaba anulado." };
+      if (msg.includes("reverso_pago_encargo_no_autorizado")) return { ok: false, codigo: "no_autorizado", error: "No tienes permiso para anular este cobro." };
+      return { ok: false, codigo: "error_reverso", error: "No se pudo confirmar la anulaci\xF3n con el servidor." };
+    }
+  }
+  return { addEncargo, updateEncargo, deleteEncargo, entregarEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo };
 }
 function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId }) {
   function productoEsDelLocalActivoVenta(prod) {
@@ -113354,7 +113466,7 @@ Generado el ${(/* @__PURE__ */ new Date()).toLocaleString("es-ES")}`;
 function lineaEncargo() {
   return { productoId: "", descripcion: "", cantidad: 1, precioUnitario: "" };
 }
-function Encargos({ encargosPendientes, encargos, clientes, productos, addEncargo, updateEncargo, deleteEncargo, entregarEncargo, addCliente }) {
+function Encargos({ encargosPendientes, encargos, clientes, productos, addEncargo, updateEncargo, deleteEncargo, entregarEncargo, registrarAnticipoEncargo, addCliente }) {
   const submitBloqueadoEncargoPM10 = import_react4.default.useRef(false);
   const entregaBloqueadaPM14 = import_react4.default.useRef(false);
   const [showForm, setShowForm] = (0, import_react4.useState)(false);
@@ -113415,7 +113527,7 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
   const addLinea = () => setForm((f22) => ({ ...f22, lineas: [...f22.lineas, lineaEncargo()] }));
   const quitarLinea = (idx) => setForm((f22) => ({ ...f22, lineas: f22.lineas.filter((_22, i33) => i33 !== idx) }));
   const totalForm = !form ? 0 : form.lineas.reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
-  function submit() {
+  async function submit() {
     if (submitBloqueadoEncargoPM10.current) return;
     submitBloqueadoEncargoPM10.current = true;
     setTimeout(() => { submitBloqueadoEncargoPM10.current = false; }, 750);
@@ -113425,6 +113537,7 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
     }
     setError("");
     const datos = { ...form, lineas: form.lineas.map((l22) => ({ ...l22 })) };
+    const esAlta = !editingId;
     const resultado = editingId ? updateEncargo(editingId, datos) : addEncargo(datos);
     if (!resultado || resultado.ok === false) {
       setError(resultado?.error || "No se pudo guardar el encargo.");
@@ -113433,6 +113546,20 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
     setShowForm(false);
     setForm(null);
     setEditingId(null);
+    // La señal solo se envía a caja al dar de alta (con el mismo importe recién
+    // validado). Editar una señal ya cobrada exige una corrección explícita
+    // (reverso + nuevo cobro), que todavía no tiene flujo propio: por ahora la
+    // edición solo actualiza el documento local, sin volver a tocar caja.
+    if (esAlta && registrarAnticipoEncargo && Number(resultado.señal) > 0) {
+      const cobro = await registrarAnticipoEncargo(resultado, {
+        concepto: "SEÑAL",
+        importe: Number(resultado.señal),
+        medioPago: resultado.señalMedioPago
+      });
+      if (!cobro.ok && cobro.codigo !== "sin_conexion" && typeof window !== "undefined" && window.alert) {
+        window.alert(`El encargo se guard\xF3, pero la se\xF1al no se pudo confirmar en caja: ${cobro.error || "error desconocido"}. Rev\xEDsalo en el encargo.`);
+      }
+    }
   }
   function crearClienteRapido() {
     if (!clienteNuevo.trim()) return;
@@ -113498,7 +113625,7 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
       /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"),
       /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"),
       /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro")
-    )), errorEntrega && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, errorEntrega), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
+    )), errorEntrega && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, errorEntrega), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: async () => {
       if (entregaBloqueadaPM14.current) return;
       entregaBloqueadaPM14.current = true;
       const resultado = entregarEncargo(e2.id, medioPagoEntrega);
@@ -113509,6 +113636,16 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
       }
       setErrorEntrega("");
       setEntregarId(null);
+      if (registrarAnticipoEncargo && resto > 9e-3) {
+        const cobro = await registrarAnticipoEncargo(e2.id, {
+          concepto: "RESTO_ENTREGA",
+          importe: resto,
+          medioPago: medioPagoEntrega
+        });
+        if (!cobro.ok && cobro.codigo !== "sin_conexion" && typeof window !== "undefined" && window.alert) {
+          window.alert(`El encargo se entreg\xF3 y el stock ya se descont\xF3, pero el resto (€${fmt(resto)}) no se pudo confirmar en caja: ${cobro.error || "error desconocido"}. Reg\xEDstralo manualmente en caja.`);
+        }
+      }
     } }, "Confirmar entrega"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setEntregarId(null) }, "Cancelar")));
   })(), confirmDeleteId && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmDeleteId(null), title: "Eliminar encargo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-4" }, "Se borra el encargo. Esta acci\xF3n no se puede deshacer."), errorEliminar && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, errorEliminar), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: () => {
     const eliminado = deleteEncargo(confirmDeleteId);
