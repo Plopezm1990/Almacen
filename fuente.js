@@ -111238,6 +111238,19 @@ function base64UrlABytes(base64Url) {
   for (let i33 = 0; i33 < cadena.length; i33++) bytes[i33] = cadena.charCodeAt(i33);
   return bytes;
 }
+async function activarSuscripcionPushPM17({ suscribir, guardarSuscripcion, deshacerSuscripcion }) {
+  const suscripcion = await suscribir();
+  try {
+    await guardarSuscripcion(suscripcion);
+  } catch (e2) {
+    try {
+      await deshacerSuscripcion(suscripcion);
+    } catch (e3) {
+    }
+    throw e2;
+  }
+  return suscripcion;
+}
 function Notificaciones({ localActivoId = null }) {
   const [soportado, setSoportado] = (0, import_react4.useState)(true);
   const [permiso, setPermiso] = (0, import_react4.useState)("default");
@@ -111270,20 +111283,25 @@ function Notificaciones({ localActivoId = null }) {
       }
       const registro = await navigator.serviceWorker.register("/sw.js");
       await navigator.serviceWorker.ready;
-      const suscripcion = await registro.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: base64UrlABytes(CLAVE_PUBLICA_VAPID)
+      await activarSuscripcionPushPM17({
+        suscribir: () => registro.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: base64UrlABytes(CLAVE_PUBLICA_VAPID)
+        }),
+        guardarSuscripcion: async (suscripcion) => {
+          const supabase = await window.getSupabaseClient();
+          const json = suscripcion.toJSON();
+          const { error: errInsert } = await supabase.from("suscripciones_push").upsert({
+            endpoint: json.endpoint,
+            p256dh: json.keys.p256dh,
+            auth: json.keys.auth,
+            dispositivo: navigator.userAgent.slice(0, 200),
+            local_id: localActivoId || null
+          });
+          if (errInsert) throw errInsert;
+        },
+        deshacerSuscripcion: (suscripcion) => suscripcion.unsubscribe()
       });
-      const supabase = await window.getSupabaseClient();
-      const json = suscripcion.toJSON();
-      const { error: errInsert } = await supabase.from("suscripciones_push").upsert({
-        endpoint: json.endpoint,
-        p256dh: json.keys.p256dh,
-        auth: json.keys.auth,
-        dispositivo: navigator.userAgent.slice(0, 200),
-        local_id: localActivoId || null
-      });
-      if (errInsert) throw errInsert;
       setSuscrito(true);
     } catch (e2) {
       setError("No se ha podido activar: " + (e2?.message || "error de conexi\xF3n"));
