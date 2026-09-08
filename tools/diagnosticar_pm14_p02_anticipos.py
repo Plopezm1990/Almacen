@@ -1,18 +1,19 @@
 from pathlib import Path
 
 s = Path('fuente.js').read_text(encoding='utf-8')
+index = Path('index.html').read_text(encoding='utf-8')
 
 
-def avanzar_hasta_cierre_parentesis(paren_open: int):
+def avanzar_hasta_cierre_parentesis(texto: str, paren_open: int):
     profundidad = 0
     quote = None
     escapado = False
     comentario_linea = False
     comentario_bloque = False
     i = paren_open
-    while i < len(s):
-        c = s[i]
-        n = s[i + 1] if i + 1 < len(s) else ''
+    while i < len(texto):
+        c = texto[i]
+        n = texto[i + 1] if i + 1 < len(texto) else ''
         if comentario_linea:
             if c == '\n': comentario_linea = False
             i += 1; continue
@@ -43,7 +44,7 @@ def bloque_funcion(nombre: str):
         return None
     inicio = min(indices)
     paren_open = s.find('(', inicio)
-    paren_close = avanzar_hasta_cierre_parentesis(paren_open)
+    paren_close = avanzar_hasta_cierre_parentesis(s, paren_open)
     if paren_close < 0:
         return None
     apertura = s.find('{', paren_close + 1)
@@ -81,13 +82,13 @@ def bloque_funcion(nombre: str):
     return None
 
 
-def vecindad(patron: str, radio: int = 1800):
-    pos = s.find(patron)
+def vecindad(texto: str, patron: str, radio: int = 1800):
+    pos = texto.find(patron)
     if pos < 0:
         return None
     ini = max(0, pos - radio)
-    fin = min(len(s), pos + len(patron) + radio)
-    return s[ini:fin]
+    fin = min(len(texto), pos + len(patron) + radio)
+    return texto[ini:fin]
 
 for nombre in [
     'crearLogicaMovimientosCaja',
@@ -102,13 +103,22 @@ for nombre in [
 for patron in [
     'sincronizarCobroSeñal',
     'sincronizarCobroSe\\u00F1al',
-    'getSupabaseClient',
     '.rpc("registrar_movimiento_caja"',
     '.from("caja_operaciones")',
 ]:
-    print(f'\n===== PM14_P02_NEIGHBOR_{patron} =====')
-    print(vecindad(patron) or f'PM14_P02_PATRON_AUSENTE={patron}')
-    print(f'===== PM14_P02_END_NEIGHBOR_{patron} =====\n')
+    print(f'\n===== PM14_P02_SOURCE_NEIGHBOR_{patron} =====')
+    print(vecindad(s, patron) or f'PM14_P02_PATRON_AUSENTE={patron}')
+    print(f'===== PM14_P02_END_SOURCE_NEIGHBOR_{patron} =====\n')
+
+for patron in [
+    'async function guardarBloque',
+    'async set(key, value)',
+    'var LEDGERS_RPC',
+    'var TABLAS_EMPRESA_LOCAL',
+]:
+    print(f'\n===== PM14_P02_INDEX_NEIGHBOR_{patron} =====')
+    print(vecindad(index, patron, 2600) or f'PM14_P02_INDEX_PATRON_AUSENTE={patron}')
+    print(f'===== PM14_P02_END_INDEX_NEIGHBOR_{patron} =====\n')
 
 for patron in [
     'getSupabaseClient',
@@ -119,3 +129,5 @@ for patron in [
     'encargos',
 ]:
     print(f'PM14_P02_PATTERN_{patron}={s.count(patron)}')
+
+print(f'PM14_P02_INDEX_LEDGER_ENCARGOS={"encargos: true" in index[index.find("var LEDGERS_RPC"):index.find("var LEDGERS_RPC")+1200]}')
