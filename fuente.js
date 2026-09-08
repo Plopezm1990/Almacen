@@ -111730,6 +111730,9 @@ function GestorEmpresas({ empresas, setEmpresas }) {
     )
   );
 }
+function empresaDestinoParaNuevoLocalPM15(empresaNuevaId, empresaPrincipalId) {
+  return empresaNuevaId || empresaPrincipalId || "";
+}
 function Locales({ locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo, configEmpresa, empresas, setEmpresas, diagnosticoLegadosPM10 = null }) {
   const [mostrarForm, setMostrarForm] = import_react4.default.useState(false);
   const [nombre, setNombre] = import_react4.default.useState("");
@@ -111742,7 +111745,7 @@ function Locales({ locales, localActivoId, crearLocal, actualizarLocal, desactiv
   const empresaPrincipalId = empresas[0]?.id || null;
   const empresaDeLocal = (l22) => l22?.empresaId ? empresas.find((e2) => e2.id === l22.empresaId) || null : empresas.length === 1 ? empresas[0] || null : null;
   function enviar() {
-    const empresaDestinoId = empresaNuevaId || (empresas.length === 1 ? empresaPrincipalId : "");
+    const empresaDestinoId = empresaDestinoParaNuevoLocalPM15(empresaNuevaId, empresaPrincipalId);
     if (!empresaDestinoId) {
       setError("Selecciona la empresa a la que pertenece el local.");
       return;

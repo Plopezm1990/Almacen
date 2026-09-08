@@ -1,0 +1,87 @@
+name: PM15 P01 LA-022 Locales y NR-08 alcance literal
+
+on:
+  push:
+    branches: [claude/pm15-contexto-borradores-errores]
+    paths:
+      - 'fuente.js'
+      - 'tests/pm15/**'
+      - '.github/workflows/pm15-p01-la022-nr08.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar-p01:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main y alcance P01 (sin cambios en supabase/)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "767a2c3163f924b7599338785fe4331f78f0e1ac"
+          unexpected="$(git diff --name-only origin/main..HEAD -- supabase/ || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'PM15 P01 es un cambio de frontend puro: no debe tocar supabase/' >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+          echo 'PM15_P01_MAIN_FROZEN=PASS'
+          echo 'PM15_P01_SIN_CAMBIOS_SUPABASE=PASS'
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+      - name: Contrato PM15 P01 (LA-022 Locales + NR-08 alcance literal)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm15/p01-la022-locales-empresa-contract.mjs
+          node tests/pm15/p01-nr08-cambio-contexto-no-alcanzable-contract.mjs
+      - name: Regresión completa (todas las suites vigentes)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for d in tests/g1 tests/pm04 tests/pm05 tests/pm07 tests/pm08 tests/pm09 tests/pm10 tests/pm11-compra tests/pm12 tests/pm13 tests/pm14; do
+            for t in "$d"/*.mjs; do
+              [ -f "$t" ] || continue
+              node "$t"
+            done
+          done
+          echo 'PM15_P01_REGRESION_COMPLETA=PASS'
+      - name: Barreras de dominio P01
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s = Path('fuente.js').read_text(encoding='utf-8')
+          ini = s.index('function empresaDestinoParaNuevoLocalPM15(')
+          fin = s.index('function Locales(', ini)
+          b = s[ini:fin]
+          assert 'empresaNuevaId || empresaPrincipalId || ""' in b
+          ini2 = s.index('function Locales(')
+          e = s[ini2:ini2+3000]
+          assert 'empresaDestinoParaNuevoLocalPM15(empresaNuevaId, empresaPrincipalId)' in e
+          print('PM15_P01_DOMAIN_GUARDS=PASS')
+          PY
+          ! grep -Eqi 'service_role|SUPABASE_SERVICE_ROLE_KEY|sb_secret_' \
+            tests/pm15/p01-la022-locales-empresa-contract.mjs \
+            tests/pm15/p01-nr08-cambio-contexto-no-alcanzable-contract.mjs \
+            tests/pm15/P01_CIERRE_LA022_NR08.md
+          echo 'PM15_P01_NO_SECRET=PASS'
+
+  gate-final:
+    needs: validar-p01
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM15 P01
+        run: |
+          set -euo pipefail
+          node tests/pm15/p01-la022-locales-empresa-contract.mjs
+          node tests/pm15/p01-nr08-cambio-contexto-no-alcanzable-contract.mjs
+          echo 'PM15_P01_GATE_FINAL=PASS'
