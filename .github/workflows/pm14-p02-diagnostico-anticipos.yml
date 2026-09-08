@@ -24,3 +24,5 @@ jobs:
           echo 'PM14_P02_DIAG_BASE=PASS'
       - name: Extraer motor real de anticipo y caja
         run: python3 tools/diagnosticar_pm14_p02_anticipos.py
+      - name: Inspeccionar wiring de Encargos
+        run: python3 tools/inspeccionar_pm14_p02_wiring.py
