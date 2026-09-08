@@ -102246,9 +102246,9 @@ function GestionAlmacen() {
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId });
-  const { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId });
+  const { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
-  const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
+  const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
   const { traspasarStock, traspasarEntreLocales } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales });
   const { addArqueo, deleteArqueo, leerBorradorArqueo } = crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosCaja, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
   const { registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja } = crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arqueos, setArqueos, registrarAuditoria, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
@@ -102747,7 +102747,7 @@ function GestionAlmacen() {
   const encargosPendientes = (0, import_react4.useMemo)(() => {
     const hoy = /* @__PURE__ */ new Date();
     hoy.setHours(0, 0, 0, 0);
-    return encargos.filter((e2) => e2.estado !== "Entregado" && e2.estado !== "Cancelado").map((e2) => {
+    return encargos.filter((e2) => e2.estado !== "Entregado" && e2.estado !== "Cancelado" && e2.estado !== "Devuelto").map((e2) => {
       const f22 = new Date(e2.fechaEntrega);
       const dias = isNaN(f22) ? null : Math.round((f22 - hoy) / 864e5);
       const total = (e2.lineas || []).reduce((a22, ln2) => a22 + (Number(ln2.cantidad) || 0) * (Number(ln2.precioUnitario) || 0), 0);
@@ -102911,7 +102911,7 @@ function GestionAlmacen() {
       d2.setDate(d2.getDate() + i33);
       const fechaISO = aISO(d2);
       const pagosDia = pendientesPago.filter((f22) => f22.vencimiento === fechaISO).reduce((a22, f22) => a22 + (f22.pendiente ?? f22.total), 0);
-      const encargosDia = encargos.filter((e2) => e2.estado !== "Entregado" && e2.estado !== "Cancelado" && e2.fechaEntrega === fechaISO).reduce((a22, e2) => {
+      const encargosDia = encargos.filter((e2) => e2.estado !== "Entregado" && e2.estado !== "Cancelado" && e2.estado !== "Devuelto" && e2.fechaEntrega === fechaISO).reduce((a22, e2) => {
         const total = (e2.lineas || []).reduce((x3, l22) => x3 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
         return a22 + Math.max(0, total - (Number(e2.se\u00F1al) || 0));
       }, 0);
@@ -103238,6 +103238,7 @@ function GestionAlmacen() {
       deleteEncargo,
       cancelarEncargo,
       entregarEncargo,
+      devolverEncargo,
       registrarAnticipoEncargo,
       revertirAnticipoEncargo,
       addCliente
@@ -106646,7 +106647,7 @@ function validarEncargoPM10(data, { productos = [], clientes = [], localActivoId
     }
   };
 }
-function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes = [], setProductos, setMovimientos, venderLote, localActivoId, empresaId = null, locales = [] }) {
+function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes = [], setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId = null, locales = [] }) {
   function localDeEncargo(e2) {
     if (!e2) return null;
     if (e2.localId) return e2.localId;
@@ -106760,6 +106761,49 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
     }
     return { ok: true, replayed: !!resultadoVenta.replayed, ventaId: resultadoVenta.ventaId, movimientos: resultadoVenta.movimientos, n: resultadoVenta.n };
   }
+  function devolverEncargo(encargoOrId, { motivo } = {}) {
+    const id = typeof encargoOrId === "string" ? encargoOrId : encargoOrId && encargoOrId.id;
+    const actual = encargos.find((e2) => e2.id === id);
+    if (!actual) return { ok: false, codigo: "referencia_inexistente", error: "El encargo no existe o ya no est\xE1 disponible." };
+    if (!encargoEsDelLocalActivo(actual)) return { ok: false, codigo: "contexto_no_autorizado", error: "El encargo no pertenece al local activo." };
+    if (actual.estado === "Devuelto") return { ok: true, replayed: true, yaDevuelto: true };
+    if (actual.estado !== "Entregado") {
+      return { ok: false, codigo: "estado_no_permitido", error: `Solo se puede devolver un encargo ya entregado (estado actual: "${actual.estado}").` };
+    }
+    const motivoTexto = String(motivo || "").trim();
+    if (!motivoTexto) return { ok: false, codigo: "motivo_requerido", error: "Indica el motivo de la devoluci\xF3n." };
+    const operationId = `devolucion-encargo:${actual.id}`;
+    const lineasConProducto = (actual.lineas || []).filter((ln2) => ln2.productoId);
+    let resultadoStock = { ok: true, n: 0, movimientos: [] };
+    if (lineasConProducto.length > 0) {
+      resultadoStock = devolverLote(lineasConProducto.map((ln2) => ({
+        productoId: ln2.productoId,
+        cantidad: ln2.cantidad,
+        precioUnitario: ln2.precioUnitario
+      })), {
+        tipo: "DEVOLUCION_ENCARGO",
+        operationId,
+        origen: "devolverEncargo",
+        documentoOrigenId: actual.id,
+        motivoBase: `Devoluci\xF3n encargo ${actual.numero || ""}`.trim(),
+        extraPorLinea: () => ({ encargoId: actual.id, clienteId: actual.clienteId }),
+        movimientoIdPorLinea: (ln2, prod, idx) => `${operationId}:${idx}`
+      });
+      if (!resultadoStock.ok) return resultadoStock;
+    }
+    const resultadoEncargo = updateEncargo(actual.id, { estado: "Devuelto", fechaDevolucion: todayISO(), motivoDevolucion: motivoTexto });
+    if (resultadoEncargo !== true) {
+      return { ok: false, codigo: "encargo_no_actualizado", error: "El stock se devolvi\xF3 pero el encargo no se pudo marcar como devuelto. Revisa el encargo antes de reintentar.", resultadoStock };
+    }
+    registrarAuditoria("Devolver encargo", `${actual.numero || actual.id} \xB7 ${motivoTexto}`);
+    const total = Number(actual.total) || (actual.lineas || []).reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
+    const señal = Number(actual.señal) || 0;
+    const resto = Math.max(0, total - señal);
+    const cobrosParaReembolsar = [];
+    if (señal > 9e-3) cobrosParaReembolsar.push({ sufijo: "senal", concepto: "Se\xF1al", importe: señal });
+    if (resto > 9e-3) cobrosParaReembolsar.push({ sufijo: "resto", concepto: "Resto entrega", importe: resto });
+    return { ok: true, movimientos: resultadoStock.movimientos, cobrosParaReembolsar };
+  }
   function hayConexionNubeEncargos() {
     return typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
   }
@@ -106867,7 +106911,7 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
       return { ok: false, codigo: "error_reverso", error: "No se pudo confirmar la anulaci\xF3n con el servidor." };
     }
   }
-  return { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo };
+  return { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo };
 }
 function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId }) {
   function productoEsDelLocalActivoVenta(prod) {
@@ -106928,6 +106972,62 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           ingresoUnitario,
           ivaVentaAplicado: ivaDe(prod),
           medioPago,
+          ...extraPorLinea(ln2, prod)
+        }
+      });
+    }
+    const resultado = aplicarLoteMovimientosStock(operaciones);
+    if (!resultado.ok) return resultado;
+    return { ok: true, n: resultado.movimientos.length, ventaId: operationId, movimientos: resultado.movimientos, replayed: !!resultado.replayed };
+  }
+  function devolverLote(lineas, opciones = {}) {
+    if (!localActivoId) return { ok: false, codigo: "contexto_no_autorizado", error: "Selecciona un local para registrar esta operaci\xF3n." };
+    const incluyeOtroLocal = (lineas || []).some((ln2) => {
+      const p22 = productos.find((x3) => x3.id === ln2.productoId);
+      return !!p22 && !productoEsDelLocalActivoVenta(p22);
+    });
+    if (incluyeOtroLocal) return { ok: false, codigo: "producto_otro_local", error: "La operaci\xF3n incluye productos de otro local." };
+    const {
+      tipo = "DEVOLUCION",
+      operationId = null,
+      origen = "devolverLote",
+      documentoOrigenId = null,
+      motivoBase = "Devoluci\xF3n",
+      extraPorLinea = () => ({}),
+      movimientoIdPorLinea = null
+    } = opciones;
+    if (!operationId) return { ok: false, codigo: "operation_id_obligatorio", error: "Esta operaci\xF3n necesita un identificador estable." };
+    const lineasValidas = (lineas || []).filter((ln2) => ln2.productoId && Number(ln2.cantidad) > 0);
+    if (lineasValidas.length === 0) return { ok: true, n: 0, ventaId: operationId, movimientos: [] };
+    const operaciones = [];
+    for (let idx = 0; idx < lineasValidas.length; idx++) {
+      const ln2 = lineasValidas[idx];
+      const prod = productos.find((p22) => p22.id === ln2.productoId);
+      if (!prod) return { ok: false, codigo: "producto_no_encontrado", error: "Producto no encontrado." };
+      const cant = Number(ln2.cantidad);
+      const costoUnitario = Number(prod.costo) || 0;
+      const ingresoUnitario = ln2.precioUnitario != null ? -Math.abs(Number(ln2.precioUnitario)) : null;
+      const movimientoId = (movimientoIdPorLinea && movimientoIdPorLinea(ln2, prod, idx)) || `${operationId}:${idx}`;
+      operaciones.push({
+        movimientoId,
+        operationId,
+        productoId: prod.id,
+        // A diferencia de venderLote, una devolución SUMA stock: se recibe de vuelta
+        // lo que ya se había entregado, nunca se bloquea por "stock insuficiente".
+        cantidad: cant,
+        tipo,
+        origen,
+        documentoOrigenId: documentoOrigenId || operationId,
+        afectaStockTotal: true,
+        afectaStockPisoVenta: true,
+        permitirDeficit: true,
+        motivo: motivoBase,
+        camposExtra: {
+          costoUnitario,
+          // El ingreso se anota en negativo, igual que anularVentaLocal, para que los
+          // informes de ventas resten esta operación en vez de contarla como ingreso.
+          ingresoUnitario,
+          ivaVentaAplicado: ivaDe(prod),
           ...extraPorLinea(ln2, prod)
         }
       });
@@ -107163,7 +107263,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       return { ok: false, error: "No se pudo confirmar la anulaci\xF3n con el servidor. No se ha modificado el stock local." };
     }
   }
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -113489,7 +113589,7 @@ Generado el ${(/* @__PURE__ */ new Date()).toLocaleString("es-ES")}`;
 function lineaEncargo() {
   return { productoId: "", descripcion: "", cantidad: 1, precioUnitario: "" };
 }
-function Encargos({ encargosPendientes, encargos, clientes, productos, addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo, addCliente }) {
+function Encargos({ encargosPendientes, encargos, clientes, productos, addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo, addCliente }) {
   const submitBloqueadoEncargoPM10 = import_react4.default.useRef(false);
   const entregaBloqueadaPM14 = import_react4.default.useRef(false);
   const [showForm, setShowForm] = (0, import_react4.useState)(false);
@@ -113499,6 +113599,9 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
   const [confirmDeleteId, setConfirmDeleteId] = (0, import_react4.useState)(null);
   const [errorEliminar, setErrorEliminar] = (0, import_react4.useState)("");
   const [motivoCancelar, setMotivoCancelar] = (0, import_react4.useState)("");
+  const [devolverId, setDevolverId] = (0, import_react4.useState)(null);
+  const [motivoDevolver, setMotivoDevolver] = (0, import_react4.useState)("");
+  const [errorDevolver, setErrorDevolver] = (0, import_react4.useState)("");
   const [entregarId, setEntregarId] = (0, import_react4.useState)(null);
   const [errorEntrega, setErrorEntrega] = (0, import_react4.useState)("");
   const [medioPagoEntrega, setMedioPagoEntrega] = (0, import_react4.useState)("Efectivo");
@@ -113632,8 +113735,37 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
   } }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 13 }), " Cancelar"))))), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setVerEntregados((s22) => !s22), className: "text-[12.5px] font-medium mt-4 mb-2", style: { color: C2.accent } }, verEntregados ? "Ocultar" : "Ver", " encargos entregados (", entregados.length, ")"), verEntregados && /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, entregados.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has entregado ninguno." }) : entregados.map((e2) => {
     const cliente = clientes.find((c22) => c22.id === e2.clienteId);
     const total = (e2.lineas || []).reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
-    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id, style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, cliente ? cliente.nombre : "\u2014", " \xB7 ", e2.fechaEntregaReal || e2.fechaEntrega), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, "\u20AC", fmt(total))));
-  })), entregarId && (() => {
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id, style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, cliente ? cliente.nombre : "—", " \xB7 ", e2.fechaEntregaReal || e2.fechaEntrega), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, "€", fmt(total))), devolverEncargo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-1.5 flex justify-end" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
+      setErrorDevolver("");
+      setMotivoDevolver("");
+      setDevolverId(e2.id);
+    } }, "Devolver")));
+  })), devolverId && (() => {
+    const e2 = encargos.find((x3) => x3.id === devolverId);
+    if (!e2) return null;
+    return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setDevolverId(null), title: "Devolver encargo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, "Se devuelve el stock de los productos del cat\xE1logo. El encargo no se borra: queda marcado como devuelto."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo de la devoluci\xF3n" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivoDevolver, onChange: (ev) => setMotivoDevolver(ev.target.value), placeholder: "Producto defectuoso, cliente insatisfecho…" })), errorDevolver && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, errorDevolver), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: async () => {
+      const resultado = devolverEncargo(devolverId, { motivo: motivoDevolver });
+      if (!resultado || resultado.ok === false) {
+        setErrorDevolver(resultado?.error || "No se pudo devolver el encargo.");
+        return;
+      }
+      setErrorDevolver("");
+      setDevolverId(null);
+      if (resultado.cobrosParaReembolsar && resultado.cobrosParaReembolsar.length > 0 && revertirAnticipoEncargo && typeof window !== "undefined" && window.confirm) {
+        const totalCobrado = resultado.cobrosParaReembolsar.reduce((a22, c22) => a22 + (Number(c22.importe) || 0), 0);
+        const reembolsar = window.confirm(`Se cobraron €${fmt(totalCobrado)} por este encargo. \xBFReembolsar ahora al cliente?`);
+        if (reembolsar) {
+          for (const cobro of resultado.cobrosParaReembolsar) {
+            const pagoId = `pago-encargo:${devolverId}:${cobro.sufijo}`;
+            const reverso = await revertirAnticipoEncargo(pagoId, `Reembolso por devoluci\xF3n: ${motivoDevolver}`);
+            if (!reverso.ok && reverso.codigo !== "sin_conexion" && typeof window.alert === "function") {
+              window.alert(`No se pudo reembolsar €${fmt(Number(cobro.importe) || 0)} (${cobro.concepto}): ${reverso.error || "error desconocido"}. Rev\xEDsalo en caja.`);
+            }
+          }
+        }
+      }
+    } }, "S\xED, devolver"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setDevolverId(null) }, "Volver")));
+  })(), entregarId && (() => {
     const e2 = encargos.find((x3) => x3.id === entregarId);
     if (!e2) return null;
     const total = (e2.lineas || []).reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);

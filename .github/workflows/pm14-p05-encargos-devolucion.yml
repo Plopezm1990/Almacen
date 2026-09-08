@@ -1,0 +1,158 @@
+name: PM14 P05 Encargos devolucion trazable
+
+on:
+  push:
+    branches: [claude/pm14-encargos-anticipos-i8ye52]
+    paths:
+      - 'fuente.js'
+      - 'tests/pm14/**'
+      - 'supabase/migrations/20260908075655_pm14_p05_*.sql'
+      - '.github/workflows/pm14-p05-encargos-devolucion.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar-p05:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: pm14_p02_test
+          POSTGRES_PASSWORD: pm14-ci-only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "7f792925d6a3d27334ee0e7335ba635b4ed79b6b"
+          echo 'PM14_P05_MAIN_FROZEN=PASS'
+      - name: Declarar el alcance de Supabase de este punto (QA, no producción)
+        shell: bash
+        run: |
+          set -euo pipefail
+          PM04_BASE='657ef014edf85f0aa78e2aa2b69be252443bb533'
+          diff="$(git diff --name-only "$PM04_BASE"..HEAD -- supabase/)"
+          echo "$diff"
+          unexpected="$(echo "$diff" | grep -vE '^supabase/migrations/20260908075655_pm14_p05_.*\.sql$' || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'Cambio inesperado en supabase/ fuera de la migracion declarada de P05' >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+          echo 'PM14_P05_SUPABASE_DIFF_DECLARADO=PASS'
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+      - name: Instalar dependencias del contrato Postgres
+        run: npm install --silent
+        working-directory: tests/pm14/db
+      - name: Esperar Postgres
+        run: |
+          for i in $(seq 1 20); do pg_isready -h 127.0.0.1 -p 5432 -U postgres && break; sleep 2; done
+        env:
+          PGPASSWORD: pm14-ci-only
+      - name: Crear base de pruebas desechable
+        run: |
+          PGPASSWORD=pm14-ci-only dropdb -h 127.0.0.1 -U postgres --if-exists pm14_p02_test
+          PGPASSWORD=pm14-ci-only createdb -h 127.0.0.1 -U postgres pm14_p02_test
+      - name: Contrato PM14 P05 sobre Postgres real (estado Devuelto)
+        env:
+          PM14_TEST_DATABASE_URL: postgresql://postgres:pm14-ci-only@127.0.0.1:5432/pm14_p02_test
+        run: node tests/pm14/db/p05-postgres-contract.mjs
+      - name: Recrear base y repetir el contrato Postgres de P02 con P05 encima (sin regresión)
+        env:
+          PM14_TEST_DATABASE_URL: postgresql://postgres:pm14-ci-only@127.0.0.1:5432/pm14_p02_test
+        run: |
+          set -euo pipefail
+          PGPASSWORD=pm14-ci-only dropdb -h 127.0.0.1 -U postgres --if-exists pm14_p02_test
+          PGPASSWORD=pm14-ci-only createdb -h 127.0.0.1 -U postgres pm14_p02_test
+          node tests/pm14/db/p02-postgres-contract.mjs
+      - name: Contrato PM14 P05 frontend (devolución)
+        run: node tests/pm14/p05-encargos-devolucion-contract.mjs
+      - name: Regresión Encargos (P01, P02, P03, P04, PM10 P08)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm14/p01-encargos-identidad-contract.mjs
+          node tests/pm14/p02-encargos-frontend-contract.mjs
+          node tests/pm14/p03-encargos-entrega-contract.mjs
+          node tests/pm14/p04-encargos-cancelacion-contract.mjs
+          node tests/pm10/p08-encargos-contract.mjs
+          echo 'PM14_P05_REGRESION_ENCARGOS=PASS'
+      - name: Regresión TPV/Caja PM07-PM09
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm07/frontend-contract.mjs
+          for t in tests/pm09/*.mjs; do node "$t"; done
+          echo 'PM14_P05_REGRESION_PM07_PM09=PASS'
+      - name: Barreras de dominio P05
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s = Path('fuente.js').read_text(encoding='utf-8')
+          ini = s.index('function crearLogicaEncargos({')
+          fin = s.index('function crearLogicaVenta({', ini)
+          b = s[ini:fin]
+          assert 'function devolverEncargo(' in b
+          assert '"Devuelto"' in b
+          assert 'motivo_requerido' in b
+          venta_ini = s.index('function crearLogicaVenta({')
+          venta_fin = s.index('function crearLogicaTraspasos({', venta_ini)
+          v = s[venta_ini:venta_fin]
+          assert 'function devolverLote(' in v
+          assert 'permitirDeficit: true' in v
+          print('PM14_P05_DOMAIN_GUARDS=PASS')
+          PY
+          ! grep -Eqi 'service_role|SUPABASE_SERVICE_ROLE_KEY|sb_secret_' \
+            supabase/migrations/20260908075655_pm14_p05_estado_devuelto_encargo.sql \
+            tests/pm14/p05-encargos-devolucion-contract.mjs tests/pm14/db/p05-postgres-contract.mjs \
+            tests/pm14/P05_CIERRE_DEVOLUCION.md
+          echo 'PM14_P05_NO_SECRET=PASS'
+
+  gate-final:
+    needs: validar-p05
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: pm14_p02_test
+          POSTGRES_PASSWORD: pm14-ci-only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar dependencias del contrato Postgres
+        run: npm install --silent
+        working-directory: tests/pm14/db
+      - name: Gate PM14 P05
+        env:
+          PM14_TEST_DATABASE_URL: postgresql://postgres:pm14-ci-only@127.0.0.1:5432/pm14_p02_test
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 20); do pg_isready -h 127.0.0.1 -p 5432 -U postgres && break; sleep 2; done
+          node tests/pm14/db/p05-postgres-contract.mjs
+          node tests/pm14/p05-encargos-devolucion-contract.mjs
+          node tests/pm14/p04-encargos-cancelacion-contract.mjs
+          node tests/pm14/p03-encargos-entrega-contract.mjs
+          node tests/pm14/p01-encargos-identidad-contract.mjs
+          echo 'PM14_P05_GATE_FINAL=PASS'
