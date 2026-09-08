@@ -1,0 +1,79 @@
+name: PM21 P02 correcciones movimientos_registro y storage
+
+on:
+  push:
+    branches: [claude/pm21-identidad-autorizacion]
+    paths:
+      - 'tests/pm21/**'
+      - 'supabase/migrations/20260908210800_pm21_p01_movimientos_registro_aislamiento.sql'
+      - 'supabase/migrations/20260908210900_pm21_p01_storage_qa_pruebas_aislamiento.sql'
+      - '.github/workflows/pm21-p02-correcciones-autorizacion.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main y alcance de supabase/ limitado a las dos migraciones de este punto
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          cambios="$(git diff --name-only origin/main..HEAD -- supabase/ || true)"
+          inesperado="$(echo "$cambios" | grep -v -e '^supabase/migrations/20260908210800_pm21_p01_movimientos_registro_aislamiento.sql$' -e '^supabase/migrations/20260908210900_pm21_p01_storage_qa_pruebas_aislamiento.sql$' || true)"
+          if [ -n "$inesperado" ]; then
+            echo 'PM21 P02 solo debe añadir las dos migraciones autorizadas de este punto' >&2
+            echo "$inesperado" >&2
+            exit 1
+          fi
+          unexpected_code="$(git diff --name-only origin/main..HEAD -- fuente.js || true)"
+          if [ -n "$unexpected_code" ]; then
+            echo 'PM21 P02 no debe tocar fuente.js: ninguna de las dos tablas/bucket tiene consumidor en el frontend' >&2
+            exit 1
+          fi
+          echo 'PM21_P02_MAIN_FROZEN=PASS'
+          echo 'PM21_P02_ALCANCE_SUPABASE_LIMITADO=PASS'
+      - name: Sintaxis bundle (no debe haber cambiado)
+        run: node --check fuente.js
+      - name: Contrato PM21 P02
+        run: node tests/pm21/p02-correcciones-contract.mjs
+      - name: Regresión completa (todas las suites vigentes)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for d in tests/g1 tests/pm04 tests/pm05 tests/pm07 tests/pm08 tests/pm09 tests/pm10 tests/pm11-compra tests/pm12 tests/pm13 tests/pm14 tests/pm15 tests/pm16 tests/pm17 tests/pm18 tests/pm19 tests/pm20; do
+            for t in "$d"/*.mjs; do
+              [ -f "$t" ] || continue
+              node "$t"
+            done
+          done
+          for t in tests/pm21/*.mjs; do
+            [ -f "$t" ] || continue
+            node "$t"
+          done
+          echo 'PM21_P02_REGRESION_COMPLETA=PASS'
+      - name: Sin secretos ni identificadores internos
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -Eqi 'service_role_key|SUPABASE_SERVICE_ROLE_KEY|sb_secret_|qjqorixtkilwsndqayyx|flqercbgpgmmfaakrwkc|cqtghwiuxrqrxupyonqf|[a-z]{20}\.supabase\.co' \
+            tests/pm21/*.mjs tests/pm21/*.md supabase/migrations/20260908210800_pm21_p01_movimientos_registro_aislamiento.sql supabase/migrations/20260908210900_pm21_p01_storage_qa_pruebas_aislamiento.sql
+          echo 'PM21_P02_NO_SECRET=PASS'
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM21 P02
+        run: |
+          set -euo pipefail
+          node tests/pm21/p02-correcciones-contract.mjs
+          echo 'PM21_P02_GATE_FINAL=PASS'
