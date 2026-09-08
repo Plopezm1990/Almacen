@@ -106557,6 +106557,8 @@ function validarEncargoPM10(data, { productos = [], clientes = [], localActivoId
   const contexto = validarContextoEscrituraPM10({ localActivoId, locales, empresaId });
   if (!contexto.ok) return contexto;
   if (!data || typeof data !== "object" || Array.isArray(data)) return errorValidacionPM10("formato_invalido", "encargo", "El encargo no tiene un formato válido.");
+  if (!empresaId) return errorValidacionPM10("contexto_no_autorizado", "empresaId", "No se pudo determinar la empresa del encargo.");
+  if (data.empresaId && data.empresaId !== empresaId) return errorValidacionPM10("referencia_otro_contexto", "empresaId", "El encargo pertenece a otra empresa.");
   if (data.localId && data.localId !== localActivoId) return errorValidacionPM10("referencia_otro_contexto", "localId", "El encargo pertenece a otro local.");
 
   const clienteId = String(data.clienteId || "").trim();
@@ -106658,20 +106660,39 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
     if (!validacion.ok) return validacion;
     const datos = validacion.datos;
     const cobros = sincronizarCobroSe\u00F1al([], datos.se\u00F1al, datos.se\u00F1alMedioPago, fecha);
-    const nuevo = { ...datos, id: uid(), estado: "Pendiente", fechaCreacion: fecha, cobros, localId: localActivoId };
+    const nuevo = { ...datos, id: uid(), empresaId, localId: localActivoId, estado: "Pendiente", fechaCreacion: fecha, total: validacion.total, cobros };
     setEncargos((s22) => [nuevo, ...s22]);
     return nuevo;
   }
   function updateEncargo(id, data) {
     const actual = encargos.find((e2) => e2.id === id);
     if (!actual || !encargoEsDelLocalActivo(actual)) return errorValidacionPM10("contexto_no_autorizado", "encargoId", "El encargo no pertenece al local activo.");
-    const candidato = { ...actual, ...data, id: actual.id, localId: actual.localId || localActivoId };
+    if (data && data.id && data.id !== actual.id) return errorValidacionPM10("campo_inmutable", "encargoId", "La identidad interna del encargo no se puede cambiar.");
+    if (data && data.localId && actual.localId && data.localId !== actual.localId) return errorValidacionPM10("campo_inmutable", "localId", "El local del encargo no se puede cambiar.");
+    if (data && data.empresaId && actual.empresaId && data.empresaId !== actual.empresaId) return errorValidacionPM10("campo_inmutable", "empresaId", "La empresa del encargo no se puede cambiar.");
+    if (data && data.fechaCreacion && actual.fechaCreacion && data.fechaCreacion !== actual.fechaCreacion) return errorValidacionPM10("campo_inmutable", "fechaCreacion", "La fecha de creación del encargo no se puede cambiar.");
+    const candidato = {
+      ...actual,
+      ...data,
+      id: actual.id,
+      empresaId: actual.empresaId || data?.empresaId || null,
+      localId: actual.localId || localActivoId,
+      fechaCreacion: actual.fechaCreacion || todayISO()
+    };
     const validacion = validarEncargoPM10(candidato, { productos, clientes, localActivoId, locales, empresaId, fechaCreacion: actual.fechaCreacion || todayISO() });
     if (!validacion.ok) return validacion;
     setEncargos(
       (s22) => s22.map((e2) => {
         if (e2.id !== id) return e2;
-        const actualizado = { ...e2, ...validacion.datos, id: e2.id, localId: e2.localId || localActivoId };
+        const actualizado = {
+          ...e2,
+          ...validacion.datos,
+          id: e2.id,
+          empresaId: e2.empresaId || validacion.datos.empresaId || null,
+          localId: e2.localId || localActivoId,
+          fechaCreacion: e2.fechaCreacion,
+          total: validacion.total
+        };
         if ("se\xF1al" in data || "se\xF1alMedioPago" in data) {
           actualizado.cobros = sincronizarCobroSe\u00F1al(e2.cobros, actualizado.se\u00F1al, actualizado.se\u00F1alMedioPago, e2.fechaCreacion);
         }
