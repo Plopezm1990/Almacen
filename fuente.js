@@ -101687,8 +101687,8 @@ function GestionAlmacen() {
   const [configEmpresa, setConfigEmpresa] = (0, import_react4.useState)({
     marca: "Chocolater\xEDa San Gin\xE9s",
     lema: "MADRID 1894",
-    razonSocial: "CHOCOLOYOS, S.L.",
-    nif: "B87342077",
+    razonSocial: "",
+    nif: "",
     web: "",
     redSocial: "@ChocoSanGines",
     pieDocumentos: "GRACIAS POR SU VISITA"
@@ -111624,6 +111624,71 @@ async function prepararLogoEmpresa(file) {
   const webp = canvas.toDataURL("image/webp", 0.88);
   return webp.startsWith("data:image/webp") ? webp : canvas.toDataURL("image/png");
 }
+function tipoIdentificadorFiscalPM18(valor) {
+  const v3 = String(valor || "").trim().toUpperCase().replace(/[\s-]/g, "");
+  if (/^[0-9]{8}[A-Z]$/.test(v3)) return "NIF";
+  if (/^[XYZ][0-9]{7}[A-Z]$/.test(v3)) return "NIE";
+  if (/^[A-HJNPQRSUVW][0-9]{7}[0-9A-J]$/.test(v3)) return "CIF";
+  return null;
+}
+function validarIdentificadorFiscalEspanaPM18(valor) {
+  const v3 = String(valor || "").trim().toUpperCase().replace(/[\s-]/g, "");
+  const tipo = tipoIdentificadorFiscalPM18(v3);
+  if (!tipo) return false;
+  const LETRAS_NIF = "TRWAGMYFPDXBNJZSQVHLCKE";
+  if (tipo === "NIF") {
+    const numero = parseInt(v3.slice(0, 8), 10);
+    return v3[8] === LETRAS_NIF[numero % 23];
+  }
+  if (tipo === "NIE") {
+    const prefijo = { X: "0", Y: "1", Z: "2" }[v3[0]];
+    const numero = parseInt(prefijo + v3.slice(1, 8), 10);
+    return v3[8] === LETRAS_NIF[numero % 23];
+  }
+  const letra = v3[0];
+  const digitos = v3.slice(1, 8);
+  const control = v3[8];
+  let sumaPar = 0;
+  let sumaImpar = 0;
+  for (let i33 = 0; i33 < digitos.length; i33++) {
+    const d2 = parseInt(digitos[i33], 10);
+    if ((i33 + 1) % 2 === 0) {
+      sumaPar += d2;
+    } else {
+      const doble = d2 * 2;
+      sumaImpar += doble > 9 ? doble - 9 : doble;
+    }
+  }
+  const digitoControl = (10 - (sumaPar + sumaImpar) % 10) % 10;
+  const LETRAS_CIF = "JABCDEFGHI";
+  const letraControl = LETRAS_CIF[digitoControl];
+  const SOLO_LETRA = "KPQS";
+  const SOLO_DIGITO = "ABEH";
+  if (SOLO_DIGITO.includes(letra)) return control === String(digitoControl);
+  if (SOLO_LETRA.includes(letra)) return control === letraControl;
+  return control === String(digitoControl) || control === letraControl;
+}
+function estadoIdentidadFiscalPM18(valor) {
+  const v3 = String(valor || "").trim();
+  if (!v3) return "ausente";
+  const tipo = tipoIdentificadorFiscalPM18(v3);
+  if (!tipo) return "formato_desconocido";
+  return validarIdentificadorFiscalEspanaPM18(v3) ? "sin_verificar" : "invalido";
+}
+function etiquetaEstadoIdentidadFiscalPM18(estado) {
+  switch (estado) {
+    case "ausente":
+      return "Sin NIF/CIF configurado";
+    case "invalido":
+      return "NIF/CIF con formato inv\xE1lido";
+    case "formato_desconocido":
+      return "Formato no reconocido (revisar)";
+    case "sin_verificar":
+      return "Formato v\xE1lido (sin verificar con la Agencia Tributaria)";
+    default:
+      return "";
+  }
+}
 function FichaEmpresaBasica({ empresa, actualizarEmpresa }) {
   const [abierto, setAbierto] = import_react4.default.useState(false);
   const [form, setForm] = import_react4.default.useState(null);
@@ -111699,7 +111764,7 @@ function FichaEmpresaBasica({ empresa, actualizarEmpresa }) {
       /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Marca" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.marca, onChange: (e2) => campo("marca", e2.target.value) })),
       /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Lema / subt\xEDtulo" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.lema, onChange: (e2) => campo("lema", e2.target.value) })),
       /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Raz\xF3n social" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.razonSocial, onChange: (e2) => campo("razonSocial", e2.target.value) })),
-      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "NIF / CIF" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.nif, onChange: (e2) => campo("nif", e2.target.value) })),
+      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "NIF / CIF" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.nif, onChange: (e2) => campo("nif", e2.target.value) }), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: estadoIdentidadFiscalPM18(form.nif) === "invalido" ? C2.red : C2.inkSoft } }, etiquetaEstadoIdentidadFiscalPM18(estadoIdentidadFiscalPM18(form.nif)))),
       /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Web (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.web, onChange: (e2) => campo("web", e2.target.value) })),
       /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Red social (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.redSocial, onChange: (e2) => campo("redSocial", e2.target.value) })),
       /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Texto final de documentos" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.pieDocumentos, onChange: (e2) => campo("pieDocumentos", e2.target.value) })),
@@ -111795,7 +111860,8 @@ function GestorEmpresas({ empresas, setEmpresas }) {
             "div",
             { className: "min-w-0" },
             /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold text-[13px]" }, e2.razonSocial || e2.marca || "Empresa sin nombre"),
-            e2.nif && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, `NIF/CIF: ${e2.nif}`)
+            e2.nif && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, `NIF/CIF: ${e2.nif}`),
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: estadoIdentidadFiscalPM18(e2.nif) === "invalido" ? C2.red : C2.inkSoft } }, etiquetaEstadoIdentidadFiscalPM18(estadoIdentidadFiscalPM18(e2.nif)))
           )
         ),
         /* @__PURE__ */ import_react4.default.createElement(FichaEmpresaBasica, { empresa: e2, actualizarEmpresa })
@@ -111806,7 +111872,7 @@ function GestorEmpresas({ empresas, setEmpresas }) {
       { onClose: () => setMostrarNueva(false), title: "A\xF1adir empresa" },
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Crea una sociedad/empresa independiente. Despu\xE9s podr\xE1s asignarle uno o varios locales."),
       /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Raz\xF3n social" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: razonSocial, onChange: (e2) => setRazonSocial(e2.target.value), autoFocus: true })),
-      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "NIF / CIF" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nif, onChange: (e2) => setNif(e2.target.value) })),
+      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "NIF / CIF" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nif, onChange: (e2) => setNif(e2.target.value) }), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: estadoIdentidadFiscalPM18(nif) === "invalido" ? C2.red : C2.inkSoft } }, etiquetaEstadoIdentidadFiscalPM18(estadoIdentidadFiscalPM18(nif)))),
       /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Marca / nombre comercial (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: marca, onChange: (e2) => setMarca(e2.target.value) })),
       /* @__PURE__ */ import_react4.default.createElement(
         Field,
@@ -115774,8 +115840,10 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
     const empresa = configEmpresa || {};
     const marcaEmpresa = empresa.marca || "Chocolater\xEDa San Gin\xE9s";
     const lemaEmpresa = empresa.lema || "MADRID 1894";
-    const razonSocialEmpresa = empresa.razonSocial || "CHOCOLOYOS, S.L.";
-    const nifEmpresa = empresa.nif || "B87342077";
+    const razonSocialEmpresa = empresa.razonSocial || "";
+    const nifOriginalEmpresa = empresa.nif || "";
+    const estadoNifEmpresa = estadoIdentidadFiscalPM18(nifOriginalEmpresa);
+    const nifEmpresa = estadoNifEmpresa === "sin_verificar" ? nifOriginalEmpresa : "";
     const redSocialEmpresa = empresa.redSocial || "";
     const webEmpresa = empresa.web || "";
     const pieEmpresa = empresa.pieDocumentos || "GRACIAS POR SU VISITA";
@@ -115799,14 +115867,14 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
         h3(
           "div",
           { className: "text-center text-[10.5px] leading-5 mb-3" },
-          h3("div", { className: "font-bold" }, razonSocialEmpresa),
-          nifEmpresa ? h3("div", null, `N.I.F.: ${nifEmpresa}`) : null,
+          razonSocialEmpresa ? h3("div", { className: "font-bold" }, razonSocialEmpresa) : h3("div", { className: "font-bold" }, "Raz\xF3n social no configurada"),
+          nifEmpresa ? h3("div", null, `N.I.F.: ${nifEmpresa}`) : h3("div", null, etiquetaEstadoIdentidadFiscalPM18(estadoNifEmpresa) + (nifOriginalEmpresa ? ` (${nifOriginalEmpresa})` : "")),
           direccionLocal ? h3("div", null, direccionLocal) : null,
           telefonoLocal ? h3("div", null, `Tfno.: ${telefonoLocal}`) : null,
           emailLocal ? h3("div", null, emailLocal) : null,
           h3("div", { className: "mt-1 font-semibold" }, `LOCAL: ${nombreLocal}`)
         ),
-        h3("div", { className: "text-center text-[12px] font-bold my-3" }, tieneNumeroFiscal ? "FACTURA SIMPLIFICADA" : "TICKET / RECIBO INTERNO"),
+        h3("div", { className: "text-center text-[12px] font-bold my-3" }, tieneNumeroFiscal && estadoNifEmpresa === "sin_verificar" ? "FACTURA SIMPLIFICADA" : "TICKET / RECIBO INTERNO"),
         v22.estado !== "ACTIVA" ? h3("div", { className: "text-center text-[11px] font-bold rounded-lg py-2 mb-3", style: { background: v22.estado === "ANULADA" ? C2.redSoft || "#FCE8E6" : C2.amberSoft || C2.surface2, color: colorEstadoVentaHistorialPM09(v22.estado) } }, etiquetaEstadoVentaHistorialPM09(v22.estado)) : null,
         h3(
           "div",
