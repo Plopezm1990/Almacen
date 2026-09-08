@@ -96,13 +96,20 @@ el hueco):
 - Manipulación directa de una relación cruzada dentro de un RPC (p. ej.
   `empleado_id` de otra empresa pasado a un RPC de fichaje) — el matiz "negativo
   por cruce de contexto, no solo por nombre del recurso" de la fila 6 de la
-  tabla de P01.
+  tabla de P01. **Actualización (P04)**: analizado en detalle; no ejecutable
+  hoy sin crear una fixture nueva en QA (solo existe un empleado, inactivo, y
+  ninguno en `QA-EMP-B`). Documentado con precisión en P04 §2, pendiente de
+  autorización si se decide crear esa fixture.
 - Un segundo Propietario de una empresa distinta con un local ya
   cerrado/fusionado (no confundir con la identidad de sesión inactiva, que ya
-  quedó cubierta en este punto).
+  quedó cubierta en este punto). **Actualización (P04)**: cerrado — verificado
+  en vivo en P04 §1 que un local con `activo:false` bloquea la operación
+  incluso para el Propietario con más alcance posible (`todos_locales`), sin
+  necesidad de una segunda identidad de otra empresa.
 - Réplica/idempotencia de un RPC de escritura ejecutado dos veces con el mismo
   `operationId` bajo sesión real HTTP (ya verificado en PM12 P08 contra una
   base local desechable, pero no contra QA con estas identidades concretas).
+  Sigue pendiente tras P04 (ver P04 §3).
 
 ## 4. Archivos
 
