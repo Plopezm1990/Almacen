@@ -1,10 +1,10 @@
-name: PM26 P06c diseno corregido aviso F y registro defecto J
+name: PM26 P06c diseno corregido aviso F y registro defecto K
 
 # Presenta el diseno corregido del aviso F (GRANT SELECT explicito,
 # mutaciones revocadas explicitamente, RPC con
 # private.pm11_puede_mutar_personal, search_path vacio cualificado,
 # nulabilidad/backfill sin tocar produccion, matriz de pruebas) tras
-# el rechazo del SQL anterior. Registra aparte el defecto J (endpoint
+# el rechazo del SQL anterior. Registra aparte el defecto K (endpoint
 # de produccion hardcodeado en el flujo publico de prefiltro), sin
 # corregirlo. No aplica ningun cambio en QA ni produccion. No toca
 # main, Netlify, Supabase (escritura), ni TPV.
@@ -14,9 +14,9 @@ on:
     branches: [claude/pm26-preparacion-tecnica]
     paths:
       - 'tests/pm26/P06B_AVISO_F_DISENO_CORREGIDO.md'
-      - 'tests/pm26/P06B_DEFECTO_J_ENDPOINT_PRODUCCION_HARDCODEADO.md'
+      - 'tests/pm26/P06B_DEFECTO_K_ENDPOINT_PRODUCCION_HARDCODEADO.md'
       - 'tests/pm26/p06c-contract.mjs'
-      - '.github/workflows/pm26-p06c-aviso-f-corregido-defecto-j.yml'
+      - '.github/workflows/pm26-p06c-aviso-f-corregido-defecto-k.yml'
   workflow_dispatch:
 
 permissions:
@@ -60,7 +60,7 @@ jobs:
             exit 1
           fi
           echo 'PM26_P06C_INTOCABLES_INTACTOS=PASS'
-      - name: Contrato PM26 P06c (diseno corregido aviso F + defecto J + sin secretos)
+      - name: Contrato PM26 P06c (diseno corregido aviso F + defecto K + sin secretos)
         run: node tests/pm26/p06c-contract.mjs
 
   gate-final:

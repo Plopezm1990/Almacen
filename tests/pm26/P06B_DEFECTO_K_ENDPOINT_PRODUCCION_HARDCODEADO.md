@@ -1,4 +1,4 @@
-# PM26 — Defecto J (nuevo): endpoint de producción hardcodeado en el flujo público de prefiltro
+# PM26 — Defecto K (nuevo): endpoint de producción hardcodeado en el flujo público de prefiltro
 
 ## Estado
 
@@ -35,7 +35,7 @@ o la propia QA.
 ## Por qué es un defecto distinto del aviso F
 
 - El aviso F trata permisos/RLS **dentro** de una base de datos (QA).
-- El defecto J trata **a qué proyecto se conecta** ese flujo concreto
+- El defecto K trata **a qué proyecto se conecta** ese flujo concreto
   — es un problema de aislamiento QA/producción, de la misma familia
   que el defecto E (Netlify) pero en Supabase, no un problema de
   permisos dentro de una base de datos.
@@ -62,6 +62,11 @@ Sin decidir todavía, dos formas de abordarlo:
 Cualquiera de las dos requiere que el usuario decida la intención real
 antes de tocar código — no se asume ninguna de las dos.
 
+**Condición explícita del usuario**: este defecto debe resolverse
+antes de ejecutar cualquier prueba viva del flujo de prefiltros
+(candidato o personal) contra QA o producción — no solo antes de
+corregirlo por su cuenta.
+
 ## Qué NO se hizo
 
 - No se modificó `fuente.js` ni ningún otro archivo de la aplicación.
@@ -73,9 +78,10 @@ antes de tocar código — no se asume ninguna de las dos.
   presente un plan más detallado.
 
 ```
-PM26_DEFECTO_J_ESTADO=REGISTRADO_SIN_CORREGIR
-PM26_DEFECTO_J_CORREGIDO=NO
-PM26_DEFECTO_J_PRUEBAS_VIVAS_EJECUTADAS=NO
-PM26_DEFECTO_J_MEZCLADO_CON_AVISO_F=NO
-PM26_DEFECTO_J_DECISION_PENDIENTE=RESOLVER_DINAMICO_O_MANTENER_DELIBERADO
+PM26_DEFECTO_K_ESTADO=REGISTRADO_SIN_CORREGIR
+PM26_DEFECTO_K_CORREGIDO=NO
+PM26_DEFECTO_K_PRUEBAS_VIVAS_EJECUTADAS=NO
+PM26_DEFECTO_K_MEZCLADO_CON_AVISO_F=NO
+PM26_DEFECTO_K_DECISION_PENDIENTE=RESOLVER_DINAMICO_O_MANTENER_DELIBERADO
+PM26_DEFECTO_K_BLOQUEA_PRUEBAS_VIVAS_DE_PREFILTROS=SI
 ```
