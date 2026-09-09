@@ -1,0 +1,60 @@
+{
+  "resultados": [
+    {
+      "caso": "login real contra QA (nube activa) llega a la aplicación",
+      "ok": true,
+      "detalle": {}
+    },
+    {
+      "caso": "el proveedor creado con nube activa existe de verdad en QA antes del intento de restauración",
+      "ok": true,
+      "detalle": {
+        "total": 3
+      }
+    },
+    {
+      "caso": "CORREGIDO: el modal de restauración se bloquea con diagnóstico cuando hay nube activa",
+      "ok": true,
+      "detalle": {
+        "textoEncontrado": true
+      }
+    },
+    {
+      "caso": "CORREGIDO: no se ofrece el botón \"Restaurar respaldo\" mientras hay nube activa",
+      "ok": true,
+      "detalle": {
+        "botonRestaurarVisible": false
+      }
+    },
+    {
+      "caso": "el fixture preexistente \"QA-PROV-A\" sigue intacto en QA (no se borró)",
+      "ok": true,
+      "detalle": {}
+    },
+    {
+      "caso": "el proveedor creado con nube activa sigue intacto en QA (no se borró)",
+      "ok": true,
+      "detalle": {}
+    },
+    {
+      "caso": "el proveedor inventado del backup antiguo NO se insertó en QA (el restore nunca se aplicó)",
+      "ok": true,
+      "detalle": {}
+    },
+    {
+      "caso": "sin excepción JS no controlada",
+      "ok": true,
+      "detalle": []
+    },
+    {
+      "caso": "limpieza: fixtures QA-PM25 eliminados al finalizar",
+      "ok": true,
+      "detalle": {
+        "idsLimpiados": [
+          "mttznsfqucwwgm"
+        ]
+      }
+    }
+  ],
+  "bloqueadasProduccion": []
+}
