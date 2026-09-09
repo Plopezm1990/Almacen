@@ -1,0 +1,81 @@
+name: PM26 P03a deteccion experimental del limite del cuerpo
+
+# Este workflow NO integra ni sustituye ningun archivo del pipeline de
+# recuperacion existente (recuperar_candidato.py, fuente-recuperado.js,
+# entrada-recuperada.js, rebuild-current.mjs, dist/fuente.js) ni toca
+# fuente.js, index.html, dependencias, main, Netlify, Supabase, QA,
+# produccion ni TPV. Verifica unicamente que el detector experimental
+# nuevo (source-recovery/p03a_deteccion_limite.py) se comporta como
+# describe el informe P03A_DETECCION_LIMITE.md: positivo real sobre
+# fuente.js + 4 negativos sinteticos, cada uno fallando por su motivo
+# exacto via codigo de salida real de un proceso -- nunca por una cadena
+# "PASS" en la salida -- y que nada de lo nuevo contiene un secreto o
+# identificador interno real.
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'source-recovery/p03a_deteccion_limite.py'
+      - 'source-recovery/p03a_test_deteccion.py'
+      - 'source-recovery/p03a_fixtures/**'
+      - 'source-recovery/P03A_DETECCION_LIMITE.md'
+      - 'tests/pm26/p03a-contract.mjs'
+      - 'tools/seguridad/verificar-secretos-e-identificadores.mjs'
+      - '.github/workflows/pm26-p03a-deteccion-limite.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger pipeline existente (P03a es diagnostico, no debe sustituir nada)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          intocables='source-recovery/recuperar_candidato.py
+          source-recovery/fuente-recuperado.js
+          source-recovery/entrada-recuperada.js
+          source-recovery/rebuild-current.mjs
+          dist/fuente.js
+          fuente.js
+          index.html'
+          cambiados="$(git diff --name-only origin/main..HEAD)"
+          while IFS= read -r archivo; do
+            [ -z "$archivo" ] && continue
+            if echo "$cambiados" | grep -qxF "$archivo"; then
+              echo "PM26 P03a (diagnostico) no debe tocar: $archivo" >&2
+              exit 1
+            fi
+          done <<< "$intocables"
+          echo 'PM26_P03A_PIPELINE_EXISTENTE_INTACTO=PASS'
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Contrato PM26 P03a (arnes del detector + CLI + sin secretos + informe)
+        run: node tests/pm26/p03a-contract.mjs
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Gate PM26 P03a -- diagnostico experimental (NO es un gate de integracion)
+        run: |
+          set -euo pipefail
+          node tests/pm26/p03a-contract.mjs
+          echo 'PM26_P03A_GATE_DE_DIAGNOSTICO=PASS'
+          echo 'AVISO: este gate certifica que el detector experimental se comporta como describe el informe -- NO que se haya integrado ni sustituido ningun archivo del pipeline de recuperacion.'
