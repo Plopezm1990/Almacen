@@ -113196,6 +113196,7 @@ function SeleccionPersonal({ entrevistas, crearEntrevista, actualizarEntrevista,
   const [confirmarEliminarPrefiltro, setConfirmarEliminarPrefiltro] = (0, import_react4.useState)(null);
   const [creandoPrefiltro, setCreandoPrefiltro] = (0, import_react4.useState)(false);
   const [enlaceGenerado, setEnlaceGenerado] = (0, import_react4.useState)(null);
+  const entrevistaEnvioBloqueadoPM24 = import_react4.default.useRef(false);
   (0, import_react4.useEffect)(() => {
     let activo = true;
     (async () => {
@@ -113269,8 +113270,19 @@ function SeleccionPersonal({ entrevistas, crearEntrevista, actualizarEntrevista,
       setCargando(false);
     }
   }
+  function bloqueadoPorEnvioDuplicadoPM24() {
+    // Un doble clic/doble toque rápido (antes de que React vuelva a
+    // renderizar) podía crear dos entrevistas o disparar dos llamadas a la
+    // IA para la misma respuesta -- igual que ya se protege la creación de
+    // pedidos, se bloquea aquí de forma síncrona durante una ventana breve.
+    if (entrevistaEnvioBloqueadoPM24.current) return true;
+    entrevistaEnvioBloqueadoPM24.current = true;
+    setTimeout(() => { entrevistaEnvioBloqueadoPM24.current = false; }, 750);
+    return false;
+  }
   function empezar() {
     if (!nombreNuevo.trim()) return;
+    if (bloqueadoPorEnvioDuplicadoPM24()) return;
     const nueva = crearEntrevista(nombreNuevo.trim());
     setNombreNuevo("");
     setShowNuevo(false);
@@ -113280,6 +113292,7 @@ function SeleccionPersonal({ entrevistas, crearEntrevista, actualizarEntrevista,
   function enviarRespuesta(valorDirecto) {
     const respuesta = (valorDirecto !== void 0 ? valorDirecto : respuestaActual).trim();
     if (!respuesta || !activa) return;
+    if (bloqueadoPorEnvioDuplicadoPM24()) return;
     const nuevoHistorial = [...activa.historial, { pregunta: activa.siguientePregunta, respuesta }];
     actualizarEntrevista(activa.id, { historial: nuevoHistorial, siguientePregunta: null, tipoRespuesta: null });
     setRespuestaActual("");
@@ -113287,6 +113300,7 @@ function SeleccionPersonal({ entrevistas, crearEntrevista, actualizarEntrevista,
   }
   function finalizarAhora() {
     if (!activa || activa.historial.length === 0) return;
+    if (bloqueadoPorEnvioDuplicadoPM24()) return;
     llamarIA(activa.id, activa.historial, true, activa.candidatoNombre);
   }
   if (activa) {
