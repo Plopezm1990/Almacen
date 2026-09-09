@@ -5,11 +5,11 @@ import { fileURLToPath } from 'node:url';
 import { escanearArbol } from '../../tools/seguridad/verificar-secretos-e-identificadores.mjs';
 
 // PM26 P06c: contrato del DISEÑO CORREGIDO del aviso F (tras el
-// rechazo explícito del SQL anterior) y del registro del defecto J
+// rechazo explícito del SQL anterior) y del registro del defecto K
 // (endpoint de producción hardcodeado en el flujo público de
 // prefiltro). No certifica ninguna aplicación real -- certifica que
 // (1) las 6 correcciones exigidas están presentes con el SQL
-// corregido, (2) el defecto J queda registrado como distinto del
+// corregido, (2) el defecto K queda registrado como distinto del
 // aviso F y sin corregir, y (3) ni los informes ni este contrato
 // contienen ningún secreto real.
 
@@ -74,14 +74,16 @@ function leer(rel) {
   console.log('PM26_P06C_AVISO_F_DISENO_CORREGIDO_VERIFICADO=PASS');
 }
 
-// ====================== DEFECTO J -- REGISTRO ======================
+// ====================== DEFECTO K -- REGISTRO ======================
 {
-  const doc = leer('tests/pm26/P06B_DEFECTO_J_ENDPOINT_PRODUCCION_HARDCODEADO.md');
-  assert.match(doc, /PM26_DEFECTO_J_ESTADO=REGISTRADO_SIN_CORREGIR/);
-  assert.match(doc, /PM26_DEFECTO_J_CORREGIDO=NO/);
-  assert.match(doc, /PM26_DEFECTO_J_PRUEBAS_VIVAS_EJECUTADAS=NO/);
-  assert.match(doc, /PM26_DEFECTO_J_MEZCLADO_CON_AVISO_F=NO/);
-  assert.match(doc, /PM26_DEFECTO_J_DECISION_PENDIENTE=RESOLVER_DINAMICO_O_MANTENER_DELIBERADO/);
+  const doc = leer('tests/pm26/P06B_DEFECTO_K_ENDPOINT_PRODUCCION_HARDCODEADO.md');
+  assert.match(doc, /PM26_DEFECTO_K_ESTADO=REGISTRADO_SIN_CORREGIR/);
+  assert.match(doc, /PM26_DEFECTO_K_CORREGIDO=NO/);
+  assert.match(doc, /PM26_DEFECTO_K_PRUEBAS_VIVAS_EJECUTADAS=NO/);
+  assert.match(doc, /PM26_DEFECTO_K_MEZCLADO_CON_AVISO_F=NO/);
+  assert.match(doc, /PM26_DEFECTO_K_DECISION_PENDIENTE=RESOLVER_DINAMICO_O_MANTENER_DELIBERADO/);
+  assert.match(doc, /PM26_DEFECTO_K_BLOQUEA_PRUEBAS_VIVAS_DE_PREFILTROS=SI/);
+  assert.match(doc, /Condición explícita del usuario.*debe resolverse\s*\n?\s*antes de ejecutar cualquier prueba viva del flujo de prefiltros/);
   assert.match(doc, /## Por qué es un defecto distinto del aviso F/);
 
   // Reproducible: la URL hardcodeada citada debe existir realmente en
@@ -92,9 +94,9 @@ function leer(rel) {
   assert.match(
     fuente,
     /https:\/\/[a-z0-9]+\.supabase\.co\/functions\/v1\/prefiltro-candidato/,
-    'la URL hardcodeada citada en el defecto J debe existir literalmente en fuente.js'
+    'la URL hardcodeada citada en el defecto K debe existir literalmente en fuente.js'
   );
-  console.log('PM26_P06C_DEFECTO_J_REGISTRO_VERIFICADO=PASS');
+  console.log('PM26_P06C_DEFECTO_K_REGISTRO_VERIFICADO=PASS');
 }
 
 // --- Estructural: sin secretos ni identificadores internos fuera de
@@ -105,7 +107,7 @@ function leer(rel) {
 {
   const archivosNuevos = [
     'tests/pm26/P06B_AVISO_F_DISENO_CORREGIDO.md',
-    'tests/pm26/P06B_DEFECTO_J_ENDPOINT_PRODUCCION_HARDCODEADO.md',
+    'tests/pm26/P06B_DEFECTO_K_ENDPOINT_PRODUCCION_HARDCODEADO.md',
     'tests/pm26/p06c-contract.mjs',
   ];
   const hallazgos = escanearArbol({ raiz: RAIZ_REPO, archivos: archivosNuevos, ubicacionesLegitimas: [] });
@@ -132,4 +134,4 @@ function leer(rel) {
   console.log('PM26_P06C_SIN_SECRETOS_REALES=PASS');
 }
 
-console.log('PM26 P06c — diseño corregido del aviso F + registro del defecto J: contrato OK');
+console.log('PM26 P06c — diseño corregido del aviso F + registro del defecto K: contrato OK');
