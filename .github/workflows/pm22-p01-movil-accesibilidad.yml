@@ -1,0 +1,105 @@
+name: PM22 P01 movil y accesibilidad (cobertura emulada)
+
+on:
+  push:
+    branches: [claude/pm22-movil-accesibilidad]
+    paths:
+      - 'tests/pm22/**'
+      - 'index.html'
+      - 'fuente.js'
+      - '.github/workflows/pm22-p01-movil-accesibilidad.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main y alcance (sin cambios en supabase/)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          unexpected="$(git diff --name-only origin/main..HEAD -- supabase/ || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'PM22 P01 no debe tocar supabase/: es cobertura de dispositivo/accesibilidad, no backend' >&2
+            exit 1
+          fi
+          echo 'PM22_P01_MAIN_FROZEN=PASS'
+          echo 'PM22_P01_SIN_CAMBIOS_SUPABASE=PASS'
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar dependencias de la suite (Chromium ya preinstalado, no se descarga de nuevo)
+        working-directory: tests/pm22
+        run: npm ci --no-audit --no-fund
+      - name: Levantar copia local aislada de la app
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 > /tmp/la-suite-http.log 2>&1 &
+          echo $! > /tmp/la-suite-http.pid
+          for i in $(seq 1 20); do
+            if curl -fsS --max-time 2 http://127.0.0.1:4173/ >/dev/null; then
+              echo "Copia local accesible"
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/la-suite-http.log || true
+          exit 1
+      - name: Suite PM22 P01 (Chromium, 5 viewports, modo local sin sincronizar)
+        working-directory: tests/pm22
+        env:
+          PM22_BASE_URL: http://127.0.0.1:4173/
+          PM22_CHROMIUM_PATH: /opt/pw-browsers/chromium
+        run: node p01-movil-accesibilidad.mjs
+      - name: Detener servidor local
+        if: always()
+        run: kill "$(cat /tmp/la-suite-http.pid)" 2>/dev/null || true
+      - name: Contrato PM22 P01
+        run: node tests/pm22/p01-contract.mjs
+      - name: Regresión completa (todas las suites vigentes)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for d in tests/g1 tests/pm04 tests/pm05 tests/pm07 tests/pm08 tests/pm09 tests/pm10 tests/pm11-compra tests/pm12 tests/pm13 tests/pm14 tests/pm15 tests/pm16 tests/pm17 tests/pm18 tests/pm19 tests/pm20 tests/pm21; do
+            for t in "$d"/*.mjs; do
+              [ -f "$t" ] || continue
+              node "$t"
+            done
+          done
+          node tests/pm22/p01-contract.mjs
+          echo 'PM22_P01_REGRESION_COMPLETA=PASS'
+      - name: Sin secretos ni identificadores internos
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -Eqi 'service_role_key|SUPABASE_SERVICE_ROLE_KEY|sb_secret_|qjqorixtkilwsndqayyx|flqercbgpgmmfaakrwkc|cqtghwiuxrqrxupyonqf|[a-z]{20}\.supabase\.co' \
+            tests/pm22/*.mjs tests/pm22/*.md
+          echo 'PM22_P01_NO_SECRET=PASS'
+      - name: Subir evidencia (capturas y resultados)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pm22-p01-evidencia
+          path: tests/pm22/evidencia/
+          if-no-files-found: ignore
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM22 P01
+        run: |
+          set -euo pipefail
+          node tests/pm22/p01-contract.mjs
+          echo 'PM22_P01_GATE_FINAL=PASS'
