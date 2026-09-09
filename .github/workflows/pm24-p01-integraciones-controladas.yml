@@ -75,12 +75,12 @@ jobs:
           ! grep -Eqi 'service_role_key|SUPABASE_SERVICE_ROLE_KEY|sb_secret_|qjqorixtkilwsndqayyx|cqtghwiuxrqrxupyonqf' \
             tests/pm24/*.mjs tests/pm24/*.md tests/pm24/*.json
           echo 'PM24_P01_NO_SECRET=PASS'
-      - name: Sin cambios de dependencias fuera de tests/pm2[234]
+      - name: Sin cambios de dependencias fuera de tests/pm2[2345]
         shell: bash
         run: |
           set -euo pipefail
           unexpected="$(git diff --name-only origin/main..HEAD -- '**/package.json' '**/package-lock.json' \
-            | grep -Ev '^tests/pm2[234]/' || true)"
+            | grep -Ev '^tests/pm2[2345]/' || true)"
           if [ -n "$unexpected" ]; then
             echo 'No debe haber cambios de dependencias fuera de tests/pm22, tests/pm23 o tests/pm24' >&2
             echo "$unexpected" >&2
