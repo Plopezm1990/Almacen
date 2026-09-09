@@ -1,0 +1,70 @@
+{
+  "ultimaUnidad": {
+    "producto": "QA-PM23-ULTIMA-UNIDAD",
+    "stockInicial": {
+      "almacen": 1,
+      "piso": 0
+    },
+    "intentosConcurrentes": 3,
+    "exitos": 1,
+    "rechazos": 2,
+    "motivosRechazo": [
+      "stock_insuficiente",
+      "stock_insuficiente"
+    ],
+    "stockFinal": {
+      "almacen": 0,
+      "piso": 0
+    },
+    "filasVentaEnBackend": 1,
+    "correcto": true
+  },
+  "duplicadoPago": {
+    "nombre": "pago",
+    "id": "pm23-dup-pago-1788935644071-4-tsnugx",
+    "respuestaA": {
+      "status": 200,
+      "ok": true,
+      "replayed": true
+    },
+    "respuestaB": {
+      "status": 200,
+      "ok": true,
+      "replayed": false
+    },
+    "filasFinales": 1,
+    "correcto": true
+  },
+  "duplicadoAjuste": {
+    "nombre": "ajuste-stock",
+    "operationId": "pm12-ajuste-conteo:pm23-dup-conteo-1788935644731-5-gogc7z:2026-09-09",
+    "respuestaA": {
+      "status": 200,
+      "ok": true,
+      "replayed": true
+    },
+    "respuestaB": {
+      "status": 200,
+      "ok": true,
+      "replayed": false
+    },
+    "filasFinales": 1,
+    "correcto": true
+  },
+  "duplicadoDevolucion": {
+    "nombre": "devolucion",
+    "id": "pm23-dup-devolucion-1788935645179-7-98gtd2",
+    "respuestaA": {
+      "status": 200,
+      "ok": true,
+      "replayed": false
+    },
+    "respuestaB": {
+      "status": 200,
+      "ok": true,
+      "replayed": true
+    },
+    "filasFinales": 1,
+    "correcto": true
+  }
+}
