@@ -1,0 +1,73 @@
+name: PM26 P05b preparacion parcial de la rama release (defecto E)
+
+# Certifica que la rama release existe en el remoto y apunta exactamente
+# al mismo commit que origin/main (ni un commit de mas, ni de menos), y
+# que el informe documenta con precision que el cambio real de contexto
+# de produccion en Netlify sigue pendiente de una accion del usuario en
+# el panel -- la herramienta de escritura disponible no expone esa
+# funcion. No toca main, Netlify, Supabase, QA, produccion ni TPV.
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'tests/pm26/P05B_PREPARACION_RAMA_RELEASE.md'
+      - 'tests/pm26/p05b-contract.mjs'
+      - '.github/workflows/pm26-p05b-preparacion-rama-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger lo que P05b no debe tocar
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          # Comparado contra el cierre previo de la rama (PM26 P05a,
+          # 91f44fe), no contra origin/main.
+          intocables='edge-auth-patch.js
+          fuente.js
+          index.html
+          _headers
+          reset-pruebas-preview.js
+          pm11-compra-mobile-loader.js
+          source-recovery/recuperar_candidato.py
+          source-recovery/fuente-recuperado.js
+          netlify.toml'
+          cambiados="$(git diff --name-only 91f44fec57df36e088b0adcfdaaeaa09237a6b74..HEAD)"
+          while IFS= read -r archivo; do
+            [ -z "$archivo" ] && continue
+            if echo "$cambiados" | grep -qxF "$archivo"; then
+              echo "PM26 P05b no debe tocar: $archivo" >&2
+              exit 1
+            fi
+          done <<< "$intocables"
+          if [ -f netlify.toml ]; then
+            echo "PM26 P05b no debe crear netlify.toml" >&2
+            exit 1
+          fi
+          echo 'PM26_P05B_INTOCABLES_INTACTOS=PASS'
+      - name: Contrato PM26 P05b (rama release alineada + estado parcial/bloqueado documentado + sin secretos)
+        run: node tests/pm26/p05b-contract.mjs
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Gate PM26 P05b -- preparacion parcial de la rama release, defecto E aun sin resolver
+        run: |
+          set -euo pipefail
+          node tests/pm26/p05b-contract.mjs
+          echo 'PM26_P05B_GATE_PREPARACION=PASS'
