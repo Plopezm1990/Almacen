@@ -342,6 +342,16 @@
         "40b4eba02ead1d36",
         "b5b492c7a15b749a"
       ]
+    },
+    {
+      "archivo": "tests/pm26/p02-contract.mjs",
+      "categoria": "termino_tecnico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
     }
   ]
 }

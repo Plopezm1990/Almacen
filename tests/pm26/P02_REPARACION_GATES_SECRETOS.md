@@ -83,9 +83,14 @@ corregir nada; su decisión, aplicada en este paquete, fue:
 
 ```
 SECRETOS_REALES=0
-LINEA_BASE=36 archivos, 112 coincidencias (termino_tecnico=71, configuracion_publica_legitima=31, falso_positivo=10)
+LINEA_BASE=37 archivos, 115 coincidencias (termino_tecnico=74, configuracion_publica_legitima=31, falso_positivo=10)
 DEUDA_DE_SANEAMIENTO=63 archivos, 161 coincidencias (identificador_interno_historico)
 ```
+
+(La línea base incluye el propio `tests/pm26/p02-contract.mjs`, que —
+como todos los contratos hermanos de este proyecto— cita los tres project
+refs como patrones de comparación para verificar que este documento no
+los publica; el escáner lo clasifica correctamente como `termino_tecnico`.)
 
 **No se afirma que los 63 archivos de deuda estén "limpios".** Se afirma
 que fueron inventariados y clasificados uno por uno, que ninguna
