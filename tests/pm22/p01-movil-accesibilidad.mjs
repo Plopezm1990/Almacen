@@ -19,7 +19,11 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
 const BASE_URL = process.env.PM22_BASE_URL || 'http://127.0.0.1:4173/';
-const EXECUTABLE_PATH = process.env.PM22_CHROMIUM_PATH || '/opt/pw-browsers/chromium';
+// Sin PM22_CHROMIUM_PATH, se usa el Chromium que Playwright gestiona por su
+// cuenta (el que instala `npx playwright install chromium`). Solo se fuerza
+// una ruta concreta cuando la variable de entorno la indica explícitamente
+// (por ejemplo, un Chromium ya preinstalado fuera del control de Playwright).
+const EXECUTABLE_PATH = process.env.PM22_CHROMIUM_PATH || undefined;
 
 const resultados = [];
 const evidenciaDir = new URL('./evidencia/', import.meta.url);

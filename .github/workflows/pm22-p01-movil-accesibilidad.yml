@@ -39,9 +39,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Instalar dependencias de la suite (Chromium ya preinstalado, no se descarga de nuevo)
+      - name: Instalar dependencias de la suite y Chromium de Playwright
         working-directory: tests/pm22
-        run: npm ci --no-audit --no-fund
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
       - name: Levantar copia local aislada de la app
         run: |
           python3 -m http.server 4173 --bind 127.0.0.1 > /tmp/la-suite-http.log 2>&1 &
@@ -59,7 +61,6 @@ jobs:
         working-directory: tests/pm22
         env:
           PM22_BASE_URL: http://127.0.0.1:4173/
-          PM22_CHROMIUM_PATH: /opt/pw-browsers/chromium
         run: node p01-movil-accesibilidad.mjs
       - name: Detener servidor local
         if: always()
