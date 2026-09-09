@@ -1,5 +1,5 @@
 {
-  "descripcion": "Identificadores internos históricos (deuda de saneamiento): duplicación de un identificador interno fuera de sus ubicaciones de runtime legítimas, en contenido preexistente de PM02-PM23. No son secretos -- ninguno concede acceso por sí solo. No se corrigen en PM26 P02 (fuera de su alcance autorizado). Nunca contiene valores, solo huellas no reversibles (sha256 truncado).",
+  "descripcion": "Identificadores internos históricos (deuda de saneamiento): duplicación real de un project ref o una clave publishable completa fuera de sus ubicaciones de runtime legítimas, en contenido preexistente. No son secretos -- ninguno concede acceso por sí solo. No se corrigen en PM26 P02 (fuera de su alcance autorizado). Nunca contiene valores, solo huellas no reversibles (sha256 truncado).",
   "entradas": [
     {
       "archivo": ".github/scripts/pm02-validar-barrera.mjs",
@@ -28,6 +28,106 @@
       ]
     },
     {
+      "archivo": ".github/workflows/pm21-p01-inventario-autorizacion.yml",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": ".github/workflows/pm21-p02-correcciones-autorizacion.yml",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": ".github/workflows/pm21-p03-matriz-identidades.yml",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": ".github/workflows/pm21-p04-local-cerrado.yml",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": ".github/workflows/pm21-p05-relacion-cruzada.yml",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": ".github/workflows/pm21-p06-replica-idempotencia.yml",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": ".github/workflows/pm22-p01-movil-accesibilidad.yml",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": ".github/workflows/pm23-p01-medicion-base.yml",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": ".github/workflows/pm23-p02-presupuesto-veredicto.yml",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": ".github/workflows/pm23-p03-ultima-unidad-duplicados.yml",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
       "archivo": ".github/workflows/release-gate-consolidacion-pm14.yml",
       "categoria": "identificador_interno_historico",
       "cantidad": 1,
@@ -41,14 +141,6 @@
       "cantidad": 4,
       "huellas": [
         "3cd9d656aaf32723",
-        "b5b492c7a15b749a"
-      ]
-    },
-    {
-      "archivo": "docs/plan-maestro/PM02_CIERRE_QA_EVIDENCIA.txt",
-      "categoria": "identificador_interno_historico",
-      "cantidad": 2,
-      "huellas": [
         "b5b492c7a15b749a"
       ]
     },
@@ -438,11 +530,113 @@
       ]
     },
     {
-      "archivo": "tests/pm24/p01-contract.mjs",
+      "archivo": "tests/pm21/p01-inventario-contract.mjs",
       "categoria": "identificador_interno_historico",
       "cantidad": 3,
       "huellas": [
-        "3cd9d656aaf32723"
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm21/p02-correcciones-contract.mjs",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm21/p03-matriz-contract.mjs",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm21/p04-local-cerrado-contract.mjs",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm21/p05-relacion-cruzada-contract.mjs",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm21/p06-replica-idempotencia-contract.mjs",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm22/p01-contract.mjs",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm23/p01-contract.mjs",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm23/p02-contract.mjs",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm23/p03-contract.mjs",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm24/p01-contract.mjs",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 5,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
       ]
     },
     {
@@ -464,9 +658,11 @@
     {
       "archivo": "tests/pm24/p02-contract.mjs",
       "categoria": "identificador_interno_historico",
-      "cantidad": 1,
+      "cantidad": 3,
       "huellas": [
-        "3cd9d656aaf32723"
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
       ]
     },
     {
@@ -488,9 +684,11 @@
     {
       "archivo": "tests/pm25/p01-contract.mjs",
       "categoria": "identificador_interno_historico",
-      "cantidad": 1,
+      "cantidad": 3,
       "huellas": [
-        "3cd9d656aaf32723"
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
       ]
     },
     {
@@ -504,9 +702,21 @@
     {
       "archivo": "tests/pm25/p02-contract.mjs",
       "categoria": "identificador_interno_historico",
-      "cantidad": 1,
+      "cantidad": 3,
       "huellas": [
-        "3cd9d656aaf32723"
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm26/p01-contract.mjs",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
       ]
     }
   ]

@@ -68,8 +68,24 @@ jobs:
           node tests/pm26/p01-contract.mjs
           node tests/pm26/p02-contract.mjs
           echo 'PM26_P01_REGRESION_COMPLETA=PASS'
-      - name: Sin secretos ni identificadores internos (escáner centralizado, PM26 P02)
-        run: node tools/seguridad/verificar-secretos-e-identificadores.mjs verificar
+          # NOTA: el escáner de secretos/identificadores ya se verificó más
+          # arriba, en "Contrato PM26 P01 y P02" (p02-contract.mjs ejecuta
+          # "verificar" como parte de su prueba positiva), sobre el checkout
+          # limpio. No se repite aquí a propósito: varios scripts de
+          # tests/pm13/*.mjs regeneran como efecto secundario, no
+          # determinista, sus propios JSON de evidencia histórica (capturan
+          # un fragmento de fuente.js cuyo recorte exacto puede variar entre
+          # ejecuciones) -- repetir el escáner después de este bucle
+          # expondría el gate a esa variación ajena a cualquier secreto o
+          # identificador real, no a un fallo genuino.
+      - name: Sintaxis del escáner y de sus ledgers (comprobación ligera, no repite el barrido completo)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check tools/seguridad/verificar-secretos-e-identificadores.mjs
+          node -e "JSON.parse(require('fs').readFileSync('tools/seguridad/linea-base-aceptada.json','utf8'))"
+          node -e "JSON.parse(require('fs').readFileSync('tools/seguridad/deuda-identificadores-historicos.json','utf8'))"
+          echo 'PM26_P01_ESCANER_LEDGERS_SINTAXIS=PASS'
 
   gate-final:
     needs: validar

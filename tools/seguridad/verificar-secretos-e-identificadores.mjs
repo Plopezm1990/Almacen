@@ -20,27 +20,41 @@
 //                                         ubicaciones de runtime ya auditadas
 //                                         en PM26 P01, necesarias para que
 //                                         el cliente funcione.
-//   - termino_tecnico                 -> el candidato aparece como parte de
-//                                         un literal de patrón (regex JS o
-//                                         cadena de grep) cuyo propio
-//                                         propósito es comprobar que ese
-//                                         valor NO debe aparecer en otro
-//                                         sitio -- uso autorreferencial, no
-//                                         una fuga nueva.
+//   - termino_tecnico                 -> reservado para nombres GENÉRICOS de
+//                                         patrón (ej. la palabra "service_role"
+//                                         o "sb_secret_" sueltas, sin ningún
+//                                         valor real adjunto) o expresiones
+//                                         puramente estructurales. NUNCA se
+//                                         aplica a un project ref real ni a
+//                                         una clave publishable completa,
+//                                         aunque aparezcan dentro de una
+//                                         regex, un comentario o un assert --
+//                                         envolver un identificador real en
+//                                         un patrón de búsqueda sigue siendo
+//                                         una duplicación de ese identificador,
+//                                         no una comprobación autorreferencial
+//                                         inocua.
 //   - falso_positivo                  -> coincidencia de forma sin relación
 //                                         real con un identificador (ej.
 //                                         subcadena casual de un blob
 //                                         binario en base64).
 //   - identificador_interno_historico -> duplicación real de un
-//                                         identificador interno fuera de sus
-//                                         ubicaciones legítimas y sin ser un
-//                                         patrón técnico. Deuda de
-//                                         saneamiento, no un secreto.
+//                                         identificador interno (project ref
+//                                         o clave publishable completa) fuera
+//                                         de sus ubicaciones legítimas. Deuda
+//                                         de saneamiento, no un secreto.
 //
 // La categoría de cada coincidencia se RE-DERIVA siempre a partir del
 // contenido real del archivo en el momento de verificar -- nunca se toma
 // de la palabra de un fichero de línea base sin comprobarla, precisamente
 // para que editar esos ficheros a mano no pueda encubrir un secreto real.
+//
+// El gate ("verificar") compara el ledger REGENERADO EN VIVO contra los
+// ficheros de línea base/deuda ENTRADA POR ENTRADA -- archivo, categoría,
+// cantidad y el conjunto exacto de huellas. Cualquier alta, baja,
+// repetición adicional del mismo valor, cambio de cantidad o
+// reclasificación exige regenerar el ledger explícitamente; no basta con
+// que la huella ya fuera conocida en algún otro archivo o categoría.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -88,8 +102,7 @@ const PATRON_CLAVE_PUBLICABLE = /sb_publishable_[A-Za-z0-9_-]{10,}/g;
 // de exactamente 20 caracteres en código de terceros vendorizado (nombres
 // de atributo HTML y de color CSS de DOMPurify/html2canvas), coincidencia
 // casual de longitud, no un identificador. Se registran por HUELLA
-// (sha256 truncado del valor), nunca por el valor mismo -- ver
-// tools/seguridad/README.md para el detalle de la investigación. ---
+// (sha256 truncado del valor), nunca por el valor mismo. ---
 const HUELLAS_FALSO_POSITIVO = new Set([
   'e4bcca595cb58f11', // atributo HTML de 20 letras en la lista de permitidos de DOMPurify
   'd85b2d645bf7db44', // atributo HTML/MathML de 20 letras en la misma lista
@@ -110,8 +123,26 @@ function huellaDe(valor) {
 }
 
 function listarArchivosGit(raiz) {
-  const salida = execFileSync('git', ['ls-files'], { cwd: raiz, encoding: 'utf8' });
+  const salida = execFileSync('git', ['ls-files'], { cwd: raiz, encoding: 'utf8', maxBuffer: MAX_BUFFER_LECTURA });
   return salida.split('\n').filter(Boolean);
+}
+
+/** Lee el contenido de un archivo tal como está en el ÍNDICE de git (lo
+ * último añadido con `git add`, o HEAD si no hay cambios en el índice) --
+ * no el árbol de trabajo. Se usa cuando el árbol a escanear se enumeró con
+ * `git ls-files`, para que el gate sea inmune a mutaciones no
+ * deterministas del árbol de trabajo ajenas al contenido rastreado (ej.
+ * scripts de diagnóstico de otros paquetes que reescriben su propia
+ * evidencia como efecto secundario de ejecutarse). */
+// maxBuffer generoso (fuente.js supera 5 MB) -- el default de Node (1 MB)
+// hacía fallar `git show` en silencio para los archivos más grandes del
+// repositorio, y ese fallo se descartaba como "no legible", dejando esos
+// archivos SIN ESCANEAR. No es un límite arbitrario: cubre con margen el
+// archivo más grande que el escáner necesita leer hoy.
+const MAX_BUFFER_LECTURA = 64 * 1024 * 1024; // 64 MB
+
+function leerDesdeIndiceGit(raiz, rel) {
+  return execFileSync('git', ['show', `:${rel}`], { cwd: raiz, encoding: 'utf8', maxBuffer: MAX_BUFFER_LECTURA });
 }
 
 /** Lista archivos de forma recursiva sin depender de git -- para escanear
@@ -131,46 +162,22 @@ export function listarArchivosRecursivo(raiz) {
   return resultado;
 }
 
-function lineaYColumnaDe(texto, indice) {
-  const hastaAqui = texto.slice(0, indice);
-  const numeroLinea = hastaAqui.split('\n').length;
-  const inicioLinea = hastaAqui.lastIndexOf('\n') + 1;
-  return { numeroLinea, columna: indice - inicioLinea };
-}
-
-function textoDeLinea(texto, indice) {
-  const inicio = texto.lastIndexOf('\n', indice - 1) + 1;
-  let fin = texto.indexOf('\n', indice);
-  if (fin === -1) fin = texto.length;
-  return texto.slice(inicio, fin);
-}
-
-// --- Heurística SINTÁCTICA (misma línea) de "término técnico": el valor
-// aparece como parte de un literal de patrón, no como un dato suelto. ---
-function pareceTerminoTecnico(lineaTexto, columna, longitudValor) {
-  const antes = lineaTexto.slice(0, columna);
-  const despues = lineaTexto.slice(columna + longitudValor);
-
-  // 1. Literal de regex JS: /valor/ (con flags opcionales) en la misma línea.
-  if (/\/$/.test(antes) && /^\/[a-z]*/.test(despues)) return true;
-
-  // 2. Elemento de una cadena de alternancia grep -E: aparece junto a un '|'
-  //    inmediatamente antes o después, dentro de una línea que invoca grep.
-  if (/grep\s+-[A-Za-z]*E/.test(lineaTexto) && (/\|$/.test(antes) || /^\|/.test(despues))) return true;
-
-  // 3. Elemento de un array/lista de "patron(es)"/"secreto" declarado en la
-  //    misma línea que el valor (ej. "const patronesSecreto = [ /x/, ").
-  if (/patron(es)?[_a-zA-Z]*\s*=\s*\[/.test(antes)) return true;
-
-  // 4. La propia línea es un comentario o assert que nombra el patrón como
-  //    metodología (ej. "no debe publicarse X", "assert.doesNotMatch").
-  if (/assert\.doesNotMatch|no debe (publicarse|aparecer)/i.test(lineaTexto)) return true;
-
-  return false;
+function lineaDe(texto, indice) {
+  return texto.slice(0, indice).split('\n').length;
 }
 
 /**
  * Escanea un árbol de archivos y clasifica cada coincidencia encontrada.
+ * IMPORTANTE: un candidato a project ref o una clave publishable completa
+ * SIEMPRE se clasifica como configuracion_publica_legitima (si está en una
+ * ubicación autorizada) o identificador_interno_historico (en cualquier
+ * otro sitio) -- nunca como termino_tecnico, sin importar si está envuelto
+ * en una regex, un comentario o un assert. termino_tecnico queda reservado
+ * para patrones genéricos que este escáner no detecta como candidatos
+ * (nombres de prefijo sin valor adjunto), así que hoy no lo produce nunca
+ * esta función -- se mantiene como categoría válida del esquema para no
+ * cerrar la puerta a un uso futuro legítimo, distinto de un identificador.
+ *
  * @param {object} opciones
  * @param {string} opciones.raiz - directorio raíz a escanear
  * @param {string[]} [opciones.archivos] - lista explícita de rutas relativas
@@ -179,6 +186,12 @@ function pareceTerminoTecnico(lineaTexto, columna, longitudValor) {
  *   clasifican como configuración pública legítima en vez de duplicación.
  */
 export function escanearArbol({ raiz, archivos, ubicacionesLegitimas = UBICACIONES_RUNTIME_LEGITIMAS }) {
+  // Si no se pasa una lista explícita, se enumera (y se LEE) vía git --
+  // índice, no árbol de trabajo -- para que el resultado sea inmune a
+  // mutaciones no deterministas del árbol de trabajo ajenas al contenido
+  // rastreado. Cuando se pasa una lista explícita (directorios aislados de
+  // prueba, sin git), se lee del sistema de archivos como siempre.
+  const usarIndiceGit = archivos === undefined;
   const listaArchivos = archivos ?? listarArchivosGit(raiz);
   const legitimasSet = new Set(ubicacionesLegitimas);
 
@@ -189,65 +202,60 @@ export function escanearArbol({ raiz, archivos, ubicacionesLegitimas = UBICACION
     const abs = path.join(raiz, rel);
     let texto;
     try {
-      texto = fs.readFileSync(abs, 'utf8');
+      texto = usarIndiceGit ? leerDesdeIndiceGit(raiz, rel) : fs.readFileSync(abs, 'utf8');
     } catch {
       continue;
     }
-    if (texto.includes(' ')) continue; // binario real, no texto
+    if (texto.includes(' ') === false) continue; // binario real, no texto
 
-    // 1. Secretos reales -- SIEMPRE bloqueante, en cualquier archivo.
+    // 1. Secretos reales -- SIEMPRE bloqueante, en cualquier archivo,
+    //    cualquiera que sea el contexto sintáctico que lo envuelva.
     for (const { patron } of PATRONES_SECRETO_REAL) {
       patron.lastIndex = 0;
       let m;
       while ((m = patron.exec(texto))) {
-        const { numeroLinea } = lineaYColumnaDe(texto, m.index);
         hallazgos.push({
           tipo: 'secreto_real',
           categoria: 'secreto_real',
           archivo: rel,
-          linea: numeroLinea,
+          linea: lineaDe(texto, m.index),
           huella: huellaDe(m[0]),
         });
         if (patron.lastIndex === m.index) patron.lastIndex++;
       }
     }
 
-    // 2. Claves publicables completas: legítimas solo en sus ubicaciones.
+    // 2. Claves publicables completas: legítimas solo en sus ubicaciones de
+    //    runtime autorizadas; en cualquier otro sitio son deuda histórica,
+    //    nunca "término técnico" -- el valor real sigue siendo el valor
+    //    real aunque esté dentro de una regex o un comentario.
     PATRON_CLAVE_PUBLICABLE.lastIndex = 0;
     let mClave;
     while ((mClave = PATRON_CLAVE_PUBLICABLE.exec(texto))) {
-      const { numeroLinea } = lineaYColumnaDe(texto, mClave.index);
       const categoria = legitimasSet.has(rel) ? 'configuracion_publica_legitima' : 'identificador_interno_historico';
-      const lineaTexto = textoDeLinea(texto, mClave.index);
-      const { columna } = lineaYColumnaDe(texto, mClave.index);
-      const categoriaFinal = categoria === 'identificador_interno_historico' && pareceTerminoTecnico(lineaTexto, columna, mClave[0].length)
-        ? 'termino_tecnico'
-        : categoria;
       hallazgos.push({
         tipo: 'identificador_duplicado',
-        categoria: categoriaFinal,
+        categoria,
         archivo: rel,
-        linea: numeroLinea,
+        linea: lineaDe(texto, mClave.index),
         huella: huellaDe(mClave[0]),
       });
     }
 
     // 3. Candidatos a project ref (forma: 20 alfanuméricos en minúsculas).
+    //    Mismo principio: legítimo solo en su ubicación, deuda histórica en
+    //    cualquier otro sitio, sin excepción por contexto sintáctico.
     PATRON_CANDIDATO_REF.lastIndex = 0;
     let mRef;
     while ((mRef = PATRON_CANDIDATO_REF.exec(texto))) {
       const valor = mRef[0];
-      const { numeroLinea, columna } = lineaYColumnaDe(texto, mRef.index);
-      const lineaTexto = textoDeLinea(texto, mRef.index);
-
       const huella = huellaDe(valor);
+
       let categoria;
       if (HUELLAS_FALSO_POSITIVO.has(huella)) {
         categoria = 'falso_positivo';
       } else if (legitimasSet.has(rel)) {
         categoria = 'configuracion_publica_legitima';
-      } else if (pareceTerminoTecnico(lineaTexto, columna, valor.length)) {
-        categoria = 'termino_tecnico';
       } else {
         categoria = 'identificador_interno_historico';
       }
@@ -256,7 +264,7 @@ export function escanearArbol({ raiz, archivos, ubicacionesLegitimas = UBICACION
         tipo: 'identificador_duplicado',
         categoria,
         archivo: rel,
-        linea: numeroLinea,
+        linea: lineaDe(texto, mRef.index),
         huella,
       });
     }
@@ -269,7 +277,7 @@ export function escanearArbol({ raiz, archivos, ubicacionesLegitimas = UBICACION
 export function agruparHallazgos(hallazgos) {
   const grupos = new Map();
   for (const h of hallazgos) {
-    const clave = `${h.archivo} ${h.categoria}`;
+    const clave = `${h.archivo} ${h.categoria}`;
     if (!grupos.has(clave)) {
       grupos.set(clave, { archivo: h.archivo, categoria: h.categoria, cantidad: 0, huellas: new Set() });
     }
@@ -293,42 +301,91 @@ export function separarEnLedgers(hallazgos) {
   };
 }
 
+function cargarLedger(ruta) {
+  const doc = JSON.parse(fs.readFileSync(ruta, 'utf8'));
+  const mapa = new Map();
+  for (const e of doc.entradas) {
+    mapa.set(`${e.archivo} ${e.categoria}`, { cantidad: e.cantidad, huellas: new Set(e.huellas) });
+  }
+  return { doc, mapa };
+}
+
+function mismasHuellas(a, b) {
+  if (a.size !== b.size) return false;
+  for (const h of a) if (!b.has(h)) return false;
+  return true;
+}
+
 /**
- * Verifica el árbol actual contra los ledgers ya registrados.
- * Devuelve { ok, secretosReales, nuevasApariciones, resumenDeuda }.
- * Nunca imprime valores -- solo archivo/categoría/huella.
+ * Verifica el árbol actual contra los ledgers ya registrados, comparando
+ * cada entrada COMPLETA (archivo + categoría + cantidad + conjunto exacto
+ * de huellas) -- no solo si una huella individual ya era conocida en algún
+ * sitio. Cualquier alta, baja, cambio de cantidad o de categoría para un
+ * (archivo, categoría) exige regenerar el ledger explícitamente.
+ * Devuelve { ok, secretosReales, discrepancias, resumenDeuda }. Nunca
+ * imprime valores -- solo archivo/categoría/motivo/huella.
  */
 export function verificar({ raiz, rutaLineaBase, rutaDeuda, archivos }) {
   const hallazgos = escanearArbol({ raiz, archivos });
   const secretosReales = hallazgos.filter((h) => h.tipo === 'secreto_real');
 
-  const lineaBase = JSON.parse(fs.readFileSync(rutaLineaBase, 'utf8'));
-  const deuda = JSON.parse(fs.readFileSync(rutaDeuda, 'utf8'));
-  const huellasConocidas = new Set();
-  for (const entrada of [...lineaBase.entradas, ...deuda.entradas]) {
-    for (const h of entrada.huellas) huellasConocidas.add(`${entrada.archivo} ${h}`);
+  const { doc: deudaDoc, mapa: mapaLineaBaseYDeuda } = (() => {
+    const lb = cargarLedger(rutaLineaBase);
+    const de = cargarLedger(rutaDeuda);
+    const combinado = new Map([...lb.mapa, ...de.mapa]);
+    return { doc: de.doc, mapa: combinado };
+  })();
+
+  const actual = agruparHallazgos(hallazgos.filter((h) => h.tipo === 'identificador_duplicado'));
+  const mapaActual = new Map(actual.map((e) => [`${e.archivo} ${e.categoria}`, { cantidad: e.cantidad, huellas: new Set(e.huellas) }]));
+
+  const discrepancias = [];
+  const todasLasClaves = new Set([...mapaLineaBaseYDeuda.keys(), ...mapaActual.keys()]);
+  for (const clave of todasLasClaves) {
+    const [archivo, categoria] = clave.split(' ');
+    const enLedger = mapaLineaBaseYDeuda.get(clave);
+    const enActual = mapaActual.get(clave);
+
+    if (enLedger && !enActual) {
+      discrepancias.push({ archivo, categoria, motivo: 'registrado_en_ledger_pero_ya_no_aparece' });
+    } else if (!enLedger && enActual) {
+      discrepancias.push({ archivo, categoria, motivo: 'aparicion_nueva_fuera_de_ledger' });
+    } else if (enLedger.cantidad !== enActual.cantidad) {
+      discrepancias.push({ archivo, categoria, motivo: `cantidad_distinta_ledger_${enLedger.cantidad}_actual_${enActual.cantidad}` });
+    } else if (!mismasHuellas(enLedger.huellas, enActual.huellas)) {
+      discrepancias.push({ archivo, categoria, motivo: 'huellas_distintas' });
+    }
   }
 
-  const nuevasApariciones = hallazgos
-    .filter((h) => h.tipo === 'identificador_duplicado')
-    .filter((h) => !huellasConocidas.has(`${h.archivo} ${h.huella}`));
-
   return {
-    ok: secretosReales.length === 0 && nuevasApariciones.length === 0,
+    ok: secretosReales.length === 0 && discrepancias.length === 0,
     secretosReales,
-    nuevasApariciones,
-    resumenDeuda: deuda.entradas,
+    discrepancias,
+    resumenDeuda: deudaDoc.entradas,
   };
+}
+
+function analizarArgumentosCLI(argv) {
+  const opciones = {};
+  for (const arg of argv) {
+    const m = arg.match(/^--([a-zA-Z-]+)=(.*)$/);
+    if (m) opciones[m[1]] = m[2];
+  }
+  return opciones;
 }
 
 // --- CLI ---
 if (process.argv[1] === __filename) {
   const modo = process.argv[2] || 'verificar';
-  const rutaLineaBase = path.join(RAIZ_REPO, 'tools/seguridad/linea-base-aceptada.json');
-  const rutaDeuda = path.join(RAIZ_REPO, 'tools/seguridad/deuda-identificadores-historicos.json');
 
   if (modo === 'regenerar-ledgers') {
-    const hallazgos = escanearArbol({ raiz: RAIZ_REPO });
+    const opts = analizarArgumentosCLI(process.argv.slice(3));
+    const raiz = opts.raiz ? path.resolve(opts.raiz) : RAIZ_REPO;
+    const rutaLineaBase = opts['linea-base'] ? path.resolve(opts['linea-base']) : path.join(RAIZ_REPO, 'tools/seguridad/linea-base-aceptada.json');
+    const rutaDeuda = opts.deuda ? path.resolve(opts.deuda) : path.join(RAIZ_REPO, 'tools/seguridad/deuda-identificadores-historicos.json');
+    const archivos = opts['sin-git'] === 'true' ? listarArchivosRecursivo(raiz) : undefined;
+
+    const hallazgos = escanearArbol({ raiz, archivos });
     const secretosReales = hallazgos.filter((h) => h.tipo === 'secreto_real');
     if (secretosReales.length > 0) {
       console.error('DETENIDO: se encontró un posible SECRETO REAL. No se regeneró ningún ledger.');
@@ -337,11 +394,11 @@ if (process.argv[1] === __filename) {
     }
     const { lineaBase, deuda } = separarEnLedgers(hallazgos);
     fs.writeFileSync(rutaLineaBase, JSON.stringify({
-      descripcion: 'Coincidencias admitidas: término técnico, falso positivo o configuración pública legítima. Regenerar solo con "node ... regenerar-ledgers" tras revisión manual. Nunca contiene valores, solo huellas no reversibles (sha256 truncado).',
+      descripcion: 'Coincidencias admitidas: término técnico, falso positivo o configuración pública legítima. Un project ref real o una clave publishable completa NUNCA se clasifican aquí como término técnico, sin importar el contexto sintáctico. Regenerar solo con "regenerar-ledgers" tras revisión manual. Nunca contiene valores, solo huellas no reversibles (sha256 truncado).',
       entradas: lineaBase,
     }, null, 2) + '\n');
     fs.writeFileSync(rutaDeuda, JSON.stringify({
-      descripcion: 'Identificadores internos históricos (deuda de saneamiento): duplicación de un identificador interno fuera de sus ubicaciones de runtime legítimas, en contenido preexistente de PM02-PM23. No son secretos -- ninguno concede acceso por sí solo. No se corrigen en PM26 P02 (fuera de su alcance autorizado). Nunca contiene valores, solo huellas no reversibles (sha256 truncado).',
+      descripcion: 'Identificadores internos históricos (deuda de saneamiento): duplicación real de un project ref o una clave publishable completa fuera de sus ubicaciones de runtime legítimas, en contenido preexistente. No son secretos -- ninguno concede acceso por sí solo. No se corrigen en PM26 P02 (fuera de su alcance autorizado). Nunca contiene valores, solo huellas no reversibles (sha256 truncado).',
       entradas: deuda,
     }, null, 2) + '\n');
     console.log(`LEDGERS_REGENERADOS: linea_base=${lineaBase.length} archivos, deuda=${deuda.length} archivos`);
@@ -349,15 +406,21 @@ if (process.argv[1] === __filename) {
   }
 
   if (modo === 'verificar') {
-    const r = verificar({ raiz: RAIZ_REPO, rutaLineaBase, rutaDeuda });
+    const opts = analizarArgumentosCLI(process.argv.slice(3));
+    const raiz = opts.raiz ? path.resolve(opts.raiz) : RAIZ_REPO;
+    const rutaLineaBase = opts['linea-base'] ? path.resolve(opts['linea-base']) : path.join(RAIZ_REPO, 'tools/seguridad/linea-base-aceptada.json');
+    const rutaDeuda = opts.deuda ? path.resolve(opts.deuda) : path.join(RAIZ_REPO, 'tools/seguridad/deuda-identificadores-historicos.json');
+    const archivos = opts['sin-git'] === 'true' ? listarArchivosRecursivo(raiz) : undefined;
+
+    const r = verificar({ raiz, rutaLineaBase, rutaDeuda, archivos });
     if (r.secretosReales.length > 0) {
       console.error('VERIFICAR_SECRETOS=FALLO: posible secreto real encontrado');
       for (const s of r.secretosReales) console.error(`  ${s.categoria} en ${s.archivo}:${s.linea} (huella ${s.huella})`);
       process.exit(2);
     }
-    if (r.nuevasApariciones.length > 0) {
-      console.error('VERIFICAR_SECRETOS=FALLO: aparición nueva fuera de línea base y deuda registrada');
-      for (const n of r.nuevasApariciones) console.error(`  ${n.categoria} en ${n.archivo}:${n.linea} (huella ${n.huella})`);
+    if (r.discrepancias.length > 0) {
+      console.error('VERIFICAR_SECRETOS=FALLO: el árbol actual no coincide exactamente con la línea base y la deuda registradas');
+      for (const d of r.discrepancias) console.error(`  ${d.categoria} en ${d.archivo}: ${d.motivo}`);
       process.exit(1);
     }
     const totalDeuda = r.resumenDeuda.reduce((acc, e) => acc + e.cantidad, 0);
