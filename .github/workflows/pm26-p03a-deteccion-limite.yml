@@ -41,6 +41,14 @@ jobs:
           set -euo pipefail
           git fetch origin main --quiet
           test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          # Se compara contra el HEAD exacto del cierre previo (PM26 P02,
+          # 1060e2f), no contra origin/main -- fuente.js y otros archivos ya
+          # difieren legitimamente de main por trabajo de PM24/PM25/PM26
+          # previamente autorizado y cerrado en esta rama. Lo que este gate
+          # debe impedir es que P03a (diagnostico) toque el pipeline
+          # existente A PARTIR de ese punto, no que la rama entera coincida
+          # con main.
+          test "$(git cat-file -t 1060e2f5ec26cb4175150df449c95f7504c32df7 2>/dev/null)" = "commit"
           intocables='source-recovery/recuperar_candidato.py
           source-recovery/fuente-recuperado.js
           source-recovery/entrada-recuperada.js
@@ -48,7 +56,7 @@ jobs:
           dist/fuente.js
           fuente.js
           index.html'
-          cambiados="$(git diff --name-only origin/main..HEAD)"
+          cambiados="$(git diff --name-only 1060e2f5ec26cb4175150df449c95f7504c32df7..HEAD)"
           while IFS= read -r archivo; do
             [ -z "$archivo" ] && continue
             if echo "$cambiados" | grep -qxF "$archivo"; then
