@@ -1,0 +1,71 @@
+name: PM21 P05 relacion cruzada entre empresas
+
+on:
+  push:
+    branches: [claude/pm21-identidad-autorizacion]
+    paths:
+      - 'tests/pm21/**'
+      - '.github/workflows/pm21-p05-relacion-cruzada.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main y alcance (solo documentación y contrato, sin código ni esquema)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          unexpected="$(git diff --name-only origin/main..HEAD -- fuente.js supabase/ | grep -v -e '^supabase/migrations/20260908210800_pm21_p01_movimientos_registro_aislamiento.sql$' -e '^supabase/migrations/20260908210900_pm21_p01_storage_qa_pruebas_aislamiento.sql$' -e '^supabase/migrations/20260908212000_pm21_p02_matices_rol_politicas.sql$' || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'PM21 P05 no debe tocar fuente.js ni añadir supabase/ más allá de las migraciones ya autorizadas en P01/P02: la fixture de datos de este punto se aplicó directamente en QA, no vía migración de esquema' >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+          echo 'PM21_P05_MAIN_FROZEN=PASS'
+          echo 'PM21_P05_SIN_CAMBIOS_CODIGO_NI_SUPABASE=PASS'
+      - name: Sintaxis bundle (no debe haber cambiado)
+        run: node --check fuente.js
+      - name: Contrato PM21 P05
+        run: node tests/pm21/p05-relacion-cruzada-contract.mjs
+      - name: Regresión completa (todas las suites vigentes)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for d in tests/g1 tests/pm04 tests/pm05 tests/pm07 tests/pm08 tests/pm09 tests/pm10 tests/pm11-compra tests/pm12 tests/pm13 tests/pm14 tests/pm15 tests/pm16 tests/pm17 tests/pm18 tests/pm19 tests/pm20; do
+            for t in "$d"/*.mjs; do
+              [ -f "$t" ] || continue
+              node "$t"
+            done
+          done
+          for t in tests/pm21/*.mjs; do
+            [ -f "$t" ] || continue
+            node "$t"
+          done
+          echo 'PM21_P05_REGRESION_COMPLETA=PASS'
+      - name: Sin secretos ni identificadores internos
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -Eqi 'service_role_key|SUPABASE_SERVICE_ROLE_KEY|sb_secret_|qjqorixtkilwsndqayyx|flqercbgpgmmfaakrwkc|cqtghwiuxrqrxupyonqf|[a-z]{20}\.supabase\.co' \
+            tests/pm21/*.mjs tests/pm21/*.md
+          echo 'PM21_P05_NO_SECRET=PASS'
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM21 P05
+        run: |
+          set -euo pipefail
+          node tests/pm21/p05-relacion-cruzada-contract.mjs
+          echo 'PM21_P05_GATE_FINAL=PASS'
