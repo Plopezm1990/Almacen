@@ -6,6 +6,11 @@
 # Requiere un servidor Postgres local en marcha (rol "postgres"
 # accesible via `sudo -u postgres psql`, o POSTGRES_PSQL/POSTGRES_SUDO
 # ajustados). No crea ni depende de ningun proyecto Supabase.
+#
+# Los archivos .sql se pasan siempre por stdin (nunca con -f <ruta>):
+# el usuario "postgres" no puede atravesar el directorio de checkout
+# en runners como GitHub Actions (permisos del directorio del
+# checkout), aunque sí puede leer lo que se le pasa por stdin.
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,22 +24,34 @@ trap 'rm -rf "$WORKDIR"; $RUN_AS_POSTGRES $PSQL -c "drop database if exists \"$D
 
 fallo() { echo "PM26_P06B_H_AISLADO_FALLO: $1" >&2; exit 1; }
 
+# Aplica un archivo .sql por stdin contra "$DB" (o la base por defecto
+# si $2 = "-"), con ON_ERROR_STOP=1.
+psql_archivo() {
+  local archivo="$1" db="$2"
+  if [ "$db" = "-" ]; then
+    cat "$archivo" | $RUN_AS_POSTGRES $PSQL -v ON_ERROR_STOP=1
+  else
+    cat "$archivo" | $RUN_AS_POSTGRES $PSQL -d "$db" -v ON_ERROR_STOP=1
+  fi
+}
+
 [ -f "$MIGRACION" ] || fallo "no se encuentra la migracion en $MIGRACION"
 
 $RUN_AS_POSTGRES $PSQL -c "drop database if exists \"$DB\";" >/dev/null
 $RUN_AS_POSTGRES $PSQL -c "create database \"$DB\";" >/dev/null
 $RUN_AS_POSTGRES $PSQL -c "drop role if exists service_role;" >/dev/null
-$RUN_AS_POSTGRES $PSQL -d "$DB" -v ON_ERROR_STOP=1 -c "create role service_role; grant all on all tables in schema public to service_role;" >/dev/null
+echo "create role service_role; grant all on all tables in schema public to service_role;" \
+  | $RUN_AS_POSTGRES $PSQL -d "$DB" -v ON_ERROR_STOP=1 >/dev/null
 
-$RUN_AS_POSTGRES $PSQL -d "$DB" -v ON_ERROR_STOP=1 -f "$DIR/schema.sql" >/dev/null \
+psql_archivo "$DIR/schema.sql" "$DB" >/dev/null \
   || fallo "no se pudo aplicar schema.sql"
 echo "PM26_P06B_H_AISLADO_SCHEMA=PASS"
 
-$RUN_AS_POSTGRES $PSQL -d "$DB" -v ON_ERROR_STOP=1 -f "$DIR/seed.sql" >/dev/null \
+psql_archivo "$DIR/seed.sql" "$DB" >/dev/null \
   || fallo "no se pudo aplicar seed.sql"
 echo "PM26_P06B_H_AISLADO_SEED=PASS"
 
-$RUN_AS_POSTGRES $PSQL -d "$DB" -v ON_ERROR_STOP=1 -f "$DIR/comportamiento.sql" > "$WORKDIR/antes.txt" 2>&1 \
+psql_archivo "$DIR/comportamiento.sql" "$DB" > "$WORKDIR/antes.txt" 2>&1 \
   || { cat "$WORKDIR/antes.txt" >&2; fallo "bateria de comportamiento ANTES fallo"; }
 
 grep -q '^P13' "$WORKDIR/antes.txt" || fallo "la bateria ANTES no llego hasta P13 -- salida incompleta"
@@ -48,11 +65,11 @@ echo "PM26_P06B_H_AISLADO_INDICES_AUSENTES_ANTES=PASS"
 TOTAL_IDX_ANTES="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select count(*) from pg_indexes where schemaname='public';")"
 
 # --- Aplicar la migracion real ---
-$RUN_AS_POSTGRES $PSQL -d "$DB" -v ON_ERROR_STOP=1 -f "$MIGRACION" >/dev/null \
+psql_archivo "$MIGRACION" "$DB" >/dev/null \
   || fallo "la migracion no se aplico limpiamente"
 echo "PM26_P06B_H_AISLADO_MIGRACION_APLICADA=PASS"
 
-$RUN_AS_POSTGRES $PSQL -d "$DB" -v ON_ERROR_STOP=1 -f "$DIR/comportamiento.sql" > "$WORKDIR/despues.txt" 2>&1 \
+psql_archivo "$DIR/comportamiento.sql" "$DB" > "$WORKDIR/despues.txt" 2>&1 \
   || { cat "$WORKDIR/despues.txt" >&2; fallo "bateria de comportamiento DESPUES fallo"; }
 
 if ! diff -q "$WORKDIR/antes.txt" "$WORKDIR/despues.txt" >/dev/null; then
@@ -74,13 +91,13 @@ echo "$PLAN" | grep -qi "InitPlan" || fallo "el plan de perfiles no muestra Init
 echo "PM26_P06B_H_AISLADO_INITPLAN_CONFIRMADO=PASS"
 
 # --- Reversion exacta ---
-$RUN_AS_POSTGRES $PSQL -d "$DB" -v ON_ERROR_STOP=1 -f "$DIR/revertir.sql" >/dev/null \
+psql_archivo "$DIR/revertir.sql" "$DB" >/dev/null \
   || fallo "la reversion no se aplico limpiamente"
 
 REVERTIDO_IDX="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select count(*) from pg_indexes where schemaname='public' and indexname in ('idx_auditoria_registro_actor_user_id','idx_movimientos_stock_operation_id','idx_pagos_encargo_revierte_pago_id','idx_suscripciones_push_user_id');")"
 [ "$REVERTIDO_IDX" = "0" ] || fallo "tras revertir deberian quedar 0 de los 4 indices, encontrado $REVERTIDO_IDX"
 
-$RUN_AS_POSTGRES $PSQL -d "$DB" -v ON_ERROR_STOP=1 -f "$DIR/comportamiento.sql" > "$WORKDIR/revertido.txt" 2>&1 \
+psql_archivo "$DIR/comportamiento.sql" "$DB" > "$WORKDIR/revertido.txt" 2>&1 \
   || { cat "$WORKDIR/revertido.txt" >&2; fallo "bateria de comportamiento tras REVERTIR fallo"; }
 
 diff -q "$WORKDIR/antes.txt" "$WORKDIR/revertido.txt" >/dev/null \
@@ -88,9 +105,9 @@ diff -q "$WORKDIR/antes.txt" "$WORKDIR/revertido.txt" >/dev/null \
 echo "PM26_P06B_H_AISLADO_REVERSION_EXACTA=PASS"
 
 # --- Repeticion controlada / idempotencia: reaplicar dos veces mas ---
-$RUN_AS_POSTGRES $PSQL -d "$DB" -v ON_ERROR_STOP=1 -f "$MIGRACION" >/dev/null \
+psql_archivo "$MIGRACION" "$DB" >/dev/null \
   || fallo "no se pudo reaplicar la migracion tras revertir"
-$RUN_AS_POSTGRES $PSQL -d "$DB" -v ON_ERROR_STOP=1 -f "$MIGRACION" >/dev/null \
+psql_archivo "$MIGRACION" "$DB" >/dev/null \
   || fallo "reaplicar la migracion una segunda vez (ya aplicada) no debe fallar"
 echo "PM26_P06B_H_AISLADO_REPETICION_CONTROLADA_IDEMPOTENTE=PASS"
 
@@ -107,6 +124,6 @@ echo "PM26_P06B_H_AISLADO_BLOQUEO_SHARELOCK_CONFIRMADO=PASS"
 
 # Dejar la base en el estado final "aplicado" antes de descartarla, por
 # si se quiere inspeccionar manualmente en la misma ejecucion.
-$RUN_AS_POSTGRES $PSQL -d "$DB" -v ON_ERROR_STOP=1 -f "$MIGRACION" >/dev/null 2>&1 || true
+psql_archivo "$MIGRACION" "$DB" >/dev/null 2>&1 || true
 
 echo "PM26_P06B_H_AISLADO_VALIDACION_COMPLETA=PASS"

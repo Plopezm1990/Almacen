@@ -3,6 +3,20 @@
 -- para validar la migracion 20260909200730_pm26_p06b_rendimiento_indices_rls_initplan.sql
 -- en un Postgres local aislado, sin tocar QA. Solo para pruebas.
 
+-- Un Postgres generico (p.ej. el paquete "postgresql" de Ubuntu en un
+-- runner de CI) no trae los roles "anon"/"authenticated" de Supabase
+-- por defecto -- se crean aqui si faltan, de forma idempotente.
+do $$
+begin
+  if not exists (select 1 from pg_roles where rolname = 'anon') then
+    create role anon;
+  end if;
+  if not exists (select 1 from pg_roles where rolname = 'authenticated') then
+    create role authenticated;
+  end if;
+end
+$$;
+
 create schema if not exists auth;
 create table if not exists auth.users (id uuid primary key);
 
