@@ -44,6 +44,11 @@ posible sobre esa empresa. Confirmado que sí.
 
 ## 2. Relación cruzada entre empresas en un RPC: diseñada, no ejecutable hoy sin una fixture nueva
 
+**Actualización (P05)**: el usuario autorizó explícitamente crear la fixture
+que faltaba; la prueba se ejecutó y quedó verificada — ver
+`tests/pm21/P05_RELACION_CRUZADA_ENTRE_EMPRESAS.md`. Lo que sigue documenta el
+análisis que llevó a identificar exactamente qué fixture hacía falta.
+
 El caso de P01 §6 ("relación cruzada, p. ej. `empleado_id` de otra empresa en
 un RPC de fichaje") requiere una identidad activa cuyo `empleado_id` real
 pertenezca a una empresa distinta de la que un atacante declararía. Se
