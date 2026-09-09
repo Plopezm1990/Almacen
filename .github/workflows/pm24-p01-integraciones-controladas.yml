@@ -1,0 +1,80 @@
+name: PM24 P01 integraciones controladas
+
+on:
+  push:
+    branches: [claude/pm24-integraciones-controladas]
+    paths:
+      - 'fuente.js'
+      - 'tests/pm24/**'
+      - '.github/workflows/pm24-p01-integraciones-controladas.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main y alcance (sin cambios en supabase/)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          unexpected="$(git diff --name-only origin/main..HEAD -- supabase/ || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'PM24 P01 no debe tocar supabase/: es una prueba de integraciones externas (correo, WhatsApp, IA, push), no de esquema' >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+          echo 'PM24_P01_MAIN_FROZEN=PASS'
+          echo 'PM24_P01_SIN_CAMBIOS_SUPABASE=PASS'
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+      - name: Contrato PM24 P01
+        run: node tests/pm24/p01-contract.mjs
+      - name: Regresión completa (todas las suites vigentes)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for d in tests/g1 tests/pm04 tests/pm05 tests/pm07 tests/pm08 tests/pm09 tests/pm10 tests/pm11-compra tests/pm12 tests/pm13 tests/pm14 tests/pm15 tests/pm16 tests/pm17 tests/pm18 tests/pm19 tests/pm20; do
+            for t in "$d"/*.mjs; do
+              [ -f "$t" ] || continue
+              node "$t"
+            done
+          done
+          node tests/pm24/p01-contract.mjs
+          echo 'PM24_P01_REGRESION_COMPLETA=PASS'
+      - name: Sin secretos ni identificadores internos
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -Eqi 'service_role_key|SUPABASE_SERVICE_ROLE_KEY|sb_secret_|qjqorixtkilwsndqayyx|cqtghwiuxrqrxupyonqf' \
+            tests/pm24/*.mjs tests/pm24/*.md tests/pm24/*.json
+          echo 'PM24_P01_NO_SECRET=PASS'
+      - name: Sin cambios de dependencias fuera de tests/pm24
+        shell: bash
+        run: |
+          set -euo pipefail
+          unexpected="$(git diff --name-only origin/main..HEAD -- '**/package.json' '**/package-lock.json' | grep -v '^tests/pm24/' || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'PM24 P01 no debe modificar dependencias fuera de tests/pm24' >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+          echo 'PM24_P01_DEPENDENCIAS_ACOTADAS=PASS'
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM24 P01
+        run: |
+          set -euo pipefail
+          node tests/pm24/p01-contract.mjs
+          echo 'PM24_P01_GATE_FINAL=PASS'
