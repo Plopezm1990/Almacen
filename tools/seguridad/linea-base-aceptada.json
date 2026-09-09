@@ -28,46 +28,12 @@
       ]
     },
     {
-      "archivo": "index.es-SJCMKHSO-5BY7EMAG.js",
-      "categoria": "falso_positivo",
-      "cantidad": 1,
-      "huellas": [
-        "ab4eeda43e545149"
-      ]
-    },
-    {
-      "archivo": "index.es-SJCMKHSO.js",
-      "categoria": "falso_positivo",
-      "cantidad": 1,
-      "huellas": [
-        "ab4eeda43e545149"
-      ]
-    },
-    {
       "archivo": "index.html",
       "categoria": "configuracion_publica_legitima",
       "cantidad": 2,
       "huellas": [
         "354107d4e103673b",
         "3cd9d656aaf32723"
-      ]
-    },
-    {
-      "archivo": "purify.es-TSVPIOEK-6SSTY34W.js",
-      "categoria": "falso_positivo",
-      "cantidad": 2,
-      "huellas": [
-        "d85b2d645bf7db44",
-        "e4bcca595cb58f11"
-      ]
-    },
-    {
-      "archivo": "purify.es-TSVPIOEK.js",
-      "categoria": "falso_positivo",
-      "cantidad": 2,
-      "huellas": [
-        "d85b2d645bf7db44",
-        "e4bcca595cb58f11"
       ]
     },
     {
