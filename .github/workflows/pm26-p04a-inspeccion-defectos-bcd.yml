@@ -1,0 +1,75 @@
+name: PM26 P04a inspeccion de solo lectura defectos B C D
+
+# Este workflow NO aplica ninguna correccion -- PM26 P04a es una
+# inspeccion de solo lectura de los defectos B (10 archivos JS huerfanos),
+# C (regla residual de _headers) y D (reset-pruebas-preview.js). Verifica
+# que nada de lo prohibido fue tocado (hashes identicos a los registrados
+# en el informe), que los hallazgos estructurales del informe son
+# reproducibles por script, y que no se copio ningun secreto ni
+# identificador QA a los archivos nuevos.
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'tests/pm26/P04A_INSPECCION_DEFECTOS_B_C_D.md'
+      - 'tests/pm26/p04a-contract.mjs'
+      - '.github/workflows/pm26-p04a-inspeccion-defectos-bcd.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger lo que P04a no debe tocar
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          # Comparado contra el cierre previo de la rama (PM26 P03b,
+          # 1a83603), no contra origin/main.
+          intocables='index.html
+          _headers
+          reset-pruebas-preview.js
+          edge-auth-patch.js
+          pm11-compra-mobile-layout-v1.js
+          chunk-43ACCR2P.js
+          chunk-CZ7CSFO4.js
+          chunk-SULEHD65.js
+          chunk-WNPC2SID.js
+          html2canvas-5V7KZ5X4.js
+          html2canvas-5V7KZ5X4-UL42RKXS.js
+          purify.es-TSVPIOEK.js
+          purify.es-TSVPIOEK-6SSTY34W.js
+          index.es-SJCMKHSO.js
+          index.es-SJCMKHSO-5BY7EMAG.js'
+          cambiados="$(git diff --name-only 1a8360317baca93648f40af48295bc76ef045239..HEAD)"
+          while IFS= read -r archivo; do
+            [ -z "$archivo" ] && continue
+            if echo "$cambiados" | grep -qxF "$archivo"; then
+              echo "PM26 P04a (solo lectura) no debe tocar: $archivo" >&2
+              exit 1
+            fi
+          done <<< "$intocables"
+          echo 'PM26_P04A_INTOCABLES_INTACTOS=PASS'
+      - name: Contrato PM26 P04a (inspeccion reproducible + sin secretos/identificadores QA)
+        run: node tests/pm26/p04a-contract.mjs
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM26 P04a -- inspeccion de solo lectura (NO es un gate de correccion)
+        run: |
+          set -euo pipefail
+          node tests/pm26/p04a-contract.mjs
+          echo 'PM26_P04A_GATE_DE_INSPECCION=PASS'
+          echo 'AVISO: este gate certifica que la inspeccion de los defectos B, C y D es precisa y reproducible -- NO que se haya eliminado o modificado ningun archivo. P04b requiere autorizacion aparte.'
