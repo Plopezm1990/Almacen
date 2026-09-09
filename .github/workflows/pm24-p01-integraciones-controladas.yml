@@ -19,50 +19,70 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Proteger main y alcance (sin cambios en supabase/)
+      - name: Proteger main y alcance (solo lo ya cerrado en PM21/22/23 + PM24)
         shell: bash
         run: |
           set -euo pipefail
           git fetch origin main --quiet
           test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
-          unexpected="$(git diff --name-only origin/main..HEAD -- supabase/ || true)"
+          # Esta rama incorpora (por merge, sin reescribir historia) los cierres
+          # ya verificados de PM21, PM22 y PM23 — de ahí que el diff contra main
+          # incluya las tres migraciones de PM21. PM24 en sí no debe añadir
+          # ningún cambio de esquema propio.
+          unexpected="$(git diff --name-only origin/main..HEAD -- supabase/ \
+            | grep -v '^supabase/migrations/20260908210800_pm21_p01_movimientos_registro_aislamiento\.sql$' \
+            | grep -v '^supabase/migrations/20260908210900_pm21_p01_storage_qa_pruebas_aislamiento\.sql$' \
+            | grep -v '^supabase/migrations/20260908212000_pm21_p02_matices_rol_politicas\.sql$' \
+            || true)"
           if [ -n "$unexpected" ]; then
-            echo 'PM24 P01 no debe tocar supabase/: es una prueba de integraciones externas (correo, WhatsApp, IA, push), no de esquema' >&2
+            echo 'PM24 no debe tocar supabase/ más allá de lo ya cerrado en PM21' >&2
             echo "$unexpected" >&2
             exit 1
           fi
           echo 'PM24_P01_MAIN_FROZEN=PASS'
-          echo 'PM24_P01_SIN_CAMBIOS_SUPABASE=PASS'
+          echo 'PM24_P01_SUPABASE_ACOTADO_A_PM21=PASS'
       - name: Sintaxis bundle
         run: node --check fuente.js
       - name: Contrato PM24 P01
         run: node tests/pm24/p01-contract.mjs
-      - name: Regresión completa (todas las suites vigentes)
+      - name: Regresión completa (todas las suites vigentes, incluye PM21/22/23 fusionados)
         shell: bash
         run: |
           set -euo pipefail
-          for d in tests/g1 tests/pm04 tests/pm05 tests/pm07 tests/pm08 tests/pm09 tests/pm10 tests/pm11-compra tests/pm12 tests/pm13 tests/pm14 tests/pm15 tests/pm16 tests/pm17 tests/pm18 tests/pm19 tests/pm20; do
+          # Barrido en bloque: directorios que solo contienen contratos
+          # estáticos (sin arneses interactivos que necesiten red real,
+          # sesión de navegador o credenciales de QA).
+          for d in tests/g1 tests/pm04 tests/pm05 tests/pm07 tests/pm08 tests/pm09 tests/pm10 tests/pm11-compra tests/pm12 tests/pm13 tests/pm14 tests/pm15 tests/pm16 tests/pm17 tests/pm18 tests/pm19 tests/pm20 tests/pm21; do
             for t in "$d"/*.mjs; do
               [ -f "$t" ] || continue
               node "$t"
             done
           done
+          # PM22 y PM23 mezclan su contrato estático con su arnés interactivo
+          # (Playwright / medición real contra QA) en el mismo directorio —
+          # se invoca solo el contrato, igual que hacía cada uno en su propio
+          # workflow de cierre.
+          node tests/pm22/p01-contract.mjs
+          node tests/pm23/p01-contract.mjs
+          node tests/pm23/p02-contract.mjs
+          node tests/pm23/p03-contract.mjs
           node tests/pm24/p01-contract.mjs
           echo 'PM24_P01_REGRESION_COMPLETA=PASS'
-      - name: Sin secretos ni identificadores internos
+      - name: Sin secretos ni identificadores internos (contenido propio de PM24)
         shell: bash
         run: |
           set -euo pipefail
           ! grep -Eqi 'service_role_key|SUPABASE_SERVICE_ROLE_KEY|sb_secret_|qjqorixtkilwsndqayyx|cqtghwiuxrqrxupyonqf' \
             tests/pm24/*.mjs tests/pm24/*.md tests/pm24/*.json
           echo 'PM24_P01_NO_SECRET=PASS'
-      - name: Sin cambios de dependencias fuera de tests/pm24
+      - name: Sin cambios de dependencias fuera de tests/pm2[234]
         shell: bash
         run: |
           set -euo pipefail
-          unexpected="$(git diff --name-only origin/main..HEAD -- '**/package.json' '**/package-lock.json' | grep -v '^tests/pm24/' || true)"
+          unexpected="$(git diff --name-only origin/main..HEAD -- '**/package.json' '**/package-lock.json' \
+            | grep -Ev '^tests/pm2[234]/' || true)"
           if [ -n "$unexpected" ]; then
-            echo 'PM24 P01 no debe modificar dependencias fuera de tests/pm24' >&2
+            echo 'No debe haber cambios de dependencias fuera de tests/pm22, tests/pm23 o tests/pm24' >&2
             echo "$unexpected" >&2
             exit 1
           fi
