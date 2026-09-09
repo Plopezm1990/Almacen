@@ -1,0 +1,347 @@
+{
+  "descripcion": "Coincidencias admitidas: término técnico, falso positivo o configuración pública legítima. Regenerar solo con \"node ... regenerar-ledgers\" tras revisión manual. Nunca contiene valores, solo huellas no reversibles (sha256 truncado).",
+  "entradas": [
+    {
+      "archivo": ".github/workflows/pm21-p01-inventario-autorizacion.yml",
+      "categoria": "termino_tecnico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": ".github/workflows/pm21-p02-correcciones-autorizacion.yml",
+      "categoria": "termino_tecnico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": ".github/workflows/pm21-p03-matriz-identidades.yml",
+      "categoria": "termino_tecnico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": ".github/workflows/pm21-p04-local-cerrado.yml",
+      "categoria": "termino_tecnico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": ".github/workflows/pm21-p05-relacion-cruzada.yml",
+      "categoria": "termino_tecnico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": ".github/workflows/pm21-p06-replica-idempotencia.yml",
+      "categoria": "termino_tecnico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": ".github/workflows/pm22-p01-movil-accesibilidad.yml",
+      "categoria": "termino_tecnico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": ".github/workflows/pm23-p01-medicion-base.yml",
+      "categoria": "termino_tecnico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": ".github/workflows/pm23-p02-presupuesto-veredicto.yml",
+      "categoria": "termino_tecnico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": ".github/workflows/pm23-p03-ultima-unidad-duplicados.yml",
+      "categoria": "termino_tecnico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "edge-auth-patch.js",
+      "categoria": "configuracion_publica_legitima",
+      "cantidad": 1,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "fuente.js",
+      "categoria": "configuracion_publica_legitima",
+      "cantidad": 12,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "fuente.js",
+      "categoria": "falso_positivo",
+      "cantidad": 4,
+      "huellas": [
+        "ab4eeda43e545149",
+        "d85b2d645bf7db44",
+        "e4bcca595cb58f11"
+      ]
+    },
+    {
+      "archivo": "index.es-SJCMKHSO-5BY7EMAG.js",
+      "categoria": "falso_positivo",
+      "cantidad": 1,
+      "huellas": [
+        "ab4eeda43e545149"
+      ]
+    },
+    {
+      "archivo": "index.es-SJCMKHSO.js",
+      "categoria": "falso_positivo",
+      "cantidad": 1,
+      "huellas": [
+        "ab4eeda43e545149"
+      ]
+    },
+    {
+      "archivo": "index.html",
+      "categoria": "configuracion_publica_legitima",
+      "cantidad": 2,
+      "huellas": [
+        "354107d4e103673b",
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "purify.es-TSVPIOEK-6SSTY34W.js",
+      "categoria": "falso_positivo",
+      "cantidad": 2,
+      "huellas": [
+        "d85b2d645bf7db44",
+        "e4bcca595cb58f11"
+      ]
+    },
+    {
+      "archivo": "purify.es-TSVPIOEK.js",
+      "categoria": "falso_positivo",
+      "cantidad": 2,
+      "huellas": [
+        "d85b2d645bf7db44",
+        "e4bcca595cb58f11"
+      ]
+    },
+    {
+      "archivo": "reset-pruebas-preview.js",
+      "categoria": "configuracion_publica_legitima",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "55ce0a106a9ae86f",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "restablecer-contrasena.html",
+      "categoria": "configuracion_publica_legitima",
+      "cantidad": 2,
+      "huellas": [
+        "354107d4e103673b",
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "source-recovery/fuente-recuperado.js",
+      "categoria": "configuracion_publica_legitima",
+      "cantidad": 11,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm21/p01-inventario-contract.mjs",
+      "categoria": "termino_tecnico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm21/p02-correcciones-contract.mjs",
+      "categoria": "termino_tecnico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm21/p03-matriz-contract.mjs",
+      "categoria": "termino_tecnico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm21/p04-local-cerrado-contract.mjs",
+      "categoria": "termino_tecnico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm21/p05-relacion-cruzada-contract.mjs",
+      "categoria": "termino_tecnico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm21/p06-replica-idempotencia-contract.mjs",
+      "categoria": "termino_tecnico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm22/p01-contract.mjs",
+      "categoria": "termino_tecnico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm23/p01-contract.mjs",
+      "categoria": "termino_tecnico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm23/p02-contract.mjs",
+      "categoria": "termino_tecnico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm23/p03-contract.mjs",
+      "categoria": "termino_tecnico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm24/p01-contract.mjs",
+      "categoria": "termino_tecnico",
+      "cantidad": 2,
+      "huellas": [
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm24/p02-contract.mjs",
+      "categoria": "termino_tecnico",
+      "cantidad": 2,
+      "huellas": [
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm25/p01-contract.mjs",
+      "categoria": "termino_tecnico",
+      "cantidad": 2,
+      "huellas": [
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm25/p02-contract.mjs",
+      "categoria": "termino_tecnico",
+      "cantidad": 2,
+      "huellas": [
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm26/p01-contract.mjs",
+      "categoria": "termino_tecnico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "40b4eba02ead1d36",
+        "b5b492c7a15b749a"
+      ]
+    }
+  ]
+}

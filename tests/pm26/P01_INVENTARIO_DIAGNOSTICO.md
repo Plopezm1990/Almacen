@@ -405,3 +405,29 @@ PM26_P01_TPV_TOCADO=NO
 PM25 P02 sigue **PARCIAL/BLOQUEADO** (no probado, no aprobado, no
 descartado, no cerrado) y se arrastra a la puerta final, como ya está
 registrado en `tests/pm25/ESTADO_PM25.md`.
+
+## Addenda tras PM26 P02 — criterio de "sin secretos" reabierto y reparado
+
+El usuario detectó, tras revisar este documento, un defecto adicional (J):
+los gates de CI de PM24/PM25 (y el de este mismo P01) comprobaban "sin
+secretos" con un `grep` que escribía los project refs reales de forma
+literal dentro del propio patrón de búsqueda — publicándolos en el propio
+mecanismo pensado para impedir su publicación. El paso "Sin valores reales
+de secreto" de este documento (más arriba, en la sección de secretos) fue,
+sin saberlo entonces, un ejemplo más del mismo defecto.
+
+**Los gates de PM24/PM25/PM26 P01 eran, en ese punto concreto, incompletos:**
+comprobaban secretos reales correctamente, pero no comprobaban la
+duplicación de identificadores internos que ellos mismos introducían.
+PM26 P02 (`tests/pm26/P02_REPARACION_GATES_SECRETOS.md`) corrige los cinco
+workflows afectados con un escáner centralizado, reabre y repara
+específicamente ese criterio, e inventaría/clasifica el resto del
+repositorio sin corregirlo (fuera del alcance autorizado para P02).
+
+**Esta reparación NO cambia ni invalida la evidencia funcional obtenida en
+los demás pasos de este documento** (los diez puntos del inventario, los
+defectos A-H, la verificación en vivo del script HUD, la reproducibilidad
+del build): esa evidencia se obtuvo por inspección directa del código y de
+las herramientas Netlify/Supabase, no depende del mecanismo de "sin
+secretos" de ningún workflow. Los defectos A-H permanecen exactamente
+donde estaban, pendientes de corrección.

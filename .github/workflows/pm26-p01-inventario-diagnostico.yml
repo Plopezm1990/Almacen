@@ -43,8 +43,10 @@ jobs:
           fi
           echo 'PM26_P01_MAIN_FROZEN=PASS'
           echo 'PM26_P01_SUPABASE_ACOTADO_A_PM21=PASS'
-      - name: Contrato PM26 P01 (verifica el INVENTARIO, no una correccion)
-        run: node tests/pm26/p01-contract.mjs
+      - name: Contrato PM26 P01 y P02 (verifica el INVENTARIO y la reparacion de gates, no una correccion de fuente.js)
+        run: |
+          node tests/pm26/p01-contract.mjs
+          node tests/pm26/p02-contract.mjs
       - name: Regresion completa (todas las suites vigentes)
         shell: bash
         run: |
@@ -64,25 +66,10 @@ jobs:
           node tests/pm25/p01-contract.mjs
           node tests/pm25/p02-contract.mjs
           node tests/pm26/p01-contract.mjs
+          node tests/pm26/p02-contract.mjs
           echo 'PM26_P01_REGRESION_COMPLETA=PASS'
-      - name: Sin valores reales de secreto ni identificadores internos
-        shell: bash
-        run: |
-          set -euo pipefail
-          # NOTA (hallazgo incidental de este mismo paquete): "! grep ...; echo PASS"
-          # bajo "set -e" NO aborta el step si grep encuentra coincidencias -- bash
-          # no aplica set -e a un comando negado con "!". Este step usa "if grep;
-          # then exit 1; fi" en su lugar para que el gate sea real.
-          # Alcance: solo el .md (el documento publicado/legible), no el .mjs --
-          # el contrato .mjs nombra estos mismos patrones deliberadamente para
-          # comprobar que NO aparecen en el .md, así que su propio texto los
-          # contiene como literales de comparación, no como un valor filtrado.
-          if grep -Eq 'sb_publishable_[A-Za-z0-9_-]{10,}|sb_secret_[A-Za-z0-9_-]{10,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}|qjqorixtkilwsndqayyx|cqtghwiuxrqrxupyonqf|flqercbgpgmmfaakrwkc' \
-            tests/pm26/*.md; then
-            echo 'Se encontró un valor real de secreto o identificador interno en tests/pm26/*.md' >&2
-            exit 1
-          fi
-          echo 'PM26_P01_NO_SECRET_VALUE=PASS'
+      - name: Sin secretos ni identificadores internos (escáner centralizado, PM26 P02)
+        run: node tools/seguridad/verificar-secretos-e-identificadores.mjs verificar
 
   gate-final:
     needs: validar
@@ -93,5 +80,6 @@ jobs:
         run: |
           set -euo pipefail
           node tests/pm26/p01-contract.mjs
+          node tests/pm26/p02-contract.mjs
           echo 'PM26_P01_GATE_DE_INVENTARIO=PASS'
           echo 'AVISO: este gate certifica que el inventario y diagnostico esta documentado con precision -- NO que se haya corregido ningun defecto.'

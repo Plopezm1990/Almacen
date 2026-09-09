@@ -68,13 +68,8 @@ jobs:
           node tests/pm25/p01-contract.mjs
           node tests/pm25/p02-contract.mjs
           echo 'PM25_P02_REGRESION_COMPLETA=PASS'
-      - name: Sin secretos ni identificadores internos
-        shell: bash
-        run: |
-          set -euo pipefail
-          ! grep -Eqi 'service_role_key|SUPABASE_SERVICE_ROLE_KEY|sb_secret_|qjqorixtkilwsndqayyx|cqtghwiuxrqrxupyonqf' \
-            tests/pm25/*.mjs tests/pm25/*.md tests/pm25/*.json
-          echo 'PM25_P02_NO_SECRET=PASS'
+      - name: Sin secretos ni identificadores internos (escáner centralizado, PM26 P02)
+        run: node tools/seguridad/verificar-secretos-e-identificadores.mjs verificar
 
   gate-final:
     needs: validar

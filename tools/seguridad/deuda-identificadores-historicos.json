@@ -1,0 +1,513 @@
+{
+  "descripcion": "Identificadores internos históricos (deuda de saneamiento): duplicación de un identificador interno fuera de sus ubicaciones de runtime legítimas, en contenido preexistente de PM02-PM23. No son secretos -- ninguno concede acceso por sí solo. No se corrigen en PM26 P02 (fuera de su alcance autorizado). Nunca contiene valores, solo huellas no reversibles (sha256 truncado).",
+  "entradas": [
+    {
+      "archivo": ".github/scripts/pm02-validar-barrera.mjs",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": ".github/scripts/validar-reinicio-local-seguro.mjs",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": ".github/workflows/pm02-cerrar-backend-qa.yml",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 12,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "55ce0a106a9ae86f",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": ".github/workflows/release-gate-consolidacion-pm14.yml",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "40b4eba02ead1d36"
+      ]
+    },
+    {
+      "archivo": "docs/plan-maestro/PM-02-aislamiento-qa-2026-09-04.md",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 4,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "docs/plan-maestro/PM02_CIERRE_QA_EVIDENCIA.txt",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 2,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "docs/plan-maestro/PM04_CIERRE.txt",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "docs/plan-maestro/PM04_EVIDENCIA.md",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 2,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "docs/plan-maestro/PM05_EVIDENCIA.md",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "docs/plan-maestro/PM07_EVIDENCIA.md",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "docs/plan-maestro/PM08_EVIDENCIA.md",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "docs/plan-maestro/PM09_EVIDENCIA.md",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "docs/plan-maestro/PM10_EVIDENCIA.md",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "docs/plan-maestro/RESET_DATOS_CHOCOS_2026-09-04.md",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "supabase/migrations/20260905185935_g1_p08_operation_id_finanzas_global.sql",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/g1/P02_MAPA_EVIDENCIAS_F1.md",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/g1/P03_LA019_EVIDENCIA.md",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/g1/P05_PERMISOS_AISLAMIENTO_EVIDENCIA.md",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/g1/P06_CIFRAS_CONCILIACIONES_EVIDENCIA.md",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/g1/P07_CONCURRENCIA_REPLAY_EVIDENCIA.md",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/g1/P08_LA004_GATE_EVIDENCIA.md",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm04/baseline-results.json",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm04/fixtures.json",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 2,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm05/backend-results.json",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm09/LA007_DIAGNOSTICO_FUENTE.txt",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 15,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm09/LA008_DIAGNOSTICO_FUENTE.txt",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 24,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm09/P09_HISTORIAL_DIAGNOSTICO.txt",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm09/P10_CAJA_DIAGNOSTICO.txt",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 4,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm09/P11_IVA_DIAGNOSTICO.txt",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm09/P15_CASOS_ECONOMICOS_EVIDENCIA.json",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm09/P16_AISLAMIENTO_CONTEXTO_EVIDENCIA.json",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm09/P17_ROBUSTEZ_EVIDENCIA.json",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm10/P07_DIAGNOSTICO_PERSONAL.json",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 15,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm10/P08_DIAGNOSTICO_ENCARGOS.json",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 2,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm10/P08_FOCUS_ENCARGOS.txt",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 2,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm10/P10_DIAGNOSTICO_AUTORIDAD.json",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 5,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm10/P10_STORAGE_ORIGINAL.md",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 2,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm10/P11_FOCUS_ROBUSTEZ.txt",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm10/P11_FOCUS_STOCK.txt",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm10/P12_DATOS_LEGADOS_EVIDENCIA.json",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm10/P13_FOCUS_CONTEXTO.txt",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm11-compra/P07_AISLAMIENTO_PERMISOS_E2E.md",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm12/P01_CHECKPOINT_INVENTARIO.md",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm12/P09_DIAGNOSTICO_TEMP.txt",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 2,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm13/P01_DIAGNOSTICO_PERSONAL.json",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm13/P04_DIAGNOSTICO_AUSENCIAS.json",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm13/P06_DIAGNOSTICO_COSTES.json",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 2,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm13/P07_DIAGNOSTICO_IA_NOMINAS.json",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 2,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm13/P07_EXTRACT_NOMINAS.txt",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm14/P02_CIERRE_ANTICIPOS_SALDO.md",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm14/P05_CIERRE_DEVOLUCION.md",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm20/P06_CIERRE_RESPALDOS_ERRORES_AUDITORIA.md",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 2,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm20/p06-errores-sistema-aislamiento-contract.mjs",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm20/P08_CIERRE_PUERTA_G2.md",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "tests/pm24/p01-contract.mjs",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm24/p01-integraciones.mjs",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 2,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm24/p01-resultado.json",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 6,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm24/p02-contract.mjs",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm24/p02-duplicacion.mjs",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm24/p02-resultado.json",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm25/p01-contract.mjs",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm25/p01-respaldo-nube-activa.mjs",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "tests/pm25/p02-contract.mjs",
+      "categoria": "identificador_interno_historico",
+      "cantidad": 1,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    }
+  ]
+}
