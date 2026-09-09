@@ -1,0 +1,94 @@
+name: PM26 P06b avisos F investigacion G correccion H preparado y validado aislado
+
+# Aviso F: investigacion de solo lectura + propuesta de SQL, sin
+# aplicar ningun cambio de esquema ni de aplicacion. Aviso G: corrige
+# el diagnostico (bloqueado por plan Free, no por falta de
+# herramienta), sin cambiar el plan ni generar facturacion. Aviso H:
+# migracion preparada en el repositorio y validada de punta a punta en
+# un Postgres local aislado (nunca contra QA) -- no aplicada en QA.
+# No reabre PM05-PM09, no mezcla F en la migracion de H, no toca main,
+# Netlify, Supabase produccion, QA (escritura) ni TPV.
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'tests/pm26/P06B_AVISO_F_INVESTIGACION.md'
+      - 'tests/pm26/P06B_AVISO_G_CORRECCION.md'
+      - 'tests/pm26/P06B_AVISO_H_VALIDACION_AISLADA.md'
+      - 'tests/pm26/p06b-contract.mjs'
+      - 'tests/pm26/p06b-h-aislado/**'
+      - 'supabase/migrations/20260909200730_pm26_p06b_rendimiento_indices_rls_initplan.sql'
+      - '.github/workflows/pm26-p06b-avisos-fgh.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger lo que P06b no debe tocar
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          # Comparado contra el cierre previo de la rama (PM26 P06a,
+          # 20dd638), no contra origin/main.
+          intocables='edge-auth-patch.js
+          fuente.js
+          index.html
+          _headers
+          reset-pruebas-preview.js
+          pm11-compra-mobile-loader.js
+          source-recovery/recuperar_candidato.py
+          source-recovery/fuente-recuperado.js
+          netlify.toml'
+          cambiados="$(git diff --name-only 20dd638e1d70d802ba1279f4e9e25d42727151e4..HEAD)"
+          while IFS= read -r archivo; do
+            [ -z "$archivo" ] && continue
+            if echo "$cambiados" | grep -qxF "$archivo"; then
+              echo "PM26 P06b no debe tocar: $archivo" >&2
+              exit 1
+            fi
+          done <<< "$intocables"
+          # El aviso H no debe mezclar ninguna migracion del aviso F.
+          if git diff --name-only 20dd638e1d70d802ba1279f4e9e25d42727151e4..HEAD -- supabase/migrations | grep -qi prefiltro; then
+            echo "PM26 P06b: no debe existir ninguna migracion del aviso F en este commit" >&2
+            exit 1
+          fi
+          echo 'PM26_P06B_INTOCABLES_INTACTOS=PASS'
+      - name: Instalar PostgreSQL local (aislado, para validar la migracion del aviso H)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sleep 2
+          sudo -u postgres pg_isready
+      - name: Contrato PM26 P06b (avisos F, G, H + validacion aislada real + sin secretos)
+        run: node tests/pm26/p06b-contract.mjs
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar PostgreSQL local (aislado)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sleep 2
+          sudo -u postgres pg_isready
+      - name: Gate PM26 P06b -- avisos F, G y H, ningun cambio aplicado en QA/produccion
+        run: |
+          set -euo pipefail
+          node tests/pm26/p06b-contract.mjs
+          echo 'PM26_P06B_GATE=PASS'

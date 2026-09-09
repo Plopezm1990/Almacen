@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+# PM26 P06b-H -- valida la migracion
+# supabase/migrations/20260909200730_pm26_p06b_rendimiento_indices_rls_initplan.sql
+# de punta a punta en un Postgres local aislado (nunca contra QA).
+#
+# Requiere un servidor Postgres local en marcha (rol "postgres"
+# accesible via `sudo -u postgres psql`, o POSTGRES_PSQL/POSTGRES_SUDO
+# ajustados). No crea ni depende de ningun proyecto Supabase.
+set -euo pipefail
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$DIR/../../.." && pwd)"
+MIGRACION="$REPO_ROOT/supabase/migrations/20260909200730_pm26_p06b_rendimiento_indices_rls_initplan.sql"
+DB="pm26_p06b_h_aislado_$$"
+PSQL="${POSTGRES_PSQL:-psql}"
+RUN_AS_POSTGRES="${POSTGRES_SUDO:-sudo -u postgres}"
+WORKDIR="$(mktemp -d)"
+trap 'rm -rf "$WORKDIR"; $RUN_AS_POSTGRES $PSQL -c "drop database if exists \"$DB\";" >/dev/null 2>&1 || true' EXIT
+
+fallo() { echo "PM26_P06B_H_AISLADO_FALLO: $1" >&2; exit 1; }
+
+[ -f "$MIGRACION" ] || fallo "no se encuentra la migracion en $MIGRACION"
+
+$RUN_AS_POSTGRES $PSQL -c "drop database if exists \"$DB\";" >/dev/null
+$RUN_AS_POSTGRES $PSQL -c "create database \"$DB\";" >/dev/null
+$RUN_AS_POSTGRES $PSQL -c "drop role if exists service_role;" >/dev/null
+$RUN_AS_POSTGRES $PSQL -d "$DB" -v ON_ERROR_STOP=1 -c "create role service_role; grant all on all tables in schema public to service_role;" >/dev/null
+
+$RUN_AS_POSTGRES $PSQL -d "$DB" -v ON_ERROR_STOP=1 -f "$DIR/schema.sql" >/dev/null \
+  || fallo "no se pudo aplicar schema.sql"
+echo "PM26_P06B_H_AISLADO_SCHEMA=PASS"
+
+$RUN_AS_POSTGRES $PSQL -d "$DB" -v ON_ERROR_STOP=1 -f "$DIR/seed.sql" >/dev/null \
+  || fallo "no se pudo aplicar seed.sql"
+echo "PM26_P06B_H_AISLADO_SEED=PASS"
+
+$RUN_AS_POSTGRES $PSQL -d "$DB" -v ON_ERROR_STOP=1 -f "$DIR/comportamiento.sql" > "$WORKDIR/antes.txt" 2>&1 \
+  || { cat "$WORKDIR/antes.txt" >&2; fallo "bateria de comportamiento ANTES fallo"; }
+
+grep -q '^P13' "$WORKDIR/antes.txt" || fallo "la bateria ANTES no llego hasta P13 -- salida incompleta"
+echo "PM26_P06B_H_AISLADO_BATERIA_ANTES=PASS"
+
+# Indices no deben existir todavia
+ANTES_IDX="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select count(*) from pg_indexes where schemaname='public' and indexname in ('idx_auditoria_registro_actor_user_id','idx_movimientos_stock_operation_id','idx_pagos_encargo_revierte_pago_id','idx_suscripciones_push_user_id');")"
+[ "$ANTES_IDX" = "0" ] || fallo "los 4 indices ya existian antes de aplicar la migracion (esperado 0, encontrado $ANTES_IDX)"
+echo "PM26_P06B_H_AISLADO_INDICES_AUSENTES_ANTES=PASS"
+
+TOTAL_IDX_ANTES="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select count(*) from pg_indexes where schemaname='public';")"
+
+# --- Aplicar la migracion real ---
+$RUN_AS_POSTGRES $PSQL -d "$DB" -v ON_ERROR_STOP=1 -f "$MIGRACION" >/dev/null \
+  || fallo "la migracion no se aplico limpiamente"
+echo "PM26_P06B_H_AISLADO_MIGRACION_APLICADA=PASS"
+
+$RUN_AS_POSTGRES $PSQL -d "$DB" -v ON_ERROR_STOP=1 -f "$DIR/comportamiento.sql" > "$WORKDIR/despues.txt" 2>&1 \
+  || { cat "$WORKDIR/despues.txt" >&2; fallo "bateria de comportamiento DESPUES fallo"; }
+
+if ! diff -q "$WORKDIR/antes.txt" "$WORKDIR/despues.txt" >/dev/null; then
+  diff "$WORKDIR/antes.txt" "$WORKDIR/despues.txt" >&2 || true
+  fallo "el comportamiento de permisos cambio tras la migracion -- deberia ser identico"
+fi
+echo "PM26_P06B_H_AISLADO_PERMISOS_IDENTICOS_ANTES_DESPUES=PASS"
+
+DESPUES_IDX="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select count(*) from pg_indexes where schemaname='public' and indexname in ('idx_auditoria_registro_actor_user_id','idx_movimientos_stock_operation_id','idx_pagos_encargo_revierte_pago_id','idx_suscripciones_push_user_id');")"
+[ "$DESPUES_IDX" = "4" ] || fallo "esperados 4 indices nuevos tras la migracion, encontrado $DESPUES_IDX"
+
+TOTAL_IDX_DESPUES="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select count(*) from pg_indexes where schemaname='public';")"
+[ "$TOTAL_IDX_DESPUES" -eq "$((TOTAL_IDX_ANTES + 4))" ] || fallo "el numero total de indices cambio en mas de 4 -- se pudo haber eliminado alguno existente (antes=$TOTAL_IDX_ANTES, despues=$TOTAL_IDX_DESPUES)"
+echo "PM26_P06B_H_AISLADO_SOLO_4_INDICES_NUEVOS_NINGUNO_ELIMINADO=PASS"
+
+# InitPlan: auth.uid() debe evaluarse una sola vez, no por fila
+PLAN="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "set role authenticated; set app.current_uid = '11111111-1111-1111-1111-111111111111'; set enable_indexscan=off; set enable_bitmapscan=off; explain (costs off, format text) select * from public.perfiles;")"
+echo "$PLAN" | grep -qi "InitPlan" || fallo "el plan de perfiles no muestra InitPlan tras la migracion -- auth.uid() puede seguir evaluandose por fila"
+echo "PM26_P06B_H_AISLADO_INITPLAN_CONFIRMADO=PASS"
+
+# --- Reversion exacta ---
+$RUN_AS_POSTGRES $PSQL -d "$DB" -v ON_ERROR_STOP=1 -f "$DIR/revertir.sql" >/dev/null \
+  || fallo "la reversion no se aplico limpiamente"
+
+REVERTIDO_IDX="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select count(*) from pg_indexes where schemaname='public' and indexname in ('idx_auditoria_registro_actor_user_id','idx_movimientos_stock_operation_id','idx_pagos_encargo_revierte_pago_id','idx_suscripciones_push_user_id');")"
+[ "$REVERTIDO_IDX" = "0" ] || fallo "tras revertir deberian quedar 0 de los 4 indices, encontrado $REVERTIDO_IDX"
+
+$RUN_AS_POSTGRES $PSQL -d "$DB" -v ON_ERROR_STOP=1 -f "$DIR/comportamiento.sql" > "$WORKDIR/revertido.txt" 2>&1 \
+  || { cat "$WORKDIR/revertido.txt" >&2; fallo "bateria de comportamiento tras REVERTIR fallo"; }
+
+diff -q "$WORKDIR/antes.txt" "$WORKDIR/revertido.txt" >/dev/null \
+  || fallo "tras revertir, el comportamiento no coincide exactamente con el estado original"
+echo "PM26_P06B_H_AISLADO_REVERSION_EXACTA=PASS"
+
+# --- Repeticion controlada / idempotencia: reaplicar dos veces mas ---
+$RUN_AS_POSTGRES $PSQL -d "$DB" -v ON_ERROR_STOP=1 -f "$MIGRACION" >/dev/null \
+  || fallo "no se pudo reaplicar la migracion tras revertir"
+$RUN_AS_POSTGRES $PSQL -d "$DB" -v ON_ERROR_STOP=1 -f "$MIGRACION" >/dev/null \
+  || fallo "reaplicar la migracion una segunda vez (ya aplicada) no debe fallar"
+echo "PM26_P06B_H_AISLADO_REPETICION_CONTROLADA_IDEMPOTENTE=PASS"
+
+# --- Bloqueo: CREATE INDEX plano toma ShareLock, no ACCESS EXCLUSIVE ---
+$RUN_AS_POSTGRES $PSQL -d "$DB" -c "drop index if exists public.idx_suscripciones_push_user_id;" >/dev/null
+LOCK_MODE="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "
+begin;
+create index idx_suscripciones_push_user_id on public.suscripciones_push (user_id);
+select l.mode from pg_locks l join pg_class c on c.oid = l.relation where c.relname = 'suscripciones_push' and l.mode <> 'AccessShareLock';
+rollback;
+" | tr -d ' ')"
+echo "$LOCK_MODE" | grep -qx "ShareLock" || fallo "modo de bloqueo inesperado para CREATE INDEX: '$LOCK_MODE' (esperado ShareLock)"
+echo "PM26_P06B_H_AISLADO_BLOQUEO_SHARELOCK_CONFIRMADO=PASS"
+
+# Dejar la base en el estado final "aplicado" antes de descartarla, por
+# si se quiere inspeccionar manualmente en la misma ejecucion.
+$RUN_AS_POSTGRES $PSQL -d "$DB" -v ON_ERROR_STOP=1 -f "$MIGRACION" >/dev/null 2>&1 || true
+
+echo "PM26_P06B_H_AISLADO_VALIDACION_COMPLETA=PASS"
