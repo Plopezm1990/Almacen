@@ -73,6 +73,7 @@ console.log('PM26_P04A_10_HUERFANOS_PRESENTES_Y_SIN_CAMBIOS=PASS');
     'docs/plan-maestro/PM17_DIAGNOSTICO_PARCHES.md',
     'source-recovery/entrada-recuperada.js',
     'tools/seguridad/linea-base-aceptada.json',
+    '.github/workflows/pm26-p04a-inspeccion-defectos-bcd.yml',
   ]);
   const inesperados = [];
   for (const archivo of archivosRastreados) {
