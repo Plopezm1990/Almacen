@@ -2,11 +2,17 @@
 
 ## Estado
 
-**En corrección — no cerrado todavía.** Este documento se declarará
-`CERRADO` únicamente cuando este lote de correcciones tenga commit/push y
-**todos** los workflows afectados estén en `SUCCESS` sobre el mismo HEAD
-exacto resultante (no sobre un commit anterior). Hasta entonces, el
-símbolo de estado más abajo dice `EN_CORRECCION`, no `CERRADO`.
+**Cerrado.** El lote de corrección (commit `3bf7506b1a0d003fc7922de809f6175c8b94cd88`)
+tiene gate remoto `SUCCESS` en los cinco workflows afectados, sobre ese
+mismo HEAD exacto:
+
+| Workflow | Run | Resultado |
+|---|---|---|
+| `pm24-p01-integraciones-controladas.yml` | [34367299659](https://github.com/Plopezm1990/Almacen/actions/runs/34367299659) | SUCCESS |
+| `pm24-p02-duplicacion.yml` | [34367303016](https://github.com/Plopezm1990/Almacen/actions/runs/34367303016) | SUCCESS |
+| `pm25-p01-respaldo-nube-activa.yml` | [34367307191](https://github.com/Plopezm1990/Almacen/actions/runs/34367307191) | SUCCESS |
+| `pm25-p02-bloqueo-entorno.yml` | [34367310814](https://github.com/Plopezm1990/Almacen/actions/runs/34367310814) | SUCCESS |
+| `pm26-p01-inventario-diagnostico.yml` | [34367290794](https://github.com/Plopezm1990/Almacen/actions/runs/34367290794) | SUCCESS |
 
 El criterio de "sin secretos" de los gates PM24/PM25 queda reabierto y
 reparado — sus cierres funcionales (los defectos reales que cada punto
@@ -305,7 +311,7 @@ revocación. Esto no ocurrió: el barrido completo de `secreto_real` dio
 cero coincidencias.
 
 ```
-PM26_P02_ESTADO=EN_CORRECCION
+PM26_P02_ESTADO=CERRADO
 PM26_P02_SECRETOS_REALES_ENCONTRADOS=0
 PM26_P02_ARCHIVOS_CORREGIDOS=5
 PM26_P02_DEUDA_REGISTRADA_ARCHIVOS=83
@@ -317,11 +323,12 @@ PM26_P02_MAIN_TOCADO=NO
 PM26_P02_FUENTE_JS_TOCADO=NO
 PM26_P02_NETLIFY_SUPABASE_TOCADO=NO
 PM26_P02_ARCHIVOS_HISTORICOS_MODIFICADOS=NO
+PM26_P02_GATE_REMOTO_HEAD=3bf7506b1a0d003fc7922de809f6175c8b94cd88
 ```
 
-Este documento pasará a `PM26_P02_ESTADO=CERRADO` únicamente cuando el
-commit de este lote de correcciones tenga gate remoto `SUCCESS` en los
-cinco workflows sobre su HEAD exacto.
+Cerrado sobre el commit `3bf7506b1a0d003fc7922de809f6175c8b94cd88`, con
+gate remoto `SUCCESS` confirmado en los cinco workflows exactamente sobre
+ese HEAD (tabla al inicio de este documento).
 
 Los defectos A–H de PM26 P01 permanecen pendientes, sin corregir. PM25 P02
 continúa PARCIAL/BLOQUEADO y se arrastra a la puerta final.

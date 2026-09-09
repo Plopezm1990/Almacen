@@ -249,7 +249,7 @@ const CANDIDATO_SINTETICO_B = 'b'.repeat(20);
 // --- El documento de cierre está completo y preciso ---
 const doc = fs.readFileSync('tests/pm26/P02_REPARACION_GATES_SECRETOS.md', 'utf8');
 
-assert.match(doc, /PM26_P02_ESTADO=(EN_CORRECCION|CERRADO)/);
+assert.match(doc, /PM26_P02_ESTADO=CERRADO/);
 assert.match(doc, /PM26_P02_SECRETOS_REALES_ENCONTRADOS=0/);
 assert.match(doc, /PM26_P02_ARCHIVOS_CORREGIDOS=5/);
 assert.match(doc, /PM26_P02_HISTORIA_GIT_REESCRITA=NO/);
