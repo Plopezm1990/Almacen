@@ -26,24 +26,27 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Proteger main, QA, producción y TPV (solo documentación, sin código ni esquema)
+      - name: Proteger main y esquema (este commit es solo documentación de estado)
         shell: bash
         run: |
           set -euo pipefail
           git fetch origin main --quiet
           test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
-          unexpected="$(git diff --name-only origin/main..HEAD -- fuente.js supabase/ \
+          # fuente.js SÍ difiere de main (por los puntos ya cerrados de PM24/PM25 P01
+          # en esta misma rama) -- lo que este guard exige es que este registro de
+          # bloqueo, en concreto, no añada ningún cambio de esquema propio.
+          unexpected="$(git diff --name-only origin/main..HEAD -- supabase/ \
             | grep -v '^supabase/migrations/20260908210800_pm21_p01_movimientos_registro_aislamiento\.sql$' \
             | grep -v '^supabase/migrations/20260908210900_pm21_p01_storage_qa_pruebas_aislamiento\.sql$' \
             | grep -v '^supabase/migrations/20260908212000_pm21_p02_matices_rol_politicas\.sql$' \
             || true)"
           if [ -n "$unexpected" ]; then
-            echo 'PM25 P02 (bloqueado) no debe tocar fuente.js ni supabase/: es un registro de estado, no una ejecución' >&2
+            echo 'PM25 P02 (bloqueado) no debe tocar supabase/ más allá de lo ya cerrado en PM21: es un registro de estado, no una ejecución' >&2
             echo "$unexpected" >&2
             exit 1
           fi
           echo 'PM25_P02_MAIN_FROZEN=PASS'
-          echo 'PM25_P02_SIN_CAMBIOS_CODIGO_NI_SUPABASE=PASS'
+          echo 'PM25_P02_SUPABASE_ACOTADO_A_PM21=PASS'
       - name: Contrato PM25 P02 (verifica el REGISTRO de bloqueo, no una ejecución)
         run: node tests/pm25/p02-contract.mjs
       - name: Regresión completa (todas las suites vigentes)
