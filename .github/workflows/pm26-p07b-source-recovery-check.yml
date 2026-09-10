@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 jobs:
-  rebuild-current:
+  rebuild-canonico:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -22,26 +22,29 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Instalar dependencias congeladas de source-recovery
         run: npm --prefix source-recovery ci
 
-      - name: Validar scripts de recuperacion
+      - name: Validar fuente recuperada y scripts
         run: npm --prefix source-recovery run check
 
-      - name: Primera reconstruccion determinista
+      - name: Primera reconstruccion canonica
         run: |
-          npm --prefix source-recovery run build:current
+          node source-recovery/verificar-build-canonico.mjs
           sha256sum source-recovery/dist/fuente.js
-          cp source-recovery/dist/fuente.js /tmp/fuente-rebuild-1.js
+          cp source-recovery/dist/fuente.js /tmp/fuente-canonica-1.js
 
-      - name: Segunda reconstruccion determinista
+      - name: Segunda reconstruccion canonica
         run: |
-          npm --prefix source-recovery run build:current
+          node source-recovery/verificar-build-canonico.mjs
           sha256sum source-recovery/dist/fuente.js
-          cmp --silent /tmp/fuente-rebuild-1.js source-recovery/dist/fuente.js
+          cmp --silent /tmp/fuente-canonica-1.js source-recovery/dist/fuente.js
           echo "P07B_SOURCE_RECOVERY_REBUILD=PASS"
 
-      - name: Confirmar arbol limpio fuera de dist
-        run: git status --short
+      - name: Confirmar que solo se genero dist ignorado
+        run: |
+          test -f source-recovery/dist/fuente.js
+          test -z "$(git status --short)"
+          echo "P07B_WORKTREE_CLEAN=PASS"
