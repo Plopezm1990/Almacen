@@ -1,0 +1,54 @@
+name: PM26 P07a diagnostico defecto K y Fase B aviso F
+
+# Diagnostico reproducible y de solo lectura. No modifica fuente.js,
+# fuente recuperada, index, reset QA ni SQL; no se conecta a Supabase y
+# no invoca Edge Functions. Protege la causa real y el orden seguro del
+# siguiente paquete de implementacion.
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'tests/pm26/P07A_DIAGNOSTICO_DEFECTO_K_FASE_B.md'
+      - 'tests/pm26/P07A_EVIDENCIA_EDGE_FUNCTIONS.json'
+      - 'tests/pm26/p07a-contract.mjs'
+      - '.github/workflows/pm26-p07a-diagnostico-defecto-k.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger alcance P07a
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          cambiados="$(git diff --name-only 4d34052b9f618d67ba1dae150215038f4adae75d..HEAD | sort)"
+          esperados="$(printf '%s\n' \
+            '.github/workflows/pm26-p07a-diagnostico-defecto-k.yml' \
+            'tests/pm26/P07A_DIAGNOSTICO_DEFECTO_K_FASE_B.md' \
+            'tests/pm26/P07A_EVIDENCIA_EDGE_FUNCTIONS.json' \
+            'tests/pm26/p07a-contract.mjs' | sort)"
+          test "$cambiados" = "$esperados"
+          echo 'PM26_P07A_ALCANCE_ACOTADO=PASS'
+      - name: Contrato P07a
+        run: node tests/pm26/p07a-contract.mjs
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate final P07a
+        run: |
+          set -euo pipefail
+          node tests/pm26/p07a-contract.mjs
+          echo 'PM26_P07A_GATE=PASS'
