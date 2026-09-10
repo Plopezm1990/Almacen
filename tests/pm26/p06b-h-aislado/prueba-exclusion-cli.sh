@@ -38,8 +38,11 @@ echo "PM26_P06B_H_CLI_EXCLUSION_MIGRATION_LIST_NO_LA_VE=PASS"
 # Control positivo: la CLI SÍ debe ver al menos una migracion real de
 # supabase/migrations, para descartar que "no ve nada" simplemente
 # porque el comando fallo silenciosamente o la base estaba vacia de
-# forma sospechosa.
-echo "$SALIDA" | grep -qE '"local":"[0-9]{14}"' \
+# forma sospechosa. El formato de salida de `migration list` varia
+# segun el contexto (JSON `"local":"20260904135838"` o tabla de texto
+# con `` `20260904135838` ``) -- se busca el timestamp de 14 digitos
+# en cualquiera de los dos formatos, no una sintaxis concreta.
+echo "$SALIDA" | grep -qE '[0-9]{14}' \
   || fallo "supabase migration list no reporto ninguna migracion real de supabase/migrations -- el control positivo no se cumple: $SALIDA"
 echo "PM26_P06B_H_CLI_EXCLUSION_CONTROL_POSITIVO_VE_MIGRACIONES_REALES=PASS"
 
