@@ -102349,7 +102349,11 @@ function GestionAlmacen() {
   const { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta } = crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, proveedores, pagosFacturas, setPagosFacturas, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
   const { addNomina, updateNomina, deleteNomina } = crearLogicaNominas({ nominas, setNominas, registrarAuditoria, empleados, localActivoId });
   const { crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista } = crearLogicaEntrevistas({ entrevistas, setEntrevistas, registrarAuditoria });
-  const { crearPrefiltro, listarPrefiltros, eliminarPrefiltro } = crearLogicaPrefiltros({ registrarAuditoria });
+  const { crearPrefiltro, listarPrefiltros, eliminarPrefiltro } = crearLogicaPrefiltros({
+    registrarAuditoria,
+    empresaId: empresaDelLocalActivo?.id || null,
+    localId: localActivoId || null
+  });
   function registrarAuditoria(accion, detalle) {
     const empleadoActivo = usuarioActivoId ? empleados.find((e2) => e2.id === usuarioActivoId) : null;
     const usuario = modoEmpleado ? empleadoActivo ? empleadoActivo.nombre : "Empleado sin identificar" : "Propietario/a";
@@ -109026,21 +109030,26 @@ function crearLogicaEntrevistas({ entrevistas, setEntrevistas, registrarAuditori
   }
   return { crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista };
 }
-function crearLogicaPrefiltros({ registrarAuditoria }) {
-  function generarToken() {
-    if (typeof crypto !== "undefined" && crypto.randomUUID) {
-      return crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
-    }
-    let t22 = "";
-    for (let i33 = 0; i33 < 64; i33++) t22 += Math.floor(Math.random() * 16).toString(16);
-    return t22;
+function crearLogicaPrefiltros({ registrarAuditoria, empresaId, localId }) {
+  function contextoValido(valor, esLocal = false) {
+    if (typeof valor !== "string" || !valor.trim()) return false;
+    if (!esLocal) return true;
+    return !["todos", "todos los locales"].includes(valor.trim().toLowerCase());
+  }
+  function tokenValido(token) {
+    return typeof token === "string" && /^[a-f0-9]{64}$/.test(token);
   }
   async function crearPrefiltro(candidatoNombre) {
+    const nombre = typeof candidatoNombre === "string" ? candidatoNombre.trim() : "";
+    if (!nombre || !contextoValido(empresaId) || !contextoValido(localId, true)) return null;
     const supabase = await window.getSupabaseClient();
-    const token = generarToken();
-    const { error } = await supabase.from("prefiltros_candidatos").insert({ token, candidato_nombre: candidatoNombre.trim(), estado: "pendiente" });
-    if (error) return null;
-    registrarAuditoria("Crear prefiltro de candidato", candidatoNombre.trim());
+    const { data: token, error } = await supabase.rpc("pm11_crear_prefiltro_candidato", {
+      p_empresa_id: empresaId,
+      p_local_id: localId,
+      p_candidato_nombre: nombre
+    });
+    if (error || !tokenValido(token)) return null;
+    registrarAuditoria("Crear prefiltro de candidato", nombre);
     return token;
   }
   async function listarPrefiltros() {
@@ -109049,11 +109058,20 @@ function crearLogicaPrefiltros({ registrarAuditoria }) {
     if (error) return [];
     return data;
   }
-  async function eliminarPrefiltro(token, candidatoNombre) {
+  async function eliminarPrefiltro(prefiltro) {
+    const token = prefiltro?.token;
+    const empresaFila = prefiltro?.empresa_id;
+    const localFila = prefiltro?.local_id;
+    if (!tokenValido(token) || !contextoValido(empresaFila) || !contextoValido(localFila, true)) return false;
     const supabase = await window.getSupabaseClient();
-    const { error } = await supabase.from("prefiltros_candidatos").delete().eq("token", token);
-    if (!error) registrarAuditoria("Eliminar prefiltro de candidato", candidatoNombre || token);
-    return !error;
+    const { data, error } = await supabase.rpc("pm11_eliminar_prefiltro_candidato", {
+      p_empresa_id: empresaFila,
+      p_local_id: localFila,
+      p_token: token
+    });
+    if (error || data !== true) return false;
+    registrarAuditoria("Eliminar prefiltro de candidato", prefiltro?.candidato_nombre || token);
+    return true;
   }
   return { crearPrefiltro, listarPrefiltros, eliminarPrefiltro };
 }
@@ -113251,9 +113269,18 @@ function SeleccionPersonal({ entrevistas, crearEntrevista, actualizarEntrevista,
   }
   async function borrarPrefiltro() {
     if (!confirmarEliminarPrefiltro) return;
-    await eliminarPrefiltro(confirmarEliminarPrefiltro.token, confirmarEliminarPrefiltro.candidato_nombre);
-    setPrefiltros(await listarPrefiltros());
-    setConfirmarEliminarPrefiltro(null);
+    setError("");
+    try {
+      const eliminado = await eliminarPrefiltro(confirmarEliminarPrefiltro);
+      if (!eliminado) {
+        setError("No se ha podido eliminar el enlace. Comprueba el contexto y vuelve a intentarlo.");
+        return;
+      }
+      setPrefiltros(await listarPrefiltros());
+      setConfirmarEliminarPrefiltro(null);
+    } catch (e2) {
+      setError("No se ha podido eliminar el enlace: " + (e2?.message || "error de conexi\xF3n") + ". Int\xE9ntalo otra vez.");
+    }
   }
   const activa = entrevistas.find((e2) => e2.id === activaId);
   const verInforme = entrevistas.find((e2) => e2.id === verInformeId);
@@ -117214,6 +117241,40 @@ function AceiteFreidoras({ freidoras = [], registrosAceite = [], productos, addF
     "S\xED, eliminar y devolver el aceite"
   ), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmEliminarRegistro(null) }, "Cancelar"))));
 }
+function origenSupabasePublicoPM26(valor, etiqueta) {
+  if (typeof valor !== "string" || !valor.trim()) throw new Error(`${etiqueta}_ausente`);
+  let url;
+  try {
+    url = new URL(valor.trim());
+  } catch {
+    throw new Error(`${etiqueta}_invalida`);
+  }
+  if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || url.search || url.hash || url.pathname !== "/") {
+    throw new Error(`${etiqueta}_invalida`);
+  }
+  return url.origin;
+}
+function construirUrlFuncionPublicaPM26(slug, entorno = typeof window !== "undefined" ? window : null) {
+  if (slug !== "prefiltro-candidato") throw new Error("funcion_publica_no_permitida");
+  if (!entorno || entorno.__modoPruebasLocal === true) throw new Error("backend_publico_no_disponible");
+  const origenActivo = origenSupabasePublicoPM26(entorno.NUBE_URL, "nube_url");
+  if (entorno.__modoPruebasQA === true) {
+    const origenQA = origenSupabasePublicoPM26(entorno.__qaNubeUrl, "qa_nube_url");
+    if (origenActivo !== origenQA) throw new Error("configuracion_qa_incoherente");
+  }
+  return new URL(`/functions/v1/${slug}`, `${origenActivo}/`).toString();
+}
+async function invocarFuncionPublicaPM26(slug, accion, datos, entorno = typeof window !== "undefined" ? window : null, fetchInterceptado = null) {
+  if (!["comprobar", "enviar"].includes(accion)) throw new Error("accion_publica_no_permitida");
+  const url = construirUrlFuncionPublicaPM26(slug, entorno);
+  const hacerFetch = fetchInterceptado || (entorno && typeof entorno.fetch === "function" ? entorno.fetch.bind(entorno) : null);
+  if (typeof hacerFetch !== "function") throw new Error("fetch_publico_no_disponible");
+  return hacerFetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...datos, accion })
+  });
+}
 function PrefiltroPublico({ token }) {
   const [estado, setEstado] = (0, import_react4.useState)("comprobando");
   const [candidatoNombre, setCandidatoNombre] = (0, import_react4.useState)("");
@@ -117234,10 +117295,7 @@ function PrefiltroPublico({ token }) {
   (0, import_react4.useEffect)(() => {
     (async () => {
       try {
-        const resp = await fetch(
-          "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/prefiltro-candidato",
-          { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "comprobar", token }) }
-        );
+        const resp = await invocarFuncionPublicaPM26("prefiltro-candidato", "comprobar", { token });
         const r2 = await resp.json();
         if (!r2.ok) {
           setEstado("invalido");
@@ -117259,10 +117317,7 @@ function PrefiltroPublico({ token }) {
     e2.preventDefault();
     setEstado("enviando");
     try {
-      const resp = await fetch(
-        "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/prefiltro-candidato",
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "enviar", token, respuestas: form }) }
-      );
+      const resp = await invocarFuncionPublicaPM26("prefiltro-candidato", "enviar", { token, respuestas: form });
       const r2 = await resp.json();
       if (!r2.ok) {
         setEstado("error");

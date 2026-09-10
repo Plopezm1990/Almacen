@@ -46,15 +46,16 @@ jobs:
           set -euo pipefail
           git fetch origin main --quiet
           test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
-          # Comparado contra el cierre previo de la rama (PM26 P02,
-          # 1060e2f), no contra origin/main -- ver PM26 P03a para la
-          # explicacion de por que origin/main no es la base correcta.
+          # Esta comprobacion pertenece al alcance HISTORICO de P03b:
+          # compara P02 con el commit final P03b. No usa HEAD, porque
+          # paquetes posteriores pueden modificar fuente.js bajo sus
+          # propios contratos y deben seguir activando este build.
           intocables='fuente.js
           index.html
           source-recovery/recuperar_candidato.py
           source-recovery/README.md
           source-recovery/PM01_CIERRE.md'
-          cambiados="$(git diff --name-only 1060e2f5ec26cb4175150df449c95f7504c32df7..HEAD)"
+          cambiados="$(git diff --name-only 1060e2f5ec26cb4175150df449c95f7504c32df7..1a8360317baca93648f40af48295bc76ef045239)"
           while IFS= read -r archivo; do
             [ -z "$archivo" ] && continue
             if echo "$cambiados" | grep -qxF "$archivo"; then
@@ -82,6 +83,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Setup Node
         uses: actions/setup-node@v4
         with:

@@ -12,7 +12,7 @@
     {
       "archivo": "fuente.js",
       "categoria": "configuracion_publica_legitima",
-      "cantidad": 12,
+      "cantidad": 10,
       "huellas": [
         "3cd9d656aaf32723"
       ]
@@ -58,7 +58,7 @@
     {
       "archivo": "source-recovery/fuente-recuperado.js",
       "categoria": "configuracion_publica_legitima",
-      "cantidad": 11,
+      "cantidad": 9,
       "huellas": [
         "3cd9d656aaf32723"
       ]

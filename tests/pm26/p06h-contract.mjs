@@ -14,8 +14,10 @@ import { escanearArbol } from '../../tools/seguridad/verificar-secretos-e-identi
 // (2) el hash documentado coincide con el archivo real, (3) la
 // migracion vive fuera de supabase/migrations y no toca fuente.js,
 // (4) validar.sh (que reproduce todo el ciclo, incluida la bateria de
-// 15 casos) se re-ejecuta de verdad y pasa, y (5) ni el documento ni
-// este contrato contienen ningun secreto real.
+// 15 casos) se re-ejecuta de verdad y pasa, (5) el preflight externo y
+// el embebido son byte a byte identicos y (6) ni el documento ni este
+// contrato contienen ningun secreto real. P07b prepara el cliente, pero
+// este contrato no certifica que F se haya aplicado en QA.
 
 const __filename = fileURLToPath(import.meta.url);
 const RAIZ_REPO = path.resolve(path.dirname(__filename), '..', '..');
@@ -31,8 +33,9 @@ for (const marcador of [
   'PM26_P06H_MIGRACION_COMBINADA_JUSTIFICADA_0_FILAS=SI',
   'PM26_P06H_PREFLIGHT_DETECTA_PRODUCCION=SI',
   'PM26_P06H_PREFLIGHT_DETECTA_FILAS_EXISTENTES=SI',
-  'PM26_P06H_FASE_B_BLOQUEADA_POR_DEFECTO_K=SI',
-  'PM26_P06H_FUENTE_JS_TOCADO=NO',
+  'PM26_P06H_PREFLIGHT_INDEPENDIENTE_IDENTICO=SI',
+  'PM26_P06H_FASE_B_CLIENTE_PREPARADA_P07B=SI',
+  'PM26_P06H_FUENTE_JS_TOCADO_EN_P07B=SI',
   'PM26_P06H_BATERIA_15_CASOS=PASS',
   'PM26_P06H_REAPLICACION_RECHAZADA_POR_PREFLIGHT=SI',
   'PM26_P06H_REVERSION_EXACTA=SI',
@@ -56,8 +59,8 @@ assert.ok(!migraciones.some((m) => /prefiltro/i.test(m)), 'no debe existir ningu
 
 assert.match(migracionTexto, /^begin;/m, 'la migracion debe empezar con BEGIN explicito');
 assert.match(migracionTexto, /^commit;/m, 'la migracion debe terminar con COMMIT explicito');
-assert.match(migracionTexto, /set lock_timeout = '5s';/);
-assert.match(migracionTexto, /set statement_timeout = '30s';/);
+assert.match(migracionTexto, /set local lock_timeout = '5s';/);
+assert.match(migracionTexto, /set local statement_timeout = '30s';/);
 assert.match(migracionTexto, /PREFLIGHT_FALLO/);
 assert.match(migracionTexto, /PREFLIGHT_CATALOGO=PASS/);
 assert.match(migracionTexto, /'prefiltros - propietario lee'/, 'el preflight debe descartar las 3 politicas reales de produccion');
@@ -72,30 +75,65 @@ assert.match(migracionTexto, /revoke insert, update, delete on public\.prefiltro
 assert.match(migracionTexto, /grant select on public\.prefiltros_candidatos to authenticated;/);
 console.log('PM26_P06H_MIGRACION_CONTIENE_PROTECCIONES=PASS');
 
-// El orden importa: preflight antes que los limites de tiempo, antes
-// que las columnas/politica/RPC, antes del COMMIT final.
+// El orden importa: BEGIN, limites locales, preflight, cambios y COMMIT.
 const idxBegin = migracionTexto.indexOf('begin;');
 const idxDoBlock = migracionTexto.indexOf('do $$');
-const idxLockTimeout = migracionTexto.indexOf('set lock_timeout');
+const idxLockTimeout = migracionTexto.indexOf('set local lock_timeout');
+const idxStatementTimeout = migracionTexto.indexOf('set local statement_timeout');
 const idxAlterColumn = migracionTexto.indexOf('add column empresa_id');
 const idxCommit = migracionTexto.lastIndexOf('commit;');
-assert.ok(idxBegin < idxDoBlock, 'BEGIN debe preceder al bloque de preflight');
-assert.ok(idxDoBlock < idxLockTimeout, 'el preflight debe preceder a los limites de tiempo');
-assert.ok(idxLockTimeout < idxAlterColumn, 'los limites de tiempo deben preceder a las columnas nuevas');
+assert.ok(idxBegin < idxLockTimeout, 'BEGIN debe preceder a los limites locales');
+assert.ok(idxLockTimeout < idxStatementTimeout, 'lock_timeout debe preceder a statement_timeout');
+assert.ok(idxStatementTimeout < idxDoBlock, 'ambos limites deben proteger tambien el preflight');
+assert.ok(idxDoBlock < idxAlterColumn, 'el preflight debe preceder a las columnas nuevas');
 assert.ok(idxAlterColumn < idxCommit, 'las columnas nuevas deben preceder al COMMIT final');
+
+// El preflight que se ejecutara de forma independiente justo antes de
+// apply_migration debe contener exactamente el mismo bloque critico que
+// el SQL final y no puede mutar catalogo ni datos.
+const preflightRel = 'tests/pm26/p06h-f-aislado/preflight-catalogo.sql';
+const preflightTexto = leer(preflightRel);
+function extraerPreflight(texto, etiqueta) {
+  const inicio = '-- PM26_P06H_PREFLIGHT_INICIO\n';
+  const fin = '-- PM26_P06H_PREFLIGHT_FIN';
+  const desde = texto.indexOf(inicio);
+  const hasta = texto.indexOf(fin, desde + inicio.length);
+  assert.ok(desde >= 0 && hasta > desde, `${etiqueta}: faltan marcadores del preflight`);
+  return texto.slice(desde + inicio.length, hasta);
+}
+assert.equal(
+  extraerPreflight(preflightTexto, 'preflight independiente'),
+  extraerPreflight(migracionTexto, 'migracion'),
+  'el preflight independiente y el embebido deben ser byte a byte identicos'
+);
+assert.match(preflightTexto, /^begin;/m);
+assert.match(preflightTexto, /^rollback;/m);
+assert.match(preflightTexto, /set local lock_timeout = '5s';/);
+assert.match(preflightTexto, /set local statement_timeout = '30s';/);
+const preflightSinComentarios = preflightTexto.replace(/^\s*--.*$/gm, '');
+assert.doesNotMatch(
+  preflightSinComentarios,
+  /\b(?:alter|create|drop|grant|revoke|insert|update|delete|truncate)\b/i,
+  'el preflight independiente debe ser de solo lectura'
+);
+console.log('PM26_P06H_PREFLIGHTS_IDENTICOS_Y_SOLO_LECTURA=PASS');
 
 // --- Hash documentado coincide con el archivo real. ---
 const hashReal = crypto.createHash('sha256').update(fs.readFileSync(migracionAbs)).digest('hex');
 assert.match(doc, new RegExp(hashReal), 'el hash SHA-256 documentado no coincide con el archivo real');
 console.log('PM26_P06H_HASH_VERIFICADO=PASS');
 
-// --- fuente.js no se toco (Fase B bloqueada por el Defecto K). ---
+// --- P07b prepara la Fase B: mutaciones por RPC, listado por SELECT. ---
 const fuenteJs = leer('fuente.js');
-assert.ok(
-  fuenteJs.includes('pm11_crear_prefiltro_candidato') === false && fuenteJs.includes('pm11_eliminar_prefiltro_candidato') === false,
-  'fuente.js no debe llamar todavia a las RPC nuevas -- la Fase B esta bloqueada por el Defecto K'
-);
-console.log('PM26_P06H_FUENTE_JS_NO_TOCADO=PASS');
+const inicioLogica = fuenteJs.indexOf('function crearLogicaPrefiltros(');
+const finLogica = fuenteJs.indexOf('function SelectorDiseno(', inicioLogica);
+assert.ok(inicioLogica >= 0 && finLogica > inicioLogica, 'no se pudo aislar crearLogicaPrefiltros');
+const logicaPrefiltros = fuenteJs.slice(inicioLogica, finLogica);
+assert.match(logicaPrefiltros, /\.rpc\("pm11_crear_prefiltro_candidato"/);
+assert.match(logicaPrefiltros, /\.rpc\("pm11_eliminar_prefiltro_candidato"/);
+assert.match(logicaPrefiltros, /\.from\("prefiltros_candidatos"\)\.select\("\*"\)/);
+assert.doesNotMatch(logicaPrefiltros, /\.from\("prefiltros_candidatos"\)\.(?:insert|delete)\(/);
+console.log('PM26_P06H_FASE_B_CLIENTE_PREPARADA=PASS');
 
 // --- Re-ejecuta de verdad validar.sh (bateria de 15 casos, preflight
 // positivo/negativo, reaplicacion rechazada, reversion exacta) -- no
@@ -111,6 +149,7 @@ for (const marcador of [
   'PM26_P06H_F_AISLADO_FUERA_DE_SUPABASE_MIGRATIONS=PASS',
   'PM26_P06H_F_AISLADO_SCHEMA=PASS',
   'PM26_P06H_F_AISLADO_SEED=PASS',
+  'PM26_P06H_F_AISLADO_PREFLIGHT_INDEPENDIENTE=PASS',
   'PM26_P06H_F_AISLADO_PREFLIGHT_DETECTA_PRODUCCION=PASS',
   'PM26_P06H_F_AISLADO_SIMULACRO_PRODUCCION_SIN_RASTRO=PASS',
   'PM26_P06H_F_AISLADO_PREFLIGHT_DETECTA_FILAS_EXISTENTES=PASS',
@@ -153,6 +192,7 @@ console.log('PM26_P06H_REVERSION_NO_RESTAURA_GRANTS_INEXISTENTES=PASS');
     'tests/pm26/p06h-f-aislado/seed.sql',
     'tests/pm26/p06h-f-aislado/comportamiento.sql',
     'tests/pm26/p06h-f-aislado/revertir.sql',
+    'tests/pm26/p06h-f-aislado/preflight-catalogo.sql',
     'tests/pm26/p06h-f-aislado/validar.sh',
   ];
   const hallazgos = escanearArbol({ raiz: RAIZ_REPO, archivos: archivosNuevos, ubicacionesLegitimas: [] });

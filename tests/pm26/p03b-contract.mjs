@@ -22,6 +22,7 @@ const RAIZ_REPO = path.resolve(path.dirname(__filename), '..', '..');
 const DIR_RECOVERY = path.join(RAIZ_REPO, 'source-recovery');
 const FUENTE_RECUPERADA = path.join(DIR_RECOVERY, 'fuente-recuperado.js');
 const CONTENIDO_INICIAL_FUENTE_RECUPERADA = fs.readFileSync(FUENTE_RECUPERADA, 'utf8');
+const CIERRE_P03B = '1a8360317baca93648f40af48295bc76ef045239';
 
 function backup(rutaAbs) {
   const original = fs.readFileSync(rutaAbs, 'utf8');
@@ -128,9 +129,10 @@ function backup(rutaAbs) {
   console.log('PM26_P03B_CONTRATOS_PM05_PM07_PM08_PM09_CORREGIDOS_PASAN=PASS');
 }
 
-// --- Lo que NO cambió respecto al cierre previo de la rama (PM26 P02,
-// 1060e2f): fuente.js real, index.html, recuperar_candidato.py (PM01),
-// README.md y PM01_CIERRE.md no fueron tocados por este paquete. ---
+// --- Lo que NO cambió DURANTE el paquete histórico P03b, desde P02
+// hasta su commit de cierre exacto. La comparación termina en el cierre
+// de P03b, no en HEAD: paquetes funcionales posteriores sí pueden cambiar
+// fuente.js bajo sus propios contratos sin falsificar la historia. ---
 {
   const intocables = [
     'fuente.js',
@@ -139,12 +141,13 @@ function backup(rutaAbs) {
     'source-recovery/README.md',
     'source-recovery/PM01_CIERRE.md',
   ];
-  const r = spawnSync('git', ['diff', '--name-only', '1060e2f5ec26cb4175150df449c95f7504c32df7..HEAD'], { cwd: RAIZ_REPO, encoding: 'utf8' });
+  const r = spawnSync('git', ['diff', '--name-only', `1060e2f5ec26cb4175150df449c95f7504c32df7..${CIERRE_P03B}`], { cwd: RAIZ_REPO, encoding: 'utf8' });
+  assert.equal(r.status, 0, `no se pudo verificar el alcance historico P03b: ${r.stderr}`);
   const cambiados = new Set(r.stdout.trim().split('\n').filter(Boolean));
   for (const archivo of intocables) {
     assert.ok(!cambiados.has(archivo), `PM26 P03b no debe tocar: ${archivo}`);
   }
-  console.log('PM26_P03B_INTOCABLES_VERIFICADOS=PASS');
+  console.log('PM26_P03B_INTOCABLES_HISTORICOS_VERIFICADOS=PASS');
 }
 
 // --- El informe de cierre documenta con precisión el diagnóstico y que

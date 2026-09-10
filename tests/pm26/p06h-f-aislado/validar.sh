@@ -7,6 +7,7 @@ set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$DIR/../../.." && pwd)"
 MIGRACION="$REPO_ROOT/supabase/qa-solo/pm26_p06h_aislamiento_prefiltros_candidatos.sql"
+PREFLIGHT="$DIR/preflight-catalogo.sql"
 DB="pm26_p06h_f_aislado_$$"
 PSQL="${POSTGRES_PSQL:-psql}"
 RUN_AS_POSTGRES="${POSTGRES_SUDO:-sudo -u postgres}"
@@ -21,6 +22,7 @@ psql_archivo() {
 }
 
 [ -f "$MIGRACION" ] || fallo "no se encuentra la migracion en $MIGRACION"
+[ -f "$PREFLIGHT" ] || fallo "no se encuentra el preflight independiente en $PREFLIGHT"
 if [ -f "$REPO_ROOT/supabase/migrations/$(basename "$MIGRACION")" ]; then
   fallo "la migracion del aviso F tambien existe dentro de supabase/migrations -- debe vivir SOLO en supabase/qa-solo"
 fi
@@ -37,35 +39,43 @@ psql_archivo "$DIR/seed.sql" "$DB" >/dev/null \
   || fallo "no se pudo aplicar seed.sql"
 echo "PM26_P06H_F_AISLADO_SEED=PASS"
 
-# --- Negativo: simular produccion (crear las 3 politicas reales de
-# produccion sobre la tabla dentro de una transaccion que se revierte)
-# -- el preflight debe abortar. ---
-NEG_PROD="$( { echo "begin;"; \
-  echo "create policy \"prefiltros - propietario lee\" on public.prefiltros_candidatos for select to authenticated using (true);"; \
-  cat "$MIGRACION"; \
-  echo "rollback;"; } | $RUN_AS_POSTGRES $PSQL -d "$DB" 2>&1 || true )"
+# --- Positivo: el preflight independiente, de solo lectura, pasa sobre
+# el catálogo aislado limpio antes de ejecutar la migración. ---
+PREFLIGHT_OK="$(psql_archivo "$PREFLIGHT" "$DB" 2>&1)" \
+  || { echo "$PREFLIGHT_OK" >&2; fallo "el preflight independiente no pasó sobre el catálogo limpio"; }
+echo "$PREFLIGHT_OK" | grep -q "PREFLIGHT_CATALOGO=PASS" \
+  || fallo "el preflight independiente no emitió PREFLIGHT_CATALOGO=PASS"
+echo "PM26_P06H_F_AISLADO_PREFLIGHT_INDEPENDIENTE=PASS"
+
+# --- Negativo: simular producción, ejecutar el preflight independiente
+# real y retirar después la única política simulada del Postgres local. ---
+$RUN_AS_POSTGRES $PSQL -d "$DB" -c \
+  'create policy "prefiltros - propietario lee" on public.prefiltros_candidatos for select to authenticated using (true);' >/dev/null
+NEG_PROD="$(psql_archivo "$PREFLIGHT" "$DB" 2>&1 || true)"
 echo "$NEG_PROD" | grep -q "PREFLIGHT_FALLO" \
   || fallo "el preflight debia fallar al detectar una politica de produccion simulada, y no fallo"
+$RUN_AS_POSTGRES $PSQL -d "$DB" -c \
+  'drop policy "prefiltros - propietario lee" on public.prefiltros_candidatos;' >/dev/null
 echo "PM26_P06H_F_AISLADO_PREFLIGHT_DETECTA_PRODUCCION=PASS"
 
-# Confirma que el rollback del simulacro no dejo rastro (0 politicas todavia).
+# Confirma que la limpieza explícita del simulacro no dejó rastro.
 QUEDAN_POLITICAS="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select count(*) from pg_policies where tablename='prefiltros_candidatos';")"
 [ "$QUEDAN_POLITICAS" = "0" ] || fallo "tras el rollback del simulacro de produccion deberian quedar 0 politicas, encontrado $QUEDAN_POLITICAS"
 echo "PM26_P06H_F_AISLADO_SIMULACRO_PRODUCCION_SIN_RASTRO=PASS"
 
-# --- Negativo: simular filas existentes (insertar una fila directa
-# como postgres, dentro de una transaccion que se revierte) -- el
-# preflight debe abortar porque exige 0 filas. ---
-NEG_FILAS="$( { echo "begin;"; \
-  echo "insert into public.prefiltros_candidatos (token, candidato_nombre) values ('token-simulado', 'Simulado');"; \
-  cat "$MIGRACION"; \
-  echo "rollback;"; } | $RUN_AS_POSTGRES $PSQL -d "$DB" 2>&1 || true )"
+# --- Negativo: simular una fila existente, ejecutar el mismo preflight
+# independiente y limpiar después el único fixture del Postgres local. ---
+$RUN_AS_POSTGRES $PSQL -d "$DB" -c \
+  "insert into public.prefiltros_candidatos (token, candidato_nombre) values ('token-simulado', 'Simulado');" >/dev/null
+NEG_FILAS="$(psql_archivo "$PREFLIGHT" "$DB" 2>&1 || true)"
 echo "$NEG_FILAS" | grep -q "PREFLIGHT_FALLO" \
   || fallo "el preflight debia fallar al encontrar una fila existente simulada, y no fallo"
+$RUN_AS_POSTGRES $PSQL -d "$DB" -c \
+  "delete from public.prefiltros_candidatos where token='token-simulado';" >/dev/null
 echo "PM26_P06H_F_AISLADO_PREFLIGHT_DETECTA_FILAS_EXISTENTES=PASS"
 
-FILAS_TRAS_ROLLBACK="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select count(*) from public.prefiltros_candidatos;")"
-[ "$FILAS_TRAS_ROLLBACK" = "0" ] || fallo "tras el rollback del simulacro de filas deberian quedar 0 filas, encontrado $FILAS_TRAS_ROLLBACK"
+FILAS_TRAS_LIMPIEZA="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select count(*) from public.prefiltros_candidatos;")"
+[ "$FILAS_TRAS_LIMPIEZA" = "0" ] || fallo "tras limpiar el simulacro de filas deberian quedar 0 filas, encontrado $FILAS_TRAS_LIMPIEZA"
 
 # --- Aplicar la migracion real (positivo). ---
 psql_archivo "$MIGRACION" "$DB" >/dev/null \

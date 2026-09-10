@@ -28,13 +28,16 @@
 -- aplicar, que la tabla sigue vacía (0 filas) -- si no lo estuviera,
 -- aborta explícitamente en vez de imponer NOT NULL a ciegas.
 --
--- No se aplica en QA sin autorización específica adicional. No se
--- toca fuente.js aquí (ver defecto K, sección aparte) -- el cambio de
--- cliente de INSERT/DELETE directos a estas RPC es la Fase B,
--- bloqueada hasta resolver el defecto K.
+-- No se aplica en QA sin autorización específica adicional. P07b
+-- prepara de forma coordinada el cliente que sustituye INSERT/DELETE
+-- directos por estas RPC, pero no despliega ni este SQL ni el cliente.
 
 begin;
 
+set local lock_timeout = '5s';
+set local statement_timeout = '30s';
+
+-- PM26_P06H_PREFLIGHT_INICIO
 do $$
 declare
   v_total int;
@@ -50,16 +53,16 @@ begin
     raise exception 'PREFLIGHT_FALLO: se encontraron políticas de producción sobre prefiltros_candidatos -- esto no es QA, abortando';
   end if;
 
-  -- 2) No aplicado ya: ni las columnas, ni la política nueva, ni las
-  --    RPC deben existir todavía.
-  if exists (select 1 from information_schema.columns where table_schema='public' and table_name='prefiltros_candidatos' and column_name='empresa_id') then
-    raise exception 'PREFLIGHT_FALLO: prefiltros_candidatos.empresa_id ya existe -- esta migración puede haberse aplicado ya';
+  -- 2) No aplicado ya: ninguna de las dos columnas, la política nueva
+  --    ni ninguna de las dos RPC deben existir todavía.
+  if exists (select 1 from information_schema.columns where table_schema='public' and table_name='prefiltros_candidatos' and column_name in ('empresa_id', 'local_id')) then
+    raise exception 'PREFLIGHT_FALLO: ya existe empresa_id o local_id en prefiltros_candidatos -- esta migración puede haberse aplicado ya';
   end if;
   if exists (select 1 from pg_policies where tablename='prefiltros_candidatos' and policyname='prefiltros_candidatos_select_gestion') then
     raise exception 'PREFLIGHT_FALLO: la política prefiltros_candidatos_select_gestion ya existe';
   end if;
-  if exists (select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='pm11_crear_prefiltro_candidato') then
-    raise exception 'PREFLIGHT_FALLO: public.pm11_crear_prefiltro_candidato ya existe';
+  if exists (select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('pm11_crear_prefiltro_candidato', 'pm11_eliminar_prefiltro_candidato')) then
+    raise exception 'PREFLIGHT_FALLO: ya existe alguna RPC PM11 de prefiltros';
   end if;
 
   -- 3) La tabla debe estar vacía -- si no lo está, esta migración
@@ -74,9 +77,7 @@ begin
   raise notice 'PREFLIGHT_CATALOGO=PASS';
 end
 $$;
-
-set lock_timeout = '5s';
-set statement_timeout = '30s';
+-- PM26_P06H_PREFLIGHT_FIN
 
 -- Columnas obligatorias de aislamiento, NOT NULL directamente: el
 -- preflight ya confirmó 0 filas, así que no hay ningún valor

@@ -2,12 +2,13 @@
 
 ## Estado
 
-**Preparado y validado en aislamiento. No autorizado a aplicarse en
-QA.** Responde a la decisión del usuario (Opción B) sobre el aviso F:
+**SQL preparado y validado en aislamiento; cliente preparado en P07b.
+No autorizado a aplicarse en QA.** Responde a la decisión del usuario
+(Opción B) sobre el aviso F:
 mantener para QA el diseño estricto de aislamiento por empresa/local,
 sin copiar el diseño de producción (registrado aparte como Defecto L,
-sin corregir). No se toca `fuente.js`: la Fase B (descrita abajo) queda
-bloqueada hasta resolver el Defecto K por separado.
+sin corregir). P07b corrige el Defecto K y prepara la Fase B del cliente,
+pero no despliega el cliente ni aplica este SQL.
 
 ---
 
@@ -48,8 +49,16 @@ producción simplemente fallaría por nombres de política inexistentes),
 aplicar esto a producción sería **activamente dañino**: producción
 concede hoy `INSERT`/`DELETE` directos a `authenticated`, y el `REVOKE`
 de este archivo rompería ese acceso real ya en uso. El preflight aborta
-si detecta esas políticas, tratándolo como prueba definitiva de estar
-fuera de QA.
+si detecta esas políticas: su presencia demuestra un catálogo incompatible.
+Su ausencia es solo una condición necesaria y no sustituye la identificación
+explícita del proyecto QA antes de una futura aplicación.
+
+Los límites `SET LOCAL lock_timeout = '5s'` y
+`SET LOCAL statement_timeout = '30s'` aparecen inmediatamente después de
+`BEGIN`, por lo que cubren también el preflight embebido y no sobreviven a
+la transacción. Existe además un preflight independiente de solo lectura en
+`tests/pm26/p06h-f-aislado/preflight-catalogo.sql`: su bloque crítico es
+byte a byte idéntico al de este SQL y termina en `ROLLBACK`.
 
 ## 3. Fases de despliegue
 
@@ -62,16 +71,14 @@ fuera de QA.
    aceptados del cliente), `REVOKE` de `INSERT`/`UPDATE`/`DELETE`
    directos, `GRANT SELECT` a `authenticated`. **No aplicada en QA
    todavía.**
-2. **Fase B — BLOQUEADA**: reescribir `fuente.js` para que el flujo de
-   prefiltro de candidatos (hoy `INSERT`/`DELETE` directos contra
-   `prefiltros_candidatos`) llame a las dos RPC nuevas en vez de al
-   cliente estándar sujeto a RLS. **No se toca `fuente.js` en este
-   paquete** — bloqueado explícitamente hasta que el Defecto K (endpoint
-   de producción hardcodeado en el mismo flujo, registrado en P06c) se
-   resuelva por separado. Aplicar la Fase A+C sin la Fase B dejaría el
-   flujo de prefiltro roto en QA (el cliente seguiría intentando
-   `INSERT`/`DELETE` directos, ahora revocados) — por eso la Fase A+C
-   tampoco se aplica todavía por sí sola.
+2. **Fase B — PREPARADA EN P07b, SIN DESPLEGAR**: la fuente canónica y
+   `fuente.js` llaman a `pm11_crear_prefiltro_candidato` y
+   `pm11_eliminar_prefiltro_candidato`; el listado continúa siendo
+   `SELECT` directo protegido por RLS. Crear usa empresa/local activos y
+   eliminar usa empresa/local de la propia fila. P07b corrige también el
+   Defecto K, de modo que la ruta pública deriva su Edge Function de la
+   `NUBE_URL` activa y falla cerrada ante configuración QA incoherente.
+   Nada de esto autoriza ni implica un despliegue en QA.
 3. **Orden exigido**: Fase A+C y Fase B deben aplicarse en el mismo
    cambio (migración + despliegue del cliente), nunca la primera sin
    la segunda inmediatamente detrás, para no romper temporalmente la
@@ -109,14 +116,14 @@ superusuario, que saltaría todos los `GRANT`/RLS):
 - N14/N15: `INSERT`/`DELETE` directos (sin pasar por la RPC) quedan
   revocados (`insufficient_privilege`).
 
-**Resultado, reproducido dos veces de forma independiente, mismo
-resultado ambas veces:**
+**Resultado reproducible en PostgreSQL local aislado:**
 
-- Preflight rechaza un catálogo simulado de producción (política real
-  de producción inyectada dentro de una transacción revertida), sin
-  dejar rastro tras el `rollback`.
-- Preflight rechaza una fila simulada existente (insertada dentro de
-  una transacción revertida), sin dejar rastro tras el `rollback`.
+- El preflight independiente pasa sobre el catálogo limpio y su bloque
+  crítico coincide byte a byte con el embebido.
+- Preflight rechaza un catálogo simulado de producción; la única política
+  de fixture se retira explícitamente después y no deja rastro.
+- Preflight rechaza una fila simulada existente; la única fila de fixture
+  se retira explícitamente después y no deja rastro.
 - Migración se aplica limpia; los 15 casos pasan.
 - Reaplicar la migración completa inmediatamente después **falla**
   con `PREFLIGHT_FALLO` (columnas/política/funciones ya existen) — igual
@@ -134,17 +141,22 @@ resultado ambas veces:**
 ## 5. Archivo final y SHA-256
 
 Archivo: `supabase/qa-solo/pm26_p06h_aislamiento_prefiltros_candidatos.sql`
-(151 líneas) — vive en `supabase/qa-solo`, no en `supabase/migrations`,
+(152 líneas) — vive en `supabase/qa-solo`, no en `supabase/migrations`,
 igual que el aviso H, por el mismo motivo (invisible para la CLI de
 Supabase y para cualquier cadena de CI/CD, verificado con la misma
 prueba de exclusión ya usada para H).
 
-SHA-256: `100b194988232c38a3eea2c62ea1c99b70e3af79655a577d98cdf3deb17ddbbe`
+SHA-256: `7ddfd417d0ee7c9e0784e014a9b731e720bd9c0a919ab5dce65f5f6f2c4c0f5e`
+
+Preflight independiente:
+`tests/pm26/p06h-f-aislado/preflight-catalogo.sql`
+(48 líneas), SHA-256:
+`a224fc1dd0501f5336ff86acf8f81c0d6f329676a8913b5713ef5ebd540325d9`.
 
 ## Qué NO se hizo
 
 - No se aplicó nada en QA ni en producción.
-- No se tocó `fuente.js` (Fase B bloqueada por el Defecto K).
+- P07b sí preparó `fuente.js` y la fuente canónica; no se desplegaron.
 - No se corrigió el Defecto L (ausencia de aislamiento en producción).
 - No se tocó `main`, `release`, Netlify, ni TPV.
 
@@ -153,8 +165,9 @@ PM26_P06H_OPCION_B_CONFIRMADA=SI
 PM26_P06H_MIGRACION_COMBINADA_JUSTIFICADA_0_FILAS=SI
 PM26_P06H_PREFLIGHT_DETECTA_PRODUCCION=SI
 PM26_P06H_PREFLIGHT_DETECTA_FILAS_EXISTENTES=SI
-PM26_P06H_FASE_B_BLOQUEADA_POR_DEFECTO_K=SI
-PM26_P06H_FUENTE_JS_TOCADO=NO
+PM26_P06H_PREFLIGHT_INDEPENDIENTE_IDENTICO=SI
+PM26_P06H_FASE_B_CLIENTE_PREPARADA_P07B=SI
+PM26_P06H_FUENTE_JS_TOCADO_EN_P07B=SI
 PM26_P06H_BATERIA_15_CASOS=PASS
 PM26_P06H_REAPLICACION_RECHAZADA_POR_PREFLIGHT=SI
 PM26_P06H_REVERSION_EXACTA=SI
@@ -164,8 +177,8 @@ PM26_P06H_APLICADO_EN_PRODUCCION=NO
 ```
 
 Pendiente de que el usuario confirme los gates remotos en verde y
-autorice específicamente aplicar esta migración en QA (y, por
-separado, resolver el Defecto K antes de la Fase B). PM25 P02 continúa
+autorice específicamente aplicar esta migración en QA dentro de P07c.
+PM25 P02 continúa
 PARCIAL/BLOQUEADO. Defecto E sigue esperando el cambio manual del
 usuario en Netlify. No se toca `main`, `release`, Netlify, Supabase en
 escritura, QA, producción ni TPV.
