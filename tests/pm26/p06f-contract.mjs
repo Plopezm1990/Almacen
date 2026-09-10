@@ -31,8 +31,10 @@ for (const marcador of [
   'PM26_P06F_PREFLIGHT_INDEPENDIENTE_MANTENIDO=SI',
   'PM26_P06F_ATOMICIDAD_BEGIN_COMMIT=SI',
   'PM26_P06F_LOCK_TIMEOUT_CONFIGURADO=SI',
+  'PM26_P06F_TIMEOUTS_SET_LOCAL_ANTES_PREFLIGHT=SI',
   'PM26_P06F_LOCK_TIMEOUT_PROBADO_CON_BLOQUEO_REAL=SI',
   'PM26_P06F_STATEMENT_TIMEOUT_CONFIGURADO=SI',
+  'PM26_P06F_IF_NOT_EXISTS_RETIRADO=SI',
   'PM26_P06F_INDICE_EQUIVALENTE_OTRO_NOMBRE_COMPROBADO=SI',
   'PM26_P06F_CHECKLIST_ASESORES_PRESENTADO=SI',
   'PM26_P06F_ASESORES_REEJECUTADOS_EN_ESTA_RONDA=NO',
@@ -53,22 +55,27 @@ const migracionTexto = fs.readFileSync(migracionAbs, 'utf8');
 
 assert.match(migracionTexto, /^begin;/m, 'la migracion debe empezar con BEGIN explicito');
 assert.match(migracionTexto, /^commit;/m, 'la migracion debe terminar con COMMIT explicito');
-assert.match(migracionTexto, /set lock_timeout = '5s';/);
-assert.match(migracionTexto, /set statement_timeout = '30s';/);
+assert.match(migracionTexto, /set local lock_timeout = '5s';/);
+assert.match(migracionTexto, /set local statement_timeout = '30s';/);
 assert.match(migracionTexto, /do \$\$/);
 assert.match(migracionTexto, /PREFLIGHT_FALLO/);
 assert.match(migracionTexto, /PREFLIGHT_CATALOGO=PASS/);
-// El BEGIN debe preceder al preflight, y el preflight preceder a los
-// indices/politicas -- el orden importa para la atomicidad.
+// El BEGIN debe preceder a los limites locales, y estos deben proteger
+// ya el preflight y toda la DDL posterior.
 const idxBegin = migracionTexto.indexOf('begin;');
 const idxDoBlock = migracionTexto.indexOf('do $$');
-const idxLockTimeout = migracionTexto.indexOf("set lock_timeout");
+const idxLockTimeout = migracionTexto.indexOf("set local lock_timeout");
 const idxCreateIndex = migracionTexto.indexOf('create index');
 const idxCommit = migracionTexto.lastIndexOf('commit;');
-assert.ok(idxBegin < idxDoBlock, 'BEGIN debe preceder al bloque de preflight');
-assert.ok(idxDoBlock < idxLockTimeout, 'el preflight debe preceder a los limites de tiempo');
-assert.ok(idxLockTimeout < idxCreateIndex, 'los limites de tiempo deben preceder a la creacion de indices');
+assert.ok(idxBegin < idxLockTimeout, 'BEGIN debe preceder a los limites de tiempo locales');
+assert.ok(idxLockTimeout < idxDoBlock, 'los limites de tiempo deben proteger tambien el preflight');
+assert.ok(idxDoBlock < idxCreateIndex, 'el preflight debe preceder a la creacion de indices');
 assert.ok(idxCreateIndex < idxCommit, 'la creacion de indices debe preceder al COMMIT final');
+assert.doesNotMatch(
+  migracionTexto,
+  /create\s+index\s+if\s+not\s+exists/i,
+  'la migracion no debe ocultar carreras o divergencias con CREATE INDEX IF NOT EXISTS'
+);
 
 // Comprobacion de indices equivalentes con otro nombre, para las 4 columnas.
 for (const columna of ['actor_user_id', 'operation_id', 'revierte_pago_id', 'user_id']) {

@@ -39,6 +39,12 @@
 
 begin;
 
+-- Limites transaccionales activos desde la primera consulta del
+-- preflight. SET LOCAL garantiza que no sobrevivan a esta transaccion,
+-- tanto si termina en COMMIT como si aborta por cualquier error.
+set local lock_timeout = '5s';
+set local statement_timeout = '30s';
+
 do $$
 declare
   v_qual text;
@@ -150,25 +156,20 @@ begin
 end
 $$;
 
--- A partir de aqui, el preflight ya paso dentro de esta misma
--- transaccion/ejecucion. Limites de tiempo para que la creacion de
--- indices falle limpio ante actividad concurrente en vez de bloquear
--- QA indefinidamente -- las 4 tablas son pequeñas en QA, estos margenes
--- son generosos.
-set lock_timeout = '5s';
-set statement_timeout = '30s';
-
 -- 1. Indices de cobertura para las 4 FK sin indice (unindexed_foreign_keys)
-create index if not exists idx_auditoria_registro_actor_user_id
+-- El preflight ya certifica su ausencia por nombre y por cobertura.
+-- No se usa IF NOT EXISTS: cualquier carrera o divergencia posterior
+-- al preflight debe fallar y revertir la transaccion completa.
+create index idx_auditoria_registro_actor_user_id
   on public.auditoria_registro (actor_user_id);
 
-create index if not exists idx_movimientos_stock_operation_id
+create index idx_movimientos_stock_operation_id
   on public.movimientos_stock (operation_id);
 
-create index if not exists idx_pagos_encargo_revierte_pago_id
+create index idx_pagos_encargo_revierte_pago_id
   on public.pagos_encargo (revierte_pago_id);
 
-create index if not exists idx_suscripciones_push_user_id
+create index idx_suscripciones_push_user_id
   on public.suscripciones_push (user_id);
 
 -- 2. Reescritura de las 4 politicas con auth_rls_initplan

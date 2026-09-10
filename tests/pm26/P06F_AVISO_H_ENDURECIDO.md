@@ -12,13 +12,15 @@ volver a solicitar autorización para aplicar el aviso H:
    existente, sin abrir ninguna excepción genérica para `supabase/**`.
 2. Preflight integrado en la misma ejecución que `apply_migration`.
 3. Preflight independiente mantenido para las pruebas.
-4. `lock_timeout`/`statement_timeout` añadidos, con prueba real de
-   bloqueo concurrente.
+4. `SET LOCAL lock_timeout`/`statement_timeout` añadidos inmediatamente
+   después de `BEGIN`, con prueba real de bloqueo concurrente.
 5. Comprobación de índices equivalentes con otro nombre, embebida en
    el propio preflight; checklist de asesores justo antes de aplicar.
-6. SHA-256 recalculado; las cuatro pruebas (positiva, negativa,
+6. `IF NOT EXISTS` retirado de los cuatro índices: una carrera o
+   divergencia posterior al preflight ahora aborta toda la transacción.
+7. SHA-256 recalculado; las cuatro pruebas (positiva, negativa,
    reversión, exclusión de producción) repetidas.
-7. Este documento, más la confirmación de gates remotos en la
+8. Este documento, más la confirmación de gates remotos en la
    respuesta de chat que lo acompaña.
 
 ---
@@ -62,13 +64,20 @@ editar uno y no el otro), la prueba lo detecta y falla.
 ## 4. Atomicidad y límites de tiempo
 
 Todo el archivo —preflight incluido— corre ahora dentro de una única
-transacción explícita (`BEGIN;` ... `COMMIT;`), y justo después del
-preflight se fija:
+transacción explícita (`BEGIN;` ... `COMMIT;`). Inmediatamente después
+de `BEGIN`, antes incluso de leer el catálogo en el preflight, se fija:
 
 ```sql
-set lock_timeout = '5s';
-set statement_timeout = '30s';
+set local lock_timeout = '5s';
+set local statement_timeout = '30s';
 ```
+
+`SET LOCAL` limita ambos valores a esta transacción: no pueden filtrarse
+a ninguna operación posterior de la sesión. Los cuatro `CREATE INDEX`
+son deliberadamente estrictos, sin `IF NOT EXISTS`; como el preflight ya
+comprueba ausencia por nombre y por cobertura equivalente, cualquier
+carrera entre esa lectura y la DDL debe fallar y provocar rollback, no
+convertirse en un éxito ambiguo.
 
 **Prueba real, no solo declarada** (`validar.sh`): se abre, en una
 sesión de Postgres aparte, una transacción que toma
@@ -118,9 +127,9 @@ autorización):**
 ## 6. SHA-256 recalculado y las 4 pruebas repetidas
 
 Archivo: `supabase/qa-solo/pm26_p06b_rendimiento_indices_rls_initplan.sql`
-(197 líneas)
+(198 líneas)
 
-SHA-256: `1f56d19d513791ef60c42b56bf0280fa739270eefa173b4feda47b9ea1380c8c`
+SHA-256: `c4dc61a38cfc58ee588917988e81e3946cb79376e635464e37c5435fe435189d`
 
 `tests/pm26/p06b-h-aislado/validar.sh`, reejecutado de punta a punta
 dos veces de forma independiente, mismo resultado ambas veces —
@@ -156,8 +165,10 @@ PM26_P06F_PREFLIGHT_EMBEBIDO_EN_MISMA_EJECUCION=SI
 PM26_P06F_PREFLIGHT_INDEPENDIENTE_MANTENIDO=SI
 PM26_P06F_ATOMICIDAD_BEGIN_COMMIT=SI
 PM26_P06F_LOCK_TIMEOUT_CONFIGURADO=SI
+PM26_P06F_TIMEOUTS_SET_LOCAL_ANTES_PREFLIGHT=SI
 PM26_P06F_LOCK_TIMEOUT_PROBADO_CON_BLOQUEO_REAL=SI
 PM26_P06F_STATEMENT_TIMEOUT_CONFIGURADO=SI
+PM26_P06F_IF_NOT_EXISTS_RETIRADO=SI
 PM26_P06F_INDICE_EQUIVALENTE_OTRO_NOMBRE_COMPROBADO=SI
 PM26_P06F_CHECKLIST_ASESORES_PRESENTADO=SI
 PM26_P06F_ASESORES_REEJECUTADOS_EN_ESTA_RONDA=NO
