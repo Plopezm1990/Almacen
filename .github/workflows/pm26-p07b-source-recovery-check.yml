@@ -1,0 +1,35 @@
+name: PM26 P07b source-recovery check
+
+on:
+  push:
+    branches:
+      - claude/pm26-preparacion-tecnica
+    paths:
+      - ".github/workflows/pm26-p07b-source-recovery-check.yml"
+      - "source-recovery/**"
+      - "fuente.js"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rebuild-current:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Reconstruir fuente.js desde source-recovery
+        run: npm --prefix source-recovery run rebuild:current
+
+      - name: Verificar build actual determinista
+        run: npm --prefix source-recovery run check:current
+
+      - name: Confirmar que la reconstruccion es byte a byte identica
+        run: git diff --exit-code -- fuente.js
