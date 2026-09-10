@@ -49,8 +49,14 @@ assert.ok(
   !migraciones.some((m) => m.includes('rendimiento_indices_rls_initplan')),
   'la migracion del aviso H no debe aparecer bajo ningun nombre en supabase/migrations'
 );
+// El archivo se endurecio despues en PM26 P06f (preflight embebido,
+// lock_timeout, etc.) -- este informe queda como narrativa historica
+// del momento en que se escribio, el hash vigente se verifica contra
+// P06f, no reescribiendo este documento.
 const hashReal = crypto.createHash('sha256').update(fs.readFileSync(path.join(RAIZ_REPO, rutaQaSolo))).digest('hex');
-assert.match(doc, new RegExp(hashReal), 'el hash SHA-256 documentado no coincide con el archivo real');
+const docP06f = leer('tests/pm26/P06F_AVISO_H_ENDURECIDO.md');
+assert.match(docP06f, new RegExp(hashReal), 'el hash SHA-256 documentado en P06f no coincide con el archivo real');
+assert.match(doc, /relocaliz|endurec/i, 'el informe de P06e debe señalar la actualización posterior en P06f');
 console.log('PM26_P06E_UBICACION_VERIFICADA=PASS');
 
 // --- Preflight de catalogo: existe y se reutiliza en validar.sh. ---

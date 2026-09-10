@@ -75,6 +75,49 @@ begin
   perform 1 from information_schema.columns where table_schema='public' and table_name='suscripciones_push' and column_name='user_id';
   if not found then raise exception 'PREFLIGHT_FALLO: suscripciones_push.user_id no existe'; end if;
 
+  -- 4) Ningun indice EXISTENTE, con cualquier nombre, debe cubrir ya
+  --    esa misma columna como su columna inicial -- si lo hiciera, el
+  --    asesor original ya no aplicaria y crear otro seria redundante.
+  select count(*) into v_encontradas
+    from pg_index i
+    join pg_class t on t.oid = i.indrelid
+    join pg_namespace n on n.oid = t.relnamespace
+    join pg_attribute a on a.attrelid = t.oid and a.attnum = i.indkey[0]
+   where n.nspname = 'public' and t.relname = 'auditoria_registro' and a.attname = 'actor_user_id';
+  if v_encontradas > 0 then
+    raise exception 'PREFLIGHT_FALLO: ya existe un indice (con cualquier nombre) que cubre auditoria_registro.actor_user_id como columna inicial';
+  end if;
+
+  select count(*) into v_encontradas
+    from pg_index i
+    join pg_class t on t.oid = i.indrelid
+    join pg_namespace n on n.oid = t.relnamespace
+    join pg_attribute a on a.attrelid = t.oid and a.attnum = i.indkey[0]
+   where n.nspname = 'public' and t.relname = 'movimientos_stock' and a.attname = 'operation_id';
+  if v_encontradas > 0 then
+    raise exception 'PREFLIGHT_FALLO: ya existe un indice (con cualquier nombre) que cubre movimientos_stock.operation_id como columna inicial';
+  end if;
+
+  select count(*) into v_encontradas
+    from pg_index i
+    join pg_class t on t.oid = i.indrelid
+    join pg_namespace n on n.oid = t.relnamespace
+    join pg_attribute a on a.attrelid = t.oid and a.attnum = i.indkey[0]
+   where n.nspname = 'public' and t.relname = 'pagos_encargo' and a.attname = 'revierte_pago_id';
+  if v_encontradas > 0 then
+    raise exception 'PREFLIGHT_FALLO: ya existe un indice (con cualquier nombre) que cubre pagos_encargo.revierte_pago_id como columna inicial';
+  end if;
+
+  select count(*) into v_encontradas
+    from pg_index i
+    join pg_class t on t.oid = i.indrelid
+    join pg_namespace n on n.oid = t.relnamespace
+    join pg_attribute a on a.attrelid = t.oid and a.attnum = i.indkey[0]
+   where n.nspname = 'public' and t.relname = 'suscripciones_push' and a.attname = 'user_id';
+  if v_encontradas > 0 then
+    raise exception 'PREFLIGHT_FALLO: ya existe un indice (con cualquier nombre) que cubre suscripciones_push.user_id como columna inicial';
+  end if;
+
   raise notice 'PREFLIGHT_CATALOGO=PASS';
 end
 $$;

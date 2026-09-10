@@ -14,6 +14,16 @@ para `perfiles`/`suscripciones_push`/`membresias_usuario` — se sigue
 la opción preferida del usuario: aislar la migración con un mecanismo
 específico de QA, fuera de `supabase/migrations`.
 
+**Actualización (PM26 P06f)**: el usuario pidió endurecer más el
+mecanismo — preflight embebido en la misma ejecución (no dos llamadas
+separadas), `lock_timeout`/`statement_timeout`, comprobación de
+índices equivalentes con otro nombre, y una prueba real de bloqueo
+concurrente. El archivo cambió de contenido (mismo SQL funcional, más
+las nuevas protecciones) y su hash cambió en consecuencia. Ver
+`P06F_AVISO_H_ENDURECIDO.md` para el hash y las pruebas vigentes; las
+secciones de más abajo describen correctamente el estado en el momento
+en que se escribieron.
+
 ---
 
 ## 1. Ubicación y mecanismo exactos

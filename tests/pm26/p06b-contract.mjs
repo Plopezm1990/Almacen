@@ -92,8 +92,11 @@ function leer(rel) {
   const migracionAbs = path.join(RAIZ_REPO, rutaMigracion);
   assert.ok(fs.existsSync(migracionAbs), `debe existir ${rutaMigracion}`);
   const hashReal = crypto.createHash('sha256').update(fs.readFileSync(migracionAbs)).digest('hex');
-  const docP06e = leer('tests/pm26/P06E_AVISO_H_AISLAMIENTO_QA_SOLO.md');
-  assert.match(docP06e, new RegExp(hashReal), 'el hash SHA-256 documentado en P06e no coincide con el archivo real de la migracion');
+  // El archivo se endurecio de nuevo en P06f (preflight embebido,
+  // lock_timeout, etc.) -- el hash vigente se verifica ahi, no en P06e
+  // (que a su vez ya quedo como narrativa historica).
+  const docP06f = leer('tests/pm26/P06F_AVISO_H_ENDURECIDO.md');
+  assert.match(docP06f, new RegExp(hashReal), 'el hash SHA-256 documentado en P06f no coincide con el archivo real de la migracion');
   assert.match(doc, /relocaliz/i, 'el informe de P06b debe señalar que la migración se relocalizó en P06e');
 
   const migracionTexto = fs.readFileSync(migracionAbs, 'utf8');
@@ -134,7 +137,9 @@ function leer(rel) {
     'PM26_P06B_H_AISLADO_SOLO_4_INDICES_NUEVOS_NINGUNO_ELIMINADO=PASS',
     'PM26_P06B_H_AISLADO_INITPLAN_CONFIRMADO=PASS',
     'PM26_P06B_H_AISLADO_REVERSION_EXACTA=PASS',
-    'PM26_P06B_H_AISLADO_REPETICION_CONTROLADA_IDEMPOTENTE=PASS',
+    // P06f reemplazo la reaplicacion "idempotente" por un rechazo
+    // explicito del preflight embebido -- mas seguro. Ver P06f.
+    'PM26_P06B_H_AISLADO_REAPLICACION_RECHAZADA_POR_PREFLIGHT=PASS',
     'PM26_P06B_H_AISLADO_BLOQUEO_SHARELOCK_CONFIRMADO=PASS',
     'PM26_P06B_H_AISLADO_VALIDACION_COMPLETA=PASS',
   ]) {
