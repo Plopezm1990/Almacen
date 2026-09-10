@@ -82,11 +82,19 @@ function leer(rel) {
   assert.match(doc, /PM26_P06B_AVISO_H_INDICES_SIN_USO_TOCADOS=NO/);
   assert.match(doc, /PM26_P06B_AVISO_F_MEZCLADO=NO/);
 
-  const rutaMigracion = 'supabase/migrations/20260909200730_pm26_p06b_rendimiento_indices_rls_initplan.sql';
+  // La migracion se relocalizo en PM26 P06e a supabase/qa-solo (fuera
+  // de supabase/migrations, para que la CLI de Supabase nunca pueda
+  // aplicarla a ningun proyecto por convencion de carpeta). Este
+  // informe (P06b) queda como narrativa historica del momento en que
+  // se creo -- la ruta y el hash vigentes se verifican contra el
+  // informe de P06e, no reescribiendo este.
+  const rutaMigracion = 'supabase/qa-solo/pm26_p06b_rendimiento_indices_rls_initplan.sql';
   const migracionAbs = path.join(RAIZ_REPO, rutaMigracion);
   assert.ok(fs.existsSync(migracionAbs), `debe existir ${rutaMigracion}`);
   const hashReal = crypto.createHash('sha256').update(fs.readFileSync(migracionAbs)).digest('hex');
-  assert.match(doc, new RegExp(hashReal), 'el hash SHA-256 documentado no coincide con el archivo real de la migracion');
+  const docP06e = leer('tests/pm26/P06E_AVISO_H_AISLAMIENTO_QA_SOLO.md');
+  assert.match(docP06e, new RegExp(hashReal), 'el hash SHA-256 documentado en P06e no coincide con el archivo real de la migracion');
+  assert.match(doc, /relocaliz/i, 'el informe de P06b debe señalar que la migración se relocalizó en P06e');
 
   const migracionTexto = fs.readFileSync(migracionAbs, 'utf8');
   // Exactamente los 4 indices y las 4 politicas, nada mas -- ninguna
@@ -144,7 +152,7 @@ function leer(rel) {
     'tests/pm26/P06B_AVISO_G_CORRECCION.md',
     'tests/pm26/P06B_AVISO_H_VALIDACION_AISLADA.md',
     'tests/pm26/p06b-contract.mjs',
-    'supabase/migrations/20260909200730_pm26_p06b_rendimiento_indices_rls_initplan.sql',
+    'supabase/qa-solo/pm26_p06b_rendimiento_indices_rls_initplan.sql',
     'tests/pm26/p06b-h-aislado/schema.sql',
     'tests/pm26/p06b-h-aislado/seed.sql',
     'tests/pm26/p06b-h-aislado/comportamiento.sql',

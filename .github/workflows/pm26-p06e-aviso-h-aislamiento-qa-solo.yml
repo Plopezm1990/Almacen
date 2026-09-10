@@ -1,0 +1,98 @@
+name: PM26 P06e aviso H aislamiento fuera de la cadena de produccion
+
+# Certifica que la migracion del aviso H (rendimiento QA) vive solo en
+# supabase/qa-solo -- nunca en supabase/migrations -- y que la CLI
+# real de Supabase, ejecutada contra el repositorio real, no la
+# descubre (con control positivo de que si descubre migraciones
+# reales). Certifica ademas el preflight de catalogo (positivo y
+# negativo, incluido el simulacro de "proyecto equivocado") mediante
+# la reejecucion real de validar.sh. No aplica nada en QA ni
+# produccion. No toca main, release, Netlify, Supabase (escritura), ni
+# TPV.
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'tests/pm26/P06E_AVISO_H_AISLAMIENTO_QA_SOLO.md'
+      - 'tests/pm26/p06e-contract.mjs'
+      - 'tests/pm26/p06b-h-aislado/**'
+      - 'supabase/qa-solo/**'
+      - '.github/workflows/pm26-p06e-aviso-h-aislamiento-qa-solo.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger lo que P06e no debe tocar
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          # Comparado contra el cierre previo de la rama (PM26 P06d,
+          # a6057f2), no contra origin/main.
+          intocables='edge-auth-patch.js
+          fuente.js
+          index.html
+          _headers
+          reset-pruebas-preview.js
+          pm11-compra-mobile-loader.js
+          source-recovery/recuperar_candidato.py
+          source-recovery/fuente-recuperado.js
+          netlify.toml'
+          cambiados="$(git diff --name-only a6057f21130f7fc25a767a51b84dc189fd9cd851..HEAD)"
+          while IFS= read -r archivo; do
+            [ -z "$archivo" ] && continue
+            if echo "$cambiados" | grep -qxF "$archivo"; then
+              echo "PM26 P06e no debe tocar: $archivo" >&2
+              exit 1
+            fi
+          done <<< "$intocables"
+          # No debe aparecer ninguna migracion nueva en supabase/migrations.
+          nuevos_en_migrations="$(git diff --name-only --diff-filter=A a6057f21130f7fc25a767a51b84dc189fd9cd851..HEAD -- supabase/migrations)"
+          if [ -n "$nuevos_en_migrations" ]; then
+            echo "PM26 P06e no debe anadir nada a supabase/migrations: $nuevos_en_migrations" >&2
+            exit 1
+          fi
+          echo 'PM26_P06E_INTOCABLES_INTACTOS=PASS'
+      - name: Instalar PostgreSQL local (aislado)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sleep 2
+          sudo -u postgres pg_isready
+      - name: Instalar CLI de Supabase (para la prueba real de exclusion)
+        run: npm install -g supabase
+      - name: Contrato PM26 P06e (aislamiento + preflight + exclusion CLI real + sin secretos)
+        run: node tests/pm26/p06e-contract.mjs
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar PostgreSQL local (aislado)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sleep 2
+          sudo -u postgres pg_isready
+      - name: Instalar CLI de Supabase
+        run: npm install -g supabase
+      - name: Gate PM26 P06e -- aislamiento fuera de la cadena de produccion, nada aplicado
+        run: |
+          set -euo pipefail
+          node tests/pm26/p06e-contract.mjs
+          echo 'PM26_P06E_GATE=PASS'

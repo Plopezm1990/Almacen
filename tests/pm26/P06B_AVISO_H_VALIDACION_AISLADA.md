@@ -9,6 +9,18 @@ repositorio y validarlo completamente en un Supabase/PostgreSQL
 aislado. No autorizo todavía aplicarlo en QA."* Se cumplen las 8
 condiciones dadas.
 
+**Actualización (PM26 P06e)**: tras una condición posterior del
+usuario (que la migración no pueda entrar por accidente en la cadena
+de producción), el archivo se **relocalizó** de
+`supabase/migrations/20260909200730_pm26_p06b_rendimiento_indices_rls_initplan.sql`
+a `supabase/qa-solo/pm26_p06b_rendimiento_indices_rls_initplan.sql`,
+con una cabecera nueva explicando el aislamiento — el hash cambió en
+consecuencia. El SQL funcional (los 4 índices y las 4 políticas) no
+cambió. Ver `P06E_AVISO_H_AISLAMIENTO_QA_SOLO.md` para la ubicación,
+el hash y las pruebas vigentes; las secciones de más abajo describen
+correctamente el estado en el momento en que se escribieron, con la
+ruta y el hash de entonces.
+
 ---
 
 ## 1. Creación mediante `supabase migration new`

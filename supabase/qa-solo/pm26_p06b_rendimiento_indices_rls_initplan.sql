@@ -7,6 +7,21 @@
 -- exactamente su tabla, comando, roles, USING y WITH CHECK -- el unico
 -- cambio es envolver auth.uid() en (select auth.uid()).
 -- No se retira ningun indice existente.
+--
+-- AVISO -- este archivo NO vive en supabase/migrations a proposito.
+-- Las politicas qa_* solo existen en el proyecto QA (produccion tiene,
+-- para las mismas tablas, politicas con nombres y alcance distintos, o
+-- ninguna) -- aplicar esto contra produccion no tiene sentido y no
+-- debe ser posible por accidente. La CLI de Supabase (`migration
+-- list`/`db push`) solo descubre archivos dentro de
+-- supabase/migrations; al vivir fuera de ahi, ninguna de las dos
+-- puede verlo ni aplicarlo jamas, se apunte al proyecto que se apunte.
+-- Unico mecanismo de aplicacion sancionado: la herramienta
+-- apply_migration de Supabase, invocada manualmente con el project_id
+-- de QA explicito, tras autorizacion especifica del usuario para esta
+-- migracion concreta -- nunca via `supabase db push`/`migration up`.
+-- Ver tests/pm26/p06b-h-aislado/preflight-catalogo.sql, que debe
+-- ejecutarse y pasar limpio inmediatamente antes de aplicar esto.
 
 -- 1. Indices de cobertura para las 4 FK sin indice (unindexed_foreign_keys)
 create index if not exists idx_auditoria_registro_actor_user_id
