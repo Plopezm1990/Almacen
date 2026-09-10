@@ -388,6 +388,11 @@ const sqlF = leer('supabase/qa-solo/pm26_p06h_aislamiento_prefiltros_candidatos.
 assert.match(sqlF, /begin;\s*set local lock_timeout = '5s';\s*set local statement_timeout = '30s';\s*-- PM26_P06H_PREFLIGHT_INICIO/s);
 assert.doesNotMatch(sqlF, /\bset lock_timeout\s*=/i);
 assert.doesNotMatch(sqlF, /\bset statement_timeout\s*=/i);
+assert.equal(
+  (sqlF.match(/revoke all on function public\.pm11_(?:crear|eliminar)_prefiltro_candidato\([^;]+\) from public, anon, authenticated, service_role;/g) || []).length,
+  2,
+  'las RPC F deben retirar también los grants directos por defecto de Supabase'
+);
 assert.ok(!fs.readdirSync(path.join(RAIZ_REPO, 'supabase/migrations')).some((nombre) => /prefiltro/i.test(nombre)));
 console.log('PM26_P07B_SQL_F_ENDURECIDO_SIN_APLICAR=PASS');
 

@@ -10,6 +10,14 @@ sin copiar el diseño de producción (registrado aparte como Defecto L,
 sin corregir). P07b corrige el Defecto K y prepara la Fase B del cliente,
 pero no despliega el cliente ni aplica este SQL.
 
+Addenda de preflight P07c: antes de la aplicación, la inspección real de QA
+detectó que sus `ALTER DEFAULT PRIVILEGES` conceden `EXECUTE` directamente a
+`anon`, `authenticated` y `service_role` para funciones nuevas de `public`.
+La versión anterior retiraba `PUBLIC`, pero ese `REVOKE` no elimina grants
+directos. La migración quedó endurecida para retirar expresamente los cuatro
+orígenes (`PUBLIC`, `anon`, `authenticated`, `service_role`) y volver a
+conceder únicamente `authenticated`. No se escribió en QA para descubrirlo.
+
 ---
 
 ## 1. Decisión Opción B confirmada
@@ -68,7 +76,9 @@ byte a byte idéntico al de este SQL y termina en `ROLLBACK`.
    lectura), RPC `pm11_crear_prefiltro_candidato` /
    `pm11_eliminar_prefiltro_candidato` (escritura, `SECURITY DEFINER`,
    `search_path` vacío, empresa/local fijados en el servidor — nunca
-   aceptados del cliente), `REVOKE` de `INSERT`/`UPDATE`/`DELETE`
+   aceptados del cliente), `EXECUTE` retirado de `PUBLIC`, `anon`,
+   `authenticated` y `service_role` antes de concederlo solo a
+   `authenticated`, `REVOKE` de `INSERT`/`UPDATE`/`DELETE`
    directos, `GRANT SELECT` a `authenticated`. **No aplicada en QA
    todavía.**
 2. **Fase B — PREPARADA EN P07b, SIN DESPLEGAR**: la fuente canónica y
@@ -116,6 +126,11 @@ superusuario, que saltaría todos los `GRANT`/RLS):
 - N14/N15: `INSERT`/`DELETE` directos (sin pasar por la RPC) quedan
   revocados (`insufficient_privilege`).
 
+El arnés reproduce además los tres grants directos por defecto observados en
+QA para funciones nuevas. Tras aplicar la migración comprueba para ambas RPC
+que `authenticated` conserva `EXECUTE` y que `anon`/`service_role` no lo
+conservan, aunque el catálogo de partida sí concediera esos privilegios.
+
 **Resultado reproducible en PostgreSQL local aislado:**
 
 - El preflight independiente pasa sobre el catálogo limpio y su bloque
@@ -125,6 +140,8 @@ superusuario, que saltaría todos los `GRANT`/RLS):
 - Preflight rechaza una fila simulada existente; la única fila de fixture
   se retira explícitamente después y no deja rastro.
 - Migración se aplica limpia; los 15 casos pasan.
+- La simulación de ACL de Supabase pasa y ambas RPC quedan ejecutables solo
+  por `authenticated`.
 - Reaplicar la migración completa inmediatamente después **falla**
   con `PREFLIGHT_FALLO` (columnas/política/funciones ya existen) — igual
   que el aviso H endurecido, un rechazo explícito, no un no-op
@@ -146,7 +163,7 @@ igual que el aviso H, por el mismo motivo (invisible para la CLI de
 Supabase y para cualquier cadena de CI/CD, verificado con la misma
 prueba de exclusión ya usada para H).
 
-SHA-256: `7ddfd417d0ee7c9e0784e014a9b731e720bd9c0a919ab5dce65f5f6f2c4c0f5e`
+SHA-256: `7edbeefd92e82bb806265d29ccf3a2c30e411b4c4f5ec654f05e969ec19d5b1a`
 
 Preflight independiente:
 `tests/pm26/p06h-f-aislado/preflight-catalogo.sql`
@@ -171,6 +188,7 @@ PM26_P06H_FUENTE_JS_TOCADO_EN_P07B=SI
 PM26_P06H_BATERIA_15_CASOS=PASS
 PM26_P06H_REAPLICACION_RECHAZADA_POR_PREFLIGHT=SI
 PM26_P06H_REVERSION_EXACTA=SI
+PM26_P06H_RPC_EXECUTE_SOLO_AUTHENTICATED=SI
 PM26_P06H_SHA256_CALCULADO=SI
 PM26_P06H_APLICADO_EN_QA=NO
 PM26_P06H_APLICADO_EN_PRODUCCION=NO

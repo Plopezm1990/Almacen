@@ -55,7 +55,10 @@ respuesta ambigua, la interfaz conserva el elemento y muestra el fallo.
 El archivo QA-only de F mantiene `BEGIN`/`COMMIT`, las RPC
 `SECURITY DEFINER` con `search_path` vacío, `EXECUTE` retirado de `PUBLIC` y
 concedido solo a `authenticated`, mutaciones directas revocadas y lectura
-mediante RLS.
+mediante RLS. El preflight vivo de P07c detectó después que QA también asigna
+grants directos por defecto a `anon`, `authenticated` y `service_role`; antes
+de cualquier aplicación se endureció el mismo artefacto para revocarlos todos
+y volver a conceder exclusivamente `authenticated`.
 
 P07b añade los ajustes pendientes:
 
@@ -93,8 +96,9 @@ derivación desde `NUBE_URL`, la RPC de alta, el booleano estricto de borrado
 y el contexto de la fila.
 
 El contrato P06h reproduce además el ciclo SQL en PostgreSQL efímero: los 15
-casos de permisos/aislamiento, preflight positivo y negativos, rechazo de
-reaplicación, reversión y reaplicación limpia.
+casos de permisos/aislamiento, los grants directos por defecto observados en
+Supabase, preflight positivo y negativos, rechazo de reaplicación, reversión y
+reaplicación limpia.
 
 ## 5. Revisión de compatibilidad
 
@@ -117,7 +121,7 @@ Referencias:
 | Fuente canónica | `0ce793aa99215927d610a0058264eacba71e358d5d9a22aaa37705873c5fb258` |
 | Bundle servido | `c2ac93d52526de2c9d1f445d415fec2a3b3e5796625bd05e04b8e5a77c265513` |
 | Build canónico determinista | `ffeb46280a17d64620993bcbc2ed37c549fe8e04c08757bcee5218d45e886bd0` |
-| SQL F QA-only | `7ddfd417d0ee7c9e0784e014a9b731e720bd9c0a919ab5dce65f5f6f2c4c0f5e` |
+| SQL F QA-only | `7edbeefd92e82bb806265d29ccf3a2c30e411b4c4f5ec654f05e969ec19d5b1a` |
 | Preflight independiente | `a224fc1dd0501f5336ff86acf8f81c0d6f329676a8913b5713ef5ebd540325d9` |
 
 Dos builds canónicos consecutivos produjeron el mismo hash. Estos hashes

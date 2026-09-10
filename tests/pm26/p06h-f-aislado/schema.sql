@@ -11,8 +11,18 @@ begin
   if not exists (select 1 from pg_roles where rolname = 'authenticated') then
     create role authenticated;
   end if;
+  if not exists (select 1 from pg_roles where rolname = 'service_role') then
+    create role service_role;
+  end if;
 end
 $$;
+
+-- QA real conserva grants directos por defecto para las funciones nuevas
+-- de public. Reproducirlos aquí evita que un simple REVOKE ... FROM PUBLIC
+-- dé una falsa sensación de aislamiento: anon/authenticated/service_role
+-- deben existir como entradas ACL independientes antes de aplicar F.
+alter default privileges in schema public
+  grant execute on functions to anon, authenticated, service_role;
 
 create schema if not exists auth;
 create table if not exists auth.users (id uuid primary key);

@@ -35,6 +35,11 @@ psql_archivo "$DIR/schema.sql" "$DB" >/dev/null \
   || fallo "no se pudo aplicar schema.sql"
 echo "PM26_P06H_F_AISLADO_SCHEMA=PASS"
 
+DEFAULT_FUNCTION_ACL="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select count(*) from pg_default_acl d cross join lateral aclexplode(d.defaclacl) a join pg_roles r on r.oid=a.grantee join pg_namespace n on n.oid=d.defaclnamespace where d.defaclobjtype='f' and n.nspname='public' and r.rolname in ('anon','authenticated','service_role') and a.privilege_type='EXECUTE';")"
+[ "$DEFAULT_FUNCTION_ACL" = "3" ] \
+  || fallo "el arnes debe reproducir los 3 grants directos por defecto de Supabase; encontrados $DEFAULT_FUNCTION_ACL"
+echo "PM26_P06H_F_AISLADO_DEFAULT_FUNCTION_ACL_SUPABASE=PASS"
+
 psql_archivo "$DIR/seed.sql" "$DB" >/dev/null \
   || fallo "no se pudo aplicar seed.sql"
 echo "PM26_P06H_F_AISLADO_SEED=PASS"
@@ -81,6 +86,11 @@ FILAS_TRAS_LIMPIEZA="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select count(*) fro
 psql_archivo "$MIGRACION" "$DB" >/dev/null \
   || fallo "la migracion no se aplico limpiamente"
 echo "PM26_P06H_F_AISLADO_MIGRACION_APLICADA=PASS"
+
+PRIVILEGIOS_RPC="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select concat_ws('|', has_function_privilege('anon','public.pm11_crear_prefiltro_candidato(text,text,text)','EXECUTE'), has_function_privilege('authenticated','public.pm11_crear_prefiltro_candidato(text,text,text)','EXECUTE'), has_function_privilege('service_role','public.pm11_crear_prefiltro_candidato(text,text,text)','EXECUTE'), has_function_privilege('anon','public.pm11_eliminar_prefiltro_candidato(text,text,text)','EXECUTE'), has_function_privilege('authenticated','public.pm11_eliminar_prefiltro_candidato(text,text,text)','EXECUTE'), has_function_privilege('service_role','public.pm11_eliminar_prefiltro_candidato(text,text,text)','EXECUTE'));")"
+[ "$PRIVILEGIOS_RPC" = "f|t|f|f|t|f" ] \
+  || fallo "las RPC deben ser ejecutables solo por authenticated; encontrado $PRIVILEGIOS_RPC"
+echo "PM26_P06H_F_AISLADO_RPC_EXECUTE_SOLO_AUTHENTICATED=PASS"
 
 # --- Bateria de comportamiento: 15 casos positivos/negativos. ---
 SALIDA="$(psql_archivo "$DIR/comportamiento.sql" "$DB" 2>&1)" \

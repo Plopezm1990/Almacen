@@ -31,6 +31,12 @@
 -- No se aplica en QA sin autorización específica adicional. P07b
 -- prepara de forma coordinada el cliente que sustituye INSERT/DELETE
 -- directos por estas RPC, pero no despliega ni este SQL ni el cliente.
+--
+-- P07c confirmó además que QA conserva privilegios por defecto de
+-- Supabase que conceden EXECUTE directamente a anon, authenticated y
+-- service_role para funciones nuevas de public. Por eso cada RPC retira
+-- tanto PUBLIC como esos grants directos y vuelve a conceder únicamente
+-- authenticated. Revocar solo PUBLIC no basta en este proyecto real.
 
 begin;
 
@@ -115,7 +121,7 @@ begin
   return v_token;
 end;
 $$;
-revoke all on function public.pm11_crear_prefiltro_candidato(text, text, text) from public;
+revoke all on function public.pm11_crear_prefiltro_candidato(text, text, text) from public, anon, authenticated, service_role;
 grant execute on function public.pm11_crear_prefiltro_candidato(text, text, text) to authenticated;
 
 create or replace function public.pm11_eliminar_prefiltro_candidato(
@@ -141,7 +147,7 @@ begin
   return true;
 end;
 $$;
-revoke all on function public.pm11_eliminar_prefiltro_candidato(text, text, text) from public;
+revoke all on function public.pm11_eliminar_prefiltro_candidato(text, text, text) from public, anon, authenticated, service_role;
 grant execute on function public.pm11_eliminar_prefiltro_candidato(text, text, text) to authenticated;
 
 -- Mutaciones directas revocadas explícitamente -- la única vía de

@@ -14,10 +14,11 @@ import { escanearArbol } from '../../tools/seguridad/verificar-secretos-e-identi
 // (2) el hash documentado coincide con el archivo real, (3) la
 // migracion vive fuera de supabase/migrations y no toca fuente.js,
 // (4) validar.sh (que reproduce todo el ciclo, incluida la bateria de
-// 15 casos) se re-ejecuta de verdad y pasa, (5) el preflight externo y
-// el embebido son byte a byte identicos y (6) ni el documento ni este
-// contrato contienen ningun secreto real. P07b prepara el cliente, pero
-// este contrato no certifica que F se haya aplicado en QA.
+// 15 casos) se re-ejecuta de verdad y pasa, incluida la ACL directa que
+// Supabase asigna a funciones nuevas, (5) el preflight externo y el
+// embebido son byte a byte identicos y (6) ni el documento ni este contrato
+// contienen ningun secreto real. P07b prepara el cliente, pero este contrato
+// no certifica que F se haya aplicado en QA.
 
 const __filename = fileURLToPath(import.meta.url);
 const RAIZ_REPO = path.resolve(path.dirname(__filename), '..', '..');
@@ -39,6 +40,7 @@ for (const marcador of [
   'PM26_P06H_BATERIA_15_CASOS=PASS',
   'PM26_P06H_REAPLICACION_RECHAZADA_POR_PREFLIGHT=SI',
   'PM26_P06H_REVERSION_EXACTA=SI',
+  'PM26_P06H_RPC_EXECUTE_SOLO_AUTHENTICATED=SI',
   'PM26_P06H_SHA256_CALCULADO=SI',
   'PM26_P06H_APLICADO_EN_QA=NO',
   'PM26_P06H_APLICADO_EN_PRODUCCION=NO',
@@ -71,6 +73,11 @@ assert.match(migracionTexto, /add column empresa_id text not null/);
 assert.match(migracionTexto, /add column local_id text not null/);
 assert.match(migracionTexto, /private\.pm11_puede_ver_personal\(empresa_id, local_id\)/);
 assert.match(migracionTexto, /private\.pm11_puede_mutar_personal\(p_empresa_id, p_local_id\)/);
+assert.equal(
+  (migracionTexto.match(/revoke all on function public\.pm11_(?:crear|eliminar)_prefiltro_candidato\([^;]+\) from public, anon, authenticated, service_role;/g) || []).length,
+  2,
+  'las dos RPC deben retirar PUBLIC y los grants directos por defecto de Supabase'
+);
 assert.match(migracionTexto, /revoke insert, update, delete on public\.prefiltros_candidatos from authenticated, anon, public;/);
 assert.match(migracionTexto, /grant select on public\.prefiltros_candidatos to authenticated;/);
 console.log('PM26_P06H_MIGRACION_CONTIENE_PROTECCIONES=PASS');
@@ -148,12 +155,14 @@ assert.equal(r1.status, 0, 'validar.sh (P06h) debe terminar con exito');
 for (const marcador of [
   'PM26_P06H_F_AISLADO_FUERA_DE_SUPABASE_MIGRATIONS=PASS',
   'PM26_P06H_F_AISLADO_SCHEMA=PASS',
+  'PM26_P06H_F_AISLADO_DEFAULT_FUNCTION_ACL_SUPABASE=PASS',
   'PM26_P06H_F_AISLADO_SEED=PASS',
   'PM26_P06H_F_AISLADO_PREFLIGHT_INDEPENDIENTE=PASS',
   'PM26_P06H_F_AISLADO_PREFLIGHT_DETECTA_PRODUCCION=PASS',
   'PM26_P06H_F_AISLADO_SIMULACRO_PRODUCCION_SIN_RASTRO=PASS',
   'PM26_P06H_F_AISLADO_PREFLIGHT_DETECTA_FILAS_EXISTENTES=PASS',
   'PM26_P06H_F_AISLADO_MIGRACION_APLICADA=PASS',
+  'PM26_P06H_F_AISLADO_RPC_EXECUTE_SOLO_AUTHENTICATED=PASS',
   'PM26_P06H_F_AISLADO_BATERIA_15_CASOS=PASS',
   'PM26_P06H_F_AISLADO_REAPLICACION_RECHAZADA=PASS',
   'PM26_P06H_F_AISLADO_REVERSION_EXACTA=PASS',

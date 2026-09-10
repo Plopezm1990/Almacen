@@ -45,8 +45,10 @@ jobs:
           git fetch origin main --quiet
           test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
           baseline='d62162fb6c512ea9fd237de1f2e2bb0ea5debeec'
+          cierre_p07b='1ee5b10cc9b129f3c5ef33f28db39dea9899f969'
           git cat-file -e "$baseline^{commit}"
-          cambiados="$(git diff --name-only "$baseline"..HEAD | sort)"
+          git cat-file -e "$cierre_p07b^{commit}"
+          cambiados="$(git diff --name-only "$baseline".."$cierre_p07b" | sort)"
           esperados="$(printf '%s\n' \
             '.github/workflows/pm26-p04b-aplicacion-defectos-bcd.yml' \
             '.github/workflows/pm26-p06h-aislamiento-prefiltros-candidatos.yml' \
@@ -68,10 +70,10 @@ jobs:
             'tools/seguridad/linea-base-aceptada.json' | sort)"
           test "$cambiados" = "$esperados"
           for archivo in index.html reset-pruebas-preview.js _headers; do
-            test "$(git rev-parse "$baseline:$archivo")" = "$(git rev-parse "HEAD:$archivo")"
+            test "$(git rev-parse "$baseline:$archivo")" = "$(git rev-parse "$cierre_p07b:$archivo")"
           done
-          test -z "$(git ls-tree --name-only HEAD -- netlify.toml)"
-          test -z "$(git diff --name-only "$baseline"..HEAD -- supabase/migrations)"
+          test -z "$(git ls-tree --name-only "$cierre_p07b" -- netlify.toml)"
+          test -z "$(git diff --name-only "$baseline".."$cierre_p07b" -- supabase/migrations)"
           echo 'PM26_P07B_ALCANCE_ACOTADO=PASS'
 
       - name: Instalar dependencias canonicas
