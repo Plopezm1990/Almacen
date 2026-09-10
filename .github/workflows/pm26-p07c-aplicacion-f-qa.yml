@@ -88,6 +88,11 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - name: Preparar fuente canonica para el contrato
+        working-directory: source-recovery
+        run: npm ci
+      - name: Reconstruir artefacto canonico para el contrato
+        run: node source-recovery/verificar-build-canonico.mjs
       - name: Contrato documental final P07c
         run: |
           set -euo pipefail
