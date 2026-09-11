@@ -60,8 +60,13 @@ jobs:
             echo 'PM26 P08g: la migracion del Defecto L no debe estar en supabase/migrations' >&2
             exit 1
           fi
-          if ls supabase/migrations | grep -qiE 'empresa|local'; then
-            echo 'PM26 P08g: el catalogo de empresas/locales no debe estar en supabase/migrations' >&2
+          # Solo los archivos NUEVOS desde el cierre previo -- el
+          # directorio ya contiene migraciones legitimas y anteriores
+          # (PM07, G1) cuyo nombre menciona "local" sin relacion alguna
+          # con el catalogo de este paquete.
+          nuevas_migraciones="$(git diff --name-only --diff-filter=A "$cierre_previo"..HEAD -- supabase/migrations)"
+          if echo "$nuevas_migraciones" | grep -qiE 'empresa|local'; then
+            echo "PM26 P08g: el catalogo de empresas/locales no debe estar en supabase/migrations -- $nuevas_migraciones" >&2
             exit 1
           fi
           echo 'PM26_P08G_ALCANCE_ACOTADO=PASS'
