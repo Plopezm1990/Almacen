@@ -5,15 +5,34 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { escanearArbol } from '../../tools/seguridad/verificar-secretos-e-identificadores.mjs';
+import { anclar, exigirDeteccion, comprobarAnclajeNoPasaEnVacio } from './lib/cierre-historico.mjs';
 
 // PM26 P06i: contrato documental del cierre real del aviso H en QA.
 // La verificacion remota se hizo desde el chat con herramientas de
 // Supabase. Este contrato no escribe ni consulta ningun proyecto:
 // valida el artefacto exacto aplicado, su hash, el alcance declarado y
 // vuelve a ejecutar todo el contrato aislado P06f.
+//
+// PM26 P08f corrigió aquí el mismo defecto que P08b ya había corregido
+// en P07c: el artefacto SQL aplicado y fuente.js se leían del árbol de
+// trabajo EN VIVO. P06i certifica un hecho histórico inmutable -- que el
+// aviso H se aplicó en QA con ese archivo exacto, y que en ese momento
+// F/K/L seguían fuera de alcance -- no una propiedad perpetua. La Fase B
+// de F llegó después (P07b) e introdujo legítimamente
+// pm11_crear_prefiltro_candidato en fuente.js, lo que rompía este gate
+// sin tener nada que ver con el aviso H. Ahora se lee con
+// `git show <cierre>:<ruta>`. Ninguna comprobación se ha debilitado,
+// eliminado ni vuelto opcional, y se añaden controles negativos que
+// demuestran que no pasan en vacío.
 
 const __filename = fileURLToPath(import.meta.url);
 const RAIZ_REPO = path.resolve(path.dirname(__filename), '..', '..');
+
+// Commit exacto donde el gate de P06i pasó en verde
+// ("PM26 P06i: registra aplicacion verificada del aviso H en QA").
+const CIERRE_HISTORICO = '4d34052b9f618d67ba1dae150215038f4adae75d';
+const hist = anclar(CIERRE_HISTORICO, 'PM26 P06i');
+console.log(`PM26_P06I_CIERRE_HISTORICO_VALIDO=PASS (${CIERRE_HISTORICO})`);
 
 function leer(rel) {
   return fs.readFileSync(path.join(RAIZ_REPO, rel), 'utf8');
@@ -21,8 +40,11 @@ function leer(rel) {
 
 const rutaDoc = 'tests/pm26/P06I_AVISO_H_APLICADO_QA.md';
 const rutaMigracion = 'supabase/qa-solo/pm26_p06b_rendimiento_indices_rls_initplan.sql';
+// El informe es el artefacto propio de P06i y se lee vivo: debe seguir
+// diciendo lo mismo hoy. La migración es el artefacto APLICADO, y lo que
+// se certifica es el que se aplicó -- se lee del commit de cierre.
 const doc = leer(rutaDoc);
-const migracion = leer(rutaMigracion);
+const migracion = hist.leer(rutaMigracion);
 
 for (const marcador of [
   'PM26_P06I_ESTADO=CERRADO',
@@ -43,6 +65,12 @@ for (const marcador of [
   assert.ok(doc.includes(marcador), `falta el marcador ${marcador}`);
 }
 console.log('PM26_P06I_ESTADO_DOCUMENTADO=PASS');
+
+assert.equal(
+  crypto.createHash('sha256').update(Buffer.from(doc, 'utf8')).digest('hex'),
+  hist.sha256(rutaDoc),
+  'el informe de P06i difiere del que se certificó en su commit de cierre'
+);
 
 const hash = crypto.createHash('sha256').update(Buffer.from(migracion)).digest('hex');
 assert.ok(doc.includes(hash), 'el cierre debe identificar el hash exacto del archivo aplicado');
@@ -79,11 +107,29 @@ for (const politica of [
 }
 console.log('PM26_P06I_OCHO_CAMBIOS_ACOTADOS=PASS');
 
-// La migracion de F continua sin aplicar y fuente.js sin la Fase B.
+// En el cierre de P06i, la migracion de F continuaba sin aplicar y
+// fuente.js sin la Fase B. Es lo que P06i certifica; que P07b la cableara
+// despues es un avance legitimo, no una regresion de este paquete.
 assert.ok(doc.includes('No se aplicó la migración del aviso F.'));
-const fuente = leer('fuente.js');
-assert.equal(fuente.includes('pm11_crear_prefiltro_candidato'), false);
-assert.equal(fuente.includes('pm11_eliminar_prefiltro_candidato'), false);
+const fuente = hist.leer('fuente.js');
+function exigirSinFaseB(texto) {
+  assert.equal(texto.includes('pm11_crear_prefiltro_candidato'), false, 'la Fase B no debía estar cableada en el cierre de P06i');
+  assert.equal(texto.includes('pm11_eliminar_prefiltro_candidato'), false, 'la Fase B no debía estar cableada en el cierre de P06i');
+  return true;
+}
+assert.ok(exigirSinFaseB(fuente));
+// Control negativo: si la Fase B apareciera en el artefacto certificado,
+// la comprobacion debe fallar. Sin esto no se distinguiria de un
+// `includes` que siempre da false por leer el archivo equivocado.
+exigirDeteccion(
+  fuente,
+  (t) => `${t}\n// pm11_crear_prefiltro_candidato inyectado\n`,
+  exigirSinFaseB,
+  /la Fase B no debía estar cableada/,
+  'P06i con Fase B inyectada'
+);
+// Y el artefacto leido tiene que ser el de verdad, no una cadena vacia.
+assert.ok(fuente.length > 100000, 'fuente.js del cierre no puede ser un artefacto vacio o truncado');
 console.log('PM26_P06I_F_K_L_FUERA_DE_ALCANCE=PASS');
 
 // Reproduce el contrato fuerte anterior: Postgres aislado, bloqueo
@@ -126,5 +172,12 @@ assert.equal(
     identificadores.map((h) => `${h.archivo}:${h.linea}`).join(', ')
 );
 console.log('PM26_P06I_SIN_SECRETOS_NI_IDENTIFICADORES=PASS');
+
+// Control negativo del anclaje: un SHA inexistente o una ruta que no
+// esta en ese commit deben fallar, nunca pasar en silencio.
+assert.ok(comprobarAnclajeNoPasaEnVacio());
+assert.throws(() => hist.leer('ruta/que/no/existe.txt'), /no se pudo leer/);
+assert.ok(!hist.existe('ruta/que/no/existe.txt'));
+console.log('PM26_P06I_ANCLAJE_CONTROL_NEGATIVO=PASS');
 
 console.log('PM26 P06i — aviso H aplicado y verificado en QA: contrato OK');

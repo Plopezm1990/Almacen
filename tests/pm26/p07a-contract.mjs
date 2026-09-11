@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { escanearArbol } from '../../tools/seguridad/verificar-secretos-e-identificadores.mjs';
+import { anclar, exigirDeteccion, comprobarAnclajeNoPasaEnVacio } from './lib/cierre-historico.mjs';
 
 // PM26 P07a: contrato del diagnostico de K y del enlace con la Fase B
 // de F. No corrige la aplicacion ni consulta backends: demuestra sobre
@@ -11,10 +12,28 @@ import { escanearArbol } from '../../tools/seguridad/verificar-secretos-e-identi
 // arranque autenticado, las escrituras directas actuales y las RPC ya
 // preparadas. La evidencia remota adjunta contiene solo metadatos
 // resumidos y se obtuvo por herramientas de solo lectura.
+//
+// PM26 P08f corrigió aquí el mismo defecto que P08b ya había corregido
+// en P07c: los cinco artefactos funcionales se comparaban con
+// `git hash-object` sobre el ARBOL VIVO contra el baseline P06i. P07a
+// certifica un hecho histórico inmutable -- que ESE diagnóstico no tocó
+// ningún artefacto funcional -- no que nadie pueda tocarlos nunca más.
+// P07b los modificó después de forma legítima y autorizada, lo que
+// rompía este gate sin tener nada que ver con el diagnóstico. Ahora se
+// comparan los blobs del commit de cierre de P07a contra los del
+// baseline P06i, y todo lo demás se lee con `git show <cierre>:<ruta>`.
+// Ninguna comprobación se ha debilitado, eliminado ni vuelto opcional:
+// cambia la FUENTE de los bytes, no lo que se exige de ellos.
 
 const __filename = fileURLToPath(import.meta.url);
 const RAIZ_REPO = path.resolve(path.dirname(__filename), '..', '..');
 const BASELINE_P06I = '4d34052b9f618d67ba1dae150215038f4adae75d';
+// Commit exacto donde el gate de P07a pasó en verde
+// ("PM26 P07a: corrige checkout del gate final").
+const CIERRE_HISTORICO = 'd62162fb6c512ea9fd237de1f2e2bb0ea5debeec';
+const hist = anclar(CIERRE_HISTORICO, 'PM26 P07a');
+const base = anclar(BASELINE_P06I, 'PM26 P07a baseline P06i');
+console.log(`PM26_P07A_CIERRE_HISTORICO_VALIDO=PASS (${CIERRE_HISTORICO})`);
 
 function leer(rel) {
   return fs.readFileSync(path.join(RAIZ_REPO, rel), 'utf8');
@@ -63,22 +82,37 @@ for (const marcador of [
 console.log('PM26_P07A_DOCUMENTO_Y_ALCANCE=PASS');
 
 // P07a solo diagnostica: los cinco artefactos funcionales relevantes
-// deben seguir byte a byte iguales al cierre P06i.
-for (const rel of [
+// quedaron byte a byte iguales al cierre P06i en el propio cierre de
+// P07a. Se comparan blobs de dos commits, no el arbol vivo.
+const ARTEFACTOS_FUNCIONALES = [
   'fuente.js',
   'source-recovery/fuente-recuperado.js',
   'index.html',
   'reset-pruebas-preview.js',
   'supabase/qa-solo/pm26_p06h_aislamiento_prefiltros_candidatos.sql',
-]) {
-  const oidBaseline = oidGit(['rev-parse', `${BASELINE_P06I}:${rel}`], `${rel} en el baseline P06i`);
-  const oidActual = oidGit(['hash-object', rel], `${rel} en el arbol actual`);
-  assert.equal(oidActual, oidBaseline, `P07a no debe modificar ${rel}`);
+];
+for (const rel of ARTEFACTOS_FUNCIONALES) {
+  const oidBaseline = base.oid(rel);
+  const oidCierre = hist.oid(rel);
+  assert.match(oidBaseline, /^[0-9a-f]{40}$/, `blob invalido para ${rel} en el baseline P06i`);
+  assert.equal(oidCierre, oidBaseline, `P07a no debe modificar ${rel}`);
+}
+// Control negativo: la comparacion tiene que ser capaz de detectar una
+// diferencia real. fuente.js SI cambio despues (P07b cableo la Fase B),
+// asi que su blob en HEAD debe diferir del baseline -- si coincidiera,
+// esta comprobacion estaria comparando siempre lo mismo consigo mismo.
+{
+  const oidVivo = oidGit(['hash-object', 'fuente.js'], 'fuente.js en el arbol actual');
+  assert.notEqual(
+    oidVivo,
+    base.oid('fuente.js'),
+    'control negativo invalido: se esperaba que fuente.js hubiera cambiado desde el baseline P06i'
+  );
 }
 console.log('PM26_P07A_ARTEFACTOS_FUNCIONALES_INTACTOS=PASS');
 
-const fuente = leer('fuente.js');
-const recuperada = leer('source-recovery/fuente-recuperado.js');
+const fuente = hist.leer('fuente.js');
+const recuperada = hist.leer('source-recovery/fuente-recuperado.js');
 
 function validarDefectoActual(texto, etiqueta) {
   const publico = bloque(texto, 'function PrefiltroPublico({ token })', 'var ultimosErroresAvisados');
@@ -111,7 +145,7 @@ console.log('PM26_P07A_RUTA_PUBLICA_SIN_CLIENTE_DEMOSTRADA=PASS');
 
 // Orden real: el reset QA corre antes de publicar NUBE_URL, y el modulo
 // se carga despues. No se copian hosts ni claves en este contrato.
-const html = leer('index.html');
+const html = hist.leer('index.html');
 const posReset = html.indexOf('<script src="./reset-pruebas-preview.js"></script>');
 const posBase = html.indexOf('var NUBE_URL = ');
 const posOverride = html.indexOf('if (window.__modoPruebasQA)');
@@ -120,7 +154,7 @@ assert.ok(posReset >= 0 && posReset < posBase && posBase < posOverride && posOve
 assert.match(html, /window\.NUBE_URL\s*=\s*NUBE_URL;/);
 assert.match(html, /window\.NUBE_URL\s*=\s*window\.__qaNubeUrl\s*\|\|\s*"";/);
 
-const reset = leer('reset-pruebas-preview.js');
+const reset = hist.leer('reset-pruebas-preview.js');
 assert.match(reset, /HOST_PREVIEW\.test\(window\.location\.hostname\)/);
 assert.match(reset, /window\.__modoPruebasQA\s*=\s*true;/);
 assert.match(reset, /window\.__qaNubeUrl\s*=\s*SUPABASE_QA_URL;/);
@@ -130,7 +164,7 @@ console.log('PM26_P07A_ORDEN_CONFIGURACION_Y_BARRERA_QA=PASS');
 
 // Las dos RPC finales y sus contratos de seguridad ya existen en el SQL
 // preparado; P07b solo debe cablear el cliente y endurecer los timeouts.
-const sqlF = leer('supabase/qa-solo/pm26_p06h_aislamiento_prefiltros_candidatos.sql');
+const sqlF = hist.leer('supabase/qa-solo/pm26_p06h_aislamiento_prefiltros_candidatos.sql');
 assert.match(sqlF, /function public\.pm11_crear_prefiltro_candidato\(\s*p_empresa_id text, p_local_id text, p_candidato_nombre text/);
 assert.match(sqlF, /function public\.pm11_eliminar_prefiltro_candidato\(\s*p_empresa_id text, p_local_id text, p_token text/);
 assert.match(sqlF, /private\.pm11_puede_mutar_personal\(p_empresa_id, p_local_id\)/g);
@@ -163,9 +197,13 @@ console.log('PM26_P07A_EVIDENCIA_EDGE_FUNCTIONS_ACOTADA=PASS');
 // desaparezca una de las pruebas de la causa, que se altere el orden de
 // configuracion o que el diagnostico oculte una escritura directa.
 {
-  const sinUnaUrl = fuente.replace(/https:\/\/[a-z0-9]+\.supabase\.co\/functions\/v1\/prefiltro-candidato/, '/functions/v1/prefiltro-candidato');
-  assert.notEqual(sinUnaUrl, fuente);
-  assert.throws(() => validarDefectoActual(sinUnaUrl, 'mutacion-url'), /dos literales/);
+  exigirDeteccion(
+    fuente,
+    (t) => t.replace(/https:\/\/[a-z0-9]+\.supabase\.co\/functions\/v1\/prefiltro-candidato/, '/functions/v1/prefiltro-candidato'),
+    (t) => validarDefectoActual(t, 'mutacion-url'),
+    /dos literales/,
+    'P07a sin una de las dos URL'
+  );
 
   const htmlOrdenRoto = html.replace(
     '<script src="./reset-pruebas-preview.js"></script>',
@@ -175,9 +213,22 @@ console.log('PM26_P07A_EVIDENCIA_EDGE_FUNCTIONS_ACOTADA=PASS');
   const pResetRoto = htmlOrdenRoto.indexOf('<script src="./reset-pruebas-preview.js"></script>');
   assert.equal(pResetRoto, -1);
 
-  const sinInsertDirecto = fuente.replace('.from("prefiltros_candidatos").insert(', '.from("prefiltros_candidatos").upsert(');
-  assert.notEqual(sinInsertDirecto, fuente);
-  assert.throws(() => validarDefectoActual(sinInsertDirecto, 'mutacion-insert'), /INSERT directo/);
+  exigirDeteccion(
+    fuente,
+    (t) => t.replace('.from("prefiltros_candidatos").insert(', '.from("prefiltros_candidatos").upsert('),
+    (t) => validarDefectoActual(t, 'mutacion-insert'),
+    /INSERT directo/,
+    'P07a sin INSERT directo'
+  );
+  // Y si la Fase B ya estuviera cableada, el diagnostico dejaria de
+  // describir el estado que certifica.
+  exigirDeteccion(
+    fuente,
+    (t) => t.replace('function SelectorDiseno(', 'var x = "pm11_crear_prefiltro_candidato";\nfunction SelectorDiseno('),
+    (t) => validarDefectoActual(t, 'mutacion-fase-b'),
+    /Fase B no debe estar aplicada aun/,
+    'P07a con Fase B inyectada'
+  );
 }
 console.log('PM26_P07A_PRUEBAS_NEGATIVAS_EN_MEMORIA=PASS');
 
@@ -214,5 +265,12 @@ assert.equal(
     identificadores.map((h) => `${h.archivo}:${h.linea}`).join(', ')
 );
 console.log('PM26_P07A_SIN_SECRETOS_NI_IDENTIFICADORES=PASS');
+
+// Control negativo del anclaje: un SHA inexistente o una ruta que no
+// esta en ese commit deben fallar, nunca pasar en silencio.
+assert.ok(comprobarAnclajeNoPasaEnVacio());
+assert.throws(() => hist.leer('ruta/que/no/existe.txt'), /no se pudo leer/);
+assert.ok(!hist.existe('ruta/que/no/existe.txt'));
+console.log('PM26_P07A_ANCLAJE_CONTROL_NEGATIVO=PASS');
 
 console.log('PM26 P07a — diagnostico K y Fase B de F: contrato OK');

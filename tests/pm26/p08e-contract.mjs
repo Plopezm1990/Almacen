@@ -65,6 +65,12 @@ for (const marcador of [
   'PM26_P08E_PREFLIGHT_EXIGE_COBERTURA_POR_PROPIETARIO=SI',
   'PM26_P08E_CERO_MEMBRESIAS_FALLA_EN_PRUEBAS=SI',
   'PM26_P08E_SIN_IDENTIFICADORES_HARDCODEADOS=SI',
+  // Añadidos por PM26 P08f (corrección documental).
+  'PM26_P08E_ALMACEN_KV_COMO_CATALOGO=RETIRADO_NO_ES_VALIDO',
+  'PM26_P08E_GUARD_VALIDA_PRESENCIA_Y_COHERENCIA=SI',
+  'PM26_P08E_GUARD_VALIDA_PROCEDENCIA=NO',
+  'PM26_P08E_GUARD_VALIDA_CONTRA_CATALOGO_BACKEND=NO',
+  'PM26_P08E_CATALOGO_CON_AUTORIDAD_REAL_EXISTE=NO',
   'PM26_P08E_COMPATIBLE_CON_PARCHE_P08D=SI',
   'PM26_P08E_MEMBRESIA_CREADA=NO',
   'PM26_P08E_MIGRACION_APLICADA=NO',
@@ -78,7 +84,10 @@ for (const marcador of [
 }
 // El bloqueo tiene que estar dicho, no solo marcado: el informe debe
 // comparar alternativas y no proponer confiar en el navegador.
-const docNorm = norm(doc);
+// Se quitan los marcadores de cita de Markdown ANTES de normalizar
+// espacios: si no, una frase dentro de un blockquote queda partida por
+// los '>' y los patrones no la encuentran aunque este presente.
+const docNorm = norm(doc.split('\n').map((l) => l.replace(/^\s*>\s?/, '')).join('\n'));
 for (const [etiqueta, patron] of [
   ['la alternativa A, bootstrap administrativo, es la seleccionada', /\| A \| [^|]*[Bb]ootstrap administrativo[^|]*\|[^|]*\|[^|]*Seleccionada/],
   ['la B, es_propietario_activo, esta rechazada', /\| B \|[^|]*es_propietario_activo[^|]*\|[^|]*\|[^|]*Rechazada/],
@@ -89,6 +98,14 @@ for (const [etiqueta, patron] of [
   ['no se fabrica la membresia', /Una membresía creada con valores inventados[^.]*\. \*\*No la creo\.\*\*/i],
   ['se declara el bloqueo, no se inventa autorizacion', /No se inventó ni se debilitó ninguna autorización/i],
   ['el repositorio no contendra los identificadores', /este repositorio no los contiene ni los contendrá/i],
+  // PM26 P08f: almacen_kv escrito desde la aplicacion ya no figura como
+  // camino aceptable, y el limite real del guard esta dicho.
+  ['almacen_kv retirado como catalogo', /Queda retirada: no es una opción válida/i],
+  ['por que almacen_kv no sirve', /Escribirlo desde la aplicación lo invalida como catálogo/i],
+  ['el catalogo debe tener autoridad real', /catálogo backend de locales con autoridad real/i],
+  ['el guard no valida procedencia', /No comprueba, y no puede comprobar hoy/i],
+  ['el guard no valida contra catalogo', /se validan \*\*solo por forma\*\*/i],
+  ['el guard no sustituye al catalogo', /No sustituye al\s*paso 1 de la sección 3\.2/i],
 ]) {
   assert.match(docNorm, patron, `el informe debe recoger: ${etiqueta}`);
 }

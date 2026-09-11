@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { escanearArbol } from '../../tools/seguridad/verificar-secretos-e-identificadores.mjs';
+import { anclar, exigirDeteccion, comprobarAnclajeNoPasaEnVacio } from './lib/cierre-historico.mjs';
 
 // PM26 P04a: contrato de la INSPECCIÓN de solo lectura de los defectos
 // B, C y D. No certifica ninguna eliminación ni modificación -- certifica
@@ -14,12 +15,33 @@ import { escanearArbol } from '../../tools/seguridad/verificar-secretos-e-identi
 // separación universal/QA del defecto D) son reproducibles por script,
 // no solo afirmados en prosa, y (3) ni el informe ni este contrato
 // contienen ningún secreto o identificador QA copiado.
+//
+// PM26 P08f corrigió aquí el mismo defecto que P08b ya había corregido
+// en P07c: los artefactos ajenos a P04a (_headers, index.html,
+// reset-pruebas-preview.js, fuente.js, los 10 huérfanos, el ledger de
+// seguridad y el propio inventario de archivos rastreados) se leían del
+// árbol de trabajo EN VIVO. P04a certifica un hecho histórico inmutable
+// -- lo que esos archivos decían en el commit exacto donde su gate pasó
+// en verde -- así que cualquier avance legítimo posterior (K, F, H,
+// P08b...) rompía este gate sin tener nada que ver con él. Ahora se leen
+// con `git show <cierre>:<ruta>`. Ninguna comprobación se ha debilitado,
+// eliminado ni vuelto opcional: cambia la FUENTE de los bytes, no lo que
+// se exige de ellos, y se añaden controles negativos que demuestran que
+// no pasan en vacío.
 
 const __filename = fileURLToPath(import.meta.url);
 const RAIZ_REPO = path.resolve(path.dirname(__filename), '..', '..');
 
-function sha256(rutaAbs) {
-  return crypto.createHash('sha256').update(fs.readFileSync(rutaAbs)).digest('hex');
+// Commit exacto donde el gate de P04a pasó en verde
+// ("PM26 P04a: corrige el gate — el propio workflow nombra los 10
+// huérfanos para protegerlos"). El módulo compartido exige que exista,
+// que sea un commit y que siga siendo antepasado de HEAD.
+const CIERRE_HISTORICO = '2ac878c96275a26e72ee2af061b2f3953e10a90f';
+const hist = anclar(CIERRE_HISTORICO, 'PM26 P04a');
+console.log(`PM26_P04A_CIERRE_HISTORICO_VALIDO=PASS (${CIERRE_HISTORICO})`);
+
+function leerVivo(rel) {
+  return fs.readFileSync(path.join(RAIZ_REPO, rel), 'utf8');
 }
 
 // --- Nada de lo prohibido fue tocado: hashes idénticos a los
@@ -32,8 +54,11 @@ const HASHES_INTOCABLES = {
   'pm11-compra-mobile-layout-v1.js': 'ac3a2f8a3818fd8a1628a19d55ba9d63240f9324f102c5673b39f04d4aaffc7c',
 };
 for (const [rel, esperado] of Object.entries(HASHES_INTOCABLES)) {
-  const real = sha256(path.join(RAIZ_REPO, rel));
-  assert.equal(real, esperado, `PM26 P04a no debe tocar ${rel} -- hash distinto al registrado en el informe`);
+  assert.equal(
+    hist.sha256(rel),
+    esperado,
+    `PM26 P04a no debe tocar ${rel} -- hash distinto al registrado en el informe (en ${CIERRE_HISTORICO})`
+  );
 }
 console.log('PM26_P04A_INTOCABLES_HASH_VERIFICADOS=PASS');
 
@@ -54,34 +79,42 @@ const HASHES_10_HUERFANOS = {
 };
 const NOMBRES_10 = Object.keys(HASHES_10_HUERFANOS);
 for (const [rel, esperado] of Object.entries(HASHES_10_HUERFANOS)) {
-  const real = sha256(path.join(RAIZ_REPO, rel));
-  assert.equal(real, esperado, `${rel} cambió de contenido respecto al informe -- P04a es de solo lectura`);
+  assert.ok(hist.existe(rel), `${rel} debía existir en el commit de cierre ${CIERRE_HISTORICO}`);
+  assert.equal(
+    hist.sha256(rel),
+    esperado,
+    `${rel} no coincide con lo registrado en el informe -- P04a es de solo lectura`
+  );
 }
 console.log('PM26_P04A_10_HUERFANOS_PRESENTES_Y_SIN_CAMBIOS=PASS');
 
-{
-  // Reproduce la búsqueda de referencias: para cada uno de los 10
-  // nombres, ningún archivo rastreado FUERA del propio grupo de 10 (y
-  // fuera de la documentación) puede contener el nombre exacto.
-  const r = spawnSync('git', ['ls-files'], { cwd: RAIZ_REPO, encoding: 'utf8' });
-  const archivosRastreados = r.stdout.trim().split('\n').filter(Boolean);
-  const permitidosFueraDelGrupo = new Set([
-    'source-recovery/README.md',
-    'tests/pm26/P01_INVENTARIO_DIAGNOSTICO.md',
-    'tests/pm26/P04A_INSPECCION_DEFECTOS_B_C_D.md',
-    'tests/pm26/p04a-contract.mjs',
-    'docs/plan-maestro/PM17_DIAGNOSTICO_PARCHES.md',
-    'source-recovery/entrada-recuperada.js',
-    'tools/seguridad/linea-base-aceptada.json',
-    '.github/workflows/pm26-p04a-inspeccion-defectos-bcd.yml',
-  ]);
+// Inventario de archivos rastreados EN EL COMMIT DE CIERRE. Antes se
+// usaba `git ls-files` (árbol vivo), lo que hacía que cualquier archivo
+// nuevo de un paquete posterior entrara en la comprobación del grafo.
+const RASTREADOS_HISTORICOS = hist.listarArchivos();
+
+// Reproduce la búsqueda de referencias: para cada uno de los 10
+// nombres, ningún archivo rastreado FUERA del propio grupo de 10 (y
+// fuera de la documentación) puede contener el nombre exacto.
+const PERMITIDOS_FUERA_DEL_GRUPO = new Set([
+  'source-recovery/README.md',
+  'tests/pm26/P01_INVENTARIO_DIAGNOSTICO.md',
+  'tests/pm26/P04A_INSPECCION_DEFECTOS_B_C_D.md',
+  'tests/pm26/p04a-contract.mjs',
+  'docs/plan-maestro/PM17_DIAGNOSTICO_PARCHES.md',
+  'source-recovery/entrada-recuperada.js',
+  'tools/seguridad/linea-base-aceptada.json',
+  '.github/workflows/pm26-p04a-inspeccion-defectos-bcd.yml',
+]);
+
+function referenciasInesperadas(leerContenido, archivos, permitidos = PERMITIDOS_FUERA_DEL_GRUPO) {
   const inesperados = [];
-  for (const archivo of archivosRastreados) {
+  for (const archivo of archivos) {
     if (NOMBRES_10.includes(path.basename(archivo))) continue; // uno de los propios 10
-    if (permitidosFueraDelGrupo.has(archivo)) continue;
+    if (permitidos.has(archivo)) continue;
     let contenido;
     try {
-      contenido = fs.readFileSync(path.join(RAIZ_REPO, archivo), 'utf8');
+      contenido = leerContenido(archivo);
     } catch {
       continue; // binario u otro problema de lectura -- no relevante aquí
     }
@@ -89,30 +122,63 @@ console.log('PM26_P04A_10_HUERFANOS_PRESENTES_Y_SIN_CAMBIOS=PASS');
       if (contenido.includes(nombre)) inesperados.push(`${archivo} menciona ${nombre}`);
     }
   }
-  assert.equal(inesperados.length, 0, `referencia inesperada fuera del grupo de 10 huérfanos: ${inesperados.join('; ')}`);
+  return inesperados;
+}
+
+{
+  const inesperados = referenciasInesperadas((f) => hist.leer(f), RASTREADOS_HISTORICOS);
+  assert.equal(
+    inesperados.length,
+    0,
+    `referencia inesperada fuera del grupo de 10 huérfanos: ${inesperados.join('; ')}`
+  );
   console.log('PM26_P04A_DEFECTO_B_SIN_REFERENCIAS_EXTERNAS_INESPERADAS=PASS');
+}
+
+// Control negativo del grafo: si se retira de la lista de permitidos un
+// archivo que SI menciona uno de los 10, la comprobación debe delatarlo.
+// Demuestra que el recorrido lee de verdad el contenido y no pasa en
+// vacío por una lista de exclusión demasiado amplia.
+{
+  const permitidosRecortados = new Set(PERMITIDOS_FUERA_DEL_GRUPO);
+  permitidosRecortados.delete('tests/pm26/P04A_INSPECCION_DEFECTOS_B_C_D.md');
+  const detectados = referenciasInesperadas((f) => hist.leer(f), RASTREADOS_HISTORICOS, permitidosRecortados);
+  assert.ok(
+    detectados.length > 0,
+    'el recorrido del grafo no detecta una referencia real -- estaría pasando en vacío'
+  );
+  console.log(`PM26_P04A_GRAFO_CONTROL_NEGATIVO=PASS (${detectados.length} referencias detectadas al recortar la lista)`);
 }
 
 // --- Defecto B: dependencia real con el ledger de seguridad (4 archivos). ---
 {
-  const lb = JSON.parse(fs.readFileSync(path.join(RAIZ_REPO, 'tools/seguridad/linea-base-aceptada.json'), 'utf8'));
+  const lb = JSON.parse(hist.leer('tools/seguridad/linea-base-aceptada.json'));
   const archivosEnLedger = new Set(lb.entradas.map((e) => e.archivo));
   const esperados = ['index.es-SJCMKHSO-5BY7EMAG.js', 'index.es-SJCMKHSO.js', 'purify.es-TSVPIOEK-6SSTY34W.js', 'purify.es-TSVPIOEK.js'];
   for (const esperado of esperados) {
     assert.ok(archivosEnLedger.has(esperado), `se esperaba que ${esperado} siguiera en la línea base aceptada`);
   }
+  // Control negativo: un nombre que nunca estuvo en el ledger no debe
+  // encontrarse -- si el Set se construyera vacío o mal, la comprobación
+  // de arriba habría pasado en vacío.
+  assert.ok(
+    !archivosEnLedger.has('archivo-que-nunca-estuvo-en-el-ledger.js'),
+    'el ledger no puede declarar presente un archivo inexistente'
+  );
+  assert.ok(archivosEnLedger.size >= esperados.length, 'el ledger leído no puede tener menos entradas que las exigidas');
   console.log('PM26_P04A_DEFECTO_B_DEPENDENCIA_LEDGER_CONFIRMADA=PASS');
 }
 
 // --- Defecto C: el archivo no existe, y la regla en _headers sigue
 // presente sin efecto sobre ningún archivo real. ---
 {
-  const r = spawnSync('git', ['ls-files'], { cwd: RAIZ_REPO, encoding: 'utf8' });
-  const rastreados = r.stdout.trim().split('\n');
-  assert.ok(!rastreados.some((f) => path.basename(f) === 'seleccion-neutral-patch.js'), 'seleccion-neutral-patch.js no debería existir en el árbol rastreado');
-  const headers = fs.readFileSync(path.join(RAIZ_REPO, '_headers'), 'utf8');
+  assert.ok(
+    !RASTREADOS_HISTORICOS.some((f) => path.basename(f) === 'seleccion-neutral-patch.js'),
+    'seleccion-neutral-patch.js no debería existir en el árbol rastreado del cierre'
+  );
+  const headers = hist.leer('_headers');
   assert.match(headers, /\/seleccion-neutral-patch\.js/, 'la regla residual debe seguir presente -- P04a no la elimina todavía');
-  const fuente = fs.readFileSync(path.join(RAIZ_REPO, 'fuente.js'), 'utf8');
+  const fuente = hist.leer('fuente.js');
   assert.ok(!fuente.includes('seleccion-neutral-patch.js'), 'fuente.js (código realmente ejecutado) no debe referenciar el archivo retirado');
   console.log('PM26_P04A_DEFECTO_C_VERIFICADO=PASS');
 }
@@ -120,19 +186,42 @@ console.log('PM26_P04A_10_HUERFANOS_PRESENTES_Y_SIN_CAMBIOS=PASS');
 // --- Defecto D: la frontera universal/QA-only es reproducible por
 // script -- el loader del layout PM11 aparece antes del guard de host,
 // y el guard de host aparece antes de cualquier mención a QA. ---
-{
-  const reset = fs.readFileSync(path.join(RAIZ_REPO, 'reset-pruebas-preview.js'), 'utf8');
+function validarFronteraD(reset) {
   const posLoaderUniversal = reset.indexOf('pm11-compra-mobile-layout-v1.js');
   const posGuardHost = reset.indexOf('HOST_PREVIEW.test(window.location.hostname)');
   const posModoQA = reset.indexOf('__modoPruebasQA');
   assert.ok(posLoaderUniversal >= 0 && posGuardHost >= 0 && posModoQA >= 0, 'no se localizaron los tres puntos de referencia esperados');
   assert.ok(posLoaderUniversal < posGuardHost, 'el loader universal debe preceder al guard de host');
   assert.ok(posGuardHost < posModoQA, 'el guard de host debe preceder a cualquier activación de modo QA');
+  return true;
+}
+{
+  const reset = hist.leer('reset-pruebas-preview.js');
+  assert.ok(validarFronteraD(reset));
+  // Controles negativos en memoria: si desapareciera el guard de host, o
+  // si el modo QA se activara antes que él, la comprobación debe fallar.
+  exigirDeteccion(
+    reset,
+    (t) => t.replace('HOST_PREVIEW.test(window.location.hostname)', 'true /* guard retirado */'),
+    validarFronteraD,
+    /no se localizaron los tres puntos de referencia esperados/,
+    'P04a defecto D sin guard de host'
+  );
+  exigirDeteccion(
+    reset,
+    (t) => `/* __modoPruebasQA adelantado */\n${t}`,
+    validarFronteraD,
+    /el guard de host debe preceder a cualquier activación de modo QA/,
+    'P04a defecto D con modo QA adelantado'
+  );
   console.log('PM26_P04A_DEFECTO_D_FRONTERA_UNIVERSAL_QA_VERIFICADA=PASS');
 }
 
 // --- Defecto D: los tests vivos identificados en el informe pasan de
-// verdad hoy (código de salida real de proceso). ---
+// verdad hoy (código de salida real de proceso). Esto SI se mide contra
+// el árbol vivo a propósito: no es una huella histórica sino una
+// propiedad que debe seguir cumpliéndose, y medirla en vivo es más
+// exigente, no menos. ---
 {
   const vivos = [
     'tests/pm12/p10-preview-smoke-contract.mjs',
@@ -149,7 +238,8 @@ console.log('PM26_P04A_10_HUERFANOS_PRESENTES_Y_SIN_CAMBIOS=PASS');
 // secreto real ni identificador interno fuera de una ubicación
 // legítima -- y, específicamente, NO contienen la URL ni la clave
 // pública QA de reset-pruebas-preview.js (condición explícita del
-// usuario para P04a). ---
+// usuario para P04a). Se escanean los archivos VIVOS: el informe y este
+// contrato deben seguir limpios hoy, no solo el día del cierre. ---
 {
   const archivosNuevosP04a = [
     'tests/pm26/P04A_INSPECCION_DEFECTOS_B_C_D.md',
@@ -167,21 +257,30 @@ console.log('PM26_P04A_10_HUERFANOS_PRESENTES_Y_SIN_CAMBIOS=PASS');
     'los archivos nuevos de P04a no deben contener ningún candidato a identificador interno real -- encontrado en: ' +
       identificadoresNoAdmitidos.map((h) => `${h.archivo}:${h.linea} (${h.categoria})`).join(', ')
   );
-  const reset = fs.readFileSync(path.join(RAIZ_REPO, 'reset-pruebas-preview.js'), 'utf8');
-  const claveQA = reset.match(/var SUPABASE_QA_KEY = "([^"]+)";/)?.[1];
-  const urlQAHost = reset.match(/var SUPABASE_QA_HOST = "([^"]+)";/)?.[1];
+  // Los valores se derivan de la ubicación legítima en el commit de
+  // cierre: son los que P04a tenía delante cuando prometió no copiarlos.
+  const resetHist = hist.leer('reset-pruebas-preview.js');
+  const claveQA = resetHist.match(/var SUPABASE_QA_KEY = "([^"]+)";/)?.[1];
+  const urlQAHost = resetHist.match(/var SUPABASE_QA_HOST = "([^"]+)";/)?.[1];
   assert.ok(claveQA && urlQAHost, 'no se pudo extraer la clave/URL QA reales desde el propio archivo para la comprobación');
+  assert.ok(claveQA.length >= 20 && urlQAHost.length >= 8, 'los identificadores derivados no pueden ser cadenas triviales');
   for (const rel of archivosNuevosP04a) {
-    const contenido = fs.readFileSync(path.join(RAIZ_REPO, rel), 'utf8');
-    assert.ok(!contenido.includes(claveQA), `${rel} no debe contener la clave pública QA copiada literalmente`);
-    assert.ok(!contenido.includes(urlQAHost), `${rel} no debe contener el host QA copiado literalmente`);
+    // Vivo e histórico: ni entonces ni ahora pueden contenerlos.
+    for (const [origen, contenido] of [['vivo', leerVivo(rel)], ['cierre', hist.leer(rel)]]) {
+      assert.ok(!contenido.includes(claveQA), `${rel} (${origen}) no debe contener la clave pública QA copiada literalmente`);
+      assert.ok(!contenido.includes(urlQAHost), `${rel} (${origen}) no debe contener el host QA copiado literalmente`);
+    }
   }
+  // Control negativo: la comprobación debe delatar una copia real.
+  const inyectado = `texto cualquiera ${claveQA} mas texto`;
+  assert.ok(inyectado.includes(claveQA), 'el control negativo de fuga debe detectar la clave inyectada');
   console.log('PM26_P04A_SIN_SECRETOS_NI_IDENTIFICADORES_QA_COPIADOS=PASS');
 }
 
 // --- El informe documenta con precisión que es de solo lectura y que no
-// se aplicó ningún cambio. ---
-const doc = fs.readFileSync(path.join(RAIZ_REPO, 'tests/pm26/P04A_INSPECCION_DEFECTOS_B_C_D.md'), 'utf8');
+// se aplicó ningún cambio. Se lee VIVO: es el artefacto propio de P04a y
+// debe seguir diciendo lo mismo hoy. ---
+const doc = leerVivo('tests/pm26/P04A_INSPECCION_DEFECTOS_B_C_D.md');
 assert.match(doc, /PM26_P04A_ESTADO=INSPECCION_SOLO_LECTURA_COMPLETA/);
 assert.match(doc, /PM26_P04A_ARCHIVOS_ELIMINADOS=0/);
 assert.match(doc, /PM26_P04A_INDEX_HTML_TOCADO=NO/);
@@ -192,6 +291,22 @@ assert.match(doc, /PM26_P04A_P04B_APLICADO=NO/);
 for (const nombre of NOMBRES_10) {
   assert.ok(doc.includes(nombre), `falta documentar ${nombre} en el informe`);
 }
-
+// El informe no puede haberse reescrito respecto a lo que se certificó.
+assert.equal(
+  crypto.createHash('sha256').update(Buffer.from(doc, 'utf8')).digest('hex'),
+  hist.sha256('tests/pm26/P04A_INSPECCION_DEFECTOS_B_C_D.md'),
+  'el informe de P04a difiere del que se certificó en su commit de cierre'
+);
 console.log('PM26_P04A_DOC_VERIFICADO=PASS');
+
+// --- Control negativo del anclaje: un SHA que no existe, uno que no es
+// antepasado de HEAD y una ruta inexistente deben fallar, nunca pasar
+// en silencio. ---
+{
+  assert.ok(comprobarAnclajeNoPasaEnVacio());
+  assert.throws(() => hist.leer('ruta/que/no/existe.txt'), /no se pudo leer/);
+  assert.ok(!hist.existe('ruta/que/no/existe.txt'));
+  console.log('PM26_P04A_ANCLAJE_CONTROL_NEGATIVO=PASS');
+}
+
 console.log('PM26 P04a — inspección de solo lectura de los defectos B, C y D: contrato OK');

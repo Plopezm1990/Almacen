@@ -150,12 +150,29 @@ autorización fabricada: parecería aislamiento sin serlo. **No la creo.**
 Es un procedimiento **administrativo y manual**, fuera del navegador, y
 requiere una autorización nueva y explícita:
 
-1. **Que exista un catálogo backend de locales.** Persistir la clave
-   `locales` en `almacen_kv` desde la aplicación, o —mejor— crear una
-   tabla real de locales. Sin esto, ninguna membresía es comprobable.
+1. **Que exista un catálogo backend de locales con autoridad real:** una
+   tabla propia de empresas y locales, escrita únicamente por vía
+   administrativa y protegida por RLS que impida al Propietario darse de
+   alta a sí mismo en una empresa o un local que no le corresponda. Sin
+   esto, ninguna membresía es comprobable.
+
+   > **Corrección (PM26 P08f).** Una versión anterior de este documento
+   > ofrecía aquí, como alternativa aceptable, «persistir la clave
+   > `locales` en `almacen_kv` desde la aplicación». **Queda retirada: no
+   > es una opción válida.** Es la misma alternativa C que la tabla de
+   > arriba ya rechaza por circular, reintroducida por la puerta de
+   > atrás. `almacen_kv` no tiene columna de usuario, de empresa ni de
+   > local, y su autorización es por `perfiles.rol` más una lista blanca
+   > de claves: el propio Propietario puede escribir esa clave desde el
+   > navegador. Un catálogo que la persona autorizada puede reescribir a
+   > voluntad no es una fuente de autoridad — validar una membresía
+   > contra él equivale a validarla contra el navegador, que es
+   > exactamente el Defecto L. **Escribirlo desde la aplicación lo
+   > invalida como catálogo, cualquiera que sea la clave usada.**
 2. **Que una persona con acceso administrativo confirme** qué empresa y
    qué local corresponden a la cuenta propietaria, tomándolo del
-   catálogo del paso 1, nunca de una suposición mía.
+   catálogo con autoridad del paso 1, nunca del estado del navegador ni
+   de una suposición mía.
 3. **Insertar una única membresía** con esos valores, vía SQL
    administrativo (nunca desde el cliente), con `activo=true` y, o bien
    `todos_locales=true`, o bien un `local_id` concreto distinto de
@@ -187,7 +204,41 @@ comprobar por control negativo real que son ellas —y no otra cosa del
 preflight— las que rechazan el estado de 0 membresías.
 
 Ninguna de las dos usa identificadores hardcodeados: son genéricas y se
-evalúan contra el catálogo real en el momento de aplicar.
+evalúan contra las tablas reales en el momento de aplicar.
+
+### 4.1 Qué NO comprueba este guard — limitación explícita
+
+**Corrección (PM26 P08f).** El guard comprueba **presencia y coherencia
+estructural** de las membresías, y nada más:
+
+- Que exista al menos una fila activa en `membresias_usuario`.
+- Que cada `Propietario` activo tenga una membresía activa cuya forma
+  encaje con lo que `private.la_tiene_local` exige: `empresa_id` no
+  vacío y, o bien `todos_locales`, o bien un `local_id` concreto
+  distinto de `TODOS`.
+
+**No comprueba, y no puede comprobar hoy:**
+
+- **La procedencia de la membresía.** No distingue una fila insertada
+  por vía administrativa de una insertada por cualquier otro camino.
+  Una membresía fabricada con valores inventados pasa el guard igual que
+  una legítima.
+- **Su correspondencia con un catálogo backend real.** No existe tal
+  catálogo (no hay tablas `empresas`/`locales`), así que `empresa_id` y
+  `local_id` se validan **solo por forma**, nunca contra una lista de
+  empresas y locales que existan de verdad. `'EMPRESA_INVENTADA'` /
+  `'LOCAL_INVENTADO'` es estructuralmente coherente y el guard lo
+  aceptaría.
+- **Que el local pertenezca a esa empresa.** Sin catálogo no hay
+  relación que verificar.
+
+Es decir: el guard **impide aplicar el Defecto L sobre el estado actual
+—0 membresías— y sobre estados incoherentes**, que es lo que se le pidió
+y lo que evita la interrupción total del servicio. **No sustituye al
+paso 1 de la sección 3.2 ni convierte una membresía en confiable.**
+Mientras no exista un catálogo con autoridad real, pasar este guard
+significa «la migración no dejará al propietario sin acceso», no «la
+autorización es correcta».
 
 **El estado actual de producción (0 membresías) falla de forma explícita
 en las pruebas**, que es justo lo que se pedía.
@@ -286,6 +337,11 @@ PM26_P08E_PREFLIGHT_EXIGE_MEMBRESIA_ACTIVA=SI
 PM26_P08E_PREFLIGHT_EXIGE_COBERTURA_POR_PROPIETARIO=SI
 PM26_P08E_CERO_MEMBRESIAS_FALLA_EN_PRUEBAS=SI
 PM26_P08E_SIN_IDENTIFICADORES_HARDCODEADOS=SI
+PM26_P08E_ALMACEN_KV_COMO_CATALOGO=RETIRADO_NO_ES_VALIDO
+PM26_P08E_GUARD_VALIDA_PRESENCIA_Y_COHERENCIA=SI
+PM26_P08E_GUARD_VALIDA_PROCEDENCIA=NO
+PM26_P08E_GUARD_VALIDA_CONTRA_CATALOGO_BACKEND=NO
+PM26_P08E_CATALOGO_CON_AUTORIDAD_REAL_EXISTE=NO
 PM26_P08E_COMPATIBLE_CON_PARCHE_P08D=SI
 PM26_P08E_MEMBRESIA_CREADA=NO
 PM26_P08E_MIGRACION_APLICADA=NO

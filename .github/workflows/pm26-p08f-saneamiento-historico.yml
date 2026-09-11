@@ -1,0 +1,122 @@
+name: PM26 P08f saneamiento historico de contratos
+
+# Repara cuatro contratos historicos (P04a, P06c, P06i, P07a) que
+# validaban contra el arbol vivo en vez del commit exacto de su propio
+# cierre, y corrige la documentacion de P08e (retira almacen_kv como
+# catalogo, declara el limite real del guard de membresias). No aplica
+# migraciones, no crea membresias, no escribe en Supabase, no despliega
+# en Netlify y no toca fuente.js, source-recovery/, _headers,
+# index.html, reset-pruebas-preview.js ni supabase/. No modifica main ni
+# release, ni fusiona o cierra la PR #38.
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'tests/pm26/P08F_SANEAMIENTO_HISTORICO_CONTRATOS.md'
+      - 'tests/pm26/P08E_PRECONDICION_MEMBRESIAS_LEGACY.md'
+      - 'tests/pm26/p08f-contract.mjs'
+      - 'tests/pm26/p08e-contract.mjs'
+      - 'tests/pm26/p04a-contract.mjs'
+      - 'tests/pm26/p06c-contract.mjs'
+      - 'tests/pm26/p06i-contract.mjs'
+      - 'tests/pm26/p07a-contract.mjs'
+      - 'tests/pm26/lib/cierre-historico.mjs'
+      - '.github/workflows/pm26-p08f-saneamiento-historico.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Proteger lo que P08f no debe tocar
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          # P08f es saneamiento de contratos y correccion documental: no
+          # toca el cliente, supabase/ ni los artefactos del Defecto L.
+          # Comparado contra el cierre previo de la rama (PM26 P08e).
+          cierre_previo='0143f6b14451322b9ea60d3c1177c1f96c0320d4'
+          git cat-file -e "$cierre_previo^{commit}"
+          git merge-base --is-ancestor "$cierre_previo" HEAD
+          intocables="fuente.js source-recovery index.html reset-pruebas-preview.js _headers supabase tests/pm26/p08-defecto-l-produccion tests/pm26/p08d-candidato-release tests/pm26/p08e-precondicion-membresias"
+          cambiados="$(git diff --name-only "$cierre_previo"..HEAD -- $intocables)"
+          if [ -n "$cambiados" ]; then
+            echo "PM26 P08f no debe tocar: $cambiados" >&2
+            exit 1
+          fi
+          if ls supabase/migrations | grep -qi prefiltro; then
+            echo 'PM26 P08f: la migracion del Defecto L no debe estar en supabase/migrations' >&2
+            exit 1
+          fi
+          echo 'PM26_P08F_ALCANCE_ACOTADO=PASS'
+
+      - name: Instalar PostgreSQL local (aislado)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sleep 2
+          sudo -u postgres pg_isready
+
+      - name: Contratos historicos reparados (P04a, P06c, P06i, P07a)
+        run: |
+          set -euo pipefail
+          node tests/pm26/p04a-contract.mjs
+          node tests/pm26/p06c-contract.mjs
+          node tests/pm26/p06i-contract.mjs
+          node tests/pm26/p07a-contract.mjs
+
+      - name: Contrato PM26 P08f (anclajes, control negativo, correccion P08e)
+        run: node tests/pm26/p08f-contract.mjs
+
+      - name: Reconstruir fuente canonica de la rama tecnica
+        working-directory: source-recovery
+        run: npm ci
+
+      - name: Regresion acumulada de la rama tecnica (P03b, P07b, P07c, P08a-P08e)
+        run: |
+          set -euo pipefail
+          node tests/pm26/p03b-contract.mjs
+          node tests/pm26/p06f-contract.mjs
+          node tests/pm26/p07b-contract.mjs
+          node tests/pm26/p07c-contract.mjs
+          node tests/pm26/p08a-contract.mjs
+          node tests/pm26/p08b-contract.mjs
+          node tests/pm26/p08c-contract.mjs
+          node tests/pm26/p08d-contract.mjs
+          node tests/pm26/p08e-contract.mjs
+
+      - name: Escaner completo de secretos e identificadores
+        run: node tools/seguridad/verificar-secretos-e-identificadores.mjs verificar
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Instalar PostgreSQL local (aislado)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sleep 2
+          sudo -u postgres pg_isready
+      - name: Gate PM26 P08f -- saneamiento historico y correccion documental
+        run: |
+          set -euo pipefail
+          node tests/pm26/p08f-contract.mjs
+          echo 'PM26_P08F_GATE=PASS'

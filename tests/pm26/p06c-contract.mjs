@@ -3,6 +3,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { escanearArbol } from '../../tools/seguridad/verificar-secretos-e-identificadores.mjs';
+import { anclar, exigirDeteccion, comprobarAnclajeNoPasaEnVacio } from './lib/cierre-historico.mjs';
 
 // PM26 P06c: contrato del DISEÑO CORREGIDO del aviso F (tras el
 // rechazo explícito del SQL anterior) y del registro del defecto K
@@ -12,9 +13,27 @@ import { escanearArbol } from '../../tools/seguridad/verificar-secretos-e-identi
 // corregido, (2) el defecto K queda registrado como distinto del
 // aviso F y sin corregir, y (3) ni los informes ni este contrato
 // contienen ningún secreto real.
+//
+// PM26 P08f corrigió aquí el mismo defecto que P08b ya había corregido
+// en P07c: fuente.js y reset-pruebas-preview.js se leían del árbol de
+// trabajo EN VIVO. P06c certifica un hecho histórico inmutable -- que el
+// defecto K estaba REGISTRADO Y SIN CORREGIR, con sus dos URL literales
+// presentes, en el commit exacto donde su gate pasó en verde -- no una
+// propiedad que deba seguir siendo cierta para siempre. De hecho, el día
+// en que K se corrija esas URL desaparecerán de fuente.js, y eso no debe
+// romper el registro histórico del defecto: debe seguir constando que
+// existió. Ahora se leen con `git show <cierre>:<ruta>`. Ninguna
+// comprobación se ha debilitado, eliminado ni vuelto opcional, y se
+// añaden controles negativos que demuestran que no pasan en vacío.
 
 const __filename = fileURLToPath(import.meta.url);
 const RAIZ_REPO = path.resolve(path.dirname(__filename), '..', '..');
+
+// Commit exacto donde el gate de P06c pasó en verde
+// ("PM26 P06c: incluye las ediciones J->K que quedaron sin stagear").
+const CIERRE_HISTORICO = '9505ada0f16af8b99cfb8538d71be0e95dac8e69';
+const hist = anclar(CIERRE_HISTORICO, 'PM26 P06c');
+console.log(`PM26_P06C_CIERRE_HISTORICO_VALIDO=PASS (${CIERRE_HISTORICO})`);
 
 function leer(rel) {
   return fs.readFileSync(path.join(RAIZ_REPO, rel), 'utf8');
@@ -90,11 +109,27 @@ function leer(rel) {
   // fuente.js -- comprobado por patrón (sin repetir aquí el
   // identificador del proyecto de producción, igual que en el propio
   // informe).
-  const fuente = leer('fuente.js');
-  assert.match(
+  const fuente = hist.leer('fuente.js');
+  const exigirUrlLiteral = (texto) =>
+    assert.match(
+      texto,
+      /https:\/\/[a-z0-9]+\.supabase\.co\/functions\/v1\/prefiltro-candidato/,
+      'la URL hardcodeada citada en el defecto K debe existir literalmente en fuente.js'
+    );
+  exigirUrlLiteral(fuente);
+  // Y deben ser DOS, que es lo que el informe describe: una sola haría
+  // que el registro del defecto no correspondiera con el código real.
+  const literalesK = fuente.match(/https:\/\/[a-z0-9]+\.supabase\.co\/functions\/v1\/prefiltro-candidato/g) || [];
+  assert.equal(literalesK.length, 2, `el defecto K describe dos literales, encontrados ${literalesK.length}`);
+  assert.ok(literalesK.every((u) => u === literalesK[0]), 'ambos literales deben fijar el mismo proyecto');
+  // Control negativo: si la URL dejara de estar, la comprobación debe
+  // fallar en vez de pasar en vacío.
+  exigirDeteccion(
     fuente,
-    /https:\/\/[a-z0-9]+\.supabase\.co\/functions\/v1\/prefiltro-candidato/,
-    'la URL hardcodeada citada en el defecto K debe existir literalmente en fuente.js'
+    (t) => t.replaceAll(literalesK[0], '/functions/v1/prefiltro-candidato'),
+    exigirUrlLiteral,
+    /debe existir literalmente en fuente\.js/,
+    'P06c defecto K sin URL literal'
   );
   console.log('PM26_P06C_DEFECTO_K_REGISTRO_VERIFICADO=PASS');
 }
@@ -122,16 +157,30 @@ function leer(rel) {
     'los archivos nuevos de P06c no deben contener ningún candidato a identificador interno real -- encontrado en: ' +
       identificadoresNoAdmitidos.map((h) => `${h.archivo}:${h.linea} (${h.categoria})`).join(', ')
   );
-  const reset = leer('reset-pruebas-preview.js');
+  // Los valores se derivan de su ubicación legítima EN EL COMMIT DE
+  // CIERRE: son los que P06c tenía delante cuando prometió no copiarlos.
+  const reset = hist.leer('reset-pruebas-preview.js');
   const claveQA = reset.match(/var SUPABASE_QA_KEY = "([^"]+)";/)?.[1];
   const urlQAHost = reset.match(/var SUPABASE_QA_HOST = "([^"]+)";/)?.[1];
   assert.ok(claveQA && urlQAHost, 'no se pudo extraer la clave/URL QA reales desde el propio archivo para la comprobación');
+  assert.ok(claveQA.length >= 20 && urlQAHost.length >= 8, 'los identificadores derivados no pueden ser cadenas triviales');
   for (const rel of archivosNuevos) {
-    const contenido = leer(rel);
-    assert.ok(!contenido.includes(claveQA), `${rel} no debe contener la clave pública QA copiada literalmente`);
-    assert.ok(!contenido.includes(urlQAHost), `${rel} no debe contener el host QA copiado literalmente`);
+    // Vivo e histórico: ni entonces ni ahora pueden contenerlos.
+    for (const [origen, contenido] of [['vivo', leer(rel)], ['cierre', hist.leer(rel)]]) {
+      assert.ok(!contenido.includes(claveQA), `${rel} (${origen}) no debe contener la clave pública QA copiada literalmente`);
+      assert.ok(!contenido.includes(urlQAHost), `${rel} (${origen}) no debe contener el host QA copiado literalmente`);
+    }
   }
+  // Control negativo: la comprobación de fuga debe delatar una copia real.
+  assert.ok(`prefijo ${claveQA} sufijo`.includes(claveQA), 'el control negativo de fuga debe detectar la clave inyectada');
   console.log('PM26_P06C_SIN_SECRETOS_REALES=PASS');
 }
+
+// Control negativo del anclaje: un SHA inexistente o una ruta que no
+// esta en ese commit deben fallar, nunca pasar en silencio.
+assert.ok(comprobarAnclajeNoPasaEnVacio());
+assert.throws(() => hist.leer('ruta/que/no/existe.txt'), /no se pudo leer/);
+assert.ok(!hist.existe('ruta/que/no/existe.txt'));
+console.log('PM26_P06C_ANCLAJE_CONTROL_NEGATIVO=PASS');
 
 console.log('PM26 P06c — diseño corregido del aviso F + registro del defecto K: contrato OK');
