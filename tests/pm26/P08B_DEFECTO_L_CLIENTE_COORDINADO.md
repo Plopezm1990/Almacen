@@ -15,6 +15,17 @@ reescribir su narrativa: esa preparación queda vigente en su alcance
 original (inspección, diseño inicial, primera validación); aquí se
 corrige, endurece y completa con la pieza que faltaba, el cliente.
 
+**Actualización (PM26 P08e):** una reinspección en solo lectura de
+producción encontró que `membresias_usuario` está **vacía**, así que
+`private.la_tiene_local()` devuelve `false` para **todos** los usuarios.
+Aplicar esta migración hoy no aislaría nada: dejaría al propietario
+legítimo sin poder crear, leer ni borrar prefiltros. El preflight
+(embebido e independiente) se endureció para rechazar ese estado de
+forma explícita, y por eso los SHA-256 de la tabla de la sección 1
+cambiaron respecto a P08b. El análisis completo, las alternativas
+comparadas y el bloqueo documentado están en
+`P08E_PRECONDICION_MEMBRESIAS_LEGACY.md`.
+
 **Actualización (PM26 P08c):** el endurecimiento final previo a
 producción está en `P08C_ENDURECIMIENTO_FINAL_PREVIO_PRODUCCION.md`.
 P08c corrige dos cosas de este informe que no eran ciertas o no eran
@@ -75,8 +86,8 @@ en `P08A_DEFECTO_L_PREPARACION_PRODUCCION.md`):
 
 | Archivo | SHA-256 |
 |---|---|
-| `tests/pm26/p08-defecto-l-produccion/migracion-propuesta.sql` | `6f924e07a033f48ade4ad1a0e602360079db2deb10e2d3941177001280acf554` |
-| `tests/pm26/p08-defecto-l-produccion/preflight-independiente.sql` | `73fdf1c6b6a85c7a7784b26be780614bb0eecd7d8582e1d562ad79c15f3c9cfd` |
+| `tests/pm26/p08-defecto-l-produccion/migracion-propuesta.sql` | `667059f9e0b2fa0bce42daaa024d557524f6f42cb3a1a865cc9ac9636b88218c` |
+| `tests/pm26/p08-defecto-l-produccion/preflight-independiente.sql` | `edb3ca7e9afc1051dc1857e639938fb7fe500874e8931312538d7ed4f3cff582` |
 
 ## 2. Cliente compatible con producción y QA
 

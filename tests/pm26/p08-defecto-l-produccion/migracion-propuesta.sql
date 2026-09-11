@@ -43,6 +43,8 @@ declare
   v_politicas_ok int;
   v_helper_ok boolean;
   v_helper_cuerpo text;
+  v_membresias int;
+  v_propietarios_sin_membresia int;
   v_norm_esperado text := '(EXISTS ( SELECT 1 FROM perfiles p WHERE ((p.user_id = ( SELECT auth.uid() AS uid)) AND (p.activo = true) AND (p.rol = ''Propietario''::text))))';
   v_helper_cuerpo_esperado text := 'CREATE OR REPLACE FUNCTION private.la_tiene_local(p_empresa text, p_local text) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO '''' AS $function$ select private.la_usuario_activo() and nullif(btrim(p_empresa),'''') is not null and nullif(btrim(p_local),'''') is not null and upper(btrim(p_local)) <> ''TODOS'' and exists( select 1 from public.membresias_usuario m where m.user_id=(select auth.uid()) and m.empresa_id=p_empresa and m.activo=true and (m.todos_locales=true or m.local_id=p_local) ); $function$';
 begin
@@ -124,6 +126,39 @@ begin
   if v_total <> 0 then
     raise exception 'PREFLIGHT_FALLO: prefiltros_candidatos tiene % filas -- esta migracion exige 0 filas; con filas existentes hace falta backfill en dos fases, no esta migracion combinada', v_total;
   end if;
+
+  -- PM26_P08E_GUARD_INICIO
+  -- 5) PM26 P08e -- precondicion de autorizacion REAL, no solo de
+  --    existencia del helper. private.la_tiene_local() exige, via
+  --    private.la_usuario_activo(), una fila activa en
+  --    membresias_usuario. Con esa tabla vacia devuelve false para
+  --    TODOS los usuarios, asi que aplicar esta migracion no aislaria
+  --    nada: dejaria al propietario legitimo sin poder crear, leer ni
+  --    borrar prefiltros. Que el helper exista y se use en otras
+  --    politicas NO implica que funcione para el usuario real.
+  select count(*) into v_membresias from public.membresias_usuario where activo = true;
+  if v_membresias = 0 then
+    raise exception 'PREFLIGHT_FALLO: membresias_usuario no tiene ninguna fila activa -- private.la_tiene_local devolveria false para todos los usuarios y esta migracion dejaria el flujo de prefiltros inutilizable. Hace falta primero el bootstrap administrativo de membresias descrito en P08E_PRECONDICION_MEMBRESIAS_LEGACY.md';
+  end if;
+
+  -- 6) Cada Propietario activo debe tener una membresia activa y
+  --    COHERENTE con lo que exige la_tiene_local: empresa no vacia y,
+  --    o bien todos_locales, o bien un local concreto distinto de
+  --    TODOS. Sin esto, el propietario perderia el acceso en silencio.
+  select count(*) into v_propietarios_sin_membresia
+    from public.perfiles p
+   where p.activo = true and p.rol = 'Propietario'
+     and not exists (
+       select 1 from public.membresias_usuario m
+        where m.user_id = p.user_id and m.activo = true
+          and nullif(btrim(m.empresa_id), '') is not null
+          and (m.todos_locales = true
+               or (nullif(btrim(m.local_id), '') is not null and upper(btrim(m.local_id)) <> 'TODOS'))
+     );
+  if v_propietarios_sin_membresia <> 0 then
+    raise exception 'PREFLIGHT_FALLO: % propietario(s) activo(s) sin membresia activa y coherente -- quedarian sin acceso a prefiltros al aplicar esta migracion', v_propietarios_sin_membresia;
+  end if;
+  -- PM26_P08E_GUARD_FIN
 
   raise notice 'PREFLIGHT_CATALOGO=PASS';
 end
