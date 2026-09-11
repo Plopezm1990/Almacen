@@ -1,0 +1,83 @@
+name: PM26 P08a defecto L preparacion en solo lectura produccion
+
+# Certifica la PREPARACION en solo lectura del Defecto L (aislamiento
+# empresa/local para prefiltros_candidatos en produccion): migracion
+# propuesta, preflight, rollback y bateria de pruebas, todo validado en
+# Postgres local aislado. No aplica nada en produccion, QA ni TPV -- la
+# migracion propuesta vive fuera de supabase/ por completo.
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'tests/pm26/P08A_DEFECTO_L_PREPARACION_PRODUCCION.md'
+      - 'tests/pm26/p08a-contract.mjs'
+      - 'tests/pm26/p08-defecto-l-produccion/**'
+      - '.github/workflows/pm26-p08a-defecto-l-preparacion.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger lo que P08a no debe tocar
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          # Comparado contra el cierre previo de la rama (PM26 P05c,
+          # a8d618b), no contra origin/main.
+          cierre_previo='a8d618b864eea4b23693c6e72d0a4e7f28bd1973'
+          git cat-file -e "$cierre_previo^{commit}"
+          cambiados="$(git diff --name-only "$cierre_previo"..HEAD)"
+          esperados="$(printf '%s\n' \
+            '.github/workflows/pm26-p08a-defecto-l-preparacion.yml' \
+            'tests/pm26/P08A_DEFECTO_L_PREPARACION_PRODUCCION.md' \
+            'tests/pm26/p08a-contract.mjs' \
+            'tests/pm26/p08-defecto-l-produccion/comportamiento.sql' \
+            'tests/pm26/p08-defecto-l-produccion/migracion-propuesta.sql' \
+            'tests/pm26/p08-defecto-l-produccion/preflight-independiente.sql' \
+            'tests/pm26/p08-defecto-l-produccion/revertir.sql' \
+            'tests/pm26/p08-defecto-l-produccion/schema.sql' \
+            'tests/pm26/p08-defecto-l-produccion/seed.sql' \
+            'tests/pm26/p08-defecto-l-produccion/validar.sh' | sort)"
+          test "$(echo "$cambiados" | sort)" = "$esperados"
+          test -z "$(git diff --name-only "$cierre_previo"..HEAD -- supabase)"
+          test -z "$(git diff --name-only "$cierre_previo"..HEAD -- fuente.js)"
+          echo 'PM26_P08A_ALCANCE_ACOTADO=PASS'
+      - name: Instalar PostgreSQL local (aislado)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sleep 2
+          sudo -u postgres pg_isready
+      - name: Contrato PM26 P08a (preparacion defecto L, sin aplicar en produccion)
+        run: node tests/pm26/p08a-contract.mjs
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar PostgreSQL local (aislado)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sleep 2
+          sudo -u postgres pg_isready
+      - name: Gate PM26 P08a -- defecto L preparado, nada aplicado en produccion
+        run: |
+          set -euo pipefail
+          node tests/pm26/p08a-contract.mjs
+          echo 'PM26_P08A_GATE=PASS'
