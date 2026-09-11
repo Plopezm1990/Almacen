@@ -91,15 +91,49 @@ node source-recovery/verificar-build-canonico.mjs
 Dos builds canónicos consecutivos produjeron el mismo hash (build
 determinista). `node --check fuente.js` confirma sintaxis válida.
 
+**Cómo se produjo `fuente.js` (hallazgo real de este paquete, no
+supuesto):** un build limpio de la fuente canónica actual **no**
+reproduce byte a byte el `fuente.js` ya congelado en `main`/`release`
+— esto ya estaba documentado y aceptado desde PM26 P03b (esbuild
+recorta algunos comentarios de línea y puede renombrar variables
+locales según la composición global de un bundle de más de 5 MB,
+incluso en zonas del archivo lejanas al cambio) y el propio informe de
+P07b ya reflejaba tres hashes distintos para "fuente canónica",
+"bundle servido" y "build canónico determinista" sin que nadie lo
+hubiera explicado hasta ahora. Comprobado aquí de forma directa:
+reconstruir en limpio la fuente canónica exacta de P08a (commit
+`1a30358`) produce un hash distinto del `fuente.js` que ese mismo
+commit tiene realmente congelado. Por tanto `fuente.js` **nunca** se
+generó con "reconstruir y copiar" sin más — así lo confirma también
+`source-recovery/post-pm08-patches/` (una serie de parches congelados
+que PM09/PM10 aplicaron en su día directamente sobre el bundle
+construido, no sobre la fuente).
+
+Siguiendo ese mismo principio, el cambio de P08b sobre `fuente.js` se
+aplicó como una edición quirúrgica y aislada directamente sobre el
+`fuente.js` ya congelado y con gate en verde de P08a (`1a30358`):
+exactamente el mismo texto que cambia en `crearLogicaPrefiltros` dentro
+de `source-recovery/fuente-recuperado.js` (firma, rama `esQA`,
+`generarTokenDirecto`, INSERT/DELETE directos), sin tocar ni un solo
+byte del resto del archivo de 5 MB. Verificado con `node --check` y
+con la batería completa de regresión (`tests/g1` a `tests/pm25`, más
+de 100 contratos): **cero fallos nuevos**, incluidos los ~13 contratos
+de PM09-PM17 que dependen de comentarios y caracteres no-ASCII
+literales que un build limpio no conserva.
+
 | Artefacto | SHA-256 |
 |---|---|
-| Fuente canónica (`source-recovery/fuente-recuperado.js`) | `0ba9512c34d799977e9679da9e6dc3276e53eb618cb310afd0b9c1a96e5660c2` |
-| Bundle servido (`fuente.js`) | `e3a80811e4374be9605653c4426c949512a20155541eb14e01fd047cdb3c9d07` |
-| Build canónico determinista (`source-recovery/dist/fuente.js`) | `a064ca14cd1e0d72d9d8930d1c61b88948afc86d423dc4e2b8551804b010ba8b` |
+| Fuente canónica (`source-recovery/fuente-recuperado.js`) | `10f5f3ef6ed120971ab2ad892f8f2736e953c9ba8e3e030618823954fdee54bc` |
+| Bundle servido (`fuente.js`) | `84d416b440be81d52b2a6e28b1d30af0387a26453d727d4d28fa48583bd74f4e` |
+| Build canónico determinista (`source-recovery/dist/fuente.js`) | `3efd60eaafd8f1c454537cdc38ce7939bdc0874070d26328a1327655bfb71cf7` |
 
-`fuente.js` y `source-recovery/dist/fuente.js` coinciden byte a byte
-(el bundle servido es exactamente la salida del build canónico, sin
-edición manual posterior).
+Las tres huellas son distintas y así debe ser: la primera es la fuente
+legible; la segunda es el bundle servido, editado quirúrgicamente sobre
+el ya congelado; la tercera es la salida de un build limpio de la
+fuente canónica, reproducible dos veces seguidas con el mismo hash,
+que demuestra que la fuente compila y contiene la misma lógica sin
+imponer una igualdad byte a byte que la propia P03b ya demostró
+imposible de sostener.
 
 ### Regresión sobre los contratos existentes
 

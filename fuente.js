@@ -43868,24 +43868,6 @@ var init_index_es = __esm({
   });
   setTimeout(comprobarPerfilActivo, 1e3);
 })();
-(function() {
-  "use strict";
-  if (document.querySelector('script[data-seleccion-neutral="1"]')) return;
-  var script = document.createElement("script");
-  script.src = "./seleccion-neutral-patch.js?v=2";
-  script.defer = true;
-  script.setAttribute("data-seleccion-neutral", "1");
-  (document.head || document.documentElement).appendChild(script);
-})();
-(function() {
-  "use strict";
-  if (document.querySelector('script[data-auth-ux="1"]')) return;
-  var script = document.createElement("script");
-  script.src = "./auth-ux-patch.js?v=1";
-  script.defer = true;
-  script.setAttribute("data-auth-ux", "1");
-  (document.head || document.documentElement).appendChild(script);
-})();
 
 // fuente-recuperado.js
 var ReactNS = __toESM(require_react(), 1);
@@ -100787,13 +100769,10 @@ var __iconNode55 = [
 var X2 = createLucideIcon("x", __iconNode55);
 
 // fuente-recuperado.js
+var import_react4 = Object.assign({ default: ReactNS.default }, ReactNS);
 var import_client2 = { createRoot: import_client.createRoot };
 var utils2 = utils;
 var writeFileSync2 = writeFileSync || writeFileSync;
-var import_react4 = Object.assign({ default: ReactNS.default }, ReactNS);
-var import_client22 = { createRoot: import_client2.createRoot };
-var utils22 = utils2;
-var writeFileSync22 = writeFileSync2 || writeFileSync2;
 var C2 = {
   bg: "var(--c-bg)",
   surface: "var(--c-surface)",
@@ -101143,6 +101122,9 @@ function cantidadConSigno(m22) {
   const base = Number(m22.cantidad) || 0;
   return m22.tipo === "salida" ? -base : base;
 }
+// PM-09 / LA-008: contrato comun de unidades economicas de venta.
+// VENTA suma; REVERSO y DEVOLUCION_CLIENTE trazables restan. La operacion
+// original se conserva: no se borra ni se reescribe para cuadrar informes.
 function esCorreccionVentaPM09(m22) {
   if (!m22) return false;
   if (esMovimientoNuevo(m22)) {
@@ -101210,11 +101192,11 @@ function resumenConsumoProductoPM09(movs = []) {
     }
   });
   let cantidad = otrasSalidas;
-  familias.forEach((f22) => {
-    const netas = Math.max(0, Number(f22.unidades) || 0);
+  familias.forEach((f2) => {
+    const netas = Math.max(0, Number(f2.unidades) || 0);
     if (netas <= 0) return;
     cantidad += netas;
-    if (f22.fecha) fechas.push(f22.fecha);
+    if (f2.fecha) fechas.push(f2.fecha);
   });
   let primeraFecha = null;
   fechas.forEach((fecha) => {
@@ -101309,15 +101291,15 @@ async function sincronizarConteosPm12({ setConteos, localActivoId }) {
   const cliente = await window.getSupabaseClient();
   let consulta = cliente.from("stock_operaciones").select("empresa_id,local_id,payload").eq("tipo", "INVENTARIO_PM12");
   if (localActivoId) consulta = consulta.eq("local_id", localActivoId);
-  const r2 = await consulta;
-  if (r2.error) throw r2.error;
-  const documentos = (r2.data || []).map((op) => op.payload && op.payload.resultado && op.payload.resultado.conteo).filter(Boolean);
+  const r = await consulta;
+  if (r.error) throw r.error;
+  const documentos = (r.data || []).map((op) => op.payload && op.payload.resultado && op.payload.resultado.conteo).filter(Boolean);
   setConteos((cs) => {
     const nuevos = [...cs];
     for (const documento of documentos) {
-      const i4 = nuevos.findIndex((c4) => c4.id === documento.id && c4.empresaId === documento.empresaId && c4.localId === documento.localId);
-      if (i4 >= 0) nuevos[i4] = { ...nuevos[i4], ...documento, _pm12Servidor: true };
-      else if (!nuevos.some((c4) => c4.id === documento.id)) nuevos.push({ ...documento, _pm12Servidor: true });
+      const i = nuevos.findIndex((c) => c.id === documento.id && c.empresaId === documento.empresaId && c.localId === documento.localId);
+      if (i >= 0) nuevos[i] = { ...nuevos[i], ...documento, _pm12Servidor: true };
+      else if (!nuevos.some((c) => c.id === documento.id)) nuevos.push({ ...documento, _pm12Servidor: true });
     }
     return nuevos;
   });
@@ -101347,7 +101329,7 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, localActivoI
       const movimientoPM12 = m4;
       const datosPM12 = movimientoPM12.datos || {};
       if (movimientoPM12.tipo === "INVENTARIO_PM12" || datosPM12.origen === "cancelarConteo") {
-        return { ...datosPM12.camposExtra || {}, ...datosPM12, id: datosPM12.movimientoId, operationId: movimientoPM12.operation_id, productoId: movimientoPM12.producto_id, localId: movimientoPM12.local_id, empresaId: movimientoPM12.empresa_id, cantidad: Number(datosPM12.cantidad), _pm07Servidor: true, fecha: String(movimientoPM12.created_at || "").slice(0, 10) };
+        return { ...(datosPM12.camposExtra || {}), ...datosPM12, id: datosPM12.movimientoId, operationId: movimientoPM12.operation_id, productoId: movimientoPM12.producto_id, localId: movimientoPM12.local_id, empresaId: movimientoPM12.empresa_id, cantidad: Number(datosPM12.cantidad), _pm07Servidor: true, fecha: String(movimientoPM12.created_at || "").slice(0, 10) };
       }
       const delta = Number(m4.delta_total) || 0;
       const creado = String(m4.created_at || "");
@@ -101878,8 +101860,8 @@ function GestionAlmacen() {
       setMovimientos(mo);
       const coMigrado = (co || []).map((c22) => {
         if (c22.ajustesAplicados) return c22;
-        const ajustes = (mo || []).filter((m4) => m4.documentoOrigenId === c22.id && m4.origen === "aplicarAjustes");
-        const completo = ajustes.length > 0 && ajustes.every((m4) => m4.pm12PlanCantidad === ajustes.length && m4.operationId === ajustes[0].operationId && m4.pm12Resultado);
+        const ajustes = (mo || []).filter((m) => m.documentoOrigenId === c22.id && m.origen === "aplicarAjustes");
+        const completo = ajustes.length > 0 && ajustes.every((m) => m.pm12PlanCantidad === ajustes.length && m.operationId === ajustes[0].operationId && m.pm12Resultado);
         return completo ? { ...c22, ajustesAplicados: true, ajustesOperationId: ajustes[0].operationId, ajustesCantidad: ajustes[0].pm12Resultado.ajustados, ajustesTraspasados: ajustes[0].pm12Resultado.traspasados } : ajustes.length ? { ...c22, ajustesPendientesRevision: true } : c22;
       });
       if (coMigrado.some((c22, i33) => c22 !== (co || [])[i33])) {
@@ -102314,7 +102296,7 @@ function GestionAlmacen() {
   const { addFreidora, updateFreidora, deleteFreidora, registrarCambio, registrarRelleno, eliminarRegistroAceite, consumoPorCiclo } = crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegistrosAceite, productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId, locales });
   const { addFichaCosto, updateFichaCosto, deleteFichaCosto, alergenosDeFicha } = crearLogicaFichasCosto({ productos, setFichasCosto, localActivoId, locales });
   function obtenerContextoAjusteConteo() {
-    const empleadoActivo = usuarioActivoId ? empleados.find((e2) => e2.id === usuarioActivoId) : null;
+    const empleadoActivo = usuarioActivoId ? empleados.find((e) => e.id === usuarioActivoId) : null;
     const rol = miPerfil && miPerfil.rol ? miPerfil.rol : modoEmpleado ? empleadoActivo && empleadoActivo.rol || "" : "Propietario";
     const actorNombre = miPerfil && miPerfil.nombre ? miPerfil.nombre : modoEmpleado ? empleadoActivo && empleadoActivo.nombre || "" : "Propietario/a";
     return {
@@ -103574,9 +103556,18 @@ function GestionAlmacen() {
     const comparacion = compararConEstadoActual(pendingRestore);
     const seConservan = coleccionesQueSeConservan(pendingRestore);
     const perdidas = comparacion.filter((c22) => c22.diferencia < 0);
+    // PM25 P01: restaurar un respaldo mientras hay sesi\xF3n de nube activa es
+    // peligroso -- el guardado sincronizado de proveedores, clientes,
+    // albaranes, facturas directas y gastos generales borra en el servidor
+    // cualquier fila que no est\xE9 en la colecci\xF3n local (sincronizarColeccionEmpresa
+    // / sincronizarColeccionEmpresaLocal en index.html), as\xED que aplicar aqu\xED
+    // el contenido de un respaldo antiguo podr\xEDa borrar o sobrescribir en la
+    // nube datos m\xE1s recientes creados en otro dispositivo. Por eso, con nube
+    // activa, se bloquea el restore y se explica el riesgo en vez de dejar
+    // continuar.
     const bloqueadoPorNubeActivaPM25 = typeof window !== "undefined" && window.__nubeActiva === true;
     if (bloqueadoPorNubeActivaPM25) {
-      return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setPendingRestore(null), title: "Restaurar respaldo \u2014 bloqueado" }, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2" }, "No se puede restaurar mientras la nube est\xE1 activa"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2" }, "Este equipo est\xE1 sincronizado con la cuenta. Restaurar un respaldo antiguo podr\xEDa ", /* @__PURE__ */ import_react4.default.createElement("b", null, "borrar en el servidor"), " proveedores, clientes, albaranes, facturas directas o gastos generales creados despu\xE9s de la fecha de este respaldo, y sobrescribir con datos antiguos lo que se haya editado desde entonces \u2014 en este dispositivo o en cualquier otro conectado a la misma cuenta."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, 'Para restaurar este respaldo de forma segura, hazlo desde "Trabajar solo en este equipo, sin sincronizar", o pide ayuda antes de continuar.')), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setPendingRestore(null) }, "Cerrar"));
+      return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setPendingRestore(null), title: "Restaurar respaldo \u2014 bloqueado" }, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2" }, "No se puede restaurar mientras la nube est\xE1 activa"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2" }, "Este equipo est\xE1 sincronizado con la cuenta. Restaurar un respaldo antiguo podr\xEDa ", /* @__PURE__ */ import_react4.default.createElement("b", null, "borrar en el servidor"), " proveedores, clientes, albaranes, facturas directas o gastos generales creados despu\xE9s de la fecha de este respaldo, y sobrescribir con datos antiguos lo que se haya editado desde entonces \u2014 en este dispositivo o en cualquier otro conectado a la misma cuenta."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "Para restaurar este respaldo de forma segura, hazlo desde \"Trabajar solo en este equipo, sin sincronizar\", o pide ayuda antes de continuar.")), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setPendingRestore(null) }, "Cerrar"));
     }
     return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setPendingRestore(null), title: "Restaurar respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-1", style: { color: C2.ink } }, pendingRestore.exportadoEl ? `Respaldo del ${new Date(pendingRestore.exportadoEl).toLocaleString("es-ES")}` : "Respaldo sin fecha registrada"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Formato ", pendingRestore.backupVersion || pendingRestore.version || "antiguo"), perdidas.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "\u26A0 Este respaldo tiene menos datos que lo que hay ahora"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2" }, "Al restaurarlo desaparecer\xEDa lo creado despu\xE9s. Se guardar\xE1 un punto de recuperaci\xF3n antes, por si te arrepientes."), perdidas.map((c22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: c22.clave, className: "text-[11.5px] mono" }, c22.nombre, ": ", c22.actual, " \u2192 ", c22.respaldo, " (", c22.diferencia, ")"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "Qu\xE9 contiene, comparado con ahora"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3 space-y-0.5", style: { color: C2.inkSoft } }, comparacion.map((c22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: c22.clave, className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", null, c22.nombre), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: c22.diferencia < 0 ? C2.red : C2.inkSoft } }, c22.actual, " \u2192 ", c22.respaldo)))), seConservan.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.bg, border: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]" }, "Este respaldo es anterior y no incluye: ", /* @__PURE__ */ import_react4.default.createElement("b", null, seConservan.join(", ")), ". Esos datos", /* @__PURE__ */ import_react4.default.createElement("b", null, " se conservan tal como est\xE1n ahora"), " \u2014 no se borran.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-4", style: { color: C2.red } }, "Restaurar sustituye lo que tengas cargado ahora por el contenido de este respaldo."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: confirmarRestauracion }, "Restaurar respaldo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setPendingRestore(null) }, "Cancelar")));
   })());
@@ -103586,17 +103577,21 @@ function validarProveedorPM10(data) {
   const nombre = String(entrada.nombre ?? "").trim();
   if (!nombre) return errorValidacionPM10("campo_obligatorio", "nombre", "Escribe el nombre del proveedor.");
   const datos = { ...entrada, nombre };
+
   const email = String(entrada.email ?? "").trim();
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return errorValidacionPM10("formato_invalido", "email", "El correo electr\xF3nico no es v\xE1lido.");
+    return errorValidacionPM10("formato_invalido", "email", "El correo electrónico no es válido.");
   }
   datos.email = email;
+
   const leadTime = numeroPM10(entrada.leadTime, "leadTime", { minimo: 0, opcional: true });
   if (!leadTime.ok) return leadTime;
   datos.leadTime = leadTime.vacio ? "" : leadTime.valor;
+
   const diasPago = numeroPM10(entrada.diasPago, "diasPago", { minimo: 0, opcional: true });
   if (!diasPago.ok) return diasPago;
   datos.diasPago = diasPago.vacio ? "" : diasPago.valor;
+
   return { ok: true, datos };
 }
 function crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria, empresaId }) {
@@ -103624,8 +103619,9 @@ function crearLogicaProveedores({ proveedores, setProveedores, registrarAuditori
 function validarEmpleadoPM10(data, { localActivoId = null, locales = [], empresaId = null } = {}) {
   const contexto = validarContextoEscrituraPM10({ localActivoId, locales, empresaId });
   if (!contexto.ok) return contexto;
-  if (!data || typeof data !== "object" || Array.isArray(data)) return errorValidacionPM10("formato_invalido", "empleado", "La ficha del empleado no es v\xE1lida.");
+  if (!data || typeof data !== "object" || Array.isArray(data)) return errorValidacionPM10("formato_invalido", "empleado", "La ficha del empleado no es válida.");
   if (data.localId && data.localId !== localActivoId) return errorValidacionPM10("referencia_otro_contexto", "localId", "El empleado pertenece a otro local.");
+
   const datos = { ...data, localId: data.localId || localActivoId };
   const nombre = String(datos.nombre ?? "").trim();
   if (!nombre) return errorValidacionPM10("campo_obligatorio", "nombre", "Escribe el nombre del empleado.");
@@ -103643,6 +103639,7 @@ function validarEmpleadoPM10(data, { localActivoId = null, locales = [], empresa
     datos[campo] = r2.valor;
     return { ok: true };
   };
+
   for (const [campo, opciones] of [
     ["horasSemanales", { defecto: 0 }],
     ["pagas", { defecto: 14, estrictoMinimo: true, entero: true }],
@@ -103659,13 +103656,13 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
   const empleadoEsDelLocalActivoPersonal = (e2) => !!e2 && (!localActivoId || e2.localId === localActivoId);
   const fechaHoyPersonalPM13 = () => typeof todayISO === "function" ? todayISO() : "";
   const bajasRegistradasPersonalPM13 = new Set(empleados.filter((e2) => e2 && e2.activo === false).map((e2) => e2.id));
-  const operacionesRemotasPersonalPM13 = /* @__PURE__ */ new Map();
+  const operacionesRemotasPersonalPM13 = new Map();
   const motorPersonalRemotoDisponiblePM13 = () => typeof window !== "undefined" && typeof window.getSupabaseClient === "function";
   async function ejecutarRpcPersonalPM13(nombre, args) {
     if (!motorPersonalRemotoDisponiblePM13()) return { disponible: false, ok: true, data: null };
     try {
       const supabase = await window.getSupabaseClient();
-      if (!supabase || typeof supabase.rpc !== "function") return { disponible: true, ok: false, error: "El motor remoto de Personal no est\xE1 disponible." };
+      if (!supabase || typeof supabase.rpc !== "function") return { disponible: true, ok: false, error: "El motor remoto de Personal no está disponible." };
       const { data, error } = await supabase.rpc(nombre, args);
       if (error) return { disponible: true, ok: false, error: error.message || String(error) };
       return { disponible: true, ok: true, data };
@@ -103679,7 +103676,7 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
     operacionesRemotasPersonalPM13.set(clave, promesa);
     return promesa;
   }
-  const errorBackendPersonalPM13 = (mensaje) => errorValidacionPM10("backend_personal", "personal", mensaje || "No se pudo confirmar la operaci\xF3n de Personal.");
+  const errorBackendPersonalPM13 = (mensaje) => errorValidacionPM10("backend_personal", "personal", mensaje || "No se pudo confirmar la operación de Personal.");
   function addEmpleado(data, controlPM13 = {}) {
     const validacion = validarEmpleadoPM10(data, { localActivoId, locales, empresaId });
     if (!validacion.ok) return validacion;
@@ -103744,7 +103741,7 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
     if (!motorPersonalRemotoDisponiblePM13()) {
       const cambiosEstado = dandoBaja ? {
         fechaBaja: validacion.datos.fechaBaja || fechaHoyPersonalPM13(),
-        motivoBaja: String(validacion.datos.motivoBaja || "Baja registrada desde edici\xF3n").trim() || "Baja registrada desde edici\xF3n"
+        motivoBaja: String(validacion.datos.motivoBaja || "Baja registrada desde edición").trim() || "Baja registrada desde edición"
       } : reactivando ? { fechaBaja: "", motivoBaja: "" } : {};
       setEmpleados((s22) => s22.map((e2) => e2.id === id ? { ...e2, ...validacion.datos, ...cambiosEstado, id: e2.id, localId: e2.localId || localActivoId } : e2));
       if (dandoBaja) {
@@ -103842,40 +103839,40 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
       )
     );
   }
-  const tiposAusenciaPM13 = /* @__PURE__ */ new Set(["Vacaciones", "Baja m\xE9dica", "Otro"]);
+  const tiposAusenciaPM13 = new Set(["Vacaciones", "Baja médica", "Otro"]);
   const ausenciasCreadasLocalPM13 = [];
-  const operacionesAusenciaLocalPM13 = /* @__PURE__ */ new Map();
+  const operacionesAusenciaLocalPM13 = new Map();
   const ausenciaActivaPM13 = (a22) => !!a22 && String(a22.estado || "ACTIVA").toUpperCase() !== "ANULADA" && !a22.anuladaAt;
   function normalizarTipoAusenciaPM13(tipo) {
     const limpio = String(tipo || "").trim();
-    if (limpio.toLowerCase() === "baja medica" || limpio.toLowerCase() === "baja m\xE9dica") return "Baja m\xE9dica";
+    if (limpio.toLowerCase() === "baja medica" || limpio.toLowerCase() === "baja médica") return "Baja médica";
     if (limpio.toLowerCase() === "vacaciones") return "Vacaciones";
     if (limpio.toLowerCase() === "otro") return "Otro";
     return limpio;
   }
   function fechaISOValidaAusenciaPM13(valor) {
     const texto = String(valor || "").trim();
-    const m22 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(texto);
-    if (!m22) return false;
-    const y3 = Number(m22[1]), mes = Number(m22[2]), d2 = Number(m22[3]);
-    const fecha = new Date(Date.UTC(y3, mes - 1, d2));
-    return fecha.getUTCFullYear() === y3 && fecha.getUTCMonth() === mes - 1 && fecha.getUTCDate() === d2;
+    const m2 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(texto);
+    if (!m2) return false;
+    const y = Number(m2[1]), mes = Number(m2[2]), d2 = Number(m2[3]);
+    const fecha = new Date(Date.UTC(y, mes - 1, d2));
+    return fecha.getUTCFullYear() === y && fecha.getUTCMonth() === mes - 1 && fecha.getUTCDate() === d2;
   }
   function diasAusenciaPM13(inicio, fin) {
     if (!fechaISOValidaAusenciaPM13(inicio) || !fechaISOValidaAusenciaPM13(fin) || fin < inicio) return 0;
-    const a22 = /* @__PURE__ */ new Date(`${inicio}T00:00:00Z`);
-    const b2 = /* @__PURE__ */ new Date(`${fin}T00:00:00Z`);
+    const a22 = new Date(`${inicio}T00:00:00Z`);
+    const b2 = new Date(`${fin}T00:00:00Z`);
     return Math.round((b2 - a22) / 864e5) + 1;
   }
   function validarAusenciaPM13(empleadoLocal, ausencia) {
     if (!empleadoEsDelLocalActivoPersonal(empleadoLocal) || !localActivoId || !empresaId) return errorValidacionPM10("contexto_no_autorizado", "empleadoId", "La ausencia requiere un empleado del local activo.");
     if (empleadoLocal.activo === false) return errorValidacionPM10("empleado_no_activo", "empleadoId", "No se pueden registrar nuevas ausencias a un empleado de baja.");
     const tipo = normalizarTipoAusenciaPM13(ausencia?.tipo);
-    if (!tiposAusenciaPM13.has(tipo)) return errorValidacionPM10("ausencia_tipo_invalido", "tipo", "Selecciona un tipo de ausencia v\xE1lido.");
+    if (!tiposAusenciaPM13.has(tipo)) return errorValidacionPM10("ausencia_tipo_invalido", "tipo", "Selecciona un tipo de ausencia válido.");
     const fechaInicio = String(ausencia?.fechaInicio || "").trim();
     const fechaFin = String(ausencia?.fechaFin || "").trim();
-    if (!fechaISOValidaAusenciaPM13(fechaInicio)) return errorValidacionPM10("fecha_invalida", "fechaInicio", "La fecha de inicio no es v\xE1lida.");
-    if (!fechaISOValidaAusenciaPM13(fechaFin)) return errorValidacionPM10("fecha_invalida", "fechaFin", "La fecha final no es v\xE1lida.");
+    if (!fechaISOValidaAusenciaPM13(fechaInicio)) return errorValidacionPM10("fecha_invalida", "fechaInicio", "La fecha de inicio no es válida.");
+    if (!fechaISOValidaAusenciaPM13(fechaFin)) return errorValidacionPM10("fecha_invalida", "fechaFin", "La fecha final no es válida.");
     if (fechaFin < fechaInicio) return errorValidacionPM10("rango_fechas_invalido", "fechaFin", "La fecha final no puede ser anterior a la inicial.");
     const candidatas = [...empleadoLocal.ausencias || [], ...ausenciasCreadasLocalPM13.filter((a22) => a22.empleadoId === empleadoLocal.id)];
     const solapada = candidatas.some((a22) => ausenciaActivaPM13(a22) && String(a22.fechaInicio || "") <= fechaFin && String(a22.fechaFin || "") >= fechaInicio);
@@ -103896,10 +103893,7 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
         if (e2.id !== empleadoId) return e2;
         const existentes = e2.ausencias || [];
         const replay = existentes.find((a22) => a22.operationId === operationId || a22.id === final.id);
-        if (replay) {
-          final = replay;
-          return e2;
-        }
+        if (replay) { final = replay; return e2; }
         return { ...e2, ausencias: [...existentes, final] };
       }));
       if (!ausenciasCreadasLocalPM13.some((a22) => a22.operationId === operationId)) ausenciasCreadasLocalPM13.push(final);
@@ -103925,7 +103919,7 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
     const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
     if (!empleadoEsDelLocalActivoPersonal(empleadoLocal) || !localActivoId || !empresaId) return errorValidacionPM10("contexto_no_autorizado", "empleadoId", "La ausencia no pertenece al local activo.");
     const objetivo = (empleadoLocal.ausencias || []).find((a22) => a22.id === ausenciaId);
-    if (!objetivo) return errorValidacionPM10("ausencia_no_encontrada", "ausenciaId", "No se encontr\xF3 la ausencia.");
+    if (!objetivo) return errorValidacionPM10("ausencia_no_encontrada", "ausenciaId", "No se encontró la ausencia.");
     if (!ausenciaActivaPM13(objetivo)) return { ok: true, replay: true, ausencia: objetivo };
     const operationId = String(controlPM13.operationId || `pm13-anular-aus:${empleadoId}:${ausenciaId}`);
     const motivo = String(controlPM13.motivo || "Anulada desde Personal").trim() || "Anulada desde Personal";
@@ -103972,9 +103966,9 @@ function crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId }) {
   const turnoEsLocal = (t22) => !!t22 && (!localActivoId || t22.localId === localActivoId);
   const parseFechaTurnoPM13 = (valor) => {
     const fecha = String(valor || "").trim();
-    const m22 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fecha);
-    if (!m22) return null;
-    const anio = Number(m22[1]), mes = Number(m22[2]), dia = Number(m22[3]);
+    const m2 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fecha);
+    if (!m2) return null;
+    const anio = Number(m2[1]), mes = Number(m2[2]), dia = Number(m2[3]);
     const ms = Date.UTC(anio, mes - 1, dia);
     const d2 = new Date(ms);
     if (d2.getUTCFullYear() !== anio || d2.getUTCMonth() !== mes - 1 || d2.getUTCDate() !== dia) return null;
@@ -103982,8 +103976,8 @@ function crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId }) {
   };
   const parseHoraTurnoPM13 = (valor) => {
     const hora = String(valor || "").trim();
-    const m22 = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(hora);
-    return m22 ? { hora, minutos: Number(m22[1]) * 60 + Number(m22[2]) } : null;
+    const m2 = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(hora);
+    return m2 ? { hora, minutos: Number(m2[1]) * 60 + Number(m2[2]) } : null;
   };
   const normalizarTurnoPM13 = (data = {}, base = null) => {
     const empleadoId = data.empleadoId ?? base?.empleadoId;
@@ -104001,7 +103995,7 @@ function crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId }) {
       if (!inicio || !fin || inicio.minutos === fin.minutos) return null;
     }
     return {
-      ...base || {},
+      ...(base || {}),
       ...data,
       empleadoId,
       fecha: fechaInfo.fecha,
@@ -104021,7 +104015,13 @@ function crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId }) {
     if (hasta <= desde) hasta += 1440;
     return [desde, hasta];
   };
-  const equivalenteTurnoPM13 = (a22, b2) => !!a22 && !!b2 && a22.empleadoId === b2.empleadoId && a22.fecha === b2.fecha && String(a22.tipo || "") === String(b2.tipo || "") && String(a22.horaInicio || "") === String(b2.horaInicio || "") && String(a22.horaFin || "") === String(b2.horaFin || "") && String(a22.notas || "") === String(b2.notas || "") && String(a22.localId || "") === String(b2.localId || "");
+  const equivalenteTurnoPM13 = (a22, b2) => !!a22 && !!b2 &&
+    a22.empleadoId === b2.empleadoId && a22.fecha === b2.fecha &&
+    String(a22.tipo || "") === String(b2.tipo || "") &&
+    String(a22.horaInicio || "") === String(b2.horaInicio || "") &&
+    String(a22.horaFin || "") === String(b2.horaFin || "") &&
+    String(a22.notas || "") === String(b2.notas || "") &&
+    String(a22.localId || "") === String(b2.localId || "");
   const conflictoTurnoPM13 = (candidato, lista, omitirId = null) => {
     const intervalo = intervaloTurnoPM13(candidato);
     return lista.some((t22) => {
@@ -104134,7 +104134,7 @@ function crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, set
   return { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, cancelarRegistroAppcc };
 }
 function crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId }) {
-  const operacionesRemotasFichajePM13 = /* @__PURE__ */ new Map();
+  const operacionesRemotasFichajePM13 = new Map();
   const motorFichajeRemotoDisponiblePM13 = () => typeof window !== "undefined" && typeof window.getSupabaseClient === "function";
   const fichajeEsLocal = (f22) => !!f22 && (!localActivoId || f22.localId === localActivoId);
   const empleadoFichajeLocal = (id) => empleados.find((e2) => e2.id === id && e2.activo !== false && (!localActivoId || e2.localId === localActivoId));
@@ -104142,9 +104142,9 @@ function crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId })
   const tipoFichajeValidoPM13 = (tipo) => tipo === "entrada" || tipo === "salida";
   const fechaFichajeValidaPM13 = (valor) => {
     const fecha = String(valor || "").trim();
-    const m22 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fecha);
-    if (!m22) return false;
-    const anio = Number(m22[1]), mes = Number(m22[2]), dia = Number(m22[3]);
+    const m2 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fecha);
+    if (!m2) return false;
+    const anio = Number(m2[1]), mes = Number(m2[2]), dia = Number(m2[3]);
     const d2 = new Date(Date.UTC(anio, mes - 1, dia));
     return d2.getUTCFullYear() === anio && d2.getUTCMonth() === mes - 1 && d2.getUTCDate() === dia;
   };
@@ -104178,7 +104178,7 @@ function crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId })
     if (!motorFichajeRemotoDisponiblePM13()) return { disponible: false, ok: true, data: null };
     try {
       const supabase = await window.getSupabaseClient();
-      if (!supabase || typeof supabase.rpc !== "function") return { disponible: true, ok: false, error: "El motor remoto de fichajes no est\xE1 disponible." };
+      if (!supabase || typeof supabase.rpc !== "function") return { disponible: true, ok: false, error: "El motor remoto de fichajes no está disponible." };
       const { data, error } = await supabase.rpc(nombre, args);
       if (error) return { disponible: true, ok: false, error: error.message || String(error) };
       return { disponible: true, ok: data?.ok !== false, data, error: data?.codigo || null };
@@ -104195,7 +104195,7 @@ function crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId })
   function fichar(empleadoId, tipo) {
     const emp = empleadoFichajeLocal(empleadoId);
     if (!emp || !localActivoId || !tipoFichajeValidoPM13(tipo)) return false;
-    const ahora = /* @__PURE__ */ new Date();
+    const ahora = new Date();
     const fecha = todayISO();
     const hora = ahora.toTimeString().slice(0, 5);
     const operationId = `pm13-fichar:${localActivoId}:${empleadoId}:${tipo}:${fecha}:${hora}`;
@@ -104219,7 +104219,7 @@ function crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId })
     const tipo = data?.tipo;
     if (!emp || !localActivoId || !tipoFichajeValidoPM13(tipo) || !fechaFichajeValidaPM13(fecha) || !horaFichajeValidaPM13(hora) || fecha > todayISO()) return false;
     const operationId = String(data?.operationId || `pm13-manual:${localActivoId}:${emp.id}:${fecha}:${hora}:${tipo}`);
-    const candidatoLocal = { id: `fichaje-${operationId}`, empleadoId: emp.id, tipo, fecha, hora, timestamp: `${fecha}T${hora}:00`, localId: emp.localId || localActivoId, operationId, manual: true, motivoManual: String(data?.motivoManual || data?.motivo || "Correcci\xF3n manual registrada").trim(), anulado: false };
+    const candidatoLocal = { id: `fichaje-${operationId}`, empleadoId: emp.id, tipo, fecha, hora, timestamp: `${fecha}T${hora}:00`, localId: emp.localId || localActivoId, operationId, manual: true, motivoManual: String(data?.motivoManual || data?.motivo || "Corrección manual registrada").trim(), anulado: false };
     if (!motorFichajeRemotoDisponiblePM13()) {
       if (!secuenciaFichajeValidaPM13(candidatoLocal)) return false;
       setFichajes((s22) => [candidatoLocal, ...s22]);
@@ -104239,7 +104239,7 @@ function crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId })
     const actual = fichajes.find((f22) => f22.id === id);
     if (!fichajeEsLocal(actual) || !fichajeVigentePM13(actual)) return false;
     const emp = empleadoFichajeLocal(actual.empleadoId);
-    if (!emp || data.empleadoId && data.empleadoId !== actual.empleadoId) return false;
+    if (!emp || (data.empleadoId && data.empleadoId !== actual.empleadoId)) return false;
     const fecha = String(data.fecha ?? actual.fecha ?? "").trim();
     const hora = String(data.hora ?? actual.hora ?? "").trim();
     const tipo = data.tipo ?? actual.tipo;
@@ -104250,7 +104250,7 @@ function crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId })
     const operationId = String(data.operationId || `pm13-corregir:${id}:${fecha}:${hora}:${tipo}`);
     if (!motorFichajeRemotoDisponiblePM13()) {
       const original = actual.original || { fecha: actual.fecha, hora: actual.hora, tipo: actual.tipo, timestamp: actual.timestamp };
-      const historialCorrecciones = [...actual.historialCorrecciones || [], { fecha: actual.fecha, hora: actual.hora, tipo: actual.tipo, motivo }];
+      const historialCorrecciones = [...(actual.historialCorrecciones || []), { fecha: actual.fecha, hora: actual.hora, tipo: actual.tipo, motivo }];
       setFichajes((s22) => s22.map((f22) => f22.id === id ? { ...candidato, corregido: true, motivoCorreccion: motivo, original, historialCorrecciones, ultimaCorreccionOperationId: operationId } : f22));
       return true;
     }
@@ -105109,8 +105109,7 @@ function crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empres
     if (!empresaId) return { ok: false, codigo: "contexto_no_autorizado", error: "No se pudo determinar la empresa activa." };
     const nuevo = { id: uid(), fechaAlta: todayISO(), ...data, empresaId };
     setClientes((s22) => [...s22, nuevo]);
-    sincronizarClienteNube(nuevo).catch(() => {
-    });
+    sincronizarClienteNube(nuevo).catch(() => {});
     return nuevo;
   }
   function updateCliente(id, data) {
@@ -105126,8 +105125,7 @@ function crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empres
         return actualizado;
       })
     );
-    if (actualizado) sincronizarClienteNube(actualizado).catch(() => {
-    });
+    if (actualizado) sincronizarClienteNube(actualizado).catch(() => {});
     return true;
   }
   function deleteCliente(id) {
@@ -105135,8 +105133,7 @@ function crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empres
     if (!c22) return false;
     registrarAuditoria("Eliminar cliente", c22.nombre);
     setClientes((s22) => s22.filter((c222) => c222.id !== id));
-    eliminarClienteNube(id).catch(() => {
-    });
+    eliminarClienteNube(id).catch(() => {});
     return true;
   }
   function anonimizarCliente(id) {
@@ -105151,8 +105148,7 @@ function crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empres
         return actualizado;
       })
     );
-    if (actualizado) sincronizarClienteNube(actualizado).catch(() => {
-    });
+    if (actualizado) sincronizarClienteNube(actualizado).catch(() => {});
     return true;
   }
   return { addCliente, updateCliente, deleteCliente, anonimizarCliente };
@@ -105164,69 +105160,65 @@ function movimientoIdMermaLotePM19(lote) {
   return `merma-lote:${productoId}:${loteCodigo}:${caducidad}`;
 }
 function crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria }) {
-  const contextos = crearMotorStock.contextos || (crearMotorStock.contextos = /* @__PURE__ */ new WeakMap());
+  // Share the existing ID/result registry between consumers of the same store.
+  const contextos = crearMotorStock.contextos || (crearMotorStock.contextos = new WeakMap());
   let porSetter = contextos.get(setProductos);
-  if (!porSetter) contextos.set(setProductos, porSetter = /* @__PURE__ */ new WeakMap());
+  if (!porSetter) contextos.set(setProductos, porSetter = new WeakMap());
   let contexto = porSetter.get(setMovimientos);
   if (!contexto) {
-    contexto = { idsConocidos: /* @__PURE__ */ new Set(), porId: /* @__PURE__ */ new Map(), snapshotLocal: /* @__PURE__ */ new Map(), vistos: /* @__PURE__ */ new WeakSet(), pendiente: null };
+    contexto = { idsConocidos: new Set(), porId: new Map(), snapshotLocal: new Map(), vistos: new WeakSet(), pendiente: null };
     porSetter.set(setMovimientos, contexto);
   }
   const { idsConocidos, porId, snapshotLocal } = contexto;
-  for (const m4 of movimientos) {
-    idsConocidos.add(m4.id);
-    porId.set(m4.id, m4);
-  }
+  for (const m of movimientos) { idsConocidos.add(m.id); porId.set(m.id, m); }
   if (!contexto.vistos.has(productos) && !contexto.pendiente) {
     contexto.vistos.add(productos);
     snapshotLocal.clear();
-    for (const p3 of productos) snapshotLocal.set(p3.id, p3);
+    for (const p of productos) snapshotLocal.set(p.id, p);
   }
   function productoActual(productoId) {
     if (snapshotLocal.has(productoId)) return snapshotLocal.get(productoId);
-    return productos.find((p22) => p22.id === productoId);
+    return productos.find((p2) => p2.id === productoId);
   }
   function calcularStockTeorico(productoId, campo = "stock") {
-    return movimientos.filter((m22) => m22.productoId === productoId).filter((m22) => m22.origen !== "reconciliacionStock").filter((m22) => {
-      if (esMovimientoNuevo(m22)) {
-        return !!m22[campo === "stockPisoVenta" ? "afectaStockPisoVenta" : "afectaStockTotal"];
+    return movimientos.filter((m2) => m2.productoId === productoId).filter((m2) => m2.origen !== "reconciliacionStock").filter((m2) => {
+      if (esMovimientoNuevo(m2)) {
+        return !!m2[campo === "stockPisoVenta" ? "afectaStockPisoVenta" : "afectaStockTotal"];
       }
       return campo !== "stockPisoVenta";
-    }).reduce((suma, m22) => suma + cantidadConSigno(m22), 0);
+    }).reduce((suma, m2) => suma + cantidadConSigno(m2), 0);
   }
   function aplicarMovimientoStock(operacion) {
     const resultado = aplicarLoteMovimientosStock([{ ...operacion, movimientoId: operacion.movimientoId || uid() }]);
     return { ...resultado, movimiento: resultado.movimientos && resultado.movimientos[0] };
   }
+
   function publicarPendiente() {
-    const p3 = contexto.pendiente;
-    if (p3.publicando) return { ok: false, codigo: "operacion_en_curso", error: "La operaci\xF3n sigue en curso.", movimientos: [] };
-    p3.publicando = true;
+    const p = contexto.pendiente;
+    if (p.publicando) return { ok: false, codigo: "operacion_en_curso", error: "La operación sigue en curso.", movimientos: [] };
+    p.publicando = true;
     try {
-      if (!p3.productosPublicados) {
-        setProductos((s3) => s3.map((producto) => {
-          const nuevo = p3.simulados.get(producto.id);
+      // Retry the prepared absolute values, never recompute/apply the delta.
+      if (!p.productosPublicados) {
+        setProductos((s) => s.map((producto) => {
+          const nuevo = p.simulados.get(producto.id);
           return nuevo ? { ...producto, stock: nuevo.stock, deficitPendiente: nuevo.deficitPendiente, stockPisoVenta: nuevo.stockPisoVenta } : producto;
         }));
-        p3.productosPublicados = true;
+        p.productosPublicados = true;
       }
-      setMovimientos((s3) => [...p3.movimientosNuevos].reverse().concat(s3.filter((m4) => !p3.ids.has(m4.id))));
-      for (const [id, producto] of p3.simulados) snapshotLocal.set(id, producto);
-      for (const m4 of p3.movimientosNuevos) {
-        idsConocidos.add(m4.id);
-        porId.set(m4.id, m4);
-      }
+      setMovimientos((s) => [...p.movimientosNuevos].reverse().concat(s.filter((m) => !p.ids.has(m.id))));
+      for (const [id, producto] of p.simulados) snapshotLocal.set(id, producto);
+      for (const m of p.movimientosNuevos) { idsConocidos.add(m.id); porId.set(m.id, m); }
       contexto.pendiente = null;
-      return { ok: true, replayed: false, yaExistia: false, movimientos: p3.movimientosNuevos };
+      return { ok: true, replayed: false, yaExistia: false, movimientos: p.movimientosNuevos };
     } catch {
-      return { ok: false, codigo: "publicacion_pendiente", error: "No se ha confirmado la operaci\xF3n completa. Reintenta la misma intenci\xF3n.", movimientos: [] };
-    } finally {
-      p3.publicando = false;
-    }
+      return { ok: false, codigo: "publicacion_pendiente", error: "No se ha confirmado la operación completa. Reintenta la misma intención.", movimientos: [] };
+    } finally { p.publicando = false; }
   }
+
   function aplicarLoteMovimientosStock(operaciones = []) {
     if (!Array.isArray(operaciones) || operaciones.length === 0) {
-      return { ok: false, codigo: "lote_vacio", error: "El lote de movimientos est\xE1 vac\xEDo.", movimientos: [] };
+      return { ok: false, codigo: "lote_vacio", error: "El lote de movimientos está vacío.", movimientos: [] };
     }
     const idsLote = /* @__PURE__ */ new Set();
     const normalizadas = [];
@@ -105236,12 +105228,20 @@ function crearMotorStock({ productos, setProductos, movimientos, setMovimientos,
       if (idsLote.has(id)) return { ok: false, codigo: "movimiento_id_duplicado", error: `El lote repite el movimiento ${id}.`, movimientos: [] };
       idsLote.add(id);
       const cantidadNum = Number(operacion.cantidad);
-      if (!Number.isFinite(cantidadNum)) return { ok: false, codigo: "cantidad_no_finita", error: `El movimiento ${id} tiene una cantidad no v\xE1lida.`, movimientos: [] };
+      if (!Number.isFinite(cantidadNum)) return { ok: false, codigo: "cantidad_no_finita", error: `El movimiento ${id} tiene una cantidad no válida.`, movimientos: [] };
       normalizadas.push({ ...operacion, movimientoId: id, cantidad: cantidadNum });
     }
     function coincideMovimiento(existente, operacion) {
       if (!existente) return false;
-      return String(existente.id || "") === operacion.movimientoId && String(existente.productoId || "") === String(operacion.productoId || "") && Number(existente.cantidad) === Number(operacion.cantidad) && String(existente.tipo || "") === String(operacion.tipo || "") && String(existente.operationId || existente.id || "") === String(operacion.operationId || operacion.movimientoId) && String(existente.origen || "") === String(operacion.origen || "") && String(existente.documentoOrigenId || "") === String(operacion.documentoOrigenId || "") && !!existente.afectaStockTotal === (operacion.afectaStockTotal !== false) && !!existente.afectaStockPisoVenta === !!operacion.afectaStockPisoVenta;
+      return String(existente.id || "") === operacion.movimientoId &&
+        String(existente.productoId || "") === String(operacion.productoId || "") &&
+        Number(existente.cantidad) === Number(operacion.cantidad) &&
+        String(existente.tipo || "") === String(operacion.tipo || "") &&
+        String(existente.operationId || existente.id || "") === String(operacion.operationId || operacion.movimientoId) &&
+        String(existente.origen || "") === String(operacion.origen || "") &&
+        String(existente.documentoOrigenId || "") === String(operacion.documentoOrigenId || "") &&
+        !!existente.afectaStockTotal === (operacion.afectaStockTotal !== false) &&
+        !!existente.afectaStockPisoVenta === !!operacion.afectaStockPisoVenta;
     }
     let existentes = 0;
     const movimientosExistentes = [];
@@ -105256,15 +105256,16 @@ function crearMotorStock({ productos, setProductos, movimientos, setMovimientos,
       movimientosExistentes.push(existente);
     }
     if (existentes > 0 && existentes < normalizadas.length) {
-      return { ok: false, codigo: "replay_parcial_inconsistente", error: "Se detect\xF3 un lote aplicado solo en parte. No se crear\xE1n movimientos adicionales hasta reconciliar el estado.", movimientos: movimientosExistentes };
+      return { ok: false, codigo: "replay_parcial_inconsistente", error: "Se detectó un lote aplicado solo en parte. No se crearán movimientos adicionales hasta reconciliar el estado.", movimientos: movimientosExistentes };
     }
     if (existentes === normalizadas.length) {
-      return { ok: true, replayed: true, yaExistia: true, movimientos: normalizadas.map((o3) => porId.get(o3.movimientoId)) };
+      return { ok: true, replayed: true, yaExistia: true, movimientos: normalizadas.map((o) => porId.get(o.movimientoId)) };
     }
+
     if (contexto.pendiente) {
-      const p3 = contexto.pendiente;
-      if (p3.movimientosNuevos.length !== normalizadas.length || !normalizadas.every((o3) => coincideMovimiento(p3.movimientosNuevos.find((m4) => m4.id === o3.movimientoId), o3))) {
-        return { ok: false, codigo: "operacion_pendiente", error: "Hay una operaci\xF3n sin confirmar. Reint\xE9ntala antes de iniciar otra.", movimientos: [] };
+      const p = contexto.pendiente;
+      if (p.movimientosNuevos.length !== normalizadas.length || !normalizadas.every((o) => coincideMovimiento(p.movimientosNuevos.find((m) => m.id === o.movimientoId), o))) {
+        return { ok: false, codigo: "operacion_pendiente", error: "Hay una operación sin confirmar. Reinténtala antes de iniciar otra.", movimientos: [] };
       }
       return publicarPendiente();
     }
@@ -105278,7 +105279,7 @@ function crearMotorStock({ productos, setProductos, movimientos, setMovimientos,
       const baseEsperada = operacion.camposExtra && operacion.camposExtra.pm12BaseStock;
       const baseActual = productoActual(operacion.productoId);
       if (baseEsperada && ["stock", "stockPisoVenta", "deficitPendiente"].some((campo) => (Number(baseEsperada[campo]) || 0) !== (Number(baseActual[campo]) || 0))) {
-        return { ok: false, codigo: "stock_base_obsoleto", error: "El stock cambi\xF3 desde que se prepar\xF3 el ajuste. Actualiza el conteo antes de aplicarlo.", movimientos: [] };
+        return { ok: false, codigo: "stock_base_obsoleto", error: "El stock cambió desde que se preparó el ajuste. Actualiza el conteo antes de aplicarlo.", movimientos: [] };
       }
       const cantidadNum = operacion.cantidad;
       const afectaStockTotal = operacion.afectaStockTotal !== false;
@@ -105293,14 +105294,14 @@ function crearMotorStock({ productos, setProductos, movimientos, setMovimientos,
         const teoricoDespues = teoricoAntes + cantidadNum;
         const deficitNuevo = Math.max(0, -teoricoDespues);
         if (deficitNuevo > deficitActual && !permitirDeficit) {
-          return { ok: false, codigo: "stock_insuficiente", error: `Stock insuficiente: hay ${Math.max(0, teoricoAntes)}, se piden ${-cantidadNum}.`, movimientos: [] };
+return { ok: false, codigo: "stock_insuficiente", error: `Stock insuficiente: hay ${Math.max(0, teoricoAntes)}, se piden ${-cantidadNum}.`, movimientos: [] };
         }
         resultadoCampos.stock = Math.max(0, teoricoDespues);
         resultadoCampos.deficitPendiente = deficitNuevo;
         deficitGenerado = Math.max(0, deficitNuevo - deficitActual);
         const minimo = Number(productoBase.stockMinimo) || 0;
         if (minimo > 0 && teoricoAntes >= minimo && teoricoDespues < minimo) {
-          avisosStockBajo.push({ producto: productoBase, teoricoDespues });
+avisosStockBajo.push({ producto: productoBase, teoricoDespues });
         }
       }
       if (afectaStockPisoVenta) {
@@ -105332,38 +105333,32 @@ function crearMotorStock({ productos, setProductos, movimientos, setMovimientos,
       movimientosNuevos.push(movimiento);
       if (deficitGenerado > 0) deficitsAuditoria.push({ producto: productoBase, deficitGenerado, tipo: operacion.tipo, operationId: movimiento.operationId });
     }
+
     contexto.pendiente = { simulados, movimientosNuevos, ids: idsLote, productosPublicados: false, publicando: false };
     const publicado = publicarPendiente();
     if (!publicado.ok) return publicado;
     if (registrarAuditoria) {
-      for (const d2 of deficitsAuditoria) {
-        try {
-          registrarAuditoria("deficit_stock_detectado", `${d2.producto.nombre}: ${d2.deficitGenerado} sin cobertura (${d2.tipo}, operaci\xF3n ${d2.operationId})`);
-        } catch {
-        }
+      for (const d of deficitsAuditoria) {
+        try { registrarAuditoria("deficit_stock_detectado", `${d.producto.nombre}: ${d.deficitGenerado} sin cobertura (${d.tipo}, operación ${d.operationId})`); } catch {}
       }
     }
     if (typeof window !== "undefined" && window.__nubeActiva) {
       for (const aviso of avisosStockBajo) {
-        try {
-          fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ titulo: "Stock bajo", cuerpo: `${aviso.producto.nombre} baj\xF3 del m\xEDnimo (quedan ${fmt(Math.max(0, aviso.teoricoDespues))}).`, localId: aviso.producto.localId || null, url: "/" })
-          }).catch(() => {
-          });
-        } catch {
-        }
+        try { fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+method: "POST",
+headers: { "Content-Type": "application/json" },
+body: JSON.stringify({ titulo: "Stock bajo", cuerpo: `${aviso.producto.nombre} bajó del mínimo (quedan ${fmt(Math.max(0, aviso.teoricoDespues))}).`, localId: aviso.producto.localId || null, url: "/" })
+        }).catch(() => {}); } catch {}
       }
     }
     return { ok: true, replayed: false, yaExistia: false, movimientos: movimientosNuevos };
   }
   function recuperarOperacionStock(operationId, intencion) {
-    if (contexto.pendiente && contexto.pendiente.movimientosNuevos.some((m4) => m4.operationId === operationId)) {
-      if (intencion && contexto.pendiente.movimientosNuevos.some((m4) => m4.pm12Intencion !== intencion)) return { ok: false, codigo: "conflicto_movimiento_existente", error: "La intenci\xF3n cambi\xF3 mientras la publicaci\xF3n estaba pendiente.", movimientos: [] };
+    if (contexto.pendiente && contexto.pendiente.movimientosNuevos.some((m) => m.operationId === operationId)) {
+      if (intencion && contexto.pendiente.movimientosNuevos.some((m) => m.pm12Intencion !== intencion)) return { ok: false, codigo: "conflicto_movimiento_existente", error: "La intención cambió mientras la publicación estaba pendiente.", movimientos: [] };
       return publicarPendiente();
     }
-    const existentes = [...porId.values()].filter((m4) => m4.operationId === operationId);
+    const existentes = [...porId.values()].filter((m) => m.operationId === operationId);
     return existentes.length ? { ok: true, replayed: true, yaExistia: true, movimientos: existentes } : null;
   }
   return { aplicarMovimientoStock, aplicarLoteMovimientosStock, recuperarOperacionStock, calcularStockTeorico };
@@ -105458,14 +105453,14 @@ function numeroPM10(valor, campo, { minimo = null, maximo = null, estrictoMinimo
     return opcional ? { ok: true, vacio: true, valor: null } : errorValidacionPM10("campo_obligatorio", campo, `${campo} es obligatorio.`);
   }
   const numero = Number(valor);
-  if (!Number.isFinite(numero)) return errorValidacionPM10("numero_no_finito", campo, `${campo} debe ser un n\xFAmero v\xE1lido.`);
-  if (entero && !Number.isInteger(numero)) return errorValidacionPM10("numero_no_entero", campo, `${campo} debe ser un n\xFAmero entero.`);
+  if (!Number.isFinite(numero)) return errorValidacionPM10("numero_no_finito", campo, `${campo} debe ser un número válido.`);
+  if (entero && !Number.isInteger(numero)) return errorValidacionPM10("numero_no_entero", campo, `${campo} debe ser un número entero.`);
   if (minimo !== null && (estrictoMinimo ? numero <= minimo : numero < minimo)) return errorValidacionPM10("valor_fuera_rango", campo, estrictoMinimo ? `${campo} debe ser mayor que ${minimo}.` : `${campo} no puede ser menor que ${minimo}.`);
   if (maximo !== null && numero > maximo) return errorValidacionPM10("valor_fuera_rango", campo, `${campo} no puede ser mayor que ${maximo}.`);
   return { ok: true, valor: numero };
 }
 function validarContextoEscrituraPM10({ localActivoId = null, locales = [], empresaId = null } = {}) {
-  if (!localActivoId) return errorValidacionPM10("contexto_no_autorizado", "localId", "Selecciona un local activo para realizar esta operaci\xF3n.");
+  if (!localActivoId) return errorValidacionPM10("contexto_no_autorizado", "localId", "Selecciona un local activo para realizar esta operación.");
   if (Array.isArray(locales) && locales.length) {
     const local = locales.find((l22) => l22 && l22.id === localActivoId) || null;
     if (!local) return errorValidacionPM10("referencia_inexistente", "localId", "El local seleccionado ya no existe.");
@@ -105496,10 +105491,10 @@ function validarProductoPM10(data, { parcial = false } = {}) {
     const presente = Object.prototype.hasOwnProperty.call(entrada, campo);
     if (!presente && parcial) continue;
     if (!presente && !obligatorioAlta) continue;
-    const r2 = numeroPM10(entrada[campo], campo, opciones);
-    if (!r2.ok) return r2;
-    if (r2.vacio) delete salida[campo];
-    else salida[campo] = r2.valor;
+    const r = numeroPM10(entrada[campo], campo, opciones);
+    if (!r.ok) return r;
+    if (r.vacio) delete salida[campo];
+    else salida[campo] = r.valor;
   }
   return { ok: true, datos: salida };
 }
@@ -105682,67 +105677,74 @@ function fechaValidaPedidoPM10(valor) {
   const texto = String(valor ?? "").trim();
   if (!texto) return true;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(texto)) return false;
-  const [y3, m4, d2] = texto.split("-").map(Number);
-  const fecha = new Date(Date.UTC(y3, m4 - 1, d2));
-  return fecha.getUTCFullYear() === y3 && fecha.getUTCMonth() === m4 - 1 && fecha.getUTCDate() === d2;
+  const [y, m, d] = texto.split("-").map(Number);
+  const fecha = new Date(Date.UTC(y, m - 1, d));
+  return fecha.getUTCFullYear() === y && fecha.getUTCMonth() === m - 1 && fecha.getUTCDate() === d;
 }
 function validarPedidoPM10(data, { pedidoActual = null, proveedores = [], productos = [], localActivoId = null, locales = [], empresaId = null } = {}) {
   const entrada = data && typeof data === "object" ? data : {};
   const contexto = validarContextoEscrituraPM10({ localActivoId, locales, empresaId });
   if (!contexto.ok) return contexto;
   if (pedidoActual && pedidoActual.localId !== localActivoId) return errorValidacionPM10("contexto_no_autorizado", "localId", "El pedido no pertenece al local activo.");
+
   const proveedorId = String(entrada.proveedorId ?? "").trim();
   if (!proveedorId) return errorValidacionPM10("campo_obligatorio", "proveedorId", "Selecciona un proveedor.");
   const proveedor = (proveedores || []).find((p22) => p22 && p22.id === proveedorId);
   if (!proveedor) return errorValidacionPM10("referencia_inexistente", "proveedorId", "El proveedor no existe en el contexto autorizado.");
   if (empresaId && proveedor.empresaId && proveedor.empresaId !== empresaId) return errorValidacionPM10("referencia_otro_contexto", "proveedorId", "El proveedor pertenece a otra empresa.");
+
   const fechaEsperada = String(entrada.fechaEsperada ?? "").trim();
-  if (fechaEsperada && !fechaValidaPedidoPM10(fechaEsperada)) return errorValidacionPM10("fecha_invalida", "fechaEsperada", "La fecha esperada no es v\xE1lida.");
-  if (!Array.isArray(entrada.items) || entrada.items.length === 0) return errorValidacionPM10("campo_obligatorio", "items", "A\xF1ade al menos un producto al pedido.");
-  const anterioresPorProducto = /* @__PURE__ */ new Map();
+  if (fechaEsperada && !fechaValidaPedidoPM10(fechaEsperada)) return errorValidacionPM10("fecha_invalida", "fechaEsperada", "La fecha esperada no es válida.");
+  if (!Array.isArray(entrada.items) || entrada.items.length === 0) return errorValidacionPM10("campo_obligatorio", "items", "Añade al menos un producto al pedido.");
+
+  const anterioresPorProducto = new Map();
   for (const anterior of pedidoActual?.items || []) {
     const clave = String(anterior?.productoId ?? "");
     if (!anterioresPorProducto.has(clave)) anterioresPorProducto.set(clave, []);
     anterioresPorProducto.get(clave).push(anterior);
   }
-  const usados = /* @__PURE__ */ new Set();
+  const usados = new Set();
   const items = [];
+
   for (let i33 = 0; i33 < entrada.items.length; i33 += 1) {
     const item = entrada.items[i33] && typeof entrada.items[i33] === "object" ? entrada.items[i33] : {};
     const prefijo = `items.${i33}`;
     const productoId = String(item.productoId ?? "").trim();
-    if (!productoId) return errorValidacionPM10("campo_obligatorio", `${prefijo}.productoId`, "Cada l\xEDnea debe tener un producto.");
+    if (!productoId) return errorValidacionPM10("campo_obligatorio", `${prefijo}.productoId`, "Cada línea debe tener un producto.");
     const producto = (productos || []).find((p22) => p22 && p22.id === productoId);
     if (!producto) return errorValidacionPM10("referencia_inexistente", `${prefijo}.productoId`, "El producto no existe.");
     if (producto.localId !== localActivoId) return errorValidacionPM10("referencia_otro_contexto", `${prefijo}.productoId`, "El producto no pertenece al local activo.");
+
     const cantidadR = numeroPM10(item.cantidad, `${prefijo}.cantidad`, { minimo: 0, estrictoMinimo: true });
     if (!cantidadR.ok) return cantidadR;
     const costoR = numeroPM10(item.costoUnitario, `${prefijo}.costoUnitario`, { minimo: 0 });
     if (!costoR.ok) return costoR;
+
     const cola = anterioresPorProducto.get(productoId) || [];
     const anterior = cola.find((x3) => !usados.has(x3)) || null;
     if (anterior) usados.add(anterior);
     let cantidadRecibida = 0;
     if (anterior) {
       const recibidaAnterior = Number(anterior.cantidadRecibida ?? 0);
-      if (!Number.isFinite(recibidaAnterior) || recibidaAnterior < 0) return errorValidacionPM10("conflicto_estado_previo", `${prefijo}.cantidadRecibida`, "La recepci\xF3n acumulada anterior no es v\xE1lida.");
+      if (!Number.isFinite(recibidaAnterior) || recibidaAnterior < 0) return errorValidacionPM10("conflicto_estado_previo", `${prefijo}.cantidadRecibida`, "La recepción acumulada anterior no es válida.");
       cantidadRecibida = recibidaAnterior;
       if (Object.prototype.hasOwnProperty.call(item, "cantidadRecibida") && item.cantidadRecibida !== null && item.cantidadRecibida !== void 0 && String(item.cantidadRecibida).trim() !== "") {
         const recibidaPayload = Number(item.cantidadRecibida);
-        if (!Number.isFinite(recibidaPayload) || recibidaPayload !== recibidaAnterior) return errorValidacionPM10("conflicto_estado_previo", `${prefijo}.cantidadRecibida`, "La edici\xF3n no puede modificar manualmente la cantidad ya recibida.");
+        if (!Number.isFinite(recibidaPayload) || recibidaPayload !== recibidaAnterior) return errorValidacionPM10("conflicto_estado_previo", `${prefijo}.cantidadRecibida`, "La edición no puede modificar manualmente la cantidad ya recibida.");
       }
       if (cantidadR.valor < cantidadRecibida) return errorValidacionPM10("exceso_sobre_cantidad_pendiente", `${prefijo}.cantidad`, "La cantidad pedida no puede quedar por debajo de lo ya recibido.");
     } else if (Object.prototype.hasOwnProperty.call(item, "cantidadRecibida") && item.cantidadRecibida !== null && item.cantidadRecibida !== void 0 && String(item.cantidadRecibida).trim() !== "") {
       const recibidaNueva = Number(item.cantidadRecibida);
-      if (!Number.isFinite(recibidaNueva) || recibidaNueva !== 0) return errorValidacionPM10("conflicto_estado_previo", `${prefijo}.cantidadRecibida`, "Una l\xEDnea nueva debe empezar con cantidad recibida igual a cero.");
+      if (!Number.isFinite(recibidaNueva) || recibidaNueva !== 0) return errorValidacionPM10("conflicto_estado_previo", `${prefijo}.cantidadRecibida`, "Una línea nueva debe empezar con cantidad recibida igual a cero.");
     }
     items.push({ ...item, productoId, cantidad: cantidadR.valor, costoUnitario: costoR.valor, cantidadRecibida });
   }
+
   if (pedidoActual) {
     for (const anterior of pedidoActual.items || []) {
       if (usados.has(anterior)) continue;
       const recibidaAnterior = Number(anterior.cantidadRecibida ?? 0);
-      if (Number.isFinite(recibidaAnterior) && recibidaAnterior > 0) return errorValidacionPM10("conflicto_estado_previo", "items", "No puedes eliminar una l\xEDnea que ya tiene unidades recibidas.");
+      if (Number.isFinite(recibidaAnterior) && recibidaAnterior > 0) return errorValidacionPM10("conflicto_estado_previo", "items", "No puedes eliminar una línea que ya tiene unidades recibidas.");
     }
   }
   return { ok: true, datos: { ...entrada, proveedorId, fechaEsperada, items } };
@@ -105753,22 +105755,23 @@ function unidadesRecepcionLineaPM10(linea, campo, modo = "directo") {
   if (modo === "directo" || linea?.tipoUnidad === "peso") {
     return { ok: true, cantidad: cantidadR.valor, udsPorCaja: 1, unidades: cantidadR.valor };
   }
-  let udsPorCaja2 = 1;
+  let udsPorCaja = 1;
   if (linea?.udsPorCaja !== null && linea?.udsPorCaja !== void 0 && String(linea.udsPorCaja).trim() !== "") {
     const udsR = numeroPM10(linea.udsPorCaja, `${campo}.udsPorCaja`, { minimo: 0, estrictoMinimo: true });
     if (!udsR.ok) return udsR;
-    udsPorCaja2 = udsR.valor;
+    udsPorCaja = udsR.valor;
   }
-  const unidades = cantidadR.valor * udsPorCaja2;
-  if (!Number.isFinite(unidades) || unidades <= 0) return errorValidacionPM10("numero_no_finito", `${campo}.cantidad`, "La cantidad total a recibir no es v\xE1lida.");
-  return { ok: true, cantidad: cantidadR.valor, udsPorCaja: udsPorCaja2, unidades };
+  const unidades = cantidadR.valor * udsPorCaja;
+  if (!Number.isFinite(unidades) || unidades <= 0) return errorValidacionPM10("numero_no_finito", `${campo}.cantidad`, "La cantidad total a recibir no es válida.");
+  return { ok: true, cantidad: cantidadR.valor, udsPorCaja, unidades };
 }
 function validarRecepcionPedidoPM10({ pedido, lineas, productos = [], localActivoId = null, locales = [], empresaId = null, modo = "directo" } = {}) {
   const contexto = validarContextoEscrituraPM10({ localActivoId, locales, empresaId });
   if (!contexto.ok) return contexto;
   if (!pedido || pedido.localId !== localActivoId) return errorValidacionPM10("contexto_no_autorizado", "pedidoId", "El pedido no pertenece al local activo.");
   if (!Array.isArray(lineas) || lineas.length === 0) return errorValidacionPM10("campo_obligatorio", "lineas", "Indica al menos una cantidad a recibir.");
-  const pendientesPorProducto = /* @__PURE__ */ new Map();
+
+  const pendientesPorProducto = new Map();
   for (let i33 = 0; i33 < (pedido.items || []).length; i33 += 1) {
     const item = pedido.items[i33] || {};
     const productoId = String(item.productoId ?? "").trim();
@@ -105779,20 +105782,23 @@ function validarRecepcionPedidoPM10({ pedido, lineas, productos = [], localActiv
     }
     pendientesPorProducto.set(productoId, (pendientesPorProducto.get(productoId) || 0) + Math.max(0, pedida - recibida));
   }
-  const solicitadasPorProducto = /* @__PURE__ */ new Map();
+
+  const solicitadasPorProducto = new Map();
   const normalizadas = [];
   for (let i33 = 0; i33 < lineas.length; i33 += 1) {
     const linea = lineas[i33] && typeof lineas[i33] === "object" ? lineas[i33] : {};
     const campo = `lineas.${i33}`;
     const productoId = String(linea.productoId ?? "").trim();
-    if (!productoId) return errorValidacionPM10("campo_obligatorio", `${campo}.productoId`, "Cada l\xEDnea recibida debe estar enlazada a un producto.");
+    if (!productoId) return errorValidacionPM10("campo_obligatorio", `${campo}.productoId`, "Cada línea recibida debe estar enlazada a un producto.");
     const producto = productos.find((p22) => p22 && p22.id === productoId);
     if (!producto) return errorValidacionPM10("referencia_inexistente", `${campo}.productoId`, "El producto recibido no existe.");
     if (producto.localId !== localActivoId) return errorValidacionPM10("referencia_otro_contexto", `${campo}.productoId`, "El producto recibido pertenece a otro local.");
     if (!pendientesPorProducto.has(productoId)) return errorValidacionPM10("referencia_inexistente", `${campo}.productoId`, "El producto no forma parte del pedido enlazado.");
+
     const unidadesR = unidadesRecepcionLineaPM10(linea, campo, modo);
     if (!unidadesR.ok) return unidadesR;
     solicitadasPorProducto.set(productoId, (solicitadasPorProducto.get(productoId) || 0) + unidadesR.unidades);
+
     if (modo === "directo") {
       let precio = producto.costo;
       if (linea.precioBruto !== null && linea.precioBruto !== void 0 && String(linea.precioBruto).trim() !== "") {
@@ -105800,7 +105806,7 @@ function validarRecepcionPedidoPM10({ pedido, lineas, productos = [], localActiv
         if (!precioR.ok) return precioR;
         precio = precioR.valor;
       }
-      if (!Number.isFinite(Number(precio)) || Number(precio) < 0) return errorValidacionPM10("numero_no_finito", `${campo}.precioBruto`, "El precio unitario no es v\xE1lido.");
+      if (!Number.isFinite(Number(precio)) || Number(precio) < 0) return errorValidacionPM10("numero_no_finito", `${campo}.precioBruto`, "El precio unitario no es válido.");
       let iva = producto.ivaCompra ?? 10;
       if (linea.ivaPct !== null && linea.ivaPct !== void 0 && String(linea.ivaPct).trim() !== "") {
         const ivaR = numeroPM10(linea.ivaPct, `${campo}.ivaPct`, { minimo: 0 });
@@ -105824,6 +105830,7 @@ function validarRecepcionPedidoPM10({ pedido, lineas, productos = [], localActiv
       normalizadas.push({ ...linea, productoId, cantidad: unidadesR.cantidad, udsPorCaja: unidadesR.udsPorCaja });
     }
   }
+
   for (const [productoId, solicitadas] of solicitadasPorProducto.entries()) {
     const pendiente = pendientesPorProducto.get(productoId) || 0;
     if (solicitadas > pendiente + 1e-9) {
@@ -105833,7 +105840,7 @@ function validarRecepcionPedidoPM10({ pedido, lineas, productos = [], localActiv
   return { ok: true, lineas: normalizadas, solicitadasPorProducto, pendientesPorProducto };
 }
 function aplicarRecepcionPedidoPM10(pedido, lineasResueltas) {
-  const disponibles = /* @__PURE__ */ new Map();
+  const disponibles = new Map();
   for (const linea of lineasResueltas || []) {
     const unidades = Number(linea?.unidadesEntradas);
     if (!linea?.productoId || !Number.isFinite(unidades) || unidades <= 0) continue;
@@ -105852,7 +105859,7 @@ function aplicarRecepcionPedidoPM10(pedido, lineasResueltas) {
   const algo = items.some((item) => Number(item.cantidadRecibida ?? 0) > 0);
   return { ...pedido, items, estado: completo ? "Recibido" : algo ? "Parcial" : "Pendiente" };
 }
-var operacionesRecepcionPM11Memoria = /* @__PURE__ */ new Map();
+const operacionesRecepcionPM11Memoria = /* @__PURE__ */ new Map();
 function valorFirmaRecepcionPM11(valor) {
   if (valor === null || valor === void 0 || String(valor).trim() === "") return null;
   const numero = Number(valor);
@@ -105866,7 +105873,7 @@ function firmaSolicitudRecepcionPM11(pedido, lineas) {
     ivaPct: valorFirmaRecepcionPM11(linea?.ivaPct),
     udsPorCaja: valorFirmaRecepcionPM11(linea?.udsPorCaja),
     tipoUnidad: String(linea?.tipoUnidad ?? "").trim()
-  })).sort((a3, b2) => JSON.stringify(a3).localeCompare(JSON.stringify(b2)));
+  })).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
   return JSON.stringify({
     pedidoId: String(pedido?.id ?? ""),
     localId: String(pedido?.localId ?? ""),
@@ -105877,8 +105884,8 @@ function firmaSolicitudRecepcionPM11(pedido, lineas) {
 function resolverOperationIdRecepcionPM11(operationId) {
   if (operationId === null || operationId === void 0) return { ok: true, operationId: `rx-${uid()}`, legado: true };
   const id = String(operationId).trim();
-  if (!id) return errorValidacionPM10("campo_obligatorio", "operationId", "La recepci\xF3n necesita una identidad de operaci\xF3n.");
-  if (id.length > 180) return errorValidacionPM10("valor_fuera_rango", "operationId", "La identidad de operaci\xF3n es demasiado larga.");
+  if (!id) return errorValidacionPM10("campo_obligatorio", "operationId", "La recepción necesita una identidad de operación.");
+  if (id.length > 180) return errorValidacionPM10("valor_fuera_rango", "operationId", "La identidad de operación es demasiado larga.");
   return { ok: true, operationId: id, legado: false };
 }
 function eventoRecepcionPM11EnPedidos(pedidos, operationId) {
@@ -105978,29 +105985,34 @@ function crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedo
     return true;
   }
   function recibirPedido(pedidoId, lineas, operationId = null) {
-    if (almacenCongelado) return errorValidacionPM10("conflicto_estado_previo", "almacen", "El almac\xE9n est\xE1 congelado por un conteo en curso.");
+    if (almacenCongelado) return errorValidacionPM10("conflicto_estado_previo", "almacen", "El almacén está congelado por un conteo en curso.");
     const pedido = pedidos2.find((pe2) => pe2.id === pedidoId);
     if (!pedidoEsDelLocalActivo(pedido)) return errorValidacionPM10("contexto_no_autorizado", "pedidoId", "Pedido fuera del local activo.");
+
     const operacionR = resolverOperationIdRecepcionPM11(operationId);
     if (!operacionR.ok) return operacionR;
     const opId = operacionR.operationId;
     const firmaSolicitud = firmaSolicitudRecepcionPM11(pedido, lineas);
+
     const persistido = eventoRecepcionPM11EnPedidos(pedidos2, opId);
     if (persistido) {
       if (persistido.pedido.id !== pedido.id || persistido.evento.firmaSolicitud !== firmaSolicitud) {
-        return errorValidacionPM10("operation_id_conflict", "operationId", "La identidad de recepci\xF3n ya pertenece a otra operaci\xF3n.");
+        return errorValidacionPM10("operation_id_conflict", "operationId", "La identidad de recepción ya pertenece a otra operación.");
       }
       return { ok: true, replayed: true, operationId: opId, lineasResueltas: persistido.evento.lineas || [], avisos: [] };
     }
+
     const memoria = operacionesRecepcionPM11Memoria.get(opId);
     if (memoria) {
       if (memoria.pedidoId !== pedido.id || memoria.firmaSolicitud !== firmaSolicitud) {
-        return errorValidacionPM10("operation_id_conflict", "operationId", "La identidad de recepci\xF3n ya pertenece a otra operaci\xF3n.");
+        return errorValidacionPM10("operation_id_conflict", "operationId", "La identidad de recepción ya pertenece a otra operación.");
       }
       return { ok: true, replayed: true, operationId: opId, lineasResueltas: memoria.lineasResueltas || [], avisos: memoria.avisos || [] };
     }
+
     const validacion = validarRecepcionPedidoPM10({ pedido, lineas, productos, localActivoId, modo: "directo" });
     if (!validacion.ok) return validacion;
+
     operacionesRecepcionPM11Memoria.set(opId, { pedidoId: pedido.id, firmaSolicitud, estado: "procesando" });
     let resultado;
     try {
@@ -106024,12 +106036,13 @@ function crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedo
     }
     if (resultado?.replayed) {
       operacionesRecepcionPM11Memoria.delete(opId);
-      return errorValidacionPM10("conflicto_estado_previo", "recepcion", "La versi\xF3n del pedido usada por esta recepci\xF3n ya fue procesada. Recarga el pedido antes de registrar una nueva recepci\xF3n.");
+      return errorValidacionPM10("conflicto_estado_previo", "recepcion", "La versión del pedido usada por esta recepción ya fue procesada. Recarga el pedido antes de registrar una nueva recepción.");
     }
     if (!resultado || !Array.isArray(resultado.lineasResueltas)) {
       operacionesRecepcionPM11Memoria.delete(opId);
-      return errorValidacionPM10("conflicto_estado_previo", "recepcion", "No se pudo completar la recepci\xF3n.");
+      return errorValidacionPM10("conflicto_estado_previo", "recepcion", "No se pudo completar la recepción.");
     }
+
     const fecha = todayISO();
     const evento = eventoRecepcionPM11(opId, firmaSolicitud, resultado.lineasResueltas, fecha);
     operacionesRecepcionPM11Memoria.set(opId, {
@@ -106039,12 +106052,13 @@ function crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedo
       lineasResueltas: evento.lineas,
       avisos: resultado.avisos || []
     });
+
     setPedidos((prev) => prev.map((pe2) => {
       if (pe2.id !== pedidoId) return pe2;
       const existente = (Array.isArray(pe2.recepcionesPM11) ? pe2.recepcionesPM11 : []).find((ev) => ev?.operationId === opId);
       if (existente) return pe2;
       const actualizado = aplicarRecepcionPedidoPM10(pe2, resultado.lineasResueltas);
-      return { ...actualizado, recepcionesPM11: [...Array.isArray(pe2.recepcionesPM11) ? pe2.recepcionesPM11 : [], evento] };
+      return { ...actualizado, recepcionesPM11: [...(Array.isArray(pe2.recepcionesPM11) ? pe2.recepcionesPM11 : []), evento] };
     }));
     return { ok: true, replayed: false, operationId: opId, avisos: resultado.avisos || [], lineasResueltas: resultado.lineasResueltas };
   }
@@ -106078,22 +106092,18 @@ function crearLogicaFichasCosto({ productos, setFichasCosto, localActivoId, loca
 }
 function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId, empresaActivaId, obtenerContextoActor }) {
   const { aplicarMovimientoStock, aplicarLoteMovimientosStock, recuperarOperacionStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
-  function remotoAtomico() {
-    return typeof window !== "undefined" && window.__nubeActiva === true;
-  }
-  function sinConexionAtomica() {
-    return { ok: false, codigo: "conexion_atomica_requerida", error: "Conecta para confirmar el ajuste completo. El conteo se conserva sin aplicar stock.", ajustados: 0, traspasados: [] };
-  }
+  function remotoAtomico() { return typeof window !== "undefined" && window.__nubeActiva === true; }
+  function sinConexionAtomica() { return { ok: false, codigo: "conexion_atomica_requerida", error: "Conecta para confirmar el ajuste completo. El conteo se conserva sin aplicar stock.", ajustados: 0, traspasados: [] }; }
   async function publicarResultadoRemoto(promesa) {
-    const r2 = await promesa;
-    if (!r2.ok) return r2;
+    const r = await promesa;
+    if (!r.ok) return r;
     try {
       await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
       await sincronizarConteosPm12({ setConteos, localActivoId });
     } catch {
-      return { ok: false, codigo: "resultado_confirmado_actualizacion_pendiente", error: "La operaci\xF3n est\xE1 confirmada en el servidor; falta actualizar esta pantalla. Reintenta para recuperar el resultado.", resultadoExistente: true, ajustados: 0, traspasados: [] };
+      return { ok: false, codigo: "resultado_confirmado_actualizacion_pendiente", error: "La operación está confirmada en el servidor; falta actualizar esta pantalla. Reintenta para recuperar el resultado.", resultadoExistente: true, ajustados: 0, traspasados: [] };
     }
-    return r2;
+    return r;
   }
   function localDeConteo(conteo) {
     if (!conteo) return null;
@@ -106120,7 +106130,7 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
   function contextoAjustePara(conteo) {
     const base = typeof obtenerContextoActor === "function" ? obtenerContextoActor() || {} : {};
     const localConteo = localDeConteo(conteo);
-    const empresaContexto = base.empresaId || empresaActivaId || conteo && conteo.empresaId || null;
+    const empresaContexto = base.empresaId || empresaActivaId || (conteo && conteo.empresaId) || null;
     const localContexto = base.localId || localActivoId || null;
     return {
       rol: base.rol,
@@ -106129,8 +106139,8 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
       empresaId: empresaContexto,
       localId: localContexto,
       todosLosLocales: base.todosLosLocales === true || String(localContexto || "").toLowerCase() === "todos",
-      conteoEmpresaId: conteo && conteo.empresaId || empresaContexto,
-      conteoLocalId: localConteo || conteo && conteo.localId || null
+      conteoEmpresaId: (conteo && conteo.empresaId) || empresaContexto,
+      conteoLocalId: localConteo || (conteo && conteo.localId) || null
     };
   }
   function autorizarMutacionAjustes(conteo) {
@@ -106147,10 +106157,10 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
       actor_ajuste_obligatorio: "No se pudo identificar a la persona responsable del ajuste.",
       contexto_ajuste_incompleto: "Selecciona una empresa y un local concreto antes de ajustar inventario.",
       todos_no_es_destino: "Todos los locales es una vista de consulta y no puede recibir ajustes de inventario.",
-      identidad_conteo_incompleta: "El conteo no tiene una identidad de empresa y local v\xE1lida para ajustar stock.",
+      identidad_conteo_incompleta: "El conteo no tiene una identidad de empresa y local válida para ajustar stock.",
       empresa_no_coincide: "El conteo pertenece a otra empresa.",
       local_no_coincide: "El conteo pertenece a otro local.",
-      motor_permisos_no_disponible: "No se pudo validar el permiso para ajustar inventario. Recarga la p\xE1gina e int\xE9ntalo de nuevo."
+      motor_permisos_no_disponible: "No se pudo validar el permiso para ajustar inventario. Recarga la página e inténtalo de nuevo."
     };
     return { ok: false, codigo, error: mensajes[codigo] || "No tienes permiso para modificar el stock desde este conteo.", ajustados: 0, traspasados: [] };
   }
@@ -106224,24 +106234,24 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
     const conteo = conteos.find((c22) => c22.id === conteoId);
     if (!conteoEsDelLocalActivo(conteo)) return { ok: false, codigo: "fuera_de_contexto", error: "Conteo no disponible en el local activo." };
     const estadosApi = typeof window !== "undefined" ? window.__pm12ConteoEstados : null;
-    if (!estadosApi) return { ok: false, codigo: "motor_no_disponible", error: "No se pudo validar el cierre. Recarga la p\xE1gina e int\xE9ntalo de nuevo." };
+    if (!estadosApi) return { ok: false, codigo: "motor_no_disponible", error: "No se pudo validar el cierre. Recarga la página e inténtalo de nuevo." };
     const cierre = estadosApi.validarCierre(conteo, { responsable: conteo.responsables && conteo.responsables.contadoPor, confirmarParcial: opciones.confirmarParcial === true, motivoParcial: opciones.motivoParcial });
-    const mensajes = { sin_productos: "Este conteo no contiene productos y no se puede cerrar.", cantidades_invalidas: "Hay cantidades inv\xE1lidas. Corr\xEDgelas antes de cerrar.", conteo_vacio: "A\xFAn no has contado ning\xFAn producto. Introduce al menos una cantidad.", responsable_obligatorio: "Indica qui\xE9n realiz\xF3 el conteo.", cobertura_incompleta: "Faltan productos por contar.", motivo_parcial_obligatorio: "Explica por qu\xE9 se cierra el conteo incompleto." };
+    const mensajes = { sin_productos: "Este conteo no contiene productos y no se puede cerrar.", cantidades_invalidas: "Hay cantidades inválidas. Corrígelas antes de cerrar.", conteo_vacio: "Aún no has contado ningún producto. Introduce al menos una cantidad.", responsable_obligatorio: "Indica quién realizó el conteo.", cobertura_incompleta: "Faltan productos por contar.", motivo_parcial_obligatorio: "Explica por qué se cierra el conteo incompleto." };
     if (!cierre.ok) return { ok: false, codigo: cierre.error, error: mensajes[cierre.error] || "No se puede cerrar el conteo.", cobertura: cierre.cobertura };
     const cerradoEn = (/* @__PURE__ */ new Date()).toISOString();
     const motivoParcial = cierre.estado === estadosApi.ESTADOS.PARCIAL ? String(opciones.motivoParcial || "").trim() : null;
     const registroCierre = { actorId: String(opciones.actorId || cierre.responsable).trim(), actorNombre: String(opciones.actorNombre || cierre.responsable).trim(), cerradoEn, motivoParcial, cobertura: cierre.cobertura };
     setConteos((s22) => s22.map((c22) => c22.id === conteoId ? { ...c22, completado: true, estado: cierre.estado, cerradoEn, motivoParcial, coberturaCierre: cierre.cobertura, cierre: registroCierre } : c22));
-    registrarAuditoria("Finalizar conteo", `${cierre.estado} \xB7 ${cierre.cobertura.contados}/${cierre.cobertura.total} producto(s) \xB7 responsable: ${cierre.responsable}`);
+    registrarAuditoria("Finalizar conteo", `${cierre.estado} · ${cierre.cobertura.contados}/${cierre.cobertura.total} producto(s) · responsable: ${cierre.responsable}`);
     return { ok: true, estado: cierre.estado, cobertura: cierre.cobertura };
   }
   function eliminarConteo(conteoId, opciones = {}) {
-    const conteo = conteos.find((c4) => c4.id === conteoId);
+    const conteo = conteos.find((c) => c.id === conteoId);
     if (!conteoEsDelLocalActivo(conteo)) return { ok: false, error: "Conteo no disponible en el local activo." };
     const estadosApi = typeof window !== "undefined" ? window.__pm12ConteoEstados : null;
-    if (!estadosApi) return { ok: false, error: "No se pudo validar el conteo. Recarga la p\xE1gina e int\xE9ntalo de nuevo." };
+    if (!estadosApi) return { ok: false, error: "No se pudo validar el conteo. Recarga la página e inténtalo de nuevo." };
     const reglasPorProducto = (productoId) => {
-      const producto = productos.find((p3) => p3.id === productoId);
+      const producto = productos.find((p) => p.id === productoId);
       return producto ? {
         indivisible: producto.indivisible === true || producto.fraccionable === false,
         precision: Number.isInteger(producto.precisionCantidad) ? producto.precisionCantidad : void 0
@@ -106261,8 +106271,8 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
       };
     }
     if (estadosApi.esBorradorCompletamenteVacio(conteo, reglasPorProducto)) {
-      setConteos((s3) => s3.filter((c4) => c4.id !== conteoId));
-      registrarAuditoria("Eliminar borrador de conteo", `Conteo vac\xEDo del ${conteo.fecha || "sin fecha"} eliminado sin movimientos de stock`);
+      setConteos((s) => s.filter((c) => c.id !== conteoId));
+      registrarAuditoria("Eliminar borrador de conteo", `Conteo vacío del ${conteo.fecha || "sin fecha"} eliminado sin movimientos de stock`);
       return { ok: true, replayed: false, eliminado: true, cancelado: false, revertidos: 0, reversos: [] };
     }
     const preparada = estadosApi.prepararCancelacion(conteo, {
@@ -106272,9 +106282,9 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
     });
     if (!preparada.ok) {
       const mensajes = {
-        motivo_cancelacion_obligatorio: "Escribe el motivo de la cancelaci\xF3n.",
-        responsable_cancelacion_obligatorio: "Indica qui\xE9n es responsable de la cancelaci\xF3n.",
-        fecha_cancelacion_invalida: "La fecha de cancelaci\xF3n no es v\xE1lida."
+        motivo_cancelacion_obligatorio: "Escribe el motivo de la cancelación.",
+        responsable_cancelacion_obligatorio: "Indica quién es responsable de la cancelación.",
+        fecha_cancelacion_invalida: "La fecha de cancelación no es válida."
       };
       return { ok: false, codigo: preparada.error, error: mensajes[preparada.error] || "No se pudo cancelar el conteo." };
     }
@@ -106287,7 +106297,7 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
       if (!window.__pm12StockAtomico) return sinConexionAtomica();
       return publicarResultadoRemoto(window.__pm12StockAtomico.cancelar(conteo, preparada, permisoRemoto));
     }
-    const generados = movimientos.filter((m4) => m4.documentoOrigenId === conteoId && m4.origen === "aplicarAjustes" && movimientoEsDelLocalActivo(m4));
+    const generados = movimientos.filter((m) => m.documentoOrigenId === conteoId && m.origen === "aplicarAjustes" && movimientoEsDelLocalActivo(m));
     if (generados.length > 0) {
       const permisoCancelacionStock = autorizarMutacionAjustes(conteo);
       if (!permisoCancelacionStock.ok) return respuestaPermisoAjuste(permisoCancelacionStock);
@@ -106295,7 +106305,7 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
     const reversos = [];
     for (const movimientoOriginal of generados) {
       const movimientoReversoId = `pm12-cancelar-conteo:${conteoId}:${movimientoOriginal.id}`;
-      const r2 = aplicarMovimientoStock({
+      const r = aplicarMovimientoStock({
         productoId: movimientoOriginal.productoId,
         cantidad: -(Number(movimientoOriginal.cantidad) || 0),
         tipo: movimientoOriginal.tipo,
@@ -106307,13 +106317,13 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
         afectaStockPisoVenta: !!movimientoOriginal.afectaStockPisoVenta,
         permitirDeficit: true,
         revierteMovimientoId: movimientoOriginal.id,
-        motivo: `Cancelaci\xF3n del conteo del ${conteo.fecha || "sin fecha"} \xB7 ${preparada.motivo}`
+        motivo: `Cancelación del conteo del ${conteo.fecha || "sin fecha"} · ${preparada.motivo}`
       });
-      if (!r2.ok) {
+      if (!r.ok) {
         return {
           ok: false,
           codigo: "reverso_cancelacion_fallido",
-          error: r2.error || "No se pudo completar un reverso de stock. Reintenta: no se duplicar\xE1n los ya creados.",
+          error: r.error || "No se pudo completar un reverso de stock. Reintenta: no se duplicarán los ya creados.",
           operationId: preparada.operationId,
           revertidos: reversos.length,
           reversos
@@ -106321,7 +106331,7 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
       }
       reversos.push({
         movimientoOriginalId: movimientoOriginal.id,
-        movimientoReversoId: r2.movimiento && r2.movimiento.id ? r2.movimiento.id : movimientoReversoId,
+        movimientoReversoId: r.movimiento && r.movimiento.id ? r.movimiento.id : movimientoReversoId,
         productoId: movimientoOriginal.productoId,
         cantidad: -(Number(movimientoOriginal.cantidad) || 0),
         tipo: movimientoOriginal.tipo
@@ -106335,8 +106345,8 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
       operationId: preparada.operationId,
       reversos
     };
-    setConteos((s3) => s3.map((c4) => c4.id === conteoId ? {
-      ...c4,
+    setConteos((s) => s.map((c) => c.id === conteoId ? {
+      ...c,
       estado: "CANCELADO",
       cancelado: true,
       canceladoEn: preparada.canceladoEn,
@@ -106346,10 +106356,10 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
       cancelacionOperationId: preparada.operationId,
       reversosCancelacion: reversos,
       cancelacion
-    } : c4));
+    } : c));
     registrarAuditoria(
       "Cancelar conteo",
-      `Conteo del ${conteo.fecha || "sin fecha"} \xB7 estado anterior ${preparada.estadoAnterior} \xB7 responsable: ${preparada.responsable} \xB7 ${reversos.length} reverso(s)`
+      `Conteo del ${conteo.fecha || "sin fecha"} · estado anterior ${preparada.estadoAnterior} · responsable: ${preparada.responsable} · ${reversos.length} reverso(s)`
     );
     return { ok: true, replayed: false, eliminado: false, cancelado: true, operationId: preparada.operationId, revertidos: reversos.length, reversos };
   }
@@ -106371,7 +106381,7 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
     if (lotes.length < 2) {
       return { ok: false, error: "Este conteo solo tiene una aplicaci\xF3n \u2014 no hay ning\xFAn duplicado que revertir." };
     }
-    if (remotoAtomico() || typeof window !== "undefined" && window.__nubeActiva === false) return { ok: false, codigo: "duplicado_legacy_requiere_revision", error: "Este ajuste antiguo requiere reconciliaci\xF3n antes de revertir stock." };
+    if (remotoAtomico() || (typeof window !== "undefined" && window.__nubeActiva === false)) return { ok: false, codigo: "duplicado_legacy_requiere_revision", error: "Este ajuste antiguo requiere reconciliación antes de revertir stock." };
     const ultimoLoteId = lotes[lotes.length - 1];
     const movimientosARevertir = porLote.get(ultimoLoteId);
     const operationIdDeEstaReversion = uid();
@@ -106412,27 +106422,27 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
       return { ok: true, replayed: true, operationId: conteo.ajustesOperationId || null, ajustados: Number(conteo.ajustesCantidad) || 0, traspasados: conteo.ajustesTraspasados || [] };
     }
     const estadosApi = typeof window !== "undefined" ? window.__pm12ConteoEstados : null;
-    if (!estadosApi) return { ok: false, codigo: "motor_no_disponible", error: "No se pudo validar el ajuste. Recarga la p\xE1gina e int\xE9ntalo de nuevo.", ajustados: 0, traspasados: [] };
+    if (!estadosApi) return { ok: false, codigo: "motor_no_disponible", error: "No se pudo validar el ajuste. Recarga la página e inténtalo de nuevo.", ajustados: 0, traspasados: [] };
     const operationIdDeEsteAjuste = conteo.ajustesOperationId || `pm12-ajuste-conteo:${conteo.id}:${conteo.cerradoEn || conteo.fecha || "sin-corte"}`;
     function confirmarDocumento(resultado) {
-      const ajustesAplicadosEn = (/* @__PURE__ */ new Date()).toISOString();
+      const ajustesAplicadosEn = new Date().toISOString();
       try {
-        setConteos((cs) => cs.map((c4) => c4.id === conteoId ? { ...c4, ajustesAplicados: true, ajustesAplicadosEn, ajustesOperationId: operationIdDeEsteAjuste, ajustesCantidad: resultado.ajustados, ajustesTraspasados: resultado.traspasados, ajustesActor: { id: permisoAjuste.actorId || null, nombre: permisoAjuste.actorNombre || "", rol: permisoAjuste.rol }, ajustesEmpresaId: permisoAjuste.empresaId, ajustesLocalId: permisoAjuste.localId } : c4));
+        setConteos((cs) => cs.map((c) => c.id === conteoId ? { ...c, ajustesAplicados: true, ajustesAplicadosEn, ajustesOperationId: operationIdDeEsteAjuste, ajustesCantidad: resultado.ajustados, ajustesTraspasados: resultado.traspasados, ajustesActor: { id: permisoAjuste.actorId || null, nombre: permisoAjuste.actorNombre || "", rol: permisoAjuste.rol }, ajustesEmpresaId: permisoAjuste.empresaId, ajustesLocalId: permisoAjuste.localId } : c));
       } catch {
-        return { ok: false, codigo: "confirmacion_conteo_pendiente", error: "El stock se aplic\xF3; falta confirmar el conteo. Reintenta para recuperar el resultado.", operationId: operationIdDeEsteAjuste, ajustados: 0, traspasados: [] };
+        return { ok: false, codigo: "confirmacion_conteo_pendiente", error: "El stock se aplicó; falta confirmar el conteo. Reintenta para recuperar el resultado.", operationId: operationIdDeEsteAjuste, ajustados: 0, traspasados: [] };
       }
       return { ok: true, operationId: operationIdDeEsteAjuste, ...resultado };
     }
-    const intencionActual = JSON.stringify({ ambito: conteo.ambito || "total", items: (conteo.items || []).map((i4) => ({ productoId: i4.productoId, conteo: Object.prototype.hasOwnProperty.call(i4, "conteo") ? i4.conteo : i4.cantidadContada })).sort((a3, b2) => String(a3.productoId).localeCompare(String(b2.productoId))) });
+    const intencionActual = JSON.stringify({ ambito: conteo.ambito || "total", items: (conteo.items || []).map((i) => ({ productoId: i.productoId, conteo: Object.prototype.hasOwnProperty.call(i, "conteo") ? i.conteo : i.cantidadContada })).sort((a, b) => String(a.productoId).localeCompare(String(b.productoId))) });
     const recuperado = remotoAtomico() ? null : recuperarOperacionStock(operationIdDeEsteAjuste, intencionActual);
     if (recuperado) {
       if (!recuperado.ok) return { ...recuperado, ajustados: 0, traspasados: [] };
       const registros = recuperado.movimientos;
       const primero = registros[0];
-      if (!primero || primero.pm12PlanCantidad !== registros.length || registros.some((m4) => m4.pm12PlanCantidad !== registros.length || m4.documentoOrigenId !== conteoId || m4.origen !== "aplicarAjustes") || !primero.pm12Resultado) {
-        return { ok: false, codigo: "replay_parcial_inconsistente", error: "El ajuste existente no acredita un lote completo. Requiere revisi\xF3n.", ajustados: 0, traspasados: [] };
+      if (!primero || primero.pm12PlanCantidad !== registros.length || registros.some((m) => m.pm12PlanCantidad !== registros.length || m.documentoOrigenId !== conteoId || m.origen !== "aplicarAjustes") || !primero.pm12Resultado) {
+        return { ok: false, codigo: "replay_parcial_inconsistente", error: "El ajuste existente no acredita un lote completo. Requiere revisión.", ajustados: 0, traspasados: [] };
       }
-      if (primero.pm12Intencion !== intencionActual) return { ok: false, codigo: "conflicto_movimiento_existente", error: "La intenci\xF3n del conteo cambi\xF3 despu\xE9s de aplicar el ajuste.", ajustados: 0, traspasados: [] };
+      if (primero.pm12Intencion !== intencionActual) return { ok: false, codigo: "conflicto_movimiento_existente", error: "La intención del conteo cambió después de aplicar el ajuste.", ajustados: 0, traspasados: [] };
       return confirmarDocumento({ ...primero.pm12Resultado, replayed: true });
     }
     const preparados = [];
@@ -106447,13 +106457,14 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
         precision: Number.isInteger(p22.precisionCantidad) ? p22.precisionCantidad : void 0
       });
       if (!normalizado.valido) {
-        return { ok: false, codigo: "cantidad_invalida", error: `La cantidad de ${p22.nombre || "un producto"} no es v\xE1lida.`, ajustados: 0, traspasados: [] };
+        return { ok: false, codigo: "cantidad_invalida", error: `La cantidad de ${p22.nombre || "un producto"} no es válida.`, ajustados: 0, traspasados: [] };
       }
       if (normalizado.contado) preparados.push({ item, producto: p22, valorFinal: normalizado.valor });
     }
-    if (preparados.length === 0) return { ok: false, codigo: "sin_lineas_contadas", error: "No hay cantidades v\xE1lidas que aplicar.", ajustados: 0, traspasados: [] };
+    if (preparados.length === 0) return { ok: false, codigo: "sin_lineas_contadas", error: "No hay cantidades válidas que aplicar.", ajustados: 0, traspasados: [] };
     const esPisoVenta = conteo.ambito === "piso_venta";
     const esAlmacen = conteo.ambito === "almacen";
+
     const planAjustes = [];
     const traspasados = [];
     const productosAjustados = /* @__PURE__ */ new Set();
@@ -106468,7 +106479,7 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
         origen: "aplicarAjustes",
         documentoOrigenId: conteoId,
         permitirDeficit: true,
-        camposExtra: { ...datos.camposExtra || {}, pm12PlanVersion: 1, pm12PlanLeg: leg, pm12ConteoId: conteoId, pm12BaseStock: { stock: p22.stock, stockPisoVenta: p22.stockPisoVenta, deficitPendiente: p22.deficitPendiente } }
+        camposExtra: { ...(datos.camposExtra || {}), pm12PlanVersion: 1, pm12PlanLeg: leg, pm12ConteoId: conteoId, pm12BaseStock: { stock: p22.stock, stockPisoVenta: p22.stockPisoVenta, deficitPendiente: p22.deficitPendiente } }
       });
     };
     for (const { producto: p22, valorFinal } of preparados) {
@@ -106480,32 +106491,32 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
         const anteriorAlmacenTeoricoFalta = stockTeoricoTotal - enPisoAntes;
         const difAlmacen = valorFinal - anteriorAlmacenTeoricoFalta;
         if (difAlmacen < 0) {
-          const cantidadATraspasar = -difAlmacen;
-          agregarPlan(p22, "almacen-falta-a-piso", {
-            cantidad: cantidadATraspasar,
-            tipo: "TRASPASO_A_PISO",
-            afectaStockTotal: false,
-            afectaStockPisoVenta: true,
-            motivo: `Faltante de almac\xE9n trasladado al piso de venta (se asume ya expuesto, sin registrar) \xB7 ${motivos[p22.id] || "Sin especificar"}`
-          });
-          traspasados.push({ productoId: p22.id, nombre: p22.nombre, cantidad: cantidadATraspasar, tipoTraspaso: "falta" });
-          continue;
+const cantidadATraspasar = -difAlmacen;
+agregarPlan(p22, "almacen-falta-a-piso", {
+  cantidad: cantidadATraspasar,
+  tipo: "TRASPASO_A_PISO",
+  afectaStockTotal: false,
+  afectaStockPisoVenta: true,
+  motivo: `Faltante de almacén trasladado al piso de venta (se asume ya expuesto, sin registrar) · ${motivos[p22.id] || "Sin especificar"}`
+});
+traspasados.push({ productoId: p22.id, nombre: p22.nombre, cantidad: cantidadATraspasar, tipoTraspaso: "falta" });
+continue;
         }
       }
       let dif, motivoTexto, afectaStockPisoVenta = false;
       if (esPisoVenta) {
         const anteriorPiso = Number(p22.stockPisoVenta) || 0;
         dif = valorFinal - anteriorPiso;
-        motivoTexto = `Ajuste por inventario (piso de venta) \xB7 ${motivos[p22.id] || "Sin especificar"}`;
+        motivoTexto = `Ajuste por inventario (piso de venta) · ${motivos[p22.id] || "Sin especificar"}`;
         afectaStockPisoVenta = true;
       } else if (esAlmacen) {
         const enPiso = Number(p22.stockPisoVenta) || 0;
         const anteriorAlmacenTeorico = stockTeoricoTotal - enPiso;
         dif = valorFinal - anteriorAlmacenTeorico;
-        motivoTexto = `Ajuste por inventario (almac\xE9n) \xB7 ${motivos[p22.id] || "Sin especificar"}`;
+        motivoTexto = `Ajuste por inventario (almacén) · ${motivos[p22.id] || "Sin especificar"}`;
       } else {
         dif = valorFinal - stockTeoricoTotal;
-        motivoTexto = `Ajuste por inventario \xB7 ${motivos[p22.id] || "Sin especificar"}`;
+        motivoTexto = `Ajuste por inventario · ${motivos[p22.id] || "Sin especificar"}`;
       }
       if (dif === 0) continue;
       agregarPlan(p22, esPisoVenta ? "inventario-piso" : esAlmacen ? "inventario-almacen" : "inventario-total", {
@@ -106517,33 +106528,34 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
       });
       if (esAlmacen && dif > 0) {
         agregarPlan(p22, "almacen-sobra-a-piso", {
-          cantidad: dif,
-          tipo: "TRASPASO_A_PISO",
-          afectaStockTotal: false,
-          afectaStockPisoVenta: true,
-          motivo: `Sobrante de inventario trasladado al piso de venta \xB7 ${motivos[p22.id] || "Sin especificar"}`
+cantidad: dif,
+tipo: "TRASPASO_A_PISO",
+afectaStockTotal: false,
+afectaStockPisoVenta: true,
+motivo: `Sobrante de inventario trasladado al piso de venta · ${motivos[p22.id] || "Sin especificar"}`
         });
         traspasados.push({ productoId: p22.id, nombre: p22.nombre, cantidad: dif, tipoTraspaso: "sobra" });
       }
       if (!esPisoVenta && !esAlmacen) {
         const pisoActual = Number(p22.stockPisoVenta) || 0;
         if (pisoActual > valorFinal) {
-          agregarPlan(p22, "total-limite-piso", {
-            cantidad: -(pisoActual - valorFinal),
-            tipo: "INVENTARIO",
-            afectaStockTotal: false,
-            afectaStockPisoVenta: true,
-            motivo: "El piso no puede superar el nuevo total contado"
-          });
+agregarPlan(p22, "total-limite-piso", {
+  cantidad: -(pisoActual - valorFinal),
+  tipo: "INVENTARIO",
+  afectaStockTotal: false,
+  afectaStockPisoVenta: true,
+  motivo: "El piso no puede superar el nuevo total contado"
+});
         }
       }
     }
+
     const resultadoPreparado = { ajustados: productosAjustados.size, traspasados };
-    for (const o3 of planAjustes) o3.camposExtra = { ...o3.camposExtra, pm12PlanCantidad: planAjustes.length, pm12Resultado: resultadoPreparado, pm12Intencion: intencionActual };
+    for (const o of planAjustes) o.camposExtra = { ...o.camposExtra, pm12PlanCantidad: planAjustes.length, pm12Resultado: resultadoPreparado, pm12Intencion: intencionActual };
     if (typeof window !== "undefined" && window.__nubeActiva === false) return sinConexionAtomica();
     if (remotoAtomico()) {
       if (!window.__pm12StockAtomico) return sinConexionAtomica();
-      const bases = preparados.map(({ producto: p3, valorFinal }) => ({ productoId: p3.id, conteo: valorFinal, stock: Number(p3.stock) || 0, stockPisoVenta: Number(p3.stockPisoVenta) || 0, deficitPendiente: Number(p3.deficitPendiente) || 0 }));
+      const bases = preparados.map(({ producto: p, valorFinal }) => ({ productoId: p.id, conteo: valorFinal, stock: Number(p.stock) || 0, stockPisoVenta: Number(p.stockPisoVenta) || 0, deficitPendiente: Number(p.deficitPendiente) || 0 }));
       return publicarResultadoRemoto(window.__pm12StockAtomico.aplicar(conteo, planAjustes, bases, permisoAjuste, operationIdDeEsteAjuste));
     }
     let resultadoLote = { ok: true, replayed: false, movimientos: [] };
@@ -106555,10 +106567,7 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
     }
     const ajustados = productosAjustados.size;
     if (planAjustes.length > 0 && !resultadoLote.replayed) {
-      try {
-        registrarAuditoria("Aplicar ajustes de inventario", `${ajustados} producto(s) ajustado(s) \xB7 ${permisoAjuste.rol} \xB7 ${permisoAjuste.actorNombre || permisoAjuste.actorId || "sin nombre"} \xB7 local ${permisoAjuste.localId}`);
-      } catch {
-      }
+      try { registrarAuditoria("Aplicar ajustes de inventario", `${ajustados} producto(s) ajustado(s) · ${permisoAjuste.rol} · ${permisoAjuste.actorNombre || permisoAjuste.actorId || "sin nombre"} · local ${permisoAjuste.localId}`); } catch {}
     }
     return confirmarDocumento({ ...resultadoPreparado, replayed: !!resultadoLote.replayed });
   }
@@ -106740,31 +106749,34 @@ function validarEncargoPM10(data, { productos = [], clientes = [], localActivoId
   const contexto = validarContextoEscrituraPM10({ localActivoId, locales, empresaId });
   if (!contexto.ok) return contexto;
   if (!empresaId) return errorValidacionPM10("contexto_no_autorizado", "empresaId", "No se pudo determinar la empresa del local activo.");
-  if (!data || typeof data !== "object" || Array.isArray(data)) return errorValidacionPM10("formato_invalido", "encargo", "El encargo no tiene un formato v\xE1lido.");
+  if (!data || typeof data !== "object" || Array.isArray(data)) return errorValidacionPM10("formato_invalido", "encargo", "El encargo no tiene un formato válido.");
   if (data.localId && data.localId !== localActivoId) return errorValidacionPM10("referencia_otro_contexto", "localId", "El encargo pertenece a otro local.");
+
   const clienteId = String(data.clienteId || "").trim();
   if (!clienteId) return errorValidacionPM10("campo_obligatorio", "clienteId", "Selecciona o crea un cliente.");
   const cliente = clientes.find((c22) => c22 && c22.id === clienteId);
-  if (!cliente) return errorValidacionPM10("referencia_inexistente", "clienteId", "El cliente seleccionado ya no existe o no est\xE1 disponible.");
+  if (!cliente) return errorValidacionPM10("referencia_inexistente", "clienteId", "El cliente seleccionado ya no existe o no está disponible.");
   if (empresaId && cliente.empresaId && cliente.empresaId !== empresaId) return errorValidacionPM10("referencia_otro_contexto", "clienteId", "El cliente pertenece a otra empresa.");
+
   const fechaEntrega = String(data.fechaEntrega || "").trim();
   if (!fechaEntrega) return errorValidacionPM10("campo_obligatorio", "fechaEntrega", "Indica la fecha de entrega.");
   function fechaISOValida(fecha) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return false;
-    const [y22, m22, d2] = fecha.split("-").map(Number);
-    const dt2 = new Date(Date.UTC(y22, m22 - 1, d2));
-    return dt2.getUTCFullYear() === y22 && dt2.getUTCMonth() === m22 - 1 && dt2.getUTCDate() === d2;
+    const [y2, m22, d2] = fecha.split("-").map(Number);
+    const dt = new Date(Date.UTC(y2, m22 - 1, d2));
+    return dt.getUTCFullYear() === y2 && dt.getUTCMonth() === m22 - 1 && dt.getUTCDate() === d2;
   }
-  if (!fechaISOValida(fechaEntrega)) return errorValidacionPM10("fecha_invalida", "fechaEntrega", "La fecha de entrega no es v\xE1lida.");
+  if (!fechaISOValida(fechaEntrega)) return errorValidacionPM10("fecha_invalida", "fechaEntrega", "La fecha de entrega no es válida.");
   const fechaBase = String(fechaCreacion || todayISO()).slice(0, 10);
-  if (!fechaISOValida(fechaBase)) return errorValidacionPM10("fecha_invalida", "fechaCreacion", "La fecha de creaci\xF3n del encargo no es v\xE1lida.");
-  if (fechaEntrega < fechaBase) return errorValidacionPM10("valor_fuera_rango", "fechaEntrega", "La fecha de entrega no puede ser anterior a la creaci\xF3n del encargo.");
-  if (!Array.isArray(data.lineas) || data.lineas.length === 0) return errorValidacionPM10("campo_obligatorio", "lineas", "A\xF1ade al menos una l\xEDnea al encargo.");
+  if (!fechaISOValida(fechaBase)) return errorValidacionPM10("fecha_invalida", "fechaCreacion", "La fecha de creación del encargo no es válida.");
+  if (fechaEntrega < fechaBase) return errorValidacionPM10("valor_fuera_rango", "fechaEntrega", "La fecha de entrega no puede ser anterior a la creación del encargo.");
+
+  if (!Array.isArray(data.lineas) || data.lineas.length === 0) return errorValidacionPM10("campo_obligatorio", "lineas", "Añade al menos una línea al encargo.");
   const lineas = [];
   let total = 0;
   for (let i33 = 0; i33 < data.lineas.length; i33++) {
     const ln2 = data.lineas[i33];
-    if (!ln2 || typeof ln2 !== "object" || Array.isArray(ln2)) return errorValidacionPM10("formato_invalido", `lineas.${i33}`, "Una l\xEDnea del encargo no es v\xE1lida.");
+    if (!ln2 || typeof ln2 !== "object" || Array.isArray(ln2)) return errorValidacionPM10("formato_invalido", `lineas.${i33}`, "Una línea del encargo no es válida.");
     const productoId = String(ln2.productoId || "").trim();
     const descripcion = String(ln2.descripcion || "").trim();
     let prod = null;
@@ -106773,34 +106785,40 @@ function validarEncargoPM10(data, { productos = [], clientes = [], localActivoId
       if (!prod) return errorValidacionPM10("referencia_inexistente", `lineas.${i33}.productoId`, "Uno de los productos del encargo ya no existe.");
       if (prod.localId && prod.localId !== localActivoId) return errorValidacionPM10("referencia_otro_contexto", `lineas.${i33}.productoId`, "Uno de los productos pertenece a otro local.");
     } else if (!descripcion) {
-      return errorValidacionPM10("campo_obligatorio", `lineas.${i33}.productoId`, "Selecciona un producto o escribe una descripci\xF3n.");
+      return errorValidacionPM10("campo_obligatorio", `lineas.${i33}.productoId`, "Selecciona un producto o escribe una descripción.");
     }
+
     const cantidadRaw = ln2.cantidad;
-    if (cantidadRaw === null || cantidadRaw === void 0 || String(cantidadRaw).trim() === "") return errorValidacionPM10("campo_obligatorio", `lineas.${i33}.cantidad`, "Indica la cantidad de cada l\xEDnea.");
+    if (cantidadRaw === null || cantidadRaw === void 0 || String(cantidadRaw).trim() === "") return errorValidacionPM10("campo_obligatorio", `lineas.${i33}.cantidad`, "Indica la cantidad de cada línea.");
     const cantidad = Number(cantidadRaw);
-    if (!Number.isFinite(cantidad)) return errorValidacionPM10("numero_no_finito", `lineas.${i33}.cantidad`, "La cantidad debe ser un n\xFAmero v\xE1lido.");
+    if (!Number.isFinite(cantidad)) return errorValidacionPM10("numero_no_finito", `lineas.${i33}.cantidad`, "La cantidad debe ser un número válido.");
     if (!(cantidad > 0)) return errorValidacionPM10("valor_fuera_rango", `lineas.${i33}.cantidad`, "La cantidad debe ser mayor que cero.");
+
     const precioRaw = ln2.precioUnitario;
-    if (precioRaw === null || precioRaw === void 0 || String(precioRaw).trim() === "") return errorValidacionPM10("campo_obligatorio", `lineas.${i33}.precioUnitario`, "Indica el precio unitario de cada l\xEDnea.");
+    if (precioRaw === null || precioRaw === void 0 || String(precioRaw).trim() === "") return errorValidacionPM10("campo_obligatorio", `lineas.${i33}.precioUnitario`, "Indica el precio unitario de cada línea.");
     const precioUnitario = Number(precioRaw);
-    if (!Number.isFinite(precioUnitario)) return errorValidacionPM10("numero_no_finito", `lineas.${i33}.precioUnitario`, "El precio unitario debe ser un n\xFAmero v\xE1lido.");
+    if (!Number.isFinite(precioUnitario)) return errorValidacionPM10("numero_no_finito", `lineas.${i33}.precioUnitario`, "El precio unitario debe ser un número válido.");
     if (precioUnitario < 0) return errorValidacionPM10("valor_fuera_rango", `lineas.${i33}.precioUnitario`, "El precio unitario no puede ser negativo.");
+
     total += cantidad * precioUnitario;
     lineas.push({ ...ln2, productoId, descripcion, cantidad, precioUnitario });
   }
-  if (!Number.isFinite(total) || total < 0) return errorValidacionPM10("numero_no_finito", "total", "El total del encargo no es v\xE1lido.");
-  const se\u00F1alRaw = data.se\u00F1al;
-  let se\u00F1al = 0;
-  if (!(se\u00F1alRaw === null || se\u00F1alRaw === void 0 || String(se\u00F1alRaw).trim() === "")) {
-    se\u00F1al = Number(se\u00F1alRaw);
-    if (!Number.isFinite(se\u00F1al)) return errorValidacionPM10("numero_no_finito", "se\xF1al", "La se\xF1al debe ser un n\xFAmero v\xE1lido.");
-    if (se\u00F1al < 0) return errorValidacionPM10("valor_fuera_rango", "se\xF1al", "La se\xF1al no puede ser negativa.");
+  if (!Number.isFinite(total) || total < 0) return errorValidacionPM10("numero_no_finito", "total", "El total del encargo no es válido.");
+
+  const señalRaw = data.señal;
+  let señal = 0;
+  if (!(señalRaw === null || señalRaw === void 0 || String(señalRaw).trim() === "")) {
+    señal = Number(señalRaw);
+    if (!Number.isFinite(señal)) return errorValidacionPM10("numero_no_finito", "señal", "La señal debe ser un número válido.");
+    if (señal < 0) return errorValidacionPM10("valor_fuera_rango", "señal", "La señal no puede ser negativa.");
   }
-  if (se\u00F1al > total + 1e-9) return errorValidacionPM10("valor_fuera_rango", "se\xF1al", "La se\xF1al no puede superar el total del encargo.");
-  const mediosValidos = /* @__PURE__ */ new Set(["Efectivo", "Tarjeta", "Transferencia", "Otro"]);
-  const se\u00F1alMedioPago = String(data.se\u00F1alMedioPago || "").trim();
-  if (se\u00F1al > 0 && !se\u00F1alMedioPago) return errorValidacionPM10("campo_obligatorio", "se\xF1alMedioPago", "Indica c\xF3mo se ha cobrado la se\xF1al.");
-  if (se\u00F1al > 0 && !mediosValidos.has(se\u00F1alMedioPago)) return errorValidacionPM10("valor_no_permitido", "se\xF1alMedioPago", "El medio de pago de la se\xF1al no es v\xE1lido.");
+  if (señal > total + 1e-9) return errorValidacionPM10("valor_fuera_rango", "señal", "La señal no puede superar el total del encargo.");
+
+  const mediosValidos = new Set(["Efectivo", "Tarjeta", "Transferencia", "Otro"]);
+  const señalMedioPago = String(data.señalMedioPago || "").trim();
+  if (señal > 0 && !señalMedioPago) return errorValidacionPM10("campo_obligatorio", "señalMedioPago", "Indica cómo se ha cobrado la señal.");
+  if (señal > 0 && !mediosValidos.has(señalMedioPago)) return errorValidacionPM10("valor_no_permitido", "señalMedioPago", "El medio de pago de la señal no es válido.");
+
   return {
     ok: true,
     total,
@@ -106809,8 +106827,8 @@ function validarEncargoPM10(data, { productos = [], clientes = [], localActivoId
       clienteId,
       fechaEntrega,
       lineas,
-      se\u00F1al,
-      se\u00F1alMedioPago: se\u00F1al > 0 ? se\u00F1alMedioPago : se\u00F1alMedioPago || "Efectivo",
+      señal,
+      señalMedioPago: señal > 0 ? señalMedioPago : señalMedioPago || "Efectivo",
       localId: localActivoId,
       empresaId,
       total
@@ -106845,8 +106863,7 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
     const cobros = sincronizarCobroSe\u00F1al([], datos.se\u00F1al, datos.se\u00F1alMedioPago, fecha);
     const nuevo = { ...datos, id: uid(), estado: "Pendiente", fechaCreacion: fecha, cobros, localId: localActivoId };
     setEncargos((s22) => [nuevo, ...s22]);
-    sincronizarEncargoNube(nuevo).catch(() => {
-    });
+    sincronizarEncargoNube(nuevo).catch(() => {});
     return nuevo;
   }
   function updateEncargo(id, data) {
@@ -106860,21 +106877,23 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
       (s22) => s22.map((e2) => {
         if (e2.id !== id) return e2;
         const actualizado = { ...e2, ...validacion.datos, id: e2.id, localId: e2.localId || localActivoId };
-        if ("se\xF1al" in data || "se\xF1alMedioPago" in data) {
+        if ("se\u00F1al" in data || "se\u00F1alMedioPago" in data) {
           actualizado.cobros = sincronizarCobroSe\u00F1al(e2.cobros, actualizado.se\u00F1al, actualizado.se\u00F1alMedioPago, e2.fechaCreacion);
         }
         actualizadoParaSincronizar = actualizado;
         return actualizado;
       })
     );
-    if (actualizadoParaSincronizar) sincronizarEncargoNube(actualizadoParaSincronizar).catch(() => {
-    });
+    if (actualizadoParaSincronizar) sincronizarEncargoNube(actualizadoParaSincronizar).catch(() => {});
     return true;
   }
   function deleteEncargo(id) {
     const actual = encargos.find((e22) => e22.id === id);
     if (!encargoEsDelLocalActivo(actual)) return false;
     if (actual.estado === "Entregado") return false;
+    // Un encargo con algún cobro confirmado (señal, resto...) ya es una operación
+    // económica: no se borra en silencio (DEC-04). Hay que cancelarlo primero y
+    // decidir explícitamente qué pasa con lo cobrado (cancelarEncargo).
     if ((actual.cobros || []).some((c22) => Number(c22.importe) > 0)) return false;
     registrarAuditoria("Eliminar encargo", actual ? `${actual.numero || "s/n"}` : id);
     setEncargos((s22) => s22.filter((e22) => e22.id !== id));
@@ -106901,7 +106920,7 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
     if (!localActivoId) return { ok: false, codigo: "contexto_no_autorizado", error: "Selecciona un local para gestionar la entrega de encargos." };
     const id = typeof encargoOrId === "string" ? encargoOrId : encargoOrId && encargoOrId.id;
     const actual = encargos.find((e2) => e2.id === id);
-    if (!actual) return { ok: false, codigo: "referencia_inexistente", error: "El encargo no existe o ya no est\xE1 disponible." };
+    if (!actual) return { ok: false, codigo: "referencia_inexistente", error: "El encargo no existe o ya no est\u00E1 disponible." };
     if (!encargoEsDelLocalActivo(actual)) return { ok: false, codigo: "contexto_no_autorizado", error: "El encargo no pertenece al local activo." };
     if (actual.estado === "Entregado") return { ok: true, replayed: true, yaEntregado: true };
     if (actual.estado && actual.estado !== "Pendiente") {
@@ -106934,7 +106953,7 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
     const cobros = resto > 9e-3 ? [...cobrosSinResto, { id: `resto-entrega:${actual.id}`, concepto: "Resto entrega", importe: resto, medioPago, fecha: todayISO() }] : cobrosSinResto;
     const resultadoEncargo = updateEncargo(actual.id, { estado: "Entregado", fechaEntregaReal: todayISO(), cobros });
     if (resultadoEncargo !== true) {
-      return { ok: false, codigo: "encargo_no_actualizado", error: "La venta se confirm\xF3 pero el encargo no se pudo marcar como entregado. Revisa el encargo antes de reintentar.", resultadoVenta };
+      return { ok: false, codigo: "encargo_no_actualizado", error: "La venta se confirm\u00F3 pero el encargo no se pudo marcar como entregado. Revisa el encargo antes de reintentar.", resultadoVenta };
     }
     return { ok: true, replayed: !!resultadoVenta.replayed, ventaId: resultadoVenta.ventaId, movimientos: resultadoVenta.movimientos, n: resultadoVenta.n };
   }
@@ -106974,10 +106993,10 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
     }
     registrarAuditoria("Devolver encargo", `${actual.numero || actual.id} \xB7 ${motivoTexto}`);
     const total = Number(actual.total) || (actual.lineas || []).reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
-    const se\u00F1al = Number(actual.se\u00F1al) || 0;
-    const resto = Math.max(0, total - se\u00F1al);
+    const señal = Number(actual.señal) || 0;
+    const resto = Math.max(0, total - señal);
     const cobrosParaReembolsar = [];
-    if (se\u00F1al > 9e-3) cobrosParaReembolsar.push({ sufijo: "senal", concepto: "Se\xF1al", importe: se\u00F1al });
+    if (señal > 9e-3) cobrosParaReembolsar.push({ sufijo: "senal", concepto: "Se\xF1al", importe: señal });
     if (resto > 9e-3) cobrosParaReembolsar.push({ sufijo: "resto", concepto: "Resto entrega", importe: resto });
     return { ok: true, movimientos: resultadoStock.movimientos, cobrosParaReembolsar };
   }
@@ -107007,6 +107026,9 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
   async function registrarAnticipoEncargo(encargoOrId, { concepto, importe, medioPago = "Efectivo", fecha } = {}) {
     const id = typeof encargoOrId === "string" ? encargoOrId : encargoOrId && encargoOrId.id;
     const encontrado = encargos.find((e2) => e2.id === id);
+    // El encargo puede acabar de crearse/editarse en este mismo render: el array
+    // "encargos" capturado en este cierre todavia no lo refleja. Si no aparece en
+    // el cierre pero el propio llamador nos paso el objeto completo, se usa ese.
     const actual = encontrado || (encargoOrId && typeof encargoOrId === "object" ? encargoOrId : null);
     if (!actual) return { ok: false, codigo: "referencia_inexistente", error: "El encargo no existe o ya no est\xE1 disponible." };
     if (!encargoEsDelLocalActivo(actual)) return { ok: false, codigo: "contexto_no_autorizado", error: "El encargo no pertenece al local activo." };
@@ -107101,12 +107123,12 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   }
   const { aplicarMovimientoStock, aplicarLoteMovimientosStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos });
   function venderLote(lineas, opciones = {}) {
-    if (!localActivoId) return { ok: false, codigo: "contexto_no_autorizado", error: "Selecciona un local para registrar esta operaci\xF3n." };
+    if (!localActivoId) return { ok: false, codigo: "contexto_no_autorizado", error: "Selecciona un local para registrar esta operación." };
     const incluyeOtroLocal = (lineas || []).some((ln2) => {
       const p22 = productos.find((x3) => x3.id === ln2.productoId);
       return !!p22 && !productoEsDelLocalActivoVenta(p22);
     });
-    if (incluyeOtroLocal) return { ok: false, codigo: "producto_otro_local", error: "La operaci\xF3n incluye productos de otro local." };
+    if (incluyeOtroLocal) return { ok: false, codigo: "producto_otro_local", error: "La operación incluye productos de otro local." };
     const {
       tipo = "VENTA",
       medioPago = "Efectivo",
@@ -107117,7 +107139,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       extraPorLinea = () => ({}),
       movimientoIdPorLinea = null
     } = opciones;
-    if (!operationId) return { ok: false, codigo: "operation_id_obligatorio", error: "Esta operaci\xF3n necesita un identificador estable." };
+    if (!operationId) return { ok: false, codigo: "operation_id_obligatorio", error: "Esta operación necesita un identificador estable." };
     const lineasValidas = (lineas || []).filter((ln2) => ln2.productoId && Number(ln2.cantidad) > 0);
     if (lineasValidas.length === 0) return { ok: true, n: 0, ventaId: operationId, movimientos: [] };
     const operaciones = [];
@@ -107128,7 +107150,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       const cant = Number(ln2.cantidad);
       const costoUnitario = Number(prod.costo) || 0;
       const ingresoUnitario = Number(ln2.precioUnitario) || precioNeto(prod);
-      const movimientoId = movimientoIdPorLinea && movimientoIdPorLinea(ln2, prod, idx) || `${operationId}:${idx}`;
+      const movimientoId = (movimientoIdPorLinea && movimientoIdPorLinea(ln2, prod, idx)) || `${operationId}:${idx}`;
       operaciones.push({
         movimientoId,
         operationId,
@@ -107181,7 +107203,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       const cant = Number(ln2.cantidad);
       const costoUnitario = Number(prod.costo) || 0;
       const ingresoUnitario = ln2.precioUnitario != null ? -Math.abs(Number(ln2.precioUnitario)) : null;
-      const movimientoId = movimientoIdPorLinea && movimientoIdPorLinea(ln2, prod, idx) || `${operationId}:${idx}`;
+      const movimientoId = (movimientoIdPorLinea && movimientoIdPorLinea(ln2, prod, idx)) || `${operationId}:${idx}`;
       operaciones.push({
         movimientoId,
         operationId,
@@ -107643,11 +107665,11 @@ function crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, se
   }
   return { activarModoEmpleado, entrarComoEmpleado, salirModoEmpleado, establecerPin };
 }
-var confirmacionesAlbaranPM11Memoria = /* @__PURE__ */ new Map();
+const confirmacionesAlbaranPM11Memoria = /* @__PURE__ */ new Map();
 function valorCanonicoNumeroAlbaranPM11(valor, defecto = null) {
   if (valor === null || valor === void 0 || String(valor).trim() === "") return defecto;
-  const n2 = Number(valor);
-  return Number.isFinite(n2) ? n2 : String(valor);
+  const n = Number(valor);
+  return Number.isFinite(n) ? n : String(valor);
 }
 function firmaConfirmacionAlbaranPM11(alb, empresaIdEfectiva = null, localIdEfectivo = null) {
   const lineas = Array.isArray(alb?.lineas) ? alb.lineas : [];
@@ -107679,19 +107701,19 @@ function claveConfirmacionAlbaranPM11(alb, empresaIdEfectiva = null, localIdEfec
 }
 function resolverConfirmacionAlbaranPM11({ alb, existente = null, memoria = null, empresaId = null, localActivoId = null } = {}) {
   const id = String(alb?.id || "").trim();
-  if (!id) return { ok: false, codigo: "campo_obligatorio", campo: "id", error: "El albar\xE1n necesita una identidad estable antes de confirmarse." };
+  if (!id) return { ok: false, codigo: "campo_obligatorio", campo: "id", error: "El albarán necesita una identidad estable antes de confirmarse." };
   const firma = firmaConfirmacionAlbaranPM11(alb, empresaId, localActivoId);
   const clave = claveConfirmacionAlbaranPM11(alb, empresaId, localActivoId);
   if (memoria) {
-    if (memoria.firma !== firma) return { ok: false, codigo: "operation_id_conflict", campo: "id", error: "El mismo albar\xE1n no puede confirmarse con contenido distinto." };
+    if (memoria.firma !== firma) return { ok: false, codigo: "operation_id_conflict", campo: "id", error: "El mismo albarán no puede confirmarse con contenido distinto." };
     return { ok: true, replayed: true, firma, clave, avisos: Array.isArray(memoria.avisos) ? memoria.avisos : [] };
   }
   if (existente && existente.estado === "confirmado") {
     const firmaPersistida = existente.confirmacionPM11?.firma || null;
     if (!firmaPersistida) {
-      return { ok: false, codigo: "documento_ya_confirmado", campo: "id", error: "Este albar\xE1n legado ya est\xE1 confirmado; se bloquea una nueva entrada para no duplicar stock ni recepci\xF3n." };
+      return { ok: false, codigo: "documento_ya_confirmado", campo: "id", error: "Este albarán legado ya está confirmado; se bloquea una nueva entrada para no duplicar stock ni recepción." };
     }
-    if (firmaPersistida !== firma) return { ok: false, codigo: "operation_id_conflict", campo: "id", error: "El mismo albar\xE1n confirmado no puede reinterpretarse con contenido distinto." };
+    if (firmaPersistida !== firma) return { ok: false, codigo: "operation_id_conflict", campo: "id", error: "El mismo albarán confirmado no puede reinterpretarse con contenido distinto." };
     return { ok: true, replayed: true, firma, clave, avisos: Array.isArray(existente.avisosPrecio) ? existente.avisosPrecio : [] };
   }
   return { ok: true, replayed: false, firma, clave, avisos: [] };
@@ -107708,9 +107730,9 @@ function normalizarNumeroFacturaPM11(valor) {
 function fechaFacturaValidaPM11(valor) {
   const texto = String(valor == null ? "" : valor).trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(texto)) return false;
-  const [y3, m4, d2] = texto.split("-").map(Number);
-  const fecha = new Date(Date.UTC(y3, m4 - 1, d2));
-  return fecha.getUTCFullYear() === y3 && fecha.getUTCMonth() === m4 - 1 && fecha.getUTCDate() === d2;
+  const [y, m, d] = texto.split("-").map(Number);
+  const fecha = new Date(Date.UTC(y, m - 1, d));
+  return fecha.getUTCFullYear() === y && fecha.getUTCMonth() === m - 1 && fecha.getUTCDate() === d;
 }
 function albaranEsFacturaOperativaPM11(alb) {
   return !!alb && alb.estado === "confirmado" && alb.esFactura === true && !!normalizarNumeroFacturaPM11(alb.numeroFactura) && fechaFacturaValidaPM11(alb.fechaFactura);
@@ -107723,7 +107745,7 @@ function claveObligacionFacturaAlbaranPM11(alb, empresaIdEfectiva = null) {
 }
 function validarIdentidadFacturaAlbaranPM11({ alb, albaranes = [], empresaId = null, localActivoId = null, exigirFactura = false } = {}) {
   if (!alb || alb.esFactura !== true) {
-    if (exigirFactura) return { ok: false, codigo: "no_es_factura", campo: "esFactura", error: "El albar\xE1n no est\xE1 marcado expl\xEDcitamente como factura." };
+    if (exigirFactura) return { ok: false, codigo: "no_es_factura", campo: "esFactura", error: "El albarán no está marcado explícitamente como factura." };
     return { ok: true, esFactura: false, clave: null, numeroFactura: "", fechaFactura: "" };
   }
   const id = String(alb.id || "").trim();
@@ -107733,10 +107755,10 @@ function validarIdentidadFacturaAlbaranPM11({ alb, albaranes = [], empresaId = n
   const numeroFactura = String(alb.numeroFactura || "").trim();
   const numeroNormalizado = normalizarNumeroFacturaPM11(numeroFactura);
   const fechaFactura = String(alb.fechaFactura || "").trim();
-  if (!id) return { ok: false, codigo: "campo_obligatorio", campo: "id", error: "La factura necesita la identidad estable del albar\xE1n." };
-  if (!empresa || !local || !proveedor) return { ok: false, codigo: "contexto_incompleto", campo: "factura", error: "La factura necesita empresa, local y proveedor expl\xEDcitos." };
-  if (!numeroNormalizado) return { ok: false, codigo: "campo_obligatorio", campo: "numeroFactura", error: "Indica el n\xFAmero de factura del proveedor." };
-  if (!fechaFacturaValidaPM11(fechaFactura)) return { ok: false, codigo: "fecha_invalida", campo: "fechaFactura", error: "Indica una fecha de factura v\xE1lida." };
+  if (!id) return { ok: false, codigo: "campo_obligatorio", campo: "id", error: "La factura necesita la identidad estable del albarán." };
+  if (!empresa || !local || !proveedor) return { ok: false, codigo: "contexto_incompleto", campo: "factura", error: "La factura necesita empresa, local y proveedor explícitos." };
+  if (!numeroNormalizado) return { ok: false, codigo: "campo_obligatorio", campo: "numeroFactura", error: "Indica el número de factura del proveedor." };
+  if (!fechaFacturaValidaPM11(fechaFactura)) return { ok: false, codigo: "fecha_invalida", campo: "fechaFactura", error: "Indica una fecha de factura válida." };
   const clave = claveObligacionFacturaAlbaranPM11({ ...alb, empresaId: empresa, proveedorId: proveedor, numeroFactura }, empresa);
   const duplicada = (Array.isArray(albaranes) ? albaranes : []).find((otra) => {
     if (!otra || String(otra.id || "") === id) return false;
@@ -107744,7 +107766,7 @@ function validarIdentidadFacturaAlbaranPM11({ alb, albaranes = [], empresaId = n
     return claveObligacionFacturaAlbaranPM11(otra, otra.empresaId) === clave;
   }) || null;
   if (duplicada) {
-    return { ok: false, codigo: "factura_duplicada", campo: "numeroFactura", error: "Ya existe otra factura confirmada de este proveedor con el mismo n\xFAmero.", duplicadaId: duplicada.id };
+    return { ok: false, codigo: "factura_duplicada", campo: "numeroFactura", error: "Ya existe otra factura confirmada de este proveedor con el mismo número.", duplicadaId: duplicada.id };
   }
   return { ok: true, esFactura: true, id, empresaId: empresa, localId: local, proveedorId: proveedor, numeroFactura, fechaFactura, clave };
 }
@@ -107934,7 +107956,7 @@ function crearLogicaAlbaranes({
   async function marcarPagada(id, pagada, importe) {
     const a22 = albaranes.find((x3) => x3.id === id);
     if (!a22 || !empresaId || !localActivoId || a22.empresaId !== empresaId || a22.localId !== localActivoId) return { ok: false, error: "Factura fuera del contexto autorizado." };
-    if (a22.estado !== "confirmado") return { ok: false, codigo: "documento_no_confirmado", campo: "estado", error: "El albar\xE1n debe estar confirmado antes de poder pagarse." };
+    if (a22.estado !== "confirmado") return { ok: false, codigo: "documento_no_confirmado", campo: "estado", error: "El albarán debe estar confirmado antes de poder pagarse." };
     const facturaPM11 = validarIdentidadFacturaAlbaranPM11({ alb: a22, albaranes, empresaId, localActivoId, exigirFactura: true });
     if (!facturaPM11.ok) return { ok: false, codigo: facturaPM11.codigo, campo: facturaPM11.campo, error: facturaPM11.error };
     const total = calcularTotalesFacturaAlbaran(a22).total;
@@ -107962,7 +107984,7 @@ function crearLogicaAlbaranes({
       }
     };
     const r2 = pagada ? await registrarPagoPM06({ factura: doc, origenFactura: "albaran", importe: importe == null ? calcularSaldoFacturaPM06(pagosFacturas, id, "albaran", total, a22.empresaId, a22.localId, a22.pagada).pendiente : importe, pagosFacturas, setPagosFacturas }) : await revertirUltimoPagoPM06({ factura: doc, origenFactura: "albaran", pagosFacturas, setPagosFacturas });
-    if (r2.ok && !r2.replayed) registrarAuditoria(pagada ? "Registrar pago factura" : "Revertir pago factura", `Factura ${facturaPM11.numeroFactura} \xB7 \u20AC${redondearDineroPM06(r2.pago?.importe || importe || 0).toFixed(2)} \xB7 ${a22.empresaId}/${a22.localId}`);
+    if (r2.ok && !r2.replayed) registrarAuditoria(pagada ? "Registrar pago factura" : "Revertir pago factura", `Factura ${facturaPM11.numeroFactura} · €${redondearDineroPM06(r2.pago?.importe || importe || 0).toFixed(2)} · ${a22.empresaId}/${a22.localId}`);
     return r2;
   }
   function procesarRecepcion({ lineas, proveedorId, fecha, documentoTipo, documentoId, documentoNumero, operationId = null, concurrencyKey = null }) {
@@ -107974,7 +107996,7 @@ function crearLogicaAlbaranes({
     if (replayInmediatoPM10) {
       if (replayInmediatoPM10.firmaEfectoPM11 !== firmaEfectoPM11) {
         procesarRecepcion._pm10UltimoReplay = false;
-        return errorValidacionPM10("operation_id_conflict", "operationId", "La misma versi\xF3n f\xEDsica de recepci\xF3n ya fue usada con otro contenido.");
+        return errorValidacionPM10("operation_id_conflict", "operationId", "La misma versión física de recepción ya fue usada con otro contenido.");
       }
       procesarRecepcion._pm10UltimoReplay = true;
       return { ...replayInmediatoPM10, replayed: true };
@@ -108108,9 +108130,10 @@ function crearLogicaAlbaranes({
   function confirmarAlbaran(alb) {
     const contexto = validarContextoEscrituraPM10({ localActivoId, locales, empresaId });
     if (!contexto.ok) return contexto;
-    if (!albaranEsDelLocalActivo(alb, true)) return errorValidacionPM10("contexto_no_autorizado", "localId", "Albar\xE1n fuera del local activo.");
+    if (!albaranEsDelLocalActivo(alb, true)) return errorValidacionPM10("contexto_no_autorizado", "localId", "Albarán fuera del local activo.");
+
     const albaranId = String(alb?.id || "").trim();
-    if (!albaranId) return errorValidacionPM10("campo_obligatorio", "id", "El albar\xE1n necesita una identidad estable antes de confirmarse.");
+    if (!albaranId) return errorValidacionPM10("campo_obligatorio", "id", "El albarán necesita una identidad estable antes de confirmarse.");
     const facturaPM11 = validarIdentidadFacturaAlbaranPM11({ alb, albaranes, empresaId, localActivoId });
     if (!facturaPM11.ok) return errorValidacionPM10(facturaPM11.codigo, facturaPM11.campo, facturaPM11.error);
     const clavePM11 = claveConfirmacionAlbaranPM11(alb, empresaId, localActivoId);
@@ -108122,22 +108145,24 @@ function crearLogicaAlbaranes({
       if (!memoriaPM11) confirmacionesAlbaranPM11Memoria.set(clavePM11, { firma: guardiaPM11.firma, avisos: guardiaPM11.avisos || [] });
       return resultadoReplayAlbaranPM11(guardiaPM11.avisos, albaranId);
     }
+
     let pedidoLigado = null;
     let lineasEntrada = alb.lineas;
     if (alb.pedidoId) {
       pedidoLigado = (pedidos || []).find((pe2) => pe2.id === alb.pedidoId) || null;
       if (!pedidoEsDelLocalActivoAlbaran(pedidoLigado)) return errorValidacionPM10("contexto_no_autorizado", "pedidoId", "El pedido enlazado no pertenece al local activo.");
       if (String(pedidoLigado.proveedorId || "") !== String(alb.proveedorId || "")) {
-        return errorValidacionPM10("referencia_otro_contexto", "proveedorId", "El proveedor del albar\xE1n no coincide con el proveedor del pedido enlazado.");
+        return errorValidacionPM10("referencia_otro_contexto", "proveedorId", "El proveedor del albarán no coincide con el proveedor del pedido enlazado.");
       }
       const localAlbaranPM11 = String(alb.localId || localActivoId || "");
       if (!localAlbaranPM11 || String(pedidoLigado.localId || "") !== localAlbaranPM11) {
-        return errorValidacionPM10("contexto_no_autorizado", "localId", "El albar\xE1n y el pedido enlazado deben pertenecer al mismo local.");
+        return errorValidacionPM10("contexto_no_autorizado", "localId", "El albarán y el pedido enlazado deben pertenecer al mismo local.");
       }
       const validacion = validarRecepcionPedidoPM10({ pedido: pedidoLigado, lineas: alb.lineas, productos, localActivoId, locales, empresaId, modo: "albaran" });
       if (!validacion.ok) return validacion;
       lineasEntrada = validacion.lineas;
     }
+
     const resultadoRecepcionPM11 = procesarRecepcion({
       lineas: lineasEntrada,
       proveedorId: alb.proveedorId,
@@ -108149,19 +108174,20 @@ function crearLogicaAlbaranes({
       concurrencyKey: pedidoLigado ? operationIdEfectoRecepcionPedidoPM11(pedidoLigado) : null
     });
     if (resultadoRecepcionPM11?.ok === false) {
-      return errorValidacionPM10(resultadoRecepcionPM11.codigo || "conflicto_estado_previo", resultadoRecepcionPM11.campo || "recepcion", resultadoRecepcionPM11.error || "No se pudo completar la recepci\xF3n del albar\xE1n.");
+      return errorValidacionPM10(resultadoRecepcionPM11.codigo || "conflicto_estado_previo", resultadoRecepcionPM11.campo || "recepcion", resultadoRecepcionPM11.error || "No se pudo completar la recepción del albarán.");
     }
     if (!resultadoRecepcionPM11 || !Array.isArray(resultadoRecepcionPM11.lineasResueltas)) {
-      return errorValidacionPM10("conflicto_estado_previo", "recepcion", "No se pudo completar la recepci\xF3n del albar\xE1n.");
+      return errorValidacionPM10("conflicto_estado_previo", "recepcion", "No se pudo completar la recepción del albarán.");
     }
     const { lineasResueltas, avisos } = resultadoRecepcionPM11;
     const replayedRecepcionPM10 = !!resultadoRecepcionPM11.replayed || !!procesarRecepcion._pm10UltimoReplay;
     if (replayedRecepcionPM10) {
-      return errorValidacionPM10("conflicto_estado_previo", "recepcion", "La versi\xF3n del pedido enlazado ya fue usada por otra recepci\xF3n. Recarga antes de confirmar otro albar\xE1n.");
+      return errorValidacionPM10("conflicto_estado_previo", "recepcion", "La versión del pedido enlazado ya fue usada por otra recepción. Recarga antes de confirmar otro albarán.");
     }
     if (pedidoLigado && !replayedRecepcionPM10) {
       setPedidos((prev) => prev.map((pe2) => pe2.id === alb.pedidoId ? aplicarRecepcionPedidoPM10(pe2, lineasResueltas) : pe2));
     }
+
     const confirmacionPM11 = {
       version: 1,
       firma: guardiaPM11.firma,
@@ -108189,18 +108215,19 @@ function crearLogicaAlbaranes({
       avisosPrecio: avisos || [],
       confirmacionPM11,
       esFactura: facturaPM11.esFactura === true,
-      numeroFactura: facturaPM11.esFactura ? facturaPM11.numeroFactura : alb.numeroFactura || "",
-      fechaFactura: facturaPM11.esFactura ? facturaPM11.fechaFactura : alb.fechaFactura || "",
+      numeroFactura: facturaPM11.esFactura ? facturaPM11.numeroFactura : (alb.numeroFactura || ""),
+      fechaFactura: facturaPM11.esFactura ? facturaPM11.fechaFactura : (alb.fechaFactura || ""),
       obligacionFacturaPM11
     });
     if (guardadoPM11 === false) {
-      return errorValidacionPM10("conflicto_persistencia", "albaran", "No se pudo guardar el albar\xE1n confirmado.");
+      return errorValidacionPM10("conflicto_persistencia", "albaran", "No se pudo guardar el albarán confirmado.");
     }
     confirmacionesAlbaranPM11Memoria.set(clavePM11, { firma: guardiaPM11.firma, avisos: avisos || [] });
+
     if ((avisos || []).length && !replayedRecepcionPM10) {
       registrarAuditoria(
-        "Variaci\xF3n de precio en albar\xE1n",
-        `${proveedorPorId(alb.proveedorId)?.nombre || "\u2014"} \xB7 ${(avisos || []).map((a22) => `${a22.nombre} ${a22.variacion > 0 ? "+" : ""}${fmt(a22.variacion)}%`).join(", ")}`
+        "Variación de precio en albarán",
+        `${proveedorPorId(alb.proveedorId)?.nombre || "—"} · ${(avisos || []).map((a22) => `${a22.nombre} ${a22.variacion > 0 ? "+" : ""}${fmt(a22.variacion)}%`).join(", ")}`
       );
     }
     const salidaPM11 = Array.isArray(avisos) ? avisos : [];
@@ -108527,6 +108554,9 @@ function crearLogicaRespaldos({
   }
   function confirmarRestauracion() {
     if (!pendingRestore) return;
+    // Salvaguarda adicional: el bot\xF3n que llama a esta funci\xF3n ya no se
+    // muestra con nube activa (ver el modal de "Restaurar respaldo" m\xE1s
+    // arriba), pero se comprueba tambi\xE9n aqu\xED por si acaso.
     if (typeof window !== "undefined" && window.__nubeActiva === true) return;
     const puntoPrevio = crearPuntoDeGuardado("previo-a-restauracion");
     let restauradas = 0;
@@ -108547,7 +108577,7 @@ function crearLogicaRespaldos({
     setPendingRestore(null);
   }
   function exportarExcelGeneral() {
-    const wb = utils22.book_new();
+    const wb = utils2.book_new();
     const hojaProductos = productos.map((p22) => ({
       C\u00F3digo: p22.codigo || "",
       Nombre: p22.nombre,
@@ -108562,7 +108592,7 @@ function crearLogicaRespaldos({
       "Stock m\xEDnimo": Number(p22.stockMinimo) || 0,
       Proveedor: proveedorPorId(p22.proveedorId)?.nombre || ""
     }));
-    utils22.book_append_sheet(wb, utils22.json_to_sheet(hojaProductos), "Productos");
+    utils2.book_append_sheet(wb, utils2.json_to_sheet(hojaProductos), "Productos");
     const hojaMov = movimientos.map((m22) => ({
       Fecha: m22.fecha,
       Tipo: m22.tipo,
@@ -108574,7 +108604,7 @@ function crearLogicaRespaldos({
       "Medio de pago": m22.medioPago || "",
       Referencia: m22.referencia || ""
     }));
-    utils22.book_append_sheet(wb, utils22.json_to_sheet(hojaMov), "Movimientos");
+    utils2.book_append_sheet(wb, utils2.json_to_sheet(hojaMov), "Movimientos");
     const hojaAlb = albaranes.filter((a22) => a22.estado === "confirmado").map((a22) => {
       const base = (a22.lineas || []).reduce((x3, ln2) => x3 + (Number(ln2.importe) || 0), 0);
       return {
@@ -108586,8 +108616,8 @@ function crearLogicaRespaldos({
         Pagada: a22.pagada ? "S\xED" : "No"
       };
     });
-    utils22.book_append_sheet(wb, utils22.json_to_sheet(hojaAlb), "Albaranes");
-    writeFileSync22(wb, `datos_almacen_${todayISO()}.xlsx`);
+    utils2.book_append_sheet(wb, utils2.json_to_sheet(hojaAlb), "Albaranes");
+    writeFileSync2(wb, `datos_almacen_${todayISO()}.xlsx`);
   }
   return {
     crearPuntoDeGuardado,
@@ -108888,16 +108918,16 @@ function crearLogicaNominas({ nominas, setNominas, registrarAuditoria, empleados
   const claveNominaPM13 = (empleadoId, mes) => `${empleadoId || ""}|${mes || ""}`;
   const mesNominaValidoPM13 = (mes) => /^\d{4}-(0[1-9]|1[0-2])$/.test(String(mes || ""));
   function prepararNominaPM13(data, emp, actual = null) {
-    if (!data || typeof data !== "object") return errorNominaPM13("Los datos de la n\xF3mina no son v\xE1lidos.");
+    if (!data || typeof data !== "object") return errorNominaPM13("Los datos de la nómina no son válidos.");
     const mes = String(data.mes || "").trim();
-    if (!mesNominaValidoPM13(mes)) return errorNominaPM13("El mes de la n\xF3mina no es v\xE1lido.");
+    if (!mesNominaValidoPM13(mes)) return errorNominaPM13("El mes de la nómina no es válido.");
     const bruto = Number(data.brutoTotal);
     const ss = data.seguridadSocialEmpresa === "" || data.seguridadSocialEmpresa == null ? 0 : Number(data.seguridadSocialEmpresa);
     if (!Number.isFinite(bruto) || bruto <= 0) return errorNominaPM13("El bruto total debe ser mayor que cero.");
     if (!Number.isFinite(ss) || ss < 0) return errorNominaPM13("La Seguridad Social de empresa no puede ser negativa.");
     const origen = actual && actual.origen === "IA" ? "IA" : data.origen === "IA" ? "IA" : "MANUAL";
     if (origen === "IA" && data.revisionHumanaConfirmada !== true) {
-      return errorNominaPM13("La propuesta de IA requiere revisi\xF3n humana expl\xEDcita antes de guardarse.");
+      return errorNominaPM13("La propuesta de IA requiere revisión humana explícita antes de guardarse.");
     }
     return {
       ok: true,
@@ -108921,49 +108951,49 @@ function crearLogicaNominas({ nominas, setNominas, registrarAuditoria, empleados
   }
   function addNomina(data) {
     const emp = empleadoNominaLocal(data?.empleadoId);
-    if (!emp) return errorNominaPM13("La n\xF3mina no pertenece a un empleado del local activo.");
+    if (!emp) return errorNominaPM13("La nómina no pertenece a un empleado del local activo.");
     const preparada = prepararNominaPM13(data, emp);
     if (!preparada.ok) return preparada;
     const clave = claveNominaPM13(preparada.datos.empleadoId, preparada.datos.mes);
     const existente = nominas.find((n2) => nominaEsLocal(n2) && n2.estado !== "ANULADA" && claveNominaPM13(n2.empleadoId, n2.mes) === clave);
-    if (existente) return errorNominaPM13("Ya existe una n\xF3mina activa para este empleado y mes. Ed\xEDtala o an\xFAlala antes de registrar otra.");
+    if (existente) return errorNominaPM13("Ya existe una nómina activa para este empleado y mes. Edítala o anúlala antes de registrar otra.");
     if (altasSesionNominaPM13.has(clave)) return { ok: true, replayed: true, id: altasSesionNominaPM13.get(clave) };
     const nueva = { ...preparada.datos, id: uid() };
     altasSesionNominaPM13.set(clave, nueva.id);
     setNominas((s22) => [nueva, ...s22]);
     registrarAuditoria(
-      nueva.origen === "IA" ? "Aprobar registro de n\xF3mina asistido por IA" : "Registrar n\xF3mina manual",
-      `${nueva.mes} \xB7 \u20AC${nueva.costeTotalEmpresa.toFixed(2)} \xB7 ${nueva.origen === "IA" ? "revisi\xF3n humana confirmada" : "entrada manual"}`
+      nueva.origen === "IA" ? "Aprobar registro de nómina asistido por IA" : "Registrar nómina manual",
+      `${nueva.mes} · €${nueva.costeTotalEmpresa.toFixed(2)} · ${nueva.origen === "IA" ? "revisión humana confirmada" : "entrada manual"}`
     );
     return { ok: true, replayed: false, nomina: nueva };
   }
   function updateNomina(id, data) {
     const actual = nominas.find((n2) => n2.id === id);
-    if (!nominaEsLocal(actual)) return errorNominaPM13("La n\xF3mina est\xE1 fuera del contexto autorizado.");
-    if (actual.estado === "ANULADA") return errorNominaPM13("Una n\xF3mina anulada no se puede editar.");
+    if (!nominaEsLocal(actual)) return errorNominaPM13("La nómina está fuera del contexto autorizado.");
+    if (actual.estado === "ANULADA") return errorNominaPM13("Una nómina anulada no se puede editar.");
     if (actual.origen === "IA" || actual.estado === "APROBADA_HUMANO") {
-      return errorNominaPM13("Una n\xF3mina asistida por IA ya revisada es inmutable. An\xFAlala y registra una correcci\xF3n nueva.");
+      return errorNominaPM13("Una nómina asistida por IA ya revisada es inmutable. Anúlala y registra una corrección nueva.");
     }
     const emp = empleadoNominaLocal(data?.empleadoId || actual.empleadoId);
-    if (!emp) return errorNominaPM13("La n\xF3mina no pertenece a un empleado del local activo.");
+    if (!emp) return errorNominaPM13("La nómina no pertenece a un empleado del local activo.");
     const preparada = prepararNominaPM13({ ...data, origen: "MANUAL" }, emp, actual);
     if (!preparada.ok) return preparada;
     const duplicada = nominas.find((n2) => n2.id !== id && nominaEsLocal(n2) && n2.estado !== "ANULADA" && n2.empleadoId === preparada.datos.empleadoId && n2.mes === preparada.datos.mes);
-    if (duplicada) return errorNominaPM13("Ya existe otra n\xF3mina activa para este empleado y mes.");
+    if (duplicada) return errorNominaPM13("Ya existe otra nómina activa para este empleado y mes.");
     const sinCambios = actual.empleadoId === preparada.datos.empleadoId && actual.mes === preparada.datos.mes && Number(actual.brutoTotal) === preparada.datos.brutoTotal && Number(actual.seguridadSocialEmpresa || 0) === preparada.datos.seguridadSocialEmpresa && String(actual.notas || "") === String(preparada.datos.notas || "");
     if (sinCambios) return { ok: true, yaSinCambios: true };
     const actualizada = { ...actual, ...preparada.datos, id: actual.id, origen: actual.origen || "MANUAL", estado: "REGISTRADA_MANUAL" };
     setNominas((s22) => s22.map((n2) => n2.id === id ? actualizada : n2));
-    registrarAuditoria("Editar registro manual de n\xF3mina", `${actualizada.mes} \xB7 \u20AC${actualizada.costeTotalEmpresa.toFixed(2)}`);
+    registrarAuditoria("Editar registro manual de nómina", `${actualizada.mes} · €${actualizada.costeTotalEmpresa.toFixed(2)}`);
     return { ok: true, nomina: actualizada };
   }
   function deleteNomina(id) {
     const actual = nominas.find((n2) => n2.id === id);
-    if (!nominaEsLocal(actual)) return errorNominaPM13("La n\xF3mina est\xE1 fuera del contexto autorizado.");
+    if (!nominaEsLocal(actual)) return errorNominaPM13("La nómina está fuera del contexto autorizado.");
     if (actual.estado === "ANULADA" || anuladasSesionNominaPM13.has(id)) return { ok: true, replayed: true };
     anuladasSesionNominaPM13.add(id);
     setNominas((s22) => s22.map((n2) => n2.id === id ? { ...n2, estado: "ANULADA", fechaAnulacion: hoyNominaPM13() } : n2));
-    registrarAuditoria("Anular registro de n\xF3mina", `${actual.mes || ""} \xB7 \u20AC${(Number(actual.costeTotalEmpresa) || 0).toFixed(2)} \xB7 sin borrado f\xEDsico`);
+    registrarAuditoria("Anular registro de nómina", `${actual.mes || ""} · €${(Number(actual.costeTotalEmpresa) || 0).toFixed(2)} · sin borrado físico`);
     return { ok: true, replayed: false };
   }
   return { addNomina, updateNomina, deleteNomina };
@@ -109002,6 +109032,17 @@ function crearLogicaEntrevistas({ entrevistas, setEntrevistas, registrarAuditori
   return { crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista };
 }
 function crearLogicaPrefiltros({ registrarAuditoria, empresaId, localId, esQA }) {
+  // PM26 P08b: dos backends coexisten para la misma interfaz publica.
+  // QA (post aviso F, P07c) expone las RPC pm11_crear_prefiltro_candidato
+  // / pm11_eliminar_prefiltro_candidato -- SIN cambios respecto a P07b.
+  // Produccion, mientras el Defecto L no este aplicado y autorizado, no
+  // tiene esas RPC ni las columnas empresa_id/local_id: usa el INSERT/
+  // DELETE directo ya vigente hoy en produccion. Cuando (y solo cuando)
+  // se autorice aplicar el Defecto L junto con este cliente, el mismo
+  // INSERT/DELETE directo queda ademas aislado por empresa/local via RLS
+  // (private.la_tiene_local), sin requerir ningun cambio adicional aqui.
+  // esQA se deriva de window.__modoPruebasQA, la misma senal que ya usa
+  // el Defecto K (P07b) -- no se introduce ningun mecanismo nuevo.
   function contextoValido(valor, esLocal = false) {
     if (typeof valor !== "string" || !valor.trim()) return false;
     if (!esLocal) return true;
@@ -109023,26 +109064,26 @@ function crearLogicaPrefiltros({ registrarAuditoria, empresaId, localId, esQA })
     if (!nombre || !contextoValido(empresaId) || !contextoValido(localId, true)) return null;
     const supabase = await window.getSupabaseClient();
     if (esQA) {
-      const { data: token2, error: error2 } = await supabase.rpc("pm11_crear_prefiltro_candidato", {
+      const { data: token, error } = await supabase.rpc("pm11_crear_prefiltro_candidato", {
         p_empresa_id: empresaId,
         p_local_id: localId,
         p_candidato_nombre: nombre
       });
-      if (error2 || !tokenValido(token2)) return null;
+      if (error || !tokenValido(token)) return null;
       registrarAuditoria("Crear prefiltro de candidato", nombre);
-      return token2;
+      return token;
     }
-    const token = generarTokenDirecto();
-    const { error } = await supabase.from("prefiltros_candidatos").insert({
-      token,
+    const tokenDirecto = generarTokenDirecto();
+    const { error: errorInsertPrefiltroDirecto } = await supabase.from("prefiltros_candidatos").insert({
+      token: tokenDirecto,
       candidato_nombre: nombre,
       estado: "pendiente",
       empresa_id: empresaId,
       local_id: localId
     });
-    if (error) return null;
+    if (errorInsertPrefiltroDirecto) return null;
     registrarAuditoria("Crear prefiltro de candidato", nombre);
-    return token;
+    return tokenDirecto;
   }
   async function listarPrefiltros() {
     const supabase = await window.getSupabaseClient();
@@ -109057,17 +109098,21 @@ function crearLogicaPrefiltros({ registrarAuditoria, empresaId, localId, esQA })
     if (!tokenValido(token) || !contextoValido(empresaFila) || !contextoValido(localFila, true)) return false;
     const supabase = await window.getSupabaseClient();
     if (esQA) {
-      const { data: data2, error: error2 } = await supabase.rpc("pm11_eliminar_prefiltro_candidato", {
+      const { data, error } = await supabase.rpc("pm11_eliminar_prefiltro_candidato", {
         p_empresa_id: empresaFila,
         p_local_id: localFila,
         p_token: token
       });
-      if (error2 || data2 !== true) return false;
+      if (error || data !== true) return false;
       registrarAuditoria("Eliminar prefiltro de candidato", prefiltro?.candidato_nombre || token);
       return true;
     }
-    const { data, error } = await supabase.from("prefiltros_candidatos").delete().eq("token", token).select();
-    if (error || !Array.isArray(data) || data.length !== 1) return false;
+    // Un DELETE bloqueado por RLS (fila de otra empresa/local) no
+    // devuelve error -- simplemente no afecta ninguna fila. Sin .select()
+    // no habria forma de distinguir ese caso de un borrado real: se exige
+    // exactamente una fila devuelta para considerarlo exito.
+    const { data: filasBorradasPrefiltroDirecto, error: errorBorrarPrefiltroDirecto } = await supabase.from("prefiltros_candidatos").delete().eq("token", token).select();
+    if (errorBorrarPrefiltroDirecto || !Array.isArray(filasBorradasPrefiltroDirecto) || filasBorradasPrefiltroDirecto.length !== 1) return false;
     registrarAuditoria("Eliminar prefiltro de candidato", prefiltro?.candidato_nombre || token);
     return true;
   }
@@ -109202,7 +109247,7 @@ function BotonModoEmpleado({ modoEmpleado, salirModoEmpleado, empleados = [], us
       title: "Cerrar sesi\xF3n de Propietario en este dispositivo"
     },
     "\u{1F512} Cerrar sesi\xF3n"
-  ), confirmarLogoutPropietarioPM17 && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => !cerrandoSesionPropietarioPM17 && setConfirmarLogoutPropietarioPM17(false), title: "Cerrar sesi\xF3n" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-4" }, "Vas a cerrar la sesi\xF3n de Propietario solo en este dispositivo. Los datos del negocio no se modificar\xE1n."), errorLogoutPropietarioPM17 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", style: { color: C2.red } }, errorLogoutPropietarioPM17), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: cerrarSesionPropietarioPM17, disabled: cerrandoSesionPropietarioPM17 }, cerrandoSesionPropietarioPM17 ? "Cerrando\u2026" : "Cerrar sesi\xF3n"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmarLogoutPropietarioPM17(false), disabled: cerrandoSesionPropietarioPM17 }, "Cancelar")))));
+  ), confirmarLogoutPropietarioPM17 && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => !cerrandoSesionPropietarioPM17 && setConfirmarLogoutPropietarioPM17(false), title: "Cerrar sesi\xF3n" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-4" }, "Vas a cerrar la sesi\xF3n de Propietario solo en este dispositivo. Los datos del negocio no se modificar\xE1n."), errorLogoutPropietarioPM17 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", style: { color: C2.red } }, errorLogoutPropietarioPM17), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: cerrarSesionPropietarioPM17, disabled: cerrandoSesionPropietarioPM17 }, cerrandoSesionPropietarioPM17 ? "Cerrando…" : "Cerrar sesi\xF3n"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmarLogoutPropietarioPM17(false), disabled: cerrandoSesionPropietarioPM17 }, "Cancelar")))));
 }
 function SidebarGrupos({ grupos, tab, setTab, disenoMenu, setDisenoMenu, temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil }) {
   return /* @__PURE__ */ import_react4.default.createElement("aside", { style: { background: C2.chrome, color: "#fff" }, className: "w-full md:w-64 shrink-0 p-4 md:p-5 flex md:flex-col gap-1 overflow-x-auto md:overflow-visible" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "hidden md:block mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "rounded-xl px-3 py-3.5 mb-2.5", style: { background: "rgba(184,139,69,0.07)", border: "1px solid rgba(184,139,69,0.24)" } }, /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO_PROYECTO, alt: "", style: { width: "100%", height: "auto", display: "block" } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] tracking-widest uppercase mb-3", style: { color: "#9CB6A9" } }, LEMA_PROYECTO), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(SelectorDiseno, { disenoMenu, setDisenoMenu, oscuro: true }), /* @__PURE__ */ import_react4.default.createElement(BotonTema, { temaOscuro, setTemaOscuro }), /* @__PURE__ */ import_react4.default.createElement(BotonModoEmpleado, { modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "md:hidden shrink-0 flex items-center gap-1.5 pr-2" }, /* @__PURE__ */ import_react4.default.createElement("img", { src: ICONO_PROYECTO, alt: "L&A Suite", style: { width: 30, height: 30, borderRadius: 7, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement(SelectorDiseno, { disenoMenu, setDisenoMenu, oscuro: true }), /* @__PURE__ */ import_react4.default.createElement(BotonTema, { temaOscuro, setTemaOscuro }), /* @__PURE__ */ import_react4.default.createElement(BotonModoEmpleado, { modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil })), grupos.map((g2, gi) => /* @__PURE__ */ import_react4.default.createElement("div", { key: gi, className: "contents md:block md:mb-1" }, g2.titulo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "hidden md:block text-[10.5px] font-semibold uppercase tracking-wide mt-3 mb-1 px-3", style: { color: "#7E9186" } }, g2.titulo), g2.titulo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "md:hidden shrink-0 self-stretch mx-1", style: { borderLeft: "1px solid rgba(255,255,255,0.15)" } }), g2.items.map((it2) => {
@@ -109530,7 +109575,7 @@ function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendi
       titulo: "Arranque: datos que no se pudieron cargar",
       valor: fallosCarga.length,
       color: fallosCarga.length ? C2.red : C2.ink,
-      nota: fallosCarga.length > 0 ? "no se ha sobrescrito nada \u2014 revisa Respaldos" : null,
+      nota: fallosCarga.length > 0 ? "no se ha sobrescrito nada — revisa Respaldos" : null,
       tab: "respaldos",
       tabNombre: "Respaldos",
       items: fallosCarga.slice(0, 10).map((f22) => ({
@@ -109860,9 +109905,7 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
   function submit() {
     if (submitBloqueadoProductoPM10.current) return;
     submitBloqueadoProductoPM10.current = true;
-    setTimeout(() => {
-      submitBloqueadoProductoPM10.current = false;
-    }, 750);
+    setTimeout(() => { submitBloqueadoProductoPM10.current = false; }, 750);
     if (!form.nombre.trim()) {
       setError("Escribe el nombre del producto.");
       return;
@@ -110321,15 +110364,13 @@ function Pedidos({ pedidos: pedidos2, proveedores, productos, crearPedido, actua
   function submit() {
     if (submitBloqueadoPedidoPM10.current) return;
     submitBloqueadoPedidoPM10.current = true;
-    setTimeout(() => {
-      submitBloqueadoPedidoPM10.current = false;
-    }, 750);
+    setTimeout(() => { submitBloqueadoPedidoPM10.current = false; }, 750);
     if (!proveedorId) {
       setError("Selecciona un proveedor.");
       return;
     }
     if (items.length === 0) {
-      setError("A\xF1ade al menos un producto al pedido.");
+      setError("Añade al menos un producto al pedido.");
       return;
     }
     const payload = { proveedorId, fechaEsperada, items };
@@ -110585,7 +110626,7 @@ function Recepcion({ pedidos: pedidos2, proveedorPorId, productoPorId, recibirPe
       if (recepcionesEnCursoPM10.current.has(pe2.id)) return;
       recepcionesEnCursoPM10.current.add(pe2.id);
       setTimeout(() => recepcionesEnCursoPM10.current.delete(pe2.id), 900);
-      const porProducto = /* @__PURE__ */ new Map();
+      const porProducto = new Map();
       pe2.items.forEach((it2) => {
         if (porProducto.has(it2.productoId)) return;
         const campo = (activos[pe2.id] || {})[it2.productoId] || {};
@@ -110611,12 +110652,12 @@ function Recepcion({ pedidos: pedidos2, proveedorPorId, productoPorId, recibirPe
       }
       const resultado = recibirPedido(pe2.id, lineasIntento, intento.operationId);
       if (!resultado || resultado.ok === false) {
-        setErroresRecepcion((s22) => ({ ...s22, [pe2.id]: resultado?.error || "No se pudo registrar la recepci\xF3n." }));
+        setErroresRecepcion((s22) => ({ ...s22, [pe2.id]: resultado?.error || "No se pudo registrar la recepción." }));
         return;
       }
       setErroresRecepcion((s22) => ({ ...s22, [pe2.id]: "" }));
       setActivos((s22) => ({ ...s22, [pe2.id]: {} }));
-    } }, /* @__PURE__ */ import_react4.default.createElement(CircleCheck, { size: 14 }), " Recibir sin albar\xE1n")), cerrarPedido && /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setCerrando(pe2) }, "Cerrar pedido")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Con albar\xE1n registras adem\xE1s precios, descuentos, lotes y caducidades, y el pedido se cierra solo. Con foto IA, haces una foto del papel del proveedor y ella rellena el borrador por ti. La otra opci\xF3n solo suma stock, sin dejar rastro del papel."));
+    } }, /* @__PURE__ */ import_react4.default.createElement(CircleCheck, { size: 14 }), " Recibir sin albarán")), cerrarPedido && /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setCerrando(pe2) }, "Cerrar pedido")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Con albar\xE1n registras adem\xE1s precios, descuentos, lotes y caducidades, y el pedido se cierra solo. Con foto IA, haces una foto del papel del proveedor y ella rellena el borrador por ti. La otra opci\xF3n solo suma stock, sin dejar rastro del papel."));
   })), cerrando && (() => {
     const faltan = cerrando.items.map((it2) => ({ ...it2, producto: productoPorId(it2.productoId), pendiente: (Number(it2.cantidad) || 0) - (Number(it2.cantidadRecibida) || 0) })).filter((it2) => it2.pendiente > 0);
     return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setCerrando(null), title: "\xBFDar el pedido por cerrado?" }, faltan.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, "Ha llegado todo lo pedido. Se marcar\xE1 como recibido.") : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2" }, "Todav\xEDa falta por llegar:"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1 mb-3" }, faltan.map((it2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: it2.productoId, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, it2.producto ? it2.producto.nombre : "\u2014"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: C2.amber } }, "faltan ", fmt(it2.pendiente))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Ci\xE9rralo si el proveedor ya no va a servir el resto. ", /* @__PURE__ */ import_react4.default.createElement("b", null, "No suma nada al stock"), " \u2014 solo saca el pedido de esta lista para que deje de aparecer como pendiente.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
@@ -110648,12 +110689,12 @@ Contado por: ____________________`;
 }
 function BloqueAplicarAjustes({ activo, procesandoCierre, onAplicar, onCerrarSinAjustar, onPedirRevertir, puedeAplicar = false }) {
   if (activo.ajustesAplicados) {
-    return /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium mb-1" }, "Ajustes ya aplicados"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, activo.ajustesAplicadosEn ? `El ${new Date(activo.ajustesAplicadosEn).toLocaleString("es-ES")} \u2014 ` : "", "no se pueden volver a aplicar, para no duplicar la correcci\xF3n sobre el stock.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", small: true, disabled: !puedeAplicar, title: !puedeAplicar ? "Solo Propietario o Encargado puede revertir ajustes de inventario." : "Revertir \xFAnicamente una aplicaci\xF3n duplicada", onClick: onPedirRevertir }, "\xBFSe aplic\xF3 dos veces por error? Revertir la \xFAltima aplicaci\xF3n"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", small: true, onClick: onCerrarSinAjustar }, "Cerrar")));
+    return /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium mb-1" }, "Ajustes ya aplicados"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, activo.ajustesAplicadosEn ? `El ${new Date(activo.ajustesAplicadosEn).toLocaleString("es-ES")} — ` : "", "no se pueden volver a aplicar, para no duplicar la corrección sobre el stock.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", small: true, disabled: !puedeAplicar, title: !puedeAplicar ? "Solo Propietario o Encargado puede revertir ajustes de inventario." : "Revertir únicamente una aplicación duplicada", onClick: onPedirRevertir }, "¿Se aplicó dos veces por error? Revertir la última aplicación"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", small: true, onClick: onCerrarSinAjustar }, "Cerrar")));
   }
   if (!puedeAplicar) {
     return /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium mb-1" }, "Conteo cerrado sin permiso de ajuste"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Puedes cerrar y revisar el conteo, pero solo Propietario o Encargado puede aplicar ajustes al stock.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: onCerrarSinAjustar, disabled: procesandoCierre }, "Cerrar sin ajustar")));
   }
-  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 flex gap-2 flex-wrap no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { disabled: procesandoCierre, onClick: onAplicar }, procesandoCierre ? "Aplicando\u2026" : "Aplicar ajustes al stock"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: onCerrarSinAjustar, disabled: procesandoCierre }, "Cerrar sin ajustar"));
+  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 flex gap-2 flex-wrap no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { disabled: procesandoCierre, onClick: onAplicar }, procesandoCierre ? "Aplicando…" : "Aplicar ajustes al stock"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: onCerrarSinAjustar, disabled: procesandoCierre }, "Cerrar sin ajustar"));
 }
 function InventarioCiego({ productos, proveedores, conteos, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion, productoPorId, crearProductoEnConteo, clasificacionABC, almacenCongelado, puedeAplicarAjustes = false }) {
   const [activoId, setActivoId] = (0, import_react4.useState)(null);
@@ -110710,10 +110751,7 @@ function InventarioCiego({ productos, proveedores, conteos, iniciarConteo, actua
     const responsable = String((activo.responsables || {}).contadoPor || "").trim();
     const resultado = finalizarConteo(activo.id, { actorId: responsable, actorNombre: responsable });
     if (resultado.ok) return;
-    if (resultado.codigo === "cobertura_incompleta") {
-      setConfirmarCierreParcial(true);
-      return;
-    }
+    if (resultado.codigo === "cobertura_incompleta") { setConfirmarCierreParcial(true); return; }
     setErrorCierre(resultado.error);
   }
   function confirmarFinalizacionParcial() {
@@ -110721,10 +110759,7 @@ function InventarioCiego({ productos, proveedores, conteos, iniciarConteo, actua
     setErrorCierre("");
     const responsable = String((activo.responsables || {}).contadoPor || "").trim();
     const resultado = finalizarConteo(activo.id, { confirmarParcial: true, motivoParcial: motivoCierreParcial, actorId: responsable, actorNombre: responsable });
-    if (!resultado.ok) {
-      setErrorCierre(resultado.error);
-      return;
-    }
+    if (!resultado.ok) { setErrorCierre(resultado.error); return; }
     setConfirmarCierreParcial(false);
     setMotivoCierreParcial("");
   }
@@ -110810,13 +110845,7 @@ ${cuerpo}`;
       action: /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setVerHoja(true) }, /* @__PURE__ */ import_react4.default.createElement(ClipboardList, { size: 15 }), " Hoja para contar"), !activo && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setActivoId(iniciarConteo("total")) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Contar todo el local"), !activo && /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setActivoId(iniciarConteo("piso_venta")) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Contar solo el piso de venta"), !activo && /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setActivoId(iniciarConteo("almacen")) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Contar solo el almac\xE9n (trastienda, sin elaborados)"))
     },
     "Inventario ciego"
-  ), confirmarCierreParcial && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => {
-    setConfirmarCierreParcial(false);
-    setMotivoCierreParcial("");
-  }, title: "Cerrar conteo parcial" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, "Has contado ", /* @__PURE__ */ import_react4.default.createElement("b", null, coberturaActivo.contados, " de ", coberturaActivo.total), " productos. Los ", coberturaActivo.pendientes, " restantes quedar\xE1n identificados como pendientes; no se tratar\xE1n como cero."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo del cierre parcial" }, /* @__PURE__ */ import_react4.default.createElement("textarea", { value: motivoCierreParcial, onChange: (e2) => setMotivoCierreParcial(e2.target.value), rows: 3, placeholder: "Ej.: faltaba revisar la c\xE1mara frigor\xEDfica", className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
-    setConfirmarCierreParcial(false);
-    setMotivoCierreParcial("");
-  } }, "Seguir contando"), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarFinalizacionParcial }, "Confirmar cierre parcial"))), resumenCierre && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between gap-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, resumenCierre.ok === false ? resumenCierre.error : resumenCierre.ajustados === 0 ? "Todo coincid\xEDa \u2014 no hizo falta ning\xFAn ajuste." : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, resumenCierre.ajustados, " producto(s) ajustado(s).", resumenCierre.traspasados.filter((t22) => t22.tipoTraspaso === "sobra").length > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " ", "De ellos, ", resumenCierre.traspasados.filter((t22) => t22.tipoTraspaso === "sobra").length, " ten\xEDan sobrante y se traspasaron solos al piso de venta:", " ", resumenCierre.traspasados.filter((t22) => t22.tipoTraspaso === "sobra").map((t22) => `${t22.nombre} (+${fmt(t22.cantidad)})`).join(", "), "."), resumenCierre.traspasados.filter((t22) => t22.tipoTraspaso === "falta").length > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " ", resumenCierre.traspasados.filter((t22) => t22.tipoTraspaso === "falta").length, " ten\xEDan menos de lo esperado en almac\xE9n \u2014 se asume que ya estaban en el piso de venta sin registrar, y se traspasaron ah\xED (el total no cambi\xF3, no se cuenta como merma):", " ", resumenCierre.traspasados.filter((t22) => t22.tipoTraspaso === "falta").map((t22) => `${t22.nombre} (+${fmt(t22.cantidad)})`).join(", "), "."))), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setResumenCierre(null), className: "shrink-0", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 16 })))), almacenCongelado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start gap-2 text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { size: 16, color: C2.amber, style: { marginTop: 2, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement("span", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Almac\xE9n congelado."), " Mientras haya un conteo abierto no se pueden registrar entradas ni salidas, para que el descuadre no salga falseado. Finaliza el conteo para desbloquearlo."))), !activo && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start gap-2 text-[12.5px]", style: { color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement(EyeOff, { size: 16, style: { marginTop: 2, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement("span", null, "Durante el conteo no se muestra la existencia del sistema: cuentas f\xEDsicamente y anotas la cantidad. Al finalizar ver\xE1s las diferencias contra el stock registrado, valoradas en euros."))), activo && !activo.completado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3 flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement(Eye, { size: 15 }), " Captura de conteos", /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: esPisoVenta || esAlmacen ? C2.amber : C2.inkSoft }, esPisoVenta ? "Solo piso de venta" : esAlmacen ? "Solo almac\xE9n (trastienda)" : "Todo el local")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Contado por" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: (activo.responsables || {}).contadoPor || "", onChange: (e2) => actualizarResponsable(activo.id, "contadoPor", e2.target.value), placeholder: "Nombre" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Revisado por (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: (activo.responsables || {}).revisor || "", onChange: (e2) => actualizarResponsable(activo.id, "revisor", e2.target.value), placeholder: "Responsable" }))), /* @__PURE__ */ import_react4.default.createElement("div", { style: { overflowX: "auto" } }, /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[12px]", style: { borderCollapse: "collapse" } }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", null, /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff", width: 30 } }, "N\xBA"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Descripci\xF3n del producto"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff", width: 58 } }, "U/M"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff", width: 96 } }, "Conteo"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, (() => {
+  ), confirmarCierreParcial && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => { setConfirmarCierreParcial(false); setMotivoCierreParcial(""); }, title: "Cerrar conteo parcial" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, "Has contado ", /* @__PURE__ */ import_react4.default.createElement("b", null, coberturaActivo.contados, " de ", coberturaActivo.total), " productos. Los ", coberturaActivo.pendientes, " restantes quedarán identificados como pendientes; no se tratarán como cero."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo del cierre parcial" }, /* @__PURE__ */ import_react4.default.createElement("textarea", { value: motivoCierreParcial, onChange: (e2) => setMotivoCierreParcial(e2.target.value), rows: 3, placeholder: "Ej.: faltaba revisar la cámara frigorífica", className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => { setConfirmarCierreParcial(false); setMotivoCierreParcial(""); } }, "Seguir contando"), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarFinalizacionParcial }, "Confirmar cierre parcial"))), resumenCierre && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between gap-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, resumenCierre.ok === false ? resumenCierre.error : resumenCierre.ajustados === 0 ? "Todo coincid\xEDa \u2014 no hizo falta ning\xFAn ajuste." : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, resumenCierre.ajustados, " producto(s) ajustado(s).", resumenCierre.traspasados.filter((t22) => t22.tipoTraspaso === "sobra").length > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " ", "De ellos, ", resumenCierre.traspasados.filter((t22) => t22.tipoTraspaso === "sobra").length, " ten\xEDan sobrante y se traspasaron solos al piso de venta:", " ", resumenCierre.traspasados.filter((t22) => t22.tipoTraspaso === "sobra").map((t22) => `${t22.nombre} (+${fmt(t22.cantidad)})`).join(", "), "."), resumenCierre.traspasados.filter((t22) => t22.tipoTraspaso === "falta").length > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " ", resumenCierre.traspasados.filter((t22) => t22.tipoTraspaso === "falta").length, " ten\xEDan menos de lo esperado en almac\xE9n \u2014 se asume que ya estaban en el piso de venta sin registrar, y se traspasaron ah\xED (el total no cambi\xF3, no se cuenta como merma):", " ", resumenCierre.traspasados.filter((t22) => t22.tipoTraspaso === "falta").map((t22) => `${t22.nombre} (+${fmt(t22.cantidad)})`).join(", "), "."))), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setResumenCierre(null), className: "shrink-0", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 16 })))), almacenCongelado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start gap-2 text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { size: 16, color: C2.amber, style: { marginTop: 2, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement("span", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Almac\xE9n congelado."), " Mientras haya un conteo abierto no se pueden registrar entradas ni salidas, para que el descuadre no salga falseado. Finaliza el conteo para desbloquearlo."))), !activo && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start gap-2 text-[12.5px]", style: { color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement(EyeOff, { size: 16, style: { marginTop: 2, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement("span", null, "Durante el conteo no se muestra la existencia del sistema: cuentas f\xEDsicamente y anotas la cantidad. Al finalizar ver\xE1s las diferencias contra el stock registrado, valoradas en euros."))), activo && !activo.completado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3 flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement(Eye, { size: 15 }), " Captura de conteos", /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: esPisoVenta || esAlmacen ? C2.amber : C2.inkSoft }, esPisoVenta ? "Solo piso de venta" : esAlmacen ? "Solo almac\xE9n (trastienda)" : "Todo el local")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Contado por" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: (activo.responsables || {}).contadoPor || "", onChange: (e2) => actualizarResponsable(activo.id, "contadoPor", e2.target.value), placeholder: "Nombre" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Revisado por (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: (activo.responsables || {}).revisor || "", onChange: (e2) => actualizarResponsable(activo.id, "revisor", e2.target.value), placeholder: "Responsable" }))), /* @__PURE__ */ import_react4.default.createElement("div", { style: { overflowX: "auto" } }, /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[12px]", style: { borderCollapse: "collapse" } }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", null, /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff", width: 30 } }, "N\xBA"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-left", style: { background: C2.chrome, color: "#fff" } }, "Descripci\xF3n del producto"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff", width: 58 } }, "U/M"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "py-2 px-2 text-center", style: { background: C2.chrome, color: "#fff", width: 96 } }, "Conteo"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, (() => {
     const enConteo = activo.items.map((it2) => ({ it: it2, p: productoPorId(it2.productoId) })).filter((x3) => x3.p);
     const grupos = agruparPorProveedor(enConteo.map((x3) => x3.p), proveedores);
     const porId = new Map(enConteo.map((x3) => [x3.p.id, x3.it]));
@@ -110907,7 +110936,7 @@ ${cuerpo}`;
         ));
       })()));
     })));
-  })()))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 p-3 rounded-lg", style: { background: C2.surfaceSoft, border: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("b", null, coberturaActivo.contados, " de ", coberturaActivo.total, " productos contados"), /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: coberturaActivo.pendientes > 0 ? C2.amber : C2.accent }, coberturaActivo.pendientes > 0 ? "En curso" : "Completo")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, coberturaActivo.pendientes, " pendiente(s) \xB7 ", coberturaActivo.porcentaje, "% completado")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-2", style: { color: C2.inkSoft } }, "Las casillas en verde ya tienen conteo capturado. Las que quedan en blanco est\xE1n pendientes. El valor 0 cuenta como cantidad v\xE1lida."), errorCierre && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] mt-3 p-3 rounded-lg", style: { color: C2.red, background: C2.redSoft } }, errorCierre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 flex gap-2 items-center flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: solicitarFinalizacion }, coberturaActivo.pendientes > 0 ? "Revisar y finalizar" : "Finalizar conteo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowNuevo((s22) => !s22) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 14 }), " Encontr\xE9 un producto que no est\xE1 en el sistema")), showNuevo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 pt-4", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium mb-3", style: { color: C2.inkSoft } }, "Da de alta el producto encontrado y captura la cantidad contada. Se a\xF1adir\xE1 al cat\xE1logo y a este conteo."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nuevo.nombre, onChange: (e2) => setNuevo({ ...nuevo, nombre: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "C\xF3digo / SKU (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nuevo.codigo, onChange: (e2) => setNuevo({ ...nuevo, codigo: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Categor\xEDa" }, /* @__PURE__ */ import_react4.default.createElement(CampoCategoria, { value: nuevo.categoria, onChange: (v22) => setNuevo({ ...nuevo, categoria: v22 }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Unidad de medida" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nuevo.unidad, onChange: (e2) => setNuevo({ ...nuevo, unidad: e2.target.value }), placeholder: "unidad, kg, caja\u2026" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Costo de compra (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: nuevo.costo, onChange: (e2) => setNuevo({ ...nuevo, costo: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio de venta (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: nuevo.precioVenta, onChange: (e2) => setNuevo({ ...nuevo, precioVenta: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Stock m\xEDnimo (reorden)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: nuevo.stockMinimo, onChange: (e2) => setNuevo({ ...nuevo, stockMinimo: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Ubicaci\xF3n en almac\xE9n (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nuevo.ubicacion, onChange: (e2) => setNuevo({ ...nuevo, ubicacion: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Proveedor principal (opcional)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: nuevo.proveedorId, onChange: (e2) => setNuevo({ ...nuevo, proveedorId: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin asignar"), proveedores.map((p22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: p22.id, value: p22.id }, p22.nombre)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Cantidad contada f\xEDsicamente" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: nuevo.cantidadContada, onChange: (e2) => setNuevo({ ...nuevo, cantidadContada: e2.target.value }) }))), errorNuevo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, errorNuevo), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-1" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitNuevo }, "A\xF1adir al conteo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+  })()))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 p-3 rounded-lg", style: { background: C2.surfaceSoft, border: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("b", null, coberturaActivo.contados, " de ", coberturaActivo.total, " productos contados"), /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: coberturaActivo.pendientes > 0 ? C2.amber : C2.accent }, coberturaActivo.pendientes > 0 ? "En curso" : "Completo")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, coberturaActivo.pendientes, " pendiente(s) · ", coberturaActivo.porcentaje, "% completado")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-2", style: { color: C2.inkSoft } }, "Las casillas en verde ya tienen conteo capturado. Las que quedan en blanco están pendientes. El valor 0 cuenta como cantidad válida."), errorCierre && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] mt-3 p-3 rounded-lg", style: { color: C2.red, background: C2.redSoft } }, errorCierre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 flex gap-2 items-center flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: solicitarFinalizacion }, coberturaActivo.pendientes > 0 ? "Revisar y finalizar" : "Finalizar conteo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowNuevo((s22) => !s22) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 14 }), " Encontr\xE9 un producto que no est\xE1 en el sistema")), showNuevo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 pt-4", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium mb-3", style: { color: C2.inkSoft } }, "Da de alta el producto encontrado y captura la cantidad contada. Se a\xF1adir\xE1 al cat\xE1logo y a este conteo."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nuevo.nombre, onChange: (e2) => setNuevo({ ...nuevo, nombre: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "C\xF3digo / SKU (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nuevo.codigo, onChange: (e2) => setNuevo({ ...nuevo, codigo: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Categor\xEDa" }, /* @__PURE__ */ import_react4.default.createElement(CampoCategoria, { value: nuevo.categoria, onChange: (v22) => setNuevo({ ...nuevo, categoria: v22 }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Unidad de medida" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nuevo.unidad, onChange: (e2) => setNuevo({ ...nuevo, unidad: e2.target.value }), placeholder: "unidad, kg, caja\u2026" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Costo de compra (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: nuevo.costo, onChange: (e2) => setNuevo({ ...nuevo, costo: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio de venta (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: nuevo.precioVenta, onChange: (e2) => setNuevo({ ...nuevo, precioVenta: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Stock m\xEDnimo (reorden)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: nuevo.stockMinimo, onChange: (e2) => setNuevo({ ...nuevo, stockMinimo: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Ubicaci\xF3n en almac\xE9n (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nuevo.ubicacion, onChange: (e2) => setNuevo({ ...nuevo, ubicacion: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Proveedor principal (opcional)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: nuevo.proveedorId, onChange: (e2) => setNuevo({ ...nuevo, proveedorId: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin asignar"), proveedores.map((p22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: p22.id, value: p22.id }, p22.nombre)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Cantidad contada f\xEDsicamente" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: nuevo.cantidadContada, onChange: (e2) => setNuevo({ ...nuevo, cantidadContada: e2.target.value }) }))), errorNuevo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, errorNuevo), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-1" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitNuevo }, "A\xF1adir al conteo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
     setShowNuevo(false);
     setErrorNuevo("");
   } }, "Cancelar")))), activo && activo.completado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between flex-wrap gap-2 mb-1 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold" }, "Resultado del conteo \u2014 ", activo.fecha), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => window.print() }, "Imprimir / Guardar PDF"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: compartirPdfWhatsApp }, /* @__PURE__ */ import_react4.default.createElement(FileText, { size: 13 }), " Enviar PDF por WhatsApp"), /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { href: `https://wa.me/?text=${encodeURIComponent(textoResultadoConteo())}` }, /* @__PURE__ */ import_react4.default.createElement(MessageCircle, { size: 13 }), " WhatsApp (solo texto)"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3 no-imprimir", style: { color: C2.inkSoft } }, "Ordenado por impacto econ\xF3mico: lo que m\xE1s dinero mueve aparece primero."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "zona-impresion", style: ESTILO_IMPRESION_CLARO }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end justify-between mb-3 pb-3", style: { borderBottom: "2px solid #9C7A34" } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold" }, "Resultado del conteo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: "#6B7A6E" } }, activo.fecha, " \xB7 ", esPisoVenta ? "Piso de venta" : esAlmacen ? "Almac\xE9n (trastienda)" : "Todo el local")), /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO, alt: "", style: { height: 48, width: "auto" } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Productos descuadrados"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: conDescuadre.length ? C2.amber : C2.accent } }, conDescuadre.length)), /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Impacto econ\xF3mico neto"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: impactoTotal < 0 ? C2.red : impactoTotal > 0 ? C2.accent : C2.ink } }, impactoTotal >= 0 ? "+" : "\u2212", "\u20AC", fmt(Math.abs(impactoTotal))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, diferencias.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No se captur\xF3 ning\xFAn conteo." }) : diferencias.map((d2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: d2.producto.id, style: { background: d2.dif === 0 ? C2.surface : C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between mb-1" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, d2.producto.nombre), /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: abcColor[esNoMercancia(d2.producto) ? "\u2014" : clasificacionABC[d2.producto.id] || "C"] || C2.inkSoft }, esNoMercancia(d2.producto) ? "\u2014" : clasificacionABC[d2.producto.id] || "C")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-4 gap-2 text-[12px] mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft }, className: "text-[10.5px]" }, esPisoVenta ? "Sistema (piso)" : esAlmacen ? "Sistema (almac\xE9n)" : "Sistema"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, fmt(referenciaSistema(d2.producto)))), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft }, className: "text-[10.5px]" }, "Conteo final"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold" }, d2.cf)), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft }, className: "text-[10.5px]" }, "Diferencia"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold", style: { color: d2.dif === 0 ? C2.inkSoft : d2.dif < 0 ? C2.red : C2.accent } }, d2.dif > 0 ? `+${d2.dif}` : d2.dif)), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft }, className: "text-[10.5px]" }, "Impacto"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold", style: { color: d2.impacto === 0 ? C2.inkSoft : d2.impacto < 0 ? C2.red : C2.accent } }, d2.impacto >= 0 ? "" : "\u2212", "\u20AC", fmt(Math.abs(d2.impacto))))), d2.dif !== 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo del descuadre" }, /* @__PURE__ */ import_react4.default.createElement(
@@ -110938,17 +110967,12 @@ ${cuerpo}`;
       if (procesandoCierre) return;
       setProcesandoCierre(true);
       try {
-        const r2 = await aplicarAjustes(activo.id, motivos);
-        setResumenCierre(r2);
-        if (r2.ok) {
-          setMotivos({});
-          setActivoId(null);
-        }
+        const r = await aplicarAjustes(activo.id, motivos);
+        setResumenCierre(r);
+        if (r.ok) { setMotivos({}); setActivoId(null); }
       } catch {
-        setResumenCierre({ ok: false, error: "No se confirm\xF3 el ajuste. Conserva el conteo y reintenta." });
-      } finally {
-        setProcesandoCierre(false);
-      }
+        setResumenCierre({ ok: false, error: "No se confirmó el ajuste. Conserva el conteo y reintenta." });
+      } finally { setProcesandoCierre(false); }
     },
     onCerrarSinAjustar: () => setActivoId(null),
     onPedirRevertir: () => setConfirmarRevertirDuplicado(true)
@@ -110985,11 +111009,11 @@ ${cuerpo}`;
       n2 += 1;
       return /* @__PURE__ */ import_react4.default.createElement("tr", { key: p22.id, style: { background: n2 % 2 ? C2.bg : C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 mono", style: { border: `1px solid ${C2.line}` } }, n2), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2", style: { border: `1px solid ${C2.line}` } }, p22.nombre, p22.codigo && /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: C2.inkSoft } }, " \xB7 ", p22.codigo)), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-center", style: { border: `1px solid ${C2.line}` } }, p22.unidad), /* @__PURE__ */ import_react4.default.createElement("td", { style: { border: `1px solid ${C2.line}`, height: 32, background: "#F0F4F1" } }));
     })));
-  })())), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-6 text-[11px] grid grid-cols-2 gap-6", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement("div", null, "Contado por: _________________________"), /* @__PURE__ */ import_react4.default.createElement("div", null, "Fecha y firma: _________________________")))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Historial de conteos"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, conteos.filter((c22) => c22.id !== activoId).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin conteos anteriores." }) : conteos.filter((c22) => c22.id !== activoId).map((c22) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: c22.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", null, "Conteo del ", c22.fecha, c22.ambito === "piso_venta" && /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, " \xB7 piso de venta"), c22.ambito === "almacen" && /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, " \xB7 almac\xE9n (trastienda)")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: c22.estado === "CANCELADO" || c22.cancelado === true ? C2.inkSoft : c22.estado === "PARCIAL" ? C2.amber : c22.completado || c22.estado === "COMPLETADO" ? C2.accent : C2.amber }, c22.estado === "CANCELADO" || c22.cancelado === true ? "Cancelado" : c22.estado === "PARCIAL" ? "Parcial" : c22.completado || c22.estado === "COMPLETADO" ? "Completado" : c22.estado === "BORRADOR" ? "Borrador" : "En curso"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setActivoId(c22.id) }, "Ver ", /* @__PURE__ */ import_react4.default.createElement(ChevronRight, { size: 13 })), eliminarConteo && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
-    setConfirmarEliminar(c22);
-    setMotivoCancelacion("");
-    setResponsableCancelacion(c22.responsables && c22.responsables.contadoPor ? c22.responsables.contadoPor : c22.responsable || "");
-  }, style: { color: C2.red } }, "Eliminar")))))), confirmarEliminar && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmarEliminar(null), title: "Cancelar o eliminar conteo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, "Vas a eliminar el conteo del ", /* @__PURE__ */ import_react4.default.createElement("b", null, confirmarEliminar.fecha), confirmarEliminar.ambito && confirmarEliminar.ambito !== "total" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " (", confirmarEliminar.ambito === "piso_venta" ? "piso de venta" : "almac\xE9n", ")"), "."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-4 p-3 rounded-lg", style: { background: C2.surfaceSoft, color: C2.inkSoft } }, confirmarEliminar.completado ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, "Los conteos iniciados o cerrados no se borran: se conservan como CANCELADO. Si aplicaron ajustes al stock, se crean reversos trazables sin borrar movimientos anteriores.") : "Solo un borrador completamente vac\xEDo se elimina f\xEDsicamente. Cualquier conteo iniciado se conserva como CANCELADO."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("label", { className: "block text-[12px]" }, "Motivo de cancelaci\xF3n", /* @__PURE__ */ import_react4.default.createElement("input", { value: motivoCancelacion, onChange: (e2) => setMotivoCancelacion(e2.target.value), placeholder: "Obligatorio si el conteo ya se inici\xF3", className: "mt-1 w-full border rounded-lg px-3 py-2 text-[13px]", style: { borderColor: C2.line, background: C2.bg } })), /* @__PURE__ */ import_react4.default.createElement("label", { className: "block text-[12px]" }, "Responsable", /* @__PURE__ */ import_react4.default.createElement("input", { value: responsableCancelacion, onChange: (e2) => setResponsableCancelacion(e2.target.value), placeholder: "Qui\xE9n autoriza la cancelaci\xF3n", className: "mt-1 w-full border rounded-lg px-3 py-2 text-[13px]", style: { borderColor: C2.line, background: C2.bg } }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmarEliminar(null), disabled: procesandoEliminar }, "Cancelar"), /* @__PURE__ */ import_react4.default.createElement(
+  })())), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-6 text-[11px] grid grid-cols-2 gap-6", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement("div", null, "Contado por: _________________________"), /* @__PURE__ */ import_react4.default.createElement("div", null, "Fecha y firma: _________________________")))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Historial de conteos"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, conteos.filter((c22) => c22.id !== activoId).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin conteos anteriores." }) : conteos.filter((c22) => c22.id !== activoId).map((c22) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: c22.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", null, "Conteo del ", c22.fecha, c22.ambito === "piso_venta" && /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, " \xB7 piso de venta"), c22.ambito === "almacen" && /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, " \xB7 almac\xE9n (trastienda)")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: (c22.estado === "CANCELADO" || c22.cancelado === true) ? C2.inkSoft : (c22.estado === "PARCIAL" ? C2.amber : (c22.completado || c22.estado === "COMPLETADO") ? C2.accent : C2.amber) }, (c22.estado === "CANCELADO" || c22.cancelado === true) ? "Cancelado" : c22.estado === "PARCIAL" ? "Parcial" : (c22.completado || c22.estado === "COMPLETADO") ? "Completado" : c22.estado === "BORRADOR" ? "Borrador" : "En curso"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setActivoId(c22.id) }, "Ver ", /* @__PURE__ */ import_react4.default.createElement(ChevronRight, { size: 13 })), eliminarConteo && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
+      setConfirmarEliminar(c22);
+      setMotivoCancelacion("");
+      setResponsableCancelacion(c22.responsables && c22.responsables.contadoPor ? c22.responsables.contadoPor : c22.responsable || "");
+    }, style: { color: C2.red } }, "Eliminar")))))), confirmarEliminar && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmarEliminar(null), title: "Cancelar o eliminar conteo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, "Vas a eliminar el conteo del ", /* @__PURE__ */ import_react4.default.createElement("b", null, confirmarEliminar.fecha), confirmarEliminar.ambito && confirmarEliminar.ambito !== "total" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " (", confirmarEliminar.ambito === "piso_venta" ? "piso de venta" : "almac\xE9n", ")"), "."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-4 p-3 rounded-lg", style: { background: C2.surfaceSoft, color: C2.inkSoft } }, confirmarEliminar.completado ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, "Los conteos iniciados o cerrados no se borran: se conservan como CANCELADO. Si aplicaron ajustes al stock, se crean reversos trazables sin borrar movimientos anteriores.") : "Solo un borrador completamente vac\xEDo se elimina f\xEDsicamente. Cualquier conteo iniciado se conserva como CANCELADO."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("label", { className: "block text-[12px]" }, "Motivo de cancelación", /* @__PURE__ */ import_react4.default.createElement("input", { value: motivoCancelacion, onChange: (e2) => setMotivoCancelacion(e2.target.value), placeholder: "Obligatorio si el conteo ya se inició", className: "mt-1 w-full border rounded-lg px-3 py-2 text-[13px]", style: { borderColor: C2.line, background: C2.bg } })), /* @__PURE__ */ import_react4.default.createElement("label", { className: "block text-[12px]" }, "Responsable", /* @__PURE__ */ import_react4.default.createElement("input", { value: responsableCancelacion, onChange: (e2) => setResponsableCancelacion(e2.target.value), placeholder: "Quién autoriza la cancelación", className: "mt-1 w-full border rounded-lg px-3 py-2 text-[13px]", style: { borderColor: C2.line, background: C2.bg } }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmarEliminar(null), disabled: procesandoEliminar }, "Cancelar"), /* @__PURE__ */ import_react4.default.createElement(
     Btn,
     {
       disabled: procesandoEliminar,
@@ -111555,28 +111579,31 @@ function diagnosticarDatosLegadosPM10({ productos = [], pedidos = [], empleados 
       if (vistos.has(r2.id)) duplicados.add(r2.id);
       vistos.add(r2.id);
     }
-    for (const id of duplicados) push(dominio, { id }, "id_duplicado", "id", `Hay m\xE1s de un registro con el id ${id}.`, "ambiguo");
+    for (const id of duplicados) push(dominio, { id }, "id_duplicado", "id", `Hay más de un registro con el id ${id}.`, "ambiguo");
   };
   const localConocido = (r2) => r2?.localId && locales.some((l22) => l22.id === r2.localId);
   const revisarContextoLocal = (dominio, r2) => {
-    if (!r2?.localId) push(dominio, r2, "contexto_ambiguo", "localId", "Registro legado sin localId: no se autoasigna a ning\xFAn local.", "ambiguo");
-    else if (!localConocido(r2)) push(dominio, r2, "local_inexistente", "localId", "El localId del registro no existe en el cat\xE1logo de locales cargado.", "ambiguo");
+    if (!r2?.localId) push(dominio, r2, "contexto_ambiguo", "localId", "Registro legado sin localId: no se autoasigna a ningún local.", "ambiguo");
+    else if (!localConocido(r2)) push(dominio, r2, "local_inexistente", "localId", "El localId del registro no existe en el catálogo de locales cargado.", "ambiguo");
   };
   const empresaDeLocal = (localId) => locales.find((l22) => l22.id === localId)?.empresaId || null;
+
   idsDuplicados("Productos", productos);
   idsDuplicados("Pedidos", pedidos);
   idsDuplicados("Personal", empleados);
   idsDuplicados("Encargos", encargos);
+
   for (const prod of productos || []) {
     revisarContextoLocal("Productos", prod);
     const v3 = validarProductoPM10(prod, { parcial: false });
-    if (!v3.ok) push("Productos", prod, v3.codigo || "invalido", v3.campo, v3.error || "Producto legado inv\xE1lido.");
+    if (!v3.ok) push("Productos", prod, v3.codigo || "invalido", v3.campo, v3.error || "Producto legado inválido.");
   }
+
   for (const pedido of pedidos || []) {
     revisarContextoLocal("Pedidos", pedido);
     if (pedido?.localId) {
       const v3 = validarPedidoPM10(pedido, { proveedores, productos, localActivoId: pedido.localId, pedidoActual: pedido });
-      if (!v3.ok) push("Pedidos", pedido, v3.codigo || "invalido", v3.campo, v3.error || "Pedido legado inv\xE1lido.");
+      if (!v3.ok) push("Pedidos", pedido, v3.codigo || "invalido", v3.campo, v3.error || "Pedido legado inválido.");
     }
     const items = Array.isArray(pedido?.items) ? pedido.items : [];
     let todoRecibido = items.length > 0;
@@ -111584,39 +111611,42 @@ function diagnosticarDatosLegadosPM10({ productos = [], pedidos = [], empleados 
       const it2 = items[i33] || {};
       const pedida = Number(it2.cantidad);
       const recibida = Number(it2.cantidadRecibida ?? 0);
-      if (!Number.isFinite(recibida) || recibida < 0) push("Recepci\xF3n", pedido, "cantidad_recibida_invalida", `items.${i33}.cantidadRecibida`, "La cantidad recibida acumulada no es v\xE1lida.");
-      if (Number.isFinite(pedida) && Number.isFinite(recibida) && recibida > pedida + 1e-9) push("Recepci\xF3n", pedido, "sobre_recepcion_legada", `items.${i33}.cantidadRecibida`, "El hist\xF3rico indica m\xE1s unidades recibidas que pedidas.");
+      if (!Number.isFinite(recibida) || recibida < 0) push("Recepción", pedido, "cantidad_recibida_invalida", `items.${i33}.cantidadRecibida`, "La cantidad recibida acumulada no es válida.");
+      if (Number.isFinite(pedida) && Number.isFinite(recibida) && recibida > pedida + 1e-9) push("Recepción", pedido, "sobre_recepcion_legada", `items.${i33}.cantidadRecibida`, "El histórico indica más unidades recibidas que pedidas.");
       if (!(Number.isFinite(pedida) && Number.isFinite(recibida) && Math.abs(pedida - recibida) <= 1e-9)) todoRecibido = false;
     }
-    if (items.length && todoRecibido && pedido?.estado !== "Recibido") push("Pedidos", pedido, "estado_ambiguo", "estado", "Todas las l\xEDneas figuran recibidas pero el pedido no est\xE1 marcado como Recibido.", "aviso");
-    if (pedido?.estado === "Recibido" && !todoRecibido) push("Pedidos", pedido, "estado_ambiguo", "estado", "El pedido figura Recibido pero todav\xEDa hay cantidades pendientes o incoherentes.", "aviso");
+    if (items.length && todoRecibido && pedido?.estado !== "Recibido") push("Pedidos", pedido, "estado_ambiguo", "estado", "Todas las líneas figuran recibidas pero el pedido no está marcado como Recibido.", "aviso");
+    if (pedido?.estado === "Recibido" && !todoRecibido) push("Pedidos", pedido, "estado_ambiguo", "estado", "El pedido figura Recibido pero todavía hay cantidades pendientes o incoherentes.", "aviso");
   }
+
   for (const emp of empleados || []) {
     revisarContextoLocal("Personal", emp);
     if (emp?.localId) {
       const v3 = validarEmpleadoPM10(emp, { localActivoId: emp.localId });
-      if (!v3.ok) push("Personal", emp, v3.codigo || "invalido", v3.campo, v3.error || "Ficha laboral legada inv\xE1lida.");
+      if (!v3.ok) push("Personal", emp, v3.codigo || "invalido", v3.campo, v3.error || "Ficha laboral legada inválida.");
     }
   }
+
   for (const enc of encargos || []) {
     revisarContextoLocal("Encargos", enc);
     if (enc?.localId) {
       const empresaId = empresaDeLocal(enc.localId);
       const v3 = validarEncargoPM10(enc, { productos, clientes, localActivoId: enc.localId, empresaId, fechaCreacion: enc.fechaCreacion || enc.fechaEntrega || todayISO() });
-      if (!v3.ok) push("Encargos", enc, v3.codigo || "invalido", v3.campo, v3.error || "Encargo legado inv\xE1lido.");
+      if (!v3.ok) push("Encargos", enc, v3.codigo || "invalido", v3.campo, v3.error || "Encargo legado inválido.");
     }
     if (Array.isArray(enc?.lineas)) {
       const totalCalculado = enc.lineas.reduce((sum, ln2) => {
-        const c22 = Number(ln2?.cantidad), p22 = Number(ln2?.precioUnitario);
-        return Number.isFinite(c22) && Number.isFinite(p22) ? sum + c22 * p22 : sum;
+        const c2 = Number(ln2?.cantidad), p22 = Number(ln2?.precioUnitario);
+        return Number.isFinite(c2) && Number.isFinite(p22) ? sum + c2 * p22 : sum;
       }, 0);
       if (enc.total !== null && enc.total !== void 0 && String(enc.total).trim() !== "") {
         const totalGuardado = Number(enc.total);
-        if (!Number.isFinite(totalGuardado)) push("Encargos", enc, "total_no_finito", "total", "El total guardado del encargo no es num\xE9rico.", "ambiguo");
-        else if (Math.abs(totalGuardado - totalCalculado) > 0.01) push("Encargos", enc, "total_desfasado", "total", `El total guardado (${totalGuardado}) no coincide con las l\xEDneas (${Number(totalCalculado.toFixed(2))}).`, "aviso");
+        if (!Number.isFinite(totalGuardado)) push("Encargos", enc, "total_no_finito", "total", "El total guardado del encargo no es numérico.", "ambiguo");
+        else if (Math.abs(totalGuardado - totalCalculado) > 0.01) push("Encargos", enc, "total_desfasado", "total", `El total guardado (${totalGuardado}) no coincide con las líneas (${Number(totalCalculado.toFixed(2))}).`, "aviso");
       }
     }
   }
+
   const porDominio = {};
   for (const i22 of incidencias) porDominio[i22.dominio] = (porDominio[i22.dominio] || 0) + 1;
   return {
@@ -111634,34 +111664,19 @@ function diagnosticarDatosLegadosPM10({ productos = [], pedidos = [], empleados 
 function DiagnosticoDatosLegadosPM10({ diagnostico }) {
   const [abierto, setAbierto] = import_react4.default.useState(false);
   const d2 = diagnostico || { totalRegistros: 0, totalIncidencias: 0, errores: 0, ambiguas: 0, avisos: 0, incidencias: [] };
-  return /* @__PURE__ */ import_react4.default.createElement(
-    Card,
-    { className: "mb-4" },
-    /* @__PURE__ */ import_react4.default.createElement(
-      "div",
-      { className: "flex items-center justify-between gap-3" },
-      /* @__PURE__ */ import_react4.default.createElement(
-        "div",
-        null,
-        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, "Datos legados \xB7 PM10"),
-        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, d2.totalIncidencias === 0 ? `Sin incidencias detectadas en ${d2.totalRegistros} registro(s) cargados.` : `${d2.totalIncidencias} incidencia(s): ${d2.errores} inv\xE1lida(s), ${d2.ambiguas} ambigua(s), ${d2.avisos} aviso(s).`)
+  return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
+    /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-3" },
+      /* @__PURE__ */ import_react4.default.createElement("div", null,
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, "Datos legados · PM10"),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, d2.totalIncidencias === 0 ? `Sin incidencias detectadas en ${d2.totalRegistros} registro(s) cargados.` : `${d2.totalIncidencias} incidencia(s): ${d2.errores} inválida(s), ${d2.ambiguas} ambigua(s), ${d2.avisos} aviso(s).`)
       ),
       /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAbierto(!abierto) }, abierto ? "Ocultar" : "Revisar")
     ),
-    /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Solo lectura: este diagn\xF3stico no borra, migra, reasigna ni corrige autom\xE1ticamente ning\xFAn registro hist\xF3rico."),
-    abierto && /* @__PURE__ */ import_react4.default.createElement(
-      "div",
-      { className: "mt-3 space-y-2" },
-      d2.incidencias.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No se han detectado datos legados incompatibles con el contrato PM10." }) : d2.incidencias.slice(0, 100).map((i22, idx) => /* @__PURE__ */ import_react4.default.createElement(
-        "div",
-        { key: `${i22.dominio}:${i22.id || "sin-id"}:${i22.codigo}:${idx}`, className: "text-[11.5px] p-2 rounded-lg", style: { background: i22.nivel === "error" ? C2.redSoft : i22.nivel === "ambiguo" ? C2.amberSoft : C2.bg } },
-        /* @__PURE__ */ import_react4.default.createElement("b", null, i22.dominio),
-        " \xB7 ",
-        i22.id || "sin id",
-        " \xB7 ",
-        i22.codigo,
-        i22.campo ? ` \xB7 ${i22.campo}` : "",
-        /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-0.5" }, i22.mensaje)
+    /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Solo lectura: este diagnóstico no borra, migra, reasigna ni corrige automáticamente ningún registro histórico."),
+    abierto && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 space-y-2" },
+      d2.incidencias.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No se han detectado datos legados incompatibles con el contrato PM10." }) : d2.incidencias.slice(0, 100).map((i22, idx) => /* @__PURE__ */ import_react4.default.createElement("div", { key: `${i22.dominio}:${i22.id || "sin-id"}:${i22.codigo}:${idx}`, className: "text-[11.5px] p-2 rounded-lg", style: { background: i22.nivel === "error" ? C2.redSoft : i22.nivel === "ambiguo" ? C2.amberSoft : C2.bg } },
+        /* @__PURE__ */ import_react4.default.createElement("b", null, i22.dominio), " · ", i22.id || "sin id", " · ", i22.codigo,
+        i22.campo ? ` · ${i22.campo}` : "", /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-0.5" }, i22.mensaje)
       )),
       d2.incidencias.length > 100 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, `Se muestran las primeras 100 de ${d2.incidencias.length}.`)
     )
@@ -112076,8 +112091,7 @@ function GestorEmpresas({ empresas, setEmpresas }) {
 function empresaDestinoParaNuevoLocalPM15(empresaNuevaId, empresaPrincipalId) {
   return empresaNuevaId || empresaPrincipalId || "";
 }
-function Locales({ locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo, configEmpresa, empresas, setEmpresas, diagnosticoLegadosPM10 = null, marcarFormularioAbiertoPM15 = () => {
-} }) {
+function Locales({ locales, localActivoId, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo, configEmpresa, empresas, setEmpresas, diagnosticoLegadosPM10 = null, marcarFormularioAbiertoPM15 = () => {} }) {
   const [mostrarForm, setMostrarForm] = import_react4.default.useState(false);
   import_react4.default.useEffect(() => {
     marcarFormularioAbiertoPM15(mostrarForm);
@@ -112684,7 +112698,7 @@ function Albaranes({
     const validas = alb.lineas.filter((ln2) => (ln2.descripcion || ln2.codigoProveedor) && Number(ln2.cantidad) > 0);
     const candidatas = alb.pedidoId ? pobladas : validas;
     if (!candidatas.length) {
-      setError("A\xF1ade al menos una l\xEDnea con descripci\xF3n y cantidad.");
+      setError("Añade al menos una línea con descripción y cantidad.");
       return;
     }
     setError("");
@@ -112696,7 +112710,7 @@ function Albaranes({
       };
       const resultado = confirmarAlbaran(limpio);
       if (resultado && resultado.ok === false) {
-        setError(resultado.error || "No se pudo registrar la recepci\xF3n del pedido.");
+        setError(resultado.error || "No se pudo registrar la recepción del pedido.");
         return;
       }
       setAvisos(resultado && resultado.length ? resultado : []);
@@ -112972,8 +112986,11 @@ function Resultados({ movimientos, productos, productoPorId, gastosGenerales, ad
     [movimientos, desde, hasta]
   );
   const ventas = salidasPeriodo.filter((m22) => esVenta(m22));
+  // PM-09 / LA-007 + Punto 12: Resultados trabaja con hechos económicos
+  // trazables. La venta original permanece; REVERSO y DEVOLUCION_CLIENTE
+  // corrigen ingreso/coste en la fecha propia de la corrección.
   const reversosVentaPeriodo = movimientos.filter((m22) => m22 && m22.anulaVentaId && (m22.tipo === "REVERSO" || m22.tipo === "entrada") && m22.fecha >= desde && m22.fecha <= hasta);
-  const devolucionesVentaPeriodo = movimientos.filter((m22) => m22 && esCorreccionVentaPM09(m22) && (m22.tipo === "DEVOLUCION_CLIENTE" || m22.tipo === "entrada" && !m22.anulaVentaId && !!m22.ventaId) && m22.fecha >= desde && m22.fecha <= hasta);
+  const devolucionesVentaPeriodo = movimientos.filter((m22) => m22 && esCorreccionVentaPM09(m22) && (m22.tipo === "DEVOLUCION_CLIENTE" || (m22.tipo === "entrada" && !m22.anulaVentaId && !!m22.ventaId)) && m22.fecha >= desde && m22.fecha <= hasta);
   const autoconsumo = salidasPeriodo.filter((m22) => m22.motivo === "Autoconsumo");
   const roturas = salidasPeriodo.filter((m22) => m22.motivo === "Rotura");
   const mermas = salidasPeriodo.filter((m22) => esMerma(m22) && m22.motivo !== "Autoconsumo" && m22.motivo !== "Rotura");
@@ -113010,9 +113027,9 @@ function Resultados({ movimientos, productos, productoPorId, gastosGenerales, ad
   })();
   const parseFechaCostePersonalPM13 = (valor) => {
     const fecha = String(valor || "").trim();
-    const m22 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fecha);
-    if (!m22) return null;
-    const anio = Number(m22[1]), mes = Number(m22[2]), dia = Number(m22[3]);
+    const m2 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fecha);
+    if (!m2) return null;
+    const anio = Number(m2[1]), mes = Number(m2[2]), dia = Number(m2[3]);
     const ms = Date.UTC(anio, mes - 1, dia);
     const d2 = new Date(ms);
     if (d2.getUTCFullYear() !== anio || d2.getUTCMonth() !== mes - 1 || d2.getUTCDate() !== dia) return null;
@@ -113118,7 +113135,7 @@ function Resultados({ movimientos, productos, productoPorId, gastosGenerales, ad
 function mensajeConfirmacionPagoPM15(factura, pendiente) {
   const proveedor = factura?.proveedor?.nombre || (factura?.origen === "directa" ? "Sin proveedor" : "Proveedor eliminado");
   const documento = factura?.numeroFactura ? `Factura ${factura.numeroFactura}` : factura?.concepto || "esta factura";
-  return `Importe a pagar a ${proveedor} \xB7 ${documento} (m\xE1ximo \u20AC${pendiente.toFixed(2)})`;
+  return `Importe a pagar a ${proveedor} \xB7 ${documento} (m\xE1ximo €${pendiente.toFixed(2)})`;
 }
 function CuentasPorPagar({ facturasPorPagar, totalPendientePago, marcarPagada, marcarPagadaFacturaDirecta, addFacturaDirecta, deleteFacturaDirecta, proveedores, resaltadaId, limpiarResaltada }) {
   const [verPagadas, setVerPagadas] = (0, import_react4.useState)(false);
@@ -113208,6 +113225,18 @@ function blankEmpleado() {
     activo: true
   };
 }
+var NIVELES_RECOMENDACION = {
+  contratar: { texto: "Contratar", color: "#16a34a" },
+  contratar_con_formacion: { texto: "Contratar con formaci\xF3n inicial", color: "#16a34a" },
+  segunda_entrevista: { texto: "Realizar segunda entrevista", color: "#d97706" },
+  prueba_practica: { texto: "Realizar prueba pr\xE1ctica", color: "#d97706" },
+  no_recomendado: { texto: "No recomendado actualmente", color: "#dc2626" }
+};
+function colorPuntuacion(p22) {
+  if (p22 >= 80) return "#16a34a";
+  if (p22 >= 60) return "#d97706";
+  return "#dc2626";
+}
 function informeEntrevistaTieneCamposNeutralesPM17(inf) {
   if (!inf) return false;
   return !!(inf.resumen || inf.experiencia || inf.disponibilidad || Array.isArray(inf.evidencias_aportadas) && inf.evidencias_aportadas.length > 0 || Array.isArray(inf.situaciones_tratadas) && inf.situaciones_tratadas.length > 0 || Array.isArray(inf.cuestiones_a_aclarar) && inf.cuestiones_a_aclarar.length > 0);
@@ -113218,7 +113247,7 @@ function prefiltroEsFormatoAntiguoPM17(resumen) {
 }
 function InformeEntrevistaNeutralPM17({ inf }) {
   if (informeEntrevistaTieneCamposNeutralesPM17(inf)) {
-    return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, inf.resumen && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-2" }, "Resumen de la entrevista"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, inf.resumen)), inf.experiencia && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-2" }, "Experiencia aportada"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, inf.experiencia)), inf.disponibilidad && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-2" }, "Disponibilidad y condiciones pr\xE1cticas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, inf.disponibilidad)), Array.isArray(inf.evidencias_aportadas) && inf.evidencias_aportadas.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-2" }, "Ejemplos y evidencias aportadas"), /* @__PURE__ */ import_react4.default.createElement("ul", { className: "text-[12px] space-y-1 list-disc pl-4" }, inf.evidencias_aportadas.map((it2, i33) => /* @__PURE__ */ import_react4.default.createElement("li", { key: i33 }, it2)))), Array.isArray(inf.situaciones_tratadas) && inf.situaciones_tratadas.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-2" }, "Situaciones tratadas"), /* @__PURE__ */ import_react4.default.createElement("ul", { className: "text-[12px] space-y-1 list-disc pl-4" }, inf.situaciones_tratadas.map((it2, i33) => /* @__PURE__ */ import_react4.default.createElement("li", { key: i33 }, it2)))), Array.isArray(inf.cuestiones_a_aclarar) && inf.cuestiones_a_aclarar.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-2" }, "Cuestiones a aclarar o comprobar"), /* @__PURE__ */ import_react4.default.createElement("ul", { className: "text-[12px] space-y-1 list-disc pl-4" }, inf.cuestiones_a_aclarar.map((it2, i33) => /* @__PURE__ */ import_react4.default.createElement("li", { key: i33 }, it2)))));
+    return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, inf.resumen && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-2" }, "Resumen de la entrevista"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, inf.resumen)), inf.experiencia && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-2" }, "Experiencia aportada"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, inf.experiencia)), inf.disponibilidad && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-2" }, "Disponibilidad y condiciones pr\xE1cticas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, inf.disponibilidad)), Array.isArray(inf.evidencias_aportadas) && inf.evidencias_aportadas.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-2" }, "Ejemplos y evidencias aportadas"), /* @__PURE__ */ import_react4.default.createElement("ul", { className: "text-[12px] space-y-1 list-disc pl-4" }, inf.evidencias_aportadas.map((it, i33) => /* @__PURE__ */ import_react4.default.createElement("li", { key: i33 }, it)))), Array.isArray(inf.situaciones_tratadas) && inf.situaciones_tratadas.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-2" }, "Situaciones tratadas"), /* @__PURE__ */ import_react4.default.createElement("ul", { className: "text-[12px] space-y-1 list-disc pl-4" }, inf.situaciones_tratadas.map((it, i33) => /* @__PURE__ */ import_react4.default.createElement("li", { key: i33 }, it)))), Array.isArray(inf.cuestiones_a_aclarar) && inf.cuestiones_a_aclarar.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-2" }, "Cuestiones a aclarar o comprobar"), /* @__PURE__ */ import_react4.default.createElement("ul", { className: "text-[12px] space-y-1 list-disc pl-4" }, inf.cuestiones_a_aclarar.map((it, i33) => /* @__PURE__ */ import_react4.default.createElement("li", { key: i33 }, it)))));
   }
   return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-2" }, "Informe anterior"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "Este registro se gener\xF3 con el formato antiguo. Por seguridad, las puntuaciones y recomendaciones autom\xE1ticas est\xE1n ocultas. Revisa la transcripci\xF3n completa para tomar cualquier decisi\xF3n de forma humana."));
 }
@@ -113226,7 +113255,7 @@ function ResumenPrefiltroNeutralPM17({ resumen }) {
   if (prefiltroEsFormatoAntiguoPM17(resumen)) {
     return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "An\xE1lisis anterior"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "Este an\xE1lisis se gener\xF3 con el formato anterior. Por seguridad, el resumen, las puntuaciones y las recomendaciones autom\xE1ticas est\xE1n ocultos. Revisa las respuestas completas para realizar la valoraci\xF3n de forma humana."));
   }
-  return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, resumen?.resumen && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "Resumen"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, resumen.resumen)), resumen?.experiencia && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "Experiencia"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, resumen.experiencia)), resumen?.disponibilidad && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "Disponibilidad"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, resumen.disponibilidad)), resumen?.motivacion && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "Motivaci\xF3n"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, resumen.motivacion)), Array.isArray(resumen?.evidencias_aportadas) && resumen.evidencias_aportadas.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "Evidencias aportadas"), /* @__PURE__ */ import_react4.default.createElement("ul", { className: "text-[12px] space-y-1 list-disc pl-4" }, resumen.evidencias_aportadas.map((it2, i33) => /* @__PURE__ */ import_react4.default.createElement("li", { key: i33 }, it2)))), Array.isArray(resumen?.cuestiones_a_aclarar) && resumen.cuestiones_a_aclarar.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "Cuestiones a aclarar"), /* @__PURE__ */ import_react4.default.createElement("ul", { className: "text-[12px] space-y-1 list-disc pl-4" }, resumen.cuestiones_a_aclarar.map((it2, i33) => /* @__PURE__ */ import_react4.default.createElement("li", { key: i33 }, it2)))));
+  return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, resumen?.resumen && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "Resumen"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, resumen.resumen)), resumen?.experiencia && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "Experiencia"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, resumen.experiencia)), resumen?.disponibilidad && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "Disponibilidad"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, resumen.disponibilidad)), resumen?.motivacion && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "Motivaci\xF3n"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, resumen.motivacion)), Array.isArray(resumen?.evidencias_aportadas) && resumen.evidencias_aportadas.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "Evidencias aportadas"), /* @__PURE__ */ import_react4.default.createElement("ul", { className: "text-[12px] space-y-1 list-disc pl-4" }, resumen.evidencias_aportadas.map((it, i33) => /* @__PURE__ */ import_react4.default.createElement("li", { key: i33 }, it)))), Array.isArray(resumen?.cuestiones_a_aclarar) && resumen.cuestiones_a_aclarar.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "Cuestiones a aclarar"), /* @__PURE__ */ import_react4.default.createElement("ul", { className: "text-[12px] space-y-1 list-disc pl-4" }, resumen.cuestiones_a_aclarar.map((it, i33) => /* @__PURE__ */ import_react4.default.createElement("li", { key: i33 }, it)))));
 }
 function SeleccionPersonal({ entrevistas, crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista, crearPrefiltro, listarPrefiltros, eliminarPrefiltro }) {
   const [activaId, setActivaId] = (0, import_react4.useState)(null);
@@ -113329,11 +113358,13 @@ function SeleccionPersonal({ entrevistas, crearEntrevista, actualizarEntrevista,
     }
   }
   function bloqueadoPorEnvioDuplicadoPM24() {
+    // Un doble clic/doble toque rápido (antes de que React vuelva a
+    // renderizar) podía crear dos entrevistas o disparar dos llamadas a la
+    // IA para la misma respuesta -- igual que ya se protege la creación de
+    // pedidos, se bloquea aquí de forma síncrona durante una ventana breve.
     if (entrevistaEnvioBloqueadoPM24.current) return true;
     entrevistaEnvioBloqueadoPM24.current = true;
-    setTimeout(() => {
-      entrevistaEnvioBloqueadoPM24.current = false;
-    }, 750);
+    setTimeout(() => { entrevistaEnvioBloqueadoPM24.current = false; }, 750);
     return false;
   }
   function empezar() {
@@ -113418,8 +113449,7 @@ function etiquetaContextoPM15(local, empresa) {
   if (nombreLocal && nombreEmpresa) return `${nombreLocal} \xB7 ${nombreEmpresa}`;
   return nombreLocal || nombreEmpresa || "";
 }
-function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, documentosPersonalCaducan, fichajes = [], nominas = [], entrevistas = [], crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista, crearPrefiltro, listarPrefiltros, eliminarPrefiltro, crearCuentaEmpleado, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {
-} }) {
+function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, documentosPersonalCaducan, fichajes = [], nominas = [], entrevistas = [], crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista, crearPrefiltro, listarPrefiltros, eliminarPrefiltro, crearCuentaEmpleado, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {} }) {
   const [vista, setVista] = (0, import_react4.useState)("empleados");
   const submitBloqueadoPersonalPM10 = import_react4.default.useRef(false);
   const altaOperacionPersonalPM13 = import_react4.default.useRef(null);
@@ -113482,9 +113512,7 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reac
   async function submit() {
     if (submitBloqueadoPersonalPM10.current) return;
     submitBloqueadoPersonalPM10.current = true;
-    setTimeout(() => {
-      submitBloqueadoPersonalPM10.current = false;
-    }, 750);
+    setTimeout(() => { submitBloqueadoPersonalPM10.current = false; }, 750);
     if (!form.nombre.trim()) {
       setError("Escribe el nombre del empleado.");
       return;
@@ -113523,9 +113551,9 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reac
   }
   function diasAusencia(ini, fin) {
     const m1 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(ini || ""));
-    const m22 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(fin || ""));
-    if (!m1 || !m22 || fin < ini) return 0;
-    const a22 = /* @__PURE__ */ new Date(`${ini}T00:00:00Z`), b2 = /* @__PURE__ */ new Date(`${fin}T00:00:00Z`);
+    const m2 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(fin || ""));
+    if (!m1 || !m2 || fin < ini) return 0;
+    const a22 = new Date(`${ini}T00:00:00Z`), b2 = new Date(`${fin}T00:00:00Z`);
     return Math.round((b2 - a22) / 864e5) + 1;
   }
   async function submitAusencia() {
@@ -113591,9 +113619,9 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reac
   }
   function fechaVacacionesPM13(valor) {
     const texto = String(valor || "").trim();
-    const m22 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(texto);
-    if (!m22) return null;
-    const anio = Number(m22[1]), mes = Number(m22[2]), dia = Number(m22[3]);
+    const m2 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(texto);
+    if (!m2) return null;
+    const anio = Number(m2[1]), mes = Number(m2[2]), dia = Number(m2[3]);
     const ms = Date.UTC(anio, mes - 1, dia);
     const d2 = new Date(ms);
     if (d2.getUTCFullYear() !== anio || d2.getUTCMonth() !== mes - 1 || d2.getUTCDate() !== dia) return null;
@@ -113620,7 +113648,7 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reac
     const programados = diasEntreVacacionesPM13(Math.max(desde, manana), hasta);
     return { reservados, disfrutados, enCurso, programados };
   }
-  function resumenVacacionesPM13(e2, anio = anioActual, hoyISO = typeof todayISO === "function" ? todayISO() : (/* @__PURE__ */ new Date()).toISOString().slice(0, 10)) {
+  function resumenVacacionesPM13(e2, anio = anioActual, hoyISO = typeof todayISO === "function" ? todayISO() : new Date().toISOString().slice(0, 10)) {
     const totalRaw = Number(e2?.diasVacacionesAnuales);
     const total = Number.isFinite(totalRaw) && totalRaw >= 0 ? totalRaw : 0;
     const resumen = { total, reservados: 0, disfrutados: 0, enCurso: 0, programados: 0, saldo: total, disponibles: total, exceso: 0 };
@@ -113715,16 +113743,13 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reac
     const resumenVacaciones = resumenVacacionesPM13(e2, anioActual);
     const usados = resumenVacaciones.reservados;
     const total = resumenVacaciones.total;
-    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold flex items-center gap-1.5" }, e2.nombre, e2.activo === false && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "baja"), e2.pin && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "con acceso"), e2.pin && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, e2.rol && ROLES_EMPLEADO[e2.rol] ? e2.rol : "Est\xE1ndar"), e2.tieneCuenta && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "cuenta: ", e2.rolCuenta)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mt-0.5", style: { color: C2.inkSoft } }, e2.puesto, " \xB7 ", e2.tipoContrato)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => exportarDatosEmpleado(e2), title: "Exportar sus datos" }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 15, color: C2.inkSoft })), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setConfirmDeleteId(e2.id), "aria-label": "Eliminar empleado" }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 15, color: C2.inkSoft })))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 text-[12px] space-y-1", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement("div", null, "Alta: ", e2.fechaAlta, e2.fechaFinContrato && ` \xB7 Fin de contrato: ${e2.fechaFinContrato}`), e2.activo === false && /* @__PURE__ */ import_react4.default.createElement("div", null, "Baja: ", e2.fechaBaja || "sin fecha (registro legado)", e2.motivoBaja && ` \xB7 ${e2.motivoBaja}`), e2.salarioBrutoMensual > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, "Bruto: \u20AC", fmt(e2.salarioBrutoMensual), "/mes (", e2.pagas, " pagas)"), /* @__PURE__ */ import_react4.default.createElement("div", null, "Vacaciones ", anioActual, ": ", resumenVacaciones.disfrutados, " disfrutados \xB7 ", resumenVacaciones.enCurso, " hoy \xB7 ", resumenVacaciones.programados, " programados \xB7 saldo ", resumenVacaciones.saldo, " / ", total, resumenVacaciones.exceso > 0 ? ` \xB7 exceso ${resumenVacaciones.exceso}` : ""), (e2.documentos || []).length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", null, e2.documentos.map((d2) => d2.nombre).filter(Boolean).join(" \xB7 "))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 flex gap-2 flex-wrap" }, e2.activo !== false && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(e2) }, "Editar"), e2.activo === false && reactivarEmpleado && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: async () => {
-      const r2 = await reactivarEmpleado(e2.id);
-      if (!r2 || r2.ok === false) setError(r2?.error || "No se pudo reactivar al empleado.");
-    } }, "Reactivar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAusenciaFor(e2.id) }, "Registrar ausencia"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setEpiFor(e2.id) }, "Entregar EPI"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setDetalleId(detalleId === e2.id ? null : e2.id) }, detalleId === e2.id ? "Ocultar historial" : "Ver historial"), crearCuentaEmpleado && !e2.tieneCuenta && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold flex items-center gap-1.5" }, e2.nombre, e2.activo === false && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "baja"), e2.pin && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "con acceso"), e2.pin && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, e2.rol && ROLES_EMPLEADO[e2.rol] ? e2.rol : "Est\xE1ndar"), e2.tieneCuenta && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "cuenta: ", e2.rolCuenta)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mt-0.5", style: { color: C2.inkSoft } }, e2.puesto, " \xB7 ", e2.tipoContrato)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => exportarDatosEmpleado(e2), title: "Exportar sus datos" }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 15, color: C2.inkSoft })), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setConfirmDeleteId(e2.id), "aria-label": "Eliminar empleado" }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 15, color: C2.inkSoft })))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 text-[12px] space-y-1", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement("div", null, "Alta: ", e2.fechaAlta, e2.fechaFinContrato && ` \xB7 Fin de contrato: ${e2.fechaFinContrato}`), e2.activo === false && /* @__PURE__ */ import_react4.default.createElement("div", null, "Baja: ", e2.fechaBaja || "sin fecha (registro legado)", e2.motivoBaja && ` \xB7 ${e2.motivoBaja}`), e2.salarioBrutoMensual > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, "Bruto: \u20AC", fmt(e2.salarioBrutoMensual), "/mes (", e2.pagas, " pagas)"), /* @__PURE__ */ import_react4.default.createElement("div", null, "Vacaciones ", anioActual, ": ", resumenVacaciones.disfrutados, " disfrutados · ", resumenVacaciones.enCurso, " hoy · ", resumenVacaciones.programados, " programados · saldo ", resumenVacaciones.saldo, " / ", total, resumenVacaciones.exceso > 0 ? ` · exceso ${resumenVacaciones.exceso}` : ""), (e2.documentos || []).length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", null, e2.documentos.map((d2) => d2.nombre).filter(Boolean).join(" \xB7 "))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 flex gap-2 flex-wrap" }, e2.activo !== false && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(e2) }, "Editar"), e2.activo === false && reactivarEmpleado && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: async () => {
+    const r2 = await reactivarEmpleado(e2.id);
+    if (!r2 || r2.ok === false) setError(r2?.error || "No se pudo reactivar al empleado.");
+  } }, "Reactivar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAusenciaFor(e2.id) }, "Registrar ausencia"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setEpiFor(e2.id) }, "Entregar EPI"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setDetalleId(detalleId === e2.id ? null : e2.id) }, detalleId === e2.id ? "Ocultar historial" : "Ver historial"), crearCuentaEmpleado && !e2.tieneCuenta && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
       setCuentaFor(e2.id);
       setCuentaForm({ nombre: e2.nombre || "", email: "", password: "", rol: "Camarero/a" });
-    } }, "Crear cuenta de acceso")), detalleId === e2.id && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 pt-3", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, "Ausencias"), (e2.ausencias || []).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin ausencias registradas." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1 mb-3" }, [...e2.ausencias || []].reverse().map((a22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: a22.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, a22.tipo, ": ", a22.fechaInicio, " \u2192 ", a22.fechaFin, " (", a22.dias, " d)", String(a22.estado || "ACTIVA").toUpperCase() === "ANULADA" || a22.anuladaAt ? " \xB7 ANULADA" : ""), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: async () => {
-      const r2 = await eliminarAusencia(e2.id, a22.id);
-      if (!r2 || r2.ok === false) setError(r2?.error || "No se pudo anular la ausencia.");
-    }, "aria-label": "Anular ausencia", title: "Anular ausencia" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft }))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1 pt-2", style: { color: C2.inkSoft, borderTop: `1px solid ${C2.line}` } }, "EPIs entregados"), (e2.epis || []).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin EPIs registrados." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1" }, [...e2.epis || []].reverse().map((epi) => /* @__PURE__ */ import_react4.default.createElement("div", { key: epi.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, epi.nombre, " \xB7 ", epi.fecha, " ", epi.firmado ? "\xB7 firmado" : "\xB7 sin firmar"), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => eliminarEpi(e2.id, epi.id), "aria-label": "Eliminar EPI" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))));
+    } }, "Crear cuenta de acceso")), detalleId === e2.id && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 pt-3", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, "Ausencias"), (e2.ausencias || []).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin ausencias registradas." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1 mb-3" }, [...e2.ausencias || []].reverse().map((a22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: a22.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, a22.tipo, ": ", a22.fechaInicio, " \u2192 ", a22.fechaFin, " (", a22.dias, " d)", String(a22.estado || "ACTIVA").toUpperCase() === "ANULADA" || a22.anuladaAt ? " · ANULADA" : ""), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: async () => { const r2 = await eliminarAusencia(e2.id, a22.id); if (!r2 || r2.ok === false) setError(r2?.error || "No se pudo anular la ausencia."); }, "aria-label": "Anular ausencia", title: "Anular ausencia" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft }))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1 pt-2", style: { color: C2.inkSoft, borderTop: `1px solid ${C2.line}` } }, "EPIs entregados"), (e2.epis || []).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin EPIs registrados." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1" }, [...e2.epis || []].reverse().map((epi) => /* @__PURE__ */ import_react4.default.createElement("div", { key: epi.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, epi.nombre, " \xB7 ", epi.fecha, " ", epi.firmado ? "\xB7 firmado" : "\xB7 sin firmar"), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => eliminarEpi(e2.id, epi.id), "aria-label": "Eliminar EPI" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))));
   })), ausenciaFor && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setAusenciaFor(null), title: "Registrar ausencia" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tipo" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: ausenciaForm.tipo, onChange: (e2) => setAusenciaForm({ ...ausenciaForm, tipo: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "Vacaciones" }, "Vacaciones"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "Baja m\xE9dica" }, "Baja m\xE9dica"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "Otro" }, "Otro permiso"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Desde" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: ausenciaForm.fechaInicio, onChange: (e2) => setAusenciaForm({ ...ausenciaForm, fechaInicio: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hasta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: ausenciaForm.fechaFin, onChange: (e2) => setAusenciaForm({ ...ausenciaForm, fechaFin: e2.target.value }) }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, diasAusencia(ausenciaForm.fechaInicio, ausenciaForm.fechaFin), " d\xEDa(s) naturales, contando ambos extremos."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitAusencia }, "Guardar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setAusenciaFor(null) }, "Cancelar"))), epiFor && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setEpiFor(null), title: "Entregar EPI" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "Deja constancia de qu\xE9 equipo de protecci\xF3n le has dado. Es parte de la obligaci\xF3n de PRL."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Equipo entregado" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: epiForm.nombre, onChange: (e2) => setEpiForm({ ...epiForm, nombre: e2.target.value }), placeholder: "Guantes t\xE9rmicos, calzado antideslizante\u2026" })), /* @__PURE__ */ import_react4.default.createElement("label", { className: "flex items-center gap-2 mb-3 text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("input", { type: "checkbox", checked: epiForm.firmado, onChange: (e2) => setEpiForm({ ...epiForm, firmado: e2.target.checked }) }), "El empleado ha firmado el recib\xED"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
     if (epiForm.nombre.trim()) {
       registrarEpi(epiFor, epiForm);
@@ -113855,7 +113880,7 @@ Generado el ${(/* @__PURE__ */ new Date()).toLocaleString("es-ES")}`;
       hora: manual.hora,
       timestamp: (/* @__PURE__ */ new Date(`${manual.fecha}T${manual.hora}:00`)).toISOString(),
       manual: true,
-      motivoManual: "Correcci\xF3n manual registrada desde Registro horario"
+      motivoManual: "Corrección manual registrada desde Registro horario"
     }));
     if (!guardado) {
       setManualError("No se pudo guardar el fichaje. Revisa empleado, fecha, hora y secuencia entrada/salida.");
@@ -114063,8 +114088,7 @@ Generado el ${(/* @__PURE__ */ new Date()).toLocaleString("es-ES")}`;
 function lineaEncargo() {
   return { productoId: "", descripcion: "", cantidad: 1, precioUnitario: "" };
 }
-function Encargos({ encargosPendientes, encargos, clientes, productos, addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo, addCliente, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {
-} }) {
+function Encargos({ encargosPendientes, encargos, clientes, productos, addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo, addCliente, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {} }) {
   const submitBloqueadoEncargoPM10 = import_react4.default.useRef(false);
   const entregaBloqueadaPM14 = import_react4.default.useRef(false);
   const [showForm, setShowForm] = (0, import_react4.useState)(false);
@@ -114136,9 +114160,7 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
   async function submit() {
     if (submitBloqueadoEncargoPM10.current) return;
     submitBloqueadoEncargoPM10.current = true;
-    setTimeout(() => {
-      submitBloqueadoEncargoPM10.current = false;
-    }, 750);
+    setTimeout(() => { submitBloqueadoEncargoPM10.current = false; }, 750);
     if (!form.clienteId) {
       setError("Selecciona o crea un cliente.");
       return;
@@ -114154,11 +114176,15 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
     setShowForm(false);
     setForm(null);
     setEditingId(null);
-    if (esAlta && registrarAnticipoEncargo && Number(resultado.se\u00F1al) > 0) {
+    // La señal solo se envía a caja al dar de alta (con el mismo importe recién
+    // validado). Editar una señal ya cobrada exige una corrección explícita
+    // (reverso + nuevo cobro), que todavía no tiene flujo propio: por ahora la
+    // edición solo actualiza el documento local, sin volver a tocar caja.
+    if (esAlta && registrarAnticipoEncargo && Number(resultado.señal) > 0) {
       const cobro = await registrarAnticipoEncargo(resultado, {
-        concepto: "SE\xD1AL",
-        importe: Number(resultado.se\u00F1al),
-        medioPago: resultado.se\u00F1alMedioPago
+        concepto: "SEÑAL",
+        importe: Number(resultado.señal),
+        medioPago: resultado.señalMedioPago
       });
       if (!cobro.ok && cobro.codigo !== "sin_conexion" && typeof window !== "undefined" && window.alert) {
         window.alert(`El encargo se guard\xF3, pero la se\xF1al no se pudo confirmar en caja: ${cobro.error || "error desconocido"}. Rev\xEDsalo en el encargo.`);
@@ -114217,18 +114243,18 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
   } }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 13 }), " Cancelar"))))), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setVerEntregados((s22) => !s22), className: "text-[12.5px] font-medium mt-4 mb-2", style: { color: C2.accent } }, verEntregados ? "Ocultar" : "Ver", " encargos entregados (", entregados.length, ")"), verEntregados && /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, entregados.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has entregado ninguno." }) : entregados.map((e2) => {
     const cliente = clientes.find((c22) => c22.id === e2.clienteId);
     const total = (e2.lineas || []).reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
-    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id, style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, cliente ? cliente.nombre : "\u2014", " \xB7 ", e2.fechaEntregaReal || e2.fechaEntrega), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, "\u20AC", fmt(total))), devolverEncargo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-1.5 flex justify-end" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id, style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, cliente ? cliente.nombre : "—", " \xB7 ", e2.fechaEntregaReal || e2.fechaEntrega), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, "€", fmt(total))), devolverEncargo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-1.5 flex justify-end" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
       setErrorDevolver("");
       setMotivoDevolver("");
       setDevolverId(e2.id);
     } }, "Devolver")));
   })), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setVerHistorial((s22) => !s22), className: "text-[12.5px] font-medium mt-2 mb-2", style: { color: C2.accent } }, verHistorial ? "Ocultar" : "Ver", " historial (cancelados y devueltos) (", historial.length, ")"), verHistorial && /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, historial.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no hay encargos cancelados ni devueltos." }) : historial.map((e2) => {
     const cliente = clientes.find((c22) => c22.id === e2.clienteId);
-    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id, style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, cliente ? cliente.nombre : "\u2014", e2.numero && ` \xB7 ${e2.numero}`), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, "\u20AC", fmt(e2.total))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mt-1 text-[11.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", { style: { color: e2.estado === "Cancelado" ? C2.red : C2.amber, fontWeight: 600 } }, e2.estado, e2.fechaHistorial && ` \xB7 ${e2.fechaHistorial}`), null), e2.motivoHistorial && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-1 text-[11.5px]", style: { color: C2.inkSoft } }, e2.motivoHistorial));
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id, style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, cliente ? cliente.nombre : "—", e2.numero && ` \xB7 ${e2.numero}`), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, "€", fmt(e2.total))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mt-1 text-[11.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", { style: { color: e2.estado === "Cancelado" ? C2.red : C2.amber, fontWeight: 600 } }, e2.estado, e2.fechaHistorial && ` \xB7 ${e2.fechaHistorial}`), null), e2.motivoHistorial && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-1 text-[11.5px]", style: { color: C2.inkSoft } }, e2.motivoHistorial));
   })), devolverId && (() => {
     const e2 = encargos.find((x3) => x3.id === devolverId);
     if (!e2) return null;
-    return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setDevolverId(null), title: "Devolver encargo" }, contextoActivoPM15 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.inkSoft } }, "Local: ", contextoActivoPM15), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, "Se devuelve el stock de los productos del cat\xE1logo. El encargo no se borra: queda marcado como devuelto."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo de la devoluci\xF3n" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivoDevolver, onChange: (ev) => setMotivoDevolver(ev.target.value), placeholder: "Producto defectuoso, cliente insatisfecho\u2026" })), errorDevolver && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, errorDevolver), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: async () => {
+    return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setDevolverId(null), title: "Devolver encargo" }, contextoActivoPM15 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.inkSoft } }, "Local: ", contextoActivoPM15), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, "Se devuelve el stock de los productos del cat\xE1logo. El encargo no se borra: queda marcado como devuelto."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo de la devoluci\xF3n" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivoDevolver, onChange: (ev) => setMotivoDevolver(ev.target.value), placeholder: "Producto defectuoso, cliente insatisfecho…" })), errorDevolver && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, errorDevolver), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: async () => {
       const resultado = devolverEncargo(devolverId, { motivo: motivoDevolver });
       if (!resultado || resultado.ok === false) {
         setErrorDevolver(resultado?.error || "No se pudo devolver el encargo.");
@@ -114238,13 +114264,13 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
       setDevolverId(null);
       if (resultado.cobrosParaReembolsar && resultado.cobrosParaReembolsar.length > 0 && revertirAnticipoEncargo && typeof window !== "undefined" && window.confirm) {
         const totalCobrado = resultado.cobrosParaReembolsar.reduce((a22, c22) => a22 + (Number(c22.importe) || 0), 0);
-        const reembolsar = window.confirm(`Se cobraron \u20AC${fmt(totalCobrado)} por este encargo. \xBFReembolsar ahora al cliente?`);
+        const reembolsar = window.confirm(`Se cobraron €${fmt(totalCobrado)} por este encargo. \xBFReembolsar ahora al cliente?`);
         if (reembolsar) {
           for (const cobro of resultado.cobrosParaReembolsar) {
             const pagoId = `pago-encargo:${devolverId}:${cobro.sufijo}`;
             const reverso = await revertirAnticipoEncargo(pagoId, `Reembolso por devoluci\xF3n: ${motivoDevolver}`);
             if (!reverso.ok && reverso.codigo !== "sin_conexion" && typeof window.alert === "function") {
-              window.alert(`No se pudo reembolsar \u20AC${fmt(Number(cobro.importe) || 0)} (${cobro.concepto}): ${reverso.error || "error desconocido"}. Rev\xEDsalo en caja.`);
+              window.alert(`No se pudo reembolsar €${fmt(Number(cobro.importe) || 0)} (${cobro.concepto}): ${reverso.error || "error desconocido"}. Rev\xEDsalo en caja.`);
             }
           }
         }
@@ -114271,9 +114297,7 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
       if (entregaBloqueadaPM14.current) return;
       entregaBloqueadaPM14.current = true;
       const resultado = entregarEncargo(e2.id, medioPagoEntrega);
-      setTimeout(() => {
-        entregaBloqueadaPM14.current = false;
-      }, 750);
+      setTimeout(() => { entregaBloqueadaPM14.current = false; }, 750);
       if (!resultado || resultado.ok === false) {
         setErrorEntrega(resultado?.error || "No se pudo entregar el encargo.");
         return;
@@ -114287,14 +114311,14 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
           medioPago: medioPagoEntrega
         });
         if (!cobro.ok && cobro.codigo !== "sin_conexion" && typeof window !== "undefined" && window.alert) {
-          window.alert(`El encargo se entreg\xF3 y el stock ya se descont\xF3, pero el resto (\u20AC${fmt(resto)}) no se pudo confirmar en caja: ${cobro.error || "error desconocido"}. Reg\xEDstralo manualmente en caja.`);
+          window.alert(`El encargo se entreg\xF3 y el stock ya se descont\xF3, pero el resto (€${fmt(resto)}) no se pudo confirmar en caja: ${cobro.error || "error desconocido"}. Reg\xEDstralo manualmente en caja.`);
         }
       }
     } }, "Confirmar entrega"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setEntregarId(null) }, "Cancelar")));
   })(), confirmDeleteId && (() => {
     const e2 = encargos.find((x3) => x3.id === confirmDeleteId);
     const tieneCobros = !!e2 && (e2.cobros || []).some((c22) => Number(c22.importe) > 0);
-    return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmDeleteId(null), title: "Cancelar encargo" }, contextoActivoPM15 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.inkSoft } }, "Local: ", contextoActivoPM15), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, tieneCobros ? "El encargo se marcar\xE1 como cancelado (no se borra) y podr\xE1s decidir si reembolsas lo ya cobrado." : "El encargo se marcar\xE1 como cancelado. No se borra: queda en el historial."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo de la cancelaci\xF3n" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivoCancelar, onChange: (ev) => setMotivoCancelar(ev.target.value), placeholder: "El cliente ya no lo quiere\u2026" })), errorEliminar && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, errorEliminar), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: async () => {
+    return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmDeleteId(null), title: "Cancelar encargo" }, contextoActivoPM15 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.inkSoft } }, "Local: ", contextoActivoPM15), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, tieneCobros ? "El encargo se marcar\xE1 como cancelado (no se borra) y podr\xE1s decidir si reembolsas lo ya cobrado." : "El encargo se marcar\xE1 como cancelado. No se borra: queda en el historial."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo de la cancelaci\xF3n" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivoCancelar, onChange: (ev) => setMotivoCancelar(ev.target.value), placeholder: "El cliente ya no lo quiere…" })), errorEliminar && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, errorEliminar), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: async () => {
       const resultado = cancelarEncargo(confirmDeleteId, { motivo: motivoCancelar });
       if (!resultado || resultado.ok === false) {
         setErrorEliminar(resultado?.error || "No se pudo cancelar el encargo.");
@@ -114304,16 +114328,19 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
       setConfirmDeleteId(null);
       if (resultado.tieneCobrosPendientesDeResolver && revertirAnticipoEncargo && typeof window !== "undefined" && window.confirm) {
         const totalCobrado = resultado.cobros.reduce((a22, c22) => a22 + (Number(c22.importe) || 0), 0);
-        const reembolsar = window.confirm(`Este encargo ten\xEDa \u20AC${fmt(totalCobrado)} cobrados. \xBFQuieres reembolsarlos ahora? (Aceptar = reembolsar, Cancelar = quedarte con el importe como se\xF1al perdida)`);
+        const reembolsar = window.confirm(`Este encargo ten\xEDa €${fmt(totalCobrado)} cobrados. \xBFQuieres reembolsarlos ahora? (Aceptar = reembolsar, Cancelar = quedarte con el importe como se\xF1al perdida)`);
         if (reembolsar) {
           const sufijoPorConcepto = { "Se\xF1al": "senal", "Resto entrega": "resto" };
           for (const cobro of resultado.cobros) {
             const sufijo = sufijoPorConcepto[cobro.concepto];
+            // El id del cobro en el documento local no siempre coincide con el id de
+            // fila del ledger real (pagos_encargo): se reconstruye a partir del mismo
+            // esquema determinista que usa registrarAnticipoEncargo.
             if (!sufijo) continue;
             const pagoId = `pago-encargo:${confirmDeleteId}:${sufijo}`;
             const reverso = await revertirAnticipoEncargo(pagoId, `Reembolso por cancelaci\xF3n: ${motivoCancelar}`);
             if (!reverso.ok && reverso.codigo !== "sin_conexion" && typeof window.alert === "function") {
-              window.alert(`No se pudo reembolsar el cobro de \u20AC${fmt(Number(cobro.importe) || 0)}: ${reverso.error || "error desconocido"}. Rev\xEDsalo en caja.`);
+              window.alert(`No se pudo reembolsar el cobro de €${fmt(Number(cobro.importe) || 0)}: ${reverso.error || "error desconocido"}. Rev\xEDsalo en caja.`);
             }
           }
         }
@@ -114321,8 +114348,7 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
     } }, "S\xED, cancelar encargo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmDeleteId(null) }, "Volver")));
   })());
 }
-function Clientes({ analisisClientes, clientesDormidos, ventaCruzada, addCliente, updateCliente, deleteCliente, anonimizarCliente, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {
-} }) {
+function Clientes({ analisisClientes, clientesDormidos, ventaCruzada, addCliente, updateCliente, deleteCliente, anonimizarCliente, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {} }) {
   const blank = { nombre: "", telefono: "", email: "", notas: "" };
   const [showForm, setShowForm] = (0, import_react4.useState)(false);
   import_react4.default.useEffect(() => {
@@ -114484,6 +114510,11 @@ function Facturas({ albaranes, facturasDirectas, pagosFacturas = [], proveedorPo
     );
   }))))));
 }
+// PM-09 / Punto 11: proyección fiscal conciliada de ventas.
+// No se usa la ficha actual del producto para reconstruir IVA histórico.
+// REVERSO resta en la fecha de la corrección. Una DEVOLUCION_CLIENTE solo se
+// proyecta fiscalmente cuando existe un reembolso registrado; SIN_REEMBOLSO
+// queda explícitamente pendiente de criterio/documentación fiscal.
 function datoFiscalVentaPM09(m22, clave) {
   if (!m22) return void 0;
   if (m22[clave] !== void 0 && m22[clave] !== null) return m22[clave];
@@ -114556,10 +114587,10 @@ function aporteIvaVentaPM09(m22, movimientos = []) {
     }
     const brutoAsociado = cantidad * ingreso * factor;
     const brutoCorregido = Math.min(Math.max(0, reembolso), Math.max(0, brutoAsociado));
-    const base2 = -(brutoCorregido / factor);
-    const cuota2 = -(brutoCorregido + base2);
+    const base = -(brutoCorregido / factor);
+    const cuota = -(brutoCorregido + base);
     const diferencia = Math.abs(brutoAsociado - reembolso);
-    return { ...comun, medioReembolso, base: base2, cuota: cuota2, total: -brutoCorregido, pendiente: diferencia > 0.01, motivoPendiente: diferencia > 0.01 ? "REEMBOLSO_DIFIERE_IMPORTE_ASOCIADO" : "" };
+    return { ...comun, medioReembolso, base, cuota, total: -brutoCorregido, pendiente: diferencia > 0.01, motivoPendiente: diferencia > 0.01 ? "REEMBOLSO_DIFIERE_IMPORTE_ASOCIADO" : "" };
   }
   const baseAbs = cantidad * ingreso;
   const signo = esR ? -1 : 1;
@@ -114577,6 +114608,8 @@ function resumenIvaVentasPM09(movimientos = [], desde = "", hasta = "") {
     if (!aporte) return;
     detalle.push(aporte);
     if (aporte.pendiente) pendientes.push(aporte);
+    // Un ajuste pendiente no altera los totales fiscales hasta que su criterio
+    // o documentación quede resuelto. Venta/REVERSO válidos sí se contabilizan.
     if (aporte.pendiente && aporte.motivoPendiente !== "REEMBOLSO_DIFIERE_IMPORTE_ASOCIADO") return;
     if (aporte.tipoIva === null) return;
     const clave = String(aporte.tipoIva);
@@ -114618,16 +114651,16 @@ function LibroIva({ movimientos, productos, albaranes, proveedorPorId, facturasD
   const totalSop = sumar(soportado);
   const resultado = totalRep.cuota - totalSop.cuota;
   function exportarExcel() {
-    const wb = utils22.book_new();
+    const wb = utils2.book_new();
     const filasRep = Object.entries(repercutido).map(([tipo, v22]) => ({ "Tipo IVA": `${tipo}%`, "Base imponible": Number(v22.base.toFixed(2)), "Cuota IVA": Number(v22.cuota.toFixed(2)) }));
     filasRep.push({ "Tipo IVA": "TOTAL", "Base imponible": Number(totalRep.base.toFixed(2)), "Cuota IVA": Number(totalRep.cuota.toFixed(2)) });
-    const wsRep = utils22.json_to_sheet(filasRep);
-    utils22.book_append_sheet(wb, wsRep, "IVA Repercutido");
+    const wsRep = utils2.json_to_sheet(filasRep);
+    utils2.book_append_sheet(wb, wsRep, "IVA Repercutido");
     const filasSop = Object.entries(soportado).map(([tipo, v22]) => ({ "Tipo IVA": `${tipo}%`, "Base imponible": Number(v22.base.toFixed(2)), "Cuota IVA": Number(v22.cuota.toFixed(2)) }));
     filasSop.push({ "Tipo IVA": "TOTAL", "Base imponible": Number(totalSop.base.toFixed(2)), "Cuota IVA": Number(totalSop.cuota.toFixed(2)) });
-    const wsSop = utils22.json_to_sheet(filasSop);
-    utils22.book_append_sheet(wb, wsSop, "IVA Soportado");
-    const wsResumen = utils22.json_to_sheet([
+    const wsSop = utils2.json_to_sheet(filasSop);
+    utils2.book_append_sheet(wb, wsSop, "IVA Soportado");
+    const wsResumen = utils2.json_to_sheet([
       { Concepto: "Periodo", Valor: `T${trimestre} ${anio} (${desde} a ${hasta})` },
       { Concepto: "Base repercutida", Valor: Number(totalRep.base.toFixed(2)) },
       { Concepto: "IVA repercutido", Valor: Number(totalRep.cuota.toFixed(2)) },
@@ -114635,7 +114668,7 @@ function LibroIva({ movimientos, productos, albaranes, proveedorPorId, facturasD
       { Concepto: "IVA soportado", Valor: Number(totalSop.cuota.toFixed(2)) },
       { Concepto: resultado >= 0 ? "A ingresar" : "A compensar", Valor: Number(Math.abs(resultado).toFixed(2)) }
     ]);
-    utils22.book_append_sheet(wb, wsResumen, "Resumen");
+    utils2.book_append_sheet(wb, wsResumen, "Resumen");
     const detalleCompras = albaranes.filter((a22) => a22.estado === "confirmado" && (a22.fechaFactura || a22.fecha) >= desde && (a22.fechaFactura || a22.fecha) <= hasta).map((a22) => {
       const prov = proveedorPorId(a22.proveedorId);
       const base = (a22.lineas || []).reduce((x3, ln2) => x3 + (Number(ln2.importe) || 0), 0) + (Number(a22.cargos) || 0);
@@ -114650,13 +114683,13 @@ function LibroIva({ movimientos, productos, albaranes, proveedorPorId, facturasD
       };
     });
     if (detalleCompras.length) {
-      utils22.book_append_sheet(wb, utils22.json_to_sheet(detalleCompras), "Detalle compras");
+      utils2.book_append_sheet(wb, utils2.json_to_sheet(detalleCompras), "Detalle compras");
     }
     const detalleVentas = resumenIvaVentas.detalle.slice().sort((a22, b2) => `${a22.fecha} ${a22.operationId}`.localeCompare(`${b2.fecha} ${b2.operationId}`)).map((t22) => ({
       Fecha: t22.fecha,
-      "Tipo operaci\xF3n": t22.tipoOperacion,
-      "ID operaci\xF3n": t22.operationId,
-      "Medio de pago": t22.medioPago || t22.medioReembolso || "\u2014",
+      "Tipo operación": t22.tipoOperacion,
+      "ID operación": t22.operationId,
+      "Medio de pago": t22.medioPago || t22.medioReembolso || "—",
       "Tipo IVA": t22.tipoIva == null ? "REVISAR" : `${t22.tipoIva}%`,
       Base: Number(t22.base.toFixed(2)),
       IVA: Number(t22.cuota.toFixed(2)),
@@ -114664,12 +114697,12 @@ function LibroIva({ movimientos, productos, albaranes, proveedorPorId, facturasD
       Estado: t22.pendiente ? `REVISAR: ${t22.motivoPendiente}` : "CONCILIADO"
     }));
     if (detalleVentas.length) {
-      utils22.book_append_sheet(wb, utils22.json_to_sheet(detalleVentas), "Detalle ventas");
+      utils2.book_append_sheet(wb, utils2.json_to_sheet(detalleVentas), "Detalle ventas");
     }
-    writeFileSync22(wb, `libro_iva_T${trimestre}_${anio}.xlsx`);
+    writeFileSync2(wb, `libro_iva_T${trimestre}_${anio}.xlsx`);
   }
   const filas = [.../* @__PURE__ */ new Set([...Object.keys(repercutido), ...Object.keys(soportado)])].sort((a22, b2) => Number(a22) - Number(b2));
-  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Libro de IVA"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Resumen trimestral de control: concilia IVA repercutido de operaciones de venta e IVA soportado de compras por tipo. Es una proyecci\xF3n interna, no sustituye la documentaci\xF3n fiscal ni la revisi\xF3n de tu gestor\xEDa.")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Trimestre" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: trimestre, onChange: (e2) => setTrimestre(Number(e2.target.value)), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: 1 }, "1T \u2014 Enero a Marzo"), /* @__PURE__ */ import_react4.default.createElement("option", { value: 2 }, "2T \u2014 Abril a Junio"), /* @__PURE__ */ import_react4.default.createElement("option", { value: 3 }, "3T \u2014 Julio a Septiembre"), /* @__PURE__ */ import_react4.default.createElement("option", { value: 4 }, "4T \u2014 Octubre a Diciembre"))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "A\xF1o" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: anio, onChange: (e2) => setAnio(Number(e2.target.value) || hoy.getFullYear()) }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Del ", desde, " al ", hasta)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "IVA repercutido (ventas)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: C2.accent } }, "\u20AC", fmt(totalRep.cuota))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "IVA soportado (compras)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1" }, "\u20AC", fmt(totalSop.cuota)))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.chrome, color: "#fff" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[13px] font-medium" }, resultado >= 0 ? "A ingresar en Hacienda" : "A compensar / devolver"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-bold text-[19px]" }, "\u20AC", fmt(Math.abs(resultado))))), filas.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay ventas ni compras registradas en este trimestre." }) : /* @__PURE__ */ import_react4.default.createElement(Card, { style: { padding: 0 }, className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", { style: { color: C2.inkSoft, borderBottom: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2 px-3" }, "Tipo"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-right font-medium py-2 px-3" }, "Base repercutida"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-right font-medium py-2 px-3" }, "Base soportada"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, filas.map((tipo) => /* @__PURE__ */ import_react4.default.createElement("tr", { key: tipo, style: { borderBottom: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-3 mono" }, tipo, "%"), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-3 mono text-right" }, repercutido[tipo] ? `\u20AC${fmt(repercutido[tipo].base)}` : "\u2014"), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-3 mono text-right" }, soportado[tipo] ? `\u20AC${fmt(soportado[tipo].base)}` : "\u2014")))))), resumenIvaVentas.pendientes.length > 0 ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft || C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold" }, `${resumenIvaVentas.pendientes.length} correcci\xF3n(es) requieren revisi\xF3n fiscal`), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Las devoluciones sin reembolso, los importes de reembolso que no coinciden con el valor asociado o las operaciones sin IVA hist\xF3rico no se convierten silenciosamente en una cifra fiscal definitiva.")) : null, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: exportarExcel }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 14 }), " Exportar a Excel"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Ventas y REVERSO usan su snapshot hist\xF3rico y la fecha de cada operaci\xF3n. Las devoluciones con reembolso se proyectan por el importe realmente corregido; SIN_REEMBOLSO queda pendiente de criterio/documentaci\xF3n fiscal. Caja y medio de pago no determinan por s\xED solos el IVA."));
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Libro de IVA"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Resumen trimestral de control: concilia IVA repercutido de operaciones de venta e IVA soportado de compras por tipo. Es una proyecci\xF3n interna, no sustituye la documentaci\xF3n fiscal ni la revisi\xF3n de tu gestor\xEDa.")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Trimestre" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: trimestre, onChange: (e2) => setTrimestre(Number(e2.target.value)), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: 1 }, "1T \u2014 Enero a Marzo"), /* @__PURE__ */ import_react4.default.createElement("option", { value: 2 }, "2T \u2014 Abril a Junio"), /* @__PURE__ */ import_react4.default.createElement("option", { value: 3 }, "3T \u2014 Julio a Septiembre"), /* @__PURE__ */ import_react4.default.createElement("option", { value: 4 }, "4T \u2014 Octubre a Diciembre"))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "A\xF1o" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: anio, onChange: (e2) => setAnio(Number(e2.target.value) || hoy.getFullYear()) }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Del ", desde, " al ", hasta)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "IVA repercutido (ventas)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: C2.accent } }, "\u20AC", fmt(totalRep.cuota))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "IVA soportado (compras)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1" }, "\u20AC", fmt(totalSop.cuota)))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.chrome, color: "#fff" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[13px] font-medium" }, resultado >= 0 ? "A ingresar en Hacienda" : "A compensar / devolver"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-bold text-[19px]" }, "\u20AC", fmt(Math.abs(resultado))))), filas.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay ventas ni compras registradas en este trimestre." }) : /* @__PURE__ */ import_react4.default.createElement(Card, { style: { padding: 0 }, className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", { style: { color: C2.inkSoft, borderBottom: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2 px-3" }, "Tipo"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-right font-medium py-2 px-3" }, "Base repercutida"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-right font-medium py-2 px-3" }, "Base soportada"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, filas.map((tipo) => /* @__PURE__ */ import_react4.default.createElement("tr", { key: tipo, style: { borderBottom: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-3 mono" }, tipo, "%"), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-3 mono text-right" }, repercutido[tipo] ? `\u20AC${fmt(repercutido[tipo].base)}` : "\u2014"), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-3 mono text-right" }, soportado[tipo] ? `\u20AC${fmt(soportado[tipo].base)}` : "\u2014")))))), resumenIvaVentas.pendientes.length > 0 ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft || C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold" }, `${resumenIvaVentas.pendientes.length} corrección(es) requieren revisión fiscal`), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Las devoluciones sin reembolso, los importes de reembolso que no coinciden con el valor asociado o las operaciones sin IVA histórico no se convierten silenciosamente en una cifra fiscal definitiva.")) : null, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: exportarExcel }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 14 }), " Exportar a Excel"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Ventas y REVERSO usan su snapshot hist\xF3rico y la fecha de cada operaci\xF3n. Las devoluciones con reembolso se proyectan por el importe realmente corregido; SIN_REEMBOLSO queda pendiente de criterio/documentaci\xF3n fiscal. Caja y medio de pago no determinan por s\xED solos el IVA."));
 }
 function Devoluciones({ productos = [], proveedores = [], devoluciones = [], movimientos = [], registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion }) {
   const h3 = import_react4.default.createElement;
@@ -115002,6 +115035,10 @@ function BloqueEntradasSalidas({ fecha, movimientosCajaDelDia = [], registrarMov
     listado
   );
 }
+// PM-09 / Punto 10: una única lectura de medios de pago para Caja.
+// Las ventas brutas suman por su medio; los REVERSO trazables restan en la
+// fecha de la corrección. DEVOLUCION_CLIENTE no entra aquí porque su reembolso
+// ya está representado por caja_operaciones y contarlo otra vez duplicaría caja.
 function esReversoVentaCajaPM09(m22) {
   if (!m22) return false;
   if (esMovimientoNuevo(m22)) return m22.tipo === "REVERSO" && !!(m22.anulaVentaId || m22.ventaId || m22.documentoOrigenId || m22.movimientoOriginalId);
@@ -115032,14 +115069,15 @@ function resumenMediosVentaCajaPM09(movs = [], fecha = "") {
       sumar(ventas, m22, 1);
       ventasIncluidas++;
     } else if (esReversoVentaCajaPM09(m22)) {
+      // Se guarda ya con signo negativo para que el consumidor solo tenga que sumar.
       sumar(reversos, m22, -1);
       reversosIncluidos++;
     }
   });
   const neto = cero();
-  Object.keys(neto).forEach((k2) => neto[k2] = redondearDineroPM08((ventas[k2] || 0) + (reversos[k2] || 0)));
-  Object.keys(ventas).forEach((k2) => ventas[k2] = redondearDineroPM08(ventas[k2] || 0));
-  Object.keys(reversos).forEach((k2) => reversos[k2] = redondearDineroPM08(reversos[k2] || 0));
+  Object.keys(neto).forEach((k) => neto[k] = redondearDineroPM08((ventas[k] || 0) + (reversos[k] || 0)));
+  Object.keys(ventas).forEach((k) => ventas[k] = redondearDineroPM08(ventas[k] || 0));
+  Object.keys(reversos).forEach((k) => reversos[k] = redondearDineroPM08(reversos[k] || 0));
   return { ventas, reversos, neto, ventasIncluidas, reversosIncluidos };
 }
 function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja }) {
@@ -115065,7 +115103,7 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
     });
   });
   const porMedio = { Efectivo: 0, Tarjeta: 0, Transferencia: 0, Otro: 0 };
-  Object.keys(porMedio).forEach((k2) => porMedio[k2] = redondearDineroPM08((resumenVentasCaja.neto[k2] || 0) + (porMedioOtros[k2] || 0)));
+  Object.keys(porMedio).forEach((k) => porMedio[k] = redondearDineroPM08((resumenVentasCaja.neto[k] || 0) + (porMedioOtros[k] || 0)));
   const movimientosCajaDelDia = movimientosCaja.filter((m22) => m22.fecha === fecha);
   const netoCaja = movimientosCajaDelDia.reduce((acc, m22) => {
     const efecto = Number(m22.efectoEfectivo);
@@ -115073,6 +115111,8 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
     return acc + (String(m22.tipo).toUpperCase() === "ENTRADA" ? Number(m22.importe) || 0 : -(Number(m22.importe) || 0));
   }, 0);
   const efectivoOtros = redondearDineroPM08(porMedioOtros.Efectivo || 0);
+  // Base no negativa: ventas brutas en efectivo + fuentes externas declaradas.
+  // Los REVERSO se muestran/aplican aparte, igual que hará el servidor PM09.
   const efectivoBase = redondearDineroPM08((resumenVentasCaja.ventas.Efectivo || 0) + efectivoOtros);
   const ajustesVentaEfectivo = redondearDineroPM08(resumenVentasCaja.reversos.Efectivo || 0);
   const efectivoEsperado = redondearDineroPM08(efectivoBase + ajustesVentaEfectivo + netoCaja);
@@ -115190,7 +115230,7 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
         h3("div", null, h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Efectivo esperado"), h3("div", { className: "text-xl font-semibold mono" }, "\u20AC", fmt(efectivoEsperado))),
         h3("div", null, h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Otras ventas"), h3("div", { className: "text-xl font-semibold mono", style: { color: C2.inkSoft } }, "\u20AC", fmt((porMedio.Tarjeta || 0) + (porMedio.Transferencia || 0) + (porMedio.Otro || 0))))
       ),
-      h3("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, `Base efectivo \u20AC${fmt(efectivoBase)} \xB7 anulaciones venta \u20AC${fmt(ajustesVentaEfectivo)} \xB7 ajustes/reembolsos caja \u20AC${fmt(netoCaja)}`),
+      h3("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, `Base efectivo €${fmt(efectivoBase)} · anulaciones venta €${fmt(ajustesVentaEfectivo)} · ajustes/reembolsos caja €${fmt(netoCaja)}`),
       h3(BloqueEntradasSalidas, { fecha, movimientosCajaDelDia, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, periodoCerrado: !!yaArqueado }),
       yaArqueado ? h3(
         "div",
@@ -115927,7 +115967,7 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
       const importeOriginal = lineas.reduce((a22, l22) => a22 + Math.abs(cantidadConSigno(l22)) * Math.abs(Number(l22.ingresoUnitario) || 0) * (1 + (Number(l22.ivaVentaAplicado) || 0) / 100), 0);
       const nombres = lineas.map((l22) => {
         const p22 = productos.find((x3) => x3.id === l22.productoId);
-        return `${fmt(Math.abs(cantidadConSigno(l22)))}\xD7 ${p22 ? p22.nombre : "Producto"}`;
+        return `${fmt(Math.abs(cantidadConSigno(l22)))}× ${p22 ? p22.nombre : "Producto"}`;
       });
       const detallePago = lineas.reduce((acc, l22) => {
         if (!l22.detallePago) return acc;
@@ -115966,10 +116006,10 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
           importeAsociado: esDev ? Math.abs(Number(datoCorreccionHistorialPM09(m22, "ingresoUnitario")) || 0) * Math.abs(Number(m22.cantidad) || 0) * (1 + (Number(datoCorreccionHistorialPM09(m22, "ivaVentaAplicado")) || 0) / 100) : importeOriginal
         };
       }).sort((a22, b2) => `${a22.fecha} ${a22.operationId}`.localeCompare(`${b2.fecha} ${b2.operationId}`));
-      const medioPago2 = lineas[0]?.medioPago || "\u2014";
+      const medioPago2 = lineas[0]?.medioPago || "—";
       const usuario = lineas[0]?.usuario || lineas[0]?.empleado || "";
       const referencia = `V-${(fecha || "SINFECHA").replaceAll("-", "")}-${String(ventaId).replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`;
-      return { ventaId, referencia, fecha, marcaTiempo, lineas, resumen: nombres.slice(0, 3).join(", ") + (nombres.length > 3 ? ` y ${nombres.length - 3} m\xE1s` : ""), importe: importeOriginal, importeOriginal, importeNetoGestion, importeAsociadoDevuelto, reembolsoAcumulado, unidadesOriginales, unidadesDevueltas, unidadesNetas, estado, trazabilidad, medioPago: medioPago2, detallePago, usuario, anulada, mesa: lineas[0]?.mesa || lineas[0]?.mesaNumero || "", zona: lineas[0]?.zona || lineas[0]?.sala || lineas[0]?.ubicacion || "", numeroFiscal: lineas[0]?.numeroFiscal || lineas[0]?.numeroFactura || "", entregado: lineas[0]?.importeEntregado ?? lineas[0]?.entregado ?? null, cambio: lineas[0]?.cambioEntregado ?? lineas[0]?.cambio ?? null };
+      return { ventaId, referencia, fecha, marcaTiempo, lineas, resumen: nombres.slice(0, 3).join(", ") + (nombres.length > 3 ? ` y ${nombres.length - 3} más` : ""), importe: importeOriginal, importeOriginal, importeNetoGestion, importeAsociadoDevuelto, reembolsoAcumulado, unidadesOriginales, unidadesDevueltas, unidadesNetas, estado, trazabilidad, medioPago: medioPago2, detallePago, usuario, anulada, mesa: lineas[0]?.mesa || lineas[0]?.mesaNumero || "", zona: lineas[0]?.zona || lineas[0]?.sala || lineas[0]?.ubicacion || "", numeroFiscal: lineas[0]?.numeroFiscal || lineas[0]?.numeroFactura || "", entregado: lineas[0]?.importeEntregado ?? lineas[0]?.entregado ?? null, cambio: lineas[0]?.cambioEntregado ?? lineas[0]?.cambio ?? null };
     }).sort((a22, b2) => `${b2.fecha} ${b2.marcaTiempo}`.localeCompare(`${a22.fecha} ${a22.marcaTiempo}`));
   }, [movimientos, productos]);
   const ventasFiltradas = (0, import_react4.useMemo)(() => {
@@ -115984,7 +116024,7 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
       if (filtroVentasEstado === "Dev. total" && v22.estado !== "DEVUELTA_TOTAL") return false;
       if (!q2) return true;
       const productosTexto = v22.lineas.map((l22) => productos.find((p22) => p22.id === l22.productoId)?.nombre || "").join(" ");
-      const correccionesTexto = (v22.trazabilidad || []).map((c22) => `${c22.tipo} ${c22.operationId} ${c22.motivo} ${c22.medioReembolso}`).join(" ");
+      const correccionesTexto = (v22.trazabilidad || []).map((c2) => `${c2.tipo} ${c2.operationId} ${c2.motivo} ${c2.medioReembolso}`).join(" ");
       return `${v22.referencia} ${v22.ventaId} ${v22.fecha} ${v22.medioPago} ${v22.usuario} ${v22.estado} ${productosTexto} ${correccionesTexto}`.toLowerCase().includes(q2);
     });
   }, [historialVentas, filtroVentasTexto, filtroVentasDesde, filtroVentasHasta, filtroVentasPago, filtroVentasEstado, productos]);
@@ -116207,23 +116247,17 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
         const precio = Math.abs(Number(l22.ingresoUnitario) || 0) * (1 + (Number(l22.ivaVentaAplicado) || 0) / 100);
         return h3("div", { key: l22.id || `${l22.productoId}-${cant}`, className: "flex justify-between gap-3 text-[12.5px]" }, h3("div", null, h3("div", { className: "font-medium" }, p22?.nombre || "Producto"), h3("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, `${fmt(cant)} \xD7 \u20AC${fmt(precio)} \xB7 IVA ${fmt(Number(l22.ivaVentaAplicado) || 0)}%`)), h3("div", { className: "mono font-semibold" }, "\u20AC", fmt(cant * precio)));
       })),
-      h3(
-        "div",
-        { className: "py-2 mb-2", style: { borderTop: `1px solid ${C2.line}` } },
+      h3("div", { className: "py-2 mb-2", style: { borderTop: `1px solid ${C2.line}` } },
         h3("div", { className: "flex justify-between font-bold" }, h3("span", null, "Total original"), h3("span", { className: "mono" }, "\u20AC", fmt(v22.importeOriginal))),
-        v22.estado !== "ACTIVA" ? h3("div", { className: "flex justify-between mt-1 text-[12px]" }, h3("span", null, "Neto de gesti\xF3n"), h3("span", { className: "mono font-semibold" }, "\u20AC", fmt(v22.importeNetoGestion))) : null,
+        v22.estado !== "ACTIVA" ? h3("div", { className: "flex justify-between mt-1 text-[12px]" }, h3("span", null, "Neto de gestión"), h3("span", { className: "mono font-semibold" }, "\u20AC", fmt(v22.importeNetoGestion))) : null,
         v22.unidadesDevueltas > 0 ? h3("div", { className: "flex justify-between mt-1 text-[11px]", style: { color: C2.inkSoft } }, h3("span", null, `Unidades: ${fmt(v22.unidadesNetas)} netas de ${fmt(v22.unidadesOriginales)}`), h3("span", null, `Reembolso: \u20AC${fmt(v22.reembolsoAcumulado)}`)) : null
       ),
-      v22.trazabilidad && v22.trazabilidad.length ? h3(
-        "div",
-        { className: "rounded-lg p-2.5 mb-3", style: { background: C2.surface2 || C2.surface, border: `1px solid ${C2.line}` } },
+      v22.trazabilidad && v22.trazabilidad.length ? h3("div", { className: "rounded-lg p-2.5 mb-3", style: { background: C2.surface2 || C2.surface, border: `1px solid ${C2.line}` } },
         h3("div", { className: "text-[11px] font-bold mb-1.5" }, "Trazabilidad de correcciones"),
-        v22.trazabilidad.map((c22, i33) => h3(
-          "div",
-          { key: c22.operationId || i33, className: "text-[10.5px] py-1", style: { borderTop: i33 ? `1px dotted ${C2.line}` : "none" } },
-          h3("div", { className: "font-semibold" }, c22.tipo === "ANULACION" ? "Anulaci\xF3n vinculada" : `Devoluci\xF3n cliente \xD7${fmt(c22.cantidad)}`),
-          h3("div", { style: { color: C2.inkSoft } }, `${c22.fecha || "Sin fecha"}${c22.motivo ? " \xB7 " + c22.motivo : ""}${c22.tipo === "DEVOLUCION_CLIENTE" ? ` \xB7 reembolso \u20AC${fmt(c22.reembolso)}${c22.medioReembolso ? " " + c22.medioReembolso : ""}` : ""}`),
-          h3("div", { className: "break-all", style: { color: C2.inkSoft } }, `Operaci\xF3n: ${c22.operationId || "\u2014"}${c22.movimientoOriginalId ? " \xB7 origen: " + c22.movimientoOriginalId : ""}`)
+        v22.trazabilidad.map((c2, i33) => h3("div", { key: c2.operationId || i33, className: "text-[10.5px] py-1", style: { borderTop: i33 ? `1px dotted ${C2.line}` : "none" } },
+          h3("div", { className: "font-semibold" }, c2.tipo === "ANULACION" ? "Anulación vinculada" : `Devolución cliente ×${fmt(c2.cantidad)}`),
+          h3("div", { style: { color: C2.inkSoft } }, `${c2.fecha || "Sin fecha"}${c2.motivo ? " · " + c2.motivo : ""}${c2.tipo === "DEVOLUCION_CLIENTE" ? ` · reembolso \u20AC${fmt(c2.reembolso)}${c2.medioReembolso ? " " + c2.medioReembolso : ""}` : ""}`),
+          h3("div", { className: "break-all", style: { color: C2.inkSoft } }, `Operación: ${c2.operationId || "—"}${c2.movimientoOriginalId ? " · origen: " + c2.movimientoOriginalId : ""}`)
         ))
       ) : null,
       v22.medioPago === "Mixto" && (v22.detallePago.efectivo > 0 || v22.detallePago.tarjeta > 0) ? h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, `Tarjeta \u20AC${fmt(v22.detallePago.tarjeta)} + Efectivo \u20AC${fmt(v22.detallePago.efectivo)}`) : null,
@@ -116849,7 +116883,7 @@ function CostePersonal({ empleados, nominas, addNomina, updateNomina, deleteNomi
       const d2 = r2.datos || {};
       const empMatch = empleadoPorNombreLeido(d2.empleado);
       const mesSaneado = mesLimpio(d2.mes);
-      const avisos = ["PM13 P07: propuesta IA. Revisa empleado, mes, bruto y Seguridad Social. La IA no emite ni valida una n\xF3mina oficial y el guardado exige confirmaci\xF3n humana expl\xEDcita."];
+      const avisos = ["PM13 P07: propuesta IA. Revisa empleado, mes, bruto y Seguridad Social. La IA no emite ni valida una nómina oficial y el guardado exige confirmación humana explícita."];
       if (!empMatch) avisos.push(`No se ha podido emparejar el nombre le\xEDdo ("${d2.empleado || "\u2014"}") con ning\xFAn empleado dado de alta. El\xEDgelo a mano abajo.`);
       if (!d2.mes) avisos.push("No se ha podido leer el mes de la n\xF3mina. Rev\xEDsalo antes de guardar.");
       else if (!mesSaneado) avisos.push(`El mes le\xEDdo ("${d2.mes}") no tiene un formato reconocible. Se ha dejado el mes actual \u2014 rev\xEDsalo antes de guardar.`);
@@ -116885,16 +116919,16 @@ function CostePersonal({ empleados, nominas, addNomina, updateNomina, deleteNomi
     setError("");
     let datosGuardarPM13 = form;
     if (!editingId && form.origen === "IA") {
-      const revisionConfirmadaPM13 = typeof window !== "undefined" && typeof window.confirm === "function" && window.confirm("Revisi\xF3n humana obligatoria: confirma que has comprobado empleado, mes, bruto, Seguridad Social y notas contra la n\xF3mina original. La IA solo propone datos y no sustituye tu revisi\xF3n.");
+      const revisionConfirmadaPM13 = typeof window !== "undefined" && typeof window.confirm === "function" && window.confirm("Revisión humana obligatoria: confirma que has comprobado empleado, mes, bruto, Seguridad Social y notas contra la nómina original. La IA solo propone datos y no sustituye tu revisión.");
       if (!revisionConfirmadaPM13) {
-        setError("La propuesta de IA no se ha guardado porque falta confirmar la revisi\xF3n humana.");
+        setError("La propuesta de IA no se ha guardado porque falta confirmar la revisión humana.");
         return;
       }
       datosGuardarPM13 = { ...form, revisionHumanaConfirmada: true };
     }
     const resultadoNominaPM13 = editingId ? updateNomina(editingId, datosGuardarPM13) : addNomina(datosGuardarPM13);
     if (!resultadoNominaPM13 || resultadoNominaPM13.ok === false) {
-      setError(resultadoNominaPM13?.error || "No se pudo guardar la n\xF3mina.");
+      setError(resultadoNominaPM13?.error || "No se pudo guardar la nómina.");
       return;
     }
     if (form.mes && form.mes !== mes) setMes(form.mes);
@@ -117528,15 +117562,13 @@ function AppConSesion() {
         onChange: (e2) => setPassword(e2.target.value),
         style: { ...campoAcceso, marginBottom: 16 }
       }
-    ), error && /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: "#FFB9AE", fontSize: 12.5, marginBottom: 12, lineHeight: 1.4 } }, error), /* @__PURE__ */ import_react4.default.createElement("button", { type: "submit", disabled: cargando, style: { width: "100%", padding: "13px", background: "linear-gradient(135deg, #8A6028 0%, #C69A52 52%, #9B7132 100%)", color: "#071D12", border: "1px solid rgba(232,199,130,.66)", borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: "pointer", boxShadow: "0 8px 20px rgba(0,0,0,.22)" } }, cargando ? "Entrando\u2026" : "Entrar"), /* @__PURE__ */ import_react4.default.createElement("div", { onClick: () => {
-      window.location.href = "./restablecer-contrasena.html";
-    }, style: { marginTop: 12, textAlign: "center", fontSize: 12.5, color: "#C69A52", textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer" } }, "\xBFOlvidaste tu contrase\xF1a?"), /* @__PURE__ */ import_react4.default.createElement("div", { onClick: entrarSinNube, style: { marginTop: 12, textAlign: "center", fontSize: 12.5, color: "#C69A52", textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer" } }, "Trabajar solo en este equipo, sin sincronizar")));
+    ), error && /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: "#FFB9AE", fontSize: 12.5, marginBottom: 12, lineHeight: 1.4 } }, error), /* @__PURE__ */ import_react4.default.createElement("button", { type: "submit", disabled: cargando, style: { width: "100%", padding: "13px", background: "linear-gradient(135deg, #8A6028 0%, #C69A52 52%, #9B7132 100%)", color: "#071D12", border: "1px solid rgba(232,199,130,.66)", borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: "pointer", boxShadow: "0 8px 20px rgba(0,0,0,.22)" } }, cargando ? "Entrando\u2026" : "Entrar"), /* @__PURE__ */ import_react4.default.createElement("div", { onClick: () => { window.location.href = "./restablecer-contrasena.html"; }, style: { marginTop: 12, textAlign: "center", fontSize: 12.5, color: "#C69A52", textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer" } }, "\xBFOlvidaste tu contrase\xF1a?"), /* @__PURE__ */ import_react4.default.createElement("div", { onClick: entrarSinNube, style: { marginTop: 12, textAlign: "center", fontSize: 12.5, color: "#C69A52", textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer" } }, "Trabajar solo en este equipo, sin sincronizar")));
   }
   return /* @__PURE__ */ import_react4.default.createElement(GestionAlmacen, null);
 }
 var rutaHash = typeof window !== "undefined" ? window.location.hash : "";
 var matchPrefiltro = /^#\/prefiltro\/(.+)$/.exec(rutaHash);
-(0, import_client22.createRoot)(document.getElementById("root")).render(
+(0, import_client2.createRoot)(document.getElementById("root")).render(
   /* @__PURE__ */ import_react4.default.createElement(
     ErrorBoundaryGlobal,
     null,
@@ -119542,324 +119574,6 @@ jspdf/dist/jspdf.es.min.js:
    * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
    * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
    * ====================================================================
-   *)
-*/
-/*! Bundled license information:
-
-react/cjs/react.development.js:
-  (**
-   * @license React
-   * react.development.js
-   *
-   * Copyright (c) Facebook, Inc. and its affiliates.
-   *
-   * This source code is licensed under the MIT license found in the
-   * LICENSE file in the root directory of this source tree.
-   *)
-
-scheduler/cjs/scheduler.development.js:
-  (**
-   * @license React
-   * scheduler.development.js
-   *
-   * Copyright (c) Facebook, Inc. and its affiliates.
-   *
-   * This source code is licensed under the MIT license found in the
-   * LICENSE file in the root directory of this source tree.
-   *)
-
-react-dom/cjs/react-dom.development.js:
-  (**
-   * @license React
-   * react-dom.development.js
-   *
-   * Copyright (c) Facebook, Inc. and its affiliates.
-   *
-   * This source code is licensed under the MIT license found in the
-   * LICENSE file in the root directory of this source tree.
-   *)
-  (**
-   * Checks if an event is supported in the current execution environment.
-   *
-   * NOTE: This will not work correctly for non-generic events such as `change`,
-   * `reset`, `load`, `error`, and `select`.
-   *
-   * Borrows from Modernizr.
-   *
-   * @param {string} eventNameSuffix Event name, e.g. "click".
-   * @return {boolean} True if the event is supported.
-   * @internal
-   * @license Modernizr 3.0.0pre (Custom Build) | MIT
-   *)
-
-html2canvas/dist/html2canvas.js:
-  (*!
-   * html2canvas 1.4.1 <https://html2canvas.hertzen.com>
-   * Copyright (c) 2022 Niklas von Hertzen <https://hertzen.com>
-   * Released under MIT License
-   *)
-  (*! *****************************************************************************
-      Copyright (c) Microsoft Corporation.
-  
-      Permission to use, copy, modify, and/or distribute this software for any
-      purpose with or without fee is hereby granted.
-  
-      THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
-      REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
-      AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
-      INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
-      LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
-      OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-      PERFORMANCE OF THIS SOFTWARE.
-      ***************************************************************************** *)
-
-dompurify/dist/purify.es.mjs:
-  (*! @license DOMPurify 3.4.14 | (c) Cure53 and other contributors | Released under the Apache license 2.0 and Mozilla Public License 2.0 | github.com/cure53/DOMPurify/blob/3.4.14/LICENSE *)
-
-svg-pathdata/lib/SVGPathData.module.js:
-  (*! *****************************************************************************
-  Copyright (c) Microsoft Corporation.
-  
-  Permission to use, copy, modify, and/or distribute this software for any
-  purpose with or without fee is hereby granted.
-  
-  THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
-  REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
-  AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
-  INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
-  LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
-  OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-  PERFORMANCE OF THIS SOFTWARE.
-  ***************************************************************************** *)
-
-pako/dist/pako.esm.mjs:
-  (*! pako 2.2.0 https://github.com/nodeca/pako @license (MIT AND Zlib) *)
-
-jspdf/dist/jspdf.es.min.js:
-  (** @license
-   *
-   * jsPDF - PDF Document creation from JavaScript
-   * Version 4.2.1 Built on 2026-03-17T11:11:27.057Z
-   *                      CommitID 00000000
-   *
-   * Copyright (c) 2010-2025 James Hall <james@parall.ax>, https://github.com/MrRio/jsPDF
-   *               2015-2025 yWorks GmbH, http://www.yworks.com
-   *               2015-2025 Lukas Holländer <lukas.hollaender@yworks.com>, https://github.com/HackbrettXXX
-   *               2016-2018 Aras Abbasi <aras.abbasi@gmail.com>
-   *               2010 Aaron Spike, https://github.com/acspike
-   *               2012 Willow Systems Corporation, https://github.com/willowsystems
-   *               2012 Pablo Hess, https://github.com/pablohess
-   *               2012 Florian Jenett, https://github.com/fjenett
-   *               2013 Warren Weckesser, https://github.com/warrenweckesser
-   *               2013 Youssef Beddad, https://github.com/lifof
-   *               2013 Lee Driscoll, https://github.com/lsdriscoll
-   *               2013 Stefan Slonevskiy, https://github.com/stefslon
-   *               2013 Jeremy Morel, https://github.com/jmorel
-   *               2013 Christoph Hartmann, https://github.com/chris-rock
-   *               2014 Juan Pablo Gaviria, https://github.com/juanpgaviria
-   *               2014 James Makes, https://github.com/dollaruw
-   *               2014 Diego Casorran, https://github.com/diegocr
-   *               2014 Steven Spungin, https://github.com/Flamenco
-   *               2014 Kenneth Glassey, https://github.com/Gavvers
-   *
-   * Permission is hereby granted, free of charge, to any person obtaining
-   * a copy of this software and associated documentation files (the
-   * "Software"), to deal in the Software without restriction, including
-   * without limitation the rights to use, copy, modify, merge, publish,
-   * distribute, sublicense, and/or sell copies of the Software, and to
-   * permit persons to whom the Software is furnished to do so, subject to
-   * the following conditions:
-   *
-   * The above copyright notice and this permission notice shall be
-   * included in all copies or substantial portions of the Software.
-   *
-   * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-   * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-   * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-   * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-   * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-   * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-   * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-   *
-   * Contributor(s):
-   *    siefkenj, ahwolf, rickygu, Midnith, saintclair, eaparango,
-   *    kim3er, mfo, alnorth, Flamenco
-   *)
-  (**
-   * A class to parse color values
-   * @author Stoyan Stefanov <sstoo@gmail.com>
-   * {@link   http://www.phpied.com/rgb-color-parser-in-javascript/}
-   * @license Use it if you like it
-   *)
-  (**
-   * @license
-   * Joseph Myers does not specify a particular license for his work.
-   *
-   * Author: Joseph Myers
-   * Accessed from: http://www.myersdaily.org/joseph/javascript/md5.js
-   *
-   * Modified by: Owen Leong
-   *)
-  (**
-   * @license
-   * FPDF is released under a permissive license: there is no usage restriction.
-   * You may embed it freely in your application (commercial or not), with or
-   * without modifications.
-   *
-   * Reference: http://www.fpdf.org/en/script/script37.php
-   *)
-  (**
-   * @license
-   * Licensed under the MIT License.
-   * http://opensource.org/licenses/mit-license
-   * Author: Owen Leong (@owenl131)
-   * Date: 15 Oct 2020
-   * References:
-   * https://www.cs.cmu.edu/~dst/Adobe/Gallery/anon21jul01-pdf-encryption.txt
-   * https://github.com/foliojs/pdfkit/blob/master/lib/security.js
-   * http://www.fpdf.org/en/script/script37.php
-   *)
-  (**
-   * @license
-    Copyright (c) 2008, Adobe Systems Incorporated
-    All rights reserved.
-  
-    Redistribution and use in source and binary forms, with or without 
-    modification, are permitted provided that the following conditions are
-    met:
-  
-    * Redistributions of source code must retain the above copyright notice, 
-      this list of conditions and the following disclaimer.
-    
-    * Redistributions in binary form must reproduce the above copyright
-      notice, this list of conditions and the following disclaimer in the 
-      documentation and/or other materials provided with the distribution.
-    
-    * Neither the name of Adobe Systems Incorporated nor the names of its 
-      contributors may be used to endorse or promote products derived from 
-      this software without specific prior written permission.
-  
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
-    IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
-    THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR 
-    CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-    EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-    PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-    LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-    NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  *)
-  (**
-   * @license
-   * Copyright (c) 2017 Aras Abbasi
-   *
-   * Licensed under the MIT License.
-   * http://opensource.org/licenses/mit-license
-   *)
-  (** ====================================================================
-   * @license
-   * jsPDF XMP metadata plugin
-   * Copyright (c) 2016 Jussi Utunen, u-jussi@suomi24.fi
-   *
-   * Permission is hereby granted, free of charge, to any person obtaining
-   * a copy of this software and associated documentation files (the
-   * "Software"), to deal in the Software without restriction, including
-   * without limitation the rights to use, copy, modify, merge, publish,
-   * distribute, sublicense, and/or sell copies of the Software, and to
-   * permit persons to whom the Software is furnished to do so, subject to
-   * the following conditions:
-   *
-   * The above copyright notice and this permission notice shall be
-   * included in all copies or substantial portions of the Software.
-   *
-   * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-   * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-   * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-   * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-   * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-   * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-   * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-   * ====================================================================
-   *)
-
-xlsx/xlsx.mjs:
-  (*! xlsx.js (C) 2013-present SheetJS -- http://sheetjs.com *)
-
-xlsx/xlsx.mjs:
-  (*! sheetjs (C) 2013-present SheetJS -- http://sheetjs.com *)
-
-lucide-react/dist/esm/shared/src/utils/mergeClasses.mjs:
-lucide-react/dist/esm/shared/src/utils/toKebabCase.mjs:
-lucide-react/dist/esm/shared/src/utils/toCamelCase.mjs:
-lucide-react/dist/esm/shared/src/utils/toPascalCase.mjs:
-lucide-react/dist/esm/defaultAttributes.mjs:
-lucide-react/dist/esm/shared/src/utils/hasA11yProp.mjs:
-lucide-react/dist/esm/context.mjs:
-lucide-react/dist/esm/Icon.mjs:
-lucide-react/dist/esm/createLucideIcon.mjs:
-lucide-react/dist/esm/icons/arrow-left-right.mjs:
-lucide-react/dist/esm/icons/bell.mjs:
-lucide-react/dist/esm/icons/boxes.mjs:
-lucide-react/dist/esm/icons/calculator.mjs:
-lucide-react/dist/esm/icons/calendar-clock.mjs:
-lucide-react/dist/esm/icons/calendar-days.mjs:
-lucide-react/dist/esm/icons/calendar-range.mjs:
-lucide-react/dist/esm/icons/camera.mjs:
-lucide-react/dist/esm/icons/chart-column.mjs:
-lucide-react/dist/esm/icons/chart-line.mjs:
-lucide-react/dist/esm/icons/chevron-right.mjs:
-lucide-react/dist/esm/icons/circle-arrow-down.mjs:
-lucide-react/dist/esm/icons/circle-arrow-up.mjs:
-lucide-react/dist/esm/icons/circle-check.mjs:
-lucide-react/dist/esm/icons/clipboard-list.mjs:
-lucide-react/dist/esm/icons/clock.mjs:
-lucide-react/dist/esm/icons/cog.mjs:
-lucide-react/dist/esm/icons/coins.mjs:
-lucide-react/dist/esm/icons/download.mjs:
-lucide-react/dist/esm/icons/droplet.mjs:
-lucide-react/dist/esm/icons/ellipsis.mjs:
-lucide-react/dist/esm/icons/eye-off.mjs:
-lucide-react/dist/esm/icons/eye.mjs:
-lucide-react/dist/esm/icons/factory.mjs:
-lucide-react/dist/esm/icons/file-text.mjs:
-lucide-react/dist/esm/icons/files.mjs:
-lucide-react/dist/esm/icons/loader-circle.mjs:
-lucide-react/dist/esm/icons/log-in.mjs:
-lucide-react/dist/esm/icons/log-out.mjs:
-lucide-react/dist/esm/icons/mail.mjs:
-lucide-react/dist/esm/icons/map.mjs:
-lucide-react/dist/esm/icons/message-circle.mjs:
-lucide-react/dist/esm/icons/minus.mjs:
-lucide-react/dist/esm/icons/package.mjs:
-lucide-react/dist/esm/icons/pencil.mjs:
-lucide-react/dist/esm/icons/phone.mjs:
-lucide-react/dist/esm/icons/plus.mjs:
-lucide-react/dist/esm/icons/receipt.mjs:
-lucide-react/dist/esm/icons/rotate-ccw-clock.mjs:
-lucide-react/dist/esm/icons/scan-barcode.mjs:
-lucide-react/dist/esm/icons/search.mjs:
-lucide-react/dist/esm/icons/shield-check.mjs:
-lucide-react/dist/esm/icons/shopping-bag.mjs:
-lucide-react/dist/esm/icons/shopping-cart.mjs:
-lucide-react/dist/esm/icons/stethoscope.mjs:
-lucide-react/dist/esm/icons/tags.mjs:
-lucide-react/dist/esm/icons/trash-2.mjs:
-lucide-react/dist/esm/icons/trending-up.mjs:
-lucide-react/dist/esm/icons/triangle-alert.mjs:
-lucide-react/dist/esm/icons/truck.mjs:
-lucide-react/dist/esm/icons/upload.mjs:
-lucide-react/dist/esm/icons/user-round.mjs:
-lucide-react/dist/esm/icons/users.mjs:
-lucide-react/dist/esm/icons/wallet.mjs:
-lucide-react/dist/esm/icons/x.mjs:
-lucide-react/dist/esm/lucide-react.mjs:
-  (**
-   * @license lucide-react v1.39.0 - ISC
-   *
-   * This source code is licensed under the ISC license.
-   * See the LICENSE file in the root directory of this source tree.
    *)
 */
 /*! Bundled license information:

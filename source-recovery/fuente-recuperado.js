@@ -8317,17 +8317,17 @@ function crearLogicaPrefiltros({ registrarAuditoria, empresaId, localId, esQA })
       registrarAuditoria("Crear prefiltro de candidato", nombre);
       return token;
     }
-    const token = generarTokenDirecto();
-    const { error } = await supabase.from("prefiltros_candidatos").insert({
-      token,
+    const tokenDirecto = generarTokenDirecto();
+    const { error: errorInsertPrefiltroDirecto } = await supabase.from("prefiltros_candidatos").insert({
+      token: tokenDirecto,
       candidato_nombre: nombre,
       estado: "pendiente",
       empresa_id: empresaId,
       local_id: localId
     });
-    if (error) return null;
+    if (errorInsertPrefiltroDirecto) return null;
     registrarAuditoria("Crear prefiltro de candidato", nombre);
-    return token;
+    return tokenDirecto;
   }
   async function listarPrefiltros() {
     const supabase = await window.getSupabaseClient();
@@ -8355,8 +8355,8 @@ function crearLogicaPrefiltros({ registrarAuditoria, empresaId, localId, esQA })
     // devuelve error -- simplemente no afecta ninguna fila. Sin .select()
     // no habria forma de distinguir ese caso de un borrado real: se exige
     // exactamente una fila devuelta para considerarlo exito.
-    const { data, error } = await supabase.from("prefiltros_candidatos").delete().eq("token", token).select();
-    if (error || !Array.isArray(data) || data.length !== 1) return false;
+    const { data: filasBorradasPrefiltroDirecto, error: errorBorrarPrefiltroDirecto } = await supabase.from("prefiltros_candidatos").delete().eq("token", token).select();
+    if (errorBorrarPrefiltroDirecto || !Array.isArray(filasBorradasPrefiltroDirecto) || filasBorradasPrefiltroDirecto.length !== 1) return false;
     registrarAuditoria("Eliminar prefiltro de candidato", prefiltro?.candidato_nombre || token);
     return true;
   }
