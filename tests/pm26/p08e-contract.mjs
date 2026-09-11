@@ -183,15 +183,18 @@ function psql(args, entrada) {
   try {
     limpiar();
     assert.equal(psql(['-c', `create database "${db}";`]).status, 0, 'no se pudo crear la base temporal');
+    // Todo el SQL entra por stdin, nunca con -f: el usuario postgres no
+    // tiene por que poder leer el arbol de trabajo (en los runners de
+    // CI vive bajo /home/runner y psql -f falla con Permission denied).
     for (const f of ['schema.sql', 'seed.sql']) {
-      const r = psql(['-d', db, '-v', 'ON_ERROR_STOP=1', '-f', path.join(base, f)]);
+      const r = psql(['-d', db, '-v', 'ON_ERROR_STOP=1'], fs.readFileSync(path.join(base, f), 'utf8'));
       assert.equal(r.status, 0, `no se pudo aplicar ${f}: ${r.stderr}`);
     }
     // Estado real de produccion hoy.
     assert.equal(psql(['-d', db, '-v', 'ON_ERROR_STOP=1', '-c', 'delete from public.membresias_usuario;']).status, 0);
 
     // 5a) Con el guard: rechaza.
-    const conGuard = psql(['-d', db, '-v', 'ON_ERROR_STOP=1', '-f', path.join(RAIZ_REPO, rutaPreflight)]);
+    const conGuard = psql(['-d', db, '-v', 'ON_ERROR_STOP=1'], preflight);
     assert.notEqual(conGuard.status, 0, 'con el guard, 0 membresias debe abortar el preflight');
     assert.match(
       conGuard.stderr,
@@ -204,8 +207,6 @@ function psql(args, entrada) {
     //     y la prueba 5a no demostraria nada.
     const mutante = preflight.replace(bloqueGuard(preflight), '');
     assert.notEqual(mutante, preflight, 'la mutacion no llego a quitar el guard -- prueba invalida');
-    // Se pasa por stdin a proposito: escribirlo en disco exigiria que el
-    // usuario postgres pudiera leer el temporal, y no hace falta.
     const sinGuard = psql(['-d', db, '-v', 'ON_ERROR_STOP=1'], mutante);
     assert.equal(
       sinGuard.status,
