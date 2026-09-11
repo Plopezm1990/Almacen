@@ -67,6 +67,19 @@ jobs:
         working-directory: source-recovery
         run: npm ci
 
+      # La regresion acumulada incluye P08b y P08c, que re-ejecutan
+      # validar.sh y la prueba de concurrencia contra un PostgreSQL local
+      # aislado. Sin este paso esos contratos fallan por falta de base de
+      # datos, no por el candidato.
+      - name: Instalar PostgreSQL local (aislado)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sleep 2
+          sudo -u postgres pg_isready
+
       - name: Regresion acumulada de la rama tecnica (P03b, P07b, P08b, P08c)
         run: |
           set -euo pipefail
