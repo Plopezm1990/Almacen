@@ -71,6 +71,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Gate PM26 P04a -- inspeccion de solo lectura (NO es un gate de correccion)
         run: |
           set -euo pipefail
