@@ -69,6 +69,13 @@ jobs:
           sleep 2
           sudo -u postgres pg_isready
 
+      # p06i-contract.mjs vuelve a ejecutar p06f-contract.mjs, que
+      # incluye la prueba de exclusion CLI (prueba-exclusion-cli.sh) --
+      # sin esta CLI instalada esa prueba aborta, no por un defecto de
+      # P08f sino por una dependencia que faltaba en este workflow.
+      - name: Instalar CLI de Supabase para la prueba de exclusion (P06i -> P06f)
+        run: npm install -g supabase
+
       - name: Contratos historicos reparados (P04a, P06c, P06i, P07a)
         run: |
           set -euo pipefail
@@ -115,6 +122,10 @@ jobs:
           sudo service postgresql start
           sleep 2
           sudo -u postgres pg_isready
+      # p08f-contract.mjs re-ejecuta P04a/P06c/P06i/P07a como procesos,
+      # y P06i re-ejecuta P06f, que incluye la prueba de exclusion CLI.
+      - name: Instalar CLI de Supabase para la prueba de exclusion (P06i -> P06f)
+        run: npm install -g supabase
       - name: Gate PM26 P08f -- saneamiento historico y correccion documental
         run: |
           set -euo pipefail
