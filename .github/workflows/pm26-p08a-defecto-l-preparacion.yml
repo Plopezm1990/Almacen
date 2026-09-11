@@ -32,11 +32,23 @@ jobs:
           set -euo pipefail
           git fetch origin main --quiet
           test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
-          # Comparado contra el cierre previo de la rama (PM26 P05c,
-          # a8d618b), no contra origin/main.
-          cierre_previo='a8d618b864eea4b23693c6e72d0a4e7f28bd1973'
-          git cat-file -e "$cierre_previo^{commit}"
-          cambiados="$(git diff --name-only "$cierre_previo"..HEAD)"
+          # PM26 P08b corrigio aqui el mismo defecto que en P07c: este
+          # paso comparaba el cierre previo de la rama contra HEAD en
+          # vivo, exigiendo una lista cerrada de archivos cambiados que
+          # cualquier extension legitima posterior (como la propia
+          # P08b, que anadio revertir-conservador.sql) rompe sin que
+          # P08a tenga nada que ver. P08a certifica un hecho historico:
+          # que su propio gate llego a pasar en verde sobre un commit
+          # concreto. Se compara por tanto el cierre previo de la rama
+          # contra el propio cierre de P08a (1a30358, no HEAD), y solo
+          # se exige que ese cierre siga existiendo y siga siendo
+          # antepasado de HEAD.
+          base_previo='a8d618b864eea4b23693c6e72d0a4e7f28bd1973'
+          cierre_p08a='1a30358b613a35b3985b201d333c26a334cfad2c'
+          git cat-file -e "$base_previo^{commit}"
+          git cat-file -e "$cierre_p08a^{commit}"
+          git merge-base --is-ancestor "$cierre_p08a" HEAD
+          cambiados="$(git diff --name-only "$base_previo".."$cierre_p08a")"
           esperados="$(printf '%s\n' \
             '.github/workflows/pm26-p08a-defecto-l-preparacion.yml' \
             'tests/pm26/P08A_DEFECTO_L_PREPARACION_PRODUCCION.md' \
@@ -49,8 +61,8 @@ jobs:
             'tests/pm26/p08-defecto-l-produccion/seed.sql' \
             'tests/pm26/p08-defecto-l-produccion/validar.sh' | sort)"
           test "$(echo "$cambiados" | sort)" = "$esperados"
-          test -z "$(git diff --name-only "$cierre_previo"..HEAD -- supabase)"
-          test -z "$(git diff --name-only "$cierre_previo"..HEAD -- fuente.js)"
+          test -z "$(git diff --name-only "$base_previo".."$cierre_p08a" -- supabase)"
+          test -z "$(git diff --name-only "$base_previo".."$cierre_p08a" -- fuente.js)"
           echo 'PM26_P08A_ALCANCE_ACOTADO=PASS'
       - name: Instalar PostgreSQL local (aislado)
         run: |

@@ -39,14 +39,22 @@ for (const marcador of [
   'PM26_P08B_ESTADO=PREPARADO_NO_APLICADO_NO_DESPLEGADO',
   'PM26_P08B_PREFLIGHT_HUELLA_CUERPO_HELPER=SI',
   'PM26_P08B_PREFLIGHT_EXCLUYE_HELPERS_QA=SI',
+  'PM26_P08B_PREFLIGHT_RECHAZA_AMBAS_COLUMNAS=SI',
   'PM26_P08B_PREFLIGHT_ENDURECIDO_PROBADO_POSITIVO_Y_NEGATIVO=SI',
   'PM26_P08B_CLIENTE_COMPATIBLE_QA_Y_PRODUCCION=SI',
   'PM26_P08B_CLIENTE_ESQA_DERIVADO_DE_SENAL_EXISTENTE=SI',
   'PM26_P08B_CORRECCION_DETECCION_DELETE_BLOQUEADO=SI',
+  'PM26_P08B_QA_MUTACION_DIRECTA_PROHIBIDA=SI',
+  'PM26_P08B_PRODUCCION_RLS_DIRECTO_VALIDADO=SI',
   'PM26_P08B_BUILD_DETERMINISTA=SI',
   'PM26_P08B_REGRESION_P07B_ACTUALIZADA_SIN_REESCRIBIR=SI',
+  'PM26_P08B_P07C_ANCLADO_A_CIERRE_HISTORICO=SI',
   'PM26_P08B_DESPLIEGUE_COORDINADO_DOCUMENTADO=SI',
+  'PM26_P08B_VENTANA_MANTENIMIENTO_DOCUMENTADA=SI',
+  'PM26_P08B_PESTANAS_ANTIGUAS_DOCUMENTADO=SI',
+  'PM26_P08B_INTERRUPCION_SQL_CLIENTE_DOCUMENTADA=SI',
   'PM26_P08B_ROLLBACK_CONSERVADOR_DOCUMENTADO=SI',
+  'PM26_P08B_ROLLBACK_CONSERVA_DATOS_CON_TRAFICO=SI',
   'PM26_P08B_PRUEBAS_ESQUEMA_ANTERIOR=PASS',
   'PM26_P08B_PRUEBAS_ESQUEMA_POSTERIOR=PASS',
   'PM26_P08B_APLICADO_EN_PRODUCCION=NO',
@@ -70,6 +78,13 @@ for (const texto of [migracionTexto, preflightTexto]) {
   assert.match(texto, /btrim\(regexp_replace\(pg_get_functiondef\(p\.oid\), '\\s\+', ' ', 'g'\)\)/);
   assert.match(texto, /pm11_puede_ver_personal', 'pm11_puede_mutar_personal'/);
   assert.match(texto, /esto parece QA, no produccion/);
+  // Correccion real: rechaza empresa_id Y local_id por separado -- un
+  // estado parcial donde solo local_id ya existiera pasaba antes sin
+  // detectarlo.
+  assert.match(texto, /column_name='empresa_id'\) then/);
+  assert.match(texto, /prefiltros_candidatos\.empresa_id ya existe/);
+  assert.match(texto, /column_name='local_id'\) then/);
+  assert.match(texto, /prefiltros_candidatos\.local_id ya existe/);
 }
 function extraerPreflight(texto, etiqueta) {
   const inicio = '-- PM26_P08_PREFLIGHT_INICIO\n';
@@ -121,6 +136,28 @@ const rutasArtefactos = ['source-recovery/fuente-recuperado.js', 'fuente.js', 's
 for (const rel of rutasArtefactos) {
   assert.ok(fs.existsSync(path.join(RAIZ_REPO, rel)), `falta ${rel}; ejecutar primero el build canonico`);
 }
+function extraerBloquesEsQA(texto, etiqueta) {
+  const marcador = 'if (esQA) {';
+  const bloques = [];
+  let desde = 0;
+  for (;;) {
+    const inicio = texto.indexOf(marcador, desde);
+    if (inicio < 0) break;
+    let i = inicio + marcador.length;
+    let profundidad = 1;
+    while (profundidad > 0 && i < texto.length) {
+      if (texto[i] === '{') profundidad++;
+      else if (texto[i] === '}') profundidad--;
+      i++;
+    }
+    assert.ok(profundidad === 0, `${etiqueta}: bloque "if (esQA) {" sin cierre`);
+    bloques.push(texto.slice(inicio, i));
+    desde = i;
+  }
+  assert.ok(bloques.length >= 2, `${etiqueta}: se esperaban al menos 2 bloques "if (esQA) { ... }", encontrados ${bloques.length}`);
+  return bloques;
+}
+
 for (const rel of rutasArtefactos) {
   const texto = leer(rel);
   assert.match(texto, /function crearLogicaPrefiltros\(\{ registrarAuditoria, empresaId, localId, esQA \}\)/);
@@ -141,6 +178,19 @@ for (const rel of rutasArtefactos) {
     texto,
     new RegExp(`if \\(${nombreError} \\|\\| !Array\\.isArray\\(${nombreData}\\) \\|\\| ${nombreData}\\.length !== 1\\) return false;`)
   );
+  // Reparacion real: la rama QA (if (esQA)) tiene prohibido mutar
+  // prefiltros_candidatos directamente -- solo por RPC. Este contrato
+  // habia dejado de comprobarlo al validar la rama de produccion; se
+  // reintroduce aqui acotado, y en tests/pm26/p07b-contract.mjs y
+  // tests/pm26/p06h-contract.mjs (que tenian el mismo defecto sin
+  // corregir desde antes de P08b).
+  for (const bloqueQA of extraerBloquesEsQA(texto, rel)) {
+    assert.doesNotMatch(
+      bloqueQA,
+      /\.from\("prefiltros_candidatos"\)\.(?:insert|delete)\(/,
+      `${rel}: la rama QA (if (esQA)) no debe mutar prefiltros_candidatos directamente`
+    );
+  }
 }
 console.log('PM26_P08B_CLIENTE_DUAL_VERIFICADO=PASS');
 
@@ -175,10 +225,13 @@ for (const marcador of [
   'PM26_P08_PREFLIGHT_DETECTA_FILAS_EXISTENTES=PASS',
   'PM26_P08_PREFLIGHT_DETECTA_CUERPO_HELPER_DISTINTO=PASS',
   'PM26_P08_PREFLIGHT_DETECTA_HELPER_QA=PASS',
+  'PM26_P08_PREFLIGHT_DETECTA_LOCAL_ID_PARCIAL=PASS',
   'PM26_P08_MIGRACION_APLICADA=PASS',
   'PM26_P08_TRANSICION_POSTERIOR=PASS',
   'PM26_P08_BATERIA_CASOS=PASS',
   'PM26_P08_REAPLICACION_RECHAZADA=PASS',
+  'PM26_P08_ROLLBACK_EXACTO_RECHAZA_CON_TRAFICO=PASS',
+  'PM26_P08_ROLLBACK_CONSERVADOR_PRESERVA_DATOS=PASS',
   'PM26_P08_REVERSION_EXACTA=PASS',
   'PM26_P08_PREFLIGHT_PASA_TRAS_REVERTIR=PASS',
   'PM26_P08_REAPLICACION_LIMPIA_TRAS_REVERTIR=PASS',
@@ -187,6 +240,21 @@ for (const marcador of [
   assert.ok(r1.stdout.includes(marcador), `falta el marcador ${marcador} en la salida real de validar.sh`);
 }
 console.log('PM26_P08B_VALIDAR_SH_REPRODUCIDO=PASS');
+
+// --- Rollback conservador: revertir.sql se niega a ejecutarse con
+// trafico real (ROLLBACK_FALLO), y revertir-conservador.sql existe,
+// nunca borra filas y solo relaja NOT NULL + revierte politicas. ---
+const revertirTexto = leer('tests/pm26/p08-defecto-l-produccion/revertir.sql');
+assert.match(revertirTexto, /ROLLBACK_FALLO/, 'revertir.sql debe negarse a ejecutarse si hay filas existentes');
+assert.match(revertirTexto, /select count\(\*\) into v_total from public\.prefiltros_candidatos;/);
+const rutaConservador = 'tests/pm26/p08-defecto-l-produccion/revertir-conservador.sql';
+assert.ok(fs.existsSync(path.join(RAIZ_REPO, rutaConservador)), 'falta revertir-conservador.sql');
+const conservadorTexto = leer(rutaConservador);
+assert.doesNotMatch(conservadorTexto, /drop column/i, 'revertir-conservador.sql nunca debe retirar columnas');
+assert.doesNotMatch(conservadorTexto, /\bdelete\s+from\b/i, 'revertir-conservador.sql nunca debe borrar filas');
+assert.match(conservadorTexto, /alter column empresa_id drop not null/);
+assert.match(conservadorTexto, /alter column local_id drop not null/);
+console.log('PM26_P08B_ROLLBACK_CONSERVADOR_VERIFICADO=PASS');
 
 // --- Los casos de transicion anterior/posterior estan realmente
 // presentes en sus archivos. ---
@@ -225,7 +293,12 @@ console.log('PM26_P08B_FUERA_DE_SUPABASE=PASS');
     'tests/pm26/p08-defecto-l-produccion/preflight-independiente.sql',
     'tests/pm26/p08-defecto-l-produccion/transicion-anterior.sql',
     'tests/pm26/p08-defecto-l-produccion/transicion-posterior.sql',
+    'tests/pm26/p08-defecto-l-produccion/revertir.sql',
+    'tests/pm26/p08-defecto-l-produccion/revertir-conservador.sql',
     'tests/pm26/p08-defecto-l-produccion/validar.sh',
+    'tests/pm26/p06h-contract.mjs',
+    'tests/pm26/p07c-contract.mjs',
+    '.github/workflows/pm26-p07c-aplicacion-f-qa.yml',
     // fuente.js, fuente-recuperado.js y dist/fuente.js NO se incluyen
     // aqui: son archivos ya existentes con deuda historica aceptada
     // (ver tools/seguridad/deuda-identificadores-historicos.json), no

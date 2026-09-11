@@ -69,9 +69,18 @@ begin
     raise exception 'PREFLIGHT_FALLO: no se encontraron las 3 politicas originales de produccion con el texto exacto esperado -- catalogo distinto al esperado, abortando';
   end if;
 
-  -- 2) No aplicado ya.
+  -- 2) No aplicado ya -- ninguna de las dos columnas debe existir
+  --    todavia. Comprobar solo empresa_id dejaria pasar un estado
+  --    parcial (por ejemplo, un ALTER previo que anadiera local_id y
+  --    fallara despues) directo al segundo ALTER de mas abajo, que
+  --    fallaria con un error generico de Postgres en vez de este
+  --    mensaje claro -- y no detectaria en absoluto un catalogo donde
+  --    solo local_id ya existiera con un tipo o restriccion distintos.
   if exists (select 1 from information_schema.columns where table_schema='public' and table_name='prefiltros_candidatos' and column_name='empresa_id') then
     raise exception 'PREFLIGHT_FALLO: prefiltros_candidatos.empresa_id ya existe -- esta migracion puede haberse aplicado ya';
+  end if;
+  if exists (select 1 from information_schema.columns where table_schema='public' and table_name='prefiltros_candidatos' and column_name='local_id') then
+    raise exception 'PREFLIGHT_FALLO: prefiltros_candidatos.local_id ya existe -- esta migracion puede haberse aplicado ya (o parcialmente)';
   end if;
 
   -- 3) El helper que se va a reutilizar existe con la firma esperada.

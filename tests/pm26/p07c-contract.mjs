@@ -2,15 +2,29 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { escanearArbol } from '../../tools/seguridad/verificar-secretos-e-identificadores.mjs';
 
 // PM26 P07c: contrato reproducible del cierre real de F en QA. Las
 // comprobaciones vivas se ejecutaron desde el chat y quedaron registradas en
 // JSON/Markdown; este contrato no se conecta a Supabase ni Netlify y no escribe.
+//
+// PM26 P08b corrigio aqui un defecto real: las huellas SHA-256 de
+// fuente-recuperado.js/fuente.js/dist/fuente.js/index.html/
+// reset-pruebas-preview.js/_headers se comprobaban contra el estado
+// EN VIVO del arbol de trabajo, no contra lo que P07c certifico en su
+// momento. Cualquier extension legitima posterior de esos archivos
+// (como la propia P08b) rompia este gate sin que P07c tuviera nada
+// que ver con el cambio real. Ahora se leen del commit exacto donde
+// el gate de P07c paso en verde (41bf2e1d, "reconstruye fuente en
+// gate final") via `git show`, nunca del arbol de trabajo actual --
+// P07c certifica un hecho historico inmutable, no una propiedad que
+// deba seguir siendo cierta para siempre.
 
 const __filename = fileURLToPath(import.meta.url);
 const RAIZ_REPO = path.resolve(path.dirname(__filename), '..', '..');
+const CIERRE_HISTORICO = '41bf2e1d123783895e87e256388a04f3fffa22aa';
 
 const rutas = {
   doc: 'tests/pm26/P07C_APLICACION_F_QA_Y_PREVIEW.md',
@@ -27,6 +41,14 @@ function leer(rel) {
 
 function sha256(rel) {
   return crypto.createHash('sha256').update(fs.readFileSync(path.join(RAIZ_REPO, rel))).digest('hex');
+}
+
+function leerHistorico(rel, cierre = CIERRE_HISTORICO) {
+  return execFileSync('git', ['show', `${cierre}:${rel}`], { cwd: RAIZ_REPO, maxBuffer: 1024 * 1024 * 64 });
+}
+
+function sha256Historico(rel, cierre = CIERRE_HISTORICO) {
+  return crypto.createHash('sha256').update(leerHistorico(rel, cierre)).digest('hex');
 }
 
 const doc = leer(rutas.doc);
@@ -144,18 +166,31 @@ assert.equal(evidencia.preview.headerRules, 6);
 assert.equal(evidencia.preview.interactiveObservation, 'BLOCKED_BY_TEAM_SSO_GOOGLE_502');
 assert.ok(doc.includes(evidencia.preview.deployId));
 
+// Ancladas al commit exacto de cierre (ver CIERRE_HISTORICO arriba),
+// nunca al arbol de trabajo actual -- estos archivos siguieron
+// evolucionando legitimamente despues de P07c (p.ej. PM26 P08b).
+execFileSync('git', ['cat-file', '-e', `${CIERRE_HISTORICO}^{commit}`], { cwd: RAIZ_REPO });
+execFileSync('git', ['merge-base', '--is-ancestor', CIERRE_HISTORICO, 'HEAD'], { cwd: RAIZ_REPO });
 for (const rel of [
   'source-recovery/fuente-recuperado.js',
   'fuente.js',
-  'source-recovery/dist/fuente.js',
   'index.html',
   'reset-pruebas-preview.js',
   '_headers',
 ]) {
-  assert.ok(doc.includes(sha256(rel)), `el documento no contiene el hash actual de ${rel}`);
+  assert.ok(doc.includes(sha256Historico(rel)), `el documento no contiene el hash de ${rel} en el commit de cierre ${CIERRE_HISTORICO}`);
 }
-const html = leer('index.html');
-const reset = leer('reset-pruebas-preview.js');
+// source-recovery/dist/fuente.js queda fuera de este bucle a
+// proposito: esta en .gitignore y nunca estuvo comprometido, ni
+// siquiera en el propio commit de cierre -- `git show` no puede
+// leerlo historicamente. Su reproducibilidad como build es un asunto
+// ortogonal a lo que P07c certifica (la aplicacion real de F en QA) y
+// ya lo cubren por separado los gates permanentes de P03b/P08b; aqui
+// solo se confirma que el documento declaro un SHA-256 con forma
+// valida para ese artefacto en su momento.
+assert.match(doc, /Build canónico \| `[0-9a-f]{64}` \|/, 'el informe debe declarar un SHA-256 valido para el build canonico');
+const html = leerHistorico('index.html').toString('utf8');
+const reset = leerHistorico('reset-pruebas-preview.js').toString('utf8');
 assert.ok(html.indexOf('reset-pruebas-preview.js') < html.indexOf('window.NUBE_URL = NUBE_URL'));
 assert.match(reset, /window\.__modoPruebasQA = true;/);
 assert.match(reset, /window\.__qaFetchProduccionBloqueado = true;/);

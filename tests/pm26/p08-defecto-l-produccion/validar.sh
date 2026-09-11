@@ -125,6 +125,19 @@ $RUN_AS_POSTGRES $PSQL -d "$DB" -c \
   "drop function private.pm11_puede_ver_personal(text, text);" >/dev/null
 echo "PM26_P08_PREFLIGHT_DETECTA_HELPER_QA=PASS"
 
+# --- Negativo: simular un estado parcial donde SOLO local_id ya
+# existe (empresa_id no) -- el preflight debe abortar especificamente
+# por local_id, no solo por empresa_id (que en este simulacro ni
+# siquiera existe todavia). ---
+$RUN_AS_POSTGRES $PSQL -d "$DB" -c \
+  "alter table public.prefiltros_candidatos add column local_id text;" >/dev/null
+NEG_LOCAL_ID="$(psql_archivo "$PREFLIGHT" "$DB" 2>&1 || true)"
+echo "$NEG_LOCAL_ID" | grep -q "prefiltros_candidatos.local_id ya existe" \
+  || { echo "$NEG_LOCAL_ID" >&2; fallo "el preflight debia fallar especificamente por local_id ya existente, y no fallo"; }
+$RUN_AS_POSTGRES $PSQL -d "$DB" -c \
+  "alter table public.prefiltros_candidatos drop column local_id;" >/dev/null
+echo "PM26_P08_PREFLIGHT_DETECTA_LOCAL_ID_PARCIAL=PASS"
+
 # --- Aplicar la migracion propuesta (positivo). ---
 psql_archivo "$MIGRACION" "$DB" >/dev/null \
   || fallo "la migracion propuesta no se aplico limpiamente"
@@ -165,6 +178,57 @@ REAPLICAR="$(psql_archivo "$MIGRACION" "$DB" 2>&1 || true)"
 echo "$REAPLICAR" | grep -q "PREFLIGHT_FALLO" \
   || fallo "reaplicar la migracion inmediatamente despues debia fallar por PREFLIGHT_FALLO y no fallo"
 echo "PM26_P08_REAPLICACION_RECHAZADA=PASS"
+
+# --- PM26 P08b: rollback CONSERVADOR -- simula que ya hubo trafico
+# real (las filas que dejo la bateria de comportamiento, con
+# empresa_id/local_id reales) y comprueba que revertir.sql (el
+# exacto/destructivo) se niega a ejecutarse, y que
+# revertir-conservador.sql revierte el comportamiento sin perder ni un
+# byte de esos datos. ---
+CONSERVADOR="$DIR/revertir-conservador.sql"
+[ -f "$CONSERVADOR" ] || fallo "no se encuentra revertir-conservador.sql en $CONSERVADOR"
+
+FILAS_ANTES_ROLLBACK="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select count(*) from public.prefiltros_candidatos;")"
+[ "$FILAS_ANTES_ROLLBACK" != "0" ] || fallo "se esperaban filas reales de la bateria antes de probar el rollback conservador, encontrado 0"
+SNAPSHOT_ANTES="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select token || '|' || empresa_id || '|' || local_id from public.prefiltros_candidatos order by token;")"
+
+# Negativo: revertir.sql (exacto) debe abortar sin tocar nada porque hay filas.
+NEG_REVERTIR="$(psql_archivo "$DIR/revertir.sql" "$DB" 2>&1 || true)"
+echo "$NEG_REVERTIR" | grep -q "ROLLBACK_FALLO" \
+  || { echo "$NEG_REVERTIR" >&2; fallo "revertir.sql debia abortar con filas existentes (ROLLBACK_FALLO) y no lo hizo"; }
+FILAS_TRAS_NEG="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select count(*) from public.prefiltros_candidatos;")"
+[ "$FILAS_TRAS_NEG" = "$FILAS_ANTES_ROLLBACK" ] || fallo "revertir.sql no debia cambiar el numero de filas al abortar, encontrado $FILAS_TRAS_NEG vs $FILAS_ANTES_ROLLBACK"
+COLUMNAS_TRAS_NEG="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select count(*) from information_schema.columns where table_schema='public' and table_name='prefiltros_candidatos' and column_name in ('empresa_id','local_id') and is_nullable='NO';")"
+[ "$COLUMNAS_TRAS_NEG" = "2" ] || fallo "revertir.sql no debia tocar las columnas al abortar -- se esperaban 2 NOT NULL, encontrado $COLUMNAS_TRAS_NEG"
+echo "PM26_P08_ROLLBACK_EXACTO_RECHAZA_CON_TRAFICO=PASS"
+
+# Positivo: revertir-conservador.sql revierte las 3 politicas y relaja
+# NOT NULL, sin borrar ni modificar ninguna fila.
+psql_archivo "$CONSERVADOR" "$DB" >/dev/null \
+  || fallo "revertir-conservador.sql no se aplico limpiamente"
+SNAPSHOT_DESPUES="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select token || '|' || empresa_id || '|' || local_id from public.prefiltros_candidatos order by token;")"
+[ "$SNAPSHOT_ANTES" = "$SNAPSHOT_DESPUES" ] \
+  || fallo "revertir-conservador.sql no debia alterar ningun dato existente -- filas distintas antes/despues"
+COLUMNAS_NULLABLE="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select count(*) from information_schema.columns where table_schema='public' and table_name='prefiltros_candidatos' and column_name in ('empresa_id','local_id') and is_nullable='YES';")"
+[ "$COLUMNAS_NULLABLE" = "2" ] || fallo "revertir-conservador.sql debia dejar empresa_id/local_id nullable, encontrado $COLUMNAS_NULLABLE de 2"
+POLITICAS_ORIGINALES="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select count(*) from pg_policy p join pg_class c on c.oid=p.polrelid where c.relname='prefiltros_candidatos' and coalesce(pg_get_expr(p.polqual,p.polrelid),'') !~ 'la_tiene_local' and coalesce(pg_get_expr(p.polwithcheck,p.polrelid),'') !~ 'la_tiene_local';")"
+[ "$POLITICAS_ORIGINALES" = "3" ] || fallo "revertir-conservador.sql debia restaurar las 3 politicas originales sin la_tiene_local, encontrado $POLITICAS_ORIGINALES de 3"
+echo "PM26_P08_ROLLBACK_CONSERVADOR_PRESERVA_DATOS=PASS"
+
+# El arnes reaplica manualmente el aislamiento (politicas + NOT NULL)
+# para poder seguir ejercitando el resto de la bateria ya existente
+# sobre el esquema migrado -- esto es bookkeeping del arnes de pruebas,
+# no forma parte de ningun procedimiento real de despliegue/rollback.
+$RUN_AS_POSTGRES $PSQL -d "$DB" -c "alter table public.prefiltros_candidatos alter column empresa_id set not null;" >/dev/null
+$RUN_AS_POSTGRES $PSQL -d "$DB" -c "alter table public.prefiltros_candidatos alter column local_id set not null;" >/dev/null
+$RUN_AS_POSTGRES $PSQL -d "$DB" -c "drop policy if exists \"prefiltros - propietario lee\" on public.prefiltros_candidatos;" >/dev/null
+$RUN_AS_POSTGRES $PSQL -d "$DB" -c "create policy \"prefiltros - propietario lee\" on public.prefiltros_candidatos for select to authenticated using (exists (select 1 from public.perfiles p where p.user_id = (select auth.uid()) and p.activo = true and p.rol = 'Propietario'::text) and private.la_tiene_local(empresa_id, local_id));" >/dev/null
+$RUN_AS_POSTGRES $PSQL -d "$DB" -c "drop policy if exists \"prefiltros - propietario crea\" on public.prefiltros_candidatos;" >/dev/null
+$RUN_AS_POSTGRES $PSQL -d "$DB" -c "create policy \"prefiltros - propietario crea\" on public.prefiltros_candidatos for insert to authenticated with check (exists (select 1 from public.perfiles p where p.user_id = (select auth.uid()) and p.activo = true and p.rol = 'Propietario'::text) and private.la_tiene_local(empresa_id, local_id));" >/dev/null
+$RUN_AS_POSTGRES $PSQL -d "$DB" -c "drop policy if exists \"prefiltros - propietario borra\" on public.prefiltros_candidatos;" >/dev/null
+$RUN_AS_POSTGRES $PSQL -d "$DB" -c "create policy \"prefiltros - propietario borra\" on public.prefiltros_candidatos for delete to authenticated using (exists (select 1 from public.perfiles p where p.user_id = (select auth.uid()) and p.activo = true and p.rol = 'Propietario'::text) and private.la_tiene_local(empresa_id, local_id));" >/dev/null
+FILAS_TRAS_RESTAURAR="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select count(*) from public.prefiltros_candidatos;")"
+[ "$FILAS_TRAS_RESTAURAR" = "$FILAS_ANTES_ROLLBACK" ] || fallo "el arnes no debia perder filas al reaplicar el aislamiento tras el simulacro de rollback conservador"
 
 # --- La bateria de comportamiento dejo filas de prueba (tok-p1,
 # tok-p2) -- revertir.sql NO las borra a proposito (un revert real no

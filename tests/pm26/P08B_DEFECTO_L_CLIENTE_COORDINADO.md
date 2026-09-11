@@ -19,8 +19,9 @@ corrige, endurece y completa con la pieza que faltaba, el cliente.
 
 ## 1. Preflight corregido y endurecido
 
-Dos comprobaciones nuevas, embebidas y en el preflight independiente
-(siguen siendo byte a byte idénticas entre ambos archivos):
+Dos comprobaciones nuevas y una corrección real, embebidas y en el
+preflight independiente (siguen siendo byte a byte idénticas entre
+ambos archivos):
 
 1. **Huella del cuerpo del helper, no solo su firma.** La preparación
    original (P08a) solo comprobaba que `private.la_tiene_local(text,
@@ -36,21 +37,33 @@ Dos comprobaciones nuevas, embebidas y en el preflight independiente
    (los helpers que sólo existen en QA). Su presencia es una señal
    adicional, independiente de las 3 políticas, de que el catálogo no
    es producción.
+3. **Corrección real: rechaza `empresa_id` Y `local_id`, no solo el
+   primero.** El preflight original solo comprobaba
+   `empresa_id` como señal de "ya aplicado" — un estado parcial donde
+   únicamente `local_id` ya existiera (por ejemplo, un `ALTER TABLE`
+   previo interrumpido a medias) habría pasado esa comprobación sin
+   detectarlo y llegado directo al segundo `ALTER TABLE ADD COLUMN
+   local_id`, que habría fallado con un error genérico de Postgres en
+   vez de este mensaje claro. Ahora comprueba ambas columnas por
+   separado, cada una con su propio mensaje.
 
-Ambas comprobaciones se probaron positiva y negativamente en el
+Las tres comprobaciones se probaron positiva y negativamente en el
 Postgres local aislado: redefinir `la_tiene_local` con un cuerpo
 distinto (`select true;`) hace abortar el preflight con el mensaje
 exacto esperado, y se restaura explícitamente el original después,
 sin dejar rastro; crear un `private.pm11_puede_ver_personal` simulado
-también hace abortar, y se elimina explícitamente después.
+también hace abortar, y se elimina explícitamente después; añadir solo
+`local_id` (sin `empresa_id`) también hace abortar con el mensaje
+específico de `local_id`, y se retira explícitamente después
+(`PM26_P08_PREFLIGHT_DETECTA_LOCAL_ID_PARCIAL`).
 
 SHA-256 de los dos archivos endurecidos (sustituyen a los documentados
 en `P08A_DEFECTO_L_PREPARACION_PRODUCCION.md`):
 
 | Archivo | SHA-256 |
 |---|---|
-| `tests/pm26/p08-defecto-l-produccion/migracion-propuesta.sql` | `0012ddcb65c3dd0923b25dd7486c111b2a41265030c3a78aa75f9b3643a5ef9c` |
-| `tests/pm26/p08-defecto-l-produccion/preflight-independiente.sql` | `a66d237b4bf72e404b1ca7da1436f547d0b8a15d4d880dc50894223b5eb13587` |
+| `tests/pm26/p08-defecto-l-produccion/migracion-propuesta.sql` | `6f924e07a033f48ade4ad1a0e602360079db2deb10e2d3941177001280acf554` |
+| `tests/pm26/p08-defecto-l-produccion/preflight-independiente.sql` | `73fdf1c6b6a85c7a7784b26be780614bb0eecd7d8582e1d562ad79c15f3c9cfd` |
 
 ## 2. Cliente compatible con producción y QA
 
@@ -148,39 +161,163 @@ aserción de que las llamadas se hacen a las RPC correctas con el
 contexto correcto. Las 5 mutaciones negativas de P07b (incluida
 `sin-rpc-crear`) se re-ejecutaron sin cambios y se siguen detectando.
 
+**Corrección real encontrada en esta reparación:** al añadir la rama
+de producción, la comprobación original de `p07b-contract.mjs` que
+garantizaba "la rama QA nunca muta `prefiltros_candidatos`
+directamente" se había retirado por completo (en vez de acotarla a la
+rama QA), y el mismo defecto existía sin corregir en
+`tests/pm26/p06h-contract.mjs`. Ambos contratos aíslan ahora, contando
+llaves (sin depender de la indentación exacta que produzca esbuild),
+cada bloque `if (esQA) { ... }` de `crearLogicaPrefiltros` y comprueban
+que ninguno contiene `.insert(`/`.delete(` directos — la prohibición
+de mutación directa en QA queda tan estricta como antes de P08b. En
+paralelo, `p07b-contract.mjs` valida ahora en positivo (no solo
+tolera) el camino RLS directo exclusivo de producción: el `INSERT` con
+`empresa_id`/`local_id` y el `DELETE` que exige `.select()` con
+exactamente una fila.
+
 ## 3. Despliegue coordinado
 
 El cliente y la migración deben desplegarse **en el mismo cambio**,
-nunca uno sin el otro:
+nunca uno sin el otro. Procedimiento real, no solo declarado:
 
-1. Aplicar `migracion-propuesta.sql` en producción (autorización
+### 3.1 Ventana de mantenimiento
+
+`prefiltros_candidatos` tiene hoy 0 filas y un uso poco frecuente
+(alta/baja manual de un Propietario). No existe un interruptor de
+"modo mantenimiento" en la aplicación para esta tabla en concreto, ni
+hace falta uno nuevo: dado el volumen real, la ventana se reduce a
+minimizar el tiempo entre los dos pasos, no a bloquear tráfico.
+
+1. Elegir un momento de baja actividad (fuera de horario comercial del
+   negocio, verificado con quien opera la tienda).
+2. Aplicar `migracion-propuesta.sql` en producción (autorización
    separada, no incluida aquí).
-2. Publicar, en el mismo despliegue, la versión de `fuente.js` con la
-   rama de producción del cliente (este commit).
-3. Nunca al revés: publicar el cliente nuevo sin la migración
-   rompería igual que hoy (las columnas no existen); aplicar la
-   migración sin el cliente nuevo rompe el alta con el cliente viejo
-   (demostrado en la sección 5).
-4. Mientras esto no se autorice y despliegue, `main`/`release` siguen
+3. Publicar, **inmediatamente después y en el mismo despliegue**, la
+   versión de `fuente.js` con la rama de producción del cliente (este
+   commit) — Netlify publica de forma atómica, así que el hueco real
+   es el tiempo entre "la migración terminó" y "el nuevo deploy queda
+   `ready`", normalmente segundos.
+4. Confirmar el deploy `ready` y, si es posible, hacer una alta y una
+   baja de prueba real inmediatamente después (con un usuario de
+   prueba, nunca con datos de un candidato real) antes de dar la
+   ventana por cerrada.
+5. Nunca al revés: publicar el cliente nuevo sin la migración rompería
+   igual que hoy (las columnas no existen); aplicar la migración sin
+   el cliente nuevo rompe el alta con el cliente viejo (demostrado en
+   la sección 5, `POST1_CLIENTE_ANTIGUO_FALLA`).
+6. Mientras esto no se autorice y despliegue, `main`/`release` siguen
    sirviendo el cliente antiguo sin cambios — este commit vive solo en
    la rama técnica y no afecta nada servido hoy.
 
+### 3.2 Pestañas antiguas ya abiertas
+
+Un navegador con la aplicación ya cargada antes del despliegue sigue
+ejecutando el `fuente.js` antiguo en memoria hasta que se recargue —
+Netlify no puede forzar una recarga de pestañas ya abiertas.
+
+- **Efecto real, ya demostrado en `POST1_CLIENTE_ANTIGUO_FALLA`**: un
+  `INSERT` desde esa pestaña antigua (sin `empresa_id`/`local_id`)
+  falla de forma ruidosa (violación de RLS) en cuanto la migración ya
+  esté aplicada — nunca se crea un prefiltro corrupto o sin
+  aislamiento; el fallo es visible para quien lo usa, no silencioso.
+- El listado (`SELECT`) y el borrado por token de una pestaña antigua
+  siguen funcionando igual (no dependen de enviar empresa/local desde
+  el cliente), así que una pestaña antigua no pierde acceso de lectura
+  ni capacidad de borrar sus propias filas — solo falla la creación de
+  prefiltros nuevos hasta recargar.
+- Mitigación: avisar a quien vaya a usar la función de prefiltros justo
+  antes/después de la ventana de mantenimiento para que recargue la
+  página; dado el volumen de uso, el riesgo real de que alguien tenga
+  la pestaña abierta exactamente en ese instante es bajo, y el efecto
+  si ocurre es un error visible y recuperable con F5, no una escritura
+  incorrecta.
+
+### 3.3 Interrupción entre SQL y cliente
+
+Si el despliegue se interrumpe **después** de aplicar
+`migracion-propuesta.sql` pero **antes** de que el deploy del cliente
+nuevo quede `ready` (fallo de Netlify, corte de red, etc.):
+
+- Producción queda con el esquema nuevo (columnas NOT NULL, políticas
+  con `la_tiene_local`) pero sirviendo todavía el cliente antiguo.
+- Efecto: **toda** alta de prefiltro falla (mismo mecanismo que
+  `POST1_CLIENTE_ANTIGUO_FALLA`) hasta que se resuelva. Ruidoso, no
+  silencioso — no se pierden ni corrompen datos porque el `INSERT`
+  nunca llega a insertar nada.
+- Como en ese instante exacto la tabla sigue sin ninguna fila nueva
+  (el cliente antiguo no puede escribir en el esquema nuevo), sigue
+  cumpliéndose la precondición de `revertir.sql` (0 filas) — la
+  reacción correcta es **revertir `migracion-propuesta.sql`
+  inmediatamente con `revertir.sql`**, no esperar ni reintentar el
+  deploy del cliente a ciegas. Eso devuelve producción al estado
+  anterior (cliente antiguo + esquema antiguo) en segundos, y se
+  reintenta el despliegue coordinado completo desde el principio.
+- Solo si se confirma que el deploy del cliente está a punto de
+  completarse (p. ej. Netlify sigue construyendo, no ha fallado) tiene
+  sentido esperar en vez de revertir — nunca dejar este estado a medias
+  sin decisión activa.
+
 ## 4. Rollback conservador
 
-- **SQL**: `revertir.sql` (sin cambios de alcance respecto a P08a) —
-  restaura las 3 políticas originales con su texto exacto, retira las
-  columnas nuevas, no toca ningún grant.
-- **Cliente**: revertir este commit (o el commit de despliegue
-  coordinado) y reconstruir con `verificar-build-canonico.mjs` restaura
-  exactamente `crearLogicaPrefiltros` a su forma previa a P08b — la
-  rama de producción completa desaparece, sin dejar código muerto ni
-  ramas condicionales huérfanas.
-- **Orden de reversión**: si alguna vez se llega a desplegar, revertir
-  el cliente primero (para dejar de depender de las columnas) y la
-  migración después, o ambos en el mismo cambio — nunca revertir solo
-  la migración mientras el cliente nuevo siga desplegado, porque
-  volvería a romper el alta (esta vez por columnas que dejan de
-  existir en vez de por columnas que faltan).
+Hay dos escenarios distintos, con dos scripts distintos — usar el
+equivocado puede destruir datos reales:
+
+### 4.1 Sin tráfico real todavía (`revertir.sql`)
+
+Si la ventana de mantenimiento se interrumpió (3.3) o se decide
+revertir antes de que nadie haya podido crear un prefiltro con el
+esquema nuevo, la tabla sigue en 0 filas. `revertir.sql` (sin cambios
+de alcance respecto a P08a) restaura las 3 políticas originales con su
+texto exacto y retira `empresa_id`/`local_id` por completo — reversión
+exacta, sin rastro. **Ahora comprueba esa precondición él mismo**: si
+al ejecutarlo encuentra alguna fila, aborta con
+`ROLLBACK_FALLO` en vez de borrar columnas a ciegas (probado en
+`PM26_P08_ROLLBACK_EXACTO_RECHAZA_CON_TRAFICO`).
+
+### 4.2 Ya hubo tráfico real (`revertir-conservador.sql`)
+
+Si el despliegue coordinado se completó y ya se crearon prefiltros
+reales con `empresa_id`/`local_id` poblados, retirar esas columnas
+destruiría ese aislamiento para siempre. `revertir-conservador.sql`:
+
+- Restaura las 3 políticas originales (solo por rol, sin
+  `la_tiene_local`) — esto por sí solo ya revierte el efecto de
+  seguridad de la migración (vuelve a permitir acceso cruzado de
+  empresa) sin tocar ni una fila.
+- Relaja `empresa_id`/`local_id` a `NULLABLE` en vez de eliminarlas
+  (`ALTER COLUMN ... DROP NOT NULL`) — así, si además hace falta volver
+  a desplegar el cliente antiguo (sin esos campos en el `INSERT`),
+  puede volver a escribir sin romper `NOT NULL`.
+- **No borra ni modifica ninguna fila existente** — probado
+  explícitamente en `PM26_P08_ROLLBACK_CONSERVADOR_PRESERVA_DATOS`
+  comparando un snapshot exacto (token, empresa_id, local_id) de todas
+  las filas antes y después de ejecutarlo.
+- Deliberadamente **no** deja el esquema bit a bit igual al anterior a
+  la migración: las columnas siguen existiendo, ahora nullable. Es el
+  precio de no perder datos reales. Retirarlas del todo, si más
+  adelante se confirma que ninguna fila las necesita, es una decisión
+  aparte y explícita con `revertir.sql` (que exige 0 filas) — nunca
+  automática desde aquí.
+
+### 4.3 Cliente y orden de reversión
+
+- Revertir este commit (o el commit de despliegue coordinado) y
+  reconstruir con `verificar-build-canonico.mjs` restaura exactamente
+  `crearLogicaPrefiltros` a su forma previa a P08b — la rama de
+  producción completa desaparece, sin dejar código muerto ni ramas
+  condicionales huérfanas.
+- **Sin tráfico real (4.1)**: revertir el cliente primero (para dejar
+  de depender de las columnas) y la migración después, o ambos en el
+  mismo cambio — nunca revertir solo la migración mientras el cliente
+  nuevo siga desplegado, porque volvería a romper el alta (esta vez por
+  columnas que dejan de existir en vez de por columnas que faltan).
+- **Con tráfico real (4.2)**: el orden no importa para la integridad de
+  los datos porque `revertir-conservador.sql` nunca los toca; sí
+  importa para el comportamiento visible — revertir primero las
+  políticas (ya incluido en el script) cierra inmediatamente el
+  aislamiento revertido, y solo entonces tiene sentido, si se desea,
+  volver a desplegar el cliente antiguo.
 
 ## 5. Pruebas sobre los esquemas anterior y posterior
 
@@ -231,6 +368,40 @@ veces, junto con el resto de la batería ya validada en P08a (14 casos
 de permisos, preflight positivo/negativo ampliado, reaplicación
 rechazada, reversión exacta).
 
+## 6. Corrección al gate histórico de P07c
+
+Al reconstruir `fuente.js`/`source-recovery/**` para esta preparación,
+el gate `pm26-p07c-aplicacion-f-qa.yml` empezó a fallar en remoto —no
+por nada que P07c hiciera mal, sino porque su contrato y su paso de
+"alcance acotado" exigían que, desde el commit base de P07c, **nada**
+volviera a cambiar jamás en `fuente.js`/`source-recovery/**`/
+`index.html`/`reset-pruebas-preview.js`/`_headers`, y que los SHA-256
+documentados coincidieran con el árbol de trabajo **actual** en vez de
+con el commit exacto donde el gate de P07c llegó a pasar en verde
+(`41bf2e1d`, "reconstruye fuente en gate final"). Cualquier extensión
+legítima posterior de esos archivos —esta misma, P08b— rompía ese gate
+sin que P07c tuviera nada que ver con el cambio real.
+
+Corregido para que P07c certifique lo que realmente certifica: un
+hecho histórico inmutable, no una propiedad que deba seguir siendo
+cierta para siempre.
+
+- `tests/pm26/p07c-contract.mjs` ahora lee los seis archivos
+  (`fuente-recuperado.js`, `fuente.js`, `index.html`,
+  `reset-pruebas-preview.js`, `_headers` vía `git show
+  41bf2e1d:<ruta>`; `source-recovery/dist/fuente.js` queda fuera por
+  ser un artefacto de build nunca comprometido, ni siquiera en el
+  propio commit de cierre) y compara sus SHA-256 contra el documento —
+  nunca contra el árbol de trabajo actual.
+- El paso "Proteger alcance" del workflow ya no exige una lista cerrada
+  de archivos cambiados ni un diff vacío en el cliente desde el commit
+  base — solo que el commit de cierre `41bf2e1d` siga existiendo y siga
+  siendo antepasado de `HEAD` (que nadie reescribió esa historia), y
+  que `supabase/migrations` siga sin ninguna migración real de F.
+- Sin cambios de comportamiento ni de alcance en lo que P07c certificó
+  en su momento (F aplicada en QA, preview validado) — solo se corrigió
+  **cómo** se sigue verificando ese hecho histórico.
+
 ## Qué NO se hizo
 
 - No se aplicó la migración en producción, QA ni TPV.
@@ -247,14 +418,22 @@ rechazada, reversión exacta).
 PM26_P08B_ESTADO=PREPARADO_NO_APLICADO_NO_DESPLEGADO
 PM26_P08B_PREFLIGHT_HUELLA_CUERPO_HELPER=SI
 PM26_P08B_PREFLIGHT_EXCLUYE_HELPERS_QA=SI
+PM26_P08B_PREFLIGHT_RECHAZA_AMBAS_COLUMNAS=SI
 PM26_P08B_PREFLIGHT_ENDURECIDO_PROBADO_POSITIVO_Y_NEGATIVO=SI
 PM26_P08B_CLIENTE_COMPATIBLE_QA_Y_PRODUCCION=SI
 PM26_P08B_CLIENTE_ESQA_DERIVADO_DE_SENAL_EXISTENTE=SI
 PM26_P08B_CORRECCION_DETECCION_DELETE_BLOQUEADO=SI
+PM26_P08B_QA_MUTACION_DIRECTA_PROHIBIDA=SI
+PM26_P08B_PRODUCCION_RLS_DIRECTO_VALIDADO=SI
 PM26_P08B_BUILD_DETERMINISTA=SI
 PM26_P08B_REGRESION_P07B_ACTUALIZADA_SIN_REESCRIBIR=SI
+PM26_P08B_P07C_ANCLADO_A_CIERRE_HISTORICO=SI
 PM26_P08B_DESPLIEGUE_COORDINADO_DOCUMENTADO=SI
+PM26_P08B_VENTANA_MANTENIMIENTO_DOCUMENTADA=SI
+PM26_P08B_PESTANAS_ANTIGUAS_DOCUMENTADO=SI
+PM26_P08B_INTERRUPCION_SQL_CLIENTE_DOCUMENTADA=SI
 PM26_P08B_ROLLBACK_CONSERVADOR_DOCUMENTADO=SI
+PM26_P08B_ROLLBACK_CONSERVA_DATOS_CON_TRAFICO=SI
 PM26_P08B_PRUEBAS_ESQUEMA_ANTERIOR=PASS
 PM26_P08B_PRUEBAS_ESQUEMA_POSTERIOR=PASS
 PM26_P08B_APLICADO_EN_PRODUCCION=NO

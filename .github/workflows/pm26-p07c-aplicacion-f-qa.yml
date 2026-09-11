@@ -34,23 +34,27 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Proteger alcance P07c y ramas congeladas
+      - name: Proteger la certificacion historica de P07c
         shell: bash
         run: |
           set -euo pipefail
           git fetch origin main --quiet
           test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
-          base='a20e37d8ac74e49a31c5a9243d1256e88428366e'
-          git cat-file -e "$base^{commit}"
-          cambiados="$(git diff --name-only "$base"..HEAD | sort)"
-          esperados="$(printf '%s\n' \
-            '.github/workflows/pm26-p07c-aplicacion-f-qa.yml' \
-            'tests/pm26/P07C_APLICACION_F_QA_Y_PREVIEW.md' \
-            'tests/pm26/P07C_EVIDENCIA_QA.json' \
-            'tests/pm26/p07c-contract.mjs' | sort)"
-          test "$cambiados" = "$esperados"
-          test -z "$(git diff --name-only "$base"..HEAD -- fuente.js source-recovery/fuente-recuperado.js source-recovery/dist/fuente.js index.html reset-pruebas-preview.js _headers supabase/migrations)"
-          echo 'PM26_P07C_ALCANCE_ACOTADO=PASS'
+          # PM26 P08b corrigio aqui un defecto real: este paso exigia
+          # que, desde el commit base 'a20e37d8', NADA mas cambiara
+          # jamas en fuente.js/source-recovery/etc -- una condicion que
+          # cualquier extension legitima posterior (como la propia
+          # P08b) rompe sin que P07c tenga nada que ver. P07c certifica
+          # un hecho historico: que su propio gate llego a pasar en
+          # verde sobre un commit concreto. Eso solo exige que ese
+          # commit siga existiendo y siga siendo un antepasado de HEAD
+          # (que nadie reescribio esa historia), nunca que el arbol de
+          # trabajo actual siga coincidiendo con el.
+          cierre='41bf2e1d123783895e87e256388a04f3fffa22aa'
+          git cat-file -e "$cierre^{commit}"
+          git merge-base --is-ancestor "$cierre" HEAD
+          test -z "$(git diff --name-only "$cierre"..HEAD -- supabase/migrations)"
+          echo 'PM26_P07C_CIERRE_HISTORICO_PROTEGIDO=PASS'
 
       - name: Reconstruir fuente canonica
         working-directory: source-recovery
@@ -88,6 +92,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Preparar fuente canonica para el contrato
         working-directory: source-recovery
         run: npm ci

@@ -35,6 +35,31 @@ function normalizar(valor) {
   return JSON.parse(JSON.stringify(valor));
 }
 
+// Aisla cada bloque "if (esQA) { ... }" contando llaves, sin depender
+// de la indentacion literal que produzca esbuild (mismo criterio que
+// tests/pm26/p06h-contract.mjs).
+function extraerBloquesEsQA(texto, etiqueta) {
+  const marcador = 'if (esQA) {';
+  const bloques = [];
+  let desde = 0;
+  for (;;) {
+    const inicio = texto.indexOf(marcador, desde);
+    if (inicio < 0) break;
+    let i = inicio + marcador.length;
+    let profundidad = 1;
+    while (profundidad > 0 && i < texto.length) {
+      if (texto[i] === '{') profundidad++;
+      else if (texto[i] === '}') profundidad--;
+      i++;
+    }
+    assert.ok(profundidad === 0, `${etiqueta}: bloque "if (esQA) {" sin cierre`);
+    bloques.push(texto.slice(inicio, i));
+    desde = i;
+  }
+  assert.ok(bloques.length >= 2, `${etiqueta}: se esperaban al menos 2 bloques "if (esQA) { ... }" (crear y eliminar), encontrados ${bloques.length}`);
+  return bloques;
+}
+
 const rutaDoc = 'tests/pm26/P07B_DEFECTO_K_FASE_B_IMPLEMENTADOS.md';
 const doc = leer(rutaDoc);
 for (const marcador of [
@@ -119,6 +144,38 @@ function validarImplementacion(texto, etiqueta) {
   const mBorrarRpc = logica.match(/const \{ data(?:: (\w+))?, error(?:: (\w+))? \} = await supabase\.rpc\("pm11_eliminar_prefiltro_candidato"/);
   assert.ok(mBorrarRpc, `${etiqueta}: no se pudo aislar la respuesta de la RPC de baja`);
   assert.match(logica, new RegExp(`if \\(${mBorrarRpc[2] || 'error'} \\|\\| ${mBorrarRpc[1] || 'data'} !== true\\) return false;`));
+
+  // La rama QA (if (esQA) { ... }) tiene PROHIBIDO mutar
+  // prefiltros_candidatos directamente -- QA solo escribe por RPC
+  // (revocado el INSERT/DELETE directo en supabase/qa-solo/..., ver
+  // p06h-contract.mjs). El bloque se aisla contando llaves para no
+  // depender de la indentacion exacta que produzca esbuild.
+  for (const bloqueQA of extraerBloquesEsQA(logica, etiqueta)) {
+    assert.doesNotMatch(
+      bloqueQA,
+      /\.from\("prefiltros_candidatos"\)\.(?:insert|delete)\(/,
+      `${etiqueta}: la rama QA (if (esQA)) no debe mutar prefiltros_candidatos directamente`
+    );
+  }
+
+  // La rama de produccion (PM26 P08b, guardada por !esQA) SI usa el
+  // camino RLS directo exclusivo de produccion -- validado en positivo
+  // aqui, no solo tolerado: INSERT con empresa_id/local_id, y un
+  // DELETE que exige .select() y exactamente una fila para distinguir
+  // un borrado bloqueado por RLS de uno real.
+  assert.match(logica, /\.from\("prefiltros_candidatos"\)\.insert\(\{/, `${etiqueta}: falta el INSERT directo de produccion`);
+  assert.match(logica, /empresa_id:\s*empresaId,\s*\n\s*local_id:\s*localId/, `${etiqueta}: el INSERT directo debe llevar empresa_id/local_id`);
+  const mBorrarDirecto = logica.match(
+    /const \{ data(?:: (\w+))?, error(?:: (\w+))? \} = await supabase\.from\("prefiltros_candidatos"\)\.delete\(\)\.eq\("token", token\)\.select\(\);/
+  );
+  assert.ok(mBorrarDirecto, `${etiqueta}: no se pudo aislar la respuesta del DELETE directo de produccion`);
+  const nombreDataDirecto = mBorrarDirecto[1] || 'data';
+  const nombreErrorDirecto = mBorrarDirecto[2] || 'error';
+  assert.match(
+    logica,
+    new RegExp(`if \\(${nombreErrorDirecto} \\|\\| !Array\\.isArray\\(${nombreDataDirecto}\\) \\|\\| ${nombreDataDirecto}\\.length !== 1\\) return false;`),
+    `${etiqueta}: el DELETE directo de produccion debe exigir exactamente una fila devuelta`
+  );
 
   assert.match(
     texto,

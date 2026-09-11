@@ -130,7 +130,15 @@ const hashReal = crypto.createHash('sha256').update(fs.readFileSync(migracionAbs
 assert.match(doc, new RegExp(hashReal), 'el hash SHA-256 documentado no coincide con el archivo real');
 console.log('PM26_P06H_HASH_VERIFICADO=PASS');
 
-// --- P07b prepara la Fase B: mutaciones por RPC, listado por SELECT. ---
+// --- P07b prepara la Fase B: mutaciones por RPC, listado por SELECT.
+// PM26 P08b anadio despues, junto a esta rama QA, una rama de
+// produccion (guardada por !esQA) que SI hace INSERT/DELETE directos
+// -- eso es correcto para produccion (que no tiene estas RPC) y no
+// debe invalidar la garantia propia de este diseno QA: dentro de la
+// rama "if (esQA) { ... }" nunca debe haber una mutacion directa,
+// solo RPC. Se aisla cada bloque esQA contando llaves (no por
+// indentacion literal) para no depender de como esbuild formatee el
+// bundle. ---
 const fuenteJs = leer('fuente.js');
 const inicioLogica = fuenteJs.indexOf('function crearLogicaPrefiltros(');
 const finLogica = fuenteJs.indexOf('function SelectorDiseno(', inicioLogica);
@@ -139,7 +147,35 @@ const logicaPrefiltros = fuenteJs.slice(inicioLogica, finLogica);
 assert.match(logicaPrefiltros, /\.rpc\("pm11_crear_prefiltro_candidato"/);
 assert.match(logicaPrefiltros, /\.rpc\("pm11_eliminar_prefiltro_candidato"/);
 assert.match(logicaPrefiltros, /\.from\("prefiltros_candidatos"\)\.select\("\*"\)/);
-assert.doesNotMatch(logicaPrefiltros, /\.from\("prefiltros_candidatos"\)\.(?:insert|delete)\(/);
+
+function extraerBloquesEsQA(texto, etiqueta) {
+  const marcador = 'if (esQA) {';
+  const bloques = [];
+  let desde = 0;
+  for (;;) {
+    const inicio = texto.indexOf(marcador, desde);
+    if (inicio < 0) break;
+    let i = inicio + marcador.length;
+    let profundidad = 1;
+    while (profundidad > 0 && i < texto.length) {
+      if (texto[i] === '{') profundidad++;
+      else if (texto[i] === '}') profundidad--;
+      i++;
+    }
+    assert.ok(profundidad === 0, `${etiqueta}: bloque "if (esQA) {" sin cierre`);
+    bloques.push(texto.slice(inicio, i));
+    desde = i;
+  }
+  assert.ok(bloques.length >= 2, `${etiqueta}: se esperaban al menos 2 bloques "if (esQA) { ... }" (crear y eliminar), encontrados ${bloques.length}`);
+  return bloques;
+}
+for (const bloqueQA of extraerBloquesEsQA(logicaPrefiltros, 'p06h')) {
+  assert.doesNotMatch(
+    bloqueQA,
+    /\.from\("prefiltros_candidatos"\)\.(?:insert|delete)\(/,
+    'la rama QA (if (esQA)) no debe mutar prefiltros_candidatos directamente -- solo por RPC'
+  );
+}
 console.log('PM26_P06H_FASE_B_CLIENTE_PREPARADA=PASS');
 
 // --- Re-ejecuta de verdad validar.sh (bateria de 15 casos, preflight
