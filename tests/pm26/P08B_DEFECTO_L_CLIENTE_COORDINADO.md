@@ -15,6 +15,19 @@ reescribir su narrativa: esa preparación queda vigente en su alcance
 original (inspección, diseño inicial, primera validación); aquí se
 corrige, endurece y completa con la pieza que faltaba, el cliente.
 
+**Actualización (PM26 P08c):** el endurecimiento final previo a
+producción está en `P08C_ENDURECIMIENTO_FINAL_PREVIO_PRODUCCION.md`.
+P08c corrige dos cosas de este informe que no eran ciertas o no eran
+seguras: (1) `revertir.sql` contaba las filas sin bloquear la tabla, de
+modo que un `INSERT` concurrente podía confirmarse antes de que se
+retiraran las columnas — ahora toma `ACCESS EXCLUSIVE` antes de contar
+y lo mantiene hasta el `COMMIT`, demostrado con dos sesiones reales en
+concurrencia; y (2) la sección 4 de este documento afirmaba que
+revertir las políticas «cierra el aislamiento», cuando lo elimina y
+reabre el Defecto L. Esa sección se reescribió en su sitio, señalada
+como corrección; el resto del informe se mantiene intacto como
+registro histórico.
+
 ---
 
 ## 1. Preflight corregido y endurecido
@@ -258,10 +271,29 @@ nuevo quede `ready` (fallo de Netlify, corte de red, etc.):
   sentido esperar en vez de revertir — nunca dejar este estado a medias
   sin decisión activa.
 
-## 4. Rollback conservador
+## 4. Rollback
 
-Hay dos escenarios distintos, con dos scripts distintos — usar el
-equivocado puede destruir datos reales:
+> **Corregido en PM26 P08c.** La versión anterior de esta sección
+> presentaba `revertir-conservador.sql` como la opción normal cuando ya
+> hay tráfico, y afirmaba que revertir las políticas «cierra
+> inmediatamente el aislamiento». Eso era **falso y peligroso**:
+> restaurar las 3 políticas originales no cierra ni conserva el
+> aislamiento — lo **elimina**, y vuelve a abrir el Defecto L. La
+> sección se reescribe aquí para decirlo con exactitud; el resto del
+> informe se mantiene como registro histórico.
+
+### 4.0 Vía segura preferente: avance controlado (no revertir)
+
+Si algo va mal con el cliente ya desplegado, la estrategia segura es
+**mantener las columnas y las políticas con aislamiento** y corregir o
+desplegar el cliente hacia delante. Revertir la protección para
+arreglar un fallo del cliente cambia un problema de **disponibilidad**
+(algo no funciona, se ve) por uno de **exposición de datos entre
+empresas** (algo se ve que no debería, y no se ve que esté pasando).
+El segundo es peor y además silencioso.
+
+Los dos escenarios de abajo son excepciones a esta preferencia, no
+alternativas equivalentes.
 
 ### 4.1 Sin tráfico real todavía (`revertir.sql`)
 
@@ -275,16 +307,27 @@ al ejecutarlo encuentra alguna fila, aborta con
 `ROLLBACK_FALLO` en vez de borrar columnas a ciegas (probado en
 `PM26_P08_ROLLBACK_EXACTO_RECHAZA_CON_TRAFICO`).
 
-### 4.2 Ya hubo tráfico real (`revertir-conservador.sql`)
+### 4.2 Ya hubo tráfico real (`revertir-conservador.sql`) — excepcional
+
+**Procedimiento excepcional y exclusivamente manual. No es el rollback
+recomendado y no forma parte de ningún procedimiento automático.**
+Exige autorización explícita y separada que nombre expresamente que se
+acepta **reabrir el Defecto L** y durante cuánto tiempo. El propio
+script lo impone: aborta con `ROLLBACK_CONSERVADOR_BLOQUEADO` salvo que
+la sesión declare esa autorización a mano (probado en
+`PM26_P08_ROLLBACK_CONSERVADOR_EXIGE_AUTORIZACION`).
 
 Si el despliegue coordinado se completó y ya se crearon prefiltros
 reales con `empresa_id`/`local_id` poblados, retirar esas columnas
-destruiría ese aislamiento para siempre. `revertir-conservador.sql`:
+destruiría para siempre esos valores. `revertir-conservador.sql`:
 
 - Restaura las 3 políticas originales (solo por rol, sin
-  `la_tiene_local`) — esto por sí solo ya revierte el efecto de
-  seguridad de la migración (vuelve a permitir acceso cruzado de
-  empresa) sin tocar ni una fila.
+  `la_tiene_local`). Esto **no conserva el aislamiento: lo elimina**.
+  Desde ese momento el Defecto L vuelve a estar abierto — un
+  Propietario de otra empresa puede leer y borrar prefiltros de
+  empresas y locales que no le corresponden, y las filas ya escritas
+  quedan expuestas aunque conserven intactos su `empresa_id` y su
+  `local_id`.
 - Relaja `empresa_id`/`local_id` a `NULLABLE` en vez de eliminarlas
   (`ALTER COLUMN ... DROP NOT NULL`) — así, si además hace falta volver
   a desplegar el cliente antiguo (sin esos campos en el `INSERT`),
@@ -313,11 +356,15 @@ destruiría ese aislamiento para siempre. `revertir-conservador.sql`:
   nuevo siga desplegado, porque volvería a romper el alta (esta vez por
   columnas que dejan de existir en vez de por columnas que faltan).
 - **Con tráfico real (4.2)**: el orden no importa para la integridad de
-  los datos porque `revertir-conservador.sql` nunca los toca; sí
-  importa para el comportamiento visible — revertir primero las
-  políticas (ya incluido en el script) cierra inmediatamente el
-  aislamiento revertido, y solo entonces tiene sentido, si se desea,
-  volver a desplegar el cliente antiguo.
+  los datos, porque `revertir-conservador.sql` nunca los toca. Sí
+  importa para la exposición: en cuanto ese script restaura las
+  políticas originales, **la protección desaparece** y el Defecto L
+  queda abierto, tanto para las filas nuevas como para todas las ya
+  escritas. Por eso la ventana entre ese paso y el restablecimiento
+  del aislamiento debe ser lo más corta posible y estar acotada por
+  escrito en la autorización que lo permitió. Volver a desplegar el
+  cliente antiguo, si se desea, va después — pero la vía preferente
+  sigue siendo 4.0: no llegar aquí.
 
 ## 5. Pruebas sobre los esquemas anterior y posterior
 

@@ -202,10 +202,25 @@ COLUMNAS_TRAS_NEG="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select count(*) from 
 [ "$COLUMNAS_TRAS_NEG" = "2" ] || fallo "revertir.sql no debia tocar las columnas al abortar -- se esperaban 2 NOT NULL, encontrado $COLUMNAS_TRAS_NEG"
 echo "PM26_P08_ROLLBACK_EXACTO_RECHAZA_CON_TRAFICO=PASS"
 
-# Positivo: revertir-conservador.sql revierte las 3 politicas y relaja
-# NOT NULL, sin borrar ni modificar ninguna fila.
-psql_archivo "$CONSERVADOR" "$DB" >/dev/null \
-  || fallo "revertir-conservador.sql no se aplico limpiamente"
+# Negativo (PM26 P08c): sin la autorizacion declarada a mano en la
+# sesion, el rollback conservador debe abortar. Es un procedimiento
+# excepcional y manual que REABRE el Defecto L: no puede ejecutarse por
+# inercia ni desde un automatismo, y el rechazo no debe tocar nada.
+NEG_CONSERVADOR="$(psql_archivo "$CONSERVADOR" "$DB" 2>&1 || true)"
+echo "$NEG_CONSERVADOR" | grep -q "ROLLBACK_CONSERVADOR_BLOQUEADO" \
+  || { echo "$NEG_CONSERVADOR" >&2; fallo "revertir-conservador.sql debia abortar sin autorizacion explicita en la sesion"; }
+POLITICAS_TRAS_NEG_CONS="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select count(*) from pg_policy p join pg_class c on c.oid=p.polrelid where c.relname='prefiltros_candidatos' and (coalesce(pg_get_expr(p.polqual,p.polrelid),'') ~ 'la_tiene_local' or coalesce(pg_get_expr(p.polwithcheck,p.polrelid),'') ~ 'la_tiene_local');")"
+[ "$POLITICAS_TRAS_NEG_CONS" = "3" ] || fallo "el rechazo por falta de autorizacion no debia tocar las politicas con aislamiento, encontrado $POLITICAS_TRAS_NEG_CONS de 3"
+COLUMNAS_TRAS_NEG_CONS="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select count(*) from information_schema.columns where table_schema='public' and table_name='prefiltros_candidatos' and column_name in ('empresa_id','local_id') and is_nullable='NO';")"
+[ "$COLUMNAS_TRAS_NEG_CONS" = "2" ] || fallo "el rechazo por falta de autorizacion no debia relajar NOT NULL, encontrado $COLUMNAS_TRAS_NEG_CONS de 2"
+echo "PM26_P08_ROLLBACK_CONSERVADOR_EXIGE_AUTORIZACION=PASS"
+
+# Positivo: con la autorizacion declarada a mano en la sesion (nunca
+# dentro del archivo), revierte las 3 politicas y relaja NOT NULL sin
+# borrar ni modificar ninguna fila.
+{ echo "set pm26.autorizacion_reapertura_defecto_l = 'CONFIRMADA';"; cat "$CONSERVADOR"; } \
+  | $RUN_AS_POSTGRES $PSQL -d "$DB" -v ON_ERROR_STOP=1 >/dev/null \
+  || fallo "revertir-conservador.sql no se aplico limpiamente con la autorizacion declarada"
 SNAPSHOT_DESPUES="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select token || '|' || empresa_id || '|' || local_id from public.prefiltros_candidatos order by token;")"
 [ "$SNAPSHOT_ANTES" = "$SNAPSHOT_DESPUES" ] \
   || fallo "revertir-conservador.sql no debia alterar ningun dato existente -- filas distintas antes/despues"
