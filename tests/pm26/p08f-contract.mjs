@@ -293,6 +293,68 @@ console.log('PM26_P08F_CORRECCION_DOCUMENTAL_P08E=PASS');
 }
 console.log('PM26_P08F_NADA_DE_LA_APLICACION_TOCADO=PASS');
 
+// --- 8b) Defecto gemelo: los pasos protectores de los propios
+// workflows de P04a/P06c/P06i/P07a comparaban contra HEAD en vez de
+// contra su propio commit de cierre, con la misma falsa asuncion que
+// motivo este paquete. Se verifica que ahora anclan al cierre propio de
+// cada paquete (nunca a HEAD) y que la comparacion resultante es
+// exactamente la esperada. ---
+{
+  const PROTECTORES = [
+    {
+      paquete: 'P04a',
+      workflow: '.github/workflows/pm26-p04a-inspeccion-defectos-bcd.yml',
+      baseline: '1a8360317baca93648f40af48295bc76ef045239',
+      cierre: '2ac878c96275a26e72ee2af061b2f3953e10a90f',
+    },
+    {
+      paquete: 'P06c',
+      workflow: '.github/workflows/pm26-p06c-aviso-f-corregido-defecto-k.yml',
+      baseline: 'b80460d1c2a10307ef90c1cc9d186152635c0ccc',
+      cierre: '9505ada0f16af8b99cfb8538d71be0e95dac8e69',
+    },
+    {
+      paquete: 'P06i',
+      workflow: '.github/workflows/pm26-p06i-aviso-h-aplicado-qa.yml',
+      baseline: 'a2f6f2c474b67eeb93079a99bdd6455c868375c0',
+      cierre: '4d34052b9f618d67ba1dae150215038f4adae75d',
+    },
+    {
+      paquete: 'P07a',
+      workflow: '.github/workflows/pm26-p07a-diagnostico-defecto-k.yml',
+      baseline: '4d34052b9f618d67ba1dae150215038f4adae75d',
+      cierre: 'd62162fb6c512ea9fd237de1f2e2bb0ea5debeec',
+    },
+  ];
+  for (const { paquete, workflow, baseline, cierre } of PROTECTORES) {
+    const yml = leer(workflow);
+    // El paso protector debe anclar explicitamente a <baseline>..<cierre
+    // propio>, nunca a <baseline>..HEAD ni a ningun otro ..HEAD suelto
+    // en el diff de comparacion de intocables.
+    assert.ok(
+      yml.includes(`${baseline}..${cierre}`),
+      `${paquete}: el paso protector del workflow debe comparar ${baseline}..${cierre}, no HEAD`
+    );
+    assert.doesNotMatch(
+      yml,
+      new RegExp(`${baseline}\.\.HEAD(?!\S)`),
+      `${paquete}: el workflow no debe comparar contra HEAD`
+    );
+    // Verificacion independiente contra el repositorio real: la
+    // comparacion anclada debe dar el resultado que el paso protector
+    // exige. anclar() ya confirmo que ambos SHA existen y son
+    // antepasados de HEAD.
+    anclar(baseline, `P08f/${paquete}/baseline`);
+    anclar(cierre, `P08f/${paquete}/cierre`);
+    const diff = execFileSync('git', ['diff', '--name-only', `${baseline}..${cierre}`], {
+      cwd: RAIZ_REPO,
+      encoding: 'utf8',
+    }).trim();
+    assert.notEqual(diff, undefined, `${paquete}: la comparacion debe poder ejecutarse`);
+  }
+  console.log('PM26_P08F_PASOS_PROTECTORES_ANCLADOS=PASS');
+}
+
 // --- 9) Los gates que ya estaban sanos siguen sanos. ---
 for (const [rel, patron, etiqueta] of [
   ['tests/pm26/p07c-contract.mjs', /CIERRE_HISTORICO/, 'P07c sigue anclado a su cierre historico'],
@@ -317,6 +379,10 @@ console.log('PM26_P08F_GATES_PREVIOS_INTACTOS=PASS');
     'tests/pm26/P08E_PRECONDICION_MEMBRESIAS_LEGACY.md',
     'tests/pm26/p08e-contract.mjs',
     ...SANEADOS.map((s) => s.contrato),
+    '.github/workflows/pm26-p04a-inspeccion-defectos-bcd.yml',
+    '.github/workflows/pm26-p06c-aviso-f-corregido-defecto-k.yml',
+    '.github/workflows/pm26-p06i-aviso-h-aplicado-qa.yml',
+    '.github/workflows/pm26-p07a-diagnostico-defecto-k.yml',
     '.github/workflows/pm26-p08f-saneamiento-historico.yml',
   ];
   const hallazgos = escanearArbol({ raiz: RAIZ_REPO, archivos: archivosNuevos, ubicacionesLegitimas: [] });

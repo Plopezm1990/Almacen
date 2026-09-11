@@ -31,7 +31,13 @@ jobs:
           set -euo pipefail
           git fetch origin main --quiet
           test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
-          cambiados="$(git diff --name-only 4d34052b9f618d67ba1dae150215038f4adae75d..HEAD | sort)"
+          # Comparado entre el cierre de P06i (4d34052) y el PROPIO
+          # cierre de P07a (d62162f), nunca contra HEAD: P07a certifica
+          # que ESE conjunto exacto de archivos fue lo unico que cambio
+          # al cerrar el paquete, un hecho historico fijo -- no que
+          # nada mas en el repositorio vuelva a cambiar despues, cosa
+          # que P07b/P08* hicieron de forma legitima y autorizada.
+          cambiados="$(git diff --name-only 4d34052b9f618d67ba1dae150215038f4adae75d..d62162fb6c512ea9fd237de1f2e2bb0ea5debeec | sort)"
           esperados="$(printf '%s\n' \
             '.github/workflows/pm26-p07a-diagnostico-defecto-k.yml' \
             'tests/pm26/P07A_DIAGNOSTICO_DEFECTO_K_FASE_B.md' \

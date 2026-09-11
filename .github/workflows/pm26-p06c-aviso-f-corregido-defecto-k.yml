@@ -35,8 +35,12 @@ jobs:
           set -euo pipefail
           git fetch origin main --quiet
           test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
-          # Comparado contra el cierre previo de la rama (PM26 P06b,
-          # b80460d), no contra origin/main.
+          # Comparado entre el cierre previo de la rama (PM26 P06b,
+          # b80460d) y el PROPIO cierre de P06c (9505ada), nunca contra
+          # HEAD: P06c certifica un hecho historico (que su propio
+          # commit no toco estos archivos), no una propiedad que deba
+          # seguir siendo cierta para siempre -- P07b/P08b/P08d los
+          # modificaron despues de forma legitima y autorizada.
           intocables='edge-auth-patch.js
           fuente.js
           index.html
@@ -46,7 +50,7 @@ jobs:
           source-recovery/recuperar_candidato.py
           source-recovery/fuente-recuperado.js
           netlify.toml'
-          cambiados="$(git diff --name-only b80460d1c2a10307ef90c1cc9d186152635c0ccc..HEAD)"
+          cambiados="$(git diff --name-only b80460d1c2a10307ef90c1cc9d186152635c0ccc..9505ada0f16af8b99cfb8538d71be0e95dac8e69)"
           while IFS= read -r archivo; do
             [ -z "$archivo" ] && continue
             if echo "$cambiados" | grep -qxF "$archivo"; then
@@ -55,7 +59,7 @@ jobs:
             fi
           done <<< "$intocables"
           # No debe existir ninguna migracion nueva del aviso F.
-          if git diff --name-only b80460d1c2a10307ef90c1cc9d186152635c0ccc..HEAD -- supabase/migrations | grep -qi prefiltro; then
+          if git diff --name-only b80460d1c2a10307ef90c1cc9d186152635c0ccc..9505ada0f16af8b99cfb8538d71be0e95dac8e69 -- supabase/migrations | grep -qi prefiltro; then
             echo "PM26 P06c: no debe existir ninguna migracion del aviso F en este commit" >&2
             exit 1
           fi

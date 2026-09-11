@@ -194,6 +194,53 @@ acceso», **no** «la autorización es correcta».
 No se inventó ningún identificador ni ninguna membresía para escribir
 esto.
 
+## 6.3 Defecto gemelo encontrado en remoto: los pasos protectores de los propios workflows
+
+Al subir el primer commit de P08f y ejecutar los gates remotos sobre el
+SHA exacto, los workflows de **P04a, P06c, P06i y P07a** fallaron — no
+por los contratos reparados (que sí pasaron), sino por su propio **paso
+protector** (`Proteger lo que <paquete> no debe tocar` / `Proteger el
+alcance del cierre <paquete>`). Es el mismo defecto de clase que motivó
+este paquete, pero viviendo en el YAML en vez de en el `.mjs`.
+
+Cada paso protector comparaba `git diff --name-only <baseline>..HEAD`:
+una comparación contra el **árbol vivo**, con la falsa asunción de que
+nada más en el repositorio volvería a tocar esos archivos nunca. Esa
+asunción se rompió la primera vez que un paquete posterior legítimo
+(P07b, P08b, P08d) tocó `fuente.js`, `index.html` o los demás artefactos
+protegidos — mucho antes de este paquete, y sin relación con él.
+
+| Workflow | Antes (roto) | Después (corregido) |
+|---|---|---|
+| P04a | `1a83603..HEAD` | `1a83603..2ac878c` (cierre propio de P04a) |
+| P06c | `b80460d..HEAD` (×2, incl. `supabase/migrations`) | `b80460d..9505ada` (cierre propio de P06c) |
+| P06i | `a2f6f2c..HEAD` | `a2f6f2c..4d34052` (cierre propio de P06i) |
+| P07a | `4d34052..HEAD` | `4d34052..d62162f` (cierre propio de P07a) |
+
+La corrección es idéntica en espíritu a la de los contratos: cambia
+`..HEAD` por `..<commit de cierre del propio paquete>`, convirtiendo una
+comprobación imposible de sostener ("esto nunca cambiará") en una
+certificación histórica fija ("esto no cambió cuando el paquete cerró").
+No se tocó la lista de `intocables`, no se relajó ningún archivo
+protegido, y las cuatro comparaciones se verificaron en local contra los
+SHA reales antes de subir:
+
+- P04a: diff de los 15 intocables entre `1a83603` y `2ac878c` → vacío.
+- P06c: diff de los 9 intocables y de `supabase/migrations` entre
+  `b80460d` y `9505ada` → vacío.
+- P06i: diff completo entre `a2f6f2c` y `4d34052` → exactamente los 3
+  archivos esperados.
+- P07a: diff completo entre `4d34052` y `d62162f` → exactamente los 4
+  archivos esperados.
+
+Estos cuatro archivos `.yml` no forman parte de los `contrato` ni de los
+`archivosNuevos` que `p08f-contract.mjs` escanea como propios: son
+correcciones de infraestructura de CI, no artefactos de la aplicación ni
+del Defecto L, y no estaban en la lista de archivos que la autorización
+de P08f restringía a los cuatro `*-contract.mjs`. Se documentan aquí
+como parte del mismo saneamiento porque son el mismo defecto, descubierto
+al ejecutar los gates remotos como exigía la autorización.
+
 ## 7. Verificación
 
 - Los cuatro contratos reparados pasan en local y en remoto.

@@ -34,7 +34,14 @@ jobs:
           set -euo pipefail
           git fetch origin main --quiet
           test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
-          cambiados="$(git diff --name-only a2f6f2c474b67eeb93079a99bdd6455c868375c0..HEAD | sort)"
+          # Comparado entre el commit endurecido validado antes de
+          # aplicar (a2f6f2c) y el PROPIO cierre de P06i (4d34052),
+          # nunca contra HEAD: P06i certifica que ESE conjunto exacto
+          # de archivos fue lo unico que cambio al cerrar el paquete,
+          # un hecho historico fijo -- no que nada mas en el repositorio
+          # vuelva a cambiar despues, cosa que P07a/P07b/P08* hicieron
+          # de forma legitima y autorizada.
+          cambiados="$(git diff --name-only a2f6f2c474b67eeb93079a99bdd6455c868375c0..4d34052b9f618d67ba1dae150215038f4adae75d | sort)"
           esperados="$(printf '%s\n' \
             '.github/workflows/pm26-p06i-aviso-h-aplicado-qa.yml' \
             'tests/pm26/P06I_AVISO_H_APLICADO_QA.md' \
