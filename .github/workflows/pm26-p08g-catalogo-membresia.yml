@@ -90,6 +90,13 @@ jobs:
         working-directory: source-recovery
         run: npm ci
 
+      # p08f-contract.mjs reejecuta P06i, que reejecuta P06f, que incluye
+      # la prueba de exclusion de la CLI de Supabase -- una dependencia
+      # de ejecucion real, no de P08g, pero cada workflow debe proveerla
+      # por si mismo (un runner de CI limpio no la trae por defecto).
+      - name: Instalar CLI de Supabase para la prueba de exclusion (P06i -> P06f)
+        run: npm install -g supabase
+
       - name: Regresion acumulada de la rama tecnica (P03b, P07b, P08a-P08f)
         run: |
           set -euo pipefail
