@@ -104,10 +104,26 @@ export function comprobarAnclajeNoPasaEnVacio(anclarFn = anclar) {
   const arbolHead = execFileSync('git', ['rev-parse', 'HEAD^{tree}'], { cwd: RAIZ_REPO, encoding: 'utf8' }).trim();
   assert.throws(() => anclarFn(arbolHead, 'control'), /no es un commit/);
   // Y un commit real que NO es antepasado de HEAD.
+  // El runner de GitHub Actions no tiene user.name/user.email
+  // configurados globalmente ("fatal: empty ident name"), a diferencia
+  // de un entorno local con git ya configurado. Se fija la identidad
+  // SOLO para esta invocacion, via variables de entorno, sin tocar la
+  // configuracion real del repositorio.
   const huerfano = execFileSync(
     'git',
     ['commit-tree', arbolHead, '-m', 'control negativo de anclaje (commit huerfano, sin referencias)'],
-    { cwd: RAIZ_REPO, encoding: 'utf8', input: '' }
+    {
+      cwd: RAIZ_REPO,
+      encoding: 'utf8',
+      input: '',
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: 'PM26 control negativo',
+        GIT_AUTHOR_EMAIL: 'control-negativo@localhost',
+        GIT_COMMITTER_NAME: 'PM26 control negativo',
+        GIT_COMMITTER_EMAIL: 'control-negativo@localhost',
+      },
+    }
   ).trim();
   assert.match(huerfano, /^[0-9a-f]{40}$/, 'no se pudo crear el commit huerfano de control');
   assert.equal(
