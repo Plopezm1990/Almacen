@@ -84,6 +84,19 @@ function backup(rutaAbs) {
   console.log('PM26_P03B_ARBOL_RESTAURADO=PASS');
 }
 
+// --- La negativa 1 (ancla ausente) deja escrito en dist/fuente.js el
+// build de la fuente MUTADA, porque esbuild termina con éxito antes de
+// que verificar-build-canonico.mjs detecte el ancla ausente -- el texto
+// fuente queda restaurado (comprobado arriba), pero dist/fuente.js no,
+// a menos que se reconstruya una vez más aquí. Sin este paso, cualquier
+// verificación posterior que confíe en dist/fuente.js (o en fuente.js,
+// si se copiara desde ahí) heredaría silenciosamente ese build corrupto.
+{
+  const r = spawnSync('node', ['verificar-build-canonico.mjs'], { cwd: DIR_RECOVERY, encoding: 'utf8' });
+  assert.equal(r.status, 0, 'la reconstrucción final tras las pruebas negativas debe terminar con éxito sobre la fuente ya restaurada');
+  console.log('PM26_P03B_DIST_RECONSTRUIDO_TRAS_NEGATIVAS=PASS');
+}
+
 // --- Verificación ESTRUCTURAL de que los archivos nuevos de P03b no
 // contienen ningún secreto real ni identificador interno fuera de una
 // ubicación legítima. ---

@@ -40,6 +40,19 @@ psql_archivo "$DIR/seed.sql" "$DB" >/dev/null \
   || fallo "no se pudo aplicar seed.sql"
 echo "PM26_P08_SEED=PASS"
 
+# --- PM26 P08b: comportamiento del cliente ANTES de la migracion --
+# confirma que el cliente actual sigue funcionando y reproduce, de
+# forma real, la brecha exacta que el Defecto L corrige. ---
+SALIDA_ANTERIOR="$(psql_archivo "$DIR/transicion-anterior.sql" "$DB" 2>&1)" \
+  || { echo "$SALIDA_ANTERIOR" >&2; fallo "transicion-anterior.sql fallo al ejecutarse"; }
+echo "$SALIDA_ANTERIOR" > "$WORKDIR/anterior.txt"
+for n in ANT1 ANT2_BRECHA_REPRODUCIDA; do
+  grep -q "$n=PASS" "$WORKDIR/anterior.txt" || { echo "$SALIDA_ANTERIOR" >&2; fallo "falta o no paso el caso $n (esquema anterior)"; }
+done
+FILAS_TRAS_ANTERIOR="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select count(*) from public.prefiltros_candidatos;")"
+[ "$FILAS_TRAS_ANTERIOR" = "0" ] || fallo "tras la transicion anterior deberian quedar 0 filas, encontrado $FILAS_TRAS_ANTERIOR"
+echo "PM26_P08_TRANSICION_ANTERIOR=PASS"
+
 # --- Positivo: el preflight independiente, de solo lectura, pasa sobre
 # el catalogo aislado limpio (las 3 politicas reales de produccion,
 # sin aislamiento todavia). ---
@@ -75,10 +88,62 @@ echo "PM26_P08_PREFLIGHT_DETECTA_FILAS_EXISTENTES=PASS"
 FILAS_TRAS_LIMPIEZA="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select count(*) from public.prefiltros_candidatos;")"
 [ "$FILAS_TRAS_LIMPIEZA" = "0" ] || fallo "tras limpiar los simulacros deberian quedar 0 filas, encontrado $FILAS_TRAS_LIMPIEZA"
 
+# --- Negativo (endurecimiento): redefinir la_tiene_local con un cuerpo
+# distinto pero la misma firma -- el preflight debe abortar por la
+# comprobacion de huella del cuerpo, no solo de la firma. ---
+$RUN_AS_POSTGRES $PSQL -d "$DB" -c \
+  "create or replace function private.la_tiene_local(p_empresa text, p_local text) returns boolean language sql stable security definer set search_path to '' as \$\$ select true; \$\$;" >/dev/null
+NEG_CUERPO="$(psql_archivo "$PREFLIGHT" "$DB" 2>&1 || true)"
+echo "$NEG_CUERPO" | grep -q "el cuerpo de private.la_tiene_local no coincide" \
+  || fallo "el preflight debia fallar al detectar un cuerpo distinto del helper, y no fallo"
+$RUN_AS_POSTGRES $PSQL -d "$DB" -c "
+create or replace function private.la_tiene_local(p_empresa text, p_local text) returns boolean
+language sql stable security definer
+set search_path to ''
+as \$\$
+  select private.la_usuario_activo()
+     and nullif(btrim(p_empresa),'') is not null
+     and nullif(btrim(p_local),'') is not null
+     and upper(btrim(p_local)) <> 'TODOS'
+     and exists(
+       select 1 from public.membresias_usuario m
+        where m.user_id=(select auth.uid()) and m.empresa_id=p_empresa and m.activo=true
+          and (m.todos_locales=true or m.local_id=p_local)
+     );
+\$\$;
+" >/dev/null || fallo "no se pudo restaurar la_tiene_local original tras el simulacro de cuerpo distinto"
+echo "PM26_P08_PREFLIGHT_DETECTA_CUERPO_HELPER_DISTINTO=PASS"
+
+# --- Negativo (endurecimiento): simular presencia de un helper de QA
+# -- el preflight debe abortar por no ser produccion. ---
+$RUN_AS_POSTGRES $PSQL -d "$DB" -c \
+  "create function private.pm11_puede_ver_personal(p_empresa_id text, p_local_id text) returns boolean language sql as \$\$ select true; \$\$;" >/dev/null
+NEG_QA="$(psql_archivo "$PREFLIGHT" "$DB" 2>&1 || true)"
+echo "$NEG_QA" | grep -q "esto parece QA, no produccion" \
+  || fallo "el preflight debia fallar al detectar un helper de QA, y no fallo"
+$RUN_AS_POSTGRES $PSQL -d "$DB" -c \
+  "drop function private.pm11_puede_ver_personal(text, text);" >/dev/null
+echo "PM26_P08_PREFLIGHT_DETECTA_HELPER_QA=PASS"
+
 # --- Aplicar la migracion propuesta (positivo). ---
 psql_archivo "$MIGRACION" "$DB" >/dev/null \
   || fallo "la migracion propuesta no se aplico limpiamente"
 echo "PM26_P08_MIGRACION_APLICADA=PASS"
+
+# --- PM26 P08b: comportamiento del cliente DESPUES de la migracion --
+# el cliente antiguo (sin empresa/local) debe fallar de forma real, el
+# cliente nuevo debe funcionar, y el patron DELETE...RETURNING (lo que
+# hace .delete().select() en supabase-js) debe cerrar la brecha
+# reproducida en el esquema anterior sin dejar residuo. ---
+SALIDA_POSTERIOR="$(psql_archivo "$DIR/transicion-posterior.sql" "$DB" 2>&1)" \
+  || { echo "$SALIDA_POSTERIOR" >&2; fallo "transicion-posterior.sql fallo al ejecutarse"; }
+echo "$SALIDA_POSTERIOR" > "$WORKDIR/posterior.txt"
+for n in POST1_CLIENTE_ANTIGUO_FALLA POST2_CLIENTE_NUEVO_FUNCIONA POST3_BRECHA_CERRADA POST3_SIN_RESIDUO_BORRADO POST4_BORRADO_PROPIO_FUNCIONA; do
+  grep -q "$n=PASS" "$WORKDIR/posterior.txt" || { echo "$SALIDA_POSTERIOR" >&2; fallo "falta o no paso el caso $n (esquema posterior)"; }
+done
+FILAS_TRAS_POSTERIOR="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select count(*) from public.prefiltros_candidatos;")"
+[ "$FILAS_TRAS_POSTERIOR" = "0" ] || fallo "tras la transicion posterior deberian quedar 0 filas, encontrado $FILAS_TRAS_POSTERIOR"
+echo "PM26_P08_TRANSICION_POSTERIOR=PASS"
 
 # --- Bateria de comportamiento. ---
 SALIDA="$(psql_archivo "$DIR/comportamiento.sql" "$DB" 2>&1)" \

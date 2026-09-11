@@ -1,0 +1,103 @@
+name: PM26 P08b defecto L preflight endurecido cliente coordinado
+
+# Certifica el preflight endurecido del Defecto L (huella del cuerpo
+# del helper + exclusion de helpers de QA), el cliente compatible con
+# QA y produccion, el despliegue coordinado y las pruebas sobre los
+# esquemas anterior y posterior. No aplica nada en produccion, QA ni
+# TPV. No despliega en Netlify ni toca main/release.
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'tests/pm26/P08B_DEFECTO_L_CLIENTE_COORDINADO.md'
+      - 'tests/pm26/P08A_DEFECTO_L_PREPARACION_PRODUCCION.md'
+      - 'tests/pm26/P07B_DEFECTO_K_FASE_B_IMPLEMENTADOS.md'
+      - 'tests/pm26/p08b-contract.mjs'
+      - 'tests/pm26/p08a-contract.mjs'
+      - 'tests/pm26/p07b-contract.mjs'
+      - 'tests/pm26/p03b-contract.mjs'
+      - 'tests/pm26/p08-defecto-l-produccion/**'
+      - 'source-recovery/**'
+      - 'fuente.js'
+      - '.github/workflows/pm26-p08b-defecto-l-cliente-coordinado.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger lo que P08b no debe tocar
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          # Comparado contra el cierre previo de la rama (PM26 P08a,
+          # 1a30358), no contra origin/main.
+          cierre_previo='1a30358b613a35b3985b201d333c26a334cfad2c'
+          git cat-file -e "$cierre_previo^{commit}"
+          for archivo in index.html reset-pruebas-preview.js _headers netlify.toml; do
+            existe_antes=0; existe_despues=0
+            git cat-file -e "$cierre_previo:$archivo" 2>/dev/null && existe_antes=1
+            git cat-file -e "HEAD:$archivo" 2>/dev/null && existe_despues=1
+            if [ "$existe_antes" != "$existe_despues" ]; then
+              echo "PM26 P08b no debe cambiar la existencia de: $archivo" >&2
+              exit 1
+            fi
+            if [ "$existe_antes" = "1" ]; then
+              test "$(git rev-parse "$cierre_previo:$archivo")" = "$(git rev-parse "HEAD:$archivo")" \
+                || { echo "PM26 P08b no debe tocar: $archivo" >&2; exit 1; }
+            fi
+          done
+          test -z "$(git diff --name-only "$cierre_previo"..HEAD -- supabase)"
+          echo 'PM26_P08B_ALCANCE_ACOTADO=PASS'
+      - name: Instalar PostgreSQL local (aislado)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sleep 2
+          sudo -u postgres pg_isready
+      - name: Reconstruir fuente canonica
+        working-directory: source-recovery
+        run: npm ci
+      - name: Contrato PM26 P08b (preflight endurecido, cliente coordinado, sin aplicar ni desplegar)
+        run: node tests/pm26/p08b-contract.mjs
+      - name: Regresion acumulada (P03b, P07b, P08a)
+        run: |
+          set -euo pipefail
+          node tests/pm26/p03b-contract.mjs
+          node tests/pm26/p07b-contract.mjs
+          node tests/pm26/p08a-contract.mjs
+      - name: Escaner completo de secretos e identificadores
+        run: node tools/seguridad/verificar-secretos-e-identificadores.mjs verificar
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar PostgreSQL local (aislado)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sleep 2
+          sudo -u postgres pg_isready
+      - name: Reconstruir fuente canonica
+        working-directory: source-recovery
+        run: npm ci
+      - name: Gate PM26 P08b -- preparado, nada aplicado ni desplegado
+        run: |
+          set -euo pipefail
+          node tests/pm26/p08b-contract.mjs
+          echo 'PM26_P08B_GATE=PASS'

@@ -8,6 +8,15 @@ preflight, rollback y plan de pruebas — **sin aplicar nada en
 producción**. Este paquete cumple ese alcance y no más: ninguna
 escritura se realizó en `L&A Suite` (producción), QA ni TPV.
 
+**Actualización (PM26 P08b):** el preflight y la migración propuesta
+descritos aquí se endurecieron después (huella del cuerpo del helper,
+exclusión explícita de helpers de QA), y se diseñó y validó el cambio
+de cliente compatible que esta preparación ya señalaba como riesgo
+bloqueante. El hash vigente de ambos archivos, y el resto del alcance
+añadido, están en `P08B_DEFECTO_L_CLIENTE_COORDINADO.md`. Esta sección
+y el resto del documento se dejan intactos como registro histórico de
+lo verificado en aquel momento.
+
 ---
 
 ## 1. Reinspección en vivo, solo lectura (2026-09-11)

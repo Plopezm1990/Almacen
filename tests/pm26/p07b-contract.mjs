@@ -88,7 +88,15 @@ function validarImplementacion(texto, etiqueta) {
   );
   assert.doesNotMatch(publico, /\bfetch\s*\(/, `${etiqueta}: PrefiltroPublico no debe saltarse el adaptador`);
 
-  assert.match(logica, /function crearLogicaPrefiltros\(\{ registrarAuditoria, empresaId, localId \}\)/);
+  // PM26 P08b extiende crearLogicaPrefiltros con una rama de produccion
+  // (INSERT/DELETE directos, guardada por !esQA) junto a la rama RPC de
+  // QA que P07b preparo aqui -- ver tests/pm26/P08B_DEFECTO_L_CLIENTE_COORDINADO.md.
+  // Esta funcion sigue validando, sin reescribir su alcance original,
+  // que la rama RPC de QA permanece intacta. Los nombres de variable
+  // locales (data/error vs data2/error2) pueden variar segun como
+  // esbuild componga el bundle -- se derivan por backreference, nunca
+  // se asumen fijos (mismo patron ya usado en PM26 P03b).
+  assert.match(logica, /function crearLogicaPrefiltros\(\{ registrarAuditoria, empresaId, localId, esQA \}\)/);
   assert.match(
     logica,
     /\.rpc\("pm11_crear_prefiltro_candidato",\s*\{\s*p_empresa_id:\s*empresaId,\s*p_local_id:\s*localId,\s*p_candidato_nombre:\s*nombre\s*\}\)/
@@ -100,11 +108,21 @@ function validarImplementacion(texto, etiqueta) {
     logica,
     /\.rpc\("pm11_eliminar_prefiltro_candidato",\s*\{\s*p_empresa_id:\s*empresaFila,\s*p_local_id:\s*localFila,\s*p_token:\s*token\s*\}\)/
   );
-  assert.match(logica, /if \(error \|\| data !== true\) return false;/);
-  assert.doesNotMatch(logica, /\.from\("prefiltros_candidatos"\)\.(?:insert|delete)\(/);
+
+  // El alias de "error" puede ser la forma abreviada ({ error }) o
+  // explicita ({ error: errorX }) segun como esbuild componga el
+  // bundle -- ambas formas se aceptan.
+  const mCrearRpc = logica.match(/const \{ data: (\w+), error(?:: (\w+))? \} = await supabase\.rpc\("pm11_crear_prefiltro_candidato"/);
+  assert.ok(mCrearRpc, `${etiqueta}: no se pudo aislar la respuesta de la RPC de alta`);
+  assert.match(logica, new RegExp(`if \\(${mCrearRpc[2] || 'error'} \\|\\| !tokenValido\\(${mCrearRpc[1]}\\)\\) return null;`));
+
+  const mBorrarRpc = logica.match(/const \{ data(?:: (\w+))?, error(?:: (\w+))? \} = await supabase\.rpc\("pm11_eliminar_prefiltro_candidato"/);
+  assert.ok(mBorrarRpc, `${etiqueta}: no se pudo aislar la respuesta de la RPC de baja`);
+  assert.match(logica, new RegExp(`if \\(${mBorrarRpc[2] || 'error'} \\|\\| ${mBorrarRpc[1] || 'data'} !== true\\) return false;`));
+
   assert.match(
     texto,
-    /crearLogicaPrefiltros\(\{\s*registrarAuditoria,\s*empresaId:\s*empresaDelLocalActivo\?\.id \|\| null,\s*localId:\s*localActivoId \|\| null\s*\}\)/
+    /crearLogicaPrefiltros\(\{\s*registrarAuditoria,\s*empresaId:\s*empresaDelLocalActivo\?\.id \|\| null,\s*localId:\s*localActivoId \|\| null,\s*esQA:[^}]*\}\)/
   );
   assert.match(texto, /eliminarPrefiltro\(confirmarEliminarPrefiltro\)/);
   return { helper, logica };
@@ -241,7 +259,7 @@ function clienteDoble({ respuestasRpc = [], filas = [], errorListado = null, sec
   };
 }
 
-async function escenarioLogica(logica, { empresaId = 'empresa-activa', localId = 'local-activo', doble } = {}) {
+async function escenarioLogica(logica, { empresaId = 'empresa-activa', localId = 'local-activo', esQA = true, doble } = {}) {
   const auditorias = [];
   let accesosCliente = 0;
   const ventana = {
@@ -254,6 +272,7 @@ async function escenarioLogica(logica, { empresaId = 'empresa-activa', localId =
   const api = crear({
     empresaId,
     localId,
+    esQA,
     registrarAuditoria(...args) {
       auditorias.push(args);
       if (doble.secuencia) doble.secuencia.push('auditoria');
@@ -396,12 +415,18 @@ assert.equal(
 assert.ok(!fs.readdirSync(path.join(RAIZ_REPO, 'supabase/migrations')).some((nombre) => /prefiltro/i.test(nombre)));
 console.log('PM26_P07B_SQL_F_ENDURECIDO_SIN_APLICAR=PASS');
 
-// Los hashes del informe deben corresponder a los cuatro artefactos
-// revisables; la igualdad no se usa como sustituto de pruebas funcionales.
+// Los hashes del informe deben corresponder a los artefactos
+// revisables; la igualdad no se usa como sustituto de pruebas
+// funcionales. PM26 P08b extendio legitimamente crearLogicaPrefiltros
+// (fuente canonica y bundle servido cambiaron de contenido) -- el hash
+// vigente de esos tres artefactos se lee de P08b, sin reescribir la
+// narrativa historica de este documento (mismo patron de la cadena
+// P06b -> P06e -> P06f).
+const docP08b = leer('tests/pm26/P08B_DEFECTO_L_CLIENTE_COORDINADO.md');
+for (const rel of ['source-recovery/fuente-recuperado.js', 'fuente.js', 'source-recovery/dist/fuente.js']) {
+  assert.ok(docP08b.includes(sha256(rel)), `P08b no contiene el SHA-256 real de ${rel}`);
+}
 for (const rel of [
-  'source-recovery/fuente-recuperado.js',
-  'fuente.js',
-  'source-recovery/dist/fuente.js',
   'supabase/qa-solo/pm26_p06h_aislamiento_prefiltros_candidatos.sql',
   'tests/pm26/p06h-f-aislado/preflight-catalogo.sql',
 ]) {

@@ -66,7 +66,16 @@ assert.match(migracionTexto, /private\.la_tiene_local\(empresa_id, local_id\)/);
 // El encabezado explicativo SI puede mencionar los helpers de QA por
 // contraste -- lo que no debe existir es una llamada real a ellos.
 assert.doesNotMatch(migracionTexto, /private\.pm11_puede_(ver|mutar)_personal\(/);
-assert.doesNotMatch(migracionTexto, /security definer/i, 'esta propuesta no introduce RPC -- sigue la arquitectura de RLS directo ya vigente en produccion');
+// PM26 P08b anade una comprobacion de huella del cuerpo de
+// la_tiene_local al preflight: una linea con una cadena de datos que
+// legitimamente contiene "SECURITY DEFINER" y "CREATE OR REPLACE
+// FUNCTION" (porque asi esta definido el helper real), no una funcion
+// nueva creada por esta migracion. Se excluye esa unica linea de datos
+// antes de comprobar que la migracion no define ninguna funcion nueva
+// -- sigue la arquitectura de RLS directo ya vigente en produccion.
+const migracionSinHuellaHelper = migracionTexto.replace(/^\s*v_helper_cuerpo_esperado text := '.*';\s*$/m, '');
+assert.notEqual(migracionSinHuellaHelper, migracionTexto, 'no se pudo aislar la linea de la huella del helper para esta comprobacion');
+assert.doesNotMatch(migracionSinHuellaHelper, /\bcreate\s+(?:or\s+replace\s+)?function\b/i, 'esta propuesta no debe definir ninguna funcion nueva -- sigue la arquitectura de RLS directo ya vigente en produccion');
 console.log('PM26_P08A_REUTILIZA_HELPER_PRODUCCION=PASS');
 
 // --- Conserva la restriccion de rol original (solo Propietario), no
@@ -91,11 +100,17 @@ assert.equal(
 );
 console.log('PM26_P08A_PREFLIGHTS_IDENTICOS=PASS');
 
-// --- Hashes documentados coinciden con los archivos reales. ---
+// --- Hashes documentados coinciden con los archivos reales. PM26 P08b
+// endurecio el preflight (migracion y preflight cambiaron de
+// contenido); el hash vigente se lee ahora de P08b, no se reescribe la
+// narrativa historica de este documento -- mismo patron ya usado en la
+// cadena P06b -> P06e -> P06f. ---
+const docP08b = leer('tests/pm26/P08B_DEFECTO_L_CLIENTE_COORDINADO.md');
+assert.match(doc, /Actualizaci[oó]n \(PM26 P08b\)/i, 'el informe P08a debe apuntar hacia adelante a P08b tras el endurecimiento del preflight');
 const hashMigracion = crypto.createHash('sha256').update(fs.readFileSync(path.join(RAIZ_REPO, rutaMigracion))).digest('hex');
 const hashPreflight = crypto.createHash('sha256').update(fs.readFileSync(path.join(RAIZ_REPO, rutaPreflight))).digest('hex');
-assert.match(doc, new RegExp(hashMigracion), 'el hash SHA-256 de la migracion documentado no coincide con el archivo real');
-assert.match(doc, new RegExp(hashPreflight), 'el hash SHA-256 del preflight documentado no coincide con el archivo real');
+assert.match(docP08b, new RegExp(hashMigracion), 'el hash SHA-256 de la migracion documentado en P08b no coincide con el archivo real');
+assert.match(docP08b, new RegExp(hashPreflight), 'el hash SHA-256 del preflight documentado en P08b no coincide con el archivo real');
 console.log('PM26_P08A_HASHES_VERIFICADOS=PASS');
 
 // --- fuente.js no se toca en este paquete. ---

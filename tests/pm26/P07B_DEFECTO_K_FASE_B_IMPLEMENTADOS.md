@@ -13,6 +13,14 @@ El gate aislado de reconstrucción del punto 1 quedó cerrado previamente en
 `77a3b0581ee95f9cc7124d52c2581518022a9011`. Este cierre conserva ese gate y
 lo incluye expresamente en el alcance acumulado de P07b.
 
+**Actualización (PM26 P08b):** `crearLogicaPrefiltros` se extendió
+después con una rama de producción (`esQA=false`) junto a la rama RPC
+de QA preparada aquí, que permanece intacta y sin cambios de
+comportamiento. El hash vigente de la fuente canónica y del bundle
+servido está en `P08B_DEFECTO_L_CLIENTE_COORDINADO.md`. Esta sección y
+el resto del documento se dejan intactos como registro histórico de lo
+implementado en aquel momento.
+
 ## 1. Corrección del Defecto K
 
 `PrefiltroPublico` ya no contiene una URL literal de un proyecto Supabase.

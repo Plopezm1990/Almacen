@@ -1596,7 +1596,8 @@ function GestionAlmacen() {
   const { crearPrefiltro, listarPrefiltros, eliminarPrefiltro } = crearLogicaPrefiltros({
     registrarAuditoria,
     empresaId: empresaDelLocalActivo?.id || null,
-    localId: localActivoId || null
+    localId: localActivoId || null,
+    esQA: typeof window !== "undefined" && window.__modoPruebasQA === true
   });
   function registrarAuditoria(accion, detalle) {
     const empleadoActivo = usuarioActivoId ? empleados.find((e2) => e2.id === usuarioActivoId) : null;
@@ -8274,7 +8275,18 @@ function crearLogicaEntrevistas({ entrevistas, setEntrevistas, registrarAuditori
   }
   return { crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista };
 }
-function crearLogicaPrefiltros({ registrarAuditoria, empresaId, localId }) {
+function crearLogicaPrefiltros({ registrarAuditoria, empresaId, localId, esQA }) {
+  // PM26 P08b: dos backends coexisten para la misma interfaz publica.
+  // QA (post aviso F, P07c) expone las RPC pm11_crear_prefiltro_candidato
+  // / pm11_eliminar_prefiltro_candidato -- SIN cambios respecto a P07b.
+  // Produccion, mientras el Defecto L no este aplicado y autorizado, no
+  // tiene esas RPC ni las columnas empresa_id/local_id: usa el INSERT/
+  // DELETE directo ya vigente hoy en produccion. Cuando (y solo cuando)
+  // se autorice aplicar el Defecto L junto con este cliente, el mismo
+  // INSERT/DELETE directo queda ademas aislado por empresa/local via RLS
+  // (private.la_tiene_local), sin requerir ningun cambio adicional aqui.
+  // esQA se deriva de window.__modoPruebasQA, la misma senal que ya usa
+  // el Defecto K (P07b) -- no se introduce ningun mecanismo nuevo.
   function contextoValido(valor, esLocal = false) {
     if (typeof valor !== "string" || !valor.trim()) return false;
     if (!esLocal) return true;
@@ -8283,16 +8295,37 @@ function crearLogicaPrefiltros({ registrarAuditoria, empresaId, localId }) {
   function tokenValido(token) {
     return typeof token === "string" && /^[a-f0-9]{64}$/.test(token);
   }
+  function generarTokenDirecto() {
+    if (typeof crypto !== "undefined" && crypto.randomUUID) {
+      return crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
+    }
+    let t22 = "";
+    for (let i33 = 0; i33 < 64; i33++) t22 += Math.floor(Math.random() * 16).toString(16);
+    return t22;
+  }
   async function crearPrefiltro(candidatoNombre) {
     const nombre = typeof candidatoNombre === "string" ? candidatoNombre.trim() : "";
     if (!nombre || !contextoValido(empresaId) || !contextoValido(localId, true)) return null;
     const supabase = await window.getSupabaseClient();
-    const { data: token, error } = await supabase.rpc("pm11_crear_prefiltro_candidato", {
-      p_empresa_id: empresaId,
-      p_local_id: localId,
-      p_candidato_nombre: nombre
+    if (esQA) {
+      const { data: token, error } = await supabase.rpc("pm11_crear_prefiltro_candidato", {
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_candidato_nombre: nombre
+      });
+      if (error || !tokenValido(token)) return null;
+      registrarAuditoria("Crear prefiltro de candidato", nombre);
+      return token;
+    }
+    const token = generarTokenDirecto();
+    const { error } = await supabase.from("prefiltros_candidatos").insert({
+      token,
+      candidato_nombre: nombre,
+      estado: "pendiente",
+      empresa_id: empresaId,
+      local_id: localId
     });
-    if (error || !tokenValido(token)) return null;
+    if (error) return null;
     registrarAuditoria("Crear prefiltro de candidato", nombre);
     return token;
   }
@@ -8308,12 +8341,22 @@ function crearLogicaPrefiltros({ registrarAuditoria, empresaId, localId }) {
     const localFila = prefiltro?.local_id;
     if (!tokenValido(token) || !contextoValido(empresaFila) || !contextoValido(localFila, true)) return false;
     const supabase = await window.getSupabaseClient();
-    const { data, error } = await supabase.rpc("pm11_eliminar_prefiltro_candidato", {
-      p_empresa_id: empresaFila,
-      p_local_id: localFila,
-      p_token: token
-    });
-    if (error || data !== true) return false;
+    if (esQA) {
+      const { data, error } = await supabase.rpc("pm11_eliminar_prefiltro_candidato", {
+        p_empresa_id: empresaFila,
+        p_local_id: localFila,
+        p_token: token
+      });
+      if (error || data !== true) return false;
+      registrarAuditoria("Eliminar prefiltro de candidato", prefiltro?.candidato_nombre || token);
+      return true;
+    }
+    // Un DELETE bloqueado por RLS (fila de otra empresa/local) no
+    // devuelve error -- simplemente no afecta ninguna fila. Sin .select()
+    // no habria forma de distinguir ese caso de un borrado real: se exige
+    // exactamente una fila devuelta para considerarlo exito.
+    const { data, error } = await supabase.from("prefiltros_candidatos").delete().eq("token", token).select();
+    if (error || !Array.isArray(data) || data.length !== 1) return false;
     registrarAuditoria("Eliminar prefiltro de candidato", prefiltro?.candidato_nombre || token);
     return true;
   }
