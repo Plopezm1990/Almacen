@@ -1,0 +1,30 @@
+{
+  "estado": "DISENO_PREVIO_SIN_MIGRACION",
+  "alcance": "Especificacion y contrato. No contiene SQL aplicable ni identificadores internos.",
+  "dependencias_confirmadas": {
+    "relaciones_visibles_ausentes": 11,
+    "relacion_auxiliar_ausente": "arqueos_caja_anulaciones",
+    "helpers_privados_ausentes": 9,
+    "helpers_compartidos_con_deriva": 8,
+    "rpc_candidatas": 13
+  },
+  "dominios": [
+    "catalogos_y_finanzas",
+    "caja_y_arqueos",
+    "stock_y_devoluciones",
+    "auditoria_y_contrato_cliente"
+  ],
+  "controles_obligatorios": [
+    "preflight_produccion_solo_lectura",
+    "rls_y_grants_minimos",
+    "auth_uid_y_contexto_empresa_local",
+    "idempotencia_y_concurrencia",
+    "rollback_conservador",
+    "ensayo_qa_aislado"
+  ],
+  "autorizaciones_posteriores": [
+    "aplicar_ensayo_qa",
+    "aplicar_migracion_produccion",
+    "publicar_cliente_release"
+  ]
+}
