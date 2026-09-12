@@ -17,3 +17,10 @@ fixtures con identificadores duplicados entre libros, pasos de reversión
 sin `DROP` manual, controles de cero pérdida, presupuesto de duración) para
 ejecutarse en cuanto exista alguna de las tres condiciones de desbloqueo
 documentadas en `P02_BLOQUEADO_ENTORNO_AISLADO.md`.
+
+Se ejecutó además un ensayo local **parcial**, en PostgreSQL local
+aislado (sin coste, sin tocar QA/producción/TPV), que cubre la lógica
+SQL pura de la migración candidata (backfill, disparador de conflicto,
+reversión) pero no las pruebas de Auth/JWT/PostgREST/RLS con sesiones
+reales que exige el cierre de P02. Ver `P02_ENSAYO_LOCAL_PARCIAL.md`.
+No cambia el estado de P02, que sigue **bloqueado**.

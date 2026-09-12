@@ -43,7 +43,7 @@ ningún entorno real.
 
 ## 3. Verificación por lectura directa en producción (esta sesión, justo después)
 
-Contra el proyecto `L&A Suite` (id `flqercbgpgmmfaakrwkc`):
+Contra el proyecto de producción real (`L&A Suite`):
 
 - `information_schema.columns` confirma `empresa_id` y `local_id`
   presentes en `public.prefiltros_candidatos`.
@@ -54,7 +54,7 @@ Contra el proyecto `L&A Suite` (id `flqercbgpgmmfaakrwkc`):
   `empresa_id='ADMIN'`, `local_id=null`, `todos_locales=true`,
   `rol='Propietario'`, `activo=true`.
 
-Contra Netlify (proyecto `chic-entremet-9107cf`):
+Contra el proyecto de Netlify que sirve producción:
 
 - El deploy del commit `9d54fc7` está en `state: ready`,
   `branch: release`, `context: production`, publicado sin errores (7
