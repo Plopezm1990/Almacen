@@ -1,0 +1,54 @@
+name: PM26 P09f QA aislado auditoria
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'tests/pm26/P09F_QA_AUTORIZACION_AUDITORIA.md'
+      - 'tests/pm26/p09f-contract.mjs'
+      - 'tests/pm26/p09f-qa-aislado/**'
+      - '.github/workflows/pm26-p09f-qa-aislado.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger alcance de QA y ramas congeladas
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main release --no-tags --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          test "$(git rev-parse origin/release)" = "9d54fc7ba76bd1285625f37b2940f99d26777ab8"
+          base_p09f="55de0c8168d6ff18ab4c3d1249e699cda12046c1"
+          git merge-base --is-ancestor "$base_p09f" HEAD
+          permitidos='^(tests/pm26/(P09F_QA_AUTORIZACION_AUDITORIA\.md|p09f-contract\.mjs|p09f-qa-aislado/ensayo-auditoria-transaccional\.sql)|\.github/workflows/pm26-p09f-qa-aislado\.yml)$'
+          inesperados="$(git diff --name-only "$base_p09f"..HEAD | grep -Ev "$permitidos" || true)"
+          test -z "$inesperados" || { echo "P09f excede alcance: $inesperados" >&2; exit 1; }
+          intocables="fuente.js source-recovery index.html reset-pruebas-preview.js _headers supabase"
+          cambiados="$(git diff --name-only "$base_p09f"..HEAD -- $intocables)"
+          test -z "$cambiados" || { echo "P09f no debe tocar: $cambiados" >&2; exit 1; }
+          echo 'PM26_P09F_ALCANCE_QA_TRANSACCIONAL=PASS'
+      - name: Contrato P09f
+        run: node tests/pm26/p09f-contract.mjs
+      - name: Contratos base y escaner
+        run: |
+          node tests/pm26/p01-contract.mjs
+          node tests/pm26/p02-contract.mjs
+          node tools/seguridad/verificar-secretos-e-identificadores.mjs verificar
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate P09f
+        run: |
+          node tests/pm26/p09f-contract.mjs
+          echo 'PM26_P09F_GATE=PASS'
