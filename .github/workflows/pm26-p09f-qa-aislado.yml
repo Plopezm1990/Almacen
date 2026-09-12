@@ -7,6 +7,7 @@ on:
       - 'tests/pm26/P09F_QA_AUTORIZACION_AUDITORIA.md'
       - 'tests/pm26/p09f-contract.mjs'
       - 'tests/pm26/p09f-qa-aislado/**'
+      - 'supabase/migrations/20260912120000_pm26_p09f_b3_pagos_encargo_operation_id_global.sql'
       - '.github/workflows/pm26-p09f-qa-aislado.yml'
   workflow_dispatch:
 
@@ -29,13 +30,17 @@ jobs:
           test "$(git rev-parse origin/release)" = "9d54fc7ba76bd1285625f37b2940f99d26777ab8"
           base_p09f="55de0c8168d6ff18ab4c3d1249e699cda12046c1"
           git merge-base --is-ancestor "$base_p09f" HEAD
-          permitidos='^(tests/pm26/(P09F_QA_AUTORIZACION_AUDITORIA\.md|p09f-contract\.mjs|p09f-qa-aislado/ensayo-auditoria-transaccional\.sql)|\.github/workflows/pm26-p09f-qa-aislado\.yml)$'
+          migracion_b3='supabase/migrations/20260912120000_pm26_p09f_b3_pagos_encargo_operation_id_global.sql'
+          permitidos='^(tests/pm26/(P09F_QA_AUTORIZACION_AUDITORIA\.md|p09f-contract\.mjs|p09f-qa-aislado/ensayo-auditoria-transaccional\.sql)|supabase/migrations/20260912120000_pm26_p09f_b3_pagos_encargo_operation_id_global\.sql|\.github/workflows/pm26-p09f-qa-aislado\.yml)$'
           inesperados="$(git diff --name-only "$base_p09f"..HEAD | grep -Ev "$permitidos" || true)"
           test -z "$inesperados" || { echo "P09f excede alcance: $inesperados" >&2; exit 1; }
-          intocables="fuente.js source-recovery index.html reset-pruebas-preview.js _headers supabase"
+          intocables="fuente.js source-recovery index.html reset-pruebas-preview.js _headers"
           cambiados="$(git diff --name-only "$base_p09f"..HEAD -- $intocables)"
           test -z "$cambiados" || { echo "P09f no debe tocar: $cambiados" >&2; exit 1; }
+          supabase_inesperado="$(git diff --name-only "$base_p09f"..HEAD -- supabase | grep -Fvx "$migracion_b3" || true)"
+          test -z "$supabase_inesperado" || { echo "P09f-B3 no puede tocar otro SQL de Supabase: $supabase_inesperado" >&2; exit 1; }
           echo 'PM26_P09F_ALCANCE_QA_TRANSACCIONAL=PASS'
+          echo 'PM26_P09F_B3_SQL_UNICO_PERMITIDO=PASS'
       - name: Contrato P09f
         run: node tests/pm26/p09f-contract.mjs
       - name: Contratos base y escaner
