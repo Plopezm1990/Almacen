@@ -1435,7 +1435,11 @@ function GestionAlmacen() {
   const { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta } = crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, proveedores, pagosFacturas, setPagosFacturas, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
   const { addNomina, updateNomina, deleteNomina } = crearLogicaNominas({ nominas, setNominas, registrarAuditoria, empleados, localActivoId });
   const { crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista } = crearLogicaEntrevistas({ entrevistas, setEntrevistas, registrarAuditoria });
-  const { crearPrefiltro, listarPrefiltros, eliminarPrefiltro } = crearLogicaPrefiltros({ registrarAuditoria });
+  const { crearPrefiltro, listarPrefiltros, eliminarPrefiltro } = crearLogicaPrefiltros({
+    registrarAuditoria,
+    empresaId: empresaDelLocalActivo?.id || null,
+    localId: localActivoId || null
+  });
   function registrarAuditoria(accion, detalle) {
     const empleadoActivo = usuarioActivoId ? empleados.find((e) => e.id === usuarioActivoId) : null;
     const usuario = modoEmpleado ? empleadoActivo ? empleadoActivo.nombre : "Empleado sin identificar" : "Propietario/a";
@@ -6326,7 +6330,10 @@ function crearLogicaEntrevistas({ entrevistas, setEntrevistas, registrarAuditori
   }
   return { crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista };
 }
-function crearLogicaPrefiltros({ registrarAuditoria }) {
+function crearLogicaPrefiltros({ registrarAuditoria, empresaId, localId }) {
+  // PM26 P08d (Defecto L): los prefiltros se aislan por empresa/local.
+  // Requiere que la migracion del Defecto L este ya aplicada -- desplegar
+  // este cliente sin ella rompe el alta, porque las columnas no existen.
   function generarToken() {
     if (typeof crypto !== "undefined" && crypto.randomUUID) {
       return crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
@@ -6338,7 +6345,7 @@ function crearLogicaPrefiltros({ registrarAuditoria }) {
   async function crearPrefiltro(candidatoNombre) {
     const supabase = await window.getSupabaseClient();
     const token = generarToken();
-    const { error } = await supabase.from("prefiltros_candidatos").insert({ token, candidato_nombre: candidatoNombre.trim(), estado: "pendiente" });
+    const { error } = await supabase.from("prefiltros_candidatos").insert({ token, candidato_nombre: candidatoNombre.trim(), estado: "pendiente", empresa_id: empresaId, local_id: localId });
     if (error) return null;
     registrarAuditoria("Crear prefiltro de candidato", candidatoNombre.trim());
     return token;
@@ -6351,9 +6358,13 @@ function crearLogicaPrefiltros({ registrarAuditoria }) {
   }
   async function eliminarPrefiltro(token, candidatoNombre) {
     const supabase = await window.getSupabaseClient();
-    const { error } = await supabase.from("prefiltros_candidatos").delete().eq("token", token);
-    if (!error) registrarAuditoria("Eliminar prefiltro de candidato", candidatoNombre || token);
-    return !error;
+    // Un DELETE bloqueado por RLS no devuelve error: simplemente no afecta
+    // ninguna fila. Sin .select() no habria forma de distinguir ese caso de
+    // un borrado real, asi que se exige exactamente una fila devuelta.
+    const { data, error } = await supabase.from("prefiltros_candidatos").delete().eq("token", token).select();
+    if (error || !Array.isArray(data) || data.length !== 1) return false;
+    registrarAuditoria("Eliminar prefiltro de candidato", candidatoNombre || token);
+    return true;
   }
   return { crearPrefiltro, listarPrefiltros, eliminarPrefiltro };
 }
