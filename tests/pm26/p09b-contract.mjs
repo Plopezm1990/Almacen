@@ -85,6 +85,19 @@ function enviaAuthorization(fuente, slug) {
   return llamadas.every((llamada) => /\bAuthorization\s*:/.test(llamada));
 }
 
+function adaptadorJwtProtege(fuente, slug) {
+  const inicio = fuente.indexOf('// ../edge-auth-patch.js');
+  if (inicio === -1) return false;
+  const fin = fuente.indexOf('\n})();', inicio);
+  if (fin === -1) return false;
+  const adaptador = fuente.slice(inicio, fin + 6);
+  return adaptador.includes(`"${slug}": true`)
+    && /getSupabaseClient/.test(adaptador)
+    && /auth\.getSession\(\)/.test(adaptador)
+    && /headers\.set\("Authorization", "Bearer " \+ token\)/.test(adaptador)
+    && /if \(!headers\.has\("Authorization"\)\)/.test(adaptador);
+}
+
 function normalizarFirmas(valor) {
   if (!valor) return [];
   if (Array.isArray(valor[0])) return valor.map(ordenados);
@@ -173,11 +186,12 @@ if (process.env.PM26_P09B_SELF_TEST === '1') {
 execFileSync('git', ['cat-file', '-e', `${releaseSha}^{commit}`], { cwd: RAIZ });
 const index = gitShow(snapshot.release.entrada);
 const fuente = gitShow(snapshot.release.fuente);
+const fuentePublicada = gitShow(snapshot.release.artefacto_publicado);
 const doc = fs.readFileSync(DOC, 'utf8');
 
 const relaciones = relacionesDesdeRelease(index, fuente);
 const rpc = rpcDesdeRelease(index, fuente);
-const edge = edgeDesdeRelease(fuente);
+const edge = edgeDesdeRelease(fuentePublicada);
 
 assert.equal(relaciones.length, snapshot.resultado_esperado.relaciones_requeridas);
 assert.equal(rpc.length, snapshot.resultado_esperado.rpc_requeridas);
@@ -203,10 +217,12 @@ assert.equal(incompatiblesRpc.length, snapshot.resultado_esperado.rpc_incompatib
 const edgeIncompatibles = edge.filter((slug) => {
   const contrato = snapshot.produccion.edge_functions[slug];
   assert.equal(contrato?.existe, true, `Edge Function ausente: ${slug}`);
-  return contrato.requiere_authorization && !enviaAuthorization(fuente, slug);
+  return contrato.requiere_authorization
+    && !enviaAuthorization(fuentePublicada, slug)
+    && !adaptadorJwtProtege(fuentePublicada, slug);
 });
 assert.equal(edgeIncompatibles.length, snapshot.resultado_esperado.edge_incompatibles_por_authorization);
-iguales(edgeIncompatibles, ['entrevista-personal', 'enviar-notificacion', 'importar-albaran', 'importar-nomina'], 'clasificacion Edge inesperada');
+iguales(edgeIncompatibles, [], 'clasificacion Edge inesperada');
 
 assert.match(doc, /DIAGNOSTICO VERIFICADO, SIN CORRECCION/i);
 assert.match(doc, /no\s+autoriza\s+ni\s+aplica\s+migraciones/i);
@@ -214,7 +230,7 @@ assert.match(doc, /no\s+certifica\s+que\s+producci[óo]n\s+sea\s+compatible/i);
 assert.match(doc, /21\s+relaciones/i);
 assert.match(doc, /11\s+ausentes/i);
 assert.match(doc, /13\s+RPC\s+(?:son\s+)?incompatibles/i);
-assert.match(doc, /4\s+de\s+6\s+integraciones\s+Edge/i);
+assert.match(doc, /0\s+de\s+6\s+integraciones\s+Edge/i);
 
 for (const archivo of [JSON.stringify(snapshot), doc, fs.readFileSync(__filename, 'utf8')]) {
   assert.doesNotMatch(archivo, /sb_(?:publishable|secret)_[A-Za-z0-9_-]{10,}/i);
@@ -225,6 +241,6 @@ console.log('PM26_P09B_RELEASE_SHA_VERIFICADO=PASS');
 console.log('PM26_P09B_21_RELACIONES_DERIVADAS=PASS');
 console.log('PM26_P09B_11_RELACIONES_AUSENTES_PRODUCCION=PASS');
 console.log('PM26_P09B_13_RPC_INCOMPATIBLES_PRODUCCION=PASS');
-console.log('PM26_P09B_EDGE_AUTH_4_DE_6_INCOMPATIBLES=PASS');
+console.log('PM26_P09B_EDGE_AUTH_0_DE_6_INCOMPATIBLES=PASS');
 console.log('PM26_P09B_QA_CONTIENE_CANDIDATOS=PASS');
 console.log('PM26 P09b — diagnostico reproducible OK; no certifica correccion');

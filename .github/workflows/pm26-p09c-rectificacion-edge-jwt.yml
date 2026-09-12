@@ -1,0 +1,57 @@
+name: PM26 P09c rectificacion Edge JWT
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'tests/pm26/P09B_COMPATIBILIDAD_RELEASE_PRODUCCION.md'
+      - 'tests/pm26/p09b-contract.mjs'
+      - 'tests/pm26/p09b-compatibilidad-release-produccion/snapshot-saneado.json'
+      - 'tests/pm26/P09C_RECTIFICACION_EDGE_JWT.md'
+      - 'tests/pm26/p09c-edge-jwt-contract.mjs'
+      - '.github/workflows/pm26-p09c-rectificacion-edge-jwt.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger alcance sin cambios funcionales
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main release --no-tags --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          test "$(git rev-parse origin/release)" = "9d54fc7ba76bd1285625f37b2940f99d26777ab8"
+          base_p09c="e31e570f192c8576dbf959b7addffaf6e1eefa62"
+          git merge-base --is-ancestor "$base_p09c" HEAD
+          permitidos='^(tests/pm26/(P09B_COMPATIBILIDAD_RELEASE_PRODUCCION\.md|p09b-contract\.mjs|p09b-compatibilidad-release-produccion/snapshot-saneado\.json|P09C_RECTIFICACION_EDGE_JWT\.md|p09c-edge-jwt-contract\.mjs)|\.github/workflows/pm26-p09c-rectificacion-edge-jwt\.yml)$'
+          inesperados="$(git diff --name-only "$base_p09c"..HEAD | grep -Ev "$permitidos" || true)"
+          test -z "$inesperados" || { echo "P09c excede alcance: $inesperados" >&2; exit 1; }
+          echo 'PM26_P09C_SOLO_RECTIFICACION=PASS'
+      - name: Contratos P09b y P09c
+        run: |
+          node tests/pm26/p09b-contract.mjs
+          node tests/pm26/p09c-edge-jwt-contract.mjs
+      - name: Regression y escaner
+        run: |
+          node tests/pm26/p01-contract.mjs
+          node tests/pm26/p02-contract.mjs
+          node tools/seguridad/verificar-secretos-e-identificadores.mjs verificar
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Gate P09c
+        run: |
+          node tests/pm26/p09c-edge-jwt-contract.mjs
+          echo 'PM26_P09C_GATE=PASS'

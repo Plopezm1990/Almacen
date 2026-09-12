@@ -4,6 +4,7 @@
   "release": {
     "commit": "9d54fc7ba76bd1285625f37b2940f99d26777ab8",
     "fuente": "source-recovery/fuente-recuperado.js",
+    "artefacto_publicado": "fuente.js",
     "entrada": "index.html"
   },
   "produccion": {
@@ -81,6 +82,6 @@
     "rpc_requeridas": 13,
     "rpc_incompatibles_produccion": 13,
     "edge_requeridas": 6,
-    "edge_incompatibles_por_authorization": 4
+    "edge_incompatibles_por_authorization": 0
   }
 }

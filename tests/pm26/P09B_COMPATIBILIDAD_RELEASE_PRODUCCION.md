@@ -17,9 +17,9 @@ commit de `release` inspeccionado; **no certifica que producción sea compatible
 - Snapshot: saneado; no contiene project refs, URLs internas, claves ni datos
   de usuarios.
 
-El contrato obtiene `index.html` y la fuente canónica mediante `git show` sobre
-el SHA exacto. No confía en listas copiadas del documento para descubrir las
-dependencias del cliente.
+El contrato obtiene `index.html`, la fuente canónica y el `fuente.js` publicado
+mediante `git show` sobre el SHA exacto. No confía en listas copiadas del
+documento para descubrir las dependencias del cliente.
 
 ## 2. Resultado de relaciones
 
@@ -55,7 +55,7 @@ distinta de la línea base productiva. El siguiente paquete deberá calcular el
 cierre transitivo de tablas, tipos, helpers, índices, triggers, grants y
 políticas de cada RPC antes de proponer SQL para producción.
 
-## 4. Resultado de Edge Functions
+## 4. Resultado de Edge Functions — rectificado por P09c
 
 Las seis funciones llamadas por el cliente existen. Dos tienen contrato de
 autenticación compatible:
@@ -63,18 +63,16 @@ autenticación compatible:
 - `crear-cuenta-empleado`: el cliente envía el JWT del usuario.
 - `prefiltro-candidato`: ruta pública limitada por token, según su diseño.
 
-Hay **4 de 6 integraciones Edge** incompatibles porque el servidor exige
-`Authorization: Bearer <JWT>` y el `fetch` publicado no envía esa cabecera:
+**Rectificación P09c:** las llamadas directas no muestran la cabecera, pero el
+`fuente.js` publicado instala antes un adaptador global de `fetch` para las
+cuatro rutas protegidas. Obtiene la sesión desde Supabase y añade
+`Authorization: Bearer <JWT>` sin sobrescribir una cabecera ya presente.
 
-- `entrevista-personal`
-- `enviar-notificacion`
-- `importar-albaran`
-- `importar-nomina`
-
-En `entrevista-personal`, además, el control `verify_jwt` puede rechazar la
-petición antes de ejecutar el código de la función. Las llamadas de
-notificaciones silencian varios errores con `catch`, de modo que un fallo puede
-no ser visible para quien utiliza la aplicación.
+Por tanto hay **0 de 6 integraciones Edge** incompatibles por ausencia de JWT.
+El adaptador devuelve un 401 local sin enviar la petición si no hay sesión. La
+prueba comportamental de P09c ejecuta las rutas protegida, pública, con JWT,
+sin JWT y con cabecera preexistente contra un entorno simulado; no llama a QA ni
+a producción.
 
 ## 5. Impacto operativo
 
@@ -86,8 +84,8 @@ sincronización multiusuario ni a copia de seguridad externa.
 
 ## 6. Orden de corrección propuesto (no ejecutado)
 
-1. P09c: parche mínimo del cliente para enviar el JWT a las cuatro Edge
-   Functions, con pruebas negativas sin token y positivas con identidad QA.
+1. P09c: rectificación del diagnóstico Edge mediante contrato comportamental
+   del adaptador JWT ya publicado.
 2. P09d: cierre transitivo de las once relaciones y trece RPC candidatas de QA,
    comparado contra la línea base real de producción.
 3. P09e: migración productiva propuesta con preflight, rollback, concurrencia,
