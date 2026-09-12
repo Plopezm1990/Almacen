@@ -36,7 +36,9 @@ jobs:
           base_p09b="a158aa88f3f75e654c9bc5f8d74e7673177687fb"
           git cat-file -e "$base_p09b^{commit}"
           git merge-base --is-ancestor "$base_p09b" HEAD
-          permitidos='^(tests/pm26/P09B_COMPATIBILIDAD_RELEASE_PRODUCCION\.md|tests/pm26/p09b-contract\.mjs|tests/pm26/p09b-compatibilidad-release-produccion/snapshot-saneado\.json|\.github/workflows/pm26-p09b-compatibilidad-release-produccion\.yml)$'
+          # P09c puede acompañar una rectificación explícita de la evidencia
+          # de P09b, pero no autoriza ningún archivo funcional ni de esquema.
+          permitidos='^(tests/pm26/(P09B_COMPATIBILIDAD_RELEASE_PRODUCCION\.md|p09b-contract\.mjs|p09b-compatibilidad-release-produccion/snapshot-saneado\.json|P09C_RECTIFICACION_EDGE_JWT\.md|p09c-edge-jwt-contract\.mjs)|\.github/workflows/(pm26-p09b-compatibilidad-release-produccion|pm26-p09c-rectificacion-edge-jwt)\.yml)$'
           inesperados="$(git diff --name-only "$base_p09b"..HEAD | grep -Ev "$permitidos" || true)"
           test -z "$inesperados" || { echo "P09b excede su alcance: $inesperados" >&2; exit 1; }
           intocables="fuente.js source-recovery index.html reset-pruebas-preview.js _headers supabase"
