@@ -209,8 +209,8 @@ assert.equal(edgeIncompatibles.length, snapshot.resultado_esperado.edge_incompat
 iguales(edgeIncompatibles, ['entrevista-personal', 'enviar-notificacion', 'importar-albaran', 'importar-nomina'], 'clasificacion Edge inesperada');
 
 assert.match(doc, /DIAGNOSTICO VERIFICADO, SIN CORRECCION/i);
-assert.match(doc, /no autoriza ni aplica migraciones/i);
-assert.match(doc, /no certifica que producci[óo]n sea compatible/i);
+assert.match(doc, /no\s+autoriza\s+ni\s+aplica\s+migraciones/i);
+assert.match(doc, /no\s+certifica\s+que\s+producci[óo]n\s+sea\s+compatible/i);
 assert.match(doc, /21 relaciones/i);
 assert.match(doc, /11 ausentes/i);
 assert.match(doc, /13 RPC incompatibles/i);
