@@ -1,0 +1,71 @@
+name: PM26 P09b compatibilidad release produccion
+
+# Gate de diagnostico: deriva las dependencias Supabase desde el release
+# publicado y las contrasta con un snapshot saneado de solo lectura. Un SUCCESS
+# certifica el inventario, NO que produccion sea compatible. No usa red hacia
+# Supabase, no aplica SQL, no despliega y no modifica main/release.
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'tests/pm26/P09B_COMPATIBILIDAD_RELEASE_PRODUCCION.md'
+      - 'tests/pm26/p09b-contract.mjs'
+      - 'tests/pm26/p09b-compatibilidad-release-produccion/**'
+      - '.github/workflows/pm26-p09b-compatibilidad-release-produccion.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Proteger main release cliente y Supabase
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main release --no-tags --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          test "$(git rev-parse origin/release)" = "9d54fc7ba76bd1285625f37b2940f99d26777ab8"
+          base_p09b="a158aa88f3f75e654c9bc5f8d74e7673177687fb"
+          git cat-file -e "$base_p09b^{commit}"
+          git merge-base --is-ancestor "$base_p09b" HEAD
+          permitidos='^(tests/pm26/P09B_COMPATIBILIDAD_RELEASE_PRODUCCION\.md|tests/pm26/p09b-contract\.mjs|tests/pm26/p09b-compatibilidad-release-produccion/snapshot-saneado\.json|\.github/workflows/pm26-p09b-compatibilidad-release-produccion\.yml)$'
+          inesperados="$(git diff --name-only "$base_p09b"..HEAD | grep -Ev "$permitidos" || true)"
+          test -z "$inesperados" || { echo "P09b excede su alcance: $inesperados" >&2; exit 1; }
+          intocables="fuente.js source-recovery index.html reset-pruebas-preview.js _headers supabase"
+          cambiados="$(git diff --name-only "$base_p09b"..HEAD -- $intocables)"
+          test -z "$cambiados" || { echo "P09b no debe tocar: $cambiados" >&2; exit 1; }
+          echo 'PM26_P09B_ALCANCE_SOLO_DIAGNOSTICO=PASS'
+
+      - name: Contrato reproducible release contra snapshot saneado
+        run: node tests/pm26/p09b-contract.mjs
+
+      - name: Contratos base y escaner completo
+        run: |
+          set -euo pipefail
+          node tests/pm26/p01-contract.mjs
+          node tests/pm26/p02-contract.mjs
+          node tools/seguridad/verificar-secretos-e-identificadores.mjs verificar
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Gate P09b diagnostico verificado sin correccion
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin release --no-tags --quiet
+          node tests/pm26/p09b-contract.mjs
+          echo 'PM26_P09B_GATE=PASS'
+          echo 'AVISO: este SUCCESS certifica el diagnostico; produccion sigue siendo incompatible.'
