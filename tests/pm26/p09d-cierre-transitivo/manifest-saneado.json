@@ -1,0 +1,56 @@
+{
+  "capturado_en": "2026-09-12",
+  "alcance": "Inspeccion de catalogo en solo lectura. Sin project refs, URLs, credenciales ni datos de usuarios.",
+  "base": {
+    "p09b_relaciones_ausentes": [
+      "albaranes_empresa",
+      "arqueos_caja",
+      "caja_operaciones",
+      "clientes_empresa",
+      "devoluciones_proveedor",
+      "devoluciones_venta",
+      "facturas_directas_empresa",
+      "gastos_empresa",
+      "pagos_factura",
+      "proveedores_empresa",
+      "stock_estado"
+    ],
+    "rpc_candidatas": 13
+  },
+  "cierre_directo_adicional": {
+    "relaciones": ["arqueos_caja_anulaciones"],
+    "helpers_privados_ausentes": [
+      "pm06_puede_gestionar_finanzas",
+      "pm06_total_factura",
+      "pm07_puede_vender",
+      "pm08_local_operable",
+      "pm08_puede_corregir_caja",
+      "pm08_puede_operar_caja",
+      "pm08_validar_dinero",
+      "pm08_validar_json_objeto",
+      "pm09_resumen_caja_ventas"
+    ]
+  },
+  "deriva_semantica_a_revisar": {
+    "helpers_compartidos": [
+      "la_rol",
+      "la_usuario_activo",
+      "la_tiene_local",
+      "la_tiene_empresa",
+      "pm07_puede_gestionar_stock",
+      "pm07_validar_cantidad",
+      "pm08_bloquear_operation_id",
+      "pm08_validar_operation_id"
+    ],
+    "relaciones_soporte_qa_no_equivalentes": [
+      "almacen_kv",
+      "empleados",
+      "stock_ubicacion"
+    ]
+  },
+  "resultado": {
+    "migracion_productiva_lista": false,
+    "motivo": "Falta validar la semantica de autorizacion, idempotencia y catalogos de soporte antes de disenar SQL.",
+    "siguiente_paso_seguro": "P09e-diseno: especificacion por dominio, preflight y rollback; sin aplicar cambios."
+  }
+}

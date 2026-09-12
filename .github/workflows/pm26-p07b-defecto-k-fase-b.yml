@@ -1,0 +1,135 @@
+name: PM26 P07b defecto K y Fase B aviso F
+
+# Corrige K y prepara el cliente de F sin tocar ningun backend. El gate
+# construye desde la fuente canonica, intercepta toda la red en memoria y
+# reproduce el SQL F exclusivamente en un PostgreSQL efimero local.
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'fuente.js'
+      - 'source-recovery/fuente-recuperado.js'
+      - 'supabase/qa-solo/pm26_p06h_aislamiento_prefiltros_candidatos.sql'
+      - 'tests/pm26/P06H_AVISO_F_DISENO_DESPLIEGUE.md'
+      - 'tests/pm26/P07B_DEFECTO_K_FASE_B_IMPLEMENTADOS.md'
+      - 'tests/pm26/p06h-contract.mjs'
+      - 'tests/pm26/p06h-f-aislado/**'
+      - 'tests/pm26/p07b-contract.mjs'
+      - 'tools/seguridad/linea-base-aceptada.json'
+      - '.github/workflows/pm26-p04b-aplicacion-defectos-bcd.yml'
+      - '.github/workflows/pm26-p06h-aislamiento-prefiltros-candidatos.yml'
+      - '.github/workflows/pm26-p06e-aviso-h-aislamiento-qa-solo.yml'
+      - '.github/workflows/pm26-p06f-aviso-h-endurecido.yml'
+      - '.github/workflows/pm26-p03b-pipeline-canonico.yml'
+      - '.github/workflows/pm26-p07b-source-recovery-check.yml'
+      - '.github/workflows/pm26-p07b-defecto-k-fase-b.yml'
+      - 'tests/pm26/p03b-contract.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Proteger alcance P07b
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          baseline='d62162fb6c512ea9fd237de1f2e2bb0ea5debeec'
+          cierre_p07b='1ee5b10cc9b129f3c5ef33f28db39dea9899f969'
+          git cat-file -e "$baseline^{commit}"
+          git cat-file -e "$cierre_p07b^{commit}"
+          cambiados="$(git diff --name-only "$baseline".."$cierre_p07b" | sort)"
+          esperados="$(printf '%s\n' \
+            '.github/workflows/pm26-p04b-aplicacion-defectos-bcd.yml' \
+            '.github/workflows/pm26-p06h-aislamiento-prefiltros-candidatos.yml' \
+            '.github/workflows/pm26-p06e-aviso-h-aislamiento-qa-solo.yml' \
+            '.github/workflows/pm26-p06f-aviso-h-endurecido.yml' \
+            '.github/workflows/pm26-p03b-pipeline-canonico.yml' \
+            '.github/workflows/pm26-p07b-source-recovery-check.yml' \
+            '.github/workflows/pm26-p07b-defecto-k-fase-b.yml' \
+            'fuente.js' \
+            'source-recovery/fuente-recuperado.js' \
+            'supabase/qa-solo/pm26_p06h_aislamiento_prefiltros_candidatos.sql' \
+            'tests/pm26/P06H_AVISO_F_DISENO_DESPLIEGUE.md' \
+            'tests/pm26/P07B_DEFECTO_K_FASE_B_IMPLEMENTADOS.md' \
+            'tests/pm26/p03b-contract.mjs' \
+            'tests/pm26/p06h-contract.mjs' \
+            'tests/pm26/p06h-f-aislado/preflight-catalogo.sql' \
+            'tests/pm26/p06h-f-aislado/validar.sh' \
+            'tests/pm26/p07b-contract.mjs' \
+            'tools/seguridad/linea-base-aceptada.json' | sort)"
+          test "$cambiados" = "$esperados"
+          for archivo in index.html reset-pruebas-preview.js _headers; do
+            test "$(git rev-parse "$baseline:$archivo")" = "$(git rev-parse "$cierre_p07b:$archivo")"
+          done
+          test -z "$(git ls-tree --name-only "$cierre_p07b" -- netlify.toml)"
+          test -z "$(git diff --name-only "$baseline".."$cierre_p07b" -- supabase/migrations)"
+          echo 'PM26_P07B_ALCANCE_ACOTADO=PASS'
+
+      - name: Instalar dependencias canonicas
+        working-directory: source-recovery
+        run: npm ci
+
+      - name: Dos builds canonicos deterministas
+        shell: bash
+        run: |
+          set -euo pipefail
+          node source-recovery/verificar-build-canonico.mjs
+          hash_1="$(sha256sum source-recovery/dist/fuente.js | cut -d' ' -f1)"
+          node source-recovery/verificar-build-canonico.mjs
+          hash_2="$(sha256sum source-recovery/dist/fuente.js | cut -d' ' -f1)"
+          test "$hash_1" = "$hash_2"
+          echo "PM26_P07B_BUILD_SHA256=$hash_2"
+          echo 'PM26_P07B_DOS_BUILDS_DETERMINISTAS=PASS'
+
+      - name: Instalar PostgreSQL local aislado
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sudo -u postgres pg_isready
+
+      - name: Contratos P06h y P07b
+        run: |
+          set -euo pipefail
+          node --check fuente.js
+          node --check source-recovery/fuente-recuperado.js
+          node tests/pm26/p06h-contract.mjs
+          node tests/pm26/p07b-contract.mjs
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Instalar dependencias canonicas
+        working-directory: source-recovery
+        run: npm ci
+      - name: Construir fuente canonica
+        run: node source-recovery/verificar-build-canonico.mjs
+      - name: Instalar PostgreSQL local aislado
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sudo -u postgres pg_isready
+      - name: Gate final P07b
+        run: |
+          set -euo pipefail
+          node tests/pm26/p06h-contract.mjs
+          node tests/pm26/p07b-contract.mjs
+          echo 'PM26_P07B_GATE=PASS'

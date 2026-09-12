@@ -1,0 +1,85 @@
+name: PM26 P06i aviso H aplicado y verificado en QA
+
+# Certifica el registro del cierre real de H. El workflow es de solo
+# lectura: vuelve a probar el artefacto en PostgreSQL local aislado y
+# valida la evidencia documental, pero nunca se conecta ni escribe en
+# Supabase QA, produccion o TPV.
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'tests/pm26/P06I_AVISO_H_APLICADO_QA.md'
+      - 'tests/pm26/p06i-contract.mjs'
+      - 'supabase/qa-solo/pm26_p06b_rendimiento_indices_rls_initplan.sql'
+      - 'tests/pm26/P06F_AVISO_H_ENDURECIDO.md'
+      - 'tests/pm26/p06f-contract.mjs'
+      - 'tests/pm26/p06b-h-aislado/**'
+      - '.github/workflows/pm26-p06i-aviso-h-aplicado-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger el alcance del cierre P06i
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          # Comparado entre el commit endurecido validado antes de
+          # aplicar (a2f6f2c) y el PROPIO cierre de P06i (4d34052),
+          # nunca contra HEAD: P06i certifica que ESE conjunto exacto
+          # de archivos fue lo unico que cambio al cerrar el paquete,
+          # un hecho historico fijo -- no que nada mas en el repositorio
+          # vuelva a cambiar despues, cosa que P07a/P07b/P08* hicieron
+          # de forma legitima y autorizada.
+          cambiados="$(git diff --name-only a2f6f2c474b67eeb93079a99bdd6455c868375c0..4d34052b9f618d67ba1dae150215038f4adae75d | sort)"
+          esperados="$(printf '%s\n' \
+            '.github/workflows/pm26-p06i-aviso-h-aplicado-qa.yml' \
+            'tests/pm26/P06I_AVISO_H_APLICADO_QA.md' \
+            'tests/pm26/p06i-contract.mjs' | sort)"
+          test "$cambiados" = "$esperados"
+          echo 'PM26_P06I_ALCANCE_ACOTADO=PASS'
+      - name: Instalar PostgreSQL local aislado
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sleep 2
+          sudo -u postgres pg_isready
+      - name: Instalar CLI de Supabase para la prueba de exclusion
+        run: npm install -g supabase
+      - name: Contrato P06i
+        run: node tests/pm26/p06i-contract.mjs
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Instalar PostgreSQL local aislado
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sleep 2
+          sudo -u postgres pg_isready
+      - name: Instalar CLI de Supabase para la prueba de exclusion
+        run: npm install -g supabase
+      - name: Gate final P06i
+        run: |
+          set -euo pipefail
+          node tests/pm26/p06i-contract.mjs
+          echo 'PM26_P06I_GATE=PASS'

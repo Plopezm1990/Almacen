@@ -1,0 +1,111 @@
+name: PM26 P01 inventario y diagnostico tecnico
+
+# Este workflow NO aplica ninguna correccion -- PM26 P01 es un inventario y
+# diagnostico de solo lectura (build, dependencias, secretos, cabeceras,
+# service worker/PWA, asesores de QA, vinculo main->produccion). Verifica
+# que el documento registra con precision que no se aplico ningun cambio,
+# que los defectos encontrados quedan listados sin resolver, y que no se
+# publica ningun secreto ni identificador interno.
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'tests/pm26/**'
+      - '.github/workflows/pm26-p01-inventario-diagnostico.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main y esquema (P01 es inventario, no debe tocar supabase/ mas alla de lo ya cerrado en PM21 y PM26 P06e/P06h)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          # Cada excepcion es un archivo concreto, ya revisado y cerrado
+          # con su propio gate -- nunca un comodin para todo supabase/.
+          # supabase/qa-solo/ (PM26 P06e/P06h) es, por diseno, un
+          # directorio que la CLI de Supabase nunca aplica a ningun
+          # proyecto (ver tests/pm26/P06E_AVISO_H_AISLAMIENTO_QA_SOLO.md
+          # y tests/pm26/P06H_AVISO_F_DISENO_DESPLIEGUE.md) -- su
+          # contenido puede cambiar (nuevas rondas de preparacion de los
+          # avisos F/H), por eso se excluye por archivo, no por hash.
+          unexpected="$(git diff --name-only origin/main..HEAD -- supabase/ \
+            | grep -v '^supabase/migrations/20260908210800_pm21_p01_movimientos_registro_aislamiento\.sql$' \
+            | grep -v '^supabase/migrations/20260908210900_pm21_p01_storage_qa_pruebas_aislamiento\.sql$' \
+            | grep -v '^supabase/migrations/20260908212000_pm21_p02_matices_rol_politicas\.sql$' \
+            | grep -v '^supabase/qa-solo/pm26_p06b_rendimiento_indices_rls_initplan\.sql$' \
+            | grep -v '^supabase/qa-solo/pm26_p06h_aislamiento_prefiltros_candidatos\.sql$' \
+            || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'PM26 P01 (inventario) no debe tocar supabase/ mas alla de lo ya cerrado en PM21/PM26 P06e/P06h' >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+          echo 'PM26_P01_MAIN_FROZEN=PASS'
+          echo 'PM26_P01_SUPABASE_ACOTADO_A_PM21_Y_P06E_Y_P06H=PASS'
+      - name: Contrato PM26 P01 y P02 (verifica el INVENTARIO y la reparacion de gates, no una correccion de fuente.js)
+        run: |
+          node tests/pm26/p01-contract.mjs
+          node tests/pm26/p02-contract.mjs
+      - name: Regresion completa (todas las suites vigentes)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for d in tests/g1 tests/pm04 tests/pm05 tests/pm07 tests/pm08 tests/pm09 tests/pm10 tests/pm11-compra tests/pm12 tests/pm13 tests/pm14 tests/pm15 tests/pm16 tests/pm17 tests/pm18 tests/pm19 tests/pm20 tests/pm21; do
+            for t in "$d"/*.mjs; do
+              [ -f "$t" ] || continue
+              node "$t"
+            done
+          done
+          node tests/pm22/p01-contract.mjs
+          node tests/pm23/p01-contract.mjs
+          node tests/pm23/p02-contract.mjs
+          node tests/pm23/p03-contract.mjs
+          node tests/pm24/p01-contract.mjs
+          node tests/pm24/p02-contract.mjs
+          node tests/pm25/p01-contract.mjs
+          node tests/pm25/p02-contract.mjs
+          node tests/pm26/p01-contract.mjs
+          node tests/pm26/p02-contract.mjs
+          echo 'PM26_P01_REGRESION_COMPLETA=PASS'
+          # NOTA: el escáner de secretos/identificadores ya se verificó más
+          # arriba, en "Contrato PM26 P01 y P02" (p02-contract.mjs ejecuta
+          # "verificar" como parte de su prueba positiva), sobre el checkout
+          # limpio. No se repite aquí a propósito: varios scripts de
+          # tests/pm13/*.mjs regeneran como efecto secundario, no
+          # determinista, sus propios JSON de evidencia histórica (capturan
+          # un fragmento de fuente.js cuyo recorte exacto puede variar entre
+          # ejecuciones) -- repetir el escáner después de este bucle
+          # expondría el gate a esa variación ajena a cualquier secreto o
+          # identificador real, no a un fallo genuino.
+      - name: Sintaxis del escáner y de sus ledgers (comprobación ligera, no repite el barrido completo)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check tools/seguridad/verificar-secretos-e-identificadores.mjs
+          node -e "JSON.parse(require('fs').readFileSync('tools/seguridad/linea-base-aceptada.json','utf8'))"
+          node -e "JSON.parse(require('fs').readFileSync('tools/seguridad/deuda-identificadores-historicos.json','utf8'))"
+          echo 'PM26_P01_ESCANER_LEDGERS_SINTAXIS=PASS'
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM26 P01 -- inventario y diagnostico (NO es un gate de correccion)
+        run: |
+          set -euo pipefail
+          node tests/pm26/p01-contract.mjs
+          node tests/pm26/p02-contract.mjs
+          echo 'PM26_P01_GATE_DE_INVENTARIO=PASS'
+          echo 'AVISO: este gate certifica que el inventario y diagnostico esta documentado con precision -- NO que se haya corregido ningun defecto.'

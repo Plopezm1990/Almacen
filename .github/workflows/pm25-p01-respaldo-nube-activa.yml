@@ -1,0 +1,87 @@
+name: PM25 P01 respaldo nube activa
+
+on:
+  push:
+    branches: [claude/pm24-integraciones-controladas]
+    paths:
+      - 'fuente.js'
+      - 'tests/pm25/**'
+      - '.github/workflows/pm25-p01-respaldo-nube-activa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main y alcance (solo lo ya cerrado en PM21/22/23 + PM24)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          unexpected="$(git diff --name-only origin/main..HEAD -- supabase/ \
+            | grep -v '^supabase/migrations/20260908210800_pm21_p01_movimientos_registro_aislamiento\.sql$' \
+            | grep -v '^supabase/migrations/20260908210900_pm21_p01_storage_qa_pruebas_aislamiento\.sql$' \
+            | grep -v '^supabase/migrations/20260908212000_pm21_p02_matices_rol_politicas\.sql$' \
+            || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'PM25 no debe tocar supabase/ más allá de lo ya cerrado en PM21' >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+          echo 'PM25_P01_MAIN_FROZEN=PASS'
+          echo 'PM25_P01_SUPABASE_ACOTADO_A_PM21=PASS'
+      - name: Sintaxis bundle
+        run: node --check fuente.js
+      - name: Contrato PM25 P01
+        run: node tests/pm25/p01-contract.mjs
+      - name: Regresión completa (todas las suites vigentes, incluye PM21/22/23 fusionados)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for d in tests/g1 tests/pm04 tests/pm05 tests/pm07 tests/pm08 tests/pm09 tests/pm10 tests/pm11-compra tests/pm12 tests/pm13 tests/pm14 tests/pm15 tests/pm16 tests/pm17 tests/pm18 tests/pm19 tests/pm20 tests/pm21; do
+            for t in "$d"/*.mjs; do
+              [ -f "$t" ] || continue
+              node "$t"
+            done
+          done
+          node tests/pm22/p01-contract.mjs
+          node tests/pm23/p01-contract.mjs
+          node tests/pm23/p02-contract.mjs
+          node tests/pm23/p03-contract.mjs
+          node tests/pm24/p01-contract.mjs
+          node tests/pm24/p02-contract.mjs
+          node tests/pm25/p01-contract.mjs
+          node tests/pm25/p02-contract.mjs
+          echo 'PM25_P01_REGRESION_COMPLETA=PASS'
+      - name: Sin secretos ni identificadores internos (escáner centralizado, PM26 P02)
+        run: node tools/seguridad/verificar-secretos-e-identificadores.mjs verificar
+      - name: Sin cambios de dependencias fuera de tests/pm2[2345]
+        shell: bash
+        run: |
+          set -euo pipefail
+          unexpected="$(git diff --name-only origin/main..HEAD -- '**/package.json' '**/package-lock.json' \
+            | grep -Ev '^tests/pm2[2345]/' || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'No debe haber cambios de dependencias fuera de tests/pm22, tests/pm23, tests/pm24 o tests/pm25' >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+          echo 'PM25_P01_DEPENDENCIAS_ACOTADAS=PASS'
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM25 P01
+        run: |
+          set -euo pipefail
+          node tests/pm25/p01-contract.mjs
+          echo 'PM25_P01_GATE_FINAL=PASS'

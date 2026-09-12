@@ -1,0 +1,84 @@
+name: PM25 P02 bloqueo por entorno aislado
+
+# Este workflow NO ejecuta el ensayo de recuperación/migración de PM25 P02
+# -- no hay entorno aislado disponible (ver tests/pm25/P02_BLOQUEADO_ENTORNO_AISLADO.md).
+# Solo verifica que el estado de bloqueo está documentado con precisión:
+# que no se afirma ejecución, aprobación ni cierre, que el motivo exacto
+# del bloqueo consta, que el diseño del ensayo se conservó íntegro, y que
+# las condiciones de desbloqueo están registradas. Un gate en verde aquí
+# certifica la HONESTIDAD del registro de bloqueo, no la ejecución de P02.
+
+on:
+  push:
+    branches: [claude/pm24-integraciones-controladas]
+    paths:
+      - 'tests/pm25/**'
+      - '.github/workflows/pm25-p02-bloqueo-entorno.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main y esquema (este commit es solo documentación de estado)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          # fuente.js SÍ difiere de main (por los puntos ya cerrados de PM24/PM25 P01
+          # en esta misma rama) -- lo que este guard exige es que este registro de
+          # bloqueo, en concreto, no añada ningún cambio de esquema propio.
+          unexpected="$(git diff --name-only origin/main..HEAD -- supabase/ \
+            | grep -v '^supabase/migrations/20260908210800_pm21_p01_movimientos_registro_aislamiento\.sql$' \
+            | grep -v '^supabase/migrations/20260908210900_pm21_p01_storage_qa_pruebas_aislamiento\.sql$' \
+            | grep -v '^supabase/migrations/20260908212000_pm21_p02_matices_rol_politicas\.sql$' \
+            || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'PM25 P02 (bloqueado) no debe tocar supabase/ más allá de lo ya cerrado en PM21: es un registro de estado, no una ejecución' >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+          echo 'PM25_P02_MAIN_FROZEN=PASS'
+          echo 'PM25_P02_SUPABASE_ACOTADO_A_PM21=PASS'
+      - name: Contrato PM25 P02 (verifica el REGISTRO de bloqueo, no una ejecución)
+        run: node tests/pm25/p02-contract.mjs
+      - name: Regresión completa (todas las suites vigentes)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for d in tests/g1 tests/pm04 tests/pm05 tests/pm07 tests/pm08 tests/pm09 tests/pm10 tests/pm11-compra tests/pm12 tests/pm13 tests/pm14 tests/pm15 tests/pm16 tests/pm17 tests/pm18 tests/pm19 tests/pm20 tests/pm21; do
+            for t in "$d"/*.mjs; do
+              [ -f "$t" ] || continue
+              node "$t"
+            done
+          done
+          node tests/pm22/p01-contract.mjs
+          node tests/pm23/p01-contract.mjs
+          node tests/pm23/p02-contract.mjs
+          node tests/pm23/p03-contract.mjs
+          node tests/pm24/p01-contract.mjs
+          node tests/pm24/p02-contract.mjs
+          node tests/pm25/p01-contract.mjs
+          node tests/pm25/p02-contract.mjs
+          echo 'PM25_P02_REGRESION_COMPLETA=PASS'
+      - name: Sin secretos ni identificadores internos (escáner centralizado, PM26 P02)
+        run: node tools/seguridad/verificar-secretos-e-identificadores.mjs verificar
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM25 P02 -- registro de bloqueo (NO es un gate de ejecución)
+        run: |
+          set -euo pipefail
+          node tests/pm25/p02-contract.mjs
+          echo 'PM25_P02_GATE_DE_REGISTRO_DE_BLOQUEO=PASS'
+          echo 'AVISO: este gate certifica que el bloqueo esta documentado con precision -- NO que PM25 P02 se haya ejecutado, aprobado o cerrado.'

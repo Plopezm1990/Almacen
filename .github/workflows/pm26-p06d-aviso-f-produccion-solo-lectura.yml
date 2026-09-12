@@ -1,0 +1,70 @@
+name: PM26 P06d aviso F verificacion de solo lectura en produccion
+
+# Certifica que la verificacion en produccion para el aviso F
+# (estructura, conteo total de filas, politicas/grants, existencia de
+# columnas empresa_id/local_id) quedo documentada con precision, sin
+# leer ninguna fila individual ni aplicar ningun cambio, y que la
+# divergencia encontrada frente al diseno propuesto para QA se
+# presenta sin decidirse. No toca main, release, Netlify, Supabase
+# (escritura), QA, produccion ni TPV.
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'tests/pm26/P06D_AVISO_F_PRODUCCION_SOLO_LECTURA.md'
+      - 'tests/pm26/p06d-contract.mjs'
+      - '.github/workflows/pm26-p06d-aviso-f-produccion-solo-lectura.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger lo que P06d no debe tocar
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          intocables='edge-auth-patch.js
+          fuente.js
+          index.html
+          _headers
+          reset-pruebas-preview.js
+          pm11-compra-mobile-loader.js
+          source-recovery/recuperar_candidato.py
+          source-recovery/fuente-recuperado.js
+          netlify.toml'
+          cambiados="$(git diff --name-only b80460d1c2a10307ef90c1cc9d186152635c0ccc..HEAD)"
+          while IFS= read -r archivo; do
+            [ -z "$archivo" ] && continue
+            if echo "$cambiados" | grep -qxF "$archivo"; then
+              echo "PM26 P06d no debe tocar: $archivo" >&2
+              exit 1
+            fi
+          done <<< "$intocables"
+          if git diff --name-only b80460d1c2a10307ef90c1cc9d186152635c0ccc..HEAD -- supabase/migrations | grep -qi prefiltro; then
+            echo "PM26 P06d: no debe existir ninguna migracion del aviso F en este commit" >&2
+            exit 1
+          fi
+          echo 'PM26_P06D_INTOCABLES_INTACTOS=PASS'
+      - name: Contrato PM26 P06d (verificacion solo lectura en produccion + sin secretos)
+        run: node tests/pm26/p06d-contract.mjs
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM26 P06d -- solo lectura en produccion, divergencia registrada sin decidir
+        run: |
+          set -euo pipefail
+          node tests/pm26/p06d-contract.mjs
+          echo 'PM26_P06D_GATE=PASS'

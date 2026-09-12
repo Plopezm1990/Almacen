@@ -1,0 +1,54 @@
+name: PM26 P09d cierre transitivo release produccion
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'tests/pm26/P09D_CIERRE_TRANSITIVO_RELEASE_PRODUCCION.md'
+      - 'tests/pm26/p09d-contract.mjs'
+      - 'tests/pm26/p09d-cierre-transitivo/**'
+      - '.github/workflows/pm26-p09d-cierre-transitivo.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger alcance y ramas congeladas
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main release --no-tags --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          test "$(git rev-parse origin/release)" = "9d54fc7ba76bd1285625f37b2940f99d26777ab8"
+          base_p09d="0ceed06b35684969c0136e46be29160e5999f6df"
+          git merge-base --is-ancestor "$base_p09d" HEAD
+          permitidos='^(tests/pm26/(P09D_CIERRE_TRANSITIVO_RELEASE_PRODUCCION\.md|p09d-contract\.mjs|p09d-cierre-transitivo/manifest-saneado\.json)|\.github/workflows/pm26-p09d-cierre-transitivo\.yml)$'
+          inesperados="$(git diff --name-only "$base_p09d"..HEAD | grep -Ev "$permitidos" || true)"
+          test -z "$inesperados" || { echo "P09d excede alcance: $inesperados" >&2; exit 1; }
+          intocables="fuente.js source-recovery index.html reset-pruebas-preview.js _headers supabase"
+          cambiados="$(git diff --name-only "$base_p09d"..HEAD -- $intocables)"
+          test -z "$cambiados" || { echo "P09d no debe tocar: $cambiados" >&2; exit 1; }
+          echo 'PM26_P09D_ALCANCE_SOLO_LECTURA=PASS'
+      - name: Contrato P09d
+        run: node tests/pm26/p09d-contract.mjs
+      - name: Contratos base y escaner
+        run: |
+          node tests/pm26/p01-contract.mjs
+          node tests/pm26/p02-contract.mjs
+          node tools/seguridad/verificar-secretos-e-identificadores.mjs verificar
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate P09d
+        run: |
+          node tests/pm26/p09d-contract.mjs
+          echo 'PM26_P09D_GATE=PASS'

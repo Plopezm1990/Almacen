@@ -1,0 +1,54 @@
+name: PM26 P09e diseno seguro compatibilidad produccion
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'tests/pm26/P09E_DISENO_SEGURO_COMPATIBILIDAD_PRODUCCION.md'
+      - 'tests/pm26/p09e-contract.mjs'
+      - 'tests/pm26/p09e-diseno-seguro/**'
+      - '.github/workflows/pm26-p09e-diseno-seguro.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Bloquear cambios de aplicacion y entornos
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main release --no-tags --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          test "$(git rev-parse origin/release)" = "9d54fc7ba76bd1285625f37b2940f99d26777ab8"
+          base_p09e="ce9f93c02e74b0a34f93a775bba87efd6e935cac"
+          git merge-base --is-ancestor "$base_p09e" HEAD
+          permitidos='^(tests/pm26/(P09E_DISENO_SEGURO_COMPATIBILIDAD_PRODUCCION\.md|p09e-contract\.mjs|p09e-diseno-seguro/manifest-saneado\.json)|\.github/workflows/pm26-p09e-diseno-seguro\.yml)$'
+          inesperados="$(git diff --name-only "$base_p09e"..HEAD | grep -Ev "$permitidos" || true)"
+          test -z "$inesperados" || { echo "P09e excede alcance: $inesperados" >&2; exit 1; }
+          intocables="fuente.js source-recovery index.html reset-pruebas-preview.js _headers supabase"
+          cambiados="$(git diff --name-only "$base_p09e"..HEAD -- $intocables)"
+          test -z "$cambiados" || { echo "P09e no debe tocar: $cambiados" >&2; exit 1; }
+          echo 'PM26_P09E_SOLO_DISENO=PASS'
+      - name: Contrato P09e
+        run: node tests/pm26/p09e-contract.mjs
+      - name: Contratos base y escaner
+        run: |
+          node tests/pm26/p01-contract.mjs
+          node tests/pm26/p02-contract.mjs
+          node tools/seguridad/verificar-secretos-e-identificadores.mjs verificar
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate P09e
+        run: |
+          node tests/pm26/p09e-contract.mjs
+          echo 'PM26_P09E_GATE=PASS'

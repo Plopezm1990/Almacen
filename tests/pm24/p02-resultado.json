@@ -1,0 +1,77 @@
+{
+  "resultados": [
+    {
+      "caso": "duplicación/IA: botón \"Empezar entrevista\" localizado para el doble clic",
+      "ok": true,
+      "detalle": {
+        "encontrado": true
+      }
+    },
+    {
+      "caso": "duplicación/IA: el doble clic en \"Empezar entrevista\" no duplica la llamada",
+      "ok": true,
+      "detalle": {
+        "solicitudesVistas": 1
+      }
+    },
+    {
+      "caso": "duplicación/IA: botón de respuesta \"Sí\" localizado para el doble clic",
+      "ok": true,
+      "detalle": {
+        "encontrado": true
+      }
+    },
+    {
+      "caso": "duplicación/IA: el doble clic al responder no duplica la llamada a la IA",
+      "ok": true,
+      "detalle": {
+        "solicitudesVistas": 2
+      }
+    },
+    {
+      "caso": "duplicación/IA: sin excepción JS no controlada durante las pruebas de doble clic",
+      "ok": true,
+      "detalle": []
+    },
+    {
+      "caso": "duplicación/push: primera ronda envía exactamente 1 aviso (lote nuevo)",
+      "ok": true,
+      "detalle": {
+        "llamadas": 1
+      }
+    },
+    {
+      "caso": "duplicación/push: repetir el mismo lote NO genera un segundo envío",
+      "ok": true,
+      "detalle": {
+        "antes": 1,
+        "despues": 1
+      }
+    },
+    {
+      "caso": "duplicación/push: un lote nuevo junto al repetido SÍ se envía (no bloquea de más)",
+      "ok": true,
+      "detalle": {
+        "antes": 1,
+        "despues": 2
+      }
+    },
+    {
+      "caso": "duplicación/push: el aviso repetido nunca llegó a intentarse enviar",
+      "ok": true,
+      "detalle": {
+        "llamadas": [
+          "Lote a punto de caducar",
+          "Lote a punto de caducar"
+        ]
+      }
+    }
+  ],
+  "bloqueadas": [
+    {
+      "url": "https://flqercbgpgmmfaakrwkc.supabase.co/rest/v1/prefiltros_candidatos?select=*&order=creado_en.desc",
+      "method": "GET",
+      "motivo": "host de producción, ruta no autorizada"
+    }
+  ]
+}

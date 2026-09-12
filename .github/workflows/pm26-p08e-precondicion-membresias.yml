@@ -1,0 +1,116 @@
+name: PM26 P08e precondicion de autorizacion backend legacy
+
+# Certifica la PRECONDICION que el Defecto L necesita antes de poder
+# aplicarse: que exista en el backend una membresia activa y coherente
+# que vincule al propietario con su empresa y su local. Hoy no existe
+# (membresias_usuario esta vacia en produccion), asi que el preflight
+# endurecido debe rechazar ese estado de forma explicita -- y este gate
+# lo comprueba con un control negativo real en PostgreSQL local: sin el
+# guard, ese mismo estado pasaria.
+#
+# No crea ninguna membresia, no aplica migraciones, no escribe en
+# Supabase (produccion, QA ni TPV), no despliega en Netlify y no toca
+# main ni release. Todo corre contra una base temporal aislada que el
+# propio script crea y destruye.
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'tests/pm26/P08E_PRECONDICION_MEMBRESIAS_LEGACY.md'
+      - 'tests/pm26/P08B_DEFECTO_L_CLIENTE_COORDINADO.md'
+      - 'tests/pm26/p08e-contract.mjs'
+      - 'tests/pm26/p08e-precondicion-membresias/**'
+      - 'tests/pm26/p08-defecto-l-produccion/**'
+      - '.github/workflows/pm26-p08e-precondicion-membresias.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Proteger lo que P08e no debe tocar
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          # P08e resuelve una precondicion de autorizacion en el backend:
+          # no cambia el cliente ni ningun esquema versionado. Se compara
+          # contra el cierre previo de la rama (PM26 P08d), nunca contra
+          # el HEAD vivo ni contra origin/main.
+          cierre_previo='67dbb6e62a2e08774040d1963f45b6ea3784903b'
+          git cat-file -e "$cierre_previo^{commit}"
+          git merge-base --is-ancestor "$cierre_previo" HEAD
+          intocables="fuente.js source-recovery index.html reset-pruebas-preview.js _headers supabase"
+          cambiados="$(git diff --name-only "$cierre_previo"..HEAD -- $intocables)"
+          if [ -n "$cambiados" ]; then
+            echo "PM26 P08e no debe tocar: $cambiados" >&2
+            exit 1
+          fi
+          # Y la migracion del Defecto L sigue fuera de supabase/migrations.
+          if ls supabase/migrations | grep -qi prefiltro; then
+            echo 'PM26 P08e: la migracion del Defecto L no debe estar en supabase/migrations' >&2
+            exit 1
+          fi
+          echo 'PM26_P08E_ALCANCE_ACOTADO=PASS'
+
+      - name: Instalar PostgreSQL local (aislado)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sleep 2
+          sudo -u postgres pg_isready
+
+      - name: Validar la precondicion de membresia en PostgreSQL local
+        run: bash tests/pm26/p08e-precondicion-membresias/validar-membresias.sh
+
+      - name: Contrato PM26 P08e (guard, control negativo, nada aplicado)
+        run: node tests/pm26/p08e-contract.mjs
+
+      - name: Reconstruir fuente canonica de la rama tecnica
+        working-directory: source-recovery
+        run: npm ci
+
+      - name: Regresion acumulada de la rama tecnica (P03b, P07b, P08a-P08d)
+        run: |
+          set -euo pipefail
+          node tests/pm26/p03b-contract.mjs
+          node tests/pm26/p07b-contract.mjs
+          node tests/pm26/p08a-contract.mjs
+          node tests/pm26/p08b-contract.mjs
+          node tests/pm26/p08c-contract.mjs
+          node tests/pm26/p08d-contract.mjs
+
+      - name: Escaner completo de secretos e identificadores
+        run: node tools/seguridad/verificar-secretos-e-identificadores.mjs verificar
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Instalar PostgreSQL local (aislado)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sleep 2
+          sudo -u postgres pg_isready
+      - name: Gate PM26 P08e -- precondicion documentada y exigida, nada aplicado
+        run: |
+          set -euo pipefail
+          node tests/pm26/p08e-contract.mjs
+          echo 'PM26_P08E_GATE=PASS'
