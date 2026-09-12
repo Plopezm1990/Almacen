@@ -211,10 +211,10 @@ iguales(edgeIncompatibles, ['entrevista-personal', 'enviar-notificacion', 'impor
 assert.match(doc, /DIAGNOSTICO VERIFICADO, SIN CORRECCION/i);
 assert.match(doc, /no\s+autoriza\s+ni\s+aplica\s+migraciones/i);
 assert.match(doc, /no\s+certifica\s+que\s+producci[óo]n\s+sea\s+compatible/i);
-assert.match(doc, /21 relaciones/i);
-assert.match(doc, /11 ausentes/i);
-assert.match(doc, /13 RPC incompatibles/i);
-assert.match(doc, /4 de 6 integraciones Edge/i);
+assert.match(doc, /21\s+relaciones/i);
+assert.match(doc, /11\s+ausentes/i);
+assert.match(doc, /13\s+RPC\s+(?:son\s+)?incompatibles/i);
+assert.match(doc, /4\s+de\s+6\s+integraciones\s+Edge/i);
 
 for (const archivo of [JSON.stringify(snapshot), doc, fs.readFileSync(__filename, 'utf8')]) {
   assert.doesNotMatch(archivo, /sb_(?:publishable|secret)_[A-Za-z0-9_-]{10,}/i);
