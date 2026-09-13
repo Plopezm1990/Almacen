@@ -76,7 +76,7 @@ jobs:
                 echo "==> $contrato [invariante histórico release==main sustituido por test PM27 de fast-forward y alcance exacto]"
                 continue
                 ;;
-              tests/pm26/p08c-contract.mjs)
+              tests/pm26/p08c-contract.mjs|tests/pm26/p08d-contract.mjs)
                 echo "==> $contrato [reproducido en alcance histórico; P09f-B3 validado aparte por PM27]"
                 migracion='supabase/migrations/20260912120000_pm26_p09f_b3_pagos_encargo_operation_id_global.sql'
                 backup="$(mktemp)"
