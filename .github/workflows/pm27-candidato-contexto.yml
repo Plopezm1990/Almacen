@@ -28,6 +28,14 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Supabase CLI estable para pruebas locales PM26
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: 2.117.0
+
+      - name: Verificar Supabase CLI local
+        run: supabase --version
+
       - name: Sintaxis loader universal
         run: node --check pm11-compra-mobile-loader.js
 
