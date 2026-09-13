@@ -1,0 +1,103 @@
+name: PM27 C13 - reauditoria post-remediacion
+
+on:
+  push:
+    branches:
+      - claude/pm27-c13-reauditoria
+    paths:
+      - tests/pm27/PM27_C13_REAUDITORIA_POST_REMEDIACION.md
+      - .github/workflows/pm27-c13-reauditoria.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pm27-c13-reauditoria-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  c13-reauditoria:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout trazable
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Supabase CLI estable para regresiones PM26
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: 2.117.0
+
+      - name: Verificar base corregida y alcance exclusivo de auditoria
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='b3d37a4cf2fdc37f66d862948a5894dfbc66b0be'
+          test "$GITHUB_REF_NAME" = 'claude/pm27-c13-reauditoria'
+          test "$GITHUB_SHA" = "$(git rev-parse HEAD)"
+          git merge-base --is-ancestor "$BASE" HEAD
+          git fetch origin main release --quiet
+          test "$(git rev-parse origin/main)" = '93a570badba1c5375febfbddc1dffdbcef003dcd'
+          test "$(git rev-parse origin/release)" = 'a97740987be57aa9646f6a06e69b2230f140ec5f'
+          CAMBIADOS="$(git diff --name-only "$BASE"..HEAD)"
+          echo "$CAMBIADOS"
+          INESPERADOS="$(printf '%s\n' "$CAMBIADOS" | grep -Ev '^(tests/pm27/PM27_C13_REAUDITORIA_POST_REMEDIACION\.md|\.github/workflows/pm27-c13-reauditoria\.yml)$' || true)"
+          test -z "$INESPERADOS"
+          echo 'PM27_C13_REAUDITORIA_BASE_CORREGIDA=PASS'
+          echo 'PM27_C13_REAUDITORIA_ALCANCE_DOCUMENTAL=PASS'
+          echo "PM27_C13_REAUDITORIA_SHA=$GITHUB_SHA"
+
+      - name: Sintaxis contratos C13
+        run: |
+          node --check tests/pm27/c13-security-definer-contract.mjs
+          node --check tests/pm27/c13-regression-suite.mjs
+          node --check tests/pm27/defecto-l-context-hotfix.test.mjs
+
+      - name: Dependencias build canonico PM26
+        run: npm ci --prefix source-recovery
+
+      - name: PostgreSQL local aislado
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo systemctl start postgresql
+          sudo -u postgres pg_isready
+          sudo -u postgres psql -tAc 'select current_user, current_database();'
+          supabase --version
+          sudo chmod o+x "$HOME" "$(dirname "$(dirname "$GITHUB_WORKSPACE")")" "$(dirname "$GITHUB_WORKSPACE")" "$GITHUB_WORKSPACE"
+          sudo -u postgres test -r "$GITHUB_WORKSPACE/supabase/migrations/20260913190500_pm27_c13_security_definer_tenant_guard.sql"
+          sudo -u postgres test -r "$GITHUB_WORKSPACE/supabase/migrations/20260913193500_pm27_c13_private_helper_hardening.sql"
+          echo 'PM27_C13_REAUDITORIA_POSTGRES=PASS'
+
+      - name: Reejecutar contrato SECURITY DEFINER C13
+        run: node tests/pm27/c13-security-definer-contract.mjs
+
+      - name: Reejecutar contexto Defecto L
+        run: node tests/pm27/defecto-l-context-hotfix.test.mjs
+
+      - name: Reejecutar regresiones acumuladas C13
+        run: node tests/pm27/c13-regression-suite.mjs
+
+      - name: Confirmar evidencia PASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'PM27_C13_RESULTADO=PASS' tests/pm27/PM27_C13_REAUDITORIA_POST_REMEDIACION.md
+          grep -q 'C13 pasa de FAIL a PASS' tests/pm27/PM27_C13_REAUDITORIA_POST_REMEDIACION.md
+          echo 'PM27_C13_REAUDITORIA_RESULTADO=PASS'
+
+      - name: Arbol limpio
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code
+          test -z "$(git status --porcelain --untracked-files=no)"
+          echo 'PM27_C13_REAUDITORIA_GATE=PASS'
