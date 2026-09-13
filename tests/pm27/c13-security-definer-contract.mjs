@@ -67,7 +67,13 @@ function pg(sql, database = db, extra = []) {
 }
 
 function pgFile(file, database = db) {
-  return run('sudo', ['-u', 'postgres', 'psql', '-v', 'ON_ERROR_STOP=1', '-X', '-q', '-d', database, '-f', file]);
+  // Alimentamos psql por stdin: así la prueba no depende de que el usuario
+  // local postgres pueda atravesar la ruta HOME del runner de CI.
+  return run(
+    'sudo',
+    ['-u', 'postgres', 'psql', '-v', 'ON_ERROR_STOP=1', '-X', '-q', '-d', database],
+    { input: read(file) }
+  );
 }
 
 function scalar(sql) {
@@ -204,8 +210,8 @@ try {
   assert.equal(scalar("select has_function_privilege('authenticated','public.anular_venta_tpv(text,text)','EXECUTE');"), 'f');
   assert.equal(scalar("select has_function_privilege('authenticated','public.obtener_contexto_operativo()','EXECUTE');"), 't');
   assert.equal(scalar("select has_function_privilege('anon','public.obtener_contexto_operativo()','EXECUTE');"), 'f');
-  assert.equal(scalar("select proconfig::text from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='obtener_contexto_operativo' and p.pronargs=0;"), '{search_path=""}');
-  assert.equal(scalar("select proconfig::text from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='private' and p.proname='es_propietario_activo' and p.pronargs=0;"), '{search_path=""}');
+  assert.equal(scalar("select proconfig[1] from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='obtener_contexto_operativo' and p.pronargs=0;"), 'search_path=""');
+  assert.equal(scalar("select proconfig[1] from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='private' and p.proname='es_propietario_activo' and p.pronargs=0;"), 'search_path=""');
   console.log('PM27_C13_ACL_SEARCH_PATH=PASS');
 
   // Caso 1: sin sesion.
