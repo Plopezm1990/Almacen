@@ -7,6 +7,7 @@ on:
     paths:
       - pm11-compra-mobile-loader.js
       - tests/pm27/defecto-l-context-hotfix.test.mjs
+      - tests/pm27/release-hotfix-state.test.mjs
       - .github/workflows/pm27-candidato-contexto.yml
   workflow_dispatch:
 
@@ -30,20 +31,29 @@ jobs:
       - name: Sintaxis loader universal
         run: node --check pm11-compra-mobile-loader.js
 
-      - name: Sintaxis regresion PM27
-        run: node --check tests/pm27/defecto-l-context-hotfix.test.mjs
+      - name: Sintaxis regresiones PM27
+        run: |
+          node --check tests/pm27/defecto-l-context-hotfix.test.mjs
+          node --check tests/pm27/release-hotfix-state.test.mjs
 
       - name: Regresion Defecto L y aislamiento
         run: node tests/pm27/defecto-l-context-hotfix.test.mjs
 
+      - name: Estado autorizado main-release posterior a P05b
+        run: node tests/pm27/release-hotfix-state.test.mjs
+
       - name: Preparar dependencias del build canonico PM26
         run: npm ci --prefix source-recovery
 
-      - name: Regresion de contratos PM26 (solo lectura)
+      - name: Regresion de contratos PM26 aplicables
         shell: bash
         run: |
           set -euo pipefail
           for contrato in tests/pm26/*-contract.mjs; do
+            if [[ "$contrato" == "tests/pm26/p05b-contract.mjs" ]]; then
+              echo "==> $contrato [invariante histórico release==main sustituido por test PM27 de fast-forward y alcance exacto]"
+              continue
+            fi
             echo "==> $contrato"
             node "$contrato"
           done
