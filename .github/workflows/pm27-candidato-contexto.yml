@@ -45,6 +45,14 @@ jobs:
       - name: Preparar dependencias del build canonico PM26
         run: npm ci --prefix source-recovery
 
+      - name: Preparar PostgreSQL local aislado para P06b
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo systemctl start postgresql
+          sudo -u postgres pg_isready
+          sudo -u postgres psql -tAc 'select current_user, current_database();'
+
       - name: Regresion de contratos PM26 aplicables
         shell: bash
         run: |
