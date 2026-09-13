@@ -57,8 +57,8 @@ assert.match(c13Sql, /revoke all on function public\.anular_venta_tpv\(text,text
 
 const operationGlobal = fs.readFileSync(operationGlobalPath, 'utf8');
 assert.match(operationGlobal, /operation_id/i, 'el hardening PM09 de operation_id debe seguir versionado');
-const p09fGlobal = fs.readFileSync(p09fGlobalPath, 'utf8');
-assert.match(p09fGlobal, /operation_id/i, 'el ledger global PM26 P09f-B3 debe seguir versionado');
+const p09fGlobal = fs.readFileSync(p09fGlobalPath);
+assert.match(p09fGlobal.toString('utf8'), /operation_id/i, 'el ledger global PM26 P09f-B3 debe seguir versionado');
 console.log('PM27_C13_REG_ALCANCE_MOTOR_MODERNO=PASS');
 
 // --- 2) TPV, stock, anulacion y caja/devoluciones mantenidas. ---
@@ -91,8 +91,10 @@ console.log('PM27_C13_REG_OPERATION_ID=PASS');
 
 // --- 4) Contratos PM26 aplicables. ---
 // Se reproduce exactamente la excepcion historica ya usada por el workflow
-// candidato PM27: P05b/P05c dependian del antiguo invariante release==main y
-// P08c..P08g deben ejecutarse temporalmente sin la migracion posterior P09f-B3.
+// candidato PM27: P05b/P05c dependian del antiguo invariante release==main.
+// P08c..P08g se ejecutan como existian ANTES de P09f-B3 y, por definicion,
+// antes de las dos migraciones C13. Los tres artefactos posteriores se retiran
+// solo del worktree de CI y se restauran byte a byte tras cada prueba.
 const pm26Dir = rel('tests', 'pm26');
 const allPm26 = fs.readdirSync(pm26Dir)
   .filter((name) => name.endsWith('-contract.mjs'))
@@ -112,6 +114,48 @@ const historicalBeforeP09fB3 = new Set([
   'p08g-contract.mjs',
 ]);
 
+const posterioresAlInstanteP08b = [
+  p09fGlobalPath,
+  c13MigrationPath,
+  c13HardeningPath,
+];
+const posterioresOriginales = new Map(
+  posterioresAlInstanteP08b.map((p) => [p, fs.readFileSync(p)])
+);
+const posterioresHashes = new Map(
+  [...posterioresOriginales.entries()].map(([p, data]) => [p, sha256Buffer(data)])
+);
+
+function ejecutarEnInstanteHistoricoP08b(test) {
+  const temporales = new Map();
+  try {
+    for (const p of posterioresAlInstanteP08b) {
+      assert.ok(fs.existsSync(p), `falta artefacto posterior antes de aislar: ${path.relative(ROOT, p)}`);
+      const tempPath = `${p}.pm27-c13-temporal`;
+      assert.ok(!fs.existsSync(tempPath), `archivo temporal inesperado: ${path.relative(ROOT, tempPath)}`);
+      fs.renameSync(p, tempPath);
+      temporales.set(p, tempPath);
+    }
+    runNode(test, { label: 'PM26 alcance historico pre-P09f-B3/C13' });
+  } finally {
+    for (const p of posterioresAlInstanteP08b) {
+      const tempPath = temporales.get(p) || `${p}.pm27-c13-temporal`;
+      if (fs.existsSync(p)) fs.rmSync(p);
+      if (fs.existsSync(tempPath)) fs.renameSync(tempPath, p);
+      else fs.writeFileSync(p, posterioresOriginales.get(p));
+    }
+  }
+
+  for (const p of posterioresAlInstanteP08b) {
+    assert.ok(fs.existsSync(p), `artefacto no restaurado: ${path.relative(ROOT, p)}`);
+    assert.equal(
+      sha256Buffer(fs.readFileSync(p)),
+      posterioresHashes.get(p),
+      `la reproduccion historica altero ${path.relative(ROOT, p)}`
+    );
+  }
+}
+
 for (const name of allPm26) {
   const test = `tests/pm26/${name}`;
 
@@ -120,33 +164,21 @@ for (const name of allPm26) {
     continue;
   }
 
-  if (!historicalBeforeP09fB3.has(name)) {
-    runNode(test, { label: 'PM26' });
+  if (historicalBeforeP09fB3.has(name)) {
+    ejecutarEnInstanteHistoricoP08b(test);
     continue;
   }
 
-  const original = fs.readFileSync(p09fGlobalPath);
-  const originalHash = sha256Buffer(original);
-  const tempPath = `${p09fGlobalPath}.pm27-c13-temporal`;
-  assert.ok(!fs.existsSync(tempPath), `archivo temporal inesperado: ${path.relative(ROOT, tempPath)}`);
-
-  try {
-    fs.renameSync(p09fGlobalPath, tempPath);
-    runNode(test, { label: 'PM26 alcance historico pre-P09f-B3' });
-  } finally {
-    if (fs.existsSync(p09fGlobalPath)) fs.rmSync(p09fGlobalPath);
-    if (fs.existsSync(tempPath)) fs.renameSync(tempPath, p09fGlobalPath);
-    else fs.writeFileSync(p09fGlobalPath, original);
-  }
-
-  const restored = fs.readFileSync(p09fGlobalPath);
-  assert.equal(
-    sha256Buffer(restored),
-    originalHash,
-    `la reproduccion historica altero ${path.relative(ROOT, p09fGlobalPath)}`
-  );
+  runNode(test, { label: 'PM26' });
 }
 
+for (const p of posterioresAlInstanteP08b) {
+  assert.equal(
+    sha256Buffer(fs.readFileSync(p)),
+    posterioresHashes.get(p),
+    `artefacto posterior debe quedar byte-a-byte intacto: ${path.relative(ROOT, p)}`
+  );
+}
 assert.equal(fs.readFileSync(p09fGlobalPath).compare(p09fGlobal), 0, 'P09f-B3 debe quedar byte-a-byte intacta');
 console.log('PM27_C13_REG_PM26=PASS');
 console.log('PM27_C13_PUNTO7_REGRESIONES=PASS');
