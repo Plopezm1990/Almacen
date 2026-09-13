@@ -113,3 +113,23 @@ El hallazgo original cambia de estado:
 Este PASS certifica el **candidato corregido**, no afirma que la remediación haya sido aplicada a Supabase producción o QA. En este punto no se ha escrito en ninguno de esos proyectos, no se ha desplegado Netlify y no se han modificado `main`, `release` ni PR #38.
 
 La aplicación/despliegue de la corrección, si procede, requiere su autorización y secuencia específica fuera de esta reauditoría.
+
+## 9. Cierre C13 y habilitación de C14 — Punto 10
+
+El gate de reauditoría post-remediación terminó en **SUCCESS** y confirmó de nuevo el contrato C13 completo, sus negativos y las regresiones acumuladas. Por tanto, se cumple la condición vinculante del plan: **solo C13 PASS permite continuar a C14**.
+
+C13 queda formalmente **CERRADO / PASS** sobre el candidato corregido `b3d37a4cf2fdc37f66d862948a5894dfbc66b0be`.
+
+A partir de C14, el baseline técnico válido de la continuación PM27 es ese candidato corregido. El candidato original `8256628d922fe0a8dbf18ca792f8b19e89f6d9ad` y la rama `claude/pm27-auditoria-25-casos` se conservan sin reescribir como evidencia histórica del FAIL que originó la remediación.
+
+El siguiente caso habilitado es **C14 — Defecto L: caché/contexto**, cuyo contrato exige comprobar que `empresa_id/local_id` solo se completen cuando el contexto sea inequívoco, que nunca se sobrescriban IDs existentes y que caché corrupta, múltiples locales o local desconocido fallen cerrado/sin inventar contexto.
+
+No se autoriza por este cierre ningún merge, despliegue ni migración remota. `main`, `release`, PR #38, Netlify y Supabase producción/QA siguen fuera de escritura salvo autorización específica posterior.
+
+Marcadores de cierre:
+
+`PM27_C13_PUNTO10=PASS`
+
+`PM27_C13_CERRADO=PASS`
+
+`PM27_C14_HABILITADO=YES`
