@@ -12,6 +12,7 @@ on:
       - tests/pm27/defecto-l-context-hotfix.test.mjs
       - tests/pm27/release-hotfix-state.test.mjs
       - tests/pm27/p08c-post-p09f-compat.test.mjs
+      - tests/pm26/p06b-h-aislado/validar.sh
       - .github/workflows/pm27-c13-security-definer.yml
   workflow_dispatch:
 
