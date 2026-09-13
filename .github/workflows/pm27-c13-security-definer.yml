@@ -73,6 +73,13 @@ jobs:
           sudo -u postgres pg_isready
           sudo -u postgres psql -tAc 'select current_user, current_database();'
           supabase --version
+          # El contrato C13 ejecuta psql como el usuario local postgres y lee
+          # las migraciones desde el checkout. En Actions, $HOME puede impedir
+          # por defecto atravesar /home/runner aunque los SQL sean 0644.
+          sudo chmod o+x "$HOME" "$(dirname "$(dirname "$GITHUB_WORKSPACE")")" "$(dirname "$GITHUB_WORKSPACE")" "$GITHUB_WORKSPACE"
+          sudo -u postgres test -r "$GITHUB_WORKSPACE/supabase/migrations/20260913190500_pm27_c13_security_definer_tenant_guard.sql"
+          sudo -u postgres test -r "$GITHUB_WORKSPACE/supabase/migrations/20260913193500_pm27_c13_private_helper_hardening.sql"
+          echo "PM27_C13_POSTGRES_PUEDE_LEER_MIGRACIONES=PASS"
 
       - name: Contrato SECURITY DEFINER C13
         run: node tests/pm27/c13-security-definer-contract.mjs
