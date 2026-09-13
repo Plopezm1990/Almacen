@@ -1,0 +1,69 @@
+name: PM27 C14 - Defecto L cache contexto
+
+on:
+  push:
+    branches:
+      - claude/pm27-c14-defecto-l-cache-contexto
+    paths:
+      - tests/pm27/PM27_C14_DEFECTO_L_CACHE_CONTEXTO.md
+      - .github/workflows/pm27-c14-defecto-l-cache-contexto.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pm27-c14-cache-contexto-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  c14-cache-contexto:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout trazable
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verificar baseline y alcance C14
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='b3d37a4cf2fdc37f66d862948a5894dfbc66b0be'
+          git merge-base --is-ancestor "$BASE" HEAD
+          mapfile -t files < <(git diff --name-only "$BASE"...HEAD)
+          printf '%s\n' "${files[@]}"
+          for f in "${files[@]}"; do
+            case "$f" in
+              tests/pm27/PM27_C14_DEFECTO_L_CACHE_CONTEXTO.md|.github/workflows/pm27-c14-defecto-l-cache-contexto.yml) ;;
+              *) echo "Archivo fuera de alcance C14: $f" >&2; exit 1 ;;
+            esac
+          done
+
+      - name: Sintaxis loader y prueba
+        run: |
+          node --check pm11-compra-mobile-loader.js
+          node --check tests/pm27/defecto-l-context-hotfix.test.mjs
+
+      - name: Ejecutar contrato Defecto L cache contexto
+        run: node tests/pm27/defecto-l-context-hotfix.test.mjs
+
+      - name: Confirmar evidencia final cuando corresponda
+        shell: bash
+        run: |
+          set -euo pipefail
+          doc='tests/pm27/PM27_C14_DEFECTO_L_CACHE_CONTEXTO.md'
+          if grep -q 'PM27_C14_RESULTADO=PASS' "$doc"; then
+            grep -q 'C14 queda formalmente \*\*CERRADO / PASS\*\*' "$doc"
+          else
+            grep -q 'PM27_C14_RESULTADO=PENDIENTE' "$doc"
+          fi
+
+      - name: Arbol limpio
+        run: git diff --exit-code
