@@ -1,0 +1,95 @@
+name: PM27 C13 - SECURITY DEFINER gate
+
+on:
+  push:
+    branches:
+      - claude/pm27-c13-remediacion-security-definer
+    paths:
+      - supabase/migrations/20260913190500_pm27_c13_security_definer_tenant_guard.sql
+      - supabase/migrations/20260913193500_pm27_c13_private_helper_hardening.sql
+      - tests/pm27/c13-security-definer-contract.mjs
+      - tests/pm27/c13-regression-suite.mjs
+      - tests/pm27/defecto-l-context-hotfix.test.mjs
+      - tests/pm27/release-hotfix-state.test.mjs
+      - tests/pm27/p08c-post-p09f-compat.test.mjs
+      - .github/workflows/pm27-c13-security-definer.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pm27-c13-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  c13-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout exacto
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Supabase CLI estable para contratos PM26
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: 2.117.0
+
+      - name: Verificar SHA y refs protegidas
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "claude/pm27-c13-remediacion-security-definer"
+          test "$GITHUB_SHA" = "$(git rev-parse HEAD)"
+          git fetch origin main release --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          test "$(git rev-parse origin/release)" = "a97740987be57aa9646f6a06e69b2230f140ec5f"
+          echo "PM27_C13_GATE_SHA=$GITHUB_SHA"
+          echo "PM27_C13_REFS_PROTEGIDAS=PASS"
+
+      - name: Sintaxis de contratos C13
+        run: |
+          node --check tests/pm27/c13-security-definer-contract.mjs
+          node --check tests/pm27/c13-regression-suite.mjs
+          node --check tests/pm27/defecto-l-context-hotfix.test.mjs
+          node --check tests/pm27/release-hotfix-state.test.mjs
+          node --check tests/pm27/p08c-post-p09f-compat.test.mjs
+
+      - name: Dependencias build canonico PM26
+        run: npm ci --prefix source-recovery
+
+      - name: PostgreSQL local aislado
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo systemctl start postgresql
+          sudo -u postgres pg_isready
+          sudo -u postgres psql -tAc 'select current_user, current_database();'
+          supabase --version
+
+      - name: Contrato SECURITY DEFINER C13
+        run: node tests/pm27/c13-security-definer-contract.mjs
+
+      - name: Regresion contexto Defecto L
+        run: node tests/pm27/defecto-l-context-hotfix.test.mjs
+
+      - name: Estado main release controlado
+        run: node tests/pm27/release-hotfix-state.test.mjs
+
+      - name: Regresiones acumuladas C13
+        run: node tests/pm27/c13-regression-suite.mjs
+
+      - name: Arbol limpio despues del gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code
+          test -z "$(git status --porcelain --untracked-files=no)"
+          echo "PM27_C13_GATE_REMOTO=PASS"
