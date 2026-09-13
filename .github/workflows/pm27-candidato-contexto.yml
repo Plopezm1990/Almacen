@@ -8,6 +8,7 @@ on:
       - pm11-compra-mobile-loader.js
       - tests/pm27/defecto-l-context-hotfix.test.mjs
       - tests/pm27/release-hotfix-state.test.mjs
+      - tests/pm27/p08c-post-p09f-compat.test.mjs
       - .github/workflows/pm27-candidato-contexto.yml
   workflow_dispatch:
 
@@ -43,12 +44,16 @@ jobs:
         run: |
           node --check tests/pm27/defecto-l-context-hotfix.test.mjs
           node --check tests/pm27/release-hotfix-state.test.mjs
+          node --check tests/pm27/p08c-post-p09f-compat.test.mjs
 
       - name: Regresion Defecto L y aislamiento
         run: node tests/pm27/defecto-l-context-hotfix.test.mjs
 
       - name: Estado autorizado main-release posterior a P05
         run: node tests/pm27/release-hotfix-state.test.mjs
+
+      - name: Compatibilidad historica P08c con P09f-B3
+        run: node tests/pm27/p08c-post-p09f-compat.test.mjs
 
       - name: Preparar dependencias del build canonico PM26
         run: npm ci --prefix source-recovery
@@ -69,6 +74,24 @@ jobs:
             case "$contrato" in
               tests/pm26/p05b-contract.mjs|tests/pm26/p05c-contract.mjs)
                 echo "==> $contrato [invariante histórico release==main sustituido por test PM27 de fast-forward y alcance exacto]"
+                continue
+                ;;
+              tests/pm26/p08c-contract.mjs)
+                echo "==> $contrato [reproducido en alcance histórico; P09f-B3 validado aparte por PM27]"
+                migracion='supabase/migrations/20260912120000_pm26_p09f_b3_pagos_encargo_operation_id_global.sql'
+                backup="$(mktemp)"
+                cp "$migracion" "$backup"
+                rm "$migracion"
+                set +e
+                node "$contrato"
+                status=$?
+                set -e
+                cp "$backup" "$migracion"
+                rm -f "$backup"
+                if [[ $status -ne 0 ]]; then
+                  exit "$status"
+                fi
+                git diff --exit-code -- "$migracion"
                 continue
                 ;;
             esac
