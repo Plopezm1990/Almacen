@@ -19,3 +19,5 @@ Reglas:
 - PR/Preview exclusivamente no productivo.
 
 Baseline funcional post-hotfix: `b3d37a4cf2fdc37f66d862948a5894dfbc66b0be`.
+
+Ejecución realizada mediante PR temporal #39 y Deploy Preview `6aa7141d6347760008c7bd12`. El cierre de C16 conserva esta autorización como evidencia y exige cerrar el PR temporal sin merge después del gate final.

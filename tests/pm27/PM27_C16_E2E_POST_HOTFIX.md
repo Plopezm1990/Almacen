@@ -6,119 +6,106 @@ Rama de auditoría: `claude/pm27-c16-e2e-post-hotfix`
 
 ## 1. Contrato del caso
 
-C16 no puede cerrarse mediante una simulación estática ni por repetir C14/C15. El criterio histórico vinculante exige **una operación real de prefiltro realizada desde la UI post-hotfix** y prohíbe afirmar que se probó si no existe evidencia de esa operación.
+C16 exige una operación real de prefiltro realizada desde la UI post-hotfix. Las pruebas estáticas de C14 y la validación RLS de C15 son necesarias pero no sustituyen el recorrido UI real -> petición real -> backend real -> persistencia observable.
 
-La evidencia mínima para un PASS futuro debe identificar de forma trazable:
+## 2. Estado histórico: bloqueo correcto
 
-- SHA/versión exacta servida por la UI;
-- entorno utilizado;
-- identidad QA/autenticada autorizada;
-- empresa/local efectivos;
-- acción real de creación de prefiltro desde la UI;
-- respuesta del backend/RLS;
-- fila creada y posteriormente limpiada si el entorno es QA;
-- ausencia de escritura en producción cuando la prueba sea no productiva.
+Antes de recibir autorización específica no existía simultáneamente una UI post-hotfix exacta, un backend QA, una sesión QA utilizable y permiso para crear el Deploy Preview. Por eso C16 se clasificó correctamente como:
 
-## 2. Estado vivo verificado antes de probar
+`BLOCKED_EXTERNAL / PENDIENTE_CONFIRMACION`
 
-### Producción Netlify
+Ese estado histórico se conserva y no se reescribe como si el E2E se hubiera ejecutado antes.
 
-El despliegue productivo actual del sitio `chic-entremet-9107cf` está `ready` y sirve la rama `release` en el commit:
+## 3. Desbloqueo autorizado
 
-`a97740987be57aa9646f6a06e69b2230f140ec5f`
+El usuario autorizó explícitamente:
 
-Ese commit corresponde al hotfix PM26 de contexto de prefiltros.
+- crear un Deploy Preview exclusivo de C16;
+- conectarlo exclusivamente a Supabase QA mediante el mecanismo versionado `reset-pruebas-preview.js`;
+- ejecutar un único prefiltro sintético desde la UI real;
+- verificar la persistencia en QA y limpiar después;
+- comprobar cero escrituras en producción.
 
-### Producción Supabase
+No se autorizó modificar `main`, `release`, producción ni PR #38.
 
-Lectura únicamente:
+## 4. UI exacta servida
 
-- `public.prefiltros_candidatos`: 0 filas;
-- último `creado_en`: `NULL`.
+Se creó el PR temporal #39 en estado draft/NO MERGE y el Deploy Preview exclusivo de C16.
 
-Por tanto, ejecutar el E2E real sobre producción implicaría crear datos reales. Las reglas vinculantes de Proyecto A prohíben esa escritura sin autorización específica para producción.
+- Deploy Netlify: `6aa7141d6347760008c7bd12`
+- Contexto: `deploy-preview`
+- Preview: `deploy-preview-39--chic-entremet-9107cf.netlify.app`
+- Commit servido: `43b62653fa56f209664ee2002d7c6114446dae05`
+- Árbol servido: `617d3a919f97bf710cd4d51c72ae08252e5ff5cb`
+- Baseline corregido: `b3d37a4cf2fdc37f66d862948a5894dfbc66b0be`
+- Árbol del baseline: `617d3a919f97bf710cd4d51c72ae08252e5ff5cb`
 
-### QA Supabase
+Los commits temporales del preview son commits vacíos: el árbol servido es byte a byte el mismo árbol del candidato corregido.
 
-Lectura únicamente:
+## 5. E2E real ejecutado desde la interfaz
 
-- `public.prefiltros_candidatos`: 0 filas;
-- último `creado_en`: `NULL`.
+La evidencia visual aportada durante la ejecución muestra la aplicación abierta en el dominio `deploy-preview-39`, dentro de Personal -> Selección de personal -> Prefiltro por WhatsApp, y el resultado real:
 
-QA sería el destino correcto para una prueba destructible/limpiable, pero hace falta una UI post-hotfix que apunte a QA.
+- candidato sintético: `PRUEBA PM26`;
+- UI: `Enlace listo para PRUEBA PM26`;
+- estado mostrado: `Pendiente de respuesta`;
+- token sintético generado: `66c35a4b0bcae4679d63610d05c3792cf23064752a8b57c7f9da620e6e9f7109`.
 
-### Deploy Preview disponible
+No se sustituyó esta operación por `curl`, SQL manual de alta, integración simulada ni PostgreSQL local.
 
-PR #38 sigue abierto/draft/no-merge y su HEAD es:
+## 6. Persistencia verificada en Supabase QA
 
-`f297be08708d0bbe566c21347123885cb3095a7c`
+Antes de la operación:
 
-Ese PR pertenece a PM26 P07c y no es el candidato post-hotfix corregido `b3d37a4c...`. Por tanto, no puede utilizarse como evidencia válida de C16 post-hotfix.
+- QA `public.prefiltros_candidatos`: 0 filas;
+- producción `public.prefiltros_candidatos`: 0 filas.
 
-Crear un nuevo PR/Deploy Preview del candidato o cambiar Netlify para generar una UI QA post-hotfix sería una acción adicional de despliegue/configuración no autorizada en este caso.
+Después de la creación desde la UI, la lectura directa en QA devolvió exactamente una fila correspondiente a la operación:
 
-## 3. Por qué no se sustituye por pruebas locales
+- `token`: `66c35a4b0bcae4679d63610d05c3792cf23064752a8b57c7f9da620e6e9f7109`;
+- `creado_en`: `2026-09-13 21:29:48.645938+00`;
+- `candidato_nombre`: `PRUEBA PM26`;
+- `estado`: `pendiente`;
+- `empresa_id`: `QA-EMP-A`;
+- `local_id`: `QA-A1`.
 
-C14 ya demostró el comportamiento de caché/contexto del cliente y C15 ya demostró la autoridad RLS real con lectura viva + reproducción aislada. Repetir esas pruebas no demuestra el requisito adicional de C16: **UI real -> petición real -> backend real -> persistencia observable**.
+La comprobación de membresía QA encontró exactamente 1 membresía activa compatible para `QA-EMP-A` / `QA-A1` (incluyendo semántica `todos_locales`). C15 ya había certificado que la RLS real es la autoridad final para empresa/local y los negativos de tenant ajeno; C16 no inventa un segundo sistema de autorización.
 
-También se descarta declarar PASS basándose únicamente en:
+En producción, inmediatamente después del E2E, `public.prefiltros_candidatos` seguía en 0 filas.
 
-- unit/integration tests del wrapper `fetch`;
-- `curl` directo al REST;
-- inserciones SQL manuales;
-- reproducción PostgreSQL local;
-- inspección del bundle o del despliegue.
+## 7. Limpieza reversible
 
-Cualquiera de esas vías omite la operación real desde la interfaz.
+Se eliminó únicamente la fila sintética identificada simultáneamente por token y nombre `PRUEBA PM26`. El `DELETE ... RETURNING` devolvió esa fila con `empresa_id=QA-EMP-A` y `local_id=QA-A1`.
 
-## 4. Bloqueo actual
+Estado final comprobado:
 
-No existe en este momento un camino que cumpla simultáneamente:
+- QA `public.prefiltros_candidatos`: 0 filas;
+- producción `public.prefiltros_candidatos`: 0 filas.
 
-1. UI post-hotfix exacta;
-2. backend QA;
-3. sesión autenticada QA utilizable desde la UI;
-4. cero escrituras en producción;
-5. cero cambios de Netlify/PR sin autorización específica.
+No quedó efecto residual del ensayo y no hubo ninguna escritura en Supabase producción.
 
-Por tanto, C16 no es PASS ni FAIL funcional. Su estado correcto es:
+## 8. Resultado C16
 
-**BLOCKED_EXTERNAL / PENDIENTE_CONFIRMACION**
+La condición que mantenía C16 bloqueado quedó resuelta con evidencia real y reversible.
 
-No se ha creado ningún prefiltro, no se ha modificado QA/producción, no se ha cambiado Netlify y no se ha tocado `main`, `release` ni PR #38.
+`PM27_C16_E2E_REAL=EJECUTADO`
 
-## 5. Desbloqueo requerido
+`PM27_C16_PREVIEW_DEPLOY=6aa7141d6347760008c7bd12`
 
-Para reabrir y cerrar C16 en PASS se necesita una de estas dos vías autorizadas:
+`PM27_C16_PREVIEW_SHA=43b62653fa56f209664ee2002d7c6114446dae05`
 
-- **Preferida:** Deploy Preview/entorno QA que sirva el candidato post-hotfix exacto y esté conectado exclusivamente a Supabase QA, con acceso autenticado disponible para ejecutar y limpiar un prefiltro sintético.
-- **Alternativa de mayor riesgo:** autorización específica para realizar una única operación sintética de prefiltro desde la UI productiva y posterior limpieza trazable en producción. Esta vía no se ejecutará por defecto.
+`PM27_C16_PREVIEW_TREE=617d3a919f97bf710cd4d51c72ae08252e5ff5cb`
 
-## 6. Gate de evidencia del bloqueo
+`PM27_C16_QA_FILA_CREADA=1`
 
-El workflow `PM27 C16 - E2E post-hotfix bloqueado` se ejecutó sobre el commit `61880f9655d028b55650e33013a468a8db0c2643` y el run `34782408871` terminó en **SUCCESS**.
+`PM27_C16_QA_MEMBRESIA_COMPATIBLE=1`
 
-Ese SUCCESS **no certifica el E2E funcional**. Solo certifica de forma trazable que:
-
-- el branch parte del baseline corregido;
-- el delta de C16 contiene únicamente esta evidencia y su workflow;
-- la clasificación conserva `BLOCKED_EXTERNAL` y no se transforma indebidamente en PASS;
-- el árbol queda limpio.
-
-Este commit final vuelve a disparar el mismo gate para exigir la misma clasificación sobre el SHA final.
-
-## 7. Resultado
-
-`PM27_C16_E2E_REAL=NO_EJECUTADO`
-
-`PM27_C16_EVIDENCIA_BLOQUEO=PASS`
-
-`PM27_C16_RESULTADO=BLOCKED_EXTERNAL`
-
-`PM27_C16_ESTADO_HISTORICO=PENDIENTE_CONFIRMACION`
+`PM27_C16_QA_FILA_FINAL=0`
 
 `PM27_C16_PRODUCCION_ESCRITURAS=0`
 
-`PM27_C16_QA_ESCRITURAS=0`
+`PM27_C16_ESTADO_HISTORICO=PENDIENTE_CONFIRMACION`
 
-Este bloqueo no debe convertirse en PASS hasta obtener la evidencia E2E real descrita arriba. Puede continuarse la auditoría con C17 sin reinterpretar ni cerrar este bloqueo; el cierre global de PM27 deberá conservar C16 como pendiente hasta resolverlo o aceptar explícitamente el riesgo/bloqueo.
+`PM27_C16_RESULTADO=PASS`
+
+C16 puede cerrarse únicamente si el gate remoto de esta evidencia termina en SUCCESS sobre el SHA exacto final de la rama.
