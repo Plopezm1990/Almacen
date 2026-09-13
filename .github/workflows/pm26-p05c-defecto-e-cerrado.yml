@@ -1,0 +1,58 @@
+name: PM26 P05c defecto E cerrado produccion publica desde release
+
+# Certifica el cierre documental del defecto E: la usuaria cambio
+# manualmente en el panel de Netlify la Production branch de main a
+# release; esta sesion solo verifico en solo lectura despues. No aplica
+# ningun cambio de configuracion de Netlify, Supabase, main, release,
+# produccion ni TPV.
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'tests/pm26/P05C_DEFECTO_E_CERRADO.md'
+      - 'tests/pm26/p05c-contract.mjs'
+      - '.github/workflows/pm26-p05c-defecto-e-cerrado.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger lo que P05c no debe tocar
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          # Comparado contra el cierre previo de la rama (PM26 P07c,
+          # 41bf2e1), no contra origin/main.
+          cierre_previo='41bf2e1d123783895e87e256388a04f3fffa22aa'
+          git cat-file -e "$cierre_previo^{commit}"
+          cambiados="$(git diff --name-only "$cierre_previo"..HEAD)"
+          esperados="$(printf '%s\n' \
+            '.github/workflows/pm26-p05c-defecto-e-cerrado.yml' \
+            'tests/pm26/P05C_DEFECTO_E_CERRADO.md' \
+            'tests/pm26/p05c-contract.mjs' | sort)"
+          test "$(echo "$cambiados" | sort)" = "$esperados"
+          test -z "$(git diff --name-only "$cierre_previo"..HEAD -- supabase)"
+          echo 'PM26_P05C_ALCANCE_ACOTADO=PASS'
+      - name: Contrato PM26 P05c (cierre documental del defecto E, sin secretos)
+        run: node tests/pm26/p05c-contract.mjs
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM26 P05c -- defecto E cerrado, nada aplicado por esta sesion
+        run: |
+          set -euo pipefail
+          node tests/pm26/p05c-contract.mjs
+          echo 'PM26_P05C_GATE=PASS'

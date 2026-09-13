@@ -84,11 +84,23 @@ assert.ok(mobileP10Pos >= 0, 'parche móvil P10 enlazado en index.html');
 assert.ok(dashboardPos > mobileP10Pos, 'parche móvil P10 carga antes del dashboard');
 assert.equal(indexHtml.split(mobileP10Tag).length - 1, 1, 'parche móvil P10 se carga una sola vez');
 
+// PM26 P04b: el loader del layout móvil PM11 se separó de
+// reset-pruebas-preview.js (exclusivo de Deploy Preview) a
+// pm11-compra-mobile-loader.js (universal, sin guard de host) -- así
+// producción deja de descargar la lógica QA-only solo para ejecutar este
+// bloque. Se comprueba la misma garantía de siempre (el layout móvil se
+// carga en todos los entornos, no solo en preview), ahora contra el
+// archivo nuevo.
+const mobileLoader = fs.readFileSync('pm11-compra-mobile-loader.js', 'utf8');
+assert.match(mobileLoader, /pm11-compra-mobile-layout-v1\.js\?v=pm11-p10-mobile-v1/, 'loader móvil PM11 enlazado');
+assert.ok(!mobileLoader.includes('HOST_PREVIEW'), 'el loader móvil universal no debe depender del guard de Deploy Preview');
+
+const indexHtmlLoaderTag = '<script src="./pm11-compra-mobile-loader.js"></script>';
+assert.ok(indexHtml.includes(indexHtmlLoaderTag), 'loader móvil universal enlazado sin condición en index.html');
+assert.equal(indexHtml.split(indexHtmlLoaderTag).length - 1, 1, 'loader móvil universal se carga una sola vez');
+
 const previewLoader = fs.readFileSync('reset-pruebas-preview.js', 'utf8');
-const loaderPos = previewLoader.indexOf('./pm11-compra-mobile-layout-v1.js?v=pm11-p10-mobile-v1');
-const previewGuardPos = previewLoader.indexOf('if (typeof window === "undefined" || !HOST_PREVIEW.test(window.location.hostname)) return;');
-assert.ok(loaderPos >= 0, 'loader móvil PM11 enlazado');
-assert.ok(previewGuardPos > loaderPos, 'layout móvil se carga antes del guard QA y no queda limitado al preview');
+assert.ok(!previewLoader.includes('pm11-compra-mobile-layout-v1.js'), 'el loader móvil ya no debe vivir dentro de reset-pruebas-preview.js (separado en PM26 P04b)');
 
 const contratos = fs.readdirSync('tests/pm11-compra');
 for (let p = 2; p <= 9; p += 1) {

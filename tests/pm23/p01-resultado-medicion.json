@@ -1,0 +1,468 @@
+{
+  "metadatos": {
+    "fecha": "2026-09-09T06:22:04.190Z",
+    "entorno": "QA (proyecto de pruebas, nunca producción)",
+    "cliente": "Node.js fetch (undici) desde el sandbox de esta sesión de desarrollo -- NO representativo de un cliente móvil/navegador real en red de usuario final",
+    "autenticacion": "anon key + sesión real (owner.a, Propietario QA-EMP-A) -- nunca service_role",
+    "nivelesConcurrencia": [
+      2,
+      5,
+      10,
+      20
+    ],
+    "tamañoSecuencial": 200
+  },
+  "pago": {
+    "operacion": "registrar_pago_factura (importe fijo 1 EUR por pago, factura compartida QA-PM23-FACTURA-PAGOS)",
+    "frio": {
+      "ms": 181.79,
+      "ok": true
+    },
+    "niveles": [
+      {
+        "nombre": "concurrente-2",
+        "tamañoMuestra": 2,
+        "n": 2,
+        "p50": 199.38,
+        "p95": 200.08,
+        "p99": 200.08,
+        "max": 200.08,
+        "errores": 0,
+        "detalleErrores": []
+      },
+      {
+        "nombre": "concurrente-5",
+        "tamañoMuestra": 5,
+        "n": 5,
+        "p50": 216.56,
+        "p95": 238.61,
+        "p99": 238.61,
+        "max": 238.61,
+        "errores": 0,
+        "detalleErrores": []
+      },
+      {
+        "nombre": "concurrente-10",
+        "tamañoMuestra": 10,
+        "n": 10,
+        "p50": 173.27,
+        "p95": 284.49,
+        "p99": 284.49,
+        "max": 284.49,
+        "errores": 0,
+        "detalleErrores": []
+      },
+      {
+        "nombre": "concurrente-20",
+        "tamañoMuestra": 20,
+        "n": 20,
+        "p50": 212.56,
+        "p95": 400.99,
+        "p99": 408.89,
+        "max": 408.89,
+        "errores": 0,
+        "detalleErrores": []
+      }
+    ],
+    "secuencial": {
+      "nombre": "secuencial-200",
+      "tamañoMuestra": 200,
+      "n": 200,
+      "p50": 132.88,
+      "p95": 147.97,
+      "p99": 287.32,
+      "max": 575.78,
+      "errores": 0,
+      "detalleErrores": []
+    },
+    "integridad": {
+      "filasAntes": 243,
+      "filasDespues": 481,
+      "filasEsperadas": 481,
+      "sinDuplicados": true,
+      "coincide": true
+    }
+  },
+  "ajuste": {
+    "operacion": "pm12_confirmar_ajuste_stock -- SUSTITUTO de \"recepción\": no existe una RPC dedicada a recepción de compra en el backend (ver hallazgo en el documento de cierre)",
+    "frio": {
+      "ms": 154.1,
+      "ok": true
+    },
+    "niveles": [
+      {
+        "nombre": "concurrente-2",
+        "tamañoMuestra": 2,
+        "n": 2,
+        "p50": 152.31,
+        "p95": 162.88,
+        "p99": 162.88,
+        "max": 162.88,
+        "errores": 0,
+        "detalleErrores": []
+      },
+      {
+        "nombre": "concurrente-5",
+        "tamañoMuestra": 5,
+        "n": 5,
+        "p50": 143.02,
+        "p95": 166.4,
+        "p99": 166.4,
+        "max": 166.4,
+        "errores": 0,
+        "detalleErrores": []
+      },
+      {
+        "nombre": "concurrente-10",
+        "tamañoMuestra": 10,
+        "n": 10,
+        "p50": 194.74,
+        "p95": 224.08,
+        "p99": 224.08,
+        "max": 224.08,
+        "errores": 0,
+        "detalleErrores": []
+      },
+      {
+        "nombre": "concurrente-20",
+        "tamañoMuestra": 20,
+        "n": 20,
+        "p50": 155.94,
+        "p95": 192.47,
+        "p99": 379.97,
+        "max": 379.97,
+        "errores": 0,
+        "detalleErrores": []
+      }
+    ],
+    "secuencial": {
+      "nombre": "secuencial-200",
+      "tamañoMuestra": 200,
+      "n": 200,
+      "p50": 143.52,
+      "p95": 153.24,
+      "p99": 163.92,
+      "max": 185.58,
+      "errores": 0,
+      "detalleErrores": []
+    }
+  },
+  "devolucion": {
+    "operacion": "registrar_devolucion_venta_pm09 (venta previa de 1 unidad creada en el setup, sin reembolso monetario para no depender de arqueo de caja)",
+    "frio": {
+      "ms": 170.52,
+      "ok": true
+    },
+    "niveles": [
+      {
+        "nombre": "concurrente-2",
+        "tamañoMuestra": 2,
+        "n": 2,
+        "p50": 161.57,
+        "p95": 167.41,
+        "p99": 167.41,
+        "max": 167.41,
+        "errores": 0,
+        "detalleErrores": []
+      },
+      {
+        "nombre": "concurrente-5",
+        "tamañoMuestra": 5,
+        "n": 5,
+        "p50": 213.02,
+        "p95": 234.75,
+        "p99": 234.75,
+        "max": 234.75,
+        "errores": 0,
+        "detalleErrores": []
+      },
+      {
+        "nombre": "concurrente-10",
+        "tamañoMuestra": 10,
+        "n": 10,
+        "p50": 196.44,
+        "p95": 229.03,
+        "p99": 229.03,
+        "max": 229.03,
+        "errores": 0,
+        "detalleErrores": []
+      },
+      {
+        "nombre": "concurrente-20",
+        "tamañoMuestra": 20,
+        "n": 20,
+        "p50": 215.2,
+        "p95": 466.04,
+        "p99": 498.06,
+        "max": 498.06,
+        "errores": 0,
+        "detalleErrores": []
+      }
+    ],
+    "secuencial": {
+      "nombre": "secuencial-200",
+      "tamañoMuestra": 200,
+      "n": 200,
+      "p50": 143.06,
+      "p95": 200.16,
+      "p99": 275.13,
+      "max": 291.32,
+      "errores": 0,
+      "detalleErrores": []
+    }
+  },
+  "timeoutRecuperacion": {
+    "timeoutMsUsado": 66,
+    "basadoEn": "p50 secuencial de pago / 2",
+    "intentos": [
+      {
+        "id": "pm23-timeout-pago-1788935079510-953-mz8njd",
+        "abortadoPorCliente": true,
+        "msHastaAborto": 68.62,
+        "reintento": {
+          "ok": true,
+          "replayed": true,
+          "status": 200
+        },
+        "filasFinalesConEsteId": 1
+      },
+      {
+        "id": "pm23-timeout-pago-1788935081457-954-kehncq",
+        "abortadoPorCliente": true,
+        "msHastaAborto": 66.68,
+        "reintento": {
+          "ok": true,
+          "replayed": true,
+          "status": 200
+        },
+        "filasFinalesConEsteId": 1
+      },
+      {
+        "id": "pm23-timeout-pago-1788935083364-955-77242o",
+        "abortadoPorCliente": true,
+        "msHastaAborto": 66.52,
+        "reintento": {
+          "ok": true,
+          "replayed": true,
+          "status": 200
+        },
+        "filasFinalesConEsteId": 1
+      },
+      {
+        "id": "pm23-timeout-pago-1788935085347-956-ut01yb",
+        "abortadoPorCliente": true,
+        "msHastaAborto": 66.84,
+        "reintento": {
+          "ok": true,
+          "replayed": true,
+          "status": 200
+        },
+        "filasFinalesConEsteId": 1
+      },
+      {
+        "id": "pm23-timeout-pago-1788935087304-957-pyumyl",
+        "abortadoPorCliente": true,
+        "msHastaAborto": 66.87,
+        "reintento": {
+          "ok": true,
+          "replayed": true,
+          "status": 200
+        },
+        "filasFinalesConEsteId": 1
+      }
+    ],
+    "efectoUnicoEnTodos": true
+  },
+  "integridad": {
+    "pagos": {
+      "filas": 486,
+      "idsUnicos": true
+    },
+    "stockAjuste": {
+      "QA-PM23-AJUSTE-01": {
+        "almacen": 998,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-02": {
+        "almacen": 998,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-03": {
+        "almacen": 998,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-04": {
+        "almacen": 998,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-05": {
+        "almacen": 998,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-06": {
+        "almacen": 998,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-07": {
+        "almacen": 998,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-08": {
+        "almacen": 998,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-09": {
+        "almacen": 998,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-10": {
+        "almacen": 998,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-11": {
+        "almacen": 998,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-12": {
+        "almacen": 998,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-13": {
+        "almacen": 998,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-14": {
+        "almacen": 998,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-15": {
+        "almacen": 998,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-16": {
+        "almacen": 998,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-17": {
+        "almacen": 998,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-18": {
+        "almacen": 998,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-19": {
+        "almacen": 998,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-20": {
+        "almacen": 998,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-21": {
+        "almacen": 999,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-22": {
+        "almacen": 999,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-23": {
+        "almacen": 999,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-24": {
+        "almacen": 999,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-25": {
+        "almacen": 999,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-26": {
+        "almacen": 999,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-27": {
+        "almacen": 999,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-28": {
+        "almacen": 999,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-29": {
+        "almacen": 999,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-30": {
+        "almacen": 999,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-31": {
+        "almacen": 999,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-32": {
+        "almacen": 999,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-33": {
+        "almacen": 999,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-34": {
+        "almacen": 999,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-35": {
+        "almacen": 999,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-36": {
+        "almacen": 999,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-37": {
+        "almacen": 999,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-38": {
+        "almacen": 999,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-39": {
+        "almacen": 1000,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-40": {
+        "almacen": 1000,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-41": {
+        "almacen": 1000,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-42": {
+        "almacen": 1000,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-43": {
+        "almacen": 1000,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-44": {
+        "almacen": 1000,
+        "piso": 0
+      },
+      "QA-PM23-AJUSTE-45": {
+        "almacen": 1000,
+        "piso": 0
+      }
+    },
+    "stockVentaProducto": {
+      "almacen": 999980,
+      "piso": 20
+    }
+  }
+}

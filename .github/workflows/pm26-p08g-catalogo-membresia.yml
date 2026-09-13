@@ -1,0 +1,135 @@
+name: PM26 P08g catalogo backend y plantilla de bootstrap de membresia
+
+# Prepara la precondicion que P08e dejo documentada como bloqueada: un
+# catalogo backend real de empresas/locales contra el que validar
+# empresa_id y local_id, mas una plantilla de bootstrap para la
+# membresia real. RLS activada, cero politicas, y revoke explicito de
+# todo privilegio a authenticated/anon/public en las dos tablas del
+# catalogo: la unica via de escritura o lectura es una conexion
+# administrativa. La plantilla no contiene ningun identificador real,
+# solo marcadores <<...>> que el propio usuario rellena y ejecuta el
+# mismo, fuera de esta sesion.
+#
+# No aplica el catalogo ni la plantilla en ningun entorno real, no crea
+# ninguna membresia, no escribe en Supabase (produccion, QA ni TPV), no
+# despliega en Netlify y no toca main ni release. Todo corre contra una
+# base temporal local que el propio script crea y destruye.
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'tests/pm26/P08G_CATALOGO_Y_BOOTSTRAP_MEMBRESIA.md'
+      - 'tests/pm26/p08g-contract.mjs'
+      - 'tests/pm26/p08g-catalogo-membresia/**'
+      - '.github/workflows/pm26-p08g-catalogo-membresia.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Proteger lo que P08g no debe tocar
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          # P08g solo anade un catalogo y una plantilla, ambos fuera de
+          # supabase/migrations: no toca el cliente ni la migracion o el
+          # preflight ya cerrados de P08. Se compara contra el cierre
+          # previo de la rama (PM26 P08f), nunca contra el HEAD vivo ni
+          # contra origin/main.
+          cierre_previo='a8032bc9b53efe70fa0d4ecec47888cb3f13765c'
+          git cat-file -e "$cierre_previo^{commit}"
+          git merge-base --is-ancestor "$cierre_previo" HEAD
+          intocables="fuente.js source-recovery index.html reset-pruebas-preview.js _headers supabase tests/pm26/p08-defecto-l-produccion/migracion-propuesta.sql tests/pm26/p08-defecto-l-produccion/preflight-independiente.sql"
+          cambiados="$(git diff --name-only "$cierre_previo"..HEAD -- $intocables)"
+          if [ -n "$cambiados" ]; then
+            echo "PM26 P08g no debe tocar: $cambiados" >&2
+            exit 1
+          fi
+          if ls supabase/migrations | grep -qi prefiltro; then
+            echo 'PM26 P08g: la migracion del Defecto L no debe estar en supabase/migrations' >&2
+            exit 1
+          fi
+          # Solo los archivos NUEVOS desde el cierre previo -- el
+          # directorio ya contiene migraciones legitimas y anteriores
+          # (PM07, G1) cuyo nombre menciona "local" sin relacion alguna
+          # con el catalogo de este paquete.
+          nuevas_migraciones="$(git diff --name-only --diff-filter=A "$cierre_previo"..HEAD -- supabase/migrations)"
+          if echo "$nuevas_migraciones" | grep -qiE 'empresa|local'; then
+            echo "PM26 P08g: el catalogo de empresas/locales no debe estar en supabase/migrations -- $nuevas_migraciones" >&2
+            exit 1
+          fi
+          echo 'PM26_P08G_ALCANCE_ACOTADO=PASS'
+
+      - name: Instalar PostgreSQL local (aislado)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sleep 2
+          sudo -u postgres pg_isready
+
+      - name: Validar el catalogo y la plantilla en PostgreSQL local
+        run: bash tests/pm26/p08g-catalogo-membresia/validar-catalogo.sh
+
+      - name: Contrato PM26 P08g (catalogo, plantilla, control negativo, nada aplicado)
+        run: node tests/pm26/p08g-contract.mjs
+
+      - name: Reconstruir fuente canonica de la rama tecnica
+        working-directory: source-recovery
+        run: npm ci
+
+      # p08f-contract.mjs reejecuta P06i, que reejecuta P06f, que incluye
+      # la prueba de exclusion de la CLI de Supabase -- una dependencia
+      # de ejecucion real, no de P08g, pero cada workflow debe proveerla
+      # por si mismo (un runner de CI limpio no la trae por defecto).
+      - name: Instalar CLI de Supabase para la prueba de exclusion (P06i -> P06f)
+        run: npm install -g supabase
+
+      - name: Regresion acumulada de la rama tecnica (P03b, P07b, P08a-P08f)
+        run: |
+          set -euo pipefail
+          node tests/pm26/p03b-contract.mjs
+          node tests/pm26/p07b-contract.mjs
+          node tests/pm26/p08a-contract.mjs
+          node tests/pm26/p08b-contract.mjs
+          node tests/pm26/p08c-contract.mjs
+          node tests/pm26/p08d-contract.mjs
+          node tests/pm26/p08e-contract.mjs
+          node tests/pm26/p08f-contract.mjs
+
+      - name: Escaner completo de secretos e identificadores
+        run: node tools/seguridad/verificar-secretos-e-identificadores.mjs verificar
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Instalar PostgreSQL local (aislado)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sleep 2
+          sudo -u postgres pg_isready
+      - name: Gate PM26 P08g -- catalogo y plantilla preparados, nada aplicado
+        run: |
+          set -euo pipefail
+          bash tests/pm26/p08g-catalogo-membresia/validar-catalogo.sh
+          node tests/pm26/p08g-contract.mjs
+          echo 'PM26_P08G_GATE=PASS'

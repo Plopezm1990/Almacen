@@ -1,17 +1,9 @@
 (function () {
   "use strict";
 
-  // PM11 P10: el parche visual de compras es parte de la app y debe cargarse
-  // también fuera de QA. El resto de este archivo continúa siendo exclusivo
-  // de Deploy Preview.
-  if (typeof window !== "undefined" && !window.__pm11CompraMobileLoaderV1) {
-    window.__pm11CompraMobileLoaderV1 = true;
-    var mobileScript = document.createElement("script");
-    mobileScript.src = "./pm11-compra-mobile-layout-v1.js?v=pm11-p10-mobile-v1";
-    mobileScript.async = false;
-    mobileScript.setAttribute("data-pm11-compra-mobile", "v1");
-    (document.head || document.documentElement).appendChild(mobileScript);
-  }
+  // El parche visual de compras (PM11 P10), antes cargado desde aquí para
+  // todos los entornos, se separó en PM26 P04b a pm11-compra-mobile-loader.js
+  // -- ese archivo es universal; este sigue siendo exclusivo de Deploy Preview.
 
   // QA de L&A Suite SOLO en Deploy Preview.
   // Producción y cualquier otro dominio quedan fuera por diseño.

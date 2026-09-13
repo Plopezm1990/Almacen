@@ -1,0 +1,28 @@
+{
+  "pm": "PM26-P03b",
+  "commit_rama_validada": "cd0c7d37562b404e1499c3a5232317c61158b67c",
+  "bundle": "fuente.js",
+  "bundle_bytes": 5451100,
+  "metodo_deteccion_limite": "firma_compuesta_p03a (comentario // fuente-recuperado.js + 2 bootstrap locales)",
+  "limite_linea": 100771,
+  "anclas_obligatorias_verificadas": {
+    "motivoFalloCargaPM16": 101246,
+    "function GestionAlmacen(": 101581,
+    "cambiarTabPM15": 101625,
+    "__contextoErroresPM20": 102747,
+    "bloqueadoPorNubeActivaPM25": 103563,
+    "validarRegistroAppccPM19": 104075,
+    "function crearLogicaCaja(": 104503,
+    "activarSuscripcionPushPM17": 111379,
+    "function ErroresSistema(": 111470,
+    "estadoIdentidadFiscalPM18": 111798,
+    "bloqueadoPorEnvioDuplicadoPM24": 113290
+  },
+  "lineas_cuerpo_aplicacion": 19028,
+  "bytes_cuerpo_aplicacion": 1523192,
+  "sha256_cuerpo_bundle": "4f770d0494181b86a929907f2184e2c9db9b83ee9c02c3ff06a503f24792ec6f",
+  "sha256_cuerpo_recuperado": "4f770d0494181b86a929907f2184e2c9db9b83ee9c02c3ff06a503f24792ec6f",
+  "paridad_cuerpo_exacta": true,
+  "fuente_recuperada_bytes": 1524555,
+  "nota": "Recuperación PM26 P03b: sustituye el bootstrap de dependencias externas (React/ReactDOM/iconos lucide-react/jsPDF/XLSX/Supabase) por imports normales; conserva byte a byte, a partir del primer bootstrap LOCAL (import_react4/import_client2, que sí forman parte del cuerpo en el formato post-PM14), toda la lógica de aplicación incluyendo PM14-PM25."
+}

@@ -1,7 +1,21 @@
 import fs from 'node:fs';
+import assert from 'node:assert/strict';
 
 const source = fs.readFileSync('source-recovery/fuente-recuperado.js', 'utf8');
 const index = fs.readFileSync('index.html', 'utf8');
+const migPm08 = fs.readFileSync('supabase/migrations/20260904204500_pm08_caja_devolucion_indivisible.sql', 'utf8');
+const migPm09Fecha = fs.readFileSync('supabase/migrations/20260905115000_pm09_fecha_operacion_economica.sql', 'utf8');
+const migracionesTexto = [migPm08, migPm09Fecha];
+
+// PM08 (corrección aplicada en PM26 P03b): tres assertions dependían de
+// nombres de variable locales del bundler (a2/a22), del nombre exacto
+// -- ya retirado -- de una RPC de devolución, o de una frase visible con
+// un carácter acentuado cuya representación en el texto fuente cambió
+// (literal "ó" vs escape "\xF3"). Se generalizan con backreferences, se
+// exige la RPC vigente verificando su migración versionada, y el
+// conflicto de idempotencia se comprueba por su rama/resultado funcional
+// (comparación de payload + forma del objeto devuelto), no por la frase
+// del mensaje de error.
 
 function functionBlock(name) {
   const re = new RegExp(`(?:async\\s+)?function\\s+${name}\\s*\\(`, 'g');
@@ -47,6 +61,52 @@ function functionBlock(name) {
   throw new Error(`PM08_${name}_SIN_CIERRE`);
 }
 
+/** Comprueba, sin presuponer el nombre del parámetro del callback de
+ * .some(...), que el alta de movimiento de caja se bloquea cuando existe
+ * un arqueo activo (no anulado) para el mismo local y fecha. */
+function verificarBloqueoArqueoActivo(bloque) {
+  const re = /\(arqueos \|\| \[\]\)\.some\s*\(\s*\(?(\w+)\)?\s*=>\s*\1\.localId\s*===\s*localActivoId\s*&&\s*\1\.fecha\s*===\s*fecha\s*&&\s*\1\.estado\s*!==\s*"ANULADO"/;
+  if (!re.test(bloque)) return { ok: false, motivo: 'no_bloquea_por_arqueo_activo' };
+  return { ok: true, motivo: null };
+}
+
+/** Igual que en PM07: exige la RPC vigente, rechaza explícitamente
+ * cualquier nombre antiguo, y exige que la RPC vigente esté definida (no
+ * solo mencionada) en una migración versionada. */
+function verificarRpcVigente(bloque, nombreRpc, nombresAntiguos, migraciones) {
+  if (!bloque.includes(`"${nombreRpc}"`)) return { ok: false, motivo: `no_llama_a_${nombreRpc}` };
+  for (const antiguo of nombresAntiguos) {
+    if (new RegExp(`"${antiguo}"`).test(bloque)) return { ok: false, motivo: `todavia_llama_a_rpc_antigua_${antiguo}` };
+  }
+  const definida = migraciones.some((m) => new RegExp(`create\\s+or\\s+replace\\s+function\\s+public\\.${nombreRpc}\\s*\\(`).test(m));
+  if (!definida) return { ok: false, motivo: `${nombreRpc}_no_definida_en_migracion_versionada` };
+  return { ok: true, motivo: null };
+}
+
+/** Comprueba el conflicto de idempotencia por su RAMA/RESULTADO
+ * FUNCIONAL -- no por el texto visible del mensaje de error, que puede
+ * escribirse con el carácter acentuado literal o con un escape \xNN
+ * equivalente. Exige: (a) el payload nuevo se compara contra el
+ * pendiente ya guardado con JSON.stringify(...) !== JSON.stringify(...);
+ * (b) esa rama de conflicto devuelve {ok:false, pendiente:<mismo
+ * objeto>}; (c) la rama de payload idéntico devuelve {ok:true,
+ * pendiente:<mismo objeto>, recuperada:true} (replay idempotente). */
+function verificarConflictoIdempotenciaPorResultado(bloque) {
+  const capturaExistente = bloque.match(/const\s+(\w+)\s*=\s*leerPendientePM08\(/);
+  if (!capturaExistente) return { ok: false, motivo: 'no_se_encontro_lectura_de_pendiente' };
+  const v = capturaExistente[1];
+
+  const reConflicto = new RegExp(
+    `JSON\\.stringify\\(${v}\\.payload\\)\\s*!==\\s*JSON\\.stringify\\(payload\\)\\s*\\)\\s*\\{\\s*return\\s*\\{\\s*ok:\\s*false,\\s*pendiente:\\s*${v},`
+  );
+  if (!reConflicto.test(bloque)) return { ok: false, motivo: 'conflicto_de_payload_no_devuelve_ok_false_con_pendiente' };
+
+  const reReplay = new RegExp(`return\\s*\\{\\s*ok:\\s*true,\\s*pendiente:\\s*${v},\\s*recuperada:\\s*true\\s*\\}`);
+  if (!reReplay.test(bloque)) return { ok: false, motivo: 'payload_identico_no_hace_replay_idempotente' };
+
+  return { ok: true, motivo: null };
+}
+
 const sync = functionBlock('sincronizarCajaPm08');
 const caja = functionBlock('crearLogicaCaja');
 const movimientosCaja = functionBlock('crearLogicaMovimientosCaja');
@@ -54,6 +114,11 @@ const devoluciones = functionBlock('crearLogicaDevoluciones');
 const uiDevoluciones = functionBlock('Devoluciones');
 const uiMovimientos = functionBlock('BloqueEntradasSalidas');
 const uiArqueo = functionBlock('ArqueoCaja');
+const prepararPendiente = functionBlock('prepararPendientePM08');
+
+const rBloqueoArqueo = verificarBloqueoArqueoActivo(movimientosCaja);
+const rDevolucionVenta = verificarRpcVigente(devoluciones, 'registrar_devolucion_venta_pm09', ['registrar_devolucion_venta'], migracionesTexto);
+const rConflictoIdempotencia = verificarConflictoIdempotenciaPorResultado(prepararPendiente);
 
 const checks = {
   sintaxis_sin_nowtime_inexistente: !source.includes('nowTime('),
@@ -67,7 +132,7 @@ const checks = {
   caja_arqueo_rpc: caja.includes('.rpc("registrar_arqueo_caja"'),
   caja_anulacion_rpc: caja.includes('.rpc("anular_arqueo_caja"'),
   caja_cero_valido: caja.includes('efectivoContado < 0') && !caja.includes('efectivoContado <= 0'),
-  caja_sin_borrado_fisico: !caja.includes('setArqueos((s2) => s2.filter'),
+  caja_sin_borrado_fisico: !/\bsetArqueos\s*\(\s*\(?\w+\)?\s*=>\s*\w+\.filter/.test(caja),
   caja_anulacion_trazable_local: caja.includes('estado: "ANULADO"') && caja.includes('anuladoMotivo'),
   caja_efecto_cero_no_falseado: caja.includes('Number.isFinite(efecto) ? efecto : fallback'),
 
@@ -75,11 +140,11 @@ const checks = {
   movimiento_reverso_rpc: movimientosCaja.includes('.rpc("revertir_movimiento_caja"'),
   movimiento_tipo_canonico: movimientosCaja.includes('["ENTRADA", "RETIRADA"]'),
   movimiento_importe_positivo: movimientosCaja.includes('imp <= 0'),
-  movimiento_bloquea_arqueo_activo: movimientosCaja.includes('a2.estado !== "ANULADO"'),
-  movimiento_sin_borrado_fisico: !movimientosCaja.includes('setMovimientosCaja((s2) => s2.filter'),
+  movimiento_bloquea_arqueo_activo: rBloqueoArqueo.ok,
+  movimiento_sin_borrado_fisico: !/\bsetMovimientosCaja\s*\(\s*\(?\w+\)?\s*=>\s*\w+\.filter/.test(movimientosCaja),
   movimiento_reverso_con_motivo: movimientosCaja.includes('if (!motivoLimpio)'),
 
-  devolucion_cliente_rpc_atomica: devoluciones.includes('.rpc("registrar_devolucion_venta"'),
+  devolucion_cliente_rpc_atomica: rDevolucionVenta.ok,
   devolucion_proveedor_rpc_atomica: devoluciones.includes('.rpc("registrar_devolucion_proveedor"'),
   devolucion_exige_venta: devoluciones.includes('if (!ventaId)'),
   devolucion_cantidad_positiva: devoluciones.includes('cant <= 0'),
@@ -90,7 +155,7 @@ const checks = {
   devolucion_contexto_local: devoluciones.includes('producto no pertenece al local activo') || devoluciones.includes('El producto no pertenece al local activo'),
 
   idempotencia_borrador_localstorage: source.includes('localStorage.setItem(clave, JSON.stringify(valor))'),
-  idempotencia_conflicto_payload: source.includes('Hay una operación anterior pendiente en este local'),
+  idempotencia_conflicto_payload: rConflictoIdempotencia.ok,
   idempotencia_doble_click_devolucion: uiDevoluciones.includes('if (enviando) return'),
   idempotencia_doble_click_movimiento: uiMovimientos.includes('if (enviando || periodoCerrado) return'),
   idempotencia_doble_click_arqueo: uiArqueo.includes('if (enviando || yaArqueado) return'),
@@ -116,6 +181,50 @@ for (const [name, passed] of Object.entries(checks)) {
   if (!passed) process.exitCode = 1;
 }
 
-if (process.exitCode) throw new Error('PM08_FRONTEND_CONTRACT_FAIL');
+if (process.exitCode) {
+  console.error('motivos:', JSON.stringify({ rBloqueoArqueo, rDevolucionVenta, rConflictoIdempotencia }, null, 2));
+  throw new Error('PM08_FRONTEND_CONTRACT_FAIL');
+}
 console.log(`PM08_FRONTEND_CHECKS=${Object.keys(checks).length}`);
 console.log('PM08_FRONTEND_CONTRACT_OK=1');
+
+// --- Pruebas negativas deliberadas sobre copias EN MEMORIA (nunca sobre
+// la aplicación real): cada una elimina UNA garantía y comprueba que el
+// verificador correspondiente la detecta. ---
+{
+  const sinBloqueo = movimientosCaja.replace(/\s*&&\s*\w+\.estado\s*!==\s*"ANULADO"/, '');
+  assert.notEqual(sinBloqueo, movimientosCaja, 'mutación sintética sin efecto -- prueba negativa inválida');
+  const r = verificarBloqueoArqueoActivo(sinBloqueo);
+  assert.equal(r.ok, false);
+  assert.equal(r.motivo, 'no_bloquea_por_arqueo_activo');
+  console.log('PM08_NEGATIVA_SIN_BLOQUEO_ARQUEO=PASS');
+}
+{
+  const conRpcAntigua = devoluciones.replace(/registrar_devolucion_venta_pm09/g, 'registrar_devolucion_venta');
+  assert.notEqual(conRpcAntigua, devoluciones, 'mutación sintética sin efecto -- prueba negativa inválida');
+  const r = verificarRpcVigente(conRpcAntigua, 'registrar_devolucion_venta_pm09', ['registrar_devolucion_venta'], migracionesTexto);
+  assert.equal(r.ok, false);
+  assert.equal(r.motivo, 'no_llama_a_registrar_devolucion_venta_pm09');
+  console.log('PM08_NEGATIVA_RPC_DEVOLUCION_ANTIGUA=PASS');
+}
+{
+  const r = verificarRpcVigente(devoluciones, 'registrar_devolucion_venta_pm09', ['registrar_devolucion_venta'], []);
+  assert.equal(r.ok, false);
+  assert.equal(r.motivo, 'registrar_devolucion_venta_pm09_no_definida_en_migracion_versionada');
+  console.log('PM08_NEGATIVA_RPC_SIN_MIGRACION=PASS');
+}
+{
+  // Puentea el conflicto: ante payload distinto, ahora "recupera" en vez
+  // de rechazar -- exactamente el defecto que rompería la idempotencia.
+  const conflictoRoto = prepararPendiente.replace(
+    /!==\s*JSON\.stringify\(payload\)\s*\)\s*\{\s*return\s*\{\s*ok:\s*false,\s*pendiente:\s*existente,/,
+    '!== JSON.stringify(payload)) { return { ok: true, pendiente: existente,'
+  );
+  assert.notEqual(conflictoRoto, prepararPendiente, 'mutación sintética sin efecto -- prueba negativa inválida');
+  const r = verificarConflictoIdempotenciaPorResultado(conflictoRoto);
+  assert.equal(r.ok, false);
+  assert.equal(r.motivo, 'conflicto_de_payload_no_devuelve_ok_false_con_pendiente');
+  console.log('PM08_NEGATIVA_CONFLICTO_IDEMPOTENCIA_PUENTEADO=PASS');
+}
+
+console.log('PM08_NEGATIVAS_4_4=1');

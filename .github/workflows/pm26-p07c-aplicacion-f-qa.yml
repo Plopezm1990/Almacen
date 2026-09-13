@@ -1,0 +1,106 @@
+name: PM26 P07c aviso F aplicado en QA y preview validado
+
+# Certifica el cierre real de P07c. El workflow es de solo lectura: reconstruye
+# y prueba el cliente, reproduce F en PostgreSQL efimero y valida la evidencia,
+# pero nunca se conecta a Supabase ni Netlify y nunca aplica migraciones.
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'tests/pm26/P07C_APLICACION_F_QA_Y_PREVIEW.md'
+      - 'tests/pm26/P07C_EVIDENCIA_QA.json'
+      - 'tests/pm26/p07c-contract.mjs'
+      - '.github/workflows/pm26-p07c-aplicacion-f-qa.yml'
+      - 'supabase/qa-solo/pm26_p06h_aislamiento_prefiltros_candidatos.sql'
+      - 'tests/pm26/p06h-f-aislado/**'
+      - 'tests/pm26/p06h-contract.mjs'
+      - 'tests/pm26/p07b-contract.mjs'
+      - 'source-recovery/**'
+      - 'fuente.js'
+      - 'index.html'
+      - 'reset-pruebas-preview.js'
+      - '_headers'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Proteger la certificacion historica de P07c
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          # PM26 P08b corrigio aqui un defecto real: este paso exigia
+          # que, desde el commit base 'a20e37d8', NADA mas cambiara
+          # jamas en fuente.js/source-recovery/etc -- una condicion que
+          # cualquier extension legitima posterior (como la propia
+          # P08b) rompe sin que P07c tenga nada que ver. P07c certifica
+          # un hecho historico: que su propio gate llego a pasar en
+          # verde sobre un commit concreto. Eso solo exige que ese
+          # commit siga existiendo y siga siendo un antepasado de HEAD
+          # (que nadie reescribio esa historia), nunca que el arbol de
+          # trabajo actual siga coincidiendo con el.
+          cierre='41bf2e1d123783895e87e256388a04f3fffa22aa'
+          git cat-file -e "$cierre^{commit}"
+          git merge-base --is-ancestor "$cierre" HEAD
+          test -z "$(git diff --name-only "$cierre"..HEAD -- supabase/migrations)"
+          echo 'PM26_P07C_CIERRE_HISTORICO_PROTEGIDO=PASS'
+
+      - name: Reconstruir fuente canonica
+        working-directory: source-recovery
+        run: npm ci
+
+      - name: Dos builds deterministas
+        shell: bash
+        run: |
+          set -euo pipefail
+          node source-recovery/verificar-build-canonico.mjs
+          hash_1="$(sha256sum source-recovery/dist/fuente.js | cut -d' ' -f1)"
+          node source-recovery/verificar-build-canonico.mjs
+          hash_2="$(sha256sum source-recovery/dist/fuente.js | cut -d' ' -f1)"
+          test "$hash_1" = "$hash_2"
+          echo "PM26_P07C_BUILD_SHA256=$hash_2"
+
+      - name: Instalar PostgreSQL local aislado
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sudo -u postgres pg_isready
+
+      - name: Contratos acumulados F y P07c
+        run: |
+          set -euo pipefail
+          node tests/pm26/p06h-contract.mjs
+          node tests/pm26/p07b-contract.mjs
+          node tests/pm26/p07c-contract.mjs
+          node tools/seguridad/verificar-secretos-e-identificadores.mjs verificar
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Preparar fuente canonica para el contrato
+        working-directory: source-recovery
+        run: npm ci
+      - name: Reconstruir artefacto canonico para el contrato
+        run: node source-recovery/verificar-build-canonico.mjs
+      - name: Contrato documental final P07c
+        run: |
+          set -euo pipefail
+          node tests/pm26/p07c-contract.mjs
+          echo 'PM26_P07C_GATE=PASS'

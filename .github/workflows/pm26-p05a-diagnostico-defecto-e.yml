@@ -1,0 +1,70 @@
+name: PM26 P05a diagnostico de solo lectura del defecto E
+
+# Documenta, sin aplicar ningun cambio, el flujo real de publicacion a
+# produccion (defecto E: main acoplado directamente al contexto
+# production de Netlify sin aprobacion manual) y presenta tres opciones
+# tecnicas sin aplicar ninguna. No toca main, Netlify, Supabase, QA,
+# produccion ni TPV. No reabre PM05-PM09 ni los paquetes B, C, D.
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'tests/pm26/P05A_DIAGNOSTICO_DEFECTO_E.md'
+      - 'tests/pm26/p05a-contract.mjs'
+      - '.github/workflows/pm26-p05a-diagnostico-defecto-e.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger lo que P05a no debe tocar
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          # Comparado contra el cierre previo de la rama (PM26 P04b,
+          # f90b84d), no contra origin/main.
+          intocables='edge-auth-patch.js
+          fuente.js
+          index.html
+          _headers
+          reset-pruebas-preview.js
+          pm11-compra-mobile-loader.js
+          source-recovery/recuperar_candidato.py
+          source-recovery/fuente-recuperado.js
+          netlify.toml'
+          cambiados="$(git diff --name-only f90b84d6cc4062221e3377a034ec12d550515688..HEAD)"
+          while IFS= read -r archivo; do
+            [ -z "$archivo" ] && continue
+            if echo "$cambiados" | grep -qxF "$archivo"; then
+              echo "PM26 P05a no debe tocar: $archivo" >&2
+              exit 1
+            fi
+          done <<< "$intocables"
+          if [ -f netlify.toml ]; then
+            echo "PM26 P05a no debe crear netlify.toml" >&2
+            exit 1
+          fi
+          echo 'PM26_P05A_INTOCABLES_INTACTOS=PASS'
+      - name: Contrato PM26 P05a (diagnostico + sin secretos)
+        run: node tests/pm26/p05a-contract.mjs
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM26 P05a -- diagnostico del defecto E, sin cambios aplicados
+        run: |
+          set -euo pipefail
+          node tests/pm26/p05a-contract.mjs
+          echo 'PM26_P05A_GATE_DIAGNOSTICO=PASS'

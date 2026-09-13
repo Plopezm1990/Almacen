@@ -1,0 +1,50 @@
+name: PM26 P07b source-recovery check
+
+on:
+  push:
+    branches:
+      - claude/pm26-preparacion-tecnica
+    paths:
+      - ".github/workflows/pm26-p07b-source-recovery-check.yml"
+      - "source-recovery/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rebuild-canonico:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Instalar dependencias congeladas de source-recovery
+        run: npm --prefix source-recovery ci
+
+      - name: Validar fuente recuperada y scripts
+        run: npm --prefix source-recovery run check
+
+      - name: Primera reconstruccion canonica
+        run: |
+          node source-recovery/verificar-build-canonico.mjs
+          sha256sum source-recovery/dist/fuente.js
+          cp source-recovery/dist/fuente.js /tmp/fuente-canonica-1.js
+
+      - name: Segunda reconstruccion canonica
+        run: |
+          node source-recovery/verificar-build-canonico.mjs
+          sha256sum source-recovery/dist/fuente.js
+          cmp --silent /tmp/fuente-canonica-1.js source-recovery/dist/fuente.js
+          echo "P07B_SOURCE_RECOVERY_REBUILD=PASS"
+
+      - name: Confirmar que solo se genero dist ignorado
+        run: |
+          test -f source-recovery/dist/fuente.js
+          test -z "$(git status --short)"
+          echo "P07B_WORKTREE_CLEAN=PASS"

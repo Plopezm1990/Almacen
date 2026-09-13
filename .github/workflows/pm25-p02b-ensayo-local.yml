@@ -1,0 +1,97 @@
+name: PM25 P02b ensayo local parcial de la migracion candidata
+
+# Certifica el ensayo local PARCIAL de la migracion candidata de PM25
+# P02 (20260905185935_g1_p08_operation_id_finanzas_global.sql) en
+# PostgreSQL local aislado: backfill, disparador de conflicto,
+# permisos, integridad de los libros originales y reversion. Exige de
+# forma activa que P02_BLOQUEADO_ENTORNO_AISLADO.md siga sin cambiar de
+# estado -- este ensayo NO cierra P02, porque no prueba Auth, JWT,
+# PostgREST ni RLS con sesiones reales (solo alcanzables con el stack
+# completo de Supabase). No crea ninguna branch ni proyecto Supabase,
+# no toca QA, produccion ni TPV, no genera ningun coste.
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'tests/pm25/P02_ENSAYO_LOCAL_PARCIAL.md'
+      - 'tests/pm25/p02b-ensayo-local-contract.mjs'
+      - 'tests/pm25/p02-ensayo-local/**'
+      - 'tests/pm25/ESTADO_PM25.md'
+      - 'tests/pm25/P02_BLOQUEADO_ENTORNO_AISLADO.md'
+      - 'tests/pm25/p02-contract.mjs'
+      - '.github/workflows/pm25-p02b-ensayo-local.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Proteger que P02 sigue bloqueado y nada real fue tocado
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          # Este paquete solo anade evidencia local; no debe tocar el
+          # cliente, supabase/migrations, ni ningun artefacto de P08.
+          # Se compara contra el cierre previo de la rama (PM26 P08h),
+          # nunca contra el HEAD vivo ni contra origin/main.
+          cierre_previo='0e29ea4cc1b5932864cfe0d2921dcdba8cf6a6ef'
+          git cat-file -e "$cierre_previo^{commit}"
+          git merge-base --is-ancestor "$cierre_previo" HEAD
+          intocables="fuente.js source-recovery index.html reset-pruebas-preview.js _headers supabase/migrations release"
+          cambiados="$(git diff --name-only "$cierre_previo"..HEAD -- $intocables)"
+          if [ -n "$cambiados" ]; then
+            echo "PM25 P02b no debe tocar: $cambiados" >&2
+            exit 1
+          fi
+          echo 'PM25_P02B_ALCANCE_ACOTADO=PASS'
+
+      - name: Instalar PostgreSQL local (aislado)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sleep 2
+          sudo -u postgres pg_isready
+
+      - name: Contrato PM25 P02 (el registro de bloqueo no debe cambiar)
+        run: node tests/pm25/p02-contract.mjs
+
+      - name: Contrato PM25 P02b (ensayo local parcial, reejecutado de verdad)
+        run: node tests/pm25/p02b-ensayo-local-contract.mjs
+
+      - name: Escaner completo de secretos e identificadores
+        run: node tools/seguridad/verificar-secretos-e-identificadores.mjs verificar
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Instalar PostgreSQL local (aislado)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sleep 2
+          sudo -u postgres pg_isready
+      - name: Gate PM25 P02b -- ensayo local parcial, P02 sigue bloqueado
+        run: |
+          set -euo pipefail
+          node tests/pm25/p02-contract.mjs
+          node tests/pm25/p02b-ensayo-local-contract.mjs
+          echo 'PM25_P02B_GATE=PASS'
+          echo 'AVISO: este gate certifica el ensayo local parcial -- NO que PM25 P02 se haya cerrado.'

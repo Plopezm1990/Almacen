@@ -1,0 +1,8 @@
+{
+  "name": "pm22-movil-accesibilidad",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "playwright": "^1.55.0"
+  }
+}

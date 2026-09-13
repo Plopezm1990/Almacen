@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "paquete": "PM26-P07c",
+  "destino": "L&A Suite QA",
+  "fuente": {
+    "commit": "a20e37d8ac74e49a31c5a9243d1256e88428366e",
+    "tree": "4c12baa76fdaf6d1572848e98bf62f5aeb322d5e",
+    "parent": "1ee5b10cc9b129f3c5ef33f28db39dea9899f969",
+    "sqlSha256": "7edbeefd92e82bb806265d29ccf3a2c30e411b4c4f5ec654f05e969ec19d5b1a",
+    "preflightSha256": "a224fc1dd0501f5336ff86acf8f81c0d6f329676a8913b5713ef5ebd540325d9"
+  },
+  "migracion": {
+    "preflightAntes": "PASS",
+    "applyMigration": "SUCCESS",
+    "version": "20260910175504",
+    "name": "pm26_p07c_aislamiento_prefiltros_candidatos_qa",
+    "count": 1,
+    "preflightDespues": "RECHAZADO_COMO_ESPERADO"
+  },
+  "catalogo": {
+    "columnasNotNull": ["empresa_id", "local_id"],
+    "rls": true,
+    "policy": "prefiltros_candidatos_select_gestion",
+    "policyRole": "authenticated",
+    "rpcSecurityDefiner": 2,
+    "rpcSearchPathVacio": 2,
+    "rpcExecute": {
+      "public": false,
+      "anon": false,
+      "authenticated": true,
+      "service_role": false
+    },
+    "authenticatedDirectMutations": false,
+    "anonTablePrivileges": false,
+    "rowCount": 0
+  },
+  "pruebasFuncionales": {
+    "total": 14,
+    "passed": 14,
+    "residualRows": 0,
+    "rlsOwnVisible": true,
+    "rlsForeignHidden": true,
+    "rpcRoundtrip": true,
+    "crossTenantCreateRejected": true,
+    "inactiveRejected": true,
+    "unauthorizedRoleRejected": true,
+    "crossContextDeleteRejected": true,
+    "directInsertRejected": true,
+    "anonRpcRejected": true
+  },
+  "unaffectedFingerprints": {
+    "columns": "813dc4d06569f7430f41eb05f79d6f0f",
+    "indexes": "9d05da57749a5029a0de7ef8a76f5f59",
+    "policies": "f2ab89a581cd141c90feaa265ff520ea",
+    "triggers": "a8d3db545254d7886cccb762defc8c9e",
+    "functions": "4e13253006cf43c01e1ced2f7d7e3a4d",
+    "constraints": "c7d70a8874394003a0e1f3bf2c724345",
+    "relationAcl": "1bbedbd3578d133371c1578f48f0ed15"
+  },
+  "preview": {
+    "pullRequest": 38,
+    "draft": true,
+    "context": "deploy-preview",
+    "state": "ready",
+    "commitMatches": true,
+    "deployId": "6aa2f10c4ec4c000082af834",
+    "manualDeploy": false,
+    "functionsDeployed": 0,
+    "edgeFunctionsDeployed": 0,
+    "headerRules": 6,
+    "interactiveObservation": "BLOCKED_BY_TEAM_SSO_GOOGLE_502"
+  },
+  "alcance": {
+    "productionWrites": 0,
+    "tpvWrites": 0,
+    "mainTouched": false,
+    "releaseTouched": false,
+    "productionDeploy": false,
+    "edgeFunctionDeploy": false
+  }
+}

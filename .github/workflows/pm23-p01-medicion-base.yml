@@ -1,0 +1,68 @@
+name: PM23 P01 medicion base red carga simultaneidad
+
+on:
+  push:
+    branches: [claude/pm23-red-carga-simultaneidad]
+    paths:
+      - 'tests/pm23/**'
+      - '.github/workflows/pm23-p01-medicion-base.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger main y alcance (solo documentación y contrato, sin código ni esquema)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          unexpected="$(git diff --name-only origin/main..HEAD -- fuente.js supabase/ || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'PM23 P01 no debe tocar fuente.js ni supabase/: es una medición de comportamiento ya existente, ejecutada de forma interactiva contra QA en la sesión que la preparó' >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+          echo 'PM23_P01_MAIN_FROZEN=PASS'
+          echo 'PM23_P01_SIN_CAMBIOS_CODIGO_NI_SUPABASE=PASS'
+      - name: Sintaxis bundle (no debe haber cambiado)
+        run: node --check fuente.js
+      - name: Contrato PM23 P01
+        run: node tests/pm23/p01-contract.mjs
+      - name: Regresión completa (todas las suites vigentes)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for d in tests/g1 tests/pm04 tests/pm05 tests/pm07 tests/pm08 tests/pm09 tests/pm10 tests/pm11-compra tests/pm12 tests/pm13 tests/pm14 tests/pm15 tests/pm16 tests/pm17 tests/pm18 tests/pm19 tests/pm20 tests/pm21; do
+            for t in "$d"/*.mjs; do
+              [ -f "$t" ] || continue
+              node "$t"
+            done
+          done
+          node tests/pm23/p01-contract.mjs
+          echo 'PM23_P01_REGRESION_COMPLETA=PASS'
+      - name: Sin secretos ni identificadores internos
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -Eqi 'service_role_key|SUPABASE_SERVICE_ROLE_KEY|sb_secret_|qjqorixtkilwsndqayyx|flqercbgpgmmfaakrwkc|cqtghwiuxrqrxupyonqf|[a-z]{20}\.supabase\.co' \
+            tests/pm23/*.mjs tests/pm23/*.md tests/pm23/*.json
+          echo 'PM23_P01_NO_SECRET=PASS'
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate PM23 P01
+        run: |
+          set -euo pipefail
+          node tests/pm23/p01-contract.mjs
+          echo 'PM23_P01_GATE_FINAL=PASS'

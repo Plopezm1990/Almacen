@@ -1,0 +1,67 @@
+{
+  "descripcion": "Coincidencias admitidas: término técnico, falso positivo o configuración pública legítima. Un project ref real o una clave publishable completa NUNCA se clasifican aquí como término técnico, sin importar el contexto sintáctico. Regenerar solo con \"regenerar-ledgers\" tras revisión manual. Nunca contiene valores, solo huellas no reversibles (sha256 truncado).",
+  "entradas": [
+    {
+      "archivo": "edge-auth-patch.js",
+      "categoria": "configuracion_publica_legitima",
+      "cantidad": 1,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "fuente.js",
+      "categoria": "configuracion_publica_legitima",
+      "cantidad": 10,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "fuente.js",
+      "categoria": "falso_positivo",
+      "cantidad": 4,
+      "huellas": [
+        "ab4eeda43e545149",
+        "d85b2d645bf7db44",
+        "e4bcca595cb58f11"
+      ]
+    },
+    {
+      "archivo": "index.html",
+      "categoria": "configuracion_publica_legitima",
+      "cantidad": 2,
+      "huellas": [
+        "354107d4e103673b",
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "reset-pruebas-preview.js",
+      "categoria": "configuracion_publica_legitima",
+      "cantidad": 3,
+      "huellas": [
+        "3cd9d656aaf32723",
+        "55ce0a106a9ae86f",
+        "b5b492c7a15b749a"
+      ]
+    },
+    {
+      "archivo": "restablecer-contrasena.html",
+      "categoria": "configuracion_publica_legitima",
+      "cantidad": 2,
+      "huellas": [
+        "354107d4e103673b",
+        "3cd9d656aaf32723"
+      ]
+    },
+    {
+      "archivo": "source-recovery/fuente-recuperado.js",
+      "categoria": "configuracion_publica_legitima",
+      "cantidad": 9,
+      "huellas": [
+        "3cd9d656aaf32723"
+      ]
+    }
+  ]
+}

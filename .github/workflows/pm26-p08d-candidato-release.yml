@@ -1,0 +1,110 @@
+name: PM26 P08d candidato exacto de despliegue del defecto L
+
+# Certifica el candidato minimo de despliegue del Defecto L basado
+# directamente en release: un parche de 2 archivos que aplica y revierte
+# limpio sobre el SHA exacto de release, reconstruye de forma
+# determinista, no rompe ninguno de los contratos que release ya tiene y
+# no arrastra nada de los paquetes K/F/H acumulados en la rama tecnica.
+# No aplica migraciones, no escribe en Supabase, no despliega en Netlify
+# y no modifica release ni main: el worktree de pruebas es efimero.
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'tests/pm26/P08D_CANDIDATO_RELEASE_DEFECTO_L.md'
+      - 'tests/pm26/p08d-contract.mjs'
+      - 'tests/pm26/p08d-candidato-release/**'
+      - '.github/workflows/pm26-p08d-candidato-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Proteger lo que P08d no debe tocar
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          # P08d es un artefacto de despliegue: prepara un parche, no
+          # cambia el cliente de la rama tecnica ni ningun esquema.
+          # Comparado contra el cierre previo de la rama (PM26 P08c).
+          cierre_previo='5fe9c63da20f740b76e47d8dfef15ebe529e6ed3'
+          git cat-file -e "$cierre_previo^{commit}"
+          git merge-base --is-ancestor "$cierre_previo" HEAD
+          intocables="fuente.js source-recovery index.html reset-pruebas-preview.js _headers supabase"
+          cambiados="$(git diff --name-only "$cierre_previo"..HEAD -- $intocables)"
+          if [ -n "$cambiados" ]; then
+            echo "PM26 P08d no debe tocar: $cambiados" >&2
+            exit 1
+          fi
+          echo 'PM26_P08D_ALCANCE_ACOTADO=PASS'
+
+      - name: Disponer del SHA exacto de release
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin release --quiet
+          git cat-file -e '93a570badba1c5375febfbddc1dffdbcef003dcd^{commit}'
+          echo 'PM26_P08D_RELEASE_DISPONIBLE=PASS'
+
+      - name: Validar el candidato sobre un worktree temporal desde release
+        run: bash tests/pm26/p08d-candidato-release/validar-candidato.sh
+
+      - name: Contrato PM26 P08d (parche acotado, mutaciones negativas, sin aplicar nada)
+        run: node tests/pm26/p08d-contract.mjs
+
+      - name: Reconstruir fuente canonica de la rama tecnica
+        working-directory: source-recovery
+        run: npm ci
+
+      # La regresion acumulada incluye P08b y P08c, que re-ejecutan
+      # validar.sh y la prueba de concurrencia contra un PostgreSQL local
+      # aislado. Sin este paso esos contratos fallan por falta de base de
+      # datos, no por el candidato.
+      - name: Instalar PostgreSQL local (aislado)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sleep 2
+          sudo -u postgres pg_isready
+
+      - name: Regresion acumulada de la rama tecnica (P03b, P07b, P08b, P08c)
+        run: |
+          set -euo pipefail
+          node tests/pm26/p03b-contract.mjs
+          node tests/pm26/p07b-contract.mjs
+          node tests/pm26/p08b-contract.mjs
+          node tests/pm26/p08c-contract.mjs
+
+      - name: Escaner completo de secretos e identificadores
+        run: node tools/seguridad/verificar-secretos-e-identificadores.mjs verificar
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Disponer del SHA exacto de release
+        run: |
+          set -euo pipefail
+          git fetch origin release --quiet
+          git cat-file -e '93a570badba1c5375febfbddc1dffdbcef003dcd^{commit}'
+      - name: Gate PM26 P08d -- candidato preparado, nada aplicado ni desplegado
+        run: |
+          set -euo pipefail
+          node tests/pm26/p08d-contract.mjs
+          echo 'PM26_P08D_GATE=PASS'

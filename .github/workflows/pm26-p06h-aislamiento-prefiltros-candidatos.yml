@@ -1,0 +1,99 @@
+name: PM26 P06h aviso F diseno estricto aislamiento prefiltros candidatos
+
+# Certifica el diseno estricto (Opcion B) del aviso F para
+# prefiltros_candidatos: aislamiento obligatorio por empresa/local,
+# lectura por RLS, escritura exclusivamente por RPC, migracion
+# combinada A+C justificada porque QA/produccion tenian 0 filas en el
+# momento del conteo agregado autorizado. P07b prepara el cliente de la
+# Fase B y endurece este SQL, pero no aplica nada en QA ni produccion.
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'tests/pm26/P06H_AVISO_F_DISENO_DESPLIEGUE.md'
+      - 'tests/pm26/P06G_DEFECTO_L_SIN_AISLAMIENTO_PRODUCCION.md'
+      - 'tests/pm26/p06h-contract.mjs'
+      - 'tests/pm26/p06h-f-aislado/**'
+      - 'supabase/qa-solo/pm26_p06h_aislamiento_prefiltros_candidatos.sql'
+      - '.github/workflows/pm26-p06h-aislamiento-prefiltros-candidatos.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Proteger lo que P06h no debe tocar
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          # El alcance historico de P07b queda fijado en su SHA remoto de
+          # cierre. P07c puede endurecer despues el mismo SQL sin convertir
+          # este gate historico en una lista creciente de excepciones.
+          baseline='d62162fb6c512ea9fd237de1f2e2bb0ea5debeec'
+          cierre_p07b='1ee5b10cc9b129f3c5ef33f28db39dea9899f969'
+          git cat-file -e "$cierre_p07b^{commit}"
+          cambiados="$(git diff --name-only "$baseline".."$cierre_p07b" | sort)"
+          esperados="$(printf '%s\n' \
+            '.github/workflows/pm26-p04b-aplicacion-defectos-bcd.yml' \
+            '.github/workflows/pm26-p06e-aviso-h-aislamiento-qa-solo.yml' \
+            '.github/workflows/pm26-p06f-aviso-h-endurecido.yml' \
+            '.github/workflows/pm26-p06h-aislamiento-prefiltros-candidatos.yml' \
+            '.github/workflows/pm26-p03b-pipeline-canonico.yml' \
+            '.github/workflows/pm26-p07b-source-recovery-check.yml' \
+            '.github/workflows/pm26-p07b-defecto-k-fase-b.yml' \
+            'fuente.js' \
+            'source-recovery/fuente-recuperado.js' \
+            'supabase/qa-solo/pm26_p06h_aislamiento_prefiltros_candidatos.sql' \
+            'tests/pm26/P06H_AVISO_F_DISENO_DESPLIEGUE.md' \
+            'tests/pm26/P07B_DEFECTO_K_FASE_B_IMPLEMENTADOS.md' \
+            'tests/pm26/p03b-contract.mjs' \
+            'tests/pm26/p06h-contract.mjs' \
+            'tests/pm26/p06h-f-aislado/preflight-catalogo.sql' \
+            'tests/pm26/p06h-f-aislado/validar.sh' \
+            'tests/pm26/p07b-contract.mjs' \
+            'tools/seguridad/linea-base-aceptada.json' | sort)"
+          test "$cambiados" = "$esperados"
+          for archivo in index.html reset-pruebas-preview.js _headers; do
+            test "$(git rev-parse "$baseline:$archivo")" = "$(git rev-parse "$cierre_p07b:$archivo")"
+          done
+          test -z "$(git ls-tree --name-only "$cierre_p07b" -- netlify.toml)"
+          test -z "$(git diff --name-only "$baseline".."$cierre_p07b" -- supabase/migrations)"
+          echo 'PM26_P06H_P07B_ALCANCE_COORDINADO=PASS'
+      - name: Instalar PostgreSQL local (aislado)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sleep 2
+          sudo -u postgres pg_isready
+      - name: Contrato PM26 P06h (diseno estricto aviso F + bateria 15 casos + sin secretos)
+        run: node tests/pm26/p06h-contract.mjs
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar PostgreSQL local (aislado)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sleep 2
+          sudo -u postgres pg_isready
+      - name: Gate PM26 P06h -- diseno estricto aviso F, nada aplicado en QA
+        run: |
+          set -euo pipefail
+          node tests/pm26/p06h-contract.mjs
+          echo 'PM26_P06H_GATE=PASS'

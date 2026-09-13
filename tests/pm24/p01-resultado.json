@@ -1,0 +1,299 @@
+{
+  "resultados": [
+    {
+      "caso": "enlaces: se generó al menos un enlace de WhatsApp",
+      "ok": true,
+      "detalle": {
+        "total": 1
+      }
+    },
+    {
+      "caso": "enlaces: WhatsApp con proveedor CON teléfono lleva el número codificado",
+      "ok": true,
+      "detalle": {
+        "ejemplo": "https://wa.me/34600111222?text=PEDIDO%20%E2%80%94%20QA%20PM24%20Proveedor%20Completo%0AFecha%20del%20pedido%3A%209%2F9%2F2026%0AEntrega%20esperada%3A%20por%20confirmar%0A%0AProductos%20pedidos%3A%0A1.%20QA%20PM24%20Producto%20%E2%80%94%201%2C00%20unidad%20(a%20%E2%82%AC10%2C00%2Funidad)%0A%0A%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%0ABase%20imponible%3A%20%E2%82%AC10%2C00%0AIVA%3A%20%E2%82%AC1%2C00%0ATOTAL%3A%20%E2%82%AC11%2C00%0A%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%0A%0AGracias."
+      }
+    },
+    {
+      "caso": "CORREGIDO: WhatsApp ya no se genera para proveedores sin teléfono",
+      "ok": true,
+      "detalle": {
+        "total": 1,
+        "sinNumero": []
+      }
+    },
+    {
+      "caso": "correo: destinatario mostrado corresponde al proveedor correcto (QA PM24 Proveedor Sin Contacto)",
+      "ok": true,
+      "detalle": {
+        "proveedorDelBoton": "QA PM24 Proveedor Sin Contacto",
+        "esperado": "(vacío)",
+        "encontrado": ""
+      }
+    },
+    {
+      "caso": "HALLAZGO: correo con proveedor SIN email abre el modal de envío igualmente (sin aviso ni bloqueo previo)",
+      "ok": true,
+      "detalle": {
+        "nota": "a diferencia de WhatsApp, aquí el destinatario vacío SÍ es visible en el campo \"Destinatario\" antes de que el usuario elija una app de correo — mitiga parcialmente el mismo problema, pero no impide llegar hasta ahí."
+      }
+    },
+    {
+      "caso": "correo: destinatario mostrado corresponde al proveedor correcto (QA PM24 Proveedor Completo)",
+      "ok": true,
+      "detalle": {
+        "proveedorDelBoton": "QA PM24 Proveedor Completo",
+        "esperado": "proveedor.pm24@qa.invalid",
+        "encontrado": "proveedor.pm24@qa.invalid"
+      }
+    },
+    {
+      "caso": "IA/sin-sesion: petición llegó al interceptor solo cuando corresponde",
+      "ok": true,
+      "detalle": {
+        "solicitudesVistas": 0,
+        "esperabaRed": false
+      }
+    },
+    {
+      "caso": "IA/sin-sesion: sin excepción JS no controlada",
+      "ok": true,
+      "detalle": []
+    },
+    {
+      "caso": "IA/sin-sesion: la interfaz muestra un mensaje explícito (no falla en silencio)",
+      "ok": true,
+      "detalle": {
+        "mensajeDetectado": true
+      }
+    },
+    {
+      "caso": "IA/respuesta-real-qa: petición llegó al interceptor solo cuando corresponde",
+      "ok": true,
+      "detalle": {
+        "solicitudesVistas": 1,
+        "esperabaRed": true
+      }
+    },
+    {
+      "caso": "IA/respuesta-real-qa: sin excepción JS no controlada",
+      "ok": true,
+      "detalle": []
+    },
+    {
+      "caso": "IA/respuesta-real-qa: la interfaz muestra un mensaje explícito (no falla en silencio)",
+      "ok": true,
+      "detalle": {
+        "mensajeDetectado": true,
+        "nota": "la respuesta real de QA es un 503 simulado; se acepta cualquier resultado no silencioso"
+      }
+    },
+    {
+      "caso": "IA/desconexion: petición llegó al interceptor solo cuando corresponde",
+      "ok": true,
+      "detalle": {
+        "solicitudesVistas": 1,
+        "esperabaRed": true
+      }
+    },
+    {
+      "caso": "IA/desconexion: sin excepción JS no controlada",
+      "ok": true,
+      "detalle": []
+    },
+    {
+      "caso": "IA/desconexion: la interfaz muestra un mensaje explícito (no falla en silencio)",
+      "ok": true,
+      "detalle": {
+        "mensajeDetectado": true
+      }
+    },
+    {
+      "caso": "IA/error-5xx-simulado: petición llegó al interceptor solo cuando corresponde",
+      "ok": true,
+      "detalle": {
+        "solicitudesVistas": 1,
+        "esperabaRed": true
+      }
+    },
+    {
+      "caso": "IA/error-5xx-simulado: sin excepción JS no controlada",
+      "ok": true,
+      "detalle": []
+    },
+    {
+      "caso": "IA/error-5xx-simulado: la interfaz muestra un mensaje explícito (no falla en silencio)",
+      "ok": true,
+      "detalle": {
+        "mensajeDetectado": true
+      }
+    },
+    {
+      "caso": "IA/respuesta-invalida: petición llegó al interceptor solo cuando corresponde",
+      "ok": true,
+      "detalle": {
+        "solicitudesVistas": 1,
+        "esperabaRed": true
+      }
+    },
+    {
+      "caso": "IA/respuesta-invalida: sin excepción JS no controlada",
+      "ok": true,
+      "detalle": []
+    },
+    {
+      "caso": "IA/respuesta-invalida: la interfaz muestra un mensaje explícito (no falla en silencio)",
+      "ok": true,
+      "detalle": {
+        "mensajeDetectado": true
+      }
+    },
+    {
+      "caso": "IA/timeout-cliente: sin timeout de cliente propio, la llamada sigue \"en vuelo\" a los 5s",
+      "ok": true,
+      "detalle": {
+        "cargandoVisibleAún": false,
+        "hallazgo": "llamarIA() no usa AbortController/timeout — ver documento"
+      }
+    },
+    {
+      "caso": "IA/timeout-cliente: petición llegó al interceptor solo cuando corresponde",
+      "ok": true,
+      "detalle": {
+        "solicitudesVistas": 1,
+        "esperabaRed": true
+      }
+    },
+    {
+      "caso": "IA/timeout-cliente: sin excepción JS no controlada",
+      "ok": true,
+      "detalle": []
+    },
+    {
+      "caso": "push/respuesta-real-qa: resultado observado",
+      "ok": true,
+      "detalle": {
+        "status": 200,
+        "data": {
+          "ok": true,
+          "qa": true,
+          "simulated": true,
+          "sent": 0
+        },
+        "lanzoExcepcion": false,
+        "registrado": null
+      }
+    },
+    {
+      "caso": "push/sin-sesion: resultado observado",
+      "ok": true,
+      "detalle": {
+        "status": 401,
+        "data": {
+          "ok": false,
+          "error": "No hay sesión activa — vuelve a iniciar sesión."
+        },
+        "lanzoExcepcion": false,
+        "registrado": "enviar-notificacion respondió 401"
+      }
+    },
+    {
+      "caso": "push/error-5xx-simulado: resultado observado",
+      "ok": true,
+      "detalle": {
+        "status": 500,
+        "data": {
+          "ok": false,
+          "error": "Error simulado por el arnés de prueba"
+        },
+        "lanzoExcepcion": false,
+        "registrado": "enviar-notificacion respondió 500"
+      }
+    },
+    {
+      "caso": "push/error-5xx-simulado: fetch() no lanza excepción por un HTTP 5xx (por eso el catch original nunca lo veía)",
+      "ok": true,
+      "detalle": {
+        "status": 500,
+        "data": {
+          "ok": false,
+          "error": "Error simulado por el arnés de prueba"
+        },
+        "lanzoExcepcion": false,
+        "registrado": "enviar-notificacion respondió 500"
+      }
+    },
+    {
+      "caso": "CORREGIDO: push/error-5xx-simulado: el fallo queda registrado (antes se ignoraba por completo)",
+      "ok": true,
+      "detalle": {
+        "status": 500,
+        "data": {
+          "ok": false,
+          "error": "Error simulado por el arnés de prueba"
+        },
+        "lanzoExcepcion": false,
+        "registrado": "enviar-notificacion respondió 500"
+      }
+    },
+    {
+      "caso": "push/desconexion: resultado observado",
+      "ok": true,
+      "detalle": {
+        "lanzoExcepcion": true,
+        "mensaje": "Failed to fetch",
+        "registrado": "Failed to fetch"
+      }
+    },
+    {
+      "caso": "push/desconexion: una desconexión real SÍ lanza excepción de fetch",
+      "ok": true,
+      "detalle": {
+        "lanzoExcepcion": true,
+        "mensaje": "Failed to fetch",
+        "registrado": "Failed to fetch"
+      }
+    },
+    {
+      "caso": "CORREGIDO: push/desconexion: el fallo queda registrado (antes el catch lo ignoraba en silencio)",
+      "ok": true,
+      "detalle": {
+        "lanzoExcepcion": true,
+        "mensaje": "Failed to fetch",
+        "registrado": "Failed to fetch"
+      }
+    }
+  ],
+  "bloqueadas": [
+    {
+      "url": "https://flqercbgpgmmfaakrwkc.supabase.co/rest/v1/prefiltros_candidatos?select=*&order=creado_en.desc",
+      "method": "GET",
+      "motivo": "host de producción, ruta no autorizada"
+    },
+    {
+      "url": "https://flqercbgpgmmfaakrwkc.supabase.co/rest/v1/prefiltros_candidatos?select=*&order=creado_en.desc",
+      "method": "GET",
+      "motivo": "host de producción, ruta no autorizada"
+    },
+    {
+      "url": "https://flqercbgpgmmfaakrwkc.supabase.co/rest/v1/prefiltros_candidatos?select=*&order=creado_en.desc",
+      "method": "GET",
+      "motivo": "host de producción, ruta no autorizada"
+    },
+    {
+      "url": "https://flqercbgpgmmfaakrwkc.supabase.co/rest/v1/prefiltros_candidatos?select=*&order=creado_en.desc",
+      "method": "GET",
+      "motivo": "host de producción, ruta no autorizada"
+    },
+    {
+      "url": "https://flqercbgpgmmfaakrwkc.supabase.co/rest/v1/prefiltros_candidatos?select=*&order=creado_en.desc",
+      "method": "GET",
+      "motivo": "host de producción, ruta no autorizada"
+    },
+    {
+      "url": "https://flqercbgpgmmfaakrwkc.supabase.co/rest/v1/prefiltros_candidatos?select=*&order=creado_en.desc",
+      "method": "GET",
+      "motivo": "host de producción, ruta no autorizada"
+    }
+  ]
+}

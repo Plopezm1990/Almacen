@@ -13,8 +13,5 @@
 /edge-auth-patch.js
   Cache-Control: no-cache, must-revalidate
 
-/seleccion-neutral-patch.js
-  Cache-Control: no-cache, must-revalidate
-
 /sw.js
   Cache-Control: no-cache, must-revalidate

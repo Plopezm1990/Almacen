@@ -1,0 +1,112 @@
+name: PM26 P08c endurecimiento final previo a produccion
+
+# Certifica el endurecimiento final del Defecto L: revertir.sql adquiere
+# ACCESS EXCLUSIVE antes de contar y lo mantiene hasta el COMMIT, la
+# prueba real de concurrencia con dos sesiones PostgreSQL pasa dos veces,
+# y revertir-conservador.sql queda declarado y protegido como
+# procedimiento excepcional y manual que REABRE el Defecto L. Todo se
+# ejecuta contra un PostgreSQL local aislado: no aplica migraciones, no
+# escribe en Supabase, no despliega en Netlify y no toca main/release.
+
+on:
+  push:
+    branches: [claude/pm26-preparacion-tecnica]
+    paths:
+      - 'tests/pm26/P08C_ENDURECIMIENTO_FINAL_PREVIO_PRODUCCION.md'
+      - 'tests/pm26/P08B_DEFECTO_L_CLIENTE_COORDINADO.md'
+      - 'tests/pm26/p08c-contract.mjs'
+      - 'tests/pm26/p08-defecto-l-produccion/**'
+      - '.github/workflows/pm26-p08c-endurecimiento-final.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Proteger lo que P08c no debe tocar
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          # Comparado contra el cierre previo de la rama (PM26 P08b,
+          # ab1ba8a), no contra origin/main. P08c es un endurecimiento
+          # de SQL, pruebas y documentacion: no toca el cliente, ni la
+          # configuracion servida, ni supabase/.
+          cierre_previo='ab1ba8aaaef05ad3908e6c311af3eec9362cf755'
+          git cat-file -e "$cierre_previo^{commit}"
+          git merge-base --is-ancestor "$cierre_previo" HEAD
+          intocables="fuente.js source-recovery index.html reset-pruebas-preview.js _headers supabase"
+          cambiados="$(git diff --name-only "$cierre_previo"..HEAD -- $intocables)"
+          if [ -n "$cambiados" ]; then
+            echo "PM26 P08c no debe tocar: $cambiados" >&2
+            exit 1
+          fi
+          test -z "$(git ls-tree --name-only HEAD -- netlify.toml)"
+          echo 'PM26_P08C_ALCANCE_ACOTADO=PASS'
+
+      - name: Instalar PostgreSQL local (aislado)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sleep 2
+          sudo -u postgres pg_isready
+
+      - name: Prueba real de concurrencia (dos sesiones PostgreSQL)
+        run: bash tests/pm26/p08-defecto-l-produccion/concurrencia-revertir.sh
+
+      - name: validar.sh (bateria completa, reproduccion independiente)
+        run: bash tests/pm26/p08-defecto-l-produccion/validar.sh
+
+      - name: Reconstruir fuente canonica
+        working-directory: source-recovery
+        run: npm ci
+
+      - name: Contrato PM26 P08c (endurecimiento, concurrencia x2, sin aplicar nada)
+        run: node tests/pm26/p08c-contract.mjs
+
+      - name: Regresion acumulada (P03b, P06h, P07b, P07c, P08a, P08b)
+        run: |
+          set -euo pipefail
+          node tests/pm26/p03b-contract.mjs
+          node tests/pm26/p06h-contract.mjs
+          node tests/pm26/p07b-contract.mjs
+          node tests/pm26/p07c-contract.mjs
+          node tests/pm26/p08a-contract.mjs
+          node tests/pm26/p08b-contract.mjs
+
+      - name: Escaner completo de secretos e identificadores
+        run: node tools/seguridad/verificar-secretos-e-identificadores.mjs verificar
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Instalar PostgreSQL local (aislado)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sleep 2
+          sudo -u postgres pg_isready
+      - name: Reconstruir fuente canonica
+        working-directory: source-recovery
+        run: npm ci
+      - name: Gate PM26 P08c -- endurecido, nada aplicado ni desplegado
+        run: |
+          set -euo pipefail
+          node tests/pm26/p08c-contract.mjs
+          echo 'PM26_P08C_GATE=PASS'

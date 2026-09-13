@@ -102349,7 +102349,12 @@ function GestionAlmacen() {
   const { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta } = crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, proveedores, pagosFacturas, setPagosFacturas, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
   const { addNomina, updateNomina, deleteNomina } = crearLogicaNominas({ nominas, setNominas, registrarAuditoria, empleados, localActivoId });
   const { crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista } = crearLogicaEntrevistas({ entrevistas, setEntrevistas, registrarAuditoria });
-  const { crearPrefiltro, listarPrefiltros, eliminarPrefiltro } = crearLogicaPrefiltros({ registrarAuditoria });
+  const { crearPrefiltro, listarPrefiltros, eliminarPrefiltro } = crearLogicaPrefiltros({
+    registrarAuditoria,
+    empresaId: empresaDelLocalActivo?.id || null,
+    localId: localActivoId || null,
+    esQA: typeof window !== "undefined" && window.__modoPruebasQA === true
+  });
   function registrarAuditoria(accion, detalle) {
     const empleadoActivo = usuarioActivoId ? empleados.find((e2) => e2.id === usuarioActivoId) : null;
     const usuario = modoEmpleado ? empleadoActivo ? empleadoActivo.nombre : "Empleado sin identificar" : "Propietario/a";
@@ -102677,7 +102682,10 @@ function GestionAlmacen() {
           localId: productos.find((p22) => p22.id === l22.productoId)?.localId || null,
           url: "/"
         })
-      }).catch(() => {
+      }).then((resp2) => {
+        if (!resp2.ok) registrarErrorSistema(`enviar-notificacion respondi\xF3 ${resp2.status}`, "notificacion-caducidad", null);
+      }).catch((err2) => {
+        registrarErrorSistema(err2 && err2.message, "notificacion-caducidad", err2 && err2.stack);
       });
     });
     const actualizados = [...yaAvisados, ...nuevos.map((l22) => l22.id)].slice(-500);
@@ -103548,6 +103556,19 @@ function GestionAlmacen() {
     const comparacion = compararConEstadoActual(pendingRestore);
     const seConservan = coleccionesQueSeConservan(pendingRestore);
     const perdidas = comparacion.filter((c22) => c22.diferencia < 0);
+    // PM25 P01: restaurar un respaldo mientras hay sesi\xF3n de nube activa es
+    // peligroso -- el guardado sincronizado de proveedores, clientes,
+    // albaranes, facturas directas y gastos generales borra en el servidor
+    // cualquier fila que no est\xE9 en la colecci\xF3n local (sincronizarColeccionEmpresa
+    // / sincronizarColeccionEmpresaLocal en index.html), as\xED que aplicar aqu\xED
+    // el contenido de un respaldo antiguo podr\xEDa borrar o sobrescribir en la
+    // nube datos m\xE1s recientes creados en otro dispositivo. Por eso, con nube
+    // activa, se bloquea el restore y se explica el riesgo en vez de dejar
+    // continuar.
+    const bloqueadoPorNubeActivaPM25 = typeof window !== "undefined" && window.__nubeActiva === true;
+    if (bloqueadoPorNubeActivaPM25) {
+      return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setPendingRestore(null), title: "Restaurar respaldo \u2014 bloqueado" }, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2" }, "No se puede restaurar mientras la nube est\xE1 activa"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2" }, "Este equipo est\xE1 sincronizado con la cuenta. Restaurar un respaldo antiguo podr\xEDa ", /* @__PURE__ */ import_react4.default.createElement("b", null, "borrar en el servidor"), " proveedores, clientes, albaranes, facturas directas o gastos generales creados despu\xE9s de la fecha de este respaldo, y sobrescribir con datos antiguos lo que se haya editado desde entonces \u2014 en este dispositivo o en cualquier otro conectado a la misma cuenta."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "Para restaurar este respaldo de forma segura, hazlo desde \"Trabajar solo en este equipo, sin sincronizar\", o pide ayuda antes de continuar.")), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setPendingRestore(null) }, "Cerrar"));
+    }
     return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setPendingRestore(null), title: "Restaurar respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-1", style: { color: C2.ink } }, pendingRestore.exportadoEl ? `Respaldo del ${new Date(pendingRestore.exportadoEl).toLocaleString("es-ES")}` : "Respaldo sin fecha registrada"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Formato ", pendingRestore.backupVersion || pendingRestore.version || "antiguo"), perdidas.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "\u26A0 Este respaldo tiene menos datos que lo que hay ahora"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2" }, "Al restaurarlo desaparecer\xEDa lo creado despu\xE9s. Se guardar\xE1 un punto de recuperaci\xF3n antes, por si te arrepientes."), perdidas.map((c22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: c22.clave, className: "text-[11.5px] mono" }, c22.nombre, ": ", c22.actual, " \u2192 ", c22.respaldo, " (", c22.diferencia, ")"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "Qu\xE9 contiene, comparado con ahora"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3 space-y-0.5", style: { color: C2.inkSoft } }, comparacion.map((c22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: c22.clave, className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", null, c22.nombre), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: c22.diferencia < 0 ? C2.red : C2.inkSoft } }, c22.actual, " \u2192 ", c22.respaldo)))), seConservan.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.bg, border: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]" }, "Este respaldo es anterior y no incluye: ", /* @__PURE__ */ import_react4.default.createElement("b", null, seConservan.join(", ")), ". Esos datos", /* @__PURE__ */ import_react4.default.createElement("b", null, " se conservan tal como est\xE1n ahora"), " \u2014 no se borran.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-4", style: { color: C2.red } }, "Restaurar sustituye lo que tengas cargado ahora por el contenido de este respaldo."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: confirmarRestauracion }, "Restaurar respaldo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setPendingRestore(null) }, "Cancelar")));
   })());
 }
@@ -108533,6 +108554,10 @@ function crearLogicaRespaldos({
   }
   function confirmarRestauracion() {
     if (!pendingRestore) return;
+    // Salvaguarda adicional: el bot\xF3n que llama a esta funci\xF3n ya no se
+    // muestra con nube activa (ver el modal de "Restaurar respaldo" m\xE1s
+    // arriba), pero se comprueba tambi\xE9n aqu\xED por si acaso.
+    if (typeof window !== "undefined" && window.__nubeActiva === true) return;
     const puntoPrevio = crearPuntoDeGuardado("previo-a-restauracion");
     let restauradas = 0;
     Object.entries(SETTERS).forEach(([clave, setter]) => {
@@ -109006,8 +109031,27 @@ function crearLogicaEntrevistas({ entrevistas, setEntrevistas, registrarAuditori
   }
   return { crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista };
 }
-function crearLogicaPrefiltros({ registrarAuditoria }) {
-  function generarToken() {
+function crearLogicaPrefiltros({ registrarAuditoria, empresaId, localId, esQA }) {
+  // PM26 P08b: dos backends coexisten para la misma interfaz publica.
+  // QA (post aviso F, P07c) expone las RPC pm11_crear_prefiltro_candidato
+  // / pm11_eliminar_prefiltro_candidato -- SIN cambios respecto a P07b.
+  // Produccion, mientras el Defecto L no este aplicado y autorizado, no
+  // tiene esas RPC ni las columnas empresa_id/local_id: usa el INSERT/
+  // DELETE directo ya vigente hoy en produccion. Cuando (y solo cuando)
+  // se autorice aplicar el Defecto L junto con este cliente, el mismo
+  // INSERT/DELETE directo queda ademas aislado por empresa/local via RLS
+  // (private.la_tiene_local), sin requerir ningun cambio adicional aqui.
+  // esQA se deriva de window.__modoPruebasQA, la misma senal que ya usa
+  // el Defecto K (P07b) -- no se introduce ningun mecanismo nuevo.
+  function contextoValido(valor, esLocal = false) {
+    if (typeof valor !== "string" || !valor.trim()) return false;
+    if (!esLocal) return true;
+    return !["todos", "todos los locales"].includes(valor.trim().toLowerCase());
+  }
+  function tokenValido(token) {
+    return typeof token === "string" && /^[a-f0-9]{64}$/.test(token);
+  }
+  function generarTokenDirecto() {
     if (typeof crypto !== "undefined" && crypto.randomUUID) {
       return crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
     }
@@ -109016,12 +109060,30 @@ function crearLogicaPrefiltros({ registrarAuditoria }) {
     return t22;
   }
   async function crearPrefiltro(candidatoNombre) {
+    const nombre = typeof candidatoNombre === "string" ? candidatoNombre.trim() : "";
+    if (!nombre || !contextoValido(empresaId) || !contextoValido(localId, true)) return null;
     const supabase = await window.getSupabaseClient();
-    const token = generarToken();
-    const { error } = await supabase.from("prefiltros_candidatos").insert({ token, candidato_nombre: candidatoNombre.trim(), estado: "pendiente" });
-    if (error) return null;
-    registrarAuditoria("Crear prefiltro de candidato", candidatoNombre.trim());
-    return token;
+    if (esQA) {
+      const { data: token, error } = await supabase.rpc("pm11_crear_prefiltro_candidato", {
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_candidato_nombre: nombre
+      });
+      if (error || !tokenValido(token)) return null;
+      registrarAuditoria("Crear prefiltro de candidato", nombre);
+      return token;
+    }
+    const tokenDirecto = generarTokenDirecto();
+    const { error: errorInsertPrefiltroDirecto } = await supabase.from("prefiltros_candidatos").insert({
+      token: tokenDirecto,
+      candidato_nombre: nombre,
+      estado: "pendiente",
+      empresa_id: empresaId,
+      local_id: localId
+    });
+    if (errorInsertPrefiltroDirecto) return null;
+    registrarAuditoria("Crear prefiltro de candidato", nombre);
+    return tokenDirecto;
   }
   async function listarPrefiltros() {
     const supabase = await window.getSupabaseClient();
@@ -109029,11 +109091,30 @@ function crearLogicaPrefiltros({ registrarAuditoria }) {
     if (error) return [];
     return data;
   }
-  async function eliminarPrefiltro(token, candidatoNombre) {
+  async function eliminarPrefiltro(prefiltro) {
+    const token = prefiltro?.token;
+    const empresaFila = prefiltro?.empresa_id;
+    const localFila = prefiltro?.local_id;
+    if (!tokenValido(token) || !contextoValido(empresaFila) || !contextoValido(localFila, true)) return false;
     const supabase = await window.getSupabaseClient();
-    const { error } = await supabase.from("prefiltros_candidatos").delete().eq("token", token);
-    if (!error) registrarAuditoria("Eliminar prefiltro de candidato", candidatoNombre || token);
-    return !error;
+    if (esQA) {
+      const { data, error } = await supabase.rpc("pm11_eliminar_prefiltro_candidato", {
+        p_empresa_id: empresaFila,
+        p_local_id: localFila,
+        p_token: token
+      });
+      if (error || data !== true) return false;
+      registrarAuditoria("Eliminar prefiltro de candidato", prefiltro?.candidato_nombre || token);
+      return true;
+    }
+    // Un DELETE bloqueado por RLS (fila de otra empresa/local) no
+    // devuelve error -- simplemente no afecta ninguna fila. Sin .select()
+    // no habria forma de distinguir ese caso de un borrado real: se exige
+    // exactamente una fila devuelta para considerarlo exito.
+    const { data: filasBorradasPrefiltroDirecto, error: errorBorrarPrefiltroDirecto } = await supabase.from("prefiltros_candidatos").delete().eq("token", token).select();
+    if (errorBorrarPrefiltroDirecto || !Array.isArray(filasBorradasPrefiltroDirecto) || filasBorradasPrefiltroDirecto.length !== 1) return false;
+    registrarAuditoria("Eliminar prefiltro de candidato", prefiltro?.candidato_nombre || token);
+    return true;
   }
   return { crearPrefiltro, listarPrefiltros, eliminarPrefiltro };
 }
@@ -110474,7 +110555,7 @@ function Pedidos({ pedidos: pedidos2, proveedores, productos, crearPedido, actua
     }, 0);
     return /* @__PURE__ */ import_react4.default.createElement(Card, { key: pe2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold" }, prov ? prov.nombre : "Proveedor eliminado"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Pedido ", pe2.fecha, " \xB7 Entrega esperada ", pe2.fechaEsperada || "\u2014")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: estadoColor[pe2.estado] }, pe2.estado), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold" }, "\u20AC", fmt(total + ivaPedido)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mono", style: { color: C2.inkSoft } }, "base \u20AC", fmt(total), " + IVA \u20AC", fmt(ivaPedido))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 flex gap-2 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
       setCorreoPedido(pe2);
-    } }, /* @__PURE__ */ import_react4.default.createElement(Mail, { size: 13 }), " Enviar por correo"), /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { small: true, href: whatsappHref(pe2) }, /* @__PURE__ */ import_react4.default.createElement(MessageCircle, { size: 13 }), " Enviar por WhatsApp"), proveedorPorId(pe2.proveedorId)?.telefono && /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { small: true, href: llamarHref(pe2) }, /* @__PURE__ */ import_react4.default.createElement(Phone, { size: 13 }), " Llamar"), pe2.estado === "Pendiente" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(pe2) }, "Editar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", onClick: () => setConfirmDeleteId(pe2.id) }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 13 }), " Eliminar"))));
+    } }, /* @__PURE__ */ import_react4.default.createElement(Mail, { size: 13 }), " Enviar por correo"), proveedorPorId(pe2.proveedorId)?.telefono && /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { small: true, href: whatsappHref(pe2) }, /* @__PURE__ */ import_react4.default.createElement(MessageCircle, { size: 13 }), " Enviar por WhatsApp"), proveedorPorId(pe2.proveedorId)?.telefono && /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { small: true, href: llamarHref(pe2) }, /* @__PURE__ */ import_react4.default.createElement(Phone, { size: 13 }), " Llamar"), pe2.estado === "Pendiente" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(pe2) }, "Editar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", onClick: () => setConfirmDeleteId(pe2.id) }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 13 }), " Eliminar"))));
   })), confirmDeleteId && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmDeleteId(null), title: "Eliminar pedido" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-4", style: { color: C2.ink } }, "\xBFSeguro que quieres eliminar este pedido? Esta acci\xF3n no se puede deshacer."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: () => {
     eliminarPedido(confirmDeleteId);
     setConfirmDeleteId(null);
@@ -110490,7 +110571,7 @@ function Pedidos({ pedidos: pedidos2, proveedores, productos, crearPedido, actua
   )), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setCorreoPedido(null) }, "Cerrar")), enviarPedido && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setEnviarPedido(null), title: "Pedido creado \u2014 \xBFc\xF3mo quieres enviarlo?" }, /* @__PURE__ */ import_react4.default.createElement("p", { className: "text-[12.5px] mb-4", style: { color: C2.inkSoft } }, "Puedes enviarlo ahora al proveedor o hacerlo m\xE1s tarde desde la lista de pedidos."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
     setCorreoPedido(enviarPedido);
     setEnviarPedido(null);
-  } }, /* @__PURE__ */ import_react4.default.createElement(Mail, { size: 14 }), " Correo"), /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { variant: "primary", href: whatsappHref(enviarPedido) }, /* @__PURE__ */ import_react4.default.createElement(MessageCircle, { size: 14 }), " WhatsApp"), proveedorPorId(enviarPedido.proveedorId)?.telefono && /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { href: llamarHref(enviarPedido) }, /* @__PURE__ */ import_react4.default.createElement(Phone, { size: 14 }), " Llamar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setEnviarPedido(null) }, "Ahora no"))));
+  } }, /* @__PURE__ */ import_react4.default.createElement(Mail, { size: 14 }), " Correo"), proveedorPorId(enviarPedido.proveedorId)?.telefono && /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { variant: "primary", href: whatsappHref(enviarPedido) }, /* @__PURE__ */ import_react4.default.createElement(MessageCircle, { size: 14 }), " WhatsApp"), proveedorPorId(enviarPedido.proveedorId)?.telefono && /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { href: llamarHref(enviarPedido) }, /* @__PURE__ */ import_react4.default.createElement(Phone, { size: 14 }), " Llamar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setEnviarPedido(null) }, "Ahora no"))));
 }
 function Recepcion({ pedidos: pedidos2, proveedorPorId, productoPorId, recibirPedido, almacenCongelado, recibirConAlbaran, recibirConFotoIA, cerrarPedido }) {
   const [activos, setActivos] = (0, import_react4.useState)({});
@@ -113193,6 +113274,7 @@ function SeleccionPersonal({ entrevistas, crearEntrevista, actualizarEntrevista,
   const [confirmarEliminarPrefiltro, setConfirmarEliminarPrefiltro] = (0, import_react4.useState)(null);
   const [creandoPrefiltro, setCreandoPrefiltro] = (0, import_react4.useState)(false);
   const [enlaceGenerado, setEnlaceGenerado] = (0, import_react4.useState)(null);
+  const entrevistaEnvioBloqueadoPM24 = import_react4.default.useRef(false);
   (0, import_react4.useEffect)(() => {
     let activo = true;
     (async () => {
@@ -113230,9 +113312,18 @@ function SeleccionPersonal({ entrevistas, crearEntrevista, actualizarEntrevista,
   }
   async function borrarPrefiltro() {
     if (!confirmarEliminarPrefiltro) return;
-    await eliminarPrefiltro(confirmarEliminarPrefiltro.token, confirmarEliminarPrefiltro.candidato_nombre);
-    setPrefiltros(await listarPrefiltros());
-    setConfirmarEliminarPrefiltro(null);
+    setError("");
+    try {
+      const eliminado = await eliminarPrefiltro(confirmarEliminarPrefiltro);
+      if (!eliminado) {
+        setError("No se ha podido eliminar el enlace. Comprueba el contexto y vuelve a intentarlo.");
+        return;
+      }
+      setPrefiltros(await listarPrefiltros());
+      setConfirmarEliminarPrefiltro(null);
+    } catch (e2) {
+      setError("No se ha podido eliminar el enlace: " + (e2?.message || "error de conexi\xF3n") + ". Int\xE9ntalo otra vez.");
+    }
   }
   const activa = entrevistas.find((e2) => e2.id === activaId);
   const verInforme = entrevistas.find((e2) => e2.id === verInformeId);
@@ -113266,8 +113357,19 @@ function SeleccionPersonal({ entrevistas, crearEntrevista, actualizarEntrevista,
       setCargando(false);
     }
   }
+  function bloqueadoPorEnvioDuplicadoPM24() {
+    // Un doble clic/doble toque rápido (antes de que React vuelva a
+    // renderizar) podía crear dos entrevistas o disparar dos llamadas a la
+    // IA para la misma respuesta -- igual que ya se protege la creación de
+    // pedidos, se bloquea aquí de forma síncrona durante una ventana breve.
+    if (entrevistaEnvioBloqueadoPM24.current) return true;
+    entrevistaEnvioBloqueadoPM24.current = true;
+    setTimeout(() => { entrevistaEnvioBloqueadoPM24.current = false; }, 750);
+    return false;
+  }
   function empezar() {
     if (!nombreNuevo.trim()) return;
+    if (bloqueadoPorEnvioDuplicadoPM24()) return;
     const nueva = crearEntrevista(nombreNuevo.trim());
     setNombreNuevo("");
     setShowNuevo(false);
@@ -113277,6 +113379,7 @@ function SeleccionPersonal({ entrevistas, crearEntrevista, actualizarEntrevista,
   function enviarRespuesta(valorDirecto) {
     const respuesta = (valorDirecto !== void 0 ? valorDirecto : respuestaActual).trim();
     if (!respuesta || !activa) return;
+    if (bloqueadoPorEnvioDuplicadoPM24()) return;
     const nuevoHistorial = [...activa.historial, { pregunta: activa.siguientePregunta, respuesta }];
     actualizarEntrevista(activa.id, { historial: nuevoHistorial, siguientePregunta: null, tipoRespuesta: null });
     setRespuestaActual("");
@@ -113284,6 +113387,7 @@ function SeleccionPersonal({ entrevistas, crearEntrevista, actualizarEntrevista,
   }
   function finalizarAhora() {
     if (!activa || activa.historial.length === 0) return;
+    if (bloqueadoPorEnvioDuplicadoPM24()) return;
     llamarIA(activa.id, activa.historial, true, activa.candidatoNombre);
   }
   if (activa) {
@@ -117180,6 +117284,40 @@ function AceiteFreidoras({ freidoras = [], registrosAceite = [], productos, addF
     "S\xED, eliminar y devolver el aceite"
   ), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmEliminarRegistro(null) }, "Cancelar"))));
 }
+function origenSupabasePublicoPM26(valor, etiqueta) {
+  if (typeof valor !== "string" || !valor.trim()) throw new Error(`${etiqueta}_ausente`);
+  let url;
+  try {
+    url = new URL(valor.trim());
+  } catch {
+    throw new Error(`${etiqueta}_invalida`);
+  }
+  if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || url.search || url.hash || url.pathname !== "/") {
+    throw new Error(`${etiqueta}_invalida`);
+  }
+  return url.origin;
+}
+function construirUrlFuncionPublicaPM26(slug, entorno = typeof window !== "undefined" ? window : null) {
+  if (slug !== "prefiltro-candidato") throw new Error("funcion_publica_no_permitida");
+  if (!entorno || entorno.__modoPruebasLocal === true) throw new Error("backend_publico_no_disponible");
+  const origenActivo = origenSupabasePublicoPM26(entorno.NUBE_URL, "nube_url");
+  if (entorno.__modoPruebasQA === true) {
+    const origenQA = origenSupabasePublicoPM26(entorno.__qaNubeUrl, "qa_nube_url");
+    if (origenActivo !== origenQA) throw new Error("configuracion_qa_incoherente");
+  }
+  return new URL(`/functions/v1/${slug}`, `${origenActivo}/`).toString();
+}
+async function invocarFuncionPublicaPM26(slug, accion, datos, entorno = typeof window !== "undefined" ? window : null, fetchInterceptado = null) {
+  if (!["comprobar", "enviar"].includes(accion)) throw new Error("accion_publica_no_permitida");
+  const url = construirUrlFuncionPublicaPM26(slug, entorno);
+  const hacerFetch = fetchInterceptado || (entorno && typeof entorno.fetch === "function" ? entorno.fetch.bind(entorno) : null);
+  if (typeof hacerFetch !== "function") throw new Error("fetch_publico_no_disponible");
+  return hacerFetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...datos, accion })
+  });
+}
 function PrefiltroPublico({ token }) {
   const [estado, setEstado] = (0, import_react4.useState)("comprobando");
   const [candidatoNombre, setCandidatoNombre] = (0, import_react4.useState)("");
@@ -117200,10 +117338,7 @@ function PrefiltroPublico({ token }) {
   (0, import_react4.useEffect)(() => {
     (async () => {
       try {
-        const resp = await fetch(
-          "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/prefiltro-candidato",
-          { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "comprobar", token }) }
-        );
+        const resp = await invocarFuncionPublicaPM26("prefiltro-candidato", "comprobar", { token });
         const r2 = await resp.json();
         if (!r2.ok) {
           setEstado("invalido");
@@ -117225,10 +117360,7 @@ function PrefiltroPublico({ token }) {
     e2.preventDefault();
     setEstado("enviando");
     try {
-      const resp = await fetch(
-        "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/prefiltro-candidato",
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "enviar", token, respuestas: form }) }
-      );
+      const resp = await invocarFuncionPublicaPM26("prefiltro-candidato", "enviar", { token, respuestas: form });
       const r2 = await resp.json();
       if (!r2.ok) {
         setEstado("error");

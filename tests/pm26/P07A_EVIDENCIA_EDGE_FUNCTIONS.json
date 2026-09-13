@@ -1,0 +1,22 @@
+{
+  "pm": "PM26-P07a",
+  "fecha_observacion_utc": "2026-09-10",
+  "metodo": "Supabase MCP: list_edge_functions + get_edge_function, solo lectura",
+  "invocaciones_al_flujo_prefiltro": 0,
+  "produccion": {
+    "slug_presente": true,
+    "estado": "ACTIVE",
+    "verify_jwt": false,
+    "implementacion": "cuestionario_real",
+    "tabla_resuelta_desde_entorno_propio": true,
+    "notificacion_interna_con_destino_literal_produccion": true
+  },
+  "qa": {
+    "slug_presente": true,
+    "estado": "ACTIVE",
+    "verify_jwt": false,
+    "implementacion": "simulador_503",
+    "escrituras_de_datos": false
+  },
+  "conclusion": "K puede resolver el destino desde la configuracion activa. La funcion real de produccion no puede copiarse sin adaptar destino interno, CORS y pruebas."
+}

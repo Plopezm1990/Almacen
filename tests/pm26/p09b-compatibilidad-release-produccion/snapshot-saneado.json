@@ -1,0 +1,87 @@
+{
+  "capturado_en": "2026-09-12",
+  "alcance": "Catalogo de solo lectura saneado; no contiene URLs, project refs, claves ni datos de usuarios",
+  "release": {
+    "commit": "9d54fc7ba76bd1285625f37b2940f99d26777ab8",
+    "fuente": "source-recovery/fuente-recuperado.js",
+    "artefacto_publicado": "fuente.js",
+    "entrada": "index.html"
+  },
+  "produccion": {
+    "relaciones": [
+      "almacen_kv",
+      "auditoria_registro",
+      "empresas",
+      "errores_sistema",
+      "fichajes_registro",
+      "locales",
+      "membresias_usuario",
+      "movimientos_registro",
+      "movimientos_stock",
+      "operaciones_procesadas",
+      "perfiles",
+      "prefiltro_limites",
+      "prefiltros_candidatos",
+      "stock_operaciones",
+      "stock_ubicacion",
+      "suscripciones_push"
+    ],
+    "rpc": {
+      "anular_venta_tpv": ["p_venta_id", "p_motivo"],
+      "descontar_stock_carrito": ["p_lineas", "p_venta_id"],
+      "obtener_contexto_operativo": [],
+      "pm12_cancelar_conteo_stock": ["p_empresa_id", "p_local_id", "p_conteo", "p_cancelacion"],
+      "pm12_confirmar_ajuste_stock": ["p_operation_id", "p_empresa_id", "p_local_id", "p_intencion", "p_plan", "p_bases"],
+      "registrar_auditoria": [
+        ["p_id", "p_usuario", "p_accion", "p_detalle", "p_fecha", "p_hora"],
+        ["p_usuario", "p_accion", "p_detalle"]
+      ]
+    },
+    "edge_functions": {
+      "crear-cuenta-empleado": { "existe": true, "requiere_authorization": true },
+      "entrevista-personal": { "existe": true, "requiere_authorization": true },
+      "enviar-notificacion": { "existe": true, "requiere_authorization": true },
+      "importar-albaran": { "existe": true, "requiere_authorization": true },
+      "importar-nomina": { "existe": true, "requiere_authorization": true },
+      "prefiltro-candidato": { "existe": true, "requiere_authorization": false }
+    }
+  },
+  "qa": {
+    "relaciones_candidatas": [
+      "albaranes_empresa",
+      "arqueos_caja",
+      "caja_operaciones",
+      "clientes_empresa",
+      "devoluciones_proveedor",
+      "devoluciones_venta",
+      "facturas_directas_empresa",
+      "gastos_empresa",
+      "pagos_factura",
+      "proveedores_empresa",
+      "stock_estado"
+    ],
+    "rpc_candidatas": {
+      "anular_arqueo_caja": ["p_operation_id", "p_arqueo_operation_id", "p_motivo"],
+      "registrar_arqueo_caja": ["p_operation_id", "p_empresa_id", "p_local_id", "p_fecha", "p_efectivo_base", "p_efectivo_contado", "p_notas", "p_snapshot"],
+      "registrar_auditoria": ["p_id", "p_usuario", "p_accion", "p_detalle", "p_fecha", "p_hora", "p_empresa_id", "p_local_id"],
+      "registrar_devolucion_proveedor": ["p_operation_id", "p_empresa_id", "p_local_id", "p_producto_id", "p_cantidad", "p_proveedor_id", "p_proveedor_nombre", "p_motivo", "p_fecha", "p_datos"],
+      "registrar_devolucion_venta": ["p_operation_id", "p_venta_operation_id", "p_empresa_id", "p_local_id", "p_producto_id", "p_cantidad", "p_reembolso", "p_medio_reembolso", "p_motivo", "p_fecha", "p_datos"],
+      "registrar_movimiento_caja": ["p_operation_id", "p_empresa_id", "p_local_id", "p_fecha", "p_tipo", "p_importe", "p_concepto", "p_datos"],
+      "registrar_pago_factura": ["p_id", "p_operation_id", "p_factura_id", "p_origen_factura", "p_empresa_id", "p_local_id", "p_importe", "p_fecha", "p_medio_pago", "p_datos"],
+      "registrar_venta_stock_carrito": ["p_operation_id", "p_empresa_id", "p_local_id", "p_lineas", "p_datos"],
+      "revertir_movimiento_caja": ["p_operation_id", "p_movimiento_operation_id", "p_motivo", "p_fecha"],
+      "revertir_pago_factura": ["p_id", "p_operation_id", "p_pago_id", "p_motivo"],
+      "revertir_venta_stock_carrito": ["p_operation_id", "p_venta_operation_id", "p_motivo"],
+      "trasladar_stock_entre_locales": ["p_operation_id", "p_empresa_id", "p_origen_local_id", "p_destino_local_id", "p_producto_origen_id", "p_producto_destino_id", "p_cantidad", "p_datos"],
+      "trasladar_stock_interno": ["p_operation_id", "p_empresa_id", "p_local_id", "p_producto_id", "p_origen", "p_destino", "p_cantidad", "p_datos"]
+    }
+  },
+  "resultado_esperado": {
+    "relaciones_requeridas": 21,
+    "relaciones_ausentes_produccion": 11,
+    "rpc_requeridas": 13,
+    "rpc_incompatibles_produccion": 13,
+    "edge_requeridas": 6,
+    "edge_incompatibles_por_authorization": 0
+  }
+}
