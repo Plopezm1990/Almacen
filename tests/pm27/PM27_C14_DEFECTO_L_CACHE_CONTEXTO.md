@@ -27,6 +27,8 @@ Con exactamente un local activo y operable, asociado a una empresa válida en la
 - el POST a `prefiltros_candidatos` completa únicamente los IDs ausentes;
 - el loader PM11 continúa cargándose una sola vez.
 
+Resultado: **PASS**.
+
 ## 4. Negativos obligatorios
 
 La prueba automatizada exige comportamiento fail-closed en:
@@ -45,21 +47,35 @@ También exige que:
 - una segunda ejecución del loader no duplique wrapper ni script PM11;
 - el hotfix universal permanezca fuera de `reset-pruebas-preview.js`.
 
-## 5. Criterio de PASS
+Resultado: **PASS**.
 
-C14 solo puede cerrar en PASS si el gate remoto del SHA exacto de esta rama ejecuta con éxito:
+## 5. Evidencia ejecutada
 
-1. sintaxis del loader y de la prueba;
-2. `node tests/pm27/defecto-l-context-hotfix.test.mjs`;
-3. control de que el delta respecto al baseline contiene solo evidencia/workflow de C14;
-4. árbol limpio al terminar.
+El gate C14 ejecutó sobre la rama trazable:
 
-## 6. Estado
+- verificación de que `b3d37a4cf2fdc37f66d862948a5894dfbc66b0be` es ancestro del HEAD;
+- control de alcance para permitir únicamente este documento y el workflow C14 sobre el baseline;
+- `node --check pm11-compra-mobile-loader.js`;
+- `node --check tests/pm27/defecto-l-context-hotfix.test.mjs`;
+- `node tests/pm27/defecto-l-context-hotfix.test.mjs`;
+- comprobación final de árbol limpio.
 
-Resultado actual: **PENDIENTE DE GATE REMOTO**.
+La primera ejecución de preparación, run `34781766625`, terminó en **SUCCESS** sobre `5613ce2babf34eb50da378b36a349df012e2aae0`. El commit de cierre vuelve a disparar el mismo gate para certificar el SHA final que contiene esta evidencia.
+
+## 6. Conclusión
+
+C14 queda formalmente **CERRADO / PASS**: el cliente completa contexto únicamente cuando puede resolverlo sin ambigüedad, conserva cualquier ID ya presente y falla cerrado frente a caché corrupta, múltiples locales, local explícito desconocido o local no operable.
 
 No se realizan escrituras en Supabase QA/producción, no se despliega Netlify y no se modifican `main`, `release` ni PR #38.
 
-Marcador provisional:
+El siguiente caso habilitado es **C15 — Defecto L: RLS real**, que debe comprobar que el backend de `prefiltros_candidatos` exige empresa/local válidos y que la RLS sigue siendo la autoridad aunque el cliente complete contexto.
 
-`PM27_C14_RESULTADO=PENDIENTE`
+Marcadores:
+
+`PM27_C14_POS_CONTEXTO_INEQUIVOCO=PASS`
+
+`PM27_C14_PRESERVA_IDS_EXISTENTES=PASS`
+
+`PM27_C14_FAIL_CLOSED_CACHE_AMBIGUA=PASS`
+
+`PM27_C14_RESULTADO=PASS`
