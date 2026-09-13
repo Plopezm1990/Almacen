@@ -1,0 +1,96 @@
+name: PM27 P01 candidato contexto prefiltro
+
+# Integra únicamente la compatibilidad de contexto del Defecto L que ya
+# demostró funcionar en release, adaptada a la arquitectura PM26 donde el
+# loader móvil vive separado. No aplica migraciones, no escribe en Supabase,
+# no despliega en Netlify y no modifica main, release ni la PR #38.
+
+on:
+  push:
+    branches:
+      - pm27-candidato-reauditoria
+    paths:
+      - 'reset-pruebas-preview.js'
+      - 'tests/pm27/**'
+      - '.github/workflows/pm27-p01-candidato-contexto-prefiltro.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Proteger rama, base y alcance del candidato
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = "pm27-candidato-reauditoria"
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          base='f297be08708d0bbe566c21347123885cb3095a7c'
+          git cat-file -e "$base^{commit}"
+          git merge-base --is-ancestor "$base" HEAD
+          cambiados="$(git diff --name-only "$base"..HEAD)"
+          inesperados="$(printf '%s\n' "$cambiados" | grep -Ev '^(reset-pruebas-preview\.js|tests/pm27/p01-defecto-l-context-hotfix\.test\.mjs|\.github/workflows/pm27-p01-candidato-contexto-prefiltro\.yml)$' || true)"
+          if [ -n "$inesperados" ]; then
+            echo "PM27 P01 contiene archivos fuera de alcance:" >&2
+            echo "$inesperados" >&2
+            exit 1
+          fi
+          printf '%s\n' "$cambiados" | grep -qx 'reset-pruebas-preview.js'
+          printf '%s\n' "$cambiados" | grep -qx 'tests/pm27/p01-defecto-l-context-hotfix.test.mjs'
+          printf '%s\n' "$cambiados" | grep -qx '.github/workflows/pm27-p01-candidato-contexto-prefiltro.yml'
+          test -z "$(git diff --name-only "$base"..HEAD -- supabase fuente.js source-recovery index.html _headers)"
+          echo 'PM27_P01_ALCANCE_ACOTADO=PASS'
+
+      - name: Sintaxis del hotfix adaptado
+        run: node --check reset-pruebas-preview.js
+
+      - name: Sintaxis de la regresión PM27
+        run: node --check tests/pm27/p01-defecto-l-context-hotfix.test.mjs
+
+      - name: Regresión específica Defecto L / contexto
+        run: node tests/pm27/p01-defecto-l-context-hotfix.test.mjs
+
+      - name: Instalar PostgreSQL local aislado para regresiones PM26
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql
+          sudo service postgresql start
+          sleep 2
+          sudo -u postgres pg_isready
+
+      - name: Preparar build canónico PM26
+        working-directory: source-recovery
+        run: npm ci
+
+      - name: Regresión heredada estable del Defecto L
+        run: |
+          set -euo pipefail
+          node tests/pm26/p03b-contract.mjs
+          node tests/pm26/p07b-contract.mjs
+          node tests/pm26/p08a-contract.mjs
+          node tests/pm26/p08b-contract.mjs
+
+      - name: Escáner completo de secretos e identificadores
+        run: node tools/seguridad/verificar-secretos-e-identificadores.mjs verificar
+
+  gate-final:
+    needs: validar
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sintaxis y regresión específica
+        run: |
+          set -euo pipefail
+          node --check reset-pruebas-preview.js
+          node --check tests/pm27/p01-defecto-l-context-hotfix.test.mjs
+          node tests/pm27/p01-defecto-l-context-hotfix.test.mjs
+          echo 'PM27_P01_GATE=PASS'
