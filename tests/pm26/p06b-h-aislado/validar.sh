@@ -88,7 +88,11 @@ echo "$PREFLIGHT_NEG1" | grep -q "PREFLIGHT_FALLO" \
   || fallo "el preflight debia fallar cuando el catalogo no coincide con QA (simulacro de proyecto equivocado) y no fallo"
 echo "PM26_P06B_H_AISLADO_PREFLIGHT_NEGATIVO_CATALOGO_DISTINTO=PASS"
 
-psql_archivo "$PREFLIGHT" "$DB" 2>&1 | grep -q "PREFLIGHT_CATALOGO=PASS" \
+# Evita falso negativo por SIGPIPE de psql cuando grep -q cierra una
+# tuberia bajo `set -o pipefail`: primero se captura la ejecucion completa.
+PREFLIGHT_POST_ROLLBACK="$(psql_archivo "$PREFLIGHT" "$DB" 2>&1)" \
+  || { echo "$PREFLIGHT_POST_ROLLBACK" >&2; fallo "tras el rollback del simulacro negativo, el preflight positivo deberia volver a pasar"; }
+echo "$PREFLIGHT_POST_ROLLBACK" | grep -q "PREFLIGHT_CATALOGO=PASS" \
   || fallo "tras el rollback del simulacro negativo, el preflight positivo deberia volver a pasar"
 echo "PM26_P06B_H_AISLADO_PREFLIGHT_ROLLBACK_SIMULACRO_LIMPIO=PASS"
 
@@ -162,7 +166,9 @@ diff -q "$WORKDIR/antes.txt" "$WORKDIR/revertido.txt" >/dev/null \
   || fallo "tras revertir, el comportamiento no coincide exactamente con el estado original"
 echo "PM26_P06B_H_AISLADO_REVERSION_EXACTA=PASS"
 
-psql_archivo "$PREFLIGHT" "$DB" 2>&1 | grep -q "PREFLIGHT_CATALOGO=PASS" \
+PREFLIGHT_POST_REVERT="$(psql_archivo "$PREFLIGHT" "$DB" 2>&1)" \
+  || { echo "$PREFLIGHT_POST_REVERT" >&2; fallo "tras revertir, el preflight positivo deberia volver a pasar"; }
+echo "$PREFLIGHT_POST_REVERT" | grep -q "PREFLIGHT_CATALOGO=PASS" \
   || fallo "tras revertir, el preflight positivo deberia volver a pasar"
 echo "PM26_P06B_H_AISLADO_PREFLIGHT_PASA_TRAS_REVERTIR=PASS"
 
@@ -204,7 +210,9 @@ echo "PM26_P06B_H_AISLADO_LOCK_TIMEOUT_CONFIRMADO=PASS"
 # bloquearse en movimientos_stock dentro de la misma transaccion).
 NINGUN_INDICE_A_MEDIAS="$($RUN_AS_POSTGRES $PSQL -d "$DB" -tAc "select count(*) from pg_indexes where schemaname='public' and indexname in ('idx_auditoria_registro_actor_user_id','idx_movimientos_stock_operation_id','idx_pagos_encargo_revierte_pago_id','idx_suscripciones_push_user_id');")"
 [ "$NINGUN_INDICE_A_MEDIAS" = "0" ] || fallo "tras el fallo por lock_timeout deberian quedar 0 indices nuevos (BEGIN/COMMIT debia revertir todo), encontrado $NINGUN_INDICE_A_MEDIAS"
-psql_archivo "$PREFLIGHT" "$DB" 2>&1 | grep -q "PREFLIGHT_CATALOGO=PASS" \
+PREFLIGHT_POST_LOCK="$(psql_archivo "$PREFLIGHT" "$DB" 2>&1)" \
+  || { echo "$PREFLIGHT_POST_LOCK" >&2; fallo "tras el fallo por lock_timeout, el preflight positivo deberia volver a pasar (nada aplicado a medias)"; }
+echo "$PREFLIGHT_POST_LOCK" | grep -q "PREFLIGHT_CATALOGO=PASS" \
   || fallo "tras el fallo por lock_timeout, el preflight positivo deberia volver a pasar (nada aplicado a medias)"
 echo "PM26_P06B_H_AISLADO_LOCK_TIMEOUT_SIN_APLICACION_PARCIAL=PASS"
 
