@@ -1,0 +1,44 @@
+name: PM27 candidato - contexto Defecto L
+
+on:
+  push:
+    branches:
+      - claude/pm27-reauditoria-candidato
+    paths:
+      - pm11-compra-mobile-loader.js
+      - tests/pm27/defecto-l-context-hotfix.test.mjs
+      - .github/workflows/pm27-candidato-contexto.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar-contexto:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Sintaxis loader universal
+        run: node --check pm11-compra-mobile-loader.js
+
+      - name: Sintaxis regresion PM27
+        run: node --check tests/pm27/defecto-l-context-hotfix.test.mjs
+
+      - name: Regresion Defecto L y aislamiento
+        run: node tests/pm27/defecto-l-context-hotfix.test.mjs
+
+      - name: Regresion de contratos PM26 (solo lectura)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for contrato in tests/pm26/*-contract.mjs; do
+            echo "==> $contrato"
+            node "$contrato"
+          done
