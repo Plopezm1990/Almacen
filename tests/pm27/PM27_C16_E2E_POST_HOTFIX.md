@@ -94,9 +94,24 @@ Para reabrir y cerrar C16 en PASS se necesita una de estas dos vías autorizadas
 - **Preferida:** Deploy Preview/entorno QA que sirva el candidato post-hotfix exacto y esté conectado exclusivamente a Supabase QA, con acceso autenticado disponible para ejecutar y limpiar un prefiltro sintético.
 - **Alternativa de mayor riesgo:** autorización específica para realizar una única operación sintética de prefiltro desde la UI productiva y posterior limpieza trazable en producción. Esta vía no se ejecutará por defecto.
 
-## 6. Resultado
+## 6. Gate de evidencia del bloqueo
+
+El workflow `PM27 C16 - E2E post-hotfix bloqueado` se ejecutó sobre el commit `61880f9655d028b55650e33013a468a8db0c2643` y el run `34782408871` terminó en **SUCCESS**.
+
+Ese SUCCESS **no certifica el E2E funcional**. Solo certifica de forma trazable que:
+
+- el branch parte del baseline corregido;
+- el delta de C16 contiene únicamente esta evidencia y su workflow;
+- la clasificación conserva `BLOCKED_EXTERNAL` y no se transforma indebidamente en PASS;
+- el árbol queda limpio.
+
+Este commit final vuelve a disparar el mismo gate para exigir la misma clasificación sobre el SHA final.
+
+## 7. Resultado
 
 `PM27_C16_E2E_REAL=NO_EJECUTADO`
+
+`PM27_C16_EVIDENCIA_BLOQUEO=PASS`
 
 `PM27_C16_RESULTADO=BLOCKED_EXTERNAL`
 
@@ -106,4 +121,4 @@ Para reabrir y cerrar C16 en PASS se necesita una de estas dos vías autorizadas
 
 `PM27_C16_QA_ESCRITURAS=0`
 
-Este bloqueo no debe convertirse en PASS hasta obtener la evidencia E2E real descrita arriba.
+Este bloqueo no debe convertirse en PASS hasta obtener la evidencia E2E real descrita arriba. Puede continuarse la auditoría con C17 sin reinterpretar ni cerrar este bloqueo; el cierre global de PM27 deberá conservar C16 como pendiente hasta resolverlo o aceptar explícitamente el riesgo/bloqueo.
