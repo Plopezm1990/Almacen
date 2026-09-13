@@ -1,0 +1,34 @@
+name: PM26 Defecto L hotfix
+
+on:
+  push:
+    branches:
+      - release
+    paths:
+      - reset-pruebas-preview.js
+      - tests/pm26/defecto-l-context-hotfix.test.mjs
+      - .github/workflows/pm26-defecto-l-hotfix.yml
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Sintaxis del hotfix
+        run: node --check reset-pruebas-preview.js
+
+      - name: Sintaxis de la regresión
+        run: node --check tests/pm26/defecto-l-context-hotfix.test.mjs
+
+      - name: Regresión Defecto L
+        run: node tests/pm26/defecto-l-context-hotfix.test.mjs
