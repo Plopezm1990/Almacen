@@ -1,0 +1,76 @@
+name: PM27 C15 - Defecto L RLS real
+
+on:
+  push:
+    branches:
+      - claude/pm27-c15-defecto-l-rls-real
+    paths:
+      - tests/pm27/c15-prefiltros-rls-contract.mjs
+      - tests/pm27/PM27_C15_DEFECTO_L_RLS_REAL.md
+      - .github/workflows/pm27-c15-defecto-l-rls-real.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pm27-c15-rls-real-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  c15-rls-real:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout trazable
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verificar baseline y alcance C15
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='b3d37a4cf2fdc37f66d862948a5894dfbc66b0be'
+          git cat-file -e "${BASE}^{commit}"
+          git merge-base --is-ancestor "$BASE" HEAD
+          mapfile -t files < <(git diff --name-only "$BASE"...HEAD | sort)
+          printf '%s\n' "${files[@]}"
+          expected=(
+            '.github/workflows/pm27-c15-defecto-l-rls-real.yml'
+            'tests/pm27/PM27_C15_DEFECTO_L_RLS_REAL.md'
+            'tests/pm27/c15-prefiltros-rls-contract.mjs'
+          )
+          mapfile -t expected_sorted < <(printf '%s\n' "${expected[@]}" | sort)
+          [[ "${#files[@]}" -eq "${#expected_sorted[@]}" ]]
+          for i in "${!files[@]}"; do
+            [[ "${files[$i]}" == "${expected_sorted[$i]}" ]]
+          done
+
+      - name: Sintaxis contrato C15
+        run: node --check tests/pm27/c15-prefiltros-rls-contract.mjs
+
+      - name: PostgreSQL local aislado
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo systemctl start postgresql
+          sudo -u postgres pg_isready
+          sudo -u postgres psql -tAc 'select current_user, current_database();'
+
+      - name: Reproducir RLS real de prefiltros
+        run: node tests/pm27/c15-prefiltros-rls-contract.mjs
+
+      - name: Confirmar evidencia C15
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Eq 'PM27_C15_RESULTADO=(PENDIENTE|PASS)' tests/pm27/PM27_C15_DEFECTO_L_RLS_REAL.md
+
+      - name: Arbol limpio
+        run: git diff --exit-code && git status --porcelain=v1 | (! grep .)
