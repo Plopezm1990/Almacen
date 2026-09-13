@@ -17,13 +17,15 @@ jobs:
   validar-contexto:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout con historial completo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Node 20
+      - name: Node 22
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Sintaxis loader universal
         run: node --check pm11-compra-mobile-loader.js
