@@ -34,6 +34,9 @@ jobs:
       - name: Regresion Defecto L y aislamiento
         run: node tests/pm27/defecto-l-context-hotfix.test.mjs
 
+      - name: Preparar dependencias del build canonico PM26
+        run: npm ci --prefix source-recovery
+
       - name: Regresion de contratos PM26 (solo lectura)
         shell: bash
         run: |
