@@ -1,0 +1,55 @@
+name: PM27 C16 - E2E post-hotfix bloqueado
+
+on:
+  push:
+    branches:
+      - claude/pm27-c16-e2e-post-hotfix
+    paths:
+      - tests/pm27/PM27_C16_E2E_POST_HOTFIX.md
+      - .github/workflows/pm27-c16-e2e-post-hotfix.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  c16-evidencia-bloqueo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout trazable
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar baseline y alcance C16
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='b3d37a4cf2fdc37f66d862948a5894dfbc66b0be'
+          git cat-file -e "$BASE^{commit}"
+          mapfile -t files < <(git diff --name-only "$BASE"...HEAD)
+          printf '%s\n' "${files[@]}"
+          for f in "${files[@]}"; do
+            case "$f" in
+              tests/pm27/PM27_C16_E2E_POST_HOTFIX.md|.github/workflows/pm27-c16-e2e-post-hotfix.yml) ;;
+              *) echo "Cambio fuera del alcance C16: $f" >&2; exit 1 ;;
+            esac
+          done
+
+      - name: Confirmar clasificacion honesta
+        shell: bash
+        run: |
+          set -euo pipefail
+          doc='tests/pm27/PM27_C16_E2E_POST_HOTFIX.md'
+          grep -Fq 'PM27_C16_E2E_REAL=NO_EJECUTADO' "$doc"
+          grep -Fq 'PM27_C16_RESULTADO=BLOCKED_EXTERNAL' "$doc"
+          grep -Fq 'PM27_C16_ESTADO_HISTORICO=PENDIENTE_CONFIRMACION' "$doc"
+          if grep -Eq 'PM27_C16_RESULTADO=PASS|C16 queda.*PASS' "$doc"; then
+            echo 'C16 no puede declararse PASS sin E2E real' >&2
+            exit 1
+          fi
+          echo 'PM27_C16_EVIDENCIA_BLOQUEO=PASS'
+          echo 'PM27_C16_RESULTADO=BLOCKED_EXTERNAL'
+
+      - name: Arbol limpio
+        run: git diff --exit-code && test -z "$(git status --porcelain)"
