@@ -39,7 +39,7 @@ jobs:
       - name: Regresion Defecto L y aislamiento
         run: node tests/pm27/defecto-l-context-hotfix.test.mjs
 
-      - name: Estado autorizado main-release posterior a P05b
+      - name: Estado autorizado main-release posterior a P05
         run: node tests/pm27/release-hotfix-state.test.mjs
 
       - name: Preparar dependencias del build canonico PM26
@@ -50,10 +50,12 @@ jobs:
         run: |
           set -euo pipefail
           for contrato in tests/pm26/*-contract.mjs; do
-            if [[ "$contrato" == "tests/pm26/p05b-contract.mjs" ]]; then
-              echo "==> $contrato [invariante histórico release==main sustituido por test PM27 de fast-forward y alcance exacto]"
-              continue
-            fi
+            case "$contrato" in
+              tests/pm26/p05b-contract.mjs|tests/pm26/p05c-contract.mjs)
+                echo "==> $contrato [invariante histórico release==main sustituido por test PM27 de fast-forward y alcance exacto]"
+                continue
+                ;;
+            esac
             echo "==> $contrato"
             node "$contrato"
           done
