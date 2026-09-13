@@ -91,7 +91,7 @@ begin
   select pg_catalog.count(distinct m.empresa_id),
          pg_catalog.count(distinct m.rol),
          pg_catalog.min(m.rol),
-         pg_catalog.coalesce(pg_catalog.bool_or(m.todos_locales is true), false)
+         coalesce(pg_catalog.bool_or(m.todos_locales is true), false)
     into v_num_empresas, v_num_roles, v_membresia_rol, v_todos_locales
     from public.membresias_usuario m
    where m.user_id = v_uid
@@ -126,12 +126,12 @@ begin
      where m.user_id = v_uid
        and m.activo is true
        and m.todos_locales is false
-       and pg_catalog.nullif(pg_catalog.btrim(m.local_id), '') is not null
+       and nullif(pg_catalog.btrim(m.local_id), '') is not null
        and pg_catalog.upper(pg_catalog.btrim(m.local_id)) not in ('TODOS', 'TODOS LOS LOCALES');
   end if;
 
   -- Empresas: nunca se aceptan IDs del navegador; salen de membresias activas.
-  select pg_catalog.coalesce(
+  select coalesce(
            pg_catalog.jsonb_agg(
              pg_catalog.jsonb_build_object(
                'id', x.empresa_id,
@@ -176,19 +176,19 @@ begin
     select distinct c.elem
       from catalogo c
       join membresias m
-        on m.empresa_id = pg_catalog.nullif(pg_catalog.btrim(c.elem->>'empresaId'), '')
+        on m.empresa_id = nullif(pg_catalog.btrim(c.elem->>'empresaId'), '')
        and (
          m.todos_locales is true
          or (
            m.todos_locales is false
-           and m.local_id = pg_catalog.nullif(pg_catalog.btrim(c.elem->>'id'), '')
+           and m.local_id = nullif(pg_catalog.btrim(c.elem->>'id'), '')
          )
        )
-     where pg_catalog.nullif(pg_catalog.btrim(c.elem->>'id'), '') is not null
-       and pg_catalog.nullif(pg_catalog.btrim(c.elem->>'empresaId'), '') is not null
-       and pg_catalog.coalesce(pg_catalog.lower(c.elem->>'activo') <> 'false', true)
+     where nullif(pg_catalog.btrim(c.elem->>'id'), '') is not null
+       and nullif(pg_catalog.btrim(c.elem->>'empresaId'), '') is not null
+       and coalesce(pg_catalog.lower(c.elem->>'activo') <> 'false', true)
   )
-  select pg_catalog.coalesce(pg_catalog.jsonb_agg(p.elem), '[]'::jsonb)
+  select coalesce(pg_catalog.jsonb_agg(p.elem), '[]'::jsonb)
     into v_locales
     from permitidos p;
 
@@ -196,7 +196,7 @@ begin
   -- devolver como fallback una membresia a local concreto. Una membresia
   -- todos_locales sin catalogo verificable permanece sin seleccion arbitraria.
   if pg_catalog.jsonb_array_length(v_locales) = 0 then
-    select pg_catalog.coalesce(
+    select coalesce(
              pg_catalog.jsonb_agg(
                pg_catalog.jsonb_build_object(
                  'id', x.local_id,
@@ -214,7 +214,7 @@ begin
          where m.user_id = v_uid
            and m.activo is true
            and m.todos_locales is false
-           and pg_catalog.nullif(pg_catalog.btrim(m.local_id), '') is not null
+           and nullif(pg_catalog.btrim(m.local_id), '') is not null
            and pg_catalog.upper(pg_catalog.btrim(m.local_id)) not in ('TODOS', 'TODOS LOS LOCALES')
       ) x;
   end if;
