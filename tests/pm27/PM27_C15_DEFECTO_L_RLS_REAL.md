@@ -69,22 +69,26 @@ La batería exige PASS en:
 
 Todos los UUID, empresas y locales de esa reproducción son efímeros y no corresponden a QA ni producción.
 
-## 5. Criterio de cierre
+## 5. Gate remoto
 
-C15 solo puede quedar en PASS cuando el gate remoto del SHA exacto de esta rama confirme:
+El primer gate C15 sobre el SHA `d6ff2eec76b7a8f6bcff80db1784e9d5102cb398`, run `34782037182`, terminó en **SUCCESS**. Confirmó baseline/alcance, sintaxis, PostgreSQL local, reproducción RLS completa, evidencia y árbol limpio.
 
-1. que el delta sobre el baseline contiene únicamente evidencia, prueba y workflow de C15;
-2. sintaxis del contrato;
-3. PostgreSQL local disponible;
-4. `node tests/pm27/c15-prefiltros-rls-contract.mjs` en PASS;
-5. árbol limpio al terminar.
+Este commit de cierre vuelve a disparar el mismo gate para exigir SUCCESS también sobre el SHA final que contiene el resultado PASS.
 
-## 6. Estado
+## 6. Resultado
 
-Resultado actual: **PENDIENTE DE GATE REMOTO**.
+C15 queda **CERRADO / PASS** porque la evidencia viva confirma que RLS y el helper de pertenencia son la autoridad efectiva, y la reproducción aislada demuestra los negativos empresa/local/rol/sesión que no pueden ejecutarse directamente en producción sin violar la regla de cero escrituras.
+
+Este PASS no implica aplicar ninguna migración: C15 fue una auditoría de la política ya existente.
 
 No se ha escrito en Supabase QA/producción, no se ha desplegado Netlify y no se han modificado `main`, `release` ni PR #38.
 
-Marcador provisional:
+Marcadores de cierre:
 
-`PM27_C15_RESULTADO=PENDIENTE`
+`PM27_C15_RLS_VIVO=PASS`
+
+`PM27_C15_NEGATIVOS_AISLADOS=PASS`
+
+`PM27_C15_RESULTADO=PASS`
+
+`PM27_C16_HABILITADO=YES`
