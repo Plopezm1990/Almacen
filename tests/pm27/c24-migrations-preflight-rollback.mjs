@@ -7,10 +7,12 @@ const manifestPath = 'tests/pm27/pm27-c24-migration-manifest.json';
 const preflightPath = 'supabase/qa-solo/pm27_c24_preflight_migraciones.sql';
 const postflightPath = 'supabase/qa-solo/pm27_c24_postflight_migraciones.sql';
 const c13HelperPath = 'supabase/migrations/20260913193500_pm27_c13_private_helper_hardening.sql';
+const productionDocPath = 'tests/pm27/PM27_C24_MIGRACIONES_PREFLIGHT_ROLLBACK.md';
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 const preflight = fs.readFileSync(preflightPath, 'utf8');
 const postflight = fs.readFileSync(postflightPath, 'utf8');
 const c13Helper = fs.readFileSync(c13HelperPath, 'utf8');
+const productionDoc = fs.readFileSync(productionDocPath, 'utf8');
 
 function check(name, ok) {
   console.log(`PM27_C24_${name}=${ok ? 'PASS' : 'FAIL'}`);
@@ -71,8 +73,6 @@ for (const m of migrations) {
 }
 
 // C24-D2: C13-P5 no puede convertir un baseline posterior válido en falso negativo.
-// Si el helper existe, se endurece. Si ya fue retirado, solo se acepta su ausencia
-// cuando no quedan políticas ni funciones que todavía lo referencien.
 check('C13_HELPER_OPCIONAL_FAIL_CLOSED',
   c13Helper.includes("to_regprocedure('private.es_propietario_activo()')")
   && c13Helper.includes("pg_catalog.pg_policies")
@@ -81,8 +81,6 @@ check('C13_HELPER_OPCIONAL_FAIL_CLOSED',
   && c13Helper.includes('helper es_propietario_activo ya ausente y sin dependencias')
   && c13Helper.includes('alter function private.es_propietario_activo() set search_path'));
 
-// El preflight agregado es deliberadamente de solo lectura y rechaza tanto
-// instalación incompleta como re-aplicación/parcial y datos incompatibles.
 check('PREFLIGHT_READ_ONLY',
   /begin;[\s\S]*set local transaction read only;[\s\S]*rollback;/i.test(preflight));
 check('PREFLIGHT_TIMEOUTS',
@@ -115,8 +113,6 @@ check('PREFLIGHT_DATOS_C22',
   && preflight.includes('un pago tiene más de un reverso')
   && preflight.includes('pago sin claim global correcto'));
 
-// El postflight también es de solo lectura y comprueba C13-C23, incluido el
-// caso de RPC legacy opcional sin llamar has_function_privilege sobre firma ausente.
 check('POSTFLIGHT_READ_ONLY',
   /begin;[\s\S]*set local transaction read only;[\s\S]*rollback;/i.test(postflight));
 check('POSTFLIGHT_TIMEOUTS',
@@ -153,16 +149,41 @@ check('POSTFLIGHT_C13_C23',
   && postflight.includes('C22 CHECK ausente/no validado')
   && postflight.includes('C23 identidad de metadatos de línea ausente'));
 
-// El manifest no debe confundirse con un aplicador. C24 prepara y certifica;
-// la aplicación remota queda para el rollout autorizado de C25.
+// Contrato de producción: C24 debe conservar de forma explícita que el manifest
+// aislado no es directamente desplegable sobre el esquema productivo actual.
+check('PRODUCCION_NO_DESTINO_DIRECTO',
+  productionDoc.includes('PRODUCCIÓN NO ES DESTINO DIRECTO DEL MANIFEST C24 ACTUAL'));
+check('PRODUCCION_INSPECCION_SOLO_LECTURA',
+  productionDoc.includes('solo lectura')
+  && productionDoc.includes('C24 no ha aplicado migraciones'));
+check('PRODUCCION_PM14_AUSENTE',
+  productionDoc.includes('public.clientes_empresa')
+  && productionDoc.includes('public.encargos_empresa')
+  && productionDoc.includes('public.pagos_encargo')
+  && productionDoc.includes('private.pm08_puede_operar_caja()'));
+check('PRODUCCION_PRERREQUISITOS_VERSIONADOS',
+  productionDoc.includes('20260904135838_pm07_stock_ubicacion_y_reversos.sql')
+  && productionDoc.includes('20260904142656_pm07_carrito_y_traslado_interlocal_atomicos.sql')
+  && productionDoc.includes('20260905120500_pm09_operation_id_global_hardening.sql')
+  && productionDoc.includes('20260908071757_pm14_p02_encargos_pagos_encargo.sql')
+  && productionDoc.includes('20260912120000_pm26_p09f_b3_pagos_encargo_operation_id_global.sql'));
+check('PRODUCCION_PM05_RECUPERACION_EXPLICITA',
+  productionDoc.includes('SQL PM05 original')
+  && productionDoc.includes('no está presente en el árbol de migraciones actual')
+  && productionDoc.includes('migración de reconciliación versionada'));
+check('PRODUCCION_DRIFT_HISTORIAL_FAIL_CLOSED',
+  productionDoc.includes('Drift de esquema frente a historial de migraciones')
+  && productionDoc.includes('Prohibido como mecanismo de reparación')
+  && productionDoc.includes('schema_migrations'));
+check('PRODUCCION_NUEVA_AUTORIZACION',
+  productionDoc.includes('nueva autorización explícita'));
+
 const c24Text = [preflight, postflight, fs.readFileSync(manifestPath, 'utf8')].join('\n');
 check('C24_NO_APLICADOR_REMOTO',
   !/supabase\s+(?:db\s+push|migration\s+up)|netlify\s+deploy/i.test(c24Text));
 
 if (process.exitCode) throw new Error('PM27_C24_STATIC_CONTRACT_FAIL');
 
-// La regresión C23 arrastra C17-C22 y PM12-P08; si C24 cambia bytes de migración
-// de forma funcional, este contrato debe detectarlo antes del cierre.
 console.log('PM27_C24_RUN=tests/pm27/c23-concurrencia-replay-atomicidad.mjs');
 execFileSync(process.execPath, ['tests/pm27/c23-concurrencia-replay-atomicidad.mjs'], { stdio: 'inherit' });
 
@@ -171,4 +192,5 @@ console.log('PM27_C24_REAPLICACION=PASS');
 console.log('PM27_C24_TIMEOUTS=PASS');
 console.log('PM27_C24_ORDEN_DEPENDENCIAS=PASS');
 console.log('PM27_C24_POSTFLIGHT=PASS');
+console.log('PM27_C24_PRODUCCION_PRERREQUISITOS=PASS');
 console.log('PM27_C24_RESULTADO=PASS');
