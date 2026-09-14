@@ -1,0 +1,114 @@
+name: PM27 C22 - Pagos reembolsos operation_id
+
+on:
+  push:
+    branches:
+      - claude/pm27-c22-pagos-reembolsos-ledger
+    paths:
+      - .github/workflows/pm27-c22-pagos-reembolsos-operation-id.yml
+      - supabase/migrations/20260914103000_pm27_c22_pagos_reembolsos_operation_id_hardening.sql
+      - tests/pm27/PM27_C22_PAGOS_REEMBOLSOS_OPERATION_ID.md
+      - tests/pm27/c22-pagos-reembolsos-operation-id.mjs
+  pull_request:
+    paths:
+      - .github/workflows/pm27-c22-pagos-reembolsos-operation-id.yml
+      - supabase/migrations/20260914103000_pm27_c22_pagos_reembolsos_operation_id_hardening.sql
+      - tests/pm27/PM27_C22_PAGOS_REEMBOLSOS_OPERATION_ID.md
+      - tests/pm27/c22-pagos-reembolsos-operation-id.mjs
+
+permissions:
+  contents: read
+
+jobs:
+  certify-c22:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout exact candidate SHA
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Guard protected refs unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_main='93a570badba1c5375febfbddc1dffdbcef003dcd'
+          expected_release='a97740987be57aa9646f6a06e69b2230f140ec5f'
+          actual_main="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+          actual_release="$(git ls-remote origin refs/heads/release | awk '{print $1}')"
+          test "$actual_main" = "$expected_main"
+          test "$actual_release" = "$expected_release"
+          echo "PROTECTED_REFS=PASS"
+
+      - name: Guard C22 scope against certified C21 base
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='0dcb7207d2b3a802ab7923cdf6e5a16e99e31053'
+          git cat-file -e "${base}^{commit}"
+
+          cat > /tmp/expected.txt <<'EOF'
+          .github/workflows/pm27-c22-pagos-reembolsos-operation-id.yml
+          supabase/migrations/20260914103000_pm27_c22_pagos_reembolsos_operation_id_hardening.sql
+          tests/pm27/PM27_C22_PAGOS_REEMBOLSOS_OPERATION_ID.md
+          tests/pm27/c22-pagos-reembolsos-operation-id.mjs
+          EOF
+
+          git diff --name-only "$base" "$GITHUB_SHA" | sort > /tmp/actual.txt
+          sort /tmp/expected.txt -o /tmp/expected.txt
+          diff -u /tmp/expected.txt /tmp/actual.txt
+          test "$(wc -l < /tmp/actual.txt | tr -d ' ')" = '4'
+          echo "C22_SCOPE=PASS"
+
+      - name: Syntax check C22 test
+        run: node --check tests/pm27/c22-pagos-reembolsos-operation-id.mjs
+
+      - name: Run C22 payment and reversal ledger contract
+        run: node tests/pm27/c22-pagos-reembolsos-operation-id.mjs
+
+      - name: Regression C21 encargos anticipos clientes
+        run: node tests/pm27/c21-encargos-anticipos-clientes.mjs
+
+      - name: Guard migration is preparation only
+        shell: bash
+        run: |
+          set -euo pipefail
+          migration='supabase/migrations/20260914103000_pm27_c22_pagos_reembolsos_operation_id_hardening.sql'
+          grep -Fq 'private.g1_operation_ids_global' "$migration"
+          grep -Fq 'private.g1_claim_operation_id()' "$migration"
+          grep -Fq 'pm27_c22_pagos_encargo_un_reverso_por_pago' "$migration"
+          grep -Fq 'pm27_c22_pagos_encargo_estado_reverso_ck' "$migration"
+          grep -Fq 'revoke insert, update, delete, truncate, references, trigger' "$migration"
+          if grep -Eiq 'supabase[[:space:]]+(db[[:space:]]+push|migration[[:space:]]+up)|netlify[[:space:]]+deploy' "$migration"; then
+            echo 'C22 migration must not deploy itself' >&2
+            exit 1
+          fi
+          echo "C22_NO_DEPLOY=PASS"
+
+      - name: Guard C22 documentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          doc='tests/pm27/PM27_C22_PAGOS_REEMBOLSOS_OPERATION_ID.md'
+          grep -Fq 'C22-D1' "$doc"
+          grep -Fq 'C22-D2' "$doc"
+          grep -Fq 'C22-D3' "$doc"
+          grep -Fq 'no se ha aplicado' "$doc"
+          grep -Fq 'C23' "$doc"
+          echo "C22_DOC=PASS"
+
+      - name: Clean working tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code
+          test -z "$(git status --porcelain)"
+          echo "C22_CLEAN_TREE=PASS"
