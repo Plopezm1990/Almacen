@@ -1,0 +1,74 @@
+name: PM27 C19 - Traspasos
+
+on:
+  push:
+    branches:
+      - claude/pm27-c19-traspasos
+    paths:
+      - supabase/migrations/20260914071000_pm27_c19_transfer_operation_id_hardening.sql
+      - tests/pm27/c19-traspasos.mjs
+      - tests/pm27/PM27_C19_TRASPASOS.md
+      - .github/workflows/pm27-c19-traspasos.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  c19-traspasos:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout trazable
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar SHA exacto y referencias protegidas
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git fetch origin main release --no-tags
+          test "$(git rev-parse origin/main)" = '93a570badba1c5375febfbddc1dffdbcef003dcd'
+          test "$(git rev-parse origin/release)" = 'a97740987be57aa9646f6a06e69b2230f140ec5f'
+
+      - name: Verificar base C18 y alcance C19
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='14c3d0a814660877139b7d06c459f0601f48a076'
+          git cat-file -e "$BASE^{commit}"
+          git merge-base --is-ancestor "$BASE" HEAD
+          mapfile -t files < <(git diff --name-only "$BASE"...HEAD)
+          printf '%s\n' "${files[@]}"
+          test "${#files[@]}" -eq 4
+          for f in "${files[@]}"; do
+            case "$f" in
+              supabase/migrations/20260914071000_pm27_c19_transfer_operation_id_hardening.sql|tests/pm27/c19-traspasos.mjs|tests/pm27/PM27_C19_TRASPASOS.md|.github/workflows/pm27-c19-traspasos.yml) ;;
+              *) echo "Cambio fuera del alcance C19: $f" >&2; exit 1 ;;
+            esac
+          done
+
+      - name: Configurar Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Sintaxis C19
+        run: node --check tests/pm27/c19-traspasos.mjs
+
+      - name: Ejecutar contrato y regresiones de Traspasos
+        run: node tests/pm27/c19-traspasos.mjs
+
+      - name: Confirmar evidencia y no-despliegue
+        shell: bash
+        run: |
+          set -euo pipefail
+          doc='tests/pm27/PM27_C19_TRASPASOS.md'
+          grep -Fq 'C19 audita traspasos internos e interlocales: origen/destino, empresa/local, atomicidad, idempotencia, replay y ausencia de efectos parciales' "$doc"
+          grep -Fq 'No se ha aplicado en QA ni en producción.' "$doc"
+          grep -Fq 'reutiliza `private.pm09_bloquear_operation_id_stock(...)` en vez de crear otro motor de idempotencia' "$doc"
+          echo 'PM27_C19_EVIDENCIA=PASS'
+
+      - name: Árbol limpio
+        run: git diff --exit-code && test -z "$(git status --porcelain)"
