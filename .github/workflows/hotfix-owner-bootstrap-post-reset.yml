@@ -12,7 +12,22 @@ permissions:
 jobs:
   hotfix-gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: la_bootstrap_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d la_bootstrap_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
     steps:
       - name: Checkout exact candidate
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -23,10 +38,39 @@ jobs:
         run: |
           node --check reset-pruebas-preview.js
           node --check edge-auth-patch.js
+          node --check owner-bootstrap-prelock.js
+          node --check owner-bootstrap-post-reset.js
           node --check tests/hotfix-barrera-reset-local.mjs
 
       - name: Hotfix contract test
         run: node tests/hotfix-barrera-reset-local.mjs
+
+      - name: PostgreSQL bootstrap integration test
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y postgresql-client
+          fi
+          psql -h 127.0.0.1 -U postgres -d la_bootstrap_test -v ON_ERROR_STOP=1 -f tests/bootstrap-owner-post-reset.sql
+
+      - name: Concurrent retry contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          SQL="select set_config('app.current_uid','685cfc8f-f674-4681-9a81-61d3a26c0287',false); select public.bootstrap_owner_instalacion('Empresa concurrente','Local concurrente');"
+          psql -h 127.0.0.1 -U postgres -d la_bootstrap_test -v ON_ERROR_STOP=1 -c "$SQL" > /tmp/bootstrap-1.log &
+          p1=$!
+          psql -h 127.0.0.1 -U postgres -d la_bootstrap_test -v ON_ERROR_STOP=1 -c "$SQL" > /tmp/bootstrap-2.log &
+          p2=$!
+          wait "$p1"
+          wait "$p2"
+          counts="$(psql -h 127.0.0.1 -U postgres -d la_bootstrap_test -Atc "select (select count(*) from public.empresas)||'|'||(select count(*) from public.locales)||'|'||(select count(*) from public.membresias_usuario)")"
+          test "$counts" = "1|1|1"
+          grep -q '"state": "ready"' /tmp/bootstrap-1.log
+          grep -q '"state": "ready"' /tmp/bootstrap-2.log
+          echo "BOOTSTRAP_CONCURRENT_PASS=$counts"
 
       - name: Scope guard against production baseline
         shell: bash
