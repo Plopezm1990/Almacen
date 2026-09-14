@@ -1,0 +1,75 @@
+name: PM27 C20 - Inventarios conteos
+
+on:
+  push:
+    branches:
+      - claude/pm27-c20-inventarios-conteos
+    paths:
+      - supabase/migrations/20260914080000_pm27_c20_inventory_count_replay_hardening.sql
+      - tests/pm27/c20-inventarios-conteos.mjs
+      - tests/pm27/PM27_C20_INVENTARIOS_CONTEOS.md
+      - .github/workflows/pm27-c20-inventarios-conteos.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  c20-inventarios-conteos:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout trazable
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar SHA exacto y referencias protegidas
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git fetch origin main release --no-tags
+          test "$(git rev-parse origin/main)" = '93a570badba1c5375febfbddc1dffdbcef003dcd'
+          test "$(git rev-parse origin/release)" = 'a97740987be57aa9646f6a06e69b2230f140ec5f'
+
+      - name: Verificar base C19 y alcance C20
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='37607abc445cd606649195320b69a8e384b6d96e'
+          git cat-file -e "$BASE^{commit}"
+          git merge-base --is-ancestor "$BASE" HEAD
+          mapfile -t files < <(git diff --name-only "$BASE"...HEAD)
+          printf '%s\n' "${files[@]}"
+          test "${#files[@]}" -eq 4
+          for f in "${files[@]}"; do
+            case "$f" in
+              supabase/migrations/20260914080000_pm27_c20_inventory_count_replay_hardening.sql|tests/pm27/c20-inventarios-conteos.mjs|tests/pm27/PM27_C20_INVENTARIOS_CONTEOS.md|.github/workflows/pm27-c20-inventarios-conteos.yml) ;;
+              *) echo "Cambio fuera del alcance C20: $f" >&2; exit 1 ;;
+            esac
+          done
+
+      - name: Configurar Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Sintaxis C20
+        run: node --check tests/pm27/c20-inventarios-conteos.mjs
+
+      - name: Ejecutar contrato y regresiones de Inventarios conteos
+        run: node tests/pm27/c20-inventarios-conteos.mjs
+
+      - name: Confirmar evidencia y no-despliegue
+        shell: bash
+        run: |
+          set -euo pipefail
+          doc='tests/pm27/PM27_C20_INVENTARIOS_CONTEOS.md'
+          grep -Fq 'C20 audita la ruta real de inventarios/conteos PM12' "$doc"
+          grep -Fq 'No se ha aplicado en QA ni en producción.' "$doc"
+          grep -Fq 'un replay exige la misma `intencion` **y el mismo `plan`**' "$doc"
+          grep -Fq 'el corte guardado en `payload.intencion` pasa a ser la identidad canónica' "$doc"
+          echo 'PM27_C20_EVIDENCIA=PASS'
+
+      - name: Árbol limpio
+        run: git diff --exit-code && test -z "$(git status --porcelain)"
