@@ -69,7 +69,7 @@ apply_manifest() {
 expect_pass_marker() {
   local marker="$1"; shift
   local output
-  output="$($@ 2>&1)" || {
+  output="$("$@" 2>&1)" || {
     printf '%s\n' "$output" >&2
     echo "Fallo esperando marcador $marker" >&2
     exit 1
@@ -119,16 +119,16 @@ load_baseline "$DB_CLEAN"
 expect_pass_marker 'PM27_C24_PREFLIGHT=PASS' run_file "$DB_CLEAN" "$PREFLIGHT"
 
 # Inventario predeploy de recuperación: debe poder ejecutarse antes del lote.
-expect_pass_marker 'ROLLBACK' run_file "$DB_CLEAN" "$SNAPSHOT" || true
-# El snapshot no emite un marker fijo histórico; la ejecución ON_ERROR_STOP=1 es el gate.
+# Este artefacto histórico no emite un marker fijo; ON_ERROR_STOP=1 es el gate.
 run_file "$DB_CLEAN" "$SNAPSHOT" > /tmp/pm27-c24-predeploy-snapshot.txt 2>&1
+test -s /tmp/pm27-c24-predeploy-snapshot.txt
+echo 'PM27_C24_PREDEPLOY_SNAPSHOT=PASS'
 
 echo '==> Create pre-package pg_dump'
 pg_client pg_dump --no-owner -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$DB_CLEAN" \
   > /tmp/pm27-c24-prepackage.sql
 
 test -s /tmp/pm27-c24-prepackage.sql
-
 echo 'PM27_C24_PREPACKAGE_DUMP=PASS'
 
 apply_manifest "$DB_CLEAN"
