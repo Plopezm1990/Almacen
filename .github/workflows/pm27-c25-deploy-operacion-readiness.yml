@@ -1,6 +1,7 @@
 name: PM27 C25 - Deploy operacion readiness
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - claude/pm27-c25-deploy-operacion-readiness
