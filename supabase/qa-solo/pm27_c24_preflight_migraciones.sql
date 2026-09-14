@@ -44,9 +44,28 @@ begin
      or to_regprocedure('private.la_tiene_local(text,text)') is null then
     raise exception 'PM27_C24_PREFLIGHT_FALLO: faltan helpers tenant';
   end if;
+
+  -- C13-P5 es compatible con baselines donde el helper ya fue retirado, pero
+  -- solo si no quedan políticas ni funciones que aún lo referencien. Si existe,
+  -- la migración lo endurece; si no existe y nadie depende de él, es no-op segura.
   if to_regprocedure('private.es_propietario_activo()') is null then
-    raise exception 'PM27_C24_PREFLIGHT_FALLO: falta private.es_propietario_activo()';
+    if exists (
+      select 1
+        from pg_catalog.pg_policies p
+       where coalesce(p.qual, '') ilike '%es_propietario_activo%'
+          or coalesce(p.with_check, '') ilike '%es_propietario_activo%'
+    ) or exists (
+      select 1
+        from pg_catalog.pg_proc p
+        join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+       where coalesce(p.prosrc, '') ilike '%es_propietario_activo%'
+         and not (n.nspname = 'private' and p.proname = 'es_propietario_activo')
+    ) then
+      raise exception 'PM27_C24_PREFLIGHT_FALLO: helper es_propietario_activo ausente pero aun referenciado';
+    end if;
+    raise notice 'PM27_C24_PREFLIGHT: helper es_propietario_activo ya ausente y sin dependencias';
   end if;
+
   if to_regprocedure('private.pm08_bloquear_operation_id(text)') is null
      or to_regprocedure('private.pm09_bloquear_operation_id_stock(text)') is null then
     raise exception 'PM27_C24_PREFLIGHT_FALLO: faltan helpers de serialización operation_id';
