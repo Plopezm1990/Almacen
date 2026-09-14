@@ -14,6 +14,7 @@ on:
       - supabase/qa-solo/pm27_c24_preflight_migraciones.sql
       - supabase/qa-solo/pm27_c24_postflight_migraciones.sql
       - supabase/qa-solo/pm27_c24_predeploy_snapshot.sql
+      - tests/pm27/PM27_C24_MIGRACIONES_PREFLIGHT_ROLLBACK.md
       - tests/pm27/c24-migrations-preflight-rollback.mjs
       - tests/pm27/pm27-c24-migration-manifest.json
       - tests/pm27/fixtures/c24-pre-c13-baseline.sql
@@ -29,6 +30,7 @@ on:
       - supabase/qa-solo/pm27_c24_preflight_migraciones.sql
       - supabase/qa-solo/pm27_c24_postflight_migraciones.sql
       - supabase/qa-solo/pm27_c24_predeploy_snapshot.sql
+      - tests/pm27/PM27_C24_MIGRACIONES_PREFLIGHT_ROLLBACK.md
       - tests/pm27/c24-migrations-preflight-rollback.mjs
       - tests/pm27/pm27-c24-migration-manifest.json
       - tests/pm27/fixtures/c24-pre-c13-baseline.sql
@@ -101,6 +103,7 @@ jobs:
           supabase/qa-solo/pm27_c24_postflight_migraciones.sql
           supabase/qa-solo/pm27_c24_predeploy_snapshot.sql
           supabase/qa-solo/pm27_c24_preflight_migraciones.sql
+          tests/pm27/PM27_C24_MIGRACIONES_PREFLIGHT_ROLLBACK.md
           tests/pm27/c24-migrations-preflight-rollback.mjs
           tests/pm27/c24-pg17-gate.sh
           tests/pm27/fixtures/c24-pre-c13-baseline.sql
@@ -109,7 +112,7 @@ jobs:
           git diff --name-only "$base" "$GITHUB_SHA" | sort > /tmp/actual.txt
           sort /tmp/expected.txt -o /tmp/expected.txt
           diff -u /tmp/expected.txt /tmp/actual.txt
-          test "$(wc -l < /tmp/actual.txt | tr -d ' ')" = '13'
+          test "$(wc -l < /tmp/actual.txt | tr -d ' ')" = '14'
           echo 'PM27_C24_SCOPE=PASS'
 
       - name: Syntax checks C24
