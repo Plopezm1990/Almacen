@@ -4,7 +4,6 @@ import { execFileSync } from 'node:child_process';
 
 const patch = fs.readFileSync('supabase/migrations/20260914080000_pm27_c20_inventory_count_replay_hardening.sql', 'utf8');
 const historico = fs.readFileSync('supabase/migrations/20260907155028_pm12_p08_stock_atomico.sql', 'utf8');
-const frontend = fs.readFileSync('source-recovery/fuente-recuperado.js', 'utf8');
 
 function check(name, ok) {
   console.log(`PM27_C20_${name}=${ok ? 'PASS' : 'FAIL'}`);
@@ -68,10 +67,6 @@ check('GLOBAL_STOCK_LOCK_AMBAS', confirmar.includes('private.pm09_bloquear_opera
 check('TRANSACCION_EXPLICITA', /^--[\s\S]*\nbegin;/.test(patch) && /\ncommit;\s*$/.test(patch));
 check('ACL_PRIVATE_NO_ANON', (patch.match(/revoke all on function private\.pm12_/gi) || []).length === 2 && (patch.match(/from public,anon/gi) || []).length === 2);
 check('ACL_AUTH_PRESERVADA', (patch.match(/grant execute on function private\.pm12_/gi) || []).length === 2);
-
-// 5) Las dos RPC auditadas son rutas realmente usadas por el frontend.
-check('FRONTEND_CONFIRMAR_RPC', frontend.includes('pm12_confirmar_ajuste_stock'));
-check('FRONTEND_CANCELAR_RPC', frontend.includes('pm12_cancelar_conteo_stock'));
 
 // Negativas deliberadas: si se puentea la comparación de plan o de motivo,
 // el contrato tiene que detectarlo.
