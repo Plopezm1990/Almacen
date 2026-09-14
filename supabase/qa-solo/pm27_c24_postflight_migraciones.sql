@@ -17,12 +17,46 @@ begin
     raise exception 'PM27_C24_POSTFLIGHT_FALLO: C13 contexto no instalado';
   end if;
 
-  select array_to_string(p.proconfig, ',') into v_cfg
-    from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-   where n.nspname='private' and p.proname='es_propietario_activo'
-     and pg_get_function_identity_arguments(p.oid)='';
-  if coalesce(v_cfg,'') not like '%search_path=%' then
-    raise exception 'PM27_C24_POSTFLIGHT_FALLO: C13 helper sin search_path fijado';
+  -- C13-P5 admite dos estados finales seguros. Si el helper sigue existiendo,
+  -- debe quedar endurecido exactamente con search_path vacío y EXECUTE solo para
+  -- authenticated. Si ya fue retirado, su ausencia solo es válida cuando ninguna
+  -- política ni función activa conserva una referencia textual al helper.
+  if pg_catalog.to_regprocedure('private.es_propietario_activo()') is null then
+    if exists (
+      select 1
+        from pg_catalog.pg_policies p
+       where coalesce(p.qual, '') ilike '%es_propietario_activo%'
+          or coalesce(p.with_check, '') ilike '%es_propietario_activo%'
+    ) or exists (
+      select 1
+        from pg_catalog.pg_proc p
+        join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+       where coalesce(p.prosrc, '') ilike '%es_propietario_activo%'
+         and not (n.nspname = 'private' and p.proname = 'es_propietario_activo')
+    ) then
+      raise exception 'PM27_C24_POSTFLIGHT_FALLO: helper es_propietario_activo ausente pero aun referenciado';
+    end if;
+    raise notice 'PM27_C24_POSTFLIGHT: helper es_propietario_activo ya ausente y sin dependencias';
+  else
+    select array_to_string(p.proconfig, ',') into v_cfg
+      from pg_catalog.pg_proc p
+      join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'private'
+       and p.proname = 'es_propietario_activo'
+       and pg_catalog.pg_get_function_identity_arguments(p.oid) = '';
+
+    if coalesce(v_cfg, '') not like '%search_path=""%' then
+      raise exception 'PM27_C24_POSTFLIGHT_FALLO: C13 helper sin search_path vacío';
+    end if;
+    if pg_catalog.has_function_privilege('public', 'private.es_propietario_activo()', 'EXECUTE') then
+      raise exception 'PM27_C24_POSTFLIGHT_FALLO: C13 helper ejecutable por PUBLIC';
+    end if;
+    if pg_catalog.has_function_privilege('anon', 'private.es_propietario_activo()', 'EXECUTE') then
+      raise exception 'PM27_C24_POSTFLIGHT_FALLO: C13 helper ejecutable por anon';
+    end if;
+    if not pg_catalog.has_function_privilege('authenticated', 'private.es_propietario_activo()', 'EXECUTE') then
+      raise exception 'PM27_C24_POSTFLIGHT_FALLO: C13 helper no ejecutable por authenticated';
+    end if;
   end if;
 
   -- Las RPC legacy pueden no existir en instalaciones modernas. Primero se
