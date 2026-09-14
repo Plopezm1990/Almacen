@@ -9,7 +9,6 @@ set local statement_timeout = '30s';
 do $c24_postflight$
 declare
   v_def text;
-  v_cfg text;
 begin
   v_def := pg_get_functiondef('public.obtener_contexto_operativo()'::regprocedure);
   if strpos(v_def, 'contexto_roles_inconsistentes') = 0
@@ -38,15 +37,19 @@ begin
     end if;
     raise notice 'PM27_C24_POSTFLIGHT: helper es_propietario_activo ya ausente y sin dependencias';
   else
-    select array_to_string(p.proconfig, ',') into v_cfg
-      from pg_catalog.pg_proc p
-      join pg_catalog.pg_namespace n on n.oid = p.pronamespace
-     where n.nspname = 'private'
-       and p.proname = 'es_propietario_activo'
-       and pg_catalog.pg_get_function_identity_arguments(p.oid) = '';
-
-    if coalesce(v_cfg, '') not like '%search_path=%'
-       or coalesce(v_cfg, '') like '%search_path=_%' then
+    -- PostgreSQL 17 serializa ALTER FUNCTION ... SET search_path = '' como el
+    -- elemento de proconfig search_path="". Se valida el elemento exacto del
+    -- array, no una expresión LIKE que confunda las comillas con contenido.
+    if not exists (
+      select 1
+        from pg_catalog.pg_proc p
+        join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+        cross join lateral unnest(coalesce(p.proconfig, array[]::text[])) cfg
+       where n.nspname = 'private'
+         and p.proname = 'es_propietario_activo'
+         and pg_catalog.pg_get_function_identity_arguments(p.oid) = ''
+         and cfg = 'search_path=""'
+    ) then
       raise exception 'PM27_C24_POSTFLIGHT_FALLO: C13 helper sin search_path vacío';
     end if;
 
