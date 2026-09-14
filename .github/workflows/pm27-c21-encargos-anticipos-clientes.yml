@@ -1,0 +1,78 @@
+name: PM27 C21 - Encargos anticipos clientes
+
+on:
+  push:
+    branches:
+      - claude/pm27-c21-encargos-anticipos-clientes
+    paths:
+      - supabase/migrations/20260914090000_pm27_c21_encargos_authorization_hardening.sql
+      - tests/pm27/c21-encargos-anticipos-clientes.mjs
+      - tests/pm27/PM27_C21_ENCARGOS_ANTICIPOS_CLIENTES.md
+      - .github/workflows/pm27-c21-encargos-anticipos-clientes.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  c21-encargos-anticipos-clientes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout trazable
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar SHA exacto y referencias protegidas
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git fetch origin main release --no-tags
+          test "$(git rev-parse origin/main)" = '93a570badba1c5375febfbddc1dffdbcef003dcd'
+          test "$(git rev-parse origin/release)" = 'a97740987be57aa9646f6a06e69b2230f140ec5f'
+
+      - name: Verificar base C20 y alcance C21
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='fb3a08f72e7789fc5e8771c2f0d7d6bd49dd4d3a'
+          git cat-file -e "$BASE^{commit}"
+          git merge-base --is-ancestor "$BASE" HEAD
+          mapfile -t files < <(git diff --name-only "$BASE"...HEAD)
+          printf '%s\n' "${files[@]}"
+          test "${#files[@]}" -eq 4
+          for f in "${files[@]}"; do
+            case "$f" in
+              supabase/migrations/20260914090000_pm27_c21_encargos_authorization_hardening.sql|tests/pm27/c21-encargos-anticipos-clientes.mjs|tests/pm27/PM27_C21_ENCARGOS_ANTICIPOS_CLIENTES.md|.github/workflows/pm27-c21-encargos-anticipos-clientes.yml) ;;
+              *) echo "Cambio fuera del alcance C21: $f" >&2; exit 1 ;;
+            esac
+          done
+
+      - name: Configurar Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Sintaxis C21
+        run: node --check tests/pm27/c21-encargos-anticipos-clientes.mjs
+
+      - name: Ejecutar contrato y regresiones de Encargos anticipos clientes
+        run: node tests/pm27/c21-encargos-anticipos-clientes.mjs
+
+      - name: Confirmar evidencia y no-despliegue
+        shell: bash
+        run: |
+          set -euo pipefail
+          doc='tests/pm27/PM27_C21_ENCARGOS_ANTICIPOS_CLIENTES.md'
+          grep -Fq 'C21 reaudita el paquete histórico PM14' "$doc"
+          grep -Fq 'La migración C21 no se ha aplicado en ningún proyecto Supabase.' "$doc"
+          grep -Fq 'C21-D1 — bypass de autorización por escritura directa' "$doc"
+          grep -Fq 'C21-D2 — asociación de cliente cross-empresa no validada en backend' "$doc"
+          grep -Fq 'C21-D3 — documento terminal mutable / transición no cerrada' "$doc"
+          grep -Fq 'corresponde a C22' "$doc"
+          grep -Fq 'reserva para C23' "$doc"
+          echo 'PM27_C21_EVIDENCIA=PASS'
+
+      - name: Árbol limpio
+        run: git diff --exit-code && test -z "$(git status --porcelain)"
