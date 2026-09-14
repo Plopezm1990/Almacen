@@ -4,6 +4,9 @@
 
 begin;
 
+set local lock_timeout = '5s';
+set local statement_timeout = '30s';
+
 do $preflight$
 begin
   if pg_catalog.to_regprocedure('private.es_propietario_activo()') is null then
