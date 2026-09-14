@@ -1,0 +1,70 @@
+name: Patch owner bootstrap script order once
+
+on:
+  push:
+    branches:
+      - claude/hotfix-owner-bootstrap-post-reset
+
+permissions:
+  contents: write
+
+jobs:
+  patch-index:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          ref: claude/hotfix-owner-bootstrap-post-reset
+
+      - name: Insert bootstrap scripts deterministically
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          pre = '<script src="./owner-bootstrap-prelock.js"></script>'
+          reset = '<script src="./reset-pruebas-preview.js"></script>'
+          flow = '<script src="./owner-bootstrap-post-reset.js"></script>'
+          edge = '<script src="./edge-auth-patch.js"></script>'
+
+          if pre not in s:
+              if reset not in s:
+                  raise SystemExit('PATCH_FAIL: reset script anchor missing')
+              s = s.replace(reset, pre + '\n' + reset, 1)
+
+          if flow not in s:
+              if edge not in s:
+                  raise SystemExit('PATCH_FAIL: edge script anchor missing')
+              s = s.replace(edge, edge + '\n' + flow, 1)
+
+          if s.count(pre) != 1 or s.count(flow) != 1:
+              raise SystemExit('PATCH_FAIL: bootstrap script duplication')
+          if s.index(pre) > s.index(reset):
+              raise SystemExit('PATCH_FAIL: prelock must precede reset gate')
+          if s.index(flow) < s.index(edge):
+              raise SystemExit('PATCH_FAIL: bootstrap flow must follow edge barrier')
+          if s.index(flow) > s.index('<script type="module" src="./fuente.js"></script>'):
+              raise SystemExit('PATCH_FAIL: bootstrap flow must precede fuente.js')
+
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Commit patched index if needed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- index.html; then
+            echo "INDEX_ALREADY_PATCHED"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "client: wire post-reset owner bootstrap before app"
+          git push origin HEAD:claude/hotfix-owner-bootstrap-post-reset
