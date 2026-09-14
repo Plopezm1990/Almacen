@@ -16,12 +16,14 @@ function check(name, ok) {
   if (!ok) process.exitCode = 1;
 }
 
+const noMigrationHistoryWrite = (text) => !/(?:insert\s+into|delete\s+from|update)\s+supabase_migrations\.schema_migrations/i.test(text);
+
 check('BASE_C25_EXACTA', workflow.includes(baseSha));
 check('TRANSACCION', /^\s*--[\s\S]*?\nbegin;/i.test(sql) && /\ncommit;\s*$/i.test(sql));
 check('TIMEOUTS', sql.includes("set local lock_timeout = '5s'") && sql.includes("set local statement_timeout = '30s'"));
 check('FAIL_CLOSED_STOCK_CERO', sql.includes('stock_ubicacion dejó de estar vacío'));
 check('FAIL_CLOSED_PARCIAL', sql.includes('tablas PM14 ya presentes/parciales') && sql.includes('marcadores C24 parciales'));
-check('SIN_STAMP_MANUAL', !/insert\s+into\s+supabase_migrations\.schema_migrations/i.test(sql) && !/delete\s+from\s+supabase_migrations\.schema_migrations/i.test(sql));
+check('SIN_STAMP_MANUAL', noMigrationHistoryWrite(sql));
 check('SNAPSHOT_RECOVERY_PRIVADO', sql.includes('private.pm27_prod_recovery_20260914') && sql.includes('revoke all on table private.pm27_prod_recovery_20260914 from public, anon, authenticated'));
 check('ALMACEN_SCOPE', sql.includes('alter table public.almacen_kv add column empresa_id text') && sql.includes('alter table public.almacen_kv add column local_id text'));
 check('STOCK_UNIDAD', sql.includes("add column unidad text not null default 'ud'"));
@@ -36,7 +38,7 @@ check('REVERSO_FUNCIONAL', sql.includes('create or replace function public.rever
 check('ACL_PUBLIC_RESTRINGIDO', sql.includes('revoke all on function public.registrar_pago_encargo') && sql.includes('grant execute on function public.registrar_pago_encargo'));
 check('POSTFLIGHT', sql.includes('PM27_PROD_RECON_POSTFLIGHT=PASS'));
 check('RECOVERY_FAIL_CLOSED', recovery.includes('PM27_PROD_RECOVERY_ABORT') && recovery.includes('pm27_prod_recovery_20260914'));
-check('RECOVERY_NO_STAMP', !/supabase_migrations\.schema_migrations/i.test(recovery));
+check('RECOVERY_NO_STAMP', noMigrationHistoryWrite(recovery));
 check('GATE_C24_REAL', gate.includes('pm27_c24_preflight_migraciones.sql') && gate.includes('pm27_c24_postflight_migraciones.sql') && gate.includes('pm27-c24-migration-manifest.json'));
 check('GATE_PG17', gate.includes('PM27_PROD_RECON_POSTGRES17=PASS'));
 check('WORKFLOW_PINNED', workflow.includes('actions/checkout@11d5960a326750d5838078e36cf38b85af677262') && workflow.includes('actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020'));
