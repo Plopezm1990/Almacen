@@ -1,0 +1,125 @@
+name: PM27 C25 - Deploy operacion readiness
+
+on:
+  push:
+    branches:
+      - claude/pm27-c25-deploy-operacion-readiness
+    paths:
+      - .github/workflows/pm27-c25-deploy-operacion-readiness.yml
+      - tests/pm27/PM27_C25_DEPLOY_OPERACION_READINESS.md
+      - tests/pm27/c25-deploy-operacion-readiness.mjs
+      - tests/pm27/pm27-c25-live-readiness-evidence.json
+  pull_request:
+    paths:
+      - .github/workflows/pm27-c25-deploy-operacion-readiness.yml
+      - tests/pm27/PM27_C25_DEPLOY_OPERACION_READINESS.md
+      - tests/pm27/c25-deploy-operacion-readiness.mjs
+      - tests/pm27/pm27-c25-live-readiness-evidence.json
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  certify-c25-readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PG_IMAGE: postgres:17
+
+    steps:
+      - name: Checkout exact candidate SHA
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+
+      - name: Setup Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+
+      - name: Guard protected refs unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_main='93a570badba1c5375febfbddc1dffdbcef003dcd'
+          expected_release='a97740987be57aa9646f6a06e69b2230f140ec5f'
+          actual_main="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+          actual_release="$(git ls-remote origin refs/heads/release | awk '{print $1}')"
+          test "$actual_main" = "$expected_main"
+          test "$actual_release" = "$expected_release"
+          echo 'PM27_C25_PROTECTED_REFS=PASS'
+
+      - name: Guard PR38 unchanged
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          pr_json="$(gh api repos/Plopezm1990/Almacen/pulls/38)"
+          test "$(printf '%s' "$pr_json" | jq -r '.state')" = 'open'
+          test "$(printf '%s' "$pr_json" | jq -r '.draft')" = 'true'
+          test "$(printf '%s' "$pr_json" | jq -r '.merged')" = 'false'
+          test "$(printf '%s' "$pr_json" | jq -r '.head.sha')" = 'f297be08708d0bbe566c21347123885cb3095a7c'
+          echo 'PM27_C25_PR38=PASS'
+
+      - name: Guard C25 scope from certified C24
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='e78853ecdb58729055a734a651f99a520fe110f0'
+          git cat-file -e "${base}^{commit}"
+          git merge-base --is-ancestor "$base" "$GITHUB_SHA"
+          cat > /tmp/expected.txt <<'EOF'
+          .github/workflows/pm27-c25-deploy-operacion-readiness.yml
+          tests/pm27/PM27_C25_DEPLOY_OPERACION_READINESS.md
+          tests/pm27/c25-deploy-operacion-readiness.mjs
+          tests/pm27/pm27-c25-live-readiness-evidence.json
+          EOF
+          git diff --name-only "$base" "$GITHUB_SHA" | sort > /tmp/actual.txt
+          sort /tmp/expected.txt -o /tmp/expected.txt
+          diff -u /tmp/expected.txt /tmp/actual.txt
+          test "$(wc -l < /tmp/actual.txt | tr -d ' ')" = '4'
+          echo 'PM27_C25_SCOPE=PASS'
+
+      - name: Syntax checks C25
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check tests/pm27/c25-deploy-operacion-readiness.mjs
+          node -e "JSON.parse(require('fs').readFileSync('tests/pm27/pm27-c25-live-readiness-evidence.json','utf8')); console.log('PM27_C25_JSON=PASS')"
+          echo 'PM27_C25_SYNTAX=PASS'
+
+      - name: Run C25 readiness contract
+        shell: bash
+        run: node tests/pm27/c25-deploy-operacion-readiness.mjs
+
+      - name: Re-certify C24 PostgreSQL 17 baseline
+        shell: bash
+        run: bash tests/pm27/c24-pg17-gate.sh
+
+      - name: Clean working tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code
+          test -z "$(git status --porcelain)"
+          echo 'PM27_C25_CLEAN_TREE=PASS'

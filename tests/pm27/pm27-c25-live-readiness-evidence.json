@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 1,
+  "checkpoint": "PM27-C25",
+  "observedDate": "2026-09-14",
+  "baseCertifiedC24Commit": "e78853ecdb58729055a734a651f99a520fe110f0",
+  "evidenceMode": "live-read-only-plus-repository-gate",
+  "github": {
+    "mainSha": "93a570badba1c5375febfbddc1dffdbcef003dcd",
+    "releaseSha": "a97740987be57aa9646f6a06e69b2230f140ec5f",
+    "c25Branch": "claude/pm27-c25-deploy-operacion-readiness",
+    "pr38": {
+      "state": "open",
+      "draft": true,
+      "merged": false,
+      "headSha": "f297be08708d0bbe566c21347123885cb3095a7c"
+    }
+  },
+  "netlify": {
+    "siteName": "chic-entremet-9107cf",
+    "siteId": "472295da-601a-43df-a4bc-8171f2fc668b",
+    "plan": "nf_team_dev",
+    "productionDeploy": {
+      "id": "6aa62a74fc312e00080cd225",
+      "state": "ready",
+      "context": "production",
+      "branch": "release",
+      "commitRef": "a97740987be57aa9646f6a06e69b2230f140ec5f",
+      "manualDeploy": false
+    },
+    "environmentVariableCount": 0,
+    "nonProductionRequiresSsoTeamLogin": true
+  },
+  "supabase": {
+    "production": {
+      "projectRef": "flqercbgpgmmfaakrwkc",
+      "name": "L&A Suite",
+      "status": "ACTIVE_HEALTHY",
+      "postgresEngine": "17",
+      "branchCount": 1,
+      "onlyDefaultMainBranch": true,
+      "passwordBreachProtection": "disabled",
+      "pm14Tables": {
+        "clientes_empresa": false,
+        "encargos_empresa": false,
+        "pagos_encargo": false
+      },
+      "baseRpcs": {
+        "registrar_venta_stock": false,
+        "registrar_venta_stock_carrito": false,
+        "trasladar_stock_interno": false,
+        "trasladar_stock_entre_locales": false,
+        "registrar_encargo": false,
+        "registrar_pago_encargo": false,
+        "revertir_pago_encargo": false
+      },
+      "legacyAuthenticatedExecute": {
+        "descontar_stock_carrito": true,
+        "anular_venta_tpv": true,
+        "obtener_contexto_operativo": true
+      },
+      "c24ManifestVersionsRecorded": []
+    },
+    "qa": {
+      "projectRef": "qjqorixtkilwsndqayyx",
+      "name": "L&A Suite QA",
+      "status": "ACTIVE_HEALTHY",
+      "postgresEngine": "17",
+      "pm14Tables": {
+        "clientes_empresa": true,
+        "encargos_empresa": true,
+        "pagos_encargo": true
+      },
+      "baseRpcs": {
+        "registrar_venta_stock": true,
+        "registrar_venta_stock_carrito": true,
+        "trasladar_stock_interno": true,
+        "trasladar_stock_entre_locales": true,
+        "registrar_encargo": true,
+        "registrar_pago_encargo": true,
+        "revertir_pago_encargo": true
+      },
+      "legacyMutationRpcsAbsent": {
+        "descontar_stock_carrito": true,
+        "anular_venta_tpv": true
+      },
+      "obtenerContextoAuthenticatedExecute": true,
+      "c24ManifestVersionsRecorded": []
+    },
+    "productionC24Preflight": "BLOCKED_MISSING_PM14_BASELINE",
+    "migrationHistoryDrift": "PRESENT_IN_PRODUCTION_AND_QA"
+  },
+  "residuals": [
+    {
+      "id": "PRODUCTION_RECONCILIATION_AND_ROLLOUT",
+      "classification": "BLOCKED_EXTERNAL",
+      "isCodeFailure": false,
+      "unlockCondition": "Nueva autorización explícita para preparar/aplicar la reconciliación productiva y ejecutar el rollout seguro C24/C25."
+    },
+    {
+      "id": "SUPABASE_THIRD_REAL_ENVIRONMENT",
+      "classification": "BLOCKED_EXTERNAL",
+      "isCodeFailure": false,
+      "unlockCondition": "Disponer de una rama/tercer entorno Supabase representativo con coste y creación expresamente autorizados, o de un entorno equivalente aprobado."
+    },
+    {
+      "id": "SUPABASE_PASSWORD_BREACH_PROTECTION",
+      "classification": "BLOCKED_EXTERNAL",
+      "isCodeFailure": false,
+      "unlockCondition": "Habilitar la capacidad en Supabase cuando el plan/configuración lo permita y exista autorización para el cambio."
+    },
+    {
+      "id": "GITHUB_ACTIONS_MUTABLE_TAGS_HISTORICAL",
+      "classification": "RESIDUAL_NON_BLOCKING",
+      "isCodeFailure": false,
+      "currentPackageMitigation": "El workflow C25 usa SHAs completos para checkout y setup-node; no se reescriben workflows históricos dentro de C25."
+    },
+    {
+      "id": "XLSX_0_18_5_HISTORICAL_ADVISORY",
+      "classification": "RESIDUAL_NON_BLOCKING",
+      "isCodeFailure": false,
+      "currentObservation": "El árbol C24/C25 no expone un artefacto xlsx por nombre; el advisory histórico se conserva como condición antes de introducir lectura/importación Excel."
+    }
+  ],
+  "decision": {
+    "c25CheckpointCandidate": "PASS_IF_EXACT_SHA_GATE_SUCCEEDS",
+    "pm27RolloutReadiness": "NO-GO",
+    "codeFailures": [],
+    "productionRollout": "BLOCKED_EXTERNAL",
+    "reasonCodes": [
+      "PRODUCTION_BASELINE_BEHIND_CERTIFIED_CANDIDATE",
+      "C24_PREFLIGHT_FAILS_ON_MISSING_PM14_BASELINE",
+      "C24_MANIFEST_NOT_RECORDED_IN_PRODUCTION",
+      "NETLIFY_PRODUCTION_STILL_ON_RELEASE_SHA",
+      "PRODUCTION_WRITE_DEPLOY_NOT_AUTHORIZED"
+    ]
+  }
+}
