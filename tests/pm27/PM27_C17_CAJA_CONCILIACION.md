@@ -51,13 +51,24 @@ La conciliación PM09 filtra por empresa y local, usa `fechaOperacion` cuando es
 
 La consulta de catálogo de producción no encontró las tablas/RPC modernas de caja PM08/PM09 inspeccionadas en QA. C17 certifica el candidato versionado y el contrato reproducible; no afirma que estas migraciones estén desplegadas en producción y no realiza ninguna escritura allí.
 
-## Criterio de cierre
+## Cierre
 
-C17 solo puede declararse PASS cuando el workflow remoto de esta rama:
+El primer gate exact-SHA de C17 fue el run `34814066666`, sobre `73d70a282e9a8f2c2f74eb1c40e1458b5f16bdf8`, y terminó en `SUCCESS`. Pasaron la verificación de referencias protegidas, el alcance desde C16, sintaxis, el contrato C17, todas las regresiones PM08/PM09 enlazadas, evidencia y árbol limpio.
 
-1. verifica el SHA exacto y que `main`/`release` sigan en sus referencias congeladas;
-2. ejecuta el contrato C17;
-3. ejecuta todas las regresiones PM08/PM09 enlazadas;
-4. termina en SUCCESS con árbol limpio.
+Este documento de cierre también queda sometido al mismo workflow: C17 solo queda definitivamente cerrado cuando el SHA que contiene este texto obtiene `SUCCESS`.
 
-Hasta ese momento el estado es `EN_CURSO`.
+`PM27_C17_ARQUEOS=PASS`
+
+`PM27_C17_CIERRES=PASS`
+
+`PM27_C17_DUPLICADOS=PASS`
+
+`PM27_C17_PERMISOS=PASS`
+
+`PM27_C17_CONSISTENCIA=PASS`
+
+`PM27_C17_ESCRITURAS_QA=0`
+
+`PM27_C17_ESCRITURAS_PRODUCCION=0`
+
+`PM27_C17_RESULTADO=PASS`
