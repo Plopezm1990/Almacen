@@ -45,10 +45,26 @@ begin
        and p.proname = 'es_propietario_activo'
        and pg_catalog.pg_get_function_identity_arguments(p.oid) = '';
 
-    if coalesce(v_cfg, '') not like '%search_path=""%' then
+    if coalesce(v_cfg, '') not like '%search_path=%'
+       or coalesce(v_cfg, '') like '%search_path=_%' then
       raise exception 'PM27_C24_POSTFLIGHT_FALLO: C13 helper sin search_path vacío';
     end if;
-    if pg_catalog.has_function_privilege('public', 'private.es_propietario_activo()', 'EXECUTE') then
+
+    -- PUBLIC es una pseudo-función de ACL, no un rol consultable por nombre en
+    -- has_function_privilege(). aclexplode representa PUBLIC con grantee=0.
+    if exists (
+      select 1
+        from pg_catalog.pg_proc p
+        join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+        cross join lateral pg_catalog.aclexplode(
+          coalesce(p.proacl, pg_catalog.acldefault('f', p.proowner))
+        ) acl
+       where n.nspname = 'private'
+         and p.proname = 'es_propietario_activo'
+         and pg_catalog.pg_get_function_identity_arguments(p.oid) = ''
+         and acl.grantee = 0
+         and acl.privilege_type = 'EXECUTE'
+    ) then
       raise exception 'PM27_C24_POSTFLIGHT_FALLO: C13 helper ejecutable por PUBLIC';
     end if;
     if pg_catalog.has_function_privilege('anon', 'private.es_propietario_activo()', 'EXECUTE') then
