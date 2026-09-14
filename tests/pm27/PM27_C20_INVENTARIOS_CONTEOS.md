@@ -1,6 +1,8 @@
 # PM27 — C20 Inventarios/conteos
 
-Estado: **CANDIDATO — pendiente de gate remoto exact-SHA**.
+Estado: **CERRADO — PASS técnico certificado por gate remoto exact-SHA**.
+
+Primer gate C20 corregido en **SUCCESS**: run `34817637985` sobre `6de8986d82ebc4d768defe2ee5e97cff620bb4a0`. Este commit incorpora la evidencia de cierre; el mismo workflow C20 debe recertificar este SHA antes de considerar definitivo el cierre documental.
 
 ## Alcance
 
@@ -10,7 +12,7 @@ No modifica `main`, `release`, PR #38, Netlify ni datos de Supabase. La inspecci
 
 ## Precondición C19
 
-El gate final exact-SHA de C19, run `34816268394`, terminó **SUCCESS** sobre `37607abc445cd606649195320b69a8e384b6d96e`. Por tanto C20 puede iniciarse sin reabrir C19.
+El gate final exact-SHA de C19, run `34816268394`, terminó **SUCCESS** sobre `37607abc445cd606649195320b69a8e384b6d96e`. Por tanto C20 se desarrolló sin reabrir C19.
 
 ## Inspección viva, solo lectura
 
@@ -28,7 +30,7 @@ La implementación persistente PM12 ya protegía atomicidad, concurrencia, stock
 
 Estos huecos no implican una segunda mutación de stock en un replay ya comprometido, pero sí permiten reinterpretar una identidad existente con un payload distinto y degradan la trazabilidad que PM12–P05/P08 exige.
 
-## Remediación candidata
+## Remediación cerrada en rama de trabajo
 
 `supabase/migrations/20260914080000_pm27_c20_inventory_count_replay_hardening.sql` reemplaza únicamente las dos funciones privadas PM12, conserva firmas, wrappers públicos y ACL, y mantiene las mismas fronteras de permiso/empresa/local.
 
@@ -51,17 +53,19 @@ La migración incluye preflight de dependencias y `BEGIN/COMMIT` explícito. **N
 
 ## Contrato reproducible
 
-`tests/pm27/c20-inventarios-conteos.mjs` reproduce los tres huecos sobre la migración PM12 histórica y verifica la remediación candidata: conflicto ante plan distinto, persistencia/comparación de bases C20, corte de cancelación canónico, conflicto ante motivo/responsable distintos, permisos, aislamiento, locks, stock base, preflight de reverso y ACL. La existencia, firmas y permisos de las dos RPC PM12 se contrastaron además mediante inspección viva de Supabase en modo solo lectura; el contrato de repositorio no presupone que una copia concreta del frontend recuperado contenga sus nombres literales.
+`tests/pm27/c20-inventarios-conteos.mjs` reproduce los tres huecos sobre la migración PM12 histórica y verifica la remediación: conflicto ante plan distinto, persistencia/comparación de bases C20, corte de cancelación canónico, conflicto ante motivo/responsable distintos, permisos, aislamiento, locks, stock base, preflight de reverso y ACL. La existencia, firmas y permisos de las dos RPC PM12 se contrastaron además mediante inspección viva de Supabase en modo solo lectura; el contrato de repositorio no presupone que una copia concreta del frontend recuperado contenga sus nombres literales.
 
 Incluye negativas deliberadas para demostrar que el contrato detecta un bypass de la comparación de plan y otro de la identidad de cancelación. Como regresión ejecuta PM12 P05–P08 y después C19; C19 arrastra a su vez la regresión acumulada C18/PM07/PM08/PM09/PM12.
 
 ## Criterio de cierre
 
-C20 solo puede declararse **PASS** si el workflow `PM27 C20 - Inventarios conteos` termina `SUCCESS` sobre el SHA exacto que contenga únicamente estos cuatro archivos C20:
+El gate `PM27 C20 - Inventarios conteos` exige SHA exacto, base C19, alcance limitado a cuatro archivos, referencias protegidas intactas, sintaxis Node, contrato C20, regresiones, evidencia de no-despliegue y árbol limpio.
+
+Archivos C20:
 
 - `supabase/migrations/20260914080000_pm27_c20_inventory_count_replay_hardening.sql`
 - `tests/pm27/c20-inventarios-conteos.mjs`
 - `tests/pm27/PM27_C20_INVENTARIOS_CONTEOS.md`
 - `.github/workflows/pm27-c20-inventarios-conteos.yml`
 
-Hasta entonces el estado correcto es **CANDIDATO**. `main` y `release` deben permanecer en `93a570badba1c5375febfbddc1dffdbcef003dcd` y `a97740987be57aa9646f6a06e69b2230f140ec5f`, respectivamente.
+`main` y `release` deben permanecer en `93a570badba1c5375febfbddc1dffdbcef003dcd` y `a97740987be57aa9646f6a06e69b2230f140ec5f`, respectivamente. No hay despliegue ni aplicación de la migración C20 como parte de este cierre.
