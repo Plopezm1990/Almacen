@@ -73,8 +73,8 @@ check('REVERSO_CROSS_LEDGER', pm08.includes('public.caja_operaciones where opera
   && pm08.includes('public.arqueos_caja where operation_id=p_operation_id')
   && pm08.includes('public.arqueos_caja_anulaciones where operation_id=p_operation_id'));
 check('REVERSO_NO_PISA_DEVOLUCIONES', pm08.includes("raise exception 'venta_con_devoluciones'"));
-check('FRONTEND_USA_PM09_VENTA', frontend.includes("'registrar_venta_stock_carrito_pm09'"));
-check('FRONTEND_USA_PM09_ANULACION', frontend.includes("'revertir_venta_stock_carrito_pm09'"));
+check('FRONTEND_USA_PM09_VENTA', frontend.includes('registrar_venta_stock_carrito_pm09'));
+check('FRONTEND_USA_PM09_ANULACION', frontend.includes('revertir_venta_stock_carrito_pm09'));
 
 // Prueba negativa deliberada en memoria: quitar el guard de una copia de la
 // función debe ser detectado por este contrato.
