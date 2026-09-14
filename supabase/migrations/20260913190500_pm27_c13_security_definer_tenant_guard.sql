@@ -6,6 +6,9 @@
 
 begin;
 
+set local lock_timeout = '5s';
+set local statement_timeout = '30s';
+
 -- Preflight: esta migracion solo es valida sobre el contrato PM21/PM26 esperado.
 do $preflight$
 begin
