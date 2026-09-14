@@ -6,23 +6,23 @@
   "migrations": [
     {
       "path": "supabase/migrations/20260913190500_pm27_c13_security_definer_tenant_guard.sql",
-      "gitBlobSha": "ebd2381fcf4973f9f6476699c82c5440e8c5b845"
+      "gitBlobSha": "c7e9012b14b08ff5554b53e7da7c27d9da7b3342"
     },
     {
       "path": "supabase/migrations/20260913193500_pm27_c13_private_helper_hardening.sql",
-      "gitBlobSha": "ffa720cac85784a9243e67613d98873c228d887c"
+      "gitBlobSha": "c2eb2214024e53f5bb576d72e2faceb441facbbf"
     },
     {
       "path": "supabase/migrations/20260914064500_pm27_c18_stock_sale_operation_id_hardening.sql",
-      "gitBlobSha": "6a8c4d338a97990b55f55e97d5c51d4b71dde331"
+      "gitBlobSha": "361ee0c88a203d73391b43083ba7ea8a70e884a4"
     },
     {
       "path": "supabase/migrations/20260914071000_pm27_c19_transfer_operation_id_hardening.sql",
-      "gitBlobSha": "6e26602b469a6edf5bd1df3b0956d19b6e58cc62"
+      "gitBlobSha": "9784d9ed7b68b8fa8f384186350291cd15a8161b"
     },
     {
       "path": "supabase/migrations/20260914080000_pm27_c20_inventory_count_replay_hardening.sql",
-      "gitBlobSha": "df4c7b1144c18222e89358394365d8a0d0849d32"
+      "gitBlobSha": "eb5140884e0a050136ecc0da33d965cf0531d2cc"
     },
     {
       "path": "supabase/migrations/20260914090000_pm27_c21_encargos_authorization_hardening.sql",
