@@ -1,6 +1,194 @@
 (function () {
   "use strict";
 
+  // HOTFIX post-reset P1 (cliente): esta barrera se instala en <head>, antes
+  // de cualquier módulo funcional. Hasta que edge-auth-patch.js valide contra
+  // el servidor la generación de instalación, ningún dato empresarial local
+  // puede leerse/escribirse y ninguna mutación puede salir hacia Supabase.
+  //
+  // Se permite únicamente:
+  // - Auth (para poder iniciar/refrescar sesión),
+  // - lecturas HTTP,
+  // - los RPC de solo lectura usados para validar generación/contexto.
+  //
+  // Tras una validación correcta, si durante el primer arranque se bloqueó
+  // alguna lectura local, se hace UNA recarga controlada. Esa recarga recibe
+  // un permiso de lectura local de un solo uso ligado a la generación recién
+  // validada; las escrituras/remotos siguen cerrados hasta revalidar servidor.
+  (function instalarBarreraTempranaPostReset() {
+    if (typeof window === "undefined" || window.__laPostResetEarlyGateV1) return;
+    window.__laPostResetEarlyGateV1 = true;
+
+    var PROD_HOST = "flqercbgpgmmfaakrwkc.supabase.co";
+    var CLAVE_GENERACION = "la_suite_installation_generation_v1";
+    var CLAVE_ARRANQUE_VALIDADO = "la_suite_post_reset_boot_generation_v1";
+    var CLAVE_CONTEXTO_SEGURO = "chocoloyos_contexto_operativo_seguro_v1";
+    var HOST_PREVIEW = /^(?:deploy-preview-\d+|[a-f0-9]{24})--chic-entremet-9107cf\.netlify\.app$/i;
+    var esPreviewQA = !!(window.location && HOST_PREVIEW.test(window.location.hostname || ""));
+    var lecturaLocalBloqueada = false;
+    var escrituraLocalBloqueada = false;
+    var mutacionRemotaBloqueada = false;
+    var lecturaPreautorizadaUnArranque = false;
+    var recargaEmitida = false;
+
+    function sincronizacionValidada() {
+      return window.__instalacionSyncPermitida === true;
+    }
+
+    function proteccionActiva() {
+      if (esPreviewQA || window.__modoPruebasQA === true || window.__modoPruebasLocal === true) return false;
+      return !sincronizacionValidada();
+    }
+
+    function esClaveNegocio(clave) {
+      clave = String(clave || "");
+      return clave.indexOf("almacen:") === 0 ||
+        clave.indexOf("almacen__") === 0 ||
+        clave === CLAVE_CONTEXTO_SEGURO;
+    }
+
+    var protoStorage = window.Storage && window.Storage.prototype;
+    var getItemNativo = protoStorage && protoStorage.getItem;
+    var setItemNativo = protoStorage && protoStorage.setItem;
+    var removeItemNativo = protoStorage && protoStorage.removeItem;
+    var clearNativo = protoStorage && protoStorage.clear;
+
+    // Permiso de lectura local de UN solo arranque, emitido únicamente después
+    // de validar la misma generación en el arranque inmediatamente anterior.
+    try {
+      if (getItemNativo && removeItemNativo && window.localStorage && window.sessionStorage) {
+        var genLocal = getItemNativo.call(window.localStorage, CLAVE_GENERACION);
+        var genArranque = getItemNativo.call(window.sessionStorage, CLAVE_ARRANQUE_VALIDADO);
+        if (genLocal && genArranque && genLocal === genArranque) {
+          lecturaPreautorizadaUnArranque = true;
+          removeItemNativo.call(window.sessionStorage, CLAVE_ARRANQUE_VALIDADO);
+        }
+      }
+    } catch (e) {}
+
+    if (protoStorage && getItemNativo && setItemNativo && !protoStorage.__laPostResetStorageGateV1) {
+      protoStorage.getItem = function (clave) {
+        if (
+          this === window.localStorage &&
+          esClaveNegocio(clave) &&
+          proteccionActiva() &&
+          !lecturaPreautorizadaUnArranque
+        ) {
+          lecturaLocalBloqueada = true;
+          return null;
+        }
+        return getItemNativo.call(this, clave);
+      };
+
+      protoStorage.setItem = function (clave, valor) {
+        if (this === window.localStorage && esClaveNegocio(clave) && proteccionActiva()) {
+          escrituraLocalBloqueada = true;
+          return;
+        }
+        return setItemNativo.call(this, clave, valor);
+      };
+
+      // El borrado se deja pasar: es la operación segura que usa P1 para
+      // poner en cuarentena/eliminar la copia anterior cuando cambia generación.
+      protoStorage.removeItem = function (clave) {
+        return removeItemNativo.call(this, clave);
+      };
+
+      if (clearNativo) {
+        protoStorage.clear = function () {
+          if (this === window.localStorage && proteccionActiva()) {
+            escrituraLocalBloqueada = true;
+            return;
+          }
+          return clearNativo.call(this);
+        };
+      }
+
+      try {
+        Object.defineProperty(protoStorage, "__laPostResetStorageGateV1", {
+          value: true,
+          configurable: true
+        });
+      } catch (e) {
+        protoStorage.__laPostResetStorageGateV1 = true;
+      }
+    }
+
+    function hostNubeObjetivo() {
+      try {
+        var url = String(window.NUBE_URL || "").trim();
+        return url ? new URL(url).hostname : PROD_HOST;
+      } catch (e) {
+        return PROD_HOST;
+      }
+    }
+
+    function rpcLecturaPermitido(pathname) {
+      return /^\/rest\/v1\/rpc\/(?:obtener_generacion_instalacion|obtener_contexto_operativo)\/?$/i.test(pathname || "");
+    }
+
+    if (typeof window.fetch === "function" && !window.fetch.__laPostResetNetworkGateV1) {
+      var fetchAnterior = window.fetch.bind(window);
+      var fetchProtegido = function (input, init) {
+        if (!proteccionActiva()) return fetchAnterior(input, init);
+
+        var metodo = String(
+          (init && init.method) ||
+          (typeof Request !== "undefined" && input instanceof Request ? input.method : "GET") ||
+          "GET"
+        ).toUpperCase();
+
+        var raw = typeof input === "string" ? input : (input && input.url) || "";
+        var destino;
+        try {
+          destino = new URL(raw, window.location && window.location.href ? window.location.href : "https://local.invalid/");
+        } catch (e) {
+          return fetchAnterior(input, init);
+        }
+
+        if (destino.hostname !== hostNubeObjetivo()) return fetchAnterior(input, init);
+        if (/^\/auth\/v1\//i.test(destino.pathname)) return fetchAnterior(input, init);
+        if (rpcLecturaPermitido(destino.pathname)) return fetchAnterior(input, init);
+        if (metodo === "GET" || metodo === "HEAD" || metodo === "OPTIONS") return fetchAnterior(input, init);
+
+        mutacionRemotaBloqueada = true;
+        return Promise.reject(new Error("POST_RESET_BARRIER_BLOCKED"));
+      };
+      fetchProtegido.__laPostResetNetworkGateV1 = true;
+      fetchProtegido.__original = fetchAnterior;
+      window.fetch = fetchProtegido;
+    }
+
+    window.__laPostResetEarlyGateEstado = function () {
+      return {
+        lecturaLocalBloqueada: lecturaLocalBloqueada,
+        escrituraLocalBloqueada: escrituraLocalBloqueada,
+        mutacionRemotaBloqueada: mutacionRemotaBloqueada,
+        lecturaPreautorizadaUnArranque: lecturaPreautorizadaUnArranque,
+        syncPermitida: sincronizacionValidada()
+      };
+    };
+
+    // Si el primer render intentó leer la copia local antes de validar servidor,
+    // no dejamos la UI construida sobre fallbacks vacíos. Tras validar la
+    // generación se recarga una vez y se consume un permiso de lectura local
+    // ligado exactamente a esa generación. Las mutaciones continúan cerradas
+    // hasta que el segundo arranque revalide el servidor.
+    if (!esPreviewQA) {
+      window.setInterval(function () {
+        if (recargaEmitida || !lecturaLocalBloqueada || !sincronizacionValidada()) return;
+        try {
+          if (!getItemNativo || !setItemNativo || !window.localStorage || !window.sessionStorage) return;
+          var generacion = getItemNativo.call(window.localStorage, CLAVE_GENERACION);
+          if (!generacion) return;
+          setItemNativo.call(window.sessionStorage, CLAVE_ARRANQUE_VALIDADO, generacion);
+          recargaEmitida = true;
+          window.location.reload();
+        } catch (e) {}
+      }, 25);
+    }
+  })();
+
   // PM11 P10: el parche visual de compras es parte de la app y debe cargarse
   // también fuera de QA. El resto de este archivo continúa siendo exclusivo
   // de Deploy Preview.
