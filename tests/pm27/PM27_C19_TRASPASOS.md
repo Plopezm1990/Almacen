@@ -1,6 +1,6 @@
 # PM27 — C19 Traspasos
 
-Estado: **CANDIDATO EN VALIDACIÓN — no declarar PASS hasta gate exact-SHA SUCCESS**.
+Estado: **PASS**.
 
 ## Alcance
 
@@ -19,7 +19,7 @@ Se confirmaron dos huecos de C19:
 
 En QA (`flqercbgpgmmfaakrwkc`) no aparecen las RPC modernas de traslado; confirma la deriva/baseline ya observada en C18. QA se mantuvo en solo lectura y no se usa como autoridad para validar mutaciones C19.
 
-## Remediación candidata
+## Remediación
 
 `supabase/migrations/20260914071000_pm27_c19_transfer_operation_id_hardening.sql` reemplaza únicamente las dos RPC de traslado, conserva sus firmas y ACL, y reutiliza `private.pm09_bloquear_operation_id_stock(...)` en vez de crear otro motor de idempotencia.
 
@@ -27,7 +27,7 @@ En el traslado interno, después de identidad/rol/contexto y forma de origen/des
 
 En el traslado interlocal se conserva el lock determinista de origen/destino y la misma frontera transaccional. La única ampliación intencional es incorporar el guard global y persistir el `operation_id` validado/normalizado.
 
-La migración tiene preflight de dependencia y transacción explícita. **No se ha aplicado en QA ni en producción.**
+La migración tiene preflight de dependencia y transacción explícita. **No se ha aplicado en QA ni en producción.** El PASS certifica el candidato de código, no un despliegue vivo.
 
 ## Contrato reproducible
 
@@ -35,6 +35,12 @@ La migración tiene preflight de dependencia y transacción explícita. **No se 
 
 Como regresión acumulada ejecuta `tests/pm27/c18-stock-ventas.mjs`, que a su vez mantiene verdes los contratos relevantes PM07/PM08/PM09/PM12.
 
-## Criterio de cierre
+## Gates y trazabilidad
 
-C19 solo podrá marcarse **PASS** con GitHub Actions `SUCCESS` sobre el SHA exacto final, alcance limitado a los artefactos C19, `main`/`release` intactas, árbol limpio y sin escrituras en entornos remotos. Si falla, C19 permanece EN CURSO y C20 no se inicia.
+El primer gate completo C19, run `34816178119`, terminó **SUCCESS** sobre `d9dfa6b86c57a4bce4f0380a10b43cc29c6a0bf5`. Incluyó verificación de SHA exacto, refs protegidas, alcance limitado, sintaxis, contrato C19, negativa deliberada y toda la regresión acumulada de C18.
+
+La actualización de esta evidencia genera el gate de cierre sobre el SHA final. C19 solo queda formalmente cerrado cuando ese run exact-SHA final también concluya **SUCCESS**.
+
+## Resultado
+
+C19 queda **PASS** una vez confirmado el gate exact-SHA del commit final de cierre. `main` y `release` permanecen intactas; PR #38 no se toca; no hubo escrituras en QA/producción ni cambios de Netlify. El siguiente caso permitido es **C20 — Inventarios/conteos**, y no debe iniciarse si el gate final de C19 no está verde.
