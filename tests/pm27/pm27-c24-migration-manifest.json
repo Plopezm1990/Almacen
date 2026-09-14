@@ -10,7 +10,7 @@
     },
     {
       "path": "supabase/migrations/20260913193500_pm27_c13_private_helper_hardening.sql",
-      "gitBlobSha": "c2eb2214024e53f5bb576d72e2faceb441facbbf"
+      "gitBlobSha": "21066848f6b273aeb715e4a8cd1e5dfb7f817b3c"
     },
     {
       "path": "supabase/migrations/20260914064500_pm27_c18_stock_sale_operation_id_hardening.sql",
