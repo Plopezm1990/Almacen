@@ -1,0 +1,74 @@
+name: PM27 C18 - Stock y ventas
+
+on:
+  push:
+    branches:
+      - claude/pm27-c18-stock-ventas
+    paths:
+      - supabase/migrations/20260914064500_pm27_c18_stock_sale_operation_id_hardening.sql
+      - tests/pm27/c18-stock-ventas.mjs
+      - tests/pm27/PM27_C18_STOCK_VENTAS.md
+      - .github/workflows/pm27-c18-stock-ventas.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  c18-stock-ventas:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout trazable
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar SHA exacto y referencias protegidas
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git fetch origin main release --no-tags
+          test "$(git rev-parse origin/main)" = '93a570badba1c5375febfbddc1dffdbcef003dcd'
+          test "$(git rev-parse origin/release)" = 'a97740987be57aa9646f6a06e69b2230f140ec5f'
+
+      - name: Verificar base C17 y alcance C18
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='f611ecaf1a67c74423457a9b0ace41e98eef800f'
+          git cat-file -e "$BASE^{commit}"
+          git merge-base --is-ancestor "$BASE" HEAD
+          mapfile -t files < <(git diff --name-only "$BASE"...HEAD)
+          printf '%s\n' "${files[@]}"
+          test "${#files[@]}" -eq 4
+          for f in "${files[@]}"; do
+            case "$f" in
+              supabase/migrations/20260914064500_pm27_c18_stock_sale_operation_id_hardening.sql|tests/pm27/c18-stock-ventas.mjs|tests/pm27/PM27_C18_STOCK_VENTAS.md|.github/workflows/pm27-c18-stock-ventas.yml) ;;
+              *) echo "Cambio fuera del alcance C18: $f" >&2; exit 1 ;;
+            esac
+          done
+
+      - name: Configurar Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Sintaxis C18
+        run: node --check tests/pm27/c18-stock-ventas.mjs
+
+      - name: Ejecutar contrato y regresiones de Stock/Ventas
+        run: node tests/pm27/c18-stock-ventas.mjs
+
+      - name: Confirmar evidencia y no-despliegue
+        shell: bash
+        run: |
+          set -euo pipefail
+          doc='tests/pm27/PM27_C18_STOCK_VENTAS.md'
+          grep -Fq 'C18 audita descuento/restauración de stock, venta/anulación, idempotencia, integridad, aislamiento empresa/local y ausencia de efectos parciales' "$doc"
+          grep -Fq 'No se ha aplicado en QA ni en producción.' "$doc"
+          grep -Fq 'no se introduce un segundo motor de idempotencia' "$doc"
+          echo 'PM27_C18_EVIDENCIA=PASS'
+
+      - name: Árbol limpio
+        run: git diff --exit-code && test -z "$(git status --porcelain)"
