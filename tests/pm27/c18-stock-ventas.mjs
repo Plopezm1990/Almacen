@@ -20,9 +20,9 @@ function sqlFunction(sql, name) {
   const start = sql.search(new RegExp(`create\\s+or\\s+replace\\s+function\\s+public\\.${name}\\s*\\(`, 'i'));
   if (start < 0) throw new Error(`PM27_C18_FUNCION_AUSENTE=${name}`);
   const bodyStart = sql.indexOf('as $$', start);
-  const end = sql.indexOf('\n$$;', bodyStart);
+  const end = sql.indexOf('$$;', bodyStart + 5);
   if (bodyStart < 0 || end < 0) throw new Error(`PM27_C18_FUNCION_INCOMPLETA=${name}`);
-  return sql.slice(start, end + 4);
+  return sql.slice(start, end + 3);
 }
 
 const venta = sqlFunction(patch, 'registrar_venta_stock');
