@@ -25,13 +25,18 @@ begin
     raise exception 'PM27_C24_POSTFLIGHT_FALLO: C13 helper sin search_path fijado';
   end if;
 
-  if has_function_privilege('authenticated','public.descontar_stock_carrito(jsonb,text)','EXECUTE')
-     and to_regprocedure('public.descontar_stock_carrito(jsonb,text)') is not null then
-    raise exception 'PM27_C24_POSTFLIGHT_FALLO: RPC legacy descontar_stock_carrito sigue ejecutable';
+  -- Las RPC legacy pueden no existir en instalaciones modernas. Primero se
+  -- resuelve su OID; solo si existe se consulta el privilegio. Así el postflight
+  -- no depende de que PostgreSQL cortocircuite una firma inexistente.
+  if to_regprocedure('public.descontar_stock_carrito(jsonb,text)') is not null then
+    if has_function_privilege('authenticated','public.descontar_stock_carrito(jsonb,text)','EXECUTE') then
+      raise exception 'PM27_C24_POSTFLIGHT_FALLO: RPC legacy descontar_stock_carrito sigue ejecutable';
+    end if;
   end if;
-  if has_function_privilege('authenticated','public.anular_venta_tpv(text,text)','EXECUTE')
-     and to_regprocedure('public.anular_venta_tpv(text,text)') is not null then
-    raise exception 'PM27_C24_POSTFLIGHT_FALLO: RPC legacy anular_venta_tpv sigue ejecutable';
+  if to_regprocedure('public.anular_venta_tpv(text,text)') is not null then
+    if has_function_privilege('authenticated','public.anular_venta_tpv(text,text)','EXECUTE') then
+      raise exception 'PM27_C24_POSTFLIGHT_FALLO: RPC legacy anular_venta_tpv sigue ejecutable';
+    end if;
   end if;
 
   v_def := pg_get_functiondef('public.registrar_venta_stock(text,text,text,text,numeric,jsonb)'::regprocedure);
