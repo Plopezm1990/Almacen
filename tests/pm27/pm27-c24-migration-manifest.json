@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "checkpoint": "PM27-C24",
+  "baseCertifiedCommit": "6733894915eadaf26f10b65f32e6e296b41a4311",
+  "policy": "Apply only in this order after pm27_c24_preflight_migraciones.sql passes. Verify each Git blob SHA byte-for-byte before execution.",
+  "migrations": [
+    {
+      "path": "supabase/migrations/20260913190500_pm27_c13_security_definer_tenant_guard.sql",
+      "gitBlobSha": "ebd2381fcf4973f9f6476699c82c5440e8c5b845"
+    },
+    {
+      "path": "supabase/migrations/20260913193500_pm27_c13_private_helper_hardening.sql",
+      "gitBlobSha": "ffa720cac85784a9243e67613d98873c228d887c"
+    },
+    {
+      "path": "supabase/migrations/20260914064500_pm27_c18_stock_sale_operation_id_hardening.sql",
+      "gitBlobSha": "6a8c4d338a97990b55f55e97d5c51d4b71dde331"
+    },
+    {
+      "path": "supabase/migrations/20260914071000_pm27_c19_transfer_operation_id_hardening.sql",
+      "gitBlobSha": "6e26602b469a6edf5bd1df3b0956d19b6e58cc62"
+    },
+    {
+      "path": "supabase/migrations/20260914080000_pm27_c20_inventory_count_replay_hardening.sql",
+      "gitBlobSha": "df4c7b1144c18222e89358394365d8a0d0849d32"
+    },
+    {
+      "path": "supabase/migrations/20260914090000_pm27_c21_encargos_authorization_hardening.sql",
+      "gitBlobSha": "ddb0e77f0f54401c9e7e22d90853b49ee821472d"
+    },
+    {
+      "path": "supabase/migrations/20260914103000_pm27_c22_pagos_reembolsos_operation_id_hardening.sql",
+      "gitBlobSha": "7af8a15fb449dfe6a2734d7e173cadc915fcba1c"
+    },
+    {
+      "path": "supabase/migrations/20260914121000_pm27_c23_concurrency_replay_atomicity.sql",
+      "gitBlobSha": "c9e1a4c47f22eddf9e6e7a3b85ed29ebc2d923b2"
+    }
+  ]
+}
