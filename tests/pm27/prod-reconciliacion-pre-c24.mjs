@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 
+// Recertificacion tras contrastar el drift vivo de produccion el 2026-09-14.
 const migrationPath = 'supabase/migrations/20260914170500_pm27_prod_reconciliacion_pre_c24.sql';
 const recoveryPath = 'supabase/qa-solo/pm27_prod_recovery_pre_c24.sql';
 const gatePath = 'tests/pm27/prod-reconciliacion-pg17-gate.sh';
