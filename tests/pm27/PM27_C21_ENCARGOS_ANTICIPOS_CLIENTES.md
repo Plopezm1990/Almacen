@@ -1,6 +1,8 @@
 # PM27 — C21 Encargos, anticipos y clientes
 
-Estado: **CANDIDATO — pendiente de gate remoto exact-SHA**.
+Estado: **CERRADO — PASS técnico certificado por gate remoto; este commit documental debe recertificarse exact-SHA**.
+
+Primer gate C21 en **SUCCESS**: run `34820565962` sobre `c1e70097b543cf53f6f2c5eb8709037d6e557c4f`. Este commit incorpora la evidencia de cierre; el mismo workflow C21 debe recertificar este SHA antes de considerar definitivo el cierre documental.
 
 C21 parte del cierre exacto de C20 `fb3a08f72e7789fc5e8771c2f0d7d6bd49dd4d3a`, cuyo workflow `PM27 C20 - Inventarios conteos` terminó `SUCCESS` en el run `34817698292`. No reabre C20.
 
@@ -47,7 +49,7 @@ El frontend rechaza un cliente con `empresaId` explícitamente distinto, pero `r
 
 `registrar_encargo` hacía un UPSERT por id/contexto sin `FOR UPDATE`, sin matriz de estados y sin inmovilizar identidad económica al cerrar. Por tanto el espejo autoritativo podía reescribir un encargo Entregado/Cancelado/Devuelto o cerrar un Pendiente cambiando simultáneamente cliente/total.
 
-## Remediación candidata
+## Remediación cerrada en rama de trabajo
 
 `supabase/migrations/20260914090000_pm27_c21_encargos_authorization_hardening.sql` aplica un cambio mínimo sobre la frontera del encargo:
 
@@ -65,7 +67,7 @@ El frontend rechaza un cliente con `empresaId` explícitamente distinto, pero `r
 
 La remediación no reemplaza ni modifica `registrar_pago_encargo`, `revertir_pago_encargo`, `pagos_encargo` ni el ledger global. No crea otro motor de idempotencia.
 
-## Contrato reproducible
+## Contrato reproducible y gate
 
 `tests/pm27/c21-encargos-anticipos-clientes.mjs`:
 
@@ -74,13 +76,15 @@ La remediación no reemplaza ni modifica `registrar_pago_encargo`, `revertir_pag
 - incluye mutaciones negativas deliberadas contra el revoke directo, el guard cross-empresa y la inmutabilidad terminal;
 - ejecuta todos los contratos JavaScript de raíz de `tests/pm14` y después `tests/pm27/c20-inventarios-conteos.mjs`, que arrastra la regresión acumulada anterior.
 
+El run `34820565962` completó en `SUCCESS`: SHA exacto, referencias protegidas, base C20, alcance de cuatro archivos, sintaxis, contrato C21, regresiones, evidencia de no-despliegue y árbol limpio quedaron en verde sobre `c1e70097b543cf53f6f2c5eb8709037d6e557c4f`.
+
 ## Criterio de cierre
 
-C21 solo puede declararse **PASS** cuando el workflow `PM27 C21 - Encargos anticipos clientes` termine `SUCCESS` sobre el SHA exacto que se declare final. El diff desde C20 debe contener únicamente estos cuatro archivos:
+El diff desde C20 queda limitado a estos cuatro archivos:
 
 - `supabase/migrations/20260914090000_pm27_c21_encargos_authorization_hardening.sql`
 - `tests/pm27/c21-encargos-anticipos-clientes.mjs`
 - `tests/pm27/PM27_C21_ENCARGOS_ANTICIPOS_CLIENTES.md`
 - `.github/workflows/pm27-c21-encargos-anticipos-clientes.yml`
 
-`main` debe seguir en `93a570badba1c5375febfbddc1dffdbcef003dcd` y `release` en `a97740987be57aa9646f6a06e69b2230f140ec5f`. Hasta obtener el gate exact-SHA, el estado correcto sigue siendo **CANDIDATO**.
+`main` debe seguir en `93a570badba1c5375febfbddc1dffdbcef003dcd` y `release` en `a97740987be57aa9646f6a06e69b2230f140ec5f`. No hay despliegue ni aplicación remota de la migración C21 como parte de este cierre. El cierre documental solo es definitivo cuando este commit posterior al primer gate vuelva a terminar `SUCCESS` en el mismo workflow exact-SHA.
