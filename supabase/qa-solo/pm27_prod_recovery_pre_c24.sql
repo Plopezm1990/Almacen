@@ -56,7 +56,6 @@ drop function if exists private.pm08_validar_dinero(numeric,boolean,boolean);
 drop function if exists private.pm08_local_operable(text,text);
 drop function if exists private.pm08_puede_operar_caja();
 drop function if exists private.pm07_puede_vender();
-drop function if exists private.pm07_validar_cantidad(numeric,boolean,smallint);
 
 alter table public.stock_ubicacion drop column if exists unidad;
 alter table public.almacen_kv drop column if exists empresa_id;

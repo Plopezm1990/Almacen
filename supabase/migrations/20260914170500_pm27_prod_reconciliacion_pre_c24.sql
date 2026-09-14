@@ -55,13 +55,42 @@ begin
 
   if to_regprocedure('private.pm06_puede_gestionar_finanzas()') is not null
      or to_regprocedure('private.pm07_puede_vender()') is not null
-     or to_regprocedure('private.pm07_validar_cantidad(numeric,boolean,smallint)') is not null
      or to_regprocedure('private.pm08_local_operable(text,text)') is not null
      or to_regprocedure('private.pm08_puede_operar_caja()') is not null
      or to_regprocedure('private.pm08_validar_dinero(numeric,boolean,boolean)') is not null
      or to_regprocedure('private.pm14_total_encargo(text,text,text)') is not null then
     raise exception 'PM27_PROD_RECON_PREFLIGHT_FALLO: helpers objetivo ya presentes/parciales';
   end if;
+
+  -- Produccion ya contiene una variante PM07 mas endurecida que QA. Se preserva:
+-- debe existir, ser IMMUTABLE/invoker, usar search_path vacio, rechazar no-finitos
+-- y no exponer EXECUTE a PUBLIC/anon/authenticated.
+if to_regprocedure('private.pm07_validar_cantidad(numeric,boolean,smallint)') is null then
+  raise exception 'PM27_PROD_RECON_PREFLIGHT_FALLO: falta pm07_validar_cantidad productiva';
+end if;
+if not exists (
+  select 1
+    from pg_proc p
+   where p.oid = 'private.pm07_validar_cantidad(numeric,boolean,smallint)'::regprocedure
+     and p.provolatile = 'i'
+     and p.prosecdef is false
+     and coalesce(p.proconfig, '{}'::text[]) @> array['search_path=""']::text[]
+     and strpos(pg_get_functiondef(p.oid), $$p_cantidad::text in ('NaN','Infinity','-Infinity')$$) > 0
+     and strpos(pg_get_functiondef(p.oid), 'unidad_indivisible') > 0
+     and strpos(pg_get_functiondef(p.oid), 'precision_cantidad_excedida') > 0
+)
+or has_function_privilege('anon', 'private.pm07_validar_cantidad(numeric,boolean,smallint)', 'EXECUTE')
+or has_function_privilege('authenticated', 'private.pm07_validar_cantidad(numeric,boolean,smallint)', 'EXECUTE')
+or exists (
+  select 1
+    from pg_proc p
+    cross join lateral aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) acl
+   where p.oid = 'private.pm07_validar_cantidad(numeric,boolean,smallint)'::regprocedure
+     and acl.grantee = 0
+     and acl.privilege_type = 'EXECUTE'
+) then
+  raise exception 'PM27_PROD_RECON_PREFLIGHT_FALLO: pm07_validar_cantidad productiva inesperada';
+end if;
 
   if to_regprocedure('public.registrar_venta_stock(text,text,text,text,numeric,jsonb)') is not null
      or to_regprocedure('public.registrar_venta_stock_carrito(text,text,text,jsonb,jsonb)') is not null
@@ -139,27 +168,6 @@ alter table public.almacen_kv add column local_id text;
 
 alter table public.stock_ubicacion
   add column unidad text not null default 'ud';
-
-create or replace function private.pm07_validar_cantidad(
-  p_cantidad numeric,
-  p_fraccionable boolean,
-  p_precision smallint
-) returns numeric
-language plpgsql
-immutable
-set search_path='pg_catalog','pg_temp'
-as $function$
-declare v numeric;
-begin
-  if coalesce(p_cantidad,0) <= 0 then raise exception 'cantidad_invalida'; end if;
-  if not coalesce(p_fraccionable,false) and p_cantidad <> trunc(p_cantidad) then
-    raise exception 'unidad_indivisible';
-  end if;
-  v := round(p_cantidad, greatest(0, least(6, coalesce(p_precision,0))));
-  if p_cantidad <> v then raise exception 'precision_cantidad_excedida'; end if;
-  return v;
-end
-$function$;
 
 create or replace function private.pm07_puede_vender()
 returns boolean
@@ -241,7 +249,6 @@ as $function$
      and coalesce(private.la_rol() in ('Propietario','Encargado'), false);
 $function$;
 
-revoke all on function private.pm07_validar_cantidad(numeric,boolean,smallint) from public, anon, authenticated;
 revoke all on function private.pm07_puede_vender() from public, anon, authenticated;
 revoke all on function private.pm08_puede_operar_caja() from public, anon, authenticated;
 revoke all on function private.pm08_local_operable(text,text) from public, anon, authenticated;

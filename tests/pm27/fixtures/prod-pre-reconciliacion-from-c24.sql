@@ -20,7 +20,23 @@ drop function private.pm08_validar_dinero(numeric,boolean,boolean);
 drop function private.pm08_local_operable(text,text);
 drop function private.pm08_puede_operar_caja();
 drop function private.pm07_puede_vender();
-drop function private.pm07_validar_cantidad(numeric,boolean,smallint);
+create or replace function private.pm07_validar_cantidad(p_cantidad numeric, p_fraccionable boolean, p_precision smallint)
+returns numeric
+language plpgsql
+immutable
+set search_path=''
+as $function$
+declare v numeric;
+begin
+  if p_cantidad is null or p_cantidad::text in ('NaN','Infinity','-Infinity') then raise exception 'cantidad_invalida'; end if;
+  v := round(p_cantidad,greatest(0,least(6,coalesce(p_precision,0))));
+  if v <= 0 then raise exception 'cantidad_invalida'; end if;
+  if not coalesce(p_fraccionable,false) and v <> trunc(v) then raise exception 'unidad_indivisible'; end if;
+  if p_cantidad <> v then raise exception 'precision_cantidad_excedida'; end if;
+  return v;
+end;
+$function$;
+revoke all on function private.pm07_validar_cantidad(numeric,boolean,smallint) from public, anon, authenticated;
 
 alter table public.stock_ubicacion drop column unidad;
 alter table public.almacen_kv drop column empresa_id;

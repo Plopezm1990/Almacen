@@ -23,6 +23,7 @@ check('TRANSACCION', /^\s*--[\s\S]*?\nbegin;/i.test(sql) && /\ncommit;\s*$/i.tes
 check('TIMEOUTS', sql.includes("set local lock_timeout = '5s'") && sql.includes("set local statement_timeout = '30s'"));
 check('FAIL_CLOSED_STOCK_CERO', sql.includes('stock_ubicacion dejó de estar vacío'));
 check('FAIL_CLOSED_PARCIAL', sql.includes('tablas PM14 ya presentes/parciales') && sql.includes('marcadores C24 parciales'));
+check('PM07_PRODUCTIVA_PRESERVADA', sql.includes('pm07_validar_cantidad productiva inesperada') && !sql.includes('create or replace function private.pm07_validar_cantidad(') && !recovery.includes('drop function if exists private.pm07_validar_cantidad'));
 check('SIN_STAMP_MANUAL', noMigrationHistoryWrite(sql));
 check('SNAPSHOT_RECOVERY_PRIVADO', sql.includes('private.pm27_prod_recovery_20260914') && sql.includes('revoke all on table private.pm27_prod_recovery_20260914 from public, anon, authenticated'));
 check('ALMACEN_SCOPE', sql.includes('alter table public.almacen_kv add column empresa_id text') && sql.includes('alter table public.almacen_kv add column local_id text'));
