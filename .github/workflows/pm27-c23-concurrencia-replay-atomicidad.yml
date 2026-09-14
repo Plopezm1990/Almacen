@@ -1,0 +1,135 @@
+name: PM27 C23 - Concurrencia replay atomicidad
+
+on:
+  push:
+    branches:
+      - claude/pm27-c23-concurrencia-replay-atomicidad
+    paths:
+      - .github/workflows/pm27-c23-concurrencia-replay-atomicidad.yml
+      - pm11-compra-mobile-loader.js
+      - pm27-c23-storage-concurrency-v1.js
+      - supabase/migrations/20260914121000_pm27_c23_concurrency_replay_atomicity.sql
+      - tests/pm27/PM27_C23_CONCURRENCIA_REPLAY_ATOMICIDAD.md
+      - tests/pm27/c23-concurrencia-replay-atomicidad.mjs
+  pull_request:
+    paths:
+      - .github/workflows/pm27-c23-concurrencia-replay-atomicidad.yml
+      - pm11-compra-mobile-loader.js
+      - pm27-c23-storage-concurrency-v1.js
+      - supabase/migrations/20260914121000_pm27_c23_concurrency_replay_atomicity.sql
+      - tests/pm27/PM27_C23_CONCURRENCIA_REPLAY_ATOMICIDAD.md
+      - tests/pm27/c23-concurrencia-replay-atomicidad.mjs
+
+permissions:
+  contents: read
+
+jobs:
+  certify-c23:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout exact candidate SHA
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Guard protected refs unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_main='93a570badba1c5375febfbddc1dffdbcef003dcd'
+          expected_release='a97740987be57aa9646f6a06e69b2230f140ec5f'
+          actual_main="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+          actual_release="$(git ls-remote origin refs/heads/release | awk '{print $1}')"
+          test "$actual_main" = "$expected_main"
+          test "$actual_release" = "$expected_release"
+          echo "PROTECTED_REFS=PASS"
+
+      - name: Guard C23 scope against certified C22 base
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='e047b0ddf8f00bc4cbe0829ea36d07ca9a7127e9'
+          git cat-file -e "${base}^{commit}"
+
+          cat > /tmp/expected.txt <<'EOF'
+          .github/workflows/pm27-c23-concurrencia-replay-atomicidad.yml
+          pm11-compra-mobile-loader.js
+          pm27-c23-storage-concurrency-v1.js
+          supabase/migrations/20260914121000_pm27_c23_concurrency_replay_atomicity.sql
+          tests/pm27/PM27_C23_CONCURRENCIA_REPLAY_ATOMICIDAD.md
+          tests/pm27/c23-concurrencia-replay-atomicidad.mjs
+          EOF
+
+          git diff --name-only "$base" "$GITHUB_SHA" | sort > /tmp/actual.txt
+          sort /tmp/expected.txt -o /tmp/expected.txt
+          diff -u /tmp/expected.txt /tmp/actual.txt
+          test "$(wc -l < /tmp/actual.txt | tr -d ' ')" = '6'
+          echo "C23_SCOPE=PASS"
+
+      - name: Syntax checks C23
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check tests/pm27/c23-concurrencia-replay-atomicidad.mjs
+          node --check pm27-c23-storage-concurrency-v1.js
+          node --check pm11-compra-mobile-loader.js
+          echo "C23_SYNTAX=PASS"
+
+      - name: Run C23 concurrency replay atomicity contract
+        run: node tests/pm27/c23-concurrencia-replay-atomicidad.mjs
+
+      - name: Guard C23 migration is preparation only
+        shell: bash
+        run: |
+          set -euo pipefail
+          migration='supabase/migrations/20260914121000_pm27_c23_concurrency_replay_atomicity.sql'
+          grep -Fq 'private.pm09_bloquear_operation_id_stock' "$migration"
+          grep -Fq 'movimientos_datos_norm=lineas_datos_norm' "$migration"
+          grep -Fq "raise exception 'operation_id_conflict'" "$migration"
+          grep -Fq "set local lock_timeout = '5s'" "$migration"
+          grep -Fq "set local statement_timeout = '30s'" "$migration"
+          if grep -Eiq 'supabase[[:space:]]+(db[[:space:]]+push|migration[[:space:]]+up)|netlify[[:space:]]+deploy' "$migration"; then
+            echo 'C23 migration must not deploy itself' >&2
+            exit 1
+          fi
+          echo "C23_NO_DEPLOY=PASS"
+
+      - name: Guard C23 multi-tab hardening
+        shell: bash
+        run: |
+          set -euo pipefail
+          patch='pm27-c23-storage-concurrency-v1.js'
+          loader='pm11-compra-mobile-loader.js'
+          grep -Fq 'sessionStorage.setItem(await baseKey(key)' "$patch"
+          grep -Fq 'c23_conflicto_concurrente:encargos' "$patch"
+          grep -Fq 'c23_conflicto_concurrente:clientes' "$patch"
+          grep -Fq 'fusionarListaConBase(remoto, base, ahora)' "$patch"
+          grep -Fq 'pm27-c23-storage-concurrency-v1.js?v=pm27-c23-storage-concurrency-v1' "$loader"
+          echo "C23_MULTITAB_HARDENING=PASS"
+
+      - name: Guard C23 documentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          doc='tests/pm27/PM27_C23_CONCURRENCIA_REPLAY_ATOMICIDAD.md'
+          grep -Fq 'C23-D1' "$doc"
+          grep -Fq 'C23-D2' "$doc"
+          grep -Fq 'no se ha aplicado' "$doc"
+          grep -Fq 'C24' "$doc"
+          echo "C23_DOC=PASS"
+
+      - name: Clean working tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code
+          test -z "$(git status --porcelain)"
+          echo "C23_CLEAN_TREE=PASS"
