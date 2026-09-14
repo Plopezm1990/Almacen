@@ -1,0 +1,71 @@
+name: PM27 C17 - Caja y conciliacion
+
+on:
+  push:
+    branches:
+      - claude/pm27-c17-caja-conciliacion
+    paths:
+      - tests/pm27/c17-caja-conciliacion.mjs
+      - tests/pm27/PM27_C17_CAJA_CONCILIACION.md
+      - .github/workflows/pm27-c17-caja-conciliacion.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  c17-caja:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout trazable
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar SHA exacto y referencias protegidas
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git fetch origin main release --no-tags
+          test "$(git rev-parse origin/main)" = '93a570badba1c5375febfbddc1dffdbcef003dcd'
+          test "$(git rev-parse origin/release)" = 'a97740987be57aa9646f6a06e69b2230f140ec5f'
+
+      - name: Verificar base C16 y alcance C17
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='270f392ab815fdb5fe6643fea34cc1580647cd65'
+          git cat-file -e "$BASE^{commit}"
+          mapfile -t files < <(git diff --name-only "$BASE"...HEAD)
+          printf '%s\n' "${files[@]}"
+          for f in "${files[@]}"; do
+            case "$f" in
+              tests/pm27/c17-caja-conciliacion.mjs|tests/pm27/PM27_C17_CAJA_CONCILIACION.md|.github/workflows/pm27-c17-caja-conciliacion.yml) ;;
+              *) echo "Cambio fuera del alcance C17: $f" >&2; exit 1 ;;
+            esac
+          done
+
+      - name: Configurar Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Sintaxis C17
+        run: node --check tests/pm27/c17-caja-conciliacion.mjs
+
+      - name: Ejecutar contrato y regresiones de Caja
+        run: node tests/pm27/c17-caja-conciliacion.mjs
+
+      - name: Confirmar evidencia y alcance honesto
+        shell: bash
+        run: |
+          set -euo pipefail
+          doc='tests/pm27/PM27_C17_CAJA_CONCILIACION.md'
+          grep -Fq 'arqueos, cierres, operaciones duplicadas/replay, permisos y consistencia' "$doc"
+          grep -Fq 'C17 no modificó ninguna de ellas' "$doc"
+          grep -Fq 'no afirma que estas migraciones estén desplegadas en producción' "$doc"
+          echo 'PM27_C17_EVIDENCIA=PASS'
+
+      - name: Arbol limpio
+        run: git diff --exit-code && test -z "$(git status --porcelain)"
