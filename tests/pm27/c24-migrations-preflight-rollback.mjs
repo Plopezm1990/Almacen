@@ -122,6 +122,18 @@ check('POSTFLIGHT_READ_ONLY',
 check('POSTFLIGHT_TIMEOUTS',
   postflight.includes("set local lock_timeout = '5s'")
   && postflight.includes("set local statement_timeout = '30s'"));
+check('POSTFLIGHT_C13_HELPER_DOS_ESTADOS_FAIL_CLOSED',
+  postflight.includes("pg_catalog.to_regprocedure('private.es_propietario_activo()') is null")
+  && postflight.includes('pg_catalog.pg_policies')
+  && postflight.includes("coalesce(p.prosrc, '') ilike '%es_propietario_activo%'")
+  && postflight.includes('helper es_propietario_activo ausente pero aun referenciado')
+  && postflight.includes('helper es_propietario_activo ya ausente y sin dependencias')
+  && postflight.includes('search_path=""')
+  && postflight.includes("pg_catalog.has_function_privilege('public', 'private.es_propietario_activo()', 'EXECUTE')")
+  && postflight.includes("pg_catalog.has_function_privilege('anon', 'private.es_propietario_activo()', 'EXECUTE')")
+  && postflight.includes("pg_catalog.has_function_privilege('authenticated', 'private.es_propietario_activo()', 'EXECUTE')")
+  && postflight.indexOf("pg_catalog.to_regprocedure('private.es_propietario_activo()') is null")
+     < postflight.indexOf("pg_catalog.has_function_privilege('authenticated', 'private.es_propietario_activo()', 'EXECUTE')"));
 check('POSTFLIGHT_LEGACY_OID_PRIMERO',
   postflight.indexOf("to_regprocedure('public.descontar_stock_carrito(jsonb,text)')")
     < postflight.indexOf("has_function_privilege('authenticated','public.descontar_stock_carrito(jsonb,text)','EXECUTE')")
