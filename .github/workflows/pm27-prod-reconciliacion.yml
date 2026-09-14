@@ -1,0 +1,129 @@
+name: PM27 - Produccion reconciliacion PRE-C24
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - claude/pm27-prod-reconciliacion
+    paths:
+      - .github/workflows/pm27-prod-reconciliacion.yml
+      - supabase/migrations/20260914170500_pm27_prod_reconciliacion_pre_c24.sql
+      - supabase/qa-solo/pm27_prod_recovery_pre_c24.sql
+      - tests/pm27/prod-reconciliacion-pre-c24.mjs
+      - tests/pm27/prod-reconciliacion-pg17-gate.sh
+      - tests/pm27/fixtures/prod-pre-reconciliacion-from-c24.sql
+      - tests/pm27/fixtures/prod-reconciliacion-smoke.sql
+      - tests/pm27/fixtures/prod-reconciliacion-post-c24-verify.sql
+      - tests/pm27/fixtures/prod-reconciliacion-recovery-verify.sql
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  certify-prod-reconciliation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PG_IMAGE: postgres:17
+
+    steps:
+      - name: Checkout exact candidate SHA
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+
+      - name: Setup Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+
+      - name: Guard protected refs unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_main='93a570badba1c5375febfbddc1dffdbcef003dcd'
+          expected_release='a97740987be57aa9646f6a06e69b2230f140ec5f'
+          actual_main="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+          actual_release="$(git ls-remote origin refs/heads/release | awk '{print $1}')"
+          test "$actual_main" = "$expected_main"
+          test "$actual_release" = "$expected_release"
+          echo 'PM27_PROD_RECON_PROTECTED_REFS=PASS'
+
+      - name: Guard PR38 unchanged
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          pr_json="$(gh api repos/Plopezm1990/Almacen/pulls/38)"
+          test "$(printf '%s' "$pr_json" | jq -r '.state')" = 'open'
+          test "$(printf '%s' "$pr_json" | jq -r '.draft')" = 'true'
+          test "$(printf '%s' "$pr_json" | jq -r '.merged')" = 'false'
+          test "$(printf '%s' "$pr_json" | jq -r '.head.sha')" = 'f297be08708d0bbe566c21347123885cb3095a7c'
+          echo 'PM27_PROD_RECON_PR38=PASS'
+
+      - name: Guard reconciliation scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='952b6399e38dca580707b2e32211375a24adcaf5'
+          git cat-file -e "${base}^{commit}"
+          git merge-base --is-ancestor "$base" "$GITHUB_SHA"
+          cat > /tmp/expected.txt <<'EOF'
+          .github/workflows/pm27-prod-reconciliacion.yml
+          supabase/migrations/20260914170500_pm27_prod_reconciliacion_pre_c24.sql
+          supabase/qa-solo/pm27_prod_recovery_pre_c24.sql
+          tests/pm27/fixtures/prod-pre-reconciliacion-from-c24.sql
+          tests/pm27/fixtures/prod-reconciliacion-post-c24-verify.sql
+          tests/pm27/fixtures/prod-reconciliacion-recovery-verify.sql
+          tests/pm27/fixtures/prod-reconciliacion-smoke.sql
+          tests/pm27/prod-reconciliacion-pg17-gate.sh
+          tests/pm27/prod-reconciliacion-pre-c24.mjs
+          EOF
+          git diff --name-only "$base" "$GITHUB_SHA" | sort > /tmp/actual.txt
+          sort /tmp/expected.txt -o /tmp/expected.txt
+          diff -u /tmp/expected.txt /tmp/actual.txt
+          test "$(wc -l < /tmp/actual.txt | tr -d ' ')" = '9'
+          echo 'PM27_PROD_RECON_SCOPE=PASS'
+
+      - name: Static contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check tests/pm27/prod-reconciliacion-pre-c24.mjs
+          node tests/pm27/prod-reconciliacion-pre-c24.mjs
+
+      - name: PostgreSQL 17 deployment and recovery gate
+        shell: bash
+        run: bash tests/pm27/prod-reconciliacion-pg17-gate.sh
+
+      - name: C24 full regression
+        shell: bash
+        run: bash tests/pm27/c24-pg17-gate.sh
+
+      - name: Clean tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code
+          test -z "$(git status --porcelain)"
+          echo 'PM27_PROD_RECON_CLEAN_TREE=PASS'
