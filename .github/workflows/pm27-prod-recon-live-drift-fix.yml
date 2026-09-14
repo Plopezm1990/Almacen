@@ -21,11 +21,13 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.sha }}
 
-      - name: Guard parent certified SHA
+      - name: Guard lineage and temporary-only delta
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = '7637617356a479b9deb65b5a68c6ad7f7b755fca'
+          base='7637617356a479b9deb65b5a68c6ad7f7b755fca'
+          git merge-base --is-ancestor "$base" HEAD
+          test "$(git diff --name-only "$base" HEAD)" = '.github/workflows/pm27-prod-recon-live-drift-fix.yml'
 
       - name: Patch observed production pm07 validator
         shell: bash
@@ -42,24 +44,17 @@ jobs:
           static = Path('tests/pm27/prod-reconciliacion-pre-c24.mjs')
 
           s = mig.read_text()
-          old = """  if to_regprocedure('private.pm06_puede_gestionar_finanzas()') is not null
-             or to_regprocedure('private.pm07_puede_vender()') is not null
-             or to_regprocedure('private.pm07_validar_cantidad(numeric,boolean,smallint)') is not null
-             or to_regprocedure('private.pm08_local_operable(text,text)') is not null
-          """
-          new = """  if to_regprocedure('private.pm06_puede_gestionar_finanzas()') is not null
-             or to_regprocedure('private.pm07_puede_vender()') is not null
-             or to_regprocedure('private.pm08_local_operable(text,text)') is not null
-          """
-          if s.count(old) != 1:
-              raise SystemExit('preflight absence block unexpected')
-          s = s.replace(old, new, 1)
+          s, n = re.subn(
+              r"\n\s+or to_regprocedure\('private\.pm07_validar_cantidad\(numeric,boolean,smallint\)'\) is not null",
+              '', s, count=1
+          )
+          if n != 1:
+              raise SystemExit('pm07 absence predicate unexpected')
 
-          needle = """  if to_regprocedure('public.registrar_venta_stock(text,text,text,text,numeric,jsonb)') is not null
-          """
-          validation = """  -- Produccion ya contiene una variante PM07 mas endurecida que QA. Se preserva
-          -- byte-semanticamente: debe existir, ser IMMUTABLE, invoker, search_path vacio,
-          -- rechazar no-finitos y no exponer EXECUTE a PUBLIC/anon/authenticated.
+          needle = "  if to_regprocedure('public.registrar_venta_stock(text,text,text,text,numeric,jsonb)') is not null\n"
+          validation = """  -- Produccion ya contiene una variante PM07 mas endurecida que QA. Se preserva:
+          -- debe existir, ser IMMUTABLE/invoker, usar search_path vacio, rechazar no-finitos
+          -- y no exponer EXECUTE a PUBLIC/anon/authenticated.
           if to_regprocedure('private.pm07_validar_cantidad(numeric,boolean,smallint)') is null then
             raise exception 'PM27_PROD_RECON_PREFLIGHT_FALLO: falta pm07_validar_cantidad productiva';
           end if;
@@ -89,13 +84,16 @@ jobs:
 
           """
           if s.count(needle) != 1:
-              raise SystemExit('RPC target block unexpected')
+              raise SystemExit('RPC target insertion point unexpected')
           s = s.replace(needle, validation + needle, 1)
 
-          pattern = re.compile(r"create or replace function private\.pm07_validar_cantidad\([\s\S]*?\n\$function\$;\n\n(?=create or replace function private\.pm07_puede_vender\(\))")
+          pattern = re.compile(
+              r"create or replace function private\.pm07_validar_cantidad\([\s\S]*?(?=create or replace function private\.pm07_puede_vender\(\))"
+          )
           s, n = pattern.subn('', s, count=1)
           if n != 1:
-              raise SystemExit('pm07 function creation block unexpected')
+              raise SystemExit('pm07 creation block unexpected')
+
           revoke = "revoke all on function private.pm07_validar_cantidad(numeric,boolean,smallint) from public, anon, authenticated;\n"
           if s.count(revoke) != 1:
               raise SystemExit('pm07 revoke line unexpected')
@@ -133,8 +131,7 @@ jobs:
           fixture.write_text(f.replace(drop_fixture, prod_pm07, 1))
 
           rv = recovery_verify.read_text()
-          rv_needle = """  if not has_function_privilege('authenticated','public.descontar_stock_carrito(jsonb,text)','EXECUTE')
-          """
+          rv_needle = "  if not has_function_privilege('authenticated','public.descontar_stock_carrito(jsonb,text)','EXECUTE')\n"
           rv_check = """  if to_regprocedure('private.pm07_validar_cantidad(numeric,boolean,smallint)') is null
              or has_function_privilege('authenticated','private.pm07_validar_cantidad(numeric,boolean,smallint)','EXECUTE')
              or has_function_privilege('anon','private.pm07_validar_cantidad(numeric,boolean,smallint)','EXECUTE')
@@ -147,14 +144,11 @@ jobs:
           recovery_verify.write_text(rv.replace(rv_needle, rv_check + rv_needle, 1))
 
           st = static.read_text()
-          st_needle = "check('SNAPSHOT_RECOVERY_PRIVADO',"
-          idx = st.find(st_needle)
-          if idx < 0:
+          st_needle = "check('FAIL_CLOSED_PARCIAL', sql.includes('tablas PM14 ya presentes/parciales') && sql.includes('marcadores C24 parciales'));\n"
+          st_check = "check('PM07_PRODUCTIVA_PRESERVADA', sql.includes('pm07_validar_cantidad productiva inesperada') && !sql.includes('create or replace function private.pm07_validar_cantidad(') && !recovery.includes('drop function if exists private.pm07_validar_cantidad'));\n"
+          if st.count(st_needle) != 1:
               raise SystemExit('static insertion point unexpected')
-          line_end = st.find('\n', idx)
-          check = "\ncheck('PM07_PRODUCTIVA_PRESERVADA', sql.includes('pm07_validar_cantidad productiva inesperada') && !sql.includes('create or replace function private.pm07_validar_cantidad(') && !recovery.includes('drop function if exists private.pm07_validar_cantidad'));// live production hardening\n"
-          st = st[:line_end+1] + check + st[line_end+1:]
-          static.write_text(st)
+          static.write_text(st.replace(st_needle, st_needle + st_check, 1))
           PY
 
           node --check tests/pm27/prod-reconciliacion-pre-c24.mjs
