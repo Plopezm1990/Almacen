@@ -6,7 +6,7 @@ const [html, patch, migration] = await Promise.all([
   readFile(new URL("../edge-auth-patch.js", import.meta.url), "utf8"),
   readFile(new URL("../supabase/migrations/20260914223000_hotfix_barrera_reset_local.sql", import.meta.url), "utf8")
 ]);
-const ownerMigration = await readFile(new URL("../supabase/migrations/20260914205720_owner_identity_bootstrap.sql", import.meta.url), "utf8");
+const ownerMigration = await readFile(new URL("../supabase/migrations/20260914223100_owner_identity_bootstrap.sql", import.meta.url), "utf8");
 
 assert.match(html, /__instalacionSyncPermitida !== true\) return;/);
 assert.match(patch, /__prepararSesionPostReset/);
