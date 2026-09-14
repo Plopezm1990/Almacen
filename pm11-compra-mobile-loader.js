@@ -7,6 +7,20 @@
   // con el código exclusivo de Deploy Preview.
   if (typeof window === "undefined") return;
 
+  // PM27 C23: instalar el hardening de concurrencia de almacenamiento antes
+  // de que el bundle React empiece a hidratar clientes/encargos. El script C23
+  // se auto-sincroniza con la creación posterior de window.storage y no toca
+  // main/release ni ningún backend por sí mismo.
+  (function cargarPM27C23StorageConcurrency() {
+    if (window.__pm27C23StorageConcurrencyLoaderV1) return;
+    window.__pm27C23StorageConcurrencyLoaderV1 = true;
+    var c23Script = document.createElement("script");
+    c23Script.src = "./pm27-c23-storage-concurrency-v1.js?v=pm27-c23-storage-concurrency-v1";
+    c23Script.async = false;
+    c23Script.setAttribute("data-pm27-c23-storage-concurrency", "v1");
+    (document.head || document.documentElement).appendChild(c23Script);
+  })();
+
   (function instalarHotfixContextoPrefiltroPM26() {
     if (window.__pm26PrefiltroHotfixVersion) return;
 
