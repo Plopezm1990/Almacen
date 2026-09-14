@@ -6,9 +6,11 @@ const base = '6733894915eadaf26f10b65f32e6e296b41a4311';
 const manifestPath = 'tests/pm27/pm27-c24-migration-manifest.json';
 const preflightPath = 'supabase/qa-solo/pm27_c24_preflight_migraciones.sql';
 const postflightPath = 'supabase/qa-solo/pm27_c24_postflight_migraciones.sql';
+const c13HelperPath = 'supabase/migrations/20260913193500_pm27_c13_private_helper_hardening.sql';
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 const preflight = fs.readFileSync(preflightPath, 'utf8');
 const postflight = fs.readFileSync(postflightPath, 'utf8');
+const c13Helper = fs.readFileSync(c13HelperPath, 'utf8');
 
 function check(name, ok) {
   console.log(`PM27_C24_${name}=${ok ? 'PASS' : 'FAIL'}`);
@@ -68,6 +70,17 @@ for (const m of migrations) {
     !/supabase\s+(?:db\s+push|migration\s+up)|netlify\s+deploy/i.test(sql));
 }
 
+// C24-D2: C13-P5 no puede convertir un baseline posterior válido en falso negativo.
+// Si el helper existe, se endurece. Si ya fue retirado, solo se acepta su ausencia
+// cuando no quedan políticas ni funciones que todavía lo referencien.
+check('C13_HELPER_OPCIONAL_FAIL_CLOSED',
+  c13Helper.includes("to_regprocedure('private.es_propietario_activo()')")
+  && c13Helper.includes("pg_catalog.pg_policies")
+  && c13Helper.includes("coalesce(p.prosrc, '') ilike '%es_propietario_activo%'")
+  && c13Helper.includes('helper es_propietario_activo ausente pero aun referenciado')
+  && c13Helper.includes('helper es_propietario_activo ya ausente y sin dependencias')
+  && c13Helper.includes('alter function private.es_propietario_activo() set search_path'));
+
 // El preflight agregado es deliberadamente de solo lectura y rechaza tanto
 // instalación incompleta como re-aplicación/parcial y datos incompatibles.
 check('PREFLIGHT_READ_ONLY',
@@ -80,6 +93,10 @@ check('PREFLIGHT_DEPENDENCIAS',
   && preflight.includes('faltan tablas base de stock')
   && preflight.includes('faltan tablas base PM14')
   && preflight.includes('falta ledger global operation_id'));
+check('PREFLIGHT_C13_HELPER_BASELINE_COMPATIBLE',
+  preflight.includes("to_regprocedure('private.es_propietario_activo()') is null")
+  && preflight.includes('helper es_propietario_activo ausente pero aun referenciado')
+  && preflight.includes('helper es_propietario_activo ya ausente y sin dependencias'));
 check('PREFLIGHT_REAPLICACION_FAIL_CLOSED',
   preflight.includes('PM27_C24_PREFLIGHT_REAPLICACION_RECHAZADA')
   && preflight.includes('C13_contexto')
