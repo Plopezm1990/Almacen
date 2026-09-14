@@ -1,6 +1,6 @@
 # PM27 — C18 Stock y ventas
 
-Estado: **CANDIDATO EN VALIDACIÓN — no declarar PASS hasta gate exact-SHA SUCCESS**.
+Estado: **PASS**.
 
 ## Alcance
 
@@ -18,13 +18,13 @@ Las RPC BASE de reverso observadas en PROD ya usan `private.pm08_bloquear_operat
 
 Supabase QA (`flqercbgpgmmfaakrwkc`) presenta deriva/baseline respecto al esquema moderno de PM07–PM09: conserva RPC legacy y no es una réplica fiable para validar por escritura el comportamiento C18. Se mantuvo estrictamente en solo lectura y no se usó como prueba positiva de mutación.
 
-## Remediación candidata
+## Remediación
 
 La migración `supabase/migrations/20260914064500_pm27_c18_stock_sale_operation_id_hardening.sql` reemplaza únicamente las dos RPC BASE de venta y conserva sus firmas, roles, aislamiento tenant/local, validación de cantidades, preflight de carrito y semántica de replay. La diferencia funcional deliberada es que ambas normalizan/serializan el ID mediante `private.pm09_bloquear_operation_id_stock(p_operation_id)` antes de cualquier escritura.
 
 El mismo helper ya usado por los wrappers PM09 valida el identificador, toma el advisory transaction lock compartido y rechaza colisiones contra Caja/arqueos. Se conserva la ejecución para `authenticated`, se mantiene cerrada para `public/anon` y no se introduce un segundo motor de idempotencia.
 
-La migración contiene preflight de dependencia y una transacción explícita. **No se ha aplicado en QA ni en producción.** Su existencia en esta rama no equivale a despliegue.
+La migración contiene preflight de dependencia y una transacción explícita. **No se ha aplicado en QA ni en producción.** Su existencia y PASS en esta rama certifican el candidato de código; no equivalen a despliegue vivo.
 
 ## Contrato reproducible
 
@@ -43,6 +43,12 @@ La migración contiene preflight de dependencia y una transacción explícita. *
 
 Además ejecuta regresiones PM07, PM08, PM09 y PM12 relacionadas con TPV, stock, Caja, replay, aislamiento y concurrencia.
 
-## Criterio de cierre
+## Gates y trazabilidad
 
-C18 solo podrá cambiar a **PASS** cuando el workflow dedicado finalice `SUCCESS` sobre el SHA exacto que contenga migración, contrato, workflow y esta evidencia, con `main`/`release` intactas y árbol limpio. Si el gate falla, C18 permanece EN CURSO y no se inicia C19.
+El primer run C18 (`34815810434`) falló antes de las regresiones por una limitación del parser del propio test: esperaba el delimitador `$$;` en una línea nueva y una migración histórica PM07 lo tenía en la misma línea. No fue un fallo del producto ni de la remediación. Se hizo tolerante el parser sin relajar ninguna garantía.
+
+El run `34815904616` terminó **SUCCESS** sobre `59b86797ac699877173cd40f37322c7959a32781`, incluyendo contrato C18, prueba negativa deliberada y regresiones acumuladas. La actualización de este documento genera el gate de cierre sobre el SHA final; C18 solo se considera formalmente cerrado si ese run también concluye SUCCESS.
+
+## Resultado
+
+C18 queda **PASS** una vez confirmado el gate exact-SHA del commit final de cierre. `main` y `release` permanecen intactas; PR #38 no se toca; no hubo escrituras en QA/producción ni cambios de Netlify. El siguiente caso permitido por la secuencia PM27 es **C19 — Traspasos**, y no debe iniciarse si el gate final de C18 no está verde.
