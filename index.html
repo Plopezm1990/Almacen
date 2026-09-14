@@ -221,6 +221,11 @@
 
   // --- Subir a la nube lo que quedó pendiente ---
   window.subirPendientes = async function () {
+    // Tras un reset, ninguna cola local puede llegar al servidor hasta que la
+    // sesión haya validado la generación autoritativa de la instalación.
+    // El valor solo lo habilita __prepararSesionPostReset() después de limpiar
+    // una copia anterior o confirmar que pertenece a la generación vigente.
+    if (window.__instalacionSyncPermitida !== true) return;
     if (!window.__nubeActiva || !window.__nubeCliente) return;
     var lista = pendientes();
     for (var i = 0; i < lista.length; i++) {
@@ -844,6 +849,7 @@
 <script src="./pm12-conteo-estados-v1.js"></script>
 <script src="pm12-stock-atomico-v1.js"></script>
 <script src="./pm12-p09-historial-informes-movil-v1.js"></script>
+<script src="./edge-auth-patch.js"></script>
 <script type="module" src="./fuente.js"></script>
 <script defer src="./pm11-compra-mobile-p10-v1.js"></script>
 <script defer src="./dashboard-premium-v2.js"></script>

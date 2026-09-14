@@ -57,6 +57,138 @@
   };
 })();
 
+// Barrera post-reset. Antes de leer o sincronizar datos empresariales, una
+// sesión autenticada compara la generación local con la generación emitida por
+// el servidor. La generación no es un secreto: solo identifica la instalación
+// vigente y permite invalidar una copia local anterior sin tocar las
+// credenciales de Supabase Auth.
+(function () {
+  "use strict";
+  if (window.__instalacionPostResetInstalada) return;
+  window.__instalacionPostResetInstalada = true;
+
+  var CLAVE_GENERACION = "la_suite_installation_generation_v1";
+  var CLAVE_RESET_APLICADO = "la_suite_installation_reset_applied_v1";
+  var CLAVE_CONTEXTO_SEGURO = "chocoloyos_contexto_operativo_seguro_v1";
+
+  // Nunca se permite sincronizar hasta haber comprobado la generación para la
+  // sesión actual. index.html consulta este indicador antes de procesar
+  // almacen__pendientes.
+  window.__instalacionSyncPermitida = false;
+
+  function borrarDatosNegocioLocales() {
+    var claves = [];
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var clave = localStorage.key(i);
+        if (!clave) continue;
+        if (
+          clave.indexOf("almacen:") === 0 ||
+          clave.indexOf("almacen__pendientes") === 0 ||
+          clave.indexOf("almacen__borrados:") === 0 ||
+          clave === CLAVE_CONTEXTO_SEGURO
+        ) {
+          claves.push(clave);
+        }
+      }
+      claves.forEach(function (clave) { localStorage.removeItem(clave); });
+    } catch (e) {
+      throw new Error("No se pudo limpiar la copia local anterior");
+    }
+  }
+
+  function leerGeneracionLocal() {
+    try { return localStorage.getItem(CLAVE_GENERACION); }
+    catch (e) { return null; }
+  }
+
+  function guardarGeneracionLocal(generacion) {
+    try {
+      localStorage.setItem(CLAVE_GENERACION, generacion);
+      localStorage.setItem(CLAVE_RESET_APLICADO, JSON.stringify({
+        generation: generacion,
+        appliedAt: Date.now()
+      }));
+    } catch (e) {
+      throw new Error("No se pudo registrar la generación de instalación");
+    }
+  }
+
+  async function prepararSesionPostReset(supabase, sesion) {
+    if (!supabase || !sesion || !sesion.user || !sesion.user.id) {
+      throw new Error("Sesión no disponible para validar la instalación");
+    }
+
+    // Si después falla la red, modo local no puede reabrir la copia antigua de
+    // esta sesión autenticada.
+    window.__instalacionSesionConNube = true;
+    window.__instalacionSyncPermitida = false;
+
+    var generacion = await supabase.rpc("obtener_generacion_instalacion");
+    var valor = generacion && generacion.data && generacion.data.generation;
+    if (generacion.error || typeof valor !== "string" || !valor) {
+      throw new Error("No se pudo validar la generación de instalación");
+    }
+
+    var generacionCambiada = leerGeneracionLocal() !== valor;
+    if (generacionCambiada) {
+      borrarDatosNegocioLocales();
+      guardarGeneracionLocal(valor);
+    }
+
+    // Este punto solo decide si la copia local pertenece a la instalación
+    // vigente. La autorización de la cuenta continúa en el guard existente.
+    // No recreamos perfiles ni promovemos cuentas en esta fase.
+    window.__instalacionSyncPermitida = true;
+    return { estado: "generacion_validada", generacionCambiada: generacionCambiada };
+  }
+
+  window.__prepararSesionPostReset = prepararSesionPostReset;
+
+  // fuente.js es un bundle histórico. Esta inicialización independiente hace
+  // efectiva la barrera sin depender de reconstruir ni alterar su contenido.
+  async function iniciarBarreraConSesion() {
+    var supabase = null;
+    for (var intento = 0; intento < 160; intento++) {
+      if (typeof window.getSupabaseClient === "function") {
+        try { supabase = await window.getSupabaseClient(); } catch (e) {}
+        if (supabase) break;
+      }
+      await new Promise(function (resolver) { setTimeout(resolver, 25); });
+    }
+    if (!supabase || !supabase.auth) return;
+
+    var recargar = false;
+    async function validar(sesion) {
+      if (!sesion || recargar) return;
+      try {
+        var resultado = await prepararSesionPostReset(supabase, sesion);
+        if (resultado.generacionCambiada) {
+          recargar = true;
+          window.location.reload();
+          return;
+        }
+        if (typeof window.subirPendientes === "function") await window.subirPendientes();
+      } catch (e) {
+        // Fallar cerrado evita reenviar una cola no comprobada.
+        window.__instalacionSyncPermitida = false;
+      }
+    }
+
+    try {
+      var actual = await supabase.auth.getSession();
+      await validar(actual && actual.data ? actual.data.session : null);
+      supabase.auth.onAuthStateChange(function (_evento, sesion) {
+        validar(sesion);
+      });
+    } catch (e) {
+      window.__instalacionSyncPermitida = false;
+    }
+  }
+
+  iniciarBarreraConSesion();
+})();
+
 // Contexto operativo mínimo + barrera de copias locales por rol.
 //
 // El programa es local-first: una colección puede seguir existiendo en el
@@ -192,7 +324,9 @@ function hayContextoAutenticadoGuardado() {
 }
 
 function modoLocalNoReclamado() {
-  return window.__nubeActiva === false && !hayContextoAutenticadoGuardado();
+  return window.__nubeActiva === false
+    && !window.__instalacionSesionConNube
+    && !hayContextoAutenticadoGuardado();
 }
 
   async function sesionActual(supabase) {
@@ -382,8 +516,14 @@ function modoLocalNoReclamado() {
       var userId = sesion && sesion.data && sesion.data.session && sesion.data.session.user
         ? sesion.data.session.user.id : null;
       if (!userId) return;
-      var perfil = await supabase.from("perfiles").select("activo").eq("user_id", userId).maybeSingle();
+
+      var perfil = await supabase
+        .from("perfiles")
+        .select("activo")
+        .eq("user_id", userId)
+        .maybeSingle();
       if (perfil.error) return;
+      if (perfil.data && perfil.data.activo === true) return;
       if (!perfil.data || perfil.data.activo !== true) {
         bloqueando = true;
         try { await supabase.auth.signOut({ scope: "local" }); } catch (e) {}
