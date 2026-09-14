@@ -1,0 +1,43 @@
+name: Hotfix owner bootstrap post-reset
+
+on:
+  push:
+    branches:
+      - claude/hotfix-owner-bootstrap-post-reset
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hotfix-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Syntax checks
+        run: |
+          node --check reset-pruebas-preview.js
+          node --check edge-auth-patch.js
+          node --check tests/hotfix-barrera-reset-local.mjs
+
+      - name: Hotfix contract test
+        run: node tests/hotfix-barrera-reset-local.mjs
+
+      - name: Scope guard against production baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE=a97740987be57aa9646f6a06e69b2230f140ec5f
+          allowed='^(\.github/workflows/hotfix-owner-bootstrap-post-reset\.yml|edge-auth-patch\.js|index\.html|reset-pruebas-preview\.js|supabase/migrations/20260914223000_hotfix_barrera_reset_local\.sql|supabase/migrations/20260914223100_owner_identity_bootstrap\.sql|tests/hotfix-barrera-reset-local\.mjs)$'
+          bad="$(git diff --name-only "$BASE" HEAD | grep -Ev "$allowed" || true)"
+          if [ -n "$bad" ]; then
+            echo "HOTFIX_SCOPE_FAIL"
+            echo "$bad"
+            exit 1
+          fi
+          echo "HOTFIX_SCOPE_PASS"
