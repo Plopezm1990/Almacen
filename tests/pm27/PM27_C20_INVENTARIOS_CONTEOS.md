@@ -51,7 +51,7 @@ La migración incluye preflight de dependencias y `BEGIN/COMMIT` explícito. **N
 
 ## Contrato reproducible
 
-`tests/pm27/c20-inventarios-conteos.mjs` reproduce los tres huecos sobre la migración PM12 histórica y verifica la remediación candidata: conflicto ante plan distinto, persistencia/comparación de bases C20, corte de cancelación canónico, conflicto ante motivo/responsable distintos, permisos, aislamiento, locks, stock base, preflight de reverso, ACL y uso real de ambas RPC desde frontend.
+`tests/pm27/c20-inventarios-conteos.mjs` reproduce los tres huecos sobre la migración PM12 histórica y verifica la remediación candidata: conflicto ante plan distinto, persistencia/comparación de bases C20, corte de cancelación canónico, conflicto ante motivo/responsable distintos, permisos, aislamiento, locks, stock base, preflight de reverso y ACL. La existencia, firmas y permisos de las dos RPC PM12 se contrastaron además mediante inspección viva de Supabase en modo solo lectura; el contrato de repositorio no presupone que una copia concreta del frontend recuperado contenga sus nombres literales.
 
 Incluye negativas deliberadas para demostrar que el contrato detecta un bypass de la comparación de plan y otro de la identidad de cancelación. Como regresión ejecuta PM12 P05–P08 y después C19; C19 arrastra a su vez la regresión acumulada C18/PM07/PM08/PM09/PM12.
 
