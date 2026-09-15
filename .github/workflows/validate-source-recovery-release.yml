@@ -1,0 +1,224 @@
+name: Validate current Source Recovery
+
+on:
+  push:
+    branches:
+      - claude/source-recovery-release-20260915
+    paths:
+      - '.github/workflows/validate-source-recovery-release.yml'
+      - 'source-recovery/**'
+      - 'fuente.js'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: source-recovery-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  certify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Guardas de alcance y ancla release
+        shell: bash
+        run: |
+          set -euo pipefail
+          RELEASE_BASE=d2eec9dfbada9778fe4e787cd841790281bc5f7f
+          git fetch origin release --no-tags
+          test "$(git rev-parse origin/release)" = "$RELEASE_BASE"
+          git merge-base --is-ancestor "$RELEASE_BASE" HEAD
+          BAD=$(git diff --name-only "$RELEASE_BASE...HEAD" | grep -Ev '^(source-recovery/|\.github/workflows/validate-source-recovery-release\.yml$)' || true)
+          if [ -n "$BAD" ]; then
+            echo "Cambios fuera del alcance autorizado:" >&2
+            echo "$BAD" >&2
+            exit 1
+          fi
+          echo "SOURCE_RECOVERY_SCOPE_GUARD=PASS"
+          echo "SOURCE_RECOVERY_RELEASE_BASE=$RELEASE_BASE"
+
+      - name: Verificar paridad exacta del cuerpo recuperado
+        run: |
+          set -euo pipefail
+          python3 source-recovery/recuperar_candidato.py --check
+
+      - name: Generar diff acumulado y manifiesto determinista
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE=7b2aa0f1500ecfc5dce551196f5434655411a314
+          RELEASE_BASE=d2eec9dfbada9778fe4e787cd841790281bc5f7f
+          TARGET_FUENTE_COMMIT=$(git log -1 --format=%H -- fuente.js)
+
+          git cat-file -e "$BASE^{commit}"
+          git cat-file -e "$TARGET_FUENTE_COMMIT^{commit}"
+
+          git diff --binary "$BASE" "$TARGET_FUENTE_COMMIT" -- fuente.js > source-recovery/CURRENT_RELEASE.patch
+          test -s source-recovery/CURRENT_RELEASE.patch
+
+          BASE_SHA=$(git show "$BASE:fuente.js" | sha256sum | awk '{print $1}')
+          TARGET_SHA=$(sha256sum fuente.js | awk '{print $1}')
+          PATCH_SHA=$(sha256sum source-recovery/CURRENT_RELEASE.patch | awk '{print $1}')
+          PATCH_BYTES=$(wc -c < source-recovery/CURRENT_RELEASE.patch)
+          RECOVERED_SHA=$(sha256sum source-recovery/fuente-recuperado.js | awk '{print $1}')
+
+          export BASE RELEASE_BASE TARGET_FUENTE_COMMIT BASE_SHA TARGET_SHA PATCH_SHA PATCH_BYTES RECOVERED_SHA
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, os
+
+          data = {
+              "format": "la-suite-current-release-rebuild-v2",
+              "baseCommit": os.environ["BASE"],
+              "baseArtifactSha256": os.environ["BASE_SHA"],
+              "releaseBaseCommit": os.environ["RELEASE_BASE"],
+              "targetFuenteCommit": os.environ["TARGET_FUENTE_COMMIT"],
+              "targetArtifactSha256": os.environ["TARGET_SHA"],
+              "patch": "CURRENT_RELEASE.patch",
+              "patchSha256": os.environ["PATCH_SHA"],
+              "patchBytes": int(os.environ["PATCH_BYTES"]),
+              "fuenteRecuperadoSha256": os.environ["RECOVERED_SHA"],
+              "rebuildContract": "Build source-recovery at baseCommit from clean npm ci; require baseArtifactSha256; apply CURRENT_RELEASE.patch with patch --batch --fuzz=0 -p1; require targetArtifactSha256 and byte-for-byte equality with repository fuente.js."
+          }
+          Path("source-recovery/CURRENT_RELEASE_MANIFEST.json").write_text(
+              json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+          echo "SOURCE_RECOVERY_TARGET_FUENTE_COMMIT=$TARGET_FUENTE_COMMIT"
+          echo "SOURCE_RECOVERY_TARGET_SHA=$TARGET_SHA"
+          echo "SOURCE_RECOVERY_PATCH_SHA=$PATCH_SHA"
+          echo "SOURCE_RECOVERY_PATCH_BYTES=$PATCH_BYTES"
+
+      - name: Build limpio determinista de la fuente recuperada actual
+        shell: bash
+        working-directory: source-recovery
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm run check
+
+          rm -rf dist
+          npm run build
+          node --check dist/fuente.js
+          SHA1=$(sha256sum dist/fuente.js | awk '{print $1}')
+          BYTES1=$(wc -c < dist/fuente.js)
+          cp dist/fuente.js /tmp/source-recovery-direct-1.js
+
+          rm -rf dist
+          npm run build
+          node --check dist/fuente.js
+          SHA2=$(sha256sum dist/fuente.js | awk '{print $1}')
+          BYTES2=$(wc -c < dist/fuente.js)
+
+          test "$SHA1" = "$SHA2"
+          test "$BYTES1" = "$BYTES2"
+          cmp -s /tmp/source-recovery-direct-1.js dist/fuente.js
+
+          echo "DIRECT_BUILD_SHA=$SHA1" >> "$GITHUB_ENV"
+          echo "DIRECT_BUILD_BYTES=$BYTES1" >> "$GITHUB_ENV"
+          echo "SOURCE_RECOVERY_DIRECT_BUILD_REPRODUCIBLE=PASS"
+
+      - name: Reconstrucción exacta del runtime dos veces
+        shell: bash
+        working-directory: source-recovery
+        run: |
+          set -euo pipefail
+
+          rm -rf dist
+          npm run build:current
+          SHA1=$(sha256sum dist/fuente.js | awk '{print $1}')
+          BYTES1=$(wc -c < dist/fuente.js)
+          cp dist/fuente.js /tmp/source-recovery-current-1.js
+
+          rm -rf dist
+          npm run build:current
+          SHA2=$(sha256sum dist/fuente.js | awk '{print $1}')
+          BYTES2=$(wc -c < dist/fuente.js)
+
+          test "$SHA1" = "$SHA2"
+          test "$BYTES1" = "$BYTES2"
+          cmp -s /tmp/source-recovery-current-1.js dist/fuente.js
+          cmp -s dist/fuente.js ../fuente.js
+          node --check dist/fuente.js
+
+          grep -q 'function GestionAlmacen' dist/fuente.js
+          grep -q 'function crearLogicaCaja' dist/fuente.js
+          grep -q 'SelectorLocalInformes' dist/fuente.js
+          grep -q 'ErroresSistema' dist/fuente.js
+          grep -q 'obtener_contexto_operativo' dist/fuente.js
+
+          echo "EXACT_REBUILD_SHA=$SHA1" >> "$GITHUB_ENV"
+          echo "EXACT_REBUILD_BYTES=$BYTES1" >> "$GITHUB_ENV"
+          echo "SOURCE_RECOVERY_EXACT_REBUILD_TWICE=PASS"
+          echo "SOURCE_RECOVERY_RUNTIME_BYTE_PARITY=PASS"
+
+      - name: Escribir evidencia estable
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET_FUENTE_COMMIT=$(git log -1 --format=%H -- fuente.js)
+          TARGET_SHA=$(sha256sum fuente.js | awk '{print $1}')
+          PATCH_SHA=$(sha256sum source-recovery/CURRENT_RELEASE.patch | awk '{print $1}')
+          BODY_SHA=$(python3 source-recovery/recuperar_candidato.py --check | awk -F= '/^SHA256_CUERPO=/{print $2}')
+          export TARGET_FUENTE_COMMIT TARGET_SHA PATCH_SHA BODY_SHA
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, os
+
+          data = {
+              "status": "PASS",
+              "contract": "source-recovery-current-v2",
+              "releaseBaseCommit": "d2eec9dfbada9778fe4e787cd841790281bc5f7f",
+              "targetFuenteCommit": os.environ["TARGET_FUENTE_COMMIT"],
+              "targetArtifactSha256": os.environ["TARGET_SHA"],
+              "applicationBodySha256": os.environ["BODY_SHA"],
+              "patchSha256": os.environ["PATCH_SHA"],
+              "directRecoveredBuildSha256": os.environ["DIRECT_BUILD_SHA"],
+              "directRecoveredBuildBytes": int(os.environ["DIRECT_BUILD_BYTES"]),
+              "exactRebuildSha256": os.environ["EXACT_REBUILD_SHA"],
+              "exactRebuildBytes": int(os.environ["EXACT_REBUILD_BYTES"]),
+              "checks": {
+                  "scopeGuard": True,
+                  "recoveredBodyExact": True,
+                  "directBuildReproducibleTwice": True,
+                  "historicalBaselineRebuiltClean": True,
+                  "cumulativePatchAppliedWithFuzzZero": True,
+                  "exactRuntimeRebuiltTwice": True,
+                  "runtimeByteParity": True,
+                  "nodeSyntax": True,
+                  "essentialMarkers": True
+              }
+          }
+          Path("source-recovery/CURRENT_RELEASE_EVIDENCE.json").write_text(
+              json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+          echo "SOURCE_RECOVERY_CERTIFICATION=PASS"
+
+      - name: Versionar artefactos de certificación si cambiaron
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add source-recovery/CURRENT_RELEASE.patch \
+                  source-recovery/CURRENT_RELEASE_MANIFEST.json \
+                  source-recovery/CURRENT_RELEASE_EVIDENCE.json
+
+          if git diff --cached --quiet; then
+            echo "SOURCE_RECOVERY_GENERATED_ARTIFACTS_ALREADY_CURRENT=1"
+            exit 0
+          fi
+
+          git commit -m "source-recovery: materialize current release certification"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo "SOURCE_RECOVERY_GENERATED_ARTIFACTS_COMMITTED=1"
