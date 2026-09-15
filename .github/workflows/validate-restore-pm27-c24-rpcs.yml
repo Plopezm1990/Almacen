@@ -1,0 +1,70 @@
+name: Validate PM27 operational RPC restoration
+
+on:
+  push:
+    branches:
+      - claude/restore-pm27-c24-rpcs
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+      BASE_SHA: 0e10a7f3a7215fe7eeb1a6432401be1ec06ab1c6
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate migration scope
+        run: node tests/pm27-restore-c24-operational-rpcs.mjs
+
+      - name: Execute migration and behavior smoke on PostgreSQL
+        run: psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/pm27-restore-c24-operational-rpcs.sql
+
+      - name: Regress P1 clean first-run storage semantics
+        run: node tests/p1-empty-kv-first-run.mjs
+
+      - name: Regress anti-resurrection barrier
+        run: node tests/hotfix-barrera-reset-local.mjs
+
+      - name: Regress Netlify publish boundary
+        run: |
+          node .github/scripts/build-netlify-publish.mjs
+          node tests/netlify-publish-boundary.mjs
+
+      - name: Verify exact candidate scope
+        run: |
+          git diff --check "${BASE_SHA}" HEAD
+          actual="$(git diff --name-only "${BASE_SHA}" HEAD | sort)"
+          expected="$(printf '%s\n' \
+            '.github/workflows/validate-restore-pm27-c24-rpcs.yml' \
+            'supabase/migrations/20260915152000_pm27_restore_c24_operational_rpcs.sql' \
+            'tests/pm27-restore-c24-operational-rpcs.mjs' \
+            'tests/pm27-restore-c24-operational-rpcs.sql' | sort)"
+          printf 'actual:\n%s\n' "$actual"
+          printf 'expected:\n%s\n' "$expected"
+          test "$actual" = "$expected"
+          echo "candidate=${GITHUB_SHA}"
