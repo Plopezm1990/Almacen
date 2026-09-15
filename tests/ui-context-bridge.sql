@@ -98,6 +98,9 @@ begin
   if r->>'state' <> 'ready' or r->>'generation' <> repeat('b', 64) then
     raise exception 'TEST_FAIL: contexto inicial no ready %', r;
   end if;
+  if coalesce((r->>'permite_todos_locales')::boolean, false) <> true then
+    raise exception 'TEST_FAIL: Owner todos_locales no expuesto %', r;
+  end if;
   if jsonb_array_length(r->'empresas') <> 1 or jsonb_array_length(r->'locales') <> 1 then
     raise exception 'TEST_FAIL: cardinalidad inicial incorrecta %', r;
   end if;
@@ -201,6 +204,13 @@ begin
   if r->>'state' <> 'ready' then
     raise exception 'TEST_FAIL: validación localActivoId falló %', r;
   end if;
+
+  -- null representa "Todos los locales" para una membresía Owner todos_locales.
+  r := public.guardar_contexto_instalacion_ui('localActivoId', 'null'::jsonb);
+  if r->>'state' <> 'ready' or coalesce((r->>'permite_todos_locales')::boolean, false) <> true then
+    raise exception 'TEST_FAIL: vista consolidada null rechazada %', r;
+  end if;
+
   begin
     perform public.guardar_contexto_instalacion_ui('localActivoId', to_jsonb('local-ajeno'::text));
     raise exception 'TEST_FAIL: local ajeno debía rechazarse';
