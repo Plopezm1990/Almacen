@@ -69,14 +69,11 @@ if (sha256(targetBundle) !== targetArtifactSha256) {
   throw new Error('fuente.js actual no coincide con el artefacto objetivo fijado');
 }
 
-const actualTargetFuenteCommit = run(
-  'git',
-  ['log', '-1', '--format=%H', '--', 'fuente.js'],
-  { cwd: repoRoot, capture: true },
-).trim();
-if (actualTargetFuenteCommit !== targetFuenteCommit) {
-  throw new Error(`Commit objetivo de fuente.js inesperado: ${actualTargetFuenteCommit} != ${targetFuenteCommit}`);
-}
+// Validar procedencia sin depender de capturar stdout de git: el commit fijado
+// debe existir y el fuente.js del árbol de trabajo debe ser idéntico al de ese
+// commit. Si alguien modifica fuente.js sin regenerar el manifiesto, falla aquí.
+run('git', ['cat-file', '-e', `${targetFuenteCommit}^{commit}`], { cwd: repoRoot });
+run('git', ['diff', '--exit-code', targetFuenteCommit, '--', 'fuente.js'], { cwd: repoRoot });
 
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'la-suite-source-recovery-'));
 const worktree = path.join(tempRoot, 'base');
