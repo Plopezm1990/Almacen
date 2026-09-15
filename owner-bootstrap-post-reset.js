@@ -56,6 +56,21 @@
     return window.__laOwnerBootstrapRpc(nombre, tokenDe(sesion), cuerpo || {});
   }
 
+  async function sembrarContextoUi(sesion) {
+    var contexto = await rpcP4("obtener_contexto_instalacion_ui", sesion, {});
+    if (!contexto || contexto.state !== "ready") {
+      throw new Error("El servidor no confirmó el contexto de empresa/local");
+    }
+    if (!contexto.generation || contexto.generation !== generacionLocal()) {
+      throw new Error("La generación del contexto empresa/local no coincide");
+    }
+    if (typeof window.__laOwnerBootstrapSeedUiContext !== "function") {
+      throw new Error("Semilla segura del contexto empresa/local no disponible");
+    }
+    window.__laOwnerBootstrapSeedUiContext(contexto, sesion.user.id);
+    return contexto;
+  }
+
   function crearMarco(titulo, descripcion) {
     quitarSetup();
     document.documentElement.classList.remove("la-installation-checking");
@@ -162,6 +177,7 @@
           throw new Error("La generación del servidor cambió durante el bootstrap");
         }
 
+        await sembrarContextoUi(sesionActual);
         if (typeof window.__laOwnerBootstrapSetReady === "function") window.__laOwnerBootstrapSetReady(true);
         window.__instalacionSyncPermitida = true;
         if (window.__instalacionSyncPermitida !== true) throw new Error("La barrera de sincronización no quedó validada");
@@ -207,6 +223,8 @@
       if (estado.generation !== generacionLocal()) throw new Error("Generación de instalación no coincide");
 
       if (estado.state === "ready") {
+        await sembrarContextoUi(sesion);
+        if (miSecuencia !== secuencia) return;
         if (typeof window.__laOwnerBootstrapSetReady === "function") window.__laOwnerBootstrapSetReady(true);
         if (window.__instalacionSyncPermitida !== true) throw new Error("Sincronización no validada");
         liberarVistaLista();
