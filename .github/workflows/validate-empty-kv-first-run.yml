@@ -1,0 +1,69 @@
+name: Validate P1 empty KV first-run
+
+on:
+  push:
+    branches:
+      - claude/hotfix-empty-kv-first-run
+
+permissions:
+  contents: read
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify exact candidate scope
+        run: |
+          set -euo pipefail
+          BASE=d64ecf18599615c8c6d890c159ecb68269bdf902
+          git merge-base --is-ancestor "$BASE" HEAD
+          git diff --check "$BASE"..HEAD
+          mapfile -t changed < <(git diff --name-only "$BASE"..HEAD | sort)
+          printf 'P1_CHANGED=%s\n' "${changed[*]}"
+          expected=(
+            ".github/workflows/validate-empty-kv-first-run.yml"
+            "index.html"
+            "tests/p1-empty-kv-first-run.mjs"
+          )
+          if [[ "${changed[*]}" != "${expected[*]}" ]]; then
+            echo "Unexpected candidate scope" >&2
+            printf 'actual: %s\n' "${changed[*]}" >&2
+            printf 'expected: %s\n' "${expected[*]}" >&2
+            exit 1
+          fi
+
+      - name: Run P1 behavioral regressions
+        run: node tests/p1-empty-kv-first-run.mjs
+
+      - name: Re-run post-reset anti-resurrection contract
+        run: node tests/hotfix-barrera-reset-local.mjs
+
+      - name: Verify narrow empty-key semantics and sync interlock
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          html = Path('index.html').read_text(encoding='utf-8')
+          required = [
+              'function leerLocalOpcional(key)',
+              'if (e && e.message === "no existe") return null;',
+              'if (!(e && e.code === "NUBE_SIN_DATOS")) falloNube = e;',
+              'if (valorLocal === null && falloNube) throw falloNube;',
+              'if (window.__instalacionSyncPermitida !== true) return;',
+          ]
+          for needle in required:
+              if needle not in html:
+                  raise SystemExit(f'Falta contrato P1: {needle}')
+          if 'LOCAL.get = function' in html:
+              raise SystemExit('No se permite reescribir globalmente LOCAL.get')
+          print('P1_NARROW_STORAGE_CONTRACT=PASS')
+          PY
+
+      - name: Candidate evidence
+        run: |
+          echo "P1_CERTIFIED_SHA=${GITHUB_SHA}"
+          echo "P1_EMPTY_KV_FIRST_RUN=PASS"
