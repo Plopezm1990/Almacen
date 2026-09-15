@@ -70,7 +70,6 @@
 
     var empresas = JSON.stringify(contexto.empresas);
     var locales = JSON.stringify(contexto.locales);
-    var localActivo = JSON.stringify(contexto.local_id);
     var cambios = false;
 
     function escribirSiCambia(clave, valor) {
@@ -83,7 +82,30 @@
 
     escribirSiCambia("almacen:empresas", empresas);
     escribirSiCambia("almacen:locales", locales);
-    escribirSiCambia("almacen:localActivoId", localActivo);
+
+    // Mantener la elección de este dispositivo si todavía es válida. Para un
+    // Propietario todos_locales=true, null representa la vista consolidada.
+    var localActivoRaw = storageGetNativo.call(window.localStorage, "almacen:localActivoId");
+    var localActivoValido = false;
+    var localActivoElegido = contexto.permite_todos_locales === true ? null : contexto.local_id;
+    if (localActivoRaw !== null) {
+      try {
+        var candidato = JSON.parse(localActivoRaw);
+        if (candidato === null && contexto.permite_todos_locales === true) {
+          localActivoElegido = null;
+          localActivoValido = true;
+        } else if (typeof candidato === "string") {
+          localActivoValido = contexto.locales.some(function (l) {
+            return l && l.id === candidato && l.activo !== false;
+          });
+          if (localActivoValido) localActivoElegido = candidato;
+        }
+      } catch (e) {}
+    }
+    var localActivo = JSON.stringify(localActivoElegido);
+    if (!localActivoValido || localActivoRaw !== localActivo) {
+      escribirSiCambia("almacen:localActivoId", localActivo);
+    }
 
     // El PIN es deliberadamente local al dispositivo. Ausencia en una
     // instalación nueva significa "todavía no configurado", no error.
@@ -97,7 +119,7 @@
       userId: userId,
       empresas: contexto.empresas,
       locales: contexto.locales,
-      localId: contexto.local_id
+      localActivo: localActivoElegido
     });
     storageSetNativo.call(window.localStorage, "almacen__ui_context_seed", JSON.stringify({
       generation: contexto.generation,
