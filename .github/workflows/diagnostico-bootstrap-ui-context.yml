@@ -20,53 +20,35 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
           s = Path('fuente.js').read_text(encoding='utf-8')
-          terms = [
-              'async function loadKey',
-              'loadKey("empresas"',
-              'loadKey("locales"',
-              'loadKey("pinPropietario"',
-              'const [empresas',
-              'const [locales',
-              'window.storage =',
-              'storage.get',
-              'fallo-carga',
-              'pinPropietario',
-              'Empresas y locales',
-              '+ Añadir empresa',
-              'localActivoId',
-          ]
-          out = []
-          for term in terms:
-              out.append('\n' + '=' * 100 + '\nTERM: ' + term + '\n' + '=' * 100 + '\n')
-              start = 0
-              count = 0
-              while True:
-                  i = s.find(term, start)
-                  if i < 0:
-                      break
-                  count += 1
-                  a = max(0, i - 6000)
-                  b = min(len(s), i + len(term) + 6000)
-                  out.append(f'\n--- MATCH {count} @ char {i} ---\n')
-                  out.append(s[a:b])
-                  out.append('\n')
-                  start = i + len(term)
-                  if count >= 10:
-                      out.append('\n[truncado a 10 coincidencias]\n')
-                      break
-              if count == 0:
-                  out.append('[sin coincidencias]\n')
+          patrones = {
+            'loadKey_pin': r'loadKey\([^\n]{0,250}pinPropietario[^\n]{0,250}',
+            'loadKey_empresas': r'loadKey\([^\n]{0,250}empresas[^\n]{0,250}',
+            'loadKey_locales': r'loadKey\([^\n]{0,250}locales[^\n]{0,250}',
+            'storage_get_impl': r'(?:get\s*:\s*async|async\s+get\s*\(|get\s*\([^)]*\)\s*\{)[\s\S]{0,3500}almacen_kv',
+            'storage_global': r'window\.storage[\s\S]{0,4500}',
+            'state_empresas': r'(?:setEmpresas|\[empresas\s*,\s*setEmpresas)[\s\S]{0,2500}',
+            'state_locales': r'(?:setLocales|\[locales\s*,\s*setLocales)[\s\S]{0,2500}',
+          }
+          out=[]
+          for nombre, pat in patrones.items():
+            out.append('\n### '+nombre+'\n')
+            ms=list(re.finditer(pat,s,re.I))[:8]
+            if not ms:
+              out.append('[sin coincidencias]\n')
+              continue
+            for n,m in enumerate(ms,1):
+              i=m.start(); a=max(0,i-2200); b=min(len(s),m.end()+2200)
+              out.append(f'\n--- {n} @ {i} ---\n{s[a:b]}\n')
           Path('diagnostics').mkdir(exist_ok=True)
-          Path('diagnostics/bootstrap-ui-source-v2.txt').write_text(''.join(out), encoding='utf-8')
+          Path('diagnostics/bootstrap-ui-source-v3.txt').write_text(''.join(out),encoding='utf-8')
           PY
       - name: Guardar diagnostico en la rama aislada
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add diagnostics/bootstrap-ui-source-v2.txt
-          if git diff --cached --quiet; then
-            exit 0
-          fi
-          git commit -m "diag: guardar loader legacy exacto"
+          git add diagnostics/bootstrap-ui-source-v3.txt
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag: aislar lecturas legacy de empresa local y PIN"
           git push origin HEAD:claude/hotfix-bootstrap-ui-context
