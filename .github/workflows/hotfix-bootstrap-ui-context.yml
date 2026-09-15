@@ -1,0 +1,93 @@
+name: Hotfix bootstrap UI context
+
+on:
+  push:
+    branches:
+      - claude/hotfix-bootstrap-ui-context
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ui-context-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: la_bootstrap_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d la_bootstrap_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Syntax checks
+        run: |
+          node --check owner-bootstrap-prelock.js
+          node --check ui-context-bridge.js
+          node --check owner-bootstrap-post-reset.js
+          node --check tests/hotfix-barrera-reset-local.mjs
+          node --check tests/ui-context-bridge.mjs
+
+      - name: Preserve P1-P4 contracts
+        run: node tests/hotfix-barrera-reset-local.mjs
+
+      - name: UI bridge client contract
+        run: node tests/ui-context-bridge.mjs
+
+      - name: PostgreSQL P4 regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y postgresql-client
+          fi
+          psql -h 127.0.0.1 -U postgres -d la_bootstrap_test -v ON_ERROR_STOP=1 -f tests/bootstrap-owner-post-reset.sql
+
+      - name: PostgreSQL P5 UI bridge integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          createdb -h 127.0.0.1 -U postgres la_ui_context_test
+          psql -h 127.0.0.1 -U postgres -d la_ui_context_test -v ON_ERROR_STOP=1 -f tests/ui-context-bridge.sql
+
+      - name: Temporary diagnostics guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e diagnostics/bootstrap-ui-source.txt
+          test ! -e diagnostics/bootstrap-ui-source-v2.txt
+          test ! -e diagnostics/bootstrap-ui-source-v3.txt
+          test ! -e diagnostics/bootstrap-ui-crud.txt
+          test ! -e diagnostics/bootstrap-ui-persist.txt
+          test ! -e .github/workflows/diagnostico-bootstrap-ui-context.yml
+          test ! -e .github/workflows/patch-ui-context-index.yml
+          echo "TEMPORARY_DIAGNOSTICS_GUARD_PASS"
+
+      - name: Scope guard against production baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE=2c70df0cc7fbb3c7c6572e4ec0820eb237dc8065
+          allowed='^(\.github/workflows/hotfix-bootstrap-ui-context\.yml|index\.html|owner-bootstrap-prelock\.js|owner-bootstrap-post-reset\.js|ui-context-bridge\.js|supabase/migrations/20260915043000_ui_context_bridge\.sql|tests/ui-context-bridge\.sql|tests/ui-context-bridge\.mjs)$'
+          bad="$(git diff --name-only "$BASE" HEAD | grep -Ev "$allowed" || true)"
+          if [ -n "$bad" ]; then
+            echo "UI_CONTEXT_SCOPE_FAIL"
+            echo "$bad"
+            exit 1
+          fi
+          echo "UI_CONTEXT_SCOPE_PASS"
