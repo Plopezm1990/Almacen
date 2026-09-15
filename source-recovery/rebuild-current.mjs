@@ -18,15 +18,26 @@ function sha256(file) {
 }
 
 function run(cmd, args, options = {}) {
+  let stdio;
+  if (options.capture) {
+    stdio = options.input === undefined
+      ? ['ignore', 'pipe', 'inherit']
+      : ['pipe', 'pipe', 'inherit'];
+  } else {
+    stdio = options.input === undefined
+      ? 'inherit'
+      : ['pipe', 'inherit', 'inherit'];
+  }
+
   const r = spawnSync(cmd, args, {
     cwd: options.cwd ?? repoRoot,
     input: options.input,
     encoding: 'utf8',
-    stdio: options.input === undefined ? 'inherit' : ['pipe', 'inherit', 'inherit'],
+    stdio,
   });
   if (r.error) throw r.error;
   if (r.status !== 0) throw new Error(`${cmd} ${args.join(' ')} terminó con código ${r.status}`);
-  return r.stdout || '';
+  return options.capture ? (r.stdout || '') : '';
 }
 
 function requireString(obj, key) {
@@ -61,7 +72,7 @@ if (sha256(targetBundle) !== targetArtifactSha256) {
 const actualTargetFuenteCommit = run(
   'git',
   ['log', '-1', '--format=%H', '--', 'fuente.js'],
-  { cwd: repoRoot },
+  { cwd: repoRoot, capture: true },
 ).trim();
 if (actualTargetFuenteCommit !== targetFuenteCommit) {
   throw new Error(`Commit objetivo de fuente.js inesperado: ${actualTargetFuenteCommit} != ${targetFuenteCommit}`);
