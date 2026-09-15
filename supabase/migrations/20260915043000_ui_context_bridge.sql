@@ -281,6 +281,7 @@ begin
           activo = excluded.activo,
           datos = excluded.datos
       where public.locales.empresa_id = excluded.empresa_id;
+    end loop;
 
   elsif v_clave = 'localActivoId' then
     if p_valor is null or jsonb_typeof(p_valor) = 'null' then
