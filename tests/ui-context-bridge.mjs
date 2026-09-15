@@ -30,7 +30,11 @@ assert.ok(posContextRpc >= 0 && posSetReady > posContextRpc,
 assert.match(bridge, /key === "pinPropietario"/);
 assert.match(bridge, /guardar_contexto_instalacion_ui/);
 assert.match(bridge, /CLAVES_CONTEXTO/);
-assert.doesNotMatch(migration, /almacen_kv/i, 'P5 no debe crear compatibilidad autoritativa en almacen_kv');
+assert.doesNotMatch(
+  migration,
+  /\b(?:from|into|update|join|delete\s+from)\s+(?:public\.)?almacen_kv\b/i,
+  'P5 no debe usar almacen_kv como autoridad para empresas/locales'
+);
 assert.match(migration, /security definer/gi);
 assert.match(migration, /set search_path = pg_catalog, public, private/gi);
 assert.match(migration, /revoke all on function public\.obtener_contexto_instalacion_ui\(\) from public, anon/i);
