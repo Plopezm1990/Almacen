@@ -2,18 +2,26 @@ from pathlib import Path
 import argparse
 import hashlib
 import json
+import re
 import subprocess
 
 ROOT = Path(__file__).resolve().parent.parent
 BUNDLE = ROOT / "fuente.js"
 OUT = ROOT / "source-recovery" / "fuente-recuperado.js"
 EVIDENCIA = ROOT / "source-recovery" / "PM01_EVIDENCIA.json"
+CURRENT_SYNC_BASELINE = "bd0dc4a85609e2b9581713cd3dc6973ffd57e893"
 
-parser = argparse.ArgumentParser(description="Recupera o verifica el cuerpo de aplicación de fuente.js")
-parser.add_argument(
+parser = argparse.ArgumentParser(description="Recupera, sincroniza o verifica el cuerpo de aplicación de fuente.js")
+group = parser.add_mutually_exclusive_group()
+group.add_argument(
     "--check",
     action="store_true",
     help="No escribe archivos: exige que fuente-recuperado.js ya coincida exactamente con el cuerpo de aplicación del bundle actual.",
+)
+group.add_argument(
+    "--sync-current",
+    action="store_true",
+    help="Regenera fuente-recuperado.js desde el runtime actual usando como ancla un baseline histórico con paridad exacta demostrada.",
 )
 args = parser.parse_args()
 
@@ -36,7 +44,139 @@ cabecera = [
     'const writeFileSync = XLSX.writeFile || XLSX.writeFileSync;',
 ]
 
+
+def git_text(*args):
+    return subprocess.check_output(["git", *args], cwd=ROOT).decode("utf-8")
+
+
+def recovered_body(text):
+    lines = text.splitlines()
+    if lines[:len(cabecera)] != cabecera:
+        raise SystemExit("SOURCE_RECOVERY_BASELINE_INVALID: cabecera recuperada inesperada")
+    body = "\n".join(lines[len(cabecera):]) + "\n"
+    if not body.strip():
+        raise SystemExit("SOURCE_RECOVERY_BASELINE_INVALID: cuerpo recuperado vacío")
+    return body
+
+
+def require_markers(body):
+    markers = [
+        "function GestionAlmacen",
+        "function crearLogicaCaja",
+        "SelectorLocalInformes",
+        "ErroresSistema",
+    ]
+    missing = [marker for marker in markers if marker not in body]
+    if missing:
+        raise SystemExit("SOURCE_RECOVERY_INVALID: faltan marcadores esenciales: " + ", ".join(missing))
+
+
 bundle_text = BUNDLE.read_text(encoding="utf-8")
+
+if args.sync_current:
+    # Baseline elegido porque PM01_EVIDENCIA.json en ese commit demuestra
+    # paridad exacta entre fuente-recuperado.js y el cuerpo de fuente.js.
+    baseline_bundle = git_text("show", f"{CURRENT_SYNC_BASELINE}:fuente.js")
+    baseline_recovered = git_text("show", f"{CURRENT_SYNC_BASELINE}:source-recovery/fuente-recuperado.js")
+    baseline_evidence = json.loads(
+        git_text("show", f"{CURRENT_SYNC_BASELINE}:source-recovery/PM01_EVIDENCIA.json")
+    )
+
+    if baseline_evidence.get("paridad_cuerpo_exacta") is not True:
+        raise SystemExit("SOURCE_RECOVERY_BASELINE_INVALID: la evidencia histórica no certifica paridad exacta")
+    if baseline_evidence.get("commit_rama_validada") != CURRENT_SYNC_BASELINE:
+        raise SystemExit("SOURCE_RECOVERY_BASELINE_INVALID: la evidencia no pertenece al baseline fijado")
+
+    baseline_body = recovered_body(baseline_recovered)
+    if not baseline_bundle.endswith(baseline_body):
+        raise SystemExit("SOURCE_RECOVERY_BASELINE_INVALID: el baseline ya no reproduce su cuerpo recuperado")
+
+    marker_line = int(baseline_evidence["marca_fuente_linea"])
+    # En el recuperador histórico: app[0] era // fuente.jsx, app[1]/app[2]
+    # eran bootstrap React/ReactDOM y cuerpo=app[3:]. Por tanto, el cuerpo
+    # certificado comienza tres líneas después de la marca.
+    baseline_body_start = marker_line + 3
+    baseline_lines = baseline_bundle.splitlines()
+    baseline_body_by_line = "\n".join(baseline_lines[baseline_body_start - 1:]) + "\n"
+    if baseline_body_by_line != baseline_body:
+        raise SystemExit("SOURCE_RECOVERY_BASELINE_INVALID: la línea de inicio histórica no coincide con el cuerpo certificado")
+
+    target_fuente_commit = git_text("log", "-1", "--format=%H", "--", "fuente.js").strip()
+    target_bundle = git_text("show", f"{target_fuente_commit}:fuente.js")
+    if target_bundle != bundle_text:
+        raise SystemExit("SOURCE_RECOVERY_TARGET_INVALID: HEAD contiene un fuente.js distinto del último commit que lo modificó")
+
+    diff = git_text(
+        "diff",
+        "--unified=0",
+        CURRENT_SYNC_BASELINE,
+        target_fuente_commit,
+        "--",
+        "fuente.js",
+    )
+
+    shift = 0
+    hunk_re = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@", re.MULTILINE)
+    hunks = list(hunk_re.finditer(diff))
+    if not hunks:
+        raise SystemExit("SOURCE_RECOVERY_SYNC_INVALID: no hay hunks entre baseline y target")
+
+    for match in hunks:
+        old_start = int(match.group(1))
+        old_count = int(match.group(2) or "1")
+        new_count = int(match.group(4) or "1")
+
+        if old_count == 0:
+            # Una inserción con old_start=N ocurre después de la línea N.
+            if old_start < baseline_body_start:
+                shift += new_count
+            continue
+
+        old_end_exclusive = old_start + old_count
+        if old_end_exclusive <= baseline_body_start:
+            shift += new_count - old_count
+            continue
+
+        if old_start < baseline_body_start < old_end_exclusive:
+            raise SystemExit(
+                "SOURCE_RECOVERY_BOUNDARY_AMBIGUOUS: un hunk cruza la frontera histórica del cuerpo "
+                f"(old={old_start},{old_count}; body_start={baseline_body_start})"
+            )
+
+        # Si el hunk empieza exactamente en body_start o después, ya pertenece
+        # al cuerpo de aplicación y no desplaza su frontera lógica.
+
+    current_body_start = baseline_body_start + shift
+    current_lines = bundle_text.splitlines()
+    if current_body_start < 1 or current_body_start > len(current_lines):
+        raise SystemExit(
+            f"SOURCE_RECOVERY_SYNC_INVALID: frontera mapeada fuera de rango ({current_body_start}/{len(current_lines)})"
+        )
+
+    current_body = "\n".join(current_lines[current_body_start - 1:]) + "\n"
+    require_markers(current_body)
+
+    recovered_text = "\n".join(cabecera) + "\n" + current_body
+    OUT.write_text(recovered_text, encoding="utf-8")
+
+    # Comprobación inmediata: el cuerpo recién escrito debe ser exactamente el
+    # sufijo del bundle actual y conservar el mismo SHA.
+    written_body = recovered_body(OUT.read_text(encoding="utf-8"))
+    if written_body != current_body or not bundle_text.endswith(written_body):
+        raise SystemExit("SOURCE_RECOVERY_SYNC_INVALID: la fuente sincronizada no conserva paridad exacta")
+
+    sha_body = hashlib.sha256(written_body.encode("utf-8")).hexdigest()
+    print(f"SOURCE_RECOVERY_SYNC_BASELINE={CURRENT_SYNC_BASELINE}")
+    print(f"SOURCE_RECOVERY_TARGET_FUENTE_COMMIT={target_fuente_commit}")
+    print(f"SOURCE_RECOVERY_BASE_BODY_START_LINE={baseline_body_start}")
+    print(f"SOURCE_RECOVERY_CURRENT_BODY_START_LINE={current_body_start}")
+    print(f"SOURCE_RECOVERY_BODY_LINE_SHIFT={shift}")
+    print(f"LINEAS_CUERPO={len(current_lines) - current_body_start + 1}")
+    print(f"BYTES_CUERPO={len(written_body.encode('utf-8'))}")
+    print(f"SHA256_CUERPO={sha_body}")
+    print("PARIDAD_CUERPO_EXACTA=1")
+    print("SOURCE_RECOVERY_SYNC_CURRENT=PASS")
+    raise SystemExit(0)
 
 # El bundle actual ya no conserva necesariamente el comentario histórico
 # "// fuente.jsx". En modo check no dependemos de metadatos del compilador:
@@ -48,21 +188,16 @@ if args.check:
         raise SystemExit("Falta source-recovery/fuente-recuperado.js")
 
     actual = OUT.read_text(encoding="utf-8")
-    recuperado = actual.splitlines()
-    if recuperado[:len(cabecera)] != cabecera:
-        raise SystemExit("SOURCE_RECOVERY_DRIFT: cabecera recuperada inesperada")
-
-    cuerpo_recuperado = "\n".join(recuperado[len(cabecera):]) + "\n"
-    if not cuerpo_recuperado.strip():
-        raise SystemExit("SOURCE_RECOVERY_DRIFT: cuerpo recuperado vacío")
+    cuerpo_recuperado = recovered_body(actual)
     if not bundle_text.endswith(cuerpo_recuperado):
         raise SystemExit("SOURCE_RECOVERY_DRIFT: el cuerpo recuperado no coincide exactamente con el sufijo de fuente.js")
 
+    require_markers(cuerpo_recuperado)
     sha_recuperado = hashlib.sha256(cuerpo_recuperado.encode("utf-8")).hexdigest()
     offset = len(bundle_text.encode("utf-8")) - len(cuerpo_recuperado.encode("utf-8"))
 
     print(f"ORIGEN_SUFFIX_OFFSET_BYTES={offset}")
-    print(f"LINEAS_CUERPO={len(recuperado) - len(cabecera)}")
+    print(f"LINEAS_CUERPO={len(cuerpo_recuperado.splitlines())}")
     print(f"BYTES_CUERPO={len(cuerpo_recuperado.encode('utf-8'))}")
     print(f"SHA256_CUERPO={sha_recuperado}")
     print("PARIDAD_CUERPO_EXACTA=1")
