@@ -20,7 +20,8 @@ jobs:
         run: |
           set -euo pipefail
           cd source-recovery
-          ./reconstruir.sh
+          npm ci
+          npm run build:current
           sha256sum ../fuente.js dist/fuente.js
           cmp -s ../fuente.js dist/fuente.js
 
