@@ -27,6 +27,7 @@ declare
   v_locales jsonb := '[]'::jsonb;
   v_empresa_principal text;
   v_local_activo text;
+  v_permite_todos boolean := false;
 begin
   if v_uid is null then
     raise exception 'Sesión requerida' using errcode = '42501';
@@ -47,6 +48,15 @@ begin
     and m.activo = true
   order by m.created_at, m.id
   limit 1;
+
+  select exists (
+    select 1
+    from public.membresias_usuario m
+    join public.empresas e on e.id = m.empresa_id and e.activo = true
+    where m.user_id = v_uid
+      and m.activo = true
+      and m.todos_locales = true
+  ) into v_permite_todos;
 
   select coalesce(jsonb_agg(x.obj order by x.orden, x.id), '[]'::jsonb)
     into v_empresas
@@ -112,6 +122,7 @@ begin
     'generation', v_generation,
     'empresa_id', v_empresa_principal,
     'local_id', v_local_activo,
+    'permite_todos_locales', v_permite_todos,
     'empresas', v_empresas,
     'locales', v_locales
   );
@@ -272,23 +283,35 @@ begin
       where public.locales.empresa_id = excluded.empresa_id;
 
   elsif v_clave = 'localActivoId' then
-    if jsonb_typeof(p_valor) <> 'string' then
+    if p_valor is null or jsonb_typeof(p_valor) = 'null' then
+      if not exists (
+        select 1
+        from public.membresias_usuario m
+        where m.user_id = v_uid
+          and m.activo = true
+          and m.rol = 'Propietario'
+          and m.todos_locales = true
+      ) then
+        raise exception 'Vista consolidada no permitida' using errcode = '42501';
+      end if;
+    elsif jsonb_typeof(p_valor) = 'string' then
+      v_id := p_valor #>> '{}';
+      if not exists (
+        select 1
+        from public.membresias_usuario m
+        join public.locales l
+          on l.empresa_id = m.empresa_id
+         and l.id = v_id
+         and l.activo = true
+         and (m.todos_locales = true or m.local_id = l.id)
+        where m.user_id = v_uid
+          and m.activo = true
+          and m.rol = 'Propietario'
+      ) then
+        raise exception 'Local activo fuera del alcance del Propietario' using errcode = '42501';
+      end if;
+    else
       raise exception 'localActivoId inválido' using errcode = '22023';
-    end if;
-    v_id := p_valor #>> '{}';
-    if not exists (
-      select 1
-      from public.membresias_usuario m
-      join public.locales l
-        on l.empresa_id = m.empresa_id
-       and l.id = v_id
-       and l.activo = true
-       and (m.todos_locales = true or m.local_id = l.id)
-      where m.user_id = v_uid
-        and m.activo = true
-        and m.rol = 'Propietario'
-    ) then
-      raise exception 'Local activo fuera del alcance del Propietario' using errcode = '42501';
     end if;
   else
     raise exception 'Clave de contexto UI no permitida' using errcode = '22023';
