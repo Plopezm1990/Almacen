@@ -6,7 +6,8 @@ const outName = '.netlify-dist';
 const outDir = path.join(root, outName);
 
 // Keep the deployed site byte-for-byte equivalent to the repository root except
-// for development, CI, database and recovery material that is not web runtime.
+// for development, CI, database, recovery, internal documentation and tooling
+// material that is not web runtime.
 const excludedRootEntries = new Set([
   '.git',
   '.github',
@@ -14,6 +15,8 @@ const excludedRootEntries = new Set([
   'tests',
   'supabase',
   'source-recovery',
+  'docs',
+  'tools',
   'netlify.toml',
 ]);
 
@@ -44,7 +47,7 @@ for (const entry of entries) {
 }
 
 // Fail closed if the exporter ever produces something that cannot be served.
-for (const required of ['index.html', 'fuente.js', 'edge-auth-patch.js', '_headers']) {
+for (const required of ['index.html', 'fuente.js', 'edge-auth-patch.js', 'reset-pruebas-preview.js', '_headers']) {
   await access(path.join(outDir, required));
 }
 
