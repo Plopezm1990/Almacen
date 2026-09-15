@@ -15,39 +15,48 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Rebuild exact current source
+        run: |
+          set -euo pipefail
+          cd source-recovery
+          ./reconstruir.sh
+          sha256sum ../fuente.js dist/fuente.js
+          cmp -s ../fuente.js dist/fuente.js
+
       - name: Inspect exact storage/loadKey implementation
         run: |
           python - <<'PY'
           from pathlib import Path
-          p=Path('fuente.js')
-          lines=p.read_text(encoding='utf-8',errors='replace').splitlines()
-          needles=[
-            'window.storage =',
-            'window.storage=',
-            'storage = {',
-            'storage={',
-            'storage.get =',
-            'storage.get=',
-            '"no existe"',
-            "'no existe'",
-            'Error("no existe")',
-            "Error('no existe')",
-            'throw new Error',
-            'async function loadKey',
-            'function loadKey'
-          ]
-          hits=[]
-          for i,line in enumerate(lines,1):
-            if any(n in line for n in needles): hits.append(i)
-          print('HITS', hits[:400])
-          merged=[]
-          for i in hits[:200]:
-            a=max(1,i-18); b=min(len(lines),i+35)
-            if merged and a <= merged[-1][1]+1:
-              merged[-1]=(merged[-1][0],max(merged[-1][1],b))
-            else:
-              merged.append((a,b))
-          for a,b in merged[:80]:
-            print(f'--- {p}:{a}-{b} ---')
-            for j in range(a,b+1): print(f'{j}: {lines[j-1]}')
+          for p in [Path('fuente.js'), Path('source-recovery/dist/fuente.js')]:
+              text=p.read_text(encoding='utf-8',errors='replace')
+              lines=text.splitlines()
+              needles=[
+                'LOCAL_MISS',
+                'motivoFalloCarga',
+                'async function loadKey',
+                'function loadKey',
+                'async get(k,b)',
+                'Error("no existe")',
+                "Error('no existe')",
+              ]
+              hits=[]
+              for i,line in enumerate(lines,1):
+                  if any(n in line for n in needles): hits.append(i)
+              print(f'=== {p} HITS {hits[:500]} ===')
+              merged=[]
+              for i in hits[:300]:
+                  a=max(1,i-30); b=min(len(lines),i+55)
+                  if merged and a <= merged[-1][1]+1:
+                      merged[-1]=(merged[-1][0],max(merged[-1][1],b))
+                  else:
+                      merged.append((a,b))
+              for a,b in merged[:120]:
+                  print(f'--- {p}:{a}-{b} ---')
+                  for j in range(a,b+1): print(f'{j}: {lines[j-1]}')
           PY
+
+      - name: Verify no rebuild drift
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- fuente.js source-recovery
