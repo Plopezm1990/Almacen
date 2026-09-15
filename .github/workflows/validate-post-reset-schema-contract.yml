@@ -1,0 +1,37 @@
+name: Validate post-reset schema contract
+
+on:
+  push:
+    branches:
+      - claude/hotfix-post-reset-schema-drift
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate schema contract repair
+        run: node tests/post-reset-schema-contract.mjs
+
+      - name: Regress post-reset anti-resurrection barrier
+        run: node tests/hotfix-barrera-reset-local.mjs
+
+      - name: Regress P1 clean first-run storage semantics
+        run: node tests/p1-empty-kv-first-run.mjs
+
+      - name: Record exact candidate
+        run: |
+          echo "candidate=${GITHUB_SHA}"
+          git status --short
+          git diff --check HEAD^ HEAD
