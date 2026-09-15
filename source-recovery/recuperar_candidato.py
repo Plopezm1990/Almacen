@@ -74,8 +74,8 @@ def require_markers(body):
 bundle_text = BUNDLE.read_text(encoding="utf-8")
 
 if args.sync_current:
-    # Baseline elegido porque PM01_EVIDENCIA.json en ese commit demuestra
-    # paridad exacta entre fuente-recuperado.js y el cuerpo de fuente.js.
+    # Baseline elegido porque contiene evidencia histórica de paridad exacta
+    # entre fuente-recuperado.js y el cuerpo de fuente.js.
     baseline_bundle = git_text("show", f"{CURRENT_SYNC_BASELINE}:fuente.js")
     baseline_recovered = git_text("show", f"{CURRENT_SYNC_BASELINE}:source-recovery/fuente-recuperado.js")
     baseline_evidence = json.loads(
@@ -84,12 +84,22 @@ if args.sync_current:
 
     if baseline_evidence.get("paridad_cuerpo_exacta") is not True:
         raise SystemExit("SOURCE_RECOVERY_BASELINE_INVALID: la evidencia histórica no certifica paridad exacta")
-    if baseline_evidence.get("commit_rama_validada") != CURRENT_SYNC_BASELINE:
-        raise SystemExit("SOURCE_RECOVERY_BASELINE_INVALID: la evidencia no pertenece al baseline fijado")
 
     baseline_body = recovered_body(baseline_recovered)
     if not baseline_bundle.endswith(baseline_body):
         raise SystemExit("SOURCE_RECOVERY_BASELINE_INVALID: el baseline ya no reproduce su cuerpo recuperado")
+
+    baseline_body_sha = hashlib.sha256(baseline_body.encode("utf-8")).hexdigest()
+    if baseline_evidence.get("sha256_cuerpo_bundle") != baseline_body_sha:
+        raise SystemExit("SOURCE_RECOVERY_BASELINE_INVALID: SHA del cuerpo del bundle no coincide con la evidencia")
+    if baseline_evidence.get("sha256_cuerpo_recuperado") != baseline_body_sha:
+        raise SystemExit("SOURCE_RECOVERY_BASELINE_INVALID: SHA del cuerpo recuperado no coincide con la evidencia")
+    if int(baseline_evidence.get("bundle_bytes", -1)) != len(baseline_bundle.encode("utf-8")):
+        raise SystemExit("SOURCE_RECOVERY_BASELINE_INVALID: tamaño del bundle histórico no coincide con la evidencia")
+    if int(baseline_evidence.get("fuente_recuperada_bytes", -1)) != len(baseline_recovered.encode("utf-8")):
+        raise SystemExit("SOURCE_RECOVERY_BASELINE_INVALID: tamaño de la fuente recuperada histórica no coincide con la evidencia")
+    if int(baseline_evidence.get("bytes_cuerpo_aplicacion", -1)) != len(baseline_body.encode("utf-8")):
+        raise SystemExit("SOURCE_RECOVERY_BASELINE_INVALID: tamaño del cuerpo histórico no coincide con la evidencia")
 
     marker_line = int(baseline_evidence["marca_fuente_linea"])
     # En el recuperador histórico: app[0] era // fuente.jsx, app[1]/app[2]
@@ -167,6 +177,7 @@ if args.sync_current:
 
     sha_body = hashlib.sha256(written_body.encode("utf-8")).hexdigest()
     print(f"SOURCE_RECOVERY_SYNC_BASELINE={CURRENT_SYNC_BASELINE}")
+    print(f"SOURCE_RECOVERY_BASE_EVIDENCE_COMMIT={baseline_evidence.get('commit_rama_validada')}")
     print(f"SOURCE_RECOVERY_TARGET_FUENTE_COMMIT={target_fuente_commit}")
     print(f"SOURCE_RECOVERY_BASE_BODY_START_LINE={baseline_body_start}")
     print(f"SOURCE_RECOVERY_CURRENT_BODY_START_LINE={current_body_start}")
