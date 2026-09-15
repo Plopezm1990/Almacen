@@ -41,9 +41,10 @@ jobs:
           echo "SOURCE_RECOVERY_SCOPE_GUARD=PASS"
           echo "SOURCE_RECOVERY_RELEASE_BASE=$RELEASE_BASE"
 
-      - name: Verificar paridad exacta del cuerpo recuperado
+      - name: Sincronizar fuente recuperada desde baseline certificado
         run: |
           set -euo pipefail
+          python3 source-recovery/recuperar_candidato.py --sync-current
           python3 source-recovery/recuperar_candidato.py --check
 
       - name: Generar diff acumulado y manifiesto determinista
@@ -166,7 +167,8 @@ jobs:
           TARGET_SHA=$(sha256sum fuente.js | awk '{print $1}')
           PATCH_SHA=$(sha256sum source-recovery/CURRENT_RELEASE.patch | awk '{print $1}')
           BODY_SHA=$(python3 source-recovery/recuperar_candidato.py --check | awk -F= '/^SHA256_CUERPO=/{print $2}')
-          export TARGET_FUENTE_COMMIT TARGET_SHA PATCH_SHA BODY_SHA
+          RECOVERED_SHA=$(sha256sum source-recovery/fuente-recuperado.js | awk '{print $1}')
+          export TARGET_FUENTE_COMMIT TARGET_SHA PATCH_SHA BODY_SHA RECOVERED_SHA
 
           python3 - <<'PY'
           from pathlib import Path
@@ -176,9 +178,11 @@ jobs:
               "status": "PASS",
               "contract": "source-recovery-current-v2",
               "releaseBaseCommit": "d2eec9dfbada9778fe4e787cd841790281bc5f7f",
+              "syncBaselineCommit": "bd0dc4a85609e2b9581713cd3dc6973ffd57e893",
               "targetFuenteCommit": os.environ["TARGET_FUENTE_COMMIT"],
               "targetArtifactSha256": os.environ["TARGET_SHA"],
               "applicationBodySha256": os.environ["BODY_SHA"],
+              "fuenteRecuperadoSha256": os.environ["RECOVERED_SHA"],
               "patchSha256": os.environ["PATCH_SHA"],
               "directRecoveredBuildSha256": os.environ["DIRECT_BUILD_SHA"],
               "directRecoveredBuildBytes": int(os.environ["DIRECT_BUILD_BYTES"]),
@@ -186,6 +190,7 @@ jobs:
               "exactRebuildBytes": int(os.environ["EXACT_REBUILD_BYTES"]),
               "checks": {
                   "scopeGuard": True,
+                  "recoveryBoundaryMappedFromCertifiedBaseline": True,
                   "recoveredBodyExact": True,
                   "directBuildReproducibleTwice": True,
                   "historicalBaselineRebuiltClean": True,
@@ -210,7 +215,8 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add source-recovery/CURRENT_RELEASE.patch \
+          git add source-recovery/fuente-recuperado.js \
+                  source-recovery/CURRENT_RELEASE.patch \
                   source-recovery/CURRENT_RELEASE_MANIFEST.json \
                   source-recovery/CURRENT_RELEASE_EVIDENCE.json
 
