@@ -1,0 +1,66 @@
+name: Diagnostico bootstrap UI context
+
+on:
+  push:
+    branches:
+      - claude/hotfix-bootstrap-ui-context
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/hotfix-bootstrap-ui-context
+      - name: Extraer fragmentos exactos del bundle
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('fuente.js')
+          s = p.read_text(encoding='utf-8')
+          terms = [
+              'pinPropietario',
+              'No se han podido cargar tus datos guardados',
+              'Empresas y locales',
+              '+ Añadir empresa',
+              'localActivoId',
+          ]
+          out = []
+          for term in terms:
+              out.append('\n' + '=' * 100 + '\nTERM: ' + term + '\n' + '=' * 100 + '\n')
+              start = 0
+              count = 0
+              while True:
+                  i = s.find(term, start)
+                  if i < 0:
+                      break
+                  count += 1
+                  a = max(0, i - 3500)
+                  b = min(len(s), i + len(term) + 3500)
+                  out.append(f'\n--- MATCH {count} @ char {i} ---\n')
+                  out.append(s[a:b])
+                  out.append('\n')
+                  start = i + len(term)
+                  if count >= 12:
+                      out.append('\n[truncado a 12 coincidencias]\n')
+                      break
+              if count == 0:
+                  out.append('[sin coincidencias]\n')
+          d = Path('diagnostics')
+          d.mkdir(exist_ok=True)
+          Path('diagnostics/bootstrap-ui-source.txt').write_text(''.join(out), encoding='utf-8')
+          PY
+      - name: Guardar diagnostico en la rama aislada
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add diagnostics/bootstrap-ui-source.txt
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "diag: guardar fragmentos del bundle para bootstrap UI"
+          git push origin HEAD:claude/hotfix-bootstrap-ui-context
