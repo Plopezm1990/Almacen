@@ -1,0 +1,27 @@
+{
+  "status": "PASS",
+  "contract": "source-recovery-current-v2",
+  "releaseBaseCommit": "d2eec9dfbada9778fe4e787cd841790281bc5f7f",
+  "syncBaselineCommit": "bd0dc4a85609e2b9581713cd3dc6973ffd57e893",
+  "targetFuenteCommit": "9d54fc7ba76bd1285625f37b2940f99d26777ab8",
+  "targetArtifactSha256": "0e45bc8d4175771b8bfd1e74ad0aa12fd39853a1431dc6ca702470882ae6c4c2",
+  "applicationBodySha256": "1b5d9e3fa364e5c0456a491d1ba76226fec7a4e38bf9fff82df39023d41893c1",
+  "fuenteRecuperadoSha256": "afb377eb4a309dcecbb3f967a5ea2da896f2f0ff6e50169adea7e71472f2a41d",
+  "patchSha256": "bd3bea952bac65886c47450bcac924e766c55ba706e0c1dbec45c496bef74aab",
+  "directRecoveredBuildSha256": "800ba6dc75f4d31a8e71e0d9bc98ed119521240e6b3861051fce5530be08aca2",
+  "directRecoveredBuildBytes": 4897449,
+  "exactRebuildSha256": "0e45bc8d4175771b8bfd1e74ad0aa12fd39853a1431dc6ca702470882ae6c4c2",
+  "exactRebuildBytes": 5448149,
+  "checks": {
+    "scopeGuard": true,
+    "recoveryBoundaryMappedFromCertifiedBaseline": true,
+    "recoveredBodyExact": true,
+    "directBuildReproducibleTwice": true,
+    "historicalBaselineRebuiltClean": true,
+    "cumulativePatchAppliedWithFuzzZero": true,
+    "exactRuntimeRebuiltTwice": true,
+    "runtimeByteParity": true,
+    "nodeSyntax": true,
+    "essentialMarkers": true
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "format": "la-suite-current-release-rebuild-v2",
+  "baseCommit": "7b2aa0f1500ecfc5dce551196f5434655411a314",
+  "baseArtifactSha256": "372813f2230054306b0d37eb3825938832b68f62ea88a484dde0b1dfcdb075ed",
+  "releaseBaseCommit": "d2eec9dfbada9778fe4e787cd841790281bc5f7f",
+  "targetFuenteCommit": "9d54fc7ba76bd1285625f37b2940f99d26777ab8",
+  "targetArtifactSha256": "0e45bc8d4175771b8bfd1e74ad0aa12fd39853a1431dc6ca702470882ae6c4c2",
+  "patch": "CURRENT_RELEASE.patch",
+  "patchSha256": "bd3bea952bac65886c47450bcac924e766c55ba706e0c1dbec45c496bef74aab",
+  "patchBytes": 677323,
+  "fuenteRecuperadoSha256": "afb377eb4a309dcecbb3f967a5ea2da896f2f0ff6e50169adea7e71472f2a41d",
+  "rebuildContract": "Build source-recovery at baseCommit from clean npm ci; require baseArtifactSha256; apply CURRENT_RELEASE.patch with patch --batch --fuzz=0 -p1; require targetArtifactSha256 and byte-for-byte equality with repository fuente.js."
+}
