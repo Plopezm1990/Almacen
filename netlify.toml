@@ -1,0 +1,3 @@
+[build]
+  command = "node .github/scripts/build-netlify-publish.mjs"
+  publish = ".netlify-dist"
