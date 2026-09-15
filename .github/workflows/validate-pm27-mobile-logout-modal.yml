@@ -1,0 +1,51 @@
+name: Validate PM27 mobile logout modal fix
+
+on:
+  push:
+    branches:
+      - pm27-fix-mobile-logout-modal
+    paths:
+      - ui-context-bridge.js
+      - tests/pm27-mobile-logout-modal-fix.mjs
+      - .github/workflows/validate-pm27-mobile-logout-modal.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Syntax check bridge
+        run: node --check ui-context-bridge.js
+
+      - name: Run focused mobile modal regression
+        run: node tests/pm27-mobile-logout-modal-fix.mjs
+
+      - name: Guard candidate scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin release --depth=50
+          mapfile -t changed < <(git diff --name-only origin/release...HEAD)
+          printf 'Changed files:\n%s\n' "${changed[*]}"
+          for file in "${changed[@]}"; do
+            case "$file" in
+              ui-context-bridge.js|tests/pm27-mobile-logout-modal-fix.mjs|.github/workflows/validate-pm27-mobile-logout-modal.yml)
+                ;;
+              *)
+                echo "Unexpected file in candidate: $file" >&2
+                exit 1
+                ;;
+            esac
+          done
