@@ -12,6 +12,20 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
     steps:
       - name: Checkout exact candidate
         uses: actions/checkout@v4
@@ -25,6 +39,9 @@ jobs:
 
       - name: Validate schema contract repair
         run: node tests/post-reset-schema-contract.mjs
+
+      - name: Execute migration on ephemeral PostgreSQL
+        run: psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/post-reset-schema-contract.sql
 
       - name: Regress post-reset anti-resurrection barrier
         run: node tests/hotfix-barrera-reset-local.mjs
