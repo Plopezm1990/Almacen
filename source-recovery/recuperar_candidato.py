@@ -1,4 +1,5 @@
 from pathlib import Path
+import argparse
 import hashlib
 import json
 import subprocess
@@ -7,6 +8,14 @@ ROOT = Path(__file__).resolve().parent.parent
 BUNDLE = ROOT / "fuente.js"
 OUT = ROOT / "source-recovery" / "fuente-recuperado.js"
 EVIDENCIA = ROOT / "source-recovery" / "PM01_EVIDENCIA.json"
+
+parser = argparse.ArgumentParser(description="Recupera o verifica el cuerpo de aplicación de fuente.js")
+parser.add_argument(
+    "--check",
+    action="store_true",
+    help="No escribe archivos: exige que fuente-recuperado.js ya coincida exactamente con el cuerpo del bundle candidato.",
+)
+args = parser.parse_args()
 
 lines = BUNDLE.read_text(encoding="utf-8").splitlines()
 marcas = [i for i, line in enumerate(lines) if line.strip() == "// fuente.jsx"]
@@ -44,16 +53,37 @@ cabecera = [
 cuerpo = app[3:]
 texto_cuerpo = "\n".join(cuerpo) + "\n"
 texto_recuperado = "\n".join(cabecera + cuerpo) + "\n"
-OUT.write_text(texto_recuperado, encoding="utf-8")
 
 # Paridad exacta del cuerpo de aplicación: la única sustitución es el bootstrap
 # de dependencias del bundle por imports normales y explícitos.
+sha_cuerpo = hashlib.sha256(texto_cuerpo.encode("utf-8")).hexdigest()
+
+if args.check:
+    if not OUT.exists():
+        raise SystemExit("Falta source-recovery/fuente-recuperado.js")
+    actual = OUT.read_text(encoding="utf-8")
+    if actual != texto_recuperado:
+        raise SystemExit("SOURCE_RECOVERY_DRIFT: fuente-recuperado.js no coincide con el cuerpo actual de fuente.js")
+    recuperado = actual.splitlines()
+    cuerpo_recuperado = "\n".join(recuperado[len(cabecera):]) + "\n"
+    sha_recuperado = hashlib.sha256(cuerpo_recuperado.encode("utf-8")).hexdigest()
+    if cuerpo_recuperado != texto_cuerpo or sha_recuperado != sha_cuerpo:
+        raise SystemExit("SOURCE_RECOVERY_DRIFT: el cuerpo recuperado no conserva paridad exacta")
+    print(f"MARCA_ORIGEN={marca + 1}")
+    print(f"LINEAS_CUERPO={len(cuerpo)}")
+    print(f"BYTES_CUERPO={len(texto_cuerpo.encode('utf-8'))}")
+    print(f"SHA256_CUERPO={sha_cuerpo}")
+    print("PARIDAD_CUERPO_EXACTA=1")
+    print("SOURCE_RECOVERY_CHECK=PASS")
+    raise SystemExit(0)
+
+OUT.write_text(texto_recuperado, encoding="utf-8")
+
 recuperado = OUT.read_text(encoding="utf-8").splitlines()
 cuerpo_recuperado = "\n".join(recuperado[len(cabecera):]) + "\n"
 if cuerpo_recuperado != texto_cuerpo:
     raise SystemExit("La fuente recuperada no conserva exactamente el cuerpo candidato")
 
-sha_cuerpo = hashlib.sha256(texto_cuerpo.encode("utf-8")).hexdigest()
 sha_recuperado = hashlib.sha256(cuerpo_recuperado.encode("utf-8")).hexdigest()
 if sha_cuerpo != sha_recuperado:
     raise SystemExit("SHA de cuerpo candidato y recuperado no coincide")
