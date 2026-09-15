@@ -115,6 +115,16 @@
     }
   };
 
+  // Una clave que todavía no existe es un estado normal de primer arranque.
+  // Solo se normaliza ese sentinel exacto; SecurityError/cuota/etc. se propagan.
+  function leerLocalOpcional(key) {
+    try { return LOCAL.get(key); }
+    catch (e) {
+      if (e && e.message === "no existe") return null;
+      throw e;
+    }
+  }
+
   // --- Cola de lo que falta subir a la nube ---
   function pendientes() {
     try { return JSON.parse(localStorage.getItem("almacen__pendientes") || "[]"); }
@@ -669,11 +679,12 @@
       var esPagosFactura = key === "pagosFacturas";
       var esLedgerRpc = !!LEDGERS_RPC[key];
       var cacheKey = await claveCacheLocal(key);
+      var falloNube = null;
       // Los ledgers PM-08 se hidratan con consultas RLS desde fuente.js cuando
       // ya existe sesión. Aquí solo se devuelve la última copia segregada del
       // usuario para no leer el antiguo bloque global de almacen_kv.
       if (esLedgerRpc && !esPagosFactura) {
-        return { key: key, value: LOCAL.get(cacheKey), shared: false };
+        return { key: key, value: leerLocalOpcional(cacheKey), shared: false };
       }
       if (window.__nubeActiva && window.__nubeCliente && pendientes().indexOf(key) === -1) {
         try {
@@ -691,15 +702,26 @@
               window.__nubeCliente.from("almacen_kv").select("value").eq("key", key).maybeSingle(),
               ESPERA_NUBE_MS
             );
-            if (r.error || !r.data) throw new Error("sin datos en la nube para " + key);
+            if (r.error) throw r.error;
+            if (!r.data) {
+              var sinDatos = new Error("sin datos en la nube para " + key);
+              sinDatos.code = "NUBE_SIN_DATOS";
+              throw sinDatos;
+            }
             lista = r.data.value;
           }
           var texto = JSON.stringify(lista);
-          LOCAL.set(cacheKey, texto); // cache segregada por identidad en datos sensibles
+          LOCAL.set(cacheKey, texto);
           return { key: key, value: texto, shared: false };
-        } catch (e) { /* si falla la nube, seguimos con la cache de ESA identidad */ }
+        } catch (e) {
+          // La ausencia remota es normal en un first-run. Cualquier otro error
+          // se conserva: si tampoco existe caché local, loadKey debe avisarlo.
+          if (!(e && e.code === "NUBE_SIN_DATOS")) falloNube = e;
+        }
       }
-      return { key: key, value: LOCAL.get(cacheKey), shared: false };
+      var valorLocal = leerLocalOpcional(cacheKey);
+      if (valorLocal === null && falloNube) throw falloNube;
+      return { key: key, value: valorLocal, shared: false };
     },
 
     // Guardar: primero en el dispositivo (instantáneo y sin fallo posible),
