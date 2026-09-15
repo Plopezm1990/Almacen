@@ -19,31 +19,35 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          needles = [
-            'No se han podido cargar tus datos guardados',
-            'Arranque: datos que no se pudieron cargar',
-            'no existe',
-            'loadKey(',
-            'storage.get(',
+          p=Path('fuente.js')
+          lines=p.read_text(encoding='utf-8',errors='replace').splitlines()
+          needles=[
+            'window.storage =',
+            'window.storage=',
+            'storage = {',
+            'storage={',
+            'storage.get =',
+            'storage.get=',
+            '"no existe"',
+            "'no existe'",
+            'Error("no existe")',
+            "Error('no existe')",
+            'throw new Error',
             'async function loadKey',
             'function loadKey'
           ]
-          candidates=[]
-          for p in [Path('fuente.js'), Path('source-recovery/fuente-recuperado.js')]:
-            if p.exists(): candidates.append(p)
-          for p in candidates:
-            print(f'=== FILE {p} size={p.stat().st_size} ===')
-            lines=p.read_text(encoding='utf-8',errors='replace').splitlines()
-            hits=[]
-            for i,line in enumerate(lines,1):
-              if any(n in line for n in needles): hits.append(i)
-            print('HITS', hits[:200])
-            shown=set()
-            for i in hits[:80]:
-              a=max(1,i-8); b=min(len(lines),i+14)
-              key=(a,b)
-              if key in shown: continue
-              shown.add(key)
-              print(f'--- {p}:{a}-{b} ---')
-              for j in range(a,b+1): print(f'{j}: {lines[j-1]}')
+          hits=[]
+          for i,line in enumerate(lines,1):
+            if any(n in line for n in needles): hits.append(i)
+          print('HITS', hits[:400])
+          merged=[]
+          for i in hits[:200]:
+            a=max(1,i-18); b=min(len(lines),i+35)
+            if merged and a <= merged[-1][1]+1:
+              merged[-1]=(merged[-1][0],max(merged[-1][1],b))
+            else:
+              merged.append((a,b))
+          for a,b in merged[:80]:
+            print(f'--- {p}:{a}-{b} ---')
+            for j in range(a,b+1): print(f'{j}: {lines[j-1]}')
           PY
