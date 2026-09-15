@@ -1,0 +1,49 @@
+name: Inspect empty KV first-run
+
+on:
+  push:
+    branches:
+      - claude/hotfix-empty-kv-first-run
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Inspect exact storage/loadKey implementation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          needles = [
+            'No se han podido cargar tus datos guardados',
+            'Arranque: datos que no se pudieron cargar',
+            'no existe',
+            'loadKey(',
+            'storage.get(',
+            'async function loadKey',
+            'function loadKey'
+          ]
+          candidates=[]
+          for p in [Path('fuente.js'), Path('source-recovery/fuente-recuperado.js')]:
+            if p.exists(): candidates.append(p)
+          for p in candidates:
+            print(f'=== FILE {p} size={p.stat().st_size} ===')
+            lines=p.read_text(encoding='utf-8',errors='replace').splitlines()
+            hits=[]
+            for i,line in enumerate(lines,1):
+              if any(n in line for n in needles): hits.append(i)
+            print('HITS', hits[:200])
+            shown=set()
+            for i in hits[:80]:
+              a=max(1,i-8); b=min(len(lines),i+14)
+              key=(a,b)
+              if key in shown: continue
+              shown.add(key)
+              print(f'--- {p}:{a}-{b} ---')
+              for j in range(a,b+1): print(f'{j}: {lines[j-1]}')
+          PY
