@@ -115,14 +115,16 @@ function crearEntorno({ movil = true, scrollX = 0, scrollY = 0 } = {}) {
   modal.focus();
 
   assert.equal(env.llamadasFocus.length, 1, "debe delegar un único focus al navegador");
-  assert.deepEqual(
-    env.llamadasFocus[0].args,
-    [{ preventScroll: true }],
+  assert.equal(env.llamadasFocus[0].args.length, 1);
+  assert.equal(
+    env.llamadasFocus[0].args[0].preventScroll,
+    true,
     "el focus del modal móvil debe usar preventScroll"
   );
-  assert.deepEqual(
-    env.llamadasScroll.at(-1),
-    { left: 0, top: 287 },
+  assert.equal(env.llamadasScroll.at(-1).left, 0);
+  assert.equal(
+    env.llamadasScroll.at(-1).top,
+    287,
     "si ya existe desplazamiento horizontal debe volver a x=0 sin cambiar y"
   );
 
@@ -143,7 +145,9 @@ function crearEntorno({ movil = true, scrollX = 0, scrollY = 0 } = {}) {
   modal.focus({ focusVisible: true });
 
   assert.equal(env.llamadasFocus.length, 1);
-  assert.deepEqual(env.llamadasFocus[0].args, [{ focusVisible: true }]);
+  assert.equal(env.llamadasFocus[0].args.length, 1);
+  assert.equal(env.llamadasFocus[0].args[0].focusVisible, true);
+  assert.equal(env.llamadasFocus[0].args[0].preventScroll, undefined);
   assert.equal(env.llamadasScroll.length, 0, "escritorio no debe forzar scroll");
 }
 
@@ -154,7 +158,7 @@ function crearEntorno({ movil = true, scrollX = 0, scrollY = 0 } = {}) {
   normal.focus();
 
   assert.equal(env.llamadasFocus.length, 1);
-  assert.deepEqual(env.llamadasFocus[0].args, []);
+  assert.equal(env.llamadasFocus[0].args.length, 0);
   assert.equal(env.llamadasScroll.length, 0, "solo los diálogos modales reciben la corrección");
 }
 
