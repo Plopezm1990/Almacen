@@ -12,6 +12,8 @@ const excludedRootEntries = new Set([
   'tests',
   'supabase',
   'source-recovery',
+  'docs',
+  'tools',
   'netlify.toml',
 ]);
 
@@ -62,14 +64,27 @@ for (const key of published.keys()) {
   assert(source.has(key), `Unexpected publish entry: ${key}`);
 }
 
-const forbiddenPrefixes = ['.github/', 'tests/', 'supabase/', 'source-recovery/'];
+const forbiddenPrefixes = [
+  '.github/',
+  'tests/',
+  'supabase/',
+  'source-recovery/',
+  'docs/',
+  'tools/',
+];
 for (const key of published.keys()) {
   assert(!forbiddenPrefixes.some((prefix) => key.startsWith(prefix)),
     `Forbidden technical path published: ${key}`);
 }
 assert(!published.has('netlify.toml'), 'netlify.toml must not be published');
 
-for (const required of ['index.html', 'fuente.js', 'edge-auth-patch.js', '_headers']) {
+for (const required of [
+  'index.html',
+  'fuente.js',
+  'edge-auth-patch.js',
+  'reset-pruebas-preview.js',
+  '_headers',
+]) {
   assert(published.has(required), `Required runtime file missing: ${required}`);
 }
 
