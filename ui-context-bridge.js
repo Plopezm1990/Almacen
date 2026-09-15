@@ -128,3 +128,119 @@
     };
   }
 })();
+
+// PM27: Chrome móvil puede desplazar horizontalmente el documento cuando
+// un modal React situado dentro del menú horizontal recibe focus(). El modal
+// de cierre de sesión está dentro de ese menú; al abrirlo el dashboard queda
+// desplazado y aparece una franja vacía a la derecha. Este hotfix se limita a
+// diálogos modales en pantallas móviles: evita el scroll producido por focus,
+// bloquea el overflow-x mientras exista el diálogo y restaura el estado al
+// cerrarlo. No cambia Auth, logout ni datos de negocio.
+(function () {
+  "use strict";
+  if (window.__laMobileDialogFocusFixV1) return;
+  if (typeof HTMLElement === "undefined" || !HTMLElement.prototype) return;
+  window.__laMobileDialogFocusFixV1 = true;
+
+  var focusNativo = HTMLElement.prototype.focus;
+  if (typeof focusNativo !== "function") return;
+
+  var bloqueoActivo = false;
+  var overflowHtmlAnterior = "";
+  var overflowBodyAnterior = "";
+
+  function esMovil() {
+    if (typeof window.matchMedia === "function") {
+      return window.matchMedia("(max-width: 767px)").matches;
+    }
+    return typeof window.innerWidth === "number" ? window.innerWidth < 768 : false;
+  }
+
+  function esDialogoModal(el) {
+    return !!(el && typeof el.getAttribute === "function" &&
+      el.getAttribute("role") === "dialog" &&
+      el.getAttribute("aria-modal") === "true");
+  }
+
+  function xActual() {
+    return Number(window.scrollX || window.pageXOffset || 0);
+  }
+
+  function yActual() {
+    return Number(window.scrollY || window.pageYOffset || 0);
+  }
+
+  function corregirScrollHorizontal(y) {
+    if (xActual() === 0) return;
+    try {
+      window.scrollTo({ left: 0, top: y, behavior: "instant" });
+    } catch (e) {
+      window.scrollTo(0, y);
+    }
+  }
+
+  HTMLElement.prototype.focus = function () {
+    if (!esMovil() || !esDialogoModal(this)) {
+      return focusNativo.apply(this, arguments);
+    }
+
+    var y = yActual();
+    var opciones = {};
+    if (arguments[0] && typeof arguments[0] === "object") {
+      for (var k in arguments[0]) opciones[k] = arguments[0][k];
+    }
+    opciones.preventScroll = true;
+
+    try {
+      focusNativo.call(this, opciones);
+    } catch (e) {
+      focusNativo.call(this);
+    }
+
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(function () { corregirScrollHorizontal(y); });
+    } else {
+      setTimeout(function () { corregirScrollHorizontal(y); }, 0);
+    }
+  };
+
+  function bloquearOverflow() {
+    if (bloqueoActivo || !document.documentElement || !document.body) return;
+    overflowHtmlAnterior = document.documentElement.style.overflowX || "";
+    overflowBodyAnterior = document.body.style.overflowX || "";
+    document.documentElement.style.overflowX = "hidden";
+    document.body.style.overflowX = "hidden";
+    bloqueoActivo = true;
+  }
+
+  function restaurarOverflow() {
+    if (!bloqueoActivo || !document.documentElement || !document.body) return;
+    document.documentElement.style.overflowX = overflowHtmlAnterior;
+    document.body.style.overflowX = overflowBodyAnterior;
+    bloqueoActivo = false;
+  }
+
+  function sincronizarBloqueo() {
+    var hayDialogo = esMovil() && document.querySelector &&
+      document.querySelector('[role="dialog"][aria-modal="true"]');
+    if (hayDialogo) {
+      bloquearOverflow();
+      corregirScrollHorizontal(yActual());
+    } else {
+      restaurarOverflow();
+    }
+  }
+
+  if (document.body && typeof MutationObserver === "function") {
+    var observer = new MutationObserver(sincronizarBloqueo);
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+  if (typeof window.addEventListener === "function") {
+    window.addEventListener("resize", sincronizarBloqueo);
+  }
+
+  window.__laMobileDialogFocusFixApiV1 = {
+    sync: sincronizarBloqueo,
+    restore: restaurarOverflow
+  };
+})();
