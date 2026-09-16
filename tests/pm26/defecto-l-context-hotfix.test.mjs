@@ -42,6 +42,7 @@ function ejecutar({ hostname = 'chic-entremet-9107cf.netlify.app', initial = {} 
     localStorage,
     location: { hostname, href: `https://${hostname}/` },
     fetch: fetchBase,
+    setInterval() { return 1; },
   };
   const context = {
     window,
