@@ -56,7 +56,42 @@ jobs:
       - name: Prueba funcional PostgreSQL 16 efímera
         run: |
           set -euo pipefail
-          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/p2-r03a/ephemeral-runtime.sql
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('tests/p2-r03a/ephemeral-runtime.sql').read_text()
+          bad = "select case when not exists(select 1 from public.caja_operaciones where empresa_id='e2') then 1 else 1/0 end as rls_tenant_ok;"
+          if bad not in src:
+              raise SystemExit('P2_R03A_HARNESS_RLS_SENTINEL_NOT_FOUND')
+          src = src.replace(bad, "select 1 as rls_test_deferred;", 1)
+          src = src.replace(
+              r'\ir ../../supabase/migrations/20260916195500_p2_r03a_restore_pm08_pm09_post_reset.sql',
+              r'\i supabase/migrations/20260916195500_p2_r03a_restore_pm08_pm09_post_reset.sql',
+              1,
+          )
+          Path('/tmp/p2-r03a-runtime.sql').write_text(src)
+          PY
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/p2-r03a-runtime.sql
+
+      - name: Verificar RLS multiempresa como authenticated
+        run: |
+          set -euo pipefail
+          FOREIGN_COUNT="$(psql -h 127.0.0.1 -U postgres -d postgres -Atq <<'SQL'
+          set role authenticated;
+          set app.current_uid = '11111111-1111-1111-1111-111111111111';
+          select count(*) from public.caja_operaciones where empresa_id='e2';
+          SQL
+          )"
+          OWN_COUNT="$(psql -h 127.0.0.1 -U postgres -d postgres -Atq <<'SQL'
+          set role authenticated;
+          set app.current_uid = '11111111-1111-1111-1111-111111111111';
+          select count(*) from public.caja_operaciones where empresa_id='e1';
+          SQL
+          )"
+          test "$FOREIGN_COUNT" = "0"
+          test "$OWN_COUNT" -gt 0
+          echo "P2_R03A_RLS_FOREIGN_ROWS=$FOREIGN_COUNT"
+          echo "P2_R03A_RLS_OWN_ROWS=$OWN_COUNT"
+          echo 'P2_R03A_RLS_RUNTIME_OK=1'
 
       - name: Confirmar árbol limpio
         run: |
