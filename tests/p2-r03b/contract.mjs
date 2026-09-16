@@ -28,13 +28,22 @@ check('TENANT_COLUMNS',
 check('RLS_ENABLED', lower.includes('alter table public.auditoria_registro enable row level security'));
 check('OLD_POLICIES_REMOVED', lower.includes("from pg_policies") && lower.includes("tablename='auditoria_registro'"));
 check('SINGLE_SELECT_POLICY', lower.includes('create policy auditoria_p2_r03b_select'));
+check('RLS_SECURITY_DEFINER_HELPER',
+  lower.includes('create or replace function private.p2_r03b_puede_leer_auditoria') &&
+  lower.includes('security definer') &&
+  lower.includes("set search_path=''"));
 check('OWNER_SCOPED_MEMBERSHIP',
   lower.includes("m.rol='propietario'") &&
-  lower.includes('m.empresa_id=auditoria_registro.empresa_id') &&
+  lower.includes('m.empresa_id=p_empresa') &&
   lower.includes('m.todos_locales=true'));
 check('LOCAL_BELONGS_TO_EMPRESA_POLICY',
-  lower.includes('l.id=auditoria_registro.local_id') &&
-  lower.includes('l.empresa_id=auditoria_registro.empresa_id'));
+  lower.includes('l.id=p_local') &&
+  lower.includes('l.empresa_id=p_empresa'));
+check('POLICY_USES_HELPER',
+  lower.includes('private.p2_r03b_puede_leer_auditoria(empresa_id,local_id)'));
+check('HELPER_EXECUTE_LEAST_PRIVILEGE',
+  lower.includes('revoke all on function private.p2_r03b_puede_leer_auditoria(text,text)') &&
+  lower.includes('grant execute on function private.p2_r03b_puede_leer_auditoria(text,text)'));
 check('APPEND_ONLY_TABLE',
   lower.includes('revoke all privileges on table public.auditoria_registro') &&
   lower.includes('from public, anon, authenticated') &&

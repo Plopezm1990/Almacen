@@ -84,35 +84,55 @@ begin
 end;
 $$;
 
+-- La decisión se encapsula en SECURITY DEFINER: authenticated no necesita
+-- SELECT directo sobre membresias_usuario/locales (en PROD no lo tiene).
+create or replace function private.p2_r03b_puede_leer_auditoria(
+  p_empresa text,
+  p_local text
+) returns boolean
+language sql
+stable
+security definer
+set search_path=''
+as $$
+  select private.la_usuario_activo()
+     and nullif(btrim(p_empresa),'') is not null
+     and exists (
+       select 1
+         from public.membresias_usuario m
+        where m.user_id=(select auth.uid())
+          and m.empresa_id=p_empresa
+          and m.activo=true
+          and m.rol='Propietario'
+          and (
+            p_local is null
+            or m.todos_locales=true
+            or m.local_id=p_local
+          )
+     )
+     and (
+       p_local is null
+       or exists (
+         select 1
+           from public.locales l
+          where l.id=p_local
+            and l.empresa_id=p_empresa
+       )
+     );
+$$;
+
+revoke all on function private.p2_r03b_puede_leer_auditoria(text,text)
+  from public, anon, authenticated;
+grant execute on function private.p2_r03b_puede_leer_auditoria(text,text)
+  to authenticated;
+
 create policy auditoria_p2_r03b_select
 on public.auditoria_registro
 for select
 to authenticated
 using (
-  private.la_usuario_activo()
-  and empresa_id is not null
-  and exists (
-    select 1
-      from public.membresias_usuario m
-     where m.user_id=(select auth.uid())
-       and m.empresa_id=auditoria_registro.empresa_id
-       and m.activo=true
-       and m.rol='Propietario'
-       and (
-         auditoria_registro.local_id is null
-         or m.todos_locales=true
-         or m.local_id=auditoria_registro.local_id
-       )
-  )
-  and (
-    local_id is null
-    or exists (
-      select 1
-        from public.locales l
-       where l.id=auditoria_registro.local_id
-         and l.empresa_id=auditoria_registro.empresa_id
-    )
-  )
+  empresa_id is not null
+  and private.p2_r03b_puede_leer_auditoria(empresa_id,local_id)
 );
 
 -- Auditoría append-only para la aplicación: lectura por RLS, mutación solo por RPC.

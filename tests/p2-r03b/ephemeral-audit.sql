@@ -6,12 +6,14 @@ create role authenticated nologin;
 
 create schema auth;
 create schema private;
+grant usage on schema auth,private to authenticated;
 
 create function auth.uid() returns uuid
 language sql stable
 as $$
   select nullif(current_setting('app.current_uid',true),'')::uuid;
 $$;
+grant execute on function auth.uid() to authenticated;
 
 create table public.empresas(
   id text primary key
@@ -98,9 +100,9 @@ grant execute on function public.registrar_auditoria(text,text,text) to authenti
 grant execute on function public.registrar_auditoria(text,text,text,text,text,text) to authenticated;
 
 -- RPC P2-R02 ficticias para certificar que el nuevo paquete las deja cerradas.
-create function public.anular_venta_tpv(text,text) returns void language sql as $$ select; $$;
-create function public.descontar_stock(text,numeric,text,jsonb) returns void language sql as $$ select; $$;
-create function public.descontar_stock_carrito(jsonb,text) returns void language sql as $$ select; $$;
+create function public.anular_venta_tpv(text,text) returns void language plpgsql as $$ begin null; end; $$;
+create function public.descontar_stock(text,numeric,text,jsonb) returns void language plpgsql as $$ begin null; end; $$;
+create function public.descontar_stock_carrito(jsonb,text) returns void language plpgsql as $$ begin null; end; $$;
 grant execute on function public.anular_venta_tpv(text,text) to authenticated;
 grant execute on function public.descontar_stock(text,numeric,text,jsonb) to authenticated;
 grant execute on function public.descontar_stock_carrito(jsonb,text) to authenticated;
