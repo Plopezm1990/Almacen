@@ -28,6 +28,7 @@ jobs:
       PGPASSWORD: postgres
       BASE_SHA: c4eaba03ecf8643c1167e0c56b90f47b0bd4ffe8
       MIGRATION: supabase/migrations/20260916054000_p2_r02_revocar_exec_rpcs_legacy.sql
+      QA_MIGRATION: supabase/migrations/20260916040900_p2_r02_qa_alinear_acl_helpers_privados.sql
 
     steps:
       - name: Checkout exact candidate
@@ -35,13 +36,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Validate migration scope statically
+      - name: Validate PROD migration scope statically
         run: node tests/p2-r02-revoke-legacy-rpcs.mjs
 
-      - name: Execute ACL smoke on PostgreSQL 16
+      - name: Execute PROD ACL smoke on PostgreSQL 16
         run: psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/p2-r02-revoke-legacy-rpcs.sql
 
-      - name: Require reapplication rejection
+      - name: Require PROD reapplication rejection
         run: |
           set -euo pipefail
           if psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$MIGRATION" > /tmp/p2-r02-reapply.log 2>&1; then
@@ -53,6 +54,27 @@ jobs:
           grep -q 'P2-R02 PREFLIGHT_FALLO: authenticated ya no tiene EXECUTE' /tmp/p2-r02-reapply.log
           echo 'P2_R02_REAPPLY_REJECTED=PASS'
 
+      - name: Validate QA helper ACL scope statically
+        run: node tests/p2-r02-qa-private-helper-acl.mjs
+
+      - name: Execute QA helper ACL and policy smoke on PostgreSQL 16
+        run: |
+          set -euo pipefail
+          createdb -h 127.0.0.1 -U postgres p2r02qa
+          psql -h 127.0.0.1 -U postgres -d p2r02qa -v ON_ERROR_STOP=1 -f tests/p2-r02-qa-private-helper-acl.sql
+
+      - name: Require QA reapplication rejection
+        run: |
+          set -euo pipefail
+          if psql -h 127.0.0.1 -U postgres -d p2r02qa -v ON_ERROR_STOP=1 -f "$QA_MIGRATION" > /tmp/p2-r02-qa-reapply.log 2>&1; then
+            cat /tmp/p2-r02-qa-reapply.log
+            echo 'P2-R02 QA REAPPLY_FALLO: la segunda aplicacion fue aceptada'
+            exit 1
+          fi
+          cat /tmp/p2-r02-qa-reapply.log
+          grep -q 'P2-R02 QA PREFLIGHT_FALLO: authenticated ya no tiene EXECUTE' /tmp/p2-r02-qa-reapply.log
+          echo 'P2_R02_QA_REAPPLY_REJECTED=PASS'
+
       - name: Verify exact candidate scope
         run: |
           set -euo pipefail
@@ -60,7 +82,10 @@ jobs:
           actual="$(git diff --name-only "${BASE_SHA}" HEAD | sort)"
           expected="$(printf '%s\n' \
             '.github/workflows/validate-p2-r02-revoke-legacy-rpcs.yml' \
+            'supabase/migrations/20260916040900_p2_r02_qa_alinear_acl_helpers_privados.sql' \
             'supabase/migrations/20260916054000_p2_r02_revocar_exec_rpcs_legacy.sql' \
+            'tests/p2-r02-qa-private-helper-acl.mjs' \
+            'tests/p2-r02-qa-private-helper-acl.sql' \
             'tests/p2-r02-revoke-legacy-rpcs.mjs' \
             'tests/p2-r02-revoke-legacy-rpcs.sql' | sort)"
           printf 'actual:\n%s\n' "$actual"
