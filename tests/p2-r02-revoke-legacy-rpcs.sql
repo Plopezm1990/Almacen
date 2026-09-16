@@ -53,11 +53,10 @@ begin
     if has_function_privilege('authenticated', r, 'EXECUTE') then
       raise exception 'P2-R02 ACL_FALLO: authenticated conserva EXECUTE sobre %', r;
     end if;
+    -- anon es un rol limpio en este PostgreSQL efimero: si PUBLIC conservara
+    -- EXECUTE, anon lo heredaria y esta comprobacion fallaria.
     if has_function_privilege('anon', r, 'EXECUTE') then
-      raise exception 'P2-R02 ACL_FALLO: anon tiene EXECUTE sobre %', r;
-    end if;
-    if has_function_privilege('public', r, 'EXECUTE') then
-      raise exception 'P2-R02 ACL_FALLO: PUBLIC tiene EXECUTE sobre %', r;
+      raise exception 'P2-R02 ACL_FALLO: anon/PUBLIC conserva EXECUTE sobre %', r;
     end if;
     if not exists (select 1 from pg_proc p where p.oid = r::oid and p.prosecdef) then
       raise exception 'P2-R02 ACL_FALLO: % dejo de ser SECURITY DEFINER', r;
@@ -69,7 +68,7 @@ begin
     raise exception 'P2-R02 SCOPE_FALLO: obtener_contexto_operativo perdio EXECUTE authenticated';
   end if;
   if has_function_privilege('anon', r, 'EXECUTE') then
-    raise exception 'P2-R02 SCOPE_FALLO: obtener_contexto_operativo gano EXECUTE anon';
+    raise exception 'P2-R02 SCOPE_FALLO: obtener_contexto_operativo gano EXECUTE anon/PUBLIC';
   end if;
 
   raise notice 'P2_R02_ACL_SMOKE=PASS';
