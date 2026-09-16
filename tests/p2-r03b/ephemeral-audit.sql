@@ -117,53 +117,74 @@ insert into public.membresias_usuario(user_id,empresa_id,local_id,todos_locales,
 
 \ir ../../supabase/migrations/20260916203000_p2_r03b_auditoria_tenant_post_reset.sql
 
+-- Assertion helper deliberadamente no usa CASE con 1/0: PostgreSQL puede
+-- plegar constantes en planificación y producir falsos negativos del harness.
+create function private.p2_r03b_assert(p_condition boolean,p_name text)
+returns text
+language plpgsql
+as $$
+begin
+  if coalesce(p_condition,false) is not true then
+    raise exception 'P2_R03B_ASSERT_FAIL:%',p_name;
+  end if;
+  return p_name||'=1';
+end;
+$$;
+
 -- Catálogo y privilegios.
-select case when
+select private.p2_r03b_assert(
   exists(select 1 from information_schema.columns where table_schema='public' and table_name='auditoria_registro' and column_name='empresa_id' and data_type='text')
   and exists(select 1 from information_schema.columns where table_schema='public' and table_name='auditoria_registro' and column_name='local_id' and data_type='text')
-  and exists(select 1 from information_schema.columns where table_schema='public' and table_name='auditoria_registro' and column_name='actor_user_id' and data_type='uuid')
-then 1 else 1/0 end as tenant_columns_ok;
+  and exists(select 1 from information_schema.columns where table_schema='public' and table_name='auditoria_registro' and column_name='actor_user_id' and data_type='uuid'),
+  'TENANT_COLUMNS_OK'
+);
 
-select case when
+select private.p2_r03b_assert(
   (select count(*) from pg_policies where schemaname='public' and tablename='auditoria_registro')=1
-  and exists(select 1 from pg_policies where schemaname='public' and tablename='auditoria_registro' and policyname='auditoria_p2_r03b_select' and cmd='SELECT')
-then 1 else 1/0 end as rls_policy_ok;
+  and exists(select 1 from pg_policies where schemaname='public' and tablename='auditoria_registro' and policyname='auditoria_p2_r03b_select' and cmd='SELECT'),
+  'RLS_POLICY_OK'
+);
 
-select case when
+select private.p2_r03b_assert(
   has_table_privilege('authenticated','public.auditoria_registro','SELECT')
   and not has_table_privilege('authenticated','public.auditoria_registro','INSERT')
   and not has_table_privilege('authenticated','public.auditoria_registro','UPDATE')
-  and not has_table_privilege('authenticated','public.auditoria_registro','DELETE')
-then 1 else 1/0 end as append_only_ok;
+  and not has_table_privilege('authenticated','public.auditoria_registro','DELETE'),
+  'APPEND_ONLY_OK'
+);
 
-select case when
+select private.p2_r03b_assert(
   has_function_privilege('authenticated','public.registrar_auditoria(text,text,text,text,date,text,text,text)','EXECUTE')
   and not has_function_privilege('anon','public.registrar_auditoria(text,text,text,text,date,text,text,text)','EXECUTE')
   and not has_function_privilege('authenticated','public.registrar_auditoria(text,text,text)','EXECUTE')
-  and not has_function_privilege('authenticated','public.registrar_auditoria(text,text,text,text,text,text)','EXECUTE')
-then 1 else 1/0 end as audit_rpc_acl_ok;
+  and not has_function_privilege('authenticated','public.registrar_auditoria(text,text,text,text,text,text)','EXECUTE'),
+  'AUDIT_RPC_ACL_OK'
+);
 
-select case when
+select private.p2_r03b_assert(
   not has_function_privilege('authenticated','public.anular_venta_tpv(text,text)','EXECUTE')
   and not has_function_privilege('authenticated','public.descontar_stock(text,numeric,text,jsonb)','EXECUTE')
-  and not has_function_privilege('authenticated','public.descontar_stock_carrito(jsonb,text)','EXECUTE')
-then 1 else 1/0 end as p2_r02_stays_revoked_ok;
+  and not has_function_privilege('authenticated','public.descontar_stock_carrito(jsonb,text)','EXECUTE'),
+  'P2_R02_STAYS_REVOKED_OK'
+);
 
 -- Escritura válida por RPC + replay exacto.
 set role authenticated;
 set app.current_uid='11111111-1111-1111-1111-111111111111';
 
-select case when
+select private.p2_r03b_assert(
   (public.registrar_auditoria(
     'audit-0001','Propietario','PRUEBA','detalle','2026-09-16','20:30','e1','l1'
-  )->>'replayed')='false'
-then 1 else 1/0 end as first_insert_ok;
+  )->>'replayed')='false',
+  'FIRST_INSERT_OK'
+);
 
-select case when
+select private.p2_r03b_assert(
   (public.registrar_auditoria(
     'audit-0001','Propietario','PRUEBA','detalle','2026-09-16','20:30','e1','l1'
-  )->>'replayed')='true'
-then 1 else 1/0 end as exact_replay_ok;
+  )->>'replayed')='true',
+  'EXACT_REPLAY_OK'
+);
 
 do $$
 begin
@@ -225,22 +246,25 @@ values (
 
 set role authenticated;
 set app.current_uid='11111111-1111-1111-1111-111111111111';
-select case when
+select private.p2_r03b_assert(
   (select count(*) from public.auditoria_registro)=1
-  and (select count(*) from public.auditoria_registro where empresa_id='e2')=0
-then 1 else 1/0 end as owner_tenant_rls_ok;
+  and (select count(*) from public.auditoria_registro where empresa_id='e2')=0,
+  'OWNER_TENANT_RLS_OK'
+);
 
 -- Un usuario operativo puede registrar su acción, pero no leer Auditoría.
 set app.current_uid='33333333-3333-3333-3333-333333333333';
-select case when
+select private.p2_r03b_assert(
   (public.registrar_auditoria(
     'audit-staff','Camarero','PRUEBA_STAFF','detalle','2026-09-16','20:33','e1','l1'
-  )->>'ok')='true'
-then 1 else 1/0 end as staff_can_log_ok;
+  )->>'ok')='true',
+  'STAFF_CAN_LOG_OK'
+);
 
-select case when
-  (select count(*) from public.auditoria_registro)=0
-then 1 else 1/0 end as staff_cannot_read_audit_ok;
+select private.p2_r03b_assert(
+  (select count(*) from public.auditoria_registro)=0,
+  'STAFF_CANNOT_READ_AUDIT_OK'
+);
 
 reset role;
 select 'P2_R03B_EPHEMERAL_OK=1' as result;
