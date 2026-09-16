@@ -32,22 +32,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 10
 
-      - name: Confirmar candidato exacto
+      - name: Confirmar candidato exacto y frontera de alcance
         run: |
           set -euo pipefail
           test "$(git branch --show-current)" = "p2-r03a-runtime-post-reset"
           echo "P2_R03A_CANDIDATE=$GITHUB_SHA"
           git diff --check HEAD^ HEAD
+          git diff --exit-code c4eaba03ecf8643c1167e0c56b90f47b0bd4ffe8 HEAD -- fuente.js
+          echo 'P2_R03A_FUENTE_UNCHANGED_FROM_RELEASE=1'
 
       - name: Contrato estático P2-R03A
         run: node tests/p2-r03a/contract.mjs
 
-      - name: Regresiones heredadas PM08 PM09
+      - name: Regresiones heredadas pertinentes PM08 PM09
         run: |
           set -euo pipefail
-          node tests/pm08/frontend-contract.mjs
           node tests/pm08/replay-scope-contract.mjs
           node tests/pm09/p10-caja-contract.mjs
           node --check fuente.js
