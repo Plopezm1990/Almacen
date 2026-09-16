@@ -100780,6 +100780,8 @@ var C2 = {
   inkSoft: "var(--c-ink-soft)",
   line: "var(--c-line)",
   accent: "var(--c-accent)",
+  accentFill: "var(--c-accent-fill)",
+  onAccent: "var(--c-on-accent)",
   accentSoft: "var(--c-accent-soft)",
   amber: "var(--c-amber)",
   amberSoft: "var(--c-amber-soft)",
@@ -103455,30 +103457,34 @@ function GestionAlmacen() {
   ), /* @__PURE__ */ import_react4.default.createElement("style", null, `
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
         :root, [data-tema="claro"] {
-          --c-bg: #F7F3E9;
-          --c-surface: #FFFFFF;
-          --c-ink: #17241C;
-          --c-ink-soft: #647267;
-          --c-line: #E2DBC7;
-          --c-accent: #8C6D2A;
-          --c-accent-soft: #F1E7CE;
-          --c-amber: #977022;
-          --c-amber-soft: #F6EAD2;
-          --c-red: #B5473A;
-          --c-red-soft: #F7E5E1;
+          --c-bg: #F7F2E8;
+          --c-surface: #FFFDF8;
+          --c-ink: #1B2420;
+          --c-ink-soft: #4F5B55;
+          --c-line: #8F8470;
+          --c-accent: #7A5718;
+          --c-accent-fill: #123B2D;
+          --c-on-accent: #F7F2E8;
+          --c-accent-soft: #E6EEE9;
+          --c-amber: #7F5300;
+          --c-amber-soft: #FBEFD6;
+          --c-red: #A3302A;
+          --c-red-soft: #F9E3E0;
         }
         [data-tema="oscuro"] {
-          --c-bg: #081A10;
-          --c-surface: #0F2818;
-          --c-ink: #F0E6D0;
-          --c-ink-soft: #93A692;
-          --c-line: #1E3A26;
-          --c-accent: #D8B876;
+          --c-bg: #0B1712;
+          --c-surface: #12211A;
+          --c-ink: #EEE7D8;
+          --c-ink-soft: #A9B7AE;
+          --c-line: #5E7568;
+          --c-accent: #D6B06A;
+          --c-accent-fill: #D6B06A;
+          --c-on-accent: #0B1712;
           --c-accent-soft: #1C3322;
-          --c-amber: #E8C066;
-          --c-amber-soft: #2B2312;
-          --c-red: #E37A69;
-          --c-red-soft: #2B1712;
+          --c-amber: #E9C372;
+          --c-amber-soft: #2A2414;
+          --c-red: #F08A7A;
+          --c-red-soft: #2E1814;
         }
         .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
         input, select { font-family: inherit; }
@@ -109256,7 +109262,7 @@ function SectionTitle({ children, action }) {
 }
 function Btn({ children, onClick, variant = "primary", type = "button", small, disabled = false }) {
   const styles = {
-    primary: { background: C2.accent, color: "#fff" },
+    primary: { background: C2.accentFill, color: C2.onAccent },
     ghost: { background: "transparent", color: C2.ink, border: `1px solid ${C2.line}` },
     danger: { background: C2.redSoft, color: C2.red }
   };
@@ -109274,7 +109280,7 @@ function Btn({ children, onClick, variant = "primary", type = "button", small, d
 }
 function LinkBtn({ children, href, variant = "ghost", small, newTab = true }) {
   const styles = {
-    primary: { background: C2.accent, color: "#fff" },
+    primary: { background: C2.accentFill, color: C2.onAccent },
     ghost: { background: "transparent", color: C2.ink, border: `1px solid ${C2.line}` },
     danger: { background: C2.redSoft, color: C2.red }
   };
@@ -113582,7 +113588,7 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reac
     {
       onClick: () => setVista("empleados"),
       className: "text-[12px] font-medium px-3 py-1.5 rounded-full",
-      style: vista === "empleados" ? { background: C2.accent, color: "#fff" } : { background: C2.surface, border: `1px solid ${C2.line}`, color: C2.inkSoft }
+      style: vista === "empleados" ? { background: C2.accentFill, color: C2.onAccent } : { background: C2.surface, border: `1px solid ${C2.line}`, color: C2.inkSoft }
     },
     "Empleados"
   ), /* @__PURE__ */ import_react4.default.createElement(
@@ -113590,7 +113596,7 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reac
     {
       onClick: () => setVista("seleccion"),
       className: "text-[12px] font-medium px-3 py-1.5 rounded-full",
-      style: vista === "seleccion" ? { background: C2.accent, color: "#fff" } : { background: C2.surface, border: `1px solid ${C2.line}`, color: C2.inkSoft }
+      style: vista === "seleccion" ? { background: C2.accentFill, color: C2.onAccent } : { background: C2.surface, border: `1px solid ${C2.line}`, color: C2.inkSoft }
     },
     "Selecci\xF3n de personal"
   )), vista === "seleccion" ? /* @__PURE__ */ import_react4.default.createElement(
@@ -114709,7 +114715,7 @@ function Devoluciones({ productos = [], proveedores = [], devoluciones = [], mov
     disabled: enviando,
     onClick: () => cambiarVista(id),
     className: "text-[12px] font-medium px-3 py-1.5 rounded-full",
-    style: vista === id ? { background: C2.accent, color: "#fff" } : estiloSelector
+    style: vista === id ? { background: C2.accentFill, color: C2.onAccent } : estiloSelector
   }, texto);
   const selectorPrincipal = vista === "cliente" ? h3(Field, { label: "Venta original y producto" }, h3("select", {
     value: ventaClave,
@@ -115474,7 +115480,7 @@ function DiagnosticoStock({ diagnostico, corregirProducto, movimientosParaReconc
       key: id,
       onClick: () => setFiltro(id),
       className: "text-[11.5px] font-medium px-2.5 py-1 rounded-full",
-      style: filtro === id ? { background: C2.accent, color: "#fff" } : { background: C2.surface, border: `1px solid ${C2.line}`, color: C2.inkSoft }
+      style: filtro === id ? { background: C2.accentFill, color: C2.onAccent } : { background: C2.surface, border: `1px solid ${C2.line}`, color: C2.inkSoft }
     },
     label
   ))), visibles.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] text-center py-4", style: { color: C2.inkSoft } }, "Nada que mostrar con este filtro.")) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, visibles.map((d2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: d2.productoId }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium truncate" }, d2.nombre), /* @__PURE__ */ import_react4.default.createElement(
@@ -115739,7 +115745,7 @@ function Mermas({ productos, movimientos, registrarSalida, almacenCongelado }) {
     {
       onClick: () => setFiltroMotivo("todos"),
       className: "text-[11.5px] font-medium px-2.5 py-1 rounded-full",
-      style: filtroMotivo === "todos" ? { background: C2.accent, color: "#fff" } : { background: C2.surface, border: `1px solid ${C2.line}`, color: C2.inkSoft }
+      style: filtroMotivo === "todos" ? { background: C2.accentFill, color: C2.onAccent } : { background: C2.surface, border: `1px solid ${C2.line}`, color: C2.inkSoft }
     },
     "Todos"
   ), porMotivo.map(([m22]) => /* @__PURE__ */ import_react4.default.createElement(
@@ -115748,7 +115754,7 @@ function Mermas({ productos, movimientos, registrarSalida, almacenCongelado }) {
       key: m22,
       onClick: () => setFiltroMotivo(m22),
       className: "text-[11.5px] font-medium px-2.5 py-1 rounded-full",
-      style: filtroMotivo === m22 ? { background: C2.accent, color: "#fff" } : { background: C2.surface, border: `1px solid ${C2.line}`, color: C2.inkSoft }
+      style: filtroMotivo === m22 ? { background: C2.accentFill, color: C2.onAccent } : { background: C2.surface, border: `1px solid ${C2.line}`, color: C2.inkSoft }
     },
     m22
   )))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-2 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "text-center py-2.5" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mono" }, registros.length), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "Registros en el periodo")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "text-center py-2.5" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mono", style: { color: C2.red } }, "\u20AC", fmt(valorTotal)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "Valor total (a coste)"))), porMotivo.length > 1 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Por motivo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, porMotivo.map(([m22, valor]) => /* @__PURE__ */ import_react4.default.createElement("div", { key: m22, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, m22), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: C2.red } }, "\u20AC", fmt(valor)))))), registros.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin mermas registradas en este periodo." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, registros.map((m22) => {
@@ -116377,7 +116383,7 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
         "span",
         {
           className: "absolute -top-2 -right-2 rounded-full text-[11px] font-bold flex items-center justify-center",
-          style: { background: C2.accent, color: "#fff", width: 22, height: 22 }
+          style: { background: C2.accentFill, color: C2.onAccent, width: 22, height: 22 }
         },
         fmt(Number(enCarrito.cantidad) || 0)
       )
