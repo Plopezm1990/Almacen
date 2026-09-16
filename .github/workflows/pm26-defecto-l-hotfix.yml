@@ -4,9 +4,12 @@ on:
   push:
     branches:
       - release
+      - pm26-defecto-l-confirmar-persistencia
     paths:
+      - owner-bootstrap-prelock.js
       - reset-pruebas-preview.js
       - tests/pm26/defecto-l-context-hotfix.test.mjs
+      - tests/pm26/defecto-l-persistencia-confirmada.test.mjs
       - .github/workflows/pm26-defecto-l-hotfix.yml
 
 permissions:
@@ -24,11 +27,19 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Sintaxis del hotfix
+      - name: Sintaxis del bootstrap temprano
+        run: node --check owner-bootstrap-prelock.js
+
+      - name: Sintaxis del hotfix de contexto
         run: node --check reset-pruebas-preview.js
 
-      - name: Sintaxis de la regresión
-        run: node --check tests/pm26/defecto-l-context-hotfix.test.mjs
+      - name: Sintaxis de las regresiones
+        run: |
+          node --check tests/pm26/defecto-l-context-hotfix.test.mjs
+          node --check tests/pm26/defecto-l-persistencia-confirmada.test.mjs
 
-      - name: Regresión Defecto L
+      - name: Regresión Defecto L — contexto
         run: node tests/pm26/defecto-l-context-hotfix.test.mjs
+
+      - name: Regresión Defecto L — persistencia confirmada
+        run: node tests/pm26/defecto-l-persistencia-confirmada.test.mjs
