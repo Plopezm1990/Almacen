@@ -86,8 +86,14 @@ end
 $p2_r02_qa_acl_smoke$;
 
 set role authenticated;
-select case when count(*)=1 then 1 else 1/0 end as finance_policy_ok
-from public.finance_probe;
+select (count(*) = 1) as finance_policy_ok
+from public.finance_probe
+\gset
 reset role;
 
-\echo P2_R02_QA_POLICY_SMOKE=PASS
+\if :finance_policy_ok
+  \echo P2_R02_QA_POLICY_SMOKE=PASS
+\else
+  \echo P2_R02_QA_POLICY_SMOKE=FAIL
+  \quit 3
+\endif
