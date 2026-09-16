@@ -1,0 +1,66 @@
+name: P2-R03B tenant audit gate
+
+on:
+  push:
+    branches: [p2-r03a-runtime-post-reset]
+    paths:
+      - 'supabase/migrations/20260916203000_p2_r03b_auditoria_tenant_post_reset.sql'
+      - 'tests/p2-r03b/**'
+      - '.github/workflows/p2-r03b-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  p2-r03b:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 10
+
+      - name: Confirmar candidato y frontera de alcance
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "p2-r03a-runtime-post-reset"
+          echo "P2_R03B_CANDIDATE=$GITHUB_SHA"
+          git diff --check HEAD^ HEAD
+          git diff --exit-code c4eaba03ecf8643c1167e0c56b90f47b0bd4ffe8 HEAD -- fuente.js
+          echo 'P2_R03B_FUENTE_UNCHANGED_FROM_RELEASE=1'
+
+      - name: Contrato estático de Auditoría
+        run: node tests/p2-r03b/contract.mjs
+
+      - name: Regresión P2-R03A y sintaxis frontend
+        run: |
+          set -euo pipefail
+          node tests/p2-r03a/contract.mjs
+          node --check fuente.js
+
+      - name: Prueba funcional PostgreSQL 16 efímera
+        run: |
+          set -euo pipefail
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -f tests/p2-r03b/ephemeral-audit.sql
+
+      - name: Confirmar árbol limpio
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
+          echo 'P2_R03B_GATE_OK=1'
