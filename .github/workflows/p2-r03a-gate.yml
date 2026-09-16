@@ -1,0 +1,65 @@
+name: P2-R03A post-reset runtime gate
+
+on:
+  push:
+    branches: [p2-r03a-runtime-post-reset]
+    paths:
+      - 'supabase/migrations/20260916195500_p2_r03a_restore_pm08_pm09_post_reset.sql'
+      - 'tests/p2-r03a/**'
+      - '.github/workflows/p2-r03a-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  p2-r03a:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Confirmar candidato exacto
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "p2-r03a-runtime-post-reset"
+          echo "P2_R03A_CANDIDATE=$GITHUB_SHA"
+          git diff --check HEAD^ HEAD
+
+      - name: Contrato estático P2-R03A
+        run: node tests/p2-r03a/contract.mjs
+
+      - name: Regresiones heredadas PM08 PM09
+        run: |
+          set -euo pipefail
+          node tests/pm08/frontend-contract.mjs
+          node tests/pm08/replay-scope-contract.mjs
+          node tests/pm09/p10-caja-contract.mjs
+          node --check fuente.js
+
+      - name: Prueba funcional PostgreSQL 16 efímera
+        run: |
+          set -euo pipefail
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/p2-r03a/ephemeral-runtime.sql
+
+      - name: Confirmar árbol limpio
+        run: |
+          set -euo pipefail
+          git status --short
+          test -z "$(git status --porcelain)"
+          echo 'P2_R03A_GATE_OK=1'
