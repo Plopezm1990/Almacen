@@ -32,7 +32,9 @@ must(/for v in select policyname from pg_policies where schemaname='public' and 
 must(/create policy pm13_fichajes_select_scope/i,'single scoped select policy');
 must(/revoke all privileges on table public\.fichajes_registro from public,anon,authenticated;/i,'table revoke');
 must(/grant select on table public\.fichajes_registro to authenticated;/i,'select only');
-must(/revoke all on function private\.pm13_fichaje_actor_es_empleado\(text\) from public,anon,authenticated;/i,'private helper acl');
+must(/revoke all on function private\.pm13_fichaje_actor_es_empleado\(text\) from public,anon,authenticated;/i,'self helper revoke baseline');
+must(/grant execute on function private\.pm13_fichaje_actor_es_empleado\(text\) to authenticated;/i,'RLS self helper execute');
+must(/revoke all on function private\.pm13_fichaje_secuencia_valida\(text,text,text,jsonb\) from public,anon,authenticated;/i,'sequence helper closed');
 must(/grant execute on function public\.pm13_fichar\(text,text,text,text\) to authenticated;/i,'authenticated rpc grant');
 must(/commit;\s*$/i,'commit');
 
