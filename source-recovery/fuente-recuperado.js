@@ -8537,7 +8537,7 @@ function Btn({ children, onClick, variant = "primary", type = "button", small, d
       onClick,
       disabled,
       className: `inline-flex items-center gap-1.5 rounded-lg font-medium ${small ? "px-2.5 py-1.5 text-[12px]" : "px-3.5 py-2 text-[13px]"}`,
-      style: { ...styles[variant], opacity: disabled ? 0.45 : 1, cursor: disabled ? "not-allowed" : "pointer" }
+      style: { ...styles[variant], minHeight: small ? void 0 : 44, opacity: disabled ? 0.45 : 1, cursor: disabled ? "not-allowed" : "pointer" }
     },
     children
   );
@@ -8554,7 +8554,7 @@ function LinkBtn({ children, href, variant = "ghost", small, newTab = true }) {
       href,
       ...newTab ? { target: "_blank", rel: "noopener noreferrer" } : {},
       className: `inline-flex items-center gap-1.5 rounded-lg font-medium no-underline ${small ? "px-2.5 py-1.5 text-[12px]" : "px-3.5 py-2 text-[13px]"}`,
-      style: styles[variant]
+      style: { ...styles[variant], minHeight: small ? void 0 : 44 }
     },
     children
   );
@@ -8565,7 +8565,7 @@ function Input(props) {
     {
       ...props,
       className: `w-full rounded-lg px-3 py-2 text-[13px] ${props.className || ""}`,
-      style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, ...props.style || {} }
+      style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44, ...props.style || {} }
     }
   );
 }
