@@ -1,8 +1,10 @@
 import fs from 'node:fs';
 
 const path='supabase/migrations/20260917173000_p2_pm13_fichajes_post_reset.sql';
+const fixPath='supabase/migrations/20260917182000_p2_pm13_fichajes_self_rls_fix.sql';
 const sql=fs.readFileSync(path,'utf8');
-const must=(re,msg)=>{ if(!re.test(sql)) throw new Error(`P2_PM13_CONTRACT_FALLO:${msg}`); };
+const fix=fs.readFileSync(fixPath,'utf8');
+const must=(re,msg,src=sql)=>{ if(!re.test(src)) throw new Error(`P2_PM13_CONTRACT_FALLO:${msg}`); };
 
 must(/begin;[\s\S]*set local lock_timeout='5s';[\s\S]*set local statement_timeout='30s';/i,'transaction/timeouts');
 must(/P2_PM13_PREFLIGHT_FALLO/i,'preflight');
@@ -37,5 +39,11 @@ must(/grant execute on function private\.pm13_fichaje_actor_es_empleado\(text\) 
 must(/revoke all on function private\.pm13_fichaje_secuencia_valida\(text,text,text,jsonb\) from public,anon,authenticated;/i,'sequence helper closed');
 must(/grant execute on function public\.pm13_fichar\(text,text,text,text\) to authenticated;/i,'authenticated rpc grant');
 must(/commit;\s*$/i,'commit');
+
+must(/P2_PM13_RLS_FIX_PREFLIGHT_FALLO/i,'RLS fix preflight',fix);
+must(/drop policy if exists pm13_fichajes_select_scope/i,'RLS fix drops prior policy',fix);
+must(/private\.pm13_fichaje_actor_es_empleado\(fichajes_registro\.datos->>'empleadoId'\)[\s\S]*or exists/i,'self branch outside empleados RLS',fix);
+must(/private\.pm11_puede_ver_personal\(e\.empresa_id,e\.local_id\)/i,'management branch remains tenant/local scoped',fix);
+must(/commit;\s*$/i,'RLS fix commit',fix);
 
 console.log('P2_PM13_CONTRACT_OK=1');
