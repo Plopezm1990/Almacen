@@ -5,6 +5,7 @@ on:
     branches: [p2-r03a-runtime-post-reset]
     paths:
       - 'supabase/migrations/20260917173000_p2_pm13_fichajes_post_reset.sql'
+      - 'supabase/migrations/20260917182000_p2_pm13_fichajes_self_rls_fix.sql'
       - 'tests/p2-pm13/**'
       - '.github/workflows/p2-pm13-gate.yml'
   workflow_dispatch:
@@ -47,7 +48,7 @@ jobs:
           git diff --check "$BASE" HEAD
           while IFS= read -r path; do
             case "$path" in
-              supabase/migrations/20260917173000_p2_pm13_fichajes_post_reset.sql|tests/p2-pm13/*|.github/workflows/p2-pm13-gate.yml) ;;
+              supabase/migrations/20260917173000_p2_pm13_fichajes_post_reset.sql|supabase/migrations/20260917182000_p2_pm13_fichajes_self_rls_fix.sql|tests/p2-pm13/*|.github/workflows/p2-pm13-gate.yml) ;;
               *) echo "P2_PM13_SCOPE_FALLO=$path"; exit 1 ;;
             esac
           done < <(git diff --name-only "$BASE" HEAD)
