@@ -75,16 +75,16 @@ select public.p2_pm11_assert(has_table_privilege('authenticated','public.emplead
 select public.p2_pm11_assert(not has_table_privilege('authenticated','public.empleados','INSERT'),'direct insert open');
 select public.p2_pm11_assert(has_function_privilege('authenticated','public.pm11_alta_empleado(text,text,text,text,jsonb)','EXECUTE'),'alta execute missing');
 select public.p2_pm11_assert(not has_function_privilege('anon','public.pm11_alta_empleado(text,text,text,text,jsonb)','EXECUTE'),'anon alta execute');
+select public.p2_pm11_assert(not has_function_privilege('authenticated','private.pm11_puede_mutar_personal(text,text)','EXECUTE'),'mutation helper exposed');
 
--- Owner A: alcance multilocal, local inactivo visible pero no mutable, tenant B denegado.
+-- Owner A: validar semántica interna con el rol propietario del harness; el cliente no ejecuta estos helpers privados.
 select set_config('request.jwt.claim.sub','11111111-1111-1111-1111-111111111111',false);
-set role authenticated;
 select public.p2_pm11_assert(private.pm11_puede_ver_personal('e1','l1'),'owner cannot view l1');
 select public.p2_pm11_assert(private.pm11_puede_ver_personal('e1','l2'),'owner cannot view inactive l2');
 select public.p2_pm11_assert(private.pm11_puede_mutar_personal('e1','l1'),'owner cannot mutate l1');
 select public.p2_pm11_assert(not private.pm11_puede_mutar_personal('e1','l2'),'inactive local mutable');
 select public.p2_pm11_assert(not private.pm11_puede_ver_personal('e2','b1'),'cross company visible');
-
+set role authenticated;
 select public.pm11_alta_empleado('e1','l1','emp-a','Empleado A','{"pm13AltaOperationId":"op-a","horasSemanales":40}'::jsonb);
 select public.p2_pm11_assert((select count(*)=1 from public.empleados where id='emp-a'),'owner alta failed');
 select public.p2_pm11_assert((public.pm11_alta_empleado('e1','l1','emp-a','Empleado A','{"pm13AltaOperationId":"op-a","horasSemanales":40}'::jsonb)->>'yaCreado')::boolean,'alta replay not idempotent');
@@ -95,9 +95,9 @@ reset role;
 
 -- Manager A puede gestionar su local concreto, no otros.
 select set_config('request.jwt.claim.sub','22222222-2222-2222-2222-222222222222',false);
-set role authenticated;
 select public.p2_pm11_assert(private.pm11_puede_mutar_personal('e1','l1'),'manager cannot mutate own local');
 select public.p2_pm11_assert(not private.pm11_puede_mutar_personal('e1','l3'),'manager can mutate other local');
+set role authenticated;
 select public.pm11_editar_empleado('e1','l1','emp-a','{"puesto":"barra"}'::jsonb,'Empleado A2');
 select public.p2_pm11_expect_error($q$select public.pm11_alta_empleado('e1','l3','bad2','Bad2','{}'::jsonb)$q$,'personal_contexto_no_autorizado');
 reset role;
@@ -127,8 +127,8 @@ reset role;
 
 -- Usuario marcado inactivo: helper y RPC fallan cerrado.
 select set_config('request.jwt.claim.sub','55555555-5555-5555-5555-555555555555',false);
-set role authenticated;
 select public.p2_pm11_assert(not private.pm11_puede_ver_personal('e1','l1'),'inactive user can view');
+set role authenticated;
 select public.p2_pm11_expect_error($q$select public.pm11_alta_empleado('e1','l1','bad4','Bad4','{}'::jsonb)$q$,'personal_contexto_no_autorizado');
 reset role;
 
