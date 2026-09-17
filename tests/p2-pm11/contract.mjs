@@ -10,7 +10,7 @@ function req(name, ok) {
 }
 
 req('transaction', low.includes('begin;') && low.trimEnd().endsWith('commit;'));
-req('timeouts', low.includes("lock_timeout = '5s'") && low.includes("statement_timeout = '30s'"));
+req('timeouts', /lock_timeout\s*=\s*'5s'/i.test(sql) && /statement_timeout\s*=\s*'30s'/i.test(sql));
 req('post-reset-preflight', low.includes("to_regclass('public.empresas')") && low.includes("to_regclass('public.locales')") && low.includes("to_regclass('public.auditoria_registro')"));
 req('empleados-authority', low.includes('create table if not exists public.empleados') && low.includes('pm11_empleados_scope_estado'));
 req('no-kv-runtime-dependency', !/from\s+public\.almacen_kv/i.test(sql));
