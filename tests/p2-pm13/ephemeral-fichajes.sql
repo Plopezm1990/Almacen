@@ -106,7 +106,7 @@ select public.p2_pm13_assert(not has_table_privilege('authenticated','public.fic
 select public.p2_pm13_assert(not has_table_privilege('anon','public.fichajes_registro','SELECT'),'anon select open');
 select public.p2_pm13_assert(has_function_privilege('authenticated','public.pm13_fichar(text,text,text,text)','EXECUTE'),'fichar execute missing');
 select public.p2_pm13_assert(not has_function_privilege('anon','public.pm13_fichar(text,text,text,text)','EXECUTE'),'anon fichar execute');
-select public.p2_pm13_assert(not has_function_privilege('authenticated','private.pm13_fichaje_actor_es_empleado(text)','EXECUTE'),'private self helper exposed');
+select public.p2_pm13_assert(has_function_privilege('authenticated','private.pm13_fichaje_actor_es_empleado(text)','EXECUTE'),'RLS self helper execute missing');
 select public.p2_pm13_assert((select count(*)=1 from pg_indexes where schemaname='public' and tablename='fichajes_registro' and indexname='pm13_fichajes_operation_id_uq'),'global op index missing');
 
 -- Autoservicio: Cajero vinculado a emp-a puede ficharse, pero no mutar fichajes manualmente.
