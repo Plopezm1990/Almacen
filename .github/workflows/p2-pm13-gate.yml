@@ -1,0 +1,81 @@
+name: P2-PM13 fichajes post-reset gate
+
+on:
+  push:
+    branches: [p2-r03a-runtime-post-reset]
+    paths:
+      - 'supabase/migrations/20260917173000_p2_pm13_fichajes_post_reset.sql'
+      - 'tests/p2-pm13/**'
+      - '.github/workflows/p2-pm13-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  p2-pm13:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGDATABASE: postgres
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 50
+
+      - name: Confirmar candidato y frontera de alcance
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "p2-r03a-runtime-post-reset"
+          BASE=2fd691d5dc86b4f11c4b47b7fc3c59263b8aac97
+          git diff --check "$BASE" HEAD
+          while IFS= read -r path; do
+            case "$path" in
+              supabase/migrations/20260917173000_p2_pm13_fichajes_post_reset.sql|tests/p2-pm13/*|.github/workflows/p2-pm13-gate.yml) ;;
+              *) echo "P2_PM13_SCOPE_FALLO=$path"; exit 1 ;;
+            esac
+          done < <(git diff --name-only "$BASE" HEAD)
+          git diff --exit-code c4eaba03ecf8643c1167e0c56b90f47b0bd4ffe8 HEAD -- fuente.js
+          echo "P2_PM13_SCOPE_OK=1"
+
+      - name: Contrato estático PM13
+        run: node tests/p2-pm13/contract.mjs
+
+      - name: Regresión candidatos A/B/C, PM11 y sintaxis frontend
+        run: |
+          set -euo pipefail
+          node tests/p2-r03a/contract.mjs
+          node tests/p2-r03b/contract.mjs
+          node tests/p2-r03c/contract.mjs
+          node tests/p2-pm11/contract.mjs
+          node --check fuente.js
+
+      - name: Prueba funcional PostgreSQL 16 efímera
+        run: |
+          set -euo pipefail
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/p2-pm13/ephemeral-fichajes.sql
+
+      - name: Prueba de concurrencia real
+        run: bash tests/p2-pm13/concurrency.sh
+
+      - name: Confirmar árbol limpio
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
+          echo "P2_PM13_GATE_OK=1"
