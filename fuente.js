@@ -103511,6 +103511,7 @@ function GestionAlmacen() {
           --c-red-soft: #2E1814;
         }
         :focus-visible { outline: 3px solid var(--c-focus-ring); outline-offset: 2px; }
+        body { font-variant-numeric: tabular-nums; }
         .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
         input, select { font-family: inherit; }
         ::placeholder { color: #9AA5A0; }
@@ -109230,7 +109231,7 @@ function SidebarGrupos({ grupos, tab, setTab, disenoMenu, setDisenoMenu, temaOsc
       !!it2.badge && /* @__PURE__ */ import_react4.default.createElement(
         "span",
         {
-          className: "ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full mono",
+          className: "ml-auto text-[13px] font-semibold px-2 py-1 rounded-full mono",
           style: { background: it2.badgeColor || C2.accentFill, color: it2.badgeTextColor || C2.onAccent, boxShadow: `0 0 0 1px ${C2.badgeRing}` }
         },
         it2.badge
@@ -109253,7 +109254,7 @@ function BotonItemSheet({ it: it2, tab, onPick }) {
     },
     /* @__PURE__ */ import_react4.default.createElement(Icon2, { size: 17, color: active ? C2.accent : C2.inkSoft }),
     /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[13px] font-medium" }, it2.label),
-    !!it2.badge && /* @__PURE__ */ import_react4.default.createElement("span", { className: "ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full mono", style: { background: it2.badgeColor || C2.accentFill, color: it2.badgeTextColor || C2.onAccent, boxShadow: `0 0 0 1px ${C2.badgeRing}` } }, it2.badge)
+    !!it2.badge && /* @__PURE__ */ import_react4.default.createElement("span", { className: "ml-auto text-[13px] font-semibold px-2 py-1 rounded-full mono", style: { background: it2.badgeColor || C2.accentFill, color: it2.badgeTextColor || C2.onAccent, boxShadow: `0 0 0 1px ${C2.badgeRing}` } }, it2.badge)
   );
 }
 function BottomNavC({ tab, setTab, categorias, dashboardItem }) {
