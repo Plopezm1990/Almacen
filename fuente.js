@@ -100782,6 +100782,7 @@ var C2 = {
   borderControl: "var(--c-border-control)",
   divider: "var(--c-divider)",
   badgeRing: "var(--c-badge-ring)",
+  focusRing: "var(--c-focus-ring)",
   accent: "var(--c-accent)",
   accentFill: "var(--c-accent-fill)",
   onAccent: "var(--c-on-accent)",
@@ -103472,6 +103473,7 @@ function GestionAlmacen() {
           --c-border-control: #8F8470;
           --c-divider: #E3DACA;
           --c-badge-ring: transparent;
+          --c-focus-ring: var(--c-accent-fill);
           --c-accent: #7A5718;
           --c-accent-fill: #123B2D;
           --c-on-accent: #F7F2E8;
@@ -103494,6 +103496,7 @@ function GestionAlmacen() {
           --c-border-control: #5E7568;
           --c-divider: #2D4237;
           --c-badge-ring: #FFFFFF;
+          --c-focus-ring: var(--c-accent-fill);
           --c-accent: #D6B06A;
           --c-accent-fill: #D6B06A;
           --c-on-accent: #0B1712;
@@ -103507,6 +103510,7 @@ function GestionAlmacen() {
           --c-on-red: #FFFFFF;
           --c-red-soft: #2E1814;
         }
+        :focus-visible { outline: 3px solid var(--c-focus-ring); outline-offset: 2px; }
         .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
         input, select { font-family: inherit; }
         ::placeholder { color: #9AA5A0; }
@@ -109321,7 +109325,7 @@ function Input(props) {
     "input",
     {
       ...props,
-      className: `w-full rounded-lg px-3 py-2 text-[13px] outline-none ${props.className || ""}`,
+      className: `w-full rounded-lg px-3 py-2 text-[13px] ${props.className || ""}`,
       style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, ...props.style || {} }
     }
   );
@@ -110197,7 +110201,11 @@ function CompraPorCaja({ form, setForm }) {
 function Modal({ children, onClose, title, ancho = "max-w-md" }) {
   const cajaRef = (0, import_react4.useRef)(null);
   (0, import_react4.useEffect)(() => {
+    const focoPrevio = document.activeElement;
     if (cajaRef.current) cajaRef.current.focus();
+    return () => {
+      if (focoPrevio && typeof focoPrevio.focus === "function") focoPrevio.focus();
+    };
   }, []);
   const onCloseRef = (0, import_react4.useRef)(onClose);
   onCloseRef.current = onClose;
@@ -110873,7 +110881,7 @@ ${cuerpo}`;
                 actualizarConteoItem(activo.id, it2.productoId, "conteo", tecleado);
               }
             },
-            className: "w-full rounded px-2 py-1.5 text-[13px] text-center outline-none mono",
+            className: "w-full rounded px-2 py-1.5 text-[13px] text-center mono",
             style: {
               border: `1px solid ${sinContar ? C2.line : C2.accent}`,
               background: sinContar ? C2.surface : C2.accentSoft,
@@ -117446,8 +117454,8 @@ function AppConSesion() {
     return /* @__PURE__ */ import_react4.default.createElement("div", { style: { ...estiloBase, color: "#6B7A6E", fontSize: 13.5 } }, "Comprobando conexi\xF3n\u2026");
   }
   if (fase === "login") {
-    const campoAcceso = { width: "100%", padding: "13px 14px", marginBottom: 12, border: "1px solid rgba(198,154,82,.30)", borderRadius: 12, fontSize: 14, boxSizing: "border-box", fontFamily: "inherit", background: "rgba(2,18,11,.52)", color: "#F4EBDD", outline: "none" };
-    return /* @__PURE__ */ import_react4.default.createElement("div", { style: estiloBase }, /* @__PURE__ */ import_react4.default.createElement("form", { onSubmit: entrar, style: { background: "linear-gradient(180deg, rgba(16,49,30,.985), rgba(5,27,16,.985))", padding: "30px 28px 26px", borderRadius: 24, width: "100%", maxWidth: 390, border: "1px solid rgba(198,154,82,.55)", boxShadow: "0 24px 70px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.03)", backdropFilter: "blur(10px)" } }, /* @__PURE__ */ import_react4.default.createElement("div", { style: { display: "flex", justifyContent: "center", marginBottom: 4 } }, /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO_PROYECTO, alt: "L&A Suite", style: { width: "72%", maxWidth: 225, height: "auto", display: "block", filter: "drop-shadow(0 8px 18px rgba(0,0,0,.28))" } })), /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontFamily: "Georgia, 'Times New Roman', serif", fontSize: 27, fontWeight: 600, textAlign: "center", marginBottom: 6, color: "#F7F0E3", letterSpacing: ".01em" } }, "L&A Suite"), /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontSize: 12.5, color: "#AEBBB2", textAlign: "center", marginBottom: 24, lineHeight: 1.45 } }, "Inicia sesi\xF3n para sincronizar entre dispositivos"), /* @__PURE__ */ import_react4.default.createElement(
+    const campoAcceso = { width: "100%", padding: "13px 14px", marginBottom: 12, border: "1px solid rgba(198,154,82,.30)", borderRadius: 12, fontSize: 14, boxSizing: "border-box", fontFamily: "inherit", background: "rgba(2,18,11,.52)", color: "#F4EBDD" };
+    return /* @__PURE__ */ import_react4.default.createElement("div", { style: estiloBase }, /* @__PURE__ */ import_react4.default.createElement("form", { onSubmit: entrar, style: { background: "linear-gradient(180deg, rgba(16,49,30,.985), rgba(5,27,16,.985))", padding: "30px 28px 26px", borderRadius: 24, width: "100%", maxWidth: 390, border: "1px solid rgba(198,154,82,.55)", boxShadow: "0 24px 70px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.03)", backdropFilter: "blur(10px)" } }, /* @__PURE__ */ import_react4.default.createElement("style", null, ".campo-acceso:focus-visible { outline: 3px solid #C69A52; outline-offset: 2px; }"), /* @__PURE__ */ import_react4.default.createElement("div", { style: { display: "flex", justifyContent: "center", marginBottom: 4 } }, /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO_PROYECTO, alt: "L&A Suite", style: { width: "72%", maxWidth: 225, height: "auto", display: "block", filter: "drop-shadow(0 8px 18px rgba(0,0,0,.28))" } })), /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontFamily: "Georgia, 'Times New Roman', serif", fontSize: 27, fontWeight: 600, textAlign: "center", marginBottom: 6, color: "#F7F0E3", letterSpacing: ".01em" } }, "L&A Suite"), /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontSize: 12.5, color: "#AEBBB2", textAlign: "center", marginBottom: 24, lineHeight: 1.45 } }, "Inicia sesi\xF3n para sincronizar entre dispositivos"), /* @__PURE__ */ import_react4.default.createElement(
       "input",
       {
         type: "email",
@@ -117456,6 +117464,7 @@ function AppConSesion() {
         placeholder: "Correo",
         value: email,
         onChange: (e2) => setEmail(e2.target.value),
+        className: "campo-acceso",
         style: campoAcceso
       }
     ), /* @__PURE__ */ import_react4.default.createElement(
@@ -117466,9 +117475,10 @@ function AppConSesion() {
         placeholder: "Contrase\xF1a",
         value: password,
         onChange: (e2) => setPassword(e2.target.value),
+        className: "campo-acceso",
         style: { ...campoAcceso, marginBottom: 16 }
       }
-    ), error && /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: "#FFB9AE", fontSize: 12.5, marginBottom: 12, lineHeight: 1.4 } }, error), /* @__PURE__ */ import_react4.default.createElement("button", { type: "submit", disabled: cargando, style: { width: "100%", padding: "13px", background: "linear-gradient(135deg, #8A6028 0%, #C69A52 52%, #9B7132 100%)", color: "#071D12", border: "1px solid rgba(232,199,130,.66)", borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: "pointer", boxShadow: "0 8px 20px rgba(0,0,0,.22)" } }, cargando ? "Entrando\u2026" : "Entrar"), /* @__PURE__ */ import_react4.default.createElement("div", { onClick: () => { window.location.href = "./restablecer-contrasena.html"; }, style: { marginTop: 12, textAlign: "center", fontSize: 12.5, color: "#C69A52", textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer" } }, "\xBFOlvidaste tu contrase\xF1a?"), /* @__PURE__ */ import_react4.default.createElement("div", { onClick: entrarSinNube, style: { marginTop: 12, textAlign: "center", fontSize: 12.5, color: "#C69A52", textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer" } }, "Trabajar solo en este equipo, sin sincronizar")));
+    ), error && /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: "#FFB9AE", fontSize: 12.5, marginBottom: 12, lineHeight: 1.4 } }, error), /* @__PURE__ */ import_react4.default.createElement("button", { type: "submit", disabled: cargando, style: { width: "100%", padding: "13px", background: "linear-gradient(135deg, #8A6028 0%, #C69A52 52%, #9B7132 100%)", color: "#071D12", border: "1px solid rgba(232,199,130,.66)", borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: "pointer", boxShadow: "0 8px 20px rgba(0,0,0,.22)" } }, cargando ? "Entrando\u2026" : "Entrar"), /* @__PURE__ */ import_react4.default.createElement("a", { href: "./restablecer-contrasena.html", style: { display: "block", marginTop: 12, textAlign: "center", fontSize: 12.5, color: "#C69A52", textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer" } }, "\xBFOlvidaste tu contrase\xF1a?"), /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", onClick: entrarSinNube, style: { display: "block", width: "100%", marginTop: 12, textAlign: "center", fontSize: 12.5, color: "#C69A52", textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer", background: "transparent", border: "none", padding: 0, font: "inherit" } }, "Trabajar solo en este equipo, sin sincronizar")));
   }
   return /* @__PURE__ */ import_react4.default.createElement(GestionAlmacen, null);
 }
