@@ -23,8 +23,12 @@ var C2 = {
   onAccent: "var(--c-on-accent)",
   accentSoft: "var(--c-accent-soft)",
   amber: "var(--c-amber)",
+  amberFill: "var(--c-amber-fill)",
+  onAmber: "var(--c-on-amber)",
   amberSoft: "var(--c-amber-soft)",
   red: "var(--c-red)",
+  redFill: "var(--c-red-fill)",
+  onRed: "var(--c-on-red)",
   redSoft: "var(--c-red-soft)",
   // Fijo a propósito: la barra lateral y las cabeceras "libro de almacén" son
   // siempre oscuras, en claro o en oscuro — no son "texto", son la marca del programa.
@@ -2607,25 +2611,25 @@ function GestionAlmacen() {
     { id: "recepcion", label: "Recepci\xF3n", icon: ClipboardList },
     { id: "albaranes", label: "Albaranes", icon: FileText },
     { id: "facturas", label: "Facturas", icon: Files },
-    { id: "pagos", label: "Cuentas por pagar", icon: Coins, badge: vencenProntoDelLocalActivo.length, badgeColor: C2.red },
-    { id: "conteo", label: "Inventario ciego", icon: Boxes, badge: stockBajoDelLocalActivo.length, badgeColor: C2.amber },
+    { id: "pagos", label: "Cuentas por pagar", icon: Coins, badge: vencenProntoDelLocalActivo.length, badgeColor: C2.redFill, badgeTextColor: C2.onRed },
+    { id: "conteo", label: "Inventario ciego", icon: Boxes, badge: stockBajoDelLocalActivo.length, badgeColor: C2.amberFill, badgeTextColor: C2.onAmber },
     { id: "saldo", label: "Saldo de almac\xE9n", icon: ClipboardList },
     { id: "mapa", label: "Mapa de almac\xE9n", icon: Map2 },
-    { id: "traspasos", label: "Traspasos", icon: ArrowLeftRight, badge: pisoVentaBajoDelLocalActivo.length, badgeColor: C2.amber },
+    { id: "traspasos", label: "Traspasos", icon: ArrowLeftRight, badge: pisoVentaBajoDelLocalActivo.length, badgeColor: C2.amberFill, badgeTextColor: C2.onAmber },
     { id: "fichas", label: "Fichas de costo", icon: Calculator },
     { id: "produccion", label: "Producci\xF3n", icon: Factory },
     { id: "mermas", label: "Mermas", icon: Trash2 },
     { id: "etiquetas", label: "Etiquetas y cat\xE1logo", icon: Tags },
     { id: "reportes", label: "Reportes y rotaci\xF3n", icon: ChartColumn },
     { id: "resultados", label: "Resultados", icon: TrendingUp },
-    { id: "personal", label: "Personal", icon: Users, badge: documentosPersonalProntoDelLocalActivo.length, badgeColor: C2.amber },
-    { id: "fichaje", label: "Registro horario", icon: Clock, badge: fichajesAbiertosDelLocalActivo.length, badgeColor: C2.amber },
+    { id: "personal", label: "Personal", icon: Users, badge: documentosPersonalProntoDelLocalActivo.length, badgeColor: C2.amberFill, badgeTextColor: C2.onAmber },
+    { id: "fichaje", label: "Registro horario", icon: Clock, badge: fichajesAbiertosDelLocalActivo.length, badgeColor: C2.amberFill, badgeTextColor: C2.onAmber },
     { id: "nominas", label: "Coste de personal", icon: Coins },
     { id: "turnos", label: "Cuadrante de turnos", icon: CalendarClock },
-    { id: "appcc", label: "Control sanitario", icon: ShieldCheck, badge: appccPendientesHoy.length, badgeColor: C2.amber },
+    { id: "appcc", label: "Control sanitario", icon: ShieldCheck, badge: appccPendientesHoy.length, badgeColor: C2.amberFill, badgeTextColor: C2.onAmber },
     { id: "aceite", label: "Aceite de freidoras", icon: Droplet },
     { id: "venta", label: "TPV", icon: ShoppingBag },
-    { id: "encargos", label: "Encargos", icon: CalendarDays, badge: encargosUrgentesDelLocalActivo.length, badgeColor: C2.red },
+    { id: "encargos", label: "Encargos", icon: CalendarDays, badge: encargosUrgentesDelLocalActivo.length, badgeColor: C2.redFill, badgeTextColor: C2.onRed },
     { id: "clientes", label: "Clientes", icon: UserRound },
     { id: "libroiva", label: "Libro de IVA", icon: Receipt },
     { id: "caja", label: "Arqueo de caja", icon: Wallet },
@@ -2633,7 +2637,7 @@ function GestionAlmacen() {
     { id: "tesoreria", label: "Tesorer\xEDa", icon: ChartLine },
     { id: "estacionalidad", label: "Estacionalidad", icon: CalendarRange },
     { id: "auditoria", label: "Auditor\xEDa", icon: RotateCcwClock },
-    { id: "diagnostico", label: "Reconciliaci\xF3n de stock", icon: Stethoscope, badge: descuadresPendientesDelLocalActivo, badgeColor: C2.red },
+    { id: "diagnostico", label: "Reconciliaci\xF3n de stock", icon: Stethoscope, badge: descuadresPendientesDelLocalActivo, badgeColor: C2.redFill, badgeTextColor: C2.onRed },
     { id: "respaldos", label: "Respaldos", icon: Cog },
     { id: "notificaciones", label: "Notificaciones", icon: Bell },
     { id: "locales", label: "Locales", icon: Map2 },
@@ -2706,8 +2710,12 @@ function GestionAlmacen() {
           --c-on-accent: #F7F2E8;
           --c-accent-soft: #E6EEE9;
           --c-amber: #7F5300;
+          --c-amber-fill: #7F5300;
+          --c-on-amber: #FFFFFF;
           --c-amber-soft: #FBEFD6;
           --c-red: #A3302A;
+          --c-red-fill: #A3302A;
+          --c-on-red: #FFFFFF;
           --c-red-soft: #F9E3E0;
         }
         [data-tema="oscuro"] {
@@ -2721,8 +2729,12 @@ function GestionAlmacen() {
           --c-on-accent: #0B1712;
           --c-accent-soft: #1C3322;
           --c-amber: #E9C372;
+          --c-amber-fill: #7F5300;
+          --c-on-amber: #FFFFFF;
           --c-amber-soft: #2A2414;
           --c-red: #F08A7A;
+          --c-red-fill: #A3302A;
+          --c-on-red: #FFFFFF;
           --c-red-soft: #2E1814;
         }
         .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
@@ -8306,8 +8318,8 @@ function SelectorDiseno({ disenoMenu, setDisenoMenu, oscuro = false }) {
       onClick: () => setDisenoMenu(o22.id),
       className: "text-[10.5px] font-semibold px-2 py-1 rounded-md whitespace-nowrap",
       style: {
-        background: disenoMenu === o22.id ? C2.accent : "transparent",
-        color: disenoMenu === o22.id ? "#fff" : oscuro ? "#B9C7C0" : C2.inkSoft
+        background: disenoMenu === o22.id ? C2.accentFill : "transparent",
+        color: disenoMenu === o22.id ? C2.onAccent : oscuro ? "#B9C7C0" : C2.inkSoft
       }
     },
     o22.label
@@ -8445,7 +8457,7 @@ function SidebarGrupos({ grupos, tab, setTab, disenoMenu, setDisenoMenu, temaOsc
         "span",
         {
           className: "ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full mono",
-          style: { background: it2.badgeColor || C2.accent, color: "#fff" }
+          style: { background: it2.badgeColor || C2.accentFill, color: it2.badgeTextColor || C2.onAccent }
         },
         it2.badge
       )
@@ -8467,7 +8479,7 @@ function BotonItemSheet({ it: it2, tab, onPick }) {
     },
     /* @__PURE__ */ import_react4.default.createElement(Icon2, { size: 17, color: active ? C2.accent : C2.inkSoft }),
     /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[13px] font-medium" }, it2.label),
-    !!it2.badge && /* @__PURE__ */ import_react4.default.createElement("span", { className: "ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full mono", style: { background: it2.badgeColor || C2.accent, color: "#fff" } }, it2.badge)
+    !!it2.badge && /* @__PURE__ */ import_react4.default.createElement("span", { className: "ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full mono", style: { background: it2.badgeColor || C2.accentFill, color: it2.badgeTextColor || C2.onAccent } }, it2.badge)
   );
 }
 function BottomNavC({ tab, setTab, categorias, dashboardItem }) {
