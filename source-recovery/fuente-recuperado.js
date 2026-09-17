@@ -2668,21 +2668,21 @@ function GestionAlmacen() {
     { titulo: "Ciclo de compra", items: pick(["proveedores", "pedidos", "recepcion", "albaranes", "pagos", "facturas"]) },
     { titulo: "Ciclo de almac\xE9n", items: pick(["productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos"]) },
     { titulo: "Ciclo de venta", items: pick(["venta", "encargos", "clientes", "devoluciones"]) },
-    { titulo: "Ciclo de coste y an\xE1lisis", items: pick(["fichas", "produccion", "mermas", "etiquetas", "resultados", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
+    { titulo: "Ciclo de coste y an\xE1lisis", items: pick(["fichas", "produccion", "mermas", "etiquetas", "direccion", "resultados", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
     { titulo: "Ciclo de personal", items: pick(["personal", "fichaje", "turnos", "nominas"]) },
     { titulo: "Ciclo de calidad", items: pick(["appcc", "aceite"]) },
-    { titulo: "Ajustes", items: pick(["auditoria", "respaldos", "notificaciones", "errores_sistema", "locales"]) }
+    { titulo: "Ajustes", items: pick(["auditoria", "diagnostico", "respaldos", "notificaciones", "errores_sistema", "locales"]) }
   ];
   const categoriasC = {
     comprar: { titulo: "Comprar", items: pick(["proveedores", "pedidos", "recepcion", "albaranes", "pagos"]) },
-    almacen: { titulo: "Almac\xE9n", items: pick(["productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos"]) },
+    almacen: { titulo: "Almac\xE9n", items: pick(["buscar", "productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos"]) },
     mas: [
       { titulo: "Vender", items: pick(["venta", "encargos", "clientes", "devoluciones"]) },
-      { titulo: "Dinero", items: pick(["resultados", "facturas", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
+      { titulo: "Dinero", items: pick(["direccion", "resultados", "facturas", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
       { titulo: "Producto", items: pick(["fichas", "produccion", "mermas", "etiquetas"]) },
       { titulo: "Equipo", items: pick(["personal", "fichaje", "turnos", "nominas"]) },
       { titulo: "Calidad", items: pick(["appcc", "aceite"]) },
-      { titulo: "Ajustes", items: pick(["auditoria", "respaldos", "notificaciones", "errores_sistema", "locales"]) }
+      { titulo: "Ajustes", items: pick(["auditoria", "diagnostico", "respaldos", "notificaciones", "errores_sistema", "locales"]) }
     ]
   };
   return /* @__PURE__ */ import_react4.default.createElement("div", { "data-tema": temaOscuro ? "oscuro" : "claro", style: { background: C2.bg, color: C2.ink, fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui" }, className: disenoMenu === "C" ? "w-full min-h-[700px] flex flex-col text-[14px]" : "w-full min-h-[700px] flex flex-col md:flex-row text-[14px]" }, fallosGuardado.length > 0 && /* @__PURE__ */ import_react4.default.createElement(
