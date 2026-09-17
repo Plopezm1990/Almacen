@@ -37,7 +37,7 @@ var C2 = {
   // Fijo a propósito: la barra lateral y las cabeceras "libro de almacén" son
   // siempre oscuras, en claro o en oscuro — no son "texto", son la marca del programa.
   // Verde bosque de la identidad general L&A Suite. Los logos de cada empresa se gestionan aparte.
-  chrome: "#0C2714"
+  chrome: "#123B2D"
 };
 var LOGO_PROYECTO = "la-suite-logo.svg";
 var ICONO_PROYECTO = "la-suite-icon.svg";
@@ -16713,13 +16713,13 @@ function AppConSesion() {
     window.actualizarIndicador();
     setFase("dentro");
   }
-  const estiloBase = { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "radial-gradient(circle at 50% 26%, #153D27 0%, #0C2714 44%, #06170E 100%)", fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui", padding: 20 };
+  const estiloBase = { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "radial-gradient(circle at 50% 26%, #1C5C46 0%, #123B2D 44%, #081A14 100%)", fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui", padding: 20 };
   if (fase === "comprobando") {
     return /* @__PURE__ */ import_react4.default.createElement("div", { style: { ...estiloBase, color: "#6B7A6E", fontSize: 13.5 } }, "Comprobando conexi\xF3n\u2026");
   }
   if (fase === "login") {
     const campoAcceso = { width: "100%", padding: "13px 14px", marginBottom: 12, border: "1px solid rgba(198,154,82,.30)", borderRadius: 12, fontSize: 14, boxSizing: "border-box", fontFamily: "inherit", background: "rgba(2,18,11,.52)", color: "#F4EBDD" };
-    return /* @__PURE__ */ import_react4.default.createElement("div", { style: estiloBase }, /* @__PURE__ */ import_react4.default.createElement("form", { onSubmit: entrar, className: "form-acceso", style: { background: "linear-gradient(180deg, rgba(16,49,30,.985), rgba(5,27,16,.985))", padding: "30px 28px 26px", borderRadius: 24, width: "100%", maxWidth: 390, border: "1px solid rgba(198,154,82,.55)", boxShadow: "0 24px 70px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.03)", backdropFilter: "blur(10px)" } }, /* @__PURE__ */ import_react4.default.createElement("style", null, ".form-acceso :focus-visible { outline: 3px solid #C69A52; outline-offset: 2px; }"), /* @__PURE__ */ import_react4.default.createElement("div", { style: { display: "flex", justifyContent: "center", marginBottom: 4 } }, /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO_PROYECTO, alt: "L&A Suite", style: { width: "72%", maxWidth: 225, height: "auto", display: "block", filter: "drop-shadow(0 8px 18px rgba(0,0,0,.28))" } })), /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontFamily: "Georgia, 'Times New Roman', serif", fontSize: 27, fontWeight: 600, textAlign: "center", marginBottom: 6, color: "#F7F0E3", letterSpacing: ".01em" } }, "L&A Suite"), /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontSize: 12.5, color: "#AEBBB2", textAlign: "center", marginBottom: 24, lineHeight: 1.45 } }, "Inicia sesi\xF3n para sincronizar entre dispositivos"), /* @__PURE__ */ import_react4.default.createElement(
+    return /* @__PURE__ */ import_react4.default.createElement("div", { style: estiloBase }, /* @__PURE__ */ import_react4.default.createElement("form", { onSubmit: entrar, className: "form-acceso", style: { background: "linear-gradient(180deg, rgba(22,71,54,.985), rgba(12,39,30,.985))", padding: "30px 28px 26px", borderRadius: 24, width: "100%", maxWidth: 390, border: "1px solid rgba(198,154,82,.55)", boxShadow: "0 24px 70px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.03)", backdropFilter: "blur(10px)" } }, /* @__PURE__ */ import_react4.default.createElement("style", null, ".form-acceso :focus-visible { outline: 3px solid #C69A52; outline-offset: 2px; }"), /* @__PURE__ */ import_react4.default.createElement("div", { style: { display: "flex", justifyContent: "center", marginBottom: 4 } }, /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO_PROYECTO, alt: "L&A Suite", style: { width: "72%", maxWidth: 225, height: "auto", display: "block", filter: "drop-shadow(0 8px 18px rgba(0,0,0,.28))" } })), /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontFamily: "Georgia, 'Times New Roman', serif", fontSize: 27, fontWeight: 600, textAlign: "center", marginBottom: 6, color: "#F7F0E3", letterSpacing: ".01em" } }, "L&A Suite"), /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontSize: 12.5, color: "#AEBBB2", textAlign: "center", marginBottom: 24, lineHeight: 1.45 } }, "Inicia sesi\xF3n para sincronizar entre dispositivos"), /* @__PURE__ */ import_react4.default.createElement(
       "input",
       {
         type: "email",
