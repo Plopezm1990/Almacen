@@ -1,0 +1,46 @@
+name: P2-P06 wire authority bridge
+
+on:
+  push:
+    branches: [p2-r03a-runtime-post-reset]
+    paths:
+      - '.github/workflows/p2-p06-wire-index.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  wire-index:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: p2-r03a-runtime-post-reset
+          fetch-depth: 20
+      - name: Insertar bridge antes de fuente.js
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          old='<script src="./owner-bootstrap-post-reset.js"></script>\n<script type="module" src="./fuente.js"></script>'
+          new='<script src="./owner-bootstrap-post-reset.js"></script>\n<script src="./server-authority-storage-bridge.js"></script>\n<script type="module" src="./fuente.js"></script>'
+          if s.count(old) != 1:
+              raise SystemExit(f'P2_P06_WIRE_MARKER_FALLO={s.count(old)}')
+          p.write_text(s.replace(old,new,1))
+          PY
+          git diff --check
+          git diff --exit-code --quiet -- fuente.js
+          grep -F '<script src="./server-authority-storage-bridge.js"></script>' index.html
+      - name: Commit wiring exacto
+        run: |
+          set -euo pipefail
+          test -n "$(git status --porcelain -- index.html)"
+          test -z "$(git status --porcelain | grep -v '^ M index.html$' || true)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "P2 P06 wire server-authority storage bridge"
+          git push origin HEAD:p2-r03a-runtime-post-reset
