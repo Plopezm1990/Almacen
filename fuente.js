@@ -110211,7 +110211,27 @@ function Modal({ children, onClose, title, ancho = "max-w-md" }) {
   onCloseRef.current = onClose;
   (0, import_react4.useEffect)(() => {
     function alTecla(e2) {
-      if (e2.key === "Escape") onCloseRef.current();
+      if (e2.key === "Escape") {
+        onCloseRef.current();
+        return;
+      }
+      if (e2.key === "Tab" && cajaRef.current) {
+        const selectorFocable = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+        const focables = Array.from(cajaRef.current.querySelectorAll(selectorFocable)).filter((el2) => el2.offsetParent !== null);
+        if (focables.length === 0) return;
+        const primero = focables[0];
+        const ultimo = focables[focables.length - 1];
+        const dentro = cajaRef.current.contains(document.activeElement);
+        if (e2.shiftKey) {
+          if (!dentro || document.activeElement === primero) {
+            e2.preventDefault();
+            ultimo.focus();
+          }
+        } else if (!dentro || document.activeElement === ultimo) {
+          e2.preventDefault();
+          primero.focus();
+        }
+      }
     }
     document.addEventListener("keydown", alTecla);
     return () => document.removeEventListener("keydown", alTecla);
