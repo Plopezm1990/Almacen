@@ -95,6 +95,7 @@ values('emp-inactive','e1','l2','activo','Empleado Local Inactivo','{"id":"emp-i
 update public.perfiles set empleado_id='emp-a' where user_id='33333333-3333-3333-3333-333333333333';
 
 \ir ../../supabase/migrations/20260917173000_p2_pm13_fichajes_post_reset.sql
+\ir ../../supabase/migrations/20260917182000_p2_pm13_fichajes_self_rls_fix.sql
 
 -- DDL/ACL/RLS final.
 select public.p2_pm13_assert((select count(*)=1 from pg_policies where schemaname='public' and tablename='fichajes_registro'),'legacy policies remain');
