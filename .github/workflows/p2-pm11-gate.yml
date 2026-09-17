@@ -1,0 +1,74 @@
+name: P2-PM11 personal post-reset gate
+
+on:
+  push:
+    branches: [p2-r03a-runtime-post-reset]
+    paths:
+      - 'supabase/migrations/20260917143000_p2_pm11_personal_post_reset.sql'
+      - 'tests/p2-pm11/**'
+      - '.github/workflows/p2-pm11-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  p2-pm11:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 30
+
+      - name: Confirmar candidato y frontera de alcance
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "p2-r03a-runtime-post-reset"
+          BASE=50b36da80e4bdb9cea78894ac8b9d429c1a7d633
+          git diff --check "$BASE" HEAD
+          while IFS= read -r path; do
+            case "$path" in
+              supabase/migrations/20260917143000_p2_pm11_personal_post_reset.sql|tests/p2-pm11/*|.github/workflows/p2-pm11-gate.yml) ;;
+              *) echo "P2_PM11_SCOPE_FALLO=$path"; exit 1 ;;
+            esac
+          done < <(git diff --name-only "$BASE" HEAD)
+          git diff --exit-code c4eaba03ecf8643c1167e0c56b90f47b0bd4ffe8 HEAD -- fuente.js
+          echo "P2_PM11_SCOPE_OK=1"
+
+      - name: Contrato estático PM11
+        run: node tests/p2-pm11/contract.mjs
+
+      - name: Regresión candidatos A/B/C y sintaxis frontend
+        run: |
+          set -euo pipefail
+          node tests/p2-r03a/contract.mjs
+          node tests/p2-r03b/contract.mjs
+          node tests/p2-r03c/contract.mjs
+          node --check fuente.js
+
+      - name: Prueba funcional PostgreSQL 16 efímera
+        run: |
+          set -euo pipefail
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -f tests/p2-pm11/ephemeral-personal.sql
+
+      - name: Confirmar árbol limpio
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
+          echo "P2_PM11_GATE_OK=1"
