@@ -177,6 +177,15 @@ var ROLES_EMPLEADO = {
   "Encargado": [.../* @__PURE__ */ new Set([...ITEMS_EMPLEADO, "venta", "caja", "devoluciones", "produccion", "aceite", "pedidos", "productos", "proveedores"])]
 };
 var NOMBRES_ROLES = Object.keys(ROLES_EMPLEADO);
+var TAB_PRIORITIES_MOVIL = {
+  "Propietario": ["dashboard", "resultados", "caja"],
+  "Encargado": ["dashboard", "venta", "fichaje"],
+  "Est\xE1ndar": ["dashboard", "venta", "fichaje"],
+  "Cajero/a": ["dashboard", "venta", "fichaje"],
+  "Camarero/a": ["dashboard", "venta", "fichaje"],
+  "Churrero/a": ["dashboard", "produccion", "fichaje"],
+  "B\xE1sico": ["dashboard", "venta", "fichaje"]
+};
 var ESTILO_IMPRESION_CLARO = {
   "--c-bg": "#F7F3E9",
   "--c-surface": "#FFFFFF",
@@ -877,7 +886,7 @@ function GestionAlmacen() {
     formularioAbiertoPM15Ref.current = false;
     setTab(nuevaTab);
   }
-  const [disenoMenu, setDisenoMenu] = (0, import_react4.useState)("B");
+  const [saltoDevolucionProveedor, setSaltoDevolucionProveedor] = (0, import_react4.useState)(0);
   const [temaOscuro, setTemaOscuro] = (0, import_react4.useState)(false);
   const [modoEmpleado, setModoEmpleado] = (0, import_react4.useState)(false);
   const [miPerfil, setMiPerfil] = (0, import_react4.useState)(null);
@@ -1058,7 +1067,7 @@ function GestionAlmacen() {
   const [historial, setHistorial] = (0, import_react4.useState)([]);
   (0, import_react4.useEffect)(() => {
     (async () => {
-      const [p22, pr, pe2, mo, co, fc, hi, al, cp, gg, em, fj, dm, ra, pc, cl, en, aq, tu, to, me2, pin, au, op, tr, ua, fd2, pf, nom, fre, rac, entr, mc, dev, ce2, emps, loc, lai] = await Promise.all([
+      const [p22, pr, pe2, mo, co, fc, hi, al, cp, gg, em, fj, ra, pc, cl, en, aq, tu, to, me2, pin, au, op, tr, ua, fd2, pf, nom, fre, rac, entr, mc, dev, ce2, emps, loc, lai] = await Promise.all([
         loadKey("proveedores", []),
         loadKey("productos", []),
         loadKey("pedidos", []),
@@ -1071,7 +1080,6 @@ function GestionAlmacen() {
         loadKey("gastosGenerales", []),
         loadKey("empleados", []),
         loadKey("fichajes", []),
-        loadKey("disenoMenu", "B"),
         loadKey("registrosAppcc", []),
         loadKey("puntosControl", []),
         loadKey("clientes", []),
@@ -1125,7 +1133,6 @@ function GestionAlmacen() {
       setGastosGenerales(gg);
       setEmpleados(em);
       setFichajes(fj);
-      setDisenoMenu(dm || "B");
       setRegistrosAppcc(ra);
       setFreidoras(fre || []);
       setRegistrosAceite(rac || []);
@@ -1340,9 +1347,6 @@ function GestionAlmacen() {
     if (ready && !skipSaveRef.current) saveKey("fichajes", fichajes);
   }, [fichajes, ready]);
   (0, import_react4.useEffect)(() => {
-    if (ready && !skipSaveRef.current) saveKey("disenoMenu", disenoMenu);
-  }, [disenoMenu, ready]);
-  (0, import_react4.useEffect)(() => {
     if (ready && !skipSaveRef.current) saveKey("registrosAppcc", registrosAppcc);
   }, [registrosAppcc, ready]);
   (0, import_react4.useEffect)(() => {
@@ -1428,6 +1432,12 @@ function GestionAlmacen() {
   (0, import_react4.useEffect)(() => {
     if (modoEmpleado && !itemsPermitidosEmpleado.includes(tab)) setTab("dashboard");
   }, [modoEmpleado, itemsPermitidosEmpleado]);
+  const rolEfectivoEmpleadoNav = (0, import_react4.useMemo)(() => {
+    if (miPerfil && miPerfil.rol && ROLES_EMPLEADO[miPerfil.rol]) return miPerfil.rol;
+    const activo = usuarioActivoId ? empleados.find((e2) => e2.id === usuarioActivoId) : null;
+    return activo?.rol && ROLES_EMPLEADO[activo.rol] ? activo.rol : "Est\xE1ndar";
+  }, [usuarioActivoId, empleados, miPerfil]);
+  const rolNavegacionMovil = modoEmpleado ? rolEfectivoEmpleadoNav : "Propietario";
   const productoPorId = (id) => productos.find((p22) => p22.id === id);
   const proveedorPorId = (id) => proveedores.find((p22) => p22.id === id);
   const [prefillAlbaran, setPrefillAlbaran] = (0, import_react4.useState)(null);
@@ -2545,7 +2555,7 @@ function GestionAlmacen() {
     }
   ), tab === "devoluciones" && /* @__PURE__ */ import_react4.default.createElement(
     Devoluciones,
-    { key: localActivoId || "todos", productos: productosDelLocalActivo, proveedores, devoluciones: devolucionesDelLocalActivo, movimientos: movimientosDelLocalActivo, registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion }
+    { key: localActivoId || "todos", productos: productosDelLocalActivo, proveedores, devoluciones: devolucionesDelLocalActivo, movimientos: movimientosDelLocalActivo, registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion, saltoProveedor: saltoDevolucionProveedor }
   ), tab === "facturas" && /* @__PURE__ */ import_react4.default.createElement(
     Facturas,
     {
@@ -2652,40 +2662,24 @@ function GestionAlmacen() {
     const filtrados = modoEmpleado ? ids.filter((id) => itemsPermitidosEmpleado.includes(id)) : ids;
     return filtrados.map(porId).filter(Boolean);
   };
-  const gruposA = [
-    { titulo: null, items: pick(["dashboard", "buscar"]) },
-    { titulo: "Compras", items: pick(["proveedores", "pedidos", "recepcion", "albaranes"]) },
-    { titulo: "Almac\xE9n", items: pick(["productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos"]) },
+  const GRUPOS = [
+    { titulo: null, items: pick(["dashboard", "direccion", "buscar"]) },
+    { titulo: "Compras", items: pick(["proveedores", "pedidos", "recepcion", "albaranes", "facturas"]) },
+    { titulo: "Almac\xE9n", items: pick(["productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos", "diagnostico", "etiquetas"]) },
     { titulo: "Ventas", items: pick(["venta", "encargos", "clientes", "devoluciones"]) },
-    { titulo: "Costes y producci\xF3n", items: pick(["fichas", "produccion", "mermas", "etiquetas"]) },
-    { titulo: "Finanzas", items: pick(["direccion", "resultados", "pagos", "facturas", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
-    { titulo: "RRHH", items: pick(["personal", "fichaje", "turnos", "nominas"]) },
+    { titulo: "Costes y producci\xF3n", items: pick(["fichas", "produccion", "mermas"]) },
+    { titulo: "Finanzas y an\xE1lisis", items: pick(["pagos", "resultados", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
+    { titulo: "Personal", items: pick(["personal", "fichaje", "turnos", "nominas"]) },
     { titulo: "Calidad", items: pick(["appcc", "aceite"]) },
-    { titulo: "Sistema", items: pick(["auditoria", "diagnostico", "respaldos", "notificaciones", "errores_sistema", "locales"]) }
+    { titulo: "Sistema", items: pick(["auditoria", "respaldos", "notificaciones", "locales", "errores_sistema"]) }
   ];
-  const gruposB = [
-    { titulo: null, items: pick(["dashboard", "buscar"]) },
-    { titulo: "Ciclo de compra", items: pick(["proveedores", "pedidos", "recepcion", "albaranes", "pagos", "facturas"]) },
-    { titulo: "Ciclo de almac\xE9n", items: pick(["productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos"]) },
-    { titulo: "Ciclo de venta", items: pick(["venta", "encargos", "clientes", "devoluciones"]) },
-    { titulo: "Ciclo de coste y an\xE1lisis", items: pick(["fichas", "produccion", "mermas", "etiquetas", "direccion", "resultados", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
-    { titulo: "Ciclo de personal", items: pick(["personal", "fichaje", "turnos", "nominas"]) },
-    { titulo: "Ciclo de calidad", items: pick(["appcc", "aceite"]) },
-    { titulo: "Ajustes", items: pick(["auditoria", "diagnostico", "respaldos", "notificaciones", "errores_sistema", "locales"]) }
-  ];
-  const categoriasC = {
-    comprar: { titulo: "Comprar", items: pick(["proveedores", "pedidos", "recepcion", "albaranes", "pagos"]) },
-    almacen: { titulo: "Almac\xE9n", items: pick(["buscar", "productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos"]) },
-    mas: [
-      { titulo: "Vender", items: pick(["venta", "encargos", "clientes", "devoluciones"]) },
-      { titulo: "Dinero", items: pick(["direccion", "resultados", "facturas", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
-      { titulo: "Producto", items: pick(["fichas", "produccion", "mermas", "etiquetas"]) },
-      { titulo: "Equipo", items: pick(["personal", "fichaje", "turnos", "nominas"]) },
-      { titulo: "Calidad", items: pick(["appcc", "aceite"]) },
-      { titulo: "Ajustes", items: pick(["auditoria", "diagnostico", "respaldos", "notificaciones", "errores_sistema", "locales"]) }
-    ]
+  const mostrarEnlaceDevolucionProveedor = pick(["proveedores"]).length > 0 && pick(["devoluciones"]).length > 0;
+  const irADevolucionProveedor = () => {
+    setSaltoDevolucionProveedor((n) => n + 1);
+    cambiarTabPM15("devoluciones");
   };
-  return /* @__PURE__ */ import_react4.default.createElement("div", { "data-tema": temaOscuro ? "oscuro" : "claro", style: { background: C2.bg, color: C2.ink, fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui" }, className: disenoMenu === "C" ? "w-full min-h-[700px] flex flex-col text-[14px]" : "w-full min-h-[700px] flex flex-col md:flex-row text-[14px]" }, fallosGuardado.length > 0 && /* @__PURE__ */ import_react4.default.createElement(
+  const pestanasFijasMovil = pick(TAB_PRIORITIES_MOVIL[rolNavegacionMovil] || ["dashboard"]);
+  return /* @__PURE__ */ import_react4.default.createElement("div", { "data-tema": temaOscuro ? "oscuro" : "claro", style: { background: C2.bg, color: C2.ink, fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui" }, className: "w-full min-h-[700px] flex flex-col md:flex-row text-[14px]" }, fallosGuardado.length > 0 && /* @__PURE__ */ import_react4.default.createElement(
     "div",
     {
       className: "text-[12.5px] px-3 py-2 flex items-center justify-between gap-2",
@@ -2783,14 +2777,12 @@ function GestionAlmacen() {
             --c-red-soft: #F7E5E1 !important;
           }
         }
-      `), disenoMenu === "C" ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(TopBarC, { disenoMenu, setDisenoMenu, tab, setTab: cambiarTabPM15, pendientes: pedidosPendientesDelLocalActivo.length, temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil, contextoActivoPM15 }), /* @__PURE__ */ import_react4.default.createElement("main", { className: "flex-1 p-4 overflow-y-auto", style: { maxHeight: "900px" } }, contenido), /* @__PURE__ */ import_react4.default.createElement(BottomNavC, { tab, setTab: cambiarTabPM15, categorias: categoriasC, dashboardItem: porId("dashboard") })) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(
+      `), /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(BarraSuperiorMovil, { temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil, contextoActivoPM15 }), /* @__PURE__ */ import_react4.default.createElement(
     SidebarGrupos,
     {
-      grupos: disenoMenu === "A" ? gruposA : gruposB,
+      grupos: GRUPOS,
       tab,
       setTab: cambiarTabPM15,
-      disenoMenu,
-      setDisenoMenu,
       temaOscuro,
       setTemaOscuro,
       modoEmpleado,
@@ -2800,9 +2792,11 @@ function GestionAlmacen() {
       entrarComoEmpleado,
       pinPropietario,
       miPerfil,
-      contextoActivoPM15
+      contextoActivoPM15,
+      mostrarEnlaceDevolucionProveedor,
+      irADevolucionProveedor
     }
-  ), /* @__PURE__ */ import_react4.default.createElement("main", { className: "flex-1 p-4 md:p-7 overflow-y-auto", style: { maxHeight: "900px" } }, contenido)), showBackupView && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowBackupView(false), title: "Tu respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2", style: { color: C2.ink } }, 'Copia este texto y gu\xE1rdalo en alg\xFAn lugar seguro (notas, correo, Google Drive). Para restaurarlo m\xE1s adelante, p\xE9galo en "Restaurar respaldo".'), /* @__PURE__ */ import_react4.default.createElement(
+  ), /* @__PURE__ */ import_react4.default.createElement("main", { className: "flex-1 p-4 md:p-7 overflow-y-auto", style: { maxHeight: "900px" } }, contenido), /* @__PURE__ */ import_react4.default.createElement(NavInferior, { tab, setTab: cambiarTabPM15, grupos: GRUPOS, pestanasFijas: pestanasFijasMovil, mostrarEnlaceDevolucionProveedor, irADevolucionProveedor })), showBackupView && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowBackupView(false), title: "Tu respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2", style: { color: C2.ink } }, 'Copia este texto y gu\xE1rdalo en alg\xFAn lugar seguro (notas, correo, Google Drive). Para restaurarlo m\xE1s adelante, p\xE9galo en "Restaurar respaldo".'), /* @__PURE__ */ import_react4.default.createElement(
     "textarea",
     {
       readOnly: true,
@@ -8320,26 +8314,6 @@ function crearLogicaPrefiltros({ registrarAuditoria, empresaId, localId }) {
   }
   return { crearPrefiltro, listarPrefiltros, eliminarPrefiltro };
 }
-function SelectorDiseno({ disenoMenu, setDisenoMenu, oscuro = false }) {
-  const opciones = [
-    { id: "A", label: "Depart." },
-    { id: "B", label: "Ciclos" },
-    { id: "C", label: "R\xE1pido" }
-  ];
-  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1 rounded-lg p-0.5 shrink-0", style: { background: oscuro ? "rgba(255,255,255,0.08)" : C2.bg } }, opciones.map((o22) => /* @__PURE__ */ import_react4.default.createElement(
-    "button",
-    {
-      key: o22.id,
-      onClick: () => setDisenoMenu(o22.id),
-      className: "text-[10.5px] font-semibold px-2 py-1 rounded-md whitespace-nowrap",
-      style: {
-        background: disenoMenu === o22.id ? C2.accentFill : "transparent",
-        color: disenoMenu === o22.id ? C2.onAccent : oscuro ? "#B9C7C0" : C2.inkSoft
-      }
-    },
-    o22.label
-  )));
-}
 function BotonTema({ temaOscuro, setTemaOscuro }) {
   return /* @__PURE__ */ import_react4.default.createElement(
     "button",
@@ -8451,8 +8425,8 @@ function BotonModoEmpleado({ modoEmpleado, salirModoEmpleado, empleados = [], us
     "\u{1F512} Cerrar sesi\xF3n"
   ), confirmarLogoutPropietarioPM17 && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => !cerrandoSesionPropietarioPM17 && setConfirmarLogoutPropietarioPM17(false), title: "Cerrar sesi\xF3n" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-4" }, "Vas a cerrar la sesi\xF3n de Propietario solo en este dispositivo. Los datos del negocio no se modificar\xE1n."), errorLogoutPropietarioPM17 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", role: "alert", style: { color: C2.red } }, errorLogoutPropietarioPM17), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: cerrarSesionPropietarioPM17, disabled: cerrandoSesionPropietarioPM17 }, cerrandoSesionPropietarioPM17 ? "Cerrando…" : "Cerrar sesi\xF3n"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmarLogoutPropietarioPM17(false), disabled: cerrandoSesionPropietarioPM17 }, "Cancelar")))));
 }
-function SidebarGrupos({ grupos, tab, setTab, disenoMenu, setDisenoMenu, temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil, contextoActivoPM15 = "" }) {
-  return /* @__PURE__ */ import_react4.default.createElement("aside", { style: { background: C2.chrome, color: "#fff" }, className: "w-full md:w-64 shrink-0 p-4 md:p-5 flex md:flex-col gap-1 overflow-x-auto md:overflow-visible" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "hidden md:block mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "rounded-xl px-3 py-3.5 mb-2.5", style: { background: "rgba(184,139,69,0.07)", border: "1px solid rgba(184,139,69,0.24)" } }, /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO_PROYECTO, alt: "", style: { width: "100%", height: "auto", display: "block" } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] tracking-widest uppercase mb-3", style: { color: "#9CB6A9" } }, LEMA_PROYECTO), contextoActivoPM15 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-3", style: { color: "#E2D3B8" } }, contextoActivoPM15), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(SelectorDiseno, { disenoMenu, setDisenoMenu, oscuro: true }), /* @__PURE__ */ import_react4.default.createElement(BotonTema, { temaOscuro, setTemaOscuro }), /* @__PURE__ */ import_react4.default.createElement(BotonModoEmpleado, { modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "md:hidden shrink-0 flex items-center gap-1.5 pr-2" }, /* @__PURE__ */ import_react4.default.createElement("img", { src: ICONO_PROYECTO, alt: "L&A Suite", style: { width: 30, height: 30, borderRadius: 7, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement(SelectorDiseno, { disenoMenu, setDisenoMenu, oscuro: true }), /* @__PURE__ */ import_react4.default.createElement(BotonTema, { temaOscuro, setTemaOscuro }), /* @__PURE__ */ import_react4.default.createElement(BotonModoEmpleado, { modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil })), grupos.map((g2, gi) => /* @__PURE__ */ import_react4.default.createElement("div", { key: gi, className: "contents md:block md:mb-1" }, g2.titulo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "hidden md:block text-[10.5px] font-semibold uppercase tracking-wide mt-3 mb-1 px-3", style: { color: "#7E9186" } }, g2.titulo), g2.titulo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "md:hidden shrink-0 self-stretch mx-1", style: { borderLeft: "1px solid rgba(255,255,255,0.15)" } }), g2.items.map((it2) => {
+function SidebarGrupos({ grupos, tab, setTab, temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil, contextoActivoPM15 = "", mostrarEnlaceDevolucionProveedor = false, irADevolucionProveedor }) {
+  return /* @__PURE__ */ import_react4.default.createElement("aside", { style: { background: C2.chrome, color: "#fff" }, className: "hidden md:flex md:w-64 shrink-0 p-4 md:p-5 md:flex-col gap-1" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "rounded-xl px-3 py-3.5 mb-2.5", style: { background: "rgba(184,139,69,0.07)", border: "1px solid rgba(184,139,69,0.24)" } }, /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO_PROYECTO, alt: "", style: { width: "100%", height: "auto", display: "block" } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] tracking-widest uppercase mb-3", style: { color: "#9CB6A9" } }, LEMA_PROYECTO), contextoActivoPM15 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-3", style: { color: "#E2D3B8" } }, contextoActivoPM15), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(BotonTema, { temaOscuro, setTemaOscuro }), /* @__PURE__ */ import_react4.default.createElement(BotonModoEmpleado, { modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil }))), grupos.map((g2, gi) => /* @__PURE__ */ import_react4.default.createElement("div", { key: gi, className: "mb-1" }, g2.titulo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] font-semibold uppercase tracking-wide mt-3 mb-1 px-3", style: { color: "#7E9186" } }, g2.titulo), g2.items.map((it2) => {
     const Icon2 = it2.icon;
     const active = tab === it2.id;
     return /* @__PURE__ */ import_react4.default.createElement(
@@ -8460,7 +8434,7 @@ function SidebarGrupos({ grupos, tab, setTab, disenoMenu, setDisenoMenu, temaOsc
       {
         key: it2.id,
         onClick: () => setTab(it2.id),
-        className: "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left shrink-0 md:shrink",
+        className: "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left w-full",
         style: {
           background: active ? "rgba(255,255,255,0.12)" : "transparent",
           color: active ? "#fff" : "#B9C7C0"
@@ -8477,10 +8451,19 @@ function SidebarGrupos({ grupos, tab, setTab, disenoMenu, setDisenoMenu, temaOsc
         it2.badge
       )
     );
-  }))));
+  }), g2.titulo === "Compras" && mostrarEnlaceDevolucionProveedor && /* @__PURE__ */ import_react4.default.createElement(
+    "button",
+    {
+      onClick: irADevolucionProveedor,
+      className: "flex items-center gap-1.5 pl-6 pr-3 py-1.5 rounded-lg text-left w-full",
+      style: { color: "#9CB6A9", fontStyle: "italic" }
+    },
+    /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11.5px]" }, "Devoluciones a proveedor"),
+    /* @__PURE__ */ import_react4.default.createElement(ChevronRight, { size: 12 })
+  ))));
 }
-function TopBarC({ disenoMenu, setDisenoMenu, temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil, contextoActivoPM15 = "" }) {
-  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between px-4 py-2.5 shrink-0", style: { background: C2.chrome, color: "#fff" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2 min-w-0" }, /* @__PURE__ */ import_react4.default.createElement("img", { src: ICONO_PROYECTO, alt: "", style: { height: 30, width: 30, borderRadius: 7, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold truncate", style: { color: "#C69A52", letterSpacing: "0.02em" } }, NOMBRE_PROYECTO), contextoActivoPM15 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-medium", style: { color: "#E2D3B8" } }, contextoActivoPM15))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement(SelectorDiseno, { disenoMenu, setDisenoMenu, oscuro: true }), /* @__PURE__ */ import_react4.default.createElement(BotonTema, { temaOscuro, setTemaOscuro }), /* @__PURE__ */ import_react4.default.createElement(BotonModoEmpleado, { modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil })));
+function BarraSuperiorMovil({ temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil, contextoActivoPM15 = "" }) {
+  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "md:hidden flex items-center justify-between px-4 py-2.5 shrink-0", style: { background: C2.chrome, color: "#fff" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2 min-w-0" }, /* @__PURE__ */ import_react4.default.createElement("img", { src: ICONO_PROYECTO, alt: "", style: { height: 30, width: 30, borderRadius: 7, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold truncate", style: { color: "#C69A52", letterSpacing: "0.02em" } }, NOMBRE_PROYECTO), contextoActivoPM15 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-medium", style: { color: "#E2D3B8" } }, contextoActivoPM15))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement(BotonTema, { temaOscuro, setTemaOscuro }), /* @__PURE__ */ import_react4.default.createElement(BotonModoEmpleado, { modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil })));
 }
 function BotonItemSheet({ it: it2, tab, onPick }) {
   const Icon2 = it2.icon;
@@ -8497,28 +8480,45 @@ function BotonItemSheet({ it: it2, tab, onPick }) {
     !!it2.badge && /* @__PURE__ */ import_react4.default.createElement("span", { className: "ml-auto text-[13px] font-semibold px-2 py-1 rounded-full mono", style: { background: it2.badgeColor || C2.accentFill, color: it2.badgeTextColor || C2.onAccent, boxShadow: `0 0 0 1px ${C2.badgeRing}` } }, it2.badge)
   );
 }
-function BottomNavC({ tab, setTab, categorias, dashboardItem }) {
-  const [sheet, setSheet] = (0, import_react4.useState)(null);
-  const enComprar = categorias.comprar.items.some((i33) => i33.id === tab);
-  const enAlmacen = categorias.almacen.items.some((i33) => i33.id === tab);
-  const enMas = categorias.mas.some((g2) => g2.items.some((i33) => i33.id === tab));
-  const enHoy = tab === "dashboard";
-  const badgeComprar = categorias.comprar.items.some((i33) => i33.badge > 0);
-  const badgeAlmacen = categorias.almacen.items.some((i33) => i33.badge > 0);
-  const badgeMas = categorias.mas.some((g2) => g2.items.some((i33) => i33.badge > 0));
-  function BotonNav({ activo, icon: Icon2, label, onClick, badge }) {
-    return /* @__PURE__ */ import_react4.default.createElement("button", { onClick, className: "flex-1 flex flex-col items-center gap-0.5 py-2 relative" }, /* @__PURE__ */ import_react4.default.createElement(Icon2, { size: 20, color: activo ? C2.accent : C2.inkSoft }), /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[10.5px] font-medium", style: { color: activo ? C2.accent : C2.inkSoft } }, label), !!badge && /* @__PURE__ */ import_react4.default.createElement("span", { className: "absolute top-1.5 right-[28%] w-2 h-2 rounded-full", style: { background: C2.red } }));
-  }
-  return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex shrink-0", style: { background: C2.surface, borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement(BotonNav, { activo: enHoy, icon: ChartColumn, label: "Hoy", onClick: () => setTab("dashboard") }), /* @__PURE__ */ import_react4.default.createElement(BotonNav, { activo: enComprar, icon: ShoppingCart, label: "Comprar", onClick: () => setSheet("comprar"), badge: badgeComprar }), /* @__PURE__ */ import_react4.default.createElement(BotonNav, { activo: enAlmacen, icon: Package, label: "Almac\xE9n", onClick: () => setSheet("almacen"), badge: badgeAlmacen }), /* @__PURE__ */ import_react4.default.createElement(BotonNav, { activo: enMas, icon: Ellipsis, label: "M\xE1s", onClick: () => setSheet("mas"), badge: badgeMas })), sheet === "comprar" && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setSheet(null), title: categorias.comprar.titulo }, categorias.comprar.items.map((it2) => /* @__PURE__ */ import_react4.default.createElement(BotonItemSheet, { key: it2.id, it: it2, tab, onPick: () => {
+function NavInferior({ tab, setTab, grupos, pestanasFijas, mostrarEnlaceDevolucionProveedor = false, irADevolucionProveedor }) {
+  const [abierto, setAbierto] = (0, import_react4.useState)(false);
+  const idsFijos = new Set(pestanasFijas.map((it2) => it2.id));
+  const ETIQUETA_PESTANA = { dashboard: "Inicio", fichaje: "Fichaje" };
+  const otros = grupos.map((g2) => ({ titulo: g2.titulo, items: g2.items.filter((it2) => !idsFijos.has(it2.id)) })).filter((g2) => g2.items.length > 0 || g2.titulo === "Compras" && mostrarEnlaceDevolucionProveedor);
+  const hayBadgeEnOtros = otros.some((g2) => g2.items.some((it2) => it2.badge > 0));
+  return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "md:hidden flex shrink-0", style: { background: C2.surface, borderTop: `1px solid ${C2.line}` } }, pestanasFijas.map((it2) => {
+    const Icon2 = it2.icon;
+    const active = tab === it2.id;
+    return /* @__PURE__ */ import_react4.default.createElement(
+      "button",
+      { key: it2.id, onClick: () => setTab(it2.id), className: "flex-1 flex flex-col items-center gap-0.5 py-2 relative", style: { minHeight: 48 } },
+      active && /* @__PURE__ */ import_react4.default.createElement("span", { className: "absolute top-0 left-1/2 -translate-x-1/2 rounded-b", style: { width: 22, height: 2.5, background: C2.accentFill } }),
+      /* @__PURE__ */ import_react4.default.createElement(Icon2, { size: 20, color: active ? C2.accent : C2.inkSoft }),
+      /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[10.5px] font-medium", style: { color: active ? C2.accent : C2.inkSoft } }, ETIQUETA_PESTANA[it2.id] || it2.label),
+      !!it2.badge && /* @__PURE__ */ import_react4.default.createElement("span", { className: "absolute top-1.5 right-[28%] w-2 h-2 rounded-full", style: { background: C2.red } })
+    );
+  }), /* @__PURE__ */ import_react4.default.createElement(
+    "button",
+    { onClick: () => setAbierto(true), className: "flex-1 flex flex-col items-center gap-0.5 py-2 relative", style: { minHeight: 48 } },
+    /* @__PURE__ */ import_react4.default.createElement(Ellipsis, { size: 20, color: C2.inkSoft }),
+    /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[10.5px] font-medium", style: { color: C2.inkSoft } }, "M\xE1s"),
+    hayBadgeEnOtros && /* @__PURE__ */ import_react4.default.createElement("span", { className: "absolute top-1.5 right-[28%] w-2 h-2 rounded-full", style: { background: C2.red } })
+  )), abierto && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setAbierto(false), title: "M\xE1s" }, otros.map((g2, gi) => /* @__PURE__ */ import_react4.default.createElement("div", { key: gi, className: "mb-3" }, g2.titulo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, g2.titulo), g2.items.map((it2) => /* @__PURE__ */ import_react4.default.createElement(BotonItemSheet, { key: it2.id, it: it2, tab, onPick: () => {
     setTab(it2.id);
-    setSheet(null);
-  } }))), sheet === "almacen" && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setSheet(null), title: categorias.almacen.titulo }, categorias.almacen.items.map((it2) => /* @__PURE__ */ import_react4.default.createElement(BotonItemSheet, { key: it2.id, it: it2, tab, onPick: () => {
-    setTab(it2.id);
-    setSheet(null);
-  } }))), sheet === "mas" && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setSheet(null), title: "M\xE1s" }, categorias.mas.map((g2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: g2.titulo, className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, g2.titulo), g2.items.map((it2) => /* @__PURE__ */ import_react4.default.createElement(BotonItemSheet, { key: it2.id, it: it2, tab, onPick: () => {
-    setTab(it2.id);
-    setSheet(null);
-  } }))))));
+    setAbierto(false);
+  } })), g2.titulo === "Compras" && mostrarEnlaceDevolucionProveedor && /* @__PURE__ */ import_react4.default.createElement(
+    "button",
+    {
+      onClick: () => {
+        irADevolucionProveedor();
+        setAbierto(false);
+      },
+      className: "w-full flex items-center justify-between gap-2.5 px-3 py-2.5 rounded-lg text-left mb-1",
+      style: { background: C2.bg, color: C2.inkSoft, fontStyle: "italic" }
+    },
+    /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12.5px]" }, "Devoluciones a proveedor"),
+    /* @__PURE__ */ import_react4.default.createElement(ChevronRight, { size: 13 })
+  )))));
 }
 function Card({ children, className = "", style = {} }) {
   return /* @__PURE__ */ import_react4.default.createElement("div", { className: `rounded-xl p-4 ${className}`, style: { background: C2.surface, border: `1px solid ${C2.line}`, ...style } }, children);
@@ -13907,9 +13907,12 @@ function LibroIva({ movimientos, productos, albaranes, proveedorPorId, facturasD
   const filas = [.../* @__PURE__ */ new Set([...Object.keys(repercutido), ...Object.keys(soportado)])].sort((a22, b2) => Number(a22) - Number(b2));
   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Libro de IVA"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Resumen trimestral de control: concilia IVA repercutido de operaciones de venta e IVA soportado de compras por tipo. Es una proyecci\xF3n interna, no sustituye la documentaci\xF3n fiscal ni la revisi\xF3n de tu gestor\xEDa.")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Trimestre" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: trimestre, onChange: (e2) => setTrimestre(Number(e2.target.value)), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: 1 }, "1T \u2014 Enero a Marzo"), /* @__PURE__ */ import_react4.default.createElement("option", { value: 2 }, "2T \u2014 Abril a Junio"), /* @__PURE__ */ import_react4.default.createElement("option", { value: 3 }, "3T \u2014 Julio a Septiembre"), /* @__PURE__ */ import_react4.default.createElement("option", { value: 4 }, "4T \u2014 Octubre a Diciembre"))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "A\xF1o" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: anio, onChange: (e2) => setAnio(Number(e2.target.value) || hoy.getFullYear()) }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Del ", desde, " al ", hasta)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "IVA repercutido (ventas)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: C2.accent } }, "\u20AC", fmt(totalRep.cuota))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "IVA soportado (compras)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1" }, "\u20AC", fmt(totalSop.cuota)))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.chrome, color: "#fff" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[13px] font-medium" }, resultado >= 0 ? "A ingresar en Hacienda" : "A compensar / devolver"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-bold text-[19px]" }, "\u20AC", fmt(Math.abs(resultado))))), filas.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay ventas ni compras registradas en este trimestre." }) : /* @__PURE__ */ import_react4.default.createElement(Card, { style: { padding: 0 }, className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", { style: { color: C2.inkSoft, borderBottom: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2 px-3" }, "Tipo"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-right font-medium py-2 px-3" }, "Base repercutida"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-right font-medium py-2 px-3" }, "Base soportada"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, filas.map((tipo) => /* @__PURE__ */ import_react4.default.createElement("tr", { key: tipo, style: { borderBottom: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-3 mono" }, tipo, "%"), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-3 mono text-right" }, repercutido[tipo] ? `\u20AC${fmt(repercutido[tipo].base)}` : "\u2014"), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-3 mono text-right" }, soportado[tipo] ? `\u20AC${fmt(soportado[tipo].base)}` : "\u2014")))))), resumenIvaVentas.pendientes.length > 0 ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft || C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold" }, `${resumenIvaVentas.pendientes.length} corrección(es) requieren revisión fiscal`), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Las devoluciones sin reembolso, los importes de reembolso que no coinciden con el valor asociado o las operaciones sin IVA histórico no se convierten silenciosamente en una cifra fiscal definitiva.")) : null, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: exportarExcel }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 14 }), " Exportar a Excel"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Ventas y REVERSO usan su snapshot hist\xF3rico y la fecha de cada operaci\xF3n. Las devoluciones con reembolso se proyectan por el importe realmente corregido; SIN_REEMBOLSO queda pendiente de criterio/documentaci\xF3n fiscal. Caja y medio de pago no determinan por s\xED solos el IVA."));
 }
-function Devoluciones({ productos = [], proveedores = [], devoluciones = [], movimientos = [], registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion }) {
+function Devoluciones({ productos = [], proveedores = [], devoluciones = [], movimientos = [], registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion, saltoProveedor = 0 }) {
   const h3 = import_react4.default.createElement;
   const [vista, setVista] = import_react4.default.useState("cliente");
+  (0, import_react4.useEffect)(() => {
+    if (saltoProveedor) setVista("proveedor");
+  }, [saltoProveedor]);
   const [productoId, setProductoId] = import_react4.default.useState("");
   const [ventaClave, setVentaClave] = import_react4.default.useState("");
   const [cantidad, setCantidad] = import_react4.default.useState("");
