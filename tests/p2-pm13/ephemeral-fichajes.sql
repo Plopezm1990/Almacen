@@ -117,6 +117,8 @@ select public.p2_pm13_assert((public.pm13_fichar('emp-a','l1','entrada','self-en
 select public.p2_pm13_assert((public.pm13_fichar('emp-a','l1','entrada','self-entry')->>'replay')::boolean,'self replay failed');
 select public.p2_pm13_assert((select count(*)=1 from public.fichajes_registro where datos->>'operationId'='self-entry'),'self replay duplicated');
 select public.p2_pm13_assert((public.pm13_fichar('emp-a','l1','entrada','self-entry-2')->>'codigo')='FICHAJE_YA_ABIERTO','sequence duplicate entry accepted');
+select public.p2_pm13_assert((public.pm13_fichar('emp-a','l1','salida','self-exit')->>'ok')::boolean,'self exit failed');
+select public.p2_pm13_assert((public.pm13_fichar('emp-a','l1','salida','self-exit')->>'replay')::boolean,'self exit replay failed');
 select public.p2_pm13_expect_error($q$select public.pm13_fichaje_manual('emp-a','l1',current_date-1,'09:00','entrada','cashier-manual','x')$q$,'fichaje_manual_no_autorizado');
 select public.p2_pm13_expect_error($q$insert into public.fichajes_registro(id,fecha,datos) values('direct',current_date,'{}'::jsonb)$q$,'permission denied');
 reset role;
@@ -135,9 +137,9 @@ select public.p2_pm13_assert((public.pm13_corregir_fichaje((select id from publi
 select public.p2_pm13_expect_error($q$select public.pm13_corregir_fichaje((select id from public.fichajes_registro where datos->>'operationId'='manual-out'),current_date-1,'19:00','salida','corr-1','ajuste')$q$,'fichaje_correccion_operation_id_conflicto');
 select public.p2_pm13_assert((select jsonb_array_length(datos->'historialCorrecciones')=1 from public.fichajes_registro where datos->>'operationId'='manual-out'),'correction replay duplicated history');
 
-select public.p2_pm13_assert((public.pm13_anular_fichaje((select id from public.fichajes_registro where datos->>'operationId'='self-entry'),'annul-1','error de fichaje')->>'ok')::boolean,'annul failed');
-select public.p2_pm13_assert((public.pm13_anular_fichaje((select id from public.fichajes_registro where datos->>'operationId'='self-entry'),'annul-1','error de fichaje')->>'replay')::boolean,'annul replay failed');
-select public.p2_pm13_expect_error($q$select public.pm13_anular_fichaje((select id from public.fichajes_registro where datos->>'operationId'='self-entry'),'annul-2','otro')$q$,'fichaje_ya_anulado');
+select public.p2_pm13_assert((public.pm13_anular_fichaje((select id from public.fichajes_registro where datos->>'operationId'='self-exit'),'annul-1','error de fichaje')->>'ok')::boolean,'annul failed');
+select public.p2_pm13_assert((public.pm13_anular_fichaje((select id from public.fichajes_registro where datos->>'operationId'='self-exit'),'annul-1','error de fichaje')->>'replay')::boolean,'annul replay failed');
+select public.p2_pm13_expect_error($q$select public.pm13_anular_fichaje((select id from public.fichajes_registro where datos->>'operationId'='self-exit'),'annul-2','otro')$q$,'fichaje_ya_anulado');
 reset role;
 
 -- Aislamiento tenant/local de lectura.
