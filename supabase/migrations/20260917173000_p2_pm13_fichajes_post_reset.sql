@@ -398,6 +398,7 @@ revoke all on function public.pm13_fichaje_manual(text,text,date,text,text,text,
 revoke all on function public.pm13_corregir_fichaje(text,date,text,text,text,text) from public,anon,authenticated;
 revoke all on function public.pm13_anular_fichaje(text,text,text) from public,anon,authenticated;
 
+grant execute on function private.pm13_fichaje_actor_es_empleado(text) to authenticated;
 grant execute on function public.pm13_fichar(text,text,text,text) to authenticated;
 grant execute on function public.pm13_fichaje_manual(text,text,date,text,text,text,text) to authenticated;
 grant execute on function public.pm13_corregir_fichaje(text,date,text,text,text,text) to authenticated;
