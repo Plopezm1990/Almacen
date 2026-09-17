@@ -88,6 +88,10 @@ set role authenticated;
 select public.pm11_alta_empleado('e2','b1','emp-b','Empleado B','{}'::jsonb);
 reset role;
 
+-- Fixture privilegiada para comprobar cierre por local inactivo.
+insert into public.empleados(id,empresa_id,local_id,estado,nombre,datos)
+values('emp-inactive','e1','l2','activo','Empleado Local Inactivo','{"id":"emp-inactive","empresaId":"e1","localId":"l2","nombre":"Empleado Local Inactivo","activo":true,"estado":"activo"}'::jsonb);
+
 update public.perfiles set empleado_id='emp-a' where user_id='33333333-3333-3333-3333-333333333333';
 
 \ir ../../supabase/migrations/20260917173000_p2_pm13_fichajes_post_reset.sql
@@ -123,6 +127,7 @@ select public.p2_pm13_assert((public.pm13_fichaje_manual('emp-a','l1',current_da
 select public.p2_pm13_assert((public.pm13_fichaje_manual('emp-a','l1',current_date-1,'17:00','salida','manual-out','turno')->>'ok')::boolean,'manual exit failed');
 select public.p2_pm13_assert((public.pm13_fichaje_manual('emp-a','l1',current_date-1,'17:00','salida','manual-out','turno')->>'replay')::boolean,'manual replay failed');
 select public.p2_pm13_expect_error($q$select public.pm13_fichaje_manual('emp-conc','l1',current_date-2,'08:00','entrada','manual-in','otro')$q$,'fichaje_operation_id_conflicto');
+select public.p2_pm13_expect_error($q$select public.pm13_fichaje_manual('emp-inactive','l2',current_date-1,'09:00','entrada','inactive-local','x')$q$,'fichaje_empleado_no_activo_o_fuera_de_local');
 
 select public.p2_pm13_assert((public.pm13_corregir_fichaje((select id from public.fichajes_registro where datos->>'operationId'='manual-out'),current_date-1,'18:00','salida','corr-1','ajuste')->>'ok')::boolean,'correction failed');
 select public.p2_pm13_assert((public.pm13_corregir_fichaje((select id from public.fichajes_registro where datos->>'operationId'='manual-out'),current_date-1,'18:00','salida','corr-1','ajuste')->>'replay')::boolean,'correction replay failed');
@@ -147,10 +152,5 @@ set role authenticated;
 select public.p2_pm13_expect_error($q$select public.pm13_fichar('emp-a','l1','entrada','spoof-cross-tenant')$q$,'fichaje_actor_no_autorizado');
 reset role;
 update public.perfiles set empleado_id=null where user_id='44444444-4444-4444-4444-444444444444';
-
--- Local inactivo falla cerrado aunque el empleado exista allí.
-update public.empleados set local_id='l2' where id='emp-conc';
--- El trigger PM11 prohíbe traslado directo: la prueba anterior debe fallar, así que restauramos por vía de fixture privilegiada no es válida.
--- Mantener emp-conc en l1 para la carrera posterior.
 
 select 'P2_PM13_EPHEMERAL_OK=1' as result;
