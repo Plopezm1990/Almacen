@@ -26,6 +26,14 @@
 -- alguna empresa activa, y eso es lo que ahora comprueba; por empresa era mas
 -- estricto de lo necesario.
 --
+-- Segundo ajuste en 'locales', tambien imprescindible: la comprobacion de
+-- pertenencia exigia que la empresa del local estuviera activa. En cuanto una
+-- empresa se da de baja, sus locales (ya inactivos) siguen viajando en la lista
+-- que manda el cliente y hacian fallar el lote ENTERO, de modo que dejaba de
+-- poder guardarse ningun local, ni los de las empresas sanas. Se detecto en
+-- produccion al dar de baja la primera empresa real. Ahora la pertenencia se
+-- exige siempre y la empresa activa solo para tener el local ACTIVO.
+--
 -- Este archivo NO se aplica automaticamente a produccion desde esta rama.
 begin;
 
@@ -176,16 +184,28 @@ begin
         raise exception 'Identidad de local inválida' using errcode = '22023';
       end if;
 
+      -- La pertenencia se exige siempre: el local tiene que ser de una empresa
+      -- del propietario.
       if not exists (
         select 1
         from public.membresias_usuario m
-        join public.empresas e on e.id = m.empresa_id and e.activo = true
         where m.user_id = v_uid
           and m.empresa_id = v_empresa_id
           and m.activo = true
           and m.rol = 'Propietario'
       ) then
         raise exception 'Empresa del local fuera del alcance del Propietario' using errcode = '42501';
+      end if;
+
+      -- Que la empresa este activa solo se exige para tener el local ACTIVO. Un
+      -- local ya inactivo de una empresa dada de baja tiene que poder seguir en
+      -- la lista sin tumbar el guardado de todos los demas.
+      if v_activo = true
+         and not exists (
+           select 1 from public.empresas e
+           where e.id = v_empresa_id and e.activo = true
+         ) then
+        raise exception 'La empresa del local esta dada de baja: reactivala antes' using errcode = '22023';
       end if;
 
       if exists (select 1 from public.locales l where l.id = v_id) then

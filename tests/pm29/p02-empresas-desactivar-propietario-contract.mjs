@@ -76,6 +76,27 @@ const src = fs.readFileSync('fuente.js', 'utf8');
     'el freno del ultimo local debe mirar los locales activos del propietario'
   );
 
+  // Segundo fallo, este detectado ya en produccion: la comprobacion de
+  // pertenencia exigia que la empresa del local estuviera activa. Como el
+  // cliente manda SIEMPRE la lista completa de locales, en cuanto una empresa
+  // se daba de baja su local (ya inactivo) seguia en la lista y tumbaba el
+  // lote entero: dejaba de poder guardarse ningun local.
+  const pertenencia = ramaLocales.slice(
+    ramaLocales.indexOf('Identidad de local'),
+    ramaLocales.indexOf('El local pertenece a otra empresa')
+  );
+  assert.doesNotMatch(
+    pertenencia,
+    /join public\.empresas e on e\.id = m\.empresa_id and e\.activo = true/,
+    'la pertenencia del local no puede exigir que la empresa este activa'
+  );
+  assert.match(
+    pertenencia,
+    /if v_activo = true\s+and not exists \(\s+select 1 from public\.empresas e\s+where e\.id = v_empresa_id and e\.activo = true/,
+    'la empresa activa solo debe exigirse para tener el local ACTIVO'
+  );
+  console.log('P02_LOCAL_DE_EMPRESA_BAJA_NO_TUMBA_EL_LOTE=PASS');
+
   // Lo que NO debe cambiar: sigue sin borrarse ninguna fila y sigue exigiendose
   // Propietario. Una baja logica que borrase la fila destruiria el historico.
   assert.doesNotMatch(sql, /delete\s+from\s+public\.(empresas|locales)/i, 'la baja debe ser logica, nunca un DELETE');
