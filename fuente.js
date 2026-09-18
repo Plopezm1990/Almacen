@@ -102138,6 +102138,16 @@ function GestionAlmacen() {
     if (ready && !skipSaveRef.current) saveKey("devoluciones", devoluciones);
   }, [devoluciones, ready]);
   (0, import_react4.useEffect)(() => {
+    function onContextoUiPM29(ev) {
+      const d3 = ev && ev.detail ? ev.detail : {};
+      const mismo = (a3, b3) => JSON.stringify(a3) === JSON.stringify(b3);
+      if (Array.isArray(d3.empresas)) setEmpresas((prev) => mismo(prev, d3.empresas) ? prev : d3.empresas);
+      if (Array.isArray(d3.locales)) setLocales((prev) => mismo(prev, d3.locales) ? prev : d3.locales);
+    }
+    window.addEventListener("contexto-ui-actualizado", onContextoUiPM29);
+    return () => window.removeEventListener("contexto-ui-actualizado", onContextoUiPM29);
+  }, []);
+  (0, import_react4.useEffect)(() => {
     if (ready && !skipSaveRef.current) saveKey("locales", locales);
   }, [locales, ready]);
   (0, import_react4.useEffect)(() => {

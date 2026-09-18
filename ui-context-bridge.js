@@ -106,6 +106,19 @@
         throw new Error("Semilla segura del contexto UI no disponible");
       }
       window.__laOwnerBootstrapSeedUiContext(r.data, actual.sesion.user.id);
+
+      // El servidor puede devolver algo distinto de lo que se le mando: al dar
+      // de baja una empresa desactiva tambien sus locales. La semilla de arriba
+      // deja eso escrito en el navegador, pero la pantalla ya montada seguiria
+      // mostrando el estado anterior hasta recargar, y el siguiente guardado
+      // de locales saldria de una lista que el servidor ya no acepta. Se
+      // anuncia el contexto confirmado para que la UI adopte el del servidor.
+      try {
+        window.dispatchEvent(new CustomEvent("contexto-ui-actualizado", {
+          detail: { empresas: r.data.empresas, locales: r.data.locales }
+        }));
+      } catch (e) {}
+
       return respuesta(key, leerLocal(key));
     }
 
