@@ -95,10 +95,11 @@
     return tarjeta;
   }
 
-  function mostrarBloqueo(mensaje, permitirReintento) {
+  function mostrarBloqueo(mensaje, permitirReintento, opciones) {
+    var op = opciones || {};
     var tarjeta = crearMarco(
-      "Instalación bloqueada de forma segura",
-      "No se abrirá el panel ni se sincronizarán datos hasta resolver el estado del servidor."
+      op.titulo || "Instalación bloqueada de forma segura",
+      op.descripcion || "No se abrirá el panel ni se sincronizarán datos hasta resolver el estado del servidor."
     );
     var aviso = document.createElement("div");
     aviso.style.cssText = "padding:12px 14px;border-radius:12px;background:#fff7e7;border:1px solid #d9b56d;color:#6a4b18;font-size:13px;line-height:1.45";
@@ -108,10 +109,16 @@
     if (permitirReintento) {
       var boton = document.createElement("button");
       boton.type = "button";
-      boton.textContent = "Reintentar comprobación";
+      boton.textContent = op.textoBoton || "Reintentar comprobación";
       boton.style.cssText = "margin-top:16px;width:100%;padding:12px 16px;border:0;border-radius:12px;background:#0C2714;color:#fff;font-weight:700;cursor:pointer";
       boton.addEventListener("click", function () {
+        // Volver a comprobar aqui solo es posible si llegamos a tener cliente
+        // y usuario. Cuando no los hay -- el caso mas habitual, que el
+        // programa no se haya descargado entero -- este boton no hacia nada
+        // en absoluto: reintentar la comprobacion no vuelve a bajar el
+        // archivo que falta. Recargar si.
         if (supabaseActual && usuarioActual) validarSesion(supabaseActual, usuarioActual);
+        else window.location.reload();
       });
       tarjeta.appendChild(boton);
     }
@@ -258,7 +265,22 @@
     }
 
     if (!supabase || !supabase.auth) {
-      mostrarBloqueo("Cliente Supabase no disponible. La aplicación permanece cerrada para proteger el estado post-reset.", true);
+      // `window.getSupabaseClient` la define el propio programa al cargarse, y
+      // en ningun otro sitio. Si no esta, no llego a cargarse: no sabemos nada
+      // del servidor, asi que no se le echa la culpa.
+      if (typeof window.getSupabaseClient !== "function") {
+        mostrarBloqueo(
+          "No se ha podido descargar el programa entero. Suele ser cosa de la conexión: vuelve a cargar la página.",
+          true,
+          {
+            titulo: "No se ha podido cargar el programa",
+            descripcion: "Falta parte del programa, así que el panel no se abre. No se ha perdido ningún dato.",
+            textoBoton: "Volver a cargar"
+          }
+        );
+      } else {
+        mostrarBloqueo("Cliente Supabase no disponible. La aplicación permanece cerrada para proteger el estado post-reset.", true);
+      }
       return;
     }
 
