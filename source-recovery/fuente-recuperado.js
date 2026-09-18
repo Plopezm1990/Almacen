@@ -2626,7 +2626,7 @@ function GestionAlmacen() {
       establecerPin,
       activarModoEmpleado
     }
-  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, diagnosticoLegadosPM10: diagnosticarDatosLegadosPM10({ productos, pedidos: pedidos2, empleados, encargos, proveedores, clientes, locales, empresas }), marcarFormularioAbiertoPM15 }));
+  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, diagnosticoLegadosPM10: diagnosticarDatosLegadosPM10({ productos, pedidos: pedidos2, empleados, encargos, proveedores, clientes, locales, empresas }), marcarFormularioAbiertoPM15 }));
   const itemsMeta = [
     { id: "dashboard", label: "Panel general", icon: ChartColumn },
     { id: "direccion", label: "Panel de direcci\xF3n", icon: TrendingUp },
@@ -11254,7 +11254,53 @@ function FichaEmpresaBasica({ empresa, actualizarEmpresa }) {
     )
   );
 }
-function GestorEmpresas({ empresas, setEmpresas }) {
+async function verificarContrasenaPropietarioPM29(contrasena) {
+  if (!contrasena) return { ok: false, error: "Escribe tu contrase\xF1a." };
+  try {
+    const supabase = await window.getSupabaseClient();
+    const { data } = await supabase.auth.getSession();
+    const correo = data?.session?.user?.email || "";
+    if (!correo) return { ok: false, error: "Necesitas la sesi\xF3n iniciada para hacer esto." };
+    const { error } = await supabase.auth.signInWithPassword({ email: correo, password: contrasena });
+    if (error) return { ok: false, error: "La contrase\xF1a no es correcta." };
+    return { ok: true };
+  } catch (e2) {
+    return { ok: false, error: e2?.message || "No se ha podido comprobar la contrase\xF1a." };
+  }
+}
+function ConfirmarConContrasenaPM29({ titulo, descripcion, textoConfirmar, onCancelar, onConfirmar }) {
+  const [contrasena, setContrasena] = import_react4.default.useState("");
+  const [error, setError] = import_react4.default.useState("");
+  const [comprobando, setComprobando] = import_react4.default.useState(false);
+  async function confirmar() {
+    if (comprobando) return;
+    setComprobando(true);
+    setError("");
+    const r2 = await verificarContrasenaPropietarioPM29(contrasena);
+    setComprobando(false);
+    if (!r2.ok) {
+      setError(r2.error);
+      return;
+    }
+    onConfirmar();
+  }
+  return /* @__PURE__ */ import_react4.default.createElement(
+    Modal,
+    { onClose: comprobando ? () => {} : onCancelar, title: titulo },
+    descripcion,
+    /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tu contrase\xF1a" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "password", value: contrasena, onChange: (e2) => setContrasena(e2.target.value), autoFocus: true })),
+    /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.inkSoft } }, "Se pide para confirmar que eres t\xFA. No se borra ning\xFAn dato: la ficha deja de estar activa pero se conserva."),
+    error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", role: "alert", style: { color: C2.red } }, error),
+    /* @__PURE__ */ import_react4.default.createElement(
+      "div",
+      { className: "flex gap-2" },
+      /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: confirmar, disabled: comprobando || !contrasena }, comprobando ? "Comprobando\u2026" : textoConfirmar),
+      /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: onCancelar, disabled: comprobando }, "Cancelar")
+    )
+  );
+}
+function GestorEmpresas({ empresas, setEmpresas, esPropietario = true, registrarAuditoria = () => {
+} }) {
   const [mostrarNueva, setMostrarNueva] = import_react4.default.useState(false);
   const [razonSocial, setRazonSocial] = import_react4.default.useState("");
   const [nif, setNif] = import_react4.default.useState("");
@@ -11263,6 +11309,13 @@ function GestorEmpresas({ empresas, setEmpresas }) {
   const [logoErrorNueva, setLogoErrorNueva] = import_react4.default.useState("");
   const [logoCargandoNueva, setLogoCargandoNueva] = import_react4.default.useState(false);
   const [error, setError] = import_react4.default.useState("");
+  const [confirmarDesactivarEmpresaPM29, setConfirmarDesactivarEmpresaPM29] = import_react4.default.useState(null);
+  const activasPM29 = empresas.filter((e2) => e2.activo !== false);
+  const inactivasPM29 = empresas.filter((e2) => e2.activo === false);
+  function desactivarEmpresaPM29(empresa) {
+    actualizarEmpresa(empresa.id, { activo: false });
+    registrarAuditoria("Desactivar empresa", empresa.razonSocial || empresa.marca || empresa.id);
+  }
   function actualizarEmpresa(id, datos) {
     setEmpresas((s22) => s22.map((e2) => e2.id === id ? { ...e2, ...datos } : e2));
   }
@@ -11322,7 +11375,7 @@ function GestorEmpresas({ empresas, setEmpresas }) {
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold text-[14px]" }, "Empresas"),
       /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setMostrarNueva(true) }, "+ A\xF1adir empresa")
     ),
-    /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, empresas.map((e2) => /* @__PURE__ */ import_react4.default.createElement(
+    /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, activasPM29.map((e2) => /* @__PURE__ */ import_react4.default.createElement(
       "div",
       { key: e2.id, className: "rounded-xl border p-3", style: { borderColor: C2.line } },
       /* @__PURE__ */ import_react4.default.createElement(
@@ -11340,9 +11393,14 @@ function GestorEmpresas({ empresas, setEmpresas }) {
             /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: estadoIdentidadFiscalPM18(e2.nif) === "invalido" ? C2.red : C2.inkSoft } }, etiquetaEstadoIdentidadFiscalPM18(estadoIdentidadFiscalPM18(e2.nif)))
           )
         ),
-        /* @__PURE__ */ import_react4.default.createElement(FichaEmpresaBasica, { empresa: e2, actualizarEmpresa })
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2 shrink-0" }, /* @__PURE__ */ import_react4.default.createElement(FichaEmpresaBasica, { empresa: e2, actualizarEmpresa }), esPropietario && activasPM29.length > 1 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", onClick: () => setConfirmarDesactivarEmpresaPM29(e2) }, "Desactivar"))
       )
     ))),
+    inactivasPM29.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] font-semibold uppercase tracking-wide mb-1.5", style: { color: C2.inkSoft } }, "Empresas desactivadas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, inactivasPM29.map((e2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: e2.id, className: "rounded-xl border p-2.5", style: { borderColor: C2.line, color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, e2.razonSocial || e2.marca || "Empresa sin nombre"))))),
+    confirmarDesactivarEmpresaPM29 && /* @__PURE__ */ import_react4.default.createElement(ConfirmarConContrasenaPM29, { titulo: "Desactivar empresa", textoConfirmar: "S\xED, desactivar", onCancelar: () => setConfirmarDesactivarEmpresaPM29(null), onConfirmar: () => {
+      desactivarEmpresaPM29(confirmarDesactivarEmpresaPM29);
+      setConfirmarDesactivarEmpresaPM29(null);
+    }, descripcion: /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, '"', confirmarDesactivarEmpresaPM29.razonSocial || confirmarDesactivarEmpresaPM29.marca || "Empresa sin nombre", '" dejar\xE1 de aparecer como empresa activa. Si todav\xEDa tiene locales activos, el servidor rechazar\xE1 la baja: desact\xEDvalos antes.') }),
     mostrarNueva && /* @__PURE__ */ import_react4.default.createElement(
       Modal,
       { onClose: () => setMostrarNueva(false), title: "A\xF1adir empresa" },
@@ -11379,7 +11437,8 @@ function GestorEmpresas({ empresas, setEmpresas }) {
 function empresaDestinoParaNuevoLocalPM15(empresaNuevaId, empresaPrincipalId) {
   return empresaNuevaId || empresaPrincipalId || "";
 }
-function Locales({ locales, localActivoId, esPropietario = true, fallosGuardado = [], crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo, configEmpresa, empresas, setEmpresas, diagnosticoLegadosPM10 = null, marcarFormularioAbiertoPM15 = () => {} }) {
+function Locales({ locales, localActivoId, esPropietario = true, fallosGuardado = [], registrarAuditoria = () => {
+}, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo, configEmpresa, empresas, setEmpresas, diagnosticoLegadosPM10 = null, marcarFormularioAbiertoPM15 = () => {} }) {
   const [mostrarForm, setMostrarForm] = import_react4.default.useState(false);
   import_react4.default.useEffect(() => {
     marcarFormularioAbiertoPM15(mostrarForm);
@@ -11411,14 +11470,14 @@ function Locales({ locales, localActivoId, esPropietario = true, fallosGuardado 
     setError("");
     setMostrarForm(false);
   }
-  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Empresas y locales"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "La separaci\xF3n por local ya est\xE1 activa en Panel general, Resultados y Libro de IVA. El resto de m\xF3dulos mantiene de momento la vista conjunta mientras se completa la separaci\xF3n por local.")), falloDesactivarPM29 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2", role: "alert" }, "No se ha podido confirmar la desactivaci\xF3n del local en el servidor", falloDesactivarPM29.mensaje ? ": " + falloDesactivarPM29.mensaje : ".", " Recarga la p\xE1gina para comprobar c\xF3mo ha quedado antes de volver a intentarlo."), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setMomentoDesactivarPM29(null) }, "Entendido")), !esPropietario && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Solo el propietario puede desactivar locales. Puedes consultarlos, pero no modificarlos.")), /* @__PURE__ */ import_react4.default.createElement(GestorEmpresas, { empresas, setEmpresas }), /* @__PURE__ */ import_react4.default.createElement(DiagnosticoSincronizacion, null), /* @__PURE__ */ import_react4.default.createElement(DiagnosticoDatosLegadosPM10, { diagnostico: diagnosticoLegadosPM10 }), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 mb-4" }, activos.map((l22) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: l22.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium text-[13px] flex items-center gap-1.5" }, l22.nombre, l22.id === localActivoId && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "activo en este dispositivo")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, `Empresa: ${empresaDeLocal(l22)?.razonSocial || empresaDeLocal(l22)?.marca || "Sin asignar"}`), l22.direccion && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, l22.direccion)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, l22.id !== localActivoId && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => cambiarLocalActivo(l22.id) }, "Usar este"), /* @__PURE__ */ import_react4.default.createElement(FichaDatosLocal, { local: l22, actualizarLocal }), activos.length > 1 && esPropietario && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", onClick: () => setConfirmarDesactivar(l22) }, "Desactivar")))))), mostrarForm ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre del local" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nombre, onChange: (e2) => setNombre(e2.target.value), placeholder: "Ej: Centro", autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Empresa" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: empresaNuevaId || empresaPrincipalId || "", onChange: (e2) => setEmpresaNuevaId(e2.target.value), className: "w-full rounded-xl border px-3 py-2 bg-transparent", style: { borderColor: C2.line, color: C2.ink } }, empresas.map((e2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: e2.id, value: e2.id }, e2.razonSocial || e2.marca || "Empresa")))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Direcci\xF3n (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: direccion, onChange: (e2) => setDireccion(e2.target.value) })), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", role: "alert", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: enviar }, "Crear local"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Empresas y locales"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "La separaci\xF3n por local ya est\xE1 activa en Panel general, Resultados y Libro de IVA. El resto de m\xF3dulos mantiene de momento la vista conjunta mientras se completa la separaci\xF3n por local.")), falloDesactivarPM29 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2", role: "alert" }, "No se ha podido confirmar la desactivaci\xF3n del local en el servidor", falloDesactivarPM29.mensaje ? ": " + falloDesactivarPM29.mensaje : ".", " Recarga la p\xE1gina para comprobar c\xF3mo ha quedado antes de volver a intentarlo."), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setMomentoDesactivarPM29(null) }, "Entendido")), !esPropietario && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Solo el propietario puede desactivar locales. Puedes consultarlos, pero no modificarlos.")), /* @__PURE__ */ import_react4.default.createElement(GestorEmpresas, { empresas, setEmpresas, esPropietario, registrarAuditoria }), /* @__PURE__ */ import_react4.default.createElement(DiagnosticoSincronizacion, null), /* @__PURE__ */ import_react4.default.createElement(DiagnosticoDatosLegadosPM10, { diagnostico: diagnosticoLegadosPM10 }), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 mb-4" }, activos.map((l22) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: l22.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium text-[13px] flex items-center gap-1.5" }, l22.nombre, l22.id === localActivoId && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "activo en este dispositivo")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, `Empresa: ${empresaDeLocal(l22)?.razonSocial || empresaDeLocal(l22)?.marca || "Sin asignar"}`), l22.direccion && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, l22.direccion)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, l22.id !== localActivoId && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => cambiarLocalActivo(l22.id) }, "Usar este"), /* @__PURE__ */ import_react4.default.createElement(FichaDatosLocal, { local: l22, actualizarLocal }), activos.length > 1 && esPropietario && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", onClick: () => setConfirmarDesactivar(l22) }, "Desactivar")))))), mostrarForm ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre del local" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: nombre, onChange: (e2) => setNombre(e2.target.value), placeholder: "Ej: Centro", autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Empresa" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: empresaNuevaId || empresaPrincipalId || "", onChange: (e2) => setEmpresaNuevaId(e2.target.value), className: "w-full rounded-xl border px-3 py-2 bg-transparent", style: { borderColor: C2.line, color: C2.ink } }, empresas.map((e2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: e2.id, value: e2.id }, e2.razonSocial || e2.marca || "Empresa")))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Direcci\xF3n (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: direccion, onChange: (e2) => setDireccion(e2.target.value) })), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", role: "alert", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: enviar }, "Crear local"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
     setMostrarForm(false);
     setError("");
-  } }, "Cancelar"))) : /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setMostrarForm(true) }, "+ A\xF1adir local nuevo"), inactivos.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-6" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, "Locales desactivados"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, inactivos.map((l22) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: l22.id, style: { opacity: 0.6 } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px]" }, l22.nombre))))), confirmarDesactivar && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmarDesactivar(null), title: "Desactivar local" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.inkSoft } }, "Empresa: ", empresaDeLocal(confirmarDesactivar)?.razonSocial || empresaDeLocal(confirmarDesactivar)?.marca || "Sin asignar"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, '"', confirmarDesactivar.nombre, '" dejar\xE1 de aparecer como local activo. No se borra ning\xFAn dato \u2014 solo se oculta de la lista de "en uso".'), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: () => {
+  } }, "Cancelar"))) : /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setMostrarForm(true) }, "+ A\xF1adir local nuevo"), inactivos.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-6" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, "Locales desactivados"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, inactivos.map((l22) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: l22.id, style: { opacity: 0.6 } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px]" }, l22.nombre))))), confirmarDesactivar && /* @__PURE__ */ import_react4.default.createElement(ConfirmarConContrasenaPM29, { titulo: "Desactivar local", textoConfirmar: "S\xED, desactivar", onCancelar: () => setConfirmarDesactivar(null), onConfirmar: () => {
     setMomentoDesactivarPM29((/* @__PURE__ */ new Date()).toISOString());
     desactivarLocal(confirmarDesactivar.id);
     setConfirmarDesactivar(null);
-  } }, "S\xED, desactivar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmarDesactivar(null) }, "Cancelar"))));
+  }, descripcion: /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.inkSoft } }, "Empresa: ", empresaDeLocal(confirmarDesactivar)?.razonSocial || empresaDeLocal(confirmarDesactivar)?.marca || "Sin asignar"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, '"', confirmarDesactivar.nombre, '" dejar\xE1 de aparecer como local activo. No se borra ning\xFAn dato \u2014 solo se oculta de la lista de "en uso".')) }));
 }
 function Respaldos({ historial, crearPuntoDeGuardado, restaurarDesdeHistorial, abrirRespaldo, abrirRestaurar, exportarExcelGeneral, pinPropietario, establecerPin, activarModoEmpleado }) {
   const [nuevoPin, setNuevoPin] = (0, import_react4.useState)("");
