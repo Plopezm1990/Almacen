@@ -166,6 +166,8 @@ const dos = [
 ];
 const contieneTexto = (nodos, t) => nodos.some((n) => n.texto && n.texto.includes(t));
 const tipos = (nodos) => nodos.map((n) => n.type);
+const botonDesactivar = (nodos) =>
+  nodos.find((n) => n.type === 'Btn' && (n.children || []).some((c) => c === 'Desactivar')) || null;
 
 function render(empresas, props = {}, estado = {}) {
   const ctx = construirContexto(estado);
@@ -186,11 +188,28 @@ function render(empresas, props = {}, estado = {}) {
   console.log('P02_NO_PROPIETARIO_SIN_DESACTIVAR=PASS');
 }
 
-// ---- Una sola empresa activa: no se ofrece (el servidor tambien lo frena). ----
+// ---- Una sola empresa activa: la accion sigue visible pero inutilizable, y se
+//      dice por que. Antes se ocultaba el boton, y entonces la pantalla era
+//      identica a la de una version sin esta funcion: quien tuviera una sola
+//      empresa -- el caso mas comun -- nunca sabria que existe. ----
 {
   const nodos = render([dos[0]], { esPropietario: true });
-  assert.ok(!contieneTexto(nodos, 'Desactivar'), 'no debe ofrecerse dar de baja la unica empresa activa');
+  const btn = botonDesactivar(nodos);
+  assert.ok(btn, 'el boton debe seguir siendo visible aunque no se pueda usar');
+  assert.equal(btn.props.disabled, true, 'debe estar deshabilitado con una sola empresa activa');
+  assert.ok(
+    contieneTexto(nodos, 'tiene que haber al menos dos activas'),
+    'debe explicarse por que no se puede usar'
+  );
   console.log('P02_ULTIMA_EMPRESA_PROTEGIDA=PASS');
+}
+
+// ---- Con dos activas, el boton esta realmente utilizable. ----
+{
+  const btn = botonDesactivar(render(dos, { esPropietario: true }));
+  assert.ok(btn, 'con dos empresas activas debe haber boton');
+  assert.notEqual(btn.props.disabled, true, 'con dos activas no debe estar deshabilitado');
+  console.log('P02_CON_DOS_ACTIVAS_HABILITADO=PASS');
 }
 
 // ---- Las desactivadas se listan aparte y no se mezclan con las activas. ----
@@ -201,9 +220,10 @@ function render(empresas, props = {}, estado = {}) {
   );
   assert.ok(contieneTexto(nodos, 'Empresas desactivadas'), 'debe haber una seccion para las desactivadas');
   assert.ok(contieneTexto(nodos, 'Empresa Baja SL'), 'la empresa dada de baja debe seguir visible');
-  assert.ok(
-    !contieneTexto(nodos, 'Desactivar'),
-    'con una sola activa no debe ofrecerse la baja aunque haya otras inactivas'
+  assert.equal(
+    botonDesactivar(nodos).props.disabled,
+    true,
+    'una empresa ya inactiva no cuenta para poder dar de baja la unica activa'
   );
   console.log('P02_INACTIVAS_LISTADAS_APARTE=PASS');
 }

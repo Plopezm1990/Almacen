@@ -113,6 +113,8 @@ function render(props, estadoInicial = {}) {
 }
 
 const contieneTexto = (nodos, txt) => nodos.some((n) => n.texto && n.texto.includes(txt));
+const botonDesactivar = (nodos) =>
+  nodos.find((n) => n.type === 'Btn' && (n.children || []).some((c) => c === 'Desactivar')) || null;
 
 // ---- 1. Propietario: el boton de desactivar existe. ----
 {
@@ -137,6 +139,34 @@ const contieneTexto = (nodos, txt) => nodos.some((n) => n.texto && n.texto.inclu
     'debe explicarse por que no aparece la accion'
   );
   console.log('P01_NO_PROPIETARIO_SIN_DESACTIVAR=PASS');
+}
+
+// ---- 2b. Con un solo local activo la accion sigue visible pero inutilizable,
+//          y se explica por que (antes desaparecia sin decir nada). ----
+{
+  const ctx = construirContexto({});
+  const nodos = aplanar(
+    ctx.Locales({
+      locales: [localesDemo[0]],
+      localActivoId: 'loc1',
+      esPropietario: true,
+      crearLocal: () => ({ ok: true }),
+      actualizarLocal: () => {},
+      desactivarLocal: () => {},
+      cambiarLocalActivo: () => {},
+      configEmpresa: {},
+      empresas: empresasDemo,
+      setEmpresas: () => {},
+    })
+  );
+  const btn = botonDesactivar(nodos);
+  assert.ok(btn, 'el boton debe seguir siendo visible aunque no se pueda usar');
+  assert.equal(btn.props.disabled, true, 'debe estar deshabilitado con un solo local activo');
+  assert.ok(
+    contieneTexto(nodos, 'tiene que haber al menos dos activos'),
+    'debe explicarse por que no se puede usar'
+  );
+  console.log('P01_UNICO_LOCAL_BOTON_VISIBLE_DESHABILITADO=PASS');
 }
 
 // ---- 3. Por defecto (prop ausente) se conserva el comportamiento previo. ----
