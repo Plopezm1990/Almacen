@@ -6,14 +6,25 @@
 -- empresa seguia activa. La pantalla mostraba la baja hasta recargar. Los
 -- locales, en cambio, ya la respetaban correctamente.
 --
--- Esta migracion solo cambia esa rama. No toca locales, ni localActivoId, ni la
--- lectura. Se conserva lo esencial: la fila NUNCA se borra (la baja es logica),
--- y sigue exigiendose rol Propietario y pertenencia de la empresa.
+-- Esta migracion cambia esa rama y, por lo explicado mas abajo, un unico freno
+-- de la rama de 'locales'. No toca localActivoId ni la lectura. Se conserva lo
+-- esencial: la fila NUNCA se borra (la baja es logica), y sigue exigiendose rol
+-- Propietario y pertenencia de la empresa.
 --
 -- Frenos nuevos al desactivar, simetricos a los que ya tenian los locales:
 --   * no se puede desactivar una empresa con locales activos;
 --   * no se puede desactivar la ultima empresa activa del propietario;
 --   * una empresa nueva no puede crearse ya desactivada.
+--
+-- Y un ajuste imprescindible en la rama de 'locales': el freno del "ultimo
+-- local activo" pasa de ser por empresa a ser por propietario. Con el freno
+-- anterior los dos se bloqueaban entre si -- no se podia dar de baja una
+-- empresa con locales activos, ni vaciarla desactivando su ultimo local --, de
+-- modo que una empresa con un solo local no se habria podido dar de baja
+-- jamas. Se comprobo reproduciendolo en el proyecto de QA. Lo que el freno
+-- protege de verdad es que al propietario le quede algun local activo en
+-- alguna empresa activa, y eso es lo que ahora comprueba; por empresa era mas
+-- estricto de lo necesario.
 --
 -- Este archivo NO se aplica automaticamente a produccion desde esta rama.
 begin;
@@ -188,10 +199,18 @@ begin
         if v_activo = false
            and exists (select 1 from public.locales l where l.id = v_id and l.activo = true)
            and not exists (
-             select 1 from public.locales l
-             where l.empresa_id = v_empresa_id and l.activo = true and l.id <> v_id
+             select 1
+             from public.membresias_usuario m
+             join public.empresas e on e.id = m.empresa_id and e.activo = true
+             join public.locales l
+               on l.empresa_id = m.empresa_id
+              and l.activo = true
+              and l.id <> v_id
+              and (m.todos_locales = true or m.local_id = l.id)
+             where m.user_id = v_uid
+               and m.activo = true
            ) then
-          raise exception 'No se puede desactivar el último local activo de la empresa' using errcode = '22023';
+          raise exception 'No se puede desactivar el ultimo local activo' using errcode = '22023';
         end if;
       elsif v_activo = false then
         raise exception 'Un local nuevo debe crearse activo' using errcode = '22023';

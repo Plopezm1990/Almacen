@@ -56,6 +56,26 @@ const src = fs.readFileSync('fuente.js', 'utf8');
     'un alta no puede nacer desactivada'
   );
 
+  // El interbloqueo que se detecto ensayando en QA: con el freno del "ultimo
+  // local activo" acotado POR EMPRESA, una empresa de un solo local no se podia
+  // dar de baja jamas (no se puede dar de baja con locales activos, ni quitarle
+  // el ultimo local). El freno pasa a ser por propietario.
+  const iniLocales = sql.indexOf("elsif v_clave = 'locales' then");
+  const finLocales = sql.indexOf("elsif v_clave = 'localActivoId' then");
+  assert.ok(iniLocales > 0 && finLocales > iniLocales, 'no se pudo acotar la rama de locales');
+  const ramaLocales = sql.slice(iniLocales, finLocales);
+
+  assert.doesNotMatch(
+    ramaLocales,
+    /where l\.empresa_id = v_empresa_id and l\.activo = true and l\.id <> v_id/,
+    'el freno del ultimo local no puede seguir acotado por empresa: crea un interbloqueo'
+  );
+  assert.match(
+    ramaLocales,
+    /join public\.empresas e on e\.id = m\.empresa_id and e\.activo = true\s+join public\.locales l/,
+    'el freno del ultimo local debe mirar los locales activos del propietario'
+  );
+
   // Lo que NO debe cambiar: sigue sin borrarse ninguna fila y sigue exigiendose
   // Propietario. Una baja logica que borrase la fila destruiria el historico.
   assert.doesNotMatch(sql, /delete\s+from\s+public\.(empresas|locales)/i, 'la baja debe ser logica, nunca un DELETE');
