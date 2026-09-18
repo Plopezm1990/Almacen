@@ -1,4 +1,5 @@
--- PM29: la desactivacion de una empresa deja de ignorarse en silencio.
+-- PM29: la desactivacion de una empresa deja de ignorarse en silencio, y
+-- arrastra sus locales.
 --
 -- Antes, la rama de 'empresas' de guardar_contexto_instalacion_ui descartaba el
 -- campo 'activo' del objeto recibido (v_item - 'activo') y nunca lo escribia en
@@ -6,33 +7,33 @@
 -- empresa seguia activa. La pantalla mostraba la baja hasta recargar. Los
 -- locales, en cambio, ya la respetaban correctamente.
 --
--- Esta migracion cambia esa rama y, por lo explicado mas abajo, un unico freno
--- de la rama de 'locales'. No toca localActivoId ni la lectura. Se conserva lo
--- esencial: la fila NUNCA se borra (la baja es logica), y sigue exigiendose rol
--- Propietario y pertenencia de la empresa.
+-- Invariantes que sostiene esta version:
+--   I1  al propietario siempre le queda al menos una empresa activa;
+--   I2  una empresa activa nunca se queda sin locales activos;
+--   I3  la fila nunca se borra: toda baja es logica.
 --
--- Frenos nuevos al desactivar, simetricos a los que ya tenian los locales:
---   * no se puede desactivar una empresa con locales activos;
---   * no se puede desactivar la ultima empresa activa del propietario;
---   * una empresa nueva no puede crearse ya desactivada.
+-- I2 es la que costo entender. El freno que la sostiene ("no se puede
+-- desactivar el ultimo local activo de la empresa") ya existia y AQUI NO SE
+-- TOCA. Con el intacto, bloquear la baja de una empresa con locales activos
+-- creaba un punto muerto: una empresa de un solo local no se podia dar de baja
+-- jamas. Se intento romperlo relajando I2 a "el ultimo local del propietario",
+-- y el resultado fue peor: empresas activas sin ningun local, y la lectura del
+-- contexto emparejando una empresa activa con el local de OTRA empresa. Se
+-- detecto en produccion, con los datos reales del propietario.
 --
--- Y un ajuste imprescindible en la rama de 'locales': el freno del "ultimo
--- local activo" pasa de ser por empresa a ser por propietario. Con el freno
--- anterior los dos se bloqueaban entre si -- no se podia dar de baja una
--- empresa con locales activos, ni vaciarla desactivando su ultimo local --, de
--- modo que una empresa con un solo local no se habria podido dar de baja
--- jamas. Se comprobo reproduciendolo en el proyecto de QA. Lo que el freno
--- protege de verdad es que al propietario le quede algun local activo en
--- alguna empresa activa, y eso es lo que ahora comprueba; por empresa era mas
--- estricto de lo necesario.
+-- La salida correcta es arrastrar: dar de baja una empresa desactiva sus
+-- locales en la misma operacion. Desaparece el punto muerto sin romper I2.
 --
--- Segundo ajuste en 'locales', tambien imprescindible: la comprobacion de
--- pertenencia exigia que la empresa del local estuviera activa. En cuanto una
--- empresa se da de baja, sus locales (ya inactivos) siguen viajando en la lista
--- que manda el cliente y hacian fallar el lote ENTERO, de modo que dejaba de
--- poder guardarse ningun local, ni los de las empresas sanas. Se detecto en
--- produccion al dar de baja la primera empresa real. Ahora la pertenencia se
--- exige siempre y la empresa activa solo para tener el local ACTIVO.
+-- Cambios sobre la funcion original:
+--   * el UPDATE de empresas persiste 'activo';
+--   * omitir 'activo' conserva el valor guardado, no fuerza true;
+--   * una empresa nueva no puede nacer desactivada;
+--   * no se puede desactivar la ultima empresa activa (I1);
+--   * la baja de una empresa desactiva sus locales;
+--   * la pertenencia de un local ya no exige que su empresa este activa (eso
+--     solo se exige para tener el local ACTIVO). Sin esto, el cliente -- que
+--     manda siempre la lista completa de locales -- no podia guardar ninguno en
+--     cuanto existiera una empresa dada de baja.
 --
 -- Este archivo NO se aplica automaticamente a produccion desde esta rama.
 begin;
@@ -111,16 +112,17 @@ begin
         end if;
 
         -- PM29: la baja de una empresa es logica (la fila nunca se borra) y
-        -- tiene dos frenos, simetricos a los que ya protegian a los locales.
+        -- arrastra sus locales en la misma operacion.
+        --
+        -- Se intento lo contrario: bloquear la baja mientras la empresa tuviera
+        -- locales activos. No funciona. Como ademas no se puede quitar a una
+        -- empresa activa su ultimo local, una empresa de un solo local no se
+        -- habria podido dar de baja jamas. Y relajar aquel freno para romper el
+        -- bloqueo dejaba algo peor: empresas activas sin ningun local, y la
+        -- lectura del contexto emparejando una empresa con el local de otra.
+        -- Arrastrar los locales es lo que "dar de baja la empresa" significa.
         if v_activo = false
            and exists (select 1 from public.empresas e where e.id = v_id and e.activo = true) then
-          if exists (
-            select 1 from public.locales l
-            where l.empresa_id = v_id and l.activo = true
-          ) then
-            raise exception 'La empresa todavia tiene locales activos: desactivalos antes' using errcode = '22023';
-          end if;
-
           if not exists (
             select 1
             from public.membresias_usuario m
@@ -131,6 +133,11 @@ begin
           ) then
             raise exception 'No se puede desactivar la ultima empresa activa' using errcode = '22023';
           end if;
+
+          update public.locales
+          set activo = false
+          where empresa_id = v_id
+            and activo = true;
         end if;
       else
         if v_activo = false then
@@ -219,18 +226,10 @@ begin
         if v_activo = false
            and exists (select 1 from public.locales l where l.id = v_id and l.activo = true)
            and not exists (
-             select 1
-             from public.membresias_usuario m
-             join public.empresas e on e.id = m.empresa_id and e.activo = true
-             join public.locales l
-               on l.empresa_id = m.empresa_id
-              and l.activo = true
-              and l.id <> v_id
-              and (m.todos_locales = true or m.local_id = l.id)
-             where m.user_id = v_uid
-               and m.activo = true
+             select 1 from public.locales l
+             where l.empresa_id = v_empresa_id and l.activo = true and l.id <> v_id
            ) then
-          raise exception 'No se puede desactivar el ultimo local activo' using errcode = '22023';
+          raise exception 'No se puede desactivar el último local activo de la empresa' using errcode = '22023';
         end if;
       elsif v_activo = false then
         raise exception 'Un local nuevo debe crearse activo' using errcode = '22023';

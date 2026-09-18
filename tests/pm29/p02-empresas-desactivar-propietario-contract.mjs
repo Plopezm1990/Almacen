@@ -42,10 +42,15 @@ const src = fs.readFileSync('fuente.js', 'utf8');
     'omitir activo debe conservar el valor guardado, no forzar true'
   );
 
-  // Los dos frenos pedidos.
+  // La baja arrastra los locales de la empresa, en la misma operacion.
+  assert.match(
+    ramaEmpresas,
+    /update public\.locales\s+set activo = false\s+where empresa_id = v_id\s+and activo = true;/,
+    'la baja de una empresa debe desactivar sus locales'
+  );
   assert.ok(
-    /locales l\s+where l\.empresa_id = v_id and l\.activo = true/.test(ramaEmpresas),
-    'debe existir el freno de locales activos'
+    !ramaEmpresas.includes('todavia tiene locales activos'),
+    'ya no debe bloquearse la baja por tener locales activos: se arrastran'
   );
   assert.ok(
     ramaEmpresas.includes('No se puede desactivar la ultima empresa activa'),
@@ -56,24 +61,21 @@ const src = fs.readFileSync('fuente.js', 'utf8');
     'un alta no puede nacer desactivada'
   );
 
-  // El interbloqueo que se detecto ensayando en QA: con el freno del "ultimo
-  // local activo" acotado POR EMPRESA, una empresa de un solo local no se podia
-  // dar de baja jamas (no se puede dar de baja con locales activos, ni quitarle
-  // el ultimo local). El freno pasa a ser por propietario.
+  // El invariante que costo entender: una empresa activa nunca se queda sin
+  // locales. El freno que lo sostiene es POR EMPRESA y debe seguir intacto.
+  // Se intento relajarlo a "el ultimo local del propietario" para romper un
+  // punto muerto, y el resultado fue peor: empresas activas sin locales, y el
+  // contexto emparejando una empresa con el local de otra. Se detecto en
+  // produccion, con datos reales. La salida correcta es la cascada de arriba.
   const iniLocales = sql.indexOf("elsif v_clave = 'locales' then");
   const finLocales = sql.indexOf("elsif v_clave = 'localActivoId' then");
   assert.ok(iniLocales > 0 && finLocales > iniLocales, 'no se pudo acotar la rama de locales');
   const ramaLocales = sql.slice(iniLocales, finLocales);
 
-  assert.doesNotMatch(
-    ramaLocales,
-    /where l\.empresa_id = v_empresa_id and l\.activo = true and l\.id <> v_id/,
-    'el freno del ultimo local no puede seguir acotado por empresa: crea un interbloqueo'
-  );
   assert.match(
     ramaLocales,
-    /join public\.empresas e on e\.id = m\.empresa_id and e\.activo = true\s+join public\.locales l/,
-    'el freno del ultimo local debe mirar los locales activos del propietario'
+    /where l\.empresa_id = v_empresa_id and l\.activo = true and l\.id <> v_id/,
+    'el freno del ultimo local debe seguir acotado POR EMPRESA'
   );
 
   // Segundo fallo, este detectado ya en produccion: la comprobacion de

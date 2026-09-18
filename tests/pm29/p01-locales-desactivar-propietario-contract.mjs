@@ -163,10 +163,51 @@ const botonDesactivar = (nodos) =>
   assert.ok(btn, 'el boton debe seguir siendo visible aunque no se pueda usar');
   assert.equal(btn.props.disabled, true, 'debe estar deshabilitado con un solo local activo');
   assert.ok(
-    contieneTexto(nodos, 'tiene que haber al menos dos activos'),
+    contieneTexto(nodos, 'no puede quedarse sin locales'),
     'debe explicarse por que no se puede usar'
   );
+  assert.ok(
+    contieneTexto(nodos, 'sus locales se desactivan con ella'),
+    'debe indicarse la salida: dar de baja la empresa entera'
+  );
   console.log('P01_UNICO_LOCAL_BOTON_VISIBLE_DESHABILITADO=PASS');
+}
+
+// ---- 2c. El freno es POR EMPRESA, no por total. Dos locales activos de
+//          empresas DISTINTAS son, cada uno, el ultimo de la suya: ninguno
+//          puede desactivarse. Contarlos en total dejaba desactivar el unico
+//          local de una empresa activa, que es lo que rompio en produccion. ----
+{
+  const ctx = construirContexto({});
+  const nodos = aplanar(
+    ctx.Locales({
+      locales: [
+        { id: 'loc1', empresaId: 'emp1', nombre: 'Local de la empresa 1', activo: true },
+        { id: 'loc2', empresaId: 'emp2', nombre: 'Local de la empresa 2', activo: true },
+      ],
+      localActivoId: 'loc1',
+      esPropietario: true,
+      crearLocal: () => ({ ok: true }),
+      actualizarLocal: () => {},
+      desactivarLocal: () => {},
+      cambiarLocalActivo: () => {},
+      configEmpresa: {},
+      empresas: [
+        { id: 'emp1', razonSocial: 'Empresa Uno SL', activo: true },
+        { id: 'emp2', razonSocial: 'Empresa Dos SL', activo: true },
+      ],
+      setEmpresas: () => {},
+    })
+  );
+  const botones = nodos.filter(
+    (n) => n.type === 'Btn' && (n.children || []).some((c) => c === 'Desactivar')
+  );
+  assert.equal(botones.length, 2, 'deberia haber un boton por local activo');
+  assert.ok(
+    botones.every((b) => b.props.disabled === true),
+    'cada local es el ultimo de su empresa: ninguno debe poder desactivarse'
+  );
+  console.log('P01_FRENO_POR_EMPRESA_NO_POR_TOTAL=PASS');
 }
 
 // ---- 3. Por defecto (prop ausente) se conserva el comportamiento previo. ----
