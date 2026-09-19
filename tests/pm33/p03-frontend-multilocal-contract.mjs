@@ -184,6 +184,62 @@ async function main() {
     assert.ok(JSON.parse(trasElRechazo.value).length === 1, 'y esa RPC nueva sí devuelve el dato correcto');
   }
 
+  // 6) (P05) Fuga cruzada de identidad: A pendiente para loc-A. Mientras
+  //    tanto cambia el local a loc-B y una recarga forzada para loc-B
+  //    resuelve YA con éxito. A resuelve DESPUÉS, también con éxito, pero
+  //    para loc-A: nunca debe filtrarse ni devolverse como si fuera de
+  //    loc-B, ni sobrescribir la caché que loc-B dejó.
+  {
+    rpcCalls = [];
+    const sb = nuevoSandbox();
+    sb.window.__localActivoIdParaContexto = 'loc-A';
+
+    let resolverA;
+    const pendienteA = new Promise((r) => { resolverA = r; });
+    let primera = true;
+    rpcImpl = async (_n, args) => {
+      const loc = (args && args.p_local_id) || null;
+      if (loc === 'loc-A' && primera) { primera = false; return pendienteA; }
+      return { data: { rol: 'Cajero/a', localId: loc, empresaId: loc === 'loc-A' ? 'emp-A' : 'emp-B', empleado: null, empleadosFichaje: [], proveedores: [{ id: 'p-' + loc }], fichasProduccion: [], cobrosEncargos: [] }, error: null };
+    };
+
+    const promesaA = sb.window.__recargarContextoOperativo(); // pide loc-A, queda pendiente
+
+    sb.window.__localActivoIdParaContexto = 'loc-B';
+    const resultadoB = await sb.window.__recargarContextoOperativo(); // pide loc-B, resuelve ya
+    assert.equal(resultadoB.localId, 'loc-B', 'B resuelve correctamente para loc-B');
+
+    resolverA({ data: { rol: 'Cajero/a', localId: 'loc-A', empresaId: 'emp-A', empleado: null, empleadosFichaje: [], proveedores: [{ id: 'p-loc-A' }], fichasProduccion: [], cobrosEncargos: [] }, error: null });
+    const resultadoA = await promesaA;
+    assert.notEqual(resultadoA && resultadoA.localId, 'loc-B', 'la respuesta tardía de A (loc-A) nunca se devuelve como si fuera la de B');
+    assert.equal(resultadoA, null, 'A queda descartada por completo: no coincide con el usuario/local vigente en el momento en que resuelve');
+
+    // La caché sigue siendo la de B, sin contaminar: una lectura normal
+    // (con TTL, sin forzar) debe devolver B sin disparar una RPC nueva.
+    const llamadasAntesControl = rpcCalls.length;
+    await sb.window.storage.get('empleados');
+    assert.equal(rpcCalls.length, llamadasAntesControl, 'no hizo falta una RPC nueva: la caché de B seguía intacta, sin rastro de A');
+  }
+
+  // 7) (P05) Concurrencia normal, mismo usuario/local, SIN caché previa,
+  //    ambas RPC correctas: la primera en terminar no debe devolver vacío
+  //    solo porque la segunda sigue pendiente.
+  {
+    rpcCalls = [];
+    const sb = nuevoSandbox();
+    sb.window.__localActivoIdParaContexto = 'loc-A';
+    rpcImpl = async () => ({ data: { rol: 'Camarero/a', localId: 'loc-A', empleado: { id: 'ea-1' }, empleadosFichaje: [{ id: 'ea-1' }], proveedores: [], fichasProduccion: [], cobrosEncargos: [] }, error: null });
+
+    // Dos lecturas concurrentes normales (sin forzar), disparadas sin
+    // esperar una a la otra -- el patrón real de dos componentes leyendo
+    // 'empleados' casi a la vez.
+    const p1 = sb.window.storage.get('empleados');
+    const p2 = sb.window.storage.get('empleados');
+    const [r1, r2] = await Promise.all([p1, p2]);
+    assert.ok(JSON.parse(r1.value).length === 1, 'la primera lectura concurrente NO devuelve vacío aunque la segunda siguiera en curso');
+    assert.ok(JSON.parse(r2.value).length === 1, 'la segunda lectura concurrente también resuelve con el dato correcto');
+  }
+
   console.log('PM33_P03_FRONTEND_MULTILOCAL_OK=1');
 }
 

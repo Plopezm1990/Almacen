@@ -43561,6 +43561,9 @@ var init_index_es = __esm({
   var contextoFecha = 0;
   var contextoLocalIdUsado = null;
   var contextoGeneracion = 0;
+  var contextoLocalEnVuelo = null;
+  var contextoGeneracionEnVuelo = null;
+  var contextoPromesaEnVuelo = null;
   var CONTEXTO_TTL_MS = 3e4;
   var CACHE_LOCAL = "chocoloyos_contexto_operativo_seguro_v1";
   var CLAVES_COMUNES = [
@@ -43724,87 +43727,118 @@ var init_index_es = __esm({
       return null;
     }
   }
-  async function obtenerContexto(forzar) {
-    var supabase = await clienteSupabase();
-    var sesion = await sesionActual(supabase);
-    var userId = sesion && sesion.user ? sesion.user.id : null;
-    if (!userId) {
-      // Sin sesión: también invalida cualquier petición anterior que
-      // siguiera en curso (cambio de sesión mientras había una pendiente).
-      contextoGeneracion++;
-      contextoCache = null;
-      contextoUsuarioId = null;
-      contextoFecha = 0;
-      contextoLocalIdUsado = null;
-      return null;
-    }
-    var ahora = Date.now();
-    var localIdSolicitado = localIdActualParaContexto();
-    // Un cambio del local activo del dispositivo invalida SIEMPRE la
-    // caché en memoria, aunque el TTL no haya vencido: nunca se sirven
-    // datos resueltos para un local distinto al que está activo ahora.
-    if (contextoLocalIdUsado !== localIdSolicitado) forzar = true;
-    if (!forzar && contextoCache && contextoUsuarioId === userId && ahora - contextoFecha < CONTEXTO_TTL_MS) {
-      return contextoCache;
-    }
-    // A partir de aquí esta llamada pasa a ser LA petición vigente.
-    // Cualquier otra invocación de obtenerContexto que arranque después
-    // (por un cambio de local, de sesión, o simplemente otra llamada
-    // concurrente) incrementa contextoGeneracion de nuevo y deja a ÉSTA
-    // obsoleta, aunque su respuesta llegue más tarde. Sin esto, una
-    // respuesta tardía podía "revivir" una caché que una petición más
-    // reciente ya había limpiado tras un rechazo -- justo lo que reportó
-    // la revisión: la primera petición, si llegaba después de un rechazo
-    // de la segunda, restauraba la caché igualmente.
-    var miGeneracion = ++contextoGeneracion;
+  function contextoObsoletoSalvoQueCoincida(userId, localIdSolicitado) {
+    // Una respuesta obsoleta NUNCA se devuelve a ciegas: solo si el
+    // estado compartido actual sigue perteneciendo al mismo
+    // usuario/local que ESTA llamada concreta pedía. Si mientras tanto
+    // el usuario o el local cambiaron (otra identidad tomó el relevo),
+    // esta llamada no puede saber si ese contextoCache es "el suyo" --
+    // devolver null es lo seguro; devolverlo a ciegas filtraría datos de
+    // otra identidad hacia quien pidió la primera.
+    return contextoUsuarioId === userId && contextoLocalIdUsado === localIdSolicitado ? contextoCache : null;
+  }
+  async function resolverContexto(forzar, localIdSolicitado, miGeneracion) {
     function siguesVigente() {
       return miGeneracion === contextoGeneracion;
     }
-    if (window.__nubeActiva) {
-      try {
-        var respuesta = localIdSolicitado ? await supabase.rpc("obtener_contexto_operativo", { p_local_id: localIdSolicitado }) : await supabase.rpc("obtener_contexto_operativo");
-        if (!siguesVigente()) {
-          // Respuesta obsoleta: se descarta sin tocar el estado
-          // compartido (ni siquiera si es un éxito) y sin devolverse como
-          // si fuera la vigente. Se devuelve lo que haya dejado la
-          // petición más reciente, sea lo que sea.
-          return contextoCache;
+    try {
+      var supabase = await clienteSupabase();
+      var sesion = await sesionActual(supabase);
+      var userId = sesion && sesion.user ? sesion.user.id : null;
+
+      if (!userId) {
+        contextoCache = null;
+        contextoUsuarioId = null;
+        contextoFecha = 0;
+        contextoLocalIdUsado = null;
+        return null;
+      }
+
+      var ahora = Date.now();
+      if (contextoLocalIdUsado !== localIdSolicitado) forzar = true;
+      if (!forzar && contextoCache && contextoUsuarioId === userId && ahora - contextoFecha < CONTEXTO_TTL_MS) {
+        return contextoCache;
+      }
+
+      if (window.__nubeActiva) {
+        try {
+          var respuesta = localIdSolicitado ? await supabase.rpc("obtener_contexto_operativo", { p_local_id: localIdSolicitado }) : await supabase.rpc("obtener_contexto_operativo");
+          if (!siguesVigente()) {
+            return contextoObsoletoSalvoQueCoincida(userId, localIdSolicitado);
+          }
+          if (!respuesta.error && respuesta.data && respuesta.data.rol) {
+            contextoCache = respuesta.data;
+            contextoUsuarioId = userId;
+            contextoFecha = ahora;
+            contextoLocalIdUsado = localIdSolicitado;
+            guardarContextoLocal(userId, contextoCache, localIdSolicitado);
+            return contextoCache;
+          }
+          if (respuesta.error) {
+            // Rechazo EXPLÍCITO del servidor (contexto no autorizado,
+            // ambiguo, local inactivo...): nunca se cae al respaldo local
+            // ni se reutiliza un contexto previo -- ni el de memoria ni
+            // el guardado en disco. Sin datos es más seguro que servir,
+            // por error, los de otro local.
+            contextoCache = null;
+            contextoUsuarioId = null;
+            contextoFecha = 0;
+            contextoLocalIdUsado = null;
+            limpiarContextoLocalGuardado();
+            return null;
+          }
+        } catch (e2) {
+          if (!siguesVigente()) return contextoObsoletoSalvoQueCoincida(userId, localIdSolicitado);
         }
-        if (!respuesta.error && respuesta.data && respuesta.data.rol) {
-          contextoCache = respuesta.data;
-          contextoUsuarioId = userId;
-          contextoFecha = ahora;
-          contextoLocalIdUsado = localIdSolicitado;
-          guardarContextoLocal(userId, contextoCache, localIdSolicitado);
-          return contextoCache;
-        }
-        if (respuesta.error) {
-          // Rechazo EXPLÍCITO del servidor (contexto no autorizado,
-          // ambiguo, local inactivo...): nunca se cae al respaldo local ni
-          // se reutiliza un contexto previo -- ni el de memoria ni el
-          // guardado en disco. Sin datos es más seguro que servir, por
-          // error, los de otro local.
-          contextoCache = null;
-          contextoUsuarioId = null;
-          contextoFecha = 0;
-          contextoLocalIdUsado = null;
-          limpiarContextoLocalGuardado();
-          return null;
-        }
-      } catch (e2) {
-        if (!siguesVigente()) return contextoCache;
+      }
+      if (!siguesVigente()) return contextoObsoletoSalvoQueCoincida(userId, localIdSolicitado);
+      var local = leerContextoLocal(userId, localIdSolicitado);
+      if (local) {
+        contextoCache = local;
+        contextoUsuarioId = userId;
+        contextoFecha = ahora;
+        contextoLocalIdUsado = localIdSolicitado;
+        return local;
+      }
+      return null;
+    } finally {
+      // Solo limpia el puntero de "en curso" si sigue siendo el de ESTA
+      // generación exacta -- si ya lo reemplazó una más nueva, esa
+      // referencia no es cosa nuestra que tocar.
+      if (contextoGeneracionEnVuelo === miGeneracion) {
+        contextoPromesaEnVuelo = null;
+        contextoLocalEnVuelo = null;
+        contextoGeneracionEnVuelo = null;
       }
     }
-    if (!siguesVigente()) return contextoCache;
-    var local = leerContextoLocal(userId, localIdSolicitado);
-    if (local) {
-      contextoCache = local;
-      contextoUsuarioId = userId;
-      contextoFecha = ahora;
-      contextoLocalIdUsado = localIdSolicitado;
-      return local;
+  }
+  function obtenerContexto(forzar) {
+    // El reclamo de "petición compartida en curso" ocurre aquí, de forma
+    // TOTALMENTE SÍNCRONA (sin ningún await antes de fijar
+    // contextoPromesaEnVuelo): dos llamadas disparadas una detrás de otra
+    // sin esperar (p. ej. dos componentes leyendo el mismo storage.get
+    // casi a la vez) se ejecutan en JS de forma síncrona hasta su primer
+    // await, así que la segunda SIEMPRE ve ya fijada la promesa de la
+    // primera si ambas piden el mismo local. Depender del orden en que
+    // las promesas de red resuelven (como hacía la versión anterior) no
+    // era suficiente: dos peticiones nuevas, concurrentes y sin caché
+    // previa, podían arrancar cada una su propia resolución antes de que
+    // ninguna hubiera podido "avisar" a la otra, y la que terminaba
+    // primero se descartaba igual que si fuera obsoleta.
+    var localIdSolicitado = localIdActualParaContexto();
+    if (!forzar && contextoPromesaEnVuelo && contextoLocalEnVuelo === localIdSolicitado) {
+      return contextoPromesaEnVuelo;
     }
-    return null;
+    // Clave nueva (local distinto al que hay en curso) o recarga forzada:
+    // nueva generación. Cualquier resolución anterior en curso -- para
+    // cualquier local o usuario -- queda obsoleta a partir de aquí,
+    // aunque su respuesta llegue más tarde.
+    var miGeneracion = ++contextoGeneracion;
+    contextoLocalEnVuelo = localIdSolicitado;
+    contextoGeneracionEnVuelo = miGeneracion;
+    var miPromesa = resolverContexto(forzar, localIdSolicitado, miGeneracion);
+    contextoPromesaEnVuelo = miPromesa;
+    return miPromesa;
   }
   function respuestaStorage(key, valor) {
     return { key, value: JSON.stringify(valor), shared: false };
