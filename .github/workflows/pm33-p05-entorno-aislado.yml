@@ -1,0 +1,56 @@
+name: PM33 P05 entorno aislado (PG17 + Auth + PostgREST reales)
+
+# Deliberadamente SOLO workflow_dispatch -- a diferencia de otros workflows
+# de este repositorio (p.ej. pm12-p08-produccion-segura.yml), este NO se
+# dispara con push. Un push a esta rama no debe ejecutar nada por sí solo;
+# la ejecución requiere una activación manual explícita y autorizada. Ver
+# docs/plan-maestro/PM33_ENTORNO_AISLADO.md para el porqué y el coste real
+# (cero -- ejecutor efímero de GitHub, sin proyecto remoto de Supabase).
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  entorno-aislado-supabase:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar rama dedicada y release sin tocar
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "claude/pm33-p03-obtener-contexto-operativo"
+          git fetch origin release --quiet
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          git merge-base --is-ancestor origin/release HEAD
+          echo 'MAIN_FROZEN=1'
+          echo 'RELEASE_ANCESTOR_OK=1'
+
+      - name: Instalar dependencias del entorno aislado
+        shell: bash
+        run: npm ci --prefix tests/pm33/supabase-full --no-audit --no-fund
+
+      - name: Iniciar Auth, PostgREST y PostgreSQL 17 desechables
+        shell: bash
+        run: |
+          set -euo pipefail
+          tests/pm33/supabase-full/node_modules/.bin/supabase start \
+            --workdir tests/pm33/supabase-full \
+            -x realtime,storage-api,imgproxy,studio,mailpit,postgres-meta,edge-runtime,logflare,vector,supavisor
+          tests/pm33/supabase-full/node_modules/.bin/supabase status \
+            --workdir tests/pm33/supabase-full -o env \
+            > tests/pm33/supabase-full/supabase/.temp/status.env
+
+      - name: P05 real -- Auth JWT + PostgREST + RLS contra PG17 real
+        run: node tests/pm33/supabase-full/p05-auth-postgrest-contract.mjs
+
+      - name: Detener Supabase desechable
+        if: always()
+        run: tests/pm33/supabase-full/node_modules/.bin/supabase stop --workdir tests/pm33/supabase-full --no-backup || true
