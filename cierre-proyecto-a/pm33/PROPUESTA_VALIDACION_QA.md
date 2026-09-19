@@ -1,9 +1,26 @@
-# PM33 P03 — Propuesta de validación en QA (no ejecutada)
+# PM33 P03 — Propuesta de validación en QA (SUPERSEDIDA — ver `qa/README.md`)
 
-Estado: **propuesta preparada, pendiente de autorización explícita.** Nada
-de este documento se ha aplicado a `qjqorixtkilwsndqayyx` (L&A Suite QA).
-Se presenta antes de tocar ese entorno, tal como exige el alcance de esta
-revisión.
+**Este documento describía una propuesta antes de ejecutar el preflight
+real. Ya se ejecutó (19/09/2026) y encontró que `qjqorixtkilwsndqayyx`
+corre una reimplementación completa de `obtener_contexto_operativo()`
+sobre un modelo relacional (`public.empleados`/`locales`), incompatible
+con el candidato PM33 (diseñado para el modelo real de PROD,
+`almacen_kv`). Aplicar este candidato sobre QA sustituiría esa
+implementación ya migrada por una más antigua — no es una validación
+neutral. Ver `qa/README.md` para el hallazgo completo y las dos opciones
+pendientes de decisión, y `HALLAZGOS_P02.md` sección 9.5.**
+
+El resto de este documento (adaptación de fixtures sin tocar `auth`,
+usuarios de prueba reales, etc.) sigue siendo válido como diseño general
+y es lo que implementan los scripts versionados en `qa/01`-`04` — pero no
+para `qjqorixtkilwsndqayyx` tal como está hoy. Se conserva como
+referencia histórica de la propuesta original.
+
+---
+
+Estado original: **propuesta preparada, pendiente de autorización
+explícita.** Nada de este documento se aplicó a `qjqorixtkilwsndqayyx`
+(L&A Suite QA).
 
 ## Qué se ejecutaría, dónde, y su efecto
 

@@ -28,80 +28,104 @@ durante esta sesión.
 
 ## 1. PM33 / R10 — Aislamiento de `obtener_contexto_operativo()`
 
-**Estado: P03 preparado y validado localmente (Postgres 16 real), incluida
+**Estado: P04 preparado y validado localmente (Postgres 16 real), incluida
 la migración completa desde el estado real de PROD y el parche de
-frontend. NO aplicado a Supabase ni a producción.** Segunda ronda de
-revisión: P02 (turno anterior) tenía un defecto de diseño propio,
-encontrado y corregido en P03. Detalle completo en
-`cierre-proyecto-a/pm33/HALLAZGOS_P02.md` (cubre P01→P02→P03).
+frontend con control de concurrencia. NO aplicado a Supabase ni a
+producción.** Tercera ronda de revisión (independiente): P03 tenía dos
+defectos de identidad/autorización propios y el frontend una condición de
+carrera, encontrados y corregidos en P04. Esa misma ronda encontró
+también que **QA no es hoy un entorno válido para validar este
+candidato** (ver más abajo). Detalle completo en
+`cierre-proyecto-a/pm33/HALLAZGOS_P02.md` (cubre P01→P02→P03→P04).
 
 - **Problema confirmado hoy, en vivo**: la función vigente en PROD
   (`flqercbgpgmmfaakrwkc`) sigue siendo la de 0 argumentos, sin acotar por
   empresa/local. El defecto R10 sigue activo en producción en este
   momento.
-- **Candidato vigente**: rama **`claude/pm33-p03-obtener-contexto-operativo`**,
-  commit **`e7491d5f840185025259e4029f7f1d6b8a814798`**, creada desde
-  `origin/release` (no desde `main`) — un solo commit por delante de
-  `release` (`f313bc0`), sin conflicto. Sustituye por completo al
-  candidato P02 anterior (que a su vez sustituía al original P01, rama
-  `claude/pm33-fix-obtener-contexto-operativo`, commit `4127782`, que
-  queda intacta sin tocar).
-- **Qué corrigió P03 sobre P02** (encontrado en esta segunda ronda,
-  reproducido con Postgres real, no solo por inspección):
-  1. P02 introducía, para roles no gestionados (Camarero/a), un fallback
-     que leía `almacen_kv` **sin acotar** por empresa/local cuando el
-     contexto era ambiguo — el mismo patrón de fondo que R10, aplicado a
-     la búsqueda de un único empleado. Demostrado: un `empleado_id`
-     duplicado entre dos empresas hacía que P02 devolviera, con
-     `LIMIT 1`, el registro de cualquiera de las dos. P03 elimina ese
-     fallback por completo.
-  2. P02 ignoraba `p_local_id` fuera del bloque obligatorio: un Camarero/a
-     podía pedir explícitamente el local de OTRA empresa y P02 le
-     devolvía igual su propio contexto, sin comprobar nada. P03 lo valida.
-  3. P02 no comprobaba que el local/empresa resuelto para estos roles
-     siguiera activo. P03 lo comprueba.
-  4. **Crítico**: P02, tal como quedó redactado, omitía el
-     `drop function if exists public.obtener_contexto_operativo();` que sí
-     llevaba P01. Aplicado sobre el estado real de PROD (solo tiene la
-     sobrecarga de 0 argumentos), P02 habría sido un **no-op**: Postgres
-     prefiere la coincidencia exacta de aridad, y el único call site real
-     invoca sin argumentos. P03 restaura el `drop` y se probó la
-     transición completa partiendo de la función antigua real (no solo de
-     una base vacía): preflight, apply transaccional, postflight y
-     rollback, con verificación funcional de que la llamada sin
-     argumentos ejecuta el cuerpo nuevo tras migrar.
-- **Pruebas ejecutadas para P03**: 65/66 aserciones locales, Postgres
-  16.13 real, no mocks (38+7+17 de SQL + 4 de frontend). La única
-  excepción es un cambio de comportamiento deliberado y documentado (P03
-  ahora resuelve `empresaId` para roles no gestionados cuando es
-  deducible; antes quedaba siempre `null`) — no una regresión de
-  aislamiento, confirmado por las aserciones que sí comprueban el valor
-  devuelto. Incluye 5 escenarios nuevos pedidos en esta ronda: id de
-  empleado duplicado entre empresas, local ajeno solicitado, membresía
-  inactiva, empresa/local de baja, y un Camarero/a activo legítimo (no
-  solo el usuario de T14, marcado inactivo).
-- **Frontend (`fuente.js`, misma rama/commit)**: `obtenerContexto()` ahora
-  envía `p_local_id` reutilizando el estado `localActivoId` ya existente
-  (mismo selector que usa el resto de la app, sin uno nuevo), invalida la
-  caché al cambiar de local, y un rechazo explícito del servidor limpia
-  la caché en memoria y en disco en vez de reutilizar datos antiguos —
-  antes un rechazo o un corte de red posterior podían servir el contexto
-  de otro local. Validado ejecutando el propio código parcheado en un
-  sandbox (no solo por inspección): 4/4. **No publicado a `release`.**
-- **Entorno comprobado**: local (Postgres 16.13, contenedor de esta
-  sesión), incluida la transición real desde la función hoy vigente en
-  PROD. **NO comprobado**: PostgreSQL 17 (versión real de PROD/QA — sin
-  Docker operativo ni paquete disponible en este entorno), Auth/PostgREST
-  reales. Propuesta concreta para cerrar ambos en QA, sin tocar `auth` ni
-  sustituir la autenticación real: `cierre-proyecto-a/pm33/PROPUESTA_VALIDACION_QA.md`
-  (preparada, **no ejecutada**, pendiente de autorización).
-- **Pasos restantes**: (1) autorización para el preflight de solo lectura
-  contra QA; (2) con eso en verde, ejecutar la propuesta de validación en
-  QA (usuarios de prueba reales, PostgreSQL 17.6, Auth/PostgREST real);
-  (3) decisión del propietario sobre publicar el cambio de frontend a
-  `release` (el SQL solo ya cierra R10 para el caso de un único local por
-  dispositivo, que es el caso real hoy; el frontend hace falta solo para
-  multilocal, sin usuarios reales todavía); (4) autorización explícita
+- **Candidato vigente**: misma rama **`claude/pm33-p03-obtener-contexto-operativo`**
+  (creada desde `origin/release`, no desde `main`), commit
+  **`5dfdbca909f7f33873e1c54fb61eda0085c994e6`** (P04 es un commit
+  adicional sobre el de P03, no una rama nueva) — dos commits por delante
+  de `release` (`f313bc0`), sin conflicto. Sustituye por completo a P03 y
+  P02; la rama original P01 (`claude/pm33-fix-obtener-contexto-operativo`,
+  commit `4127782`) sigue intacta, sin tocar.
+- **Qué corrigió P04 sobre P03** (tercera ronda, independiente,
+  reproducido con Postgres real antes de escribir el parche):
+  1. **El parámetro del cliente no demostraba autorización.** P03
+     aceptaba la fuente heredada (el propio `empleado_id` en
+     `almacen_kv`) contra un `p_local_id` explícito comprobando solo "¿hay
+     una coincidencia de este id EN ese local?" — no pertenencia real.
+     Demostrado: un `empleado_id` duplicado entre dos empresas, sin
+     ninguna membresía, obtenía el contexto de cualquiera de las dos con
+     solo pedirla por su local. Afectaba también al bloque obligatorio
+     (Encargado/Cajero/a/Churrero/a), no solo a Camarero/a. P04 resuelve
+     esa fuente una sola vez, a nivel GLOBAL (sin filtrar por el local
+     pedido): si no es exactamente un candidato, queda inutilizable para
+     cualquier local explícito, no solo para el que resultó ambiguo.
+  2. **Una membresía desactivada no revocaba el acceso heredado.**
+     Demostrado: desactivar la membresía de un Camarero/a no le impedía
+     seguir obteniendo su contexto, porque su `empleado_id` seguía
+     existiendo, sin cambios, en `almacen_kv`. P04 comprueba si existe una
+     membresía explícitamente inactiva del mismo usuario para esa misma
+     empresa/local antes de aceptar la vía heredada; si no existe
+     ninguna fila de membresía (el caso real de legado puro), la vía
+     heredada sigue funcionando sin cambios — verificado con pruebas
+     dedicadas para no penalizar a los usuarios heredados legítimos.
+  3. **Condición de carrera en el frontend.** Dos peticiones pendientes
+     para el mismo usuario/local: la segunda rechazaba primero; la
+     primera, más tardía, podía resolver después con éxito y restaurar la
+     caché que la más reciente ya había limpiado. P04 añade un contador
+     de generación: cualquier respuesta que resuelva después de que otra
+     invocación más reciente haya tomado el relevo se descarta sin tocar
+     la caché ni devolverse al consumidor. Cubre también cambios de local
+     y de sesión con peticiones en curso.
+- **Pruebas ejecutadas para P04**: **75/75** aserciones locales en verde,
+  Postgres 16.13 real + sandbox `vm` de `fuente.js`, no mocks de texto
+  (39 contrato vigente + 7 regresión Camarero/a + 17 aislamiento
+  Camarero/a + 12 defectos nuevos de identidad/revocación + 5 escenarios
+  de frontend, incluida la condición de carrera). Cero pruebas
+  desactivadas o pendientes: T14c, superseded por un cambio de contrato
+  deliberado desde P03 (`empresaId` ahora se resuelve para roles no
+  gestionados cuando es deducible), se actualizó con justificación y una
+  comprobación más estricta (valor exacto) en un archivo de contrato
+  vigente separado; el archivo histórico de P01 se conserva sin tocar.
+  Cada defecto nuevo se demostró en rojo contra P03 (6/12 y el escenario
+  de frontend fallaban) antes de escribir la corrección.
+- **Frontend (`fuente.js`, misma rama/commit)**: sin cambios adicionales
+  sobre lo descrito para P03 más el control de concurrencia de este
+  punto. **No publicado a `release`.**
+- **Hallazgo nuevo — QA no es hoy un entorno válido para este candidato.**
+  Se pidió explícitamente no asumir que la definición/permisos de QA
+  coinciden con los de PROD. No coinciden: ejecuté el preflight de solo
+  lectura contra `qjqorixtkilwsndqayyx` el 19/09/2026 y
+  `obtener_contexto_operativo()` en QA es una **reimplementación
+  completa**, sobre tablas relacionales (`public.empleados`/`locales`) y
+  autorización exclusivamente vía membresías, sin ninguna vía heredada
+  por `almacen_kv` — no una variante del mismo diseño. Aplicar este
+  candidato (pensado para el modelo real de PROD) sobre QA sustituiría
+  una implementación ya migrada y más estricta por una más antigua. El
+  preflight (`cierre-proyecto-a/pm33/qa/00_preflight.sql`) lo detecta
+  automáticamente y **aborta** en vez de dejar que un `apply` posterior lo
+  sobrescriba a ciegas — probado tanto en el caso que debe pasar como en
+  el que debe abortar, y abortó, correctamente, contra QA real. Coherente
+  con la deuda de trazabilidad de migraciones ya registrada más abajo
+  (Punto 5): esta es la confirmación concreta, sobre esta función exacta.
+- **Entorno comprobado**: local (Postgres 16.13), incluida la transición
+  real desde la función hoy vigente en PROD, para P03 y para P04 por
+  separado. **NO comprobado**: PostgreSQL 17 real, Auth/PostgREST reales
+  — bloqueado para QA por el hallazgo anterior, no por falta de
+  herramientas. Kit completo implementado y versionado (no solo descrito)
+  en `cierre-proyecto-a/pm33/qa/`: creación de usuarios de prueba reales
+  vía Auth Admin API, carga de datos prefijados, batería vía
+  `supabase-js` real con `signInWithPassword`, y limpieza — **no
+  ejecutados** más allá del preflight (que bloquea seguir contra QA tal
+  como está hoy).
+- **Pasos restantes**: (1) decisión del propietario sobre el hallazgo de
+  QA (¿su modelo relacional es el diseño futuro, o hace falta un entorno
+  espejo de PROD para validar este candidato?); (2) identificar/preparar
+  el entorno correcto según esa decisión; (3) con su preflight en verde,
+  ejecutar el kit de QA (`01`-`04`); (4) decisión del propietario sobre
+  publicar el cambio de frontend a `release`; (5) autorización explícita
   para aplicar a PROD. Nada de esto se ha hecho en esta sesión.
 
 ---
@@ -358,6 +382,19 @@ workstream separado cuando se decida, sin condicionar el cierre de 1-13.
   grants reales contra PROD antes de diseñar la migración (`pg_proc`,
   `pg_depend`, `has_function_privilege`). Detalle completo en
   `pm33/HALLAZGOS_P02.md` sección 7-8.
+- PM33 (tercera ronda, independiente, candidato P04 sobre la misma rama,
+  commit `5dfdbca`): 75/75 aserciones Postgres 16.13 real + sandbox vm de
+  `fuente.js`, cero pendientes/desactivadas. Reproducidos en rojo contra
+  P03 los dos defectos de identidad/revocación (6/12) y la condición de
+  carrera del frontend antes de corregirlos. Migración probada de nuevo
+  partiendo de la función real de PROD. Preflight de solo lectura
+  ejecutado de verdad contra QA (`qjqorixtkilwsndqayyx`): función
+  completamente distinta de la de PROD (modelo relacional
+  `empleados`/`locales` vs. `almacen_kv`) — QA queda descartado como
+  entorno de validación para este candidato hasta una decisión del
+  propietario. Kit de QA (creación/carga/ejecución/limpieza) implementado
+  y versionado en `pm33/qa/`, no ejecutado más allá del preflight. Detalle
+  completo en `pm33/HALLAZGOS_P02.md` sección 9-10.
 - GitHub Actions: 0 workflow runs para `f313bc0` (HEAD de `release`);
   confirmado que ningún workflow dispara por push a las ramas usadas en
   esta revisión.

@@ -1,12 +1,12 @@
-# PM33 — Revisión de cierre: P01 → P02 → P03
+# PM33 — Revisión de cierre: P01 → P02 → P03 → P04
 
-Estado: **P03 preparado y validado localmente contra Postgres real (16.13), incluida la migración completa desde el estado real de PROD y el parche de frontend. NO aplicado a Supabase ni a producción. Falta validación con PostgreSQL 17 (versión real de PROD/QA), Auth/PostgREST reales -- propuesta concreta preparada en `PROPUESTA_VALIDACION_QA.md`, pendiente de autorización.**
+Estado: **P04 preparado y validado localmente contra Postgres real (16.13), incluida la migración completa desde el estado real de PROD y el parche de frontend con control de concurrencia. NO aplicado a Supabase ni a producción. QA (`qjqorixtkilwsndqayyx`) NO es hoy un entorno válido para validar este candidato -- ver sección 9, hallazgo nuevo de esta ronda. Falta validación con PostgreSQL 17 real y Auth/PostgREST reales en un entorno que sí coincida con el modelo de PROD; scripts implementados y versionados en `qa/`, no ejecutados más allá del preflight de solo lectura.**
 
-Este documento cubre las tres iteraciones en orden: **P02** (secciones 1-6,
-qué corrigió sobre el candidato original P01 y qué gap dejó abierto) y
-**P03** (sección 7 en adelante, qué corrigió sobre P02 tras una segunda
-ronda de revisión). Nada de lo descrito en las secciones 1-6 quedó
-aplicado; P03 lo sustituye por completo como candidato vigente.
+Este documento cubre las cuatro iteraciones en orden: **P02** (secciones
+1-6), **P03** (sección 7-8, segunda ronda) y **P04** (sección 9 en
+adelante, tercera ronda, sobre una revisión independiente de P03). Nada
+de lo descrito en las secciones 1-8 quedó aplicado; P04 sustituye a P03
+por completo como candidato vigente.
 
 ## 1. Contexto
 
@@ -332,20 +332,178 @@ este cambio de frontend tendrá que incorporarse ahí también.
   un cliente real. Misma propuesta de QA lo cierra.
 - **No aplicado a ningún entorno real** (ni QA ni PROD).
 
-## 8. Próximo paso concreto (vigente)
+## 8. Próximo paso concreto (histórico, sustituido por la sección 10)
 
-1. Autorización para ejecutar el **preflight** (solo lectura) de
-   `PM33_P03_MIGRACION_DESDE_PROD.sql` contra QA — confirma que el estado
-   real de QA coincide con lo asumido antes de aplicar nada.
-2. Con eso en verde, ejecutar la propuesta de `PROPUESTA_VALIDACION_QA.md`:
-   usuarios de prueba reales vía Supabase Auth Admin, datos de prueba
-   prefijados y retirables en `public`, batería completa (66 aserciones)
-   vía `supabase-js` real contra PostgreSQL 17.6.
-3. Decisión del propietario sobre publicar el cambio de frontend a
-   `release` (independiente de aplicar el SQL — el SQL solo, sin el
-   cambio de frontend, ya cierra R10 para el caso de uso real actual de
-   un único local por dispositivo; el cambio de frontend es necesario
-   únicamente para el caso multilocal, que hoy no tiene usuarios reales
-   en PROD).
-4. Solo tras (2) en verde y (3) decidido, autorización explícita para
+Esta sección describía el plan cuando P03 era el candidato vigente. Antes
+de solicitar autorización se pidió una tercera ronda de revisión
+independiente, que encontró dos defectos de identidad/autorización más
+(sección 9.1-9.2), una condición de carrera en el frontend (9.3), y un
+hallazgo que cambia el propio plan de validación en QA (9.5). Ver sección
+10 para el plan vigente.
+
+---
+
+## 9. P04 — tercera ronda: revisión independiente sobre P03
+
+Candidato: rama **`claude/pm33-p03-obtener-contexto-operativo`** (la
+misma rama que P03; P04 es un commit adicional sobre ella, no una rama
+nueva), commit **`5dfdbca909f7f33873e1c54fb61eda0085c994e6`**. Sigue
+siendo un único frente por delante de `release`, ahora dos commits
+(P03 + P04), sin conflicto.
+
+### 9.1 Defecto: el parámetro del cliente no demuestra autorización
+
+Reproducido con Postgres real: `camareroColision` (empleado_id `dup-9`,
+**sin ninguna membresía**, `dup-9` existe en `emp-A/loc-A` y en
+`emp-B/loc-B`) obtenía el contexto de `emp-A` pidiendo `p_local_id='loc-A'`
+y el de `emp-B` pidiendo `'loc-B'` — el servidor solo comprobaba "¿existe
+una coincidencia de este id EN el local pedido?", nunca "¿este id
+pertenece de forma inequívoca a ese local?". Cualquiera que conociera (o
+adivinara) el `local_id` de otra empresa donde su propio `empleado_id`
+colisionara podía obtener sus datos con solo pedirlo. **Afectaba también
+al bloque obligatorio** (Encargado/Cajero/a/Churrero/a), no solo a
+Camarero/a — conservar ese bloque sin cambios en P02/P03 no lo hacía
+seguro, tenía el mismo patrón desde P01.
+
+**Corrección**: la fuente (b) (el propio `empleado_id` en `almacen_kv`)
+se resuelve **una sola vez, a nivel global**, contando cuántos pares
+`(empresa_id, local_id)` distintos tiene ese id en todo `almacen_kv` —
+sin filtrar por el local pedido. Si no es exactamente uno, la fuente (b)
+queda inutilizable para **cualquier** local explícito, no solo para el
+que resultó ambiguo. Si es exactamente uno, un `p_local_id` explícito
+solo se acepta si **coincide** con ese único par.
+
+### 9.2 Defecto: una membresía revocada no bloqueaba la vía heredada
+
+Reproducido: `camareroActivo` (membresía `id=20`, `emp-A/loc-A`) seguía
+obteniendo su contexto tras `update membresias_usuario set activo=false
+where id=20`, porque su `empleado_id` seguía existiendo, sin cambios, en
+`almacen_kv` — la vía heredada nunca comprobaba si había una baja
+explícita.
+
+**Corrección**: antes de aceptar la fuente (b) para un par resuelto, se
+comprueba si existe una membresía de ese mismo usuario, para esa misma
+empresa (con ese local o con `todos_locales`), marcada **explícitamente**
+`activo = false`. Si existe, la vía heredada queda bloqueada para ese
+par. Si no existe **ninguna** fila de membresía (nunca se migró al
+modelo de membresías — el caso real de Cajero/a y Churrero/a en
+producción hoy), la vía heredada sigue funcionando exactamente igual:
+esto no exige tener membresía, solo impide que una baja explícita se
+elude por una vía más antigua. Verificado con pruebas dedicadas que los
+usuarios heredados **legítimos** (sin ninguna membresía) no se ven
+afectados.
+
+### 9.3 Pruebas para 9.1/9.2 (Postgres 16.13 real, ciclo rojo/verde contra P03)
+
+`tests/pm33/db/p04-identidad-y-revocacion-contract.mjs` /
+`p04-identidad-y-revocacion-contract.mjs` en este directorio:
+
+| # | Escenario | P03 (sin corregir) | P04 |
+|---|---|---|---|
+| D1a | Camarero/a, id duplicado, pide `loc-A` y `loc-B` explícitos | **FAIL** — devuelve el empleado de la empresa pedida, cualquiera | PASS — `empleado: null` en ambos casos |
+| D1b | Cajero/a (bloque obligatorio), mismo patrón | **FAIL** — no rechazaba | PASS — rechazado con "Contexto no autorizado" en ambos |
+| D1c | Cajero/a con membresía válida SOLO en A, pide B explícito | ya pasaba (control) | PASS |
+| D2a | Camarero/a, membresía revocada, `empleado_id` sigue en `almacen_kv` | **FAIL** — devolvía el empleado igualmente | PASS — `empleado: null` |
+| D2b | Cajero/a (bloque obligatorio), mismo patrón | **FAIL** — no rechazaba | PASS — rechazado |
+| Control | Heredados legítimos (sin ninguna membresía) y activos (membresía intacta) | PASS | PASS (sin cambios) |
+
+Total: **12/12 PASS** contra P04; **6/12 FAIL** contra P03 sin corregir
+(confirmado ejecutando la misma batería contra el commit `e7491d5` antes
+de escribir el parche).
+
+### 9.4 Condición de carrera en el frontend (`fuente.js`)
+
+Reportado: dos peticiones pendientes de `obtenerContexto()` para el mismo
+usuario/local — la segunda resuelve primero con un rechazo de
+autorización; la primera resuelve **después** con éxito. El diseño de
+P03 no tenía ninguna noción de "petición vigente": el éxito tardío de la
+primera sobrescribía la caché que la segunda (más reciente) ya había
+limpiado, y una lectura posterior (`window.storage.get('empleados')`)
+devolvía esos datos obsoletos sin una nueva llamada a la RPC.
+
+**Corrección**: contador de generación (`contextoGeneracion`). Cada
+invocación de `obtenerContexto()` que llega a necesitar red o disco
+queda marcada como la vigente en el momento en que empieza (no en el que
+termina); cualquier respuesta — éxito, rechazo, o fallo de red — que
+resuelva después de que otra invocación más reciente haya tomado el
+relevo se descarta sin tocar la caché ni devolverse al consumidor. Cubre
+también cambios de local (ya invalidaban la caché desde P03, ahora
+además invalidan la generación) y de sesión (sin usuario ⇒ nueva
+generación).
+
+Validado ejecutando el propio código parcheado (`tests/pm33/p03-frontend-multilocal-contract.mjs`,
+escenario 5) en un sandbox `vm`: **reproducido el fallo contra el
+`fuente.js` de P03** (commit `e7491d5`) con una prueba controlable
+(promesas diferidas para fijar el orden de resolución exacto que
+describe el informe) — el resultado tardío se filtraba tal como se
+reportó — y **confirmado en verde contra el `fuente.js` de P04**.
+
+### 9.5 Hallazgo nuevo: QA no es hoy un entorno válido para validar este candidato
+
+Se pidió explícitamente no asumir que la definición/permisos de QA
+coinciden con los de PROD antes de preparar una reversión específica.
+Ejecuté el preflight de solo lectura contra `qjqorixtkilwsndqayyx` el
+19/09/2026 (autorizado: lecturas remotas dentro del alcance existente) y
+**no coinciden — la diferencia es de diseño, no de detalle**:
+
+`obtener_contexto_operativo()` en QA es una **reimplementación completa**
+sobre tablas relacionales (`public.empleados`, `public.locales`),
+autorización **exclusivamente** vía `membresias_usuario` (sin ninguna vía
+heredada por `almacen_kv`), forma de respuesta distinta (`ok`,
+`todosLocales`, `empresas`, `locales`, `modulos`) y códigos de error con
+nombre en vez de `errcode 42501`. El detalle completo, con la definición
+íntegra capturada, está en `qa/README.md` y `qa/00_preflight.sql`.
+
+**Consecuencia**: aplicar el candidato PM33 (diseñado para el modelo real
+de PROD, `almacen_kv`) sobre QA no sería una validación neutral —
+**sustituiría una implementación de QA ya migrada y más estricta por una
+más antigua**. Preparé el preflight como una puerta de seguridad real
+(`DO` block que compara la definición contra lo que el candidato asume y
+**aborta con `RAISE EXCEPTION`** si no coincide, no solo un aviso en un
+documento) y lo probé tanto en el caso que debe pasar como en el que debe
+abortar antes de ejecutarlo contra QA de verdad; abortó, correctamente,
+contra QA.
+
+Esto es la confirmación concreta, sobre esta función exacta, de la deuda
+de trazabilidad de migraciones ya registrada en el Punto 5 del documento
+maestro (QA tiene 27 migraciones que no existen en PROD). **Decisión
+pendiente del propietario**, no tomada aquí: si el modelo relacional de
+QA es el diseño futuro (y este candidato PM33 debería apuntar ahí en vez
+de a `almacen_kv`), o si hace falta primero un entorno espejo de PROD
+para validar este candidato sin tocar la implementación ya migrada de
+QA — ver `qa/README.md` para el detalle de ambas opciones.
+
+### 9.6 Kit de QA: implementado y versionado, no solo descrito
+
+`cierre-proyecto-a/pm33/qa/`: `00_preflight.sql` (ejecutado de verdad),
+`01_crear_usuarios_prueba.mjs` (Auth Admin API, usuarios desechables reales
+por escenario), `02_cargar_datos_prueba.mjs` (datos de prueba prefijados
+`qa-pm33-`, vinculados a los UIDs reales creados en `01`, vía conexión
+directa), `03_ejecutar_bateria.mjs` (login real por usuario vía
+`signInWithPassword` + `supabase-js`, sin `pg` directo ni `set_config` —
+cierra de verdad el gap de Auth/PostgREST reales cuando haya un entorno
+válido), `04_limpiar.mjs` (retira filas y usuarios, en ese orden). Ninguno
+de `01`-`04` se ha ejecutado — el hallazgo de 9.5 los bloquea para
+`qjqorixtkilwsndqayyx` tal como está hoy, y así lo señala el propio
+preflight al ejecutarse.
+
+## 10. Próximo paso concreto (vigente)
+
+1. **Decisión del propietario** sobre el hallazgo 9.5: ¿el modelo
+   relacional de QA es el diseño futuro para esta función, o hace falta
+   un entorno espejo de PROD (`almacen_kv`) para validar este candidato?
+   Nada de lo siguiente tiene sentido sin esta decisión.
+2. Según lo decidido: identificar/preparar el entorno correcto (posible
+   candidato ya existente: `ytavvyusrmwandchjyei`, L&A Suite P2-R03
+   validation, hoy `INACTIVE` — reactivar un proyecto pausado tiene coste
+   real y requiere autorización explícita; comprobar primero, con un
+   preflight igual que el de QA, que su función coincide con el modelo de
+   PROD antes de asumir que sirve).
+3. Con el entorno correcto identificado y su preflight en verde, ejecutar
+   `qa/01`-`04` en ese orden (usuarios de prueba reales, datos prefijados,
+   batería vía Auth/PostgREST real, limpieza).
+4. Decisión del propietario sobre publicar el cambio de frontend a
+   `release` (el SQL solo ya cierra R10 para el caso de un único local
+   por dispositivo, el caso real hoy).
+5. Solo tras (3) en verde y (4) decidido, autorización explícita para
    aplicar a PROD.
