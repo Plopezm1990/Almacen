@@ -12,6 +12,11 @@
 //   4. El respaldo en disco (leerContextoLocal) NUNCA sirve el contexto de
 //      un local distinto al que se está pidiendo ahora (protege frente a
 //      un corte de red justo después de cambiar de local).
+//   5. (P04) Condición de carrera: dos peticiones pendientes para el mismo
+//      usuario/local -- la segunda rechaza primero; la primera resuelve
+//      con éxito DESPUÉS. El éxito tardío nunca reescribe la caché que la
+//      más reciente ya limpió, y la siguiente lectura dispara una RPC
+//      nueva en vez de devolver la respuesta obsoleta "gratis".
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -144,6 +149,39 @@ async function main() {
     rpcImpl = async () => { throw new Error('red caída justo al cambiar de local'); };
     const resultado = await sb.window.__recargarContextoOperativo();
     assert.equal(resultado, null, 'el respaldo en disco de loc-A NUNCA se sirve como si fuera el de loc-B');
+  }
+
+  // 5) Condición de carrera: A pide primero, se queda pendiente. B pide
+  //    después (mismo usuario/local), rechaza YA. A resuelve con éxito
+  //    DESPUÉS: no debe restaurar la caché. Una lectura posterior debe
+  //    disparar una RPC nueva, no reutilizar la respuesta tardía de A.
+  {
+    rpcCalls = [];
+    const sb = nuevoSandbox();
+    sb.window.__localActivoIdParaContexto = 'loc-A';
+
+    let resolverA;
+    const pendienteA = new Promise((r) => { resolverA = r; });
+    let numLlamada = 0;
+    rpcImpl = async () => {
+      numLlamada++;
+      if (numLlamada === 1) return pendienteA; // A: se queda pendiente
+      return { data: null, error: { message: 'Contexto no autorizado' } }; // B: rechaza ya
+    };
+
+    const promesaA = sb.window.__recargarContextoOperativo(); // dispara A (queda pendiente)
+    const resultadoB = await sb.window.__recargarContextoOperativo(); // dispara B, resuelve antes que A
+    assert.equal(resultadoB, null, 'B (la petición más reciente) rechaza y limpia la caché');
+
+    resolverA({ data: { rol: 'Camarero/a', localId: 'loc-A', empleado: { id: 'ea-1' }, empleadosFichaje: [{ id: 'ea-1' }], proveedores: [], fichasProduccion: [], cobrosEncargos: [] }, error: null });
+    const resultadoA = await promesaA;
+    assert.equal(resultadoA, null, 'el éxito TARDÍO de A se descarta -- B ya invalidó su generación, no reescribe la caché que B limpió');
+
+    const llamadasAntes = rpcCalls.length;
+    rpcImpl = async () => ({ data: { rol: 'Camarero/a', localId: 'loc-A', empleado: { id: 'ea-1' }, empleadosFichaje: [{ id: 'ea-1' }], proveedores: [], fichasProduccion: [], cobrosEncargos: [] }, error: null });
+    const trasElRechazo = await sb.window.storage.get('empleados');
+    assert.ok(rpcCalls.length > llamadasAntes, 'la siguiente lectura dispara una RPC nueva, no reutiliza la respuesta obsoleta de A sin llamar al servidor');
+    assert.ok(JSON.parse(trasElRechazo.value).length === 1, 'y esa RPC nueva sí devuelve el dato correcto');
   }
 
   console.log('PM33_P03_FRONTEND_MULTILOCAL_OK=1');

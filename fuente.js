@@ -43560,6 +43560,7 @@ var init_index_es = __esm({
   var contextoUsuarioId = null;
   var contextoFecha = 0;
   var contextoLocalIdUsado = null;
+  var contextoGeneracion = 0;
   var CONTEXTO_TTL_MS = 3e4;
   var CACHE_LOCAL = "chocoloyos_contexto_operativo_seguro_v1";
   var CLAVES_COMUNES = [
@@ -43727,7 +43728,16 @@ var init_index_es = __esm({
     var supabase = await clienteSupabase();
     var sesion = await sesionActual(supabase);
     var userId = sesion && sesion.user ? sesion.user.id : null;
-    if (!userId) return null;
+    if (!userId) {
+      // Sin sesión: también invalida cualquier petición anterior que
+      // siguiera en curso (cambio de sesión mientras había una pendiente).
+      contextoGeneracion++;
+      contextoCache = null;
+      contextoUsuarioId = null;
+      contextoFecha = 0;
+      contextoLocalIdUsado = null;
+      return null;
+    }
     var ahora = Date.now();
     var localIdSolicitado = localIdActualParaContexto();
     // Un cambio del local activo del dispositivo invalida SIEMPRE la
@@ -43737,9 +43747,29 @@ var init_index_es = __esm({
     if (!forzar && contextoCache && contextoUsuarioId === userId && ahora - contextoFecha < CONTEXTO_TTL_MS) {
       return contextoCache;
     }
+    // A partir de aquí esta llamada pasa a ser LA petición vigente.
+    // Cualquier otra invocación de obtenerContexto que arranque después
+    // (por un cambio de local, de sesión, o simplemente otra llamada
+    // concurrente) incrementa contextoGeneracion de nuevo y deja a ÉSTA
+    // obsoleta, aunque su respuesta llegue más tarde. Sin esto, una
+    // respuesta tardía podía "revivir" una caché que una petición más
+    // reciente ya había limpiado tras un rechazo -- justo lo que reportó
+    // la revisión: la primera petición, si llegaba después de un rechazo
+    // de la segunda, restauraba la caché igualmente.
+    var miGeneracion = ++contextoGeneracion;
+    function siguesVigente() {
+      return miGeneracion === contextoGeneracion;
+    }
     if (window.__nubeActiva) {
       try {
         var respuesta = localIdSolicitado ? await supabase.rpc("obtener_contexto_operativo", { p_local_id: localIdSolicitado }) : await supabase.rpc("obtener_contexto_operativo");
+        if (!siguesVigente()) {
+          // Respuesta obsoleta: se descarta sin tocar el estado
+          // compartido (ni siquiera si es un éxito) y sin devolverse como
+          // si fuera la vigente. Se devuelve lo que haya dejado la
+          // petición más reciente, sea lo que sea.
+          return contextoCache;
+        }
         if (!respuesta.error && respuesta.data && respuesta.data.rol) {
           contextoCache = respuesta.data;
           contextoUsuarioId = userId;
@@ -43762,8 +43792,10 @@ var init_index_es = __esm({
           return null;
         }
       } catch (e2) {
+        if (!siguesVigente()) return contextoCache;
       }
     }
+    if (!siguesVigente()) return contextoCache;
     var local = leerContextoLocal(userId, localIdSolicitado);
     if (local) {
       contextoCache = local;
