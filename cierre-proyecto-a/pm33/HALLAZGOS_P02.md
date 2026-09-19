@@ -1,12 +1,14 @@
-# PM33 — Revisión de cierre: P01 → P02 → P03 → P04
+# PM33 — Revisión de cierre: P01 → P02 → P03 → P04 → P05
 
-Estado: **P04 preparado y validado localmente contra Postgres real (16.13), incluida la migración completa desde el estado real de PROD y el parche de frontend con control de concurrencia. NO aplicado a Supabase ni a producción. QA (`qjqorixtkilwsndqayyx`) NO es hoy un entorno válido para validar este candidato -- ver sección 9, hallazgo nuevo de esta ronda. Falta validación con PostgreSQL 17 real y Auth/PostgREST reales en un entorno que sí coincida con el modelo de PROD; scripts implementados y versionados en `qa/`, no ejecutados más allá del preflight de solo lectura.**
+Estado: **P05 preparado y validado localmente contra Postgres real (16.13), incluida la migración completa desde el estado real de PROD y el parche de frontend con control de concurrencia. NO aplicado a Supabase ni a producción. Decisión del propietario: preparar un entorno aislado equivalente al modelo actual de PROD para validar con PostgreSQL 17 + Auth + PostgREST reales -- preparado (CI, `workflow_dispatch`), NO ejecutado todavía en esta sesión -- ver sección 11.5. QA (`qjqorixtkilwsndqayyx`) se conserva intacto, sin tocar y sin usarse para esta validación.**
 
-Este documento cubre las cuatro iteraciones en orden: **P02** (secciones
-1-6), **P03** (sección 7-8, segunda ronda) y **P04** (sección 9 en
-adelante, tercera ronda, sobre una revisión independiente de P03). Nada
-de lo descrito en las secciones 1-8 quedó aplicado; P04 sustituye a P03
-por completo como candidato vigente.
+Este documento cubre las cinco iteraciones en orden: **P02** (secciones
+1-6), **P03** (sección 7-8, segunda ronda), **P04** (sección 9 en
+adelante, tercera ronda, sobre una revisión independiente de P03) y
+**P05** (sección 11 en adelante, cuarta ronda, sobre una revisión
+independiente de P04, commit `5dfdbca`). Nada de lo descrito en las
+secciones 1-10 quedó aplicado; P05 sustituye a P04 por completo como
+candidato vigente.
 
 ## 1. Contexto
 
@@ -461,8 +463,23 @@ más antigua**. Preparé el preflight como una puerta de seguridad real
 (`DO` block que compara la definición contra lo que el candidato asume y
 **aborta con `RAISE EXCEPTION`** si no coincide, no solo un aviso en un
 documento) y lo probé tanto en el caso que debe pasar como en el que debe
-abortar antes de ejecutarlo contra QA de verdad; abortó, correctamente,
-contra QA.
+abortar antes de ejecutarlo contra QA de verdad.
+
+> **Corrección explícita (ronda P05, ver sección 11.3)**: la frase que
+> seguía aquí ("abortó, correctamente, contra QA") era **incorrecta por
+> partida doble** y se retira. Primero, ese preflight (v1, con la
+> condición `usa_empleados_relacional AND NOT usa_almacen_kv`) **nunca se
+> ejecutó de verdad** en esta ronda contra QA — el razonamiento de arriba
+> se hizo a mano, sobre consultas de introspección sueltas, no sobre el
+> resultado de correr el script. Segundo, esa misma condición tenía un
+> punto ciego que la revisión independiente de la ronda P05 encontró y
+> reprodujo: QA es en realidad un modelo **híbrido** (usa `almacen_kv`
+> para el catálogo de `'locales'` Y `public.empleados` relacional para el
+> resto), así que `true AND NOT true = false` — el aborto no se habría
+> disparado ni ejecutándolo. El preflight se corrigió (hash md5 exacto,
+> ver 11.3) y **esa versión sí se ejecutó de verdad** contra QA, con el
+> hash real de QA en el mensaje de error — la evidencia genuina está en
+> 11.3, no aquí.
 
 Esto es la confirmación concreta, sobre esta función exacta, de la deuda
 de trazabilidad de migraciones ya registrada en el Punto 5 del documento
@@ -487,7 +504,7 @@ de `01`-`04` se ha ejecutado — el hallazgo de 9.5 los bloquea para
 `qjqorixtkilwsndqayyx` tal como está hoy, y así lo señala el propio
 preflight al ejecutarse.
 
-## 10. Próximo paso concreto (vigente)
+## 10. Próximo paso concreto (histórico, sustituido por la sección 12)
 
 1. **Decisión del propietario** sobre el hallazgo 9.5: ¿el modelo
    relacional de QA es el diseño futuro para esta función, o hace falta
@@ -507,3 +524,210 @@ preflight al ejecutarse.
    por dispositivo, el caso real hoy).
 5. Solo tras (3) en verde y (4) decidido, autorización explícita para
    aplicar a PROD.
+
+## 11. P05 — cuarta ronda: revisión independiente sobre P04 (commit `5dfdbca`)
+
+Decisión del propietario que enmarca esta ronda: preparar la validación
+de PM33 en un **entorno aislado equivalente al modelo actual de PROD**
+(`almacen_kv`), conservando QA existente y su implementación intactos.
+Esto no decide el modelo futuro ni incorpora P2 al cierre de PM33. Sobre
+esa base, la revisión independiente reprodujo cinco hallazgos contra
+`5dfdbca`; los cinco están corregidos y verificados en el candidato
+vigente (rama `claude/pm33-p03-obtener-contexto-operativo`, commit
+`de613dc`, dos commits por delante del de P05 puro `8dbef85`: el primero
+ya en `8dbef85` corrige 11.1/11.2, el segundo — `de613dc` — añade el
+entorno aislado de 11.5, sin tocar SQL/frontend).
+
+### 11.1 Identidad duplicada con estados diferentes (activo filtrado antes de resolver identidad)
+
+**Reproducido** antes de corregir: perfil Cajero/a, membresía única en
+emp-A/loc-A, `empleado_id` `dup-9` existente en `almacen_kv` de emp-A
+(marcado `activo:false`) y de emp-B (marcado `activo:true`). P04 contaba
+los candidatos de la fuente heredada **filtrando por `activo=true`
+primero** — con un único registro activo visible (el de B), la colisión
+real quedaba oculta y la llamada con `p_local_id='loc-B'` devolvía datos
+de B, sin membresía ni pertenencia real ahí.
+
+**Corrección (SQL)**: la identidad se resuelve primero, a nivel global,
+**sin** filtrar por `activo` — se cuentan los `(empresa_id, local_id)`
+distintos en los que existe ese `empleado_id`. Solo si ese conteo es
+exactamente 1 se examina el `activo` del único candidato resuelto; una
+coincidencia activa en otra empresa nunca demuestra pertenencia y nunca
+participa en el conteo de unicidad. Aplicado a los tres roles del bloque
+obligatorio (Encargado, Cajero/a, Churrero/a) y al bloque de Camarero/a
+por igual — ver el comentario "DEFECTO... IDENTIDAD PRIMERO, ACTIVIDAD
+DESPUÉS" en `supabase/migrations/20260919170000_pm33_p05_identidad_antes_de_actividad.sql`.
+
+**Pruebas**: `tests/pm33/db/fixtures_p05_extra.sql` (nuevo) añade tres
+fixtures de colisión activo/inactivo, una por cada rol del bloque
+obligatorio (`dup-501` Cajero/a, `dup-502` Encargado, `dup-503`
+Churrero/a), cada una con membresía únicamente en A.
+`tests/pm33/db/p05-identidad-antes-de-actividad-contract.mjs` (nuevo):
+para cada rol, pedir `loc-B` debe quedar rechazado ("Contexto no
+autorizado") y pedir el propio `loc-A` debe seguir resolviendo vía
+membresía. **3 de 6 aserciones fallan contra P04** (`5dfdbca`) antes de
+la corrección; **6/6 pasan contra P05**. Los usuarios heredados
+legítimos (sin colisión) siguen verificados por las pruebas ya
+existentes de P03/P04 (`camarero-heredado-legitimo` y equivalentes) —
+sin regresión.
+
+### 11.2 Concurrencia y caché (frontend)
+
+Dos defectos distintos, ambos en `resolverContexto`/`obtenerContexto` de
+`fuente.js`:
+
+**11.2.a — filtración de identidad cruzada al descartar una respuesta
+obsoleta.** P04 introdujo el contador de generación, pero la rama
+`if (!siguesVigente()) return contextoCache;` devolvía la caché **sin
+comprobar a qué usuario/local pertenecía esa caché en ese momento** —
+una petición A pendiente para `loc-A`, un cambio de usuario/local a B
+mid-flight, y un éxito de B, dejaban que la llegada tardía de A
+devolviera el contexto de B. **Reproducido** contra P04 con promesas
+diferidas controladas (orden de resolución exacto fijado por la prueba)
+antes de corregir. **Corrección**: nueva función
+`contextoObsoletoSalvoQueCoincida(userId, localIdSolicitado)` — solo
+devuelve `contextoCache` si `contextoUsuarioId`/`contextoLocalIdUsado`
+coinciden con la invocación que pregunta; si no, `null`. Aplicada en los
+tres puntos donde antes se devolvía `contextoCache` a ciegas (tras el
+`await` a la RPC, en el `catch`, y tras el `await` a la sesión).
+
+**11.2.b — falsos vacíos por concurrencia normal.** Un diseño de
+generación "pura" (bump en cada intento nuevo, incluso dos peticiones
+casi simultáneas para el **mismo** local/usuario) descartaba la primera
+de dos peticiones idénticas por tener una generación menor, aunque fuera
+igual de correcta. **Reproducido**: dos `storage.get('empleados')`
+simultáneos del mismo usuario/local, sin caché inicial, con ambas RPC
+correctas — la primera terminaba vacía si la segunda seguía pendiente.
+**Corrección**: coalescencia de peticiones equivalentes resuelta de
+forma **100% síncrona** (antes de cualquier `await`), usando
+`localIdActualParaContexto()` (ya síncrona) como única clave — explota
+que dos llamadas síncronas consecutivas en JS ejecutan su prefijo
+síncrono en orden estricto sin intercalado, así que dos peticiones para
+el mismo local comparten la misma promesa en vuelo en vez de generar dos
+intentos que compitan por generación.
+
+Un intento anterior de corregir 11.2.b introdujo un tercer defecto
+**propio de esta misma ronda de pruebas, no del código de producción**:
+una comprobación de "obsoleto" colocada justo después de resolver la
+sesión (antes de la llamada RPC) cortocircuitaba la primera de dos
+llamadas forzadas síncronas consecutivas (el patrón que ya usaba el
+escenario 5 existente) antes de que esa primera llamada hiciera su
+propia petición RPC — desincronizando el contador de llamadas del mock y
+provocando un deadlock (la segunda llamada recibía la promesa nunca
+resuelta de la primera). Diagnosticado por bisección con marcadores y
+reproducciones mínimas; corregido retirando esa comprobación prematura,
+que nunca fue pedida por el propietario y no forma parte del contrato:
+la comprobación de vigencia sigue solo en los tres puntos originales.
+
+**Pruebas**: `tests/pm33/p03-frontend-multilocal-contract.mjs`, dos
+escenarios nuevos (6 y 7). Escenario 6: A pendiente (promesa diferida
+controlada) para `loc-A`, cambio de local a `loc-B` mid-flight, recarga
+forzada de B resuelve con éxito, la llegada tardía de A se descarta
+(`resultadoA === null`) y una lectura posterior de B **no** dispara una
+nueva RPC (caché de B intacta, sin contaminar). Escenario 7: dos
+`sb.window.storage.get('empleados')` simultáneos vía `Promise.all`,
+mismo usuario/local, sin caché inicial, ambas RPC correctas — ninguna de
+las dos respuestas queda vacía. Las 7 escenarios del archivo, ejecutados
+5 veces consecutivas completas: en verde de forma determinista (no por
+suerte de temporización).
+
+### 11.3 Preflight — comprobación de compatibilidad frágil
+
+El preflight v1 (heurística `usa_empleados_relacional AND NOT
+usa_almacen_kv`) tenía el mismo punto ciego que debía detectar: QA es un
+modelo **híbrido** (usa `almacen_kv` para el catálogo de `'locales'` Y
+`public.empleados` relacional para el resto), así que esa condición
+nunca se dispara contra QA. Además, la afirmación de la sección 9.5
+("abortó, correctamente, contra QA") era incorrecta por partida doble —
+corregida explícitamente ahí mismo, no aquí: el script v1 nunca se había
+ejecutado de verdad en la ronda P04, y el razonamiento manual que lo
+sustituyó compartía el mismo punto ciego.
+
+**Corrección**: `cierre-proyecto-a/pm33/qa/00_preflight.sql` ya no usa
+heurísticas de texto. Compara el **hash md5 exacto** de
+`pg_get_functiondef()` de la definición vigente contra una lista corta
+de hashes conocidos y compatibles (hoy, únicamente
+`40d7bf2ea50776b7eb40a3fff239c0b4`, el de la función real de PROD,
+capturado el 19/09/2026). Cualquier definición que no coincida
+exactamente aborta — cubre también, sin heurísticas adicionales, "no
+existe la función" y "hay más de una sobrecarga".
+
+**Ejecutado de verdad** (esta vez sí, vía la herramienta de ejecución
+SQL, contra `qjqorixtkilwsndqayyx`) el 19/09/2026: abortó, con el hash
+real de QA (`3064430c63c97f6c50e05ff0117da862`, distinto del de PROD) en
+el propio mensaje de error — salida literal del error:
+`PREFLIGHT ABORTADO: la definición vigente (hash 3064430c63c97f6c50e05ff0117da862) no coincide con ninguna definicion conocida y compatible.`
+La definición completa de QA, capturada en esa misma ejecución, se
+conserva en `qa/99_rollback_especifico_de_qa_20260919.sql` — documentada
+como específica de QA, nunca como reversión válida para PROD.
+
+### 11.4 Kit de QA — bug de doble escritura en la clave `almacen_kv`
+
+`02_cargar_datos_prueba.mjs` escribía la fila `almacen_kv` de (emp-A,
+loc-A, `'empleados'`) **dos veces por separado** — una con
+`[dup-9, ea6]`, otra después con `[dup2]` (el heredado legítimo) — y el
+segundo `INSERT ... ON CONFLICT DO UPDATE SET value = excluded.value`
+**reemplazaba el array completo**, perdiendo `dup-9` y `ea6`.
+
+**Corrección**: cada fila de `almacen_kv` se construye **completa en
+memoria** antes de un único `INSERT` por fila — nunca dos escrituras a
+la misma clave. Añadidos además, sobre el mismo kit: `_entorno.mjs`
+(exige que `SUPABASE_PROJECT_URL` y `SUPABASE_DB_URL` apunten al mismo
+proyecto antes de que `02`/`03`/`04` hagan nada), `_manifest.mjs` +
+`RUN_ID` por ejecución (registra exactamente qué crea `01`/`02` según se
+va creando, no al final), verificación **post-carga** explícita en `02`
+(contenido real de las filas de `almacen_kv`, conteo de
+perfiles/membresías) antes de marcar el manifest como `confirmado`, y
+`04_limpiar.mjs` reescrito para borrar **exactamente** los objetos del
+manifest (nunca por prefijo) — si algo falla, el manifest se conserva
+con `fallo_parcial` en vez de borrarse. Detalle completo en
+`cierre-proyecto-a/pm33/qa/README.md`.
+
+### 11.5 Entorno aislado equivalente al modelo actual de PROD
+
+Preparado, **no ejecutado** en esta sesión (Docker no disponible en este
+sandbox, CLI de `supabase` no instalado aquí). Replica el patrón ya
+existente y probado en este repositorio para PM12
+(`tests/pm12/supabase-full/` + `pm12-p08-produccion-segura.yml`):
+PostgreSQL 17 + Auth (GoTrue) + PostgREST reales y desechables vía
+Supabase CLI sobre un runner de GitHub Actions.
+
+- `tests/pm33/supabase-full/` (rama del candidato): esquema
+  representativo (mismo subconjunto que `tests/pm33/db/fixtures.sql`,
+  pero con Auth real en vez de un stub de `auth.uid()`), copia literal
+  del candidato P05, y `p05-auth-postgrest-contract.mjs` — usuarios
+  reales vía Auth Admin API, JWT real, RPC real vía PostgREST. Incluye
+  explícitamente el escenario de 11.1 (identidad duplicada con estados
+  distintos) validado esta vez con JWT y PostgREST reales, no con el
+  stub de `set_config`.
+- `.github/workflows/pm33-p05-entorno-aislado.yml`: **solo
+  `workflow_dispatch`** — a diferencia del de PM12 (que también dispara
+  con `push`), un push a esta rama no ejecuta nada por sí solo.
+- `docs/plan-maestro/PM33_ENTORNO_AISLADO.md`: documenta esta opción
+  como la recomendada (coste cero, ningún proyecto remoto tocado) y las
+  dos alternativas con Supabase Cloud (reactivar
+  `ytavvyusrmwandchjyei`, o un branch nuevo de Supabase) con
+  destino/coste real consultado (0 USD/mes recurrente para un proyecto
+  nuevo en esta organización; 0.01344 USD/hora para un branch) y
+  operación concreta — ninguna ejecutada, ninguna autorizada.
+
+**Pendiente**: activación manual supervisada del workflow (no hecha en
+esta sesión) para obtener la primera ejecución real contra PostgreSQL 17
++ Auth + PostgREST genuinos.
+
+## 12. Próximo paso concreto (vigente)
+
+1. **Activar** `pm33-p05-entorno-aislado.yml` (`workflow_dispatch`
+   manual, supervisado) para la primera ejecución real contra
+   PostgreSQL 17 + Auth + PostgREST genuinos — ver 11.5. Nada de lo
+   validado hasta ahora sustituye a esto; es el único paso que faltaba
+   para que "validado" deje de significar solo "validado localmente".
+2. Con esa ejecución en verde: decisión del propietario sobre publicar
+   el cambio de frontend a `release` (el SQL solo ya cierra R10 para el
+   caso de un único local por dispositivo, el caso real hoy).
+3. Solo tras (1) en verde y (2) decidido, autorización explícita y
+   específica para aplicar a PROD — nunca implícita por haber preparado
+   el candidato.
+4. Decisión pendiente, separada y no bloqueante para el cierre de PM33:
+   si el modelo relacional de QA es el diseño futuro de esta función
+   (fuera del alcance actual, ver 9.5).
