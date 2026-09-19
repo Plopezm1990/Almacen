@@ -1,84 +1,102 @@
-# PM33 — Kit de validación QA (versionado, NO ejecutado más allá del preflight)
+# PM33 — Kit de validación (versionado). Estado real, sin dar nada por bueno sin ejecutarlo
 
-Estado: scripts implementados y versionados. El **preflight** (`00_preflight.sql`)
-sí se ejecutó de verdad contra `qjqorixtkilwsndqayyx` el 19/09/2026 (solo
-lectura, dentro de la autorización existente). Los demás scripts
-(`01`-`04`) **no se han ejecutado**: el propio preflight bloquea seguir,
-por la razón que se explica abajo. Nada de esto se ha aplicado a QA ni a
-PROD.
+Estado: scripts implementados, corregidos y versionados. El **preflight**
+(`00_preflight.sql`) se ha **ejecutado de verdad** dos veces contra
+`qjqorixtkilwsndqayyx` (QA): una vez con una versión con un defecto (v1,
+ver corrección abajo) y una segunda vez, ya corregido, con el resultado
+real documentado en `HALLAZGOS_P02.md` sección 11. Los demás scripts
+(`01`-`04`) **no se han ejecutado contra ningún proyecto real**: el propio
+preflight sigue bloqueando seguir contra QA tal como está hoy. Nada de
+esto se ha aplicado a QA ni a PROD.
 
-## Hallazgo del preflight: QA no es un objetivo válido para este candidato, hoy
+## Corrección sobre la versión anterior: el preflight v1 tenía el mismo defecto que debía detectar
 
-Se pidió explícitamente no asumir que la definición/permisos de QA
-coinciden con los de PROD. No coinciden, y la diferencia es sustancial,
-no cosmética: `obtener_contexto_operativo()` en QA es una
-**reimplementación completa**, no una variante del mismo diseño:
+La v1 de este preflight comprobaba "¿el cuerpo menciona `public.empleados`
+Y NO menciona `almacen_kv`?" para decidir si abortar. La función real de
+QA es **híbrida**: usa `almacen_kv` para leer el catálogo de locales (clave
+`'locales'`) Y la tabla relacional `public.empleados` para los datos del
+empleado. Con esa condición, `true AND NOT true` = `false`: **el aborto no
+se disparaba**. El documento anterior afirmaba que el preflight "abortó,
+correctamente, contra QA real" -- esa afirmación era incorrecta por partida
+doble: no se había ejecutado el *script* en sí (se razonó a mano sobre
+consultas de introspección sueltas), y ese razonamiento manual tenía el
+mismo punto ciego que la condición.
 
-| | PROD (hoy) | QA (hoy) |
-|---|---|---|
-| Fuente de datos de empleado | `almacen_kv` (JSON, clave `'empleados'`) | tabla relacional `public.empleados` |
-| Locales | implícitos en `almacen_kv` | tabla relacional `public.locales`, catálogo por empresa |
-| Autorización | mezcla membresías + vía heredada (el defecto R10 que corrige este candidato) | **solo** `membresias_usuario`, sin vía heredada |
-| Forma de la respuesta | `rol/empresaId/localId/empleado/empleadosFichaje/proveedores/fichasProduccion/cobrosEncargos` | `ok/rol/empresaId/localId/todosLocales/empresas/locales/empleado/empleadosFichaje/modulos` |
-| Errores | `errcode 42501` con mensajes en español | excepciones con nombre (`contexto_sesion_requerida`, etc.) |
+**Corregido**: `00_preflight.sql` ya no usa heurísticas sobre qué tablas
+menciona el texto. Compara el **hash md5 exacto** de
+`pg_get_functiondef()` de la definición vigente contra una lista corta de
+hashes conocidos y compatibles (hoy, únicamente el de la función real de
+PROD, capturado directamente el 19/09/2026: `40d7bf2ea50776b7eb40a3fff239c0b4`).
+Cualquier definición que no coincida EXACTAMENTE aborta -- sin intentar
+adivinar "se parece lo suficiente". Esto cubre también, sin heurísticas
+adicionales, "no existe la función" y "hay más de una sobrecarga".
 
-Aplicar el candidato PM33 P03/P04 (diseñado para el modelo real de PROD)
-sobre QA **sustituiría una implementación ya migrada y más estricta por
-una más antigua** — no sería una validación neutral, sería un
-retroceso real para QA. El preflight (`00_preflight.sql`) lo detecta
-automáticamente (no es solo un aviso en un documento: es un `DO` block
-que compara la definición real contra lo que el candidato asume, y
-**aborta con `RAISE EXCEPTION`** si no coincide) y así lo hizo al
-ejecutarlo hoy.
+**Ejecutado de verdad, ya corregido, el 19/09/2026 contra QA**: abortó,
+con el hash real de QA (`3064430c63c97f6c50e05ff0117da862`, distinto del
+de PROD) en el propio mensaje de error -- ver la salida literal en
+`HALLAZGOS_P02.md` sección 11. La definición completa de QA, capturada en
+esa misma ejecución, se conserva en `99_rollback_especifico_de_qa_20260919.sql`
+por si alguna vez tocara esa función ahí (no planeado, no autorizado):
+nunca se asume que el cuerpo de PROD serviría de reversión para QA.
 
-Esto es coherente con lo ya registrado en el Punto 5 del documento
-maestro (`cierre-proyecto-a/SEGUIMIENTO_18_PUNTOS.md`): QA tiene 27
-migraciones que no existen en PROD, y P2 está por delante de PROD en
-varios frentes. Este hallazgo es la prueba concreta de esa deuda de
-trazabilidad aplicada a esta función exacta.
+## Qué significa esto para "validar el candidato en PostgreSQL 17 real"
 
-## Qué significa esto para "validar P04 en PostgreSQL 17 real"
+Decisión ya tomada por el propietario: **preparar un entorno aislado
+equivalente al modelo actual de PROD** (no reconciliar con el modelo de
+QA, no incorporar P2 al cierre de PM33). QA se conserva intacto, sin
+tocar. Ver `docs/plan-maestro/PM33_ENTORNO_AISLADO.md` (rama del
+candidato) para la propuesta concreta de ese entorno -- pendiente de
+presentar coste/destino/operaciones antes de crear o reactivar nada.
 
-Sigue pendiente, pero **no puede cerrarse contra `qjqorixtkilwsndqayyx`
-tal como está hoy** sin antes decidir una de estas dos cosas (decisión
-del propietario, no tomada aquí):
+## Los scripts (implementados, corregidos, listos para el entorno correcto)
 
-1. **QA está en un frente de migración distinto** (el modelo relacional es
-   el futuro, todavía no reconciliado con PROD) y este candidato PM33
-   debería, en su momento, dirigirse a ese modelo en vez de al de
-   `almacen_kv` — lo que cambiaría sustancialmente el propio candidato.
-2. **QA necesita primero un entorno "espejo de PROD"** (mismo modelo
-   `almacen_kv`) para poder validar este candidato tal como está, sin
-   tocar la implementación ya migrada de QA. Candidatos: reactivar el
-   proyecto `ytavvyusrmwandchjyei` (L&A Suite P2-R03 validation, hoy
-   `INACTIVE` — activar un proyecto pausado tiene coste real, requiere
-   autorización) tras comprobar que SU función coincide con el modelo de
-   PROD, o crear una rama de desarrollo Supabase sobre QA o PROD (tiene
-   coste, requiere `confirm_cost` y autorización).
+- **`00_preflight.sql`** — solo lectura. Aborta (hash exacto, ver arriba)
+  si el entorno objetivo no es una copia real del modelo de PROD. Repetir
+  contra cualquier entorno nuevo antes de considerar aplicar nada --
+  nunca asumir que "ya se comprobó una vez".
+- **`_entorno.mjs`** — (nuevo) exige que `SUPABASE_PROJECT_URL` (API) y
+  `SUPABASE_DB_URL` (conexión directa) apunten al MISMO proyecto,
+  comparando la referencia de proyecto extraída de cada URL. Sin esto, un
+  `SUPABASE_DB_URL` copiado por error de otro proyecto escribiría datos de
+  prueba en un entorno y los leería de otro, sin ningún error visible
+  hasta mucho después. Lo usan `02`, `03` y `04`.
+- **`_manifest.mjs`** — (nuevo) cada ejecución tiene un `RUN_ID` propio
+  (fecha + al azar). Todo lo que crea `01`/`02` se registra en
+  `._manifest.json` (gitignored) según se va creando, no al final --
+  usuarios de Auth, empresas, locales, filas de `almacen_kv`, ids de
+  membresía. `04_limpiar.mjs` borra EXACTAMENTE esos objetos, nunca "todo
+  lo que empiece por qa-pm33-" (que alcanzaría restos de otra ejecución).
+  Si algo falla a mitad de camino, el manifest se conserva (nunca se
+  borra en un fallo) con el estado `fallo_parcial`, como registro de lo
+  pendiente.
+- **`01_crear_usuarios_prueba.mjs`** — crea usuarios de Supabase Auth
+  desechables vía Admin API, uno por escenario, con el `RUN_ID` en el
+  email. Se niega a correr si ya hay un manifest sin limpiar.
+- **`02_cargar_datos_prueba.mjs`** — **corrige un defecto real** de la
+  versión anterior: escribía la fila `almacen_kv` de `(emp-A, loc-A,
+  'empleados')` dos veces por separado (una con el empleado de la
+  colisión + el activo, otra con el heredado legítimo), y el segundo
+  `INSERT ... ON CONFLICT DO UPDATE SET value = excluded.value`
+  **reemplazaba el valor entero**, perdiendo los dos primeros. Ahora cada
+  fila de `almacen_kv` se construye COMPLETA en memoria antes de un único
+  `INSERT` -- nunca dos escrituras a la misma clave. Verifica los datos
+  cargados con una consulta explícita (contenido de las filas de
+  `almacen_kv`, número de perfiles y membresías) **antes** de marcar el
+  manifest como `confirmado`; si la verificación falla, lo marca
+  `fallo_parcial` y no continúa.
+- **`03_ejecutar_bateria.mjs`** — lee los identificadores exactos del
+  `RUN_ID` vigente desde el manifest (nunca valores fijos como
+  `'loc-A'` a secas); exige que el manifest esté `confirmado` antes de
+  arrancar. `signInWithPassword` real por usuario, sin `pg` directo.
+- **`04_limpiar.mjs`** — borra exactamente lo del manifest (membresías,
+  perfiles, filas de `almacen_kv`, locales, empresas, usuarios de Auth,
+  en ese orden). Si algo falla, dice exactamente qué y conserva el
+  manifest para reintentar o revisar a mano.
 
-## Los scripts (implementados, listos para el entorno correcto)
-
-- `00_preflight.sql` — solo lectura. Ejecutado de verdad contra QA hoy.
-  Repetirlo contra cualquier entorno antes de considerar aplicar nada:
-  aborta solo si el entorno no coincide con el modelo asumido.
-- `01_crear_usuarios_prueba.mjs` — crea usuarios de Supabase Auth
-  desechables vía Admin API (`SUPABASE_SERVICE_ROLE_KEY`, nunca en este
-  repo), uno por escenario, y escribe sus UIDs reales a
-  `._usuarios_prueba.json` (gitignored, se genera en tiempo de
-  ejecución).
-- `02_cargar_datos_prueba.mjs` — con esos UIDs reales, inserta filas de
-  prueba en `perfiles`/`membresias_usuario`/`almacen_kv`, todas
-  prefijadas `qa-pm33-` para ser triviales de identificar y borrar.
-- `03_ejecutar_bateria.mjs` — con `SUPABASE_ANON_KEY` (o publishable key)
-  y `signInWithPassword` real por usuario, ejecuta los escenarios
-  centrales de aislamiento (equivalentes a T01-T05, T16-T20, D1-D2 de la
-  batería local) vía PostgREST real, JWT real -- no `pg` directo.
-- `04_limpiar.mjs` — borra las filas de prueba y los usuarios de Auth
-  creados en `01`, en ese orden.
-
-Ninguno de `01`-`04` se ha ejecutado. `00_preflight.sql` corre primero
-siempre; si aborta (como hizo hoy contra QA), los siguientes pasos no
-tienen sentido ejecutarlos ahí.
+Ninguno de `01`-`04` se ha ejecutado contra un proyecto real. `00_preflight.sql`
+corre primero siempre; mientras aborte contra el entorno objetivo (como
+sigue haciendo contra QA), los pasos siguientes no tienen sentido
+ejecutarlos ahí.
 
 ## Variables de entorno requeridas (ninguna con valor por defecto, ninguna committeada)
 
@@ -86,5 +104,8 @@ tienen sentido ejecutarlos ahí.
 SUPABASE_PROJECT_URL=...
 SUPABASE_SERVICE_ROLE_KEY=...   # solo 01 y 04 (crear/borrar usuarios)
 SUPABASE_ANON_KEY=...           # solo 03 (login real de cada usuario de prueba)
-SUPABASE_DB_URL=...             # solo 02 (conexión directa para insertar datos de prueba)
+SUPABASE_DB_URL=...             # solo 02 y 04 (conexión directa)
 ```
+
+`_entorno.mjs` comprueba que `SUPABASE_PROJECT_URL` y `SUPABASE_DB_URL`
+apunten al mismo proyecto antes de que `02`/`03`/`04` hagan nada.
