@@ -60,6 +60,50 @@ jobs:
           echo 'MAIN_FROZEN=1'
           echo 'RELEASE_ANCESTOR_OK=1'
 
+      - name: Gate de migración única desplegable (exactamente P05, sin P03/P04)
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Deliberadamente solo supabase/migrations/ -- NUNCA
+          # tests/pm33/supabase-full/supabase/migrations/, que son las
+          # migraciones internas del entorno de pruebas desechable (ahí
+          # conviven a propósito el esquema representativo y una copia de
+          # la migración P05 para levantar el stack de Supabase de este
+          # mismo workflow) y no son migraciones que se vayan a desplegar
+          # a PROD.
+          encontradas=$(find supabase/migrations -maxdepth 1 -type f -iname '*pm33*' | sort)
+          n=$(printf '%s\n' "$encontradas" | grep -c . || true)
+          echo "Migraciones PM33 en supabase/migrations:"
+          printf '%s\n' "$encontradas"
+          echo "GATE_MIGRACION_PM33_ENCONTRADAS=$n"
+
+          if [ "$n" -ne 1 ]; then
+            echo "GATE_MIGRACION_PM33 FALLÓ: se esperaba exactamente 1 migración PM33 en supabase/migrations, se encontraron $n."
+            exit 1
+          fi
+
+          esperada="supabase/migrations/20260919170000_pm33_p05_identidad_antes_de_actividad.sql"
+          if [ "$encontradas" != "$esperada" ]; then
+            echo "GATE_MIGRACION_PM33 FALLÓ: la única migración PM33 presente no es la esperada."
+            echo "Esperada: $esperada"
+            echo "Encontrada: $encontradas"
+            exit 1
+          fi
+
+          # Confirmación explícita, independiente del conteo de arriba, de
+          # que las migraciones intermedias P03/P04 (con defectos ya
+          # corregidos en rondas posteriores) no están en supabase/migrations,
+          # busquen por el prefijo de timestamp que tenían, sea cual sea su
+          # nombre completo.
+          intermedias=$(find supabase/migrations -maxdepth 1 -type f \( -name '20260919150000_*' -o -name '20260919160000_*' \))
+          if [ -n "$intermedias" ]; then
+            echo "GATE_MIGRACION_PM33 FALLÓ: se encontraron migraciones intermedias P03/P04 que no deben estar en el candidato final:"
+            printf '%s\n' "$intermedias"
+            exit 1
+          fi
+
+          echo "GATE_MIGRACION_PM33=PASS -- única migración desplegable: $encontradas"
+
       - name: Pruebas de frontend (9 escenarios, sandbox vm real de fuente.js)
         run: node tests/pm33/p03-frontend-multilocal-contract.mjs
 
