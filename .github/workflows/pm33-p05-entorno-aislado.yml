@@ -1,0 +1,89 @@
+name: "PM33 promoción final: entorno aislado (PG17 + Auth + PostgREST reales)"
+
+# Esta rama (claude/pm33-promocion-final) es el candidato final LIMPIO:
+# creada desde release vigente, sin las migraciones intermedias P03/P04
+# (con defectos ya corregidos) en su historia -- ver
+# cierre-proyecto-a/pm33/PROPUESTA_PROMOCION.md. Contiene exactamente una
+# migración autocontenida (P05) y el fuente.js/fuente-recuperado.js
+# finales ya validados en claude/pm33-p03-obtener-contexto-operativo
+# (run 35465771875, SUCCESS). Este workflow re-valida ese mismo contenido
+# sobre el SHA real de ESTA rama limpia -- no se asume que "ya se validó
+# antes" sustituye a volver a probarlo aquí.
+#
+# workflow_dispatch por sí solo no basta aquí: GitHub solo permite
+# disparar manualmente (botón "Run workflow" o la API) un workflow cuyo
+# archivo YA está registrado -- en la práctica, eso exige que el archivo
+# exista en la rama por defecto (main) o que ya se haya ejecutado antes
+# por otro evento en ESTA rama. Con main congelada (no se toca) y esta
+# rama sin ejecuciones previas, un workflow_dispatch aislado se quedaría
+# sin poder dispararse nunca. Por eso se añade `push`, restringido
+# EXCLUSIVAMENTE al nombre exacto de esta rama (nunca un comodín, igual
+# que el resto de workflows de este repositorio) -- el mismo patrón que
+# ya usa pm12-p08-produccion-segura.yml. Un push a cualquier OTRA rama no
+# dispara nada. workflow_dispatch se conserva para re-ejecuciones
+# manuales posteriores. Este workflow no despliega nada: solo levanta un
+# stack de Supabase desechable en el propio ejecutor de GitHub, corre las
+# pruebas, y lo destruye.
+on:
+  push:
+    branches: [claude/pm33-promocion-final]
+    paths:
+      - 'tests/pm33/supabase-full/**'
+      - 'supabase/migrations/20260919170000_pm33_p05_identidad_antes_de_actividad.sql'
+      - 'fuente.js'
+      - 'tests/pm33/p03-frontend-multilocal-contract.mjs'
+      - 'source-recovery/**'
+      - '.github/workflows/pm33-p05-entorno-aislado.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  entorno-aislado-supabase:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar rama dedicada y release sin tocar
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "claude/pm33-promocion-final"
+          git fetch origin release --quiet
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          git merge-base --is-ancestor origin/release HEAD
+          echo 'MAIN_FROZEN=1'
+          echo 'RELEASE_ANCESTOR_OK=1'
+
+      - name: Pruebas de frontend (9 escenarios, sandbox vm real de fuente.js)
+        run: node tests/pm33/p03-frontend-multilocal-contract.mjs
+
+      - name: Comprobación de paridad source-recovery (sin drift entre fuente.js y fuente-recuperado.js)
+        run: python3 source-recovery/recuperar_candidato.py --check
+
+      - name: Instalar dependencias del entorno aislado
+        shell: bash
+        run: npm ci --prefix tests/pm33/supabase-full --no-audit --no-fund
+
+      - name: Iniciar Auth, PostgREST y PostgreSQL 17 desechables
+        shell: bash
+        run: |
+          set -euo pipefail
+          tests/pm33/supabase-full/node_modules/.bin/supabase start \
+            --workdir tests/pm33/supabase-full \
+            -x realtime,storage-api,imgproxy,studio,mailpit,postgres-meta,edge-runtime,logflare,vector,supavisor
+          tests/pm33/supabase-full/node_modules/.bin/supabase status \
+            --workdir tests/pm33/supabase-full -o env \
+            > tests/pm33/supabase-full/supabase/.temp/status.env
+
+      - name: P05 real -- Auth JWT + PostgREST + RLS contra PG17 real
+        run: node tests/pm33/supabase-full/p05-auth-postgrest-contract.mjs
+
+      - name: Detener Supabase desechable
+        if: always()
+        run: tests/pm33/supabase-full/node_modules/.bin/supabase stop --workdir tests/pm33/supabase-full --no-backup || true
