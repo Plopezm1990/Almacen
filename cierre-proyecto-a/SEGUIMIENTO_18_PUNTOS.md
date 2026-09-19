@@ -28,18 +28,31 @@ durante esta sesión.
 
 ## 1. PM33 / R10 — Aislamiento de `obtener_contexto_operativo()`
 
-**Estado: FASE A APLICADA Y VERIFICADA EN PROD.** La migración P05 está
+**Estado: CERRADO.** Fase A y fase B ejecutadas y verificadas en PROD, ambas
+autorizadas explícitamente por el propietario. La migración P05 está
 aplicada en `flqercbgpgmmfaakrwkc` (versión real registrada
 `20260919225831`), postflight en verde (7/7 comprobaciones exigidas).
-Candidato final re-validado tras renombrar el archivo a esa versión:
-`claude/pm33-promocion-final` @ `6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d`,
-gate [`run 35474922732`](https://github.com/Plopezm1990/Almacen/actions/runs/35474922732)
-**SUCCESS**. **Fase B (mover `release`, publicar Netlify) PENDIENTE de
-autorización separada -- NO cerrado, NO publicado en Netlify.** El
-mecanismo de aplicación inicialmente propuesto (`supabase db push`)
-resultó inseguro -- el propietario comprobó la matriz real de migraciones
-(34 locales vs. 36 en PROD, 0 en común) y se corrigió antes de aplicar
-nada (ver más abajo y `pm33/HALLAZGOS_P02.md` sección 17).
+`release` se movió mediante fast-forward exacto a
+`6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d` (sin merge commit, sin rebase,
+`main`/PR#38 sin tocar) y Netlify publicó automáticamente el deploy
+`6aaf17545a7196000883d14d` (`state=ready`, `branch=release`,
+`commit_ref=6e26391...`, `context=production`, sin errores de build).
+Postflight de producción en verde: `index.html` y `fuente.js` responden
+correctamente, hash SHA-256 servido de `fuente.js`
+(`9367617cb34600966a5e726e6a16b1bb2a537b220aba0c54d6fdd53e53c1eb8a`)
+idéntico al esperado y al del commit promovido, cabecera `Cache-Control`
+preservada, llamada RPC anónima sigue rechazada (`HTTP 401`, `42501`), sin
+avisos de seguridad nuevos. Gate
+[`run 35474922732`](https://github.com/Plopezm1990/Almacen/actions/runs/35474922732)
+**SUCCESS**. Límite honesto documentado: sin credenciales reales de un
+empleado activo no fue posible una prueba funcional autenticada completa
+de la lógica multilocal en PROD (no se crearon usuarios ni datos
+sintéticos, conforme a la condición explícita del propietario). Detalle
+completo de la fase B en `pm33/HALLAZGOS_P02.md` sección 21. El mecanismo
+de aplicación inicialmente propuesto (`supabase db push`) resultó
+inseguro -- el propietario comprobó la matriz real de migraciones (34
+locales vs. 36 en PROD, 0 en común) y se corrigió antes de aplicar nada
+(ver más abajo y `pm33/HALLAZGOS_P02.md` sección 17).
 Candidato P05 (SQL + frontend) validado localmente (Postgres 16 real,
 81/81), en un entorno aislado equivalente al modelo actual de PROD con
 **PostgreSQL 17.6.1.167 + Auth (GoTrue v2.196.0) + PostgREST (v16.2)
@@ -332,17 +345,27 @@ mover `release` (dispara Netlify automáticamente, `manual_deploy=false`).
   en el historial tanto la aplicación de P05 como su reversión. Detalle
   completo en `pm33/PROPUESTA_PROMOCION.md` secciones 4-5 y 11-13, y en
   `pm33/HALLAZGOS_P02.md` sección 19.
-- **Pasos restantes**: PM33 pasa a **fase A aplicada y verificada en
-  PROD; fase B (mover `release`, publicar Netlify) pendiente de
-  autorización separada**, sobre
-  `claude/pm33-promocion-final` @ `6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d`.
-  Con (B) autorizada: comprobación inmediata antes de mover (`release`
-  sigue en `f313bc0`, el candidato sigue en `6e26391`, el gate sigue en
-  SUCCESS, PROD conserva la migración `20260919225831`) → fast-forward
-  exacto de `release` → supervisar el despliegue de Netlify → verificar
-  en producción (`index.html`, `fuente.js` y su hash servido, cabecera
-  `Cache-Control`, rechazo de la llamada anónima, ausencia de errores
-  nuevos) → postflight final → cerrar PM33 solo si todo queda en verde.
+- **Fase B ejecutada (19/09/2026), autorizada explícitamente por el
+  propietario**: comprobación inmediata antes de mover reconfirmada en
+  verde (`release` seguía en `f313bc0`, el candidato en `6e26391`, el
+  gate en SUCCESS, PROD con la migración `20260919225831`) → fast-forward
+  exacto de `release` a `6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d` (push
+  sin `--force`, aceptado como fast-forward puro; `main`/PR#38 sin
+  tocar) → Netlify publicó automáticamente el deploy
+  `6aaf17545a7196000883d14d` (`ready`, `production`,
+  `commit_ref=6e26391...`, sin errores de build, sin secretos
+  detectados) → verificación en producción: `index.html` y `fuente.js`
+  responden `HTTP 200`, hash SHA-256 servido de `fuente.js`
+  (`9367617cb34600966a5e726e6a16b1bb2a537b220aba0c54d6fdd53e53c1eb8a`)
+  idéntico al esperado y al del commit promovido (verificado con `diff`
+  byte a byte), cabecera `Cache-Control: no-cache,must-revalidate`
+  presente, llamada RPC anónima sigue rechazada (`HTTP 401`, `42501`),
+  avisos de seguridad sin cambios → **no fue necesario ningún
+  rollback**. Límite honesto: sin credenciales reales de un empleado
+  activo no fue posible una prueba funcional autenticada de extremo a
+  extremo (no se crearon usuarios ni datos sintéticos en PROD, conforme
+  a la condición explícita del propietario). **PM33 queda CERRADO.**
+  Detalle completo en `pm33/HALLAZGOS_P02.md` sección 21.
   Decisión separada y no bloqueante para el cierre de PM33: si el modelo
   relacional de QA es el diseño futuro de esta función, ni la deuda más
   amplia de 34 vs. 36 migraciones más allá de P05 (Punto 5).

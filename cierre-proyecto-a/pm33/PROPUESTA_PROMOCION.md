@@ -1,19 +1,26 @@
 # PM33 — Propuesta de promoción a PROD y Netlify
 
-**Estado: FASE A APLICADA Y VERIFICADA EN PROD.** La migración P05 está
-aplicada en `flqercbgpgmmfaakrwkc` con el mecanismo corregido de la
-sección 5 (`apply_migration`, versión real registrada
+**Estado: CERRADO. FASE A Y FASE B APLICADAS Y VERIFICADAS EN PROD.** La
+migración P05 está aplicada en `flqercbgpgmmfaakrwkc` con el mecanismo
+corregido de la sección 5 (`apply_migration`, versión real registrada
 `20260919225831`), postflight en verde (7/7). Candidato final
 re-validado tras renombrar el archivo a esa versión:
 `claude/pm33-promocion-final` @ `6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d`,
 gate [`run 35474922732`](https://github.com/Plopezm1990/Almacen/actions/runs/35474922732)
-**SUCCESS**. Detalle completo de la fase A en
-`cierre-proyecto-a/pm33/HALLAZGOS_P02.md` sección 19. **Fase B (mover
-`release`, publicar Netlify) PENDIENTE de autorización separada — NO
-cerrado, NO publicado en Netlify.** Nada de Netlify se ha ejecutado
-todavía. Esta propuesta sigue existiendo para que el propietario
-autorice, específicamente, (B) mover `release` a `6e26391` — no queda
-autorizada implícitamente por haber completado (A).
+**SUCCESS**. `release` se movió mediante fast-forward exacto a ese commit
+(sin merge commit, sin rebase, `main`/PR#38 sin tocar) y Netlify publicó
+automáticamente el deploy `6aaf17545a7196000883d14d` (`ready`,
+`production`, `commit_ref` coincidente, sin errores de build). Postflight
+de producción en verde: `index.html`/`fuente.js` responden, hash SHA-256
+servido de `fuente.js` idéntico al esperado
+(`9367617cb34600966a5e726e6a16b1bb2a537b220aba0c54d6fdd53e53c1eb8a`),
+`Cache-Control` preservada, llamada RPC anónima sigue rechazada (`HTTP
+401`, `42501`), sin avisos de seguridad nuevos. No hizo falta ningún
+rollback. Límite honesto: sin credenciales reales de un empleado activo,
+no se ejecutó una prueba funcional autenticada completa (no se crearon
+usuarios ni datos sintéticos en PROD). Detalle completo de la fase A en
+`cierre-proyecto-a/pm33/HALLAZGOS_P02.md` sección 19, y de la fase B en la
+sección 21 del mismo documento.
 
 ## 0. Evidencia (candidato final limpio, no la rama de iteración)
 

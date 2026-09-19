@@ -1,6 +1,6 @@
 # PM33 — Revisión de cierre: P01 → P02 → P03 → P04 → P05
 
-Estado: **Fase A aplicada y verificada en PROD (`flqercbgpgmmfaakrwkc`): la migración P05 está aplicada (versión real `20260919225831`), postflight en verde. Candidato final re-validado: `claude/pm33-promocion-final` @ `6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d`, gate `run 35474922732` SUCCESS. Fase B (mover `release`, publicar Netlify) PENDIENTE de autorización separada. NO cerrado.** Candidato P05 (SQL + frontend) validado contra Postgres real localmente (16.13, 81/81 aserciones), contra un entorno aislado equivalente al modelo actual de PROD con **PostgreSQL 17.6.1.167 + Auth (GoTrue v2.196.0) + PostgREST (v16.2) reales** (`run 35465771875`, commit `d6ed496`, SUCCESS), sobre el candidato final limpio creado desde `release` vigente sin las migraciones intermedias P03/P04 en su historia (`run 35473168918`, commit `21ce7fa`, SUCCESS), y de nuevo tras renombrar la migración a su versión real registrada por PROD (`run 35474922732`, commit `6e26391`, **SUCCESS**). Ver sección 13 para la primera validación real, sección 15 para el candidato final limpio, sección 17 para el hallazgo crítico de la matriz de migraciones (34 locales vs. 36 en PROD, 0 en común) y el mecanismo corregido, sección 19 para la fase A completa (preflight, aplicación, postflight, versión registrada), y sección 20 para el estado vigente. QA (`qjqorixtkilwsndqayyx`) se conserva intacto, sin tocar. Propuesta de promoción concreta en `cierre-proyecto-a/pm33/PROPUESTA_PROMOCION.md` -- pendiente de autorización separada del propietario para (B) mover `release` (dispara Netlify automáticamente).
+Estado: **PM33 CERRADO. Fase A y Fase B ejecutadas y verificadas en PROD, ambas autorizadas explícitamente por el propietario.** La migración P05 está aplicada en `flqercbgpgmmfaakrwkc` (versión real `20260919225831`). `release` se movió mediante fast-forward exacto a `6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d` (sin merge commit, sin rebase, `main`/PR#38 sin tocar) y Netlify publicó automáticamente el deploy `6aaf17545a7196000883d14d` (`state=ready`, `branch=release`, `commit_ref=6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d`, `context=production`, sin errores de build). Postflight de producción en verde (ver sección 21). Candidato P05 (SQL + frontend) validado contra Postgres real localmente (16.13, 81/81 aserciones), contra un entorno aislado equivalente al modelo actual de PROD con **PostgreSQL 17.6.1.167 + Auth (GoTrue v2.196.0) + PostgREST (v16.2) reales** (`run 35465771875`, commit `d6ed496`, SUCCESS), sobre el candidato final limpio creado desde `release` vigente sin las migraciones intermedias P03/P04 en su historia (`run 35473168918`, commit `21ce7fa`, SUCCESS), y de nuevo tras renombrar la migración a su versión real registrada por PROD (`run 35474922732`, commit `6e26391`, **SUCCESS**). Ver sección 13 para la primera validación real, sección 15 para el candidato final limpio, sección 17 para el hallazgo crítico de la matriz de migraciones (34 locales vs. 36 en PROD, 0 en común) y el mecanismo corregido, sección 19 para la fase A completa (preflight, aplicación, postflight, versión registrada), sección 20 para el estado previo a la fase B, y sección 21 para la fase B completa y el cierre. QA (`qjqorixtkilwsndqayyx`) se conserva intacto, sin tocar. Propuesta de promoción en `cierre-proyecto-a/pm33/PROPUESTA_PROMOCION.md`.
 
 Este documento cubre las cinco iteraciones en orden: **P02** (secciones
 1-6), **P03** (sección 7-8, segunda ronda), **P04** (sección 9 en
@@ -1190,13 +1190,17 @@ sin sesión, ya hecha) queda para la fase B o para una verificación
 posterior expresamente supervisada por el propietario — no se ha hecho
 en esta fase.
 
-## 20. Próximo paso concreto (vigente)
+## 20. Próximo paso concreto (histórico -- superado por la sección 21)
 
-**Estado: Fase A de PM33 aplicada y verificada en PROD
+**Este estado quedó superado el 19/09/2026 al ejecutarse la fase B (ver
+sección 21). Se conserva sin editar como registro de lo que estaba
+pendiente en ese momento.**
+
+Estado (en ese momento): Fase A de PM33 aplicada y verificada en PROD
 (`flqercbgpgmmfaakrwkc`), candidato final re-validado
 (`claude/pm33-promocion-final` @ `6e26391`, gate `35474922732` SUCCESS).
 Fase B (mover `release`, publicar Netlify) pendiente de autorización
-separada. NO cerrado.**
+separada. NO cerrado.
 
 1. Propietario autoriza, específicamente, mover `release` a
    `6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d` -- dispara Netlify
@@ -1218,3 +1222,124 @@ separada. NO cerrado.**
    (fuera del alcance actual, ver 9.5). Tampoco bloqueante: la deuda más
    amplia de 34 vs. 36 migraciones más allá de P05 (Punto 5 del
    documento maestro de cierre).
+
+## 21. Fase B ejecutada: `release` promovido, Netlify publicado, PM33 cerrado
+
+**Autorizada explícitamente por el propietario** ("Autorizo la fase B de
+PM33: promover `claude/pm33-promocion-final` @
+`6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d` a `release`"), con
+procedimiento obligatorio de 8 pasos, todos ejecutados el 19/09/2026
+contra `flqercbgpgmmfaakrwkc` / sitio Netlify `chic-entremet-9107cf`.
+
+### 21.1 Comprobación inmediata antes de mover (paso 2)
+
+Reconfirmado, de forma independiente, justo antes del push:
+
+- `origin/release` = `f313bc0e036281d5c68c57fcda72da72f0dd0369` (sin
+  cambios).
+- `origin/claude/pm33-promocion-final` =
+  `6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d` (sin cambios).
+- Gate `run 35474922732` -- reconsultado vía la API de GitHub Actions --
+  `conclusion=success` (sin cambios).
+- PROD: `obtener_contexto_operativo(text)`, `pronargs=1`, hash
+  `211ddc8ad6c053be1c75872ceb29a093` (sin cambios desde la fase A).
+- `list_migrations`: 37 filas, `20260919225831` sigue presente como
+  última entrada.
+- `git merge-base --is-ancestor f313bc0... 6e26391...` → verdadero:
+  fast-forward seguro confirmado.
+- `git log --oneline f313bc0..6e26391` → exactamente los tres commits
+  esperados (`6e26391`, `21ce7fa`, `70ccfd5`).
+
+### 21.2 Fast-forward de `release` (paso 3)
+
+`git push origin 6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d:release` --
+push **sin `--force`**, aceptado por GitHub como fast-forward puro
+(`f313bc0..6e26391`, sin marca de reescritura de historia). `main`
+verificado sin cambios tras el push
+(`93a570badba1c5375febfbddc1dffdbcef003dcd`, idéntico al esperado). PR#38
+no se tocó.
+
+### 21.3 Despliegue de Netlify supervisado con espera acotada (paso 4)
+
+Nuevo deploy detectado: **`6aaf17545a7196000883d14d`**. Detalle
+verificado vía `get-deploy-for-site`:
+
+- `state = "ready"`, `commit_ref =
+  "6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d"` (coincide exactamente),
+  `branch = "release"`, `context = "production"`, `error_message =
+  null`, `manual_deploy = false` (disparado automáticamente por el
+  push, como se documentó).
+- `summary.status = "ready"`, los cinco mensajes del resumen son de tipo
+  `info` (1 archivo nuevo subido, 7 reglas de cabecera aplicadas sin
+  error, sin funciones/edge functions, sin reglas de redirección) -- sin
+  errores de build.
+- `deploy_validations_report.secret_scan_result`: sin coincidencias
+  (`secretsScanMatches: []`, `enhancedSecretsScanMatches: []`).
+- `published_at = "2026-09-19T23:14:41.133Z"`, `deploy_time = 11`
+  segundos.
+
+### 21.4 Verificación en producción (paso 5)
+
+- **`index.html`**: `HTTP 200`, contenido HTML válido servido
+  (`<title>L&amp;A Suite</title>` y metadatos esperados presentes).
+- **`fuente.js`**: `HTTP 200`. Cabecera `cache-control:
+  no-cache,must-revalidate` presente (coincide con el valor exigido,
+  sin diferencia semántica por el espacio tras la coma).
+- **Hash SHA-256 servido de `fuente.js`**:
+  `9367617cb34600966a5e726e6a16b1bb2a537b220aba0c54d6fdd53e53c1eb8a` --
+  verificado con `sha256sum` sobre la descarga real (64 caracteres
+  hexadecimales, formato válido), **idéntico** al valor dado por el
+  propietario y **idéntico** (`diff` byte a byte) al `fuente.js` del
+  commit `6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d` extraído con `git
+  show`.
+- **Llamada RPC anónima**: petición HTTP real (no simulada) contra
+  `https://flqercbgpgmmfaakrwkc.supabase.co/rest/v1/rpc/obtener_contexto_operativo`
+  con la clave `anon` real, sin JWT de usuario -- `HTTP 401`,
+  `{"code":"42501","message":"permission denied for function
+  obtener_contexto_operativo"}`. Idéntico al postflight de la fase A
+  (sección 19.3.6): el despliegue del frontend no altera el
+  comportamiento de rechazo en el backend.
+- **Avisos de seguridad**: `get_advisors(type=security)` reconsultado
+  tras el despliegue -- mismas tres categorías, mismos recuentos (6
+  `rls_enabled_no_policy`, 17
+  `authenticated_security_definer_function_executable`, 1
+  `auth_leaked_password_protection`). Sin categorías ni hallazgos
+  nuevos atribuibles a este despliegue (esperado: un despliegue de
+  Netlify no modifica la base de datos).
+
+### 21.5 Límite honesto: sin prueba funcional autenticada completa (paso 6)
+
+Conforme a la condición explícita de no crear usuarios ni datos
+sintéticos en PROD: **no dispongo de credenciales reales de ningún
+empleado activo** para iniciar sesión y ejercitar de extremo a extremo
+la lógica multilocal de `obtener_contexto_operativo(p_local_id)` como
+usuario autenticado real. Como ya se documentó en la preparación de la
+fase A, PROD solo tiene confirmado un perfil Propietario activo; no se
+ha consultado más allá de eso en esta fase para evitar tocar datos de
+usuarios sin necesidad. Esta limitación se registra honestamente en
+lugar de simular o dar por bueno un resultado no verificado. Lo que sí
+quedó verificado de forma real y repetida (fases A y B): el rechazo de
+acceso sin sesión, la firma/hash exactos de la función aplicada, y la
+ausencia de nuevos avisos de seguridad.
+
+### 21.6 Rollback (paso 7)
+
+**No fue necesario.** Todas las comprobaciones de los pasos 3-5
+resultaron en verde a la primera; no se ejecutó ningún rollback de
+Netlify ni ninguna migración de reversión.
+
+### 21.7 Cierre (paso 8)
+
+Con los pasos 1-6 en verde y sin necesidad de rollback: **PM33 queda
+CERRADO.** Estado final:
+
+- `release` = `6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d`.
+- PROD (`flqercbgpgmmfaakrwkc`): `obtener_contexto_operativo(p_local_id
+  text default null)`, migración registrada `20260919225831`, hash
+  `211ddc8ad6c053be1c75872ceb29a093`, `authenticated` con EXECUTE,
+  `anon`/`PUBLIC` sin EXECUTE.
+- Netlify (`chic-entremet-9107cf`): deploy actual
+  `6aaf17545a7196000883d14d`, `ready`, `production`, servido desde
+  `release@6e26391`.
+- `main` y PR#38: sin cambios.
+- QA (`qjqorixtkilwsndqayyx`): intacto, sin tocar.
