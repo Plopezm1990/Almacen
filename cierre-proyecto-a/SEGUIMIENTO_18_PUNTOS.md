@@ -28,51 +28,81 @@ durante esta sesión.
 
 ## 1. PM33 / R10 — Aislamiento de `obtener_contexto_operativo()`
 
-**Estado: preparado y validado localmente (Postgres 16 real). NO aplicado.
-Regresión encontrada en el candidato original y corregida en un nuevo
-candidato P02, también validado localmente.**
+**Estado: P03 preparado y validado localmente (Postgres 16 real), incluida
+la migración completa desde el estado real de PROD y el parche de
+frontend. NO aplicado a Supabase ni a producción.** Segunda ronda de
+revisión: P02 (turno anterior) tenía un defecto de diseño propio,
+encontrado y corregido en P03. Detalle completo en
+`cierre-proyecto-a/pm33/HALLAZGOS_P02.md` (cubre P01→P02→P03).
 
-- **Problema confirmado hoy, en vivo**: consulté `pg_get_functiondef` contra
-  PROD (`flqercbgpgmmfaakrwkc`) el 19/09/2026 — la función vigente sigue
-  siendo la versión de 0 argumentos, sin acotar por empresa/local. El
-  defecto R10 sigue activo en producción en este momento.
-- **Candidato original**: rama `claude/pm33-fix-obtener-contexto-operativo`,
-  commit `4127782b3feb2977e0570548904ca5e4f6523937`. Confirmado: 1 commit
-  por delante de `release` (`f313bc0`), sin conflicto (`git merge-base` =
-  `f313bc0`). Reproduje su batería (14 escenarios / 38 aserciones) de forma
-  independiente contra Postgres 16.13 real: **38/38 PASS**, igual que
-  reporta su propio commit.
-- **Hallazgo nuevo de esta revisión**: el candidato original vacía
-  `empleado`/`empleadosFichaje` para cualquier rol fuera de
-  `Encargado/Cajero/a/Churrero/a` (hoy, `Camarero/a` es el caso real) —
-  contradice la propia afirmación de su documento ("cubierto por T14").
-  Reproducido con Postgres real: el mismo usuario de T14 pasa de recibir su
-  propio registro de empleado (función vigente en PROD) a recibir `null`
-  con el candidato original. Rompe `fichajesDelPropioEmpleado` en
-  `fuente.js` para ese rol.
-- **Corrección preparada**: `cierre-proyecto-a/pm33/candidato_p02_obtener_contexto_operativo.sql`.
-  Detalle completo, evidencia rojo/verde y pruebas en
-  `cierre-proyecto-a/pm33/HALLAZGOS_P02.md`.
-- **Pruebas ejecutadas**: 45/45 aserciones locales (38 del contrato
-  original + 7 nuevas), Postgres 16.13 real, no mocks. Además, verificación
-  de solo lectura contra PROD que el propio autor había dejado pendiente:
-  **0 empleados activos con `empleado_id` ambiguo entre locales hoy** — el
-  riesgo de "contexto ambiguo" al aplicar el bloque obligatorio queda
-  acotado con evidencia actual.
+- **Problema confirmado hoy, en vivo**: la función vigente en PROD
+  (`flqercbgpgmmfaakrwkc`) sigue siendo la de 0 argumentos, sin acotar por
+  empresa/local. El defecto R10 sigue activo en producción en este
+  momento.
+- **Candidato vigente**: rama **`claude/pm33-p03-obtener-contexto-operativo`**,
+  commit **`e7491d5f840185025259e4029f7f1d6b8a814798`**, creada desde
+  `origin/release` (no desde `main`) — un solo commit por delante de
+  `release` (`f313bc0`), sin conflicto. Sustituye por completo al
+  candidato P02 anterior (que a su vez sustituía al original P01, rama
+  `claude/pm33-fix-obtener-contexto-operativo`, commit `4127782`, que
+  queda intacta sin tocar).
+- **Qué corrigió P03 sobre P02** (encontrado en esta segunda ronda,
+  reproducido con Postgres real, no solo por inspección):
+  1. P02 introducía, para roles no gestionados (Camarero/a), un fallback
+     que leía `almacen_kv` **sin acotar** por empresa/local cuando el
+     contexto era ambiguo — el mismo patrón de fondo que R10, aplicado a
+     la búsqueda de un único empleado. Demostrado: un `empleado_id`
+     duplicado entre dos empresas hacía que P02 devolviera, con
+     `LIMIT 1`, el registro de cualquiera de las dos. P03 elimina ese
+     fallback por completo.
+  2. P02 ignoraba `p_local_id` fuera del bloque obligatorio: un Camarero/a
+     podía pedir explícitamente el local de OTRA empresa y P02 le
+     devolvía igual su propio contexto, sin comprobar nada. P03 lo valida.
+  3. P02 no comprobaba que el local/empresa resuelto para estos roles
+     siguiera activo. P03 lo comprueba.
+  4. **Crítico**: P02, tal como quedó redactado, omitía el
+     `drop function if exists public.obtener_contexto_operativo();` que sí
+     llevaba P01. Aplicado sobre el estado real de PROD (solo tiene la
+     sobrecarga de 0 argumentos), P02 habría sido un **no-op**: Postgres
+     prefiere la coincidencia exacta de aridad, y el único call site real
+     invoca sin argumentos. P03 restaura el `drop` y se probó la
+     transición completa partiendo de la función antigua real (no solo de
+     una base vacía): preflight, apply transaccional, postflight y
+     rollback, con verificación funcional de que la llamada sin
+     argumentos ejecuta el cuerpo nuevo tras migrar.
+- **Pruebas ejecutadas para P03**: 65/66 aserciones locales, Postgres
+  16.13 real, no mocks (38+7+17 de SQL + 4 de frontend). La única
+  excepción es un cambio de comportamiento deliberado y documentado (P03
+  ahora resuelve `empresaId` para roles no gestionados cuando es
+  deducible; antes quedaba siempre `null`) — no una regresión de
+  aislamiento, confirmado por las aserciones que sí comprueban el valor
+  devuelto. Incluye 5 escenarios nuevos pedidos en esta ronda: id de
+  empleado duplicado entre empresas, local ajeno solicitado, membresía
+  inactiva, empresa/local de baja, y un Camarero/a activo legítimo (no
+  solo el usuario de T14, marcado inactivo).
+- **Frontend (`fuente.js`, misma rama/commit)**: `obtenerContexto()` ahora
+  envía `p_local_id` reutilizando el estado `localActivoId` ya existente
+  (mismo selector que usa el resto de la app, sin uno nuevo), invalida la
+  caché al cambiar de local, y un rechazo explícito del servidor limpia
+  la caché en memoria y en disco en vez de reutilizar datos antiguos —
+  antes un rechazo o un corte de red posterior podían servir el contexto
+  de otro local. Validado ejecutando el propio código parcheado en un
+  sandbox (no solo por inspección): 4/4. **No publicado a `release`.**
 - **Entorno comprobado**: local (Postgres 16.13, contenedor de esta
-  sesión). **NO comprobado**: PostgreSQL 17 (versión real de PROD/QA —
-  sin Docker operativo ni paquete disponible en este entorno), Auth/JWT/
-  PostgREST reales, RLS real (la función es `SECURITY DEFINER` y no
-  depende de RLS de las tablas que lee, lo que reduce el gap pero no lo
-  cierra), compatibilidad multi-local del frontend (`fuente.js` invoca sin
-  `p_local_id`; hoy ningún usuario real de PROD tiene membresía
-  multi-local, pero el candidato rechazaría a uno que la tuviera y el
-  frontend no sabe reintentar con `p_local_id` — **decisión de producto
-  pendiente, no tomada aquí**).
-- **Pasos restantes**: (1) decisión del propietario sobre el gap
-  multi-local; (2) aplicar y repetir la batería en QA (PostgreSQL 17 real)
-  + una prueba de humo con Auth real; (3) autorización explícita para
-  aplicar a PROD. Nada de esto se ha hecho en esta sesión.
+  sesión), incluida la transición real desde la función hoy vigente en
+  PROD. **NO comprobado**: PostgreSQL 17 (versión real de PROD/QA — sin
+  Docker operativo ni paquete disponible en este entorno), Auth/PostgREST
+  reales. Propuesta concreta para cerrar ambos en QA, sin tocar `auth` ni
+  sustituir la autenticación real: `cierre-proyecto-a/pm33/PROPUESTA_VALIDACION_QA.md`
+  (preparada, **no ejecutada**, pendiente de autorización).
+- **Pasos restantes**: (1) autorización para el preflight de solo lectura
+  contra QA; (2) con eso en verde, ejecutar la propuesta de validación en
+  QA (usuarios de prueba reales, PostgreSQL 17.6, Auth/PostgREST real);
+  (3) decisión del propietario sobre publicar el cambio de frontend a
+  `release` (el SQL solo ya cierra R10 para el caso de un único local por
+  dispositivo, que es el caso real hoy; el frontend hace falta solo para
+  multilocal, sin usuarios reales todavía); (4) autorización explícita
+  para aplicar a PROD. Nada de esto se ha hecho en esta sesión.
 
 ---
 
@@ -317,9 +347,17 @@ workstream separado cuando se decida, sin condicionar el cierre de 1-13.
   `execute_sql` de solo lectura), Netlify (`get-projects`).
 - `git status`/`git log` del checkout: limpio antes de empezar, rama
   `claude/proyecto-a-la-suite-cierre-3xs7l3` desde `main` (`93a570b`).
-- PM33: 45/45 aserciones Postgres 16.13 real (ver sección 1 y
-  `pm33/HALLAZGOS_P02.md`). Verificación de solo lectura contra PROD
-  (0 empleados con `empleado_id` ambiguo entre locales).
+- PM33 (primera ronda, candidato P02): 45/45 aserciones Postgres 16.13
+  real. Verificación de solo lectura contra PROD (0 empleados con
+  `empleado_id` ambiguo entre locales).
+- PM33 (segunda ronda, candidato P03 sobre rama `claude/pm33-p03-obtener-contexto-operativo`
+  sacada de `origin/release`): 65/66 aserciones Postgres 16.13 real (SQL +
+  frontend), incluida la migración completa probada partiendo de la
+  función real hoy vigente en PROD (capturada por `pg_get_functiondef`,
+  no reescrita de memoria) y su rollback. Verificación de dependencias y
+  grants reales contra PROD antes de diseñar la migración (`pg_proc`,
+  `pg_depend`, `has_function_privilege`). Detalle completo en
+  `pm33/HALLAZGOS_P02.md` sección 7-8.
 - GitHub Actions: 0 workflow runs para `f313bc0` (HEAD de `release`);
   confirmado que ningún workflow dispara por push a las ramas usadas en
   esta revisión.
