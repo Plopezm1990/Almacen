@@ -1,12 +1,27 @@
 name: PM33 P05 entorno aislado (PG17 + Auth + PostgREST reales)
 
-# Deliberadamente SOLO workflow_dispatch -- a diferencia de otros workflows
-# de este repositorio (p.ej. pm12-p08-produccion-segura.yml), este NO se
-# dispara con push. Un push a esta rama no debe ejecutar nada por sí solo;
-# la ejecución requiere una activación manual explícita y autorizada. Ver
-# docs/plan-maestro/PM33_ENTORNO_AISLADO.md para el porqué y el coste real
-# (cero -- ejecutor efímero de GitHub, sin proyecto remoto de Supabase).
+# workflow_dispatch por sí solo NO basta aquí: GitHub solo permite
+# disparar manualmente (botón "Run workflow" o la API) un workflow cuyo
+# archivo YA está registrado -- en la práctica, eso exige que el archivo
+# exista en la rama por defecto (main) o que ya se haya ejecutado antes
+# por otro evento en ESTA rama. Con main congelada (no se toca) y esta
+# rama sin ejecuciones previas, un workflow_dispatch aislado se quedaría
+# sin poder dispararse nunca. Por eso se añade `push`, restringido
+# EXCLUSIVAMENTE al nombre exacto de esta rama candidata (nunca un
+# comodín, igual que el resto de workflows de este repositorio) -- el
+# mismo patrón que ya usa pm12-p08-produccion-segura.yml. Un push a
+# cualquier OTRA rama no dispara nada. workflow_dispatch se conserva para
+# poder re-ejecutar manualmente una vez el archivo ya esté registrado.
+# Este workflow no despliega nada: solo levanta un stack de Supabase
+# desechable en el propio ejecutor de GitHub, corre las pruebas, y lo
+# destruye -- ver docs/plan-maestro/PM33_ENTORNO_AISLADO.md.
 on:
+  push:
+    branches: [claude/pm33-p03-obtener-contexto-operativo]
+    paths:
+      - 'tests/pm33/supabase-full/**'
+      - 'supabase/migrations/20260919170000_pm33_p05_identidad_antes_de_actividad.sql'
+      - '.github/workflows/pm33-p05-entorno-aislado.yml'
   workflow_dispatch: {}
 
 permissions:

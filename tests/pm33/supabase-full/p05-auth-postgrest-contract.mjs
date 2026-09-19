@@ -57,6 +57,27 @@ function check(name, cond, detalle) {
   if (cond) { pass++; console.log(`[PASS] ${name}`); }
   else { fail++; failures.push(name); console.log(`[FAIL] ${name}${detalle ? ' -- ' + detalle : ''}`); }
 }
+// El propietario pidió explícitamente exigir el rechazo esperado y SU
+// CÓDIGO, no solo "la llamada no tuvo éxito": un HTTP 500 (fallo de
+// infraestructura -- PostgREST caído, la RPC no existe, un error de
+// sintaxis en el propio SQL...) también hace que `.ok` sea false, y eso
+// NUNCA demuestra aislamiento correcto -- demuestra que la petición no
+// llegó a evaluarse. Este helper exige las tres cosas a la vez: nunca un
+// 500, un HTTP de rechazo real (4xx), y el código de error explícito
+// 42501 (insufficient_privilege) que el propio candidato P05 usa en
+// TODOS sus `raise exception ... using errcode = '42501'` -- nunca solo
+// "cualquier error". No se fija un único status HTTP exacto (la
+// asignación status<->código de Postgres es cosa de PostgREST, no del
+// candidato), pero SÍ se exige que sea un 4xx explícito, nunca un 5xx.
+function checkRechazo(nombre, respuesta, patronMensaje) {
+  const detalle = JSON.stringify(respuesta);
+  check(`${nombre}: nunca un HTTP 500 (un fallo de infraestructura no es aislamiento correcto)`, respuesta.status !== 500, detalle);
+  check(`${nombre}: HTTP de rechazo real (4xx explícito, no 2xx ni 5xx)`, respuesta.status >= 400 && respuesta.status < 500, detalle);
+  check(`${nombre}: código de error explícito 42501 (insufficient_privilege) en el cuerpo, no un mensaje genérico`, !!(respuesta.data && respuesta.data.code === '42501'), detalle);
+  if (patronMensaje) {
+    check(`${nombre}: mensaje reconocible (${patronMensaje})`, !!(respuesta.data && typeof respuesta.data.message === 'string' && patronMensaje.test(respuesta.data.message)), detalle);
+  }
+}
 
 try {
   await db.query(`insert into public.empresas (id, nombre, activo) values
@@ -77,16 +98,20 @@ try {
       (1,$1,'emp-A','loc-A',false,'Cajero/a',true)`, [u.id]);
 
     const sinLocal = await call(u.token);
-    check('E1 sin p_local_id: resuelve a A vía membresía', sinLocal.ok && sinLocal.data.empresaId === 'emp-A', JSON.stringify(sinLocal));
+    check('E1 sin p_local_id: resuelve a A vía membresía', sinLocal.ok && sinLocal.status === 200 && sinLocal.data.empresaId === 'emp-A', JSON.stringify(sinLocal));
 
     const pidiendoB = await call(u.token, 'loc-B');
-    check('E1 pidiendo loc-B explícito: RECHAZADO (nunca datos de B)',
-      !pidiendoB.ok || pidiendoB.data?.empresaId !== 'emp-B',
-      JSON.stringify(pidiendoB));
+    checkRechazo('E1 pidiendo loc-B explícito', pidiendoB, /no autorizad/i);
 
     const pidiendoA = await call(u.token, 'loc-A');
     check('E1 pidiendo su propio loc-A: resuelve a A vía membresía (no penaliza al usuario legítimo)',
-      pidiendoA.ok && pidiendoA.data.empresaId === 'emp-A', JSON.stringify(pidiendoA));
+      pidiendoA.ok && pidiendoA.status === 200 && pidiendoA.data.empresaId === 'emp-A', JSON.stringify(pidiendoA));
+  }
+
+  console.log('\n=== Control: sin autenticar (sin JWT de usuario real) también se rechaza por código, no a ciegas ===');
+  {
+    const sinAutenticar = await call(anonKey);
+    checkRechazo('llamada con la clave anon (auth.uid() nulo)', sinAutenticar, /no autenticad/i);
   }
 
   console.log('\n=== Aislamiento básico Cajero/a A vs B (JWT real) ===');
@@ -100,8 +125,8 @@ try {
       (2,$1,'emp-A','loc-A',false,'Cajero/a',true), (3,$2,'emp-B','loc-B',false,'Cajero/a',true)`, [a.id, b.id]);
     const ra = await call(a.token);
     const rb = await call(b.token);
-    check('cajero-a acotado a emp-A', ra.ok && ra.data.empresaId === 'emp-A', JSON.stringify(ra));
-    check('cajero-b acotado a emp-B', rb.ok && rb.data.empresaId === 'emp-B', JSON.stringify(rb));
+    check('cajero-a acotado a emp-A', ra.ok && ra.status === 200 && ra.data.empresaId === 'emp-A', JSON.stringify(ra));
+    check('cajero-b acotado a emp-B', rb.ok && rb.status === 200 && rb.data.empresaId === 'emp-B', JSON.stringify(rb));
   }
 
   console.log('\n=== Revocación de membresía bloquea la vía heredada (JWT real) ===');
@@ -116,7 +141,7 @@ try {
       (4,$1,'emp-A','loc-A',false,'Camarero/a',false)`, [u.id]);
     const r = await call(u.token);
     check('membresía explícitamente inactiva bloquea la vía heredada: empleado null',
-      r.ok && r.data.empleado === null, JSON.stringify(r));
+      r.ok && r.status === 200 && r.data.empleado === null, JSON.stringify(r));
   }
 
   console.log('\n=== Heredado legítimo sin membresía sigue funcionando (JWT real) ===');
@@ -127,7 +152,7 @@ try {
     await db.query(`insert into public.perfiles (user_id, rol, empleado_id, activo) values ($1,'Camarero/a','heredado-1',true)`, [u.id]);
     const r = await call(u.token);
     check('sin fila de membresía (legado puro) sigue resolviendo por almacen_kv',
-      r.ok && r.data.empleado && r.data.empleado.id === 'heredado-1', JSON.stringify(r));
+      r.ok && r.status === 200 && r.data.empleado && r.data.empleado.id === 'heredado-1', JSON.stringify(r));
   }
 
   console.log('\n=== Control: acceso directo a las tablas base sigue denegado vía PostgREST ===');
