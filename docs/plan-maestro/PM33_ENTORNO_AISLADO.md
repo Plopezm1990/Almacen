@@ -41,8 +41,14 @@ para PM33:
   en las tablas base, igual que el modelo real (el único punto de acceso
   autorizado es la función `SECURITY DEFINER`).
 - `tests/pm33/supabase-full/supabase/migrations/20260919170000_pm33_p05_identidad_antes_de_actividad.sql`
-  — copia literal (diff vacío) del candidato real
-  `supabase/migrations/20260919170000_pm33_p05_identidad_antes_de_actividad.sql`.
+  — copia literal (diff vacío de contenido) del candidato real, aplicado
+  en PROD el 19/09/2026 y registrado allí con la versión real
+  `20260919225831` (ver `cierre-proyecto-a/pm33/PROPUESTA_PROMOCION.md`) —
+  este archivo del entorno de pruebas conserva su nombre original,
+  `20260919170000`, porque no es una migración desplegable (el gate de
+  migración única la ignora explícitamente); el archivo desplegable real
+  es
+  `supabase/migrations/20260919225831_pm33_p05_identidad_antes_de_actividad.sql`.
 - `tests/pm33/supabase-full/p05-auth-postgrest-contract.mjs` — usuarios
   reales vía Auth Admin API, `signInWithPassword`-equivalente
   (`/auth/v1/token?grant_type=password`) por JWT real, llamadas RPC reales

@@ -29,7 +29,7 @@ on:
     branches: [claude/pm33-promocion-final]
     paths:
       - 'tests/pm33/supabase-full/**'
-      - 'supabase/migrations/20260919170000_pm33_p05_identidad_antes_de_actividad.sql'
+      - 'supabase/migrations/20260919225831_pm33_p05_identidad_antes_de_actividad.sql'
       - 'fuente.js'
       - 'tests/pm33/p03-frontend-multilocal-contract.mjs'
       - 'source-recovery/**'
@@ -82,7 +82,7 @@ jobs:
             exit 1
           fi
 
-          esperada="supabase/migrations/20260919170000_pm33_p05_identidad_antes_de_actividad.sql"
+          esperada="supabase/migrations/20260919225831_pm33_p05_identidad_antes_de_actividad.sql"
           if [ "$encontradas" != "$esperada" ]; then
             echo "GATE_MIGRACION_PM33 FALLÓ: la única migración PM33 presente no es la esperada."
             echo "Esperada: $esperada"
