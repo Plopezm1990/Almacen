@@ -28,50 +28,82 @@ durante esta sesión.
 
 ## 1. PM33 / R10 — Aislamiento de `obtener_contexto_operativo()`
 
-**Estado: validado para promoción. NO cerrado, NO aplicado a Supabase/PROD,
-NO publicado en Netlify.** Candidato P05 (SQL + frontend) validado
-localmente (Postgres 16 real, 81/81) Y en un entorno aislado equivalente
-al modelo actual de PROD con **PostgreSQL 17.6.1.167 + Auth (GoTrue
-v2.196.0) + PostgREST (v16.2) reales**, vía GitHub Actions —
-[`run 35465771875`](https://github.com/Plopezm1990/Almacen/actions/runs/35465771875),
-commit `d6ed496`, **SUCCESS**: 9/9 escenarios de frontend, paridad
-`source-recovery` en verde, y 15/15 aserciones reales de Auth JWT +
-PostgREST + permisos/RLS. Cuarta ronda de revisión (independiente, sobre
-`5dfdbca`): P04 filtraba por `activo` antes de resolver identidad (podía
-ocultar una colisión real), tenía dos defectos de concurrencia/caché en
-el frontend, y el preflight de QA tenía el mismo punto ciego que debía
-detectar — encontrados y corregidos en P05. Una ronda posterior,
-independiente, sobre la primera ejecución real (`run 35460961139`,
-commit `9523131`, 14 PASS/1 FAIL) encontró y corrigió además una
-condición de carrera ENTRE SESIONES en el frontend (dos usuarios
-distintos pidiendo el mismo local podían compartir, sin darse cuenta, la
-misma petición en vuelo), un `SOURCE_RECOVERY_DRIFT` nunca corregido
-desde P03, y una prueba de autorización que exigía un mensaje que nunca
-podía darse (el rechazo sin autenticar ocurre a nivel de permiso, antes
-de la función). Decisión del propietario que enmarca esta ronda: preparar
-la validación en un **entorno aislado equivalente al modelo actual de
-PROD** (`almacen_kv`), conservando QA intacto — **no** decide el modelo
-futuro ni incorpora P2 al cierre de PM33. Detalle completo en
-`cierre-proyecto-a/pm33/HALLAZGOS_P02.md` (cubre P01→P02→P03→P04→P05 y la
-validación aislada real, secciones 13-14). Propuesta concreta de
-promoción a PROD/Netlify en `cierre-proyecto-a/pm33/PROPUESTA_PROMOCION.md`
-— pendiente de autorización separada del propietario para cada mitad.
+**Estado: validado para promoción, sobre el candidato final LIMPIO
+`claude/pm33-promocion-final` @ `21ce7fad37dec815fc4568945872fc72a9bf3cd7`.
+NO cerrado, NO aplicado a Supabase/PROD, NO publicado en Netlify.**
+Candidato P05 (SQL + frontend) validado localmente (Postgres 16 real,
+81/81), en un entorno aislado equivalente al modelo actual de PROD con
+**PostgreSQL 17.6.1.167 + Auth (GoTrue v2.196.0) + PostgREST (v16.2)
+reales** sobre la rama de iteración
+([`run 35465771875`](https://github.com/Plopezm1990/Almacen/actions/runs/35465771875),
+commit `d6ed496`, SUCCESS: 9/9 frontend, paridad `source-recovery`,
+15/15 Auth/PostgREST/RLS), y de nuevo sobre el SHA final de una rama
+creada limpia desde `release` vigente — sin las migraciones intermedias
+P03/P04 en su historia, con un gate automático que exige exactamente una
+migración PM33 desplegable
+([`run 35473168918`](https://github.com/Plopezm1990/Almacen/actions/runs/35473168918),
+commit `21ce7fa`, **SUCCESS**). Cuarta ronda de revisión (independiente,
+sobre `5dfdbca`): P04 filtraba por `activo` antes de resolver identidad
+(podía ocultar una colisión real), tenía dos defectos de
+concurrencia/caché en el frontend, y el preflight de QA tenía el mismo
+punto ciego que debía detectar — encontrados y corregidos en P05. Una
+ronda posterior, independiente, sobre la primera ejecución real
+(`run 35460961139`, commit `9523131`, 14 PASS/1 FAIL) encontró y corrigió
+además una condición de carrera ENTRE SESIONES en el frontend (dos
+usuarios distintos pidiendo el mismo local podían compartir, sin darse
+cuenta, la misma petición en vuelo), un `SOURCE_RECOVERY_DRIFT` nunca
+corregido desde P03, y una prueba de autorización que exigía un mensaje
+que nunca podía darse (el rechazo sin autenticar ocurre a nivel de
+permiso, antes de la función). El propietario confirmó después, con
+consultas de solo lectura propias sobre PROD y Netlify, el punto de
+partida exacto y señaló que la rama de iteración no debía promocionarse
+directamente por contener P03/P04 en su historia — de ahí la rama final
+limpia. Decisión del propietario que enmarca toda esta ronda: preparar la
+validación en un **entorno aislado equivalente al modelo actual de PROD**
+(`almacen_kv`), conservando QA intacto — **no** decide el modelo futuro
+ni incorpora P2 al cierre de PM33. Detalle completo en
+`cierre-proyecto-a/pm33/HALLAZGOS_P02.md` (cubre P01→P02→P03→P04→P05, la
+validación aislada real, y el candidato final limpio, secciones 13-16).
+Propuesta concreta de promoción a PROD/Netlify, incluido el mecanismo
+exacto de aplicación y reconciliación de versión, en
+`cierre-proyecto-a/pm33/PROPUESTA_PROMOCION.md` — pendiente de
+autorización separada del propietario para (A) aplicar en PROD y (B)
+mover `release` (dispara Netlify automáticamente, `manual_deploy=false`).
 
 - **Problema confirmado hoy, en vivo**: la función vigente en PROD
   (`flqercbgpgmmfaakrwkc`) sigue siendo la de 0 argumentos, sin acotar por
   empresa/local. El defecto R10 sigue activo en producción en este
   momento.
-- **Candidato vigente**: misma rama **`claude/pm33-p03-obtener-contexto-operativo`**
-  (creada desde `origin/release`, no desde `main`), commit
-  **`d6ed496b2f9c1e14159d651e3c7ed337ea2e5a24`** (SQL+frontend de
-  producción en `e7491d5`→`5dfdbca`→`8dbef85`→`51c537f`; entorno aislado
-  y su validación real en `de613dc`→`9523131`→`d6ed496` encima, sin tocar
-  SQL/frontend salvo `51c537f`) — siete commits por delante de `release`
-  (`f313bc0`), **fusión limpia confirmada** (`git merge --no-commit
-  --no-ff` sobre `release` real, sin conflictos, abortada sin dejar
-  rastro). Sustituye por completo a P04, P03 y P02; la rama original P01
-  (`claude/pm33-fix-obtener-contexto-operativo`, commit `4127782`) sigue
-  intacta, sin tocar.
+- **Candidato final vigente (limpio, para promoción)**: rama
+  **`claude/pm33-promocion-final`**, SHA
+  **`21ce7fad37dec815fc4568945872fc72a9bf3cd7`** — creada desde `release`
+  vigente (`f313bc0`), **no** desde la rama de iteración. Un solo commit
+  de contenido (`70ccfd5`, tomado por contenido exacto de
+  `claude/pm33-p03-obtener-contexto-operativo` commit `d6ed496`, sin
+  replicar su historia) más un commit de gate automático (`21ce7fa`).
+  `git merge-base --is-ancestor origin/release HEAD` confirma `release`
+  como ancestro directo. **Ninguna migración P03/P04 existe en esta rama,
+  ni en el árbol ni en la historia** — `supabase/migrations/` contiene
+  exactamente una migración PM33
+  (`20260919170000_pm33_p05_identidad_antes_de_actividad.sql`), reforzado
+  por un gate de CI que falla si no es así (verificado en rojo con una
+  copia temporal de la migración P03 real, y en verde en
+  [`run 35473168918`](https://github.com/Plopezm1990/Almacen/actions/runs/35473168918)).
+  `fuente.js` y la migración son idénticos byte a byte (verificado con
+  `diff`) al contenido ya validado en la rama de iteración.
+  - **Rama de iteración (histórica, no promocionable directamente)**:
+    `claude/pm33-p03-obtener-contexto-operativo`, commit `d6ed496`
+    (SQL+frontend de producción en `e7491d5`→`5dfdbca`→`8dbef85`→`51c537f`;
+    entorno aislado y su validación real en `de613dc`→`9523131`→`d6ed496`
+    encima) — siete commits por delante de `release`, **fusión limpia
+    confirmada** en su momento (`git merge --no-commit --no-ff` sobre
+    `release` real, sin conflictos, abortada sin dejar rastro). Se
+    conserva como registro de la iteración P03→P04→P05, pero la
+    promoción real se hace desde `claude/pm33-promocion-final`, no desde
+    aquí, precisamente porque esta rama sí contiene P03/P04 en su
+    historia. Sustituye por completo a P04, P03 y P02 como iteración; la
+    rama original P01 (`claude/pm33-fix-obtener-contexto-operativo`,
+    commit `4127782`) sigue intacta, sin tocar.
 - **Qué corrigió P05 sobre P04** (cuarta ronda, independiente, sobre
   `5dfdbca`, reproducido con Postgres real antes de escribir el parche —
   detalle completo en `pm33/HALLAZGOS_P02.md` sección 11):
@@ -230,16 +262,44 @@ promoción a PROD/Netlify en `cierre-proyecto-a/pm33/PROPUESTA_PROMOCION.md`
   depende `obtener_contexto_operativo`), no un volcado completo de PROD;
   no cubre el resto de tablas de la aplicación, ni Storage, ni Edge
   Functions, ni ningún otro componente fuera de esta función.
-- **Pasos restantes**: PM33 pasa a **validado para promoción**. (1)
-  Propietario autoriza, por separado, cada mitad de la propuesta concreta
-  en `cierre-proyecto-a/pm33/PROPUESTA_PROMOCION.md`: (a) aplicar la
-  migración SQL en PROD (preflight de solo lectura → apply en una
-  transacción → postflight), (b) publicar `fuente.js` en Netlify —
-  siempre (a) antes que (b), nunca al revés (ver esa propuesta, sección 6,
-  para el riesgo concreto de invertir el orden). Nada de esto se ha hecho
-  en esta sesión. Decisión separada y no bloqueante para el cierre de
-  PM33: si el modelo relacional de QA es el diseño futuro de esta
-  función.
+- **Candidato final limpio, creado y re-validado esta ronda**: el
+  propietario, tras confirmar por su cuenta el estado exacto de PROD y
+  de Netlify con consultas de solo lectura, señaló que la rama de
+  iteración no debía promocionarse directamente (contiene P03/P04 en su
+  historia). Creada `claude/pm33-promocion-final` desde `release` vigente,
+  con exactamente una migración desplegable y un gate de CI que lo
+  exige automáticamente — re-validada de nuevo con PostgreSQL 17 +
+  Auth + PostgREST reales sobre el SHA final
+  ([`run 35473168918`](https://github.com/Plopezm1990/Almacen/actions/runs/35473168918),
+  commit `21ce7fa`, **SUCCESS**). Detalle completo en
+  `pm33/HALLAZGOS_P02.md` sección 15.
+- **Mecanismo de aplicación definido**: `supabase db push` (CLI), no la
+  herramienta MCP `apply_migration` — solo el CLI registra en
+  `supabase_migrations.schema_migrations` una `version` igual al
+  prefijo exacto del nombre de archivo (`20260919170000`), reconciliando
+  repositorio y base por construcción. Confirmado vía `supabase
+  --help`/`db push --help` (CLI 2.117.0) que `db push --dry-run` es una
+  comprobación de solo lectura real, enlazada, sin depender de Docker.
+  Dry-run literal no ejecutado (sin credenciales de PROD en este
+  sandbox); sustituido por `list_migrations` de solo lectura vía MCP
+  (autorizado explícitamente en esta ronda): 36 migraciones en PROD,
+  ninguna con prefijo `20260919*` — confirma lo mismo que mostraría el
+  dry-run. Mecanismo sancionado para corregir la tabla de historial si
+  hiciera falta: `supabase migration repair --status applied|reverted`,
+  nunca SQL manual sobre esa tabla. Detalle completo, incluida la
+  operación exacta y el postflight, en `pm33/PROPUESTA_PROMOCION.md`
+  secciones 4-5.
+- **Pasos restantes**: PM33 pasa a **validado para promoción**, sobre
+  `claude/pm33-promocion-final` @ `21ce7fad37dec815fc4568945872fc72a9bf3cd7`.
+  Propietario autoriza, por separado, en
+  `cierre-proyecto-a/pm33/PROPUESTA_PROMOCION.md`: **(A)** aplicar la
+  migración en PROD (`supabase db push`, tras dry-run en verde →
+  postflight), **(B)** mover `release` (dispara Netlify automáticamente,
+  `manual_deploy=false`) — siempre (A) antes que (B), nunca al revés (ver
+  esa propuesta, sección 8, para el riesgo concreto de invertir el
+  orden). Nada de esto se ha hecho en esta sesión. Decisión separada y no
+  bloqueante para el cierre de PM33: si el modelo relacional de QA es el
+  diseño futuro de esta función.
 
 ---
 
