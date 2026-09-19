@@ -28,20 +28,34 @@ durante esta sesión.
 
 ## 1. PM33 / R10 — Aislamiento de `obtener_contexto_operativo()`
 
-**Estado: P05 preparado y validado localmente (Postgres 16 real), incluida
-la migración completa desde el estado real de PROD y el parche de
-frontend con control de concurrencia. NO aplicado a Supabase ni a
-producción.** Cuarta ronda de revisión (independiente, sobre `5dfdbca`):
-P04 filtraba por `activo` antes de resolver identidad (podía ocultar una
-colisión real), tenía dos defectos de concurrencia/caché en el frontend,
-y el preflight de QA tenía el mismo punto ciego que debía detectar —
-encontrados y corregidos en P05. Decisión del propietario que enmarca
-esta ronda: preparar la validación en un **entorno aislado equivalente al
-modelo actual de PROD** (`almacen_kv`), conservando QA intacto — **no**
-decide el modelo futuro ni incorpora P2 al cierre de PM33. Ese entorno
-(PostgreSQL 17 + Auth + PostgREST reales, vía CI) está preparado pero
-**no ejecutado todavía** (ver más abajo). Detalle completo en
-`cierre-proyecto-a/pm33/HALLAZGOS_P02.md` (cubre P01→P02→P03→P04→P05).
+**Estado: validado para promoción. NO cerrado, NO aplicado a Supabase/PROD,
+NO publicado en Netlify.** Candidato P05 (SQL + frontend) validado
+localmente (Postgres 16 real, 81/81) Y en un entorno aislado equivalente
+al modelo actual de PROD con **PostgreSQL 17.6.1.167 + Auth (GoTrue
+v2.196.0) + PostgREST (v16.2) reales**, vía GitHub Actions —
+[`run 35465771875`](https://github.com/Plopezm1990/Almacen/actions/runs/35465771875),
+commit `d6ed496`, **SUCCESS**: 9/9 escenarios de frontend, paridad
+`source-recovery` en verde, y 15/15 aserciones reales de Auth JWT +
+PostgREST + permisos/RLS. Cuarta ronda de revisión (independiente, sobre
+`5dfdbca`): P04 filtraba por `activo` antes de resolver identidad (podía
+ocultar una colisión real), tenía dos defectos de concurrencia/caché en
+el frontend, y el preflight de QA tenía el mismo punto ciego que debía
+detectar — encontrados y corregidos en P05. Una ronda posterior,
+independiente, sobre la primera ejecución real (`run 35460961139`,
+commit `9523131`, 14 PASS/1 FAIL) encontró y corrigió además una
+condición de carrera ENTRE SESIONES en el frontend (dos usuarios
+distintos pidiendo el mismo local podían compartir, sin darse cuenta, la
+misma petición en vuelo), un `SOURCE_RECOVERY_DRIFT` nunca corregido
+desde P03, y una prueba de autorización que exigía un mensaje que nunca
+podía darse (el rechazo sin autenticar ocurre a nivel de permiso, antes
+de la función). Decisión del propietario que enmarca esta ronda: preparar
+la validación en un **entorno aislado equivalente al modelo actual de
+PROD** (`almacen_kv`), conservando QA intacto — **no** decide el modelo
+futuro ni incorpora P2 al cierre de PM33. Detalle completo en
+`cierre-proyecto-a/pm33/HALLAZGOS_P02.md` (cubre P01→P02→P03→P04→P05 y la
+validación aislada real, secciones 13-14). Propuesta concreta de
+promoción a PROD/Netlify en `cierre-proyecto-a/pm33/PROPUESTA_PROMOCION.md`
+— pendiente de autorización separada del propietario para cada mitad.
 
 - **Problema confirmado hoy, en vivo**: la función vigente en PROD
   (`flqercbgpgmmfaakrwkc`) sigue siendo la de 0 argumentos, sin acotar por
@@ -49,10 +63,13 @@ decide el modelo futuro ni incorpora P2 al cierre de PM33. Ese entorno
   momento.
 - **Candidato vigente**: misma rama **`claude/pm33-p03-obtener-contexto-operativo`**
   (creada desde `origin/release`, no desde `main`), commit
-  **`de613dc`** (P05 SQL/frontend en `8dbef85`, entorno aislado en
-  `de613dc` encima, sin tocar SQL/frontend) — cuatro commits por delante
-  de `release` (`f313bc0`), sin conflicto. Sustituye por completo a P04,
-  P03 y P02; la rama original P01
+  **`d6ed496b2f9c1e14159d651e3c7ed337ea2e5a24`** (SQL+frontend de
+  producción en `e7491d5`→`5dfdbca`→`8dbef85`→`51c537f`; entorno aislado
+  y su validación real en `de613dc`→`9523131`→`d6ed496` encima, sin tocar
+  SQL/frontend salvo `51c537f`) — siete commits por delante de `release`
+  (`f313bc0`), **fusión limpia confirmada** (`git merge --no-commit
+  --no-ff` sobre `release` real, sin conflictos, abortada sin dejar
+  rastro). Sustituye por completo a P04, P03 y P02; la rama original P01
   (`claude/pm33-fix-obtener-contexto-operativo`, commit `4127782`) sigue
   intacta, sin tocar.
 - **Qué corrigió P05 sobre P04** (cuarta ronda, independiente, sobre
@@ -156,9 +173,11 @@ decide el modelo futuro ni incorpora P2 al cierre de PM33. Ese entorno
   `workflow_dispatch` de GitHub Actions) preparado y versionado, **no
   ejecutado todavía** — ver más abajo. Detalle completo en
   `pm33/HALLAZGOS_P02.md` sección 11.
-- **Frontend (`fuente.js`, misma rama, commit `8dbef85`)**: control de
-  concurrencia corregido sobre P04 (ver arriba). **No publicado a
-  `release`.**
+- **Frontend (`fuente.js`, misma rama, commits `8dbef85` + `51c537f`)**:
+  control de concurrencia corregido sobre P04 (ver arriba), y una segunda
+  corrección posterior — concurrencia ENTRE SESIONES (dos usuarios
+  distintos pidiendo el mismo local podían compartir, sin darse cuenta,
+  la misma petición en curso). **No publicado a `release`.**
 - **QA no es hoy un entorno válido para este candidato (vigente, sin
   cambios respecto de P04).** Se pidió explícitamente no asumir que la
   definición/permisos de QA coinciden con los de PROD. No coinciden:
@@ -184,32 +203,43 @@ decide el modelo futuro ni incorpora P2 al cierre de PM33. Ese entorno
   contra QA el 19/09/2026 y abortó con el hash real de QA
   (`3064430c63c97f6c50e05ff0117da862`) en el propio mensaje de error —
   evidencia completa en `pm33/HALLAZGOS_P02.md` sección 11.3.
-- **Entorno comprobado**: local (Postgres 16.13), incluida la transición
-  real desde la función hoy vigente en PROD, para P03, P04 y P05 por
-  separado. **NO comprobado todavía**: PostgreSQL 17 real, Auth/PostgREST
-  reales. Kit de QA completo, corregido y versionado en
+- **Entorno comprobado**: local (Postgres 16.13, 81/81 aserciones),
+  incluida la transición real desde la función hoy vigente en PROD, para
+  P03, P04 y P05 por separado. **Y, desde esta ronda, PostgreSQL 17 real
+  + Auth (GoTrue) + PostgREST reales, vía GitHub Actions**
+  ([`run 35465771875`](https://github.com/Plopezm1990/Almacen/actions/runs/35465771875),
+  commit `d6ed496`, **SUCCESS**): versiones efectivas PostgreSQL
+  `17.6.1.167`, PostgREST `v16.2`, GoTrue `v2.196.0`. 9/9 escenarios de
+  frontend, paridad `source-recovery` en verde, 15/15 aserciones reales
+  de Auth JWT + PostgREST + permisos/RLS (incluido el escenario de
+  identidad duplicada pedido por el propietario, y el rechazo sin
+  autenticar por HTTP 401 + código `42501`, con `EXECUTE` de `anon`
+  comprobado como denegado directamente en la base). Una primera
+  ejecución (`run 35460961139`, commit `9523131`) dio 14 PASS/1 FAIL — el
+  fallo era de la prueba, no del candidato (exigía un mensaje que nunca
+  puede darse porque el rechazo sin autenticar ocurre a nivel de permiso,
+  antes de la función); corregido junto con un `SOURCE_RECOVERY_DRIFT`
+  nunca cerrado desde P03. Detalle completo en `pm33/HALLAZGOS_P02.md`
+  sección 13. Kit de QA completo, corregido y versionado en
   `cierre-proyecto-a/pm33/qa/` — sigue bloqueado para
-  `qjqorixtkilwsndqayyx` por el hallazgo anterior, sin ejecutar más allá
-  del preflight. Camino alternativo ya preparado (no bloqueado por QA):
-  `tests/pm33/supabase-full/` + `.github/workflows/pm33-p05-entorno-aislado.yml`
-  (rama del candidato) — Postgres 17 + Auth + PostgREST reales y
-  desechables vía Supabase CLI sobre un runner de GitHub Actions,
-  replicando el patrón ya probado en este repositorio para PM12. Solo
-  `workflow_dispatch` (nunca se dispara con un push); **no ejecutado
-  todavía** — Docker no está disponible en este sandbox de desarrollo.
-  `docs/plan-maestro/PM33_ENTORNO_AISLADO.md` documenta esta opción como
-  la recomendada (coste cero, ningún proyecto remoto) y dos alternativas
-  con Supabase Cloud (reactivar el proyecto `ytavvyusrmwandchjyei`, o un
-  branch nuevo) con destino/coste real consultado — ninguna ejecutada ni
-  autorizada.
-- **Pasos restantes**: (1) activación manual supervisada del workflow
-  `pm33-p05-entorno-aislado.yml` para la primera ejecución real contra
-  PostgreSQL 17 + Auth + PostgREST genuinos; (2) con esa ejecución en
-  verde, decisión del propietario sobre publicar el cambio de frontend a
-  `release`; (3) solo tras (1) en verde y (2) decidido, autorización
-  explícita y específica para aplicar a PROD. Nada de esto se ha hecho en
-  esta sesión. Decisión separada y no bloqueante para el cierre de PM33:
-  si el modelo relacional de QA es el diseño futuro de esta función.
+  `qjqorixtkilwsndqayyx` por el hallazgo de incompatibilidad de modelo,
+  sin ejecutar más allá del preflight (decisión ya tomada de validar por
+  el camino del entorno aislado en vez de reconciliar con QA).
+- **Diferencias del entorno de validación frente a PROD real**: el
+  esquema usado es un subconjunto representativo (las 5 tablas de las que
+  depende `obtener_contexto_operativo`), no un volcado completo de PROD;
+  no cubre el resto de tablas de la aplicación, ni Storage, ni Edge
+  Functions, ni ningún otro componente fuera de esta función.
+- **Pasos restantes**: PM33 pasa a **validado para promoción**. (1)
+  Propietario autoriza, por separado, cada mitad de la propuesta concreta
+  en `cierre-proyecto-a/pm33/PROPUESTA_PROMOCION.md`: (a) aplicar la
+  migración SQL en PROD (preflight de solo lectura → apply en una
+  transacción → postflight), (b) publicar `fuente.js` en Netlify —
+  siempre (a) antes que (b), nunca al revés (ver esa propuesta, sección 6,
+  para el riesgo concreto de invertir el orden). Nada de esto se ha hecho
+  en esta sesión. Decisión separada y no bloqueante para el cierre de
+  PM33: si el modelo relacional de QA es el diseño futuro de esta
+  función.
 
 ---
 
@@ -241,6 +271,16 @@ y documentar los bloqueados o no aplicables. No hacerlo sobre PROD.
   automatización alguna** al recibir un push (ni `claude/proyecto-a-la-suite-cierre-3xs7l3`
   ni `claude/pm33-fix-obtener-contexto-operativo` aparecen como branch
   trigger de ningún workflow).
+  > **Actualización parcial (ronda de validación aislada de PM33)**: esta
+  > afirmación ya no describe `claude/pm33-p03-obtener-contexto-operativo`
+  > (una rama distinta, del candidato PM33, no listada arriba): esa rama sí
+  > tiene ahora un `push` propio, restringido EXCLUSIVAMENTE a su nombre
+  > exacto (`.github/workflows/pm33-p05-entorno-aislado.yml`), añadido a
+  > propósito para poder validar el candidato con PostgreSQL 17 real — ver
+  > Punto 1. Esto es una puerta de CI para el candidato de PM33
+  > específicamente, no la puerta de certificación general para "el
+  > candidato final" de todo el cierre que sigue faltando por diseñar
+  > (párrafo siguiente, sin cambios).
 - **Falta diseñar**: un flujo de certificación que corra contra el
   candidato final exacto (no contra ramas históricas) y una regla de
   promoción que lo exija. No se ha diseñado en esta sesión — es una
@@ -481,7 +521,7 @@ workstream separado cuando se decida, sin condicionar el cierre de 1-13.
   y versionado en `pm33/qa/`, no ejecutado más allá de esas consultas. Detalle
   completo en `pm33/HALLAZGOS_P02.md` sección 9-10.
 - PM33 (cuarta ronda, independiente, candidato P05 sobre la misma rama,
-  commit `de613dc`): identidad-antes-que-actividad, 6/6 aserciones nuevas
+  commit `8dbef85`): identidad-antes-que-actividad, 6/6 aserciones nuevas
   en verde (3/6 fallan contra P04 antes de corregir); 7 escenarios de
   frontend (2 nuevos de concurrencia/caché cruzada), 5 ejecuciones
   completas consecutivas en verde de forma determinista; batería completa
@@ -492,14 +532,39 @@ workstream separado cuando se decida, sin condicionar el cierre de 1-13.
   corregido (bug de doble escritura en `almacen_kv`, manifest por
   ejecución, verificación post-carga, limpieza exacta). Entorno aislado
   equivalente al modelo actual de PROD (PostgreSQL 17 + Auth + PostgREST
-  reales, `workflow_dispatch` de GitHub Actions, replicando el patrón ya
-  probado en este repositorio para PM12) preparado y versionado en
-  `tests/pm33/supabase-full/` — **no ejecutado todavía**, Docker no
-  disponible en este sandbox. Detalle completo en
+  reales, GitHub Actions, replicando el patrón ya probado en este
+  repositorio para PM12) preparado y versionado en
+  `tests/pm33/supabase-full/`. Detalle completo en
   `pm33/HALLAZGOS_P02.md` sección 11.
-- GitHub Actions: 0 workflow runs para `f313bc0` (HEAD de `release`);
-  confirmado que ningún workflow dispara por push a las ramas usadas en
-  esta revisión.
+- PM33 (quinta ronda, validación aislada real, commits `9523131`→`d6ed496`):
+  activado el workflow (corregido primero para disparar por `push`
+  restringido a esta rama exacta, ya que `workflow_dispatch` por sí solo
+  no basta mientras el archivo solo exista en una rama no-default sin
+  ejecuciones previas). Primera ejecución real
+  (`run 35460961139`, commit `9523131`): 14 PASS/1 FAIL — el fallo era de
+  la prueba (exigía un mensaje que nunca puede darse, porque el rechazo
+  sin autenticar ocurre a nivel de permiso `EXECUTE`, antes de la
+  función), no del candidato; corregida sin conceder `EXECUTE` a
+  `anon`/`PUBLIC`. Misma ronda: cerrado un `SOURCE_RECOVERY_DRIFT` nunca
+  corregido desde P03 (`fuente-recuperado.js` sin sincronizar en ninguna
+  ronda de PM33), añadidas las 9 pruebas de frontend y la comprobación de
+  paridad como pasos propios del workflow. Segunda ejecución real
+  ([`run 35465771875`](https://github.com/Plopezm1990/Almacen/actions/runs/35465771875),
+  commit `d6ed496`): **SUCCESS** — PostgreSQL `17.6.1.167`, PostgREST
+  `v16.2`, GoTrue `v2.196.0`; 9/9 frontend, paridad en verde, 15/15
+  Auth/PostgREST/RLS reales. Detalle completo en
+  `pm33/HALLAZGOS_P02.md` sección 13. **PM33 pasa a validado para
+  promoción** — propuesta concreta en
+  `pm33/PROPUESTA_PROMOCION.md`.
+- GitHub Actions: **actualizado sobre una afirmación anterior de esta
+  misma lista** — "0 workflow runs para `f313bc0`... ningún workflow
+  dispara por push a las ramas usadas en esta revisión" seguía siendo
+  cierto para `f313bc0` (HEAD de `release`, sin tocar) en el momento en
+  que se escribió, pero ya no describe el estado actual: esta misma ronda
+  añadió intencionadamente un trigger `push` restringido EXCLUSIVAMENTE
+  a `claude/pm33-p03-obtener-contexto-operativo` (nunca un comodín, nunca
+  a `release` ni `main`) precisamente para poder disparar la validación
+  aislada — ver el punto anterior.
 - Manifiesto de release: confirmado desactualizado (`9d54fc7`/`0e45bc8d`
   vs HEAD real `f313bc0`).
 - Migraciones: 36 en PROD, 63 en QA, comparadas contra `supabase/migrations/`

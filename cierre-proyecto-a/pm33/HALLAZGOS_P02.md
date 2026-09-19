@@ -1,14 +1,16 @@
 # PM33 — Revisión de cierre: P01 → P02 → P03 → P04 → P05
 
-Estado: **P05 preparado y validado localmente contra Postgres real (16.13), incluida la migración completa desde el estado real de PROD y el parche de frontend con control de concurrencia. NO aplicado a Supabase ni a producción. Decisión del propietario: preparar un entorno aislado equivalente al modelo actual de PROD para validar con PostgreSQL 17 + Auth + PostgREST reales -- preparado (CI, `workflow_dispatch`), NO ejecutado todavía en esta sesión -- ver sección 11.5. QA (`qjqorixtkilwsndqayyx`) se conserva intacto, sin tocar y sin usarse para esta validación.**
+Estado: **PM33 validado para promoción. NO cerrado, NO aplicado a Supabase/PROD, NO publicado en Netlify.** Candidato P05 (SQL + frontend) validado contra Postgres real localmente (16.13, 81/81 aserciones) Y contra un entorno aislado equivalente al modelo actual de PROD con **PostgreSQL 17.6.1.167 + Auth (GoTrue v2.196.0) + PostgREST (v16.2) reales**, vía GitHub Actions (`run 35465771875`, commit `d6ed496`, **SUCCESS** -- 9/9 frontend + paridad `source-recovery` + 15/15 Auth/PostgREST/RLS reales). Ver sección 13 para la evidencia completa y sección 14 para el estado vigente. QA (`qjqorixtkilwsndqayyx`) se conserva intacto, sin tocar y sin usarse para esta validación. Propuesta de promoción concreta en `cierre-proyecto-a/pm33/PROPUESTA_PROMOCION.md` -- pendiente de autorización separada del propietario para (a) aplicar en PROD y (b) publicar en Netlify.
 
 Este documento cubre las cinco iteraciones en orden: **P02** (secciones
 1-6), **P03** (sección 7-8, segunda ronda), **P04** (sección 9 en
-adelante, tercera ronda, sobre una revisión independiente de P03) y
+adelante, tercera ronda, sobre una revisión independiente de P03),
 **P05** (sección 11 en adelante, cuarta ronda, sobre una revisión
-independiente de P04, commit `5dfdbca`). Nada de lo descrito en las
-secciones 1-10 quedó aplicado; P05 sustituye a P04 por completo como
-candidato vigente.
+independiente de P04, commit `5dfdbca`), y la **validación aislada real**
+(secciones 13-14, sobre commits `9523131`→`d6ed496`). Nada de lo descrito
+en las secciones 1-12 quedó aplicado a ningún entorno real; P05 sustituye
+a P04 por completo como candidato vigente, y las correcciones de 13.1
+sustituyen al entorno aislado tal como quedó preparado en la sección 11.
 
 ## 1. Contexto
 
@@ -700,9 +702,13 @@ Supabase CLI sobre un runner de GitHub Actions.
   explícitamente el escenario de 11.1 (identidad duplicada con estados
   distintos) validado esta vez con JWT y PostgREST reales, no con el
   stub de `set_config`.
-- `.github/workflows/pm33-p05-entorno-aislado.yml`: **solo
-  `workflow_dispatch`** — a diferencia del de PM12 (que también dispara
-  con `push`), un push a esta rama no ejecuta nada por sí solo.
+- `.github/workflows/pm33-p05-entorno-aislado.yml`: inicialmente solo
+  `workflow_dispatch` — **corregido después**: `workflow_dispatch` por sí
+  solo no basta mientras el archivo del workflow solo exista en la rama
+  candidata (GitHub exige que esté registrado, lo que en la práctica pide
+  la rama por defecto o una ejecución previa por otro evento). Se añadió
+  `push` restringido EXCLUSIVAMENTE al nombre exacto de esta rama
+  candidata (nunca un comodín) — ver sección 13.
 - `docs/plan-maestro/PM33_ENTORNO_AISLADO.md`: documenta esta opción
   como la recomendada (coste cero, ningún proyecto remoto tocado) y las
   dos alternativas con Supabase Cloud (reactivar
@@ -711,11 +717,13 @@ Supabase CLI sobre un runner de GitHub Actions.
   nuevo en esta organización; 0.01344 USD/hora para un branch) y
   operación concreta — ninguna ejecutada, ninguna autorizada.
 
-**Pendiente**: activación manual supervisada del workflow (no hecha en
-esta sesión) para obtener la primera ejecución real contra PostgreSQL 17
-+ Auth + PostgREST genuinos.
+**Ejecutado de verdad — ver sección 13**: la ejecución real contra
+PostgreSQL 17 + Auth + PostgREST genuinos ya se hizo (dos rondas: una con
+un fallo real corregido, y la definitiva en verde). Esta sección se deja
+sin reescribir más allá de esta nota para conservar el registro histórico
+de lo que se preparó en esta ronda; el resultado real está en la 13.
 
-## 12. Próximo paso concreto (vigente)
+## 12. Próximo paso concreto (histórico, sustituido por la sección 14)
 
 1. **Activar** `pm33-p05-entorno-aislado.yml` (`workflow_dispatch`
    manual, supervisado) para la primera ejecución real contra
@@ -728,6 +736,140 @@ esta sesión) para obtener la primera ejecución real contra PostgreSQL 17
 3. Solo tras (1) en verde y (2) decidido, autorización explícita y
    específica para aplicar a PROD — nunca implícita por haber preparado
    el candidato.
+4. Decisión pendiente, separada y no bloqueante para el cierre de PM33:
+   si el modelo relacional de QA es el diseño futuro de esta función
+   (fuera del alcance actual, ver 9.5).
+
+## 13. Ejecución real contra PostgreSQL 17 + Auth + PostgREST genuinos (dos rondas)
+
+### 13.1 Primera ejecución real — `run 35460961139`, commit `9523131`: FAILURE (14 PASS / 1 FAIL)
+
+Activado el workflow (corregido primero para disparar por `push`
+restringido a esta rama exacta, ver 11.5). El único fallo: la prueba de
+"sin autenticar" exigía el mensaje `"No autenticado"`. Ese mensaje solo
+se emite **dentro** del cuerpo de la función — una llamada con la clave
+`anon` nunca llega a ejecutarlo, porque el candidato ya revoca `EXECUTE`
+de `anon`/`public` de forma explícita (`revoke all on function ... from
+public, anon;`, en la propia migración) y Postgres rechaza la llamada a
+nivel de permiso, **antes** de invocar la función. Corregida la prueba,
+no el candidato — no se concedió `EXECUTE` a `anon` ni `PUBLIC` para
+hacerla pasar.
+
+De paso, esta ronda también encontró y corrigió, sobre el mismo commit:
+
+- **`SOURCE_RECOVERY_DRIFT`**: `source-recovery/fuente-recuperado.js` no
+  se había sincronizado en NINGUNA ronda de PM33 (P01-P05) — pasaba en
+  `release` (con su propio `fuente-recuperado.js` de verdad sincronizado
+  en `f313bc0`) y fallaba en esta rama candidata desde que P03 empezó a
+  tocar `fuente.js`. Corregido con el procedimiento ya existente
+  (`python3 source-recovery/recuperar_candidato.py --sync-current`,
+  anclado al mismo baseline de paridad exacta certificada que ya usaba el
+  proyecto, `bd0dc4a`). El cambio de contenido real son las +13 líneas
+  netas que P03-P05 añadieron sobre el `fuente.js` de `release`
+  (contador de generación, seguimiento síncrono de sesión, invalidación
+  por cambio de sesión) — `fuente.js` en sí no cambió por esta
+  corrección.
+- Instalación reproducible: generado y versionado
+  `tests/pm33/supabase-full/package-lock.json` (antes ausente).
+  Comprobado que `npm ci --prefix tests/pm33/supabase-full --no-audit
+  --no-fund` (el comando exacto del workflow) funciona desde una copia
+  limpia, instalando el CLI de `supabase` 2.117.0 de verdad.
+- Activación: `workflow_dispatch` por sí solo no basta mientras el
+  archivo del workflow solo exista en la rama candidata. Añadido `push`
+  restringido EXCLUSIVAMENTE al nombre exacto de esta rama (nunca un
+  comodín).
+- Pruebas de autorización reforzadas: los rechazos ya no se aceptan como
+  "cualquier respuesta no-ok" (un HTTP 500 de infraestructura contaba
+  antes como aislamiento correcto). Nuevo helper que exige explícitamente
+  que nunca sea un 500, que sea un 4xx real, y el código de error EXACTO
+  (`42501`, insufficient_privilege) en el cuerpo.
+- Añadidos como pasos propios del workflow, antes de levantar el stack
+  de Supabase: las 9 pruebas de frontend (sandbox `vm` real de
+  `fuente.js`) y la comprobación de paridad de `source-recovery`.
+  Ampliados los filtros de `paths` del `push` para que `fuente.js`, el
+  test de frontend, y `source-recovery/**` también disparen el workflow
+  — antes ninguno de los tres lo hacía.
+
+### 13.2 Segunda ejecución real — `run 35465771875`, commit `d6ed496`: **SUCCESS**
+
+Con las correcciones de 13.1 aplicadas, se pusheó de nuevo (reejecutar el
+SHA anterior sin cambios habría repetido el mismo fallo) y esta segunda
+ejecución terminó en verde por completo:
+[`https://github.com/Plopezm1990/Almacen/actions/runs/35465771875`](https://github.com/Plopezm1990/Almacen/actions/runs/35465771875).
+
+Evidencia literal de los logs reales de esa ejecución (no de memoria):
+
+- **Versiones efectivas de los servicios**: PostgreSQL `17.6.1.167`,
+  PostgREST `v16.2`, GoTrue (Auth) `v2.196.0`, Kong (API gateway)
+  `2.8.1`.
+- `MAIN_FROZEN=1`, `RELEASE_ANCESTOR_OK=1` — main y release seguían en
+  las SHA congeladas verificadas en vivo por el propio workflow.
+- `PM33_P03_FRONTEND_MULTILOCAL_OK=1` — **9/9** escenarios de frontend
+  (sandbox `vm` real de `fuente.js`) en verde.
+- `SOURCE_RECOVERY_CHECK=PASS`, `PARIDAD_CUERPO_EXACTA=1`,
+  `SHA256_CUERPO=c07303adcfe0c6b114fd36d5b77e33c3ef94c854b2431e3659fa3f70984a12d5`
+  — paridad `source-recovery` en verde, mismo hash que el cálculo local.
+- `PM33_P05_ENTORNO_AISLADO_OK=1`, `TOTAL PASS=15 FAIL=0` — **15/15**
+  aserciones reales de Auth JWT + PostgREST + permisos/RLS contra
+  PostgreSQL 17 real: el escenario de identidad duplicada pedido
+  explícitamente por el propietario (sin p_local_id resuelve por
+  membresía; pidiendo `loc-B` explícito rechaza con HTTP 4xx y código
+  `42501`; pidiendo su propio `loc-A` sigue resolviendo), el control de
+  rechazo sin autenticar (HTTP 401, código `42501`, y `EXECUTE` de `anon`
+  comprobado como `false` directamente en la base, no solo inferido del
+  HTTP), aislamiento básico Cajero/a A vs B, revocación de membresía
+  bloqueando la vía heredada, heredado legítimo sin membresía, y control
+  de que las tablas base siguen sin exponerse directamente por
+  PostgREST.
+
+**Qué distingue estas pruebas de las locales**: las de
+`tests/pm33/db/` (81/81 aserciones citadas en secciones anteriores)
+corren contra Postgres real pero con `auth.uid()` **stubeado** vía
+`set_config('request.jwt.claim.sub', ...)` — nunca pasan por Auth ni por
+PostgREST. Las 15 de esta sección son las primeras de todo PM33
+ejecutadas con **JWT real emitido por GoTrue** y **HTTP real a
+PostgREST** — incluida la comprobación de que el propio PostgREST, no
+solo la función, respeta los permisos (control de acceso directo a
+`almacen_kv`, y el rechazo por `EXECUTE` denegado antes de entrar en la
+función). Las 9 de frontend siguen siendo sandbox `vm` de `fuente.js`
+contra mocks (nunca un navegador real ni Auth real del lado del
+cliente) — eso sigue sin cambiar y sigue siendo una limitación explícita.
+
+**Diferencias del esquema de este entorno frente al de PROD real**: el
+esquema de `tests/pm33/supabase-full/supabase/migrations/20260919160000_pm33_schema_representativo.sql`
+es un subconjunto representativo (mismas 5 tablas de las que depende
+`obtener_contexto_operativo`: `perfiles`, `empresas`, `locales`,
+`membresias_usuario`, `almacen_kv`), extraído por introspección durante
+la auditoría R10 — **no** un volcado completo del esquema de PROD. No
+incluye el resto de tablas de la aplicación, ni sus políticas RLS (aquí
+se revoca el acceso directo por completo en vez de usar políticas), ni
+extensiones, ni triggers que pudieran existir en PROD fuera del alcance
+de esta función. Sigue sin comprobarse: migración completa (todas las
+tablas), Storage, Edge Functions, ni ningún otro componente de PROD más
+allá de esta única función y las tablas de las que depende.
+
+**Pendiente todavía**: ninguna validación adicional bloquea la
+promoción del candidato SQL+frontend — ver sección 14 y
+`PROPUESTA_PROMOCION.md` para lo que sigue siendo decisión y ejecución
+del propietario (aplicar en PROD, publicar en Netlify), no algo que
+falte por preparar.
+
+## 14. Próximo paso concreto (vigente)
+
+**Estado: PM33 validado para promoción. NO cerrado, NO aplicado, NO
+publicado.**
+
+1. Propietario revisa y autoriza, por separado, cada mitad de
+   `cierre-proyecto-a/pm33/PROPUESTA_PROMOCION.md`: (a) aplicar la
+   migración SQL en PROD, (b) publicar `fuente.js` en Netlify. Ninguna
+   autorización implícita por haber preparado o validado el candidato.
+2. Si se autoriza (a): preflight de solo lectura sobre PROD (especificado
+   en la propuesta, no ejecutado todavía) → aplicar
+   `docs/plan-maestro/PM33_P05_MIGRACION_DESDE_PROD.sql` → postflight en
+   verde. Nunca publicar el frontend antes de que esto esté en verde
+   (ver la propuesta, sección 6, para el porqué exacto).
+3. Si se autoriza (b), solo después de (2): publicar `fuente.js` a
+   Netlify.
 4. Decisión pendiente, separada y no bloqueante para el cierre de PM33:
    si el modelo relacional de QA es el diseño futuro de esta función
    (fuera del alcance actual, ver 9.5).
