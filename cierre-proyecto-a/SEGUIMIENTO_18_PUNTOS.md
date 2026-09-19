@@ -30,7 +30,11 @@ durante esta sesión.
 
 **Estado: validado para promoción, sobre el candidato final LIMPIO
 `claude/pm33-promocion-final` @ `21ce7fad37dec815fc4568945872fc72a9bf3cd7`.
-NO cerrado, NO aplicado a Supabase/PROD, NO publicado en Netlify.**
+PROMOCIÓN DETENIDA: el mecanismo de aplicación propuesto inicialmente
+(`supabase db push`) resultó inseguro -- el propietario comprobó la
+matriz real de migraciones (34 locales vs. 36 en PROD, 0 en común) y se
+corrigió (ver más abajo y `pm33/HALLAZGOS_P02.md` sección 17). NO
+cerrado, NO aplicado a Supabase/PROD, NO publicado en Netlify.**
 Candidato P05 (SQL + frontend) validado localmente (Postgres 16 real,
 81/81), en un entorno aislado equivalente al modelo actual de PROD con
 **PostgreSQL 17.6.1.167 + Auth (GoTrue v2.196.0) + PostgREST (v16.2)
@@ -273,33 +277,53 @@ mover `release` (dispara Netlify automáticamente, `manual_deploy=false`).
   ([`run 35473168918`](https://github.com/Plopezm1990/Almacen/actions/runs/35473168918),
   commit `21ce7fa`, **SUCCESS**). Detalle completo en
   `pm33/HALLAZGOS_P02.md` sección 15.
-- **Mecanismo de aplicación definido**: `supabase db push` (CLI), no la
-  herramienta MCP `apply_migration` — solo el CLI registra en
-  `supabase_migrations.schema_migrations` una `version` igual al
-  prefijo exacto del nombre de archivo (`20260919170000`), reconciliando
-  repositorio y base por construcción. Confirmado vía `supabase
-  --help`/`db push --help` (CLI 2.117.0) que `db push --dry-run` es una
-  comprobación de solo lectura real, enlazada, sin depender de Docker.
-  Dry-run literal no ejecutado (sin credenciales de PROD en este
-  sandbox); sustituido por `list_migrations` de solo lectura vía MCP
-  (autorizado explícitamente en esta ronda): 36 migraciones en PROD,
-  ninguna con prefijo `20260919*` — confirma lo mismo que mostraría el
-  dry-run. Mecanismo sancionado para corregir la tabla de historial si
-  hiciera falta: `supabase migration repair --status applied|reverted`,
-  nunca SQL manual sobre esa tabla. Detalle completo, incluida la
-  operación exacta y el postflight, en `pm33/PROPUESTA_PROMOCION.md`
-  secciones 4-5.
-- **Pasos restantes**: PM33 pasa a **validado para promoción**, sobre
+- **Mecanismo de aplicación — corregido en esta ronda, PROMOCIÓN
+  DETENIDA hasta ejecutarlo.** Propuesta anterior (retirada): `supabase
+  db push` (CLI), apoyada en que `list_migrations` no mostraba ninguna
+  versión `20260919*` en PROD. **El propietario comprobó la matriz real
+  de migraciones y esa propuesta no era segura**: `supabase/migrations/`
+  de la rama final contiene **34** versiones, PROD registra **36**, y la
+  **intersección entre ambas es 0** (verificado de forma independiente
+  contando los 34 prefijos reales y comparándolos contra las 36 filas
+  reales). `list_migrations` (lectura de la tabla remota) **no es
+  equivalente** a `supabase db push --dry-run` (que compara esa tabla
+  contra los archivos locales): con intersección 0, un `db push` real
+  trataría las 34 migraciones locales como pendientes, no solo P05 — sin
+  evidencia de que aplicar las otras 33 sea seguro. Quedan descartados
+  `db push` sin flags, `db push --include-all`, y cualquier reparación
+  masiva del historial.
+  **Mecanismo corregido**: aplicar únicamente el contenido exacto de la
+  migración P05 vía `apply_migration` (MCP, que no lee ni compara
+  `supabase/migrations/`, así que no toca las otras 33 versiones),
+  capturar después con `list_migrations` la versión real que Supabase
+  genere (no predecible de antemano), renombrar en el repositorio el
+  archivo de la migración P05 para que coincida con esa versión real,
+  actualizar el gate de migración única y la documentación, y volver a
+  ejecutar el gate sobre el nuevo SHA antes de mover `release`. Rollback
+  también corregido: nunca `migration repair --status reverted` como
+  operación normal (el historial ya tiene discrepancias no auditadas);
+  el rollback es hacia delante — primero restaurar el deploy de Netlify
+  `6aad473513310100099a03a9`, después aplicar una NUEVA migración de
+  rollback (mismo mecanismo), conservando en el historial tanto la
+  aplicación de P05 como su reversión. Detalle completo, incluida la
+  alternativa documental con `supabase migration fetch` (sigue bloqueada
+  por falta de credenciales de PROD en este sandbox), en
+  `pm33/PROPUESTA_PROMOCION.md` secciones 4-5 y 11-13, y en
+  `pm33/HALLAZGOS_P02.md` sección 17.
+- **Pasos restantes**: PM33 pasa a **validado para promoción, mecanismo
+  de aplicación corregido, PROMOCIÓN DETENIDA hasta ejecutarlo**, sobre
   `claude/pm33-promocion-final` @ `21ce7fad37dec815fc4568945872fc72a9bf3cd7`.
   Propietario autoriza, por separado, en
   `cierre-proyecto-a/pm33/PROPUESTA_PROMOCION.md`: **(A)** aplicar la
-  migración en PROD (`supabase db push`, tras dry-run en verde →
-  postflight), **(B)** mover `release` (dispara Netlify automáticamente,
-  `manual_deploy=false`) — siempre (A) antes que (B), nunca al revés (ver
-  esa propuesta, sección 8, para el riesgo concreto de invertir el
-  orden). Nada de esto se ha hecho en esta sesión. Decisión separada y no
-  bloqueante para el cierre de PM33: si el modelo relacional de QA es el
-  diseño futuro de esta función.
+  migración P05 en PROD por el mecanismo corregido (`apply_migration` →
+  capturar versión real → renombrar archivo → actualizar gate →
+  re-ejecutar gate en verde), **(B)** mover `release` (dispara Netlify
+  automáticamente, `manual_deploy=false`) — siempre (A) antes que (B),
+  nunca al revés (ver esa propuesta, sección 9, para el riesgo concreto
+  de invertir el orden). Nada de esto se ha hecho en esta sesión.
+  Decisión separada y no bloqueante para el cierre de PM33: si el modelo
+  relacional de QA es el diseño futuro de esta función, ni la deuda más
+  amplia de 34 vs. 36 migraciones más allá de P05 (Punto 5).
 
 ---
 

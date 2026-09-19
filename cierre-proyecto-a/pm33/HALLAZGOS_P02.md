@@ -1,6 +1,6 @@
 # PM33 — Revisión de cierre: P01 → P02 → P03 → P04 → P05
 
-Estado: **PM33 validado para promoción, sobre el candidato final LIMPIO `claude/pm33-promocion-final` @ `21ce7fad37dec815fc4568945872fc72a9bf3cd7`. NO cerrado, NO aplicado a Supabase/PROD, NO publicado en Netlify.** Candidato P05 (SQL + frontend) validado contra Postgres real localmente (16.13, 81/81 aserciones), contra un entorno aislado equivalente al modelo actual de PROD con **PostgreSQL 17.6.1.167 + Auth (GoTrue v2.196.0) + PostgREST (v16.2) reales** (`run 35465771875` sobre la rama de iteración, commit `d6ed496`, SUCCESS), Y de nuevo sobre el SHA final de la rama limpia, creada desde `release` vigente sin las migraciones intermedias P03/P04 en su historia (`run 35473168918`, commit `21ce7fa`, **SUCCESS**, incluido un gate automático que exige exactamente una migración PM33 desplegable). Ver sección 13 para la primera validación real, sección 15 para el candidato final limpio y el mecanismo de aplicación, y sección 16 para el estado vigente. QA (`qjqorixtkilwsndqayyx`) se conserva intacto, sin tocar y sin usarse para esta validación. Propuesta de promoción concreta en `cierre-proyecto-a/pm33/PROPUESTA_PROMOCION.md` -- pendiente de autorización separada del propietario para (A) aplicar en PROD y (B) mover `release` (dispara Netlify automáticamente).
+Estado: **PM33 validado para promoción, sobre el candidato final LIMPIO `claude/pm33-promocion-final` @ `21ce7fad37dec815fc4568945872fc72a9bf3cd7`. PROMOCIÓN DETENIDA -- el mecanismo de aplicación propuesto inicialmente (`supabase db push`) resultó inseguro (ver sección 17) y se corrigió. NO cerrado, NO aplicado a Supabase/PROD, NO publicado en Netlify.** Candidato P05 (SQL + frontend) validado contra Postgres real localmente (16.13, 81/81 aserciones), contra un entorno aislado equivalente al modelo actual de PROD con **PostgreSQL 17.6.1.167 + Auth (GoTrue v2.196.0) + PostgREST (v16.2) reales** (`run 35465771875` sobre la rama de iteración, commit `d6ed496`, SUCCESS), Y de nuevo sobre el SHA final de la rama limpia, creada desde `release` vigente sin las migraciones intermedias P03/P04 en su historia (`run 35473168918`, commit `21ce7fa`, **SUCCESS**, incluido un gate automático que exige exactamente una migración PM33 desplegable) -- **nada de esta validación queda invalidada por el hallazgo de la sección 17: el SQL y el frontend siguen correctos, lo que cambió es el mecanismo de aplicación a PROD**. Ver sección 13 para la primera validación real, sección 15 para el candidato final limpio, sección 17 para el hallazgo crítico de la matriz de migraciones (34 locales vs. 36 en PROD, 0 en común) y el mecanismo corregido, y sección 18 para el estado vigente. QA (`qjqorixtkilwsndqayyx`) se conserva intacto, sin tocar y sin usarse para esta validación. Propuesta de promoción concreta en `cierre-proyecto-a/pm33/PROPUESTA_PROMOCION.md` -- pendiente de autorización separada del propietario para (A) aplicar en PROD (mecanismo corregido) y (B) mover `release` (dispara Netlify automáticamente).
 
 Este documento cubre las cinco iteraciones en orden: **P02** (secciones
 1-6), **P03** (sección 7-8, segunda ronda), **P04** (sección 9 en
@@ -979,7 +979,7 @@ rollback (SQL + `migration repair --status reverted`, Netlify antes que
 SQL si hay que revertir), en `cierre-proyecto-a/pm33/PROPUESTA_PROMOCION.md`
 secciones 4-11.
 
-## 16. Próximo paso concreto (vigente)
+## 16. Próximo paso concreto (histórico, sustituido por la sección 18)
 
 **Estado: PM33 validado para promoción, sobre el candidato final limpio
 `claude/pm33-promocion-final` @ `21ce7fad37dec815fc4568945872fc72a9bf3cd7`.
@@ -1004,3 +1004,93 @@ NO cerrado, NO aplicado, NO publicado.**
 4. Decisión pendiente, separada y no bloqueante para el cierre de PM33:
    si el modelo relacional de QA es el diseño futuro de esta función
    (fuera del alcance actual, ver 9.5).
+
+## 17. PROMOCIÓN DETENIDA: la matriz real de migraciones invalida el mecanismo `db push` de la sección 15.4
+
+**Corrección explícita, no silenciosa, sobre la sección 15.4 de este
+mismo documento.** El propietario comprobó la matriz real de migraciones
+repo↔PROD y encontró que la propuesta anterior no era segura:
+
+- `supabase/migrations/` en `claude/pm33-promocion-final` contiene **34**
+  versiones.
+- PROD registra **36** versiones en `supabase_migrations.schema_migrations`.
+- **Intersección: 0.** Verificado de forma independiente contando los 34
+  prefijos reales de la rama y comparándolos contra las 36 filas reales
+  ya capturadas por `list_migrations` en la sección 15.4 — ninguna
+  coincide.
+
+**La afirmación de la sección 15.4** de que `supabase db push --dry-run`
+"reconocería exactamente" la migración P05 como única pendiente **era
+incorrecta y queda retirada aquí**: se apoyaba en que `list_migrations`
+no mostraba ninguna versión `20260919*`, pero `list_migrations` solo lee
+la tabla remota — no compara contra los archivos locales, que es
+exactamente lo que hace `db push --dry-run`. Con intersección 0, un
+`db push` real (con o sin `--dry-run`) tendría que considerar las 34
+versiones locales como pendientes, no solo P05 — no hay evidencia de que
+aplicar las otras 33 sea seguro (es la misma deuda de trazabilidad ya
+registrada en el Punto 5 del documento maestro de cierre, ahora
+cuantificada con exactitud: 34 vs. 36, 0 en común). **Quedan descartados
+expresamente**: `db push` sin flags, `db push --include-all`, y
+cualquier reparación masiva del historial.
+
+**Mecanismo corregido** (sustituye a la sección 15.4 por completo):
+aplicar el contenido exacto de la migración P05, y solo ese, vía
+`supabase_apply_migration` (MCP) — que no lee ni compara
+`supabase/migrations/`, así que no arriesga tocar las otras 33 versiones
+— capturar después la versión real que Supabase genere (no predecible de
+antemano) vía `list_migrations`, renombrar en el repositorio el archivo
+de la migración P05 para que coincida con esa versión real, actualizar el
+gate de migración única y la documentación en consecuencia, y volver a
+ejecutar el gate sobre el nuevo SHA antes de mover `release`. Detalle
+completo, paso a paso, en `cierre-proyecto-a/pm33/PROPUESTA_PROMOCION.md`
+sección 5.
+
+**Rollback también corregido**: se retira `supabase migration repair
+--status reverted` como mecanismo de rollback operativo normal (el propio
+historial ya tiene discrepancias no auditadas; añadir reparaciones sobre
+él sin necesidad real no es prudente). El rollback correcto es hacia
+delante: primero restaurar el deploy de Netlify
+`6aad473513310100099a03a9`, después aplicar una NUEVA migración de
+rollback (mismo mecanismo, `apply_migration`) que restaure la función
+anterior, conservando en el historial tanto la aplicación de P05 como su
+reversión — nunca borrando ni reescribiendo la entrada de P05. Detalle
+completo en `PROPUESTA_PROMOCION.md` sección 11.
+
+**Vía alternativa documentada, no ejecutable aquí**: `supabase migration
+fetch --linked` en un directorio de trabajo aislado reconciliaría el
+repositorio completo (las 36 versiones reales, no solo P05) antes de un
+`dry-run` genuinamente demostrado — sigue bloqueada en este sandbox por
+falta de credenciales de conexión a PROD (mismo hallazgo que en la ronda
+anterior). Ver `PROPUESTA_PROMOCION.md` sección 13.
+
+No se ha aplicado nada a PROD ni se ha modificado el historial remoto de
+migraciones en esta ronda — solo se corrigió la documentación.
+
+## 18. Próximo paso concreto (vigente)
+
+**Estado: PM33 validado para promoción, mecanismo de aplicación
+corregido, PROMOCIÓN DETENIDA hasta ejecutar el mecanismo de la sección
+17. NO cerrado, NO aplicado, NO publicado.**
+
+1. Propietario revisa `cierre-proyecto-a/pm33/PROPUESTA_PROMOCION.md`
+   (sección 5, mecanismo corregido) y autoriza, por separado:
+   - **(A) Autorización para aplicar la migración P05** — vía
+     `apply_migration` (MCP), captura de la versión real, renombrado del
+     archivo, actualización del gate, y nueva ejecución del gate en
+     verde, todo antes de continuar.
+   - **(B) Autorización para mover `release`** — dispara Netlify
+     automáticamente (`manual_deploy=false`), solo después de que (A) y
+     su nuevo gate estén en verde.
+2. Con (A) autorizada: preflight (sección 3) → `apply_migration` con el
+   contenido exacto de P05 → postflight inmediato → capturar la versión
+   real en `list_migrations` → renombrar el archivo en
+   `claude/pm33-promocion-final` → actualizar el gate y la documentación
+   → push → nuevo gate en verde sobre el nuevo SHA → confirmación
+   funcional supervisada con un usuario real (nunca sintético).
+3. Con (B) autorizada, solo después de (2): mover `release` al nuevo SHA
+   (con el archivo ya renombrado), no a `21ce7fad37dec815fc4568945872fc72a9bf3cd7`.
+4. Decisión pendiente, separada y no bloqueante para el cierre de PM33:
+   si el modelo relacional de QA es el diseño futuro de esta función
+   (fuera del alcance actual, ver 9.5). Tampoco bloqueante para PM33: la
+   deuda más amplia de 34 vs. 36 migraciones más allá de P05 (Punto 5 del
+   documento maestro de cierre).
