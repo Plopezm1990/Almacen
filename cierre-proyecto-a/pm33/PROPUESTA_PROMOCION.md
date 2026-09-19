@@ -1,13 +1,19 @@
 # PM33 — Propuesta de promoción a PROD y Netlify
 
-**Estado: candidato final limpio, validado para promoción. NO cerrado, NO
-aplicado. PROMOCIÓN DETENIDA** — el propietario comprobó la matriz real
-de migraciones repo↔PROD y el mecanismo de aplicación descrito en una
-versión anterior de este documento no es seguro (sección 4). Nada de
-esto se ha ejecutado contra PROD ni contra Netlify. Esta propuesta existe
-para que el propietario autorice, por separado, (A) la aplicación en
-PROD y (B) mover `release` (dispara Netlify automáticamente) — ninguna de
-las dos queda autorizada implícitamente por preparar este documento.
+**Estado: FASE A APLICADA Y VERIFICADA EN PROD.** La migración P05 está
+aplicada en `flqercbgpgmmfaakrwkc` con el mecanismo corregido de la
+sección 5 (`apply_migration`, versión real registrada
+`20260919225831`), postflight en verde (7/7). Candidato final
+re-validado tras renombrar el archivo a esa versión:
+`claude/pm33-promocion-final` @ `6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d`,
+gate [`run 35474922732`](https://github.com/Plopezm1990/Almacen/actions/runs/35474922732)
+**SUCCESS**. Detalle completo de la fase A en
+`cierre-proyecto-a/pm33/HALLAZGOS_P02.md` sección 19. **Fase B (mover
+`release`, publicar Netlify) PENDIENTE de autorización separada — NO
+cerrado, NO publicado en Netlify.** Nada de Netlify se ha ejecutado
+todavía. Esta propuesta sigue existiendo para que el propietario
+autorice, específicamente, (B) mover `release` a `6e26391` — no queda
+autorizada implícitamente por haber completado (A).
 
 ## 0. Evidencia (candidato final limpio, no la rama de iteración)
 

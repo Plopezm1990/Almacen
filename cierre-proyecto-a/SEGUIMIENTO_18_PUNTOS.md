@@ -28,13 +28,18 @@ durante esta sesión.
 
 ## 1. PM33 / R10 — Aislamiento de `obtener_contexto_operativo()`
 
-**Estado: validado para promoción, sobre el candidato final LIMPIO
-`claude/pm33-promocion-final` @ `21ce7fad37dec815fc4568945872fc72a9bf3cd7`.
-PROMOCIÓN DETENIDA: el mecanismo de aplicación propuesto inicialmente
-(`supabase db push`) resultó inseguro -- el propietario comprobó la
-matriz real de migraciones (34 locales vs. 36 en PROD, 0 en común) y se
-corrigió (ver más abajo y `pm33/HALLAZGOS_P02.md` sección 17). NO
-cerrado, NO aplicado a Supabase/PROD, NO publicado en Netlify.**
+**Estado: FASE A APLICADA Y VERIFICADA EN PROD.** La migración P05 está
+aplicada en `flqercbgpgmmfaakrwkc` (versión real registrada
+`20260919225831`), postflight en verde (7/7 comprobaciones exigidas).
+Candidato final re-validado tras renombrar el archivo a esa versión:
+`claude/pm33-promocion-final` @ `6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d`,
+gate [`run 35474922732`](https://github.com/Plopezm1990/Almacen/actions/runs/35474922732)
+**SUCCESS**. **Fase B (mover `release`, publicar Netlify) PENDIENTE de
+autorización separada -- NO cerrado, NO publicado en Netlify.** El
+mecanismo de aplicación inicialmente propuesto (`supabase db push`)
+resultó inseguro -- el propietario comprobó la matriz real de migraciones
+(34 locales vs. 36 en PROD, 0 en común) y se corrigió antes de aplicar
+nada (ver más abajo y `pm33/HALLAZGOS_P02.md` sección 17).
 Candidato P05 (SQL + frontend) validado localmente (Postgres 16 real,
 81/81), en un entorno aislado equivalente al modelo actual de PROD con
 **PostgreSQL 17.6.1.167 + Auth (GoTrue v2.196.0) + PostgREST (v16.2)
@@ -292,35 +297,52 @@ mover `release` (dispara Netlify automáticamente, `manual_deploy=false`).
   evidencia de que aplicar las otras 33 sea seguro. Quedan descartados
   `db push` sin flags, `db push --include-all`, y cualquier reparación
   masiva del historial.
-  **Mecanismo corregido**: aplicar únicamente el contenido exacto de la
-  migración P05 vía `apply_migration` (MCP, que no lee ni compara
-  `supabase/migrations/`, así que no toca las otras 33 versiones),
-  capturar después con `list_migrations` la versión real que Supabase
-  genere (no predecible de antemano), renombrar en el repositorio el
-  archivo de la migración P05 para que coincida con esa versión real,
-  actualizar el gate de migración única y la documentación, y volver a
-  ejecutar el gate sobre el nuevo SHA antes de mover `release`. Rollback
-  también corregido: nunca `migration repair --status reverted` como
-  operación normal (el historial ya tiene discrepancias no auditadas);
-  el rollback es hacia delante — primero restaurar el deploy de Netlify
-  `6aad473513310100099a03a9`, después aplicar una NUEVA migración de
-  rollback (mismo mecanismo), conservando en el historial tanto la
-  aplicación de P05 como su reversión. Detalle completo, incluida la
-  alternativa documental con `supabase migration fetch` (sigue bloqueada
-  por falta de credenciales de PROD en este sandbox), en
-  `pm33/PROPUESTA_PROMOCION.md` secciones 4-5 y 11-13, y en
-  `pm33/HALLAZGOS_P02.md` sección 17.
-- **Pasos restantes**: PM33 pasa a **validado para promoción, mecanismo
-  de aplicación corregido, PROMOCIÓN DETENIDA hasta ejecutarlo**, sobre
-  `claude/pm33-promocion-final` @ `21ce7fad37dec815fc4568945872fc72a9bf3cd7`.
-  Propietario autoriza, por separado, en
-  `cierre-proyecto-a/pm33/PROPUESTA_PROMOCION.md`: **(A)** aplicar la
-  migración P05 en PROD por el mecanismo corregido (`apply_migration` →
-  capturar versión real → renombrar archivo → actualizar gate →
-  re-ejecutar gate en verde), **(B)** mover `release` (dispara Netlify
-  automáticamente, `manual_deploy=false`) — siempre (A) antes que (B),
-  nunca al revés (ver esa propuesta, sección 9, para el riesgo concreto
-  de invertir el orden). Nada de esto se ha hecho en esta sesión.
+**Mecanismo corregido y EJECUTADO**: aplicado únicamente el contenido
+  exacto de la migración P05 vía `apply_migration` (MCP, que no lee ni
+  compara `supabase/migrations/`, así que no tocó las otras 33
+  versiones). Preflight repetido inmediatamente antes de aplicar: las
+  cuatro condiciones de parada exigidas por el propietario se
+  comprobaron, ninguna se disparó (función de 0 argumentos, hash
+  `40d7bf2ea50776b7eb40a3fff239c0b4`, sin dependencias nuevas,
+  `authenticated=true`/`anon=false`/`public=false`). Postflight
+  inmediato, las siete comprobaciones exigidas, todas en verde: una única
+  función con `p_local_id text DEFAULT NULL` (sin la sobrecarga de 0
+  argumentos), `authenticated` conserva `EXECUTE`, `anon`/`PUBLIC` sin
+  `EXECUTE`, hash de la definición aplicada
+  (`211ddc8ad6c053be1c75872ceb29a093`) verificado idéntico contra una
+  instancia local de Postgres 16 con el mismo P05 ya validado, llamada
+  sin sesión rechazada con una petición HTTP real contra PROD (`401`,
+  código `42501`, mismo comportamiento ya validado en el entorno
+  aislado), y sin avisos de seguridad nuevos atribuibles a esta migración
+  (mismos 17 hallazgos de `SECURITY DEFINER` ya documentados, mismo
+  hallazgo de leaked password protection ya documentado como Punto 10).
+  `list_migrations` confirma **37 filas** (36+1): la nueva es `version =
+  "20260919225831"`, `name = "pm33_p05_identidad_antes_de_actividad"`.
+  Candidato final actualizado (renombrado el archivo a esa versión real,
+  gate y documentación actualizados) y re-validado:
+  `claude/pm33-promocion-final` @ `6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d`,
+  [`run 35474922732`](https://github.com/Plopezm1990/Almacen/actions/runs/35474922732)
+  **SUCCESS** (verificado de forma independiente vía la API de GitHub
+  Actions). Ningún usuario ni dato sintético creado en PROD. Rollback
+  corregido, no ejecutado (no hizo falta): nunca `migration repair
+  --status reverted` como operación normal (el historial ya tiene
+  discrepancias no auditadas); el rollback es hacia delante — primero
+  restaurar el deploy de Netlify `6aad473513310100099a03a9`, después
+  aplicar una NUEVA migración de rollback (mismo mecanismo), conservando
+  en el historial tanto la aplicación de P05 como su reversión. Detalle
+  completo en `pm33/PROPUESTA_PROMOCION.md` secciones 4-5 y 11-13, y en
+  `pm33/HALLAZGOS_P02.md` sección 19.
+- **Pasos restantes**: PM33 pasa a **fase A aplicada y verificada en
+  PROD; fase B (mover `release`, publicar Netlify) pendiente de
+  autorización separada**, sobre
+  `claude/pm33-promocion-final` @ `6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d`.
+  Con (B) autorizada: comprobación inmediata antes de mover (`release`
+  sigue en `f313bc0`, el candidato sigue en `6e26391`, el gate sigue en
+  SUCCESS, PROD conserva la migración `20260919225831`) → fast-forward
+  exacto de `release` → supervisar el despliegue de Netlify → verificar
+  en producción (`index.html`, `fuente.js` y su hash servido, cabecera
+  `Cache-Control`, rechazo de la llamada anónima, ausencia de errores
+  nuevos) → postflight final → cerrar PM33 solo si todo queda en verde.
   Decisión separada y no bloqueante para el cierre de PM33: si el modelo
   relacional de QA es el diseño futuro de esta función, ni la deuda más
   amplia de 34 vs. 36 migraciones más allá de P05 (Punto 5).

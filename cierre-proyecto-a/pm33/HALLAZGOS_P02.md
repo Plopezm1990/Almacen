@@ -1,6 +1,6 @@
 # PM33 — Revisión de cierre: P01 → P02 → P03 → P04 → P05
 
-Estado: **PM33 validado para promoción, sobre el candidato final LIMPIO `claude/pm33-promocion-final` @ `21ce7fad37dec815fc4568945872fc72a9bf3cd7`. PROMOCIÓN DETENIDA -- el mecanismo de aplicación propuesto inicialmente (`supabase db push`) resultó inseguro (ver sección 17) y se corrigió. NO cerrado, NO aplicado a Supabase/PROD, NO publicado en Netlify.** Candidato P05 (SQL + frontend) validado contra Postgres real localmente (16.13, 81/81 aserciones), contra un entorno aislado equivalente al modelo actual de PROD con **PostgreSQL 17.6.1.167 + Auth (GoTrue v2.196.0) + PostgREST (v16.2) reales** (`run 35465771875` sobre la rama de iteración, commit `d6ed496`, SUCCESS), Y de nuevo sobre el SHA final de la rama limpia, creada desde `release` vigente sin las migraciones intermedias P03/P04 en su historia (`run 35473168918`, commit `21ce7fa`, **SUCCESS**, incluido un gate automático que exige exactamente una migración PM33 desplegable) -- **nada de esta validación queda invalidada por el hallazgo de la sección 17: el SQL y el frontend siguen correctos, lo que cambió es el mecanismo de aplicación a PROD**. Ver sección 13 para la primera validación real, sección 15 para el candidato final limpio, sección 17 para el hallazgo crítico de la matriz de migraciones (34 locales vs. 36 en PROD, 0 en común) y el mecanismo corregido, y sección 18 para el estado vigente. QA (`qjqorixtkilwsndqayyx`) se conserva intacto, sin tocar y sin usarse para esta validación. Propuesta de promoción concreta en `cierre-proyecto-a/pm33/PROPUESTA_PROMOCION.md` -- pendiente de autorización separada del propietario para (A) aplicar en PROD (mecanismo corregido) y (B) mover `release` (dispara Netlify automáticamente).
+Estado: **Fase A aplicada y verificada en PROD (`flqercbgpgmmfaakrwkc`): la migración P05 está aplicada (versión real `20260919225831`), postflight en verde. Candidato final re-validado: `claude/pm33-promocion-final` @ `6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d`, gate `run 35474922732` SUCCESS. Fase B (mover `release`, publicar Netlify) PENDIENTE de autorización separada. NO cerrado.** Candidato P05 (SQL + frontend) validado contra Postgres real localmente (16.13, 81/81 aserciones), contra un entorno aislado equivalente al modelo actual de PROD con **PostgreSQL 17.6.1.167 + Auth (GoTrue v2.196.0) + PostgREST (v16.2) reales** (`run 35465771875`, commit `d6ed496`, SUCCESS), sobre el candidato final limpio creado desde `release` vigente sin las migraciones intermedias P03/P04 en su historia (`run 35473168918`, commit `21ce7fa`, SUCCESS), y de nuevo tras renombrar la migración a su versión real registrada por PROD (`run 35474922732`, commit `6e26391`, **SUCCESS**). Ver sección 13 para la primera validación real, sección 15 para el candidato final limpio, sección 17 para el hallazgo crítico de la matriz de migraciones (34 locales vs. 36 en PROD, 0 en común) y el mecanismo corregido, sección 19 para la fase A completa (preflight, aplicación, postflight, versión registrada), y sección 20 para el estado vigente. QA (`qjqorixtkilwsndqayyx`) se conserva intacto, sin tocar. Propuesta de promoción concreta en `cierre-proyecto-a/pm33/PROPUESTA_PROMOCION.md` -- pendiente de autorización separada del propietario para (B) mover `release` (dispara Netlify automáticamente).
 
 Este documento cubre las cinco iteraciones en orden: **P02** (secciones
 1-6), **P03** (sección 7-8, segunda ronda), **P04** (sección 9 en
@@ -1066,7 +1066,7 @@ anterior). Ver `PROPUESTA_PROMOCION.md` sección 13.
 No se ha aplicado nada a PROD ni se ha modificado el historial remoto de
 migraciones en esta ronda — solo se corrigió la documentación.
 
-## 18. Próximo paso concreto (vigente)
+## 18. Próximo paso concreto (histórico, sustituido por la sección 20)
 
 **Estado: PM33 validado para promoción, mecanismo de aplicación
 corregido, PROMOCIÓN DETENIDA hasta ejecutar el mecanismo de la sección
@@ -1093,4 +1093,128 @@ corregido, PROMOCIÓN DETENIDA hasta ejecutar el mecanismo de la sección
    si el modelo relacional de QA es el diseño futuro de esta función
    (fuera del alcance actual, ver 9.5). Tampoco bloqueante para PM33: la
    deuda más amplia de 34 vs. 36 migraciones más allá de P05 (Punto 5 del
+   documento maestro de cierre).
+
+## 19. Fase A ejecutada: migración P05 aplicada en PROD
+
+**Autorizada explícitamente por el propietario, con siete condiciones,
+todas cumplidas.** Ejecutada contra `flqercbgpgmmfaakrwkc` el 19/09/2026.
+
+### 19.1 Preflight repetido inmediatamente antes de aplicar
+
+Las cuatro condiciones de parada exigidas se comprobaron, ninguna se
+disparó:
+
+- Existe únicamente `obtener_contexto_operativo()` de 0 argumentos.
+- Hash: `40d7bf2ea50776b7eb40a3fff239c0b4` (idéntico al capturado el
+  19/09/2026).
+- `pg_depend` sin filas para esta función — sin dependencias nuevas.
+- `authenticated_execute=true`, `anon_execute=false`,
+  `public_execute=false`.
+
+### 19.2 Aplicación
+
+`apply_migration` (MCP) contra `flqercbgpgmmfaakrwkc`, `name =
+"pm33_p05_identidad_antes_de_actividad"`, `query` = el contenido literal
+completo de
+`supabase/migrations/20260919170000_pm33_p05_identidad_antes_de_actividad.sql`
+del commit `21ce7fad37dec815fc4568945872fc72a9bf3cd7` (extraído con `git
+show`, verificado antes de enviarlo). Sin tocar `db push` ni ninguna de
+las otras 33 versiones locales sin correspondencia en PROD (sección 17).
+
+### 19.3 Postflight inmediato — las siete comprobaciones exigidas
+
+1. **Una única función con `p_local_id text DEFAULT NULL`**: confirmado
+   (`pronargs=1`, `args="p_local_id text DEFAULT NULL::text"`).
+2. **Ausencia de la sobrecarga antigua de 0 argumentos**: confirmado — la
+   consulta por firma devuelve una sola fila.
+3. **`authenticated` conserva EXECUTE**: confirmado (`true`).
+4. **`anon` y `PUBLIC` sin EXECUTE**: confirmado (`false`, `false`).
+5. **El hash/cuerpo corresponde al P05 aplicado**: hash de la definición
+   en PROD tras aplicar = `211ddc8ad6c053be1c75872ceb29a093`. Verificado
+   de forma independiente: **idéntico** al hash calculado sobre una
+   instancia local de PostgreSQL 16 (`pm33_test`, de esta misma sesión)
+   con el mismo candidato P05 ya validado localmente — no es solo
+   autoconsistencia de PROD, es una comparación cruzada contra un
+   entorno distinto que corrió el mismo SQL.
+6. **La llamada sin sesión es rechazada**: petición HTTP real (no
+   simulada) contra `https://flqercbgpgmmfaakrwkc.supabase.co/rest/v1/rpc/obtener_contexto_operativo`
+   con la clave `anon` real de PROD, sin JWT de usuario — respuesta
+   `HTTP 401`, cuerpo
+   `{"code":"42501","details":null,"hint":null,"message":"permission denied for function obtener_contexto_operativo"}`.
+   Coincide exactamente con el comportamiento ya validado en el entorno
+   aislado (sección 13): rechazo a nivel de permiso, antes de entrar en
+   la función.
+7. **Sin avisos de seguridad nuevos atribuibles a esta migración**:
+   `get_advisors(type=security)` tras aplicar devuelve tres categorías,
+   ninguna nueva ni con recuento aumentado por esta migración:
+   `rls_enabled_no_policy` (6 hallazgos, ninguno de una tabla tocada por
+   esta migración -- no toca ninguna tabla), `authenticated_security_definer_function_executable`
+   (**17** hallazgos -- mismo recuento ya documentado en rondas
+   anteriores de este cierre; `obtener_contexto_operativo(p_local_id
+   text)` aparece con su firma nueva, pero ya aparecía con la firma
+   antigua antes de aplicar -- no es un hallazgo nuevo, es el mismo con
+   los argumentos actualizados), y `auth_leaked_password_protection` (1
+   hallazgo, ya documentado como Punto 10 del cierre general, sin
+   relación con esta migración).
+
+### 19.4 Versión registrada
+
+`list_migrations` tras aplicar: **37 filas** (36 + 1). La nueva:
+**`version = "20260919225831"`**, **`name =
+"pm33_p05_identidad_antes_de_actividad"`**.
+
+### 19.5 Candidato final actualizado y re-validado
+
+En `claude/pm33-promocion-final`: renombrado
+`supabase/migrations/20260919170000_pm33_p05_identidad_antes_de_actividad.sql`
+→ `supabase/migrations/20260919225831_pm33_p05_identidad_antes_de_actividad.sql`
+(contenido SQL verificado sin cambios con `diff`), actualizado el gate de
+migración única y el filtro de `paths` del workflow al nuevo nombre,
+corregida la referencia correspondiente en
+`docs/plan-maestro/PM33_ENTORNO_AISLADO.md`. Commit **`6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d`**.
+Workflow re-ejecutado sobre ese SHA:
+[`run 35474922732`](https://github.com/Plopezm1990/Almacen/actions/runs/35474922732)
+— **SUCCESS** (verificado de forma independiente vía la API de GitHub
+Actions, no solo por el reporte del propietario).
+
+**Candidato final vigente para la fase B: `claude/pm33-promocion-final`
+@ `6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d`.**
+
+### 19.6 Qué NO se hizo en esta fase
+
+No se creó ningún usuario ni dato sintético en PROD. No se movió
+`release`. No se publicó nada en Netlify. La confirmación funcional con
+un usuario real y supervisado (distinta de la comprobación de rechazo
+sin sesión, ya hecha) queda para la fase B o para una verificación
+posterior expresamente supervisada por el propietario — no se ha hecho
+en esta fase.
+
+## 20. Próximo paso concreto (vigente)
+
+**Estado: Fase A de PM33 aplicada y verificada en PROD
+(`flqercbgpgmmfaakrwkc`), candidato final re-validado
+(`claude/pm33-promocion-final` @ `6e26391`, gate `35474922732` SUCCESS).
+Fase B (mover `release`, publicar Netlify) pendiente de autorización
+separada. NO cerrado.**
+
+1. Propietario autoriza, específicamente, mover `release` a
+   `6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d` -- dispara Netlify
+   automáticamente (`manual_deploy=false`).
+2. Con esa autorización: comprobación inmediata antes de mover
+   (`release` sigue en `f313bc0`, el candidato sigue en `6e26391`, el
+   gate sigue en SUCCESS, PROD conserva la migración `20260919225831`) →
+   fast-forward exacto de `release` → supervisar el despliegue de
+   Netlify con espera acotada → verificar en producción (`index.html`,
+   `fuente.js` y su hash servido, cabecera `Cache-Control`, rechazo de la
+   llamada anónima, ausencia de errores nuevos) → postflight final.
+3. Solo si todo queda en verde: marcar PM33 cerrado. Si algo falla:
+   procedimiento de rollback documentado en
+   `cierre-proyecto-a/pm33/PROPUESTA_PROMOCION.md` sección 11 (Netlify
+   primero, después una nueva migración de rollback registrada si hace
+   falta revertir también el SQL).
+4. Decisión pendiente, separada y no bloqueante para el cierre de PM33:
+   si el modelo relacional de QA es el diseño futuro de esta función
+   (fuera del alcance actual, ver 9.5). Tampoco bloqueante: la deuda más
+   amplia de 34 vs. 36 migraciones más allá de P05 (Punto 5 del
    documento maestro de cierre).
