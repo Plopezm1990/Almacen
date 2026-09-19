@@ -43562,8 +43562,19 @@ var init_index_es = __esm({
   var contextoLocalIdUsado = null;
   var contextoGeneracion = 0;
   var contextoLocalEnVuelo = null;
+  var contextoUsuarioEnVuelo = null;
   var contextoGeneracionEnVuelo = null;
   var contextoPromesaEnVuelo = null;
+  // Se conoce de forma SÍNCRONA (sin await) el usuario de la sesión
+  // vigente -- imprescindible porque el reclamo de "petición compartida
+  // en curso" en obtenerContexto() ocurre antes de cualquier await, y sin
+  // esto solo distinguía por local: dos usuarios distintos pidiendo el
+  // MISMO local (p. ej. tras cambiar de sesión en el mismo dispositivo
+  // sin cambiar de local) podían recibir, sin darse cuenta, la misma
+  // promesa compartida -- y por tanto la respuesta del otro usuario.
+  // void 0 = todavía no se conoce (antes de que resuelva la suscripción
+  // de abajo); null = sin sesión.
+  var sesionUsuarioConocido = void 0;
   var CONTEXTO_TTL_MS = 3e4;
   var CACHE_LOCAL = "chocoloyos_contexto_operativo_seguro_v1";
   var CLAVES_COMUNES = [
@@ -43737,6 +43748,42 @@ var init_index_es = __esm({
     // otra identidad hacia quien pidió la primera.
     return contextoUsuarioId === userId && contextoLocalIdUsado === localIdSolicitado ? contextoCache : null;
   }
+  function invalidarPorCambioDeSesion(nuevoUsuarioId) {
+    // Un cambio de sesión (login, logout, o cambio de usuario en el mismo
+    // dispositivo sin recargar la página) invalida TODO lo que dependía
+    // de la sesión anterior de inmediato: la caché en memoria, el
+    // respaldo en disco, y cualquier resolución en curso -- aunque su RPC
+    // ya esté en vuelo. Sube la generación para que, si esa resolución en
+    // curso pertenece al usuario anterior y resuelve DESPUÉS de este
+    // cambio, quede descartada por completo (ver contextoObsoletoSalvoQueCoincida)
+    // en vez de escribir sus datos sobre el estado ya limpio del usuario
+    // nuevo.
+    sesionUsuarioConocido = nuevoUsuarioId;
+    contextoGeneracion++;
+    contextoPromesaEnVuelo = null;
+    contextoLocalEnVuelo = null;
+    contextoUsuarioEnVuelo = null;
+    contextoGeneracionEnVuelo = null;
+    contextoCache = null;
+    contextoUsuarioId = null;
+    contextoFecha = 0;
+    contextoLocalIdUsado = null;
+    limpiarContextoLocalGuardado();
+  }
+  (async function seguirCambiosDeSesion() {
+    try {
+      var supabase = await clienteSupabase();
+      var sesionInicial = await sesionActual(supabase);
+      sesionUsuarioConocido = sesionInicial && sesionInicial.user ? sesionInicial.user.id : null;
+      supabase.auth.onAuthStateChange(function(_evento, sesion) {
+        var nuevoUsuarioId = sesion && sesion.user ? sesion.user.id : null;
+        if (nuevoUsuarioId !== sesionUsuarioConocido) {
+          invalidarPorCambioDeSesion(nuevoUsuarioId);
+        }
+      });
+    } catch (e2) {
+    }
+  })();
   async function resolverContexto(forzar, localIdSolicitado, miGeneracion) {
     function siguesVigente() {
       return miGeneracion === contextoGeneracion;
@@ -43808,6 +43855,7 @@ var init_index_es = __esm({
       if (contextoGeneracionEnVuelo === miGeneracion) {
         contextoPromesaEnVuelo = null;
         contextoLocalEnVuelo = null;
+        contextoUsuarioEnVuelo = null;
         contextoGeneracionEnVuelo = null;
       }
     }
@@ -43826,15 +43874,27 @@ var init_index_es = __esm({
     // ninguna hubiera podido "avisar" a la otra, y la que terminaba
     // primero se descartaba igual que si fuera obsoleta.
     var localIdSolicitado = localIdActualParaContexto();
-    if (!forzar && contextoPromesaEnVuelo && contextoLocalEnVuelo === localIdSolicitado) {
+    // La clave de reutilización es (usuario, local), nunca solo el local:
+    // sin el usuario, dos sesiones distintas pidiendo el MISMO local (el
+    // caso real de cambiar de sesión en el mismo dispositivo sin cambiar
+    // de local) podían compartir, sin darse cuenta, la misma promesa en
+    // curso -- y por tanto la respuesta de la otra sesión.
+    // sesionUsuarioConocido puede ser `void 0` muy brevemente, solo antes
+    // de que la suscripción de arriba resuelva por primera vez; en ese
+    // caso dos llamadas concurrentes se coalescen igual que antes (mismo
+    // valor `void 0` para ambas), lo peor que puede pasar es una llamada
+    // de red de más -- nunca al revés.
+    var usuarioIdSolicitado = sesionUsuarioConocido;
+    if (!forzar && contextoPromesaEnVuelo && contextoLocalEnVuelo === localIdSolicitado && contextoUsuarioEnVuelo === usuarioIdSolicitado) {
       return contextoPromesaEnVuelo;
     }
-    // Clave nueva (local distinto al que hay en curso) o recarga forzada:
-    // nueva generación. Cualquier resolución anterior en curso -- para
-    // cualquier local o usuario -- queda obsoleta a partir de aquí,
-    // aunque su respuesta llegue más tarde.
+    // Clave nueva (usuario o local distinto al que hay en curso) o
+    // recarga forzada: nueva generación. Cualquier resolución anterior en
+    // curso -- para cualquier local o usuario -- queda obsoleta a partir
+    // de aquí, aunque su respuesta llegue más tarde.
     var miGeneracion = ++contextoGeneracion;
     contextoLocalEnVuelo = localIdSolicitado;
+    contextoUsuarioEnVuelo = usuarioIdSolicitado;
     contextoGeneracionEnVuelo = miGeneracion;
     var miPromesa = resolverContexto(forzar, localIdSolicitado, miGeneracion);
     contextoPromesaEnVuelo = miPromesa;

@@ -17,6 +17,19 @@
 //      con éxito DESPUÉS. El éxito tardío nunca reescribe la caché que la
 //      más reciente ya limpió, y la siguiente lectura dispara una RPC
 //      nueva en vez de devolver la respuesta obsoleta "gratis".
+//   6. (P05) Fuga cruzada de identidad al descartar una respuesta obsoleta
+//      (cambio de local con una recarga forzada de por medio).
+//   7. (P05) Concurrencia normal, mismo usuario/local, sin caché previa:
+//      ninguna de las dos lecturas debe volver vacía por la otra.
+//   8. (ronda actual) Concurrencia ENTRE SESIONES: el usuario A inicia una
+//      lectura normal (sin forzar) que queda pendiente; la sesión cambia
+//      al usuario B, MISMO local, y B inicia otra lectura normal mientras
+//      la de A sigue pendiente. B nunca debe recibir la respuesta de A --
+//      la reutilización de la petición en curso debe distinguir
+//      usuario/sesión, no solo local.
+//   9. (ronda actual) Cerrar sesión (logout) con una lectura pendiente
+//      invalida también la caché y la respuesta en curso: una lectura
+//      posterior sin sesión nunca hereda la del usuario anterior.
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -35,14 +48,41 @@ for (const pieza of [
   'window.__localActivoIdParaContexto',
   'p_local_id: localIdSolicitado',
   'limpiarContextoLocalGuardado',
+  'contextoUsuarioEnVuelo',
+  'sesionUsuarioConocido',
+  'invalidarPorCambioDeSesion',
+  'onAuthStateChange',
 ]) {
-  assert.ok(bloque.includes(pieza), `el parche P03 incluye: ${pieza}`);
+  assert.ok(bloque.includes(pieza), `el parche incluye: ${pieza}`);
 }
 
 // --- Entorno simulado ---------------------------------------------------
 let rpcCalls = [];
 let rpcImpl = async () => ({ data: null, error: { message: 'no configurado' } });
 const storageBackend = {};
+// Sesión simulada, MUTABLE desde fuera (a diferencia de la versión
+// anterior, con un usuario fijo 'user-1') -- necesaria para el escenario
+// 8/9: cambiar de sesión (incluido cerrar sesión) con una lectura
+// pendiente. sesionSuscriptores recibe los callbacks que el propio
+// parche registra vía supabase.auth.onAuthStateChange, compartido entre
+// todos los clientes simulados que devuelva getSupabaseClient (igual que
+// el cliente real de Supabase es un único objeto compartido en la app).
+let sesionActualId = 'user-1';
+let sesionSuscriptores = [];
+function cambiarSesion(nuevoUsuarioId) {
+  sesionActualId = nuevoUsuarioId;
+  const sesion = nuevoUsuarioId ? { user: { id: nuevoUsuarioId } } : null;
+  const evento = nuevoUsuarioId ? 'SIGNED_IN' : 'SIGNED_OUT';
+  sesionSuscriptores.forEach((cb) => { try { cb(evento, sesion); } catch (e) { /* no debe tumbar la prueba */ } });
+}
+// Deja pasar suficientes vueltas de microtask/macrotask para que la
+// suscripción a onAuthStateChange que el propio parche registra al
+// arrancar (clienteSupabase() + sesionActual(), ambos async) ya se haya
+// completado -- necesario para que los escenarios de cambio de sesión
+// sean deterministas en vez de depender de una carrera de arranque.
+function esperarSuscripcionDeSesion() {
+  return new Promise((r) => setTimeout(r, 0));
+}
 
 function crearWindow() {
   const w = {
@@ -52,7 +92,13 @@ function crearWindow() {
       set: async (key, value) => { storageBackend[key] = JSON.stringify(value); return { key, value, shared: false }; },
     },
     getSupabaseClient: async () => ({
-      auth: { getSession: async () => ({ data: { session: { user: { id: 'user-1' } } } }) },
+      auth: {
+        getSession: async () => ({ data: { session: sesionActualId ? { user: { id: sesionActualId } } : null } }),
+        onAuthStateChange: (cb) => {
+          sesionSuscriptores.push(cb);
+          return { data: { subscription: { unsubscribe() {} } } };
+        },
+      },
       rpc: async (nombre, args) => {
         rpcCalls.push({ nombre, args: args || null });
         return rpcImpl(nombre, args);
@@ -72,6 +118,8 @@ function crearLocalStorage() {
 }
 
 function nuevoSandbox() {
+  sesionActualId = 'user-1';
+  sesionSuscriptores = [];
   const window_ = crearWindow();
   const localStorage = crearLocalStorage();
   const sandbox = { window: window_, localStorage, setTimeout, console, Promise };
@@ -238,6 +286,88 @@ async function main() {
     const [r1, r2] = await Promise.all([p1, p2]);
     assert.ok(JSON.parse(r1.value).length === 1, 'la primera lectura concurrente NO devuelve vacío aunque la segunda siguiera en curso');
     assert.ok(JSON.parse(r2.value).length === 1, 'la segunda lectura concurrente también resuelve con el dato correcto');
+  }
+
+  // 8) Concurrencia ENTRE SESIONES, MISMO local: A inicia una lectura
+  //    normal (sin forzar) que queda pendiente. La sesión cambia a B
+  //    (mismo local activo, sin que el usuario lo cambie). B inicia otra
+  //    lectura normal mientras la de A sigue pendiente. B NUNCA debe
+  //    recibir la respuesta de A: debe disparar su PROPIA llamada RPC. El
+  //    éxito tardío de A, una vez resuelto, queda descartado (igual que
+  //    cualquier respuesta de una generación ya superada) -- nunca se
+  //    devuelve como si fuera la de B ni se escribe sobre la caché de B.
+  {
+    rpcCalls = [];
+    const sb = nuevoSandbox();
+    sb.window.__localActivoIdParaContexto = 'loc-A';
+    await esperarSuscripcionDeSesion(); // sesionUsuarioConocido ya vale 'user-1'
+
+    let resolverA;
+    const pendienteA = new Promise((r) => { resolverA = r; });
+    rpcImpl = async () => {
+      // La primera llamada (la de A) se queda pendiente; cualquier
+      // llamada posterior debe ser la de B -- si el parche fallara y B
+      // reutilizara la petición de A, esta segunda rama nunca se
+      // alcanzaría y rpcCalls.length se quedaría en 1.
+      if (rpcCalls.length === 1) return pendienteA;
+      return { data: { rol: 'Cajero/a', localId: 'loc-A', empresaId: 'emp-B', empleado: null, empleadosFichaje: [{ id: 'emp-B-1' }], proveedores: [], fichasProduccion: [], cobrosEncargos: [] }, error: null };
+    };
+
+    const promesaA = sb.window.storage.get('empleados'); // A: lectura normal, queda pendiente
+    await new Promise((r) => setTimeout(r, 0)); // deja que A llegue de verdad a la RPC (y quede bloqueada en pendienteA) antes de cambiar de sesión
+    assert.equal(rpcCalls.length, 1, 'A ya disparó su llamada RPC antes del cambio de sesión');
+
+    cambiarSesion('user-2'); // cambia la sesión a B, MISMO local activo
+    const promesaB = sb.window.storage.get('empleados'); // B: lectura normal mientras A sigue pendiente
+
+    resolverA({ data: { rol: 'Cajero/a', localId: 'loc-A', empresaId: 'emp-A', empleado: null, empleadosFichaje: [{ id: 'emp-A-1' }], proveedores: [], fichasProduccion: [], cobrosEncargos: [] }, error: null });
+    const [resultadoA, resultadoB] = await Promise.all([promesaA, promesaB]);
+
+    assert.equal(rpcCalls.length, 2, 'B disparó su PROPIA llamada RPC -- nunca reutilizó la petición en curso de A');
+    const idsB = resultadoB.value ? JSON.parse(resultadoB.value).map((e) => e.id) : [];
+    assert.deepEqual(idsB, ['emp-B-1'], 'B recibe su propio resultado, nunca el de A');
+    const idsA = resultadoA.value ? JSON.parse(resultadoA.value).map((e) => e.id) : [];
+    assert.ok(idsA.indexOf('emp-B-1') === -1, 'A nunca recibe, ni por error, el resultado de B');
+    assert.notDeepEqual(idsA, idsB, 'A y B nunca comparten el mismo resultado en este escenario');
+
+    // Control: la caché sigue siendo la de B, sin contaminar por el
+    // éxito tardío de A -- una lectura posterior no debería tener que
+    // repetir la RPC si sigue dentro del TTL.
+    const llamadasAntesControl = rpcCalls.length;
+    const control = await sb.window.storage.get('empleados');
+    assert.deepEqual(JSON.parse(control.value).map((e) => e.id), ['emp-B-1'], 'la lectura posterior sigue viendo los datos de B, sin rastro de A');
+    assert.equal(rpcCalls.length, llamadasAntesControl, 'no hizo falta una RPC nueva: la caché de B seguía intacta');
+  }
+
+  // 9) Cerrar sesión (logout) con una lectura pendiente: invalida también
+  //    la caché y la respuesta en curso. Una lectura posterior sin sesión
+  //    nunca hereda ni el resultado ni la caché del usuario anterior.
+  {
+    rpcCalls = [];
+    const sb = nuevoSandbox();
+    sb.window.__localActivoIdParaContexto = 'loc-A';
+    await esperarSuscripcionDeSesion();
+
+    let resolverPendiente;
+    const pendiente = new Promise((r) => { resolverPendiente = r; });
+    rpcImpl = async () => pendiente;
+
+    const promesaAntesDeCerrar = sb.window.storage.get('empleados'); // pendiente
+    await new Promise((r) => setTimeout(r, 0));
+    assert.equal(rpcCalls.length, 1, 'la lectura ya disparó su RPC antes de cerrar sesión');
+
+    cambiarSesion(null); // logout
+    resolverPendiente({ data: { rol: 'Cajero/a', localId: 'loc-A', empresaId: 'emp-A', empleado: null, empleadosFichaje: [{ id: 'no-debe-verse' }], proveedores: [], fichasProduccion: [], cobrosEncargos: [] }, error: null });
+    const resultadoTardio = await promesaAntesDeCerrar;
+    assert.equal(resultadoTardio.value, '', 'el éxito tardío tras cerrar sesión se descarta -- no se entrega ni se cachea');
+
+    // Una lectura posterior, ya sin sesión, tampoco debe disparar la RPC
+    // (resolverContexto corta en seco en cuanto no hay userId) ni heredar
+    // nada de la sesión anterior.
+    const llamadasAntes = rpcCalls.length;
+    const trasCerrar = await sb.window.storage.get('empleados');
+    assert.equal(trasCerrar.value, '', 'sin sesión, la lectura no devuelve datos del usuario anterior');
+    assert.equal(rpcCalls.length, llamadasAntes, 'sin sesión no se llama a la RPC de nuevo');
   }
 
   console.log('PM33_P03_FRONTEND_MULTILOCAL_OK=1');
