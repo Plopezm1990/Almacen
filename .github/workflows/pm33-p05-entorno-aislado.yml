@@ -21,6 +21,9 @@ on:
     paths:
       - 'tests/pm33/supabase-full/**'
       - 'supabase/migrations/20260919170000_pm33_p05_identidad_antes_de_actividad.sql'
+      - 'fuente.js'
+      - 'tests/pm33/p03-frontend-multilocal-contract.mjs'
+      - 'source-recovery/**'
       - '.github/workflows/pm33-p05-entorno-aislado.yml'
   workflow_dispatch: {}
 
@@ -47,6 +50,12 @@ jobs:
           git merge-base --is-ancestor origin/release HEAD
           echo 'MAIN_FROZEN=1'
           echo 'RELEASE_ANCESTOR_OK=1'
+
+      - name: Pruebas de frontend (9 escenarios, sandbox vm real de fuente.js)
+        run: node tests/pm33/p03-frontend-multilocal-contract.mjs
+
+      - name: Comprobación de paridad source-recovery (sin drift entre fuente.js y fuente-recuperado.js)
+        run: python3 source-recovery/recuperar_candidato.py --check
 
       - name: Instalar dependencias del entorno aislado
         shell: bash

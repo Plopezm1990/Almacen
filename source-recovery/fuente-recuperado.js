@@ -962,6 +962,19 @@ function GestionAlmacen() {
   const [localActivoId, setLocalActivoId] = (0, import_react4.useState)(null);
   const [localInformeId, setLocalInformeId] = (0, import_react4.useState)("");
   (0, import_react4.useEffect)(() => {
+    if (typeof window === "undefined") return;
+    // PM33 P03: el contexto operativo (obtener_contexto_operativo) se pide
+    // acotado al local activo del dispositivo cuando se conoce, en vez de
+    // sin argumentos. Reutiliza el mismo estado que ya gestiona el resto de
+    // la app (localActivoId), sin introducir un selector nuevo. Cualquier
+    // cambio de local fuerza una recarga inmediata del contexto: nunca se
+    // sigue usando en memoria el contexto resuelto para el local anterior.
+    window.__localActivoIdParaContexto = typeof localActivoId === "string" && localActivoId ? localActivoId : null;
+    if (typeof window.__recargarContextoOperativo === "function") {
+      window.__recargarContextoOperativo();
+    }
+  }, [localActivoId]);
+  (0, import_react4.useEffect)(() => {
     if (!ready || typeof window === "undefined" || !window.__nubeActiva) return;
     let activo = true;
     (async () => {

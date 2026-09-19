@@ -108,10 +108,34 @@ try {
       pidiendoA.ok && pidiendoA.status === 200 && pidiendoA.data.empresaId === 'emp-A', JSON.stringify(pidiendoA));
   }
 
-  console.log('\n=== Control: sin autenticar (sin JWT de usuario real) también se rechaza por código, no a ciegas ===');
+  console.log('\n=== Control: sin autenticar (rol anon) se rechaza A NIVEL DE PERMISO, antes de la función ===');
   {
+    // Corrección sobre una ronda anterior: esta llamada NUNCA llega a
+    // ejecutar el cuerpo de la función (el `raise exception 'No
+    // autenticado'` de dentro), así que nunca puede devolver ese mensaje.
+    // El candidato revoca EXECUTE de anon/public explícitamente
+    // (`revoke all on function ... from public, anon;` en la propia
+    // migración) -- Postgres rechaza la llamada por falta de privilegio
+    // ANTES de que PostgREST pueda invocar la función, y PostgREST
+    // traduce ese rechazo (sin JWT de usuario real) como HTTP 401. Se
+    // comprueba el permiso real en la base, no solo se infiere del HTTP:
+    // nunca se concede EXECUTE a anon/PUBLIC para hacer pasar esta
+    // prueba -- si algún día se concediera por error, esta comprobación
+    // de permiso fallaría de inmediato, con o sin PostgREST de por medio.
+    const permisoAnon = await db.query(
+      `select has_function_privilege('anon', 'public.obtener_contexto_operativo(text)', 'EXECUTE') as puede`
+    );
+    check('anon NO tiene EXECUTE sobre obtener_contexto_operativo (permiso real en BD, no inferido)',
+      permisoAnon.rows[0].puede === false, JSON.stringify(permisoAnon.rows[0]));
+
     const sinAutenticar = await call(anonKey);
-    checkRechazo('llamada con la clave anon (auth.uid() nulo)', sinAutenticar, /no autenticad/i);
+    const detalle = JSON.stringify(sinAutenticar);
+    check('llamada con la clave anon: nunca un HTTP 500 (un fallo de infraestructura no es aislamiento correcto)',
+      sinAutenticar.status !== 500, detalle);
+    check('llamada con la clave anon: HTTP 401 -- rechazo a nivel de permiso, no de aplicación',
+      sinAutenticar.status === 401, detalle);
+    check('llamada con la clave anon: código de error explícito 42501 (insufficient_privilege) en el cuerpo',
+      !!(sinAutenticar.data && sinAutenticar.data.code === '42501'), detalle);
   }
 
   console.log('\n=== Aislamiento básico Cajero/a A vs B (JWT real) ===');
