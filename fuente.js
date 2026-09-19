@@ -43559,6 +43559,7 @@ var init_index_es = __esm({
   var contextoCache = null;
   var contextoUsuarioId = null;
   var contextoFecha = 0;
+  var contextoLocalIdUsado = null;
   var CONTEXTO_TTL_MS = 3e4;
   var CACHE_LOCAL = "chocoloyos_contexto_operativo_seguro_v1";
   var CLAVES_COMUNES = [
@@ -43662,22 +43663,35 @@ var init_index_es = __esm({
     }
     throw new Error("Cliente Supabase no disponible");
   }
-  function guardarContextoLocal(userId, contexto) {
+  function guardarContextoLocal(userId, contexto, localIdSolicitado) {
     if (!userId || !contexto || !contexto.rol) return;
     try {
       localStorage.setItem(CACHE_LOCAL, JSON.stringify({
         userId,
+        localIdSolicitado: localIdSolicitado || null,
         contexto,
         verificadoEn: Date.now()
       }));
     } catch (e2) {
     }
   }
-  function leerContextoLocal(userId) {
+  function limpiarContextoLocalGuardado() {
+    try {
+      localStorage.removeItem(CACHE_LOCAL);
+    } catch (e2) {
+    }
+  }
+  function leerContextoLocal(userId, localIdSolicitado) {
     if (!userId) return null;
     try {
       var guardado = JSON.parse(localStorage.getItem(CACHE_LOCAL) || "null");
       if (!guardado || guardado.userId !== userId || !guardado.contexto || !guardado.contexto.rol) return null;
+      // El contexto cacheado en disco solo es válido para el MISMO local
+      // que se está pidiendo ahora. Sin esto, cambiar de local en un
+      // dispositivo y perder la conexión justo después podía servir, desde
+      // el respaldo local, el contexto (y por tanto los datos) del local
+      // anterior.
+      if ((guardado.localIdSolicitado || null) !== (localIdSolicitado || null)) return null;
       return guardado.contexto;
     } catch (e2) {
       return null;
@@ -43702,33 +43716,60 @@ var init_index_es = __esm({
       return null;
     }
   }
+  function localIdActualParaContexto() {
+    try {
+      return typeof window.__localActivoIdParaContexto === "string" && window.__localActivoIdParaContexto ? window.__localActivoIdParaContexto : null;
+    } catch (e2) {
+      return null;
+    }
+  }
   async function obtenerContexto(forzar) {
     var supabase = await clienteSupabase();
     var sesion = await sesionActual(supabase);
     var userId = sesion && sesion.user ? sesion.user.id : null;
     if (!userId) return null;
     var ahora = Date.now();
+    var localIdSolicitado = localIdActualParaContexto();
+    // Un cambio del local activo del dispositivo invalida SIEMPRE la
+    // caché en memoria, aunque el TTL no haya vencido: nunca se sirven
+    // datos resueltos para un local distinto al que está activo ahora.
+    if (contextoLocalIdUsado !== localIdSolicitado) forzar = true;
     if (!forzar && contextoCache && contextoUsuarioId === userId && ahora - contextoFecha < CONTEXTO_TTL_MS) {
       return contextoCache;
     }
     if (window.__nubeActiva) {
       try {
-        var respuesta = await supabase.rpc("obtener_contexto_operativo");
+        var respuesta = localIdSolicitado ? await supabase.rpc("obtener_contexto_operativo", { p_local_id: localIdSolicitado }) : await supabase.rpc("obtener_contexto_operativo");
         if (!respuesta.error && respuesta.data && respuesta.data.rol) {
           contextoCache = respuesta.data;
           contextoUsuarioId = userId;
           contextoFecha = ahora;
-          guardarContextoLocal(userId, contextoCache);
+          contextoLocalIdUsado = localIdSolicitado;
+          guardarContextoLocal(userId, contextoCache, localIdSolicitado);
           return contextoCache;
+        }
+        if (respuesta.error) {
+          // Rechazo EXPLÍCITO del servidor (contexto no autorizado,
+          // ambiguo, local inactivo...): nunca se cae al respaldo local ni
+          // se reutiliza un contexto previo -- ni el de memoria ni el
+          // guardado en disco. Sin datos es más seguro que servir, por
+          // error, los de otro local.
+          contextoCache = null;
+          contextoUsuarioId = null;
+          contextoFecha = 0;
+          contextoLocalIdUsado = null;
+          limpiarContextoLocalGuardado();
+          return null;
         }
       } catch (e2) {
       }
     }
-    var local = leerContextoLocal(userId);
+    var local = leerContextoLocal(userId, localIdSolicitado);
     if (local) {
       contextoCache = local;
       contextoUsuarioId = userId;
       contextoFecha = ahora;
+      contextoLocalIdUsado = localIdSolicitado;
       return local;
     }
     return null;
@@ -101722,6 +101763,19 @@ function GestionAlmacen() {
   const [empresas, setEmpresas] = (0, import_react4.useState)([]);
   const [localActivoId, setLocalActivoId] = (0, import_react4.useState)(null);
   const [localInformeId, setLocalInformeId] = (0, import_react4.useState)("");
+  (0, import_react4.useEffect)(() => {
+    if (typeof window === "undefined") return;
+    // PM33 P03: el contexto operativo (obtener_contexto_operativo) se pide
+    // acotado al local activo del dispositivo cuando se conoce, en vez de
+    // sin argumentos. Reutiliza el mismo estado que ya gestiona el resto de
+    // la app (localActivoId), sin introducir un selector nuevo. Cualquier
+    // cambio de local fuerza una recarga inmediata del contexto: nunca se
+    // sigue usando en memoria el contexto resuelto para el local anterior.
+    window.__localActivoIdParaContexto = typeof localActivoId === "string" && localActivoId ? localActivoId : null;
+    if (typeof window.__recargarContextoOperativo === "function") {
+      window.__recargarContextoOperativo();
+    }
+  }, [localActivoId]);
   (0, import_react4.useEffect)(() => {
     if (!ready || typeof window === "undefined" || !window.__nubeActiva) return;
     let activo = true;
