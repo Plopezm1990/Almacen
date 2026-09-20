@@ -481,16 +481,15 @@ reproducible en la rama `claude/punto2-134-pruebas`:
 
 ## 3. Puerta de CI sobre el candidato final
 
-**Estado: FASE A EJECUTADA — puerta de CI incorporada a `release`
-(`release` ahora en `8540bd0`). FASE B AUTORIZADA pero BLOQUEADA: las
-herramientas de esta sesión no incluyen configuración de protección de
-rama de GitHub. `release` sigue sin ninguna regla de protección. NO
-cerrado.** (El diagnóstico anterior de este punto, "bloqueado —
+**Estado: CERRADO.** Fase A ejecutada (puerta de CI incorporada a
+`release`, ahora en `8540bd0`) y Fase B ejecutada (protección de rama
+aplicada sobre `release`, con `gate-final` como required status check),
+ambas verificadas. (El diagnóstico original de este punto, "bloqueado —
 confirmado que no existe hoy", describía `release@f313bc0`, que ya no es
-el HEAD real de `release`; queda sustituido por esta revalidación
-completa contra `release@6e26391`, después por la incorporación real de
-la Fase A, y finalmente por el bloqueo técnico de la Fase B, todo
-documentado al final de esta sección.)
+el HEAD real de `release`; quedó sustituido por la revalidación completa
+contra `release@6e26391`, después por la incorporación real de la Fase A,
+y finalmente por la protección de rama de la Fase B, todo documentado al
+final de esta sección.)
 
 **Revalidación inicial contra `release@6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d`**
 (no heredada de la ronda anterior): SHA de `main` =
@@ -682,78 +681,90 @@ confirma fast-forward puro). `release` pasó a apuntar exactamente a
 
 ---
 
-### Fase B — AUTORIZADA, BLOQUEADA por falta de herramienta (20/09/2026)
+### Fase B — EJECUTADA (aplicada por el propietario vía GitHub Settings, 20/09/2026)
 
 **Autorización recibida**: configurar protección de rama en `release`
 (required status check `gate-final`, `strict=true`, aplicar a
 administradores, impedir force-push y borrado, sin aprobaciones de
 terceros ni reglas adicionales).
 
-**Preflight de solo lectura — completado, los 5 puntos confirman lo
-esperado**:
-1. `release` sigue exactamente en
-   `8540bd06d5555cf260aa4599144ed6c64f3ca029` (`git fetch` +
-   `git rev-parse origin/release`, reconfirmado).
-2. `.github/workflows/puerta-ci-release.yml` existe en `release`
-   (`git show origin/release:...`).
-3. Conserva el trigger `pull_request: branches: [release]` (mismo
-   comando, grep sobre el resultado).
-4. El check `gate-final` existe entre los checks reales del run
-   [`35505508683`](https://github.com/Plopezm1990/Almacen/actions/runs/35505508683):
-   job `gate-final`, `conclusion=success` (confirmado vía la API de
-   GitHub Actions, `list_workflow_jobs`).
-5. Configuración de protección actual capturada antes de intentar
-   modificarla: `release` → `"protected": false` (sin ninguna regla),
-   confirmado vía `list_branches` de la API de GitHub -- mismo resultado
-   que ya se había documentado al abrir este punto, y que se vuelve a
-   confirmar aquí como el estado "antes" de esta fase.
+**Preflight de solo lectura previo — completado, los 5 puntos confirmaron
+lo esperado** (idéntico al registrado en el primer intento de esta fase):
+`release` en `8540bd0`; `puerta-ci-release.yml` presente en `release` con
+su trigger `pull_request` intacto; el check `gate-final` real y en
+`success` en el run
+[`35505508683`](https://github.com/Plopezm1990/Almacen/actions/runs/35505508683);
+configuración de protección capturada antes de cualquier cambio:
+`release` → `"protected": false`.
 
-**Bloqueado antes de aplicar ningún cambio**: el conjunto de herramientas
-de GitHub disponible en esta sesión (servidor MCP de GitHub) no incluye
-ninguna operación de configuración de reglas de protección de rama
-(`branch protection rules` / `required status checks`) -- se comprobó
-explícitamente buscando por nombre y por dominio (protection, required
-status checks, repository settings/admin) y no existe ese tipo de
-herramienta entre las expuestas. Tampoco hay acceso a `gh` CLI ni a la
-API de GitHub por otra vía en este entorno. Aplicar la Fase B tal como se
-autorizó (vía la API de branch protection) **no es posible con las
-herramientas disponibles en esta sesión** -- no es una limitación de
-autorización ni de las comprobaciones, sino de capacidad técnica.
+**Aplicación**: la sesión no dispone de ninguna herramienta de
+configuración de `branch protection rules` (se comprobó explícitamente
+buscando por nombre y por dominio entre las herramientas de GitHub
+disponibles, y no existe ese tipo de herramienta; tampoco hay acceso a
+`gh` CLI ni a la API de GitHub por otra vía). Por ello, la Fase B se
+aplicó **directamente por el propietario, en la interfaz de
+administración de GitHub** (`Settings → Branches`), no por esta sesión.
+Estado reportado por el propietario, con verificación propia inmediata
+desde la propia pantalla de edición de la regla tras crearla (mensaje de
+GitHub `Branch protection rule created`, después reabierta en modo
+edición para comprobar cada valor):
+- Regla clásica de protección de rama creada sobre `release`, ID `83444129`.
+- Required status check: `gate-final` (origen: GitHub Actions).
+- `Require branches to be up to date before merging`: activado.
+- `Do not allow bypassing the above settings`: activado (afecta también
+  a administradores).
+- Force-push: no permitido.
+- Eliminación de `release`: no permitida.
+- Sin aprobaciones obligatorias, sin resolución obligatoria de
+  conversaciones, sin commits firmados, sin historial lineal, sin
+  deployments obligatorios, sin bloqueo total de la rama -- ninguna regla
+  no solicitada.
 
-**No se aplicó ningún cambio de configuración.** `release` sigue sin
-ninguna regla de protección, exactamente como antes de esta fase. No se
-intentó ningún rodeo (no se editó nada por otra vía, no se simuló el
-resultado).
+**Verificado por esta sesión, por lectura, con las herramientas
+disponibles (sin modificar nada)**: `list_branches` de la API de GitHub
+sobre `Plopezm1990/Almacen` devuelve, para `release`:
+```
+{"name":"release","sha":"8540bd06d5555cf260aa4599144ed6c64f3ca029","protected":true}
+```
+GitHub reconoce `release` como rama protegida (`protected: true`), sobre
+el SHA correcto. Esta sesión no tiene acceso, entre sus herramientas, a
+una lectura granular de la regla (required checks exactos, `strict`,
+enforcement sobre administradores, restricciones de force-push/borrado) —
+esa parte del estado reportado arriba procede de la verificación directa
+del propietario desde la pantalla de edición de la regla en GitHub, no de
+una relectura independiente por esta sesión. El único campo verificable
+con las herramientas de esta sesión (`protected: true`/`false`) coincide
+exactamente con lo reportado.
 
-**Camino recomendado para completar la Fase B** (pendiente de que el
-propietario elija uno):
-- Aplicarla manualmente en
-  `https://github.com/Plopezm1990/Almacen/settings/branches` →
-  "Add branch protection rule" → Branch name pattern `release` → activar
-  únicamente: "Require status checks to pass before merging" (marcar
-  "Require branches to be up to date before merging", y añadir
-  `gate-final` como check obligatorio -- aparecerá en la lista una vez
-  exista al menos un check con ese nombre sobre el repositorio, que ya
-  existe gracias al run `35505508683`/al run de `release` tras la Fase
-  A) + "Do not allow bypassing the above settings" (para que aplique
-  también a administradores) + "Restrict deletions" + desactivar
-  cualquier permiso de force-push. Sin "Require a pull request before
-  merging" con aprobaciones, sin revisores obligatorios, sin ninguna otra
-  regla.
-- O bien conceder a esta sesión una vía de acceso a la API de GitHub que
-  cubra `branch protection rules` (por ejemplo, una herramienta MCP
-  adicional o credenciales para `gh api`), y repetir esta fase con las
-  mismas comprobaciones ya documentadas.
+**Estado posterior, también confirmado por esta sesión**:
+- `release` = `8540bd06d5555cf260aa4599144ed6c64f3ca029` (sin cambios).
+- `main` = `93a570badba1c5375febfbddc1dffdbcef003dcd` (sin cambios).
+- Netlify: `currentDeploy` sigue siendo `6aafbc029d58a60008d41f3c`,
+  `state=ready` — no se generó ningún deploy nuevo al configurar la
+  protección de rama (una operación de configuración de GitHub no es un
+  push ni un cambio de contenido, así que no dispara la integración de
+  Netlify).
+- PR #38, Supabase y el código del repositorio: sin cambios.
 
-**Pendiente, no ejecutado**:
-- **B. Configurar protección de rama en `release` y el job `gate-final`
-  como required status check** -- autorizado, preflight completo, **bloqueado
-  por falta de herramienta** (ver arriba). `release` sigue sin ninguna
-  regla de protección.
+**Procedimiento de reversión** (documentado, no ejecutado): editar o
+eliminar la regla clásica de protección de rama `83444129` desde
+`https://github.com/Plopezm1990/Almacen/settings/branches` — desactivarla
+o borrarla revierte el efecto de inmediato; es un cambio de configuración
+de GitHub, no de código, y no requiere ningún revert de commit.
 
-El Punto 3 **NO se marca como cerrado**: la Fase A está ejecutada y
-verificada, pero la Fase B autorizada no pudo completarse con las
-herramientas disponibles. No se empezó el Punto 4.
+**Fase B queda EJECUTADA y verificada dentro de lo que las herramientas
+de esta sesión permiten confirmar por lectura.**
+
+---
+
+**Punto 3: CERRADO.** Fase A (incorporación de la puerta de CI a
+`release`, fast-forward `6e26391..8540bd0`) y Fase B (protección de rama
++ `gate-final` como required status check) quedan ambas ejecutadas y
+verificadas. `release` avanzó únicamente por el fast-forward autorizado;
+la protección de rama se aplicó únicamente por la configuración
+autorizada, sin reglas adicionales. `main`, PR #38, Supabase y el código
+del repositorio no se tocaron en ningún momento. No se empezó el
+Punto 4.
 
 ---
 
