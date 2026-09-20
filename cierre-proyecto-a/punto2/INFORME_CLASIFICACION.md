@@ -1,10 +1,41 @@
 # Punto 2 — Informe de clasificación (deuda de pruebas fallidas)
 
-Rama: `claude/punto2-134-pruebas`, creada desde `release` vigente
-(`6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d`, el mismo commit al que se
-promovió PM33). `release`, `main`, PR #38, QA y PROD **no se han tocado**
-en este trabajo — todo lo ejecutado corrió contra código local o entornos
-Postgres/Auth/PostgREST desechables (local o en GitHub Actions).
+Rama: `claude/punto2-134-pruebas`, commit final **`c685907ea7a0ba5eb4756e9393491ff4baa3ee1d`**,
+creada desde `release` vigente (`6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d`, el
+mismo commit al que se promovió PM33). `release`, `main`, PR #38, QA, PROD y
+Netlify **no se han tocado** en todo este trabajo.
+
+**Estado: CERRADO. Puerta de CI en verde real: 133/133 contratos activos.**
+[`run 35495162728`](https://github.com/Plopezm1990/Almacen/actions/runs/35495162728) — SUCCESS.
+
+## 0. Corrección tras una auditoría independiente
+
+Una primera entrega de este punto (commit `0234a2f`) fue revisada por una
+auditoría independiente, que encontró dos problemas reales y confirmados:
+
+1. **No era reproducible.** `ejecutar_bateria_no_db.sh` tenía `cd
+   /home/user/Almacen` hardcodeado, dependía de un `mjs_list.txt` generado
+   en `/tmp` (nunca versionado) y no verificaba el inventario antes de
+   ejecutar. No podía correr desde otro clon.
+2. **`preparar_postgres_local.sh` no podía haber producido la evidencia
+   que decía tener.** Usaba `set -e`, que para el script entero en el
+   primer fallo — y uno de los 10 archivos que ejecuta
+   (`tests/pm33/db/p01-aislamiento-multiempresa-contract.mjs`) **falla a
+   propósito** (es un registro histórico retirado). Con `set -e`, el
+   script nunca pudo haber llegado a ejecutar los archivos posteriores a
+   P01 en la misma corrida.
+
+Además, la clasificación "contrato histórico obsoleto" (10 archivos) se
+aceptó como diagnóstico correcto, pero **no se había corregido ningún
+archivo real** — la entrega describía las causas sin dejar los tests en
+verde, así que la batería seguía teniendo 12 archivos en rojo pese a que
+el informe afirmaba "0 defectos".
+
+Este documento y la matriz que lo acompaña reflejan el estado **después**
+de corregir los dos problemas de reproducibilidad, actualizar los 9
+contratos activos obsoletos y completar los 2 arneses de prueba
+incompletos — todo verificado con una ejecución real en CI sobre el commit
+final, no solo localmente.
 
 ## 1. El informe original de 134/116/18 no se encontró
 
@@ -15,272 +46,267 @@ por nombre como fuente de "134 scripts / 116 PASS / 18 FAIL" en
 (`517f443`, 19/09/2026). Resultado de la búsqueda:
 
 - `git log --all -S` del nombre del informe y de los formatos que este
-  propio repositorio usa para cifras de resultados (`"116 PASS"`,
-  `"18 FAIL"`, `"116/134"`, `"134 pruebas"`, `"134 casos"`, `"134
-  scripts"`) sobre las 104 ramas remotas y todo el historial: **cero
-  coincidencias**, salvo la cita textual que lo menciona sin adjuntarlo.
+  propio repositorio usa para cifras de resultados sobre las 104 ramas
+  remotas y todo el historial: **cero coincidencias**, salvo la cita
+  textual que lo menciona sin adjuntarlo.
 - El archivo `Proyecto_A_Pendientes_Verificados_2026-09-19` no existe en
   ningún árbol de ninguna rama.
-- PR #38 (título y cuerpo) y una búsqueda de issues del repositorio: sin
-  coincidencias.
+- PR #38 y una búsqueda de issues del repositorio: sin coincidencias.
 - Los workflows de GitHub Actions más parecidos a "ejecutar la batería
-  completa y contar resultados" (`pm20-p07-revalidacion-acumulada.yml`,
-  `release-gate-consolidacion-pm14.yml`, `pm27-c16-e2e-post-hotfix.yml`)
-  usan todos `set -euo pipefail` y **paran en el primer fallo** — ninguno
-  puede, por diseño, generar un recuento tipo "116 PASS / 18 FAIL" en una
-  misma ejecución. No existe tampoco ningún script "runner" que recorra
-  las 134 pruebas sin parar en el primer error.
+  completa y contar resultados" usan todos `set -euo pipefail` y **paran
+  en el primer fallo** — ninguno puede, por diseño, generar un recuento
+  tipo "116 PASS / 18 FAIL" en una misma ejecución.
 
-**Conclusión, aceptada por el propietario tras presentarle esta
-evidencia**: el informe fue, con toda probabilidad, una evaluación
-externa (de una sesión anterior) nunca versionada en este repositorio, y
-el patrón de CI existente confirma que tampoco pudo generarse
-automáticamente aquí. Por instrucción explícita del propietario, este
-punto se completa con **un inventario nuevo y honesto**, construido desde
-cero a partir de lo que existe realmente en el repositorio hoy — sin
-pretender reproducir, ni heredar el número, del informe perdido.
+**Conclusión, aceptada por el propietario**: el informe fue, con toda
+probabilidad, una evaluación externa nunca versionada en este
+repositorio. Por instrucción explícita, este punto se completa con **un
+inventario nuevo y honesto**, sin pretender reproducir ni heredar el
+número del informe perdido.
 
-## 2. Criterio del inventario nuevo
+## 2. Criterio del inventario nuevo, ahora con manifiesto versionado
 
-Unidad de prueba: cada archivo `.mjs` bajo `tests/` en `release`
-(`6e26391`). Total encontrado: **142**. De esos 142, se excluyen de la
-contabilidad PASS/FAIL, con justificación explícita caso por caso (ver
-`MATRIZ_134_PRUEBAS.md`):
+Unidad de prueba: cada archivo `.mjs` bajo `tests/` en el commit final.
+Total: **142**, fijado en `cierre-proyecto-a/punto2/manifiesto_clasificacion.json`
+— la fuente única de verdad que tanto el runner local como la puerta de CI
+revalidan contra el árbol real antes de ejecutar nada:
 
-- **3 utilidades de infraestructura**, no casos de prueba: mutan
-  archivos (`tests/pm12/p09-aplicar-index.mjs`, integra un script en
-  `index.html`) o preparan fixtures para otros tests
-  (`tests/pm12/supabase-full/prepare-fixture.mjs`,
-  `prepare-production-baseline.mjs`). Ninguno afirma PASS/FAIL.
-- **5 scripts de diagnóstico de solo lectura** (`tests/pm13/p0{1,2,3,4,7}-diagnostico-*.mjs`):
-  inspeccionan `fuente.js` por patrones de texto y escriben un JSON/TXT de
-  evidencia; no contienen ninguna aserción PASS/FAIL. Al ejecutarlos se
-  confirmó, además, que la evidencia ya commiteada estaba desactualizada
-  respecto al `fuente.js` actual (mismo patrón de "drift" ya documentado
-  para PM33/source-recovery en rondas anteriores) — se revirtió esa
-  regeneración para no alterar el árbol de trabajo con un cambio fuera
-  del alcance de este punto, y queda anotado como hallazgo, no como
-  defecto.
+- **133 contratos activos** — deben pasar siempre, sin excepción.
+- **1 histórico, fallo esperado** —
+  `tests/pm33/db/p01-aislamiento-multiempresa-contract.mjs`, marcado
+  explícitamente `HISTORICAL_EXPECTED_FAIL` en el manifiesto. El propio
+  repositorio documenta, en la cabecera de
+  `tests/pm33/db/contrato-vigente-contract.mjs`, que este archivo "se
+  conserva SIN modificar como registro histórico... no se toca ni se
+  reutiliza como gate", porque P03 cambió deliberadamente el
+  comportamiento que este archivo todavía comprueba (T14c). El contrato
+  vigente real, `contrato-vigente-contract.mjs`, pasa 39/39. Ni el runner
+  ni la puerta de CI lo cuentan jamás como activo; si algún día pasara,
+  la puerta de CI fallaría explícitamente (`gate-final` revalida que su
+  `classification` siga siendo `historical_expected_fail`).
+- **3 utilidades**, no casos de prueba: `tests/pm12/p09-aplicar-index.mjs`
+  (integra un script en `index.html`, idempotente),
+  `tests/pm12/supabase-full/prepare-fixture.mjs` y
+  `prepare-production-baseline.mjs` (preparan fixtures exclusivamente
+  para el job `pm12-p08-supabase-full` de CI). Ninguna afirma PASS/FAIL.
+- **5 diagnósticos** de solo lectura (`tests/pm13/p0{1,2,3,4,7}-diagnostico-*.mjs`):
+  inspeccionan `fuente.js` por patrones de texto y escriben evidencia
+  JSON/TXT; no contienen ninguna aserción PASS/FAIL. Al ejecutarlos se
+  confirmó que la evidencia ya commiteada estaba desactualizada respecto
+  al `fuente.js` actual — deuda anotada por separado (sección 6), no
+  corregida en esta rama por quedar fuera de su alcance.
 
-Quedan **134** archivos con semántica real de PASS/FAIL. Que esta cifra
-coincida con el número citado en el informe perdido es una coincidencia
-observada, **no una confirmación** de correspondencia con aquel informe:
-la metodología es completamente distinta (inventario directo del árbol
-actual, no un informe externo), y no hay forma de comprobar si los 134
-archivos que cuento aquí son los mismos 134 casos que aquel informe
-contaba.
+Que el número de contratos con semántica PASS/FAIL activa más el
+histórico (134) coincida con la cifra citada en el informe perdido es una
+coincidencia observada, **no una confirmación** de correspondencia: la
+metodología es completamente distinta.
 
-## 3. Resultado real de los 142 archivos ejecutados
+## 3. Resultado real, verificado en CI sobre el commit final
 
-| Clasificación | Cuenta | Significado |
-|---|---|---|
-| **PASS** | **122** | Ejecutado de verdad, contra código/BD real, sin fallos. |
-| **Contrato histórico obsoleto** | **10** | El texto/estructura exacta que el test comprueba cambió en una ronda posterior; el comportamiento real que el test pretendía proteger se verificó intacto por inspección directa del código actual. **No es un defecto.** |
-| **Infraestructura** | **5** | 3 utilidades que no son casos de prueba + 2 casos con un hueco del arnés de prueba (un mock incompleto que quedó desfasado por un hotfix legítimo posterior). **No es un defecto de producto.** |
-| **No aplicable** | **5** | Scripts de diagnóstico de solo lectura, sin PASS/FAIL. |
-| **Defectos actuales de producto** | **0** | Ninguno encontrado. |
+[`run 35495162728`](https://github.com/Plopezm1990/Almacen/actions/runs/35495162728)
+— **SUCCESS**, los 4 jobs en verde. Salida real y completa del job
+`gate-final` (que solo se ejecuta, y solo puede pasar, si los tres jobs
+anteriores pasaron Y el manifiesto se revalida contra el árbol real):
 
-**Total: 142. Suma verificada: 122+10+5+5 = 142.**
+```
+ACTIVE_PASS=133
+ACTIVE_FAIL=0
+HISTORICAL_EXPECTED_FAIL=1
+UTILITIES=3
+DIAGNOSTICS=5
+TOTAL_INVENTORY=142
+PUNTO2_GATE_COMPLETA=PASS
+```
 
-De los 134 con semántica PASS/FAIL: **122 PASS reales, 10 contrato
-obsoleto, 2 infraestructura (arnés) — 0 defectos de producto.**
-
-Entornos usados, todos reales (nunca simulados/mockeados a nivel de
+Desglose por entorno, los tres reales (nunca simulados a nivel de
 resultado):
-- **121 pruebas**: Node puro (aserciones contra `fuente.js`,
-  `source-recovery/fuente-recuperado.js`, `index.html` o fixtures
-  locales).
-- **10 pruebas**: PostgreSQL 16.13 real, local, desechable (bases
-  `pm12_p08_test`, `pm14_p02_test`, `pm33_p05_test`, creadas y destruidas
-  para este ejercicio). Sin Docker disponible en este entorno de
-  trabajo, así que estas 10 se hicieron con el Postgres del sistema en
-  vez de con el CLI de Supabase — el resultado es igual de real (SQL
-  real, RPC real, sin mocks), solo cambia qué motor de Postgres lo sirve.
-- **3 pruebas**: Auth + PostgREST + Postgres reales, que si necesitan
-  Docker (el CLI de Supabase). Se ejecutaron en GitHub Actions,
-  reutilizando exactamente el patrón ya validado en el Punto 1 (PM33):
-  `.github/workflows/punto2-p08-supabase-full.yml`, rama
-  `claude/punto2-134-pruebas`, commit `fc90ed6`,
-  [`run 35492977065`](https://github.com/Plopezm1990/Almacen/actions/runs/35492977065) —
-  **SUCCESS**, los dos jobs (`pm12-p08-supabase-full`,
-  `pm33-p05-supabase-full`) en verde, con las marcas de PASS de cada
-  test confirmadas en el log real (ver `MATRIZ_134_PRUEBAS.md`, sección
-  de detalle).
 
-## 4. Raíces de los 12 fallos iniciales (todas investigadas hasta el fondo)
+- **121 contratos activos, Node puro** (incluye el build real de Netlify
+  como prerrequisito de `tests/netlify-publish-boundary.mjs`) — job
+  `node-y-postgres`, paso "121 contratos activos Node": **127/127**
+  ejecutados sin fallo (121 activos + 3 utilidades + 5 diagnósticos +... 
+  ver nota de conteo abajo), Node **v22.23.2**.
+- **9 contratos activos + 1 histórico esperado, PostgreSQL real** — mismo
+  job, paso "9 contratos activos Postgres + 1 histórico esperado en rojo
+  (P01)": **9/9 activos PASS**, P01 falla exactamente donde se espera,
+  contra un servicio PostgreSQL **16.15** real de GitHub Actions.
+- **3 contratos, Auth + PostgREST + PostgreSQL 17 reales** (Docker, mismo
+  patrón ya validado en el Punto 1 para PM33) — jobs
+  `pm12-p08-supabase-full` y `pm33-p05-supabase-full`: **3/3 PASS**
+  (`P08_SUPABASE_AUTH_POSTGREST_CONCURRENT_REPLAY=PASS`,
+  `P08_SUPABASE_RLS_SCOPE_AND_DIRECT_WRITE_DENIED=PASS`,
+  `P08_SUPABASE_AUTH_POSTGREST_CONCURRENT_CANCEL=PASS`,
+  `PM12_PROD_BASELINE_MINIMAL=PASS` + 3 marcas más, `TOTAL PASS=15 FAIL=0`
+  en PM33 P05). Supabase Storage confirmado en el log: **v1.72.1**.
 
-Ningún fallo se clasificó por inspección superficial: cada uno se
-reprodujo, se localizó la comprobación exacta que fallaba, se comparó
-contra el código real de `fuente.js`/`source-recovery/fuente-recuperado.js`
-con `grep`/lectura directa, y solo se cerró la clasificación cuando la
-causa quedó confirmada con evidencia textual. Resumen de las causas
-raíz encontradas (el detalle completo, por archivo, está en
-`MATRIZ_134_PRUEBAS.md`):
+Nota de conteo: el paso "121 contratos activos Node" del job ejecuta en
+realidad 127 archivos (121 activos + 3 utilidades + 5 diagnósticos - 2
+utilidades exclusivas de CI que no se ejecutan de forma aislada = 127),
+porque utilidades y diagnósticos comparten el mismo entorno Node y el
+script los ejecuta a todos para dejar registrado su comportamiento real,
+aunque solo los 121 activos cuentan para `ACTIVE_PASS`. El desglose
+archivo por archivo está en `MATRIZ_134_PRUEBAS.md`.
 
-1. **Renombrado de variables por el empaquetador** (`p2`→`p22`,
-   `l2`→`l22`, `a2`→`a22`): afecta a `tests/pm07/frontend-contract.mjs`
-   (5 de sus 7 comprobaciones) y `tests/pm08/frontend-contract.mjs` (1
-   comprobación). La lógica es idéntica carácter por carácter salvo el
-   nombre de la variable — confirmado con `grep` sobre el patrón exacto
-   renombrado.
-2. **RPC renombradas en una ronda posterior** (PM09 añadió el sufijo
-   `_pm09` a `registrar_venta_stock_carrito`/`revertir_venta_stock_carrito`):
-   2 comprobaciones de `tests/pm07/frontend-contract.mjs`.
-3. **Reescritura de un manifiesto a una versión posterior** (v1→v2, con
-   una capa de validación `requireString(manifest, campo)` en vez de
-   acceso directo `manifest.campo`): `tests/g1/p08-la004-gate-contract.mjs`
-   (2 comprobaciones) — la verificación de SHA sigue presente, confirmada
-   por `grep` en `source-recovery/rebuild-current.mjs`.
-4. **Validación añadida antes de un spread de datos** (`...data` →
-   `...validacion.datos`): 1 comprobación de
-   `tests/pm05/frontend-contract.mjs` — `empresaId` se sigue fijando
-   igual; es un endurecimiento, no una regresión.
-5. **Texto de mensaje al usuario reescrito, misma protección**:
-   `tests/pm09/p17-robustness-contract.mjs` (1 comprobación) — el
-   bloqueo de una operación con un envío previo sin confirmar sigue
-   activo, solo cambió la frase mostrada.
-6. **Rediseño de UI (PM28/PM29) que sustituyó componentes completos
-   preservando el comportamiento protegido**: `tests/pm15/p02-mej01-contexto-modales-contract.mjs`
-   (modal `ConfirmarConContrasenaPM29` sustituye al JSX inline de PM15,
-   sigue mostrando "Empresa: X") y `tests/pm15/p04-nr08-proteccion-borrador-navegacion-contract.mjs`
-   (`TopBarC` se sustituyó por `BarraSuperiorMovil`+`SidebarGrupos`, se
-   retiró el conmutador de diseño A/B; `setTab: cambiarTabPM15` —el
-   `setTab` protegido contra pérdida de borrador— confirmado presente en
-   `SidebarGrupos`, `NavInferior` y `BusquedaGlobal` por inspección
-   directa).
-7. **Técnica de navegación cambiada, mismo destino**:
-   `tests/pm17/p03-wiring-login-logout-contract.mjs` — un enlace `<a
-   href>` real sustituyó a un manejador de clic imperativo
-   (`window.location.href = ...`); técnica más idiomática/accesible,
-   mismo destino.
-8. **Prop añadida sin quitar ninguna de las anteriores**:
-   `tests/pm20/p05-buscador-etiquetas-auditoria-contract.mjs` — se
-   añadió `empresa: empresaDelLocalActivo` delante de las 3 props
-   originales, que siguen intactas.
-9. **Hueco del arnés de prueba, no del producto**:
-   `tests/pm12/p10-preview-smoke-contract.mjs` y
-   `tests/pm26/defecto-l-context-hotfix.test.mjs` — ambos simulan un
-   `window` mínimo dentro de una sandbox `vm` de Node; una barrera de
-   arranque añadida después (post-reset, hotfix legítimo) empezó a
-   llamar a `window.setInterval` en la ruta de producción, función que
-   el `window` simulado de estos dos tests nunca definió porque no
-   existía cuando se escribieron. Un navegador real siempre tiene
-   `setInterval`; reproducido con `setInterval` mockeado, el resto del
-   script corre sin ningún otro fallo.
-10. **Prerrequisito de build ausente, no un fallo real**:
-    `tests/netlify-publish-boundary.mjs` fallaba con `ENOENT
-    .netlify-dist` porque ese directorio lo genera el propio comando de
-    build de Netlify (`node .github/scripts/build-netlify-publish.mjs`,
-    declarado en `netlify.toml`), que no se había ejecutado en este
-    entorno de trabajo. Tras ejecutarlo: `NETLIFY_PUBLISH_BOUNDARY_PASS
-    entries=33` — pasa limpio.
-11. **Registro histórico retirado a propósito**:
-    `tests/pm33/db/p01-aislamiento-multiempresa-contract.mjs` — el
-    propio repositorio documenta, en la cabecera de
-    `tests/pm33/db/contrato-vigente-contract.mjs`, que este archivo "se
-    conserva SIN modificar como registro histórico... no se toca ni se
-    reutiliza como gate", precisamente porque P03 cambió deliberadamente
-    el comportamiento que este archivo todavía comprueba. El contrato
-    vigente real (`contrato-vigente-contract.mjs`) pasa 39/39.
+Evidencia bruta reproducible, descargada del propio run de CI (no
+regenerada a mano): `cierre-proyecto-a/punto2/evidencia/resultado_bruto_no_db.tsv`
+y `resultado_bruto_postgres.tsv`.
 
-## 5. Recorridos PM28–PM33 verificados especialmente
+## 4. Los 12 archivos que estaban en rojo: causa raíz encontrada Y corregida
 
-Por instrucción explícita, se prestó atención reforzada a: identidad/
-fichaje, contexto empresa/local, persistencia, red, concurrencia,
-impresión y exportación.
+A diferencia de la entrega anterior (que solo diagnosticaba sin corregir),
+los 9 contratos activos con aserciones obsoletas se **reescribieron** para
+comprobar el comportamiento vigente de forma estructural (nombres de
+variable agnósticos, prefijos de RPC tolerantes a sufijo de versión,
+texto de usuario tolerante a reescritura, componentes de UI localizados
+por nombre real) en vez de literales frágiles del bundle, y los 2 arneses
+de prueba incompletos se completaron con las APIs de navegador que les
+faltaban. Ninguno de los 12 resultó ser un defecto de producto:
+
+1. **`tests/g1/p08-la004-gate-contract.mjs`** — exigía el literal
+   `manifest.baseArtifactSha256`; el manifiesto real (formato v2) usa
+   `requireString(manifest, 'baseArtifactSha256')`, con validación de
+   tipo añadida. Corregido: el test ahora extrae el campo por cualquiera
+   de las dos formas y verifica que la variable resultante participe
+   después en una comparación estricta (`!==`/`===`) contra un hash
+   calculado — valida el comportamiento real, no el literal.
+2. **`tests/pm05/frontend-contract.mjs`** — 3 comprobaciones exigían
+   variables de iteración literales (`p2`, `c2`) que el empaquetador
+   renombró (`p22`, `x3`) en una ronda posterior; una además exigía
+   `...data` donde el código real interpone `...validacion.datos` (una
+   capa de validación añadida, `empresaId` se sigue fijando igual).
+   Corregido con regexes agnósticas al nombre de variable (backreferencia
+   `(\w+)...\1`) y al origen del spread.
+3. **`tests/pm07/frontend-contract.mjs`** — 7 comprobaciones: 2 RPC
+   renombradas con sufijo de versión (`registrar_venta_stock_carrito` →
+   `..._pm09`, y su reverso) y 5 por el mismo renombrado de variables del
+   empaquetador (`p2`→`p22`, `l2`→`l22`), incluida una comprobación
+   NEGATIVA (`alertas_sin_precedencia_ambigua`) que había quedado
+   vacíamente en verde por el mismo motivo — corregida para seguir
+   detectando el patrón real bajo el nombre de variable actual.
+4. **`tests/pm08/frontend-contract.mjs`** — 2 comprobaciones: mismo
+   renombrado de variable (`a2`→`a22`) y el mismo texto de usuario
+   reescrito que en el punto 5.
+5. **`tests/pm09/p17-robustness-contract.mjs`** — el texto "Hay una
+   operación anterior pendiente en este local" se reescribió a "Hay una
+   operación sin confirmar..."; misma protección. Corregido para aceptar
+   ambos textos.
+6. **`tests/pm15/p02-mej01-contexto-modales-contract.mjs`** — PM29
+   sustituyó el JSX inline de "Desactivar local" por el componente
+   compartido `ConfirmarConContrasenaPM29` (añade confirmación con
+   contraseña). Corregido: localiza la acción por `titulo: "Desactivar
+   local"` y verifica que su `descripcion` siga mostrando "Empresa: "
+   respaldado por una consulta real (`empresaDeLocal(...)`), no un texto
+   fijo.
+7. **`tests/pm15/p04-nr08-proteccion-borrador-navegacion-contract.mjs`**
+   — el rediseño visual (PM28) sustituyó `TopBarC`/`BottomNavC` por
+   `BarraSuperiorMovil`+`SidebarGrupos`/`NavInferior` y retiró el
+   conmutador de diseño A/B. Corregido: verifica, por nombre de
+   componente real, que `SidebarGrupos` y `NavInferior` reciban
+   `setTab: cambiarTabPM15` (el setTab protegido) — confirmado presente
+   en ambos, más `BusquedaGlobal` y el dashboard (sin cambios).
+8. **`tests/pm17/p03-wiring-login-logout-contract.mjs`** — un enlace
+   `<a href="...">` real sustituyó a un manejador de clic imperativo
+   (`window.location.href = ...`); mismo destino. Corregido para aceptar
+   ambas técnicas de navegación.
+9. **`tests/pm20/p05-buscador-etiquetas-auditoria-contract.mjs`** — se
+   añadió la prop `empresa` delante de las 3 originales, que siguen
+   intactas. Corregido para tolerar props adicionales delante.
+10. **`tests/pm12/p10-preview-smoke-contract.mjs`** y **`tests/pm26/defecto-l-context-hotfix.test.mjs`**
+    — su `window` simulado no definía `setInterval` ni `sessionStorage`,
+    APIs que una barrera de arranque añadida después (post-reset,
+    hotfix legítimo) empezó a usar incluso en la ruta de producción. Un
+    navegador real siempre las tiene. Completados ambos mocks; en PM26
+    además hizo falta `window.__instalacionSyncPermitida = true`
+    (la bandera que en un navegador real pone el script COMPAÑERO
+    `edge-auth-patch.js` una vez validada la sincronización — ese test
+    no lo carga porque no es lo que prueba, así que se simula el estado
+    que dejaría tras validar correctamente).
+11. **`tests/netlify-publish-boundary.mjs`** — fallaba con `ENOENT
+    .netlify-dist`, un prerrequisito de build ausente
+    (`node .github/scripts/build-netlify-publish.mjs`, el propio build
+    command de `netlify.toml`). El runner ahora lo ejecuta siempre, al
+    final (tras estabilizar el árbol), reconstruyendo `.netlify-dist`
+    desde cero cada vez.
+12. **`tests/pm33/db/p01-aislamiento-multiempresa-contract.mjs`** — no se
+    "corrige": es un registro histórico retirado a propósito (ver
+    sección 2). Se ejecuta siempre, marcado `HISTORICAL_EXPECTED_FAIL`,
+    para dejar constancia real de que sigue fallando exactamente donde
+    se espera — nunca contado como activo.
+
+## 5. Hallazgo incidental: `cierre-proyecto-a/` y el build de Netlify
+
+Al depurar el prerrequisito de `netlify-publish-boundary.mjs` se
+encontró que `.github/scripts/build-netlify-publish.mjs` no excluye
+`cierre-proyecto-a/` de la copia publicable — al vivir esta carpeta de
+documentación ahora en una rama descendiente de `release` (a diferencia
+de la rama de seguimiento general, que nunca toca `release`), si esta
+rama llegara a promocionarse tal cual, `cierre-proyecto-a/` se
+publicaría en el sitio de producción. No se ha modificado
+`build-netlify-publish.mjs` (fuera del alcance de este punto, y toca la
+ruta de publicación de Netlify, que la instrucción de esta ronda pidió
+no tocar) — se deja anotado aquí y cruzado con el Punto 6
+("certificar ruta de publicación/recuperación Netlify"), que es donde
+corresponde decidir si excluirla.
+
+## 6. Recorridos PM28–PM33 verificados especialmente
 
 - **Fichaje**: `tests/pm13/p03-fichajes-contract.mjs`,
   `p03-backend-fichajes-contract.mjs` — **PASS**. No se encontró ningún
-  identificador "VIS-17" en el repositorio (ni en el árbol actual de
-  `release` ni en el historial completo de las 104 ramas) — si se
-  refiere a un catálogo distinto del que usa este repo (que identifica
-  sus casos como `LA-0xx` en `tests/pm04/regression-catalog.json`),
-  conviene que el propietario confirme dónde vive esa referencia.
-- **Contexto empresa/local**: cubierto extensamente — PM33 (39/39 +
-  15/15 en Auth/PostgREST real), PM29 (`p01`/`p02`/`p03`
-  desactivar/adopción — **PASS**), PM32 (selector empresa/local —
-  **PASS**), PM15 (2 casos, ambos "contrato obsoleto" con el
-  comportamiento confirmado intacto, ver sección 4).
+  identificador "VIS-17" en el repositorio (ni en el árbol actual ni en
+  el historial completo de las 104 ramas) — este repo identifica sus
+  casos como `LA-0xx`; si "VIS-17" vive en un catálogo distinto,
+  conviene que el propietario confirme dónde.
+- **Contexto empresa/local**: PM33 (39/39 Postgres + 15/15 Auth/PostgREST
+  real), PM29 (`p01`/`p02`/`p03` — PASS), PM32 (selector empresa/local —
+  PASS), PM15 (2 casos, ambos corregidos y en verde, ver sección 4).
 - **Persistencia**: `tests/pm10/p10-autoridad-persistencia-contract.mjs`
-  — **PASS**.
-- **Red**: manejo de fallos de red y modo offline cubierto en
-  `tests/pm09/p17-robustness-contract.mjs` (infra, comportamiento real
-  confirmado intacto) y en la lógica de venta/traspaso offline de
-  `tests/pm07/frontend-contract.mjs` (contrato obsoleto, comportamiento
-  confirmado intacto).
+  — PASS.
+- **Red**: `tests/pm09/p17-robustness-contract.mjs` y la lógica de
+  venta/traspaso offline de `tests/pm07/frontend-contract.mjs` — ambos
+  corregidos y en verde.
 - **Concurrencia**: `tests/g1/p07-concurrencia-replay-contract.mjs`,
   `tests/pm08/replay-scope-contract.mjs`,
   `tests/pm11-compra/p08-fallos-replay-concurrencia-contract.mjs`,
   `tests/pm12/p08-fallos-replay-concurrencia-contract.mjs`,
   `tests/pm12/db/p08-postgres-contract.mjs`,
   `tests/pm14/p07-encargos-concurrencia-contract.mjs`,
-  `tests/pm14/db/p07-postgres-concurrencia-contract.mjs` — **todos
-  PASS**, incluidos los 2 que corren contra Postgres real con bloqueos
-  reales.
+  `tests/pm14/db/p07-postgres-concurrencia-contract.mjs` — todos PASS,
+  incluidos los 2 que corren contra Postgres real con bloqueos reales.
 - **Impresión y exportación**: no existe ningún archivo `.mjs` dedicado
-  a impresión o exportación (Excel/PDF) en la batería completa de 142.
-  La deuda de la dependencia `xlsx` usada para exportar ya está señalada
-  aparte, como punto propio, en `SEGUIMIENTO_18_PUNTOS.md` (Punto 8) —
-  este hallazgo (falta de cobertura automatizada de impresión/
-  exportación) queda anotado aquí como referencia cruzada, no se
-  duplica como punto nuevo.
+  a impresión o exportación (Excel/PDF) en los 142 inventariados. **No
+  se inventa cobertura que no existe** — la deuda de la dependencia
+  `xlsx` ya está señalada aparte en `SEGUIMIENTO_18_PUNTOS.md` (Punto 8);
+  este hallazgo (ausencia de test automatizado de impresión/exportación)
+  queda cruzado con ese punto, no duplicado como uno nuevo.
 
-## 6. Qué NO se hizo (límites honestos de esta ronda)
+## 7. Qué NO se hizo (límites honestos)
 
 - No se aplicó ningún cambio a `fuente.js`, `source-recovery/fuente-recuperado.js`
-  ni a ninguna migración: no hizo falta, porque no se confirmó ningún
-  defecto de producto.
-- No se tocó `release`, `main`, PR #38, QA ni PROD.
+  ni a ninguna migración — no hizo falta, ningún defecto de producto.
+- No se tocó `release`, `main`, PR #38, QA, PROD ni Netlify.
 - No se regeneró la evidencia desactualizada de los 5 diagnósticos de
-  PM13 (se revirtió tras confirmar el hallazgo) — actualizarla, si se
-  quiere, es una decisión aparte, fuera del alcance de este punto.
-- Los 3 casos Auth/PostgREST/Postgres reales se resolvieron con un
-  workflow de GitHub Actions nuevo (mismo patrón que el ya validado
-  para PM33), no con Docker local — este entorno de trabajo no tiene
-  Docker operativo.
-
-## 7. Propuesta de corrección, por prioridad
-
-Como no se encontró ningún defecto de producto, no hay nada que
-corregir en `fuente.js` ni en el backend. La deuda real que queda es
-**de los propios tests** (10 archivos con aserciones sobre texto/
-estructura exacta que quedó obsoleta) y **de cobertura** (impresión/
-exportación sin test dedicado). Prioridad sugerida:
-
-1. **Alta — actualizar los 10 tests con contrato obsoleto** para que
-   afirmen sobre el comportamiento real vigente en vez de un patrón de
-   texto que ya no existe. Mientras sigan en rojo, cualquier ejecución
-   futura de la batería completa reportará fallos que no son fallos,
-   erosionando la confianza en el resultado (exactamente el riesgo que
-   motivó este punto). Los 2 archivos con hueco de arnés
-   (`window.setInterval` ausente en el mock) necesitan solo añadir esa
-   función al objeto `window` simulado.
-2. **Media — decidir el destino de `tests/pm33/db/p01-aislamiento-multiempresa-contract.mjs`**:
-   ya está documentado como retirado; podría borrarse o marcarse de
-   forma más visible (p. ej. moverlo a un directorio `historico/`) para
-   que dejar de ejecutarlo en la batería completa no dependa de que
-   quien la corra lea la cabecera del archivo vecino.
-3. **Baja — cobertura de impresión/exportación**: no hay evidencia de
-   que falte funcionalmente (no se encontró ningún defecto), pero
-   tampoco hay ningún test automatizado que lo cubra. Añadir uno es una
-   mejora de cobertura, no una corrección de un fallo conocido.
-4. **Aparte, no de este punto**: refrescar la evidencia desactualizada
-   de los 5 diagnósticos de PM13 si se van a seguir usando como
-   referencia — decisión del propietario, fuera del alcance de este
-   punto.
+  PM13 — deuda separada (sección 6 de `SEGUIMIENTO_18_PUNTOS.md` tras
+  esta actualización), no corregida en esta rama por quedar fuera de su
+  alcance.
+- No se modificó `.github/scripts/build-netlify-publish.mjs` pese al
+  hallazgo de la sección 5 — cruzado con el Punto 6, no resuelto aquí.
 
 ## 8. Entrega
 
-- **SHA de esta rama** (con la matriz, este informe y el workflow ya
-  commiteados): ver el commit final de esta rama en el historial de
-  `claude/punto2-134-pruebas`.
-- **PASS**: 122 · **Contrato obsoleto**: 10 · **Infraestructura**: 5 ·
-  **No aplicable**: 5 · **Defectos actuales**: 0 · **Total**: 142.
-- **Lista exacta de "fallos" iniciales, todos reclasificados** (ninguno
-  quedó como defecto de producto): ver sección 4 de este informe y el
-  detalle en `MATRIZ_134_PRUEBAS.md`.
+- **SHA final**: `c685907ea7a0ba5eb4756e9393491ff4baa3ee1d` (rama
+  `claude/punto2-134-pruebas`).
+- **Puerta de CI**: [`run 35495162728`](https://github.com/Plopezm1990/Almacen/actions/runs/35495162728) — SUCCESS, 4/4 jobs.
+- **ACTIVE_PASS=133 · ACTIVE_FAIL=0 · HISTORICAL_EXPECTED_FAIL=1 ·
+  UTILITIES=3 · DIAGNOSTICS=5 · TOTAL_INVENTORY=142.**
+- **Defectos actuales de producto confirmados: 0.**
+- Versiones reales: Node v22.23.2, PostgreSQL 16.15 (job
+  `node-y-postgres`), Supabase Storage v1.72.1 (jobs full-stack).
+- Matriz completa, archivo por archivo: `MATRIZ_134_PRUEBAS.md`.
+- Manifiesto versionado (fuente de verdad): `manifiesto_clasificacion.json`.
+- Scripts reproducibles: `evidencia/ejecutar_bateria_no_db.sh`,
+  `evidencia/preparar_postgres_local.sh` — verificados desde un
+  worktree limpio (`git worktree add --detach`) antes de confiar en
+  ellos, y de nuevo en CI sobre el commit final.
 
-Cada uno de los 142 casos tiene un resultado demostrado (ejecutado de
-verdad, o clasificado con evidencia textual concreta cuando no aplica
-PASS/FAIL). El Punto 2 puede darse por completado bajo el criterio
-descrito en la sección 2 de este informe.
+El Punto 2 queda cerrado bajo el criterio descrito en la sección 2: los
+133 contratos activos están en verde real, verificado en CI sobre el
+commit final, no solo localmente.
