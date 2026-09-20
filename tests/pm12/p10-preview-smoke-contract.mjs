@@ -30,10 +30,19 @@ function runReset(hostname) {
     calls.push(typeof input === 'string' ? input : input?.url || '');
     return { ok: true, status: 200, url: calls.at(-1) };
   };
+  // sessionStorage y setInterval: reset-pruebas-preview.js ganó, en una
+  // ronda posterior (barrera temprana post-reset, hotfix legítimo), una
+  // ruta que usa ambas APIs reales del navegador en window incluso fuera
+  // de Deploy Preview (la ruta de producción). Un navegador real siempre
+  // las tiene; setInterval se simula sin ejecutar el callback (en un
+  // navegador real tampoco se ejecuta de forma síncrona antes de que
+  // termine este mismo tick), que es el comportamiento real, no un atajo.
   const window = {
     location: { hostname, href: `https://${hostname}/` },
     localStorage: storage,
+    sessionStorage: createStorage(),
     fetch: fakeFetch,
+    setInterval: () => 0,
     console
   };
   const sandbox = { window, document, localStorage: storage, console, URL, Promise, Error };

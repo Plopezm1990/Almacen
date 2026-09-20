@@ -48,8 +48,23 @@ check('PATCH_FILES_17', fs.readdirSync('source-recovery/post-pm08-patches').filt
 check('PATCH_LAST_PM10_P13', patchManifest.commits?.at(-1)?.commit === 'a4a1866f4e81c4651162105e33d37515cb53a7f2');
 const readsRootFuente = /readFileSync\s*\([^\n;]*\.\.\/fuente\.js/.test(rebuildCurrent) || /readFileSync\s*\([^\n;]*['"]fuente\.js['"]/.test(rebuildCurrent);
 check('REBUILD_DOES_NOT_READ_ROOT_TARGET', !readsRootFuente);
-check('REBUILD_VERIFIES_BASE_SHA', rebuildCurrent.includes('manifest.baseArtifactSha256'));
-check('REBUILD_VERIFIES_TARGET_SHA', rebuildCurrent.includes('manifest.targetArtifactSha256'));
+// Verifica el COMPORTAMIENTO (el campo del manifiesto se extrae a una
+// variable y esa variable participa después en una comparación estricta
+// contra un hash calculado), no un literal de acceso concreto -- acepta
+// tanto `manifest.campo` como `requireString(manifest, 'campo')` (la
+// forma real desde el manifiesto v2, que además valida el tipo).
+function manifestFieldIsVerified(source, field) {
+  const declRe = new RegExp(
+    String.raw`(?:const|let|var)\s+(\w+)\s*=\s*(?:manifest\.${field}\b|requireString\(\s*manifest\s*,\s*['"]${field}['"]\s*\))`
+  );
+  const decl = source.match(declRe);
+  if (!decl) return false;
+  const varName = decl[1];
+  const usoRe = new RegExp(String.raw`\b${varName}\b\s*(?:!==|===)|(?:!==|===)\s*\b${varName}\b`);
+  return usoRe.test(source);
+}
+check('REBUILD_VERIFIES_BASE_SHA', manifestFieldIsVerified(rebuildCurrent, 'baseArtifactSha256'));
+check('REBUILD_VERIFIES_TARGET_SHA', manifestFieldIsVerified(rebuildCurrent, 'targetArtifactSha256'));
 check('REBUILD_APPLIES_ZERO_FUZZ', rebuildCurrent.includes("'--fuzz=0'"));
 check('PACKAGE_BUILD_CURRENT', sourcePackage.scripts?.['build:current'] === 'node rebuild-current.mjs');
 

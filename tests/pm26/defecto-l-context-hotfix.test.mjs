@@ -38,10 +38,31 @@ function ejecutar({ hostname = 'chic-entremet-9107cf.netlify.app', initial = {} 
       };
     },
   };
+  // sessionStorage y setInterval: reset-pruebas-preview.js ganó, en una
+  // ronda posterior (barrera temprana post-reset, hotfix legítimo), una
+  // ruta que usa ambas APIs reales del navegador en window incluso fuera
+  // de Deploy Preview (la ruta de producción, el hostname por defecto de
+  // esta función). Un navegador real siempre las tiene; setInterval se
+  // simula sin ejecutar el callback (tampoco se ejecutaría de forma
+  // síncrona en un navegador real), que es el comportamiento real, no un
+  // atajo.
+  //
+  // __instalacionSyncPermitida=true: esa misma barrera bloquea toda
+  // mutación remota hasta que edge-auth-patch.js (un script COMPAÑERO,
+  // que este arnés no carga porque no es lo que este archivo prueba) haya
+  // validado la generación contra el servidor y ponga esta bandera a
+  // true. Los 8 escenarios de este archivo prueban la inyección de
+  // contexto PM26 en el cuerpo de un POST real -- un caso de uso que en
+  // un navegador real solo ocurre ya autenticado y sincronizado, es
+  // decir, con esta bandera ya en true. Sin ella, la barrera bloquearía
+  // el fetch antes de llegar a la lógica que este archivo sí prueba.
   const window = {
     localStorage,
+    sessionStorage: storage(),
     location: { hostname, href: `https://${hostname}/` },
     fetch: fetchBase,
+    setInterval: () => 0,
+    __instalacionSyncPermitida: true,
   };
   const context = {
     window,

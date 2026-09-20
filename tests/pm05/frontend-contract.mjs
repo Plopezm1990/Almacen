@@ -16,11 +16,20 @@ ok(index.includes('p_empresa_id: d.empresaId || null'), 'auditoría diferida no 
 ok(index.includes('p_local_id: d.localId || null'), 'auditoría diferida no transmite local');
 
 ok(source.includes('crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria, empresaId })'), 'lógica de proveedores sin empresa');
-ok(source.includes('const nuevo = { id: uid(), ...data, empresaId };'), 'alta proveedor no fija empresa');
-ok(source.includes('p2.id === id && p2.empresaId === empresaId'), 'edición proveedor no limita empresa');
+// Estructural, no un literal exacto: el alta siempre fija empresaId al
+// final, sea cual sea la variable de datos que se difunda (...data en
+// origen; una capa de validación posterior puede interponer
+// ...validacion.datos sin cambiar la garantía real -- empresaId nunca se
+// pierde).
+ok(/const nuevo = \{ id: uid\(\), \.\.\.[\w.]+, empresaId \};/.test(source), 'alta proveedor no fija empresa');
+// Estructural: cualquier nombre de variable de iteración vale, lo que
+// importa es que la condición de edición exija id Y empresaId a la vez
+// (nunca solo id) -- el empaquetador ya ha renombrado esta variable más
+// de una vez (p2->p22, c2->x3).
+ok(/(\w+)\.id === id && \1\.empresaId === empresaId/.test(source), 'edición proveedor no limita empresa');
 ok(source.includes('crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId })'), 'lógica de clientes sin empresa');
 ok(source.includes('fechaAlta: todayISO(), ...data, empresaId'), 'alta cliente no fija empresa');
-ok(source.includes('c2.id === id && c2.empresaId === empresaId'), 'edición cliente no limita empresa');
+ok(/(\w+)\.id === id && \1\.empresaId === empresaId/.test(source), 'edición cliente no limita empresa');
 ok(source.includes('empresaId: empresaDelLocalActivo?.id || null, localId: localActivoId || null'), 'evento auditoría sin contexto empresa/local');
 ok(source.includes('p_empresa_id: entrada.empresaId'), 'RPC auditoría no recibe empresa');
 ok(source.includes('p_local_id: entrada.localId'), 'RPC auditoría no recibe local');
