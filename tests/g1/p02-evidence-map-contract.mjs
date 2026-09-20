@@ -1,3 +1,4 @@
+throw new Error("DEMO_TEMPORAL_PUNTO3_FUERZA_FALLO_CONTRATO_ACTIVO");
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
