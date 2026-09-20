@@ -374,15 +374,44 @@ mover `release` (dispara Netlify automáticamente, `manual_deploy=false`).
 
 ## 2. Deuda de las 18 pruebas fallidas (de 134)
 
-**Estado: NO reejecutado en esta sesión — pendiente.** El informe de
-19/09 ya advierte que es una clasificación histórica sin repetir la
-batería completa. Esta revisión tampoco la ha repetido (134 scripts está
-fuera del alcance que dio tiempo a cubrir en esta pasada). Se mantiene
-como historial de referencia, **no como resultado verificado hoy**.
-**Siguiente acción**: ejecutar la batería completa de 134 scripts en un
-entorno con las dependencias necesarias (QA), clasificar cada FAIL como
-producto / contrato histórico obsoleto / defecto actual / infraestructura,
-y documentar los bloqueados o no aplicables. No hacerlo sobre PROD.
+**Estado: CERRADO — reconstruido honestamente, 0 defectos de producto
+confirmados.** El informe original `Proyecto_A_Pendientes_Verificados_2026-09-19`
+que fijaba "134 scripts / 116 PASS / 18 FAIL" **no se localizó en ningún
+punto del repositorio ni de GitHub** — búsqueda exhaustiva (pickaxe sobre
+las 104 ramas y todo el historial, PR #38, issues, y confirmación de que
+ningún workflow de este repo puede generar ese tipo de recuento porque
+todos paran en el primer fallo). Por instrucción explícita del
+propietario, se reconstruyó desde cero, sin heredar el número ni
+aproximar la lista: se inventariaron los **142** archivos `.mjs` reales
+bajo `tests/` en `release` (`6e26391`), se ejecutaron de verdad (nunca
+simulados) contra código/BD/Auth-PostgREST reales, y se clasificó cada
+resultado con evidencia concreta.
+
+Resultado: **122 PASS reales · 10 con contrato histórico obsoleto
+(comportamiento protegido confirmado intacto bajo código
+renombrado/refactorizado en rondas posteriores — nunca un defecto) · 5
+de infraestructura (3 utilidades que no son casos de prueba + 2 con un
+hueco de arnés de prueba por un hotfix legítimo posterior) · 5 no
+aplicables (diagnósticos de solo lectura, sin PASS/FAIL) · 0 defectos de
+producto**. Los 10 casos que requieren Postgres real corrieron contra un
+Postgres 16 local desechable; los 3 que requieren Auth+PostgREST+Postgres
+reales corrieron en GitHub Actions reutilizando el patrón ya validado
+para PM33 —
+[`run 35492977065`](https://github.com/Plopezm1990/Almacen/actions/runs/35492977065),
+ambos jobs SUCCESS. Se verificaron especialmente los recorridos PM28-33
+(identidad/fichaje, contexto empresa/local, persistencia, red,
+concurrencia): todos PASS o con causa raíz confirmada no-defecto; no se
+encontró ningún identificador "VIS-17" en el repositorio; impresión/
+exportación no tiene test `.mjs` dedicado (hallazgo de cobertura, no de
+defecto, cruzado con el Punto 8). No se aplicó ningún cambio a
+`fuente.js` ni a migraciones — no hizo falta. Detalle completo, matriz de
+142 filas y evidencia reproducible en la rama
+`claude/punto2-134-pruebas` (commit `0234a2f`):
+`cierre-proyecto-a/punto2/INFORME_CLASIFICACION.md` y
+`cierre-proyecto-a/punto2/MATRIZ_134_PRUEBAS.md`.
+**Pendiente, no bloqueante**: actualizar los 10 tests con contrato
+obsoleto para que dejen de reportar falsos fallos (propuesta de
+prioridad en el informe, sección 7).
 
 ---
 
