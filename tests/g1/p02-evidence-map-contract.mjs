@@ -1,4 +1,3 @@
-throw new Error("DEMO_FALLO_FORZADO_TEMPORAL_CI");
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
