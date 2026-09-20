@@ -517,6 +517,23 @@ Cero credenciales, cero pasos de despliegue. Disparo: `workflow_dispatch`,
 deliberadamente **sin** disparador de producción (`push` a `release`)
 todavía.
 
+**Corrección tras una auditoría independiente**: la primera entrega
+(commit `5bf2dec`) incluía el propio informe de cierre
+(`cierre-proyecto-a/punto3/INFORME_PUERTA_CI.md`) dentro de la rama
+candidata, lo que hacía el diff frente a `release` de **18** archivos en
+vez de los 17 reales de la puerta de CI, y mezclaba documentación de
+cierre con la infraestructura que se compara contra `release`. Se
+corrigió: el informe (mismo contenido) se trasladó íntegro a esta rama de
+seguimiento, y se retiró por completo de la candidata (commit `ea9f76b`).
+Se repitieron todas las comprobaciones sobre el SHA corregido, incluida
+una nueva: **igualdad byte a byte del payload de Netlify** entre
+`release@6e26391` y la candidata corregida — `.netlify-dist` construido en
+worktrees separados desde cada punto de partida: 33 archivos en cada uno,
+mismas rutas, **mismos SHA-256 archivo por archivo**, sin
+`cierre-proyecto-a` en ninguno de los dos. Confirma que incorporar esta
+candidata no cambiaría ni un solo byte del contenido que Netlify sirve
+hoy.
+
 **Verificado, con logs comprobados en cada caso (no solo el estado)**:
 - **Rojo real**: se forzó el fallo de un contrato activo no relacionado
   (`tests/g1/p02-evidence-map-contract.mjs`), commit `16b3c22`,
@@ -528,31 +545,42 @@ todavía.
   — **SUCCESS real**, 4/4 jobs, conteos calculados extraídos del log de
   `gate-final`: `NODE_ACTIVE_PASS=121/121`, `POSTGRES_ACTIVE_PASS=9/9`,
   `PM12_FULL_STACK_PASS=2/2`, `PM33_FULL_STACK_PASS=1/1`,
-  `ACTIVE_PASS=133 ACTIVE_FAIL=0`. Vuelto a confirmar, mismos conteos, en
-  el commit final con el informe de entrega
-  (`5bf2dec9120c92271d90edbd3bdf648b305f9218`,
-  [`run 35504230673`](https://github.com/Plopezm1990/Almacen/actions/runs/35504230673),
-  SUCCESS, 4/4 jobs).
+  `ACTIVE_PASS=133 ACTIVE_FAIL=0`.
+- **Verde real, sobre el SHA final realmente entregado** (tras retirar el
+  informe de la candidata): commit
+  `ea9f76bb71414cd92534121e19cabbe35087ea8b`,
+  [`run 35504771758`](https://github.com/Plopezm1990/Almacen/actions/runs/35504771758)
+  — **SUCCESS real**, 4/4 jobs, mismos conteos:
+  `NODE_ACTIVE_PASS=121/121`, `POSTGRES_ACTIVE_PASS=9/9`,
+  `PM12_FULL_STACK_PASS=2/2`, `PM33_FULL_STACK_PASS=1/1`,
+  `ACTIVE_PASS=133 ACTIVE_FAIL=0`, `UTILITIES=3 DIAGNOSTICS=5
+  TOTAL_INVENTORY=142`.
 - El workflow no despliega en Netlify ni escribe en Supabase remoto (cero
   `secrets.*`, stacks Supabase locales desechables parados siempre al
   final del job).
-- SHA probado = HEAD local = HEAD remoto en cada caso.
+- SHA probado = HEAD local = HEAD remoto = `ea9f76b`.
 - `git diff --check` limpio sobre el diff completo frente a `release`.
 - Fusión simulada (`git merge --no-commit --no-ff` sobre una copia
-  desechable de `origin/release`) sin ningún conflicto — 17 archivos.
+  desechable de `origin/release`) sin ningún conflicto — **exactamente 17
+  archivos**, todos bajo `.github/workflows/` o `tests/`.
 
-**Entrega completa** (rama y SHA final, runs rojo/verde, lista de los 17
-archivos modificados, diff frente a `release`, propuesta de required
-status check con su efecto y reversión, confirmación de que no se tocó
-ninguna rama ni entorno protegido) en
-`cierre-proyecto-a/punto3/INFORME_PUERTA_CI.md`, rama
-`claude/punto3-puerta-ci-final` @
-`5bf2dec9120c92271d90edbd3bdf648b305f9218`.
+**Entrega completa** (rama y SHA final, runs rojo/verde, lista real de los
+17 archivos modificados, diff frente a `release`, igualdad byte a byte del
+payload Netlify, propuesta de incorporación y de required status check
+con su efecto y reversión, confirmación de que no se tocó ninguna rama ni
+entorno protegido) en `cierre-proyecto-a/punto3/INFORME_PUERTA_CI.md`, en
+**esta** rama de seguimiento (ya no en la candidata). SHA final de la
+candidata: `claude/punto3-puerta-ci-final` @
+`ea9f76bb71414cd92534121e19cabbe35087ea8b`.
 
 **Pendiente de autorización separada, no aplicado**:
 - **A. Incorporar la puerta a `release`** (fusionar
   `claude/punto3-puerta-ci-final`, o el subconjunto de archivos que el
-  propietario decida, a `release`).
+  propietario decida, a `release`). **Aviso**: el push disparará un deploy
+  automático de Netlify (integración directa del repositorio, fuera de
+  GitHub Actions) aunque el payload publicable sea byte a byte idéntico al
+  actual — nuevo `deploy_id` en el historial de Netlify, sin cambio de
+  contenido servido.
 - **B. Configurarla como required status check** (crear una regla de
   protección de rama para `release` -- hoy no tiene ninguna -- y añadir el
   check del job `gate-final` a la lista de checks obligatorios).
