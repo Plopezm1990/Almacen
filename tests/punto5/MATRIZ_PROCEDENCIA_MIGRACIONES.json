@@ -3,6 +3,18 @@
   "captured_at_utc": "2026-09-20",
   "release_commit": "21ee66bdb52e4d5ad0af2341543f53720a4cf027",
   "scope": "metadata-only; no table rows, auth data, DDL, DML, migration repairs, or environment configuration changes",
+  "catalog_scope": [
+    "function signatures, definition hashes, owner and EXECUTE effective for anon/authenticated/PUBLIC",
+    "table owner, RLS flags and effective SELECT/INSERT/UPDATE/DELETE for anon/authenticated/PUBLIC",
+    "RLS policy command, target roles and expression hashes",
+    "view definition hashes/security_invoker",
+    "trigger definition hashes"
+  ],
+  "catalog_exclusions": [
+    "business rows",
+    "Auth users or sessions",
+    "column/constraint/index physical definitions"
+  ],
   "sources": {
     "repository": {
       "path": "supabase/migrations",
@@ -19,8 +31,8 @@
   },
   "methodology": [
     "Exact provenance requires equal version and migration name.",
-    "A migration-name match with another version is recorded as lineage evidence only, not semantic equivalence.",
-    "Current catalog equality is assessed separately from history; no claim of semantic equivalence is made without an object-level proof."
+    "A migration-name match with another version is lineage evidence only, not semantic equivalence.",
+    "Current catalog equality is assessed separately from history; no semantic equivalence is asserted without an object-level proof."
   ],
   "counts": {
     "repository": 34,
@@ -1819,193 +1831,679 @@
       ],
       "tables": [
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "g1_operation_ids_global",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "private",
           "rls_forced": false,
-          "rls_enabled": false
+          "rls_enabled": false,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "la_instalacion_estado",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "private",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "pm27_prod_recovery_20260914",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "private",
           "rls_forced": false,
-          "rls_enabled": false
+          "rls_enabled": false,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "albaranes_empresa",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": true,
+            "insert": true,
+            "select": true,
+            "update": true
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "almacen_kv",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": true,
+            "insert": true,
+            "select": true,
+            "update": true
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "auditoria_registro",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": true,
+            "insert": false,
+            "select": true,
+            "update": true
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "clientes_empresa",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": true,
+            "insert": true,
+            "select": true,
+            "update": true
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "empresas",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "encargos_empresa",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": true,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "errores_sistema",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": true,
+            "select": true,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "facturas_directas_empresa",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": true,
+            "select": true,
+            "update": true
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "fichajes_registro",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": true,
+            "insert": true,
+            "select": true,
+            "update": true
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "gastos_empresa",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": true,
+            "insert": true,
+            "select": true,
+            "update": true
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "locales",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "membresias_usuario",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "movimientos_registro",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": true,
+            "insert": true,
+            "select": true,
+            "update": true
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "movimientos_stock",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": true,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "operaciones_procesadas",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "pagos_encargo",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": true,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "pagos_factura",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": true,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "perfiles",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": true,
+            "insert": true,
+            "select": true,
+            "update": true
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "prefiltro_limites",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "prefiltros_candidatos",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": true,
+            "insert": true,
+            "select": true,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "proveedores_empresa",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": true,
+            "insert": true,
+            "select": true,
+            "update": true
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "stock_operaciones",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": true,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "stock_ubicacion",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": true,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "suscripciones_push",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": true,
+            "insert": true,
+            "select": true,
+            "update": true
+          }
         }
       ],
       "policies": [
@@ -3210,235 +3708,829 @@
       ],
       "tables": [
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "g1_operation_ids_global",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "private",
           "rls_forced": false,
-          "rls_enabled": false
+          "rls_enabled": false,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "la_instalacion_estado",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "private",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "albaranes_empresa",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": true,
+            "insert": true,
+            "select": true,
+            "update": true
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "almacen_kv",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": true,
+            "insert": true,
+            "select": true,
+            "update": true
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "arqueos_caja",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": true,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "arqueos_caja_anulaciones",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": true,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "auditoria_registro",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": true,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "caja_operaciones",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": true,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "clientes_empresa",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": true,
+            "insert": true,
+            "select": true,
+            "update": true
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "devoluciones_proveedor",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": true,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "devoluciones_venta",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": true,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "empleados",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": true,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "empresas",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": true,
+            "insert": true,
+            "select": true,
+            "update": true
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "encargos_empresa",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": true,
+            "insert": true,
+            "select": true,
+            "update": true
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "errores_sistema",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": true,
+            "insert": true,
+            "select": true,
+            "update": true
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "facturas_directas_empresa",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": true,
+            "insert": true,
+            "select": true,
+            "update": true
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "fichajes_registro",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": true,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "gastos_empresa",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": true,
+            "insert": true,
+            "select": true,
+            "update": true
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "locales",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": true,
+            "insert": true,
+            "select": true,
+            "update": true
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "membresias_usuario",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": true,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "movimientos_registro",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": true,
+            "insert": true,
+            "select": true,
+            "update": true
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "movimientos_stock",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": true,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "operaciones_procesadas",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "pagos_encargo",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": true,
+            "insert": true,
+            "select": true,
+            "update": true
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "pagos_factura",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": true,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "perfiles",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": true,
+            "insert": true,
+            "select": true,
+            "update": true
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "pm29_res",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": false
+          "rls_enabled": false,
+          "authenticated": {
+            "delete": true,
+            "insert": true,
+            "select": true,
+            "update": true
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "prefiltro_limites",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "prefiltros_candidatos",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": true,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "proveedores_empresa",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": true,
+            "insert": true,
+            "select": true,
+            "update": true
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "stock_operaciones",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": true,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "stock_ubicacion",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": false,
+            "insert": false,
+            "select": true,
+            "update": false
+          }
         },
         {
+          "anon": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "name": "suscripciones_push",
           "owner": "postgres",
+          "public": {
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false
+          },
           "schema": "public",
           "rls_forced": false,
-          "rls_enabled": true
+          "rls_enabled": true,
+          "authenticated": {
+            "delete": true,
+            "insert": true,
+            "select": true,
+            "update": true
+          }
         }
       ],
       "policies": [
@@ -5190,8 +6282,8 @@
       "prod": 27,
       "qa": 33,
       "both": 26,
-      "same": 26,
-      "different": 0,
+      "same": 16,
+      "different": 10,
       "prodOnly": [
         "private|pm27_prod_recovery_20260914|"
       ],
@@ -5204,7 +6296,18 @@
         "public|empleados|",
         "public|pm29_res|"
       ],
-      "divergent": []
+      "divergent": [
+        "public|auditoria_registro|",
+        "public|empresas|",
+        "public|encargos_empresa|",
+        "public|errores_sistema|",
+        "public|facturas_directas_empresa|",
+        "public|fichajes_registro|",
+        "public|locales|",
+        "public|membresias_usuario|",
+        "public|pagos_encargo|",
+        "public|prefiltros_candidatos|"
+      ]
     },
     "policies": {
       "prod": 49,
