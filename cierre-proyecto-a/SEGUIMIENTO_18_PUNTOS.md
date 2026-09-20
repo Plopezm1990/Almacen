@@ -481,11 +481,14 @@ reproducible en la rama `claude/punto2-134-pruebas`:
 
 ## 3. Puerta de CI sobre el candidato final
 
-**Estado: PREPARADO Y VALIDADO — NO incorporado a `release`, NO configurado
-como required status check.** (El diagnóstico anterior de este punto,
-"bloqueado — confirmado que no existe hoy", describía `release@f313bc0`,
-que ya no es el HEAD real de `release`; queda sustituido por esta
-revalidación completa contra `release@6e26391`.)
+**Estado: FASE A EJECUTADA — puerta de CI incorporada a `release`
+(`release` ahora en `8540bd0`). FASE B (required status check) pendiente
+de autorización separada — NO cerrado hasta completarla.** (El
+diagnóstico anterior de este punto, "bloqueado — confirmado que no existe
+hoy", describía `release@f313bc0`, que ya no es el HEAD real de
+`release`; queda sustituido por esta revalidación completa contra
+`release@6e26391`, y después por la incorporación real documentada al
+final de esta sección.)
 
 **Revalidación inicial contra `release@6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d`**
 (no heredada de la ronda anterior): SHA de `main` =
@@ -615,26 +618,71 @@ servido, pero sí un nuevo `deploy_id` en el historial de Netlify.
 
 **Entrega completa** (ambas ramas, SHA finales, runs rojo/verde/verde,
 lista real de los 17 archivos, diff frente a `release`, igualdad byte a
-byte del payload Netlify en ambas rondas, propuesta de incorporación y de
-required status check con su efecto y reversión, confirmación de que no
-se tocó ninguna rama ni entorno protegido) en
-`cierre-proyecto-a/punto3/INFORME_PUERTA_CI.md`, en esta rama de
+byte del payload Netlify en ambas rondas, la Fase A ejecutada con toda su
+evidencia, propuesta de required status check con su efecto y reversión)
+en `cierre-proyecto-a/punto3/INFORME_PUERTA_CI.md`, en esta rama de
 seguimiento.
 
-**Pendiente de autorización separada, no aplicado**:
-- **A. Incorporar la candidata limpia `claude/punto3-promocion-final`
-  (commit `8540bd0`) a `release`.** **Aviso**: el push disparará un deploy
-  automático de Netlify (integración directa del repositorio, fuera de
-  GitHub Actions) aunque el payload publicable sea byte a byte idéntico al
-  actual — nuevo `deploy_id` en el historial de Netlify, sin cambio de
-  contenido servido.
-- **B. Configurarla como required status check** (crear una regla de
-  protección de rama para `release` -- hoy no tiene ninguna -- y añadir el
-  check del job `gate-final` a la lista de checks obligatorios).
+---
 
-Ninguna de las dos se activa por esta entrega. El Punto 3 permanece
-**preparado y validado**, no cerrado, hasta que el propietario autorice A
-y/o B por separado.
+### Fase A — EJECUTADA (autorizada explícitamente, 20/09/2026)
+
+**Autorización**: incorporar `claude/punto3-promocion-final@8540bd0` a
+`release` mediante fast-forward exacto, sin `--force`, sin merge commit,
+sin tocar `main` ni PR #38. Reconfirmado inmediatamente antes del
+movimiento: `release` seguía en `6e26391`, la candidata seguía en
+`8540bd0`, el run
+[`35505508683`](https://github.com/Plopezm1990/Almacen/actions/runs/35505508683)
+seguía en `SUCCESS`, y la incorporación seguía siendo fast-forward con un
+único commit.
+
+**Movimiento**: `git push origin claude/punto3-promocion-final:release` →
+`6e26391..8540bd0` (la notación `..`, no `...`, del propio `git push`
+confirma fast-forward puro). `release` pasó a apuntar exactamente a
+`8540bd06d5555cf260aa4599144ed6c64f3ca029`.
+
+**Verificado después del push**:
+- `release` = `8540bd06d5555cf260aa4599144ed6c64f3ca029` (confirmado con
+  `git fetch` + `git rev-parse origin/release`).
+- `main` intacto: `93a570badba1c5375febfbddc1dffdbcef003dcd`.
+- PR #38 sin tocar: sigue `open`, `draft`, base `main@93a570b`, head sin
+  cambios (`claude/pm26-preparacion-tecnica@f297be0`).
+- `.github/workflows/puerta-ci-release.yml` presente en `release`, con su
+  trigger `pull_request: branches: [release]` intacto (confirmado con
+  `git show origin/release:...`).
+
+**Despliegue automático de Netlify, supervisado hasta estado final**
+(sitio `chic-entremet-9107cf`, proyecto `472295da-601a-43df-a4bc-8171f2fc668b`):
+- Deploy anterior (baseline, capturado antes del push):
+  `6aaf17545a7196000883d14d`, `commit_ref=6e26391...`, `ready`.
+- **Deploy nuevo**: `6aafbc029d58a60008d41f3c` — `branch=release`,
+  `commit_ref=8540bd06d5555cf260aa4599144ed6c64f3ca029`,
+  `context=production`, `state=ready`, `error_message=null`,
+  `deploy_validations_report.secret_scan_result.secretsScanMatches=[]`
+  (693 archivos escaneados, ningún secreto). Tiempo de build: 9s.
+- **Payload confirmado sin cambios, por dos vías independientes**: (1) la
+  comparación local ya hecha antes del push (33 archivos, mismas rutas,
+  mismos SHA-256 entre `release@6e26391` y `8540bd0`); (2) el propio
+  resumen del deploy de Netlify: `"All files already uploaded by a
+  previous deploy with the same commits"` — Netlify reconoció el
+  contenido como idéntico al de un deploy anterior y no volvió a subir
+  ningún archivo.
+- Confirma la predicción hecha antes de autorizar: el push disparó un
+  deploy real y nuevo (`deploy_id` distinto), pero sin ningún cambio de
+  contenido servido en producción.
+
+**`release` avanzó de `6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d` a
+`8540bd06d5555cf260aa4599144ed6c64f3ca029`. La puerta de CI general
+(`puerta-ci-release.yml`, 133/133 contratos activos) queda incorporada a
+`release` y activa en los PR dirigidos a ella.**
+
+**Pendiente, no ejecutado**:
+- **B. Configurar protección de rama en `release` y el job `gate-final`
+  como required status check** (hoy `release` sigue sin ninguna regla de
+  protección). Requiere autorización explícita aparte.
+
+El Punto 3 **NO se marca como cerrado** hasta completar también la Fase
+B. No se empezó el Punto 4.
 
 ---
 
