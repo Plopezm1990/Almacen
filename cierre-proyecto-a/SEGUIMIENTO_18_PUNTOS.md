@@ -387,8 +387,8 @@ archivos `.mjs` reales bajo `tests/` en un manifiesto versionado
 de verdad (nunca simulados) contra código/BD/Auth-PostgREST reales, y se
 clasificó cada resultado con evidencia concreta.
 
-**Corrección tras una auditoría independiente**: una primera entrega
-(commit `0234a2f`) resultó no ser reproducible (ruta absoluta
+**Primera corrección tras una auditoría independiente**: una primera
+entrega (commit `0234a2f`) resultó no ser reproducible (ruta absoluta
 hardcodeada, dependía de un archivo temporal sin versionar) y su script
 de Postgres usaba `set -e`, que impedía que hubiera podido producir la
 evidencia completa que decía tener (uno de los 10 archivos falla a
@@ -403,14 +403,47 @@ actualizaron para comprobar comportamiento vigente de forma estructural
 con las APIs de navegador que les faltaban (`window.setInterval`,
 `window.sessionStorage`). Se construyó además una puerta de CI completa
 (4 jobs) que revalida el manifiesto contra el árbol real en cada
-ejecución y solo pasa si los 133 contratos activos están en verde.
+ejecución. Cerrado sobre commit `1b823c9`,
+[`run 35495524333`](https://github.com/Plopezm1990/Almacen/actions/runs/35495524333).
+
+**Segunda corrección tras una auditoría independiente**: esa puerta de
+CI tenía un defecto real propio: `ejecutar_bateria_no_db.sh` registraba
+el código de salida de cada contrato pero nunca lo acumulaba ni exigía
+que los 121 activos de Node terminaran en `0` — el script podía acabar
+en verde con un contrato activo roto en medio de la batería. Además,
+el job `gate-final` imprimía `ACTIVE_PASS=133` / `ACTIVE_FAIL=0` como
+texto fijo, sin haberlos calculado. Se corrigió: `ejecutar_bateria_no_db.sh`
+ahora calcula `NODE_ACTIVE_TOTAL/PASS/FAIL` reales por clasificación del
+manifiesto, exige exactamente 121/121/0 y termina en código 1 si algún
+contrato activo falla (o si una utilidad/diagnóstico se bloquea o lanza
+excepción, contado como fallo de infraestructura) — siempre tras
+completar la batería entera, nunca a mitad de camino, y el veredicto se
+calcula e imprime antes de la comprobación de limpieza del árbol para
+que un fallo real nunca quede oculto tras otro aviso;
+`preparar_postgres_local.sh` emite igual `POSTGRES_ACTIVE_TOTAL/PASS/FAIL`
+y `HISTORICAL_EXPECTED_FAIL` calculados y exige 9/9/0/1; los tres jobs
+de ejecución del workflow exponen esos conteos como *outputs* de job
+(los dos jobs full-stack cuentan solo los pasos cuyo `outcome` fue
+`success`), y `gate-final` exige que los tres hayan terminado con éxito,
+**suma** esos outputs (121+9+3=133) y solo entonces construye el
+resumen — sin ningún `echo` de un número no demostrado en ese mismo run.
+Se demostró el gate en rojo real y en verde real sobre el propio
+workflow de CI, no solo en local: commit `ae8ef65` → verde
+([`run 35502426949`](https://github.com/Plopezm1990/Almacen/actions/runs/35502426949));
+commit temporal `009c5bb` (fallo forzado de un contrato activo no
+relacionado con esta ronda) → rojo real, `NODE_ACTIVE_FAIL=1` con la
+causa exacta
+([`run 35502547235`](https://github.com/Plopezm1990/Almacen/actions/runs/35502547235),
+FAILURE); commit `6320ab9` (revert del anterior) → verde real de nuevo
+([`run 35502655080`](https://github.com/Plopezm1990/Almacen/actions/runs/35502655080)).
+Detalle completo de ambas rondas de corrección en
+`cierre-proyecto-a/punto2/INFORME_CLASIFICACION.md` sección 0-bis.
 
 **Resultado final, verificado en CI sobre el commit final** —
-[`run 35495524333`](https://github.com/Plopezm1990/Almacen/actions/runs/35495524333)
-(commit `1b823c9`, SUCCESS, 4/4 jobs; el mismo estado de código ya
-verificado en el
-[`run 35495409478`](https://github.com/Plopezm1990/Almacen/actions/runs/35495409478),
-commit `3f8e1d0`):
+[`run 35502837233`](https://github.com/Plopezm1990/Almacen/actions/runs/35502837233)
+(commit `643b56a`, SUCCESS, 4/4 jobs, logs comprobados uno a uno, no solo
+el estado; mismo estado de código ya verificado en rojo/verde real en el
+commit `6320ab9` / `run 35502655080` citados arriba):
 
 ```
 ACTIVE_PASS=133
@@ -426,17 +459,21 @@ Auth/PostgREST/Postgres real), 1 histórico marcado
 `HISTORICAL_EXPECTED_FAIL` (`tests/pm33/db/p01-aislamiento-multiempresa-contract.mjs`,
 un registro retirado a propósito que el propio repositorio documenta
 como tal — nunca contado como activo), 3 utilidades y 5 diagnósticos sin
-semántica PASS/FAIL. **0 defectos de producto confirmados.** Se
-verificaron especialmente los recorridos PM28-33 (identidad/fichaje,
-contexto empresa/local, persistencia, red, concurrencia): todos PASS; no
-se encontró ningún identificador "VIS-17" en el repositorio; impresión/
-exportación sigue sin test `.mjs` dedicado (hallazgo de cobertura, no de
-defecto, cruzado con el Punto 8, sin inventar cobertura que no existe).
-Hallazgo incidental, cruzado con el Punto 6: `build-netlify-publish.mjs`
-no excluye `cierre-proyecto-a/` de la copia publicable. No se aplicó
-ningún cambio a `fuente.js` ni a migraciones — no hizo falta. Detalle
-completo, matriz de 142 filas y evidencia reproducible en la rama
-`claude/punto2-134-pruebas`:
+semántica PASS/FAIL. **0 defectos de producto confirmados en esta
+batería** (no es una afirmación de que el producto no contenga defectos
+en general — es el resultado de los 133 contratos activos ejecutados
+aquí, cuyo cálculo ahora es real y exigido por la propia puerta, nunca
+declarado). Se verificaron especialmente los recorridos PM28-33
+(identidad/fichaje, contexto empresa/local, persistencia, red,
+concurrencia): todos PASS; no se encontró ningún identificador "VIS-17"
+en el repositorio; impresión/exportación sigue sin test `.mjs` dedicado
+(hallazgo de cobertura, no de defecto, cruzado con el Punto 8, sin
+inventar cobertura que no existe). Hallazgo incidental, cruzado con el
+Punto 6: `build-netlify-publish.mjs` no excluye `cierre-proyecto-a/` de
+la copia publicable. No se aplicó ningún cambio a `fuente.js` ni a
+migraciones, ni se tocó `release`, `main`, PR #38, Supabase ni Netlify —
+no hizo falta. Detalle completo, matriz de 142 filas y evidencia
+reproducible en la rama `claude/punto2-134-pruebas`:
 `cierre-proyecto-a/punto2/INFORME_CLASIFICACION.md` y
 `cierre-proyecto-a/punto2/MATRIZ_134_PRUEBAS.md`.
 
