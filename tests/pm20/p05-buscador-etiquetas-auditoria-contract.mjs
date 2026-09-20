@@ -20,7 +20,11 @@ const src = fs.readFileSync('fuente.js', 'utf8');
 // ---- 2. EtiquetasCatalogo: productos y fichasCosto llegan ya filtrados al local
 // activo -- no puede imprimir etiquetas ni catálogo de otro local. ----
 {
-  assert.match(src, /createElement\(EtiquetasCatalogo, \{ productos: productosDelLocalActivo, fichasCosto: fichasCostoDelLocalActivo, alergenosDeFicha \}\)/, 'EtiquetasCatalogo debe recibir productos/fichasCosto ya filtrados por local activo');
+  // Tolerante a props añadidas delante de las tres originales (p.ej.
+  // `empresa` en una ronda posterior de contexto multiempresa) -- lo que
+  // importa es que productos/fichasCosto ya filtrados por local activo, y
+  // alergenosDeFicha, se sigan pasando, en ese orden relativo.
+  assert.match(src, /createElement\(EtiquetasCatalogo, \{[^}]*productos: productosDelLocalActivo, fichasCosto: fichasCostoDelLocalActivo, alergenosDeFicha \}\)/, 'EtiquetasCatalogo debe recibir productos/fichasCosto ya filtrados por local activo');
   console.log('P05_PM20_ETIQUETAS_CATALOGO_ALCANCE_CORRECTO=PASS');
 }
 
