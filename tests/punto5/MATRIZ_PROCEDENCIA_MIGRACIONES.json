@@ -1,0 +1,5320 @@
+{
+  "format": "la-suite-migration-provenance-v1",
+  "captured_at_utc": "2026-09-20",
+  "release_commit": "21ee66bdb52e4d5ad0af2341543f53720a4cf027",
+  "scope": "metadata-only; no table rows, auth data, DDL, DML, migration repairs, or environment configuration changes",
+  "sources": {
+    "repository": {
+      "path": "supabase/migrations",
+      "count": 34
+    },
+    "prod": {
+      "project_ref": "flqercbgpgmmfaakrwkc",
+      "migration_count": 37
+    },
+    "qa": {
+      "project_ref": "qjqorixtkilwsndqayyx",
+      "migration_count": 62
+    }
+  },
+  "methodology": [
+    "Exact provenance requires equal version and migration name.",
+    "A migration-name match with another version is recorded as lineage evidence only, not semantic equivalence.",
+    "Current catalog equality is assessed separately from history; no claim of semantic equivalence is made without an object-level proof."
+  ],
+  "counts": {
+    "repository": 34,
+    "prod": 37,
+    "qa": 62,
+    "exact_repository_prod": 1,
+    "exact_repository_qa": 16,
+    "same_name_different_version_prod": 7,
+    "same_name_different_version_qa": 10,
+    "prod_only_no_repo_match": 29,
+    "qa_only_no_repo_match": 36
+  },
+  "repository_migrations": [
+    {
+      "version": "20260904135838",
+      "name": "pm07_stock_ubicacion_y_reversos",
+      "path": "supabase/migrations/20260904135838_pm07_stock_ubicacion_y_reversos.sql",
+      "git_blob_sha1": "8b88ee3f9569ab71482281874ba6c491ba4e81e4",
+      "size_bytes": 14934,
+      "objects": {
+        "functions": [
+          "private.pm07_validar_cantidad",
+          "private.pm07_puede_gestionar_stock",
+          "private.pm07_puede_vender",
+          "public.registrar_venta_stock",
+          "public.revertir_venta_stock",
+          "public.trasladar_stock_interno"
+        ],
+        "tables": [
+          "public.stock_ubicacion",
+          "public.stock_operaciones",
+          "public.movimientos_stock",
+          "public.stock_ubicacion",
+          "public.stock_operaciones",
+          "public.movimientos_stock"
+        ],
+        "views": [
+          "public.stock_estado"
+        ],
+        "triggers": [],
+        "policies": [
+          "pm07_stock_select",
+          "pm07_operaciones_select",
+          "pm07_movimientos_select"
+        ]
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "exact_version_and_name",
+        "migration": {
+          "version": "20260904135838",
+          "name": "pm07_stock_ubicacion_y_reversos"
+        }
+      }
+    },
+    {
+      "version": "20260904140200",
+      "name": "pm07_ajustar_roles_venta",
+      "path": "supabase/migrations/20260904140200_pm07_ajustar_roles_venta.sql",
+      "git_blob_sha1": "bd881f38a5a0774404210c3a308a1650527feac5",
+      "size_bytes": 392,
+      "objects": {
+        "functions": [
+          "private.pm07_puede_vender"
+        ],
+        "tables": [],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "exact_version_and_name",
+        "migration": {
+          "version": "20260904140200",
+          "name": "pm07_ajustar_roles_venta"
+        }
+      }
+    },
+    {
+      "version": "20260904140526",
+      "name": "pm07_bloqueo_local_inactivo_v2",
+      "path": "supabase/migrations/20260904140526_pm07_bloqueo_local_inactivo_v2.sql",
+      "git_blob_sha1": "463d8458594e6bcc52e432bd2b09047c6b77cce3",
+      "size_bytes": 879,
+      "objects": {
+        "functions": [],
+        "tables": [
+          "public.stock_ubicacion"
+        ],
+        "views": [
+          "public.stock_estado"
+        ],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "exact_version_and_name",
+        "migration": {
+          "version": "20260904140526",
+          "name": "pm07_bloqueo_local_inactivo_v2"
+        }
+      }
+    },
+    {
+      "version": "20260904141530",
+      "name": "pm07_validacion_cantidad_semantica",
+      "path": "supabase/migrations/20260904141530_pm07_validacion_cantidad_semantica.sql",
+      "git_blob_sha1": "c4c6cefe654c64689b023a644d784ce3e7d53d42",
+      "size_bytes": 697,
+      "objects": {
+        "functions": [
+          "private.pm07_validar_cantidad"
+        ],
+        "tables": [],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "exact_version_and_name",
+        "migration": {
+          "version": "20260904141530",
+          "name": "pm07_validacion_cantidad_semantica"
+        }
+      }
+    },
+    {
+      "version": "20260904142656",
+      "name": "pm07_carrito_y_traslado_interlocal_atomicos",
+      "path": "supabase/migrations/20260904142656_pm07_carrito_y_traslado_interlocal_atomicos.sql",
+      "git_blob_sha1": "adee8947d459b95874bdedc25852d16ca9697632",
+      "size_bytes": 14819,
+      "objects": {
+        "functions": [
+          "public.registrar_venta_stock_carrito",
+          "public.revertir_venta_stock_carrito",
+          "public.trasladar_stock_entre_locales"
+        ],
+        "tables": [
+          "public.stock_ubicacion",
+          "public.stock_operaciones",
+          "public.stock_operaciones",
+          "public.movimientos_stock",
+          "public.movimientos_stock"
+        ],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "exact_version_and_name",
+        "migration": {
+          "version": "20260904142656",
+          "name": "pm07_carrito_y_traslado_interlocal_atomicos"
+        }
+      }
+    },
+    {
+      "version": "20260904142728",
+      "name": "pm07_carrito_aceptar_producto_id_frontend",
+      "path": "supabase/migrations/20260904142728_pm07_carrito_aceptar_producto_id_frontend.sql",
+      "git_blob_sha1": "7598433b9f6da60778a37a824a1f1aef4c69ca0c",
+      "size_bytes": 5073,
+      "objects": {
+        "functions": [
+          "public.registrar_venta_stock_carrito"
+        ],
+        "tables": [],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "exact_version_and_name",
+        "migration": {
+          "version": "20260904142728",
+          "name": "pm07_carrito_aceptar_producto_id_frontend"
+        }
+      }
+    },
+    {
+      "version": "20260904143318",
+      "name": "pm07_reverso_conservar_datos_economicos",
+      "path": "supabase/migrations/20260904143318_pm07_reverso_conservar_datos_economicos.sql",
+      "git_blob_sha1": "cc7670bd45783f9d9f7c34b07d96b27f73311ede",
+      "size_bytes": 4308,
+      "objects": {
+        "functions": [
+          "public.revertir_venta_stock_carrito"
+        ],
+        "tables": [],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "exact_version_and_name",
+        "migration": {
+          "version": "20260904143318",
+          "name": "pm07_reverso_conservar_datos_economicos"
+        }
+      }
+    },
+    {
+      "version": "20260904143800",
+      "name": "pm07_stock_estado_security_invoker",
+      "path": "supabase/migrations/20260904143800_pm07_stock_estado_security_invoker.sql",
+      "git_blob_sha1": "224be07bd975d6994e9af948c47f482b984a9418",
+      "size_bytes": 134,
+      "objects": {
+        "functions": [],
+        "tables": [],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "same_name_different_version",
+        "migrations": [
+          {
+            "version": "20260904143557",
+            "name": "pm07_stock_estado_security_invoker"
+          }
+        ]
+      }
+    },
+    {
+      "version": "20260904204500",
+      "name": "pm08_caja_devolucion_indivisible",
+      "path": "supabase/migrations/20260904204500_pm08_caja_devolucion_indivisible.sql",
+      "git_blob_sha1": "d381d5de50d98a4ba5ab67b5f2c1dc2db4bb2f0c",
+      "size_bytes": 55204,
+      "objects": {
+        "functions": [
+          "private.pm08_puede_operar_caja",
+          "private.pm08_puede_corregir_caja",
+          "private.pm08_local_operable",
+          "private.pm08_validar_json_objeto",
+          "private.pm08_validar_operation_id",
+          "private.pm08_validar_dinero",
+          "private.pm08_bloquear_operation_id",
+          "public.registrar_movimiento_caja",
+          "public.revertir_movimiento_caja",
+          "public.registrar_arqueo_caja",
+          "public.anular_arqueo_caja",
+          "public.registrar_devolucion_venta",
+          "public.registrar_devolucion_proveedor",
+          "public.revertir_venta_stock_carrito",
+          "public.revertir_venta_stock"
+        ],
+        "tables": [
+          "public.caja_operaciones",
+          "public.arqueos_caja",
+          "public.arqueos_caja_anulaciones",
+          "public.stock_operaciones",
+          "public.stock_operaciones",
+          "public.movimientos_stock",
+          "public.movimientos_stock",
+          "public.devoluciones_venta",
+          "public.devoluciones_proveedor",
+          "public.caja_operaciones",
+          "public.arqueos_caja",
+          "public.arqueos_caja_anulaciones",
+          "public.devoluciones_venta",
+          "public.devoluciones_proveedor"
+        ],
+        "views": [],
+        "triggers": [],
+        "policies": [
+          "pm08_caja_select",
+          "pm08_arqueos_select",
+          "pm08_arqueos_anulaciones_select",
+          "pm08_devoluciones_venta_select",
+          "pm08_devoluciones_proveedor_select"
+        ]
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "same_name_different_version",
+        "migrations": [
+          {
+            "version": "20260904233204",
+            "name": "pm08_caja_devolucion_indivisible"
+          }
+        ]
+      }
+    },
+    {
+      "version": "20260904234000",
+      "name": "pm08_replay_scope_hardening",
+      "path": "supabase/migrations/20260904234000_pm08_replay_scope_hardening.sql",
+      "git_blob_sha1": "de2e2dc9596bbdfc528a7a079ebc2a1ddd2f1eba",
+      "size_bytes": 7038,
+      "objects": {
+        "functions": [
+          "public.revertir_movimiento_caja",
+          "public.anular_arqueo_caja"
+        ],
+        "tables": [],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "same_name_different_version",
+        "migrations": [
+          {
+            "version": "20260904233527",
+            "name": "pm08_replay_scope_hardening"
+          }
+        ]
+      }
+    },
+    {
+      "version": "20260905105500",
+      "name": "pm09_conciliacion_caja",
+      "path": "supabase/migrations/20260905105500_pm09_conciliacion_caja.sql",
+      "git_blob_sha1": "cccb5eb8cc97ed29a307b2783cd7022cc4a65786",
+      "size_bytes": 8282,
+      "objects": {
+        "functions": [
+          "private.pm09_resumen_caja_ventas",
+          "public.registrar_arqueo_caja"
+        ],
+        "tables": [],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "same_name_different_version",
+        "migrations": [
+          {
+            "version": "20260905105620",
+            "name": "pm09_conciliacion_caja"
+          }
+        ]
+      }
+    },
+    {
+      "version": "20260905115000",
+      "name": "pm09_fecha_operacion_economica",
+      "path": "supabase/migrations/20260905115000_pm09_fecha_operacion_economica.sql",
+      "git_blob_sha1": "ed09a41668b0921718b419b30feebe18df131ff1",
+      "size_bytes": 9643,
+      "objects": {
+        "functions": [
+          "public.registrar_venta_stock_pm09",
+          "public.registrar_venta_stock_carrito_pm09",
+          "public.revertir_venta_stock_pm09",
+          "public.revertir_venta_stock_carrito_pm09",
+          "public.registrar_devolucion_venta_pm09",
+          "private.pm09_resumen_caja_ventas"
+        ],
+        "tables": [],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "same_name_different_version",
+        "migrations": [
+          {
+            "version": "20260905115143",
+            "name": "pm09_fecha_operacion_economica"
+          }
+        ]
+      }
+    },
+    {
+      "version": "20260905120500",
+      "name": "pm09_operation_id_global_hardening",
+      "path": "supabase/migrations/20260905120500_pm09_operation_id_global_hardening.sql",
+      "git_blob_sha1": "81e8457e3753f60f9fb8a4d4db55f20cebef66ee",
+      "size_bytes": 6606,
+      "objects": {
+        "functions": [
+          "private.pm09_bloquear_operation_id_stock",
+          "public.registrar_venta_stock_pm09",
+          "public.registrar_venta_stock_carrito_pm09",
+          "public.revertir_venta_stock_pm09",
+          "public.revertir_venta_stock_carrito_pm09"
+        ],
+        "tables": [],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "same_name_different_version",
+        "migrations": [
+          {
+            "version": "20260905120546",
+            "name": "pm09_operation_id_global_hardening"
+          }
+        ]
+      }
+    },
+    {
+      "version": "20260905183353",
+      "name": "g1_p05_bloquear_todos_locales_mutacion",
+      "path": "supabase/migrations/20260905183353_g1_p05_bloquear_todos_locales_mutacion.sql",
+      "git_blob_sha1": "20424191eb82d40c78c9309967393e881b484b4f",
+      "size_bytes": 580,
+      "objects": {
+        "functions": [
+          "private.la_tiene_local"
+        ],
+        "tables": [],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "exact_version_and_name",
+        "migration": {
+          "version": "20260905183353",
+          "name": "g1_p05_bloquear_todos_locales_mutacion"
+        }
+      }
+    },
+    {
+      "version": "20260905183514",
+      "name": "g1_p05_restringir_rpc_stock_anon",
+      "path": "supabase/migrations/20260905183514_g1_p05_restringir_rpc_stock_anon.sql",
+      "git_blob_sha1": "85020c953761a00ead4b8889e8b73dd554d475c3",
+      "size_bytes": 223,
+      "objects": {
+        "functions": [],
+        "tables": [],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "exact_version_and_name",
+        "migration": {
+          "version": "20260905183514",
+          "name": "g1_p05_restringir_rpc_stock_anon"
+        }
+      }
+    },
+    {
+      "version": "20260905185935",
+      "name": "g1_p08_operation_id_finanzas_global",
+      "path": "supabase/migrations/20260905185935_g1_p08_operation_id_finanzas_global.sql",
+      "git_blob_sha1": "01a59508516d8255ad06733a07c663d5001649f4",
+      "size_bytes": 8762,
+      "objects": {
+        "functions": [
+          "private.g1_claim_operation_id",
+          "public.registrar_pago_factura",
+          "public.revertir_pago_factura"
+        ],
+        "tables": [
+          "private.g1_operation_ids_global"
+        ],
+        "views": [],
+        "triggers": [
+          "g1_operation_id_global",
+          "g1_operation_id_global",
+          "g1_operation_id_global",
+          "g1_operation_id_global",
+          "g1_operation_id_global"
+        ],
+        "policies": []
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "exact_version_and_name",
+        "migration": {
+          "version": "20260905185935",
+          "name": "g1_p08_operation_id_finanzas_global"
+        }
+      }
+    },
+    {
+      "version": "20260907155028",
+      "name": "pm12_p08_stock_atomico",
+      "path": "supabase/migrations/20260907155028_pm12_p08_stock_atomico.sql",
+      "git_blob_sha1": "d1444564dd3349c5bcb525c6d51e1d3f7711eed5",
+      "size_bytes": 19701,
+      "objects": {
+        "functions": [
+          "private.pm12_confirmar_ajuste_stock",
+          "public.pm12_confirmar_ajuste_stock",
+          "private.pm12_cancelar_conteo_stock",
+          "public.pm12_cancelar_conteo_stock"
+        ],
+        "tables": [
+          "public",
+          "public"
+        ],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "same_name_different_version",
+        "migrations": [
+          {
+            "version": "20260907175737",
+            "name": "pm12_p08_stock_atomico"
+          }
+        ]
+      }
+    },
+    {
+      "version": "20260907194803",
+      "name": "pm13_p01_ciclo_personal_idempotente",
+      "path": "supabase/migrations/20260907194803_pm13_p01_ciclo_personal_idempotente.sql",
+      "git_blob_sha1": "344e25639c942627c2e044c5722b181746acbc9d",
+      "size_bytes": 9621,
+      "objects": {
+        "functions": [
+          "public.pm11_alta_empleado",
+          "public.pm11_editar_empleado",
+          "public.pm11_baja_empleado",
+          "public.pm11_reactivar_empleado"
+        ],
+        "tables": [],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "exact_version_and_name",
+        "migration": {
+          "version": "20260907194803",
+          "name": "pm13_p01_ciclo_personal_idempotente"
+        }
+      }
+    },
+    {
+      "version": "20260907195207",
+      "name": "pm13_p01_alta_concurrency_lock",
+      "path": "supabase/migrations/20260907195207_pm13_p01_alta_concurrency_lock.sql",
+      "git_blob_sha1": "b1de431b6ecb23478a1b87018d0fd3dcb52a56bc",
+      "size_bytes": 2714,
+      "objects": {
+        "functions": [
+          "public.pm11_alta_empleado"
+        ],
+        "tables": [],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "exact_version_and_name",
+        "migration": {
+          "version": "20260907195207",
+          "name": "pm13_p01_alta_concurrency_lock"
+        }
+      }
+    },
+    {
+      "version": "20260907205000",
+      "name": "pm13_p03_fichajes_seguros",
+      "path": "supabase/migrations/20260907205000_pm13_p03_fichajes_seguros.sql",
+      "git_blob_sha1": "8acc71dfe805bc8feb4f576a8913123cbcc78cad",
+      "size_bytes": 16656,
+      "objects": {
+        "functions": [
+          "private.pm13_fichaje_actor_es_empleado",
+          "private.pm13_fichaje_secuencia_valida",
+          "public.pm13_fichar",
+          "public.pm13_fichaje_manual",
+          "public.pm13_corregir_fichaje",
+          "public.pm13_anular_fichaje"
+        ],
+        "tables": [
+          "public.fichajes_registro"
+        ],
+        "views": [],
+        "triggers": [],
+        "policies": [
+          "pm13_fichajes_select_scope"
+        ]
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "same_name_different_version",
+        "migrations": [
+          {
+            "version": "20260907205007",
+            "name": "pm13_p03_fichajes_seguros"
+          }
+        ]
+      }
+    },
+    {
+      "version": "20260907212000",
+      "name": "pm13_p04_ausencias_trazables",
+      "path": "supabase/migrations/20260907212000_pm13_p04_ausencias_trazables.sql",
+      "git_blob_sha1": "70d0f07de889b37b4a8d68c9ed6b8bbb408f8709",
+      "size_bytes": 9230,
+      "objects": {
+        "functions": [
+          "public.pm13_registrar_ausencia",
+          "public.pm13_anular_ausencia"
+        ],
+        "tables": [],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "same_name_different_version",
+        "migrations": [
+          {
+            "version": "20260907211858",
+            "name": "pm13_p04_ausencias_trazables"
+          }
+        ]
+      }
+    },
+    {
+      "version": "20260908071757",
+      "name": "pm14_p02_encargos_pagos_encargo",
+      "path": "supabase/migrations/20260908071757_pm14_p02_encargos_pagos_encargo.sql",
+      "git_blob_sha1": "e91eb01128c92231d108cd510255ba0eb80115cb",
+      "size_bytes": 12701,
+      "objects": {
+        "functions": [
+          "private.pm14_total_encargo",
+          "public.registrar_encargo",
+          "public.registrar_pago_encargo",
+          "public.revertir_pago_encargo"
+        ],
+        "tables": [
+          "public.encargos_empresa",
+          "public.encargos_empresa",
+          "public.pagos_encargo",
+          "public.pagos_encargo"
+        ],
+        "views": [],
+        "triggers": [],
+        "policies": [
+          "pm14_encargos_select",
+          "pm14_encargos_insert",
+          "pm14_encargos_update",
+          "pm14_pagos_encargo_select"
+        ]
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "exact_version_and_name",
+        "migration": {
+          "version": "20260908071757",
+          "name": "pm14_p02_encargos_pagos_encargo"
+        }
+      }
+    },
+    {
+      "version": "20260908071911",
+      "name": "pm14_p02_revocar_ejecucion_anonima",
+      "path": "supabase/migrations/20260908071911_pm14_p02_revocar_ejecucion_anonima.sql",
+      "git_blob_sha1": "b68c3cdbecea13428895ddcbac33315e006d0798",
+      "size_bytes": 866,
+      "objects": {
+        "functions": [],
+        "tables": [],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "exact_version_and_name",
+        "migration": {
+          "version": "20260908071911",
+          "name": "pm14_p02_revocar_ejecucion_anonima"
+        }
+      }
+    },
+    {
+      "version": "20260908071936",
+      "name": "pm14_p02_revocar_anon_explicito",
+      "path": "supabase/migrations/20260908071936_pm14_p02_revocar_anon_explicito.sql",
+      "git_blob_sha1": "cc258e9cfeab943eaa2c43fc9591f46622a185d0",
+      "size_bytes": 675,
+      "objects": {
+        "functions": [],
+        "tables": [],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "exact_version_and_name",
+        "migration": {
+          "version": "20260908071936",
+          "name": "pm14_p02_revocar_anon_explicito"
+        }
+      }
+    },
+    {
+      "version": "20260908075655",
+      "name": "pm14_p05_estado_devuelto_encargo",
+      "path": "supabase/migrations/20260908075655_pm14_p05_estado_devuelto_encargo.sql",
+      "git_blob_sha1": "cd097465e7bde9533ec2466f5c1d72471be135ee",
+      "size_bytes": 3034,
+      "objects": {
+        "functions": [
+          "private.pm14_total_encargo",
+          "public.registrar_encargo"
+        ],
+        "tables": [],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "exact_version_and_name",
+        "migration": {
+          "version": "20260908075655",
+          "name": "pm14_p05_estado_devuelto_encargo"
+        }
+      }
+    },
+    {
+      "version": "20260908180500",
+      "name": "pm20_p06_errores_sistema_aislamiento",
+      "path": "supabase/migrations/20260908180500_pm20_p06_errores_sistema_aislamiento.sql",
+      "git_blob_sha1": "8001812a59a9569ae6ad0fcc390097cf3bcceaf8",
+      "size_bytes": 1068,
+      "objects": {
+        "functions": [],
+        "tables": [
+          "public.errores_sistema"
+        ],
+        "views": [],
+        "triggers": [],
+        "policies": [
+          "errores_sistema_select",
+          "errores_sistema_insert"
+        ]
+      },
+      "prod": {
+        "classification": "not_registered_in_prod"
+      },
+      "qa": {
+        "classification": "same_name_different_version",
+        "migrations": [
+          {
+            "version": "20260908181917",
+            "name": "pm20_p06_errores_sistema_aislamiento"
+          }
+        ]
+      }
+    },
+    {
+      "version": "20260914223000",
+      "name": "hotfix_barrera_reset_local",
+      "path": "supabase/migrations/20260914223000_hotfix_barrera_reset_local.sql",
+      "git_blob_sha1": "21a71ede7fa1d71e04c4505110adc97ce9bdafd3",
+      "size_bytes": 1887,
+      "objects": {
+        "functions": [
+          "public.obtener_generacion_instalacion"
+        ],
+        "tables": [
+          "private.la_instalacion_estado",
+          "private.la_instalacion_estado"
+        ],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "same_name_different_version",
+        "migrations": [
+          {
+            "version": "20260914211248",
+            "name": "hotfix_barrera_reset_local"
+          }
+        ]
+      },
+      "qa": {
+        "classification": "not_registered_in_qa"
+      }
+    },
+    {
+      "version": "20260914223100",
+      "name": "owner_identity_bootstrap",
+      "path": "supabase/migrations/20260914223100_owner_identity_bootstrap.sql",
+      "git_blob_sha1": "85ca867993f63cd4ab2c5d0293f1637c0c6534ae",
+      "size_bytes": 1531,
+      "objects": {
+        "functions": [],
+        "tables": [],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "same_name_different_version",
+        "migrations": [
+          {
+            "version": "20260914211351",
+            "name": "owner_identity_bootstrap"
+          }
+        ]
+      },
+      "qa": {
+        "classification": "not_registered_in_qa"
+      }
+    },
+    {
+      "version": "20260914223200",
+      "name": "owner_installation_bootstrap",
+      "path": "supabase/migrations/20260914223200_owner_installation_bootstrap.sql",
+      "git_blob_sha1": "79ec1767fbbebe3e17dcae438e9ed0d1f4f2f4d1",
+      "size_bytes": 7516,
+      "objects": {
+        "functions": [
+          "public.obtener_estado_instalacion",
+          "public.bootstrap_owner_instalacion"
+        ],
+        "tables": [],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "same_name_different_version",
+        "migrations": [
+          {
+            "version": "20260915033418",
+            "name": "owner_installation_bootstrap"
+          }
+        ]
+      },
+      "qa": {
+        "classification": "not_registered_in_qa"
+      }
+    },
+    {
+      "version": "20260915043000",
+      "name": "ui_context_bridge",
+      "path": "supabase/migrations/20260915043000_ui_context_bridge.sql",
+      "git_blob_sha1": "78877cfcfd1dbc47670306e050149780bae73d86",
+      "size_bytes": 10930,
+      "objects": {
+        "functions": [
+          "public.obtener_contexto_instalacion_ui",
+          "public.guardar_contexto_instalacion_ui"
+        ],
+        "tables": [
+          "public.empresas",
+          "public.locales"
+        ],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "same_name_different_version",
+        "migrations": [
+          {
+            "version": "20260915052510",
+            "name": "ui_context_bridge"
+          }
+        ]
+      },
+      "qa": {
+        "classification": "not_registered_in_qa"
+      }
+    },
+    {
+      "version": "20260915132000",
+      "name": "post_reset_schema_contract_repair",
+      "path": "supabase/migrations/20260915132000_post_reset_schema_contract_repair.sql",
+      "git_blob_sha1": "2adeb21a6814d2efee3a3da84e1d81fc6758a1bd",
+      "size_bytes": 6354,
+      "objects": {
+        "functions": [],
+        "tables": [],
+        "views": [
+          "public.stock_estado"
+        ],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "same_name_different_version",
+        "migrations": [
+          {
+            "version": "20260915135339",
+            "name": "post_reset_schema_contract_repair"
+          }
+        ]
+      },
+      "qa": {
+        "classification": "not_registered_in_qa"
+      }
+    },
+    {
+      "version": "20260915152000",
+      "name": "pm27_restore_c24_operational_rpcs",
+      "path": "supabase/migrations/20260915152000_pm27_restore_c24_operational_rpcs.sql",
+      "git_blob_sha1": "addd4f0e2104db8c201be704a2eca79b42db60b5",
+      "size_bytes": 33900,
+      "objects": {
+        "functions": [
+          "public.registrar_venta_stock",
+          "public.registrar_venta_stock_carrito",
+          "public.trasladar_stock_interno",
+          "public.trasladar_stock_entre_locales",
+          "public.registrar_encargo"
+        ],
+        "tables": [],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "same_name_different_version",
+        "migrations": [
+          {
+            "version": "20260915152758",
+            "name": "pm27_restore_c24_operational_rpcs"
+          }
+        ]
+      },
+      "qa": {
+        "classification": "not_registered_in_qa"
+      }
+    },
+    {
+      "version": "20260918120000",
+      "name": "pm29_desactivar_empresa_propietario",
+      "path": "supabase/migrations/20260918120000_pm29_desactivar_empresa_propietario.sql",
+      "git_blob_sha1": "8ed38c036057ddb4d605a4b6eb62c92ca7781afe",
+      "size_bytes": 11673,
+      "objects": {
+        "functions": [
+          "public.guardar_contexto_instalacion_ui"
+        ],
+        "tables": [],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "same_name_different_version",
+        "migrations": [
+          {
+            "version": "20260918061050",
+            "name": "pm29_desactivar_empresa_propietario"
+          }
+        ]
+      },
+      "qa": {
+        "classification": "not_registered_in_qa"
+      }
+    },
+    {
+      "version": "20260919225831",
+      "name": "pm33_p05_identidad_antes_de_actividad",
+      "path": "supabase/migrations/20260919225831_pm33_p05_identidad_antes_de_actividad.sql",
+      "git_blob_sha1": "5f5ce4f8f0ee0a3a8ddf1ddea14969a95b74906b",
+      "size_bytes": 18534,
+      "objects": {
+        "functions": [
+          "public.obtener_contexto_operativo"
+        ],
+        "tables": [],
+        "views": [],
+        "triggers": [],
+        "policies": []
+      },
+      "prod": {
+        "classification": "exact_version_and_name",
+        "migration": {
+          "version": "20260919225831",
+          "name": "pm33_p05_identidad_antes_de_actividad"
+        }
+      },
+      "qa": {
+        "classification": "not_registered_in_qa"
+      }
+    }
+  ],
+  "prod_remote_only": [
+    {
+      "version": "20260902072602",
+      "name": "restringir_fichajes_por_empleado_y_rol",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260902072812",
+      "name": "optimizar_rls_movimientos_sin_cambiar_acceso",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260902072933",
+      "name": "cerrar_rpc_es_propietario_y_embutir_politicas",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260902073043",
+      "name": "fijar_search_path_triggers_fecha",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260902073103",
+      "name": "cerrar_privilegios_operaciones_procesadas",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260902080610",
+      "name": "optimizar_rls_almacen_kv",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260902080712",
+      "name": "helper_privado_propietario_y_optimizacion_rls",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260902081221",
+      "name": "cerrar_tablas_internas_a_clientes",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260902081448",
+      "name": "retirar_privilegios_laterales_tablas_sensibles",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260902081554",
+      "name": "cerrar_trigger_functions_y_eliminar_helper_obsoleto",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260902082343",
+      "name": "contexto_operativo_y_permisos_por_rol",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260902082423",
+      "name": "ampliar_contexto_operativo_fichajes",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260902083527",
+      "name": "local_id_movimientos_por_producto",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260902083605",
+      "name": "completar_movimientos_local_unico",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260902083655",
+      "name": "etiquetar_historico_local_unico",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260902090123",
+      "name": "propiedad_segura_suscripciones_push",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260902090631",
+      "name": "asignar_usuario_suscripciones_push",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260902090830",
+      "name": "reducir_contexto_churrero",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260902104514",
+      "name": "retirar_trigger_push_usuario_redundante",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260902113411",
+      "name": "etiquetar_historico_multilocal_fase2",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260903055736",
+      "name": "preservar_metadatos_economicos_venta_tpv",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260903060827",
+      "name": "anulacion_atomica_venta_tpv",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260907184331",
+      "name": "pm12_produccion_baseline_p08",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260907185032",
+      "name": "pm12_p08_stock_atomico_produccion",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260914174114",
+      "name": "pm27_prod_reconciliacion_pre_c24",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260915163735",
+      "name": "pm27_reconcile_pm05_pm06_finance_gap_v2",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260916035012",
+      "name": "p2_r02_revocar_exec_rpcs_legacy",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260918075013",
+      "name": "pm29_local_de_empresa_inactiva_no_tumba_el_lote",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260918105721",
+      "name": "pm29_desactivar_empresa_propietario_cascada",
+      "classification": "prod_only_no_repository_name_or_version_match"
+    }
+  ],
+  "qa_remote_only": [
+    {
+      "version": "20260904091829",
+      "name": "pm02_base_qa_aislada",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260904104042",
+      "name": "pm05_aislamiento_transversal",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260904104728",
+      "name": "pm05_scope_almacen_kv_qa",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260904105337",
+      "name": "pm05_hardening_helpers",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260904113424",
+      "name": "pm06_identidad_factura_pago_gasto",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260904113723",
+      "name": "pm06_gasto_derivado_factura",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260904113947",
+      "name": "pm06_bloqueo_identidad_documental",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260906060647",
+      "name": "pm11_empleados_entidad_rls",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260906060830",
+      "name": "pm11_guard_perfiles_sensibles",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260906061626",
+      "name": "pm11_rpc_ciclo_vida_empleados",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260906072402",
+      "name": "pm11_migracion_controlada_empleados_legacy",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260906074000",
+      "name": "pm11_vinculo_cuenta_empleado_integridad",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260906075429",
+      "name": "pm11_creacion_cuenta_empleado_segura",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260906080951",
+      "name": "pm11_anonimizacion_segura_empleado",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260906163842",
+      "name": "pm11_contexto_operativo_acceso_smoke",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260908211134",
+      "name": "pm21_p01_movimientos_registro_aislamiento",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260908211144",
+      "name": "pm21_p01_storage_qa_pruebas_aislamiento",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260908212044",
+      "name": "pm21_p02_matices_rol_politicas",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260910063716",
+      "name": "pm26_p06i_aviso_h_rendimiento_qa",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260910175504",
+      "name": "pm26_p07c_aislamiento_prefiltros_candidatos_qa",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260912210619",
+      "name": "pm26_p09f_b3_pagos_encargo_operation_id_global",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260915183918",
+      "name": "p2_r01_qa_revocar_anon_tablas",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260915183924",
+      "name": "p2_r01_qa_revocar_anon_secuencias",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260915183930",
+      "name": "p2_r01_qa_default_tablas_sin_anon",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260915183935",
+      "name": "p2_r01_qa_default_secuencias_sin_anon",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260915183940",
+      "name": "p2_r01_qa_default_funciones_public_sin_anon",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260915184058",
+      "name": "p2_r01_qa_revocar_uso_public_anon",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260915184324",
+      "name": "p2_r01_qa_pm05_scope_sin_anon_explicito",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260916040900",
+      "name": "p2_r02_qa_alinear_acl_helpers_privados",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260918055252",
+      "name": "pm29_qa_paridad_tablas_empresas_locales",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260918055315",
+      "name": "pm29_qa_replica_hotfix_barrera_reset_local",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260918055414",
+      "name": "pm29_qa_estado_stub_y_contexto_lectura",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260918055500",
+      "name": "pm29_qa_guardar_contexto_instalacion_ui",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260918055813",
+      "name": "pm29_qa_guardar_contexto_v2_freno_local_por_propietario",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260918074122",
+      "name": "pm29_qa_v3_pertenencia_local_sin_exigir_empresa_activa",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    },
+    {
+      "version": "20260918103803",
+      "name": "pm29_qa_v4_baja_empresa_con_cascada",
+      "classification": "qa_only_no_repository_name_or_version_match"
+    }
+  ],
+  "registered_histories": {
+    "prod": [
+      {
+        "version": "20260902072602",
+        "name": "restringir_fichajes_por_empleado_y_rol"
+      },
+      {
+        "version": "20260902072812",
+        "name": "optimizar_rls_movimientos_sin_cambiar_acceso"
+      },
+      {
+        "version": "20260902072933",
+        "name": "cerrar_rpc_es_propietario_y_embutir_politicas"
+      },
+      {
+        "version": "20260902073043",
+        "name": "fijar_search_path_triggers_fecha"
+      },
+      {
+        "version": "20260902073103",
+        "name": "cerrar_privilegios_operaciones_procesadas"
+      },
+      {
+        "version": "20260902080610",
+        "name": "optimizar_rls_almacen_kv"
+      },
+      {
+        "version": "20260902080712",
+        "name": "helper_privado_propietario_y_optimizacion_rls"
+      },
+      {
+        "version": "20260902081221",
+        "name": "cerrar_tablas_internas_a_clientes"
+      },
+      {
+        "version": "20260902081448",
+        "name": "retirar_privilegios_laterales_tablas_sensibles"
+      },
+      {
+        "version": "20260902081554",
+        "name": "cerrar_trigger_functions_y_eliminar_helper_obsoleto"
+      },
+      {
+        "version": "20260902082343",
+        "name": "contexto_operativo_y_permisos_por_rol"
+      },
+      {
+        "version": "20260902082423",
+        "name": "ampliar_contexto_operativo_fichajes"
+      },
+      {
+        "version": "20260902083527",
+        "name": "local_id_movimientos_por_producto"
+      },
+      {
+        "version": "20260902083605",
+        "name": "completar_movimientos_local_unico"
+      },
+      {
+        "version": "20260902083655",
+        "name": "etiquetar_historico_local_unico"
+      },
+      {
+        "version": "20260902090123",
+        "name": "propiedad_segura_suscripciones_push"
+      },
+      {
+        "version": "20260902090631",
+        "name": "asignar_usuario_suscripciones_push"
+      },
+      {
+        "version": "20260902090830",
+        "name": "reducir_contexto_churrero"
+      },
+      {
+        "version": "20260902104514",
+        "name": "retirar_trigger_push_usuario_redundante"
+      },
+      {
+        "version": "20260902113411",
+        "name": "etiquetar_historico_multilocal_fase2"
+      },
+      {
+        "version": "20260903055736",
+        "name": "preservar_metadatos_economicos_venta_tpv"
+      },
+      {
+        "version": "20260903060827",
+        "name": "anulacion_atomica_venta_tpv"
+      },
+      {
+        "version": "20260907184331",
+        "name": "pm12_produccion_baseline_p08"
+      },
+      {
+        "version": "20260907185032",
+        "name": "pm12_p08_stock_atomico_produccion"
+      },
+      {
+        "version": "20260914174114",
+        "name": "pm27_prod_reconciliacion_pre_c24"
+      },
+      {
+        "version": "20260914211248",
+        "name": "hotfix_barrera_reset_local"
+      },
+      {
+        "version": "20260914211351",
+        "name": "owner_identity_bootstrap"
+      },
+      {
+        "version": "20260915033418",
+        "name": "owner_installation_bootstrap"
+      },
+      {
+        "version": "20260915052510",
+        "name": "ui_context_bridge"
+      },
+      {
+        "version": "20260915135339",
+        "name": "post_reset_schema_contract_repair"
+      },
+      {
+        "version": "20260915152758",
+        "name": "pm27_restore_c24_operational_rpcs"
+      },
+      {
+        "version": "20260915163735",
+        "name": "pm27_reconcile_pm05_pm06_finance_gap_v2"
+      },
+      {
+        "version": "20260916035012",
+        "name": "p2_r02_revocar_exec_rpcs_legacy"
+      },
+      {
+        "version": "20260918061050",
+        "name": "pm29_desactivar_empresa_propietario"
+      },
+      {
+        "version": "20260918075013",
+        "name": "pm29_local_de_empresa_inactiva_no_tumba_el_lote"
+      },
+      {
+        "version": "20260918105721",
+        "name": "pm29_desactivar_empresa_propietario_cascada"
+      },
+      {
+        "version": "20260919225831",
+        "name": "pm33_p05_identidad_antes_de_actividad"
+      }
+    ],
+    "qa": [
+      {
+        "version": "20260904091829",
+        "name": "pm02_base_qa_aislada"
+      },
+      {
+        "version": "20260904104042",
+        "name": "pm05_aislamiento_transversal"
+      },
+      {
+        "version": "20260904104728",
+        "name": "pm05_scope_almacen_kv_qa"
+      },
+      {
+        "version": "20260904105337",
+        "name": "pm05_hardening_helpers"
+      },
+      {
+        "version": "20260904113424",
+        "name": "pm06_identidad_factura_pago_gasto"
+      },
+      {
+        "version": "20260904113723",
+        "name": "pm06_gasto_derivado_factura"
+      },
+      {
+        "version": "20260904113947",
+        "name": "pm06_bloqueo_identidad_documental"
+      },
+      {
+        "version": "20260904135838",
+        "name": "pm07_stock_ubicacion_y_reversos"
+      },
+      {
+        "version": "20260904140200",
+        "name": "pm07_ajustar_roles_venta"
+      },
+      {
+        "version": "20260904140526",
+        "name": "pm07_bloqueo_local_inactivo_v2"
+      },
+      {
+        "version": "20260904141530",
+        "name": "pm07_validacion_cantidad_semantica"
+      },
+      {
+        "version": "20260904142656",
+        "name": "pm07_carrito_y_traslado_interlocal_atomicos"
+      },
+      {
+        "version": "20260904142728",
+        "name": "pm07_carrito_aceptar_producto_id_frontend"
+      },
+      {
+        "version": "20260904143318",
+        "name": "pm07_reverso_conservar_datos_economicos"
+      },
+      {
+        "version": "20260904143557",
+        "name": "pm07_stock_estado_security_invoker"
+      },
+      {
+        "version": "20260904233204",
+        "name": "pm08_caja_devolucion_indivisible"
+      },
+      {
+        "version": "20260904233527",
+        "name": "pm08_replay_scope_hardening"
+      },
+      {
+        "version": "20260905105620",
+        "name": "pm09_conciliacion_caja"
+      },
+      {
+        "version": "20260905115143",
+        "name": "pm09_fecha_operacion_economica"
+      },
+      {
+        "version": "20260905120546",
+        "name": "pm09_operation_id_global_hardening"
+      },
+      {
+        "version": "20260905183353",
+        "name": "g1_p05_bloquear_todos_locales_mutacion"
+      },
+      {
+        "version": "20260905183514",
+        "name": "g1_p05_restringir_rpc_stock_anon"
+      },
+      {
+        "version": "20260905185935",
+        "name": "g1_p08_operation_id_finanzas_global"
+      },
+      {
+        "version": "20260906060647",
+        "name": "pm11_empleados_entidad_rls"
+      },
+      {
+        "version": "20260906060830",
+        "name": "pm11_guard_perfiles_sensibles"
+      },
+      {
+        "version": "20260906061626",
+        "name": "pm11_rpc_ciclo_vida_empleados"
+      },
+      {
+        "version": "20260906072402",
+        "name": "pm11_migracion_controlada_empleados_legacy"
+      },
+      {
+        "version": "20260906074000",
+        "name": "pm11_vinculo_cuenta_empleado_integridad"
+      },
+      {
+        "version": "20260906075429",
+        "name": "pm11_creacion_cuenta_empleado_segura"
+      },
+      {
+        "version": "20260906080951",
+        "name": "pm11_anonimizacion_segura_empleado"
+      },
+      {
+        "version": "20260906163842",
+        "name": "pm11_contexto_operativo_acceso_smoke"
+      },
+      {
+        "version": "20260907175737",
+        "name": "pm12_p08_stock_atomico"
+      },
+      {
+        "version": "20260907194803",
+        "name": "pm13_p01_ciclo_personal_idempotente"
+      },
+      {
+        "version": "20260907195207",
+        "name": "pm13_p01_alta_concurrency_lock"
+      },
+      {
+        "version": "20260907205007",
+        "name": "pm13_p03_fichajes_seguros"
+      },
+      {
+        "version": "20260907211858",
+        "name": "pm13_p04_ausencias_trazables"
+      },
+      {
+        "version": "20260908071757",
+        "name": "pm14_p02_encargos_pagos_encargo"
+      },
+      {
+        "version": "20260908071911",
+        "name": "pm14_p02_revocar_ejecucion_anonima"
+      },
+      {
+        "version": "20260908071936",
+        "name": "pm14_p02_revocar_anon_explicito"
+      },
+      {
+        "version": "20260908075655",
+        "name": "pm14_p05_estado_devuelto_encargo"
+      },
+      {
+        "version": "20260908181917",
+        "name": "pm20_p06_errores_sistema_aislamiento"
+      },
+      {
+        "version": "20260908211134",
+        "name": "pm21_p01_movimientos_registro_aislamiento"
+      },
+      {
+        "version": "20260908211144",
+        "name": "pm21_p01_storage_qa_pruebas_aislamiento"
+      },
+      {
+        "version": "20260908212044",
+        "name": "pm21_p02_matices_rol_politicas"
+      },
+      {
+        "version": "20260910063716",
+        "name": "pm26_p06i_aviso_h_rendimiento_qa"
+      },
+      {
+        "version": "20260910175504",
+        "name": "pm26_p07c_aislamiento_prefiltros_candidatos_qa"
+      },
+      {
+        "version": "20260912210619",
+        "name": "pm26_p09f_b3_pagos_encargo_operation_id_global"
+      },
+      {
+        "version": "20260915183918",
+        "name": "p2_r01_qa_revocar_anon_tablas"
+      },
+      {
+        "version": "20260915183924",
+        "name": "p2_r01_qa_revocar_anon_secuencias"
+      },
+      {
+        "version": "20260915183930",
+        "name": "p2_r01_qa_default_tablas_sin_anon"
+      },
+      {
+        "version": "20260915183935",
+        "name": "p2_r01_qa_default_secuencias_sin_anon"
+      },
+      {
+        "version": "20260915183940",
+        "name": "p2_r01_qa_default_funciones_public_sin_anon"
+      },
+      {
+        "version": "20260915184058",
+        "name": "p2_r01_qa_revocar_uso_public_anon"
+      },
+      {
+        "version": "20260915184324",
+        "name": "p2_r01_qa_pm05_scope_sin_anon_explicito"
+      },
+      {
+        "version": "20260916040900",
+        "name": "p2_r02_qa_alinear_acl_helpers_privados"
+      },
+      {
+        "version": "20260918055252",
+        "name": "pm29_qa_paridad_tablas_empresas_locales"
+      },
+      {
+        "version": "20260918055315",
+        "name": "pm29_qa_replica_hotfix_barrera_reset_local"
+      },
+      {
+        "version": "20260918055414",
+        "name": "pm29_qa_estado_stub_y_contexto_lectura"
+      },
+      {
+        "version": "20260918055500",
+        "name": "pm29_qa_guardar_contexto_instalacion_ui"
+      },
+      {
+        "version": "20260918055813",
+        "name": "pm29_qa_guardar_contexto_v2_freno_local_por_propietario"
+      },
+      {
+        "version": "20260918074122",
+        "name": "pm29_qa_v3_pertenencia_local_sin_exigir_empresa_activa"
+      },
+      {
+        "version": "20260918103803",
+        "name": "pm29_qa_v4_baja_empresa_con_cascada"
+      }
+    ]
+  },
+  "catalog_snapshot": {
+    "prod": {
+      "views": [
+        {
+          "name": "stock_estado",
+          "owner": "postgres",
+          "schema": "public",
+          "definition_md5": "65f5830944d7fc24ec2c724a3fb1b1b7",
+          "security_invoker": true
+        }
+      ],
+      "tables": [
+        {
+          "name": "g1_operation_ids_global",
+          "owner": "postgres",
+          "schema": "private",
+          "rls_forced": false,
+          "rls_enabled": false
+        },
+        {
+          "name": "la_instalacion_estado",
+          "owner": "postgres",
+          "schema": "private",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "pm27_prod_recovery_20260914",
+          "owner": "postgres",
+          "schema": "private",
+          "rls_forced": false,
+          "rls_enabled": false
+        },
+        {
+          "name": "albaranes_empresa",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "almacen_kv",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "auditoria_registro",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "clientes_empresa",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "empresas",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "encargos_empresa",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "errores_sistema",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "facturas_directas_empresa",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "fichajes_registro",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "gastos_empresa",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "locales",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "membresias_usuario",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "movimientos_registro",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "movimientos_stock",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "operaciones_procesadas",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "pagos_encargo",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "pagos_factura",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "perfiles",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "prefiltro_limites",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "prefiltros_candidatos",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "proveedores_empresa",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "stock_operaciones",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "stock_ubicacion",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "suscripciones_push",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        }
+      ],
+      "policies": [
+        {
+          "name": "pm06_albaranes_delete",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "albaranes_empresa",
+          "schema": "public",
+          "command": "d",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "1e2d4421c29bacda837a9c5b309f5cb8"
+        },
+        {
+          "name": "pm06_albaranes_insert",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "albaranes_empresa",
+          "schema": "public",
+          "command": "a",
+          "check_md5": "1e2d4421c29bacda837a9c5b309f5cb8",
+          "using_md5": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        {
+          "name": "pm06_albaranes_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "albaranes_empresa",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "b70b4a73dcc7f375376b13153caccba7"
+        },
+        {
+          "name": "pm06_albaranes_update",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "albaranes_empresa",
+          "schema": "public",
+          "command": "w",
+          "check_md5": "1e2d4421c29bacda837a9c5b309f5cb8",
+          "using_md5": "1e2d4421c29bacda837a9c5b309f5cb8"
+        },
+        {
+          "name": "acceso por rol y clave - delete",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "almacen_kv",
+          "schema": "public",
+          "command": "d",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "d4dc6d5a65b8d9b64d45edd2b49c6896"
+        },
+        {
+          "name": "acceso por rol y clave - insert",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "almacen_kv",
+          "schema": "public",
+          "command": "a",
+          "check_md5": "209203e4f7da93d0e9b6eb3b410057e6",
+          "using_md5": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        {
+          "name": "acceso por rol y clave - select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "almacen_kv",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "209203e4f7da93d0e9b6eb3b410057e6"
+        },
+        {
+          "name": "acceso por rol y clave - update",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "almacen_kv",
+          "schema": "public",
+          "command": "w",
+          "check_md5": "209203e4f7da93d0e9b6eb3b410057e6",
+          "using_md5": "209203e4f7da93d0e9b6eb3b410057e6"
+        },
+        {
+          "name": "auditoria - insertar",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "auditoria_registro",
+          "schema": "public",
+          "command": "a",
+          "check_md5": "f25476519fb7f23cbf5951d404ca7f4b",
+          "using_md5": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        {
+          "name": "auditoria - leer solo propietario",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "auditoria_registro",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "e45f4227cc856f6be32be52f8798a3d5"
+        },
+        {
+          "name": "clientes_empresa_delete",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "clientes_empresa",
+          "schema": "public",
+          "command": "d",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "97ac4bdcd0fc1c90da9f5657c0d4248f"
+        },
+        {
+          "name": "clientes_empresa_insert",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "clientes_empresa",
+          "schema": "public",
+          "command": "a",
+          "check_md5": "2b3cd85f1af3212e09db3f0697e61799",
+          "using_md5": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        {
+          "name": "clientes_empresa_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "clientes_empresa",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "97ac4bdcd0fc1c90da9f5657c0d4248f"
+        },
+        {
+          "name": "clientes_empresa_update",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "clientes_empresa",
+          "schema": "public",
+          "command": "w",
+          "check_md5": "2b3cd85f1af3212e09db3f0697e61799",
+          "using_md5": "97ac4bdcd0fc1c90da9f5657c0d4248f"
+        },
+        {
+          "name": "pm14_encargos_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "encargos_empresa",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "b70b4a73dcc7f375376b13153caccba7"
+        },
+        {
+          "name": "errores - cualquiera con sesion inserta",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "errores_sistema",
+          "schema": "public",
+          "command": "a",
+          "check_md5": "f25476519fb7f23cbf5951d404ca7f4b",
+          "using_md5": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        {
+          "name": "errores - propietario lee",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "errores_sistema",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "e45f4227cc856f6be32be52f8798a3d5"
+        },
+        {
+          "name": "pm06_facturas_directas_insert",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "facturas_directas_empresa",
+          "schema": "public",
+          "command": "a",
+          "check_md5": "1e2d4421c29bacda837a9c5b309f5cb8",
+          "using_md5": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        {
+          "name": "pm06_facturas_directas_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "facturas_directas_empresa",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "b70b4a73dcc7f375376b13153caccba7"
+        },
+        {
+          "name": "pm06_facturas_directas_update",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "facturas_directas_empresa",
+          "schema": "public",
+          "command": "w",
+          "check_md5": "1e2d4421c29bacda837a9c5b309f5cb8",
+          "using_md5": "1e2d4421c29bacda837a9c5b309f5cb8"
+        },
+        {
+          "name": "fichajes - borrar",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "fichajes_registro",
+          "schema": "public",
+          "command": "d",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "d4dc6d5a65b8d9b64d45edd2b49c6896"
+        },
+        {
+          "name": "fichajes - corregir",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "fichajes_registro",
+          "schema": "public",
+          "command": "w",
+          "check_md5": "749ab87252da91b32a426f7e25801006",
+          "using_md5": "749ab87252da91b32a426f7e25801006"
+        },
+        {
+          "name": "fichajes - insertar",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "fichajes_registro",
+          "schema": "public",
+          "command": "a",
+          "check_md5": "85854a2b4eae5cf64d407f480c54b729",
+          "using_md5": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        {
+          "name": "fichajes - leer",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "fichajes_registro",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "85854a2b4eae5cf64d407f480c54b729"
+        },
+        {
+          "name": "pm06_gastos_delete",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "gastos_empresa",
+          "schema": "public",
+          "command": "d",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "1e2d4421c29bacda837a9c5b309f5cb8"
+        },
+        {
+          "name": "pm06_gastos_insert",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "gastos_empresa",
+          "schema": "public",
+          "command": "a",
+          "check_md5": "1e2d4421c29bacda837a9c5b309f5cb8",
+          "using_md5": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        {
+          "name": "pm06_gastos_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "gastos_empresa",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "b70b4a73dcc7f375376b13153caccba7"
+        },
+        {
+          "name": "pm06_gastos_update",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "gastos_empresa",
+          "schema": "public",
+          "command": "w",
+          "check_md5": "1e2d4421c29bacda837a9c5b309f5cb8",
+          "using_md5": "1e2d4421c29bacda837a9c5b309f5cb8"
+        },
+        {
+          "name": "movimientos - borrar",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "movimientos_registro",
+          "schema": "public",
+          "command": "d",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "d4dc6d5a65b8d9b64d45edd2b49c6896"
+        },
+        {
+          "name": "movimientos - insertar",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "movimientos_registro",
+          "schema": "public",
+          "command": "a",
+          "check_md5": "f25476519fb7f23cbf5951d404ca7f4b",
+          "using_md5": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        {
+          "name": "movimientos - leer",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "movimientos_registro",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "f25476519fb7f23cbf5951d404ca7f4b"
+        },
+        {
+          "name": "pm12_prod_movimientos_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "movimientos_stock",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "01b0d1540c12e4bddc0abf49bc27914f"
+        },
+        {
+          "name": "pm14_pagos_encargo_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "pagos_encargo",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "b70b4a73dcc7f375376b13153caccba7"
+        },
+        {
+          "name": "pm06_pagos_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "pagos_factura",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "b70b4a73dcc7f375376b13153caccba7"
+        },
+        {
+          "name": "perfiles - leer propio o propietario",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "perfiles",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "dc1181b0003600f0ef6926c539cb9933"
+        },
+        {
+          "name": "perfiles - propietario actualiza",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "perfiles",
+          "schema": "public",
+          "command": "w",
+          "check_md5": "e45f4227cc856f6be32be52f8798a3d5",
+          "using_md5": "e45f4227cc856f6be32be52f8798a3d5"
+        },
+        {
+          "name": "prefiltros - propietario borra",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "prefiltros_candidatos",
+          "schema": "public",
+          "command": "d",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "49ff8e0675c137ce9c1a8a0ff34d3f37"
+        },
+        {
+          "name": "prefiltros - propietario crea",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "prefiltros_candidatos",
+          "schema": "public",
+          "command": "a",
+          "check_md5": "49ff8e0675c137ce9c1a8a0ff34d3f37",
+          "using_md5": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        {
+          "name": "prefiltros - propietario lee",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "prefiltros_candidatos",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "49ff8e0675c137ce9c1a8a0ff34d3f37"
+        },
+        {
+          "name": "proveedores_empresa_delete",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "proveedores_empresa",
+          "schema": "public",
+          "command": "d",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "97ac4bdcd0fc1c90da9f5657c0d4248f"
+        },
+        {
+          "name": "proveedores_empresa_insert",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "proveedores_empresa",
+          "schema": "public",
+          "command": "a",
+          "check_md5": "2b3cd85f1af3212e09db3f0697e61799",
+          "using_md5": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        {
+          "name": "proveedores_empresa_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "proveedores_empresa",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "97ac4bdcd0fc1c90da9f5657c0d4248f"
+        },
+        {
+          "name": "proveedores_empresa_update",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "proveedores_empresa",
+          "schema": "public",
+          "command": "w",
+          "check_md5": "2b3cd85f1af3212e09db3f0697e61799",
+          "using_md5": "97ac4bdcd0fc1c90da9f5657c0d4248f"
+        },
+        {
+          "name": "pm12_prod_operaciones_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "stock_operaciones",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "01b0d1540c12e4bddc0abf49bc27914f"
+        },
+        {
+          "name": "pm12_prod_stock_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "stock_ubicacion",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "01b0d1540c12e4bddc0abf49bc27914f"
+        },
+        {
+          "name": "push - propia actualiza",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "suscripciones_push",
+          "schema": "public",
+          "command": "w",
+          "check_md5": "3aeba96f8ccb8ceadb4ee7a9763fd16b",
+          "using_md5": "73ff08c80d0872f55ffb0faf1d87429c"
+        },
+        {
+          "name": "push - propia borra",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "suscripciones_push",
+          "schema": "public",
+          "command": "d",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "73ff08c80d0872f55ffb0faf1d87429c"
+        },
+        {
+          "name": "push - propia inserta",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "suscripciones_push",
+          "schema": "public",
+          "command": "a",
+          "check_md5": "3aeba96f8ccb8ceadb4ee7a9763fd16b",
+          "using_md5": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        {
+          "name": "push - propia lee",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "suscripciones_push",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "73ff08c80d0872f55ffb0faf1d87429c"
+        }
+      ],
+      "triggers": [
+        {
+          "name": "pm06_albaran_identidad",
+          "table": "albaranes_empresa",
+          "schema": "public",
+          "definition_md5": "a097704a66d050c84308ac41663a29fd"
+        },
+        {
+          "name": "pm06_albaran_proveedor",
+          "table": "albaranes_empresa",
+          "schema": "public",
+          "definition_md5": "b234ac4a053bcce4fa73b1a0ae2ba27e"
+        },
+        {
+          "name": "almacen_kv_actualizar_fecha",
+          "table": "almacen_kv",
+          "schema": "public",
+          "definition_md5": "68ef4d46abec7b444c4f46163aba7781"
+        },
+        {
+          "name": "pm06_factura_directa_identidad",
+          "table": "facturas_directas_empresa",
+          "schema": "public",
+          "definition_md5": "2d0625542af85bb4df0a661272bb5c20"
+        },
+        {
+          "name": "pm06_factura_directa_proveedor",
+          "table": "facturas_directas_empresa",
+          "schema": "public",
+          "definition_md5": "51e4baf9facd7f4f2f8a72e1117a78cf"
+        },
+        {
+          "name": "pm06_factura_proyecta_gasto",
+          "table": "facturas_directas_empresa",
+          "schema": "public",
+          "definition_md5": "4471b91064912a944c5b7963c52948c0"
+        },
+        {
+          "name": "movimientos_completar_local",
+          "table": "movimientos_registro",
+          "schema": "public",
+          "definition_md5": "d9e2675600163338197f9f56ef5a04cd"
+        },
+        {
+          "name": "g1_operation_id_global",
+          "table": "pagos_encargo",
+          "schema": "public",
+          "definition_md5": "2739bd438036e462c4cd17715283f374"
+        },
+        {
+          "name": "g1_operation_id_global",
+          "table": "pagos_factura",
+          "schema": "public",
+          "definition_md5": "2e9f99a35f4481ce0e5103efab057965"
+        },
+        {
+          "name": "perfiles_actualizar_fecha",
+          "table": "perfiles",
+          "schema": "public",
+          "definition_md5": "05e4cd30deb7625756ea8e8f42cf35c2"
+        },
+        {
+          "name": "g1_operation_id_global",
+          "table": "stock_operaciones",
+          "schema": "public",
+          "definition_md5": "ffec9d55cccb317b898ec7fa78172512"
+        },
+        {
+          "name": "suscripciones_push_estampar_propiedad",
+          "table": "suscripciones_push",
+          "schema": "public",
+          "definition_md5": "63be5a08aebbe8c089ec16867eb22d8f"
+        }
+      ],
+      "functions": [
+        {
+          "name": "es_propietario_activo",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "7cf85a2c6e795b99fc7eff6f1f7971e9",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "g1_claim_operation_id",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "715424e550ba42b7ab65ed2d11d20b3a",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "la_rol",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "a83aa3aeadc7767092e3d9ec257b5f17",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "la_tiene_empresa",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_empresa text",
+          "definition_md5": "03a459e56b125e4c43ef5bacc88830a3",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "la_tiene_local",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_empresa text, p_local text",
+          "definition_md5": "7cc0d55da7f420011be5599ed993e1b9",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "la_usuario_activo",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "d677fd247fdfb001019cf256a633f114",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm06_proteger_identidad_y_total",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "c741ef728ebc9d1dbb47a02a0b4e6530",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm06_proyectar_gasto_factura",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "1a2932aa3e4f6137316bc708cfb11541",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm06_puede_gestionar_finanzas",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "dda6f745fdec8ad41c4766dd1a9420c1",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm06_total_datos",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_origen text, d jsonb",
+          "definition_md5": "4d8063ec2cdfa78e0196c24ea09abc21",
+          "execute_public": false,
+          "security_definer": false,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm06_total_factura",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_origen text, p_factura_id text, p_empresa text, p_local text",
+          "definition_md5": "62523edf522eda6af14f1f0395aee986",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm06_validar_proveedor_compatible",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "381fff969dc39df0827bd6126f892964",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm07_puede_gestionar_stock",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "4f77cd6204335ee79c59ff89ac316101",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm07_puede_vender",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "2a66a185e77093034fbeb3f62aceac20",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm07_validar_cantidad",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_cantidad numeric, p_fraccionable boolean, p_precision smallint",
+          "definition_md5": "b3c99442595c7e0195d2b91e0a4ac8e4",
+          "execute_public": false,
+          "security_definer": false,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm08_bloquear_operation_id",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text",
+          "definition_md5": "f24a2d6d27125087e54cc47863047f20",
+          "execute_public": false,
+          "security_definer": false,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm08_local_operable",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text",
+          "definition_md5": "4616d9bbe8eee824893cd154423d4f7b",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm08_puede_operar_caja",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "274f1a49b1fdf38763200bce0090da77",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm08_validar_dinero",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_importe numeric, p_permite_cero boolean, p_permite_negativo boolean",
+          "definition_md5": "00a3df0df8f1464e5409e6deae388319",
+          "execute_public": false,
+          "security_definer": false,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm08_validar_operation_id",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text",
+          "definition_md5": "53e7c46e17953b9ffc5bb357e6fd83a1",
+          "execute_public": false,
+          "security_definer": false,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm09_bloquear_operation_id_stock",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text",
+          "definition_md5": "2afe543f20407818e014eae13498b320",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm12_cancelar_conteo_stock",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text, p_conteo jsonb, p_cancelacion jsonb",
+          "definition_md5": "d6d057a8b656fb7d17577ec34d26fe81",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm12_confirmar_ajuste_stock",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text, p_empresa_id text, p_local_id text, p_intencion jsonb, p_plan jsonb, p_bases jsonb",
+          "definition_md5": "84e14413fd1e803f13e9a7ca57f84900",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm14_total_encargo",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_empresa text, p_local text, p_encargo_id text",
+          "definition_md5": "b0fa966dcad5f011b4685eed1608fcc3",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "actualizar_fecha",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "87a1e75c07ed90451c51bb9f717cb80d",
+          "execute_public": false,
+          "security_definer": false,
+          "execute_authenticated": false
+        },
+        {
+          "name": "actualizar_fecha_perfil",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "9fb60ea097e496fb62595cbe73cbf2f6",
+          "execute_public": false,
+          "security_definer": false,
+          "execute_authenticated": false
+        },
+        {
+          "name": "anular_venta_tpv",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_venta_id text, p_motivo text",
+          "definition_md5": "bd90760308e4cb4567227c25908366cf",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "bootstrap_owner_instalacion",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_empresa_nombre text, p_local_nombre text",
+          "definition_md5": "208f62fdfc336e2c109e0997ae9d05aa",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "completar_local_movimiento",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "b1cf0a6a62799a274b0b84a74902646f",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "descontar_stock",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_producto_id text, p_cantidad numeric, p_venta_id text, p_movimiento jsonb",
+          "definition_md5": "14a30fa740e035ef5240d4f9e5fd7c0f",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "descontar_stock_carrito",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_lineas jsonb, p_venta_id text",
+          "definition_md5": "42c8db377c3835ca9bf6749eeab51e20",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "estampar_propiedad_suscripcion_push",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "573e7b05c005384039b43489e06cd518",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "guardar_contexto_instalacion_ui",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_clave text, p_valor jsonb",
+          "definition_md5": "99c6a64be93365aa331a02a9ce6ddd6c",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "obtener_contexto_instalacion_ui",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "8cd6c1b6e8d6966f9300053fe61f29ca",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "obtener_contexto_operativo",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_local_id text",
+          "definition_md5": "211ddc8ad6c053be1c75872ceb29a093",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "obtener_estado_instalacion",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "d8d61eb09a25701d93a61071b1228f2b",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "obtener_generacion_instalacion",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "d24dbcc74430d13fd9ddddd25c4e1e5c",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm12_cancelar_conteo_stock",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text, p_conteo jsonb, p_cancelacion jsonb",
+          "definition_md5": "34bcce28250160475005204590b6bece",
+          "execute_public": false,
+          "security_definer": false,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm12_confirmar_ajuste_stock",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text, p_empresa_id text, p_local_id text, p_intencion jsonb, p_plan jsonb, p_bases jsonb",
+          "definition_md5": "c8430cd698d2d1208169255fbcd8767e",
+          "execute_public": false,
+          "security_definer": false,
+          "execute_authenticated": true
+        },
+        {
+          "name": "registrar_auditoria",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_id text, p_usuario text, p_accion text, p_detalle text, p_fecha text, p_hora text",
+          "definition_md5": "ecf57b04fdee2f2b198c2fc8424ad6fa",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "registrar_auditoria",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_usuario text, p_accion text, p_detalle text",
+          "definition_md5": "f3db951c16cc119603b012cca542fb7f",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "registrar_encargo",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_id text, p_empresa_id text, p_local_id text, p_cliente_id text, p_total numeric, p_estado text, p_datos jsonb",
+          "definition_md5": "239daf8c6424d2cc130694d606551ef6",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "registrar_intento_prefiltro",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_clave text",
+          "definition_md5": "710a74b0a1e52321a1876e503f6ec35c",
+          "execute_public": false,
+          "security_definer": false,
+          "execute_authenticated": false
+        },
+        {
+          "name": "registrar_pago_encargo",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_id text, p_operation_id text, p_encargo_id text, p_empresa_id text, p_local_id text, p_concepto text, p_importe numeric, p_fecha date, p_medio_pago text, p_datos jsonb",
+          "definition_md5": "277875ad6fe8bf887f540234331f74b0",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "registrar_pago_factura",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_id text, p_operation_id text, p_factura_id text, p_origen_factura text, p_empresa_id text, p_local_id text, p_importe numeric, p_fecha date, p_medio_pago text, p_datos jsonb",
+          "definition_md5": "6b18595d25b4cc4c3e6de98d7ee4dd18",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "registrar_venta_stock",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text, p_empresa_id text, p_local_id text, p_producto_id text, p_cantidad numeric, p_datos jsonb",
+          "definition_md5": "25dcc2c91aeac17c0167d10724e0b518",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "registrar_venta_stock_carrito",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text, p_empresa_id text, p_local_id text, p_lineas jsonb, p_datos jsonb",
+          "definition_md5": "9b8d46b3a512059e868cce0864c9b27c",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "revertir_pago_encargo",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_id text, p_operation_id text, p_pago_id text, p_motivo text",
+          "definition_md5": "798138ef5234cf8c957ca21d8edc8e41",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "revertir_pago_factura",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_id text, p_operation_id text, p_pago_id text, p_motivo text",
+          "definition_md5": "e2c0381d78a7618f903525dcf6ace74f",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "rls_auto_enable",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "6998ea6b4c2480f5d2e34b5dcf3f8d36",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "trasladar_stock_entre_locales",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text, p_empresa_id text, p_origen_local_id text, p_destino_local_id text, p_producto_origen_id text, p_producto_destino_id text, p_cantidad numeric, p_datos jsonb",
+          "definition_md5": "2a488933d4e45533e62d8d6ce33ec3ab",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "trasladar_stock_interno",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text, p_empresa_id text, p_local_id text, p_producto_id text, p_origen text, p_destino text, p_cantidad numeric, p_datos jsonb",
+          "definition_md5": "cec3b9d21906017ba7a2a178b6098ace",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        }
+      ]
+    },
+    "qa": {
+      "views": [
+        {
+          "name": "stock_estado",
+          "owner": "postgres",
+          "schema": "public",
+          "definition_md5": "65f5830944d7fc24ec2c724a3fb1b1b7",
+          "security_invoker": true
+        }
+      ],
+      "tables": [
+        {
+          "name": "g1_operation_ids_global",
+          "owner": "postgres",
+          "schema": "private",
+          "rls_forced": false,
+          "rls_enabled": false
+        },
+        {
+          "name": "la_instalacion_estado",
+          "owner": "postgres",
+          "schema": "private",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "albaranes_empresa",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "almacen_kv",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "arqueos_caja",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "arqueos_caja_anulaciones",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "auditoria_registro",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "caja_operaciones",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "clientes_empresa",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "devoluciones_proveedor",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "devoluciones_venta",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "empleados",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "empresas",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "encargos_empresa",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "errores_sistema",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "facturas_directas_empresa",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "fichajes_registro",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "gastos_empresa",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "locales",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "membresias_usuario",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "movimientos_registro",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "movimientos_stock",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "operaciones_procesadas",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "pagos_encargo",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "pagos_factura",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "perfiles",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "pm29_res",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": false
+        },
+        {
+          "name": "prefiltro_limites",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "prefiltros_candidatos",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "proveedores_empresa",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "stock_operaciones",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "stock_ubicacion",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        },
+        {
+          "name": "suscripciones_push",
+          "owner": "postgres",
+          "schema": "public",
+          "rls_forced": false,
+          "rls_enabled": true
+        }
+      ],
+      "policies": [
+        {
+          "name": "pm06_albaranes_delete",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "albaranes_empresa",
+          "schema": "public",
+          "command": "d",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "1e2d4421c29bacda837a9c5b309f5cb8"
+        },
+        {
+          "name": "pm06_albaranes_insert",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "albaranes_empresa",
+          "schema": "public",
+          "command": "a",
+          "check_md5": "1e2d4421c29bacda837a9c5b309f5cb8",
+          "using_md5": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        {
+          "name": "pm06_albaranes_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "albaranes_empresa",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "b70b4a73dcc7f375376b13153caccba7"
+        },
+        {
+          "name": "pm06_albaranes_update",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "albaranes_empresa",
+          "schema": "public",
+          "command": "w",
+          "check_md5": "1e2d4421c29bacda837a9c5b309f5cb8",
+          "using_md5": "1e2d4421c29bacda837a9c5b309f5cb8"
+        },
+        {
+          "name": "pm05_almacen_delete",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "almacen_kv",
+          "schema": "public",
+          "command": "d",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "6fce7862c1b2458fb9354b8f2f03a0fd"
+        },
+        {
+          "name": "pm05_almacen_insert",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "almacen_kv",
+          "schema": "public",
+          "command": "a",
+          "check_md5": "6fce7862c1b2458fb9354b8f2f03a0fd",
+          "using_md5": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        {
+          "name": "pm05_almacen_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "almacen_kv",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "6fce7862c1b2458fb9354b8f2f03a0fd"
+        },
+        {
+          "name": "pm05_almacen_update",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "almacen_kv",
+          "schema": "public",
+          "command": "w",
+          "check_md5": "6fce7862c1b2458fb9354b8f2f03a0fd",
+          "using_md5": "6fce7862c1b2458fb9354b8f2f03a0fd"
+        },
+        {
+          "name": "pm08_arqueos_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "arqueos_caja",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "01b0d1540c12e4bddc0abf49bc27914f"
+        },
+        {
+          "name": "pm08_arqueos_anulaciones_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "arqueos_caja_anulaciones",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "01b0d1540c12e4bddc0abf49bc27914f"
+        },
+        {
+          "name": "auditoria_pm05_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "auditoria_registro",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "36771bba53016f0b1e24fd1150aa3bd8"
+        },
+        {
+          "name": "pm08_caja_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "caja_operaciones",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "01b0d1540c12e4bddc0abf49bc27914f"
+        },
+        {
+          "name": "clientes_empresa_delete",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "clientes_empresa",
+          "schema": "public",
+          "command": "d",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "97ac4bdcd0fc1c90da9f5657c0d4248f"
+        },
+        {
+          "name": "clientes_empresa_insert",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "clientes_empresa",
+          "schema": "public",
+          "command": "a",
+          "check_md5": "2b3cd85f1af3212e09db3f0697e61799",
+          "using_md5": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        {
+          "name": "clientes_empresa_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "clientes_empresa",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "97ac4bdcd0fc1c90da9f5657c0d4248f"
+        },
+        {
+          "name": "clientes_empresa_update",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "clientes_empresa",
+          "schema": "public",
+          "command": "w",
+          "check_md5": "2b3cd85f1af3212e09db3f0697e61799",
+          "using_md5": "97ac4bdcd0fc1c90da9f5657c0d4248f"
+        },
+        {
+          "name": "pm08_devoluciones_proveedor_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "devoluciones_proveedor",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "01b0d1540c12e4bddc0abf49bc27914f"
+        },
+        {
+          "name": "pm08_devoluciones_venta_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "devoluciones_venta",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "01b0d1540c12e4bddc0abf49bc27914f"
+        },
+        {
+          "name": "pm11_empleados_select_gestion",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "empleados",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "8dfc79ab80dd917b3809b967177adfbe"
+        },
+        {
+          "name": "pm14_encargos_insert",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "encargos_empresa",
+          "schema": "public",
+          "command": "a",
+          "check_md5": "b70b4a73dcc7f375376b13153caccba7",
+          "using_md5": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        {
+          "name": "pm14_encargos_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "encargos_empresa",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "b70b4a73dcc7f375376b13153caccba7"
+        },
+        {
+          "name": "pm14_encargos_update",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "encargos_empresa",
+          "schema": "public",
+          "command": "w",
+          "check_md5": "b70b4a73dcc7f375376b13153caccba7",
+          "using_md5": "b70b4a73dcc7f375376b13153caccba7"
+        },
+        {
+          "name": "errores_sistema_insert",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "errores_sistema",
+          "schema": "public",
+          "command": "a",
+          "check_md5": "2c0e0c00bc8cf3eab7bd58ce45d75e4c",
+          "using_md5": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        {
+          "name": "errores_sistema_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "errores_sistema",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "b99d49f57d3eafabb11c644049fe7e0c"
+        },
+        {
+          "name": "pm06_facturas_directas_insert",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "facturas_directas_empresa",
+          "schema": "public",
+          "command": "a",
+          "check_md5": "1e2d4421c29bacda837a9c5b309f5cb8",
+          "using_md5": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        {
+          "name": "pm06_facturas_directas_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "facturas_directas_empresa",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "b70b4a73dcc7f375376b13153caccba7"
+        },
+        {
+          "name": "pm06_facturas_directas_update",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "facturas_directas_empresa",
+          "schema": "public",
+          "command": "w",
+          "check_md5": "1e2d4421c29bacda837a9c5b309f5cb8",
+          "using_md5": "1e2d4421c29bacda837a9c5b309f5cb8"
+        },
+        {
+          "name": "pm13_fichajes_select_scope",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "fichajes_registro",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "9df1690189be42a3ee9d05ec31896492"
+        },
+        {
+          "name": "pm06_gastos_delete",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "gastos_empresa",
+          "schema": "public",
+          "command": "d",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "1e2d4421c29bacda837a9c5b309f5cb8"
+        },
+        {
+          "name": "pm06_gastos_insert",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "gastos_empresa",
+          "schema": "public",
+          "command": "a",
+          "check_md5": "1e2d4421c29bacda837a9c5b309f5cb8",
+          "using_md5": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        {
+          "name": "pm06_gastos_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "gastos_empresa",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "b70b4a73dcc7f375376b13153caccba7"
+        },
+        {
+          "name": "pm06_gastos_update",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "gastos_empresa",
+          "schema": "public",
+          "command": "w",
+          "check_md5": "1e2d4421c29bacda837a9c5b309f5cb8",
+          "using_md5": "1e2d4421c29bacda837a9c5b309f5cb8"
+        },
+        {
+          "name": "membresia_propia_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "membresias_usuario",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "cfa97d26c8c4dd958d420e7d72d03867"
+        },
+        {
+          "name": "movimientos_registro_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "movimientos_registro",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "72bdd64107f878e39a468c9cd04becb3"
+        },
+        {
+          "name": "pm07_movimientos_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "movimientos_stock",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "01b0d1540c12e4bddc0abf49bc27914f"
+        },
+        {
+          "name": "pm14_pagos_encargo_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "pagos_encargo",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "b70b4a73dcc7f375376b13153caccba7"
+        },
+        {
+          "name": "pm06_pagos_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "pagos_factura",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "b70b4a73dcc7f375376b13153caccba7"
+        },
+        {
+          "name": "qa_perfil_propio_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "perfiles",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "6a6b7c2a3a520c44377894171204e8d2"
+        },
+        {
+          "name": "qa_perfil_propio_update",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "perfiles",
+          "schema": "public",
+          "command": "w",
+          "check_md5": "6a6b7c2a3a520c44377894171204e8d2",
+          "using_md5": "6a6b7c2a3a520c44377894171204e8d2"
+        },
+        {
+          "name": "prefiltros_candidatos_select_gestion",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "prefiltros_candidatos",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "8dfc79ab80dd917b3809b967177adfbe"
+        },
+        {
+          "name": "proveedores_empresa_delete",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "proveedores_empresa",
+          "schema": "public",
+          "command": "d",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "97ac4bdcd0fc1c90da9f5657c0d4248f"
+        },
+        {
+          "name": "proveedores_empresa_insert",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "proveedores_empresa",
+          "schema": "public",
+          "command": "a",
+          "check_md5": "2b3cd85f1af3212e09db3f0697e61799",
+          "using_md5": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        {
+          "name": "proveedores_empresa_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "proveedores_empresa",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "97ac4bdcd0fc1c90da9f5657c0d4248f"
+        },
+        {
+          "name": "proveedores_empresa_update",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "proveedores_empresa",
+          "schema": "public",
+          "command": "w",
+          "check_md5": "2b3cd85f1af3212e09db3f0697e61799",
+          "using_md5": "97ac4bdcd0fc1c90da9f5657c0d4248f"
+        },
+        {
+          "name": "pm07_operaciones_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "stock_operaciones",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "01b0d1540c12e4bddc0abf49bc27914f"
+        },
+        {
+          "name": "pm07_stock_select",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "stock_ubicacion",
+          "schema": "public",
+          "command": "r",
+          "check_md5": "d41d8cd98f00b204e9800998ecf8427e",
+          "using_md5": "01b0d1540c12e4bddc0abf49bc27914f"
+        },
+        {
+          "name": "qa_push_propio",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "suscripciones_push",
+          "schema": "public",
+          "command": "*",
+          "check_md5": "6a6b7c2a3a520c44377894171204e8d2",
+          "using_md5": "6a6b7c2a3a520c44377894171204e8d2"
+        }
+      ],
+      "triggers": [
+        {
+          "name": "pm06_albaran_identidad",
+          "table": "albaranes_empresa",
+          "schema": "public",
+          "definition_md5": "a097704a66d050c84308ac41663a29fd"
+        },
+        {
+          "name": "pm06_albaran_proveedor",
+          "table": "albaranes_empresa",
+          "schema": "public",
+          "definition_md5": "b234ac4a053bcce4fa73b1a0ae2ba27e"
+        },
+        {
+          "name": "pm05_scope_almacen_kv_trg",
+          "table": "almacen_kv",
+          "schema": "public",
+          "definition_md5": "7fd9047cc1dcf2edd700e24f52d58d79"
+        },
+        {
+          "name": "g1_operation_id_global",
+          "table": "arqueos_caja",
+          "schema": "public",
+          "definition_md5": "d4c5ac008240a4c8a42896184ab33ce5"
+        },
+        {
+          "name": "g1_operation_id_global",
+          "table": "arqueos_caja_anulaciones",
+          "schema": "public",
+          "definition_md5": "ae77ff1a2265d3940c08c07325f9bfc9"
+        },
+        {
+          "name": "g1_operation_id_global",
+          "table": "caja_operaciones",
+          "schema": "public",
+          "definition_md5": "fd40da5ebf5096b0213ed3ca79adc5c5"
+        },
+        {
+          "name": "pm11_empleados_guard",
+          "table": "empleados",
+          "schema": "public",
+          "definition_md5": "21f2977014784164e1c7fcbac4ed7898"
+        },
+        {
+          "name": "pm06_factura_directa_identidad",
+          "table": "facturas_directas_empresa",
+          "schema": "public",
+          "definition_md5": "2d0625542af85bb4df0a661272bb5c20"
+        },
+        {
+          "name": "pm06_factura_directa_proveedor",
+          "table": "facturas_directas_empresa",
+          "schema": "public",
+          "definition_md5": "51e4baf9facd7f4f2f8a72e1117a78cf"
+        },
+        {
+          "name": "pm06_factura_proyecta_gasto",
+          "table": "facturas_directas_empresa",
+          "schema": "public",
+          "definition_md5": "4471b91064912a944c5b7963c52948c0"
+        },
+        {
+          "name": "pm11_membresias_vinculo_guard",
+          "table": "membresias_usuario",
+          "schema": "public",
+          "definition_md5": "c880233f16df4b76d10bc6dbb7499196"
+        },
+        {
+          "name": "g1_operation_id_global",
+          "table": "pagos_encargo",
+          "schema": "public",
+          "definition_md5": "2739bd438036e462c4cd17715283f374"
+        },
+        {
+          "name": "g1_operation_id_global",
+          "table": "pagos_factura",
+          "schema": "public",
+          "definition_md5": "2e9f99a35f4481ce0e5103efab057965"
+        },
+        {
+          "name": "pm11_perfiles_guard_sensible",
+          "table": "perfiles",
+          "schema": "public",
+          "definition_md5": "b8ee227c1d554a9844e0d5404c2b1f96"
+        },
+        {
+          "name": "pm11_perfiles_vinculo_guard",
+          "table": "perfiles",
+          "schema": "public",
+          "definition_md5": "4cdf8428967c12c2408f438def4d6fae"
+        },
+        {
+          "name": "g1_operation_id_global",
+          "table": "stock_operaciones",
+          "schema": "public",
+          "definition_md5": "ffec9d55cccb317b898ec7fa78172512"
+        }
+      ],
+      "functions": [
+        {
+          "name": "g1_claim_operation_id",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "f6d804c7870a6bc9da61b303ba485150",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "la_rol",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "23b59011e6c7020dceaf983087396a84",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "la_tiene_empresa",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_empresa text",
+          "definition_md5": "3fa10c5d09c6f57ed56328c8a0285bb1",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "la_tiene_local",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_empresa text, p_local text",
+          "definition_md5": "f32caae9d288a9fcde401872eda886ef",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "la_usuario_activo",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "2d0ea541023b80118cd075438fe528c9",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm06_proteger_identidad_y_total",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "d06cb6731779288f336f2213ac80cef2",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm06_proyectar_gasto_factura",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "e77874ad11f145f442bb4236ce456a31",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm06_puede_gestionar_finanzas",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "c4b12a8790f7105b15eaddb5ce296ff2",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm06_total_datos",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": true,
+          "identity_args": "p_origen text, d jsonb",
+          "definition_md5": "94a9c6132c9f0e85d6dc3a82e4fbdd2c",
+          "execute_public": true,
+          "security_definer": false,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm06_total_factura",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_origen text, p_factura_id text, p_empresa text, p_local text",
+          "definition_md5": "0e20e409820e76ca5af19b3cd3029f7e",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm06_validar_proveedor_compatible",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "6bd0966f805d18dbc31a2ac6badfd5ea",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm07_puede_gestionar_stock",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "7cc007efd040dbdc754772f7c20ce7b1",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm07_puede_vender",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "2b7a534b9170eb537afae5cc788cb97b",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm07_validar_cantidad",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": true,
+          "identity_args": "p_cantidad numeric, p_fraccionable boolean, p_precision smallint",
+          "definition_md5": "bb70f2fedb9331e304fda6573dd94e29",
+          "execute_public": true,
+          "security_definer": false,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm08_bloquear_operation_id",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text",
+          "definition_md5": "e1f67f93cee3d38c55c7745b144d6390",
+          "execute_public": false,
+          "security_definer": false,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm08_local_operable",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text",
+          "definition_md5": "4616d9bbe8eee824893cd154423d4f7b",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm08_puede_corregir_caja",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "83e01bc74f5f0a5e83d36077b613982c",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm08_puede_operar_caja",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "274f1a49b1fdf38763200bce0090da77",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm08_validar_dinero",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_importe numeric, p_permite_cero boolean, p_permite_negativo boolean",
+          "definition_md5": "0527b3ad263bcb38b86e3dbd48e039e4",
+          "execute_public": false,
+          "security_definer": false,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm08_validar_json_objeto",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_valor jsonb, p_max_bytes integer",
+          "definition_md5": "bf965b70baec9f968622cebd04d94a71",
+          "execute_public": false,
+          "security_definer": false,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm08_validar_operation_id",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text",
+          "definition_md5": "42d7e7b1c1eccc3acf3b67bd1301fbe2",
+          "execute_public": false,
+          "security_definer": false,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm09_bloquear_operation_id_stock",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text",
+          "definition_md5": "e4ad0693e42acd93cedf635760fde9f8",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm09_resumen_caja_ventas",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text, p_fecha date",
+          "definition_md5": "fea77bec37d4eff527f9775beebbbf5d",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm11_auditar_empleado",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_accion text, p_empleado_id text, p_empresa_id text, p_local_id text, p_detalle jsonb",
+          "definition_md5": "ece577f169d7123552e3e25c5612efdb",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm11_empleados_guard",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "00f93b4a01a87e972d4d5ea697f266fd",
+          "execute_public": false,
+          "security_definer": false,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm11_local_activo",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text",
+          "definition_md5": "9e1b8bebfec32d94ce9ee4da2f1f5ba0",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm11_local_pertenece_empresa",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text",
+          "definition_md5": "890be662e4c86516ff00e8b3350047d6",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm11_membresias_vinculo_guard",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "64acff9ff3bf7094b1d014785075cf74",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm11_normalizar_empleado_legacy",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_ficha jsonb, p_empresa_id text, p_local_id text",
+          "definition_md5": "4cff94033cf0e99ecb5c0ddcef89597a",
+          "execute_public": false,
+          "security_definer": false,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm11_perfiles_guard_sensible",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "9df1103d36d7d52aaaa26ce309a8e5b8",
+          "execute_public": false,
+          "security_definer": false,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm11_perfiles_vinculo_guard",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "6fb5302304abc04c19b38bfb7f33162c",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm11_propietario_puede_gestionar_vinculo",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text",
+          "definition_md5": "1013fa745de92a7058602fc19f2e774c",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm11_puede_migrar_personal",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text",
+          "definition_md5": "cfb9f5c307d5b29da5a6821754fa551f",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm11_puede_mutar_personal",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text",
+          "definition_md5": "2e8498b2030a54f80cba0a7bdda0e995",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm11_puede_ver_personal",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text",
+          "definition_md5": "256c8f63546a1cb320ac5ee3ce46ff28",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm11_try_timestamptz",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_text text",
+          "definition_md5": "2532249bdfdea859e48b8100e780a0ca",
+          "execute_public": false,
+          "security_definer": false,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm11_validar_datos_laborales",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_datos jsonb",
+          "definition_md5": "d0bb13121a409a705c8797b4e824fb3f",
+          "execute_public": false,
+          "security_definer": false,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm12_cancelar_conteo_stock",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text, p_conteo jsonb, p_cancelacion jsonb",
+          "definition_md5": "d6d057a8b656fb7d17577ec34d26fe81",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm12_confirmar_ajuste_stock",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text, p_empresa_id text, p_local_id text, p_intencion jsonb, p_plan jsonb, p_bases jsonb",
+          "definition_md5": "a3f966c48cabbcfd80880c4527eef648",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm13_fichaje_actor_es_empleado",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_empleado_id text",
+          "definition_md5": "19daef23cbbf5e1d15477a18135c3f55",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm13_fichaje_secuencia_valida",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_empleado_id text, p_local_id text, p_ignorar_id text, p_candidato jsonb",
+          "definition_md5": "b323d1fb4c11b9579552617b78e3c98d",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm14_total_encargo",
+          "owner": "postgres",
+          "schema": "private",
+          "execute_anon": false,
+          "identity_args": "p_empresa text, p_local text, p_encargo_id text",
+          "definition_md5": "4975b11e96333f80b7fc003f7af096a5",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "anular_arqueo_caja",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text, p_arqueo_operation_id text, p_motivo text",
+          "definition_md5": "a9a08a5e75a3d56ce128c55bc9c9dcbc",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "guardar_contexto_instalacion_ui",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_clave text, p_valor jsonb",
+          "definition_md5": "99c6a64be93365aa331a02a9ce6ddd6c",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "obtener_contexto_instalacion_ui",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "8cd6c1b6e8d6966f9300053fe61f29ca",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "obtener_contexto_operativo",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "3064430c63c97f6c50e05ff0117da862",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "obtener_estado_instalacion",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "6094599adbfafa7627a90769177c350c",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "obtener_generacion_instalacion",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "d24dbcc74430d13fd9ddddd25c4e1e5c",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm05_scope_almacen_kv",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": true,
+          "identity_args": "",
+          "definition_md5": "54267e700984e42f3f741b018c9af091",
+          "execute_public": true,
+          "security_definer": false,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm11_alta_empleado",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text, p_empleado_id text, p_nombre text, p_datos jsonb",
+          "definition_md5": "db6d5506eb72376e7ef4b03fc25573b3",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm11_anonimizar_empleado",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text, p_empleado_id text",
+          "definition_md5": "0731b13f6ebbd3fa4b39776ba8765778",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm11_baja_empleado",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text, p_empleado_id text, p_motivo text",
+          "definition_md5": "0f320b1b8e3707a2121e66ddf2b078fd",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm11_crear_prefiltro_candidato",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text, p_candidato_nombre text",
+          "definition_md5": "ec766d7c1b3650f86a52ac520f0e799d",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm11_desvincular_cuenta_empleado",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text, p_empleado_id text, p_user_id uuid",
+          "definition_md5": "5c3b5b70437d2f55b9377482a99f6456",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm11_editar_empleado",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text, p_empleado_id text, p_cambios jsonb, p_nombre text",
+          "definition_md5": "5951a1c934a868ab4fce94561d23d1ed",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm11_eliminar_prefiltro_candidato",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text, p_token text",
+          "definition_md5": "a1543af0d2caf30ba46925861d17b70d",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm11_finalizar_creacion_cuenta_empleado",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_actor_user_id uuid, p_user_id uuid, p_empresa_id text, p_local_id text, p_empleado_id text, p_nombre text, p_rol text",
+          "definition_md5": "354cd3754c4e09f56d0645a7599baf88",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "pm11_migrar_empleados_legacy",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text, p_fichas jsonb",
+          "definition_md5": "4fe556da8d1777b79e9e06653086c3ab",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm11_previsualizar_migracion_empleados_legacy",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text, p_fichas jsonb",
+          "definition_md5": "1c223c5daed8dfe03c8596c0d2118272",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm11_reactivar_empleado",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text, p_empleado_id text",
+          "definition_md5": "ba9d7c023ded08aeba4acf397f830feb",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm11_vincular_cuenta_empleado",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text, p_empleado_id text, p_user_id uuid",
+          "definition_md5": "9525716fe1c47846d9d7bab2d7a3027b",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm12_cancelar_conteo_stock",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text, p_conteo jsonb, p_cancelacion jsonb",
+          "definition_md5": "34bcce28250160475005204590b6bece",
+          "execute_public": false,
+          "security_definer": false,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm12_confirmar_ajuste_stock",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text, p_empresa_id text, p_local_id text, p_intencion jsonb, p_plan jsonb, p_bases jsonb",
+          "definition_md5": "c8430cd698d2d1208169255fbcd8767e",
+          "execute_public": false,
+          "security_definer": false,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm13_anular_ausencia",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text, p_empleado_id text, p_ausencia_id text, p_operation_id text, p_motivo text",
+          "definition_md5": "8d7706fccb66e491c85b5fdb596d621f",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm13_anular_fichaje",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_fichaje_id text, p_operation_id text, p_motivo text",
+          "definition_md5": "4e44ebee9ba2d501efa605a862852203",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm13_corregir_fichaje",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_fichaje_id text, p_fecha date, p_hora text, p_tipo text, p_operation_id text, p_motivo text",
+          "definition_md5": "a31b36f680950dce1da2c69104209965",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm13_fichaje_manual",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_empleado_id text, p_local_id text, p_fecha date, p_hora text, p_tipo text, p_operation_id text, p_motivo text",
+          "definition_md5": "8a24d19672bc191ba47cd9f2eba4472a",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm13_fichar",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_empleado_id text, p_local_id text, p_tipo text, p_operation_id text",
+          "definition_md5": "30c6c81bd60080eb770c71570ce8f222",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "pm13_registrar_ausencia",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_empresa_id text, p_local_id text, p_empleado_id text, p_ausencia_id text, p_tipo text, p_fecha_inicio date, p_fecha_fin date, p_operation_id text",
+          "definition_md5": "7a8992c02b530c89937936b09ceb4711",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "qa_ping",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "",
+          "definition_md5": "4839afbe0b889b2c8e2ecc80e68599f3",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": false
+        },
+        {
+          "name": "registrar_arqueo_caja",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text, p_empresa_id text, p_local_id text, p_fecha date, p_efectivo_base numeric, p_efectivo_contado numeric, p_notas text, p_snapshot jsonb",
+          "definition_md5": "a77c0cee0b1420da32964f799b8b4a9f",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "registrar_auditoria",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_id text, p_usuario text, p_accion text, p_detalle text, p_fecha date, p_hora text, p_empresa_id text, p_local_id text",
+          "definition_md5": "92a553ce88a438bbc930dde246e3466e",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "registrar_devolucion_proveedor",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text, p_empresa_id text, p_local_id text, p_producto_id text, p_cantidad numeric, p_proveedor_id text, p_proveedor_nombre text, p_motivo text, p_fecha date, p_datos jsonb",
+          "definition_md5": "07fe88626f0cf2eb0c09ddca55f747d1",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "registrar_devolucion_venta",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text, p_venta_operation_id text, p_empresa_id text, p_local_id text, p_producto_id text, p_cantidad numeric, p_reembolso numeric, p_medio_reembolso text, p_motivo text, p_fecha date, p_datos jsonb",
+          "definition_md5": "253ac10d117ad05269f553be64743b4f",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "registrar_devolucion_venta_pm09",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text, p_venta_operation_id text, p_empresa_id text, p_local_id text, p_producto_id text, p_cantidad numeric, p_reembolso numeric, p_medio_reembolso text, p_motivo text, p_fecha date, p_datos jsonb",
+          "definition_md5": "6070f33e2b52db1952f4cefe2abc4e2a",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "registrar_encargo",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_id text, p_empresa_id text, p_local_id text, p_cliente_id text, p_total numeric, p_estado text, p_datos jsonb",
+          "definition_md5": "ea337f385356e1fd8743c33c6e45a671",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "registrar_movimiento_caja",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text, p_empresa_id text, p_local_id text, p_fecha date, p_tipo text, p_importe numeric, p_concepto text, p_datos jsonb",
+          "definition_md5": "2b723045b4517adc79e45d87b0a130ce",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "registrar_pago_encargo",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_id text, p_operation_id text, p_encargo_id text, p_empresa_id text, p_local_id text, p_concepto text, p_importe numeric, p_fecha date, p_medio_pago text, p_datos jsonb",
+          "definition_md5": "a02a26960ebd32e2a5238606fc0ef8b8",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "registrar_pago_factura",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_id text, p_operation_id text, p_factura_id text, p_origen_factura text, p_empresa_id text, p_local_id text, p_importe numeric, p_fecha date, p_medio_pago text, p_datos jsonb",
+          "definition_md5": "8b2ff43fcfec19bc4a7b34c7ddddc6f0",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "registrar_venta_stock",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text, p_empresa_id text, p_local_id text, p_producto_id text, p_cantidad numeric, p_datos jsonb",
+          "definition_md5": "f609075d8131fe929bb402400c22cd88",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "registrar_venta_stock_carrito",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text, p_empresa_id text, p_local_id text, p_lineas jsonb, p_datos jsonb",
+          "definition_md5": "91c1900aee8a90ed8c1e96c6dc23acc6",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "registrar_venta_stock_carrito_pm09",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text, p_empresa_id text, p_local_id text, p_lineas jsonb, p_fecha date, p_datos jsonb",
+          "definition_md5": "b6171ebd9a916ce4365ecf3c4dfef6fa",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "registrar_venta_stock_pm09",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text, p_empresa_id text, p_local_id text, p_producto_id text, p_cantidad numeric, p_fecha date, p_datos jsonb",
+          "definition_md5": "7e90bcec9e2be7de8ef75fcd0226fffc",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "revertir_movimiento_caja",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text, p_movimiento_operation_id text, p_motivo text, p_fecha date",
+          "definition_md5": "77771e9e2a7e7bd06dc66bd525a1c218",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "revertir_pago_encargo",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_id text, p_operation_id text, p_pago_id text, p_motivo text",
+          "definition_md5": "fc8e70738f71c56c79aac49b6881bbbe",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "revertir_pago_factura",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_id text, p_operation_id text, p_pago_id text, p_motivo text",
+          "definition_md5": "ad22b436646312b111401a09deab5f07",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "revertir_venta_stock",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text, p_venta_operation_id text, p_motivo text",
+          "definition_md5": "639989520cb607396b55a7d79d7cdbe3",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "revertir_venta_stock_carrito",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text, p_venta_operation_id text, p_motivo text",
+          "definition_md5": "22aa5e41953385923cddc395e1d2e1d5",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "revertir_venta_stock_carrito_pm09",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text, p_venta_operation_id text, p_fecha date, p_motivo text",
+          "definition_md5": "b6aa2c9d6597409710b2b4cc1541f137",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "revertir_venta_stock_pm09",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text, p_venta_operation_id text, p_fecha date, p_motivo text",
+          "definition_md5": "8beaf0a2dce46bebab41bd34a446d09c",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "trasladar_stock_entre_locales",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text, p_empresa_id text, p_origen_local_id text, p_destino_local_id text, p_producto_origen_id text, p_producto_destino_id text, p_cantidad numeric, p_datos jsonb",
+          "definition_md5": "bab7aca07d368a1116ee7a85cc5982cb",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        },
+        {
+          "name": "trasladar_stock_interno",
+          "owner": "postgres",
+          "schema": "public",
+          "execute_anon": false,
+          "identity_args": "p_operation_id text, p_empresa_id text, p_local_id text, p_producto_id text, p_origen text, p_destino text, p_cantidad numeric, p_datos jsonb",
+          "definition_md5": "f68830fc9b2e158297d6416cbba11b63",
+          "execute_public": false,
+          "security_definer": true,
+          "execute_authenticated": true
+        }
+      ]
+    }
+  },
+  "catalog_comparison": {
+    "functions": {
+      "prod": 52,
+      "qa": 92,
+      "both": 38,
+      "same": 8,
+      "different": 30,
+      "prodOnly": [
+        "private|es_propietario_activo|",
+        "public|actualizar_fecha|",
+        "public|actualizar_fecha_perfil|",
+        "public|anular_venta_tpv|p_venta_id text, p_motivo text",
+        "public|bootstrap_owner_instalacion|p_empresa_nombre text, p_local_nombre text",
+        "public|completar_local_movimiento|",
+        "public|descontar_stock|p_producto_id text, p_cantidad numeric, p_venta_id text, p_movimiento jsonb",
+        "public|descontar_stock_carrito|p_lineas jsonb, p_venta_id text",
+        "public|estampar_propiedad_suscripcion_push|",
+        "public|obtener_contexto_operativo|p_local_id text",
+        "public|registrar_auditoria|p_id text, p_usuario text, p_accion text, p_detalle text, p_fecha text, p_hora text",
+        "public|registrar_auditoria|p_usuario text, p_accion text, p_detalle text",
+        "public|registrar_intento_prefiltro|p_clave text",
+        "public|rls_auto_enable|"
+      ],
+      "qaOnly": [
+        "private|pm08_puede_corregir_caja|",
+        "private|pm08_validar_json_objeto|p_valor jsonb, p_max_bytes integer",
+        "private|pm09_resumen_caja_ventas|p_empresa_id text, p_local_id text, p_fecha date",
+        "private|pm11_auditar_empleado|p_accion text, p_empleado_id text, p_empresa_id text, p_local_id text, p_detalle jsonb",
+        "private|pm11_empleados_guard|",
+        "private|pm11_local_activo|p_empresa_id text, p_local_id text",
+        "private|pm11_local_pertenece_empresa|p_empresa_id text, p_local_id text",
+        "private|pm11_membresias_vinculo_guard|",
+        "private|pm11_normalizar_empleado_legacy|p_ficha jsonb, p_empresa_id text, p_local_id text",
+        "private|pm11_perfiles_guard_sensible|",
+        "private|pm11_perfiles_vinculo_guard|",
+        "private|pm11_propietario_puede_gestionar_vinculo|p_empresa_id text, p_local_id text",
+        "private|pm11_puede_migrar_personal|p_empresa_id text, p_local_id text",
+        "private|pm11_puede_mutar_personal|p_empresa_id text, p_local_id text",
+        "private|pm11_puede_ver_personal|p_empresa_id text, p_local_id text",
+        "private|pm11_try_timestamptz|p_text text",
+        "private|pm11_validar_datos_laborales|p_datos jsonb",
+        "private|pm13_fichaje_actor_es_empleado|p_empleado_id text",
+        "private|pm13_fichaje_secuencia_valida|p_empleado_id text, p_local_id text, p_ignorar_id text, p_candidato jsonb",
+        "public|anular_arqueo_caja|p_operation_id text, p_arqueo_operation_id text, p_motivo text",
+        "public|obtener_contexto_operativo|",
+        "public|pm05_scope_almacen_kv|",
+        "public|pm11_alta_empleado|p_empresa_id text, p_local_id text, p_empleado_id text, p_nombre text, p_datos jsonb",
+        "public|pm11_anonimizar_empleado|p_empresa_id text, p_local_id text, p_empleado_id text",
+        "public|pm11_baja_empleado|p_empresa_id text, p_local_id text, p_empleado_id text, p_motivo text",
+        "public|pm11_crear_prefiltro_candidato|p_empresa_id text, p_local_id text, p_candidato_nombre text",
+        "public|pm11_desvincular_cuenta_empleado|p_empresa_id text, p_local_id text, p_empleado_id text, p_user_id uuid",
+        "public|pm11_editar_empleado|p_empresa_id text, p_local_id text, p_empleado_id text, p_cambios jsonb, p_nombre text",
+        "public|pm11_eliminar_prefiltro_candidato|p_empresa_id text, p_local_id text, p_token text",
+        "public|pm11_finalizar_creacion_cuenta_empleado|p_actor_user_id uuid, p_user_id uuid, p_empresa_id text, p_local_id text, p_empleado_id text, p_nombre text, p_rol text",
+        "public|pm11_migrar_empleados_legacy|p_empresa_id text, p_local_id text, p_fichas jsonb",
+        "public|pm11_previsualizar_migracion_empleados_legacy|p_empresa_id text, p_local_id text, p_fichas jsonb",
+        "public|pm11_reactivar_empleado|p_empresa_id text, p_local_id text, p_empleado_id text",
+        "public|pm11_vincular_cuenta_empleado|p_empresa_id text, p_local_id text, p_empleado_id text, p_user_id uuid",
+        "public|pm13_anular_ausencia|p_empresa_id text, p_local_id text, p_empleado_id text, p_ausencia_id text, p_operation_id text, p_motivo text",
+        "public|pm13_anular_fichaje|p_fichaje_id text, p_operation_id text, p_motivo text",
+        "public|pm13_corregir_fichaje|p_fichaje_id text, p_fecha date, p_hora text, p_tipo text, p_operation_id text, p_motivo text",
+        "public|pm13_fichaje_manual|p_empleado_id text, p_local_id text, p_fecha date, p_hora text, p_tipo text, p_operation_id text, p_motivo text",
+        "public|pm13_fichar|p_empleado_id text, p_local_id text, p_tipo text, p_operation_id text",
+        "public|pm13_registrar_ausencia|p_empresa_id text, p_local_id text, p_empleado_id text, p_ausencia_id text, p_tipo text, p_fecha_inicio date, p_fecha_fin date, p_operation_id text",
+        "public|qa_ping|",
+        "public|registrar_arqueo_caja|p_operation_id text, p_empresa_id text, p_local_id text, p_fecha date, p_efectivo_base numeric, p_efectivo_contado numeric, p_notas text, p_snapshot jsonb",
+        "public|registrar_auditoria|p_id text, p_usuario text, p_accion text, p_detalle text, p_fecha date, p_hora text, p_empresa_id text, p_local_id text",
+        "public|registrar_devolucion_proveedor|p_operation_id text, p_empresa_id text, p_local_id text, p_producto_id text, p_cantidad numeric, p_proveedor_id text, p_proveedor_nombre text, p_motivo text, p_fecha date, p_datos jsonb",
+        "public|registrar_devolucion_venta|p_operation_id text, p_venta_operation_id text, p_empresa_id text, p_local_id text, p_producto_id text, p_cantidad numeric, p_reembolso numeric, p_medio_reembolso text, p_motivo text, p_fecha date, p_datos jsonb",
+        "public|registrar_devolucion_venta_pm09|p_operation_id text, p_venta_operation_id text, p_empresa_id text, p_local_id text, p_producto_id text, p_cantidad numeric, p_reembolso numeric, p_medio_reembolso text, p_motivo text, p_fecha date, p_datos jsonb",
+        "public|registrar_movimiento_caja|p_operation_id text, p_empresa_id text, p_local_id text, p_fecha date, p_tipo text, p_importe numeric, p_concepto text, p_datos jsonb",
+        "public|registrar_venta_stock_carrito_pm09|p_operation_id text, p_empresa_id text, p_local_id text, p_lineas jsonb, p_fecha date, p_datos jsonb",
+        "public|registrar_venta_stock_pm09|p_operation_id text, p_empresa_id text, p_local_id text, p_producto_id text, p_cantidad numeric, p_fecha date, p_datos jsonb",
+        "public|revertir_movimiento_caja|p_operation_id text, p_movimiento_operation_id text, p_motivo text, p_fecha date",
+        "public|revertir_venta_stock|p_operation_id text, p_venta_operation_id text, p_motivo text",
+        "public|revertir_venta_stock_carrito|p_operation_id text, p_venta_operation_id text, p_motivo text",
+        "public|revertir_venta_stock_carrito_pm09|p_operation_id text, p_venta_operation_id text, p_fecha date, p_motivo text",
+        "public|revertir_venta_stock_pm09|p_operation_id text, p_venta_operation_id text, p_fecha date, p_motivo text"
+      ],
+      "divergent": [
+        "private|g1_claim_operation_id|",
+        "private|la_rol|",
+        "private|la_tiene_empresa|p_empresa text",
+        "private|la_tiene_local|p_empresa text, p_local text",
+        "private|la_usuario_activo|",
+        "private|pm06_proteger_identidad_y_total|",
+        "private|pm06_proyectar_gasto_factura|",
+        "private|pm06_puede_gestionar_finanzas|",
+        "private|pm06_total_datos|p_origen text, d jsonb",
+        "private|pm06_total_factura|p_origen text, p_factura_id text, p_empresa text, p_local text",
+        "private|pm06_validar_proveedor_compatible|",
+        "private|pm07_puede_gestionar_stock|",
+        "private|pm07_puede_vender|",
+        "private|pm07_validar_cantidad|p_cantidad numeric, p_fraccionable boolean, p_precision smallint",
+        "private|pm08_bloquear_operation_id|p_operation_id text",
+        "private|pm08_validar_dinero|p_importe numeric, p_permite_cero boolean, p_permite_negativo boolean",
+        "private|pm08_validar_operation_id|p_operation_id text",
+        "private|pm09_bloquear_operation_id_stock|p_operation_id text",
+        "private|pm12_confirmar_ajuste_stock|p_operation_id text, p_empresa_id text, p_local_id text, p_intencion jsonb, p_plan jsonb, p_bases jsonb",
+        "private|pm14_total_encargo|p_empresa text, p_local text, p_encargo_id text",
+        "public|obtener_estado_instalacion|",
+        "public|registrar_encargo|p_id text, p_empresa_id text, p_local_id text, p_cliente_id text, p_total numeric, p_estado text, p_datos jsonb",
+        "public|registrar_pago_encargo|p_id text, p_operation_id text, p_encargo_id text, p_empresa_id text, p_local_id text, p_concepto text, p_importe numeric, p_fecha date, p_medio_pago text, p_datos jsonb",
+        "public|registrar_pago_factura|p_id text, p_operation_id text, p_factura_id text, p_origen_factura text, p_empresa_id text, p_local_id text, p_importe numeric, p_fecha date, p_medio_pago text, p_datos jsonb",
+        "public|registrar_venta_stock|p_operation_id text, p_empresa_id text, p_local_id text, p_producto_id text, p_cantidad numeric, p_datos jsonb",
+        "public|registrar_venta_stock_carrito|p_operation_id text, p_empresa_id text, p_local_id text, p_lineas jsonb, p_datos jsonb",
+        "public|revertir_pago_encargo|p_id text, p_operation_id text, p_pago_id text, p_motivo text",
+        "public|revertir_pago_factura|p_id text, p_operation_id text, p_pago_id text, p_motivo text",
+        "public|trasladar_stock_entre_locales|p_operation_id text, p_empresa_id text, p_origen_local_id text, p_destino_local_id text, p_producto_origen_id text, p_producto_destino_id text, p_cantidad numeric, p_datos jsonb",
+        "public|trasladar_stock_interno|p_operation_id text, p_empresa_id text, p_local_id text, p_producto_id text, p_origen text, p_destino text, p_cantidad numeric, p_datos jsonb"
+      ]
+    },
+    "tables": {
+      "prod": 27,
+      "qa": 33,
+      "both": 26,
+      "same": 26,
+      "different": 0,
+      "prodOnly": [
+        "private|pm27_prod_recovery_20260914|"
+      ],
+      "qaOnly": [
+        "public|arqueos_caja|",
+        "public|arqueos_caja_anulaciones|",
+        "public|caja_operaciones|",
+        "public|devoluciones_proveedor|",
+        "public|devoluciones_venta|",
+        "public|empleados|",
+        "public|pm29_res|"
+      ],
+      "divergent": []
+    },
+    "policies": {
+      "prod": 49,
+      "qa": 47,
+      "both": 22,
+      "same": 22,
+      "different": 0,
+      "prodOnly": [
+        "public|almacen_kv|acceso por rol y clave - delete",
+        "public|almacen_kv|acceso por rol y clave - insert",
+        "public|almacen_kv|acceso por rol y clave - select",
+        "public|almacen_kv|acceso por rol y clave - update",
+        "public|auditoria_registro|auditoria - insertar",
+        "public|auditoria_registro|auditoria - leer solo propietario",
+        "public|errores_sistema|errores - cualquiera con sesion inserta",
+        "public|errores_sistema|errores - propietario lee",
+        "public|fichajes_registro|fichajes - borrar",
+        "public|fichajes_registro|fichajes - corregir",
+        "public|fichajes_registro|fichajes - insertar",
+        "public|fichajes_registro|fichajes - leer",
+        "public|movimientos_registro|movimientos - borrar",
+        "public|movimientos_registro|movimientos - insertar",
+        "public|movimientos_registro|movimientos - leer",
+        "public|movimientos_stock|pm12_prod_movimientos_select",
+        "public|perfiles|perfiles - leer propio o propietario",
+        "public|perfiles|perfiles - propietario actualiza",
+        "public|prefiltros_candidatos|prefiltros - propietario borra",
+        "public|prefiltros_candidatos|prefiltros - propietario crea",
+        "public|prefiltros_candidatos|prefiltros - propietario lee",
+        "public|stock_operaciones|pm12_prod_operaciones_select",
+        "public|stock_ubicacion|pm12_prod_stock_select",
+        "public|suscripciones_push|push - propia actualiza",
+        "public|suscripciones_push|push - propia borra",
+        "public|suscripciones_push|push - propia inserta",
+        "public|suscripciones_push|push - propia lee"
+      ],
+      "qaOnly": [
+        "public|almacen_kv|pm05_almacen_delete",
+        "public|almacen_kv|pm05_almacen_insert",
+        "public|almacen_kv|pm05_almacen_select",
+        "public|almacen_kv|pm05_almacen_update",
+        "public|arqueos_caja|pm08_arqueos_select",
+        "public|arqueos_caja_anulaciones|pm08_arqueos_anulaciones_select",
+        "public|auditoria_registro|auditoria_pm05_select",
+        "public|caja_operaciones|pm08_caja_select",
+        "public|devoluciones_proveedor|pm08_devoluciones_proveedor_select",
+        "public|devoluciones_venta|pm08_devoluciones_venta_select",
+        "public|empleados|pm11_empleados_select_gestion",
+        "public|encargos_empresa|pm14_encargos_insert",
+        "public|encargos_empresa|pm14_encargos_update",
+        "public|errores_sistema|errores_sistema_insert",
+        "public|errores_sistema|errores_sistema_select",
+        "public|fichajes_registro|pm13_fichajes_select_scope",
+        "public|membresias_usuario|membresia_propia_select",
+        "public|movimientos_registro|movimientos_registro_select",
+        "public|movimientos_stock|pm07_movimientos_select",
+        "public|perfiles|qa_perfil_propio_select",
+        "public|perfiles|qa_perfil_propio_update",
+        "public|prefiltros_candidatos|prefiltros_candidatos_select_gestion",
+        "public|stock_operaciones|pm07_operaciones_select",
+        "public|stock_ubicacion|pm07_stock_select",
+        "public|suscripciones_push|qa_push_propio"
+      ],
+      "divergent": []
+    },
+    "views": {
+      "prod": 1,
+      "qa": 1,
+      "both": 1,
+      "same": 1,
+      "different": 0,
+      "prodOnly": [],
+      "qaOnly": [],
+      "divergent": []
+    },
+    "triggers": {
+      "prod": 12,
+      "qa": 16,
+      "both": 8,
+      "same": 8,
+      "different": 0,
+      "prodOnly": [
+        "public|almacen_kv|almacen_kv_actualizar_fecha",
+        "public|movimientos_registro|movimientos_completar_local",
+        "public|perfiles|perfiles_actualizar_fecha",
+        "public|suscripciones_push|suscripciones_push_estampar_propiedad"
+      ],
+      "qaOnly": [
+        "public|almacen_kv|pm05_scope_almacen_kv_trg",
+        "public|arqueos_caja|g1_operation_id_global",
+        "public|arqueos_caja_anulaciones|g1_operation_id_global",
+        "public|caja_operaciones|g1_operation_id_global",
+        "public|empleados|pm11_empleados_guard",
+        "public|membresias_usuario|pm11_membresias_vinculo_guard",
+        "public|perfiles|pm11_perfiles_guard_sensible",
+        "public|perfiles|pm11_perfiles_vinculo_guard"
+      ],
+      "divergent": []
+    }
+  },
+  "known_high_priority_lineage": [
+    {
+      "repo": "20260919225831_pm33_p05_identidad_antes_de_actividad",
+      "prod": "20260919225831_pm33_p05_identidad_antes_de_actividad",
+      "classification": "exact_version_and_name"
+    },
+    {
+      "prod": "20260916035012_p2_r02_revocar_exec_rpcs_legacy",
+      "classification": "prod_only_no_repository_name_or_version_match",
+      "disposition": "unresolved; do not copy or repair history without a separately authorized remediation"
+    }
+  ]
+}
