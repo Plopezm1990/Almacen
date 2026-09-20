@@ -164,14 +164,56 @@ workflow), antes del commit `4127d39`:
    `function crearLogicaCaja`, `SelectorLocalInformes`,
    `ErroresSistema`, `obtener_contexto_operativo`).
 
-`git diff --check` sobre el commit señala una línea con espacio final
-dentro de `CURRENT_RELEASE.patch`: es un espacio **real y preexistente**
-dentro de un literal de texto JSX embebido en `fuente.js` ("...siempre
-una en uso. ", línea 112361 del bundle actual), que el patch generado
-captura fielmente porque debe reproducir `fuente.js` byte a byte -- el
-patch ya commiteado anteriormente contenía dos casos equivalentes. No se
-modifica `fuente.js` ni el patch para "limpiarlo": hacerlo rompería la
-paridad byte a byte que es el propósito entero del mecanismo.
+`git diff --check origin/release..HEAD` **termina en código `2`, no
+PASS**. Tiene exactamente un hallazgo:
+
+```
+source-recovery/CURRENT_RELEASE.patch:6272: trailing whitespace.
+++    esPropietario && activasPM29.length <= 1 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Para desactivar una empresa tiene que haber al menos dos activas: el programa necesita siempre una en uso."),
+```
+(el espacio final que señala `git diff --check` se omite aquí, al final
+de la cita en este documento, solo por higiene de este propio archivo de
+prosa; el byte real permanece intacto, sin tocar, en
+`CURRENT_RELEASE.patch` y en `fuente.js`.)
+
+Esa línea pertenece al **contenido histórico real de `fuente.js`** -- un
+espacio final dentro de un literal de texto JSX ya presente en el bundle
+servido ("...siempre una en uso. ", línea 112361 del `fuente.js` actual;
+el patch ya commiteado anteriormente contenía dos casos equivalentes) --
+y debe conservarse tal cual para mantener la reconstrucción byte a byte.
+**No se modifica `fuente.js` ni se sanitiza el parche**: hacerlo
+invalidaría `patchSha256`, rompería `patch --batch --fuzz=0` contra el
+hash fijado, y dejaría de reproducir `fuente.js` byte a byte -- el
+propósito entero del mecanismo.
+
+Control acotado, excluyendo únicamente el artefacto generado que
+reproduce ese contenido histórico:
+
+```
+$ git diff --check origin/release..HEAD -- . ':(exclude)source-recovery/CURRENT_RELEASE.patch'
+$ echo $?
+0
+```
+
+**Termina en código `0`.** El resto del cambio (el workflow y los otros
+dos archivos JSON) no tiene ningún hallazgo de espacios.
+
+**Por qué la excepción es segura, no una omisión**: el propio commit
+demuestra, con evidencia generada y no declarada, que ese contenido es
+exacto y no accidental --
+- `patchSha256` queda fijado en el manifiesto y se reverifica en cada
+  ejecución (`rebuild-current.mjs` aborta si no coincide).
+- El parche se aplica con `patch --batch --fuzz=0 -p1`: cualquier drift,
+  incluido en espacios, haría fallar la aplicación en vez de aceptarla
+  en silencio.
+- La reconstrucción exacta se ejecutó **dos veces** de forma
+  independiente (secciones 6 y 7), con resultado idéntico entre sí.
+- El resultado final se comparó **byte a byte contra `fuente.js`**
+  (`cmp -s dist/fuente.js ../fuente.js`), no solo por SHA-256.
+
+Cuatro comprobaciones independientes, todas en verde, sobre el mismo
+byte que `git diff --check` señala -- la excepción está tan verificada
+como el resto del mecanismo, no es una omisión sin comprobar.
 
 ## 7. Certificación remota
 
@@ -240,9 +282,14 @@ a `release` sería, como en el Punto 3, disparar un nuevo deploy (nuevo
 
 ## 10. Comprobaciones finales
 
-- **`git diff --check`**: 1 hallazgo, explicado en la sección 6 (espacio
-  real preexistente en `fuente.js`, capturado fielmente por el patch
-  generado -- no se modifica).
+- **`git diff --check origin/release..HEAD`**: código `2`, no PASS -- 1
+  hallazgo exacto (`source-recovery/CURRENT_RELEASE.patch:6272: trailing
+  whitespace`), explicado en la sección 6 (espacio real preexistente en
+  `fuente.js`, capturado fielmente por el patch generado -- no se
+  modifica). El control acotado que excluye únicamente ese artefacto
+  generado (`git diff --check origin/release..HEAD -- .
+  ':(exclude)source-recovery/CURRENT_RELEASE.patch'`) sí termina en
+  código `0`.
 - **Alcance exacto de archivos modificados** (`git diff --name-only
   origin/release HEAD`), 4 archivos:
   ```
@@ -279,15 +326,25 @@ a `release` sería, como en el Punto 3, disparar un nuevo deploy (nuevo
 
 ## 12. Reversión
 
-Un `git revert` del commit de fast-forward no aplica aquí de la misma
-forma que a un cambio de lógica: al ser fast-forward puro, revertir
-significaría mover `release` de vuelta a `8540bd06...` (mismo
-procedimiento que cualquier rollback de este tipo de promoción) o, sin
-mover `release`, aplicar un nuevo commit que restaure el contenido
-anterior de los 4 archivos de `source-recovery/`. Ninguna migración de
-base de datos, ningún cambio de `fuente.js` ni de configuración de
-Netlify/Supabase está involucrado -- la reversión es exclusivamente de
-metadatos de certificación y del workflow que los genera.
+`release` está protegida (Fase B del Punto 3): no admite force-push, y
+la regla se aplica también a administradores. **Mover `release` de
+vuelta a `8540bd0...` no es una opción de reversión disponible** -- ni
+siquiera para deshacer una promoción propia.
+
+El único rollback permitido es **hacia delante**: crear un nuevo commit
+que, partiendo del `8540bd0...` original, restaure el contenido anterior
+de los 4 archivos modificados (`.github/workflows/validate-source-recovery-release.yml`,
+`source-recovery/CURRENT_RELEASE.patch`,
+`source-recovery/CURRENT_RELEASE_EVIDENCE.json`,
+`source-recovery/CURRENT_RELEASE_MANIFEST.json`), y someter ese commit a
+`gate-final` como cualquier otro cambio antes de fusionarlo -- exactamente
+el mismo patrón de PR ya usado para incorporar la puerta de CI. Ese
+rollback **no se ejecuta en esta entrega**; queda documentado como
+procedimiento disponible si se necesitara. Ninguna migración de base de
+datos, ningún cambio de `fuente.js` ni de configuración de
+Netlify/Supabase está involucrado en ningún caso -- la reversión es
+exclusivamente de metadatos de certificación y del workflow que los
+genera.
 
 ## 13. Confirmación de límites respetados
 

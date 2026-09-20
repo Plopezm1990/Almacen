@@ -836,11 +836,19 @@ mismas rutas, mismos SHA-256, payload byte a byte idéntico.
 confirmado: los 4 archivos que cambia este punto viven todos fuera del
 contenido publicable.
 
-**Comprobaciones finales**: `git diff --check` señala 1 hallazgo dentro
-de `CURRENT_RELEASE.patch` -- un espacio real y preexistente dentro de un
-literal de texto JSX de `fuente.js`, capturado fielmente porque el patch
-debe reproducir `fuente.js` byte a byte (no se modifica: hacerlo
-rompería la paridad exigida). Alcance exacto: 4 archivos
+**Comprobaciones finales**: `git diff --check origin/release..HEAD`
+**termina en código `2`, no PASS** -- exactamente 1 hallazgo
+(`source-recovery/CURRENT_RELEASE.patch:6272: trailing whitespace`), un
+espacio real y preexistente dentro de un literal de texto JSX de
+`fuente.js`, capturado fielmente porque el patch debe reproducir
+`fuente.js` byte a byte (no se modifica: hacerlo rompería la paridad
+exigida). El control acotado que excluye únicamente ese artefacto
+generado (`git diff --check origin/release..HEAD -- .
+':(exclude)source-recovery/CURRENT_RELEASE.patch'`) sí **termina en
+código `0`** -- la excepción está respaldada por el hash versionado del
+parche, su aplicación con `fuzz=0`, la doble reconstrucción exacta y la
+paridad byte a byte con `fuente.js` ya documentadas arriba. Alcance
+exacto: 4 archivos
 (`.github/workflows/validate-source-recovery-release.yml`,
 `source-recovery/CURRENT_RELEASE.patch`,
 `source-recovery/CURRENT_RELEASE_EVIDENCE.json`,
@@ -848,6 +856,14 @@ rompería la paridad exigida). Alcance exacto: 4 archivos
 workflow modificado. Fusión simulada sin conflictos. La promoción
 incorporaría exactamente **1 commit**
 (`4127d39945d49f51c33e4b13a1ec8d69cc6a872e`).
+
+**Reversión, si hiciera falta**: `release` está protegida (Fase B del
+Punto 3) -- no admite force-push, ni siquiera para administradores, así
+que **mover `release` de vuelta a `8540bd0` no es una opción**. El único
+rollback disponible es hacia delante: un nuevo commit que restaure,
+desde `8540bd0`, el contenido anterior de los 4 archivos, sometido a
+`gate-final` como cualquier otro cambio antes de fusionarlo. No se
+ejecuta en esta entrega.
 
 **Entrega completa** (diagnóstico, regeneración, validación local y
 remota, igualdad de payload, comprobaciones finales, efecto esperado y
