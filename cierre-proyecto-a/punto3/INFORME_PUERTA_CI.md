@@ -4,23 +4,34 @@
 como required status check.** Ambas incorporaciones requieren autorización
 separada (ver sección 6).
 
-Rama de trabajo: `claude/punto3-puerta-ci-final`, creada desde
-`origin/release@6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d` (punto de partida
-corregido: `release` ya NO está en `f313bc0`).
+**Dos ramas, con propósitos distintos**:
 
-SHA final validado: **`ea9f76bb71414cd92534121e19cabbe35087ea8b`** (coincide
-exactamente con el HEAD local, el HEAD remoto empujado y el SHA sobre el que
-corrió el último run verde de CI).
+- **Rama de trabajo `claude/punto3-puerta-ci-final`**, creada desde
+  `origin/release@6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d` (punto de
+  partida corregido: `release` ya NO está en `f313bc0`). Contiene 7
+  commits y conserva, a propósito, la evidencia histórica completa del
+  proceso: el diseño de la puerta, la demostración real en rojo
+  (`16b3c22`) y su reversión (`96457de`), y el vaivén del informe de
+  cierre (añadido en `5bf2dec`, retirado en `ea9f76b`). SHA final:
+  `ea9f76bb71414cd92534121e19cabbe35087ea8b`. Secciones 1-7 de este
+  informe describen el trabajo hecho en esta rama.
+- **Rama limpia de promoción `claude/punto3-promocion-final`**, creada a
+  petición explícita tras una auditoría independiente: incorporar los 7
+  commits de la rama de trabajo a `release` habría dejado en el historial
+  de producción un fallo introducido deliberadamente (`16b3c22`) y su
+  reversión (`96457de`), algo que no debe llegar a producción aunque el
+  estado final sea correcto. Un solo commit
+  (`8540bd06d5555cf260aa4599144ed6c64f3ca029`) directamente sobre
+  `origin/release@6e26391`, con el estado final por **contenido** (no por
+  cherry-pick de historia) de los mismos 17 archivos de `ea9f76b`. Sección
+  8 de este informe documenta su construcción y verificación completas.
 
-> **Nota sobre la ubicación de este informe**: este archivo se escribió
-> originalmente dentro de la propia rama candidata
-> (`claude/punto3-puerta-ci-final`), lo que hacía que el diff frente a
-> `release` fuera de 18 archivos en vez de los 17 reales de la puerta de CI
-> — una auditoría independiente lo detectó. Se corrigió: el contenido (sin
-> cambios) se trasladó aquí, a la rama de seguimiento, y se retiró por
-> completo de la candidata (commit `ea9f76b`). La candidata queda con
-> exactamente 17 archivos de diferencia frente a `release`, todos bajo
-> `.github/workflows/` o `tests/` — ver sección 5.
+> **Nota sobre la ubicación de este informe**: se escribió originalmente
+> dentro de la propia rama candidata de trabajo, lo que hacía su diff
+> frente a `release` de 18 archivos en vez de 17 — una auditoría
+> independiente lo detectó. Se corrigió: el contenido se trasladó aquí, a
+> la rama de seguimiento, y se retiró por completo de ambas candidatas
+> (nunca llegó a existir en `claude/punto3-promocion-final`).
 
 ---
 
@@ -281,14 +292,70 @@ Ningún cambio toca `fuente.js`, `index.html`, migraciones de
 `supabase/migrations/`, ni ningún archivo de producto — solo tests
 (correcciones ya verificadas en el Punto 2) e infraestructura de CI.
 
+## 6-bis. Rama limpia de promoción: `claude/punto3-promocion-final`
+
+Construida a petición explícita, tras una auditoría independiente: los 7
+commits de `claude/punto3-puerta-ci-final` (secciones 1-6 de este
+informe) incluyen un fallo introducido deliberadamente (`16b3c22`) y su
+reversión (`96457de`) para demostrar el rojo/verde real de la puerta --
+evidencia necesaria, pero que no debe llegar al historial de `release` si
+esta candidata se incorpora.
+
+**Construcción** (por contenido, sin cherry-pick de historia):
+1. `git checkout -b claude/punto3-promocion-final origin/release` (base:
+   `6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d`).
+2. `git checkout ea9f76b -- <los 17 archivos>` -- trae el contenido final
+   ya validado, sin ningún commit intermedio de la rama de trabajo.
+3. Cambio de contenido único y explícitamente permitido: en
+   `.github/workflows/puerta-ci-release.yml`, el trigger `push` pasa de
+   `branches: [claude/punto3-puerta-ci-final]` a
+   `branches: [claude/punto3-promocion-final]` -- necesario para poder
+   validar esta rama en su propio nombre. `git diff ea9f76b` sobre los 17
+   archivos confirma que es el único cambio.
+4. Un solo commit: `8540bd06d5555cf260aa4599144ed6c64f3ca029`.
+
+**Comprobado antes del push** (los 9 requisitos exigidos, todos con
+resultado positivo):
+
+| # | Comprobación | Resultado |
+|---|---|---|
+| 1 | `origin/release` ancestro directo de `HEAD` | OK (`git merge-base --is-ancestor`) |
+| 2 | Exactamente 1 commit entre `origin/release` y `HEAD` | `git rev-list --count` = 1 |
+| 3 | Diff de exactamente 17 archivos | `git diff --name-only` = 17 líneas |
+| 4 | Todos bajo `.github/workflows/` o `tests/` | sin excepciones |
+| 5 | Nada bajo `cierre-proyecto-a/` | sin coincidencias |
+| 6 | Archivos idénticos a `ea9f76b` salvo el trigger permitido | `git diff ea9f76b` -- 1 línea, la del trigger |
+| 7 | `git diff --check` | limpio, código 0 |
+| 8 | Fusión simulada sobre copia desechable de `release` | sin conflictos, 17 archivos en el índice |
+| 9 | Payload `.netlify-dist` byte a byte idéntico | 33 archivos, mismas rutas, mismos SHA-256, sin `cierre-proyecto-a` (worktrees limpios de `release` y de esta candidata, comparación independiente de la de la sección 4.8) |
+
+**Confirmado después del push, con logs (no solo el estado)**: run
+[`35505508683`](https://github.com/Plopezm1990/Almacen/actions/runs/35505508683)
+— **SUCCESS real, 4/4 jobs**. Extraído del log de `gate-final`:
+```
+NODE_ACTIVE_TOTAL=121  NODE_ACTIVE_PASS=121  NODE_ACTIVE_FAIL=0
+POSTGRES_ACTIVE_TOTAL=9  POSTGRES_ACTIVE_PASS=9  POSTGRES_ACTIVE_FAIL=0
+HISTORICAL_EXPECTED_FAIL=1
+PM12_FULL_STACK_PASS=2 (de 2)   PM33_FULL_STACK_PASS=1 (de 1)
+CALCULO_TOTAL_ACTIVOS=133 (121 Node + 9 Postgres + 3 full-stack)
+ACTIVE_PASS=133  ACTIVE_FAIL=0
+UTILITIES=3  DIAGNOSTICS=5  TOTAL_INVENTORY=142
+PUERTA_CI_RELEASE_GATE=PASS
+```
+
+No se demostró de nuevo el rojo en esta rama a propósito -- esa
+demostración ya existe, real y verificada, en `claude/punto3-puerta-ci-final`
+(sección 4); repetirla aquí solo añadiría otro commit temporal a limpiar.
+
 ## 6. Propuesta de incorporación y de required status check — pendiente de autorización
 
 **No aplicado.** Documentado aquí para que el propietario decida.
 
-### A. Incorporar la puerta a `release`
+### A. Incorporar la candidata limpia a `release`
 
-Fusionar `claude/punto3-puerta-ci-final` (o el subconjunto de sus 17
-archivos que el propietario decida) a `release`.
+Fusionar `claude/punto3-promocion-final` (commit `8540bd0`, un solo
+commit sobre `release`, sin el historial de trabajo de
+`claude/punto3-puerta-ci-final`) a `release`.
 
 **Aviso explícito**: `release` está conectada a Netlify por integración
 directa del repositorio (fuera de GitHub Actions). **Cualquier push a
@@ -344,4 +411,7 @@ cambio de contenido servido.
 - No se aplicó ningún despliegue.
 - No se aplicó ninguna regla de protección de rama ni required status
   check — quedan solo propuestos (sección 6).
+- Ni `claude/punto3-puerta-ci-final` ni `claude/punto3-promocion-final`
+  se tocaron más allá de lo documentado en este informe; ninguna de las
+  dos se fusionó a `release`.
 - No se empezaron los puntos 4-18.

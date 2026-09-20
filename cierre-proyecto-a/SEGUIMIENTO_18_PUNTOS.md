@@ -564,19 +564,66 @@ hoy.
   desechable de `origin/release`) sin ningún conflicto — **exactamente 17
   archivos**, todos bajo `.github/workflows/` o `tests/`.
 
-**Entrega completa** (rama y SHA final, runs rojo/verde, lista real de los
-17 archivos modificados, diff frente a `release`, igualdad byte a byte del
-payload Netlify, propuesta de incorporación y de required status check
-con su efecto y reversión, confirmación de que no se tocó ninguna rama ni
-entorno protegido) en `cierre-proyecto-a/punto3/INFORME_PUERTA_CI.md`, en
-**esta** rama de seguimiento (ya no en la candidata). SHA final de la
-candidata: `claude/punto3-puerta-ci-final` @
-`ea9f76bb71414cd92534121e19cabbe35087ea8b`.
+**Dos ramas, con propósitos distintos — ninguna de las dos incorporada
+todavía a `release`:**
+
+- **Rama de trabajo, `claude/punto3-puerta-ci-final`** (7 commits sobre
+  `origin/release@6e26391`): conserva como evidencia histórica todo el
+  proceso de construcción y demostración -- incluida la demostración real
+  en rojo (`16b3c22`, fallo forzado) y su reversión (`96457de`), y el
+  vaivén del informe de cierre (`5bf2dec` lo añadió, `ea9f76b` lo retiró).
+  SHA final de esta rama: `ea9f76bb71414cd92534121e19cabbe35087ea8b`. No se
+  toca más allá de lo ya hecho.
+- **Rama limpia de promoción, `claude/punto3-promocion-final`** (creada a
+  petición explícita, tras una auditoría independiente que señaló que
+  incorporar los 7 commits de trabajo a `release` mezclaría en el
+  historial de producción un fallo deliberado y su reversión): **un solo
+  commit** (`8540bd06d5555cf260aa4599144ed6c64f3ca029`) directamente sobre
+  `origin/release@6e26391`, con el estado final por contenido (no por
+  cherry-pick de historia) de los mismos 17 archivos de `ea9f76b`. Único
+  cambio de contenido respecto a `ea9f76b`: el trigger `push` del workflow
+  pasa a apuntar a `claude/punto3-promocion-final` (necesario para poder
+  validar esta rama en su propio nombre; el trigger `push: branches:
+  [release]` sigue sin añadirse).
+
+  Comprobado antes del push (los 9 requisitos exigidos): `origin/release`
+  es ancestro directo de `HEAD`; exactamente 1 commit entre
+  `origin/release` y `HEAD`; el diff contiene exactamente 17 archivos,
+  todos bajo `.github/workflows/` o `tests/`; nada bajo
+  `cierre-proyecto-a/`; los archivos son idénticos a los de `ea9f76b`
+  salvo el cambio permitido del nombre de rama en el trigger (confirmado
+  con `git diff ea9f76b`); `git diff --check` limpio; la simulación de
+  incorporación sobre una copia desechable de `release` no tiene
+  conflictos; el payload `.netlify-dist`, construido desde worktrees
+  limpios de `release` y de esta candidata, sigue siendo byte a byte
+  idéntico (33 rutas, mismos SHA-256, sin `cierre-proyecto-a`).
+
+  Confirmado después del push, con logs (no solo el estado): run
+  [`35505508683`](https://github.com/Plopezm1990/Almacen/actions/runs/35505508683)
+  — **SUCCESS real, 4/4 jobs**, conteos calculados extraídos del log de
+  `gate-final`: `NODE_ACTIVE_PASS=121/121`, `POSTGRES_ACTIVE_PASS=9/9`,
+  `PM12_FULL_STACK_PASS=2/2`, `PM33_FULL_STACK_PASS=1/1`,
+  `ACTIVE_PASS=133 ACTIVE_FAIL=0`, `UTILITIES=3 DIAGNOSTICS=5
+  TOTAL_INVENTORY=142`.
+
+**`release`, Netlify y la protección de rama siguen sin modificarse.** El
+futuro movimiento de `release` (fusión de cualquiera de las dos ramas)
+disparará un nuevo deploy automático de Netlify -- por la integración
+directa del repositorio, fuera de GitHub Actions -- aunque el payload
+publicable sea byte a byte idéntico al actual: no hay cambio de contenido
+servido, pero sí un nuevo `deploy_id` en el historial de Netlify.
+
+**Entrega completa** (ambas ramas, SHA finales, runs rojo/verde/verde,
+lista real de los 17 archivos, diff frente a `release`, igualdad byte a
+byte del payload Netlify en ambas rondas, propuesta de incorporación y de
+required status check con su efecto y reversión, confirmación de que no
+se tocó ninguna rama ni entorno protegido) en
+`cierre-proyecto-a/punto3/INFORME_PUERTA_CI.md`, en esta rama de
+seguimiento.
 
 **Pendiente de autorización separada, no aplicado**:
-- **A. Incorporar la puerta a `release`** (fusionar
-  `claude/punto3-puerta-ci-final`, o el subconjunto de archivos que el
-  propietario decida, a `release`). **Aviso**: el push disparará un deploy
+- **A. Incorporar la candidata limpia `claude/punto3-promocion-final`
+  (commit `8540bd0`) a `release`.** **Aviso**: el push disparará un deploy
   automático de Netlify (integración directa del repositorio, fuera de
   GitHub Actions) aunque el payload publicable sea byte a byte idéntico al
   actual — nuevo `deploy_id` en el historial de Netlify, sin cambio de
