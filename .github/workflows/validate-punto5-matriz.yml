@@ -1,0 +1,27 @@
+name: Validate Punto 5 migration provenance
+
+on:
+  push:
+    branches:
+      - claude/punto5-matriz-migraciones
+    paths:
+      - 'tests/punto5/**'
+      - '.github/workflows/validate-punto5-matriz.yml'
+  pull_request:
+    branches:
+      - release
+    paths:
+      - 'tests/punto5/**'
+      - '.github/workflows/validate-punto5-matriz.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-matrix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Validate captured matrix
+        run: node tests/punto5/verificar_matriz.mjs
