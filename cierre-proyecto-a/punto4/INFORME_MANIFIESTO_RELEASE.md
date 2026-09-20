@@ -1,16 +1,20 @@
 # Punto 4 — Manifiesto de reconstrucción del release
 
-**Estado: PREPARADO Y VALIDADO — NO promocionado a `release`.** La
-promoción requiere autorización separada (ver sección 6).
+**Estado: CERRADO.** Promocionado a `release` mediante
+[PR #40](https://github.com/Plopezm1990/Almacen/pull/40) (rebase and
+merge), no mediante push directo -- ver sección 14.
 
 Rama de trabajo: `claude/punto4-manifiesto-release`, creada desde
 `origin/release@8540bd06d5555cf260aa4599144ed6c64f3ca029` (el HEAD real y
 vigente de `release`; la sección anterior de este punto en el seguimiento
 referenciaba `f313bc0`, que ya no es el HEAD desde el Punto 1/PM33).
 
-SHA final validado: **`4127d39945d49f51c33e4b13a1ec8d69cc6a872e`** (único
-commit sobre `release`; coincide con el HEAD local, el HEAD remoto
+SHA candidato validado: **`4127d39945d49f51c33e4b13a1ec8d69cc6a872e`**
+(único commit sobre `release`; coincide con el HEAD local, el HEAD remoto
 empujado, y el SHA sobre el que corrieron ambos workflows).
+
+**SHA final real en `release` tras la fusión: `21ee66bdb52e4d5ad0af2341543f53720a4cf027`**
+(distinto de `4127d39...` por el propio rebase de GitHub; ver sección 14).
 
 ---
 
@@ -309,7 +313,7 @@ a `release` sería, como en el Punto 3, disparar un nuevo deploy (nuevo
   (`4127d39945d49f51c33e4b13a1ec8d69cc6a872e`) -- `git rev-list --count
   origin/release..HEAD` = 1.
 
-## 11. Efecto esperado de promocionar
+## 11. Efecto esperado de promocionar (previsto antes de la fusión)
 
 - `release` avanzaría de `8540bd06d5555cf260aa4599144ed6c64f3ca029` a
   `4127d39945d49f51c33e4b13a1ec8d69cc6a872e` (fast-forward puro, mismo
@@ -324,36 +328,180 @@ a `release` sería, como en el Punto 3, disparar un nuevo deploy (nuevo
 - El push disparará, igual que en el Punto 3, un nuevo deploy automático
   de Netlify (nuevo `deploy_id`, mismo contenido servido).
 
+Este efecto se cumplió, pero no por el fast-forward previsto aquí: el
+push directo fue rechazado (sección 14) y la promoción real se hizo vía
+PR #40 con rebase and merge, con un SHA final distinto de `4127d39...`
+por el propio rebase. El resto de lo previsto en esta sección (contenido
+publicable sin cambios, manifiesto/evidencia corregidos, nuevo deploy de
+Netlify) se cumplió exactamente como aquí se anticipaba -- ver sección 14
+para la verificación real.
+
 ## 12. Reversión
 
 `release` está protegida (Fase B del Punto 3): no admite force-push, y
 la regla se aplica también a administradores. **Mover `release` de
 vuelta a `8540bd0...` no es una opción de reversión disponible** -- ni
-siquiera para deshacer una promoción propia.
+siquiera para deshacer una promoción propia. Esto se confirmó en la
+práctica: el intento de push directo fue rechazado precisamente por la
+protección de rama (sección 14), y la promoción real tuvo que hacerse vía
+PR, no vía movimiento directo de la referencia.
 
 El único rollback permitido es **hacia delante**: crear un nuevo commit
-que, partiendo del `8540bd0...` original, restaure el contenido anterior
-de los 4 archivos modificados (`.github/workflows/validate-source-recovery-release.yml`,
+que, partiendo del `21ee66bdb...` actual (antes `8540bd0...`), restaure
+el contenido anterior de los 4 archivos modificados
+(`.github/workflows/validate-source-recovery-release.yml`,
 `source-recovery/CURRENT_RELEASE.patch`,
 `source-recovery/CURRENT_RELEASE_EVIDENCE.json`,
 `source-recovery/CURRENT_RELEASE_MANIFEST.json`), y someter ese commit a
 `gate-final` como cualquier otro cambio antes de fusionarlo -- exactamente
-el mismo patrón de PR ya usado para incorporar la puerta de CI. Ese
-rollback **no se ejecuta en esta entrega**; queda documentado como
-procedimiento disponible si se necesitara. Ninguna migración de base de
-datos, ningún cambio de `fuente.js` ni de configuración de
-Netlify/Supabase está involucrado en ningún caso -- la reversión es
-exclusivamente de metadatos de certificación y del workflow que los
-genera.
+el mismo patrón de PR ya usado para incorporar esta promoción. Ese
+rollback **no se ha ejecutado**; queda documentado como procedimiento
+disponible si se necesitara. Ninguna migración de base de datos, ningún
+cambio de `fuente.js` ni de configuración de Netlify/Supabase está
+involucrado en ningún caso -- la reversión es exclusivamente de
+metadatos de certificación y del workflow que los genera.
 
-## 13. Confirmación de límites respetados
+## 13. Confirmación de límites respetados (durante la preparación)
 
-- `release` no se movió ni se modificó: sigue en
-  `8540bd06d5555cf260aa4599144ed6c64f3ca029`.
+- `release` no se movió ni se modificó durante la preparación: se
+  mantuvo en `8540bd06d5555cf260aa4599144ed6c64f3ca029` hasta la fusión
+  autorizada por separado (sección 14).
 - `main` no se tocó: sigue en `93a570badba1c5375febfbddc1dffdbcef003dcd`.
-- PR #38, Supabase y Netlify no se tocaron: cero `secrets.*` en el
-  workflow modificado, ninguna llamada a sus APIs desde esta tarea salvo
-  la lectura de solo consulta del estado de deploy ya publicado (no se
-  disparó ningún deploy).
-- No se aplicó ninguna promoción -- pendiente de autorización.
-- No se empezó el Punto 5.
+- PR #38, Supabase y Netlify no se tocaron durante la preparación: cero
+  `secrets.*` en el workflow modificado, ninguna llamada a sus APIs desde
+  esta tarea salvo la lectura de solo consulta del estado de deploy ya
+  publicado.
+- No se aplicó ninguna promoción durante la preparación -- pendiente de
+  autorización, concedida y ejecutada después (sección 14).
+- No se empezó el Punto 5 durante la preparación.
+
+## 14. Rechazo del push directo y promoción real vía PR #40
+
+**Intento de push directo (rechazado)**: con autorización expresa para
+el fast-forward `8540bd0..4127d39`, tras reconfirmar las 6 condiciones
+pedidas (SHA de `release`, SHA candidato, protección activa, ambos runs
+en `SUCCESS` sobre el SHA exacto, fast-forward elegible de 1 commit/4
+archivos), se ejecutó:
+```
+git push origin claude/punto4-manifiesto-release:release
+```
+sin `--force` y sin merge commit, exactamente como se instruyó. GitHub lo
+rechazó:
+```
+remote: error: GH006: Protected branch update failed for refs/heads/release.
+remote:
+remote: - Required status check "gate-final" is expected.
+To https://github.com/Plopezm1990/Almacen
+ ! [remote rejected] claude/punto4-manifiesto-release -> release (protected branch hook declined)
+error: failed to push some refs to 'https://github.com/Plopezm1990/Almacen'
+```
+pese a que la API de Actions confirmaba `gate-final` con
+`conclusion: success` sobre el SHA candidato exacto
+(`4127d39945d49f51c33e4b13a1ec8d69cc6a872e`, run `35528466331`) --
+una discrepancia entre la evaluación de protección de rama en el momento
+del push y el estado reportado por la API de Actions, no diagnosticada
+ni investigada por instrucción explícita ("detente y reporta el error
+exacto; no desactives ni modifiques la protección"). Se confirmó por
+`git fetch origin release` + `git rev-parse` que `release` no se movió:
+siguió en `8540bd06d5555cf260aa4599144ed6c64f3ca029`. No se tocó la
+protección de rama, Netlify ni Supabase.
+
+**Promoción real, vía Pull Request**: con autorización separada para
+"crear un PR para satisfacer correctamente la protección de rama" (sin
+autorizar todavía la fusión), se verificó primero que `release` seguía en
+`8540bd06...` y la candidata en `4127d39...`, y que no existía ya un PR
+abierto o cerrado con ese mismo head/base (`claude/punto4-manifiesto-release`
+→ `release`). Se creó
+[PR #40](https://github.com/Plopezm1990/Almacen/pull/40)
+("Punto 4: actualizar manifiesto reproducible de release"), resumiendo en
+el cuerpo los 4 archivos, los hashes certificados, los runs previos, la
+excepción de `git diff --check` y la igualdad de payload de Netlify.
+
+El evento `pull_request` disparó un nuevo run de la puerta de CI general
+sobre el mismo SHA candidato,
+[`35536118837`](https://github.com/Plopezm1990/Almacen/actions/runs/35536118837)
+-- **SUCCESS real, 4/4 jobs**: `node-y-postgres`, `pm33-p05-supabase-full`,
+`pm12-p08-supabase-full` y `gate-final`, todos `completed`/`success`. El
+log del job `gate-final` (id `106145603682`) confirma
+`ACTIVE_PASS=133`, `ACTIVE_FAIL=0`, `HISTORICAL_EXPECTED_FAIL=1`,
+`UTILITIES=3`, `DIAGNOSTICS=5`, `TOTAL_INVENTORY=142`,
+`PUERTA_CI_RELEASE_GATE=PASS`. Vía `get_check_runs` sobre el propio PR se
+confirmó que este `gate-final` (del run disparado por el PR, no el
+anterior por `workflow_dispatch`) aparece como check satisfecho en el
+contexto del PR, y `mergeable_state` del PR pasó a `clean`. El PR generó
+además un Netlify **Deploy Preview** (`6ab043ef25c49c000891e37f`, estado
+`Deploy Preview ready!`, URL `deploy-preview-40--chic-entremet-9107cf.netlify.app`)
+-- explícitamente no productivo.
+
+**Fusión, con autorización separada**: verificadas de nuevo las 8
+condiciones pedidas antes de fusionar (PR abierto y `mergeable_state:
+clean`; base `release@8540bd0...`; head
+`claude/punto4-manifiesto-release@4127d39...`; exactamente 1 commit y 4
+archivos; run `35536118837` con 4/4 jobs `SUCCESS`; `gate-final` del
+propio PR en `SUCCESS`; `ACTIVE_PASS=133`/`ACTIVE_FAIL=0`; Deploy Preview
+`6ab043ef25c49c000891e37f` listo y no productivo), se ejecutó la fusión
+con **`merge_method: "rebase"`** exclusivamente (sin merge commit, sin
+squash, sin push directo, sin desactivar protección), fijando
+`expectedHeadSha=4127d39945d49f51c33e4b13a1ec8d69cc6a872e` para garantizar
+que se fusionaba exactamente ese SHA y no uno posterior.
+
+No existe, entre las herramientas disponibles en esta sesión, una forma
+de leer por adelantado qué métodos de fusión permite el repositorio
+(`allow_merge_commit`/`allow_squash_merge`/`allow_rebase_merge`); la
+única confirmación posible de que "Rebase and merge" estaba disponible
+fue que la propia llamada de fusión con `merge_method: "rebase"`
+tuviera éxito, como ocurrió.
+
+**SHA final real: `21ee66bdb52e4d5ad0af2341543f53720a4cf027`** (distinto
+de `4127d39...` por el rebase; GitHub reescribe el commit al aplicarlo
+sobre el HEAD de destino). Verificaciones post-fusión:
+- **Sin merge commit**: `git log -1 --format="%H %P"` sobre
+  `origin/release` devuelve un único padre
+  (`8540bd06d5555cf260aa4599144ed6c64f3ca029`) -- confirma que es un
+  commit simple reescrito por el rebase, no un commit de fusión con dos
+  padres.
+- **Igualdad byte a byte de los 4 archivos**: `git diff
+  4127d39945d49f51c33e4b13a1ec8d69cc6a872e origin/release -- <los 4
+  archivos>` termina en código de salida `0` y sin salida -- contenido
+  idéntico al de la candidata validada, solo cambia el SHA del commit por
+  el rebase.
+- `release` sigue protegida: `list_branches` devuelve
+  `{"name":"release","sha":"21ee66bdb52e4d5ad0af2341543f53720a4cf027","protected":true}`.
+- `main` sin cambios: `93a570badba1c5375febfbddc1dffdbcef003dcd`.
+- PR #38 sin cambios: sigue `open`, `draft: true`, mismo `head`
+  (`f297be08708d0bbe566c21347123885cb3095a7c`), mismo `base` (`main`).
+- PR #40: `merged: true`, `state: closed`, `merged_by: Plopezm1990`.
+
+**Deploy de producción de Netlify**: nuevo `currentDeploy`
+`6ab0472a6242cb0008894ccd` -- `branch: release`,
+`commit_ref: 21ee66bdb52e4d5ad0af2341543f53720a4cf027`,
+`context: production`, `state: ready`, `error_message: null`,
+`secret_scan_result: {secretsScanMatches: [], enhancedSecretsScanMatches: []}`.
+**Igualdad de payload reprobada directamente, no solo por el mensaje de
+Netlify**: se construyó `.netlify-dist` en dos worktrees limpios y
+desechables, uno sobre `release@21ee66bdb...` (el nuevo HEAD) y otro
+sobre `release@8540bd0...` (el HEAD anterior a esta fusión) --
+`node .github/scripts/build-netlify-publish.mjs` copió el mismo conjunto
+de 31 entradas de raíz en ambos casos; el listado final de
+`.netlify-dist` fue de 33 archivos en cada worktree, con las mismas
+rutas (`diff` de la lista de rutas vacío) y los mismos SHA-256 (`diff` de
+la lista de hashes vacío) -- payload byte a byte idéntico. El mensaje de
+Netlify "All files already uploaded by a previous deploy with the same
+commits" es evidencia corroborante, no la prueba primaria.
+
+**Manifiesto y evidencia verificados directamente sobre `release`**
+(lectura de archivo al SHA `21ee66bdb...` vía la API de GitHub, no
+asumidos ni copiados de la candidata):
+- `source-recovery/CURRENT_RELEASE_MANIFEST.json`:
+  `releaseBaseCommit=8540bd06d5555cf260aa4599144ed6c64f3ca029`,
+  `targetFuenteCommit=70ccfd54d673f20584fe3d37f3791de0b2455270`,
+  `targetArtifactSha256=9367617cb34600966a5e726e6a16b1bb2a537b220aba0c54d6fdd53e53c1eb8a`.
+- `source-recovery/CURRENT_RELEASE_EVIDENCE.json`: `status=PASS`, mismos
+  `releaseBaseCommit`/`targetFuenteCommit`/`targetArtifactSha256`, todos
+  los `checks.*` en `true`.
+
+**Límites respetados durante toda la promoción**: la protección de rama
+de `release` no se tocó en ningún momento (ni para permitir el push
+directo tras el rechazo, ni durante la fusión); Supabase no se tocó;
+`main` y PR #38 permanecen exactamente como estaban; no se empezó el
+Punto 5.

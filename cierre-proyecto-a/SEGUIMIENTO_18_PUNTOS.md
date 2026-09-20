@@ -770,10 +770,11 @@ Punto 4.
 
 ## 4. Manifiesto de reconstrucción del release
 
-**Estado: PREPARADO Y VALIDADO — NO promocionado a `release`.** (El
-diagnóstico anterior de este punto describía `release@f313bc0`, que ya no
-es el HEAD real de `release` desde el Punto 1/PM33; queda sustituido por
-la revalidación completa contra `release@8540bd0`, documentada abajo.)
+**Estado: CERRADO.** Promocionado a `release` mediante PR #40 (rebase and
+merge), no mediante push directo -- ver más abajo. (El diagnóstico
+anterior de este punto describía `release@f313bc0`, que ya no es el HEAD
+real de `release` desde el Punto 1/PM33; queda sustituido por la
+revalidación completa contra `release@8540bd0`, documentada abajo.)
 
 **Diagnóstico confirmado**: `source-recovery/CURRENT_RELEASE_MANIFEST.json`
 y `CURRENT_RELEASE_EVIDENCE.json` en `release@8540bd0` seguían
@@ -865,15 +866,86 @@ desde `8540bd0`, el contenido anterior de los 4 archivos, sometido a
 `gate-final` como cualquier otro cambio antes de fusionarlo. No se
 ejecuta en esta entrega.
 
-**Entrega completa** (diagnóstico, regeneración, validación local y
-remota, igualdad de payload, comprobaciones finales, efecto esperado y
-reversión) en `cierre-proyecto-a/punto4/INFORME_MANIFIESTO_RELEASE.md`,
-en esta rama de seguimiento.
+**Rechazo del push directo (`GH006`)**: con autorización expresa para el
+fast-forward `8540bd0..4127d39`, se ejecutó `git push
+origin claude/punto4-manifiesto-release:release` (sin `--force`, sin
+merge commit). GitHub lo rechazó:
+```
+remote: error: GH006: Protected branch update failed for refs/heads/release.
+remote:
+remote: - Required status check "gate-final" is expected.
+ ! [remote rejected] claude/punto4-manifiesto-release -> release (protected branch hook declined)
+```
+pese a que la API de Actions confirmaba `gate-final` en `SUCCESS` sobre
+ese mismo SHA exacto (run `35528466331`) -- una discrepancia entre la
+evaluación de protección de rama en el momento del push y el estado
+reportado por la API de Actions, no diagnosticada. Siguiendo la
+instrucción explícita del propietario, la sesión se detuvo de inmediato,
+no tocó la protección de rama y confirmó que `release` no se movió
+(`git fetch` + `git rev-parse` siguieron devolviendo `8540bd06...`).
 
-**Pendiente de autorización separada, no aplicado**: promocionar
-`claude/punto4-manifiesto-release@4127d39` a `release` (fast-forward,
-mismo patrón que el Punto 3). El Punto 4 permanece **preparado y
-validado**, no cerrado, hasta que el propietario autorice la promoción.
+**Promoción real, vía PR #40**: con autorización separada, se creó
+[PR #40](https://github.com/Plopezm1990/Almacen/pull/40) (`claude/punto4-manifiesto-release`
+→ `release`), verificando primero que no existía otro PR abierto con ese
+mismo head/base. El evento `pull_request` disparó un nuevo run de la
+puerta de CI general, [`35536118837`](https://github.com/Plopezm1990/Almacen/actions/runs/35536118837)
+-- **SUCCESS real, 4/4 jobs** (`node-y-postgres`, `pm33-p05-supabase-full`,
+`pm12-p08-supabase-full`, `gate-final`), con `gate-final` satisfecho en el
+propio contexto del PR (no solo en el run previo por
+`workflow_dispatch`) y `ACTIVE_PASS=133 ACTIVE_FAIL=0` confirmado en el
+log del job. El PR generó además un Netlify **Deploy Preview**
+(`6ab043ef25c49c000891e37f`, `ready`, no productivo).
+
+Con las 8 condiciones previas verificadas (PR abierto y `mergeable_state:
+clean`, base/head correctos, 1 commit/4 archivos, 4/4 jobs y `gate-final`
+en verde en el propio PR, `ACTIVE_PASS=133`/`ACTIVE_FAIL=0`, Deploy
+Preview listo y no productivo), se autorizó y ejecutó la fusión con
+**Rebase and merge** exclusivamente (sin merge commit, sin squash, sin
+push directo, sin desactivar protección). No existe una herramienta
+disponible en esta sesión para leer por adelantado qué métodos de fusión
+permite el repositorio (`allow_merge_commit`/`allow_squash_merge`/
+`allow_rebase_merge`); la única confirmación posible fue que la propia
+llamada de fusión con `merge_method: "rebase"` (y `expectedHeadSha` fijado
+al SHA candidato exacto) tuviera éxito, como ocurrió.
+
+**SHA resultante real en `release`: `21ee66bdb52e4d5ad0af2341543f53720a4cf027`**
+(distinto de `4127d39...` por el propio rebase). Verificado: commit con un
+único padre (`8540bd06...`), es decir **sin merge commit**; los 4 archivos
+modificados son byte a byte idénticos entre `4127d39...` y
+`21ee66bdb...` (`git diff` vacío, código de salida `0`); `release` sigue
+protegida (`protected: true`, `list_branches`); `main` sin cambios
+(`93a570bad...`); PR #38 sin cambios (abierto, borrador, mismo head);
+PR #40 fusionado y cerrado (`merged: true`, `merged_by`).
+
+**Deploy de producción de Netlify tras la fusión**: nuevo `currentDeploy`
+`6ab0472a6242cb0008894ccd`, `branch: release`,
+`commit_ref: 21ee66bdb52e4d5ad0af2341543f53720a4cf027`,
+`context: production`, `state: ready`, `error_message: null`,
+`secret_scan_result` sin coincidencias (`secretsScanMatches: []`,
+`enhancedSecretsScanMatches: []`). **Igualdad de payload reprobada
+directamente** (no solo por el mensaje de Netlify): `.netlify-dist`
+construido desde worktrees limpios de `release@21ee66bdb...` y de
+`release@8540bd0...` (el estado anterior a esta fusión) -- 33 archivos en
+cada uno, mismas rutas, mismos SHA-256, payload byte a byte idéntico. El
+mensaje de Netlify "All files already uploaded by a previous deploy with
+the same commits" queda como evidencia corroborante, no como prueba
+primaria.
+
+**Manifiesto y evidencia verificados directamente sobre `release`** (vía
+lectura de archivo al SHA `21ee66bdb...`, no asumidos):
+`releaseBaseCommit=8540bd06...`, `targetFuenteCommit=70ccfd54...`,
+`targetArtifactSha256=9367617c...`, `status=PASS`.
+
+**Entrega completa** (diagnóstico, regeneración, validación local y
+remota, igualdad de payload, comprobaciones finales, rechazo del push
+directo, promoción vía PR #40, fusión y deploy de producción) en
+`cierre-proyecto-a/punto4/INFORME_MANIFIESTO_RELEASE.md`, en esta rama de
+seguimiento.
+
+**Punto 4: CERRADO.** `release` avanzó únicamente por la fusión autorizada
+del PR #40 (rebase and merge, sin merge commit); la protección de rama no
+se tocó en ningún momento; `main`, PR #38, Supabase y el resto del código
+del repositorio no se modificaron. No se empezó el Punto 5.
 
 ---
 
