@@ -123,7 +123,7 @@ resultado):
 - **121 contratos activos, Node puro** (incluye el build real de Netlify
   como prerrequisito de `tests/netlify-publish-boundary.mjs`) — job
   `node-y-postgres`, paso "121 contratos activos Node": **127/127**
-  ejecutados sin fallo (121 activos + 3 utilidades + 5 diagnósticos +... 
+  ejecutados sin fallo (121 activos + 3 utilidades + 5 diagnósticos +
   ver nota de conteo abajo), Node **v22.23.2**.
 - **9 contratos activos + 1 histórico esperado, PostgreSQL real** — mismo
   job, paso "9 contratos activos Postgres + 1 histórico esperado en rojo

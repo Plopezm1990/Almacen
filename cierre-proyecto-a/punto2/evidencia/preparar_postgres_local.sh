@@ -85,6 +85,7 @@ export PM33_TEST_DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:5432/pm3
 mkdir -p "$EVID_DIR"
 : > "$OUT"
 echo "# POSTGRES=$(psql -h 127.0.0.1 -U postgres -tAc 'select version();') FECHA_UTC=$(date -u +%FT%TZ)" >> "$OUT"
+printf 'ruta\tclasificacion\tcodigo_salida\tduracion_ms\tultima_marca\tresultado_final\n' >> "$OUT"
 
 # Lista de ejecución: todo lo que el manifiesto marca environment=postgres
 # (9 activos + 1 histórico), en el orden del propio manifiesto.
@@ -94,7 +95,14 @@ const m = JSON.parse(fs.readFileSync('$MANIFEST', 'utf8'));
 console.log(m.entries.filter(e => e.environment === 'postgres').map(e => e.path + '\t' + e.classification).join('\n'));
 ")
 
+postgres_active_total=0
+postgres_active_pass=0
+postgres_active_fail=0
+historical_expected_fail_count=0
 fallos_inesperados=0
+FALLOS_ACTIVOS=()
+FALLOS_HISTORICO=()
+
 for linea in "${archivos[@]}"; do
   f="${linea%%$'\t'*}"
   clasificacion="${linea##*$'\t'}"
@@ -104,27 +112,61 @@ for linea in "${archivos[@]}"; do
   end=$(date +%s%N)
   ms=$(( (end - start) / 1000000 ))
   lastline=$(printf '%s' "$out" | tail -1 | tr '\t' ' ')
-  printf '%s\t%s\t%s\t%sms\t%s\n' "$f" "$clasificacion" "$code" "$ms" "$lastline" >> "$OUT"
 
   if [ "$clasificacion" = "historical_expected_fail" ]; then
     if [ "$code" -eq 0 ]; then
+      resultado="INESPERADO_PASA"
       echo "$f -> exit=$code (${ms}ms) -- INESPERADO: se esperaba que este histórico siguiera fallando (P03 cambió el contrato deliberadamente) y ahora pasa; revisa si sigue siendo un registro histórico válido."
       fallos_inesperados=$((fallos_inesperados + 1))
+      FALLOS_HISTORICO+=("$f (pasó, se esperaba que fallara)")
     else
+      resultado="HISTORICAL_EXPECTED_FAIL"
+      historical_expected_fail_count=$((historical_expected_fail_count + 1))
       echo "$f -> exit=$code (${ms}ms) -- esperado (HISTORICAL_EXPECTED_FAIL)"
     fi
   else
-    echo "$f -> exit=$code (${ms}ms)"
-    if [ "$code" -ne 0 ]; then
+    postgres_active_total=$((postgres_active_total + 1))
+    if [ "$code" -eq 0 ]; then
+      resultado="PASS"
+      postgres_active_pass=$((postgres_active_pass + 1))
+    else
+      resultado="FAIL"
+      postgres_active_fail=$((postgres_active_fail + 1))
       fallos_inesperados=$((fallos_inesperados + 1))
+      FALLOS_ACTIVOS+=("$f (exit=$code)")
     fi
+    echo "$f -> exit=$code (${ms}ms) resultado=$resultado"
   fi
+  printf '%s\t%s\t%s\t%sms\t%s\t%s\n' "$f" "$clasificacion" "$code" "$ms" "$lastline" "$resultado" >> "$OUT"
 done
 
 echo "RESULTADO_ESCRITO=$OUT"
 
+# ---- Conteos REALES (nunca fijos) y veredicto ----
+echo "POSTGRES_ACTIVE_TOTAL=$postgres_active_total"
+echo "POSTGRES_ACTIVE_PASS=$postgres_active_pass"
+echo "POSTGRES_ACTIVE_FAIL=$postgres_active_fail"
+echo "HISTORICAL_EXPECTED_FAIL=$historical_expected_fail_count"
+
+if [ "$postgres_active_total" -ne 9 ]; then
+  echo "POSTGRES_ACTIVE_TOTAL_INESPERADO: se esperaban 9 contratos activos Postgres, el manifiesto tiene $postgres_active_total." >&2
+  fallos_inesperados=$((fallos_inesperados + 1))
+fi
+if [ "$historical_expected_fail_count" -ne 1 ]; then
+  echo "HISTORICAL_EXPECTED_FAIL_INESPERADO: se esperaba exactamente 1, hubo $historical_expected_fail_count." >&2
+  fallos_inesperados=$((fallos_inesperados + 1))
+fi
+
 if [ "$fallos_inesperados" -gt 0 ]; then
   echo "PREPARAR_POSTGRES_LOCAL: $fallos_inesperados resultado(s) no coinciden con lo esperado por el manifiesto." >&2
+  if [ "${#FALLOS_ACTIVOS[@]}" -gt 0 ]; then
+    echo "  Contratos activos fallidos:" >&2
+    printf '    - %s\n' "${FALLOS_ACTIVOS[@]}" >&2
+  fi
+  if [ "${#FALLOS_HISTORICO[@]}" -gt 0 ]; then
+    echo "  Históricos con resultado inesperado:" >&2
+    printf '    - %s\n' "${FALLOS_HISTORICO[@]}" >&2
+  fi
   exit 1
 fi
 echo "PREPARAR_POSTGRES_LOCAL_OK=1"
