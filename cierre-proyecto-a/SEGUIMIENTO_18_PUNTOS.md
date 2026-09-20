@@ -770,24 +770,94 @@ Punto 4.
 
 ## 4. Manifiesto de reconstrucción del release
 
-**Estado: bloqueado — desactualización confirmada y cuantificada.**
+**Estado: PREPARADO Y VALIDADO — NO promocionado a `release`.** (El
+diagnóstico anterior de este punto describía `release@f313bc0`, que ya no
+es el HEAD real de `release` desde el Punto 1/PM33; queda sustituido por
+la revalidación completa contra `release@8540bd0`, documentada abajo.)
 
-`source-recovery/CURRENT_RELEASE_MANIFEST.json` en `release` certifica:
+**Diagnóstico confirmado**: `source-recovery/CURRENT_RELEASE_MANIFEST.json`
+y `CURRENT_RELEASE_EVIDENCE.json` en `release@8540bd0` seguían
+certificando `targetFuenteCommit=9d54fc7...`
+(`targetArtifactSha256=0e45bc8d...`), desactualizado tras las promociones
+del Punto 1 y el Punto 3. El último commit real que modifica `fuente.js`
+en `release` vigente es `70ccfd54d673f20584fe3d37f3791de0b2455270`
+(`sha256=9367617cb34600966a5e726e6a16b1bb2a537b220aba0c54d6fdd53e53c1eb8a`)
+-- calculado con `git log -1 --format=%H -- fuente.js`, nunca asumido
+como el HEAD de `release` (que es un commit de infraestructura de CI, no
+toca `fuente.js`).
 
-```
-targetFuenteCommit:   9d54fc7ba76bd1285625f37b2940f99d26777ab8
-targetArtifactSha256: 0e45bc8d4175771b8bfd1e74ad0aa12fd39853a1431dc6ca702470882ae6c4c2
-```
+**Regenerado en la rama `claude/punto4-manifiesto-release`** (creada
+desde `origin/release@8540bd0`): mismo mecanismo ya existente en
+`source-recovery/` (README, `rebuild-current.mjs`,
+`recuperar_candidato.py`), sin cambios de lógica -- ambos scripts ya
+calculan el commit objetivo de forma dinámica. Único archivo con lógica
+desactualizada: `.github/workflows/validate-source-recovery-release.yml`
+(disparo restringido a esta rama, `RELEASE_BASE=8540bd06...`). Se
+mantiene `baseCommit=7b2aa0f1...` sin cambios: sigue siendo reproducible
+byte a byte, sin ninguna razón técnica para moverlo.
 
-Esto **no corresponde al HEAD actual de `release`** (`f313bc0`, con 137
-commits sobre `main`). El manifiesto certifica un punto muy anterior de la
-historia. No se ha regenerado en esta sesión (requiere reconstruir desde
-un entorno limpio con `npm ci` + aplicar el patch documentado — no
-ejecutado aquí por alcance de tiempo). **Siguiente acción**: regenerar
-`CURRENT_RELEASE_MANIFEST.json`/`CURRENT_RELEASE_EVIDENCE.json` para el
-candidato final una vez esté fijado (después de resolver PM33 y el resto
-de bloqueantes), no antes — regenerarlo hoy solo certificaría un estado
-que todavía va a cambiar.
+**Validado en local antes del commit**: `recuperar_candidato.py
+--sync-current`/`--check` en verde; `npm ci` limpio; build directo
+ejecutado dos veces (mismo SHA, mismo tamaño, byte a byte idéntico entre
+ambas ejecuciones); `npm run build:current` (reconstrucción exacta contra
+un worktree desechable del baseline histórico) ejecutado dos veces
+(reproduce `baseArtifactSha256`, aplica el patch con `patch --batch
+--fuzz=0`, mismo SHA final, mismo tamaño, byte a byte idéntico entre
+ambas ejecuciones y contra `fuente.js`); sintaxis y los 5 marcadores
+esenciales verificados.
+
+**Certificación remota**: push del commit `4127d39945d49f51c33e4b13a1ec8d69cc6a872e`
+disparó `validate-source-recovery-release.yml`, run
+[`35528256636`](https://github.com/Plopezm1990/Almacen/actions/runs/35528256636)
+— **SUCCESS real, 9/9 pasos**, logs comprobados:
+`SOURCE_RECOVERY_TARGET_FUENTE_COMMIT=70ccfd54...`,
+`SOURCE_RECOVERY_TARGET_SHA=9367617c...`,
+`SOURCE_RECOVERY_DIRECT_BUILD_REPRODUCIBLE=PASS`,
+`SOURCE_RECOVERY_EXACT_REBUILD_TWICE=PASS`,
+`SOURCE_RECOVERY_RUNTIME_BYTE_PARITY=PASS`,
+`SOURCE_RECOVERY_CERTIFICATION=PASS`. El paso final no generó ningún
+commit automático (`SOURCE_RECOVERY_GENERATED_ARTIFACTS_ALREADY_CURRENT=1`):
+los artefactos regenerados en CI coincidieron byte a byte con los ya
+commiteados localmente -- el SHA final de la rama es el commit manual
+`4127d39`.
+
+**Puerta de CI general sobre ese mismo SHA**: disparada por
+`workflow_dispatch`, run
+[`35528466331`](https://github.com/Plopezm1990/Almacen/actions/runs/35528466331)
+— **SUCCESS real, 4/4 jobs**: `ACTIVE_PASS=133 ACTIVE_FAIL=0 UTILITIES=3
+DIAGNOSTICS=5 TOTAL_INVENTORY=142`.
+
+**Igualdad del payload de Netlify**: `.netlify-dist` construido desde
+worktrees limpios de `origin/release` y de
+`claude/punto4-manifiesto-release@4127d39` -- 33 archivos en cada uno,
+mismas rutas, mismos SHA-256, payload byte a byte idéntico.
+`source-recovery/` y `.github/` quedan excluidos del publish en ambos
+(ya lo hacía `build-netlify-publish.mjs` antes de este punto). Esperado y
+confirmado: los 4 archivos que cambia este punto viven todos fuera del
+contenido publicable.
+
+**Comprobaciones finales**: `git diff --check` señala 1 hallazgo dentro
+de `CURRENT_RELEASE.patch` -- un espacio real y preexistente dentro de un
+literal de texto JSX de `fuente.js`, capturado fielmente porque el patch
+debe reproducir `fuente.js` byte a byte (no se modifica: hacerlo
+rompería la paridad exigida). Alcance exacto: 4 archivos
+(`.github/workflows/validate-source-recovery-release.yml`,
+`source-recovery/CURRENT_RELEASE.patch`,
+`source-recovery/CURRENT_RELEASE_EVIDENCE.json`,
+`source-recovery/CURRENT_RELEASE_MANIFEST.json`). Cero `secrets.*` en el
+workflow modificado. Fusión simulada sin conflictos. La promoción
+incorporaría exactamente **1 commit**
+(`4127d39945d49f51c33e4b13a1ec8d69cc6a872e`).
+
+**Entrega completa** (diagnóstico, regeneración, validación local y
+remota, igualdad de payload, comprobaciones finales, efecto esperado y
+reversión) en `cierre-proyecto-a/punto4/INFORME_MANIFIESTO_RELEASE.md`,
+en esta rama de seguimiento.
+
+**Pendiente de autorización separada, no aplicado**: promocionar
+`claude/punto4-manifiesto-release@4127d39` a `release` (fast-forward,
+mismo patrón que el Punto 3). El Punto 4 permanece **preparado y
+validado**, no cerrado, hasta que el propietario autorice la promoción.
 
 ---
 
