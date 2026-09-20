@@ -481,32 +481,85 @@ reproducible en la rama `claude/punto2-134-pruebas`:
 
 ## 3. Puerta de CI sobre el candidato final
 
-**Estado: bloqueado — confirmado que no existe hoy.**
+**Estado: PREPARADO Y VALIDADO — NO incorporado a `release`, NO configurado
+como required status check.** (El diagnóstico anterior de este punto,
+"bloqueado — confirmado que no existe hoy", describía `release@f313bc0`,
+que ya no es el HEAD real de `release`; queda sustituido por esta
+revalidación completa contra `release@6e26391`.)
 
-- Confirmé vía GitHub Actions que **no hay ningún workflow run para el SHA
-  actual de `release` (`f313bc0`)**. Los únicos runs en la rama `release`
-  corresponden al workflow `pm26-defecto-l-hotfix.yml` sobre commits
-  **anteriores** (`2c70df0c`, `a97740987`), no sobre el HEAD actual.
-- Cada workflow del repositorio dispara solo con `push` a su propia rama
-  nombrada exactamente (p. ej. `branches: [pm13-p03-fichajes]`), nunca con
-  comodines. Confirmé que **ninguna rama de esta revisión activa
-  automatización alguna** al recibir un push (ni `claude/proyecto-a-la-suite-cierre-3xs7l3`
-  ni `claude/pm33-fix-obtener-contexto-operativo` aparecen como branch
-  trigger de ningún workflow).
-  > **Actualización parcial (ronda de validación aislada de PM33)**: esta
-  > afirmación ya no describe `claude/pm33-p03-obtener-contexto-operativo`
-  > (una rama distinta, del candidato PM33, no listada arriba): esa rama sí
-  > tiene ahora un `push` propio, restringido EXCLUSIVAMENTE a su nombre
-  > exacto (`.github/workflows/pm33-p05-entorno-aislado.yml`), añadido a
-  > propósito para poder validar el candidato con PostgreSQL 17 real — ver
-  > Punto 1. Esto es una puerta de CI para el candidato de PM33
-  > específicamente, no la puerta de certificación general para "el
-  > candidato final" de todo el cierre que sigue faltando por diseñar
-  > (párrafo siguiente, sin cambios).
-- **Falta diseñar**: un flujo de certificación que corra contra el
-  candidato final exacto (no contra ramas históricas) y una regla de
-  promoción que lo exija. No se ha diseñado en esta sesión — es una
-  decisión de proceso, no un parche puntual.
+**Revalidación inicial contra `release@6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d`**
+(no heredada de la ronda anterior): SHA de `main` =
+`93a570badba1c5375febfbddc1dffdbcef003dcd`. De los 179 workflows presentes
+en `release`, solo 2 tienen un disparador que pueda alcanzarla
+(`pm05-regresion.yml`, `pull_request` sin filtro de rama pero con 5 rutas
+muy estrechas; `pm26-defecto-l-hotfix.yml`, `push` a `release` con 3 rutas
+igual de estrechas) — **ninguno ejecuta la batería general**. `release` no
+tiene ninguna regla de protección (`protected: false`, confirmado vía la
+API de GitHub): **un commit puede llegar hoy a `release` sin ejecutar
+ninguna prueba general**, confirmado. Ningún workflow del repositorio usa
+un solo `secrets.*` (grep exhaustivo sobre los 179): ninguno puede
+desplegar en Netlify ni escribir en el proyecto Supabase remoto — el
+despliegue de Netlify ocurre por la integración directa de Netlify con el
+repositorio, fuera de cualquier check (ya observado en el Punto 1/PM33
+Fase B).
+
+**Diseño construido, en la rama `claude/punto3-puerta-ci-final`** (creada
+desde `origin/release@6e26391`, sin tocar `release`): se generaliza la
+puerta de 4 jobs (121 Node + 9 Postgres + 3 Auth/PostgREST/Postgres reales)
+ya validada en el Punto 2, ahora como infraestructura general del
+repositorio bajo `tests/ci/` (manifiesto, runners) y
+`.github/workflows/puerta-ci-release.yml` — no bajo rutas de cierre de un
+punto. Se conservan las 11 correcciones de tests del Punto 2, y PM33 P01
+sigue separado como `historical_expected_fail`. Los conteos se calculan y
+exigen siempre a partir de outputs reales de los jobs, nunca se declaran.
+Cero credenciales, cero pasos de despliegue. Disparo: `workflow_dispatch`,
+`pull_request` contra `release`, y `push` sobre la propia rama aislada —
+deliberadamente **sin** disparador de producción (`push` a `release`)
+todavía.
+
+**Verificado, con logs comprobados en cada caso (no solo el estado)**:
+- **Rojo real**: se forzó el fallo de un contrato activo no relacionado
+  (`tests/g1/p02-evidence-map-contract.mjs`), commit `16b3c22`,
+  [`run 35503815182`](https://github.com/Plopezm1990/Almacen/actions/runs/35503815182)
+  — **FAILURE real**, con causa exacta en el log:
+  `NODE_ACTIVE_FAIL=1`, `tests/g1/p02-evidence-map-contract.mjs (exit=1)`.
+- **Verde real**: revertido (`git revert` → commit `96457de`),
+  [`run 35503941267`](https://github.com/Plopezm1990/Almacen/actions/runs/35503941267)
+  — **SUCCESS real**, 4/4 jobs, conteos calculados extraídos del log de
+  `gate-final`: `NODE_ACTIVE_PASS=121/121`, `POSTGRES_ACTIVE_PASS=9/9`,
+  `PM12_FULL_STACK_PASS=2/2`, `PM33_FULL_STACK_PASS=1/1`,
+  `ACTIVE_PASS=133 ACTIVE_FAIL=0`. Vuelto a confirmar, mismos conteos, en
+  el commit final con el informe de entrega
+  (`5bf2dec9120c92271d90edbd3bdf648b305f9218`,
+  [`run 35504230673`](https://github.com/Plopezm1990/Almacen/actions/runs/35504230673),
+  SUCCESS, 4/4 jobs).
+- El workflow no despliega en Netlify ni escribe en Supabase remoto (cero
+  `secrets.*`, stacks Supabase locales desechables parados siempre al
+  final del job).
+- SHA probado = HEAD local = HEAD remoto en cada caso.
+- `git diff --check` limpio sobre el diff completo frente a `release`.
+- Fusión simulada (`git merge --no-commit --no-ff` sobre una copia
+  desechable de `origin/release`) sin ningún conflicto — 17 archivos.
+
+**Entrega completa** (rama y SHA final, runs rojo/verde, lista de los 17
+archivos modificados, diff frente a `release`, propuesta de required
+status check con su efecto y reversión, confirmación de que no se tocó
+ninguna rama ni entorno protegido) en
+`cierre-proyecto-a/punto3/INFORME_PUERTA_CI.md`, rama
+`claude/punto3-puerta-ci-final` @
+`5bf2dec9120c92271d90edbd3bdf648b305f9218`.
+
+**Pendiente de autorización separada, no aplicado**:
+- **A. Incorporar la puerta a `release`** (fusionar
+  `claude/punto3-puerta-ci-final`, o el subconjunto de archivos que el
+  propietario decida, a `release`).
+- **B. Configurarla como required status check** (crear una regla de
+  protección de rama para `release` -- hoy no tiene ninguna -- y añadir el
+  check del job `gate-final` a la lista de checks obligatorios).
+
+Ninguna de las dos se activa por esta entrega. El Punto 3 permanece
+**preparado y validado**, no cerrado, hasta que el propietario autorice A
+y/o B por separado.
 
 ---
 
