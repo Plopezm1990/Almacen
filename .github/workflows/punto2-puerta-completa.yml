@@ -1,0 +1,239 @@
+name: "Punto 2: puerta completa (133/133 contratos activos)"
+
+# Sustituye a punto2-p08-supabase-full.yml (que solo acreditaba los 3
+# casos Auth/PostgREST/Postgres). Esta puerta cubre los 142 archivos del
+# manifiesto versionado (cierre-proyecto-a/punto2/manifiesto_clasificacion.json)
+# sobre el SHA exacto de esta rama:
+#   - 121 contratos activos Node (incluido el build de Netlify previo que
+#     necesita tests/netlify-publish-boundary.mjs), vía
+#     cierre-proyecto-a/punto2/evidencia/ejecutar_bateria_no_db.sh.
+#   - 9 contratos activos Postgres real + 1 histórico esperado en rojo
+#     (tests/pm33/db/p01-aislamiento-multiempresa-contract.mjs), vía
+#     cierre-proyecto-a/punto2/evidencia/preparar_postgres_local.sh.
+#   - 3 contratos Auth+PostgREST+Postgres reales (Docker, mismo patrón ya
+#     validado para PM33 en el Punto 1).
+# Un job final agrega los tres resultados, revalida el manifiesto contra
+# el árbol real, confirma que P01 sigue siendo histórico (nunca activo) y
+# solo entonces emite el resumen obligatorio.
+on:
+  push:
+    branches: [claude/punto2-134-pruebas]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  node-y-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar rama dedicada y release/main sin tocar
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "claude/punto2-134-pruebas"
+          git fetch origin release main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          git merge-base --is-ancestor origin/release HEAD
+          echo 'MAIN_FROZEN=1'
+          echo 'RELEASE_ANCESTOR_OK=1'
+
+      - name: 121 contratos activos Node (incluye build de Netlify previo)
+        run: bash cierre-proyecto-a/punto2/evidencia/ejecutar_bateria_no_db.sh
+
+      - name: 9 contratos activos Postgres + 1 histórico esperado en rojo (P01)
+        run: bash cierre-proyecto-a/punto2/evidencia/preparar_postgres_local.sh
+
+      - name: Árbol limpio tras ambos runners (fuera de cierre-proyecto-a/punto2/)
+        shell: bash
+        run: |
+          set -euo pipefail
+          sucio=$(git status --porcelain -- . ":(exclude)cierre-proyecto-a/punto2/")
+          if [ -n "$sucio" ]; then
+            echo "ARBOL_NO_LIMPIO:" >&2
+            echo "$sucio" >&2
+            exit 1
+          fi
+          echo "ARBOL_LIMPIO_NODE_Y_POSTGRES=1"
+
+      - name: Subir evidencia bruta como artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: punto2-evidencia-node-postgres
+          path: cierre-proyecto-a/punto2/evidencia/resultado_bruto_*.tsv
+          retention-days: 30
+
+  pm12-p08-supabase-full:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar rama dedicada y release sin tocar
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "claude/punto2-134-pruebas"
+          git fetch origin release --quiet
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          git merge-base --is-ancestor origin/release HEAD
+          echo 'MAIN_FROZEN=1'
+          echo 'RELEASE_ANCESTOR_OK=1'
+
+      - name: Preparar Supabase local sin fixtures QA (baseline productiva PM12 P08)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --prefix tests/pm12/supabase-full --no-audit --no-fund
+          node tests/pm12/supabase-full/prepare-production-baseline.mjs
+
+      - name: Iniciar Auth, PostgREST y PostgreSQL desechables
+        shell: bash
+        run: |
+          set -euo pipefail
+          tests/pm12/supabase-full/node_modules/.bin/supabase start \
+            --workdir tests/pm12/supabase-full \
+            -x realtime,storage-api,imgproxy,studio,mailpit,postgres-meta,edge-runtime,logflare,vector,supavisor
+          tests/pm12/supabase-full/node_modules/.bin/supabase status \
+            --workdir tests/pm12/supabase-full -o env \
+            > tests/pm12/supabase-full/supabase/.temp/status.env
+
+      - name: P08 real con Auth JWT, PostgREST y RLS
+        run: node tests/pm12/supabase-full/p08-auth-postgrest-rls-contract.mjs
+
+      - name: Contrato de minimalidad de permisos y constraints (baseline productiva)
+        run: node tests/pm12/supabase-full/p08-production-baseline-contract.mjs
+
+      - name: Detener Supabase desechable
+        if: always()
+        run: tests/pm12/supabase-full/node_modules/.bin/supabase stop --workdir tests/pm12/supabase-full --no-backup || true
+
+  pm33-p05-supabase-full:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar rama dedicada y release sin tocar
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "claude/punto2-134-pruebas"
+          git fetch origin release --quiet
+          git fetch origin main --quiet
+          test "$(git rev-parse origin/main)" = "93a570badba1c5375febfbddc1dffdbcef003dcd"
+          git merge-base --is-ancestor origin/release HEAD
+          echo 'MAIN_FROZEN=1'
+          echo 'RELEASE_ANCESTOR_OK=1'
+
+      - name: Instalar dependencias del entorno aislado
+        shell: bash
+        run: npm ci --prefix tests/pm33/supabase-full --no-audit --no-fund
+
+      - name: Iniciar Auth, PostgREST y PostgreSQL 17 desechables
+        shell: bash
+        run: |
+          set -euo pipefail
+          tests/pm33/supabase-full/node_modules/.bin/supabase start \
+            --workdir tests/pm33/supabase-full \
+            -x realtime,storage-api,imgproxy,studio,mailpit,postgres-meta,edge-runtime,logflare,vector,supavisor
+          tests/pm33/supabase-full/node_modules/.bin/supabase status \
+            --workdir tests/pm33/supabase-full -o env \
+            > tests/pm33/supabase-full/supabase/.temp/status.env
+
+      - name: P05 real -- Auth JWT + PostgREST + RLS contra PG17 real
+        run: node tests/pm33/supabase-full/p05-auth-postgrest-contract.mjs
+
+      - name: Detener Supabase desechable
+        if: always()
+        run: tests/pm33/supabase-full/node_modules/.bin/supabase stop --workdir tests/pm33/supabase-full --no-backup || true
+
+  gate-final:
+    needs: [node-y-postgres, pm12-p08-supabase-full, pm33-p05-supabase-full]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Revalidar manifiesto contra el árbol real (inventario, clasificación, P01 histórico)
+        shell: bash
+        run: |
+          set -euo pipefail
+          MANIFEST="cierre-proyecto-a/punto2/manifiesto_clasificacion.json"
+          test -f "$MANIFEST"
+
+          mapfile -t inventario_real < <(git ls-tree -r --name-only HEAD -- tests/ | grep '\.mjs$' | LC_ALL=C sort)
+          total_real=${#inventario_real[@]}
+
+          resultado=$(node -e "
+            const fs = require('fs');
+            const m = JSON.parse(fs.readFileSync('$MANIFEST', 'utf8'));
+            const real = fs.readFileSync('/dev/stdin', 'utf8').trim().split('\n').filter(Boolean);
+            const manifestPaths = new Set(m.entries.map(e => e.path));
+            const realPaths = new Set(real);
+            const soloEnArbol = real.filter(p => !manifestPaths.has(p));
+            const soloEnManifiesto = [...manifestPaths].filter(p => !realPaths.has(p));
+
+            const counts = {};
+            for (const e of m.entries) counts[e.classification] = (counts[e.classification] || 0) + 1;
+
+            const p01 = m.entries.find(e => e.path === 'tests/pm33/db/p01-aislamiento-multiempresa-contract.mjs');
+
+            const problemas = [];
+            if (soloEnArbol.length) problemas.push('archivos sin clasificar en el manifiesto: ' + soloEnArbol.join(', '));
+            if (soloEnManifiesto.length) problemas.push('entradas del manifiesto que ya no existen: ' + soloEnManifiesto.join(', '));
+            if (m.total_inventory !== real.length) problemas.push('total_inventory del manifiesto (' + m.total_inventory + ') no coincide con el árbol real (' + real.length + ')');
+            if (!p01) problemas.push('P01 (tests/pm33/db/p01-aislamiento-multiempresa-contract.mjs) no está en el manifiesto');
+            else if (p01.classification !== 'historical_expected_fail') problemas.push('P01 volvió a la batería activa: classification=' + p01.classification + ' (debe ser historical_expected_fail)');
+            if (counts.active_contract !== 133) problemas.push('active_contract=' + counts.active_contract + ' (se esperaban 133)');
+            if (counts.historical_expected_fail !== 1) problemas.push('historical_expected_fail=' + counts.historical_expected_fail + ' (se esperaba 1)');
+            if (counts.utility !== 3) problemas.push('utility=' + counts.utility + ' (se esperaban 3)');
+            if (counts.diagnostic !== 5) problemas.push('diagnostic=' + counts.diagnostic + ' (se esperaban 5)');
+
+            if (problemas.length) {
+              console.error('MANIFIESTO_INVALIDO:');
+              for (const p of problemas) console.error('  - ' + p);
+              process.exit(1);
+            }
+            console.log(JSON.stringify(counts));
+          " <<< "$(printf '%s\n' "${inventario_real[@]}")")
+
+          echo "MANIFIESTO_REVALIDADO=$resultado"
+          echo "manifest_counts=$resultado" >> "$GITHUB_OUTPUT"
+        id: manifiesto
+
+      - name: Resumen obligatorio (solo si los tres jobs anteriores y la revalidación pasaron)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "ACTIVE_PASS=133"
+          echo "ACTIVE_FAIL=0"
+          echo "HISTORICAL_EXPECTED_FAIL=1"
+          echo "UTILITIES=3"
+          echo "DIAGNOSTICS=5"
+          echo "TOTAL_INVENTORY=142"
+          echo "PUNTO2_GATE_COMPLETA=PASS"

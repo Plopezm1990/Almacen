@@ -25,12 +25,25 @@ if [ ! -f "$MANIFEST" ]; then
   exit 1
 fi
 
-service postgresql start 2>/dev/null || sudo service postgresql start
-sleep 1
-sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';" 2>/dev/null || \
-  psql -U postgres -c "ALTER USER postgres PASSWORD 'postgres';"
-
 export PGPASSWORD=postgres
+
+# Portable entre un entorno de trabajo interactivo (sin Postgres arrancado
+# todavía, se levanta el paquete local del sistema) y CI (un contenedor de
+# servicio Postgres que ya escucha en 127.0.0.1:5432 con esta misma
+# contraseña vía POSTGRES_PASSWORD) -- en ningún caso se asume systemd.
+if ! pg_isready -h 127.0.0.1 -p 5432 -U postgres >/dev/null 2>&1; then
+  service postgresql start 2>/dev/null || sudo service postgresql start 2>/dev/null || true
+  for i in $(seq 1 20); do
+    pg_isready -h 127.0.0.1 -p 5432 -U postgres >/dev/null 2>&1 && break
+    sleep 1
+  done
+fi
+pg_isready -h 127.0.0.1 -p 5432 -U postgres
+# Fija la contraseña solo hace falta en un Postgres local recién instalado
+# (auth peer/trust por defecto); en CI el servicio ya la trae fijada y
+# esto es un no-op idempotente tolerado.
+sudo -u postgres psql -h 127.0.0.1 -c "ALTER USER postgres PASSWORD 'postgres';" 2>/dev/null || \
+  psql -h 127.0.0.1 -U postgres -c "ALTER USER postgres PASSWORD 'postgres';" 2>/dev/null || true
 for db in pm12_p08_test pm14_p02_test pm33_p05_test; do
   dropdb -h 127.0.0.1 -U postgres --if-exists "$db"
   createdb -h 127.0.0.1 -U postgres "$db"
