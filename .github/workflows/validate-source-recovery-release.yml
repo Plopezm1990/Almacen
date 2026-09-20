@@ -3,7 +3,7 @@ name: Validate current Source Recovery
 on:
   push:
     branches:
-      - claude/source-recovery-release-20260915
+      - claude/punto4-manifiesto-release
     paths:
       - '.github/workflows/validate-source-recovery-release.yml'
       - 'source-recovery/**'
@@ -28,7 +28,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          RELEASE_BASE=d2eec9dfbada9778fe4e787cd841790281bc5f7f
+          RELEASE_BASE=8540bd06d5555cf260aa4599144ed6c64f3ca029
           git fetch origin release --no-tags
           test "$(git rev-parse origin/release)" = "$RELEASE_BASE"
           git merge-base --is-ancestor "$RELEASE_BASE" HEAD
@@ -52,7 +52,7 @@ jobs:
         run: |
           set -euo pipefail
           BASE=7b2aa0f1500ecfc5dce551196f5434655411a314
-          RELEASE_BASE=d2eec9dfbada9778fe4e787cd841790281bc5f7f
+          RELEASE_BASE=8540bd06d5555cf260aa4599144ed6c64f3ca029
           TARGET_FUENTE_COMMIT=$(git log -1 --format=%H -- fuente.js)
 
           git cat-file -e "$BASE^{commit}"
@@ -177,7 +177,7 @@ jobs:
           data = {
               "status": "PASS",
               "contract": "source-recovery-current-v2",
-              "releaseBaseCommit": "d2eec9dfbada9778fe4e787cd841790281bc5f7f",
+              "releaseBaseCommit": "8540bd06d5555cf260aa4599144ed6c64f3ca029",
               "syncBaselineCommit": "bd0dc4a85609e2b9581713cd3dc6973ffd57e893",
               "targetFuenteCommit": os.environ["TARGET_FUENTE_COMMIT"],
               "targetArtifactSha256": os.environ["TARGET_SHA"],
