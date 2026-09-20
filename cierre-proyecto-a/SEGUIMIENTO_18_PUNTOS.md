@@ -6,11 +6,20 @@ contra el estado real del repositorio, GitHub, Supabase (PROD/QA) y Netlify
 en el momento de cada verificación registrada abajo. No contiene
 credenciales ni secretos.
 
-**Rama de trabajo:** `claude/proyecto-a-la-suite-cierre-3xs7l3`.
-**Alcance de esta sesión:** lecturas remotas, preparación de correcciones en
-rama/copia de trabajo aislada, commits locales, pruebas locales. `main` y
-`release` no se han tocado. PR #38 no se ha fusionado. No se ha aplicado
-ninguna migración ni cambio de datos/configuración en Supabase QA ni PROD.
+**Rama de seguimiento:** `claude/proyecto-a-la-suite-cierre-3xs7l3`.
+
+**Estado actual:** `release` está protegida en
+`21ee66bdb52e4d5ad0af2341543f53720a4cf027`; `main` permanece en
+`93a570badba1c5375febfbddc1dffdbcef003dcd`; PR #38 no se ha fusionado.
+PM33 está aplicada en PROD como
+`20260919225831_pm33_p05_identidad_antes_de_actividad`. Puntos 1–4
+cerrados. Este documento conserva la cronología de verificaciones previas,
+pero sus afirmaciones sobre “sin tocar release/PROD” describen el estado
+inicial de la revisión, no el estado actual.
+
+**Límite vigente:** no se realizan cambios en QA/PROD, historial de
+migraciones, `main`, `release`, PR #38 ni Netlify sin autorización
+separada.
 
 **Convención de estado** (por punto, no por frase suelta):
 `preparado` · `validado localmente` · `validado en QA` · `aplicado` ·
@@ -951,27 +960,55 @@ del repositorio no se modificaron. No se empezó el Punto 5.
 
 ## 5. Matriz de procedencia de migraciones (repo / QA / PROD)
 
-**Estado: deuda de trazabilidad confirmada, matriz NO completada.**
+**Estado: MATRIZ COMPLETADA · reconciliación pendiente de decisión.**
 
-Listé las migraciones aplicadas en PROD (36) y QA (63) vía Supabase el
-19/09/2026, y las comparé contra los archivos de `supabase/migrations/` en
-la rama `release`. Confirmado: **los timestamps de los archivos en
-`release` no coinciden 1:1 con las versiones registradas como aplicadas en
-PROD** (p. ej. `release` tiene un archivo `20260904135838`, que no
-aparece en el historial de migraciones de PROD tal como lo devuelve
-Supabase). Esto es consistente con lo que señala el informe: el historial
-de migraciones vivo en cada entorno no es una simple proyección del
-directorio del repositorio.
+Captura nueva, de solo lectura, sobre
+`release@21ee66bdb52e4d5ad0af2341543f53720a4cf027`, PROD y QA. Sustituye
+los conteos históricos 36/63: el estado actual es **34** archivos de
+migración en el repositorio, **37** registros en PROD y **62** en QA.
 
-Confirmado también: `p2_r02_revocar_exec_rpcs_legacy` está aplicada y
-activa en PROD (versión `20260916035012`), y su cadena de origen no está
-incorporada en `release`. QA tiene 27 migraciones adicionales que no
-existen en PROD (toda la serie `p2_r01_qa_*`, `p2_r02_qa_*`,
-`pm29_qa_*`), coherente con que P2 está muy por delante de PROD.
+| Relación | Resultado |
+|---|---:|
+| Coincidencia exacta repo↔PROD (versión y nombre) | 1 |
+| Coincidencia exacta repo↔QA | 16 |
+| Mismo nombre, versión distinta, repo↔PROD | 7 |
+| Mismo nombre, versión distinta, repo↔QA | 10 |
+| Registros solo PROD, sin nombre ni versión en repo | 29 |
+| Registros solo QA, sin nombre ni versión en repo | 36 |
 
-**No completado en esta sesión**: la matriz completa objeto-por-objeto
-(grants, funciones, RLS) por entorno. Es un trabajo de reconciliación
-sustancial que requiere su propia pasada dedicada.
+La única coincidencia exacta repo↔PROD es
+`20260919225831_pm33_p05_identidad_antes_de_actividad`. Las coincidencias
+por nombre con versión distinta se catalogan solo como **evidencia de
+linaje**, nunca como equivalencia semántica. En particular,
+`20260916035012_p2_r02_revocar_exec_rpcs_legacy` sigue sin procedencia
+versionada en `release` y queda clasificada como **no resuelta**, sin
+intentar copiarla ni reparar el historial.
+
+La matriz incluye huellas de definición y permisos de funciones; RLS,
+propietario y privilegios efectivos de tablas para `anon`,
+`authenticated` y `PUBLIC`; políticas RLS; vistas y triggers. Entre
+PROD y QA: 38 funciones con misma firma, de las cuales 8 coinciden y 30
+difieren; 14 funciones solo existen en PROD y 54 solo en QA. Comparten 26
+tablas por nombre, pero solo 16 conservan también la misma configuración de
+RLS, propietario y privilegios; 10 difieren en esa dimensión. Las 22
+políticas compartidas, la vista compartida y los 8 triggers compartidos
+coinciden en sus huellas respectivas. Esto confirma que QA no es un espejo
+de PROD y no debe usarse como fuente de orden de migraciones de producción.
+
+Artefactos reproducibles en la rama aislada
+`claude/punto5-matriz-migraciones@690691811ec16e0f762a2c39d7ec5344e9a9619a`:
+`tests/punto5/MATRIZ_PROCEDENCIA_MIGRACIONES.json`,
+`catalogo_solo_lectura.sql`, `verificar_matriz.mjs` y README; solo
+modifican `tests/` y `.github/`. CI
+[`35538924300`](https://github.com/Plopezm1990/Almacen/actions/runs/35538924300)
+SUCCESS sobre ese SHA exacto:
+`PUNTO5_MATRIZ=PASS REPO=34 PROD=37 QA=62 EXACT_PROD=1 EXACT_QA=16`.
+
+**No ejecutado:** `db push`, `migration repair`, `apply_migration`,
+DDL, DML, cambios de grants/RLS/configuración, ni lectura de filas de
+negocio o Auth. La siguiente fase requiere una autorización separada para
+elegir una estrategia de reconciliación; no hay ninguna acción automática
+segura sobre `schema_migrations`.
 
 ---
 
