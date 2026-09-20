@@ -88,9 +88,19 @@ const src = fs.readFileSync('fuente.js', 'utf8');
 // setTab crudo: barra lateral, barra superior C, navegación inferior móvil, buscador
 // global y las tarjetas del dashboard. ----
 {
-  assert.match(src, /createElement\(TopBarC, \{[^}]*setTab: cambiarTabPM15/, 'TopBarC debe usar cambiarTabPM15');
-  assert.match(src, /createElement\(BottomNavC, \{[^}]*setTab: cambiarTabPM15/, 'BottomNavC debe usar cambiarTabPM15');
-  assert.match(src, /grupos: disenoMenu === "A" \? gruposA : gruposB,\s*tab,\s*setTab: cambiarTabPM15,/, 'SidebarGrupos debe usar cambiarTabPM15');
+  // Estructural, no un nombre de componente ni un prop concreto: el
+  // rediseño visual (PM28) sustituyó TopBarC/BottomNavC por
+  // SidebarGrupos/NavInferior y retiró el conmutador de diseño A/B
+  // (disenoMenu/gruposA/gruposB) a favor de una única lista GRUPOS -- lo
+  // que importa, sea cual sea el nombre del componente, es que la
+  // superficie de navegación real reciba el setTab PROTEGIDO
+  // (cambiarTabPM15), nunca el crudo.
+  function usaSetTabProtegido(nombreComponente) {
+    const re = new RegExp(String.raw`createElement\(\s*${nombreComponente}\s*,[\s\S]{0,500}?setTab: cambiarTabPM15`);
+    return re.test(src);
+  }
+  assert.ok(usaSetTabProtegido('SidebarGrupos'), 'SidebarGrupos (navegación lateral/superior) debe usar cambiarTabPM15');
+  assert.ok(usaSetTabProtegido('NavInferior'), 'NavInferior (navegación inferior móvil) debe usar cambiarTabPM15');
   assert.match(src, /createElement\(BusquedaGlobal, \{[^}]*setTab: cambiarTabPM15/, 'BusquedaGlobal debe usar cambiarTabPM15');
   assert.match(src, /sugerenciasPedido: sugerenciasPedidoInforme,\s*setTab: cambiarTabPM15,/, 'Dashboard debe usar cambiarTabPM15');
   console.log('P04_NR08_SUPERFICIES_DE_NAVEGACION_PROTEGIDAS=PASS');

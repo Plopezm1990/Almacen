@@ -16,7 +16,10 @@ const src = fs.readFileSync('fuente.js', 'utf8');
   assert.ok(finLogin > iniLogin, 'no se pudo acotar la pantalla de login');
   const bloque = src.slice(iniLogin, finLogin);
 
-  assert.match(bloque, /window\.location\.href = "\.\/restablecer-contrasena\.html";/, 'el enlace debe navegar al mismo restablecer-contrasena.html que ya usaba el parche');
+  // Tolerante a la técnica de navegación: un manejador de clic imperativo
+  // (window.location.href = ...) y un enlace real (<a href="...">) llevan
+  // al mismo destino; lo que importa es el destino, no cómo se llega.
+  assert.match(bloque, /(?:window\.location\.href = "\.\/restablecer-contrasena\.html";|href: "\.\/restablecer-contrasena\.html")/, 'el enlace debe navegar al mismo restablecer-contrasena.html que ya usaba el parche');
   assert.match(bloque, /"\\xBFOlvidaste tu contrase\\xF1a\?"/, 'debe mostrar el texto real del enlace');
   assert.match(bloque, /placeholder: "Correo"/, 'debe seguir siendo el mismo formulario de login real (no uno nuevo)');
   console.log('P03_PM17_LOGIN_ENLACE_OLVIDE_CONTRASENA=PASS');

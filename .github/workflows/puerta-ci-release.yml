@@ -1,0 +1,418 @@
+name: "Puerta de CI general -- candidato a release (133/133 contratos activos)"
+
+# Punto 3: generaliza la puerta validada en el Punto 2
+# (cierre-proyecto-a/punto2/) a infraestructura reutilizable del
+# repositorio, basada en el manifiesto versionado
+# (tests/ci/manifiesto_clasificacion.json, 142 archivos) sobre el SHA
+# exacto evaluado, en 4 jobs:
+#   - node-y-postgres: ejecuta tests/ci/ejecutar_bateria_no_db.sh (121
+#     activos Node) y tests/ci/preparar_postgres_local.sh (9 activos
+#     Postgres + 1 histórico esperado en rojo), contra un servicio
+#     Postgres 16 real. Ambos scripts CALCULAN sus propios conteos
+#     (NODE_ACTIVE_*, POSTGRES_ACTIVE_*) y terminan con código de salida
+#     distinto de 0 si algún contrato activo falla o si una
+#     utilidad/diagnóstico se bloquea -- el job los expone como outputs,
+#     nunca como texto fijo.
+#   - pm12-p08-supabase-full / pm33-p05-supabase-full: los 3 contratos
+#     Auth+PostgREST+Postgres reales, contra un stack de Supabase local
+#     desechable (sin credenciales ni proyecto remoto); cada uno expone
+#     cuántos de sus propios tests pasaron (2 y 1 respectivamente),
+#     calculado a partir del resultado real (`outcome`) de cada paso,
+#     nunca fijo.
+#   - gate-final: exige que los tres jobs anteriores hayan terminado con
+#     éxito, SUMA los outputs reales (121+9+3=133) y solo entonces
+#     imprime el resumen -- no hay ningún `echo` de un número que no se
+#     haya demostrado primero. Revalida además el manifiesto contra el
+#     árbol real (inventario, clasificación, histórico PM33 P01 separado
+#     de la batería activa).
+#
+# No despliega en Netlify ni escribe en Supabase remoto: ningún paso usa
+# secrets (no hay ninguno declarado en este workflow), y los dos stacks
+# de Supabase que se arrancan son instancias locales desechables
+# (`supabase start --workdir ...`), paradas siempre al final del job.
+#
+# Disparo: manual (workflow_dispatch), en los PR dirigidos a `release`
+# (para poder proponerla como required status check más adelante -- esa
+# incorporación y la propia regla de protección necesitan autorización
+# aparte, ver Punto 3 en SEGUIMIENTO_18_PUNTOS.md) y en la propia rama
+# aislada de esta puerta, para poder validarla antes de proponerla.
+# Deliberadamente NO se añade un disparador `push: branches: [release]`
+# todavía -- eso sería un disparador de producción, fuera del alcance de
+# este punto.
+on:
+  push:
+    branches: [claude/punto3-promocion-final]
+  pull_request:
+    branches: [release]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  node-y-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    outputs:
+      node_active_total: ${{ steps.node_run.outputs.node_active_total }}
+      node_active_pass: ${{ steps.node_run.outputs.node_active_pass }}
+      node_active_fail: ${{ steps.node_run.outputs.node_active_fail }}
+      infra_fail: ${{ steps.node_run.outputs.infra_fail }}
+      postgres_active_total: ${{ steps.postgres_run.outputs.postgres_active_total }}
+      postgres_active_pass: ${{ steps.postgres_run.outputs.postgres_active_pass }}
+      postgres_active_fail: ${{ steps.postgres_run.outputs.postgres_active_fail }}
+      historical_expected_fail: ${{ steps.postgres_run.outputs.historical_expected_fail }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Guarda de disparo -- nunca por push directo a release/main
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "EVENT_NAME=${{ github.event_name }}"
+          echo "GITHUB_REF_NAME=$GITHUB_REF_NAME"
+          if [ "${{ github.event_name }}" = "push" ]; then
+            test "$GITHUB_REF_NAME" != "release"
+            test "$GITHUB_REF_NAME" != "main"
+          fi
+          echo 'DISPARO_VALIDADO=1'
+
+      - name: 121 contratos activos Node (incluye build de Netlify previo)
+        id: node_run
+        shell: bash
+        run: |
+          set +e
+          bash tests/ci/ejecutar_bateria_no_db.sh > /tmp/node_run.log 2>&1
+          code=$?
+          set -e
+          cat /tmp/node_run.log
+          total=$(sed -n 's/^NODE_ACTIVE_TOTAL=\([0-9]*\).*/\1/p' /tmp/node_run.log | tail -1)
+          pass=$(sed -n 's/^NODE_ACTIVE_PASS=\([0-9]*\).*/\1/p' /tmp/node_run.log | tail -1)
+          fail=$(sed -n 's/^NODE_ACTIVE_FAIL=\([0-9]*\).*/\1/p' /tmp/node_run.log | tail -1)
+          infra=$(sed -n 's/^INFRA_FAIL=\([0-9]*\).*/\1/p' /tmp/node_run.log | tail -1)
+          echo "node_active_total=${total:--1}" >> "$GITHUB_OUTPUT"
+          echo "node_active_pass=${pass:--1}" >> "$GITHUB_OUTPUT"
+          echo "node_active_fail=${fail:--1}" >> "$GITHUB_OUTPUT"
+          echo "infra_fail=${infra:--1}" >> "$GITHUB_OUTPUT"
+          exit $code
+
+      - name: 9 contratos activos Postgres + 1 histórico esperado en rojo (P01)
+        id: postgres_run
+        shell: bash
+        run: |
+          set +e
+          bash tests/ci/preparar_postgres_local.sh > /tmp/pg_run.log 2>&1
+          code=$?
+          set -e
+          cat /tmp/pg_run.log
+          total=$(sed -n 's/^POSTGRES_ACTIVE_TOTAL=\([0-9]*\).*/\1/p' /tmp/pg_run.log | tail -1)
+          pass=$(sed -n 's/^POSTGRES_ACTIVE_PASS=\([0-9]*\).*/\1/p' /tmp/pg_run.log | tail -1)
+          fail=$(sed -n 's/^POSTGRES_ACTIVE_FAIL=\([0-9]*\).*/\1/p' /tmp/pg_run.log | tail -1)
+          hist=$(sed -n 's/^HISTORICAL_EXPECTED_FAIL=\([0-9]*\).*/\1/p' /tmp/pg_run.log | tail -1)
+          echo "postgres_active_total=${total:--1}" >> "$GITHUB_OUTPUT"
+          echo "postgres_active_pass=${pass:--1}" >> "$GITHUB_OUTPUT"
+          echo "postgres_active_fail=${fail:--1}" >> "$GITHUB_OUTPUT"
+          echo "historical_expected_fail=${hist:--1}" >> "$GITHUB_OUTPUT"
+          exit $code
+
+      - name: Árbol limpio tras ambos runners
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          sucio=$(git status --porcelain -- .)
+          if [ -n "$sucio" ]; then
+            echo "ARBOL_NO_LIMPIO:" >&2
+            echo "$sucio" >&2
+            exit 1
+          fi
+          echo "ARBOL_LIMPIO_NODE_Y_POSTGRES=1"
+
+      - name: Subir evidencia bruta como artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: puerta-ci-evidencia-node-postgres
+          path: tests/ci/evidencia/resultado_bruto_*.tsv
+          retention-days: 30
+
+  pm12-p08-supabase-full:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      pm12_full_stack_pass: ${{ steps.contar.outputs.pm12_full_stack_pass }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Preparar Supabase local sin fixtures QA (baseline productiva PM12 P08)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --prefix tests/pm12/supabase-full --no-audit --no-fund
+          node tests/pm12/supabase-full/prepare-production-baseline.mjs
+
+      - name: Iniciar Auth, PostgREST y PostgreSQL desechables
+        shell: bash
+        run: |
+          set -euo pipefail
+          tests/pm12/supabase-full/node_modules/.bin/supabase start \
+            --workdir tests/pm12/supabase-full \
+            -x realtime,storage-api,imgproxy,studio,mailpit,postgres-meta,edge-runtime,logflare,vector,supavisor
+          tests/pm12/supabase-full/node_modules/.bin/supabase status \
+            --workdir tests/pm12/supabase-full -o env \
+            > tests/pm12/supabase-full/supabase/.temp/status.env
+
+      - name: P08 real con Auth JWT, PostgREST y RLS
+        id: p08_auth
+        run: node tests/pm12/supabase-full/p08-auth-postgrest-rls-contract.mjs
+
+      - name: Contrato de minimalidad de permisos y constraints (baseline productiva)
+        id: p08_baseline
+        run: node tests/pm12/supabase-full/p08-production-baseline-contract.mjs
+
+      - name: Conteo real (solo cuenta un paso si terminó en éxito)
+        id: contar
+        if: always()
+        shell: bash
+        run: |
+          total=0
+          [ "${{ steps.p08_auth.outcome }}" = "success" ] && total=$((total + 1))
+          [ "${{ steps.p08_baseline.outcome }}" = "success" ] && total=$((total + 1))
+          echo "pm12_full_stack_pass=$total" >> "$GITHUB_OUTPUT"
+          echo "PM12_FULL_STACK_PASS=$total (de 2)"
+
+      - name: Detener Supabase desechable
+        if: always()
+        run: tests/pm12/supabase-full/node_modules/.bin/supabase stop --workdir tests/pm12/supabase-full --no-backup || true
+
+  pm33-p05-supabase-full:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      pm33_full_stack_pass: ${{ steps.contar.outputs.pm33_full_stack_pass }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Instalar dependencias del entorno aislado
+        shell: bash
+        run: npm ci --prefix tests/pm33/supabase-full --no-audit --no-fund
+
+      - name: Iniciar Auth, PostgREST y PostgreSQL 17 desechables
+        shell: bash
+        run: |
+          set -euo pipefail
+          tests/pm33/supabase-full/node_modules/.bin/supabase start \
+            --workdir tests/pm33/supabase-full \
+            -x realtime,storage-api,imgproxy,studio,mailpit,postgres-meta,edge-runtime,logflare,vector,supavisor
+          tests/pm33/supabase-full/node_modules/.bin/supabase status \
+            --workdir tests/pm33/supabase-full -o env \
+            > tests/pm33/supabase-full/supabase/.temp/status.env
+
+      - name: P05 real -- Auth JWT + PostgREST + RLS contra PG17 real
+        id: p05_auth
+        run: node tests/pm33/supabase-full/p05-auth-postgrest-contract.mjs
+
+      - name: Conteo real (solo cuenta el paso si terminó en éxito)
+        id: contar
+        if: always()
+        shell: bash
+        run: |
+          total=0
+          [ "${{ steps.p05_auth.outcome }}" = "success" ] && total=$((total + 1))
+          echo "pm33_full_stack_pass=$total" >> "$GITHUB_OUTPUT"
+          echo "PM33_FULL_STACK_PASS=$total (de 1)"
+
+      - name: Detener Supabase desechable
+        if: always()
+        run: tests/pm33/supabase-full/node_modules/.bin/supabase stop --workdir tests/pm33/supabase-full --no-backup || true
+
+  gate-final:
+    needs: [node-y-postgres, pm12-p08-supabase-full, pm33-p05-supabase-full]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Exigir que los tres jobs anteriores hayan terminado con éxito
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "node-y-postgres.result=${{ needs.node-y-postgres.result }}"
+          echo "pm12-p08-supabase-full.result=${{ needs.pm12-p08-supabase-full.result }}"
+          echo "pm33-p05-supabase-full.result=${{ needs.pm33-p05-supabase-full.result }}"
+          fallo=0
+          [ "${{ needs.node-y-postgres.result }}" = "success" ] || { echo "node-y-postgres no terminó con éxito" >&2; fallo=1; }
+          [ "${{ needs.pm12-p08-supabase-full.result }}" = "success" ] || { echo "pm12-p08-supabase-full no terminó con éxito" >&2; fallo=1; }
+          [ "${{ needs.pm33-p05-supabase-full.result }}" = "success" ] || { echo "pm33-p05-supabase-full no terminó con éxito" >&2; fallo=1; }
+          if [ "$fallo" -ne 0 ]; then
+            echo "GATE_FINAL_FALLO: al menos un job previo no terminó con éxito -- no se calcula ningún resumen." >&2
+            exit 1
+          fi
+
+      - name: Calcular (nunca declarar) el total real de contratos activos
+        id: calcular
+        shell: bash
+        env:
+          NODE_ACTIVE_TOTAL: ${{ needs.node-y-postgres.outputs.node_active_total }}
+          NODE_ACTIVE_PASS: ${{ needs.node-y-postgres.outputs.node_active_pass }}
+          NODE_ACTIVE_FAIL: ${{ needs.node-y-postgres.outputs.node_active_fail }}
+          INFRA_FAIL: ${{ needs.node-y-postgres.outputs.infra_fail }}
+          POSTGRES_ACTIVE_TOTAL: ${{ needs.node-y-postgres.outputs.postgres_active_total }}
+          POSTGRES_ACTIVE_PASS: ${{ needs.node-y-postgres.outputs.postgres_active_pass }}
+          POSTGRES_ACTIVE_FAIL: ${{ needs.node-y-postgres.outputs.postgres_active_fail }}
+          HISTORICAL_EXPECTED_FAIL: ${{ needs.node-y-postgres.outputs.historical_expected_fail }}
+          PM12_FULL_STACK_PASS: ${{ needs.pm12-p08-supabase-full.outputs.pm12_full_stack_pass }}
+          PM33_FULL_STACK_PASS: ${{ needs.pm33-p05-supabase-full.outputs.pm33_full_stack_pass }}
+        run: |
+          set -euo pipefail
+          echo "-- Outputs reales recibidos de los jobs anteriores --"
+          echo "NODE_ACTIVE_TOTAL=$NODE_ACTIVE_TOTAL"
+          echo "NODE_ACTIVE_PASS=$NODE_ACTIVE_PASS"
+          echo "NODE_ACTIVE_FAIL=$NODE_ACTIVE_FAIL"
+          echo "INFRA_FAIL=$INFRA_FAIL"
+          echo "POSTGRES_ACTIVE_TOTAL=$POSTGRES_ACTIVE_TOTAL"
+          echo "POSTGRES_ACTIVE_PASS=$POSTGRES_ACTIVE_PASS"
+          echo "POSTGRES_ACTIVE_FAIL=$POSTGRES_ACTIVE_FAIL"
+          echo "HISTORICAL_EXPECTED_FAIL=$HISTORICAL_EXPECTED_FAIL"
+          echo "PM12_FULL_STACK_PASS=$PM12_FULL_STACK_PASS (de 2)"
+          echo "PM33_FULL_STACK_PASS=$PM33_FULL_STACK_PASS (de 1)"
+
+          fallo=0
+          [ "$NODE_ACTIVE_TOTAL" = "121" ] || { echo "NODE_ACTIVE_TOTAL != 121" >&2; fallo=1; }
+          [ "$NODE_ACTIVE_PASS" = "121" ] || { echo "NODE_ACTIVE_PASS != 121" >&2; fallo=1; }
+          [ "$NODE_ACTIVE_FAIL" = "0" ] || { echo "NODE_ACTIVE_FAIL != 0" >&2; fallo=1; }
+          [ "$INFRA_FAIL" = "0" ] || { echo "INFRA_FAIL != 0" >&2; fallo=1; }
+          [ "$POSTGRES_ACTIVE_TOTAL" = "9" ] || { echo "POSTGRES_ACTIVE_TOTAL != 9" >&2; fallo=1; }
+          [ "$POSTGRES_ACTIVE_PASS" = "9" ] || { echo "POSTGRES_ACTIVE_PASS != 9" >&2; fallo=1; }
+          [ "$POSTGRES_ACTIVE_FAIL" = "0" ] || { echo "POSTGRES_ACTIVE_FAIL != 0" >&2; fallo=1; }
+          [ "$HISTORICAL_EXPECTED_FAIL" = "1" ] || { echo "HISTORICAL_EXPECTED_FAIL != 1" >&2; fallo=1; }
+          [ "$PM12_FULL_STACK_PASS" = "2" ] || { echo "PM12_FULL_STACK_PASS != 2" >&2; fallo=1; }
+          [ "$PM33_FULL_STACK_PASS" = "1" ] || { echo "PM33_FULL_STACK_PASS != 1" >&2; fallo=1; }
+          if [ "$fallo" -ne 0 ]; then
+            echo "GATE_FINAL_CONTEO_INESPERADO" >&2
+            exit 1
+          fi
+
+          full_stack_total=$((PM12_FULL_STACK_PASS + PM33_FULL_STACK_PASS))
+          active_pass=$((NODE_ACTIVE_PASS + POSTGRES_ACTIVE_PASS + full_stack_total))
+          active_fail=$((NODE_ACTIVE_FAIL + POSTGRES_ACTIVE_FAIL))
+          total_activos=$((NODE_ACTIVE_TOTAL + POSTGRES_ACTIVE_TOTAL + 3))
+
+          {
+            echo "active_pass=$active_pass"
+            echo "active_fail=$active_fail"
+            echo "total_activos=$total_activos"
+            echo "historical_expected_fail=$HISTORICAL_EXPECTED_FAIL"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "CALCULO_TOTAL_ACTIVOS=$total_activos (121 Node + 9 Postgres + 3 full-stack)"
+          echo "CALCULO_ACTIVE_PASS=$active_pass"
+          echo "CALCULO_ACTIVE_FAIL=$active_fail"
+
+          if [ "$total_activos" -ne 133 ]; then
+            echo "TOTAL_ACTIVOS_CALCULADO_DISTINTO_DE_133: $total_activos" >&2
+            exit 1
+          fi
+          if [ "$active_pass" -ne 133 ] || [ "$active_fail" -ne 0 ]; then
+            echo "ACTIVE_PASS/ACTIVE_FAIL_CALCULADOS_NO_CUADRAN: pass=$active_pass fail=$active_fail" >&2
+            exit 1
+          fi
+
+      - name: Revalidar manifiesto contra el árbol real (inventario, clasificación, P01 histórico)
+        id: revalidar
+        shell: bash
+        run: |
+          set -euo pipefail
+          MANIFEST="tests/ci/manifiesto_clasificacion.json"
+          test -f "$MANIFEST"
+
+          mapfile -t inventario_real < <(git ls-tree -r --name-only HEAD -- tests/ | grep '\.mjs$' | LC_ALL=C sort)
+          total_real=${#inventario_real[@]}
+
+          resultado=$(node -e "
+            const fs = require('fs');
+            const m = JSON.parse(fs.readFileSync('$MANIFEST', 'utf8'));
+            const real = fs.readFileSync('/dev/stdin', 'utf8').trim().split('\n').filter(Boolean);
+            const manifestPaths = new Set(m.entries.map(e => e.path));
+            const realPaths = new Set(real);
+            const soloEnArbol = real.filter(p => !manifestPaths.has(p));
+            const soloEnManifiesto = [...manifestPaths].filter(p => !realPaths.has(p));
+
+            const counts = {};
+            for (const e of m.entries) counts[e.classification] = (counts[e.classification] || 0) + 1;
+
+            const p01 = m.entries.find(e => e.path === 'tests/pm33/db/p01-aislamiento-multiempresa-contract.mjs');
+
+            const problemas = [];
+            if (soloEnArbol.length) problemas.push('archivos sin clasificar en el manifiesto: ' + soloEnArbol.join(', '));
+            if (soloEnManifiesto.length) problemas.push('entradas del manifiesto que ya no existen: ' + soloEnManifiesto.join(', '));
+            if (m.total_inventory !== real.length) problemas.push('total_inventory del manifiesto (' + m.total_inventory + ') no coincide con el árbol real (' + real.length + ')');
+            if (!p01) problemas.push('P01 (tests/pm33/db/p01-aislamiento-multiempresa-contract.mjs) no está en el manifiesto');
+            else if (p01.classification !== 'historical_expected_fail') problemas.push('P01 volvió a la batería activa: classification=' + p01.classification + ' (debe ser historical_expected_fail)');
+            if (counts.active_contract !== 133) problemas.push('active_contract=' + counts.active_contract + ' (se esperaban 133)');
+            if (counts.historical_expected_fail !== 1) problemas.push('historical_expected_fail=' + counts.historical_expected_fail + ' (se esperaba 1)');
+            if (counts.utility !== 3) problemas.push('utility=' + counts.utility + ' (se esperaban 3)');
+            if (counts.diagnostic !== 5) problemas.push('diagnostic=' + counts.diagnostic + ' (se esperaban 5)');
+
+            if (problemas.length) {
+              console.error('MANIFIESTO_INVALIDO:');
+              for (const p of problemas) console.error('  - ' + p);
+              process.exit(1);
+            }
+            console.log(JSON.stringify(counts));
+          " <<< "$(printf '%s\n' "${inventario_real[@]}")")
+
+          echo "MANIFIESTO_REVALIDADO=$resultado"
+          utilities=$(node -e "console.log(JSON.parse(process.argv[1]).utility)" "$resultado")
+          diagnostics=$(node -e "console.log(JSON.parse(process.argv[1]).diagnostic)" "$resultado")
+          {
+            echo "utilities=$utilities"
+            echo "diagnostics=$diagnostics"
+            echo "total_inventory=$total_real"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Resumen final -- todo viene de outputs calculados/revalidados en los pasos anteriores
+        shell: bash
+        env:
+          ACTIVE_PASS: ${{ steps.calcular.outputs.active_pass }}
+          ACTIVE_FAIL: ${{ steps.calcular.outputs.active_fail }}
+          TOTAL_ACTIVOS: ${{ steps.calcular.outputs.total_activos }}
+          HISTORICAL_EXPECTED_FAIL: ${{ steps.calcular.outputs.historical_expected_fail }}
+          UTILITIES: ${{ steps.revalidar.outputs.utilities }}
+          DIAGNOSTICS: ${{ steps.revalidar.outputs.diagnostics }}
+          TOTAL_INVENTORY: ${{ steps.revalidar.outputs.total_inventory }}
+        run: |
+          set -euo pipefail
+          for v in ACTIVE_PASS ACTIVE_FAIL TOTAL_ACTIVOS HISTORICAL_EXPECTED_FAIL UTILITIES DIAGNOSTICS TOTAL_INVENTORY; do
+            if [ -z "${!v:-}" ]; then
+              echo "RESUMEN_FINAL_SIN_VALOR: falta $v (algún paso anterior no lo expuso)" >&2
+              exit 1
+            fi
+          done
+          echo "ACTIVE_PASS=$ACTIVE_PASS"
+          echo "ACTIVE_FAIL=$ACTIVE_FAIL"
+          echo "HISTORICAL_EXPECTED_FAIL=$HISTORICAL_EXPECTED_FAIL"
+          echo "UTILITIES=$UTILITIES"
+          echo "DIAGNOSTICS=$DIAGNOSTICS"
+          echo "TOTAL_INVENTORY=$TOTAL_INVENTORY"
+          echo "PUERTA_CI_RELEASE_GATE=PASS"

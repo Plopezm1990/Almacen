@@ -75,11 +75,16 @@ const checks = {
   movimiento_reverso_rpc: movimientosCaja.includes('.rpc("revertir_movimiento_caja"'),
   movimiento_tipo_canonico: movimientosCaja.includes('["ENTRADA", "RETIRADA"]'),
   movimiento_importe_positivo: movimientosCaja.includes('imp <= 0'),
-  movimiento_bloquea_arqueo_activo: movimientosCaja.includes('a2.estado !== "ANULADO"'),
+  // Nombre de variable agnóstico (a2 en origen, a22 tras un renombrado
+  // del empaquetador): lo que importa es la condición en sí.
+  movimiento_bloquea_arqueo_activo: /\w+\.estado !== "ANULADO"/.test(movimientosCaja),
   movimiento_sin_borrado_fisico: !movimientosCaja.includes('setMovimientosCaja((s2) => s2.filter'),
   movimiento_reverso_con_motivo: movimientosCaja.includes('if (!motivoLimpio)'),
 
-  devolucion_cliente_rpc_atomica: devoluciones.includes('.rpc("registrar_devolucion_venta"'),
+  // Prefijo estable: el sufijo de versión de la RPC puede cambiar entre
+  // rondas (renombrada a _pm09 tras esta), lo que importa es que sigue
+  // siendo la RPC atómica de devolución de venta.
+  devolucion_cliente_rpc_atomica: /\.rpc\("registrar_devolucion_venta(_\w+)?"/.test(devoluciones),
   devolucion_proveedor_rpc_atomica: devoluciones.includes('.rpc("registrar_devolucion_proveedor"'),
   devolucion_exige_venta: devoluciones.includes('if (!ventaId)'),
   devolucion_cantidad_positiva: devoluciones.includes('cant <= 0'),
@@ -90,7 +95,10 @@ const checks = {
   devolucion_contexto_local: devoluciones.includes('producto no pertenece al local activo') || devoluciones.includes('El producto no pertenece al local activo'),
 
   idempotencia_borrador_localstorage: source.includes('localStorage.setItem(clave, JSON.stringify(valor))'),
-  idempotencia_conflicto_payload: source.includes('Hay una operación anterior pendiente en este local'),
+  // El texto exacto mostrado al usuario cambió en una ronda posterior;
+  // lo que importa es que sigue existiendo el bloqueo por operación
+  // pendiente sin confirmar (mismo mecanismo que PM09 P17).
+  idempotencia_conflicto_payload: source.includes('operación sin confirmar') || source.includes('operación anterior pendiente'),
   idempotencia_doble_click_devolucion: uiDevoluciones.includes('if (enviando) return'),
   idempotencia_doble_click_movimiento: uiMovimientos.includes('if (enviando || periodoCerrado) return'),
   idempotencia_doble_click_arqueo: uiArqueo.includes('if (enviando || yaArqueado) return'),
