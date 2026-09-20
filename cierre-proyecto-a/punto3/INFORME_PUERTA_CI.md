@@ -3,8 +3,10 @@
 **Estado: FASE A EJECUTADA — la puerta de CI está incorporada a
 `release` (`release` avanzó de `6e26391` a `8540bd0`, fast-forward puro,
 autorizado explícitamente el 20/09/2026 — ver sección 6-ter). FASE B
-(required status check) sigue pendiente de autorización separada. El
-Punto 3 NO se marca cerrado hasta completar también la Fase B.**
+AUTORIZADA pero BLOQUEADA: las herramientas de GitHub disponibles en
+esta sesión no incluyen configuración de protección de rama — ver
+sección 6-quater. `release` sigue sin ninguna regla de protección. El
+Punto 3 NO se marca cerrado.**
 
 **Dos ramas, con propósitos distintos**:
 
@@ -401,16 +403,20 @@ fast-forward) y sin ningún merge commit.
 | `error_message` | `null` | `null` |
 | secretos detectados | 0 (687 archivos escaneados) | 0 (693 archivos escaneados) |
 
-**Payload confirmado sin cambios, por dos vías independientes**:
-1. La comparación local ya hecha antes del push (sección 6-bis): 33
-   archivos, mismas rutas, mismos SHA-256 entre `release@6e26391` y
-   `8540bd0`.
-2. El propio resumen del deploy de Netlify:
-   `"All files already uploaded by a previous deploy with the same
-   commits"` — Netlify, de forma completamente independiente de
-   cualquier comparación hecha en este trabajo, reconoció el contenido
-   como idéntico a un deploy anterior y no volvió a subir ningún
-   archivo.
+**Demostración de la igualdad del payload**: la comparación local ya
+hecha antes del push (sección 6-bis) -- 33 archivos, mismas rutas,
+mismos SHA-256 entre `release@6e26391` y `8540bd0` -- es la prueba real
+de que el contenido publicable no cambió.
+
+El resumen del deploy de Netlify,
+`"All files already uploaded by a previous deploy with the same
+commits"`, es **evidencia corroborativa de reutilización**: Netlify
+detectó los mismos archivos y no los volvió a subir, lo cual es
+consistente con el resultado ya demostrado localmente. No se trata como
+una segunda demostración independiente ni como sustituto de la
+comparación SHA-256 -- es un mensaje de optimización interna de
+subida de Netlify (deduplicación de assets ya conocidos), no una
+garantía criptográfica publicada por Netlify sobre el contenido.
 
 Esto confirma exactamente lo anticipado en el aviso de la propuesta
 original (más abajo, sección A): el push disparó un deploy real y nuevo
@@ -437,12 +443,14 @@ de GitHub Actions). Cualquier push a `release` dispara un deploy
 automático de Netlify, y este push lo disparó (`deploy_id`
 `6aafbc029d58a60008d41f3c`), aunque el payload publicable resultante fue
 **byte a byte idéntico** al que Netlify servía antes desde
-`release@6e26391` (33 archivos, mismas rutas, mismos SHA-256; confirmado
-además por el propio Netlify: "All files already uploaded by a previous
-deploy with the same commits"). El efecto visible en producción fue nulo
-a nivel de contenido, pero sí quedó un nuevo deploy en el historial de
-Netlify (nuevo `commit_ref`, nuevo `deploy_id`) — no fue una operación
-sin efecto observable, solo sin cambio de contenido servido.
+`release@6e26391` -- demostrado por la comparación local (33 archivos,
+mismas rutas, mismos SHA-256), con el propio resumen del deploy de
+Netlify ("All files already uploaded by a previous deploy with the same
+commits") como evidencia corroborativa de reutilización, no como la
+demostración en sí. El efecto visible en producción fue nulo a nivel de
+contenido, pero sí quedó un nuevo deploy en el historial de Netlify
+(nuevo `commit_ref`, nuevo `deploy_id`) — no fue una operación sin
+efecto observable, solo sin cambio de contenido servido.
 
 ### B. Configurar protección de rama y required status check — PENDIENTE, no ejecutado
 
@@ -476,6 +484,61 @@ sin efecto observable, solo sin cambio de contenido servido.
   fusión, no solo en el PR, pero es una decisión operativa aparte que
   tampoco se activa sin autorización explícita.
 
+## 6-quater. Fase B — AUTORIZADA, BLOQUEADA por falta de herramienta (20/09/2026)
+
+**Autorización recibida**: aplicar la protección mínima descrita en la
+sección B anterior -- required status check `gate-final`,
+`strict=true`, aplicar a administradores, impedir force-push, impedir
+borrado de `release`, sin aprobaciones de terceros ni reglas
+adicionales.
+
+**Preflight de solo lectura -- completado**:
+
+| # | Comprobación | Resultado |
+|---|---|---|
+| 1 | `release` sigue en `8540bd06d5555cf260aa4599144ed6c64f3ca029` | OK (`git fetch` + `git rev-parse origin/release`) |
+| 2 | `.github/workflows/puerta-ci-release.yml` existe en `release` | OK (`git show origin/release:...`) |
+| 3 | Conserva el trigger `pull_request: branches: [release]` | OK |
+| 4 | `gate-final` existe entre los checks reales del run `35505508683` | OK -- job `gate-final`, `conclusion=success` (API de GitHub Actions) |
+| 5 | Configuración de protección actual capturada antes de modificar | `release` → `"protected": false`, sin ninguna regla (API de GitHub, `list_branches`) |
+
+**Bloqueado antes de aplicar ningún cambio**: el servidor MCP de GitHub
+disponible en esta sesión no expone ninguna herramienta para configurar
+reglas de protección de rama (`branch protection rules` /
+`required status checks`) -- se buscó explícitamente por nombre y por
+dominio (protection, required status checks, repository settings/admin)
+entre las herramientas disponibles y no existe ninguna con esa
+capacidad. Tampoco hay acceso a `gh` CLI ni a la API REST de GitHub por
+otra vía en este entorno de trabajo. Aplicar la Fase B tal como se
+autorizó **no es posible con las herramientas disponibles en esta
+sesión** -- es una limitación de capacidad técnica, no de autorización
+ni de las comprobaciones anteriores (todas pasaron).
+
+**No se aplicó ningún cambio de configuración**, ni se intentó ningún
+rodeo. `release` sigue exactamente como estaba antes de esta fase: sin
+ninguna regla de protección.
+
+**Camino recomendado para completar la Fase B**:
+1. **Manual, vía la interfaz de GitHub**:
+   `https://github.com/Plopezm1990/Almacen/settings/branches` → "Add
+   branch protection rule" → patrón de rama `release` → activar
+   únicamente "Require status checks to pass before merging" (con
+   "Require branches to be up to date before merging" marcado) y añadir
+   `gate-final` a la lista de checks obligatorios (ya aparece disponible
+   para seleccionar, porque el run `35505508683` y los runs posteriores
+   sobre `release` ya lo registraron como check real) + "Do not allow
+   bypassing the above settings" (para que aplique también a
+   administradores -- si el plan/rol del propietario no permite marcar
+   esa opción, GitHub lo indicará explícitamente en la propia interfaz,
+   y esa sería la respuesta honesta a exigir en la verificación
+   posterior) + "Restrict deletions" + dejar desactivado cualquier
+   permiso de force-push. Sin "Require a pull request before merging"
+   con aprobaciones, sin revisores obligatorios, sin ninguna otra regla.
+2. **O** conceder a esta sesión una vía de acceso a la API de GitHub que
+   cubra `branch protection rules` (por ejemplo, una herramienta MCP
+   adicional, o credenciales de `gh api`), y repetir esta fase
+   reutilizando el mismo preflight ya documentado arriba.
+
 ## 7. Confirmación de límites respetados
 
 - `release` avanzó **solo** mediante el fast-forward explícitamente
@@ -495,8 +558,9 @@ sin efecto observable, solo sin cambio de contenido servido.
   Netlify (no se cambió configuración, no se disparó ningún deploy
   manual).
 - No se aplicó ninguna regla de protección de rama ni required status
-  check — Fase B sigue pendiente de autorización aparte (sección 6-ter,
-  punto B).
+  check: la Fase B fue autorizada, su preflight de solo lectura pasó
+  íntegro, pero quedó bloqueada por falta de herramienta disponible en
+  esta sesión (sección 6-quater) -- no se intentó ningún rodeo.
 - `claude/punto3-puerta-ci-final` y `claude/punto3-promocion-final` no se
   tocaron más allá de lo ya documentado; el contenido de la segunda es
   ahora, además, el HEAD de `release`.
