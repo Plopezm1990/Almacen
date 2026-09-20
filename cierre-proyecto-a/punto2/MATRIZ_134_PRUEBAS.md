@@ -1,10 +1,10 @@
 # Punto 2 -- Matriz completa de las 142 pruebas (133 activas + 1 histórica + 3 utilidades + 5 diagnósticos)
 
-Rama: `claude/punto2-134-pruebas`, commit **`3f8e1d0300cb16b99634c2ff04d3135ee37e29d3`**, creada desde `release` (`6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d`). Fuente de verdad de la clasificación: `cierre-proyecto-a/punto2/manifiesto_clasificacion.json`. Ver `INFORME_CLASIFICACION.md` para la metodología completa, la corrección tras la auditoría independiente, y por qué esta matriz no reproduce el informe original perdido.
+Rama: `claude/punto2-134-pruebas`, commit **`6320ab9e4fd06a18932856fd2c662451120e18a2`**, creada desde `release` (`6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d`). Fuente de verdad de la clasificación: `cierre-proyecto-a/punto2/manifiesto_clasificacion.json`. Ver `INFORME_CLASIFICACION.md` para la metodología completa, la corrección tras la auditoría independiente, y por qué esta matriz no reproduce el informe original perdido.
 
 ## Puerta de CI -- resultado real, no simulado
 
-[`run 35495409478`](https://github.com/Plopezm1990/Almacen/actions/runs/35495409478) -- **SUCCESS**, los 4 jobs (`node-y-postgres`, `pm12-p08-supabase-full`, `pm33-p05-supabase-full`, `gate-final`) en verde. Salida real del job `gate-final`:
+[`run 35502655080`](https://github.com/Plopezm1990/Almacen/actions/runs/35502655080) -- **SUCCESS**, los 4 jobs (`node-y-postgres`, `pm12-p08-supabase-full`, `pm33-p05-supabase-full`, `gate-final`) en verde. Salida real del job `gate-final`:
 
 ```
 ACTIVE_PASS=133
@@ -181,14 +181,14 @@ Versiones reales confirmadas en la propia ejecución: Node **v22.23.2**, Postgre
 - **Clasificación**: Contrato activo
 - **Entorno**: postgres
 - **Resultado real**: PASS (exit=0, 595ms)
-- **Evidencia**: CI run 35495409478, job node-y-postgres, contra PostgreSQL 16.15 real (servicio de GitHub Actions).
+- **Evidencia**: CI run 35502655080, job node-y-postgres, contra PostgreSQL 16.15 real (servicio de GitHub Actions).
 
 ### `tests/pm12/p09-aplicar-index.mjs`
 
 - **Clasificación**: Utilidad
 - **Entorno**: node
 - **Resultado real**: PASS (exit=0, 30ms)
-- **Evidencia**: Utilidad de aplicación (integra pm12-p09-historial-informes-movil-v1.js en index.html), idempotente. No es un caso de prueba PASS/FAIL. Ejecutada dentro de la batería Node (ver resultado real). CI run 35495409478, job node-y-postgres.
+- **Evidencia**: Utilidad de aplicación (integra pm12-p09-historial-informes-movil-v1.js en index.html), idempotente. No es un caso de prueba PASS/FAIL. Ejecutada dentro de la batería Node (ver resultado real). CI run 35502655080, job node-y-postgres.
 
 ### `tests/pm12/supabase-full/p08-auth-postgrest-rls-contract.mjs`
 
@@ -223,98 +223,98 @@ Versiones reales confirmadas en la propia ejecución: Node **v22.23.2**, Postgre
 - **Clasificación**: Diagnóstico
 - **Entorno**: node
 - **Resultado real**: PASS (exit=0, 61ms)
-- **Evidencia**: Diagnóstico de solo lectura (inspecciona fuente.js, escribe evidencia JSON). Sin PASS/FAIL. Ejecutado dentro de la batería Node (ver resultado real); su evidencia ya commiteada quedó desactualizada respecto al fuente.js actual -- deuda separada, no corregida en esta rama (ver informe). CI run 35495409478, job node-y-postgres.
+- **Evidencia**: Diagnóstico de solo lectura (inspecciona fuente.js, escribe evidencia JSON). Sin PASS/FAIL. Ejecutado dentro de la batería Node (ver resultado real); su evidencia ya commiteada quedó desactualizada respecto al fuente.js actual -- deuda separada, no corregida en esta rama (ver informe). CI run 35502655080, job node-y-postgres.
 
 ### `tests/pm13/p02-diagnostico-turnos.mjs`
 
 - **Clasificación**: Diagnóstico
 - **Entorno**: node
 - **Resultado real**: PASS (exit=0, 48ms)
-- **Evidencia**: Igual que P01. CI run 35495409478, job node-y-postgres.
+- **Evidencia**: Igual que P01. CI run 35502655080, job node-y-postgres.
 
 ### `tests/pm13/p03-diagnostico-fichajes.mjs`
 
 - **Clasificación**: Diagnóstico
 - **Entorno**: node
 - **Resultado real**: PASS (exit=0, 54ms)
-- **Evidencia**: Igual que P01. CI run 35495409478, job node-y-postgres.
+- **Evidencia**: Igual que P01. CI run 35502655080, job node-y-postgres.
 
 ### `tests/pm13/p04-diagnostico-ausencias.mjs`
 
 - **Clasificación**: Diagnóstico
 - **Entorno**: node
 - **Resultado real**: PASS (exit=0, 66ms)
-- **Evidencia**: Igual que P01. CI run 35495409478, job node-y-postgres.
+- **Evidencia**: Igual que P01. CI run 35502655080, job node-y-postgres.
 
 ### `tests/pm13/p07-diagnostico-ia-nominas.mjs`
 
 - **Clasificación**: Diagnóstico
 - **Entorno**: node
 - **Resultado real**: PASS (exit=0, 139ms)
-- **Evidencia**: Igual que P01. CI run 35495409478, job node-y-postgres.
+- **Evidencia**: Igual que P01. CI run 35502655080, job node-y-postgres.
 
 ### `tests/pm14/db/p02-postgres-contract.mjs`
 
 - **Clasificación**: Contrato activo
 - **Entorno**: postgres
 - **Resultado real**: PASS (exit=0, 154ms)
-- **Evidencia**: CI run 35495409478, job node-y-postgres, contra PostgreSQL 16.15 real (servicio de GitHub Actions).
+- **Evidencia**: CI run 35502655080, job node-y-postgres, contra PostgreSQL 16.15 real (servicio de GitHub Actions).
 
 ### `tests/pm14/db/p05-postgres-contract.mjs`
 
 - **Clasificación**: Contrato activo
 - **Entorno**: postgres
 - **Resultado real**: PASS (exit=0, 123ms)
-- **Evidencia**: CI run 35495409478, job node-y-postgres, contra PostgreSQL 16.15 real (servicio de GitHub Actions).
+- **Evidencia**: CI run 35502655080, job node-y-postgres, contra PostgreSQL 16.15 real (servicio de GitHub Actions).
 
 ### `tests/pm14/db/p07-postgres-concurrencia-contract.mjs`
 
 - **Clasificación**: Contrato activo
 - **Entorno**: postgres
 - **Resultado real**: PASS (exit=0, 152ms)
-- **Evidencia**: CI run 35495409478, job node-y-postgres, contra PostgreSQL 16.15 real (servicio de GitHub Actions).
+- **Evidencia**: CI run 35502655080, job node-y-postgres, contra PostgreSQL 16.15 real (servicio de GitHub Actions).
 
 ### `tests/pm33/db/contrato-vigente-contract.mjs`
 
 - **Clasificación**: Contrato activo
 - **Entorno**: postgres
 - **Resultado real**: PASS (exit=0, 118ms)
-- **Evidencia**: CI run 35495409478, job node-y-postgres, contra PostgreSQL 16.15 real (servicio de GitHub Actions).
+- **Evidencia**: CI run 35502655080, job node-y-postgres, contra PostgreSQL 16.15 real (servicio de GitHub Actions).
 
 ### `tests/pm33/db/p01-aislamiento-multiempresa-contract.mjs`
 
 - **Clasificación**: Histórico (fallo esperado)
 - **Entorno**: postgres
 - **Resultado real**: FAIL esperado (exit=1, 97ms)
-- **Evidencia**: Registro histórico retirado (P03 cambió el contrato deliberadamente); contrato vigente real: contrato-vigente-contract.mjs (PASS). CI run 35495409478, job node-y-postgres.
+- **Evidencia**: Registro histórico retirado (P03 cambió el contrato deliberadamente); contrato vigente real: contrato-vigente-contract.mjs (PASS). CI run 35502655080, job node-y-postgres.
 
 ### `tests/pm33/db/p02-regresion-rol-no-gestionado.mjs`
 
 - **Clasificación**: Contrato activo
 - **Entorno**: postgres
 - **Resultado real**: PASS (exit=0, 76ms)
-- **Evidencia**: CI run 35495409478, job node-y-postgres, contra PostgreSQL 16.15 real (servicio de GitHub Actions).
+- **Evidencia**: CI run 35502655080, job node-y-postgres, contra PostgreSQL 16.15 real (servicio de GitHub Actions).
 
 ### `tests/pm33/db/p03-aislamiento-camarero-contract.mjs`
 
 - **Clasificación**: Contrato activo
 - **Entorno**: postgres
 - **Resultado real**: PASS (exit=0, 84ms)
-- **Evidencia**: CI run 35495409478, job node-y-postgres, contra PostgreSQL 16.15 real (servicio de GitHub Actions).
+- **Evidencia**: CI run 35502655080, job node-y-postgres, contra PostgreSQL 16.15 real (servicio de GitHub Actions).
 
 ### `tests/pm33/db/p04-identidad-y-revocacion-contract.mjs`
 
 - **Clasificación**: Contrato activo
 - **Entorno**: postgres
 - **Resultado real**: PASS (exit=0, 93ms)
-- **Evidencia**: CI run 35495409478, job node-y-postgres, contra PostgreSQL 16.15 real (servicio de GitHub Actions).
+- **Evidencia**: CI run 35502655080, job node-y-postgres, contra PostgreSQL 16.15 real (servicio de GitHub Actions).
 
 ### `tests/pm33/db/p05-identidad-antes-de-actividad-contract.mjs`
 
 - **Clasificación**: Contrato activo
 - **Entorno**: postgres
 - **Resultado real**: PASS (exit=0, 87ms)
-- **Evidencia**: CI run 35495409478, job node-y-postgres, contra PostgreSQL 16.15 real (servicio de GitHub Actions).
+- **Evidencia**: CI run 35502655080, job node-y-postgres, contra PostgreSQL 16.15 real (servicio de GitHub Actions).
 
 ### `tests/pm33/supabase-full/p05-auth-postgrest-contract.mjs`
 

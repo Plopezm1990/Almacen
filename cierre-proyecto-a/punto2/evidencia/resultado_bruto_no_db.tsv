@@ -1,129 +1,129 @@
-# INVENTARIO_VERIFICADO=142 ARCHIVOS_A_EJECUTAR=127 NODE=v22.22.2 FECHA_UTC=2026-09-20T09:27:59Z
+# INVENTARIO_VERIFICADO=142 ARCHIVOS_A_EJECUTAR=127 NODE=v22.23.2 FECHA_UTC=2026-09-20T09:34:24Z
 ruta	clasificacion	codigo_salida	duracion_ms	ultima_marca	resultado_final
-tests/g1/p02-evidence-map-contract.mjs	active_contract	0	49ms	G1 P02: mapa de evidencias F1 verificable OK	PASS
-tests/g1/p03-la019-contract.mjs	active_contract	0	55ms	G1_P03_LA019_CONTRACT_OK=1	PASS
-tests/g1/p04-la023-contract.mjs	active_contract	0	104ms	G1_P04_LA023_CONTRACT_OK=1	PASS
-tests/g1/p05-permisos-aislamiento-contract.mjs	active_contract	0	55ms	G1_P05_PERMISOS_AISLAMIENTO_CONTRACT_OK=1	PASS
-tests/g1/p06-cifras-conciliaciones-contract.mjs	active_contract	0	56ms	G1_P06_CIFRAS_CONCILIACIONES_CONTRACT_OK=1	PASS
-tests/g1/p07-concurrencia-replay-contract.mjs	active_contract	0	50ms	G1_P07_CONCURRENCIA_REPLAY_CONTRACT_OK=1	PASS
-tests/g1/p08-la004-gate-contract.mjs	active_contract	0	53ms	G1_P08_LA004_GATE_CONTRACT_OK=1	PASS
-tests/hotfix-barrera-reset-local.mjs	active_contract	0	53ms	hotfix-barrera-reset-local: OK	PASS
-tests/p1-empty-kv-first-run.mjs	active_contract	0	98ms	p1-empty-kv-first-run: OK	PASS
-tests/pm04/contract-tests.mjs	active_contract	0	54ms	PM04_PRODUCTION_DATA_COPIED=0	PASS
-tests/pm05/frontend-contract.mjs	active_contract	0	67ms	PM05_PM04_NEGATIVOS_5_5=1	PASS
-tests/pm07/frontend-contract.mjs	active_contract	0	105ms	PM07_FRONTEND_CONTRACT_OK=1	PASS
-tests/pm08/frontend-contract.mjs	active_contract	0	72ms	PM08_FRONTEND_CONTRACT_OK=1	PASS
-tests/pm08/migration-contract.mjs	active_contract	0	53ms	PM08_MIGRATION_CONTRACT_OK=1	PASS
-tests/pm08/replay-scope-contract.mjs	active_contract	0	52ms	PM08_REPLAY_SCOPE_CONTRACT_OK=1	PASS
-tests/pm09/la007-results-contract.mjs	active_contract	0	91ms	PM09_LA007_CONTRACT_OK=1	PASS
-tests/pm09/la008-rotation-margin-contract.mjs	active_contract	0	93ms	PM09_LA008_CONTRACT_OK=1	PASS
-tests/pm09/p09-historial-contract.mjs	active_contract	0	103ms	PM09_P09_HISTORIAL_CONTRACT_OK=1	PASS
-tests/pm09/p10-caja-contract.mjs	active_contract	0	92ms	PM09_P10_CAJA_CONTRACT_OK=1	PASS
-tests/pm09/p11-iva-contract.mjs	active_contract	0	100ms	PM09_P11_IVA_CONTRACT_OK=1	PASS
-tests/pm09/p12-resultados-margin-contract.mjs	active_contract	0	90ms	PM09_P12_RESULTADOS_CONTRACT_OK=1	PASS
-tests/pm09/p15-special-economic-contract.mjs	active_contract	0	82ms	PM09_P15_SPECIAL_ECONOMIC_CONTRACT_OK=1	PASS
-tests/pm09/p16-isolation-context-contract.mjs	active_contract	0	87ms	PM09_P16_ISOLATION_CONTEXT_CONTRACT_OK=1	PASS
-tests/pm09/p17-robustness-contract.mjs	active_contract	0	92ms	PM09_P17_ROBUSTNESS_CONTRACT_OK=1	PASS
-tests/pm10/p04-productos-contract.mjs	active_contract	0	99ms	PM10 P04 LA-011 productos: contrato OK	PASS
-tests/pm10/p05-pedidos-contract.mjs	active_contract	0	82ms	PM10 P05 LA-012 Pedidos: contrato OK	PASS
-tests/pm10/p06-recepcion-contract.mjs	active_contract	0	97ms	PM10 P06 LA-013 Recepción: contrato OK	PASS
-tests/pm10/p07-personal-contract.mjs	active_contract	0	86ms	PM10 P07 LA-017 Personal: contrato OK	PASS
-tests/pm10/p08-encargos-contract.mjs	active_contract	0	91ms	PM10 P08 LA-018 Encargos: contrato OK	PASS
-tests/pm10/p09-transversal-contract.mjs	active_contract	0	97ms	PM10 P09 transversal: contrato común, atomicidad, legados y contexto OK	PASS
-tests/pm10/p10-autoridad-persistencia-contract.mjs	active_contract	0	91ms	PM10 P10 autoridad persistencia: contrato OK	PASS
-tests/pm10/p11-robustez-altas-contract.mjs	active_contract	0	89ms	PM10 P11 robustez altas/recepción: contrato OK	PASS
-tests/pm10/p12-datos-legados-contract.mjs	active_contract	0	93ms	PM10 P12 datos legados y ambiguos: contrato OK	PASS
-tests/pm10/p13-contexto-aislamiento-contract.mjs	active_contract	0	98ms	PM10 P13 aislamiento/contexto A1-A2-B1-Todos-inactivo: contrato OK	PASS
-tests/pm11-compra/p02-contrato-e2e-estados-contract.mjs	active_contract	0	52ms	PM11_COMPRA_P02_CONTRATO_E2E_ESTADOS=PASS	PASS
-tests/pm11-compra/p03-recepciones-multiples-replay-contract.mjs	active_contract	0	84ms	PM11_COMPRA_P03_RECEPCIONES_MULTIPLES_REPLAY=PASS	PASS
-tests/pm11-compra/p04-albaran-trazabilidad-contract.mjs	active_contract	0	81ms	PM11_COMPRA_P04_ALBARAN_TRAZABILIDAD=PASS	PASS
-tests/pm11-compra/p05-factura-identidad-contract.mjs	active_contract	0	89ms	PM11_COMPRA_P05_FACTURA_IDENTIDAD=PASS	PASS
-tests/pm11-compra/p06-pago-reverso-e2e-contract.mjs	active_contract	0	85ms	PM11_COMPRA_P06_PAGO_REVERSO_E2E=PASS	PASS
-tests/pm11-compra/p07-aislamiento-permisos-e2e-contract.mjs	active_contract	0	79ms	PM11_COMPRA_P07_AISLAMIENTO_PERMISOS_E2E=PASS	PASS
-tests/pm11-compra/p08-fallos-replay-concurrencia-contract.mjs	active_contract	0	89ms	PM11_COMPRA_P08_FALLOS_REPLAY_CONCURRENCIA=PASS	PASS
-tests/pm11-compra/p09-conciliacion-e2e-contract.mjs	active_contract	0	98ms	PM11_COMPRA_P09_CONCILIACION_E2E=PASS	PASS
-tests/pm11-compra/p10-regresion-integral-contract.mjs	active_contract	0	86ms	PM11_COMPRA_P10_REGRESION_INTEGRAL=PASS	PASS
-tests/pm12/p01-checkpoint-inventario-contract.mjs	active_contract	0	89ms	PM12_P01_CONTRACT=PASS	PASS
-tests/pm12/p02-estados-normalizacion-contract.mjs	active_contract	0	52ms	PM12_P02_ESTADOS_NORMALIZACION=PASS	PASS
-tests/pm12/p03-documento-corte-contract.mjs	active_contract	0	52ms	PM12_P03_DOCUMENTO_CORTE=PASS	PASS
-tests/pm12/p04-cierre-honesto-ux-contract.mjs	active_contract	0	99ms	COMPLETO_SIN_CONFIRMACION_EXTRA=1	PASS
-tests/pm12/p05-ajustes-trazables-contract.mjs	active_contract	0	104ms	REPLAY_SIN_DUPLICAR=1	PASS
-tests/pm12/p06-cancelacion-conservadora-contract.mjs	active_contract	0	120ms	LEGADOS_CONSERVADORES=1	PASS
-tests/pm12/p07-permisos-aislamiento-ajustes-contract.mjs	active_contract	0	112ms	TRAZABILIDAD_ACTOR_CONTEXTO=1	PASS
-tests/pm12/p08-fallos-replay-concurrencia-contract.mjs	active_contract	0	99ms	REPLAY_PARCIAL_FAIL_CLOSED=1	PASS
-tests/pm12/p08-instancias-fallos-contract.mjs	active_contract	0	106ms	source-recovery/fuente-recuperado.js: P08_SHARED_IDS_FAILURES_REENTRANCY_LOST_RESPONSE=PASS	PASS
-tests/pm12/p09-aplicar-index.mjs	utility	0	46ms	P09_INDEX_YA_INTEGRADO=PASS	PASS
-tests/pm12/p09-historial-informes-movil-contract.mjs	active_contract	0	75ms	P09_SOLO_PRESENTACION_SIN_ESCRITURAS=PASS	PASS
-tests/pm12/p10-preview-smoke-contract.mjs	active_contract	0	55ms	P10_INDEX_ASSETS_PM12=PASS	PASS
-tests/pm13/p01-altas-bajas-personal-contract.mjs	active_contract	0	104ms	PM13 P01 altas/bajas personal: contrato frontend+RPC OK	PASS
-tests/pm13/p01-backend-personal-contract.mjs	active_contract	0	54ms	PM13 P01 backend personal: contrato OK	PASS
-tests/pm13/p01-diagnostico-personal.mjs	diagnostic	0	92ms	}	PASS
-tests/pm13/p01-rpc-personal-contract.mjs	active_contract	0	103ms	PM13 P01 RPC híbrido: contrato OK	PASS
-tests/pm13/p02-diagnostico-turnos.mjs	diagnostic	0	82ms	}	PASS
-tests/pm13/p02-turnos-contract.mjs	active_contract	0	84ms	UI_NO_CIERRA_EN_ERROR=1	PASS
-tests/pm13/p03-backend-fichajes-contract.mjs	active_contract	0	54ms	CORRECCION_ANULACION_TRAZABLE=1	PASS
-tests/pm13/p03-diagnostico-fichajes.mjs	diagnostic	0	83ms	}	PASS
-tests/pm13/p03-fichajes-contract.mjs	active_contract	0	104ms	UI_FAIL_CLOSED=1	PASS
-tests/pm13/p04-ausencias-contract.mjs	active_contract	0	82ms	UI_FAIL_CLOSED=1	PASS
-tests/pm13/p04-backend-ausencias-contract.mjs	active_contract	0	52ms	SIN_DDL_DESTRUCTIVO=1	PASS
-tests/pm13/p04-diagnostico-ausencias.mjs	diagnostic	0	101ms	}	PASS
-tests/pm13/p05-vacaciones-contract.mjs	active_contract	0	86ms	SIN_DERIVA_ZONA_HORARIA=1	PASS
-tests/pm13/p06-costes-personal-contract.mjs	active_contract	0	90ms	RESULTADOS_PERIODO=1	PASS
-tests/pm13/p07-diagnostico-ia-nominas.mjs	diagnostic	0	181ms	{"hasCrearLogicaNominas":true,"hasImportarNomina":true,"hasAprobarNominaLiteral":false,"hasRevisionHumanaLiteral":true,"hasBorrador":true,"hasSinteticaLiteral":false,"hasSimuladaLiteral":true,"hasIAVisible":true}	PASS
-tests/pm13/p07-ia-nominas-revision-contract.mjs	active_contract	0	91ms	COSTES_EXCLUYEN_ANULADAS=1	PASS
-tests/pm14/p01-encargos-identidad-contract.mjs	active_contract	0	84ms	PM14 P01 Encargos — identidad estable (empresaId/total): contrato OK	PASS
-tests/pm14/p02-encargos-frontend-contract.mjs	active_contract	0	6097ms	PM14 P02 Encargos — enganche frontend (RPC anticipo/saldo): contrato OK	PASS
-tests/pm14/p03-encargos-entrega-contract.mjs	active_contract	0	87ms	PM14 P03 Encargos — entrega atómica, idempotente y con local real: contrato OK	PASS
-tests/pm14/p04-encargos-cancelacion-contract.mjs	active_contract	0	84ms	PM14 P04 Encargos — cancelación trazable, no destructiva: contrato OK	PASS
-tests/pm14/p05-encargos-devolucion-contract.mjs	active_contract	0	90ms	PM14 P05 Encargos — devolución de lo entregado, trazable e idempotente: contrato OK	PASS
-tests/pm14/p06-clientes-aislamiento-contract.mjs	active_contract	0	92ms	PM14 P06 Clientes — aislamiento por empresa y anonimización: contrato OK	PASS
-tests/pm14/p07-encargos-concurrencia-contract.mjs	active_contract	0	6088ms	PM14 P07 Encargos — concurrencia real probada donde importa (caja), riesgo de fondo documentado donde no se resuelve (documento en blob): contrato OK	PASS
-tests/pm14/p08-encargos-historial-contract.mjs	active_contract	0	93ms	PM14 P08 Encargos — historial de cancelados/devueltos: contrato OK	PASS
-tests/pm15/p01-la022-locales-empresa-contract.mjs	active_contract	0	81ms	PM15 P01 (LA-022) — Locales: nombre vacío no culpa a una empresa ya elegida: contrato OK	PASS
-tests/pm15/p01-nr08-cambio-contexto-no-alcanzable-contract.mjs	active_contract	0	86ms	PM15 P01 (NR-08, alcance literal) — cambiar contexto mientras un formulario de Encargos/Clientes sigue abierto no es alcanzable en la UI actual: contrato OK (pérdida general de borrador al cambiar de pestaña queda documentada como pendiente, no resuelta aquí)	PASS
-tests/pm15/p02-mej01-contexto-modales-contract.mjs	active_contract	0	91ms	PM15 P02 (MEJ-01) — empresa/local visibles en modales de acciones sensibles: contrato OK	PASS
-tests/pm15/p03-mej02-confirmacion-pago-destino-contract.mjs	active_contract	0	80ms	PM15 P03 (MEJ-02) — confirmación de pago con importe y destino: contrato OK	PASS
-tests/pm15/p04-nr08-proteccion-borrador-navegacion-contract.mjs	active_contract	0	107ms	PM15 (NR-08, ampliación) — borradores protegidos al cambiar de pestaña: contrato OK	PASS
-tests/pm16/p01-la025-loadkey-fallos-contract.mjs	active_contract	0	1136ms	PM16 P01 (LA-025) — loadKey diferencia ausencia/corrupción/cuota/acceso: contrato OK	PASS
-tests/pm16/p01-la025-ui-fallos-carga-contract.mjs	active_contract	0	88ms	PM16 P01 (LA-025) — fallo real de carga visible de punta a punta: contrato OK	PASS
-tests/pm17/p01-rollback-push-nativo-contract.mjs	active_contract	0	80ms	PM17 P01 (rollback push nativo) — activarSuscripcionPushPM17: contrato OK	PASS
-tests/pm17/p01-wiring-notificaciones-contract.mjs	active_contract	0	77ms	PM17 P01 (wiring nativo) — Notificaciones.activar() conectado al rollback: contrato OK	PASS
-tests/pm17/p02-neutralidad-informes-nativo-contract.mjs	active_contract	0	80ms	PM17 P02 (neutralidad nativa) — clasificación de informes: contrato OK	PASS
-tests/pm17/p02-wiring-seleccionpersonal-contract.mjs	active_contract	0	77ms	PM17 P02 (wiring nativo) — SeleccionPersonal neutralizado de punta a punta: contrato OK	PASS
-tests/pm17/p03-auth-ux-nativo-contract.mjs	active_contract	0	77ms	PM17 P03 (auth UX nativo) — debeMostrarLogoutPropietarioPM17: contrato OK	PASS
-tests/pm17/p03-wiring-login-logout-contract.mjs	active_contract	0	80ms	PM17 P03 (wiring auth UX nativo) — login y logout de Propietario: contrato OK	PASS
-tests/pm17/p04-retirar-parches-externos-contract.mjs	active_contract	0	85ms	PM17 P04 (retirada de parches externos) — sin dependencia de red en runtime: contrato OK	PASS
-tests/pm18/p01-identidad-fiscal-contract.mjs	active_contract	0	81ms	PM18 P01 (LA-021) — identidad fiscal nunca se presenta como verificada sin serlo: contrato OK	PASS
-tests/pm18/p01-wiring-identidad-fiscal-contract.mjs	active_contract	0	86ms	PM18 P01 (wiring) — identidad fiscal conectada de punta a punta: contrato OK	PASS
-tests/pm19/p01-appcc-historico-trazable-contract.mjs	active_contract	0	80ms	PM19 P01 (APPCC histórico trazable) — funciones puras: contrato OK	PASS
-tests/pm19/p01-wiring-appcc-contract.mjs	active_contract	0	85ms	PM19 P01 (wiring APPCC) — histórico trazable de punta a punta: contrato OK	PASS
-tests/pm19/p02-aceite-responsable-contract.mjs	active_contract	0	77ms	PM19 P02 (aceite responsable obligatorio) — función pura: contrato OK	PASS
-tests/pm19/p02-wiring-aceite-contract.mjs	active_contract	0	76ms	PM19 P02 (wiring aceite) — responsable obligatorio conectado: contrato OK	PASS
-tests/pm19/p03-wiring-traspasos-contract.mjs	active_contract	0	78ms	PM19 P03 (corregido) — traspasarStock usa la única autoridad de contexto: contrato OK	PASS
-tests/pm19/p04-merma-descuenta-una-vez-contract.mjs	active_contract	0	78ms	PM19 P04 (merma descuenta una vez) — id determinista: contrato OK	PASS
-tests/pm19/p04-wiring-merma-contract.mjs	active_contract	0	78ms	PM19 P04 (wiring merma) — merma por lote protegida por deduplicación real: contrato OK	PASS
-tests/pm19/p05-comportamiento-guardia-contract.mjs	active_contract	0	103ms	PM19 P05 — comportamiento real de la guardia en los 5 módulos (positivo/negativo): contrato OK	PASS
-tests/pm19/p05-inventario-mutaciones-protegidas-contract.mjs	active_contract	0	85ms	PM19 P05 — inventario de 23 mutaciones locales protegidas, guardia siempre antes de mutar: contrato OK	PASS
-tests/pm19/p05-validar-contexto-escritura-contract.mjs	active_contract	0	80ms	PM19 P05 (paso previo) — validarContextoEscrituraPM10 cubre los 5 casos exigidos: contrato OK	PASS
-tests/pm20/p01-checkpoint-inventario-contract.mjs	active_contract	0	163ms	PM20 P01 (checkpoint e inventario) — refleja el código y catálogo reales: contrato OK	PASS
-tests/pm20/p02-comportamiento-proveedor-contract.mjs	active_contract	0	84ms	PM20 P02 — LA-016 corregida: validación real de email/días en proveedores: contrato OK	PASS
-tests/pm20/p02-la014-fecha-esperada-pedido-contract.mjs	active_contract	0	92ms	PM20 P02 — LA-014 revalidado: fecha esperada persiste exacta en alta, edición y recarga: contrato OK	PASS
-tests/pm20/p02-wiring-proveedores-contract.mjs	active_contract	0	97ms	PM20 P02 (wiring Proveedores) — UI conectada al contrato real: contrato OK	PASS
-tests/pm20/p03-dashboard-informes-resultados-contract.mjs	active_contract	0	93ms	PM20 P03 — Dashboard/informes/Resultados: fórmulas y filtros reproducibles (verificado, no supuesto): contrato OK	PASS
-tests/pm20/p04-tesoreria-estacionalidad-saldo-mapa-contract.mjs	active_contract	0	84ms	PM20 P04 — Tesorería/Estacionalidad/Saldo/Mapa: métricas definidas y comprobadas: contrato OK	PASS
-tests/pm20/p05-buscador-etiquetas-auditoria-contract.mjs	active_contract	0	86ms	PM20 P05 — Buscador/Etiquetas/Auditoría: alcance verificado, sin fuga de contexto: contrato OK	PASS
-tests/pm20/p06-errores-sistema-aislamiento-contract.mjs	active_contract	0	83ms	PM20 P06 — errores_sistema aislado por empresa (defecto real corregido en QA): contrato OK	PASS
-tests/pm20/p07-revalidacion-acumulada-contract.mjs	active_contract	0	81ms	PM20 P07 — revalidación acumulada de módulos con cobertura histórica fuerte: contrato OK	PASS
-tests/pm20/p08-restauracion-qa-contract.mjs	active_contract	0	101ms	PM20 P08 — restauración QA ensayada de punta a punta (comportamiento real, no solo código leído): contrato OK	PASS
-tests/pm26/defecto-l-context-hotfix.test.mjs	active_contract	0	62ms	PM26_DEFECTO_L_CONTEXT_HOTFIX=PASS	PASS
-tests/pm27-mobile-logout-modal-fix.mjs	active_contract	0	52ms	PM27 mobile logout modal fix: PASS	PASS
-tests/pm27-restore-c24-operational-rpcs.mjs	active_contract	0	49ms	PM27_RPC_RESTORE_STATIC=PASS	PASS
-tests/pm29/p01-locales-desactivar-propietario-contract.mjs	active_contract	0	88ms	PM29_P01_LOCALES_DESACTIVAR_PROPIETARIO=PASS	PASS
-tests/pm29/p02-empresas-desactivar-propietario-contract.mjs	active_contract	0	92ms	PM29_P02_EMPRESAS_DESACTIVAR_PROPIETARIO=PASS	PASS
-tests/pm29/p03-adopcion-contexto-contract.mjs	active_contract	0	83ms	PM29_P03_ADOPCION_CONTEXTO=PASS	PASS
-tests/pm31/p01-bloqueo-programa-no-cargado-contract.mjs	active_contract	0	10457ms	PM31_P01_BLOQUEO_PROGRAMA_NO_CARGADO=PASS	PASS
-tests/pm32/p01-selector-empresa-y-local-contract.mjs	active_contract	0	98ms	PM32_P01_SELECTOR_EMPRESA_Y_LOCAL=PASS	PASS
-tests/pm33/p03-frontend-multilocal-contract.mjs	active_contract	0	92ms	PM33_P03_FRONTEND_MULTILOCAL_OK=1	PASS
-tests/post-reset-schema-contract.mjs	active_contract	0	79ms	PASS post-reset schema contract: narrow repair + active stock dependency + least privilege	PASS
-tests/ui-context-bridge.mjs	active_contract	0	53ms	UI_CONTEXT_BRIDGE_PASS	PASS
-tests/netlify-publish-boundary.mjs	active_contract	0	152ms	NETLIFY_PUBLISH_BOUNDARY_PASS entries=43	PASS
+tests/g1/p02-evidence-map-contract.mjs	active_contract	0	76ms	G1 P02: mapa de evidencias F1 verificable OK	PASS
+tests/g1/p03-la019-contract.mjs	active_contract	0	24ms	G1_P03_LA019_CONTRACT_OK=1	PASS
+tests/g1/p04-la023-contract.mjs	active_contract	0	50ms	G1_P04_LA023_CONTRACT_OK=1	PASS
+tests/g1/p05-permisos-aislamiento-contract.mjs	active_contract	0	24ms	G1_P05_PERMISOS_AISLAMIENTO_CONTRACT_OK=1	PASS
+tests/g1/p06-cifras-conciliaciones-contract.mjs	active_contract	0	24ms	G1_P06_CIFRAS_CONCILIACIONES_CONTRACT_OK=1	PASS
+tests/g1/p07-concurrencia-replay-contract.mjs	active_contract	0	25ms	G1_P07_CONCURRENCIA_REPLAY_CONTRACT_OK=1	PASS
+tests/g1/p08-la004-gate-contract.mjs	active_contract	0	24ms	G1_P08_LA004_GATE_CONTRACT_OK=1	PASS
+tests/hotfix-barrera-reset-local.mjs	active_contract	0	27ms	hotfix-barrera-reset-local: OK	PASS
+tests/p1-empty-kv-first-run.mjs	active_contract	0	53ms	p1-empty-kv-first-run: OK	PASS
+tests/pm04/contract-tests.mjs	active_contract	0	23ms	PM04_PRODUCTION_DATA_COPIED=0	PASS
+tests/pm05/frontend-contract.mjs	active_contract	0	34ms	PM05_PM04_NEGATIVOS_5_5=1	PASS
+tests/pm07/frontend-contract.mjs	active_contract	0	809ms	PM07_FRONTEND_CONTRACT_OK=1	PASS
+tests/pm08/frontend-contract.mjs	active_contract	0	44ms	PM08_FRONTEND_CONTRACT_OK=1	PASS
+tests/pm08/migration-contract.mjs	active_contract	0	26ms	PM08_MIGRATION_CONTRACT_OK=1	PASS
+tests/pm08/replay-scope-contract.mjs	active_contract	0	23ms	PM08_REPLAY_SCOPE_CONTRACT_OK=1	PASS
+tests/pm09/la007-results-contract.mjs	active_contract	0	45ms	PM09_LA007_CONTRACT_OK=1	PASS
+tests/pm09/la008-rotation-margin-contract.mjs	active_contract	0	54ms	PM09_LA008_CONTRACT_OK=1	PASS
+tests/pm09/p09-historial-contract.mjs	active_contract	0	56ms	PM09_P09_HISTORIAL_CONTRACT_OK=1	PASS
+tests/pm09/p10-caja-contract.mjs	active_contract	0	48ms	PM09_P10_CAJA_CONTRACT_OK=1	PASS
+tests/pm09/p11-iva-contract.mjs	active_contract	0	51ms	PM09_P11_IVA_CONTRACT_OK=1	PASS
+tests/pm09/p12-resultados-margin-contract.mjs	active_contract	0	43ms	PM09_P12_RESULTADOS_CONTRACT_OK=1	PASS
+tests/pm09/p15-special-economic-contract.mjs	active_contract	0	38ms	PM09_P15_SPECIAL_ECONOMIC_CONTRACT_OK=1	PASS
+tests/pm09/p16-isolation-context-contract.mjs	active_contract	0	45ms	PM09_P16_ISOLATION_CONTEXT_CONTRACT_OK=1	PASS
+tests/pm09/p17-robustness-contract.mjs	active_contract	0	50ms	PM09_P17_ROBUSTNESS_CONTRACT_OK=1	PASS
+tests/pm10/p04-productos-contract.mjs	active_contract	0	52ms	PM10 P04 LA-011 productos: contrato OK	PASS
+tests/pm10/p05-pedidos-contract.mjs	active_contract	0	40ms	PM10 P05 LA-012 Pedidos: contrato OK	PASS
+tests/pm10/p06-recepcion-contract.mjs	active_contract	0	421ms	PM10 P06 LA-013 Recepción: contrato OK	PASS
+tests/pm10/p07-personal-contract.mjs	active_contract	0	43ms	PM10 P07 LA-017 Personal: contrato OK	PASS
+tests/pm10/p08-encargos-contract.mjs	active_contract	0	42ms	PM10 P08 LA-018 Encargos: contrato OK	PASS
+tests/pm10/p09-transversal-contract.mjs	active_contract	0	44ms	PM10 P09 transversal: contrato común, atomicidad, legados y contexto OK	PASS
+tests/pm10/p10-autoridad-persistencia-contract.mjs	active_contract	0	43ms	PM10 P10 autoridad persistencia: contrato OK	PASS
+tests/pm10/p11-robustez-altas-contract.mjs	active_contract	0	47ms	PM10 P11 robustez altas/recepción: contrato OK	PASS
+tests/pm10/p12-datos-legados-contract.mjs	active_contract	0	43ms	PM10 P12 datos legados y ambiguos: contrato OK	PASS
+tests/pm10/p13-contexto-aislamiento-contract.mjs	active_contract	0	52ms	PM10 P13 aislamiento/contexto A1-A2-B1-Todos-inactivo: contrato OK	PASS
+tests/pm11-compra/p02-contrato-e2e-estados-contract.mjs	active_contract	0	22ms	PM11_COMPRA_P02_CONTRATO_E2E_ESTADOS=PASS	PASS
+tests/pm11-compra/p03-recepciones-multiples-replay-contract.mjs	active_contract	0	52ms	PM11_COMPRA_P03_RECEPCIONES_MULTIPLES_REPLAY=PASS	PASS
+tests/pm11-compra/p04-albaran-trazabilidad-contract.mjs	active_contract	0	38ms	PM11_COMPRA_P04_ALBARAN_TRAZABILIDAD=PASS	PASS
+tests/pm11-compra/p05-factura-identidad-contract.mjs	active_contract	0	43ms	PM11_COMPRA_P05_FACTURA_IDENTIDAD=PASS	PASS
+tests/pm11-compra/p06-pago-reverso-e2e-contract.mjs	active_contract	0	42ms	PM11_COMPRA_P06_PAGO_REVERSO_E2E=PASS	PASS
+tests/pm11-compra/p07-aislamiento-permisos-e2e-contract.mjs	active_contract	0	35ms	PM11_COMPRA_P07_AISLAMIENTO_PERMISOS_E2E=PASS	PASS
+tests/pm11-compra/p08-fallos-replay-concurrencia-contract.mjs	active_contract	0	44ms	PM11_COMPRA_P08_FALLOS_REPLAY_CONCURRENCIA=PASS	PASS
+tests/pm11-compra/p09-conciliacion-e2e-contract.mjs	active_contract	0	47ms	PM11_COMPRA_P09_CONCILIACION_E2E=PASS	PASS
+tests/pm11-compra/p10-regresion-integral-contract.mjs	active_contract	0	43ms	PM11_COMPRA_P10_REGRESION_INTEGRAL=PASS	PASS
+tests/pm12/p01-checkpoint-inventario-contract.mjs	active_contract	0	47ms	PM12_P01_CONTRACT=PASS	PASS
+tests/pm12/p02-estados-normalizacion-contract.mjs	active_contract	0	32ms	PM12_P02_ESTADOS_NORMALIZACION=PASS	PASS
+tests/pm12/p03-documento-corte-contract.mjs	active_contract	0	60ms	PM12_P03_DOCUMENTO_CORTE=PASS	PASS
+tests/pm12/p04-cierre-honesto-ux-contract.mjs	active_contract	0	49ms	COMPLETO_SIN_CONFIRMACION_EXTRA=1	PASS
+tests/pm12/p05-ajustes-trazables-contract.mjs	active_contract	0	51ms	REPLAY_SIN_DUPLICAR=1	PASS
+tests/pm12/p06-cancelacion-conservadora-contract.mjs	active_contract	0	62ms	LEGADOS_CONSERVADORES=1	PASS
+tests/pm12/p07-permisos-aislamiento-ajustes-contract.mjs	active_contract	0	56ms	TRAZABILIDAD_ACTOR_CONTEXTO=1	PASS
+tests/pm12/p08-fallos-replay-concurrencia-contract.mjs	active_contract	0	51ms	REPLAY_PARCIAL_FAIL_CLOSED=1	PASS
+tests/pm12/p08-instancias-fallos-contract.mjs	active_contract	0	61ms	source-recovery/fuente-recuperado.js: P08_SHARED_IDS_FAILURES_REENTRANCY_LOST_RESPONSE=PASS	PASS
+tests/pm12/p09-aplicar-index.mjs	utility	0	25ms	P09_INDEX_YA_INTEGRADO=PASS	PASS
+tests/pm12/p09-historial-informes-movil-contract.mjs	active_contract	0	532ms	P09_SOLO_PRESENTACION_SIN_ESCRITURAS=PASS	PASS
+tests/pm12/p10-preview-smoke-contract.mjs	active_contract	0	28ms	P10_INDEX_ASSETS_PM12=PASS	PASS
+tests/pm13/p01-altas-bajas-personal-contract.mjs	active_contract	0	59ms	PM13 P01 altas/bajas personal: contrato frontend+RPC OK	PASS
+tests/pm13/p01-backend-personal-contract.mjs	active_contract	0	25ms	PM13 P01 backend personal: contrato OK	PASS
+tests/pm13/p01-diagnostico-personal.mjs	diagnostic	0	51ms	}	PASS
+tests/pm13/p01-rpc-personal-contract.mjs	active_contract	0	60ms	PM13 P01 RPC híbrido: contrato OK	PASS
+tests/pm13/p02-diagnostico-turnos.mjs	diagnostic	0	39ms	}	PASS
+tests/pm13/p02-turnos-contract.mjs	active_contract	0	40ms	UI_NO_CIERRA_EN_ERROR=1	PASS
+tests/pm13/p03-backend-fichajes-contract.mjs	active_contract	0	23ms	CORRECCION_ANULACION_TRAZABLE=1	PASS
+tests/pm13/p03-diagnostico-fichajes.mjs	diagnostic	0	45ms	}	PASS
+tests/pm13/p03-fichajes-contract.mjs	active_contract	0	54ms	UI_FAIL_CLOSED=1	PASS
+tests/pm13/p04-ausencias-contract.mjs	active_contract	0	39ms	UI_FAIL_CLOSED=1	PASS
+tests/pm13/p04-backend-ausencias-contract.mjs	active_contract	0	23ms	SIN_DDL_DESTRUCTIVO=1	PASS
+tests/pm13/p04-diagnostico-ausencias.mjs	diagnostic	0	54ms	}	PASS
+tests/pm13/p05-vacaciones-contract.mjs	active_contract	0	39ms	SIN_DERIVA_ZONA_HORARIA=1	PASS
+tests/pm13/p06-costes-personal-contract.mjs	active_contract	0	42ms	RESULTADOS_PERIODO=1	PASS
+tests/pm13/p07-diagnostico-ia-nominas.mjs	diagnostic	0	116ms	{"hasCrearLogicaNominas":true,"hasImportarNomina":true,"hasAprobarNominaLiteral":false,"hasRevisionHumanaLiteral":true,"hasBorrador":true,"hasSinteticaLiteral":false,"hasSimuladaLiteral":true,"hasIAVisible":true}	PASS
+tests/pm13/p07-ia-nominas-revision-contract.mjs	active_contract	0	46ms	COSTES_EXCLUYEN_ANULADAS=1	PASS
+tests/pm14/p01-encargos-identidad-contract.mjs	active_contract	0	37ms	PM14 P01 Encargos — identidad estable (empresaId/total): contrato OK	PASS
+tests/pm14/p02-encargos-frontend-contract.mjs	active_contract	0	6049ms	PM14 P02 Encargos — enganche frontend (RPC anticipo/saldo): contrato OK	PASS
+tests/pm14/p03-encargos-entrega-contract.mjs	active_contract	0	48ms	PM14 P03 Encargos — entrega atómica, idempotente y con local real: contrato OK	PASS
+tests/pm14/p04-encargos-cancelacion-contract.mjs	active_contract	0	40ms	PM14 P04 Encargos — cancelación trazable, no destructiva: contrato OK	PASS
+tests/pm14/p05-encargos-devolucion-contract.mjs	active_contract	0	46ms	PM14 P05 Encargos — devolución de lo entregado, trazable e idempotente: contrato OK	PASS
+tests/pm14/p06-clientes-aislamiento-contract.mjs	active_contract	0	47ms	PM14 P06 Clientes — aislamiento por empresa y anonimización: contrato OK	PASS
+tests/pm14/p07-encargos-concurrencia-contract.mjs	active_contract	0	6043ms	PM14 P07 Encargos — concurrencia real probada donde importa (caja), riesgo de fondo documentado donde no se resuelve (documento en blob): contrato OK	PASS
+tests/pm14/p08-encargos-historial-contract.mjs	active_contract	0	46ms	PM14 P08 Encargos — historial de cancelados/devueltos: contrato OK	PASS
+tests/pm15/p01-la022-locales-empresa-contract.mjs	active_contract	0	39ms	PM15 P01 (LA-022) — Locales: nombre vacío no culpa a una empresa ya elegida: contrato OK	PASS
+tests/pm15/p01-nr08-cambio-contexto-no-alcanzable-contract.mjs	active_contract	0	39ms	PM15 P01 (NR-08, alcance literal) — cambiar contexto mientras un formulario de Encargos/Clientes sigue abierto no es alcanzable en la UI actual: contrato OK (pérdida general de borrador al cambiar de pestaña queda documentada como pendiente, no resuelta aquí)	PASS
+tests/pm15/p02-mej01-contexto-modales-contract.mjs	active_contract	0	44ms	PM15 P02 (MEJ-01) — empresa/local visibles en modales de acciones sensibles: contrato OK	PASS
+tests/pm15/p03-mej02-confirmacion-pago-destino-contract.mjs	active_contract	0	40ms	PM15 P03 (MEJ-02) — confirmación de pago con importe y destino: contrato OK	PASS
+tests/pm15/p04-nr08-proteccion-borrador-navegacion-contract.mjs	active_contract	0	55ms	PM15 (NR-08, ampliación) — borradores protegidos al cambiar de pestaña: contrato OK	PASS
+tests/pm16/p01-la025-loadkey-fallos-contract.mjs	active_contract	0	1121ms	PM16 P01 (LA-025) — loadKey diferencia ausencia/corrupción/cuota/acceso: contrato OK	PASS
+tests/pm16/p01-la025-ui-fallos-carga-contract.mjs	active_contract	0	49ms	PM16 P01 (LA-025) — fallo real de carga visible de punta a punta: contrato OK	PASS
+tests/pm17/p01-rollback-push-nativo-contract.mjs	active_contract	0	38ms	PM17 P01 (rollback push nativo) — activarSuscripcionPushPM17: contrato OK	PASS
+tests/pm17/p01-wiring-notificaciones-contract.mjs	active_contract	0	35ms	PM17 P01 (wiring nativo) — Notificaciones.activar() conectado al rollback: contrato OK	PASS
+tests/pm17/p02-neutralidad-informes-nativo-contract.mjs	active_contract	0	38ms	PM17 P02 (neutralidad nativa) — clasificación de informes: contrato OK	PASS
+tests/pm17/p02-wiring-seleccionpersonal-contract.mjs	active_contract	0	36ms	PM17 P02 (wiring nativo) — SeleccionPersonal neutralizado de punta a punta: contrato OK	PASS
+tests/pm17/p03-auth-ux-nativo-contract.mjs	active_contract	0	33ms	PM17 P03 (auth UX nativo) — debeMostrarLogoutPropietarioPM17: contrato OK	PASS
+tests/pm17/p03-wiring-login-logout-contract.mjs	active_contract	0	39ms	PM17 P03 (wiring auth UX nativo) — login y logout de Propietario: contrato OK	PASS
+tests/pm17/p04-retirar-parches-externos-contract.mjs	active_contract	0	44ms	PM17 P04 (retirada de parches externos) — sin dependencia de red en runtime: contrato OK	PASS
+tests/pm18/p01-identidad-fiscal-contract.mjs	active_contract	0	37ms	PM18 P01 (LA-021) — identidad fiscal nunca se presenta como verificada sin serlo: contrato OK	PASS
+tests/pm18/p01-wiring-identidad-fiscal-contract.mjs	active_contract	0	45ms	PM18 P01 (wiring) — identidad fiscal conectada de punta a punta: contrato OK	PASS
+tests/pm19/p01-appcc-historico-trazable-contract.mjs	active_contract	0	42ms	PM19 P01 (APPCC histórico trazable) — funciones puras: contrato OK	PASS
+tests/pm19/p01-wiring-appcc-contract.mjs	active_contract	0	38ms	PM19 P01 (wiring APPCC) — histórico trazable de punta a punta: contrato OK	PASS
+tests/pm19/p02-aceite-responsable-contract.mjs	active_contract	0	35ms	PM19 P02 (aceite responsable obligatorio) — función pura: contrato OK	PASS
+tests/pm19/p02-wiring-aceite-contract.mjs	active_contract	0	37ms	PM19 P02 (wiring aceite) — responsable obligatorio conectado: contrato OK	PASS
+tests/pm19/p03-wiring-traspasos-contract.mjs	active_contract	0	40ms	PM19 P03 (corregido) — traspasarStock usa la única autoridad de contexto: contrato OK	PASS
+tests/pm19/p04-merma-descuenta-una-vez-contract.mjs	active_contract	0	39ms	PM19 P04 (merma descuenta una vez) — id determinista: contrato OK	PASS
+tests/pm19/p04-wiring-merma-contract.mjs	active_contract	0	42ms	PM19 P04 (wiring merma) — merma por lote protegida por deduplicación real: contrato OK	PASS
+tests/pm19/p05-comportamiento-guardia-contract.mjs	active_contract	0	57ms	PM19 P05 — comportamiento real de la guardia en los 5 módulos (positivo/negativo): contrato OK	PASS
+tests/pm19/p05-inventario-mutaciones-protegidas-contract.mjs	active_contract	0	45ms	PM19 P05 — inventario de 23 mutaciones locales protegidas, guardia siempre antes de mutar: contrato OK	PASS
+tests/pm19/p05-validar-contexto-escritura-contract.mjs	active_contract	0	40ms	PM19 P05 (paso previo) — validarContextoEscrituraPM10 cubre los 5 casos exigidos: contrato OK	PASS
+tests/pm20/p01-checkpoint-inventario-contract.mjs	active_contract	0	84ms	PM20 P01 (checkpoint e inventario) — refleja el código y catálogo reales: contrato OK	PASS
+tests/pm20/p02-comportamiento-proveedor-contract.mjs	active_contract	0	44ms	PM20 P02 — LA-016 corregida: validación real de email/días en proveedores: contrato OK	PASS
+tests/pm20/p02-la014-fecha-esperada-pedido-contract.mjs	active_contract	0	45ms	PM20 P02 — LA-014 revalidado: fecha esperada persiste exacta en alta, edición y recarga: contrato OK	PASS
+tests/pm20/p02-wiring-proveedores-contract.mjs	active_contract	0	37ms	PM20 P02 (wiring Proveedores) — UI conectada al contrato real: contrato OK	PASS
+tests/pm20/p03-dashboard-informes-resultados-contract.mjs	active_contract	0	33ms	PM20 P03 — Dashboard/informes/Resultados: fórmulas y filtros reproducibles (verificado, no supuesto): contrato OK	PASS
+tests/pm20/p04-tesoreria-estacionalidad-saldo-mapa-contract.mjs	active_contract	0	42ms	PM20 P04 — Tesorería/Estacionalidad/Saldo/Mapa: métricas definidas y comprobadas: contrato OK	PASS
+tests/pm20/p05-buscador-etiquetas-auditoria-contract.mjs	active_contract	0	41ms	PM20 P05 — Buscador/Etiquetas/Auditoría: alcance verificado, sin fuga de contexto: contrato OK	PASS
+tests/pm20/p06-errores-sistema-aislamiento-contract.mjs	active_contract	0	35ms	PM20 P06 — errores_sistema aislado por empresa (defecto real corregido en QA): contrato OK	PASS
+tests/pm20/p07-revalidacion-acumulada-contract.mjs	active_contract	0	36ms	PM20 P07 — revalidación acumulada de módulos con cobertura histórica fuerte: contrato OK	PASS
+tests/pm20/p08-restauracion-qa-contract.mjs	active_contract	0	49ms	PM20 P08 — restauración QA ensayada de punta a punta (comportamiento real, no solo código leído): contrato OK	PASS
+tests/pm26/defecto-l-context-hotfix.test.mjs	active_contract	0	28ms	PM26_DEFECTO_L_CONTEXT_HOTFIX=PASS	PASS
+tests/pm27-mobile-logout-modal-fix.mjs	active_contract	0	26ms	PM27 mobile logout modal fix: PASS	PASS
+tests/pm27-restore-c24-operational-rpcs.mjs	active_contract	0	24ms	PM27_RPC_RESTORE_STATIC=PASS	PASS
+tests/pm29/p01-locales-desactivar-propietario-contract.mjs	active_contract	0	42ms	PM29_P01_LOCALES_DESACTIVAR_PROPIETARIO=PASS	PASS
+tests/pm29/p02-empresas-desactivar-propietario-contract.mjs	active_contract	0	43ms	PM29_P02_EMPRESAS_DESACTIVAR_PROPIETARIO=PASS	PASS
+tests/pm29/p03-adopcion-contexto-contract.mjs	active_contract	0	38ms	PM29_P03_ADOPCION_CONTEXTO=PASS	PASS
+tests/pm31/p01-bloqueo-programa-no-cargado-contract.mjs	active_contract	0	10431ms	PM31_P01_BLOQUEO_PROGRAMA_NO_CARGADO=PASS	PASS
+tests/pm32/p01-selector-empresa-y-local-contract.mjs	active_contract	0	54ms	PM32_P01_SELECTOR_EMPRESA_Y_LOCAL=PASS	PASS
+tests/pm33/p03-frontend-multilocal-contract.mjs	active_contract	0	48ms	PM33_P03_FRONTEND_MULTILOCAL_OK=1	PASS
+tests/post-reset-schema-contract.mjs	active_contract	0	37ms	PASS post-reset schema contract: narrow repair + active stock dependency + least privilege	PASS
+tests/ui-context-bridge.mjs	active_contract	0	24ms	UI_CONTEXT_BRIDGE_PASS	PASS
+tests/netlify-publish-boundary.mjs	active_contract	0	172ms	NETLIFY_PUBLISH_BOUNDARY_PASS entries=43	PASS

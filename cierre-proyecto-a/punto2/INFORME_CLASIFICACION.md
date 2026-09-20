@@ -1,12 +1,14 @@
 # Punto 2 — Informe de clasificación (deuda de pruebas fallidas)
 
-Rama: `claude/punto2-134-pruebas`, commit final **`3f8e1d0300cb16b99634c2ff04d3135ee37e29d3`**,
+Rama: `claude/punto2-134-pruebas`, commit final **`6320ab9e4fd06a18932856fd2c662451120e18a2`**,
 creada desde `release` vigente (`6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d`, el
 mismo commit al que se promovió PM33). `release`, `main`, PR #38, QA, PROD y
 Netlify **no se han tocado** en todo este trabajo.
 
-**Estado: CERRADO. Puerta de CI en verde real: 133/133 contratos activos.**
-[`run 35495409478`](https://github.com/Plopezm1990/Almacen/actions/runs/35495409478) — SUCCESS.
+**Estado: CERRADO. Puerta de CI en verde real: 133/133 contratos activos,
+calculados y exigidos por la propia puerta (no declarados) -- demostrado
+también en rojo real, ver sección 0-bis.**
+[`run 35502655080`](https://github.com/Plopezm1990/Almacen/actions/runs/35502655080) — SUCCESS.
 
 ## 0. Corrección tras una auditoría independiente
 
@@ -36,6 +38,59 @@ de corregir los dos problemas de reproducibilidad, actualizar los 9
 contratos activos obsoletos y completar los 2 arneses de prueba
 incompletos — todo verificado con una ejecución real en CI sobre el commit
 final, no solo localmente.
+
+## 0-bis. Segunda corrección: la puerta de CI declaraba el resultado en vez de calcularlo
+
+Una segunda auditoría, sobre la entrega anterior (commit `1b823c9`, run
+`35495524333`), encontró un defecto real distinto: `ejecutar_bateria_no_db.sh`
+registraba el código de salida de cada contrato en el TSV pero **nunca lo
+acumulaba ni exigía que los 121 activos terminaran en 0** — el script
+podía terminar con código 0 aunque un contrato activo hubiera fallado, con
+tal de que el árbol quedara limpio. `gate-final`, además, **imprimía
+`ACTIVE_PASS=133`/`ACTIVE_FAIL=0` como texto fijo**, sin haberlos
+calculado a partir de ningún dato real de los jobs anteriores. El run
+concreto que se citó como cierre había sido, en efecto, verde de verdad —
+pero la puerta, tal como estaba construida, no habría detectado un fallo
+futuro.
+
+Corregido: ambos runners leen ahora la clasificación de cada entrada del
+manifiesto, calculan `NODE_ACTIVE_TOTAL/PASS/FAIL` y
+`POSTGRES_ACTIVE_TOTAL/PASS/FAIL` reales, y terminan con código 1 si algún
+contrato activo falla o si una utilidad/diagnóstico se bloquea (fallo de
+infraestructura) — siempre tras completar la batería entera, nunca a
+mitad de camino. `node-y-postgres`, `pm12-p08-supabase-full` y
+`pm33-p05-supabase-full` exponen esos conteos como **outputs de job**
+(los dos últimos, contando solo los pasos cuyo `outcome` fue realmente
+`success`); `gate-final` exige que los tres jobs hayan terminado con
+éxito, **suma esos outputs** (121+9+3=133) y solo entonces imprime el
+resumen — no queda ningún `echo` de un número que no se haya demostrado
+primero en ese mismo run.
+
+**Demostrado en rojo y en verde, en ambos niveles:**
+- Runner, en una copia temporal (`git worktree add --detach`): forzado el
+  fallo de `tests/g1/p02-evidence-map-contract.mjs` (no tocado por
+  ninguna corrección de este punto) — el runner reportó
+  `NODE_ACTIVE_FAIL=1` con la causa exacta y terminó con código 1;
+  revertido, volvió a `NODE_ACTIVE_FAIL=0` y código 0.
+- Workflow, en la propia rama, tres commits reales: `ae8ef65` (las
+  correcciones) →
+  [`run 35502426949`](https://github.com/Plopezm1990/Almacen/actions/runs/35502426949)
+  SUCCESS; `009c5bb` (el mismo fallo forzado, temporal) →
+  [`run 35502547235`](https://github.com/Plopezm1990/Almacen/actions/runs/35502547235)
+  **FAILURE real** — `node-y-postgres` con
+  `NODE_ACTIVE_FAIL=1`/`NODE_ACTIVE_FAIL_DETECTADO` señalando el archivo
+  exacto, `gate-final` deteniéndose en "Exigir que los tres jobs
+  anteriores hayan terminado con éxito" sin llegar a calcular ni imprimir
+  ningún resumen; `6320ab9` (`git revert` exacto del commit anterior) →
+  [`run 35502655080`](https://github.com/Plopezm1990/Almacen/actions/runs/35502655080)
+  **SUCCESS real**, los 4 jobs en verde, resumen calculado desde los
+  outputs de los tres jobs.
+
+Corregido también, en el mismo commit `ae8ef65`: un espacio final en este
+documento (`git diff --check` ahora sin hallazgos).
+
+**Commit final: `6320ab9e4fd06a18932856fd2c662451120e18a2`. Run final:
+[`35502655080`](https://github.com/Plopezm1990/Almacen/actions/runs/35502655080).**
 
 ## 1. El informe original de 134/116/18 no se encontró
 
@@ -102,10 +157,12 @@ metodología es completamente distinta.
 
 ## 3. Resultado real, verificado en CI sobre el commit final
 
-[`run 35495409478`](https://github.com/Plopezm1990/Almacen/actions/runs/35495409478)
-— **SUCCESS**, los 4 jobs en verde. Salida real y completa del job
-`gate-final` (que solo se ejecuta, y solo puede pasar, si los tres jobs
-anteriores pasaron Y el manifiesto se revalida contra el árbol real):
+[`run 35502655080`](https://github.com/Plopezm1990/Almacen/actions/runs/35502655080)
+— **SUCCESS**, los 4 jobs en verde, sobre el commit `6320ab9`. Salida real y
+completa del job `gate-final` (que solo se ejecuta, y solo puede pasar, si
+los tres jobs anteriores pasaron Y el manifiesto se revalida contra el
+árbol real, Y los conteos calculados a partir de sus outputs coinciden
+con lo exigido — ver sección 0-bis):
 
 ```
 ACTIVE_PASS=133
@@ -292,12 +349,15 @@ corresponde decidir si excluirla.
 
 ## 8. Entrega
 
-- **SHA final**: `3f8e1d0300cb16b99634c2ff04d3135ee37e29d3` (rama
+- **SHA final**: `6320ab9e4fd06a18932856fd2c662451120e18a2` (rama
   `claude/punto2-134-pruebas`).
-- **Puerta de CI**: [`run 35495409478`](https://github.com/Plopezm1990/Almacen/actions/runs/35495409478) — SUCCESS, 4/4 jobs.
+- **Puerta de CI**: [`run 35502655080`](https://github.com/Plopezm1990/Almacen/actions/runs/35502655080) — SUCCESS, 4/4 jobs, con los conteos calculados (no declarados) a partir de los outputs reales de los tres jobs anteriores.
 - **ACTIVE_PASS=133 · ACTIVE_FAIL=0 · HISTORICAL_EXPECTED_FAIL=1 ·
   UTILITIES=3 · DIAGNOSTICS=5 · TOTAL_INVENTORY=142.**
-- **Defectos actuales de producto confirmados: 0.**
+- **0 defectos de producto confirmados en esta batería** (no es una
+  afirmación de que el producto no contenga defectos en general — es el
+  resultado de los 133 contratos activos ejecutados aquí, cuyo cálculo
+  ahora es real y exigido, no declarado).
 - Versiones reales: Node v22.23.2, PostgreSQL 16.15 (job
   `node-y-postgres`), Supabase Storage v1.72.1 (jobs full-stack).
 - Matriz completa, archivo por archivo: `MATRIZ_134_PRUEBAS.md`.
@@ -305,8 +365,10 @@ corresponde decidir si excluirla.
 - Scripts reproducibles: `evidencia/ejecutar_bateria_no_db.sh`,
   `evidencia/preparar_postgres_local.sh` — verificados desde un
   worktree limpio (`git worktree add --detach`) antes de confiar en
-  ellos, y de nuevo en CI sobre el commit final.
+  ellos, y de nuevo en CI sobre el commit final, incluida una
+  demostración real en rojo y en verde (sección 0-bis).
 
 El Punto 2 queda cerrado bajo el criterio descrito en la sección 2: los
-133 contratos activos están en verde real, verificado en CI sobre el
-commit final, no solo localmente.
+133 contratos activos están en verde real, con la puerta de CI exigiendo
+y calculando ese resultado (no declarándolo), verificado en rojo y en
+verde sobre el commit final, no solo localmente.

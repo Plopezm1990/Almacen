@@ -1,12 +1,12 @@
-# POSTGRES=PostgreSQL 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit FECHA_UTC=2026-09-20T09:21:20Z
+# POSTGRES=PostgreSQL 16.15 (Debian 16.15-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit FECHA_UTC=2026-09-20T09:35:02Z
 ruta	clasificacion	codigo_salida	duracion_ms	ultima_marca	resultado_final
-tests/pm12/db/p08-postgres-contract.mjs	active_contract	0	623ms	P08_POSTGRES_ISOLATED_CONTRACT=PASS	PASS
-tests/pm14/db/p02-postgres-contract.mjs	active_contract	0	183ms	PM14 P02 Postgres — pagos_encargo/registrar_pago_encargo/revertir_pago_encargo: contrato OK	PASS
-tests/pm14/db/p05-postgres-contract.mjs	active_contract	0	140ms	PM14 P05 Postgres — estado Devuelto en el espejo autoritativo: contrato OK	PASS
-tests/pm14/db/p07-postgres-concurrencia-contract.mjs	active_contract	0	193ms	P07_PG_CONCURRENCIA_REAL_MISMO_OPERATION_ID=PASS	PASS
-tests/pm33/db/contrato-vigente-contract.mjs	active_contract	0	114ms	PM33_CONTRATO_VIGENTE_OK=1	PASS
-tests/pm33/db/p01-aislamiento-multiempresa-contract.mjs	historical_expected_fail	1	110ms	    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)	HISTORICAL_EXPECTED_FAIL
-tests/pm33/db/p02-regresion-rol-no-gestionado.mjs	active_contract	0	96ms	PM33_P02_REGRESION_CAMARERO_OK=1	PASS
-tests/pm33/db/p03-aislamiento-camarero-contract.mjs	active_contract	0	99ms	PM33_P03_CAMARERO_AISLAMIENTO_OK=1	PASS
-tests/pm33/db/p04-identidad-y-revocacion-contract.mjs	active_contract	0	113ms	PM33_P04_OK=1	PASS
-tests/pm33/db/p05-identidad-antes-de-actividad-contract.mjs	active_contract	0	104ms	PM33_P05_IDENTIDAD_OK=1	PASS
+tests/pm12/db/p08-postgres-contract.mjs	active_contract	0	815ms	P08_POSTGRES_ISOLATED_CONTRACT=PASS	PASS
+tests/pm14/db/p02-postgres-contract.mjs	active_contract	0	245ms	PM14 P02 Postgres — pagos_encargo/registrar_pago_encargo/revertir_pago_encargo: contrato OK	PASS
+tests/pm14/db/p05-postgres-contract.mjs	active_contract	0	92ms	PM14 P05 Postgres — estado Devuelto en el espejo autoritativo: contrato OK	PASS
+tests/pm14/db/p07-postgres-concurrencia-contract.mjs	active_contract	0	237ms	P07_PG_CONCURRENCIA_REAL_MISMO_OPERATION_ID=PASS	PASS
+tests/pm33/db/contrato-vigente-contract.mjs	active_contract	0	67ms	PM33_CONTRATO_VIGENTE_OK=1	PASS
+tests/pm33/db/p01-aislamiento-multiempresa-contract.mjs	historical_expected_fail	1	65ms	    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)	HISTORICAL_EXPECTED_FAIL
+tests/pm33/db/p02-regresion-rol-no-gestionado.mjs	active_contract	0	53ms	PM33_P02_REGRESION_CAMARERO_OK=1	PASS
+tests/pm33/db/p03-aislamiento-camarero-contract.mjs	active_contract	0	56ms	PM33_P03_CAMARERO_AISLAMIENTO_OK=1	PASS
+tests/pm33/db/p04-identidad-y-revocacion-contract.mjs	active_contract	0	62ms	PM33_P04_OK=1	PASS
+tests/pm33/db/p05-identidad-antes-de-actividad-contract.mjs	active_contract	0	57ms	PM33_P05_IDENTIDAD_OK=1	PASS
