@@ -1,11 +1,11 @@
-# POSTGRES=PostgreSQL 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit FECHA_UTC=2026-09-20T06:37:25Z
-tests/pm12/db/p08-postgres-contract.mjs	active_contract	0	735ms	P08_POSTGRES_ISOLATED_CONTRACT=PASS
-tests/pm14/db/p02-postgres-contract.mjs	active_contract	0	192ms	PM14 P02 Postgres — pagos_encargo/registrar_pago_encargo/revertir_pago_encargo: contrato OK
-tests/pm14/db/p05-postgres-contract.mjs	active_contract	0	148ms	PM14 P05 Postgres — estado Devuelto en el espejo autoritativo: contrato OK
-tests/pm14/db/p07-postgres-concurrencia-contract.mjs	active_contract	0	176ms	P07_PG_CONCURRENCIA_REAL_MISMO_OPERATION_ID=PASS
-tests/pm33/db/contrato-vigente-contract.mjs	active_contract	0	121ms	PM33_CONTRATO_VIGENTE_OK=1
-tests/pm33/db/p01-aislamiento-multiempresa-contract.mjs	historical_expected_fail	1	113ms	    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-tests/pm33/db/p02-regresion-rol-no-gestionado.mjs	active_contract	0	99ms	PM33_P02_REGRESION_CAMARERO_OK=1
-tests/pm33/db/p03-aislamiento-camarero-contract.mjs	active_contract	0	103ms	PM33_P03_CAMARERO_AISLAMIENTO_OK=1
-tests/pm33/db/p04-identidad-y-revocacion-contract.mjs	active_contract	0	110ms	PM33_P04_OK=1
-tests/pm33/db/p05-identidad-antes-de-actividad-contract.mjs	active_contract	0	102ms	PM33_P05_IDENTIDAD_OK=1
+# POSTGRES=PostgreSQL 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit FECHA_UTC=2026-09-20T06:44:47Z
+tests/pm12/db/p08-postgres-contract.mjs	active_contract	0	671ms	P08_POSTGRES_ISOLATED_CONTRACT=PASS
+tests/pm14/db/p02-postgres-contract.mjs	active_contract	0	200ms	PM14 P02 Postgres — pagos_encargo/registrar_pago_encargo/revertir_pago_encargo: contrato OK
+tests/pm14/db/p05-postgres-contract.mjs	active_contract	0	162ms	PM14 P05 Postgres — estado Devuelto en el espejo autoritativo: contrato OK
+tests/pm14/db/p07-postgres-concurrencia-contract.mjs	active_contract	0	185ms	P07_PG_CONCURRENCIA_REAL_MISMO_OPERATION_ID=PASS
+tests/pm33/db/contrato-vigente-contract.mjs	active_contract	0	116ms	PM33_CONTRATO_VIGENTE_OK=1
+tests/pm33/db/p01-aislamiento-multiempresa-contract.mjs	historical_expected_fail	1	121ms	    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+tests/pm33/db/p02-regresion-rol-no-gestionado.mjs	active_contract	0	105ms	PM33_P02_REGRESION_CAMARERO_OK=1
+tests/pm33/db/p03-aislamiento-camarero-contract.mjs	active_contract	0	113ms	PM33_P03_CAMARERO_AISLAMIENTO_OK=1
+tests/pm33/db/p04-identidad-y-revocacion-contract.mjs	active_contract	0	116ms	PM33_P04_OK=1
+tests/pm33/db/p05-identidad-antes-de-actividad-contract.mjs	active_contract	0	107ms	PM33_P05_IDENTIDAD_OK=1
