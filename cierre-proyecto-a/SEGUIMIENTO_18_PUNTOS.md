@@ -374,44 +374,71 @@ mover `release` (dispara Netlify automáticamente, `manual_deploy=false`).
 
 ## 2. Deuda de las 18 pruebas fallidas (de 134)
 
-**Estado: CERRADO — reconstruido honestamente, 0 defectos de producto
-confirmados.** El informe original `Proyecto_A_Pendientes_Verificados_2026-09-19`
+**Estado: CERRADO — puerta de CI en verde real, 133/133 contratos
+activos.** El informe original `Proyecto_A_Pendientes_Verificados_2026-09-19`
 que fijaba "134 scripts / 116 PASS / 18 FAIL" **no se localizó en ningún
 punto del repositorio ni de GitHub** — búsqueda exhaustiva (pickaxe sobre
 las 104 ramas y todo el historial, PR #38, issues, y confirmación de que
 ningún workflow de este repo puede generar ese tipo de recuento porque
 todos paran en el primer fallo). Por instrucción explícita del
-propietario, se reconstruyó desde cero, sin heredar el número ni
-aproximar la lista: se inventariaron los **142** archivos `.mjs` reales
-bajo `tests/` en `release` (`6e26391`), se ejecutaron de verdad (nunca
-simulados) contra código/BD/Auth-PostgREST reales, y se clasificó cada
-resultado con evidencia concreta.
+propietario, se reconstruyó desde cero: se inventariaron los **142**
+archivos `.mjs` reales bajo `tests/` en un manifiesto versionado
+(`cierre-proyecto-a/punto2/manifiesto_clasificacion.json`), se ejecutaron
+de verdad (nunca simulados) contra código/BD/Auth-PostgREST reales, y se
+clasificó cada resultado con evidencia concreta.
 
-Resultado: **122 PASS reales · 10 con contrato histórico obsoleto
-(comportamiento protegido confirmado intacto bajo código
-renombrado/refactorizado en rondas posteriores — nunca un defecto) · 5
-de infraestructura (3 utilidades que no son casos de prueba + 2 con un
-hueco de arnés de prueba por un hotfix legítimo posterior) · 5 no
-aplicables (diagnósticos de solo lectura, sin PASS/FAIL) · 0 defectos de
-producto**. Los 10 casos que requieren Postgres real corrieron contra un
-Postgres 16 local desechable; los 3 que requieren Auth+PostgREST+Postgres
-reales corrieron en GitHub Actions reutilizando el patrón ya validado
-para PM33 —
-[`run 35492977065`](https://github.com/Plopezm1990/Almacen/actions/runs/35492977065),
-ambos jobs SUCCESS. Se verificaron especialmente los recorridos PM28-33
-(identidad/fichaje, contexto empresa/local, persistencia, red,
-concurrencia): todos PASS o con causa raíz confirmada no-defecto; no se
-encontró ningún identificador "VIS-17" en el repositorio; impresión/
-exportación no tiene test `.mjs` dedicado (hallazgo de cobertura, no de
-defecto, cruzado con el Punto 8). No se aplicó ningún cambio a
-`fuente.js` ni a migraciones — no hizo falta. Detalle completo, matriz de
-142 filas y evidencia reproducible en la rama
-`claude/punto2-134-pruebas` (commit `0234a2f`):
+**Corrección tras una auditoría independiente**: una primera entrega
+(commit `0234a2f`) resultó no ser reproducible (ruta absoluta
+hardcodeada, dependía de un archivo temporal sin versionar) y su script
+de Postgres usaba `set -e`, que impedía que hubiera podido producir la
+evidencia completa que decía tener (uno de los 10 archivos falla a
+propósito). Los 9 contratos activos "obsoletos" se habían diagnosticado
+pero no corregido — la batería seguía en rojo pese a que el informe
+afirmaba "0 defectos". Se corrigió todo: los 2 scripts se reescribieron
+para ser reproducibles desde cualquier clon (verificado con `git
+worktree add --detach` antes de confiar en ellos) y para ejecutar cada
+test aislado sin parar en el primer fallo; los 9 contratos se
+actualizaron para comprobar comportamiento vigente de forma estructural
+(no literales frágiles del bundle); se completaron 2 arneses de prueba
+con las APIs de navegador que les faltaban (`window.setInterval`,
+`window.sessionStorage`). Se construyó además una puerta de CI completa
+(4 jobs) que revalida el manifiesto contra el árbol real en cada
+ejecución y solo pasa si los 133 contratos activos están en verde.
+
+**Resultado final, verificado en CI sobre el commit final** —
+[`run 35495524333`](https://github.com/Plopezm1990/Almacen/actions/runs/35495524333)
+(commit `1b823c9`, SUCCESS, 4/4 jobs; el mismo estado de código ya
+verificado en el
+[`run 35495409478`](https://github.com/Plopezm1990/Almacen/actions/runs/35495409478),
+commit `3f8e1d0`):
+
+```
+ACTIVE_PASS=133
+ACTIVE_FAIL=0
+HISTORICAL_EXPECTED_FAIL=1
+UTILITIES=3
+DIAGNOSTICS=5
+TOTAL_INVENTORY=142
+```
+
+133 contratos activos en verde real (121 Node + 9 Postgres real + 3
+Auth/PostgREST/Postgres real), 1 histórico marcado
+`HISTORICAL_EXPECTED_FAIL` (`tests/pm33/db/p01-aislamiento-multiempresa-contract.mjs`,
+un registro retirado a propósito que el propio repositorio documenta
+como tal — nunca contado como activo), 3 utilidades y 5 diagnósticos sin
+semántica PASS/FAIL. **0 defectos de producto confirmados.** Se
+verificaron especialmente los recorridos PM28-33 (identidad/fichaje,
+contexto empresa/local, persistencia, red, concurrencia): todos PASS; no
+se encontró ningún identificador "VIS-17" en el repositorio; impresión/
+exportación sigue sin test `.mjs` dedicado (hallazgo de cobertura, no de
+defecto, cruzado con el Punto 8, sin inventar cobertura que no existe).
+Hallazgo incidental, cruzado con el Punto 6: `build-netlify-publish.mjs`
+no excluye `cierre-proyecto-a/` de la copia publicable. No se aplicó
+ningún cambio a `fuente.js` ni a migraciones — no hizo falta. Detalle
+completo, matriz de 142 filas y evidencia reproducible en la rama
+`claude/punto2-134-pruebas`:
 `cierre-proyecto-a/punto2/INFORME_CLASIFICACION.md` y
 `cierre-proyecto-a/punto2/MATRIZ_134_PRUEBAS.md`.
-**Pendiente, no bloqueante**: actualizar los 10 tests con contrato
-obsoleto para que dejen de reportar falsos fallos (propuesta de
-prioridad en el informe, sección 7).
 
 ---
 
