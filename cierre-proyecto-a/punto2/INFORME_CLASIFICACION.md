@@ -1,12 +1,12 @@
 # Punto 2 — Informe de clasificación (deuda de pruebas fallidas)
 
-Rama: `claude/punto2-134-pruebas`, commit final **`c685907ea7a0ba5eb4756e9393491ff4baa3ee1d`**,
+Rama: `claude/punto2-134-pruebas`, commit final **`3f8e1d0300cb16b99634c2ff04d3135ee37e29d3`**,
 creada desde `release` vigente (`6e26391eff7bafc1ceb3f1e6f6e45d84f3d3086d`, el
 mismo commit al que se promovió PM33). `release`, `main`, PR #38, QA, PROD y
 Netlify **no se han tocado** en todo este trabajo.
 
 **Estado: CERRADO. Puerta de CI en verde real: 133/133 contratos activos.**
-[`run 35495162728`](https://github.com/Plopezm1990/Almacen/actions/runs/35495162728) — SUCCESS.
+[`run 35495409478`](https://github.com/Plopezm1990/Almacen/actions/runs/35495409478) — SUCCESS.
 
 ## 0. Corrección tras una auditoría independiente
 
@@ -102,7 +102,7 @@ metodología es completamente distinta.
 
 ## 3. Resultado real, verificado en CI sobre el commit final
 
-[`run 35495162728`](https://github.com/Plopezm1990/Almacen/actions/runs/35495162728)
+[`run 35495409478`](https://github.com/Plopezm1990/Almacen/actions/runs/35495409478)
 — **SUCCESS**, los 4 jobs en verde. Salida real y completa del job
 `gate-final` (que solo se ejecuta, y solo puede pasar, si los tres jobs
 anteriores pasaron Y el manifiesto se revalida contra el árbol real):
@@ -292,9 +292,9 @@ corresponde decidir si excluirla.
 
 ## 8. Entrega
 
-- **SHA final**: `c685907ea7a0ba5eb4756e9393491ff4baa3ee1d` (rama
+- **SHA final**: `3f8e1d0300cb16b99634c2ff04d3135ee37e29d3` (rama
   `claude/punto2-134-pruebas`).
-- **Puerta de CI**: [`run 35495162728`](https://github.com/Plopezm1990/Almacen/actions/runs/35495162728) — SUCCESS, 4/4 jobs.
+- **Puerta de CI**: [`run 35495409478`](https://github.com/Plopezm1990/Almacen/actions/runs/35495409478) — SUCCESS, 4/4 jobs.
 - **ACTIVE_PASS=133 · ACTIVE_FAIL=0 · HISTORICAL_EXPECTED_FAIL=1 ·
   UTILITIES=3 · DIAGNOSTICS=5 · TOTAL_INVENTORY=142.**
 - **Defectos actuales de producto confirmados: 0.**
