@@ -31,7 +31,7 @@ jobs:
   validar-pm08:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
       - name: Contrato frontend y almacenamiento PM-08
         run: node tests/pm08/frontend-contract.mjs
       - name: Contrato de migración, RLS y atomicidad PM-08

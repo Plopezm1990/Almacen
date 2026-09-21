@@ -18,7 +18,7 @@ jobs:
   validar-p07:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           fetch-depth: 0
       - name: Proteger main y alcance P07
@@ -109,7 +109,7 @@ jobs:
     needs: validar-p07
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
       - name: Gate PM13 P07
         shell: bash
         run: |
