@@ -1,5 +1,19 @@
 (function () {
   "use strict";
+
+  function esPrefiltroPublico() {
+    return !!(window.location && String(window.location.hash || "").indexOf("#/prefiltro/") === 0);
+  }
+
+  // La ruta publica de prefiltro no necesita sesion ni bootstrap privado.
+  // Liberamos solo la barrera visual de instalacion; el interlock privado
+  // permanece cerrado y no se marca la sincronizacion del panel como valida.
+  if (esPrefiltroPublico()) {
+    document.documentElement.classList.remove("la-installation-checking");
+    document.documentElement.classList.remove("la-installation-needs-setup");
+    return;
+  }
+
   if (window.__laOwnerBootstrapFlowV1) return;
   window.__laOwnerBootstrapFlowV1 = true;
 
