@@ -114,7 +114,7 @@ create function public.registrar_auditoria(
 ) returns jsonb
 language plpgsql security definer
 set search_path=public,auth,private,pg_temp
-as $ begin return '{}'::jsonb; end; $;
+as $$ begin return '{}'::jsonb; end; $$;
 grant execute on function public.registrar_auditoria(
   text,text,text,text,date,text,text,text
 ) to authenticated;
