@@ -56,14 +56,14 @@ jobs:
           test "$actual" = "$expected"
           echo "P2_R03B_SCOPE=PASS"
 
-      - name: Verificar artefactos históricos exactos
+      - name: Verificar corrección mínima del conflicto QA de defaults
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git hash-object supabase/migrations/20260916203000_p2_r03b_auditoria_tenant_post_reset.sql)" = "bb05c3c5d960d5d0a67be44fd3a4a7cf25ce16eb"
-          test "$(git hash-object .github/scripts/p2-r03b/contract.mjs)" = "2a8a0856502d1f90283fee21604e57af98754a4c"
-          test "$(git hash-object .github/scripts/p2-r03b/ephemeral-audit.sql)" = "68ea04715eac5bf89bb74a97b8ad7586cfd147aa"
-          echo "P2_R03B_HISTORICAL_ARTIFACTS=PASS"
+          grep -F "drop function if exists public.registrar_auditoria("             supabase/migrations/20260916203000_p2_r03b_auditoria_tenant_post_reset.sql >/dev/null
+          grep -F "QA_DEFAULTS_REMOVED_OK" .github/scripts/p2-r03b/ephemeral-audit.sql >/dev/null
+          grep -F "QA_DEFAULTS_REMOVED_FAIL_CLOSED" .github/scripts/p2-r03b/contract.mjs >/dev/null
+          echo "P2_R03B_QA_DEFAULT_FIX_PRESENT=PASS"
 
       - name: Contrato estático R03B
         shell: bash

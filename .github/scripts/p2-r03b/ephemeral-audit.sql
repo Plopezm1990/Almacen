@@ -99,6 +99,26 @@ as $$ begin null; end; $$;
 grant execute on function public.registrar_auditoria(text,text,text) to authenticated;
 grant execute on function public.registrar_auditoria(text,text,text,text,text,text) to authenticated;
 
+-- Estado QA observado el 21/09/2026: misma firma de 8 argumentos, pero con
+-- DEFAULT NULL en empresa/local. Este estado causaba ERROR 42P13 al intentar
+-- quitar los defaults mediante CREATE OR REPLACE.
+create function public.registrar_auditoria(
+  p_id text,
+  p_usuario text,
+  p_accion text,
+  p_detalle text,
+  p_fecha date,
+  p_hora text,
+  p_empresa_id text default null,
+  p_local_id text default null
+) returns jsonb
+language plpgsql security definer
+set search_path=public,auth,private,pg_temp
+as $ begin return '{}'::jsonb; end; $;
+grant execute on function public.registrar_auditoria(
+  text,text,text,text,date,text,text,text
+) to authenticated;
+
 -- RPC P2-R02 ficticias para certificar que el nuevo paquete las deja cerradas.
 create function public.anular_venta_tpv(text,text) returns void language plpgsql as $$ begin null; end; $$;
 create function public.descontar_stock(text,numeric,text,jsonb) returns void language plpgsql as $$ begin null; end; $$;
@@ -159,6 +179,20 @@ select private.p2_r03b_assert(
   and not has_function_privilege('authenticated','public.registrar_auditoria(text,text,text)','EXECUTE')
   and not has_function_privilege('authenticated','public.registrar_auditoria(text,text,text,text,text,text)','EXECUTE'),
   'AUDIT_RPC_ACL_OK'
+);
+
+select private.p2_r03b_assert(
+  (
+    select p.pronargdefaults=0
+       and position('DEFAULT' in upper(pg_get_function_arguments(p.oid)))=0
+      from pg_proc p
+      join pg_namespace n on n.oid=p.pronamespace
+     where n.nspname='public'
+       and p.proname='registrar_auditoria'
+       and pg_get_function_identity_arguments(p.oid)=
+         'p_id text, p_usuario text, p_accion text, p_detalle text, p_fecha date, p_hora text, p_empresa_id text, p_local_id text'
+  ),
+  'QA_DEFAULTS_REMOVED_OK'
 );
 
 select private.p2_r03b_assert(

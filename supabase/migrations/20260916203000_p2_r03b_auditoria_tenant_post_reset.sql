@@ -143,6 +143,15 @@ grant select on table public.auditoria_registro to authenticated;
 -- ---------------------------------------------------------------------------
 -- 3. RPC de 8 parámetros compatible con el frontend actual.
 -- ---------------------------------------------------------------------------
+-- QA puede contener esta misma firma con DEFAULT en p_empresa_id/p_local_id.
+-- PostgreSQL no permite eliminar defaults mediante CREATE OR REPLACE FUNCTION.
+-- Se elimina únicamente la firma exacta (sin CASCADE) y se recrea a continuación
+-- con los 8 parámetros obligatorios. Si apareciera una dependencia, DROP falla
+-- cerrado y toda la migración se revierte.
+drop function if exists public.registrar_auditoria(
+  text,text,text,text,date,text,text,text
+);
+
 create or replace function public.registrar_auditoria(
   p_id text,
   p_usuario text,

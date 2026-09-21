@@ -51,6 +51,15 @@ check('APPEND_ONLY_TABLE',
 
 check('RPC_EIGHT_ARGS',
   /registrar_auditoria\s*\(\s*p_id text,\s*p_usuario text,\s*p_accion text,\s*p_detalle text,\s*p_fecha date,\s*p_hora text,\s*p_empresa_id text,\s*p_local_id text\s*\)/is.test(sql));
+const dropEight = lower.indexOf('drop function if exists public.registrar_auditoria(');
+const createEight = lower.indexOf('create or replace function public.registrar_auditoria(');
+check('QA_DEFAULTS_REMOVED_FAIL_CLOSED',
+  dropEight >= 0 &&
+  createEight > dropEight &&
+  lower.slice(dropEight, createEight).includes('text,text,text,text,date,text,text,text'));
+check('RPC_TENANT_ARGS_REQUIRED',
+  !/p_empresa_id\s+text\s+default/is.test(audit) &&
+  !/p_local_id\s+text\s+default/is.test(audit));
 check('RPC_SECURITY_DEFINER', audit.toLowerCase().includes('security definer'));
 check('RPC_SAFE_SEARCH_PATH', audit.toLowerCase().includes("set search_path=''"));
 check('RPC_ACTIVE_USER', audit.includes('private.la_usuario_activo()'));

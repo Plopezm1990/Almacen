@@ -49,6 +49,28 @@ QA está parcialmente adelantado:
 
 R03B debe reconciliar esa política con el contrato final del paquete: lectura tenant-aware limitada a `Propietario`.
 
+## Corrección tras el primer intento controlado en QA
+
+El primer intento autorizado de aplicar R03B en QA falló de forma transaccional con PostgreSQL `42P13`: la firma de 8 argumentos ya existente tenía `DEFAULT NULL` en `p_empresa_id` y `p_local_id`, y PostgreSQL no permite retirar esos defaults con `CREATE OR REPLACE FUNCTION`.
+
+Postflight inmediato del fallo confirmó:
+
+- no se registró una migración R03B en QA;
+- no quedaron cambios parciales;
+- la policy anterior `auditoria_pm05_select` seguía vigente;
+- el helper R03B no existía;
+- la función de 8 argumentos seguía con `pronargdefaults=2`;
+- la función no tenía dependencias internas de base de datos.
+
+La corrección mínima de este candidato es:
+
+- `DROP FUNCTION IF EXISTS public.registrar_auditoria(text,text,text,text,date,text,text,text)` **sin CASCADE**;
+- recreación inmediata de la misma firma con los 8 parámetros obligatorios;
+- si apareciera una dependencia inesperada, el `DROP` falla cerrado y la transacción completa se revierte;
+- el harness efímero reproduce explícitamente el estado QA con dos defaults y exige `pronargdefaults=0` después de aplicar el candidato.
+
+No se ha reintentado QA con esta corrección; requiere autorización separada después de recertificar el PR.
+
 ## Wiring del frontend actual
 
 El `fuente.js` actual llama a `registrar_auditoria` con exactamente los ocho parámetros esperados:
