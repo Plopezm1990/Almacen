@@ -90,6 +90,16 @@ jobs:
           fi
           echo 'DISPARO_VALIDADO=1'
 
+      - name: Instalar dependencia de build Tailwind 3.4.17
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-package-lock --ignore-scripts --no-audit --no-fund
+          test -f node_modules/tailwindcss/lib/cli.js
+          version=$(node -p "require('./node_modules/tailwindcss/package.json').version")
+          test "$version" = "3.4.17"
+          echo "TAILWIND_BUILD_VERSION=$version"
+
       - name: 121 contratos activos Node (incluye build de Netlify previo)
         id: node_run
         shell: bash

@@ -1,3 +1,6 @@
 [build]
   command = "node .github/scripts/build-netlify-publish.mjs"
   publish = ".netlify-dist"
+
+[build.environment]
+  NPM_FLAGS = "--no-package-lock --ignore-scripts --no-audit --no-fund"
