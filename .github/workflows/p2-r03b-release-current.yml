@@ -1,0 +1,129 @@
+name: "P2-R03B — auditoría tenant-aware sobre release actual"
+
+on:
+  pull_request:
+    branches: [release]
+    paths:
+      - '.github/workflows/p2-r03b-release-current.yml'
+      - '.github/scripts/p2-r03b/**'
+      - 'docs/plan-maestro/P2_R03B_RELEASE_CURRENT.md'
+      - 'supabase/migrations/20260916203000_p2_r03b_auditoria_tenant_post_reset.sql'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  p2-r03b:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+
+      - name: Node 24
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '24'
+
+      - name: Frontera exacta del candidato
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='899863a11cdac54fc68e472f1e1bb921a1bacbe3'
+          git cat-file -e "$BASE^{commit}"
+          git merge-base --is-ancestor "$BASE" HEAD
+          mapfile -t changed < <(git diff --name-only "$BASE"...HEAD | LC_ALL=C sort)
+          printf '%s\n' "${changed[@]}"
+          expected=$'.github/scripts/p2-r03b/contract.mjs\n.github/scripts/p2-r03b/ephemeral-audit.sql\n.github/workflows/p2-r03b-release-current.yml\ndocs/plan-maestro/P2_R03B_RELEASE_CURRENT.md\nsupabase/migrations/20260916203000_p2_r03b_auditoria_tenant_post_reset.sql'
+          actual="$(printf '%s\n' "${changed[@]}")"
+          test "$actual" = "$expected"
+          echo "P2_R03B_SCOPE=PASS"
+
+      - name: Verificar corrección mínima del conflicto QA de defaults
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F "drop function if exists public.registrar_auditoria("             supabase/migrations/20260916203000_p2_r03b_auditoria_tenant_post_reset.sql >/dev/null
+          grep -F "QA_DEFAULTS_REMOVED_OK" .github/scripts/p2-r03b/ephemeral-audit.sql >/dev/null
+          grep -F "QA_DEFAULTS_REMOVED_FAIL_CLOSED" .github/scripts/p2-r03b/contract.mjs >/dev/null
+          echo "P2_R03B_QA_DEFAULT_FIX_PRESENT=PASS"
+
+      - name: Contrato estático R03B
+        shell: bash
+        run: |
+          set -euo pipefail
+          node .github/scripts/p2-r03b/contract.mjs
+
+      - name: Regresión R03A y sintaxis frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          node .github/scripts/p2-r03a/contract.mjs
+          node --check fuente.js
+
+      - name: Wiring frontend actual de registrar_auditoria
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const src = fs.readFileSync('fuente.js','utf8');
+          const needle = 'rpc("registrar_auditoria"';
+          const i = src.indexOf(needle);
+          if (i < 0) throw new Error('P2_R03B_WIRING_RPC_AUSENTE');
+          const block = src.slice(i, i + 1800);
+          const required = [
+            'p_id:', 'p_usuario:', 'p_accion:', 'p_detalle:',
+            'p_fecha:', 'p_hora:', 'p_empresa_id:', 'p_local_id:'
+          ];
+          for (const key of required) {
+            if (!block.includes(key)) throw new Error('P2_R03B_WIRING_FALTA_' + key.replace(':',''));
+          }
+          console.log('P2_R03B_FRONTEND_8_ARGS=PASS');
+          NODE
+
+      - name: Preparar harness efímero
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('.github/scripts/p2-r03b/ephemeral-audit.sql').read_text()
+          old = r'\ir ../../supabase/migrations/20260916203000_p2_r03b_auditoria_tenant_post_reset.sql'
+          new = r'\i supabase/migrations/20260916203000_p2_r03b_auditoria_tenant_post_reset.sql'
+          if old not in src:
+              raise SystemExit('P2_R03B_HARNESS_INCLUDE_NOT_FOUND')
+          src = src.replace(old, new, 1)
+          Path('/tmp/p2-r03b-ephemeral.sql').write_text(src)
+          PY
+
+      - name: Prueba funcional PostgreSQL 16 efímera
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/p2-r03b-ephemeral.sql
+
+      - name: Confirmar árbol limpio
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
+          echo "P2_R03B_GATE=PASS"
