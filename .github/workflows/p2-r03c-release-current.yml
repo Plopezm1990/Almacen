@@ -32,9 +32,10 @@ jobs:
       PGPASSWORD: postgres
 
     steps:
-      - name: Checkout exact candidate
+      - name: Checkout exact PR head
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
 
       - name: Node 24
@@ -47,8 +48,12 @@ jobs:
         run: |
           set -euo pipefail
           BASE='fe01c398ef1bcc7af54d972e88790592919d4119'
+          ACTUAL_HEAD="$(git rev-parse HEAD)"
           test "$(git rev-parse origin/release)" = "$BASE"
-          git merge-base --is-ancestor "$BASE" HEAD
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            test "$ACTUAL_HEAD" = '${{ github.event.pull_request.head.sha }}'
+          fi
+          git merge-base --is-ancestor "$BASE" "$ACTUAL_HEAD"
           mapfile -t changed < <(git diff --name-only "$BASE"...HEAD | LC_ALL=C sort)
           printf '%s\n' "${changed[@]}"
           expected=$'.github/scripts/p2-r03c/contract.mjs\n.github/scripts/p2-r03c/ephemeral-errors.sql\n.github/workflows/p2-r03c-release-current.yml\ndocs/plan-maestro/P2_R03C_RELEASE_CURRENT.md\nsupabase/migrations/20260917111500_p2_r03c_errores_sistema_post_reset.sql'
@@ -56,7 +61,7 @@ jobs:
           test "$actual" = "$expected"
           echo "P2_R03C_SCOPE=PASS"
           echo "P2_R03C_BASE=$BASE"
-          echo "P2_R03C_CANDIDATE=$GITHUB_SHA"
+          echo "P2_R03C_CANDIDATE=$ACTUAL_HEAD"
 
       - name: Verificar SQL histórico recuperado
         shell: bash
