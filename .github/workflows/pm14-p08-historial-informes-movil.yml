@@ -17,7 +17,7 @@ jobs:
   validar-p08:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
       - name: Proteger main y alcance P08 (sin cambios en supabase/)
@@ -88,7 +88,7 @@ jobs:
     needs: validar-p08
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Gate PM14 P08 (y cierre final de PM14)
         run: |
           set -euo pipefail

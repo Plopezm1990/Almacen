@@ -8,7 +8,7 @@ jobs:
   auditar:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Inventariar claves y arranque del modo local
         run: |
           python3 <<'PY'
