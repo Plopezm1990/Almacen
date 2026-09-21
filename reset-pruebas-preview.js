@@ -35,6 +35,16 @@
       return window.__instalacionSyncPermitida === true;
     }
 
+    function esPrefiltroPublico() {
+      return !!(window.location && String(window.location.hash || "").indexOf("#/prefiltro/") === 0);
+    }
+
+    function mutacionPrefiltroPublicoPermitida(destino, metodo) {
+      return esPrefiltroPublico() &&
+        metodo === "POST" &&
+        /^\\/functions\\/v1\\/prefiltro-candidato\\/?$/i.test((destino && destino.pathname) || "");
+    }
+
     function proteccionActiva() {
       if (esPreviewQA || window.__modoPruebasQA === true || window.__modoPruebasLocal === true) return false;
       return !sincronizacionValidada();
@@ -147,6 +157,9 @@
         }
 
         if (destino.hostname !== hostNubeObjetivo()) return fetchAnterior(input, init);
+        // Excepcion minima para el formulario publico: solo su POST a la Edge
+        // Function propia. No abre almacenamiento local ni otras mutaciones.
+        if (mutacionPrefiltroPublicoPermitida(destino, metodo)) return fetchAnterior(input, init);
         if (/^\/auth\/v1\//i.test(destino.pathname)) return fetchAnterior(input, init);
         if (rpcLecturaPermitido(destino.pathname)) return fetchAnterior(input, init);
         if (metodo === "GET" || metodo === "HEAD" || metodo === "OPTIONS") return fetchAnterior(input, init);

@@ -44,6 +44,12 @@ assert.match(resetPatch, /clave\.indexOf\("almacen__"\) === 0/);
 assert.match(resetPatch, /chocoloyos_contexto_operativo_seguro_v1/);
 assert.match(resetPatch, /return null;/);
 assert.match(resetPatch, /POST_RESET_BARRIER_BLOCKED/);
+assert.match(resetPatch, /function esPrefiltroPublico\\(\\)/);
+assert.match(resetPatch, /function mutacionPrefiltroPublicoPermitida\\(destino, metodo\\)/);
+assert.match(resetPatch, /esPrefiltroPublico\\(\\) &&/);
+assert.match(resetPatch, /metodo === "POST"/);
+assert.match(resetPatch, /prefiltro-candidato/);
+assert.match(resetPatch, /return !sincronizacionValidada\\(\\);/);
 assert.match(resetPatch, /\/auth\\\/v1\\\//);
 assert.match(resetPatch, /obtener_generacion_instalacion\|obtener_contexto_operativo/);
 assert.match(resetPatch, /metodo === "GET" \|\| metodo === "HEAD" \|\| metodo === "OPTIONS"/);
@@ -102,6 +108,9 @@ assert.doesNotMatch(bootstrapMigration, /delete from public\.(empresas|locales|m
 
 // P4 cliente: primero revalida P1, después consulta estado; needs_setup mantiene
 // el interlock cerrado y el alta solo termina tras releer ready + generación.
+assert.match(bootstrapFlow, /function esPrefiltroPublico\\(\\)/);
+assert.match(bootstrapFlow, /if \\(esPrefiltroPublico\\(\\)\\)/);
+assert.match(bootstrapFlow, /classList\\.remove\\("la-installation-checking"\\)/);
 assert.match(bootstrapFlow, /__prepararSesionPostReset/);
 assert.match(bootstrapFlow, /obtener_estado_instalacion/);
 assert.match(bootstrapFlow, /bootstrap_owner_instalacion/);
