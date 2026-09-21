@@ -1,0 +1,149 @@
+name: "P2-R03C — errores_sistema tenant-aware sobre release actual"
+
+on:
+  pull_request:
+    branches: [release]
+    paths:
+      - '.github/workflows/p2-r03c-release-current.yml'
+      - '.github/scripts/p2-r03c/**'
+      - 'docs/plan-maestro/P2_R03C_RELEASE_CURRENT.md'
+      - 'supabase/migrations/20260917111500_p2_r03c_errores_sistema_post_reset.sql'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  p2-r03c:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Node 24
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '24'
+
+      - name: Frontera exacta del candidato
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='fe01c398ef1bcc7af54d972e88790592919d4119'
+          ACTUAL_HEAD="$(git rev-parse HEAD)"
+          test "$(git rev-parse origin/release)" = "$BASE"
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            test "$ACTUAL_HEAD" = '${{ github.event.pull_request.head.sha }}'
+          fi
+          git merge-base --is-ancestor "$BASE" "$ACTUAL_HEAD"
+          mapfile -t changed < <(git diff --name-only "$BASE"...HEAD | LC_ALL=C sort)
+          printf '%s\n' "${changed[@]}"
+          expected=$'.github/scripts/p2-r03c/contract.mjs\n.github/scripts/p2-r03c/ephemeral-errors.sql\n.github/workflows/p2-r03c-release-current.yml\ndocs/plan-maestro/P2_R03C_RELEASE_CURRENT.md\nsupabase/migrations/20260917111500_p2_r03c_errores_sistema_post_reset.sql'
+          actual="$(printf '%s\n' "${changed[@]}")"
+          test "$actual" = "$expected"
+          echo "P2_R03C_SCOPE=PASS"
+          echo "P2_R03C_BASE=$BASE"
+          echo "P2_R03C_CANDIDATE=$ACTUAL_HEAD"
+
+      - name: Verificar SQL histórico recuperado
+        shell: bash
+        run: |
+          set -euo pipefail
+          blob="$(git hash-object supabase/migrations/20260917111500_p2_r03c_errores_sistema_post_reset.sql)"
+          test "$blob" = "ef9983098845ceaed25bcef33447334e0d6ea1fe"
+          echo "P2_R03C_SQL_HISTORICO_EXACTO=$blob"
+
+      - name: Contrato estático R03C
+        shell: bash
+        run: |
+          set -euo pipefail
+          node .github/scripts/p2-r03c/contract.mjs
+
+      - name: Regresión R03A R03B y sintaxis frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          node .github/scripts/p2-r03a/contract.mjs
+          node .github/scripts/p2-r03b/contract.mjs
+          node --check fuente.js
+          echo "P2_R03C_R03A_R03B_REGRESSION=PASS"
+
+      - name: Wiring frontend errores_sistema tenant-aware
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const src = fs.readFileSync('fuente.js','utf8');
+
+          const insertStart = src.indexOf('async function registrarErrorSistema');
+          if (insertStart < 0) throw new Error('P2_R03C_REGISTRAR_ERROR_AUSENTE');
+          const insertBlock = src.slice(insertStart, insertStart + 2600);
+          for (const needle of [
+            'from("errores_sistema").insert({',
+            'empresa_id: contexto.empresaId || null',
+            'local_id: contexto.localId || null'
+          ]) {
+            if (!insertBlock.includes(needle)) throw new Error('P2_R03C_WIRING_INSERT_FALTA=' + needle);
+          }
+
+          const contextNeedle = 'window.__contextoErroresPM20 = { empresaId: empresaDelLocalActivo?.id || null, localId: localActivoId || null }';
+          if (!src.includes(contextNeedle)) throw new Error('P2_R03C_CONTEXTO_TENANT_AUSENTE');
+
+          const readStart = src.indexOf('function ErroresSistema()');
+          if (readStart < 0) throw new Error('P2_R03C_UI_ERRORES_AUSENTE');
+          const readBlock = src.slice(readStart, readStart + 2600);
+          if (!readBlock.includes('from("errores_sistema").select("*")')) {
+            throw new Error('P2_R03C_UI_LECTURA_AUSENTE');
+          }
+
+          console.log('P2_R03C_FRONTEND_TENANT_INSERT=PASS');
+          console.log('P2_R03C_FRONTEND_RLS_READ=PASS');
+          NODE
+
+      - name: Preparar harness efímero
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('.github/scripts/p2-r03c/ephemeral-errors.sql').read_text()
+          old = r'\ir ../../supabase/migrations/20260917111500_p2_r03c_errores_sistema_post_reset.sql'
+          new = r'\i supabase/migrations/20260917111500_p2_r03c_errores_sistema_post_reset.sql'
+          if old not in src:
+              raise SystemExit('P2_R03C_HARNESS_INCLUDE_NOT_FOUND')
+          src = src.replace(old, new, 1)
+          Path('/tmp/p2-r03c-ephemeral.sql').write_text(src)
+          PY
+
+      - name: Prueba funcional PostgreSQL 16 efímera
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/p2-r03c-ephemeral.sql
+
+      - name: Confirmar árbol limpio
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
+          echo "P2_R03C_GATE=PASS"
