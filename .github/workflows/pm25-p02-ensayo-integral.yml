@@ -1,0 +1,92 @@
+name: "PM25 P02 — ensayo integral Auth JWT PostgREST RLS restore reversión"
+
+on:
+  pull_request:
+    branches: [release]
+    paths:
+      - '.github/workflows/pm25-p02-ensayo-integral.yml'
+      - '.github/scripts/pm25-p02-backup-restore.sh'
+      - '.github/scripts/pm25-p02-post-restore.mjs'
+      - 'docs/plan-maestro/PM25_P02_ENSAYO_INTEGRAL.md'
+      - 'tests/pm12/supabase-full/**'
+      - 'tests/pm12/prod-baseline/**'
+      - 'supabase/migrations/20260907155028_pm12_p08_stock_atomico.sql'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  pm25-p02-integral:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+
+      - name: Guardas de aislamiento
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" != "release" || test "$GITHUB_EVENT_NAME" = "workflow_dispatch"
+          ! grep -R -E 'SUPABASE_ACCESS_TOKEN|SUPABASE_DB_PASSWORD|sb_secret_|service_role_key[[:space:]]*='             .github/scripts/pm25-p02-* docs/plan-maestro/PM25_P02_ENSAYO_INTEGRAL.md
+          echo 'PM25_P02_SIN_CREDENCIALES_REMOTAS=PASS'
+
+      - name: Instalar CLI y driver del entorno aislado
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --prefix tests/pm12/supabase-full --no-audit --no-fund
+
+      - name: Preparar baseline representativa sin fixtures QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm12/supabase-full/prepare-production-baseline.mjs
+
+      - name: Iniciar Auth PostgREST y PostgreSQL 17 desechables
+        shell: bash
+        run: |
+          set -euo pipefail
+          tests/pm12/supabase-full/node_modules/.bin/supabase start             --workdir tests/pm12/supabase-full             -x realtime,storage-api,imgproxy,studio,mailpit,postgres-meta,edge-runtime,logflare,vector,supavisor
+          tests/pm12/supabase-full/node_modules/.bin/supabase status             --workdir tests/pm12/supabase-full -o env             > tests/pm12/supabase-full/supabase/.temp/status.env
+          grep -E '^DB_URL="postgresql://postgres:postgres@(127\.0\.0\.1|localhost):[0-9]+/postgres"$'             tests/pm12/supabase-full/supabase/.temp/status.env >/dev/null
+          echo 'PM25_P02_STACK_LOCAL=PASS'
+
+      - name: Auth JWT PostgREST RLS y reversión operativa real
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/pm12/supabase-full/p08-auth-postgrest-rls-contract.mjs
+
+      - name: Backup, pérdida controlada y restauración de datos operativos
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .github/scripts/pm25-p02-backup-restore.sh
+
+      - name: Revalidar JWT PostgREST RLS y reversión después de restaurar
+        shell: bash
+        run: |
+          set -euo pipefail
+          node .github/scripts/pm25-p02-post-restore.mjs
+
+      - name: Detener Supabase desechable
+        if: always()
+        shell: bash
+        run: |
+          tests/pm12/supabase-full/node_modules/.bin/supabase stop             --workdir tests/pm12/supabase-full --no-backup || true
+
+  gate-pm25-p02:
+    needs: [pm25-p02-integral]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Exigir ensayo integral verde
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ needs.pm25-p02-integral.result }}" = "success"
+          echo 'PM25_P02_GATE=PASS'
