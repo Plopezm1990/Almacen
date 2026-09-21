@@ -2,6 +2,7 @@ import fs from 'node:fs';
 
 const source = fs.readFileSync('source-recovery/fuente-recuperado.js', 'utf8');
 const index = fs.readFileSync('index.html', 'utf8');
+const storageBootstrap = fs.readFileSync('index-storage-bootstrap.js', 'utf8');
 
 function functionBlock(name) {
   const re = new RegExp(`(?:async\\s+)?function\\s+${name}\\s*\\(`, 'g');
@@ -112,11 +113,12 @@ const checks = {
   ui_reverso_no_eliminar: uiMovimientos.includes('Revertir con motivo') && !uiMovimientos.includes('aria-label": "Eliminar movimiento'),
   ui_arqueo_anular_no_borrar: uiArqueo.includes('Anular cierre con motivo') && !uiArqueo.includes('Borrar y repetir'),
 
-  storage_ledgers_rpc: index.includes('var LEDGERS_RPC = {') && index.includes('arqueos: true') && index.includes('movimientosCaja: true') && index.includes('devoluciones: true'),
-  storage_cache_por_usuario_pm08: index.includes('arqueos: true, movimientosCaja: true, devoluciones: true'),
-  storage_get_no_lee_bloque_global: index.includes('if (esLedgerRpc && !esPagosFactura)'),
-  storage_set_no_upsert_bloque_global: index.includes('if (esLedgerRpc) {') && index.includes('Los ledgers remotos solo se escriben mediante RPC transaccional'),
-  storage_pendientes_no_resube_ledger: index.includes('if (LEDGERS_RPC[key])'),
+  storage_bootstrap_wired: index.includes('<script src="./index-storage-bootstrap.js"></script>'),
+  storage_ledgers_rpc: storageBootstrap.includes('var LEDGERS_RPC = {') && storageBootstrap.includes('arqueos: true') && storageBootstrap.includes('movimientosCaja: true') && storageBootstrap.includes('devoluciones: true'),
+  storage_cache_por_usuario_pm08: storageBootstrap.includes('arqueos: true, movimientosCaja: true, devoluciones: true'),
+  storage_get_no_lee_bloque_global: storageBootstrap.includes('if (esLedgerRpc && !esPagosFactura)'),
+  storage_set_no_upsert_bloque_global: storageBootstrap.includes('if (esLedgerRpc) {') && storageBootstrap.includes('Los ledgers remotos solo se escriben mediante RPC transaccional'),
+  storage_pendientes_no_resube_ledger: storageBootstrap.includes('if (LEDGERS_RPC[key])'),
 };
 
 for (const [name, passed] of Object.entries(checks)) {
