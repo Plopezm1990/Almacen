@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [html, patch, resetPatch, prelock, bootstrapFlow, migration, ownerMigration, bootstrapMigration] = await Promise.all([
+const [html, storageBootstrap, patch, resetPatch, prelock, bootstrapFlow, migration, ownerMigration, bootstrapMigration] = await Promise.all([
   readFile(new URL("../index.html", import.meta.url), "utf8"),
+  readFile(new URL("../index-storage-bootstrap.js", import.meta.url), "utf8"),
   readFile(new URL("../edge-auth-patch.js", import.meta.url), "utf8"),
   readFile(new URL("../reset-pruebas-preview.js", import.meta.url), "utf8"),
   readFile(new URL("../owner-bootstrap-prelock.js", import.meta.url), "utf8"),
@@ -16,13 +17,14 @@ const [html, patch, resetPatch, prelock, bootstrapFlow, migration, ownerMigratio
 // instala después del adaptador Auth/P1 y antes del bundle funcional.
 const prelockPos = html.indexOf('<script src="./owner-bootstrap-prelock.js"></script>');
 const resetPos = html.indexOf('<script src="./reset-pruebas-preview.js"></script>');
+const storagePos = html.indexOf('<script src="./index-storage-bootstrap.js"></script>');
 const edgePos = html.indexOf('<script src="./edge-auth-patch.js"></script>');
 const bootstrapFlowPos = html.indexOf('<script src="./owner-bootstrap-post-reset.js"></script>');
 const fuentePos = html.indexOf('<script type="module" src="./fuente.js"></script>');
-assert.ok(prelockPos >= 0 && resetPos > prelockPos && edgePos > resetPos && bootstrapFlowPos > edgePos && fuentePos > bootstrapFlowPos);
+assert.ok(prelockPos >= 0 && resetPos > prelockPos && storagePos > resetPos && edgePos > storagePos && bootstrapFlowPos > edgePos && fuentePos > bootstrapFlowPos);
 
 // Ninguna cola antigua puede procesarse hasta validar generación.
-assert.match(html, /__instalacionSyncPermitida !== true\) return;/);
+assert.match(storageBootstrap, /__instalacionSyncPermitida !== true\) return;/);
 assert.match(patch, /__prepararSesionPostReset/);
 assert.match(patch, /obtener_generacion_instalacion/);
 assert.match(patch, /almacen__pendientes/);
