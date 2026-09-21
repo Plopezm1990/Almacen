@@ -42,7 +42,7 @@
     function mutacionPrefiltroPublicoPermitida(destino, metodo) {
       return esPrefiltroPublico() &&
         metodo === "POST" &&
-        /^\\/functions\\/v1\\/prefiltro-candidato\\/?$/i.test((destino && destino.pathname) || "");
+        /^\/functions\/v1\/prefiltro-candidato\/?$/i.test((destino && destino.pathname) || "");
     }
 
     function proteccionActiva() {
