@@ -2,18 +2,16 @@ import assert from "node:assert/strict";
 import vm from "node:vm";
 import { readFile } from "node:fs/promises";
 
-const [html, fuente] = await Promise.all([
+const [html, storageScript, fuente] = await Promise.all([
   readFile(new URL("../index.html", import.meta.url), "utf8"),
+  readFile(new URL("../index-storage-bootstrap.js", import.meta.url), "utf8"),
   readFile(new URL("../fuente.js", import.meta.url), "utf8"),
 ]);
 
-const storageMarker = "ALMACENAMIENTO: PRIMERO LOCAL";
-const markerPos = html.indexOf(storageMarker);
-assert.ok(markerPos >= 0, "No se encontró el adaptador de almacenamiento");
-const scriptStart = html.lastIndexOf("<script>", markerPos);
-const scriptEnd = html.indexOf("</script>", markerPos);
-assert.ok(scriptStart >= 0 && scriptEnd > scriptStart, "No se pudo aislar el script de almacenamiento");
-const storageScript = html.slice(scriptStart + "<script>".length, scriptEnd);
+assert.ok(
+  html.includes('<script src="./index-storage-bootstrap.js"></script>'),
+  "index.html no carga el adaptador de almacenamiento externo"
+);
 
 const loadStart = fuente.indexOf("function motivoFalloCargaPM16");
 const loadEnd = fuente.indexOf("async function saveKey", loadStart);
@@ -183,9 +181,9 @@ function cloudClient({ data = null, error = null } = {}) {
 }
 
 // Contratos estáticos: el fix debe ser estrecho y no abrir la barrera de sincronización.
-assert.match(html, /function leerLocalOpcional\(key\)/);
-assert.match(html, /e && e\.message === "no existe"/);
-assert.match(html, /__instalacionSyncPermitida !== true\) return;/);
-assert.doesNotMatch(html, /catch\s*\([^)]*\)\s*\{\s*return null;\s*\}/);
+assert.match(storageScript, /function leerLocalOpcional\(key\)/);
+assert.match(storageScript, /e && e\.message === "no existe"/);
+assert.match(storageScript, /__instalacionSyncPermitida !== true\) return;/);
+assert.doesNotMatch(storageScript, /catch\s*\([^)]*\)\s*\{\s*return null;\s*\}/);
 
 console.log("p1-empty-kv-first-run: OK");
