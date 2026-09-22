@@ -7,6 +7,7 @@ const prefiltro = fs.readFileSync('supabase/functions/prefiltro-candidato/index.
 const shared = fs.readFileSync('supabase/functions/_shared/tenant-scope.js', 'utf8');
 const manifest = JSON.parse(fs.readFileSync('supabase/functions/edge-security-manifest.json', 'utf8'));
 const rateMigration = fs.readFileSync('supabase/migrations/20260922080500_p2_sec_prefiltro_rate_limit_rpc.sql', 'utf8');
+const f01Migration = fs.readFileSync('supabase/migrations/20260922095000_p2_sec_revoke_pm05_scope_anon.sql', 'utf8');
 
 assert.equal(manifest.base_release, 'e8de01fbdad63bd7fbe57982e3ae978e06d1ca52');
 assert.deepEqual(
@@ -66,5 +67,17 @@ assert.match(rateMigration, /least\(public\.prefiltro_limites\.intentos \+ 1, 21
 assert.match(rateMigration, /revoke all on function public\.registrar_intento_prefiltro\(text\) from public,anon,authenticated,service_role;/i);
 assert.match(rateMigration, /grant execute on function public\.registrar_intento_prefiltro\(text\) to service_role;/i);
 assert.doesNotMatch(rateMigration, /grant execute[\s\S]{0,160}(?:anon|authenticated)/i);
+
+assert.match(f01Migration, /begin;[\s\S]*set local lock_timeout='5s';[\s\S]*set local statement_timeout='30s';/i);
+assert.match(f01Migration, /P2_SEC_F01_PREFLIGHT_FALLO/);
+assert.match(f01Migration, /to_regprocedure\('public\.pm05_scope_almacen_kv\(\)'\)/i);
+assert.match(f01Migration, /t\.tgname='pm05_scope_almacen_kv_trg'/i);
+assert.match(f01Migration, /revoke execute on function public\.pm05_scope_almacen_kv\(\) from public, anon;/i);
+assert.match(f01Migration, /has_function_privilege\('public',v_oid,'EXECUTE'\)/i);
+assert.match(f01Migration, /has_function_privilege\('anon',v_oid,'EXECUTE'\)/i);
+assert.match(f01Migration, /has_function_privilege\('authenticated',v_oid,'EXECUTE'\)/i);
+assert.match(f01Migration, /has_function_privilege\('service_role',v_oid,'EXECUTE'\)/i);
+assert.doesNotMatch(f01Migration, /grant execute/i);
+assert.doesNotMatch(f01Migration, /(?:insert\s+into|update\s+public\.|delete\s+from)\s+/i);
 
 console.log('P2_EDGE_SECURITY_CONTRACT_OK=1');
