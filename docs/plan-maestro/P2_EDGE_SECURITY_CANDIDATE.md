@@ -52,7 +52,7 @@ La auditoría transversal detectó que `public.pm05_scope_almacen_kv()` conserva
 El gate específico comprueba:
 
 - exact-head sobre esta base;
-- alcance exacto de once archivos;
+- alcance exacto de doce archivos;
 - `fuente.js` intacto y exactamente dos migraciones SQL dentro del candidato;
 - propietario de otra empresa rechazado;
 - usuario sin membresía rechazado;
@@ -64,7 +64,7 @@ El gate específico comprueba:
 - contrato y ACL de `registrar_intento_prefiltro(text)`;
 - incremento secuencial y rechazo de claves inválidas;
 - 16 incrementos concurrentes sin pérdidas;
-- contrato estático de P2-SEC-F01: revocación de `PUBLIC/anon`, preservación de `authenticated/service_role`, preflight del trigger y ausencia de DML;
+- contrato estático y ejecución PostgreSQL efímera de P2-SEC-F01: revocación de `PUBLIC/anon`, preservación de `authenticated/service_role`, continuidad del trigger, preflight y ausencia de DML;
 - regresiones R03A/R03B/R03C/PM11/PM13/P06.
 
 Al abrir PR contra `release`, también debe ejecutarse la puerta general `gate-final` de 133 contratos activos.
