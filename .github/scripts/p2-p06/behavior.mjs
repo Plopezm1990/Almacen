@@ -107,7 +107,7 @@ function makeScenario({capability=true,tables={},pending=['empleados','fichajes'
 
 {
   const s=makeScenario({tables:{fichajes_registro:{error:'rls read denied'}}});
-  await assert.rejects(()=>s.window.storage.get('fichajes',false),/rls read denied/);
+  await assert.rejects(()=>s.window.storage.get('fichajes',false),(e)=>e && e.message==='rls read denied');
   assert.equal(s.calls.get.length,0);
   const saved=await s.window.storage.set('fichajes','legacy-data',false);
   assert.equal(saved.serverAuthoritative,true);
