@@ -215,12 +215,10 @@ jobs:
           stable
           security definer
           set search_path=''
-          as $
-            select exists(
-              select 1 from public.locales l
-              where l.id=p_local_id and l.empresa_id=p_empresa_id and l.activo=true
-            );
-          $;
+          as 'select exists(
+            select 1 from public.locales l
+            where l.id=p_local_id and l.empresa_id=p_empresa_id and l.activo=true
+          )';
 
           insert into public.locales(id,empresa_id,activo)
           values('local-finalize','empresa-finalize',true);
