@@ -1,0 +1,107 @@
+name: "P2-P06 — Persistencia / autoridad de servidor"
+
+on:
+  pull_request:
+    branches: [release]
+    paths:
+      - '.github/scripts/p2-p06/**'
+      - '.github/workflows/p2-p06-server-authority-release-current.yml'
+      - 'docs/plan-maestro/P2_P06_RELEASE_CURRENT.md'
+      - 'index.html'
+      - 'server-authority-storage-bridge.js'
+      - 'supabase/migrations/20260922170000_p2_p06_server_authority_capabilities_release_current.sql'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  p2-p06:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGDATABASE: postgres
+
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Node 24
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '24'
+
+      - name: Frontera exacta del candidato P06
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='ba06125123d10796d7cc64eee2ccea529927d105'
+          ACTUAL_HEAD="$(git rev-parse HEAD)"
+          git fetch origin release --quiet
+          test "$(git rev-parse origin/release)" = "$BASE"
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            test "$ACTUAL_HEAD" = '${{ github.event.pull_request.head.sha }}'
+          fi
+          git merge-base --is-ancestor "$BASE" "$ACTUAL_HEAD"
+          mapfile -t changed < <(git diff --name-only "$BASE"...HEAD | LC_ALL=C sort)
+          printf '%s\n' "${changed[@]}"
+          expected=$'.github/scripts/p2-p06/behavior.mjs\n.github/scripts/p2-p06/contract.mjs\n.github/scripts/p2-p06/ephemeral-capability.sql\n.github/scripts/p2-p06/stack.mjs\n.github/workflows/p2-p06-server-authority-release-current.yml\ndocs/plan-maestro/P2_P06_RELEASE_CURRENT.md\nindex.html\nserver-authority-storage-bridge.js\nsupabase/migrations/20260922170000_p2_p06_server_authority_capabilities_release_current.sql'
+          actual="$(printf '%s\n' "${changed[@]}")"
+          test "$actual" = "$expected"
+          echo "P2_P06_SCOPE=PASS"
+          echo "P2_P06_BASE=$BASE"
+          echo "P2_P06_CANDIDATE=$ACTUAL_HEAD"
+
+      - name: Contratos P06
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check server-authority-storage-bridge.js
+          node .github/scripts/p2-p06/contract.mjs
+          node .github/scripts/p2-p06/behavior.mjs
+          node .github/scripts/p2-p06/stack.mjs
+
+      - name: Regresiones R03A R03B R03C PM11 PM13 y contexto
+        shell: bash
+        run: |
+          set -euo pipefail
+          node .github/scripts/p2-r03a/contract.mjs
+          node .github/scripts/p2-r03b/contract.mjs
+          node .github/scripts/p2-r03c/contract.mjs
+          node .github/scripts/p2-pm11/contract.mjs
+          node .github/scripts/p2-pm13/contract.mjs
+          node tests/ui-context-bridge.mjs
+          node --check fuente.js
+          echo "P2_P06_REGRESSION=PASS"
+
+      - name: PostgreSQL 16 efímero — capability y preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f .github/scripts/p2-p06/ephemeral-capability.sql
+
+      - name: Confirmar árbol limpio
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
+          echo "P2_P06_GATE=PASS"
