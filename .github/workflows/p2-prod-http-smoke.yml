@@ -1,0 +1,108 @@
+name: "P2 PROD HTTP smoke — read-only"
+
+on:
+  push:
+    branches:
+      - claude/p2-prod-http-smoke
+    paths:
+      - ".github/workflows/p2-prod-http-smoke.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  prod-http-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact smoke candidate
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 1
+
+      - name: Netlify PROD — HTTP and byte parity
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://chic-entremet-9107cf.netlify.app"
+          TMP="$(mktemp -d)"
+          trap 'rm -rf "$TMP"' EXIT
+
+          code="$(curl -sS -o "$TMP/index.html" -w '%{http_code}'             --connect-timeout 15 --max-time 30             "$BASE/")"
+          test "$code" = "200"
+
+          code="$(curl -sS -o "$TMP/fuente.js" -w '%{http_code}'             --connect-timeout 15 --max-time 30             "$BASE/fuente.js")"
+          test "$code" = "200"
+
+          code="$(curl -sS -o "$TMP/server-authority-storage-bridge.js" -w '%{http_code}'             --connect-timeout 15 --max-time 30             "$BASE/server-authority-storage-bridge.js")"
+          test "$code" = "200"
+
+          cmp -s fuente.js "$TMP/fuente.js"
+          cmp -s server-authority-storage-bridge.js "$TMP/server-authority-storage-bridge.js"
+
+          grep -Fq "p2_server_authority_capabilities" "$TMP/server-authority-storage-bridge.js"
+          grep -Fq "legacyPersistence" "$TMP/server-authority-storage-bridge.js"
+
+          for rpc in             pm11_alta_empleado             pm11_editar_empleado             pm11_baja_empleado             pm11_reactivar_empleado             pm13_fichar             pm13_fichaje_manual             pm13_corregir_fichaje             pm13_anular_fichaje
+          do
+            grep -Fq "$rpc" "$TMP/fuente.js"
+          done
+
+          echo "P2_PROD_HTTP_NETLIFY=PASS"
+          echo "P2_PROD_HTTP_ASSET_BYTE_PARITY=PASS"
+          echo "P2_PROD_HTTP_RPC_MARKERS=PASS"
+
+      - name: Edge PROD — safe rejection and CORS paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1"
+          ALLOWED="https://chic-entremet-9107cf.netlify.app"
+          HOSTILE="https://example.invalid"
+          TMP="$(mktemp -d)"
+          trap 'rm -rf "$TMP"' EXIT
+
+          # crear-cuenta-empleado has verify_jwt=true. No valid JWT is supplied,
+          # so the gateway must reject before the function can reach any write path.
+          code="$(curl -sS -o "$TMP/crear-post.txt" -w '%{http_code}'             --connect-timeout 15 --max-time 30             -X POST -H "Content-Type: application/json"             --data '{}'             "$BASE/crear-cuenta-empleado")"
+          test "$code" = "401"
+
+          # enviar-notificacion authenticates in-function. These paths terminate
+          # before recipient lookup, push delivery or subscription cleanup.
+          code="$(curl -sS -D "$TMP/notif-options.h" -o "$TMP/notif-options.txt" -w '%{http_code}'             --connect-timeout 15 --max-time 30             -X OPTIONS -H "Origin: $ALLOWED"             "$BASE/enviar-notificacion")"
+          test "$code" = "200"
+          grep -Eiq "^access-control-allow-origin:[[:space:]]*$ALLOWED[[:space:]]*$" "$TMP/notif-options.h"
+
+          code="$(curl -sS -o "$TMP/notif-hostile.txt" -w '%{http_code}'             --connect-timeout 15 --max-time 30             -X OPTIONS -H "Origin: $HOSTILE"             "$BASE/enviar-notificacion")"
+          test "$code" = "403"
+
+          code="$(curl -sS -o "$TMP/notif-post.txt" -w '%{http_code}'             --connect-timeout 15 --max-time 30             -X POST -H "Content-Type: application/json"             --data '{}'             "$BASE/enviar-notificacion")"
+          test "$code" = "401"
+
+          code="$(curl -sS -o "$TMP/notif-get.txt" -w '%{http_code}'             --connect-timeout 15 --max-time 30             "$BASE/enviar-notificacion")"
+          test "$code" = "405"
+
+          # prefiltro-candidato POST is intentionally forbidden in this smoke:
+          # POST increments the live rate-limit table. GET/OPTIONS return before
+          # fingerprint/rate-limit execution and are therefore non-destructive.
+          code="$(curl -sS -D "$TMP/pref-options.h" -o "$TMP/pref-options.txt" -w '%{http_code}'             --connect-timeout 15 --max-time 30             -X OPTIONS -H "Origin: $ALLOWED"             "$BASE/prefiltro-candidato")"
+          test "$code" = "200"
+          grep -Eiq "^access-control-allow-origin:[[:space:]]*$ALLOWED[[:space:]]*$" "$TMP/pref-options.h"
+
+          code="$(curl -sS -o "$TMP/pref-hostile.txt" -w '%{http_code}'             --connect-timeout 15 --max-time 30             -X OPTIONS -H "Origin: $HOSTILE"             "$BASE/prefiltro-candidato")"
+          test "$code" = "403"
+
+          code="$(curl -sS -o "$TMP/pref-get.txt" -w '%{http_code}'             --connect-timeout 15 --max-time 30             "$BASE/prefiltro-candidato")"
+          test "$code" = "405"
+
+          echo "P2_PROD_HTTP_CREAR_AUTH_REJECTION=PASS"
+          echo "P2_PROD_HTTP_NOTIFICACION_SAFE_PATHS=PASS"
+          echo "P2_PROD_HTTP_PREFILTRO_SAFE_PATHS=PASS"
+          echo "P2_PROD_HTTP_EDGE=PASS"
+
+      - name: Final smoke gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "P2_PROD_HTTP_SMOKE=PASS"
