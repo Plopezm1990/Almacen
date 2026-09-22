@@ -114,4 +114,62 @@ function makeScenario({capability=true,tables={},pending=['empleados','fichajes'
   assert.equal(s.calls.set.length,0);
 }
 
+
+{
+  const rpcCalls={a:0,b:0};
+  const legacy={
+    async get(key,shared){ return {key,value:JSON.stringify(['legacy:'+key]),shared:!!shared}; },
+    async set(key,value,shared){ return {key,value,shared:!!shared,legacy:true}; },
+    async delete(key,shared){ return {key,deleted:true,shared:!!shared,legacy:true}; }
+  };
+  function client(label){
+    return {
+      async rpc(name){
+        assert.equal(name,'p2_server_authority_capabilities');
+        rpcCalls[label]+=1;
+        return {data:{personal:'pm11',fichajes:'pm13',legacyPersistence:false},error:null};
+      },
+      from(table){
+        assert.equal(table,'empleados');
+        return {
+          async select(){
+            return {data:[{
+              id:'emp-'+label,empresa_id:'e1',local_id:'l1',estado:'activo',
+              nombre:'Empleado '+label,datos:{},created_at:null,updated_at:null,
+              baja_at:null,reactivado_at:null,anonimizado_at:null
+            }],error:null};
+          }
+        };
+      }
+    };
+  }
+  const clientA=client('a');
+  const clientB=client('b');
+  let current=clientA;
+  const localStorage={
+    getItem(){return null;},
+    setItem(){},
+    removeItem(){}
+  };
+  const window={
+    storage:legacy,
+    async getSupabaseClient(){return current;}
+  };
+  const context={window,localStorage,Object,Array,String,Promise,JSON,Error,setInterval(){throw new Error('unexpected retry');},clearInterval(){}};
+  vm.createContext(context);
+  vm.runInContext(source,context,{filename:'server-authority-storage-bridge.js'});
+
+  const a=JSON.parse((await context.window.storage.get('empleados',false)).value);
+  assert.equal(a[0].id,'emp-a');
+  assert.equal(rpcCalls.a,1);
+
+  current=clientB;
+  const b=JSON.parse((await context.window.storage.get('empleados',false)).value);
+  assert.equal(b[0].id,'emp-b');
+  assert.equal(rpcCalls.b,1,'new Supabase client must revalidate capability');
+
+  await context.window.storage.get('empleados',false);
+  assert.equal(rpcCalls.b,1,'positive capability may be cached only for the same client');
+}
+
 console.log('P2_P06_BRIDGE_BEHAVIOR_OK=1');
