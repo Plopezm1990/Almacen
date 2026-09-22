@@ -135,9 +135,10 @@ La reconciliación se basa en el contrato vivo, no en exigir igualdad nominal de
    - Clasificación: **diferencia justificada**. No se debe relajar PROD para buscar simetría nominal.
 
 8. **`idx_fichajes_fecha`**
-   - La revalidación viva del 2026-09-22 confirma que el índice no existe ni en QA ni en PROD.
-   - Cualquier nota anterior que lo describiera como índice extra de PROD queda obsoleta.
-   - Clasificación: **diferencia histórica ya inexistente**.
+   - QA no contiene un índice con ese nombre.
+   - PROD sí conserva `public.idx_fichajes_fecha` sobre `public.fichajes_registro(fecha)`, con definición `CREATE INDEX idx_fichajes_fecha ON public.fichajes_registro USING btree (fecha)`.
+   - La reauditoría de Performance Advisors del 2026-09-22 lo clasifica como `unused_index` (INFO).
+   - Clasificación: **diferencia histórica real y no bloqueante**. No se elimina de PROD ni se crea en QA solo para buscar simetría; cualquier optimización futura debe basarse en carga representativa y uso real.
 
 ### Conclusión de reconciliación
 
