@@ -4,10 +4,10 @@
 
 - release: `e8de01fbdad63bd7fbe57982e3ae978e06d1ca52`.
 - Este candidato no modifica `fuente.js` ni Supabase PROD.
-- Incluye dos migraciones aisladas: `supabase/migrations/20260922080500_p2_sec_prefiltro_rate_limit_rpc.sql` y `supabase/migrations/20260922095000_p2_sec_revoke_pm05_scope_anon.sql`.
-- Las tres Edge Functions ya se desplegaron en QA con autorización separada; el despliegue reveló que QA carecía de `registrar_intento_prefiltro(text)`.
-- La migración de rate limit ya fue aplicada únicamente en QA tras autorización separada y postflight satisfactorio.
-- La migración P2-SEC-F01 queda solo versionada en GitHub; aplicarla en QA requiere una nueva autorización separada.
+- Incluye tres migraciones aisladas: rate limit de prefiltro, P2-SEC-F01 y versionado de `pm11_finalizar_creacion_cuenta_empleado(...)`.
+- Las tres Edge Functions fueron validadas en QA y posteriormente promovidas a PROD con autorización separada y postflight satisfactorio.
+- La migración de rate limit fue aplicada en QA; PROD ya tenía `registrar_intento_prefiltro(text)` equivalente, por lo que no se reaplica solo para igualar historial.
+- P2-SEC-F01 fue cerrada en QA. En PROD es N/A porque `public.pm05_scope_almacen_kv()` no existe allí; no se fuerza la creación de ese objeto histórico.
 - No modifica `main` ni PR #38.
 
 ## Hallazgos cerrados por diseño
@@ -17,6 +17,8 @@
 La variante productiva histórica elevaba a `service_role` después de comprobar únicamente un rol global. El candidato toma la empresa/local exclusivamente de la fila `empleados` obtenida por el servidor y exige una membresía activa `Propietario` que cubra exactamente esa empresa/local antes de crear Auth.
 
 La finalización permanece delegada en `pm11_finalizar_creacion_cuenta_empleado`; si falla, se compensa eliminando o bloqueando la cuenta Auth recién creada.
+
+La auditoría posterior a la promoción confirmó que esa RPC existe en QA y PROD con definición idéntica (MD5 `354cd3754c4e09f56d0645a7599baf88`), `SECURITY DEFINER`, `search_path=public, auth, private, pg_temp` y EXECUTE exclusivo de `service_role`. El candidato ahora la versiona explícitamente para que la dependencia de `crear-cuenta-empleado` no quede fuera del control de código.
 
 ### enviar-notificacion
 
@@ -52,8 +54,8 @@ La auditoría transversal detectó que `public.pm05_scope_almacen_kv()` conserva
 El gate específico comprueba:
 
 - exact-head sobre esta base;
-- alcance exacto de doce archivos;
-- `fuente.js` intacto y exactamente dos migraciones SQL dentro del candidato;
+- alcance exacto de trece archivos;
+- `fuente.js` intacto y exactamente tres migraciones SQL dentro del candidato;
 - propietario de otra empresa rechazado;
 - usuario sin membresía rechazado;
 - local ajeno rechazado;
@@ -65,6 +67,7 @@ El gate específico comprueba:
 - incremento secuencial y rechazo de claves inválidas;
 - 16 incrementos concurrentes sin pérdidas;
 - contrato estático y ejecución PostgreSQL efímera de P2-SEC-F01: revocación de `PUBLIC/anon`, preservación de `authenticated/service_role`, continuidad del trigger, preflight y ausencia de DML;
+- contrato y ejecución PostgreSQL efímera real de `pm11_finalizar_creacion_cuenta_empleado(...)`: hash certificado, ACL solo `service_role`, alta de perfil/membresía, auditoría e idempotencia de replay;
 - regresiones R03A/R03B/R03C/PM11/PM13/P06.
 
 Al abrir PR contra `release`, también debe ejecutarse la puerta general `gate-final` de 133 contratos activos.

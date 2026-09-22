@@ -14,6 +14,7 @@ on:
       - 'supabase/functions/edge-security-manifest.json'
       - 'supabase/migrations/20260922080500_p2_sec_prefiltro_rate_limit_rpc.sql'
       - 'supabase/migrations/20260922095000_p2_sec_revoke_pm05_scope_anon.sql'
+      - 'supabase/migrations/20260922180000_p2_sec_pm11_finalize_account_dependency.sql'
   workflow_dispatch: {}
 
 permissions:
@@ -66,14 +67,15 @@ jobs:
           git merge-base --is-ancestor "$BASE" "$ACTUAL_HEAD"
           mapfile -t changed < <(git diff --name-only "$BASE"...HEAD | LC_ALL=C sort)
           printf '%s\n' "${changed[@]}"
-          expected=$'.github/scripts/p2-edge-security/behavior.mjs\n.github/scripts/p2-edge-security/contract.mjs\n.github/scripts/p2-edge-security/ephemeral-rate-limit.sql\n.github/workflows/p2-edge-security-candidate.yml\ndocs/plan-maestro/P2_EDGE_SECURITY_CANDIDATE.md\nsupabase/functions/_shared/tenant-scope.js\nsupabase/functions/crear-cuenta-empleado/index.ts\nsupabase/functions/edge-security-manifest.json\nsupabase/functions/enviar-notificacion/index.ts\nsupabase/functions/prefiltro-candidato/index.ts\nsupabase/migrations/20260922080500_p2_sec_prefiltro_rate_limit_rpc.sql\nsupabase/migrations/20260922095000_p2_sec_revoke_pm05_scope_anon.sql'
+          expected=$'.github/scripts/p2-edge-security/behavior.mjs\n.github/scripts/p2-edge-security/contract.mjs\n.github/scripts/p2-edge-security/ephemeral-rate-limit.sql\n.github/workflows/p2-edge-security-candidate.yml\ndocs/plan-maestro/P2_EDGE_SECURITY_CANDIDATE.md\nsupabase/functions/_shared/tenant-scope.js\nsupabase/functions/crear-cuenta-empleado/index.ts\nsupabase/functions/edge-security-manifest.json\nsupabase/functions/enviar-notificacion/index.ts\nsupabase/functions/prefiltro-candidato/index.ts\nsupabase/migrations/20260922080500_p2_sec_prefiltro_rate_limit_rpc.sql\nsupabase/migrations/20260922095000_p2_sec_revoke_pm05_scope_anon.sql\nsupabase/migrations/20260922180000_p2_sec_pm11_finalize_account_dependency.sql'
           actual="$(printf '%s\n' "${changed[@]}")"
           test "$actual" = "$expected"
           ! printf '%s\n' "${changed[@]}" | grep -Eq '^fuente\.js$'
           mapfile -t migrations < <(printf '%s\n' "${changed[@]}" | grep '^supabase/migrations/' || true)
-          test "${#migrations[@]}" = "2"
+          test "${#migrations[@]}" = "3"
           test "${migrations[0]}" = 'supabase/migrations/20260922080500_p2_sec_prefiltro_rate_limit_rpc.sql'
           test "${migrations[1]}" = 'supabase/migrations/20260922095000_p2_sec_revoke_pm05_scope_anon.sql'
+          test "${migrations[2]}" = 'supabase/migrations/20260922180000_p2_sec_pm11_finalize_account_dependency.sql'
           echo "P2_EDGE_SECURITY_SCOPE=PASS"
           echo "P2_EDGE_SECURITY_BASE=$BASE"
           echo "P2_EDGE_SECURITY_CANDIDATE=$ACTUAL_HEAD"
@@ -159,6 +161,129 @@ jobs:
             'F01 trigger stopped working after revoke'
           );
           select 'P2_EDGE_SECURITY_F01_EPHEMERAL=PASS' as result;
+          SQL
+
+      - name: PostgreSQL 16 efímero — dependencia PM11 finalizadora
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          create extension if not exists pgcrypto;
+          create schema if not exists auth;
+          create schema if not exists private;
+
+          create table public.locales(
+            id text primary key,
+            empresa_id text not null,
+            activo boolean not null default true
+          );
+          create table public.empleados(
+            id text primary key,
+            empresa_id text not null,
+            local_id text not null,
+            estado text not null,
+            nombre text
+          );
+          create table public.perfiles(
+            user_id uuid primary key,
+            rol text not null,
+            nombre text,
+            empleado_id text,
+            activo boolean not null default true
+          );
+          create table public.membresias_usuario(
+            user_id uuid not null,
+            empresa_id text not null,
+            local_id text,
+            todos_locales boolean not null default false,
+            rol text not null,
+            activo boolean not null default true
+          );
+          create table public.auditoria_registro(
+            id text primary key,
+            fecha date not null,
+            datos jsonb not null,
+            empresa_id text,
+            local_id text,
+            actor_user_id uuid
+          );
+          create table auth.users(id uuid primary key);
+
+          create or replace function private.pm11_local_activo(p_empresa_id text,p_local_id text)
+          returns boolean
+          language sql
+          stable
+          security definer
+          set search_path=''
+          as $
+            select exists(
+              select 1 from public.locales l
+              where l.id=p_local_id and l.empresa_id=p_empresa_id and l.activo=true
+            );
+          $;
+
+          insert into public.locales(id,empresa_id,activo)
+          values('local-finalize','empresa-finalize',true);
+          insert into public.empleados(id,empresa_id,local_id,estado,nombre)
+          values('emp-finalize','empresa-finalize','local-finalize','activo','Empleado Finalize');
+          insert into public.perfiles(user_id,rol,nombre,empleado_id,activo)
+          values('11111111-1111-1111-1111-111111111111'::uuid,'Propietario','Owner',null,true);
+          insert into public.membresias_usuario(user_id,empresa_id,local_id,todos_locales,rol,activo)
+          values('11111111-1111-1111-1111-111111111111'::uuid,'empresa-finalize',null,true,'Propietario',true);
+          insert into auth.users(id)
+          values('22222222-2222-2222-2222-222222222222'::uuid);
+          SQL
+
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260922180000_p2_sec_pm11_finalize_account_dependency.sql
+
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          select public.p2_sec_assert(
+            md5(pg_get_functiondef(to_regprocedure('public.pm11_finalizar_creacion_cuenta_empleado(uuid,uuid,text,text,text,text,text)')))='354cd3754c4e09f56d0645a7599baf88',
+            'finalizer hash differs from certified QA/PROD'
+          );
+          select public.p2_sec_assert(
+            has_function_privilege('service_role','public.pm11_finalizar_creacion_cuenta_empleado(uuid,uuid,text,text,text,text,text)','EXECUTE'),
+            'service_role execute missing on finalizer'
+          );
+          select public.p2_sec_assert(
+            not has_function_privilege('authenticated','public.pm11_finalizar_creacion_cuenta_empleado(uuid,uuid,text,text,text,text,text)','EXECUTE')
+            and not has_function_privilege('anon','public.pm11_finalizar_creacion_cuenta_empleado(uuid,uuid,text,text,text,text,text)','EXECUTE')
+            and not has_function_privilege('public','public.pm11_finalizar_creacion_cuenta_empleado(uuid,uuid,text,text,text,text,text)','EXECUTE'),
+            'finalizer execute opened outside service_role'
+          );
+
+          set role service_role;
+          select public.p2_sec_assert(
+            (public.pm11_finalizar_creacion_cuenta_empleado(
+              '11111111-1111-1111-1111-111111111111'::uuid,
+              '22222222-2222-2222-2222-222222222222'::uuid,
+              'empresa-finalize','local-finalize','emp-finalize','Empleado Finalize','Camarero/a'
+            )->>'ok')::boolean,
+            'finalizer first execution failed'
+          );
+          select public.p2_sec_assert(
+            (public.pm11_finalizar_creacion_cuenta_empleado(
+              '11111111-1111-1111-1111-111111111111'::uuid,
+              '22222222-2222-2222-2222-222222222222'::uuid,
+              'empresa-finalize','local-finalize','emp-finalize','Empleado Finalize','Camarero/a'
+            )->>'yaCreada')::boolean,
+            'finalizer replay was not idempotent'
+          );
+          reset role;
+
+          select public.p2_sec_assert(
+            exists(select 1 from public.perfiles where user_id='22222222-2222-2222-2222-222222222222'::uuid and empleado_id='emp-finalize' and rol='Camarero/a' and activo=true),
+            'target profile was not created'
+          );
+          select public.p2_sec_assert(
+            exists(select 1 from public.membresias_usuario where user_id='22222222-2222-2222-2222-222222222222'::uuid and empresa_id='empresa-finalize' and local_id='local-finalize' and todos_locales=false and rol='Camarero/a' and activo=true),
+            'target membership was not created'
+          );
+          select public.p2_sec_assert(
+            (select count(*) from public.auditoria_registro where empresa_id='empresa-finalize' and local_id='local-finalize' and actor_user_id='11111111-1111-1111-1111-111111111111'::uuid)=1,
+            'finalizer audit must be exactly one row after replay'
+          );
+          select 'P2_EDGE_SECURITY_PM11_FINALIZER_EPHEMERAL=PASS' as result;
           SQL
 
       - name: Concurrencia — sin incrementos perdidos
