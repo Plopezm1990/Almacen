@@ -60,10 +60,7 @@ assert.match(rateMigration, /P2_SEC_PREFILTRO_RATE_LIMIT_PREFLIGHT_FALLO/);
 assert.match(rateMigration, /create or replace function public\.registrar_intento_prefiltro\(p_clave text\)/i);
 assert.match(rateMigration, /security invoker/i);
 assert.match(rateMigration, /set search_path=''/i);
-assert.match(rateMigration, /p_clave !~ '\^\[0-9a-f\]\{64\}\
-
-console.log('P2_EDGE_SECURITY_CONTRACT_OK=1');
-/);
+assert.equal(rateMigration.includes("p_clave !~ '^[0-9a-f]{64}$'"), true);
 assert.match(rateMigration, /insert into public\.prefiltro_limites[\s\S]*on conflict \(clave\) do update/i);
 assert.match(rateMigration, /least\(public\.prefiltro_limites\.intentos \+ 1, 2147483647\)/);
 assert.match(rateMigration, /revoke all on function public\.registrar_intento_prefiltro\(text\) from public,anon,authenticated,service_role;/i);
