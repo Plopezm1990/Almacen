@@ -75,3 +75,82 @@ Al abrir PR contra `release`, también debe ejecutarse la puerta general `gate-f
 ## Fronteras de autorización
 
 Este candidato GitHub no autoriza aplicar la migración en QA/PROD, nuevos despliegues Edge, merge a release ni cambio deliberado de Netlify PROD. Cada transición posterior necesita autorización separada.
+
+## Reconciliación histórica QA ↔ PROD — 2026-09-22
+
+Estado posterior al merge de PR #54:
+
+- `release` quedó en `cfd429ed721c54552928581c964196d361c709ce`.
+- PR #54 quedó `MERGED`.
+- No se aplicaron migraciones adicionales a QA/PROD durante el merge.
+- No se redeplegaron Edge Functions.
+- Netlify PROD se mantuvo deliberadamente en el deploy anterior porque el candidato no modificó el artefacto web publicado.
+
+La reconciliación se basa en el contrato vivo, no en exigir igualdad nominal de historiales. QA y PROD conservan secuencias de migración diferentes por razones históricas; no se deben normalizar mediante `db push`, `migration repair` ni reaplicaciones artificiales cuando el objeto funcional vivo ya es equivalente o la diferencia está justificada.
+
+### Diferencias verificadas y clasificación
+
+1. **R03A**
+   - QA conserva la secuencia histórica post-reset.
+   - PROD contiene la variante compuesta endurecida `20260922111934_p2_r03a_restore_pm08_pm09_post_reset_hardened`.
+   - Clasificación: **diferencia histórica justificada**. No requiere normalización.
+
+2. **`public.registrar_intento_prefiltro(text)`**
+   - QA y PROD exponen la misma definición viva.
+   - MD5 en ambos entornos: `710a74b0a1e52321a1876e503f6ec35c`.
+   - `SECURITY INVOKER`, `search_path=''`, EXECUTE solo para `service_role`.
+   - Clasificación: **equivalencia funcional certificada**. PROD no necesita reaplicar la migración de QA únicamente para igualar el historial.
+
+3. **P2-SEC-F01 / `public.pm05_scope_almacen_kv()`**
+   - QA conserva el objeto y tiene revocados `PUBLIC/anon`, preservando `authenticated/service_role`.
+   - PROD no contiene `public.pm05_scope_almacen_kv()`.
+   - Clasificación: **N/A en PROD**. No se debe crear un objeto histórico inexistente solo para aplicar una revocación.
+
+4. **`public.pm11_finalizar_creacion_cuenta_empleado(...)`**
+   - QA y PROD son idénticos por definición.
+   - MD5 en ambos: `354cd3754c4e09f56d0645a7599baf88`.
+   - `SECURITY DEFINER`.
+   - `search_path=public, auth, private, pg_temp`.
+   - EXECUTE exclusivo de `service_role`.
+   - Clasificación: **equivalencia funcional certificada**. La migración versionada en PR #54 documenta el contrato; no justifica reaplicarlo en un entorno donde ya coincide exactamente.
+
+5. **`public.registrar_auditoria(...)` canónica**
+   - La variante de 8 parámetros es idéntica por definición en QA y PROD, MD5 `b2973c713fe81c6f40ff96cd32ba19ac`.
+   - QA concede EXECUTE a `authenticated` y `service_role`.
+   - PROD concede EXECUTE únicamente a `authenticated` además del propietario `postgres`.
+   - Ninguna función SQL viva ni ninguna de las 14 Edge Functions activas de PROD referencia `registrar_auditoria`.
+   - Clasificación: **diferencia ACL justificada**. PROD es más restrictivo; no se debe ampliar su ACL solo para igualar QA.
+
+6. **Overloads legacy de `registrar_auditoria` en PROD**
+   - QA tiene un único overload, el canónico de 8 parámetros.
+   - PROD conserva además:
+     - `registrar_auditoria(p_id text, p_usuario text, p_accion text, p_detalle text, p_fecha text, p_hora text)`
+     - `registrar_auditoria(p_usuario text, p_accion text, p_detalle text)`
+   - Ambos overloads legacy solo son ejecutables por `postgres`; no tienen EXECUTE para `PUBLIC`, `anon`, `authenticated` ni `service_role`.
+   - Clasificación: **legacy controlado y cerrado al cliente**. No requiere borrado para cerrar este plan.
+
+7. **Default ACL de funciones en `public`**
+   - QA conserva defaults más permisivos para funciones creadas por `postgres`.
+   - PROD conserva un default ACL más restrictivo para ese propietario.
+   - Clasificación: **diferencia justificada**. No se debe relajar PROD para buscar simetría nominal.
+
+8. **`idx_fichajes_fecha`**
+   - QA no contiene un índice con ese nombre.
+   - PROD sí conserva `public.idx_fichajes_fecha` sobre `public.fichajes_registro(fecha)`, con definición `CREATE INDEX idx_fichajes_fecha ON public.fichajes_registro USING btree (fecha)`.
+   - La reauditoría de Performance Advisors del 2026-09-22 lo clasifica como `unused_index` (INFO).
+   - Clasificación: **diferencia histórica real y no bloqueante**. No se elimina de PROD ni se crea en QA solo para buscar simetría; cualquier optimización futura debe basarse en carga representativa y uso real.
+
+### Conclusión de reconciliación
+
+No se detecta ninguna divergencia QA ↔ PROD que exija una migración correctiva solo por paridad histórica.
+
+Criterio final:
+
+- equivalencia funcional viva > igualdad de nombres de migración;
+- diferencias más restrictivas en PROD se conservan salvo evidencia funcional contraria;
+- objetos históricos ausentes en PROD no se crean para reproducir pasos de QA;
+- overloads legacy cerrados al cliente se documentan como residuo controlado;
+- no usar `db push` ni `migration repair` para forzar simetría.
+
+**Resultado: RECONCILIACIÓN QA ↔ PROD = CERRADA, sin cambios de base de datos.**
+
