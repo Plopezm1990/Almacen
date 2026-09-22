@@ -6,6 +6,7 @@ const notify = fs.readFileSync('supabase/functions/enviar-notificacion/index.ts'
 const prefiltro = fs.readFileSync('supabase/functions/prefiltro-candidato/index.ts', 'utf8');
 const shared = fs.readFileSync('supabase/functions/_shared/tenant-scope.js', 'utf8');
 const manifest = JSON.parse(fs.readFileSync('supabase/functions/edge-security-manifest.json', 'utf8'));
+const rateMigration = fs.readFileSync('supabase/migrations/20260922080500_p2_sec_prefiltro_rate_limit_rpc.sql', 'utf8');
 
 assert.equal(manifest.base_release, 'e8de01fbdad63bd7fbe57982e3ae978e06d1ca52');
 assert.deepEqual(
@@ -43,6 +44,7 @@ assert.match(notify, /El local no pertenece a la empresa indicada/);
 assert.doesNotMatch(notify, /rolDestino\s*=\s*"Propietario"/);
 
 assert.match(prefiltro, /\.select\("estado,candidato_nombre,expira_en,empresa_id,local_id"\)/);
+assert.match(prefiltro, /\.rpc\("registrar_intento_prefiltro",\s*\{\s*p_clave:\s*clave\s*\}\)/);
 assert.match(prefiltro, /\$\{supabaseUrl\}\/functions\/v1\/enviar-notificacion/);
 assert.match(prefiltro, /empresaId:\s*fila\.empresa_id/);
 assert.match(prefiltro, /localId:\s*fila\.local_id/);
@@ -52,5 +54,20 @@ assert.doesNotMatch(prefiltro, /flqercbgpgmmfaakrwkc/);
 assert.match(shared, /membership\.empresa_id !== empresaId/);
 assert.match(shared, /membership\.todos_locales === true/);
 assert.match(shared, /if \(!s \|\| !s\.user_id \|\| !activeProfiles\.has\(s\.user_id\)\) return false/);
+
+assert.match(rateMigration, /begin;[\s\S]*set local lock_timeout='5s';[\s\S]*set local statement_timeout='30s';/i);
+assert.match(rateMigration, /P2_SEC_PREFILTRO_RATE_LIMIT_PREFLIGHT_FALLO/);
+assert.match(rateMigration, /create or replace function public\.registrar_intento_prefiltro\(p_clave text\)/i);
+assert.match(rateMigration, /security invoker/i);
+assert.match(rateMigration, /set search_path=''/i);
+assert.match(rateMigration, /p_clave !~ '\^\[0-9a-f\]\{64\}\
+
+console.log('P2_EDGE_SECURITY_CONTRACT_OK=1');
+/);
+assert.match(rateMigration, /insert into public\.prefiltro_limites[\s\S]*on conflict \(clave\) do update/i);
+assert.match(rateMigration, /least\(public\.prefiltro_limites\.intentos \+ 1, 2147483647\)/);
+assert.match(rateMigration, /revoke all on function public\.registrar_intento_prefiltro\(text\) from public,anon,authenticated,service_role;/i);
+assert.match(rateMigration, /grant execute on function public\.registrar_intento_prefiltro\(text\) to service_role;/i);
+assert.doesNotMatch(rateMigration, /grant execute[\s\S]{0,160}(?:anon|authenticated)/i);
 
 console.log('P2_EDGE_SECURITY_CONTRACT_OK=1');

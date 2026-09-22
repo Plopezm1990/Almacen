@@ -12,6 +12,7 @@ on:
       - 'supabase/functions/enviar-notificacion/index.ts'
       - 'supabase/functions/prefiltro-candidato/index.ts'
       - 'supabase/functions/edge-security-manifest.json'
+      - 'supabase/migrations/20260922080500_p2_sec_prefiltro_rate_limit_rpc.sql'
   workflow_dispatch: {}
 
 permissions:
@@ -21,6 +22,23 @@ jobs:
   edge-security:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGDATABASE: postgres
     steps:
       - name: Checkout exact PR head
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
@@ -47,7 +65,160 @@ jobs:
           git merge-base --is-ancestor "$BASE" "$ACTUAL_HEAD"
           mapfile -t changed < <(git diff --name-only "$BASE"...HEAD | LC_ALL=C sort)
           printf '%s\n' "${changed[@]}"
-          expected=$'.github/scripts/p2-edge-security/behavior.mjs\n.github/scripts/p2-edge-security/contract.mjs\n.github/workflows/p2-edge-security-candidate.yml\ndocs/plan-maestro/P2_EDGE_SECURITY_CANDIDATE.md\nsupabase/functions/_shared/tenant-scope.js\nsupabase/functions/crear-cuenta-empleado/index.ts\nsupabase/functions/edge-security-manifest.json\nsupabase/functions/enviar-notificacion/index.ts\nsupabase/functions/prefiltro-candidato/index.ts'
+          expected=
+          actual="$(printf '%s\n' "${changed[@]}")"
+          test "$actual" = "$expected"
+          ! printf '%s\n' "${changed[@]}" | grep -Eq '^fuente\.js
+          echo "P2_EDGE_SECURITY_SCOPE=PASS"
+          echo "P2_EDGE_SECURITY_BASE=$BASE"
+          echo "P2_EDGE_SECURITY_CANDIDATE=$ACTUAL_HEAD"
+
+      - name: Contratos de tenant Edge
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check supabase/functions/_shared/tenant-scope.js
+          node .github/scripts/p2-edge-security/contract.mjs
+          node .github/scripts/p2-edge-security/behavior.mjs
+
+      - name: PostgreSQL 16 efímero — rate limit
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f .github/scripts/p2-edge-security/ephemeral-rate-limit.sql
+
+      - name: Concurrencia — sin incrementos perdidos
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEY="$(printf 'b%.0s' {1..64})"
+          psql -v ON_ERROR_STOP=1 -c "delete from public.prefiltro_limites where clave='$KEY';" >/dev/null
+          pids=()
+          for i in $(seq 1 16); do
+            (
+              psql -v ON_ERROR_STOP=1 -Atq -c "set role service_role; select public.registrar_intento_prefiltro('$KEY');"                 >"/tmp/p2-sec-rate-$i.out"
+            ) &
+            pids+=("$!")
+          done
+          for pid in "${pids[@]}"; do wait "$pid"; done
+          final="$(psql -v ON_ERROR_STOP=1 -Atq -c "select intentos from public.prefiltro_limites where clave='$KEY';")"
+          test "$final" = "16"
+          echo "P2_EDGE_SECURITY_RATE_LIMIT_CONCURRENCY=PASS"
+
+      - name: Regresiones P2 existentes
+        shell: bash
+        run: |
+          set -euo pipefail
+          node .github/scripts/p2-r03a/contract.mjs
+          node .github/scripts/p2-r03b/contract.mjs
+          node .github/scripts/p2-r03c/contract.mjs
+          node .github/scripts/p2-pm11/contract.mjs
+          node .github/scripts/p2-pm13/contract.mjs
+          node .github/scripts/p2-p06/contract.mjs
+          node --check fuente.js
+          echo "P2_EDGE_SECURITY_REGRESSION=PASS"
+
+      - name: No credenciales ni proyecto Supabase hardcodeados
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -RIE 'sb_secret_|eyJ[A-Za-z0-9_-]{30,}|https://[a-z]{20}\.supabase\.co'             supabase/functions/_shared             supabase/functions/crear-cuenta-empleado             supabase/functions/enviar-notificacion             supabase/functions/prefiltro-candidato
+          echo "P2_EDGE_SECURITY_NO_LITERAL_SECRETS=PASS"
+
+      - name: Confirmar árbol limpio
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
+          echo "P2_EDGE_SECURITY_GATE=PASS"
+.github/scripts/p2-edge-security/behavior.mjs\n.github/scripts/p2-edge-security/contract.mjs\n.github/scripts/p2-edge-security/ephemeral-rate-limit.sql\n.github/workflows/p2-edge-security-candidate.yml\ndocs/plan-maestro/P2_EDGE_SECURITY_CANDIDATE.md\nsupabase/functions/_shared/tenant-scope.js\nsupabase/functions/crear-cuenta-empleado/index.ts\nsupabase/functions/edge-security-manifest.json\nsupabase/functions/enviar-notificacion/index.ts\nsupabase/functions/prefiltro-candidato/index.ts\nsupabase/migrations/20260922080500_p2_sec_prefiltro_rate_limit_rpc.sql'
+          actual="$(printf '%s\n' "${changed[@]}")"
+          test "$actual" = "$expected"
+          ! printf '%s\n' "${changed[@]}" | grep -Eq '^(fuente\.js|supabase/migrations/)'
+          echo "P2_EDGE_SECURITY_SCOPE=PASS"
+          echo "P2_EDGE_SECURITY_BASE=$BASE"
+          echo "P2_EDGE_SECURITY_CANDIDATE=$ACTUAL_HEAD"
+
+      - name: Contratos de tenant Edge
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check supabase/functions/_shared/tenant-scope.js
+          node .github/scripts/p2-edge-security/contract.mjs
+          node .github/scripts/p2-edge-security/behavior.mjs
+
+      - name: Regresiones P2 existentes
+        shell: bash
+        run: |
+          set -euo pipefail
+          node .github/scripts/p2-r03a/contract.mjs
+          node .github/scripts/p2-r03b/contract.mjs
+          node .github/scripts/p2-r03c/contract.mjs
+          node .github/scripts/p2-pm11/contract.mjs
+          node .github/scripts/p2-pm13/contract.mjs
+          node .github/scripts/p2-p06/contract.mjs
+          node --check fuente.js
+          echo "P2_EDGE_SECURITY_REGRESSION=PASS"
+
+      - name: No credenciales ni proyecto Supabase hardcodeados
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -RIE 'sb_secret_|eyJ[A-Za-z0-9_-]{30,}|https://[a-z]{20}\.supabase\.co'             supabase/functions/_shared             supabase/functions/crear-cuenta-empleado             supabase/functions/enviar-notificacion             supabase/functions/prefiltro-candidato
+          echo "P2_EDGE_SECURITY_NO_LITERAL_SECRETS=PASS"
+
+      - name: Confirmar árbol limpio
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
+          echo "P2_EDGE_SECURITY_GATE=PASS"
+
+          mapfile -t migrations < <(printf '%s\n' "${changed[@]}" | grep '^supabase/migrations/' || true)
+          test "${#migrations[@]}" = "1"
+          test "${migrations[0]}" = 'supabase/migrations/20260922080500_p2_sec_prefiltro_rate_limit_rpc.sql'
+          echo "P2_EDGE_SECURITY_SCOPE=PASS"
+          echo "P2_EDGE_SECURITY_BASE=$BASE"
+          echo "P2_EDGE_SECURITY_CANDIDATE=$ACTUAL_HEAD"
+
+      - name: Contratos de tenant Edge
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check supabase/functions/_shared/tenant-scope.js
+          node .github/scripts/p2-edge-security/contract.mjs
+          node .github/scripts/p2-edge-security/behavior.mjs
+
+      - name: Regresiones P2 existentes
+        shell: bash
+        run: |
+          set -euo pipefail
+          node .github/scripts/p2-r03a/contract.mjs
+          node .github/scripts/p2-r03b/contract.mjs
+          node .github/scripts/p2-r03c/contract.mjs
+          node .github/scripts/p2-pm11/contract.mjs
+          node .github/scripts/p2-pm13/contract.mjs
+          node .github/scripts/p2-p06/contract.mjs
+          node --check fuente.js
+          echo "P2_EDGE_SECURITY_REGRESSION=PASS"
+
+      - name: No credenciales ni proyecto Supabase hardcodeados
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -RIE 'sb_secret_|eyJ[A-Za-z0-9_-]{30,}|https://[a-z]{20}\.supabase\.co'             supabase/functions/_shared             supabase/functions/crear-cuenta-empleado             supabase/functions/enviar-notificacion             supabase/functions/prefiltro-candidato
+          echo "P2_EDGE_SECURITY_NO_LITERAL_SECRETS=PASS"
+
+      - name: Confirmar árbol limpio
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
+          echo "P2_EDGE_SECURITY_GATE=PASS"
+.github/scripts/p2-edge-security/behavior.mjs\n.github/scripts/p2-edge-security/contract.mjs\n.github/scripts/p2-edge-security/ephemeral-rate-limit.sql\n.github/workflows/p2-edge-security-candidate.yml\ndocs/plan-maestro/P2_EDGE_SECURITY_CANDIDATE.md\nsupabase/functions/_shared/tenant-scope.js\nsupabase/functions/crear-cuenta-empleado/index.ts\nsupabase/functions/edge-security-manifest.json\nsupabase/functions/enviar-notificacion/index.ts\nsupabase/functions/prefiltro-candidato/index.ts\nsupabase/migrations/20260922080500_p2_sec_prefiltro_rate_limit_rpc.sql'
           actual="$(printf '%s\n' "${changed[@]}")"
           test "$actual" = "$expected"
           ! printf '%s\n' "${changed[@]}" | grep -Eq '^(fuente\.js|supabase/migrations/)'
