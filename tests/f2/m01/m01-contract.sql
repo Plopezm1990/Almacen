@@ -222,14 +222,57 @@ declare n integer;
 begin
   select count(*) into n from public.terminales_tpv;
   if n<>1 then raise exception 'M01_FAIL: RLS esperaba 1 terminal y obtuvo %',n; end if;
-  if has_table_privilege('authenticated','public.cajas_fisicas','INSERT')
-     or has_table_privilege('authenticated','public.caja_sesiones','UPDATE')
-     or has_table_privilege('authenticated','public.caja_conteos','DELETE') then
-    raise exception 'M01_FAIL: mutación directa concedida';
+  if exists (
+    select 1
+    from information_schema.role_table_grants
+    where table_schema='public'
+      and table_name in (
+        'terminales_tpv','abc_operaciones','abc_eventos','cajas_fisicas',
+        'caja_sesiones','caja_sesion_terminales','caja_cierres','caja_conteos',
+        'efectos_pendientes'
+      )
+      and grantee='authenticated'
+      and privilege_type in ('INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER')
+  ) then
+    raise exception 'M01_FAIL: authenticated conserva privilegios directos no permitidos';
   end if;
+
+  if exists (
+    select 1
+    from information_schema.role_table_grants
+    where table_schema='public'
+      and table_name in (
+        'terminales_tpv','abc_operaciones','abc_eventos','cajas_fisicas',
+        'caja_sesiones','caja_sesion_terminales','caja_cierres','caja_conteos',
+        'efectos_pendientes'
+      )
+      and grantee='anon'
+  ) then
+    raise exception 'M01_FAIL: anon conserva privilegios directos sobre tablas M01';
+  end if;
+
+  if not has_table_privilege('authenticated','public.terminales_tpv','SELECT')
+     or not has_table_privilege('authenticated','public.cajas_fisicas','SELECT')
+     or not has_table_privilege('authenticated','public.caja_sesiones','SELECT')
+     or not has_table_privilege('authenticated','public.caja_sesion_terminales','SELECT')
+     or not has_table_privilege('authenticated','public.caja_cierres','SELECT')
+     or not has_table_privilege('authenticated','public.caja_conteos','SELECT') then
+    raise exception 'M01_FAIL: falta SELECT operativo autorizado';
+  end if;
+
   if has_table_privilege('authenticated','public.abc_operaciones','SELECT')
+     or has_table_privilege('authenticated','public.abc_eventos','SELECT')
      or has_table_privilege('authenticated','public.efectos_pendientes','SELECT') then
     raise exception 'M01_FAIL: ledger interno expuesto por SELECT directo';
+  end if;
+
+  if has_sequence_privilege('authenticated','public.abc_eventos_id_seq','USAGE')
+     or has_sequence_privilege('authenticated','public.abc_eventos_id_seq','SELECT')
+     or has_sequence_privilege('authenticated','public.abc_eventos_id_seq','UPDATE')
+     or has_sequence_privilege('anon','public.abc_eventos_id_seq','USAGE')
+     or has_sequence_privilege('anon','public.abc_eventos_id_seq','SELECT')
+     or has_sequence_privilege('anon','public.abc_eventos_id_seq','UPDATE') then
+    raise exception 'M01_FAIL: secuencia interna abc_eventos expuesta';
   end if;
 end $$;
 reset role;

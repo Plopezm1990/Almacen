@@ -7,6 +7,7 @@ on:
     branches: [release]
     paths:
       - "supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql"
+      - "supabase/migrations/20260923070000_abc_f2_m01b_acl_hardening.sql"
       - "tests/f2/m01/**"
       - ".github/workflows/abc-f2-m01-contract.yml"
   workflow_dispatch: {}
@@ -42,13 +43,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          file="supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql"
-          test -f "$file"
-          if grep -Eiq '(^|[[:space:]])drop[[:space:]]+(table|column|constraint)|alter[[:space:]]+table.*rename|alter[[:space:]]+table.*alter[[:space:]]+column.*type' "$file"; then
-            echo "M01_DESTRUCTIVA: se detectó DDL destructivo" >&2
-            exit 1
-          fi
-          ! grep -Eiq 'stock_operaciones|movimientos_stock|arqueos_caja' "$file"
+          files=(
+            "supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql"
+            "supabase/migrations/20260923070000_abc_f2_m01b_acl_hardening.sql"
+          )
+          for file in "${files[@]}"; do
+            test -f "$file"
+            if grep -Eiq '(^|[[:space:]])drop[[:space:]]+(table|column|constraint)|alter[[:space:]]+table.*rename|alter[[:space:]]+table.*alter[[:space:]]+column.*type' "$file"; then
+              echo "M01_DESTRUCTIVA: se detectó DDL destructivo en $file" >&2
+              exit 1
+            fi
+            ! grep -Eiq 'stock_operaciones|movimientos_stock|arqueos_caja' "$file"
+          done
           echo "M01_SCOPE_GUARD=PASS"
 
       - name: Preparar fixture legacy mínimo
@@ -56,6 +62,9 @@ jobs:
 
       - name: Aplicar M01 en PostgreSQL local desechable
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql
+
+      - name: Aplicar M01b ACL hardening
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923070000_abc_f2_m01b_acl_hardening.sql
 
       - name: Ejecutar contrato M01
         run: psql -v ON_ERROR_STOP=1 -f tests/f2/m01/m01-contract.sql
