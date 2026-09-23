@@ -6,6 +6,8 @@ on:
   pull_request:
     branches: [release]
     paths:
+      - "supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql"
+      - "supabase/migrations/20260923210100_abc_f2_m01b_acl_hardening.sql"
       - "supabase/migrations/20260923220000_abc_f2_m02a_core_comercial_fiscal.sql"
       - "tests/f2/m02a/**"
       - ".github/workflows/abc-f2-m02a-contract.yml"
@@ -42,8 +44,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          m01="supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql"
+          m01b="supabase/migrations/20260923210100_abc_f2_m01b_acl_hardening.sql"
           file="supabase/migrations/20260923220000_abc_f2_m02a_core_comercial_fiscal.sql"
+          test -f "$m01"
+          test -f "$m01b"
           test -f "$file"
+
+          if [[ "$(basename "$m01")" > "$(basename "$m01b")" || "$(basename "$m01")" == "$(basename "$m01b")"
+             || "$(basename "$m01b")" > "$(basename "$file")" || "$(basename "$m01b")" == "$(basename "$file")" ]]; then
+            echo "M02A_ORDER_GUARD: se requiere M01 < M01b < M02A" >&2
+            exit 1
+          fi
           if grep -Eiq '(^|[[:space:]])drop[[:space:]]+(table|column|constraint)|alter[[:space:]]+table.*rename|alter[[:space:]]+table.*alter[[:space:]]+column.*type' "$file"; then
             echo "M02A_DESTRUCTIVA: se detectó DDL destructivo" >&2
             exit 1
@@ -61,7 +73,7 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql
 
       - name: Aplicar M01b ACL
-        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923070000_abc_f2_m01b_acl_hardening.sql
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923210100_abc_f2_m01b_acl_hardening.sql
 
       - name: Aplicar M02A
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923220000_abc_f2_m02a_core_comercial_fiscal.sql
