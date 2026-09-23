@@ -252,7 +252,7 @@ select public.abc_confirmar_linea_pedido_configurada(
       'expected_option_version',3
     )
   ),
-  2,2,
+  1,2,
   '20000000-0000-0000-0000-000000000007',
   '40000000-0000-0000-0000-000000000004',
   date '2026-09-23'
