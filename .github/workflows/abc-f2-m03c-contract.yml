@@ -59,7 +59,7 @@ jobs:
           )
 
           previous=""
-          for file in "\${files[@]}"; do
+          for file in "${files[@]}"; do
             test -f "$file"
             current="$(basename "$file")"
             if [[ -n "$previous" && ! "$previous" < "$current" ]]; then
@@ -69,7 +69,7 @@ jobs:
             previous="$current"
           done
 
-          m03c="\${files[6]}"
+          m03c="${files[6]}"
           if grep -Eiq '(^|[[:space:]])drop[[:space:]]+(table|column|constraint)|alter[[:space:]]+table.*rename|alter[[:space:]]+table.*alter[[:space:]]+column.*type' "$m03c"; then
             echo "M03C_DESTRUCTIVA: DDL destructivo detectado" >&2
             exit 1
