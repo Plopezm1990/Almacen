@@ -1,0 +1,70 @@
+name: "ABC F2 M02A -- contrato núcleo comercial y fiscal"
+
+on:
+  push:
+    branches: [abc-f2-m02a-core-comercial-fiscal]
+  pull_request:
+    branches: [release]
+    paths:
+      - "supabase/migrations/20260923220000_abc_f2_m02a_core_comercial_fiscal.sql"
+      - "tests/f2/m02a/**"
+      - ".github/workflows/abc-f2-m02a-contract.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  m02a-postgres-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Guardar alcance aditivo M02A
+        shell: bash
+        run: |
+          set -euo pipefail
+          file="supabase/migrations/20260923220000_abc_f2_m02a_core_comercial_fiscal.sql"
+          test -f "$file"
+          if grep -Eiq '(^|[[:space:]])drop[[:space:]]+(table|column|constraint)|alter[[:space:]]+table.*rename|alter[[:space:]]+table.*alter[[:space:]]+column.*type' "$file"; then
+            echo "M02A_DESTRUCTIVA: se detectó DDL destructivo" >&2
+            exit 1
+          fi
+          if grep -Eiq 'alter[[:space:]]+table[[:space:]]+public\.(pagos_factura|pagos_encargo|devoluciones_venta|stock_operaciones|movimientos_stock|caja_operaciones|arqueos_caja)' "$file"; then
+            echo "M02A_SCOPE: se detectó alteración de tabla legacy" >&2
+            exit 1
+          fi
+          echo "M02A_SCOPE_GUARD=PASS"
+
+      - name: Preparar fixture mínimo
+        run: psql -v ON_ERROR_STOP=1 -f tests/f2/m02a/fixture-m02a.sql
+
+      - name: Aplicar M01 base
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql
+
+      - name: Aplicar M01b ACL
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923070000_abc_f2_m01b_acl_hardening.sql
+
+      - name: Aplicar M02A
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923220000_abc_f2_m02a_core_comercial_fiscal.sql
+
+      - name: Ejecutar contrato M02A
+        run: psql -v ON_ERROR_STOP=1 -f tests/f2/m02a/m02a-contract.sql
