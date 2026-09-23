@@ -1,0 +1,61 @@
+name: "ABC F2 M01 -- contrato base transaccional y caja"
+
+on:
+  push:
+    branches: [abc-f2-m01-base-transaccional-caja]
+  pull_request:
+    branches: [release]
+    paths:
+      - "supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql"
+      - "tests/f2/m01/**"
+      - ".github/workflows/abc-f2-m01-contract.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  m01-postgres-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Guardar alcance aditivo
+        shell: bash
+        run: |
+          set -euo pipefail
+          file="supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql"
+          test -f "$file"
+          if grep -Eiq '(^|[[:space:]])drop[[:space:]]+(table|column|constraint)|alter[[:space:]]+table.*rename|alter[[:space:]]+table.*alter[[:space:]]+column.*type' "$file"; then
+            echo "M01_DESTRUCTIVA: se detectó DDL destructivo" >&2
+            exit 1
+          fi
+          ! grep -Eiq 'stock_operaciones|movimientos_stock|arqueos_caja' "$file"
+          echo "M01_SCOPE_GUARD=PASS"
+
+      - name: Preparar fixture legacy mínimo
+        run: psql -v ON_ERROR_STOP=1 -f tests/f2/m01/fixture-legacy.sql
+
+      - name: Aplicar M01 en PostgreSQL local desechable
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql
+
+      - name: Ejecutar contrato M01
+        run: psql -v ON_ERROR_STOP=1 -f tests/f2/m01/m01-contract.sql
