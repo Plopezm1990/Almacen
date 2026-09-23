@@ -53,11 +53,11 @@ jobs:
           test -f supabase/migrations/20260923230000_abc_f2_m02b_pagos_reservas_reembolsos.sql
           test -f supabase/migrations/20260923233000_abc_f2_m03a_autoridad_transaccional.sql
           test -f supabase/migrations/20260923234500_abc_f2_m03b_checkout_cobro.sql
-          test "20260923210000" < "20260923210100"
-          test "20260923210100" < "20260923220000"
-          test "20260923220000" < "20260923230000"
-          test "20260923230000" < "20260923233000"
-          test "20260923233000" < "20260923234500"
+          [[ "20260923210000" < "20260923210100" ]]
+          [[ "20260923210100" < "20260923220000" ]]
+          [[ "20260923220000" < "20260923230000" ]]
+          [[ "20260923230000" < "20260923233000" ]]
+          [[ "20260923233000" < "20260923234500" ]]
           if grep -Eiq '(^|[[:space:]])drop[[:space:]]+(table|column|constraint)|alter[[:space:]]+table.*rename|alter[[:space:]]+table.*alter[[:space:]]+column.*type' supabase/migrations/20260923234500_abc_f2_m03b_checkout_cobro.sql; then
             echo "M03B_DESTRUCTIVA: DDL destructivo detectado" >&2
             exit 1
