@@ -474,19 +474,25 @@ begin
     return coalesce(v_cmd->'resultado',v_cmd);
   end if;
 
-  select r.*,p.*
-    into v_reembolso,v_pago
-    from public.reembolsos r
-    join public.pagos p
-      on p.empresa_id=r.empresa_id
-     and p.local_id=r.local_id
-     and p.id=r.pago_id
-   where r.empresa_id=p_empresa_id
-     and r.local_id=p_local_id
-     and r.id=p_reembolso_id
-   for update of r,p;
+  select *
+    into v_reembolso
+    from public.reembolsos
+   where empresa_id=p_empresa_id
+     and local_id=p_local_id
+     and id=p_reembolso_id
+   for update;
 
   if not found then raise exception 'reembolso_no_encontrado'; end if;
+
+  select *
+    into v_pago
+    from public.pagos
+   where empresa_id=p_empresa_id
+     and local_id=p_local_id
+     and id=v_reembolso.pago_id
+   for update;
+
+  if not found then raise exception 'pago_no_encontrado'; end if;
   if v_reembolso.estado<>'PENDIENTE' then
     raise exception 'reembolso_efectivo_no_confirmable';
   end if;
@@ -678,17 +684,25 @@ begin
     return coalesce(v_cmd->'resultado',v_cmd);
   end if;
 
-  select r.*,p.*
-    into v_reembolso,v_pago
-    from public.reembolsos r
-    join public.pagos p
-      on p.empresa_id=r.empresa_id
-     and p.local_id=r.local_id
-     and p.id=r.pago_id
-   where r.empresa_id=p_empresa_id
-     and r.local_id=p_local_id
-     and r.id=p_reembolso_id
-   for update of r,p;
+  select *
+    into v_reembolso
+    from public.reembolsos
+   where empresa_id=p_empresa_id
+     and local_id=p_local_id
+     and id=p_reembolso_id
+   for update;
+
+  if not found then raise exception 'reembolso_no_encontrado'; end if;
+
+  select *
+    into v_pago
+    from public.pagos
+   where empresa_id=p_empresa_id
+     and local_id=p_local_id
+     and id=v_reembolso.pago_id
+   for update;
+
+  if not found then raise exception 'pago_no_encontrado'; end if;
 
   if v_reembolso.estado in ('CONFIRMADO','RECHAZADO','CANCELADO') then
     if v_reembolso.estado=v_estado
