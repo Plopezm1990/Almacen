@@ -125,8 +125,11 @@ alter default privileges for role postgres in schema public
 alter default privileges for role postgres in schema public
   revoke all privileges on sequences from anon, authenticated, service_role;
 
-alter default privileges for role postgres in schema public
+-- PostgreSQL concede EXECUTE a PUBLIC globalmente en funciones nuevas.
+-- Ese default solo puede retirarse en el nivel global, no con IN SCHEMA.
+alter default privileges for role postgres
   revoke execute on functions from public;
 
+-- Revierte además cualquier GRANT por-schema heredado por los roles Data API.
 alter default privileges for role postgres in schema public
   revoke execute on functions from anon, authenticated, service_role;
