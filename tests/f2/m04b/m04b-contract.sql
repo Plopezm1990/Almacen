@@ -194,27 +194,30 @@ insert into public.caja_operaciones(
   '11111111-1111-1111-1111-111111111111'
 );
 
--- Resolver ids como postgres; authenticated no necesita SELECT directo para invocar las RPC.
-select operation_id as repo_op
-  from public.caja_operaciones
- where abc_command_id='M04B:manual:repo:1'
-\gset
-select operation_id as fund_op
-  from public.caja_operaciones
- where abc_command_id='M04B:open:1'
-   and categoria='FONDO_INICIAL'
-\gset
-select operation_id as gasto_op
-  from public.caja_operaciones
- where abc_command_id='M04B:manual:gasto:1'
-\gset
+-- Resolver ids como postgres y conservarlos en GUC de prueba.
+select set_config(
+  'app.m04b_repo_op',
+  (select operation_id from public.caja_operaciones where abc_command_id='M04B:manual:repo:1'),
+  false
+);
+select set_config(
+  'app.m04b_fund_op',
+  (select operation_id from public.caja_operaciones
+    where abc_command_id='M04B:open:1' and categoria='FONDO_INICIAL'),
+  false
+);
+select set_config(
+  'app.m04b_gasto_op',
+  (select operation_id from public.caja_operaciones where abc_command_id='M04B:manual:gasto:1'),
+  false
+);
 
 set role authenticated;
 
 -- Reverso ABC de movimiento manual permitido.
 select public.abc_revertir_movimiento_caja(
   'M04B:reverse:repo:1','E1','L1',
-  :'repo_op',
+  current_setting('app.m04b_repo_op'),
   'b1000000-0000-0000-0000-000000000101',
   'Correccion reposicion','2026-09-23'
 );
@@ -222,7 +225,7 @@ select public.abc_revertir_movimiento_caja(
 -- Replay exacto del reverso.
 select public.abc_revertir_movimiento_caja(
   'M04B:reverse:repo:1','E1','L1',
-  :'repo_op',
+  current_setting('app.m04b_repo_op'),
   'b1000000-0000-0000-0000-000000000101',
   'Correccion reposicion','2026-09-23'
 );
@@ -233,7 +236,7 @@ begin
   begin
     perform public.abc_revertir_movimiento_caja(
       'M04B:deny:fund:abc','E1','L1',
-      :'fund_op',
+      current_setting('app.m04b_fund_op'),
       'b1000000-0000-0000-0000-000000000101',
       'No permitido','2026-09-23'
     );
@@ -265,7 +268,7 @@ begin
   begin
     perform public.revertir_movimiento_caja(
       'M04B:deny:fund:legacy',
-      :'fund_op',
+      current_setting('app.m04b_fund_op'),
       'No permitido','2026-09-23'
     );
     raise exception 'M04B_FAIL: legacy revirtio fondo ABC';
@@ -325,7 +328,7 @@ begin
   begin
     perform public.abc_revertir_movimiento_caja(
       'M04B:cashier:reverse','E1','L1',
-      :'gasto_op',
+      current_setting('app.m04b_gasto_op'),
       'b1000000-0000-0000-0000-000000000101',
       'Cajero no autorizado','2026-09-23'
     );
