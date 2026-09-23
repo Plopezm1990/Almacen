@@ -139,7 +139,7 @@ jobs:
           sleep 1
 
           claimed_b_during="$(
-            psql -At -v ON_ERROR_STOP=1 <<'SQL'
+            psql -Atq -v ON_ERROR_STOP=1 <<'SQL'
           set role service_role;
           select count(*) from public.abc_reclamar_efectos('worker-conc-b',1,60);
           SQL
@@ -153,7 +153,7 @@ jobs:
           wait "$holder"
 
           claimed_b_active="$(
-            psql -At -v ON_ERROR_STOP=1 <<'SQL'
+            psql -Atq -v ON_ERROR_STOP=1 <<'SQL'
           set role service_role;
           select count(*) from public.abc_reclamar_efectos('worker-conc-b',1,60);
           SQL
@@ -171,7 +171,7 @@ jobs:
           SQL
 
           claimed_b_expired="$(
-            psql -At -v ON_ERROR_STOP=1 <<'SQL'
+            psql -Atq -v ON_ERROR_STOP=1 <<'SQL'
           set role service_role;
           select count(*) from public.abc_reclamar_efectos('worker-conc-b',1,60);
           SQL
