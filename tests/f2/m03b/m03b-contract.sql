@@ -81,13 +81,19 @@ select public.abc_iniciar_cobro(
   'TARJETA',12,'EUR','90000000-0000-0000-0000-000000000001',null,null
 );
 
-do $$
+reset role;
+
+do $
 declare r numeric;
 begin
   select sum(importe_reservado) into r from public.reservas_saldo
    where intento_id='60000000-0000-0000-0000-000000000001' and estado='ACTIVA';
   if r<>12 then raise exception 'M03B_FAIL: reserva esperada 12, obtuvo %',r; end if;
+end $;
 
+set role authenticated;
+do $
+begin
   begin
     perform public.abc_iniciar_cobro(
       'M03B:pay:start:0002','E1','L1','40000000-0000-0000-0000-000000000001',
@@ -98,7 +104,7 @@ begin
   exception when others then
     if sqlerrm not like '%saldo_insuficiente%' then raise; end if;
   end;
-end $$;
+end $;
 
 reset role;
 set role service_role;
@@ -108,13 +114,15 @@ select public.abc_resolver_intento(
   'DESCONOCIDO','SIM','SIM-PAY-001',null,null,null,'{"step":"timeout"}'
 );
 
-do $$
+reset role;
+do $
 declare n integer;
 begin
   select count(*) into n from public.reservas_saldo
    where intento_id='60000000-0000-0000-0000-000000000001' and estado='ACTIVA';
   if n<>1 then raise exception 'M03B_FAIL: UNKNOWN libero reserva'; end if;
-end $$;
+end $;
+set role service_role;
 
 select public.abc_resolver_intento(
   'M03B:resolve:confirm:1','E1','L1','60000000-0000-0000-0000-000000000001',
