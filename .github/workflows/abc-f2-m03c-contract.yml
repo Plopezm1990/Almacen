@@ -1,0 +1,190 @@
+name: "ABC F2 M03C -- reembolsos transaccionales"
+
+on:
+  push:
+    branches: [abc-f2-m03c-reembolsos]
+  pull_request:
+    branches: [release]
+    paths:
+      - "supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql"
+      - "supabase/migrations/20260923210100_abc_f2_m01b_acl_hardening.sql"
+      - "supabase/migrations/20260923220000_abc_f2_m02a_core_comercial_fiscal.sql"
+      - "supabase/migrations/20260923230000_abc_f2_m02b_pagos_reservas_reembolsos.sql"
+      - "supabase/migrations/20260923233000_abc_f2_m03a_autoridad_transaccional.sql"
+      - "supabase/migrations/20260923234500_abc_f2_m03b_checkout_cobro.sql"
+      - "supabase/migrations/20260923235900_abc_f2_m03c_reembolsos_transaccionales.sql"
+      - "tests/f2/m03c/**"
+      - ".github/workflows/abc-f2-m03c-contract.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  m03c-postgres-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Guardar orden, alcance y separacion stock
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql
+            supabase/migrations/20260923210100_abc_f2_m01b_acl_hardening.sql
+            supabase/migrations/20260923220000_abc_f2_m02a_core_comercial_fiscal.sql
+            supabase/migrations/20260923230000_abc_f2_m02b_pagos_reservas_reembolsos.sql
+            supabase/migrations/20260923233000_abc_f2_m03a_autoridad_transaccional.sql
+            supabase/migrations/20260923234500_abc_f2_m03b_checkout_cobro.sql
+            supabase/migrations/20260923235900_abc_f2_m03c_reembolsos_transaccionales.sql
+          )
+
+          previous=""
+          for file in "\${files[@]}"; do
+            test -f "$file"
+            current="$(basename "$file")"
+            if [[ -n "$previous" && ! "$previous" < "$current" ]]; then
+              echo "M03C_ORDER_GUARD: orden invalido $previous -> $current" >&2
+              exit 1
+            fi
+            previous="$current"
+          done
+
+          m03c="\${files[6]}"
+          if grep -Eiq '(^|[[:space:]])drop[[:space:]]+(table|column|constraint)|alter[[:space:]]+table.*rename|alter[[:space:]]+table.*alter[[:space:]]+column.*type' "$m03c"; then
+            echo "M03C_DESTRUCTIVA: DDL destructivo detectado" >&2
+            exit 1
+          fi
+
+          if grep -Eiq 'stock_operaciones|movimientos_stock|devoluciones_venta' "$m03c"; then
+            echo "M03C_STOCK_COUPLING: reembolso economico no debe mutar stock legacy" >&2
+            exit 1
+          fi
+
+          echo "M03C_SCOPE_GUARD=PASS"
+
+      - name: Preparar fixture
+        run: psql -v ON_ERROR_STOP=1 -f tests/f2/m03c/fixture-m03c.sql
+      - name: Aplicar M01
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql
+      - name: Aplicar M01b
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923210100_abc_f2_m01b_acl_hardening.sql
+      - name: Aplicar M02A
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923220000_abc_f2_m02a_core_comercial_fiscal.sql
+      - name: Aplicar M02B
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923230000_abc_f2_m02b_pagos_reservas_reembolsos.sql
+      - name: Aplicar M03A
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923233000_abc_f2_m03a_autoridad_transaccional.sql
+      - name: Aplicar M03B
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923234500_abc_f2_m03b_checkout_cobro.sql
+      - name: Aplicar M03C
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923235900_abc_f2_m03c_reembolsos_transaccionales.sql
+      - name: Ejecutar contrato M03C
+        run: psql -v ON_ERROR_STOP=1 -f tests/f2/m03c/m03c-contract.sql
+
+      - name: Concurrencia real -- dos reembolsos sobre la misma aplicacion
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          psql -v ON_ERROR_STOP=1 <<'SQL' &
+          begin;
+          set role authenticated;
+          select set_config('request.jwt.claim.sub','11111111-1111-1111-1111-111111111111',false);
+          select set_config('app.test_empresa','E1',false);
+          select set_config('app.test_local','L1',false);
+          select public.abc_solicitar_reembolso(
+            'M03C:conc:refund:0001','E1','L1',
+            '80000000-0000-0000-0000-000000000110',
+            '50000000-0000-0000-0000-000000000103',
+            15,'Concurrencia refund A',
+            '90000000-0000-0000-0000-000000000101',
+            '2026-09-23'
+          );
+          select pg_sleep(4);
+          commit;
+          SQL
+          holder=$!
+
+          sleep 1
+          set +e
+          psql -v ON_ERROR_STOP=1 >/tmp/m03c_lock.out 2>&1 <<'SQL'
+          begin;
+          set local lock_timeout='1s';
+          set role authenticated;
+          select set_config('request.jwt.claim.sub','11111111-1111-1111-1111-111111111111',false);
+          select set_config('app.test_empresa','E1',false);
+          select set_config('app.test_local','L1',false);
+          select public.abc_solicitar_reembolso(
+            'M03C:conc:refund:0002','E1','L1',
+            '80000000-0000-0000-0000-000000000111',
+            '50000000-0000-0000-0000-000000000103',
+            15,'Concurrencia refund B',
+            '90000000-0000-0000-0000-000000000101',
+            '2026-09-23'
+          );
+          commit;
+          SQL
+          rc=$?
+          set -e
+
+          if [[ "$rc" -eq 0 ]]; then
+            cat /tmp/m03c_lock.out
+            wait "$holder" || true
+            echo "M03C_CONCURRENCY_FAIL: segundo reembolso no espero lock" >&2
+            exit 1
+          fi
+          if ! grep -Eiq 'lock timeout|canceling statement due to lock timeout' /tmp/m03c_lock.out; then
+            cat /tmp/m03c_lock.out
+            wait "$holder" || true
+            echo "M03C_CONCURRENCY_FAIL: error inesperado" >&2
+            exit 1
+          fi
+          wait "$holder"
+
+          set +e
+          psql -v ON_ERROR_STOP=1 >/tmp/m03c_after.out 2>&1 <<'SQL'
+          begin;
+          set role authenticated;
+          select set_config('request.jwt.claim.sub','11111111-1111-1111-1111-111111111111',false);
+          select set_config('app.test_empresa','E1',false);
+          select set_config('app.test_local','L1',false);
+          select public.abc_solicitar_reembolso(
+            'M03C:conc:refund:0002','E1','L1',
+            '80000000-0000-0000-0000-000000000111',
+            '50000000-0000-0000-0000-000000000103',
+            15,'Concurrencia refund B',
+            '90000000-0000-0000-0000-000000000101',
+            '2026-09-23'
+          );
+          commit;
+          SQL
+          rc=$?
+          set -e
+
+          if [[ "$rc" -eq 0 ]] || ! grep -q 'saldo_reembolsable_insuficiente' /tmp/m03c_after.out; then
+            cat /tmp/m03c_after.out
+            echo "M03C_CONCURRENCY_FAIL: tras commit esperaba saldo_reembolsable_insuficiente" >&2
+            exit 1
+          fi
+
+          echo "ABC_F2_M03C_CONCURRENCY=PASS"
