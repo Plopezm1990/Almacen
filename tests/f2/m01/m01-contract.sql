@@ -27,7 +27,8 @@ insert into public.terminales_tpv(id,empresa_id,local_id,nombre,device_key) valu
 
 insert into public.cajas_fisicas(id,empresa_id,local_id,nombre) values
   ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1','E1','L1','Caja 1'),
-  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2','E2','L2','Caja 2');
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2','E2','L2','Caja 2'),
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb3','E1','L1','Caja 3');
 
 -- Compatibilidad legacy: las nuevas columnas de caja_operaciones pueden quedar NULL.
 insert into public.caja_operaciones(
@@ -99,7 +100,7 @@ begin
       id,empresa_id,local_id,caja_id,estado,version,abierta_at,abierta_por
     ) values (
       'cccccccc-cccc-cccc-cccc-ccccccccccc3','E2','L2',
-      'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1','ABIERTA',1,now(),
+      'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb3','ABIERTA',1,now(),
       '22222222-2222-2222-2222-222222222222'
     );
     raise exception 'M01_FAIL: caja cross-tenant aceptada';
