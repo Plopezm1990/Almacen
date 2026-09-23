@@ -152,6 +152,12 @@ jobs:
           sleep 1
           set +e
           psql -v ON_ERROR_STOP=1 >/tmp/m04b_lock.out 2>&1 <<'SQL'
+          select set_config(
+            'app.m04b_original_op',
+            (select operation_id from public.caja_operaciones
+              where abc_command_id='M04B:manual:conc:1'),
+            false
+          );
           begin;
           set local lock_timeout='1s';
           set role authenticated;
