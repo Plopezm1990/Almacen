@@ -427,7 +427,7 @@ begin
 end $$;
 
 
-create function public.abc_iniciar_cobro(
+create or replace function public.abc_iniciar_cobro(
   p_operation_id text,p_empresa_id text,p_local_id text,p_checkout_id uuid,
   p_pago_id uuid,p_intento_id uuid,p_medio text,p_importe_objetivo numeric,
   p_payment_currency_code text,p_terminal_id uuid,
@@ -577,7 +577,7 @@ begin
   return v_result;
 end $$;
 
-create function public.abc_resolver_intento(
+create or replace function public.abc_resolver_intento(
   p_operation_id text,p_empresa_id text,p_local_id text,p_intento_id uuid,p_estado text,
   p_provider_code text,p_provider_reference text,p_authorized_amount numeric,
   p_captured_amount numeric,p_settled_amount numeric,p_provider_snapshot jsonb default '{}'::jsonb
@@ -736,7 +736,7 @@ begin
   return v_result;
 end $$;
 
-create function public.abc_solicitar_reembolso(
+create or replace function public.abc_solicitar_reembolso(
   p_operation_id text,
   p_empresa_id text,
   p_local_id text,
@@ -945,7 +945,7 @@ begin
   return v_result;
 end $$;
 
-create function public.abc_cancelar_reembolso(
+create or replace function public.abc_cancelar_reembolso(
   p_operation_id text,
   p_empresa_id text,
   p_local_id text,
@@ -1056,7 +1056,7 @@ begin
   return v_result;
 end $$;
 
-create function public.abc_resolver_reembolso(
+create or replace function public.abc_resolver_reembolso(
   p_operation_id text,
   p_empresa_id text,
   p_local_id text,
