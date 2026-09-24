@@ -9,6 +9,7 @@ const root = resolve(import.meta.dirname, '../../..');
 const db = await bootstrapA08();
 const owner = '00000000-0000-0000-0000-000000000021';
 const manager = '00000000-0000-0000-0000-000000000023';
+const manager22 = '00000000-0000-0000-0000-000000000022';
 const account1 = '50000000-0000-0000-0000-000000000011';
 const account2 = '50000000-0000-0000-0000-000000000012';
 const line = '70000000-0000-0000-0000-000000000011';
@@ -21,6 +22,13 @@ const call = async ({ operationId, accountId = account2, kind = 'AMOUNT', value 
   const result = await db.query(`select public.abc_aplicar_descuento_cuenta(
     $1,'emp-f','loc-f1',$2::uuid,$3,$4::numeric,$5,$6,$7::uuid,$8::uuid,$9::date
   ) as result`, [operationId, accountId, kind, value, reason, version, terminal, session, day]);
+  return result.rows[0].result;
+};
+
+const approve = async (operationId, snapshotHash, attemptId, decision = 'APROBAR') => {
+  const result=await db.query(`select public.abc_aprobar_descuento_cuenta(
+    $1,'emp-f','loc-f1',$2,$3::uuid,$4,'Prueba PGlite autorizador') as result`,
+  [operationId,snapshotHash,attemptId,decision]);
   return result.rows[0].result;
 };
 
@@ -40,6 +48,12 @@ try {
     has_function_privilege('authenticated',
       'public.abc_aplicar_descuento_cuenta(text,text,text,uuid,text,numeric,text,bigint,uuid,uuid,date)',
       'EXECUTE') as authenticated,
+    has_function_privilege('authenticated',
+      'public.abc_aprobar_descuento_cuenta(text,text,text,text,uuid,text,text)',
+      'EXECUTE') as approval_authenticated,
+    has_function_privilege('anon',
+      'public.abc_aprobar_descuento_cuenta(text,text,text,text,uuid,text,text)',
+      'EXECUTE') as approval_anon,
     has_function_privilege('anon',
       'public.abc_aplicar_descuento_cuenta(text,text,text,uuid,text,numeric,text,bigint,uuid,uuid,date)',
       'EXECUTE') as anonymous,
@@ -54,7 +68,8 @@ try {
     (select relrowsecurity from pg_class where oid='public.abc_descuento_politicas'::regclass) as policy_rls,
     (select prosecdef from pg_proc where oid=
       'public.abc_aplicar_descuento_cuenta(text,text,text,uuid,text,numeric,text,bigint,uuid,uuid,date)'::regprocedure) as security_definer`)).rows[0];
-  assert.deepEqual(acl, { authenticated: true, anonymous: false, direct_update: false,
+  assert.deepEqual(acl, { authenticated: true, approval_authenticated: true,
+    approval_anon: false, anonymous: false, direct_update: false,
     policy_insert: false, service_role_execute: false, helper_execute: false,
     rls: true, policy_rls: true, security_definer: true });
   process.stdout.write('PASS ACL/RLS\n');
@@ -85,7 +100,7 @@ try {
     values ('${manager}','emp-f','loc-f1',false,'Encargado',true);
     select set_config('request.jwt.claim.sub','${manager}',false);`);
   await assert.rejects(call({ operationId: 'a09.test.discount.2', value: '7', version: 4 }),
-    /descuento_limite_acumulado_excedido/);
+    /descuento_escalado_no_permitido/);
   assert.equal((await db.query(`select count(*)::int n from public.abc_descuentos_aplicados
     where operation_id='a09.test.discount.2'`)).rows[0].n, 0);
   process.stdout.write('PASS cumulative role cap and rollback\n');
@@ -98,15 +113,48 @@ try {
 
   await db.exec(`select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000022',false);`);
   await assert.rejects(call({ operationId: 'a09.test.denied', accountId: account1,
-    value: '1', version: 4 }), /descuento_no_autorizado/);
+    value: '1', version: 4 }), /descuento_(no_autorizado|solicitar_no_autorizado)/);
   process.stdout.write('PASS permission denial\n');
 
   await db.exec(`insert into public.abc_descuento_politicas(
-    empresa_id,local_id,user_id,max_percent,requiere_doble_aprobacion
-  ) values ('emp-f','loc-f1','00000000-0000-0000-0000-000000000022',10,true);`);
-  await assert.rejects(call({ operationId: 'a09.test.dual', accountId: account1,
-    value: '1', version: 4 }), /descuento_requiere_doble_aprobacion/);
-  process.stdout.write('PASS dual approval fail-closed\n');
+    empresa_id,local_id,user_id,max_percent,puede_solicitar,puede_aplicar,
+    puede_autorizar,requiere_doble_aprobacion
+  ) values ('emp-f','loc-f1','${manager22}',20,true,true,true,true);
+  update public.membresias_usuario set rol='Encargado'
+    where user_id='${manager22}' and empresa_id='emp-f' and local_id='loc-f1';
+  insert into public.cuentas_comerciales(
+    id,empresa_id,local_id,currency_code,modalidad,estado,version,created_by,opened_operating_day
+  ) values ('50000000-0000-0000-0000-000000000030','emp-f','loc-f1','EUR','BARRA',
+    'ABIERTA',1,'${owner}',date '${day}');
+  insert into public.pedidos_tpv(
+    id,empresa_id,local_id,cuenta_id,currency_code,estado,version,created_by,created_operating_day
+  ) values ('60000000-0000-0000-0000-000000000030','emp-f','loc-f1',
+    '50000000-0000-0000-0000-000000000030','EUR','ABIERTO',1,'${owner}',date '${day}');
+  insert into public.pedido_lineas(
+    id,empresa_id,local_id,pedido_id,producto_id,cantidad,unidad,estado,version,
+    entidad_fiscal_id,currency_code,precio_unitario,descuento_total,base,impuestos,total,
+    snapshot_comercial,snapshot_calculo,created_by,created_operating_day
+  ) values ('70000000-0000-0000-0000-000000000030','emp-f','loc-f1',
+    '60000000-0000-0000-0000-000000000030','prod-unit-f',1,'ud','CONFIRMADA',1,
+    '10000000-0000-0000-0000-000000000008','EUR',10,0,10,1,11,
+    '{"impuesto_pct":10}'::jsonb,'{"modo":"SERVER_AUTHORITY_A03","impuesto_pct":10}'::jsonb,
+    '${owner}',date '${day}');`);
+  await db.exec(`select set_config('request.jwt.claim.sub','${manager22}',false);`);
+  const dualPending=await call({ operationId:'a09.test.dual',
+    accountId:'50000000-0000-0000-0000-000000000030',value:'1',version:1 });
+  assert.equal(dualPending.status,'PENDIENTE_AUTORIZACION');
+  await db.exec(`select set_config('request.jwt.claim.sub','${owner}',false);`);
+  const dualApproval=await approve('a09.test.dual',dualPending.approval_hash,
+    '90000000-0000-0000-0000-000000000030');
+  assert.equal(dualApproval.status,'APROBADA');
+  await db.exec(`select set_config('request.jwt.claim.sub','${manager22}',false);`);
+  const dualApplied=await call({ operationId:'a09.test.dual',
+    accountId:'50000000-0000-0000-0000-000000000030',value:'1',version:1 });
+  assert.equal(dualApplied.ok,true);
+  assert.equal(dualApplied.autorizador_id,owner);
+  assert.equal((await db.query(`select estado from public.abc_descuento_autorizaciones
+    where operation_id='a09.test.dual'`)).rows[0].estado,'APLICADA');
+  process.stdout.write('PASS dual approval request, distinct signature and application\n');
 
   await db.exec(`select set_config('request.jwt.claim.sub','${owner}',false);
     select set_config('app.test_local','loc-f2',false);`);

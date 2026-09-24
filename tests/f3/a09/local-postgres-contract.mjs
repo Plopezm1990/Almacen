@@ -77,6 +77,25 @@ async function discount(db, operationId, accountId, version, kind = 'AMOUNT', va
   return result.rows[0].value;
 }
 
+async function approve(db, operationId, snapshotHash, attemptId,
+  decision = 'APROBAR', reason = 'Revisión de segundo usuario') {
+  return (await db.query(`select public.abc_aprobar_descuento_cuenta(
+    $1,'emp-f','loc-f1',$2,$3::uuid,$4,$5) as value`,
+  [operationId,snapshotHash,attemptId,decision,reason])).rows[0].value;
+}
+
+async function configurePolicy(db, operationId, {
+  role = null,userId = null,maxPercent = '20',courtesy = false,
+  canRequest = true,canApply = true,canAuthorize = true,
+  escalation = false,doubleApproval = false,active = true,
+  reason = 'Configuración local A09',
+} = {}) {
+  return (await db.query(`select public.abc_configurar_descuento_politica(
+    $1,'emp-f','loc-f1',$2,$3::uuid,$4::numeric,$5,$6,$7,$8,$9,$10,$11,$12,$13::date
+  ) as value`,[operationId,role,userId,maxPercent,courtesy,canRequest,canApply,
+    canAuthorize,escalation,doubleApproval,active,reason,day])).rows[0].value;
+}
+
 async function createAccount(db, accountId) {
   await db.query(`insert into public.cuentas_comerciales(
     id,empresa_id,local_id,currency_code,modalidad,estado,version,created_by,opened_operating_day)
@@ -235,17 +254,34 @@ try {
   const acl=(await db.query(`select
     has_function_privilege('authenticated',
       'public.abc_aplicar_descuento_cuenta(text,text,text,uuid,text,numeric,text,bigint,uuid,uuid,date)','EXECUTE') authenticated_execute,
+    has_function_privilege('authenticated',
+      'public.abc_aprobar_descuento_cuenta(text,text,text,text,uuid,text,text)','EXECUTE') approval_authenticated_execute,
+    has_function_privilege('authenticated',
+      'public.abc_listar_descuento_politicas(text,text)','EXECUTE') policy_list_authenticated_execute,
+    has_function_privilege('authenticated',
+      'public.abc_configurar_descuento_politica(text,text,text,text,uuid,numeric,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,date)','EXECUTE') policy_write_authenticated_execute,
     has_function_privilege('anon',
       'public.abc_aplicar_descuento_cuenta(text,text,text,uuid,text,numeric,text,bigint,uuid,uuid,date)','EXECUTE') anon_execute,
+    has_function_privilege('anon',
+      'public.abc_aprobar_descuento_cuenta(text,text,text,text,uuid,text,text)','EXECUTE') approval_anon_execute,
+    has_function_privilege('anon',
+      'public.abc_configurar_descuento_politica(text,text,text,text,uuid,numeric,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,date)','EXECUTE') policy_write_anon_execute,
     has_function_privilege('service_role',
       'public.abc_aplicar_descuento_cuenta(text,text,text,uuid,text,numeric,text,bigint,uuid,uuid,date)','EXECUTE') service_execute,
+    has_function_privilege('service_role',
+      'public.abc_aprobar_descuento_cuenta(text,text,text,text,uuid,text,text)','EXECUTE') approval_service_execute,
+    has_function_privilege('service_role',
+      'public.abc_configurar_descuento_politica(text,text,text,text,uuid,numeric,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,date)','EXECUTE') policy_write_service_execute,
     has_table_privilege('authenticated','public.abc_descuento_politicas','SELECT') policy_select,
     has_table_privilege('authenticated','public.abc_descuento_politicas','INSERT') policy_insert,
     has_table_privilege('authenticated','public.abc_descuentos_aplicados','SELECT') audit_select,
     has_table_privilege('authenticated','public.abc_descuentos_aplicados','INSERT') audit_insert,
     has_table_privilege('authenticated','public.abc_descuentos_aplicados','UPDATE') audit_update,
     (select relrowsecurity from pg_class where oid='public.abc_descuento_politicas'::regclass) policy_rls`)).rows[0];
-  assert.deepEqual(acl,{authenticated_execute:true,anon_execute:false,service_execute:false,
+  assert.deepEqual(acl,{authenticated_execute:true,approval_authenticated_execute:true,
+    policy_list_authenticated_execute:true,policy_write_authenticated_execute:true,
+    anon_execute:false,approval_anon_execute:false,policy_write_anon_execute:false,
+    service_execute:false,approval_service_execute:false,policy_write_service_execute:false,
     policy_select:false,policy_insert:false,audit_select:true,audit_insert:false,
     audit_update:false,policy_rls:true});
   for (const signature of ['private.abc_a09_jcs(jsonb)',
@@ -307,6 +343,19 @@ try {
   await assert.rejects(db.query(`insert into public.abc_descuento_politicas(
     empresa_id,local_id,rol,max_percent) values ('emp-f','loc-f1','Propietario',100)`),
     /denegado|permission denied/i);
+  const ownerPolicies=(await db.query(`select public.abc_listar_descuento_politicas(
+    'emp-f','loc-f1') as value`)).rows[0].value;
+  assert.deepEqual(ownerPolicies,[]);
+  await assert.rejects(db.query(`select public.abc_listar_descuento_politicas(
+    'emp-f','loc-f2')`),/descuento_politica_no_autorizada/);
+  await db.query('reset role');
+  await actor(db,'00000000-0000-0000-0000-000000000024');
+  await db.query('set role authenticated');
+  await assert.rejects(db.query(`select public.abc_listar_descuento_politicas(
+    'emp-f','loc-f1')`),/descuento_politica_no_autorizada/);
+  await db.query('reset role');
+  await actor(db);
+  await db.query('set role authenticated');
   const result = await discount(db,'a09.pg.split',account2,3);
   await db.query('reset role');
   assert.equal(result.descuento, 2);
@@ -340,8 +389,10 @@ try {
     where user_id=$1 and empresa_id='emp-f' and local_id='loc-f1'`,[managerId]);
   await actor(db,managerId);
   await db.query('set role authenticated');
+  await assert.rejects(db.query(`select public.abc_listar_descuento_politicas(
+    'emp-f','loc-f1')`),/descuento_politica_no_autorizada/);
   await assert.rejects(discount(db,'a09.pg.manager.over-cap',manager.account,1,'AMOUNT','3'),
-    /descuento_limite_acumulado_excedido/);
+    /descuento_escalado_no_permitido/);
   assert.equal((await db.query(`select count(*)::int n from public.abc_descuentos_aplicados
     where operation_id='a09.pg.manager.over-cap'`)).rows[0].n,0);
   const managerDiscount=await discount(db,'a09.pg.manager.cap',manager.account,1,'AMOUNT','2');
@@ -352,6 +403,478 @@ try {
     where operation_id='a09.pg.manager.cap' and solicitante_id=$1
       and autorizador_id=$1 and importe=2`,[managerId])).rows[0].n,1);
   process.stdout.write('PASS Encargado cap, atomic audit and exact 20 percent boundary\n');
+
+  const approverId='00000000-0000-0000-0000-000000000023';
+  await db.query('reset role');
+  await db.query(`insert into public.membresias_usuario(
+    user_id,empresa_id,local_id,todos_locales,rol,activo
+  ) values ($1,'emp-f','loc-f1',false,'Encargado',true)`,[approverId]);
+  await actor(db,owner);
+  await db.query('set role authenticated');
+  await configurePolicy(db,'a09.pg.policy.manager.request-disabled',{
+    userId:managerId,maxPercent:'20',canRequest:false,canApply:true,
+    canAuthorize:true,escalation:false,doubleApproval:false,
+  });
+  await db.query('reset role');
+  const noRequestLine=await makeLine(db,'75');
+  await actor(db,managerId);
+  await db.query('set role authenticated');
+  await assert.rejects(discount(db,'a09.pg.permission.request-denied',
+    noRequestLine.account,1,'AMOUNT','1'),/descuento_solicitar_no_autorizado/);
+  await db.query('reset role');
+  assert.equal((await db.query(`select count(*)::int n from public.abc_operaciones
+    where operation_id='a09.pg.permission.request-denied'`)).rows[0].n,0);
+
+  await db.query('reset role');
+  await actor(db,owner);
+  await db.query('set role authenticated');
+  await configurePolicy(db,'a09.pg.policy.manager.apply-disabled',{
+    userId:managerId,maxPercent:'20',canRequest:true,canApply:false,
+    canAuthorize:true,escalation:false,doubleApproval:false,
+  });
+  await db.query('reset role');
+  const noApplyLine=await makeLine(db,'76');
+  await actor(db,managerId);
+  await db.query('set role authenticated');
+  await assert.rejects(discount(db,'a09.pg.permission.apply-denied',
+    noApplyLine.account,1,'AMOUNT','1'),/descuento_aplicar_no_autorizado/);
+  await db.query('reset role');
+  assert.equal((await db.query(`select count(*)::int n from public.abc_descuentos_aplicados
+    where operation_id='a09.pg.permission.apply-denied'`)).rows[0].n,0);
+
+  await db.query('reset role');
+  await actor(db,owner);
+  await db.query('set role authenticated');
+  const disabledPolicy=await configurePolicy(db,'a09.pg.policy.manager.disabled-escalation',{
+    userId:managerId,maxPercent:'20',canRequest:true,canApply:true,canAuthorize:true,
+    escalation:false,doubleApproval:false,
+  });
+  assert.equal(disabledPolicy.status,'CONFIGURADA');
+  assert.deepEqual(await configurePolicy(db,'a09.pg.policy.manager.disabled-escalation',{
+    userId:managerId,maxPercent:'20',canRequest:true,canApply:true,canAuthorize:true,
+    escalation:false,doubleApproval:false,
+  }),disabledPolicy);
+  await assert.rejects(configurePolicy(db,'a09.pg.policy.manager.disabled-escalation',{
+    userId:managerId,maxPercent:'19',canRequest:true,canApply:true,canAuthorize:true,
+    escalation:false,doubleApproval:false,
+  }),/operation_id_conflict/);
+  await db.query('reset role');
+  const policyAudit=(await db.query(`select event_type,payload->>'reason' reason,
+    payload->'after'->>'max_percent' max_percent,
+    payload->'after'->>'permite_escalado' escalation,
+    actor_user_id::text actor from public.abc_eventos
+    where operation_id='a09.pg.policy.manager.disabled-escalation'`)).rows;
+  assert.deepEqual(policyAudit,[{event_type:'DESCUENTO_POLITICA_CONFIGURADA',
+    reason:'Configuración local A09',max_percent:'20.0000',escalation:'false',actor:owner}]);
+  assert.equal((await db.query(`select count(*)::int n from public.abc_eventos
+    where operation_id='a09.pg.policy.manager.disabled-escalation'`)).rows[0].n,1);
+  await db.query('reset role');
+  const disabledEscalationLine=await makeLine(db,'79');
+  await actor(db,managerId);
+  await db.query('set role authenticated');
+  await assert.rejects(discount(db,'a09.pg.escalation.disabled',
+    disabledEscalationLine.account,1,'PERCENT','30'),/descuento_escalado_no_permitido/);
+  await db.query('reset role');
+  assert.equal((await db.query(`select count(*)::int n from public.abc_descuento_autorizaciones
+    where operation_id='a09.pg.escalation.disabled'`)).rows[0].n,0);
+  assert.equal((await db.query(`select count(*)::int n from public.abc_descuentos_aplicados
+    where operation_id='a09.pg.escalation.disabled'`)).rows[0].n,0);
+  await actor(db,owner);
+  await db.query('set role authenticated');
+  process.stdout.write('PASS separate request, apply and authorization permissions\n');
+  const dualPolicy=await configurePolicy(db,'a09.pg.policy.manager.dual',{
+    userId:managerId,maxPercent:'20',canRequest:true,canApply:true,canAuthorize:true,
+    escalation:false,doubleApproval:true,
+  });
+  assert.equal(dualPolicy.status,'CONFIGURADA');
+  await configurePolicy(db,'a09.pg.policy.owner.authorizer',{
+    userId:owner,maxPercent:'100',courtesy:true,canRequest:true,canApply:true,
+    canAuthorize:true,escalation:false,doubleApproval:false,
+  });
+  await db.query('reset role');
+  const approvalLine=await makeLine(db,'80');
+  await actor(db,managerId);
+  await db.query('set role authenticated');
+  const pending=await discount(db,'a09.pg.dual.valid',approvalLine.account,1,'AMOUNT','1');
+  assert.equal(pending.status,'PENDIENTE_AUTORIZACION');
+  assert.match(pending.approval_hash,/^[0-9a-f]{64}$/);
+  assert.equal(pending.snapshot.operation.importe_descuento,'1.00000000');
+  assert.equal(hashSnapshot(pending.snapshot),pending.approval_hash,
+    'the exact approval snapshot must hash identically in SQL and JS');
+  await db.query('reset role');
+  assert.equal((await db.query(`select count(*)::int n from public.abc_descuentos_aplicados
+    where operation_id='a09.pg.dual.valid'`)).rows[0].n,0);
+  assert.equal((await db.query(`select count(*)::int n from public.abc_eventos
+    where operation_id='a09.pg.dual.valid'`)).rows[0].n,0);
+  await db.query('set role authenticated');
+  const selfAttempt='90000000-0000-0000-0000-000000000081';
+  const self=await approve(db,'a09.pg.dual.valid',pending.approval_hash,selfAttempt);
+  assert.equal(self.error,'descuento_autoaprobacion_rechazada');
+  const selfReplay=await approve(db,'a09.pg.dual.valid',pending.approval_hash,selfAttempt);
+  assert.equal(selfReplay.replayed,true);
+  assert.equal((await db.query(`select count(*)::int n from public.abc_descuento_aprobacion_intentos
+    where operation_id='a09.pg.dual.valid' and autorizador_id=$1`,[managerId])).rows[0].n,1);
+
+  await db.query("select set_config('app.test_local','loc-f2',false)");
+  await assert.rejects(approve(db,'a09.pg.dual.valid',pending.approval_hash,
+    '90000000-0000-0000-0000-000000000088'),/contexto_no_autorizado/);
+  await db.query("select set_config('app.test_local','loc-f1',false)");
+
+  await db.query('reset role');
+  await db.query(`update public.membresias_usuario set rol='Camarero/a'
+    where user_id=$1 and empresa_id='emp-f' and local_id='loc-f1'`,[approverId]);
+  await actor(db,approverId);
+  await db.query('set role authenticated');
+  const insufficient=await approve(db,'a09.pg.dual.valid',pending.approval_hash,
+    '90000000-0000-0000-0000-000000000082');
+  assert.equal(insufficient.error,'descuento_aprobador_sin_permiso');
+  assert.equal((await db.query(`select estado from public.abc_descuento_autorizaciones
+    where operation_id='a09.pg.dual.valid'`)).rows[0].estado,'PENDIENTE');
+
+  await db.query('reset role');
+  await db.query(`update public.membresias_usuario set rol='Encargado'
+    where user_id=$1 and empresa_id='emp-f' and local_id='loc-f1'`,[approverId]);
+  await actor(db,owner);
+  await actor(other,approverId);
+  await db.query('set role authenticated');
+  await other.query('set role authenticated');
+  const concurrentApprovals=await Promise.all([
+    approve(db,'a09.pg.dual.valid',pending.approval_hash,
+      '90000000-0000-0000-0000-000000000083'),
+    approve(other,'a09.pg.dual.valid',pending.approval_hash,
+      '90000000-0000-0000-0000-000000000084'),
+  ]);
+  assert.equal(concurrentApprovals.filter((x)=>x.ok&&x.status==='APROBADA').length,1);
+  assert.equal(concurrentApprovals.filter((x)=>x.error==='descuento_ya_aprobado').length,1);
+  const winningAttempt=(await db.query(`select attempt_id,autorizador_id
+    from public.abc_descuento_aprobacion_intentos
+    where operation_id='a09.pg.dual.valid' and resultado->>'status'='APROBADA'`)).rows[0];
+  const winningDb=winningAttempt.autorizador_id===approverId?other:db;
+  await actor(winningDb,winningAttempt.autorizador_id);
+  await winningDb.query('set role authenticated');
+  const approvalReplay=await approve(winningDb,'a09.pg.dual.valid',pending.approval_hash,
+    winningAttempt.attempt_id);
+  assert.equal(approvalReplay.replayed,true);
+
+  await actor(db,managerId);
+  const approvedApply=await discount(db,'a09.pg.dual.valid',approvalLine.account,1,'AMOUNT','1');
+  assert.equal(approvedApply.ok,true);
+  assert.equal(approvedApply.autorizador_id,winningAttempt.autorizador_id);
+  const approvedRetry=await discount(db,'a09.pg.dual.valid',approvalLine.account,1,'AMOUNT','1');
+  assert.deepEqual(approvedRetry,approvedApply);
+  assert.equal((await db.query(`select count(*)::int n from public.abc_descuentos_aplicados
+    where operation_id='a09.pg.dual.valid' and solicitante_id=$1
+      and autorizador_id=$2 and autorizacion_id is not null`,
+    [managerId,winningAttempt.autorizador_id])).rows[0].n,1);
+  assert.equal((await db.query(`select estado from public.abc_descuento_autorizaciones
+    where operation_id='a09.pg.dual.valid'`)).rows[0].estado,'APLICADA');
+  const authorizationAudit=(await db.query(`select solicitante_id::text,
+    autorizador_id::text,motivo,motivo_autorizacion,
+    solicitada_at is not null requested_at,autorizada_at is not null approved_at,
+    aplicada_at is not null applied_at,resultado->>'status' result
+    from public.abc_descuento_autorizaciones where operation_id='a09.pg.dual.valid'`)).rows[0];
+  assert.deepEqual(authorizationAudit,{solicitante_id:managerId,
+    autorizador_id:winningAttempt.autorizador_id,motivo:'Prueba A09 local',
+    motivo_autorizacion:'Revisión de segundo usuario',requested_at:true,approved_at:true,
+    applied_at:true,result:'APLICADA'});
+  process.stdout.write('PASS dual approval, distinct users, audit, concurrent approvers and replay\n');
+
+  await actor(db,owner);
+  const escalatedPolicy=await configurePolicy(db,'a09.pg.policy.manager.escalation',{
+    userId:managerId,maxPercent:'20',canRequest:true,canApply:true,canAuthorize:true,
+    escalation:true,doubleApproval:false,
+  });
+  assert.equal(escalatedPolicy.status,'CONFIGURADA');
+  await configurePolicy(db,'a09.pg.policy.approver.cap20',{
+    userId:approverId,maxPercent:'20',canRequest:false,canApply:false,
+    canAuthorize:true,escalation:false,doubleApproval:false,
+  });
+  await db.query('reset role');
+  const escalationLine=await makeLine(db,'89');
+  const insufficientLine=await makeLine(db,'88');
+  await actor(db,managerId);
+  await db.query('set role authenticated');
+  const escalatedPending=await discount(db,'a09.pg.escalation.owner-approves-30',
+    escalationLine.account,1,'PERCENT','30');
+  assert.equal(escalatedPending.status,'PENDIENTE_AUTORIZACION');
+  assert.equal(escalatedPending.snapshot.operation.requiere_escalado,true);
+  assert.equal(escalatedPending.snapshot.operation.importe_descuento,'3.00000000');
+  assert.equal(hashSnapshot(escalatedPending.snapshot),escalatedPending.approval_hash);
+
+  const insufficientPending=await discount(db,'a09.pg.escalation.insufficient-cap',
+    insufficientLine.account,1,'PERCENT','30');
+  assert.equal(insufficientPending.status,'PENDIENTE_AUTORIZACION');
+  await actor(db,approverId);
+  const insufficientEscalation=await approve(db,'a09.pg.escalation.insufficient-cap',
+    insufficientPending.approval_hash,'90000000-0000-0000-0000-000000000091');
+  assert.equal(insufficientEscalation.error,'descuento_aprobador_sin_permiso');
+  assert.equal((await db.query(`select estado from public.abc_descuento_autorizaciones
+    where operation_id='a09.pg.escalation.insufficient-cap'`)).rows[0].estado,'PENDIENTE');
+
+  await actor(db,owner);
+  const escalatedApproval=await approve(db,'a09.pg.escalation.owner-approves-30',
+    escalatedPending.approval_hash,'90000000-0000-0000-0000-000000000092');
+  assert.equal(escalatedApproval.status,'APROBADA');
+  await actor(db,managerId);
+  const escalatedApplied=await discount(db,'a09.pg.escalation.owner-approves-30',
+    escalationLine.account,1,'PERCENT','30');
+  assert.equal(escalatedApplied.ok,true);
+  assert.equal(Number(escalatedApplied.descuento),3);
+  assert.equal(escalatedApplied.autorizador_id,owner);
+  assert.equal((await db.query(`select count(*)::int n from public.abc_descuentos_aplicados
+    where operation_id='a09.pg.escalation.owner-approves-30' and importe=3
+      and solicitante_id=$1 and autorizador_id=$2`,[managerId,owner])).rows[0].n,1);
+  assert.deepEqual(await discount(db,'a09.pg.escalation.owner-approves-30',
+    escalationLine.account,1,'PERCENT','30'),escalatedApplied);
+  assert.equal((await db.query(`select count(*)::int n from public.abc_descuentos_aplicados
+    where operation_id='a09.pg.escalation.owner-approves-30'`)).rows[0].n,1);
+  assert.equal((await db.query(`select descuento_total::text discount,
+      (descuento_total*100<= (base+descuento_total)*20)::boolean requester_cap_check
+    from public.pedido_lineas where id=$1`,[escalationLine.source])).rows[0].requester_cap_check,false,
+    'the request exceeds the requester cap, but the owner authorization must allow it');
+  process.stdout.write('PASS policy escalation: Encargado 20% requests 30%, Owner 100% approves, replay is idempotent\n');
+
+  await db.query('reset role');
+  await actor(db,owner);
+  await db.query('set role authenticated');
+  await configurePolicy(db,'a09.pg.policy.manager.restore-dual',{
+    userId:managerId,maxPercent:'20',canRequest:true,canApply:true,canAuthorize:true,
+    escalation:false,doubleApproval:true,
+  });
+  await configurePolicy(db,'a09.pg.policy.owner.keep-authorize',{
+    userId:owner,maxPercent:'100',courtesy:true,canRequest:true,canApply:true,
+    canAuthorize:true,escalation:false,doubleApproval:false,
+  });
+  await db.query('reset role');
+  const revokedApproverLine=await makeLine(db,'84');
+  await actor(db,managerId);
+  await db.query('set role authenticated');
+  const revokedPending=await discount(db,'a09.pg.dual.approver-revoked',
+    revokedApproverLine.account,1,'AMOUNT','1');
+  await db.query('reset role');
+  await actor(db,owner);
+  await db.query('set role authenticated');
+  await approve(db,'a09.pg.dual.approver-revoked',revokedPending.approval_hash,
+    '90000000-0000-0000-0000-000000000089');
+  await db.query('reset role');
+  await actor(db,owner);
+  await db.query('set role authenticated');
+  await configurePolicy(db,'a09.pg.policy.owner.revoke-authorize',{
+    userId:owner,maxPercent:'100',courtesy:true,canRequest:true,canApply:true,
+    canAuthorize:false,escalation:false,doubleApproval:false,
+  });
+  await actor(db,managerId);
+  const revokedApply=await discount(db,'a09.pg.dual.approver-revoked',
+    revokedApproverLine.account,1,'AMOUNT','1');
+  assert.equal(revokedApply.status,'INVALIDADA');
+  assert.equal(revokedApply.error,'descuento_autorizacion_configuracion_cambiada');
+  await db.query('reset role');
+  await actor(db,owner);
+  await db.query('set role authenticated');
+  await configurePolicy(db,'a09.pg.policy.owner.restore-default',{
+    userId:owner,maxPercent:'100',courtesy:true,canRequest:true,canApply:true,
+    canAuthorize:true,escalation:false,doubleApproval:false,active:false,
+  });
+  await db.query('reset role');
+  process.stdout.write('PASS approver permission revocation invalidates before application\n');
+
+  await db.query('reset role');
+  const rollbackLine=await makeLine(db,'81');
+  await actor(db,managerId);
+  await db.query('set role authenticated');
+  const rollbackPending=await discount(db,'a09.pg.dual.rollback',rollbackLine.account,1,'AMOUNT','1');
+  await db.query('reset role');
+  await actor(db,owner);
+  await db.query('set role authenticated');
+  await approve(db,'a09.pg.dual.rollback',rollbackPending.approval_hash,
+    '90000000-0000-0000-0000-000000000085');
+  await db.query('begin');
+  await actor(db,managerId);
+  await discount(db,'a09.pg.dual.rollback',rollbackLine.account,1,'AMOUNT','1');
+  await db.query('rollback');
+  await actor(db,managerId);
+  await db.query('set role authenticated');
+  assert.equal((await db.query(`select estado from public.abc_descuento_autorizaciones
+    where operation_id='a09.pg.dual.rollback'`)).rows[0].estado,'APROBADA');
+  assert.equal((await db.query(`select count(*)::int n from public.abc_descuentos_aplicados
+    where operation_id='a09.pg.dual.rollback'`)).rows[0].n,0);
+  const rollbackRetry=await discount(db,'a09.pg.dual.rollback',rollbackLine.account,1,'AMOUNT','1');
+  assert.equal(rollbackRetry.ok,true);
+  assert.equal((await db.query(`select count(*)::int n from public.abc_descuentos_aplicados
+    where operation_id='a09.pg.dual.rollback'`)).rows[0].n,1);
+  process.stdout.write('PASS dual-approval application rollback and safe retry\n');
+
+  await db.query('reset role');
+  const staleApprovalLine=await makeLine(db,'82');
+  await actor(db,managerId);
+  await db.query('set role authenticated');
+  const stalePending=await discount(db,'a09.pg.dual.stale',staleApprovalLine.account,1,'AMOUNT','1');
+  await db.query('reset role');
+  await actor(db,owner);
+  await db.query('set role authenticated');
+  await approve(db,'a09.pg.dual.stale',stalePending.approval_hash,
+    '90000000-0000-0000-0000-000000000086');
+  await db.query('reset role');
+  await db.query(`update public.cuentas_comerciales set version=version+1 where id=$1`,
+    [staleApprovalLine.account]);
+  await actor(db,managerId);
+  await db.query('set role authenticated');
+  const staleApply=await discount(db,'a09.pg.dual.stale',staleApprovalLine.account,1,'AMOUNT','1');
+  assert.equal(staleApply.status,'INVALIDADA');
+  assert.equal(staleApply.error,'cuenta_version_conflict');
+  assert.equal((await db.query(`select estado from public.abc_descuento_autorizaciones
+    where operation_id='a09.pg.dual.stale'`)).rows[0].estado,'INVALIDADA');
+  assert.equal((await db.query(`select count(*)::int n from public.abc_descuentos_aplicados
+    where operation_id='a09.pg.dual.stale'`)).rows[0].n,0);
+  process.stdout.write('PASS approved discount invalidates on stale account version\n');
+
+  await db.query('reset role');
+  const sharedApprovalLine=await makeLine(db,'85',{
+    price:'10',quantity:'2',base:'20',tax:'2',total:'22',rate:'10',
+  });
+  const sharedApprovalTarget='50000000-0000-0000-0000-000000000086';
+  await createAccount(db,sharedApprovalTarget);
+  const sharedSplit=await moveLine(db,'a09.pg.dual.discount-change.split',
+    sharedApprovalLine.source,sharedApprovalLine.account,sharedApprovalTarget,
+    1,1,1,1);
+  await actor(db,managerId);
+  await db.query('set role authenticated');
+  const changedDiscountPending=await discount(db,'a09.pg.dual.discount-change.pending',
+    sharedApprovalTarget,sharedSplit.cuenta_destino_version,'AMOUNT','1');
+  await actor(db,owner);
+  const unrelatedDiscount=await discount(db,'a09.pg.dual.discount-change.other',
+    sharedApprovalLine.account,sharedSplit.cuenta_origen_version,'AMOUNT','1');
+  assert.equal(unrelatedDiscount.ok,true);
+  const changedDiscountApproval=await approve(db,'a09.pg.dual.discount-change.pending',
+    changedDiscountPending.approval_hash,'90000000-0000-0000-0000-000000000090');
+  assert.equal(changedDiscountApproval.status,'INVALIDADA');
+  assert.equal(changedDiscountApproval.error,'descuento_autorizacion_version_obsoleta');
+  assert.equal((await db.query(`select count(*)::int n from public.abc_descuentos_aplicados
+    where operation_id='a09.pg.dual.discount-change.pending'`)).rows[0].n,0);
+  assert.equal((await db.query(`select estado from public.abc_descuento_autorizaciones
+    where operation_id='a09.pg.dual.discount-change.pending'`)).rows[0].estado,'INVALIDADA');
+  process.stdout.write('PASS pending authorization invalidates when another discount changes the shared line\n');
+
+  await db.query('reset role');
+  const changedPolicyLine=await makeLine(db,'83');
+  const policyAtRequest=(await db.query(`select max_percent from public.abc_descuento_politicas
+    where empresa_id='emp-f' and local_id='loc-f1' and user_id=$1`,[managerId])).rows[0].max_percent;
+  await actor(db,managerId);
+  await db.query('set role authenticated');
+  const policyPending=await discount(db,'a09.pg.dual.policy-change',changedPolicyLine.account,1,'AMOUNT','1');
+  await db.query('reset role');
+  await actor(db,owner);
+  await db.query('set role authenticated');
+  await approve(db,'a09.pg.dual.policy-change',policyPending.approval_hash,
+    '90000000-0000-0000-0000-000000000087');
+  await db.query('reset role');
+  await actor(db,owner);
+  await db.query('set role authenticated');
+  await configurePolicy(db,'a09.pg.policy.manager.change-before-apply',{
+    userId:managerId,maxPercent:'19',canRequest:true,canApply:true,canAuthorize:true,
+    escalation:false,doubleApproval:true,
+  });
+  await actor(db,managerId);
+  const policyChangedApply=await discount(db,'a09.pg.dual.policy-change',
+    changedPolicyLine.account,1,'AMOUNT','1');
+  assert.equal(policyChangedApply.status,'INVALIDADA');
+  assert.equal(policyChangedApply.error,'descuento_autorizacion_configuracion_cambiada');
+  assert.equal((await db.query(`select estado from public.abc_descuento_autorizaciones
+    where operation_id='a09.pg.dual.policy-change'`)).rows[0].estado,'INVALIDADA');
+  await db.query('reset role');
+  await actor(db,owner);
+  await db.query('set role authenticated');
+  await configurePolicy(db,'a09.pg.policy.manager.restore-cap',{
+    userId:managerId,maxPercent:String(policyAtRequest),canRequest:true,canApply:true,
+    canAuthorize:true,escalation:false,doubleApproval:true,
+  });
+  await db.query('reset role');
+  process.stdout.write('PASS permission/configuration change invalidates approved request\n');
+
+  const revokedRequesterLine=await makeLine(db,'87');
+  await actor(db,managerId);
+  await db.query('set role authenticated');
+  const revokedRequesterPending=await discount(db,'a09.pg.dual.requester-revoked',
+    revokedRequesterLine.account,1,'AMOUNT','1');
+  await db.query('reset role');
+  await db.query(`update public.membresias_usuario set activo=false
+    where user_id=$1 and empresa_id='emp-f' and local_id='loc-f1'`,[managerId]);
+  assert.deepEqual((await db.query(`select estado,resultado->>'error' error
+    from public.abc_descuento_autorizaciones
+    where operation_id='a09.pg.dual.requester-revoked'`)).rows[0],
+    {estado:'INVALIDADA',error:'descuento_autorizacion_configuracion_cambiada'});
+  assert.equal((await db.query(`select status from public.abc_operaciones
+    where operation_id='a09.pg.dual.requester-revoked'`)).rows[0].status,'FALLIDA');
+  assert.equal((await db.query(`select count(*)::int n from public.abc_descuentos_aplicados
+    where operation_id='a09.pg.dual.requester-revoked'`)).rows[0].n,0);
+  await db.query(`update public.membresias_usuario set activo=true
+    where user_id=$1 and empresa_id='emp-f' and local_id='loc-f1'`,[managerId]);
+  assert.equal(revokedRequesterPending.status,'PENDIENTE_AUTORIZACION');
+  process.stdout.write('PASS requester membership revocation closes pending authorization\n');
+  await other.query('reset role');
+  await actor(db,owner);
+  await actor(other,owner);
+
+  const concurrentPolicyLine=await makeLine(db,'93');
+  await actor(db,managerId);
+  await db.query('set role authenticated');
+  const concurrentPolicyPending=await discount(db,'a09.pg.concurrent.policy-change',
+    concurrentPolicyLine.account,1,'AMOUNT','1');
+  assert.equal(concurrentPolicyPending.status,'PENDIENTE_AUTORIZACION');
+  await db.query('reset role');
+  await db.query('begin');
+  await db.query(`select private.abc_a09_lock_config_context('emp-f','loc-f1')`);
+  await actor(other,owner);
+  await other.query('set role authenticated');
+  const policyWriter=configurePolicy(other,'a09.pg.policy.concurrent-change',{
+    userId:managerId,maxPercent:'19',canRequest:true,canApply:true,canAuthorize:true,
+    escalation:false,doubleApproval:true,
+  });
+  await waitForLock(db,'a09-other');
+  await db.query('commit');
+  assert.equal((await policyWriter).status,'CONFIGURADA');
+  assert.equal((await db.query(`select estado from public.abc_descuento_autorizaciones
+    where operation_id='a09.pg.concurrent.policy-change'`)).rows[0].estado,'INVALIDADA');
+  await other.query('reset role');
+  await actor(db,managerId);
+  await db.query('set role authenticated');
+  const policyRaceApply=await discount(db,'a09.pg.concurrent.policy-change',
+    concurrentPolicyLine.account,1,'AMOUNT','1');
+  assert.equal(policyRaceApply.status,'INVALIDADA');
+  assert.equal((await db.query(`select count(*)::int n from public.abc_descuentos_aplicados
+    where operation_id='a09.pg.concurrent.policy-change'`)).rows[0].n,0);
+  await db.query('reset role');
+  await actor(db,owner);
+  await db.query('set role authenticated');
+  await configurePolicy(db,'a09.pg.policy.concurrent-change.restore',{
+    userId:managerId,maxPercent:'20',canRequest:true,canApply:true,canAuthorize:true,
+    escalation:false,doubleApproval:true,
+  });
+  await db.query('reset role');
+  process.stdout.write('PASS concurrent policy write waits for discount lock and invalidates the pending approval\n');
+
+  const concurrentMembershipLine=await makeLine(db,'94');
+  await actor(db,managerId);
+  await db.query('set role authenticated');
+  const concurrentMembershipPending=await discount(db,'a09.pg.concurrent.membership-change',
+    concurrentMembershipLine.account,1,'AMOUNT','1');
+  assert.equal(concurrentMembershipPending.status,'PENDIENTE_AUTORIZACION');
+  await db.query('reset role');
+  await db.query('begin');
+  await db.query(`select private.abc_a09_lock_config_context('emp-f','loc-f1')`);
+  const membershipWriter=other.query(`update public.membresias_usuario set rol='Camarero/a'
+    where user_id=$1 and empresa_id='emp-f' and local_id='loc-f1'`,[managerId]);
+  await waitForLock(db,'a09-other');
+  await db.query('commit');
+  await membershipWriter;
+  assert.equal((await db.query(`select estado from public.abc_descuento_autorizaciones
+    where operation_id='a09.pg.concurrent.membership-change'`)).rows[0].estado,'INVALIDADA');
+  assert.equal((await db.query(`select count(*)::int n from public.abc_descuentos_aplicados
+    where operation_id='a09.pg.concurrent.membership-change'`)).rows[0].n,0);
+  await db.query(`update public.membresias_usuario set rol='Encargado'
+    where user_id=$1 and empresa_id='emp-f' and local_id='loc-f1'`,[managerId]);
+  await actor(db,owner);
+  process.stdout.write('PASS concurrent membership permission change waits and invalidates pending approval\n');
 
   const negativeAccount='50000000-0000-0000-0000-000000000090';
   const negativeTarget='50000000-0000-0000-0000-000000000091';

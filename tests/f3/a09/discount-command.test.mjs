@@ -55,12 +55,12 @@ test('100 % por importe o porcentaje no elude la capacidad de cortesía', async 
   assert.equal(engine.audit.length, 0);
 });
 
-test('motivo y doble autorización pendiente fallan sin efectos', async () => {
+test('el modelo de una llamada valida el motivo y falla cerrado para doble autorización', async () => {
   const engine = new DiscountCommandReference(state());
   await assert.rejects(engine.execute(request({ reason: '  ' }), 'owner'), /reason_required/);
   assert.equal(engine.audit.length, 0);
   const guarded = new DiscountCommandReference(state({ requireDualApproval: true }));
-  await assert.rejects(guarded.execute(request(), 'owner'), /dual_approval_required/);
+  await assert.rejects(guarded.execute(request(), 'owner'), /dual_approval_requires_postgres_contract/);
   assert.equal(guarded.state.accountVersion, 1);
 });
 

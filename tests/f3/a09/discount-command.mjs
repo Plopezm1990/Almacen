@@ -1,5 +1,5 @@
-// Executable reference protocol. It models DB locks, OCC and idempotency;
-// product authorization must be implemented and tested in PostgreSQL.
+// Executable single-call reference protocol. It models OCC and idempotency;
+// staged dual approval is implemented and tested by the PostgreSQL contract.
 import { applyRepartoDiscount } from './discount-math.mjs';
 
 const DEFAULT_LIMITS = Object.freeze({ Propietario: '100', Encargado: '20' });
@@ -35,7 +35,8 @@ export class DiscountCommandReference {
         !(role === 'Propietario' || this.state.courtesyUsers?.includes(authUserId))) {
         throw new Error('courtesy_capability_denied');
       }
-      if (this.state.requireDualApproval) throw new Error('dual_approval_required');
+      // This reduced model does not represent the approval table/RPC flow.
+      if (this.state.requireDualApproval) throw new Error('dual_approval_requires_postgres_contract');
       if (typeof request.reason !== 'string' || request.reason.trim() === '') {
         throw new Error('reason_required');
       }
