@@ -118,7 +118,7 @@ try {
     snapshot_calculo,created_by,created_operating_day
   ) values (
     '81000000-0000-0000-0000-000000000009','emp-f','loc-f1','${account1}',
-    '10000000-0000-0000-0000-000000000008','EUR','ABIERTA',1,10,0,1,11,
+    '10000000-0000-0000-0000-000000000008','EUR','ABIERTA',1,30,0,3,33,
     '{}'::jsonb,'${owner}',date '${day}'
   );
   insert into public.venta_fiscal_lineas(
@@ -127,7 +127,7 @@ try {
   ) values (
     '82000000-0000-0000-0000-000000000009','emp-f','loc-f1',
     '81000000-0000-0000-0000-000000000009','${line}',
-    '10000000-0000-0000-0000-000000000008','EUR',1,10,0,10,1,11,'{}'::jsonb
+    '10000000-0000-0000-0000-000000000008','EUR',3,10,0,30,3,33,'{}'::jsonb
   );`);
   await assert.rejects(call({ operationId: 'a09.test.partial', accountId: account1,
     value: '1', version: 4 }), /descuento_linea_fiscalizada/);

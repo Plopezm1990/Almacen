@@ -478,6 +478,55 @@ end $$;
 
 revoke all on function private.abc_descuento_politica(text,text)
   from public,anon,authenticated,service_role;
+
+-- Un escritor fiscal privilegiado puede haber preparado importes antes de que
+-- A09 confirme el descuento. La FK por si sola espera el lock de la linea,
+-- pero despues permite insertar una instantanea antigua. Este guard bloquea
+-- la fuente y exige la cuota A08 actual para toda linea tocada por A09.
+-- La fiscalizacion parcial posterior a A09 queda cerrada hasta que exista una
+-- RPC fiscal que asigne y redondee sus importes con un contrato propio.
+create function private.abc_a09_guard_fiscal_linea()
+returns trigger language plpgsql security definer set search_path=''
+as $$
+declare
+  v_cuenta_id uuid;
+  v_expected record;
+begin
+  perform 1 from public.pedido_lineas l
+  where l.empresa_id=new.empresa_id and l.local_id=new.local_id
+    and l.id=new.source_line_id for update;
+  if not found then raise exception 'a09_fiscal_linea_fuente_ausente'; end if;
+  if not exists (
+    select 1 from public.abc_descuentos_aplicados d
+    where d.empresa_id=new.empresa_id and d.local_id=new.local_id
+      and d.source_line_id=new.source_line_id
+  ) then return new; end if;
+
+  select vf.cuenta_id into v_cuenta_id from public.ventas_fiscales vf
+  where vf.empresa_id=new.empresa_id and vf.local_id=new.local_id
+    and vf.id=new.venta_fiscal_id and vf.estado<>'CANCELADA';
+  if v_cuenta_id is null then raise exception 'a09_fiscal_venta_no_apta'; end if;
+  select sum(r.cantidad) cantidad,sum(r.descuento) descuento,
+         sum(r.base) base,sum(r.impuestos) impuesto,sum(r.total) total
+    into v_expected
+  from public.cuenta_linea_repartos r
+  where r.empresa_id=new.empresa_id and r.local_id=new.local_id
+    and r.source_line_id=new.source_line_id and r.cuenta_id=v_cuenta_id
+    and r.estado='ACTIVO';
+  if v_expected.cantidad is null or new.cantidad<>v_expected.cantidad
+     or new.descuento<>v_expected.descuento or new.base<>v_expected.base
+     or new.impuesto<>v_expected.impuesto or new.total<>v_expected.total then
+    raise exception 'a09_fiscal_snapshot_obsoleto_o_parcial';
+  end if;
+  return new;
+end $$;
+
+create trigger a09_guard_fiscal_linea
+  before insert or update on public.venta_fiscal_lineas
+  for each row execute function private.abc_a09_guard_fiscal_linea();
+revoke all on function private.abc_a09_guard_fiscal_linea()
+  from public,anon,authenticated,service_role;
+
 revoke all on function public.abc_aplicar_descuento_cuenta(
   text,text,text,uuid,text,numeric,text,bigint,uuid,uuid,date
 ) from public,anon,authenticated,service_role;
