@@ -210,19 +210,22 @@ begin
     return;
   end if;
 
-  select l.*,p.cuenta_id
-    into v_linea,v_cuenta_id
+  select l.*
+    into v_linea
     from public.pedido_lineas l
-    join public.pedidos_tpv p
-      on p.empresa_id=l.empresa_id
-     and p.local_id=l.local_id
-     and p.id=l.pedido_id
    where l.empresa_id=p_empresa_id
      and l.local_id=p_local_id
      and l.id=p_linea_id
-   for update of l;
+   for update;
 
   if not found then raise exception 'reparto_linea_no_encontrada'; end if;
+
+  select p.cuenta_id
+    into v_cuenta_id
+    from public.pedidos_tpv p
+   where p.empresa_id=p_empresa_id
+     and p.local_id=p_local_id
+     and p.id=v_linea.pedido_id;
   if v_linea.estado in ('BORRADOR','CANCELADA') then
     raise exception 'reparto_linea_no_repartible';
   end if;
