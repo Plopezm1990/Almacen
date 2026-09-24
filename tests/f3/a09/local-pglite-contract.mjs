@@ -1,5 +1,6 @@
 // Functional local smoke on PostgreSQL 18 WASM. PostgreSQL 16 CI remains required.
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { bootstrapA08 } from './local-pglite-bootstrap.mjs';
@@ -24,8 +25,12 @@ const call = async ({ operationId, accountId = account2, kind = 'AMOUNT', value 
 };
 
 try {
-  await db.exec(await readFile(resolve(root,
-    'tests/f3/a09/a09-migration-draft.sql'), 'utf8'));
+  const draft=await readFile(resolve(root,'tests/f3/a09/a09-migration-draft.sql'));
+  const migration=await readFile(resolve(root,'supabase/migrations',
+    '20260924160739_abc_f3_a09_descuentos_cortesias.sql'));
+  assert.equal(createHash('sha256').update(migration).digest('hex'),
+    createHash('sha256').update(draft).digest('hex'),'migration must match reviewed draft bytes');
+  await db.exec(migration.toString('utf8'));
   const a08 = await readFile(resolve(root, 'tests/f3/a08/a08-contract.sql'), 'utf8');
   const marker = a08.indexOf('-- Replay exacto.');
   if (marker < 0) throw new Error('A08 fixture marker absent');

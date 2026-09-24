@@ -1,16 +1,22 @@
 // Real PostgreSQL 16/17 contract. Requires a disposable local server and pg in TEMP.
-// A09 remains a draft under tests/f3/a09; this script never touches remote databases.
+// A09 migration is a local candidate; this script never touches remote databases.
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve, dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { projectFiscalCents } from './fiscal-cents.mjs';
+import {
+  SNAPSHOT_CANONICALIZATION, SNAPSHOT_HASH_ALGORITHM, SNAPSHOT_SCHEMA_VERSION,
+  assertSnapshotAmount, canonicalSnapshotBytes, hashSnapshot,
+} from './snapshot-jcs.mjs';
 
 const require = createRequire(import.meta.url);
 const { Client } = require(process.env.A09_PG_CLIENT ??
   join(tmpdir(), 'a09-pg-client', 'node_modules', 'pg'));
 const root = resolve(import.meta.dirname, '../../..');
+const migrationName='20260924160739_abc_f3_a09_descuentos_cortesias.sql';
 const port = Number(process.env.A09_PG_PORT ?? 55416);
 const database = process.env.A09_PG_DATABASE ?? 'a09';
 const owner = '00000000-0000-0000-0000-000000000021';
@@ -45,7 +51,11 @@ async function bootstrap(db) {
   for (const name of migrations) {
     await db.query(await readFile(resolve(root, 'supabase/migrations', name), 'utf8'));
   }
-  await db.query(await readFile(resolve(root, 'tests/f3/a09/a09-migration-draft.sql'), 'utf8'));
+  const draft=await readFile(resolve(root,'tests/f3/a09/a09-migration-draft.sql'));
+  const migration=await readFile(resolve(root,'supabase/migrations',migrationName));
+  assert.equal(createHash('sha256').update(migration).digest('hex'),
+    createHash('sha256').update(draft).digest('hex'),'migration must match reviewed draft bytes');
+  await db.query(migration.toString('utf8'));
   const a08 = await readFile(resolve(root, 'tests/f3/a08/a08-contract.sql'), 'utf8');
   const marker = a08.indexOf('-- Replay exacto.');
   assert(marker > 0);
@@ -53,16 +63,17 @@ async function bootstrap(db) {
   process.stdout.write(`PASS PostgreSQL ${((await db.query('show server_version')).rows[0].server_version)} bootstrap\n`);
 }
 
-async function actor(db) {
+async function actor(db, userId = owner) {
   await db.query('select set_config($1,$2,false),set_config($3,$4,false),set_config($5,$6,false)',
-    ['app.test_empresa','emp-f','app.test_local','loc-f1','request.jwt.claim.sub',owner]);
+    ['app.test_empresa','emp-f','app.test_local','loc-f1','request.jwt.claim.sub',userId]);
 }
 
-async function discount(db, operationId, accountId, version, kind = 'AMOUNT', value = '2') {
+async function discount(db, operationId, accountId, version, kind = 'AMOUNT', value = '2',
+  tenant = 'emp-f', local = 'loc-f1', reason = 'Prueba A09 local') {
   const result = await db.query(`select public.abc_aplicar_descuento_cuenta(
-    $1,'emp-f','loc-f1',$2::uuid,$3,$4::numeric,'Prueba A09 local',
-    $5,$6::uuid,$7::uuid,$8::date) as value`,
-  [operationId, accountId, kind, value, version, terminal, session, day]);
+    $1,$2,$3,$4::uuid,$5,$6::numeric,$7,
+    $8,$9::uuid,$10::uuid,$11::date) as value`,
+  [operationId, tenant, local, accountId, kind, value, reason, version, terminal, session, day]);
   return result.rows[0].value;
 }
 
@@ -221,10 +232,83 @@ try {
   assert.deepEqual(security,{guard:true,security_definer:true,
     authenticated_execute:false,service_execute:false,projection_definer:true,
     projection_authenticated:false,audit_rls:true});
+  const acl=(await db.query(`select
+    has_function_privilege('authenticated',
+      'public.abc_aplicar_descuento_cuenta(text,text,text,uuid,text,numeric,text,bigint,uuid,uuid,date)','EXECUTE') authenticated_execute,
+    has_function_privilege('anon',
+      'public.abc_aplicar_descuento_cuenta(text,text,text,uuid,text,numeric,text,bigint,uuid,uuid,date)','EXECUTE') anon_execute,
+    has_function_privilege('service_role',
+      'public.abc_aplicar_descuento_cuenta(text,text,text,uuid,text,numeric,text,bigint,uuid,uuid,date)','EXECUTE') service_execute,
+    has_table_privilege('authenticated','public.abc_descuento_politicas','SELECT') policy_select,
+    has_table_privilege('authenticated','public.abc_descuento_politicas','INSERT') policy_insert,
+    has_table_privilege('authenticated','public.abc_descuentos_aplicados','SELECT') audit_select,
+    has_table_privilege('authenticated','public.abc_descuentos_aplicados','INSERT') audit_insert,
+    has_table_privilege('authenticated','public.abc_descuentos_aplicados','UPDATE') audit_update,
+    (select relrowsecurity from pg_class where oid='public.abc_descuento_politicas'::regclass) policy_rls`)).rows[0];
+  assert.deepEqual(acl,{authenticated_execute:true,anon_execute:false,service_execute:false,
+    policy_select:false,policy_insert:false,audit_select:true,audit_insert:false,
+    audit_update:false,policy_rls:true});
+  for (const signature of ['private.abc_a09_jcs(jsonb)',
+    'private.abc_a09_snapshot_hash(jsonb)',
+    'private.abc_a09_validar_importe_snapshot(text,text)']) {
+    for (const role of ['authenticated','anon','service_role']) {
+      assert.equal((await db.query('select has_function_privilege($1,$2,$3) allowed',
+        [role,signature,'EXECUTE'])).rows[0].allowed,false,
+      `${role} must not execute ${signature}`);
+    }
+  }
   process.stdout.write('PASS A09 fiscal trigger ACL/RLS\n');
+
+  const snapshotVector={
+    schema_version:SNAPSHOT_SCHEMA_VERSION,
+    canonicalization:SNAPSHOT_CANONICALIZATION,
+    hash_algorithm:SNAPSHOT_HASH_ALGORITHM,
+    currency:'EUR',
+    line:{id:'82000000-0000-0000-0000-000000000040',subtotal:'0.05500000',
+      discount:'0.00000000',base:'0.05000000',tax:'0.00500000',total:'0.05500000',
+      total_cents:'6',base_cents:'5',tax_cents:'1',rounding_adjustment_cents:'0',
+      vat_rate:'10.0000'},
+    text_vector:'café 😀\n\u0001',flags:[true,null,false],
+  };
+  const canonicalBytes=canonicalSnapshotBytes(snapshotVector);
+  const {rows:[jcs]}=await db.query(`select
+    private.abc_a09_jcs($1::jsonb) canonical,
+    private.abc_a09_snapshot_hash($1::jsonb) hash`,[JSON.stringify(snapshotVector)]);
+  assert.equal(jcs.canonical,canonicalBytes.toString('utf8'));
+  assert.equal(jcs.hash,hashSnapshot(snapshotVector));
+  assert.equal(jcs.hash,'90dcc4b3d6d7e46ec762973ecbee3c880d65bb7a6e22f940817f5c59bf6eca35');
+  for (const vector of [{z:'"/\\\n\r\t\u0001',a:'niño'},
+    {schema_version:SNAPSHOT_SCHEMA_VERSION,amount:'-0.00000001',cents:'-1'}]) {
+    const {rows:[parity]}=await db.query(`select private.abc_a09_jcs($1::jsonb) canonical,
+      private.abc_a09_snapshot_hash($1::jsonb) hash`,[JSON.stringify(vector)]);
+    assert.equal(parity.canonical,canonicalSnapshotBytes(vector).toString('utf8'));
+    assert.equal(parity.hash,hashSnapshot(vector));
+  }
+  for (const [value,scale] of [['0.00000000','DECIMAL_8'],['-0.00000001','DECIMAL_8'],
+    ['-10.25000000','DECIMAL_8'],['-1','CENT_INTEGER'],['0','CENT_INTEGER']]) {
+    assertSnapshotAmount(value,scale);
+    assert.equal((await db.query(
+      'select private.abc_a09_validar_importe_snapshot($1,$2) valid',[value,scale])).rows[0].valid,true);
+  }
+  for (const [value,scale] of [['-0.00000000','DECIMAL_8'],['+1.00000000','DECIMAL_8'],
+    ['01.00000000','DECIMAL_8'],['-0','CENT_INTEGER'],['01','CENT_INTEGER']]) {
+    assert.throws(()=>assertSnapshotAmount(value,scale));
+    assert.equal((await db.query(
+      'select private.abc_a09_validar_importe_snapshot($1,$2) valid',[value,scale])).rows[0].valid,false);
+  }
+  await assert.rejects(db.query('select private.abc_a09_jcs(\'{"amount":0.1}\'::jsonb)'),
+    /a09_jcs_json_numbers_forbidden/);
+  process.stdout.write('PASS SQL/JS RFC8785 canonical UTF-8 bytes, SHA-256 and amount grammar\n');
   await actor(db);
   await actor(other);
+  await db.query('set role authenticated');
+  await assert.rejects(db.query(`update public.abc_descuentos_aplicados set motivo='tamper'`),
+    /denegado|permission denied/i);
+  await assert.rejects(db.query(`insert into public.abc_descuento_politicas(
+    empresa_id,local_id,rol,max_percent) values ('emp-f','loc-f1','Propietario',100)`),
+    /denegado|permission denied/i);
   const result = await discount(db,'a09.pg.split',account2,3);
+  await db.query('reset role');
   assert.equal(result.descuento, 2);
   const recon = await exactReconciliation(db,line);
   assert.equal(recon.source_total, '41.80000000');
@@ -232,6 +316,157 @@ try {
   assert.deepEqual(retry,result);
   await assert.rejects(discount(other,'a09.pg.split',account2,3,'AMOUNT','1'),/operation_id_conflict/);
   process.stdout.write('PASS A08 split, source sums and idempotency across real connections\n');
+
+  await db.query('set role anon');
+  await assert.rejects(discount(db,'a09.pg.anon',account1,1),/denegado|permission denied/i);
+  await db.query('reset role');
+  await db.query('set role authenticated');
+  await db.query("select set_config('app.test_local','loc-f2',false)");
+  await assert.rejects(discount(db,'a09.pg.cross-local',account1,1),/descuento_no_autorizado/);
+  await db.query("select set_config('app.test_local','loc-f1',false)");
+  await assert.rejects(discount(db,'a09.pg.cross-company',account1,1,'AMOUNT','1','emp-other','loc-f1'),
+    /descuento_no_autorizado/);
+  await assert.rejects(discount(db,'a09.pg.blank-reason',account1,1,'AMOUNT','1',
+    'emp-f','loc-f1','   '),/descuento_parametros_invalidos/);
+  await db.query('reset role');
+  assert.equal((await db.query(`select count(*)::int n from public.abc_descuentos_aplicados
+    where operation_id in ('a09.pg.anon','a09.pg.cross-local','a09.pg.cross-company',
+      'a09.pg.blank-reason')`)).rows[0].n,0);
+  process.stdout.write('PASS authenticated-only execution, tenant isolation and reason validation\n');
+
+  const manager=await makeLine(db,'70');
+  const managerId='00000000-0000-0000-0000-000000000022';
+  await db.query(`update public.membresias_usuario set rol='Encargado'
+    where user_id=$1 and empresa_id='emp-f' and local_id='loc-f1'`,[managerId]);
+  await actor(db,managerId);
+  await db.query('set role authenticated');
+  await assert.rejects(discount(db,'a09.pg.manager.over-cap',manager.account,1,'AMOUNT','3'),
+    /descuento_limite_acumulado_excedido/);
+  assert.equal((await db.query(`select count(*)::int n from public.abc_descuentos_aplicados
+    where operation_id='a09.pg.manager.over-cap'`)).rows[0].n,0);
+  const managerDiscount=await discount(db,'a09.pg.manager.cap',manager.account,1,'AMOUNT','2');
+  await db.query('reset role');
+  await actor(db);
+  assert.equal(Number(managerDiscount.descuento),2);
+  assert.equal((await db.query(`select count(*)::int n from public.abc_descuentos_aplicados
+    where operation_id='a09.pg.manager.cap' and solicitante_id=$1
+      and autorizador_id=$1 and importe=2`,[managerId])).rows[0].n,1);
+  process.stdout.write('PASS Encargado cap, atomic audit and exact 20 percent boundary\n');
+
+  const negativeAccount='50000000-0000-0000-0000-000000000090';
+  const negativeTarget='50000000-0000-0000-0000-000000000091';
+  const negativeOrder='60000000-0000-0000-0000-000000000090';
+  const negativeLine='70000000-0000-0000-0000-000000000090';
+  const negativeGroup='a0000000-0000-0000-0000-000000000090';
+  const negativeOption='b0000000-0000-0000-0000-000000000090';
+  await createAccount(db,negativeAccount);
+  await createAccount(db,negativeTarget);
+  await db.query(`insert into public.pedidos_tpv(
+    id,empresa_id,local_id,cuenta_id,currency_code,estado,version,created_by,created_operating_day)
+    values ($1,'emp-f','loc-f1',$2,'EUR','ABIERTO',1,$3,$4::date)`,
+    [negativeOrder,negativeAccount,owner,day]);
+  await db.query(`insert into public.catalogo_tpv_grupos_opciones(
+    id,empresa_id,local_id,nombre,tipo_grupo,orden,activo,version)
+    values ($1,'emp-f','loc-f1','Retirada A09','MODIFICADOR',1,true,1)`,[negativeGroup]);
+  await db.query(`insert into public.catalogo_tpv_producto_grupos(
+      empresa_id,local_id,producto_id,currency_code,grupo_id,min_selecciones,
+      max_selecciones,orden,activo,version)
+      values ('emp-f','loc-f1','prod-unit-f','EUR',$1,1,1,1,true,1)`,[negativeGroup]);
+  await db.query(`insert into public.catalogo_tpv_opciones(
+      id,empresa_id,local_id,grupo_id,currency_code,nombre,tipo_opcion,
+      delta_precio,hereda_impuesto,impuesto_pct,max_cantidad,orden,activo,version,snapshot_origen)
+      values ($2,'emp-f','loc-f1',$1,'EUR','Sin ingrediente','RETIRADA',-2,true,
+        null,1,1,true,1,'{}'::jsonb)`,[negativeGroup,negativeOption]);
+  const selection=[{grupo_id:negativeGroup,opcion_id:negativeOption,cantidad:1,
+    expected_group_version:1,expected_product_group_version:1,expected_option_version:1}];
+  await db.query(`select public.abc_agregar_linea_pedido_configurada(
+    'a09.pg.a04.negative.add','emp-f','loc-f1',$1,$2,'prod-unit-f',2,1,$3::jsonb,
+    1,$4::uuid,$5::uuid,$6::date)`,
+    [negativeLine,negativeOrder,JSON.stringify(selection),terminal,session,day]);
+  await db.query(`select public.abc_confirmar_linea_pedido_configurada(
+    'a09.pg.a04.negative.confirm','emp-f','loc-f1',$1,1,$2::jsonb,1,2,
+    $3::uuid,$4::uuid,$5::date)`,
+    [negativeLine,JSON.stringify(selection),terminal,session,day]);
+  const a04Line=(await db.query(`select base::text,impuestos::text,total::text,version
+    from public.pedido_lineas where id=$1`,[negativeLine])).rows[0];
+  assert.deepEqual(a04Line,{base:'16.00000000',impuestos:'1.60000000',total:'17.60000000',version:'2'});
+  const splitResult=await moveLine(db,'a09.pg.a04.negative.split',negativeLine,
+    negativeAccount,negativeTarget,1,1,1,2);
+  const applied=await discount(db,'a09.pg.a04.negative.discount',negativeTarget,
+    splitResult.cuenta_destino_version,'AMOUNT','2');
+  const appliedRetry=await discount(other,'a09.pg.a04.negative.discount',negativeTarget,
+    splitResult.cuenta_destino_version,'AMOUNT','2');
+  assert.deepEqual(appliedRetry,applied);
+  const sourceSums=await assertActiveSourceSums(db,negativeLine,
+    {quantity:'2.00000000',discount:'2.00000000',base:'14.00000000',
+      tax:'1.40000000',total:'15.40000000'});
+  const persistedOption=(await db.query(`select delta_precio_unitario::text delta,
+    base::text,impuestos::text tax from public.pedido_linea_opciones
+    where linea_id=$1`,[negativeLine])).rows[0];
+  assert.deepEqual(persistedOption,{delta:'-2.00000000',base:'-4.00000000',tax:'-0.40000000'});
+  const audit=(await db.query(`select tipo,importe::text,solicitante_id::text,
+    autorizador_id::text,motivo from public.abc_descuentos_aplicados
+    where operation_id='a09.pg.a04.negative.discount'`)).rows;
+  assert.deepEqual(audit,[{tipo:'AMOUNT',importe:'2.00000000',solicitante_id:owner,
+    autorizador_id:owner,motivo:'Prueba A09 local'}]);
+  assert.equal((await db.query(`select count(*)::int n from public.abc_eventos
+    where operation_id='a09.pg.a04.negative.discount'
+      and event_type='CUENTA_DESCUENTO_APLICADO'`)).rows[0].n,1);
+  assert.equal((await db.query(`select count(*)::int n from public.abc_descuentos_aplicados
+    where operation_id='a09.pg.a04.negative.discount'`)).rows[0].n,1);
+  const negativeRepart=(await db.query(`select id from public.cuenta_linea_repartos
+    where source_line_id=$1 and cuenta_id=$2 and estado='ACTIVO'`,
+    [negativeLine,negativeTarget])).rows[0].id;
+  const negativeFiscal='81000000-0000-0000-0000-000000000090';
+  await fiscalHeader(db,negativeFiscal,negativeTarget,negativeLine,negativeRepart);
+  const negativeFiscalValues=await fiscalExact(db,negativeFiscal,negativeRepart);
+  assert.equal(negativeFiscalValues.subtotal,'8.00000000');
+  assert.equal(negativeFiscalValues.discount,'2.00000000');
+  assert.equal(negativeFiscalValues.tax,'0.60000000');
+  assert.equal(negativeFiscalValues.total,'6.60000000');
+  assert.deepEqual(sourceSums,{quantity:'2.00000000',discount:'2.00000000',
+    base:'14.00000000',tax:'1.40000000',total:'15.40000000'});
+  await db.query(`update public.catalogo_tpv_producto_grupos set activo=false
+    where empresa_id='emp-f' and local_id='loc-f1' and producto_id='prod-unit-f' and grupo_id=$1`,
+    [negativeGroup]);
+  await db.query(`update public.catalogo_tpv_grupos_opciones set activo=false where id=$1`,
+    [negativeGroup]);
+  process.stdout.write('PASS real A04 negative modifier → A08 split → A09 discount/retry → current fiscal share\n');
+
+  const closedAccount='50000000-0000-0000-0000-000000000092';
+  await createAccount(db,closedAccount);
+  await db.query(`update public.cuentas_comerciales set estado='CERRADA',closed_at=now()
+    where id=$1`,[closedAccount]);
+  await assert.rejects(discount(db,'a09.pg.closed',closedAccount,1),/descuento_cuenta_no_abierta/);
+  assert.equal((await db.query(`select count(*)::int n from public.abc_eventos
+    where operation_id='a09.pg.closed'`)).rows[0].n,0);
+  process.stdout.write('PASS closed-account state rejects discount without audit/event effects\n');
+
+  const draft=await makeLine(db,'60');
+  await db.query(`update public.pedido_lineas set estado='BORRADOR' where id=$1`,[draft.source]);
+  await assert.rejects(discount(db,'a09.pg.draft',draft.account,1),/descuento_linea_no_apta/);
+  const cancelled=await makeLine(db,'61');
+  await db.query(`update public.pedido_lineas set estado='CANCELADA' where id=$1`,[cancelled.source]);
+  await assert.rejects(discount(db,'a09.pg.cancelled',cancelled.account,1),/descuento_cuenta_sin_lineas/);
+  assert.equal((await db.query(`select count(*)::int n from public.abc_descuentos_aplicados
+    where operation_id in ('a09.pg.draft','a09.pg.cancelled')`)).rows[0].n,0);
+  const partial=await makeLine(db,'62',{quantity:'2'});
+  const partialDoc='81000000-0000-0000-0000-000000000062';
+  await db.query(`insert into public.ventas_fiscales(
+    id,empresa_id,local_id,cuenta_id,entidad_fiscal_id,currency_code,estado,version,
+    subtotal,descuento_total,impuestos_total,total,snapshot_calculo,created_by,created_operating_day)
+    values ($1,'emp-f','loc-f1',$2,$3,'EUR','ABIERTA',1,10,0,1,11,'{}'::jsonb,$4,$5::date)`,
+    [partialDoc,partial.account,issuer,owner,day]);
+  await db.query(`insert into public.venta_fiscal_lineas(
+    empresa_id,local_id,venta_fiscal_id,source_line_id,entidad_fiscal_id,currency_code,
+    cantidad,precio_unitario,descuento,base,impuesto,total,snapshot)
+    values ('emp-f','loc-f1',$1,$2,$3,'EUR',1,10,0,10,1,11,'{}'::jsonb)`,
+    [partialDoc,partial.source,issuer]);
+  await assert.rejects(discount(db,'a09.pg.preexisting-partial',partial.account,1),
+    /descuento_linea_fiscalizada/);
+  assert.equal((await db.query(`select count(*)::int n from public.abc_eventos
+    where operation_id in ('a09.pg.draft','a09.pg.cancelled','a09.pg.preexisting-partial')`)).rows[0].n,0);
+  process.stdout.write('PASS draft/cancelled/fiscalized source states reject discount without audit/event effects\n');
 
   const repart = (await db.query(`select id from public.cuenta_linea_repartos
     where source_line_id=$1 and cuenta_id=$2 and estado='ACTIVO'`,[line,account2])).rows[0].id;
@@ -574,7 +809,8 @@ try {
   const serverVersion = (await db.query('show server_version_num')).rows[0].server_version_num;
   assert(['16','17'].includes(serverVersion.slice(0,2)));
   process.stdout.write(`A09_POSTGRES_LOCKS_${serverVersion}=PASS\n`);
-  process.stdout.write('A09_LOCAL_ACCEPTANCE=OPEN future fiscal snapshot/outbox enforcement\n');
+  process.stdout.write('A09_COMMERCIAL_ACCEPTANCE=PASS_WITH_EXPLICIT_SCOPE\n');
+  process.stdout.write('FISCAL_SNAPSHOT_OUTBOX=RESERVED_FOR_FUTURE_PHASE\n');
 } catch (error) {
   process.stderr.write(`A09_POSTGRES_CONTRACT=FAIL ${error.stack}\n`);
   process.exitCode=1;
