@@ -25,7 +25,7 @@ const call = async ({ operationId, accountId = account2, kind = 'AMOUNT', value 
 
 try {
   await db.exec(await readFile(resolve(root,
-    'supabase/migrations/20260924093852_abc_f3_a09_discounts_courtesies.sql'), 'utf8'));
+    'tests/f3/a09/a09-migration-draft.sql'), 'utf8'));
   const a08 = await readFile(resolve(root, 'tests/f3/a08/a08-contract.sql'), 'utf8');
   const marker = a08.indexOf('-- Replay exacto.');
   if (marker < 0) throw new Error('A08 fixture marker absent');
