@@ -80,10 +80,21 @@ test('porcentaje a nivel cuenta reparte entre líneas y conserva totales', () =>
   assert.deepEqual([result.discount, result.base, result.tax, result.total], ['3', '27', '4.68', '31.68']);
 });
 
+test('un descuento de cuenta no puede convertir una línea pequeña en cortesía', () => {
+  assert.throws(() => applyAccountDiscount({
+    lines: [
+      { lineId: 'large', components: [{ base: '1', taxPct: '0' }] },
+      { lineId: 'tiny', components: [{ base: '0.00000001', taxPct: '0' }] },
+    ], kind: 'AMOUNT', value: '1',
+  }), /courtesy_required/);
+});
+
 test('los límites de autorización y precio se rechazan antes de persistir', () => {
   const line = { components: [{ base: '10', taxPct: '10' }] };
   assert.throws(() => applyLineDiscount({ ...line, kind: 'PERCENT', value: '100.00000001' }), /discount_percent_exceeded/);
   assert.throws(() => applyLineDiscount({ ...line, kind: 'AMOUNT', value: '11' }), /discount_base_exceeded/);
+  assert.throws(() => applyLineDiscount({ ...line, kind: 'AMOUNT', value: '10' }), /courtesy_required/);
+  assert.throws(() => applyLineDiscount({ ...line, kind: 'PERCENT', value: '100' }), /courtesy_required/);
   assert.throws(() => applyLineDiscount({ ...line, kind: 'AMOUNT', value: '9', minimumRemainingBase: '2' }), /price_floor_violated/);
   assert.throws(() => applyLineDiscount({ ...line, kind: 'AMOUNT', value: '0' }), /discount_zero/);
   assert.throws(() => applyLineDiscount({ ...line, kind: 'PERCENT', value: '0.00000001' }), /discount_effective_zero/);

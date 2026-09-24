@@ -48,6 +48,13 @@ test('política específica de usuario puede ampliar capacidad, pero deja rastro
   assert.equal(engine.audit[0].reason, 'Atención al cliente');
 });
 
+test('100 % por importe o porcentaje no elude la capacidad de cortesía', async () => {
+  const engine = new DiscountCommandReference(state({ userLimits: { cashier: '100' } }));
+  await assert.rejects(engine.execute(request({ value: '10' }), 'cashier'), /courtesy_required/);
+  await assert.rejects(engine.execute(request({ kind: 'PERCENT', value: '100' }), 'cashier'), /courtesy_required/);
+  assert.equal(engine.audit.length, 0);
+});
+
 test('motivo y doble autorización pendiente fallan sin efectos', async () => {
   const engine = new DiscountCommandReference(state());
   await assert.rejects(engine.execute(request({ reason: '  ' }), 'owner'), /reason_required/);

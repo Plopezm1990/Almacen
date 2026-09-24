@@ -67,6 +67,7 @@ function discountAmount(kind, value, available, allowZero = false) {
   if (kind === 'PERCENT' && requested > 100n * SCALE) throw new Error('discount_percent_exceeded');
   if (amount === 0n && !allowZero) throw new Error('discount_effective_zero');
   if (amount > available) throw new Error('discount_base_exceeded');
+  if (amount === available && !allowZero) throw new Error('courtesy_required');
   return amount;
 }
 
@@ -153,6 +154,10 @@ export function applyAccountDiscount({ lines, kind, value }) {
       allowZero: true,
     }),
   }));
+  if (kind !== 'COURTESY' && results.some((line) =>
+    decimal(line.discount, 'discount') > 0n && decimal(line.base, 'base') === 0n)) {
+    throw new Error('courtesy_required');
+  }
   return {
     grossBase: format(totalBase),
     discount: format(discount),

@@ -366,6 +366,9 @@ begin
     when 'PERCENT' then round(v_base*p_valor/100,8)
     else p_valor end;
   if v_amount<=0 or v_amount>v_base then raise exception 'descuento_importe_fuera_base'; end if;
+  if v_kind<>'COURTESY' and v_amount=v_base then
+    raise exception 'descuento_cortesia_requerida';
+  end if;
 
   -- Unidades de 10^-8, restos mayores y empate por reparto.id.
   for v_alloc in
@@ -391,6 +394,9 @@ begin
   loop
     if v_alloc.amount=0 then continue; end if;
     select * into v_row from public.cuenta_linea_repartos where id=v_alloc.id for update;
+    if v_kind<>'COURTESY' and v_alloc.amount=v_row.base then
+      raise exception 'descuento_cortesia_requerida';
+    end if;
     select coalesce(
       nullif(l.snapshot_calculo->>'impuesto_base_pct','')::numeric,
       nullif(l.snapshot_calculo->>'impuesto_pct','')::numeric,

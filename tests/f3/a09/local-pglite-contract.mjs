@@ -167,6 +167,11 @@ try {
     [negativeLine])).rows[0];
   assert.deepEqual(Object.values(negativeAmounts).map(Number), [1.6,6.4,0.64,7.04]);
   process.stdout.write('PASS A04 negative modifier uses net base\n');
+  await assert.rejects(call({ operationId: 'a09.test.bypass.amount', accountId: account3,
+    value: '6.4', version: 2 }), /descuento_cortesia_requerida/);
+  await assert.rejects(call({ operationId: 'a09.test.bypass.percent', accountId: account3,
+    kind: 'PERCENT', value: '100', version: 2 }), /descuento_cortesia_requerida/);
+  process.stdout.write('PASS full discount requires COURTESY operation\n');
 
   const tinyLine = '70000000-0000-0000-0000-000000000021';
   await db.exec(`insert into public.pedido_lineas(
@@ -179,6 +184,8 @@ try {
     '${owner}',date '${day}');`);
   const negativeVersionBefore = (await db.query('select version from public.pedido_lineas where id=$1',
     [negativeLine])).rows[0].version;
+  await assert.rejects(call({ operationId: 'a09.test.bypass.row', accountId: account3,
+    value: '14.39999999', version: 2 }), /descuento_cortesia_requerida/);
   result = await call({ operationId: 'a09.test.rounding', accountId: account3,
     value: '0.00000001', version: 2 });
   assert.equal(Number(result.descuento), 0.00000001);
