@@ -66,6 +66,41 @@ async function discount(db, operationId, accountId, version, kind = 'AMOUNT', va
   return result.rows[0].value;
 }
 
+async function createAccount(db, accountId) {
+  await db.query(`insert into public.cuentas_comerciales(
+    id,empresa_id,local_id,currency_code,modalidad,estado,version,created_by,opened_operating_day)
+    values ($1,'emp-f','loc-f1','EUR','BARRA','ABIERTA',1,$2,$3::date)`,
+    [accountId,owner,day]);
+}
+
+async function accountVersion(db, accountId) {
+  return (await db.query(`select version from public.cuentas_comerciales where id=$1`,
+    [accountId])).rows[0].version;
+}
+
+async function moveLine(db, operationId, sourceLine, sourceAccount, destinationAccount,
+  quantity, sourceVersion, destinationVersion, lineVersion) {
+  return (await db.query(`select public.abc_mover_cantidad_linea_cuenta(
+    $1,'emp-f','loc-f1',$2::uuid,$3::uuid,$4::uuid,$5,'Prueba A09 reparto',
+    $6,$7,$8,$9::uuid,$10::uuid,$11::date) as value`,
+  [operationId,sourceLine,sourceAccount,destinationAccount,quantity,
+    sourceVersion,destinationVersion,lineVersion,terminal,session,day])).rows[0].value;
+}
+
+async function assertActiveSourceSums(db, sourceLine, expected) {
+  const {rows:[actual]} = await db.query(`select sum(r.cantidad)::text quantity,
+    sum(r.descuento)::text discount,sum(r.base)::text base,
+    sum(r.impuestos)::text tax,sum(r.total)::text total
+    from public.cuenta_linea_repartos r where r.source_line_id=$1 and r.estado='ACTIVO'`,
+  [sourceLine]);
+  const {rows:[source]} = await db.query(`select cantidad::text quantity,
+    descuento_total::text discount,base::text,impuestos::text tax,total::text
+    from public.pedido_lineas where id=$1`,[sourceLine]);
+  assert.deepEqual(actual,source,'active A08 shares must equal the source line exactly');
+  if (expected) assert.deepEqual(actual,expected);
+  return actual;
+}
+
 async function exactReconciliation(db, sourceLine) {
   const {rows} = await db.query(`select
     l.descuento_total::text source_discount,l.base::text source_base,
@@ -129,7 +164,7 @@ async function fiscalExact(db, fiscalId, expectedRepartId) {
 }
 
 async function makeLine(db, suffix, amounts = {}) {
-  const {account: sharedAccount,price='10',discount='0',base='10',tax='1',total='11',rate='10'} = amounts;
+  const {account: sharedAccount,price='10',discount='0',base='10',tax='1',total='11',rate='10',quantity='1'} = amounts;
   const account = sharedAccount ?? `50000000-0000-0000-0000-0000000000${suffix}`;
   const order = `60000000-0000-0000-0000-0000000000${suffix}`;
   const source = `70000000-0000-0000-0000-0000000000${suffix}`;
@@ -145,10 +180,10 @@ async function makeLine(db, suffix, amounts = {}) {
     id,empresa_id,local_id,pedido_id,producto_id,cantidad,unidad,estado,version,
     entidad_fiscal_id,currency_code,precio_unitario,descuento_total,base,impuestos,total,
     snapshot_comercial,snapshot_calculo,created_by,created_operating_day)
-    values ($1,'emp-f','loc-f1',$2,'prod-unit-f',1,'ud','CONFIRMADA',1,
+    values ($1,'emp-f','loc-f1',$2,'prod-unit-f',$12,'ud','CONFIRMADA',1,
       $3,'EUR',$6,$7,$8,$9,$10,jsonb_build_object('impuesto_pct',$11::numeric),
       jsonb_build_object('modo','SERVER_AUTHORITY_A03','impuesto_pct',$11::numeric),$4,$5::date)`,
-    [source,order,issuer,owner,day,price,discount,base,tax,total,rate]);
+    [source,order,issuer,owner,day,price,discount,base,tax,total,rate,quantity]);
   return {account,source};
 }
 
@@ -269,6 +304,71 @@ try {
   await exactReconciliation(db,third.source);
   process.stdout.write('PASS two discounts: row lock, one winner, stale version without extra audit\n');
 
+  const splitFirst=await makeLine(db,'50',{price:'5',base:'10',tax:'1',total:'11',quantity:'2'});
+  const splitFirstTarget='50000000-0000-0000-0000-000000000051';
+  await createAccount(db,splitFirstTarget);
+  await db.query('begin');
+  const splitFirstResult=await moveLine(db,'a09.pg.split-before-discount',splitFirst.source,
+    splitFirst.account,splitFirstTarget,1,1,1,1);
+  const concurrentDiscount=discount(other,'a09.pg.split-first-discount',
+    splitFirstTarget,splitFirstResult.cuenta_destino_version,'AMOUNT','1');
+  await waitForLock(db,'a09-other');
+  await db.query('commit');
+  const splitFirstDiscount=await concurrentDiscount;
+  assert.deepEqual(await discount(db,'a09.pg.split-first-discount',splitFirstTarget,
+    splitFirstResult.cuenta_destino_version,'AMOUNT','1'),splitFirstDiscount);
+  await assert.rejects(discount(other,'a09.pg.split-first-stale',splitFirstTarget,1,'AMOUNT','1'),
+    /cuenta_version_conflict/);
+  assert.equal((await db.query(`select count(*)::int n from public.abc_descuentos_aplicados
+    where operation_id='a09.pg.split-first-discount'`)).rows[0].n,1);
+  const splitFirstSums=await assertActiveSourceSums(db,splitFirst.source);
+  assert.deepEqual(splitFirstSums,{quantity:'2.00000000',discount:'1.00000000',
+    base:'9.00000000',tax:'0.90000000',total:'9.90000000'});
+  const splitFirstRepart=(await db.query(`select id from public.cuenta_linea_repartos
+    where source_line_id=$1 and cuenta_id=$2 and estado='ACTIVO'`,
+    [splitFirst.source,splitFirstTarget])).rows[0].id;
+  const splitFirstDoc='81000000-0000-0000-0000-000000000050';
+  await fiscalHeader(db,splitFirstDoc,splitFirstTarget,splitFirst.source,splitFirstRepart);
+  assert.equal((await fiscalExact(db,splitFirstDoc,splitFirstRepart)).total,'4.40000000');
+  process.stdout.write('PASS A08 split first, concurrent A09 retry/stale version, then current fiscal share\n');
+
+  const discountFirst=await makeLine(db,'52',{price:'5',base:'10',tax:'1',total:'11',quantity:'2'});
+  const discountFirstTarget='50000000-0000-0000-0000-000000000053';
+  await createAccount(db,discountFirstTarget);
+  await db.query('begin');
+  await discount(db,'a09.pg.discount-before-split',discountFirst.account,1,'AMOUNT','1');
+  const staleSplit=moveLine(other,'a09.pg.stale-split-after-discount',discountFirst.source,
+    discountFirst.account,discountFirstTarget,1,1,1,1);
+  await waitForLock(db,'a09-other');
+  await db.query('commit');
+  await assert.rejects(staleSplit,/cuenta_origen_version_conflict/);
+  assert.equal((await db.query(`select count(*)::int n from public.abc_eventos
+    where operation_id='a09.pg.stale-split-after-discount'`)).rows[0].n,0);
+  const currentSourceVersion=await accountVersion(db,discountFirst.account);
+  const currentTargetVersion=await accountVersion(db,discountFirstTarget);
+  const currentLineVersion=(await db.query(`select version from public.pedido_lineas where id=$1`,
+    [discountFirst.source])).rows[0].version;
+  const successfulSplit=await moveLine(other,'a09.pg.split-after-discount',discountFirst.source,
+    discountFirst.account,discountFirstTarget,1,currentSourceVersion,currentTargetVersion,currentLineVersion);
+  assert.deepEqual(await moveLine(db,'a09.pg.split-after-discount',discountFirst.source,
+    discountFirst.account,discountFirstTarget,1,currentSourceVersion,currentTargetVersion,currentLineVersion),
+  successfulSplit);
+  await assert.rejects(moveLine(db,'a09.pg.split-after-discount',discountFirst.source,
+    discountFirst.account,discountFirstTarget,0.5,currentSourceVersion,currentTargetVersion,currentLineVersion),
+  /operation_id_conflict/);
+  await assert.rejects(discount(db,'a09.pg.stale-discount-after-split',discountFirstTarget,
+    currentTargetVersion,'AMOUNT','0.1'),/cuenta_version_conflict/);
+  const discountFirstSums=await assertActiveSourceSums(db,discountFirst.source);
+  assert.deepEqual(discountFirstSums,{quantity:'2.00000000',discount:'1.00000000',
+    base:'9.00000000',tax:'0.90000000',total:'9.90000000'});
+  const discountFirstRepart=(await db.query(`select id from public.cuenta_linea_repartos
+    where source_line_id=$1 and cuenta_id=$2 and estado='ACTIVO'`,
+    [discountFirst.source,discountFirstTarget])).rows[0].id;
+  const discountFirstDoc='81000000-0000-0000-0000-000000000052';
+  await fiscalHeader(db,discountFirstDoc,discountFirstTarget,discountFirst.source,discountFirstRepart);
+  assert.equal((await fiscalExact(db,discountFirstDoc,discountFirstRepart)).total,'4.95000000');
+  process.stdout.write('PASS A09 discount first, stale A08 split rollback/retry, then current fiscal share\n');
+
   const fractional = await makeLine(db,'34');
   await discount(db,'a09.pg.fractional-cent',fractional.account,1,'PERCENT','33.3333');
   await exactReconciliation(db,fractional.source);
@@ -369,6 +469,29 @@ try {
   assert(capProjection.lines.every((item)=>BigInt(item.base_cents)>=0n));
   process.stdout.write('PASS cent allocation caps displayed discount at each line subtotal\n');
 
+  const impossibleA=await makeLine(db,'42',{price:'0.0173',discount:'0.0098',
+    base:'0.0075',tax:'0',total:'0.0075',rate:'0'});
+  const impossibleB=await makeLine(db,'43',{account:impossibleA.account,price:'0.0069',
+    discount:'0.0059',base:'0.0010',tax:'0',total:'0.0010',rate:'0'});
+  const impossibleDoc='81000000-0000-0000-0000-000000000042';
+  await db.query(`insert into public.ventas_fiscales(
+    id,empresa_id,local_id,cuenta_id,entidad_fiscal_id,currency_code,
+    estado,version,subtotal,descuento_total,impuestos_total,total,
+    snapshot_calculo,created_by,created_operating_day)
+    values ($1,'emp-f','loc-f1',$2,$3,'EUR','ABIERTA',1,0.0242,0.0157,0,0.0085,'{}'::jsonb,$4,$5::date)`,
+    [impossibleDoc,impossibleA.account,issuer,owner,day]);
+  await db.query(`insert into public.venta_fiscal_lineas(
+    id,empresa_id,local_id,venta_fiscal_id,source_line_id,entidad_fiscal_id,currency_code,
+    cantidad,precio_unitario,descuento,base,impuesto,total,snapshot)
+    values
+      ('82000000-0000-0000-0000-000000000042','emp-f','loc-f1',$1,$2,$4,'EUR',1,0.0173,0.0098,0.0075,0,0.0075,'{}'::jsonb),
+      ('82000000-0000-0000-0000-000000000043','emp-f','loc-f1',$1,$3,$4,'EUR',1,0.0069,0.0059,0.0010,0,0.0010,'{}'::jsonb)`,
+    [impossibleDoc,impossibleA.source,impossibleB.source,issuer]);
+  await assert.rejects(db.query(
+    'select private.abc_a09_proyectar_centimos($1)',[impossibleDoc]),
+    /a09_proyeccion_descuento_centimos_sin_capacidad/);
+  process.stdout.write('PASS cent projection fails closed when rounded aggregate discount cannot fit line caps\n');
+
   const rateA=await makeLine(db,'40',{price:'0.055',base:'0.05',tax:'0.005',total:'0.055',rate:'10'});
   const rateB=await makeLine(db,'41',{price:'0.03',base:'0.025',tax:'0.005',total:'0.03',rate:'20'});
   const rateDoc='81000000-0000-0000-0000-000000000040';
@@ -390,6 +513,11 @@ try {
   assert.equal(rateProjection.document.tax_cents,'2');
   assert.equal(rateProjection.document.total_cents,'9');
   assert.equal(rateProjection.document.rounding_adjustment_cents,'-1');
+  assert.deepEqual(rateProjection.lines.map((item)=>[item.id,item.base_cents,
+    item.tax_cents,item.total_cents,item.rounding_adjustment_cents]),[
+    ['82000000-0000-0000-0000-000000000040','5','1','6','0'],
+    ['82000000-0000-0000-0000-000000000041','3','1','3','-1'],
+  ]);
   const rateReference=projectFiscalCents([
     {id:'82000000-0000-0000-0000-000000000040',base:'0.05',discount:'0',tax:'0.005',total:'0.055',taxBucket:'10'},
     {id:'82000000-0000-0000-0000-000000000041',base:'0.025',discount:'0',tax:'0.005',total:'0.03',taxBucket:'20'},
@@ -446,7 +574,7 @@ try {
   const serverVersion = (await db.query('show server_version_num')).rows[0].server_version_num;
   assert(['16','17'].includes(serverVersion.slice(0,2)));
   process.stdout.write(`A09_POSTGRES_LOCKS_${serverVersion}=PASS\n`);
-  process.stdout.write('A09_LOCAL_ACCEPTANCE=OPEN fiscal output integration and independent review\n');
+  process.stdout.write('A09_LOCAL_ACCEPTANCE=OPEN future fiscal snapshot/outbox enforcement\n');
 } catch (error) {
   process.stderr.write(`A09_POSTGRES_CONTRACT=FAIL ${error.stack}\n`);
   process.exitCode=1;

@@ -48,6 +48,11 @@ test('redondea el IVA dentro de cada tipo fiscal antes de conciliar el documento
   assert.equal(projected.document.subtotal,'0.08');
   assert.equal(projected.document.total,'0.09');
   assert.equal(projected.document.roundingAdjustment,'-0.01');
+  assert.deepEqual(projected.lines.map(({id,base,tax,total,roundingAdjustment})=>
+    [id,base,tax,total,roundingAdjustment]),[
+    ['a','0.05','0.01','0.06','0.00'],
+    ['b','0.03','0.01','0.03','-0.01'],
+  ]);
 });
 
 test('rechaza líneas internas incoherentes, ids duplicados y precisión superior a 8',()=>{
@@ -57,4 +62,11 @@ test('rechaza líneas internas incoherentes, ids duplicados y precisión superio
     {id:'a',base:'1',discount:'0',tax:'0',total:'1'},
   ]),/duplicado/);
   assert.throws(()=>projectFiscalCents([{id:'a',base:'1.000000001',discount:'0',tax:'0',total:'1'}]),/decimales/);
+});
+
+test('rechaza un residuo agregado de descuento que no cabe sin base visible negativa',()=>{
+  assert.throws(()=>projectFiscalCents([
+    {id:'a',base:'0.00750000',discount:'0.00980000',tax:'0',total:'0.00750000'},
+    {id:'b',base:'0.00100000',discount:'0.00590000',tax:'0',total:'0.00100000'},
+  ]),/no hay subtotal mostrado suficiente para el descuento/);
 });

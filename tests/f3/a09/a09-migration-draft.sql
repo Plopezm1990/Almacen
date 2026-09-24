@@ -535,6 +535,7 @@ returns jsonb language plpgsql stable security definer set search_path=''
 as $$
 declare
   v_projection jsonb;
+  v_expected_discount numeric;
 begin
   if exists (
     select 1 from public.venta_fiscal_lineas vl
@@ -645,6 +646,12 @@ begin
       'rounding_adjustment_cents',adjustment_cents::text,'total_cents',total_cents::text
     )) end into v_projection from line_json;
   if v_projection is null then raise exception 'a09_documento_sin_lineas'; end if;
+  select round(coalesce(sum(vl.descuento),0)*100) into v_expected_discount
+  from public.venta_fiscal_lineas vl
+  where vl.venta_fiscal_id=p_venta_fiscal_id;
+  if (v_projection#>>'{document,discount_cents}')::numeric<>v_expected_discount then
+    raise exception 'a09_proyeccion_descuento_centimos_sin_capacidad';
+  end if;
   return v_projection;
 end $$;
 revoke all on function private.abc_a09_proyectar_centimos(uuid)
