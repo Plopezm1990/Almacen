@@ -1,0 +1,137 @@
+name: "ABC F3 A08 -- account split merge"
+
+on:
+  push:
+    branches: [abc-f3-a08-account-split-merge]
+  pull_request:
+    branches: [release]
+    paths:
+      - "supabase/migrations/20260924060000_abc_f3_a08_account_split_merge.sql"
+      - "tests/f3/a08/**"
+      - ".github/workflows/abc-f3-a08-contract.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  a08-postgres-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Guardar alcance A08
+        shell: bash
+        run: |
+          set -euo pipefail
+          migration="supabase/migrations/20260924060000_abc_f3_a08_account_split_merge.sql"
+          test -f "$migration"
+
+          grep -q "create table public.cuenta_linea_repartos" "$migration"
+          grep -q "create table public.cuenta_relaciones" "$migration"
+          grep -q "create table public.cuenta_cuotas_importe" "$migration"
+          grep -q "create function public.abc_mover_cantidad_linea_cuenta" "$migration"
+          grep -q "create function public.abc_asignar_cuota_importe" "$migration"
+          grep -q "create function public.abc_revertir_cuota_importe" "$migration"
+          grep -q "create function public.abc_unir_cuentas" "$migration"
+          grep -q "create function public.abc_consultar_reparto_cuenta" "$migration"
+          grep -q "ABC_CUENTA_REPARTIR" "$migration"
+          grep -q "ABC_CUENTA_UNIR" "$migration"
+          grep -q "ABC_REPARTO_REVERTIR" "$migration"
+
+          if grep -Eiq 'grant[[:space:]]+(insert|update|delete).*cuenta_(linea_repartos|relaciones|cuotas_importe).*authenticated' "$migration"; then
+            echo "A08_SECURITY: DML directo A08 concedido a authenticated" >&2
+            exit 1
+          fi
+
+          if grep -Eiq '(insert[[:space:]]+into|update|delete[[:space:]]+from)[[:space:]]+public\.(pagos|pago_intentos|pago_aplicaciones|checkouts|checkout_ventas)' "$migration"; then
+            echo "A08_SCOPE: A08 no debe mutar cobros/checkouts" >&2
+            exit 1
+          fi
+
+          if grep -Eiq 'update[[:space:]]+public\.pedido_lineas[[:space:]]+set[[:space:]].*pedido_id' "$migration"; then
+            echo "A08_SCOPE: A08 no debe mover físicamente pedido_lineas" >&2
+            exit 1
+          fi
+
+          if grep -Eiq 'update[[:space:]]+public\.pedidos_tpv[[:space:]]+set[[:space:]].*cuenta_id' "$migration"; then
+            echo "A08_SCOPE: A08 no debe reescribir la cuenta del pedido" >&2
+            exit 1
+          fi
+
+          echo "A08_SCOPE_GUARD=PASS"
+
+      - name: Preparar fixture F2/F3
+        run: psql -v ON_ERROR_STOP=1 -f tests/f3/a08/fixture-a08.sql
+
+      - name: Aplicar M01
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql
+      - name: Aplicar M01b
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923210100_abc_f2_m01b_acl_hardening.sql
+      - name: Aplicar M02A
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923220000_abc_f2_m02a_core_comercial_fiscal.sql
+      - name: Aplicar M02B
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923230000_abc_f2_m02b_pagos_reservas_reembolsos.sql
+      - name: Aplicar M03A
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923233000_abc_f2_m03a_autoridad_transaccional.sql
+      - name: Aplicar M03B
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923234500_abc_f2_m03b_checkout_cobro.sql
+      - name: Aplicar M03C
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923235900_abc_f2_m03c_reembolsos_transaccionales.sql
+      - name: Aplicar M04A
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260924001000_abc_f2_m04a_caja_sesiones.sql
+      - name: Aplicar M04B
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260924002000_abc_f2_m04b_movimientos_caja.sql
+      - name: Aplicar M04C
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260924003000_abc_f2_m04c_outbox_persistente.sql
+      - name: Aplicar M04D
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260924004000_abc_f2_m04d_acl_parity.sql
+      - name: Aplicar A03
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260924010000_abc_f3_a03_server_authority.sql
+      - name: Aplicar A04
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260924020000_abc_f3_a04_variants_modifiers.sql
+      - name: Aplicar A05
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260924030000_abc_f3_a05_order_state_machine.sql
+      - name: Aplicar A06
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260924040000_abc_f3_a06_account_recovery.sql
+      - name: Aplicar A07
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260924050000_abc_f3_a07_tables_zones.sql
+      - name: Aplicar A08
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260924060000_abc_f3_a08_account_split_merge.sql
+
+      - name: Regresión ACL F2 tras A08
+        run: psql -v ON_ERROR_STOP=1 -f tests/f2/m04d/m04d-contract.sql
+      - name: Regresión A03 tras A08
+        run: psql -v ON_ERROR_STOP=1 -f tests/f3/a03/a03-contract.sql
+      - name: Regresión A04 tras A08
+        run: psql -v ON_ERROR_STOP=1 -f tests/f3/a04/a04-contract.sql
+      - name: Regresión A05 tras A08
+        run: psql -v ON_ERROR_STOP=1 -f tests/f3/a05/a05-contract.sql
+      - name: Regresión A06 tras A08
+        run: psql -v ON_ERROR_STOP=1 -f tests/f3/a06/a06-contract.sql
+      - name: Regresión A07 tras A08
+        run: psql -v ON_ERROR_STOP=1 -f tests/f3/a07/a07-contract.sql
+
+      - name: Ejecutar contrato A08
+        run: psql -v ON_ERROR_STOP=1 -f tests/f3/a08/a08-contract.sql
