@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve, dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { projectFiscalCents } from './fiscal-cents.mjs';
 
 const require = createRequire(import.meta.url);
 const { Client } = require(process.env.A09_PG_CLIENT ??
@@ -127,13 +128,16 @@ async function fiscalExact(db, fiscalId, expectedRepartId) {
   return row;
 }
 
-async function makeLine(db, suffix) {
-  const account = `50000000-0000-0000-0000-0000000000${suffix}`;
+async function makeLine(db, suffix, amounts = {}) {
+  const {account: sharedAccount,price='10',discount='0',base='10',tax='1',total='11',rate='10'} = amounts;
+  const account = sharedAccount ?? `50000000-0000-0000-0000-0000000000${suffix}`;
   const order = `60000000-0000-0000-0000-0000000000${suffix}`;
   const source = `70000000-0000-0000-0000-0000000000${suffix}`;
-  await db.query(`insert into public.cuentas_comerciales(
-    id,empresa_id,local_id,currency_code,modalidad,estado,version,created_by,opened_operating_day)
-    values ($1,'emp-f','loc-f1','EUR','BARRA','ABIERTA',1,$2,$3::date)`,[account,owner,day]);
+  if (!sharedAccount) {
+    await db.query(`insert into public.cuentas_comerciales(
+      id,empresa_id,local_id,currency_code,modalidad,estado,version,created_by,opened_operating_day)
+      values ($1,'emp-f','loc-f1','EUR','BARRA','ABIERTA',1,$2,$3::date)`,[account,owner,day]);
+  }
   await db.query(`insert into public.pedidos_tpv(
     id,empresa_id,local_id,cuenta_id,currency_code,estado,version,created_by,created_operating_day)
     values ($1,'emp-f','loc-f1',$2,'EUR','ABIERTO',1,$3,$4::date)`,[order,account,owner,day]);
@@ -142,9 +146,9 @@ async function makeLine(db, suffix) {
     entidad_fiscal_id,currency_code,precio_unitario,descuento_total,base,impuestos,total,
     snapshot_comercial,snapshot_calculo,created_by,created_operating_day)
     values ($1,'emp-f','loc-f1',$2,'prod-unit-f',1,'ud','CONFIRMADA',1,
-      $3,'EUR',10,0,10,1,11,'{"impuesto_pct":10}'::jsonb,
-      '{"modo":"SERVER_AUTHORITY_A03","impuesto_pct":10}'::jsonb,$4,$5::date)`,
-    [source,order,issuer,owner,day]);
+      $3,'EUR',$6,$7,$8,$9,$10,jsonb_build_object('impuesto_pct',$11::numeric),
+      jsonb_build_object('modo','SERVER_AUTHORITY_A03','impuesto_pct',$11::numeric),$4,$5::date)`,
+    [source,order,issuer,owner,day,price,discount,base,tax,total,rate]);
   return {account,source};
 }
 
@@ -173,10 +177,15 @@ try {
       'private.abc_a09_guard_fiscal_linea()','EXECUTE') authenticated_execute,
     has_function_privilege('service_role',
       'private.abc_a09_guard_fiscal_linea()','EXECUTE') service_execute,
+    (select prosecdef from pg_proc where oid=
+      'private.abc_a09_proyectar_centimos(uuid)'::regprocedure) projection_definer,
+    has_function_privilege('authenticated',
+      'private.abc_a09_proyectar_centimos(uuid)','EXECUTE') projection_authenticated,
     (select relrowsecurity from pg_class where oid=
       'public.abc_descuentos_aplicados'::regclass) audit_rls`);
   assert.deepEqual(security,{guard:true,security_definer:true,
-    authenticated_execute:false,service_execute:false,audit_rls:true});
+    authenticated_execute:false,service_execute:false,projection_definer:true,
+    projection_authenticated:false,audit_rls:true});
   process.stdout.write('PASS A09 fiscal trigger ACL/RLS\n');
   await actor(db);
   await actor(other);
@@ -195,7 +204,16 @@ try {
   await fiscalHeader(db,doc,account2,line,repart);
   const fiscal = await fiscalExact(db,doc,repart);
   assert.equal(fiscal.total,'8.80000000');
-  process.stdout.write('PASS fiscal line/header versus A08 split, exact at 8 and 2 decimals\n');
+  const fiscalLine = (await db.query(`select id::text,base::text,descuento::text discount,
+    impuesto::text tax,total::text from public.venta_fiscal_lineas where venta_fiscal_id=$1`,[doc])).rows;
+  const projectedDoc = projectFiscalCents(fiscalLine);
+  assert.deepEqual(projectedDoc.document,{subtotal:'10.00',discount:'2.00',base:'8.00',
+    tax:'0.80',roundingAdjustment:'0.00',total:'8.80'});
+  const sqlProjection = (await db.query(
+    'select private.abc_a09_proyectar_centimos($1) projection',[doc])).rows[0].projection;
+  assert.deepEqual(sqlProjection.document,{subtotal_cents:'1000',discount_cents:'200',
+    base_cents:'800',tax_cents:'80',rounding_adjustment_cents:'0',total_cents:'880'});
+  process.stdout.write('PASS fiscal line/header versus A08 split, exact at 8 decimals and projected cents\n');
 
   const first = await makeLine(db,'31');
   const firstFiscal = '81000000-0000-0000-0000-000000000031';
@@ -261,7 +279,127 @@ try {
       +round(impuestos,2)-round(total,2))::text naive_document_delta
     from public.pedido_lineas where id=$1`,[fractional.source]);
   assert.equal(rounding.naive_document_delta,'0.01');
-  process.stdout.write(`KNOWN GAP naive fiscal rounding: ${JSON.stringify(rounding)}\n`);
+  const projectedFractional = projectFiscalCents([{id:fractional.source,
+    base:rounding.base,discount:rounding.discount,tax:rounding.tax,total:rounding.total}]);
+  assert.deepEqual(projectedFractional.document,{subtotal:'10.00',discount:'3.33',base:'6.67',
+    tax:'0.67',roundingAdjustment:'-0.01',total:'7.33'});
+  process.stdout.write(`PASS explicit fiscal cent projection resolves the one-cent gap: ${JSON.stringify(projectedFractional.document)}\n`);
+  const fractionalRepart = (await db.query(`select id from public.cuenta_linea_repartos
+    where source_line_id=$1 and estado='ACTIVO'`,[fractional.source])).rows[0].id;
+  const fractionalDoc = '81000000-0000-0000-0000-000000000034';
+  await fiscalHeader(db,fractionalDoc,fractional.account,fractional.source,fractionalRepart);
+  const fractionalSqlProjection = (await db.query(
+    'select private.abc_a09_proyectar_centimos($1) projection',[fractionalDoc])).rows[0].projection;
+  assert.deepEqual(fractionalSqlProjection.document,{subtotal_cents:'1000',
+    discount_cents:'333',base_cents:'667',tax_cents:'67',
+    rounding_adjustment_cents:'-1',total_cents:'733'});
+
+  const tinyA=await makeLine(db,'36',{price:'0.005',base:'0.005',tax:'0',total:'0.005',rate:'0'});
+  const tinyB=await makeLine(db,'37',{price:'0.005',base:'0.005',tax:'0',total:'0.005',rate:'0'});
+  const tinyDoc='81000000-0000-0000-0000-000000000036';
+  await db.query(`insert into public.ventas_fiscales(
+    id,empresa_id,local_id,cuenta_id,entidad_fiscal_id,currency_code,
+    estado,version,subtotal,descuento_total,impuestos_total,total,
+    snapshot_calculo,created_by,created_operating_day)
+    values ($1,'emp-f','loc-f1',$2,$3,'EUR','ABIERTA',1,0.01,0,0,0.01,'{}'::jsonb,$4,$5::date)`,
+    [tinyDoc,tinyA.account,issuer,owner,day]);
+  await db.query(`insert into public.venta_fiscal_lineas(
+    id,empresa_id,local_id,venta_fiscal_id,source_line_id,entidad_fiscal_id,currency_code,
+    cantidad,precio_unitario,descuento,base,impuesto,total,snapshot)
+    values
+      ('82000000-0000-0000-0000-000000000036','emp-f','loc-f1',$1,$2,$4,'EUR',1,0.005,0,0.005,0,0.005,'{}'::jsonb),
+      ('82000000-0000-0000-0000-000000000037','emp-f','loc-f1',$1,$3,$4,'EUR',1,0.005,0,0.005,0,0.005,'{}'::jsonb)`,
+    [tinyDoc,tinyA.source,tinyB.source,issuer]);
+  const tinyProjection=(await db.query(
+    'select private.abc_a09_proyectar_centimos($1) projection',[tinyDoc])).rows[0].projection;
+  assert.deepEqual(tinyProjection.document,{subtotal_cents:'1',discount_cents:'0',
+    base_cents:'1',tax_cents:'0',rounding_adjustment_cents:'0',total_cents:'1'});
+  assert.deepEqual(tinyProjection.lines.map((item)=>[item.id,item.total_cents]),[
+    ['82000000-0000-0000-0000-000000000036','1'],
+    ['82000000-0000-0000-0000-000000000037','0'],
+  ]);
+  const tinyReference=projectFiscalCents([
+    {id:'82000000-0000-0000-0000-000000000036',base:'0.00500000',discount:'0',tax:'0',total:'0.00500000'},
+    {id:'82000000-0000-0000-0000-000000000037',base:'0.00500000',discount:'0',tax:'0',total:'0.00500000'},
+  ]);
+  const toCents=(amount)=>BigInt(amount.replace('.','')).toString();
+  assert.deepEqual(tinyProjection.document,{subtotal_cents:toCents(tinyReference.document.subtotal),
+    discount_cents:toCents(tinyReference.document.discount),base_cents:toCents(tinyReference.document.base),
+    tax_cents:toCents(tinyReference.document.tax),
+    rounding_adjustment_cents:toCents(tinyReference.document.roundingAdjustment),
+    total_cents:toCents(tinyReference.document.total)});
+  assert.deepEqual(tinyProjection.lines.map((item)=>[
+    item.id,item.subtotal_cents,item.discount_cents,item.base_cents,item.tax_cents,
+    item.rounding_adjustment_cents,item.total_cents,
+  ]),tinyReference.lines.map((item)=>[
+    item.id,toCents(item.subtotal),toCents(item.discount),toCents(item.base),toCents(item.tax),
+    toCents(item.roundingAdjustment),toCents(item.total),
+  ]));
+  process.stdout.write('PASS SQL/reference projection allocates half-cent residual once by stable line id\n');
+
+  const capA=await makeLine(db,'38',{price:'0.005',discount:'0.0049',base:'0.0001',tax:'0',total:'0.0001',rate:'0'});
+  const capB=await makeLine(db,'39',{account:capA.account,price:'0.0051',discount:'0.0002',base:'0.0049',tax:'0',total:'0.0049',rate:'0'});
+  const capDoc='81000000-0000-0000-0000-000000000038';
+  await db.query(`insert into public.ventas_fiscales(
+    id,empresa_id,local_id,cuenta_id,entidad_fiscal_id,currency_code,
+    estado,version,subtotal,descuento_total,impuestos_total,total,
+    snapshot_calculo,created_by,created_operating_day)
+    values ($1,'emp-f','loc-f1',$2,$3,'EUR','ABIERTA',1,0.0101,0.0051,0,0.005,'{}'::jsonb,$4,$5::date)`,
+    [capDoc,capA.account,issuer,owner,day]);
+  await db.query(`insert into public.venta_fiscal_lineas(
+    id,empresa_id,local_id,venta_fiscal_id,source_line_id,entidad_fiscal_id,currency_code,
+    cantidad,precio_unitario,descuento,base,impuesto,total,snapshot)
+    values
+      ('82000000-0000-0000-0000-000000000038','emp-f','loc-f1',$1,$2,$4,'EUR',1,0.005,0.0049,0.0001,0,0.0001,'{}'::jsonb),
+      ('82000000-0000-0000-0000-000000000039','emp-f','loc-f1',$1,$3,$4,'EUR',1,0.0051,0.0002,0.0049,0,0.0049,'{}'::jsonb)`,
+    [capDoc,capA.source,capB.source,issuer]);
+  const capProjection=(await db.query(
+    'select private.abc_a09_proyectar_centimos($1) projection',[capDoc])).rows[0].projection;
+  const capReference=projectFiscalCents([
+    {id:'82000000-0000-0000-0000-000000000038',base:'0.00010000',discount:'0.00490000',tax:'0',total:'0.00010000'},
+    {id:'82000000-0000-0000-0000-000000000039',base:'0.00490000',discount:'0.00020000',tax:'0',total:'0.00490000'},
+  ]);
+  assert.deepEqual(capProjection.document,{subtotal_cents:'1',discount_cents:'1',
+    base_cents:'0',tax_cents:'0',rounding_adjustment_cents:'1',total_cents:'1'});
+  assert.deepEqual(capProjection.document,{subtotal_cents:toCents(capReference.document.subtotal),
+    discount_cents:toCents(capReference.document.discount),base_cents:toCents(capReference.document.base),
+    tax_cents:toCents(capReference.document.tax),
+    rounding_adjustment_cents:toCents(capReference.document.roundingAdjustment),
+    total_cents:toCents(capReference.document.total)});
+  assert(capProjection.lines.every((item)=>BigInt(item.base_cents)>=0n));
+  process.stdout.write('PASS cent allocation caps displayed discount at each line subtotal\n');
+
+  const rateA=await makeLine(db,'40',{price:'0.055',base:'0.05',tax:'0.005',total:'0.055',rate:'10'});
+  const rateB=await makeLine(db,'41',{price:'0.03',base:'0.025',tax:'0.005',total:'0.03',rate:'20'});
+  const rateDoc='81000000-0000-0000-0000-000000000040';
+  await db.query(`insert into public.ventas_fiscales(
+    id,empresa_id,local_id,cuenta_id,entidad_fiscal_id,currency_code,
+    estado,version,subtotal,descuento_total,impuestos_total,total,
+    snapshot_calculo,created_by,created_operating_day)
+    values ($1,'emp-f','loc-f1',$2,$3,'EUR','ABIERTA',1,0.075,0,0.01,0.085,'{}'::jsonb,$4,$5::date)`,
+    [rateDoc,rateA.account,issuer,owner,day]);
+  await db.query(`insert into public.venta_fiscal_lineas(
+    id,empresa_id,local_id,venta_fiscal_id,source_line_id,entidad_fiscal_id,currency_code,
+    cantidad,precio_unitario,descuento,base,impuesto,total,snapshot)
+    values
+      ('82000000-0000-0000-0000-000000000040','emp-f','loc-f1',$1,$2,$4,'EUR',1,0.055,0,0.05,0.005,0.055,'{}'::jsonb),
+      ('82000000-0000-0000-0000-000000000041','emp-f','loc-f1',$1,$3,$4,'EUR',1,0.03,0,0.025,0.005,0.03,'{}'::jsonb)`,
+    [rateDoc,rateA.source,rateB.source,issuer]);
+  const rateProjection=(await db.query(
+    'select private.abc_a09_proyectar_centimos($1) projection',[rateDoc])).rows[0].projection;
+  assert.equal(rateProjection.document.tax_cents,'2');
+  assert.equal(rateProjection.document.total_cents,'9');
+  assert.equal(rateProjection.document.rounding_adjustment_cents,'-1');
+  const rateReference=projectFiscalCents([
+    {id:'82000000-0000-0000-0000-000000000040',base:'0.05',discount:'0',tax:'0.005',total:'0.055',taxBucket:'10'},
+    {id:'82000000-0000-0000-0000-000000000041',base:'0.025',discount:'0',tax:'0.005',total:'0.03',taxBucket:'20'},
+  ]);
+  assert.deepEqual(rateProjection.document,{subtotal_cents:toCents(rateReference.document.subtotal),
+    discount_cents:toCents(rateReference.document.discount),base_cents:toCents(rateReference.document.base),
+    tax_cents:toCents(rateReference.document.tax),
+    rounding_adjustment_cents:toCents(rateReference.document.roundingAdjustment),
+    total_cents:toCents(rateReference.document.total)});
+  process.stdout.write('PASS separate tax-rate buckets reconcile through explicit document adjustment\n');
 
   const direct = await makeLine(db,'35');
   const directDoc = '81000000-0000-0000-0000-000000000035';
@@ -308,7 +446,7 @@ try {
   const serverVersion = (await db.query('show server_version_num')).rows[0].server_version_num;
   assert(['16','17'].includes(serverVersion.slice(0,2)));
   process.stdout.write(`A09_POSTGRES_LOCKS_${serverVersion}=PASS\n`);
-  process.stdout.write('A09_LOCAL_ACCEPTANCE=OPEN fiscal cent projection and independent review\n');
+  process.stdout.write('A09_LOCAL_ACCEPTANCE=OPEN fiscal output integration and independent review\n');
 } catch (error) {
   process.stderr.write(`A09_POSTGRES_CONTRACT=FAIL ${error.stack}\n`);
   process.exitCode=1;

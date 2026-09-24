@@ -527,6 +527,129 @@ create trigger a09_guard_fiscal_linea
 revoke all on function private.abc_a09_guard_fiscal_linea()
   from public,anon,authenticated,service_role;
 
+-- Proyección para impresión/documento: redondea cada agregado a céntimos,
+-- asigna los restos por mayor fracción e id de línea y expone el ajuste que
+-- reconcilia total = base + IVA + ajuste. Los importes fuente siguen a 8 dp.
+create function private.abc_a09_proyectar_centimos(p_venta_fiscal_id uuid)
+returns jsonb language plpgsql stable security definer set search_path=''
+as $$
+declare
+  v_projection jsonb;
+begin
+  if exists (
+    select 1 from public.venta_fiscal_lineas vl
+    join public.pedido_lineas l on l.empresa_id=vl.empresa_id
+      and l.local_id=vl.local_id and l.id=vl.source_line_id
+    cross join lateral (select coalesce(
+      nullif(vl.snapshot->>'impuesto_pct','')::numeric,
+      nullif(l.snapshot_calculo->>'impuesto_base_pct','')::numeric,
+      nullif(l.snapshot_calculo->>'impuesto_pct','')::numeric,
+      nullif(l.snapshot_comercial->>'impuesto_pct','')::numeric,
+      nullif(l.snapshot_comercial->>'impuesto_base_pct','')::numeric
+    ) rate) r
+    where vl.venta_fiscal_id=p_venta_fiscal_id and (
+      r.rate is null or exists (
+        select 1 from public.pedido_linea_opciones o
+        where o.empresa_id=vl.empresa_id and o.local_id=vl.local_id
+          and o.linea_id=vl.source_line_id and o.base<>0 and o.impuesto_pct<>r.rate
+      )
+    )
+  ) then raise exception 'a09_proyeccion_tipo_iva_desconocido_o_mixto'; end if;
+
+  with source as (
+    select vl.id::text id,vl.base,vl.descuento,vl.base+vl.descuento subtotal,
+      vl.impuesto tax,vl.total,coalesce(
+        nullif(vl.snapshot->>'impuesto_pct','')::numeric,
+        nullif(l.snapshot_calculo->>'impuesto_base_pct','')::numeric,
+        nullif(l.snapshot_calculo->>'impuesto_pct','')::numeric,
+        nullif(l.snapshot_comercial->>'impuesto_pct','')::numeric,
+        nullif(l.snapshot_comercial->>'impuesto_base_pct','')::numeric
+      ) tax_rate
+    from public.venta_fiscal_lineas vl
+    join public.pedido_lineas l on l.empresa_id=vl.empresa_id
+      and l.local_id=vl.local_id and l.id=vl.source_line_id
+    where vl.venta_fiscal_id=p_venta_fiscal_id
+  ), floors as (
+    select s.*,
+      floor(s.subtotal*100) subtotal_floor,
+      s.subtotal*100-floor(s.subtotal*100) subtotal_fraction,
+      floor(s.descuento*100) discount_floor,
+      s.descuento*100-floor(s.descuento*100) discount_fraction,
+      floor(s.tax*100) tax_floor,
+      s.tax*100-floor(s.tax*100) tax_fraction,
+      floor(s.total*100) total_floor,
+      s.total*100-floor(s.total*100) total_fraction
+    from source s
+  ), targets as (
+    select round(coalesce(sum(subtotal),0)*100) subtotal_target,
+      coalesce(sum(subtotal_floor),0) subtotal_floor_sum,
+      round(coalesce(sum(descuento),0)*100) discount_target,
+      coalesce(sum(discount_floor),0) discount_floor_sum,
+      round(coalesce(sum(total),0)*100) total_target,
+      coalesce(sum(total_floor),0) total_floor_sum
+    from floors
+  ), allocated as (
+    select f.id,
+      f.subtotal_floor + case when row_number() over(
+        order by f.subtotal_fraction desc,f.id
+      ) <= t.subtotal_target-t.subtotal_floor_sum then 1 else 0 end subtotal_cents,
+      f.discount_floor,f.discount_fraction,
+      f.tax,f.tax_floor,f.tax_fraction,f.tax_rate,
+      f.total_floor + case when row_number() over(
+        order by f.total_fraction desc,f.id
+      ) <= t.total_target-t.total_floor_sum then 1 else 0 end total_cents
+    from floors f cross join targets t
+  ), tax_ranked as (
+    select a.id,a.tax_floor,
+      row_number() over(partition by a.tax_rate order by a.tax_fraction desc,a.id) rank,
+      round(sum(a.tax) over(partition by a.tax_rate)*100) target,
+      sum(a.tax_floor) over(partition by a.tax_rate) floor_sum
+    from allocated a
+  ), tax_allocated as (
+    select id,tax_floor+case when rank<=target-floor_sum then 1 else 0 end tax_cents
+    from tax_ranked
+  ), discount_ranked as (
+    -- No se permite redondear descuento por encima del subtotal mostrado.
+    select a.id,row_number() over(order by a.discount_fraction desc,a.id) rank
+    from allocated a where a.discount_floor<a.subtotal_cents
+  ), projected as (
+    select a.id,a.subtotal_cents,
+      a.discount_floor+case when d.rank<=t.discount_target-t.discount_floor_sum
+        then 1 else 0 end discount_cents,
+      x.tax_cents,a.total_cents
+    from allocated a cross join targets t
+    left join discount_ranked d on d.id=a.id
+    join tax_allocated x on x.id=a.id
+  ), lines_with_base as (
+    select p.*,p.subtotal_cents-p.discount_cents base_cents
+    from projected p
+  ), document_lines as (
+    select p.*,p.total_cents-p.base_cents-p.tax_cents adjustment_cents
+    from lines_with_base p
+  ), line_json as (
+    select jsonb_agg(jsonb_build_object(
+      'id',id,'subtotal_cents',subtotal_cents::text,
+      'discount_cents',discount_cents::text,'base_cents',base_cents::text,
+      'tax_cents',tax_cents::text,'rounding_adjustment_cents',adjustment_cents::text,
+      'total_cents',total_cents::text
+    ) order by id) lines,
+      sum(subtotal_cents) subtotal_cents,sum(discount_cents) discount_cents,
+      sum(base_cents) base_cents,sum(tax_cents) tax_cents,
+      sum(adjustment_cents) adjustment_cents,sum(total_cents) total_cents
+    from document_lines
+  )
+  select case when lines is null then null else jsonb_build_object(
+    'lines',lines,'document',jsonb_build_object(
+      'subtotal_cents',subtotal_cents::text,'discount_cents',discount_cents::text,
+      'base_cents',base_cents::text,'tax_cents',tax_cents::text,
+      'rounding_adjustment_cents',adjustment_cents::text,'total_cents',total_cents::text
+    )) end into v_projection from line_json;
+  if v_projection is null then raise exception 'a09_documento_sin_lineas'; end if;
+  return v_projection;
+end $$;
+revoke all on function private.abc_a09_proyectar_centimos(uuid)
+  from public,anon,authenticated,service_role;
+
 revoke all on function public.abc_aplicar_descuento_cuenta(
   text,text,text,uuid,text,numeric,text,bigint,uuid,uuid,date
 ) from public,anon,authenticated,service_role;
