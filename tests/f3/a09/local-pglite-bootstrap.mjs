@@ -1,5 +1,6 @@
-// Optional local compatibility check. PGlite is installed outside the repo.
-// This is not a substitute for the PostgreSQL 16/Supabase contract gate.
+// Reproducible PostgreSQL 18 WASM bootstrap for the A09 compatibility smoke.
+// The CI runner loads the pinned package from tests/f3/a09; this is not a
+// substitute for the real PostgreSQL 16/17 contract gate.
 import { createRequire } from 'node:module';
 import { readFile } from 'node:fs/promises';
 import { resolve, dirname, join } from 'node:path';

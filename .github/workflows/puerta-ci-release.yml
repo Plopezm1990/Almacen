@@ -1,14 +1,17 @@
-name: "Puerta de CI general -- candidato a release (133/133 contratos activos)"
+name: "Puerta de CI general -- candidato a release (139/139 contratos activos)"
 
 # Punto 3: generaliza la puerta validada en el Punto 2
 # (cierre-proyecto-a/punto2/) a infraestructura reutilizable del
 # repositorio, basada en el manifiesto versionado
-# (tests/ci/manifiesto_clasificacion.json, 142 archivos) sobre el SHA
-# exacto evaluado, en 4 jobs:
-#   - node-y-postgres: ejecuta tests/ci/ejecutar_bateria_no_db.sh (121
-#     activos Node) y tests/ci/preparar_postgres_local.sh (9 activos
-#     Postgres + 1 histórico esperado en rojo), contra un servicio
-#     Postgres 16 real. Ambos scripts CALCULAN sus propios conteos
+# (tests/ci/manifiesto_clasificacion.json, 153 archivos) sobre el SHA
+# exacto evaluado, en 5 jobs:
+#   - node-y-postgres: ejecuta tests/ci/ejecutar_bateria_no_db.sh (125
+#     activos Node), ejecutar_pglite_local.sh (1 activo más su bootstrap)
+#     y preparar_postgres_local.sh (10 activos Postgres 16 + 1 histórico
+#     esperado en rojo), contra motores desechables.
+#   - a09-postgres17: repite el contrato A09 con dos conexiones reales
+#     sobre PostgreSQL 17; es una repetición por versión, no otro archivo.
+#     Los runners CALCULAN sus propios conteos
 #     (NODE_ACTIVE_*, POSTGRES_ACTIVE_*) y terminan con código de salida
 #     distinto de 0 si algún contrato activo falla o si una
 #     utilidad/diagnóstico se bloquea -- el job los expone como outputs,
@@ -19,8 +22,8 @@ name: "Puerta de CI general -- candidato a release (133/133 contratos activos)"
 #     cuántos de sus propios tests pasaron (2 y 1 respectivamente),
 #     calculado a partir del resultado real (`outcome`) de cada paso,
 #     nunca fijo.
-#   - gate-final: exige que los tres jobs anteriores hayan terminado con
-#     éxito, SUMA los outputs reales (121+9+3=133) y solo entonces
+#   - gate-final: exige que los cuatro jobs de prueba hayan terminado con
+#     éxito, SUMA los outputs reales únicos (125+10+1+3=139) y solo entonces
 #     imprime el resumen -- no hay ningún `echo` de un número que no se
 #     haya demostrado primero. Revalida además el manifiesto contra el
 #     árbol real (inventario, clasificación, histórico PM33 P01 separado
@@ -73,6 +76,11 @@ jobs:
       postgres_active_pass: ${{ steps.postgres_run.outputs.postgres_active_pass }}
       postgres_active_fail: ${{ steps.postgres_run.outputs.postgres_active_fail }}
       historical_expected_fail: ${{ steps.postgres_run.outputs.historical_expected_fail }}
+      pglite_active_total: ${{ steps.pglite_run.outputs.pglite_active_total }}
+      pglite_active_pass: ${{ steps.pglite_run.outputs.pglite_active_pass }}
+      pglite_active_fail: ${{ steps.pglite_run.outputs.pglite_active_fail }}
+      pglite_utility_run: ${{ steps.pglite_run.outputs.pglite_utility_run }}
+      pglite_infra_fail: ${{ steps.pglite_run.outputs.pglite_infra_fail }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
@@ -100,7 +108,7 @@ jobs:
           test "$version" = "3.4.17"
           echo "TAILWIND_BUILD_VERSION=$version"
 
-      - name: 121 contratos activos Node (incluye build de Netlify previo)
+      - name: 125 contratos activos Node (incluye build de Netlify previo)
         id: node_run
         shell: bash
         run: |
@@ -119,7 +127,33 @@ jobs:
           echo "infra_fail=${infra:--1}" >> "$GITHUB_OUTPUT"
           exit $code
 
-      - name: 9 contratos activos Postgres + 1 histórico esperado en rojo (P01)
+      - name: Instalar dependencia PGlite fijada para A09
+        shell: bash
+        run: npm ci --prefix tests/f3/a09 --no-audit --no-fund
+
+      - name: Contrato funcional A09 en PGlite (PostgreSQL 18 WASM)
+        id: pglite_run
+        shell: bash
+        run: |
+          set +e
+          A09_PGLITE_PACKAGE_ROOT="$GITHUB_WORKSPACE/tests/f3/a09/node_modules/@electric-sql/pglite" \
+            bash tests/ci/ejecutar_pglite_local.sh > /tmp/pglite_run.log 2>&1
+          code=$?
+          set -e
+          cat /tmp/pglite_run.log
+          total=$(sed -n 's/^PGLITE_ACTIVE_TOTAL=\([0-9]*\).*/\1/p' /tmp/pglite_run.log | tail -1)
+          pass=$(sed -n 's/^PGLITE_ACTIVE_PASS=\([0-9]*\).*/\1/p' /tmp/pglite_run.log | tail -1)
+          fail=$(sed -n 's/^PGLITE_ACTIVE_FAIL=\([0-9]*\).*/\1/p' /tmp/pglite_run.log | tail -1)
+          utility=$(sed -n 's/^PGLITE_UTILITIES_RUN=\([0-9]*\).*/\1/p' /tmp/pglite_run.log | tail -1)
+          infra=$(sed -n 's/^PGLITE_INFRA_FAIL=\([0-9]*\).*/\1/p' /tmp/pglite_run.log | tail -1)
+          echo "pglite_active_total=${total:--1}" >> "$GITHUB_OUTPUT"
+          echo "pglite_active_pass=${pass:--1}" >> "$GITHUB_OUTPUT"
+          echo "pglite_active_fail=${fail:--1}" >> "$GITHUB_OUTPUT"
+          echo "pglite_utility_run=${utility:--1}" >> "$GITHUB_OUTPUT"
+          echo "pglite_infra_fail=${infra:--1}" >> "$GITHUB_OUTPUT"
+          exit $code
+
+      - name: 10 contratos activos Postgres 16 + 1 histórico esperado en rojo (P01)
         id: postgres_run
         shell: bash
         run: |
@@ -138,7 +172,7 @@ jobs:
           echo "historical_expected_fail=${hist:--1}" >> "$GITHUB_OUTPUT"
           exit $code
 
-      - name: Árbol limpio tras ambos runners
+      - name: Árbol limpio tras los runners Node, PGlite y Postgres 16
         if: always()
         shell: bash
         run: |
@@ -149,15 +183,66 @@ jobs:
             echo "$sucio" >&2
             exit 1
           fi
-          echo "ARBOL_LIMPIO_NODE_Y_POSTGRES=1"
+          echo "ARBOL_LIMPIO_NODE_PGLITE_POSTGRES=1"
 
       - name: Subir evidencia bruta como artifact
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
-          name: puerta-ci-evidencia-node-postgres
+          name: puerta-ci-evidencia-node-pglite-postgres
           path: tests/ci/evidencia/resultado_bruto_*.tsv
           retention-days: 30
+
+  a09_postgres17:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    outputs:
+      a09_postgres17_pass: ${{ steps.a09_pg17.outputs.a09_postgres17_pass }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '20'
+
+      - name: Instalar cliente PostgreSQL fijado
+        run: npm ci --prefix tests/pm12/db --no-audit --no-fund
+
+      - name: Contrato A09 con dos conexiones PostgreSQL 17
+        id: a09_pg17
+        shell: bash
+        env:
+          PGPASSWORD: postgres
+          A09_PG_PORT: '5432'
+          A09_PG_DATABASE: a09_discount_pg17_test
+          A09_PG_CLIENT: ${{ github.workspace }}/tests/pm12/db/node_modules/pg
+        run: |
+          set -euo pipefail
+          pg_isready -h 127.0.0.1 -p "$A09_PG_PORT" -U postgres
+          pg_version_num=$(psql -h 127.0.0.1 -p "$A09_PG_PORT" -U postgres -d postgres -tAc 'show server_version_num' | tr -d '[:space:]')
+          pg_major="${pg_version_num:0:2}"
+          if [ "$pg_major" != "17" ]; then
+            echo "A09_POSTGRES17_VERSION_INESPERADA: $pg_version_num" >&2
+            exit 1
+          fi
+          createdb -h 127.0.0.1 -p "$A09_PG_PORT" -U postgres "$A09_PG_DATABASE"
+          node tests/f3/a09/local-postgres-contract.mjs | tee /tmp/a09_pg17.log
+          echo "a09_postgres17_pass=1" >> "$GITHUB_OUTPUT"
+          echo "A09_POSTGRES17_PASS=1"
 
   pm12-p08-supabase-full:
     runs-on: ubuntu-latest
@@ -254,7 +339,7 @@ jobs:
         run: tests/pm33/supabase-full/node_modules/.bin/supabase stop --workdir tests/pm33/supabase-full --no-backup || true
 
   gate-final:
-    needs: [node-y-postgres, pm12-p08-supabase-full, pm33-p05-supabase-full]
+    needs: [node-y-postgres, a09_postgres17, pm12-p08-supabase-full, pm33-p05-supabase-full]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -263,15 +348,17 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Exigir que los tres jobs anteriores hayan terminado con éxito
+      - name: Exigir que los cuatro jobs anteriores hayan terminado con éxito
         shell: bash
         run: |
           set -euo pipefail
           echo "node-y-postgres.result=${{ needs.node-y-postgres.result }}"
+          echo "a09_postgres17.result=${{ needs.a09_postgres17.result }}"
           echo "pm12-p08-supabase-full.result=${{ needs.pm12-p08-supabase-full.result }}"
           echo "pm33-p05-supabase-full.result=${{ needs.pm33-p05-supabase-full.result }}"
           fallo=0
           [ "${{ needs.node-y-postgres.result }}" = "success" ] || { echo "node-y-postgres no terminó con éxito" >&2; fallo=1; }
+          [ "${{ needs.a09_postgres17.result }}" = "success" ] || { echo "a09_postgres17 no terminó con éxito" >&2; fallo=1; }
           [ "${{ needs.pm12-p08-supabase-full.result }}" = "success" ] || { echo "pm12-p08-supabase-full no terminó con éxito" >&2; fallo=1; }
           [ "${{ needs.pm33-p05-supabase-full.result }}" = "success" ] || { echo "pm33-p05-supabase-full no terminó con éxito" >&2; fallo=1; }
           if [ "$fallo" -ne 0 ]; then
@@ -291,6 +378,12 @@ jobs:
           POSTGRES_ACTIVE_PASS: ${{ needs.node-y-postgres.outputs.postgres_active_pass }}
           POSTGRES_ACTIVE_FAIL: ${{ needs.node-y-postgres.outputs.postgres_active_fail }}
           HISTORICAL_EXPECTED_FAIL: ${{ needs.node-y-postgres.outputs.historical_expected_fail }}
+          PGLITE_ACTIVE_TOTAL: ${{ needs.node-y-postgres.outputs.pglite_active_total }}
+          PGLITE_ACTIVE_PASS: ${{ needs.node-y-postgres.outputs.pglite_active_pass }}
+          PGLITE_ACTIVE_FAIL: ${{ needs.node-y-postgres.outputs.pglite_active_fail }}
+          PGLITE_UTILITY_RUN: ${{ needs.node-y-postgres.outputs.pglite_utility_run }}
+          PGLITE_INFRA_FAIL: ${{ needs.node-y-postgres.outputs.pglite_infra_fail }}
+          A09_POSTGRES17_PASS: ${{ needs.a09_postgres17.outputs.a09_postgres17_pass }}
           PM12_FULL_STACK_PASS: ${{ needs.pm12-p08-supabase-full.outputs.pm12_full_stack_pass }}
           PM33_FULL_STACK_PASS: ${{ needs.pm33-p05-supabase-full.outputs.pm33_full_stack_pass }}
         run: |
@@ -304,18 +397,30 @@ jobs:
           echo "POSTGRES_ACTIVE_PASS=$POSTGRES_ACTIVE_PASS"
           echo "POSTGRES_ACTIVE_FAIL=$POSTGRES_ACTIVE_FAIL"
           echo "HISTORICAL_EXPECTED_FAIL=$HISTORICAL_EXPECTED_FAIL"
+          echo "PGLITE_ACTIVE_TOTAL=$PGLITE_ACTIVE_TOTAL"
+          echo "PGLITE_ACTIVE_PASS=$PGLITE_ACTIVE_PASS"
+          echo "PGLITE_ACTIVE_FAIL=$PGLITE_ACTIVE_FAIL"
+          echo "PGLITE_UTILITY_RUN=$PGLITE_UTILITY_RUN"
+          echo "PGLITE_INFRA_FAIL=$PGLITE_INFRA_FAIL"
+          echo "A09_POSTGRES17_PASS=$A09_POSTGRES17_PASS (PostgreSQL 17 repeat)"
           echo "PM12_FULL_STACK_PASS=$PM12_FULL_STACK_PASS (de 2)"
           echo "PM33_FULL_STACK_PASS=$PM33_FULL_STACK_PASS (de 1)"
 
           fallo=0
-          [ "$NODE_ACTIVE_TOTAL" = "121" ] || { echo "NODE_ACTIVE_TOTAL != 121" >&2; fallo=1; }
-          [ "$NODE_ACTIVE_PASS" = "121" ] || { echo "NODE_ACTIVE_PASS != 121" >&2; fallo=1; }
+          [ "$NODE_ACTIVE_TOTAL" = "125" ] || { echo "NODE_ACTIVE_TOTAL != 125" >&2; fallo=1; }
+          [ "$NODE_ACTIVE_PASS" = "125" ] || { echo "NODE_ACTIVE_PASS != 125" >&2; fallo=1; }
           [ "$NODE_ACTIVE_FAIL" = "0" ] || { echo "NODE_ACTIVE_FAIL != 0" >&2; fallo=1; }
           [ "$INFRA_FAIL" = "0" ] || { echo "INFRA_FAIL != 0" >&2; fallo=1; }
-          [ "$POSTGRES_ACTIVE_TOTAL" = "9" ] || { echo "POSTGRES_ACTIVE_TOTAL != 9" >&2; fallo=1; }
-          [ "$POSTGRES_ACTIVE_PASS" = "9" ] || { echo "POSTGRES_ACTIVE_PASS != 9" >&2; fallo=1; }
+          [ "$POSTGRES_ACTIVE_TOTAL" = "10" ] || { echo "POSTGRES_ACTIVE_TOTAL != 10" >&2; fallo=1; }
+          [ "$POSTGRES_ACTIVE_PASS" = "10" ] || { echo "POSTGRES_ACTIVE_PASS != 10" >&2; fallo=1; }
           [ "$POSTGRES_ACTIVE_FAIL" = "0" ] || { echo "POSTGRES_ACTIVE_FAIL != 0" >&2; fallo=1; }
           [ "$HISTORICAL_EXPECTED_FAIL" = "1" ] || { echo "HISTORICAL_EXPECTED_FAIL != 1" >&2; fallo=1; }
+          [ "$PGLITE_ACTIVE_TOTAL" = "1" ] || { echo "PGLITE_ACTIVE_TOTAL != 1" >&2; fallo=1; }
+          [ "$PGLITE_ACTIVE_PASS" = "1" ] || { echo "PGLITE_ACTIVE_PASS != 1" >&2; fallo=1; }
+          [ "$PGLITE_ACTIVE_FAIL" = "0" ] || { echo "PGLITE_ACTIVE_FAIL != 0" >&2; fallo=1; }
+          [ "$PGLITE_UTILITY_RUN" = "1" ] || { echo "PGLITE_UTILITY_RUN != 1" >&2; fallo=1; }
+          [ "$PGLITE_INFRA_FAIL" = "0" ] || { echo "PGLITE_INFRA_FAIL != 0" >&2; fallo=1; }
+          [ "$A09_POSTGRES17_PASS" = "1" ] || { echo "A09_POSTGRES17_PASS != 1" >&2; fallo=1; }
           [ "$PM12_FULL_STACK_PASS" = "2" ] || { echo "PM12_FULL_STACK_PASS != 2" >&2; fallo=1; }
           [ "$PM33_FULL_STACK_PASS" = "1" ] || { echo "PM33_FULL_STACK_PASS != 1" >&2; fallo=1; }
           if [ "$fallo" -ne 0 ]; then
@@ -324,9 +429,9 @@ jobs:
           fi
 
           full_stack_total=$((PM12_FULL_STACK_PASS + PM33_FULL_STACK_PASS))
-          active_pass=$((NODE_ACTIVE_PASS + POSTGRES_ACTIVE_PASS + full_stack_total))
-          active_fail=$((NODE_ACTIVE_FAIL + POSTGRES_ACTIVE_FAIL))
-          total_activos=$((NODE_ACTIVE_TOTAL + POSTGRES_ACTIVE_TOTAL + 3))
+          active_pass=$((NODE_ACTIVE_PASS + POSTGRES_ACTIVE_PASS + PGLITE_ACTIVE_PASS + full_stack_total))
+          active_fail=$((NODE_ACTIVE_FAIL + POSTGRES_ACTIVE_FAIL + PGLITE_ACTIVE_FAIL))
+          total_activos=$((NODE_ACTIVE_TOTAL + POSTGRES_ACTIVE_TOTAL + PGLITE_ACTIVE_TOTAL + 3))
 
           {
             echo "active_pass=$active_pass"
@@ -335,15 +440,15 @@ jobs:
             echo "historical_expected_fail=$HISTORICAL_EXPECTED_FAIL"
           } >> "$GITHUB_OUTPUT"
 
-          echo "CALCULO_TOTAL_ACTIVOS=$total_activos (121 Node + 9 Postgres + 3 full-stack)"
+          echo "CALCULO_TOTAL_ACTIVOS=$total_activos (125 Node + 10 Postgres 16 + 1 PGlite + 3 full-stack)"
           echo "CALCULO_ACTIVE_PASS=$active_pass"
           echo "CALCULO_ACTIVE_FAIL=$active_fail"
 
-          if [ "$total_activos" -ne 133 ]; then
-            echo "TOTAL_ACTIVOS_CALCULADO_DISTINTO_DE_133: $total_activos" >&2
+          if [ "$total_activos" -ne 139 ]; then
+            echo "TOTAL_ACTIVOS_CALCULADO_DISTINTO_DE_139: $total_activos" >&2
             exit 1
           fi
-          if [ "$active_pass" -ne 133 ] || [ "$active_fail" -ne 0 ]; then
+          if [ "$active_pass" -ne 139 ] || [ "$active_fail" -ne 0 ]; then
             echo "ACTIVE_PASS/ACTIVE_FAIL_CALCULADOS_NO_CUADRAN: pass=$active_pass fail=$active_fail" >&2
             exit 1
           fi
@@ -355,43 +460,12 @@ jobs:
           set -euo pipefail
           MANIFEST="tests/ci/manifiesto_clasificacion.json"
           test -f "$MANIFEST"
+          VALIDATOR=".github/scripts/validar-manifiesto-ci.mjs"
+          test -f "$VALIDATOR"
 
-          mapfile -t inventario_real < <(git ls-tree -r --name-only HEAD -- tests/ | grep '\.mjs$' | LC_ALL=C sort)
-          total_real=${#inventario_real[@]}
-
-          resultado=$(node -e "
-            const fs = require('fs');
-            const m = JSON.parse(fs.readFileSync('$MANIFEST', 'utf8'));
-            const real = fs.readFileSync('/dev/stdin', 'utf8').trim().split('\n').filter(Boolean);
-            const manifestPaths = new Set(m.entries.map(e => e.path));
-            const realPaths = new Set(real);
-            const soloEnArbol = real.filter(p => !manifestPaths.has(p));
-            const soloEnManifiesto = [...manifestPaths].filter(p => !realPaths.has(p));
-
-            const counts = {};
-            for (const e of m.entries) counts[e.classification] = (counts[e.classification] || 0) + 1;
-
-            const p01 = m.entries.find(e => e.path === 'tests/pm33/db/p01-aislamiento-multiempresa-contract.mjs');
-
-            const problemas = [];
-            if (soloEnArbol.length) problemas.push('archivos sin clasificar en el manifiesto: ' + soloEnArbol.join(', '));
-            if (soloEnManifiesto.length) problemas.push('entradas del manifiesto que ya no existen: ' + soloEnManifiesto.join(', '));
-            if (m.total_inventory !== real.length) problemas.push('total_inventory del manifiesto (' + m.total_inventory + ') no coincide con el árbol real (' + real.length + ')');
-            if (!p01) problemas.push('P01 (tests/pm33/db/p01-aislamiento-multiempresa-contract.mjs) no está en el manifiesto');
-            else if (p01.classification !== 'historical_expected_fail') problemas.push('P01 volvió a la batería activa: classification=' + p01.classification + ' (debe ser historical_expected_fail)');
-            if (counts.active_contract !== 133) problemas.push('active_contract=' + counts.active_contract + ' (se esperaban 133)');
-            if (counts.historical_expected_fail !== 1) problemas.push('historical_expected_fail=' + counts.historical_expected_fail + ' (se esperaba 1)');
-            if (counts.utility !== 3) problemas.push('utility=' + counts.utility + ' (se esperaban 3)');
-            if (counts.diagnostic !== 5) problemas.push('diagnostic=' + counts.diagnostic + ' (se esperaban 5)');
-
-            if (problemas.length) {
-              console.error('MANIFIESTO_INVALIDO:');
-              for (const p of problemas) console.error('  - ' + p);
-              process.exit(1);
-            }
-            console.log(JSON.stringify(counts));
-          " <<< "$(printf '%s\n' "${inventario_real[@]}")")
-
+          node "$VALIDATOR" --self-test
+          resultado=$(node "$VALIDATOR")
+          total_real=$(node -e "console.log(JSON.parse(process.argv[1]).total_inventory)" "$resultado")
           echo "MANIFIESTO_REVALIDADO=$resultado"
           utilities=$(node -e "console.log(JSON.parse(process.argv[1]).utility)" "$resultado")
           diagnostics=$(node -e "console.log(JSON.parse(process.argv[1]).diagnostic)" "$resultado")

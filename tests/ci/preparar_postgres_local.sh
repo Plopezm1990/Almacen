@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Prepara un Postgres 16 local desechable y ejecuta los 9 contratos activos
-# de tests/{pm12,pm14,pm33}/db/*.mjs que necesitan Postgres real pero NO
+# Prepara un Postgres 16 local desechable y ejecuta los 10 contratos activos
+# de tests/{pm12,pm14,pm33}/db/*.mjs y tests/f3/a09 que necesitan Postgres real pero NO
 # Auth/PostgREST (esos 3 van en el workflow de CI, porque necesitan Docker,
 # no disponible en este entorno de trabajo), más
 # tests/pm33/db/p01-aislamiento-multiempresa-contract.mjs, que se ejecuta
@@ -39,12 +39,19 @@ if ! pg_isready -h 127.0.0.1 -p 5432 -U postgres >/dev/null 2>&1; then
   done
 fi
 pg_isready -h 127.0.0.1 -p 5432 -U postgres
+pg_version_num=$(psql -h 127.0.0.1 -p 5432 -U postgres -d postgres -tAc 'show server_version_num' | tr -d '[:space:]')
+pg_major="${pg_version_num:0:2}"
+if [ "$pg_major" != "16" ]; then
+  echo "POSTGRES_VERSION_INESPERADA: A09 y esta batería esperan PostgreSQL 16, se encontró server_version_num=$pg_version_num." >&2
+  exit 1
+fi
+echo "POSTGRES_VERSION_VERIFICADA=$pg_major"
 # Fija la contraseña solo hace falta en un Postgres local recién instalado
 # (auth peer/trust por defecto); en CI el servicio ya la trae fijada y
 # esto es un no-op idempotente tolerado.
 sudo -u postgres psql -h 127.0.0.1 -c "ALTER USER postgres PASSWORD 'postgres';" 2>/dev/null || \
   psql -h 127.0.0.1 -U postgres -c "ALTER USER postgres PASSWORD 'postgres';" 2>/dev/null || true
-for db in pm12_p08_test pm14_p02_test pm33_p05_test; do
+for db in pm12_p08_test pm14_p02_test pm33_p05_test a09_discount_test; do
   dropdb -h 127.0.0.1 -U postgres --if-exists "$db"
   createdb -h 127.0.0.1 -U postgres "$db"
 done
@@ -81,6 +88,10 @@ psql -h 127.0.0.1 -U postgres -d pm33_p05_test -v ON_ERROR_STOP=1 -f "$migracion
 export PM12_TEST_DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:5432/pm12_p08_test'
 export PM14_TEST_DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:5432/pm14_p02_test'
 export PM33_TEST_DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:5432/pm33_p05_test'
+export A09_PG_PORT=5432
+export A09_PG_DATABASE='a09_discount_test'
+export A09_PG_CLIENT="$ROOT/tests/pm12/db/node_modules/pg"
+export PGPASSWORD=postgres
 
 mkdir -p "$EVID_DIR"
 : > "$OUT"
@@ -88,7 +99,7 @@ echo "# POSTGRES=$(psql -h 127.0.0.1 -U postgres -tAc 'select version();') FECHA
 printf 'ruta\tclasificacion\tcodigo_salida\tduracion_ms\tultima_marca\tresultado_final\n' >> "$OUT"
 
 # Lista de ejecución: todo lo que el manifiesto marca environment=postgres
-# (9 activos + 1 histórico), en el orden del propio manifiesto.
+# (10 activos + 1 histórico), en el orden del propio manifiesto.
 mapfile -t archivos < <(node -e "
 const fs = require('fs');
 const m = JSON.parse(fs.readFileSync('$MANIFEST', 'utf8'));
@@ -107,7 +118,9 @@ for linea in "${archivos[@]}"; do
   f="${linea%%$'\t'*}"
   clasificacion="${linea##*$'\t'}"
   start=$(date +%s%N)
-  out=$(timeout 60 node "$f" 2>&1)
+  test_timeout=60
+  if [ "$f" = "tests/f3/a09/local-postgres-contract.mjs" ]; then test_timeout=300; fi
+  out=$(timeout "$test_timeout" node "$f" 2>&1)
   code=$?
   end=$(date +%s%N)
   ms=$(( (end - start) / 1000000 ))
@@ -148,12 +161,14 @@ echo "POSTGRES_ACTIVE_PASS=$postgres_active_pass"
 echo "POSTGRES_ACTIVE_FAIL=$postgres_active_fail"
 echo "HISTORICAL_EXPECTED_FAIL=$historical_expected_fail_count"
 
-if [ "$postgres_active_total" -ne 9 ]; then
-  echo "POSTGRES_ACTIVE_TOTAL_INESPERADO: se esperaban 9 contratos activos Postgres, el manifiesto tiene $postgres_active_total." >&2
+expected_postgres_active=$(node -e "const m=JSON.parse(require('fs').readFileSync('$MANIFEST','utf8')); console.log(m.expected_environment_counts.postgres.active_contract)")
+if [ "$postgres_active_total" -ne "$expected_postgres_active" ]; then
+  echo "POSTGRES_ACTIVE_TOTAL_INESPERADO: se esperaban $expected_postgres_active contratos activos Postgres, el runner ejecutó $postgres_active_total." >&2
   fallos_inesperados=$((fallos_inesperados + 1))
 fi
-if [ "$historical_expected_fail_count" -ne 1 ]; then
-  echo "HISTORICAL_EXPECTED_FAIL_INESPERADO: se esperaba exactamente 1, hubo $historical_expected_fail_count." >&2
+expected_postgres_historical=$(node -e "const m=JSON.parse(require('fs').readFileSync('$MANIFEST','utf8')); console.log(m.expected_environment_counts.postgres.historical_expected_fail)")
+if [ "$historical_expected_fail_count" -ne "$expected_postgres_historical" ]; then
+  echo "HISTORICAL_EXPECTED_FAIL_INESPERADO: se esperaban $expected_postgres_historical, hubo $historical_expected_fail_count." >&2
   fallos_inesperados=$((fallos_inesperados + 1))
 fi
 
