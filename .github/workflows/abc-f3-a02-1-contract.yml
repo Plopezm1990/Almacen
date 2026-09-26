@@ -72,9 +72,9 @@ jobs:
 
           const errorAnchor = 'if (msg.includes("sesion_usuario_requerida")) return "No hay una sesión de usuario válida.";';
           const errorReplacement = errorAnchor + '\n    if (msg.includes("operating_day_configuracion_ausente")) return "El local no tiene configurada todavía su zona horaria y hora de corte operativa.";\n    if (msg.includes("operating_day_configuracion_ambigua")) return "La configuración del día operativo del local es ambigua; se ha bloqueado la operación.";\n    if (msg.includes("operating_day_timezone_invalida")) return "La zona horaria configurada para el local no es válida.";\n    if (msg.includes("operating_day_cliente_no_autoritativo")) return "El día operativo lo determina el servidor; recarga el TPV antes de continuar.";\n    if (msg.includes("operating_day_servidor_ausente")) return "El servidor no devolvió un día operativo válido; no se ha guardado el pedido.";';
-          if (s.includes(errorAnchor) && !s.includes("operating_day_servidor_ausente")) {
+          if (s.includes(errorAnchor) && !s.includes('msg.includes("operating_day_configuracion_ausente")')) {
             s = s.replace(errorAnchor, errorReplacement);
-          } else if (!s.includes("operating_day_servidor_ausente")) {
+          } else if (!s.includes('msg.includes("operating_day_configuracion_ausente")')) {
             throw new Error("A02_P06_ERROR_MAP_ANCHOR_MISSING");
           }
 
