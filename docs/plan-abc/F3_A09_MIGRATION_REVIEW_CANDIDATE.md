@@ -1,5 +1,7 @@
 # F3/A09 — candidato revisado y plan de aplicación
 
+> **Actualización posterior:** el estado real de QA del 26/09/2026 está en [`A09_QA_STATUS_2026-09-26.md`](A09_QA_STATUS_2026-09-26.md). Este informe conserva la revisión histórica del candidato y sus frases sobre “no aplicado en QA” ya no describen el estado actual.
+
 Estado: **contrato A09, incluida la doble aprobación configurable, el escalado condicionado y la API de política del Propietario, verificado localmente; candidato de migración revisable en la rama aislada; no aplicado en QA/PROD**. IVA mixto repartido y fiscalización parcial previa siguen fuera del primer alcance. F3 sigue en desarrollo y A09 no emite documentos fiscales. Informe actualizado el 24/09/2026.
 
 ## Identidad y contenido exacto

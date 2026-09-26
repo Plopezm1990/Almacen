@@ -1,5 +1,7 @@
 # F3/A09 — preflight Netlify y propuesta de revisión QA
 
+> **Actualización posterior:** el estado real de QA del 26/09/2026 está en [`A09_QA_STATUS_2026-09-26.md`](A09_QA_STATUS_2026-09-26.md). Este informe conserva la evidencia histórica del 24/09/2026 y sus frases sobre “no aplicado en QA” ya no describen el estado actual.
+
 Fecha de comprobación: 24/09/2026. Este documento registra evidencia de solo lectura. No se ha hecho push, abierto/actualizado una PR, aplicado SQL ni desplegado.
 
 ## Estado Git y protecciones
