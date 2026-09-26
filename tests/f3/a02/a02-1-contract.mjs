@@ -11,9 +11,9 @@ assert.ok(runtime.endsWith(recoveredBody), "A02.1: runtime y fuente recuperada p
 
 assert.ok(recovered.includes("A02.1 UI -> A03 server authority"), "A02.1: falta marcador del adaptador");
 assert.ok(recovered.includes("venderCarrito: venderCarritoA02"), "A02.1: VentaRapida no usa el adaptador A03");
-assert.ok(recovered.includes('supabase.rpc("abc_abrir_cuenta"'), "A02.1: falta abc_abrir_cuenta");
-assert.ok(recovered.includes('"abc_crear_pedido"'), "A02.1: falta abc_crear_pedido");
-assert.ok(recovered.includes('"abc_agregar_linea_pedido"'), "A02.1: falta abc_agregar_linea_pedido");
+assert.ok(recovered.includes('rpcA02ConRecuperacion(supabase, "abc_abrir_cuenta"'), "A02.1: falta abc_abrir_cuenta mediante el wrapper idempotente");
+assert.ok(recovered.includes('rpcA02ConRecuperacion(supabase, "abc_crear_pedido"'), "A02.1: falta abc_crear_pedido mediante el wrapper idempotente");
+assert.ok(recovered.includes('rpcA02ConRecuperacion(supabase, "abc_agregar_linea_pedido"'), "A02.1: falta abc_agregar_linea_pedido mediante el wrapper idempotente");
 assert.ok(recovered.includes('"abc_consultar_operacion"'), "A02.1: falta recuperación de operation_id");
 assert.ok(recovered.includes("p_expected_cuenta_version"), "A02.1: falta optimistic locking de cuenta");
 assert.ok(recovered.includes("p_expected_pedido_version"), "A02.1: falta optimistic locking de pedido");
