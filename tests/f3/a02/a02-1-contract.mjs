@@ -402,6 +402,66 @@ assert.ok(a03.includes("grant select on table public.catalogo_tpv_productos to a
 assert.ok(!a03.includes("grant insert on table public.catalogo_tpv_productos to authenticated"), "A02.1 P10: frontend autenticado puede insertar precios");
 assert.ok(!a03.includes("grant update on table public.catalogo_tpv_productos to authenticated"), "A02.1 P10: frontend autenticado puede modificar precios");
 
+
+// P11 — ciclo completo de persistencia cuenta/pedido en dispositivo.
+assert.ok(recovered.includes('la_suite_a02_1_ultima_cuenta_v1:${empresaId}:${localId}'), "A02.1 P11: contexto final no está aislado por empresa/local");
+assert.ok(recovered.includes("function validarContextoCuentaA02(contexto, empresaId, localId)"), "A02.1 P11: falta validación estructural del contexto persistido");
+assert.ok(recovered.includes("function leerContextoCuentaA02(empresaId, localId)"), "A02.1 P11: falta ruta de lectura del contexto persistido");
+assert.ok(recovered.includes("function guardarContextoCuentaA02(empresaId, localId, contexto)"), "A02.1 P11: falta ruta de escritura + readback del contexto persistido");
+assert.ok(recovered.includes("const releido = leerContextoCuentaA02(empresaId, localId);"), "A02.1 P11: contexto no se relee después de guardar");
+assert.ok(recovered.includes('throw new Error("persistencia_contexto_cuenta_no_disponible")'), "A02.1 P11: almacenamiento final no falla cerrado");
+assert.ok(recovered.includes('throw new Error("contexto_cuenta_persistido_invalido")'), "A02.1 P11: contexto final inválido no falla cerrado");
+
+for (const required of [
+  "contexto.schemaVersion !== 1",
+  "contexto.empresaId !== empresaId || contexto.localId !== localId",
+  "uuidPersistidoA02(contexto.cuentaId)",
+  "uuidPersistidoA02(contexto.pedidoId)",
+  'versionServidorA02(contexto.cuentaVersion, "contexto.cuenta_version")',
+  'versionServidorA02(contexto.pedidoVersion, "contexto.pedido_version")',
+  "uuidPersistidoA02(contexto.terminalId)",
+  "uuidPersistidoA02(contexto.sessionId)",
+  "contexto.operatingDay",
+  "contexto.currencyCode",
+  "Array.isArray(contexto.lineas)",
+  'versionServidorA02(linea.lineaVersion, "contexto.linea_version")',
+  'importeServidorA02(linea.total, "contexto.linea_total")'
+]) {
+  assert.ok(recovered.includes(required), `A02.1 P11: falta validar campo persistido: ${required}`);
+}
+
+const contextoFinalStart = adapter.indexOf("const agregado = guardarContextoCuentaA02(");
+assert.ok(contextoFinalStart >= 0, "A02.1 P11: resultado final no usa persistencia validada");
+const contextoFinalEnd = adapter.indexOf("});", contextoFinalStart);
+const contextoFinal = adapter.slice(contextoFinalStart, contextoFinalEnd + 3);
+for (const required of [
+  "schemaVersion: 1",
+  "empresaId",
+  "localId: localActivoId",
+  "cuentaId: pending.cuentaId",
+  "cuentaVersion:",
+  "pedidoId: pending.pedidoId",
+  "pedidoVersion",
+  "lineas: pending.lineas.map",
+  "terminalId: contexto.terminalId",
+  "sessionId: contexto.sessionId",
+  "operatingDay: pending.operatingDay",
+  "currencyCode: pending.currencyCode"
+]) {
+  assert.ok(contextoFinal.includes(required), `A02.1 P11: contexto final incompleto: ${required}`);
+}
+
+const removePendingP11 = adapter.indexOf("localStorage.removeItem(pendingKey)", contextoFinalStart);
+assert.ok(removePendingP11 > contextoFinalStart, "A02.1 P11: estado pendiente se elimina antes de persistir contexto final");
+assert.ok(!adapter.includes("leerContextoCuentaA02("), "A02.1 P11: una venta nueva no debe reutilizar automáticamente el último pedido completado");
+
+assert.ok(recovered.includes('throw new Error("persistencia_idempotencia_no_disponible")'), "A02.1 P11: fallo de lectura del pendiente no se bloquea");
+assert.ok(recovered.includes('throw new Error("persistencia_idempotencia_corrupta")'), "A02.1 P11: JSON pendiente corrupto puede crear IDs nuevos");
+assert.ok(recovered.includes('msg.includes("persistencia_idempotencia_corrupta")'), "A02.1 P11: falta mensaje de pendiente corrupto");
+assert.ok(recovered.includes('msg.includes("persistencia_contexto_cuenta_no_disponible")'), "A02.1 P11: falta mensaje de persistencia final");
+assert.ok(recovered.includes('msg.includes("contexto_cuenta_persistido_invalido")'), "A02.1 P11: falta mensaje de contexto final inválido");
+
+console.log("A02_1_DEVICE_CONTEXT_PERSISTENCE=PASS");
 console.log("A02_1_SERVER_ECONOMIC_AUTHORITY=PASS");
 console.log("A02_1_OPTIMISTIC_LOCKING=PASS");
 console.log("A02_1_TIMEOUT_RECOVERY=PASS");
