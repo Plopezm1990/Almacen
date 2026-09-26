@@ -62,7 +62,7 @@ jobs:
             exit 1
           fi
 
-          if grep -Eiq '(insert[[:space:]]+into|update[[:space:]]+public\.|delete[[:space:]]+from)[[:space:]]*public\.(pagos|pago_intentos|pago_aplicaciones|checkouts|checkout_ventas|ventas_fiscales|venta_fiscal_lineas|movimientos_stock|stock_operaciones|stock_ubicacion)' "$migration"; then
+          if grep -Eiq '(insert[[:space:]]+into|update|delete[[:space:]]+from)[[:space:]]+public\\.(pagos|pago_intentos|pago_aplicaciones|checkouts|checkout_ventas|ventas_fiscales|venta_fiscal_lineas|movimientos_stock|stock_operaciones|stock_ubicacion)' "$migration"; then
             echo "A10_SCOPE: A10 no debe mutar pagos, fiscalidad ni stock" >&2
             exit 1
           fi
