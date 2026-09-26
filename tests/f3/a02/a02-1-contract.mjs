@@ -311,6 +311,98 @@ for (const [nombre,siguiente] of [
   assert.ok(cuerpo.includes("returning version into v_new_pedido_version"), `A02.1 P09: ${nombre} no devuelve nueva versión de pedido`);
 }
 
+
+// P10 — autoridad económica exclusiva del servidor.
+const calcStart = a03.indexOf("create function private.abc_calcular_linea_tpv(");
+const calcEnd = a03.indexOf("create function public.abc_abrir_cuenta(", calcStart);
+assert.ok(calcStart >= 0 && calcEnd > calcStart, "A02.1 P10: no se pudo aislar el cálculo económico servidor");
+const calcEconomico = a03.slice(calcStart, calcEnd);
+
+for (const required of [
+  "from public.catalogo_tpv_productos c",
+  "join public.entidad_fiscal_local_monedas elm",
+  "join public.entidades_fiscales ef",
+  "and c.activo=true",
+  "and elm.activa=true",
+  "and ef.activa=true",
+  "v_bruto:=round(v_cantidad*v_catalog.precio_unitario,8)",
+  "v_base:=(v_bruto-v_descuento)::numeric(24,8)",
+  "v_impuestos:=round(v_base*v_catalog.impuesto_pct/100,8)",
+  "v_total:=round(v_base+v_impuestos,8)",
+  "'precio_unitario',v_catalog.precio_unitario",
+  "'impuesto_pct',v_catalog.impuesto_pct",
+  "'base',v_base",
+  "'impuestos',v_impuestos",
+  "'total',v_total",
+  "'modo','SERVER_AUTHORITY_A03'"
+]) {
+  assert.ok(calcEconomico.includes(required), `A02.1 P10: falta autoridad económica servidor: ${required}`);
+}
+
+const agregarLineaP10 = cuerpoFuncionA03("abc_agregar_linea_pedido", "abc_actualizar_linea_pedido");
+assert.ok(agregarLineaP10.includes("v_calc:=private.abc_calcular_linea_tpv("), "A02.1 P10: agregar línea no delega cálculo económico al servidor");
+for (const forbiddenParam of [
+  "p_precio_unitario",
+  "p_precio",
+  "p_impuesto_pct",
+  "p_iva",
+  "p_base",
+  "p_impuestos",
+  "p_total",
+  "p_descuento_total"
+]) {
+  assert.ok(!agregarLineaP10.includes(forbiddenParam), `A02.1 P10: RPC acepta autoridad económica del cliente: ${forbiddenParam}`);
+}
+for (const persisted of [
+  "(v_calc->>'precio_unitario')::numeric",
+  "(v_calc->>'descuento_total')::numeric",
+  "(v_calc->>'base')::numeric",
+  "(v_calc->>'impuestos')::numeric",
+  "(v_calc->>'total')::numeric",
+  "v_calc->'snapshot_comercial'",
+  "v_calc->'snapshot_calculo'"
+]) {
+  assert.ok(agregarLineaP10.includes(persisted), `A02.1 P10: línea no persiste valor/snapshot calculado por servidor: ${persisted}`);
+}
+
+const rpcLineaStart = adapter.indexOf('rpcA02ConRecuperacion(supabase, "abc_agregar_linea_pedido"');
+const rpcLineaEnd = adapter.indexOf("}, empresaId, localActivoId, linea.operationId)", rpcLineaStart);
+assert.ok(rpcLineaStart >= 0 && rpcLineaEnd > rpcLineaStart, "A02.1 P10: no se pudo aislar RPC de línea");
+const rpcLineaCliente = adapter.slice(rpcLineaStart, rpcLineaEnd);
+for (const required of ["p_producto_id: linea.productoId", "p_cantidad: linea.cantidad"]) {
+  assert.ok(rpcLineaCliente.includes(required), `A02.1 P10: falta dato comercial permitido: ${required}`);
+}
+for (const forbidden of [
+  "p_precio",
+  "p_impuesto",
+  "p_iva",
+  "p_base",
+  "p_total",
+  "p_descuento",
+  "precioNeto(",
+  "ivaDe(",
+  "costoUnitario",
+  "ingresoUnitario",
+  "ivaVentaAplicado"
+]) {
+  assert.ok(!rpcLineaCliente.includes(forbidden), `A02.1 P10: cliente intenta imponer cálculo económico: ${forbidden}`);
+}
+
+assert.ok(recovered.includes("function importeServidorA02(valor, campo)"), "A02.1 P10: falta validador de importes del servidor");
+assert.ok(recovered.includes("Number.isFinite(importe)"), "A02.1 P10: importe servidor no se valida como finito");
+assert.ok(recovered.includes("importe < 0"), "A02.1 P10: importe servidor negativo no falla cerrado");
+assert.ok(adapter.includes('importeServidorA02(l22.resultado?.total, "linea.total")'), "A02.1 P10: total UI no proviene estrictamente del resultado servidor");
+assert.ok(!adapter.includes("Number(l22.resultado?.total) || 0"), "A02.1 P10: fallback 0 puede ocultar respuesta económica inválida");
+assert.ok(!adapter.includes("precioNeto("), "A02.1 P10: adaptador A02 calcula precio local");
+assert.ok(!adapter.includes("ivaDe("), "A02.1 P10: adaptador A02 calcula IVA local");
+assert.ok(recovered.includes('msg.includes("importe_servidor_invalido")'), "A02.1 P10: falta fail-closed ante importe servidor inválido");
+
+assert.ok(a03.includes("revoke all on table public.catalogo_tpv_productos"), "A02.1 P10: catálogo económico no revoca DML genérico");
+assert.ok(a03.includes("grant select on table public.catalogo_tpv_productos to authenticated"), "A02.1 P10: frontend no tiene contrato de solo lectura sobre catálogo");
+assert.ok(!a03.includes("grant insert on table public.catalogo_tpv_productos to authenticated"), "A02.1 P10: frontend autenticado puede insertar precios");
+assert.ok(!a03.includes("grant update on table public.catalogo_tpv_productos to authenticated"), "A02.1 P10: frontend autenticado puede modificar precios");
+
+console.log("A02_1_SERVER_ECONOMIC_AUTHORITY=PASS");
 console.log("A02_1_OPTIMISTIC_LOCKING=PASS");
 console.log("A02_1_TIMEOUT_RECOVERY=PASS");
 console.log("A02_1_IDEMPOTENCY_STABLE_IDS=PASS");
