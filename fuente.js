@@ -101845,6 +101845,14 @@ function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", e
     cargar();
   }, [empresaId, localId]);
   const cambiar = (rol, campo2, valor) => setForm((anterior) => ({ ...anterior, [rol]: { ...anterior[rol], [campo2]: valor } }));
+  const validarPolitica = (rol, p3) => {
+    const max = Number(p3.max_percent);
+    if (!Number.isFinite(max) || max < 0 || max > 100) return `${rol}: el descuento m\xE1ximo debe estar entre 0 y 100%.`;
+    if (p3.permite_cortesia && max !== 100) return `${rol}: las cortes\xEDas requieren un descuento m\xE1ximo del 100%.`;
+    if (p3.permite_escalado && !p3.puede_solicitar) return `${rol}: el escalado requiere permitir solicitudes.`;
+    if (p3.puede_autorizar && max === 0) return `${rol}: una autorizaci\xF3n necesita un l\xEDmite mayor que 0%.`;
+    return "";
+  };
   const guardar = async () => {
     setError("");
     setConfirmacion("");
@@ -101859,6 +101867,13 @@ function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", e
     if (!motivo.trim()) {
       setError("Escribe un motivo para este cambio.");
       return;
+    }
+    for (const rol of ["Propietario", "Encargado"]) {
+      const validacion = validarPolitica(rol, form[rol]);
+      if (validacion) {
+        setError(validacion);
+        return;
+      }
     }
     setGuardando(true);
     try {
@@ -101910,7 +101925,7 @@ function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", e
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold" }, rol),
         /* @__PURE__ */ import_react4.default.createElement("label", { className: "flex items-center gap-2 text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("input", { type: "checkbox", checked: !!p3.activa, onChange: (e2) => cambiar(rol, "activa", e2.target.checked) }), "Activa")
       ),
-      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Descuento m\xE1ximo (%)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", min: "0", max: "100", step: "0.01", value: p3.max_percent, onChange: (e2) => cambiar(rol, "max_percent", e2.target.value) })),
+      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Descuento m\xE1ximo (%)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", min: "0", max: "100", step: "0.01", value: p3.max_percent, onChange: (e2) => cambiar(rol, "max_percent", e2.target.value) }), p3.permite_cortesia && Number(p3.max_percent) !== 100 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-1", style: { color: C2.red } }, "Las cortes\xEDas requieren un m\xE1ximo del 100%.")),
       /* @__PURE__ */ import_react4.default.createElement(
         "div",
         { className: "grid grid-cols-1 md:grid-cols-2 gap-2 mt-2" },
