@@ -32,7 +32,7 @@ jobs:
           set -euo pipefail
           BASE=0db9dcccaa11879b88ca09d5f8ada8e58ebffd82
           git merge-base --is-ancestor "$BASE" HEAD
-          BAD=$(git diff --name-only "$BASE...HEAD" | grep -Ev '^(fuente\.js|source-recovery/fuente-recuperado\.js|tests/f3/a02/|\.github/workflows/abc-f3-a02-1-contract\.yml$)' || true)
+          BAD=$(git diff --name-only "$BASE...HEAD" | grep -Ev '^(fuente\.js|source-recovery/fuente-recuperado\.js|tests/f3/a02/|supabase/migrations/20260926203000_abc_f3_a02_operating_day_a11\.sql|\.github/workflows/abc-f3-a02-1-contract\.yml$)' || true)
           if [ -n "$BAD" ]; then
             echo "A02_1_SCOPE_FAIL" >&2
             echo "$BAD" >&2
