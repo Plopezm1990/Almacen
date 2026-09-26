@@ -6912,6 +6912,11 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("terminal_sin_sesion_abierta")) return "Este terminal no tiene una sesión de caja abierta.";
     if (msg.includes("terminal_sesion_ambigua")) return "El terminal aparece vinculado a más de una sesión activa; se ha bloqueado la operación.";
     if (msg.includes("sesion_usuario_requerida")) return "No hay una sesión de usuario válida.";
+    if (msg.includes("operating_day_configuracion_ausente")) return "El local no tiene configurada todavía su zona horaria y hora de corte operativa.";
+    if (msg.includes("operating_day_configuracion_ambigua")) return "La configuración del día operativo del local es ambigua; se ha bloqueado la operación.";
+    if (msg.includes("operating_day_timezone_invalida")) return "La zona horaria configurada para el local no es válida.";
+    if (msg.includes("operating_day_cliente_no_autoritativo")) return "El día operativo lo determina el servidor; recarga el TPV antes de continuar.";
+    if (msg.includes("operating_day_servidor_ausente")) return "El servidor no devolvió un día operativo válido; no se ha guardado el pedido.";
     if (msg.includes("producto_tpv_no_disponible")) return "Uno de los productos no está disponible en el catálogo TPV del servidor.";
     if (msg.includes("cuenta_version_conflict") || msg.includes("pedido_version_conflict")) return "La cuenta o el pedido cambió en otro terminal. Recarga antes de continuar.";
     if (msg.includes("operacion_a02_en_curso") || msg.includes("operacion_a02_estado_desconocido")) return "El servidor recibió la operación pero todavía no puede confirmarse su resultado. No se repetirá con otro identificador.";
@@ -7015,7 +7020,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           fingerprint,
           empresaId,
           localId: localActivoId,
-          operatingDay: todayISO(),
+          operatingDay: null,
           currencyCode,
           modalidad: "BARRA",
           cuentaId,
@@ -7050,8 +7055,11 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           p_responsable_actual: contexto.userId,
           p_terminal_id: contexto.terminalId,
           p_session_id: contexto.sessionId,
-          p_operating_day: pending.operatingDay
+          p_operating_day: null
         }, empresaId, localActivoId, pending.openOperationId);
+        const operatingDayServidor = pending.cuentaResultado?.operating_day || null;
+        if (!operatingDayServidor) throw new Error("operating_day_servidor_ausente");
+        pending.operatingDay = operatingDayServidor;
         if (!guardarJsonLocalA02(pendingKey, pending)) throw new Error("persistencia_idempotencia_no_disponible");
       }
 
