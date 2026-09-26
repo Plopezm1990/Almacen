@@ -6846,6 +6846,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     try {
       terminalId = localStorage.getItem(storageKey) || null;
     } catch (e2) {
+      throw new Error("persistencia_terminal_no_disponible");
     }
 
     let qTerminales = supabase
@@ -6861,8 +6862,17 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (terminalId) {
       if (!Array.isArray(terminales) || terminales.length !== 1) throw new Error("terminal_configurado_no_disponible");
     } else {
-      if (!Array.isArray(terminales) || terminales.length !== 1) throw new Error("terminal_contexto_ambiguo");
+      if (!Array.isArray(terminales) || terminales.length === 0) throw new Error("terminal_no_configurado");
+      if (terminales.length > 1) throw new Error("terminal_contexto_ambiguo");
       terminalId = terminales[0].id;
+      try {
+        localStorage.setItem(storageKey, terminalId);
+        if (localStorage.getItem(storageKey) !== terminalId) {
+          throw new Error("persistencia_terminal_no_disponible");
+        }
+      } catch (e2) {
+        throw new Error("persistencia_terminal_no_disponible");
+      }
     }
 
     const { data: vinculos, error: vinculosError } = await supabase
@@ -6891,15 +6901,13 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (cajaSesionError) throw cajaSesionError;
     if (!cajaSesion) throw new Error("terminal_sin_sesion_abierta");
 
-    try {
-      localStorage.setItem(storageKey, terminalId);
-    } catch (e2) {
-    }
     return { userId, terminalId, sessionId, cajaSesionVersion: Number(cajaSesion.version) || 1 };
   }
   function errorRpcA02(error) {
     const msg = String(error?.message || error || "");
+    if (msg.includes("terminal_no_configurado")) return "No hay ningún terminal TPV activo configurado para este local.";
     if (msg.includes("terminal_contexto_ambiguo")) return "Este dispositivo todavía no tiene un terminal TPV asignado de forma inequívoca.";
+    if (msg.includes("persistencia_terminal_no_disponible")) return "Este navegador no puede guardar de forma segura el terminal asignado. Activa el almacenamiento local antes de operar.";
     if (msg.includes("terminal_configurado_no_disponible")) return "El terminal asignado a este dispositivo ya no está disponible.";
     if (msg.includes("terminal_sin_sesion_abierta")) return "Este terminal no tiene una sesión de caja abierta.";
     if (msg.includes("terminal_sesion_ambigua")) return "El terminal aparece vinculado a más de una sesión activa; se ha bloqueado la operación.";

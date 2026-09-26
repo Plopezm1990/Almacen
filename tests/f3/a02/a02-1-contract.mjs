@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 const recovered = fs.readFileSync("source-recovery/fuente-recuperado.js", "utf8");
 const runtime = fs.readFileSync("fuente.js", "utf8");
 const a03 = fs.readFileSync("supabase/migrations/20260924010000_abc_f3_a03_server_authority.sql", "utf8");
+const m01 = fs.readFileSync("supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql", "utf8");
 
 const headerLines = 14;
 const recoveredBody = recovered.split("\n").slice(headerLines).join("\n");
@@ -29,6 +30,22 @@ assert.ok(recovered.includes('from("caja_sesiones")'), "A02.1: falta validación
 assert.ok(recovered.includes("false && showCobro"), "A02.1: UI de cobro heredada sigue activa");
 assert.ok(recovered.includes("Guardar pedido"), "A02.1: el CTA aún presenta un cobro");
 assert.ok(recovered.includes("registrar_venta_stock_carrito_pm09"), "A02.1: el legado PM09 fue eliminado bruscamente");
+
+const terminalStart = recovered.indexOf("async function contextoTerminalA02");
+const terminalEnd = recovered.indexOf("function errorRpcA02", terminalStart);
+assert.ok(terminalStart >= 0 && terminalEnd > terminalStart, "A02.1: no se pudo aislar el resolver de terminal");
+const terminalResolver = recovered.slice(terminalStart, terminalEnd);
+assert.ok(terminalResolver.includes("la_suite_abc_terminal_id_v1:"), "A02.1: falta binding persistente por empresa/local");
+assert.ok(terminalResolver.includes('qTerminales = qTerminales.eq("id", terminalId)'), "A02.1: el terminal persistido no se revalida por id");
+assert.ok(terminalResolver.includes("terminales.length === 0"), "A02.1: falta fail-closed cuando no hay terminales");
+assert.ok(terminalResolver.includes("terminales.length > 1"), "A02.1: falta fail-closed cuando hay varios terminales");
+assert.ok(terminalResolver.includes('throw new Error("persistencia_terminal_no_disponible")'), "A02.1: el binding puede continuar sin persistencia segura");
+const uniqueCheck = terminalResolver.indexOf("terminales.length > 1");
+const selectOnlyAfterUnique = terminalResolver.indexOf("terminalId = terminales[0].id");
+assert.ok(uniqueCheck >= 0 && selectOnlyAfterUnique > uniqueCheck, "A02.1: se selecciona un terminal antes de demostrar unicidad");
+assert.ok(m01.includes("create unique index abc_terminal_device_key_uq"), "A02.1: device_key no es único por scope");
+assert.ok(m01.includes("revoke insert,update,delete on public.terminales_tpv from authenticated"), "A02.1: el navegador conserva escritura directa sobre terminales_tpv");
+
 
 function firmaA03(fn) {
   const startToken = `create function public.${fn}(`;
