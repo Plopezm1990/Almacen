@@ -839,6 +839,170 @@ function SelectorLocalInformes({ locales = [], valor = "", onChange, empresas = 
   const empresaActualPM32 = empresasActivasPM32.find((e3) => String(e3.id) === String(empresaActivaId || ""));
   return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-1 gap-3 items-end " + (variasEmpresasPM32 ? "md:grid-cols-3" : "md:grid-cols-2") }, variasEmpresasPM32 && /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Empresa" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: empresaActivaId || "", onChange: (e2) => onCambiarEmpresa && onCambiarEmpresa(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, empresasActivasPM32.map((e3) => /* @__PURE__ */ import_react4.default.createElement("option", { key: e3.id, value: e3.id }, nombreEmpresaPM32(e3))))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Local" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: valor, onChange: (e2) => onChange(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, variasEmpresasPM32 ? "Todos los locales de esta empresa" : "Todos los locales"), activos.map((l22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: l22.id, value: l22.id }, l22.nombre)))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] pb-2", style: { color: C2.inkSoft } }, seleccionado ? variasEmpresasPM32 ? `Mostrando solo ${seleccionado.nombre} \xB7 ${nombreEmpresaPM32(empresaActualPM32)}.` : `Mostrando solo ${seleccionado.nombre}.` : variasEmpresasPM32 ? `Mostrando datos consolidados de ${nombreEmpresaPM32(empresaActualPM32)}.` : "Mostrando datos consolidados de todos los locales.")));
 }
+function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", esPropietario = false }) {
+  const empresaId = empresa?.id || "";
+  const politicaInicial = {
+    Propietario: {
+      rol: "Propietario",
+      max_percent: "100",
+      permite_cortesia: true,
+      puede_solicitar: true,
+      puede_aplicar: true,
+      puede_autorizar: true,
+      permite_escalado: false,
+      requiere_doble_aprobacion: false,
+      activa: true
+    },
+    Encargado: {
+      rol: "Encargado",
+      max_percent: "20",
+      permite_cortesia: false,
+      puede_solicitar: true,
+      puede_aplicar: true,
+      puede_autorizar: false,
+      permite_escalado: true,
+      requiere_doble_aprobacion: false,
+      activa: true
+    }
+  };
+  const [politicas, setPoliticas] = (0, import_react4.useState)([]);
+  const [form, setForm] = (0, import_react4.useState)(politicaInicial);
+  const [motivo, setMotivo] = (0, import_react4.useState)("Configuración inicial de descuentos y cortesías A09");
+  const [cargando, setCargando] = (0, import_react4.useState)(false);
+  const [guardando, setGuardando] = (0, import_react4.useState)(false);
+  const [error, setError] = (0, import_react4.useState)("");
+  const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
+  const hoy = () => new Date().toISOString().slice(0, 10);
+  const obtenerCliente = async () => {
+    if (typeof window === "undefined" || typeof window.getSupabaseClient !== "function") return null;
+    return window.getSupabaseClient();
+  };
+  const cargar = async () => {
+    setError("");
+    setConfirmacion("");
+    if (!empresaId || !localId) {
+      setPoliticas([]);
+      setCargando(false);
+      return;
+    }
+    setCargando(true);
+    try {
+      const supabase = await obtenerCliente();
+      if (!supabase) throw new Error("No hay una sesión sincronizada.");
+      const { data, error: rpcError } = await supabase.rpc("abc_listar_descuento_politicas", {
+        p_empresa_id: empresaId,
+        p_local_id: localId
+      });
+      if (rpcError) throw rpcError;
+      const lista = Array.isArray(data) ? data : [];
+      setPoliticas(lista);
+      setForm((anterior) => {
+        const siguiente = { ...anterior };
+        for (const politica of lista) {
+          if (politica?.rol && siguiente[politica.rol]) siguiente[politica.rol] = { ...siguiente[politica.rol], ...politica, max_percent: String(politica.max_percent ?? "0") };
+        }
+        return siguiente;
+      });
+    } catch (e2) {
+      setError(e2?.message || "No se pudieron cargar las políticas.");
+    } finally {
+      setCargando(false);
+    }
+  };
+  (0, import_react4.useEffect)(() => {
+    cargar();
+  }, [empresaId, localId]);
+  const cambiar = (rol, campo, valor) => setForm((anterior) => ({ ...anterior, [rol]: { ...anterior[rol], [campo]: valor } }));
+  const guardar = async () => {
+    setError("");
+    setConfirmacion("");
+    if (!esPropietario) {
+      setError("Solo un usuario con rol Propietario puede configurar estas políticas.");
+      return;
+    }
+    if (!empresaId || !localId) {
+      setError("Selecciona un local concreto antes de guardar.");
+      return;
+    }
+    if (!motivo.trim()) {
+      setError("Escribe un motivo para este cambio.");
+      return;
+    }
+    setGuardando(true);
+    try {
+      const supabase = await obtenerCliente();
+      if (!supabase) throw new Error("No hay una sesión sincronizada.");
+      for (const rol of ["Propietario", "Encargado"]) {
+        const p = form[rol];
+        const { error: rpcError } = await supabase.rpc("abc_configurar_descuento_politica", {
+          p_operation_id: `a09.configurar.politica.${empresaId}.${localId}.${rol}.${Date.now()}`,
+          p_empresa_id: empresaId,
+          p_local_id: localId,
+          p_rol: rol,
+          p_user_id: null,
+          p_max_percent: Number(p.max_percent),
+          p_permite_cortesia: !!p.permite_cortesia,
+          p_puede_solicitar: !!p.puede_solicitar,
+          p_puede_aplicar: !!p.puede_aplicar,
+          p_puede_autorizar: !!p.puede_autorizar,
+          p_permite_escalado: !!p.permite_escalado,
+          p_requiere_doble_aprobacion: !!p.requiere_doble_aprobacion,
+          p_activa: !!p.activa,
+          p_motivo: motivo.trim(),
+          p_operating_day: hoy()
+        });
+        if (rpcError) throw rpcError;
+      }
+      setConfirmacion("Políticas guardadas correctamente en el servidor.");
+      await cargar();
+    } catch (e2) {
+      setError(e2?.message || "No se pudieron guardar las políticas.");
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const campo = (rol, clave, etiqueta) => /* @__PURE__ */ import_react4.default.createElement(
+    "label",
+    { className: "flex items-center gap-2 text-[12px]", key: clave },
+    /* @__PURE__ */ import_react4.default.createElement("input", { type: "checkbox", checked: !!form[rol][clave], onChange: (e2) => cambiar(rol, clave, e2.target.checked) }),
+    etiqueta
+  );
+  const tarjeta = (rol) => {
+    const p = form[rol];
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: rol, className: "mb-3" },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold" }, rol),
+        /* @__PURE__ */ import_react4.default.createElement("label", { className: "flex items-center gap-2 text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("input", { type: "checkbox", checked: !!p.activa, onChange: (e2) => cambiar(rol, "activa", e2.target.checked) }), "Activa")
+      ),
+      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Descuento máximo (%)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", min: "0", max: "100", step: "0.01", value: p.max_percent, onChange: (e2) => cambiar(rol, "max_percent", e2.target.value) })),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-2 mt-2" },
+        campo(rol, "permite_cortesia", "Permite cortesías"),
+        campo(rol, "puede_solicitar", "Puede solicitar"),
+        campo(rol, "puede_aplicar", "Puede aplicar"),
+        campo(rol, "puede_autorizar", "Puede autorizar"),
+        campo(rol, "permite_escalado", "Permite escalado"),
+        campo(rol, "requiere_doble_aprobacion", "Requiere doble aprobación")
+      )
+    );
+  };
+  return /* @__PURE__ */ import_react4.default.createElement("div", null,
+    /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Descuentos y cortesías"),
+    /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold" }, empresa?.razonSocial || empresa?.marca || "Empresa", localNombre ? ` · ${localNombre}` : ""),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mt-1", style: { color: C2.inkSoft } }, "Estas reglas se aplican al servidor y requieren una sesión autenticada de Propietario.")
+    ),
+    !localId && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, "Selecciona un local concreto para configurar sus políticas."),
+    localId && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null,
+      politicas.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold mb-2" }, "Configuración actual"), politicas.map((p) => /* @__PURE__ */ import_react4.default.createElement("div", { key: p.id, className: "text-[12px] mb-1" }, `${p.rol || "Usuario"}: ${p.max_percent}% · ${p.activa ? "activa" : "inactiva"}`))),
+      tarjeta("Propietario"),
+      tarjeta("Encargado"),
+      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo del cambio" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivo, onChange: (e2) => setMotivo(e2.target.value), maxLength: 500 })),
+      error && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.redSoft, border: "none" } }, error),
+      confirmacion && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.accentSoft, border: "none" } }, confirmacion),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: guardar, disabled: guardando || cargando }, guardando ? "Guardando…" : "Guardar políticas"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: cargar, disabled: cargando }, cargando ? "Cargando…" : "Recargar"))
+    )
+  );
+}
 function decidirCambioTabPM15(formularioAbierto, confirmar) {
   if (!formularioAbierto) return true;
   return !!confirmar();
@@ -2659,7 +2823,7 @@ function GestionAlmacen() {
       establecerPin,
       activarModoEmpleado
     }
-  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, diagnosticoLegadosPM10: diagnosticarDatosLegadosPM10({ productos, pedidos: pedidos2, empleados, encargos, proveedores, clientes, locales, empresas }), marcarFormularioAbiertoPM15 }));
+  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, diagnosticoLegadosPM10: diagnosticarDatosLegadosPM10({ productos, pedidos: pedidos2, empleados, encargos, proveedores, clientes, locales, empresas }), marcarFormularioAbiertoPM15 }), tab === "descuentos" && /* @__PURE__ */ import_react4.default.createElement(PoliticasDescuentos, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }));
   const itemsMeta = [
     { id: "dashboard", label: "Panel general", icon: ChartColumn },
     { id: "direccion", label: "Panel de direcci\xF3n", icon: TrendingUp },
@@ -2695,6 +2859,7 @@ function GestionAlmacen() {
     { id: "libroiva", label: "Libro de IVA", icon: Receipt },
     { id: "caja", label: "Arqueo de caja", icon: Wallet },
     { id: "devoluciones", label: "Devoluciones", icon: ArrowLeftRight },
+    { id: "descuentos", label: "Descuentos y cortesías", icon: ShieldCheck },
     { id: "tesoreria", label: "Tesorer\xEDa", icon: ChartLine },
     { id: "estacionalidad", label: "Estacionalidad", icon: CalendarRange },
     { id: "auditoria", label: "Auditor\xEDa", icon: RotateCcwClock },
@@ -2713,7 +2878,7 @@ function GestionAlmacen() {
     { titulo: null, items: pick(["dashboard", "direccion", "buscar"]) },
     { titulo: "Compras", items: pick(["proveedores", "pedidos", "recepcion", "albaranes", "facturas"]) },
     { titulo: "Almac\xE9n", items: pick(["resumen_almacen", "productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos", "diagnostico", "etiquetas"]) },
-    { titulo: "Ventas", items: pick(["venta", "encargos", "clientes", "devoluciones"]) },
+    { titulo: "Ventas", items: pick(["venta", "encargos", "clientes", "devoluciones", "descuentos"]) },
     { titulo: "Costes y producci\xF3n", items: pick(["fichas", "produccion", "mermas"]) },
     { titulo: "Finanzas y an\xE1lisis", items: pick(["pagos", "resultados", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
     { titulo: "Personal", items: pick(["personal", "fichaje", "turnos", "nominas"]) },
