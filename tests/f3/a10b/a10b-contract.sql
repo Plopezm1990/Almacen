@@ -166,7 +166,7 @@ select public.abc_confirmar_entrega_comanda(
 );
 reset role;
 
-do $
+do $$
 begin
   if (select n from a10b_delivery_before) is distinct from (
     select count(*)::bigint
@@ -176,7 +176,7 @@ begin
   ) then
     raise exception 'A10B_FAIL: replay entrega duplico auditoria';
   end if;
-end $;
+end $$;
 
 -- A10B no altera los límites económicos/fiscales/stock.
 do $$
