@@ -146,16 +146,14 @@ const end = recovered.indexOf("async function venderCarrito(lineas", start);
 assert.ok(start >= 0 && end > start, "A02.1: no se pudo aislar el adaptador");
 const adapter = recovered.slice(start, end);
 
-for (const forbidden of [
+const forbiddenPrimaryA02 = [
   "registrar_venta_stock_carrito_pm09",
   "venderLocal(",
   "abc_iniciar_checkout",
   "abc_confirmar_pago",
   "abc_emitir",
   "checkout_ventas"
-]) {
-  assert.ok(!adapter.includes(forbidden), `A02.1: escritura fuera de alcance detectada: ${forbidden}`);
-}
+];
 
 assert.ok(adapter.includes('modalidad: "BARRA"'), "A02.1: VentaRapida debe mapearse explícitamente a BARRA");
 assert.ok(adapter.includes("totalServidor"), "A02.1: la confirmación debe usar total devuelto por servidor");
@@ -494,23 +492,44 @@ for (const forbidden of [
   assert.ok(!guardarPedidoHandler.includes(forbidden), `A02.1 P12: Guardar pedido inicia lógica fuera de alcance: ${forbidden}`);
 }
 
-for (const forbidden of [
-  "abc_iniciar_checkout",
-  "abc_confirmar_pago",
-  "abc_emitir",
-  "checkout_ventas",
-  "registrar_venta_stock_carrito_pm09",
-  "venderLocal("
-]) {
-  assert.ok(!adapter.includes(forbidden), `A02.1 P12: adaptador A02 escribe fuera del límite pedido: ${forbidden}`);
-}
-
 assert.ok(
   adapter.includes("const agregado = guardarContextoCuentaA02(") &&
   adapter.includes("localStorage.removeItem(pendingKey)") &&
   adapter.includes('modo: "a02-a03-pedido"'),
   "A02.1 P12: el camino de Guardar pedido no termina tras persistir el contexto A03"
 );
+
+// P13 — guardas explícitas de fuera de alcance del camino primario A02.1.
+for (const forbidden of forbiddenPrimaryA02) {
+  assert.ok(!adapter.includes(forbidden), `A02.1 P13: escritura fuera de alcance detectada: ${forbidden}`);
+}
+assert.ok(!guardarPedidoHandler.includes("setShowCobro(true)"), "A02.1 P13: Guardar pedido vuelve a abrir el flujo de cobro");
+
+
+// P14 — contrato A02.1 consolidado P1–P13 con allowlist del camino primario.
+const rpcPrimariosA02 = [...adapter.matchAll(/rpcA02ConRecuperacion\(supabase, "([^"]+)"/g)].map((m) => m[1]);
+assert.deepEqual(
+  rpcPrimariosA02,
+  ["abc_abrir_cuenta", "abc_crear_pedido", "abc_agregar_linea_pedido"],
+  "A02.1 P14: el adaptador primario contiene RPCs adicionales, ausentes o fuera de orden"
+);
+
+const abrirCuentaP14 = adapter.indexOf('"abc_abrir_cuenta"');
+const crearPedidoP14 = adapter.indexOf('"abc_crear_pedido"');
+const agregarLineaP14 = adapter.indexOf('"abc_agregar_linea_pedido"');
+assert.ok(
+  abrirCuentaP14 >= 0 && crearPedidoP14 > abrirCuentaP14 && agregarLineaP14 > crearPedidoP14,
+  "A02.1 P14: secuencia primaria A03 inválida"
+);
+
+assert.equal(
+  (guardarPedidoHandler.match(/await venderCarrito\(/g) || []).length,
+  1,
+  "A02.1 P14: Guardar pedido debe tener una única delegación al adaptador primario"
+);
+
+console.log("A02_1_OUT_OF_SCOPE_GUARDS=PASS");
+console.log("A02_1_P1_P13_CONSOLIDATED=PASS");
 
 console.log("A02_1_SAVE_ORDER_NO_PAYMENT=PASS");
 
