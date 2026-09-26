@@ -6,6 +6,7 @@ const recovered = fs.readFileSync("source-recovery/fuente-recuperado.js", "utf8"
 const runtime = fs.readFileSync("fuente.js", "utf8");
 const a03 = fs.readFileSync("supabase/migrations/20260924010000_abc_f3_a03_server_authority.sql", "utf8");
 const m01 = fs.readFileSync("supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql", "utf8");
+const m03a = fs.readFileSync("supabase/migrations/20260923233000_abc_f2_m03a_autoridad_transaccional.sql", "utf8");
 const m04a = fs.readFileSync("supabase/migrations/20260924001000_abc_f2_m04a_caja_sesiones.sql", "utf8");
 const a11 = fs.readFileSync("supabase/migrations/20260926203000_abc_f3_a02_operating_day_a11.sql", "utf8");
 
@@ -164,6 +165,68 @@ assert.ok(recoveryStart >= 0 && recoveryEnd > recoveryStart, "A02.1: no se pudo 
 const recoveryAdapter = recovered.slice(recoveryStart, recoveryEnd);
 assert.ok(recoveryAdapter.includes("operacion_a02_en_curso"), "A02.1: falta fail-closed tras timeout en curso");
 
+
+// P07 — idempotencia formal: IDs estables en cliente + operation_id autoritativo en servidor.
+const pendingRead = adapter.indexOf("let pending = leerJsonLocalA02(pendingKey)");
+const pendingGuard = adapter.indexOf("if (pending && pending.fingerprint !== fingerprint)");
+const pendingCreate = adapter.indexOf("if (!pending) {");
+const firstRpc = adapter.indexOf('rpcA02ConRecuperacion(supabase, "abc_abrir_cuenta"');
+assert.ok(pendingRead >= 0 && pendingGuard > pendingRead && pendingCreate > pendingGuard, "A02.1 P07: el estado pendiente no se recupera antes de generar IDs");
+assert.ok(firstRpc > pendingCreate, "A02.1 P07: se llama al servidor antes de estabilizar el estado pendiente");
+
+const createEnd = adapter.indexOf("\n      if (!pending.cuentaResultado)", pendingCreate);
+assert.ok(createEnd > pendingCreate, "A02.1 P07: no se pudo aislar la creación idempotente");
+const idCreation = adapter.slice(pendingCreate, createEnd);
+assert.ok(idCreation.includes("const cuentaId = uuidA02();"), "A02.1 P07: falta cuenta_id estable");
+assert.ok(idCreation.includes("const pedidoId = uuidA02();"), "A02.1 P07: falta pedido_id estable");
+assert.ok(idCreation.includes("const lineaId = uuidA02();"), "A02.1 P07: falta linea_id estable");
+assert.ok(idCreation.includes("openOperationId: `a02.1.open.${cuentaId}`"), "A02.1 P07: operation_id de cuenta no deriva del ID estable");
+assert.ok(idCreation.includes("orderOperationId: `a02.1.order.${pedidoId}`"), "A02.1 P07: operation_id de pedido no deriva del ID estable");
+assert.ok(idCreation.includes("operationId: `a02.1.line.${lineaId}`"), "A02.1 P07: operation_id de línea no deriva del ID estable");
+assert.equal((adapter.match(/uuidA02\(\)/g) || []).length, 3, "A02.1 P07: se generan IDs nuevos fuera del bloque de creación inicial");
+
+const persistInitial = adapter.indexOf('guardarJsonLocalA02(pendingKey, pending)', pendingCreate);
+assert.ok(persistInitial > pendingCreate && persistInitial < firstRpc, "A02.1 P07: los IDs no se persisten antes del primer RPC");
+
+for (const required of [
+  "p_operation_id: pending.openOperationId",
+  "p_cuenta_id: pending.cuentaId",
+  "p_operation_id: pending.orderOperationId",
+  "p_pedido_id: pending.pedidoId",
+  "p_cuenta_id: pending.cuentaId",
+  "p_operation_id: linea.operationId",
+  "p_linea_id: linea.lineaId",
+  "p_pedido_id: pending.pedidoId"
+]) {
+  assert.ok(adapter.includes(required), `A02.1 P07: RPC no reutiliza identificador estable: ${required}`);
+}
+assert.ok(adapter.includes("if (linea.resultado)"), "A02.1 P07: las líneas ya completadas no se saltan en replay");
+assert.ok(adapter.includes("if (!pending.cuentaResultado)"), "A02.1 P07: la cuenta completada puede repetirse");
+assert.ok(adapter.includes("if (!pending.pedidoResultado)"), "A02.1 P07: el pedido completado puede repetirse");
+
+const finalPersist = adapter.lastIndexOf("guardarJsonLocalA02(claveUltimaCuentaA02");
+const pendingRemove = adapter.indexOf("localStorage.removeItem(pendingKey)", finalPersist);
+assert.ok(finalPersist >= 0 && pendingRemove > finalPersist, "A02.1 P07: se borra el estado pendiente antes de persistir el resultado final");
+
+assert.ok(m01.includes("operation_id text primary key"), "A02.1 P07: operation_id no es único en abc_operaciones");
+assert.ok(m03a.includes("pg_catalog.pg_advisory_xact_lock"), "A02.1 P07: falta exclusión concurrente por operation_id");
+assert.ok(m03a.includes("v_hash:=private.abc_request_hash(v_request)"), "A02.1 P07: falta hash estable del request");
+assert.ok(m03a.includes("where operation_id=p_operation_id"), "A02.1 P07: replay no busca por operation_id");
+assert.ok(m03a.includes("raise exception 'operation_id_conflict'"), "A02.1 P07: reutilizar operation_id con request distinto no falla cerrado");
+assert.ok(m03a.includes("'replayed',true"), "A02.1 P07: servidor no identifica replay");
+assert.ok(m03a.includes("'resultado',v_existente.resultado"), "A02.1 P07: replay no devuelve el resultado original");
+
+for (const fn of ["abc_abrir_cuenta", "abc_crear_pedido", "abc_agregar_linea_pedido"]) {
+  const fnStart = a03.indexOf(`create function public.${fn}(`);
+  assert.ok(fnStart >= 0, `A02.1 P07: no existe ${fn}`);
+  const fnEnd = a03.indexOf("\ncreate function ", fnStart + 1);
+  const fnBody = a03.slice(fnStart, fnEnd > fnStart ? fnEnd : a03.length);
+  assert.ok(fnBody.includes("private.abc_operacion_iniciar("), `A02.1 P07: ${fn} no entra por la barrera idempotente`);
+  assert.ok(fnBody.includes("if (v_cmd->>'replayed')::boolean then"), `A02.1 P07: ${fn} no corta la escritura en replay`);
+  assert.ok(fnBody.includes("private.abc_operacion_completar(p_operation_id,v_result)"), `A02.1 P07: ${fn} no persiste resultado idempotente`);
+}
+
+console.log("A02_1_IDEMPOTENCY_STABLE_IDS=PASS");
 console.log("A02_1_CONTRACT=PASS");
 console.log("A02_1_PRIMARY_PATH=A03");
 console.log("A02_1_PAYMENT_WRITES=0");
