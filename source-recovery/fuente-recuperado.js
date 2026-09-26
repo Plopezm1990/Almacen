@@ -6814,11 +6814,17 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     return `la_suite_a02_1_ultima_cuenta_v1:${empresaId}:${localId}`;
   }
   function leerJsonLocalA02(clave) {
+    let raw = null;
     try {
-      const raw = localStorage.getItem(clave);
-      return raw ? JSON.parse(raw) : null;
+      raw = localStorage.getItem(clave);
     } catch (e2) {
-      return null;
+      throw new Error("persistencia_idempotencia_no_disponible");
+    }
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch (e2) {
+      throw new Error("persistencia_idempotencia_corrupta");
     }
   }
   function guardarJsonLocalA02(clave, valor) {
@@ -6848,6 +6854,54 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       throw new Error(`importe_servidor_invalido:${campo}`);
     }
     return importe;
+  }
+  function uuidPersistidoA02(valor) {
+    return typeof valor === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(valor);
+  }
+  function validarContextoCuentaA02(contexto, empresaId, localId) {
+    if (!contexto || contexto.schemaVersion !== 1) throw new Error("contexto_cuenta_persistido_invalido");
+    if (contexto.empresaId !== empresaId || contexto.localId !== localId) throw new Error("contexto_cuenta_persistido_invalido");
+    if (!uuidPersistidoA02(contexto.cuentaId) || !uuidPersistidoA02(contexto.pedidoId)) throw new Error("contexto_cuenta_persistido_invalido");
+    versionServidorA02(contexto.cuentaVersion, "contexto.cuenta_version");
+    versionServidorA02(contexto.pedidoVersion, "contexto.pedido_version");
+    if (!uuidPersistidoA02(contexto.terminalId) || !uuidPersistidoA02(contexto.sessionId)) throw new Error("contexto_cuenta_persistido_invalido");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(contexto.operatingDay || ""))) throw new Error("contexto_cuenta_persistido_invalido");
+    if (!/^[A-Z]{3}$/.test(String(contexto.currencyCode || ""))) throw new Error("contexto_cuenta_persistido_invalido");
+    if (!Array.isArray(contexto.lineas) || contexto.lineas.length === 0) throw new Error("contexto_cuenta_persistido_invalido");
+    for (const linea of contexto.lineas) {
+      if (!uuidPersistidoA02(linea?.lineaId) || !linea?.productoId) throw new Error("contexto_cuenta_persistido_invalido");
+      versionServidorA02(linea.lineaVersion, "contexto.linea_version");
+      if (!Number.isFinite(Number(linea.cantidad)) || Number(linea.cantidad) <= 0) throw new Error("contexto_cuenta_persistido_invalido");
+      importeServidorA02(linea.total, "contexto.linea_total");
+    }
+    return contexto;
+  }
+  function leerContextoCuentaA02(empresaId, localId) {
+    let raw = null;
+    try {
+      raw = localStorage.getItem(claveUltimaCuentaA02(empresaId, localId));
+    } catch (e2) {
+      throw new Error("persistencia_contexto_cuenta_no_disponible");
+    }
+    if (!raw) return null;
+    let contexto = null;
+    try {
+      contexto = JSON.parse(raw);
+    } catch (e2) {
+      throw new Error("contexto_cuenta_persistido_invalido");
+    }
+    return validarContextoCuentaA02(contexto, empresaId, localId);
+  }
+  function guardarContextoCuentaA02(empresaId, localId, contexto) {
+    const validado = validarContextoCuentaA02(contexto, empresaId, localId);
+    try {
+      localStorage.setItem(claveUltimaCuentaA02(empresaId, localId), JSON.stringify(validado));
+    } catch (e2) {
+      throw new Error("persistencia_contexto_cuenta_no_disponible");
+    }
+    const releido = leerContextoCuentaA02(empresaId, localId);
+    if (!releido) throw new Error("persistencia_contexto_cuenta_no_disponible");
+    return releido;
   }
   async function contextoTerminalA02(supabase, empresaId, localId) {
     const { data: authData, error: authError } = await supabase.auth.getSession();
@@ -6940,6 +6994,9 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("operacion_a02_estado_desconocido")) return "No se puede confirmar todavía el estado de la operación. No se repetirá con otro identificador.";
     if (msg.includes("uuid_seguro_no_disponible")) return "Este navegador no puede generar identificadores seguros para el TPV.";
     if (msg.includes("persistencia_idempotencia_no_disponible")) return "No se puede guardar el estado de recuperación del pedido en este dispositivo.";
+    if (msg.includes("persistencia_idempotencia_corrupta")) return "El estado pendiente del pedido está dañado en este dispositivo. Se ha bloqueado la operación para evitar duplicados.";
+    if (msg.includes("persistencia_contexto_cuenta_no_disponible")) return "No se puede guardar o releer el contexto de la cuenta y el pedido en este dispositivo.";
+    if (msg.includes("contexto_cuenta_persistido_invalido")) return "El contexto guardado de la cuenta o el pedido no es válido. Se ha bloqueado su uso.";
     if (msg.includes("pedido_a02_pendiente_distinto")) return "Hay un pedido anterior pendiente de confirmar. Reintenta ese pedido antes de cambiar el carrito.";
     if (msg.includes("catalogo_tpv_incompleto")) return "El catálogo TPV del servidor no contiene todos los productos del carrito.";
     if (msg.includes("moneda_tpv_ambigua")) return "El carrito mezcla monedas o no tiene una moneda TPV única.";
@@ -7151,7 +7208,10 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       }
 
       const totalServidor = pending.lineas.reduce((acc, l22) => acc + importeServidorA02(l22.resultado?.total, "linea.total"), 0);
-      const agregado = {
+      const agregado = guardarContextoCuentaA02(empresaId, localActivoId, {
+        schemaVersion: 1,
+        empresaId,
+        localId: localActivoId,
         cuentaId: pending.cuentaId,
         cuentaVersion: versionServidorA02(pending.pedidoResultado?.cuenta_version, "pedido.cuenta_version"),
         pedidoId: pending.pedidoId,
@@ -7168,8 +7228,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         operatingDay: pending.operatingDay,
         currencyCode: pending.currencyCode,
         updatedAt: (/* @__PURE__ */ new Date()).toISOString()
-      };
-      if (!guardarJsonLocalA02(claveUltimaCuentaA02(empresaId, localActivoId), agregado)) throw new Error("persistencia_idempotencia_no_disponible");
+      });
       try {
         localStorage.removeItem(pendingKey);
       } catch (e2) {
