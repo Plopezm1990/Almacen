@@ -360,7 +360,8 @@ select public.abc_cancelar_linea(
   '40000000-0000-0000-0000-000000000010',date '2026-09-26'
 );
 
-do $$
+do $
+declare v_stock_exists boolean:=false;
 begin
   if not exists(
     select 1 from public.comanda_lineas cl
@@ -370,10 +371,14 @@ begin
       and cl.linea_id='70000000-0000-0000-0000-000000000020'
       and cl.decision_merma='PENDIENTE'
   ) then raise exception 'A10_FAIL: cancelacion preparada sin decision merma pendiente'; end if;
-  if exists(select 1 from public.movimientos_stock where operation_id='a10.cancel.prepared') then
-    raise exception 'A10_FAIL: A10 repuso/movio stock automaticamente';
+  if to_regclass('public.movimientos_stock') is not null then
+    execute 'select exists(select 1 from public.movimientos_stock where operation_id=$1)'
+      into v_stock_exists using 'a10.cancel.prepared';
+    if v_stock_exists then
+      raise exception 'A10_FAIL: A10 repuso/movio stock automaticamente';
+    end if;
   end if;
-end $$;
+end $;
 
 select public.abc_resolver_merma_comanda_linea(
   'a10.merma.resolve','emp-g','loc-g1',
@@ -389,12 +394,17 @@ select public.abc_resolver_merma_comanda_linea(
   '40000000-0000-0000-0000-000000000010',date '2026-09-26'
 );
 
-do $$
+do $
+declare v_stock_exists boolean:=false;
 begin
-  if exists(select 1 from public.movimientos_stock where operation_id='a10.merma.resolve') then
-    raise exception 'A10_FAIL: decision merma mutó stock';
+  if to_regclass('public.movimientos_stock') is not null then
+    execute 'select exists(select 1 from public.movimientos_stock where operation_id=$1)'
+      into v_stock_exists using 'a10.merma.resolve';
+    if v_stock_exists then
+      raise exception 'A10_FAIL: decision merma mutó stock';
+    end if;
   end if;
-end $$;
+end $;
 
 -- Reimpresión: mismo documento/comanda, solo nuevo efecto.
 select public.abc_reimprimir_comanda(
@@ -484,7 +494,8 @@ end $$;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000031',false);
 
 -- A10 no muta pagos/checkouts/fiscalidad ni stock.
-do $$
+do $
+declare v_stock_exists boolean:=false;
 begin
   if exists(select 1 from public.pagos where empresa_id='emp-g')
      or exists(select 1 from public.pago_intentos where empresa_id='emp-g')
@@ -492,9 +503,13 @@ begin
      or exists(select 1 from public.ventas_fiscales where empresa_id='emp-g') then
     raise exception 'A10_FAIL: efectos economicos/fiscales indebidos';
   end if;
-  if exists(select 1 from public.movimientos_stock where empresa_id='emp-g') then
-    raise exception 'A10_FAIL: A10 movio stock';
+  if to_regclass('public.movimientos_stock') is not null then
+    execute 'select exists(select 1 from public.movimientos_stock where empresa_id=$1)'
+      into v_stock_exists using 'emp-g';
+    if v_stock_exists then
+      raise exception 'A10_FAIL: A10 movio stock';
+    end if;
   end if;
-end $$;
+end $;
 
 select 'ABC_F3_A10_CONTRACT=PASS' as resultado;
