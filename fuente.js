@@ -102738,7 +102738,7 @@ function GestionAlmacen() {
   const { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion } = crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId, empresaActivaId: empresaDelLocalActivo && empresaDelLocalActivo.id || null, obtenerContextoActor: obtenerContextoAjusteConteo });
   const conteoAbierto = (0, import_react4.useMemo)(() => conteosDelLocalActivo.find((c22) => !c22.completado) || null, [conteosDelLocalActivo]);
   const almacenCongelado = !!conteoAbierto;
-  const { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro } = crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId, locales });
+  const { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro } = crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { diagnosticarStock, corregirProducto, movimientosParaReconciliar } = crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
   const { buscarEnCatalogo, aprenderReferencia, guardarAlbaran, eliminarAlbaran, marcarPagada, confirmarAlbaran, anularAlbaran, recibirConAlbaran, recibirConFotoIA, duplicadosDe, desviacionesDePrecio, procesarRecepcion } = crearLogicaAlbaranes({
     catalogoProv,
@@ -105922,7 +105922,7 @@ function validarProductoPM10(data, { parcial = false } = {}) {
   }
   return { ok: true, datos: salida };
 }
-function crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId, locales = [] }) {
+function crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId, locales = [], empresaId = null }) {
   function productoEsDelLocalActivo(prod) {
     if (!prod) return false;
     if (!localActivoId) return true;
@@ -105993,7 +105993,7 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
     if (!contexto.ok) return contexto;
     const datosValidos = validacion.datos;
     const stockInicial = Object.prototype.hasOwnProperty.call(datosValidos, "stock") ? datosValidos.stock : 0;
-    const nuevo = { id: uid(), ...datosValidos, stock: stockInicial, localId: localActivoId || datosValidos.localId || null };
+    const nuevo = { id: uid(), ...datosValidos, stock: stockInicial, empresaId: datosValidos.empresaId || empresaId || null, localId: localActivoId || datosValidos.localId || null };
     setProductos((s22) => [...s22, nuevo]);
     if (stockInicial > 0) {
       setMovimientos((s22) => [
