@@ -107847,7 +107847,9 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("operating_day_servidor_ausente")) return "El servidor no devolvió un día operativo válido; no se ha guardado el pedido.";
     if (msg.includes("producto_tpv_no_disponible")) return "Uno de los productos no está disponible en el catálogo TPV del servidor.";
     if (msg.includes("cuenta_version_conflict") || msg.includes("pedido_version_conflict")) return "La cuenta o el pedido cambió en otro terminal. Recarga antes de continuar.";
-    if (msg.includes("operacion_a02_en_curso") || msg.includes("operacion_a02_estado_desconocido")) return "El servidor recibió la operación pero todavía no puede confirmarse su resultado. No se repetirá con otro identificador.";
+    if (msg.includes("operacion_a02_en_curso")) return "La operación sigue procesándose en el servidor. No se repetirá automáticamente.";
+    if (msg.includes("operacion_a02_fallida")) return "La operación figura como fallida en el servidor. No se repetirá automáticamente.";
+    if (msg.includes("operacion_a02_estado_desconocido")) return "No se puede confirmar todavía el estado de la operación. No se repetirá con otro identificador.";
     if (msg.includes("uuid_seguro_no_disponible")) return "Este navegador no puede generar identificadores seguros para el TPV.";
     if (msg.includes("persistencia_idempotencia_no_disponible")) return "No se puede guardar el estado de recuperación del pedido en este dispositivo.";
     if (msg.includes("pedido_a02_pendiente_distinto")) return "Hay un pedido anterior pendiente de confirmar. Reintenta ese pedido antes de cambiar el carrito.";
@@ -107875,10 +107877,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       }
     }
 
-    try {
-      return await ejecutar(6500);
-    } catch (error) {
-      if (!error?.a02Timeout) throw error;
+    async function consultarEstado() {
       let consulta = null;
       try {
         consulta = await supabase.rpc("abc_consultar_operacion", {
@@ -107889,16 +107888,50 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       } catch (e2) {
         throw new Error("operacion_a02_estado_desconocido");
       }
-      if (consulta && !consulta.error) {
-        if (consulta.data?.resultado) return consulta.data.resultado;
-        if (consulta.data?.status === "PROCESANDO") throw new Error("operacion_a02_en_curso");
+
+      if (consulta?.error) {
+        const consultaMsg = String(consulta.error?.message || consulta.error || "");
+        if (consultaMsg.includes("operacion_no_encontrada_o_no_autorizada")) {
+          return { encontrada: false };
+        }
         throw new Error("operacion_a02_estado_desconocido");
       }
-      const consultaMsg = String(consulta?.error?.message || consulta?.error || "");
-      if (!consultaMsg.includes("operacion_no_encontrada_o_no_autorizada")) {
-        throw new Error("operacion_a02_estado_desconocido");
+
+      const estado = String(consulta?.data?.status || "");
+      if (estado === "COMPLETADA") {
+        if (!consulta.data?.resultado) throw new Error("operacion_a02_estado_desconocido");
+        return { encontrada: true, completada: true, resultado: consulta.data.resultado };
       }
+      if (estado === "PROCESANDO") {
+        return { encontrada: true, procesando: true };
+      }
+      if (estado === "FALLIDA") {
+        return { encontrada: true, fallida: true };
+      }
+      throw new Error("operacion_a02_estado_desconocido");
+    }
+
+    async function recuperarTrasTimeout(permiteReintentoSeguro) {
+      const estado = await consultarEstado();
+      if (estado.completada) return estado.resultado;
+      if (estado.procesando) throw new Error("operacion_a02_en_curso");
+      if (estado.fallida) throw new Error("operacion_a02_fallida");
+      if (!estado.encontrada && permiteReintentoSeguro) {
+        try {
+          return await ejecutar(6500);
+        } catch (error) {
+          if (!error?.a02Timeout) throw error;
+          return recuperarTrasTimeout(false);
+        }
+      }
+      throw new Error("operacion_a02_estado_desconocido");
+    }
+
+    try {
       return await ejecutar(6500);
+    } catch (error) {
+      if (!error?.a02Timeout) throw error;
+      return recuperarTrasTimeout(true);
     }
   }
   async function venderCarritoA02(lineas) {
