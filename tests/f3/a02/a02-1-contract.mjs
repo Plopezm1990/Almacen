@@ -48,7 +48,11 @@ for (const forbidden of [
 assert.ok(adapter.includes('modalidad: "BARRA"'), "A02.1: VentaRapida debe mapearse explícitamente a BARRA");
 assert.ok(adapter.includes("totalServidor"), "A02.1: la confirmación debe usar total devuelto por servidor");
 assert.ok(adapter.includes("pedido_a02_pendiente_distinto"), "A02.1: falta fail-closed ante carrito distinto con operación pendiente");
-assert.ok(adapter.includes("operacion_a02_en_curso"), "A02.1: falta fail-closed tras timeout en curso");
+const recoveryStart = recovered.indexOf("async function rpcA02ConRecuperacion");
+const recoveryEnd = recovered.indexOf("async function venderCarritoA02", recoveryStart);
+assert.ok(recoveryStart >= 0 && recoveryEnd > recoveryStart, "A02.1: no se pudo aislar el wrapper de recuperación");
+const recoveryAdapter = recovered.slice(recoveryStart, recoveryEnd);
+assert.ok(recoveryAdapter.includes("operacion_a02_en_curso"), "A02.1: falta fail-closed tras timeout en curso");
 
 console.log("A02_1_CONTRACT=PASS");
 console.log("A02_1_PRIMARY_PATH=A03");
