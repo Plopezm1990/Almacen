@@ -360,7 +360,7 @@ select public.abc_cancelar_linea(
   '40000000-0000-0000-0000-000000000010',date '2026-09-26'
 );
 
-do $
+do $$
 declare v_stock_exists boolean:=false;
 begin
   if not exists(
@@ -378,7 +378,7 @@ begin
       raise exception 'A10_FAIL: A10 repuso/movio stock automaticamente';
     end if;
   end if;
-end $;
+end $$;
 
 select public.abc_resolver_merma_comanda_linea(
   'a10.merma.resolve','emp-g','loc-g1',
@@ -394,7 +394,7 @@ select public.abc_resolver_merma_comanda_linea(
   '40000000-0000-0000-0000-000000000010',date '2026-09-26'
 );
 
-do $
+do $$
 declare v_stock_exists boolean:=false;
 begin
   if to_regclass('public.movimientos_stock') is not null then
@@ -404,7 +404,7 @@ begin
       raise exception 'A10_FAIL: decision merma mutó stock';
     end if;
   end if;
-end $;
+end $$;
 
 -- Reimpresión: mismo documento/comanda, solo nuevo efecto.
 select public.abc_reimprimir_comanda(
@@ -494,7 +494,7 @@ end $$;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000031',false);
 
 -- A10 no muta pagos/checkouts/fiscalidad ni stock.
-do $
+do $$
 declare v_stock_exists boolean:=false;
 begin
   if exists(select 1 from public.pagos where empresa_id='emp-g')
@@ -510,6 +510,6 @@ begin
       raise exception 'A10_FAIL: A10 movio stock';
     end if;
   end if;
-end $;
+end $$;
 
 select 'ABC_F3_A10_CONTRACT=PASS' as resultado;
