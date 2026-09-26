@@ -255,6 +255,63 @@ assert.equal((recoveryAdapter.match(/return await ejecutar\(6500\)/g) || []).len
 assert.ok(recovered.includes('msg.includes("operacion_a02_fallida")'), "A02.1 P08: falta mensaje de operación FALLIDA");
 assert.ok(recovered.includes('msg.includes("operacion_a02_estado_desconocido")'), "A02.1 P08: falta fail-closed de estado desconocido");
 
+
+// P09 — optimistic locking y propagación estricta de versiones.
+assert.ok(recovered.includes("function versionServidorA02(valor, campo)"), "A02.1 P09: falta validador estricto de versiones");
+assert.ok(recovered.includes("Number.isSafeInteger(version)"), "A02.1 P09: versiones no se validan como enteros seguros");
+assert.ok(recovered.includes('throw new Error(`version_servidor_invalida:${campo}`)'), "A02.1 P09: versión inválida no falla cerrado");
+
+assert.ok(adapter.includes('p_expected_cuenta_version: versionServidorA02(pending.cuentaResultado?.version, "cuenta.version")'), "A02.1 P09: crear pedido no propaga versión autoritativa de cuenta");
+assert.ok(adapter.includes('let pedidoVersion = versionServidorA02(pending.pedidoResultado?.version, "pedido.version")'), "A02.1 P09: cadena de líneas no inicia con versión autoritativa del pedido");
+assert.ok(adapter.includes('pedidoVersion = versionServidorA02(linea.resultado?.pedido_version, "linea.pedido_version")'), "A02.1 P09: línea nueva no propaga pedido_version devuelto");
+assert.ok(adapter.includes('pedidoVersion = versionServidorA02(linea.resultado.pedido_version, "linea.pedido_version")'), "A02.1 P09: replay de línea no reconstruye pedido_version desde resultado persistido");
+assert.ok(adapter.includes('cuentaVersion: versionServidorA02(pending.pedidoResultado?.cuenta_version, "pedido.cuenta_version")'), "A02.1 P09: resultado agregado no conserva cuenta_version autoritativa");
+assert.ok(adapter.includes('lineaVersion: versionServidorA02(l22.resultado?.linea_version, "linea.linea_version")'), "A02.1 P09: resultado agregado no conserva linea_version autoritativa");
+assert.ok(!adapter.includes("Number(pending.cuentaResultado?.version) || 1"), "A02.1 P09: fallback local oculta cuenta.version inválida");
+assert.ok(!adapter.includes("Number(pending.pedidoResultado?.version) || 1"), "A02.1 P09: fallback local oculta pedido.version inválida");
+assert.ok(!adapter.includes("Number(linea.resultado?.pedido_version) || pedidoVersion"), "A02.1 P09: fallback local oculta pedido_version inválida");
+assert.ok(!adapter.includes("Number(l22.resultado?.linea_version) || 1"), "A02.1 P09: fallback local oculta linea_version inválida");
+assert.ok(recovered.includes('msg.includes("linea_version_conflict")'), "A02.1 P09: falta tratamiento de conflicto de versión de línea");
+assert.ok(recovered.includes('msg.includes("version_servidor_invalida")'), "A02.1 P09: falta mensaje fail-closed de versión inválida");
+
+function cuerpoFuncionA03(nombre, siguiente) {
+  const inicio = a03.indexOf(`create function public.${nombre}(`);
+  assert.ok(inicio >= 0, `A02.1 P09: falta ${nombre}`);
+  const fin = siguiente ? a03.indexOf(`create function public.${siguiente}(`, inicio + 1) : a03.indexOf("\nrevoke all on", inicio + 1);
+  return a03.slice(inicio, fin > inicio ? fin : a03.length);
+}
+
+const crearPedidoP09 = cuerpoFuncionA03("abc_crear_pedido", "abc_agregar_linea_pedido");
+assert.ok(crearPedidoP09.includes("for update;"), "A02.1 P09: crear pedido no bloquea cuenta antes de comparar versión");
+assert.ok(crearPedidoP09.includes("v_cuenta.version<>p_expected_cuenta_version"), "A02.1 P09: crear pedido no verifica expected cuenta version");
+assert.ok(crearPedidoP09.includes("raise exception 'cuenta_version_conflict'"), "A02.1 P09: conflicto de cuenta no falla cerrado");
+assert.ok(crearPedidoP09.includes("set version=version+1"), "A02.1 P09: crear pedido no incrementa cuenta version");
+assert.ok(crearPedidoP09.includes("'cuenta_version',v_new_cuenta_version"), "A02.1 P09: crear pedido no devuelve nueva cuenta version");
+assert.ok(crearPedidoP09.includes("'version',1"), "A02.1 P09: crear pedido no devuelve versión inicial del pedido");
+
+const agregarLineaP09 = cuerpoFuncionA03("abc_agregar_linea_pedido", "abc_actualizar_linea_pedido");
+assert.ok(agregarLineaP09.includes("for update;"), "A02.1 P09: agregar línea no bloquea pedido");
+assert.ok(agregarLineaP09.includes("v_pedido.version<>p_expected_pedido_version"), "A02.1 P09: agregar línea no verifica expected pedido version");
+assert.ok(agregarLineaP09.includes("raise exception 'pedido_version_conflict'"), "A02.1 P09: conflicto de pedido no falla cerrado");
+assert.ok(agregarLineaP09.includes("set estado=case when estado='BORRADOR' then 'ABIERTO' else estado end,\n         version=version+1"), "A02.1 P09: agregar línea no incrementa pedido version");
+assert.ok(agregarLineaP09.includes("'pedido_version',v_new_pedido_version"), "A02.1 P09: agregar línea no devuelve nueva pedido version");
+assert.ok(agregarLineaP09.includes("'linea_version',1"), "A02.1 P09: agregar línea no devuelve versión inicial de línea");
+
+for (const [nombre,siguiente] of [
+  ["abc_actualizar_linea_pedido","abc_confirmar_linea_pedido"],
+  ["abc_confirmar_linea_pedido",null]
+]) {
+  const cuerpo = cuerpoFuncionA03(nombre,siguiente);
+  assert.ok((cuerpo.match(/for update;/g) || []).length >= 2, `A02.1 P09: ${nombre} no bloquea pedido y línea`);
+  assert.ok(cuerpo.includes("v_pedido.version<>p_expected_pedido_version"), `A02.1 P09: ${nombre} no verifica versión de pedido`);
+  assert.ok(cuerpo.includes("v_linea.version<>p_expected_linea_version"), `A02.1 P09: ${nombre} no verifica versión de línea`);
+  assert.ok(cuerpo.includes("raise exception 'pedido_version_conflict'"), `A02.1 P09: ${nombre} no falla ante pedido obsoleto`);
+  assert.ok(cuerpo.includes("raise exception 'linea_version_conflict'"), `A02.1 P09: ${nombre} no falla ante línea obsoleta`);
+  assert.ok(cuerpo.includes("returning version into v_new_linea_version"), `A02.1 P09: ${nombre} no devuelve nueva versión de línea`);
+  assert.ok(cuerpo.includes("returning version into v_new_pedido_version"), `A02.1 P09: ${nombre} no devuelve nueva versión de pedido`);
+}
+
+console.log("A02_1_OPTIMISTIC_LOCKING=PASS");
 console.log("A02_1_TIMEOUT_RECOVERY=PASS");
 console.log("A02_1_IDEMPOTENCY_STABLE_IDS=PASS");
 console.log("A02_1_CONTRACT=PASS");
