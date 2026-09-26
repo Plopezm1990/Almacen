@@ -1,13 +1,74 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 142,
+  "total_inventory": 153,
   "expected_counts": {
-    "active_contract": 133,
+    "active_contract": 139,
     "historical_expected_fail": 1,
-    "utility": 3,
+    "utility": 8,
     "diagnostic": 5
   },
+  "expected_environment_counts": {
+    "node": { "active_contract": 125, "historical_expected_fail": 0, "utility": 7, "diagnostic": 5 },
+    "postgres": { "active_contract": 10, "historical_expected_fail": 1, "utility": 0, "diagnostic": 0 },
+    "pglite": { "active_contract": 1, "historical_expected_fail": 0, "utility": 1, "diagnostic": 0 },
+    "supabase_full_stack": { "active_contract": 3, "historical_expected_fail": 0, "utility": 0, "diagnostic": 0 }
+  },
   "entries": [
+    {
+      "path": "tests/f3/a09/discount-command.mjs",
+      "classification": "utility",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f3/a09/discount-command.test.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f3/a09/discount-math.mjs",
+      "classification": "utility",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f3/a09/discount-math.test.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f3/a09/fiscal-cents.mjs",
+      "classification": "utility",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f3/a09/fiscal-cents.test.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f3/a09/local-pglite-bootstrap.mjs",
+      "classification": "utility",
+      "environment": "pglite"
+    },
+    {
+      "path": "tests/f3/a09/local-pglite-contract.mjs",
+      "classification": "active_contract",
+      "environment": "pglite"
+    },
+    {
+      "path": "tests/f3/a09/local-postgres-contract.mjs",
+      "classification": "active_contract",
+      "environment": "postgres"
+    },
+    {
+      "path": "tests/f3/a09/snapshot-jcs.mjs",
+      "classification": "utility",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f3/a09/snapshot-jcs.test.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
     {
       "path": "tests/g1/p02-evidence-map-contract.mjs",
       "classification": "active_contract",

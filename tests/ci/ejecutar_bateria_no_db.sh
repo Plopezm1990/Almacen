@@ -20,15 +20,16 @@
 # ignorada por git). Pensado para poder ejecutarse desde cualquier clon o
 # worktree limpio.
 #
-# Ejecuta: los 121 contratos activos con `environment: "node"` del
-# manifiesto, los 5 diagnósticos y 1 de las 3 utilidades
-# (tests/pm12/p09-aplicar-index.mjs -- las otras 2 utilidades,
+# Ejecuta: los contratos activos con `environment: "node"` del
+# manifiesto (125 en A09), los 5 diagnósticos y 5 utilidades Node: el
+# aplicador de índice preexistente más los cuatro módulos puros A09, que
+# se cargan como comprobación de sintaxis/imports. Las otras 2 utilidades,
 # prepare-fixture.mjs/prepare-production-baseline.mjs, son exclusivamente
 # de preparación para el job Auth/PostgREST de CI y se ejecutan solo ahí,
 # nunca de forma aislada aquí, porque escriben migraciones temporales para
-# un stack de Supabase que este script no levanta).
+# un stack de Supabase que este script no levanta.
 #
-# NO ejecuta los 9 contratos Postgres (ver preparar_postgres_local.sh) ni
+# NO ejecuta los 10 contratos Postgres (ver preparar_postgres_local.sh) ni
 # los 3 contratos Auth/PostgREST/Postgres reales (ver el workflow de CI).
 # No usa credenciales ni entornos remotos: todo corre en local/CI contra
 # procesos efímeros.
@@ -78,38 +79,22 @@ if [ -n "$sucio_previo" ]; then
 fi
 echo "RUTAS_MUTABLES_PREVIAS_LIMPIAS=1"
 
-# ---- 1. Inventario real del árbol vs. manifiesto (detecta drift) ----
-mapfile -t inventario_real < <(git ls-tree -r --name-only HEAD -- tests/ | grep '\.mjs$' | LC_ALL=C sort)
-total_real=${#inventario_real[@]}
-
-total_manifiesto=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$MANIFEST','utf8')).total_inventory)")
-if [ "$total_real" -ne "$total_manifiesto" ]; then
-  echo "INVENTARIO_DESAJUSTADO: árbol real=$total_real, manifiesto=$total_manifiesto -- actualiza el manifiesto antes de continuar." >&2
+# ---- 1. Validar inventario, unicidad y esquema antes de ejecutar nada ----
+VALIDATOR=".github/scripts/validar-manifiesto-ci.mjs"
+if [ ! -f "$VALIDATOR" ]; then
+  echo "FALTA_VALIDADOR_MANIFIESTO: $VALIDATOR" >&2
   exit 1
 fi
-
-# Cada ruta del árbol real debe existir en el manifiesto, y viceversa (ni
-# archivos nuevos sin clasificar, ni entradas del manifiesto que ya no
-# existen).
-mismatch=$(node -e "
-const fs = require('fs');
-const manifest = JSON.parse(fs.readFileSync('$MANIFEST', 'utf8'));
-const real = fs.readFileSync('/dev/stdin', 'utf8').trim().split('\n').filter(Boolean);
-const manifestPaths = new Set(manifest.entries.map(e => e.path));
-const realPaths = new Set(real);
-const soloEnArbol = real.filter(p => !manifestPaths.has(p));
-const soloEnManifiesto = [...manifestPaths].filter(p => !realPaths.has(p));
-if (soloEnArbol.length || soloEnManifiesto.length) {
-  console.log(JSON.stringify({ soloEnArbol, soloEnManifiesto }));
-}
-" <<< "$(printf '%s\n' "${inventario_real[@]}")")
-
-if [ -n "$mismatch" ]; then
-  echo "INVENTARIO_DESAJUSTADO_POR_RUTA: $mismatch" >&2
+if ! node "$VALIDATOR" --self-test; then
+  echo "AUTOPRUEBAS_VALIDADOR_MANIFIESTO_FALLARON" >&2
   exit 1
 fi
-
-echo "INVENTARIO_VERIFICADO=$total_real (coincide con el manifiesto)"
+if ! manifest_summary=$(node "$VALIDATOR"); then
+  echo "MANIFIESTO_INVALIDO: se aborta antes de ejecutar la batería." >&2
+  exit 1
+fi
+total_real=$(node -e "console.log(JSON.parse(process.argv[1]).total_inventory)" "$manifest_summary")
+echo "INVENTARIO_VERIFICADO=$total_real; MANIFIESTO=$manifest_summary"
 
 # ---- 2. Construir la lista de ejecución, CON su clasificación (environment=node) ----
 # Excluye las 2 utilidades de preparación exclusivas del job Auth/PostgREST
@@ -256,8 +241,19 @@ echo "INFRA_FAIL=$infra_fail"
 
 fallo_final=0
 
-if [ "$node_active_total" -ne 121 ]; then
-  echo "NODE_ACTIVE_TOTAL_INESPERADO: se esperaban 121 contratos activos Node, el manifiesto tiene $node_active_total." >&2
+expected_node_active=$(node -e "const m=JSON.parse(require('fs').readFileSync('$MANIFEST','utf8')); console.log(m.expected_environment_counts.node.active_contract)")
+if [ "$node_active_total" -ne "$expected_node_active" ]; then
+  echo "NODE_ACTIVE_TOTAL_INESPERADO: se esperaban $expected_node_active contratos activos Node, el runner ejecutó $node_active_total." >&2
+  fallo_final=1
+fi
+expected_node_utilities=$(node -e "const m=JSON.parse(require('fs').readFileSync('$MANIFEST','utf8')); console.log(m.expected_environment_counts.node.utility - 2)")
+if [ "$utilidades_ejecutadas" -ne "$expected_node_utilities" ]; then
+  echo "UTILITIES_RUN_INESPERADO: se esperaban $expected_node_utilities utilidades Node ejecutables en esta batería (excluye las 2 preparaciones del stack), se ejecutaron $utilidades_ejecutadas." >&2
+  fallo_final=1
+fi
+expected_node_diagnostics=$(node -e "const m=JSON.parse(require('fs').readFileSync('$MANIFEST','utf8')); console.log(m.expected_environment_counts.node.diagnostic)")
+if [ "$diagnosticos_ejecutados" -ne "$expected_node_diagnostics" ]; then
+  echo "DIAGNOSTICS_RUN_INESPERADO: se esperaban $expected_node_diagnostics diagnósticos Node, se ejecutaron $diagnosticos_ejecutados." >&2
   fallo_final=1
 fi
 if [ "$node_active_fail" -ne 0 ]; then
