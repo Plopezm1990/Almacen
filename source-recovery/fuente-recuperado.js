@@ -6835,6 +6835,13 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       cantidad: Number(l22.cantidad)
     })));
   }
+  function versionServidorA02(valor, campo) {
+    const version = Number(valor);
+    if (!Number.isSafeInteger(version) || version < 1) {
+      throw new Error(`version_servidor_invalida:${campo}`);
+    }
+    return version;
+  }
   async function contextoTerminalA02(supabase, empresaId, localId) {
     const { data: authData, error: authError } = await supabase.auth.getSession();
     if (authError) throw authError;
@@ -6918,7 +6925,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("operating_day_cliente_no_autoritativo")) return "El día operativo lo determina el servidor; recarga el TPV antes de continuar.";
     if (msg.includes("operating_day_servidor_ausente")) return "El servidor no devolvió un día operativo válido; no se ha guardado el pedido.";
     if (msg.includes("producto_tpv_no_disponible")) return "Uno de los productos no está disponible en el catálogo TPV del servidor.";
-    if (msg.includes("cuenta_version_conflict") || msg.includes("pedido_version_conflict")) return "La cuenta o el pedido cambió en otro terminal. Recarga antes de continuar.";
+    if (msg.includes("cuenta_version_conflict") || msg.includes("pedido_version_conflict") || msg.includes("linea_version_conflict")) return "La cuenta, el pedido o una línea cambió en otro terminal. Recarga antes de continuar.";
+    if (msg.includes("version_servidor_invalida")) return "El servidor devolvió una versión de concurrencia inválida. Se ha bloqueado la operación para evitar sobrescribir cambios.";
     if (msg.includes("operacion_a02_en_curso")) return "La operación sigue procesándose en el servidor. No se repetirá automáticamente.";
     if (msg.includes("operacion_a02_fallida")) return "La operación figura como fallida en el servidor. No se repetirá automáticamente.";
     if (msg.includes("operacion_a02_estado_desconocido")) return "No se puede confirmar todavía el estado de la operación. No se repetirá con otro identificador.";
@@ -7103,7 +7111,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           p_local_id: localActivoId,
           p_pedido_id: pending.pedidoId,
           p_cuenta_id: pending.cuentaId,
-          p_expected_cuenta_version: Number(pending.cuentaResultado?.version) || 1,
+          p_expected_cuenta_version: versionServidorA02(pending.cuentaResultado?.version, "cuenta.version"),
           p_terminal_id: contexto.terminalId,
           p_session_id: contexto.sessionId,
           p_operating_day: pending.operatingDay
@@ -7111,10 +7119,10 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         if (!guardarJsonLocalA02(pendingKey, pending)) throw new Error("persistencia_idempotencia_no_disponible");
       }
 
-      let pedidoVersion = Number(pending.pedidoResultado?.version) || 1;
+      let pedidoVersion = versionServidorA02(pending.pedidoResultado?.version, "pedido.version");
       for (const linea of pending.lineas) {
         if (linea.resultado) {
-          pedidoVersion = Number(linea.resultado.pedido_version) || pedidoVersion;
+          pedidoVersion = versionServidorA02(linea.resultado.pedido_version, "linea.pedido_version");
           continue;
         }
         linea.resultado = await rpcA02ConRecuperacion(supabase, "abc_agregar_linea_pedido", {
@@ -7130,19 +7138,19 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           p_session_id: contexto.sessionId,
           p_operating_day: pending.operatingDay
         }, empresaId, localActivoId, linea.operationId);
-        pedidoVersion = Number(linea.resultado?.pedido_version) || pedidoVersion;
+        pedidoVersion = versionServidorA02(linea.resultado?.pedido_version, "linea.pedido_version");
         if (!guardarJsonLocalA02(pendingKey, pending)) throw new Error("persistencia_idempotencia_no_disponible");
       }
 
       const totalServidor = pending.lineas.reduce((acc, l22) => acc + (Number(l22.resultado?.total) || 0), 0);
       const agregado = {
         cuentaId: pending.cuentaId,
-        cuentaVersion: Number(pending.pedidoResultado?.cuenta_version) || Number(pending.cuentaResultado?.version) || 1,
+        cuentaVersion: versionServidorA02(pending.pedidoResultado?.cuenta_version, "pedido.cuenta_version"),
         pedidoId: pending.pedidoId,
         pedidoVersion,
         lineas: pending.lineas.map((l22) => ({
           lineaId: l22.lineaId,
-          lineaVersion: Number(l22.resultado?.linea_version) || 1,
+          lineaVersion: versionServidorA02(l22.resultado?.linea_version, "linea.linea_version"),
           productoId: l22.productoId,
           cantidad: l22.cantidad,
           total: Number(l22.resultado?.total) || 0
