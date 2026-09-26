@@ -107770,6 +107770,13 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     }
     return version;
   }
+  function importeServidorA02(valor, campo) {
+    const importe = Number(valor);
+    if (!Number.isFinite(importe) || importe < 0) {
+      throw new Error(`importe_servidor_invalido:${campo}`);
+    }
+    return importe;
+  }
   async function contextoTerminalA02(supabase, empresaId, localId) {
     const { data: authData, error: authError } = await supabase.auth.getSession();
     if (authError) throw authError;
@@ -107855,6 +107862,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("producto_tpv_no_disponible")) return "Uno de los productos no está disponible en el catálogo TPV del servidor.";
     if (msg.includes("cuenta_version_conflict") || msg.includes("pedido_version_conflict") || msg.includes("linea_version_conflict")) return "La cuenta, el pedido o una línea cambió en otro terminal. Recarga antes de continuar.";
     if (msg.includes("version_servidor_invalida")) return "El servidor devolvió una versión de concurrencia inválida. Se ha bloqueado la operación para evitar sobrescribir cambios.";
+    if (msg.includes("importe_servidor_invalido")) return "El servidor no devolvió un importe económico válido. Se ha bloqueado la operación para evitar usar cálculos del dispositivo.";
     if (msg.includes("operacion_a02_en_curso")) return "La operación sigue procesándose en el servidor. No se repetirá automáticamente.";
     if (msg.includes("operacion_a02_fallida")) return "La operación figura como fallida en el servidor. No se repetirá automáticamente.";
     if (msg.includes("operacion_a02_estado_desconocido")) return "No se puede confirmar todavía el estado de la operación. No se repetirá con otro identificador.";
@@ -108070,7 +108078,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         if (!guardarJsonLocalA02(pendingKey, pending)) throw new Error("persistencia_idempotencia_no_disponible");
       }
 
-      const totalServidor = pending.lineas.reduce((acc, l22) => acc + (Number(l22.resultado?.total) || 0), 0);
+      const totalServidor = pending.lineas.reduce((acc, l22) => acc + importeServidorA02(l22.resultado?.total, "linea.total"), 0);
       const agregado = {
         cuentaId: pending.cuentaId,
         cuentaVersion: versionServidorA02(pending.pedidoResultado?.cuenta_version, "pedido.cuenta_version"),
@@ -108081,7 +108089,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           lineaVersion: versionServidorA02(l22.resultado?.linea_version, "linea.linea_version"),
           productoId: l22.productoId,
           cantidad: l22.cantidad,
-          total: Number(l22.resultado?.total) || 0
+          total: importeServidorA02(l22.resultado?.total, "linea.total")
         })),
         terminalId: contexto.terminalId,
         sessionId: contexto.sessionId,
