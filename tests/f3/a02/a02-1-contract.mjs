@@ -460,6 +460,60 @@ assert.ok(recovered.includes('msg.includes("persistencia_idempotencia_corrupta")
 assert.ok(recovered.includes('msg.includes("persistencia_contexto_cuenta_no_disponible")'), "A02.1 P11: falta mensaje de persistencia final");
 assert.ok(recovered.includes('msg.includes("contexto_cuenta_persistido_invalido")'), "A02.1 P11: falta mensaje de contexto final inválido");
 
+
+// P12 — Guardar pedido termina en A03 sin iniciar cobro.
+const guardarPedidoStart = recovered.indexOf("async function confirmarCobro()");
+const guardarPedidoEnd = recovered.indexOf("\n  return /* @__PURE__ */", guardarPedidoStart);
+assert.ok(guardarPedidoStart >= 0 && guardarPedidoEnd > guardarPedidoStart, "A02.1 P12: no se pudo aislar el handler de Guardar pedido");
+const guardarPedidoHandler = recovered.slice(guardarPedidoStart, guardarPedidoEnd);
+
+assert.ok(
+  recovered.includes("lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro, disabled: enviandoVenta }"),
+  "A02.1 P12: el CTA visible no guarda el pedido directamente"
+);
+assert.ok(recovered.includes("Guardar pedido"), "A02.1 P12: falta el CTA Guardar pedido");
+assert.ok(recovered.includes("Guardando pedido"), "A02.1 P12: falta estado de guardado del pedido");
+assert.ok(recovered.includes("false && showCobro"), "A02.1 P12: el modal heredado de cobro volvió a estar activo");
+assert.ok(
+  !recovered.includes('import_react4.default.createElement(Btn, { onClick: abrirCobro }, "Cobrar'),
+  "A02.1 P12: el CTA visible volvió a abrir cobro"
+);
+
+assert.ok(guardarPedidoHandler.includes("await venderCarrito("), "A02.1 P12: Guardar pedido no delega en el adaptador A02/A03");
+for (const forbidden of [
+  "medioPago",
+  "detallePago",
+  "importeTarjetaMixto",
+  "restoEfectivoMixto",
+  "abc_iniciar_checkout",
+  "abc_confirmar_pago",
+  "abc_emitir",
+  "registrar_venta_stock_carrito_pm09",
+  "venderLocal("
+]) {
+  assert.ok(!guardarPedidoHandler.includes(forbidden), `A02.1 P12: Guardar pedido inicia lógica fuera de alcance: ${forbidden}`);
+}
+
+for (const forbidden of [
+  "abc_iniciar_checkout",
+  "abc_confirmar_pago",
+  "abc_emitir",
+  "checkout_ventas",
+  "registrar_venta_stock_carrito_pm09",
+  "venderLocal("
+]) {
+  assert.ok(!adapter.includes(forbidden), `A02.1 P12: adaptador A02 escribe fuera del límite pedido: ${forbidden}`);
+}
+
+assert.ok(
+  adapter.includes("const agregado = guardarContextoCuentaA02(") &&
+  adapter.includes("localStorage.removeItem(pendingKey)") &&
+  adapter.includes('modo: "a02-a03-pedido"'),
+  "A02.1 P12: el camino de Guardar pedido no termina tras persistir el contexto A03"
+);
+
+console.log("A02_1_SAVE_ORDER_NO_PAYMENT=PASS");
+
 console.log("A02_1_DEVICE_CONTEXT_PERSISTENCE=PASS");
 console.log("A02_1_SERVER_ECONOMIC_AUTHORITY=PASS");
 console.log("A02_1_OPTIMISTIC_LOCKING=PASS");
