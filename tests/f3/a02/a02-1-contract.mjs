@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 
 const recovered = fs.readFileSync("source-recovery/fuente-recuperado.js", "utf8");
 const runtime = fs.readFileSync("fuente.js", "utf8");
+const a03 = fs.readFileSync("supabase/migrations/20260924010000_abc_f3_a03_server_authority.sql", "utf8");
 
 const headerLines = 14;
 const recoveredBody = recovered.split("\n").slice(headerLines).join("\n");
@@ -28,6 +29,38 @@ assert.ok(recovered.includes('from("caja_sesiones")'), "A02.1: falta validación
 assert.ok(recovered.includes("false && showCobro"), "A02.1: UI de cobro heredada sigue activa");
 assert.ok(recovered.includes("Guardar pedido"), "A02.1: el CTA aún presenta un cobro");
 assert.ok(recovered.includes("registrar_venta_stock_carrito_pm09"), "A02.1: el legado PM09 fue eliminado bruscamente");
+
+function firmaA03(fn) {
+  const startToken = `create function public.${fn}(`;
+  const start = a03.indexOf(startToken);
+  assert.ok(start >= 0, `A02.1: no existe firma A03 para ${fn}`);
+  const end = a03.indexOf(")\nreturns jsonb", start);
+  assert.ok(end > start, `A02.1: firma A03 incompleta para ${fn}`);
+  return a03.slice(start + startToken.length, end)
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.replace(/,$/, "").split(/\s+/)[0]);
+}
+
+function parametrosRpcA02(fn) {
+  const token = `rpcA02ConRecuperacion(supabase, "${fn}", {`;
+  const start = recovered.indexOf(token);
+  assert.ok(start >= 0, `A02.1: no existe llamada frontend para ${fn}`);
+  const bodyStart = recovered.indexOf("{", start);
+  const bodyEnd = recovered.indexOf("}, empresaId, localActivoId", bodyStart);
+  assert.ok(bodyEnd > bodyStart, `A02.1: llamada frontend incompleta para ${fn}`);
+  return [...recovered.slice(bodyStart + 1, bodyEnd).matchAll(/\b(p_[a-z0-9_]+)\s*:/g)].map((m) => m[1]);
+}
+
+for (const fn of ["abc_abrir_cuenta", "abc_crear_pedido", "abc_agregar_linea_pedido"]) {
+  assert.deepEqual(
+    parametrosRpcA02(fn),
+    firmaA03(fn),
+    `A02.1: parámetros frontend/A03 no coinciden para ${fn}`
+  );
+}
+
 
 const start = recovered.indexOf("async function venderCarritoA02");
 const end = recovered.indexOf("async function venderCarrito(lineas", start);
