@@ -151,17 +151,18 @@ select count(*)::bigint as n
  where operation_id='a10.order.send'
    and event_type='COMANDA_ENTREGA_CONFIRMADA';
 
+select e.id as a10b_replay_effect_id
+  from public.efectos_pendientes e
+ where e.abc_command_id='a10.order.send'
+   and e.tipo='KITCHEN_COMANDA'
+   and e.estado='COMPLETADO'
+ order by e.id
+ limit 1
+\gset
+
 set role service_role;
 select public.abc_confirmar_entrega_comanda(
-  (
-    select e.id
-      from public.efectos_pendientes e
-     where e.abc_command_id='a10.order.send'
-       and e.tipo='KITCHEN_COMANDA'
-       and e.estado='COMPLETADO'
-     order by e.id
-     limit 1
-  ),
+  :'a10b_replay_effect_id'::uuid,
   'worker-a10'
 );
 reset role;
