@@ -205,9 +205,9 @@ assert.ok(adapter.includes("if (linea.resultado)"), "A02.1 P07: las líneas ya c
 assert.ok(adapter.includes("if (!pending.cuentaResultado)"), "A02.1 P07: la cuenta completada puede repetirse");
 assert.ok(adapter.includes("if (!pending.pedidoResultado)"), "A02.1 P07: el pedido completado puede repetirse");
 
-const finalPersist = adapter.lastIndexOf("guardarJsonLocalA02(claveUltimaCuentaA02");
+const finalPersist = adapter.lastIndexOf("guardarContextoCuentaA02(empresaId, localActivoId");
 const pendingRemove = adapter.indexOf("localStorage.removeItem(pendingKey)", finalPersist);
-assert.ok(finalPersist >= 0 && pendingRemove > finalPersist, "A02.1 P07: se borra el estado pendiente antes de persistir el resultado final");
+assert.ok(finalPersist >= 0 && pendingRemove > finalPersist, "A02.1 P07: se borra el estado pendiente antes de persistir y releer el resultado final");
 
 assert.ok(m01.includes("operation_id text primary key"), "A02.1 P07: operation_id no es único en abc_operaciones");
 assert.ok(m03a.includes("pg_catalog.pg_advisory_xact_lock"), "A02.1 P07: falta exclusión concurrente por operation_id");
@@ -432,8 +432,9 @@ for (const required of [
 
 const contextoFinalStart = adapter.indexOf("const agregado = guardarContextoCuentaA02(");
 assert.ok(contextoFinalStart >= 0, "A02.1 P11: resultado final no usa persistencia validada");
-const contextoFinalEnd = adapter.indexOf("});", contextoFinalStart);
-const contextoFinal = adapter.slice(contextoFinalStart, contextoFinalEnd + 3);
+const removePendingP11 = adapter.indexOf("localStorage.removeItem(pendingKey)", contextoFinalStart);
+assert.ok(removePendingP11 > contextoFinalStart, "A02.1 P11: estado pendiente se elimina antes de persistir contexto final");
+const contextoFinal = adapter.slice(contextoFinalStart, removePendingP11);
 for (const required of [
   "schemaVersion: 1",
   "empresaId",
@@ -451,8 +452,6 @@ for (const required of [
   assert.ok(contextoFinal.includes(required), `A02.1 P11: contexto final incompleto: ${required}`);
 }
 
-const removePendingP11 = adapter.indexOf("localStorage.removeItem(pendingKey)", contextoFinalStart);
-assert.ok(removePendingP11 > contextoFinalStart, "A02.1 P11: estado pendiente se elimina antes de persistir contexto final");
 assert.ok(!adapter.includes("leerContextoCuentaA02("), "A02.1 P11: una venta nueva no debe reutilizar automáticamente el último pedido completado");
 
 assert.ok(recovered.includes('throw new Error("persistencia_idempotencia_no_disponible")'), "A02.1 P11: fallo de lectura del pendiente no se bloquea");
