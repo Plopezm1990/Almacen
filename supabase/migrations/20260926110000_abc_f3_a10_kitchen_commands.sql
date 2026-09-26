@@ -215,6 +215,10 @@ begin
    order by case when m.todos_locales=false and m.local_id=p_local_id then 0 else 1 end,m.id desc
    limit 1;
 
+  if v_rol is null then
+    return false;
+  end if;
+
   return case v_cap
     when 'ABC_COMANDA_VER' then v_rol in ('Propietario','Encargado','Cajero/a','Camarero/a','Churrero/a')
     when 'ABC_COMANDA_CONFIGURAR' then v_rol in ('Propietario','Encargado')
