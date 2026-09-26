@@ -478,9 +478,20 @@ begin
   ) then raise exception 'A10_FAIL: producto sin ruta fue enviado'; end if;
 end $$;
 
--- Aislamiento cross-local.
+-- Aislamiento cross-local y fail-closed sin membresía del local.
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000033',false);
-do $$
+
+do $
+begin
+  if private.abc_a10_tiene_capacidad('emp-g','loc-g1','ABC_COMANDA_VER') is distinct from false then
+    raise exception 'A10_FAIL: capacidad cross-local no cerro en false';
+  end if;
+  if private.abc_a10_tiene_capacidad('emp-g','loc-g1','ABC_COMANDA_CONFIGURAR') is distinct from false then
+    raise exception 'A10_FAIL: configuracion cross-local no cerro en false';
+  end if;
+end $;
+
+do $
 begin
   begin
     perform public.abc_listar_comandas_estacion(
