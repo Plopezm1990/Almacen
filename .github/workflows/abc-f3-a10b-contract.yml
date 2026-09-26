@@ -112,25 +112,26 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260924160739_abc_f3_a09_descuentos_cortesias.sql
       - name: Aplicar A10
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260926110000_abc_f3_a10_kitchen_commands.sql
-      - name: Aplicar A10B
-        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260926140000_abc_f3_a10b_kitchen_audit.sql
 
-      - name: Regresión ACL F2 tras A10B
+      # Las regresiones históricas se ejecutan antes de A10B porque A10B amplía
+      # deliberadamente abc_eventos para operaciones A05/A10. El contrato A05
+      # conserva un contador exacto de eventos propio de su versión original.
+      - name: Regresión ACL F2 antes de A10B
         run: psql -v ON_ERROR_STOP=1 -f tests/f2/m04d/m04d-contract.sql
-      - name: Regresión A03 tras A10B
+      - name: Regresión A03 antes de A10B
         run: psql -v ON_ERROR_STOP=1 -f tests/f3/a03/a03-contract.sql
-      - name: Regresión A04 tras A10B
+      - name: Regresión A04 antes de A10B
         run: psql -v ON_ERROR_STOP=1 -f tests/f3/a04/a04-contract.sql
-      - name: Regresión A05 tras A10B
+      - name: Regresión A05 antes de A10B
         run: psql -v ON_ERROR_STOP=1 -f tests/f3/a05/a05-contract.sql
-      - name: Regresión A06 tras A10B
+      - name: Regresión A06 antes de A10B
         run: psql -v ON_ERROR_STOP=1 -f tests/f3/a06/a06-contract.sql
-      - name: Regresión A07 tras A10B
+      - name: Regresión A07 antes de A10B
         run: psql -v ON_ERROR_STOP=1 -f tests/f3/a07/a07-contract.sql
-      - name: Regresión A08 tras A10B
+      - name: Regresión A08 antes de A10B
         run: psql -v ON_ERROR_STOP=1 -f tests/f3/a08/a08-contract.sql
 
-      - name: Regresión A09 lógica
+      - name: Regresión A09 lógica antes de A10B
         shell: bash
         run: |
           set -euo pipefail
@@ -139,7 +140,10 @@ jobs:
           A09_PGLITE_PACKAGE_ROOT="$GITHUB_WORKSPACE/tests/f3/a09/node_modules/@electric-sql/pglite" \
             bash tests/ci/ejecutar_pglite_local.sh
 
-      - name: Regresión A10 completa
+      - name: Aplicar A10B
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260926140000_abc_f3_a10b_kitchen_audit.sql
+
+      - name: Regresión A10 completa tras A10B
         run: psql -v ON_ERROR_STOP=1 -f tests/f3/a10/a10-contract.sql
 
       - name: Ejecutar contrato A10B
