@@ -181,7 +181,7 @@ assert.match(selectorTxt, /cambiarLocalActivo\(siguiente\)/);
 assert.doesNotMatch(selectorTxt, /if \(!siguiente\)[\s\S]{0,200}setLocalActivoId/);
 
 // Wiring real: las cinco fronteras reciben locales; Pedidos/Personal/Encargos reciben empresa activa.
-assert.match(src, /crearLogicaProductos\(\{[^\n]*localActivoId, locales \}\)/);
+assert.match(src, /crearLogicaProductos\(\{[^\n]*localActivoId, locales, empresaId:/);
 assert.match(src, /crearLogicaPedidos\(\{[^\n]*localActivoId, locales, empresaId: empresaDelLocalActivo\?\.id \|\| null \}\)/);
 assert.match(src, /crearLogicaPersonal\(\{[^\n]*localActivoId, locales, empresaId: empresaDelLocalActivo\?\.id \|\| null \}\)/);
 assert.match(src, /crearLogicaEncargos\(\{[^\n]*empresaId: empresaDelLocalActivo\?\.id \|\| null, locales \}\)/);
