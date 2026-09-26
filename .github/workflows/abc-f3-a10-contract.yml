@@ -130,9 +130,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm ci --prefix tests/f3/a09
+          npm ci --prefix tests/f3/a09 --no-audit --no-fund
           node --test tests/f3/a09/*.test.mjs
-          node tests/f3/a09/local-pglite-contract.mjs
+          A09_PGLITE_PACKAGE_ROOT="$GITHUB_WORKSPACE/tests/f3/a09/node_modules/@electric-sql/pglite" \
+            bash tests/ci/ejecutar_pglite_local.sh
 
       - name: Ejecutar contrato A10
         run: psql -v ON_ERROR_STOP=1 -f tests/f3/a10/a10-contract.sql
