@@ -8,6 +8,7 @@ on:
       - 'source-recovery/fuente-recuperado.js'
       - 'fuente.js'
       - 'tests/f3/a02/**'
+      - 'supabase/migrations/20260926203000_abc_f3_a02_operating_day_a11.sql'
       - '.github/workflows/abc-f3-a02-1-contract.yml'
 
 permissions:
@@ -38,6 +39,48 @@ jobs:
             exit 1
           fi
           echo "A02_1_SCOPE=PASS"
+
+      - name: Aplicar adaptador A11 de operating_day
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require("node:fs");
+          const path = "source-recovery/fuente-recuperado.js";
+          let s = fs.readFileSync(path, "utf8");
+
+          if (s.includes("operatingDay: todayISO(),")) {
+            s = s.replace("operatingDay: todayISO(),", "operatingDay: null,");
+          } else if (!s.includes("operatingDay: null,")) {
+            throw new Error("A02_P06_OPERATING_DAY_INIT_ANCHOR_MISSING");
+          }
+
+          const openParam = "p_operating_day: pending.operatingDay\n        }, empresaId, localActivoId, pending.openOperationId);";
+          if (s.includes(openParam)) {
+            s = s.replace(openParam, "p_operating_day: null\n        }, empresaId, localActivoId, pending.openOperationId);");
+          } else if (!s.includes("p_operating_day: null\n        }, empresaId, localActivoId, pending.openOperationId);")) {
+            throw new Error("A02_P06_OPEN_PARAM_ANCHOR_MISSING");
+          }
+
+          const saveAnchor = "}, empresaId, localActivoId, pending.openOperationId);\n        if (!guardarJsonLocalA02(pendingKey, pending)) throw new Error(\"persistencia_idempotencia_no_disponible\");";
+          const saveReplacement = "}, empresaId, localActivoId, pending.openOperationId);\n        const operatingDayServidor = pending.cuentaResultado?.operating_day || null;\n        if (!operatingDayServidor) throw new Error(\"operating_day_servidor_ausente\");\n        pending.operatingDay = operatingDayServidor;\n        if (!guardarJsonLocalA02(pendingKey, pending)) throw new Error(\"persistencia_idempotencia_no_disponible\");";
+          if (s.includes(saveAnchor)) {
+            s = s.replace(saveAnchor, saveReplacement);
+          } else if (!s.includes("const operatingDayServidor = pending.cuentaResultado?.operating_day || null;")) {
+            throw new Error("A02_P06_SERVER_DAY_ANCHOR_MISSING");
+          }
+
+          const errorAnchor = 'if (msg.includes("sesion_usuario_requerida")) return "No hay una sesión de usuario válida.";';
+          const errorReplacement = errorAnchor + '\n    if (msg.includes("operating_day_configuracion_ausente")) return "El local no tiene configurada todavía su zona horaria y hora de corte operativa.";\n    if (msg.includes("operating_day_configuracion_ambigua")) return "La configuración del día operativo del local es ambigua; se ha bloqueado la operación.";\n    if (msg.includes("operating_day_timezone_invalida")) return "La zona horaria configurada para el local no es válida.";\n    if (msg.includes("operating_day_cliente_no_autoritativo")) return "El día operativo lo determina el servidor; recarga el TPV antes de continuar.";\n    if (msg.includes("operating_day_servidor_ausente")) return "El servidor no devolvió un día operativo válido; no se ha guardado el pedido.";';
+          if (s.includes(errorAnchor) && !s.includes("operating_day_servidor_ausente")) {
+            s = s.replace(errorAnchor, errorReplacement);
+          } else if (!s.includes("operating_day_servidor_ausente")) {
+            throw new Error("A02_P06_ERROR_MAP_ANCHOR_MISSING");
+          }
+
+          fs.writeFileSync(path, s);
+          NODE
+          echo "A02_P06_SOURCE_PATCH=PASS"
 
       - name: Materializar runtime desde cuerpo recuperado
         shell: bash
@@ -91,11 +134,11 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add fuente.js
+          git add source-recovery/fuente-recuperado.js fuente.js
           if git diff --cached --quiet; then
             echo "A02_1_RUNTIME_ALREADY_CURRENT=1"
             exit 0
           fi
-          git commit -m "[skip netlify] A02.1 materialize runtime parity"
+          git commit -m "[skip netlify] A02.1 materialize A11 operating day"
           git push origin "HEAD:${GITHUB_REF_NAME}"
           echo "A02_1_RUNTIME_COMMITTED=1"
