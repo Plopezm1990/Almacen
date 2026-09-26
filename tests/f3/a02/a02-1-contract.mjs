@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 const recovered = fs.readFileSync("source-recovery/fuente-recuperado.js", "utf8");
 const runtime = fs.readFileSync("fuente.js", "utf8");
 const a03 = fs.readFileSync("supabase/migrations/20260924010000_abc_f3_a03_server_authority.sql", "utf8");
+const a06 = fs.readFileSync("supabase/migrations/20260924040000_abc_f3_a06_account_recovery.sql", "utf8");
 const m01 = fs.readFileSync("supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql", "utf8");
 const m03a = fs.readFileSync("supabase/migrations/20260923233000_abc_f2_m03a_autoridad_transaccional.sql", "utf8");
 const m04a = fs.readFileSync("supabase/migrations/20260924001000_abc_f2_m04a_caja_sesiones.sql", "utf8");
@@ -226,6 +227,35 @@ for (const fn of ["abc_abrir_cuenta", "abc_crear_pedido", "abc_agregar_linea_ped
   assert.ok(fnBody.includes("private.abc_operacion_completar(p_operation_id,v_result)"), `A02.1 P07: ${fn} no persiste resultado idempotente`);
 }
 
+
+// P08 — recuperación formal tras timeout mediante abc_consultar_operacion.
+assert.ok(a06.includes("create function public.abc_consultar_operacion("), "A02.1 P08: falta RPC de consulta de operación");
+assert.ok(a06.includes("not private.abc_tiene_capacidad(p_empresa_id,p_local_id,'ABC_CUENTA_OPERAR')"), "A02.1 P08: consulta sin capacidad ABC_CUENTA_OPERAR");
+assert.ok(a06.includes("and empresa_id=p_empresa_id"), "A02.1 P08: consulta no acota empresa");
+assert.ok(a06.includes("and local_id=p_local_id"), "A02.1 P08: consulta no acota local");
+assert.ok(a06.includes("and executor_kind='USER'"), "A02.1 P08: consulta no restringe operaciones de usuario");
+assert.ok(a06.includes("and actor_user_id=auth.uid()"), "A02.1 P08: consulta puede exponer operación de otro usuario");
+assert.ok(a06.includes("'status',v_row.status"), "A02.1 P08: consulta no devuelve estado");
+assert.ok(a06.includes("'resultado',v_row.resultado"), "A02.1 P08: consulta no devuelve resultado");
+assert.ok(a06.includes("'error',v_row.error"), "A02.1 P08: consulta no devuelve error");
+assert.ok(a06.includes("grant execute on function public.abc_consultar_operacion("), "A02.1 P08: consulta no está expuesta al rol autenticado controlado");
+
+assert.ok(recoveryAdapter.includes('supabase.rpc("abc_consultar_operacion"'), "A02.1 P08: timeout no consulta estado servidor");
+assert.ok(recoveryAdapter.includes("p_operation_id: operationId"), "A02.1 P08: consulta usa otro operation_id");
+assert.ok(recoveryAdapter.includes('estado === "COMPLETADA"'), "A02.1 P08: falta recuperación de COMPLETADA");
+assert.ok(recoveryAdapter.includes("return estado.resultado"), "A02.1 P08: no reutiliza resultado ya completado");
+assert.ok(recoveryAdapter.includes('estado === "PROCESANDO"'), "A02.1 P08: falta tratamiento PROCESANDO");
+assert.ok(recoveryAdapter.includes('throw new Error("operacion_a02_en_curso")'), "A02.1 P08: PROCESANDO no falla cerrado");
+assert.ok(recoveryAdapter.includes('estado === "FALLIDA"'), "A02.1 P08: falta tratamiento FALLIDA");
+assert.ok(recoveryAdapter.includes('throw new Error("operacion_a02_fallida")'), "A02.1 P08: FALLIDA podría reintentarse");
+assert.ok(recoveryAdapter.includes("recuperarTrasTimeout(true)"), "A02.1 P08: primer timeout no entra al flujo formal");
+assert.ok(recoveryAdapter.includes("return recuperarTrasTimeout(false)"), "A02.1 P08: segundo timeout no reconsulta estado");
+assert.ok(recoveryAdapter.includes("if (!estado.encontrada && permiteReintentoSeguro)"), "A02.1 P08: no limita el reintento al caso no encontrado");
+assert.equal((recoveryAdapter.match(/return await ejecutar\(6500\)/g) || []).length, 2, "A02.1 P08: debe existir solo ejecución inicial + un reintento seguro");
+assert.ok(recovered.includes('msg.includes("operacion_a02_fallida")'), "A02.1 P08: falta mensaje de operación FALLIDA");
+assert.ok(recovered.includes('msg.includes("operacion_a02_estado_desconocido")'), "A02.1 P08: falta fail-closed de estado desconocido");
+
+console.log("A02_1_TIMEOUT_RECOVERY=PASS");
 console.log("A02_1_IDEMPOTENCY_STABLE_IDS=PASS");
 console.log("A02_1_CONTRACT=PASS");
 console.log("A02_1_PRIMARY_PATH=A03");
