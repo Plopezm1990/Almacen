@@ -6,6 +6,7 @@ const recovered = fs.readFileSync("source-recovery/fuente-recuperado.js", "utf8"
 const runtime = fs.readFileSync("fuente.js", "utf8");
 const a03 = fs.readFileSync("supabase/migrations/20260924010000_abc_f3_a03_server_authority.sql", "utf8");
 const m01 = fs.readFileSync("supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql", "utf8");
+const m04a = fs.readFileSync("supabase/migrations/20260924001000_abc_f2_m04a_caja_sesiones.sql", "utf8");
 
 const headerLines = 14;
 const recoveredBody = recovered.split("\n").slice(headerLines).join("\n");
@@ -45,6 +46,37 @@ const selectOnlyAfterUnique = terminalResolver.indexOf("terminalId = terminales[
 assert.ok(uniqueCheck >= 0 && selectOnlyAfterUnique > uniqueCheck, "A02.1: se selecciona un terminal antes de demostrar unicidad");
 assert.ok(m01.includes("create unique index abc_terminal_device_key_uq"), "A02.1: device_key no es único por scope");
 assert.ok(m01.includes("revoke insert,update,delete on public.terminales_tpv from authenticated"), "A02.1: el navegador conserva escritura directa sobre terminales_tpv");
+
+assert.ok(
+  m04a.includes("create unique index abc_terminal_una_sesion_activa_uq") &&
+  m04a.includes("on public.caja_sesion_terminales(terminal_id)") &&
+  m04a.includes("where hasta is null;"),
+  "A02.1: F2 M04A no garantiza una única sesión activa por terminal"
+);
+for (const required of [
+  '.from("caja_sesion_terminales")',
+  '.eq("empresa_id", empresaId)',
+  '.eq("local_id", localId)',
+  '.eq("terminal_id", terminalId)',
+  '.is("hasta", null)',
+  '.limit(2)'
+]) {
+  assert.ok(terminalResolver.includes(required), `A02.1: resolución de sesión incompleta: ${required}`);
+}
+assert.ok(terminalResolver.includes("vinculos.length !== 1"), "A02.1: falta cardinalidad exacta del vínculo activo");
+assert.ok(terminalResolver.includes('"terminal_sesion_ambigua"'), "A02.1: falta fail-closed para múltiples vínculos activos");
+assert.ok(terminalResolver.includes('"terminal_sin_sesion_abierta"'), "A02.1: falta fail-closed cuando no existe vínculo activo");
+for (const required of [
+  '.from("caja_sesiones")',
+  '.eq("empresa_id", empresaId)',
+  '.eq("local_id", localId)',
+  '.eq("id", sessionId)',
+  '.eq("estado", "ABIERTA")',
+  '.maybeSingle()'
+]) {
+  assert.ok(terminalResolver.includes(required), `A02.1: validación de caja abierta incompleta: ${required}`);
+}
+
 
 
 function firmaA03(fn) {
