@@ -1,3 +1,4 @@
+// Trigger A02.1 isolated workflow after workflow installation.
 import fs from "node:fs";
 import assert from "node:assert/strict";
 
