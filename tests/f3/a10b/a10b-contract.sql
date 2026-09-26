@@ -145,40 +145,38 @@ begin
 end $$;
 
 -- Confirmar otra vez una entrega ya completada: idempotencia sin nuevo evento.
-do $$
-declare
-  v_efecto uuid;
-  v_before bigint;
-  v_after bigint;
+create temporary table a10b_delivery_before as
+select count(*)::bigint as n
+  from public.abc_eventos
+ where operation_id='a10.order.send'
+   and event_type='COMANDA_ENTREGA_CONFIRMADA';
+
+set role service_role;
+select public.abc_confirmar_entrega_comanda(
+  (
+    select e.id
+      from public.efectos_pendientes e
+     where e.abc_command_id='a10.order.send'
+       and e.tipo='KITCHEN_COMANDA'
+       and e.estado='COMPLETADO'
+     order by e.id
+     limit 1
+  ),
+  'worker-a10'
+);
+reset role;
+
+do $
 begin
-  select e.id into v_efecto
-    from public.efectos_pendientes e
-   where e.abc_command_id='a10.order.send'
-     and e.tipo='KITCHEN_COMANDA'
-     and e.estado='COMPLETADO'
-   order by e.id
-   limit 1;
-
-  if v_efecto is null then raise exception 'A10B_FAIL: efecto completado ausente'; end if;
-
-  select count(*) into v_before
-    from public.abc_eventos
-   where operation_id='a10.order.send'
-     and event_type='COMANDA_ENTREGA_CONFIRMADA';
-
-  perform set_config('role','service_role',true);
-  perform public.abc_confirmar_entrega_comanda(v_efecto,'worker-a10');
-  perform set_config('role','postgres',true);
-
-  select count(*) into v_after
-    from public.abc_eventos
-   where operation_id='a10.order.send'
-     and event_type='COMANDA_ENTREGA_CONFIRMADA';
-
-  if v_after<>v_before then
+  if (select n from a10b_delivery_before) is distinct from (
+    select count(*)::bigint
+      from public.abc_eventos
+     where operation_id='a10.order.send'
+       and event_type='COMANDA_ENTREGA_CONFIRMADA'
+  ) then
     raise exception 'A10B_FAIL: replay entrega duplico auditoria';
   end if;
-end $$;
+end $;
 
 -- A10B no altera los límites económicos/fiscales/stock.
 do $$
