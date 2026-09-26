@@ -1,5 +1,7 @@
 # F3/A09 — descuentos y cortesías: diseño local
 
+> **Actualización posterior:** el estado real de QA del 26/09/2026 está en [`A09_QA_STATUS_2026-09-26.md`](A09_QA_STATUS_2026-09-26.md). Este documento conserva el diseño y la evidencia histórica del 24/09/2026.
+
 Estado: **contrato A09 verificado localmente en PostgreSQL 16/17; candidato de migración revisable solo en esta rama local; sin aplicación en QA/PROD**. La doble aprobación configurable y las RPC administrativas de políticas se implementan y prueban localmente en esta revisión. Quedan fuera repartos con IVA mixto y líneas fiscalizadas antes del descuento. La emisión fiscal permanece en una fase posterior y no se declara validada. Base: `release` en `89a163906d2b7c3c7c082e0c0d7a65c334e3871e`, tras el cierre técnico A08 en PROD del 24/09/2026. Rama local `codex/abc-f3-a09-discounts-comps`.
 
 ## Contratos y dependencias comprobados
