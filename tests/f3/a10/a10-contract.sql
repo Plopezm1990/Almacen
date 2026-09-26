@@ -201,14 +201,14 @@ select public.abc_crear_estacion_preparacion(
 
 select public.abc_asignar_producto_estacion(
   'a10.route.cafe','emp-g','loc-g1','prod-cafe-g',
-  '92000000-0000-0000-0000-000000000001',1,
+  '92000000-0000-0000-0000-000000000001',1::smallint,
   '20000000-0000-0000-0000-000000000020',
   '40000000-0000-0000-0000-000000000010',date '2026-09-26'
 );
 
 select public.abc_asignar_producto_estacion(
   'a10.route.churro','emp-g','loc-g1','prod-churro-g',
-  '92000000-0000-0000-0000-000000000002',1,
+  '92000000-0000-0000-0000-000000000002',1::smallint,
   '20000000-0000-0000-0000-000000000020',
   '40000000-0000-0000-0000-000000000010',date '2026-09-26'
 );
