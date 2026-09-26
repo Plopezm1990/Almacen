@@ -7,6 +7,7 @@ const runtime = fs.readFileSync("fuente.js", "utf8");
 const a03 = fs.readFileSync("supabase/migrations/20260924010000_abc_f3_a03_server_authority.sql", "utf8");
 const m01 = fs.readFileSync("supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql", "utf8");
 const m04a = fs.readFileSync("supabase/migrations/20260924001000_abc_f2_m04a_caja_sesiones.sql", "utf8");
+const a11 = fs.readFileSync("supabase/migrations/20260926203000_abc_f3_a02_operating_day_a11.sql", "utf8");
 
 const headerLines = 14;
 const recoveredBody = recovered.split("\n").slice(headerLines).join("\n");
@@ -77,6 +78,33 @@ for (const required of [
   assert.ok(terminalResolver.includes(required), `A02.1: validación de caja abierta incompleta: ${required}`);
 }
 
+
+
+assert.ok(a11.includes("create table private.abc_operating_day_reglas"), "A02.1 P06: falta regla A11 versionada por local");
+assert.ok(a11.includes("timezone_name text not null"), "A02.1 P06: falta zona horaria IANA por local");
+assert.ok(a11.includes("cutoff_time time without time zone not null"), "A02.1 P06: falta hora de corte configurable");
+assert.ok(a11.includes("vigente_desde timestamptz not null"), "A02.1 P06: falta vigencia versionada");
+assert.ok(a11.includes("vigente_hasta timestamptz"), "A02.1 P06: falta cierre de vigencia");
+assert.ok(a11.includes("abc_resolver_operating_day_contexto"), "A02.1 P06: falta resolver servidor de operating_day");
+assert.ok(a11.includes("p_occurred_at at time zone v_rule.timezone_name"), "A02.1 P06: operating_day no usa zona del local");
+assert.ok(a11.includes("v_cutoff_instant:=(v_local_date+v_rule.cutoff_time) at time zone v_rule.timezone_name"), "A02.1 P06: falta corte horario autoritativo");
+assert.ok(a11.includes("operating_day_configuracion_ausente"), "A02.1 P06: falta fail-closed sin configuración A11");
+assert.ok(a11.includes("operating_day_configuracion_ambigua"), "A02.1 P06: falta fail-closed ante reglas solapadas");
+assert.ok(a11.includes("create or replace function public.abc_abrir_cuenta"), "A02.1 P06: A03 no consume autoridad A11");
+assert.ok(a11.includes("'operating_day',v_operating_day"), "A02.1 P06: resultado servidor no devuelve operating_day");
+assert.ok(a11.includes("'cutoff_rule_version'"), "A02.1 P06: falta versión de regla en auditoría/respuesta");
+assert.ok(a11.includes("Deliberadamente no se insertan reglas reales"), "A02.1 P06: la migración no deja explícita la ausencia de datos reales");
+
+assert.ok(terminalResolver.length > 0, "A02.1 P06: resolver de terminal no disponible");
+const a02Start = recovered.indexOf("async function venderCarritoA02");
+const a02End = recovered.indexOf("async function venderCarrito(lineas", a02Start);
+const a02Adapter = recovered.slice(a02Start, a02End);
+assert.ok(a02Adapter.includes("operatingDay: null"), "A02.1 P06: el cliente sigue fijando un día calendario");
+assert.ok(a02Adapter.includes("p_operating_day: null"), "A02.1 P06: abc_abrir_cuenta sigue recibiendo una fecha autoritativa del cliente");
+assert.ok(a02Adapter.includes("pending.cuentaResultado?.operating_day"), "A02.1 P06: el cliente no consume el operating_day devuelto por servidor");
+assert.ok(a02Adapter.includes("pending.operatingDay = operatingDayServidor"), "A02.1 P06: no se propaga el día servidor a pedido/líneas");
+assert.ok(!a02Adapter.includes("operatingDay: todayISO()"), "A02.1 P06: todayISO() sigue siendo autoridad de operating_day");
+assert.ok(recovered.includes('msg.includes("operating_day_configuracion_ausente")'), "A02.1 P06: falta mensaje fail-closed sin regla A11");
 
 
 function firmaA03(fn) {
