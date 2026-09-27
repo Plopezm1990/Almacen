@@ -51,26 +51,26 @@ venderBlock = venderBlock.slice(0, venderCatchPos)
 source = source.slice(0, venderStart) + venderBlock + source.slice(enviarStart);
 
 const enviarStart2 = source.indexOf("async function enviarPedidoA05()");
-const accionStart = source.indexOf("async function accionPedidoA05(", enviarStart2);
-if (enviarStart2 < 0 || accionStart < 0) throw new Error("A06.2 enviar block missing");
-let enviarBlock = source.slice(enviarStart2, accionStart);
+const recuperarStartForSend = source.indexOf("async function recuperarCuentaA06()", enviarStart2);
+if (enviarStart2 < 0 || recuperarStartForSend < 0) throw new Error("A06.2 enviar block missing");
+let enviarBlock = source.slice(enviarStart2, recuperarStartForSend);
 const enviarCatchPos = enviarBlock.lastIndexOf(genericCatch);
 if (enviarCatchPos < 0 || enviarBlock.slice(enviarCatchPos + genericCatch.length).trim() !== "") throw new Error("A06.2 enviar catch anchor mismatch");
 enviarBlock = enviarBlock.slice(0, enviarCatchPos)
   + '    } catch (error) {\n      return respuestaErrorA06(error);\n    }\n  }'
   + enviarBlock.slice(enviarCatchPos + genericCatch.length);
-source = source.slice(0, enviarStart2) + enviarBlock + source.slice(accionStart);
+source = source.slice(0, enviarStart2) + enviarBlock + source.slice(recuperarStartForSend);
 
 const accionStart2 = source.indexOf("async function accionPedidoA05(");
-const recuperarStart = source.indexOf("async function recuperarCuentaA06()", accionStart2);
-if (accionStart2 < 0 || recuperarStart < 0) throw new Error("A06.2 accion block missing");
-let accionBlock = source.slice(accionStart2, recuperarStart);
+const venderLegacyStart = source.indexOf("async function venderCarrito(", accionStart2);
+if (accionStart2 < 0 || venderLegacyStart < 0) throw new Error("A06.2 accion block missing");
+let accionBlock = source.slice(accionStart2, venderLegacyStart);
 const accionCatchPos = accionBlock.lastIndexOf(genericCatch);
 if (accionCatchPos < 0 || accionBlock.slice(accionCatchPos + genericCatch.length).trim() !== "") throw new Error("A06.2 accion catch anchor mismatch");
 accionBlock = accionBlock.slice(0, accionCatchPos)
   + '    } catch (error) {\n      return respuestaErrorA06(error);\n    }\n  }'
   + accionBlock.slice(accionCatchPos + genericCatch.length);
-source = source.slice(0, accionStart2) + accionBlock + source.slice(recuperarStart);
+source = source.slice(0, accionStart2) + accionBlock + source.slice(venderLegacyStart);
 
 // Borrador local A06.2: solo conserva intención de pedido, nunca precio/total autoritativo.
 // Política: 24 h desde la última modificación local. Se aísla por empresa + local.
