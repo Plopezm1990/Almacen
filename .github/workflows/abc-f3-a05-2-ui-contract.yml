@@ -1,0 +1,91 @@
+# A05.2 final regression after A05.3
+name: A05.2 TPV state integration
+
+on:
+  push:
+    branches:
+      - abc-f3-a05-2-tpv-state-integration
+    paths:
+      - 'source-recovery/fuente-recuperado.js'
+      - 'fuente.js'
+      - 'tests/f3/a05/a05-2-ui-contract.mjs'
+      - 'scripts/f3/a05-2-patch.mjs'
+      - '.github/workflows/abc-f3-a05-2-ui-contract.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: abc-f3-a05-2-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+
+      - name: Guardar alcance y base release
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE=18f2bd86281dc5451f8d9e0624635f88c82fc472
+          BAD=$(git diff --name-only "$BASE...HEAD" | grep -Ev '^(fuente\.js|source-recovery/fuente-recuperado\.js|tests/f3/a05/a05-[23]-ui-contract\.mjs|scripts/f3/a05-[23]-patch\.mjs|\.github/workflows/abc-f3-a05-[23]-ui-contract\.yml)$' || true)
+          if [ -n "$BAD" ]; then
+            echo "A05_2_SCOPE_FAIL" >&2
+            echo "$BAD" >&2
+            exit 1
+          fi
+          echo "A05_2_SCOPE=PASS"
+
+      - name: Validar integración A05.2 materializada
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'async function enviarPedidoA05()' source-recovery/fuente-recuperado.js
+          echo "A05_2_MATERIALIZED=PASS"
+
+      - name: Materializar runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require("node:fs");
+          const recovered = fs.readFileSync("source-recovery/fuente-recuperado.js", "utf8");
+          const runtime = fs.readFileSync("fuente.js", "utf8");
+          const lines = recovered.split("\n");
+          if (lines[0] !== "// FUENTE RECUPERADO DESDE EL BUNDLE CANDIDATO DE L&A SUITE.") throw new Error("A05_2_BAD_RECOVERY_HEADER");
+          const body = lines.slice(14).join("\n");
+          const marker = "var C2 = {";
+          const first = runtime.indexOf(marker);
+          const second = runtime.indexOf(marker, first + 1);
+          if (first < 0 || second >= 0) throw new Error("A05_2_RUNTIME_BOUNDARY_AMBIGUOUS");
+          const next = runtime.slice(0, first) + body;
+          if (next !== runtime) throw new Error("A05_2_RUNTIME_NOT_CURRENT");
+          NODE
+          echo "A05_2_RUNTIME_PARITY=PASS"
+
+      - name: Verificar sintaxis y source recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check fuente.js
+          python3 source-recovery/recuperar_candidato.py --check
+          echo "A05_2_SOURCE_RECOVERY=PASS"
+
+      - name: Build directo recuperado
+        shell: bash
+        working-directory: source-recovery
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm run check
+          rm -rf dist
+          npm run build
+          node --check dist/fuente.js
+          echo "A05_2_DIRECT_BUILD=PASS"
+
+      - name: Contrato A05.2
+        run: node tests/f3/a05/a05-2-ui-contract.mjs
