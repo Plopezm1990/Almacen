@@ -6802,7 +6802,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     return venderLineas(lineas, { tipo: "VENTA", medioPago, detallePago, origen: "venderLocal", motivoBase: "TPV" });
   }
   // A02.1 UI -> A03 server authority.
-  // PM09 queda como legado aislado; VentaRapida usa A03 como camino primario.
+  // A04.2 UI -> A04 configured products; client only sends IDs, quantities and optimistic versions.
+  // PM09 queda como legado aislado; VentaRapida usa A03/A04 como camino primario.
   function uuidA02() {
     if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
     throw new Error("uuid_seguro_no_disponible");
@@ -6835,10 +6836,47 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       return false;
     }
   }
+  function normalizarConfiguracionLineaA04(configuracion) {
+    if (!configuracion) return null;
+    const expectedProductVersion = versionServidorA02(configuracion.expectedProductVersion, "a04.product.version");
+    if (!Array.isArray(configuracion.selecciones)) throw new Error("configuracion_a04_cliente_invalida");
+    const vistos = /* @__PURE__ */ new Set();
+    const selecciones = configuracion.selecciones.map((seleccion) => {
+      const grupoId = String(seleccion?.grupo_id || "");
+      const opcionId = String(seleccion?.opcion_id || "");
+      const cantidad = Number(seleccion?.cantidad);
+      if (!uuidPersistidoA02(grupoId) || !uuidPersistidoA02(opcionId) || !Number.isSafeInteger(cantidad) || cantidad < 1) {
+        throw new Error("configuracion_a04_cliente_invalida");
+      }
+      const clave = `${grupoId}:${opcionId}`;
+      if (vistos.has(clave)) throw new Error("configuracion_a04_cliente_invalida");
+      vistos.add(clave);
+      return {
+        grupo_id: grupoId,
+        opcion_id: opcionId,
+        cantidad,
+        expected_group_version: versionServidorA02(seleccion.expected_group_version, "a04.group.version"),
+        expected_product_group_version: versionServidorA02(seleccion.expected_product_group_version, "a04.product_group.version"),
+        expected_option_version: versionServidorA02(seleccion.expected_option_version, "a04.option.version")
+      };
+    }).sort((a22, b2) => `${a22.grupo_id}:${a22.opcion_id}`.localeCompare(`${b2.grupo_id}:${b2.opcion_id}`));
+    return { expectedProductVersion, selecciones };
+  }
   function fingerprintLineasA02(lineas) {
     return JSON.stringify((lineas || []).map((l22) => ({
       productoId: String(l22.productoId || ""),
-      cantidad: Number(l22.cantidad)
+      cantidad: Number(l22.cantidad),
+      configuracionA04: l22.configuracionA04 ? {
+        expectedProductVersion: Number(l22.configuracionA04.expectedProductVersion),
+        selecciones: (l22.configuracionA04.selecciones || []).map((s22) => ({
+          grupo_id: String(s22.grupo_id || ""),
+          opcion_id: String(s22.opcion_id || ""),
+          cantidad: Number(s22.cantidad),
+          expected_group_version: Number(s22.expected_group_version),
+          expected_product_group_version: Number(s22.expected_product_group_version),
+          expected_option_version: Number(s22.expected_option_version)
+        })).sort((a22, b2) => `${a22.grupo_id}:${a22.opcion_id}`.localeCompare(`${b2.grupo_id}:${b2.opcion_id}`))
+      } : null
     })));
   }
   function versionServidorA02(valor, campo) {
@@ -7000,6 +7038,12 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("pedido_a02_pendiente_distinto")) return "Hay un pedido anterior pendiente de confirmar. Reintenta ese pedido antes de cambiar el carrito.";
     if (msg.includes("catalogo_tpv_incompleto")) return "El catálogo TPV del servidor no contiene todos los productos del carrito.";
     if (msg.includes("moneda_tpv_ambigua")) return "El carrito mezcla monedas o no tiene una moneda TPV única.";
+    if (msg.includes("configuracion_a04_cliente_invalida") || msg.includes("selecciones_formato_invalido") || msg.includes("seleccion_formato_invalido") || msg.includes("seleccion_campos_no_permitidos") || msg.includes("seleccion_campos_requeridos") || msg.includes("seleccion_tipos_invalidos") || msg.includes("seleccion_valores_invalidos") || msg.includes("seleccion_duplicada")) return "La configuración de variantes o modificadores no es válida. Vuelve a seleccionar las opciones.";
+    if (msg.includes("grupo_min_selecciones_incumplido") || msg.includes("configuracion_requerida")) return "Falta seleccionar una variante u opción obligatoria del producto.";
+    if (msg.includes("grupo_max_selecciones_excedido")) return "Has seleccionado más modificadores de los permitidos para este producto.";
+    if (msg.includes("opcion_max_cantidad_excedida")) return "La cantidad elegida de un modificador supera el máximo permitido.";
+    if (msg.includes("catalogo_producto_version_conflict") || msg.includes("catalogo_grupo_version_conflict") || msg.includes("catalogo_producto_grupo_version_conflict") || msg.includes("catalogo_opcion_version_conflict")) return "La configuración del producto cambió en el servidor. Vuelve a abrir sus variantes antes de guardar.";
+    if (msg.includes("opcion_tpv_no_disponible") || msg.includes("seleccion_no_pertenece_producto")) return "Una variante o modificador ya no está disponible para este producto.";
     if (msg.includes("contexto_no_autorizado") || msg.includes("no_autorizad")) return "No tienes permiso para operar este TPV en el local seleccionado.";
     return msg || "No se pudo guardar el pedido en el servidor.";
   }
@@ -7081,10 +7125,16 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   }
   async function venderCarritoA02(lineas) {
     if (!localActivoId) return { ok: false, error: "Selecciona un local para abrir el TPV." };
-    const normalizadas = (lineas || []).filter((l22) => l22.productoId && Number(l22.cantidad) > 0).map((l22) => ({
-      productoId: String(l22.productoId),
-      cantidad: Number(l22.cantidad)
-    }));
+    let normalizadas = [];
+    try {
+      normalizadas = (lineas || []).filter((l22) => l22.productoId && Number(l22.cantidad) > 0).map((l22) => ({
+        productoId: String(l22.productoId),
+        cantidad: Number(l22.cantidad),
+        configuracionA04: normalizarConfiguracionLineaA04(l22.configuracionA04)
+      }));
+    } catch (error) {
+      return { ok: false, error: errorRpcA02(error) };
+    }
     if (normalizadas.length === 0) return { ok: false, error: "Carrito vac\xEDo" };
 
     const productosCarrito = normalizadas.map((l22) => productos.find((p22) => p22.id === l22.productoId)).filter(Boolean);
@@ -7138,6 +7188,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
             return {
               productoId: l22.productoId,
               cantidad: l22.cantidad,
+              configuracionA04: l22.configuracionA04,
               lineaId,
               operationId: `a02.1.line.${lineaId}`,
               resultado: null
@@ -7190,19 +7241,37 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           pedidoVersion = versionServidorA02(linea.resultado.pedido_version, "linea.pedido_version");
           continue;
         }
-        linea.resultado = await rpcA02ConRecuperacion(supabase, "abc_agregar_linea_pedido", {
-          p_operation_id: linea.operationId,
-          p_empresa_id: empresaId,
-          p_local_id: localActivoId,
-          p_linea_id: linea.lineaId,
-          p_pedido_id: pending.pedidoId,
-          p_producto_id: linea.productoId,
-          p_cantidad: linea.cantidad,
-          p_expected_pedido_version: pedidoVersion,
-          p_terminal_id: contexto.terminalId,
-          p_session_id: contexto.sessionId,
-          p_operating_day: pending.operatingDay
-        }, empresaId, localActivoId, linea.operationId);
+        if (!linea.configuracionA04) {
+          linea.resultado = await rpcA02ConRecuperacion(supabase, "abc_agregar_linea_pedido", {
+            p_operation_id: linea.operationId,
+            p_empresa_id: empresaId,
+            p_local_id: localActivoId,
+            p_linea_id: linea.lineaId,
+            p_pedido_id: pending.pedidoId,
+            p_producto_id: linea.productoId,
+            p_cantidad: linea.cantidad,
+            p_expected_pedido_version: pedidoVersion,
+            p_terminal_id: contexto.terminalId,
+            p_session_id: contexto.sessionId,
+            p_operating_day: pending.operatingDay
+          }, empresaId, localActivoId, linea.operationId);
+        } else {
+          linea.resultado = await rpcA02ConRecuperacion(supabase, "abc_agregar_linea_pedido_configurada", {
+            p_operation_id: linea.operationId,
+            p_empresa_id: empresaId,
+            p_local_id: localActivoId,
+            p_linea_id: linea.lineaId,
+            p_pedido_id: pending.pedidoId,
+            p_producto_id: linea.productoId,
+            p_cantidad: linea.cantidad,
+            p_expected_product_version: linea.configuracionA04.expectedProductVersion,
+            p_selecciones: linea.configuracionA04.selecciones,
+            p_expected_pedido_version: pedidoVersion,
+            p_terminal_id: contexto.terminalId,
+            p_session_id: contexto.sessionId,
+            p_operating_day: pending.operatingDay
+          }, empresaId, localActivoId, linea.operationId);
+        }
         pedidoVersion = versionServidorA02(linea.resultado?.pedido_version, "linea.pedido_version");
         if (!guardarJsonLocalA02(pendingKey, pending)) throw new Error("persistencia_idempotencia_no_disponible");
       }
@@ -7221,6 +7290,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           lineaVersion: versionServidorA02(l22.resultado?.linea_version, "linea.linea_version"),
           productoId: l22.productoId,
           cantidad: l22.cantidad,
+          configuradaA04: !!l22.configuracionA04,
+          opciones: Array.isArray(l22.resultado?.opciones) ? l22.resultado.opciones : [],
           total: importeServidorA02(l22.resultado?.total, "linea.total")
         })),
         terminalId: contexto.terminalId,
@@ -7236,7 +7307,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       return {
         ok: true,
         n: agregado.lineas.length,
-        modo: "a02-a03-pedido",
+        modo: pending.lineas.some((l22) => !!l22.configuracionA04) ? "a02-a03-a04-pedido" : "a02-a03-pedido",
         cuentaId: agregado.cuentaId,
         cuentaVersion: agregado.cuentaVersion,
         pedidoId: agregado.pedidoId,
@@ -16349,6 +16420,10 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
   const [confirmacion, setConfirmacion] = (0, import_react4.useState)(null);
   const [enviandoVenta, setEnviandoVenta] = (0, import_react4.useState)(false);
   const [errorVenta, setErrorVenta] = (0, import_react4.useState)("");
+  const [configurandoA04, setConfigurandoA04] = (0, import_react4.useState)(null);
+  const [seleccionesA04, setSeleccionesA04] = (0, import_react4.useState)({});
+  const [errorA04, setErrorA04] = (0, import_react4.useState)("");
+  const [cargandoA04, setCargandoA04] = (0, import_react4.useState)(false);
   const vendibles = (0, import_react4.useMemo)(
     () => productos.filter((p22) => p22.activo !== false && (p22.tipo === "elaborado" || Number(p22.precioVenta) > 0) && (p22._pm07Servidor ? Number(p22.stock) || 0 : Number(p22.stockPisoVenta) || 0) > 0),
     [productos]
@@ -16380,32 +16455,217 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
       setTimeout(() => setAvisoEscaneo(""), 1500);
     }
   }
-  function agregar(producto) {
+  function claveCarritoA04(productoId, configuracionA04) {
+    if (!configuracionA04) return String(productoId);
+    const firma = (configuracionA04.selecciones || []).map((s22) => `${s22.grupo_id}:${s22.opcion_id}:${s22.cantidad}:${s22.expected_group_version}:${s22.expected_product_group_version}:${s22.expected_option_version}`).sort().join("|");
+    return `${productoId}::a04::${configuracionA04.expectedProductVersion}::${firma}`;
+  }
+  function agregarLineaCarritoA04(producto, configuracionA04 = null) {
+    const claveCarrito = claveCarritoA04(producto.id, configuracionA04);
     setCarrito((s22) => {
-      const existe = s22.find((l22) => l22.productoId === producto.id);
-      if (existe) return s22.map((l22) => l22.productoId === producto.id ? { ...l22, cantidad: (Number(l22.cantidad) || 0) + 1 } : l22);
-      return [...s22, { productoId: producto.id, cantidad: 1 }];
+      const existe = s22.find((l22) => (l22.claveCarrito || l22.productoId) === claveCarrito);
+      if (existe) return s22.map((l22) => (l22.claveCarrito || l22.productoId) === claveCarrito ? { ...l22, cantidad: (Number(l22.cantidad) || 0) + 1 } : l22);
+      return [...s22, { claveCarrito, productoId: producto.id, cantidad: 1, configuracionA04 }];
     });
   }
-  function cambiarCantidad(productoId, delta) {
+  async function agregar(producto) {
+    if (cargandoA04) return;
+    setErrorVenta("");
+    setErrorA04("");
+    const empresaId = configEmpresa?.id || producto?.empresaId || null;
+    const localId = local?.id || producto?.localId || null;
+    if (!empresaId || !localId) {
+      setErrorVenta("No se pudo determinar empresa y local para cargar las variantes del producto.");
+      return;
+    }
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) {
+      setErrorVenta("El TPV necesita conexión con el servidor para comprobar variantes y modificadores.");
+      return;
+    }
+    setCargandoA04(true);
+    try {
+      const supabase = await window.getSupabaseClient();
+      const { data: catalogos, error: catalogoError } = await supabase
+        .from("catalogo_tpv_productos")
+        .select("producto_id,currency_code,precio_unitario,impuesto_pct,version,activo")
+        .eq("empresa_id", empresaId)
+        .eq("local_id", localId)
+        .eq("producto_id", producto.id)
+        .eq("activo", true)
+        .limit(2);
+      if (catalogoError) throw catalogoError;
+      if (!Array.isArray(catalogos) || catalogos.length !== 1) throw new Error(catalogos && catalogos.length > 1 ? "moneda_tpv_ambigua" : "producto_tpv_no_disponible");
+      const catalogo = catalogos[0];
+      const { data: enlaces, error: enlacesError } = await supabase
+        .from("catalogo_tpv_producto_grupos")
+        .select("grupo_id,min_selecciones,max_selecciones,orden,version,activo")
+        .eq("empresa_id", empresaId)
+        .eq("local_id", localId)
+        .eq("producto_id", producto.id)
+        .eq("currency_code", catalogo.currency_code)
+        .eq("activo", true)
+        .order("orden", { ascending: true });
+      if (enlacesError) throw enlacesError;
+      if (!Array.isArray(enlaces) || enlaces.length === 0) {
+        agregarLineaCarritoA04(producto, null);
+        return;
+      }
+      const idsGrupos = [...new Set(enlaces.map((x3) => x3.grupo_id).filter(Boolean))];
+      const [{ data: grupos, error: gruposError }, { data: opciones, error: opcionesError }] = await Promise.all([
+        supabase
+          .from("catalogo_tpv_grupos_opciones")
+          .select("id,nombre,tipo_grupo,orden,version,activo")
+          .eq("empresa_id", empresaId)
+          .eq("local_id", localId)
+          .eq("activo", true)
+          .in("id", idsGrupos),
+        supabase
+          .from("catalogo_tpv_opciones")
+          .select("id,grupo_id,nombre,tipo_opcion,delta_precio,hereda_impuesto,impuesto_pct,max_cantidad,orden,version,activo")
+          .eq("empresa_id", empresaId)
+          .eq("local_id", localId)
+          .eq("currency_code", catalogo.currency_code)
+          .eq("activo", true)
+          .in("grupo_id", idsGrupos)
+          .order("orden", { ascending: true })
+      ]);
+      if (gruposError) throw gruposError;
+      if (opcionesError) throw opcionesError;
+      const mapaGrupos = new Map((grupos || []).map((g2) => [g2.id, g2]));
+      const gruposUi = enlaces.map((enlace) => {
+        const grupo = mapaGrupos.get(enlace.grupo_id);
+        if (!grupo) throw new Error("configuracion_a04_cliente_invalida");
+        const opcionesGrupo = (opciones || []).filter((o2) => o2.grupo_id === grupo.id).map((o2) => ({
+          id: o2.id,
+          nombre: o2.nombre,
+          tipoOpcion: o2.tipo_opcion,
+          deltaPrecio: Number(o2.delta_precio) || 0,
+          heredaImpuesto: !!o2.hereda_impuesto,
+          impuestoPct: o2.impuesto_pct == null ? null : Number(o2.impuesto_pct),
+          maxCantidad: Math.max(1, Number(o2.max_cantidad) || 1),
+          version: Number(o2.version)
+        }));
+        if (Number(enlace.min_selecciones) > 0 && opcionesGrupo.length === 0) throw new Error("configuracion_a04_cliente_invalida");
+        return {
+          id: grupo.id,
+          nombre: grupo.nombre,
+          tipoGrupo: grupo.tipo_grupo,
+          minSelecciones: Number(enlace.min_selecciones) || 0,
+          maxSelecciones: Math.max(1, Number(enlace.max_selecciones) || 1),
+          version: Number(grupo.version),
+          productGroupVersion: Number(enlace.version),
+          opciones: opcionesGrupo
+        };
+      });
+      const inicial = {};
+      for (const grupo of gruposUi) {
+        if (grupo.minSelecciones === 1 && grupo.opciones.length === 1) {
+          inicial[grupo.id] = { [grupo.opciones[0].id]: 1 };
+        }
+      }
+      setSeleccionesA04(inicial);
+      setConfigurandoA04({
+        producto,
+        catalogo: {
+          currencyCode: catalogo.currency_code,
+          precioUnitario: Number(catalogo.precio_unitario) || 0,
+          impuestoPct: Number(catalogo.impuesto_pct) || 0,
+          version: Number(catalogo.version)
+        },
+        grupos: gruposUi
+      });
+    } catch (error) {
+      const msg = String(error?.message || error || "");
+      if (msg.includes("moneda_tpv_ambigua")) setErrorVenta("El producto tiene más de una moneda TPV activa y no puede configurarse de forma inequívoca.");
+      else if (msg.includes("producto_tpv_no_disponible")) setErrorVenta("El producto no está disponible todavía en el catálogo TPV del servidor.");
+      else setErrorVenta("No se pudieron cargar las variantes y modificadores del producto.");
+    } finally {
+      setCargandoA04(false);
+    }
+  }
+  function cambiarSeleccionA04(grupo, opcion, delta) {
+    setSeleccionesA04((anterior) => {
+      const actualGrupo = { ...(anterior[grupo.id] || {}) };
+      if (grupo.tipoGrupo === "VARIANTE") {
+        return { ...anterior, [grupo.id]: { [opcion.id]: 1 } };
+      }
+      const actual = Number(actualGrupo[opcion.id]) || 0;
+      const siguiente = Math.max(0, Math.min(opcion.maxCantidad, actual + delta));
+      const otros = Object.entries(actualGrupo).reduce((acc, [id, cantidad]) => id === opcion.id ? acc : acc + (Number(cantidad) || 0), 0);
+      if (otros + siguiente > grupo.maxSelecciones) return anterior;
+      if (siguiente === 0) delete actualGrupo[opcion.id];
+      else actualGrupo[opcion.id] = siguiente;
+      return { ...anterior, [grupo.id]: actualGrupo };
+    });
+  }
+  function confirmarConfiguracionA04() {
+    if (!configurandoA04) return;
+    const selecciones = [];
+    const etiquetas = [];
+    let precioUnitarioPreview = configurandoA04.catalogo.precioUnitario * (1 + configurandoA04.catalogo.impuestoPct / 100);
+    for (const grupo of configurandoA04.grupos) {
+      const elegidas = seleccionesA04[grupo.id] || {};
+      const totalGrupo = Object.values(elegidas).reduce((acc, cantidad) => acc + (Number(cantidad) || 0), 0);
+      if (totalGrupo < grupo.minSelecciones) {
+        setErrorA04(`Selecciona al menos ${grupo.minSelecciones} opción(es) en ${grupo.nombre}.`);
+        return;
+      }
+      if (totalGrupo > grupo.maxSelecciones) {
+        setErrorA04(`El grupo ${grupo.nombre} admite como máximo ${grupo.maxSelecciones} selección(es).`);
+        return;
+      }
+      for (const opcion of grupo.opciones) {
+        const cantidad = Number(elegidas[opcion.id]) || 0;
+        if (cantidad <= 0) continue;
+        if (cantidad > opcion.maxCantidad) {
+          setErrorA04(`${opcion.nombre} admite como máximo ${opcion.maxCantidad}.`);
+          return;
+        }
+        selecciones.push({
+          grupo_id: grupo.id,
+          opcion_id: opcion.id,
+          cantidad,
+          expected_group_version: grupo.version,
+          expected_product_group_version: grupo.productGroupVersion,
+          expected_option_version: opcion.version
+        });
+        etiquetas.push(`${grupo.nombre}: ${opcion.nombre}${cantidad > 1 ? " x" + cantidad : ""}`);
+        const impuesto = opcion.heredaImpuesto ? configurandoA04.catalogo.impuestoPct : Number(opcion.impuestoPct) || 0;
+        precioUnitarioPreview += cantidad * opcion.deltaPrecio * (1 + impuesto / 100);
+      }
+    }
+    const configuracionA04 = {
+      expectedProductVersion: configurandoA04.catalogo.version,
+      selecciones,
+      etiquetas,
+      precioUnitarioPreview,
+      currencyCode: configurandoA04.catalogo.currencyCode
+    };
+    agregarLineaCarritoA04(configurandoA04.producto, configuracionA04);
+    setConfigurandoA04(null);
+    setSeleccionesA04({});
+    setErrorA04("");
+  }
+  function cambiarCantidad(claveCarrito, delta) {
     setCarrito(
-      (s22) => s22.map((l22) => l22.productoId === productoId ? { ...l22, cantidad: Math.max(1, (Number(l22.cantidad) || 0) + delta) } : l22).filter((l22) => l22.cantidad > 0)
+      (s22) => s22.map((l22) => (l22.claveCarrito || l22.productoId) === claveCarrito ? { ...l22, cantidad: Math.max(1, (Number(l22.cantidad) || 0) + delta) } : l22).filter((l22) => l22.cantidad > 0)
     );
   }
-  function fijarCantidad(productoId, valor) {
-    setCarrito((s22) => s22.map((l22) => l22.productoId === productoId ? { ...l22, cantidad: valor } : l22));
+  function fijarCantidad(claveCarrito, valor) {
+    setCarrito((s22) => s22.map((l22) => (l22.claveCarrito || l22.productoId) === claveCarrito ? { ...l22, cantidad: valor } : l22));
   }
-  function normalizarCantidad(productoId) {
+  function normalizarCantidad(claveCarrito) {
     setCarrito(
       (s22) => s22.map((l22) => {
-        if (l22.productoId !== productoId) return l22;
+        if ((l22.claveCarrito || l22.productoId) !== claveCarrito) return l22;
         const n2 = Number(l22.cantidad);
         return { ...l22, cantidad: !n2 || n2 <= 0 ? 1 : n2 };
       })
     );
   }
-  function quitar(productoId) {
-    setCarrito((s22) => s22.filter((l22) => l22.productoId !== productoId));
+  function quitar(claveCarrito) {
+    setCarrito((s22) => s22.filter((l22) => (l22.claveCarrito || l22.productoId) !== claveCarrito));
   }
   function vaciarCarrito() {
     setCarrito([]);
@@ -16413,12 +16673,21 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
   const lineasCarrito = carrito.map((l22) => {
     const p22 = productos.find((x3) => x3.id === l22.productoId);
     if (!p22) return null;
-    const precioConIva = precioNeto(p22) * (1 + ivaDe(p22) / 100);
+    const precioBaseConIva = precioNeto(p22) * (1 + ivaDe(p22) / 100);
+    const previewA04 = Number(l22.configuracionA04?.precioUnitarioPreview);
+    const precioConIva = Number.isFinite(previewA04) && previewA04 >= 0 ? previewA04 : precioBaseConIva;
     const cant = Number(l22.cantidad) || 0;
     return { ...l22, cantidadNum: cant, producto: p22, precioUnitario: precioConIva, subtotal: precioConIva * cant };
   }).filter(Boolean);
   const total = lineasCarrito.reduce((a22, l22) => a22 + l22.subtotal, 0);
-  const faltaStock = lineasCarrito.filter((l22) => l22.cantidadNum > (l22.producto._pm07Servidor ? Number(l22.producto.stock) || 0 : Number(l22.producto.stockPisoVenta) || 0));
+  const cantidadesProductoA04 = lineasCarrito.reduce((mapa, l22) => {
+    mapa.set(l22.productoId, (mapa.get(l22.productoId) || 0) + l22.cantidadNum);
+    return mapa;
+  }, /* @__PURE__ */ new Map());
+  const faltaStock = [...cantidadesProductoA04.entries()].map(([productoId, cantidadNum]) => {
+    const producto = productos.find((p22) => p22.id === productoId);
+    return producto ? { producto, cantidadNum } : null;
+  }).filter((l22) => l22 && l22.cantidadNum > (l22.producto._pm07Servidor ? Number(l22.producto.stock) || 0 : Number(l22.producto.stockPisoVenta) || 0));
   const restoEfectivoMixto = medioPago === "Mixto" ? Math.max(0, total - (Number(importeTarjetaMixto) || 0)) : null;
   const baseParaCambio = medioPago === "Mixto" ? restoEfectivoMixto : total;
   const cambio = (medioPago === "Efectivo" || medioPago === "Mixto") && efectivoRecibido !== "" ? Number(efectivoRecibido) - baseParaCambio : null;
@@ -16430,11 +16699,66 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
     setErrorVenta("");
     setShowCobro(true);
   }
+  function renderConfiguradorA04() {
+    if (!configurandoA04) return null;
+    const h4 = import_react4.default.createElement;
+    return h4(
+      Modal,
+      { onClose: () => {
+        setConfigurandoA04(null);
+        setSeleccionesA04({});
+        setErrorA04("");
+      }, title: `Configurar ${configurandoA04.producto.nombre}` },
+      h4("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Elige variantes y modificadores. El precio e IVA definitivos se recalculan y validan en el servidor al guardar el pedido."),
+      configurandoA04.grupos.map((grupo) => {
+        const elegidas = seleccionesA04[grupo.id] || {};
+        const totalGrupo = Object.values(elegidas).reduce((acc, cantidad) => acc + (Number(cantidad) || 0), 0);
+        return h4(
+          Card,
+          { key: grupo.id, className: "mb-3" },
+          h4("div", { className: "flex justify-between gap-2 mb-2" },
+            h4("div", { className: "font-semibold text-[13px]" }, grupo.nombre),
+            h4("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, `${totalGrupo}/${grupo.maxSelecciones}${grupo.minSelecciones > 0 ? " · mínimo " + grupo.minSelecciones : ""}`)
+          ),
+          grupo.opciones.map((opcion) => {
+            const cantidad = Number(elegidas[opcion.id]) || 0;
+            const seleccionada = cantidad > 0;
+            return h4(
+              "div",
+              { key: opcion.id, className: "flex items-center justify-between gap-2 py-1.5", style: { borderTop: `1px solid ${C2.line}` } },
+              h4("button", {
+                type: "button",
+                onClick: () => cambiarSeleccionA04(grupo, opcion, grupo.tipoGrupo === "VARIANTE" ? 1 : seleccionada ? -cantidad : 1),
+                className: "text-left flex-1 text-[12px] rounded-md px-2 py-2",
+                style: { background: seleccionada ? C2.accentSoft : C2.surface, color: C2.ink }
+              }, `${seleccionada ? "\u2713 " : ""}${opcion.nombre}${opcion.deltaPrecio ? " · " + (opcion.deltaPrecio > 0 ? "+" : "") + fmt(opcion.deltaPrecio) + " " + configurandoA04.catalogo.currencyCode : ""}`),
+              grupo.tipoGrupo === "MODIFICADOR" && seleccionada && opcion.maxCantidad > 1 ? h4(
+                "div",
+                { className: "flex items-center gap-1" },
+                h4("button", { type: "button", onClick: () => cambiarSeleccionA04(grupo, opcion, -1), className: "rounded-md px-3 py-2", style: { border: `1px solid ${C2.line}` } }, "\u2212"),
+                h4("span", { className: "mono text-[12px] w-6 text-center" }, cantidad),
+                h4("button", { type: "button", onClick: () => cambiarSeleccionA04(grupo, opcion, 1), className: "rounded-md px-3 py-2", style: { border: `1px solid ${C2.line}` } }, "+")
+              ) : null
+            );
+          })
+        );
+      }),
+      errorA04 ? h4("div", { role: "alert", className: "text-[12px] mb-3 p-2 rounded-lg", style: { background: C2.redSoft || "#FCE8E6", color: C2.red } }, errorA04) : null,
+      h4("div", { className: "flex gap-2" },
+        h4(Btn, { onClick: confirmarConfiguracionA04 }, "Añadir al carrito"),
+        h4(Btn, { variant: "ghost", onClick: () => {
+          setConfigurandoA04(null);
+          setSeleccionesA04({});
+          setErrorA04("");
+        } }, "Cancelar")
+      )
+    );
+  }
   async function confirmarCobro() {
     setErrorVenta("");
     setEnviandoVenta(true);
     const resultado = await venderCarrito(
-      carrito.map((l22) => ({ productoId: l22.productoId, cantidad: l22.cantidad }))
+      carrito.map((l22) => ({ productoId: l22.productoId, cantidad: l22.cantidad, configuracionA04: l22.configuracionA04 || null }))
     );
     setEnviandoVenta(false);
     if (!resultado || resultado.ok === false) {
@@ -16448,7 +16772,7 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
     setCarrito([]);
     setShowCobro(false);
   }
-  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[16px] font-semibold" }, "TPV"), carrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: vaciarCarrito }, "Vaciar carrito")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "A02.1 guarda la cuenta y el pedido en el servidor con autoridad A03. ", /* @__PURE__ */ import_react4.default.createElement("b", null, "No registra cobro, tique fiscal ni movimiento de stock"), ". Esos pasos se integran en fases posteriores.")), vendibles.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay nada en el piso de venta ahora mismo. Ponle precio a un producto en Productos, o haz un traspaso desde el almac\xE9n en la pesta\xF1a Traspasos." }) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "relative mb-3" }, /* @__PURE__ */ import_react4.default.createElement(
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[16px] font-semibold" }, "TPV"), carrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: vaciarCarrito }, "Vaciar carrito")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "A02.1/A04.2 guarda la cuenta y el pedido con autoridad del servidor. Los productos configurables usan variantes y modificadores A04. ", /* @__PURE__ */ import_react4.default.createElement("b", null, "No registra cobro, tique fiscal ni movimiento de stock"), ". El total definitivo lo confirma el servidor.")), vendibles.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay nada en el piso de venta ahora mismo. Ponle precio a un producto en Productos, o haz un traspaso desde el almac\xE9n en la pesta\xF1a Traspasos." }) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "relative mb-3" }, /* @__PURE__ */ import_react4.default.createElement(
     "input",
     {
       ref: inputEscaneoRef,
@@ -16495,29 +16819,30 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
     c22
   ))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4" }, visibles.map((p22) => {
     const precioConIva = precioNeto(p22) * (1 + ivaDe(p22) / 100);
-    const enCarrito = carrito.find((l22) => l22.productoId === p22.id);
+    const cantidadEnCarrito = carrito.filter((l22) => l22.productoId === p22.id).reduce((acc, l22) => acc + (Number(l22.cantidad) || 0), 0);
     const sinStock = (Number(p22.stockPisoVenta) || 0) <= 0;
     return /* @__PURE__ */ import_react4.default.createElement(
       "button",
       {
         key: p22.id,
         onClick: () => agregar(p22),
+        disabled: cargandoA04,
         className: "rounded-xl p-3 text-left relative",
-        style: { background: C2.surface, border: `1px solid ${enCarrito ? C2.accent : C2.line}`, minHeight: 104 }
+        style: { background: C2.surface, border: `1px solid ${cantidadEnCarrito > 0 ? C2.accent : C2.line}`, minHeight: 104, opacity: cargandoA04 ? 0.7 : 1 }
       },
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium leading-tight mb-1" }, p22.nombre),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[14px] font-bold mono", style: { color: C2.accent } }, "\u20AC", fmt(precioConIva)),
       sinStock && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mt-0.5", style: { color: C2.red } }, "sin stock"),
-      enCarrito && /* @__PURE__ */ import_react4.default.createElement(
+      cantidadEnCarrito > 0 && /* @__PURE__ */ import_react4.default.createElement(
         "span",
         {
           className: "absolute -top-2 -right-2 rounded-full text-[11px] font-bold flex items-center justify-center",
           style: { background: C2.accentFill, color: C2.onAccent, width: 22, height: 22 }
         },
-        fmt(Number(enCarrito.cantidad) || 0)
+        fmt(cantidadEnCarrito)
       )
     );
-  }))), lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2" }, "Carrito"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 mb-3" }, lineasCarrito.map((l22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: l22.productoId, className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "flex-1" }, l22.producto.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => cambiarCantidad(l22.productoId, -1), className: "rounded-md p-1 flex items-center justify-center", style: { border: `1px solid ${C2.line}`, minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Minus, { size: 12 })), /* @__PURE__ */ import_react4.default.createElement(
+  }))), lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2" }, "Carrito"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 mb-3" }, lineasCarrito.map((l22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: l22.claveCarrito || l22.productoId, className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "flex-1" }, /* @__PURE__ */ import_react4.default.createElement("div", null, l22.producto.nombre), l22.configuracionA04?.etiquetas?.length ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-0.5", style: { color: C2.inkSoft } }, l22.configuracionA04.etiquetas.join(" · ")) : null), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => cambiarCantidad(l22.claveCarrito || l22.productoId, -1), className: "rounded-md p-1 flex items-center justify-center", style: { border: `1px solid ${C2.line}`, minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Minus, { size: 12 })), /* @__PURE__ */ import_react4.default.createElement(
     "input",
     {
       type: "number",
@@ -16525,13 +16850,13 @@ function VentaRapida({ productos, venderCarrito, anularVenta, movimientos = [], 
       step: "any",
       min: "0",
       value: l22.cantidad,
-      onChange: (e2) => fijarCantidad(l22.productoId, e2.target.value),
-      onBlur: () => normalizarCantidad(l22.productoId),
+      onChange: (e2) => fijarCantidad(l22.claveCarrito || l22.productoId, e2.target.value),
+      onBlur: () => normalizarCantidad(l22.claveCarrito || l22.productoId),
       onFocus: (e2) => e2.target.select(),
       className: "mono text-center rounded-md py-1",
       style: { width: 54, border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, fontSize: 13, minHeight: 44 }
     }
-  ), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => cambiarCantidad(l22.productoId, 1), className: "rounded-md p-1 flex items-center justify-center", style: { border: `1px solid ${C2.line}`, minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 12 })), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold w-16 text-right" }, "\u20AC", fmt(l22.subtotal)), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => quitar(l22.productoId), "aria-label": "Quitar producto", className: "flex items-center justify-center", style: { minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))), faltaStock.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.red } }, "Vas a dejar en negativo: ", faltaStock.map((l22) => l22.producto.nombre).join(", "), "."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between pt-2", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "font-semibold" }, "Total"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-bold text-[19px]", style: { color: C2.accent } }, "\u20AC", fmt(total)))), lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro, disabled: enviandoVenta }, enviandoVenta ? "Guardando pedido\u2026" : `Guardar pedido \u20AC${fmt(total)}`), false && showCobro && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowCobro(false), title: "Cobrar" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-center mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Total"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[28px] font-bold mono", style: { color: C2.accent } }, "\u20AC", fmt(total))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Medio de pago" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: medioPago, onChange: (e2) => setMedioPago(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", null, "Efectivo"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Mixto"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro"))), medioPago === "Efectivo" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value), autoFocus: true })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`)), medioPago === "Mixto" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Paga con tarjeta (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", max: total, value: importeTarjetaMixto, onChange: (e2) => setImporteTarjetaMixto(e2.target.value), autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "Resto en efectivo: ", /* @__PURE__ */ import_react4.default.createElement("b", { className: "mono", style: { color: C2.ink } }, "\u20AC", fmt(restoEfectivoMixto))), restoEfectivoMixto > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value) })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "\u26A0 ", errorVenta), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(
+  ), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => cambiarCantidad(l22.claveCarrito || l22.productoId, 1), className: "rounded-md p-1 flex items-center justify-center", style: { border: `1px solid ${C2.line}`, minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 12 })), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold w-16 text-right" }, "\u20AC", fmt(l22.subtotal)), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => quitar(l22.claveCarrito || l22.productoId), "aria-label": "Quitar producto", className: "flex items-center justify-center", style: { minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))), faltaStock.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.red } }, "Vas a dejar en negativo: ", faltaStock.map((l22) => l22.producto.nombre).join(", "), "."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between pt-2", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "font-semibold" }, "Total"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-bold text-[19px]", style: { color: C2.accent } }, "\u20AC", fmt(total)))), lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro, disabled: enviandoVenta || cargandoA04 }, enviandoVenta ? "Guardando pedido\u2026" : `Guardar pedido \u20AC${fmt(total)}`), renderConfiguradorA04(), false && showCobro && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowCobro(false), title: "Cobrar" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-center mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Total"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[28px] font-bold mono", style: { color: C2.accent } }, "\u20AC", fmt(total))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Medio de pago" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: medioPago, onChange: (e2) => setMedioPago(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", null, "Efectivo"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Mixto"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro"))), medioPago === "Efectivo" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value), autoFocus: true })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`)), medioPago === "Mixto" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Paga con tarjeta (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", max: total, value: importeTarjetaMixto, onChange: (e2) => setImporteTarjetaMixto(e2.target.value), autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "Resto en efectivo: ", /* @__PURE__ */ import_react4.default.createElement("b", { className: "mono", style: { color: C2.ink } }, "\u20AC", fmt(restoEfectivoMixto))), restoEfectivoMixto > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value) })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "\u26A0 ", errorVenta), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(
     Btn,
     {
       onClick: confirmarCobro,

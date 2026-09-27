@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 const recovered = fs.readFileSync("source-recovery/fuente-recuperado.js", "utf8");
 const runtime = fs.readFileSync("fuente.js", "utf8");
 const a03 = fs.readFileSync("supabase/migrations/20260924010000_abc_f3_a03_server_authority.sql", "utf8");
+const a04 = fs.readFileSync("supabase/migrations/20260924020000_abc_f3_a04_variants_modifiers.sql", "utf8");
 const a06 = fs.readFileSync("supabase/migrations/20260924040000_abc_f3_a06_account_recovery.sql", "utf8");
 const m01 = fs.readFileSync("supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql", "utf8");
 const m03a = fs.readFileSync("supabase/migrations/20260923233000_abc_f2_m03a_autoridad_transaccional.sql", "utf8");
@@ -21,6 +22,10 @@ assert.ok(recovered.includes('rpcA02ConRecuperacion(supabase, "abc_abrir_cuenta"
 assert.ok(recovered.includes('rpcA02ConRecuperacion(supabase, "abc_crear_pedido"'), "A02.1: falta abc_crear_pedido mediante el wrapper idempotente");
 assert.ok(recovered.includes('rpcA02ConRecuperacion(supabase, "abc_agregar_linea_pedido"'), "A02.1: falta abc_agregar_linea_pedido mediante el wrapper idempotente");
 assert.ok(recovered.includes('"abc_consultar_operacion"'), "A02.1: falta recuperación de operation_id");
+assert.ok(recovered.includes('rpcA02ConRecuperacion(supabase, "abc_agregar_linea_pedido_configurada"'), "A04.2: falta ruta configurada A04");
+assert.ok(recovered.includes('from("catalogo_tpv_producto_grupos")'), "A04.2: UI no consulta asignaciones producto/grupo");
+assert.ok(recovered.includes('from("catalogo_tpv_grupos_opciones")'), "A04.2: UI no consulta grupos de opciones");
+assert.ok(recovered.includes('from("catalogo_tpv_opciones")'), "A04.2: UI no consulta opciones configurables");
 assert.ok(recovered.includes("p_expected_cuenta_version"), "A02.1: falta optimistic locking de cuenta");
 assert.ok(recovered.includes("p_expected_pedido_version"), "A02.1: falta optimistic locking de pedido");
 assert.ok(recovered.includes("p_terminal_id"), "A02.1: falta terminal_id");
@@ -466,7 +471,7 @@ assert.ok(guardarPedidoStart >= 0 && guardarPedidoEnd > guardarPedidoStart, "A02
 const guardarPedidoHandler = recovered.slice(guardarPedidoStart, guardarPedidoEnd);
 
 assert.ok(
-  recovered.includes("lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro, disabled: enviandoVenta }"),
+  recovered.includes("lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro, disabled: enviandoVenta || cargandoA04 }"),
   "A02.1 P12: el CTA visible no guarda el pedido directamente"
 );
 assert.ok(recovered.includes("Guardar pedido"), "A02.1 P12: falta el CTA Guardar pedido");
@@ -495,7 +500,7 @@ for (const forbidden of [
 assert.ok(
   adapter.includes("const agregado = guardarContextoCuentaA02(") &&
   adapter.includes("localStorage.removeItem(pendingKey)") &&
-  adapter.includes('modo: "a02-a03-pedido"'),
+  adapter.includes('modo: pending.lineas.some((l22) => !!l22.configuracionA04) ? "a02-a03-a04-pedido" : "a02-a03-pedido"'),
   "A02.1 P12: el camino de Guardar pedido no termina tras persistir el contexto A03"
 );
 
@@ -510,16 +515,17 @@ assert.ok(!guardarPedidoHandler.includes("setShowCobro(true)"), "A02.1 P13: Guar
 const rpcPrimariosA02 = [...adapter.matchAll(/rpcA02ConRecuperacion\(supabase, "([^"]+)"/g)].map((m) => m[1]);
 assert.deepEqual(
   rpcPrimariosA02,
-  ["abc_abrir_cuenta", "abc_crear_pedido", "abc_agregar_linea_pedido"],
-  "A02.1 P14: el adaptador primario contiene RPCs adicionales, ausentes o fuera de orden"
+  ["abc_abrir_cuenta", "abc_crear_pedido", "abc_agregar_linea_pedido", "abc_agregar_linea_pedido_configurada"],
+  "A02.1/A04.2 P14: el adaptador contiene RPCs adicionales, ausentes o fuera de orden"
 );
 
 const abrirCuentaP14 = adapter.indexOf('"abc_abrir_cuenta"');
 const crearPedidoP14 = adapter.indexOf('"abc_crear_pedido"');
 const agregarLineaP14 = adapter.indexOf('"abc_agregar_linea_pedido"');
+const agregarLineaConfiguradaP14 = adapter.indexOf('"abc_agregar_linea_pedido_configurada"');
 assert.ok(
-  abrirCuentaP14 >= 0 && crearPedidoP14 > abrirCuentaP14 && agregarLineaP14 > crearPedidoP14,
-  "A02.1 P14: secuencia primaria A03 inválida"
+  abrirCuentaP14 >= 0 && crearPedidoP14 > abrirCuentaP14 && agregarLineaP14 > crearPedidoP14 && agregarLineaConfiguradaP14 > agregarLineaP14,
+  "A02.1/A04.2 P14: secuencia A03/A04 inválida"
 );
 
 assert.equal(
@@ -527,6 +533,33 @@ assert.equal(
   1,
   "A02.1 P14: Guardar pedido debe tener una única delegación al adaptador primario"
 );
+
+const rpcA04Start = adapter.indexOf('rpcA02ConRecuperacion(supabase, "abc_agregar_linea_pedido_configurada"');
+const rpcA04End = adapter.indexOf("}, empresaId, localActivoId, linea.operationId)", rpcA04Start);
+assert.ok(rpcA04Start >= 0 && rpcA04End > rpcA04Start, "A04.2: no se pudo aislar RPC configurada");
+const rpcA04Cliente = adapter.slice(rpcA04Start, rpcA04End);
+for (const required of [
+  "p_expected_product_version: linea.configuracionA04.expectedProductVersion",
+  "p_selecciones: linea.configuracionA04.selecciones",
+  "p_expected_pedido_version: pedidoVersion"
+]) {
+  assert.ok(rpcA04Cliente.includes(required), `A04.2: RPC configurada incompleta: ${required}`);
+}
+for (const forbidden of ["p_precio", "p_impuesto", "p_iva", "p_base", "p_total", "p_descuento"]) {
+  assert.ok(!rpcA04Cliente.includes(forbidden), `A04.2: cliente intenta imponer economía: ${forbidden}`);
+}
+assert.ok(a04.includes("create function public.abc_agregar_linea_pedido_configurada("), "A04.2: backend A04 no versionado");
+assert.ok(a04.includes("p_expected_product_version bigint"), "A04.2: backend no exige versión de producto");
+assert.ok(a04.includes("p_selecciones jsonb"), "A04.2: backend no recibe selecciones estructuradas");
+assert.ok(recovered.includes("function renderConfiguradorA04()"), "A04.2: falta configurador visible");
+assert.ok(recovered.includes("grupo.minSelecciones"), "A04.2: UI no valida mínimos");
+assert.ok(recovered.includes("grupo.maxSelecciones"), "A04.2: UI no valida máximos");
+assert.ok(recovered.includes("opcion.maxCantidad"), "A04.2: UI no respeta máximo por opción");
+assert.ok(recovered.includes("precio e IVA definitivos se recalculan y validan en el servidor"), "A04.2: UI no deja clara autoridad económica");
+assert.ok(recovered.includes("configuracionA04: l22.configuracionA04 || null"), "A04.2: carrito no entrega configuración al adaptador");
+assert.ok(recovered.includes("configuradaA04: !!l22.configuracionA04"), "A04.2: contexto final no identifica línea configurada");
+assert.ok(recovered.includes('modo: pending.lineas.some((l22) => !!l22.configuracionA04) ? "a02-a03-a04-pedido"'), "A04.2: resultado no distingue uso A04");
+console.log("A04_2_UI_INTEGRATION=PASS");
 
 console.log("A02_1_OUT_OF_SCOPE_GUARDS=PASS");
 console.log("A02_1_P1_P13_CONSOLIDATED=PASS");
