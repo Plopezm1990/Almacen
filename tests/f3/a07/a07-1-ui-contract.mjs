@@ -82,7 +82,7 @@ for (const required of [
   "Comensales",
   "Asignar esta cuenta",
   "No hay zonas ni mesas configuradas para este local.",
-  "Traslado de mesa y relevo de responsable se validan en A07.2."
+  "Traslados y relevos conservan la misma cuenta y se registran en el historial del servidor."
 ]) {
   assert.ok(src.includes(required), `A07.1 UI incompleta: ${required}`);
 }
