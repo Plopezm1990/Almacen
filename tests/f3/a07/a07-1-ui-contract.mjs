@@ -36,7 +36,8 @@ for (const forbidden of [
 
 // Assignment must use the actual recovered account and optimistic versions.
 const assignIni = src.indexOf("async function asignarMesaCuentaA07(");
-const assignFinA072 = src.indexOf("\n  async function listarResponsablesCuentaA07(", assignIni);\nconst assignFin = assignFinA072 > assignIni ? assignFinA072 : src.indexOf("\n  async function venderCarrito(", assignIni);
+const assignFinA072 = src.indexOf("\n  async function listarResponsablesCuentaA07(", assignIni);
+const assignFin = assignFinA072 > assignIni ? assignFinA072 : src.indexOf("\n  async function venderCarrito(", assignIni);
 assert.ok(assignIni >= 0 && assignFin > assignIni, "A07.1 adaptador de asignación no localizable");
 const assign = src.slice(assignIni, assignFin);
 for (const required of [
