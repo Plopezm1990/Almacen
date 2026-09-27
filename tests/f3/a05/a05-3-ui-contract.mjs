@@ -1,3 +1,4 @@
+// A05.3 final validation trigger.
 import fs from "node:fs";
 import assert from "node:assert/strict";
 
