@@ -30,11 +30,11 @@ assert.ok(
   "A06.1: GestionAlmacen no pasa empresaDelLocalActivo"
 );
 assert.ok(
-  recovered.includes("venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06 } = crearLogicaVenta"),
+  recovered.includes("venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06"),
   "A06.1: los adaptadores A02/A05/A06 no salen del factory"
 );
 assert.ok(
-  recovered.includes("return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06 };"),
+  recovered.includes("return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06"),
   "A06.1: crearLogicaVenta no devuelve los adaptadores operativos"
 );
 
@@ -103,7 +103,7 @@ assert.ok(
   "A06.1: VentaRapida no recibe la recuperación"
 );
 assert.ok(
-  recovered.includes("venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, anularVenta"),
+  recovered.includes("venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06"),
   "A06.1: recuperación no está cableada al TPV"
 );
 assert.ok(

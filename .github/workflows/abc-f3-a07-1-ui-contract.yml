@@ -14,6 +14,7 @@ on:
       - '.github/scripts/validar-manifiesto-ci.mjs'
       - '.github/workflows/puerta-ci-release.yml'
       - 'tests/pm20/p07-revalidacion-acumulada-contract.mjs'
+      - 'tests/f3/a06/a06-1-ui-contract.mjs'
 
 permissions:
   contents: write
@@ -36,7 +37,7 @@ jobs:
           set -euo pipefail
           BASE=b88235cebf0f28346c174b39184634b53837294f
           git merge-base --is-ancestor "$BASE" HEAD
-          BAD=$(git diff --name-only "$BASE...HEAD" | grep -Ev '^(fuente\.js|source-recovery/fuente-recuperado\.js|tests/f3/a07/a07-1-ui-contract\.mjs|scripts/f3/a07-1-patch\.mjs|\.github/workflows/abc-f3-a07-1-ui-contract\.yml|tests/ci/manifiesto_clasificacion\.json|\.github/scripts/validar-manifiesto-ci\.mjs|\.github/workflows/puerta-ci-release\.yml|tests/pm20/p07-revalidacion-acumulada-contract\.mjs)$' || true)
+          BAD=$(git diff --name-only "$BASE...HEAD" | grep -Ev '^(fuente\.js|source-recovery/fuente-recuperado\.js|tests/f3/a07/a07-1-ui-contract\.mjs|scripts/f3/a07-1-patch\.mjs|\.github/workflows/abc-f3-a07-1-ui-contract\.yml|tests/ci/manifiesto_clasificacion\.json|\.github/scripts/validar-manifiesto-ci\.mjs|\.github/workflows/puerta-ci-release\.yml|tests/pm20/p07-revalidacion-acumulada-contract\.mjs|tests/f3/a06/a06-1-ui-contract\.mjs)$' || true)
           if [ -n "$BAD" ]; then
             echo "A07_1_SCOPE_FAIL" >&2
             echo "$BAD" >&2
