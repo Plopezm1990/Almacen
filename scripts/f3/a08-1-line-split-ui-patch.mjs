@@ -313,8 +313,8 @@ const handlers = `
 `;
 
 replaceOnce(
-  '  const vendibles = (0, import_react4.useMemo)(',
-  handlers + '  const vendibles = (0, import_react4.useMemo)(',
+  '    setMotivoResponsableA07("");\n  }\n\n  const vendibles = (0, import_react4.useMemo)(',
+  '    setMotivoResponsableA07("");\n  }\n\n' + handlers + '  const vendibles = (0, import_react4.useMemo)(',
   "UI_HANDLERS"
 );
 
