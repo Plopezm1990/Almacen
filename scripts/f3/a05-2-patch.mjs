@@ -299,9 +299,13 @@ source = replaceOnce(
 // 8. Acción UI de envío.
 source = replaceOnce(
   source,
-`  return /* @__PURE__ */ import_react4.default.createElement("div", null,
+`    setShowCobro(false);
+  }
+  return /* @__PURE__ */ import_react4.default.createElement("div", null,
 `,
-`  async function enviarPedidoGuardadoA05() {
+`    setShowCobro(false);
+  }
+  async function enviarPedidoGuardadoA05() {
     if (procesandoA05 || !confirmacion || typeof enviarPedidoA05 !== "function") return;
     setProcesandoA05(true);
     setErrorA05("");
