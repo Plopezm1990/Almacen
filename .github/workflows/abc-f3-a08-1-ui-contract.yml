@@ -92,17 +92,17 @@ jobs:
           node tests/f3/a08/a08-1-ui-contract.mjs
           node tests/pm20/p07-revalidacion-acumulada-contract.mjs
 
-      - name: Persistir runtime materializado
+      - name: Persistir Source Recovery y runtime materializados
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add fuente.js
+          git add source-recovery/fuente-recuperado.js fuente.js
           if git diff --cached --quiet; then
             echo "A08_1_RUNTIME_ALREADY_CURRENT=1"
             exit 0
           fi
-          git commit -m "[skip netlify] A08.1 materialize reparto por productos"
+          git commit -m "[skip netlify] A08.1 materialize snapshot e idempotencia"
           git push origin "HEAD:${GITHUB_REF_NAME}"
           echo "A08_1_RUNTIME_COMMITTED=1"
