@@ -352,17 +352,16 @@ source = replaceOnce(
   "A07.2 preserve diners"
 );
 
-// Insert move/reassignment controls before closing Card.
-const closeSala = '      !ubicacion && mesaSeleccionadaA07 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 p-2 rounded-lg", style: { border: "1px solid " + C2.line } },\n';
-if (countOf(source, closeSala) !== 1) throw new Error("A07.2 sala form anchor");
-const salaIndex = source.indexOf(closeSala);
-const salaEndNeedle = '      ) : null\n    );\n  }\n\n  function renderPedidoOperativoA05()';
-const salaEnd = source.indexOf(salaEndNeedle, salaIndex);
-if (salaEnd < 0) throw new Error("A07.2 sala end anchor");
-const originalTail = source.slice(salaIndex, salaEnd);
-const extendedTail = originalTail.replace(
-  '      ) : null\n',
-  `      ) : null,
+// Insert move/reassignment controls after the exact A07.1 assignment form.
+const assignmentTail = `          /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarAsignacionMesaA07, disabled: asignandoMesaA07 }, asignandoMesaA07 ? "Asignando…" : "Asignar esta cuenta"),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setMesaSeleccionadaA07(null), disabled: asignandoMesaA07 }, "Cancelar")
+        )
+      ) : null`;
+
+const assignmentExtended = `          /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarAsignacionMesaA07, disabled: asignandoMesaA07 }, asignandoMesaA07 ? "Asignando…" : "Asignar esta cuenta"),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setMesaSeleccionadaA07(null), disabled: asignandoMesaA07 }, "Cancelar")
+        )
+      ) : null,
       ubicacion && mesaSeleccionadaA07 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 p-2 rounded-lg", style: { border: "1px solid " + C2.line } },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-2" }, "Trasladar a ", mesaSeleccionadaA07.nombre || mesaSeleccionadaA07.codigo),
         /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Comensales" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", min: "1", max: "999", step: "1", value: comensalesA07, onChange: (e2) => setComensalesA07(e2.target.value) })),
@@ -382,10 +381,9 @@ const extendedTail = originalTail.replace(
           /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarRelevoResponsableA07, disabled: cambiandoResponsableA07 || !responsableSeleccionadoA07 || !motivoResponsableA07.trim() }, cambiandoResponsableA07 ? "Cambiando…" : "Confirmar relevo"),
           /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => { setRelevoAbiertoA07(false); setMotivoResponsableA07(""); }, disabled: cambiandoResponsableA07 }, "Cancelar")
         )
-      )
-`
-);
-source = source.slice(0, salaIndex) + extendedTail + source.slice(salaEnd);
+      )`;
+
+source = replaceOnce(source, assignmentTail, assignmentExtended, "A07.2 move/reassignment controls");
 
 fs.writeFileSync(sourcePath, source);
 console.log("A07_2_PATCH=PASS");
