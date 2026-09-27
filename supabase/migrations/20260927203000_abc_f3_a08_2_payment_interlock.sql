@@ -274,7 +274,7 @@ begin
     'estado','PENDIENTE','importe_reservado',p_importe_objetivo);
   perform private.abc_operacion_completar(p_operation_id,v_result);
   return v_result;
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION public.abc_confirmar_efectivo(p_operation_id text, p_empresa_id text, p_local_id text, p_intento_id uuid, p_caja_id uuid, p_session_id uuid, p_terminal_id uuid, p_operating_day date)
  RETURNS jsonb
@@ -372,7 +372,7 @@ begin
     'checkout_estado',v_checkout_estado);
   perform private.abc_operacion_completar(p_operation_id,v_result);
   return v_result;
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION public.abc_resolver_intento(p_operation_id text, p_empresa_id text, p_local_id text, p_intento_id uuid, p_estado text, p_provider_code text, p_provider_reference text, p_authorized_amount numeric, p_captured_amount numeric, p_settled_amount numeric, p_provider_snapshot jsonb DEFAULT '{}'::jsonb)
  RETURNS jsonb
@@ -536,7 +536,7 @@ begin
     'checkout_estado',v_checkout_estado);
   perform private.abc_operacion_completar(p_operation_id,v_result);
   return v_result;
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION public.abc_mover_cantidad_linea_cuenta(p_operation_id text, p_empresa_id text, p_local_id text, p_linea_id uuid, p_cuenta_origen_id uuid, p_cuenta_destino_id uuid, p_cantidad numeric, p_comensal_ref text, p_expected_origen_version bigint, p_expected_destino_version bigint, p_expected_linea_version bigint, p_terminal_id uuid, p_session_id uuid, p_operating_day date)
  RETURNS jsonb
@@ -782,7 +782,7 @@ begin
   );
   perform private.abc_operacion_completar(p_operation_id,v_result);
   return v_result;
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION public.abc_asignar_cuota_importe(p_operation_id text, p_empresa_id text, p_local_id text, p_cuenta_origen_id uuid, p_cuenta_destino_id uuid, p_importe numeric, p_etiqueta text, p_expected_origen_version bigint, p_expected_destino_version bigint, p_terminal_id uuid, p_session_id uuid, p_operating_day date)
  RETURNS jsonb
@@ -923,7 +923,7 @@ begin
   );
   perform private.abc_operacion_completar(p_operation_id,v_result);
   return v_result;
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION public.abc_revertir_cuota_importe(p_operation_id text, p_empresa_id text, p_local_id text, p_cuota_id uuid, p_expected_cuota_version bigint, p_expected_origen_version bigint, p_expected_destino_version bigint, p_terminal_id uuid, p_session_id uuid, p_operating_day date)
  RETURNS jsonb
@@ -1025,7 +1025,7 @@ begin
   );
   perform private.abc_operacion_completar(p_operation_id,v_result);
   return v_result;
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION public.abc_unir_cuentas(p_operation_id text, p_empresa_id text, p_local_id text, p_cuenta_origen_id uuid, p_cuenta_destino_id uuid, p_motivo text, p_expected_origen_version bigint, p_expected_destino_version bigint, p_terminal_id uuid, p_session_id uuid, p_operating_day date)
  RETURNS jsonb
@@ -1268,7 +1268,7 @@ begin
   );
   perform private.abc_operacion_completar(p_operation_id,v_result);
   return v_result;
-end $function$
+end $function$;
 
 revoke all on function private.abc_cuenta_tiene_cobro_incierto(text,text,uuid)
   from public,anon,authenticated,service_role;
