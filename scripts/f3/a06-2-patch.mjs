@@ -43,27 +43,33 @@ const enviarStart = source.indexOf("async function enviarPedidoA05()", venderSta
 if (venderStart < 0 || enviarStart < 0) throw new Error("A06.2 venderCarrito block missing");
 let venderBlock = source.slice(venderStart, enviarStart);
 const genericCatch = '    } catch (error) {\n      return { ok: false, error: errorRpcA02(error) };\n    }\n  }';
-if (!venderBlock.endsWith(genericCatch)) throw new Error("A06.2 venderCarrito catch anchor mismatch");
-venderBlock = venderBlock.slice(0, -genericCatch.length)
-  + '    } catch (error) {\n      return respuestaErrorA06(error);\n    }\n  }\n';
+const venderCatchPos = venderBlock.lastIndexOf(genericCatch);
+if (venderCatchPos < 0 || venderBlock.slice(venderCatchPos + genericCatch.length).trim() !== "") throw new Error("A06.2 venderCarrito catch anchor mismatch");
+venderBlock = venderBlock.slice(0, venderCatchPos)
+  + '    } catch (error) {\n      return respuestaErrorA06(error);\n    }\n  }'
+  + venderBlock.slice(venderCatchPos + genericCatch.length);
 source = source.slice(0, venderStart) + venderBlock + source.slice(enviarStart);
 
 const enviarStart2 = source.indexOf("async function enviarPedidoA05()");
 const accionStart = source.indexOf("async function accionPedidoA05(", enviarStart2);
 if (enviarStart2 < 0 || accionStart < 0) throw new Error("A06.2 enviar block missing");
 let enviarBlock = source.slice(enviarStart2, accionStart);
-if (!enviarBlock.endsWith(genericCatch)) throw new Error("A06.2 enviar catch anchor mismatch");
-enviarBlock = enviarBlock.slice(0, -genericCatch.length)
-  + '    } catch (error) {\n      return respuestaErrorA06(error);\n    }\n  }\n';
+const enviarCatchPos = enviarBlock.lastIndexOf(genericCatch);
+if (enviarCatchPos < 0 || enviarBlock.slice(enviarCatchPos + genericCatch.length).trim() !== "") throw new Error("A06.2 enviar catch anchor mismatch");
+enviarBlock = enviarBlock.slice(0, enviarCatchPos)
+  + '    } catch (error) {\n      return respuestaErrorA06(error);\n    }\n  }'
+  + enviarBlock.slice(enviarCatchPos + genericCatch.length);
 source = source.slice(0, enviarStart2) + enviarBlock + source.slice(accionStart);
 
 const accionStart2 = source.indexOf("async function accionPedidoA05(");
 const recuperarStart = source.indexOf("async function recuperarCuentaA06()", accionStart2);
 if (accionStart2 < 0 || recuperarStart < 0) throw new Error("A06.2 accion block missing");
 let accionBlock = source.slice(accionStart2, recuperarStart);
-if (!accionBlock.endsWith(genericCatch)) throw new Error("A06.2 accion catch anchor mismatch");
-accionBlock = accionBlock.slice(0, -genericCatch.length)
-  + '    } catch (error) {\n      return respuestaErrorA06(error);\n    }\n  }\n';
+const accionCatchPos = accionBlock.lastIndexOf(genericCatch);
+if (accionCatchPos < 0 || accionBlock.slice(accionCatchPos + genericCatch.length).trim() !== "") throw new Error("A06.2 accion catch anchor mismatch");
+accionBlock = accionBlock.slice(0, accionCatchPos)
+  + '    } catch (error) {\n      return respuestaErrorA06(error);\n    }\n  }'
+  + accionBlock.slice(accionCatchPos + genericCatch.length);
 source = source.slice(0, accionStart2) + accionBlock + source.slice(recuperarStart);
 
 // Borrador local A06.2: solo conserva intención de pedido, nunca precio/total autoritativo.
