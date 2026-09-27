@@ -1,5 +1,6 @@
 import fs from "node:fs";
 
+// A08.1: fuente canónica -> runtime publicado de la rama.
 const recoveredPath = "source-recovery/fuente-recuperado.js";
 const runtimePath = "fuente.js";
 const recovered = fs.readFileSync(recoveredPath, "utf8");
