@@ -127,6 +127,6 @@ jobs:
                 'abc_exigir_cuenta_sin_cobro_incierto'
               )
               and p.prosecdef
-              and p.proconfig @> array['search_path='];
+              and array_to_string(coalesce(p.proconfig,'{}'::text[]),',') like '%search_path=%';
           " | grep -q '^A08_2_PRIVATE_HELPERS=PASS$'
           echo "A08_2_1_POSTGRES16=PASS"
