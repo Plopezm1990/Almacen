@@ -1,0 +1,132 @@
+name: "ABC F3 A08.2.1 -- payment interlock"
+
+on:
+  push:
+    branches: [abc-f3-a08-2-payment-interlock]
+    paths:
+      - "supabase/migrations/20260927203000_abc_f3_a08_2_payment_interlock.sql"
+      - "tests/f3/a08/a08-2-payment-interlock-contract.sql"
+      - ".github/workflows/abc-f3-a08-2-payment-interlock.yml"
+  pull_request:
+    branches: [release]
+    paths:
+      - "supabase/migrations/20260927203000_abc_f3_a08_2_payment_interlock.sql"
+      - "tests/f3/a08/a08-2-payment-interlock-contract.sql"
+      - ".github/workflows/abc-f3-a08-2-payment-interlock.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  a08-2-1-payment-interlock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+
+      - name: Guardar alcance A08.2.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE=f3e3b23f2cb789876d8e9f0d53a951d110a24c90
+          git merge-base --is-ancestor "$BASE" HEAD
+          migration="supabase/migrations/20260927203000_abc_f3_a08_2_payment_interlock.sql"
+          contract="tests/f3/a08/a08-2-payment-interlock-contract.sql"
+          test -f "$migration"
+          test -f "$contract"
+
+          grep -q "create function private.abc_cuenta_tiene_cobro_incierto" "$migration"
+          grep -q "create function private.abc_bloquear_cuenta_cobro_interlock" "$migration"
+          grep -q "create function private.abc_exigir_cuenta_sin_cobro_incierto" "$migration"
+          grep -q "cuenta_con_cobro_incierto" "$migration"
+          grep -q "p.estado in ('PENDIENTE','AUTORIZADO','DESCONOCIDO')" "$migration"
+          grep -q "i.estado in ('PENDIENTE','AUTORIZADO','DESCONOCIDO')" "$migration"
+          grep -q "r.estado='ACTIVA'" "$migration"
+
+          test "$(grep -c "private.abc_exigir_cuenta_sin_cobro_incierto" "$migration")" -ge 9
+          test "$(grep -c "private.abc_bloquear_cuenta_cobro_interlock" "$migration")" -ge 5
+
+          if grep -Eiq '^create[[:space:]]+table|^alter[[:space:]]+table.*add[[:space:]]+column' "$migration"; then
+            echo "A08_2_SCOPE_FAIL: A08.2.1 no debe crear tablas ni columnas." >&2
+            exit 1
+          fi
+
+          BAD=$(git diff --name-only "$BASE...HEAD" | grep -Ev '^(supabase/migrations/20260927203000_abc_f3_a08_2_payment_interlock\.sql|tests/f3/a08/a08-2-payment-interlock-contract\.sql|\.github/workflows/abc-f3-a08-2-payment-interlock\.yml)$' || true)
+          if [ -n "$BAD" ]; then
+            echo "A08_2_SCOPE_FAIL: archivos fuera del alcance autorizado:" >&2
+            echo "$BAD" >&2
+            exit 1
+          fi
+          echo "A08_2_1_SCOPE=PASS"
+
+      - name: Preparar fixture F2/F3
+        run: psql -v ON_ERROR_STOP=1 -f tests/f3/a08/fixture-a08.sql
+
+      - name: Aplicar baseline F2 y F3 hasta A08
+        shell: bash
+        run: |
+          set -euo pipefail
+          for migration in             20260923210000_abc_f2_m01_base_transaccional_caja.sql             20260923210100_abc_f2_m01b_acl_hardening.sql             20260923220000_abc_f2_m02a_core_comercial_fiscal.sql             20260923230000_abc_f2_m02b_pagos_reservas_reembolsos.sql             20260923233000_abc_f2_m03a_autoridad_transaccional.sql             20260923234500_abc_f2_m03b_checkout_cobro.sql             20260923235900_abc_f2_m03c_reembolsos_transaccionales.sql             20260924001000_abc_f2_m04a_caja_sesiones.sql             20260924002000_abc_f2_m04b_movimientos_caja.sql             20260924003000_abc_f2_m04c_outbox_persistente.sql             20260924004000_abc_f2_m04d_acl_parity.sql             20260924010000_abc_f3_a03_server_authority.sql             20260924020000_abc_f3_a04_variants_modifiers.sql             20260924030000_abc_f3_a05_order_state_machine.sql             20260924040000_abc_f3_a06_account_recovery.sql             20260924050000_abc_f3_a07_tables_zones.sql             20260924060000_abc_f3_a08_account_split_merge.sql
+          do
+            psql -v ON_ERROR_STOP=1 -f "supabase/migrations/$migration"
+          done
+
+      - name: Regresión A08 antes de capas posteriores
+        run: psql -v ON_ERROR_STOP=1 -f tests/f3/a08/a08-contract.sql
+
+      - name: Aplicar capas posteriores vigentes
+        shell: bash
+        run: |
+          set -euo pipefail
+          for migration in             20260924160739_abc_f3_a09_descuentos_cortesias.sql             20260926110000_abc_f3_a10_kitchen_commands.sql             20260926140000_abc_f3_a10b_kitchen_audit.sql             20260926203000_abc_f3_a02_operating_day_a11.sql
+          do
+            psql -v ON_ERROR_STOP=1 -f "supabase/migrations/$migration"
+          done
+
+      - name: Aplicar candidato A08.2.1
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260927203000_abc_f3_a08_2_payment_interlock.sql
+
+      - name: Ejecutar contrato A08.2.1
+        run: psql -v ON_ERROR_STOP=1 -f tests/f3/a08/a08-2-payment-interlock-contract.sql
+
+      - name: Verificar firmas y seguridad
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -Atc "
+            select case when count(*)=3 then 'A08_2_PRIVATE_HELPERS=PASS'
+                        else 'A08_2_PRIVATE_HELPERS=FAIL:'||count(*) end
+            from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+            where n.nspname='private'
+              and p.proname in (
+                'abc_cuenta_tiene_cobro_incierto',
+                'abc_bloquear_cuenta_cobro_interlock',
+                'abc_exigir_cuenta_sin_cobro_incierto'
+              )
+              and p.prosecdef
+              and p.proconfig @> array['search_path='];
+          " | grep -q '^A08_2_PRIVATE_HELPERS=PASS$'
+          echo "A08_2_1_POSTGRES16=PASS"
