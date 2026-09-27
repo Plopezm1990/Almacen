@@ -30,9 +30,9 @@ console.log("A06_2_BACKEND_OPTIMISTIC_LOCK=PASS");
   };
   const ctx = { localStorage, Date, JSON, Number, String, Array, Object, Error };
   vm.createContext(ctx);
-  vm.runInContext(src.slice(ini, fin), ctx);
+  vm.runInContext(src.slice(ini, fin) + "\nthis.__A06_TTL = A06_BORRADOR_TTL_MS;", ctx);
 
-  assert.equal(ctx.A06_BORRADOR_TTL_MS, 24 * 60 * 60 * 1000, "A06.2 TTL debe ser 24h");
+  assert.equal(ctx.__A06_TTL, 24 * 60 * 60 * 1000, "A06.2 TTL debe ser 24h");
   assert.notEqual(ctx.claveBorradorTpvA06("emp-1", "loc-1"), ctx.claveBorradorTpvA06("emp-1", "loc-2"));
   assert.notEqual(ctx.claveBorradorTpvA06("emp-1", "loc-1"), ctx.claveBorradorTpvA06("emp-2", "loc-1"));
 
