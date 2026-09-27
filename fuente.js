@@ -102682,7 +102682,7 @@ function GestionAlmacen() {
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
-  const { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
+  const { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
   const { traspasarStock, traspasarEntreLocales } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales });
@@ -103685,7 +103685,7 @@ function GestionAlmacen() {
       movimientos: movimientosDelLocalActivo,
       setTab: cambiarTabPM15
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, registrarAuditoria, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un \xFAnico local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un \xFAnico local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -107954,7 +107954,9 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       || msg.includes("linea_version_conflict")
       || msg.includes("mesa_version_conflict")
       || msg.includes("mesa_origen_version_conflict")
-      || msg.includes("mesa_destino_version_conflict");
+      || msg.includes("mesa_destino_version_conflict")
+      || msg.includes("cuenta_origen_version_conflict")
+      || msg.includes("cuenta_destino_version_conflict");
   }
   function respuestaErrorA06(error) {
     const conflict = esConflictoVersionA06(error);
@@ -108003,6 +108005,20 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("nuevo_responsable_no_pertenece_local")) return "El nuevo responsable ya no pertenece a este local.";
     if (msg.includes("responsable_sin_cambio")) return "Ese usuario ya es el responsable actual.";
     if (msg.includes("motivo_reasignacion_requerido")) return "Indica el motivo del cambio de responsable.";
+    if (msg.includes("reparto_cuenta_no_autorizado") || msg.includes("reparto_consultar_no_autorizado")) return "Tu perfil no tiene permiso para repartir productos entre cuentas.";
+    if (msg.includes("cuentas_recuperables_no_autorizadas")) return "Tu perfil no puede consultar las cuentas abiertas de este local.";
+    if (msg.includes("cuenta_origen_version_conflict") || msg.includes("cuenta_destino_version_conflict")) return "Una de las cuentas cambió en otro terminal. Recarga el reparto antes de repetir la operación.";
+    if (msg.includes("reparto_cuenta_no_encontrada")) return "La cuenta origen o destino ya no está disponible.";
+    if (msg.includes("reparto_cuenta_no_abierta")) return "El reparto solo puede hacerse entre cuentas abiertas.";
+    if (msg.includes("reparto_moneda_incompatible")) return "Las cuentas usan monedas distintas y no pueden repartirse entre sí.";
+    if (msg.includes("reparto_operating_day_incompatible")) return "Las cuentas pertenecen a días operativos distintos.";
+    if (msg.includes("cuota_activa_incompatible_con_reparto_linea")) return "Hay un reparto por importe activo y no se pueden mover productos hasta resolverlo.";
+    if (msg.includes("reparto_linea_no_encontrada") || msg.includes("reparto_linea_no_repartible")) return "La línea seleccionada ya no se puede repartir.";
+    if (msg.includes("reparto_cantidad_no_fraccionable")) return "Este producto solo puede repartirse por unidades completas.";
+    if (msg.includes("reparto_cantidad_precision_invalida") || msg.includes("reparto_cantidad_precision_maxima")) return "La cantidad tiene más decimales de los permitidos para este producto.";
+    if (msg.includes("reparto_cantidad_excede_disponible")) return "La cantidad supera lo que queda disponible en esta cuenta.";
+    if (msg.includes("reparto_parte_fiscalizada_inmovil")) return "Esa cantidad incluye una parte ya fiscalizada y no se puede mover.";
+    if (msg.includes("reparto_comensal_conflict")) return "La parte existente en la cuenta destino pertenece a otro comensal.";
     if (msg.includes("pedido_enviar_no_autorizado")) return "Tu perfil no tiene permiso para enviar este pedido.";
     if (msg.includes("pedido_no_enviable")) return "El pedido ya no está en un estado que permita enviarlo.";
     if (msg.includes("pedido_lineas_no_confirmadas")) return "Hay líneas que todavía no están confirmadas y el pedido no puede enviarse.";
@@ -108904,6 +108920,180 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     }
   }
 
+  async function consultarRepartoCuentaA08() {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local antes de repartir productos." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    try {
+      const contexto = leerContextoCuentaA02(empresaId, localActivoId);
+      if (!contexto) throw new Error("contexto_cuenta_persistido_invalido");
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "El reparto de productos necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const { data, error } = await supabase.rpc("abc_consultar_reparto_cuenta", {
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_cuenta_id: contexto.cuentaId,
+        p_terminal_id: terminal.terminalId,
+        p_session_id: terminal.sessionId,
+        p_operating_day: contexto.operatingDay
+      });
+      if (error) throw error;
+      if (!data?.ok || String(data.cuenta_id || "") !== String(contexto.cuentaId)) {
+        throw new Error("reparto_consultar_respuesta_invalida");
+      }
+      if (String(data.estado || "") !== "ABIERTA") throw new Error("reparto_cuenta_no_abierta");
+      if (String(data.operating_day || "") !== String(contexto.operatingDay)) {
+        throw new Error("reparto_operating_day_incompatible");
+      }
+      if (!data.reparto || !Array.isArray(data.reparto.lineas)) {
+        throw new Error("reparto_consultar_respuesta_invalida");
+      }
+      return {
+        ok: true,
+        origen: {
+          cuenta_id: data.cuenta_id,
+          estado: data.estado,
+          version: versionServidorA02(data.version, "a08.snapshot.cuenta_version"),
+          currency_code: data.currency_code,
+          opened_operating_day: data.operating_day,
+          reparto: data.reparto
+        },
+        terminalId: terminal.terminalId,
+        sessionId: terminal.sessionId,
+        operatingDay: contexto.operatingDay
+      };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function listarCuentasRepartoA08() {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local antes de repartir productos." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    try {
+      const contexto = leerContextoCuentaA02(empresaId, localActivoId);
+      if (!contexto) throw new Error("contexto_cuenta_persistido_invalido");
+      const consulta = await consultarRepartoCuentaA08();
+      if (!consulta?.ok) return consulta;
+      const origen = consulta.origen;
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "El reparto de productos necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const { data, error } = await supabase.rpc("abc_listar_cuentas_recuperables", {
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_terminal_id: terminal.terminalId,
+        p_session_id: terminal.sessionId,
+        p_operating_day: contexto.operatingDay,
+        p_abandono_minutos: 30
+      });
+      if (error) throw error;
+      if (!data?.ok || !Array.isArray(data.cuentas)) throw new Error("cuentas_reparto_respuesta_invalida");
+
+      const cuentas = data.cuentas.map((cuenta) => ({
+        ...cuenta,
+        version: versionServidorA02(cuenta.version, "a08.lista.cuenta_version")
+      }));
+      const moneda = String(origen.currency_code || contexto.currencyCode || "");
+      const destinos = cuentas.filter((cuenta) =>
+        String(cuenta.cuenta_id || "") !== String(contexto.cuentaId)
+        && String(cuenta.estado || "") === "ABIERTA"
+        && cuenta.reanudable_mismo_dia !== false
+        && String(cuenta.opened_operating_day || "") === String(contexto.operatingDay)
+        && String(cuenta.currency_code || "") === moneda
+      );
+
+      return {
+        ok: true,
+        origen,
+        destinos,
+        terminalId: terminal.terminalId,
+        sessionId: terminal.sessionId,
+        operatingDay: contexto.operatingDay
+      };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function moverCantidadLineaCuentaA08(lineaId, cantidad, cuentaDestinoId, expectedOrigenVersion, expectedDestinoVersion, expectedLineaVersion, comensalRef = "") {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local antes de repartir productos." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    const cantidadNumero = Number(cantidad);
+    const destinoId = String(cuentaDestinoId || "").trim();
+    const comensal = String(comensalRef || "").trim();
+    if (!lineaId || !destinoId || !Number.isFinite(cantidadNumero) || cantidadNumero <= 0) {
+      return { ok: false, error: "Selecciona producto, cantidad y cuenta destino." };
+    }
+
+    try {
+      const contexto = leerContextoCuentaA02(empresaId, localActivoId);
+      if (!contexto) throw new Error("contexto_cuenta_persistido_invalido");
+      if (String(contexto.cuentaId) === destinoId) throw new Error("reparto_parametros_invalidos");
+      const origenVersion = versionServidorA02(expectedOrigenVersion, "a08.move.cuenta_origen_version");
+      const destinoVersion = versionServidorA02(expectedDestinoVersion, "a08.move.cuenta_destino_version");
+      const lineaVersion = versionServidorA02(expectedLineaVersion, "a08.move.linea_version");
+
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "El reparto de productos necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const operationSeed = JSON.stringify({
+        empresaId,
+        localId: localActivoId,
+        lineaId,
+        cuentaOrigenId: contexto.cuentaId,
+        cuentaDestinoId: destinoId,
+        cantidad: cantidadNumero,
+        comensalRef: comensal || null,
+        expectedOrigenVersion: origenVersion,
+        expectedDestinoVersion: destinoVersion,
+        expectedLineaVersion: lineaVersion,
+        terminalId: terminal.terminalId,
+        sessionId: terminal.sessionId,
+        operatingDay: contexto.operatingDay
+      });
+      const operationDigest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(operationSeed));
+      const operationHash = Array.from(new Uint8Array(operationDigest))
+        .map((byte) => byte.toString(16).padStart(2, "0"))
+        .join("");
+      const operationId = "a08.1.linea:" + operationHash;
+
+      const movimiento = await rpcA02ConRecuperacion(supabase, "abc_mover_cantidad_linea_cuenta", {
+        p_operation_id: operationId,
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_linea_id: lineaId,
+        p_cuenta_origen_id: contexto.cuentaId,
+        p_cuenta_destino_id: destinoId,
+        p_cantidad: cantidadNumero,
+        p_comensal_ref: comensal || null,
+        p_expected_origen_version: origenVersion,
+        p_expected_destino_version: destinoVersion,
+        p_expected_linea_version: lineaVersion,
+        p_terminal_id: terminal.terminalId,
+        p_session_id: terminal.sessionId,
+        p_operating_day: contexto.operatingDay
+      }, empresaId, localActivoId, operationId);
+
+      const recuperada = await recuperarCuentaA06();
+      const estado = await listarCuentasRepartoA08();
+      return {
+        ok: true,
+        movimiento,
+        cuenta: recuperada?.ok ? recuperada : null,
+        estado: estado?.ok ? estado : null
+      };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
   async function venderCarrito(lineas, medioPago = "Efectivo", detallePago = null) {
     if (!localActivoId) return { ok: false, error: "Selecciona un local para abrir el TPV." };
     const incluyeOtroLocal = (lineas || []).some((ln2) => {
@@ -109058,7 +109248,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       return { ok: false, error: "No se pudo confirmar la anulaci\xF3n con el servidor. No se ha modificado el stock local." };
     }
   }
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -117681,7 +117871,7 @@ function guardarBorradorTpvA06(empresaId, localId, lineas, ahoraMs = Date.now())
     return { estado: "NO_DISPONIBLE", lineas: normalizadas, error: "No se pudo guardar el borrador local del TPV." };
   }
 }
-function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], registrarAuditoria, local = null, configEmpresa }) {
+function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, local = null, configEmpresa }) {
   const [carrito, setCarrito] = (0, import_react4.useState)([]);
   const [categoria, setCategoria] = (0, import_react4.useState)("Todos");
   const [busqueda, setBusqueda] = (0, import_react4.useState)("");
@@ -118100,6 +118290,16 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [motivoResponsableA07, setMotivoResponsableA07] = (0, import_react4.useState)("");
   const [cargandoResponsablesA07, setCargandoResponsablesA07] = (0, import_react4.useState)(false);
   const [cambiandoResponsableA07, setCambiandoResponsableA07] = (0, import_react4.useState)(false);
+  const [repartoAbiertoA08, setRepartoAbiertoA08] = (0, import_react4.useState)(false);
+  const [estadoRepartoA08, setEstadoRepartoA08] = (0, import_react4.useState)(null);
+  const [cargandoRepartoA08, setCargandoRepartoA08] = (0, import_react4.useState)(false);
+  const [lineaSeleccionadaA08, setLineaSeleccionadaA08] = (0, import_react4.useState)("");
+  const [cantidadRepartoA08, setCantidadRepartoA08] = (0, import_react4.useState)("");
+  const [cuentaDestinoA08, setCuentaDestinoA08] = (0, import_react4.useState)("");
+  const [comensalRepartoA08, setComensalRepartoA08] = (0, import_react4.useState)("");
+  const [moviendoLineaA08, setMoviendoLineaA08] = (0, import_react4.useState)(false);
+  const [errorRepartoA08, setErrorRepartoA08] = (0, import_react4.useState)("");
+  const [mensajeRepartoA08, setMensajeRepartoA08] = (0, import_react4.useState)("");
   const [motivoOperacionA05, setMotivoOperacionA05] = (0, import_react4.useState)("");
   const [accionEnCursoA05, setAccionEnCursoA05] = (0, import_react4.useState)("");
   const [errorVenta, setErrorVenta] = (0, import_react4.useState)("");
@@ -118182,10 +118382,29 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       setResponsablesA07([]);
       setResponsableSeleccionadoA07("");
       setMotivoResponsableA07("");
+      setRepartoAbiertoA08(false);
+      setEstadoRepartoA08(null);
+      setLineaSeleccionadaA08("");
+      setCantidadRepartoA08("");
+      setCuentaDestinoA08("");
+      setComensalRepartoA08("");
+      setErrorRepartoA08("");
+      setMensajeRepartoA08("");
       return;
     }
     refrescarSalaA07();
   }, [pedidoOperativoA05?.cuentaId, pedidoOperativoA05?.cuentaVersion, local?.id, configEmpresa?.id]);
+
+  (0, import_react4.useEffect)(() => {
+    setRepartoAbiertoA08(false);
+    setEstadoRepartoA08(null);
+    setLineaSeleccionadaA08("");
+    setCantidadRepartoA08("");
+    setCuentaDestinoA08("");
+    setComensalRepartoA08("");
+    setErrorRepartoA08("");
+    setMensajeRepartoA08("");
+  }, [pedidoOperativoA05?.cuentaId, local?.id, configEmpresa?.id]);
 
   function etiquetaResponsableA07(userId) {
     const id = String(userId || "");
@@ -118282,6 +118501,103 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     else await refrescarSalaA07();
     setRelevoAbiertoA07(false);
     setMotivoResponsableA07("");
+  }
+
+  function cantidadMovibleA08(linea) {
+    const cantidad = Number(linea?.cantidad) || 0;
+    const fiscalizada = Number(linea?.cantidad_fiscalizada) || 0;
+    return Math.max(0, cantidad - fiscalizada);
+  }
+
+  function lineasMoviblesA08(estado = estadoRepartoA08) {
+    const lineas = Array.isArray(estado?.origen?.reparto?.lineas) ? estado.origen.reparto.lineas : [];
+    return lineas.filter((linea) =>
+      !["BORRADOR", "CANCELADA"].includes(String(linea?.estado_linea || ""))
+      && cantidadMovibleA08(linea) > 0
+    );
+  }
+
+  function aplicarEstadoRepartoA08(estado) {
+    setEstadoRepartoA08(estado || null);
+    const lineas = lineasMoviblesA08(estado);
+    const primera = lineas[0] || null;
+    const destinos = Array.isArray(estado?.destinos) ? estado.destinos : [];
+    setLineaSeleccionadaA08(primera?.source_line_id || "");
+    setCantidadRepartoA08(primera ? String(cantidadMovibleA08(primera)) : "");
+    setCuentaDestinoA08(destinos[0]?.cuenta_id || "");
+  }
+
+  async function abrirRepartoProductosA08() {
+    if (typeof listarCuentasRepartoA08 !== "function") return;
+    setCargandoRepartoA08(true);
+    setErrorRepartoA08("");
+    setMensajeRepartoA08("");
+    const resultado = await listarCuentasRepartoA08();
+    setCargandoRepartoA08(false);
+    if (!resultado?.ok) {
+      setErrorRepartoA08(resultado?.error || "No se pudo cargar el reparto de la cuenta.");
+      return;
+    }
+    aplicarEstadoRepartoA08(resultado);
+    setRepartoAbiertoA08(true);
+  }
+
+  function seleccionarLineaRepartoA08(lineaId) {
+    setLineaSeleccionadaA08(lineaId);
+    const linea = lineasMoviblesA08().find((item) => String(item.source_line_id || "") === String(lineaId || ""));
+    setCantidadRepartoA08(linea ? String(cantidadMovibleA08(linea)) : "");
+    setErrorRepartoA08("");
+    setMensajeRepartoA08("");
+  }
+
+  async function confirmarRepartoProductoA08() {
+    if (typeof moverCantidadLineaCuentaA08 !== "function" || moviendoLineaA08) return;
+    const lineas = lineasMoviblesA08();
+    const linea = lineas.find((item) => String(item.source_line_id || "") === String(lineaSeleccionadaA08 || ""));
+    const destinos = Array.isArray(estadoRepartoA08?.destinos) ? estadoRepartoA08.destinos : [];
+    const destino = destinos.find((item) => String(item.cuenta_id || "") === String(cuentaDestinoA08 || ""));
+    const cantidad = Number(cantidadRepartoA08);
+    const disponible = cantidadMovibleA08(linea);
+    if (!linea || !destino || !Number.isFinite(cantidad) || cantidad <= 0 || cantidad > disponible) {
+      setErrorRepartoA08("Selecciona una línea, una cantidad disponible y una cuenta destino.");
+      return;
+    }
+
+    setMoviendoLineaA08(true);
+    setErrorRepartoA08("");
+    setMensajeRepartoA08("");
+    const resultado = await moverCantidadLineaCuentaA08(
+      linea.source_line_id,
+      cantidad,
+      destino.cuenta_id,
+      estadoRepartoA08?.origen?.version,
+      destino.version,
+      linea.linea_version,
+      comensalRepartoA08
+    );
+    setMoviendoLineaA08(false);
+
+    if (!resultado?.ok) {
+      if (resultado?.conflict && typeof listarCuentasRepartoA08 === "function") {
+        const fresco = await listarCuentasRepartoA08();
+        if (fresco?.ok) aplicarEstadoRepartoA08(fresco);
+      }
+      setErrorRepartoA08(resultado?.error || "No se pudo repartir el producto.");
+      return;
+    }
+
+    if (resultado.cuenta?.pedidoId) setPedidoOperativoA05(resultado.cuenta);
+    if (resultado.estado?.ok) aplicarEstadoRepartoA08(resultado.estado);
+    setComensalRepartoA08("");
+    setMensajeRepartoA08("Producto repartido correctamente. Ambas cuentas se han recargado desde el servidor.");
+  }
+
+  function etiquetaCuentaDestinoA08(cuenta) {
+    const ubicacion = cuenta?.ubicacion || {};
+    const sitio = ubicacion.mesa_nombre || ubicacion.mesa_codigo || "Cuenta abierta";
+    const modalidad = String(cuenta?.modalidad || "TPV");
+    const total = Number(cuenta?.total_comercial) || 0;
+    return sitio + " · " + modalidad + " · €" + fmt(total);
   }
 
   const vendibles = (0, import_react4.useMemo)(
@@ -118823,6 +119139,71 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     );
   }
 
+
+  function renderRepartoProductosA08() {
+    const pedido = pedidoOperativoA05;
+    if (!pedido?.cuentaId) return null;
+    const lineas = lineasMoviblesA08();
+    const destinos = Array.isArray(estadoRepartoA08?.destinos) ? estadoRepartoA08.destinos : [];
+    const seleccion = lineas.find((item) => String(item.source_line_id || "") === String(lineaSeleccionadaA08 || "")) || null;
+    const disponible = cantidadMovibleA08(seleccion);
+    const fiscalizada = Number(seleccion?.cantidad_fiscalizada) || 0;
+
+    if (!repartoAbiertoA08) {
+      return /* @__PURE__ */ import_react4.default.createElement(
+        Card,
+        { className: "mb-4" },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2" },
+          /* @__PURE__ */ import_react4.default.createElement("div", null,
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Repartir productos"),
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Mueve cantidades comerciales entre cuentas abiertas sin mover el pedido de cocina ni los pagos.")
+          ),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: abrirRepartoProductosA08, disabled: cargandoRepartoA08 }, cargandoRepartoA08 ? "Cargando…" : "Abrir reparto")
+        ),
+        errorRepartoA08 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] mt-2 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", errorRepartoA08) : null
+      );
+    }
+
+    return /* @__PURE__ */ import_react4.default.createElement(
+      Card,
+      { className: "mb-4" },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 mb-2" },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Repartir productos"),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5" },
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: abrirRepartoProductosA08, disabled: cargandoRepartoA08 || moviendoLineaA08 }, cargandoRepartoA08 ? "Actualizando…" : "Actualizar"),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => { setRepartoAbiertoA08(false); setErrorRepartoA08(""); setMensajeRepartoA08(""); }, disabled: moviendoLineaA08 }, "Cerrar")
+        )
+      ),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, "Las cantidades disponibles, versiones de cuenta y parte fiscalizada se leen del servidor justo antes del reparto."),
+      lineas.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "No hay productos repartibles en esta cuenta.") : /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Producto / línea" },
+        /* @__PURE__ */ import_react4.default.createElement("select", { value: lineaSeleccionadaA08, onChange: (e2) => seleccionarLineaRepartoA08(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[12px]", style: { border: "1px solid " + C2.line, background: C2.surface, color: C2.ink } },
+          /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Selecciona…"),
+          lineas.map((linea) => {
+            const producto = productos.find((p22) => String(p22.id) === String(linea.producto_id));
+            return /* @__PURE__ */ import_react4.default.createElement("option", { key: linea.source_line_id, value: linea.source_line_id }, producto?.nombre || "Producto", " · disponible ", fmt(cantidadMovibleA08(linea)));
+          })
+        )
+      ),
+      seleccion ? /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Cantidad a mover" },
+        /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", min: "0.00000001", max: String(disponible), step: "any", value: cantidadRepartoA08, onChange: (e2) => setCantidadRepartoA08(e2.target.value) })
+      ) : null,
+      fiscalizada > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.amber || C2.inkSoft } }, "Parte fiscalizada inmóvil: ", fmt(fiscalizada), " · disponible para mover: ", fmt(disponible)) : null,
+      destinos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "No hay otra cuenta abierta compatible en este local y día operativo.") : /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Cuenta destino" },
+        /* @__PURE__ */ import_react4.default.createElement("select", { value: cuentaDestinoA08, onChange: (e2) => setCuentaDestinoA08(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[12px]", style: { border: "1px solid " + C2.line, background: C2.surface, color: C2.ink } },
+          /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Selecciona…"),
+          destinos.map((cuenta) => /* @__PURE__ */ import_react4.default.createElement("option", { key: cuenta.cuenta_id, value: cuenta.cuenta_id }, etiquetaCuentaDestinoA08(cuenta)))
+        )
+      ),
+      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Comensal (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: comensalRepartoA08, onChange: (e2) => setComensalRepartoA08(e2.target.value), placeholder: "Ej. Persona 2" })),
+      errorRepartoA08 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] mb-2 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", errorRepartoA08) : null,
+      mensajeRepartoA08 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2 p-2 rounded-lg", style: { background: C2.accentSoft, color: C2.ink } }, mensajeRepartoA08) : null,
+      /* @__PURE__ */ import_react4.default.createElement(Btn, {
+        onClick: confirmarRepartoProductoA08,
+        disabled: moviendoLineaA08 || !seleccion || !cuentaDestinoA08 || !Number.isFinite(Number(cantidadRepartoA08)) || Number(cantidadRepartoA08) <= 0 || Number(cantidadRepartoA08) > disponible
+      }, moviendoLineaA08 ? "Moviendo…" : "Mover producto")
+    );
+  }
+
   function renderPedidoOperativoA05() {
     const pedido = pedidoOperativoA05;
     if (!pedido || !pedido.pedidoId) return null;
@@ -118874,7 +119255,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     conflictoA06.revisionServidor ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono text-[9.5px] mt-1", style: { color: C2.inkSoft } }, "Revisión servidor: ", conflictoA06.revisionServidor) : null,
     /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setConflictoA06(null) }, "Entendido")
   ) : null,
-  renderSalaA07(), renderPedidoOperativoA05(), vendibles.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay nada en el piso de venta ahora mismo. Ponle precio a un producto en Productos, o haz un traspaso desde el almac\xE9n en la pesta\xF1a Traspasos." }) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "relative mb-3" }, /* @__PURE__ */ import_react4.default.createElement(
+  renderSalaA07(), renderRepartoProductosA08(), renderPedidoOperativoA05(), vendibles.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay nada en el piso de venta ahora mismo. Ponle precio a un producto en Productos, o haz un traspaso desde el almac\xE9n en la pesta\xF1a Traspasos." }) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "relative mb-3" }, /* @__PURE__ */ import_react4.default.createElement(
     "input",
     {
       ref: inputEscaneoRef,
