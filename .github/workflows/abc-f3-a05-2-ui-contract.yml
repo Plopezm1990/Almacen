@@ -41,7 +41,14 @@ jobs:
           echo "A05_2_SCOPE=PASS"
 
       - name: Aplicar integración A05.2
-        run: node scripts/f3/a05-2-patch.mjs
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -Fq 'async function enviarPedidoA05()' source-recovery/fuente-recuperado.js; then
+            echo "A05_2_ALREADY_MATERIALIZED=1"
+          else
+            node scripts/f3/a05-2-patch.mjs
+          fi
 
       - name: Materializar runtime
         shell: bash
