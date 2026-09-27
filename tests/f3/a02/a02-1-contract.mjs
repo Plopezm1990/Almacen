@@ -104,7 +104,8 @@ assert.ok(a11.includes("Deliberadamente no se insertan reglas reales"), "A02.1 P
 
 assert.ok(terminalResolver.length > 0, "A02.1 P06: resolver de terminal no disponible");
 const a02Start = recovered.indexOf("async function venderCarritoA02");
-const a02End = recovered.indexOf("async function venderCarrito(lineas", a02Start);
+const a02EndA05 = recovered.indexOf("async function enviarPedidoA05()", a02Start);
+const a02End = a02EndA05 > a02Start ? a02EndA05 : recovered.indexOf("async function venderCarrito(lineas", a02Start);
 const a02Adapter = recovered.slice(a02Start, a02End);
 assert.ok(a02Adapter.includes("operatingDay: null"), "A02.1 P06: el cliente sigue fijando un día calendario");
 assert.ok(a02Adapter.includes("p_operating_day: null"), "A02.1 P06: abc_abrir_cuenta sigue recibiendo una fecha autoritativa del cliente");
@@ -147,7 +148,8 @@ for (const fn of ["abc_abrir_cuenta", "abc_crear_pedido", "abc_agregar_linea_ped
 
 
 const start = recovered.indexOf("async function venderCarritoA02");
-const end = recovered.indexOf("async function venderCarrito(lineas", start);
+const endA05 = recovered.indexOf("async function enviarPedidoA05()", start);
+const end = endA05 > start ? endA05 : recovered.indexOf("async function venderCarrito(lineas", start);
 assert.ok(start >= 0 && end > start, "A02.1: no se pudo aislar el adaptador");
 const adapter = recovered.slice(start, end);
 
