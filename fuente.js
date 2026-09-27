@@ -102682,7 +102682,7 @@ function GestionAlmacen() {
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
-  const { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
+  const { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
   const { traspasarStock, traspasarEntreLocales } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales });
@@ -103685,7 +103685,7 @@ function GestionAlmacen() {
       movimientos: movimientosDelLocalActivo,
       setTab: cambiarTabPM15
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, registrarAuditoria, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un \xFAnico local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, registrarAuditoria, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un \xFAnico local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -107952,7 +107952,9 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     return msg.includes("cuenta_version_conflict")
       || msg.includes("pedido_version_conflict")
       || msg.includes("linea_version_conflict")
-      || msg.includes("mesa_version_conflict");
+      || msg.includes("mesa_version_conflict")
+      || msg.includes("mesa_origen_version_conflict")
+      || msg.includes("mesa_destino_version_conflict");
   }
   function respuestaErrorA06(error) {
     const conflict = esConflictoVersionA06(error);
@@ -107992,6 +107994,15 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("mesa_no_asignable") || msg.includes("mesa_fuera_servicio")) return "La mesa ya no está disponible para asignación.";
     if (msg.includes("mesa_no_encontrada")) return "La mesa seleccionada ya no existe.";
     if (msg.includes("zona_no_activa")) return "La zona de la mesa ya no está activa.";
+    if (msg.includes("mesa_mover_no_autorizada")) return "Tu perfil no tiene permiso para trasladar esta cuenta.";
+    if (msg.includes("mesa_origen_version_conflict") || msg.includes("mesa_destino_version_conflict")) return "La mesa cambió en otro terminal. Se ha bloqueado el traslado hasta recargar la sala.";
+    if (msg.includes("mesa_destino_no_asignable")) return "La mesa de destino ya no está disponible.";
+    if (msg.includes("mesa_destino_igual_origen")) return "Selecciona una mesa distinta de la actual.";
+    if (msg.includes("cuenta_sin_mesa_activa")) return "La cuenta ya no tiene una mesa activa. Recarga la sala.";
+    if (msg.includes("cuenta_reasignar_no_autorizada") || msg.includes("responsables_listar_no_autorizado")) return "Solo un perfil autorizado puede cambiar el responsable de la cuenta.";
+    if (msg.includes("nuevo_responsable_no_pertenece_local")) return "El nuevo responsable ya no pertenece a este local.";
+    if (msg.includes("responsable_sin_cambio")) return "Ese usuario ya es el responsable actual.";
+    if (msg.includes("motivo_reasignacion_requerido")) return "Indica el motivo del cambio de responsable.";
     if (msg.includes("pedido_enviar_no_autorizado")) return "Tu perfil no tiene permiso para enviar este pedido.";
     if (msg.includes("pedido_no_enviable")) return "El pedido ya no está en un estado que permita enviarlo.";
     if (msg.includes("pedido_lineas_no_confirmadas")) return "Hay líneas que todavía no están confirmadas y el pedido no puede enviarse.";
@@ -108752,6 +108763,147 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     }
   }
 
+  async function listarResponsablesCuentaA07() {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local antes de consultar responsables." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    try {
+      const contexto = leerContextoCuentaA02(empresaId, localActivoId);
+      if (!contexto) throw new Error("contexto_cuenta_persistido_invalido");
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "El relevo de responsable necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const { data, error } = await supabase.rpc("abc_listar_responsables_cuenta", {
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_terminal_id: terminal.terminalId,
+        p_session_id: terminal.sessionId,
+        p_operating_day: contexto.operatingDay
+      });
+      if (error) throw error;
+      if (!data?.ok || !Array.isArray(data.responsables)) throw new Error("responsables_respuesta_invalida");
+      return { ok: true, responsables: data.responsables };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function moverMesaCuentaA07(mesaDestinoId, comensales, motivo, expectedMesaDestinoVersion) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local antes de trasladar la cuenta." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    const nComensales = Number(comensales);
+    const motivoLimpio = String(motivo || "").trim();
+    if (!mesaDestinoId || !Number.isSafeInteger(nComensales) || nComensales < 1 || nComensales > 999 || !motivoLimpio) {
+      return { ok: false, error: "Selecciona mesa de destino, comensales y un motivo del traslado." };
+    }
+    try {
+      const contexto = leerContextoCuentaA02(empresaId, localActivoId);
+      if (!contexto?.ubicacion?.mesa_id) throw new Error("cuenta_sin_mesa_activa");
+      if (String(contexto.ubicacion.mesa_id) === String(mesaDestinoId)) throw new Error("mesa_destino_igual_origen");
+
+      const cuentaVersion = versionServidorA02(contexto.cuentaVersion, "a07.move.cuenta_version");
+      const mesaOrigenVersion = versionServidorA02(contexto.ubicacion.mesa_version, "a07.move.mesa_origen_version");
+      const mesaDestinoVersion = versionServidorA02(expectedMesaDestinoVersion, "a07.move.mesa_destino_version");
+
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "El traslado de mesa necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const operationId = [
+        "a07.2.move",
+        contexto.cuentaId,
+        contexto.ubicacion.mesa_id,
+        mesaDestinoId,
+        cuentaVersion,
+        mesaOrigenVersion,
+        mesaDestinoVersion,
+        nComensales,
+        motivoLimpio.slice(0, 48)
+      ].join(".");
+
+      const movimiento = await rpcA02ConRecuperacion(supabase, "abc_mover_cuenta_mesa", {
+        p_operation_id: operationId,
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_cuenta_id: contexto.cuentaId,
+        p_mesa_destino_id: mesaDestinoId,
+        p_comensales: nComensales,
+        p_motivo: motivoLimpio,
+        p_expected_cuenta_version: cuentaVersion,
+        p_expected_mesa_origen_version: mesaOrigenVersion,
+        p_expected_mesa_destino_version: mesaDestinoVersion,
+        p_terminal_id: terminal.terminalId,
+        p_session_id: terminal.sessionId,
+        p_operating_day: contexto.operatingDay
+      }, empresaId, localActivoId, operationId);
+
+      const recuperada = await recuperarCuentaA06();
+      const mapa = await cargarMapaSalaA07();
+      return {
+        ok: true,
+        movimiento,
+        cuenta: recuperada?.ok ? recuperada : null,
+        mapa: mapa?.ok ? mapa : null
+      };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function cambiarResponsableCuentaA07(nuevoResponsable, motivo) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local antes de cambiar responsable." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    const responsableId = String(nuevoResponsable || "").trim();
+    const motivoLimpio = String(motivo || "").trim();
+    if (!responsableId || !motivoLimpio) return { ok: false, error: "Selecciona un responsable e indica el motivo del relevo." };
+
+    try {
+      const contexto = leerContextoCuentaA02(empresaId, localActivoId);
+      if (!contexto) throw new Error("contexto_cuenta_persistido_invalido");
+      if (String(contexto.responsableActual || "") === responsableId) throw new Error("responsable_sin_cambio");
+      const cuentaVersion = versionServidorA02(contexto.cuentaVersion, "a07.responsable.cuenta_version");
+
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "El relevo de responsable necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const operationId = [
+        "a07.2.responsable",
+        contexto.cuentaId,
+        responsableId,
+        cuentaVersion,
+        motivoLimpio.slice(0, 48)
+      ].join(".");
+
+      const cambio = await rpcA02ConRecuperacion(supabase, "abc_cambiar_responsable_cuenta", {
+        p_operation_id: operationId,
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_cuenta_id: contexto.cuentaId,
+        p_nuevo_responsable: responsableId,
+        p_motivo: motivoLimpio,
+        p_expected_cuenta_version: cuentaVersion,
+        p_terminal_id: terminal.terminalId,
+        p_session_id: terminal.sessionId,
+        p_operating_day: contexto.operatingDay
+      }, empresaId, localActivoId, operationId);
+
+      const recuperada = await recuperarCuentaA06();
+      const mapa = await cargarMapaSalaA07();
+      return {
+        ok: true,
+        cambio,
+        cuenta: recuperada?.ok ? recuperada : null,
+        mapa: mapa?.ok ? mapa : null
+      };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
   async function venderCarrito(lineas, medioPago = "Efectivo", detallePago = null) {
     if (!localActivoId) return { ok: false, error: "Selecciona un local para abrir el TPV." };
     const incluyeOtroLocal = (lineas || []).some((ln2) => {
@@ -108906,7 +109058,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       return { ok: false, error: "No se pudo confirmar la anulaci\xF3n con el servidor. No se ha modificado el stock local." };
     }
   }
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -117529,7 +117681,7 @@ function guardarBorradorTpvA06(empresaId, localId, lineas, ahoraMs = Date.now())
     return { estado: "NO_DISPONIBLE", lineas: normalizadas, error: "No se pudo guardar el borrador local del TPV." };
   }
 }
-function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], registrarAuditoria, local = null, configEmpresa }) {
+function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], registrarAuditoria, local = null, configEmpresa }) {
   const [carrito, setCarrito] = (0, import_react4.useState)([]);
   const [categoria, setCategoria] = (0, import_react4.useState)("Todos");
   const [busqueda, setBusqueda] = (0, import_react4.useState)("");
@@ -117940,6 +118092,14 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [mesaSeleccionadaA07, setMesaSeleccionadaA07] = (0, import_react4.useState)(null);
   const [comensalesA07, setComensalesA07] = (0, import_react4.useState)("2");
   const [asignandoMesaA07, setAsignandoMesaA07] = (0, import_react4.useState)(false);
+  const [motivoTrasladoA07, setMotivoTrasladoA07] = (0, import_react4.useState)("");
+  const [moviendoMesaA07, setMoviendoMesaA07] = (0, import_react4.useState)(false);
+  const [relevoAbiertoA07, setRelevoAbiertoA07] = (0, import_react4.useState)(false);
+  const [responsablesA07, setResponsablesA07] = (0, import_react4.useState)([]);
+  const [responsableSeleccionadoA07, setResponsableSeleccionadoA07] = (0, import_react4.useState)("");
+  const [motivoResponsableA07, setMotivoResponsableA07] = (0, import_react4.useState)("");
+  const [cargandoResponsablesA07, setCargandoResponsablesA07] = (0, import_react4.useState)(false);
+  const [cambiandoResponsableA07, setCambiandoResponsableA07] = (0, import_react4.useState)(false);
   const [motivoOperacionA05, setMotivoOperacionA05] = (0, import_react4.useState)("");
   const [accionEnCursoA05, setAccionEnCursoA05] = (0, import_react4.useState)("");
   const [errorVenta, setErrorVenta] = (0, import_react4.useState)("");
@@ -118017,6 +118177,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       setMapaSalaA07(null);
       setErrorSalaA07("");
       setMesaSeleccionadaA07(null);
+      setMotivoTrasladoA07("");
+      setRelevoAbiertoA07(false);
+      setResponsablesA07([]);
+      setResponsableSeleccionadoA07("");
+      setMotivoResponsableA07("");
       return;
     }
     refrescarSalaA07();
@@ -118025,6 +118190,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   function etiquetaResponsableA07(userId) {
     const id = String(userId || "");
     if (!id) return "Sin responsable";
+    const candidato = responsablesA07.find((r22) => String(r22.user_id || "") === id);
+    if (candidato?.nombre) return candidato.nombre;
     if (mapaSalaA07?.currentUserId && id === String(mapaSalaA07.currentUserId) && nombreResponsableActualA07) {
       return nombreResponsableActualA07;
     }
@@ -118052,6 +118219,71 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     else await refrescarSalaA07();
     setMesaSeleccionadaA07(null);
   }
+
+  async function confirmarTrasladoMesaA07() {
+    if (!mesaSeleccionadaA07 || typeof moverMesaCuentaA07 !== "function") return;
+    const n = Number(comensalesA07);
+    const motivo = motivoTrasladoA07.trim();
+    if (!Number.isSafeInteger(n) || n < 1 || n > 999 || !motivo) {
+      setErrorSalaA07("Indica comensales y un motivo del traslado.");
+      return;
+    }
+    setMoviendoMesaA07(true);
+    setErrorSalaA07("");
+    const resultado = await moverMesaCuentaA07(mesaSeleccionadaA07.mesa_id, n, motivo, mesaSeleccionadaA07.version);
+    setMoviendoMesaA07(false);
+    if (!resultado?.ok) {
+      setErrorSalaA07(resultado?.error || "No se pudo trasladar la cuenta.");
+      if (resultado?.conflict) await refrescarSalaA07();
+      return;
+    }
+    if (resultado.cuenta?.pedidoId) setPedidoOperativoA05(resultado.cuenta);
+    if (resultado.mapa?.zonas) setMapaSalaA07(resultado.mapa);
+    else await refrescarSalaA07();
+    setMesaSeleccionadaA07(null);
+    setMotivoTrasladoA07("");
+  }
+
+  async function abrirRelevoResponsableA07() {
+    if (typeof listarResponsablesCuentaA07 !== "function") return;
+    setCargandoResponsablesA07(true);
+    setErrorSalaA07("");
+    const resultado = await listarResponsablesCuentaA07();
+    setCargandoResponsablesA07(false);
+    if (!resultado?.ok) {
+      setErrorSalaA07(resultado?.error || "No se pudieron cargar los responsables.");
+      return;
+    }
+    setResponsablesA07(resultado.responsables || []);
+    const actual = String(pedidoOperativoA05?.responsableActual || mapaSalaA07?.responsableActual || "");
+    const primero = (resultado.responsables || []).find((r22) => String(r22.user_id || "") !== actual);
+    setResponsableSeleccionadoA07(primero?.user_id || "");
+    setRelevoAbiertoA07(true);
+  }
+
+  async function confirmarRelevoResponsableA07() {
+    if (typeof cambiarResponsableCuentaA07 !== "function") return;
+    const motivo = motivoResponsableA07.trim();
+    if (!responsableSeleccionadoA07 || !motivo) {
+      setErrorSalaA07("Selecciona un nuevo responsable e indica el motivo.");
+      return;
+    }
+    setCambiandoResponsableA07(true);
+    setErrorSalaA07("");
+    const resultado = await cambiarResponsableCuentaA07(responsableSeleccionadoA07, motivo);
+    setCambiandoResponsableA07(false);
+    if (!resultado?.ok) {
+      setErrorSalaA07(resultado?.error || "No se pudo cambiar el responsable.");
+      if (resultado?.conflict) await refrescarSalaA07();
+      return;
+    }
+    if (resultado.cuenta?.pedidoId) setPedidoOperativoA05(resultado.cuenta);
+    if (resultado.mapa?.zonas) setMapaSalaA07(resultado.mapa);
+    else await refrescarSalaA07();
+    setRelevoAbiertoA07(false);
+    setMotivoResponsableA07("");
+  }
+
   const vendibles = (0, import_react4.useMemo)(
     () => productos.filter((p22) => p22.activo !== false && (p22.tipo === "elaborado" || Number(p22.precioVenta) > 0) && (p22._pm07Servidor ? Number(p22.stock) || 0 : Number(p22.stockPisoVenta) || 0) > 0),
     [productos]
@@ -118524,7 +118756,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         " · ", ubicacion.zona_nombre || ubicacion.zona_tipo || "Zona",
         " · ", Number(ubicacion.comensales) || 0, " comensal(es)",
         " · ", ubicacion.estado_mesa || "OCUPADA",
-        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mt-1", style: { color: C2.inkSoft } }, "Traslado de mesa y relevo de responsable se validan en A07.2.")
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mt-1", style: { color: C2.inkSoft } }, "Traslados y relevos conservan la misma cuenta y se registran en el historial del servidor.")
       ) : null,
       errorSalaA07 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] mb-2 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", errorSalaA07) : null,
       !cargandoSalaA07 && zonas.length === 0 && !errorSalaA07 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "No hay zonas ni mesas configuradas para este local.") : null,
@@ -118538,10 +118770,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
             return /* @__PURE__ */ import_react4.default.createElement("button", {
               key: mesa.mesa_id,
               type: "button",
-              disabled: !!ubicacion || noAsignable || asignandoMesaA07,
+              disabled: !!esActual || noAsignable || asignandoMesaA07 || moviendoMesaA07,
               onClick: () => {
                 setMesaSeleccionadaA07(mesa);
-                if (Number(mesa.capacidad) > 0) setComensalesA07(String(Math.min(Number(mesa.capacidad), 2) || 1));
+                if (ubicacion?.comensales) setComensalesA07(String(ubicacion.comensales));
+                else if (Number(mesa.capacidad) > 0) setComensalesA07(String(Math.min(Number(mesa.capacidad), 2) || 1));
               },
               className: "rounded-lg p-2 text-left",
               style: {
@@ -118566,7 +118799,27 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarAsignacionMesaA07, disabled: asignandoMesaA07 }, asignandoMesaA07 ? "Asignando…" : "Asignar esta cuenta"),
           /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setMesaSeleccionadaA07(null), disabled: asignandoMesaA07 }, "Cancelar")
         )
-      ) : null
+      ) : null,
+      ubicacion && mesaSeleccionadaA07 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 p-2 rounded-lg", style: { border: "1px solid " + C2.line } },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-2" }, "Trasladar a ", mesaSeleccionadaA07.nombre || mesaSeleccionadaA07.codigo),
+        /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Comensales" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", min: "1", max: "999", step: "1", value: comensalesA07, onChange: (e2) => setComensalesA07(e2.target.value) })),
+        /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo del traslado" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivoTrasladoA07, onChange: (e2) => setMotivoTrasladoA07(e2.target.value), placeholder: "Cliente cambia de mesa…" })),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" },
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarTrasladoMesaA07, disabled: moviendoMesaA07 || !motivoTrasladoA07.trim() }, moviendoMesaA07 ? "Trasladando…" : "Trasladar cuenta"),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => { setMesaSeleccionadaA07(null); setMotivoTrasladoA07(""); }, disabled: moviendoMesaA07 }, "Cancelar")
+        )
+      ) : null,
+      !relevoAbiertoA07 ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: abrirRelevoResponsableA07, disabled: cargandoResponsablesA07 || cambiandoResponsableA07 }, cargandoResponsablesA07 ? "Cargando responsables…" : "Cambiar responsable") : /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 p-2 rounded-lg", style: { border: "1px solid " + C2.line } },
+        /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nuevo responsable" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: responsableSeleccionadoA07, onChange: (e2) => setResponsableSeleccionadoA07(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[12px]", style: { border: "1px solid " + C2.line, background: C2.surface, color: C2.ink } },
+          /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Selecciona…"),
+          responsablesA07.filter((r22) => String(r22.user_id || "") !== String(responsable || "")).map((r22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: r22.user_id, value: r22.user_id }, r22.nombre, " · ", r22.rol))
+        )),
+        /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo del relevo" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivoResponsableA07, onChange: (e2) => setMotivoResponsableA07(e2.target.value), placeholder: "Cambio de turno…" })),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" },
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarRelevoResponsableA07, disabled: cambiandoResponsableA07 || !responsableSeleccionadoA07 || !motivoResponsableA07.trim() }, cambiandoResponsableA07 ? "Cambiando…" : "Confirmar relevo"),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => { setRelevoAbiertoA07(false); setMotivoResponsableA07(""); }, disabled: cambiandoResponsableA07 }, "Cancelar")
+        )
+      )
     );
   }
 
