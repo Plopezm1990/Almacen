@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 
 const recovered = fs.readFileSync("source-recovery/fuente-recuperado.js", "utf8");
 const a06 = fs.readFileSync("supabase/migrations/20260924040000_abc_f3_a06_account_recovery.sql", "utf8");
+const a06a11 = fs.readFileSync("supabase/migrations/20260927113403_abc_f3_a06_recovery_server_operating_day.sql", "utf8");
 
 // A06.1: el backend autoritativo ya existe.
 for (const required of [
@@ -124,6 +125,23 @@ for (const forbidden of [
 ]) {
   assert.ok(!adapter.includes(forbidden), `A06.1: efecto fuera de alcance: ${forbidden}`);
 }
+
+assert.ok(
+  a06a11.includes("private.abc_resolver_operating_day_contexto("),
+  "A06.1/A11: la recuperación no usa el resolver autoritativo de día operativo"
+);
+assert.ok(
+  a06a11.includes("v_cuenta.opened_operating_day<>v_current_operating_day"),
+  "A06.1/A11: la recuperación no compara contra el día calculado por servidor"
+);
+assert.ok(
+  !a06a11.includes("v_cuenta.opened_operating_day<>p_operating_day"),
+  "A06.1/A11: el cliente sigue siendo autoridad del día operativo"
+);
+assert.ok(
+  a06a11.includes("SECURITY DEFINER") && a06a11.includes("SET search_path TO ''"),
+  "A06.1/A11: se degradó el hardening de la RPC"
+);
 
 console.log("A06_1_SAME_ACCOUNT_RECOVERY=PASS");
 console.log("A06_1_DUPLICATE_CREATION_WRITES=0");
