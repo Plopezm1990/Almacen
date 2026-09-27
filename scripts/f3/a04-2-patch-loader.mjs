@@ -1,3 +1,4 @@
+// A04.2 final idempotency validation trigger.
 import { gunzipSync } from "node:zlib";
 import { readFileSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
