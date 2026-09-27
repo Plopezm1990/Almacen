@@ -7992,6 +7992,55 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     }
   }
 
+  async function consultarRepartoCuentaA08() {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local antes de repartir productos." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    try {
+      const contexto = leerContextoCuentaA02(empresaId, localActivoId);
+      if (!contexto) throw new Error("contexto_cuenta_persistido_invalido");
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "El reparto de productos necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const { data, error } = await supabase.rpc("abc_consultar_reparto_cuenta", {
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_cuenta_id: contexto.cuentaId,
+        p_terminal_id: terminal.terminalId,
+        p_session_id: terminal.sessionId,
+        p_operating_day: contexto.operatingDay
+      });
+      if (error) throw error;
+      if (!data?.ok || String(data.cuenta_id || "") !== String(contexto.cuentaId)) {
+        throw new Error("reparto_consultar_respuesta_invalida");
+      }
+      if (String(data.estado || "") !== "ABIERTA") throw new Error("reparto_cuenta_no_abierta");
+      if (String(data.operating_day || "") !== String(contexto.operatingDay)) {
+        throw new Error("reparto_operating_day_incompatible");
+      }
+      if (!data.reparto || !Array.isArray(data.reparto.lineas)) {
+        throw new Error("reparto_consultar_respuesta_invalida");
+      }
+      return {
+        ok: true,
+        origen: {
+          cuenta_id: data.cuenta_id,
+          estado: data.estado,
+          version: versionServidorA02(data.version, "a08.snapshot.cuenta_version"),
+          currency_code: data.currency_code,
+          opened_operating_day: data.operating_day,
+          reparto: data.reparto
+        },
+        terminalId: terminal.terminalId,
+        sessionId: terminal.sessionId,
+        operatingDay: contexto.operatingDay
+      };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
   async function listarCuentasRepartoA08() {
     if (!localActivoId) return { ok: false, error: "Selecciona un local antes de repartir productos." };
     const empresaId = empresaDelLocalActivo?.id || null;
@@ -7999,6 +8048,9 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     try {
       const contexto = leerContextoCuentaA02(empresaId, localActivoId);
       if (!contexto) throw new Error("contexto_cuenta_persistido_invalido");
+      const consulta = await consultarRepartoCuentaA08();
+      if (!consulta?.ok) return consulta;
+      const origen = consulta.origen;
       const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
       if (!hayConexion) return { ok: false, error: "El reparto de productos necesita conexión con el servidor." };
       const supabase = await window.getSupabaseClient();
@@ -8018,8 +8070,6 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         ...cuenta,
         version: versionServidorA02(cuenta.version, "a08.lista.cuenta_version")
       }));
-      const origen = cuentas.find((cuenta) => String(cuenta.cuenta_id || "") === String(contexto.cuentaId));
-      if (!origen) throw new Error("reparto_cuenta_no_encontrada");
       const moneda = String(origen.currency_code || contexto.currencyCode || "");
       const destinos = cuentas.filter((cuenta) =>
         String(cuenta.cuenta_id || "") !== String(contexto.cuentaId)
@@ -8065,17 +8115,26 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       if (!hayConexion) return { ok: false, error: "El reparto de productos necesita conexión con el servidor." };
       const supabase = await window.getSupabaseClient();
       const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
-      const operationId = [
-        "a08.1.linea",
-        contexto.cuentaId,
+      const operationSeed = JSON.stringify({
+        empresaId,
+        localId: localActivoId,
         lineaId,
-        destinoId,
-        origenVersion,
-        destinoVersion,
-        lineaVersion,
-        String(cantidadNumero),
-        comensal.slice(0, 32)
-      ].join(".");
+        cuentaOrigenId: contexto.cuentaId,
+        cuentaDestinoId: destinoId,
+        cantidad: cantidadNumero,
+        comensalRef: comensal || null,
+        expectedOrigenVersion: origenVersion,
+        expectedDestinoVersion: destinoVersion,
+        expectedLineaVersion: lineaVersion,
+        terminalId: terminal.terminalId,
+        sessionId: terminal.sessionId,
+        operatingDay: contexto.operatingDay
+      });
+      const operationDigest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(operationSeed));
+      const operationHash = Array.from(new Uint8Array(operationDigest))
+        .map((byte) => byte.toString(16).padStart(2, "0"))
+        .join("");
+      const operationId = "a08.1.linea:" + operationHash;
 
       const movimiento = await rpcA02ConRecuperacion(supabase, "abc_mover_cantidad_linea_cuenta", {
         p_operation_id: operationId,
