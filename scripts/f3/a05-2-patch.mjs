@@ -162,7 +162,7 @@ source = replaceOnce(
           throw new Error("linea_no_confirmable");
         }
 
-        const operationId = `a05.2.confirm.${linea.lineaId}`;
+        const operationId = "a05.2.confirm." + linea.lineaId;
         let confirmado = null;
         if (linea.configuradaA04) {
           const configuracion = linea.configuracionA04;
@@ -205,7 +205,7 @@ source = replaceOnce(
         guardarContextoCuentaA02(empresaId, localActivoId, contexto);
       }
 
-      const sendOperationId = `a05.2.send.${contexto.pedidoId}`;
+      const sendOperationId = "a05.2.send." + contexto.pedidoId;
       const enviado = await rpcA02ConRecuperacion(supabase, "abc_enviar_pedido", {
         p_operation_id: sendOperationId,
         p_empresa_id: empresaId,
