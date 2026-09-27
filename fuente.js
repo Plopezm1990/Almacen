@@ -102682,7 +102682,7 @@ function GestionAlmacen() {
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
-  const { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
+  const { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
   const { traspasarStock, traspasarEntreLocales } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales });
@@ -103685,7 +103685,7 @@ function GestionAlmacen() {
       movimientos: movimientosDelLocalActivo,
       setTab: cambiarTabPM15
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, anularVenta, movimientos: movimientosDelLocalActivo, registrarAuditoria, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un \xFAnico local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, registrarAuditoria, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un \xFAnico local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -107951,7 +107951,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     const msg = String(error?.message || error || "");
     return msg.includes("cuenta_version_conflict")
       || msg.includes("pedido_version_conflict")
-      || msg.includes("linea_version_conflict");
+      || msg.includes("linea_version_conflict")
+      || msg.includes("mesa_version_conflict");
   }
   function respuestaErrorA06(error) {
     const conflict = esConflictoVersionA06(error);
@@ -107984,6 +107985,13 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("cuenta_recuperacion_pedidos_ambigua")) return "La cuenta tiene más de un pedido operativo y no se reanudará automáticamente.";
     if (msg.includes("cuenta_recuperacion_sin_lineas")) return "La cuenta recuperada no contiene líneas operativas.";
     if (msg.includes("cuenta_recuperacion_id_distinto") || msg.includes("cuenta_recuperacion_respuesta_invalida")) return "La respuesta de recuperación no coincide con la cuenta guardada; se ha bloqueado la reanudación.";
+    if (msg.includes("sala_ver_no_autorizada")) return "Tu perfil no tiene permiso para ver la sala.";
+    if (msg.includes("mesa_asignar_no_autorizada")) return "Tu perfil no tiene permiso para asignar mesas.";
+    if (msg.includes("mesa_version_conflict")) return "La mesa cambió en otro terminal. Se ha recargado el mapa antes de continuar.";
+    if (msg.includes("cuenta_ya_asignada_mesa")) return "La cuenta ya tiene una mesa asignada. Recarga la sala antes de continuar.";
+    if (msg.includes("mesa_no_asignable") || msg.includes("mesa_fuera_servicio")) return "La mesa ya no está disponible para asignación.";
+    if (msg.includes("mesa_no_encontrada")) return "La mesa seleccionada ya no existe.";
+    if (msg.includes("zona_no_activa")) return "La zona de la mesa ya no está activa.";
     if (msg.includes("pedido_enviar_no_autorizado")) return "Tu perfil no tiene permiso para enviar este pedido.";
     if (msg.includes("pedido_no_enviable")) return "El pedido ya no está en un estado que permita enviarlo.";
     if (msg.includes("pedido_lineas_no_confirmadas")) return "Hay líneas que todavía no están confirmadas y el pedido no puede enviarse.";
@@ -108285,6 +108293,9 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         sessionId: contexto.sessionId,
         operatingDay: pending.operatingDay,
         currencyCode: pending.currencyCode,
+        modalidad: pending.modalidad,
+        responsableActual: contexto.userId,
+        ubicacion: null,
         updatedAt: (/* @__PURE__ */ new Date()).toISOString()
       });
       try {
@@ -108303,6 +108314,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         lineas: agregado.lineas,
         totalServidor,
         currencyCode: agregado.currencyCode,
+        responsableActual: agregado.responsableActual || contexto.userId,
+        ubicacion: agregado.ubicacion || null,
         ventaId: agregado.cuentaId
       };
     } catch (error) {
@@ -108527,6 +108540,9 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         sessionId: terminal.sessionId,
         operatingDay: contextoLocal.operatingDay,
         currencyCode: String(data.cuenta.currency_code || contextoLocal.currencyCode || "EUR"),
+        modalidad: String(data.cuenta.modalidad || contextoLocal.modalidad || "BARRA"),
+        responsableActual: data.cuenta.responsable_actual || contextoLocal.responsableActual || null,
+        ubicacion: data.ubicacion && typeof data.ubicacion === "object" ? data.ubicacion : null,
         updatedAt: (/* @__PURE__ */ new Date()).toISOString()
       });
 
@@ -108630,6 +108646,107 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       contexto.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
       const guardado = guardarContextoCuentaA02(empresaId, localActivoId, contexto);
       return { ok: true, ...guardado };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function cargarMapaSalaA07() {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para ver la sala." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    let contexto = null;
+    try {
+      contexto = leerContextoCuentaA02(empresaId, localActivoId);
+    } catch (error) {
+      return { ok: false, error: errorRpcA02(error) };
+    }
+    if (!contexto) {
+      return {
+        ok: false,
+        requiereCuenta: true,
+        error: "Guarda primero un pedido real para cargar la sala con el día operativo y la sesión del servidor."
+      };
+    }
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return { ok: false, error: "La sala necesita conexión con el servidor." };
+    try {
+      const supabase = await window.getSupabaseClient();
+      const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const { data, error } = await supabase.rpc("abc_listar_mapa_sala", {
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_terminal_id: terminal.terminalId,
+        p_session_id: terminal.sessionId,
+        p_operating_day: contexto.operatingDay
+      });
+      if (error) throw error;
+      if (!data?.ok || !Array.isArray(data.zonas)) throw new Error("mapa_sala_respuesta_invalida");
+      return {
+        ok: true,
+        zonas: data.zonas,
+        operatingDay: data.operating_day || contexto.operatingDay,
+        terminalId: terminal.terminalId,
+        sessionId: terminal.sessionId,
+        currentUserId: terminal.userId,
+        cuentaId: contexto.cuentaId,
+        cuentaVersion: contexto.cuentaVersion,
+        ubicacion: contexto.ubicacion || null,
+        responsableActual: contexto.responsableActual || null
+      };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function asignarMesaCuentaA07(mesaId, comensales, expectedMesaVersion) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local antes de asignar una mesa." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    const nComensales = Number(comensales);
+    if (!mesaId || !Number.isSafeInteger(nComensales) || nComensales < 1 || nComensales > 999) {
+      return { ok: false, error: "Indica una mesa y un número de comensales entre 1 y 999." };
+    }
+    try {
+      const contexto = leerContextoCuentaA02(empresaId, localActivoId);
+      if (!contexto) throw new Error("contexto_cuenta_persistido_invalido");
+      if (contexto.ubicacion?.mesa_id) throw new Error("cuenta_ya_asignada_mesa");
+      const mesaVersion = versionServidorA02(expectedMesaVersion, "a07.mesa_version");
+      const cuentaVersion = versionServidorA02(contexto.cuentaVersion, "a07.cuenta_version");
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "La asignación de mesa necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const operationId = [
+        "a07.1.assign",
+        contexto.cuentaId,
+        mesaId,
+        cuentaVersion,
+        mesaVersion,
+        nComensales
+      ].join(".");
+      const asignacion = await rpcA02ConRecuperacion(supabase, "abc_asignar_cuenta_mesa", {
+        p_operation_id: operationId,
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_cuenta_id: contexto.cuentaId,
+        p_mesa_id: mesaId,
+        p_comensales: nComensales,
+        p_expected_cuenta_version: cuentaVersion,
+        p_expected_mesa_version: mesaVersion,
+        p_terminal_id: terminal.terminalId,
+        p_session_id: terminal.sessionId,
+        p_operating_day: contexto.operatingDay
+      }, empresaId, localActivoId, operationId);
+
+      const recuperada = await recuperarCuentaA06();
+      const mapa = await cargarMapaSalaA07();
+      return {
+        ok: true,
+        asignacion,
+        cuenta: recuperada?.ok ? recuperada : null,
+        mapa: mapa?.ok ? mapa : null
+      };
     } catch (error) {
       return respuestaErrorA06(error);
     }
@@ -108789,7 +108906,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       return { ok: false, error: "No se pudo confirmar la anulaci\xF3n con el servidor. No se ha modificado el stock local." };
     }
   }
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -117412,7 +117529,7 @@ function guardarBorradorTpvA06(empresaId, localId, lineas, ahoraMs = Date.now())
     return { estado: "NO_DISPONIBLE", lineas: normalizadas, error: "No se pudo guardar el borrador local del TPV." };
   }
 }
-function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, anularVenta, movimientos = [], registrarAuditoria, local = null, configEmpresa }) {
+function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], registrarAuditoria, local = null, configEmpresa }) {
   const [carrito, setCarrito] = (0, import_react4.useState)([]);
   const [categoria, setCategoria] = (0, import_react4.useState)("Todos");
   const [busqueda, setBusqueda] = (0, import_react4.useState)("");
@@ -117817,6 +117934,12 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [estadoBorradorA06, setEstadoBorradorA06] = (0, import_react4.useState)({ estado: "VACIO", lineas: [] });
   const [conflictoA06, setConflictoA06] = (0, import_react4.useState)(null);
   const omitirPersistenciaInicialA06Ref = (0, import_react4.useRef)(true);
+  const [mapaSalaA07, setMapaSalaA07] = (0, import_react4.useState)(null);
+  const [cargandoSalaA07, setCargandoSalaA07] = (0, import_react4.useState)(false);
+  const [errorSalaA07, setErrorSalaA07] = (0, import_react4.useState)("");
+  const [mesaSeleccionadaA07, setMesaSeleccionadaA07] = (0, import_react4.useState)(null);
+  const [comensalesA07, setComensalesA07] = (0, import_react4.useState)("2");
+  const [asignandoMesaA07, setAsignandoMesaA07] = (0, import_react4.useState)(false);
   const [motivoOperacionA05, setMotivoOperacionA05] = (0, import_react4.useState)("");
   const [accionEnCursoA05, setAccionEnCursoA05] = (0, import_react4.useState)("");
   const [errorVenta, setErrorVenta] = (0, import_react4.useState)("");
@@ -117869,6 +117992,66 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       activo = false;
     };
   }, [local?.id, configEmpresa?.id, leerPedidoOperativoA05, recuperarCuentaA06]);
+
+  async function refrescarSalaA07() {
+    if (typeof cargarMapaSalaA07 !== "function") return;
+    if (!pedidoOperativoA05?.cuentaId) {
+      setMapaSalaA07(null);
+      setErrorSalaA07("");
+      return;
+    }
+    setCargandoSalaA07(true);
+    const resultado = await cargarMapaSalaA07();
+    setCargandoSalaA07(false);
+    if (!resultado?.ok) {
+      setMapaSalaA07(null);
+      setErrorSalaA07(resultado?.error || "No se pudo cargar la sala.");
+      return;
+    }
+    setMapaSalaA07(resultado);
+    setErrorSalaA07("");
+  }
+
+  (0, import_react4.useEffect)(() => {
+    if (!pedidoOperativoA05?.cuentaId) {
+      setMapaSalaA07(null);
+      setErrorSalaA07("");
+      setMesaSeleccionadaA07(null);
+      return;
+    }
+    refrescarSalaA07();
+  }, [pedidoOperativoA05?.cuentaId, pedidoOperativoA05?.cuentaVersion, local?.id, configEmpresa?.id]);
+
+  function etiquetaResponsableA07(userId) {
+    const id = String(userId || "");
+    if (!id) return "Sin responsable";
+    if (mapaSalaA07?.currentUserId && id === String(mapaSalaA07.currentUserId) && nombreResponsableActualA07) {
+      return nombreResponsableActualA07;
+    }
+    return "Usuario …" + id.slice(-8);
+  }
+
+  async function confirmarAsignacionMesaA07() {
+    if (!mesaSeleccionadaA07 || typeof asignarMesaCuentaA07 !== "function") return;
+    const n = Number(comensalesA07);
+    if (!Number.isSafeInteger(n) || n < 1 || n > 999) {
+      setErrorSalaA07("Indica un número de comensales entre 1 y 999.");
+      return;
+    }
+    setAsignandoMesaA07(true);
+    setErrorSalaA07("");
+    const resultado = await asignarMesaCuentaA07(mesaSeleccionadaA07.mesa_id, n, mesaSeleccionadaA07.version);
+    setAsignandoMesaA07(false);
+    if (!resultado?.ok) {
+      setErrorSalaA07(resultado?.error || "No se pudo asignar la mesa.");
+      if (resultado?.conflict) await refrescarSalaA07();
+      return;
+    }
+    if (resultado.cuenta?.pedidoId) setPedidoOperativoA05(resultado.cuenta);
+    if (resultado.mapa?.zonas) setMapaSalaA07(resultado.mapa);
+    else await refrescarSalaA07();
+    setMesaSeleccionadaA07(null);
+  }
   const vendibles = (0, import_react4.useMemo)(
     () => productos.filter((p22) => p22.activo !== false && (p22.tipo === "elaborado" || Number(p22.precioVenta) > 0) && (p22._pm07Servidor ? Number(p22.stock) || 0 : Number(p22.stockPisoVenta) || 0) > 0),
     [productos]
@@ -118252,7 +118435,9 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       pedidoVersion: resultado.pedidoVersion || null,
       pedidoEstado: resultado.pedidoEstado || "ABIERTO",
       lineas: Array.isArray(resultado.lineas) ? resultado.lineas : [],
-      currencyCode: resultado.currencyCode || "EUR"
+      currencyCode: resultado.currencyCode || "EUR",
+      responsableActual: resultado.responsableActual || null,
+      ubicacion: resultado.ubicacion || null
     });
     setErrorA05("");
     setConflictoA06(null);
@@ -118320,6 +118505,71 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     }
   }
 
+  function renderSalaA07() {
+    const pedido = pedidoOperativoA05;
+    if (!pedido?.cuentaId) return null;
+    const ubicacion = pedido.ubicacion || mapaSalaA07?.ubicacion || null;
+    const responsable = pedido.responsableActual || mapaSalaA07?.responsableActual || null;
+    const zonas = Array.isArray(mapaSalaA07?.zonas) ? mapaSalaA07.zonas : [];
+    return /* @__PURE__ */ import_react4.default.createElement(
+      Card,
+      { className: "mb-4" },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 mb-2" },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Sala y mesas"),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: refrescarSalaA07, disabled: cargandoSalaA07 }, cargandoSalaA07 ? "Actualizando…" : "Actualizar")
+      ),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "Ocupación y comensales vienen de cuentas reales del servidor. Responsable: ", /* @__PURE__ */ import_react4.default.createElement("b", null, etiquetaResponsableA07(responsable))),
+      ubicacion ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3 p-2 rounded-lg", style: { background: C2.accentSoft } },
+        /* @__PURE__ */ import_react4.default.createElement("b", null, ubicacion.mesa_nombre || ubicacion.mesa_codigo || "Mesa"),
+        " · ", ubicacion.zona_nombre || ubicacion.zona_tipo || "Zona",
+        " · ", Number(ubicacion.comensales) || 0, " comensal(es)",
+        " · ", ubicacion.estado_mesa || "OCUPADA",
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mt-1", style: { color: C2.inkSoft } }, "Traslado de mesa y relevo de responsable se validan en A07.2.")
+      ) : null,
+      errorSalaA07 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] mb-2 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", errorSalaA07) : null,
+      !cargandoSalaA07 && zonas.length === 0 && !errorSalaA07 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "No hay zonas ni mesas configuradas para este local.") : null,
+      zonas.map((zona) => /* @__PURE__ */ import_react4.default.createElement("div", { key: zona.zona_id, className: "mb-3" },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, zona.nombre || zona.codigo, " · ", zona.tipo),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 sm:grid-cols-3 gap-2" },
+          (zona.mesas || []).map((mesa) => {
+            const seleccionada = mesaSeleccionadaA07?.mesa_id === mesa.mesa_id;
+            const noAsignable = ["BLOQUEADA", "RESERVADA", "FUERA_SERVICIO"].includes(String(mesa.estado_efectivo || ""));
+            const esActual = ubicacion?.mesa_id && String(ubicacion.mesa_id) === String(mesa.mesa_id);
+            return /* @__PURE__ */ import_react4.default.createElement("button", {
+              key: mesa.mesa_id,
+              type: "button",
+              disabled: !!ubicacion || noAsignable || asignandoMesaA07,
+              onClick: () => {
+                setMesaSeleccionadaA07(mesa);
+                if (Number(mesa.capacidad) > 0) setComensalesA07(String(Math.min(Number(mesa.capacidad), 2) || 1));
+              },
+              className: "rounded-lg p-2 text-left",
+              style: {
+                border: "1px solid " + (esActual || seleccionada ? C2.accent : C2.line),
+                background: esActual ? C2.accentSoft : C2.surface,
+                opacity: noAsignable ? 0.6 : 1
+              }
+            },
+              /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold" }, mesa.nombre || mesa.codigo),
+              /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, mesa.estado_efectivo, " · ", Number(mesa.ocupacion_comensales) || 0, "/", Number(mesa.capacidad) || 0, " personas"),
+              mesa.sobre_capacidad ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.red } }, "Sobre capacidad") : null,
+              (mesa.cuentas || []).length ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mt-1", style: { color: C2.inkSoft } }, (mesa.cuentas || []).length, " cuenta(s) activa(s)") : null
+            );
+          })
+        )
+      )),
+      !ubicacion && mesaSeleccionadaA07 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 p-2 rounded-lg", style: { border: "1px solid " + C2.line } },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-2" }, "Asignar ", mesaSeleccionadaA07.nombre || mesaSeleccionadaA07.codigo),
+        /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Comensales" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", min: "1", max: "999", step: "1", value: comensalesA07, onChange: (e2) => setComensalesA07(e2.target.value) })),
+        Number(comensalesA07) > Number(mesaSeleccionadaA07.capacidad) ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.amber || C2.inkSoft } }, "Aviso: supera la capacidad configurada de la mesa. El backend lo permite como advertencia, no como bloqueo.") : null,
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" },
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarAsignacionMesaA07, disabled: asignandoMesaA07 }, asignandoMesaA07 ? "Asignando…" : "Asignar esta cuenta"),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setMesaSeleccionadaA07(null), disabled: asignandoMesaA07 }, "Cancelar")
+        )
+      ) : null
+    );
+  }
+
   function renderPedidoOperativoA05() {
     const pedido = pedidoOperativoA05;
     if (!pedido || !pedido.pedidoId) return null;
@@ -118371,7 +118621,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     conflictoA06.revisionServidor ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono text-[9.5px] mt-1", style: { color: C2.inkSoft } }, "Revisión servidor: ", conflictoA06.revisionServidor) : null,
     /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setConflictoA06(null) }, "Entendido")
   ) : null,
-  renderPedidoOperativoA05(), vendibles.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay nada en el piso de venta ahora mismo. Ponle precio a un producto en Productos, o haz un traspaso desde el almac\xE9n en la pesta\xF1a Traspasos." }) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "relative mb-3" }, /* @__PURE__ */ import_react4.default.createElement(
+  renderSalaA07(), renderPedidoOperativoA05(), vendibles.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay nada en el piso de venta ahora mismo. Ponle precio a un producto en Productos, o haz un traspaso desde el almac\xE9n en la pesta\xF1a Traspasos." }) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "relative mb-3" }, /* @__PURE__ */ import_react4.default.createElement(
     "input",
     {
       ref: inputEscaneoRef,
