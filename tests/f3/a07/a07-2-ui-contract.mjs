@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 const src = fs.readFileSync("source-recovery/fuente-recuperado.js", "utf8");
 const a06 = fs.readFileSync("supabase/migrations/20260924040000_abc_f3_a06_account_recovery.sql", "utf8");
 const a07 = fs.readFileSync("supabase/migrations/20260924050000_abc_f3_a07_tables_zones.sql", "utf8");
+const a07Contract = fs.readFileSync("tests/f3/a07/a07-contract.sql", "utf8");
 const a072 = fs.readFileSync("supabase/migrations/20260927150500_abc_f3_a07_2_list_responsables.sql", "utf8");
 
 // Backend A07.2 primitives.
@@ -87,7 +88,7 @@ for (const required of [
   "mapa cross-local aceptado",
   "efectos económicos inesperados"
 ]) {
-  assert.ok(a07.includes(required), `A07.2 falta evidencia backend: ${required}`);
+  assert.ok(a07Contract.includes(required), `A07.2 falta evidencia backend: ${required}`);
 }
 
 // UI adapters: same account, same local context, server versions and mandatory reason.
