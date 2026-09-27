@@ -1,4 +1,5 @@
-// A06.1 final materialized-head validation trigger.\nimport fs from "node:fs";
+// A06.1 final materialized-head validation trigger.
+import fs from "node:fs";
 import assert from "node:assert/strict";
 
 const recovered = fs.readFileSync("source-recovery/fuente-recuperado.js", "utf8");
