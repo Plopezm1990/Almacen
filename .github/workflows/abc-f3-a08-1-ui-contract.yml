@@ -1,0 +1,130 @@
+name: A08.1 line split UI
+
+on:
+  push:
+    branches:
+      - abc-f3-a08-1-line-split-ui
+    paths:
+      - 'source-recovery/fuente-recuperado.js'
+      - 'fuente.js'
+      - 'scripts/f3/a08-1-line-split-ui-patch.mjs'
+      - 'tests/f3/a08/a08-1-ui-contract.mjs'
+      - 'tests/ci/manifiesto_clasificacion.json'
+      - '.github/scripts/validar-manifiesto-ci.mjs'
+      - '.github/workflows/puerta-ci-release.yml'
+      - '.github/workflows/abc-f3-a08-1-ui-contract.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: abc-f3-a08-1-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+
+      - name: Guardar alcance y base release
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE=ed30d80f3d3a2e0b7d1841fc31ce589d70710e7a
+          git merge-base --is-ancestor "$BASE" HEAD
+          BAD=$(git diff --name-only "$BASE...HEAD" | grep -Ev '^(fuente\.js|source-recovery/fuente-recuperado\.js|scripts/f3/a08-1-line-split-ui-patch\.mjs|tests/f3/a08/a08-1-ui-contract\.mjs|tests/ci/manifiesto_clasificacion\.json|\.github/scripts/validar-manifiesto-ci\.mjs|\.github/workflows/puerta-ci-release\.yml|\.github/workflows/abc-f3-a08-1-ui-contract\.yml)$' || true)
+          if [ -n "$BAD" ]; then
+            echo "A08_1_SCOPE_FAIL" >&2
+            echo "$BAD" >&2
+            exit 1
+          fi
+          echo "A08_1_SCOPE=PASS"
+
+      - name: Aplicar integración A08.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -Fq 'async function moverCantidadLineaCuentaA08(' source-recovery/fuente-recuperado.js; then
+            echo "A08_1_ALREADY_MATERIALIZED=1"
+          else
+            node scripts/f3/a08-1-line-split-ui-patch.mjs
+          fi
+
+      - name: Materializar runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require("node:fs");
+          const recovered = fs.readFileSync("source-recovery/fuente-recuperado.js", "utf8");
+          const runtime = fs.readFileSync("fuente.js", "utf8");
+          const lines = recovered.split("\n");
+          if (lines[0] !== "// FUENTE RECUPERADO DESDE EL BUNDLE CANDIDATO DE L&A SUITE.") {
+            throw new Error("A08_1_BAD_RECOVERY_HEADER");
+          }
+          const body = lines.slice(14).join("\n");
+          const marker = "var C2 = {";
+          const first = runtime.indexOf(marker);
+          const second = runtime.indexOf(marker, first + 1);
+          if (first < 0 || second >= 0) throw new Error("A08_1_RUNTIME_BOUNDARY_AMBIGUOUS");
+          fs.writeFileSync("fuente.js", runtime.slice(0, first) + body);
+          NODE
+          echo "A08_1_RUNTIME_MATERIALIZED=PASS"
+
+      - name: Verificar sintaxis y Source Recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check fuente.js
+          python3 source-recovery/recuperar_candidato.py --check
+          echo "A08_1_SOURCE_RECOVERY=PASS"
+
+      - name: Build directo recuperado
+        shell: bash
+        working-directory: source-recovery
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm run check
+          rm -rf dist
+          npm run build
+          node --check dist/fuente.js
+          echo "A08_1_DIRECT_BUILD=PASS"
+
+      - name: Validar inventario CI
+        shell: bash
+        run: |
+          set -euo pipefail
+          node .github/scripts/validar-manifiesto-ci.mjs
+          echo "A08_1_MANIFEST=PASS"
+
+      - name: Regresión acumulada y contrato A08.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/f3/a05/a05-2-ui-contract.mjs
+          node tests/f3/a05/a05-3-ui-contract.mjs
+          node tests/f3/a06/a06-1-ui-contract.mjs
+          node tests/f3/a06/a06-2-ui-contract.mjs
+          node tests/f3/a07/a07-1-ui-contract.mjs
+          node tests/f3/a07/a07-2-ui-contract.mjs
+          node tests/f3/a08/a08-1-ui-contract.mjs
+          node tests/pm20/p07-revalidacion-acumulada-contract.mjs
+
+      - name: Persistir implementación materializada
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add source-recovery/fuente-recuperado.js fuente.js
+          if git diff --cached --quiet; then
+            echo "A08_1_ALREADY_CURRENT=1"
+            exit 0
+          fi
+          git commit -m "[skip netlify] A08.1 materialize line split UI"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo "A08_1_MATERIALIZED=1"
