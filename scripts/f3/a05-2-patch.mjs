@@ -296,15 +296,14 @@ source = replaceOnce(
   "A05 confirmation payload"
 );
 
-// 8. Acción UI de envío.
-source = replaceOnce(
-  source,
-`    setShowCobro(false);
-  }
-  return /* @__PURE__ */ import_react4.default.createElement("div", null,
-`,
-`    setShowCobro(false);
-  }
+// 8. Acción UI de envío: inserción acotada al componente VentaRapida.
+{
+  const ventaStart = source.indexOf("function VentaRapida(");
+  const cobroStart = source.indexOf("  async function confirmarCobro()", ventaStart);
+  const returnMarker = '\n  return /* @__PURE__ */ import_react4.default.createElement("div", null,';
+  const returnPos = source.indexOf(returnMarker, cobroStart);
+  if (ventaStart < 0 || cobroStart < 0 || returnPos < 0) throw new Error("A05 UI send function: anchor not found");
+  const sendUi = `
   async function enviarPedidoGuardadoA05() {
     if (procesandoA05 || !confirmacion || typeof enviarPedidoA05 !== "function") return;
     setProcesandoA05(true);
@@ -324,19 +323,19 @@ source = replaceOnce(
     } finally {
       setProcesandoA05(false);
     }
-  }
-  return /* @__PURE__ */ import_react4.default.createElement("div", null,
-`,
-  "A05 UI send function"
-);
+  }`;
+  source = source.slice(0, returnPos) + sendUi + source.slice(returnPos);
+}
 
-// 9. Modal de confirmación: Guardar -> Enviar.
-source = replaceOnce(
-  source,
-`confirmacion && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmacion(null), title: "Pedido guardado" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-2" }, confirmacion.currencyCode || "EUR", " ", fmt(confirmacion.total), " · ", confirmacion.n, " línea(s)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Cuenta ", confirmacion.cuentaId || "", " · Pedido ", confirmacion.pedidoId || ""), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "A02.1 ha persistido cuenta, pedido y líneas en el servidor. No se ha registrado cobro, documento fiscal ni movimiento de stock."), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setConfirmacion(null) }, "Aceptar")),`,
-`confirmacion && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => !procesandoA05 && setConfirmacion(null), title: confirmacion.pedidoEstado === "ENVIADO" ? "Pedido enviado" : "Pedido guardado" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-2" }, confirmacion.currencyCode || "EUR", " ", fmt(confirmacion.total), " · ", confirmacion.n, " línea(s)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Cuenta ", confirmacion.cuentaId || "", " · Pedido ", confirmacion.pedidoId || ""), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2 font-semibold", style: { color: confirmacion.pedidoEstado === "ENVIADO" ? C2.accent : C2.ink } }, "Estado operativo: ", confirmacion.pedidoEstado || "ABIERTO"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, confirmacion.pedidoEstado === "ENVIADO" ? "A05 ha confirmado las líneas y enviado el pedido. Preparación, servido y cancelaciones se habilitarán en el siguiente subpunto." : "A02/A04 han persistido cuenta, pedido y líneas. A05 puede confirmar las líneas y enviar el pedido sin registrar cobro, documento fiscal ni movimiento de stock."), errorA05 && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", errorA05), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, confirmacion.pedidoEstado !== "ENVIADO" ? /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: enviarPedidoGuardadoA05, disabled: procesandoA05 }, procesandoA05 ? "Enviando pedido…" : "Enviar pedido") : null, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmacion(null), disabled: procesandoA05 }, confirmacion.pedidoEstado === "ENVIADO" ? "Aceptar" : "Cerrar"))),`,
-  "A05 confirmation modal"
-);
+// 9. Modal de confirmación: Guardar -> Enviar, sustitución acotada.
+{
+  const ventaStart = source.indexOf("function VentaRapida(");
+  const modalStart = source.indexOf('confirmacion && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmacion(null), title: "Pedido guardado" }', ventaStart);
+  const modalEnd = source.indexOf(", renderHistorialVentas()", modalStart);
+  if (ventaStart < 0 || modalStart < 0 || modalEnd < 0) throw new Error("A05 confirmation modal: anchor not found");
+  const modalNuevo = `confirmacion && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => !procesandoA05 && setConfirmacion(null), title: confirmacion.pedidoEstado === "ENVIADO" ? "Pedido enviado" : "Pedido guardado" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-2" }, confirmacion.currencyCode || "EUR", " ", fmt(confirmacion.total), " · ", confirmacion.n, " línea(s)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Cuenta ", confirmacion.cuentaId || "", " · Pedido ", confirmacion.pedidoId || ""), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2 font-semibold", style: { color: confirmacion.pedidoEstado === "ENVIADO" ? C2.accent : C2.ink } }, "Estado operativo: ", confirmacion.pedidoEstado || "ABIERTO"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, confirmacion.pedidoEstado === "ENVIADO" ? "A05 ha confirmado las líneas y enviado el pedido. Preparación, servido y cancelaciones se habilitarán en el siguiente subpunto." : "A02/A04 han persistido cuenta, pedido y líneas. A05 puede confirmar las líneas y enviar el pedido sin registrar cobro, documento fiscal ni movimiento de stock."), errorA05 && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", errorA05), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, confirmacion.pedidoEstado !== "ENVIADO" ? /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: enviarPedidoGuardadoA05, disabled: procesandoA05 }, procesandoA05 ? "Enviando pedido…" : "Enviar pedido") : null, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmacion(null), disabled: procesandoA05 }, confirmacion.pedidoEstado === "ENVIADO" ? "Aceptar" : "Cerrar")))`;
+  source = source.slice(0, modalStart) + modalNuevo + source.slice(modalEnd);
+}
 
 // 10. Aviso del TPV.
 source = replaceOnce(
