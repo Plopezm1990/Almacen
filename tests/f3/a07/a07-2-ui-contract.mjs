@@ -1,3 +1,4 @@
+// A07.2 final materialized-head validation trigger.
 import fs from "node:fs";
 import assert from "node:assert/strict";
 
