@@ -9,6 +9,7 @@ on:
       - 'fuente.js'
       - 'scripts/f3/a08-1-line-split-ui-patch.mjs'
       - 'tests/f3/a08/a08-1-ui-contract.mjs'
+      - 'tests/pm20/p07-revalidacion-acumulada-contract.mjs'
       - 'tests/ci/manifiesto_clasificacion.json'
       - '.github/scripts/validar-manifiesto-ci.mjs'
       - '.github/workflows/puerta-ci-release.yml'
@@ -35,7 +36,7 @@ jobs:
           set -euo pipefail
           BASE=ed30d80f3d3a2e0b7d1841fc31ce589d70710e7a
           git merge-base --is-ancestor "$BASE" HEAD
-          BAD=$(git diff --name-only "$BASE...HEAD" | grep -Ev '^(fuente\.js|source-recovery/fuente-recuperado\.js|scripts/f3/a08-1-line-split-ui-patch\.mjs|tests/f3/a08/a08-1-ui-contract\.mjs|tests/ci/manifiesto_clasificacion\.json|\.github/scripts/validar-manifiesto-ci\.mjs|\.github/workflows/puerta-ci-release\.yml|\.github/workflows/abc-f3-a08-1-ui-contract\.yml)$' || true)
+          BAD=$(git diff --name-only "$BASE...HEAD" | grep -Ev '^(fuente\.js|source-recovery/fuente-recuperado\.js|scripts/f3/a08-1-line-split-ui-patch\.mjs|tests/f3/a08/a08-1-ui-contract\.mjs|tests/pm20/p07-revalidacion-acumulada-contract\.mjs|tests/ci/manifiesto_clasificacion\.json|\.github/scripts/validar-manifiesto-ci\.mjs|\.github/workflows/puerta-ci-release\.yml|\.github/workflows/abc-f3-a08-1-ui-contract\.yml)$' || true)
           if [ -n "$BAD" ]; then
             echo "A08_1_SCOPE_FAIL" >&2
             echo "$BAD" >&2
