@@ -16,7 +16,7 @@ const src = fs.readFileSync('fuente.js', 'utf8');
 // criterio NR-07/"Todos nunca destino" ya cerrado en PM19 P05, aplicado también a nivel
 // de navegación de pantalla completa, no solo a las mutaciones individuales. ----
 {
-  assert.match(src, /tab === "venta" && \(localInformeId && localActivoId === localInformeId \? .*createElement\(VentaRapida, \{ productos: productosDelLocalActivo, venderCarrito, anularVenta, movimientos: movimientosDelLocalActivo/, 'VentaRapida debe recibir datos ya filtrados por local activo y las funciones probadas del motor, sin reimplementar nada');
+  assert.match(src, /tab === "venta" && \(localInformeId && localActivoId === localInformeId \? .*createElement\(VentaRapida, \{ productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, anularVenta, movimientos: movimientosDelLocalActivo/, 'VentaRapida debe recibir datos filtrados por local activo y el adaptador primario A02/A03, sin reimplementar el motor');
   assert.match(src, /El TPV no puede abrirse en Todos los locales\. Selecciona un local concreto: cada venta, stock y caja pertenecen a un \\xFAnico local\./, 'debe existir el bloqueo explícito de TPV en modo "Todos"');
   console.log('P07_PM20_TPV_BLOQUEADO_EN_TODOS=PASS');
 }
