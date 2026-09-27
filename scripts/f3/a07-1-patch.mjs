@@ -372,8 +372,8 @@ source = replaceOnce(
 // Insert map before operational order card.
 source = replaceOnce(
   source,
-  '), renderPedidoOperativoA05(), vendibles.length === 0 ?',
-  '), renderSalaA07(), renderPedidoOperativoA05(), vendibles.length === 0 ?',
+  '  renderPedidoOperativoA05(), vendibles.length === 0 ?',
+  '  renderSalaA07(), renderPedidoOperativoA05(), vendibles.length === 0 ?',
   "A07.1 render placement"
 );
 
