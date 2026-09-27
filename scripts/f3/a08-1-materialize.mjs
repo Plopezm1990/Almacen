@@ -1,6 +1,7 @@
 import fs from "node:fs";
 
 // A08.1: endurece la fuente canónica y materializa el runtime publicado de la rama.
+// Validación final del HEAD materializado.
 const recoveredPath = "source-recovery/fuente-recuperado.js";
 const runtimePath = "fuente.js";
 let recovered = fs.readFileSync(recoveredPath, "utf8");
