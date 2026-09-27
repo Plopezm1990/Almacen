@@ -258,7 +258,7 @@ const handlers = `
     const sitio = [mesa, zona].filter(Boolean).join(" · ");
     const id = String(cuenta?.cuenta_id || "");
     const total = Number(cuenta?.total_comercial || 0);
-    return `${sitio || cuenta?.modalidad || "Cuenta"} · …${id.slice(-8)} · €${fmt(total)}`;
+    return String(sitio || cuenta?.modalidad || "Cuenta") + " · …" + id.slice(-8) + " · €" + fmt(total);
   }
 
   async function confirmarRepartoLineaA08() {
