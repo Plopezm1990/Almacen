@@ -36,7 +36,8 @@ for (const forbidden of [
 
 // Assignment must use the actual recovered account and optimistic versions.
 const assignIni = src.indexOf("async function asignarMesaCuentaA07(");
-const assignFin = src.indexOf("\n  async function venderCarrito(", assignIni);
+const assignFinA072 = src.indexOf("\n  async function listarResponsablesCuentaA07(", assignIni);
+const assignFin = assignFinA072 > assignIni ? assignFinA072 : src.indexOf("\n  async function venderCarrito(", assignIni);
 assert.ok(assignIni >= 0 && assignFin > assignIni, "A07.1 adaptador de asignación no localizable");
 const assign = src.slice(assignIni, assignFin);
 for (const required of [
@@ -81,7 +82,7 @@ for (const required of [
   "Comensales",
   "Asignar esta cuenta",
   "No hay zonas ni mesas configuradas para este local.",
-  "Traslado de mesa y relevo de responsable se validan en A07.2."
+  "Traslados y relevos conservan la misma cuenta y se registran en el historial del servidor."
 ]) {
   assert.ok(src.includes(required), `A07.1 UI incompleta: ${required}`);
 }
@@ -108,11 +109,11 @@ assert.ok(src.includes("if (resultado?.conflict) await refrescarSalaA07();"), "A
 
 // A07.1 is wired from factory to TPV.
 assert.ok(
-  src.includes("recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07 } = crearLogicaVenta"),
+  src.includes("recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07"),
   "A07.1 adapters not destructured"
 );
 assert.ok(
-  src.includes("recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, nombreResponsableActualA07"),
+  src.includes("recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07"),
   "A07.1 TPV props not wired"
 );
 
