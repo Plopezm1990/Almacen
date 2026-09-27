@@ -58,7 +58,7 @@ assert.ok(recovered.includes("function VentaRapida({ productos, venderCarrito, e
 assert.ok(recovered.includes("async function enviarPedidoGuardadoA05()"), "A05.2: UI sin acción de envío");
 assert.ok(recovered.includes("Estado operativo:"), "A05.2: UI no muestra estado operativo");
 assert.ok(recovered.includes('"Enviar pedido"'), "A05.2: CTA de envío ausente");
-assert.ok(recovered.includes("Preparación, servido y cancelaciones se habilitarán en el siguiente subpunto."), "A05.2: límite A05.3 no documentado");
+assert.ok(recovered.includes("Continúa su preparación, servido o cancelación desde el panel operativo del TPV."), "A05.2/A05.3: continuidad operativa no documentada");
 
 assert.ok(a05.includes("create function public.abc_enviar_pedido("), "A05.2: backend A05 ausente");
 assert.ok(a05.includes("if v_pedido.estado<>'ABIERTO' then raise exception 'pedido_no_enviable'"), "A05.2: backend no exige ABIERTO");
