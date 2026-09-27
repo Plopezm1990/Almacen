@@ -2757,7 +2757,7 @@ function GestionAlmacen() {
       movimientos: movimientosDelLocalActivo,
       setTab: cambiarTabPM15
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, anularVenta, movimientos: movimientosDelLocalActivo, registrarAuditoria, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un \xFAnico local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, anularVenta, movimientos: movimientosDelLocalActivo, registrarAuditoria, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un \xFAnico local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -7038,6 +7038,15 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("pedido_enviar_no_autorizado")) return "Tu perfil no tiene permiso para enviar este pedido.";
     if (msg.includes("pedido_no_enviable")) return "El pedido ya no está en un estado que permita enviarlo.";
     if (msg.includes("pedido_lineas_no_confirmadas")) return "Hay líneas que todavía no están confirmadas y el pedido no puede enviarse.";
+    if (msg.includes("transicion_linea_no_autorizada")) return "Tu perfil no tiene permiso para realizar esta transición del pedido.";
+    if (msg.includes("linea_cancelar_no_autorizada")) return "Tu perfil no tiene permiso para cancelar esta línea.";
+    if (msg.includes("cancelacion_sensible_no_autorizada")) return "Esta cancelación requiere autorización sensible de Encargado o Propietario.";
+    if (msg.includes("pedido_cancelar_no_autorizado")) return "Tu perfil no tiene permiso para cancelar el pedido completo.";
+    if (msg.includes("motivo_cancelacion_requerido")) return "Es obligatorio indicar un motivo para cancelar.";
+    if (msg.includes("transicion_linea_invalida")) return "La línea cambió de estado y esa acción ya no es válida.";
+    if (msg.includes("linea_no_cancelable")) return "La línea ya no se puede cancelar.";
+    if (msg.includes("pedido_con_lineas_servidas_no_cancelable")) return "No se puede cancelar un pedido que ya tiene líneas servidas.";
+    if (msg.includes("pedido_no_cancelable") || msg.includes("pedido_no_operable")) return "El pedido ya no admite esa operación.";
     if (msg.includes("pedido_sin_lineas_enviables")) return "El pedido no contiene líneas que se puedan enviar.";
     if (msg.includes("linea_no_confirmable")) return "Una línea cambió de estado y ya no puede confirmarse desde este pedido.";
     if (msg.includes("configuracion_a04_contexto_ausente")) return "Falta la configuración original de una variante o modificador. Vuelve a crear ese pedido antes de enviarlo.";
@@ -7462,6 +7471,98 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         lineas: guardado.lineas,
         lineasEnviadas: Number(enviado?.lineas_enviadas) || guardado.lineas.filter((l22) => l22.estado === "ENVIADA").length
       };
+    } catch (error) {
+      return { ok: false, error: errorRpcA02(error) };
+    }
+  }
+
+  function leerPedidoOperativoA05() {
+    if (!localActivoId) return null;
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return null;
+    try {
+      return leerContextoCuentaA02(empresaId, localActivoId);
+    } catch (e2) {
+      return null;
+    }
+  }
+
+  async function accionPedidoA05(accion, lineaId = null, motivo = "") {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local antes de operar el pedido." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return { ok: false, error: "A05 requiere conexión con el servidor para operar el pedido." };
+
+    try {
+      const contexto = leerContextoCuentaA02(empresaId, localActivoId);
+      if (!contexto) throw new Error("contexto_cuenta_persistido_invalido");
+      if (["CERRADO", "CANCELADO"].includes(contexto.pedidoEstado)) throw new Error("pedido_no_operable");
+      const supabase = await window.getSupabaseClient();
+
+      if (accion === "CANCELAR_PEDIDO") {
+        const motivoLimpio = String(motivo || "").trim();
+        if (!motivoLimpio) throw new Error("motivo_cancelacion_requerido");
+        const operationId = "a05.3.cancelar.pedido." + contexto.pedidoId + "." + contexto.pedidoVersion;
+        const resultado = await rpcA02ConRecuperacion(supabase, "abc_cancelar_pedido", {
+          p_operation_id: operationId,
+          p_empresa_id: empresaId,
+          p_local_id: localActivoId,
+          p_pedido_id: contexto.pedidoId,
+          p_motivo: motivoLimpio,
+          p_expected_pedido_version: versionServidorA02(contexto.pedidoVersion, "a05.cancel.pedido_version"),
+          p_terminal_id: contexto.terminalId,
+          p_session_id: contexto.sessionId,
+          p_operating_day: contexto.operatingDay
+        }, empresaId, localActivoId, operationId);
+        contexto.pedidoVersion = versionServidorA02(resultado?.pedido_version, "a05.cancel.result.pedido_version");
+        contexto.pedidoEstado = String(resultado?.estado || "CANCELADO");
+        contexto.lineas = contexto.lineas.map((linea) => linea.estado === "CANCELADA" ? linea : {
+          ...linea,
+          estado: "CANCELADA",
+          lineaVersion: versionServidorA02(Number(linea.lineaVersion) + 1, "a05.cancel.result.linea_version")
+        });
+        contexto.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
+        const guardado = guardarContextoCuentaA02(empresaId, localActivoId, contexto);
+        return { ok: true, ...guardado };
+      }
+
+      const linea = contexto.lineas.find((l22) => l22.lineaId === lineaId);
+      if (!linea) throw new Error("linea_no_encontrada");
+      const mapa = {
+        INICIAR_PREPARACION: "abc_iniciar_preparacion_linea",
+        MARCAR_PREPARADA: "abc_marcar_linea_preparada",
+        SERVIR: "abc_servir_linea",
+        CANCELAR_LINEA: "abc_cancelar_linea"
+      };
+      const rpc = mapa[accion];
+      if (!rpc) throw new Error("accion_a05_invalida");
+      const operationId = "a05.3." + accion.toLowerCase() + "." + linea.lineaId + "." + linea.lineaVersion + "." + contexto.pedidoVersion;
+      const params = {
+        p_operation_id: operationId,
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_linea_id: linea.lineaId,
+        p_expected_linea_version: versionServidorA02(linea.lineaVersion, "a05.action.linea_version"),
+        p_expected_pedido_version: versionServidorA02(contexto.pedidoVersion, "a05.action.pedido_version"),
+        p_terminal_id: contexto.terminalId,
+        p_session_id: contexto.sessionId,
+        p_operating_day: contexto.operatingDay
+      };
+      if (accion === "CANCELAR_LINEA") {
+        const motivoLimpio = String(motivo || "").trim();
+        if (!motivoLimpio) throw new Error("motivo_cancelacion_requerido");
+        params.p_motivo = motivoLimpio;
+      }
+
+      const resultado = await rpcA02ConRecuperacion(supabase, rpc, params, empresaId, localActivoId, operationId);
+      linea.lineaVersion = versionServidorA02(resultado?.linea_version, "a05.action.result.linea_version");
+      linea.estado = String(resultado?.estado || linea.estado);
+      contexto.pedidoVersion = versionServidorA02(resultado?.pedido_version, "a05.action.result.pedido_version");
+      contexto.pedidoEstado = String(resultado?.pedido_estado || contexto.pedidoEstado);
+      contexto.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
+      const guardado = guardarContextoCuentaA02(empresaId, localActivoId, contexto);
+      return { ok: true, ...guardado };
     } catch (error) {
       return { ok: false, error: errorRpcA02(error) };
     }
@@ -16166,7 +16267,7 @@ function EtiquetasCatalogo({ productos, fichasCosto, alergenosDeFicha, empresa =
     return a22 ? `${a22.icono} ${a22.nombre}` : "";
   }).join(" \xB7 "))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[13px]" }, "\u20AC", fmt(precioNeto(v22.producto) * (1 + ivaDe(v22.producto) / 100))))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mt-4", style: { color: "#6B7A6E" } }, "Precios con IVA incluido. Puede haber trazas de otros al\xE9rgenos por manipulaci\xF3n en el mismo obrador."))));
 }
-function VentaRapida({ productos, venderCarrito, enviarPedidoA05, anularVenta, movimientos = [], registrarAuditoria, local = null, configEmpresa }) {
+function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, anularVenta, movimientos = [], registrarAuditoria, local = null, configEmpresa }) {
   const [carrito, setCarrito] = (0, import_react4.useState)([]);
   const [categoria, setCategoria] = (0, import_react4.useState)("Todos");
   const [busqueda, setBusqueda] = (0, import_react4.useState)("");
@@ -16566,11 +16667,30 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, anularVenta, m
   const [enviandoVenta, setEnviandoVenta] = (0, import_react4.useState)(false);
   const [procesandoA05, setProcesandoA05] = (0, import_react4.useState)(false);
   const [errorA05, setErrorA05] = (0, import_react4.useState)("");
+  const [pedidoOperativoA05, setPedidoOperativoA05] = (0, import_react4.useState)(null);
+  const [motivoOperacionA05, setMotivoOperacionA05] = (0, import_react4.useState)("");
+  const [accionEnCursoA05, setAccionEnCursoA05] = (0, import_react4.useState)("");
   const [errorVenta, setErrorVenta] = (0, import_react4.useState)("");
   const [configurandoA04, setConfigurandoA04] = (0, import_react4.useState)(null);
   const [seleccionesA04, setSeleccionesA04] = (0, import_react4.useState)({});
   const [errorA04, setErrorA04] = (0, import_react4.useState)("");
   const [cargandoA04, setCargandoA04] = (0, import_react4.useState)(false);
+
+  (0, import_react4.useEffect)(() => {
+    let activo = true;
+    if (typeof leerPedidoOperativoA05 !== "function") {
+      setPedidoOperativoA05(null);
+      return () => {
+        activo = false;
+      };
+    }
+    Promise.resolve(leerPedidoOperativoA05()).then((pedido) => {
+      if (activo) setPedidoOperativoA05(pedido || null);
+    });
+    return () => {
+      activo = false;
+    };
+  }, [local?.id, configEmpresa?.id, leerPedidoOperativoA05]);
   const vendibles = (0, import_react4.useMemo)(
     () => productos.filter((p22) => p22.activo !== false && (p22.tipo === "elaborado" || Number(p22.precioVenta) > 0) && (p22._pm07Servidor ? Number(p22.stock) || 0 : Number(p22.stockPisoVenta) || 0) > 0),
     [productos]
@@ -16926,6 +17046,9 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, anularVenta, m
       currencyCode: resultado.currencyCode || "EUR"
     });
     setErrorA05("");
+    if (typeof leerPedidoOperativoA05 === "function") {
+      setPedidoOperativoA05(await Promise.resolve(leerPedidoOperativoA05()));
+    }
     setCarrito([]);
     setShowCobro(false);
   }
@@ -16945,11 +17068,77 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, anularVenta, m
         pedidoEstado: resultado.pedidoEstado || "ENVIADO",
         lineas: Array.isArray(resultado.lineas) ? resultado.lineas : actual.lineas
       } : actual);
+      setPedidoOperativoA05(resultado);
     } finally {
       setProcesandoA05(false);
     }
   }
-  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[16px] font-semibold" }, "TPV"), carrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: vaciarCarrito }, "Vaciar carrito")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "A02/A04 guardan la cuenta y el pedido con autoridad del servidor; A05 permite enviarlo de forma operativa. Los productos configurables usan variantes y modificadores A04. ", /* @__PURE__ */ import_react4.default.createElement("b", null, "No registra cobro, tique fiscal ni movimiento de stock"), ". El total definitivo lo confirma el servidor.")), vendibles.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay nada en el piso de venta ahora mismo. Ponle precio a un producto en Productos, o haz un traspaso desde el almac\xE9n en la pesta\xF1a Traspasos." }) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "relative mb-3" }, /* @__PURE__ */ import_react4.default.createElement(
+  async function ejecutarAccionA05(accion, lineaId = null) {
+    if (accionEnCursoA05 || typeof accionPedidoA05 !== "function") return;
+    if ((accion === "CANCELAR_LINEA" || accion === "CANCELAR_PEDIDO") && !motivoOperacionA05.trim()) {
+      setErrorA05("Escribe un motivo antes de cancelar.");
+      return;
+    }
+    setAccionEnCursoA05(accion + ":" + (lineaId || "pedido"));
+    setErrorA05("");
+    try {
+      const resultado = await accionPedidoA05(accion, lineaId, motivoOperacionA05);
+      if (!resultado || resultado.ok === false) {
+        setErrorA05(resultado?.error || "No se pudo realizar la operación.");
+        return;
+      }
+      setPedidoOperativoA05(resultado);
+      setConfirmacion((actual) => actual && actual.pedidoId === resultado.pedidoId ? {
+        ...actual,
+        pedidoVersion: resultado.pedidoVersion,
+        pedidoEstado: resultado.pedidoEstado,
+        lineas: resultado.lineas
+      } : actual);
+      if (accion === "CANCELAR_LINEA" || accion === "CANCELAR_PEDIDO") setMotivoOperacionA05("");
+    } finally {
+      setAccionEnCursoA05("");
+    }
+  }
+
+  function renderPedidoOperativoA05() {
+    const pedido = pedidoOperativoA05;
+    if (!pedido || !pedido.pedidoId) return null;
+    const terminal = pedido.pedidoEstado === "CERRADO" || pedido.pedidoEstado === "CANCELADO";
+    const tieneServidas = (pedido.lineas || []).some((l22) => l22.estado === "SERVIDA");
+    const puedeCancelarPedido = !terminal && !tieneServidas;
+    return /* @__PURE__ */ import_react4.default.createElement(
+      Card,
+      { className: "mb-4" },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 mb-2" },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Pedido operativo"),
+        /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px] font-semibold", style: { color: pedido.pedidoEstado === "CANCELADO" ? C2.red : C2.accent } }, pedido.pedidoEstado || "ABIERTO")
+      ),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, "Los permisos se validan siempre en el servidor. Preparación, servido y cancelaciones no registran cobro ni documento fiscal."),
+      (pedido.lineas || []).map((linea) => {
+        const producto = productos.find((p22) => p22.id === linea.productoId);
+        const busy = !!accionEnCursoA05;
+        return /* @__PURE__ */ import_react4.default.createElement(
+          "div",
+          { key: linea.lineaId, className: "py-2", style: { borderTop: "1px solid " + C2.line } },
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 mb-1" },
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium" }, producto?.nombre || linea.productoId),
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] font-semibold", style: { color: C2.inkSoft } }, linea.estado)
+          ),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-wrap gap-1.5" },
+            linea.estado === "ENVIADA" ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => ejecutarAccionA05("INICIAR_PREPARACION", linea.lineaId), disabled: busy }, "Iniciar preparación") : null,
+            linea.estado === "EN_PREPARACION" ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => ejecutarAccionA05("MARCAR_PREPARADA", linea.lineaId), disabled: busy }, "Marcar preparada") : null,
+            linea.estado === "PREPARADA" ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => ejecutarAccionA05("SERVIR", linea.lineaId), disabled: busy }, "Servir") : null,
+            !["SERVIDA", "CANCELADA"].includes(linea.estado) ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", onClick: () => ejecutarAccionA05("CANCELAR_LINEA", linea.lineaId), disabled: busy || !motivoOperacionA05.trim() }, "Cancelar línea") : null
+          )
+        );
+      }),
+      !terminal ? /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo de cancelación (obligatorio para cancelar)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivoOperacionA05, onChange: (e2) => setMotivoOperacionA05(e2.target.value), placeholder: "Error de pedido, cliente cancela…" })) : null,
+      errorA05 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] mb-2 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", errorA05) : null,
+      puedeCancelarPedido ? /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: () => ejecutarAccionA05("CANCELAR_PEDIDO"), disabled: !!accionEnCursoA05 || !motivoOperacionA05.trim() }, accionEnCursoA05 === "CANCELAR_PEDIDO:pedido" ? "Cancelando…" : "Cancelar pedido") : null
+    );
+  }
+
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[16px] font-semibold" }, "TPV"), carrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: vaciarCarrito }, "Vaciar carrito")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "A02/A04 guardan la cuenta y el pedido con autoridad del servidor; A05 permite enviarlo de forma operativa. Los productos configurables usan variantes y modificadores A04. ", /* @__PURE__ */ import_react4.default.createElement("b", null, "No registra cobro, tique fiscal ni movimiento de stock"), ". El total definitivo lo confirma el servidor.")), renderPedidoOperativoA05(), vendibles.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay nada en el piso de venta ahora mismo. Ponle precio a un producto en Productos, o haz un traspaso desde el almac\xE9n en la pesta\xF1a Traspasos." }) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "relative mb-3" }, /* @__PURE__ */ import_react4.default.createElement(
     "input",
     {
       ref: inputEscaneoRef,
@@ -17040,7 +17229,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, anularVenta, m
       disabled: enviandoVenta || medioPago === "Efectivo" && cambio !== null && cambio < 0 || medioPago === "Mixto" && (Number(importeTarjetaMixto) < 0 || Number(importeTarjetaMixto) > total || restoEfectivoMixto > 0 && cambio !== null && cambio < 0)
     },
     enviandoVenta ? "Cobrando\u2026" : "Confirmar venta"
-  ), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowCobro(false), disabled: enviandoVenta }, "Cancelar"))), confirmacion && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => !procesandoA05 && setConfirmacion(null), title: confirmacion.pedidoEstado === "ENVIADO" ? "Pedido enviado" : "Pedido guardado" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-2" }, confirmacion.currencyCode || "EUR", " ", fmt(confirmacion.total), " · ", confirmacion.n, " línea(s)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Cuenta ", confirmacion.cuentaId || "", " · Pedido ", confirmacion.pedidoId || ""), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2 font-semibold", style: { color: confirmacion.pedidoEstado === "ENVIADO" ? C2.accent : C2.ink } }, "Estado operativo: ", confirmacion.pedidoEstado || "ABIERTO"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, confirmacion.pedidoEstado === "ENVIADO" ? "A05 ha confirmado las líneas y enviado el pedido. Preparación, servido y cancelaciones se habilitarán en el siguiente subpunto." : "A02/A04 han persistido cuenta, pedido y líneas. A05 puede confirmar las líneas y enviar el pedido sin registrar cobro, documento fiscal ni movimiento de stock."), errorA05 && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", errorA05), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, confirmacion.pedidoEstado !== "ENVIADO" ? /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: enviarPedidoGuardadoA05, disabled: procesandoA05 }, procesandoA05 ? "Enviando pedido…" : "Enviar pedido") : null, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmacion(null), disabled: procesandoA05 }, confirmacion.pedidoEstado === "ENVIADO" ? "Aceptar" : "Cerrar"))), renderHistorialVentas(), confirmAnular && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmAnular(null), title: "Anular esta venta" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, /* @__PURE__ */ import_react4.default.createElement("b", null, confirmAnular.resumen), " \xB7 \u20AC", fmt(confirmAnular.importe)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "El stock de esos productos volver\xE1 al piso de venta, y quedar\xE1 registrada la anulaci\xF3n. La venta original no se borra: se ve que existi\xF3 y que se anul\xF3."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivoAnular, onChange: (e2) => setMotivoAnular(e2.target.value), placeholder: "Cobro duplicado, importe incorrecto\u2026" })), errorAnular && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", role: "alert", style: { color: C2.red } }, errorAnular), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: confirmarAnulacion, disabled: procesandoAnulacion }, procesandoAnulacion ? "Anulando\u2026" : "S\xED, anular la venta"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmAnular(null), disabled: procesandoAnulacion }, "Cancelar"))));
+  ), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowCobro(false), disabled: enviandoVenta }, "Cancelar"))), confirmacion && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => !procesandoA05 && setConfirmacion(null), title: confirmacion.pedidoEstado === "ENVIADO" ? "Pedido enviado" : "Pedido guardado" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-2" }, confirmacion.currencyCode || "EUR", " ", fmt(confirmacion.total), " · ", confirmacion.n, " línea(s)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Cuenta ", confirmacion.cuentaId || "", " · Pedido ", confirmacion.pedidoId || ""), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2 font-semibold", style: { color: confirmacion.pedidoEstado === "ENVIADO" ? C2.accent : C2.ink } }, "Estado operativo: ", confirmacion.pedidoEstado || "ABIERTO"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, confirmacion.pedidoEstado === "ENVIADO" ? "A05 ha confirmado las líneas y enviado el pedido. Continúa su preparación, servido o cancelación desde el panel operativo del TPV." : "A02/A04 han persistido cuenta, pedido y líneas. A05 puede confirmar las líneas y enviar el pedido sin registrar cobro, documento fiscal ni movimiento de stock."), errorA05 && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", errorA05), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, confirmacion.pedidoEstado !== "ENVIADO" ? /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: enviarPedidoGuardadoA05, disabled: procesandoA05 }, procesandoA05 ? "Enviando pedido…" : "Enviar pedido") : null, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmacion(null), disabled: procesandoA05 }, confirmacion.pedidoEstado === "ENVIADO" ? "Aceptar" : "Cerrar"))), renderHistorialVentas(), confirmAnular && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmAnular(null), title: "Anular esta venta" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, /* @__PURE__ */ import_react4.default.createElement("b", null, confirmAnular.resumen), " \xB7 \u20AC", fmt(confirmAnular.importe)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "El stock de esos productos volver\xE1 al piso de venta, y quedar\xE1 registrada la anulaci\xF3n. La venta original no se borra: se ve que existi\xF3 y que se anul\xF3."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivoAnular, onChange: (e2) => setMotivoAnular(e2.target.value), placeholder: "Cobro duplicado, importe incorrecto\u2026" })), errorAnular && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", role: "alert", style: { color: C2.red } }, errorAnular), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: confirmarAnulacion, disabled: procesandoAnulacion }, procesandoAnulacion ? "Anulando\u2026" : "S\xED, anular la venta"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmAnular(null), disabled: procesandoAnulacion }, "Cancelar"))));
 }
 function Traspasos({ productos, productosEmpresa = [], locales = [], localActivoId, traspasos, traspasarStock, traspasarEntreLocales, pisoVentaBajo, fichasCosto = [] }) {
   const h3 = import_react4.default.createElement;
