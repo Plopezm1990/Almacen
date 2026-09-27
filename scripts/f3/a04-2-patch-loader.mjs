@@ -13,5 +13,9 @@ const oldCta = 'recovered.includes("lineasCarrito.length > 0 && /* @__PURE__ */ 
 const newCta = 'recovered.includes("lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro, disabled: enviandoVenta || cargandoA04 }")';
 if (test.includes(oldCta)) test = test.replace(oldCta, newCta);
 else if (!test.includes(newCta)) throw new Error("A04_2_P12_CTA_TEST_ANCHOR_MISSING");
+const oldMode = "adapter.includes('modo: \"a02-a03-pedido\"')";
+const newMode = "adapter.includes('modo: pending.lineas.some((l22) => !!l22.configuracionA04) ? \"a02-a03-a04-pedido\" : \"a02-a03-pedido\"')";
+if (test.includes(oldMode)) test = test.replace(oldMode, newMode);
+else if (!test.includes(newMode)) throw new Error("A04_2_P12_MODE_TEST_ANCHOR_MISSING");
 writeFileSync(testPath, test);
 console.log("A04_2_P12_TEST_ALIGNED=PASS");
