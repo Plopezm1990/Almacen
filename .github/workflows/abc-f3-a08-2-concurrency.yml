@@ -1,0 +1,109 @@
+name: "ABC F3 A08.2.2 -- deterministic two-box concurrency"
+
+on:
+  push:
+    branches: [abc-f3-a08-2-concurrency]
+    paths:
+      - "tests/f3/a08/a08-2-concurrency.sh"
+      - ".github/workflows/abc-f3-a08-2-concurrency.yml"
+  pull_request:
+    branches: [release]
+    paths:
+      - "tests/f3/a08/a08-2-concurrency.sh"
+      - ".github/workflows/abc-f3-a08-2-concurrency.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  a08-2-2-concurrency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+
+      - name: Guardar alcance A08.2.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE=3571f0d75ba8d4e640f9872b5778317137b27f30
+          git merge-base --is-ancestor "$BASE" HEAD
+
+          test -f tests/f3/a08/a08-2-concurrency.sh
+          test -f .github/workflows/abc-f3-a08-2-concurrency.yml
+          bash -n tests/f3/a08/a08-2-concurrency.sh
+
+          BAD=$(git diff --name-only "$BASE...HEAD" | grep -Ev '^(tests/f3/a08/a08-2-concurrency\.sh|\.github/workflows/abc-f3-a08-2-concurrency\.yml)$' || true)
+          if [ -n "$BAD" ]; then
+            echo "A08_2_2_SCOPE_FAIL: archivos fuera del alcance autorizado:" >&2
+            echo "$BAD" >&2
+            exit 1
+          fi
+
+          if git diff --name-only "$BASE...HEAD" | grep -q '^supabase/migrations/'; then
+            echo "A08_2_2_SCOPE_FAIL: no se autorizaron cambios de migración." >&2
+            exit 1
+          fi
+
+          echo "A08_2_2_SCOPE=PASS"
+
+      - name: Preparar fixture F2/F3
+        run: psql -v ON_ERROR_STOP=1 -f tests/f3/a08/fixture-a08.sql
+
+      - name: Aplicar baseline F2 y F3 hasta A08
+        shell: bash
+        run: |
+          set -euo pipefail
+          for migration in             20260923210000_abc_f2_m01_base_transaccional_caja.sql             20260923210100_abc_f2_m01b_acl_hardening.sql             20260923220000_abc_f2_m02a_core_comercial_fiscal.sql             20260923230000_abc_f2_m02b_pagos_reservas_reembolsos.sql             20260923233000_abc_f2_m03a_autoridad_transaccional.sql             20260923234500_abc_f2_m03b_checkout_cobro.sql             20260923235900_abc_f2_m03c_reembolsos_transaccionales.sql             20260924001000_abc_f2_m04a_caja_sesiones.sql             20260924002000_abc_f2_m04b_movimientos_caja.sql             20260924003000_abc_f2_m04c_outbox_persistente.sql             20260924004000_abc_f2_m04d_acl_parity.sql             20260924010000_abc_f3_a03_server_authority.sql             20260924020000_abc_f3_a04_variants_modifiers.sql             20260924030000_abc_f3_a05_order_state_machine.sql             20260924040000_abc_f3_a06_account_recovery.sql             20260924050000_abc_f3_a07_tables_zones.sql             20260924060000_abc_f3_a08_account_split_merge.sql
+          do
+            psql -v ON_ERROR_STOP=1 -f "supabase/migrations/$migration"
+          done
+
+      - name: Regresión A08 previa
+        run: psql -v ON_ERROR_STOP=1 -f tests/f3/a08/a08-contract.sql
+
+      - name: Aplicar capas posteriores vigentes relevantes
+        shell: bash
+        run: |
+          set -euo pipefail
+          for migration in             20260924160739_abc_f3_a09_descuentos_cortesias.sql             20260926110000_abc_f3_a10_kitchen_commands.sql             20260926140000_abc_f3_a10b_kitchen_audit.sql             20260926203000_abc_f3_a02_operating_day_a11.sql
+          do
+            psql -v ON_ERROR_STOP=1 -f "supabase/migrations/$migration"
+          done
+
+      - name: Aplicar A08.2.1 ya integrada en release
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260927203000_abc_f3_a08_2_payment_interlock.sql
+
+      - name: Dos cajas -- lock, espera, serialización e idempotencia
+        shell: bash
+        run: bash tests/f3/a08/a08-2-concurrency.sh
+
+      - name: Verificar resultado final
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git status --porcelain | wc -l)" -eq 0
+          echo "ABC_F3_A08_2_2_POSTGRES16=PASS"
