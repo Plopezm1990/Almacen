@@ -14,6 +14,8 @@ test('A10 UI expone Cocina, estaciones y comandas en ambas fuentes', async () =>
     assert.match(source, /tab === "cocina"/);
     assert.match(source, /id: "cocina", label: "Cocina A10"/);
     assert.match(source, /listarEstacionesA10/);
+    assert.match(source, /abrirSesionCajaA10/);
+    assert.match(source, /abc_abrir_sesion_caja/);
     assert.match(source, /listarComandasA10/);
     assert.match(source, /abc_listar_comandas_estacion/);
   }

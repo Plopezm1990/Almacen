@@ -1822,6 +1822,7 @@ function GestionAlmacen() {
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
   const { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
+  const { abrirSesionCajaA10 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
   const { traspasarStock, traspasarEntreLocales } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales });
@@ -7019,7 +7020,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (!releido) throw new Error("persistencia_contexto_cuenta_no_disponible");
     return releido;
   }
-  async function contextoTerminalA02(supabase, empresaId, localId) {
+  async function contextoTerminalA02(supabase, empresaId, localId, opciones = {}) {
+    const permitirSinSesion = opciones.permitirSinSesion === true;
     const { data: authData, error: authError } = await supabase.auth.getSession();
     if (authError) throw authError;
     const userId = authData?.session?.user?.id || null;
@@ -7058,6 +7060,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         throw new Error("persistencia_terminal_no_disponible");
       }
     }
+
+    if (permitirSinSesion) return { userId, terminalId, sessionId: null, cajaSesionVersion: 0 };
 
     const { data: vinculos, error: vinculosError } = await supabase
       .from("caja_sesion_terminales")
@@ -7114,6 +7118,10 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("persistencia_terminal_no_disponible")) return "Este navegador no puede guardar de forma segura el terminal asignado. Activa el almacenamiento local antes de operar.";
     if (msg.includes("terminal_configurado_no_disponible")) return "El terminal asignado a este dispositivo ya no está disponible.";
     if (msg.includes("terminal_sin_sesion_abierta")) return "Este terminal no tiene una sesión de caja abierta.";
+    if (msg.includes("abc_caja_no_autorizado")) return "Tu usuario no tiene permiso para abrir la sesión de caja en este local.";
+    if (msg.includes("caja_contexto_ambiguo")) return "Hay más de una caja activa para este local; se ha bloqueado la apertura.";
+    if (msg.includes("caja_fisica_no_disponible")) return "No hay una caja física activa disponible para este local.";
+    if (msg.includes("caja_con_sesion_activa") || msg.includes("terminal_ya_vinculado_otra_sesion")) return "La caja o el terminal ya tienen una sesión activa.";
     if (msg.includes("terminal_sesion_ambigua")) return "El terminal aparece vinculado a más de una sesión activa; se ha bloqueado la operación.";
     if (msg.includes("sesion_usuario_requerida")) return "No hay una sesión de usuario válida.";
     if (msg.includes("operating_day_configuracion_ausente")) return "El local no tiene configurada todavía su zona horaria y hora de corte operativa.";
@@ -7880,6 +7888,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   }
 
   async function listarEstacionesA10() {
+    listarEstacionesA10.abrirSesionCajaA10 = abrirSesionCajaA10;
     try {
       const contexto = await contextoA10(false);
       const [estaciones, rutas] = await Promise.all([
@@ -7889,6 +7898,47 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       if (estaciones.error) throw estaciones.error;
       if (rutas.error) throw rutas.error;
       return { ok: true, estaciones: estaciones.data || [], rutas: rutas.data || [] };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function abrirSesionCajaA10({ fondoInicial = 0 } = {}) {
+    try {
+      const empresaId = empresaDelLocalActivo?.id || null;
+      const localId = localActivoId || null;
+      const fondo = Number(fondoInicial);
+      if (!empresaId || !localId) throw new Error("contexto_local_requerido");
+      if (!Number.isFinite(fondo) || fondo < 0) throw new Error("fondo_inicial_invalido");
+      const supabase = await window.getSupabaseClient();
+      const contexto = await contextoTerminalA02(supabase, empresaId, localId, { permitirSinSesion: true });
+      const { data: cajas, error: cajasError } = await supabase
+        .from("cajas_fisicas")
+        .select("id,nombre")
+        .eq("empresa_id", empresaId)
+        .eq("local_id", localId)
+        .eq("activo", true)
+        .order("nombre", { ascending: true })
+        .limit(2);
+      if (cajasError) throw cajasError;
+      if (!Array.isArray(cajas) || cajas.length === 0) throw new Error("caja_fisica_no_disponible");
+      if (cajas.length > 1) throw new Error("caja_contexto_ambiguo");
+      const operationId = `a10.ui.cash.open.${uuidA02()}`;
+      const sessionId = uuidA02();
+      const { data, error } = await supabase.rpc("abc_abrir_sesion_caja", {
+        p_operation_id: operationId,
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_session_id: sessionId,
+        p_caja_id: cajas[0].id,
+        p_responsable_user_id: contexto.userId,
+        p_terminal_id: contexto.terminalId,
+        p_currency_code: "EUR",
+        p_fondo_inicial: fondo,
+        p_operating_day: todayISO()
+      });
+      if (error) throw error;
+      return { ok: true, ...(data || {}), caja_nombre: cajas[0].nombre };
     } catch (error) {
       return respuestaErrorA06(error);
     }
@@ -8748,7 +8798,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       return { ok: false, error: "No se pudo confirmar la anulaci\xF3n con el servidor. No se ha modificado el stock local." };
     }
   }
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -19394,6 +19444,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
 }
 function CocinaA10({ productos = [], local = null, configEmpresa = null, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10 }) {
   const h3 = import_react4.default.createElement;
+  const abrirSesionCajaA10 = typeof listarEstacionesA10?.abrirSesionCajaA10 === "function" ? listarEstacionesA10.abrirSesionCajaA10 : null;
   const [estaciones, setEstaciones] = (0, import_react4.useState)([]);
   const [rutas, setRutas] = (0, import_react4.useState)([]);
   const [comandas, setComandas] = (0, import_react4.useState)([]);
@@ -19408,6 +19459,8 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
   const [procesando, setProcesando] = (0, import_react4.useState)("");
   const [error, setError] = (0, import_react4.useState)("");
   const [mensaje, setMensaje] = (0, import_react4.useState)("");
+  const [requiereApertura, setRequiereApertura] = (0, import_react4.useState)(false);
+  const [fondoInicial, setFondoInicial] = (0, import_react4.useState)("0");
 
   const productosActivos = (productos || []).filter((producto) => producto && producto.activo !== false);
   const estacionSeleccionada = estaciones.find((estacion) => String(estacion.id) === String(estacionId)) || null;
@@ -19422,9 +19475,11 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     const resultado = await listarEstacionesA10();
     setCargando(false);
     if (!resultado?.ok) {
+      setRequiereApertura(String(resultado?.error || "").toLowerCase().includes("sesión de caja"));
       setError(resultado?.error || "No se pudieron cargar las estaciones.");
       return;
     }
+    setRequiereApertura(false);
     const nuevas = Array.isArray(resultado.estaciones) ? resultado.estaciones : [];
     setEstaciones(nuevas);
     setRutas(Array.isArray(resultado.rutas) ? resultado.rutas : []);
@@ -19473,6 +19528,23 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     setNombre("");
     setMensaje("Estación creada por el contrato A10.");
     await refrescarEstaciones();
+  }
+
+  async function abrirSesion() {
+    if (procesando || typeof abrirSesionCajaA10 !== "function") return;
+    setProcesando("abrir-sesion");
+    setError("");
+    setMensaje("");
+    const resultado = await abrirSesionCajaA10({ fondoInicial });
+    setProcesando("");
+    if (!resultado?.ok) {
+      setError(resultado?.error || "No se pudo abrir la sesión de caja.");
+      return;
+    }
+    setRequiereApertura(false);
+    setMensaje(`Sesión de caja abierta en ${resultado.caja_nombre || "la caja principal"} con fondo inicial de €${Number(fondoInicial || 0).toFixed(2)}.`);
+    await refrescarEstaciones();
+    await refrescarComandas();
   }
 
   async function cambiarActivo(estacion) {
@@ -19564,6 +19636,12 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     h3(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, h3("div", { className: "text-[12px]" }, "A10 enruta comandas por estación mediante RPC y outbox. ", h3("b", null, "No mueve stock, no cobra ni emite fiscalidad."))),
     error ? h3("div", { role: "alert", className: "text-[12px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", error) : null,
     mensaje ? h3("div", { className: "text-[12px] mb-3 p-2 rounded-lg", style: { background: C2.accentSoft } }, mensaje) : null,
+    requiereApertura ? h3(Card, { className: "mb-4", style: { background: C2.redSoft || "#FCE8E6", border: "none" } },
+      h3("div", { className: "text-[12.5px] font-semibold mb-1" }, "Abrir sesión de caja"),
+      h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Este terminal necesita una sesión abierta para crear estaciones y recibir comandas. La apertura queda registrada por el servidor; no genera una venta."),
+      h3(Field, { label: "Fondo inicial (€)" }, h3(Input, { type: "number", min: "0", step: "0.01", value: fondoInicial, onChange: (e2) => setFondoInicial(e2.target.value) })),
+      h3(Btn, { small: true, onClick: abrirSesion, disabled: !!procesando || !String(fondoInicial).trim() }, procesando === "abrir-sesion" ? "Abriendo…" : "Abrir sesión")
+    ) : null,
     h3(Card, { className: "mb-4" },
       h3("div", { className: "text-[12.5px] font-semibold mb-2" }, "Estaciones y rutas"),
       h3("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-2" },
