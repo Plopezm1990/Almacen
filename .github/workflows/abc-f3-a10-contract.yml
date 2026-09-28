@@ -135,5 +135,8 @@ jobs:
           A09_PGLITE_PACKAGE_ROOT="$GITHUB_WORKSPACE/tests/f3/a09/node_modules/@electric-sql/pglite" \
             bash tests/ci/ejecutar_pglite_local.sh
 
+      - name: Regresión A10 UI
+        run: node --test tests/f3/a10/a10-ui.test.mjs
+
       - name: Ejecutar contrato A10
         run: psql -v ON_ERROR_STOP=1 -f tests/f3/a10/a10-contract.sql
