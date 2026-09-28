@@ -8798,7 +8798,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       return { ok: false, error: "No se pudo confirmar la anulaci\xF3n con el servidor. No se ha modificado el stock local." };
     }
   }
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaA08 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
