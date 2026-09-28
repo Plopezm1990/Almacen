@@ -138,3 +138,10 @@ test('A09.1.7 integra descuento/cortesía y doble autorización en el TPV sin DM
   assert.doesNotMatch(source, /\.from\("abc_descuentos_aplicados"\)\s*\.insert/);
   assert.doesNotMatch(source, /\.from\("abc_descuentos_aplicados"\)\s*\.update/);
 });
+
+test('A09.2.1 traduce la denegación autoritativa de cortesía', async () => {
+  const source = await readFile(new URL('../../../source-recovery/fuente-recuperado.js', import.meta.url), 'utf8');
+
+  assert.match(source, /msg\.includes\("cortesia_no_autorizada"\).*La política de descuentos de este local no permite aplicar cortesías/);
+  assert.doesNotMatch(source, /msg\.includes\("cortesia_no_autorizada"\).*No tienes permiso para operar este TPV/);
+});

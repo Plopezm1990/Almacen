@@ -108088,6 +108088,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("reparto_comensal_conflict")) return "La parte existente en la cuenta destino pertenece a otro comensal.";
     if (msg.includes("cuenta_con_cobro_incierto")) return "Esta cuenta tiene un cobro pendiente o incierto. Resuelve el cobro antes de repartir productos.";
     if (msg.includes("descuento_no_autorizado") || msg.includes("descuento_solicitar_no_autorizado") || msg.includes("descuento_aplicar_no_autorizado")) return "Tu perfil no tiene permiso para solicitar o aplicar este descuento.";
+    if (msg.includes("cortesia_no_autorizada")) return "La política de descuentos de este local no permite aplicar cortesías.";
     if (msg.includes("descuento_parametros_invalidos")) return "Revisa el tipo, valor y motivo del descuento.";
     if (msg.includes("descuento_cortesia_requerida")) return "Para dejar el importe al 100 % debes usar la opción Cortesía.";
     if (msg.includes("descuento_importe_fuera_base") || msg.includes("descuento_base_no_positiva")) return "El descuento supera la base disponible de la cuenta.";
