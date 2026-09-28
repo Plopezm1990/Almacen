@@ -4,162 +4,176 @@ const targets = ['source-recovery/fuente-recuperado.js', 'fuente.js'];
 
 function replaceRequired(text, before, after, label) {
   const first = text.indexOf(before);
-  if (first < 0) throw new Error(\`A09 materializer: falta \${label}\`);
-  if (text.indexOf(before, first + 1) >= 0) throw new Error(\`A09 materializer: \${label} no es único\`);
+  if (first < 0) throw new Error('A09 materializer: falta ' + label);
+  if (text.indexOf(before, first + 1) >= 0) throw new Error('A09 materializer: ' + label + ' no es único');
   return text.slice(0, first) + after + text.slice(first + before.length);
 }
 
 function patchBlock(block) {
   let out = block;
-  out = replaceRequired(out,
-\`  const politicaInicial = {
-    Propietario: {\`,
-\`  const crearPoliticaVacia = (rol) => ({
-    rol,
-    max_percent: "0",
-    permite_cortesia: false,
-    puede_solicitar: false,
-    puede_aplicar: false,
-    puede_autorizar: false,
-    permite_escalado: false,
-    requiere_doble_aprobacion: false,
-    activa: true
-  });
-  const politicaInicial = {
-    Propietario: {\`,
-  'factory de política segura');
 
-  out = replaceRequired(out,
-\`    Encargado: {
-      rol: "Encargado",
-      max_percent: "20",
-      permite_cortesia: false,
-      puede_solicitar: true,
-      puede_aplicar: true,
-      puede_autorizar: false,
-      permite_escalado: true,
-      requiere_doble_aprobacion: false,
-      activa: true
-    }
-  };\`,
-\`    Encargado: {
-      rol: "Encargado",
-      max_percent: "20",
-      permite_cortesia: false,
-      puede_solicitar: true,
-      puede_aplicar: true,
-      puede_autorizar: false,
-      permite_escalado: true,
-      requiere_doble_aprobacion: false,
-      activa: true
-    },
-    "Cajero/a": crearPoliticaVacia("Cajero/a"),
-    "Camarero/a": crearPoliticaVacia("Camarero/a"),
-    "Churrero/a": crearPoliticaVacia("Churrero/a"),
-    "Básico": crearPoliticaVacia("Básico")
-  };\`,
-  'roles base A09');
+  out = replaceRequired(
+    out,
+    '  const politicaInicial = {\n    Propietario: {',
+    '  const crearPoliticaVacia = (rol) => ({\n' +
+      '    rol,\n' +
+      '    max_percent: "0",\n' +
+      '    permite_cortesia: false,\n' +
+      '    puede_solicitar: false,\n' +
+      '    puede_aplicar: false,\n' +
+      '    puede_autorizar: false,\n' +
+      '    permite_escalado: false,\n' +
+      '    requiere_doble_aprobacion: false,\n' +
+      '    activa: true\n' +
+      '  });\n' +
+      '  const politicaInicial = {\n' +
+      '    Propietario: {',
+    'factory de política segura'
+  );
 
-  out = replaceRequired(out,
-\`  const [form, setForm] = (0, import_react4.useState)(politicaInicial);
-  const [motivo, setMotivo]\`,
-\`  const [form, setForm] = (0, import_react4.useState)(politicaInicial);
-  const [nuevoRol, setNuevoRol] = (0, import_react4.useState)("");
-  const [motivo, setMotivo]\`,
-  'estado nuevoRol');
+  out = replaceRequired(
+    out,
+    '    Encargado: {\n' +
+      '      rol: "Encargado",\n' +
+      '      max_percent: "20",\n' +
+      '      permite_cortesia: false,\n' +
+      '      puede_solicitar: true,\n' +
+      '      puede_aplicar: true,\n' +
+      '      puede_autorizar: false,\n' +
+      '      permite_escalado: true,\n' +
+      '      requiere_doble_aprobacion: false,\n' +
+      '      activa: true\n' +
+      '    }\n' +
+      '  };',
+    '    Encargado: {\n' +
+      '      rol: "Encargado",\n' +
+      '      max_percent: "20",\n' +
+      '      permite_cortesia: false,\n' +
+      '      puede_solicitar: true,\n' +
+      '      puede_aplicar: true,\n' +
+      '      puede_autorizar: false,\n' +
+      '      permite_escalado: true,\n' +
+      '      requiere_doble_aprobacion: false,\n' +
+      '      activa: true\n' +
+      '    },\n' +
+      '    "Cajero/a": crearPoliticaVacia("Cajero/a"),\n' +
+      '    "Camarero/a": crearPoliticaVacia("Camarero/a"),\n' +
+      '    "Churrero/a": crearPoliticaVacia("Churrero/a"),\n' +
+      '    "Básico": crearPoliticaVacia("Básico")\n' +
+      '  };',
+    'roles base A09'
+  );
 
-  out = replaceRequired(out,
-\`      setForm((anterior) => {
-        const siguiente = { ...anterior };
-        for (const politica of lista) {
-          if (politica?.rol && siguiente[politica.rol]) siguiente[politica.rol] = { ...siguiente[politica.rol], ...politica, max_percent: String(politica.max_percent ?? "0") };
-        }
-        return siguiente;
-      });\`,
-\`      setForm(() => {
-        const siguiente = Object.fromEntries(
-          Object.entries(politicaInicial).map(([rol, politica]) => [rol, { ...politica }])
-        );
-        for (const politica of lista) {
-          if (!politica?.rol) continue;
-          siguiente[politica.rol] = {
-            ...crearPoliticaVacia(politica.rol),
-            ...(siguiente[politica.rol] || {}),
-            ...politica,
-            max_percent: String(politica.max_percent ?? "0")
-          };
-        }
-        return siguiente;
-      });\`,
-  'carga dinámica de roles');
+  out = replaceRequired(
+    out,
+    '  const [form, setForm] = (0, import_react4.useState)(politicaInicial);\n' +
+      '  const [motivo, setMotivo]',
+    '  const [form, setForm] = (0, import_react4.useState)(politicaInicial);\n' +
+      '  const [nuevoRol, setNuevoRol] = (0, import_react4.useState)("");\n' +
+      '  const [motivo, setMotivo]',
+    'estado nuevoRol'
+  );
 
-  out = replaceRequired(out,
-\`  const guardar = async () => {\`,
-\`  const anadirRol = () => {
-    setError("");
-    setConfirmacion("");
-    const rol = nuevoRol.trim();
-    if (!rol) {
-      setError("Escribe el nombre del rol que quieres añadir a A09.");
-      return;
-    }
-    if (rol.length > 80) {
-      setError("El nombre del rol no puede superar 80 caracteres.");
-      return;
-    }
-    if (form[rol]) {
-      setError(\`\${rol}: ya existe en esta configuración.\`);
-      return;
-    }
-    setForm((anterior) => ({ ...anterior, [rol]: crearPoliticaVacia(rol) }));
-    setNuevoRol("");
-  };
-  const guardar = async () => {\`,
-  'alta de rol A09');
+  out = replaceRequired(
+    out,
+    '      setForm((anterior) => {\n' +
+      '        const siguiente = { ...anterior };\n' +
+      '        for (const politica of lista) {\n' +
+      '          if (politica?.rol && siguiente[politica.rol]) siguiente[politica.rol] = { ...siguiente[politica.rol], ...politica, max_percent: String(politica.max_percent ?? "0") };\n' +
+      '        }\n' +
+      '        return siguiente;\n' +
+      '      });',
+    '      setForm(() => {\n' +
+      '        const siguiente = Object.fromEntries(\n' +
+      '          Object.entries(politicaInicial).map(([rol, politica]) => [rol, { ...politica }])\n' +
+      '        );\n' +
+      '        for (const politica of lista) {\n' +
+      '          if (!politica?.rol) continue;\n' +
+      '          siguiente[politica.rol] = {\n' +
+      '            ...crearPoliticaVacia(politica.rol),\n' +
+      '            ...(siguiente[politica.rol] || {}),\n' +
+      '            ...politica,\n' +
+      '            max_percent: String(politica.max_percent ?? "0")\n' +
+      '          };\n' +
+      '        }\n' +
+      '        return siguiente;\n' +
+      '      });',
+    'carga dinámica de roles'
+  );
+
+  out = replaceRequired(
+    out,
+    '  const guardar = async () => {',
+    '  const anadirRol = () => {\n' +
+      '    setError("");\n' +
+      '    setConfirmacion("");\n' +
+      '    const rol = nuevoRol.trim();\n' +
+      '    if (!rol) {\n' +
+      '      setError("Escribe el nombre del rol que quieres añadir a A09.");\n' +
+      '      return;\n' +
+      '    }\n' +
+      '    if (rol.length > 80) {\n' +
+      '      setError("El nombre del rol no puede superar 80 caracteres.");\n' +
+      '      return;\n' +
+      '    }\n' +
+      '    if (form[rol]) {\n' +
+      '      setError(rol + ": ya existe en esta configuración.");\n' +
+      '      return;\n' +
+      '    }\n' +
+      '    setForm((anterior) => ({ ...anterior, [rol]: crearPoliticaVacia(rol) }));\n' +
+      '    setNuevoRol("");\n' +
+      '  };\n' +
+      '  const guardar = async () => {',
+    'alta de rol A09'
+  );
 
   const fixed = 'for (const rol of ["Propietario", "Encargado"])';
   const dynamic = 'for (const rol of Object.keys(form))';
   const fixedCount = out.split(fixed).length - 1;
-  if (fixedCount !== 2) throw new Error(\`A09 materializer: loops fijos inesperados \${fixedCount}\`);
+  if (fixedCount !== 2) throw new Error('A09 materializer: loops fijos inesperados ' + fixedCount);
   out = out.split(fixed).join(dynamic);
 
-  out = replaceRequired(out,
-\`  return /* @__PURE__ */ import_react4.default.createElement(\`,
-\`  const rolesConfigurados = Object.keys(form);
-  return /* @__PURE__ */ import_react4.default.createElement(\`,
-  'lista dinámica render');
+  out = replaceRequired(
+    out,
+    '  return /* @__PURE__ */ import_react4.default.createElement(',
+    '  const rolesConfigurados = Object.keys(form);\n' +
+      '  return /* @__PURE__ */ import_react4.default.createElement(',
+    'lista dinámica render'
+  );
 
-  out = replaceRequired(out,
-\`      tarjeta("Propietario"),
-      tarjeta("Encargado"),
-      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo del cambio" }\`,
-\`      rolesConfigurados.map(tarjeta),
-      /* @__PURE__ */ import_react4.default.createElement(
-        Card,
-        { className: "mb-3" },
-        /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold mb-2" }, "Añadir rol A09"),
-        /* @__PURE__ */ import_react4.default.createElement(
-          "div",
-          { className: "flex gap-2 flex-wrap items-end" },
-          /* @__PURE__ */ import_react4.default.createElement(
-            "div",
-            { className: "min-w-[220px] flex-1" },
-            /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre exacto del rol" },
-              /* @__PURE__ */ import_react4.default.createElement(Input, {
-                value: nuevoRol,
-                onChange: (e2) => setNuevoRol(e2.target.value),
-                maxLength: 80,
-                placeholder: "Ej. Supervisor de sala"
-              })
-            )
-          ),
-          /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: anadirRol }, "Añadir")
-        ),
-        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } },
-          "Añadir un rol aquí configura únicamente sus límites A09; no crea ni amplía permisos generales de acceso.")
-      ),
-      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo del cambio" }\`,
-  'render de roles');
+  out = replaceRequired(
+    out,
+    '      tarjeta("Propietario"),\n' +
+      '      tarjeta("Encargado"),\n' +
+      '      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo del cambio" }',
+    '      rolesConfigurados.map(tarjeta),\n' +
+      '      /* @__PURE__ */ import_react4.default.createElement(\n' +
+      '        Card,\n' +
+      '        { className: "mb-3" },\n' +
+      '        /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold mb-2" }, "Añadir rol A09"),\n' +
+      '        /* @__PURE__ */ import_react4.default.createElement(\n' +
+      '          "div",\n' +
+      '          { className: "flex gap-2 flex-wrap items-end" },\n' +
+      '          /* @__PURE__ */ import_react4.default.createElement(\n' +
+      '            "div",\n' +
+      '            { className: "min-w-[220px] flex-1" },\n' +
+      '            /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre exacto del rol" },\n' +
+      '              /* @__PURE__ */ import_react4.default.createElement(Input, {\n' +
+      '                value: nuevoRol,\n' +
+      '                onChange: (e2) => setNuevoRol(e2.target.value),\n' +
+      '                maxLength: 80,\n' +
+      '                placeholder: "Ej. Supervisor de sala"\n' +
+      '              })\n' +
+      '            )\n' +
+      '          ),\n' +
+      '          /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: anadirRol }, "Añadir")\n' +
+      '        ),\n' +
+      '        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } },\n' +
+      '          "Añadir un rol aquí configura únicamente sus límites A09; no crea ni amplía permisos generales de acceso.")\n' +
+      '      ),\n' +
+      '      /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo del cambio" }',
+    'render de roles'
+  );
 
   for (const required of [
     '"Cajero/a": crearPoliticaVacia("Cajero/a")',
@@ -168,7 +182,7 @@ function patchBlock(block) {
     'rolesConfigurados.map(tarjeta)',
     'const anadirRol = () =>'
   ]) {
-    if (!out.includes(required)) throw new Error(\`A09 materializer: falta \${required}\`);
+    if (!out.includes(required)) throw new Error('A09 materializer: falta ' + required);
   }
   if (out.includes(fixed)) throw new Error('A09 materializer: persiste el hardcode de dos roles');
   return out;
@@ -179,11 +193,11 @@ for (const file of targets) {
   const source = fs.readFileSync(file, 'utf8');
   const start = source.indexOf('function PoliticasDescuentos');
   const end = source.indexOf('function GestionAlmacen()', start);
-  if (start < 0 || end < 0) throw new Error(\`A09 materializer: límites no encontrados en \${file}\`);
+  if (start < 0 || end < 0) throw new Error('A09 materializer: límites no encontrados en ' + file);
   const patchedBlock = patchBlock(source.slice(start, end));
   if (reference === null) reference = patchedBlock;
   else if (patchedBlock !== reference) throw new Error('A09 materializer: los bloques resultantes divergen');
   fs.writeFileSync(file, source.slice(0, start) + patchedBlock + source.slice(end), 'utf8');
-  console.log(\`A09_ROLE_POLICY_UI_PATCHED=\${file}\`);
+  console.log('A09_ROLE_POLICY_UI_PATCHED=' + file);
 }
 console.log('A09_ROLE_POLICY_UI_MATERIALIZE=PASS');
