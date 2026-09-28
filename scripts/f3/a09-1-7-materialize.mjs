@@ -15,6 +15,12 @@ function replaceOnce(text, needle, replacement, label) {
   return text.replace(needle, replacement);
 }
 
+function replaceExpected(text, needle, replacement, expected, label) {
+  const count = countOf(text, needle);
+  if (count !== expected) throw new Error("A09_1_7_" + label + "_ANCHOR_COUNT=" + count);
+  return text.split(needle).join(replacement);
+}
+
 function block(lines) {
   return lines.join("\n") + "\n";
 }
@@ -29,10 +35,11 @@ if (!source.includes("async function aplicarDescuentoCuentaA09(")) {
     "FACTORY_DESTRUCTURE"
   );
 
-  source = replaceOnce(
+  source = replaceExpected(
     source,
     "listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria",
     "listarCuentasRepartoA08, moverCantidadLineaCuentaA08, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, registrarAuditoria",
+    2,
     "TPV_WIRING"
   );
 
