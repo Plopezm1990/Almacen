@@ -252,6 +252,24 @@ test('A09.2.7 muestra producto, cantidad y líneas sin DML de stock desde el TPV
   }
 });
 
+test('A09.2.8 muestra el alcance de fiscalización sin DML desde el TPV', async () => {
+  const source = await readFile(new URL('../../../source-recovery/fuente-recuperado.js', import.meta.url), 'utf8');
+  const runtime = await readFile(new URL('../../../fuente.js', import.meta.url), 'utf8');
+
+  for (const candidate of [source, runtime]) {
+    assert.match(candidate, /async function listarFiscalizacionA09\(/);
+    assert.match(candidate, /\.from\("ventas_fiscales"\)[\s\S]*?\.select\(/);
+    assert.match(candidate, /\.from\("venta_fiscal_lineas"\)[\s\S]*?\.select\(/);
+    assert.match(candidate, /Fiscalización · alcance A09/);
+    assert.match(candidate, /fiscalización activa bloquea el descuento/);
+    assert.match(candidate, /fiscalización parcial no se aplica en este alcance/);
+    assert.doesNotMatch(candidate, /\.from\("ventas_fiscales"\)\s*\.insert/);
+    assert.doesNotMatch(candidate, /\.from\("ventas_fiscales"\)\s*\.update/);
+    assert.doesNotMatch(candidate, /\.from\("venta_fiscal_lineas"\)\s*\.insert/);
+    assert.doesNotMatch(candidate, /\.from\("venta_fiscal_lineas"\)\s*\.update/);
+  }
+});
+
 test('A09.2.3 identifica el escalado por encima del límite del rol', async () => {
   const source = await readFile(new URL('../../../source-recovery/fuente-recuperado.js', import.meta.url), 'utf8');
   const runtime = await readFile(new URL('../../../fuente.js', import.meta.url), 'utf8');

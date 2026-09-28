@@ -118571,7 +118571,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [motivoAutorizacionA09, setMotivoAutorizacionA09] = (0, import_react4.useState)("");
   const [autorizacionesA09, setAutorizacionesA09] = (0, import_react4.useState)([]);
   const [descuentosAplicadosA09, setDescuentosAplicadosA09] = (0, import_react4.useState)([]);
-  const [auditoriaDescuentosA09, setAuditoriaDescuentosA09] = (0, import_react4.useState)({ solicitudes: [], intentos: [], aplicaciones: [], eventos: [], efectosCaja: [], efectosStock: [] });
+  const [auditoriaDescuentosA09, setAuditoriaDescuentosA09] = (0, import_react4.useState)({ solicitudes: [], intentos: [], aplicaciones: [], eventos: [], efectosCaja: [], efectosStock: [], fiscalizacion: [] });
   const [errorAuditoriaDescuentosA09, setErrorAuditoriaDescuentosA09] = (0, import_react4.useState)("");
   const [cargandoAutorizacionesA09, setCargandoAutorizacionesA09] = (0, import_react4.useState)(false);
   const [procesandoDescuentoA09, setProcesandoDescuentoA09] = (0, import_react4.useState)(false);
@@ -119092,6 +119092,51 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     }
   }
 
+  async function listarFiscalizacionA09() {
+    const localId = local?.id || null;
+    const empresaId = configEmpresa?.id || null;
+    if (!localId) return { ok: false, error: "Selecciona un local antes de revisar la fiscalización." };
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    try {
+      const contexto = leerContextoCuentaA02(empresaId, localId);
+      if (!contexto?.cuentaId) throw new Error("contexto_cuenta_persistido_invalido");
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "La fiscalización necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const ventasResponse = await supabase
+        .from("ventas_fiscales")
+        .select("id,estado,subtotal,descuento_total,impuestos_total,total,currency_code,created_at")
+        .eq("empresa_id", empresaId)
+        .eq("local_id", localId)
+        .eq("cuenta_id", contexto.cuentaId)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (ventasResponse.error) throw ventasResponse.error;
+      const ventas = Array.isArray(ventasResponse.data) ? ventasResponse.data : [];
+      const ventaIds = ventas.map((row) => row?.id).filter(Boolean);
+      if (ventaIds.length === 0) return { ok: true, fiscalizaciones: [] };
+      const lineasResponse = await supabase
+        .from("venta_fiscal_lineas")
+        .select("id,venta_fiscal_id,source_line_id,cantidad,descuento,base,impuesto,total,currency_code,created_at")
+        .eq("empresa_id", empresaId)
+        .eq("local_id", localId)
+        .in("venta_fiscal_id", ventaIds)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (lineasResponse.error) throw lineasResponse.error;
+      const ventaById = new Map(ventas.map((row) => [String(row?.id || ""), row]));
+      return {
+        ok: true,
+        fiscalizaciones: (Array.isArray(lineasResponse.data) ? lineasResponse.data : []).map((row) => ({
+          ...row,
+          venta: ventaById.get(String(row?.venta_fiscal_id || "")) || null
+        }))
+      };
+    } catch (error) {
+      return { ok: false, error: respuestaErrorA06(error) };
+    }
+  }
+
   function agruparDescuentosAplicadosA09(rows) {
     const grouped = new Map();
     for (const row of Array.isArray(rows) ? rows : []) {
@@ -119128,13 +119173,14 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     if (typeof listarAutorizacionesDescuentoA09 !== "function") return;
     setCargandoAutorizacionesA09(true);
     setErrorAuditoriaDescuentosA09("");
-    setAuditoriaDescuentosA09({ solicitudes: [], intentos: [], aplicaciones: [], eventos: [], efectosCaja: [], efectosStock: [] });
-    const [resultado, resultadoStack, resultadoAuditoria, resultadoCaja, resultadoStock] = await Promise.all([
+    setAuditoriaDescuentosA09({ solicitudes: [], intentos: [], aplicaciones: [], eventos: [], efectosCaja: [], efectosStock: [], fiscalizacion: [] });
+    const [resultado, resultadoStack, resultadoAuditoria, resultadoCaja, resultadoStock, resultadoFiscal] = await Promise.all([
       listarAutorizacionesDescuentoA09(),
       listarDescuentosAplicadosA09(),
       listarAuditoriaDescuentosA09(),
       listarEfectosCajaA09(),
-      listarEfectosStockA09()
+      listarEfectosStockA09(),
+      listarFiscalizacionA09()
     ]);
     setCargandoAutorizacionesA09(false);
     if (!resultado?.ok) {
@@ -119151,12 +119197,13 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     setDescuentosAplicadosA09(agruparDescuentosAplicadosA09(resultadoStack.descuentos));
     if (!resultadoAuditoria?.ok) {
       setErrorAuditoriaDescuentosA09(resultadoAuditoria?.error || "No se pudo cargar la auditoría de descuentos.");
-      setAuditoriaDescuentosA09({ solicitudes: [], intentos: [], aplicaciones: resultadoStack.descuentos || [], eventos: [], efectosCaja: resultadoCaja?.ok ? resultadoCaja.efectos || [] : [], efectosStock: resultadoStock?.ok ? resultadoStock.lineas || [] : [] });
+      setAuditoriaDescuentosA09({ solicitudes: [], intentos: [], aplicaciones: resultadoStack.descuentos || [], eventos: [], efectosCaja: resultadoCaja?.ok ? resultadoCaja.efectos || [] : [], efectosStock: resultadoStock?.ok ? resultadoStock.lineas || [] : [], fiscalizacion: resultadoFiscal?.ok ? resultadoFiscal.fiscalizaciones || [] : [] });
     } else {
-      setAuditoriaDescuentosA09({ ...resultadoAuditoria, aplicaciones: resultadoStack.descuentos || [], efectosCaja: resultadoCaja?.ok ? resultadoCaja.efectos || [] : [], efectosStock: resultadoStock?.ok ? resultadoStock.lineas || [] : [] });
+      setAuditoriaDescuentosA09({ ...resultadoAuditoria, aplicaciones: resultadoStack.descuentos || [], efectosCaja: resultadoCaja?.ok ? resultadoCaja.efectos || [] : [], efectosStock: resultadoStock?.ok ? resultadoStock.lineas || [] : [], fiscalizacion: resultadoFiscal?.ok ? resultadoFiscal.fiscalizaciones || [] : [] });
     }
     if (!resultadoCaja?.ok) setErrorAuditoriaDescuentosA09(resultadoCaja?.error || "No se pudieron cargar los efectos de caja.");
     if (!resultadoStock?.ok) setErrorAuditoriaDescuentosA09(resultadoStock?.error || "No se pudo cargar la integridad de stock.");
+    if (!resultadoFiscal?.ok) setErrorAuditoriaDescuentosA09(resultadoFiscal?.error || "No se pudo cargar la fiscalización.");
   }
 
   async function abrirDescuentoCuentaA09() {
@@ -119866,11 +119913,16 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mb-1", style: { color: C2.inkSoft } }, "El descuento A09 conserva producto, cantidad y unidad; solo actualiza los importes comerciales de la línea y no genera movimientos de stock."),
           auditoriaDescuentosA09.efectosStock.length > 0 ? auditoriaDescuentosA09.efectosStock.map((row) => /* @__PURE__ */ import_react4.default.createElement("div", { key: "audit-stock-" + row.id, className: "text-[10px] p-2 rounded-lg mb-1", style: { border: "1px solid " + C2.line, color: C2.inkSoft } }, "Producto ", String(row?.producto_id || "sin producto"), " · cantidad ", fmt(row?.cantidad), " ", String(row?.unidad || ""), " · línea ", String(row?.id || "").slice(-16), row?.descuentos?.length ? " · descuentos " + row.descuentos.length : " · sin descuento registrado")) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "No hay líneas comerciales asociadas a esta cuenta."),
         ),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2" },
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] font-semibold mb-1" }, "Fiscalización · alcance A09"),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mb-1", style: { color: C2.inkSoft } }, "Una línea con fiscalización activa bloquea el descuento; la fiscalización parcial no se aplica en este alcance y no se modifica desde el TPV."),
+          auditoriaDescuentosA09.fiscalizacion.length > 0 ? auditoriaDescuentosA09.fiscalizacion.map((row) => /* @__PURE__ */ import_react4.default.createElement("div", { key: "audit-fiscal-" + row.id, className: "text-[10px] p-2 rounded-lg mb-1", style: { border: "1px solid " + C2.line, color: C2.inkSoft } }, String(row?.venta?.estado || "VENTA FISCAL"), " · línea ", String(row?.source_line_id || "").slice(-16), " · cantidad ", fmt(row?.cantidad), " · total €", fmt(row?.total), " · ", row?.created_at || "sin fecha")) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Sin líneas fiscales activas asociadas a esta cuenta."),
+        ),
         auditoriaDescuentosA09.eventos.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", null,
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] font-semibold mb-1" }, "Eventos server-side · ", auditoriaDescuentosA09.eventos.length),
           auditoriaDescuentosA09.eventos.map((row) => /* @__PURE__ */ import_react4.default.createElement("div", { key: "audit-event-" + row.operation_id + "-" + row.occurred_at, className: "text-[10px] p-2 rounded-lg mb-1", style: { border: "1px solid " + C2.line, color: C2.inkSoft } }, String(row?.event_type || "EVENTO"), " · ", row?.occurred_at || "sin fecha", " · operación …", String(row?.operation_id || "").slice(-16)))
         ) : null,
-        auditoriaDescuentosA09.solicitudes.length === 0 && auditoriaDescuentosA09.intentos.length === 0 && auditoriaDescuentosA09.aplicaciones.length === 0 && auditoriaDescuentosA09.eventos.length === 0 && auditoriaDescuentosA09.efectosCaja.length === 0 && auditoriaDescuentosA09.efectosStock.length === 0 && !errorAuditoriaDescuentosA09 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "No hay registros de auditoría para esta cuenta.") : null
+        auditoriaDescuentosA09.solicitudes.length === 0 && auditoriaDescuentosA09.intentos.length === 0 && auditoriaDescuentosA09.aplicaciones.length === 0 && auditoriaDescuentosA09.eventos.length === 0 && auditoriaDescuentosA09.efectosCaja.length === 0 && auditoriaDescuentosA09.efectosStock.length === 0 && auditoriaDescuentosA09.fiscalizacion.length === 0 && !errorAuditoriaDescuentosA09 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "No hay registros de auditoría para esta cuenta.") : null
       ),
       activas.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3" },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-2" }, "Autorizaciones de esta cuenta"),
