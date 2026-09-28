@@ -1,0 +1,80 @@
+name: "TEMP A08.2.3 -- materialize runtime"
+
+on:
+  push:
+    branches: [abc-f3-a08-2-3-closeout]
+    paths:
+      - "source-recovery/fuente-recuperado.js"
+      - "fuente.js"
+      - "tests/f3/a08/a08-1-ui-contract.mjs"
+      - ".github/workflows/temp-a08-2-3-materialize.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: temp-a08-2-3-materialize
+  cancel-in-progress: false
+
+jobs:
+  materialize:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+
+      - name: Verificar base y alcance
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE=8373ace6e83084c65bc1e730ea2f771c74805651
+          git merge-base --is-ancestor "$BASE" HEAD
+          BAD=$(git diff --name-only "$BASE...HEAD" | grep -Ev '^(source-recovery/fuente-recuperado\.js|fuente\.js|tests/f3/a08/a08-1-ui-contract\.mjs|\.github/workflows/temp-a08-2-3-materialize\.yml)$' || true)
+          if [ -n "$BAD" ]; then
+            echo "A08_2_3_SCOPE_FAIL" >&2
+            echo "$BAD" >&2
+            exit 1
+          fi
+          grep -q 'msg.includes("cuenta_con_cobro_incierto")' source-recovery/fuente-recuperado.js
+          echo "A08_2_3_SCOPE=PASS"
+
+      - name: Materializar runtime desde Source Recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          BEFORE=$(sha256sum source-recovery/fuente-recuperado.js | awk '{print $1}')
+          node scripts/f3/a08-1-materialize.mjs
+          AFTER=$(sha256sum source-recovery/fuente-recuperado.js | awk '{print $1}')
+          test "$BEFORE" = "$AFTER"
+          grep -q 'msg.includes("cuenta_con_cobro_incierto")' fuente.js
+          grep -q 'Esta cuenta tiene un cobro pendiente o incierto. Resuelve el cobro antes de repartir productos.' fuente.js
+          echo "A08_2_3_RUNTIME_MATERIALIZED=PASS"
+
+      - name: Regresión Source Recovery y contrato A08 UI
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check fuente.js
+          python3 source-recovery/recuperar_candidato.py --check
+          node tests/f3/a08/a08-1-ui-contract.mjs
+          echo "A08_2_3_UI_REGRESSION=PASS"
+
+      - name: Persistir únicamente runtime materializado
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fuente.js
+          if git diff --cached --quiet; then
+            echo "A08_2_3_RUNTIME_ALREADY_CURRENT=1"
+            exit 0
+          fi
+          if ! git diff --cached --name-only | grep -qx 'fuente.js'; then
+            echo "A08_2_3_UNEXPECTED_STAGED_FILES" >&2
+            exit 1
+          fi
+          git commit -m "[skip netlify] F3 A08.2.3: materialize payment interlock UI"
+          git push origin "HEAD:abc-f3-a08-2-3-closeout"
+          echo "A08_2_3_RUNTIME_COMMITTED=1"
