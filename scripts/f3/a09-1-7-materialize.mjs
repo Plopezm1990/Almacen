@@ -31,22 +31,21 @@ if (!source.includes("async function aplicarDescuentoCuentaA09(")) {
   source = replaceOnce(
     source,
     "listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta",
-    "listarCuentasRepartoA08, moverCantidadLineaCuentaA08, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09 } = crearLogicaVenta",
+    "aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta",
     "FACTORY_DESTRUCTURE"
   );
 
-  source = replaceExpected(
+  source = replaceOnce(
     source,
-    "listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria",
-    "listarCuentasRepartoA08, moverCantidadLineaCuentaA08, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, registrarAuditoria",
-    2,
+    "anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08",
+    "anularVenta, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08",
     "TPV_WIRING"
   );
 
   source = replaceOnce(
     source,
     "listarCuentasRepartoA08, moverCantidadLineaCuentaA08 };\n}",
-    "listarCuentasRepartoA08, moverCantidadLineaCuentaA08, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09 };\n}",
+    "aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 };\n}",
     "FACTORY_RETURN"
   );
 
@@ -57,8 +56,8 @@ if (!source.includes("async function aplicarDescuentoCuentaA09(")) {
     source = source.replace(
       ventaSignature,
       ventaSignature.replace(
-        "moverCantidadLineaCuentaA08",
-        "moverCantidadLineaCuentaA08, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09"
+        "listarCuentasRepartoA08",
+        "aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08"
       )
     );
   }
@@ -473,7 +472,7 @@ if (!source.includes("async function aplicarDescuentoCuentaA09(")) {
   source = replaceOnce(
     source,
     "renderSalaA07(), renderRepartoProductosA08(), renderPedidoOperativoA05()",
-    "renderSalaA07(), renderRepartoProductosA08(), renderDescuentoCuentaA09(), renderPedidoOperativoA05()",
+    "renderSalaA07(), renderRepartoProductosA08(), renderPedidoOperativoA05(), renderDescuentoCuentaA09()",
     "UI_RENDER_CALL"
   );
 
