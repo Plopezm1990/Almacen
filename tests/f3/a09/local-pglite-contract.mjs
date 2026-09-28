@@ -285,6 +285,77 @@ try {
 
   await db.exec(`delete from public.cuenta_cuotas_importe
     where empresa_id='emp-f' and local_id='loc-f1' and cuenta_origen_id='${account3}';`);
+
+  const cashAccount = '50000000-0000-0000-0000-000000000040';
+  const cashOrder = '60000000-0000-0000-0000-000000000040';
+  const cashLine = '70000000-0000-0000-0000-000000000040';
+  const cashSale = '81000000-0000-0000-0000-000000000040';
+  const cashCheckout = '82000000-0000-0000-0000-000000000040';
+  const cashPayment = '83000000-0000-0000-0000-000000000040';
+  const cashAttempt = '84000000-0000-0000-0000-000000000040';
+  await db.exec(`insert into public.cuentas_comerciales(
+    id,empresa_id,local_id,currency_code,modalidad,estado,version,created_by,opened_operating_day
+  ) values ('${cashAccount}','emp-f','loc-f1','EUR','BARRA','ABIERTA',1,'${owner}',date '${day}');
+  insert into public.pedidos_tpv(
+    id,empresa_id,local_id,cuenta_id,currency_code,estado,version,created_by,created_operating_day
+  ) values ('${cashOrder}','emp-f','loc-f1','${cashAccount}','EUR','ABIERTO',1,'${owner}',date '${day}');
+  insert into public.pedido_lineas(
+    id,empresa_id,local_id,pedido_id,producto_id,cantidad,unidad,estado,version,
+    entidad_fiscal_id,currency_code,precio_unitario,descuento_total,base,impuestos,total,
+    snapshot_comercial,snapshot_calculo,created_by,created_operating_day
+  ) values ('${cashLine}','emp-f','loc-f1','${cashOrder}','prod-unit-f',1,'ud','CONFIRMADA',1,
+    '10000000-0000-0000-0000-000000000008','EUR',10,0,10,1,11,
+    '{"impuesto_pct":10}'::jsonb,'{"modo":"SERVER_AUTHORITY_A03","impuesto_pct":10}'::jsonb,
+    '${owner}',date '${day}');`);
+  result = await call({ operationId: 'a09.test.cash.discount', accountId: cashAccount, value: '2', version: 1 });
+  assert.equal(Number(result.total_comercial), 8.8);
+  assert.equal((await db.query(`select count(*)::int n
+    from public.caja_operaciones co
+    join public.pagos p on p.empresa_id=co.empresa_id and p.local_id=co.local_id
+      and p.id::text=co.origen_id and co.origen_tipo='ABC_PAGO'
+    join public.checkouts c on c.empresa_id=p.empresa_id and c.local_id=p.local_id
+      and c.id=p.checkout_id
+    where c.cuenta_id=$1`, [cashAccount])).rows[0].n, 0);
+
+  await db.exec(`insert into public.ventas_fiscales(
+    id,empresa_id,local_id,cuenta_id,entidad_fiscal_id,currency_code,
+    estado,version,subtotal,descuento_total,impuestos_total,total,
+    snapshot_calculo,created_by,created_operating_day
+  ) values ('${cashSale}','emp-f','loc-f1','${cashAccount}',
+    '10000000-0000-0000-0000-000000000008','EUR','ABIERTA',1,8,2,0.8,8.8,
+    '{"origen":"A09_CASH_CONCILIATION"}'::jsonb,'${owner}',date '${day}');`);
+  const openedCash = (await db.query(`select public.abc_abrir_checkout(
+    'a09.cash.checkout','emp-f','loc-f1','${cashCheckout}'::uuid,'${cashAccount}'::uuid,
+    array['${cashSale}'::uuid],date '${day}') as result`)).rows[0].result;
+  assert.equal(openedCash.estado, 'ABIERTO');
+  const startedCash = (await db.query(`select public.abc_iniciar_cobro(
+    'a09.cash.start','emp-f','loc-f1','${cashCheckout}'::uuid,'${cashPayment}'::uuid,
+    '${cashAttempt}'::uuid,'EFECTIVO',8.8,'EUR','${terminal}'::uuid,10,1.2) as result`)).rows[0].result;
+  assert.equal(startedCash.estado, 'PENDIENTE');
+  const confirmedCash = (await db.query(`select public.abc_confirmar_efectivo(
+    'a09.cash.confirm','emp-f','loc-f1','${cashAttempt}'::uuid,
+    '30000000-0000-0000-0000-000000000008'::uuid,
+    '${session}'::uuid,'${terminal}'::uuid,date '${day}') as result`)).rows[0].result;
+  assert.equal(confirmedCash.estado, 'CONFIRMADO');
+  const cashReconciliation = (await db.query(`select
+    co.importe,co.efecto_efectivo,p.importe_objetivo,p.estado as pago_estado,
+    c.estado as checkout_estado
+    from public.caja_operaciones co
+    join public.pagos p on p.empresa_id=co.empresa_id and p.local_id=co.local_id
+      and p.id::text=co.origen_id and co.origen_tipo='ABC_PAGO'
+    join public.checkouts c on c.empresa_id=p.empresa_id and c.local_id=p.local_id
+      and c.id=p.checkout_id
+    where co.abc_command_id='a09.cash.confirm'`)).rows;
+  assert.equal(cashReconciliation.length, 1);
+  assert.equal(Number(cashReconciliation[0].importe), 8.8);
+  assert.equal(Number(cashReconciliation[0].efecto_efectivo), 8.8);
+  assert.equal(Number(cashReconciliation[0].importe_objetivo), 8.8);
+  assert.equal(cashReconciliation[0].pago_estado, 'CONFIRMADO');
+  assert.equal(cashReconciliation[0].checkout_estado, 'COMPLETADO');
+  await assert.rejects(call({ operationId: 'a09.test.cash.after_commit', accountId: cashAccount,
+    value: '0.5', version: 2 }), /descuento_compromiso_financiero/);
+  process.stdout.write('PASS A09.2.6 cash effect and monetary reconciliation\n');
+
   const competing = await Promise.allSettled([
     call({ operationId: 'a09.test.race.1', accountId: account3, value: '1', version: 3 }),
     call({ operationId: 'a09.test.race.2', accountId: account3, value: '1', version: 3 }),
