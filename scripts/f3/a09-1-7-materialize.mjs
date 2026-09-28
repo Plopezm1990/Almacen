@@ -53,14 +53,15 @@ if (!source.includes("async function aplicarDescuentoCuentaA09(")) {
   const ventaSignatureMatch = source.match(/function VentaRapida\(\{[^\n]*moverCantidadLineaCuentaA08[^\n]*\}\) \{/);
   if (!ventaSignatureMatch) throw new Error("A09_1_7_VENTA_RAPIDA_PROPS_ANCHOR_COUNT=0");
   const ventaSignature = ventaSignatureMatch[0];
-  if (ventaSignature.includes("aplicarDescuentoCuentaA09")) throw new Error("A09_1_7_VENTA_RAPIDA_PROPS_ALREADY_PATCHED");
-  source = source.replace(
-    ventaSignature,
-    ventaSignature.replace(
-      "moverCantidadLineaCuentaA08",
-      "moverCantidadLineaCuentaA08, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09"
-    )
-  );
+  if (!ventaSignature.includes("aplicarDescuentoCuentaA09")) {
+    source = source.replace(
+      ventaSignature,
+      ventaSignature.replace(
+        "moverCantidadLineaCuentaA08",
+        "moverCantidadLineaCuentaA08, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09"
+      )
+    );
+  }
 
   const errorAnchor = '    if (msg.includes("pedido_enviar_no_autorizado")) return "Tu perfil no tiene permiso para enviar este pedido.";';
   const errorBlock = block([
