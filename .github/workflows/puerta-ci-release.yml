@@ -44,7 +44,7 @@ name: "Puerta de CI general -- candidato a release (147/147 contratos activos)"
 # este punto.
 on:
   push:
-    branches: [claude/punto3-promocion-final]
+    branches: [claude/punto3-promocion-final, abc-f3-a09-1-7-tpv-discounts]
   pull_request:
     branches: [release]
   workflow_dispatch: {}
