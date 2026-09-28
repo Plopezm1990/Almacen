@@ -118986,6 +118986,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       sessionId: op.session_id,
       operatingDay: op.operating_day,
       requiereEscalado: op.requiere_escalado === true,
+      requiereDobleAprobacion: op.requiere_escalado !== true,
       approvalHash: row?.snapshot_hash || ""
     };
   }
@@ -119012,7 +119013,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       const requiereEscalado = resultado?.resultado?.snapshot?.operation?.requiere_escalado === true;
       setMensajeDescuentoA09(requiereEscalado
         ? "Solicitud de escalado pendiente. Supera el límite de tu rol y debe autorizarla otra persona con capacidad suficiente."
-        : "Solicitud pendiente de autorización. Debe aprobarla otra persona con capacidad suficiente.");
+        : "Solicitud de doble autorización pendiente. La política exige que otra persona la apruebe; la aprobación no aplica el descuento por sí sola.");
     } else if (resultado.applied) {
       if (resultado?.cuenta?.pedidoId) setPedidoOperativoA05(resultado.cuenta);
       setValorDescuentoA09("");
@@ -119595,7 +119596,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2" },
           /* @__PURE__ */ import_react4.default.createElement("div", null,
             /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Descuento / cortesía"),
-            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Aplica límites A09; si supera el límite de tu rol, crea una solicitud de escalado.")
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Aplica límites A09; las políticas de doble autorización requieren segunda firma y los excesos de rol se escalan.")
           ),
           /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: abrirDescuentoCuentaA09 }, "Abrir")
         )
@@ -119627,7 +119628,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivoDescuentoA09, onChange: (e2) => setMotivoDescuentoA09(e2.target.value), maxLength: 500, placeholder: "Motivo obligatorio" })
       ),
       /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => enviarDescuentoA09(), disabled: procesandoDescuentoA09 || !motivoDescuentoA09.trim() || (tipoDescuentoA09 !== "COURTESY" && !valorDescuentoA09) }, procesandoDescuentoA09 ? "Procesando…" : "Aplicar / solicitar"),
-      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-2", style: { color: C2.inkSoft } }, "Si requiere doble autorización, otra persona debe aprobar. La aprobación no aplica el descuento por sí sola."),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-2", style: { color: C2.inkSoft } }, "Las políticas con doble autorización requieren que otra persona apruebe; la aprobación no aplica el descuento por sí sola."),
       descuentosAplicadosA09.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3" },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Stack aplicado · ", descuentosAplicadosA09.length, " operaciones"),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "Cada operación se aplica sobre la base restante y el servidor vuelve a validar el límite acumulado."),
@@ -119643,9 +119644,10 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         ),
         activas.map((row) => {
           const op = row?.snapshot?.operation || {};
+          const requiereEscalado = op.requiere_escalado === true;
           return /* @__PURE__ */ import_react4.default.createElement("div", { key: row.operation_id, className: "p-2 rounded-lg mb-2", style: { border: "1px solid " + C2.line } },
-            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold" }, String(row.estado || ""), " · ", String(op.tipo || ""), " · €", fmt(Number(op.importe_descuento) || 0), op.requiere_escalado === true ? " · ESCALADO" : ""),
-            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, op.requiere_escalado === true ? "Supera el límite del rol solicitante; debe autorizarla alguien con capacidad suficiente." : row.motivo || op.motivo || ""),
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold" }, String(row.estado || ""), " · ", String(op.tipo || ""), " · €", fmt(Number(op.importe_descuento) || 0), requiereEscalado ? " · ESCALADO" : " · DOBLE AUTORIZACIÓN"),
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, requiereEscalado ? "Supera el límite del rol solicitante; debe autorizarla alguien con capacidad suficiente." : "La política exige una segunda autorización de otra persona; la aprobación no aplica el descuento por sí sola."),
             row.estado === "PENDIENTE" ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-2 flex-wrap" },
               /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => decidirAutorizacionA09(row, "APROBAR"), disabled: procesandoDescuentoA09 || !motivoAutorizacionA09.trim() }, "Aprobar"),
               /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => decidirAutorizacionA09(row, "RECHAZAR"), disabled: procesandoDescuentoA09 || !motivoAutorizacionA09.trim() }, "Rechazar")
