@@ -17642,6 +17642,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [motivoDescuentoA09, setMotivoDescuentoA09] = (0, import_react4.useState)("");
   const [motivoAutorizacionA09, setMotivoAutorizacionA09] = (0, import_react4.useState)("");
   const [autorizacionesA09, setAutorizacionesA09] = (0, import_react4.useState)([]);
+  const [descuentosAplicadosA09, setDescuentosAplicadosA09] = (0, import_react4.useState)([]);
   const [cargandoAutorizacionesA09, setCargandoAutorizacionesA09] = (0, import_react4.useState)(false);
   const [procesandoDescuentoA09, setProcesandoDescuentoA09] = (0, import_react4.useState)(false);
   const [errorDescuentoA09, setErrorDescuentoA09] = (0, import_react4.useState)("");
@@ -17957,16 +17958,84 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     return sitio + " · " + modalidad + " · €" + fmt(total);
   }
 
+  async function listarDescuentosAplicadosA09() {
+    const localId = local?.id || null;
+    const empresaId = configEmpresa?.id || null;
+    if (!localId) return { ok: false, error: "Selecciona un local antes de revisar el stack de descuentos." };
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    try {
+      const contexto = leerContextoCuentaA02(empresaId, localId);
+      if (!contexto?.cuentaId) throw new Error("contexto_cuenta_persistido_invalido");
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "Los descuentos necesitan conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const { data, error } = await supabase
+        .from("abc_descuentos_aplicados")
+        .select("operation_id,cuenta_id,tipo,importe,motivo,created_at,source_line_id,reparto_id")
+        .eq("empresa_id", empresaId)
+        .eq("local_id", localId)
+        .eq("cuenta_id", contexto.cuentaId)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return { ok: true, descuentos: Array.isArray(data) ? data : [] };
+    } catch (error) {
+      return { ok: false, error: respuestaErrorA06(error) };
+    }
+  }
+
+  function agruparDescuentosAplicadosA09(rows) {
+    const grouped = new Map();
+    for (const row of Array.isArray(rows) ? rows : []) {
+      const operationId = String(row?.operation_id || "").trim();
+      if (!operationId) continue;
+      const current = grouped.get(operationId) || {
+        operationId,
+        tipo: String(row?.tipo || ""),
+        importe: 0,
+        motivo: String(row?.motivo || ""),
+        createdAt: row?.created_at || null,
+        repartos: new Set(),
+        lineas: new Set()
+      };
+      current.importe += Number(row?.importe) || 0;
+      if (row?.reparto_id) current.repartos.add(String(row.reparto_id));
+      if (row?.source_line_id) current.lineas.add(String(row.source_line_id));
+      grouped.set(operationId, current);
+    }
+    return [...grouped.values()]
+      .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
+      .map((row) => ({
+        operationId: row.operationId,
+        tipo: row.tipo,
+        importe: row.importe,
+        motivo: row.motivo,
+        createdAt: row.createdAt,
+        repartos: row.repartos.size,
+        lineas: row.lineas.size
+      }));
+  }
+
   async function cargarAutorizacionesA09() {
     if (typeof listarAutorizacionesDescuentoA09 !== "function") return;
     setCargandoAutorizacionesA09(true);
-    const resultado = await listarAutorizacionesDescuentoA09();
+    const [resultado, resultadoStack] = await Promise.all([
+      listarAutorizacionesDescuentoA09(),
+      listarDescuentosAplicadosA09()
+    ]);
     setCargandoAutorizacionesA09(false);
     if (!resultado?.ok) {
       setErrorDescuentoA09(resultado?.error || "No se pudieron cargar las autorizaciones.");
       return;
     }
+    if (!resultadoStack?.ok) {
+      setErrorDescuentoA09(resultadoStack?.error || "No se pudo cargar el stack de descuentos.");
+      setAutorizacionesA09(Array.isArray(resultado.solicitudes) ? resultado.solicitudes : []);
+      setDescuentosAplicadosA09([]);
+      return;
+    }
     setAutorizacionesA09(Array.isArray(resultado.solicitudes) ? resultado.solicitudes : []);
+    setDescuentosAplicadosA09(agruparDescuentosAplicadosA09(resultadoStack.descuentos));
   }
 
   async function abrirDescuentoCuentaA09() {
@@ -18627,6 +18696,14 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       ),
       /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => enviarDescuentoA09(), disabled: procesandoDescuentoA09 || !motivoDescuentoA09.trim() || (tipoDescuentoA09 !== "COURTESY" && !valorDescuentoA09) }, procesandoDescuentoA09 ? "Procesando…" : "Aplicar / solicitar"),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-2", style: { color: C2.inkSoft } }, "Si requiere doble autorización, otra persona debe aprobar. La aprobación no aplica el descuento por sí sola."),
+      descuentosAplicadosA09.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3" },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Stack aplicado · ", descuentosAplicadosA09.length, " operaciones"),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "Cada operación se aplica sobre la base restante y el servidor vuelve a validar el límite acumulado."),
+        descuentosAplicadosA09.map((row) => /* @__PURE__ */ import_react4.default.createElement("div", { key: row.operationId, className: "p-2 rounded-lg mb-2", style: { border: "1px solid " + C2.line } },
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold" }, String(row.tipo || ""), " · €", fmt(row.importe), " · ", row.repartos, " reparto", row.repartos === 1 ? "" : "s"),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, row.motivo || "Sin motivo registrado", row.lineas > 0 ? " · "+row.lineas+" línea"+(row.lineas === 1 ? "" : "s") : "")
+        ))
+      ) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-3", style: { color: C2.inkSoft } }, "No hay descuentos aplicados en esta cuenta."),
       activas.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3" },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-2" }, "Autorizaciones de esta cuenta"),
         /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo de aprobación / rechazo" },
