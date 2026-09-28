@@ -307,8 +307,13 @@ try {
     '10000000-0000-0000-0000-000000000008','EUR',10,0,10,1,11,
     '{"impuesto_pct":10}'::jsonb,'{"modo":"SERVER_AUTHORITY_A03","impuesto_pct":10}'::jsonb,
     '${owner}',date '${day}');`);
+  const commercialBefore = (await db.query('select producto_id,cantidad,unidad from public.pedido_lineas where id=$1', [cashLine])).rows[0];
   result = await call({ operationId: 'a09.test.cash.discount', accountId: cashAccount, value: '2', version: 1 });
   assert.equal(Number(result.total_comercial), 8.8);
+  const commercialAfter = (await db.query('select producto_id,cantidad,unidad from public.pedido_lineas where id=$1', [cashLine])).rows[0];
+  assert.equal(commercialAfter.producto_id, commercialBefore.producto_id);
+  assert.equal(Number(commercialAfter.cantidad), Number(commercialBefore.cantidad));
+  assert.equal(commercialAfter.unidad, commercialBefore.unidad);
   assert.equal((await db.query(`select count(*)::int n
     from public.caja_operaciones co
     join public.pagos p on p.empresa_id=co.empresa_id and p.local_id=co.local_id

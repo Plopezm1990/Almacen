@@ -118571,7 +118571,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [motivoAutorizacionA09, setMotivoAutorizacionA09] = (0, import_react4.useState)("");
   const [autorizacionesA09, setAutorizacionesA09] = (0, import_react4.useState)([]);
   const [descuentosAplicadosA09, setDescuentosAplicadosA09] = (0, import_react4.useState)([]);
-  const [auditoriaDescuentosA09, setAuditoriaDescuentosA09] = (0, import_react4.useState)({ solicitudes: [], intentos: [], aplicaciones: [], eventos: [], efectosCaja: [] });
+  const [auditoriaDescuentosA09, setAuditoriaDescuentosA09] = (0, import_react4.useState)({ solicitudes: [], intentos: [], aplicaciones: [], eventos: [], efectosCaja: [], efectosStock: [] });
   const [errorAuditoriaDescuentosA09, setErrorAuditoriaDescuentosA09] = (0, import_react4.useState)("");
   const [cargandoAutorizacionesA09, setCargandoAutorizacionesA09] = (0, import_react4.useState)(false);
   const [procesandoDescuentoA09, setProcesandoDescuentoA09] = (0, import_react4.useState)(false);
@@ -119028,6 +119028,70 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     }
   }
 
+  async function listarEfectosStockA09() {
+    const localId = local?.id || null;
+    const empresaId = configEmpresa?.id || null;
+    if (!localId) return { ok: false, error: "Selecciona un local antes de revisar líneas y producto." };
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    try {
+      const contexto = leerContextoCuentaA02(empresaId, localId);
+      if (!contexto?.cuentaId) throw new Error("contexto_cuenta_persistido_invalido");
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "La integridad de stock necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const pedidosResponse = await supabase
+        .from("pedidos_tpv")
+        .select("id,estado,version,created_at")
+        .eq("empresa_id", empresaId)
+        .eq("local_id", localId)
+        .eq("cuenta_id", contexto.cuentaId)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (pedidosResponse.error) throw pedidosResponse.error;
+      const pedidoIds = (Array.isArray(pedidosResponse.data) ? pedidosResponse.data : []).map((row) => row?.id).filter(Boolean);
+      if (pedidoIds.length === 0) return { ok: true, lineas: [] };
+      const lineasResponse = await supabase
+        .from("pedido_lineas")
+        .select("id,pedido_id,producto_id,cantidad,unidad,estado,version,descuento_total,base,impuestos,total")
+        .eq("empresa_id", empresaId)
+        .eq("local_id", localId)
+        .in("pedido_id", pedidoIds)
+        .order("id", { ascending: true })
+        .limit(200);
+      if (lineasResponse.error) throw lineasResponse.error;
+      const lineas = Array.isArray(lineasResponse.data) ? lineasResponse.data : [];
+      const lineaIds = lineas.map((row) => row?.id).filter(Boolean);
+      if (lineaIds.length === 0) return { ok: true, lineas: [] };
+      const descuentosResponse = await supabase
+        .from("abc_descuentos_aplicados")
+        .select("operation_id,source_line_id,tipo,importe,created_at")
+        .eq("empresa_id", empresaId)
+        .eq("local_id", localId)
+        .eq("cuenta_id", contexto.cuentaId)
+        .in("source_line_id", lineaIds)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (descuentosResponse.error) throw descuentosResponse.error;
+      const descuentosPorLinea = new Map();
+      for (const descuento of Array.isArray(descuentosResponse.data) ? descuentosResponse.data : []) {
+        const key = String(descuento?.source_line_id || "");
+        if (!key) continue;
+        const rows = descuentosPorLinea.get(key) || [];
+        rows.push(descuento);
+        descuentosPorLinea.set(key, rows);
+      }
+      return {
+        ok: true,
+        lineas: lineas.map((linea) => ({
+          ...linea,
+          descuentos: descuentosPorLinea.get(String(linea?.id || "")) || []
+        }))
+      };
+    } catch (error) {
+      return { ok: false, error: respuestaErrorA06(error) };
+    }
+  }
+
   function agruparDescuentosAplicadosA09(rows) {
     const grouped = new Map();
     for (const row of Array.isArray(rows) ? rows : []) {
@@ -119064,12 +119128,13 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     if (typeof listarAutorizacionesDescuentoA09 !== "function") return;
     setCargandoAutorizacionesA09(true);
     setErrorAuditoriaDescuentosA09("");
-    setAuditoriaDescuentosA09({ solicitudes: [], intentos: [], aplicaciones: [], eventos: [], efectosCaja: [] });
-    const [resultado, resultadoStack, resultadoAuditoria, resultadoCaja] = await Promise.all([
+    setAuditoriaDescuentosA09({ solicitudes: [], intentos: [], aplicaciones: [], eventos: [], efectosCaja: [], efectosStock: [] });
+    const [resultado, resultadoStack, resultadoAuditoria, resultadoCaja, resultadoStock] = await Promise.all([
       listarAutorizacionesDescuentoA09(),
       listarDescuentosAplicadosA09(),
       listarAuditoriaDescuentosA09(),
-      listarEfectosCajaA09()
+      listarEfectosCajaA09(),
+      listarEfectosStockA09()
     ]);
     setCargandoAutorizacionesA09(false);
     if (!resultado?.ok) {
@@ -119086,11 +119151,12 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     setDescuentosAplicadosA09(agruparDescuentosAplicadosA09(resultadoStack.descuentos));
     if (!resultadoAuditoria?.ok) {
       setErrorAuditoriaDescuentosA09(resultadoAuditoria?.error || "No se pudo cargar la auditoría de descuentos.");
-      setAuditoriaDescuentosA09({ solicitudes: [], intentos: [], aplicaciones: resultadoStack.descuentos || [], eventos: [], efectosCaja: resultadoCaja?.ok ? resultadoCaja.efectos || [] : [] });
+      setAuditoriaDescuentosA09({ solicitudes: [], intentos: [], aplicaciones: resultadoStack.descuentos || [], eventos: [], efectosCaja: resultadoCaja?.ok ? resultadoCaja.efectos || [] : [], efectosStock: resultadoStock?.ok ? resultadoStock.lineas || [] : [] });
     } else {
-      setAuditoriaDescuentosA09({ ...resultadoAuditoria, aplicaciones: resultadoStack.descuentos || [], efectosCaja: resultadoCaja?.ok ? resultadoCaja.efectos || [] : [] });
+      setAuditoriaDescuentosA09({ ...resultadoAuditoria, aplicaciones: resultadoStack.descuentos || [], efectosCaja: resultadoCaja?.ok ? resultadoCaja.efectos || [] : [], efectosStock: resultadoStock?.ok ? resultadoStock.lineas || [] : [] });
     }
     if (!resultadoCaja?.ok) setErrorAuditoriaDescuentosA09(resultadoCaja?.error || "No se pudieron cargar los efectos de caja.");
+    if (!resultadoStock?.ok) setErrorAuditoriaDescuentosA09(resultadoStock?.error || "No se pudo cargar la integridad de stock.");
   }
 
   async function abrirDescuentoCuentaA09() {
@@ -119793,13 +119859,18 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         ) : null,
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2" },
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] font-semibold mb-1" }, "Efectos de caja · conciliación"),
-          auditoriaDescuentosA09.efectosCaja.length > 0 ? auditoriaDescuentosA09.efectosCaja.map((row) => /* @__PURE__ */ import_react4.default.createElement("div", { key: "audit-cash-" + row.operation_id, className: "text-[10px] p-2 rounded-lg mb-1", style: { border: "1px solid " + C2.line, color: C2.inkSoft } }, String(row?.checkout?.estado || "CHECKOUT"), " · ", String(row?.pago?.estado || "PAGO"), " · ", String(row?.medio_pago || row?.pago?.medio || "EFECTIVO"), " · importe €", fmt(row?.importe), " · efecto efectivo €", fmt(row?.efecto_efectivo), " · ", row?.created_at || "sin fecha")) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Sin movimientos de caja asociados: el descuento solo modifica el total comercial; el cobro posterior registra el importe neto.")
+        auditoriaDescuentosA09.efectosCaja.length > 0 ? auditoriaDescuentosA09.efectosCaja.map((row) => /* @__PURE__ */ import_react4.default.createElement("div", { key: "audit-cash-" + row.operation_id, className: "text-[10px] p-2 rounded-lg mb-1", style: { border: "1px solid " + C2.line, color: C2.inkSoft } }, String(row?.checkout?.estado || "CHECKOUT"), " · ", String(row?.pago?.estado || "PAGO"), " · ", String(row?.medio_pago || row?.pago?.medio || "EFECTIVO"), " · importe €", fmt(row?.importe), " · efecto efectivo €", fmt(row?.efecto_efectivo), " · ", row?.created_at || "sin fecha")) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Sin movimientos de caja asociados: el descuento solo modifica el total comercial; el cobro posterior registra el importe neto.")
+        ),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2" },
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] font-semibold mb-1" }, "Stock · líneas · producto"),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mb-1", style: { color: C2.inkSoft } }, "El descuento A09 conserva producto, cantidad y unidad; solo actualiza los importes comerciales de la línea y no genera movimientos de stock."),
+          auditoriaDescuentosA09.efectosStock.length > 0 ? auditoriaDescuentosA09.efectosStock.map((row) => /* @__PURE__ */ import_react4.default.createElement("div", { key: "audit-stock-" + row.id, className: "text-[10px] p-2 rounded-lg mb-1", style: { border: "1px solid " + C2.line, color: C2.inkSoft } }, "Producto ", String(row?.producto_id || "sin producto"), " · cantidad ", fmt(row?.cantidad), " ", String(row?.unidad || ""), " · línea ", String(row?.id || "").slice(-16), row?.descuentos?.length ? " · descuentos " + row.descuentos.length : " · sin descuento registrado")) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "No hay líneas comerciales asociadas a esta cuenta."),
         ),
         auditoriaDescuentosA09.eventos.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", null,
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] font-semibold mb-1" }, "Eventos server-side · ", auditoriaDescuentosA09.eventos.length),
           auditoriaDescuentosA09.eventos.map((row) => /* @__PURE__ */ import_react4.default.createElement("div", { key: "audit-event-" + row.operation_id + "-" + row.occurred_at, className: "text-[10px] p-2 rounded-lg mb-1", style: { border: "1px solid " + C2.line, color: C2.inkSoft } }, String(row?.event_type || "EVENTO"), " · ", row?.occurred_at || "sin fecha", " · operación …", String(row?.operation_id || "").slice(-16)))
         ) : null,
-        auditoriaDescuentosA09.solicitudes.length === 0 && auditoriaDescuentosA09.intentos.length === 0 && auditoriaDescuentosA09.aplicaciones.length === 0 && auditoriaDescuentosA09.eventos.length === 0 && auditoriaDescuentosA09.efectosCaja.length === 0 && !errorAuditoriaDescuentosA09 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "No hay registros de auditoría para esta cuenta.") : null
+        auditoriaDescuentosA09.solicitudes.length === 0 && auditoriaDescuentosA09.intentos.length === 0 && auditoriaDescuentosA09.aplicaciones.length === 0 && auditoriaDescuentosA09.eventos.length === 0 && auditoriaDescuentosA09.efectosCaja.length === 0 && auditoriaDescuentosA09.efectosStock.length === 0 && !errorAuditoriaDescuentosA09 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "No hay registros de auditoría para esta cuenta.") : null
       ),
       activas.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3" },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-2" }, "Autorizaciones de esta cuenta"),

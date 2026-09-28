@@ -233,6 +233,25 @@ test('A09.2.6 concilia los efectos de caja desde checkout y pago sin DML desde e
   }
 });
 
+test('A09.2.7 muestra producto, cantidad y líneas sin DML de stock desde el TPV', async () => {
+  const source = await readFile(new URL('../../../source-recovery/fuente-recuperado.js', import.meta.url), 'utf8');
+  const runtime = await readFile(new URL('../../../fuente.js', import.meta.url), 'utf8');
+
+  for (const candidate of [source, runtime]) {
+    assert.match(candidate, /async function listarEfectosStockA09\(/);
+    assert.match(candidate, /\.from\("pedidos_tpv"\)[\s\S]*?\.select\(/);
+    assert.match(candidate, /\.from\("pedido_lineas"\)[\s\S]*?\.select\(/);
+    assert.match(candidate, /\.from\("abc_descuentos_aplicados"\)[\s\S]*?\.in\("source_line_id", lineaIds\)/);
+    assert.match(candidate, /Stock · líneas · producto/);
+    assert.match(candidate, /conserva producto, cantidad y unidad/);
+    assert.doesNotMatch(candidate, /\.from\("pedidos_tpv"\)\s*\.insert/);
+    assert.doesNotMatch(candidate, /\.from\("pedido_lineas"\)\s*\.insert/);
+    assert.doesNotMatch(candidate, /\.from\("pedido_lineas"\)\s*\.update/);
+    assert.doesNotMatch(candidate, /\.from\("abc_descuentos_aplicados"\)\s*\.insert/);
+    assert.doesNotMatch(candidate, /\.from\("abc_descuentos_aplicados"\)\s*\.update/);
+  }
+});
+
 test('A09.2.3 identifica el escalado por encima del límite del rol', async () => {
   const source = await readFile(new URL('../../../source-recovery/fuente-recuperado.js', import.meta.url), 'utf8');
   const runtime = await readFile(new URL('../../../fuente.js', import.meta.url), 'utf8');
