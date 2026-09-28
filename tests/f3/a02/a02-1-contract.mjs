@@ -2,15 +2,17 @@
 import fs from "node:fs";
 import assert from "node:assert/strict";
 
-const recovered = fs.readFileSync("source-recovery/fuente-recuperado.js", "utf8");
-const runtime = fs.readFileSync("fuente.js", "utf8");
-const a03 = fs.readFileSync("supabase/migrations/20260924010000_abc_f3_a03_server_authority.sql", "utf8");
-const a04 = fs.readFileSync("supabase/migrations/20260924020000_abc_f3_a04_variants_modifiers.sql", "utf8");
-const a06 = fs.readFileSync("supabase/migrations/20260924040000_abc_f3_a06_account_recovery.sql", "utf8");
-const m01 = fs.readFileSync("supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql", "utf8");
-const m03a = fs.readFileSync("supabase/migrations/20260923233000_abc_f2_m03a_autoridad_transaccional.sql", "utf8");
-const m04a = fs.readFileSync("supabase/migrations/20260924001000_abc_f2_m04a_caja_sesiones.sql", "utf8");
-const a11 = fs.readFileSync("supabase/migrations/20260926203000_abc_f3_a02_operating_day_a11.sql", "utf8");
+const readText = (path) => fs.readFileSync(path, "utf8").replace(/\r\n/g, "\n");
+
+const recovered = readText("source-recovery/fuente-recuperado.js");
+const runtime = readText("fuente.js");
+const a03 = readText("supabase/migrations/20260924010000_abc_f3_a03_server_authority.sql");
+const a04 = readText("supabase/migrations/20260924020000_abc_f3_a04_variants_modifiers.sql");
+const a06 = readText("supabase/migrations/20260924040000_abc_f3_a06_account_recovery.sql");
+const m01 = readText("supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql");
+const m03a = readText("supabase/migrations/20260923233000_abc_f2_m03a_autoridad_transaccional.sql");
+const m04a = readText("supabase/migrations/20260924001000_abc_f2_m04a_caja_sesiones.sql");
+const a11 = readText("supabase/migrations/20260926203000_abc_f3_a02_operating_day_a11.sql");
 
 const headerLines = 14;
 const recoveredBody = recovered.split("\n").slice(headerLines).join("\n");
