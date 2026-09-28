@@ -1,4 +1,5 @@
 name: A09.1.7 TPV descuentos y autorizaciones
+# Revalida también el HEAD ya materializado: el materializador debe ser idempotente.
 
 on:
   push:
