@@ -1,0 +1,110 @@
+name: A09.1.7 TPV descuentos y autorizaciones
+
+on:
+  push:
+    branches:
+      - abc-f3-a09-1-7-tpv-discounts
+    paths:
+      - 'source-recovery/fuente-recuperado.js'
+      - 'fuente.js'
+      - 'scripts/f3/a09-1-7-materialize.mjs'
+      - 'tests/f3/a09/discount-command.test.mjs'
+      - 'supabase/migrations/20260924160739_abc_f3_a09_descuentos_cortesias.sql'
+      - '.github/workflows/abc-f3-a09-1-7-ui-contract.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: abc-f3-a09-1-7-\${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+
+      - name: Guardar alcance y base release
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE=2226e0b2e65f540d80a2bb2294058bb61559c55e
+          git merge-base --is-ancestor "$BASE" HEAD
+          BAD=$(git diff --name-only "$BASE...HEAD" | grep -Ev '^(fuente\.js|source-recovery/fuente-recuperado\.js|scripts/f3/a09-1-7-materialize\.mjs|tests/f3/a09/discount-command\.test\.mjs|\.github/workflows/abc-f3-a09-1-7-ui-contract\.yml)$' || true)
+          if [ -n "$BAD" ]; then
+            echo "A09_1_7_SCOPE_FAIL" >&2
+            echo "$BAD" >&2
+            exit 1
+          fi
+          git diff --exit-code "$BASE...HEAD" -- supabase/
+          echo "A09_1_7_SCOPE=PASS"
+
+      - name: Materializar A09.1.7
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/f3/a09-1-7-materialize.mjs
+
+      - name: Verificar sintaxis y Source Recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check source-recovery/fuente-recuperado.js
+          node --check fuente.js
+          python3 source-recovery/recuperar_candidato.py --check
+          echo "A09_1_7_SOURCE_RECOVERY=PASS"
+
+      - name: Build directo recuperado
+        shell: bash
+        working-directory: source-recovery
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm run check
+          rm -rf dist
+          npm run build
+          node --check dist/fuente.js
+          echo "A09_1_7_BUILD=PASS"
+
+      - name: Contratos A09 y regresión TPV
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/f3/a09/discount-command.test.mjs
+          node tests/f3/a09/discount-math.test.mjs
+          node tests/f3/a09/fiscal-cents.test.mjs
+          node tests/f3/a09/snapshot-jcs.test.mjs
+          node tests/f3/a06/a06-1-ui-contract.mjs
+          node tests/f3/a06/a06-2-ui-contract.mjs
+          node tests/f3/a07/a07-1-ui-contract.mjs
+          node tests/f3/a07/a07-2-ui-contract.mjs
+          node tests/f3/a08/a08-1-ui-contract.mjs
+          node tests/pm20/p07-revalidacion-acumulada-contract.mjs
+          echo "A09_1_7_CONTRACTS=PASS"
+
+      - name: Validar manifiesto CI sin aumentar inventario
+        shell: bash
+        run: |
+          set -euo pipefail
+          node .github/scripts/validar-manifiesto-ci.mjs --self-test
+          node .github/scripts/validar-manifiesto-ci.mjs
+          echo
+          echo "A09_1_7_MANIFEST=PASS"
+
+      - name: Persistir Source Recovery y runtime materializados
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add source-recovery/fuente-recuperado.js fuente.js
+          if git diff --cached --quiet; then
+            echo "A09_1_7_RUNTIME_ALREADY_CURRENT=1"
+            exit 0
+          fi
+          git commit -m "[skip netlify] A09.1.7 materializar TPV descuentos"
+          git push origin "HEAD:\${GITHUB_REF_NAME}"
+          echo "A09_1_7_RUNTIME_COMMITTED=1"
