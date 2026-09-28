@@ -24,10 +24,10 @@ jobs:
           node --check fuente.js
           node --check source-recovery/fuente-recuperado.js
           git diff --check
-          git diff --exit-code --quiet -- fuente.js source-recovery/fuente-recuperado.js && {
+          if git diff --exit-code --quiet -- fuente.js source-recovery/fuente-recuperado.js; then
             echo "A09_MATERIALIZE_SIN_CAMBIOS" >&2
             exit 1
-          }
+          fi
       - name: Versionar archivos grandes
         run: |
           set -euo pipefail
