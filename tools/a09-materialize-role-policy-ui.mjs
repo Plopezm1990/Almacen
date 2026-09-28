@@ -201,3 +201,5 @@ for (const file of targets) {
   console.log('A09_ROLE_POLICY_UI_PATCHED=' + file);
 }
 console.log('A09_ROLE_POLICY_UI_MATERIALIZE=PASS');
+
+// trigger: diff guard corrected
