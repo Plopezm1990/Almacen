@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const INVENTORY = 161;
+const INVENTORY = 162;
 const CLASSES = ['active_contract', 'historical_expected_fail', 'utility', 'diagnostic'];
 const ENVIRONMENTS = ['node', 'postgres', 'pglite', 'supabase_full_stack'];
 const PAIRS = {
@@ -12,9 +12,9 @@ const PAIRS = {
   pglite: ['active_contract', 'utility'],
   supabase_full_stack: ['active_contract'],
 };
-const COUNTS = { active_contract: 147, historical_expected_fail: 1, utility: 8, diagnostic: 5 };
+const COUNTS = { active_contract: 148, historical_expected_fail: 1, utility: 8, diagnostic: 5 };
 const ENVIRONMENT_COUNTS = {
-  node: { active_contract: 133, historical_expected_fail: 0, utility: 7, diagnostic: 5 },
+  node: { active_contract: 134, historical_expected_fail: 0, utility: 7, diagnostic: 5 },
   postgres: { active_contract: 10, historical_expected_fail: 1, utility: 0, diagnostic: 0 },
   pglite: { active_contract: 1, historical_expected_fail: 0, utility: 1, diagnostic: 0 },
   supabase_full_stack: { active_contract: 3, historical_expected_fail: 0, utility: 0, diagnostic: 0 },
@@ -31,6 +31,9 @@ const A09 = {
   'tests/f3/a09/local-postgres-contract.mjs': ['active_contract', 'postgres'],
   'tests/f3/a09/snapshot-jcs.mjs': ['utility', 'node'],
   'tests/f3/a09/snapshot-jcs.test.mjs': ['active_contract', 'node'],
+};
+const A10 = {
+  'tests/f3/a10/a10-ui.test.mjs': ['active_contract', 'node'],
 };
 
 function zeroCounts(keys) {
@@ -138,6 +141,12 @@ function validate(manifest, realPaths) {
       add('a09_classification', path + ' debe aparecer una vez como ' + expected[0] + '/' + expected[1] + '.');
     }
   }
+  for (const [path, expected] of Object.entries(A10)) {
+    const matches = entries.filter((entry) => entry && entry.path === path);
+    if (matches.length !== 1 || matches[0]?.classification !== expected[0] || matches[0]?.environment !== expected[1]) {
+      add('a10_classification', path + ' debe aparecer una vez como ' + expected[0] + '/' + expected[1] + '.');
+    }
+  }
   const p01 = entries.filter((entry) => entry && entry.path === 'tests/pm33/db/p01-aislamiento-multiempresa-contract.mjs');
   if (p01.length !== 1 || p01[0]?.classification !== 'historical_expected_fail' || p01[0]?.environment !== 'postgres') {
     add('historical_contract', 'P01 debe aparecer una vez como historical_expected_fail/postgres.');
@@ -164,7 +173,7 @@ function selfTest(manifest, realPaths) {
   spoofed.push({ ...duplicate, environment: 'unknown_environment' });
   const spoofedActive = spoofed.filter((entry) => entry.classification === 'active_contract').length;
   if (spoofed.length !== INVENTORY || spoofedActive !== COUNTS.active_contract) {
-    throw new Error('El caso combinado no conserva 161 entradas y 147 contratos activos.');
+    throw new Error('El caso combinado no conserva 162 entradas y 148 contratos activos.');
   }
   const spoofedCodes = new Set(validate({ ...manifest, entries: spoofed }, realPaths).issues.map((issue) => issue.code));
   if (!['invalid_environment', 'duplicate_path', 'missing_path'].every((code) => spoofedCodes.has(code))) {

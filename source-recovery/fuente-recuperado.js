@@ -165,28 +165,28 @@ function generarPdfConteo(conteo, diferencias, proveedores, empresa) {
   return doc;
 }
 var TIPOS_IVA = [0, 4, 10, 21];
-var ITEMS_EMPLEADO = ["dashboard", "venta", "fichaje", "recepcion", "conteo", "appcc", "mapa", "traspasos"];
+var ITEMS_EMPLEADO = ["dashboard", "venta", "cocina", "fichaje", "recepcion", "conteo", "appcc", "mapa", "traspasos"];
 var ROLES_EMPLEADO = {
   "B\xE1sico": ["dashboard", "venta", "fichaje"],
   "Est\xE1ndar": ITEMS_EMPLEADO,
   // Roles de las cuentas reales (Fase 8, paso 3) — cada uno ve solo lo
   // que necesita para su puesto, no el "modo empleado" genérico de antes.
-  "Camarero/a": ["dashboard", "venta", "fichaje"],
-  "Cajero/a": ["dashboard", "venta", "fichaje", "caja", "devoluciones"],
-  "Churrero/a": ["dashboard", "produccion", "aceite", "fichaje", "recepcion", "conteo"],
+  "Camarero/a": ["dashboard", "venta", "cocina", "fichaje"],
+  "Cajero/a": ["dashboard", "venta", "cocina", "fichaje", "caja", "devoluciones"],
+  "Churrero/a": ["dashboard", "produccion", "aceite", "cocina", "fichaje", "recepcion", "conteo"],
   // Encargado ve todo lo de los tres puestos combinado, más lo que ya
   // tenía antes (pedidos, productos, proveedores) — es intencionadamente
   // el rol más amplio, sin llegar a las cifras de negocio del Propietario.
-  "Encargado": [.../* @__PURE__ */ new Set([...ITEMS_EMPLEADO, "venta", "caja", "devoluciones", "produccion", "aceite", "pedidos", "productos", "proveedores"])]
+  "Encargado": [.../* @__PURE__ */ new Set([...ITEMS_EMPLEADO, "venta", "cocina", "caja", "devoluciones", "produccion", "aceite", "pedidos", "productos", "proveedores"])]
 };
 var NOMBRES_ROLES = Object.keys(ROLES_EMPLEADO);
 var TAB_PRIORITIES_MOVIL = {
   "Propietario": ["dashboard", "resultados", "caja"],
-  "Encargado": ["dashboard", "venta", "fichaje"],
-  "Est\xE1ndar": ["dashboard", "venta", "fichaje"],
-  "Cajero/a": ["dashboard", "venta", "fichaje"],
-  "Camarero/a": ["dashboard", "venta", "fichaje"],
-  "Churrero/a": ["dashboard", "produccion", "fichaje"],
+  "Encargado": ["dashboard", "venta", "cocina", "fichaje"],
+  "Est\xE1ndar": ["dashboard", "venta", "cocina", "fichaje"],
+  "Cajero/a": ["dashboard", "venta", "cocina", "fichaje"],
+  "Camarero/a": ["dashboard", "venta", "cocina", "fichaje"],
+  "Churrero/a": ["dashboard", "produccion", "cocina", "fichaje"],
   "B\xE1sico": ["dashboard", "venta", "fichaje"]
 };
 var ESTILO_IMPRESION_CLARO = {
@@ -1821,7 +1821,7 @@ function GestionAlmacen() {
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
-  const { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
+  const { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
   const { traspasarStock, traspasarEntreLocales } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales });
@@ -2824,7 +2824,7 @@ function GestionAlmacen() {
       movimientos: movimientosDelLocalActivo,
       setTab: cambiarTabPM15
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un \xFAnico local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un \xFAnico local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10 }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -2948,6 +2948,7 @@ function GestionAlmacen() {
     { id: "appcc", label: "Control sanitario", icon: ShieldCheck, badge: appccPendientesHoy.length, badgeColor: C2.amberFill, badgeTextColor: C2.onAmber },
     { id: "aceite", label: "Aceite de freidoras", icon: Droplet },
     { id: "venta", label: "TPV", icon: ShoppingBag },
+    { id: "cocina", label: "Cocina A10", icon: Factory },
     { id: "encargos", label: "Encargos", icon: CalendarDays, badge: encargosUrgentesDelLocalActivo.length, badgeColor: C2.redFill, badgeTextColor: C2.onRed },
     { id: "clientes", label: "Clientes", icon: UserRound },
     { id: "libroiva", label: "Libro de IVA", icon: Receipt },
@@ -2972,7 +2973,7 @@ function GestionAlmacen() {
     { titulo: null, items: pick(["dashboard", "direccion", "buscar"]) },
     { titulo: "Compras", items: pick(["proveedores", "pedidos", "recepcion", "albaranes", "facturas"]) },
     { titulo: "Almac\xE9n", items: pick(["resumen_almacen", "productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos", "diagnostico", "etiquetas"]) },
-    { titulo: "Ventas", items: pick(["venta", "encargos", "clientes", "devoluciones", "descuentos"]) },
+    { titulo: "Ventas", items: pick(["venta", "cocina", "encargos", "clientes", "devoluciones", "descuentos"]) },
     { titulo: "Costes y producci\xF3n", items: pick(["fichas", "produccion", "mermas"]) },
     { titulo: "Finanzas y an\xE1lisis", items: pick(["pagos", "resultados", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
     { titulo: "Personal", items: pick(["personal", "fichaje", "turnos", "nominas"]) },
@@ -7191,6 +7192,19 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("motivo_cancelacion_requerido")) return "Es obligatorio indicar un motivo para cancelar.";
     if (msg.includes("transicion_linea_invalida")) return "La línea cambió de estado y esa acción ya no es válida.";
     if (msg.includes("linea_no_cancelable")) return "La línea ya no se puede cancelar.";
+    if (msg.includes("a10_requiere_conexion")) return "A10 necesita conexión con el servidor; no se ha registrado ningún cambio local.";
+    if (msg.includes("local_requerido") || msg.includes("empresa_requerida")) return "Selecciona un local operativo antes de abrir Cocina.";
+    if (msg.includes("operating_day_context_required")) return "Abre o recupera primero un pedido real para resolver el día operativo del servidor.";
+    if (msg.includes("comanda_ver_no_autorizado")) return "Tu perfil no tiene permiso para ver las comandas de este local.";
+    if (msg.includes("comanda_configurar_no_autorizado")) return "Solo Propietario o Encargado pueden configurar estaciones y rutas.";
+    if (msg.includes("comanda_cambio_no_autorizado")) return "Tu perfil no tiene permiso para enviar cambios a cocina.";
+    if (msg.includes("comanda_reimprimir_no_autorizado")) return "Tu perfil no tiene permiso para reimprimir comandas.";
+    if (msg.includes("comanda_merma_no_autorizada")) return "Solo Propietario o Encargado pueden resolver decisiones de merma.";
+    if (msg.includes("comandas_respuesta_invalida")) return "El servidor devolvió una lista de comandas no válida.";
+    if (msg.includes("estacion_no_encontrada") || msg.includes("comanda_no_encontrada")) return "La estación o comanda ya no existe; actualiza la vista.";
+    if (msg.includes("estacion_version_conflict")) return "La estación cambió en otro terminal. Actualiza antes de guardar.";
+    if (msg.includes("linea_no_admite_cambio_comanda")) return "La línea ya no admite cambios operativos desde cocina.";
+    if (msg.includes("comanda_merma_no_pendiente")) return "La decisión de merma ya fue resuelta por otro usuario.";
     if (msg.includes("pedido_con_lineas_servidas_no_cancelable")) return "No se puede cancelar un pedido que ya tiene líneas servidas.";
     if (msg.includes("pedido_no_cancelable") || msg.includes("pedido_no_operable")) return "El pedido ya no admite esa operación.";
     if (msg.includes("pedido_sin_lineas_enviables")) return "El pedido no contiene líneas que se puedan enviar.";
@@ -7838,6 +7852,156 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     } catch (error) {
       return respuestaErrorA06(error);
     }
+  }
+
+  async function contextoA10(requiereDia = false) {
+    if (!localActivoId) throw new Error("local_requerido");
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) throw new Error("empresa_requerida");
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) throw new Error("a10_requiere_conexion");
+    const supabase = await window.getSupabaseClient();
+    const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+    let contexto = null;
+    try {
+      contexto = leerContextoCuentaA02(empresaId, localActivoId);
+    } catch (error) {
+      if (requiereDia) throw error;
+    }
+    if (requiereDia && !contexto?.operatingDay) throw new Error("operating_day_context_required");
+    return {
+      supabase,
+      empresaId,
+      localId: localActivoId,
+      terminalId: terminal.terminalId,
+      sessionId: terminal.sessionId,
+      operatingDay: contexto?.operatingDay || null
+    };
+  }
+
+  async function listarEstacionesA10() {
+    try {
+      const contexto = await contextoA10(false);
+      const [estaciones, rutas] = await Promise.all([
+        contexto.supabase.from("tpv_estaciones_preparacion").select("id,codigo,nombre,tipo,activo,version,created_at,updated_at").eq("empresa_id", contexto.empresaId).eq("local_id", contexto.localId).order("nombre", { ascending: true }),
+        contexto.supabase.from("tpv_producto_estaciones").select("producto_id,estacion_id,prioridad,activo,version,created_at,updated_at").eq("empresa_id", contexto.empresaId).eq("local_id", contexto.localId).eq("activo", true).order("prioridad", { ascending: true })
+      ]);
+      if (estaciones.error) throw estaciones.error;
+      if (rutas.error) throw rutas.error;
+      return { ok: true, estaciones: estaciones.data || [], rutas: rutas.data || [] };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function listarComandasA10(estacionId = null, limite = 100) {
+    try {
+      const contexto = await contextoA10(false);
+      const { data, error } = await contexto.supabase.rpc("abc_listar_comandas_estacion", {
+        p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId,
+        p_estacion_id: estacionId || null,
+        p_limite: Math.min(500, Math.max(1, Number(limite) || 100))
+      });
+      if (error) throw error;
+      if (!Array.isArray(data)) throw new Error("comandas_respuesta_invalida");
+      return { ok: true, comandas: data };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function ejecutarOperacionA10(rpc, operationId, params) {
+    try {
+      const contexto = await contextoA10(true);
+      const resultado = await rpcA02ConRecuperacion(contexto.supabase, rpc, {
+        p_operation_id: operationId,
+        p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId,
+        ...params,
+        p_terminal_id: contexto.terminalId,
+        p_session_id: contexto.sessionId,
+        p_operating_day: contexto.operatingDay
+      }, contexto.empresaId, contexto.localId, operationId);
+      return { ok: true, ...resultado };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function crearEstacionA10({ codigo, nombre, tipo = "OTRO" } = {}) {
+    const codigoLimpio = String(codigo || "").trim().toUpperCase();
+    const nombreLimpio = String(nombre || "").trim();
+    if (!codigoLimpio || !nombreLimpio) return { ok: false, error: "Indica código y nombre de la estación." };
+    const estacionId = uuidA02();
+    return ejecutarOperacionA10("abc_crear_estacion_preparacion", `a10.ui.station.create.${estacionId}`, {
+      p_estacion_id: estacionId,
+      p_codigo: codigoLimpio,
+      p_nombre: nombreLimpio,
+      p_tipo: String(tipo || "OTRO").toUpperCase()
+    });
+  }
+
+  async function actualizarEstacionA10({ estacionId, nombre, tipo = "OTRO", activo = true, version } = {}) {
+    const nombreLimpio = String(nombre || "").trim();
+    const versionEsperada = Number(version);
+    if (!estacionId || !nombreLimpio || !Number.isSafeInteger(versionEsperada) || versionEsperada < 1) {
+      return { ok: false, error: "La estación o su versión ya no son válidas. Recarga antes de actualizar." };
+    }
+    return ejecutarOperacionA10("abc_actualizar_estacion_preparacion", `a10.ui.station.update.${estacionId}.${versionEsperada}`, {
+      p_estacion_id: estacionId,
+      p_nombre: nombreLimpio,
+      p_tipo: String(tipo || "OTRO").toUpperCase(),
+      p_activo: activo === true,
+      p_expected_version: versionEsperada
+    });
+  }
+
+  async function asignarProductoEstacionA10({ productoId, estacionId, prioridad = 1 } = {}) {
+    const producto = String(productoId || "").trim();
+    const prioridadNumero = Number(prioridad);
+    if (!producto || !estacionId || !Number.isSafeInteger(prioridadNumero) || prioridadNumero < 1 || prioridadNumero > 100) {
+      return { ok: false, error: "Selecciona producto, estación y una prioridad entre 1 y 100." };
+    }
+    return ejecutarOperacionA10("abc_asignar_producto_estacion", `a10.ui.route.${producto}.${estacionId}.${prioridadNumero}`, {
+      p_producto_id: producto,
+      p_estacion_id: estacionId,
+      p_prioridad: prioridadNumero
+    });
+  }
+
+  async function enviarCambioComandaA10({ lineaId, nota, lineaVersion } = {}) {
+    const linea = String(lineaId || "").trim();
+    const notaLimpia = String(nota || "").trim();
+    const version = Number(lineaVersion);
+    if (!linea || !notaLimpia || !Number.isSafeInteger(version) || version < 1) {
+      return { ok: false, error: "Indica la línea, una nota y una versión válida." };
+    }
+    return ejecutarOperacionA10("abc_enviar_cambio_comanda", `a10.ui.change.${linea}.${version}.${notaLimpia.slice(0, 48)}`, {
+      p_linea_id: linea,
+      p_nota: notaLimpia,
+      p_expected_linea_version: version
+    });
+  }
+
+  async function reimprimirComandaA10(comandaId) {
+    const id = String(comandaId || "").trim();
+    if (!id) return { ok: false, error: "Selecciona una comanda antes de reimprimir." };
+    return ejecutarOperacionA10("abc_reimprimir_comanda", `a10.ui.reprint.${id}.${Date.now()}`, {
+      p_comanda_id: id
+    });
+  }
+
+  async function resolverMermaComandaA10({ comandaLineaId, decision } = {}) {
+    const id = String(comandaLineaId || "").trim();
+    const decisionLimpia = String(decision || "").trim().toUpperCase();
+    if (!id || !["MERMA_CONFIRMADA", "NO_MERMA"].includes(decisionLimpia)) {
+      return { ok: false, error: "La decisión de merma no es válida." };
+    }
+    return ejecutarOperacionA10("abc_resolver_merma_comanda_linea", `a10.ui.merma.${id}.${decisionLimpia}`, {
+      p_comanda_linea_id: id,
+      p_decision: decisionLimpia
+    });
   }
 
   async function cargarMapaSalaA07() {
@@ -8584,7 +8748,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       return { ok: false, error: "No se pudo confirmar la anulaci\xF3n con el servidor. No se ha modificado el stock local." };
     }
   }
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -19227,6 +19391,200 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     },
     enviandoVenta ? "Cobrando\u2026" : "Confirmar venta"
   ), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowCobro(false), disabled: enviandoVenta }, "Cancelar"))), confirmacion && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => !procesandoA05 && setConfirmacion(null), title: confirmacion.pedidoEstado === "ENVIADO" ? "Pedido enviado" : "Pedido guardado" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-2" }, confirmacion.currencyCode || "EUR", " ", fmt(confirmacion.total), " · ", confirmacion.n, " línea(s)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Cuenta ", confirmacion.cuentaId || "", " · Pedido ", confirmacion.pedidoId || ""), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2 font-semibold", style: { color: confirmacion.pedidoEstado === "ENVIADO" ? C2.accent : C2.ink } }, "Estado operativo: ", confirmacion.pedidoEstado || "ABIERTO"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, confirmacion.pedidoEstado === "ENVIADO" ? "A05 ha confirmado las líneas y enviado el pedido. Continúa su preparación, servido o cancelación desde el panel operativo del TPV." : "A02/A04 han persistido cuenta, pedido y líneas. A05 puede confirmar las líneas y enviar el pedido sin registrar cobro, documento fiscal ni movimiento de stock."), errorA05 && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", errorA05), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, confirmacion.pedidoEstado !== "ENVIADO" ? /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: enviarPedidoGuardadoA05, disabled: procesandoA05 }, procesandoA05 ? "Enviando pedido…" : "Enviar pedido") : null, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmacion(null), disabled: procesandoA05 }, confirmacion.pedidoEstado === "ENVIADO" ? "Aceptar" : "Cerrar"))), renderHistorialVentas(), confirmAnular && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmAnular(null), title: "Anular esta venta" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, /* @__PURE__ */ import_react4.default.createElement("b", null, confirmAnular.resumen), " \xB7 \u20AC", fmt(confirmAnular.importe)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "El stock de esos productos volver\xE1 al piso de venta, y quedar\xE1 registrada la anulaci\xF3n. La venta original no se borra: se ve que existi\xF3 y que se anul\xF3."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivoAnular, onChange: (e2) => setMotivoAnular(e2.target.value), placeholder: "Cobro duplicado, importe incorrecto\u2026" })), errorAnular && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", role: "alert", style: { color: C2.red } }, errorAnular), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: confirmarAnulacion, disabled: procesandoAnulacion }, procesandoAnulacion ? "Anulando\u2026" : "S\xED, anular la venta"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmAnular(null), disabled: procesandoAnulacion }, "Cancelar"))));
+}
+function CocinaA10({ productos = [], local = null, configEmpresa = null, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10 }) {
+  const h3 = import_react4.default.createElement;
+  const [estaciones, setEstaciones] = (0, import_react4.useState)([]);
+  const [rutas, setRutas] = (0, import_react4.useState)([]);
+  const [comandas, setComandas] = (0, import_react4.useState)([]);
+  const [estacionId, setEstacionId] = (0, import_react4.useState)("");
+  const [codigo, setCodigo] = (0, import_react4.useState)("");
+  const [nombre, setNombre] = (0, import_react4.useState)("");
+  const [tipo, setTipo] = (0, import_react4.useState)("COCINA");
+  const [productoId, setProductoId] = (0, import_react4.useState)("");
+  const [prioridad, setPrioridad] = (0, import_react4.useState)("1");
+  const [notas, setNotas] = (0, import_react4.useState)({});
+  const [cargando, setCargando] = (0, import_react4.useState)(false);
+  const [procesando, setProcesando] = (0, import_react4.useState)("");
+  const [error, setError] = (0, import_react4.useState)("");
+  const [mensaje, setMensaje] = (0, import_react4.useState)("");
+
+  const productosActivos = (productos || []).filter((producto) => producto && producto.activo !== false);
+  const estacionSeleccionada = estaciones.find((estacion) => String(estacion.id) === String(estacionId)) || null;
+  const nombreProducto = (id) => productos.find((producto) => String(producto.id) === String(id))?.nombre || id || "Producto";
+  const nombreEstacion = (id) => estaciones.find((estacion) => String(estacion.id) === String(id))?.nombre || "Sin estación";
+  const versionLinea = (linea) => Number(linea?.linea_version || linea?.snapshot?.linea_version || linea?.snapshot?.lineaVersion || 0);
+
+  async function refrescarEstaciones() {
+    if (!local?.id || !configEmpresa?.id || typeof listarEstacionesA10 !== "function") return;
+    setCargando(true);
+    setError("");
+    const resultado = await listarEstacionesA10();
+    setCargando(false);
+    if (!resultado?.ok) {
+      setError(resultado?.error || "No se pudieron cargar las estaciones.");
+      return;
+    }
+    const nuevas = Array.isArray(resultado.estaciones) ? resultado.estaciones : [];
+    setEstaciones(nuevas);
+    setRutas(Array.isArray(resultado.rutas) ? resultado.rutas : []);
+    if (estacionId && !nuevas.some((estacion) => String(estacion.id) === String(estacionId))) setEstacionId("");
+  }
+
+  async function refrescarComandas() {
+    if (typeof listarComandasA10 !== "function") return;
+    setCargando(true);
+    setError("");
+    const resultado = await listarComandasA10(estacionId || null, 100);
+    setCargando(false);
+    if (!resultado?.ok) {
+      setError(resultado?.error || "No se pudieron cargar las comandas.");
+      return;
+    }
+    setComandas(Array.isArray(resultado.comandas) ? resultado.comandas : []);
+  }
+
+  (0, import_react4.useEffect)(() => {
+    setEstaciones([]);
+    setRutas([]);
+    setComandas([]);
+    setEstacionId("");
+    setError("");
+    setMensaje("");
+    refrescarEstaciones();
+  }, [local?.id, configEmpresa?.id]);
+
+  (0, import_react4.useEffect)(() => {
+    if (local?.id && configEmpresa?.id) refrescarComandas();
+  }, [estacionId, local?.id, configEmpresa?.id]);
+
+  async function guardarEstacion() {
+    if (procesando || typeof crearEstacionA10 !== "function") return;
+    setProcesando("crear-estacion");
+    setError("");
+    setMensaje("");
+    const resultado = await crearEstacionA10({ codigo, nombre, tipo });
+    setProcesando("");
+    if (!resultado?.ok) {
+      setError(resultado?.error || "No se pudo crear la estación.");
+      return;
+    }
+    setCodigo("");
+    setNombre("");
+    setMensaje("Estación creada por el contrato A10.");
+    await refrescarEstaciones();
+  }
+
+  async function cambiarActivo(estacion) {
+    if (procesando || typeof actualizarEstacionA10 !== "function") return;
+    setProcesando("estacion:" + estacion.id);
+    setError("");
+    setMensaje("");
+    const resultado = await actualizarEstacionA10({ estacionId: estacion.id, nombre: estacion.nombre, tipo: estacion.tipo, activo: estacion.activo !== true, version: estacion.version });
+    setProcesando("");
+    if (!resultado?.ok) {
+      setError(resultado?.error || "No se pudo actualizar la estación.");
+      return;
+    }
+    setMensaje(estacion.activo === true ? "Estación desactivada." : "Estación activada.");
+    await refrescarEstaciones();
+  }
+
+  async function guardarRuta() {
+    if (procesando || typeof asignarProductoEstacionA10 !== "function") return;
+    setProcesando("ruta");
+    setError("");
+    setMensaje("");
+    const resultado = await asignarProductoEstacionA10({ productoId, estacionId: estacionId || estacionSeleccionada?.id, prioridad });
+    setProcesando("");
+    if (!resultado?.ok) {
+      setError(resultado?.error || "No se pudo asignar la ruta.");
+      return;
+    }
+    setMensaje("Ruta de producto actualizada por el contrato A10.");
+    await refrescarEstaciones();
+  }
+
+  async function ejecutarA10(clave, accion) {
+    if (procesando) return;
+    setProcesando(clave);
+    setError("");
+    setMensaje("");
+    const resultado = await accion();
+    setProcesando("");
+    if (!resultado?.ok) {
+      setError(resultado?.error || "La operación A10 no se pudo completar.");
+      return;
+    }
+    setMensaje("Operación A10 confirmada por el servidor.");
+    await refrescarComandas();
+  }
+
+  function renderComanda(comanda) {
+    const lineas = Array.isArray(comanda?.lineas) ? comanda.lineas : [];
+    return h3(Card, { key: comanda.id, className: "mb-2" },
+      h3("div", { className: "flex items-center justify-between gap-2 mb-2" },
+        h3("div", { className: "text-[12.5px] font-semibold" }, String(comanda.tipo || "COMANDA"), " · ", nombreEstacion(comanda.estacion_id)),
+        h3("span", { className: "text-[10.5px] font-semibold", style: { color: comanda.estado === "BLOQUEADA" ? C2.red : C2.accent } }, String(comanda.estado || "PENDIENTE"))
+      ),
+      h3("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "Pedido ", String(comanda.pedido_id || "").slice(-12), " · ", comanda.created_at || "sin fecha"),
+      lineas.map((linea) => {
+        const nota = notas[linea.id] || "";
+        const version = versionLinea(linea);
+        return h3("div", { key: linea.id, className: "py-2", style: { borderTop: "1px solid " + C2.line } },
+          h3("div", { className: "flex items-center justify-between gap-2" },
+            h3("div", { className: "text-[12px] font-medium" }, nombreProducto(linea.producto_id), " · ", String(linea.cantidad)),
+            h3("span", { className: "text-[10px]", style: { color: C2.inkSoft } }, String(linea.accion || "ALTA"))
+          ),
+          linea.nota ? h3("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, "Nota: ", linea.nota) : null,
+          linea.decision_merma === "PENDIENTE" ? h3("div", { className: "mt-2 p-2 rounded-lg", style: { background: C2.amberSoft } },
+            h3("div", { className: "text-[11px] font-semibold mb-1" }, "Decisión de merma pendiente"),
+            h3("div", { className: "flex gap-1.5 flex-wrap" },
+              h3(Btn, { small: true, onClick: () => ejecutarA10("merma:" + linea.id, () => resolverMermaComandaA10({ comandaLineaId: linea.id, decision: "MERMA_CONFIRMADA" })) }, "Confirmar merma"),
+              h3(Btn, { small: true, variant: "ghost", onClick: () => ejecutarA10("no-merma:" + linea.id, () => resolverMermaComandaA10({ comandaLineaId: linea.id, decision: "NO_MERMA" })) }, "No es merma")
+            )
+          ) : null,
+          h3("div", { className: "flex gap-1.5 flex-wrap mt-2" },
+            h3(Btn, { small: true, onClick: () => ejecutarA10("reprint:" + comanda.id, () => reimprimirComandaA10(comanda.id)) }, "Reimprimir"),
+            version > 0 ? h3(Btn, { small: true, variant: "ghost", onClick: () => ejecutarA10("change:" + linea.id, () => enviarCambioComandaA10({ lineaId: linea.linea_id, nota, lineaVersion: version })), disabled: !nota.trim() }, "Enviar cambio") : null
+          ),
+          version > 0 ? h3(Input, { value: nota, onChange: (e2) => setNotas((prev) => ({ ...prev, [linea.id]: e2.target.value })), placeholder: "Nota operativa para cocina…", maxLength: 500 }) : null
+        );
+      }),
+      lineas.length === 0 ? h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "La comanda no contiene líneas visibles.") : null
+    );
+  }
+
+  if (!local?.id || !configEmpresa?.id) {
+    return h3(Card, { className: "p-5" }, h3("div", { className: "text-[16px] font-semibold mb-2" }, "Cocina y comandas A10"), h3("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "Selecciona un local concreto para consultar estaciones y comandas."));
+  }
+
+  return h3("div", null,
+    h3("div", { className: "flex items-center justify-between mb-3" }, h3("h2", { className: "text-[16px] font-semibold" }, "Cocina y comandas A10"), h3(Btn, { small: true, variant: "ghost", onClick: () => { refrescarEstaciones(); refrescarComandas(); }, disabled: !!procesando || cargando }, cargando ? "Actualizando…" : "Actualizar")),
+    h3(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, h3("div", { className: "text-[12px]" }, "A10 enruta comandas por estación mediante RPC y outbox. ", h3("b", null, "No mueve stock, no cobra ni emite fiscalidad."))),
+    error ? h3("div", { role: "alert", className: "text-[12px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", error) : null,
+    mensaje ? h3("div", { className: "text-[12px] mb-3 p-2 rounded-lg", style: { background: C2.accentSoft } }, mensaje) : null,
+    h3(Card, { className: "mb-4" },
+      h3("div", { className: "text-[12.5px] font-semibold mb-2" }, "Estaciones y rutas"),
+      h3("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-2" },
+        h3(Field, { label: "Código" }, h3(Input, { value: codigo, onChange: (e2) => setCodigo(e2.target.value), placeholder: "COCINA" })),
+        h3(Field, { label: "Nombre" }, h3(Input, { value: nombre, onChange: (e2) => setNombre(e2.target.value), placeholder: "Cocina principal" })),
+        h3(Field, { label: "Tipo" }, h3("select", { value: tipo, onChange: (e2) => setTipo(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: "1px solid " + C2.line, background: C2.surface, color: C2.ink } }, ["COCINA", "CHURRERIA", "BARRA", "BEBIDAS", "OTRO"].map((valor) => h3("option", { key: valor, value: valor }, valor))))
+      ),
+      h3(Btn, { small: true, onClick: guardarEstacion, disabled: !!procesando || !codigo.trim() || !nombre.trim() }, procesando === "crear-estacion" ? "Creando…" : "Crear estación"),
+      h3("div", { className: "mt-3 space-y-1.5" }, estaciones.length === 0 ? h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "No hay estaciones configuradas todavía.") : estaciones.map((estacion) => h3("div", { key: estacion.id, className: "flex items-center justify-between gap-2 p-2 rounded-lg", style: { border: "1px solid " + C2.line, opacity: estacion.activo ? 1 : 0.6 } }, h3("div", null, h3("div", { className: "text-[11.5px] font-semibold" }, estacion.codigo, " · ", estacion.nombre), h3("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, estacion.tipo, " · ", rutas.filter((ruta) => String(ruta.estacion_id) === String(estacion.id)).length, " ruta(s)")), h3(Btn, { small: true, variant: "ghost", onClick: () => cambiarActivo(estacion), disabled: !!procesando }, estacion.activo ? "Desactivar" : "Activar"))))
+    ),
+    h3(Card, { className: "mb-4" },
+      h3("div", { className: "text-[12.5px] font-semibold mb-2" }, "Asignar producto a estación"),
+      h3("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-2" },
+        h3(Field, { label: "Producto" }, h3("select", { value: productoId, onChange: (e2) => setProductoId(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: "1px solid " + C2.line, background: C2.surface, color: C2.ink } }, h3("option", { value: "" }, "Selecciona…"), productosActivos.map((producto) => h3("option", { key: producto.id, value: producto.id }, producto.nombre)))),
+        h3(Field, { label: "Estación" }, h3("select", { value: estacionId, onChange: (e2) => setEstacionId(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: "1px solid " + C2.line, background: C2.surface, color: C2.ink } }, h3("option", { value: "" }, "Selecciona…"), estaciones.filter((estacion) => estacion.activo !== false).map((estacion) => h3("option", { key: estacion.id, value: estacion.id }, estacion.codigo, " · ", estacion.nombre)))),
+        h3(Field, { label: "Prioridad" }, h3(Input, { type: "number", min: "1", max: "100", step: "1", value: prioridad, onChange: (e2) => setPrioridad(e2.target.value) }))
+      ),
+      h3(Btn, { small: true, onClick: guardarRuta, disabled: !!procesando || !productoId || !estacionId }, procesando === "ruta" ? "Guardando…" : "Guardar ruta")
+    ),
+    h3(Card, { className: "mb-3" }, h3("div", { className: "flex items-center justify-between gap-2 mb-2" }, h3("div", { className: "text-[12.5px] font-semibold" }, "Comandas"), h3("select", { value: estacionId, onChange: (e2) => setEstacionId(e2.target.value), className: "rounded-lg px-2 py-1 text-[11px]", style: { border: "1px solid " + C2.line, background: C2.surface, color: C2.ink } }, h3("option", { value: "" }, "Todas las estaciones"), estaciones.map((estacion) => h3("option", { key: estacion.id, value: estacion.id }, estacion.codigo)))), h3("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "La lista procede de abc_listar_comandas_estacion y respeta el local activo."), comandas.length === 0 ? h3("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "No hay comandas para este filtro.") : comandas.map(renderComanda))
+  );
 }
 function Traspasos({ productos, productosEmpresa = [], locales = [], localActivoId, traspasos, traspasarStock, traspasarEntreLocales, pisoVentaBajo, fichasCosto = [] }) {
   const h3 = import_react4.default.createElement;
