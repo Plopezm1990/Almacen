@@ -393,7 +393,11 @@ if (!source.includes("async function aplicarDescuentoCuentaA09(")) {
     '  }',
     ''
   ]);
-  source = replaceOnce(source, helperAnchor, helperBlock + helperAnchor, "UI_HELPERS");
+  const ventaRapidaStart = source.indexOf("function VentaRapida(");
+  if (ventaRapidaStart < 0) throw new Error("A09_1_7_VENTA_RAPIDA_NOT_FOUND");
+  const helperIndex = source.indexOf(helperAnchor, ventaRapidaStart);
+  if (helperIndex < 0) throw new Error("A09_1_7_UI_HELPERS_ANCHOR_COUNT=0");
+  source = source.slice(0, helperIndex) + helperBlock + source.slice(helperIndex);
 
   const renderAnchor = '  function renderRepartoProductosA08() {';
   const renderBlock = block([
