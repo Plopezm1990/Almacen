@@ -7894,6 +7894,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
 
   async function listarEstacionesA10() {
     listarEstacionesA10.abrirSesionCajaA10 = abrirSesionCajaA10;
+    listarEstacionesA10.cerrarSesionCajaA10 = cerrarSesionCajaA10;
     try {
       const contexto = await contextoA10(false);
       const [estaciones, rutas] = await Promise.all([
@@ -7944,6 +7945,29 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       });
       if (error) throw error;
       return { ok: true, ...(data || {}), caja_nombre: cajas[0].nombre };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function cerrarSesionCajaA10({ efectivoContado = 0 } = {}) {
+    try {
+      const contexto = await contextoA10(true);
+      const contado = Number(efectivoContado);
+      if (!Number.isFinite(contado) || contado < 0) throw new Error("efectivo_contado_invalido");
+      const operationId = `a10.ui.cash.close.${uuidA02()}`;
+      const { data, error } = await contexto.supabase.rpc("abc_cerrar_sesion_caja", {
+        p_operation_id: operationId,
+        p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId,
+        p_session_id: contexto.sessionId,
+        p_terminal_id: contexto.terminalId,
+        p_currency_code: "EUR",
+        p_counted_amount: contado,
+        p_operating_day: contexto.operatingDay
+      });
+      if (error) throw error;
+      return { ok: true, ...(data || {}) };
     } catch (error) {
       return respuestaErrorA06(error);
     }
@@ -19450,6 +19474,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
 function CocinaA10({ productos = [], local = null, configEmpresa = null, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10 }) {
   const h3 = import_react4.default.createElement;
   const abrirSesionCajaA10 = typeof listarEstacionesA10?.abrirSesionCajaA10 === "function" ? listarEstacionesA10.abrirSesionCajaA10 : null;
+  const cerrarSesionCajaA10 = typeof listarEstacionesA10?.cerrarSesionCajaA10 === "function" ? listarEstacionesA10.cerrarSesionCajaA10 : null;
   const [estaciones, setEstaciones] = (0, import_react4.useState)([]);
   const [rutas, setRutas] = (0, import_react4.useState)([]);
   const [comandas, setComandas] = (0, import_react4.useState)([]);
@@ -19466,6 +19491,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
   const [mensaje, setMensaje] = (0, import_react4.useState)("");
   const [requiereApertura, setRequiereApertura] = (0, import_react4.useState)(false);
   const [fondoInicial, setFondoInicial] = (0, import_react4.useState)("0");
+  const [efectivoContado, setEfectivoContado] = (0, import_react4.useState)("0");
 
   const productosActivos = (productos || []).filter((producto) => producto && producto.activo !== false);
   const estacionSeleccionada = estaciones.find((estacion) => String(estacion.id) === String(estacionId)) || null;
@@ -19550,6 +19576,29 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     setMensaje(`Sesión de caja abierta en ${resultado.caja_nombre || "la caja principal"} con fondo inicial de €${Number(fondoInicial || 0).toFixed(2)}.`);
     await refrescarEstaciones();
     await refrescarComandas();
+  }
+
+  async function cerrarSesion() {
+    if (procesando || typeof cerrarSesionCajaA10 !== "function") return;
+    const contado = Number(efectivoContado);
+    if (!Number.isFinite(contado) || contado < 0) {
+      setError("Escribe un efectivo contado igual o mayor que cero.");
+      return;
+    }
+    setProcesando("cerrar-sesion");
+    setError("");
+    setMensaje("");
+    const resultado = await cerrarSesionCajaA10({ efectivoContado: contado });
+    setProcesando("");
+    if (!resultado?.ok) {
+      setError(resultado?.error || "No se pudo cerrar la sesión de caja.");
+      return;
+    }
+    setRequiereApertura(true);
+    setEstaciones([]);
+    setRutas([]);
+    setComandas([]);
+    setMensaje(`Sesión cerrada: contado €${Number(resultado.counted_amount || 0).toFixed(2)}, esperado €${Number(resultado.expected_amount || 0).toFixed(2)}, diferencia €${Number(resultado.difference || 0).toFixed(2)}.`);
   }
 
   async function cambiarActivo(estacion) {
@@ -19646,6 +19695,12 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
       h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Este terminal necesita una sesión abierta para crear estaciones y recibir comandas. La apertura queda registrada por el servidor; no genera una venta."),
       h3(Field, { label: "Fondo inicial (€)" }, h3(Input, { type: "number", min: "0", step: "0.01", value: fondoInicial, onChange: (e2) => setFondoInicial(e2.target.value) })),
       h3(Btn, { small: true, onClick: abrirSesion, disabled: !!procesando || !String(fondoInicial).trim() }, procesando === "abrir-sesion" ? "Abriendo…" : "Abrir sesión")
+    ) : null,
+    !requiereApertura && cerrarSesionCajaA10 ? h3(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } },
+      h3("div", { className: "text-[12.5px] font-semibold mb-1" }, "Cerrar sesión de caja"),
+      h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Introduce el efectivo contado. El servidor calculará el esperado, registrará el arqueo y cerrará la sesión de forma irreversible."),
+      h3(Field, { label: "Efectivo contado (€)" }, h3(Input, { type: "number", min: "0", step: "0.01", value: efectivoContado, onChange: (e2) => setEfectivoContado(e2.target.value) })),
+      h3(Btn, { small: true, variant: "danger", onClick: cerrarSesion, disabled: !!procesando || !String(efectivoContado).trim() }, procesando === "cerrar-sesion" ? "Cerrando…" : "Cerrar sesión")
     ) : null,
     h3(Card, { className: "mb-4" },
       h3("div", { className: "text-[12.5px] font-semibold mb-2" }, "Estaciones y rutas"),
