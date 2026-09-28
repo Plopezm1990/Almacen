@@ -118571,7 +118571,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [motivoAutorizacionA09, setMotivoAutorizacionA09] = (0, import_react4.useState)("");
   const [autorizacionesA09, setAutorizacionesA09] = (0, import_react4.useState)([]);
   const [descuentosAplicadosA09, setDescuentosAplicadosA09] = (0, import_react4.useState)([]);
-  const [auditoriaDescuentosA09, setAuditoriaDescuentosA09] = (0, import_react4.useState)({ solicitudes: [], intentos: [], aplicaciones: [], eventos: [] });
+  const [auditoriaDescuentosA09, setAuditoriaDescuentosA09] = (0, import_react4.useState)({ solicitudes: [], intentos: [], aplicaciones: [], eventos: [], efectosCaja: [] });
   const [errorAuditoriaDescuentosA09, setErrorAuditoriaDescuentosA09] = (0, import_react4.useState)("");
   const [cargandoAutorizacionesA09, setCargandoAutorizacionesA09] = (0, import_react4.useState)(false);
   const [procesandoDescuentoA09, setProcesandoDescuentoA09] = (0, import_react4.useState)(false);
@@ -118968,6 +118968,66 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     }
   }
 
+  async function listarEfectosCajaA09() {
+    const localId = local?.id || null;
+    const empresaId = configEmpresa?.id || null;
+    if (!localId) return { ok: false, error: "Selecciona un local antes de revisar los efectos de caja." };
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    try {
+      const contexto = leerContextoCuentaA02(empresaId, localId);
+      if (!contexto?.cuentaId) throw new Error("contexto_cuenta_persistido_invalido");
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "La conciliación monetaria necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const checkoutsResponse = await supabase
+        .from("checkouts")
+        .select("id,estado,currency_code,operating_day,created_at,completed_at")
+        .eq("empresa_id", empresaId)
+        .eq("local_id", localId)
+        .eq("cuenta_id", contexto.cuentaId)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (checkoutsResponse.error) throw checkoutsResponse.error;
+      const checkouts = Array.isArray(checkoutsResponse.data) ? checkoutsResponse.data : [];
+      const checkoutIds = checkouts.map((row) => row?.id).filter(Boolean);
+      if (checkoutIds.length === 0) return { ok: true, efectos: [] };
+      const pagosResponse = await supabase
+        .from("pagos")
+        .select("id,checkout_id,medio,estado,importe_objetivo,importe_recibido,cambio_entregado,payment_currency_code,created_at,resolved_at")
+        .eq("empresa_id", empresaId)
+        .eq("local_id", localId)
+        .in("checkout_id", checkoutIds)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (pagosResponse.error) throw pagosResponse.error;
+      const pagos = Array.isArray(pagosResponse.data) ? pagosResponse.data : [];
+      const pagoIds = pagos.map((row) => row?.id).filter(Boolean);
+      if (pagoIds.length === 0) return { ok: true, efectos: [] };
+      const cajaResponse = await supabase
+        .from("caja_operaciones")
+        .select("operation_id,origen_id,tipo,importe,efecto_efectivo,medio_pago,concepto,fecha,currency_code,operating_day,abc_command_id,created_at")
+        .eq("empresa_id", empresaId)
+        .eq("local_id", localId)
+        .eq("origen_tipo", "ABC_PAGO")
+        .in("origen_id", pagoIds)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (cajaResponse.error) throw cajaResponse.error;
+      const checkoutById = new Map(checkouts.map((row) => [String(row?.id || ""), row]));
+      const pagoById = new Map(pagos.map((row) => [String(row?.id || ""), row]));
+      return {
+        ok: true,
+        efectos: (Array.isArray(cajaResponse.data) ? cajaResponse.data : []).map((row) => {
+          const pago = pagoById.get(String(row?.origen_id || ""));
+          const checkout = pago ? checkoutById.get(String(pago?.checkout_id || "")) : null;
+          return { ...row, pago, checkout };
+        })
+      };
+    } catch (error) {
+      return { ok: false, error: respuestaErrorA06(error) };
+    }
+  }
+
   function agruparDescuentosAplicadosA09(rows) {
     const grouped = new Map();
     for (const row of Array.isArray(rows) ? rows : []) {
@@ -119004,11 +119064,12 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     if (typeof listarAutorizacionesDescuentoA09 !== "function") return;
     setCargandoAutorizacionesA09(true);
     setErrorAuditoriaDescuentosA09("");
-    setAuditoriaDescuentosA09({ solicitudes: [], intentos: [], aplicaciones: [], eventos: [] });
-    const [resultado, resultadoStack, resultadoAuditoria] = await Promise.all([
+    setAuditoriaDescuentosA09({ solicitudes: [], intentos: [], aplicaciones: [], eventos: [], efectosCaja: [] });
+    const [resultado, resultadoStack, resultadoAuditoria, resultadoCaja] = await Promise.all([
       listarAutorizacionesDescuentoA09(),
       listarDescuentosAplicadosA09(),
-      listarAuditoriaDescuentosA09()
+      listarAuditoriaDescuentosA09(),
+      listarEfectosCajaA09()
     ]);
     setCargandoAutorizacionesA09(false);
     if (!resultado?.ok) {
@@ -119025,10 +119086,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     setDescuentosAplicadosA09(agruparDescuentosAplicadosA09(resultadoStack.descuentos));
     if (!resultadoAuditoria?.ok) {
       setErrorAuditoriaDescuentosA09(resultadoAuditoria?.error || "No se pudo cargar la auditoría de descuentos.");
-      setAuditoriaDescuentosA09({ solicitudes: [], intentos: [], aplicaciones: resultadoStack.descuentos || [], eventos: [] });
+      setAuditoriaDescuentosA09({ solicitudes: [], intentos: [], aplicaciones: resultadoStack.descuentos || [], eventos: [], efectosCaja: resultadoCaja?.ok ? resultadoCaja.efectos || [] : [] });
     } else {
-      setAuditoriaDescuentosA09({ ...resultadoAuditoria, aplicaciones: resultadoStack.descuentos || [] });
+      setAuditoriaDescuentosA09({ ...resultadoAuditoria, aplicaciones: resultadoStack.descuentos || [], efectosCaja: resultadoCaja?.ok ? resultadoCaja.efectos || [] : [] });
     }
+    if (!resultadoCaja?.ok) setErrorAuditoriaDescuentosA09(resultadoCaja?.error || "No se pudieron cargar los efectos de caja.");
   }
 
   async function abrirDescuentoCuentaA09() {
@@ -119727,13 +119789,17 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         ) : null,
         auditoriaDescuentosA09.aplicaciones.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2" },
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] font-semibold mb-1" }, "Aplicaciones registradas · ", auditoriaDescuentosA09.aplicaciones.length),
-          auditoriaDescuentosA09.aplicaciones.map((row) => /* @__PURE__ */ import_react4.default.createElement("div", { key: "audit-applied-" + row.operation_id + "-" + row.reparto_id, className: "text-[10px] p-2 rounded-lg mb-1", style: { border: "1px solid " + C2.line, color: C2.inkSoft } }, String(row?.tipo || "DESCUENTO"), " · €", fmt(row?.importe), " · ", row?.created_at || "sin fecha", " · operación …", String(row?.operation_id || "").slice(-16)))
+        auditoriaDescuentosA09.aplicaciones.map((row) => /* @__PURE__ */ import_react4.default.createElement("div", { key: "audit-applied-" + row.operation_id + "-" + row.reparto_id, className: "text-[10px] p-2 rounded-lg mb-1", style: { border: "1px solid " + C2.line, color: C2.inkSoft } }, String(row?.tipo || "DESCUENTO"), " · €", fmt(row?.importe), " · ", row?.created_at || "sin fecha", " · operación …", String(row?.operation_id || "").slice(-16)))
         ) : null,
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2" },
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] font-semibold mb-1" }, "Efectos de caja · conciliación"),
+          auditoriaDescuentosA09.efectosCaja.length > 0 ? auditoriaDescuentosA09.efectosCaja.map((row) => /* @__PURE__ */ import_react4.default.createElement("div", { key: "audit-cash-" + row.operation_id, className: "text-[10px] p-2 rounded-lg mb-1", style: { border: "1px solid " + C2.line, color: C2.inkSoft } }, String(row?.checkout?.estado || "CHECKOUT"), " · ", String(row?.pago?.estado || "PAGO"), " · ", String(row?.medio_pago || row?.pago?.medio || "EFECTIVO"), " · importe €", fmt(row?.importe), " · efecto efectivo €", fmt(row?.efecto_efectivo), " · ", row?.created_at || "sin fecha")) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Sin movimientos de caja asociados: el descuento solo modifica el total comercial; el cobro posterior registra el importe neto.")
+        ),
         auditoriaDescuentosA09.eventos.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", null,
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] font-semibold mb-1" }, "Eventos server-side · ", auditoriaDescuentosA09.eventos.length),
           auditoriaDescuentosA09.eventos.map((row) => /* @__PURE__ */ import_react4.default.createElement("div", { key: "audit-event-" + row.operation_id + "-" + row.occurred_at, className: "text-[10px] p-2 rounded-lg mb-1", style: { border: "1px solid " + C2.line, color: C2.inkSoft } }, String(row?.event_type || "EVENTO"), " · ", row?.occurred_at || "sin fecha", " · operación …", String(row?.operation_id || "").slice(-16)))
         ) : null,
-        auditoriaDescuentosA09.solicitudes.length === 0 && auditoriaDescuentosA09.intentos.length === 0 && auditoriaDescuentosA09.aplicaciones.length === 0 && auditoriaDescuentosA09.eventos.length === 0 && !errorAuditoriaDescuentosA09 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "No hay registros de auditoría para esta cuenta.") : null
+        auditoriaDescuentosA09.solicitudes.length === 0 && auditoriaDescuentosA09.intentos.length === 0 && auditoriaDescuentosA09.aplicaciones.length === 0 && auditoriaDescuentosA09.eventos.length === 0 && auditoriaDescuentosA09.efectosCaja.length === 0 && !errorAuditoriaDescuentosA09 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "No hay registros de auditoría para esta cuenta.") : null
       ),
       activas.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3" },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-2" }, "Autorizaciones de esta cuenta"),

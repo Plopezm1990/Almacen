@@ -214,6 +214,25 @@ test('A09.2.5 muestra la auditoría completa de descuentos sin DML desde el TPV'
   }
 });
 
+test('A09.2.6 concilia los efectos de caja desde checkout y pago sin DML desde el TPV', async () => {
+  const source = await readFile(new URL('../../../source-recovery/fuente-recuperado.js', import.meta.url), 'utf8');
+  const runtime = await readFile(new URL('../../../fuente.js', import.meta.url), 'utf8');
+
+  for (const candidate of [source, runtime]) {
+    assert.match(candidate, /async function listarEfectosCajaA09\(/);
+    assert.match(candidate, /\.from\("checkouts"\)[\s\S]*?\.select\(/);
+    assert.match(candidate, /\.from\("pagos"\)[\s\S]*?\.select\(/);
+    assert.match(candidate, /\.from\("caja_operaciones"\)[\s\S]*?\.eq\("origen_tipo", "ABC_PAGO"\)/);
+    assert.match(candidate, /\.in\("origen_id", pagoIds\)/);
+    assert.match(candidate, /Efectos de caja · conciliación/);
+    assert.match(candidate, /el descuento solo modifica el total comercial; el cobro posterior registra el importe neto/);
+    assert.doesNotMatch(candidate, /\.from\("checkouts"\)\s*\.insert/);
+    assert.doesNotMatch(candidate, /\.from\("pagos"\)\s*\.insert/);
+    assert.doesNotMatch(candidate, /\.from\("caja_operaciones"\)\s*\.insert/);
+    assert.doesNotMatch(candidate, /\.from\("caja_operaciones"\)\s*\.update/);
+  }
+});
+
 test('A09.2.3 identifica el escalado por encima del límite del rol', async () => {
   const source = await readFile(new URL('../../../source-recovery/fuente-recuperado.js', import.meta.url), 'utf8');
   const runtime = await readFile(new URL('../../../fuente.js', import.meta.url), 'utf8');
