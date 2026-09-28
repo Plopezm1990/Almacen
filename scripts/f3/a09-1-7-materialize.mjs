@@ -37,8 +37,8 @@ if (!source.includes("async function aplicarDescuentoCuentaA09(")) {
 
   source = replaceOnce(
     source,
-    "anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08",
-    "anularVenta, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08",
+    "movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, local:",
+    "movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local:",
     "TPV_WIRING"
   );
 
