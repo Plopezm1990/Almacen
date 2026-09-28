@@ -108019,6 +108019,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("reparto_cantidad_excede_disponible")) return "La cantidad supera lo que queda disponible en esta cuenta.";
     if (msg.includes("reparto_parte_fiscalizada_inmovil")) return "Esa cantidad incluye una parte ya fiscalizada y no se puede mover.";
     if (msg.includes("reparto_comensal_conflict")) return "La parte existente en la cuenta destino pertenece a otro comensal.";
+    if (msg.includes("cuenta_con_cobro_incierto")) return "Esta cuenta tiene un cobro pendiente o incierto. Resuelve el cobro antes de repartir productos.";
     if (msg.includes("pedido_enviar_no_autorizado")) return "Tu perfil no tiene permiso para enviar este pedido.";
     if (msg.includes("pedido_no_enviable")) return "El pedido ya no está en un estado que permita enviarlo.";
     if (msg.includes("pedido_lineas_no_confirmadas")) return "Hay líneas que todavía no están confirmadas y el pedido no puede enviarse.";
