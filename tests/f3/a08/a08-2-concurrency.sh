@@ -194,7 +194,7 @@ sql "
     '$ATTEMPT_A'::uuid,
     'RECHAZADO','SIMULADOR','a0822-provider-a',
     11,null,null,
-    '{"fase":"rechazado"}'::jsonb
+    jsonb_build_object('fase','rechazado')
   );
 " >/tmp/a0822-reject.out
 
