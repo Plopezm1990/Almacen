@@ -181,6 +181,19 @@ test('A09.2.2 muestra el stack aplicado separado de las autorizaciones', async (
   assert.doesNotMatch(runtime, /\.from\("abc_descuentos_aplicados"\)\s*\.update/);
 });
 
+test('A09.2.4 identifica la doble autorización exigida por la política', async () => {
+  const source = await readFile(new URL('../../../source-recovery/fuente-recuperado.js', import.meta.url), 'utf8');
+  const runtime = await readFile(new URL('../../../fuente.js', import.meta.url), 'utf8');
+
+  for (const candidate of [source, runtime]) {
+    assert.match(candidate, /requiereDobleAprobacion/);
+    assert.match(candidate, /Solicitud de doble autorización pendiente/);
+    assert.match(candidate, /las políticas de doble autorización requieren segunda firma y los excesos de rol se escalan/);
+    assert.match(candidate, /DOBLE AUTORIZACIÓN/);
+    assert.match(candidate, /La política exige una segunda autorización de otra persona; la aprobación no aplica el descuento por sí sola/);
+  }
+});
+
 test('A09.2.3 identifica el escalado por encima del límite del rol', async () => {
   const source = await readFile(new URL('../../../source-recovery/fuente-recuperado.js', import.meta.url), 'utf8');
   const runtime = await readFile(new URL('../../../fuente.js', import.meta.url), 'utf8');
