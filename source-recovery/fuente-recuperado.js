@@ -1484,8 +1484,13 @@ function GestionAlmacen() {
         localActivoFinal = localesFinales.find((l22) => l22.activo !== false && !l22.fusionadoEn)?.id || localesFinales[0]?.id || null;
       }
       let productosFinales = productosBase;
-      if (localActivoFinal && productosFinales.some((prod) => !prod.localId)) {
-        productosFinales = productosFinales.map((prod) => prod.localId ? prod : { ...prod, localId: localActivoFinal });
+      if (localActivoFinal && productosFinales.some((prod) => !prod.localId || !prod.empresaId)) {
+        productosFinales = productosFinales.map((prod) => {
+          const localId = prod.localId || localActivoFinal;
+          const local = localesFinales.find((l22) => l22 && l22.id === localId);
+          const empresaId = prod.empresaId || local?.empresaId || empresaLegacyUnicaId || null;
+          return prod.localId === localId && prod.empresaId === empresaId ? prod : { ...prod, localId, empresaId };
+        });
       }
       const localPorProductoMigracion = new Map(productosFinales.map((prod) => [prod.id, prod.localId || localActivoFinal || null]));
       const inferirLocalLineasMigracion = (lineas) => {
