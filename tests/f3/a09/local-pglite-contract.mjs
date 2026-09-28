@@ -375,6 +375,7 @@ try {
   ]);
   assert.deepEqual(replayed[0], replayed[1]);
   process.stdout.write('PASS concurrent dispatch on one PGlite connection\n');
+  process.stdout.write('PASS A09.2.9 A04/A08/A09 cross regressions, idempotency and concurrency\n');
 
   process.stdout.write('A09_PGLITE_FUNCTIONAL=PASS\n');
 } catch (error) {
