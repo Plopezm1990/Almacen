@@ -112,3 +112,29 @@ test('UI A09 configura roles operativos y deja de depender de dos roles fijos', 
   assert.match(source, /no crea ni amplía permisos generales de acceso/);
   assert.doesNotMatch(source, /for \(const rol of \["Propietario", "Encargado"\]\)/);
 });
+
+
+test('A09.1.7 integra descuento/cortesía y doble autorización en el TPV sin DML directo', async () => {
+  const source = await readFile(new URL('../../../source-recovery/fuente-recuperado.js', import.meta.url), 'utf8');
+
+  assert.match(source, /async function aplicarDescuentoCuentaA09\(/);
+  assert.match(source, /async function listarAutorizacionesDescuentoA09\(/);
+  assert.match(source, /async function resolverAutorizacionDescuentoA09\(/);
+  assert.match(source, /supabase\.rpc\("abc_aplicar_descuento_cuenta"/);
+  assert.match(source, /supabase\.rpc\("abc_aprobar_descuento_cuenta"/);
+  assert.match(source, /\.from\("abc_descuento_autorizaciones"\)[\s\S]*?\.select\(/);
+  assert.match(source, /"a09\.1\.7\.descuento:" \+ await hashHexA09\(seed\)/);
+  assert.match(source, /PENDIENTE_AUTORIZACION/);
+  assert.match(source, /solicitudDesdeAutorizacionA09\(row\)/);
+  assert.match(source, /row\.estado === "APROBADA"/);
+  assert.match(source, /La misma persona que solicitó el descuento no puede aprobarlo/);
+  assert.match(source, /function renderDescuentoCuentaA09\(\)/);
+  assert.match(source, /value: "PERCENT"/);
+  assert.match(source, /value: "AMOUNT"/);
+  assert.match(source, /value: "COURTESY"/);
+
+  assert.doesNotMatch(source, /\.from\("abc_descuento_autorizaciones"\)\s*\.insert/);
+  assert.doesNotMatch(source, /\.from\("abc_descuento_autorizaciones"\)\s*\.update/);
+  assert.doesNotMatch(source, /\.from\("abc_descuentos_aplicados"\)\s*\.insert/);
+  assert.doesNotMatch(source, /\.from\("abc_descuentos_aplicados"\)\s*\.update/);
+});
