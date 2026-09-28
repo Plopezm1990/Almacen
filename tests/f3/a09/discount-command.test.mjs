@@ -194,6 +194,26 @@ test('A09.2.4 identifica la doble autorización exigida por la política', async
   }
 });
 
+test('A09.2.5 muestra la auditoría completa de descuentos sin DML desde el TPV', async () => {
+  const source = await readFile(new URL('../../../source-recovery/fuente-recuperado.js', import.meta.url), 'utf8');
+  const runtime = await readFile(new URL('../../../fuente.js', import.meta.url), 'utf8');
+
+  for (const candidate of [source, runtime]) {
+    assert.match(candidate, /async function listarAuditoriaDescuentosA09\(/);
+    assert.match(candidate, /.from\("abc_descuento_aprobacion_intentos"\)[\s\S]*?\.select\(/);
+    assert.match(candidate, /operationIds = new Set\(solicitudes\.map/);
+    assert.match(candidate, /intentos\.data.*filter\(\(row\) => operationIds\.has/);
+    assert.match(candidate, /.from\("abc_eventos"\)[\s\S]*?CUENTA_DESCUENTO_APLICADO/);
+    assert.match(candidate, /Auditoría A09 · historial/);
+    assert.match(candidate, /Solicitudes y estado final/);
+    assert.match(candidate, /Intentos de aprobación/);
+    assert.match(candidate, /Aplicaciones registradas/);
+    assert.match(candidate, /Los reversos económicos siguen el flujo transaccional correspondiente/);
+    assert.doesNotMatch(candidate, /\.from\("abc_descuento_aprobacion_intentos"\)\s*\.insert/);
+    assert.doesNotMatch(candidate, /\.from\("abc_eventos"\)\s*\.update/);
+  }
+});
+
 test('A09.2.3 identifica el escalado por encima del límite del rol', async () => {
   const source = await readFile(new URL('../../../source-recovery/fuente-recuperado.js', import.meta.url), 'utf8');
   const runtime = await readFile(new URL('../../../fuente.js', import.meta.url), 'utf8');
