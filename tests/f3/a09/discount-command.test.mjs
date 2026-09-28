@@ -29,6 +29,22 @@ test('límite de Encargado: 20 % acumulado, incluso en una segunda operación', 
   assert.equal(engine.audit.length, 1);
 });
 
+test('A09.2.2 apila porcentaje e importe sobre la base restante', async () => {
+  const engine = new DiscountCommandReference(state());
+  const first = await engine.execute(request({
+    operationId: 'a09-stack-01', kind: 'PERCENT', value: '10', expectedVersion: 1,
+  }), 'owner');
+  const second = await engine.execute(request({
+    operationId: 'a09-stack-02', kind: 'AMOUNT', value: '2', expectedVersion: 2,
+  }), 'owner');
+
+  assert.equal(first.discount, '1');
+  assert.equal(second.discount, '2');
+  assert.equal(engine.state.repartos[0].discount, '3');
+  assert.equal(engine.state.repartos[0].base, '7');
+  assert.deepEqual(engine.audit.map((entry) => entry.kind), ['PERCENT', 'AMOUNT']);
+});
+
 test('Propietario puede dar cortesía; Encargado, Caja y ajenos no', async () => {
   const owner = new DiscountCommandReference(state());
   const result = await owner.execute(request({ kind: 'COURTESY', value: undefined }), 'owner');
@@ -144,4 +160,23 @@ test('A09.2.1 traduce la denegación autoritativa de cortesía', async () => {
 
   assert.match(source, /msg\.includes\("cortesia_no_autorizada"\).*La política de descuentos de este local no permite aplicar cortesías/);
   assert.doesNotMatch(source, /msg\.includes\("cortesia_no_autorizada"\).*No tienes permiso para operar este TPV/);
+});
+
+test('A09.2.2 muestra el stack aplicado separado de las autorizaciones', async () => {
+  const source = await readFile(new URL('../../../source-recovery/fuente-recuperado.js', import.meta.url), 'utf8');
+  const runtime = await readFile(new URL('../../../fuente.js', import.meta.url), 'utf8');
+
+  assert.match(source, /async function listarDescuentosAplicadosA09\(/);
+  assert.match(source, /\.from\("abc_descuentos_aplicados"\)[\s\S]*?\.select\(/);
+  assert.match(source, /function agruparDescuentosAplicadosA09\(/);
+  assert.match(source, /Stack aplicado/);
+  assert.match(source, /Cada operación se aplica sobre la base restante/);
+  assert.doesNotMatch(source, /\.from\("abc_descuentos_aplicados"\)\s*\.insert/);
+  assert.doesNotMatch(source, /\.from\("abc_descuentos_aplicados"\)\s*\.update/);
+  assert.match(runtime, /async function listarDescuentosAplicadosA09\(/);
+  assert.match(runtime, /\.from\("abc_descuentos_aplicados"\)[\s\S]*?\.select\(/);
+  assert.match(runtime, /Stack aplicado/);
+  assert.match(runtime, /Cada operación se aplica sobre la base restante/);
+  assert.doesNotMatch(runtime, /\.from\("abc_descuentos_aplicados"\)\s*\.insert/);
+  assert.doesNotMatch(runtime, /\.from\("abc_descuentos_aplicados"\)\s*\.update/);
 });
