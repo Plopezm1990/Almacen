@@ -398,10 +398,10 @@ try {
     assert.equal(configured.status,'CONFIGURADA');
     assert.equal(configured.rol,role);
   }
-  const specificUser='00000000-0000-0000-0000-000000000024';
-  const individual=await configurePolicy(db,'a09.pg.policy.individual.cashier',{
-    userId:specificUser,maxPercent:'9',canRequest:true,canApply:true,canAuthorize:false,
-    escalation:false,doubleApproval:false,
+  const specificUser=owner;
+  const individual=await configurePolicy(db,'a09.pg.policy.individual.owner',{
+    userId:specificUser,maxPercent:'100',courtesy:true,canRequest:true,canApply:true,
+    canAuthorize:true,escalation:false,doubleApproval:false,
   });
   assert.equal(individual.status,'CONFIGURADA');
   const listedRoles=(await db.query(`select public.abc_listar_descuento_politicas(
@@ -415,7 +415,7 @@ try {
   const effectiveSpecific=(await db.query(`select private.abc_descuento_politica_usuario(
     $1::uuid,'emp-f','loc-f1') as value`,[specificUser])).rows[0].value;
   assert.equal(effectiveSpecific.policy_scope,'loc-f1');
-  assert.equal(Number(effectiveSpecific.max_percent),9);
+  assert.equal(Number(effectiveSpecific.max_percent),100);
   process.stdout.write('PASS configurable Cajero/Camarero/custom roles and user-specific precedence\n');
 
   const manager=await makeLine(db,'70');
