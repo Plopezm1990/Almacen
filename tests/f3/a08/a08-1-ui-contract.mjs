@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 
 const src = fs.readFileSync("source-recovery/fuente-recuperado.js", "utf8");
 const a08 = fs.readFileSync("supabase/migrations/20260924060000_abc_f3_a08_account_split_merge.sql", "utf8");
+const a082 = fs.readFileSync("supabase/migrations/20260927203000_abc_f3_a08_2_payment_interlock.sql", "utf8");
 
 // Backend preexistente que A08.1 debe reutilizar, no reimplementar.
 for (const required of [
@@ -96,6 +97,11 @@ for (const forbidden of [
 }
 assert.ok(!move.includes("comensal.slice(0, 32)"), "A08.1 no debe introducir texto libre truncado en operation_id");
 
+// A08.2.3: el interlock de cobro debe llegar a la UI con un mensaje operativo.
+assert.ok(a082.includes("cuenta_con_cobro_incierto"), "A08.2.1 debe mantener el error autoritativo de cobro incierto");
+assert.ok(src.includes('msg.includes("cuenta_con_cobro_incierto")'), "A08.2.3 debe traducir el interlock de cobro");
+assert.ok(src.includes("Esta cuenta tiene un cobro pendiente o incierto. Resuelve el cobro antes de repartir productos."), "A08.2.3 mensaje operativo ausente");
+
 // UI: cantidad disponible deriva del snapshot comercial, restando lo fiscalizado.
 for (const required of [
   "function cantidadMovibleA08(linea)",
@@ -140,3 +146,4 @@ console.log("A08_1_LINES_UI=PASS");
 console.log("A08_1_OPTIMISTIC_LOCKING=PASS");
 console.log("A08_1_NO_MANUAL_UUID=PASS");
 console.log("A08_1_NO_PAYMENT_MUTATION=PASS");
+console.log("A08_2_3_PAYMENT_INTERLOCK_UI=PASS");
