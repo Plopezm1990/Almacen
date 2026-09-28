@@ -106,5 +106,5 @@ jobs:
             exit 0
           fi
           git commit -m "[skip netlify] A09.1.7 materializar TPV descuentos"
-          git push origin "HEAD:\${GITHUB_REF_NAME}"
+          git push origin "HEAD:$GITHUB_REF_NAME"
           echo "A09_1_7_RUNTIME_COMMITTED=1"
