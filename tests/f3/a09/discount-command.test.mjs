@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { DiscountCommandReference } from './discount-command.mjs';
+import { readFileSync } from 'node:fs';
 
 const state = (overrides = {}) => ({
   accountVersion: 1,
@@ -97,4 +98,19 @@ test('dos reintentos concurrentes del mismo operation_id producen un único efec
   ]);
   assert.deepEqual(outcomes.map((outcome) => outcome.replayed), [false, true]);
   assert.equal(engine.audit.length, 1);
+});
+
+
+test('UI A09 expone límites configurables para perfiles adicionales y personalizados', () => {
+  const index = readFileSync('index.html', 'utf8');
+  const extension = readFileSync('a09-role-policy-ui.js', 'utf8');
+  assert.match(index, /a09-role-policy-ui\.js/);
+  for (const role of ['Cajero/a', 'Camarero/a', 'Churrero/a', 'Básico']) {
+    assert.match(extension, new RegExp(role.replace('/', '\\/')));
+  }
+  assert.match(extension, /Añadir perfil personalizado/);
+  assert.match(extension, /abc_listar_descuento_politicas/);
+  assert.match(extension, /abc_configurar_descuento_politica/);
+  assert.match(extension, /p_user_id:\s*null/);
+  assert.doesNotMatch(extension, /\.from\(["']abc_descuento_politicas["']\)/);
 });
