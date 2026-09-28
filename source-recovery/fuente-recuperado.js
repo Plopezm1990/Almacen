@@ -845,6 +845,17 @@ function decidirCambioTabPM15(formularioAbierto, confirmar) {
 }
 function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", esPropietario = false }) {
   const empresaId = empresa?.id || "";
+  const crearPoliticaVacia = (rol) => ({
+    rol,
+    max_percent: "0",
+    permite_cortesia: false,
+    puede_solicitar: false,
+    puede_aplicar: false,
+    puede_autorizar: false,
+    permite_escalado: false,
+    requiere_doble_aprobacion: false,
+    activa: true
+  });
   const politicaInicial = {
     Propietario: {
       rol: "Propietario",
@@ -867,10 +878,15 @@ function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", e
       permite_escalado: true,
       requiere_doble_aprobacion: false,
       activa: true
-    }
+    },
+    "Cajero/a": crearPoliticaVacia("Cajero/a"),
+    "Camarero/a": crearPoliticaVacia("Camarero/a"),
+    "Churrero/a": crearPoliticaVacia("Churrero/a"),
+    "Básico": crearPoliticaVacia("Básico")
   };
   const [politicas, setPoliticas] = (0, import_react4.useState)([]);
   const [form, setForm] = (0, import_react4.useState)(politicaInicial);
+  const [nuevoRol, setNuevoRol] = (0, import_react4.useState)("");
   const [motivo, setMotivo] = (0, import_react4.useState)("Configuraci\xF3n inicial de descuentos y cortes\xEDas A09");
   const [cargando, setCargando] = (0, import_react4.useState)(false);
   const [guardando, setGuardando] = (0, import_react4.useState)(false);
@@ -900,10 +916,18 @@ function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", e
       if (rpcError) throw rpcError;
       const lista = Array.isArray(data) ? data : [];
       setPoliticas(lista);
-      setForm((anterior) => {
-        const siguiente = { ...anterior };
+      setForm(() => {
+        const siguiente = Object.fromEntries(
+          Object.entries(politicaInicial).map(([rol, politica]) => [rol, { ...politica }])
+        );
         for (const politica of lista) {
-          if (politica?.rol && siguiente[politica.rol]) siguiente[politica.rol] = { ...siguiente[politica.rol], ...politica, max_percent: String(politica.max_percent ?? "0") };
+          if (!politica?.rol) continue;
+          siguiente[politica.rol] = {
+            ...crearPoliticaVacia(politica.rol),
+            ...(siguiente[politica.rol] || {}),
+            ...politica,
+            max_percent: String(politica.max_percent ?? "0")
+          };
         }
         return siguiente;
       });
@@ -925,6 +949,25 @@ function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", e
     if (p3.puede_autorizar && max === 0) return `${rol}: una autorizaci\xF3n necesita un l\xEDmite mayor que 0%.`;
     return "";
   };
+  const anadirRol = () => {
+    setError("");
+    setConfirmacion("");
+    const rol = nuevoRol.trim();
+    if (!rol) {
+      setError("Escribe el nombre del rol que quieres añadir a A09.");
+      return;
+    }
+    if (rol.length > 80) {
+      setError("El nombre del rol no puede superar 80 caracteres.");
+      return;
+    }
+    if (form[rol]) {
+      setError(rol + ": ya existe en esta configuración.");
+      return;
+    }
+    setForm((anterior) => ({ ...anterior, [rol]: crearPoliticaVacia(rol) }));
+    setNuevoRol("");
+  };
   const guardar = async () => {
     setError("");
     setConfirmacion("");
@@ -940,7 +983,7 @@ function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", e
       setError("Escribe un motivo para este cambio.");
       return;
     }
-    for (const rol of ["Propietario", "Encargado"]) {
+    for (const rol of Object.keys(form)) {
       const validacion = validarPolitica(rol, form[rol]);
       if (validacion) {
         setError(validacion);
@@ -951,7 +994,7 @@ function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", e
     try {
       const supabase = await obtenerCliente();
       if (!supabase) throw new Error("No hay una sesi\xF3n sincronizada.");
-      for (const rol of ["Propietario", "Encargado"]) {
+      for (const rol of Object.keys(form)) {
         const p3 = form[rol];
         const { error: rpcError } = await supabase.rpc("abc_configurar_descuento_politica", {
           p_operation_id: `a09.configurar.politica.${empresaId}.${localId}.${rol}.${Date.now()}`,
@@ -1010,6 +1053,7 @@ function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", e
       )
     );
   };
+  const rolesConfigurados = Object.keys(form);
   return /* @__PURE__ */ import_react4.default.createElement(
     "div",
     null,
@@ -1025,8 +1069,31 @@ function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", e
       import_react4.default.Fragment,
       null,
       politicas.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold mb-2" }, "Configuraci\xF3n actual"), politicas.map((p3) => /* @__PURE__ */ import_react4.default.createElement("div", { key: p3.id, className: "text-[12px] mb-1" }, `${p3.rol || "Usuario"}: ${p3.max_percent}% \xB7 ${p3.activa ? "activa" : "inactiva"}`))),
-      tarjeta("Propietario"),
-      tarjeta("Encargado"),
+      rolesConfigurados.map(tarjeta),
+      /* @__PURE__ */ import_react4.default.createElement(
+        Card,
+        { className: "mb-3" },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold mb-2" }, "Añadir rol A09"),
+        /* @__PURE__ */ import_react4.default.createElement(
+          "div",
+          { className: "flex gap-2 flex-wrap items-end" },
+          /* @__PURE__ */ import_react4.default.createElement(
+            "div",
+            { className: "min-w-[220px] flex-1" },
+            /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre exacto del rol" },
+              /* @__PURE__ */ import_react4.default.createElement(Input, {
+                value: nuevoRol,
+                onChange: (e2) => setNuevoRol(e2.target.value),
+                maxLength: 80,
+                placeholder: "Ej. Supervisor de sala"
+              })
+            )
+          ),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: anadirRol }, "Añadir")
+        ),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } },
+          "Añadir un rol aquí configura únicamente sus límites A09; no crea ni amplía permisos generales de acceso.")
+      ),
       /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo del cambio" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivo, onChange: (e2) => setMotivo(e2.target.value), maxLength: 500 })),
       error && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.redSoft, border: "none" } }, error),
       confirmacion && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.accentSoft, border: "none" } }, confirmacion),

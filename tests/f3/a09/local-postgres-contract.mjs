@@ -383,6 +383,41 @@ try {
       'a09.pg.blank-reason')`)).rows[0].n,0);
   process.stdout.write('PASS authenticated-only execution, tenant isolation and reason validation\n');
 
+  await actor(db,owner);
+  await db.query('set role authenticated');
+  const roleCases=[
+    ['a09.pg.policy.cashier.role','Cajero/a','7'],
+    ['a09.pg.policy.waiter.role','Camarero/a','5'],
+    ['a09.pg.policy.custom.role','Supervisor temporal','12'],
+  ];
+  for (const [operationId,role,maxPercent] of roleCases) {
+    const configured=await configurePolicy(db,operationId,{
+      role,maxPercent,canRequest:true,canApply:true,canAuthorize:false,
+      escalation:false,doubleApproval:false,
+    });
+    assert.equal(configured.status,'CONFIGURADA');
+    assert.equal(configured.rol,role);
+  }
+  const specificUser=owner;
+  const individual=await configurePolicy(db,'a09.pg.policy.individual.owner',{
+    userId:specificUser,maxPercent:'100',courtesy:true,canRequest:true,canApply:true,
+    canAuthorize:true,escalation:false,doubleApproval:false,
+  });
+  assert.equal(individual.status,'CONFIGURADA');
+  const listedRoles=(await db.query(`select public.abc_listar_descuento_politicas(
+    'emp-f','loc-f1') as value`)).rows[0].value;
+  for (const [,role,maxPercent] of roleCases) {
+    const row=listedRoles.find((item)=>item.rol===role);
+    assert(row,`missing A09 role policy for ${role}`);
+    assert.equal(Number(row.max_percent),Number(maxPercent));
+  }
+  await db.query('reset role');
+  const effectiveSpecific=(await db.query(`select private.abc_descuento_politica_usuario(
+    $1::uuid,'emp-f','loc-f1') as value`,[specificUser])).rows[0].value;
+  assert.equal(effectiveSpecific.policy_scope,'loc-f1');
+  assert.equal(Number(effectiveSpecific.max_percent),100);
+  process.stdout.write('PASS configurable Cajero/Camarero/custom roles and user-specific precedence\n');
+
   const manager=await makeLine(db,'70');
   const managerId='00000000-0000-0000-0000-000000000022';
   await db.query(`update public.membresias_usuario set rol='Encargado'

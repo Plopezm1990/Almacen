@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFile } from 'node:fs/promises';
 import { DiscountCommandReference } from './discount-command.mjs';
 
 const state = (overrides = {}) => ({
@@ -97,4 +98,17 @@ test('dos reintentos concurrentes del mismo operation_id producen un único efec
   ]);
   assert.deepEqual(outcomes.map((outcome) => outcome.replayed), [false, true]);
   assert.equal(engine.audit.length, 1);
+});
+
+
+test('UI A09 configura roles operativos y deja de depender de dos roles fijos', async () => {
+  const source = await readFile(new URL('../../../source-recovery/fuente-recuperado.js', import.meta.url), 'utf8');
+  assert.match(source, /"Cajero\/a": crearPoliticaVacia\("Cajero\/a"\)/);
+  assert.match(source, /"Camarero\/a": crearPoliticaVacia\("Camarero\/a"\)/);
+  assert.match(source, /"Churrero\/a": crearPoliticaVacia\("Churrero\/a"\)/);
+  assert.match(source, /"Básico": crearPoliticaVacia\("Básico"\)/);
+  assert.match(source, /const rolesConfigurados = Object\.keys\(form\)/);
+  assert.match(source, /const anadirRol = \(\) =>/);
+  assert.match(source, /no crea ni amplía permisos generales de acceso/);
+  assert.doesNotMatch(source, /for \(const rol of \["Propietario", "Encargado"\]\)/);
 });
