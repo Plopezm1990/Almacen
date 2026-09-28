@@ -133,13 +133,13 @@ function patchBlock(block) {
   if (fixedCount !== 2) throw new Error('A09 materializer: loops fijos inesperados ' + fixedCount);
   out = out.split(fixed).join(dynamic);
 
-  out = replaceRequired(
-    out,
-    '  return /* @__PURE__ */ import_react4.default.createElement(',
+  const mainReturn = '  return /* @__PURE__ */ import_react4.default.createElement(';
+  const mainReturnIndex = out.lastIndexOf(mainReturn);
+  if (mainReturnIndex < 0) throw new Error('A09 materializer: falta render principal');
+  out = out.slice(0, mainReturnIndex) +
     '  const rolesConfigurados = Object.keys(form);\n' +
-      '  return /* @__PURE__ */ import_react4.default.createElement(',
-    'lista dinámica render'
-  );
+    mainReturn +
+    out.slice(mainReturnIndex + mainReturn.length);
 
   out = replaceRequired(
     out,
