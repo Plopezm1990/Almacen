@@ -233,6 +233,60 @@ test('A09.2.6 concilia los efectos de caja desde checkout y pago sin DML desde e
   }
 });
 
+test('A09.2.7 muestra producto, cantidad y líneas sin DML de stock desde el TPV', async () => {
+  const source = await readFile(new URL('../../../source-recovery/fuente-recuperado.js', import.meta.url), 'utf8');
+  const runtime = await readFile(new URL('../../../fuente.js', import.meta.url), 'utf8');
+
+  for (const candidate of [source, runtime]) {
+    assert.match(candidate, /async function listarEfectosStockA09\(/);
+    assert.match(candidate, /\.from\("pedidos_tpv"\)[\s\S]*?\.select\(/);
+    assert.match(candidate, /\.from\("pedido_lineas"\)[\s\S]*?\.select\(/);
+    assert.match(candidate, /\.from\("abc_descuentos_aplicados"\)[\s\S]*?\.in\("source_line_id", lineaIds\)/);
+    assert.match(candidate, /Stock · líneas · producto/);
+    assert.match(candidate, /conserva producto, cantidad y unidad/);
+    assert.doesNotMatch(candidate, /\.from\("pedidos_tpv"\)\s*\.insert/);
+    assert.doesNotMatch(candidate, /\.from\("pedido_lineas"\)\s*\.insert/);
+    assert.doesNotMatch(candidate, /\.from\("pedido_lineas"\)\s*\.update/);
+    assert.doesNotMatch(candidate, /\.from\("abc_descuentos_aplicados"\)\s*\.insert/);
+    assert.doesNotMatch(candidate, /\.from\("abc_descuentos_aplicados"\)\s*\.update/);
+  }
+});
+
+test('A09.2.8 muestra el alcance de fiscalización sin DML desde el TPV', async () => {
+  const source = await readFile(new URL('../../../source-recovery/fuente-recuperado.js', import.meta.url), 'utf8');
+  const runtime = await readFile(new URL('../../../fuente.js', import.meta.url), 'utf8');
+
+  for (const candidate of [source, runtime]) {
+    assert.match(candidate, /async function listarFiscalizacionA09\(/);
+    assert.match(candidate, /\.from\("ventas_fiscales"\)[\s\S]*?\.select\(/);
+    assert.match(candidate, /\.from\("venta_fiscal_lineas"\)[\s\S]*?\.select\(/);
+    assert.match(candidate, /Fiscalización · alcance A09/);
+    assert.match(candidate, /fiscalización activa bloquea el descuento/);
+    assert.match(candidate, /fiscalización parcial no se aplica en este alcance/);
+    assert.doesNotMatch(candidate, /\.from\("ventas_fiscales"\)\s*\.insert/);
+    assert.doesNotMatch(candidate, /\.from\("ventas_fiscales"\)\s*\.update/);
+    assert.doesNotMatch(candidate, /\.from\("venta_fiscal_lineas"\)\s*\.insert/);
+    assert.doesNotMatch(candidate, /\.from\("venta_fiscal_lineas"\)\s*\.update/);
+  }
+});
+
+test('A09.2.9 conserva cobertura cruzada A04/A08/A09, idempotencia y concurrencia', async () => {
+  const migration = await readFile(new URL('./a09-migration-draft.sql', import.meta.url), 'utf8');
+  const pglite = await readFile(new URL('./local-pglite-contract.mjs', import.meta.url), 'utf8');
+  const math = await readFile(new URL('./discount-math.test.mjs', import.meta.url), 'utf8');
+  const command = await readFile(new URL('./discount-command.test.mjs', import.meta.url), 'utf8');
+
+  assert.match(migration, /public\.cuenta_linea_repartos/);
+  assert.match(migration, /public\.checkouts/);
+  assert.match(migration, /public\.venta_fiscal_lineas/);
+  assert.match(math, /A04:/);
+  assert.match(pglite, /PASS split\/source reconciliation/);
+  assert.match(pglite, /PASS partial fiscalization rejection/);
+  assert.match(pglite, /PASS concurrent dispatch on one PGlite connection/);
+  assert.match(command, /dos descuentos concurrentes con la misma versión/);
+  assert.match(command, /dos reintentos concurrentes del mismo operation_id/);
+});
+
 test('A09.2.3 identifica el escalado por encima del límite del rol', async () => {
   const source = await readFile(new URL('../../../source-recovery/fuente-recuperado.js', import.meta.url), 'utf8');
   const runtime = await readFile(new URL('../../../fuente.js', import.meta.url), 'utf8');
