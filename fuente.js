@@ -118571,6 +118571,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [motivoAutorizacionA09, setMotivoAutorizacionA09] = (0, import_react4.useState)("");
   const [autorizacionesA09, setAutorizacionesA09] = (0, import_react4.useState)([]);
   const [descuentosAplicadosA09, setDescuentosAplicadosA09] = (0, import_react4.useState)([]);
+  const [auditoriaDescuentosA09, setAuditoriaDescuentosA09] = (0, import_react4.useState)({ solicitudes: [], intentos: [], aplicaciones: [], eventos: [] });
+  const [errorAuditoriaDescuentosA09, setErrorAuditoriaDescuentosA09] = (0, import_react4.useState)("");
   const [cargandoAutorizacionesA09, setCargandoAutorizacionesA09] = (0, import_react4.useState)(false);
   const [procesandoDescuentoA09, setProcesandoDescuentoA09] = (0, import_react4.useState)(false);
   const [errorDescuentoA09, setErrorDescuentoA09] = (0, import_react4.useState)("");
@@ -118912,6 +118914,60 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     }
   }
 
+  async function listarAuditoriaDescuentosA09() {
+    const localId = local?.id || null;
+    const empresaId = configEmpresa?.id || null;
+    if (!localId) return { ok: false, error: "Selecciona un local antes de revisar la auditoría de descuentos." };
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    try {
+      const contexto = leerContextoCuentaA02(empresaId, localId);
+      if (!contexto?.cuentaId) throw new Error("contexto_cuenta_persistido_invalido");
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "La auditoría de descuentos necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const [autorizaciones, intentos, eventos] = await Promise.all([
+        supabase
+          .from("abc_descuento_autorizaciones")
+          .select("operation_id,cuenta_id,motivo,snapshot,estado,solicitante_id,autorizador_id,motivo_autorizacion,solicitada_at,autorizada_at,aplicada_at,resultado")
+          .eq("empresa_id", empresaId)
+          .eq("local_id", localId)
+          .eq("cuenta_id", contexto.cuentaId)
+          .order("solicitada_at", { ascending: false })
+          .limit(100),
+        supabase
+          .from("abc_descuento_aprobacion_intentos")
+          .select("operation_id,attempt_id,solicitante_id,autorizador_id,decision,motivo,resultado,occurred_at")
+          .eq("empresa_id", empresaId)
+          .eq("local_id", localId)
+          .order("occurred_at", { ascending: false })
+          .limit(200),
+        supabase
+          .from("abc_eventos")
+          .select("operation_id,event_type,payload,actor_user_id,occurred_at,operating_day")
+          .eq("empresa_id", empresaId)
+          .eq("local_id", localId)
+          .eq("aggregate_type", "CUENTA")
+          .eq("aggregate_id", contexto.cuentaId)
+          .eq("event_type", "CUENTA_DESCUENTO_APLICADO")
+          .order("occurred_at", { ascending: false })
+          .limit(100)
+      ]);
+      for (const response of [autorizaciones, intentos, eventos]) {
+        if (response.error) throw response.error;
+      }
+      const solicitudes = Array.isArray(autorizaciones.data) ? autorizaciones.data : [];
+      const operationIds = new Set(solicitudes.map((row) => String(row?.operation_id || "")).filter(Boolean));
+      return {
+        ok: true,
+        solicitudes,
+        intentos: (Array.isArray(intentos.data) ? intentos.data : []).filter((row) => operationIds.has(String(row?.operation_id || ""))),
+        eventos: Array.isArray(eventos.data) ? eventos.data : []
+      };
+    } catch (error) {
+      return { ok: false, error: respuestaErrorA06(error) };
+    }
+  }
+
   function agruparDescuentosAplicadosA09(rows) {
     const grouped = new Map();
     for (const row of Array.isArray(rows) ? rows : []) {
@@ -118947,9 +119003,12 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   async function cargarAutorizacionesA09() {
     if (typeof listarAutorizacionesDescuentoA09 !== "function") return;
     setCargandoAutorizacionesA09(true);
-    const [resultado, resultadoStack] = await Promise.all([
+    setErrorAuditoriaDescuentosA09("");
+    setAuditoriaDescuentosA09({ solicitudes: [], intentos: [], aplicaciones: [], eventos: [] });
+    const [resultado, resultadoStack, resultadoAuditoria] = await Promise.all([
       listarAutorizacionesDescuentoA09(),
-      listarDescuentosAplicadosA09()
+      listarDescuentosAplicadosA09(),
+      listarAuditoriaDescuentosA09()
     ]);
     setCargandoAutorizacionesA09(false);
     if (!resultado?.ok) {
@@ -118964,6 +119023,12 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     }
     setAutorizacionesA09(Array.isArray(resultado.solicitudes) ? resultado.solicitudes : []);
     setDescuentosAplicadosA09(agruparDescuentosAplicadosA09(resultadoStack.descuentos));
+    if (!resultadoAuditoria?.ok) {
+      setErrorAuditoriaDescuentosA09(resultadoAuditoria?.error || "No se pudo cargar la auditoría de descuentos.");
+      setAuditoriaDescuentosA09({ solicitudes: [], intentos: [], aplicaciones: resultadoStack.descuentos || [], eventos: [] });
+    } else {
+      setAuditoriaDescuentosA09({ ...resultadoAuditoria, aplicaciones: resultadoStack.descuentos || [] });
+    }
   }
 
   async function abrirDescuentoCuentaA09() {
@@ -119637,6 +119702,39 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, row.motivo || "Sin motivo registrado", row.lineas > 0 ? " · "+row.lineas+" línea"+(row.lineas === 1 ? "" : "s") : "")
         ))
       ) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-3", style: { color: C2.inkSoft } }, "No hay descuentos aplicados en esta cuenta."),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3" },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Auditoría A09 · historial"),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "Incluye solicitud, aprobación o rechazo, invalidación y aplicación. Los reversos económicos siguen el flujo transaccional correspondiente."),
+        errorAuditoriaDescuentosA09 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11px] mb-2 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", errorAuditoriaDescuentosA09) : null,
+        auditoriaDescuentosA09.solicitudes.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2" },
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] font-semibold mb-1" }, "Solicitudes y estado final"),
+          auditoriaDescuentosA09.solicitudes.map((row) => {
+            const op = row?.snapshot?.operation || {};
+            const operationId = String(row?.operation_id || "").slice(-16);
+            const resultado = row?.resultado || {};
+            return /* @__PURE__ */ import_react4.default.createElement("div", { key: "audit-request-" + row.operation_id, className: "p-2 rounded-lg mb-2", style: { border: "1px solid " + C2.line } },
+              /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold" }, String(row?.estado || ""), " · ", String(op?.tipo || "DESCUENTO"), " · …", operationId),
+              /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mt-1", style: { color: C2.inkSoft } }, "Solicitud: ", row?.solicitada_at || "sin fecha", " · Motivo: ", row?.motivo || "sin motivo"),
+              row?.autorizada_at ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mt-1", style: { color: C2.inkSoft } }, "Decisión: ", row.autorizada_at, " · ", row.motivo_autorizacion || "sin motivo de autorización") : null,
+              row?.aplicada_at ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mt-1", style: { color: C2.inkSoft } }, "Aplicación: ", row.aplicada_at) : null,
+              resultado?.error ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mt-1", style: { color: C2.red } }, "Resultado: ", String(resultado.error)) : null
+            );
+          })
+        ) : null,
+        auditoriaDescuentosA09.intentos.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2" },
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] font-semibold mb-1" }, "Intentos de aprobación · ", auditoriaDescuentosA09.intentos.length),
+          auditoriaDescuentosA09.intentos.map((row) => /* @__PURE__ */ import_react4.default.createElement("div", { key: "audit-attempt-" + row.attempt_id, className: "text-[10px] p-2 rounded-lg mb-1", style: { border: "1px solid " + C2.line, color: C2.inkSoft } }, String(row?.decision || "INTENTO"), " · ", row?.occurred_at || "sin fecha", " · ", row?.motivo || "sin motivo", " · ", String(row?.resultado?.status || row?.resultado?.error || "registrado")))
+        ) : null,
+        auditoriaDescuentosA09.aplicaciones.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2" },
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] font-semibold mb-1" }, "Aplicaciones registradas · ", auditoriaDescuentosA09.aplicaciones.length),
+          auditoriaDescuentosA09.aplicaciones.map((row) => /* @__PURE__ */ import_react4.default.createElement("div", { key: "audit-applied-" + row.operation_id + "-" + row.reparto_id, className: "text-[10px] p-2 rounded-lg mb-1", style: { border: "1px solid " + C2.line, color: C2.inkSoft } }, String(row?.tipo || "DESCUENTO"), " · €", fmt(row?.importe), " · ", row?.created_at || "sin fecha", " · operación …", String(row?.operation_id || "").slice(-16)))
+        ) : null,
+        auditoriaDescuentosA09.eventos.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", null,
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] font-semibold mb-1" }, "Eventos server-side · ", auditoriaDescuentosA09.eventos.length),
+          auditoriaDescuentosA09.eventos.map((row) => /* @__PURE__ */ import_react4.default.createElement("div", { key: "audit-event-" + row.operation_id + "-" + row.occurred_at, className: "text-[10px] p-2 rounded-lg mb-1", style: { border: "1px solid " + C2.line, color: C2.inkSoft } }, String(row?.event_type || "EVENTO"), " · ", row?.occurred_at || "sin fecha", " · operación …", String(row?.operation_id || "").slice(-16)))
+        ) : null,
+        auditoriaDescuentosA09.solicitudes.length === 0 && auditoriaDescuentosA09.intentos.length === 0 && auditoriaDescuentosA09.aplicaciones.length === 0 && auditoriaDescuentosA09.eventos.length === 0 && !errorAuditoriaDescuentosA09 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "No hay registros de auditoría para esta cuenta.") : null
+      ),
       activas.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3" },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-2" }, "Autorizaciones de esta cuenta"),
         /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo de aprobación / rechazo" },
