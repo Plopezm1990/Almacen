@@ -180,3 +180,17 @@ test('A09.2.2 muestra el stack aplicado separado de las autorizaciones', async (
   assert.doesNotMatch(runtime, /\.from\("abc_descuentos_aplicados"\)\s*\.insert/);
   assert.doesNotMatch(runtime, /\.from\("abc_descuentos_aplicados"\)\s*\.update/);
 });
+
+test('A09.2.3 identifica el escalado por encima del límite del rol', async () => {
+  const source = await readFile(new URL('../../../source-recovery/fuente-recuperado.js', import.meta.url), 'utf8');
+  const runtime = await readFile(new URL('../../../fuente.js', import.meta.url), 'utf8');
+
+  for (const candidate of [source, runtime]) {
+    assert.match(candidate, /requiereEscalado/);
+    assert.match(candidate, /requiere_escalado/);
+    assert.match(candidate, /Solicitud de escalado pendiente/);
+    assert.match(candidate, /Supera el límite de tu rol/);
+    assert.match(candidate, /ESCALADO/);
+    assert.match(candidate, /Supera el límite del rol solicitante; debe autorizarla alguien con capacidad suficiente/);
+  }
+});
