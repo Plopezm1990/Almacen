@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { DiscountCommandReference } from './discount-command.mjs';
+import { readFileSync } from 'node:fs';
 
 const state = (overrides = {}) => ({
   accountVersion: 1,
@@ -97,4 +98,96 @@ test('dos reintentos concurrentes del mismo operation_id producen un único efec
   ]);
   assert.deepEqual(outcomes.map((outcome) => outcome.replayed), [false, true]);
   assert.equal(engine.audit.length, 1);
+});
+
+
+test('UI A09 expone límites configurables para perfiles adicionales y personalizados', () => {
+  const index = readFileSync('index.html', 'utf8');
+  const extension = readFileSync('a09-role-policy-ui.js', 'utf8');
+  assert.match(index, /a09-role-policy-ui\.js/);
+  for (const role of ['Cajero/a', 'Camarero/a', 'Churrero/a', 'Básico']) {
+    assert.match(extension, new RegExp(role.replace('/', '\\/')));
+  }
+  assert.match(extension, /Añadir perfil personalizado/);
+  assert.match(extension, /abc_listar_descuento_politicas/);
+  assert.match(extension, /abc_configurar_descuento_politica/);
+  assert.match(extension, /p_user_id:\s*null/);
+  assert.doesNotMatch(extension, /\.from\(["']abc_descuento_politicas["']\)/);
+});
+
+
+test('perfiles sin política específica fallan cerrados a 0 %', async () => {
+  const members = {
+    cashier: 'Cajero/a',
+    waiter: 'Camarero/a',
+    churrero: 'Churrero/a',
+    basic: 'Básico',
+    custom: 'Supervisor de sala',
+  };
+  for (const actor of Object.keys(members)) {
+    const engine = new DiscountCommandReference(state({ members }));
+    await assert.rejects(
+      engine.execute(request({ operationId: `a09-default-${actor}`, value: '0.01' }), actor),
+      /discount_capability_denied/
+    );
+    assert.equal(engine.audit.length, 0);
+    assert.equal(engine.state.accountVersion, 1);
+  }
+});
+
+test('una política por rol habilita perfiles base y personalizados solo hasta su límite', async () => {
+  const members = {
+    cashier: 'Cajero/a',
+    waiter: 'Camarero/a',
+    churrero: 'Churrero/a',
+    basic: 'Básico',
+    custom: 'Supervisor de sala',
+  };
+  const roleLimits = {
+    'Cajero/a': '10',
+    'Camarero/a': '10',
+    'Churrero/a': '10',
+    'Básico': '10',
+    'Supervisor de sala': '10',
+  };
+
+  for (const actor of Object.keys(members)) {
+    const allowed = new DiscountCommandReference(state({ members, roleLimits }));
+    const ok = await allowed.execute(
+      request({ operationId: `a09-role-ok-${actor}`, value: '1' }),
+      actor
+    );
+    assert.equal(ok.discount, '1');
+    assert.equal(allowed.audit.length, 1);
+
+    const blocked = new DiscountCommandReference(state({ members, roleLimits }));
+    await assert.rejects(
+      blocked.execute(request({ operationId: `a09-role-over-${actor}`, value: '1.00000001' }), actor),
+      /discount_limit_exceeded|cumulative_discount_limit_exceeded/
+    );
+    assert.equal(blocked.audit.length, 0);
+    assert.equal(blocked.state.accountVersion, 1);
+  }
+});
+
+test('los valores iniciales privilegiados siguen siendo Propietario 100 % y Encargado 20 %', async () => {
+  const owner = new DiscountCommandReference(state());
+  const ownerResult = await owner.execute(
+    request({ operationId: 'a09-owner-default-100', kind: 'COURTESY', value: undefined }),
+    'owner'
+  );
+  assert.equal(ownerResult.total, '0');
+
+  const manager = new DiscountCommandReference(state());
+  const managerResult = await manager.execute(
+    request({ operationId: 'a09-manager-default-20', value: '2' }),
+    'manager'
+  );
+  assert.equal(managerResult.discount, '2');
+
+  const managerOver = new DiscountCommandReference(state());
+  await assert.rejects(
+    managerOver.execute(request({ operationId: 'a09-manager-over-20', value: '2.00000001' }), 'manager'),
+    /discount_limit_exceeded|cumulative_discount_limit_exceeded/
+  );
 });
