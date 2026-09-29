@@ -270,7 +270,7 @@ begin
     into v_current_fp
     from private.abc_f4_lineas_cobrables_cuenta(p_empresa_id,p_local_id,p_cuenta_id) x;
 
-  select count(*),min(c.id)
+  select count(*),(array_agg(c.id))[1]
     into v_active,v_checkout_id
     from public.checkouts c
    where c.empresa_id=p_empresa_id
