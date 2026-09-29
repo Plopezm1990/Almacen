@@ -290,12 +290,12 @@ end $$;
 -- Fail-closed: B02/B03 no interpreta cuotas A08 por importe; eso pertenece a B05.
 insert into public.cuenta_cuotas_importe(
   id,empresa_id,local_id,cuenta_origen_id,cuenta_destino_id,importe,currency_code,
-  etiqueta,estado,version,operation_id,created_by
+  etiqueta,estado,version,created_by
 ) values (
   '90000000-2222-3333-4444-555555555551','emp-f4','loc-f4',
   '50000000-2222-3333-4444-555555555551',
   '50000000-2222-3333-4444-555555555552',
-  1,'EUR','TEST_B05','ACTIVA',1,'f4.test.quota',
+  1,'EUR','TEST_B05','ACTIVA',1,
   '11111111-2222-3333-4444-555555555551'
 );
 
