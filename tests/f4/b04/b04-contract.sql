@@ -126,7 +126,13 @@ begin
 end $$;
 
 set role authenticated;
-select public.abc_resolver_incidencia_cobro('b04.incident.resolve.02','emp-f4b04','loc-f4b04',(select id from public.abc_listar_incidencias_cobro('emp-f4b04','loc-f4b04',null) where motivo='Respuesta del proveedor perdida'),'CONFIRMADO','SIMULADOR','sim-b04-001',22,22,22,'{"verificado":"proveedor","evidencia_id":"B04-001"}'::jsonb);
+do $$
+begin
+  perform public.abc_resolver_incidencia_cobro('b04.incident.resolve.02','emp-f4b04','loc-f4b04',(select id from public.abc_listar_incidencias_cobro('emp-f4b04','loc-f4b04',null) where motivo='Respuesta del proveedor perdida'),'CONFIRMADO','SIMULADOR','sim-b04-001',22,22,22,'{"verificado":"proveedor","evidencia_id":"B04-001"}'::jsonb);
+  raise exception 'F4_B04_FAIL: permitió resolver dos veces la incidencia';
+exception when others then
+  if sqlerrm not like '%cobro_incidencia_no_abierta%' then raise; end if;
+end $$;
 reset role;
 
 select 'ABC_F4_B04=PASS' as result;
