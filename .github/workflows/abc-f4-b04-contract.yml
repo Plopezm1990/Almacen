@@ -1,11 +1,13 @@
-name: "ABC F4 B04 -- cobro de resultado desconocido"
+name: "ABC F4 B04+B05 -- cobro incierto y pagos mixtos"
 
 on:
   pull_request:
     branches: [release]
     paths:
       - "supabase/migrations/20260929213000_abc_f4_b04_unknown_payment.sql"
+      - "supabase/migrations/20260929220000_abc_f4_b05_mixed_payments.sql"
       - "tests/f4/b04/**"
+      - "tests/f4/b05/**"
       - "source-recovery/fuente-recuperado.js"
       - "fuente.js"
       - "scripts/f4/b02-b03-materialize.mjs"
@@ -61,6 +63,11 @@ jobs:
             exit 1
           fi
           echo "F4_B04_SCOPE=PASS"
+          migration_b05="supabase/migrations/20260929220000_abc_f4_b05_mixed_payments.sql"
+          test -f "$migration_b05"
+          grep -q "create function public.abc_estado_pago_mixto_cuenta" "$migration_b05"
+          grep -q "disponible_para_nuevo_cobro" "$migration_b05"
+          echo "F4_B05_SCOPE=PASS"
 
       - name: Preparar fixture
         run: psql -v ON_ERROR_STOP=1 -f tests/f3/a08/fixture-a08.sql
@@ -87,7 +94,8 @@ jobs:
             20260924050000_abc_f3_a07_tables_zones.sql \
             20260924060000_abc_f3_a08_account_split_merge.sql \
             20260929040000_abc_f4_b02_b03_checkout_bridge.sql \
-            20260929213000_abc_f4_b04_unknown_payment.sql; do
+            20260929213000_abc_f4_b04_unknown_payment.sql \
+            20260929220000_abc_f4_b05_mixed_payments.sql; do
             psql -v ON_ERROR_STOP=1 -f "supabase/migrations/$migration"
           done
 
@@ -96,3 +104,9 @@ jobs:
 
       - name: Ejecutar contrato UI B04
         run: node tests/f4/b04/b04-ui-contract.mjs
+
+      - name: Ejecutar contrato B05
+        run: psql -v ON_ERROR_STOP=1 -f tests/f4/b05/b05-contract.sql
+
+      - name: Ejecutar contrato UI B05
+        run: node tests/f4/b05/b05-ui-contract.mjs
