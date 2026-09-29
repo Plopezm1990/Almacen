@@ -70,13 +70,15 @@ select public.abc_preparar_checkout_cuenta('b04.prepare.01','emp-f4b04','loc-f4b
 select public.abc_iniciar_cobro('b04.pay.0001','emp-f4b04','loc-f4b04','80000000-2222-3333-4444-555555555561','81000000-2222-3333-4444-555555555561','82000000-2222-3333-4444-555555555561','TARJETA',22,'EUR','20000000-2222-3333-4444-555555555561',null,null);
 
 select public.abc_abrir_incidencia_cobro('b04.incident.open.01','emp-f4b04','loc-f4b04','82000000-2222-3333-4444-555555555561','Respuesta del proveedor perdida','SIMULADOR','sim-b04-001','{"origen":"corte_respuesta","terminal":"TPV-01"}'::jsonb);
+reset role;
 
 do $$
 declare v_incident uuid; v_state text; v_attempt_state text; v_reservas integer;
 begin
   select id,estado into v_incident,v_state
-    from public.abc_listar_incidencias_cobro('emp-f4b04','loc-f4b04',null)
-   where id is not null and motivo='Respuesta del proveedor perdida';
+    from public.abc_cobro_incidencias
+   where empresa_id='emp-f4b04' and local_id='loc-f4b04'
+     and id is not null and motivo='Respuesta del proveedor perdida';
   select estado into v_attempt_state from public.pago_intentos where id='82000000-2222-3333-4444-555555555561';
   select count(*) into v_reservas from public.reservas_saldo where intento_id='82000000-2222-3333-4444-555555555561' and estado='ACTIVA';
   if v_incident is null or v_state<>'ABIERTA' or v_attempt_state<>'PENDIENTE' or v_reservas<>1 then
@@ -90,23 +92,29 @@ begin
   end;
 end $$;
 
+set role authenticated;
 select public.abc_resolver_incidencia_cobro('b04.incident.resolve.01','emp-f4b04','loc-f4b04',(select id from public.abc_listar_incidencias_cobro('emp-f4b04','loc-f4b04',null) where motivo='Respuesta del proveedor perdida'),'CONFIRMADO','SIMULADOR','sim-b04-001',22,22,22,'{"verificado":"proveedor","evidencia_id":"B04-001"}'::jsonb);
+reset role;
 
+set role authenticated;
 select public.abc_preparar_checkout_cuenta('b04.cancel.prepare.01','emp-f4b04','loc-f4b04','80000000-2222-3333-4444-555555555562','50000000-2222-3333-4444-555555555562',1,'20000000-2222-3333-4444-555555555561','40000000-2222-3333-4444-555555555561','2026-09-29');
 select public.abc_iniciar_cobro('b04.cancel.pay.0001','emp-f4b04','loc-f4b04','80000000-2222-3333-4444-555555555562','81000000-2222-3333-4444-555555555562','82000000-2222-3333-4444-555555555562','TARJETA',11,'EUR','20000000-2222-3333-4444-555555555561',null,null);
 select public.abc_abrir_incidencia_cobro('b04.cancel.incident.01','emp-f4b04','loc-f4b04','82000000-2222-3333-4444-555555555562','Autorización cancelada en el terminal','SIMULADOR','sim-b04-002','{"origen":"terminal","resultado":"cancelado"}'::jsonb);
 select public.abc_resolver_incidencia_cobro('b04.cancel.resolve.01','emp-f4b04','loc-f4b04',(select id from public.abc_listar_incidencias_cobro('emp-f4b04','loc-f4b04',null) where motivo='Autorización cancelada en el terminal'),'CANCELADO','SIMULADOR','sim-b04-002',null,null,null,'{"verificado":"terminal","evidencia_id":"B04-002"}'::jsonb);
+reset role;
 
 do $$
 declare v_incident_state text; v_payment_state text; v_attempt_state text; v_reservas integer; v_count integer; v_cancel_payment text; v_cancel_attempt text; v_cancel_reservas integer;
 begin
   select estado into v_incident_state
-    from public.abc_listar_incidencias_cobro('emp-f4b04','loc-f4b04',null)
-   where motivo='Respuesta del proveedor perdida';
+    from public.abc_cobro_incidencias
+   where empresa_id='emp-f4b04' and local_id='loc-f4b04'
+     and motivo='Respuesta del proveedor perdida';
   select estado into v_payment_state from public.pagos where id='81000000-2222-3333-4444-555555555561';
   select estado into v_attempt_state from public.pago_intentos where id='82000000-2222-3333-4444-555555555561';
   select count(*) into v_reservas from public.reservas_saldo where intento_id='82000000-2222-3333-4444-555555555561' and estado='ACTIVA';
-  select count(*) into v_count from public.abc_listar_incidencias_cobro('emp-f4b04','loc-f4b04',null);
+  select count(*) into v_count from public.abc_cobro_incidencias
+   where empresa_id='emp-f4b04' and local_id='loc-f4b04';
   select estado into v_cancel_payment from public.pagos where id='81000000-2222-3333-4444-555555555562';
   select estado into v_cancel_attempt from public.pago_intentos where id='82000000-2222-3333-4444-555555555562';
   select count(*) into v_cancel_reservas from public.reservas_saldo where intento_id='82000000-2222-3333-4444-555555555562' and estado='ACTIVA';
@@ -117,6 +125,7 @@ begin
   end if;
 end $$;
 
+set role authenticated;
 select public.abc_resolver_incidencia_cobro('b04.incident.resolve.02','emp-f4b04','loc-f4b04',(select id from public.abc_listar_incidencias_cobro('emp-f4b04','loc-f4b04',null) where motivo='Respuesta del proveedor perdida'),'CONFIRMADO','SIMULADOR','sim-b04-001',22,22,22,'{"verificado":"proveedor","evidencia_id":"B04-001"}'::jsonb);
 reset role;
 
