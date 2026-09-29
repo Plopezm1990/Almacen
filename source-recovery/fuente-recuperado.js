@@ -2830,7 +2830,7 @@ function GestionAlmacen() {
       movimientos: movimientosDelLocalActivo,
       setTab: cambiarTabPM15
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un \xFAnico local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10 }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un \xFAnico local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10 }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -7321,6 +7321,240 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       return recuperarTrasTimeout(true);
     }
   }
+
+  function clavePendienteCobroF4(empresaId, localId, cuentaId) {
+    if (!empresaId || !localId || !cuentaId) return null;
+    return "la_suite_f4_b02_b03_pago_v1:" + empresaId + ":" + localId + ":" + cuentaId;
+  }
+  function leerPendienteCobroF4(empresaId, localId, cuentaId) {
+    const clave = clavePendienteCobroF4(empresaId, localId, cuentaId);
+    if (!clave) return null;
+    try {
+      const raw = localStorage.getItem(clave);
+      if (!raw) return null;
+      const dato = JSON.parse(raw);
+      if (!dato || dato.version !== 1 || dato.empresaId !== empresaId || dato.localId !== localId || dato.cuentaId !== cuentaId) {
+        localStorage.removeItem(clave);
+        return null;
+      }
+      return dato;
+    } catch (error) {
+      try { localStorage.removeItem(clave); } catch (e2) {}
+      return null;
+    }
+  }
+  function guardarPendienteCobroF4(pendiente) {
+    const clave = clavePendienteCobroF4(pendiente?.empresaId, pendiente?.localId, pendiente?.cuentaId);
+    if (!clave) throw new Error("pago_contexto_invalido");
+    try {
+      localStorage.setItem(clave, JSON.stringify(pendiente));
+      if (localStorage.getItem(clave) === null) throw new Error("persistencia_pago_no_disponible");
+    } catch (error) {
+      throw new Error("persistencia_pago_no_disponible");
+    }
+  }
+  function limpiarPendienteCobroF4(empresaId, localId, cuentaId) {
+    const clave = clavePendienteCobroF4(empresaId, localId, cuentaId);
+    if (!clave) return;
+    try { localStorage.removeItem(clave); } catch (error) {}
+  }
+  function mensajeErrorCobroF4(error) {
+    const msg = String(error?.message || error || "");
+    if (msg.includes("pago_pedido_no_listo")) return "Envía el pedido antes de iniciar el cobro.";
+    if (msg.includes("pago_estado_incierto_existente") || msg.includes("cuenta_con_cobro_incierto")) return "Hay un cobro pendiente o incierto. Resuélvelo antes de iniciar otro.";
+    if (msg.includes("checkout_cuenta_modificada")) return "La cuenta cambió después de preparar el cobro. Recarga antes de continuar.";
+    if (msg.includes("checkout_cuenta_ambigua")) return "La cuenta tiene más de un cobro activo y requiere revisión.";
+    if (msg.includes("cuenta_ya_fiscalizada_sin_checkout")) return "La cuenta ya tiene un snapshot económico previo sin checkout activo; requiere revisión.";
+    if (msg.includes("checkout_cuotas_importe_pendiente_b05")) return "Esta cuenta tiene un reparto por importe. Se cobrará cuando se implemente B05 para conservar el reparto exacto.";
+    if (msg.includes("pedido_lineas_no_cobrables")) return "El pedido contiene líneas que todavía no están confirmadas para cobro.";
+    if (msg.includes("cuenta_version_conflict")) return "La cuenta cambió en otro terminal. Recarga antes de cobrar.";
+    if (msg.includes("abc_cobro_no_autorizado") || msg.includes("abc_efectivo_no_autorizado") || msg.includes("abc_checkout_no_autorizado")) return "Tu usuario no tiene permiso para realizar este cobro.";
+    if (msg.includes("saldo_insuficiente")) return "El saldo disponible cambió. Actualiza el estado del cobro.";
+    if (msg.includes("sesion_caja_no_abierta") || msg.includes("terminal_no_vinculado_sesion") || msg.includes("terminal_sesion_no_operativa")) return "Este terminal no tiene una sesión de caja válida para cobrar.";
+    if (msg.includes("persistencia_pago_no_disponible")) return "Este navegador no puede conservar de forma segura la identidad del cobro.";
+    return errorRpcA02(error);
+  }
+  async function leerEstadoCobroF4() {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para consultar el cobro." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    try {
+      const contextoCuenta = leerContextoCuentaA02(empresaId, localActivoId);
+      if (!contextoCuenta?.cuentaId) return { ok: true, disponible: false, estado: "SIN_CUENTA" };
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "El cobro necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const { data: resumen, error: resumenError } = await supabase.rpc("abc_estado_cobro_cuenta", {
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_cuenta_id: contextoCuenta.cuentaId
+      });
+      if (resumenError) throw resumenError;
+      const { data: checkouts, error: checkoutsError } = await supabase
+        .from("checkouts")
+        .select("id,estado,currency_code,version,created_at,completed_at,cancelled_at")
+        .eq("empresa_id", empresaId)
+        .eq("local_id", localActivoId)
+        .eq("cuenta_id", contextoCuenta.cuentaId)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      if (checkoutsError) throw checkoutsError;
+      const checkoutIds = (checkouts || []).map((x3) => x3.id);
+      let pagos = [];
+      if (checkoutIds.length) {
+        const { data: pagosData, error: pagosError } = await supabase
+          .from("pagos")
+          .select("id,checkout_id,medio,estado,importe_objetivo,importe_recibido,cambio_entregado,payment_currency_code,created_at,resolved_at")
+          .eq("empresa_id", empresaId).eq("local_id", localActivoId)
+          .in("checkout_id", checkoutIds).order("created_at", { ascending: false });
+        if (pagosError) throw pagosError;
+        pagos = pagosData || [];
+      }
+      const pagoIds = pagos.map((x3) => x3.id);
+      let intentos = [];
+      if (pagoIds.length) {
+        const { data: intentosData, error: intentosError } = await supabase
+          .from("pago_intentos")
+          .select("id,pago_id,estado,provider_code,provider_reference,requested_amount,authorized_amount,captured_amount,settled_amount,authorization_status,capture_status,settlement_status,started_at,resolved_at")
+          .eq("empresa_id", empresaId).eq("local_id", localActivoId)
+          .in("pago_id", pagoIds).order("started_at", { ascending: false });
+        if (intentosError) throw intentosError;
+        intentos = intentosData || [];
+      }
+      let pendienteLocal = leerPendienteCobroF4(empresaId, localActivoId, contextoCuenta.cuentaId);
+      if (pendienteLocal?.pagoId) {
+        const pago = pagos.find((x3) => String(x3.id) === String(pendienteLocal.pagoId));
+        if (pago && ["CONFIRMADO", "RECHAZADO", "CANCELADO", "REEMBOLSADO"].includes(String(pago.estado || ""))) {
+          limpiarPendienteCobroF4(empresaId, localActivoId, contextoCuenta.cuentaId);
+          pendienteLocal = null;
+        }
+      }
+      return {
+        ok: true, disponible: true, cuentaId: contextoCuenta.cuentaId,
+        currencyCode: String(contextoCuenta.currencyCode || "EUR"),
+        estado: String(resumen?.estado || "PENDIENTE"),
+        total: Number(resumen?.total) || 0,
+        confirmado: Number(resumen?.confirmado) || 0,
+        saldo: Number(resumen?.saldo) || 0,
+        checkouts: checkouts || [], pagos, intentos, pendienteLocal,
+        cobroIncierto: intentos.some((x3) => ["PENDIENTE", "AUTORIZADO", "DESCONOCIDO"].includes(String(x3.estado || "")))
+      };
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+  async function iniciarCobroCuentaF4(medioSolicitado = "EFECTIVO") {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para cobrar." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    const medio = String(medioSolicitado || "").toUpperCase();
+    if (!["EFECTIVO", "TARJETA"].includes(medio)) return { ok: false, error: "Medio de pago no disponible en este punto." };
+    try {
+      const recuperada = await recuperarCuentaA06();
+      if (!recuperada?.ok || !recuperada.cuentaId) throw new Error(recuperada?.error || "cuenta_no_encontrada");
+      if (!["ENVIADO", "SERVIDO"].includes(String(recuperada.pedidoEstado || ""))) throw new Error("pago_pedido_no_listo");
+      if (String(recuperada.currencyCode || "EUR") !== "EUR") throw new Error("conversion_divisa_no_habilitada");
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "El cobro necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const estadoPrevio = await leerEstadoCobroF4();
+      if (!estadoPrevio.ok) return estadoPrevio;
+      const tuvoCheckout = Array.isArray(estadoPrevio.checkouts) && estadoPrevio.checkouts.length>0;
+      if (tuvoCheckout && Number(estadoPrevio.saldo) <= 0 && !estadoPrevio.cobroIncierto) return estadoPrevio;
+      let pendiente = leerPendienteCobroF4(empresaId, localActivoId, recuperada.cuentaId);
+      if (!pendiente && estadoPrevio.cobroIncierto) throw new Error("pago_estado_incierto_existente");
+      if (pendiente && pendiente.medio !== medio) throw new Error("pago_estado_incierto_existente");
+      if (!pendiente) {
+        const checkoutId = uuidA02();
+        const pagoId = uuidA02();
+        const intentoId = uuidA02();
+        pendiente = {
+          version: 1, empresaId, localId: localActivoId, cuentaId: recuperada.cuentaId, medio,
+          checkoutId, pagoId, intentoId,
+          prepareOperationId: "f4.b02b03.prepare." + checkoutId,
+          payOperationId: "f4.b02b03.pay." + intentoId,
+          cashOperationId: "f4.b02b03.cash." + intentoId,
+          importeObjetivo: null, createdAt: new Date().toISOString()
+        };
+        guardarPendienteCobroF4(pendiente);
+      }
+      const preparado = await rpcA02ConRecuperacion(supabase, "abc_preparar_checkout_cuenta", {
+        p_operation_id: pendiente.prepareOperationId,
+        p_empresa_id: empresaId, p_local_id: localActivoId,
+        p_checkout_id: pendiente.checkoutId, p_cuenta_id: recuperada.cuentaId,
+        p_expected_cuenta_version: versionServidorA02(recuperada.cuentaVersion, "f4.cuenta.version"),
+        p_terminal_id: terminal.terminalId, p_session_id: terminal.sessionId,
+        p_operating_day: recuperada.operatingDay
+      }, empresaId, localActivoId, pendiente.prepareOperationId);
+      if (preparado?.checkout_id && String(preparado.checkout_id) !== String(pendiente.checkoutId)) {
+        pendiente.checkoutId = preparado.checkout_id;
+        guardarPendienteCobroF4(pendiente);
+      }
+      const { data: resumen, error: resumenError } = await supabase.rpc("abc_estado_cobro_cuenta", {
+        p_empresa_id: empresaId, p_local_id: localActivoId, p_cuenta_id: recuperada.cuentaId
+      });
+      if (resumenError) throw resumenError;
+      const saldo = Number(resumen?.saldo);
+      if (!Number.isFinite(saldo) || saldo <= 0) {
+        limpiarPendienteCobroF4(empresaId, localActivoId, recuperada.cuentaId);
+        return await leerEstadoCobroF4();
+      }
+      if (pendiente.importeObjetivo == null) {
+        pendiente.importeObjetivo = saldo;
+        guardarPendienteCobroF4(pendiente);
+      }
+      const importe = Number(pendiente.importeObjetivo);
+      await rpcA02ConRecuperacion(supabase, "abc_iniciar_cobro", {
+        p_operation_id: pendiente.payOperationId,
+        p_empresa_id: empresaId, p_local_id: localActivoId,
+        p_checkout_id: pendiente.checkoutId, p_pago_id: pendiente.pagoId,
+        p_intento_id: pendiente.intentoId, p_medio: medio,
+        p_importe_objetivo: importe, p_payment_currency_code: "EUR",
+        p_terminal_id: terminal.terminalId,
+        p_importe_recibido: medio === "EFECTIVO" ? importe : null,
+        p_cambio_entregado: medio === "EFECTIVO" ? 0 : null
+      }, empresaId, localActivoId, pendiente.payOperationId);
+      if (medio === "EFECTIVO") {
+        const { data: cajaSesion, error: cajaError } = await supabase
+          .from("caja_sesiones").select("caja_id")
+          .eq("empresa_id", empresaId).eq("local_id", localActivoId)
+          .eq("id", terminal.sessionId).eq("estado", "ABIERTA").maybeSingle();
+        if (cajaError) throw cajaError;
+        if (!cajaSesion?.caja_id) throw new Error("sesion_caja_no_abierta");
+        await rpcA02ConRecuperacion(supabase, "abc_confirmar_efectivo", {
+          p_operation_id: pendiente.cashOperationId,
+          p_empresa_id: empresaId, p_local_id: localActivoId,
+          p_intento_id: pendiente.intentoId, p_caja_id: cajaSesion.caja_id,
+          p_session_id: terminal.sessionId, p_terminal_id: terminal.terminalId,
+          p_operating_day: recuperada.operatingDay
+        }, empresaId, localActivoId, pendiente.cashOperationId);
+        limpiarPendienteCobroF4(empresaId, localActivoId, recuperada.cuentaId);
+      }
+      const estadoFinal = await leerEstadoCobroF4();
+      if (medio === "TARJETA" && estadoFinal.ok) {
+        estadoFinal.mensaje = "Tarjeta iniciada en modo simulado: el intento queda pendiente hasta que el adaptador de proveedor lo resuelva.";
+      }
+      return estadoFinal;
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+  async function reintentarCobroF4() {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para recuperar el cobro." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    try {
+      const contexto = leerContextoCuentaA02(empresaId, localActivoId);
+      if (!contexto?.cuentaId) return { ok: false, error: "No hay una cuenta operativa para recuperar." };
+      const pendiente = leerPendienteCobroF4(empresaId, localActivoId, contexto.cuentaId);
+      if (!pendiente?.medio) return await leerEstadoCobroF4();
+      return await iniciarCobroCuentaF4(pendiente.medio);
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+
   async function venderCarritoA02(lineas) {
     if (!localActivoId) return { ok: false, error: "Selecciona un local para abrir el TPV." };
     let normalizadas = [];
@@ -17450,7 +17684,7 @@ function guardarBorradorTpvA06(empresaId, localId, lineas, ahoraMs = Date.now())
     return { estado: "NO_DISPONIBLE", lineas: normalizadas, error: "No se pudo guardar el borrador local del TPV." };
   }
 }
-function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, local = null, configEmpresa }) {
+function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, local = null, configEmpresa }) {
   const [carrito, setCarrito] = (0, import_react4.useState)([]);
   const [categoria, setCategoria] = (0, import_react4.useState)("Todos");
   const [busqueda, setBusqueda] = (0, import_react4.useState)("");
@@ -17842,6 +18076,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     }
   }
   const inputEscaneoRef = (0, import_react4.useRef)(null);
+  const [estadoCobroF4, setEstadoCobroF4] = (0, import_react4.useState)(null);
+  const [cargandoCobroF4, setCargandoCobroF4] = (0, import_react4.useState)(false);
+  const [procesandoCobroF4, setProcesandoCobroF4] = (0, import_react4.useState)(false);
+  const [errorCobroF4, setErrorCobroF4] = (0, import_react4.useState)("");
+  const [mensajeCobroF4, setMensajeCobroF4] = (0, import_react4.useState)("");
   const [showCobro, setShowCobro] = (0, import_react4.useState)(false);
   const [medioPago, setMedioPago] = (0, import_react4.useState)("Efectivo");
   const [efectivoRecibido, setEfectivoRecibido] = (0, import_react4.useState)("");
@@ -18958,6 +19197,122 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     return true;
   }
 
+
+  async function refrescarCobroF4() {
+    if (typeof leerEstadoCobroF4 !== "function" || !pedidoOperativoA05?.cuentaId) {
+      setEstadoCobroF4(null);
+      return;
+    }
+    setCargandoCobroF4(true);
+    const resultado = await leerEstadoCobroF4();
+    setCargandoCobroF4(false);
+    if (!resultado?.ok) {
+      setErrorCobroF4(resultado?.error || "No se pudo consultar el estado del cobro.");
+      return;
+    }
+    setEstadoCobroF4(resultado);
+    setErrorCobroF4("");
+  }
+  async function ejecutarCobroF4(medio) {
+    if (procesandoCobroF4 || typeof iniciarCobroCuentaF4 !== "function") return;
+    setProcesandoCobroF4(true);
+    setErrorCobroF4("");
+    setMensajeCobroF4("");
+    const resultado = await iniciarCobroCuentaF4(medio);
+    setProcesandoCobroF4(false);
+    if (!resultado?.ok) {
+      setErrorCobroF4(resultado?.error || "No se pudo iniciar el cobro.");
+      await refrescarCobroF4();
+      return;
+    }
+    setEstadoCobroF4(resultado);
+    setMensajeCobroF4(resultado.mensaje || (medio === "EFECTIVO" ? "Cobro en efectivo confirmado por el servidor." : "Intento de tarjeta registrado."));
+  }
+  async function recuperarCobroF4UI() {
+    if (procesandoCobroF4 || typeof reintentarCobroF4 !== "function") return;
+    setProcesandoCobroF4(true);
+    setErrorCobroF4("");
+    setMensajeCobroF4("");
+    const resultado = await reintentarCobroF4();
+    setProcesandoCobroF4(false);
+    if (!resultado?.ok) {
+      setErrorCobroF4(resultado?.error || "No se pudo recuperar el cobro.");
+      return;
+    }
+    setEstadoCobroF4(resultado);
+    setMensajeCobroF4(resultado.mensaje || "Estado de cobro recuperado sin crear otro intento.");
+  }
+  function etiquetaEstadoIntentoF4(estado) {
+    const valor = String(estado || "");
+    if (valor === "CONFIRMADO") return "Confirmado";
+    if (valor === "AUTORIZADO") return "Autorizado";
+    if (valor === "RECHAZADO") return "Rechazado";
+    if (valor === "CANCELADO") return "Cancelado";
+    if (valor === "DESCONOCIDO") return "Resultado desconocido";
+    return "Pendiente";
+  }
+  function renderCobroF4() {
+    if (!pedidoOperativoA05?.cuentaId) return null;
+    const pedidoListo = ["ENVIADO", "SERVIDO"].includes(String(pedidoOperativoA05.pedidoEstado || pedidoOperativoA05.estado || ""));
+    const estado = estadoCobroF4;
+    const tieneCheckout = Array.isArray(estado?.checkouts) && estado.checkouts.length>0;
+    const totalPedido = (pedidoOperativoA05.lineas || []).reduce((acc, linea) => acc + (Number(linea.total) || 0), 0);
+    const totalVisible = tieneCheckout ? Number(estado?.total) || 0 : totalPedido;
+    const confirmadoVisible = Number(estado?.confirmado) || 0;
+    const saldoVisible = tieneCheckout ? Number(estado?.saldo) || 0 : Math.max(0,totalPedido-confirmadoVisible);
+    const ultimoIntento = Array.isArray(estado?.intentos) ? estado.intentos[0] : null;
+    const bloqueado = !!estado?.cobroIncierto;
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 mb-2" },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Cobro · F4"),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: refrescarCobroF4, disabled: cargandoCobroF4 || procesandoCobroF4 }, cargandoCobroF4 ? "Actualizando…" : "Actualizar")
+      ),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "B02/B03: estados e identidad de intento son autoritativos en servidor. Tarjeta usa simulación y no se marca pagada sin resolución del proveedor."),
+      !pedidoListo ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] p-2 rounded-lg", style: { background: C2.amberSoft } }, "Envía el pedido antes de cobrar.") : null,
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-3 gap-2 mb-2" },
+        /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Total"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[12px]" }, "€", fmt(totalVisible))),
+        /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Confirmado"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[12px]" }, "€", fmt(confirmadoVisible))),
+        /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Pendiente"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[12px]" }, "€", fmt(saldoVisible)))
+      ),
+      estado?.estado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2" }, "Cuenta: ", /* @__PURE__ */ import_react4.default.createElement("b", null, tieneCheckout ? estado.estado : "LISTA PARA PREPARAR"), ultimoIntento ? " · Último intento: " + etiquetaEstadoIntentoF4(ultimoIntento.estado) : "") : null,
+      bloqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: C2.amberSoft, color: C2.ink } }, "Existe un intento pendiente, autorizado o desconocido. No se permite iniciar otro cobro sobre ese saldo.") : null,
+      errorCobroF4 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: "#FCE8E6", color: C2.red } }, errorCobroF4) : null,
+      mensajeCobroF4 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: C2.accentSoft, color: C2.ink } }, mensajeCobroF4) : null,
+      pedidoListo && saldoVisible > 0 && !bloqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" },
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => ejecutarCobroF4("EFECTIVO"), disabled: procesandoCobroF4 }, procesandoCobroF4 ? "Procesando…" : "Cobrar efectivo exacto"),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => ejecutarCobroF4("TARJETA"), disabled: procesandoCobroF4 }, "Iniciar tarjeta simulada")
+      ) : null,
+      estado?.pendienteLocal ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" },
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: recuperarCobroF4UI, disabled: procesandoCobroF4 }, "Recuperar/reintentar mismo intento")
+      ) : null
+    );
+  }
+
+  (0, import_react4.useEffect)(() => {
+    let activo = true;
+    if (!pedidoOperativoA05?.cuentaId || typeof leerEstadoCobroF4 !== "function") {
+      setEstadoCobroF4(null);
+      setErrorCobroF4("");
+      return () => { activo = false; };
+    }
+    setCargandoCobroF4(true);
+    Promise.resolve(leerEstadoCobroF4()).then((resultado) => {
+      if (!activo) return;
+      setCargandoCobroF4(false);
+      if (!resultado?.ok) {
+        setErrorCobroF4(resultado?.error || "No se pudo consultar el cobro.");
+        return;
+      }
+      setEstadoCobroF4(resultado);
+      setErrorCobroF4("");
+    }).catch(() => {
+      if (!activo) return;
+      setCargandoCobroF4(false);
+      setErrorCobroF4("No se pudo consultar el cobro.");
+    });
+    return () => { activo = false; };
+  }, [pedidoOperativoA05?.cuentaId, pedidoOperativoA05?.cuentaVersion, pedidoOperativoA05?.pedidoEstado, local?.id, configEmpresa?.id]);
+
   async function confirmarCobro() {
     setErrorVenta("");
     setEnviandoVenta(true);
@@ -19365,7 +19720,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     );
   }
 
-  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[16px] font-semibold" }, "TPV"), carrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: vaciarCarrito }, "Vaciar carrito")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "A02/A04 guardan la cuenta y el pedido con autoridad del servidor; A05 permite enviarlo de forma operativa. Los productos configurables usan variantes y modificadores A04. ", /* @__PURE__ */ import_react4.default.createElement("b", null, "No registra cobro, tique fiscal ni movimiento de stock"), ". El total definitivo lo confirma el servidor.")),
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[16px] font-semibold" }, "TPV"), carrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: vaciarCarrito }, "Vaciar carrito")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "A02/A04 guardan la cuenta y el pedido con autoridad del servidor; A05 permite enviarlo y F4 inicia el cobro solo cuando el pedido está listo. Los productos configurables usan variantes y modificadores A04. ", /* @__PURE__ */ import_react4.default.createElement("b", null, "No registra cobro, tique fiscal ni movimiento de stock"), ". El total definitivo lo confirma el servidor.")),
   estadoBorradorA06?.estado === "ACTIVO" ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } },
     /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold" }, "Borrador local activo"),
     /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, carrito.length, " línea(s) · se conserva 24 h desde la última modificación · caduca ", estadoBorradorA06.expiresAtMs ? new Date(estadoBorradorA06.expiresAtMs).toLocaleString("es-ES") : "")
@@ -19378,7 +19733,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     conflictoA06.revisionServidor ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono text-[9.5px] mt-1", style: { color: C2.inkSoft } }, "Revisión servidor: ", conflictoA06.revisionServidor) : null,
     /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setConflictoA06(null) }, "Entendido")
   ) : null,
-  renderSalaA07(), renderRepartoProductosA08(), renderPedidoOperativoA05(), renderDescuentoCuentaA09(), vendibles.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay nada en el piso de venta ahora mismo. Ponle precio a un producto en Productos, o haz un traspaso desde el almac\xE9n en la pesta\xF1a Traspasos." }) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "relative mb-3" }, /* @__PURE__ */ import_react4.default.createElement(
+  renderSalaA07(), renderRepartoProductosA08(), renderPedidoOperativoA05(), renderDescuentoCuentaA09(), renderCobroF4(), vendibles.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay nada en el piso de venta ahora mismo. Ponle precio a un producto en Productos, o haz un traspaso desde el almac\xE9n en la pesta\xF1a Traspasos." }) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "relative mb-3" }, /* @__PURE__ */ import_react4.default.createElement(
     "input",
     {
       ref: inputEscaneoRef,
