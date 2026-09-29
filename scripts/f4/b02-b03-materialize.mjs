@@ -78,7 +78,7 @@ const providerResolverRpc = "abc_" + "resolver_intento";
 if (wrapperBlock.includes(providerResolverRpc)) throw new Error("F4_B02_B03_PROVIDER_RESOLUTION_OUT_OF_SCOPE");
 
 const lines = recovered.split("\n");
-if (lines[0] !== "// FUENTE RECUPERADO DESDE EL BUNDLE CANDIDATO DE L&A SUITE.") {
+if (lines[0].replace(/\r$/, "") !== "// FUENTE RECUPERADO DESDE EL BUNDLE CANDIDATO DE L&A SUITE.") {
   throw new Error("F4_B02_B03_BAD_RECOVERY_HEADER");
 }
 const body = lines.slice(14).join("\n");

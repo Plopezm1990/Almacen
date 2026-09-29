@@ -1,0 +1,98 @@
+name: "ABC F4 B04 -- cobro de resultado desconocido"
+
+on:
+  pull_request:
+    branches: [release]
+    paths:
+      - "supabase/migrations/20260929213000_abc_f4_b04_unknown_payment.sql"
+      - "tests/f4/b04/**"
+      - "source-recovery/fuente-recuperado.js"
+      - "fuente.js"
+      - "scripts/f4/b02-b03-materialize.mjs"
+      - ".github/workflows/abc-f4-b04-contract.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: abc-f4-b04-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  f4-b04:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+
+      - name: Guardar alcance B04
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor e8035269f3f2895acd04dd756973d99ad5072d9a HEAD
+          migration="supabase/migrations/20260929213000_abc_f4_b04_unknown_payment.sql"
+          test -f "$migration"
+          grep -q "create table public.abc_cobro_incidencias" "$migration"
+          grep -q "create function public.abc_resolver_incidencia_cobro" "$migration"
+          grep -q "provider_reference" "$migration"
+          if grep -Eiq '(PAN|CVV|card_number|numero_tarjeta)[[:space:]]+(text|varchar|json)' "$migration"; then
+            echo "F4_B04_SECURITY_FAIL: dato sensible de tarjeta" >&2
+            exit 1
+          fi
+          echo "F4_B04_SCOPE=PASS"
+
+      - name: Preparar fixture
+        run: psql -v ON_ERROR_STOP=1 -f tests/f3/a08/fixture-a08.sql
+      - name: Aplicar dependencias ABC
+        shell: bash
+        run: |
+          set -euo pipefail
+          for migration in \
+            20260923210000_abc_f2_m01_base_transaccional_caja.sql \
+            20260923210100_abc_f2_m01b_acl_hardening.sql \
+            20260923220000_abc_f2_m02a_core_comercial_fiscal.sql \
+            20260923230000_abc_f2_m02b_pagos_reservas_reembolsos.sql \
+            20260923233000_abc_f2_m03a_autoridad_transaccional.sql \
+            20260923234500_abc_f2_m03b_checkout_cobro.sql \
+            20260923235900_abc_f2_m03c_reembolsos_transaccionales.sql \
+            20260924001000_abc_f2_m04a_caja_sesiones.sql \
+            20260924002000_abc_f2_m04b_movimientos_caja.sql \
+            20260924003000_abc_f2_m04c_outbox_persistente.sql \
+            20260924004000_abc_f2_m04d_acl_parity.sql \
+            20260924010000_abc_f3_a03_server_authority.sql \
+            20260924020000_abc_f3_a04_variants_modifiers.sql \
+            20260924030000_abc_f3_a05_order_state_machine.sql \
+            20260924040000_abc_f3_a06_account_recovery.sql \
+            20260924050000_abc_f3_a07_tables_zones.sql \
+            20260924060000_abc_f3_a08_account_split_merge.sql \
+            20260929040000_abc_f4_b02_b03_checkout_bridge.sql \
+            20260929213000_abc_f4_b04_unknown_payment.sql; do
+            psql -v ON_ERROR_STOP=1 -f "supabase/migrations/$migration"
+          done
+
+      - name: Ejecutar contrato B04
+        run: psql -v ON_ERROR_STOP=1 -f tests/f4/b04/b04-contract.sql
+
+      - name: Ejecutar contrato UI B04
+        run: node tests/f4/b04/b04-ui-contract.mjs

@@ -2830,7 +2830,7 @@ function GestionAlmacen() {
       movimientos: movimientosDelLocalActivo,
       setTab: cambiarTabPM15
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un \xFAnico local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10 }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10 }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -7358,6 +7358,18 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (!clave) return;
     try { localStorage.removeItem(clave); } catch (error) {}
   }
+  function evidenciaCobroF4(valor) {
+    if (valor && typeof valor === "object" && !Array.isArray(valor)) return valor;
+    const texto = String(valor || "").trim();
+    if (!texto) return {};
+    try {
+      const dato = JSON.parse(texto);
+      if (!dato || typeof dato !== "object" || Array.isArray(dato)) throw new Error("evidencia_invalida");
+      return dato;
+    } catch (error) {
+      return { nota: texto };
+    }
+  }
   function mensajeErrorCobroF4(error) {
     const msg = String(error?.message || error || "");
     if (msg.includes("pago_pedido_no_listo")) return "Envía el pedido antes de iniciar el cobro.";
@@ -7369,6 +7381,11 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("pedido_lineas_no_cobrables")) return "El pedido contiene líneas que todavía no están confirmadas para cobro.";
     if (msg.includes("cuenta_version_conflict")) return "La cuenta cambió en otro terminal. Recarga antes de cobrar.";
     if (msg.includes("abc_cobro_no_autorizado") || msg.includes("abc_efectivo_no_autorizado") || msg.includes("abc_checkout_no_autorizado")) return "Tu usuario no tiene permiso para realizar este cobro.";
+    if (msg.includes("abc_cobro_resolver_no_autorizado")) return "Solo un Propietario o Encargado puede resolver esta incidencia.";
+    if (msg.includes("evidencia_datos_tarjeta_prohibidos")) return "La evidencia no puede contener PAN, CVV ni datos completos de tarjeta.";
+    if (msg.includes("abc_f4_b04") || msg.includes("abc_abrir_incidencia_cobro") || msg.includes("abc_resolver_incidencia_cobro")) return "La gestión B04 todavía no está disponible en este servidor.";
+    if (msg.includes("cobro_incidencia_ya_abierta")) return "Este cobro ya tiene una incidencia abierta.";
+    if (msg.includes("cobro_incidencia_no_abierta")) return "La incidencia ya fue resuelta o cancelada.";
     if (msg.includes("saldo_insuficiente")) return "El saldo disponible cambió. Actualiza el estado del cobro.";
     if (msg.includes("sesion_caja_no_abierta") || msg.includes("terminal_no_vinculado_sesion") || msg.includes("terminal_sesion_no_operativa")) return "Este terminal no tiene una sesión de caja válida para cobrar.";
     if (msg.includes("persistencia_pago_no_disponible")) return "Este navegador no puede conservar de forma segura la identidad del cobro.";
@@ -7418,9 +7435,16 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           .select("id,pago_id,estado,provider_code,provider_reference,requested_amount,authorized_amount,captured_amount,settled_amount,authorization_status,capture_status,settlement_status,started_at,resolved_at")
           .eq("empresa_id", empresaId).eq("local_id", localActivoId)
           .in("pago_id", pagoIds).order("started_at", { ascending: false });
-        if (intentosError) throw intentosError;
+      if (intentosError) throw intentosError;
         intentos = intentosData || [];
       }
+      let incidencias = [];
+      const { data: incidenciasData } = await supabase.rpc("abc_listar_incidencias_cobro", {
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_cuenta_id: contextoCuenta.cuentaId
+      });
+      if (Array.isArray(incidenciasData)) incidencias = incidenciasData;
       let pendienteLocal = leerPendienteCobroF4(empresaId, localActivoId, contextoCuenta.cuentaId);
       if (pendienteLocal?.pagoId) {
         const pago = pagos.find((x3) => String(x3.id) === String(pendienteLocal.pagoId));
@@ -7436,9 +7460,58 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         total: Number(resumen?.total) || 0,
         confirmado: Number(resumen?.confirmado) || 0,
         saldo: Number(resumen?.saldo) || 0,
-        checkouts: checkouts || [], pagos, intentos, pendienteLocal,
+        checkouts: checkouts || [], pagos, intentos, incidencias, pendienteLocal,
         cobroIncierto: intentos.some((x3) => ["PENDIENTE", "AUTORIZADO", "DESCONOCIDO"].includes(String(x3.estado || "")))
       };
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+  async function abrirIncidenciaCobroF4({ intentoId = null, motivo = "", providerCode = null, providerReference = null, evidencia = {} } = {}) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para abrir la incidencia." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    const contextoCuenta = empresaId ? leerContextoCuentaA02(empresaId, localActivoId) : null;
+    const intento = intentoId || leerEstadoCobroF4 && (await leerEstadoCobroF4())?.intentos?.[0]?.id;
+    if (!empresaId || !contextoCuenta?.cuentaId || !intento) return { ok: false, error: "No se encontró el intento de cobro incierto." };
+    try {
+      const supabase = await window.getSupabaseClient();
+      const { data, error } = await supabase.rpc("abc_abrir_incidencia_cobro", {
+        p_operation_id: "f4.b04.incident.open." + uuidA02(),
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_intento_id: intento,
+        p_motivo: String(motivo || "").trim(),
+        p_provider_code: providerCode || null,
+        p_provider_reference: providerReference || null,
+        p_evidencia: evidenciaCobroF4(evidencia)
+      });
+      if (error) throw error;
+      return { ok: true, resultado: data, estado: await leerEstadoCobroF4() };
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+  async function resolverIncidenciaCobroF4({ incidenciaId, estado, providerCode, providerReference, authorizedAmount = null, capturedAmount = null, settledAmount = null, evidencia = {} } = {}) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para resolver la incidencia." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId || !incidenciaId) return { ok: false, error: "No se encontró la incidencia de cobro." };
+    try {
+      const supabase = await window.getSupabaseClient();
+      const { data, error } = await supabase.rpc("abc_resolver_incidencia_cobro", {
+        p_operation_id: "f4.b04.incident.resolve." + uuidA02(),
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_incidencia_id: incidenciaId,
+        p_estado: String(estado || "").toUpperCase(),
+        p_provider_code: String(providerCode || "").trim(),
+        p_provider_reference: String(providerReference || "").trim(),
+        p_authorized_amount: authorizedAmount,
+        p_captured_amount: capturedAmount,
+        p_settled_amount: settledAmount,
+        p_evidencia: evidenciaCobroF4(evidencia)
+      });
+      if (error) throw error;
+      return { ok: true, resultado: data, estado: await leerEstadoCobroF4() };
     } catch (error) {
       return { ok: false, error: mensajeErrorCobroF4(error) };
     }
@@ -17684,7 +17757,7 @@ function guardarBorradorTpvA06(empresaId, localId, lineas, ahoraMs = Date.now())
     return { estado: "NO_DISPONIBLE", lineas: normalizadas, error: "No se pudo guardar el borrador local del TPV." };
   }
 }
-function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, local = null, configEmpresa }) {
+function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, local = null, configEmpresa }) {
   const [carrito, setCarrito] = (0, import_react4.useState)([]);
   const [categoria, setCategoria] = (0, import_react4.useState)("Todos");
   const [busqueda, setBusqueda] = (0, import_react4.useState)("");
@@ -18081,6 +18154,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [procesandoCobroF4, setProcesandoCobroF4] = (0, import_react4.useState)(false);
   const [errorCobroF4, setErrorCobroF4] = (0, import_react4.useState)("");
   const [mensajeCobroF4, setMensajeCobroF4] = (0, import_react4.useState)("");
+  const [formularioIncidenciaB04, setFormularioIncidenciaB04] = (0, import_react4.useState)({ motivo: "Respuesta del proveedor perdida", providerCode: "", providerReference: "", estado: "CONFIRMADO", autorizado: "", capturado: "", liquidado: "", evidencia: "" });
+  const [procesandoIncidenciaB04, setProcesandoIncidenciaB04] = (0, import_react4.useState)(false);
   const [showCobro, setShowCobro] = (0, import_react4.useState)(false);
   const [medioPago, setMedioPago] = (0, import_react4.useState)("Efectivo");
   const [efectivoRecibido, setEfectivoRecibido] = (0, import_react4.useState)("");
@@ -19242,6 +19317,78 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     setEstadoCobroF4(resultado);
     setMensajeCobroF4(resultado.mensaje || "Estado de cobro recuperado sin crear otro intento.");
   }
+  function cambiarFormularioIncidenciaB04(campo, valor) {
+    setFormularioIncidenciaB04((actual) => ({ ...actual, [campo]: valor }));
+  }
+  function numeroIncidenciaB04(valor) {
+    if (valor === "" || valor === null || valor === void 0) return null;
+    const numero = Number(valor);
+    return Number.isFinite(numero) ? numero : null;
+  }
+  async function abrirIncidenciaB04UI() {
+    if (procesandoIncidenciaB04) return;
+    const ultimoIntento = Array.isArray(estadoCobroF4?.intentos) ? estadoCobroF4.intentos[0] : null;
+    if (!ultimoIntento?.id) {
+      setErrorCobroF4("No se encontró un intento incierto para abrir la incidencia.");
+      return;
+    }
+    if (!String(formularioIncidenciaB04.motivo || "").trim()) {
+      setErrorCobroF4("Indica el motivo de la incidencia.");
+      return;
+    }
+    setProcesandoIncidenciaB04(true);
+    setErrorCobroF4("");
+    setMensajeCobroF4("");
+    const resultado = await abrirIncidenciaCobroF4({
+      intentoId: ultimoIntento.id,
+      motivo: formularioIncidenciaB04.motivo,
+      providerCode: formularioIncidenciaB04.providerCode,
+      providerReference: formularioIncidenciaB04.providerReference,
+      evidencia: formularioIncidenciaB04.evidencia
+    });
+    setProcesandoIncidenciaB04(false);
+    if (!resultado?.ok) {
+      setErrorCobroF4(resultado?.error || "No se pudo abrir la incidencia.");
+      return;
+    }
+    setEstadoCobroF4(resultado.estado || estadoCobroF4);
+    setMensajeCobroF4("Incidencia B04 abierta. El saldo queda bloqueado hasta resolverla.");
+  }
+  async function resolverIncidenciaB04UI(incidencia) {
+    if (procesandoIncidenciaB04 || !incidencia?.id) return;
+    const estado = String(formularioIncidenciaB04.estado || "").toUpperCase();
+    const autorizado = numeroIncidenciaB04(formularioIncidenciaB04.autorizado);
+    const capturado = numeroIncidenciaB04(formularioIncidenciaB04.capturado);
+    const liquidado = numeroIncidenciaB04(formularioIncidenciaB04.liquidado);
+    if (!formularioIncidenciaB04.providerCode || !formularioIncidenciaB04.providerReference) {
+      setErrorCobroF4("Indica el código y la referencia del proveedor.");
+      return;
+    }
+    if (estado === "CONFIRMADO" && (capturado === null || capturado <= 0)) {
+      setErrorCobroF4("Para confirmar, indica el importe capturado.");
+      return;
+    }
+    setProcesandoIncidenciaB04(true);
+    setErrorCobroF4("");
+    setMensajeCobroF4("");
+    const resultado = await resolverIncidenciaCobroF4({
+      incidenciaId: incidencia.id,
+      estado,
+      providerCode: formularioIncidenciaB04.providerCode,
+      providerReference: formularioIncidenciaB04.providerReference,
+      authorizedAmount: autorizado,
+      capturedAmount: capturado,
+      settledAmount: liquidado,
+      evidencia: formularioIncidenciaB04.evidencia
+    });
+    setProcesandoIncidenciaB04(false);
+    if (!resultado?.ok) {
+      setErrorCobroF4(resultado?.error || "No se pudo resolver la incidencia.");
+      return;
+    }
+    setEstadoCobroF4(resultado.estado || estadoCobroF4);
+    setMensajeCobroF4("Incidencia B04 resuelta. El estado del cobro se ha actualizado en el servidor.");
+  }
   function etiquetaEstadoIntentoF4(estado) {
     const valor = String(estado || "");
     if (valor === "CONFIRMADO") return "Confirmado";
@@ -19262,6 +19409,9 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const saldoVisible = tieneCheckout ? Number(estado?.saldo) || 0 : Math.max(0,totalPedido-confirmadoVisible);
     const ultimoIntento = Array.isArray(estado?.intentos) ? estado.intentos[0] : null;
     const bloqueado = !!estado?.cobroIncierto;
+    const incidencias = Array.isArray(estado?.incidencias) ? estado.incidencias : [];
+    const incidenciaActiva = incidencias.find((incidencia) => incidencia.estado === "ABIERTA") || null;
+    const form = formularioIncidenciaB04;
     return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 mb-2" },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Cobro · F4"),
@@ -19276,6 +19426,33 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       ),
       estado?.estado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2" }, "Cuenta: ", /* @__PURE__ */ import_react4.default.createElement("b", null, tieneCheckout ? estado.estado : "LISTA PARA PREPARAR"), ultimoIntento ? " · Último intento: " + etiquetaEstadoIntentoF4(ultimoIntento.estado) : "") : null,
       bloqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: C2.amberSoft, color: C2.ink } }, "Existe un intento pendiente, autorizado o desconocido. No se permite iniciar otro cobro sobre ese saldo.") : null,
+      bloqueado && !incidenciaActiva ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mb-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Abrir incidencia B04"),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "Registra el corte de respuesta y conserva la referencia del proveedor. La autorización se valida en el servidor."),
+        /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.motivo, onChange: (e2) => cambiarFormularioIncidenciaB04("motivo", e2.target.value), placeholder: "Respuesta del proveedor perdida" })),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-2" },
+          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Código proveedor" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.providerCode, onChange: (e2) => cambiarFormularioIncidenciaB04("providerCode", e2.target.value), placeholder: ultimoIntento?.provider_code || "SIMULADOR" })),
+          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Referencia proveedor" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.providerReference, onChange: (e2) => cambiarFormularioIncidenciaB04("providerReference", e2.target.value), placeholder: ultimoIntento?.provider_reference || "referencia" }))
+        ),
+        /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Evidencia (JSON opcional o nota)" }, /* @__PURE__ */ import_react4.default.createElement("textarea", { value: form.evidencia, onChange: (e2) => cambiarFormularioIncidenciaB04("evidencia", e2.target.value), rows: 2, className: "w-full rounded-lg px-3 py-2 text-[12px]", placeholder: "terminal, hora del corte, ticket interno…", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } })),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: abrirIncidenciaB04UI, disabled: procesandoIncidenciaB04 }, procesandoIncidenciaB04 ? "Guardando…" : "Abrir incidencia")
+      ) : null,
+      incidenciaActiva ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mb-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Incidencia B04 abierta"),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, incidenciaActiva.motivo, " · ", incidenciaActiva.provider_reference || "sin referencia"),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-2" },
+          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Resultado verificado" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.estado, onChange: (e2) => cambiarFormularioIncidenciaB04("estado", e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[12px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "CONFIRMADO" }, "Confirmado"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "RECHAZADO" }, "Rechazado"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "CANCELADO" }, "Cancelado"))),
+          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Código proveedor" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.providerCode, onChange: (e2) => cambiarFormularioIncidenciaB04("providerCode", e2.target.value), placeholder: incidenciaActiva.provider_code || "código" }))
+        ),
+        /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Referencia proveedor" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.providerReference, onChange: (e2) => cambiarFormularioIncidenciaB04("providerReference", e2.target.value), placeholder: incidenciaActiva.provider_reference || "referencia" })),
+        form.estado === "CONFIRMADO" ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-3 gap-2" },
+          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Autorizado" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", value: form.autorizado, onChange: (e2) => cambiarFormularioIncidenciaB04("autorizado", e2.target.value), placeholder: String(ultimoIntento?.requested_amount || "importe") })),
+          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Capturado" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", value: form.capturado, onChange: (e2) => cambiarFormularioIncidenciaB04("capturado", e2.target.value), placeholder: String(ultimoIntento?.requested_amount || "importe") })),
+          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Liquidado" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", value: form.liquidado, onChange: (e2) => cambiarFormularioIncidenciaB04("liquidado", e2.target.value), placeholder: "opcional" }))
+        ) : null,
+        /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Evidencia de resolución" }, /* @__PURE__ */ import_react4.default.createElement("textarea", { value: form.evidencia, onChange: (e2) => cambiarFormularioIncidenciaB04("evidencia", e2.target.value), rows: 2, className: "w-full rounded-lg px-3 py-2 text-[12px]", placeholder: "Quién verificó, cuándo y con qué comprobante…", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } })),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => resolverIncidenciaB04UI(incidenciaActiva), disabled: procesandoIncidenciaB04 }, procesandoIncidenciaB04 ? "Resolviendo…" : "Resolver incidencia")
+      ) : null,
       errorCobroF4 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: "#FCE8E6", color: C2.red } }, errorCobroF4) : null,
       mensajeCobroF4 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: C2.accentSoft, color: C2.ink } }, mensajeCobroF4) : null,
       pedidoListo && saldoVisible > 0 && !bloqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" },
