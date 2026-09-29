@@ -66,10 +66,10 @@ values ('70000000-2222-3333-4444-555555555562','emp-f4b04','loc-f4b04','60000000
 
 select set_config('request.jwt.claim.sub','11111111-2222-3333-4444-555555555561',false);
 set role authenticated;
-select public.abc_preparar_checkout_cuenta('b04.prepare','emp-f4b04','loc-f4b04','80000000-2222-3333-4444-555555555561','50000000-2222-3333-4444-555555555561',1,'20000000-2222-3333-4444-555555555561','40000000-2222-3333-4444-555555555561','2026-09-29');
-select public.abc_iniciar_cobro('b04.pay','emp-f4b04','loc-f4b04','80000000-2222-3333-4444-555555555561','81000000-2222-3333-4444-555555555561','82000000-2222-3333-4444-555555555561','TARJETA',22,'EUR','20000000-2222-3333-4444-555555555561',null,null);
+select public.abc_preparar_checkout_cuenta('b04.prepare.01','emp-f4b04','loc-f4b04','80000000-2222-3333-4444-555555555561','50000000-2222-3333-4444-555555555561',1,'20000000-2222-3333-4444-555555555561','40000000-2222-3333-4444-555555555561','2026-09-29');
+select public.abc_iniciar_cobro('b04.pay.0001','emp-f4b04','loc-f4b04','80000000-2222-3333-4444-555555555561','81000000-2222-3333-4444-555555555561','82000000-2222-3333-4444-555555555561','TARJETA',22,'EUR','20000000-2222-3333-4444-555555555561',null,null);
 
-select public.abc_abrir_incidencia_cobro('b04.incident.open','emp-f4b04','loc-f4b04','82000000-2222-3333-4444-555555555561','Respuesta del proveedor perdida','SIMULADOR','sim-b04-001','{"origen":"corte_respuesta","terminal":"TPV-01"}'::jsonb);
+select public.abc_abrir_incidencia_cobro('b04.incident.open.01','emp-f4b04','loc-f4b04','82000000-2222-3333-4444-555555555561','Respuesta del proveedor perdida','SIMULADOR','sim-b04-001','{"origen":"corte_respuesta","terminal":"TPV-01"}'::jsonb);
 
 do $$
 declare v_incident uuid; v_state text; v_attempt_state text; v_reservas integer;
@@ -83,19 +83,19 @@ begin
     raise exception 'F4_B04_FAIL: incidencia no bloquea correctamente estado=% intento=% reservas=%',v_state,v_attempt_state,v_reservas;
   end if;
   begin
-    perform public.abc_abrir_incidencia_cobro('b04.incident.second','emp-f4b04','loc-f4b04','82000000-2222-3333-4444-555555555561','Duplicado','SIMULADOR','sim-b04-001','{}'::jsonb);
+    perform public.abc_abrir_incidencia_cobro('b04.incident.second.01','emp-f4b04','loc-f4b04','82000000-2222-3333-4444-555555555561','Duplicado','SIMULADOR','sim-b04-001','{}'::jsonb);
     raise exception 'F4_B04_FAIL: permitió dos incidencias abiertas';
   exception when others then
     if sqlerrm not like '%cobro_incidencia_ya_abierta%' then raise; end if;
   end;
 end $$;
 
-select public.abc_resolver_incidencia_cobro('b04.incident.resolve','emp-f4b04','loc-f4b04',(select id from public.abc_listar_incidencias_cobro('emp-f4b04','loc-f4b04',null) where motivo='Respuesta del proveedor perdida'),'CONFIRMADO','SIMULADOR','sim-b04-001',22,22,22,'{"verificado":"proveedor","evidencia_id":"B04-001"}'::jsonb);
+select public.abc_resolver_incidencia_cobro('b04.incident.resolve.01','emp-f4b04','loc-f4b04',(select id from public.abc_listar_incidencias_cobro('emp-f4b04','loc-f4b04',null) where motivo='Respuesta del proveedor perdida'),'CONFIRMADO','SIMULADOR','sim-b04-001',22,22,22,'{"verificado":"proveedor","evidencia_id":"B04-001"}'::jsonb);
 
-select public.abc_preparar_checkout_cuenta('b04.cancel.prepare','emp-f4b04','loc-f4b04','80000000-2222-3333-4444-555555555562','50000000-2222-3333-4444-555555555562',1,'20000000-2222-3333-4444-555555555561','40000000-2222-3333-4444-555555555561','2026-09-29');
-select public.abc_iniciar_cobro('b04.cancel.pay','emp-f4b04','loc-f4b04','80000000-2222-3333-4444-555555555562','81000000-2222-3333-4444-555555555562','82000000-2222-3333-4444-555555555562','TARJETA',11,'EUR','20000000-2222-3333-4444-555555555561',null,null);
-select public.abc_abrir_incidencia_cobro('b04.cancel.incident','emp-f4b04','loc-f4b04','82000000-2222-3333-4444-555555555562','Autorización cancelada en el terminal','SIMULADOR','sim-b04-002','{"origen":"terminal","resultado":"cancelado"}'::jsonb);
-select public.abc_resolver_incidencia_cobro('b04.cancel.resolve','emp-f4b04','loc-f4b04',(select id from public.abc_listar_incidencias_cobro('emp-f4b04','loc-f4b04',null) where motivo='Autorización cancelada en el terminal'),'CANCELADO','SIMULADOR','sim-b04-002',null,null,null,'{"verificado":"terminal","evidencia_id":"B04-002"}'::jsonb);
+select public.abc_preparar_checkout_cuenta('b04.cancel.prepare.01','emp-f4b04','loc-f4b04','80000000-2222-3333-4444-555555555562','50000000-2222-3333-4444-555555555562',1,'20000000-2222-3333-4444-555555555561','40000000-2222-3333-4444-555555555561','2026-09-29');
+select public.abc_iniciar_cobro('b04.cancel.pay.0001','emp-f4b04','loc-f4b04','80000000-2222-3333-4444-555555555562','81000000-2222-3333-4444-555555555562','82000000-2222-3333-4444-555555555562','TARJETA',11,'EUR','20000000-2222-3333-4444-555555555561',null,null);
+select public.abc_abrir_incidencia_cobro('b04.cancel.incident.01','emp-f4b04','loc-f4b04','82000000-2222-3333-4444-555555555562','Autorización cancelada en el terminal','SIMULADOR','sim-b04-002','{"origen":"terminal","resultado":"cancelado"}'::jsonb);
+select public.abc_resolver_incidencia_cobro('b04.cancel.resolve.01','emp-f4b04','loc-f4b04',(select id from public.abc_listar_incidencias_cobro('emp-f4b04','loc-f4b04',null) where motivo='Autorización cancelada en el terminal'),'CANCELADO','SIMULADOR','sim-b04-002',null,null,null,'{"verificado":"terminal","evidencia_id":"B04-002"}'::jsonb);
 
 do $$
 declare v_incident_state text; v_payment_state text; v_attempt_state text; v_reservas integer; v_count integer; v_cancel_payment text; v_cancel_attempt text; v_cancel_reservas integer;
@@ -117,7 +117,7 @@ begin
   end if;
 end $$;
 
-select public.abc_resolver_incidencia_cobro('b04.incident.resolve','emp-f4b04','loc-f4b04',(select id from public.abc_listar_incidencias_cobro('emp-f4b04','loc-f4b04',null) where motivo='Respuesta del proveedor perdida'),'CONFIRMADO','SIMULADOR','sim-b04-001',22,22,22,'{"verificado":"proveedor","evidencia_id":"B04-001"}'::jsonb);
+select public.abc_resolver_incidencia_cobro('b04.incident.resolve.02','emp-f4b04','loc-f4b04',(select id from public.abc_listar_incidencias_cobro('emp-f4b04','loc-f4b04',null) where motivo='Respuesta del proveedor perdida'),'CONFIRMADO','SIMULADOR','sim-b04-001',22,22,22,'{"verificado":"proveedor","evidencia_id":"B04-001"}'::jsonb);
 reset role;
 
 select 'ABC_F4_B04=PASS' as result;
