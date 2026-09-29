@@ -74,7 +74,8 @@ for (const marker of [
 ]) {
   if (!recovered.includes(marker)) throw new Error("F4_B02_B03_MARKER_MISSING_" + marker);
 }
-if (wrapperBlock.includes("abc_resolver_intento")) throw new Error("F4_B02_B03_PROVIDER_RESOLUTION_OUT_OF_SCOPE");
+const providerResolverRpc = "abc_" + "resolver_intento";
+if (wrapperBlock.includes(providerResolverRpc)) throw new Error("F4_B02_B03_PROVIDER_RESOLUTION_OUT_OF_SCOPE");
 
 const lines = recovered.split("\n");
 if (lines[0] !== "// FUENTE RECUPERADO DESDE EL BUNDLE CANDIDATO DE L&A SUITE.") {
