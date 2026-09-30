@@ -6,6 +6,7 @@ on:
     paths:
       - "supabase/migrations/20260929213000_abc_f4_b04_unknown_payment.sql"
       - "supabase/migrations/20260929220000_abc_f4_b05_mixed_payments.sql"
+      - "supabase/migrations/20260930100000_abc_f4_b06_non_sale_receipts.sql"
       - "tests/f4/b04/**"
       - "tests/f4/b05/**"
       - "source-recovery/fuente-recuperado.js"
@@ -95,7 +96,8 @@ jobs:
             20260924060000_abc_f3_a08_account_split_merge.sql \
             20260929040000_abc_f4_b02_b03_checkout_bridge.sql \
             20260929213000_abc_f4_b04_unknown_payment.sql \
-            20260929220000_abc_f4_b05_mixed_payments.sql; do
+            20260929220000_abc_f4_b05_mixed_payments.sql \
+            20260930100000_abc_f4_b06_non_sale_receipts.sql; do
             psql -v ON_ERROR_STOP=1 -f "supabase/migrations/$migration"
           done
 
@@ -110,3 +112,6 @@ jobs:
 
       - name: Ejecutar contrato UI B05
         run: node tests/f4/b05/b05-ui-contract.mjs
+
+      - name: Ejecutar contrato B06 separación no venta
+        run: psql -v ON_ERROR_STOP=1 -f tests/f4/b06/b06-contract.sql

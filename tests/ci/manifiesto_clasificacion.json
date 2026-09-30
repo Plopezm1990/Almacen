@@ -1,8 +1,8 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 164,
+  "total_inventory": 165,
   "expected_counts": {
-    "active_contract": 150,
+    "active_contract": 151,
     "historical_expected_fail": 1,
     "utility": 8,
     "diagnostic": 5
@@ -21,7 +21,7 @@
       "diagnostic": 0
     },
     "postgres": {
-      "active_contract": 10,
+      "active_contract": 11,
       "historical_expected_fail": 1,
       "utility": 0,
       "diagnostic": 0
@@ -143,6 +143,11 @@
       "path": "tests/f4/b05/b05-ui-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
+    },
+    {
+      "path": "tests/f4/b06/b06-contract.sql",
+      "classification": "active_contract",
+      "environment": "postgres"
     },
     {
       "path": "tests/g1/p02-evidence-map-contract.mjs",
