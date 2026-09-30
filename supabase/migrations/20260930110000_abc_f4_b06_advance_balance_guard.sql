@@ -110,7 +110,8 @@ begin
     v_request,p_terminal_id
   );
   if coalesce((v_cmd->>'replayed')::boolean,false) then
-    return coalesce(v_cmd->'resultado',v_cmd);
+    v_resultado := coalesce(v_cmd->'resultado',v_cmd);
+    return jsonb_set(v_resultado,'{replayed}','true'::jsonb,true);
   end if;
 
   -- La unicidad de abc_command_id es la última barrera de replay del ledger.
