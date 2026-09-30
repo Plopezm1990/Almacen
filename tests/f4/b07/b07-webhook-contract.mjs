@@ -10,6 +10,9 @@ assert.match(webhook, /await req\.text\(\)/);
 assert.match(webhook, /\.rpc\(\s*["']abc_b07_obtener_configuracion/);
 assert.match(webhook, /ABC_B07_SIMULATION_SECRET/);
 assert.match(webhook, /crypto\.subtle\.importKey/);
+assert.match(webhook, /searchParams\.get\("provider_code"\)/);
+assert.match(webhook, /searchParams\.get\("account_id"\)/);
+assert.match(webhook, /signatureValue/);
 assert.match(webhook, /\.rpc\(\s*["']abc_b07_procesar_evento/);
 assert.doesNotMatch(webhook, /abc_resolver_intento|insert into|update public\.pagos|empresa_id\s*=/i);
 assert.doesNotMatch(webhook, /stripe|redsys|sumup/i);
@@ -31,6 +34,7 @@ assert.doesNotMatch(processing, /grant execute[\s\S]{0,180}(?:anon|authenticated
 const {
   normalizeProviderEvent,
   assertNoCardData,
+  signatureValue,
 } = await import('../../../supabase/functions/_shared/abc-b07-adapter.mjs');
 
 const event = normalizeProviderEvent({
@@ -59,6 +63,8 @@ assert.equal(event.amount, 12.5);
 assert.equal(event.currency, 'EUR');
 assert.equal(event.event_type, 'PAYMENT_STATUS_CHANGED');
 assert.equal(event.status, 'CONFIRMADO');
+assert.equal(signatureValue('sha256=abc123', { prefix: 'sha256=' }), 'abc123');
+assert.equal(signatureValue('abc123', { prefix: 'sha256=' }), null);
 assert.throws(() => assertNoCardData({ payment_method_details: { last4: '1234' } }), /B07_PAYLOAD_SENSIBLE/);
 assert.throws(() => normalizeProviderEvent({
   providerCode: 'GENERIC_PAYMENTS',

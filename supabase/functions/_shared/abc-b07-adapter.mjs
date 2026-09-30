@@ -109,6 +109,16 @@ export function signatureHeaderName(signatureConfig = {}) {
   return name || 'x-signature';
 }
 
+export function signatureValue(signature, signatureConfig = {}) {
+  const value = cleanText(signature, 2048);
+  if (!value) return null;
+  const prefix = cleanText(signatureConfig.prefix, 96);
+  if (!prefix) return value;
+  if (!value.startsWith(prefix)) return null;
+  const unprefixed = value.slice(prefix.length).trim();
+  return unprefixed || null;
+}
+
 export function constantTimeEqualText(left, right) {
   if (typeof left !== 'string' || typeof right !== 'string') return false;
   const a = new TextEncoder().encode(left);

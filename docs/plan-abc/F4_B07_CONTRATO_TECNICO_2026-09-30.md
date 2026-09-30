@@ -60,9 +60,18 @@ no escribe pagos, caja ni stock directamente.
 
 ## Contrato propuesto de entrada
 
-La futura entrada sera un endpoint de servidor para el proveedor elegido. El
-nombre definitivo y su adaptador dependeran del proveedor; no se fija una URL
-publica en esta fase.
+La entrada es un endpoint de servidor genérico. El proveedor se selecciona por
+cabeceras `x-abc-b07-provider-code` y `x-abc-b07-account-id`, o por los
+parámetros de ruta `provider_code` y `account_id` cuando el proveedor no
+permite cabeceras personalizadas. El nombre y la cuenta se resuelven contra el
+registro privado; la petición nunca puede elegir libremente su empresa o local.
+
+La configuración permite reutilizar el mismo adaptador para cualquier
+proveedor cuyo webhook entregue JSON y firme el cuerpo con HMAC SHA-256 o
+SHA-512: rutas de campos, estados, cabecera o parámetro de firma, codificación
+HEX/BASE64/BASE64URL y prefijo de firma se guardan por proveedor. Un esquema
+asimétrico, OAuth o una firma que requiera una canonicalización propia sigue
+necesitando un adaptador criptográfico específico; no se simula como HMAC.
 
 1. Se conserva el cuerpo HTTP crudo para verificar la firma antes de parsear el
    JSON.
