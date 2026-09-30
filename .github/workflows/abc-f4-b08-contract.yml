@@ -11,7 +11,11 @@ on:
       - "supabase/migrations/20260923233000_abc_f2_m03a_autoridad_transaccional.sql"
       - "supabase/migrations/20260923234500_abc_f2_m03b_checkout_cobro.sql"
       - "supabase/migrations/20260923235900_abc_f2_m03c_reembolsos_transaccionales.sql"
+      - "supabase/migrations/20260924001000_abc_f2_m04a_caja_sesiones.sql"
+      - "supabase/migrations/20260924002000_abc_f2_m04b_movimientos_caja.sql"
+      - "supabase/migrations/20260924003000_abc_f2_m04c_outbox_persistente.sql"
       - "tests/f2/m03c/**"
+      - "tests/f2/m04c/**"
       - "tests/f4/b08/**"
       - "docs/plan-abc/F4_B08_CONTRATO_TECNICO_2026-09-30.md"
       - ".github/workflows/abc-f4-b08-contract.yml"
@@ -64,7 +68,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          psql -v ON_ERROR_STOP=1 -f tests/f2/m03c/fixture-m03c.sql
+          psql -v ON_ERROR_STOP=1 -f tests/f2/m04c/fixture-m04c.sql
           for migration in \
             20260923210000_abc_f2_m01_base_transaccional_caja.sql \
             20260923210100_abc_f2_m01b_acl_hardening.sql \
@@ -72,7 +76,10 @@ jobs:
             20260923230000_abc_f2_m02b_pagos_reservas_reembolsos.sql \
             20260923233000_abc_f2_m03a_autoridad_transaccional.sql \
             20260923234500_abc_f2_m03b_checkout_cobro.sql \
-            20260923235900_abc_f2_m03c_reembolsos_transaccionales.sql; do
+            20260923235900_abc_f2_m03c_reembolsos_transaccionales.sql \
+            20260924001000_abc_f2_m04a_caja_sesiones.sql \
+            20260924002000_abc_f2_m04b_movimientos_caja.sql \
+            20260924003000_abc_f2_m04c_outbox_persistente.sql; do
             psql -v ON_ERROR_STOP=1 -f "supabase/migrations/$migration"
           done
 
