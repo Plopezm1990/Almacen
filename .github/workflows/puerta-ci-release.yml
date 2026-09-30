@@ -5,7 +5,7 @@ name: "Puerta de CI general -- candidato a release (157/157 contratos activos)"
 # repositorio, basada en el manifiesto versionado
 # (tests/ci/manifiesto_clasificacion.json, 171 archivos) sobre el SHA
 # exacto evaluado, en 5 jobs:
-#   - node-y-postgres: ejecuta tests/ci/ejecutar_bateria_no_db.sh (142
+#   - node-y-postgres: ejecuta tests/ci/ejecutar_bateria_no_db.sh (143
 #     activos Node), ejecutar_pglite_local.sh (1 activo más su bootstrap)
 #     y preparar_postgres_local.sh (10 activos Postgres 16 + 1 histórico
 #     esperado en rojo), contra motores desechables.
@@ -23,7 +23,7 @@ name: "Puerta de CI general -- candidato a release (157/157 contratos activos)"
 #     calculado a partir del resultado real (`outcome`) de cada paso,
 #     nunca fijo.
 #   - gate-final: exige que los cuatro jobs de prueba hayan terminado con
-#     éxito, SUMA los outputs reales únicos (142+10+1+3=156) y solo entonces
+#     éxito, SUMA los outputs reales únicos (143+10+1+3=157) y solo entonces
 #     imprime el resumen -- no hay ningún `echo` de un número que no se
 #     haya demostrado primero. Revalida además el manifiesto contra el
 #     árbol real (inventario, clasificación, histórico PM33 P01 separado
@@ -407,8 +407,8 @@ jobs:
           echo "PM33_FULL_STACK_PASS=$PM33_FULL_STACK_PASS (de 1)"
 
           fallo=0
-          [ "$NODE_ACTIVE_TOTAL" = "142" ] || { echo "NODE_ACTIVE_TOTAL != 142" >&2; fallo=1; }
-          [ "$NODE_ACTIVE_PASS" = "142" ] || { echo "NODE_ACTIVE_PASS != 142" >&2; fallo=1; }
+          [ "$NODE_ACTIVE_TOTAL" = "143" ] || { echo "NODE_ACTIVE_TOTAL != 143" >&2; fallo=1; }
+          [ "$NODE_ACTIVE_PASS" = "143" ] || { echo "NODE_ACTIVE_PASS != 143" >&2; fallo=1; }
           [ "$NODE_ACTIVE_FAIL" = "0" ] || { echo "NODE_ACTIVE_FAIL != 0" >&2; fallo=1; }
           [ "$INFRA_FAIL" = "0" ] || { echo "INFRA_FAIL != 0" >&2; fallo=1; }
           [ "$POSTGRES_ACTIVE_TOTAL" = "10" ] || { echo "POSTGRES_ACTIVE_TOTAL != 10" >&2; fallo=1; }
@@ -440,15 +440,15 @@ jobs:
             echo "historical_expected_fail=$HISTORICAL_EXPECTED_FAIL"
           } >> "$GITHUB_OUTPUT"
 
-          echo "CALCULO_TOTAL_ACTIVOS=$total_activos (142 Node + 10 Postgres 16 + 1 PGlite + 3 full-stack)"
+          echo "CALCULO_TOTAL_ACTIVOS=$total_activos (143 Node + 10 Postgres 16 + 1 PGlite + 3 full-stack)"
           echo "CALCULO_ACTIVE_PASS=$active_pass"
           echo "CALCULO_ACTIVE_FAIL=$active_fail"
 
-          if [ "$total_activos" -ne 156 ]; then
-            echo "TOTAL_ACTIVOS_CALCULADO_DISTINTO_DE_156: $total_activos" >&2
+          if [ "$total_activos" -ne 157 ]; then
+            echo "TOTAL_ACTIVOS_CALCULADO_DISTINTO_DE_157: $total_activos" >&2
             exit 1
           fi
-          if [ "$active_pass" -ne 156 ] || [ "$active_fail" -ne 0 ]; then
+          if [ "$active_pass" -ne 157 ] || [ "$active_fail" -ne 0 ]; then
             echo "ACTIVE_PASS/ACTIVE_FAIL_CALCULADOS_NO_CUADRAN: pass=$active_pass fail=$active_fail" >&2
             exit 1
           fi
