@@ -1,0 +1,80 @@
+name: "ABC F4 B08 -- devoluciones economicas"
+
+on:
+  pull_request:
+    branches: [release]
+    paths:
+      - "supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql"
+      - "supabase/migrations/20260923210100_abc_f2_m01b_acl_hardening.sql"
+      - "supabase/migrations/20260923220000_abc_f2_m02a_core_comercial_fiscal.sql"
+      - "supabase/migrations/20260923230000_abc_f2_m02b_pagos_reservas_reembolsos.sql"
+      - "supabase/migrations/20260923233000_abc_f2_m03a_autoridad_transaccional.sql"
+      - "supabase/migrations/20260923234500_abc_f2_m03b_checkout_cobro.sql"
+      - "supabase/migrations/20260923235900_abc_f2_m03c_reembolsos_transaccionales.sql"
+      - "tests/f2/m03c/**"
+      - "tests/f4/b08/**"
+      - "docs/plan-abc/F4_B08_CONTRATO_TECNICO_2026-09-30.md"
+      - ".github/workflows/abc-f4-b08-contract.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  f4-b08:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Guardar separacion del reembolso economico
+        shell: bash
+        run: |
+          set -euo pipefail
+          migration="supabase/migrations/20260923235900_abc_f2_m03c_reembolsos_transaccionales.sql"
+          test -f "$migration"
+          grep -q "create function public.abc_solicitar_reembolso" "$migration"
+          grep -q "create function public.abc_confirmar_reembolso_efectivo" "$migration"
+          grep -q "create function public.abc_resolver_reembolso" "$migration"
+          grep -q "create function public.abc_cancelar_reembolso" "$migration"
+          if grep -Eiq 'stock_operaciones|movimientos_stock|devoluciones_venta' "$migration"; then
+            echo "F4_B08_STOCK_COUPLING: reembolso economico acoplado al stock legacy" >&2
+            exit 1
+          fi
+          echo "F4_B08_SCOPE_GUARD=PASS"
+
+      - name: Aplicar dependencias de reembolsos
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f tests/f2/m03c/fixture-m03c.sql
+          for migration in \
+            20260923210000_abc_f2_m01_base_transaccional_caja.sql \
+            20260923210100_abc_f2_m01b_acl_hardening.sql \
+            20260923220000_abc_f2_m02a_core_comercial_fiscal.sql \
+            20260923230000_abc_f2_m02b_pagos_reservas_reembolsos.sql \
+            20260923233000_abc_f2_m03a_autoridad_transaccional.sql \
+            20260923234500_abc_f2_m03b_checkout_cobro.sql \
+            20260923235900_abc_f2_m03c_reembolsos_transaccionales.sql; do
+            psql -v ON_ERROR_STOP=1 -f "supabase/migrations/$migration"
+          done
+
+      - name: Ejecutar contrato F4 B08
+        run: psql -v ON_ERROR_STOP=1 -f tests/f4/b08/b08-contract.sql
