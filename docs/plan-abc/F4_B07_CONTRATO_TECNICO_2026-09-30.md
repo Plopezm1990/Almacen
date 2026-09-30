@@ -122,4 +122,6 @@ no se ha inventado un adaptador Stripe, Redsys, SumUp u otro proveedor.
 
 El siguiente subpunto será conectar el proveedor contratado, cargar su
 configuración real y probar su sandbox con un fixture firmado. Hasta entonces
-no debe desplegarse a producción.
+el fixture genérico `tests/f4/b07/fixtures/generic-provider-event.json` permite
+comprobar localmente la normalización y firma HMAC sin fingir que existe un
+proveedor contratado. Hasta entonces no debe desplegarse a producción.

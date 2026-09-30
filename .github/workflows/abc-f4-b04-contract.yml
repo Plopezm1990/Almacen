@@ -135,3 +135,6 @@ jobs:
 
       - name: Ejecutar contrato B07 entrada y adaptador
         run: node tests/f4/b07/b07-webhook-contract.mjs
+
+      - name: Ejecutar fixture B07 HMAC simulado
+        run: node tests/f4/b07/b07-simulated-fixture.mjs
