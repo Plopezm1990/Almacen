@@ -124,4 +124,6 @@ El siguiente subpunto será conectar el proveedor contratado, cargar su
 configuración real y probar su sandbox con un fixture firmado. Hasta entonces
 el fixture genérico `tests/f4/b07/fixtures/generic-provider-event.json` permite
 comprobar localmente la normalización y firma HMAC sin fingir que existe un
-proveedor contratado. Hasta entonces no debe desplegarse a producción.
+proveedor contratado. El contrato SQL de simulador prueba además el efecto
+económico, el replay, el conflicto de payload y el rechazo por importe. Hasta
+entonces no debe desplegarse a producción.

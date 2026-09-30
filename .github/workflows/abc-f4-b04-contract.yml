@@ -133,6 +133,9 @@ jobs:
       - name: Ejecutar contrato B07 configuración
         run: psql -v ON_ERROR_STOP=1 -f tests/f4/b07/b07-contract.sql
 
+      - name: Ejecutar contrato B07 simulador
+        run: psql -v ON_ERROR_STOP=1 -f tests/f4/b07/b07-simulator-contract.sql
+
       - name: Ejecutar contrato B07 entrada y adaptador
         run: node tests/f4/b07/b07-webhook-contract.mjs
 
