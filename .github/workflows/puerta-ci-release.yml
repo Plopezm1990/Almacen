@@ -1,9 +1,9 @@
-name: "Puerta de CI general -- candidato a release (156/156 contratos activos)"
+name: "Puerta de CI general -- candidato a release (157/157 contratos activos)"
 
 # Punto 3: generaliza la puerta validada en el Punto 2
 # (cierre-proyecto-a/punto2/) a infraestructura reutilizable del
 # repositorio, basada en el manifiesto versionado
-# (tests/ci/manifiesto_clasificacion.json, 170 archivos) sobre el SHA
+# (tests/ci/manifiesto_clasificacion.json, 171 archivos) sobre el SHA
 # exacto evaluado, en 5 jobs:
 #   - node-y-postgres: ejecuta tests/ci/ejecutar_bateria_no_db.sh (142
 #     activos Node), ejecutar_pglite_local.sh (1 activo más su bootstrap)
@@ -108,7 +108,7 @@ jobs:
           test "$version" = "3.4.17"
           echo "TAILWIND_BUILD_VERSION=$version"
 
-      - name: 142 contratos activos Node (incluye build de Netlify previo)
+      - name: 143 contratos activos Node (incluye build de Netlify previo)
         id: node_run
         shell: bash
         run: |
