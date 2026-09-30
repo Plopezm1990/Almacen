@@ -89,6 +89,108 @@ begin
      ) then
     raise exception 'F4_B06_FAIL: guardia de fuente de anticipo ausente';
   end if;
+
+  if to_regprocedure('public.abc_registrar_movimiento_anticipo(text,text,text,uuid,text,numeric,text,uuid,text,text,date,uuid,jsonb)') is null
+     or not has_function_privilege(
+       'authenticated',
+       'public.abc_registrar_movimiento_anticipo(text,text,text,uuid,text,numeric,text,uuid,text,text,date,uuid,jsonb)',
+       'EXECUTE'
+     )
+     or has_function_privilege(
+       'anon',
+       'public.abc_registrar_movimiento_anticipo(text,text,text,uuid,text,numeric,text,uuid,text,text,date,uuid,jsonb)',
+       'EXECUTE'
+     ) then
+    raise exception 'F4_B06_FAIL: ACL de RPC de saldo incorrecta';
+  end if;
+
+  if strpos(
+       pg_get_functiondef(
+         'public.abc_registrar_movimiento_anticipo(text,text,text,uuid,text,numeric,text,uuid,text,text,date,uuid,jsonb)'::regprocedure
+       ),
+       'b06_saldo_insuficiente'
+     ) = 0
+     or strpos(
+       pg_get_functiondef(
+         'public.abc_registrar_movimiento_anticipo(text,text,text,uuid,text,numeric,text,uuid,text,text,date,uuid,jsonb)'::regprocedure
+       ),
+       'abc_operacion_iniciar'
+     ) = 0 then
+    raise exception 'F4_B06_FAIL: guardas de saldo/idempotencia ausentes';
+  end if;
 end $$;
 
-select 'ABC_F4_B06_SEPARATION=PASS' as result;
+-- Prueba funcional mínima: una aplicación consume saldo una sola vez y una
+-- segunda petición que supera el saldo queda rechazada por el servidor.
+insert into public.abc_operaciones(
+  operation_id,empresa_id,local_id,command_type,request_hash,status,
+  actor_user_id,request,resultado,completed_at
+) values (
+  'b06.source.0001','emp-f4b04','loc-f4b04','B06_SOURCE',repeat('a',64),
+  'COMPLETADA','11111111-2222-3333-4444-555555555561','{}'::jsonb,
+  '{"ok":true}'::jsonb,now()
+);
+insert into public.abc_cobros_no_venta(
+  id,empresa_id,local_id,abc_command_id,concepto,importe,currency_code,medio,
+  encargo_id,titular_id,responsable_user_id,operating_day,created_by
+) values (
+  'b0600000-0000-0000-0000-000000000001','emp-f4b04','loc-f4b04',
+  'b06.source.0001','ANTICIPO',5,'EUR','EFECTIVO','encargo-b06-1',null,
+  '11111111-2222-3333-4444-555555555561','2026-09-29',
+  '11111111-2222-3333-4444-555555555561'
+);
+
+select set_config('request.jwt.claim.sub','11111111-2222-3333-4444-555555555561',false);
+set role authenticated;
+do $$
+declare
+  v_venta uuid;
+  v_first jsonb;
+  v_replay jsonb;
+  v_movimientos integer;
+begin
+  select id into v_venta
+    from public.ventas_fiscales
+   where empresa_id='emp-f4b04'
+     and local_id='loc-f4b04'
+     and currency_code='EUR'
+     and estado<>'CANCELADA'
+   order by created_at
+   limit 1;
+  if v_venta is null then raise exception 'F4_B06_FAIL: falta venta fiscal de prueba'; end if;
+
+  v_first:=public.abc_registrar_movimiento_anticipo(
+    'b06.apply.0001','emp-f4b04','loc-f4b04',
+    'b0600000-0000-0000-0000-000000000001','APLICACION',4,'EUR',
+    v_venta,null,null,'2026-09-29',null,'{}'::jsonb
+  );
+  v_replay:=public.abc_registrar_movimiento_anticipo(
+    'b06.apply.0001','emp-f4b04','loc-f4b04',
+    'b0600000-0000-0000-0000-000000000001','APLICACION',4,'EUR',
+    v_venta,null,null,'2026-09-29',null,'{}'::jsonb
+  );
+
+  if (v_first->>'ok')::boolean is not true
+     or (v_first->>'saldo_disponible')::numeric<>1
+     or (v_replay->>'saldo_disponible')::numeric<>1 then
+    raise exception 'F4_B06_FAIL: replay o saldo de aplicación incorrecto';
+  end if;
+  select count(*) into v_movimientos
+    from public.abc_anticipo_movimientos
+   where anticipo_id='b0600000-0000-0000-0000-000000000001';
+  if v_movimientos<>1 then raise exception 'F4_B06_FAIL: replay duplicó movimiento'; end if;
+
+  begin
+    perform public.abc_registrar_movimiento_anticipo(
+      'b06.apply.overflow','emp-f4b04','loc-f4b04',
+      'b0600000-0000-0000-0000-000000000001','APLICACION',2,'EUR',
+      v_venta,null,null,'2026-09-29',null,'{}'::jsonb
+    );
+    raise exception 'F4_B06_FAIL: permitió superar saldo de anticipo';
+  exception when others then
+    if sqlerrm not like '%b06_saldo_insuficiente%' then raise; end if;
+  end;
+end $$;
+reset role;
+
+select 'ABC_F4_B06=PASS' as result;
