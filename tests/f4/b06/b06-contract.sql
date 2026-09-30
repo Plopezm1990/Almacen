@@ -56,6 +56,39 @@ begin
   ) then
     raise exception 'F4_B06_FAIL: política de lectura ausente';
   end if;
+
+  if to_regclass('public.abc_anticipo_movimientos') is null then
+    raise exception 'F4_B06_FAIL: falta relación de aplicación/devolución';
+  end if;
+  if not exists (
+    select 1 from pg_constraint
+     where conrelid='public.abc_anticipo_movimientos'::regclass
+       and conname='abc_anticipo_movimiento_source_fk'
+  ) or not exists (
+    select 1 from pg_constraint
+     where conrelid='public.abc_anticipo_movimientos'::regclass
+       and conname='abc_anticipo_movimiento_venta_fk'
+  ) then
+    raise exception 'F4_B06_FAIL: relaciones de origen/destino incompletas';
+  end if;
+
+  if has_table_privilege('anon','public.abc_anticipo_movimientos','SELECT')
+     or has_table_privilege('authenticated','public.abc_anticipo_movimientos','INSERT')
+     or has_table_privilege('authenticated','public.abc_anticipo_movimientos','UPDATE')
+     or has_table_privilege('authenticated','public.abc_anticipo_movimientos','DELETE')
+     or not has_table_privilege('authenticated','public.abc_anticipo_movimientos','SELECT') then
+    raise exception 'F4_B06_FAIL: ACL de trazabilidad incorrecta';
+  end if;
+
+  if to_regprocedure('private.abc_b06_validar_anticipo_movimiento()') is null
+     or not exists (
+       select 1 from pg_trigger
+        where tgrelid='public.abc_anticipo_movimientos'::regclass
+          and tgname='abc_b06_anticipo_movimiento_guard'
+          and not tgisinternal
+     ) then
+    raise exception 'F4_B06_FAIL: guardia de fuente de anticipo ausente';
+  end if;
 end $$;
 
 select 'ABC_F4_B06_SEPARATION=PASS' as result;

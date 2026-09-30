@@ -9,6 +9,7 @@ on:
       - "supabase/migrations/20260930100000_abc_f4_b06_non_sale_receipts.sql"
       - "tests/f4/b04/**"
       - "tests/f4/b05/**"
+      - "tests/f4/b06/**"
       - "source-recovery/fuente-recuperado.js"
       - "fuente.js"
       - "scripts/f4/b02-b03-materialize.mjs"
@@ -97,7 +98,8 @@ jobs:
             20260929040000_abc_f4_b02_b03_checkout_bridge.sql \
             20260929213000_abc_f4_b04_unknown_payment.sql \
             20260929220000_abc_f4_b05_mixed_payments.sql \
-            20260930100000_abc_f4_b06_non_sale_receipts.sql; do
+            20260930100000_abc_f4_b06_non_sale_receipts.sql \
+            20260930103000_abc_f4_b06_advance_traceability.sql; do
             psql -v ON_ERROR_STOP=1 -f "supabase/migrations/$migration"
           done
 
