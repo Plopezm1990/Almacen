@@ -1,0 +1,37 @@
+# F4 B10 — Protección de datos de tarjeta
+
+Fecha: 01/10/2026.
+
+## B10.1 cerrado: frontera técnica
+
+El terminal o el proveedor de pagos captura los datos sensibles. La Suite ABC
+solo conserva la referencia del proveedor, importes, moneda, estados y la
+evidencia operativa necesaria. No se almacenan PAN, CVV/CVC, banda magnética,
+clave privada ni el objeto completo del método de pago.
+
+La migración `20261001090000_abc_f4_b10_card_data_boundary.sql` añade una
+función recursiva de validación y restricciones a:
+
+- `pago_intentos.provider_snapshot`;
+- `reembolsos.provider_snapshot`;
+- `efectos_pendientes.payload`;
+- `abc_eventos.payload`;
+- eventos B07 del proveedor y su último conflicto.
+
+La migración audita primero las filas existentes y aborta si encuentra una
+clave prohibida. Después, las restricciones impiden que una nueva escritura
+introduzca esos datos, también cuando están anidados en arrays u objetos.
+
+## Límites de este cierre
+
+Esto no certifica PCI DSS ni sustituye el cuestionario del adquirente. Queda
+para el siguiente subpunto decidir el proveedor, el flujo de terminal o
+redirect/hosted fields y documentar el alcance PCI con el adquirente. No se
+inventan credenciales ni se hace deploy remoto en este paso.
+
+## Evidencia
+
+El contrato `tests/f4/b10/b10-card-data-contract.mjs` comprueba la función
+recursiva, las claves prohibidas, las cinco restricciones y la ausencia de
+escrituras de negocio dentro de la migración. El workflow
+`.github/workflows/abc-f4-b10-card-data.yml` lo ejecuta en CI.
