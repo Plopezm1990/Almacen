@@ -11,6 +11,7 @@ on:
       - "supabase/migrations/20260930110000_abc_f4_b06_advance_balance_guard.sql"
       - "supabase/migrations/20260930120000_abc_f4_b06_policy_catalog.sql"
       - "supabase/migrations/20260930150000_abc_f4_b07_provider_registry.sql"
+      - "supabase/migrations/20260930153000_abc_f4_b07_server_config.sql"
       - "tests/f4/b04/**"
       - "tests/f4/b05/**"
       - "tests/f4/b06/**"
@@ -107,7 +108,8 @@ jobs:
             20260930103000_abc_f4_b06_advance_traceability.sql \
             20260930110000_abc_f4_b06_advance_balance_guard.sql \
             20260930120000_abc_f4_b06_policy_catalog.sql \
-            20260930150000_abc_f4_b07_provider_registry.sql; do
+            20260930150000_abc_f4_b07_provider_registry.sql \
+            20260930153000_abc_f4_b07_server_config.sql; do
             psql -v ON_ERROR_STOP=1 -f "supabase/migrations/$migration"
           done
 
@@ -128,3 +130,6 @@ jobs:
 
       - name: Ejecutar contrato B07 configuración
         run: psql -v ON_ERROR_STOP=1 -f tests/f4/b07/b07-contract.sql
+
+      - name: Ejecutar contrato B07 entrada y adaptador
+        run: node tests/f4/b07/b07-webhook-contract.mjs

@@ -61,6 +61,17 @@ begin
      or exists (select 1 from private.abc_b07_cuentas_comerciales) then
     raise exception 'F4_B07_FAIL: se ha hardcodeado un proveedor o una cuenta';
   end if;
+
+  if to_regprocedure('public.abc_b07_obtener_configuracion(text,text)') is null then
+    raise exception 'F4_B07_FAIL: falta resolver de configuración servidor-servidor';
+  end if;
+
+  if has_function_privilege('anon','public.abc_b07_obtener_configuracion(text,text)','EXECUTE')
+     or has_function_privilege('authenticated','public.abc_b07_obtener_configuracion(text,text)','EXECUTE')
+     or has_function_privilege('public','public.abc_b07_obtener_configuracion(text,text)','EXECUTE')
+     or not has_function_privilege('service_role','public.abc_b07_obtener_configuracion(text,text)','EXECUTE') then
+    raise exception 'F4_B07_FAIL: privilegios del resolver servidor-servidor incorrectos';
+  end if;
 end $$;
 
 select 'ABC_F4_B07_CONFIG=PASS' as result;

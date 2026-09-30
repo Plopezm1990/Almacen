@@ -4,11 +4,12 @@ Fecha: 30/09/2026.
 
 ## Estado
 
-Este documento cierra el subpunto de diseño tecnico de B07 y deja preparada la
-configuracion agnostica de proveedor. B07 no se puede cerrar ni probar contra
-un sandbox hasta identificar el proveedor contratado y su mecanismo de firma.
-La migracion solo crea catalogo y vinculos privados; no crea una Edge Function,
-no almacena secretos y no activa ningun proveedor.
+Este documento cierra el subpunto de diseño tecnico y el subpunto de entrada
+simulada de B07. Queda preparada una Edge Function generica, con firma HMAC o
+secreto de simulacion, que normaliza eventos sin aplicar efectos economicos.
+B07 no se puede cerrar ni probar contra un sandbox hasta identificar el
+proveedor contratado y su mecanismo de firma. No se han aplicado migraciones
+remotas ni se ha hecho deploy.
 
 ## Alcance oficial
 
@@ -41,6 +42,13 @@ La primera migracion de B07 crea `private.abc_b07_proveedores` y
 configuracion de firma y las rutas de normalizacion; la segunda vincula una
 cuenta comercial a empresa y local y solo conserva `secret_ref`, nunca el valor
 del secreto.
+
+La segunda migracion crea `public.abc_b07_obtener_configuracion`, una funcion
+`security definer` ejecutable solo por `service_role`. La Edge Function
+`abc-b07-webhook` usa esa funcion para resolver la cuenta y el ambito comercial
+en servidor. El adaptador `abc-b07-adapter.mjs` admite rutas de normalizacion
+configurables, rechaza datos de tarjeta y permite validar eventos simulados sin
+escribir en pagos, caja, stock ni incidencias.
 
 ## Contrato propuesto de entrada
 
@@ -105,4 +113,6 @@ cuenta comercial, el formato del evento ni un sandbox verificable. Por tanto,
 no se ha inventado un adaptador Stripe, Redsys, SumUp u otro proveedor.
 
 El siguiente subpunto sera implementar la entrada de servidor y su adaptador
-configurable, primero con eventos simulados y sin aplicar cambios remotos.
+configurable con validacion de importe, moneda, referencia e idempotencia
+contra el intento de pago. Ese subpunto requiere ya el proveedor contratado o
+un fixture firmado equivalente; aun no debe desplegarse a produccion.
