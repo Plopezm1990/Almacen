@@ -113,6 +113,36 @@ begin
     return coalesce(v_cmd->'resultado',v_cmd);
   end if;
 
+  -- La unicidad de abc_command_id es la última barrera de replay del ledger.
+  -- Se consulta después del lock de operación para devolver el resultado
+  -- existente incluso si una operación anterior ya materializó el movimiento.
+  select * into v_mov
+    from public.abc_anticipo_movimientos
+   where abc_command_id=p_operation_id
+   for update;
+  if found then
+    select * into v_anticipo
+      from public.abc_cobros_no_venta
+     where empresa_id=p_empresa_id
+       and local_id=p_local_id
+       and id=p_anticipo_id
+     for update;
+    select coalesce(sum(m.importe),0)::numeric(24,8)
+      into v_consumido
+      from public.abc_anticipo_movimientos m
+     where m.empresa_id=p_empresa_id
+       and m.local_id=p_local_id
+       and m.anticipo_id=p_anticipo_id;
+    return jsonb_build_object(
+      'ok',true,
+      'replayed',true,
+      'movimiento',to_jsonb(v_mov),
+      'importe_anticipo',v_anticipo.importe,
+      'importe_consumido',v_consumido,
+      'saldo_disponible',round(v_anticipo.importe-v_consumido,8)
+    );
+  end if;
+
   select * into v_anticipo
     from public.abc_cobros_no_venta
    where empresa_id=p_empresa_id
