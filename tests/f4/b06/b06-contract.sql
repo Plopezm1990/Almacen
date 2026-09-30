@@ -170,6 +170,21 @@ insert into public.abc_cobros_no_venta(
   '11111111-2222-3333-4444-555555555561'
 );
 
+-- La aplicación necesita un destino fiscal real; el fixture común de B04/B05
+-- solo prepara cuentas y cobros, no fiscaliza una venta.
+insert into public.ventas_fiscales(
+  id,empresa_id,local_id,cuenta_id,entidad_fiscal_id,currency_code,
+  estado,version,subtotal,descuento_total,impuestos_total,total,
+  snapshot_calculo,created_by,created_operating_day
+) values (
+  'b0600000-0000-0000-0000-000000000002',
+  'emp-f4b04','loc-f4b04',
+  '50000000-2222-3333-4444-555555555561',
+  '10000000-2222-3333-4444-555555555561','EUR',
+  'ABIERTA',1,4,0,0,4,'{"test":"B06"}'::jsonb,
+  '11111111-2222-3333-4444-555555555561','2026-09-29'
+);
+
 select set_config('request.jwt.claim.sub','11111111-2222-3333-4444-555555555561',false);
 set role authenticated;
 do $$
