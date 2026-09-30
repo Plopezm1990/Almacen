@@ -7386,7 +7386,9 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("abc_f4_b04") || msg.includes("abc_abrir_incidencia_cobro") || msg.includes("abc_resolver_incidencia_cobro")) return "La gestión B04 todavía no está disponible en este servidor.";
     if (msg.includes("cobro_incidencia_ya_abierta")) return "Este cobro ya tiene una incidencia abierta.";
     if (msg.includes("cobro_incidencia_no_abierta")) return "La incidencia ya fue resuelta o cancelada.";
-    if (msg.includes("saldo_insuficiente")) return "El saldo disponible cambió. Actualiza el estado del cobro.";
+    if (msg.includes("saldo_insuficiente")) return "El saldo disponible cambió o el importe supera el saldo. Actualiza el estado del cobro.";
+    if (msg.includes("pago_importe_distinto")) return "Ya existe un intento con otro importe. Recupéralo o resuélvelo antes de cambiar la cantidad.";
+    if (msg.includes("efectivo_recibido_cambio_inconsistente")) return "El efectivo recibido y el cambio no cuadran con el importe del pago.";
     if (msg.includes("sesion_caja_no_abierta") || msg.includes("terminal_no_vinculado_sesion") || msg.includes("terminal_sesion_no_operativa")) return "Este terminal no tiene una sesión de caja válida para cobrar.";
     if (msg.includes("persistencia_pago_no_disponible")) return "Este navegador no puede conservar de forma segura la identidad del cobro.";
     return errorRpcA02(error);
@@ -7407,6 +7409,12 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         p_cuenta_id: contextoCuenta.cuentaId
       });
       if (resumenError) throw resumenError;
+      const { data: detalleB05, error: detalleB05Error } = await supabase.rpc("abc_estado_pago_mixto_cuenta", {
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_cuenta_id: contextoCuenta.cuentaId
+      });
+      if (detalleB05Error) throw detalleB05Error;
       const { data: checkouts, error: checkoutsError } = await supabase
         .from("checkouts")
         .select("id,estado,currency_code,version,created_at,completed_at,cancelled_at")
@@ -7453,13 +7461,20 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           pendienteLocal = null;
         }
       }
+      const resumenServidor = detalleB05 || resumen;
+      if (Array.isArray(detalleB05?.pagos)) pagos = detalleB05.pagos;
+      if (Array.isArray(detalleB05?.intentos)) intentos = detalleB05.intentos;
       return {
         ok: true, disponible: true, cuentaId: contextoCuenta.cuentaId,
         currencyCode: String(contextoCuenta.currencyCode || "EUR"),
-        estado: String(resumen?.estado || "PENDIENTE"),
-        total: Number(resumen?.total) || 0,
-        confirmado: Number(resumen?.confirmado) || 0,
-        saldo: Number(resumen?.saldo) || 0,
+        estado: String(resumenServidor?.estado || "PENDIENTE"),
+        total: Number(resumenServidor?.total) || 0,
+        confirmado: Number(resumenServidor?.confirmado) || 0,
+        saldo: Number(resumenServidor?.saldo) || 0,
+        reservado: Number(resumenServidor?.reservado) || 0,
+        efectivoRecibido: Number(resumenServidor?.efectivo_recibido) || 0,
+        cambioEntregado: Number(resumenServidor?.cambio_entregado) || 0,
+        cajas: Array.isArray(resumenServidor?.cajas) ? resumenServidor.cajas : [],
         checkouts: checkouts || [], pagos, intentos, incidencias, pendienteLocal,
         cobroIncierto: intentos.some((x3) => ["PENDIENTE", "AUTORIZADO", "DESCONOCIDO"].includes(String(x3.estado || "")))
       };
@@ -7516,7 +7531,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       return { ok: false, error: mensajeErrorCobroF4(error) };
     }
   }
-  async function iniciarCobroCuentaF4(medioSolicitado = "EFECTIVO") {
+  async function iniciarCobroCuentaF4(medioSolicitado = "EFECTIVO", opciones = {}) {
     if (!localActivoId) return { ok: false, error: "Selecciona un local para cobrar." };
     const empresaId = empresaDelLocalActivo?.id || null;
     if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
@@ -7538,6 +7553,10 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       let pendiente = leerPendienteCobroF4(empresaId, localActivoId, recuperada.cuentaId);
       if (!pendiente && estadoPrevio.cobroIncierto) throw new Error("pago_estado_incierto_existente");
       if (pendiente && pendiente.medio !== medio) throw new Error("pago_estado_incierto_existente");
+      if (pendiente && opciones?.importeObjetivo != null
+          && Number(pendiente.importeObjetivo) !== Number(opciones.importeObjetivo)) {
+        throw new Error("pago_importe_distinto");
+      }
       if (!pendiente) {
         const checkoutId = uuidA02();
         const pagoId = uuidA02();
@@ -7574,10 +7593,26 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         return await leerEstadoCobroF4();
       }
       if (pendiente.importeObjetivo == null) {
-        pendiente.importeObjetivo = saldo;
-        guardarPendienteCobroF4(pendiente);
+        pendiente.importeObjetivo = opciones?.importeObjetivo == null || opciones.importeObjetivo === ""
+          ? saldo : Number(opciones.importeObjetivo);
       }
       const importe = Number(pendiente.importeObjetivo);
+      if (!Number.isFinite(importe) || importe <= 0 || importe > saldo) throw new Error("saldo_insuficiente");
+      if (medio === "EFECTIVO") {
+        const recibido = pendiente.importeRecibido == null
+          ? (opciones?.importeRecibido == null || opciones.importeRecibido === "" ? importe : Number(opciones.importeRecibido))
+          : Number(pendiente.importeRecibido);
+        const cambio = pendiente.cambioEntregado == null
+          ? (opciones?.cambioEntregado == null || opciones.cambioEntregado === "" ? 0 : Number(opciones.cambioEntregado))
+          : Number(pendiente.cambioEntregado);
+        if (!Number.isFinite(recibido) || !Number.isFinite(cambio) || recibido < importe || cambio < 0
+            || Math.abs((recibido - cambio) - importe) > 0.000001) {
+          throw new Error("efectivo_recibido_cambio_inconsistente");
+        }
+        pendiente.importeRecibido = recibido;
+        pendiente.cambioEntregado = cambio;
+      }
+      guardarPendienteCobroF4(pendiente);
       await rpcA02ConRecuperacion(supabase, "abc_iniciar_cobro", {
         p_operation_id: pendiente.payOperationId,
         p_empresa_id: empresaId, p_local_id: localActivoId,
@@ -7585,8 +7620,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         p_intento_id: pendiente.intentoId, p_medio: medio,
         p_importe_objetivo: importe, p_payment_currency_code: "EUR",
         p_terminal_id: terminal.terminalId,
-        p_importe_recibido: medio === "EFECTIVO" ? importe : null,
-        p_cambio_entregado: medio === "EFECTIVO" ? 0 : null
+        p_importe_recibido: medio === "EFECTIVO" ? pendiente.importeRecibido : null,
+        p_cambio_entregado: medio === "EFECTIVO" ? pendiente.cambioEntregado : null
       }, empresaId, localActivoId, pendiente.payOperationId);
       if (medio === "EFECTIVO") {
         const { data: cajaSesion, error: cajaError } = await supabase
@@ -7605,6 +7640,11 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         limpiarPendienteCobroF4(empresaId, localActivoId, recuperada.cuentaId);
       }
       const estadoFinal = await leerEstadoCobroF4();
+      if (medio === "EFECTIVO" && estadoFinal.ok) {
+        estadoFinal.mensaje = Number(estadoFinal.saldo) > 0
+          ? `Efectivo confirmado. Saldo restante calculado por el servidor: €${Number(estadoFinal.saldo).toFixed(2)}. Puedes completar el pago con tarjeta.`
+          : "Efectivo confirmado y cuenta pagada.";
+      }
       if (medio === "TARJETA" && estadoFinal.ok) {
         estadoFinal.mensaje = "Tarjeta iniciada en modo simulado: el intento queda pendiente hasta que el adaptador de proveedor lo resuelva.";
       }
@@ -18154,6 +18194,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [procesandoCobroF4, setProcesandoCobroF4] = (0, import_react4.useState)(false);
   const [errorCobroF4, setErrorCobroF4] = (0, import_react4.useState)("");
   const [mensajeCobroF4, setMensajeCobroF4] = (0, import_react4.useState)("");
+  const [importeCobroF4, setImporteCobroF4] = (0, import_react4.useState)("");
+  const [efectivoRecibidoCobroF4, setEfectivoRecibidoCobroF4] = (0, import_react4.useState)("");
   const [formularioIncidenciaB04, setFormularioIncidenciaB04] = (0, import_react4.useState)({ motivo: "Respuesta del proveedor perdida", providerCode: "", providerReference: "", estado: "CONFIRMADO", autorizado: "", capturado: "", liquidado: "", evidencia: "" });
   const [procesandoIncidenciaB04, setProcesandoIncidenciaB04] = (0, import_react4.useState)(false);
   const [showCobro, setShowCobro] = (0, import_react4.useState)(false);
@@ -19288,12 +19330,12 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     setEstadoCobroF4(resultado);
     setErrorCobroF4("");
   }
-  async function ejecutarCobroF4(medio) {
+  async function ejecutarCobroF4(medio, opciones = {}) {
     if (procesandoCobroF4 || typeof iniciarCobroCuentaF4 !== "function") return;
     setProcesandoCobroF4(true);
     setErrorCobroF4("");
     setMensajeCobroF4("");
-    const resultado = await iniciarCobroCuentaF4(medio);
+    const resultado = await iniciarCobroCuentaF4(medio, opciones);
     setProcesandoCobroF4(false);
     if (!resultado?.ok) {
       setErrorCobroF4(resultado?.error || "No se pudo iniciar el cobro.");
@@ -19409,6 +19451,10 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const saldoVisible = tieneCheckout ? Number(estado?.saldo) || 0 : Math.max(0,totalPedido-confirmadoVisible);
     const ultimoIntento = Array.isArray(estado?.intentos) ? estado.intentos[0] : null;
     const bloqueado = !!estado?.cobroIncierto;
+    const importeVisible = importeCobroF4 === "" ? saldoVisible : Number(importeCobroF4);
+    const recibidoVisible = efectivoRecibidoCobroF4 === "" ? null : Number(efectivoRecibidoCobroF4);
+    const cambioVisible = recibidoVisible !== null && Number.isFinite(recibidoVisible) && Number.isFinite(importeVisible)
+      ? recibidoVisible - importeVisible : null;
     const incidencias = Array.isArray(estado?.incidencias) ? estado.incidencias : [];
     const incidenciaActiva = incidencias.find((incidencia) => incidencia.estado === "ABIERTA") || null;
     const form = formularioIncidenciaB04;
@@ -19417,7 +19463,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Cobro · F4"),
         /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: refrescarCobroF4, disabled: cargandoCobroF4 || procesandoCobroF4 }, cargandoCobroF4 ? "Actualizando…" : "Actualizar")
       ),
-      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "B02/B03: estados e identidad de intento son autoritativos en servidor. Tarjeta usa simulación y no se marca pagada sin resolución del proveedor."),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "B05: el importe restante, el cambio y la caja se calculan y validan en servidor. Para un pago mixto, cobra una parte en efectivo y completa después con tarjeta."),
       !pedidoListo ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] p-2 rounded-lg", style: { background: C2.amberSoft } }, "Envía el pedido antes de cobrar.") : null,
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-3 gap-2 mb-2" },
         /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Total"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[12px]" }, "€", fmt(totalVisible))),
@@ -19455,9 +19501,18 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       ) : null,
       errorCobroF4 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: "#FCE8E6", color: C2.red } }, errorCobroF4) : null,
       mensajeCobroF4 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: C2.accentSoft, color: C2.ink } }, mensajeCobroF4) : null,
-      pedidoListo && saldoVisible > 0 && !bloqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" },
-        /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => ejecutarCobroF4("EFECTIVO"), disabled: procesandoCobroF4 }, procesandoCobroF4 ? "Procesando…" : "Cobrar efectivo exacto"),
-        /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => ejecutarCobroF4("TARJETA"), disabled: procesandoCobroF4 }, "Iniciar tarjeta simulada")
+      pedidoListo && saldoVisible > 0 && !bloqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-2 mb-2" },
+          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Importe de este pago (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0.01", max: saldoVisible, value: importeCobroF4, onChange: (e2) => setImporteCobroF4(e2.target.value), placeholder: saldoVisible.toFixed(2) })),
+          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo recibido (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", value: efectivoRecibidoCobroF4, onChange: (e2) => setEfectivoRecibidoCobroF4(e2.target.value), placeholder: importeVisible > 0 ? importeVisible.toFixed(2) : "0.00" }))
+        ),
+        cambioVisible !== null ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: cambioVisible < 0 ? C2.red : C2.accent } }, cambioVisible < 0 ? `Faltan €${fmt(Math.abs(cambioVisible))}` : `Cambio a devolver: €${fmt(cambioVisible)}`) : null,
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" },
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => ejecutarCobroF4("EFECTIVO", { importeObjetivo: importeVisible, importeRecibido: recibidoVisible == null ? importeVisible : recibidoVisible, cambioEntregado: cambioVisible == null ? 0 : cambioVisible }), disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 || cambioVisible !== null && cambioVisible < 0 }, procesandoCobroF4 ? "Procesando…" : "Cobrar efectivo"),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => ejecutarCobroF4("TARJETA", { importeObjetivo: importeVisible }), disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 }, "Iniciar tarjeta simulada"),
+          confirmadoVisible > 0 && saldoVisible > 0 ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => ejecutarCobroF4("TARJETA", { importeObjetivo: saldoVisible }), disabled: procesandoCobroF4 }, "Completar pago mixto con tarjeta") : null
+        ),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-2", style: { color: C2.inkSoft } }, "El botón de completar mixto usa el saldo que devuelve el servidor, no el cálculo local del navegador.")
       ) : null,
       estado?.pendienteLocal ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" },
         /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: recuperarCobroF4UI, disabled: procesandoCobroF4 }, "Recuperar/reintentar mismo intento")
