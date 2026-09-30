@@ -444,11 +444,11 @@ jobs:
           echo "CALCULO_ACTIVE_PASS=$active_pass"
           echo "CALCULO_ACTIVE_FAIL=$active_fail"
 
-          if [ "$total_activos" -ne 152 ]; then
-            echo "TOTAL_ACTIVOS_CALCULADO_DISTINTO_DE_152: $total_activos" >&2
+          if [ "$total_activos" -ne 153 ]; then
+            echo "TOTAL_ACTIVOS_CALCULADO_DISTINTO_DE_153: $total_activos" >&2
             exit 1
           fi
-          if [ "$active_pass" -ne 152 ] || [ "$active_fail" -ne 0 ]; then
+          if [ "$active_pass" -ne 153 ] || [ "$active_fail" -ne 0 ]; then
             echo "ACTIVE_PASS/ACTIVE_FAIL_CALCULADOS_NO_CUADRAN: pass=$active_pass fail=$active_fail" >&2
             exit 1
           fi
