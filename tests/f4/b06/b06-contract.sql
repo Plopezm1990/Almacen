@@ -194,15 +194,9 @@ declare
   v_replay jsonb;
   v_movimientos integer;
 begin
-  select id into v_venta
-    from public.ventas_fiscales
-   where empresa_id='emp-f4b04'
-     and local_id='loc-f4b04'
-     and currency_code='EUR'
-     and estado<>'CANCELADA'
-   order by created_at
-   limit 1;
-  if v_venta is null then raise exception 'F4_B06_FAIL: falta venta fiscal de prueba'; end if;
+  -- El SELECT directo estaría sujeto a RLS bajo authenticated; la RPC valida
+  -- la existencia del destino con SECURITY DEFINER.
+  v_venta := 'b0600000-0000-0000-0000-000000000002';
 
   v_first:=public.abc_registrar_movimiento_anticipo(
     'b06.apply.0001','emp-f4b04','loc-f4b04',
