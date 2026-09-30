@@ -5,9 +5,10 @@ Fecha: 30/09/2026.
 ## Estado
 
 B08 queda preparado como un contrato F4 sobre la autoridad transaccional de
-reembolsos que ya existe en F2. Este paso no activa un proveedor real, no
-aplica migraciones remotas y no hace deploy de produccion. La evidencia se
-ejecuta en PostgreSQL aislado con datos ficticios.
+reembolsos que ya existe en F2. B08.2 añade la comprobación del outbox
+persistente M04C para efectos externos, sin activar un proveedor real, aplicar
+migraciones remotas ni hacer deploy de producción. La evidencia se ejecuta en
+PostgreSQL aislado con datos ficticios.
 
 ## Alcance oficial
 
@@ -73,6 +74,23 @@ decisiones no se simulan con un proveedor inventado.
 ## Evidencia
 
 El contrato `tests/f4/b08/b08-contract.sql` reutiliza la bateria transaccional
-aislada de reembolsos y la ejecuta bajo el identificador F4 B08. El workflow
-`.github/workflows/abc-f4-b08-contract.yml` comprueba ademas que la migracion
-de reembolsos no acopla el reembolso economico al stock legacy.
+aislada de reembolsos y la ejecuta bajo el identificador F4 B08. B08.2
+reutiliza además `tests/f2/m04c/m04c-contract.sql` para comprobar que los
+reembolsos no efectivos crean un único efecto `PROVIDER_REEMBOLSO`, que un
+worker puede reintentarlo, que una cancelación previa al envío lo abandona y
+que una resolución terminal lo completa. El efectivo no crea ese efecto.
+El workflow `.github/workflows/abc-f4-b08-contract.yml` comprueba además que
+la migración de reembolsos no acopla el reembolso económico al stock legacy.
+
+## B08.2 cerrado
+
+- Solicitud externa: un outbox deduplicado por reembolso.
+- Fallo transitorio: retry con lease y sin duplicar el reembolso.
+- Cancelación antes del envío: estado `CANCELADO` y efecto `ABANDONADO`.
+- Resultado final: el resolver completa el efecto de forma atómica.
+- Efectivo local: no genera `PROVIDER_REEMBOLSO`.
+
+El siguiente subpunto queda fuera de este cambio: conectar el proveedor real,
+resolver su configuración de cuenta y ejecutar su sandbox. Eso requiere que el
+usuario aporte proveedor, cuenta comercial, formato de API y credenciales de
+entorno; no se inventa ni se despliega en este paso.
