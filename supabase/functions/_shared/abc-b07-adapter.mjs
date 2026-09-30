@@ -77,7 +77,18 @@ export function normalizeProviderEvent({
 
   const eventType = cleanText(readPath(payload, config.event_type), 96)?.toUpperCase()
     || 'PAYMENT_STATUS_CHANGED';
-  const occurredAt = cleanText(readPath(payload, config.occurred_at), 80);
+  const rawStatus = requiredText(payload, config.status, 'status');
+  const statusMap = config.status_map && typeof config.status_map === 'object'
+    ? config.status_map
+    : {};
+  const mappedStatus = statusMap[rawStatus] ?? statusMap[rawStatus.toLowerCase()] ?? rawStatus;
+  const status = cleanText(mappedStatus, 96)?.toUpperCase();
+  if (!status) throw new Error('B07_ESTADO_INVALIDO');
+  const occurredAtRaw = cleanText(readPath(payload, config.occurred_at), 80);
+  if (occurredAtRaw && Number.isNaN(Date.parse(occurredAtRaw))) {
+    throw new Error('B07_FECHA_INVALIDA');
+  }
+  const occurredAt = occurredAtRaw ? new Date(occurredAtRaw).toISOString() : null;
 
   return {
     provider_code: safeProviderCode,
@@ -85,7 +96,7 @@ export function normalizeProviderEvent({
     provider_event_id: requiredText(payload, config.event_id, 'event_id'),
     provider_reference: requiredText(payload, config.reference, 'reference'),
     event_type: eventType,
-    status: requiredText(payload, config.status, 'status').toUpperCase(),
+    status,
     amount,
     currency,
     occurred_at: occurredAt,

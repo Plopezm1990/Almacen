@@ -4,9 +4,10 @@ Fecha: 30/09/2026.
 
 ## Estado
 
-Este documento cierra el subpunto de diseño tecnico y el subpunto de entrada
-simulada de B07. Queda preparada una Edge Function generica, con firma HMAC o
-secreto de simulacion, que normaliza eventos sin aplicar efectos economicos.
+Este documento cierra el subpunto de diseño tecnico, el subpunto de entrada
+simulada y el subpunto de procesamiento controlado de B07. Queda preparada una
+Edge Function generica, con firma HMAC o secreto de simulacion, que normaliza,
+deduplica y aplica eventos solo mediante la autoridad transaccional existente.
 B07 no se puede cerrar ni probar contra un sandbox hasta identificar el
 proveedor contratado y su mecanismo de firma. No se han aplicado migraciones
 remotas ni se ha hecho deploy.
@@ -48,7 +49,14 @@ La segunda migracion crea `public.abc_b07_obtener_configuracion`, una funcion
 `abc-b07-webhook` usa esa funcion para resolver la cuenta y el ambito comercial
 en servidor. El adaptador `abc-b07-adapter.mjs` admite rutas de normalizacion
 configurables, rechaza datos de tarjeta y permite validar eventos simulados sin
-escribir en pagos, caja, stock ni incidencias.
+exponer secretos.
+
+La tercera migracion crea `abc_b07_eventos_proveedor`, con unicidad por
+proveedor, cuenta y evento, y `abc_b07_procesar_evento`. El evento se guarda
+antes de procesarse; las repeticiones son replay, una misma clave con contenido
+distinto es conflicto, y los desacuerdos de importe, moneda o referencia se
+rechazan. Los estados terminales delegan en `abc_resolver_intento`; el webhook
+no escribe pagos, caja ni stock directamente.
 
 ## Contrato propuesto de entrada
 
@@ -112,7 +120,6 @@ El repositorio sigue sin contener el nombre del proveedor contratado, su
 cuenta comercial, el formato del evento ni un sandbox verificable. Por tanto,
 no se ha inventado un adaptador Stripe, Redsys, SumUp u otro proveedor.
 
-El siguiente subpunto sera implementar la entrada de servidor y su adaptador
-configurable con validacion de importe, moneda, referencia e idempotencia
-contra el intento de pago. Ese subpunto requiere ya el proveedor contratado o
-un fixture firmado equivalente; aun no debe desplegarse a produccion.
+El siguiente subpunto será conectar el proveedor contratado, cargar su
+configuración real y probar su sandbox con un fixture firmado. Hasta entonces
+no debe desplegarse a producción.

@@ -93,7 +93,20 @@ Deno.serve(async (req) => {
       payload,
       normalizationConfig,
     });
-    return json({ ok: true, mode: isSimulation ? "simulation" : "provider", effect_applied: false, event });
+    const { data: result, error: processingError } = await admin.rpc("abc_b07_procesar_evento", {
+      p_provider_code: event.provider_code,
+      p_provider_account_id: event.provider_account_id,
+      p_provider_event_id: event.provider_event_id,
+      p_provider_reference: event.provider_reference,
+      p_event_type: event.event_type,
+      p_status: event.status,
+      p_amount: event.amount,
+      p_currency: event.currency,
+      p_occurred_at: event.occurred_at,
+      p_payload: event.payload,
+    });
+    if (processingError) return json({ ok: false, error: "provider_event_processing_unavailable" }, 503);
+    return json({ ...result, mode: isSimulation ? "simulation" : "provider" });
   } catch (error) {
     return json({ ok: false, error: error instanceof Error ? error.message : "invalid_provider_event" }, 400);
   }

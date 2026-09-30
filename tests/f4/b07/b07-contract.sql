@@ -72,6 +72,41 @@ begin
      or not has_function_privilege('service_role','public.abc_b07_obtener_configuracion(text,text)','EXECUTE') then
     raise exception 'F4_B07_FAIL: privilegios del resolver servidor-servidor incorrectos';
   end if;
+
+  if to_regclass('public.abc_b07_eventos_proveedor') is null
+     or to_regprocedure('public.abc_b07_procesar_evento(text,text,text,text,text,text,numeric,text,timestamptz,jsonb)') is null then
+    raise exception 'F4_B07_FAIL: falta registro o procesador de eventos';
+  end if;
+
+  select c.relrowsecurity into v_rls
+    from pg_class c
+    join pg_namespace n on n.oid=c.relnamespace
+   where n.nspname='public' and c.relname='abc_b07_eventos_proveedor';
+  if v_rls is not true then
+    raise exception 'F4_B07_FAIL: RLS del registro de eventos no activado';
+  end if;
+
+  if has_table_privilege('anon','public.abc_b07_eventos_proveedor','SELECT')
+     or has_table_privilege('authenticated','public.abc_b07_eventos_proveedor','SELECT')
+     or has_table_privilege('service_role','public.abc_b07_eventos_proveedor','SELECT') then
+    raise exception 'F4_B07_FAIL: registro de eventos expuesto por tabla';
+  end if;
+
+  if not exists (
+    select 1 from pg_indexes
+     where schemaname='public'
+       and tablename='abc_b07_eventos_proveedor'
+       and indexname='abc_b07_event_key_uq'
+  ) then
+    raise exception 'F4_B07_FAIL: falta unicidad por cuenta y evento';
+  end if;
+
+  if has_function_privilege('anon','public.abc_b07_procesar_evento(text,text,text,text,text,text,numeric,text,timestamptz,jsonb)','EXECUTE')
+     or has_function_privilege('authenticated','public.abc_b07_procesar_evento(text,text,text,text,text,text,numeric,text,timestamptz,jsonb)','EXECUTE')
+     or has_function_privilege('public','public.abc_b07_procesar_evento(text,text,text,text,text,text,numeric,text,timestamptz,jsonb)','EXECUTE')
+     or not has_function_privilege('service_role','public.abc_b07_procesar_evento(text,text,text,text,text,text,numeric,text,timestamptz,jsonb)','EXECUTE') then
+    raise exception 'F4_B07_FAIL: privilegios del procesador de eventos incorrectos';
+  end if;
 end $$;
 
 select 'ABC_F4_B07_CONFIG=PASS' as result;

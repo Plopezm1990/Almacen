@@ -12,6 +12,7 @@ on:
       - "supabase/migrations/20260930120000_abc_f4_b06_policy_catalog.sql"
       - "supabase/migrations/20260930150000_abc_f4_b07_provider_registry.sql"
       - "supabase/migrations/20260930153000_abc_f4_b07_server_config.sql"
+      - "supabase/migrations/20260930160000_abc_f4_b07_event_processing.sql"
       - "tests/f4/b04/**"
       - "tests/f4/b05/**"
       - "tests/f4/b06/**"
@@ -109,7 +110,8 @@ jobs:
             20260930110000_abc_f4_b06_advance_balance_guard.sql \
             20260930120000_abc_f4_b06_policy_catalog.sql \
             20260930150000_abc_f4_b07_provider_registry.sql \
-            20260930153000_abc_f4_b07_server_config.sql; do
+            20260930153000_abc_f4_b07_server_config.sql \
+            20260930160000_abc_f4_b07_event_processing.sql; do
             psql -v ON_ERROR_STOP=1 -f "supabase/migrations/$migration"
           done
 
