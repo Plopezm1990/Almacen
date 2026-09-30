@@ -192,7 +192,6 @@ declare
   v_venta uuid;
   v_first jsonb;
   v_replay jsonb;
-  v_movimientos integer;
 begin
   -- El SELECT directo estaría sujeto a RLS bajo authenticated; la RPC valida
   -- la existencia del destino con SECURITY DEFINER.
@@ -211,14 +210,11 @@ begin
 
   if (v_first->>'ok')::boolean is not true
      or (v_first->>'saldo_disponible')::numeric<>1
-     or (v_replay->>'saldo_disponible')::numeric<>1 then
+     or (v_replay->>'saldo_disponible')::numeric<>1
+     or (v_replay->>'replayed')::boolean is not true
+     or v_replay->'movimiento'->>'id' is distinct from v_first->'movimiento'->>'id' then
     raise exception 'F4_B06_FAIL: replay o saldo de aplicación incorrecto';
   end if;
-  select count(*) into v_movimientos
-    from public.abc_anticipo_movimientos
-   where anticipo_id='b0600000-0000-0000-0000-000000000001'
-     and abc_command_id='b06.apply.0001';
-  if v_movimientos<>1 then raise exception 'F4_B06_FAIL: replay duplicó movimiento'; end if;
 
   begin
     perform public.abc_registrar_movimiento_anticipo(
