@@ -75,7 +75,15 @@ export function normalizeProviderEvent({
   const currency = requiredText(payload, config.currency, 'currency').toUpperCase();
   if (!/^[A-Z]{3}$/.test(currency)) throw new Error('B07_MONEDA_INVALIDA');
 
-  const eventType = cleanText(readPath(payload, config.event_type), 96)?.toUpperCase()
+  const rawEventType = cleanText(readPath(payload, config.event_type), 96)
+    || 'PAYMENT_STATUS_CHANGED';
+  const eventTypeMap = config.event_type_map && typeof config.event_type_map === 'object'
+    ? config.event_type_map
+    : {};
+  const mappedEventType = eventTypeMap[rawEventType]
+    ?? eventTypeMap[rawEventType.toLowerCase()]
+    ?? rawEventType;
+  const eventType = cleanText(mappedEventType, 96)?.toUpperCase()
     || 'PAYMENT_STATUS_CHANGED';
   const rawStatus = requiredText(payload, config.status, 'status');
   const statusMap = config.status_map && typeof config.status_map === 'object'
@@ -102,6 +110,14 @@ export function normalizeProviderEvent({
     occurred_at: occurredAt,
     payload,
   };
+}
+
+export function normalizeRefundProviderEvent(args) {
+  const event = normalizeProviderEvent(args);
+  if (!/^REFUND(?:_|$)/.test(event.event_type)) {
+    throw new Error('B08_EVENTO_NO_REEMBOLSO');
+  }
+  return event;
 }
 
 export function signatureHeaderName(signatureConfig = {}) {
