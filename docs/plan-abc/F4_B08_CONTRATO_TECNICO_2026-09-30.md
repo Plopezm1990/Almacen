@@ -5,10 +5,10 @@ Fecha: 30/09/2026.
 ## Estado
 
 B08 queda preparado como un contrato F4 sobre la autoridad transaccional de
-reembolsos que ya existe en F2. B08.2 añade la comprobación del outbox
-persistente M04C para efectos externos, sin activar un proveedor real, aplicar
-migraciones remotas ni hacer deploy de producción. La evidencia se ejecuta en
-PostgreSQL aislado con datos ficticios.
+reembolsos que ya existe en F2. B08.2 comprueba el outbox persistente M04C y
+B08.3 añade el adaptador de simulador configurable para eventos de reembolso,
+sin activar un proveedor real, aplicar migraciones remotas ni hacer deploy de
+producción. La evidencia se ejecuta en CI con datos ficticios.
 
 ## Alcance oficial
 
@@ -89,6 +89,16 @@ la migración de reembolsos no acopla el reembolso económico al stock legacy.
 - Cancelación antes del envío: estado `CANCELADO` y efecto `ABANDONADO`.
 - Resultado final: el resolver completa el efecto de forma atómica.
 - Efectivo local: no genera `PROVIDER_REEMBOLSO`.
+
+## B08.3 cerrado
+
+- El adaptador acepta dos perfiles de proveedor con rutas de normalización
+  distintas.
+- Permite mapear estados y tipos de evento a la nomenclatura interna.
+- Rechaza eventos que no sean de reembolso.
+- Rechaza payloads que contengan datos de tarjeta.
+- Mantiene la cuenta comercial y la referencia del proveedor como datos
+  normalizados, sin permitir que el payload elija empresa o local.
 
 El siguiente subpunto queda fuera de este cambio: conectar el proveedor real,
 resolver su configuración de cuenta y ejecutar su sandbox. Eso requiere que el

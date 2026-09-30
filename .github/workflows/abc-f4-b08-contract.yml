@@ -17,6 +17,7 @@ on:
       - "tests/f2/m03c/**"
       - "tests/f2/m04c/**"
       - "tests/f4/b08/**"
+      - "supabase/functions/_shared/abc-b07-adapter.mjs"
       - "docs/plan-abc/F4_B08_CONTRATO_TECNICO_2026-09-30.md"
       - ".github/workflows/abc-f4-b08-contract.yml"
   workflow_dispatch: {}
@@ -25,6 +26,17 @@ permissions:
   contents: read
 
 jobs:
+  f4-b08-adapter:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Ejecutar contrato del adaptador generico de reembolsos
+        run: node tests/f4/b08/b08-refund-adapter-contract.mjs
+
   f4-b08:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
