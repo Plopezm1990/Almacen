@@ -104,3 +104,17 @@ El siguiente subpunto queda fuera de este cambio: conectar el proveedor real,
 resolver su configuración de cuenta y ejecutar su sandbox. Eso requiere que el
 usuario aporte proveedor, cuenta comercial, formato de API y credenciales de
 entorno; no se inventa ni se despliega en este paso.
+
+## B08.4 en curso
+
+La interfaz incorpora una vista separada de reembolso económico dentro de
+Devoluciones, sin sustituir ni mezclar el flujo histórico de devolución física.
+La vista permite seleccionar el pago original, consultar el saldo disponible,
+solicitar un reembolso parcial o total con motivo obligatorio, consultar sus
+estados y cancelar una solicitud antes de su envío.
+
+El perfil visible es `SIMULADOR_B08`: la pantalla solo llama a las RPC
+transaccionales `abc_solicitar_reembolso`, `abc_cancelar_reembolso` y,
+exclusivamente para efectivo con sesión abierta, `abc_confirmar_reembolso_efectivo`.
+Los medios no efectivos permanecen pendientes para el proveedor real; no se
+envía dinero, no se inventan credenciales y no se hace deploy de producción.
