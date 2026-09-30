@@ -4,6 +4,7 @@ import {
   encodeSignature,
   normalizeProviderEvent,
   signatureHeaderName,
+  signatureValue,
 } from "../_shared/abc-b07-adapter.mjs";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
@@ -42,8 +43,11 @@ Deno.serve(async (req) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !serviceRoleKey) return json({ ok: false, error: "server_not_configured" }, 500);
 
-  const providerCode = req.headers.get("x-abc-b07-provider-code")?.trim().toUpperCase();
-  const providerAccountId = req.headers.get("x-abc-b07-account-id")?.trim();
+  const requestUrl = new URL(req.url);
+  const providerCode = (req.headers.get("x-abc-b07-provider-code")
+    || requestUrl.searchParams.get("provider_code"))?.trim().toUpperCase();
+  const providerAccountId = (req.headers.get("x-abc-b07-account-id")
+    || requestUrl.searchParams.get("account_id"))?.trim();
   if (!providerCode || !providerAccountId) return json({ ok: false, error: "provider_account_required" }, 400);
 
   const rawBody = await req.text();
@@ -76,9 +80,10 @@ Deno.serve(async (req) => {
     if (signatureConfig.algorithm === "ASYMMETRIC") {
       return json({ ok: false, error: "asymmetric_adapter_pending" }, 501);
     }
-    const signature = signatureConfig.location === "QUERY"
+    const rawSignature = signatureConfig.location === "QUERY"
       ? new URL(req.url).searchParams.get(signatureHeaderName(signatureConfig))
       : req.headers.get(signatureHeaderName(signatureConfig));
+    const signature = signatureValue(rawSignature, signatureConfig);
     const secretRef = typeof configuration.secret_ref === "string" ? configuration.secret_ref : "";
     const secret = secretRef ? Deno.env.get(secretRef) : undefined;
     if (!signature || !secret || !(await verifyHmac(rawBody, signature, signatureConfig, secret))) {
