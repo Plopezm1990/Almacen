@@ -10,9 +10,13 @@ on:
       - "supabase/migrations/20260930103000_abc_f4_b06_advance_traceability.sql"
       - "supabase/migrations/20260930110000_abc_f4_b06_advance_balance_guard.sql"
       - "supabase/migrations/20260930120000_abc_f4_b06_policy_catalog.sql"
+      - "supabase/migrations/20260930150000_abc_f4_b07_provider_registry.sql"
+      - "supabase/migrations/20260930153000_abc_f4_b07_server_config.sql"
+      - "supabase/migrations/20260930160000_abc_f4_b07_event_processing.sql"
       - "tests/f4/b04/**"
       - "tests/f4/b05/**"
       - "tests/f4/b06/**"
+      - "tests/f4/b07/**"
       - "source-recovery/fuente-recuperado.js"
       - "fuente.js"
       - "scripts/f4/b02-b03-materialize.mjs"
@@ -104,7 +108,10 @@ jobs:
             20260930100000_abc_f4_b06_non_sale_receipts.sql \
             20260930103000_abc_f4_b06_advance_traceability.sql \
             20260930110000_abc_f4_b06_advance_balance_guard.sql \
-            20260930120000_abc_f4_b06_policy_catalog.sql; do
+            20260930120000_abc_f4_b06_policy_catalog.sql \
+            20260930150000_abc_f4_b07_provider_registry.sql \
+            20260930153000_abc_f4_b07_server_config.sql \
+            20260930160000_abc_f4_b07_event_processing.sql; do
             psql -v ON_ERROR_STOP=1 -f "supabase/migrations/$migration"
           done
 
@@ -122,3 +129,15 @@ jobs:
 
       - name: Ejecutar contrato B06 separación no venta
         run: psql -v ON_ERROR_STOP=1 -f tests/f4/b06/b06-contract.sql
+
+      - name: Ejecutar contrato B07 configuración
+        run: psql -v ON_ERROR_STOP=1 -f tests/f4/b07/b07-contract.sql
+
+      - name: Ejecutar contrato B07 simulador
+        run: psql -v ON_ERROR_STOP=1 -f tests/f4/b07/b07-simulator-contract.sql
+
+      - name: Ejecutar contrato B07 entrada y adaptador
+        run: node tests/f4/b07/b07-webhook-contract.mjs
+
+      - name: Ejecutar fixture B07 HMAC simulado
+        run: node tests/f4/b07/b07-simulated-fixture.mjs
