@@ -18,26 +18,26 @@ insert into private.abc_b07_cuentas_comerciales(
 );
 
 insert into public.cuentas_comerciales(id,empresa_id,local_id,currency_code,modalidad,estado,version,created_by,opened_operating_day,responsable_actual)
-values ('50000000-2222-3333-4444-555555555563','emp-f4b04','loc-f4b04','EUR','BARRA','ABIERTA',1,'11111111-2222-3333-4444-555555555561','2026-09-29','11111111-2222-3333-4444-555555555561');
+values ('50000000-2222-3333-4444-555555555566','emp-f4b04','loc-f4b04','EUR','BARRA','ABIERTA',1,'11111111-2222-3333-4444-555555555561','2026-09-29','11111111-2222-3333-4444-555555555561');
 insert into public.pedidos_tpv(id,empresa_id,local_id,cuenta_id,currency_code,estado,version,created_by,created_operating_day)
-values ('60000000-2222-3333-4444-555555555563','emp-f4b04','loc-f4b04','50000000-2222-3333-4444-555555555563','EUR','ENVIADO',1,'11111111-2222-3333-4444-555555555561','2026-09-29');
+values ('60000000-2222-3333-4444-555555555566','emp-f4b04','loc-f4b04','50000000-2222-3333-4444-555555555566','EUR','ENVIADO',1,'11111111-2222-3333-4444-555555555561','2026-09-29');
 insert into public.pedido_lineas(id,empresa_id,local_id,pedido_id,producto_id,cantidad,unidad,estado,version,entidad_fiscal_id,currency_code,precio_unitario,descuento_total,base,impuestos,total,snapshot_comercial,snapshot_calculo,created_by,created_operating_day)
-values ('70000000-2222-3333-4444-555555555563','emp-f4b04','loc-f4b04','60000000-2222-3333-4444-555555555563','prod-b07-sim',1,'ud','ENVIADA',1,'10000000-2222-3333-4444-555555555561','EUR',20,0,20,2,22,'{"test":true}','{"modo":"TEST_F4_B07_SIMULATOR"}','11111111-2222-3333-4444-555555555561','2026-09-29');
+values ('70000000-2222-3333-4444-555555555566','emp-f4b04','loc-f4b04','60000000-2222-3333-4444-555555555566','prod-b07-sim',1,'ud','ENVIADA',1,'10000000-2222-3333-4444-555555555561','EUR',20,0,20,2,22,'{"test":true}','{"modo":"TEST_F4_B07_SIMULATOR"}','11111111-2222-3333-4444-555555555561','2026-09-29');
 
 select set_config('request.jwt.claim.sub','11111111-2222-3333-4444-555555555561',false);
 set role authenticated;
 select public.abc_preparar_checkout_cuenta(
   'b07.sim.prepare.01','emp-f4b04','loc-f4b04',
-  '80000000-2222-3333-4444-555555555563',
-  '50000000-2222-3333-4444-555555555563',1,
+  '80000000-2222-3333-4444-555555555566',
+  '50000000-2222-3333-4444-555555555566',1,
   '20000000-2222-3333-4444-555555555561',
   '40000000-2222-3333-4444-555555555561','2026-09-29'
 );
 select public.abc_iniciar_cobro(
   'b07.sim.pay.0001','emp-f4b04','loc-f4b04',
-  '80000000-2222-3333-4444-555555555563',
-  '81000000-2222-3333-4444-555555555563',
-  '82000000-2222-3333-4444-555555555563',
+  '80000000-2222-3333-4444-555555555566',
+  '81000000-2222-3333-4444-555555555566',
+  '82000000-2222-3333-4444-555555555566',
   'TARJETA',22,'EUR','20000000-2222-3333-4444-555555555561',null,null
 );
 reset role;
@@ -45,7 +45,7 @@ reset role;
 -- Fixture de la referencia que normalmente devolvería el proveedor.
 update public.pago_intentos
    set provider_code='SIMULATOR',provider_reference='sim-qa-ref-001'
- where id='82000000-2222-3333-4444-555555555563';
+ where id='82000000-2222-3333-4444-555555555566';
 
 set role service_role;
 select public.abc_b07_procesar_evento(
@@ -82,9 +82,9 @@ declare
   v_conflicts integer;
   v_rejected text;
 begin
-  select estado into v_pago from public.pagos where id='81000000-2222-3333-4444-555555555563';
-  select estado into v_intento from public.pago_intentos where id='82000000-2222-3333-4444-555555555563';
-  select count(*) into v_aplicaciones from public.pago_aplicaciones where intento_id='82000000-2222-3333-4444-555555555563';
+  select estado into v_pago from public.pagos where id='81000000-2222-3333-4444-555555555566';
+  select estado into v_intento from public.pago_intentos where id='82000000-2222-3333-4444-555555555566';
+  select count(*) into v_aplicaciones from public.pago_aplicaciones where intento_id='82000000-2222-3333-4444-555555555566';
   select processing_status,conflict_count into v_event_status,v_conflicts
     from public.abc_b07_eventos_proveedor
    where provider_code='SIMULATOR' and provider_account_id='sim-qa-b07' and provider_event_id='evt-b07-sim-001';
