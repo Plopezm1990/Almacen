@@ -9,6 +9,7 @@ on:
       - "supabase/migrations/20260930100000_abc_f4_b06_non_sale_receipts.sql"
       - "supabase/migrations/20260930103000_abc_f4_b06_advance_traceability.sql"
       - "supabase/migrations/20260930110000_abc_f4_b06_advance_balance_guard.sql"
+      - "supabase/migrations/20260930120000_abc_f4_b06_policy_catalog.sql"
       - "tests/f4/b04/**"
       - "tests/f4/b05/**"
       - "tests/f4/b06/**"
@@ -102,7 +103,8 @@ jobs:
             20260929220000_abc_f4_b05_mixed_payments.sql \
             20260930100000_abc_f4_b06_non_sale_receipts.sql \
             20260930103000_abc_f4_b06_advance_traceability.sql \
-            20260930110000_abc_f4_b06_advance_balance_guard.sql; do
+            20260930110000_abc_f4_b06_advance_balance_guard.sql \
+            20260930120000_abc_f4_b06_policy_catalog.sql; do
             psql -v ON_ERROR_STOP=1 -f "supabase/migrations/$migration"
           done
 

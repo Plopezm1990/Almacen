@@ -118,6 +118,36 @@ begin
      ) = 0 then
     raise exception 'F4_B06_FAIL: guardas de saldo/idempotencia ausentes';
   end if;
+
+  if to_regclass('public.abc_b06_politica_conceptos') is null then
+    raise exception 'F4_B06_FAIL: falta catálogo de política B06';
+  end if;
+  if (select count(*) from public.abc_b06_politica_conceptos)<>3
+     or exists (
+       select 1 from public.abc_b06_politica_conceptos
+        where estado_definicion<>'PENDIENTE_ASESORIA'
+           or tratamiento_fiscal<>'PENDIENTE_ASESORIA'
+           or documento_requerido<>'PENDIENTE_ASESORIA'
+           or cuenta_contable<>'PENDIENTE_ASESORIA'
+     ) then
+    raise exception 'F4_B06_FAIL: política fiscal/documental/contable no queda pendiente de asesoría';
+  end if;
+  if not exists (
+    select 1 from public.abc_b06_politica_conceptos
+     where concepto='FIANZA' and requiere_titular
+  ) or not exists (
+    select 1 from public.abc_b06_politica_conceptos
+     where concepto='ANTICIPO' and requiere_encargo
+  ) then
+    raise exception 'F4_B06_FAIL: requisitos de titular/encargo incompletos';
+  end if;
+  if not exists (
+    select 1 from pg_constraint
+     where conrelid='public.abc_cobros_no_venta'::regclass
+       and conname='abc_cobro_no_venta_politica_fk'
+  ) then
+    raise exception 'F4_B06_FAIL: cobro no venta sin política referenciada';
+  end if;
 end $$;
 
 -- Prueba funcional mínima: una aplicación consume saldo una sola vez y una
