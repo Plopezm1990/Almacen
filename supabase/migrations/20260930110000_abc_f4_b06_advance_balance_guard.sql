@@ -199,7 +199,45 @@ begin
     p_empresa_id,p_local_id,p_operation_id,p_anticipo_id,v_movimiento,v_importe,
     v_currency,p_venta_fiscal_id,p_caja_operation_id,nullif(v_motivo,''),auth.uid(),
     coalesce(p_datos,'{}'::jsonb),p_operating_day,auth.uid()
-  ) returning * into v_mov;
+  )
+  on conflict (abc_command_id) do nothing
+  returning * into v_mov;
+
+  if not found then
+    select * into v_mov
+      from public.abc_anticipo_movimientos
+     where abc_command_id=p_operation_id
+     for update;
+    if not found then
+      raise exception 'b06_replay_movimiento_no_encontrado';
+    end if;
+    if v_mov.empresa_id is distinct from p_empresa_id
+       or v_mov.local_id is distinct from p_local_id
+       or v_mov.anticipo_id is distinct from p_anticipo_id
+       or v_mov.movimiento is distinct from v_movimiento
+       or v_mov.importe is distinct from v_importe
+       or v_mov.currency_code is distinct from v_currency
+       or v_mov.venta_fiscal_id is distinct from p_venta_fiscal_id
+       or v_mov.caja_operation_id is distinct from p_caja_operation_id
+       or v_mov.motivo is distinct from nullif(v_motivo,'')
+       or v_mov.operating_day is distinct from p_operating_day then
+      raise exception 'operation_id_conflict';
+    end if;
+    select coalesce(sum(m.importe),0)::numeric(24,8)
+      into v_consumido
+      from public.abc_anticipo_movimientos m
+     where m.empresa_id=p_empresa_id
+       and m.local_id=p_local_id
+       and m.anticipo_id=p_anticipo_id;
+    return jsonb_build_object(
+      'ok',true,
+      'replayed',true,
+      'movimiento',to_jsonb(v_mov),
+      'importe_anticipo',v_anticipo.importe,
+      'importe_consumido',v_consumido,
+      'saldo_disponible',round(v_anticipo.importe-v_consumido,8)
+    );
+  end if;
 
   v_resultado := jsonb_build_object(
     'ok',true,

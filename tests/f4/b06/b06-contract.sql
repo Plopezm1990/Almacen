@@ -216,7 +216,8 @@ begin
   end if;
   select count(*) into v_movimientos
     from public.abc_anticipo_movimientos
-   where anticipo_id='b0600000-0000-0000-0000-000000000001';
+   where anticipo_id='b0600000-0000-0000-0000-000000000001'
+     and abc_command_id='b06.apply.0001';
   if v_movimientos<>1 then raise exception 'F4_B06_FAIL: replay duplicó movimiento'; end if;
 
   begin
