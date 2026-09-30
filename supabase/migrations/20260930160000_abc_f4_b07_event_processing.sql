@@ -244,7 +244,7 @@ begin
      and i.local_id=v_local_id
      and (i.provider_code is null or i.provider_code=v_provider_code)
      and i.provider_reference=v_reference
-   order by i.created_at desc, i.id desc
+   order by i.started_at desc, i.id desc
    limit 1
    for update;
   if not found then
