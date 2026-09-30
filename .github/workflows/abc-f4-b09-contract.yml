@@ -5,6 +5,7 @@ on:
     branches: [release]
     paths:
       - "supabase/migrations/20260930230000_abc_f4_b09_settlements_disputes.sql"
+      - "supabase/migrations/20260930233000_abc_f4_b09_import_resolution.sql"
       - "tests/f4/b09/**"
       - "docs/plan-abc/F4_B09_CONTRATO_TECNICO_2026-09-30.md"
       - ".github/workflows/abc-f4-b09-contract.yml"
@@ -24,3 +25,5 @@ jobs:
           node-version: 22
       - name: Validar contrato de esquema B09.1
         run: node tests/f4/b09/b09-schema-contract.mjs
+      - name: Validar contrato de RPC B09.2
+        run: node tests/f4/b09/b09-rpc-contract.mjs
