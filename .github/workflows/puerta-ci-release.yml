@@ -407,8 +407,8 @@ jobs:
           echo "PM33_FULL_STACK_PASS=$PM33_FULL_STACK_PASS (de 1)"
 
           fallo=0
-          [ "$NODE_ACTIVE_TOTAL" = "136" ] || { echo "NODE_ACTIVE_TOTAL != 136" >&2; fallo=1; }
-          [ "$NODE_ACTIVE_PASS" = "136" ] || { echo "NODE_ACTIVE_PASS != 136" >&2; fallo=1; }
+          [ "$NODE_ACTIVE_TOTAL" = "138" ] || { echo "NODE_ACTIVE_TOTAL != 138" >&2; fallo=1; }
+          [ "$NODE_ACTIVE_PASS" = "138" ] || { echo "NODE_ACTIVE_PASS != 138" >&2; fallo=1; }
           [ "$NODE_ACTIVE_FAIL" = "0" ] || { echo "NODE_ACTIVE_FAIL != 0" >&2; fallo=1; }
           [ "$INFRA_FAIL" = "0" ] || { echo "INFRA_FAIL != 0" >&2; fallo=1; }
           [ "$POSTGRES_ACTIVE_TOTAL" = "10" ] || { echo "POSTGRES_ACTIVE_TOTAL != 10" >&2; fallo=1; }
