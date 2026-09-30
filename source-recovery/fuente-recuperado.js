@@ -2864,7 +2864,7 @@ function GestionAlmacen() {
     }
   ), tab === "devoluciones" && /* @__PURE__ */ import_react4.default.createElement(
     Devoluciones,
-    { key: localActivoId || "todos", productos: productosDelLocalActivo, proveedores, devoluciones: devolucionesDelLocalActivo, movimientos: movimientosDelLocalActivo, registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion, saltoProveedor: saltoDevolucionProveedor }
+    { key: localActivoId || "todos", productos: productosDelLocalActivo, proveedores, devoluciones: devolucionesDelLocalActivo, movimientos: movimientosDelLocalActivo, registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion, saltoProveedor: saltoDevolucionProveedor, empresaId: empresaDelLocalActivo?.id || "", localId: localActivoId || "" }
   ), tab === "facturas" && /* @__PURE__ */ import_react4.default.createElement(
     Facturas,
     {
@@ -16500,7 +16500,343 @@ function LibroIva({ movimientos, productos, albaranes, proveedorPorId, facturasD
   const filas = [.../* @__PURE__ */ new Set([...Object.keys(repercutido), ...Object.keys(soportado)])].sort((a22, b2) => Number(a22) - Number(b2));
   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Libro de IVA"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Resumen trimestral de control: concilia IVA repercutido de operaciones de venta e IVA soportado de compras por tipo. Es una proyecci\xF3n interna, no sustituye la documentaci\xF3n fiscal ni la revisi\xF3n de tu gestor\xEDa.")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Trimestre" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: trimestre, onChange: (e2) => setTrimestre(Number(e2.target.value)), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: 1 }, "1T \u2014 Enero a Marzo"), /* @__PURE__ */ import_react4.default.createElement("option", { value: 2 }, "2T \u2014 Abril a Junio"), /* @__PURE__ */ import_react4.default.createElement("option", { value: 3 }, "3T \u2014 Julio a Septiembre"), /* @__PURE__ */ import_react4.default.createElement("option", { value: 4 }, "4T \u2014 Octubre a Diciembre"))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "A\xF1o" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: anio, onChange: (e2) => setAnio(Number(e2.target.value) || hoy.getFullYear()) }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Del ", desde, " al ", hasta)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "IVA repercutido (ventas)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: C2.accent } }, "\u20AC", fmt(totalRep.cuota))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "IVA soportado (compras)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1" }, "\u20AC", fmt(totalSop.cuota)))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.chrome, color: "#fff" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[13px] font-medium" }, resultado >= 0 ? "A ingresar en Hacienda" : "A compensar / devolver"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-bold text-[19px]" }, "\u20AC", fmt(Math.abs(resultado))))), filas.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay ventas ni compras registradas en este trimestre." }) : /* @__PURE__ */ import_react4.default.createElement(Card, { style: { padding: 0 }, className: "mb-4" }, /* @__PURE__ */ /* @__PURE__ */ import_react4.default.createElement("div", { style: { overflowX: "auto" } }, import_react4.default.createElement("table", { className: "w-full text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", { style: { color: C2.inkSoft, borderBottom: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2 px-3" }, "Tipo"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-right font-medium py-2 px-3" }, "Base repercutida"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-right font-medium py-2 px-3" }, "Base soportada"))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, filas.map((tipo) => /* @__PURE__ */ import_react4.default.createElement("tr", { key: tipo, style: { borderBottom: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-3 mono" }, tipo, "%"), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-3 mono text-right" }, repercutido[tipo] ? `\u20AC${fmt(repercutido[tipo].base)}` : "\u2014"), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-3 mono text-right" }, soportado[tipo] ? `\u20AC${fmt(soportado[tipo].base)}` : "\u2014"))))))), resumenIvaVentas.pendientes.length > 0 ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft || C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold" }, `${resumenIvaVentas.pendientes.length} corrección(es) requieren revisión fiscal`), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Las devoluciones sin reembolso, los importes de reembolso que no coinciden con el valor asociado o las operaciones sin IVA histórico no se convierten silenciosamente en una cifra fiscal definitiva.")) : null, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: exportarExcel }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 14 }), " Exportar a Excel"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Ventas y REVERSO usan su snapshot hist\xF3rico y la fecha de cada operaci\xF3n. Las devoluciones con reembolso se proyectan por el importe realmente corregido; SIN_REEMBOLSO queda pendiente de criterio/documentaci\xF3n fiscal. Caja y medio de pago no determinan por s\xED solos el IVA."));
 }
-function Devoluciones({ productos = [], proveedores = [], devoluciones = [], movimientos = [], registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion, saltoProveedor = 0 }) {
+function mensajeErrorReembolsoB08(error, fallback = "No se ha podido completar el reembolso.") {
+  const msg = String(error?.message || error || "");
+  const mensajes = [
+    ["abc_reembolso_no_autorizado", "Tu usuario no tiene permiso para solicitar reembolsos en este local."],
+    ["abc_cancelar_reembolso_no_autorizado", "Tu usuario no tiene permiso para cancelar reembolsos."],
+    ["abc_confirmar_reembolso_no_autorizado", "Tu usuario no tiene permiso para confirmar reembolsos en efectivo."],
+    ["terminal_no_configurado", "No hay ningún terminal TPV activo configurado para este local."],
+    ["terminal_configurado_no_disponible", "El terminal asignado a este dispositivo ya no está disponible."],
+    ["terminal_contexto_ambiguo", "Este dispositivo tiene más de un terminal activo y necesita una asignación inequívoca."],
+    ["terminal_sin_sesion_abierta", "Este terminal no tiene una sesión de caja abierta."],
+    ["terminal_sesion_ambigua", "Este terminal aparece vinculado a más de una sesión de caja."],
+    ["pago_no_reembolsable", "El pago ya no está en un estado que permita solicitar un reembolso."],
+    ["saldo_reembolsable_insuficiente", "El importe supera el saldo todavía disponible para reembolsar."],
+    ["reembolso_no_encontrado", "No se ha encontrado la solicitud de reembolso."],
+    ["reembolso_no_cancelable", "Este reembolso ya no se puede cancelar."],
+    ["reembolso_enviado_a_proveedor", "El reembolso ya fue enviado a un proveedor y no se puede cancelar desde aquí."],
+    ["sesion_caja_no_abierta", "La sesión de caja ya no está abierta."],
+    ["terminal_no_vinculado_sesion", "El terminal no está vinculado a la sesión de caja."],
+    ["reembolso_efectivo_no_confirmable", "Este reembolso ya no está pendiente de confirmación en efectivo."],
+    ["reembolso_no_efectivo", "El pago original no fue realizado en efectivo."],
+    ["motivo_reembolso_requerido", "Escribe el motivo del reembolso."],
+    ["motivo_cancelacion_requerido", "Escribe el motivo de la cancelación."],
+    ["reembolso_parametros_requeridos", "Faltan datos del pago o del día operativo."],
+    ["reembolso_efectivo_parametros_requeridos", "Faltan datos de caja para confirmar el efectivo."],
+    ["operating_day_configuracion_ausente", "El local no tiene configurado el día operativo."],
+    ["operating_day_cliente_no_autoritativo", "El día operativo debe resolverlo el servidor; recarga el local."],
+    ["conversion_reembolso_no_habilitada", "No se puede reembolsar un pago con conversión de moneda en este punto."],
+    ["reembolso_ya_resuelto", "El reembolso ya fue resuelto con otro resultado."],
+    ["provider_reembolso_reference_conflict", "El proveedor ya dejó una referencia distinta para este reembolso."]
+  ];
+  const encontrado = mensajes.find(([codigo]) => msg.includes(codigo));
+  return encontrado ? encontrado[1] : msg ? `${fallback} ${msg}` : fallback;
+}
+
+async function contextoTerminalReembolsoB08(supabase, empresaId, localId, requiereSesion = false) {
+  const { data: authData, error: authError } = await supabase.auth.getSession();
+  if (authError) throw authError;
+  if (!authData?.session?.user?.id) throw new Error("sesion_usuario_requerida");
+  const storageKey = `la_suite_abc_terminal_id_v1:${empresaId}:${localId}`;
+  let terminalId = null;
+  try {
+    terminalId = localStorage.getItem(storageKey) || null;
+  } catch {
+    throw new Error("persistencia_terminal_no_disponible");
+  }
+  let terminalesQuery = supabase.from("terminales_tpv").select("id").eq("empresa_id", empresaId).eq("local_id", localId).eq("activo", true);
+  if (terminalId) terminalesQuery = terminalesQuery.eq("id", terminalId);
+  const { data: terminales, error: terminalesError } = await terminalesQuery;
+  if (terminalesError) throw terminalesError;
+  if (terminalId && (!Array.isArray(terminales) || terminales.length !== 1)) throw new Error("terminal_configurado_no_disponible");
+  if (!terminalId) {
+    if (!Array.isArray(terminales) || terminales.length === 0) throw new Error("terminal_no_configurado");
+    if (terminales.length > 1) throw new Error("terminal_contexto_ambiguo");
+    terminalId = terminales[0].id;
+    try {
+      localStorage.setItem(storageKey, terminalId);
+    } catch {
+      throw new Error("persistencia_terminal_no_disponible");
+    }
+  }
+  if (!requiereSesion) return { terminalId };
+  const { data: vinculos, error: vinculosError } = await supabase
+    .from("caja_sesion_terminales")
+    .select("session_id,terminal_id,desde")
+    .eq("empresa_id", empresaId)
+    .eq("local_id", localId)
+    .eq("terminal_id", terminalId)
+    .is("hasta", null)
+    .order("desde", { ascending: false })
+    .limit(2);
+  if (vinculosError) throw vinculosError;
+  if (!Array.isArray(vinculos) || vinculos.length !== 1) throw new Error(vinculos && vinculos.length > 1 ? "terminal_sesion_ambigua" : "terminal_sin_sesion_abierta");
+  const sessionId = vinculos[0].session_id;
+  const { data: cajaSesion, error: cajaError } = await supabase
+    .from("caja_sesiones")
+    .select("id,caja_id,estado")
+    .eq("empresa_id", empresaId)
+    .eq("local_id", localId)
+    .eq("id", sessionId)
+    .eq("estado", "ABIERTA")
+    .maybeSingle();
+  if (cajaError) throw cajaError;
+  if (!cajaSesion) throw new Error("terminal_sin_sesion_abierta");
+  return { terminalId, sessionId, cajaId: cajaSesion.caja_id };
+}
+
+function ReembolsosEconomicosB08({ empresaId = "", localId = "" }) {
+  const h3 = import_react4.default.createElement;
+  const [pagos, setPagos] = import_react4.default.useState([]);
+  const [reembolsos, setReembolsos] = import_react4.default.useState([]);
+  const [pagoId, setPagoId] = import_react4.default.useState("");
+  const [importe, setImporte] = import_react4.default.useState("");
+  const [motivo, setMotivo] = import_react4.default.useState("");
+  const [perfilProveedor, setPerfilProveedor] = import_react4.default.useState("SIMULADOR_B08");
+  const [cargando, setCargando] = import_react4.default.useState(false);
+  const [procesando, setProcesando] = import_react4.default.useState("");
+  const [error, setError] = import_react4.default.useState("");
+  const [mensaje, setMensaje] = import_react4.default.useState("");
+  const [cancelandoId, setCancelandoId] = import_react4.default.useState("");
+  const [motivoCancelacion, setMotivoCancelacion] = import_react4.default.useState("");
+
+  async function cargar() {
+    if (!empresaId || !localId) {
+      setPagos([]);
+      setReembolsos([]);
+      setError("");
+      return;
+    }
+    if (!window.__nubeActiva || typeof window.getSupabaseClient !== "function") {
+      setError("Los reembolsos económicos necesitan conexión con el servidor.");
+      return;
+    }
+    setCargando(true);
+    setError("");
+    try {
+      const supabase = await window.getSupabaseClient();
+      const checkoutsResponse = await supabase
+        .from("checkouts")
+        .select("id,currency_code,estado,operating_day,created_at")
+        .eq("empresa_id", empresaId)
+        .eq("local_id", localId)
+        .eq("estado", "COMPLETADO")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (checkoutsResponse.error) throw checkoutsResponse.error;
+      const checkouts = Array.isArray(checkoutsResponse.data) ? checkoutsResponse.data : [];
+      const checkoutIds = checkouts.map((row) => row.id).filter(Boolean);
+      if (checkoutIds.length === 0) {
+        setPagos([]);
+        setReembolsos([]);
+        return;
+      }
+      const pagosResponse = await supabase
+        .from("pagos")
+        .select("id,checkout_id,medio,estado,importe_objetivo,payment_currency_code,created_at,resolved_at")
+        .eq("empresa_id", empresaId)
+        .eq("local_id", localId)
+        .in("checkout_id", checkoutIds)
+        .in("estado", ["CONFIRMADO", "REEMBOLSADO"])
+        .order("created_at", { ascending: false });
+      if (pagosResponse.error) throw pagosResponse.error;
+      const pagosServidor = Array.isArray(pagosResponse.data) ? pagosResponse.data : [];
+      const pagoIds = pagosServidor.map((row) => row.id).filter(Boolean);
+      let reembolsosServidor = [];
+      if (pagoIds.length > 0) {
+        const reembolsosResponse = await supabase
+          .from("reembolsos")
+          .select("id,pago_id,estado,payment_currency_code,importe_solicitado,provider_code,provider_reference,motivo,created_at,resolved_at")
+          .eq("empresa_id", empresaId)
+          .eq("local_id", localId)
+          .in("pago_id", pagoIds)
+          .order("created_at", { ascending: false });
+        if (reembolsosResponse.error) throw reembolsosResponse.error;
+        reembolsosServidor = Array.isArray(reembolsosResponse.data) ? reembolsosResponse.data : [];
+      }
+      const checkoutById = new Map(checkouts.map((row) => [String(row.id), row]));
+      setPagos(pagosServidor.map((row) => ({ ...row, checkout: checkoutById.get(String(row.checkout_id)) || null })));
+      setReembolsos(reembolsosServidor);
+      if (pagoId && !pagoIds.some((id) => String(id) === String(pagoId))) setPagoId("");
+    } catch (e2) {
+      setError(mensajeErrorReembolsoB08(e2, "No se pudieron cargar los pagos reembolsables."));
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  (0, import_react4.useEffect)(() => {
+    cargar();
+  }, [empresaId, localId]);
+
+  const reembolsosPorPago = (0, import_react4.useMemo)(() => {
+    const mapa = new Map();
+    reembolsos.forEach((row) => {
+      const key = String(row.pago_id || "");
+      if (!key) return;
+      const lista = mapa.get(key) || [];
+      lista.push(row);
+      mapa.set(key, lista);
+    });
+    return mapa;
+  }, [reembolsos]);
+  const pagosVista = (pagos || []).map((pago) => {
+    const filas = reembolsosPorPago.get(String(pago.id)) || [];
+    const reservado = filas.filter((row) => ["PENDIENTE", "DESCONOCIDO", "CONFIRMADO"].includes(String(row.estado))).reduce((total, row) => total + (Number(row.importe_solicitado) || 0), 0);
+    const importeObjetivo = Number(pago.importe_objetivo) || 0;
+    return { ...pago, reembolsos: filas, importeDisponible: Math.max(0, importeObjetivo - reservado) };
+  });
+  const pagoSeleccionado = pagosVista.find((row) => String(row.id) === String(pagoId)) || null;
+  const maximo = pagoSeleccionado ? pagoSeleccionado.importeDisponible : 0;
+
+  function limpiarFormulario() {
+    setPagoId("");
+    setImporte("");
+    setMotivo("");
+  }
+
+  async function solicitar() {
+    if (procesando) return;
+    const importeNumero = Number(importe);
+    if (!pagoSeleccionado) return setError("Selecciona un pago confirmado.");
+    if (!Number.isFinite(importeNumero) || importeNumero <= 0 || importeNumero > maximo + 1e-8) return setError("El importe debe ser mayor que cero y no superar el saldo disponible.");
+    if (!String(motivo).trim()) return setError("Escribe el motivo del reembolso.");
+    setProcesando("solicitar");
+    setError("");
+    setMensaje("");
+    try {
+      const supabase = await window.getSupabaseClient();
+      const terminal = await contextoTerminalReembolsoB08(supabase, empresaId, localId, false);
+      const operatingDay = pagoSeleccionado.checkout?.operating_day;
+      if (!operatingDay) throw new Error("operating_day_servidor_ausente");
+      const reembolsoId = crypto.randomUUID();
+      const { data, error: rpcError } = await supabase.rpc("abc_solicitar_reembolso", {
+        p_operation_id: `b08.ui.request.${reembolsoId}`,
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_reembolso_id: reembolsoId,
+        p_pago_id: pagoSeleccionado.id,
+        p_importe_solicitado: importeNumero,
+        p_motivo: String(motivo).trim(),
+        p_terminal_id: terminal.terminalId,
+        p_operating_day: operatingDay
+      });
+      if (rpcError) throw rpcError;
+      setMensaje(`Solicitud creada como ${data?.estado || "PENDIENTE"}. El simulador no envía dinero a un proveedor real.`);
+      limpiarFormulario();
+      await cargar();
+    } catch (e2) {
+      setError(mensajeErrorReembolsoB08(e2));
+    } finally {
+      setProcesando("");
+    }
+  }
+
+  async function cancelar(row) {
+    if (procesando) return;
+    if (!String(motivoCancelacion).trim()) return setError("Escribe el motivo de la cancelación.");
+    setProcesando(`cancelar:${row.id}`);
+    setError("");
+    setMensaje("");
+    try {
+      const supabase = await window.getSupabaseClient();
+      const terminal = await contextoTerminalReembolsoB08(supabase, empresaId, localId, false);
+      const pago = pagosVista.find((item) => String(item.id) === String(row.pago_id));
+      const operatingDay = pago?.checkout?.operating_day;
+      if (!operatingDay) throw new Error("operating_day_servidor_ausente");
+      const { error: rpcError } = await supabase.rpc("abc_cancelar_reembolso", {
+        p_operation_id: `b08.ui.cancel.${row.id}`,
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_reembolso_id: row.id,
+        p_motivo_cancelacion: String(motivoCancelacion).trim(),
+        p_terminal_id: terminal.terminalId,
+        p_operating_day: operatingDay
+      });
+      if (rpcError) throw rpcError;
+      setMensaje("Solicitud cancelada y saldo liberado.");
+      setCancelandoId("");
+      setMotivoCancelacion("");
+      await cargar();
+    } catch (e2) {
+      setError(mensajeErrorReembolsoB08(e2));
+    } finally {
+      setProcesando("");
+    }
+  }
+
+  async function confirmarEfectivo(row) {
+    if (procesando) return;
+    setProcesando(`efectivo:${row.id}`);
+    setError("");
+    setMensaje("");
+    try {
+      const supabase = await window.getSupabaseClient();
+      const terminal = await contextoTerminalReembolsoB08(supabase, empresaId, localId, true);
+      const pago = pagosVista.find((item) => String(item.id) === String(row.pago_id));
+      const operatingDay = pago?.checkout?.operating_day;
+      if (!operatingDay) throw new Error("operating_day_servidor_ausente");
+      const { error: rpcError } = await supabase.rpc("abc_confirmar_reembolso_efectivo", {
+        p_operation_id: `b08.ui.cash.${row.id}`,
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_reembolso_id: row.id,
+        p_caja_id: terminal.cajaId,
+        p_session_id: terminal.sessionId,
+        p_terminal_id: terminal.terminalId,
+        p_operating_day: operatingDay
+      });
+      if (rpcError) throw rpcError;
+      setMensaje("Reembolso en efectivo confirmado. Se ha creado un único movimiento negativo de caja.");
+      await cargar();
+    } catch (e2) {
+      setError(mensajeErrorReembolsoB08(e2));
+    } finally {
+      setProcesando("");
+    }
+  }
+
+  const estiloSelectorB08 = { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink };
+  const etiquetaEstadoB08 = (estado) => estado === "PENDIENTE" ? "Pendiente" : estado === "DESCONOCIDO" ? "Desconocido" : estado === "CONFIRMADO" ? "Confirmado" : estado === "CANCELADO" ? "Cancelado" : estado === "RECHAZADO" ? "Rechazado" : estado;
+  const colorEstadoB08 = (estado) => estado === "CONFIRMADO" ? C2.accent : ["PENDIENTE", "DESCONOCIDO"].includes(estado) ? C2.amber : ["RECHAZADO", "CANCELADO"].includes(estado) ? C2.red : C2.inkSoft;
+
+  if (!empresaId || !localId) return h3(Card, { className: "mb-4" }, h3("div", { className: "text-[12.5px]" }, "Selecciona una empresa y un local para consultar reembolsos económicos."));
+  return h3(
+    "div",
+    null,
+    h3(SectionTitle, null, "Reembolso económico B08"),
+    h3(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, h3("div", { className: "text-[12px]" }, "Este flujo se relaciona con el pago original, reserva el importe en el servidor y no modifica stock ni devoluciones físicas. El perfil actual es un simulador configurable: no conecta con ningún proveedor real.")),
+    h3(Card, { className: "mb-4" },
+      h3(Field, { label: "Perfil de proveedor" }, h3("select", { value: perfilProveedor, onChange: (e2) => setPerfilProveedor(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: estiloSelectorB08 }, h3("option", { value: "SIMULADOR_B08" }, "Simulador configurable B08"))),
+      h3(Field, { label: "Pago original" }, h3("select", { value: pagoId, disabled: cargando || !!procesando, onChange: (e2) => { setPagoId(e2.target.value); setImporte(""); setError(""); }, className: "w-full rounded-lg px-3 py-2 text-[13px]", style: estiloSelectorB08 }, h3("option", { value: "" }, cargando ? "Cargando pagos…" : pagosVista.length ? "Selecciona un pago confirmado" : "No hay pagos confirmados disponibles"), pagosVista.filter((row) => row.importeDisponible > 0).map((row) => h3("option", { key: row.id, value: row.id }, `${String(row.created_at || "").slice(0, 16).replace("T", " ")} · ${row.medio} · €${fmt(row.importe_objetivo)} · disponible €${fmt(row.importeDisponible)}`)))),
+      pagoSeleccionado && h3("div", { className: "text-[11px] mb-2", style: { color: C2.inkSoft } }, `Día operativo del pago: ${pagoSeleccionado.checkout?.operating_day || "—"} · saldo disponible: €${fmt(maximo)}`),
+      h3(Field, { label: "Importe a reembolsar (€)" }, h3(Input, { type: "number", min: "0.01", max: maximo || undefined, step: "0.01", value: importe, disabled: !pagoSeleccionado || !!procesando, onChange: (e2) => setImporte(e2.target.value), placeholder: "Puede ser parcial o total" })),
+      h3(Field, { label: "Motivo obligatorio" }, h3(Input, { value: motivo, disabled: !!procesando, onChange: (e2) => setMotivo(e2.target.value), placeholder: "Ej: cobro duplicado o pedido cancelado" })),
+      error && h3("div", { className: "text-[11.5px] mb-2", style: { color: C2.red } }, error),
+      mensaje && h3("div", { className: "text-[11.5px] mb-2", style: { color: C2.accent } }, mensaje),
+      h3(Btn, { disabled: !!procesando || !pagoSeleccionado, onClick: solicitar }, procesando === "solicitar" ? "Solicitando…" : "Solicitar reembolso")
+    ),
+    h3("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Solicitudes y estados"),
+    reembolsos.length === 0 ? h3(Empty, { text: "Todavía no hay solicitudes de reembolso en este local." }) : h3("div", { className: "space-y-2" }, reembolsos.map((row) => {
+      const pago = pagosVista.find((item) => String(item.id) === String(row.pago_id));
+      const esPendiente = ["PENDIENTE", "DESCONOCIDO"].includes(String(row.estado));
+      const esEfectivo = String(pago?.medio || "") === "EFECTIVO";
+      return h3(Card, { key: row.id },
+        h3("div", { className: "flex items-center justify-between gap-2 text-[12.5px]" }, h3("span", null, `€${fmt(row.importe_solicitado)} · ${pago?.medio || "Pago"}`), h3(Pill2, { color: colorEstadoB08(row.estado) }, etiquetaEstadoB08(row.estado))),
+        h3("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, `${String(row.created_at || "").slice(0, 16).replace("T", " ")} · motivo: ${row.motivo}`),
+        row.provider_code && h3("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, `Proveedor: ${row.provider_code} · referencia: ${row.provider_reference || "—"}`),
+        esPendiente && h3("div", { className: "flex gap-2 flex-wrap mt-2" },
+          esEfectivo && h3(Btn, { small: true, disabled: !!procesando, onClick: () => confirmarEfectivo(row) }, procesando === `efectivo:${row.id}` ? "Confirmando…" : "Confirmar efectivo"),
+          cancelandoId !== row.id && h3(Btn, { small: true, variant: "ghost", disabled: !!procesando, onClick: () => { setCancelandoId(row.id); setMotivoCancelacion(""); setError(""); } }, "Cancelar solicitud")
+        ),
+        cancelandoId === row.id && h3("div", { className: "mt-2 p-2 rounded-lg", style: { background: C2.bg } }, h3(Field, { label: "Motivo de cancelación" }, h3(Input, { value: motivoCancelacion, disabled: !!procesando, onChange: (e2) => setMotivoCancelacion(e2.target.value), placeholder: "Ej: cliente cambió la forma de devolución" })), h3("div", { className: "flex gap-2" }, h3(Btn, { small: true, variant: "danger", disabled: !!procesando, onClick: () => cancelar(row) }, procesando === `cancelar:${row.id}` ? "Cancelando…" : "Confirmar cancelación"), h3(Btn, { small: true, variant: "ghost", disabled: !!procesando, onClick: () => setCancelandoId("") }, "Volver")))
+      );
+    }))
+  );
+}
+
+function Devoluciones({ productos = [], proveedores = [], devoluciones = [], movimientos = [], registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion, saltoProveedor = 0, empresaId = "", localId = "" }) {
   const h3 = import_react4.default.createElement;
   const [vista, setVista] = import_react4.default.useState("cliente");
   (0, import_react4.useEffect)(() => {
@@ -16672,7 +17008,11 @@ function Devoluciones({ productos = [], proveedores = [], devoluciones = [], mov
     "div",
     null,
     h3(SectionTitle, null, "Devoluciones"),
-    h3("div", { className: "flex gap-1.5 mb-4" }, botonVista("cliente", "De cliente"), botonVista("proveedor", "A proveedor")),
+    h3("div", { className: "flex gap-1.5 mb-4 flex-wrap" }, botonVista("cliente", "De cliente"), botonVista("proveedor", "A proveedor"), botonVista("reembolso", "Reembolso económico")),
+    vista === "reembolso" && h3(ReembolsosEconomicosB08, { empresaId, localId }),
+    vista !== "reembolso" && h3(
+      import_react4.default.Fragment,
+      null,
     h3(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, h3("div", { className: "text-[12.5px]" }, vista === "cliente" ? "Selecciona la venta original. Stock y reembolso se confirman juntos: si una parte falla, no se guarda ninguna." : "La salida se confirma contra el stock real del local y nunca puede dejar existencias negativas.")),
     h3(
       Card,
@@ -16689,6 +17029,7 @@ function Devoluciones({ productos = [], proveedores = [], devoluciones = [], mov
     ),
     h3("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Historial"),
     historial
+    )
   );
 }
 function BloqueEntradasSalidas({ fecha, movimientosCajaDelDia = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, periodoCerrado = false }) {
