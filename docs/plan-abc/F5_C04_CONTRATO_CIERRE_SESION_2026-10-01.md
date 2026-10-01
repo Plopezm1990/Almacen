@@ -66,6 +66,9 @@ PostgreSQL.
 La revisión estática de seguridad confirma autenticación y capacidad por RPC,
 `search_path` cerrado y ausencia de ejecución para `anon`/`service_role`; el
 resultado de `supabase db advisors` queda pendiente de una base conectada.
+Queda preparado además el workflow PostgreSQL 16 efímero
+`.github/workflows/abc-f5-c04-postgres.yml`, que ejecuta el contrato funcional
+real con dos conexiones independientes.
 
 ## Criterios de aceptación pendientes
 
