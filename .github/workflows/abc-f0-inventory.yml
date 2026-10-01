@@ -5,11 +5,13 @@ on:
     branches: [codex/f0-inventario-abc]
     paths:
       - "docs/plan-abc/F0_INVENTARIO_A01_C12_2026-10-01.md"
+      - "docs/plan-abc/F0_2_DECISION_PILOTO_2026-10-01.md"
       - "tests/f0/f0-inventory-contract.mjs"
       - ".github/workflows/abc-f0-inventory.yml"
   pull_request:
     paths:
       - "docs/plan-abc/F0_INVENTARIO_A01_C12_2026-10-01.md"
+      - "docs/plan-abc/F0_2_DECISION_PILOTO_2026-10-01.md"
       - "tests/f0/f0-inventory-contract.mjs"
       - ".github/workflows/abc-f0-inventory.yml"
 
