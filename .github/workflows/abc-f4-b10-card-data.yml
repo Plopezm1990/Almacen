@@ -5,6 +5,7 @@ on:
     branches: [release]
     paths:
       - "supabase/migrations/20261001090000_abc_f4_b10_card_data_boundary.sql"
+      - "supabase/migrations/20261001100000_abc_f4_b10_pci_capture_modes.sql"
       - "tests/f4/b10/**"
       - "docs/plan-abc/F4_B10_CONTRATO_TECNICO_2026-10-01.md"
       - ".github/workflows/abc-f4-b10-card-data.yml"
