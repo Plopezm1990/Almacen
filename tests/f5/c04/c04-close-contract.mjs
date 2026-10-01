@@ -17,8 +17,8 @@ for (const term of [
 ]) {
   assert.match(doc, new RegExp(term.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&'), 'i'), `C04 falta ${term}`);
 }
-assert.match(doc, /CONTRATO_C04_BLOQUEADO_POR_PROVISIONAL_REAPERTURA/);
-assert.match(doc, /No se aplica una migración incompleta/i);
+assert.match(doc, /CANDIDATO_C04_IMPLEMENTADO_NO_APLICADO/);
+assert.match(doc, /no se\s+escriben QA\/PROD/i);
 
 for (const state of ['PREPARANDO_APERTURA', 'ABIERTA', 'EN_CIERRE', 'CIERRE_PROVISIONAL', 'CERRADA_FINAL']) {
   assert.match(sessions, new RegExp(state));

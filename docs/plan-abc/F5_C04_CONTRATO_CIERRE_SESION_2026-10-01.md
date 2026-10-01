@@ -1,14 +1,14 @@
 # F5 C04 Contrato de cierre provisional y definitivo
 
 Fecha: 2026-10-01  
-Estado: `CONTRATO_C04_BLOQUEADO_POR_PROVISIONAL_REAPERTURA`  
+Estado: `CANDIDATO_C04_IMPLEMENTADO_NO_APLICADO`
 Base: Plan ABC C04, F2 caja transaccional, C03 y `origin/release` `7859508`
 
-La revisión de `release` confirma que existe el cierre definitivo de una sesión
-de caja y que el servidor calcula el esperado antes de registrar el conteo. C04
-no puede declararse cerrado todavía: el plan exige distinguir cierre
-provisional y definitivo, bloquear pagos inciertos y permitir reapertura solo con
-permiso, causa y trazabilidad; el circuito actual no cubre aún todo ese alcance.
+La revisión de `release` confirmó que existía el cierre definitivo, pero faltaba
+el circuito provisional y la reapertura. Esta rama prepara una migración
+aditiva que cubre esas transiciones y deja el cierre definitivo protegido por
+una guarda de servidor. El candidato todavía no está aplicado en ningún
+entorno.
 
 ## Estados requeridos
 
@@ -33,15 +33,28 @@ modificando el arqueo ni ocultando el pendiente.
   servidor y registra `CAJA_SESION_CERRADA`.
 - El cierre usa `operation_id` y recuperación idempotente.
 
+## Implementación candidata C04
+
+- `abc_iniciar_cierre_sesion_caja` pasa `ABIERTA` a `EN_CIERRE` y crea el
+  cierre `INICIADO`.
+- `abc_confirmar_cierre_provisional` registra conteo, esperado, diferencia y
+  bloqueos, y pasa la sesión a `CIERRE_PROVISIONAL`.
+- `abc_finalizar_cierre_sesion_caja` solo finaliza si no hay pagos o efectos
+  pendientes; la guarda también impide cerrar directamente desde `ABIERTA`.
+- `abc_reabrir_cierre_provisional` exige capacidad y motivo, cancela el cierre
+  provisional de forma trazable y devuelve la sesión a `ABIERTA`.
+
+La primera versión solo permite reabrir un cierre provisional. Reabrir una
+sesión `CERRADA_FINAL` queda fuera hasta aprobar una política específica.
+
 ## Falta para cerrar C04
 
-1. RPC/flujo autoritativo para pasar a `EN_CIERRE` y después a
-   `CIERRE_PROVISIONAL` con sus pendientes y resultado.
-2. Guarda que impida `CERRADA_FINAL` mientras exista un pago incierto o efecto
-   incompatible sin resolver.
-3. Reapertura segura de una sesión provisional o cerrada según la política
-   aprobada, siempre con rol, motivo, operación y evento.
-4. Pruebas concurrentes de cierre frente a cobro, devolución y recuperación.
+1. Aplicar y verificar la migración en una base PostgreSQL de prueba.
+2. Actualizar el adaptador/UI para usar las cuatro RPC nuevas y mostrar los
+   bloqueos.
+3. Ejecutar pruebas concurrentes de cierre frente a cobro, devolución y
+   recuperación.
+4. Obtener la revisión de seguridad/advisors y preparar QA.
 5. Evidencia de que ninguna transición duplica movimientos ni permite operar en
    una sesión definitivamente cerrada.
 
@@ -55,6 +68,6 @@ modificando el arqueo ni ocultando el pendiente.
 
 ## Resultado de C04
 
-C04 queda documentado como pendiente bloqueado por la ausencia del circuito
-provisional y de reapertura. No se aplica una migración incompleta, no se
+C04 queda implementado como candidato revisable, con la aplicación en entorno,
+la adaptación de interfaz y la prueba PostgreSQL todavía pendientes. No se
 escriben QA/PROD, no se hace merge y no se ejecuta deploy de Netlify.
