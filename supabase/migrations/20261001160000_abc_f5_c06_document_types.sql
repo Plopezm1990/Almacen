@@ -44,6 +44,7 @@ create table public.abc_c06_documentos_clasificados (
   constraint abc_c06_clasificacion_operation_fk
     foreign key (empresa_id,local_id,operation_id)
     references public.abc_operaciones(empresa_id,local_id,operation_id) on delete restrict,
+  constraint abc_c06_documento_id_uq unique (documento_id),
   constraint abc_c06_clasificacion_documento_uq unique (empresa_id,local_id,documento_id),
   constraint abc_c06_clasificacion_operation_uq unique (empresa_id,local_id,operation_id)
 );

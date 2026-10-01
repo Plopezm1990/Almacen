@@ -8,6 +8,7 @@ for (const marker of [
   'abc_c06_documentos_clasificados',
   'abc_clasificar_documento',
   'abc_c06_clasificacion_documento_uq',
+  'abc_c06_documento_id_uq',
   'abc_c06_clasificacion_operation_uq',
   'abc_c06_guard_clasificacion',
   'FACTURA_SIMPLIFICADA',
