@@ -1,0 +1,27 @@
+name: ABC F5 PM09 security hardening contract
+
+on:
+  push:
+    paths:
+      - 'supabase/migrations/20261001230000_abc_f5_pm09_security_hardening.sql'
+      - 'tests/f5/pm09/**'
+      - '.github/workflows/abc-f5-pm09-security.yml'
+  pull_request:
+    paths:
+      - 'supabase/migrations/20261001230000_abc_f5_pm09_security_hardening.sql'
+      - 'tests/f5/pm09/**'
+      - '.github/workflows/abc-f5-pm09-security.yml'
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run PM09 hardening contracts
+        run: |
+          node tests/f5/pm09/pm09-security-hardening-contract.mjs
+          node tests/f5/pm09/pm09-security-hardening-negative-contract.mjs
+          git diff --check
