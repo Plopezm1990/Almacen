@@ -98,7 +98,6 @@ try {
   assert.equal(concurrent.filter((item) => item.status === 'fulfilled').length, 1, 'solo una confirmación concurrente puede ganar');
   assert.equal(concurrent.filter((item) => item.status === 'rejected').length, 1, 'la segunda confirmación debe ser rechazada');
 
-  await admin.connect();
   await admin.query(`insert into public.abc_operaciones(operation_id,empresa_id,local_id,command_type,request_hash,status,actor_user_id,terminal_id,request)
     values ('c04.pg.effect.0001',$1,$2,'TEST_C04_EFFECT',repeat('a',64),'PROCESANDO',$3::uuid,$4::uuid,'{}'::jsonb)`, [empresa, local, owner, terminal]);
   await admin.query(`insert into public.efectos_pendientes(empresa_id,local_id,abc_command_id,tipo,dedupe_key,payload,estado,attempt_count,next_attempt_at)
@@ -106,13 +105,10 @@ try {
 
   await rejects(call(first, 'abc_finalizar_cierre_sesion_caja', ['c04.pg.final.blocked', empresa, local, { type: 'uuid', value: session }, { type: 'uuid', value: terminal }, 'EUR', { type: 'date', value: day }]), 'cierre_definitivo_bloqueado');
 
-  await admin.connect();
   await admin.query(`update public.efectos_pendientes set estado='COMPLETADO',completed_at=now() where dedupe_key='c04.pg.effect.dedupe'`);
-  await admin.end();
   const finalized = await call(first, 'abc_finalizar_cierre_sesion_caja', ['c04.pg.final.ok.0001', empresa, local, { type: 'uuid', value: session }, { type: 'uuid', value: terminal }, 'EUR', { type: 'date', value: day }]);
   assert.equal(finalized.estado, 'CERRADA_FINAL');
 
-  await admin.connect();
   const session2 = '40000000-0000-0000-0000-000000000099';
   const caja2 = '30000000-0000-0000-0000-000000000099';
   await admin.query(`insert into public.cajas_fisicas(id,empresa_id,local_id,nombre,activo) values ($1,$2,$3,'Caja C04 2',true)`, [caja2, empresa, local]);
