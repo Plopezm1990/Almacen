@@ -43,3 +43,5 @@ jobs:
         run: node tests/f5/c04/c04-ui-contract.mjs
       - name: Validar contrato de concurrencia C04
         run: node tests/f5/c04/c04-concurrency-contract.mjs
+      - name: Validar contrato de seguridad C04
+        run: node tests/f5/c04/c04-security-contract.mjs

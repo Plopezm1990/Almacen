@@ -63,6 +63,9 @@ También queda añadido un contrato estático de concurrencia que verifica los
 bloqueos `FOR UPDATE`, la guarda de transición final y que cobros/reembolsos
 solo entren con sesión `ABIERTA`; la carrera real sigue pendiente de
 PostgreSQL.
+La revisión estática de seguridad confirma autenticación y capacidad por RPC,
+`search_path` cerrado y ausencia de ejecución para `anon`/`service_role`; el
+resultado de `supabase db advisors` queda pendiente de una base conectada.
 
 ## Criterios de aceptación pendientes
 
