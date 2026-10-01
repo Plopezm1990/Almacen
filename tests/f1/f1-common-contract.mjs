@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 const contract = fs.readFileSync('docs/plan-abc/F1_1_CONTRATOS_COMUNES_2026-10-01.md', 'utf8');
 const transitions = fs.readFileSync('docs/plan-abc/F1_2_MATRIZ_ESTADOS_TRANSICIONES_2026-10-01.md', 'utf8');
+const permissions = fs.readFileSync('docs/plan-abc/F1_3_MATRIZ_PERMISOS_2026-10-01.md', 'utf8');
 
 for (const term of [
   'Moneda', 'Redondeo', 'Impuestos', 'Precio histórico', 'Descuento', 'Reparto',
@@ -24,5 +25,13 @@ assert.match(transitions, /PENDIENTE_APROBACION_DE_NEGOCIO/);
 assert.match(transitions, /no duplica el efecto económico ni externo/i);
 assert.match(transitions, /No decide aún el proveedor/i);
 assert.match(transitions, /no\s+requiere secrets, migración remota, merge ni deploy/i);
+
+for (const term of ['Operaciones protegidas', 'Propietario', 'Encargado', 'Cajero', 'Camarero', 'Denegaciones obligatorias', 'Evidencia por rol', 'Criterios de aceptación F1.3']) {
+  assert.match(permissions, new RegExp(term, 'i'), `F1.3 falta ${term}`);
+}
+assert.match(permissions, /PENDIENTE_VALIDACION_DE_ROLES/);
+assert.match(permissions, /autorización se decide en servidor/i);
+assert.match(permissions, /No modifica ACL\/RLS/i);
+assert.match(permissions, /no requiere secretos, merge ni deploy/i);
 
 console.log('ABC_F1_COMMON_CONTRACT=PASS');
