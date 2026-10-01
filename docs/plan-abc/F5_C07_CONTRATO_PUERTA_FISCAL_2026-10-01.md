@@ -1,7 +1,7 @@
 # F5 C07 Contrato de puerta fiscal
 
 Fecha: 2026-10-01  
-Estado: `CANDIDATO_C07_IMPLEMENTADO_NO_APLICADO`
+Estado: `CANDIDATO_C07_VALIDADO_PG_NO_APLICADO`
 
 ## Alcance
 
@@ -36,8 +36,8 @@ decisiones se incorporen en C07/C08 con asesoría y evidencia del proveedor.
 
 ## Evidencia y pendiente
 
-La prueba PostgreSQL 16 debe comprobar configuración simulada, evaluación
+La prueba PostgreSQL 16 comprobó configuración simulada, evaluación
 positiva en simulador, bloqueo en productivo, rechazo de activación y requisito
-de proveedor. Después quedan pendientes asesoría, proveedor/sandbox, advisors
+de proveedor. El run 2 del workflow C07 pasó en 31 segundos. Después quedan pendientes asesoría, proveedor/sandbox, advisors
 y decisión de aplicación en QA. No se aplican migraciones remotas ni se hace
 deploy de Netlify.
