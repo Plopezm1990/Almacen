@@ -1,0 +1,25 @@
+name: "ABC F0 -- inventario A01-C12"
+
+on:
+  push:
+    branches: [codex/f0-inventario-abc]
+    paths:
+      - "docs/plan-abc/F0_INVENTARIO_A01_C12_2026-10-01.md"
+      - "tests/f0/f0-inventory-contract.mjs"
+      - ".github/workflows/abc-f0-inventory.yml"
+  pull_request:
+    paths:
+      - "docs/plan-abc/F0_INVENTARIO_A01_C12_2026-10-01.md"
+      - "tests/f0/f0-inventory-contract.mjs"
+      - ".github/workflows/abc-f0-inventory.yml"
+
+jobs:
+  f0-inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validar matriz F0
+        run: node tests/f0/f0-inventory-contract.mjs
