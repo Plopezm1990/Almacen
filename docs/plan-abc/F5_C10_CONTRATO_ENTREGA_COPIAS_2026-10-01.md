@@ -1,7 +1,7 @@
 # F5 C10 Contrato de entrega y copias
 
 Fecha: 2026-10-01  
-Estado: `CANDIDATO_C10_PENDIENTE_VALIDACION_PG`
+Estado: `CANDIDATO_C10_VALIDADO_PG_NO_APLICADO`
 
 ## Alcance
 
@@ -34,8 +34,9 @@ ejecuta deploy de Netlify.
 
 ## Evidencia y pendiente
 
-La prueba PostgreSQL 16 cubrirá entrega original digital, replay, copia en
+La prueba PostgreSQL 16 cubrió entrega original digital, replay, copia en
 papel vinculada a C09, rechazo de papel sin impresión, rechazo de impresión de
 otro documento, inmutabilidad y comprobación de que C05 conserva un solo
-documento. Falta ejecutar el workflow y registrar su run. Después queda C11,
-advisors, revisión de asesoría/proveedor y decisión de aplicación en QA.
+documento. El run corregido pasó en 37 segundos:
+https://github.com/Plopezm1990/Almacen/actions/runs/36915965158. Después queda
+C11, advisors, revisión de asesoría/proveedor y decisión de aplicación en QA.
