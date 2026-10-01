@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 const contract = fs.readFileSync('docs/plan-abc/F1_1_CONTRATOS_COMUNES_2026-10-01.md', 'utf8');
 const transitions = fs.readFileSync('docs/plan-abc/F1_2_MATRIZ_ESTADOS_TRANSICIONES_2026-10-01.md', 'utf8');
 const permissions = fs.readFileSync('docs/plan-abc/F1_3_MATRIZ_PERMISOS_2026-10-01.md', 'utf8');
+const fiscal = fs.readFileSync('docs/plan-abc/F1_4_DECISION_FISCAL_EMISOR_2026-10-01.md', 'utf8');
 
 for (const term of [
   'Moneda', 'Redondeo', 'Impuestos', 'Precio histórico', 'Descuento', 'Reparto',
@@ -33,5 +34,12 @@ assert.match(permissions, /PENDIENTE_VALIDACION_DE_ROLES/);
 assert.match(permissions, /autorización se decide en servidor/i);
 assert.match(permissions, /No modifica ACL\/RLS/i);
 assert.match(permissions, /no requiere secretos, merge ni deploy/i);
+
+for (const term of ['Fuentes oficiales', 'Datos que debe confirmar la asesoría', 'Emisor propio', 'Proveedor integrado', 'Criterios de no aceptación provisional', 'C03']) {
+  assert.match(fiscal, new RegExp(term, 'i'), `F1.4 falta ${term}`);
+}
+assert.match(fiscal, /PENDIENTE_ASESORIA/);
+assert.match(fiscal, /no se presume resuelta/i);
+assert.match(fiscal, /No requiere secretos, migración remota, merge ni deploy/i);
 
 console.log('ABC_F1_COMMON_CONTRACT=PASS');
