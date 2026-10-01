@@ -39,3 +39,7 @@ verificado contra un servicio bancario real.
 
 La ejecución local de B12.2 está registrada en
 `F4_B12_EVIDENCIA_SIMULADOR_2026-10-01.md`.
+
+La ficha de entrada para B12.3 está en
+`F4_B12_ALTA_SANDBOX_2026-10-01.md`; mientras no se complete, el proveedor
+permanece `BLOCKED_UNVERIFIED`.
