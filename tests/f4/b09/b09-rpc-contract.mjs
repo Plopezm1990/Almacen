@@ -18,6 +18,7 @@ assert.match(sql, /grant execute on function public\.abc_b09_resolver_disputa[\s
 assert.match(sql, /revoke all on function public\.abc_b09_importar_liquidacion[\s\S]*from public,anon,authenticated,service_role/);
 assert.match(sql, /private\.abc_b09_iniciar_operacion/);
 assert.match(sql, /private\.abc_b09_completar_operacion/);
+assert.match(sql, /p_empresa_id,p_local_id,upper\(btrim\(p_provider_code\)\),btrim\(p_provider_account_id\),\s*v_dispute_ref,\s*nullif\(btrim\(v_disputa->>'provider_reason_code'/);
 assert.match(sql, /from public\.pagos/);
 assert.match(sql, /from public\.pago_intentos/);
 assert.match(sql, /update public\.abc_b09_liquidacion_lineas/);

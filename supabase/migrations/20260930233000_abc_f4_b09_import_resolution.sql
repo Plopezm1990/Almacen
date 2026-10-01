@@ -340,6 +340,7 @@ begin
       provider_snapshot,resolution_note,resolved_at
     ) values (
       p_empresa_id,p_local_id,upper(btrim(p_provider_code)),btrim(p_provider_account_id),
+      v_dispute_ref,
       nullif(btrim(v_disputa->>'provider_reason_code'),''),
       nullif(btrim(v_disputa->>'provider_line_reference'),''),
       nullif(v_linked_linea.id::text,'')::uuid,v_pago_id,v_intento_id,v_dispute_currency,
