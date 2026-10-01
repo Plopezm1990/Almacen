@@ -1,15 +1,15 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 174,
+  "total_inventory": 208,
   "expected_counts": {
-    "active_contract": 160,
+    "active_contract": 194,
     "historical_expected_fail": 1,
     "utility": 8,
     "diagnostic": 5
   },
   "expected_environment_counts": {
     "node": {
-      "active_contract": 146,
+      "active_contract": 171,
       "historical_expected_fail": 0,
       "utility": 7,
       "diagnostic": 5
@@ -21,7 +21,7 @@
       "diagnostic": 0
     },
     "postgres": {
-      "active_contract": 10,
+      "active_contract": 19,
       "historical_expected_fail": 1,
       "utility": 0,
       "diagnostic": 0
@@ -191,6 +191,176 @@
     },
     {
       "path": "tests/f4/b12/b12-payment-trial-matrix-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c03/c03-cash-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c04/c04-close-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c04/c04-close-implementation.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c04/c04-concurrency-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c04/c04-postgres-contract.mjs",
+      "classification": "active_contract",
+      "environment": "postgres"
+    },
+    {
+      "path": "tests/f5/c04/c04-security-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c04/c04-ui-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c05/c05-postgres-contract.mjs",
+      "classification": "active_contract",
+      "environment": "postgres"
+    },
+    {
+      "path": "tests/f5/c05/c05-security-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c05/c05-series-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c06/c06-document-types-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c06/c06-postgres-contract.mjs",
+      "classification": "active_contract",
+      "environment": "postgres"
+    },
+    {
+      "path": "tests/f5/c06/c06-security-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07-fiscal-gate-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07-postgres-contract.mjs",
+      "classification": "active_contract",
+      "environment": "postgres"
+    },
+    {
+      "path": "tests/f5/c07/c07-security-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c08/c08-postgres-contract.mjs",
+      "classification": "active_contract",
+      "environment": "postgres"
+    },
+    {
+      "path": "tests/f5/c08/c08-retention-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c08/c08-security-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c09/c09-postgres-contract.mjs",
+      "classification": "active_contract",
+      "environment": "postgres"
+    },
+    {
+      "path": "tests/f5/c09/c09-printing-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c09/c09-security-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c10/c10-delivery-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c10/c10-postgres-contract.mjs",
+      "classification": "active_contract",
+      "environment": "postgres"
+    },
+    {
+      "path": "tests/f5/c10/c10-security-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c11/c11-postgres-contract.mjs",
+      "classification": "active_contract",
+      "environment": "postgres"
+    },
+    {
+      "path": "tests/f5/c11/c11-reconciliation-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c11/c11-security-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c12/c12-close-rehearsal-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c12/c12-postgres-contract.mjs",
+      "classification": "active_contract",
+      "environment": "postgres"
+    },
+    {
+      "path": "tests/f5/c12/c12-security-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/pm09/pm09-security-hardening-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/pm09/pm09-security-hardening-negative-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/pm09/pm09-service-role-caller-inventory.mjs",
       "classification": "active_contract",
       "environment": "node"
     },
