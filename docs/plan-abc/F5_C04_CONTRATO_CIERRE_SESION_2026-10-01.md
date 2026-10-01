@@ -50,13 +50,15 @@ sesión `CERRADA_FINAL` queda fuera hasta aprobar una política específica.
 ## Falta para cerrar C04
 
 1. Aplicar y verificar la migración en una base PostgreSQL de prueba.
-2. Actualizar el adaptador/UI para usar las cuatro RPC nuevas y mostrar los
-   bloqueos.
-3. Ejecutar pruebas concurrentes de cierre frente a cobro, devolución y
+2. Ejecutar pruebas concurrentes de cierre frente a cobro, devolución y
    recuperación.
-4. Obtener la revisión de seguridad/advisors y preparar QA.
-5. Evidencia de que ninguna transición duplica movimientos ni permite operar en
+3. Obtener la revisión de seguridad/advisors y preparar QA.
+4. Evidencia de que ninguna transición duplica movimientos ni permite operar en
    una sesión definitivamente cerrada.
+
+El adaptador/UI de TPV ya queda conectado en esta rama candidata: separa
+iniciar, confirmar provisional, finalizar y reabrir con motivo; muestra los
+bloqueos devueltos por el servidor y mantiene `operation_id` por operación.
 
 ## Criterios de aceptación pendientes
 
@@ -69,5 +71,6 @@ sesión `CERRADA_FINAL` queda fuera hasta aprobar una política específica.
 ## Resultado de C04
 
 C04 queda implementado como candidato revisable, con la aplicación en entorno,
-la adaptación de interfaz y la prueba PostgreSQL todavía pendientes. No se
-escriben QA/PROD, no se hace merge y no se ejecuta deploy de Netlify.
+las pruebas PostgreSQL/concurrentes y la revisión de seguridad todavía
+pendientes. No se escriben QA/PROD, no se hace merge y no se ejecuta deploy de
+Netlify.
