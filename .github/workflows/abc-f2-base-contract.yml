@@ -10,11 +10,13 @@ on:
       - "docs/plan-abc/F2_3_EVIDENCIA_PGLITE_FALLBACK_2026-10-01.md"
       - "docs/plan-abc/F2_4_PRECHECK_MIGRACION_CANDIDATA_2026-10-01.md"
       - "docs/plan-abc/F2_5_PUERTA_REVISION_MIGRACION_2026-10-01.md"
+      - "docs/plan-abc/F2_6_MANIFIESTO_RECUPERACION_CANDIDATO_2026-10-01.md"
       - "tests/f2/f2-base-contract.mjs"
       - "tests/f2/f2-local-verification-contract.mjs"
       - "tests/f2/f2-local-evidence-contract.mjs"
       - "tests/f2/f2-migration-precheck-contract.mjs"
       - "tests/f2/f2-migration-gate-contract.mjs"
+      - "tests/f2/f2-candidate-manifest-contract.mjs"
       - ".github/workflows/abc-f2-base-contract.yml"
   pull_request:
     paths:
@@ -24,11 +26,13 @@ on:
       - "docs/plan-abc/F2_3_EVIDENCIA_PGLITE_FALLBACK_2026-10-01.md"
       - "docs/plan-abc/F2_4_PRECHECK_MIGRACION_CANDIDATA_2026-10-01.md"
       - "docs/plan-abc/F2_5_PUERTA_REVISION_MIGRACION_2026-10-01.md"
+      - "docs/plan-abc/F2_6_MANIFIESTO_RECUPERACION_CANDIDATO_2026-10-01.md"
       - "tests/f2/f2-base-contract.mjs"
       - "tests/f2/f2-local-verification-contract.mjs"
       - "tests/f2/f2-local-evidence-contract.mjs"
       - "tests/f2/f2-migration-precheck-contract.mjs"
       - "tests/f2/f2-migration-gate-contract.mjs"
+      - "tests/f2/f2-candidate-manifest-contract.mjs"
       - ".github/workflows/abc-f2-base-contract.yml"
 
 jobs:
@@ -49,3 +53,5 @@ jobs:
         run: node tests/f2/f2-migration-precheck-contract.mjs
       - name: Validar puerta de migración F2.5
         run: node tests/f2/f2-migration-gate-contract.mjs
+      - name: Validar manifiesto F2.6
+        run: node tests/f2/f2-candidate-manifest-contract.mjs
