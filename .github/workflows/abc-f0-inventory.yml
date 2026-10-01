@@ -8,6 +8,7 @@ on:
       - "docs/plan-abc/F0_2_DECISION_PILOTO_2026-10-01.md"
       - "docs/plan-abc/F0_3_MAPA_RECORRIDOS_2026-10-01.md"
       - "docs/plan-abc/F0_4_INVENTARIO_TECNICO_2026-10-01.md"
+      - "docs/plan-abc/F0_5_MATRIZ_EJECUCION_A01_C12_2026-10-01.md"
       - "tests/f0/f0-inventory-contract.mjs"
       - ".github/workflows/abc-f0-inventory.yml"
   pull_request:
@@ -16,6 +17,7 @@ on:
       - "docs/plan-abc/F0_2_DECISION_PILOTO_2026-10-01.md"
       - "docs/plan-abc/F0_3_MAPA_RECORRIDOS_2026-10-01.md"
       - "docs/plan-abc/F0_4_INVENTARIO_TECNICO_2026-10-01.md"
+      - "docs/plan-abc/F0_5_MATRIZ_EJECUCION_A01_C12_2026-10-01.md"
       - "tests/f0/f0-inventory-contract.mjs"
       - ".github/workflows/abc-f0-inventory.yml"
 
