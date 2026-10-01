@@ -1,7 +1,7 @@
 # F5 C05 Contrato de series y numeracion documental
 
 Fecha: 2026-10-01  
-Estado: `CANDIDATO_C05_VALIDADO_PG_NO_APLICADO`  
+Estado: `CANDIDATO_C05_VALIDADO_PG_NO_APLICADO`
 Base: Plan ABC C05, F2 operaciones idempotentes y F5 C04
 
 ## Alcance de este subpunto

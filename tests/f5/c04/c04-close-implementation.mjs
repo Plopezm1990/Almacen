@@ -28,8 +28,8 @@ for (const term of [
   assert.match(sql, new RegExp(term, 'i'), `C04 falta ${term}`);
 }
 assert.doesNotMatch(sql, /grant execute on function public\.[^;]+ to service_role/i);
-assert.match(doc, /CANDIDATO_C04_IMPLEMENTADO_NO_APLICADO/);
-assert.match(doc, /Aplicar y verificar la migración en una base PostgreSQL/i);
+assert.match(doc, /CANDIDATO_C04_(IMPLEMENTADO_NO_APLICADO|VALIDADO_PG_NO_APLICADO)/);
+assert.match(doc, /Decidir y autorizar la aplicación en QA|Aplicar y verificar la migración en una base PostgreSQL/i);
 assert.match(doc, /Reabrir una\s+sesión `CERRADA_FINAL` queda fuera/i);
 
 console.log('ABC_F5_C04_CLOSE_IMPLEMENTATION=PASS_WITH_POSTGRES_PENDING');

@@ -11,14 +11,14 @@ for (const term of [
   'CERRADA_FINAL',
   'pago `DESCONOCIDO`',
   'Lo que ya existe',
-  'Falta para cerrar C04',
+  'Pendiente para el cierre operativo de C04',
   'reapertura',
   'Criterios de aceptación pendientes',
 ]) {
   assert.match(doc, new RegExp(term.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&'), 'i'), `C04 falta ${term}`);
 }
-assert.match(doc, /CANDIDATO_C04_IMPLEMENTADO_NO_APLICADO/);
-assert.match(doc, /no se\s+escriben QA\/PROD/i);
+assert.match(doc, /CANDIDATO_C04_(IMPLEMENTADO_NO_APLICADO|VALIDADO_PG_NO_APLICADO)/);
+assert.match(doc, /no se\s+escriben QA\/PROD|sin aplicarse en QA\/PROD/i);
 
 for (const state of ['PREPARANDO_APERTURA', 'ABIERTA', 'EN_CIERRE', 'CIERRE_PROVISIONAL', 'CERRADA_FINAL']) {
   assert.match(sessions, new RegExp(state));
