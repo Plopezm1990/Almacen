@@ -1,0 +1,29 @@
+name: "ABC F5 C03 -- arqueo calculado en servidor"
+
+on:
+  push:
+    branches: [codex/f5-c03-cash-reconciliation]
+    paths:
+      - "docs/plan-abc/F5_C03_CONTRATO_ARQUEO_SERVIDOR_2026-10-01.md"
+      - "tests/f5/c03/**"
+      - "supabase/migrations/20260904204500_pm08_caja_devolucion_indivisible.sql"
+      - "supabase/migrations/20260905105500_pm09_conciliacion_caja.sql"
+      - ".github/workflows/abc-f5-c03-cash-contract.yml"
+  pull_request:
+    paths:
+      - "docs/plan-abc/F5_C03_CONTRATO_ARQUEO_SERVIDOR_2026-10-01.md"
+      - "tests/f5/c03/**"
+      - "supabase/migrations/20260904204500_pm08_caja_devolucion_indivisible.sql"
+      - "supabase/migrations/20260905105500_pm09_conciliacion_caja.sql"
+      - ".github/workflows/abc-f5-c03-cash-contract.yml"
+
+jobs:
+  c03-cash-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validar contrato C03
+        run: node tests/f5/c03/c03-cash-contract.mjs
