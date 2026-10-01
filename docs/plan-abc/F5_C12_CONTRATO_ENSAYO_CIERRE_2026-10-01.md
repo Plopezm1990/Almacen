@@ -1,7 +1,7 @@
 # F5 C12 Contrato de ensayo del cierre
 
 Fecha: 2026-10-01  
-Estado: `CANDIDATO_C12_PENDIENTE_VALIDACION_PG`
+Estado: `CANDIDATO_C12_VALIDADO_PG_NO_APLICADO`
 
 ## Alcance
 
@@ -35,9 +35,12 @@ deploy de Netlify.
 
 ## Evidencia y pendiente
 
-La prueba PostgreSQL 16 debe cubrir un estado pendiente por falta de conteo y
+La prueba PostgreSQL 16 cubrió un estado pendiente por falta de conteo y
 entrega, un estado `APTO_CIERRE` después de completar el flujo, hash, replay,
-inmutabilidad y comprobación de que las tablas de cierre no cambian. Tras esa
-validación, C03-C12 quedarán implementados como candidatos técnicos sin aplicar
-en QA/PROD. Quedarán aparte la revisión de asesoría/proveedor, las decisiones
-de configuración y la autorización explícita de una aplicación remota.
+inmutabilidad y comprobación de que las tablas de cierre no cambian. La
+ejecución validada fue:
+https://github.com/Plopezm1990/Almacen/actions/runs/36918524330.
+
+C03-C12 quedan implementados como candidatos técnicos sin aplicar en QA/PROD.
+Quedan aparte la revisión de asesoría/proveedor, las decisiones de
+configuración y la autorización explícita de una aplicación remota.
