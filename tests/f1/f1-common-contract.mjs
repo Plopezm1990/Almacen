@@ -6,6 +6,7 @@ const transitions = fs.readFileSync('docs/plan-abc/F1_2_MATRIZ_ESTADOS_TRANSICIO
 const permissions = fs.readFileSync('docs/plan-abc/F1_3_MATRIZ_PERMISOS_2026-10-01.md', 'utf8');
 const fiscal = fs.readFileSync('docs/plan-abc/F1_4_DECISION_FISCAL_EMISOR_2026-10-01.md', 'utf8');
 const monetary = fs.readFileSync('docs/plan-abc/F1_5_VECTORES_MONETARIOS_2026-10-01.md', 'utf8');
+const gate = fs.readFileSync('docs/plan-abc/F1_6_PUERTA_SALIDA_DISENO_2026-10-01.md', 'utf8');
 
 for (const term of [
   'Moneda', 'Redondeo', 'Impuestos', 'Precio histórico', 'Descuento', 'Reparto',
@@ -50,5 +51,12 @@ assert.match(monetary, /PENDIENTE_APROBACION_DE_PARAMETROS/);
 assert.match(monetary, /servidor y UI/i);
 assert.match(monetary, /no se fijan\s+tasas fiscales reales/i);
 assert.match(monetary, /no requiere secrets, migración remota, merge ni deploy/i);
+
+for (const term of ['Entregables preparados', 'Bloqueos antes de F2', 'Condiciones para abrir F2', 'Fuera de esta puerta', 'PENDIENTE_APROBACION_F1']) {
+  assert.match(gate, new RegExp(term, 'i'), `F1.6 falta ${term}`);
+}
+assert.match(gate, /No incluye `db push`/i);
+assert.match(gate, /Tampoco\s+cierra los requisitos A01–C12/i);
+assert.match(gate, /migración candidata revisable/i);
 
 console.log('ABC_F1_COMMON_CONTRACT=PASS');
