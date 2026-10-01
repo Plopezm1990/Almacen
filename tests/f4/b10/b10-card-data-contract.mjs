@@ -7,6 +7,8 @@ const pciPath = 'supabase/migrations/20261001100000_abc_f4_b10_pci_capture_modes
 const pciSql = fs.readFileSync(pciPath, 'utf8');
 const gatePath = 'supabase/migrations/20261001110000_abc_f4_b10_pci_review_gate.sql';
 const gateSql = fs.readFileSync(gatePath, 'utf8');
+const onboardingPath = 'docs/plan-abc/F4_B10_ALTA_PROVEEDOR_PCI_2026-10-01.md';
+const onboarding = fs.readFileSync(onboardingPath, 'utf8');
 
 assert.match(sql, /create function private\.abc_b10_payload_sin_datos_tarjeta\(p_payload jsonb\)/i);
 assert.match(sql, /language plpgsql[\s\S]*immutable[\s\S]*security definer[\s\S]*set search_path=''/i);
@@ -48,5 +50,16 @@ assert.match(gateSql, /abc_b10_pci_review_status_ck/i);
 assert.match(gateSql, /abc_b10_pci_review_enable_ck/i);
 assert.match(gateSql, /enabled = false or pci_review_status = 'APPROVED'/i);
 assert.match(gateSql, /ABC_F4_B10_PCI_GATE_REQUIERE_REVISION/i);
+
+for (const required of [
+  'Adquirente / banco',
+  'Proveedor de pagos',
+  'EXTERNAL_TERMINAL',
+  'HOSTED_FIELDS',
+  'HOSTED_REDIRECT',
+  'PENDING_ACQUIRER',
+  'enabled = false',
+  'PAN, CVV/CVC',
+]) assert.match(onboarding, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'));
 
 console.log('ABC_F4_B10_CARD_DATA=PASS');

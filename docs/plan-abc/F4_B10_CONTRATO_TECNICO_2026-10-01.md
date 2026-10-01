@@ -61,6 +61,9 @@ documentación dentro de la base de datos ni activar todavía un proveedor
 real. Para cerrar la parte operativa solo faltan el adquirente, el proveedor,
 el modo elegido y la evidencia de revisión que aporte el usuario.
 
+La ficha `F4_B10_ALTA_PROVEEDOR_PCI_2026-10-01.md` reúne esos datos y la
+secuencia de comprobaciones previa a cualquier activación.
+
 ## Evidencia
 
 El contrato `tests/f4/b10/b10-card-data-contract.mjs` comprueba la función
