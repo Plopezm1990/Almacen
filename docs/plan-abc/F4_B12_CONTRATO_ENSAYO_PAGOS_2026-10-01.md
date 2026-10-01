@@ -36,3 +36,6 @@ B07 y B08 tienen recorridos de simulador preparados. La validación de sandbox
 real queda pendiente de que el usuario aporte proveedor, cuenta, documentación
 y secretos del entorno. Hasta entonces el sistema queda preparado pero no
 verificado contra un servicio bancario real.
+
+La ejecución local de B12.2 está registrada en
+`F4_B12_EVIDENCIA_SIMULADOR_2026-10-01.md`.
