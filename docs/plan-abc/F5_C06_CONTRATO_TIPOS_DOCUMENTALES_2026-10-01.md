@@ -1,7 +1,7 @@
 # F5 C06 Contrato de tipos documentales
 
 Fecha: 2026-10-01  
-Estado: `CANDIDATO_C06_IMPLEMENTADO_NO_APLICADO`
+Estado: `CANDIDATO_C06_VALIDADO_PG_NO_APLICADO`
 
 ## Alcance
 
@@ -44,14 +44,14 @@ sin mezclar pedido, precuenta, justificante y factura.
 
 ## Evidencia
 
-La prueba PostgreSQL 16 debe cubrir clasificación completa, simplificada y
+La prueba PostgreSQL 16 cubre clasificación completa, simplificada y
 rectificativa, replay de la misma operación, rechazo de datos incompletos y
-protección contra reclasificación directa. No se aplican migraciones remotas,
+protección contra reclasificación directa. El run 1 del workflow C06 pasó en
+28 segundos. No se aplican migraciones remotas,
 no se escribe QA/PROD y no se ejecuta deploy de Netlify.
 
 ## Pendiente para cerrar C06
 
-1. Ejecutar la prueba real en PostgreSQL 16.
-2. Revisar con asesoría los campos y modalidades de cada tipo.
-3. Obtener advisors desde una base conectada.
-4. Esperar C07 para la decisión fiscal y de proveedor.
+1. Revisar con asesoría los campos y modalidades de cada tipo.
+2. Obtener advisors desde una base conectada.
+3. Esperar C07 para la decisión fiscal y de proveedor.
