@@ -59,6 +59,10 @@ sesión `CERRADA_FINAL` queda fuera hasta aprobar una política específica.
 El adaptador/UI de TPV ya queda conectado en esta rama candidata: separa
 iniciar, confirmar provisional, finalizar y reabrir con motivo; muestra los
 bloqueos devueltos por el servidor y mantiene `operation_id` por operación.
+También queda añadido un contrato estático de concurrencia que verifica los
+bloqueos `FOR UPDATE`, la guarda de transición final y que cobros/reembolsos
+solo entren con sesión `ABIERTA`; la carrera real sigue pendiente de
+PostgreSQL.
 
 ## Criterios de aceptación pendientes
 

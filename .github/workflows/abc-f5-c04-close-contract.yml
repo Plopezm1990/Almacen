@@ -9,6 +9,8 @@ on:
       - "supabase/migrations/20261001140000_abc_f5_c04_close_reopen.sql"
       - "supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql"
       - "supabase/migrations/20260928223000_pm10_cierre_sesion_caja.sql"
+      - "supabase/migrations/20260923234500_abc_f2_m03b_checkout_cobro.sql"
+      - "supabase/migrations/20260923235900_abc_f2_m03c_reembolsos_transaccionales.sql"
       - "source-recovery/fuente-recuperado.js"
       - "fuente.js"
       - ".github/workflows/abc-f5-c04-close-contract.yml"
@@ -19,6 +21,8 @@ on:
       - "supabase/migrations/20261001140000_abc_f5_c04_close_reopen.sql"
       - "supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql"
       - "supabase/migrations/20260928223000_pm10_cierre_sesion_caja.sql"
+      - "supabase/migrations/20260923234500_abc_f2_m03b_checkout_cobro.sql"
+      - "supabase/migrations/20260923235900_abc_f2_m03c_reembolsos_transaccionales.sql"
       - "source-recovery/fuente-recuperado.js"
       - "fuente.js"
       - ".github/workflows/abc-f5-c04-close-contract.yml"
@@ -37,3 +41,5 @@ jobs:
         run: node tests/f5/c04/c04-close-implementation.mjs
       - name: Validar adaptador UI C04
         run: node tests/f5/c04/c04-ui-contract.mjs
+      - name: Validar contrato de concurrencia C04
+        run: node tests/f5/c04/c04-concurrency-contract.mjs
