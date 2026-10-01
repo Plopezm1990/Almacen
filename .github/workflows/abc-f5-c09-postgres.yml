@@ -1,0 +1,39 @@
+name: ABC F5 C09 -- PostgreSQL efímero
+
+on:
+  push:
+    branches:
+      - codex/f5-c03-cash-reconciliation
+  pull_request:
+    branches:
+      - release
+
+jobs:
+  c09-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Instalar cliente PostgreSQL fijado
+        shell: bash
+        run: |
+          npm install --prefix "$RUNNER_TEMP/c09-pg-client" --no-save --no-package-lock pg@8.16.3
+      - name: Ejecutar contrato C09 en PostgreSQL 16
+        env:
+          C09_PG_CLIENT: ${{ runner.temp }}/c09-pg-client/node_modules/pg
+          ABC_F5_C09_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: node tests/f5/c09/c09-postgres-contract.mjs
