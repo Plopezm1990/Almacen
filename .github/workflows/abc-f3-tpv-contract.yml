@@ -1,16 +1,18 @@
-name: "ABC F3.1 -- contrato TPV autoridad servidor"
+name: "ABC F3.2 -- contrato UI TPV"
 
 on:
   push:
     branches: [codex/f3-tpv-contrato]
     paths:
       - "docs/plan-abc/F3_1_CONTRATO_TPV_AUTORIDAD_2026-10-01.md"
-      - "tests/f3/tpv/f3-tpv-contract.mjs"
+      - "docs/plan-abc/F3_2_CONTRATO_UI_TPV_2026-10-01.md"
+      - "tests/f3/tpv/**"
       - ".github/workflows/abc-f3-tpv-contract.yml"
   pull_request:
     paths:
       - "docs/plan-abc/F3_1_CONTRATO_TPV_AUTORIDAD_2026-10-01.md"
-      - "tests/f3/tpv/f3-tpv-contract.mjs"
+      - "docs/plan-abc/F3_2_CONTRATO_UI_TPV_2026-10-01.md"
+      - "tests/f3/tpv/**"
       - ".github/workflows/abc-f3-tpv-contract.yml"
 
 jobs:
@@ -21,5 +23,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Validar contrato TPV F3.1
+      - name: Validar autoridad TPV F3.1
         run: node tests/f3/tpv/f3-tpv-contract.mjs
+      - name: Validar interfaz TPV F3.2
+        run: node tests/f3/tpv/f3-tpv-ui-contract.mjs
