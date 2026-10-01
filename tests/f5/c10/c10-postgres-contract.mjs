@@ -118,7 +118,7 @@ try {
   assert.equal(copy.tipo_entrega, 'COPIA');
   assert.equal(copy.estado, 'REGISTRADA');
   await rejects(call(second, 'abc_registrar_entrega_documental', [
-    'c10.pg.delivery.0004', empresa, local, { type: 'uuid', value: reserved.documento_id }, { type: 'uuid', value: version.version_id }, { type: 'uuid', value: printed.impresion_id },
+    'c10.pg.delivery.0004', empresa, local, { type: 'uuid', value: reserved.documento_id }, { type: 'uuid', value: version.version_id }, { type: 'uuid', value: '99999999-9999-9999-9999-999999999999' },
     'COPIA', 'PAPEL', { role: 'cliente' }, 'Copia con impresion ajena', null, {},
   ]), 'impresion_no_corresponde_documento');
   await rejects(admin.query(`update public.abc_c10_entregas_documentales set motivo='alterado' where id=$1`, [original.entrega_id]), 'entrega_documental_inmutable');
