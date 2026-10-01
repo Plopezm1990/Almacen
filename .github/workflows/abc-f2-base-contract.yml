@@ -6,13 +6,17 @@ on:
     paths:
       - "docs/plan-abc/F2_1_BASE_TRANSACCIONAL_CONTRATO_2026-10-01.md"
       - "docs/plan-abc/F2_2_INVENTARIO_DEPENDENCIAS_RELEASE_2026-10-01.md"
+      - "docs/plan-abc/F2_3_VERIFICACION_LOCAL_POSTGRES_2026-10-01.md"
       - "tests/f2/f2-base-contract.mjs"
+      - "tests/f2/f2-local-verification-contract.mjs"
       - ".github/workflows/abc-f2-base-contract.yml"
   pull_request:
     paths:
       - "docs/plan-abc/F2_1_BASE_TRANSACCIONAL_CONTRATO_2026-10-01.md"
       - "docs/plan-abc/F2_2_INVENTARIO_DEPENDENCIAS_RELEASE_2026-10-01.md"
+      - "docs/plan-abc/F2_3_VERIFICACION_LOCAL_POSTGRES_2026-10-01.md"
       - "tests/f2/f2-base-contract.mjs"
+      - "tests/f2/f2-local-verification-contract.mjs"
       - ".github/workflows/abc-f2-base-contract.yml"
 
 jobs:
@@ -25,3 +29,5 @@ jobs:
           node-version: 20
       - name: Validar contrato base F2.1
         run: node tests/f2/f2-base-contract.mjs
+      - name: Validar contrato local F2.3
+        run: node tests/f2/f2-local-verification-contract.mjs
