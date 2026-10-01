@@ -1,7 +1,7 @@
 # F5 C08 Contrato de conservación y corrección documental
 
 Fecha: 2026-10-01  
-Estado: `CANDIDATO_C08_PENDIENTE_VALIDACION_PG`
+Estado: `CANDIDATO_C08_VALIDADO_PG_NO_APLICADO`
 
 ## Alcance
 
@@ -39,8 +39,9 @@ respuesta fiscal conserva el resultado del modo configurado por C07, incluido
 
 ## Evidencia y pendiente
 
-La prueba PostgreSQL 16 cubrirá conservación, huella, replay, inmutabilidad,
-rectificación vinculada, cancelación operativa y reembolso. Falta ejecutar el
-workflow y registrar su run. Después quedan pendientes advisors, revisión de
-asesoría/proveedor y decisión de aplicación en QA. No se aplican migraciones
-remotas ni se ejecuta deploy de Netlify.
+La prueba PostgreSQL 16 cubrió conservación, huella, replay, inmutabilidad,
+rectificación vinculada, cancelación operativa y reembolso. El workflow pasó en
+32 segundos: https://github.com/Plopezm1990/Almacen/actions/runs/36914004105.
+Quedan pendientes advisors, revisión de asesoría/proveedor y decisión de
+aplicación en QA. No se aplican migraciones remotas ni se ejecuta deploy de
+Netlify.
