@@ -24,4 +24,5 @@ jobs:
         run: |
           node tests/f5/pm09/pm09-security-hardening-contract.mjs
           node tests/f5/pm09/pm09-security-hardening-negative-contract.mjs
+          node tests/f5/pm09/pm09-service-role-caller-inventory.mjs
           git diff --check
