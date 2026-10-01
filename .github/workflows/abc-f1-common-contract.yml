@@ -1,0 +1,25 @@
+name: "ABC F1.1 -- contratos comunes"
+
+on:
+  push:
+    branches: [codex/f1-contratos-comunes]
+    paths:
+      - "docs/plan-abc/F1_1_CONTRATOS_COMUNES_2026-10-01.md"
+      - "tests/f1/f1-common-contract.mjs"
+      - ".github/workflows/abc-f1-common-contract.yml"
+  pull_request:
+    paths:
+      - "docs/plan-abc/F1_1_CONTRATOS_COMUNES_2026-10-01.md"
+      - "tests/f1/f1-common-contract.mjs"
+      - ".github/workflows/abc-f1-common-contract.yml"
+
+jobs:
+  f1-common-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validar contrato común F1.1
+        run: node tests/f1/f1-common-contract.mjs
