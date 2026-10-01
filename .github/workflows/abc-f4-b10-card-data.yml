@@ -9,6 +9,7 @@ on:
       - "supabase/migrations/20261001110000_abc_f4_b10_pci_review_gate.sql"
       - "tests/f4/b10/**"
       - "docs/plan-abc/F4_B10_CONTRATO_TECNICO_2026-10-01.md"
+      - "docs/plan-abc/F4_B10_ALTA_PROVEEDOR_PCI_2026-10-01.md"
       - ".github/workflows/abc-f4-b10-card-data.yml"
   workflow_dispatch: {}
 
