@@ -81,7 +81,6 @@ const second = new Client({ connectionString: databaseUrl, application_name: 'ab
 try {
   await admin.connect();
   await bootstrap(admin);
-  await admin.end();
   await first.connect();
   await second.connect();
   await context(first);
@@ -104,7 +103,6 @@ try {
     values ('c04.pg.effect.0001',$1,$2,'TEST_C04_EFFECT',repeat('a',64),'PROCESANDO',$3::uuid,$4::uuid,'{}'::jsonb)`, [empresa, local, owner, terminal]);
   await admin.query(`insert into public.efectos_pendientes(empresa_id,local_id,abc_command_id,tipo,dedupe_key,payload,estado,attempt_count,next_attempt_at)
     values ($1,$2,'c04.pg.effect.0001','TEST_C04_EFFECT','c04.pg.effect.dedupe','{}'::jsonb,'PENDIENTE',0,now())`, [empresa, local]);
-  await admin.end();
 
   await rejects(call(first, 'abc_finalizar_cierre_sesion_caja', ['c04.pg.final.blocked', empresa, local, { type: 'uuid', value: session }, { type: 'uuid', value: terminal }, 'EUR', { type: 'date', value: day }]), 'cierre_definitivo_bloqueado');
 
@@ -124,7 +122,6 @@ try {
     values ($1,$2,$3,$4::uuid,now())`, [empresa, local, session2, terminal]);
   await admin.query(`insert into public.caja_sesion_responsables(empresa_id,local_id,session_id,user_id,desde,asignado_por,motivo)
     values ($1,$2,$3,$4::uuid,now(),$4::uuid,'TEST_C04')`, [empresa, local, session2, owner]);
-  await admin.end();
 
   const started2 = await call(first, 'abc_iniciar_cierre_sesion_caja', ['c04.pg.start.0002', empresa, local, { type: 'uuid', value: session2 }, { type: 'uuid', value: terminal }, { type: 'date', value: day }]);
   assert.equal(started2.estado, 'EN_CIERRE');
