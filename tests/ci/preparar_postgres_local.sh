@@ -120,8 +120,26 @@ for linea in "${archivos[@]}"; do
   start=$(date +%s%N)
   test_timeout=60
   if [ "$f" = "tests/f3/a09/local-postgres-contract.mjs" ]; then test_timeout=300; fi
-  out=$(timeout "$test_timeout" node "$f" 2>&1)
-  code=$?
+  isolated_db=""
+  isolated_env=""
+  if [[ "$f" =~ ^tests/f5/(c0[4-9]|c1[0-2])/.+-postgres-contract\.mjs$ ]]; then
+    f5_code="${BASH_REMATCH[1]}"
+    isolated_db="abc_f5_${f5_code}_test"
+    isolated_env="ABC_F5_${f5_code^^}_TEST_DATABASE_URL"
+    dropdb -h 127.0.0.1 -U postgres --if-exists "$isolated_db" >/dev/null 2>&1 || true
+    export "$isolated_env=postgresql://postgres:postgres@127.0.0.1:5432/$isolated_db"
+  fi
+  out=""
+  if [ -n "$isolated_db" ] && ! createdb -h 127.0.0.1 -U postgres "$isolated_db" >/dev/null 2>&1; then
+    out="No se pudo crear la base aislada $isolated_db"
+    code=1
+  else
+    out=$(timeout "$test_timeout" node "$f" 2>&1)
+    code=$?
+  fi
+  if [ -n "$isolated_db" ]; then
+    dropdb -h 127.0.0.1 -U postgres --if-exists "$isolated_db" >/dev/null 2>&1 || true
+  fi
   end=$(date +%s%N)
   ms=$(( (end - start) / 1000000 ))
   lastline=$(printf '%s' "$out" | tail -1 | tr '\t' ' ')
