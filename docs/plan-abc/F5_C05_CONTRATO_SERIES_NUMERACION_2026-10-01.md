@@ -1,7 +1,7 @@
 # F5 C05 Contrato de series y numeracion documental
 
 Fecha: 2026-10-01  
-Estado: `CANDIDATO_C05_IMPLEMENTADO_NO_APLICADO`  
+Estado: `CANDIDATO_C05_VALIDADO_PG_NO_APLICADO`  
 Base: Plan ABC C05, F2 operaciones idempotentes y F5 C04
 
 ## Alcance de este subpunto
@@ -45,7 +45,7 @@ fiscal.
 
 1. Contratos estáticos de preflight, concurrencia, idempotencia, ACL/RLS y
    no-renumeracion.
-2. Prueba PostgreSQL 16 con dos conexiones: dos reservas concurrentes de la
+2. Prueba PostgreSQL 16 ejecutada con dos conexiones: dos reservas concurrentes de la
    misma serie, recuperación por `operation_id`, transición pendiente a
    emitido y bloqueo de modificación de un documento emitido.
 3. No se aplican migraciones remotas, no se escribe QA/PROD y no se ejecuta
@@ -59,3 +59,6 @@ fiscal.
 - una respuesta pendiente o error no consume otra identidad al reintentarse;
 - un documento emitido conserva serie y numero;
 - proveedor, fiscalidad y asesoria quedan expresamente pendientes de C06/C07.
+
+La ejecución PostgreSQL 16 de C05 pasó en GitHub Actions (run 1, 34 s). La
+revisión de advisors y la aplicación en QA/PROD siguen separadas y pendientes.

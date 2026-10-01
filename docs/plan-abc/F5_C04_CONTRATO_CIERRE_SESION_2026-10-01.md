@@ -1,7 +1,7 @@
 # F5 C04 Contrato de cierre provisional y definitivo
 
 Fecha: 2026-10-01  
-Estado: `CANDIDATO_C04_IMPLEMENTADO_NO_APLICADO`
+Estado: `CANDIDATO_C04_VALIDADO_PG_NO_APLICADO`
 Base: Plan ABC C04, F2 caja transaccional, C03 y `origin/release` `7859508`
 
 La revisión de `release` confirmó que existía el cierre definitivo, pero faltaba
@@ -47,22 +47,19 @@ modificando el arqueo ni ocultando el pendiente.
 La primera versión solo permite reabrir un cierre provisional. Reabrir una
 sesión `CERRADA_FINAL` queda fuera hasta aprobar una política específica.
 
-## Falta para cerrar C04
+## Pendiente para el cierre operativo de C04
 
-1. Aplicar y verificar la migración en una base PostgreSQL de prueba.
-2. Ejecutar pruebas concurrentes de cierre frente a cobro, devolución y
-   recuperación.
-3. Obtener la revisión de seguridad/advisors y preparar QA.
-4. Evidencia de que ninguna transición duplica movimientos ni permite operar en
-   una sesión definitivamente cerrada.
+1. Obtener la revisión de seguridad/advisors desde una base conectada.
+2. Decidir y autorizar la aplicación en QA; esta rama no la aplica.
+3. Mantener la autorización separada para cualquier aplicación en PROD.
 
 El adaptador/UI de TPV ya queda conectado en esta rama candidata: separa
 iniciar, confirmar provisional, finalizar y reabrir con motivo; muestra los
 bloqueos devueltos por el servidor y mantiene `operation_id` por operación.
 También queda añadido un contrato estático de concurrencia que verifica los
 bloqueos `FOR UPDATE`, la guarda de transición final y que cobros/reembolsos
-solo entren con sesión `ABIERTA`; la carrera real sigue pendiente de
-PostgreSQL.
+solo entren con sesión `ABIERTA`. El workflow PostgreSQL 16 ejecutó la carrera
+real con dos conexiones independientes y pasó.
 La revisión estática de seguridad confirma autenticación y capacidad por RPC,
 `search_path` cerrado y ausencia de ejecución para `anon`/`service_role`; el
 resultado de `supabase db advisors` queda pendiente de una base conectada.
@@ -80,7 +77,8 @@ real con dos conexiones independientes.
 
 ## Resultado de C04
 
-C04 queda implementado como candidato revisable, con la aplicación en entorno,
-las pruebas PostgreSQL/concurrentes y la revisión de seguridad todavía
-pendientes. No se escriben QA/PROD, no se hace merge y no se ejecuta deploy de
-Netlify.
+C04 queda validado en PostgreSQL 16 desechable, incluida la carrera concurrente,
+el bloqueo por pendientes, la finalización, la reapertura y la guarda contra
+cierre directo. Sigue sin aplicarse en QA/PROD; tampoco se hace merge ni se
+ejecuta deploy de Netlify. Solo queda la revisión `db advisors` con una base
+conectada y la decisión separada de promoción.
