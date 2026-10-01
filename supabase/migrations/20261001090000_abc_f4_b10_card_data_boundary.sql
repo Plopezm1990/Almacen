@@ -141,4 +141,7 @@ alter table public.abc_b07_eventos_proveedor
 comment on function private.abc_b10_payload_sin_datos_tarjeta(jsonb) is
   'B10: valida recursivamente que payloads y snapshots no contengan PAN, CVV/CVC ni datos completos de tarjeta.';
 
+revoke all on function private.abc_b10_payload_sin_datos_tarjeta(jsonb)
+  from public, anon, authenticated, service_role;
+
 commit;

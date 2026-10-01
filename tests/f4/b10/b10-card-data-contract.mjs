@@ -34,6 +34,7 @@ assert.match(sql, /efectos_pendientes[\s\S]*payload/i);
 assert.match(sql, /abc_eventos[\s\S]*payload/i);
 assert.match(sql, /abc_b07_eventos_proveedor[\s\S]*last_conflict_payload/i);
 assert.match(sql, /ABC_F4_B10_DATOS_TARJETA_EXISTENTES/i);
+assert.match(sql, /revoke all on function private\.abc_b10_payload_sin_datos_tarjeta\(jsonb\)[\s\S]*from public, anon, authenticated, service_role/i);
 assert.doesNotMatch(sql, /insert into public\.(pagos|pago_intentos|reembolsos|abc_eventos|efectos_pendientes)/i);
 
 assert.match(pciSql, /add column capture_mode text not null default 'EXTERNAL_TERMINAL'/i);
