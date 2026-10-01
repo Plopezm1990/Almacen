@@ -29,9 +29,27 @@ para el siguiente subpunto decidir el proveedor, el flujo de terminal o
 redirect/hosted fields y documentar el alcance PCI con el adquirente. No se
 inventan credenciales ni se hace deploy remoto en este paso.
 
+## B10.2 cerrado: captura configurable sin proveedor hardcodeado
+
+`private.abc_b07_proveedores.capture_mode` deja configurado por proveedor
+dónde captura la tarjeta, con tres opciones:
+
+- `EXTERNAL_TERMINAL`: el terminal físico captura la tarjeta;
+- `HOSTED_FIELDS`: el proveedor aloja los campos sensibles;
+- `HOSTED_REDIRECT`: el cliente sale a una página alojada por el proveedor.
+
+El resolver servidor-servidor devuelve únicamente ese modo no secreto junto
+con la configuración operativa. No devuelve credenciales ni datos de tarjeta,
+y ningún modo permite que el navegador envíe PAN/CVV a ABC.
+
+La opción por defecto es `EXTERNAL_TERMINAL`, porque no amplía el alcance de
+la Suite. La clasificación PCI concreta queda deliberadamente pendiente de
+confirmación con el adquirente: el código no afirma que una opción concreta
+sea automáticamente SAQ A, SAQ A-EP o equivalente.
+
 ## Evidencia
 
 El contrato `tests/f4/b10/b10-card-data-contract.mjs` comprueba la función
-recursiva, las claves prohibidas, las cinco restricciones y la ausencia de
-escrituras de negocio dentro de la migración. El workflow
+recursiva, las claves prohibidas, las cinco restricciones, los modos de
+captura y la ausencia de escrituras de negocio dentro de la migración. El workflow
 `.github/workflows/abc-f4-b10-card-data.yml` lo ejecuta en CI.
