@@ -158,6 +158,23 @@ jobs:
         shell: bash
         run: |
           set +e
+          # Los contratos F5 usan clientes `pg` separados para poder ejecutarse
+          # también de forma aislada. Este runner agregado debe proporcionarles
+          # el mismo cliente antes de lanzar la batería completa.
+          npm install --prefix "$RUNNER_TEMP/f5-pg-client" --no-save --no-package-lock --no-audit --no-fund pg@8.16.3 || {
+            echo "F5_PG_CLIENT_INSTALL_FAIL=1" >&2
+            exit 1
+          }
+          f5_pg_client="$RUNNER_TEMP/f5-pg-client/node_modules/pg"
+          export C04_PG_CLIENT="$f5_pg_client"
+          export C05_PG_CLIENT="$f5_pg_client"
+          export C06_PG_CLIENT="$f5_pg_client"
+          export C07_PG_CLIENT="$f5_pg_client"
+          export C08_PG_CLIENT="$f5_pg_client"
+          export C09_PG_CLIENT="$f5_pg_client"
+          export C10_PG_CLIENT="$f5_pg_client"
+          export C11_PG_CLIENT="$f5_pg_client"
+          export C12_PG_CLIENT="$f5_pg_client"
           bash tests/ci/preparar_postgres_local.sh > /tmp/pg_run.log 2>&1
           code=$?
           set -e
