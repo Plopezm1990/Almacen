@@ -1,7 +1,7 @@
 # F5 C11 Contrato de conciliación explicable
 
 Fecha: 2026-10-01  
-Estado: `CANDIDATO_C11_PENDIENTE_VALIDACION_PG`
+Estado: `CANDIDATO_C11_VALIDADO_PG_NO_APLICADO`
 
 ## Alcance
 
@@ -37,7 +37,8 @@ y no se ejecuta deploy de Netlify.
 
 ## Evidencia y pendiente
 
-La prueba PostgreSQL 16 cubrirá estado pendiente, estado conciliado, explicación,
+La prueba PostgreSQL 16 cubrió estado pendiente, estado conciliado, explicación,
 huella, replay, inmutabilidad y comprobación de que C05 conserva un solo
-documento. Falta ejecutar el workflow y registrar su run. Después queda C12,
-advisors, revisión de asesoría/proveedor y decisión de aplicación en QA.
+documento. El workflow pasó en 1 minuto y 7 segundos:
+https://github.com/Plopezm1990/Almacen/actions/runs/36917196726. Después queda
+C12, advisors, revisión de asesoría/proveedor y decisión de aplicación en QA.
