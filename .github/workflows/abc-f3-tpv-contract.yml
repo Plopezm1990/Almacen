@@ -7,6 +7,7 @@ on:
       - "docs/plan-abc/F3_1_CONTRATO_TPV_AUTORIDAD_2026-10-01.md"
       - "docs/plan-abc/F3_2_CONTRATO_UI_TPV_2026-10-01.md"
       - "docs/plan-abc/F3_3_CONTRATO_CUENTAS_RECUPERACION_2026-10-01.md"
+      - "docs/plan-abc/F3_4_CONTRATO_VARIANTES_SUPLEMENTOS_2026-10-01.md"
       - "tests/f3/tpv/**"
       - ".github/workflows/abc-f3-tpv-contract.yml"
   pull_request:
@@ -14,6 +15,7 @@ on:
       - "docs/plan-abc/F3_1_CONTRATO_TPV_AUTORIDAD_2026-10-01.md"
       - "docs/plan-abc/F3_2_CONTRATO_UI_TPV_2026-10-01.md"
       - "docs/plan-abc/F3_3_CONTRATO_CUENTAS_RECUPERACION_2026-10-01.md"
+      - "docs/plan-abc/F3_4_CONTRATO_VARIANTES_SUPLEMENTOS_2026-10-01.md"
       - "tests/f3/tpv/**"
       - ".github/workflows/abc-f3-tpv-contract.yml"
 
@@ -31,3 +33,5 @@ jobs:
         run: node tests/f3/tpv/f3-tpv-ui-contract.mjs
       - name: Validar recuperación TPV F3.3
         run: node tests/f3/tpv/f3-tpv-recovery-contract.mjs
+      - name: Validar variantes TPV F3.4
+        run: node tests/f3/tpv/f3-tpv-variants-contract.mjs
