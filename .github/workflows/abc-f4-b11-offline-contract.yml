@@ -6,6 +6,7 @@ on:
     paths:
       - "docs/plan-maestro/PM03_CONTRATOS_MINIMOS_PROPUESTA.md"
       - "docs/plan-abc/F4_B11_CONTRATO_TECNICO_2026-10-01.md"
+      - "docs/plan-abc/F4_B11_CONTINGENCIA_TERMINAL_OFFLINE_2026-10-01.md"
       - "source-recovery/fuente-recuperado.js"
       - "tests/pm07/frontend-contract.mjs"
       - "tests/f4/b11/**"
