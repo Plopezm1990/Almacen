@@ -1,7 +1,7 @@
 # F5 C09 Contrato de impresión sin duplicar la venta
 
 Fecha: 2026-10-01  
-Estado: `CANDIDATO_C09_PENDIENTE_VALIDACION_PG`
+Estado: `CANDIDATO_C09_VALIDADO_PG_NO_APLICADO`
 
 ## Alcance
 
@@ -37,8 +37,9 @@ documento histórico y no se aplica ninguna migración remota.
 
 ## Evidencia y pendiente
 
-La prueba PostgreSQL 16 cubrirá impresión original, replay, reimpresión,
-motivo obligatorio, inmutabilidad y comprobación de que C05 conserva un solo
-documento. Falta ejecutar el workflow y registrar su run. Después quedan C10,
-advisors, revisión de asesoría/proveedor y decisión de aplicación en QA. No se
-ejecuta deploy de Netlify.
+La prueba PostgreSQL 16 cubrió impresión original, replay, reimpresión, motivo
+obligatorio, inmutabilidad y comprobación de que C05 conserva un solo
+documento. El workflow pasó en 27 segundos:
+https://github.com/Plopezm1990/Almacen/actions/runs/36914948992. Después quedan
+C10, advisors, revisión de asesoría/proveedor y decisión de aplicación en QA.
+No se ejecuta deploy de Netlify.
