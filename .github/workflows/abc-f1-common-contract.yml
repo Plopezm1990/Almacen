@@ -5,11 +5,13 @@ on:
     branches: [codex/f1-contratos-comunes]
     paths:
       - "docs/plan-abc/F1_1_CONTRATOS_COMUNES_2026-10-01.md"
+      - "docs/plan-abc/F1_2_MATRIZ_ESTADOS_TRANSICIONES_2026-10-01.md"
       - "tests/f1/f1-common-contract.mjs"
       - ".github/workflows/abc-f1-common-contract.yml"
   pull_request:
     paths:
       - "docs/plan-abc/F1_1_CONTRATOS_COMUNES_2026-10-01.md"
+      - "docs/plan-abc/F1_2_MATRIZ_ESTADOS_TRANSICIONES_2026-10-01.md"
       - "tests/f1/f1-common-contract.mjs"
       - ".github/workflows/abc-f1-common-contract.yml"
 
