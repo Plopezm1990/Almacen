@@ -5,11 +5,13 @@ on:
     branches: [codex/f2-base-transaccional]
     paths:
       - "docs/plan-abc/F2_1_BASE_TRANSACCIONAL_CONTRATO_2026-10-01.md"
+      - "docs/plan-abc/F2_2_INVENTARIO_DEPENDENCIAS_RELEASE_2026-10-01.md"
       - "tests/f2/f2-base-contract.mjs"
       - ".github/workflows/abc-f2-base-contract.yml"
   pull_request:
     paths:
       - "docs/plan-abc/F2_1_BASE_TRANSACCIONAL_CONTRATO_2026-10-01.md"
+      - "docs/plan-abc/F2_2_INVENTARIO_DEPENDENCIAS_RELEASE_2026-10-01.md"
       - "tests/f2/f2-base-contract.mjs"
       - ".github/workflows/abc-f2-base-contract.yml"
 
