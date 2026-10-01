@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 const path = 'docs/plan-abc/F0_INVENTARIO_A01_C12_2026-10-01.md';
 const inventory = fs.readFileSync(path, 'utf8');
 const pilot = fs.readFileSync('docs/plan-abc/F0_2_DECISION_PILOTO_2026-10-01.md', 'utf8');
+const journeys = fs.readFileSync('docs/plan-abc/F0_3_MAPA_RECORRIDOS_2026-10-01.md', 'utf8');
 const ids = [
   ...Array.from({ length: 12 }, (_, i) => `A${String(i + 1).padStart(2, '0')}`),
   ...Array.from({ length: 12 }, (_, i) => `B${String(i + 1).padStart(2, '0')}`),
@@ -27,5 +28,13 @@ assert.match(pilot, /Cajas simultáneas/);
 assert.match(pilot, /Responsable de aceptación/);
 assert.match(pilot, /sin incluir\s+contraseñas ni\s+secretos/i);
 assert.match(pilot, /No requiere migración\s+remota, secretos, merge ni deploy/i);
+
+for (const id of ['R01', 'R02', 'R03', 'R04', 'R05', 'R06', 'R07', 'R08', 'R09', 'R10']) {
+  assert.match(journeys, new RegExp(`\\| ${id} \\|`), `F0 falta ${id}`);
+}
+assert.match(journeys, /PENDIENTE_EJECUCION_CON_DATOS_FICTICIOS/);
+assert.match(journeys, /no se guardarán contraseñas, PAN, CVV, tokens/i);
+assert.match(journeys, /no cierra A01–C12/i);
+assert.match(journeys, /sin\s+despliegues de Netlify/i);
 
 console.log('ABC_F0_INVENTORY_CONTRACT=PASS');
