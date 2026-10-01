@@ -36,6 +36,23 @@ async function bootstrap(db) {
   for (const name of migrations) await db.query(await readFile(resolve(root, 'supabase/migrations', name), 'utf8'));
   await db.query(await readFile(resolve(root, 'supabase/migrations/20260928223000_pm10_cierre_sesion_caja.sql'), 'utf8'));
   await db.query(await readFile(resolve(root, 'supabase/migrations/20261001140000_abc_f5_c04_close_reopen.sql'), 'utf8'));
+  await db.query(`
+    insert into auth.users(id) values ('${owner}') on conflict (id) do nothing;
+    insert into public.empresas(id,nombre,activo) values ('${empresa}','Empresa C04',true);
+    insert into public.locales(id,empresa_id,nombre,activo) values ('${local}','${empresa}','Local C04',true);
+    insert into public.membresias_usuario(user_id,empresa_id,local_id,todos_locales,rol,activo)
+      values ('${owner}','${empresa}','${local}',false,'Propietario',true);
+    insert into public.terminales_tpv(id,empresa_id,local_id,nombre,activo)
+      values ('${terminal}','${empresa}','${local}','Terminal C04',true);
+    insert into public.cajas_fisicas(id,empresa_id,local_id,nombre,activo)
+      values ('30000000-0000-0000-0000-000000000098','${empresa}','${local}','Caja C04',true);
+    insert into public.caja_sesiones(id,empresa_id,local_id,caja_id,estado,version,abierta_at,abierta_por)
+      values ('${session}','${empresa}','${local}','30000000-0000-0000-0000-000000000098','ABIERTA',1,now(),'${owner}');
+    insert into public.caja_sesion_terminales(empresa_id,local_id,session_id,terminal_id,desde)
+      values ('${empresa}','${local}','${session}','${terminal}',now());
+    insert into public.caja_sesion_responsables(empresa_id,local_id,session_id,user_id,desde,asignado_por,motivo)
+      values ('${empresa}','${local}','${session}','${owner}',now(),'${owner}','TEST_C04');
+  `);
 }
 
 async function context(db) {
