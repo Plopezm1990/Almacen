@@ -27,6 +27,9 @@ del negocio. Hasta entonces, la contingencia operativa es anotar el pedido o
 usar un terminal independiente conectado y conciliarlo después; no se finge
 una confirmación bancaria en ABC.
 
+El diseño de esa contingencia queda descrito, sin activarse, en
+`F4_B11_CONTINGENCIA_TERMINAL_OFFLINE_2026-10-01.md`.
+
 ## Evidencia
 
 `tests/f4/b11/b11-offline-boundary-contract.mjs` comprueba la decisión, el
