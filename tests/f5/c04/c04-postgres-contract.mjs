@@ -105,7 +105,7 @@ try {
 
   await rejects(call(first, 'abc_finalizar_cierre_sesion_caja', ['c04.pg.final.blocked', empresa, local, { type: 'uuid', value: session }, { type: 'uuid', value: terminal }, 'EUR', { type: 'date', value: day }]), 'cierre_definitivo_bloqueado');
 
-  await admin.query(`update public.efectos_pendientes set estado='COMPLETADO',completed_at=now() where dedupe_key='c04.pg.effect.dedupe'`);
+  await admin.query(`update public.efectos_pendientes set estado='COMPLETADO',completed_at=now(),next_attempt_at=null where dedupe_key='c04.pg.effect.dedupe'`);
   const finalized = await call(first, 'abc_finalizar_cierre_sesion_caja', ['c04.pg.final.ok.0001', empresa, local, { type: 'uuid', value: session }, { type: 'uuid', value: terminal }, 'EUR', { type: 'date', value: day }]);
   assert.equal(finalized.estado, 'CERRADA_FINAL');
 
