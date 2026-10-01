@@ -5,6 +5,8 @@ const migrationPath = 'supabase/migrations/20261001090000_abc_f4_b10_card_data_b
 const sql = fs.readFileSync(migrationPath, 'utf8');
 const pciPath = 'supabase/migrations/20261001100000_abc_f4_b10_pci_capture_modes.sql';
 const pciSql = fs.readFileSync(pciPath, 'utf8');
+const gatePath = 'supabase/migrations/20261001110000_abc_f4_b10_pci_review_gate.sql';
+const gateSql = fs.readFileSync(gatePath, 'utf8');
 
 assert.match(sql, /create function private\.abc_b10_payload_sin_datos_tarjeta\(p_payload jsonb\)/i);
 assert.match(sql, /language plpgsql[\s\S]*immutable[\s\S]*security definer[\s\S]*set search_path=''/i);
@@ -40,5 +42,11 @@ for (const mode of ['EXTERNAL_TERMINAL', 'HOSTED_FIELDS', 'HOSTED_REDIRECT']) {
 assert.match(pciSql, /'capture_mode',\s*p\.capture_mode/i);
 assert.match(pciSql, /revoke all on function public\.abc_b07_obtener_configuracion/i);
 assert.match(pciSql, /grant execute on function public\.abc_b07_obtener_configuracion[\s\S]*to service_role/i);
+
+assert.match(gateSql, /add column pci_review_status text not null default 'PENDING_ACQUIRER'/i);
+assert.match(gateSql, /abc_b10_pci_review_status_ck/i);
+assert.match(gateSql, /abc_b10_pci_review_enable_ck/i);
+assert.match(gateSql, /enabled = false or pci_review_status = 'APPROVED'/i);
+assert.match(gateSql, /ABC_F4_B10_PCI_GATE_REQUIERE_REVISION/i);
 
 console.log('ABC_F4_B10_CARD_DATA=PASS');

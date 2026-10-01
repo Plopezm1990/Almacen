@@ -47,9 +47,24 @@ la Suite. La clasificación PCI concreta queda deliberadamente pendiente de
 confirmación con el adquirente: el código no afirma que una opción concreta
 sea automáticamente SAQ A, SAQ A-EP o equivalente.
 
+## B10.3 cerrado: compuerta de revisión del adquirente
+
+`private.abc_b07_proveedores.pci_review_status` nace como
+`PENDING_ACQUIRER`. La restricción `abc_b10_pci_review_enable_ck` impide que
+un proveedor quede `enabled=true` mientras no tenga estado `APPROVED`.
+También se comprueban las filas existentes antes de crear la restricción; si
+hubiera un proveedor activo sin revisión, la migración se detendría para no
+convertir una situación desconocida en una aprobación implícita.
+
+La Suite queda lista para registrar la decisión del adquirente sin guardar su
+documentación dentro de la base de datos ni activar todavía un proveedor
+real. Para cerrar la parte operativa solo faltan el adquirente, el proveedor,
+el modo elegido y la evidencia de revisión que aporte el usuario.
+
 ## Evidencia
 
 El contrato `tests/f4/b10/b10-card-data-contract.mjs` comprueba la función
 recursiva, las claves prohibidas, las cinco restricciones, los modos de
-captura y la ausencia de escrituras de negocio dentro de la migración. El workflow
+captura, la compuerta de aprobación y la ausencia de escrituras de negocio
+dentro de la migración. El workflow
 `.github/workflows/abc-f4-b10-card-data.yml` lo ejecuta en CI.
