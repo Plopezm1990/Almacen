@@ -5,6 +5,7 @@ const contract = fs.readFileSync('docs/plan-abc/F1_1_CONTRATOS_COMUNES_2026-10-0
 const transitions = fs.readFileSync('docs/plan-abc/F1_2_MATRIZ_ESTADOS_TRANSICIONES_2026-10-01.md', 'utf8');
 const permissions = fs.readFileSync('docs/plan-abc/F1_3_MATRIZ_PERMISOS_2026-10-01.md', 'utf8');
 const fiscal = fs.readFileSync('docs/plan-abc/F1_4_DECISION_FISCAL_EMISOR_2026-10-01.md', 'utf8');
+const monetary = fs.readFileSync('docs/plan-abc/F1_5_VECTORES_MONETARIOS_2026-10-01.md', 'utf8');
 
 for (const term of [
   'Moneda', 'Redondeo', 'Impuestos', 'Precio histórico', 'Descuento', 'Reparto',
@@ -41,5 +42,13 @@ for (const term of ['Fuentes oficiales', 'Datos que debe confirmar la asesoría'
 assert.match(fiscal, /PENDIENTE_ASESORIA/);
 assert.match(fiscal, /no se presume resuelta/i);
 assert.match(fiscal, /No requiere secretos, migración remota, merge ni deploy/i);
+
+for (const id of ['M01', 'M02', 'M03', 'M04', 'M05', 'M06', 'M07', 'M08', 'M09', 'M10', 'M11', 'M12']) {
+  assert.match(monetary, new RegExp(`\\| ${id} \\|`), `F1.5 falta ${id}`);
+}
+assert.match(monetary, /PENDIENTE_APROBACION_DE_PARAMETROS/);
+assert.match(monetary, /servidor y UI/i);
+assert.match(monetary, /no se fijan\s+tasas fiscales reales/i);
+assert.match(monetary, /no requiere secrets, migración remota, merge ni deploy/i);
 
 console.log('ABC_F1_COMMON_CONTRACT=PASS');

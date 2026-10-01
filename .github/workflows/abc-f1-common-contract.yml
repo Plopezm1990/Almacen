@@ -8,6 +8,7 @@ on:
       - "docs/plan-abc/F1_2_MATRIZ_ESTADOS_TRANSICIONES_2026-10-01.md"
       - "docs/plan-abc/F1_3_MATRIZ_PERMISOS_2026-10-01.md"
       - "docs/plan-abc/F1_4_DECISION_FISCAL_EMISOR_2026-10-01.md"
+      - "docs/plan-abc/F1_5_VECTORES_MONETARIOS_2026-10-01.md"
       - "tests/f1/f1-common-contract.mjs"
       - ".github/workflows/abc-f1-common-contract.yml"
   pull_request:
@@ -16,6 +17,7 @@ on:
       - "docs/plan-abc/F1_2_MATRIZ_ESTADOS_TRANSICIONES_2026-10-01.md"
       - "docs/plan-abc/F1_3_MATRIZ_PERMISOS_2026-10-01.md"
       - "docs/plan-abc/F1_4_DECISION_FISCAL_EMISOR_2026-10-01.md"
+      - "docs/plan-abc/F1_5_VECTORES_MONETARIOS_2026-10-01.md"
       - "tests/f1/f1-common-contract.mjs"
       - ".github/workflows/abc-f1-common-contract.yml"
 
