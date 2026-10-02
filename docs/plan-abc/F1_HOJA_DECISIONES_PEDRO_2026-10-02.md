@@ -121,11 +121,14 @@ Resultado: `F6_INVENTARIO_CAPA_CONFIGURACION_2026-10-02.md`.
 | Por dónde empezar | **Pieza 1, solo en QA y sin desplegar la pantalla** | Autorizada y hecha (ver `F6_PIEZA1_DIA_CAJAS_2026-10-02.md`) |
 | D30 (probar P1 en el preview 118) | **Aún no, lo prueba Pedro después** | Sigue abierta |
 
-**Pendiente de elegir (D12, valor inicial 0 %):** hoy, sin una política escrita, el encargado puede descontar
-hasta un 20 % (valor escrito en `abc_descuento_politica_usuario` y asumido por los contratos A09). Para que el
-inicial sea 0 % hay dos caminos: **(A)** por datos, escribir una política explícita de 0 % para el encargado al
-dar de alta cada empresa o local (no toca código); **(B)** cambiar el valor por defecto del código y adaptar los
-contratos A09. Recomendación: A ahora, B al promocionar. No se ha tocado nada de descuentos.
+**D12, valor inicial 0 % (resuelto el 2/10/2026): Pedro elige la opción A.** Hoy, sin una política escrita, el
+código deja al encargado descontar hasta un 20 % (valor escrito en `abc_descuento_politica_usuario` y asumido por
+los contratos A09). Se elige el camino **A: por datos**, escribir una política explícita de 0 % para el encargado
+en cada empresa y local, sin tocar código (la opción B, cambiar el valor por defecto del código y adaptar los
+contratos A09, queda para el momento de promocionar). Aplicado en QA: ver `F6_PIEZA1_DIA_CAJAS_2026-10-02.md`.
+**Consecuencia:** como no hay un procedimiento de alta de empresa o local que lo haga solo, **cada empresa o local
+nuevo debe recibir esa política de 0 % al darse de alta**; si no, el local nuevo seguiría con el 20 % por defecto
+del código hasta aplicar la opción B.
 
 ## Nivel 1 — necesarias para empezar las etapas 1 y 2 (terreno de pruebas y pantalla)
 

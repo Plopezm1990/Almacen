@@ -5,7 +5,7 @@ Alcance: **solo QA** (`qjqorixtkilwsndqayyx`) y repositorio. **Producción no to
 modificada.**
 Autorización: «Sí, solo en QA y sin desplegar la pantalla» (Pedro, 2/10/2026), sobre el diseño de
 `F6_INVENTARIO_CAPA_CONFIGURACION_2026-10-02.md`.
-Estado: `PIEZA_1_APLICADA_Y_VERIFICADA_EN_QA_SIN_PANTALLA_D12_PENDIENTE_DE_ELEGIR`
+Estado: `PIEZA_1_APLICADA_Y_VERIFICADA_EN_QA_SIN_PANTALLA_D12_OPCION_A_APLICADA_EN_QA`
 
 ## Qué se hizo
 
@@ -32,10 +32,8 @@ Detalles que conviene saber:
 ## Qué NO se hizo
 
 - No hay **pantalla** para configurar: solo funciones del servidor.
-- **D12 (descuento del encargado a 0 %)**: no se ha tocado. Hoy sin política escrita el encargado puede hasta
-  el 20 % (valor en código y en los contratos A09). Falta elegir entre **(A)** escribir una política explícita
-  de 0 % por datos al dar de alta cada empresa/local o **(B)** cambiar el valor por defecto del código y adaptar
-  los contratos A09. Recomendación: A ahora, B al promocionar.
+- **D12 (descuento del encargado a 0 %)**: ver la sección siguiente (opción A aplicada en QA). El valor por
+  defecto del código (20 %) **no** se ha cambiado.
 - No se han retirado los roles Churrero/a, Básico y Estándar (es de la pieza de permisos; hay que reasignar
   personas y no se ha revisado producción).
 - No existe el «propietario de la plataforma» (Pedro configurando cualquier empresa) ni ajustes a nivel de
@@ -55,6 +53,29 @@ función, como Propietario, motivo «D06 (Pedro, 2/10/2026)…»:
 Hasta esa medianoche sigue mandando el 04:00. Las cuentas y pedidos ya creados conservan su día guardado
 (`opened_operating_day`, `created_operating_day`…): el cambio solo afecta a lo que se registre después. Quedan
 dos eventos de auditoría con el actor propietario.
+
+## D12: descuento inicial del encargado a 0 % (opción A, solo QA)
+
+Pedro eligió la opción A el 2/10/2026: política explícita **por datos**, sin tocar código. Se escribió con la
+función existente `abc_configurar_descuento_politica`, como Propietario, motivo «D12 (Pedro, 2/10/2026, opción
+A)…», una vez por local activo de QA:
+
+| Local | Antes | Ahora (Encargado) |
+|---|---|---|
+| QA-A1 | sin política escrita (el código daba 20 %) | **0 %**: puede solicitar y escalar al propietario; no puede aplicar ni autorizar por sí mismo; sin cortesía |
+| QA-A2 | política escrita de 20 % (aplicar sí, autorizar no) | **0 %**, igual que arriba |
+
+- El Propietario sigue en 100 % (sin cambios). Quedan dos eventos de auditoría (`DESCUENTO_POLITICA_CONFIGURADA`)
+  con valor anterior, nuevo, motivo y actor; QA-A2 muestra «20 → 0».
+- Comprobado con la función de política efectiva: el encargado de QA-A2 resuelve a 0 % (aplicar y autorizar
+  «false», solicitar y escalar «true»). QA-A1 no tiene ningún encargado en QA, así que ahí solo se comprobó que la
+  política quedó escrita.
+- Los locales `QA-B1` y `QA-B2` están inactivos y no se tocaron.
+- **Límite de la opción A:** solo cubre los locales ya existentes. No hay procedimiento de alta que escriba esta
+  política, así que **cada empresa o local nuevo** debe recibirla al darse de alta; si no, empezaría con el 20 %
+  del código. La opción B (cambiar el valor por defecto y adaptar los contratos A09) lo resuelve de raíz y queda
+  para la promoción.
+- Los contratos A09 no se ven afectados: usan sus propios datos de prueba, no los de QA.
 
 ## Pruebas
 
@@ -85,7 +106,7 @@ Hallazgos durante las pruebas (corregidos):
 - Producción **no** se consultó: puede tener una versión distinta de `abc_abrir_sesion_caja` (la migración se
   detendría por la huella) o de las funciones de membresía.
 - No se probó con carga concurrente real; el cerrojo por local se razona, no se midió.
-- Antes de promocionar: registrar `cfg1-static-contract.mjs` y el contrato vivo en la puerta de CI, y decidir D12.
+- Antes de promocionar: registrar `cfg1-static-contract.mjs` y el contrato vivo en la puerta de CI, y decidir si se pasa de la opción A a la B (D12).
 - La migración quedó registrada en QA con la marca `20261002164602` (la que asigna la herramienta); el archivo
   del repositorio se llama `20261002190000_abc_config_pieza1_dia_cajas.sql`.
 
