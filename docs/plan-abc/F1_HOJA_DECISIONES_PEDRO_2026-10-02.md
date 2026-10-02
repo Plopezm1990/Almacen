@@ -137,6 +137,9 @@ probada en local; **aplicada en QA por Pedro a mano (editor SQL) y verificada co
 **Confirmado por Pedro el 2/10/2026:** umbral inicial 0 €, autoaprobación permitida (queda en la auditoría) y la pantalla
 actual se deja hasta la pieza de pantalla (en QA, finalizar un cierre con diferencia dará error hasta entonces).
 
+**Pieza 3 (D02, modalidades por local) elegida por Pedro el 2/10/2026 y aplicada solo en QA**; verificada con 79/79 comprobaciones.
+Informe: `F6_PIEZA3_MODALIDADES_2026-10-02.md`. Valor por defecto: todas las modalidades habilitadas (comportamiento actual).
+
 ## Nivel 1 — necesarias para empezar las etapas 1 y 2 (terreno de pruebas y pantalla)
 
 | ID | Decisión | Recomendación | Por qué importa | Desbloquea |
