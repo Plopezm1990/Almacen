@@ -1,7 +1,7 @@
 # Hoja de decisiones para Pedro (Plan ABC, etapa 0)
 
 Fecha: 2026-10-02
-Estado: `NIVELES_1_Y_2_ACEPTADOS_CON_HECHOS_ABIERTOS_NIVELES_3_Y_4_PENDIENTES`
+Estado: `NIVELES_1_Y_2_ACEPTADOS_D01_A_D06_D12_D15_RESPONDIDOS_EN_SEGUNDA_RONDA_LECTURAS_POR_CONFIRMAR_D19_Y_NIVELES_3_Y_4_PENDIENTES`
 Base: `a5a4321`, las matrices `F0_MATRIZ_A01_A12_EVIDENCIA_2026-10-02.md` y
 `F0_MATRIZ_B01_C12_EVIDENCIA_2026-10-02.md`, y las fichas de la rama
 `codex/f1-contratos-comunes` (F1.1–F1.6) y `codex/f0-inventario-abc` (F0.2).
@@ -30,8 +30,7 @@ Pedro respondió: «Acepto las recomendadas de los niveles 1 y 2». Se registra 
 | Estado | Decisiones |
 |---|---|
 | **Aceptada la recomendación** | D02, D06 (condicional), D07, D08, D09, D10, D11, D13, D14, D16, D17 (provisional, hasta los 12 vectores F1.5), D18 |
-| **Sigue abierta: es un dato tuyo, no tenía recomendación** | D01 (local piloto), D03 (cajas simultáneas y roles), D04 (equipos), D05 (quién acepta) |
-| **Aceptada la regla, falta la cifra** | D12 (porcentaje de descuento del encargado), D15 (umbral de diferencia de caja) |
+| **Respondidas en la segunda ronda (2/10/2026, ver más abajo)** | D01, D03, D04, D05 (eran datos tuyos); D02 y D06 (la respuesta sustituye a la condicional de la primera ronda); D12 y D15 (en vez de cifra, dijiste cómo quieres que funcionen). Con **lecturas mías por confirmar** |
 | **Aceptada, pero hay que responder lo que deja pendiente** | D19 (los `pendiente` de la matriz F1.3) |
 | **Condicional que depende de un hecho tuyo** | D02 (qué modalidades usas hoy), D06 (¿hay servicio que cruza la medianoche?) |
 | **Resuelta el 2/10 tras la etapa 1** | D31: Pedro decide **precio de carta con IVA incluido**. Implementada en QA con P3 (`F5_P3_CATALOGO_AUTORITATIVO_2026-10-02.md`); falta confirmarlo con la asesoría |
@@ -41,6 +40,31 @@ Efecto: P3 (ruta autoritativa de `productos`) quedó autorizada por Pedro el 2/1
 en QA. La **D07 se ejecutó** (etapa 1, `F5_ETAPA1_SIEMBRA_QA_2026-10-02.md`). La regla
 de día operativo sembrada en QA (corte 04:00) es **de prueba**: D06 sigue abierta para
 el local piloto. Nada de lo aceptado autoriza producción, despliegues ni gasto.
+
+## Segunda respuesta de Pedro (2/10/2026, tras cerrar P3 y P3b)
+
+Pedro respondió a los datos del nivel 1 y a D12/D15. Una respuesta tuya es una decisión; **mi lectura
+de una respuesta ambigua no lo es** hasta que la confirmes (última columna).
+
+| ID | Lo que dijiste (resumido) | Cómo se registra | Efecto en el plan | Por confirmar |
+|---|---|---|---|---|
+| D01 | Sin empresa fija: tú, como propietario, das de alta las empresas en el programa; quieres un programa para vender a distintas empresas | **Producto multiempresa, sin local piloto único.** El alta de empresas la hace el propietario de la plataforma. Las pruebas siguen en QA con empresas y locales ficticios (`QA-EMP-A`, A1/A2) | Cambia el supuesto de F1 («un solo local representativo»): todo se diseña por empresa y local, sin datos fijos. El primer cliente real se decide con D29 | ¿Es esta la lectura correcta? |
+| D02 | Todas las modalidades que se puedan seleccionar; cada empresa o local usa las suyas | Modalidades **configurables por empresa/local**, todas disponibles | **Amplía** el alcance respecto a la recomendación («empezar por las de uso diario»): mesas, unir cuentas, repartos y para llevar deben poder activarse por local. No se ha comprobado cuánta configuración por local existe hoy | — |
+| D03 | Máximo 10 cajas abiertas a la vez; roles configurables según empresa o local | Límite de **10 cajas simultáneas**; **roles y permisos configurables por empresa/local** | La matriz de permisos F1.3 pasa de fija a **plantilla por defecto + ajustes del propietario**; cambia cómo se cierra D19 y las capacidades del servidor | ¿10 por local o en total? «Roles configurables»: ¿ajustar los permisos de los cuatro roles actuales o crear roles nuevos con nombre propio? |
+| D04 | Ningún equipo por ahora; configurable para los equipos de cada empresa o local | «No aplica» hoy; **equipos configurables por empresa/local** | No se compra ni se integra nada. Hará falta un registro de equipos por local, que se diseña cuando toque | — |
+| D05 | El propietario | **Acepta el resultado el propietario (Pedro)** | Ninguna fila pasa a «verificado» sin su aceptación | Entiendo «propietario de la plataforma», no el de cada cliente |
+| D06 | Sí, implementarlo con corte a las 00:00 | **00:00** (`Europe/Madrid`) como regla por defecto. El modelo ya guarda la regla por local (`abc_operating_day_reglas`) | La regla de prueba de QA (04:00) no vale para la aceptación; se cambia a 00:00 cuando lo autorices | Un servicio que cruce la medianoche quedaría partido en dos días. ¿00:00 por defecto y configurable por local? |
+| D12 | Configurable: lo que decida el propietario | El % de descuento del encargado **no es una cifra fija: lo configura el propietario** | Hace falta ese ajuste por empresa/local. Propuesta mía: valor inicial 0 % (sin descuento libre) hasta que lo configure | La propuesta del 0 % inicial |
+| D15 | Cuando haya diferencia en caja, que se registre en la cinta de auditoría | Toda diferencia de caja **se registra en la auditoría** | No diste umbral: queda por decidir si además exige motivo y aprobación del propietario. Mi recomendación: motivo siempre; aprobación sobre un umbral que configura el propietario. Se comprobará qué registra hoy el cierre | ¿Motivo obligatorio y umbral configurable? |
+
+**Consecuencia transversal.** D02, D03, D04, D06, D12 y D15 apuntan a lo mismo: una **capa de
+configuración por empresa y local** (modalidades, roles y permisos, equipos, corte del día, límites de
+descuento y de diferencia de caja). No se ha inventariado qué existe hoy ni se ha empezado nada; propongo
+una etapa previa para inventariarlo y dibujarlo antes de construir flujos. Requiere tu autorización.
+
+**Sigue abierto:** D19 (siete casillas de la matriz de permisos, ahora condicionadas por D03), D31
+(confirmación de la asesoría), D21, D24 y D27 (datos tuyos) y las recomendaciones de los niveles 3 y 4
+(D20, D22, D23, D25, D26, D28, D29, D30).
 
 ## Nivel 1 — necesarias para empezar las etapas 1 y 2 (terreno de pruebas y pantalla)
 
