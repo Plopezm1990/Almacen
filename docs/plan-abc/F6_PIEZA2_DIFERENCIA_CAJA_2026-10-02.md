@@ -4,14 +4,13 @@ Fecha: 2026-10-02
 Alcance: **solo QA** (`qjqorixtkilwsndqayyx`) y repositorio. **Producción no tocada. Pantalla no modificada.**
 Autorización: «Autorizo la pieza 2 solo en QA» (Pedro, 2/10/2026), sobre el diseño de
 `F6_INVENTARIO_CAPA_CONFIGURACION_2026-10-02.md`.
-Estado: `PIEZA_2_ESCRITA_Y_VERIFICADA_EN_REPLICA_LOCAL_NO_APLICADA_EN_QA_POR_APROBACION_PENDIENTE`
+Estado: `PIEZA_2_APLICADA_Y_VERIFICADA_EN_QA_SIN_PANTALLA`
 
-> **Aviso importante.** La migración **no está aplicada en QA**. La herramienta de Supabase exige aprobación
-> para aplicarla (toca restricciones de una tabla) y esa aprobación no se concedió: la primera llamada se
-> quedó esperando hasta cortarse a los 60 s y la segunda devolvió «requiere aprobación». Se comprobó después que
-> QA quedó intacta (sin tabla nueva, sin funciones nuevas, sin la restricción cambiada, migración sin registrar,
-> sin transacciones ni bloqueos abiertos). Todo lo demás está hecho y probado en una réplica local; falta
-> aplicarla en QA, ejecutar allí el contrato vivo y dejarlo todo verificado.
+La migración la **pegó Pedro a mano en el editor SQL de Supabase de QA** (resultado «Success. No rows returned»)
+porque la herramienta de aplicar migraciones de la sesión pedía una aprobación que no llegó a concederse (dos
+intentos se cortaron sin aplicar nada; se comprobó entre medias que QA seguía intacta). Por eso **no aparece en la
+lista de migraciones de Supabase** (la herramienta es la que la registra); el archivo del repositorio es
+`supabase/migrations/20261002210000_abc_config_pieza2_diferencia_caja.sql`.
 
 ## Qué se pidió (D15 y D19)
 
@@ -66,13 +65,22 @@ Límites que siguen abiertos:
 
 | Prueba | Resultado |
 |---|---|
-| Contrato vivo `tests/cfg/cfg2-contract.sql` en una réplica local (cadena de migraciones con C04, funciones reales de membresía), 6 trozos independientes | **201/201** |
-| Contrato vivo de la pieza 1 con la pieza 2 aplicada (regresión) | **102/102** |
+| Contrato vivo `tests/cfg/cfg2-contract.sql` **en QA**, con `ROLLBACK`, en cuatro llamadas (la herramienta corta a los 60 s): ajustes 44/44, aprobación y dentro del umbral 57/57, rechazo y umbral 68/68, guarda y aislamiento 32/32 | **201/201** |
+| Mismo contrato en una réplica local (cadena de migraciones con C04, funciones reales de membresía), 6 trozos independientes | **201/201** |
+| Contrato vivo de la pieza 1 con la pieza 2 aplicada, en la réplica local (regresión) | **102/102** |
 | Contrato original de C04 con Postgres real (`c04-postgres-contract.mjs`) con las piezas 1 y 2 aplicadas | **PASS** |
 | Contrato original de C12 con Postgres real (`c12-postgres-contract.mjs`) con las piezas 1 y 2 aplicadas | **PASS** |
 | Contrato estático `tests/cfg/cfg2-static-contract.mjs` | OK |
 | Mutantes del contrato vivo: 22 averías provocadas (sin guarda, guarda ciega al cierre final, «mayor o igual», el encargado decide, motivo opcional, rechazo que no bloquea, umbral por defecto distinto, sin valor absoluto, evento equivocado…) | **22/22 detectadas** |
 | Mutantes del contrato estático: 27 averías provocadas (permisos, `search_path`, ACL, RLS, política, toca C04, borra, huella, rangos, orden de bloqueo…) | **27/27 detectadas** |
+
+Estado de QA comprobado **después** de aplicar y de las pruebas: tabla `caja_cierre_diferencias` con RLS activada, sin
+políticas y sin permisos de tabla; las 8 funciones son SECURITY DEFINER con `search_path` vacío, las 3 privadas sin
+permiso para nadie y las 5 públicas solo para `authenticated` (ni `anon`, ni `service_role`, ni `public`); la restricción de
+la clave de ajustes admite `caja_diferencia_umbral`; el trigger nuevo convive con el de C04; **cero residuos** de las
+pruebas (empresas, locales, membresías, cajas, sesiones, diferencias, eventos y operaciones `CFG-*`), sin transacciones
+abiertas ni bloqueos; la única sesión de QA sigue `ABIERTA`, las reglas del día siguen en 00:00 y no hay ajustes
+guardados (el umbral rige por su valor por defecto, 0).
 
 Cobertura destacable del contrato vivo: permisos por rol y por empresa/local (`anon` y `service_role` rechazados),
 idempotencia con replay y conflicto de `operation_id`, justo en el umbral y un céntimo por encima, umbral 0, sobrante,
@@ -89,17 +97,21 @@ Hallazgos durante las pruebas (resueltos en el propio contrato):
 
 ## Límites de la verificación
 
-- **No se ha ejecutado nada de la pieza 2 en QA.** La réplica local no es QA: incluye las migraciones hasta C04,
-  pero no las posteriores a C04 en todos los casos; la ejecución en QA es la que cubrirá la cadena real.
+- La réplica local no incluye todas las migraciones posteriores a C04; la ejecución en QA es la que cubre la cadena
+  real. Aun así, **QA no es producción**.
 - Producción **no** se consultó: podría tener versiones distintas de las funciones que la migración comprueba por
   huella (en ese caso se detendría sin cambiar nada).
 - Sin prueba de carga ni de concurrencia real. El orden de bloqueo (primero el cierre, luego la sesión, igual que
   C04) se razona y se comprueba por texto, no se midió.
+- La migración no está registrada en la lista de migraciones de Supabase de QA (se aplicó a mano).
+- Para el contrato en QA, la prueba de «el Encargado sin acceso a ese local» desactiva su membresía en lugar de
+  borrarla (la herramienta pide una confirmación extra con sentencias de borrado, aunque sea dentro de una
+  transacción que se revierte); es una prueba equivalente y más realista, y el archivo del repositorio ya usa esa
+  versión (201/201 también en local).
 - Antes de promocionar: registrar `cfg2-static-contract.mjs` y el contrato vivo en la puerta de CI, y adaptar la
   pantalla (pieza 6) para no romper el cierre con diferencia.
 
 ## Siguiente paso
 
-Aplicar la migración en QA (con la aprobación de la herramienta), ejecutar el contrato vivo en trozos con
-`ROLLBACK`, comprobar que QA queda sin residuos y con las funciones, restricciones y ACL esperadas, y actualizar
-este informe.
+Pieza 3 (modalidades por local), pieza 4 (registro de equipos), pieza 5 (permisos configurables y retirada de roles) o la
+pantalla de configuración (pieza 6); cada una necesita su autorización.

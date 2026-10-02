@@ -131,7 +131,7 @@ nuevo debe recibir esa política de 0 % al darse de alta**; si no, el local nuev
 del código hasta aplicar la opción B.
 
 **Pieza 2 (D15, diferencia de caja) autorizada solo en QA el 2/10/2026** («Autorizo la pieza 2 solo en QA»). Escrita y
-probada en una réplica local; **pendiente de aplicar en QA** por una aprobación de herramienta no concedida. Informe:
+probada en local; **aplicada en QA por Pedro a mano (editor SQL) y verificada con 201/201 comprobaciones** el 2/10/2026. Informe:
 `F6_PIEZA2_DIFERENCIA_CAJA_2026-10-02.md`. Valores por defecto que Pedro puede cambiar: umbral de aprobación **0 €**
 (cualquier diferencia exige aprobación del propietario); el propietario puede aprobar sus propias diferencias.
 **Confirmado por Pedro el 2/10/2026:** umbral inicial 0 €, autoaprobación permitida (queda en la auditoría) y la pantalla

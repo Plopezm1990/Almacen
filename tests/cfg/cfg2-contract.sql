@@ -570,8 +570,8 @@ begin
   v := pg_temp.f_obt('F3.6 una sesión de otro local, pedida con el local del usuario, no devuelve nada del otro', k_enc, k_loc, (y->>'s')::uuid);
   perform pg_temp.ok('F3.7 sin cierre ni diferencia ni estado de sesión', v->'cierre_id' = 'null'::jsonb and v->'session_estado' = 'null'::jsonb, v);
 
-  -- Isolation: un usuario de un solo local no actúa en otro local de la misma empresa.
-  delete from public.membresias_usuario where user_id = k_enc::uuid and local_id = k_loc2;
+  -- Aislamiento: sin membresía activa en ese local, el Encargado no actúa en él.
+  update public.membresias_usuario set activo = false where user_id = k_enc::uuid and local_id = k_loc2;
   perform pg_temp.f_reg('F4.1 el Encargado sin acceso a ese local no puede registrar', k_enc, 'cfg2-f3-reg-01', k_loc2, (y->>'s')::uuid, 'x', 'abc_caja_no_autorizado');
   perform pg_temp.f_obt('F4.2 ni leer', k_enc, k_loc2, (y->>'s')::uuid, 'abc_caja_no_autorizado');
   perform pg_temp.f_reg('F4.3 registrar sobre una sesión que no existe', k_caj, 'cfg2-f3-reg-02', k_loc2, gen_random_uuid(), 'x', 'cierre_provisional_no_encontrado');
