@@ -144,6 +144,23 @@ Informe: `F6_PIEZA3_MODALIDADES_2026-10-02.md`. Valor por defecto: todas las mod
 Informe: `F6_PIEZA4_EQUIPOS_2026-10-02.md`. Es solo un registro (empieza vacío, ningún flujo lo lee, no se integra ni se compra nada); solo el
 Propietario lo cambia y nada se borra (se desactiva).
 
+**Pieza 5 (D03/D19 permisos, D14 reabrir cierre y retirada de roles) elegida por Pedro el 2/10/2026 y aplicada solo en QA**; verificada
+con 154/154 comprobaciones. Informe: `F6_PIEZA5_PERMISOS_2026-10-02.md`. Decisiones de Pedro (todas con opciones recomendadas): el
+propietario puede dar o quitar permisos a Encargado, Cajero/a y Camarero/a **con techo en lo delicado** (dinero, documentos fiscales y
+reabrir cierres nunca bajan de Encargado); **por empresa y por local, y el local manda**; Churrero/a, Básico y Estándar se retiran
+**bloqueando altas nuevas y quitando sus permisos** (quien ya los tiene se lista para reasignarlo); y **D14** (reabrir un cierre solo
+el Propietario) queda aplicado. **D13 queda sin permiso para el cajero** (ver el punto abierto siguiente).
+
+**Sigue abierto (pieza 5):**
+
+- **Devoluciones (D13, «el cajero solo con aprobación»).** Por lectura del código, `abc_solicitar_reembolso` encola el efecto hacia el
+  proveedor al **solicitar** (no al confirmar) cuando el pago no es en efectivo. Antes de conectar un proveedor hay que cambiar el flujo
+  para que nada salga sin aprobación; entonces se podrá dar la capacidad al cajero. Hoy nadie puede dársela (techo en Encargado).
+- **Producción**: revisar quién tiene Churrero/a, Básico o Estándar (perderían permisos) y si las funciones de permisos coinciden con las
+  de QA (la migración se niega a aplicarse si no).
+- **Pantalla (pieza 6)**: matriz de permisos del propietario, quitar los tres roles de la lista de alta de empleados y ocultar «reabrir
+  cierre» a quien no pueda; hoy esas acciones darán error en QA.
+
 ## Nivel 1 — necesarias para empezar las etapas 1 y 2 (terreno de pruebas y pantalla)
 
 | ID | Decisión | Recomendación | Por qué importa | Desbloquea |

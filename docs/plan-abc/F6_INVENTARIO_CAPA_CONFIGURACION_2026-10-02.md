@@ -4,7 +4,7 @@ Fecha: 2026-10-02
 Alcance: solo lectura. Base de datos de QA (`qjqorixtkilwsndqayyx`) y código del repositorio. **Producción no
 consultada. Ningún cambio de código, de base de datos ni de despliegue.**
 Autorización: «Sí, autorizo» a la etapa de inventario y diseño (Pedro, 2/10/2026).
-Estado: `INVENTARIO_HECHO_PIEZAS_1_2_3_Y_4_APLICADAS_Y_VERIFICADAS_EN_QA_RESTO_SIN_IMPLEMENTAR` (pieza 4: `F6_PIEZA4_EQUIPOS_2026-10-02.md`) (pieza 3: `F6_PIEZA3_MODALIDADES_2026-10-02.md`) (pieza 1: `F6_PIEZA1_DIA_CAJAS_2026-10-02.md`; pieza 2: `F6_PIEZA2_DIFERENCIA_CAJA_2026-10-02.md`)
+Estado: `INVENTARIO_HECHO_PIEZAS_1_A_5_APLICADAS_Y_VERIFICADAS_EN_QA_SOLO_FALTA_LA_PANTALLA` (pieza 5: `F6_PIEZA5_PERMISOS_2026-10-02.md`) (pieza 4: `F6_PIEZA4_EQUIPOS_2026-10-02.md`) (pieza 3: `F6_PIEZA3_MODALIDADES_2026-10-02.md`) (pieza 1: `F6_PIEZA1_DIA_CAJAS_2026-10-02.md`; pieza 2: `F6_PIEZA2_DIFERENCIA_CAJA_2026-10-02.md`)
 
 ## Qué se pidió
 

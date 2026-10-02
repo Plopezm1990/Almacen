@@ -9,6 +9,10 @@ on conflict do nothing;
 
 -- Esquema mínimo para las funciones reales de membresía de QA (private.la_usuario_activo usa perfiles y empleados).
 create table if not exists public.perfiles(user_id uuid primary key, activo boolean not null default true, empleado_id uuid);
+-- Columnas que existen en QA y que usa abc_listar_roles_retirados (pieza 5); opcionales para el resto de contratos.
+alter table public.perfiles add column if not exists nombre text;
+alter table public.perfiles add column if not exists rol text;
+alter table public.perfiles add column if not exists updated_at timestamp with time zone not null default now();
 create table if not exists public.empleados(id uuid primary key, empresa_id text, local_id text, estado text);
 insert into public.perfiles(user_id, activo, empleado_id) values
   ('16c79749-a206-47d9-8d56-fbc7a4a49eb7', true, null),
