@@ -4,7 +4,7 @@ Fecha: 2026-10-02
 Entorno: Supabase QA `qjqorixtkilwsndqayyx` (solo QA). Producción no se tocó. Sin deploy.
 Autorización: «Autorizo P3 y D31 con IVA incluido» (Pedro, 2/10/2026).
 Código base: `a5a4321` + documentación de esta rama.
-Estado: `MIGRACION_APLICADA_EN_QA_VERIFICADA_EN_BACKEND_PUENTE_DE_PANTALLA_PROBADO_EN_LOCAL_SIN_DEPLOY_NO_VERIFICADO_EN_NAVEGADOR`
+Estado: `MIGRACION_APLICADA_EN_QA_VERIFICADA_EN_BACKEND_PUENTE_V1_PROBADO_EN_PREVIEW_118_PUENTE_V2_CORREGIDO_Y_PROBADO_EN_LOCAL_SIN_DESPLEGAR`
 
 No cierra ningún requisito: A02, A03 y A04 siguen `INCOMPLETO` (falta verlo en pantalla).
 
@@ -60,7 +60,9 @@ Un puente nuevo, en un archivo que ya se publica (sin ampliar la frontera de pub
 - Observa los guardados de `productos` y envía **solo las diferencias de venta** (nombre,
   unidad, fraccionable, precisión, precio, IVA, activo, tipo, local) contra la última lista
   conocida de la sesión. Sin lista de referencia no envía nada. Un cambio de stock no
-  dispara el catálogo.
+  dispara el catálogo. (Versión 2, ver «Corrección del puente»: la comparación ignora la
+  empresa, las marcas internas y los números escritos como texto; solo envía guardados hechos
+  por una persona; nunca desactiva por ausencia; no envía más de 25 cambios de golpe.)
 - Se ejecuta después del guardado heredado y en segundo plano: un fallo del puente nunca
   rompe el guardado de la pantalla.
 - Reintentos con el mismo `operation_id` mientras el contenido no cambia. Si el servidor no
@@ -76,9 +78,9 @@ Un puente nuevo, en un archivo que ya se publica (sin ampliar la frontera de pub
 | Contrato vivo `tests/p3/p3-catalogo-contract.sql`: migración + 51 comprobaciones en una transacción con `ROLLBACK`, con usuarios suplantados por rol | QA (ensayo en seco, antes de aplicar) | **Todo correcto**: 0 fallos |
 | Cuadrícula de redondeo: 3.960 cálculos (≈165 precios × IVA 0/4/10/21 % × 6 cantidades) | QA, dentro del contrato | 0 fallos: total = cantidad × precio con IVA y base + impuesto = total |
 | Mismos importes que antes al convertir el catálogo sembrado (45 combinaciones) | QA | Idénticos |
-| `tests/p3-catalogo-bridge.mjs`: 16 escenarios del puente en una máquina virtual | Local | Pasa; 3 mutantes del puente se detectan |
+| `tests/p3-catalogo-bridge.mjs`: 21 escenarios del puente (v2) en una máquina virtual | Local | Pasa; 6 mutantes del puente se detectan (la v1 tenía 16 escenarios y 3 mutantes) |
 | `tests/p3/p3-catalogo-static-contract.mjs`: forma de la migración y compatibilidad con A03/A04 | Local | Pasa |
-| Regresión: 67 contratos pasan (F3, F4, F5, puente de contexto, P1, PM05/07/08, frontera de publicación) | Local | Los mismos 12 de siempre fallan por entorno (sin PostgreSQL/PGlite local) |
+| Regresión (conjunto de la v1): 67 contratos pasan (F3, F4, F5, puente de contexto, P1, PM05/07/08, frontera de publicación) | Local | Los mismos 12 de siempre fallan por entorno (sin PostgreSQL/PGlite local). La batería completa de la v2 está en «Corrección del puente» |
 
 Casos que cubre el contrato vivo (resumen):
 
@@ -104,16 +106,22 @@ restricción presentes, `SECURITY DEFINER` con `search_path` vacío, ACL solo `a
 en la RPC y solo propietario en las privadas, 0 filas con `precio_con_impuesto`, catálogo /
 stock / `almacen_kv` en 30 / 83 / 25 (sin cambios), 0 operaciones P3 persistidas, 0 residuos.
 
+**Estado de QA después de la prueba en el preview 118 (leído del servidor):** las 30 filas del
+catálogo ya tienen `precio_con_impuesto` (30 de 30, versión 2, última modificación 13:47 UTC)
+con los mismos totales que antes; es decir, la conversión «base → IVA incluido» del catálogo
+sembrado ocurrió de verdad desde un navegador real. «Agua 50 cl (QA)» sigue en 0,99 € con IVA
+(base 0,90) en A1 y A2: a la hora de esta lectura **no había llegado ningún cambio de precio
+hecho a mano**.
+
 ## Límites y hallazgos
 
 1. **Verificación posterior a la aplicación incompleta.** Tras aplicar la migración lancé una
    prueba corta de humo con `ROLLBACK`; su registro no se devolvió (el `SELECT` final lo
    tapó) y no repetí la llamada porque fue rechazada. La evidencia funcional es la del ensayo
    en seco (mismo SQL, mismo estado de QA) más las consultas de catálogo de arriba.
-2. **Pantalla sin verificar y sin desplegar.** El puente solo llega al navegador con un
-   deploy, que no está autorizado. Hasta entonces el catálogo sembrado de QA sigue con la
-   semántica anterior (precio base): se convierte con la primera sincronización real, y los
-   importes no cambian.
+2. **Pantalla.** El puente v1 llegó a un navegador real (preview 118) y envió al servidor.
+   El puente v2 (corregido, ver abajo) **no está desplegado**: solo está probado en máquina
+   virtual local. El catálogo sembrado de QA ya está convertido a precio con IVA (ver arriba).
 3. **No hay camino de vuelta.** La RPC escribe el catálogo; la lista que ve la pantalla en
    otro dispositivo sigue viniendo de `almacen_kv`, que en QA no admite escrituras de listas.
    Los productos editados en un equipo no aparecen en la lista de otro hasta resolverlo
@@ -131,6 +139,63 @@ stock / `almacen_kv` en 30 / 83 / 25 (sin cambios), 0 operaciones P3 persistidas
 8. **Promoción a producción:** no autorizada. Exige A03 y A04, el control de `operation_id`
    de F2 y un contexto fiscal en cada local (la migración tiene preflight y falla si falta
    algo). No se ha comprobado el estado de producción.
+
+## Corrección del puente (v2, sin desplegar)
+
+**Qué se vio en la prueba real (preview 118, Pedro, mismo día).** Pedro cambió el precio de
+«Agua 50 cl (QA)» pero el registro de operaciones de QA (`abc_operaciones`) mostró **seis envíos de
+15 productos** (los dos locales, A1 y A2) en vez de uno solo del Agua: dos a las 13:47:47 UTC
+(`ACTUALIZADO` ×15 en cada local, la conversión inicial), uno más a las 13:47:48 y tres a las
+13:51 UTC, estos cuatro últimos `SIN_CAMBIOS` (envíos redundantes: el contenido ya estaba).
+Causa: la aplicación, al arrancar, reescribe la lista de `productos` (normaliza campos, añade
+`empresaId` y marcas internas de stock, y a veces cambia entre «lista cruda» y «lista
+normalizada»), y el puente v1 comparaba también `empresaId`, así que cada reescritura parecía
+un cambio en los 30 productos.
+
+**Riesgo que eso implica.** Los envíos son idempotentes y, por contenido, no cambian importes
+(las versiones no subieron en los cuatro envíos redundantes y los totales no cambiaron), pero un guardado de la propia aplicación con una
+lista antigua de la nube (la sincronización de `almacen_kv` puede devolver una lista vieja tras
+recargar) podría haber **devuelto el catálogo a un precio antiguo** sin que nadie lo tocase.
+
+**Qué hace la v2** (`ui-context-bridge.js`, sin tocar `fuente.js`):
+
+| Cambio | Efecto |
+|---|---|
+| Solo cuenta un guardado como edición si hubo una acción de la persona (clic, toque, tecla, cambio de campo) en los 3 s anteriores | Un guardado de la propia aplicación al arrancar o recargar no se envía y no pisa el catálogo |
+| La firma de comparación no incluye `empresaId` y normaliza texto, números como texto («10» = 10), `activo` por defecto verdadero y `tipo` vacío = «materia_prima» (igual que la pantalla) | Reescrituras que no cambian la venta no generan envío |
+| Ausente de la lista ≠ desactivado | Nunca se desactiva un producto por no aparecer; solo `activo:false` explícito lo desactiva |
+| Un producto que no estaba en la referencia se envía como alta solo si había referencia | Con la lista de referencia vacía no se confunde una carga con altas |
+| Más de 25 cambios en un solo guardado no se envían solos: aviso en consola + evento `catalogo-tpv-cambio-masivo`; el volcado es explícito (`window.__catalogoTpv.sincronizarTodo()`) | Una importación o recarga masiva no reescribe el catálogo por sorpresa |
+
+**Pruebas de la v2 (local, sin red):**
+
+- `tests/p3-catalogo-bridge.mjs`: 21 escenarios (los 16 anteriores adaptados + ausencia sin
+  desactivar, `activo:false` explícito, ruido de normalización, guardado sin interacción, cambios
+  masivos, referencia vacía, cambio solo de stock/coste). **Pasan.**
+- 6 mutantes del puente, **todos detectados**: sin la puerta de interacción, sin la guarda
+  masiva, `empresaId` en la firma, altas sin referencia, `tipo` literal, números sin normalizar.
+- `tests/p3/p3-catalogo-static-contract.mjs` y `tests/ui-context-bridge.mjs`: pasan.
+- Batería completa de `.mjs` (211): 185 pasan; los 26 que fallan lo hacen por entorno (falta
+  `pg` o PGlite en este contenedor); `tests/netlify-publish-boundary.mjs` pasa tras reconstruir
+  `.netlify-dist`.
+
+**Límites de la v2:**
+
+- **No está en ningún navegador.** El preview 118 sigue sirviendo el puente v1 hasta que haya
+  un nuevo push sin `[skip netlify]`, que requiere autorización.
+- La puerta de interacción es una heurística de 3 s: una acción de la persona seguida, dentro
+  de esos 3 s, de una recarga de lista antigua por la aplicación aún podría enviarse (muy
+  improbable; sería un cambio de venta real frente a lo último visto).
+- Fuera de alcance, sin corregir: el aviso falso «No se pudo actualizar el producto» (ver
+  abajo) y la lectura de vuelta del catálogo (P3b).
+
+### Defecto aparte: aviso falso «No se pudo actualizar el producto»
+
+Reportado por Pedro en el mismo preview: al guardar la edición de un producto sale el cartel
+rojo aunque el cambio se guardó. Causa (lectura de código, no del puente): en `fuente.js`,
+`updateProducto(id, data)` no devuelve nada cuando va bien, y `submitEdit` muestra el error
+cuando `!actualizado || actualizado.ok === false`. Es previo a P1 y P3. Corregirlo exige
+tocar `fuente.js` y `source-recovery/fuente-recuperado.js` y desplegar; **no está autorizado**.
 
 ## Reversión (QA)
 

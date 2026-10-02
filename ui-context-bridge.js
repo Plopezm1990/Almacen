@@ -154,11 +154,20 @@
 // Reglas de seguridad:
 //  - No sustituye ni retrasa el guardado heredado: se ejecuta después de él y en
 //    segundo plano; un fallo aquí nunca hace fallar el guardado de la pantalla.
-//  - Solo envía diferencias contra la última lista conocida en esta sesión. Sin
-//    lista de referencia no envía nada (no se vuelca la lista entera por sorpresa).
-//    El volcado completo es explícito: window.__catalogoTpv.sincronizarTodo().
-//  - Un producto quitado de la lista se envía como inactivo; lo ausente nunca se
-//    desactiva por inferencia en el servidor.
+//  - Solo envía cambios hechos por una persona: un guardado de `productos` sin una
+//    interacción del usuario en los últimos 3 s se considera de la propia aplicación
+//    (al arrancar recarga la lista desde la nube, que en QA puede estar desfasada) y
+//    no se envía. Así una recarga nunca devuelve el catálogo a un precio antiguo.
+//  - Solo envía diferencias de VENTA contra la última lista conocida: el nombre, la
+//    unidad, lo fraccionable, el precio con IVA, el IVA, activo, tipo y local. Los
+//    campos que la pantalla añade o quita por su cuenta (empresa, marcas internas de
+//    stock) y los números escritos como texto no cuentan. Sin lista de referencia no
+//    envía nada.
+//  - Nunca desactiva por ausencia: la pantalla borra con «activo: false», no quitando
+//    el producto de la lista, y una lista parcial no debe dar de baja nada.
+//  - Si un solo guardado cambia más de 25 productos no lo envía solo (puede ser una
+//    carga o una importación): avisa y deja el volcado explícito,
+//    window.__catalogoTpv.sincronizarTodo().
 //  - Si la RPC no existe en el servidor (producción antes de promoverla) el puente
 //    se desactiva en silencio y la pantalla sigue como antes.
 //  - Reintentos con el mismo operation_id mientras el contenido no cambie.
@@ -174,13 +183,14 @@
   var ESPERA_MS = 1500;
   var REINTENTOS_MS = [2000, 4000, 8000, 16000, 32000];
   var MAX_LOTE = 200;
-  var CAMPOS_VENTA = ["nombre", "unidad", "fraccionable", "precisionCantidad", "precioVenta",
-    "ivaVenta", "activo", "tipo", "localId", "empresaId"];
+  var VENTANA_INTERACCION_MS = 3000;
+  var MAX_CAMBIOS_AUTOMATICOS = 25;
 
   var getAnterior = window.storage.get.bind(window.storage);
   var setAnterior = window.storage.set.bind(window.storage);
 
   var referencia = null;      // última lista conocida de esta sesión
+  var ultimaInteraccion = 0;  // última acción de una persona (clic, tecla, toque)
   var noDisponible = false;   // la RPC no existe en este servidor
   var avisados = {};
   var temporizador = null;
@@ -217,21 +227,54 @@
     return m;
   }
 
+  function textoNorm(v) {
+    return v === undefined || v === null ? "" : String(v).trim();
+  }
+
+  function numeroNorm(v) {
+    var t = textoNorm(v);
+    if (t === "") return null;
+    var n = Number(t);
+    return isFinite(n) ? Math.round(n * 1e8) / 1e8 : t;
+  }
+
+  function boolNorm(v, porDefecto) {
+    if (v === undefined || v === null || v === "") return porDefecto;
+    if (typeof v === "string") return ["false", "f", "0"].indexOf(v.trim().toLowerCase()) === -1;
+    return !!v;
+  }
+
+  // Lo que el servidor usa para vender. No incluye empresa ni marcas internas.
   function firmaVenta(p) {
-    return JSON.stringify(CAMPOS_VENTA.map(function (c) { return p[c] === undefined ? null : p[c]; }));
+    var fraccionable = boolNorm(p.fraccionable, false);
+    var precio = numeroNorm(p.precioVenta);
+    return JSON.stringify([
+      textoNorm(p.nombre),
+      textoNorm(p.unidad),
+      fraccionable,
+      fraccionable ? (numeroNorm(p.precisionCantidad) || 0) : 0,
+      precio === null ? 0 : precio,
+      numeroNorm(p.ivaVenta),
+      boolNorm(p.activo, true),
+      // La pantalla trata un tipo vacío como «materia_prima» (p.tipo || "materia_prima").
+      textoNorm(p.tipo).toLowerCase() || "materia_prima",
+      textoNorm(p.localId)
+    ]);
   }
 
   function calcularCambios(anterior, nuevo) {
     var a = porId(anterior);
     var n = porId(nuevo);
+    var hayBase = Object.keys(a).length > 0;
     var salida = [];
     Object.keys(n).forEach(function (id) {
-      if (!a[id] || firmaVenta(a[id]) !== firmaVenta(n[id])) salida.push(n[id]);
-    });
-    Object.keys(a).forEach(function (id) {
-      if (!n[id]) {
-        salida.push({ id: a[id].id, localId: a[id].localId, empresaId: a[id].empresaId, nombre: a[id].nombre, activo: false });
+      if (!a[id]) {
+        // Un producto que no estaba en la lista de referencia es un alta, pero solo
+        // si había lista: con una referencia vacía no se distingue un alta de una carga.
+        if (hayBase) salida.push(n[id]);
+        return;
       }
+      if (firmaVenta(a[id]) !== firmaVenta(n[id])) salida.push(n[id]);
     });
     return salida;
   }
@@ -436,14 +479,22 @@
   window.storage.set = async function (key, value, shared) {
     if (key !== CLAVE) return setAnterior(key, value, shared);
     var previa = referencia;
+    var ahora = Date.now();
     var resultado = await setAnterior(key, value, shared);
     var nueva = typeof value === "string" ? parsearLista(value) : null;
     if (nueva) {
       referencia = nueva;
-      if (previa && !noDisponible && window.__nubeActiva) {
+      var porPersona = ahora - ultimaInteraccion <= VENTANA_INTERACCION_MS;
+      if (previa && porPersona && !noDisponible && window.__nubeActiva) {
         try {
           var cambios = calcularCambios(previa, nueva);
-          if (cambios.length) { registrar(cambios); planificar(ESPERA_MS); }
+          if (cambios.length > MAX_CAMBIOS_AUTOMATICOS) {
+            aviso("masivo", cambios.length + " productos cambiados de golpe: no se envían solos al catálogo del TPV. Usa window.__catalogoTpv.sincronizarTodo().");
+            emitir("catalogo-tpv-cambio-masivo", { cantidad: cambios.length });
+          } else if (cambios.length) {
+            registrar(cambios);
+            planificar(ESPERA_MS);
+          }
         } catch (e) {
           aviso("calculo", "No se pudieron calcular los cambios del catálogo.", String(e && e.message || e));
         }
@@ -464,6 +515,10 @@
   };
 
   if (typeof window.addEventListener === "function") {
+    var marcarInteraccion = function () { ultimaInteraccion = Date.now(); };
+    ["pointerdown", "touchstart", "keydown", "input", "change", "click"].forEach(function (tipo) {
+      window.addEventListener(tipo, marcarInteraccion, true);
+    });
     window.addEventListener("online", function () { intentos = 0; planificar(500); });
   }
   if (Object.keys(leerPendiente()).length) planificar(3000);

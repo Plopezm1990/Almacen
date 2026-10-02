@@ -2,7 +2,13 @@
 
 Fecha: 2026-10-02
 Autorización: «Autorizo el deploy agrupado para probar P1 y P3» (Pedro, 2/10/2026).
-Estado: `PREVIEW_PEDIDO_PENDIENTE_DE_PRUEBA_EN_PANTALLA`
+Estado: `PREVIEW_118_PROBADO_PARCIALMENTE_PUENTE_V2_PENDIENTE_DE_SEGUNDO_PREVIEW`
+
+> **Aviso (actualización del mismo día).** El preview del PR 118 sirve el puente **v1**. La
+> corrección v2 (`F5_P3_CATALOGO_AUTORITATIVO_2026-10-02.md`, «Corrección del puente») está
+> probada solo en local y **no está desplegada**. La dirección correcta es siempre la del
+> **PR 118** (`deploy-preview-118--…`), no la del 117. El cartel rojo «No se pudo actualizar el
+> producto» es un defecto previo e independiente de P1 y P3: el cambio sí se guarda.
 
 ## Qué se despliega y qué no
 
