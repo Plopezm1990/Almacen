@@ -63,21 +63,18 @@ Casos negativos (rechazados con el motivo esperado):
 | Cierre final con un cobro pendiente | `cierre_definitivo_bloqueado: PAGOS_PENDIENTES` |
 | Abrir cuenta en una sesión cerrada | `terminal_sesion_no_operativa` |
 
-## Hallazgos (requieren decisión o autorización; nada se ha corregido)
+## Hallazgos (requieren decisión o autorización; solo el 1 se ha corregido, en QA y como dato)
 
-1. **Aviso de `locales` (defecto reproducido en base de datos).** El cliente
-   guarda el bloque `locales` con `upsert({key, value})` en `almacen_kv`. El
-   valor es un array sin `empresaId`, el trigger `pm05_scope_almacen_kv` deja
-   `empresa_id` a `NULL` y la política INSERT exige `empresa_id IS NOT NULL`.
-   Resultado: `42501 new row violates row-level security policy` para los cuatro
-   actores probados, incluidos los propietarios de la empresa dueña de la fila.
-   Controles: `UPDATE` directo como Propietario A funciona (1 fila); como
-   Propietario B 0 filas; `INSERT` con `empresaId` funciona para A y falla para B;
-   `INSERT` de un array sin `empresaId` falla. La clave primaria es solo `key`
-   (global entre empresas). El valor guardado tiene 3 locales y la tabla `locales`
-   tiene 4. El cliente traga el error (`catch` → `marcarPendiente`), por lo que
-   solo se ve «Subiendo N…». **No reproducido en navegador:** no se localizó el
-   texto exacto del aviso en el código ni se capturó la petición de red.
+1. **Aviso de `locales`.** *Rectificado el mismo día; ver
+   `F5_CORRECCION_AVISO_LOCALES_QA_2026-10-02.md`.* La primera versión de este
+   informe atribuía el aviso a un `upsert` directo de `locales` en `almacen_kv`
+   rechazado por RLS. **Esa causa era errónea:** ese `upsert` es la ruta heredada,
+   que el puente `ui-context-bridge.js` sustituye por la RPC
+   `guardar_contexto_instalacion_ui`. La causa comprobada es otra: la fila
+   heredada `almacen_kv.locales` (sembrada el 6/9) contenía `QA-A-CERRADO`,
+   inactivo e inexistente en la tabla `locales`, y la RPC la rechaza con
+   `22023 Un local nuevo debe crearse activo` para los dos propietarios de la
+   empresa A. La corrección aplicada en QA es de datos (una fila de `almacen_kv`).
 2. **Sin regla de día operativo (A11) en QA.** `private.abc_operating_day_reglas`
    está vacía en todos los locales, así que `abc_abrir_cuenta` falla con
    `operating_day_configuracion_ausente`. Es una precondición de datos.
