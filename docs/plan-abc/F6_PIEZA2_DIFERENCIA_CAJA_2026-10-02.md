@@ -45,16 +45,21 @@ y la sesión se queda en cierre provisional (se puede reabrir con motivo, como h
 funciones nuevas (pieza 6). Con diferencia 0 todo sigue igual. En QA no hay ninguna sesión en cierre provisional
 ahora mismo, así que ningún dato existente queda bloqueado.
 
-## Decisiones y límites a confirmar con Pedro
+## Decisiones de Pedro (2/10/2026, por preguntas con opciones) y límites
 
-1. **Valor por defecto del umbral: 0 €.** Es lo más estricto (cualquier diferencia, aunque sea de un céntimo, la
-   aprueba el propietario). Pedro no fijó una cifra; cada propietario la cambia por local.
-2. **El propietario puede aprobar sus propias diferencias** (por ejemplo, si él mismo cerró la caja). No se
-   impuso separación de funciones; queda el actor en la auditoría.
-3. **Reabrir un cierre** sigue permitido a quien opera la caja (también al cajero): D14 y la plantilla D19 piden
+| Tema | Decisión |
+|---|---|
+| Pantalla actual | **Se deja hasta la pieza de pantalla (pieza 6)**: no se toca la pantalla ahora. En QA, finalizar un cierre con diferencia dará error hasta entonces |
+| Umbral por defecto | **0 €** (cualquier diferencia exige aprobación del propietario); cada propietario lo cambia por local |
+| Autoaprobación | **El propietario puede aprobar su propia diferencia**; queda el actor en la auditoría |
+| Siguiente paso | **Esperar** a que Pedro permita en el conector de Supabase la herramienta de aplicar migraciones y entonces aplicar la pieza 2 en QA |
+
+Límites que siguen abiertos:
+
+1. **Reabrir un cierre** sigue permitido a quien opera la caja (también al cajero): D14 y la plantilla D19 piden
    solo el propietario, pero eso pertenece a la pieza de permisos y no se cambió aquí.
-4. **Una sola moneda (EUR) por ahora**: el umbral se aplica al importe de la moneda de la sesión.
-5. Si la diferencia **cambia después de registrarla** (en la práctica no se puede mover caja con el cierre
+2. **Una sola moneda (EUR) por ahora**: el umbral se aplica al importe de la moneda de la sesión.
+3. Si la diferencia **cambia después de registrarla** (en la práctica no se puede mover caja con el cierre
    provisional; es una defensa), el cierre se bloquea con `DIFERENCIA_CAMBIADA` y hay que registrar de nuevo.
 
 ## Pruebas

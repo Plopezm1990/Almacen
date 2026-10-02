@@ -134,6 +134,8 @@ del código hasta aplicar la opción B.
 probada en una réplica local; **pendiente de aplicar en QA** por una aprobación de herramienta no concedida. Informe:
 `F6_PIEZA2_DIFERENCIA_CAJA_2026-10-02.md`. Valores por defecto que Pedro puede cambiar: umbral de aprobación **0 €**
 (cualquier diferencia exige aprobación del propietario); el propietario puede aprobar sus propias diferencias.
+**Confirmado por Pedro el 2/10/2026:** umbral inicial 0 €, autoaprobación permitida (queda en la auditoría) y la pantalla
+actual se deja hasta la pieza de pantalla (en QA, finalizar un cierre con diferencia dará error hasta entonces).
 
 ## Nivel 1 — necesarias para empezar las etapas 1 y 2 (terreno de pruebas y pantalla)
 
