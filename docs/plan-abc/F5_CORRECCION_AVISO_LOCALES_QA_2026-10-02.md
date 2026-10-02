@@ -3,7 +3,7 @@
 Fecha: 2026-10-02
 Entorno: Supabase QA `qjqorixtkilwsndqayyx` (solo QA; sin producción, sin deploy)
 SHA de código: `a5a4321` (sin cambios de código ni de migraciones)
-Estado: `CORREGIDO_EN_QA_DATOS_VERIFICADO_EN_BD_PENDIENTE_VERIFICAR_EN_NAVEGADOR`
+Estado: `LOCALES_CORREGIDO_EN_QA_VERIFICADO_EN_REGISTROS_PENDIENTE_CONFIRMAR_EN_PANTALLA_OTRAS_ESCRITURAS_RLS_SIN_CORREGIR`
 
 ## Causa
 
@@ -85,11 +85,36 @@ dejar pasar solo `qjqorixtkilwsndqayyx` y registrar consola, red y
 como variables del entorno y nunca por chat. No es el alojamiento de Netlify (sin
 sus cabeceras ni CSP) y los WebSocket no pasan por el proxy del entorno.
 
+## Evidencia de los registros de QA (sesión real en el preview, 11:10 UTC)
+
+Lectura de los registros de la API de QA (solo lectura), sesión del Propietario
+A+B (`16c79749…`) con `referer` del preview `deploy-preview-117`:
+
+- `rpc/guardar_contexto_instalacion_ui`, antes del arreglo (1/10 22:00 a 2/10
+  08:30 UTC): 8 respuestas `400` con código `22023`. Es coherente con la
+  validación `Un local nuevo debe crearse activo`, aunque los registros no
+  muestran el mensaje.
+- Después del arreglo (desde 10:53 UTC): solo `200`. En el inicio de sesión de las
+  11:10 el cliente guardó el contexto dos veces con éxito (cargas de 45 y 175
+  bytes: `localActivoId` y una lista de locales de dos elementos, por tamaño).
+- **Siguen fallando otras escrituras**, con `403` y error PostgREST `42501`
+  (`new row violates row-level security policy`): `POST /rest/v1/almacen_kv` con
+  `resolution=merge-duplicates` y `POST /rest/v1/movimientos_registro`. Se repiten
+  desde la noche anterior (más de 100 y unas 30 respectivamente) y reaparecen en
+  cada carga, también en las 11:10. En la sesión de las 11:10 hubo 6 `almacen_kv`
+  con 4 tamaños de carga distintos (30, 33, 5269 y 255717 bytes), lo que concuerda
+  con «Subiendo 4». Uno de 33 bytes cuadra con `{"key":"temaOscuro","value":true}`.
+- Esas escrituras son el mecanismo que se describió por error como causa del aviso
+  de `locales` (RLS que exige `empresa_id` no nulo sobre un valor sin `empresaId`).
+  Ocurre en otras claves del bloque genérico y en `movimientos_registro`, no en
+  `locales`. **No se ha corregido** y no depende del arreglo de `locales`.
+
 ## Límites
 
-- **No verificado en navegador.** No hay usuario de prueba ni acceso al preview
-  privado. La verificación es en base de datos, sobre el mismo camino que sigue el
-  cliente. Falta confirmar que el aviso desaparece al recargar el preview.
+- **El aviso no se ha visto en pantalla.** Los registros muestran que el guardado
+  de `locales` por la RPC ya funciona en una sesión real, pero no que el aviso
+  haya desaparecido: eso se confirma con la pantalla y el contenido de
+  `almacen__pendientes` del navegador.
 - «Subiendo N…» cuenta claves pendientes guardadas en el navegador
   (`almacen__pendientes`). Este arreglo no las vacía; se esperan reintentos, pero
   no se ha comprobado qué claves contiene ese contador.
