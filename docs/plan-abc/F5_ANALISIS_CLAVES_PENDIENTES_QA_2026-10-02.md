@@ -6,6 +6,16 @@ datos ni de producción. No se consultó producción (no autorizado).
 SHA de código: `a5a4321`
 Estado: `ANALISIS_COMPLETADO_PROPUESTA_PENDIENTE_DE_DECISION`
 
+> **Actualización (misma fecha): producción.** Tras una lectura mínima y solo de
+> lectura de producción (autorizada), este análisis solo es válido para QA. En
+> producción `almacen_kv` usa políticas por rol y clave, sin exigir empresa, y esas
+> colecciones **sí se guardan** (hay filas de `conteos`, `historialRespaldos`,
+> `productos` y `temaOscuro`); `movimientos_registro` sí permite insertar. Donde
+> más abajo se dice que algo «no puede funcionar nunca» o que `movimientos_registro`
+> «solo tiene política de lectura», es QA. Por eso la propuesta P1 original («solo
+> local» fijo) se sustituye por el P1 revisado, que reacciona a la respuesta del
+> servidor; véase `F5_P1_RECHAZOS_POR_PERMISOS_SOLO_LOCAL_2026-10-02.md`.
+
 Las cinco claves atascadas en `almacen__pendientes` del navegador del Propietario
 A+B son `productos`, `movimientos`, `conteos`, `historialRespaldos` y `temaOscuro`.
 
@@ -23,8 +33,9 @@ A+B son `productos`, `movimientos`, `conteos`, `historialRespaldos` y `temaOscur
    queda en `almacen__pendientes`, se muestra «Subiendo N…» y se reintenta en cada
    carga. Además `almacen_kv` tiene como clave primaria solo `key`: una fila por
    clave para todas las empresas.
-5. `movimientos` va por otra ruta (`movimientos_registro`), que **solo tiene
-   política de lectura**: ningún cliente puede escribir ahí por diseño.
+5. `movimientos` va por otra ruta (`movimientos_registro`), que **en QA solo tiene
+   política de lectura**: ningún cliente puede escribir ahí. En producción sí hay
+   política de inserción.
 
 ## Qué es cada clave y dónde está la verdad
 
@@ -54,7 +65,7 @@ usuario las modifique. No se han analizado.
 
 ## Propuesta por paquetes (nada se ha hecho)
 
-- **P1 — «solo local» y error visible.** Para `temaOscuro`, `movimientos` y los
+- **P1 — «solo local» y error visible. (SUSTITUIDO por el P1 revisado: se aplicaría también a producción, donde esas claves sí se guardan.)** Para `temaOscuro`, `movimientos` y los
   borradores de `conteos`: guardar en el navegador, no subir, no encolar y purgar
   sus entradas de `almacen__pendientes`. Cambio acotado en
   `index-storage-bootstrap.js` (archivo propio, no el bundle `fuente.js`). Hay que
