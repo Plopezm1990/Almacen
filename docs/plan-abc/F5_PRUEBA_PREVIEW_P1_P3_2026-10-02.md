@@ -2,12 +2,14 @@
 
 Fecha: 2026-10-02
 Autorización: «Autorizo el deploy agrupado para probar P1 y P3» (Pedro, 2/10/2026).
-Estado: `PREVIEW_118_PROBADO_PARCIALMENTE_PUENTE_V2_PENDIENTE_DE_SEGUNDO_PREVIEW`
+Estado: `PREVIEW_118_RECONSTRUIDO_CON_PUENTE_V2_PENDIENTE_DE_PRUEBA_EN_PANTALLA`
 
-> **Aviso (actualización del mismo día).** El preview del PR 118 sirve el puente **v1**. La
-> corrección v2 (`F5_P3_CATALOGO_AUTORITATIVO_2026-10-02.md`, «Corrección del puente») está
-> probada solo en local y **no está desplegada**. La dirección correcta es siempre la del
-> **PR 118** (`deploy-preview-118--…`), no la del 117. El cartel rojo «No se pudo actualizar el
+> **Aviso (actualización del mismo día).** El PR 118 se reconstruyó con el puente **v2**
+> (`F5_P3_CATALOGO_AUTORITATIVO_2026-10-02.md`, «Corrección del puente» y «Despliegue no pedido»):
+> no estaba previsto desplegarlo, pero es solo QA. Para probar la v2 abre **otra ventana privada**
+> (la caché del navegador puede servir el puente antiguo) en la dirección del **PR 118**
+> (`deploy-preview-118--…`), no la del 117. Esperado tras cambiar el Agua a 1,00: **un solo envío de
+> 1 producto** en `abc_operaciones` (lo comprobaré yo). El cartel rojo «No se pudo actualizar el
 > producto» es un defecto previo e independiente de P1 y P3: el cambio sí se guarda.
 
 ## Qué se despliega y qué no

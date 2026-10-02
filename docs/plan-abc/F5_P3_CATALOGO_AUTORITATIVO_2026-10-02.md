@@ -1,10 +1,10 @@
 # F5 — P3: ruta autoritativa del catálogo del TPV y precio con IVA incluido (D31)
 
 Fecha: 2026-10-02
-Entorno: Supabase QA `qjqorixtkilwsndqayyx` (solo QA). Producción no se tocó. Sin deploy.
+Entorno: Supabase QA `qjqorixtkilwsndqayyx` (solo QA). Producción no se tocó. Deploy solo como preview de QA del PR 118 (ver «Despliegue no pedido»).
 Autorización: «Autorizo P3 y D31 con IVA incluido» (Pedro, 2/10/2026).
 Código base: `a5a4321` + documentación de esta rama.
-Estado: `MIGRACION_APLICADA_EN_QA_VERIFICADA_EN_BACKEND_PUENTE_V1_PROBADO_EN_PREVIEW_118_PUENTE_V2_CORREGIDO_Y_PROBADO_EN_LOCAL_SIN_DESPLEGAR`
+Estado: `MIGRACION_APLICADA_EN_QA_VERIFICADA_EN_BACKEND_PUENTE_V1_PROBADO_EN_PREVIEW_118_PUENTE_V2_PROBADO_EN_LOCAL_Y_PUBLICADO_SIN_QUERER_EN_PREVIEW_118_NO_VERIFICADO_EN_NAVEGADOR`
 
 No cierra ningún requisito: A02, A03 y A04 siguen `INCOMPLETO` (falta verlo en pantalla).
 
@@ -120,8 +120,9 @@ hecho a mano**.
    tapó) y no repetí la llamada porque fue rechazada. La evidencia funcional es la del ensayo
    en seco (mismo SQL, mismo estado de QA) más las consultas de catálogo de arriba.
 2. **Pantalla.** El puente v1 llegó a un navegador real (preview 118) y envió al servidor.
-   El puente v2 (corregido, ver abajo) **no está desplegado**: solo está probado en máquina
-   virtual local. El catálogo sembrado de QA ya está convertido a precio con IVA (ver arriba).
+   El puente v2 (corregido, ver abajo) está probado en máquina virtual local y, sin que
+   se hubiera pedido, llegó también al preview 118 (ver «Despliegue no pedido»); no se ha visto
+   en un navegador. El catálogo sembrado de QA ya está convertido a precio con IVA (ver arriba).
 3. **No hay camino de vuelta.** La RPC escribe el catálogo; la lista que ve la pantalla en
    otro dispositivo sigue viniendo de `almacen_kv`, que en QA no admite escrituras de listas.
    Los productos editados en un equipo no aparecen en la lista de otro hasta resolverlo
@@ -140,7 +141,7 @@ hecho a mano**.
    de F2 y un contexto fiscal en cada local (la migración tiene preflight y falla si falta
    algo). No se ha comprobado el estado de producción.
 
-## Corrección del puente (v2, sin desplegar)
+## Corrección del puente (v2)
 
 **Qué se vio en la prueba real (preview 118, Pedro, mismo día).** Pedro cambió el precio de
 «Agua 50 cl (QA)» pero el registro de operaciones de QA (`abc_operaciones`) mostró **seis envíos de
@@ -181,13 +182,26 @@ recargar) podría haber **devuelto el catálogo a un precio antiguo** sin que na
 
 **Límites de la v2:**
 
-- **No está en ningún navegador.** El preview 118 sigue sirviendo el puente v1 hasta que haya
-  un nuevo push sin `[skip netlify]`, que requiere autorización.
+- **Aún no se ha visto en un navegador real.** Hay que repetir la prueba del Agua en el preview 118
+  y mirar `abc_operaciones` (esperado: un solo envío de 1 producto, sin envíos de 15).
 - La puerta de interacción es una heurística de 3 s: una acción de la persona seguida, dentro
   de esos 3 s, de una recarga de lista antigua por la aplicación aún podría enviarse (muy
   improbable; sería un cambio de venta real frente a lo último visto).
 - Fuera de alcance, sin corregir: el aviso falso «No se pudo actualizar el producto» (ver
   abajo) y la lectura de vuelta del catálogo (P3b).
+
+### Despliegue no pedido (hay que decirlo)
+
+La autorización fue «corrige el puente y pruébalo **sin desplegar**». Al subir el commit
+`4a4c13e` (con la etiqueta `[skip netlify]` al final de la primera línea) Netlify **construyó
+igualmente** el Deploy Preview del PR 118 («Deploy Preview ready», 14:48 UTC). Es decir: la etiqueta
+no impidió el build (los commits anteriores con la etiqueta delante se subieron cuando aún no
+existía el PR, así que esa suposición no estaba comprobada para un PR abierto). Efecto: el preview
+118 ya sirve el puente v2. Alcance: solo QA (Deploy Preview de un PR en borrador, protegido por el
+equipo de Netlify), sin producción, sin fusión, sin cambio de `release`. No se puede deshacer sin
+otro despliegue; no se intentó. Lección aplicada: para subir documentación o código sin construir
+hay que usar la etiqueta como prefijo del mensaje (convención del repo) y aun así comprobar el
+estado del PR; si el control es crítico, subir a otra rama distinta de la del PR.
 
 ### Defecto aparte: aviso falso «No se pudo actualizar el producto»
 
@@ -205,7 +219,7 @@ funciones de cálculo desde `20260924010000_abc_f3_a03_server_authority.sql` y
 quite la restricción y la columna. No se ha escrito ni ensayado: no hay filas con
 `precio_con_impuesto` en QA ni cambios de datos que deshacer.
 
-## Cómo probarlo en pantalla (cuando haya deploy)
+## Cómo probarlo en pantalla (preview 118)
 
 1. Ventana privada, preview de QA, Propietario, Local A1, pestaña de productos.
 2. Cambia el precio de «Agua 50 cl (QA)» a 1,00 € y guarda.
