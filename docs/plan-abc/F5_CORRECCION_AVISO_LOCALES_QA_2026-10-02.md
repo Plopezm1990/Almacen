@@ -62,6 +62,29 @@ updated_at = now() where key = 'locales' and empresa_id = 'QA-EMP-A';`
 - Solo cambió la fila `locales` (24 filas en `almacen_kv`). Las tablas `locales` y
   `empresas`, `caja_sesiones` y el catálogo no cambiaron.
 
+## Segunda copia de la lista defectuosa (hallazgo posterior)
+
+`reset-pruebas-preview.js` siembra, una vez por navegador (marcador
+`la_suite_reset_total_20260904_v6_qa`), `almacen:locales` en `localStorage` con la
+misma lista antigua que incluye `QA-A-CERRADO`. La pantalla arranca desde esa
+copia local (el puente lee del `localStorage` para estas claves), por lo que el
+arreglo de la fila de `almacen_kv` **puede no ser suficiente** en navegadores que
+ya la tengan. Es una hipótesis: se comprobó que un navegador nuevo la trae
+sembrada, no que provoque el aviso tras iniciar sesión.
+
+Prueba en seco, sin iniciar sesión (Chromium, código de `a5a4321` servido bajo el
+host `deploy-preview-117--chic-entremet-9107cf.netlify.app` mediante
+interceptación de red): modo QA activo, bloqueo de producción activo y 0 intentos
+hacia producción. Un perfil nuevo trae `almacen:locales` =
+`QA-A1, QA-A2, QA-A-CERRADO (inactivo)`.
+
+Método seguro para la prueba con sesión: servir los ficheros del repositorio bajo
+ese host, abortar cualquier petición a `flqercbgpgmmfaakrwkc` (HTTP y WebSocket),
+dejar pasar solo `qjqorixtkilwsndqayyx` y registrar consola, red y
+`localStorage`. Requiere un usuario Propietario de QA y su contraseña, entregados
+como variables del entorno y nunca por chat. No es el alojamiento de Netlify (sin
+sus cabeceras ni CSP) y los WebSocket no pasan por el proxy del entorno.
+
 ## Límites
 
 - **No verificado en navegador.** No hay usuario de prueba ni acceso al preview
