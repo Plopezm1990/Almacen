@@ -78,7 +78,8 @@ sus cambios desde la propia pantalla. Comprobado en QA (tablas de configuración
 
 El cierre de caja depende de un contexto guardado en el navegador (la última cuenta del TPV) para saber el día operativo. Es frágil: no funciona
 en una ventana privada ni en otro equipo. La 6d debería obtener el día operativo del servidor (por ejemplo, de la propia sesión de caja) en vez
-de exigir una cuenta reciente en ese navegador.
+de exigir una cuenta reciente en ese navegador. **Plan y hallazgos ampliados** (incluido que, por lectura del código, los pasos posteriores a «Iniciar cierre»
+buscan la sesión en estado ABIERTA y fallarían): `F6_PIEZA6D_CIERRE_DIFERENCIA_PLAN_2026-10-02.md`.
 
 ## Efectos y avisos
 
