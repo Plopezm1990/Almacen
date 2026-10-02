@@ -56,12 +56,21 @@ Informe: `F6_PIEZA6_PANTALLA_RESULTADO_2026-10-02.md`.
 
 ## Prueba 5 — Los retoques (6f)
 
+> Aviso: para llegar a «Reabrir» hay que poder cerrar la caja, y el cierre de Cocina A10 exige antes haber abierto una cuenta en el TPV *en ese mismo navegador*; en una ventana privada nueva sale «Abre o recupera primero un pedido real…». Es un comportamiento previo, no un fallo de esta pantalla.
+
 1. **Alta de empleados** (pestaña **Personal** → «Nuevo empleado»): el desplegable «Nivel de acceso en modo empleado» debe tener solo
    **Encargado, Cajero/a y Camarero/a** (ya no Básico, Estándar ni Churrero/a). Al editar a alguien que ya tuviera uno de los tres
    retirados, ese rol aparece solo para esa persona, para que no se pierda sin querer.
 2. **Cierre de caja** (pestaña **Cocina A10**, sección de cierre de caja): con el cierre provisional hecho, el Propietario ve el motivo y el botón
    «Reabrir cierre provisional». Si entras como Cajero/a o Camarero/a, no ven el botón y dice: «Solo el Propietario (o quien él
    autorice en Configuración) puede reabrir un cierre provisional.».
+
+## Resultado (Pedro, 2/10/2026)
+
+**Pruebas 1 a 4 superadas, con la vuelta a como estaba hecha desde la propia pantalla.** En QA: ocho eventos de auditoría (cinco guardados y tres
+vueltas), las cuatro secciones leyeron de QA y ninguna petición falló (detalle en `F6_PIEZA6_PANTALLA_RESULTADO_2026-10-02.md`). **Prueba 5
+pendiente**: el aviso «Abre o recupera primero un pedido real…» al pulsar «Iniciar cierre» es del cierre de caja previo (necesita una cuenta abierta
+en el mismo navegador), no de la pantalla nueva; la sesión de caja de A1 queda abierta en QA y Reabrir queda sin ver en pantalla.
 
 ## Qué debes avisarme
 

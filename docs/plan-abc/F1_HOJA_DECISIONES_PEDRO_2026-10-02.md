@@ -165,7 +165,9 @@ el Propietario) queda aplicado. **D13 queda sin permiso para el cajero** (ver el
 solo QA.** Informe: `F6_PIEZA6_PANTALLA_RESULTADO_2026-10-02.md`; guía de prueba: `F6_PRUEBA_PREVIEW_PANTALLA_CONFIG_2026-10-02.md`.
 Pestaña nueva «Configuración» (grupo Sistema, solo Propietario) con día y cajas, modalidades, equipos y permisos; el botón «Reabrir cierre»
 solo se ofrece a quien puede; y los tres roles retirados ya no salen en el alta. Comprobada con pruebas locales (68/68 de ejecución, contrato
-estático, 91 averías provocadas), **sin haberla visto funcionando contra QA** (la primera vez será en el navegador de Pedro).
+estático, 91 averías provocadas) y **probada por Pedro en el preview 118**: pruebas 1 a 4 (día y cajas, modalidades, equipos, permisos) verificadas en QA con
+auditoría y deshechas desde la propia pantalla. **Pendiente la Prueba 5** (botón «Reabrir» y lista de puestos del alta): el cierre de caja de
+Cocina A10 exige una cuenta abierta en el mismo navegador (comportamiento previo); se resolverá en la 6d. La sesión de caja de QA-A1 queda abierta.
 
 **Sigue abierto (pieza 6):**
 
