@@ -56,13 +56,12 @@ Funciones PM09 revisadas:
 
 ## Decisión
 
-No se revocaron grants, no se reemplazó `SECURITY DEFINER`, no se cambió
-`search_path` y no se modificó ninguna base. Los seis wrappers A10 quedan
-clasificados como API intencionada con guardia delegada. Las cinco funciones
-PM09 quedan clasificadas como `REVISAR_Y_ENDURECER`: no hay bypass observado,
-pero debe cerrarse la exposición innecesaria a `service_role` y homogeneizarse
-el `search_path` antes de considerar el subpunto terminado.
+No se reemplazó `SECURITY DEFINER`. El hardening PM09 se aplicó únicamente en
+QA: se fijó `search_path = ''` en los cinco wrappers, se retiró `EXECUTE` para
+`service_role` y se mantuvo `authenticated` como único rol cliente. Los seis
+wrappers A10 siguen clasificados como API intencionada con guardia delegada.
+Producción queda pendiente de validación funcional y autorización separada.
 
-El candidato local de hardening y sus pruebas negativas ya están preparados y
-validados. El siguiente subpunto será la decisión de aplicación en QA, con
-preflight y rollback, sin tocar producción.
+El candidato local de hardening, sus pruebas negativas y la verificación QA ya
+están completados. El siguiente subpunto será la validación funcional del
+flujo PM09 contra QA antes de valorar producción.

@@ -1,7 +1,7 @@
 # F5 / PM09 — candidato local de hardening de seguridad
 
 Fecha de actualización: 2026-10-02
-Estado: `CANDIDATO_PM09_HARDENING_VALIDADO_NO_APLICADO`
+Estado: `QA_APLICADO_VALIDADO_PROD_PENDIENTE`
 
 ## Alcance ejecutado
 
@@ -31,6 +31,22 @@ wrappers ya tienen `search_path = ''`; `registrar_venta_stock_pm09` y
 `revertir_venta_stock_pm09` aún declaran
 `search_path = public, auth, private, pg_temp`. El candidato homogeneiza los
 cinco wrappers y revoca la concesión a `service_role`.
+
+## Aplicación y verificación QA — 2026-10-02
+
+Se aplicó la migración `abc_f5_pm09_security_hardening` en el proyecto QA
+`qjqorixtkilwsndqayyx`. La consulta posterior confirmó:
+
+- los cinco wrappers siguen siendo `SECURITY DEFINER`;
+- los cinco tienen `search_path = ''`;
+- los cinco son ejecutables por `authenticated`;
+- ninguno es ejecutable por `anon` ni por `service_role`;
+- `private.pm09_bloquear_operation_id_stock` no es ejecutable por roles cliente.
+
+La aplicación no se hizo en producción. El advisor general mantiene sus avisos
+existentes de funciones `SECURITY DEFINER` ejecutables por `authenticated` y
+de tablas RLS sin políticas; esos avisos no son una regresión introducida por
+este cambio y requieren revisión separada.
 
 ## Negative tests y permisos
 
@@ -62,5 +78,6 @@ excepción; no se debe restaurar el permiso por defecto sin esa decisión.
   `tests/f5/pm09/pm09-security-hardening-negative-contract.mjs`
 - Workflow: `.github/workflows/abc-f5-pm09-security.yml`
 
-No se ejecutaron migraciones remotas, no se tocaron QA/PROD y no se hizo
-deploy.
+La migración ya se ejecutó únicamente en QA y no se hizo deploy de frontend.
+Producción queda pendiente de una validación funcional y una autorización
+separada.
