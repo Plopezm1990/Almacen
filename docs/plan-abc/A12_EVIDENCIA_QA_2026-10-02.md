@@ -34,7 +34,12 @@ La batería dirigida A02/A05/A06/A07/A10 y los contratos F4/F5 ejecutados previa
 1. El contrato UI A08 tiene una aserción de snapshot desalineada con el nombre actual de la función de etiqueta de destino.
 2. El contrato PostgreSQL local A09 no puede conectar porque no hay servidor local escuchando en `127.0.0.1:55416`; el contrato PGlite sí pasa.
 
+## Comprobación visual local QA
+
+Con sesión autenticada de Propietario A y apuntando al proyecto QA, el módulo TPV se abrió correctamente al seleccionar `Local A1 · QA Empresa A, S.L.`. La pantalla mostró el histórico de ventas y los filtros de pago/estado sin el error de esquema B05. El piso de venta aparece vacío porque el catálogo QA no tiene productos publicados para ese local; no es un fallo de renderizado del TPV.
+
+La copia local mostró además un aviso de sincronización de `locales`; se conserva como aviso de entorno local y no impidió abrir ni renderizar el TPV. No se creó ninguna venta ni se modificaron datos comerciales.
+
 ## Pendiente para cerrar A12 al 100 %
 
-Falta únicamente la prueba visual autenticada desde el Deploy Preview QA. Netlify protege ese preview con Team Protection y la producción sigue sin promover las migraciones B04/B05/F5. No se ha modificado producción ni se ha hecho deploy adicional.
-
+Falta únicamente repetir la prueba visual autenticada directamente desde el Deploy Preview QA. Netlify protege ese preview con Team Protection; por eso se validó la misma pantalla en una copia local apuntada a QA. La producción sigue sin promover las migraciones B04/B05/F5. No se ha modificado producción ni se ha hecho deploy adicional.
