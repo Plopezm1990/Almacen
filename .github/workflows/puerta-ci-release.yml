@@ -1,13 +1,13 @@
-name: "Puerta de CI general -- candidato a release (155/155 contratos activos)"
+name: "Puerta de CI general -- candidato a release (194/194 contratos activos)"
 
 # Punto 3: generaliza la puerta validada en el Punto 2
 # (cierre-proyecto-a/punto2/) a infraestructura reutilizable del
 # repositorio, basada en el manifiesto versionado
-# (tests/ci/manifiesto_clasificacion.json, 169 archivos) sobre el SHA
+# (tests/ci/manifiesto_clasificacion.json, 208 archivos) sobre el SHA
 # exacto evaluado, en 5 jobs:
-#   - node-y-postgres: ejecuta tests/ci/ejecutar_bateria_no_db.sh (141
+#   - node-y-postgres: ejecuta tests/ci/ejecutar_bateria_no_db.sh (171
 #     activos Node), ejecutar_pglite_local.sh (1 activo más su bootstrap)
-#     y preparar_postgres_local.sh (10 activos Postgres 16 + 1 histórico
+#     y preparar_postgres_local.sh (19 activos Postgres 16 + 1 histórico
 #     esperado en rojo), contra motores desechables.
 #   - a09-postgres17: repite el contrato A09 con dos conexiones reales
 #     sobre PostgreSQL 17; es una repetición por versión, no otro archivo.
@@ -23,7 +23,7 @@ name: "Puerta de CI general -- candidato a release (155/155 contratos activos)"
 #     calculado a partir del resultado real (`outcome`) de cada paso,
 #     nunca fijo.
 #   - gate-final: exige que los cuatro jobs de prueba hayan terminado con
-#     éxito, SUMA los outputs reales únicos (141+10+1+3=155) y solo entonces
+#     éxito, SUMA los outputs reales únicos (171+19+1+3=194) y solo entonces
 #     imprime el resumen -- no hay ningún `echo` de un número que no se
 #     haya demostrado primero. Revalida además el manifiesto contra el
 #     árbol real (inventario, clasificación, histórico PM33 P01 separado
@@ -108,7 +108,7 @@ jobs:
           test "$version" = "3.4.17"
           echo "TAILWIND_BUILD_VERSION=$version"
 
-      - name: 141 contratos activos Node (incluye build de Netlify previo)
+      - name: 171 contratos activos Node (incluye build de Netlify previo)
         id: node_run
         shell: bash
         run: |
@@ -153,11 +153,28 @@ jobs:
           echo "pglite_infra_fail=${infra:--1}" >> "$GITHUB_OUTPUT"
           exit $code
 
-      - name: 10 contratos activos Postgres 16 + 1 histórico esperado en rojo (P01)
+      - name: 19 contratos activos Postgres 16 + 1 histórico esperado en rojo (P01)
         id: postgres_run
         shell: bash
         run: |
           set +e
+          # Los contratos F5 usan clientes `pg` separados para poder ejecutarse
+          # también de forma aislada. Este runner agregado debe proporcionarles
+          # el mismo cliente antes de lanzar la batería completa.
+          npm install --prefix "$RUNNER_TEMP/f5-pg-client" --no-save --no-package-lock --no-audit --no-fund pg@8.16.3 || {
+            echo "F5_PG_CLIENT_INSTALL_FAIL=1" >&2
+            exit 1
+          }
+          f5_pg_client="$RUNNER_TEMP/f5-pg-client/node_modules/pg"
+          export C04_PG_CLIENT="$f5_pg_client"
+          export C05_PG_CLIENT="$f5_pg_client"
+          export C06_PG_CLIENT="$f5_pg_client"
+          export C07_PG_CLIENT="$f5_pg_client"
+          export C08_PG_CLIENT="$f5_pg_client"
+          export C09_PG_CLIENT="$f5_pg_client"
+          export C10_PG_CLIENT="$f5_pg_client"
+          export C11_PG_CLIENT="$f5_pg_client"
+          export C12_PG_CLIENT="$f5_pg_client"
           bash tests/ci/preparar_postgres_local.sh > /tmp/pg_run.log 2>&1
           code=$?
           set -e
@@ -407,12 +424,12 @@ jobs:
           echo "PM33_FULL_STACK_PASS=$PM33_FULL_STACK_PASS (de 1)"
 
           fallo=0
-          [ "$NODE_ACTIVE_TOTAL" = "141" ] || { echo "NODE_ACTIVE_TOTAL != 141" >&2; fallo=1; }
-          [ "$NODE_ACTIVE_PASS" = "141" ] || { echo "NODE_ACTIVE_PASS != 141" >&2; fallo=1; }
+          [ "$NODE_ACTIVE_TOTAL" = "171" ] || { echo "NODE_ACTIVE_TOTAL != 171" >&2; fallo=1; }
+          [ "$NODE_ACTIVE_PASS" = "171" ] || { echo "NODE_ACTIVE_PASS != 171" >&2; fallo=1; }
           [ "$NODE_ACTIVE_FAIL" = "0" ] || { echo "NODE_ACTIVE_FAIL != 0" >&2; fallo=1; }
           [ "$INFRA_FAIL" = "0" ] || { echo "INFRA_FAIL != 0" >&2; fallo=1; }
-          [ "$POSTGRES_ACTIVE_TOTAL" = "10" ] || { echo "POSTGRES_ACTIVE_TOTAL != 10" >&2; fallo=1; }
-          [ "$POSTGRES_ACTIVE_PASS" = "10" ] || { echo "POSTGRES_ACTIVE_PASS != 10" >&2; fallo=1; }
+          [ "$POSTGRES_ACTIVE_TOTAL" = "19" ] || { echo "POSTGRES_ACTIVE_TOTAL != 19" >&2; fallo=1; }
+          [ "$POSTGRES_ACTIVE_PASS" = "19" ] || { echo "POSTGRES_ACTIVE_PASS != 19" >&2; fallo=1; }
           [ "$POSTGRES_ACTIVE_FAIL" = "0" ] || { echo "POSTGRES_ACTIVE_FAIL != 0" >&2; fallo=1; }
           [ "$HISTORICAL_EXPECTED_FAIL" = "1" ] || { echo "HISTORICAL_EXPECTED_FAIL != 1" >&2; fallo=1; }
           [ "$PGLITE_ACTIVE_TOTAL" = "1" ] || { echo "PGLITE_ACTIVE_TOTAL != 1" >&2; fallo=1; }
@@ -440,15 +457,15 @@ jobs:
             echo "historical_expected_fail=$HISTORICAL_EXPECTED_FAIL"
           } >> "$GITHUB_OUTPUT"
 
-          echo "CALCULO_TOTAL_ACTIVOS=$total_activos (141 Node + 10 Postgres 16 + 1 PGlite + 3 full-stack)"
+          echo "CALCULO_TOTAL_ACTIVOS=$total_activos (171 Node + 19 Postgres 16 + 1 PGlite + 3 full-stack)"
           echo "CALCULO_ACTIVE_PASS=$active_pass"
           echo "CALCULO_ACTIVE_FAIL=$active_fail"
 
-          if [ "$total_activos" -ne 155 ]; then
-            echo "TOTAL_ACTIVOS_CALCULADO_DISTINTO_DE_155: $total_activos" >&2
+          if [ "$total_activos" -ne 194 ]; then
+            echo "TOTAL_ACTIVOS_CALCULADO_DISTINTO_DE_194: $total_activos" >&2
             exit 1
           fi
-          if [ "$active_pass" -ne 155 ] || [ "$active_fail" -ne 0 ]; then
+          if [ "$active_pass" -ne 194 ] || [ "$active_fail" -ne 0 ]; then
             echo "ACTIVE_PASS/ACTIVE_FAIL_CALCULADOS_NO_CUADRAN: pass=$active_pass fail=$active_fail" >&2
             exit 1
           fi

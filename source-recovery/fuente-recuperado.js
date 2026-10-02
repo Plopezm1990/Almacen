@@ -1826,7 +1826,7 @@ function GestionAlmacen() {
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
-  const { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
+  const { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { abrirSesionCajaA10 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
@@ -8242,6 +8242,10 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   async function listarEstacionesA10() {
     listarEstacionesA10.abrirSesionCajaA10 = abrirSesionCajaA10;
     listarEstacionesA10.cerrarSesionCajaA10 = cerrarSesionCajaA10;
+    listarEstacionesA10.iniciarCierreSesionCajaA10 = iniciarCierreSesionCajaA10;
+    listarEstacionesA10.confirmarCierreProvisionalA10 = confirmarCierreProvisionalA10;
+    listarEstacionesA10.finalizarCierreSesionCajaA10 = finalizarCierreSesionCajaA10;
+    listarEstacionesA10.reabrirCierreProvisionalA10 = reabrirCierreProvisionalA10;
     try {
       const contexto = await contextoA10(false);
       const [estaciones, rutas] = await Promise.all([
@@ -8297,13 +8301,31 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     }
   }
 
-  async function cerrarSesionCajaA10({ efectivoContado = 0 } = {}) {
+  async function iniciarCierreSesionCajaA10() {
+    try {
+      const contexto = await contextoA10(true);
+      const operationId = `f5.ui.cash.close.start.${uuidA02()}`;
+      const resultado = await rpcA02ConRecuperacion(contexto.supabase, "abc_iniciar_cierre_sesion_caja", {
+        p_operation_id: operationId,
+        p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId,
+        p_session_id: contexto.sessionId,
+        p_terminal_id: contexto.terminalId,
+        p_operating_day: contexto.operatingDay
+      }, contexto.empresaId, contexto.localId, operationId);
+      return { ok: true, ...(resultado || {}) };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function confirmarCierreProvisionalA10({ efectivoContado = 0 } = {}) {
     try {
       const contexto = await contextoA10(true);
       const contado = Number(efectivoContado);
       if (!Number.isFinite(contado) || contado < 0) throw new Error("efectivo_contado_invalido");
-      const operationId = `a10.ui.cash.close.${uuidA02()}`;
-      const { data, error } = await contexto.supabase.rpc("abc_cerrar_sesion_caja", {
+      const operationId = `f5.ui.cash.close.provisional.${uuidA02()}`;
+      const resultado = await rpcA02ConRecuperacion(contexto.supabase, "abc_confirmar_cierre_provisional", {
         p_operation_id: operationId,
         p_empresa_id: contexto.empresaId,
         p_local_id: contexto.localId,
@@ -8312,12 +8334,59 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         p_currency_code: "EUR",
         p_counted_amount: contado,
         p_operating_day: contexto.operatingDay
-      });
-      if (error) throw error;
-      return { ok: true, ...(data || {}) };
+      }, contexto.empresaId, contexto.localId, operationId);
+      return { ok: true, ...(resultado || {}) };
     } catch (error) {
       return respuestaErrorA06(error);
     }
+  }
+
+  async function finalizarCierreSesionCajaA10() {
+    try {
+      const contexto = await contextoA10(true);
+      const operationId = `f5.ui.cash.close.finalize.${uuidA02()}`;
+      const resultado = await rpcA02ConRecuperacion(contexto.supabase, "abc_finalizar_cierre_sesion_caja", {
+        p_operation_id: operationId,
+        p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId,
+        p_session_id: contexto.sessionId,
+        p_terminal_id: contexto.terminalId,
+        p_currency_code: "EUR",
+        p_operating_day: contexto.operatingDay
+      }, contexto.empresaId, contexto.localId, operationId);
+      return { ok: true, ...(resultado || {}) };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function reabrirCierreProvisionalA10({ motivo = "" } = {}) {
+    try {
+      const contexto = await contextoA10(true);
+      const motivoLimpio = String(motivo || "").trim();
+      if (!motivoLimpio) throw new Error("motivo_reapertura_requerido");
+      const operationId = `f5.ui.cash.close.reopen.${uuidA02()}`;
+      const resultado = await rpcA02ConRecuperacion(contexto.supabase, "abc_reabrir_cierre_provisional", {
+        p_operation_id: operationId,
+        p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId,
+        p_session_id: contexto.sessionId,
+        p_terminal_id: contexto.terminalId,
+        p_motivo: motivoLimpio,
+        p_operating_day: contexto.operatingDay
+      }, contexto.empresaId, contexto.localId, operationId);
+      return { ok: true, ...(resultado || {}) };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function cerrarSesionCajaA10({ efectivoContado = 0 } = {}) {
+    const iniciado = await iniciarCierreSesionCajaA10();
+    if (!iniciado?.ok) return iniciado;
+    const provisional = await confirmarCierreProvisionalA10({ efectivoContado });
+    if (!provisional?.ok) return provisional;
+    return finalizarCierreSesionCajaA10();
   }
 
   async function listarComandasA10(estacionId = null, limite = 100) {
@@ -9174,7 +9243,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       return { ok: false, error: "No se pudo confirmar la anulaci\xF3n con el servidor. No se ha modificado el stock local." };
     }
   }
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -20402,7 +20471,10 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
 function CocinaA10({ productos = [], local = null, configEmpresa = null, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10 }) {
   const h3 = import_react4.default.createElement;
   const abrirSesionCajaA10 = typeof listarEstacionesA10?.abrirSesionCajaA10 === "function" ? listarEstacionesA10.abrirSesionCajaA10 : null;
-  const cerrarSesionCajaA10 = typeof listarEstacionesA10?.cerrarSesionCajaA10 === "function" ? listarEstacionesA10.cerrarSesionCajaA10 : null;
+  const iniciarCierreSesionCajaA10 = typeof listarEstacionesA10?.iniciarCierreSesionCajaA10 === "function" ? listarEstacionesA10.iniciarCierreSesionCajaA10 : null;
+  const confirmarCierreProvisionalA10 = typeof listarEstacionesA10?.confirmarCierreProvisionalA10 === "function" ? listarEstacionesA10.confirmarCierreProvisionalA10 : null;
+  const finalizarCierreSesionCajaA10 = typeof listarEstacionesA10?.finalizarCierreSesionCajaA10 === "function" ? listarEstacionesA10.finalizarCierreSesionCajaA10 : null;
+  const reabrirCierreProvisionalA10 = typeof listarEstacionesA10?.reabrirCierreProvisionalA10 === "function" ? listarEstacionesA10.reabrirCierreProvisionalA10 : null;
   const [estaciones, setEstaciones] = (0, import_react4.useState)([]);
   const [rutas, setRutas] = (0, import_react4.useState)([]);
   const [comandas, setComandas] = (0, import_react4.useState)([]);
@@ -20420,6 +20492,9 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
   const [requiereApertura, setRequiereApertura] = (0, import_react4.useState)(false);
   const [fondoInicial, setFondoInicial] = (0, import_react4.useState)("0");
   const [efectivoContado, setEfectivoContado] = (0, import_react4.useState)("0");
+  const [estadoCierre, setEstadoCierre] = (0, import_react4.useState)("ABIERTA");
+  const [motivoReapertura, setMotivoReapertura] = (0, import_react4.useState)("");
+  const [bloqueosCierre, setBloqueosCierre] = (0, import_react4.useState)([]);
 
   const productosActivos = (productos || []).filter((producto) => producto && producto.activo !== false);
   const estacionSeleccionada = estaciones.find((estacion) => String(estacion.id) === String(estacionId)) || null;
@@ -20465,6 +20540,9 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     setEstacionId("");
     setError("");
     setMensaje("");
+    setEstadoCierre("ABIERTA");
+    setMotivoReapertura("");
+    setBloqueosCierre([]);
     refrescarEstaciones();
   }, [local?.id, configEmpresa?.id]);
 
@@ -20501,32 +20579,90 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
       return;
     }
     setRequiereApertura(false);
+    setEstadoCierre("ABIERTA");
+    setBloqueosCierre([]);
     setMensaje(`Sesión de caja abierta en ${resultado.caja_nombre || "la caja principal"} con fondo inicial de €${Number(fondoInicial || 0).toFixed(2)}.`);
     await refrescarEstaciones();
     await refrescarComandas();
   }
 
-  async function cerrarSesion() {
-    if (procesando || typeof cerrarSesionCajaA10 !== "function") return;
+  async function iniciarCierre() {
+    if (procesando || typeof iniciarCierreSesionCajaA10 !== "function") return;
+    setProcesando("iniciar-cierre");
+    setError("");
+    setMensaje("");
+    const resultado = await iniciarCierreSesionCajaA10();
+    setProcesando("");
+    if (!resultado?.ok) {
+      setError(resultado?.error || "No se pudo iniciar el cierre de la sesión.");
+      return;
+    }
+    setEstadoCierre("EN_CIERRE");
+    setMensaje("Cierre iniciado. Revisa el efectivo contado y confirma el cierre provisional.");
+  }
+
+  async function confirmarProvisional() {
+    if (procesando || typeof confirmarCierreProvisionalA10 !== "function") return;
     const contado = Number(efectivoContado);
     if (!Number.isFinite(contado) || contado < 0) {
       setError("Escribe un efectivo contado igual o mayor que cero.");
       return;
     }
-    setProcesando("cerrar-sesion");
+    setProcesando("cierre-provisional");
     setError("");
     setMensaje("");
-    const resultado = await cerrarSesionCajaA10({ efectivoContado: contado });
+    const resultado = await confirmarCierreProvisionalA10({ efectivoContado: contado });
     setProcesando("");
     if (!resultado?.ok) {
-      setError(resultado?.error || "No se pudo cerrar la sesión de caja.");
+      setError(resultado?.error || "No se pudo confirmar el cierre provisional.");
       return;
     }
+    setEstadoCierre("CIERRE_PROVISIONAL");
+    setBloqueosCierre(Array.isArray(resultado.blockers) ? resultado.blockers : []);
+    setMensaje(`Cierre provisional registrado: contado €${Number(resultado.counted_amount || contado).toFixed(2)}, esperado €${Number(resultado.expected_amount || 0).toFixed(2)}, diferencia €${Number(resultado.difference || 0).toFixed(2)}. Puedes finalizarlo o reabrirlo con motivo.`);
+  }
+
+  async function finalizarCierre() {
+    if (procesando || typeof finalizarCierreSesionCajaA10 !== "function") return;
+    setProcesando("finalizar-cierre");
+    setError("");
+    setMensaje("");
+    const resultado = await finalizarCierreSesionCajaA10();
+    setProcesando("");
+    if (!resultado?.ok) {
+      setError(resultado?.error || "No se pudo finalizar el cierre.");
+      return;
+    }
+    setEstadoCierre("CERRADA_FINAL");
     setRequiereApertura(true);
+    setBloqueosCierre([]);
     setEstaciones([]);
     setRutas([]);
     setComandas([]);
-    setMensaje(`Sesión cerrada: contado €${Number(resultado.counted_amount || 0).toFixed(2)}, esperado €${Number(resultado.expected_amount || 0).toFixed(2)}, diferencia €${Number(resultado.difference || 0).toFixed(2)}.`);
+    setMensaje("Sesión cerrada definitivamente por el servidor. Para operar de nuevo, abre una nueva sesión.");
+  }
+
+  async function reabrirProvisional() {
+    if (procesando || typeof reabrirCierreProvisionalA10 !== "function") return;
+    if (!motivoReapertura.trim()) {
+      setError("Indica el motivo para reabrir el cierre provisional.");
+      return;
+    }
+    setProcesando("reabrir-cierre");
+    setError("");
+    setMensaje("");
+    const resultado = await reabrirCierreProvisionalA10({ motivo: motivoReapertura });
+    setProcesando("");
+    if (!resultado?.ok) {
+      setError(resultado?.error || "No se pudo reabrir el cierre provisional.");
+      return;
+    }
+    setEstadoCierre("ABIERTA");
+    setMotivoReapertura("");
+    setBloqueosCierre([]);
+    setMensaje("Cierre provisional reabierto. La sesión vuelve a estar disponible para operar.");
+    await refrescarEstaciones();
+    await refrescarComandas();
   }
 
   async function cambiarActivo(estacion) {
@@ -20624,11 +20760,27 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
       h3(Field, { label: "Fondo inicial (€)" }, h3(Input, { type: "number", min: "0", step: "0.01", value: fondoInicial, onChange: (e2) => setFondoInicial(e2.target.value) })),
       h3(Btn, { small: true, onClick: abrirSesion, disabled: !!procesando || !String(fondoInicial).trim() }, procesando === "abrir-sesion" ? "Abriendo…" : "Abrir sesión")
     ) : null,
-    !requiereApertura && cerrarSesionCajaA10 ? h3(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } },
-      h3("div", { className: "text-[12.5px] font-semibold mb-1" }, "Cerrar sesión de caja"),
-      h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Introduce el efectivo contado. El servidor calculará el esperado, registrará el arqueo y cerrará la sesión de forma irreversible."),
-      h3(Field, { label: "Efectivo contado (€)" }, h3(Input, { type: "number", min: "0", step: "0.01", value: efectivoContado, onChange: (e2) => setEfectivoContado(e2.target.value) })),
-      h3(Btn, { small: true, variant: "danger", onClick: cerrarSesion, disabled: !!procesando || !String(efectivoContado).trim() }, procesando === "cerrar-sesion" ? "Cerrando…" : "Cerrar sesión")
+    !requiereApertura && iniciarCierreSesionCajaA10 ? h3(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } },
+      h3("div", { className: "text-[12.5px] font-semibold mb-1" }, "Cierre de sesión de caja · ", estadoCierre),
+      estadoCierre === "ABIERTA" ? h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Inicia el cierre cuando dejes de operar. El servidor comprobará los pagos y efectos pendientes antes de permitir el cierre provisional.") : null,
+      estadoCierre === "EN_CIERRE" ? h3("div", null,
+        h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Introduce el efectivo contado para registrar el arqueo provisional. Todavía podrás reabrirlo con un motivo."),
+        h3(Field, { label: "Efectivo contado (€)" }, h3(Input, { type: "number", min: "0", step: "0.01", value: efectivoContado, onChange: (e2) => setEfectivoContado(e2.target.value) })),
+        h3(Btn, { small: true, onClick: confirmarProvisional, disabled: !!procesando || !String(efectivoContado).trim() }, procesando === "cierre-provisional" ? "Registrando…" : "Confirmar cierre provisional")
+      ) : null,
+      estadoCierre === "ABIERTA" ? h3(Btn, { small: true, variant: "danger", onClick: iniciarCierre, disabled: !!procesando }, procesando === "iniciar-cierre" ? "Iniciando…" : "Iniciar cierre") : null,
+      estadoCierre === "CIERRE_PROVISIONAL" ? h3("div", null,
+        h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "El cierre provisional está registrado. Finalízalo cuando no queden bloqueos o reábrelo para corregir la sesión."),
+        bloqueosCierre.length > 0 ? h3("div", { className: "mb-3 p-2 rounded-lg", style: { background: C2.redSoft || "#FCE8E6", color: C2.red } },
+          h3("div", { className: "text-[11.5px] font-semibold mb-1" }, "Bloqueos que impiden el cierre definitivo"),
+          h3("ul", { className: "list-disc pl-4 text-[11px]" }, bloqueosCierre.map((bloqueo, indice) => h3("li", { key: String(bloqueo?.tipo || bloqueo?.codigo || indice) }, String(bloqueo?.detalle || bloqueo?.tipo || bloqueo?.codigo || "Pendiente operativo"))))
+        ) : null,
+        h3("div", { className: "flex gap-2 flex-wrap" },
+          h3(Btn, { small: true, variant: "danger", onClick: finalizarCierre, disabled: !!procesando }, procesando === "finalizar-cierre" ? "Finalizando…" : "Finalizar cierre"),
+          h3(Field, { label: "Motivo de reapertura" }, h3(Input, { value: motivoReapertura, onChange: (e2) => setMotivoReapertura(e2.target.value), placeholder: "Ajuste de arqueo…", maxLength: 500 })),
+          h3(Btn, { small: true, variant: "ghost", onClick: reabrirProvisional, disabled: !!procesando || !motivoReapertura.trim() }, procesando === "reabrir-cierre" ? "Reabriendo…" : "Reabrir cierre provisional")
+        )
+      ) : null
     ) : null,
     h3(Card, { className: "mb-4" },
       h3("div", { className: "text-[12.5px] font-semibold mb-2" }, "Estaciones y rutas"),

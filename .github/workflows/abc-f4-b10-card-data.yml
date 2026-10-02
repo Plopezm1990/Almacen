@@ -1,0 +1,29 @@
+name: "ABC F4 B10 -- frontera de datos de tarjeta"
+
+on:
+  pull_request:
+    branches: [release]
+    paths:
+      - "supabase/migrations/20261001090000_abc_f4_b10_card_data_boundary.sql"
+      - "supabase/migrations/20261001100000_abc_f4_b10_pci_capture_modes.sql"
+      - "supabase/migrations/20261001110000_abc_f4_b10_pci_review_gate.sql"
+      - "tests/f4/b10/**"
+      - "docs/plan-abc/F4_B10_CONTRATO_TECNICO_2026-10-01.md"
+      - "docs/plan-abc/F4_B10_ALTA_PROVEEDOR_PCI_2026-10-01.md"
+      - ".github/workflows/abc-f4-b10-card-data.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  f4-b10-card-data:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Validar contrato estático B10.1
+        run: node tests/f4/b10/b10-card-data-contract.mjs
