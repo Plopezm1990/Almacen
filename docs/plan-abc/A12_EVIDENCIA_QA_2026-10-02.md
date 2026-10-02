@@ -40,6 +40,14 @@ Con sesión autenticada de Propietario A y apuntando al proyecto QA, el módulo 
 
 La copia local mostró además un aviso de sincronización de `locales`; se conserva como aviso de entorno local y no impidió abrir ni renderizar el TPV. No se creó ninguna venta ni se modificaron datos comerciales.
 
-## Pendiente para cerrar A12 al 100 %
+## Validación visual del Deploy Preview QA
 
-Falta únicamente repetir la prueba visual autenticada directamente desde el Deploy Preview QA. Netlify protege ese preview con Team Protection; por eso se validó la misma pantalla en una copia local apuntada a QA. La producción sigue sin promover las migraciones B04/B05/F5. No se ha modificado producción ni se ha hecho deploy adicional.
+La prueba autenticada se repitió directamente en `https://deploy-preview-117--chic-entremet-9107cf.netlify.app/` con el Propietario A. El preview mostró `Local A1 · QA Empresa A, S.L.`, confirmando visualmente el tenant QA, y el módulo TPV abrió al seleccionar `Local A1`.
+
+La pantalla mostró el histórico de ventas, filtros de pago y estado, y el mensaje funcional A02/A04/A05/F4 sin el error de esquema B05. El piso de venta está vacío porque no hay productos publicados para ese local. No se creó ninguna venta ni se ejecutó ningún cobro.
+
+El preview permaneció privado durante la prueba (`Private` en el panel de Netlify). La producción sigue sin modificarse y no se cambiaron permisos de acceso.
+
+## Cierre de A12
+
+A12 queda validado en backend QA, copia local y Deploy Preview autenticado. Se mantiene como aviso no bloqueante la sincronización pendiente de `locales` que muestra la aplicación; no impidió abrir ni renderizar el TPV. No se ha modificado producción ni se ha hecho deploy adicional.
