@@ -128,9 +128,11 @@ iniciada en `deploy-preview-117`:
 Conclusión: el defecto de `locales` está corregido en QA y comprobado en una
 sesión real. Queda abierto, y sin relación con `locales`, que cinco colecciones no
 se puedan guardar en la nube por la RLS (`almacen_kv` y `movimientos_registro`,
-`403`/`42501`), lo que mantiene el indicador «Subiendo N…». Por tamaño, `productos`
-encaja con la carga de 255 KB y `temaOscuro` con la de 33 bytes del registro de
-QA; es una inferencia. No se sabe si afecta a producción: no se ha consultado.
+`403`/`42501`), lo que mantiene el indicador «Subiendo N…». Por tamaño solo se
+puede asociar con seguridad `temaOscuro` (33 bytes exactos); la asociación de la
+carga de 255 KB con `productos` que figuraba aquí era errónea (ver
+`F5_ANALISIS_CLAVES_PENDIENTES_QA_2026-10-02.md`). No se sabe si afecta a
+producción: no se ha consultado.
 Pendiente de que Pedro confirme que no ve ningún aviso de locales en pantalla.
 
 ## Límites
