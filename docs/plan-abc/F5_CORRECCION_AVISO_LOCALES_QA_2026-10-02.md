@@ -3,7 +3,7 @@
 Fecha: 2026-10-02
 Entorno: Supabase QA `qjqorixtkilwsndqayyx` (solo QA; sin producción, sin deploy)
 SHA de código: `a5a4321` (sin cambios de código ni de migraciones)
-Estado: `LOCALES_CORREGIDO_EN_QA_VERIFICADO_EN_REGISTROS_PENDIENTE_CONFIRMAR_EN_PANTALLA_OTRAS_ESCRITURAS_RLS_SIN_CORREGIR`
+Estado: `LOCALES_CORREGIDO_Y_VERIFICADO_EN_NAVEGADOR_Y_REGISTROS_OTRAS_5_COLECCIONES_RLS_SIN_CORREGIR`
 
 ## Causa
 
@@ -108,6 +108,30 @@ A+B (`16c79749…`) con `referer` del preview `deploy-preview-117`:
   de `locales` (RLS que exige `empresa_id` no nulo sobre un valor sin `empresaId`).
   Ocurre en otras claves del bloque genérico y en `movimientos_registro`, no en
   `locales`. **No se ha corregido** y no depende del arreglo de `locales`.
+
+## Verificación en navegador (Propietario A+B, preview, ~11:50 UTC)
+
+Resultado del fragmento de diagnóstico (solo lectura) en Firefox, con la sesión ya
+iniciada en `deploy-preview-117`:
+
+- `modoQA: true`, `nubeActiva: true`, `syncPermitida: true`.
+- `almacen:locales` del navegador = `QA-A1, QA-B1 (inactivo), QA-B2 (inactivo),
+  QA-A2`, idéntica a la que devuelve `obtener_contexto_instalacion_ui`. **Ya no
+  contiene `QA-A-CERRADO`**: la semilla antigua del navegador fue sustituida por
+  el contexto del servidor. Igual en `empresas`, `localActivoId` (`QA-A1`) y la
+  generación (`17aac47e` en ambos lados).
+- `almacen__pendientes` = `historialRespaldos`, `productos`, `movimientos`,
+  `conteos`, `temaOscuro`. **Ninguna es `locales`, `empresas` ni `localActivoId`.**
+- Ninguna de esas cinco claves existe en `almacen_kv` de QA (las 24 filas son las
+  sembradas el 4 y el 6 de septiembre): nunca se han guardado.
+
+Conclusión: el defecto de `locales` está corregido en QA y comprobado en una
+sesión real. Queda abierto, y sin relación con `locales`, que cinco colecciones no
+se puedan guardar en la nube por la RLS (`almacen_kv` y `movimientos_registro`,
+`403`/`42501`), lo que mantiene el indicador «Subiendo N…». Por tamaño, `productos`
+encaja con la carga de 255 KB y `temaOscuro` con la de 33 bytes del registro de
+QA; es una inferencia. No se sabe si afecta a producción: no se ha consultado.
+Pendiente de que Pedro confirme que no ve ningún aviso de locales en pantalla.
 
 ## Límites
 
