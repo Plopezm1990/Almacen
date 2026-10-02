@@ -62,6 +62,22 @@ Estado: `PREVIEW_118_RECONSTRUIDO_CON_PUENTE_V2_PENDIENTE_DE_PRUEBA_EN_PANTALLA`
    cobrar.
 7. Para dejarlo como estaba, vuelve a poner el precio en 0,99 €.
 
+## Prueba 3 — P3b: el precio nuevo sobrevive a la recarga (QA)
+
+Desde las 15:18 UTC la base de datos de QA tiene el «espejo» (P3b): al guardar, el servidor deja al día
+también la lista que carga la pantalla. Hoy esa lista aún tiene el Agua a 0,99 (nadie la ha tocado), así que:
+
+1. Ventana privada nueva, preview del **PR 118**, Propietario, Local A1.
+2. Productos → «Agua 50 cl (QA)»: pon el precio en **1,00 €** (la pantalla enseña 0,99) y guarda. No debe salir
+   el cartel rojo.
+3. Espera unos 5 segundos y **recarga la página**. El Agua debe seguir en **1,00 €**.
+4. Avísame: compruebo en QA que hay un solo envío de 1 producto, que la lista de la nube tiene 1,00 y que el
+   servidor cobra lo mismo. Opcional: en el TPV añade 3 aguas, el total debe ser 3,00 €.
+5. Para dejarlo como estaba, ponlo otra vez en 0,99 (también debe sobrevivir a la recarga).
+
+Qué no cubre: productos **nuevos** creados en la pantalla (no sobreviven a la recarga en QA, ver el informe de
+P3, límite P3b 2) ni dos dispositivos a la vez.
+
 ## Cómo saber si el preview es el correcto
 
 - Si `puente` sale `"undefined"`, estás viendo una versión sin P3 (caché antigua o la dirección

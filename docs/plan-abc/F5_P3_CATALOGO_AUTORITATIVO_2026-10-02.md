@@ -4,7 +4,7 @@ Fecha: 2026-10-02
 Entorno: Supabase QA `qjqorixtkilwsndqayyx` (solo QA). Producción no se tocó. Deploy solo como preview de QA del PR 118 (ver «Despliegue no pedido»).
 Autorización: «Autorizo P3 y D31 con IVA incluido» (Pedro, 2/10/2026).
 Código base: `a5a4321` + documentación de esta rama.
-Estado: `MIGRACION_APLICADA_EN_QA_VERIFICADA_EN_BACKEND_PUENTE_V1_PROBADO_EN_PREVIEW_118_PUENTE_V2_PROBADO_EN_LOCAL_Y_PUBLICADO_SIN_QUERER_EN_PREVIEW_118_NO_VERIFICADO_EN_NAVEGADOR`
+Estado: `MIGRACION_APLICADA_EN_QA_VERIFICADA_EN_BACKEND_PUENTE_V1_PROBADO_EN_PREVIEW_118_PUENTE_V2_VERIFICADO_EN_PREVIEW_118_P3B_ESPEJO_APLICADO_EN_QA_VERIFICADO_EN_BACKEND_PENDIENTE_DE_VER_EN_PANTALLA`
 
 No cierra ningún requisito: A02, A03 y A04 siguen `INCOMPLETO` (falta verlo en pantalla).
 
@@ -123,10 +123,10 @@ hecho a mano**.
    El puente v2 (corregido, ver abajo) está probado en máquina virtual local y, sin que
    se hubiera pedido, llegó también al preview 118 (ver «Despliegue no pedido»); no se ha visto
    en un navegador. El catálogo sembrado de QA ya está convertido a precio con IVA (ver arriba).
-3. **No hay camino de vuelta.** La RPC escribe el catálogo; la lista que ve la pantalla en
-   otro dispositivo sigue viniendo de `almacen_kv`, que en QA no admite escrituras de listas.
-   Los productos editados en un equipo no aparecen en la lista de otro hasta resolverlo
-   (propuesta P3b: función de lectura del catálogo para reconstruir la lista).
+3. **Camino de vuelta: resuelto en QA por P3b para los cambios de venta de productos existentes**
+   (ver «P3b» más abajo). Lo que sigue sin existir: los productos **dados de alta** en la pantalla
+   llegan al catálogo, pero no a la lista de la nube (la pantalla no puede escribirla en QA), así que
+   tras recargar no aparecen en la pantalla aunque el servidor los tenga.
 4. **Importes fraccionados sin redondear a céntimos.** El servidor calcula a 8 decimales
    (D17 sigue provisional): 0,333 kg a 19,80 € da 6,5934, que no se puede cobrar ni
    conciliar al céntimo. Ya ocurría con el precio base; no se ha cambiado.
@@ -245,17 +245,94 @@ y `.github/workflows/puerta-ci-release.yml`, y los tests nuevos no están regist
 - `tests/p1-denied-keys-solo-local.mjs` (P1)
 - `tests/p3-catalogo-bridge.mjs` (P3)
 - `tests/p3/p3-catalogo-static-contract.mjs` (P3)
-- `tests/p3/p3-actualizar-producto-resultado.mjs` (esta corrección)
+- `tests/p3/p3-actualizar-producto-resultado.mjs` (corrección del cartel)
+- `tests/p3/p3b-espejo-static-contract.mjs` (P3b)
 
-Error literal del registro: `inventory_count: inventario=211; esperado=208` (ahora 212) y
+Error literal del registro: `inventory_count: inventario=211; esperado=208` (con P3b serán 213) y
 `missing_path` por cada uno. Los trabajos PostgreSQL (C05–C12), A09, PM12 y PM33 del mismo flujo pasan.
 **No se ha tocado la puerta**: registrar los archivos exige cambiar cifras de una puerta de publicación
 (manifiesto, validador y flujo) y debe hacerse en el PR de promoción real, no en un PR de preview «NO
 FUSIONAR». Se deja como decisión de Pedro.
 
+### P3b — espejo en la lista de la nube (opción A, autorizada por Pedro, solo QA)
+
+**Qué se vio.** Con el preview 118 (puente v2 + corrección del cartel), Pedro cambió el Agua a 1,00 y al
+recargar volvió a salir 0,99. Lectura de QA (después de las 15:02 UTC, la última operación vista):
+
+| Dónde | Agua de A1 | Qué hace |
+|---|---|---|
+| `catalogo_tpv_productos` (servidor) | 1,00 € (versión 3, desde las 14:54) | lo que **cobra** el TPV |
+| `almacen_kv.productos` (lista que carga la pantalla) | 0,99 €, `updated_at` 13:00:17 (la siembra) | lo que **muestra** la pantalla al recargar |
+
+La fecha de la lista no se había movido desde la siembra: ninguna escritura de la pantalla llega a la
+nube (la política PM05 la rechaza; ya lo marcaba P1 como «solo en este equipo»; no se vio en los
+registros del servidor, es la deducción que mejor encaja con esa fecha). Resultado: la pantalla mostraba
+un precio y el servidor cobraba otro.
+
+**Qué hace P3b** (migración `20261002170000_abc_p3b_espejo_lista_nube`, **solo QA**): la RPC
+`abc_catalogo_guardar_productos` refleja además, en la misma transacción, los campos de venta aceptados
+(nombre, unidad, fraccionable, precisión si es al peso, `precioVenta`, `ivaVenta` y, si llega, `activo`)
+en los elementos recibidos de la fila `productos` de la empresa. Reglas:
+
+- Solo se tocan elementos que ya existen, del local de la llamada, y solo esos campos. **No se crean ni
+  se borran elementos**, no se toca stock, coste, código ni nada más, y se conserva el orden.
+- No cambia el catálogo ni los importes. No reescribe la fila (ni mueve su fecha) si no hay cambios.
+- Los omitidos por el servidor (otro local, otra empresa, inválidos) no se reflejan.
+- Fila de otra empresa o que no es una lista → no se toca (`lista_nube: sin_fila`). La respuesta añade
+  `lista_nube`: `actualizada | sin_cambios | sin_fila | sin_productos`.
+- Efecto colateral conocido: al actualizar la fila se ejecuta el disparador existente
+  `pm07_bootstrap_stock_desde_productos_kv`, que solo **inserta** filas de stock que falten
+  (`on conflict do nothing`). Comprobado: el stock existente no cambia.
+- Permisos intactos (`create or replace` + se reafirman): solo `authenticated`; Cajero/a, Encargado de
+  otro local y Propietario de otra empresa siguen rechazados.
+
+**Pruebas.**
+
+- Ensayo en seco en QA (migración + contrato, `ROLLBACK`): 54 de 55 correctas; el fallo era mi propia
+  expectativa («el stock no cambia en todo el contrato»): el alta de un producto nuevo crea, por diseño
+  de P3, su fila de stock inicial. Se corrigió el test (excluir el producto nuevo y comprobar aparte que
+  su stock inicial es 0) y se demostró con la ejecución siguiente.
+- Aplicada en QA con el contrato vivo `tests/p3/p3b-espejo-contract.sql` ejecutado **contra la función
+  ya persistida** (con `ROLLBACK`): **56 de 56** (50 afirmaciones + 6 rechazos esperados). Incluye el caso
+  real (catálogo 1,00 con la lista a 0,99 → guardar → la lista pasa a 1,00 y el servidor cobra 3 x 1,50 =
+  4,50 tras otro cambio), idempotencia/replay/conflicto, texto «1.25» → número, baja/reactivación/no
+  vendible, artículo al peso, alta sin crear elementos, omitidos, mezcla, otra empresa, fila que no es lista,
+  y lectura con rol real.
+- Mutante en vivo (función sin la escritura del espejo, con `ROLLBACK`): `lista_nube` seguía diciendo
+  «actualizada» pero el precio en la lista se quedaba en 0,99. Por eso el contrato **lee el dato real** y no
+  se fía del indicador (el caso 2.3 falla con el mutante).
+- `tests/p3/p3b-espejo-static-contract.mjs` (local): la función de P3b es la de P3 más cuatro añadidos exactos
+  y nada más; un único `update` sobre `almacen_kv`, sin `insert`/`delete`; solo campos de venta; bloqueo de fila,
+  filtro de empresa y de local; ACL. **11 mutantes detectados.**
+- Batería completa de `.mjs`: 188 pasan; los 25 que fallan son de entorno (sin `pg`/PGlite).
+- Estado persistido en QA tras aplicar: función `SECURITY DEFINER` con `search_path` vacío, `EXECUTE` solo
+  para `authenticated`, migración registrada, y los **datos reales sin tocar** (lista de la nube sigue en 0,99
+  hasta la próxima edición real, catálogo 1,00 v3, 30 filas de catálogo y 83 de stock, 0 residuos del contrato).
+
+**Límites de P3b.**
+
+1. **No visto en pantalla.** Falta la prueba de Pedro: la pantalla muestra hoy 0,99; al guardar el Agua a 1,00
+   el puente envía 1 producto, el servidor responde «sin cambios» en el catálogo y refleja 1,00 en la lista, y
+   al recargar debe verse 1,00.
+2. **Altas desde la pantalla no sobreviven a la recarga en QA** (ver límite 3 arriba). Crear elementos en la lista
+   desde una función del servidor se descartó por ahora: pasaría datos de la pantalla sin validar a una lista que
+   consume toda la aplicación.
+3. **Carrera con la propia pantalla en producción.** En producción la pantalla escribe la lista entera; si lo hace
+   a la vez con la RPC puede pisar el espejo (la RPC bloquea la fila, pero la pantalla no pasa por la RPC). No se ha
+   comprobado el comportamiento de PM05 en producción. Hay que revisarlo antes de promover P3/P3b.
+4. **Sigue el riesgo de una pantalla con la lista antigua en memoria** (sin recargar): si alguien edita otro dato
+   de venta del mismo producto, el puente enviaría también el precio antiguo. P3b reduce la ventana (tras cualquier
+   guardado la nube queda al día) pero no la elimina.
+5. **No aplicado en producción.** Solo QA, por autorización expresa.
+
 ## Reversión (QA)
 
-La migración es aditiva y sin datos: basta con un SQL de reversión que restaure las dos
+**P3b** se revierte con `create or replace` de `abc_catalogo_guardar_productos` usando el cuerpo de la
+migración `20261002150000` (sin el espejo); no deja datos propios, pero **las listas ya reflejadas en
+`almacen_kv.productos` conservan los precios reflejados** (son datos válidos; no hay que deshacerlos).
+No se ha escrito ni ensayado el SQL de reversión de P3b.
+
+La migración de P3 es aditiva y sin datos: basta con un SQL de reversión que restaure las dos
 funciones de cálculo desde `20260924010000_abc_f3_a03_server_authority.sql` y
 `20260924020000_abc_f3_a04_variants_modifiers.sql`, elimine la RPC y los dos auxiliares y
 quite la restricción y la columna. No se ha escrito ni ensayado: no hay filas con
