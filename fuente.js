@@ -101108,6 +101108,9 @@ var ROLES_EMPLEADO = {
   "Encargado": [.../* @__PURE__ */ new Set([...ITEMS_EMPLEADO, "venta", "cocina", "caja", "devoluciones", "produccion", "aceite", "pedidos", "productos", "proveedores"])]
 };
 var NOMBRES_ROLES = Object.keys(ROLES_EMPLEADO);
+// Pieza 5 (F6): estos tres roles ya no se pueden asignar a nadie nuevo; siguen existiendo para quien ya los tiene.
+var ROLES_RETIRADOS = ["B\xE1sico", "Est\xE1ndar", "Churrero/a"];
+var NOMBRES_ROLES_ALTA = NOMBRES_ROLES.filter((r2) => !ROLES_RETIRADOS.includes(r2));
 var TAB_PRIORITIES_MOVIL = {
   "Propietario": ["dashboard", "resultados", "caja"],
   "Encargado": ["dashboard", "venta", "cocina", "fichaje"],
@@ -101771,6 +101774,761 @@ function decidirCambioTabPM15(formularioAbierto, confirmar) {
   if (!formularioAbierto) return true;
   return !!confirmar();
 }
+// ==== CONFIGURACION_LOCAL (pieza 6) ====
+// Pantalla «Configuración» del Propietario (capa de configuración, piezas 1 a 5): día y cajas, modalidades, equipos y permisos.
+// Cada cambio se guarda en el servidor con motivo y operation_id; la pantalla no accede a ninguna tabla de configuración.
+var CONFIG_MODALIDADES = [
+  { id: "BARRA", etiqueta: "Barra" },
+  { id: "MESA", etiqueta: "Mesa" },
+  { id: "TERRAZA", etiqueta: "Terraza" },
+  { id: "TAKEAWAY", etiqueta: "Para llevar" },
+  { id: "OTRO", etiqueta: "Otro" }
+];
+var CONFIG_TIPOS_EQUIPO = [
+  { id: "IMPRESORA_TICKET", etiqueta: "Impresora de tickets" },
+  { id: "IMPRESORA_COCINA", etiqueta: "Impresora de cocina" },
+  { id: "CAJON_MONEDERO", etiqueta: "Cajón monedero" },
+  { id: "DATAFONO", etiqueta: "Datáfono" },
+  { id: "OTRO", etiqueta: "Otro" }
+];
+var CONFIG_ROLES_MATRIZ = ["Encargado", "Cajero/a", "Camarero/a"];
+var CONFIG_CAPACIDADES = [
+  { grupo: "Cuentas y pedidos", items: [
+    ["ABC_CUENTA_OPERAR", "Abrir y llevar cuentas y pedidos"],
+    ["ABC_CUENTA_REASIGNAR", "Cambiar de responsable una cuenta"],
+    ["ABC_PEDIDO_ENVIAR", "Enviar pedidos a cocina"],
+    ["ABC_PEDIDO_SERVIR", "Marcar como servido"],
+    ["ABC_LINEA_CANCELAR", "Cancelar líneas de un pedido"],
+    ["ABC_CANCELACION_SENSIBLE", "Cancelaciones sensibles"],
+    ["ABC_PEDIDO_CANCELAR", "Cancelar un pedido"],
+    ["ABC_PEDIDO_CERRAR", "Cerrar un pedido"],
+    ["ABC_CUENTA_REPARTIR", "Repartir una cuenta"],
+    ["ABC_CUENTA_UNIR", "Unir cuentas"],
+    ["ABC_REPARTO_REVERTIR", "Deshacer un reparto"]
+  ] },
+  { grupo: "Cobros y devoluciones", items: [
+    ["ABC_COBRO_INICIAR", "Iniciar un cobro"],
+    ["ABC_COBRO_EFECTIVO", "Cobrar en efectivo"],
+    ["ABC_COBRO_RESOLVER_INCIERTO", "Resolver cobros inciertos"],
+    ["ABC_REEMBOLSO_SOLICITAR", "Solicitar devoluciones"],
+    ["ABC_REEMBOLSO_CONFIRMAR", "Confirmar devoluciones"]
+  ] },
+  { grupo: "Caja y documentos", items: [
+    ["ABC_CAJA_OPERAR", "Abrir, mover y cerrar la caja"],
+    ["ABC_CIERRE_REABRIR", "Reabrir un cierre de caja"],
+    ["ABC_EMISOR_CAMBIAR", "Documentos y datos del emisor"]
+  ] },
+  { grupo: "Preparación y cocina", items: [
+    ["ABC_PREPARACION_INICIAR", "Iniciar la preparación"],
+    ["ABC_PREPARACION_COMPLETAR", "Marcar como preparado"],
+    ["ABC_COMANDA_VER", "Ver comandas"],
+    ["ABC_COMANDA_REIMPRIMIR", "Reimprimir comandas"],
+    ["ABC_COMANDA_CAMBIAR", "Enviar cambios a cocina"],
+    ["ABC_COMANDA_CONFIGURAR", "Configurar estaciones de cocina"],
+    ["ABC_COMANDA_MERMA_DECIDIR", "Decidir mermas"]
+  ] },
+  { grupo: "Sala", items: [
+    ["ABC_SALA_VER", "Ver el mapa de sala"],
+    ["ABC_SALA_CONFIGURAR", "Configurar zonas y mesas"],
+    ["ABC_MESA_ASIGNAR", "Asignar cuentas a mesas"],
+    ["ABC_MESA_RESERVAR", "Reservar mesas"],
+    ["ABC_MESA_BLOQUEAR", "Bloquear mesas"]
+  ] }
+];
+var CONFIG_ERRORES = {
+  abc_config_no_autorizado: "Solo el Propietario puede cambiar esta configuración en este local.",
+  abc_no_autenticado: "Tu sesión ha caducado. Vuelve a entrar.",
+  contexto_no_autorizado: "No tienes acceso a este local.",
+  operation_id_conflict: "Esta operación ya se había enviado con otros datos. Inténtalo de nuevo.",
+  command_type_requerido: "Operación no válida.",
+  ajuste_clave_invalida: "Ajuste no válido.",
+  ajuste_valor_invalido: "El valor no es un número válido.",
+  ajuste_valor_fuera_de_rango: "El valor está fuera del rango permitido.",
+  ajuste_motivo_requerido: "Escribe el motivo del cambio.",
+  dia_operativo_motivo_requerido: "Escribe el motivo del cambio.",
+  dia_operativo_timezone_invalida: "La zona horaria no es válida (por ejemplo, Europe/Madrid).",
+  dia_operativo_corte_fuera_de_rango: "La hora de corte debe estar entre las 00:00 y las 12:00.",
+  dia_operativo_local_no_disponible: "El local no está disponible.",
+  dia_operativo_vigencia_pasada: "El cambio no puede aplicarse a una fecha ya pasada.",
+  dia_operativo_vigencia_incoherente: "Ya hay un cambio de corte posterior; la fecha no es coherente.",
+  modalidad_invalida: "Modalidad no válida.",
+  modalidad_estado_requerido: "Indica si la modalidad queda habilitada o no.",
+  modalidad_motivo_requerido: "Escribe el motivo del cambio.",
+  modalidad_local_no_disponible: "El local no está disponible.",
+  modalidades_minimo_una: "Tiene que quedar al menos una modalidad habilitada.",
+  equipo_id_requerido: "Falta el identificador del equipo.",
+  equipo_tipo_invalido: "Tipo de equipo no válido.",
+  equipo_nombre_invalido: "Escribe un nombre de hasta 80 caracteres.",
+  equipo_referencia_invalida: "La referencia puede tener hasta 120 caracteres.",
+  equipo_notas_invalidas: "Las notas pueden tener hasta 500 caracteres.",
+  equipo_estado_requerido: "Indica si el equipo está activo.",
+  equipo_motivo_requerido: "Escribe el motivo del cambio.",
+  equipo_local_no_disponible: "El local no está disponible.",
+  equipo_terminal_no_disponible: "El terminal elegido no está activo en este local.",
+  equipo_id_en_uso: "Ese equipo pertenece a otro local.",
+  equipo_nombre_duplicado: "Ya hay un equipo con ese nombre en este local.",
+  equipo_tipo_inmutable: "El tipo de un equipo no se puede cambiar; desactívalo y crea otro.",
+  capacidad_ambito_invalido: "Ámbito no válido.",
+  capacidad_rol_invalido: "Ese rol no se puede configurar.",
+  capacidad_invalida: "Permiso no válido.",
+  capacidad_fuera_de_techo: "Por seguridad, ese permiso no se puede dar a ese rol.",
+  capacidad_motivo_requerido: "Escribe el motivo del cambio.",
+  capacidad_local_no_disponible: "El local no está disponible."
+};
+function configUuid() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c3) => {
+    const r2 = Math.random() * 16 | 0;
+    return (c3 === "x" ? r2 : r2 & 3 | 8).toString(16);
+  });
+}
+function configOperacion(clave) {
+  return "f6.cfg." + clave + "." + configUuid();
+}
+function configMensajeError(e2) {
+  const texto = String(e2?.message || e2 || "");
+  const codigo = Object.keys(CONFIG_ERRORES).find((c3) => texto.includes(c3));
+  if (codigo) return CONFIG_ERRORES[codigo];
+  return "No se pudo completar la operación." + (texto ? " (" + texto + ")" : "");
+}
+async function configCliente() {
+  if (typeof window === "undefined" || typeof window.getSupabaseClient !== "function") throw new Error("No hay una sesión sincronizada.");
+  const supabase = await window.getSupabaseClient();
+  if (!supabase) throw new Error("No hay una sesión sincronizada.");
+  return supabase;
+}
+async function configRpc(nombre, parametros) {
+  const supabase = await configCliente();
+  const { data, error } = await supabase.rpc(nombre, parametros);
+  if (error) throw error;
+  return data;
+}
+function ConfigAviso({ error = "", confirmacion = "" }) {
+  const h = import_react4.default.createElement;
+  return h(
+    import_react4.default.Fragment,
+    null,
+    error ? h("div", { role: "alert", className: "mb-3 p-2 rounded-lg text-[12px]", style: { background: C2.redSoft, color: C2.red } }, error) : null,
+    confirmacion ? h("div", { role: "status", className: "mb-3 p-2 rounded-lg text-[12px]", style: { background: C2.accentSoft, color: C2.ink } }, confirmacion) : null
+  );
+}
+function ConfigMotivo({ valor, onCambio, deshabilitado = false }) {
+  const h = import_react4.default.createElement;
+  return h(
+    Field,
+    { label: "Motivo del cambio (obligatorio, queda en la auditoría)" },
+    h(Input, { value: valor, onChange: (e2) => onCambio(e2.target.value), placeholder: "Por qué se hace este cambio", maxLength: 500, disabled: deshabilitado })
+  );
+}
+function ConfigDia({ empresaId, localId }) {
+  const h = import_react4.default.createElement;
+  const [datos, setDatos] = (0, import_react4.useState)(null);
+  const [cargando, setCargando] = (0, import_react4.useState)(false);
+  const [guardando, setGuardando] = (0, import_react4.useState)("");
+  const [error, setError] = (0, import_react4.useState)("");
+  const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
+  const [motivo, setMotivo] = (0, import_react4.useState)("");
+  const [corte, setCorte] = (0, import_react4.useState)("00:00");
+  const [zona, setZona] = (0, import_react4.useState)("Europe/Madrid");
+  const [cajas, setCajas] = (0, import_react4.useState)("10");
+  const [umbral, setUmbral] = (0, import_react4.useState)("0");
+  const cargar = async () => {
+    setCargando(true);
+    setError("");
+    try {
+      const d2 = await configRpc("abc_obtener_ajustes", { p_empresa_id: empresaId, p_local_id: localId });
+      setDatos(d2 || {});
+      setCorte(String(d2?.dia_operativo?.cutoff_time || "00:00:00").slice(0, 5));
+      setZona(String(d2?.dia_operativo?.timezone_name || "Europe/Madrid"));
+      setCajas(String(d2?.cajas_abiertas_max?.valor ?? 10));
+      setUmbral(String(d2?.caja_diferencia_umbral?.valor ?? 0));
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setCargando(false);
+    }
+  };
+  (0, import_react4.useEffect)(() => {
+    setConfirmacion("");
+    cargar();
+  }, [empresaId, localId]);
+  const guardar = async (clave, accion) => {
+    setError("");
+    setConfirmacion("");
+    if (!motivo.trim()) {
+      setError("Escribe el motivo del cambio.");
+      return;
+    }
+    setGuardando(clave);
+    try {
+      const r2 = await accion();
+      setConfirmacion(r2?.cambio === false ? "No había nada que cambiar: el valor ya era ese." : "Guardado en el servidor.");
+      await cargar();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando("");
+    }
+  };
+  const guardarCorte = () => {
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(corte) || corte > "12:00") {
+      setError("La hora de corte debe estar entre las 00:00 y las 12:00.");
+      return;
+    }
+    if (!zona.trim()) {
+      setError("Escribe la zona horaria, por ejemplo Europe/Madrid.");
+      return;
+    }
+    return guardar("corte", () => configRpc("abc_configurar_dia_operativo", {
+      p_operation_id: configOperacion("dia"),
+      p_empresa_id: empresaId,
+      p_local_id: localId,
+      p_timezone_name: zona.trim(),
+      p_cutoff_time: corte + ":00",
+      p_vigente_desde: null,
+      p_motivo: motivo.trim()
+    }));
+  };
+  const guardarCajas = () => {
+    const n2 = Number(cajas);
+    if (!Number.isInteger(n2) || n2 < 1 || n2 > 10) {
+      setError("El número de cajas debe ser un entero entre 1 y 10.");
+      return;
+    }
+    return guardar("cajas", () => configRpc("abc_configurar_ajuste", {
+      p_operation_id: configOperacion("ajuste"),
+      p_empresa_id: empresaId,
+      p_local_id: localId,
+      p_clave: "cajas_abiertas_max",
+      p_valor: n2,
+      p_motivo: motivo.trim()
+    }));
+  };
+  const guardarUmbral = () => {
+    const n2 = Number(umbral);
+    if (!Number.isFinite(n2) || n2 < 0 || n2 > 1e4 || Math.round(n2 * 100) !== n2 * 100) {
+      setError("El umbral debe estar entre 0 y 10000 € con, como mucho, dos decimales.");
+      return;
+    }
+    return guardar("umbral", () => configRpc("abc_configurar_ajuste", {
+      p_operation_id: configOperacion("ajuste"),
+      p_empresa_id: empresaId,
+      p_local_id: localId,
+      p_clave: "caja_diferencia_umbral",
+      p_valor: n2,
+      p_motivo: motivo.trim()
+    }));
+  };
+  const origen = (a3) => !a3 || a3.origen === "defecto" ? "valor por defecto" : "fijado en este local (versión " + a3.version + ")";
+  const ocupado = cargando || !!guardando;
+  return h(
+    "div",
+    null,
+    h(ConfigAviso, { error, confirmacion }),
+    h(ConfigMotivo, { valor: motivo, onCambio: setMotivo, deshabilitado: ocupado }),
+    h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-1" }, "Corte del día"),
+      h("div", { className: "text-[12px] mb-2", style: { color: C2.inkSoft } }, "Hora a la que cambia el día de caja y de informes. Ahora: " + (datos?.dia_operativo ? String(datos.dia_operativo.cutoff_time).slice(0, 5) + " (" + datos.dia_operativo.timezone_name + ")" : "sin regla propia (00:00, Europe/Madrid)") + ". Un cambio se aplica desde mañana."),
+      h(
+        "div",
+        { className: "grid grid-cols-1 md:grid-cols-2 gap-2" },
+        h(Field, { label: "Hora de corte (de 00:00 a 12:00)" }, h(Input, { type: "time", value: corte, onChange: (e2) => setCorte(e2.target.value), disabled: ocupado })),
+        h(Field, { label: "Zona horaria" }, h(Input, { value: zona, onChange: (e2) => setZona(e2.target.value), placeholder: "Europe/Madrid", disabled: ocupado }))
+      ),
+      h(Btn, { small: true, onClick: guardarCorte, disabled: ocupado }, guardando === "corte" ? "Guardando…" : "Guardar corte del día")
+    ),
+    h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-1" }, "Cajas abiertas a la vez"),
+      h("div", { className: "text-[12px] mb-2", style: { color: C2.inkSoft } }, "Máximo de sesiones de caja abiertas al mismo tiempo en este local (de 1 a 10). Ahora: " + (datos?.cajas_abiertas_max ? datos.cajas_abiertas_max.valor : 10) + " (" + origen(datos?.cajas_abiertas_max) + ")."),
+      h(Field, { label: "Cajas (1 a 10)" }, h(Input, { type: "number", min: "1", max: "10", step: "1", value: cajas, onChange: (e2) => setCajas(e2.target.value), disabled: ocupado })),
+      h(Btn, { small: true, onClick: guardarCajas, disabled: ocupado }, guardando === "cajas" ? "Guardando…" : "Guardar número de cajas")
+    ),
+    h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-1" }, "Diferencia de caja"),
+      h("div", { className: "text-[12px] mb-2", style: { color: C2.inkSoft } }, "Importe (€) a partir del cual una diferencia en el cierre necesita que la apruebe el Propietario, además del motivo. Con 0 € cualquier diferencia lo necesita. Ahora: " + (datos?.caja_diferencia_umbral ? datos.caja_diferencia_umbral.valor : 0) + " € (" + origen(datos?.caja_diferencia_umbral) + ")."),
+      h(Field, { label: "Umbral (€)" }, h(Input, { type: "number", min: "0", max: "10000", step: "0.01", value: umbral, onChange: (e2) => setUmbral(e2.target.value), disabled: ocupado })),
+      h(Btn, { small: true, onClick: guardarUmbral, disabled: ocupado }, guardando === "umbral" ? "Guardando…" : "Guardar umbral"),
+      h("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "De momento la pantalla de cierre no pide aún el motivo ni la aprobación: hasta entonces un cierre con diferencia no se puede finalizar.")
+    ),
+    cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando…") : null
+  );
+}
+function ConfigModalidades({ empresaId, localId }) {
+  const h = import_react4.default.createElement;
+  const [datos, setDatos] = (0, import_react4.useState)(null);
+  const [cargando, setCargando] = (0, import_react4.useState)(false);
+  const [guardando, setGuardando] = (0, import_react4.useState)(false);
+  const [error, setError] = (0, import_react4.useState)("");
+  const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
+  const [motivo, setMotivo] = (0, import_react4.useState)("");
+  const [elegidas, setElegidas] = (0, import_react4.useState)({});
+  const cargar = async (conservarError = false) => {
+    setCargando(true);
+    if (!conservarError) setError("");
+    try {
+      const d2 = await configRpc("abc_obtener_modalidades_local", { p_empresa_id: empresaId, p_local_id: localId });
+      const lista = Array.isArray(d2?.modalidades) ? d2.modalidades : [];
+      setDatos(lista);
+      setElegidas(Object.fromEntries(lista.map((m2) => [m2.modalidad, m2.habilitada === true])));
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setCargando(false);
+    }
+  };
+  (0, import_react4.useEffect)(() => {
+    setConfirmacion("");
+    cargar();
+  }, [empresaId, localId]);
+  const cambios = (datos || []).filter((m2) => elegidas[m2.modalidad] !== (m2.habilitada === true));
+  const guardar = async () => {
+    setError("");
+    setConfirmacion("");
+    if (cambios.length === 0) {
+      setError("No has cambiado nada.");
+      return;
+    }
+    if (!motivo.trim()) {
+      setError("Escribe el motivo del cambio.");
+      return;
+    }
+    if (!Object.values(elegidas).some((v2) => v2)) {
+      setError("Tiene que quedar al menos una modalidad habilitada.");
+      return;
+    }
+    setGuardando(true);
+    try {
+      for (const m2 of cambios.slice().sort((a3, b3) => Number(elegidas[b3.modalidad]) - Number(elegidas[a3.modalidad]))) {
+        await configRpc("abc_configurar_modalidad_local", {
+          p_operation_id: configOperacion("modalidad"),
+          p_empresa_id: empresaId,
+          p_local_id: localId,
+          p_modalidad: m2.modalidad,
+          p_habilitada: elegidas[m2.modalidad] === true,
+          p_motivo: motivo.trim()
+        });
+      }
+      setConfirmacion("Modalidades guardadas en el servidor. Las cuentas ya abiertas no cambian.");
+      await cargar();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+      await cargar(true);
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const ocupado = cargando || guardando;
+  return h(
+    "div",
+    null,
+    h(ConfigAviso, { error, confirmacion }),
+    h(ConfigMotivo, { valor: motivo, onCambio: setMotivo, deshabilitado: ocupado }),
+    h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-1" }, "Modalidades de cuenta habilitadas"),
+      h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Qué tipos de cuenta se pueden abrir en este local. Deshabilitar una no toca las cuentas que ya están abiertas. Tiene que quedar al menos una."),
+      (datos || []).map((m2) => {
+        const etiqueta = (CONFIG_MODALIDADES.find((x3) => x3.id === m2.modalidad) || { etiqueta: m2.modalidad }).etiqueta;
+        const bloqueada = m2.modalidad === "BARRA";
+        return h(
+          "label",
+          { key: m2.modalidad, className: "flex items-center gap-2 text-[13px] mb-2" },
+          h("input", { type: "checkbox", checked: elegidas[m2.modalidad] === true, disabled: ocupado || bloqueada && elegidas[m2.modalidad] === true, onChange: (e2) => setElegidas({ ...elegidas, [m2.modalidad]: e2.target.checked }) }),
+          etiqueta,
+          h("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, m2.origen === "defecto" ? "(por defecto)" : "(decidido en este local)"),
+          bloqueada ? h("span", { className: "text-[11px]", style: { color: C2.amber } }, "De momento el TPV abre las cuentas siempre en Barra: no se puede deshabilitar.") : null
+        );
+      }),
+      h(Btn, { small: true, onClick: guardar, disabled: ocupado || cambios.length === 0 }, guardando ? "Guardando…" : "Guardar modalidades")
+    ),
+    cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando…") : null
+  );
+}
+function ConfigEquipos({ empresaId, localId }) {
+  const h = import_react4.default.createElement;
+  const vacio = { id: "", tipo: "DATAFONO", nombre: "", referencia: "", terminalId: "", notas: "", activo: true };
+  const [equipos, setEquipos] = (0, import_react4.useState)([]);
+  const [terminales, setTerminales] = (0, import_react4.useState)([]);
+  const [verInactivos, setVerInactivos] = (0, import_react4.useState)(false);
+  const [cargando, setCargando] = (0, import_react4.useState)(false);
+  const [guardando, setGuardando] = (0, import_react4.useState)(false);
+  const [error, setError] = (0, import_react4.useState)("");
+  const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
+  const [motivo, setMotivo] = (0, import_react4.useState)("");
+  const [form, setForm] = (0, import_react4.useState)(null);
+  const cargar = async (inactivos = verInactivos) => {
+    setCargando(true);
+    setError("");
+    try {
+      const d2 = await configRpc("abc_listar_equipos_local", { p_empresa_id: empresaId, p_local_id: localId, p_incluir_inactivos: inactivos });
+      setEquipos(Array.isArray(d2?.equipos) ? d2.equipos : []);
+      const supabase = await configCliente();
+      const { data: t3, error: errT } = await supabase.from("terminales_tpv").select("id,nombre").eq("empresa_id", empresaId).eq("local_id", localId).eq("activo", true);
+      if (errT) throw errT;
+      setTerminales(Array.isArray(t3) ? t3 : []);
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setCargando(false);
+    }
+  };
+  (0, import_react4.useEffect)(() => {
+    setConfirmacion("");
+    setForm(null);
+    cargar();
+  }, [empresaId, localId]);
+  const nombreTipo = (id) => (CONFIG_TIPOS_EQUIPO.find((x3) => x3.id === id) || { etiqueta: id }).etiqueta;
+  const enviar = async (datosEquipo, mensaje) => {
+    setError("");
+    setConfirmacion("");
+    if (!motivo.trim()) {
+      setError("Escribe el motivo del cambio.");
+      return false;
+    }
+    if (!String(datosEquipo.nombre || "").trim()) {
+      setError("Escribe el nombre del equipo.");
+      return false;
+    }
+    setGuardando(true);
+    try {
+      const r2 = await configRpc("abc_configurar_equipo_local", {
+        p_operation_id: configOperacion("equipo"),
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_equipo_id: datosEquipo.id || configUuid(),
+        p_tipo: datosEquipo.tipo,
+        p_nombre: String(datosEquipo.nombre).trim(),
+        p_referencia: String(datosEquipo.referencia || "").trim() || null,
+        p_terminal_id: datosEquipo.terminalId || null,
+        p_activo: datosEquipo.activo === true,
+        p_notas: String(datosEquipo.notas || "").trim() || null,
+        p_motivo: motivo.trim()
+      });
+      setConfirmacion(r2?.cambio === false ? "No había nada que cambiar." : mensaje);
+      setForm(null);
+      await cargar();
+      return true;
+    } catch (e2) {
+      setError(configMensajeError(e2));
+      return false;
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const editar = (e3) => {
+    const terminalActivo = terminales.some((t3) => t3.id === e3.terminal_id);
+    setForm({ id: e3.id, tipo: e3.tipo, nombre: e3.nombre || "", referencia: e3.referencia || "", terminalId: terminalActivo ? e3.terminal_id : "", notas: e3.notas || "", activo: e3.activo === true, terminalPerdido: !!e3.terminal_id && !terminalActivo });
+    setError("");
+    setConfirmacion("");
+  };
+  const alternarActivo = (e3) => enviar({ id: e3.id, tipo: e3.tipo, nombre: e3.nombre, referencia: e3.referencia, terminalId: terminales.some((t3) => t3.id === e3.terminal_id) ? e3.terminal_id : "", notas: e3.notas, activo: e3.activo !== true }, e3.activo === true ? "Equipo desactivado." : "Equipo activado.");
+  const ocupado = cargando || guardando;
+  const campoSelect = (valor, onChange, opciones, deshabilitado) => h(
+    "select",
+    { value: valor, onChange: (e2) => onChange(e2.target.value), disabled: deshabilitado, className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 } },
+    opciones.map(([v2, t3]) => h("option", { key: v2, value: v2 }, t3))
+  );
+  return h(
+    "div",
+    null,
+    h(ConfigAviso, { error, confirmacion }),
+    h(ConfigMotivo, { valor: motivo, onCambio: setMotivo, deshabilitado: ocupado }),
+    h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-1" }, "Equipos del local"),
+      h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Solo es un registro de los aparatos del local (impresoras, cajón, datáfono…). No los conecta ni los configura. No escribas contraseñas ni claves en la referencia ni en las notas. Los equipos no se borran: se desactivan."),
+      h("label", { className: "flex items-center gap-2 text-[12px] mb-3" }, h("input", { type: "checkbox", checked: verInactivos, onChange: (e2) => {
+        setVerInactivos(e2.target.checked);
+        cargar(e2.target.checked);
+      } }), "Ver también los desactivados"),
+      equipos.length === 0 && !cargando ? h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Todavía no hay ningún equipo registrado en este local.") : null,
+      equipos.map((e3) => h(
+        "div",
+        { key: e3.id, className: "flex items-start justify-between gap-2 mb-2 pb-2", style: { borderBottom: `1px solid ${C2.divider}`, opacity: e3.activo ? 1 : 0.6 } },
+        h(
+          "div",
+          { className: "text-[13px]" },
+          h("div", { className: "font-semibold" }, e3.nombre, e3.activo ? "" : " (desactivado)"),
+          h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, nombreTipo(e3.tipo), e3.referencia ? " · " + e3.referencia : "", e3.terminal_nombre ? " · terminal " + e3.terminal_nombre : ""),
+          e3.notas ? h("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, e3.notas) : null
+        ),
+        h(
+          "div",
+          { className: "flex gap-2 flex-wrap" },
+          h(Btn, { small: true, variant: "ghost", onClick: () => editar(e3), disabled: ocupado }, "Editar"),
+          h(Btn, { small: true, variant: e3.activo ? "danger" : "ghost", onClick: () => alternarActivo(e3), disabled: ocupado }, e3.activo ? "Desactivar" : "Activar")
+        )
+      )),
+      form ? null : h(Btn, { small: true, onClick: () => {
+        setForm({ ...vacio });
+        setError("");
+        setConfirmacion("");
+      }, disabled: ocupado }, "Añadir un equipo")
+    ),
+    form ? h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-2" }, form.id ? "Editar equipo" : "Nuevo equipo"),
+      h(
+        "div",
+        { className: "grid grid-cols-1 md:grid-cols-2 gap-2" },
+        h(Field, { label: "Tipo" }, campoSelect(form.tipo, (v2) => setForm({ ...form, tipo: v2 }), CONFIG_TIPOS_EQUIPO.map((x3) => [x3.id, x3.etiqueta]), ocupado || !!form.id)),
+        h(Field, { label: "Nombre (hasta 80 caracteres)" }, h(Input, { value: form.nombre, onChange: (e2) => setForm({ ...form, nombre: e2.target.value }), maxLength: 80, disabled: ocupado })),
+        h(Field, { label: "Referencia (modelo, nº de serie o etiqueta; opcional)" }, h(Input, { value: form.referencia, onChange: (e2) => setForm({ ...form, referencia: e2.target.value }), maxLength: 120, disabled: ocupado })),
+        h(Field, { label: "Terminal del TPV asociado (opcional)" }, campoSelect(form.terminalId, (v2) => setForm({ ...form, terminalId: v2 }), [["", "Sin terminal"], ...terminales.map((t3) => [t3.id, t3.nombre || t3.id])], ocupado))
+      ),
+      form.terminalPerdido ? h("div", { className: "text-[11px] mb-2", style: { color: C2.amber } }, "El terminal que tenía asociado está desactivado: al guardar se quitará ese vínculo.") : null,
+      h(Field, { label: "Notas (opcional)" }, h(Input, { value: form.notas, onChange: (e2) => setForm({ ...form, notas: e2.target.value }), maxLength: 500, disabled: ocupado })),
+      form.id ? h("label", { className: "flex items-center gap-2 text-[12px] mb-3" }, h("input", { type: "checkbox", checked: form.activo, onChange: (e2) => setForm({ ...form, activo: e2.target.checked }), disabled: ocupado }), "Activo") : null,
+      h(
+        "div",
+        { className: "flex gap-2 flex-wrap" },
+        h(Btn, { small: true, onClick: () => enviar(form, form.id ? "Equipo guardado." : "Equipo añadido."), disabled: ocupado }, guardando ? "Guardando…" : "Guardar equipo"),
+        h(Btn, { small: true, variant: "ghost", onClick: () => setForm(null), disabled: ocupado }, "Cancelar")
+      )
+    ) : null,
+    cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando…") : null
+  );
+}
+function ConfigPermisos({ empresaId, localId, localNombre = "" }) {
+  const h = import_react4.default.createElement;
+  const [datos, setDatos] = (0, import_react4.useState)(null);
+  const [cargando, setCargando] = (0, import_react4.useState)(false);
+  const [guardando, setGuardando] = (0, import_react4.useState)(false);
+  const [error, setError] = (0, import_react4.useState)("");
+  const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
+  const [motivo, setMotivo] = (0, import_react4.useState)("");
+  const [ambito, setAmbito] = (0, import_react4.useState)("LOCAL");
+  const [pendientes, setPendientes] = (0, import_react4.useState)({});
+  const [retirados, setRetirados] = (0, import_react4.useState)(null);
+  const [cargandoRetirados, setCargandoRetirados] = (0, import_react4.useState)(false);
+  const cargar = async (conservarError = false) => {
+    setCargando(true);
+    if (!conservarError) setError("");
+    try {
+      const d2 = await configRpc("abc_obtener_capacidades_rol", { p_empresa_id: empresaId, p_local_id: localId });
+      setDatos(d2 || null);
+      setPendientes({});
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setCargando(false);
+    }
+  };
+  (0, import_react4.useEffect)(() => {
+    setConfirmacion("");
+    setRetirados(null);
+    setAmbito("LOCAL");
+    cargar();
+  }, [empresaId, localId]);
+  const infoCelda = (cap, rol) => {
+    const fila = (datos?.capacidades || []).find((c3) => c3.capacidad === cap);
+    return fila ? (fila.roles || []).find((r2) => r2.rol === rol) || null : null;
+  };
+  const decisionDelAmbito = (info) => ambito === "EMPRESA" ? info?.decision_empresa : info?.decision_local;
+  const valorMostrado = (cap, rol, info) => {
+    const p3 = pendientes[rol + "|" + cap];
+    if (p3 && p3.permitido !== null) return p3.permitido;
+    return info?.efectivo === true;
+  };
+  const alternar = (cap, rol, info) => {
+    const clave = rol + "|" + cap;
+    const actual = valorMostrado(cap, rol, info);
+    const nuevo = !actual;
+    if (nuevo && info?.puede_dar !== true) return;
+    setPendientes((anterior) => {
+      const siguiente = { ...anterior };
+      if (nuevo === (info?.efectivo === true) && !(clave in anterior && anterior[clave].permitido === null)) delete siguiente[clave];
+      else siguiente[clave] = { rol, capacidad: cap, permitido: nuevo };
+      return siguiente;
+    });
+  };
+  const heredar = (cap, rol) => setPendientes((anterior) => ({ ...anterior, [rol + "|" + cap]: { rol, capacidad: cap, permitido: null } }));
+  const deshacer = (cap, rol) => setPendientes((anterior) => {
+    const siguiente = { ...anterior };
+    delete siguiente[rol + "|" + cap];
+    return siguiente;
+  });
+  const lista = Object.values(pendientes);
+  const guardar = async () => {
+    setError("");
+    setConfirmacion("");
+    if (lista.length === 0) {
+      setError("No has cambiado nada.");
+      return;
+    }
+    if (!motivo.trim()) {
+      setError("Escribe el motivo del cambio.");
+      return;
+    }
+    setGuardando(true);
+    let hechos = 0;
+    try {
+      for (const c3 of lista) {
+        await configRpc("abc_configurar_capacidad_rol", {
+          p_operation_id: configOperacion("permiso"),
+          p_empresa_id: empresaId,
+          p_local_id: localId,
+          p_ambito: ambito,
+          p_rol: c3.rol,
+          p_capacidad: c3.capacidad,
+          p_permitido: c3.permitido,
+          p_motivo: motivo.trim()
+        });
+        hechos += 1;
+      }
+      setConfirmacion(hechos + (hechos === 1 ? " cambio guardado" : " cambios guardados") + " en el servidor.");
+    } catch (e2) {
+      setError((hechos > 0 ? (hechos === 1 ? "1 cambio ya guardado" : hechos + " cambios ya guardados") + "; el siguiente falló: " : "") + configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+      await cargar(true);
+    }
+  };
+  const verRetirados = async () => {
+    setCargandoRetirados(true);
+    setError("");
+    try {
+      setRetirados(await configRpc("abc_listar_roles_retirados", { p_empresa_id: empresaId, p_local_id: localId }));
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setCargandoRetirados(false);
+    }
+  };
+  const ocupado = cargando || guardando;
+  const puedeEmpresa = datos?.puede_configurar_empresa === true;
+  const celda = (cap, rol) => {
+    const info = infoCelda(cap, rol);
+    if (!info) return h("td", { key: rol, className: "px-2 py-1 text-center" }, "—");
+    const pendiente = pendientes[rol + "|" + cap];
+    const marcado = valorMostrado(cap, rol, info);
+    const bloqueado = !marcado && info.puede_dar !== true;
+    const hayDecision = decisionDelAmbito(info) !== null && decisionDelAmbito(info) !== void 0;
+    return h(
+      "td",
+      { key: rol, className: "px-2 py-1 text-center", style: pendiente ? { background: C2.amberSoft } : void 0 },
+      pendiente && pendiente.permitido === null ? h("div", { className: "text-[11px]" }, "volverá a lo normal ", h("button", { type: "button", className: "underline", onClick: () => deshacer(cap, rol) }, "deshacer")) : h(
+        "div",
+        null,
+        h("input", { type: "checkbox", "aria-label": cap + " " + rol, checked: marcado, disabled: ocupado || bloqueado, onChange: () => alternar(cap, rol, info) }),
+        bloqueado ? h("span", { title: "Por seguridad, este permiso no se puede dar a este rol", className: "text-[11px]" }, " 🔒") : null,
+        !pendiente && info.origen !== "plantilla" ? h("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, info.origen === "local" ? "decidido aquí" : "decidido en la empresa") : null,
+        !pendiente && hayDecision ? h("button", { type: "button", className: "text-[10px] underline", onClick: () => heredar(cap, rol), disabled: ocupado }, "volver a lo normal") : null
+      )
+    );
+  };
+  return h(
+    "div",
+    null,
+    h(ConfigAviso, { error, confirmacion }),
+    h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-1" }, "Permisos por rol"),
+      h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "El Propietario siempre puede todo. Puedes dar o quitar permisos al Encargado, al Cajero/a y al Camarero/a. Lo delicado (devoluciones, cobros inciertos, documentos fiscales, cancelaciones sensibles y reabrir cierres) no puede bajar de Encargado (🔒). El cambio de un local manda sobre el de la empresa."),
+      h(
+        "div",
+        { className: "grid grid-cols-1 md:grid-cols-2 gap-2" },
+        h(Field, { label: "Dónde se aplican los cambios" }, h(
+          "select",
+          { value: ambito, onChange: (e2) => {
+            setAmbito(e2.target.value);
+            setPendientes({});
+          }, disabled: ocupado, className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 } },
+          h("option", { value: "LOCAL" }, "Solo este local" + (localNombre ? " (" + localNombre + ")" : "")),
+          h("option", { value: "EMPRESA", disabled: !puedeEmpresa }, "Toda la empresa" + (puedeEmpresa ? "" : " (hace falta ser Propietario de todos los locales)"))
+        )),
+        h(ConfigMotivo, { valor: motivo, onCambio: setMotivo, deshabilitado: ocupado })
+      ),
+      h(
+        "div",
+        { className: "flex gap-2 flex-wrap items-center mb-1" },
+        h(Btn, { small: true, onClick: guardar, disabled: ocupado || lista.length === 0 }, guardando ? "Guardando…" : "Guardar " + lista.length + (lista.length === 1 ? " cambio" : " cambios")),
+        h(Btn, { small: true, variant: "ghost", onClick: () => setPendientes({}), disabled: ocupado || lista.length === 0 }, "Descartar cambios")
+      )
+    ),
+    datos ? h(
+      "div",
+      { className: "overflow-x-auto mb-3" },
+      h(
+        "table",
+        { className: "w-full text-[12px]", style: { borderCollapse: "collapse" } },
+        h("thead", null, h(
+          "tr",
+          { style: { borderBottom: `1px solid ${C2.line}` } },
+          h("th", { className: "text-left px-2 py-1" }, "Permiso"),
+          h("th", { className: "px-2 py-1" }, "Propietario"),
+          CONFIG_ROLES_MATRIZ.map((r2) => h("th", { key: r2, className: "px-2 py-1" }, r2))
+        )),
+        CONFIG_CAPACIDADES.map((g3) => h(
+          "tbody",
+          { key: g3.grupo },
+          h("tr", null, h("td", { colSpan: 5, className: "px-2 pt-3 pb-1 font-semibold", style: { color: C2.inkSoft } }, g3.grupo)),
+          g3.items.map(([cap, etiqueta]) => h(
+            "tr",
+            { key: cap, style: { borderBottom: `1px solid ${C2.divider}` } },
+            h("td", { className: "px-2 py-1" }, etiqueta),
+            h("td", { className: "px-2 py-1 text-center" }, "✓"),
+            CONFIG_ROLES_MATRIZ.map((r2) => celda(cap, r2))
+          ))
+        ))
+      )
+    ) : null,
+    h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-1" }, "Roles retirados"),
+      h("div", { className: "text-[12px] mb-2", style: { color: C2.inkSoft } }, "Básico, Estándar y Churrero/a ya no se pueden asignar a nadie nuevo y no tienen ningún permiso. Si alguien aún los tiene, reasígnalo a Encargado, Cajero/a o Camarero/a desde Personal."),
+      h(Btn, { small: true, variant: "ghost", onClick: verRetirados, disabled: ocupado || cargandoRetirados }, cargandoRetirados ? "Buscando…" : "Ver quién tiene un rol retirado en este local"),
+      retirados ? (retirados.personas || []).length === 0 ? h("div", { className: "text-[12px] mt-2" }, "Nadie tiene un rol retirado en este local.") : h(
+        "ul",
+        { className: "list-disc pl-4 text-[12px] mt-2" },
+        retirados.personas.map((p3, i2) => h("li", { key: String(p3.user_id) + i2 }, (p3.nombre || "Sin nombre") + " · " + p3.rol + (p3.activo ? "" : " (inactivo)") + (p3.todos_locales ? " · todos los locales" : "")))
+      ) : null
+    ),
+    cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando…") : null
+  );
+}
+function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", esPropietario = false }) {
+  const h = import_react4.default.createElement;
+  const empresaId = empresa?.id || "";
+  const [seccion, setSeccion] = (0, import_react4.useState)("dia");
+  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["permisos", "Permisos"]];
+  let contenido = null;
+  if (!esPropietario) contenido = h(Card, { className: "mb-4" }, "Solo un usuario con rol Propietario puede ver y cambiar la configuración.");
+  else if (!empresaId || !localId) contenido = h(Card, { className: "mb-4" }, "Selecciona un local concreto para configurarlo.");
+  else contenido = h(
+    import_react4.default.Fragment,
+    null,
+    h("div", { className: "flex gap-2 flex-wrap mb-4" }, secciones.map(([id, texto]) => h(Btn, { key: id, small: true, variant: seccion === id ? "primary" : "ghost", onClick: () => setSeccion(id) }, texto))),
+    seccion === "dia" ? h(ConfigDia, { empresaId, localId }) : null,
+    seccion === "modalidades" ? h(ConfigModalidades, { empresaId, localId }) : null,
+    seccion === "equipos" ? h(ConfigEquipos, { empresaId, localId }) : null,
+    seccion === "permisos" ? h(ConfigPermisos, { empresaId, localId, localNombre }) : null
+  );
+  return h(
+    "div",
+    null,
+    h(SectionTitle, null, "Configuración"),
+    h(
+      Card,
+      { className: "mb-4", style: { background: C2.accentSoft, border: "none" } },
+      h("div", { className: "text-[13px] font-semibold" }, empresa?.razonSocial || empresa?.marca || "Empresa", localNombre ? ` · ${localNombre}` : ""),
+      h("div", { className: "text-[12px] mt-1", style: { color: C2.inkSoft } }, "Estos ajustes se guardan en el servidor, solo los puede cambiar el Propietario y cada cambio queda en la auditoría con su motivo.")
+    ),
+    contenido
+  );
+}
+// ==== FIN CONFIGURACION_LOCAL ====
 function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", esPropietario = false }) {
   const empresaId = empresa?.id || "";
   const crearPoliticaVacia = (rol) => ({
@@ -103758,7 +104516,7 @@ function GestionAlmacen() {
       movimientos: movimientosDelLocalActivo,
       setTab: cambiarTabPM15
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10 }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -103851,7 +104609,7 @@ function GestionAlmacen() {
       establecerPin,
       activarModoEmpleado
     }
-  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, diagnosticoLegadosPM10: diagnosticarDatosLegadosPM10({ productos, pedidos: pedidos2, empleados, encargos, proveedores, clientes, locales, empresas }), marcarFormularioAbiertoPM15 }), tab === "descuentos" && /* @__PURE__ */ import_react4.default.createElement(PoliticasDescuentos, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }));
+  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, diagnosticoLegadosPM10: diagnosticarDatosLegadosPM10({ productos, pedidos: pedidos2, empleados, encargos, proveedores, clientes, locales, empresas }), marcarFormularioAbiertoPM15 }), tab === "descuentos" && /* @__PURE__ */ import_react4.default.createElement(PoliticasDescuentos, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }), tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }));
   const itemsMeta = [
     { id: "dashboard", label: "Panel general", icon: ChartColumn },
     { id: "direccion", label: "Panel de direcci\xF3n", icon: TrendingUp },
@@ -103896,6 +104654,7 @@ function GestionAlmacen() {
     { id: "notificaciones", label: "Notificaciones", icon: Bell },
     { id: "descuentos", label: "Descuentos y cortesías", icon: ShieldCheck },
     { id: "locales", label: "Locales", icon: Map2 },
+    { id: "configuracion", label: "Configuraci\xF3n", icon: Cog },
     { id: "errores_sistema", label: "Errores del sistema", icon: TriangleAlert }
   ];
   const porId = (id) => itemsMeta.find((x3) => x3.id === id);
@@ -103912,7 +104671,7 @@ function GestionAlmacen() {
     { titulo: "Finanzas y an\xE1lisis", items: pick(["pagos", "resultados", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
     { titulo: "Personal", items: pick(["personal", "fichaje", "turnos", "nominas"]) },
     { titulo: "Calidad", items: pick(["appcc", "aceite"]) },
-    { titulo: "Sistema", items: pick(["auditoria", "respaldos", "notificaciones", "locales", "errores_sistema"]) }
+    { titulo: "Sistema", items: pick(["auditoria", "respaldos", "notificaciones", "locales", "configuracion", "errores_sistema"]) }
   ];
   const mostrarEnlaceDevolucionProveedor = pick(["proveedores"]).length > 0 && pick(["devoluciones"]).length > 0;
   const irADevolucionProveedor = () => {
@@ -109306,6 +110065,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       }, contexto.empresaId, contexto.localId, operationId);
       return { ok: true, ...(resultado || {}) };
     } catch (error) {
+      if (String(error?.message || error || "").includes("abc_caja_no_autorizado")) return { ok: false, error: "Solo el Propietario (o quien él autorice en Configuración) puede reabrir un cierre provisional.", conflict: false, conflictType: null };
       return respuestaErrorA06(error);
     }
   }
@@ -116472,7 +117232,7 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reac
       eliminarPrefiltro,
       empresa
     }
-  ) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Aqu\xED llevas la ficha de cada empleado, sus documentos y sus vacaciones. Este programa ", /* @__PURE__ */ import_react4.default.createElement("b", null, "no calcula n\xF3minas"), "(retenciones de IRPF, cotizaciones a la Seguridad Social): eso debe hacerlo tu gestor\xEDa o un programa de n\xF3minas certificado, porque las cifras cambian cada a\xF1o y un error tiene consecuencias legales reales.")), documentosPersonalCaducan.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2 flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { size: 15, color: C2.red }), " Documentos y contratos que necesitan atenci\xF3n"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1" }, documentosPersonalCaducan.slice(0, 8).map((d2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: d2.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, d2.empleado, " \xB7 ", d2.concepto), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold", style: { color: d2.dias < 0 ? C2.red : d2.dias <= 7 ? C2.amber : C2.inkSoft } }, d2.dias < 0 ? `venci\xF3 hace ${Math.abs(d2.dias)} d` : d2.dias === 0 ? "hoy" : `en ${d2.dias} d`))))), showForm && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3" }, editingId ? "Editando empleado" : "Nuevo empleado"), /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "1 \xB7 Identificaci\xF3n" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre completo" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.nombre, onChange: (e2) => setForm({ ...form, nombre: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "DNI / NIE (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.dni, onChange: (e2) => setForm({ ...form, dni: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Puesto / categor\xEDa" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.puesto, onChange: (e2) => setForm({ ...form, puesto: e2.target.value }), placeholder: "Dependienta, obrador\u2026" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nivel de acceso en modo empleado" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.rol, onChange: (e2) => setForm({ ...form, rol: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, NOMBRES_ROLES.map((r2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: r2, value: r2 }, r2))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, form.rol === "B\xE1sico" && "Solo panel, venta y fichaje \u2014 para alguien que empieza.", form.rol === "Est\xE1ndar" && "A\xF1ade recepci\xF3n, conteo, APPCC, mapa y traspasos.", form.rol === "Encargado" && "A\xF1ade adem\xE1s pedidos, productos y proveedores.")), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "D\xEDas que suele poder trabajar (opcional)" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5 flex-wrap" }, DIAS_REPARTO.map((d2) => {
+  ) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Aqu\xED llevas la ficha de cada empleado, sus documentos y sus vacaciones. Este programa ", /* @__PURE__ */ import_react4.default.createElement("b", null, "no calcula n\xF3minas"), "(retenciones de IRPF, cotizaciones a la Seguridad Social): eso debe hacerlo tu gestor\xEDa o un programa de n\xF3minas certificado, porque las cifras cambian cada a\xF1o y un error tiene consecuencias legales reales.")), documentosPersonalCaducan.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2 flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { size: 15, color: C2.red }), " Documentos y contratos que necesitan atenci\xF3n"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1" }, documentosPersonalCaducan.slice(0, 8).map((d2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: d2.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, d2.empleado, " \xB7 ", d2.concepto), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold", style: { color: d2.dias < 0 ? C2.red : d2.dias <= 7 ? C2.amber : C2.inkSoft } }, d2.dias < 0 ? `venci\xF3 hace ${Math.abs(d2.dias)} d` : d2.dias === 0 ? "hoy" : `en ${d2.dias} d`))))), showForm && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3" }, editingId ? "Editando empleado" : "Nuevo empleado"), /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "1 \xB7 Identificaci\xF3n" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre completo" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.nombre, onChange: (e2) => setForm({ ...form, nombre: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "DNI / NIE (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.dni, onChange: (e2) => setForm({ ...form, dni: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Puesto / categor\xEDa" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.puesto, onChange: (e2) => setForm({ ...form, puesto: e2.target.value }), placeholder: "Dependienta, obrador\u2026" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nivel de acceso en modo empleado" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.rol, onChange: (e2) => setForm({ ...form, rol: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, NOMBRES_ROLES_ALTA.concat(ROLES_RETIRADOS.includes(form.rol) ? [form.rol] : []).map((r2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: r2, value: r2 }, r2))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, form.rol === "B\xE1sico" && "Solo panel, venta y fichaje \u2014 para alguien que empieza.", form.rol === "Est\xE1ndar" && "A\xF1ade recepci\xF3n, conteo, APPCC, mapa y traspasos.", form.rol === "Encargado" && "A\xF1ade adem\xE1s pedidos, productos y proveedores.")), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "D\xEDas que suele poder trabajar (opcional)" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5 flex-wrap" }, DIAS_REPARTO.map((d2) => {
     const activo = (form.diasDisponibles || []).includes(d2.valor);
     return /* @__PURE__ */ import_react4.default.createElement(
       "button",
@@ -121397,7 +122157,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     enviandoVenta ? "Cobrando\u2026" : "Confirmar venta"
   ), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowCobro(false), disabled: enviandoVenta }, "Cancelar"))), confirmacion && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => !procesandoA05 && setConfirmacion(null), title: confirmacion.pedidoEstado === "ENVIADO" ? "Pedido enviado" : "Pedido guardado" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-2" }, confirmacion.currencyCode || "EUR", " ", fmt(confirmacion.total), " · ", confirmacion.n, " línea(s)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Cuenta ", confirmacion.cuentaId || "", " · Pedido ", confirmacion.pedidoId || ""), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2 font-semibold", style: { color: confirmacion.pedidoEstado === "ENVIADO" ? C2.accent : C2.ink } }, "Estado operativo: ", confirmacion.pedidoEstado || "ABIERTO"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, confirmacion.pedidoEstado === "ENVIADO" ? "A05 ha confirmado las líneas y enviado el pedido. Continúa su preparación, servido o cancelación desde el panel operativo del TPV." : "A02/A04 han persistido cuenta, pedido y líneas. A05 puede confirmar las líneas y enviar el pedido sin registrar cobro, documento fiscal ni movimiento de stock."), errorA05 && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", errorA05), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, confirmacion.pedidoEstado !== "ENVIADO" ? /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: enviarPedidoGuardadoA05, disabled: procesandoA05 }, procesandoA05 ? "Enviando pedido…" : "Enviar pedido") : null, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmacion(null), disabled: procesandoA05 }, confirmacion.pedidoEstado === "ENVIADO" ? "Aceptar" : "Cerrar"))), renderHistorialVentas(), confirmAnular && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmAnular(null), title: "Anular esta venta" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, /* @__PURE__ */ import_react4.default.createElement("b", null, confirmAnular.resumen), " \xB7 \u20AC", fmt(confirmAnular.importe)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "El stock de esos productos volver\xE1 al piso de venta, y quedar\xE1 registrada la anulaci\xF3n. La venta original no se borra: se ve que existi\xF3 y que se anul\xF3."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivoAnular, onChange: (e2) => setMotivoAnular(e2.target.value), placeholder: "Cobro duplicado, importe incorrecto\u2026" })), errorAnular && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", role: "alert", style: { color: C2.red } }, errorAnular), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: confirmarAnulacion, disabled: procesandoAnulacion }, procesandoAnulacion ? "Anulando\u2026" : "S\xED, anular la venta"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmAnular(null), disabled: procesandoAnulacion }, "Cancelar"))));
 }
-function CocinaA10({ productos = [], local = null, configEmpresa = null, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10 }) {
+function CocinaA10({ productos = [], local = null, configEmpresa = null, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil = "" }) {
   const h3 = import_react4.default.createElement;
   const abrirSesionCajaA10 = typeof listarEstacionesA10?.abrirSesionCajaA10 === "function" ? listarEstacionesA10.abrirSesionCajaA10 : null;
   const iniciarCierreSesionCajaA10 = typeof listarEstacionesA10?.iniciarCierreSesionCajaA10 === "function" ? listarEstacionesA10.iniciarCierreSesionCajaA10 : null;
@@ -121423,6 +122183,25 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
   const [efectivoContado, setEfectivoContado] = (0, import_react4.useState)("0");
   const [estadoCierre, setEstadoCierre] = (0, import_react4.useState)("ABIERTA");
   const [motivoReapertura, setMotivoReapertura] = (0, import_react4.useState)("");
+  const [puedeReabrirCierre, setPuedeReabrirCierre] = (0, import_react4.useState)(null);
+  (0, import_react4.useEffect)(() => {
+    let activo = true;
+    setPuedeReabrirCierre(null);
+    if (!configEmpresa?.id || !local?.id || !rolPerfil) return void 0;
+    (async () => {
+      try {
+        const d2 = await configRpc("abc_obtener_capacidades_rol", { p_empresa_id: configEmpresa.id, p_local_id: local.id });
+        const fila = (d2?.capacidades || []).find((c3) => c3.capacidad === "ABC_CIERRE_REABRIR");
+        const celda = fila ? (fila.roles || []).find((r2) => r2.rol === rolPerfil) : null;
+        if (activo) setPuedeReabrirCierre(celda ? celda.efectivo === true : false);
+      } catch (e2) {
+        if (activo) setPuedeReabrirCierre(null);
+      }
+    })();
+    return () => {
+      activo = false;
+    };
+  }, [configEmpresa?.id, local?.id, rolPerfil]);
   const [bloqueosCierre, setBloqueosCierre] = (0, import_react4.useState)([]);
 
   const productosActivos = (productos || []).filter((producto) => producto && producto.activo !== false);
@@ -121706,8 +122485,9 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
         ) : null,
         h3("div", { className: "flex gap-2 flex-wrap" },
           h3(Btn, { small: true, variant: "danger", onClick: finalizarCierre, disabled: !!procesando }, procesando === "finalizar-cierre" ? "Finalizando…" : "Finalizar cierre"),
-          h3(Field, { label: "Motivo de reapertura" }, h3(Input, { value: motivoReapertura, onChange: (e2) => setMotivoReapertura(e2.target.value), placeholder: "Ajuste de arqueo…", maxLength: 500 })),
-          h3(Btn, { small: true, variant: "ghost", onClick: reabrirProvisional, disabled: !!procesando || !motivoReapertura.trim() }, procesando === "reabrir-cierre" ? "Reabriendo…" : "Reabrir cierre provisional")
+          puedeReabrirCierre === false ? h3("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Solo el Propietario (o quien él autorice en Configuración) puede reabrir un cierre provisional.") : null,
+          puedeReabrirCierre === false ? null : h3(Field, { label: "Motivo de reapertura" }, h3(Input, { value: motivoReapertura, onChange: (e2) => setMotivoReapertura(e2.target.value), placeholder: "Ajuste de arqueo…", maxLength: 500 })),
+          puedeReabrirCierre === false ? null : h3(Btn, { small: true, variant: "ghost", onClick: reabrirProvisional, disabled: !!procesando || !motivoReapertura.trim() }, procesando === "reabrir-cierre" ? "Reabriendo…" : "Reabrir cierre provisional")
         )
       ) : null
     ) : null,

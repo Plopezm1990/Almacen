@@ -1,10 +1,9 @@
 # F6 · pieza 6: pantalla de configuración — inventario y plan por sub-piezas
 
 Fecha: 2026-10-02
-Alcance de este documento: **solo lectura** del código de la aplicación y de las migraciones, y este informe. **Ningún cambio
-de pantalla, de base de datos ni de despliegue.** Producción no consultada.
+Alcance de este documento (escrito antes de implementar): **solo lectura** del código de la aplicación y de las migraciones, y este informe. Producción no consultada.
 Autorización: «Pieza 6: pantalla de configuración» elegida por Pedro el 2/10/2026 (solo QA, como las piezas anteriores).
-Estado: `INVENTARIO_HECHO_PANTALLA_SIN_IMPLEMENTAR`
+Estado: `INVENTARIO_HECHO` — **primera entrega (6a+6b+6c+6f) hecha y en rama**: ver `F6_PIEZA6_PANTALLA_RESULTADO_2026-10-02.md`; 6d y 6e siguen sin autorizar ni implementar
 
 ## Cómo está hecha la aplicación (lo que condiciona el trabajo)
 

@@ -158,8 +158,19 @@ el Propietario) queda aplicado. **D13 queda sin permiso para el cajero** (ver el
   para que nada salga sin aprobación; entonces se podrá dar la capacidad al cajero. Hoy nadie puede dársela (techo en Encargado).
 - **Producción**: revisar quién tiene Churrero/a, Básico o Estándar (perderían permisos) y si las funciones de permisos coinciden con las
   de QA (la migración se niega a aplicarse si no).
-- **Pantalla (pieza 6)**: matriz de permisos del propietario, quitar los tres roles de la lista de alta de empleados y ocultar «reabrir
-  cierre» a quien no pueda; hoy esas acciones darán error en QA.
+- ~~**Pantalla (pieza 6)**: matriz de permisos del propietario, quitar los tres roles de la lista de alta de empleados y ocultar «reabrir
+  cierre» a quien no pueda~~ → **hecho en la primera entrega de la pieza 6** (ver abajo), pendiente de que Pedro la pruebe en el preview.
+
+**Pieza 6 (pantalla de configuración) elegida por Pedro el 2/10/2026; primera entrega «Pantalla completa y retoques» (6a+6b+6c+6f) hecha,
+solo QA.** Informe: `F6_PIEZA6_PANTALLA_RESULTADO_2026-10-02.md`; guía de prueba: `F6_PRUEBA_PREVIEW_PANTALLA_CONFIG_2026-10-02.md`.
+Pestaña nueva «Configuración» (grupo Sistema, solo Propietario) con día y cajas, modalidades, equipos y permisos; el botón «Reabrir cierre»
+solo se ofrece a quien puede; y los tres roles retirados ya no salen en el alta. Comprobada con pruebas locales (68/68 de ejecución, contrato
+estático, 91 averías provocadas), **sin haberla visto funcionando contra QA** (la primera vez será en el navegador de Pedro).
+
+**Sigue abierto (pieza 6):**
+
+- **6d — cierre con diferencia**: la pantalla de cierre aún no pide motivo ni aprobación; en QA un cierre con diferencia no se puede finalizar. No autorizada.
+- **6e — modalidad al abrir cuenta**: el TPV abre siempre en Barra; por eso Barra está bloqueada en la pantalla. No autorizada.
 
 ## Nivel 1 — necesarias para empezar las etapas 1 y 2 (terreno de pruebas y pantalla)
 
