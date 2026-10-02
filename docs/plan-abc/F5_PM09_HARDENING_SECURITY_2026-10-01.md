@@ -63,6 +63,14 @@ La validación cubre el contrato de las RPC y su integración con el frontend si
 crear datos de negocio nuevos en QA. La comprobación funcional con datos reales
 queda reservada a un smoke manual autenticado posterior si fuese necesario.
 
+## Smoke manual del preview QA — 2026-10-02
+
+El preview protegido cargó con la sesión autenticada `Local A1 · QA Empresa A,
+S.L.`. Se abrió el módulo TPV y se mostró el historial de ventas sin registrar
+un cobro, venta, devolución ni movimiento de stock nuevo. El TPV quedó operativo
+para el local concreto. Se mantiene el aviso no bloqueante de sincronización
+de `locales`, ya conocido y separado de este hardening.
+
 ## Negative tests y permisos
 
 Los contratos locales verifican que:
