@@ -140,6 +140,10 @@ actual se deja hasta la pieza de pantalla (en QA, finalizar un cierre con difere
 **Pieza 3 (D02, modalidades por local) elegida por Pedro el 2/10/2026 y aplicada solo en QA**; verificada con 79/79 comprobaciones.
 Informe: `F6_PIEZA3_MODALIDADES_2026-10-02.md`. Valor por defecto: todas las modalidades habilitadas (comportamiento actual).
 
+**Pieza 4 (D04, registro de equipos por local) elegida por Pedro el 2/10/2026 y aplicada solo en QA**; verificada con 72/72 comprobaciones.
+Informe: `F6_PIEZA4_EQUIPOS_2026-10-02.md`. Es solo un registro (empieza vacío, ningún flujo lo lee, no se integra ni se compra nada); solo el
+Propietario lo cambia y nada se borra (se desactiva).
+
 ## Nivel 1 — necesarias para empezar las etapas 1 y 2 (terreno de pruebas y pantalla)
 
 | ID | Decisión | Recomendación | Por qué importa | Desbloquea |
