@@ -70,7 +70,7 @@ recomendación**, salvo D24 (todavía no tiene asesoría). Quedan así:
 | ID | Decisión cerrada |
 |---|---|
 | D01 | Confirmado: **producto multiempresa sin local piloto fijo**; el propietario da de alta las empresas; las pruebas siguen en QA con empresas ficticias |
-| D03 | **10 cajas abiertas a la vez por local.** «Roles configurables» = **ajustar los permisos de los 4 roles actuales** (propietario, encargado, cajero, camarero) por empresa o local; roles nuevos con nombre propio, fuera de alcance por ahora |
+| D03 | **10 cajas abiertas a la vez por local** (pieza 1 hecha en QA). «Roles configurables» = **ajustar los permisos de los 4 roles actuales** (propietario, encargado, cajero, camarero) por empresa o local; roles nuevos con nombre propio, fuera de alcance por ahora; los roles Churrero/a, Básico y Estándar se retiran (ver abajo) |
 | D05 | Acepta el resultado **el propietario (Pedro)** (lectura: propietario de la plataforma; no se preguntó de nuevo) |
 | D06 | **00:00 por defecto (`Europe/Madrid`), configurable por local** |
 | D12 | El % de descuento del encargado lo configura el propietario; **valor inicial 0 %** (sin descuento libre) |
@@ -111,6 +111,21 @@ Cada empresa o local podrá ajustarla (D03).
 local** (modalidades, roles y permisos, equipos, corte del día, límites de descuento y de diferencia de caja).
 Solo lectura del código y de QA y un documento; sin cambios de código ni de base de datos y sin despliegues.
 Resultado: `F6_INVENTARIO_CAPA_CONFIGURACION_2026-10-02.md`.
+
+## Respuestas sobre la capa de configuración (2/10/2026, tras el inventario F6)
+
+| Pregunta del inventario | Respuesta de Pedro | Cómo se aplica |
+|---|---|---|
+| Roles Churrero/a, Básico y Estándar | **Retirarlos** | Queda con **4 roles** (propietario, encargado, cajero/a, camarero/a). Se aplica en la pieza de **permisos** (pieza 5), no antes: hay que reasignar a las personas que hoy los tienen y no se ha revisado producción |
+| Quién configura | **Cada empresa con su propietario** | La pieza 1 usa «Propietario de la empresa» como quien configura. **No existe** todavía el concepto de «propietario de la plataforma» (Pedro configurando cualquier empresa): sigue siendo una decisión de diseño aparte |
+| Por dónde empezar | **Pieza 1, solo en QA y sin desplegar la pantalla** | Autorizada y hecha (ver `F6_PIEZA1_DIA_CAJAS_2026-10-02.md`) |
+| D30 (probar P1 en el preview 118) | **Aún no, lo prueba Pedro después** | Sigue abierta |
+
+**Pendiente de elegir (D12, valor inicial 0 %):** hoy, sin una política escrita, el encargado puede descontar
+hasta un 20 % (valor escrito en `abc_descuento_politica_usuario` y asumido por los contratos A09). Para que el
+inicial sea 0 % hay dos caminos: **(A)** por datos, escribir una política explícita de 0 % para el encargado al
+dar de alta cada empresa o local (no toca código); **(B)** cambiar el valor por defecto del código y adaptar los
+contratos A09. Recomendación: A ahora, B al promocionar. No se ha tocado nada de descuentos.
 
 ## Nivel 1 — necesarias para empezar las etapas 1 y 2 (terreno de pruebas y pantalla)
 

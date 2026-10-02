@@ -4,7 +4,7 @@ Fecha: 2026-10-02
 Alcance: solo lectura. Base de datos de QA (`qjqorixtkilwsndqayyx`) y código del repositorio. **Producción no
 consultada. Ningún cambio de código, de base de datos ni de despliegue.**
 Autorización: «Sí, autorizo» a la etapa de inventario y diseño (Pedro, 2/10/2026).
-Estado: `INVENTARIO_HECHO_DISEÑO_PROPUESTO_SIN_IMPLEMENTAR`
+Estado: `INVENTARIO_HECHO_PIEZA_1_IMPLEMENTADA_SOLO_EN_QA_RESTO_SIN_IMPLEMENTAR` (la pieza 1 está en `F6_PIEZA1_DIA_CAJAS_2026-10-02.md`)
 
 ## Qué se pidió
 
@@ -77,6 +77,10 @@ Piezas, de menos a más riesgo (cada una exigiría su autorización):
    funciones del servidor, que se pueden probar sin pantalla.
 
 ## Preguntas abiertas para Pedro
+
+**Respondidas el 2/10/2026** (detalle en la hoja de decisiones): (1) los roles Churrero/a, Básico y Estándar se
+**retiran** (se aplica en la pieza de permisos); (2) configura **cada empresa con su propietario**; (3) se empieza
+por la **pieza 1, solo en QA y sin desplegar la pantalla**. Texto original de las preguntas:
 
 1. **Roles:** ¿Churrero/a, Básico y Estándar se mantienen como roles de la plantilla (con sus permisos de hoy), se
    fusionan con los otros o se retiran?
