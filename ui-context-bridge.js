@@ -142,6 +142,333 @@
   }
 })();
 
+// ABC P3: los productos de la pantalla llegan al catálogo autoritativo del TPV.
+//
+// La pantalla mantiene los productos en la colección heredada `productos`, pero el
+// TPV vende contra `catalogo_tpv_productos` y no existía ningún camino general de una
+// a otro (en QA, además, la política de almacen_kv rechaza las listas). Este puente
+// observa los guardados de `productos`, calcula qué productos cambiaron en lo que
+// afecta a la venta (nombre, unidad, fraccionable, precisión, precio con IVA, IVA,
+// activo, tipo, local) y los envía a la RPC transaccional abc_catalogo_guardar_productos.
+//
+// Reglas de seguridad:
+//  - No sustituye ni retrasa el guardado heredado: se ejecuta después de él y en
+//    segundo plano; un fallo aquí nunca hace fallar el guardado de la pantalla.
+//  - Solo envía diferencias contra la última lista conocida en esta sesión. Sin
+//    lista de referencia no envía nada (no se vuelca la lista entera por sorpresa).
+//    El volcado completo es explícito: window.__catalogoTpv.sincronizarTodo().
+//  - Un producto quitado de la lista se envía como inactivo; lo ausente nunca se
+//    desactiva por inferencia en el servidor.
+//  - Si la RPC no existe en el servidor (producción antes de promoverla) el puente
+//    se desactiva en silencio y la pantalla sigue como antes.
+//  - Reintentos con el mismo operation_id mientras el contenido no cambie.
+(function () {
+  "use strict";
+  if (window.__laCatalogoTpvBridgeV1 || !window.storage) return;
+  window.__laCatalogoTpvBridgeV1 = true;
+
+  var CLAVE = "productos";
+  var RPC = "abc_catalogo_guardar_productos";
+  var MONEDA = "EUR";
+  var LS_PENDIENTE = "la_suite_catalogo_tpv_pendiente_v1";
+  var ESPERA_MS = 1500;
+  var REINTENTOS_MS = [2000, 4000, 8000, 16000, 32000];
+  var MAX_LOTE = 200;
+  var CAMPOS_VENTA = ["nombre", "unidad", "fraccionable", "precisionCantidad", "precioVenta",
+    "ivaVenta", "activo", "tipo", "localId", "empresaId"];
+
+  var getAnterior = window.storage.get.bind(window.storage);
+  var setAnterior = window.storage.set.bind(window.storage);
+
+  var referencia = null;      // última lista conocida de esta sesión
+  var noDisponible = false;   // la RPC no existe en este servidor
+  var avisados = {};
+  var temporizador = null;
+  var enCurso = false;
+  var otraVez = false;
+  var intentos = 0;
+
+  function aviso(clave, mensaje, detalle) {
+    if (avisados[clave]) return;
+    avisados[clave] = true;
+    try { console.warn("[catálogo TPV] " + mensaje, detalle === undefined ? "" : detalle); } catch (e) {}
+  }
+
+  function emitir(tipo, detalle) {
+    try {
+      if (typeof CustomEvent === "function" && typeof window.dispatchEvent === "function") {
+        window.dispatchEvent(new CustomEvent(tipo, { detail: detalle }));
+      }
+    } catch (e) {}
+  }
+
+  function parsearLista(texto) {
+    try {
+      var v = JSON.parse(texto);
+      return Array.isArray(v) ? v : null;
+    } catch (e) { return null; }
+  }
+
+  function porId(lista) {
+    var m = {};
+    lista.forEach(function (p) {
+      if (p && typeof p === "object" && p.id !== undefined && p.id !== null) m[String(p.id)] = p;
+    });
+    return m;
+  }
+
+  function firmaVenta(p) {
+    return JSON.stringify(CAMPOS_VENTA.map(function (c) { return p[c] === undefined ? null : p[c]; }));
+  }
+
+  function calcularCambios(anterior, nuevo) {
+    var a = porId(anterior);
+    var n = porId(nuevo);
+    var salida = [];
+    Object.keys(n).forEach(function (id) {
+      if (!a[id] || firmaVenta(a[id]) !== firmaVenta(n[id])) salida.push(n[id]);
+    });
+    Object.keys(a).forEach(function (id) {
+      if (!n[id]) {
+        salida.push({ id: a[id].id, localId: a[id].localId, empresaId: a[id].empresaId, nombre: a[id].nombre, activo: false });
+      }
+    });
+    return salida;
+  }
+
+  function leerJson(clave) {
+    try {
+      var t = localStorage.getItem(clave);
+      return t ? JSON.parse(t) : null;
+    } catch (e) { return null; }
+  }
+
+  function empresaDe(p) {
+    if (p.empresaId) return String(p.empresaId);
+    var locales = leerJson("almacen:locales");
+    if (Array.isArray(locales)) {
+      for (var i = 0; i < locales.length; i++) {
+        if (locales[i] && String(locales[i].id) === String(p.localId) && locales[i].empresaId) {
+          return String(locales[i].empresaId);
+        }
+      }
+    }
+    return "";
+  }
+
+  function leerPendiente() {
+    var o = leerJson(LS_PENDIENTE);
+    return o && typeof o === "object" && !Array.isArray(o) ? o : {};
+  }
+
+  function guardarPendiente(o) {
+    try {
+      if (Object.keys(o).length) localStorage.setItem(LS_PENDIENTE, JSON.stringify(o));
+      else localStorage.removeItem(LS_PENDIENTE);
+    } catch (e) {}
+  }
+
+  function registrar(cambios) {
+    var pend = leerPendiente();
+    var sinContexto = 0;
+    cambios.forEach(function (p) {
+      var local = p.localId ? String(p.localId) : "";
+      var empresa = empresaDe(p);
+      if (!local || !empresa) { sinContexto++; return; }
+      var g = empresa + "|" + local;
+      if (!pend[g]) pend[g] = { empresaId: empresa, localId: local, opId: null, productos: {} };
+      pend[g].productos[String(p.id)] = p;
+      pend[g].opId = null;   // el contenido cambió: el siguiente envío usa otro operation_id
+    });
+    if (sinContexto) {
+      aviso("sin-contexto", sinContexto + " producto(s) sin empresa o local: no se envían al catálogo del TPV.");
+    }
+    guardarPendiente(pend);
+  }
+
+  function nuevoOpId(local) {
+    var azar = "";
+    try {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") azar = window.crypto.randomUUID();
+    } catch (e) {}
+    if (!azar) azar = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    return ("p3.cat." + String(local).replace(/[^A-Za-z0-9._:-]/g, "-") + "." + Date.now().toString(36) + "." + azar)
+      .slice(0, 190);
+  }
+
+  async function esperarBarrera() {
+    for (var i = 0; i < 400; i++) {
+      if (window.__instalacionSyncPermitida === true) return true;
+      await new Promise(function (resolve) { setTimeout(resolve, 25); });
+    }
+    return false;
+  }
+
+  async function clienteConSesion() {
+    if (typeof window.getSupabaseClient !== "function") return null;
+    var supabase = await window.getSupabaseClient();
+    var r = await supabase.auth.getSession();
+    var sesion = r && r.data ? r.data.session : null;
+    if (!sesion || !sesion.user || !sesion.user.id) return null;
+    return supabase;
+  }
+
+  function planificar(ms) {
+    if (typeof setTimeout !== "function") return;
+    if (temporizador) clearTimeout(temporizador);
+    temporizador = setTimeout(function () { temporizador = null; vaciar(); }, ms);
+  }
+
+  function reintentar() {
+    if (intentos < REINTENTOS_MS.length) {
+      intentos++;
+      planificar(REINTENTOS_MS[intentos - 1]);
+    }
+  }
+
+  function clasificar(error, g) {
+    var msg = String((error && (error.message || error.details || error.hint)) || "");
+    var code = String((error && error.code) || "");
+    if (code === "PGRST202" || code === "42883" || (error && error.status === 404) ||
+        /could not find the function|function .* does not exist/i.test(msg)) {
+      return "no_disponible";
+    }
+    if (/abc_catalogo_no_autorizado/.test(msg) || code === "42501") return "descartar";
+    if (/catalogo_contexto_fiscal_(ausente|ambiguo)/.test(msg)) return "configuracion";
+    if (/operation_id_conflict/.test(msg)) return "otro_id";
+    return "reintentar";
+  }
+
+  async function enviarGrupo(supabase, g) {
+    var pend = leerPendiente();
+    var grupo = pend[g];
+    if (!grupo) return "ok";
+    if (!grupo.opId) {
+      grupo.opId = nuevoOpId(grupo.localId);
+      guardarPendiente(pend);
+    }
+    var ids = Object.keys(grupo.productos).sort();
+    var lista = ids.map(function (id) { return grupo.productos[id]; });
+    var resumen = { creados: 0, actualizados: 0, sin_cambios: 0, desactivados: 0, omitidos: 0, stock_inicial_creado: 0 };
+    var omitidos = [];
+    for (var desde = 0, n = 0; desde < lista.length; desde += MAX_LOTE, n++) {
+      var r;
+      try {
+        r = await supabase.rpc(RPC, {
+          p_operation_id: grupo.opId + (n ? "." + n : ""),
+          p_empresa_id: grupo.empresaId,
+          p_local_id: grupo.localId,
+          p_currency_code: MONEDA,
+          p_productos: lista.slice(desde, desde + MAX_LOTE)
+        });
+      } catch (e) {
+        r = { error: e };
+      }
+      if (r.error) return { estado: clasificar(r.error, g), error: r.error };
+      if (!r.data || r.data.ok !== true) return { estado: "reintentar", error: new Error("respuesta_inesperada") };
+      Object.keys(resumen).forEach(function (k) { resumen[k] += Number(r.data.resumen && r.data.resumen[k]) || 0; });
+      (r.data.productos || []).forEach(function (x) {
+        if (x.resultado === "OMITIDO" && x.motivo !== "no_vendible" && x.motivo !== "inactivo") omitidos.push(x);
+      });
+    }
+    var actual = leerPendiente();
+    if (actual[g] && actual[g].opId === grupo.opId) delete actual[g];
+    guardarPendiente(actual);
+    return { estado: "ok", resumen: resumen, omitidos: omitidos, local: grupo.localId };
+  }
+
+  async function vaciar() {
+    if (noDisponible) return;
+    if (enCurso) { otraVez = true; return; }
+    var claves = Object.keys(leerPendiente());
+    if (!claves.length) return;
+    enCurso = true;
+    var hayReintento = false;
+    try {
+      if (!(await esperarBarrera())) { hayReintento = true; return; }
+      var supabase = await clienteConSesion();
+      if (!supabase) { hayReintento = true; return; }
+      for (var i = 0; i < claves.length; i++) {
+        var r = await enviarGrupo(supabase, claves[i]);
+        if (r === "ok") continue;
+        if (r.estado === "ok") {
+          intentos = 0;
+          if (r.omitidos.length) aviso("omitidos:" + r.local, "El servidor omitió productos al guardar el catálogo del TPV.", r.omitidos);
+          emitir("catalogo-tpv-sincronizado", { local: r.local, resumen: r.resumen, omitidos: r.omitidos });
+        } else if (r.estado === "no_disponible") {
+          noDisponible = true;
+          guardarPendiente({});
+          aviso("no-disponible", "El servidor no tiene la ruta del catálogo del TPV; la pantalla sigue como antes.");
+          return;
+        } else if (r.estado === "descartar") {
+          var p1 = leerPendiente(); delete p1[claves[i]]; guardarPendiente(p1);
+          aviso("sin-permiso:" + claves[i], "Este usuario no puede guardar el catálogo del TPV de este local; los cambios quedan solo en la pantalla.");
+          emitir("catalogo-tpv-error", { motivo: "sin_permiso", local: claves[i] });
+        } else if (r.estado === "configuracion") {
+          aviso("config:" + claves[i], "El local no tiene contexto fiscal configurado: el catálogo del TPV no se puede guardar todavía.", String(r.error && r.error.message || ""));
+          emitir("catalogo-tpv-error", { motivo: "contexto_fiscal", local: claves[i] });
+        } else if (r.estado === "otro_id") {
+          var p2 = leerPendiente();
+          if (p2[claves[i]]) { p2[claves[i]].opId = null; guardarPendiente(p2); }
+          hayReintento = true;
+        } else {
+          hayReintento = true;
+        }
+      }
+    } catch (e) {
+      hayReintento = true;
+    } finally {
+      enCurso = false;
+      if (hayReintento) reintentar();
+      else if (otraVez) { otraVez = false; planificar(ESPERA_MS); }
+    }
+  }
+
+  window.storage.get = async function (key, shared) {
+    var r = await getAnterior(key, shared);
+    if (key === CLAVE && r && typeof r.value === "string") {
+      var lista = parsearLista(r.value);
+      if (lista) referencia = lista;
+    }
+    return r;
+  };
+
+  window.storage.set = async function (key, value, shared) {
+    if (key !== CLAVE) return setAnterior(key, value, shared);
+    var previa = referencia;
+    var resultado = await setAnterior(key, value, shared);
+    var nueva = typeof value === "string" ? parsearLista(value) : null;
+    if (nueva) {
+      referencia = nueva;
+      if (previa && !noDisponible && window.__nubeActiva) {
+        try {
+          var cambios = calcularCambios(previa, nueva);
+          if (cambios.length) { registrar(cambios); planificar(ESPERA_MS); }
+        } catch (e) {
+          aviso("calculo", "No se pudieron calcular los cambios del catálogo.", String(e && e.message || e));
+        }
+      }
+    }
+    return resultado;
+  };
+
+  window.__catalogoTpv = {
+    pendientes: function () { return leerPendiente(); },
+    // Volcado completo y explícito de la lista conocida (alta inicial del catálogo).
+    sincronizarTodo: async function () {
+      if (!referencia) return { ok: false, motivo: "sin_lista" };
+      registrar(referencia);
+      await vaciar();
+      return { ok: Object.keys(leerPendiente()).length === 0, pendientes: leerPendiente() };
+    }
+  };
+
+  if (typeof window.addEventListener === "function") {
+    window.addEventListener("online", function () { intentos = 0; planificar(500); });
+  }
+  if (Object.keys(leerPendiente()).length) planificar(3000);
+})();
+
 // PM27: Chrome móvil puede desplazar horizontalmente el documento cuando
 // un modal React situado dentro del menú horizontal recibe focus(). El modal
 // de cierre de sesión está dentro de ese menú; al abrirlo el dashboard queda

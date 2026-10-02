@@ -11,6 +11,12 @@ Estado: `MATRIZ_CON_EVIDENCIA_PENDIENTE_DE_DECISIONES_Y_ACEPTACION`
 > cambia de estado: todo está verificado en backend, no en pantalla. Véase
 > `F5_ETAPA1_SIEMBRA_QA_2026-10-02.md`.
 
+> **Actualización (P3, 2/10/2026).** Existe ya en QA la ruta autoritativa de `productos`
+> (`abc_catalogo_guardar_productos`) y el precio de carta con IVA incluido (D31), con un
+> puente de pantalla probado en local y sin desplegar. El bloqueo 1 «catálogo TPV vacío»
+> pasa a «resuelto en backend en QA, sin verificar en pantalla». Ninguna fila cambia de
+> estado. Véase `F5_P3_CATALOGO_AUTORITATIVO_2026-10-02.md`.
+
 Sustituye al esqueleto `F0_5_MATRIZ_EJECUCION_A01_C12` de la rama
 `codex/f0-inventario-abc` (todo en `PENDIENTE`, con numeración de C antigua). No
 es una aceptación: ninguna fila pasa a «verificado» sin recorrido real, entorno,

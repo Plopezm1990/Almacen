@@ -34,10 +34,11 @@ Pedro respondió: «Acepto las recomendadas de los niveles 1 y 2». Se registra 
 | **Aceptada la regla, falta la cifra** | D12 (porcentaje de descuento del encargado), D15 (umbral de diferencia de caja) |
 | **Aceptada, pero hay que responder lo que deja pendiente** | D19 (los `pendiente` de la matriz F1.3) |
 | **Condicional que depende de un hecho tuyo** | D02 (qué modalidades usas hoy), D06 (¿hay servicio que cruza la medianoche?) |
-| **Nueva, añadida el 2/10 tras la etapa 1** | D31 (precio con IVA o sin IVA) |
+| **Resuelta el 2/10 tras la etapa 1** | D31: Pedro decide **precio de carta con IVA incluido**. Implementada en QA con P3 (`F5_P3_CATALOGO_AUTORITATIVO_2026-10-02.md`); falta confirmarlo con la asesoría |
 | **Niveles 3 y 4** | Sin responder |
 
-Efecto: la **D07 se ejecutó** (etapa 1, `F5_ETAPA1_SIEMBRA_QA_2026-10-02.md`). La regla
+Efecto: P3 (ruta autoritativa de `productos`) quedó autorizada por Pedro el 2/10 y se ejecutó
+en QA. La **D07 se ejecutó** (etapa 1, `F5_ETAPA1_SIEMBRA_QA_2026-10-02.md`). La regla
 de día operativo sembrada en QA (corte 04:00) es **de prueba**: D06 sigue abierta para
 el local piloto. Nada de lo aceptado autoriza producción, despliegues ni gasto.
 

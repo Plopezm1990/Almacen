@@ -105,6 +105,13 @@ y no se inventariaron.
    - El servidor exige la vía «configurada» para los artículos con grupos
      obligatorios; es el comportamiento correcto de A04.
 
+## Seguimiento (P3, mismo día)
+
+Los hallazgos 1 y 2 (no hay camino de `productos` al catálogo; precio con IVA frente a
+base) se atendieron en `F5_P3_CATALOGO_AUTORITATIVO_2026-10-02.md`: Pedro decidió D31
+(precio con IVA incluido) y autorizó P3. La siembra de este informe no se modificó: el
+catálogo sembrado sigue con la semántica anterior hasta la primera sincronización real.
+
 ## Límites
 
 - **No verificado en la pantalla.** La evidencia es de base de datos con roles
