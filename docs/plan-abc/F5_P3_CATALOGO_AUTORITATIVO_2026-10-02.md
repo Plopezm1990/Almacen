@@ -193,15 +193,17 @@ recargar) podría haber **devuelto el catálogo a un precio antiguo** sin que na
 ### Despliegue no pedido (hay que decirlo)
 
 La autorización fue «corrige el puente y pruébalo **sin desplegar**». Al subir el commit
-`4a4c13e` (con la etiqueta `[skip netlify]` al final de la primera línea) Netlify **construyó
+`4a4c13e` (con `[skip netlify]` al final de la primera línea) Netlify **construyó
 igualmente** el Deploy Preview del PR 118 («Deploy Preview ready», 14:48 UTC). Es decir: la etiqueta
 no impidió el build (los commits anteriores con la etiqueta delante se subieron cuando aún no
 existía el PR, así que esa suposición no estaba comprobada para un PR abierto). Efecto: el preview
 118 ya sirve el puente v2. Alcance: solo QA (Deploy Preview de un PR en borrador, protegido por el
 equipo de Netlify), sin producción, sin fusión, sin cambio de `release`. No se puede deshacer sin
-otro despliegue; no se intentó. Lección aplicada: para subir documentación o código sin construir
-hay que usar la etiqueta como prefijo del mensaje (convención del repo) y aun así comprobar el
-estado del PR; si el control es crítico, subir a otra rama distinta de la del PR.
+otro despliegue; no se intentó. Lección: en un PR abierto, **`[skip netlify]` no evita el build**,
+ni al final ni al principio del mensaje (comprobado con dos pushes seguidos: `4a4c13e` y
+`49293db` generaron cada uno su Deploy Preview). **Cada push a la rama `claude/vigilant-hawking-uji8l4`
+reconstruye el preview 118.** Para subir trabajo sin construir hay que usar otra rama que no sea la
+del PR; hasta autorización, el trabajo nuevo no se sube a esta rama salvo que se acepte un build.
 
 ### Defecto aparte: aviso falso «No se pudo actualizar el producto»
 
