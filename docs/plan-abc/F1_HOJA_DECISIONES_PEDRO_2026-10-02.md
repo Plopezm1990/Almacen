@@ -130,6 +130,11 @@ contratos A09, queda para el momento de promocionar). Aplicado en QA: ver `F6_PI
 nuevo debe recibir esa política de 0 % al darse de alta**; si no, el local nuevo seguiría con el 20 % por defecto
 del código hasta aplicar la opción B.
 
+**Pieza 2 (D15, diferencia de caja) autorizada solo en QA el 2/10/2026** («Autorizo la pieza 2 solo en QA»). Escrita y
+probada en una réplica local; **pendiente de aplicar en QA** por una aprobación de herramienta no concedida. Informe:
+`F6_PIEZA2_DIFERENCIA_CAJA_2026-10-02.md`. Valores por defecto que Pedro puede cambiar: umbral de aprobación **0 €**
+(cualquier diferencia exige aprobación del propietario); el propietario puede aprobar sus propias diferencias.
+
 ## Nivel 1 — necesarias para empezar las etapas 1 y 2 (terreno de pruebas y pantalla)
 
 | ID | Decisión | Recomendación | Por qué importa | Desbloquea |
