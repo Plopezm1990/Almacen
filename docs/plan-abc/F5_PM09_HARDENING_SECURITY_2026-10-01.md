@@ -48,6 +48,21 @@ existentes de funciones `SECURITY DEFINER` ejecutables por `authenticated` y
 de tablas RLS sin políticas; esos avisos no son una regresión introducida por
 este cambio y requieren revisión separada.
 
+## Validación funcional y regresiva — 2026-10-02
+
+Pasaron todos los contratos locales de PM09 y replay relacionados:
+
+- historial, caja, IVA y resultados/margen;
+- economía especial y fecha económica;
+- aislamiento de empresa/local;
+- robustez, replay e idempotencia;
+- resultados LA-007 y rotación/margen LA-008;
+- concurrencia y replay G1 P07.
+
+La validación cubre el contrato de las RPC y su integración con el frontend sin
+crear datos de negocio nuevos en QA. La comprobación funcional con datos reales
+queda reservada a un smoke manual autenticado posterior si fuese necesario.
+
 ## Negative tests y permisos
 
 Los contratos locales verifican que:
