@@ -1,7 +1,7 @@
 # Hoja de decisiones para Pedro (Plan ABC, etapa 0)
 
 Fecha: 2026-10-02
-Estado: `NIVELES_1_Y_2_ACEPTADOS_D01_A_D06_D12_D15_RESPONDIDOS_EN_SEGUNDA_RONDA_LECTURAS_POR_CONFIRMAR_D19_Y_NIVELES_3_Y_4_PENDIENTES`
+Estado: `DECISIONES_DE_NEGOCIO_CERRADAS_EXCEPTO_D24_D26_D31_ASESORIA_Y_D30_PRUEBA_DE_P1`
 Base: `a5a4321`, las matrices `F0_MATRIZ_A01_A12_EVIDENCIA_2026-10-02.md` y
 `F0_MATRIZ_B01_C12_EVIDENCIA_2026-10-02.md`, y las fichas de la rama
 `codex/f1-contratos-comunes` (F1.1–F1.6) y `codex/f0-inventario-abc` (F0.2).
@@ -62,9 +62,55 @@ configuración por empresa y local** (modalidades, roles y permisos, equipos, co
 descuento y de diferencia de caja). No se ha inventariado qué existe hoy ni se ha empezado nada; propongo
 una etapa previa para inventariarlo y dibujarlo antes de construir flujos. Requiere tu autorización.
 
-**Sigue abierto:** D19 (siete casillas de la matriz de permisos, ahora condicionadas por D03), D31
-(confirmación de la asesoría), D21, D24 y D27 (datos tuyos) y las recomendaciones de los niveles 3 y 4
-(D20, D22, D23, D25, D26, D28, D29, D30).
+## Confirmaciones por preguntas con opciones (2/10/2026)
+
+Pedro contestó las lecturas pendientes y el resto de la hoja eligiendo opciones. **Todas coinciden con la
+recomendación**, salvo D24 (todavía no tiene asesoría). Quedan así:
+
+| ID | Decisión cerrada |
+|---|---|
+| D01 | Confirmado: **producto multiempresa sin local piloto fijo**; el propietario da de alta las empresas; las pruebas siguen en QA con empresas ficticias |
+| D03 | **10 cajas abiertas a la vez por local.** «Roles configurables» = **ajustar los permisos de los 4 roles actuales** (propietario, encargado, cajero, camarero) por empresa o local; roles nuevos con nombre propio, fuera de alcance por ahora |
+| D05 | Acepta el resultado **el propietario (Pedro)** (lectura: propietario de la plataforma; no se preguntó de nuevo) |
+| D06 | **00:00 por defecto (`Europe/Madrid`), configurable por local** |
+| D12 | El % de descuento del encargado lo configura el propietario; **valor inicial 0 %** (sin descuento libre) |
+| D15 | Toda diferencia de caja **se registra en la auditoría**, **exige motivo** y, sobre un **umbral configurable por el propietario**, requiere su aprobación. Nunca se inventa un ingreso para cuadrar |
+| D19 | Cerrada como **plantilla por defecto, ajustable por empresa o local** (ver abajo) |
+| D20, D22, D23, D25 | **Aceptadas** las recomendaciones: datáfono independiente con confirmación declarada; primer alcance solo con conexión; proveedor de pagos configurable y elegido cuando haya presupuesto; emisor fiscal integrado, no propio |
+| D21 | Solo **efectivo y tarjeta** por ahora |
+| D26, D28, D29 | **Aceptadas**: plazos fiscales los confirma la asesoría; 0 despliegues durante la iteración y 1 productivo agrupado al final (los previews de QA para probar no cuentan); promoción a producción más tarde, con candidato exacto, comprobaciones previas y recuperación (no autorizada ahora) |
+| D27 | **Ningún gasto nuevo hasta nueva orden**: no se contrata ni se amplía nada sin aprobación expresa |
+
+**D19, plantilla por defecto** (las demás casillas de la matriz F1.3 no cambian):
+
+| Operación | Propietario | Encargado | Cajero | Camarero |
+|---|---|---|---|---|
+| cancelar pedido servido | sí, con motivo (*) | **sí, con motivo** | no por defecto | no por defecto |
+| abrir caja | sí | sí | **sí** | no |
+| cerrar caja | sí | sí | **sí** (si hay diferencia sobre el umbral de D15, aprueba el propietario) | no |
+| resolver cobro desconocido | sí | sí | **no** | no |
+| solicitar devolución | sí | sí | solo con aprobación (D13) | no |
+| aprobar descuento | sí | sí, hasta su límite (D12; 0 % inicial) | no por defecto | no |
+| reabrir sesión | sí | **no** (D14, solo propietario) | no | no |
+| emitir documento | sí | sí | **no**, hasta que la asesoría valide | no |
+| rectificar documento | sí | **no** | no | no |
+| resolver incidencia | sí | sí | **no** (las pasa al encargado) | no |
+
+(*) La casilla del propietario para «cancelar pedido servido» no se preguntó; se propone «sí, con motivo».
+Cada empresa o local podrá ajustarla (D03).
+
+**Sigue abierto:**
+
+- **D24, D26 y D31 (asesoría).** Pedro **todavía no tiene asesoría**: no hay quien confirme el precio con IVA
+  incluido (D31), los plazos fiscales (D26) ni los puntos de F1.4. La puerta fiscal sigue cerrada. D25
+  (emisor integrado) queda aceptada pero no se puede elegir proveedor sin asesoría.
+- **D30 (P1).** Pedro quiere probarlo antes en el preview 118 (cambiar el tema oscuro/claro y comprobar el
+  aviso «solo en este equipo»); después valida el plazo de 6 h y los textos.
+
+**Siguiente paso autorizado (2/10/2026):** inventario y diseño de la **capa de configuración por empresa y
+local** (modalidades, roles y permisos, equipos, corte del día, límites de descuento y de diferencia de caja).
+Solo lectura del código y de QA y un documento; sin cambios de código ni de base de datos y sin despliegues.
+Resultado: `F6_INVENTARIO_CAPA_CONFIGURACION_2026-10-02.md`.
 
 ## Nivel 1 — necesarias para empezar las etapas 1 y 2 (terreno de pruebas y pantalla)
 
