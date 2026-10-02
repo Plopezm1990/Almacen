@@ -1,6 +1,6 @@
 # F5 / PM09 — candidato local de hardening de seguridad
 
-Fecha: 2026-10-01  
+Fecha de actualización: 2026-10-02
 Estado: `CANDIDATO_PM09_HARDENING_VALIDADO_NO_APLICADO`
 
 ## Alcance ejecutado
@@ -21,6 +21,16 @@ El candidato fija `search_path = ''` en las seis funciones y conserva las
 referencias de negocio totalmente cualificadas (`public.*` y `private.*`). No
 modifica las funciones base PM07/PM08, que siguen siendo responsables de
 autenticación, tenant, capacidades, contexto operativo e idempotencia.
+
+## Estado observado en QA
+
+La lectura actual de QA confirma que los cinco wrappers públicos son
+`SECURITY DEFINER`, no son ejecutables por `anon`, sí son ejecutables por
+`authenticated` y todavía conservan `EXECUTE` para `service_role`. Tres
+wrappers ya tienen `search_path = ''`; `registrar_venta_stock_pm09` y
+`revertir_venta_stock_pm09` aún declaran
+`search_path = public, auth, private, pg_temp`. El candidato homogeneiza los
+cinco wrappers y revoca la concesión a `service_role`.
 
 ## Negative tests y permisos
 
