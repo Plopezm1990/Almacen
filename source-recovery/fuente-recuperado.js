@@ -8002,6 +8002,18 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("opcion_max_cantidad_excedida")) return "La cantidad elegida de un modificador supera el máximo permitido.";
     if (msg.includes("catalogo_producto_version_conflict") || msg.includes("catalogo_grupo_version_conflict") || msg.includes("catalogo_producto_grupo_version_conflict") || msg.includes("catalogo_opcion_version_conflict")) return "La configuración del producto cambió en el servidor. Vuelve a abrir sus variantes antes de guardar.";
     if (msg.includes("opcion_tpv_no_disponible") || msg.includes("seleccion_no_pertenece_producto")) return "Una variante o modificador ya no está disponible para este producto.";
+    if (msg.includes("cierre_definitivo_diferencia_pendiente")) return "El cierre no se puede finalizar todavía: la diferencia de caja está sin tratar (falta el motivo o la aprobación del Propietario, o fue rechazada).";
+    if (msg.includes("diferencia_caja_motivo_requerido")) return "Escribe el motivo de la diferencia de caja.";
+    if (msg.includes("diferencia_caja_motivo_invalido")) return "El motivo puede tener hasta 500 caracteres.";
+    if (msg.includes("diferencia_caja_inexistente")) return "No hay ninguna diferencia de caja que registrar.";
+    if (msg.includes("diferencia_caja_ya_decidida")) return "El Propietario ya decidió esta diferencia. Actualiza la pantalla.";
+    if (msg.includes("diferencia_caja_sin_registro")) return "Antes de decidir hay que registrar el motivo de la diferencia.";
+    if (msg.includes("diferencia_caja_cambiada")) return "La diferencia cambió desde que se registró el motivo. Actualiza y regístrala de nuevo.";
+    if (msg.includes("diferencia_caja_no_requiere_aprobacion")) return "Esta diferencia no supera el umbral y no necesita aprobación.";
+    if (msg.includes("diferencia_caja_decision_invalida")) return "La decisión no es válida.";
+    if (msg.includes("abc_diferencia_caja_no_autorizada")) return "Solo el Propietario puede aprobar o rechazar una diferencia de caja.";
+    if (msg.includes("cierre_provisional_no_encontrado") || msg.includes("sesion_no_provisional")) return "El cierre ya no está en estado provisional. Actualiza la pantalla.";
+    if (msg.includes("dia_operativo_local_no_disponible")) return "El local no está disponible para consultar el día operativo.";
     if (msg.includes("contexto_no_autorizado") || msg.includes("no_autorizad")) return "No tienes permiso para operar este TPV en el local seleccionado.";
     return msg || "No se pudo guardar el pedido en el servidor.";
   }
@@ -8999,6 +9011,105 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     };
   }
 
+  // Cierre de caja (pieza 6d): el cierre localiza la sesión del terminal en cualquier estado del cierre y obtiene el día
+  // operativo del servidor. No depende de la última cuenta abierta en este navegador ni de que la sesión esté ABIERTA.
+  async function contextoCierreA10({ conDia = true } = {}) {
+    if (!localActivoId) throw new Error("local_requerido");
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) throw new Error("empresa_requerida");
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) throw new Error("a10_requiere_conexion");
+    const supabase = await window.getSupabaseClient();
+    const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId, { permitirSinSesion: true });
+    const { data: vinculos, error: vinculosError } = await supabase
+      .from("caja_sesion_terminales")
+      .select("session_id,terminal_id,desde")
+      .eq("empresa_id", empresaId)
+      .eq("local_id", localActivoId)
+      .eq("terminal_id", terminal.terminalId)
+      .is("hasta", null)
+      .order("desde", { ascending: false })
+      .limit(2);
+    if (vinculosError) throw vinculosError;
+    if (!Array.isArray(vinculos) || vinculos.length !== 1) throw new Error(vinculos && vinculos.length > 1 ? "terminal_sesion_ambigua" : "terminal_sin_sesion_abierta");
+    const sessionId = vinculos[0].session_id;
+    const { data: sesion, error: sesionError } = await supabase
+      .from("caja_sesiones")
+      .select("id,estado,version")
+      .eq("empresa_id", empresaId)
+      .eq("local_id", localActivoId)
+      .eq("id", sessionId)
+      .maybeSingle();
+    if (sesionError) throw sesionError;
+    if (!sesion || !["ABIERTA", "EN_CIERRE", "CIERRE_PROVISIONAL"].includes(sesion.estado)) throw new Error("terminal_sin_sesion_abierta");
+    let operatingDay = null;
+    if (conDia) {
+      const { data: dia, error: diaError } = await supabase.rpc("abc_obtener_dia_operativo_local", { p_empresa_id: empresaId, p_local_id: localActivoId });
+      if (diaError) throw diaError;
+      operatingDay = /^\d{4}-\d{2}-\d{2}$/.test(String(dia?.operating_day || "")) ? String(dia.operating_day) : null;
+      if (!operatingDay) throw new Error("operating_day_servidor_ausente");
+    }
+    return { supabase, empresaId, localId: localActivoId, terminalId: terminal.terminalId, sessionId, sessionEstado: sesion.estado, operatingDay };
+  }
+
+  async function consultarCierreCajaA10() {
+    try {
+      const contexto = await contextoCierreA10({ conDia: false });
+      const base = { ok: true, sessionId: contexto.sessionId, sessionEstado: contexto.sessionEstado };
+      if (contexto.sessionEstado !== "CIERRE_PROVISIONAL") return base;
+      const { data, error } = await contexto.supabase.rpc("abc_obtener_diferencia_caja", {
+        p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId,
+        p_session_id: contexto.sessionId
+      });
+      if (error) return { ...base, diferenciaError: errorRpcA02(error) };
+      return { ...base, ...(data || {}), ok: true, sessionEstado: contexto.sessionEstado };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function registrarDiferenciaCajaA10({ motivo = "" } = {}) {
+    try {
+      const contexto = await contextoCierreA10({ conDia: false });
+      const motivoLimpio = String(motivo || "").trim();
+      if (!motivoLimpio) throw new Error("diferencia_caja_motivo_requerido");
+      const operationId = `f6.ui.cash.diff.register.${uuidA02()}`;
+      const resultado = await rpcA02ConRecuperacion(contexto.supabase, "abc_registrar_diferencia_caja", {
+        p_operation_id: operationId,
+        p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId,
+        p_session_id: contexto.sessionId,
+        p_motivo: motivoLimpio
+      }, contexto.empresaId, contexto.localId, operationId);
+      return { ok: true, ...(resultado || {}) };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function decidirDiferenciaCajaA10({ decision = "", motivo = "" } = {}) {
+    try {
+      const contexto = await contextoCierreA10({ conDia: false });
+      const decisionLimpia = String(decision || "").trim().toUpperCase();
+      if (decisionLimpia !== "APROBAR" && decisionLimpia !== "RECHAZAR") throw new Error("diferencia_caja_decision_invalida");
+      const motivoLimpio = String(motivo || "").trim();
+      if (!motivoLimpio) throw new Error("diferencia_caja_motivo_requerido");
+      const operationId = `f6.ui.cash.diff.decide.${uuidA02()}`;
+      const resultado = await rpcA02ConRecuperacion(contexto.supabase, "abc_decidir_diferencia_caja", {
+        p_operation_id: operationId,
+        p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId,
+        p_session_id: contexto.sessionId,
+        p_decision: decisionLimpia,
+        p_motivo: motivoLimpio
+      }, contexto.empresaId, contexto.localId, operationId);
+      return { ok: true, ...(resultado || {}) };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
   async function listarEstacionesA10() {
     listarEstacionesA10.abrirSesionCajaA10 = abrirSesionCajaA10;
     listarEstacionesA10.cerrarSesionCajaA10 = cerrarSesionCajaA10;
@@ -9006,6 +9117,9 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     listarEstacionesA10.confirmarCierreProvisionalA10 = confirmarCierreProvisionalA10;
     listarEstacionesA10.finalizarCierreSesionCajaA10 = finalizarCierreSesionCajaA10;
     listarEstacionesA10.reabrirCierreProvisionalA10 = reabrirCierreProvisionalA10;
+    listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
+    listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
+    listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
     try {
       const contexto = await contextoA10(false);
       const [estaciones, rutas] = await Promise.all([
@@ -9063,7 +9177,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
 
   async function iniciarCierreSesionCajaA10() {
     try {
-      const contexto = await contextoA10(true);
+      const contexto = await contextoCierreA10();
       const operationId = `f5.ui.cash.close.start.${uuidA02()}`;
       const resultado = await rpcA02ConRecuperacion(contexto.supabase, "abc_iniciar_cierre_sesion_caja", {
         p_operation_id: operationId,
@@ -9081,7 +9195,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
 
   async function confirmarCierreProvisionalA10({ efectivoContado = 0 } = {}) {
     try {
-      const contexto = await contextoA10(true);
+      const contexto = await contextoCierreA10();
       const contado = Number(efectivoContado);
       if (!Number.isFinite(contado) || contado < 0) throw new Error("efectivo_contado_invalido");
       const operationId = `f5.ui.cash.close.provisional.${uuidA02()}`;
@@ -9103,7 +9217,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
 
   async function finalizarCierreSesionCajaA10() {
     try {
-      const contexto = await contextoA10(true);
+      const contexto = await contextoCierreA10();
       const operationId = `f5.ui.cash.close.finalize.${uuidA02()}`;
       const resultado = await rpcA02ConRecuperacion(contexto.supabase, "abc_finalizar_cierre_sesion_caja", {
         p_operation_id: operationId,
@@ -9122,7 +9236,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
 
   async function reabrirCierreProvisionalA10({ motivo = "" } = {}) {
     try {
-      const contexto = await contextoA10(true);
+      const contexto = await contextoCierreA10();
       const motivoLimpio = String(motivo || "").trim();
       if (!motivoLimpio) throw new Error("motivo_reapertura_requerido");
       const operationId = `f5.ui.cash.close.reopen.${uuidA02()}`;
@@ -10004,6 +10118,18 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       return { ok: false, error: "No se pudo confirmar la anulaci\xF3n con el servidor. No se ha modificado el stock local." };
     }
   }
+  // Las funciones del cierre de caja cuelgan de listarEstacionesA10 (así las recibe CocinaA10). Se enlazan aquí, al crear la lógica,
+  // y no solo la primera vez que se llama a listarEstacionesA10: esta lógica se recrea en cada pintado de la aplicación y, si no,
+  // la pantalla recibiría un listarEstacionesA10 sin ellas hasta su primera llamada (pieza 6d).
+  listarEstacionesA10.abrirSesionCajaA10 = abrirSesionCajaA10;
+  listarEstacionesA10.cerrarSesionCajaA10 = cerrarSesionCajaA10;
+  listarEstacionesA10.iniciarCierreSesionCajaA10 = iniciarCierreSesionCajaA10;
+  listarEstacionesA10.confirmarCierreProvisionalA10 = confirmarCierreProvisionalA10;
+  listarEstacionesA10.finalizarCierreSesionCajaA10 = finalizarCierreSesionCajaA10;
+  listarEstacionesA10.reabrirCierreProvisionalA10 = reabrirCierreProvisionalA10;
+  listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
+  listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
+  listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
   return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
@@ -21229,6 +21355,23 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     enviandoVenta ? "Cobrando\u2026" : "Confirmar venta"
   ), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowCobro(false), disabled: enviandoVenta }, "Cancelar"))), confirmacion && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => !procesandoA05 && setConfirmacion(null), title: confirmacion.pedidoEstado === "ENVIADO" ? "Pedido enviado" : "Pedido guardado" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-2" }, confirmacion.currencyCode || "EUR", " ", fmt(confirmacion.total), " · ", confirmacion.n, " línea(s)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Cuenta ", confirmacion.cuentaId || "", " · Pedido ", confirmacion.pedidoId || ""), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2 font-semibold", style: { color: confirmacion.pedidoEstado === "ENVIADO" ? C2.accent : C2.ink } }, "Estado operativo: ", confirmacion.pedidoEstado || "ABIERTO"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, confirmacion.pedidoEstado === "ENVIADO" ? "A05 ha confirmado las líneas y enviado el pedido. Continúa su preparación, servido o cancelación desde el panel operativo del TPV." : "A02/A04 han persistido cuenta, pedido y líneas. A05 puede confirmar las líneas y enviar el pedido sin registrar cobro, documento fiscal ni movimiento de stock."), errorA05 && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", errorA05), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, confirmacion.pedidoEstado !== "ENVIADO" ? /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: enviarPedidoGuardadoA05, disabled: procesandoA05 }, procesandoA05 ? "Enviando pedido…" : "Enviar pedido") : null, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmacion(null), disabled: procesandoA05 }, confirmacion.pedidoEstado === "ENVIADO" ? "Aceptar" : "Cerrar"))), renderHistorialVentas(), confirmAnular && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmAnular(null), title: "Anular esta venta" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, /* @__PURE__ */ import_react4.default.createElement("b", null, confirmAnular.resumen), " \xB7 \u20AC", fmt(confirmAnular.importe)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "El stock de esos productos volver\xE1 al piso de venta, y quedar\xE1 registrada la anulaci\xF3n. La venta original no se borra: se ve que existi\xF3 y que se anul\xF3."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivoAnular, onChange: (e2) => setMotivoAnular(e2.target.value), placeholder: "Cobro duplicado, importe incorrecto\u2026" })), errorAnular && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", role: "alert", style: { color: C2.red } }, errorAnular), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: confirmarAnulacion, disabled: procesandoAnulacion }, procesandoAnulacion ? "Anulando\u2026" : "S\xED, anular la venta"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmAnular(null), disabled: procesandoAnulacion }, "Cancelar"))));
 }
+var CIERRE_TEXTO_BLOQUEO = {
+  DIFERENCIA_SIN_MOTIVO: "Falta registrar el motivo de la diferencia.",
+  DIFERENCIA_PENDIENTE_APROBACION: "Falta la aprobación del Propietario.",
+  DIFERENCIA_RECHAZADA: "El Propietario rechazó la diferencia: reabre el cierre y vuelve a contar.",
+  DIFERENCIA_CAMBIADA: "La diferencia cambió desde que se registró el motivo: regístralo de nuevo."
+};
+function infoCierreA10(r2) {
+  return {
+    difference: r2?.difference ?? null,
+    expected: r2?.expected_amount ?? null,
+    counted: r2?.counted_amount ?? null,
+    umbral: r2?.umbral ?? 0,
+    requiereAprobacion: r2?.requiere_aprobacion === true,
+    registro: r2?.registro || null,
+    bloqueos: Array.isArray(r2?.bloqueos) ? r2.bloqueos : []
+  };
+}
 function CocinaA10({ productos = [], local = null, configEmpresa = null, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil = "" }) {
   const h3 = import_react4.default.createElement;
   const abrirSesionCajaA10 = typeof listarEstacionesA10?.abrirSesionCajaA10 === "function" ? listarEstacionesA10.abrirSesionCajaA10 : null;
@@ -21236,6 +21379,9 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
   const confirmarCierreProvisionalA10 = typeof listarEstacionesA10?.confirmarCierreProvisionalA10 === "function" ? listarEstacionesA10.confirmarCierreProvisionalA10 : null;
   const finalizarCierreSesionCajaA10 = typeof listarEstacionesA10?.finalizarCierreSesionCajaA10 === "function" ? listarEstacionesA10.finalizarCierreSesionCajaA10 : null;
   const reabrirCierreProvisionalA10 = typeof listarEstacionesA10?.reabrirCierreProvisionalA10 === "function" ? listarEstacionesA10.reabrirCierreProvisionalA10 : null;
+  const consultarCierreCajaA10 = typeof listarEstacionesA10?.consultarCierreCajaA10 === "function" ? listarEstacionesA10.consultarCierreCajaA10 : null;
+  const registrarDiferenciaCajaA10 = typeof listarEstacionesA10?.registrarDiferenciaCajaA10 === "function" ? listarEstacionesA10.registrarDiferenciaCajaA10 : null;
+  const decidirDiferenciaCajaA10 = typeof listarEstacionesA10?.decidirDiferenciaCajaA10 === "function" ? listarEstacionesA10.decidirDiferenciaCajaA10 : null;
   const [estaciones, setEstaciones] = (0, import_react4.useState)([]);
   const [rutas, setRutas] = (0, import_react4.useState)([]);
   const [comandas, setComandas] = (0, import_react4.useState)([]);
@@ -21275,6 +21421,10 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     };
   }, [configEmpresa?.id, local?.id, rolPerfil]);
   const [bloqueosCierre, setBloqueosCierre] = (0, import_react4.useState)([]);
+  const [cierreInfo, setCierreInfo] = (0, import_react4.useState)(null);
+  const [motivoDiferencia, setMotivoDiferencia] = (0, import_react4.useState)("");
+  const [motivoDecision, setMotivoDecision] = (0, import_react4.useState)("");
+  const bloqueosDiferencia = Array.isArray(cierreInfo?.bloqueos) ? cierreInfo.bloqueos : [];
 
   const productosActivos = (productos || []).filter((producto) => producto && producto.activo !== false);
   const estacionSeleccionada = estaciones.find((estacion) => String(estacion.id) === String(estacionId)) || null;
@@ -21282,10 +21432,38 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
   const nombreEstacion = (id) => estaciones.find((estacion) => String(estacion.id) === String(id))?.nombre || "Sin estación";
   const versionLinea = (linea) => Number(linea?.linea_version || linea?.snapshot?.linea_version || linea?.snapshot?.lineaVersion || 0);
 
+  async function sincronizarCierre() {
+    if (typeof consultarCierreCajaA10 !== "function") return null;
+    const r2 = await consultarCierreCajaA10();
+    if (!r2?.ok) return null;
+    const estado = String(r2.sessionEstado || "");
+    if (estado === "EN_CIERRE" || estado === "CIERRE_PROVISIONAL") {
+      setEstadoCierre(estado);
+      if (estado !== "CIERRE_PROVISIONAL") setCierreInfo(null);
+      else if (!r2.diferenciaError) setCierreInfo(infoCierreA10(r2));
+    } else if (estado === "ABIERTA") {
+      setEstadoCierre("ABIERTA");
+      setCierreInfo(null);
+    }
+    return estado || null;
+  }
+
+  async function refrescarCierreInfo() {
+    return sincronizarCierre();
+  }
+
   async function refrescarEstaciones() {
     if (!local?.id || !configEmpresa?.id || typeof listarEstacionesA10 !== "function") return;
     setCargando(true);
     setError("");
+    const estadoServidor = await sincronizarCierre();
+    if (estadoServidor === "EN_CIERRE" || estadoServidor === "CIERRE_PROVISIONAL") {
+      setCargando(false);
+      setRequiereApertura(false);
+      setEstaciones([]);
+      setRutas([]);
+      return;
+    }
     const resultado = await listarEstacionesA10();
     setCargando(false);
     if (!resultado?.ok) {
@@ -21323,6 +21501,9 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     setEstadoCierre("ABIERTA");
     setMotivoReapertura("");
     setBloqueosCierre([]);
+    setCierreInfo(null);
+    setMotivoDiferencia("");
+    setMotivoDecision("");
     refrescarEstaciones();
   }, [local?.id, configEmpresa?.id]);
 
@@ -21399,7 +21580,8 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     }
     setEstadoCierre("CIERRE_PROVISIONAL");
     setBloqueosCierre(Array.isArray(resultado.blockers) ? resultado.blockers : []);
-    setMensaje(`Cierre provisional registrado: contado €${Number(resultado.counted_amount || contado).toFixed(2)}, esperado €${Number(resultado.expected_amount || 0).toFixed(2)}, diferencia €${Number(resultado.difference || 0).toFixed(2)}. Puedes finalizarlo o reabrirlo con motivo.`);
+    setMensaje(`Cierre provisional registrado: contado €${Number(resultado.counted_amount || contado).toFixed(2)}, esperado €${Number(resultado.expected_amount || 0).toFixed(2)}, diferencia €${Number(resultado.difference || 0).toFixed(2)}. ${Number(resultado.difference || 0) !== 0 ? "Hay una diferencia: registra su motivo antes de finalizar." : "Puedes finalizarlo o reabrirlo con motivo."}`);
+    await refrescarCierreInfo();
   }
 
   async function finalizarCierre() {
@@ -21411,6 +21593,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     setProcesando("");
     if (!resultado?.ok) {
       setError(resultado?.error || "No se pudo finalizar el cierre.");
+      await refrescarCierreInfo();
       return;
     }
     setEstadoCierre("CERRADA_FINAL");
@@ -21419,6 +21602,9 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     setEstaciones([]);
     setRutas([]);
     setComandas([]);
+    setCierreInfo(null);
+    setMotivoDiferencia("");
+    setMotivoDecision("");
     setMensaje("Sesión cerrada definitivamente por el servidor. Para operar de nuevo, abre una nueva sesión.");
   }
 
@@ -21440,9 +21626,54 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     setEstadoCierre("ABIERTA");
     setMotivoReapertura("");
     setBloqueosCierre([]);
+    setCierreInfo(null);
+    setMotivoDiferencia("");
+    setMotivoDecision("");
     setMensaje("Cierre provisional reabierto. La sesión vuelve a estar disponible para operar.");
     await refrescarEstaciones();
     await refrescarComandas();
+  }
+
+  async function registrarDiferencia() {
+    if (procesando || typeof registrarDiferenciaCajaA10 !== "function") return;
+    if (!motivoDiferencia.trim()) {
+      setError("Escribe el motivo de la diferencia de caja.");
+      return;
+    }
+    setProcesando("registrar-diferencia");
+    setError("");
+    setMensaje("");
+    const resultado = await registrarDiferenciaCajaA10({ motivo: motivoDiferencia.trim() });
+    setProcesando("");
+    if (!resultado?.ok) {
+      setError(resultado?.error || "No se pudo registrar el motivo de la diferencia.");
+      await refrescarCierreInfo();
+      return;
+    }
+    setMotivoDiferencia("");
+    setMensaje("Motivo de la diferencia registrado.");
+    await refrescarCierreInfo();
+  }
+
+  async function decidirDiferencia(decision) {
+    if (procesando || typeof decidirDiferenciaCajaA10 !== "function") return;
+    if (!motivoDecision.trim()) {
+      setError("Escribe el motivo de tu decisión.");
+      return;
+    }
+    setProcesando("decidir-diferencia");
+    setError("");
+    setMensaje("");
+    const resultado = await decidirDiferenciaCajaA10({ decision, motivo: motivoDecision.trim() });
+    setProcesando("");
+    if (!resultado?.ok) {
+      setError(resultado?.error || "No se pudo registrar tu decisión.");
+      await refrescarCierreInfo();
+      return;
+    }
+    setMotivoDecision("");
+    setMensaje(decision === "APROBAR" ? "Diferencia aprobada. Ya se puede finalizar el cierre." : "Diferencia rechazada. Reabre el cierre y vuelve a contar.");
+    await refrescarCierreInfo();
   }
 
   async function cambiarActivo(estacion) {
@@ -21488,6 +21719,36 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     }
     setMensaje("Operación A10 confirmada por el servidor.");
     await refrescarComandas();
+  }
+
+  function renderDiferencia() {
+    const info = cierreInfo;
+    if (!info || info.difference === null || info.difference === void 0 || Number(info.difference) === 0) return null;
+    const registro = info.registro || null;
+    const euros = (n2) => Number(n2).toFixed(2);
+    const esPropietarioCierre = rolPerfil === "Propietario";
+    const pideMotivo = !registro || bloqueosDiferencia.includes("DIFERENCIA_SIN_MOTIVO") || bloqueosDiferencia.includes("DIFERENCIA_CAMBIADA");
+    return h3("div", { className: "mb-3 p-2 rounded-lg", style: { background: C2.redSoft || "#FCE8E6" }, "data-diferencia-caja": "1" },
+      h3("div", { className: "text-[12px] font-semibold mb-1", style: { color: C2.red } }, "Diferencia de caja: €" + euros(info.difference) + " (contado €" + euros(info.counted) + ", esperado €" + euros(info.expected) + ")"),
+      h3("div", { className: "text-[11px] mb-2", style: { color: C2.inkSoft } }, "Toda diferencia exige un motivo y queda en la auditoría. " + (info.requiereAprobacion ? "Esta supera el umbral de €" + euros(info.umbral) + ": la tiene que aprobar el Propietario." : "Esta no supera el umbral de €" + euros(info.umbral) + ": no necesita aprobación.")),
+      pideMotivo ? h3("div", null,
+        registro && bloqueosDiferencia.includes("DIFERENCIA_CAMBIADA") ? h3("div", { className: "text-[11px] mb-2", style: { color: C2.red } }, CIERRE_TEXTO_BLOQUEO.DIFERENCIA_CAMBIADA) : null,
+        h3(Field, { label: "Motivo de la diferencia (obligatorio)" }, h3(Input, { value: motivoDiferencia, onChange: (e2) => setMotivoDiferencia(e2.target.value), placeholder: "Por qué no cuadra la caja…", maxLength: 500 })),
+        h3(Btn, { small: true, onClick: registrarDiferencia, disabled: !!procesando || !motivoDiferencia.trim() }, procesando === "registrar-diferencia" ? "Registrando…" : "Registrar motivo")
+      ) : h3("div", null,
+        h3("div", { className: "text-[11.5px] mb-1" }, "Motivo registrado: «" + String(registro.motivo || "") + "»"),
+        registro.estado === "APROBADA" ? h3("div", { className: "text-[11.5px]" }, "Aprobada por el Propietario: «" + String(registro.decision_motivo || "") + "». Ya se puede finalizar el cierre.") : null,
+        registro.estado === "RECHAZADA" ? h3("div", { className: "text-[11.5px]", style: { color: C2.red } }, "Rechazada por el Propietario: «" + String(registro.decision_motivo || "") + "». " + CIERRE_TEXTO_BLOQUEO.DIFERENCIA_RECHAZADA) : null,
+        registro.estado === "REGISTRADA" && !info.requiereAprobacion ? h3("div", { className: "text-[11.5px]" }, "Motivo guardado. Ya se puede finalizar el cierre.") : null,
+        registro.estado === "REGISTRADA" && info.requiereAprobacion ? (esPropietarioCierre ? h3("div", null,
+          h3(Field, { label: "Motivo de tu decisión (obligatorio)" }, h3(Input, { value: motivoDecision, onChange: (e2) => setMotivoDecision(e2.target.value), placeholder: "Por qué apruebas o rechazas…", maxLength: 500 })),
+          h3("div", { className: "flex gap-2 flex-wrap" },
+            h3(Btn, { small: true, onClick: () => decidirDiferencia("APROBAR"), disabled: !!procesando || !motivoDecision.trim() }, procesando === "decidir-diferencia" ? "Guardando…" : "Aprobar diferencia"),
+            h3(Btn, { small: true, variant: "danger", onClick: () => decidirDiferencia("RECHAZAR"), disabled: !!procesando || !motivoDecision.trim() }, "Rechazar diferencia")
+          )
+        ) : h3("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Pendiente de aprobación del Propietario. El cierre no se puede finalizar hasta entonces.")) : null
+      )
+    );
   }
 
   function renderComanda(comanda) {
@@ -21551,12 +21812,13 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
       estadoCierre === "ABIERTA" ? h3(Btn, { small: true, variant: "danger", onClick: iniciarCierre, disabled: !!procesando }, procesando === "iniciar-cierre" ? "Iniciando…" : "Iniciar cierre") : null,
       estadoCierre === "CIERRE_PROVISIONAL" ? h3("div", null,
         h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "El cierre provisional está registrado. Finalízalo cuando no queden bloqueos o reábrelo para corregir la sesión."),
+        renderDiferencia(),
         bloqueosCierre.length > 0 ? h3("div", { className: "mb-3 p-2 rounded-lg", style: { background: C2.redSoft || "#FCE8E6", color: C2.red } },
           h3("div", { className: "text-[11.5px] font-semibold mb-1" }, "Bloqueos que impiden el cierre definitivo"),
           h3("ul", { className: "list-disc pl-4 text-[11px]" }, bloqueosCierre.map((bloqueo, indice) => h3("li", { key: String(bloqueo?.tipo || bloqueo?.codigo || indice) }, String(bloqueo?.detalle || bloqueo?.tipo || bloqueo?.codigo || "Pendiente operativo"))))
         ) : null,
         h3("div", { className: "flex gap-2 flex-wrap" },
-          h3(Btn, { small: true, variant: "danger", onClick: finalizarCierre, disabled: !!procesando }, procesando === "finalizar-cierre" ? "Finalizando…" : "Finalizar cierre"),
+          h3(Btn, { small: true, variant: "danger", onClick: finalizarCierre, disabled: !!procesando || bloqueosDiferencia.length > 0 }, procesando === "finalizar-cierre" ? "Finalizando…" : "Finalizar cierre"),
           puedeReabrirCierre === false ? h3("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Solo el Propietario (o quien él autorice en Configuración) puede reabrir un cierre provisional.") : null,
           puedeReabrirCierre === false ? null : h3(Field, { label: "Motivo de reapertura" }, h3(Input, { value: motivoReapertura, onChange: (e2) => setMotivoReapertura(e2.target.value), placeholder: "Ajuste de arqueo…", maxLength: 500 })),
           puedeReabrirCierre === false ? null : h3(Btn, { small: true, variant: "ghost", onClick: reabrirProvisional, disabled: !!procesando || !motivoReapertura.trim() }, procesando === "reabrir-cierre" ? "Reabriendo…" : "Reabrir cierre provisional")

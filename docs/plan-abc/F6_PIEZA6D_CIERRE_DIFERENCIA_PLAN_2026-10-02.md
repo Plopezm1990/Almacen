@@ -5,7 +5,7 @@ Alcance de este documento: **solo lectura** del código de la aplicación y de l
 pantalla, de base de datos ni de despliegue.** Producción no consultada. QA solo lectura.
 Autorización: «6d: cierre de caja con diferencia» elegida por Pedro el 2/10/2026 (solo QA). El plan se presenta antes de implementar y las
 decisiones de diseño de la última sección esperan su respuesta.
-Estado: `PLAN_PRESENTADO_SIN_IMPLEMENTAR`
+Estado: `PLAN_EJECUTADO` — decisiones A y B aceptadas por Pedro (las recomendadas) e implementado: ver `F6_PIEZA6D_CIERRE_DIFERENCIA_RESULTADO_2026-10-02.md`
 
 ## Qué se pidió (D15 y D19)
 

@@ -169,10 +169,15 @@ estático, 91 averías provocadas) y **probada por Pedro en el preview 118**: pr
 auditoría y deshechas desde la propia pantalla. **Pendiente la Prueba 5** (botón «Reabrir» y lista de puestos del alta): el cierre de caja de
 Cocina A10 exige una cuenta abierta en el mismo navegador (comportamiento previo); se resolverá en la 6d. La sesión de caja de QA-A1 queda abierta.
 
+**6d — cierre de caja con diferencia: elegida por Pedro el 2/10/2026, con las decisiones A (el servidor calcula el día operativo) y B (el Propietario aprueba en
+la misma pantalla de cierre); implementada y aplicada solo en QA** (informe: `F6_PIEZA6D_CIERRE_DIFERENCIA_RESULTADO_2026-10-02.md`; guía de prueba:
+`F6_PRUEBA_PREVIEW_CIERRE_CAJA_2026-10-02.md`). Incluye arreglar antes dos fallos previos del cierre desde la pantalla (necesitaba una cuenta abierta en el navegador
+y, tras «Iniciar cierre», no podía continuar). Pendiente de que Pedro la pruebe en el preview. **Una función nueva en QA:** `abc_obtener_dia_operativo_local`.
+
 **Sigue abierto (pieza 6):**
 
-- **6d — cierre con diferencia**: la pantalla de cierre aún no pide motivo ni aprobación; en QA un cierre con diferencia no se puede finalizar. No autorizada.
 - **6e — modalidad al abrir cuenta**: el TPV abre siempre en Barra; por eso Barra está bloqueada en la pantalla. No autorizada.
+- **Aprobar desde otro dispositivo**: hoy el Propietario aprueba una diferencia en el terminal donde se cerró la caja; una lista de «cierres pendientes» sería una ampliación.
 
 ## Nivel 1 — necesarias para empezar las etapas 1 y 2 (terreno de pruebas y pantalla)
 
