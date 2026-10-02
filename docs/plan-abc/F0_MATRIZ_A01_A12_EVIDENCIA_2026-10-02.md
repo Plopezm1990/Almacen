@@ -4,6 +4,13 @@ Fecha: 2026-10-02
 SHA de código: `a5a4321` (más documentación de esta rama)
 Estado: `MATRIZ_CON_EVIDENCIA_PENDIENTE_DE_DECISIONES_Y_ACEPTACION`
 
+> **Actualización (etapa 1, 2/10/2026).** QA tiene ahora un catálogo ficticio
+> sembrado (15 artículos por local en A1 y A2, con variantes y stock) y una regla de
+> día operativo de prueba (04:00); A1 tiene terminal, caja y vínculo fiscal. Los
+> bloqueos 1 y 5 de abajo pasan a «provisionalmente resueltos en QA». Ninguna fila
+> cambia de estado: todo está verificado en backend, no en pantalla. Véase
+> `F5_ETAPA1_SIEMBRA_QA_2026-10-02.md`.
+
 Sustituye al esqueleto `F0_5_MATRIZ_EJECUCION_A01_C12` de la rama
 `codex/f0-inventario-abc` (todo en `PENDIENTE`, con numeración de C antigua). No
 es una aceptación: ninguna fila pasa a «verificado» sin recorrido real, entorno,

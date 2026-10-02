@@ -49,6 +49,12 @@ A+B son `productos`, `movimientos`, `conteos`, `historialRespaldos` y `temaOscur
 
 ## Consecuencia para la aceptación
 
+> **Actualización (etapa 1, misma fecha).** Además del rechazo de `productos`, la
+> migración PM10 solo proyecta el producto `PRUEBA A10 VALIDACION` de la empresa y local
+> con nombre fijo («Chocolateria San Gines» / «Chocoloyos S.L»): no existe un camino
+> general de `productos` a `catalogo_tpv_productos`. Véase
+> `F5_ETAPA1_SIEMBRA_QA_2026-10-02.md`.
+
 La cadena `productos` rechazado → ninguna clave `productos` en la nube → trigger
 sin efecto → catálogo TPV sin proyectar explica, como causa probable, que QA no
 tenga productos vendibles (hallazgo de A12). No se ha probado desde la interfaz.

@@ -1,7 +1,7 @@
 # Hoja de decisiones para Pedro (Plan ABC, etapa 0)
 
 Fecha: 2026-10-02
-Estado: `PENDIENTE_DECISION_DE_PEDRO`
+Estado: `NIVELES_1_Y_2_ACEPTADOS_CON_HECHOS_ABIERTOS_NIVELES_3_Y_4_PENDIENTES`
 Base: `a5a4321`, las matrices `F0_MATRIZ_A01_A12_EVIDENCIA_2026-10-02.md` y
 `F0_MATRIZ_B01_C12_EVIDENCIA_2026-10-02.md`, y las fichas de la rama
 `codex/f1-contratos-comunes` (F1.1–F1.6) y `codex/f0-inventario-abc` (F0.2).
@@ -22,6 +22,24 @@ La forma más rápida es una sola respuesta, por ejemplo:
 Las decisiones marcadas **HECHO** no tienen recomendación porque dependen de
 datos que solo conoces tú (nombre del local, modelo de datáfono…): rellénalas.
 Nunca escribas contraseñas, claves ni datos reales de clientes.
+
+## Respuesta de Pedro (2/10/2026) y estado
+
+Pedro respondió: «Acepto las recomendadas de los niveles 1 y 2». Se registra así:
+
+| Estado | Decisiones |
+|---|---|
+| **Aceptada la recomendación** | D02, D06 (condicional), D07, D08, D09, D10, D11, D13, D14, D16, D17 (provisional, hasta los 12 vectores F1.5), D18 |
+| **Sigue abierta: es un dato tuyo, no tenía recomendación** | D01 (local piloto), D03 (cajas simultáneas y roles), D04 (equipos), D05 (quién acepta) |
+| **Aceptada la regla, falta la cifra** | D12 (porcentaje de descuento del encargado), D15 (umbral de diferencia de caja) |
+| **Aceptada, pero hay que responder lo que deja pendiente** | D19 (los `pendiente` de la matriz F1.3) |
+| **Condicional que depende de un hecho tuyo** | D02 (qué modalidades usas hoy), D06 (¿hay servicio que cruza la medianoche?) |
+| **Nueva, añadida el 2/10 tras la etapa 1** | D31 (precio con IVA o sin IVA) |
+| **Niveles 3 y 4** | Sin responder |
+
+Efecto: la **D07 se ejecutó** (etapa 1, `F5_ETAPA1_SIEMBRA_QA_2026-10-02.md`). La regla
+de día operativo sembrada en QA (corte 04:00) es **de prueba**: D06 sigue abierta para
+el local piloto. Nada de lo aceptado autoriza producción, despliegues ni gasto.
 
 ## Nivel 1 — necesarias para empezar las etapas 1 y 2 (terreno de pruebas y pantalla)
 
@@ -51,6 +69,7 @@ Nunca escribas contraseñas, claves ni datos reales de clientes.
 | D17 | **Moneda, decimales y redondeo** | EUR, 2 decimales; redondeo «mitad hacia arriba» calculado solo en el servidor. Hay que comprobarlo contra los 12 vectores F1.5 antes de darlo por bueno | Sin parámetros aprobados los vectores no se convierten en pruebas | A03, F1.5 |
 | D18 | **Reparto de céntimos** | La primera parte absorbe el céntimo (10,00 entre tres: 3,34 + 3,33 + 3,33) | Regla estable y determinista | A08 |
 | D19 | **Permisos por operación** | Validar la matriz F1.3 con los roles reales; los `pendiente` de esa matriz son tuyos (por ejemplo si el cajero abre caja o cierra) | Sin ella no se endurecen los permisos | F1.3, U |
+| D31 | **Precio de venta: ¿incluye el IVA?** (nueva, hallazgo de la etapa 1) | Sí: el precio de carta es con IVA incluido, como ya dice el formulario de producto («Precio de venta CON IVA»); el servidor debe partir de ese precio y obtener la base. Confírmalo con la asesoría | El servidor suma hoy el impuesto sobre el precio del catálogo, y la proyección copia el precio con IVA sin convertirlo: 3,30 € con IVA se cobraría a 3,63 €. Es una decisión antes de tocar A03 | A03, F1.1, B08, C06 |
 
 ## Nivel 3 — dependen de terceros (se lanzan ya para que no sean el cuello de botella)
 
