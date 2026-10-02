@@ -2,7 +2,7 @@
 
 Fecha: 2026-10-02
 Autorización: «Autorizo el deploy agrupado para probar P1 y P3» (Pedro, 2/10/2026).
-Estado: `PREVIEW_118_RECONSTRUIDO_CON_PUENTE_V2_PENDIENTE_DE_PRUEBA_EN_PANTALLA`
+Estado: `PREVIEW_118_P3_P3B_Y_CARTEL_VERIFICADOS_EN_PANTALLA_POR_PEDRO`
 
 > **Aviso (actualización del mismo día).** El PR 118 se reconstruyó con el puente **v2**
 > (`F5_P3_CATALOGO_AUTORITATIVO_2026-10-02.md`, «Corrección del puente» y «Despliegue no pedido»):
@@ -74,6 +74,9 @@ también la lista que carga la pantalla. Hoy esa lista aún tiene el Agua a 0,99
 4. Avísame: compruebo en QA que hay un solo envío de 1 producto, que la lista de la nube tiene 1,00 y que el
    servidor cobra lo mismo. Opcional: en el TPV añade 3 aguas, el total debe ser 3,00 €.
 5. Para dejarlo como estaba, ponlo otra vez en 0,99 (también debe sobrevivir a la recarga).
+
+**Resultado (Pedro, 2/10/2026): superada.** Tras guardar a 1,00 € y recargar, el Agua siguió en 1,00 €. En QA:
+un solo envío de 1 producto (15:34:54 UTC, `lista_nube=actualizada`), lista de la nube con 1,00 en A1 y 0,99 en A2.
 
 Qué no cubre: productos **nuevos** creados en la pantalla (no sobreviven a la recarga en QA, ver el informe de
 P3, límite P3b 2) ni dos dispositivos a la vez.

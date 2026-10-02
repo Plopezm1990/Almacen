@@ -4,7 +4,7 @@ Fecha: 2026-10-02
 Entorno: Supabase QA `qjqorixtkilwsndqayyx` (solo QA). Producción no se tocó. Deploy solo como preview de QA del PR 118 (ver «Despliegue no pedido»).
 Autorización: «Autorizo P3 y D31 con IVA incluido» (Pedro, 2/10/2026).
 Código base: `a5a4321` + documentación de esta rama.
-Estado: `MIGRACION_APLICADA_EN_QA_VERIFICADA_EN_BACKEND_PUENTE_V1_PROBADO_EN_PREVIEW_118_PUENTE_V2_VERIFICADO_EN_PREVIEW_118_P3B_ESPEJO_APLICADO_EN_QA_VERIFICADO_EN_BACKEND_PENDIENTE_DE_VER_EN_PANTALLA`
+Estado: `MIGRACION_APLICADA_EN_QA_VERIFICADA_EN_BACKEND_PUENTE_V1_PROBADO_EN_PREVIEW_118_PUENTE_V2_VERIFICADO_EN_PREVIEW_118_P3B_ESPEJO_APLICADO_EN_QA_VERIFICADO_EN_BACKEND_Y_EN_PANTALLA_POR_PEDRO`
 
 No cierra ningún requisito: A02, A03 y A04 siguen `INCOMPLETO` (falta verlo en pantalla).
 
@@ -311,9 +311,14 @@ en los elementos recibidos de la fila `productos` de la empresa. Reglas:
 
 **Límites de P3b.**
 
-1. **No visto en pantalla.** Falta la prueba de Pedro: la pantalla muestra hoy 0,99; al guardar el Agua a 1,00
-   el puente envía 1 producto, el servidor responde «sin cambios» en el catálogo y refleja 1,00 en la lista, y
-   al recargar debe verse 1,00.
+1. **Verificado en pantalla por Pedro (preview 118, 2/10/2026).** Con la lista de la nube a 0,99, Pedro guardó
+   el Agua de A1 a 1,00 € y tras **recargar siguió en 1,00 €** (el cartel rojo ya no aparece). Lectura de QA
+   (solo lectura) a continuación: una sola operación nueva, a las 15:34:54 UTC, local A1, `n=1`, `sin_cambios=1`
+   (el catálogo ya estaba en 1,00) y `lista_nube=actualizada`; la lista de la nube tiene el Agua de A1 en 1 y la
+   de A2 intacta en 0,99, con `updated_at` 15:34:54; el catálogo no cambió (A1 1,00 versión 3, A2 0,99 versión 2;
+   30 filas) y el stock tampoco (83 filas). Es la primera vez que el camino completo pantalla → servidor →
+   pantalla funciona desde un navegador real con un solo producto. **Sigue sin probarse:** dos dispositivos a la
+   vez, otros roles, productos nuevos y el TPV con la lista recargada.
 2. **Altas desde la pantalla no sobreviven a la recarga en QA** (ver límite 3 arriba). Crear elementos en la lista
    desde una función del servidor se descartó por ahora: pasaría datos de la pantalla sin validar a una lista que
    consume toda la aplicación.
