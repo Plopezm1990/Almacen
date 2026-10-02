@@ -106124,6 +106124,7 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
         });
       }
     }
+    return { ok: true };
   }
   function deleteProducto(id) {
     if (!validarContextoEscrituraPM10({ localActivoId, locales }).ok) return false;

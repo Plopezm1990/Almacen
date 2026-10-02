@@ -187,8 +187,8 @@ recargar) podría haber **devuelto el catálogo a un precio antiguo** sin que na
 - La puerta de interacción es una heurística de 3 s: una acción de la persona seguida, dentro
   de esos 3 s, de una recarga de lista antigua por la aplicación aún podría enviarse (muy
   improbable; sería un cambio de venta real frente a lo último visto).
-- Fuera de alcance, sin corregir: el aviso falso «No se pudo actualizar el producto» (ver
-  abajo) y la lectura de vuelta del catálogo (P3b).
+- Fuera de alcance: la lectura de vuelta del catálogo (P3b). El aviso falso «No se pudo actualizar
+  el producto» se corrige aparte (ver abajo).
 
 ### Despliegue no pedido (hay que decirlo)
 
@@ -205,13 +205,53 @@ ni al final ni al principio del mensaje (comprobado con dos pushes seguidos: `4a
 reconstruye el preview 118.** Para subir trabajo sin construir hay que usar otra rama que no sea la
 del PR; hasta autorización, el trabajo nuevo no se sube a esta rama salvo que se acepte un build.
 
-### Defecto aparte: aviso falso «No se pudo actualizar el producto»
+### Prueba real de la v2 en el preview 118 (Pedro, 14:54 UTC)
 
-Reportado por Pedro en el mismo preview: al guardar la edición de un producto sale el cartel
-rojo aunque el cambio se guardó. Causa (lectura de código, no del puente): en `fuente.js`,
-`updateProducto(id, data)` no devuelve nada cuando va bien, y `submitEdit` muestra el error
-cuando `!actualizado || actualizado.ok === false`. Es previo a P1 y P3. Corregirlo exige
-tocar `fuente.js` y `source-recovery/fuente-recuperado.js` y desplegar; **no está autorizado**.
+Pedro cambió «Agua 50 cl (QA)» a 1,00 € en el preview 118 y lo leí en QA (solo lectura): **una sola
+operación** nueva en `abc_operaciones` (14:54:05 UTC, local A1, `ACTUALIZADO` ×1, no 15), el Agua de A1
+quedó con `precio_con_impuesto` 1,00 (base 0,90909091, versión 3) y el Agua de A2 no se tocó (0,99,
+versión 2). Es la primera vez que el camino completo pantalla → catálogo funciona con un solo producto
+desde un navegador real. Sigue en pie: el preview puede tardar en servir el puente nuevo si el navegador
+tiene la versión antigua en caché.
+
+### Corrección del aviso falso «No se pudo actualizar el producto» (autorizada por Pedro)
+
+Síntoma: al guardar la edición de un producto sale el cartel rojo aunque el cambio se guardó. Causa
+(lectura de código): `updateProducto(id, data)` de `fuente.js` no devolvía nada cuando iba bien, y
+`submitEdit` trata «sin resultado» o `ok === false` como fallo. Es previo a P1 y P3.
+
+Corrección mínima: `updateProducto` devuelve `{ ok: true }` al terminar. Se aplica con el mismo cambio
+de una línea en `fuente.js` y en `source-recovery/fuente-recuperado.js` (los dos bloques son idénticos
+y se comprobó). El único consumidor del resultado es `submitEdit` (el uso desde fichas de coste lo
+ignora); `submitEdit` no se toca: los fallos reales (dato inválido, producto de otro local, producto
+inexistente) siguen devolviendo `{ ok: false, … }` y siguen mostrando su mensaje.
+
+Prueba: `tests/p3/p3-actualizar-producto-resultado.mjs` ejecuta la función real extraída de las dos
+copias (stub del motor de stock): éxito → `{ ok: true }` (y el cartel no se mostraría), cambio de stock
+→ éxito con un movimiento de stock, precio negativo / producto de otro local / inexistente → rechazo sin
+cambiar nada. Un mutante (quitar la línea) lo hace fallar. `tests/pm10/p04-productos-contract.mjs` y
+`tests/pm19/p04-wiring-merma-contract.mjs` siguen pasando. Batería completa de `.mjs`: 187 pasan; los
+25 que fallan son de entorno (sin `pg`/PGlite).
+
+Límite: no visto en un navegador hasta que Pedro lo pruebe en el preview 118 reconstruido.
+
+### Puerta de CI del PR 118: roja desde que se añadieron los tests de P1/P3
+
+La «Puerta de CI general -- candidato a release» falla en el PR 118 (también antes de este cambio, desde
+que existen estos archivos de test): su inventario está escrito a mano (208 archivos, 194 contratos
+activos, 171 en Node) en `tests/ci/manifiesto_clasificacion.json`, `.github/scripts/validar-manifiesto-ci.mjs`
+y `.github/workflows/puerta-ci-release.yml`, y los tests nuevos no están registrados:
+
+- `tests/p1-denied-keys-solo-local.mjs` (P1)
+- `tests/p3-catalogo-bridge.mjs` (P3)
+- `tests/p3/p3-catalogo-static-contract.mjs` (P3)
+- `tests/p3/p3-actualizar-producto-resultado.mjs` (esta corrección)
+
+Error literal del registro: `inventory_count: inventario=211; esperado=208` (ahora 212) y
+`missing_path` por cada uno. Los trabajos PostgreSQL (C05–C12), A09, PM12 y PM33 del mismo flujo pasan.
+**No se ha tocado la puerta**: registrar los archivos exige cambiar cifras de una puerta de publicación
+(manifiesto, validador y flujo) y debe hacerse en el PR de promoción real, no en un PR de preview «NO
+FUSIONAR». Se deja como decisión de Pedro.
 
 ## Reversión (QA)
 

@@ -10,7 +10,9 @@ Estado: `PREVIEW_118_RECONSTRUIDO_CON_PUENTE_V2_PENDIENTE_DE_PRUEBA_EN_PANTALLA`
 > (la caché del navegador puede servir el puente antiguo) en la dirección del **PR 118**
 > (`deploy-preview-118--…`), no la del 117. Esperado tras cambiar el Agua a 1,00: **un solo envío de
 > 1 producto** en `abc_operaciones` (lo comprobaré yo). El cartel rojo «No se pudo actualizar el
-> producto» es un defecto previo e independiente de P1 y P3: el cambio sí se guarda.
+> producto» era un defecto previo e independiente de P1 y P3 (el cambio sí se guardaba); se corrige en el
+> siguiente build del PR 118: al guardar la edición de un producto el formulario debe **cerrarse sin
+> cartel rojo**. Si el cartel sigue saliendo, abre una ventana privada nueva (caché) y avísame.
 
 ## Qué se despliega y qué no
 
