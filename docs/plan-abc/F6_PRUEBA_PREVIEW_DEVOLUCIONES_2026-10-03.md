@@ -10,8 +10,8 @@ Informe: `F6_D13_DEVOLUCIONES_RESULTADO_2026-10-03.md`.
   **QA** (Propietario), **Local A1**. Si la dirección no empieza por `deploy-preview-`, **no sigas**.
 - QA **no tiene ningún pago**, así que primero hay que generar un cobro de prueba **en efectivo** (Prueba 0). Un cobro con tarjeta simulada se queda pendiente y **no sirve**: solo se
   puede devolver un pago confirmado.
-- La caja de A1 está **abierta** (sesión `8d1397b9`). El cobro de prueba suma efectivo a esa caja y la devolución lo resta (movimiento negativo), así que **si luego haces un cierre
-  de caja, el efectivo esperado ya no será 0 €** hasta devolverlo todo. Haz una prueba tras otra y devuelve los 3 € completos al final si quieres dejar la caja a cero.
+- La caja de A1 está **abierta** (a las 09:00 UTC del 3/10 la sesión abierta era `6be7b6af`, con fondo 0; las anteriores se cerraron). El cobro de prueba suma efectivo a esa caja y la devolución lo resta (movimiento negativo), así que **si luego haces un cierre
+  de caja, el efectivo esperado ya no será 0 €** hasta devolverlo todo. Haz una prueba tras otra y devuelve el cobro **completo** al final si quieres dejar la caja a cero (ojo: lo que se devuelve es el total cobrado menos lo ya devuelto; las solicitudes canceladas no cuentan).
 - Todo lo que hagas **se guarda de verdad en QA** (con auditoría). Escribe como motivo «prueba D13».
 
 ## Prueba 0 — Un cobro en efectivo de 3 €
