@@ -1,7 +1,8 @@
--- F7 · Promoción a producción · comprobaciones previas de SOLO LECTURA (preparado el 3/10/2026, NO EJECUTADO).
+-- F7 · Promoción a producción · comprobaciones previas de SOLO LECTURA (preparado el 3/10/2026).
 --
--- Producción es el proyecto de Supabase `flqercbgpgmmfaakrwkc`. Este archivo NO se ha ejecutado nunca contra producción: se escribió y se
--- probó solo contra la réplica local. Ejecutarlo en producción exige la autorización expresa de Pedro (ver el documento de preparación).
+-- Producción es el proyecto de Supabase `flqercbgpgmmfaakrwkc`. El 3/10/2026, a las 11:33 UTC, con la autorización expresa de Pedro, se ejecutaron
+-- en producción los bloques P0, P1, P2, P3, P5, P6, P7, P8 y P9 tal cual, y de P4 solo una versión estrecha (huellas md5 sin las definiciones).
+-- Resultado: `F7_PROMOCION_PRODUCCION_FOTO_RESULTADO_2026-10-03.md`. Volver a ejecutarlo en producción exige una autorización nueva.
 --
 -- Reglas del archivo: solo `select`. Ningún `insert`, `update`, `delete`, `create`, `alter`, `drop`, `grant`, `revoke`, `truncate`, `set` de
 -- datos, `do` ni función con efectos. Cada consulta es independiente (se puede ejecutar por separado). Las tablas que pueden no existir en

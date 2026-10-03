@@ -1,20 +1,20 @@
 # F7 · Promoción a producción · documento de preparación
 
 Fecha: 2026-10-03
-Estado: `PREPARADO_SIN_EJECUTAR` — **la promoción NO está autorizada y NO se ha hecho nada en producción.**
-Autorización recibida: Pedro pidió (3/10/2026) «preparar el documento de promoción a producción». Solo un documento y un archivo de comprobaciones.
-Qué NO se ha hecho: no se ha consultado producción (proyecto `flqercbgpgmmfaakrwkc`), no se ha ejecutado contra él el archivo SQL de este paquete, no se ha fusionado ninguna rama, no se ha publicado nada y no se ha tocado QA para esto (solo se leyó el registro de migraciones y la existencia de unos objetos, en solo lectura).
+Estado: `PREPARADO_Y_FOTO_DE_PRODUCCION_HECHA_SOLO_LECTURA` — **la promoción NO está autorizada y NO se ha escrito nada en producción.** Resultado de la foto: `F7_PROMOCION_PRODUCCION_FOTO_RESULTADO_2026-10-03.md`.
+Autorizaciones recibidas (3/10/2026): «preparar el documento de promoción a producción» (un documento y un archivo de comprobaciones) y, después, «autorizo la foto de solo lectura de producción» (solo consultas `select`).
+Qué NO se ha hecho: no se ha aplicado ninguna migración ni escrito ninguna fila en producción (proyecto `flqercbgpgmmfaakrwkc`), no se ha fusionado ninguna rama, no se ha publicado nada y no se ha escrito nada en QA (solo se leyó su registro de migraciones y unas huellas). La foto de producción **sí** se hizo, solo lectura, el 3/10/2026 a las 11:33 UTC.
 Archivo que lo acompaña: `F7_PROMOCION_PRODUCCION_PREFLIGHT_SOLO_LECTURA_2026-10-03.sql` (comprobaciones previas de **solo lectura**; probado únicamente contra la réplica local, en una sesión forzada a solo lectura). Lo vigila el contrato `tests/cfg/f7-preflight-static-contract.mjs`: que no contenga ninguna sentencia que escriba y que sus listas (objetos nuevos, huellas md5, funciones reemplazadas, tablas) coincidan con las migraciones reales y con este documento (14 averías provocadas, todas detectadas).
 Decisiones que cita: D12, D26, D28, D29, D31 (`F1_HOJA_DECISIONES_PEDRO_2026-10-02.md`): **0 despliegues durante la iteración y 1 productivo agrupado al final; la promoción se decide más tarde, con candidato exacto, comprobaciones previas y recuperación.**
 
 ## 1. Resumen para Pedro
 
-Promocionar no es subir «la capa de configuración» sola. Esa capa (piezas 1 a 6, devoluciones, arreglos de cobro y descuentos) está construida **encima de unas 35 migraciones anteriores** que el repositorio tiene desde la A09 (24/9) y de las que **solo se sabe que dos están en producción** (la A11 y la recuperación de cuenta, documentadas el 28/9). Lo que pesa, por orden:
+Promocionar no es subir «la capa de configuración» sola. Esa capa (piezas 1 a 6, devoluciones, arreglos de cobro y descuentos) está construida **encima de otras migraciones anteriores**: de las **45 migraciones candidatas** desde la A09 (24/9), **producción tiene 10 y le faltan 35** (foto del 3/10). Lo que pesa, por orden:
 
-1. **No sé en qué estado está producción.** La última evidencia es del 28/9 (A11) y del 2/10 (el endurecimiento PM09 se frenó porque la base de producción **no coincide** con la de QA). El primer paso real es una **foto de solo lectura** de producción (archivo SQL adjunto). Necesita tu permiso expreso.
+1. **Ya sé en qué estado está producción** (foto del 3/10, solo lectura): tiene todo hasta B02-B03 (29/9) y nada posterior, ninguna migración a medias, y su registro coincide con sus objetos. **Una deriva pequeña:** las dos funciones de PM07 de producción son un borrador anterior (a una expresión regular le falta una barra invertida): hay que corregirlas con una migración aparte. Lleva sin actividad desde el 28/9.
 2. **12 de las 45 migraciones candidatas nunca se han aplicado en QA** (B06, B07, B09 y B10: proveedor de pagos, anticipos, liquidaciones, tarjeta). Solo se han probado en una base desechable de CI. Mi propuesta: **dejarlas fuera** del primer paquete.
-3. **Hay cambios que tocan datos reales al aplicarse:** PM07 y PM10 crean filas desde los productos (stock autoritativo, contexto fiscal **simulado**, catálogo del TPV); D13 marca como aprobados **todos** los reembolsos que ya existan; y P3 pasa a leer el precio de carta **con IVA incluido** (D31, **sin confirmar con la asesoría**, que aún no tienes): cambia lo que se cobra. Mi propuesta: P3 y P3b **no** entran hasta que lo confirmes.
-4. **La pieza 5 retira tres roles** (Churrero/a, Básico, Estándar): quien los tenga pierde permisos y no se podrá dar de alta a nadie con ellos. Hay que mirar quién los tiene en producción y reasignarlos **antes**.
+3. **Datos:** el volumen en producción es muy pequeño (0 pagos, 0 reembolsos, 30 eventos, 1 producto en el catálogo). PM07 y PM10 ya hicieron sus bootstraps y D13 no tiene reembolsos que marcar. Lo que sí pesa es que P3 pasa a leer el precio de carta **con IVA incluido** (D31, **sin confirmar con la asesoría**, que aún no tienes): cambia lo que se cobra. Mi propuesta: P3 y P3b **no** entran hasta que lo confirmes.
+4. **La pieza 5 retira tres roles** (Churrero/a, Básico, Estándar): **nadie los tiene en producción** (las 3 membresías son Propietario activo), así que no quita permisos a nadie; sí impide dar de alta a alguien con ellos.
 5. **PM09 está bloqueada** por la deriva de producción (faltan dos funciones y la RPC base de reverso). Es otro trabajo, previo, y no está hecho.
 6. **El orden importa:** primero el servidor (todo es aditivo), después la aplicación, en una ventana corta y sin cajas abiertas. La aplicación nueva **no** debe salir antes que el servidor nuevo.
 7. **La puerta de CI general está en rojo** (32 pruebas sin registrar) y los contratos SQL de la capa de configuración **solo corren en mi réplica local**, no en CI. Hay que arreglarlo en el PR de promoción.
@@ -35,9 +35,9 @@ Tú decides al final (§12). Mientras tanto, **no se aplica nada**.
 | 24/9 | A08 aplicada (`20260924082637_abc_f3_a08_account_split_merge`); tres tablas nuevas con 0 filas; mismas funciones que QA (por huella md5); humo transaccional con `ROLLBACK` pasado | `A08_POSTFLIGHT_PROD_2026-09-24.md` |
 | 28/9 | A11 y la recuperación de cuenta con día operativo registradas; una regla de día operativo para el local productivo: `Europe/Madrid`, corte 00:00, versión 1 | `A11_CIERRE_2026-09-28.md` |
 | 2/10 | **PM09: bloqueado.** En producción faltan `registrar_venta_stock_pm09`, `revertir_venta_stock_pm09` y la RPC base `revertir_venta_stock`; el resto existe. No se aplicó | `F5_PM09_PROD_PREFLIGHT_2026-10-02.md` |
-| — | **Todo lo demás: sin información.** En particular: si están A09, A10, A07.2, A08.2, PM07/PM10, F4 (B02–B05), F5 (C04–C12), si está la migración de permisos `20260924004000` (m04d), qué versión de `abc_abrir_sesion_caja` hay, quién tiene los roles retirados y qué datos reales hay | — |
+| **3/10, 11:33 UTC** | **Foto de solo lectura.** Registro hasta `abc_f4_b02_b03_checkout_bridge`; **faltan 35 de las 45 candidatas** (A08.2, B04, B05, B06–B10, C04–C12, PM09, P3, P3b y las 8 de configuración), ninguna a medias; m04d **aplicada** (el navegador no lee `abc_eventos`, `pago_intentos`, etc.); `abc_abrir_sesion_caja` y las tres funciones de reembolso **coinciden** con las que esperan las migraciones; 27 de 33 funciones comparables coinciden con el repositorio, **2 de PM07 no** (§4 del informe); roles retirados: **nadie**; 3 empresas, 4 locales, 3 membresías, 0 pagos, 0 reembolsos, 1 sesión de caja cerrada, **2 cuentas abiertas**, **1 efecto pendiente**; última actividad 28/9 | `F7_PROMOCION_PRODUCCION_FOTO_RESULTADO_2026-10-03.md` |
 
-Producción **tiene datos reales** (el local productivo). Por eso las comprobaciones previas son solo recuentos, nunca contenido.
+Producción tiene un local productivo y muy pocos datos. Las comprobaciones previas son solo recuentos y huellas, nunca contenido. Lo que **no** sé: qué versión de la aplicación sirve hoy, qué son las 2 cuentas abiertas ni el efecto pendiente, y si hay copia de seguridad.
 
 ## 4. Hallazgos de esta preparación (el repositorio y QA no coinciden del todo)
 
@@ -53,14 +53,14 @@ Mi propuesta, para que decidas (§12). Cada paquete se aprueba **por separado**,
 
 | Paquete | Qué incluye | Mi recomendación |
 |---|---|---|
-| **0 · Foto** | Solo lectura de producción: archivo `…PREFLIGHT_SOLO_LECTURA…sql`, bloques P0–P9. Más: huellas en QA de la pieza 2 | **Primero.** Nada más empieza sin esto |
-| **A · Base** | Lo anterior a la configuración que la foto diga que **falta** en producción: A09, A10, A10b, A07.2, A08.2, PM07/PM10, F4 hasta B05, F5 C04–C12 (filas 1–13 y 26–34 del apéndice A). **PM09 (fila 35) solo después de reconciliar la base de producción** (cambio de alcance aparte) | Sí, en el orden de las marcas, **cada migración con su comprobación** |
+| **0 · Foto** | Solo lectura de producción: bloques P0–P9. **Hecha el 3/10** (`F7_PROMOCION_PRODUCCION_FOTO_RESULTADO_2026-10-03.md`). Pendiente: huellas en QA de la pieza 2 | Hecha. Se repite dentro de la ventana |
+| **A · Base** | Lo que **falta** en producción antes de la configuración: **12 migraciones**: A08.2 (fila 7), B04 y B05 (filas 12–13) y C04–C12 (filas 26–34), más una **corrección pequeña de PM07** (nueva, por la deriva de la foto). **PM09 (fila 35) solo después de reconciliar la base de producción** (cambio de alcance aparte) | Sí, en el orden de las marcas, **cada migración con su comprobación de huella** |
 | **B · Catálogo con IVA** | P3 y P3b (filas 36–37). Cambia el importe que se cobra (D31) | **Fuera** hasta que la asesoría confirme D31, o hasta que decidas asumirlo tú por escrito |
 | **C · Configuración** | Piezas 1, 2, 3, 4, 5, 6d, D13 y A09 eventos (filas 38–45) | Sí, **después de A** (la pieza 6d se niega a aplicarse si faltan funciones de las piezas 1 y 5) |
 | **D · Proveedor de pagos** | B06, B07, B09, B10 (filas 14–25) | **Fuera.** Primero a QA, con tu autorización, y probarlas allí |
 | **E · Aplicación** | Un solo despliegue de producción (D28): `fuente.js` y los otros tres archivos del candidato | **Después** de C, en la misma ventana |
 
-Si falta algo de A en producción, la foto lo dirá por migración (`todos` / `ninguno` / `ALGUNOS (deriva)`; este último **detiene todo** hasta revisarlo).
+La foto del 3/10 ya dio el veredicto por migración (`todos` / `ninguno`; ninguna `ALGUNOS (deriva)`). Se repite en la ventana: si apareciera una `ALGUNOS (deriva)`, **se detiene todo** hasta revisarla.
 
 ## 6. Qué cambia en datos y comportamiento al aplicar
 
@@ -68,10 +68,10 @@ Si falta algo de A en producción, la foto lo dirá por migración (`todos` / `n
 
 | Migración | Qué escribe |
 |---|---|
-| PM07 (fila 8) | `insert` en `stock_ubicacion` para productos sin fila autoritativa; no reemplaza saldos |
-| PM10 (fila 9) | `insert` de un contexto fiscal **simulado** en locales activos sin configuración y del catálogo del TPV desde los productos; no pisa filas ni precios |
+| PM07 (fila 8) | `insert` en `stock_ubicacion` para productos sin fila autoritativa; no reemplaza saldos. **Ya aplicada en producción** (con una deriva: ver el informe de la foto, §4) |
+| PM10 (fila 9) | `insert` de un contexto fiscal **simulado** en locales activos sin configuración y del catálogo del TPV desde los productos; no pisa filas ni precios. **Ya aplicada en producción** |
 | B06 catálogo de políticas (fila 17) | `insert` del catálogo de conceptos (solo si entrara el paquete D) |
-| D13 (fila 44) | dos columnas nuevas en `reembolsos` y `update reembolsos set aprobado_por = created_by, aprobado_at = created_at where aprobado_at is null`: todo reembolso existente se da por aprobado (es la regla que ya regía) |
+| D13 (fila 44) | dos columnas nuevas en `reembolsos` y `update reembolsos set aprobado_por = created_by, aprobado_at = created_at where aprobado_at is null`: todo reembolso existente se da por aprobado (es la regla que ya regía). **En producción hay 0 reembolsos: tocaría 0 filas** |
 
 **Cambios de comportamiento inmediatos** (disparadores y funciones): C04–C12 y las piezas 2, 3 y 5 añaden disparadores de guarda. En concreto: **pieza 5** bloquea dar de alta o reactivar a quien tenga Churrero/a, Básico o Estándar (`rol_retirado:<rol>`), y **solo el Propietario** puede reabrir un cierre; **pieza 2**: un cierre con diferencia exige decisión; **pieza 3**: no se abre una cuenta con una modalidad deshabilitada; **D13**: pedir un reembolso ya no lo encola si quien lo pide no puede aprobar (por defecto, Propietario y Encargado aprueban en el acto y el Cajero/a no tiene el permiso).
 
@@ -97,15 +97,15 @@ Lectura del código y de los informes de cada pieza (**no probado** en combinaci
 ## 8. Condiciones de entrada (todas, antes de aplicar nada)
 
 1. Autorizaciones de §12.
-2. **Foto de producción** (bloques P0–P9) guardada con hora y proyecto; veredicto por migración; **cero** migraciones en «ALGUNOS (deriva)».
+2. **Foto de producción** (bloques P0–P9) repetida en la ventana, con hora y proyecto, y comparada con la del 3/10 (11:33 UTC); **cero** migraciones en «ALGUNOS (deriva)».
 3. **Paridad por huellas:** P3 del archivo SQL sobre producción. Cada una de las 11 huellas (piezas 1, 2, 5 y D13) debe dar `COINCIDE`; si alguna da `DISTINTA`, la migración se negaría a aplicarse (por diseño) y **no se fuerza**. Comprobado en la réplica local que da `COINCIDE` sobre el estado previo de cada migración.
 4. **Base PM09 reconciliada** en producción (la RPC base `revertir_venta_stock` y los wrappers que faltan), como cambio de alcance aparte y con su propio preflight.
 5. **Pieza 2:** huellas de sus funciones iguales entre QA y el archivo (o registrada en QA).
 6. **Pruebas registradas:** los 32 archivos del apéndice B en `tests/ci/manifiesto_clasificacion.json` (hoy `inventario=240; esperado=208`), un flujo de CI Postgres para los contratos SQL de la capa de configuración y los contratos históricos F2/F4 de reembolsos adaptados a D13 (o decidir su destino).
-7. **Roles retirados:** bloque P7 (recuento por rol, sin nombres). Reasignar antes a quien los tenga.
-8. **m04d:** bloque P5. Si el navegador todavía puede leer esas 28 tablas, m04d no está aplicada y los dos arreglos de pantalla pasan a ser necesarios **a la vez** que m04d.
+7. **Roles retirados:** el 3/10 nadie los tenía; repetir P7 en la ventana.
+8. **m04d:** **aplicada en producción** (foto del 3/10): los dos arreglos de pantalla (cobro y historial de descuentos) son necesarios; el de cobro necesita B05 en producción antes que la aplicación.
 9. **D12:** política de 0 % del local productivo preparada (o la opción B decidida).
-10. **Ventana:** bloque P8: **sin cajas abiertas, sin cuentas abiertas, sin reembolsos ni envíos pendientes**; fuera del servicio.
+10. **Ventana:** bloque P8: **sin cajas abiertas, sin cuentas abiertas, sin reembolsos ni envíos pendientes**; fuera del servicio. El 3/10 había **2 cuentas abiertas y 1 efecto pendiente** (con 5 días sin actividad): hay que ver qué son y decidir qué se hace con ellas (con tu permiso).
 11. **Netlify:** confirmar cuál es la rama de producción (el documento `A09_NETLIFY_QA_REVIEW_PROPOSAL_2026-09-24.md` no pudo comprobarlo; el PR 118 da a entender que fusionar en `release` publica producción), anotar el identificador del despliegue de producción actual (para volver) y el coste (según ese documento, en el plan basado en créditos cada despliegue de producción exitoso cuesta 15 créditos y los previews 0; no comprobado hoy).
 12. **Copia de seguridad:** guardar la salida del bloque P4 (definición de las **46 funciones** que las migraciones reemplazan) y comprobar si el proyecto de producción tiene copia diaria o recuperación a un instante (no consultado).
 
@@ -145,12 +145,12 @@ Solo con las autorizaciones de §12 y en este orden. **Parar al primer fallo.**
 
 ## 12. Lo que necesito de ti (nada de esto está decidido ni autorizado)
 
-1. **¿Autorizas la foto de solo lectura de producción** (bloques P0–P9 del archivo adjunto)? Es el único paso que no cambia nada y desbloquea todo lo demás.
+1. **Foto de producción: hecha** el 3/10 con tu autorización. Falta decidir qué hacer con la **deriva de PM07** (una migración correctora pequeña, en el paquete A) y si miro, solo lectura, qué son las **2 cuentas abiertas** y el **efecto pendiente**.
 2. **Alcance del primer paquete:** A + C + E (mi propuesta), con P3/P3b y B06–B10 fuera.
 3. **P3 y P3b (precio con IVA incluido):** esperar a la asesoría (recomendado) o asumirlo tú por escrito.
 4. **B06–B10:** llevarlas primero a QA (con tu autorización) o dejarlas fuera del producto por ahora.
 5. **D12:** política de 0 % por datos para el local productivo (opción A, ya elegida) o cambiar el valor por defecto del código (opción B).
-6. **Roles retirados:** reasignar antes de la ventana a quien los tenga en producción.
+6. **Roles retirados:** nadie los tiene en producción; solo repetir la comprobación en la ventana.
 7. **PM09:** autorizar el trabajo aparte de reconciliar la base de producción (preflight del 2/10).
 8. **Ventana y responsable:** cuándo (sin servicio ni cajas abiertas) y quién ejecuta y vigila.
 9. **Despliegue y fusión:** un solo despliegue (D28) mediante un PR nuevo desde `release`, no el 118.
@@ -158,8 +158,8 @@ Solo con las autorizaciones de §12 y en este orden. **Parar al primer fallo.**
 
 ## 13. Límites de este documento
 
-- Producción **no consultada**: todo lo del §3 es lo último documentado, de hace entre 1 y 9 días, y puede haber cambiado.
-- El orden de las migraciones es el de las marcas de tiempo de los archivos; las dependencias reales con producción no se han comprobado.
+- La foto de producción es del 3/10/2026 a las 11:33 UTC y puede cambiar; no dice qué versión de la aplicación sirve producción, ni qué son las 2 cuentas abiertas y el efecto pendiente, ni si hay copia de seguridad.
+- El orden de las migraciones es el de las marcas de tiempo de los archivos; las dependencias principales (B04 antes de la pieza 5, C04 antes de la pieza 5, pieza 5 antes de D13) están confirmadas con los datos de producción (§5 del informe de la foto); el resto no se ha comprobado migración a migración.
 - La tabla del §7 sale de leer el código y los informes, no de probar las combinaciones.
 - El archivo SQL se probó solo en la réplica local (sin errores en una sesión de solo lectura, con las huellas dando `COINCIDE` sobre el estado previo de cada migración). En producción las columnas de los bloques P8 y P9 (`estado`, `created_at`, `occurred_at`) podrían diferir; si fallaran, fallan sin efectos y se anota como deriva.
 - No hay prueba de carga ni de concurrencia real de ninguna pieza.
@@ -168,55 +168,55 @@ Solo con las autorizaciones de §12 y en este orden. **Parar al primer fallo.**
 
 ## Apéndice A · Las 45 migraciones candidatas, en orden
 
-«Registro en QA» es la marca con la que la herramienta las registró en QA (3/10/2026, solo lectura).
+«Registro en QA» es la marca con la que la herramienta las registró en QA y «Producción» la marca con la que figura en el registro de producción (ambos leídos el 3/10/2026, solo lectura). Producción tiene 10 de las 45 y le faltan 35.
 
-| # | Archivo | Nombre | Qué hace | Paquete | Registro en QA |
-|---|---|---|---|---|---|
-| 1 | `20260924160739` | `abc_f3_a09_descuentos_cortesias` | Descuentos y cortesías con autorización (A09) | F3 | `20260925062334` |
-| 2 | `20260926110000` | `abc_f3_a10_kitchen_commands` | Comandas de cocina (A10) | F3 | `20260926125550` |
-| 3 | `20260926140000` | `abc_f3_a10b_kitchen_audit` | Auditoría de cocina (A10b) | F3 | `20260926133422` |
-| 4 | `20260926203000` | `abc_f3_a02_operating_day_a11` | Día operativo (A11). **Documentada en PROD el 28/9** | F3 | `20260927070910` |
-| 5 | `20260927113403` | `abc_f3_a06_recovery_server_operating_day` | Recuperar cuenta con día operativo. **Documentada en PROD el 28/9** | F3 | `20260927113403` |
-| 6 | `20260927150500` | `abc_f3_a07_2_list_responsables` | Lista de responsables de cuenta (A07.2) | F3 | `20260927170018` |
-| 7 | `20260927203000` | `abc_f3_a08_2_payment_interlock` | Cuenta bloqueada con cobro incierto (A08.2) | F3 | `20260927205020` |
-| 8 | `20260928170000` | `pm07_bootstrap_stock_desde_productos` | PM07: crea el stock autoritativo desde los productos. **Inserta filas** | F3 | `20260929060333` |
-| 9 | `20260928222000` | `pm10_bootstrap_tpv_catalogo` | PM10: crea contexto fiscal SIMULADO y catálogo del TPV desde los productos. **Inserta filas** | F3 | `20260929060754` |
-| 10 | `20260928223000` | `pm10_cierre_sesion_caja` | Cierre de sesión de caja (PM10) | F3 | `20260929061405` |
-| 11 | `20260929040000` | `abc_f4_b02_b03_checkout_bridge` | Cobro: puente de checkout (B02-B03) | F4 | `20260929061816` |
-| 12 | `20260929213000` | `abc_f4_b04_unknown_payment` | Pago de resultado desconocido (B04) | F4 | `20261002060601` |
-| 13 | `20260929220000` | `abc_f4_b05_mixed_payments` | Pagos mixtos (B05). Da `abc_estado_pago_mixto_cuenta`, que usa la pantalla de cobro | F4 | `20261002060610` |
-| 14 | `20260930100000` | `abc_f4_b06_non_sale_receipts` | Cobros que no son venta (B06) | B06-B10 | **nunca aplicada en QA** |
-| 15 | `20260930103000` | `abc_f4_b06_advance_traceability` | Anticipos: trazabilidad (B06) | B06-B10 | **nunca aplicada en QA** |
-| 16 | `20260930110000` | `abc_f4_b06_advance_balance_guard` | Anticipos: guarda del saldo (B06) | B06-B10 | **nunca aplicada en QA** |
-| 17 | `20260930120000` | `abc_f4_b06_policy_catalog` | Catálogo de políticas de conceptos (B06). **Inserta filas** | B06-B10 | **nunca aplicada en QA** |
-| 18 | `20260930150000` | `abc_f4_b07_provider_registry` | Registro de proveedores de pago (B07) | B06-B10 | **nunca aplicada en QA** |
-| 19 | `20260930153000` | `abc_f4_b07_server_config` | Configuración del proveedor desde el servidor (B07) | B06-B10 | **nunca aplicada en QA** |
-| 20 | `20260930160000` | `abc_f4_b07_event_processing` | Procesado de eventos del proveedor (B07) | B06-B10 | **nunca aplicada en QA** |
-| 21 | `20260930230000` | `abc_f4_b09_settlements_disputes` | Liquidaciones y disputas (B09) | B06-B10 | **nunca aplicada en QA** |
-| 22 | `20260930233000` | `abc_f4_b09_import_resolution` | Importar liquidaciones y resolver disputas (B09) | B06-B10 | **nunca aplicada en QA** |
-| 23 | `20261001090000` | `abc_f4_b10_card_data_boundary` | Frontera de datos de tarjeta (B10) | B06-B10 | **nunca aplicada en QA** |
-| 24 | `20261001100000` | `abc_f4_b10_pci_capture_modes` | Modos de captura PCI (B10) | B06-B10 | **nunca aplicada en QA** |
-| 25 | `20261001110000` | `abc_f4_b10_pci_review_gate` | Puerta de revisión PCI (B10) | B06-B10 | **nunca aplicada en QA** |
-| 26 | `20261001140000` | `abc_f5_c04_close_reopen` | Cierre y reapertura de caja (C04) | F5 | `20261002060641` |
-| 27 | `20261001150000` | `abc_f5_c05_document_series` | Series de numeración documental (C05) | F5 | `20261002060652` |
-| 28 | `20261001160000` | `abc_f5_c06_document_types` | Tipos documentales (C06) | F5 | `20261002060700` |
-| 29 | `20261001170000` | `abc_f5_c07_fiscal_gate` | Puerta fiscal (C07), cerrada a propósito | F5 | `20261002060709` |
-| 30 | `20261001180000` | `abc_f5_c08_document_retention` | Conservación y corrección de documentos (C08) | F5 | `20261002060718` |
-| 31 | `20261001190000` | `abc_f5_c09_document_printing` | Impresión sin duplicar (C09) | F5 | `20261002060727` |
-| 32 | `20261001200000` | `abc_f5_c10_document_delivery` | Entrega de copias (C10) | F5 | `20261002060735` |
-| 33 | `20261001210000` | `abc_f5_c11_explainable_reconciliation` | Conciliación explicable (C11) | F5 | `20261002060744` |
-| 34 | `20261001220000` | `abc_f5_c12_close_rehearsal` | Ensayo de cierre (C12) | F5 | `20261002060752` |
-| 35 | `20261001230000` | `abc_f5_pm09_security_hardening` | Endurecimiento de seguridad PM09. **BLOQUEADA en PROD (2/10): la base no coincide con QA** | F5 | `20261002082225` |
-| 36 | `20261002150000` | `abc_p3_catalogo_autoritativo` | P3: catálogo autoritativo, precio de carta con IVA incluido (D31). **Cambia el importe que se cobra** | P3 | `20261002133018` |
-| 37 | `20261002170000` | `abc_p3b_espejo_lista_nube` | P3b: la copia de la lista en la nube refleja los campos de venta | P3 | `20261002151826` |
-| 38 | `20261002190000` | `abc_config_pieza1_dia_cajas` | Pieza 1: día operativo y cajas configurables (D06, D12 opción A) | Configuración | `20261002164602` |
-| 39 | `20261002210000` | `abc_config_pieza2_diferencia_caja` | Pieza 2: diferencia de caja con aprobación (D15) | Configuración | **no** (aplicada a mano) |
-| 40 | `20261002220000` | `abc_config_pieza3_modalidades` | Pieza 3: modalidades por local (D02) | Configuración | `20261002182214` |
-| 41 | `20261002230000` | `abc_config_pieza4_equipos` | Pieza 4: equipos y terminales por local | Configuración | `20261002183425` |
-| 42 | `20261002240000` | `abc_config_pieza5_permisos` | Pieza 5: permisos configurables y retirada de tres roles (D14) | Configuración | `20261002190532` |
-| 43 | `20261002250000` | `abc_config_pieza6d_dia_operativo` | Pieza 6d: lectura del día operativo por local | Configuración | `20261002201209` |
-| 44 | `20261003100000` | `abc_config_d13_reembolsos_aprobacion` | D13: devoluciones con aprobación. **Actualiza todos los reembolsos existentes** | Configuración | `20261003081109` |
-| 45 | `20261003120000` | `abc_a09_eventos_descuento_cuenta` | A09: eventos de descuento de una cuenta por función del servidor | Configuración | `20261003103727` |
+| # | Archivo | Nombre | Qué hace | Paquete | Registro en QA | Producción (3/10) |
+|---|---|---|---|---|---|---|
+| 1 | `20260924160739` | `abc_f3_a09_descuentos_cortesias` | Descuentos y cortesías con autorización (A09) | F3 | `20260925062334` | `20260926051548` |
+| 2 | `20260926110000` | `abc_f3_a10_kitchen_commands` | Comandas de cocina (A10) | F3 | `20260926125550` | `20260926131350` |
+| 3 | `20260926140000` | `abc_f3_a10b_kitchen_audit` | Auditoría de cocina (A10b) | F3 | `20260926133422` | `20260926134235` |
+| 4 | `20260926203000` | `abc_f3_a02_operating_day_a11` | Día operativo (A11). **Documentada en PROD el 28/9** | F3 | `20260927070910` | `20260927072741` |
+| 5 | `20260927113403` | `abc_f3_a06_recovery_server_operating_day` | Recuperar cuenta con día operativo. **Documentada en PROD el 28/9** | F3 | `20260927113403` | `20260927113504` |
+| 6 | `20260927150500` | `abc_f3_a07_2_list_responsables` | Lista de responsables de cuenta (A07.2) | F3 | `20260927170018` | `20260927172341` |
+| 7 | `20260927203000` | `abc_f3_a08_2_payment_interlock` | Cuenta bloqueada con cobro incierto (A08.2) | F3 | `20260927205020` | **falta** |
+| 8 | `20260928170000` | `pm07_bootstrap_stock_desde_productos` | PM07: crea el stock autoritativo desde los productos. **Inserta filas.** En producción hay un **borrador anterior** (le falta una barra invertida en una expresión regular) | F3 | `20260929060333` | `20260928203006` |
+| 9 | `20260928222000` | `pm10_bootstrap_tpv_catalogo` | PM10: crea contexto fiscal SIMULADO y catálogo del TPV desde los productos. **Inserta filas** | F3 | `20260929060754` | `20260928204348` |
+| 10 | `20260928223000` | `pm10_cierre_sesion_caja` | Cierre de sesión de caja (PM10) | F3 | `20260929061405` | `20260928211206` |
+| 11 | `20260929040000` | `abc_f4_b02_b03_checkout_bridge` | Cobro: puente de checkout (B02-B03) | F4 | `20260929061816` | `20260929062815` |
+| 12 | `20260929213000` | `abc_f4_b04_unknown_payment` | Pago de resultado desconocido (B04) | F4 | `20261002060601` | **falta** |
+| 13 | `20260929220000` | `abc_f4_b05_mixed_payments` | Pagos mixtos (B05). Da `abc_estado_pago_mixto_cuenta`, que usa la pantalla de cobro | F4 | `20261002060610` | **falta** |
+| 14 | `20260930100000` | `abc_f4_b06_non_sale_receipts` | Cobros que no son venta (B06) | B06-B10 | **nunca aplicada en QA** | **falta** |
+| 15 | `20260930103000` | `abc_f4_b06_advance_traceability` | Anticipos: trazabilidad (B06) | B06-B10 | **nunca aplicada en QA** | **falta** |
+| 16 | `20260930110000` | `abc_f4_b06_advance_balance_guard` | Anticipos: guarda del saldo (B06) | B06-B10 | **nunca aplicada en QA** | **falta** |
+| 17 | `20260930120000` | `abc_f4_b06_policy_catalog` | Catálogo de políticas de conceptos (B06). **Inserta filas** | B06-B10 | **nunca aplicada en QA** | **falta** |
+| 18 | `20260930150000` | `abc_f4_b07_provider_registry` | Registro de proveedores de pago (B07) | B06-B10 | **nunca aplicada en QA** | **falta** |
+| 19 | `20260930153000` | `abc_f4_b07_server_config` | Configuración del proveedor desde el servidor (B07) | B06-B10 | **nunca aplicada en QA** | **falta** |
+| 20 | `20260930160000` | `abc_f4_b07_event_processing` | Procesado de eventos del proveedor (B07) | B06-B10 | **nunca aplicada en QA** | **falta** |
+| 21 | `20260930230000` | `abc_f4_b09_settlements_disputes` | Liquidaciones y disputas (B09) | B06-B10 | **nunca aplicada en QA** | **falta** |
+| 22 | `20260930233000` | `abc_f4_b09_import_resolution` | Importar liquidaciones y resolver disputas (B09) | B06-B10 | **nunca aplicada en QA** | **falta** |
+| 23 | `20261001090000` | `abc_f4_b10_card_data_boundary` | Frontera de datos de tarjeta (B10) | B06-B10 | **nunca aplicada en QA** | **falta** |
+| 24 | `20261001100000` | `abc_f4_b10_pci_capture_modes` | Modos de captura PCI (B10) | B06-B10 | **nunca aplicada en QA** | **falta** |
+| 25 | `20261001110000` | `abc_f4_b10_pci_review_gate` | Puerta de revisión PCI (B10) | B06-B10 | **nunca aplicada en QA** | **falta** |
+| 26 | `20261001140000` | `abc_f5_c04_close_reopen` | Cierre y reapertura de caja (C04) | F5 | `20261002060641` | **falta** |
+| 27 | `20261001150000` | `abc_f5_c05_document_series` | Series de numeración documental (C05) | F5 | `20261002060652` | **falta** |
+| 28 | `20261001160000` | `abc_f5_c06_document_types` | Tipos documentales (C06) | F5 | `20261002060700` | **falta** |
+| 29 | `20261001170000` | `abc_f5_c07_fiscal_gate` | Puerta fiscal (C07), cerrada a propósito | F5 | `20261002060709` | **falta** |
+| 30 | `20261001180000` | `abc_f5_c08_document_retention` | Conservación y corrección de documentos (C08) | F5 | `20261002060718` | **falta** |
+| 31 | `20261001190000` | `abc_f5_c09_document_printing` | Impresión sin duplicar (C09) | F5 | `20261002060727` | **falta** |
+| 32 | `20261001200000` | `abc_f5_c10_document_delivery` | Entrega de copias (C10) | F5 | `20261002060735` | **falta** |
+| 33 | `20261001210000` | `abc_f5_c11_explainable_reconciliation` | Conciliación explicable (C11) | F5 | `20261002060744` | **falta** |
+| 34 | `20261001220000` | `abc_f5_c12_close_rehearsal` | Ensayo de cierre (C12) | F5 | `20261002060752` | **falta** |
+| 35 | `20261001230000` | `abc_f5_pm09_security_hardening` | Endurecimiento de seguridad PM09. **BLOQUEADA en PROD (2/10): la base no coincide con QA** | F5 | `20261002082225` | **falta** |
+| 36 | `20261002150000` | `abc_p3_catalogo_autoritativo` | P3: catálogo autoritativo, precio de carta con IVA incluido (D31). **Cambia el importe que se cobra** | P3 | `20261002133018` | **falta** |
+| 37 | `20261002170000` | `abc_p3b_espejo_lista_nube` | P3b: la copia de la lista en la nube refleja los campos de venta | P3 | `20261002151826` | **falta** |
+| 38 | `20261002190000` | `abc_config_pieza1_dia_cajas` | Pieza 1: día operativo y cajas configurables (D06, D12 opción A) | Configuración | `20261002164602` | **falta** |
+| 39 | `20261002210000` | `abc_config_pieza2_diferencia_caja` | Pieza 2: diferencia de caja con aprobación (D15) | Configuración | **no** (aplicada a mano) | **falta** |
+| 40 | `20261002220000` | `abc_config_pieza3_modalidades` | Pieza 3: modalidades por local (D02) | Configuración | `20261002182214` | **falta** |
+| 41 | `20261002230000` | `abc_config_pieza4_equipos` | Pieza 4: equipos y terminales por local | Configuración | `20261002183425` | **falta** |
+| 42 | `20261002240000` | `abc_config_pieza5_permisos` | Pieza 5: permisos configurables y retirada de tres roles (D14) | Configuración | `20261002190532` | **falta** |
+| 43 | `20261002250000` | `abc_config_pieza6d_dia_operativo` | Pieza 6d: lectura del día operativo por local | Configuración | `20261002201209` | **falta** |
+| 44 | `20261003100000` | `abc_config_d13_reembolsos_aprobacion` | D13: devoluciones con aprobación. **Actualiza todos los reembolsos existentes** | Configuración | `20261003081109` | **falta** |
+| 45 | `20261003120000` | `abc_a09_eventos_descuento_cuenta` | A09: eventos de descuento de una cuenta por función del servidor | Configuración | `20261003103727` | **falta** |
 
 Paquetes: F3/F4/F5 = «A · Base»; B06-B10 = «D · Proveedor de pagos»; P3 = «B · Catálogo con IVA»; Configuración = «C».
 
