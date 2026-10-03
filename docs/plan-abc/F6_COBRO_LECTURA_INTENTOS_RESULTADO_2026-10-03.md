@@ -2,7 +2,7 @@
 
 Fecha: 2026-10-03
 Autorización: Pedro eligió «Arreglar el error de la pantalla de cobro» como siguiente pieza (3/10/2026), tras terminar la prueba de devoluciones. **Solo QA.** Producción no consultada ni tocada.
-Estado: `ARREGLADO_Y_VERIFICADO_CON_PRUEBAS_LOCALES_PENDIENTE_COMPROBAR_EN_PANTALLA`
+Estado: `ARREGLADO_VERIFICADO_Y_COMPROBADO_EN_PANTALLA_CON_COWORK`
 Origen del hallazgo: `F6_D13_DEVOLUCIONES_RESULTADO_2026-10-03.md`, sección «Hallazgo durante la prueba con Cowork».
 
 ## Qué fallaba
@@ -36,9 +36,11 @@ Lista de tablas sin lectura para el navegador (comprobada en QA con `has_table_p
 
 Consultando todas las lecturas directas de la aplicación contra los permisos de QA aparece **una más de la misma clase**: el **historial de descuentos del TPV** (`abc_descuento_*`, pieza A09) lee **`abc_eventos`** directamente y recibiría «permission denied for table abc_eventos»; como la carga hace `Promise.all` y lanza si cualquiera falla, **el panel de auditoría de descuentos no cargaría**. No lo he arreglado (otra pantalla, no autorizada). Queda anotado en `tests/cfg/lib/tablas-sin-acceso-qa.mjs` (`LECTURAS_DIRECTAS_CONOCIDAS`): el contrato estático falla si aparece **otra** lectura directa nueva o si esa se arregla y no se quita de la lista. Hace falta decidir cómo se leerían esos eventos (una función del servidor que devuelva los eventos de descuento de la cuenta).
 
-## Qué comprobará Cowork o Pedro
+## Comprobación en pantalla con Cowork (3/10/2026)
 
-Con el cobro de 3,85 € ya hecho en QA: recargar el TPV (ventana privada) y mirar la cuenta pagada: **el cartel rojo «permission denied for table pago_intentos» ya no debe aparecer**; el panel de cobro debe mostrar la cuenta como pagada («Total €3,85, Confirmado €3,85, Pendiente €0,00»). Un cobro nuevo también debe terminar con «Efectivo confirmado y cuenta pagada.» sin cartel.
+- **Primer intento (12:12 hora local, 10:12 UTC): el cartel seguía saliendo.** Cowork miró en la pestaña que ya tenía abierta, un minuto después de que Netlify diera por terminado el preview con el arreglo (10:11:11 UTC); navegar dentro de la aplicación no vuelve a descargar el código. Comprobación de que no era un fallo del servidor (QA, solo lectura, en una transacción que se revierte, con la identidad del Propietario): `abc_estado_cobro_cuenta`, `abc_estado_pago_mixto_cuenta` y `abc_listar_incidencias_cobro` responden sin error de permisos sobre la cuenta pagada (`PAGADO`, confirmado 3,85, saldo 0; el intento llega con los mismos campos).
+- **Segundo intento (12:24–12:25 hora local), en una pestaña nueva con recarga completa:** en la página cargada **ningún archivo `.js` contiene `from("pago_intentos")`** (comprobado desde la consola con una lectura de todos los scripts cargados). TPV → cuenta «Porción de tarta (QA)» (SERVIDA): **Total €3,85, Confirmado €3,85, Pendiente €0,00, «Cuenta: PAGADO · Último intento: Confirmado»**; **el cartel «permission denied for table pago_intentos» ya no aparece** (0 coincidencias), y tampoco los botones «Cobrar efectivo» ni «Iniciar tarjeta simulada» porque la cuenta está pagada. Antes salía «Confirmado €0,00 / Pendiente €3,85», que es lo que enseña la pantalla cuando la lectura falla.
+- **Límite:** no se hizo un cobro nuevo con la versión nueva; la lectura que falla se ejecuta igual en cada cobro (al terminar de cobrar y al mostrar la cuenta), y se probó aquí sobre la cuenta con pagos.
 
 ## Para promocionar a producción (no autorizado)
 
