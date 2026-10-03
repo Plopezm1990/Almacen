@@ -1,17 +1,17 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 208,
+  "total_inventory": 241,
   "expected_counts": {
-    "active_contract": 194,
+    "active_contract": 224,
     "historical_expected_fail": 1,
-    "utility": 8,
+    "utility": 11,
     "diagnostic": 5
   },
   "expected_environment_counts": {
     "node": {
-      "active_contract": 171,
+      "active_contract": 201,
       "historical_expected_fail": 0,
-      "utility": 7,
+      "utility": 10,
       "diagnostic": 5
     },
     "pglite": {
@@ -1072,6 +1072,171 @@
     },
     {
       "path": "tests/ui-context-bridge.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/a09-acciones-ui-runtime.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/a09-eventos-static-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/a09-eventos-ui-runtime.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/a09-panel-ui-runtime.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/alcance-static-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/cfg1-static-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/cfg2-static-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/cfg3-static-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/cfg4-static-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/cfg5-static-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/cfg6-ui-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/cfg6-ui-runtime.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/cfg6d-static-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/cfg6d-ui-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/cfg6d-ui-runtime.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/cfg6e-ui-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/cfg6e-ui-runtime.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/cobro-lectura-runtime.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/cobro-lectura-static-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/d13-static-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/d13-ui-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/d13-ui-runtime.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/f7-preflight-static-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/lib/servidor-caja-falso.mjs",
+      "classification": "utility",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/lib/servidor-reembolsos-falso.mjs",
+      "classification": "utility",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/lib/tablas-sin-acceso-qa.mjs",
+      "classification": "utility",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/pm07-fix-static-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/pm08-caja-ui-runtime.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/p1-denied-keys-solo-local.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/p3-catalogo-bridge.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/p3/p3-actualizar-producto-resultado.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/p3/p3-catalogo-static-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/p3/p3b-espejo-static-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     }

@@ -1,7 +1,7 @@
 # F5 / PM09 — inventario de callers `service_role`
 
-Fecha: 2026-10-01  
-Estado: `INVENTARIO_LOCAL_COMPLETADO_NO_APLICADO`
+Fecha de actualización: 2026-10-02
+Estado: `INVENTARIO_LOCAL_COMPLETADO_SIN_CALLER_SERVICE_ROLE_CONOCIDO`
 
 ## Resultado
 
@@ -38,4 +38,7 @@ contiene callers PM09 ni una combinación de `SUPABASE_SERVICE_ROLE_KEY` con
 estos wrappers.
 
 No se modificaron permisos remotos, no se ejecutaron migraciones y no se hizo
-deploy.
+deploy. La comprobación del catálogo QA confirma que los cinco wrappers aún
+conservan `EXECUTE` para `service_role`; esa concesión queda como decisión
+pendiente del siguiente subpunto, no como una necesidad demostrada por el
+código versionado.
