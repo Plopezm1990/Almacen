@@ -79,6 +79,15 @@ for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]
   assert.equal(todas, comoTexto, `${nombre}: ${todas - comoTexto} salida(s) de error meten el objeto en el campo «error» (la pantalla lo dibujaría y se rompería)`);
   assert.ok(todas >= 10, nombre + ": las diez salidas de error del panel de descuentos");
 }
+// las dos ayudas que usan los cargadores del panel (viven en crearLogicaVenta) llegan hasta el TPV: la lógica las entrega, la aplicación las recibe y se las pasa
+for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]]) {
+  const unico = (s, texto) => assert.equal(t.split(s).length - 1, 1, `${nombre}: ${texto}`);
+  unico("moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 };\n}\nfunction crearLogicaTraspasos(", "crearLogicaVenta entrega leerContextoCuentaA02 y respuestaErrorA06 (al final de su lista)");
+  unico("  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta,", "la aplicación recibe las dos ayudas de la lógica (al principio de su lista: el final lo exige el contrato A08.1)");
+  unico("listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({", "y el final de esa lista no cambia");
+  unico("configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) :", "la aplicación se las pasa al TPV");
+  unico("local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {", "el TPV las declara entre sus propiedades");
+}
 // la pantalla dibuja esos errores tal cual (por eso tienen que ser texto)
 assert.match(recuperado, /"⚠ ", errorAuditoriaDescuentosA09\) : null/, "la pantalla dibuja el error del historial directamente");
 assert.match(recuperado, /"⚠ ", errorDescuentoA09\) : null/, "la pantalla dibuja el error del descuento directamente");
@@ -113,6 +122,11 @@ const acciones = await read("tests/cfg/a09-acciones-ui-runtime.mjs");
 for (const marca of ["A1 sin permiso para aplicar el descuento", "B1 un código de error dentro de la respuesta", "C1 un error cualquiera del servidor", "C2 un conflicto de versión sigue marcándose", "D1 un descuento aplicado devuelve ok:true", "D2 una solicitud pendiente de autorización",
   "E1 sin permiso para autorizar", "E3 un código de error dentro de la respuesta", "E4 un error cualquiera del servidor", "E5 aprobar bien devuelve ok:true"])
   assert.ok(acciones.includes(marca), "falta el caso de ejecución de las acciones: " + marca);
+const panel = await read("tests/cfg/a09-panel-ui-runtime.mjs");
+for (const marca of ["B1 el panel termina de cargar", "B2 el botón de actualizar vuelve a", "B5 salen los eventos de descuento", "B8 los eventos se piden a la función del servidor", "D1 sin permiso para ver el historial", "D2 un error al leer los descuentos aplicados", "E1 «Actualizar» vuelve a cargar", "RECHAZO NO CONTROLADO"])
+  assert.ok(panel.includes(marca), "falta el caso de la prueba del panel montado: " + marca);
+const alcance = await read("tests/cfg/alcance-static-contract.mjs");
+assert.ok(alcance.includes("CONOCIDOS") && alcance.includes("identificadores usados sin declarar"), "existe el contrato de alcance");
 const vivo = await read("tests/cfg/a09-eventos-ui-runtime.mjs");
 for (const marca of ["A1 el historial carga", "A5 los eventos se piden a la función del servidor", "A6 el navegador no consulta ninguna tabla sin permiso", "C1 sin descuentos aplicados", "C2 si el servidor no manda lista", "D1 sin permiso para ver el historial",
   "D2 cuenta no identificada", "D3 un error cualquiera del servidor", "D5 el error siempre es un TEXTO", "F1 ", "E1 sin cuenta guardada", "E2 sin conexión"])
