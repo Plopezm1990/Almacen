@@ -58,7 +58,23 @@ Pedro probó con la guía `F6_PRUEBA_PREVIEW_MODALIDAD_CUENTA_2026-10-02.md` (pr
 - **Todo coincide con lo esperado.** La regla automática (Barra, o la primera habilitada) y la modalidad elegida llegan a `cuentas_comerciales.modalidad`; el día operativo de los eventos es 2026-10-03.
 - **Quedan dos cuentas abiertas y vacías** (`f655f75c` y `2d84933b`) con sus pedidos cancelados, como avisaba la guía. **No bloquean el próximo cierre de caja:** los bloqueos del cierre son solo pagos y efectos pendientes y no hay ninguno.
 - La sesión de caja de QA-A1 queda **abierta** (`8d1397b9`, desde las 07:15 UTC del 3/10). La sesión antigua de QA-A2 (25/9) sigue abierta; no se ha tocado.
-- Lo que la base de datos no enseña (que el selector se vea bien, los textos y los colores) depende de lo que Pedro vio: no avisó de nada raro. La prueba opcional 4 (la modalidad cambia mientras tanto) solo está cubierta por las pruebas automáticas.
+- Lo que la base de datos no enseña (que el selector se vea bien, los textos y los colores) depende de lo que Pedro vio: no avisó de nada raro. La prueba opcional 4 (la modalidad cambia mientras tanto) se hizo después con Cowork: ver la sección siguiente.
+
+## Prueba opcional 4 con dos pestañas (3/10/2026, agente de navegador Cowork) y comprobación en QA
+
+Cowork siguió el guion con la sesión de Pedro (todos los pasos en OK; los textos de pantalla coinciden con los previstos, incluido el aviso rojo dentro del carrito). Lo registrado en QA, de forma independiente:
+
+| Paso | Qué dice QA |
+|---|---|
+| Pestaña 2: desmarcar Mesa (motivo «prueba 6e dos pestañas») | `MODALIDAD_LOCAL_CONFIGURADA` 07:48:36 UTC: MESA de `true` a `false`, versión 1 |
+| Pestaña 1: «Guardar pedido» con Mesa elegida (rechazo) | **No se creó ninguna cuenta** con ese intento: entre 07:48:36 y la siguiente apertura no hay `CUENTA_ABIERTA` |
+| Pestaña 1: guardar de nuevo, ya en Barra | `CUENTA_ABIERTA` 07:49:10, cuenta `ea9b1d2b` con `modalidad = BARRA`; pedido creado y, a 07:49:56, `PEDIDO_CANCELADO` con motivo «prueba» |
+| Restaurar Mesa (motivo «prueba 6e restaurar») | `MODALIDAD_LOCAL_CONFIGURADA` 07:50:46: MESA a `true`, versión 2 |
+
+- **Estado final:** ninguna modalidad deshabilitada (Barra, Mesa y Terraza con fila propia; Para llevar y Otro por defecto). Cinco habilitadas.
+- **Cuentas de prueba:** quedan tres cuentas abiertas y vacías (`f655f75c` Para llevar, `2d84933b` Mesa, `ea9b1d2b` Barra) con sus pedidos cancelados. No bloquean el cierre (solo lo bloquean pagos y efectos pendientes, y no hay ninguno).
+- **Caja:** la sesión actual de A1 es `6be7b6af` (`ABIERTA`, desde 07:46 UTC). La sesión antigua de QA-A2 (25/9) sigue abierta; no se ha tocado.
+- Con esto, **las cuatro pruebas de la guía de la 6e están hechas en pantalla y comprobadas en QA.**
 
 ## Límites
 

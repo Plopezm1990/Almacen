@@ -3,7 +3,7 @@
 Fecha: 2026-10-02
 Alcance de este documento (escrito antes de implementar): **solo lectura** del código de la aplicación y de las migraciones, y este informe. Producción no consultada.
 Autorización: «Pieza 6: pantalla de configuración» elegida por Pedro el 2/10/2026 (solo QA, como las piezas anteriores).
-Estado: `INVENTARIO_HECHO` — **primera entrega (6a+6b+6c+6f) hecha y en rama**: ver `F6_PIEZA6_PANTALLA_RESULTADO_2026-10-02.md`; 6d autorizada, implementada y aplicada solo en QA (`F6_PIEZA6D_CIERRE_DIFERENCIA_RESULTADO_2026-10-02.md`; probada por Pedro el 3/10/2026 salvo «aprobar diferencia» en pantalla); 6e autorizada por Pedro, implementada solo en el cliente (sin tocar el servidor ni QA): plan en `F6_PIEZA6E_MODALIDAD_AL_ABRIR_CUENTA_PLAN_2026-10-02.md`, informe en `F6_PIEZA6E_MODALIDAD_AL_ABRIR_CUENTA_RESULTADO_2026-10-02.md` (probada por Pedro el 3/10/2026 en el preview y comprobada en QA)
+Estado: `INVENTARIO_HECHO` — **primera entrega (6a+6b+6c+6f) hecha y en rama**: ver `F6_PIEZA6_PANTALLA_RESULTADO_2026-10-02.md`; 6d autorizada, implementada y aplicada solo en QA (`F6_PIEZA6D_CIERRE_DIFERENCIA_RESULTADO_2026-10-02.md`; probada en pantalla y en QA el 3/10/2026, incluida la aprobación de una diferencia); 6e autorizada por Pedro, implementada solo en el cliente (sin tocar el servidor ni QA): plan en `F6_PIEZA6E_MODALIDAD_AL_ABRIR_CUENTA_PLAN_2026-10-02.md`, informe en `F6_PIEZA6E_MODALIDAD_AL_ABRIR_CUENTA_RESULTADO_2026-10-02.md` (probada por Pedro el 3/10/2026 en el preview y comprobada en QA)
 
 ## Cómo está hecha la aplicación (lo que condiciona el trabajo)
 

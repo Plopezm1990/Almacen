@@ -3,7 +3,7 @@
 Fecha: 2026-10-02
 Autorización: «6d: cierre de caja con diferencia» y decisiones **A** (el servidor calcula el día operativo del cierre) y **B** (el Propietario aprueba en la misma pantalla de cierre), Pedro, 2/10/2026.
 **Solo QA.** Producción no consultada ni tocada.
-Estado: `IMPLEMENTADA_VERIFICADA_Y_PROBADA_POR_PEDRO_EN_PANTALLA_FALTA_SOLO_APROBAR_UNA_DIFERENCIA`
+Estado: `IMPLEMENTADA_VERIFICADA_Y_PROBADA_EN_PANTALLA_Y_EN_QA_INCLUIDA_LA_APROBACION`
 Plan de partida: `F6_PIEZA6D_CIERRE_DIFERENCIA_PLAN_2026-10-02.md`. Guía de prueba: `F6_PRUEBA_PREVIEW_CIERRE_CAJA_2026-10-02.md`.
 
 ## Qué se ha hecho
@@ -100,8 +100,23 @@ Pedro probó con la guía `F6_PRUEBA_PREVIEW_CIERRE_CAJA_2026-10-02.md` y dijo �
 
 - **El día operativo de todos los eventos es 2026-10-03**, el que calcula el servidor (hora de corte 04:00 de Madrid; eran las 09:08 en Madrid). Confirma la decisión A y el arreglo H1.
 - **Sin residuos del cierre:** ningún cierre sin terminar, ninguna diferencia pendiente, ningún pago ni efecto pendiente.
-- **No se probó «Aprobar diferencia» en pantalla**: no hay ninguna fila `APROBADA` (la sesión extra se hizo con fondo 200 y sin diferencia). Esa ruta solo está probada por las pruebas automáticas y por la ejecución real contra las funciones de QA con `ROLLBACK`.
+- **«Aprobar diferencia» no se probó en la primera tanda** (la sesión extra se hizo con fondo 200 y sin diferencia); se probó después, ver la sección siguiente.
 - Lo que no se puede ver desde la base de datos (recargar la página a mitad de un paso, los colores y textos) depende de lo que Pedro vio: no avisó de nada raro.
+
+## Aprobar una diferencia en pantalla (3/10/2026, con el agente de navegador Cowork) y comprobación en QA
+
+Pedro pasó a Cowork (agente que maneja el navegador con la sesión de Pedro ya iniciada) un guion de pruebas escrito por mí. Cowork paró dos veces por **errores de mi guion, no de la aplicación**: (1) el efectivo esperado **no se muestra** antes de «Iniciar cierre», solo en el recuadro rojo tras el provisional; (2) tras aprobar hay dos textos: el aviso temporal «Diferencia aprobada. Ya se puede finalizar el cierre.» y, dentro del recuadro rojo, «Aprobada por el Propietario: «…». Ya se puede finalizar el cierre.» (Cowork confirmó que ambos aparecen). Corregido el guion, siguió hasta el final con todos los pasos en OK. Lo registrado en QA (sesión `8d1397b9`, QA-A1), **de forma independiente** de lo que contó Cowork:
+
+| Paso | Qué dice QA |
+|---|---|
+| Iniciar cierre y confirmar contando 203 (esperado 200) | `CAJA_SESION_EN_CIERRE` 07:41:52 y `CAJA_SESION_CIERRE_PROVISIONAL` 07:42:14 UTC |
+| Registrar motivo «prueba aprobar» | `CAJA_DIFERENCIA_REGISTRADA` 07:42:40: esperado 200, contado 203, diferencia 3, umbral 0, requiere aprobación |
+| Aprobar | `CAJA_DIFERENCIA_APROBADA` 07:42:55; estado `APROBADA`, versión 2, motivo de la decisión «prueba aprobar» |
+| Finalizar | `CAJA_SESION_CERRADA` 07:45:56; sesión `CERRADA_FINAL` (cerró con la diferencia de 3 € ya aprobada) |
+| Abrir caja con fondo 0 | `CAJA_SESION_ABIERTA` 07:46:06, sesión `6be7b6af`, `ABIERTA` |
+
+Todos los eventos llevan el día operativo **2026-10-03** (el del servidor). Sin residuos del cierre: ningún cierre sin terminar, ninguna diferencia pendiente, ningún pago ni efecto pendiente.
+Con esto, **las tres rutas del cierre con diferencia (rechazar, aprobar y sin diferencia) están probadas en pantalla y en QA.**
 
 ## Lo que sigue abierto de la capa de configuración
 

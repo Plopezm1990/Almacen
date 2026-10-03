@@ -172,13 +172,13 @@ Cocina A10 exige una cuenta abierta en el mismo navegador (comportamiento previo
 **6d — cierre de caja con diferencia: elegida por Pedro el 2/10/2026, con las decisiones A (el servidor calcula el día operativo) y B (el Propietario aprueba en
 la misma pantalla de cierre); implementada y aplicada solo en QA** (informe: `F6_PIEZA6D_CIERRE_DIFERENCIA_RESULTADO_2026-10-02.md`; guía de prueba:
 `F6_PRUEBA_PREVIEW_CIERRE_CAJA_2026-10-02.md`). Incluye arreglar antes dos fallos previos del cierre desde la pantalla (necesitaba una cuenta abierta en el navegador
-y, tras «Iniciar cierre», no podía continuar). **Probada por Pedro en el preview el 3/10/2026 y comprobada en QA** (iniciar, provisional, diferencia registrada y rechazada, reabrir y finalizar; día operativo del servidor); **falta probar en pantalla «Aprobar diferencia»**. **Una función nueva en QA:** `abc_obtener_dia_operativo_local`.
+y, tras «Iniciar cierre», no podía continuar). **Probada por Pedro en el preview el 3/10/2026 y comprobada en QA** (iniciar, provisional, diferencia registrada y rechazada, reabrir y finalizar; día operativo del servidor); **«Aprobar diferencia» probada después en pantalla (con Cowork) y comprobada en QA**. **Una función nueva en QA:** `abc_obtener_dia_operativo_local`.
 
 **6e — modalidad al abrir cuenta (D02): elegida por Pedro el 2/10/2026, con las decisiones A (automática y selector) y B (todas las habilitadas, incluidas Mesa y
 Terraza); implementada solo en el cliente, sin tocar el servidor ni QA** (informe: `F6_PIEZA6E_MODALIDAD_AL_ABRIR_CUENTA_RESULTADO_2026-10-02.md`; guía de prueba:
 `F6_PRUEBA_PREVIEW_MODALIDAD_CUENTA_2026-10-02.md`). El TPV abre la cuenta en la modalidad elegida o, si no se elige, en Barra si está habilitada y, si no, en la primera habilitada;
 con más de una habilitada aparece «Tipo de cuenta» en el carrito; **Barra ya se puede deshabilitar** en Configuración. Hallazgo arreglado: los errores de «Guardar pedido» no se veían nunca.
-Se actualizó una comprobación antigua (A02.1) que exigía «siempre Barra». **Probada por Pedro en el preview el 3/10/2026 y comprobada en QA** (Para llevar, Barra deshabilitada con apertura en Mesa y Barra restaurada).
+Se actualizó una comprobación antigua (A02.1) que exigía «siempre Barra». **Probada por Pedro en el preview el 3/10/2026 y comprobada en QA** (Para llevar, Barra deshabilitada con apertura en Mesa, Barra restaurada y la prueba de dos pestañas con rechazo y reintento).
 
 **Sigue abierto (pieza 6):**
 
