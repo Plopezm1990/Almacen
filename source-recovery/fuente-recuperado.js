@@ -5050,7 +5050,7 @@ function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arque
           if (!movimiento2) throw new Error("respuesta_caja_incompleta");
           setMovimientosCaja((prev) => [movimiento2, ...(prev || []).filter((m22) => m22.operationId !== movimiento2.operationId && m22.id !== movimiento2.id)]);
           limpiarPendientePM08(clave);
-          if (!r2.data?.replayed) registrarAuditoria?.("MOVIMIENTO_CAJA", `${tipoCanonico} de ${money(imp)} \xB7 ${conceptoLimpio}`);
+          if (!r2.data?.replayed) registrarAuditoria?.("MOVIMIENTO_CAJA", `${tipoCanonico} de \u20AC${fmt(imp)} \xB7 ${conceptoLimpio}`);
           return { ok: true, movimiento: movimiento2, replayed: !!r2.data?.replayed };
         } catch {
           return { ok: false, pendiente: true, error: "No se pudo confirmar si el servidor recibi\xF3 el movimiento. Reintenta: se utilizar\xE1 el mismo identificador y no se duplicar\xE1." };
@@ -5072,7 +5072,7 @@ function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arque
       });
       setMovimientosCaja((prev) => [movimiento, ...(prev || []).filter((m22) => m22.operationId !== movimiento.operationId)]);
       limpiarPendientePM08(clave);
-      registrarAuditoria?.("MOVIMIENTO_CAJA", `${tipoCanonico} de ${money(imp)} \xB7 ${conceptoLimpio}`);
+      registrarAuditoria?.("MOVIMIENTO_CAJA", `${tipoCanonico} de \u20AC${fmt(imp)} \xB7 ${conceptoLimpio}`);
       return { ok: true, movimiento, local: true };
     })();
     operacionesPM08EnCurso[clave] = tarea;

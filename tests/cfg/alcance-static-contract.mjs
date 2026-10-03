@@ -7,8 +7,8 @@
 // Cómo: analiza el código con un analizador de JavaScript (acorn + eslint-scope) y lista los identificadores sin declarar. Solo se admiten:
 //   - los que son del entorno o de librerías empaquetadas (detección de funciones de otros navegadores o entornos: Buffer, Deno, process, chrome…);
 //   - los alias que el recuperador del fuente deja sin declarar (X2, utils2, writeFileSync2, import_client2: en el bundle sí existen);
-//   - los fallos CONOCIDOS y anotados: `money` (el registro de movimientos manuales de caja, PM-08, llama a una función `money` que no existe).
-// Si aparece otro, falla. Si se arregla `money`, falla hasta quitarlo de la lista.
+//   - los fallos CONOCIDOS y anotados (ahora ninguno: `money`, que usaba el registro de movimientos manuales de caja PM-08 y no existe, se arregló el 3/10/2026).
+// Si aparece cualquier otro, falla. Si se anota un fallo conocido y luego se arregla, falla hasta quitarlo de la lista.
 //
 // Necesita librerías que no están en el repositorio: CFG_SCOPE_DEPS = carpeta (con node_modules) que contenga acorn y eslint-scope
 // (por defecto /opt/node-tools). Por ejemplo:  mkdir /tmp/scopedeps && cd /tmp/scopedeps && npm init -y && npm i acorn eslint-scope
@@ -41,8 +41,8 @@ const GLOBALES = new Set(["window", "document", "localStorage", "sessionStorage"
 const LIBRERIAS = ["__magic__", "__REACT_DEVTOOLS_GLOBAL_HOOK__", "$", "AbortSignal", "ActiveXObject", "Buffer", "Bun", "checkDCE", "chrome", "CloseEvent", "define", "Deno", "encrypt_agile", "Folder", "global", "HTMLAnchorElement", "IE_SaveFile", "IS_REACT_ACT_ENVIRONMENT", "jest", "MSApp", "Pebble", "process", "PublicKeyCredential", "ReadableStream", "reportError", "RGBColor", "safari", "saveAs", "setImmediate"];
 // alias que deja sin declarar el recuperador del fuente (en el bundle existen)
 const ALIAS_RECUPERADO = ["import_client2", "utils2", "writeFileSync2", "X2"];
-// fallos conocidos y anotados (ver el informe del 3/10/2026)
-const CONOCIDOS = { money: "el registro de movimientos manuales de caja (PM-08) llama a money(), que no existe" };
+// fallos conocidos y anotados: nombre -> descripción (vacío desde el arreglo de `money`, 3/10/2026)
+const CONOCIDOS = {};
 
 function libres(codigo, nombre) {
   const ast = acorn.parse(codigo, { ecmaVersion: "latest", sourceType: "module", locations: true, ranges: true });
