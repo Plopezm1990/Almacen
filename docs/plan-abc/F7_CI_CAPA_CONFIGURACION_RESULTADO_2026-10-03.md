@@ -44,4 +44,19 @@ En el informe de la pieza A09 anoté que ese contrato «falla igual antes del ca
 | Cambio | El ejecutor de Postgres imprime ahora las últimas 40 líneas de salida de un contrato que falla (`tests/ci/preparar_postgres_local.sh`, solo en caso de fallo, sin cambio de conteos) |
 | Commit `c66da24` (con ese cambio) | **25 de 25 comprobaciones en verde**: `node-y-postgres` (Node 201/201, PGlite, Postgres 16 19/19 + 1 histórico esperado), `gate-final`, `a09_postgres17`, `pm12-p08-supabase-full`, `pm33-p05-supabase-full`, `f4-b02-b03`, `f4-b04`, `f4-b08` (y sus dos hermanos), `f4-b11-offline`, `c04`…`c12`, `validar` y **`cfg-sql`** |
 
-**Conclusión:** el fallo del contrato A09 en `b5ba70e` **no se reprodujo** ni en local ni en la ejecución siguiente, sin ningún cambio relacionado. Lo trato como **intermitente** (hay carreras entre conexiones en ese contrato), no como un defecto de esta rama, pero **no puedo probar que lo sea**: con una sola muestra no se descarta que dependa de algo del entorno de GitHub. Si vuelve a salir, el registro ya mostrará la causa.
+**Conclusión:** el fallo del contrato A09 en `b5ba70e` **no se reprodujo** ni en local ni en la ejecución siguiente, sin ningún cambio relacionado. Lo trato como **intermitente** (hay carreras entre conexiones en ese contrato), no como un defecto de esta rama, pero **no puedo probar que lo sea**: con una sola muestra no se descarta que dependa de algo del entorno de GitHub. **Actualización (3/10, commit `752da40`):** volvió a salir y el registro mostró la causa; ver §6.
+
+## 6. Segundo fallo del contrato A09: causa encontrada y arreglada
+
+**Qué pasó.** En el commit `752da40` (PR 118) `node-y-postgres` y `gate-final` salieron en rojo por el mismo contrato, `tests/f3/a09/local-postgres-contract.mjs`. Esta vez el registro (con las últimas 40 líneas que añadió el ejecutor) decía: `A09_POSTGRES_CONTRACT=FAIL Error: a09-other did not wait on a PostgreSQL lock`, en `waitForLock`, dentro de la prueba «A09 discount first, stale A08 split rollback/retry», y a continuación `Error: Connection terminated` (la otra conexión se cerró con su consulta en vuelo al terminar el script).
+
+**Causa.** `waitForLock` consulta `pg_stat_activity` desde la conexión `db`, que en esas pruebas está dentro de una transacción abierta (`begin`). Dentro de una transacción esa vista devuelve **siempre la misma foto cacheada**. Si en la primera consulta la otra conexión todavía no había llegado a esperar el bloqueo, las 99 siguientes (50 ms entre una y otra) veían lo mismo y la prueba caducaba a los 5 s. Es una carrera **de la propia prueba**: no tiene relación con la aplicación, con las migraciones ni con los datos. En local casi nunca se pierde la carrera (1,7 s por ejecución); en el ejecutor de GitHub, más lento, sí.
+
+**Arreglo** (solo la prueba, commit `948af6d`): `select pg_stat_clear_snapshot()` antes de cada consulta de espera.
+
+**Comprobación (PostgreSQL 16 local).**
+- Reproducido a propósito: con un retraso de 40 ms en el arranque de la segunda conexión, la versión anterior falla con el mismo mensaje.
+- Con el arreglo, la misma prueba retrasada pasa; con un retraso de 40 ms en **todas** las consultas de la segunda conexión (los 9 sitios que usan `waitForLock`) pasa 5 de 5; sin retraso, 15 de 15.
+- `fuente.js` no cambia (`sha256` `5d8aef59…`); el manifiesto sigue en 241/224/11.
+
+**Lo que no se puede afirmar.** Que fuera esta la causa de las dos veces: el primer registro (`b5ba70e`) no mostró el mensaje, solo `Node.js v22.23.3` y código 1. Coincide con el mismo patrón (una consulta en vuelo cerrada al final) pero no hay prueba directa. Si volviera a fallar con otro mensaje, sería otra causa.
