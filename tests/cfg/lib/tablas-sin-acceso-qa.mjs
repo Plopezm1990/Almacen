@@ -9,6 +9,7 @@ export const SIN_ACCESO_QA = [
   'caja_cierre_diferencias', 'efectos_pendientes', 'operaciones_procesadas', 'pago_aplicaciones', 'pago_intentos', 'pm29_res', 'prefiltro_limites',
   'reembolso_aplicaciones', 'reservas_saldo'
 ];
-// Lecturas directas que la aplicación todavía hace a una de esas tablas (fallo conocido y anotado, fuera del arreglo del cobro):
-// el historial de descuentos del TPV lee abc_eventos y recibiría «permission denied». Cuando se arregle, se quita de aquí.
-export const LECTURAS_DIRECTAS_CONOCIDAS = { abc_eventos: 1 };
+// Lecturas directas que la aplicación todavía hace a una de esas tablas. Ninguna: la del historial de descuentos del TPV (abc_eventos) se cambió el 3/10/2026
+// por la función abc_listar_eventos_descuento_cuenta. Si aparece otra, el contrato estático falla: se arregla leyendo por una función del servidor,
+// no se añade aquí.
+export const LECTURAS_DIRECTAS_CONOCIDAS = {};

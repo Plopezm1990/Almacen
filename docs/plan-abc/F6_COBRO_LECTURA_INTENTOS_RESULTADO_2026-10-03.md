@@ -32,9 +32,9 @@ Solo cambio en la pantalla (no hay migración ni cambio de servidor): `leerEstad
 
 Lista de tablas sin lectura para el navegador (comprobada en QA con `has_table_privilege`, solo lectura, 3/10/2026): `tests/cfg/lib/tablas-sin-acceso-qa.mjs`.
 
-## Hallazgo relacionado (sin arreglar, fuera de esta pieza)
+## Hallazgo relacionado (arreglado después, ver `F6_A09_HISTORIAL_DESCUENTOS_RESULTADO_2026-10-03.md`)
 
-Consultando todas las lecturas directas de la aplicación contra los permisos de QA aparece **una más de la misma clase**: el **historial de descuentos del TPV** (`abc_descuento_*`, pieza A09) lee **`abc_eventos`** directamente y recibiría «permission denied for table abc_eventos»; como la carga hace `Promise.all` y lanza si cualquiera falla, **el panel de auditoría de descuentos no cargaría**. No lo he arreglado (otra pantalla, no autorizada). Queda anotado en `tests/cfg/lib/tablas-sin-acceso-qa.mjs` (`LECTURAS_DIRECTAS_CONOCIDAS`): el contrato estático falla si aparece **otra** lectura directa nueva o si esa se arregla y no se quita de la lista. Hace falta decidir cómo se leerían esos eventos (una función del servidor que devuelva los eventos de descuento de la cuenta).
+Consultando todas las lecturas directas de la aplicación contra los permisos de QA aparece **una más de la misma clase**: el **historial de descuentos del TPV** (`abc_descuento_*`, pieza A09) lee **`abc_eventos`** directamente y recibiría «permission denied for table abc_eventos»; como la carga hace `Promise.all` y lanza si cualquiera falla, **el panel de auditoría de descuentos no cargaría**. No lo arreglé en esta pieza (otra pantalla, no autorizada); Pedro lo eligió como siguiente pieza y quedó arreglado el mismo día con una función del servidor. Queda anotado en `tests/cfg/lib/tablas-sin-acceso-qa.mjs` (`LECTURAS_DIRECTAS_CONOCIDAS`): el contrato estático falla si aparece **otra** lectura directa nueva o si esa se arregla y no se quita de la lista. Hace falta decidir cómo se leerían esos eventos (una función del servidor que devuelva los eventos de descuento de la cuenta).
 
 ## Comprobación en pantalla con Cowork (3/10/2026)
 

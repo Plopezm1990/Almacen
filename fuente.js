@@ -108862,6 +108862,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("reparto_parte_fiscalizada_inmovil")) return "Esa cantidad incluye una parte ya fiscalizada y no se puede mover.";
     if (msg.includes("reparto_comensal_conflict")) return "La parte existente en la cuenta destino pertenece a otro comensal.";
     if (msg.includes("cuenta_con_cobro_incierto")) return "Esta cuenta tiene un cobro pendiente o incierto. Resuelve el cobro antes de repartir productos.";
+    if (msg.includes("descuento_eventos_no_autorizado")) return "Tu perfil no tiene permiso para ver el historial de descuentos de esta cuenta.";
+    if (msg.includes("descuento_eventos_parametros_invalidos")) return "No se pudo identificar la cuenta para mostrar su historial de descuentos.";
     if (msg.includes("descuento_no_autorizado") || msg.includes("descuento_solicitar_no_autorizado") || msg.includes("descuento_aplicar_no_autorizado")) return "Tu perfil no tiene permiso para solicitar o aplicar este descuento.";
     if (msg.includes("cortesia_no_autorizada")) return "La política de descuentos de este local no permite aplicar cortesías.";
     if (msg.includes("descuento_parametros_invalidos")) return "Revisa el tipo, valor y motivo del descuento.";
@@ -110795,7 +110797,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       if (error) throw error;
       return { ok: true, solicitudes: Array.isArray(data) ? data : [] };
     } catch (error) {
-      return { ok: false, error: respuestaErrorA06(error) };
+      return { ok: false, error: respuestaErrorA06(error).error };
     }
   }
 
@@ -120943,7 +120945,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       if (error) throw error;
       return { ok: true, descuentos: Array.isArray(data) ? data : [] };
     } catch (error) {
-      return { ok: false, error: respuestaErrorA06(error) };
+      return { ok: false, error: respuestaErrorA06(error).error };
     }
   }
 
@@ -120974,16 +120976,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           .eq("local_id", localId)
           .order("occurred_at", { ascending: false })
           .limit(200),
-        supabase
-          .from("abc_eventos")
-          .select("operation_id,event_type,payload,actor_user_id,occurred_at,operating_day")
-          .eq("empresa_id", empresaId)
-          .eq("local_id", localId)
-          .eq("aggregate_type", "CUENTA")
-          .eq("aggregate_id", contexto.cuentaId)
-          .eq("event_type", "CUENTA_DESCUENTO_APLICADO")
-          .order("occurred_at", { ascending: false })
-          .limit(100)
+        supabase.rpc("abc_listar_eventos_descuento_cuenta", {
+          p_empresa_id: empresaId,
+          p_local_id: localId,
+          p_cuenta_id: contexto.cuentaId
+        })
       ]);
       for (const response of [autorizaciones, intentos, eventos]) {
         if (response.error) throw response.error;
@@ -120997,7 +120994,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         eventos: Array.isArray(eventos.data) ? eventos.data : []
       };
     } catch (error) {
-      return { ok: false, error: respuestaErrorA06(error) };
+      return { ok: false, error: respuestaErrorA06(error).error };
     }
   }
 
@@ -121057,7 +121054,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         })
       };
     } catch (error) {
-      return { ok: false, error: respuestaErrorA06(error) };
+      return { ok: false, error: respuestaErrorA06(error).error };
     }
   }
 
@@ -121121,7 +121118,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         }))
       };
     } catch (error) {
-      return { ok: false, error: respuestaErrorA06(error) };
+      return { ok: false, error: respuestaErrorA06(error).error };
     }
   }
 
@@ -121166,7 +121163,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         }))
       };
     } catch (error) {
-      return { ok: false, error: respuestaErrorA06(error) };
+      return { ok: false, error: respuestaErrorA06(error).error };
     }
   }
 
