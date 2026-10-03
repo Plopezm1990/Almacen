@@ -56,6 +56,17 @@ Las primeras averías de pantalla dejaron **7 supervivientes de ejecución** (y 
 - La vista «De cliente» y los reembolsos antiguos no pasan por este flujo.
 - No he capturado la pantalla en Chromium con el estilo real (en 6d y 6e sí): lo puedo hacer si Pedro lo pide.
 
+## Hallazgo durante la prueba con Cowork (3/10/2026): la pantalla de cobro falla al leer tras cobrar (no es de D13)
+
+Al generar el cobro de prueba en efectivo desde el TPV, Cowork vio el cartel rojo «permission denied for table pago_intentos» justo después de pulsar «Cobrar efectivo» y paró. En QA (solo lectura) **el cobro sí se había guardado**: un pago EFECTIVO `CONFIRMADO` de 3,85 € (08:46:57 UTC), su intento `CONFIRMADO` y su cobro `COMPLETADO`.
+
+- **Causa:** `leerEstadoCobroF4` (introducida el 29/9 en `a5bca07`, F4 B02-B03) consulta directamente la tabla `pago_intentos`, pero la migración `20260924004000_abc_f2_m04d_acl_parity` (24/9) quita al navegador todo acceso directo a esa tabla (las mutaciones y las lecturas sensibles van por funciones del servidor). La consulta directa solo se ejecuta cuando la cuenta ya tiene algún pago, y QA no tenía ninguno, por eso no se había visto.
+- **Efecto:** mientras una cuenta tenga pagos, el panel de cobro del TPV muestra ese error cada vez que lee su estado, aunque el cobro haya salido bien.
+- **Arreglo previsto (no hecho, pendiente de autorización de Pedro):** dejar de consultar `pago_intentos` desde el navegador y usar los intentos que ya devuelve la función `abc_estado_pago_mixto_cuenta` (la pantalla ya los usa para sustituir el resultado de la consulta directa). Cambio pequeño en la pantalla, con contrato de ejecución con servidor falso que reproduzca la ACL.
+- **Decisión de Pedro (3/10/2026):** terminar primero la prueba de devoluciones y arreglar el cobro después, como pieza aparte.
+- **No impide probar devoluciones:** la pantalla de devoluciones solo lee `pagos`, que sí es legible; Cowork sigue desde el paso 2 con ese cobro de 3,85 €.
+- **Producción:** es un bloqueo a revisar antes de promocionar (si la migración m04d ya está allí, el cobro con pagos fallaría igual).
+
 ## Para promocionar a producción (no autorizado)
 
 Además de lo ya anotado en piezas anteriores (registrar las pruebas `cfg1`…`cfg6e` y `d13` en la puerta de CI general, comprobaciones de huella md5, titulares de los roles, contratos históricos):
