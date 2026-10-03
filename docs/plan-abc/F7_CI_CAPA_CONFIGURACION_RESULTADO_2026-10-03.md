@@ -46,7 +46,7 @@ En el informe de la pieza A09 anoté que ese contrato «falla igual antes del ca
 
 **Conclusión:** el fallo del contrato A09 en `b5ba70e` **no se reprodujo** ni en local ni en la ejecución siguiente, sin ningún cambio relacionado. Lo trato como **intermitente** (hay carreras entre conexiones en ese contrato), no como un defecto de esta rama, pero **no puedo probar que lo sea**: con una sola muestra no se descarta que dependa de algo del entorno de GitHub. **Actualización (3/10, commit `752da40`):** volvió a salir y el registro mostró la causa; ver §6.
 
-## 6. Segundo fallo del contrato A09: causa encontrada y arreglada
+## 6. Segundo y tercer fallo del contrato A09: dos carreras de la propia prueba, encontradas y arregladas
 
 **Qué pasó.** En el commit `752da40` (PR 118) `node-y-postgres` y `gate-final` salieron en rojo por el mismo contrato, `tests/f3/a09/local-postgres-contract.mjs`. Esta vez el registro (con las últimas 40 líneas que añadió el ejecutor) decía: `A09_POSTGRES_CONTRACT=FAIL Error: a09-other did not wait on a PostgreSQL lock`, en `waitForLock`, dentro de la prueba «A09 discount first, stale A08 split rollback/retry», y a continuación `Error: Connection terminated` (la otra conexión se cerró con su consulta en vuelo al terminar el script).
 
@@ -59,4 +59,8 @@ En el informe de la pieza A09 anoté que ese contrato «falla igual antes del ca
 - Con el arreglo, la misma prueba retrasada pasa; con un retraso de 40 ms en **todas** las consultas de la segunda conexión (los 9 sitios que usan `waitForLock`) pasa 5 de 5; sin retraso, 15 de 15.
 - `fuente.js` no cambia (`sha256` `5d8aef59…`); el manifiesto sigue en 241/224/11.
 
-**Lo que no se puede afirmar.** Que fuera esta la causa de las dos veces: el primer registro (`b5ba70e`) no mostró el mensaje, solo `Node.js v22.23.3` y código 1. Coincide con el mismo patrón (una consulta en vuelo cerrada al final) pero no hay prueba directa. Si volviera a fallar con otro mensaje, sería otra causa.
+**Tercer fallo y segunda carrera (commit `fdc7ec2`, job `a09_postgres17`, PostgreSQL 17.11).** Con el arreglo anterior ya puesto, el mismo contrato cayó en la misma prueba («discount first, stale A08 split») con otra señal: `error: cuenta_origen_version_conflict` como **rechazo sin manejar** y `Node.js v20.20.2`. Ese error es justo el que la prueba espera. Causa: la consulta en vuelo de la otra conexión (`staleSplit`) se creaba, la prueba esperaba el bloqueo, enviaba `commit` y solo después hacía `assert.rejects(staleSplit, …)`. Si la respuesta de error de la otra conexión llegaba al proceso Node **antes** que la respuesta del `commit`, la promesa rechazaba sin manejador y Node cerraba el proceso. Mismo hueco en otros tres sitios (`loser`, `stale`, `staleFiscalInsert`). Arreglo: una función `expectRejection` que marca la promesa como atendida (`.catch` vacío) y la devuelve; `assert.rejects` sigue viendo el rechazo original.
+
+Comprobación (PostgreSQL 16 local): retrasando 60 ms la respuesta del `commit`, la versión anterior se cae con `error: descuento_linea_fiscalizada` (rechazo sin manejar); con el arreglo pasa 5 de 5 con ese retraso y 15 de 15 sin él. Mutante: cambiar el error esperado de `staleSplit` por otro hace que la prueba falle (`AssertionError … did not match the regular expression`), es decir, el arreglo no tapa un fallo real.
+
+**Lo que no se puede afirmar.** Cuál de las dos carreras causó el primer fallo: el primer registro (`b5ba70e`) no mostró el mensaje, solo `Node.js v22.23.3` y código 1. Es compatible con la segunda carrera (un rechazo sin manejar termina el proceso con ese pie) pero no hay prueba directa. Si volviera a fallar con otro mensaje, sería otra causa.
