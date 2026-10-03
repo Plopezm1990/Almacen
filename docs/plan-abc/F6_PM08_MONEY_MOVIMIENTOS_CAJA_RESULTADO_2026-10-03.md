@@ -2,7 +2,7 @@
 
 Fecha: 2026-10-03
 Autorización: Pedro eligió «Arreglar el fallo de `money` en movimientos de caja» como siguiente pieza (3/10/2026). **Solo cliente** (ningún cambio en el servidor ni en QA). Producción no consultada ni tocada.
-Estado: `ARREGLADO_Y_VERIFICADO_CON_PRUEBAS_LOCALES_SIN_COMPROBAR_EN_PANTALLA`
+Estado: `ARREGLADO_Y_VERIFICADO_CON_PRUEBAS_LOCALES_Y_EN_PANTALLA_CON_COWORK_Y_EN_QA`
 Origen del hallazgo: `F6_A09_HISTORIAL_DESCUENTOS_RESULTADO_2026-10-03.md`, párrafo «Hallazgo del escaneo» (contrato de alcance).
 
 ## Qué fallaba
@@ -35,6 +35,19 @@ El contrato de **alcance** (`tests/cfg/alcance-static-contract.mjs`) tenía `mon
 
 ## Límites
 
-- **No se ha visto en pantalla**: la prueba de ejecución usa la lógica real y un servidor falso. Para verlo, hace falta registrar una entrada o retirada manual en el arqueo del preview (genera un movimiento real en QA con el efecto en caja del día), por lo que no lo hago sin que lo apruebes.
+- **Visto en pantalla el 3/10/2026** (ver la última sección). Antes solo había pruebas de ejecución con un servidor falso.
 - **Efecto secundario que sigue vigente (no es de este arreglo):** si la anotación de auditoría lanzara cualquier otro error después de guardar en el servidor, el `catch` de la rama de la nube volvería a mostrar el mismo aviso falso, porque esa anotación está dentro del mismo `try` que la llamada al servidor. Con `fmt` ya no hay causa conocida, pero la estructura queda así. No lo he cambiado (más cirugía que la autorizada).
 - Producción: no autorizada. Antes: registrar `pm08-caja-ui-runtime` (y el resto de pruebas nuevas de la capa de configuración) en la puerta de CI general.
+
+## Comprobación en pantalla con Cowork (3/10/2026, preview del PR 119)
+
+Preview `deploy-preview-119--chic-entremet-9107cf.netlify.app` (QA), Propietario, Local A1, caja abierta. Dos movimientos manuales en «Arqueo de caja» → «Entradas, retiradas y reembolsos».
+
+| Qué | Resultado |
+|---|---|
+| Entrada de 12,50 «Prueba Cowork PM08 entrada» | Salió «Entrada confirmada.» y el movimiento «+€12,50» en la lista. **Sin** el aviso rojo «No se pudo confirmar si el servidor recibió el movimiento…» ni errores con «money» en la consola |
+| Auditoría | `MOVIMIENTO_CAJA` — «ENTRADA de €12,50 · Prueba Cowork PM08 entrada» |
+| Retirada de 12,50 «Prueba Cowork PM08 retirada» | «Retirada confirmada.»; auditoría «RETIRADA de €12,50 · Prueba Cowork PM08 retirada»; la caja vuelve a €400,00 |
+| Contraste mío en QA (solo lectura) | `caja_operaciones` del Local A1: 6 → 8 (2 nuevas: `ENTRADA` 12,50 con efecto en efectivo +12,50 a las 21:21:43 UTC y `RETIRADA` 12,50 con −12,50 a las 21:30:47 UTC; neto cero). `auditoria_registro`: 8 → 10 (las 2 filas `MOVIMIENTO_CAJA` con ese texto exacto, usuario «Propietario/a»). Sin eventos de descuento nuevos, mismas cuentas abiertas, `arqueos_caja` vacía |
+
+Es la prueba directa del arreglo: antes la auditoría `MOVIMIENTO_CAJA` no se escribía nunca y salía el aviso falso.

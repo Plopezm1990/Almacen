@@ -22,6 +22,7 @@ Origen: Pedro eligió «Cerrar contigo las decisiones del primer paquete» y res
 | 10 | Quién ejecuta | **Claude, con el visto bueno de Pedro y Pedro presente** | Se ejecutan los pasos del documento uno a uno, comprobando cada huella |
 | 11 | Corrección de PM07 | **Sí, en la base del primer paquete** | Migración `20261003130000`, escrita y probada, sin aplicar |
 | 12 | Las 2 cuentas abiertas y el envío pendiente | **Mirar qué son, solo lectura** | Hecho (§3) |
+| 13 | D30 (P1: aviso de guardado y plazo de 6 h) | **Sí, valido los textos y las 6 h** (Pedro, 3/10/2026, después de verlo en el preview del candidato, §5) | P1 se queda en el candidato tal cual (`index-storage-bootstrap.js`). D30 queda cerrada |
 
 ## 2. Cómo se autoriza (decisión 8)
 
@@ -54,8 +55,23 @@ Solo estados y fechas, sin datos de clientes. Producción: `flqercbgpgmmfaakrwkc
 ## 4. Lo que queda por hacer, por orden
 
 1. Cuando Pedro lo pida: llevar B06–B10 a QA (decisión 3), con su autorización expresa.
-2. Preparar el PR nuevo desde `release` con el candidato exacto (decisión 7) y la CI en verde.
+2. ~~Preparar el PR nuevo desde `release` con el candidato exacto (decisión 7) y la CI en verde.~~ **HECHO (3/10/2026):** PR borrador 119, CI en verde, `fuente.js` `5d8aef59…`.
 3. Preparar el plan de reconciliación de PM09 (decisión 6), solo documento.
 4. Acordar la ventana (decisión 9) y decidir qué se hace con las dos cuentas y el envío (§3).
 5. Dentro de la ventana: foto repetida, autorización expresa, ejecución con comprobación de cada huella.
 6. Paquete aparte para P3/P3b (decisión 2) tras el primero.
+
+## 5. Pruebas en pantalla del candidato (Cowork, 3/10/2026, preview del PR 119)
+
+Preview `deploy-preview-119--chic-entremet-9107cf.netlify.app` (la aplicación del candidato; QA, no producción), usuario Propietario, Local A1. Comprobado por Cowork en pantalla y contrastado por mí en QA (solo lectura).
+
+| Prueba | Resultado |
+|---|---|
+| 0 · seguridad | **Pasa.** `modoQA = true`, `nubeUrl` = proyecto de QA, 80 de 80 peticiones a QA y ninguna al proyecto de producción |
+| A · P1, aviso de guardado | **Pasa.** Antes de tocar nada: «4 colecciones solo en este equipo (el servidor no permite guardarlas)» (`productos`, `historialRespaldos`, `movimientos`, `conteos`). Tras cambiar el tema: «5 colecciones…» (se añade `temaOscuro`). Tras recargar: igual y el tema persiste. Nunca «Subiendo N…». **Pedro valida textos y plazo de 6 h (decisión 13)** |
+| B · arreglo de `money` (PM-08) | **Pasa.** «Entrada confirmada.» y «Retirada confirmada.» sin aviso rojo. En QA: 2 movimientos nuevos (`ENTRADA` 12,50, efecto +12,50; `RETIRADA` 12,50, efecto −12,50; neto cero) y 2 filas de auditoría `MOVIMIENTO_CAJA` con el texto exacto «ENTRADA de €12,50 · Prueba Cowork PM08 entrada» y «RETIRADA de €12,50 · Prueba Cowork PM08 retirada». Movimientos de caja de A1: 6 → 8; auditoría: 8 → 10. Antes del arreglo la auditoría no se escribía nunca y salía un aviso falso |
+| C · historial de descuentos con datos (Local A2) | **No se pudo.** Con el Local A2 elegido en el selector, el TPV dijo «El TPV no puede abrirse en Todos los locales…». Ese código es **idéntico en `release`** (el candidato solo añade propiedades al TPV), así que no es un fallo nuevo. Hipótesis **no confirmada:** el contexto de la nube vuelve a poner el local activo (`sincronizarContextoPm07` aplica `localActivoId` de la nube) mientras el filtro de informes queda en A2. Además las 2 cuentas de A2 son del 26/9 y el TPV solo reanuda cuentas del día actual, así que por pantalla no se pueden abrir. Se sustituye por una prueba con un descuento nuevo en una cuenta de A1 (pendiente) |
+
+Otras observaciones de Cowork (no relacionadas con el candidato; `index.html` no cambia):
+- Consola, ruido en todas las pantallas: bloqueos de CSP de Netlify, 404 de `seleccion-neutral-patch.js?v=2` y `auth-ux-patch.js?v=1` (ninguno está en el repositorio ni lo referencia `index.html`; `_headers` menciona el primero; procedencia **no comprobada**, quizá un fragmento inyectado desde Netlify) y un aviso de React por claves repetidas en `Dashboard`.
+- Un desplazamiento con la rueda del ratón subió a 0,01 el campo «Efectivo contado en caja» del arqueo; Cowork lo dejó a 0 sin guardar y en QA `arqueos_caja` sigue vacía.

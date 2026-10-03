@@ -1,7 +1,7 @@
 # Hoja de decisiones para Pedro (Plan ABC, etapa 0)
 
 Fecha: 2026-10-02
-Estado: `DECISIONES_DE_NEGOCIO_CERRADAS_EXCEPTO_D24_D26_D31_ASESORIA_Y_D30_PRUEBA_DE_P1`
+Estado: `DECISIONES_DE_NEGOCIO_CERRADAS_EXCEPTO_D24_D26_D31_ASESORIA`
 Base: `a5a4321`, las matrices `F0_MATRIZ_A01_A12_EVIDENCIA_2026-10-02.md` y
 `F0_MATRIZ_B01_C12_EVIDENCIA_2026-10-02.md`, y las fichas de la rama
 `codex/f1-contratos-comunes` (F1.1–F1.6) y `codex/f0-inventario-abc` (F0.2).
@@ -258,3 +258,7 @@ Se actualizó una comprobación antigua (A02.1) que exigía «siempre Barra». *
 ## Actualización del 3/10/2026: decisiones sobre la promoción a producción (D28, D29, D31, D12)
 
 Pedro decidió el alcance y la forma de la promoción: ver `F7_PROMOCION_PRODUCCION_DECISIONES_2026-10-03.md`. En resumen: primer paquete = base + configuración + aplicación en un único despliegue (D28) desde un PR nuevo; **P3/P3b en un paquete aparte después**, asumiendo Pedro por escrito el riesgo de **D31** (precio con IVA incluido sin confirmar con la asesoría); **B06–B10 primero a QA**; **D12 se mantiene en la opción A** (política de 0 % por datos); **PM09 aparte**; una sola autorización para el primer paquete, a dar en la ventana sobre el candidato exacto. **La promoción sigue sin estar autorizada** (D29).
+
+## Actualización del 3/10/2026 (tarde): D30 cerrada
+
+Pedro vio el aviso de guardado de P1 en el preview del candidato (PR 119; ver `F7_PROMOCION_PRODUCCION_DECISIONES_2026-10-03.md` §5) y **validó los textos y el plazo de 6 horas**: «Sí, valido textos y 6 h». P1 se queda en el candidato tal cual.
