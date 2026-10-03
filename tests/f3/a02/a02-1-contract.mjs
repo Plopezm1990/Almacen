@@ -164,7 +164,13 @@ const forbiddenPrimaryA02 = [
   "checkout_ventas"
 ];
 
-assert.ok(adapter.includes('modalidad: "BARRA"'), "A02.1: VentaRapida debe mapearse explícitamente a BARRA");
+// Pieza 6e (D02, 2/10/2026): la modalidad ya no es una constante «BARRA». La decide resolverModalidadAperturaA02 al crear el registro
+// pendiente: la que elige el cajero y, si no elige, BARRA cuando el local la tiene habilitada (y, si no, la primera habilitada).
+// Si no se puede leer la lista de modalidades, se mantiene el comportamiento anterior: BARRA.
+assert.ok(adapter.includes("modalidad: modalidadApertura,"), "A02.1: el registro pendiente debe llevar la modalidad decidida al crearlo");
+assert.ok(adapter.includes("resolverModalidadAperturaA02(supabase, empresaId, localActivoId, opciones?.modalidad)"), "A02.1: la modalidad se decide con resolverModalidadAperturaA02");
+assert.ok(recovered.includes('if (!habilitadas) return pedida || "BARRA";'), "A02.1: sin lista de modalidades, VentaRapida abre en BARRA como antes");
+assert.ok(recovered.includes('return habilitadas.includes("BARRA") ? "BARRA" : habilitadas[0];'), "A02.1: por defecto BARRA cuando está habilitada");
 assert.ok(adapter.includes("totalServidor"), "A02.1: la confirmación debe usar total devuelto por servidor");
 assert.ok(adapter.includes("pedido_a02_pendiente_distinto"), "A02.1: falta fail-closed ante carrito distinto con operación pendiente");
 const recoveryStart = recovered.indexOf("async function rpcA02ConRecuperacion");

@@ -219,12 +219,24 @@ async function makeLine(db, suffix, amounts = {}) {
 
 async function waitForLock(db, applicationName) {
   for (let i=0; i<100; i++) {
+    // `db` suele estar dentro de una transaccion abierta: ahi pg_stat_activity devuelve la misma foto cacheada en
+    // todas las consultas. Sin esta limpieza, si la otra conexion aun no esperaba en la primera consulta, las 99
+    // siguientes ven lo mismo y la prueba caduca (fallo intermitente observado en CI de GitHub).
+    await db.query('select pg_stat_clear_snapshot()');
     const {rows} = await db.query(`select wait_event_type from pg_stat_activity
       where application_name=$1 and state='active'`,[applicationName]);
     if (rows[0]?.wait_event_type === 'Lock') return;
     await new Promise((done) => setTimeout(done, 50));
   }
   throw new Error(`${applicationName} did not wait on a PostgreSQL lock`);
+}
+
+// Una consulta en vuelo que se espera rechazada puede rechazar ANTES de que `assert.rejects` le enganche su manejador (la respuesta de
+// la otra conexion llega antes que la del commit): Node lo trata como rechazo sin manejar y mata el proceso. El `.catch` vacio solo la
+// marca como atendida; `assert.rejects` sigue viendo el rechazo original.
+function expectRejection(promise) {
+  promise.catch(() => {});
+  return promise;
 }
 
 const db = connection('a09-main');
@@ -1059,7 +1071,7 @@ try {
     cantidad,precio_unitario,descuento,base,impuesto,total,snapshot)
     values ('emp-f','loc-f1',$1,$2,$3,'EUR',1,10,0,10,1,11,'{}'::jsonb)`,
     [firstFiscal,first.source,issuer]);
-  const loser = discount(db,'a09.pg.fiscal-wins',first.account,1);
+  const loser = expectRejection(discount(db,'a09.pg.fiscal-wins',first.account,1));
   await waitForLock(other,'a09-main');
   await other.query('commit');
   await assert.rejects(loser,/descuento_linea_fiscalizada/);
@@ -1087,7 +1099,7 @@ try {
   const third = await makeLine(db,'33');
   await db.query('begin');
   await discount(db,'a09.pg.concurrent.1',third.account,1);
-  const stale = discount(other,'a09.pg.concurrent.2',third.account,1);
+  const stale = expectRejection(discount(other,'a09.pg.concurrent.2',third.account,1));
   await waitForLock(db,'a09-other');
   await db.query('commit');
   await assert.rejects(stale,/cuenta_version_conflict/);
@@ -1130,8 +1142,8 @@ try {
   await createAccount(db,discountFirstTarget);
   await db.query('begin');
   await discount(db,'a09.pg.discount-before-split',discountFirst.account,1,'AMOUNT','1');
-  const staleSplit=moveLine(other,'a09.pg.stale-split-after-discount',discountFirst.source,
-    discountFirst.account,discountFirstTarget,1,1,1,1);
+  const staleSplit=expectRejection(moveLine(other,'a09.pg.stale-split-after-discount',discountFirst.source,
+    discountFirst.account,discountFirstTarget,1,1,1,1));
   await waitForLock(db,'a09-other');
   await db.query('commit');
   await assert.rejects(staleSplit,/cuenta_origen_version_conflict/);
@@ -1332,11 +1344,11 @@ try {
     [directDoc,direct.account,issuer,owner,day]);
   await db.query('begin');
   await discount(db,'a09.pg.direct-fiscal-writer',direct.account,1);
-  const staleFiscalInsert = other.query(`insert into public.venta_fiscal_lineas(
+  const staleFiscalInsert = expectRejection(other.query(`insert into public.venta_fiscal_lineas(
     empresa_id,local_id,venta_fiscal_id,source_line_id,entidad_fiscal_id,currency_code,
     cantidad,precio_unitario,descuento,base,impuesto,total,snapshot)
     values ('emp-f','loc-f1',$1,$2,$3,'EUR',1,10,0,10,1,11,'{}'::jsonb)`,
-    [directDoc,direct.source,issuer]);
+    [directDoc,direct.source,issuer]));
   await waitForLock(db,'a09-other');
   await db.query('commit');
   await assert.rejects(staleFiscalInsert,/a09_fiscal_snapshot_obsoleto_o_parcial/);

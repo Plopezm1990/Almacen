@@ -1,6 +1,6 @@
 # F5 plan de remediación priorizada de advisors
 
-Fecha: 2026-10-01  
+Fecha de actualización: 2026-10-02  
 Estado: `PLAN_LOCAL_PENDIENTE_APLICACION_REMOTA`
 
 ## Objetivo
@@ -21,20 +21,22 @@ de valorar PROD.
 
 ### P1 — Seguridad de funciones públicas
 
-El advisor informa 106 funciones `SECURITY DEFINER` ejecutables por
-`authenticated` en QA y 95 en PROD. No se revoca `EXECUTE` en bloque: varias
-RPC públicas son la API intencionada del sistema. La revisión debe generar una
-lista allowlist por función, comprobar `auth.uid()`, capacidad empresa/local,
-`search_path` fijo y ausencia de acceso directo equivalente; solo las
-funciones no justificadas se corrigen en una migración compensatoria separada.
+El inventario QA del 2026-10-02 encontró 136 funciones `SECURITY DEFINER`:
+112 fijan `search_path=""` y 24 usan otra configuración. El advisor informa
+125 ejecutables por `authenticated`, 0 por `anon` y 54 por `service_role`.
+No se revoca `EXECUTE` en bloque: varias RPC públicas son la API intencionada
+del sistema. La revisión debe generar una lista allowlist por función,
+comprobar `auth.uid()`, capacidad empresa/local, `search_path` fijo y ausencia
+de acceso directo equivalente; solo las funciones no justificadas se corrigen
+en una migración compensatoria separada.
 
 ### P1 — RLS habilitado sin política
 
-Hay 7 tablas en cada proyecto. Antes de añadir políticas se debe comprobar su
-ACL y si son tablas internas protegidas por RPC. Una tabla interna sin grants
-directos puede mantenerse así y documentarse; una tabla expuesta necesita una
-política de mínimo privilegio. No se crea una política genérica para todas las
-tablas.
+El advisor QA actual informa 19 tablas con RLS habilitado y sin política. Antes
+de añadir políticas se debe comprobar su ACL y si son tablas internas
+protegidas por RPC. Una tabla interna sin grants directos puede mantenerse así
+y documentarse; una tabla expuesta necesita una política de mínimo privilegio.
+No se crea una política genérica para todas las tablas.
 
 ### P2 — Índices de claves foráneas
 
@@ -53,6 +55,14 @@ sin ventana de observación, revisión de dependencias y plan de recuperación.
 ## Alcance realizado en este punto
 
 - Se clasificaron las alertas de seguridad y rendimiento de QA/PROD.
+- Se ejecutó en QA un inventario de solo lectura de las funciones
+  `SECURITY DEFINER`, sus `search_path` y sus grants efectivos.
+- Se confirmó que `anon` no tiene `EXECUTE` sobre ninguna de las 136 funciones
+  inventariadas; la exposición relevante queda acotada al rol
+  `authenticated` y debe revisarse por allowlist.
+- Se confirmó el advisor QA de seguridad: 125 avisos por funciones
+  `SECURITY DEFINER` ejecutables por `authenticated`, 19 avisos INFO de RLS
+  sin política y 1 aviso WARN de protección contra contraseñas filtradas.
 - Se mantuvieron fuera de alcance las escrituras remotas, los cambios de Auth,
   migraciones, grants, políticas, índices y deploys.
 - C03-C12 continúa como candidato local validado; C12 no está aplicado en QA ni
@@ -60,10 +70,11 @@ sin ventana de observación, revisión de dependencias y plan de recuperación.
 
 ## Siguiente subpunto
 
-El siguiente subpunto aislado será el inventario de funciones `SECURITY
-DEFINER` y sus grants, empezando por QA y en modo de solo lectura. La eventual
-corrección será otra decisión independiente, con SQL compensatorio, preflight,
-rollback y autorización específica.
+El inventario queda terminado. El siguiente subpunto aislado será clasificar
+las 24 funciones QA con `search_path` distinto de `""` y las funciones
+`authenticated` que no formen parte de la allowlist de API pública. La
+eventual corrección será otra decisión independiente, con SQL compensatorio,
+preflight, rollback y autorización específica.
 
 ## Referencias
 
