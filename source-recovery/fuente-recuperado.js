@@ -9962,11 +9962,11 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         return { ok: true, applied: true, resultado: data, cuenta };
       }
       const code = data?.error || ("descuento_" + String(data?.status || "respuesta_invalida").toLowerCase());
-      return { ok: false, resultado: data, error: respuestaErrorA06(new Error(code)) };
+      return { ok: false, resultado: data, error: respuestaErrorA06(new Error(code)).error };
     } catch (error) {
       const conflict = esConflictoVersionA06(error);
       const cuenta = conflict && typeof recuperarCuentaA06 === "function" ? await recuperarCuentaA06() : null;
-      return { ok: false, conflict, cuenta, error: respuestaErrorA06(error) };
+      return { ok: false, conflict, cuenta, error: respuestaErrorA06(error).error };
     }
   }
 
@@ -9999,11 +9999,11 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       if (error) throw error;
       const code = String(data?.error || "");
       if (code && code !== "descuento_rechazado_por_autorizador" && code !== "descuento_ya_aprobado") {
-        return { ok: false, resultado: data, error: respuestaErrorA06(new Error(code)) };
+        return { ok: false, resultado: data, error: respuestaErrorA06(new Error(code)).error };
       }
       return { ok: true, estado: String(data?.status || ""), resultado: data };
     } catch (error) {
-      return { ok: false, error: respuestaErrorA06(error) };
+      return { ok: false, error: respuestaErrorA06(error).error };
     }
   }
 

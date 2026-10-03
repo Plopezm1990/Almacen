@@ -67,6 +67,18 @@ for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]
   const cuerpo = entre(t, "  async function listarAutorizacionesDescuentoA09() {", "  async function ", nombre + " listarAutorizacionesDescuentoA09");
   assert.ok(cuerpo.includes("return { ok: false, error: respuestaErrorA06(error).error };") && !cuerpo.includes("error: respuestaErrorA06(error) }"), nombre + ": listarAutorizacionesDescuentoA09 devuelve el error como texto");
 }
+// y también «aplicar descuento» y «aprobar o rechazar una autorización» (las dos acciones del mismo panel)
+for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]]) {
+  const aplicar = entre(t, "  async function aplicarDescuentoCuentaA09(", "  async function resolverAutorizacionDescuentoA09(", nombre + " aplicarDescuentoCuentaA09");
+  assert.ok(aplicar.includes("return { ok: false, resultado: data, error: respuestaErrorA06(new Error(code)).error };") && aplicar.includes("return { ok: false, conflict, cuenta, error: respuestaErrorA06(error).error };"), nombre + ": aplicarDescuentoCuentaA09 devuelve el error como texto (en sus dos salidas de error)");
+  const resolver = entre(t, "  async function resolverAutorizacionDescuentoA09(", "\n  }\n", nombre + " resolverAutorizacionDescuentoA09");
+  assert.ok(resolver.includes("return { ok: false, resultado: data, error: respuestaErrorA06(new Error(code)).error };") && resolver.includes("return { ok: false, error: respuestaErrorA06(error).error };"), nombre + ": resolverAutorizacionDescuentoA09 devuelve el error como texto (en sus dos salidas de error)");
+  // ninguna salida de la aplicación mete el objeto de error dentro del campo «error»
+  const todas = (t.match(/error: respuestaErrorA06\(/g) || []).length;
+  const comoTexto = (t.match(/error: respuestaErrorA06\((?:error|new Error\(code\))\)\.error/g) || []).length;
+  assert.equal(todas, comoTexto, `${nombre}: ${todas - comoTexto} salida(s) de error meten el objeto en el campo «error» (la pantalla lo dibujaría y se rompería)`);
+  assert.ok(todas >= 10, nombre + ": las diez salidas de error del panel de descuentos");
+}
 // la pantalla dibuja esos errores tal cual (por eso tienen que ser texto)
 assert.match(recuperado, /"⚠ ", errorAuditoriaDescuentosA09\) : null/, "la pantalla dibuja el error del historial directamente");
 assert.match(recuperado, /"⚠ ", errorDescuentoA09\) : null/, "la pantalla dibuja el error del descuento directamente");
@@ -97,6 +109,10 @@ for (const c of ["descuento_eventos_no_autorizado", "descuento_eventos_parametro
 // 6. El contrato A09 anterior ya no exige la lectura directa, y los contratos de ejecución existen y cubren los casos exigidos.
 const viejo = await read("tests/f3/a09/discount-command.test.mjs");
 assert.ok(viejo.includes("abc_listar_eventos_descuento_cuenta") && !/from\\\(\\"abc_eventos\\"\\\)\[\\s\\S\]\*\?CUENTA_DESCUENTO_APLICADO/.test(viejo), "el contrato A09.2.5 exige la función y no la lectura directa");
+const acciones = await read("tests/cfg/a09-acciones-ui-runtime.mjs");
+for (const marca of ["A1 sin permiso para aplicar el descuento", "B1 un código de error dentro de la respuesta", "C1 un error cualquiera del servidor", "C2 un conflicto de versión sigue marcándose", "D1 un descuento aplicado devuelve ok:true", "D2 una solicitud pendiente de autorización",
+  "E1 sin permiso para autorizar", "E3 un código de error dentro de la respuesta", "E4 un error cualquiera del servidor", "E5 aprobar bien devuelve ok:true"])
+  assert.ok(acciones.includes(marca), "falta el caso de ejecución de las acciones: " + marca);
 const vivo = await read("tests/cfg/a09-eventos-ui-runtime.mjs");
 for (const marca of ["A1 el historial carga", "A5 los eventos se piden a la función del servidor", "A6 el navegador no consulta ninguna tabla sin permiso", "C1 sin descuentos aplicados", "C2 si el servidor no manda lista", "D1 sin permiso para ver el historial",
   "D2 cuenta no identificada", "D3 un error cualquiera del servidor", "D5 el error siempre es un TEXTO", "F1 ", "E1 sin cuenta guardada", "E2 sin conexión"])
