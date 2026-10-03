@@ -254,3 +254,7 @@ Se actualizó una comprobación antigua (A02.1) que exigía «siempre Barra». *
 - No se leyó la función del servidor que calcula impuestos y redondeo; D17 se
   confirma con los 12 vectores F1.5 y no antes.
 - Los umbrales y porcentajes (D12, D15) no se proponen con cifra: son tuyos.
+
+## Actualización del 3/10/2026: decisiones sobre la promoción a producción (D28, D29, D31, D12)
+
+Pedro decidió el alcance y la forma de la promoción: ver `F7_PROMOCION_PRODUCCION_DECISIONES_2026-10-03.md`. En resumen: primer paquete = base + configuración + aplicación en un único despliegue (D28) desde un PR nuevo; **P3/P3b en un paquete aparte después**, asumiendo Pedro por escrito el riesgo de **D31** (precio con IVA incluido sin confirmar con la asesoría); **B06–B10 primero a QA**; **D12 se mantiene en la opción A** (política de 0 % por datos); **PM09 aparte**; una sola autorización para el primer paquete, a dar en la ventana sobre el candidato exacto. **La promoción sigue sin estar autorizada** (D29).

@@ -1,7 +1,7 @@
 # F7 · Promoción a producción · documento de preparación
 
 Fecha: 2026-10-03
-Estado: `PREPARADO_Y_FOTO_DE_PRODUCCION_HECHA_SOLO_LECTURA` — **la promoción NO está autorizada y NO se ha escrito nada en producción.** Resultado de la foto: `F7_PROMOCION_PRODUCCION_FOTO_RESULTADO_2026-10-03.md`.
+Estado: `PREPARADO_FOTO_HECHA_Y_DECISIONES_TOMADAS_PROMOCION_NO_AUTORIZADA` — **la promoción NO está autorizada y NO se ha escrito nada en producción.** Resultado de la foto: `F7_PROMOCION_PRODUCCION_FOTO_RESULTADO_2026-10-03.md`. Decisiones de Pedro (alcance, P3, B06–B10, D12, PM09, despliegue, ventana, quién ejecuta): `F7_PROMOCION_PRODUCCION_DECISIONES_2026-10-03.md`.
 Autorizaciones recibidas (3/10/2026): «preparar el documento de promoción a producción» (un documento y un archivo de comprobaciones) y, después, «autorizo la foto de solo lectura de producción» (solo consultas `select`).
 Qué NO se ha hecho: no se ha aplicado ninguna migración ni escrito ninguna fila en producción (proyecto `flqercbgpgmmfaakrwkc`), no se ha fusionado ninguna rama, no se ha publicado nada y no se ha escrito nada en QA (solo se leyó su registro de migraciones y unas huellas). La foto de producción **sí** se hizo, solo lectura, el 3/10/2026 a las 11:33 UTC.
 Archivo que lo acompaña: `F7_PROMOCION_PRODUCCION_PREFLIGHT_SOLO_LECTURA_2026-10-03.sql` (comprobaciones previas de **solo lectura**; probado únicamente contra la réplica local, en una sesión forzada a solo lectura). Lo vigila el contrato `tests/cfg/f7-preflight-static-contract.mjs`: que no contenga ninguna sentencia que escriba y que sus listas (objetos nuevos, huellas md5, funciones reemplazadas, tablas) coincidan con las migraciones reales y con este documento (14 averías provocadas, todas detectadas).
@@ -55,9 +55,9 @@ Mi propuesta, para que decidas (§12). Cada paquete se aprueba **por separado**,
 |---|---|---|
 | **0 · Foto** | Solo lectura de producción: bloques P0–P9. **Hecha el 3/10** (`F7_PROMOCION_PRODUCCION_FOTO_RESULTADO_2026-10-03.md`). Pendiente: huellas en QA de la pieza 2 | Hecha. Se repite dentro de la ventana |
 | **A · Base** | Lo que **falta** en producción antes de la configuración: **12 migraciones**: A08.2 (fila 7), B04 y B05 (filas 12–13) y C04–C12 (filas 26–34), más la **corrección de PM07** (fila 46, nueva por la deriva de la foto: escrita y probada el 3/10 en la réplica y en QA con `ROLLBACK`, **sin aplicar en producción**), es decir, 13. **PM09 (fila 35) solo después de reconciliar la base de producción** (cambio de alcance aparte) | Sí, en el orden de las marcas, **cada migración con su comprobación de huella** |
-| **B · Catálogo con IVA** | P3 y P3b (filas 36–37). Cambia el importe que se cobra (D31) | **Fuera** hasta que la asesoría confirme D31, o hasta que decidas asumirlo tú por escrito |
+| **B · Catálogo con IVA** | P3 y P3b (filas 36–37). Cambia el importe que se cobra (D31) | **Paquete aparte, justo después del primero.** Decidido el 3/10: Pedro asume D31 por escrito (sin asesoría), con su propia comprobación y su propia autorización |
 | **C · Configuración** | Piezas 1, 2, 3, 4, 5, 6d, D13 y A09 eventos (filas 38–45; la 46 es del paquete A) | Sí, **después de A** (la pieza 6d se niega a aplicarse si faltan funciones de las piezas 1 y 5) |
-| **D · Proveedor de pagos** | B06, B07, B09, B10 (filas 14–25) | **Fuera.** Primero a QA, con tu autorización, y probarlas allí |
+| **D · Proveedor de pagos** | B06, B07, B09, B10 (filas 14–25) | **Fuera del primer paquete.** Decidido el 3/10: primero a QA (con tu autorización expresa cuando quieras empezar) y probarlas allí |
 | **E · Aplicación** | Un solo despliegue de producción (D28): `fuente.js` y los otros tres archivos del candidato | **Después** de C, en la misma ventana |
 
 La foto del 3/10 ya dio el veredicto por migración (`todos` / `ninguno`; ninguna `ALGUNOS (deriva)`). Se repite en la ventana: si apareciera una `ALGUNOS (deriva)`, **se detiene todo** hasta revisarla.
@@ -143,7 +143,7 @@ Solo con las autorizaciones de §12 y en este orden. **Parar al primer fallo.**
 - Humo con `ROLLBACK` sin residuos.
 - La pantalla de configuración y el historial de descuentos abren sin cartel rojo.
 
-## 12. Lo que necesito de ti (nada de esto está decidido ni autorizado)
+## 12. Lo que necesitaba de ti (decidido el 3/10: ver `F7_PROMOCION_PRODUCCION_DECISIONES_2026-10-03.md`; la promoción sigue SIN autorizar)
 
 1. **Foto de producción: hecha** el 3/10 con tu autorización. Falta decidir qué hacer con la **deriva de PM07** (una migración correctora pequeña, en el paquete A) y si miro, solo lectura, qué son las **2 cuentas abiertas** y el **efecto pendiente**.
 2. **Alcance del primer paquete:** A + C + E (mi propuesta), con P3/P3b y B06–B10 fuera.
