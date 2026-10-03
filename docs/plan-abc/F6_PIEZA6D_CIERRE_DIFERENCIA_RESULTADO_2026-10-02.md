@@ -3,7 +3,7 @@
 Fecha: 2026-10-02
 Autorización: «6d: cierre de caja con diferencia» y decisiones **A** (el servidor calcula el día operativo del cierre) y **B** (el Propietario aprueba en la misma pantalla de cierre), Pedro, 2/10/2026.
 **Solo QA.** Producción no consultada ni tocada.
-Estado: `IMPLEMENTADA_Y_VERIFICADA_LOCALMENTE_SERVIDOR_APLICADO_EN_QA_PENDIENTE_DE_PRUEBA_EN_PANTALLA_POR_PEDRO`
+Estado: `IMPLEMENTADA_VERIFICADA_Y_PROBADA_POR_PEDRO_EN_PANTALLA_FALTA_SOLO_APROBAR_UNA_DIFERENCIA`
 Plan de partida: `F6_PIEZA6D_CIERRE_DIFERENCIA_PLAN_2026-10-02.md`. Guía de prueba: `F6_PRUEBA_PREVIEW_CIERRE_CAJA_2026-10-02.md`.
 
 ## Qué se ha hecho
@@ -84,8 +84,27 @@ Lo que sigue sin comprobarse es la pantalla funcionando contra QA (límite 1).
 6. **Producción** no está autorizada. Antes de promocionar habría que: aplicar `20261002250000` (la migración se niega a aplicarse si faltan las funciones de las piezas 1 y 5), registrar las pruebas nuevas (`cfg1`…`cfg6d`) en la puerta de CI y adaptar los contratos históricos citados en `F6_PIEZA5_PERMISOS_2026-10-02.md`.
 7. La cadena de reconstrucción exacta del bundle (`CURRENT_RELEASE.patch`) la regenera la integración continua.
 
+## Prueba de Pedro en el preview 118 (3/10/2026) y comprobación en QA (solo lectura)
+
+Pedro probó con la guía `F6_PRUEBA_PREVIEW_CIERRE_CAJA_2026-10-02.md` y dijo «hecho». Lo registrado en QA (caja de QA-A1, sesión `ee3392f5`):
+
+| Paso | Qué dice QA |
+|---|---|
+| Iniciar cierre y provisional sin diferencia (contado 0) | `CAJA_SESION_EN_CIERRE` 07:08:12 y `CAJA_SESION_CIERRE_PROVISIONAL` 07:08:25 UTC, **13 segundos después**: el segundo paso ya no falla (arreglo H2). Esperado 0,00 € como decía la guía |
+| Reabrir (motivo «PRUEBA») | `CAJA_SESION_REABIERTA` 07:11:06; cierre 1 en `CANCELADO` |
+| Cierre con contado 5 | `caja_cierre_diferencias`: esperado 0, contado 5, diferencia 5, umbral 0, requiere aprobación; motivo «ERROR DE CONTEO» registrado 07:12:09 (`CAJA_DIFERENCIA_REGISTRADA`) |
+| Rechazar | `CAJA_DIFERENCIA_RECHAZADA` 07:12:55; estado `RECHAZADA`, versión 2, con el motivo de la decisión |
+| Reabrir y recontar | `CAJA_SESION_REABIERTA` 07:13:28 («ERROR DE CONTEO»); tercer cierre contado 0 |
+| Finalizar | `CAJA_SESION_CERRADA` 07:13:54; sesión `CERRADA_FINAL` (versión 10) |
+| Sesión extra | Se abrió otra con fondo 200 € y se cerró sin diferencia (200/200) a las 07:14:30; y se abrió la sesión actual de A1 (`8d1397b9`, `ABIERTA`) para probar la 6e |
+
+- **El día operativo de todos los eventos es 2026-10-03**, el que calcula el servidor (hora de corte 04:00 de Madrid; eran las 09:08 en Madrid). Confirma la decisión A y el arreglo H1.
+- **Sin residuos del cierre:** ningún cierre sin terminar, ninguna diferencia pendiente, ningún pago ni efecto pendiente.
+- **No se probó «Aprobar diferencia» en pantalla**: no hay ninguna fila `APROBADA` (la sesión extra se hizo con fondo 200 y sin diferencia). Esa ruta solo está probada por las pruebas automáticas y por la ejecución real contra las funciones de QA con `ROLLBACK`.
+- Lo que no se puede ver desde la base de datos (recargar la página a mitad de un paso, los colores y textos) depende de lo que Pedro vio: no avisó de nada raro.
+
 ## Lo que sigue abierto de la capa de configuración
 
-- **6e**: elegir modalidad al abrir cuenta en el TPV (y poder deshabilitar Barra).
+- ~~**6e**~~ hecha: ver `F6_PIEZA6E_MODALIDAD_AL_ABRIR_CUENTA_RESULTADO_2026-10-02.md`.
 - **D13**: devoluciones del cajero (el flujo hoy encola el efecto al solicitar).
 - **Producción** y los puntos pendientes de promoción.

@@ -3,7 +3,7 @@
 Fecha: 2026-10-02
 Autorización: «6e: modalidad al abrir cuenta» con las decisiones **A · Automática y selector** y **B · Todas las habilitadas (incluidas Mesa y Terraza)**, Pedro, 2/10/2026.
 **Solo QA.** Producción no consultada ni tocada. **Esta pieza no toca el servidor ni QA**: no hay migración nueva ni se ha escrito ni leído nada en QA (el servidor ya tenía todo desde la pieza 3).
-Estado: `IMPLEMENTADA_Y_VERIFICADA_LOCALMENTE_PENDIENTE_DE_PRUEBA_EN_PANTALLA_POR_PEDRO`
+Estado: `IMPLEMENTADA_VERIFICADA_Y_PROBADA_POR_PEDRO_EN_PANTALLA`
 Plan de partida: `F6_PIEZA6E_MODALIDAD_AL_ABRIR_CUENTA_PLAN_2026-10-02.md`. Guía de prueba: `F6_PRUEBA_PREVIEW_MODALIDAD_CUENTA_2026-10-02.md`.
 
 ## Qué se ha hecho
@@ -43,6 +43,22 @@ Reglas de decisión (por este orden): la modalidad **elegida**, si existe y est�
 | Capturas en Chromium con la hoja de estilos real (escritorio claro y móvil oscuro): todas habilitadas, «Para llevar» elegida, sin Barra, error de modalidad, solo Mesa (sin selector) | selector y aviso legibles; sin desborde |
 
 Las primeras averías provocadas dejaron **11 supervivientes** de ejecución que en realidad eran huecos de la prueba (Barra gana aunque la lista llegue en otro orden; una lectura que lanza una excepción o contesta con error y datos; descartar un pedido pendiente cuando la cuenta ya estaba abierta; reiniciar al cambiar de local; desactivar el selector mientras guarda; título y tamaño táctil del selector). Se añadieron 19 casos y ahora no sobrevive ninguna.
+
+## Prueba de Pedro en el preview 118 (3/10/2026) y comprobación en QA (solo lectura)
+
+Pedro probó con la guía `F6_PRUEBA_PREVIEW_MODALIDAD_CUENTA_2026-10-02.md` (pruebas 1 a 3; la 4, opcional, no) y dijo «hecho». Lo registrado en QA (sesión de caja `8d1397b9`, QA-A1):
+
+| Prueba | Qué dice QA |
+|---|---|
+| 1 · Elegir «Para llevar» y guardar | Cuenta `f655f75c` con `modalidad = TAKEAWAY` (07:16:41 UTC). El pedido se envió a cocina y se canceló después: `PEDIDO_CANCELADO` y comanda de cancelación; pedido y línea en `CANCELADO/CANCELADA` |
+| 2 · Deshabilitar Barra | `MODALIDAD_LOCAL_CONFIGURADA` 07:20:09, BARRA de `true` a `false`, motivo «NO HAY BARRA». Ya se pudo desmarcar (antes estaba bloqueada) |
+| 2 · Guardar con Barra deshabilitada | Cuenta `2d84933b` con `modalidad = MESA` (la primera habilitada, como dice la regla automática; 07:21:07). Sin error. Pedido cancelado |
+| 3 · Volver a habilitar Barra | `MODALIDAD_LOCAL_CONFIGURADA` 07:22:22, BARRA a `true`, motivo «ACTIVAMOS BARRA». **Ninguna modalidad deshabilitada** (las cinco habilitadas: Barra y Terraza con fila propia, el resto por defecto) |
+
+- **Todo coincide con lo esperado.** La regla automática (Barra, o la primera habilitada) y la modalidad elegida llegan a `cuentas_comerciales.modalidad`; el día operativo de los eventos es 2026-10-03.
+- **Quedan dos cuentas abiertas y vacías** (`f655f75c` y `2d84933b`) con sus pedidos cancelados, como avisaba la guía. **No bloquean el próximo cierre de caja:** los bloqueos del cierre son solo pagos y efectos pendientes y no hay ninguno.
+- La sesión de caja de QA-A1 queda **abierta** (`8d1397b9`, desde las 07:15 UTC del 3/10). La sesión antigua de QA-A2 (25/9) sigue abierta; no se ha tocado.
+- Lo que la base de datos no enseña (que el selector se vea bien, los textos y los colores) depende de lo que Pedro vio: no avisó de nada raro. La prueba opcional 4 (la modalidad cambia mientras tanto) solo está cubierta por las pruebas automáticas.
 
 ## Límites
 
