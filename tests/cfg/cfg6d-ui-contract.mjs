@@ -38,7 +38,7 @@ const bloques = (t, nombre) => ({
   logica: entre(t, "  // Cierre de caja (pieza 6d):", "  async function listarEstacionesA10() {", nombre),
   modulo: entre(t, "var CIERRE_TEXTO_BLOQUEO = {", "function CocinaA10({", nombre),
   cocina: entre(t, "function CocinaA10({", "\n}\n", nombre),
-  enlaces: entre(t, "  // Las funciones del cierre de caja cuelgan de listarEstacionesA10", "  return { venderCarrito, venderLocal, anularVenta, venderLineas,", nombre),
+  enlaces: entre(t, "  // Las funciones del cierre de caja cuelgan de listarEstacionesA10", "  return { ", nombre),
   cierre4: entre(t, "  async function iniciarCierreSesionCajaA10() {", "  async function cerrarSesionCajaA10(", nombre),
   traducciones: entre(t, '    if (msg.includes("cierre_definitivo_diferencia_pendiente"))', '    if (msg.includes("contexto_no_autorizado") || msg.includes("no_autorizad"))', nombre)
 });

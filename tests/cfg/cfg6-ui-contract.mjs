@@ -150,8 +150,10 @@ assert.ok(ficha.indexOf("ConfigDia, {") > ficha.indexOf("else contenido = h("), 
 assert.match(ficha, /const secciones = \[\["dia", "Día y cajas"\], \["modalidades", "Modalidades"\], \["equipos", "Equipos"\], \["permisos", "Permisos"\]\];/);
 assert.equal((comp.match(/Escribe el motivo del cambio\./g) || []).length >= 4, true, "cada sección exige el motivo");
 assert.match(comp, /B\u00E1sico, Est\u00E1ndar y Churrero\/a ya no se pueden asignar a nadie nuevo y no tienen ning\u00FAn permiso\./, "la pantalla explica la retirada de roles");
-assert.match(comp, /const bloqueada = m2\.modalidad === "BARRA";/, "de momento Barra no se puede deshabilitar (el TPV abre siempre en Barra)");
-assert.match(comp, /abre las cuentas siempre en Barra: no se puede deshabilitar\./);
+assert.doesNotMatch(comp, /bloqueada/, "Barra ya no está bloqueada: el TPV elige otra modalidad habilitada (pieza 6e)");
+assert.doesNotMatch(comp, /siempre en Barra/);
+assert.match(comp, /disabled: ocupado, onChange: \(e2\) => setElegidas\(\{ \.\.\.elegidas, \[m2\.modalidad\]: e2\.target\.checked \}\) \}\),/, "todas las casillas, también Barra, se pueden cambiar");
+assert.match(comp, /El TPV abre la cuenta en Barra si est\u00E1 habilitada y, si no, en la primera habilitada; si hay varias, el cajero elige\./, "la pantalla explica qué hace el TPV");
 assert.match(comp, /\.sort\(\(a3, b3\) => Number\(elegidas\[b3\.modalidad\]\) - Number\(elegidas\[a3\.modalidad\]\)\)/, "con varios cambios se habilita antes de deshabilitar");
 assert.match(comp, /const bloqueado = !marcado && info\.puede_dar !== true;/, "lo que supera el techo no se puede dar");
 assert.match(comp, /if \(nuevo && info\?\.puede_dar !== true\) return;/);
@@ -165,7 +167,7 @@ assert.match(comp, /await cargar\(true\);\s+\}\s+\};\s+const verRetirados/, "tra
 // 6. El contrato de ejecución existe y cubre los casos exigidos.
 const runtime = await read("tests/cfg/cfg6-ui-runtime.mjs");
 for (const marca of ["S1.1 sin perfil Propietario", "S2.1 sin local concreto", "S3.5 con motivo envía una sola operación", "S3.9 una hora de corte posterior", "S3.14 un rechazo del servidor se traduce",
-  "S4.2 Barra no se puede deshabilitar", "S4.6 con varios cambios se habilita antes de deshabilitar", "S5.5 el alta envía todos los parámetros", "S5.8 editar conserva el id", "S5.9 desactivar reenvía el equipo con activo=false",
+  "S4.2 Barra se puede deshabilitar", "S4.6 con varios cambios se habilita antes de deshabilitar", "S5.5 el alta envía todos los parámetros", "S5.8 editar conserva el id", "S5.9 desactivar reenvía el equipo con activo=false",
   "S6.4 lo delicado no se puede dar", "S6.9 guarda cada cambio con ámbito LOCAL", "S6.12 se envía permitido nulo", "S6.13 con «Toda la empresa»", "S6.14 si falla el segundo", "S6.16 lista a las personas con roles retirados",
   "R1 los tres roles retirados no están en la lista de alta", "C1 el Propietario ve el motivo", "C4 el Cajero/a no ve el botón", "C6 si el Propietario autoriza al Encargado", "C7 si no se puede consultar el permiso", "C9 un rol que no está en la matriz"])
   assert.ok(runtime.includes(marca), "falta el caso de ejecución: " + marca);

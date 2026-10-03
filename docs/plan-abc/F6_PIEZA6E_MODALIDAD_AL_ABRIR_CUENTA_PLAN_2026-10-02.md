@@ -4,7 +4,7 @@ Fecha: 2026-10-02
 Alcance de este documento: **solo lectura** del código de la aplicación y de las migraciones (piezas 3 y A07), y este plan. **Ningún cambio de pantalla, de base de datos ni de
 despliegue.** Producción no consultada. QA no consultada para esta pieza.
 Autorización: «6e: elegir modalidad al abrir cuenta» elegida por Pedro el 2/10/2026 (solo QA). El plan se presenta antes de implementar y las decisiones de la última sección esperan su respuesta.
-Estado: `PLAN_PRESENTADO_SIN_IMPLEMENTAR`
+Estado: `IMPLEMENTADO` — decisiones de Pedro (2/10/2026): **A · Automática y selector**, **B · Todas las habilitadas (incluidas Mesa y Terraza)**. Informe: `F6_PIEZA6E_MODALIDAD_AL_ABRIR_CUENTA_RESULTADO_2026-10-02.md`; guía de prueba: `F6_PRUEBA_PREVIEW_MODALIDAD_CUENTA_2026-10-02.md`. (El resto de este documento es el plan tal como se presentó.)
 
 ## Qué se pidió (D02)
 

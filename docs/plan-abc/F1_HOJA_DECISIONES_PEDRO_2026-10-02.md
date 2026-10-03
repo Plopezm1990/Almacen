@@ -174,9 +174,14 @@ la misma pantalla de cierre); implementada y aplicada solo en QA** (informe: `F6
 `F6_PRUEBA_PREVIEW_CIERRE_CAJA_2026-10-02.md`). Incluye arreglar antes dos fallos previos del cierre desde la pantalla (necesitaba una cuenta abierta en el navegador
 y, tras «Iniciar cierre», no podía continuar). Pendiente de que Pedro la pruebe en el preview. **Una función nueva en QA:** `abc_obtener_dia_operativo_local`.
 
+**6e — modalidad al abrir cuenta (D02): elegida por Pedro el 2/10/2026, con las decisiones A (automática y selector) y B (todas las habilitadas, incluidas Mesa y
+Terraza); implementada solo en el cliente, sin tocar el servidor ni QA** (informe: `F6_PIEZA6E_MODALIDAD_AL_ABRIR_CUENTA_RESULTADO_2026-10-02.md`; guía de prueba:
+`F6_PRUEBA_PREVIEW_MODALIDAD_CUENTA_2026-10-02.md`). El TPV abre la cuenta en la modalidad elegida o, si no se elige, en Barra si está habilitada y, si no, en la primera habilitada;
+con más de una habilitada aparece «Tipo de cuenta» en el carrito; **Barra ya se puede deshabilitar** en Configuración. Hallazgo arreglado: los errores de «Guardar pedido» no se veían nunca.
+Se actualizó una comprobación antigua (A02.1) que exigía «siempre Barra». Pendiente de que Pedro la pruebe en el preview.
+
 **Sigue abierto (pieza 6):**
 
-- **6e — modalidad al abrir cuenta**: el TPV abre siempre en Barra; por eso Barra está bloqueada en la pantalla. No autorizada.
 - **Aprobar desde otro dispositivo**: hoy el Propietario aprueba una diferencia en el terminal donde se cerró la caja; una lista de «cierres pendientes» sería una ampliación.
 
 ## Nivel 1 — necesarias para empezar las etapas 1 y 2 (terreno de pruebas y pantalla)

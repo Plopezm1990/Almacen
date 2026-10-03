@@ -224,7 +224,7 @@ async function parte1() {
   await clic(boton('Modalidades'));
   ok('S4.1 carga las cinco modalidades con los parámetros exactos', llamadas.some((c) => c.nombre === 'abc_obtener_modalidades_local' && c.params.p_empresa_id === 'EMP-1' && c.params.p_local_id === 'LOC-1') && texto().includes('Para llevar') && texto().includes('Terraza'), texto().slice(0, 400));
   const casillas = () => Object.fromEntries([...document.querySelectorAll('label')].filter((l) => l.querySelector('input[type=checkbox]')).map((l) => [l.childNodes[1]?.textContent || l.textContent.split('(')[0].trim(), l.querySelector('input')]));
-  ok('S4.2 Barra no se puede deshabilitar y se explica', casillas()['Barra'].disabled === true && texto().includes('abre las cuentas siempre en Barra'), texto().slice(0, 500));
+  ok('S4.2 Barra se puede deshabilitar y se explica qué hace el TPV', casillas()['Barra'].disabled === false && !texto().includes('siempre en Barra') && texto().includes('El TPV abre la cuenta en Barra si está habilitada y, si no, en la primera habilitada'), texto().slice(0, 700));
   await marcar(casillas()['Terraza'], false);
   reset();
   await clic(boton('Guardar modalidades'));
