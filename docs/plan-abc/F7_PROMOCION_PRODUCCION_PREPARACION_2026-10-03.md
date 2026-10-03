@@ -17,7 +17,7 @@ Promocionar no es subir «la capa de configuración» sola. Esa capa (piezas 1 a
 4. **La pieza 5 retira tres roles** (Churrero/a, Básico, Estándar): **nadie los tiene en producción** (las 3 membresías son Propietario activo), así que no quita permisos a nadie; sí impide dar de alta a alguien con ellos.
 5. **PM09 está bloqueada** por la deriva de producción (faltan dos funciones y la RPC base de reverso). Es otro trabajo, previo, y no está hecho.
 6. **El orden importa:** primero el servidor (todo es aditivo), después la aplicación, en una ventana corta y sin cajas abiertas. La aplicación nueva **no** debe salir antes que el servidor nuevo.
-7. **La puerta de CI general está en rojo** (32 pruebas sin registrar) y los contratos SQL de la capa de configuración **solo corren en mi réplica local**, no en CI. Hay que arreglarlo en el PR de promoción.
+7. **La puerta de CI general:** estaba en rojo por 32 pruebas sin registrar. El 3/10 quedaron **registradas las 33 pruebas** (241 archivos, 224 contratos activos), la puerta instala las dependencias de las pruebas de ejecución y hay un flujo nuevo para los contratos SQL de configuración. Probado en local (la batería Node de la puerta pasa 201/201 con Node 20; los contratos SQL en un PostgreSQL 16 limpio); **falta ver el resultado en GitHub** (`F7_CI_CAPA_CONFIGURACION_RESULTADO_2026-10-03.md`).
 
 Tú decides al final (§12). Mientras tanto, **no se aplica nada**.
 
@@ -44,8 +44,8 @@ Producción tiene un local productivo y muy pocos datos. Las comprobaciones prev
 1. **B06, B07, B09 y B10 (12 archivos) nunca se han aplicado en QA.** Comprobado hoy en QA, solo lectura: no existe ninguna tabla, función ni restricción con esos nombres y ninguna aparece en su registro de migraciones. Sí tienen contratos que corren en una base desechable de CI (flujos `abc-f4-b04`, `b08`, `b09`, `b10-card-data`, `b11`, `b12`). Regla del plan: **no se promociona lo que QA no ha probado**.
 2. **La pieza 2 está aplicada en QA, pero no figura en su registro de migraciones**: la aplicaste a mano desde el editor SQL el 2/10 (verificada 201/201; ya constaba en su informe). Antes de promocionar hay que **demostrar que su archivo coincide con lo que hay en QA** (huellas de sus ocho funciones) o registrarla en QA. Hoy lo sé por el registro, no por una comparación de cuerpos.
 3. **El registro de QA usa marcas de tiempo propias**, distintas de las del archivo, y nombres cortos o largos según cómo se aplicó. Para comparar con producción hay que usar el **nombre**, no la marca (apéndice A).
-4. **Los contratos SQL de la capa de configuración** (`cfg1`…`cfg6d`, `d13`, `a09-eventos`) y `d13-upgrade.sh` **no tienen flujo de CI**: solo los he ejecutado yo en la réplica local y en QA con `ROLLBACK`. Hay modelos de flujo para copiar (`abc-f5-c05-postgres.yml` y compañía).
-5. **`tests/netlify-publish-boundary.mjs` falla en el entorno de trabajo** («Publish content mismatch: fuente.js») y falla igual antes de mis cambios. No lo he investigado: revisar antes de promocionar.
+4. **Los contratos SQL de la capa de configuración** (`cfg1`…`cfg6d`, `d13`, `a09-eventos`), `d13-upgrade.sh` y el de la corrección de PM07 no tenían flujo de CI: **ya lo tienen** (`abc-f6-config-contract.yml`, creado el 3/10, probado en local en un clúster limpio y con 5 averías provocadas detectadas; sin ejecutar todavía en GitHub).
+5. **`tests/netlify-publish-boundary.mjs` no es un fallo real:** fallaba en mi entorno por una copia vieja del build; la batería de CI la reconstruye y con ello **pasa** (comprobado el 3/10).
 
 ## 5. Paquetes propuestos y orden
 
@@ -101,7 +101,7 @@ Lectura del código y de los informes de cada pieza (**no probado** en combinaci
 3. **Paridad por huellas:** P3 del archivo SQL sobre producción. Cada una de las 11 huellas (piezas 1, 2, 5 y D13) debe dar `COINCIDE`; si alguna da `DISTINTA`, la migración se negaría a aplicarse (por diseño) y **no se fuerza**. Comprobado en la réplica local que da `COINCIDE` sobre el estado previo de cada migración.
 4. **Base PM09 reconciliada** en producción (la RPC base `revertir_venta_stock` y los wrappers que faltan), como cambio de alcance aparte y con su propio preflight.
 5. **Pieza 2:** huellas de sus funciones iguales entre QA y el archivo (o registrada en QA).
-6. **Pruebas registradas:** los 32 archivos del apéndice B en `tests/ci/manifiesto_clasificacion.json` (hoy `inventario=240; esperado=208`), un flujo de CI Postgres para los contratos SQL de la capa de configuración y los contratos históricos F2/F4 de reembolsos adaptados a D13 (o decidir su destino).
+6. **Pruebas registradas:** hecho el 3/10 en la rama (los 33 archivos del apéndice B en `tests/ci/manifiesto_clasificacion.json`, el flujo de CI para los contratos SQL). Queda ver la puerta en verde en GitHub y adaptar los contratos históricos F2/F4 de reembolsos a D13 (o decidir su destino).
 7. **Roles retirados:** el 3/10 nadie los tenía; repetir P7 en la ventana.
 8. **m04d:** **aplicada en producción** (foto del 3/10): los dos arreglos de pantalla (cobro y historial de descuentos) son necesarios; el de cobro necesita B05 en producción antes que la aplicación.
 9. **D12:** política de 0 % del local productivo preparada (o la opción B decidida).
@@ -221,9 +221,9 @@ Solo con las autorizaciones de §12 y en este orden. **Parar al primer fallo.**
 
 Paquetes: F3/F4/F5 = «A · Base»; B06-B10 = «D · Proveedor de pagos»; P3 = «B · Catálogo con IVA»; Configuración = «C».
 
-## Apéndice B · Pruebas por registrar en el manifiesto de CI (32 archivos)
+## Apéndice B · Pruebas registradas el 3/10 en el manifiesto de CI (33 archivos)
 
-`tests/cfg/`: `a09-acciones-ui-runtime`, `a09-eventos-static-contract`, `a09-eventos-ui-runtime`, `a09-panel-ui-runtime`, `alcance-static-contract`, `cfg1-static-contract`, `cfg2-static-contract`, `cfg3-static-contract`, `cfg4-static-contract`, `cfg5-static-contract`, `cfg6-ui-contract`, `cfg6-ui-runtime`, `cfg6d-static-contract`, `cfg6d-ui-contract`, `cfg6d-ui-runtime`, `cfg6e-ui-contract`, `cfg6e-ui-runtime`, `cobro-lectura-runtime`, `cobro-lectura-static-contract`, `d13-static-contract`, `d13-ui-contract`, `d13-ui-runtime`, `f7-preflight-static-contract` (vigila que el archivo de comprobaciones previas sea de solo lectura y coincida con las migraciones y con este documento), `pm08-caja-ui-runtime` y las tres ayudas `lib/servidor-caja-falso`, `lib/servidor-reembolsos-falso`, `lib/tablas-sin-acceso-qa` (utilidades).
+`tests/cfg/`: `a09-acciones-ui-runtime`, `a09-eventos-static-contract`, `a09-eventos-ui-runtime`, `a09-panel-ui-runtime`, `alcance-static-contract`, `cfg1-static-contract`, `cfg2-static-contract`, `cfg3-static-contract`, `cfg4-static-contract`, `cfg5-static-contract`, `cfg6-ui-contract`, `cfg6-ui-runtime`, `cfg6d-static-contract`, `cfg6d-ui-contract`, `cfg6d-ui-runtime`, `cfg6e-ui-contract`, `cfg6e-ui-runtime`, `cobro-lectura-runtime`, `cobro-lectura-static-contract`, `d13-static-contract`, `d13-ui-contract`, `d13-ui-runtime`, `pm07-fix-static-contract`, `f7-preflight-static-contract` (vigila que el archivo de comprobaciones previas sea de solo lectura y coincida con las migraciones y con este documento), `pm08-caja-ui-runtime` y las tres ayudas `lib/servidor-caja-falso`, `lib/servidor-reembolsos-falso`, `lib/tablas-sin-acceso-qa` (utilidades).
 `tests/`: `p1-denied-keys-solo-local`, `p3-catalogo-bridge`, `p3/p3-actualizar-producto-resultado`, `p3/p3-catalogo-static-contract`, `p3/p3b-espejo-static-contract`.
 
-Además, sin contar para el validador pero sin ejecutarse en CI: los contratos SQL `cfg1`…`cfg6d`, `d13`, `a09-eventos` y `d13-upgrade.sh`. Las pruebas de ejecución (`*-ui-runtime`) necesitan librerías que no están en el repositorio (react 18.3.1, react-dom, jsdom) y el contrato de alcance necesita acorn y eslint-scope: el flujo de CI debe instalarlas.
+Además, sin contar para el validador (solo cuenta `.mjs`) y ejecutados por el flujo `abc-f6-config-contract.yml`: los contratos SQL `cfg1`…`cfg6d`, `d13`, `a09-eventos` y `d13-upgrade.sh`. Las pruebas de ejecución (`*-ui-runtime`) necesitan librerías que no están en el repositorio (react 18.3.1, react-dom, jsdom) y el contrato de alcance necesita acorn y eslint-scope: el flujo de CI debe instalarlas.
