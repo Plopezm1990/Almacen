@@ -8211,17 +8211,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         if (pagosError) throw pagosError;
         pagos = pagosData || [];
       }
-      const pagoIds = pagos.map((x3) => x3.id);
+      // Los intentos de pago llegan con abc_estado_pago_mixto_cuenta (más abajo): el navegador no puede leer pago_intentos directamente.
       let intentos = [];
-      if (pagoIds.length) {
-        const { data: intentosData, error: intentosError } = await supabase
-          .from("pago_intentos")
-          .select("id,pago_id,estado,provider_code,provider_reference,requested_amount,authorized_amount,captured_amount,settled_amount,authorization_status,capture_status,settlement_status,started_at,resolved_at")
-          .eq("empresa_id", empresaId).eq("local_id", localActivoId)
-          .in("pago_id", pagoIds).order("started_at", { ascending: false });
-      if (intentosError) throw intentosError;
-        intentos = intentosData || [];
-      }
       let incidencias = [];
       const { data: incidenciasData } = await supabase.rpc("abc_listar_incidencias_cobro", {
         p_empresa_id: empresaId,

@@ -64,6 +64,7 @@ Al generar el cobro de prueba en efectivo desde el TPV, Cowork vio el cartel roj
 - **Efecto:** mientras una cuenta tenga pagos, el panel de cobro del TPV muestra ese error cada vez que lee su estado, aunque el cobro haya salido bien.
 - **Arreglo previsto (no hecho, pendiente de autorización de Pedro):** dejar de consultar `pago_intentos` desde el navegador y usar los intentos que ya devuelve la función `abc_estado_pago_mixto_cuenta` (la pantalla ya los usa para sustituir el resultado de la consulta directa). Cambio pequeño en la pantalla, con contrato de ejecución con servidor falso que reproduzca la ACL.
 - **Decisión de Pedro (3/10/2026):** terminar primero la prueba de devoluciones y arreglar el cobro después, como pieza aparte.
+- **Arreglado el mismo día (solo QA), pendiente de comprobar en pantalla:** `F6_COBRO_LECTURA_INTENTOS_RESULTADO_2026-10-03.md`. Allí se anota además otra lectura directa de la misma clase (`abc_eventos`, historial de descuentos) que no se ha tocado.
 - **No impide probar devoluciones:** la pantalla de devoluciones solo lee `pagos`, que sí es legible; Cowork sigue desde el paso 2 con ese cobro de 3,85 €.
 - **Producción:** es un bloqueo a revisar antes de promocionar (si la migración m04d ya está allí, el cobro con pagos fallaría igual).
 
