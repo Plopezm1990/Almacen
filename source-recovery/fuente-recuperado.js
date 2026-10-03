@@ -882,8 +882,8 @@ var CONFIG_CAPACIDADES = [
     ["ABC_COBRO_INICIAR", "Iniciar un cobro"],
     ["ABC_COBRO_EFECTIVO", "Cobrar en efectivo"],
     ["ABC_COBRO_RESOLVER_INCIERTO", "Resolver cobros inciertos"],
-    ["ABC_REEMBOLSO_SOLICITAR", "Solicitar devoluciones"],
-    ["ABC_REEMBOLSO_CONFIRMAR", "Confirmar devoluciones"]
+    ["ABC_REEMBOLSO_SOLICITAR", "Solicitar devoluciones (el Cajero/a necesita aprobación)"],
+    ["ABC_REEMBOLSO_CONFIRMAR", "Aprobar y confirmar devoluciones"]
   ] },
   { grupo: "Caja y documentos", items: [
     ["ABC_CAJA_OPERAR", "Abrir, mover y cerrar la caja"],
@@ -3620,7 +3620,7 @@ function GestionAlmacen() {
     }
   ), tab === "devoluciones" && /* @__PURE__ */ import_react4.default.createElement(
     Devoluciones,
-    { key: localActivoId || "todos", productos: productosDelLocalActivo, proveedores, devoluciones: devolucionesDelLocalActivo, movimientos: movimientosDelLocalActivo, registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion, saltoProveedor: saltoDevolucionProveedor, empresaId: empresaDelLocalActivo?.id || "", localId: localActivoId || "" }
+    { key: localActivoId || "todos", productos: productosDelLocalActivo, proveedores, devoluciones: devolucionesDelLocalActivo, movimientos: movimientosDelLocalActivo, registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion, saltoProveedor: saltoDevolucionProveedor, empresaId: empresaDelLocalActivo?.id || "", localId: localActivoId || "", rolPerfil: miPerfil?.rol || "" }
   ), tab === "facturas" && /* @__PURE__ */ import_react4.default.createElement(
     Facturas,
     {
@@ -17534,7 +17534,12 @@ function mensajeErrorReembolsoB08(error, fallback = "No se ha podido completar e
     ["operating_day_cliente_no_autoritativo", "El día operativo debe resolverlo el servidor; recarga el local."],
     ["conversion_reembolso_no_habilitada", "No se puede reembolsar un pago con conversión de moneda en este punto."],
     ["reembolso_ya_resuelto", "El reembolso ya fue resuelto con otro resultado."],
-    ["provider_reembolso_reference_conflict", "El proveedor ya dejó una referencia distinta para este reembolso."]
+    ["provider_reembolso_reference_conflict", "El proveedor ya dejó una referencia distinta para este reembolso."],
+    ["abc_aprobar_reembolso_no_autorizado", "Tu usuario no tiene permiso para aprobar reembolsos."],
+    ["reembolso_pendiente_aprobacion", "Este reembolso todavía no está aprobado: un Encargado o el Propietario tiene que aprobarlo antes."],
+    ["reembolso_aprobador_distinto_solicitante", "No puedes aprobar una solicitud que hiciste tú: tiene que aprobarla otra persona."],
+    ["reembolso_ya_aprobado", "Este reembolso ya estaba aprobado. Actualiza la pantalla."],
+    ["reembolso_no_aprobable", "Este reembolso ya no se puede aprobar (está resuelto o cancelado). Actualiza la pantalla."]
   ];
   const encontrado = mensajes.find(([codigo]) => msg.includes(codigo));
   return encontrado ? encontrado[1] : msg ? `${fallback} ${msg}` : fallback;
@@ -17592,7 +17597,7 @@ async function contextoTerminalReembolsoB08(supabase, empresaId, localId, requie
   return { terminalId, sessionId, cajaId: cajaSesion.caja_id };
 }
 
-function ReembolsosEconomicosB08({ empresaId = "", localId = "" }) {
+function ReembolsosEconomicosB08({ empresaId = "", localId = "", rolPerfil = "" }) {
   const h3 = import_react4.default.createElement;
   const [pagos, setPagos] = import_react4.default.useState([]);
   const [reembolsos, setReembolsos] = import_react4.default.useState([]);
@@ -17606,6 +17611,8 @@ function ReembolsosEconomicosB08({ empresaId = "", localId = "" }) {
   const [mensaje, setMensaje] = import_react4.default.useState("");
   const [cancelandoId, setCancelandoId] = import_react4.default.useState("");
   const [motivoCancelacion, setMotivoCancelacion] = import_react4.default.useState("");
+  const [usuarioId, setUsuarioId] = import_react4.default.useState("");
+  const [permisos, setPermisos] = import_react4.default.useState({ solicitar: null, confirmar: null });
 
   async function cargar() {
     if (!empresaId || !localId) {
@@ -17622,6 +17629,12 @@ function ReembolsosEconomicosB08({ empresaId = "", localId = "" }) {
     setError("");
     try {
       const supabase = await window.getSupabaseClient();
+      try {
+        const sesionUsuario = await supabase.auth.getSession();
+        setUsuarioId(String(sesionUsuario?.data?.session?.user?.id || ""));
+      } catch (e3) {
+        setUsuarioId("");
+      }
       const checkoutsResponse = await supabase
         .from("checkouts")
         .select("id,currency_code,estado,operating_day,created_at")
@@ -17653,7 +17666,7 @@ function ReembolsosEconomicosB08({ empresaId = "", localId = "" }) {
       if (pagoIds.length > 0) {
         const reembolsosResponse = await supabase
           .from("reembolsos")
-          .select("id,pago_id,estado,payment_currency_code,importe_solicitado,provider_code,provider_reference,motivo,created_at,resolved_at")
+          .select("id,pago_id,estado,payment_currency_code,importe_solicitado,provider_code,provider_reference,motivo,created_at,resolved_at,created_by,aprobado_por,aprobado_at")
           .eq("empresa_id", empresaId)
           .eq("local_id", localId)
           .in("pago_id", pagoIds)
@@ -17675,6 +17688,27 @@ function ReembolsosEconomicosB08({ empresaId = "", localId = "" }) {
   (0, import_react4.useEffect)(() => {
     cargar();
   }, [empresaId, localId]);
+  (0, import_react4.useEffect)(() => {
+    let activo = true;
+    setPermisos({ solicitar: null, confirmar: null });
+    if (!empresaId || !localId || !rolPerfil) return void 0;
+    (async () => {
+      try {
+        const d2 = await configRpc("abc_obtener_capacidades_rol", { p_empresa_id: empresaId, p_local_id: localId });
+        const celdaDe = (capacidad) => {
+          const fila = (d2?.capacidades || []).find((c3) => c3.capacidad === capacidad);
+          const celda = fila ? (fila.roles || []).find((r2) => r2.rol === rolPerfil) : null;
+          return celda ? celda.efectivo === true : false;
+        };
+        if (activo) setPermisos({ solicitar: celdaDe("ABC_REEMBOLSO_SOLICITAR"), confirmar: celdaDe("ABC_REEMBOLSO_CONFIRMAR") });
+      } catch (e2) {
+        if (activo) setPermisos({ solicitar: null, confirmar: null });
+      }
+    })();
+    return () => {
+      activo = false;
+    };
+  }, [empresaId, localId, rolPerfil]);
 
   const reembolsosPorPago = (0, import_react4.useMemo)(() => {
     const mapa = new Map();
@@ -17729,7 +17763,7 @@ function ReembolsosEconomicosB08({ empresaId = "", localId = "" }) {
         p_operating_day: operatingDay
       });
       if (rpcError) throw rpcError;
-      setMensaje(`Solicitud creada como ${data?.estado || "PENDIENTE"}. El simulador no envía dinero a un proveedor real.`);
+      setMensaje(data?.requiere_aprobacion === true ? "Solicitud creada y pendiente de aprobación: no sale dinero hasta que un Encargado o el Propietario la apruebe." : `Solicitud creada como ${data?.estado || "PENDIENTE"}. El simulador no envía dinero a un proveedor real.`);
       limpiarFormulario();
       await cargar();
     } catch (e2) {
@@ -17761,9 +17795,38 @@ function ReembolsosEconomicosB08({ empresaId = "", localId = "" }) {
         p_operating_day: operatingDay
       });
       if (rpcError) throw rpcError;
-      setMensaje("Solicitud cancelada y saldo liberado.");
+      setMensaje(row.aprobado_at ? "Solicitud cancelada y saldo liberado." : "Solicitud rechazada y saldo liberado.");
       setCancelandoId("");
       setMotivoCancelacion("");
+      await cargar();
+    } catch (e2) {
+      setError(mensajeErrorReembolsoB08(e2));
+    } finally {
+      setProcesando("");
+    }
+  }
+
+  async function aprobar(row) {
+    if (procesando) return;
+    setProcesando(`aprobar:${row.id}`);
+    setError("");
+    setMensaje("");
+    try {
+      const supabase = await window.getSupabaseClient();
+      const terminal = await contextoTerminalReembolsoB08(supabase, empresaId, localId, false);
+      const pago = pagosVista.find((item) => String(item.id) === String(row.pago_id));
+      const operatingDay = pago?.checkout?.operating_day;
+      if (!operatingDay) throw new Error("operating_day_servidor_ausente");
+      const { error: rpcError } = await supabase.rpc("abc_aprobar_reembolso", {
+        p_operation_id: `b08.ui.approve.${row.id}`,
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_reembolso_id: row.id,
+        p_terminal_id: terminal.terminalId,
+        p_operating_day: operatingDay
+      });
+      if (rpcError) throw rpcError;
+      setMensaje(String(pago?.medio || "") === "EFECTIVO" ? "Solicitud aprobada. Ahora se puede confirmar el efectivo." : "Solicitud aprobada. El simulador no envía dinero a un proveedor real.");
       await cargar();
     } catch (e2) {
       setError(mensajeErrorReembolsoB08(e2));
@@ -17821,20 +17884,27 @@ function ReembolsosEconomicosB08({ empresaId = "", localId = "" }) {
       h3(Field, { label: "Motivo obligatorio" }, h3(Input, { value: motivo, disabled: !!procesando, onChange: (e2) => setMotivo(e2.target.value), placeholder: "Ej: cobro duplicado o pedido cancelado" })),
       error && h3("div", { className: "text-[11.5px] mb-2", style: { color: C2.red } }, error),
       mensaje && h3("div", { className: "text-[11.5px] mb-2", style: { color: C2.accent } }, mensaje),
-      h3(Btn, { disabled: !!procesando || !pagoSeleccionado, onClick: solicitar }, procesando === "solicitar" ? "Solicitando…" : "Solicitar reembolso")
+      permisos.solicitar === false && h3("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft }, "data-aviso-reembolso": "sin-permiso" }, "Tu usuario no tiene permiso para solicitar reembolsos. El Propietario puede activarlo en Sistema → Configuración → Permisos."),
+      permisos.solicitar === true && permisos.confirmar === false && h3("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft }, "data-aviso-reembolso": "con-aprobacion" }, "Lo que solicites quedará pendiente de aprobación: no sale dinero hasta que un Encargado o el Propietario lo apruebe."),
+      h3(Btn, { disabled: !!procesando || !pagoSeleccionado || permisos.solicitar === false, onClick: solicitar }, procesando === "solicitar" ? "Solicitando…" : "Solicitar reembolso")
     ),
     h3("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Solicitudes y estados"),
     reembolsos.length === 0 ? h3(Empty, { text: "Todavía no hay solicitudes de reembolso en este local." }) : h3("div", { className: "space-y-2" }, reembolsos.map((row) => {
       const pago = pagosVista.find((item) => String(item.id) === String(row.pago_id));
       const esPendiente = ["PENDIENTE", "DESCONOCIDO"].includes(String(row.estado));
       const esEfectivo = String(pago?.medio || "") === "EFECTIVO";
+      const pendienteAprobacion = String(row.estado) === "PENDIENTE" && !row.aprobado_at;
+      const esMia = !!usuarioId && String(row.created_by || "") === usuarioId;
       return h3(Card, { key: row.id },
-        h3("div", { className: "flex items-center justify-between gap-2 text-[12.5px]" }, h3("span", null, `€${fmt(row.importe_solicitado)} · ${pago?.medio || "Pago"}`), h3(Pill2, { color: colorEstadoB08(row.estado) }, etiquetaEstadoB08(row.estado))),
+        h3("div", { className: "flex items-center justify-between gap-2 text-[12.5px]" }, h3("span", null, `€${fmt(row.importe_solicitado)} · ${pago?.medio || "Pago"}`), h3(Pill2, { color: colorEstadoB08(row.estado) }, pendienteAprobacion ? "Pendiente de aprobación" : etiquetaEstadoB08(row.estado))),
         h3("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, `${String(row.created_at || "").slice(0, 16).replace("T", " ")} · motivo: ${row.motivo}`),
         row.provider_code && h3("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, `Proveedor: ${row.provider_code} · referencia: ${row.provider_reference || "—"}`),
-        esPendiente && h3("div", { className: "flex gap-2 flex-wrap mt-2" },
-          esEfectivo && h3(Btn, { small: true, disabled: !!procesando, onClick: () => confirmarEfectivo(row) }, procesando === `efectivo:${row.id}` ? "Confirmando…" : "Confirmar efectivo"),
-          cancelandoId !== row.id && h3(Btn, { small: true, variant: "ghost", disabled: !!procesando, onClick: () => { setCancelandoId(row.id); setMotivoCancelacion(""); setError(""); } }, "Cancelar solicitud")
+        pendienteAprobacion && h3("div", { className: "text-[11.5px] mt-1", style: { color: C2.amber }, "data-aviso-aprobacion": "1" }, permisos.confirmar === false ? "Esperando a que la apruebe un Encargado o el Propietario. Hasta entonces no sale dinero." : esMia ? "Tiene que aprobarla otra persona. Hasta entonces no sale dinero." : "Revisa la solicitud y apruébala o recházala. Hasta que se apruebe no sale dinero."),
+        String(row.estado) === "PENDIENTE" && row.aprobado_at && h3("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, `Aprobada el ${String(row.aprobado_at).slice(0, 16).replace("T", " ")}`),
+        esPendiente && permisos.confirmar !== false && h3("div", { className: "flex gap-2 flex-wrap mt-2" },
+          pendienteAprobacion && !esMia && h3(Btn, { small: true, disabled: !!procesando, onClick: () => aprobar(row) }, procesando === `aprobar:${row.id}` ? "Aprobando…" : "Aprobar"),
+          !pendienteAprobacion && esEfectivo && h3(Btn, { small: true, disabled: !!procesando, onClick: () => confirmarEfectivo(row) }, procesando === `efectivo:${row.id}` ? "Confirmando…" : "Confirmar efectivo"),
+          cancelandoId !== row.id && h3(Btn, { small: true, variant: "ghost", disabled: !!procesando, onClick: () => { setCancelandoId(row.id); setMotivoCancelacion(""); setError(""); } }, pendienteAprobacion ? "Rechazar solicitud" : "Cancelar solicitud")
         ),
         cancelandoId === row.id && h3("div", { className: "mt-2 p-2 rounded-lg", style: { background: C2.bg } }, h3(Field, { label: "Motivo de cancelación" }, h3(Input, { value: motivoCancelacion, disabled: !!procesando, onChange: (e2) => setMotivoCancelacion(e2.target.value), placeholder: "Ej: cliente cambió la forma de devolución" })), h3("div", { className: "flex gap-2" }, h3(Btn, { small: true, variant: "danger", disabled: !!procesando, onClick: () => cancelar(row) }, procesando === `cancelar:${row.id}` ? "Cancelando…" : "Confirmar cancelación"), h3(Btn, { small: true, variant: "ghost", disabled: !!procesando, onClick: () => setCancelandoId("") }, "Volver")))
       );
@@ -17842,7 +17912,7 @@ function ReembolsosEconomicosB08({ empresaId = "", localId = "" }) {
   );
 }
 
-function Devoluciones({ productos = [], proveedores = [], devoluciones = [], movimientos = [], registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion, saltoProveedor = 0, empresaId = "", localId = "" }) {
+function Devoluciones({ productos = [], proveedores = [], devoluciones = [], movimientos = [], registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion, saltoProveedor = 0, empresaId = "", localId = "", rolPerfil = "" }) {
   const h3 = import_react4.default.createElement;
   const [vista, setVista] = import_react4.default.useState("cliente");
   (0, import_react4.useEffect)(() => {
@@ -18015,7 +18085,7 @@ function Devoluciones({ productos = [], proveedores = [], devoluciones = [], mov
     null,
     h3(SectionTitle, null, "Devoluciones"),
     h3("div", { className: "flex gap-1.5 mb-4 flex-wrap" }, botonVista("cliente", "De cliente"), botonVista("proveedor", "A proveedor"), botonVista("reembolso", "Reembolso económico")),
-    vista === "reembolso" && h3(ReembolsosEconomicosB08, { empresaId, localId }),
+    vista === "reembolso" && h3(ReembolsosEconomicosB08, { empresaId, localId, rolPerfil }),
     vista !== "reembolso" && h3(
       import_react4.default.Fragment,
       null,

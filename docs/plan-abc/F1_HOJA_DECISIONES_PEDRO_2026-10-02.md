@@ -153,10 +153,12 @@ el Propietario) queda aplicado. **D13 queda sin permiso para el cajero** (ver el
 
 **Sigue abierto (pieza 5):**
 
-- **Devoluciones (D13, «el cajero solo con aprobación»).** Por lectura del código, `abc_solicitar_reembolso` encola el efecto hacia el
-  proveedor al **solicitar** (no al confirmar) cuando el pago no es en efectivo. Antes de conectar un proveedor hay que cambiar el flujo
-  para que nada salga sin aprobación; entonces se podrá dar la capacidad al cajero. Hoy nadie puede dársela (techo en Encargado).
-  **Hallazgos y plan presentados el 3/10/2026** (sin implementar; esperan las decisiones A a D de Pedro): `F6_D13_DEVOLUCIONES_HALLAZGOS_Y_PLAN_2026-10-03.md`.
+- ~~**Devoluciones (D13, «el cajero solo con aprobación»).**~~ → **hecho el 3/10/2026, solo QA** (decisiones A «Servidor, permiso y pantalla», B «Encargado y Propietario
+  aprueban», C «lo que solicita un Encargado o el Propietario se aprueba en el acto» y D «el Cajero/a no puede solicitar por defecto; lo activa el Propietario»).
+  `abc_solicitar_reembolso` ya **no encola el envío al proveedor** si quien solicita no puede confirmar; la función nueva `abc_aprobar_reembolso` lo encola al aprobar
+  y nadie aprueba lo que solicitó él mismo; `ABC_REEMBOLSO_SOLICITAR` se puede dar al Cajero/a (techo Cajero/a) y `ABC_REEMBOLSO_CONFIRMAR` sigue con techo Encargado; la pantalla
+  «Reembolso económico» muestra «Pendiente de aprobación» con Aprobar y Rechazar. Informe: `F6_D13_DEVOLUCIONES_RESULTADO_2026-10-03.md`; guía de prueba:
+  `F6_PRUEBA_PREVIEW_DEVOLUCIONES_2026-10-03.md` (pendiente de que Pedro la pruebe; hace falta un cobro de prueba en efectivo).
 - **Producción**: revisar quién tiene Churrero/a, Básico o Estándar (perderían permisos) y si las funciones de permisos coinciden con las
   de QA (la migración se niega a aplicarse si no).
 - ~~**Pantalla (pieza 6)**: matriz de permisos del propietario, quitar los tres roles de la lista de alta de empleados y ocultar «reabrir

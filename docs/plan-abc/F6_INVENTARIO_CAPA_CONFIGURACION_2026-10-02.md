@@ -4,7 +4,7 @@ Fecha: 2026-10-02
 Alcance: solo lectura. Base de datos de QA (`qjqorixtkilwsndqayyx`) y código del repositorio. **Producción no
 consultada. Ningún cambio de código, de base de datos ni de despliegue.**
 Autorización: «Sí, autorizo» a la etapa de inventario y diseño (Pedro, 2/10/2026).
-Estado: `INVENTARIO_HECHO_PIEZAS_1_A_5_APLICADAS_Y_VERIFICADAS_EN_QA_PANTALLA_6A_6B_6C_6F_ENTREGADA_Y_PROBADA_POR_PEDRO_6D_Y_6E_IMPLEMENTADAS_Y_PROBADAS_EN_PANTALLA_Y_EN_QA` (pieza 6: `F6_PIEZA6_PANTALLA_RESULTADO_2026-10-02.md`; 6d: `F6_PIEZA6D_CIERRE_DIFERENCIA_RESULTADO_2026-10-02.md`; 6e: `F6_PIEZA6E_MODALIDAD_AL_ABRIR_CUENTA_RESULTADO_2026-10-02.md`) (pieza 5: `F6_PIEZA5_PERMISOS_2026-10-02.md`) (pieza 4: `F6_PIEZA4_EQUIPOS_2026-10-02.md`) (pieza 3: `F6_PIEZA3_MODALIDADES_2026-10-02.md`) (pieza 1: `F6_PIEZA1_DIA_CAJAS_2026-10-02.md`; pieza 2: `F6_PIEZA2_DIFERENCIA_CAJA_2026-10-02.md`)
+Estado: `INVENTARIO_HECHO_PIEZAS_1_A_5_APLICADAS_Y_VERIFICADAS_EN_QA_PANTALLA_6A_6B_6C_6F_ENTREGADA_Y_PROBADA_POR_PEDRO_6D_Y_6E_IMPLEMENTADAS_Y_PROBADAS_EN_PANTALLA_Y_EN_QA_D13_IMPLEMENTADA_Y_VERIFICADA_EN_QA_PENDIENTE_PRUEBA_EN_PANTALLA` (D13: `F6_D13_DEVOLUCIONES_RESULTADO_2026-10-03.md`) (pieza 6: `F6_PIEZA6_PANTALLA_RESULTADO_2026-10-02.md`; 6d: `F6_PIEZA6D_CIERRE_DIFERENCIA_RESULTADO_2026-10-02.md`; 6e: `F6_PIEZA6E_MODALIDAD_AL_ABRIR_CUENTA_RESULTADO_2026-10-02.md`) (pieza 5: `F6_PIEZA5_PERMISOS_2026-10-02.md`) (pieza 4: `F6_PIEZA4_EQUIPOS_2026-10-02.md`) (pieza 3: `F6_PIEZA3_MODALIDADES_2026-10-02.md`) (pieza 1: `F6_PIEZA1_DIA_CAJAS_2026-10-02.md`; pieza 2: `F6_PIEZA2_DIFERENCIA_CAJA_2026-10-02.md`)
 
 ## Qué se pidió
 
@@ -44,7 +44,7 @@ configurable con 0 % inicial (D12), diferencias de caja a la auditoría con moti
    - **Reabrir un cierre provisional** (`abc_reabrir_cierre_provisional`) usa `ABC_CAJA_OPERAR`, es decir, **hoy
      también puede hacerlo el cajero**; D14 y la plantilla D19 piden solo el propietario.
    - **Solicitar devoluciones:** hoy solo propietario y encargado (`ABC_REEMBOLSO_SOLICITAR`); D13 pide que el
-     cajero pueda solicitarlas con aprobación.
+     cajero pueda solicitarlas con aprobación. **Resuelto el 3/10/2026** (D13, ver `F6_D13_DEVOLUCIONES_RESULTADO_2026-10-03.md`).
    - **Emitir y rectificar documentos:** no existen todavía funciones para hacerlo (puerta fiscal cerrada). Las
      funciones documentales actuales (clasificar, configurar modalidad fiscal, conservar, evaluar) exigen
      `ABC_EMISOR_CAMBIAR` (propietario y encargado). Las casillas D19 de «emitir» y «rectificar» no tienen

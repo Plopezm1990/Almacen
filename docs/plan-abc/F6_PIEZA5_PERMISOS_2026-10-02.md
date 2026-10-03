@@ -59,6 +59,8 @@ mover alguna (por ejemplo, ABC_PEDIDO_CANCELAR o la merma de cocina), es un camb
 
 ## Hallazgo (D13) y decisión pendiente de diseño
 
+> **Resuelto el 3/10/2026** con la pieza D13 (solo QA): `abc_solicitar_reembolso` ya no encola el envío si quien solicita no puede confirmar, hay una función nueva `abc_aprobar_reembolso` y el permiso de solicitar se puede dar al Cajero/a. Ver `F6_D13_DEVOLUCIONES_RESULTADO_2026-10-03.md`. Lo que sigue describe lo que se encontró entonces.
+
 Al leer `abc_solicitar_reembolso` se ve que, cuando el pago **no es en efectivo**, la función **encola el efecto hacia el
 proveedor en el momento de solicitar** la devolución, no al confirmarla. Hoy no hay proveedor conectado, así que no sale
 nada; pero con un proveedor real, quien pueda *solicitar* movería dinero sin aprobación. Por eso D13 («el cajero solo con

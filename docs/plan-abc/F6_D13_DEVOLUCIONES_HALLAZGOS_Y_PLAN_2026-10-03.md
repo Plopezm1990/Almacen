@@ -3,7 +3,7 @@
 Fecha: 2026-10-03
 Alcance de este documento: **solo lectura** de las migraciones, del código de la aplicación y de la documentación, más **una consulta de solo lectura a QA** (cuántos pagos, reembolsos y efectos hay). **Ningún cambio de pantalla, de base de datos ni de despliegue.** Producción no consultada.
 Autorización: «D13: devoluciones» elegida por Pedro el 3/10/2026 (solo QA). El plan se presenta antes de implementar y las decisiones de la última sección esperan su respuesta.
-Estado: `PLAN_PRESENTADO_SIN_IMPLEMENTAR`
+Estado: `PLAN_EJECUTADO_VER_RESULTADO` (decisiones A «Servidor, permiso y pantalla», B «Encargado y Propietario», C «Se aprueba en el acto» y D «No por defecto; lo activa el Propietario», Pedro, 3/10/2026; informe: `F6_D13_DEVOLUCIONES_RESULTADO_2026-10-03.md`)
 
 ## Qué pide D13
 
