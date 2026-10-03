@@ -18,20 +18,20 @@ Origen: Pedro eligió «Cerrar contigo las decisiones del primer paquete» y res
 | 6 | PM09 | **Trabajo aparte, después del primer paquete** | Se prepara el plan de reconciliación de la base de producción con QA (solo documento y pruebas locales). No bloquea el primer paquete |
 | 7 | Cómo se publica | **PR nuevo desde `release` con el candidato congelado y un solo despliegue de producción (D28)**, no el PR 118 | El PR 118 sigue siendo un preview de QA «NO FUSIONAR» |
 | 8 | Cómo se autoriza | **Una sola autorización para el primer paquete entero** | Ver «Cómo se autoriza» |
-| 9 | Ventana | **Sin fecha fija: se acuerda cuando el paquete esté listo** | Fuera del servicio, con aviso previo y con producción sin cajas, cuentas ni envíos pendientes |
+| 9 | Ventana | **Sin fecha fija: se acuerda cuando el paquete esté listo** | Fuera del servicio, con aviso previo y con producción sin cajas abiertas, pagos ni reembolsos en curso (las únicas excepciones son los restos conocidos de la prueba A10, decisiones 14 y 15) |
 | 10 | Quién ejecuta | **Claude, con el visto bueno de Pedro y Pedro presente** | Se ejecutan los pasos del documento uno a uno, comprobando cada huella |
 | 11 | Corrección de PM07 | **Sí, en la base del primer paquete** | Migración `20261003130000`, escrita y probada, sin aplicar |
 | 12 | Las 2 cuentas abiertas y el envío pendiente | **Mirar qué son, solo lectura** | Hecho (§3) |
 | 13 | D30 (P1: aviso de guardado y plazo de 6 h) | **Sí, valido los textos y las 6 h** (Pedro, 3/10/2026, después de verlo en el preview del candidato, §5) | P1 se queda en el candidato tal cual (`index-storage-bootstrap.js`). D30 queda cerrada |
-| 14 | Quién cierra las 2 cuentas abiertas de producción | Pedro dijo «las cierro yo en la ventana, con tu autorización expresa» (3/10/2026) **partiendo de que el servidor tenía una función para cerrarlas**. No la tiene (§3 bis) | **REABIERTA.** Hay que elegir entre dejarlas como restos conocidos, una corrección de datos en la ventana o abrir una caja y cancelar los pedidos (§3 bis) |
-| 15 | La comanda de cocina pendiente | **Decidir cuando sepamos qué es** (Pedro, 3/10/2026). Ya se sabe (§3 bis): resto de la prueba A10 | **Pendiente de decisión:** descartarla en la ventana (con su sí específico) o dejarla aceptada por escrito en la comprobación P8 |
+| 14 | Las 2 cuentas abiertas de producción (y sus 2 pedidos enviados) | **Se dejan como restos conocidos; no se escribe nada en producción** (Pedro, 3/10/2026). Sustituye a su primera respuesta, que partía de que el servidor tenía una función para cerrarlas (§3 bis) | La comprobación P8b las acepta por identificador (cuentas `528c0715-…` y `40431ef0-…`; pedidos `79762954-…` y `c9d51daf-…`) y vigila que no haya nada más. Se pueden limpiar después, en un paquete aparte con su propia autorización |
+| 15 | La comanda de cocina pendiente | **Se deja y P8b la acepta** (`22ca6555-…`) (Pedro, 3/10/2026) | Mientras no haya un proceso de cocina que recoja efectos, nadie la consume. Si algún día se pone en marcha, hay que descartarla antes (reclamarla y abandonarla) para que no salga una comanda de prueba |
 
 ## 2. Cómo se autoriza (decisión 8)
 
 Pedro quiere dar **una sola autorización** para el primer paquete entero en lugar de una por migración o por grupo. Para que eso sea seguro, cuando llegue el momento se hará así, y solo entonces:
 
 1. **Candidato exacto congelado:** commit y `sha256` de `fuente.js` del PR nuevo, con la CI en verde.
-2. **Foto de solo lectura repetida** en la ventana y comparada con la del 3/10: sin migraciones a medias, huellas esperadas (`COINCIDE`) y producción sin cajas, cuentas ni envíos pendientes.
+2. **Foto de solo lectura repetida** en la ventana y comparada con la del 3/10: sin migraciones a medias, huellas esperadas (`COINCIDE`) y producción sin cajas abiertas, pagos ni reembolsos en curso, con las únicas excepciones conocidas (las 2 cuentas, sus 2 pedidos y la comanda de la prueba A10; bloque P8b).
 3. **Pedro presente y diciendo expresamente que sí** sobre ese candidato y esa foto (una frase suya, no una respuesta ambigua).
 4. Ejecución en el orden del documento, **comprobando la huella de cada migración tras aplicarla** (la foto detectó que una migración de producción perdió una barra invertida al aplicarse por otro camino).
 5. **Me detengo a la primera diferencia** con lo esperado (una huella distinta, un fallo de migración, un objeto que no debía estar) y no sigo sin que Pedro lo decida; la autorización única **no** cubre continuar tras un fallo.
@@ -79,12 +79,14 @@ Consecuencia: la decisión 14 se tomó sobre un supuesto falso y **se reabre** (
 2. **Corrección de datos en la ventana**, en una sola transacción con comprobaciones previas (exactamente esas 2 cuentas `ABIERTA`, esos pedidos `ENVIADO`, esas líneas, cero pagos): cuentas `CANCELADA`, pedidos y líneas cancelados y la comanda descartada. Es editar filas, no usar una función del servidor, y necesita su sí específico.
 3. **Abrir una caja en producción y cancelar los pedidos con la función del servidor:** deja las cuentas `ABIERTA` igualmente y obliga a abrir y cerrar una caja real. No recomendada.
 
+**Decisión de Pedro (3/10/2026): opción 1, dejarlas como restos conocidos, y lo mismo para la comanda.** El bloque P8b de las comprobaciones previas (solo lectura) las vigila por identificador: el 3/10/2026 en producción da 0, 0, 0 («fuera de lo conocido») y 2, 2, 1 («restos conocidos»).
+
 ## 4. Lo que queda por hacer, por orden
 
 1. Cuando Pedro lo pida: llevar B06–B10 a QA (decisión 3), con su autorización expresa.
 2. ~~Preparar el PR nuevo desde `release` con el candidato exacto (decisión 7) y la CI en verde.~~ **HECHO (3/10/2026):** PR borrador 119, CI en verde, `fuente.js` `5d8aef59…`.
 3. Preparar el plan de reconciliación de PM09 (decisión 6), solo documento.
-4. Acordar la ventana (decisión 9). Las dos cuentas y la comanda: decisiones 14 y 15 abiertas; no existe función para cerrar cuentas (§3 bis).
+4. Acordar la ventana (decisión 9). Las 2 cuentas y la comanda se dejan como restos conocidos (decisiones 14 y 15): no se escribe nada en producción y P8b los vigila.
 5. Dentro de la ventana: foto repetida, autorización expresa, ejecución con comprobación de cada huella.
 6. Paquete aparte para P3/P3b (decisión 2) tras el primero.
 

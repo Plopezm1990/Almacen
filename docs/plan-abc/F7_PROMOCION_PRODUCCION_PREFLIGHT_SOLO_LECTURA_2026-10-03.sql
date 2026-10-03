@@ -395,6 +395,35 @@ select 'pagos por estado', estado::text, count(*) from public.pagos group by est
 order by 1, 2;
 
 -- ============================================================================================================================
+-- P8b · Restos conocidos de la prueba A10 del 28/9 (decisiones 14 y 15 de Pedro, 3/10/2026: se dejan como están y P8 los acepta por identificador).
+--       Esperado el 3/10/2026: 0, 0, 0 en las tres primeras filas y 2, 2, 1 en las tres últimas. Cualquier otro valor = hay algo en curso que no es un resto conocido: PARAR y avisar.
+-- ============================================================================================================================
+select 'fuera de lo conocido: cuentas ABIERTA (esperado 0)' as que, count(*) as filas
+  from public.cuentas_comerciales
+ where estado = 'ABIERTA' and id::text not in ('528c0715-5026-4aa0-bbfa-6ff3db8e848a', '40431ef0-84f7-41d7-8e3e-bf06685d60b7')
+union all
+select 'fuera de lo conocido: pedidos BORRADOR, ABIERTO o ENVIADO (esperado 0)', count(*)
+  from public.pedidos_tpv
+ where estado in ('BORRADOR', 'ABIERTO', 'ENVIADO') and id::text not in ('79762954-51a8-4f81-8ef2-231259d2de22', 'c9d51daf-2b14-4642-a377-36aa9b79510f')
+union all
+select 'fuera de lo conocido: efectos PENDIENTE o EN_PROCESO (esperado 0)', count(*)
+  from public.efectos_pendientes
+ where estado in ('PENDIENTE', 'EN_PROCESO') and id::text <> '22ca6555-18b8-4d2f-8037-81ed2028fd6b'
+union all
+select 'resto conocido: cuentas aun ABIERTA (esperado 2)', count(*)
+  from public.cuentas_comerciales
+ where estado = 'ABIERTA' and id::text in ('528c0715-5026-4aa0-bbfa-6ff3db8e848a', '40431ef0-84f7-41d7-8e3e-bf06685d60b7')
+union all
+select 'resto conocido: pedidos aun ENVIADO (esperado 2)', count(*)
+  from public.pedidos_tpv
+ where estado = 'ENVIADO' and id::text in ('79762954-51a8-4f81-8ef2-231259d2de22', 'c9d51daf-2b14-4642-a377-36aa9b79510f')
+union all
+select 'resto conocido: comanda aun PENDIENTE (esperado 1)', count(*)
+  from public.efectos_pendientes
+ where estado = 'PENDIENTE' and id::text = '22ca6555-18b8-4d2f-8037-81ed2028fd6b'
+order by 1;
+
+-- ============================================================================================================================
 -- P9 · Reglas de día operativo ya existentes (A11) y la última actividad (para no promocionar durante el servicio)
 -- ============================================================================================================================
 select 'ultimo_evento' as que, max(occurred_at)::text as valor from public.abc_eventos
