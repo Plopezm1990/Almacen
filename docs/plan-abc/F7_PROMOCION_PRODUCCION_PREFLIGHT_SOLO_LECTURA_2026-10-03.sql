@@ -377,7 +377,8 @@ select m.rol, m.activo, count(*) as membresias
  order by 1, 2;
 
 -- ============================================================================================================================
--- P8 · Estado operativo (para elegir una ventana tranquila): cajas abiertas, cuentas abiertas, reembolsos pendientes, envíos pendientes.
+-- P8 · Estado operativo (para elegir una ventana tranquila): cajas abiertas, cuentas abiertas, reembolsos pendientes, envíos pendientes, pedidos sin cerrar y pagos.
+--      Ojo: ninguna operación del servidor cierra una cuenta (solo la fusión), así que «cuentas ABIERTA» no mide si hay algo en curso; sí lo miden los pedidos aún sin servir ni cancelar y los pagos.
 --      Las columnas se leen por nombre habitual; si alguna no existe en producción la consulta falla SIN efectos y se anota la deriva.
 -- ============================================================================================================================
 select 'caja_sesiones por estado' as que, estado::text as valor, count(*) as filas from public.caja_sesiones group by estado
@@ -387,6 +388,10 @@ union all
 select 'reembolsos por estado', estado::text, count(*) from public.reembolsos group by estado
 union all
 select 'efectos_pendientes por estado', estado::text, count(*) from public.efectos_pendientes group by estado
+union all
+select 'pedidos_tpv por estado', estado::text, count(*) from public.pedidos_tpv group by estado
+union all
+select 'pagos por estado', estado::text, count(*) from public.pagos group by estado
 order by 1, 2;
 
 -- ============================================================================================================================

@@ -23,7 +23,7 @@ Origen: Pedro eligió «Cerrar contigo las decisiones del primer paquete» y res
 | 11 | Corrección de PM07 | **Sí, en la base del primer paquete** | Migración `20261003130000`, escrita y probada, sin aplicar |
 | 12 | Las 2 cuentas abiertas y el envío pendiente | **Mirar qué son, solo lectura** | Hecho (§3) |
 | 13 | D30 (P1: aviso de guardado y plazo de 6 h) | **Sí, valido los textos y las 6 h** (Pedro, 3/10/2026, después de verlo en el preview del candidato, §5) | P1 se queda en el candidato tal cual (`index-storage-bootstrap.js`). D30 queda cerrada |
-| 14 | Quién cierra las 2 cuentas abiertas de producción | **Las cierra Claude en la ventana, con tu autorización expresa** (Pedro, 3/10/2026, después de pedir «mira más detalle», §3 bis) | Es un plan, **no** la autorización: en la ventana hará falta su sí específico sobre esas dos cuentas, tras repetir la foto. Es una corrección de datos y queda fuera de la autorización única. Mecanismo previsto: las funciones propias del servidor, no editar filas a mano (§3 bis) |
+| 14 | Quién cierra las 2 cuentas abiertas de producción | Pedro dijo «las cierro yo en la ventana, con tu autorización expresa» (3/10/2026) **partiendo de que el servidor tenía una función para cerrarlas**. No la tiene (§3 bis) | **REABIERTA.** Hay que elegir entre dejarlas como restos conocidos, una corrección de datos en la ventana o abrir una caja y cancelar los pedidos (§3 bis) |
 | 15 | La comanda de cocina pendiente | **Decidir cuando sepamos qué es** (Pedro, 3/10/2026). Ya se sabe (§3 bis): resto de la prueba A10 | **Pendiente de decisión:** descartarla en la ventana (con su sí específico) o dejarla aceptada por escrito en la comprobación P8 |
 
 ## 2. Cómo se autoriza (decisión 8)
@@ -64,14 +64,27 @@ Solo estados y fechas, sin datos de clientes. Producción: `flqercbgpgmmfaakrwkc
 
 **Conclusión por los datos (Pedro no lo recuerda):** son **restos de la prueba de validación de la pieza A10 (cocina) del 28/9**, no actividad comercial: no hay ni un solo cobro en toda la base y el único producto vendido es el de prueba.
 
-**Cómo se cerrarían (previsto, sin probar):** en producción existen las funciones del servidor `abc_cancelar_pedido(...)` (cancela el pedido de una cuenta) y `abc_abandonar_efecto(...)` (descarta un efecto pendiente). Hay que ensayar **antes en QA** qué estado final queda en la cuenta tras cancelar su pedido (si se cierra sola o hace falta otra operación) y si las funciones se pueden ejecutar desde la herramienta de administración. No se editan filas a mano.
+**Corrección (3/10/2026, lectura del código de producción y de QA, solo lectura): NO existe una operación del servidor que cierre o cancele una cuenta.** Lo que escribí antes («se cierran con las funciones propias del servidor») era un supuesto mío y era falso.
+
+| Qué | Hallazgo |
+|---|---|
+| Cerrar o cancelar una cuenta | La **única** función que cambia el estado de una cuenta es `abc_unir_cuentas` (fusionar): deja la cuenta de origen en `CERRADA` y la de destino sigue `ABIERTA`. No sirve para dejar cero cuentas abiertas. La tabla admite `CANCELADA`, pero nada la escribe |
+| Cancelar el pedido | `abc_cancelar_pedido` pasa el pedido y sus líneas a `CANCELADO`/`CANCELADA`, **no toca la cuenta** (sigue `ABIERTA`) y exige un terminal con una **sesión de caja abierta**. En producción hay 1 terminal activo y 0 sesiones abiertas (la única está `CERRADA_FINAL`): habría que abrir una caja en producción antes |
+| Descartar la comanda | `abc_abandonar_efecto` es una función de proceso (worker): exige que el efecto esté `EN_PROCESO` con el mismo `worker_ref` y un arrendamiento vigente. Primero habría que reclamarlo con `abc_reclamar_efectos_cocina` y luego abandonarlo con un error escrito |
+
+Consecuencia: la decisión 14 se tomó sobre un supuesto falso y **se reabre** (opciones abajo). Además, como ninguna operación cierra cuentas, el criterio de la comprobación P8 «sin cuentas abiertas» no sirve como medida de «nada en curso»: cualquier cuenta creada quedará `ABIERTA` salvo que se fusione. Lo que sí mide si hay algo en curso son los **pedidos aún sin servir ni cancelar** (por ejemplo `ENVIADO`), los pagos o reembolsos en curso, los efectos pendientes y las sesiones de caja abiertas. En QA se ve la diferencia: hay 7 cuentas `ABIERTA`, incluidas las de pedidos ya `SERVIDO` y un pago `REEMBOLSADO`.
+
+**Opciones para las 2 cuentas y la comanda:**
+1. **Dejarlas como restos conocidos** (sin escribir nada en producción) y adaptar P8: sin sesiones de caja abiertas, sin pagos ni reembolsos en curso y, como únicas excepciones por identificador, las 2 cuentas/pedidos y la comanda `22ca6555…`. Quedan documentadas y se limpian después, en un paquete aparte, si se quiere.
+2. **Corrección de datos en la ventana**, en una sola transacción con comprobaciones previas (exactamente esas 2 cuentas `ABIERTA`, esos pedidos `ENVIADO`, esas líneas, cero pagos): cuentas `CANCELADA`, pedidos y líneas cancelados y la comanda descartada. Es editar filas, no usar una función del servidor, y necesita su sí específico.
+3. **Abrir una caja en producción y cancelar los pedidos con la función del servidor:** deja las cuentas `ABIERTA` igualmente y obliga a abrir y cerrar una caja real. No recomendada.
 
 ## 4. Lo que queda por hacer, por orden
 
 1. Cuando Pedro lo pida: llevar B06–B10 a QA (decisión 3), con su autorización expresa.
 2. ~~Preparar el PR nuevo desde `release` con el candidato exacto (decisión 7) y la CI en verde.~~ **HECHO (3/10/2026):** PR borrador 119, CI en verde, `fuente.js` `5d8aef59…`.
 3. Preparar el plan de reconciliación de PM09 (decisión 6), solo documento.
-4. Acordar la ventana (decisión 9). Las dos cuentas: se cierran en la ventana con su sí específico (decisión 14), tras ensayarlo en QA. Falta decidir la comanda (decisión 15).
+4. Acordar la ventana (decisión 9). Las dos cuentas y la comanda: decisiones 14 y 15 abiertas; no existe función para cerrar cuentas (§3 bis).
 5. Dentro de la ventana: foto repetida, autorización expresa, ejecución con comprobación de cada huella.
 6. Paquete aparte para P3/P3b (decisión 2) tras el primero.
 
