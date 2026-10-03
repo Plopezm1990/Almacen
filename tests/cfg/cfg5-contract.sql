@@ -1,6 +1,7 @@
 -- Capa de configuración, PIEZA 5 · contrato vivo de permisos configurables, reabrir cierre (D14) y retirada de roles.
 --
--- Se ejecuta DESPUÉS de las migraciones de las piezas 1 y 5 (20261002190000 y 20261002240000), dentro de una
+-- Se ejecuta DESPUÉS de las migraciones de las piezas 1 y 5 y de D13 (20261002190000, 20261002240000 y 20261003100000; D13 cambia
+-- el techo de ABC_REEMBOLSO_SOLICITAR a «Cajero/a», por eso las comprobaciones de techo usan ABC_REEMBOLSO_CONFIRMAR), dentro de una
 -- transacción que termina en ROLLBACK:
 --
 --   begin; <este archivo>; select <resumen de la.log>; rollback;
@@ -198,10 +199,11 @@ begin
                     or (c.cajero and not private.abc_cap_techo_permite(c.techo, 'Cajero/a'))
                     or (c.camarero and not private.abc_cap_techo_permite(c.techo, 'Camarero/a'))
                     or not c.propietario), null);
-  perform pg_temp.ok('M1.4 lo delicado (dinero, documentos fiscales, reabrir) tiene techo en Encargado',
+  perform pg_temp.ok('M1.4 lo delicado (dinero, documentos fiscales, reabrir) tiene techo en Encargado (salvo solicitar devoluciones: techo Cajero/a desde D13)',
     (select array_agg(capacidad order by capacidad) from private.abc_cap_catalogo() where techo = 'ENCARGADO')
-      = array['ABC_CANCELACION_SENSIBLE','ABC_CIERRE_REABRIR','ABC_COBRO_RESOLVER_INCIERTO','ABC_EMISOR_CAMBIAR','ABC_REEMBOLSO_CONFIRMAR','ABC_REEMBOLSO_SOLICITAR']
-    and not exists (select 1 from private.abc_cap_catalogo() where techo not in ('TODOS', 'ENCARGADO')), null);
+      = array['ABC_CANCELACION_SENSIBLE','ABC_CIERRE_REABRIR','ABC_COBRO_RESOLVER_INCIERTO','ABC_EMISOR_CAMBIAR','ABC_REEMBOLSO_CONFIRMAR']
+    and (select array_agg(capacidad order by capacidad) from private.abc_cap_catalogo() where techo = 'CAJERO') = array['ABC_REEMBOLSO_SOLICITAR']
+    and not exists (select 1 from private.abc_cap_catalogo() where techo not in ('TODOS', 'ENCARGADO', 'CAJERO')), null);
 
   -- La función general no reconoce las capacidades de cocina y la de cocina no reconoce las demás (como antes).
   perform pg_temp.ok('M2.1 abc_tiene_capacidad no reconoce una capacidad de cocina', not pg_temp.cap(k_prop, 'CFG-LM1', 'ABC_COMANDA_VER', 'GENERAL'), null);
@@ -254,7 +256,7 @@ begin
   perform pg_temp.c_cfg('C2.3 un rol retirado no se configura', k_prop, 'cfg5-val-03', 'CFG-LA', 'LOCAL', 'Churrero/a', 'ABC_PEDIDO_CANCELAR', true, 'x', 'capacidad_rol_invalido');
   perform pg_temp.c_cfg('C2.4 un rol inexistente', k_prop, 'cfg5-val-04', 'CFG-LA', 'LOCAL', 'Gerente', 'ABC_PEDIDO_CANCELAR', true, 'x', 'capacidad_rol_invalido');
   perform pg_temp.c_cfg('C2.5 una capacidad inventada', k_prop, 'cfg5-val-05', 'CFG-LA', 'LOCAL', 'Cajero/a', 'ABC_INVENTADA', true, 'x', 'capacidad_invalida');
-  perform pg_temp.c_cfg('C2.6 el cajero no puede solicitar devoluciones (techo)', k_prop, 'cfg5-val-06', 'CFG-LA', 'LOCAL', 'Cajero/a', 'ABC_REEMBOLSO_SOLICITAR', true, 'x', 'capacidad_fuera_de_techo');
+  perform pg_temp.c_cfg('C2.6 el cajero no puede confirmar devoluciones (techo)', k_prop, 'cfg5-val-06', 'CFG-LA', 'LOCAL', 'Cajero/a', 'ABC_REEMBOLSO_CONFIRMAR', true, 'x', 'capacidad_fuera_de_techo');
   perform pg_temp.c_cfg('C2.7 el camarero no puede cambiar el emisor (techo)', k_prop, 'cfg5-val-07', 'CFG-LA', 'LOCAL', 'Camarero/a', 'ABC_EMISOR_CAMBIAR', true, 'x', 'capacidad_fuera_de_techo');
   perform pg_temp.c_cfg('C2.8 el cajero no puede reabrir cierres (techo)', k_prop, 'cfg5-val-08', 'CFG-LA', 'LOCAL', 'Cajero/a', 'ABC_CIERRE_REABRIR', true, 'x', 'capacidad_fuera_de_techo');
   perform pg_temp.c_cfg('C2.9 sin motivo', k_prop, 'cfg5-val-09', 'CFG-LA', 'LOCAL', 'Cajero/a', 'ABC_PEDIDO_CANCELAR', true, '  ', 'capacidad_motivo_requerido');
@@ -352,14 +354,14 @@ begin
   v2 := pg_temp.c_cfg('C5.7 se deja como estaba', k_prop, 'cfg5-0303', 'CFG-LA2', 'LOCAL', 'Encargado', 'ABC_CAJA_OPERAR', null, 'Fin');
   v2 := pg_temp.c_cfg('C5.8 se deja como estaba (2)', k_prop, 'cfg5-0304', 'CFG-LA2', 'LOCAL', 'Encargado', 'ABC_REEMBOLSO_CONFIRMAR', null, 'Fin');
   perform pg_temp.ok('C5.9 el Encargado de CFG-LA2 vuelve a lo normal', pg_temp.cap(k_enc, 'CFG-LA2', 'ABC_CAJA_OPERAR') and pg_temp.cap(k_enc, 'CFG-LA2', 'ABC_REEMBOLSO_CONFIRMAR'), null);
-  v2 := pg_temp.c_cfg('C5.10 quitar siempre se puede, también a un rol que está por encima del techo (el Cajero/a no solicita devoluciones)', k_prop, 'cfg5-0305', 'CFG-LA2', 'LOCAL', 'Cajero/a', 'ABC_REEMBOLSO_SOLICITAR', false, 'Dejarlo explícito');
-  perform pg_temp.ok('C5.11 queda anotado y el Cajero/a sigue sin poder', (v2->>'cambio')::boolean and not pg_temp.cap(k_caj, 'CFG-LA2', 'ABC_REEMBOLSO_SOLICITAR'), v2);
-  v2 := pg_temp.c_cfg('C5.12 y se puede volver a heredar', k_prop, 'cfg5-0306', 'CFG-LA2', 'LOCAL', 'Cajero/a', 'ABC_REEMBOLSO_SOLICITAR', null, 'Fin');
+  v2 := pg_temp.c_cfg('C5.10 quitar siempre se puede, también a un rol que está por encima del techo (el Cajero/a no confirma devoluciones)', k_prop, 'cfg5-0305', 'CFG-LA2', 'LOCAL', 'Cajero/a', 'ABC_REEMBOLSO_CONFIRMAR', false, 'Dejarlo explícito');
+  perform pg_temp.ok('C5.11 queda anotado y el Cajero/a sigue sin poder', (v2->>'cambio')::boolean and not pg_temp.cap(k_caj, 'CFG-LA2', 'ABC_REEMBOLSO_CONFIRMAR'), v2);
+  v2 := pg_temp.c_cfg('C5.12 y se puede volver a heredar', k_prop, 'cfg5-0306', 'CFG-LA2', 'LOCAL', 'Cajero/a', 'ABC_REEMBOLSO_CONFIRMAR', null, 'Fin');
 
   -- C6: defensa en la lectura: una fila que supera el techo (escrita a mano) no concede nada
   perform pg_temp.directo('C6.1 se fuerza una fila por encima del techo (solo posible escribiendo directamente en la tabla)',
-    format('insert into public.abc_capacidades_rol(empresa_id,local_id,rol,capacidad,permitido,motivo) values (%L,%L,%L,%L,true,%L)', k_e, 'CFG-LA', 'Cajero/a', 'ABC_REEMBOLSO_SOLICITAR', 'forzado'));
-  perform pg_temp.ok('C6.2 aun así el Cajero/a no puede solicitar devoluciones', not pg_temp.cap(k_caj, 'CFG-LA', 'ABC_REEMBOLSO_SOLICITAR'), null);
+    format('insert into public.abc_capacidades_rol(empresa_id,local_id,rol,capacidad,permitido,motivo) values (%L,%L,%L,%L,true,%L)', k_e, 'CFG-LA', 'Cajero/a', 'ABC_REEMBOLSO_CONFIRMAR', 'forzado'));
+  perform pg_temp.ok('C6.2 aun así el Cajero/a no puede confirmar devoluciones', not pg_temp.cap(k_caj, 'CFG-LA', 'ABC_REEMBOLSO_CONFIRMAR'), null);
 
   -- C7: auditoría
   select count(*) into v_cnt from public.abc_eventos where empresa_id = k_e and event_type = 'CAPACIDAD_ROL_CONFIGURADA' and operation_id like 'cfg5-%';
