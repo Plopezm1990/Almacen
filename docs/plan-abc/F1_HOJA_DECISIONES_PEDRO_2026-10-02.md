@@ -156,6 +156,7 @@ el Propietario) queda aplicado. **D13 queda sin permiso para el cajero** (ver el
 - **Devoluciones (D13, «el cajero solo con aprobación»).** Por lectura del código, `abc_solicitar_reembolso` encola el efecto hacia el
   proveedor al **solicitar** (no al confirmar) cuando el pago no es en efectivo. Antes de conectar un proveedor hay que cambiar el flujo
   para que nada salga sin aprobación; entonces se podrá dar la capacidad al cajero. Hoy nadie puede dársela (techo en Encargado).
+  **Hallazgos y plan presentados el 3/10/2026** (sin implementar; esperan las decisiones A a D de Pedro): `F6_D13_DEVOLUCIONES_HALLAZGOS_Y_PLAN_2026-10-03.md`.
 - **Producción**: revisar quién tiene Churrero/a, Básico o Estándar (perderían permisos) y si las funciones de permisos coinciden con las
   de QA (la migración se niega a aplicarse si no).
 - ~~**Pantalla (pieza 6)**: matriz de permisos del propietario, quitar los tres roles de la lista de alta de empleados y ocultar «reabrir
