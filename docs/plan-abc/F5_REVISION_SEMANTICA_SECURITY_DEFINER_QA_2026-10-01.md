@@ -1,8 +1,8 @@
 # F5 revisión semántica de SECURITY DEFINER en QA
 
-Fecha: 2026-10-01  
-Proyecto: `qjqorixtkilwsndqayyx` — L&A Suite QA  
-Estado: `REVISION_SEMANTICA_COMPLETADA_CAMBIOS_PENDIENTES`
+Fecha de actualización: 2026-10-02
+Proyecto: `qjqorixtkilwsndqayyx` — L&A Suite QA
+Estado: `REVISION_SEMANTICA_PM09_COMPLETADA_CANDIDATO_VALIDADO`
 
 ## Resultado A10
 
@@ -28,21 +28,23 @@ la función privada es la frontera de autorización.
 
 Las cinco RPC PM09 llaman a una función pública base que sí comprueba
 autenticación, capacidad y contexto de empresa/local. También usan bloqueo de
-`operation_id` y validan fecha. No se confirma un bypass de autorización en
-esta lectura, pero quedan tres puntos concretos para una corrección separada:
+`operation_id` y validan fecha. La lectura de QA no confirma un bypass de
+autorización, pero sí confirma una superficie de endurecimiento concreta:
 
-1. `registrar_venta_stock_pm09`, `revertir_venta_stock_pm09` y el helper
-   `private.pm09_bloquear_operation_id_stock` declaran
-   `search_path TO 'public', 'auth', 'private', 'pg_temp'`; debe evaluarse el
-   endurecimiento a `search_path TO ''` y la cualificación de nombres antes de
-   cambiarlo.
-2. Las cinco funciones PM09 tienen `EXECUTE` para `service_role` en QA; hay
-   que confirmar si ese canal sigue siendo necesario o si debe revocarse en una
-   migración compensatoria.
+1. En QA, `registrar_venta_stock_pm09` y `revertir_venta_stock_pm09` declaran
+   `search_path TO 'public', 'auth', 'private', 'pg_temp'`; el wrapper de
+   devolución y los dos wrappers de carrito ya tienen `search_path = ''`.
+2. Las cinco funciones PM09 tienen `EXECUTE` para `service_role` en QA. El
+   inventario local no encontró callers de esos wrappers desde Edge Functions
+   ni desde código que use `SUPABASE_SERVICE_ROLE_KEY`.
 3. Los wrappers actualizan `movimientos_stock` después de delegar usando
-   `operation_id`; aunque el identificador está tratado como único por el
-   núcleo, la revisión de aislamiento debe confirmar que añadir
-   `empresa_id`/`local_id` no rompe replay ni compatibilidad histórica.
+   `operation_id`; el candidato conserva las referencias cualificadas y las
+   barreras de replay/fecha sin cambiar las funciones base PM07/PM08.
+
+La autorización efectiva está en las funciones base: comprueban `auth.uid()`,
+capacidad PM07/PM08 y pertenencia a empresa/local mediante helpers privados.
+El helper privado `private.pm09_bloquear_operation_id_stock` no es ejecutable
+por roles cliente.
 
 Funciones PM09 revisadas:
 
@@ -54,12 +56,12 @@ Funciones PM09 revisadas:
 
 ## Decisión
 
-No se revocaron grants, no se reemplazó `SECURITY DEFINER`, no se cambió
-`search_path` y no se modificó ninguna base. Los seis wrappers A10 quedan
-clasificados como API intencionada con guardia delegada. Las cinco funciones
-PM09 quedan clasificadas como `REVISAR_Y_ENDURECER`, con cambios que requieren
-pruebas de compatibilidad, preflight y rollback.
+No se reemplazó `SECURITY DEFINER`. El hardening PM09 se aplicó únicamente en
+QA: se fijó `search_path = ''` en los cinco wrappers, se retiró `EXECUTE` para
+`service_role` y se mantuvo `authenticated` como único rol cliente. Los seis
+wrappers A10 siguen clasificados como API intencionada con guardia delegada.
+Producción queda pendiente de validación funcional y autorización separada.
 
-El siguiente subpunto aislado será preparar el candidato local de hardening
-PM09 y sus pruebas negativas, sin aplicarlo en QA/PROD hasta validar el
-impacto.
+El candidato local de hardening, sus pruebas negativas y la verificación QA ya
+están completados. El siguiente subpunto será la validación funcional del
+flujo PM09 contra QA antes de valorar producción.
