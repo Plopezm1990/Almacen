@@ -2,8 +2,8 @@
 
 Fecha: 2026-10-03
 Autorización: Pedro eligió «Preparar antes lo que no toca producción» (3/10/2026): registrar las pruebas nuevas en el manifiesto de CI, crear el flujo de CI para los contratos SQL de configuración y escribir y probar la corrección de PM07.
-Estado: `HECHO_Y_PROBADO_EN_LOCAL_PENDIENTE_VER_EL_RESULTADO_EN_GITHUB`
-Alcance: solo repositorio, réplica local y QA con `ROLLBACK`. **Producción no se ha tocado** (la foto de solo lectura es del paso anterior). Los flujos de GitHub **no se han podido ejecutar desde aquí**: lo que se probó es el mismo código que ejecutan, en local.
+Estado: `HECHO_PROBADO_EN_LOCAL_Y_EN_VERDE_EN_GITHUB` (25 de 25 comprobaciones del PR 118 sobre el commit `c66da24`, 3/10/2026 15:15 UTC)
+Alcance: solo repositorio, réplica local y QA con `ROLLBACK`. **Producción no se ha tocado** (la foto de solo lectura es del paso anterior). Los flujos de GitHub no se pueden ejecutar desde aquí: primero se probó el mismo código en local y después se miró el resultado real en GitHub (§5).
 
 ## 1. Qué se ha hecho
 
@@ -31,7 +31,17 @@ En el informe de la pieza A09 anoté que ese contrato «falla igual antes del ca
 
 ## 4. Qué no se ha podido comprobar
 
-- **Los flujos en GitHub**: son los mismos scripts y versiones que probé en local, pero el entorno de GitHub (imagen `ubuntu-latest`, `postgres:16` como contenedor de servicio, red) puede diferir. Hay que mirar el resultado en el PR 118 tras el push.
-- La **puerta completa**: solo he podido probar su parte Node. Los trabajos de PostgreSQL 16 de la puerta, PGlite, PostgreSQL 17 y los de Supabase completo no los toqué ni los probé aquí.
-- Las pruebas **Postgres de la puerta** no incluyen los contratos SQL de configuración: van en el flujo propio `abc-f6-config-contract.yml`, que no forma parte de los números del manifiesto (el validador solo cuenta archivos `.mjs`).
-- `git push` dispara el PR 118: si algún flujo falla en GitHub por una razón que no veo en local, se corrige con un commit nuevo.
+- La **puerta completa** en local: solo pude probar su parte Node. El resto (PostgreSQL 16, PGlite, PostgreSQL 17 y Supabase completo) lo he visto solo en GitHub (§5).
+- Los contratos SQL de configuración **no cuentan en los números del manifiesto** (el validador solo cuenta archivos `.mjs`): van en el flujo propio `abc-f6-config-contract.yml`.
+
+## 5. Resultado en GitHub (PR 118)
+
+| Comprobación | Resultado |
+|---|---|
+| Commit `b5ba70e` (primer push con todo lo anterior) | Node: pasos «Instalar dependencias…» y «201 contratos activos Node» **correctos**; PGlite correcto; `f4-b02-b03` correcto; `abc-f6-config-contract` (contratos SQL de configuración) **correcto en 36 s** sobre PostgreSQL 16.15. **Un fallo:** `tests/f3/a09/local-postgres-contract.mjs` (contrato A09 con PostgreSQL, que tiene carreras entre conexiones) salió con código 1 a los 1,1 s, sin más información que «Node.js v22.23.3»; `gate-final` en rojo por ese único contrato |
+| Por qué no se veía antes | Hasta entonces la puerta se paraba en la validación del manifiesto (`inventario=213; esperado=208` y luego 239/240) y **los pasos de PGlite y PostgreSQL 16 se saltaban**: ese contrato no se había evaluado nunca en esta rama |
+| Diagnóstico | Con el mismo script (`preparar_postgres_local.sh`) y el mismo código en un PostgreSQL 16 local, **pasa** (1,2 s). Ni mi rama ni el commit de fusión con `release` cambian ese contrato, sus fixtures ni las migraciones F2/A03–A08 que usa. El baseline de `release` (PR 117, 1/10) pasaba la puerta entera |
+| Cambio | El ejecutor de Postgres imprime ahora las últimas 40 líneas de salida de un contrato que falla (`tests/ci/preparar_postgres_local.sh`, solo en caso de fallo, sin cambio de conteos) |
+| Commit `c66da24` (con ese cambio) | **25 de 25 comprobaciones en verde**: `node-y-postgres` (Node 201/201, PGlite, Postgres 16 19/19 + 1 histórico esperado), `gate-final`, `a09_postgres17`, `pm12-p08-supabase-full`, `pm33-p05-supabase-full`, `f4-b02-b03`, `f4-b04`, `f4-b08` (y sus dos hermanos), `f4-b11-offline`, `c04`…`c12`, `validar` y **`cfg-sql`** |
+
+**Conclusión:** el fallo del contrato A09 en `b5ba70e` **no se reprodujo** ni en local ni en la ejecución siguiente, sin ningún cambio relacionado. Lo trato como **intermitente** (hay carreras entre conexiones en ese contrato), no como un defecto de esta rama, pero **no puedo probar que lo sea**: con una sola muestra no se descarta que dependa de algo del entorno de GitHub. Si vuelve a salir, el registro ya mostrará la causa.
