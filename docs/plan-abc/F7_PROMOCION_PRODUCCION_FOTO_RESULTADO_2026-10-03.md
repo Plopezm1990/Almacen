@@ -103,3 +103,5 @@ Pedro eligió preparar lo que no toca producción. Resultado para la deriva de P
 - **Contrato estático** `tests/cfg/pm07-fix-static-contract.mjs`: el cuerpo es idéntico al de la migración original de PM07 byte a byte, las dos huellas son las reales, la migración solo hace tres cosas y no toca nada más.
 - **Averías provocadas:** 13 sobre la migración (sin barra invertida, comprobación previa mal, sin comprobación, no inmutable, otro `search_path`, `SECURITY DEFINER`, sin comprobar existencia, sobrecarga, sin `or replace`, permisos, acepta cualquier cuerpo, cuerpo distinto, valor por defecto distinto): **13/13 detectadas por el contrato vivo y por el estático**; un cambio solo de comentario pasa (no es avería).
 - **No se ha aplicado en producción.** Entra en el paquete A (de 12 pasa a 13 migraciones). El archivo de comprobaciones previas (P3) tiene ahora dos filas más para esta función.
+
+> **Actualización (3/10/2026, más tarde):** las 2 cuentas abiertas y el efecto pendiente se miraron después con autorización de Pedro; son restos de la prueba A10 del 28/9. Ver `F7_PROMOCION_PRODUCCION_DECISIONES_2026-10-03.md`, §3 bis.
