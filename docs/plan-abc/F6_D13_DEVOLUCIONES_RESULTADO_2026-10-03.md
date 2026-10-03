@@ -3,7 +3,7 @@
 Fecha: 2026-10-03
 Autorización: «D13: devoluciones» con las decisiones **A · Servidor, permiso y pantalla**, **B · Encargado y Propietario aprueban**, **C · Lo que solicita un Encargado o el Propietario se aprueba en el acto** y **D · El Cajero/a no puede solicitar por defecto; lo activa el Propietario en Configuración → Permisos**, Pedro, 3/10/2026.
 **Solo QA** (proyecto `qjqorixtkilwsndqayyx`). Producción no consultada ni tocada; su promoción **no está autorizada**.
-Estado: `IMPLEMENTADA_SERVIDOR_APLICADO_EN_QA_PANTALLA_VERIFICADA_CON_PRUEBAS_LOCALES_PENDIENTE_PRUEBA_DE_PEDRO_EN_PANTALLA`
+Estado: `IMPLEMENTADA_PROBADA_EN_PANTALLA_CON_COWORK_Y_VERIFICADA_EN_QA` (queda sin probar en pantalla lo que necesita otro usuario o un proveedor: ver «Límites»)
 Plan de partida: `F6_D13_DEVOLUCIONES_HALLAZGOS_Y_PLAN_2026-10-03.md`. Guía de prueba: `F6_PRUEBA_PREVIEW_DEVOLUCIONES_2026-10-03.md`.
 
 ## Qué se ha hecho
@@ -66,6 +66,25 @@ Al generar el cobro de prueba en efectivo desde el TPV, Cowork vio el cartel roj
 - **Decisión de Pedro (3/10/2026):** terminar primero la prueba de devoluciones y arreglar el cobro después, como pieza aparte.
 - **No impide probar devoluciones:** la pantalla de devoluciones solo lee `pagos`, que sí es legible; Cowork sigue desde el paso 2 con ese cobro de 3,85 €.
 - **Producción:** es un bloqueo a revisar antes de promocionar (si la migración m04d ya está allí, el cobro con pagos fallaría igual).
+
+## Prueba en pantalla con Cowork (3/10/2026) y comprobación independiente en QA (solo lectura)
+
+Pedro pasó a Cowork (agente que maneja el navegador con la sesión de Pedro) el guion `F6_PROMPT_COWORK_DEVOLUCIONES_2026-10-03.md` en el preview 118 (Propietario, Local A1). Lo que hizo y lo que dice QA:
+
+| Paso | Qué vio Cowork | Qué dice QA |
+|---|---|---|
+| 0 · Versión nueva | Las filas «Solicitar devoluciones (el Cajero/a necesita aprobación)» (Cajero/a sin marcar y **sin candado**) y «Aprobar y confirmar devoluciones» (Cajero/a **con candado**) con el texto nuevo, tras recargar (la primera carga era de caché) | — |
+| 1 · Cobro en efectivo de 3,85 € | Para que saliera el panel de cobro hizo falta avanzar el pedido (iniciar preparación, marcar preparada, servir): el guion no lo decía. Al cobrar salió «permission denied for table pago_intentos» | Pago EFECTIVO `CONFIRMADO` de 3,85 €, cobro `COMPLETADO`, entrada de caja de 3,85 € (ver «Hallazgo» más arriba) |
+| 2 · Solicitar 1 € como Propietario | Sin avisos de permiso. «Solicitud creada como PENDIENTE. El simulador no envía dinero a un proveedor real.» Fila «Pendiente» con «Aprobada el …» y los botones «Confirmar efectivo» y «Cancelar solicitud» (sin «Aprobar» ni «Rechazar solicitud») | `REEMBOLSO_SOLICITADO` con `requiere_aprobacion = false` y `REEMBOLSO_APROBADO` con `automatica = true` en el mismo instante; `aprobado_por` = `created_by` = el Propietario |
+| 3 · Cancelar | «Solicitud cancelada y saldo liberado.»; la fila «Cancelado»; el disponible vuelve a 3,85 | `REEMBOLSO_CANCELADO` con el motivo; estado `CANCELADO` |
+| 4 · Solicitar 1 € y confirmar efectivo | «Reembolso en efectivo confirmado. Se ha creado un único movimiento negativo de caja.»; la fila «Confirmado»; disponible 2,85 | `REEMBOLSO_EFECTIVO_CONFIRMADO`; movimiento negativo de 1,00 € en la sesión de caja |
+| 5 · Resto | Se solicitó y confirmó 1,85 € (disponible 1,00 €) | Movimiento negativo de 1,85 €. Saldo de la sesión de caja: 3,85 − 1,00 − 1,85 = **1,00 €** |
+| 6 · Permiso del Cajero/a | Se pudo marcar «Solicitar devoluciones» (sin candado) con «1 cambio guardado en el servidor.»; «Aprobar y confirmar devoluciones» siguió con candado | Evento `CAPACIDAD_ROL_CONFIGURADA` (`ABC_REEMBOLSO_SOLICITAR`, Cajero/a, QA-A1, `efectivo_antes = false`, `efectivo_despues = true`) |
+
+- **Ninguna cola de proveedor:** 0 efectos `PROVIDER_REEMBOLSO` (el pago era en efectivo). Los tres reembolsos tienen `aprobado_por` y `aprobado_at`.
+- **Error mío en un importe:** el mensaje que di a Cowork decía que el último importe era 1,85 y era 2,85 (lo cancelado no resta), por eso quedó 1,00 € disponible y la caja con 1,00 € de más. No es un fallo de la aplicación.
+- **Incidente de Cowork en el paso 6 (revertido):** al deshacer el permiso, un clic por coordenadas cayó en otra celda y guardó una decisión que **quitó «Cobrar en efectivo» al Cajero/a** del Local A1 (evento a las 09:08:04 UTC; Cowork lo había descrito como «Encargado», pero QA dice Cajero/a). Con instrucciones por nombre accesible y comprobación previa («Guardar 2 cambios»), Cowork pulsó «volver a lo normal» en las dos celdas (`ABC_COBRO_EFECTIVO` y `ABC_REEMBOLSO_SOLICITAR`, Cajero/a) a las 09:14:13 UTC. QA lo confirma: las dos filas de `abc_capacidades_rol` quedan con `permitido = null` (versión 2) y hay dos eventos de auditoría (efectivo_despues = true para el cobro y = false para solicitar devoluciones). Es solo QA, Local A1, rol Cajero/a, y no se tocó el Encargado.
+- **Reembolso sin confirmar:** Cowork hizo el paso opcional de dejar la caja a cero, solicitó el 1,00 € restante (09:15:10 UTC, aprobado en el acto) y no pudo confirmarlo por un fallo transitorio de su propio sistema de seguridad. Queda un reembolso `PENDIENTE` de 1,00 € **aprobado**, con la reserva de saldo puesta y sin efecto en cola.
 
 ## Para promocionar a producción (no autorizado)
 

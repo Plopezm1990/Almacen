@@ -158,7 +158,7 @@ el Propietario) queda aplicado. **D13 queda sin permiso para el cajero** (ver el
   `abc_solicitar_reembolso` ya **no encola el envío al proveedor** si quien solicita no puede confirmar; la función nueva `abc_aprobar_reembolso` lo encola al aprobar
   y nadie aprueba lo que solicitó él mismo; `ABC_REEMBOLSO_SOLICITAR` se puede dar al Cajero/a (techo Cajero/a) y `ABC_REEMBOLSO_CONFIRMAR` sigue con techo Encargado; la pantalla
   «Reembolso económico» muestra «Pendiente de aprobación» con Aprobar y Rechazar. Informe: `F6_D13_DEVOLUCIONES_RESULTADO_2026-10-03.md`; guía de prueba:
-  `F6_PRUEBA_PREVIEW_DEVOLUCIONES_2026-10-03.md` (pendiente de que Pedro la pruebe; hace falta un cobro de prueba en efectivo).
+  `F6_PRUEBA_PREVIEW_DEVOLUCIONES_2026-10-03.md` (probada en pantalla con Cowork el 3/10/2026 y verificada en QA, ver el informe; el cobro de prueba destapó un fallo previo de la pantalla de cobro, `pago_intentos`, que queda para una pieza aparte).
 - **Producción**: revisar quién tiene Churrero/a, Básico o Estándar (perderían permisos) y si las funciones de permisos coinciden con las
   de QA (la migración se niega a aplicarse si no).
 - ~~**Pantalla (pieza 6)**: matriz de permisos del propietario, quitar los tres roles de la lista de alta de empleados y ocultar «reabrir
