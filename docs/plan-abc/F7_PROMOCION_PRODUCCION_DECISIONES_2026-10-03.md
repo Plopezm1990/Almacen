@@ -23,6 +23,8 @@ Origen: Pedro eligió «Cerrar contigo las decisiones del primer paquete» y res
 | 11 | Corrección de PM07 | **Sí, en la base del primer paquete** | Migración `20261003130000`, escrita y probada, sin aplicar |
 | 12 | Las 2 cuentas abiertas y el envío pendiente | **Mirar qué son, solo lectura** | Hecho (§3) |
 | 13 | D30 (P1: aviso de guardado y plazo de 6 h) | **Sí, valido los textos y las 6 h** (Pedro, 3/10/2026, después de verlo en el preview del candidato, §5) | P1 se queda en el candidato tal cual (`index-storage-bootstrap.js`). D30 queda cerrada |
+| 14 | Quién cierra las 2 cuentas abiertas de producción | **Las cierra Claude en la ventana, con tu autorización expresa** (Pedro, 3/10/2026, después de pedir «mira más detalle», §3 bis) | Es un plan, **no** la autorización: en la ventana hará falta su sí específico sobre esas dos cuentas, tras repetir la foto. Es una corrección de datos y queda fuera de la autorización única. Mecanismo previsto: las funciones propias del servidor, no editar filas a mano (§3 bis) |
+| 15 | La comanda de cocina pendiente | **Decidir cuando sepamos qué es** (Pedro, 3/10/2026). Ya se sabe (§3 bis): resto de la prueba A10 | **Pendiente de decisión:** descartarla en la ventana (con su sí específico) o dejarla aceptada por escrito en la comprobación P8 |
 
 ## 2. Cómo se autoriza (decisión 8)
 
@@ -52,12 +54,24 @@ Solo estados y fechas, sin datos de clientes. Producción: `flqercbgpgmmfaakrwkc
 - El envío de cocina pendiente se queda sin consumir si no hay proceso que lo recoja; conviene decidir si se descarta o se deja (tampoco se toca sin autorización).
 - La comprobación P8 de la ventana (sin cuentas abiertas ni envíos pendientes) las detectará si siguen ahí.
 
+### 3 bis. Segunda lectura, con detalle (autorizada por Pedro: «No me acuerdo; mira más detalle», 3/10/2026; solo `select`, nada escrito)
+
+| Qué | Dato |
+|---|---|
+| Las 2 cuentas | `BARRA`, `ABIERTA`, versión 2, abiertas el 28/9 a las 20:44:28 y 20:45:48 UTC (día operativo 28/9). Misma persona como creadora y responsable (prefijo `685cfc8f`). Cada una tiene **un pedido** `ENVIADO` (creado 1 s después de abrir la cuenta) con **una línea** `ENVIADA`: 1 × «PRUEBA A10 VALIDACION» (producto `muloqu4hyhmkmh`), 10,00 € + IVA 10 % = 11,00 €, sin descuento |
+| La comanda | Es la **única** fila de `efectos_pendientes`: `KITCHEN_COMANDA`, `PENDIENTE`, 0 intentos, sin error, sin bloqueo ni proceso asignado. Su carga es la comanda nueva (`NUEVA`, alta) de la línea de la **segunda** cuenta; la primera no tiene comanda |
+| Resto de producción | **Cero** pagos, intentos de pago y aplicaciones de pago. Solo existen esas 2 cuentas. El único producto del catálogo del TPV es «PRUEBA A10 VALIDACION» (activo, 10,00 €, IVA 10 %) |
+
+**Conclusión por los datos (Pedro no lo recuerda):** son **restos de la prueba de validación de la pieza A10 (cocina) del 28/9**, no actividad comercial: no hay ni un solo cobro en toda la base y el único producto vendido es el de prueba.
+
+**Cómo se cerrarían (previsto, sin probar):** en producción existen las funciones del servidor `abc_cancelar_pedido(...)` (cancela el pedido de una cuenta) y `abc_abandonar_efecto(...)` (descarta un efecto pendiente). Hay que ensayar **antes en QA** qué estado final queda en la cuenta tras cancelar su pedido (si se cierra sola o hace falta otra operación) y si las funciones se pueden ejecutar desde la herramienta de administración. No se editan filas a mano.
+
 ## 4. Lo que queda por hacer, por orden
 
 1. Cuando Pedro lo pida: llevar B06–B10 a QA (decisión 3), con su autorización expresa.
 2. ~~Preparar el PR nuevo desde `release` con el candidato exacto (decisión 7) y la CI en verde.~~ **HECHO (3/10/2026):** PR borrador 119, CI en verde, `fuente.js` `5d8aef59…`.
 3. Preparar el plan de reconciliación de PM09 (decisión 6), solo documento.
-4. Acordar la ventana (decisión 9) y decidir qué se hace con las dos cuentas y el envío (§3).
+4. Acordar la ventana (decisión 9). Las dos cuentas: se cierran en la ventana con su sí específico (decisión 14), tras ensayarlo en QA. Falta decidir la comanda (decisión 15).
 5. Dentro de la ventana: foto repetida, autorización expresa, ejecución con comprobación de cada huella.
 6. Paquete aparte para P3/P3b (decisión 2) tras el primero.
 
