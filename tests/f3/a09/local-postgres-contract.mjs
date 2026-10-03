@@ -219,6 +219,10 @@ async function makeLine(db, suffix, amounts = {}) {
 
 async function waitForLock(db, applicationName) {
   for (let i=0; i<100; i++) {
+    // `db` suele estar dentro de una transaccion abierta: ahi pg_stat_activity devuelve la misma foto cacheada en
+    // todas las consultas. Sin esta limpieza, si la otra conexion aun no esperaba en la primera consulta, las 99
+    // siguientes ven lo mismo y la prueba caduca (fallo intermitente observado en CI de GitHub).
+    await db.query('select pg_stat_clear_snapshot()');
     const {rows} = await db.query(`select wait_event_type from pg_stat_activity
       where application_name=$1 and state='active'`,[applicationName]);
     if (rows[0]?.wait_event_type === 'Lock') return;
