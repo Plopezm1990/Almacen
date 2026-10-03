@@ -59,8 +59,12 @@ for (const f of archivos) {
 }
 const p3 = sql.slice(sql.indexOf('-- P3 ·'), sql.indexOf('-- P4 ·'));
 const huellasSql = new Set([...p3.matchAll(/'([0-9a-f]{32})'/g)].map((m) => m[1]));
-const firmasSql = new Set([...p3.matchAll(/\('(?:pieza\d|d13)[^']*', '([^']+)', '[0-9a-f]{32}'/g)].map((m) => m[1]));
-assert.ok(huellasMig.size === 11 && firmasMig.size === 11, `se esperaban 11 huellas en las migraciones: ${huellasMig.size}/${firmasMig.size}`);
+const firmasSql = new Set([...p3.matchAll(/\('(?:pieza\d|d13|pm07fix)[^']*', '([^']+)', '[0-9a-f]{32}'/g)].map((m) => m[1]));
+// La corrección de PM07 comprueba su función con to_regprocedure y p.oid=v_oid (no con p.oid='…'::regprocedure): se añade a mano, verificando el texto.
+const PM07_FIRMA = 'private.pm07_numero_catalogo(text,numeric)';
+assert.ok(leer('20261003130000_abc_pm07_correccion_numero_catalogo.sql').includes(`to_regprocedure('${PM07_FIRMA}')`), 'la corrección de PM07 debe comprobar su función');
+firmasMig.add(PM07_FIRMA);
+assert.ok(huellasMig.size === 13 && firmasMig.size === 12, `se esperaban 13 huellas y 12 funciones en las migraciones: ${huellasMig.size}/${firmasMig.size}`);
 assert.deepEqual([...huellasMig].sort(), [...huellasSql].sort(), 'P3: las huellas md5 no coinciden con las de las migraciones');
 assert.deepEqual([...firmasMig].sort(), [...firmasSql].sort(), 'P3: las funciones comprobadas no coinciden con las de las migraciones');
 

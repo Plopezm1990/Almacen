@@ -9,10 +9,10 @@ Decisiones que cita: D12, D26, D28, D29, D31 (`F1_HOJA_DECISIONES_PEDRO_2026-10-
 
 ## 1. Resumen para Pedro
 
-Promocionar no es subir «la capa de configuración» sola. Esa capa (piezas 1 a 6, devoluciones, arreglos de cobro y descuentos) está construida **encima de otras migraciones anteriores**: de las **45 migraciones candidatas** desde la A09 (24/9), **producción tiene 10 y le faltan 35** (foto del 3/10). Lo que pesa, por orden:
+Promocionar no es subir «la capa de configuración» sola. Esa capa (piezas 1 a 6, devoluciones, arreglos de cobro y descuentos) está construida **encima de otras migraciones anteriores**: de las **46 migraciones candidatas** desde la A09 (24/9), **producción tiene 10 y le faltan 36** (foto del 3/10; la número 46 es la corrección de PM07 que propone esa foto). Lo que pesa, por orden:
 
 1. **Ya sé en qué estado está producción** (foto del 3/10, solo lectura): tiene todo hasta B02-B03 (29/9) y nada posterior, ninguna migración a medias, y su registro coincide con sus objetos. **Una deriva pequeña:** las dos funciones de PM07 de producción son un borrador anterior (a una expresión regular le falta una barra invertida): hay que corregirlas con una migración aparte. Lleva sin actividad desde el 28/9.
-2. **12 de las 45 migraciones candidatas nunca se han aplicado en QA** (B06, B07, B09 y B10: proveedor de pagos, anticipos, liquidaciones, tarjeta). Solo se han probado en una base desechable de CI. Mi propuesta: **dejarlas fuera** del primer paquete.
+2. **12 de las 46 migraciones candidatas nunca se han aplicado en QA** (B06, B07, B09 y B10: proveedor de pagos, anticipos, liquidaciones, tarjeta). Solo se han probado en una base desechable de CI. Mi propuesta: **dejarlas fuera** del primer paquete.
 3. **Datos:** el volumen en producción es muy pequeño (0 pagos, 0 reembolsos, 30 eventos, 1 producto en el catálogo). PM07 y PM10 ya hicieron sus bootstraps y D13 no tiene reembolsos que marcar. Lo que sí pesa es que P3 pasa a leer el precio de carta **con IVA incluido** (D31, **sin confirmar con la asesoría**, que aún no tienes): cambia lo que se cobra. Mi propuesta: P3 y P3b **no** entran hasta que lo confirmes.
 4. **La pieza 5 retira tres roles** (Churrero/a, Básico, Estándar): **nadie los tiene en producción** (las 3 membresías son Propietario activo), así que no quita permisos a nadie; sí impide dar de alta a alguien con ellos.
 5. **PM09 está bloqueada** por la deriva de producción (faltan dos funciones y la RPC base de reverso). Es otro trabajo, previo, y no está hecho.
@@ -26,7 +26,7 @@ Tú decides al final (§12). Mientras tanto, **no se aplica nada**.
 - **Rama:** `claude/vigilant-hawking-uji8l4`, commit `c85ff0c` al escribir esto. **PR 118: borrador, «NO FUSIONAR»**, base `release`, 64 commits, 101 archivos (+21 576 / −249). Es un PR de **preview de QA**: no debe fusionarse (la aplicación solo reconoce como QA los previews de PR `deploy-preview-N--chic-entremet-9107cf…`; cualquier otra dirección usa producción).
 - **Contenido:** 4 archivos de aplicación (`fuente.js`, `source-recovery/fuente-recuperado.js`, `index-storage-bootstrap.js`, `ui-context-bridge.js`), las migraciones, las pruebas y la documentación.
 - **Recomendación:** **no fusionar el PR 118.** Cuando se autorice, abrir un **PR de promoción nuevo desde la última `release`**, con un candidato congelado (un commit exacto y el `sha256` de `fuente.js`), con las pruebas registradas en el manifiesto de CI y sin documentación de trabajo que no deba viajar. Hoy la rama figura «behind» respecto a `release`: habrá que traer lo nuevo de `release` y volver a probar.
-- **Migraciones candidatas:** 45 archivos desde `20260924160739` (A09) hasta `20261003120000` (A09 eventos). Lista completa, con su registro en QA, en el apéndice A. Las 10 de la capa de configuración: P3, P3b, piezas 1, 2, 3, 4, 5, 6d, D13 y A09 eventos (P3 y P3b van en un paquete aparte, §5).
+- **Migraciones candidatas:** 46 archivos desde `20260924160739` (A09) hasta `20261003130000` (corrección de PM07, nueva el 3/10). Lista completa, con su registro en QA, en el apéndice A. Las 10 de la capa de configuración: P3, P3b, piezas 1, 2, 3, 4, 5, 6d, D13 y A09 eventos (P3 y P3b van en un paquete aparte, §5).
 
 ## 3. Lo que se sabe de producción, y lo que no
 
@@ -35,7 +35,7 @@ Tú decides al final (§12). Mientras tanto, **no se aplica nada**.
 | 24/9 | A08 aplicada (`20260924082637_abc_f3_a08_account_split_merge`); tres tablas nuevas con 0 filas; mismas funciones que QA (por huella md5); humo transaccional con `ROLLBACK` pasado | `A08_POSTFLIGHT_PROD_2026-09-24.md` |
 | 28/9 | A11 y la recuperación de cuenta con día operativo registradas; una regla de día operativo para el local productivo: `Europe/Madrid`, corte 00:00, versión 1 | `A11_CIERRE_2026-09-28.md` |
 | 2/10 | **PM09: bloqueado.** En producción faltan `registrar_venta_stock_pm09`, `revertir_venta_stock_pm09` y la RPC base `revertir_venta_stock`; el resto existe. No se aplicó | `F5_PM09_PROD_PREFLIGHT_2026-10-02.md` |
-| **3/10, 11:33 UTC** | **Foto de solo lectura.** Registro hasta `abc_f4_b02_b03_checkout_bridge`; **faltan 35 de las 45 candidatas** (A08.2, B04, B05, B06–B10, C04–C12, PM09, P3, P3b y las 8 de configuración), ninguna a medias; m04d **aplicada** (el navegador no lee `abc_eventos`, `pago_intentos`, etc.); `abc_abrir_sesion_caja` y las tres funciones de reembolso **coinciden** con las que esperan las migraciones; 27 de 33 funciones comparables coinciden con el repositorio, **2 de PM07 no** (§4 del informe); roles retirados: **nadie**; 3 empresas, 4 locales, 3 membresías, 0 pagos, 0 reembolsos, 1 sesión de caja cerrada, **2 cuentas abiertas**, **1 efecto pendiente**; última actividad 28/9 | `F7_PROMOCION_PRODUCCION_FOTO_RESULTADO_2026-10-03.md` |
+| **3/10, 11:33 UTC** | **Foto de solo lectura.** Registro hasta `abc_f4_b02_b03_checkout_bridge`; **faltaban 35 de las 45 candidatas de entonces** (hoy 36 de 46, con la corrección de PM07) (A08.2, B04, B05, B06–B10, C04–C12, PM09, P3, P3b y las 8 de configuración), ninguna a medias; m04d **aplicada** (el navegador no lee `abc_eventos`, `pago_intentos`, etc.); `abc_abrir_sesion_caja` y las tres funciones de reembolso **coinciden** con las que esperan las migraciones; 27 de 33 funciones comparables coinciden con el repositorio, **2 de PM07 no** (§4 del informe); roles retirados: **nadie**; 3 empresas, 4 locales, 3 membresías, 0 pagos, 0 reembolsos, 1 sesión de caja cerrada, **2 cuentas abiertas**, **1 efecto pendiente**; última actividad 28/9 | `F7_PROMOCION_PRODUCCION_FOTO_RESULTADO_2026-10-03.md` |
 
 Producción tiene un local productivo y muy pocos datos. Las comprobaciones previas son solo recuentos y huellas, nunca contenido. Lo que **no** sé: qué versión de la aplicación sirve hoy, qué son las 2 cuentas abiertas ni el efecto pendiente, y si hay copia de seguridad.
 
@@ -54,9 +54,9 @@ Mi propuesta, para que decidas (§12). Cada paquete se aprueba **por separado**,
 | Paquete | Qué incluye | Mi recomendación |
 |---|---|---|
 | **0 · Foto** | Solo lectura de producción: bloques P0–P9. **Hecha el 3/10** (`F7_PROMOCION_PRODUCCION_FOTO_RESULTADO_2026-10-03.md`). Pendiente: huellas en QA de la pieza 2 | Hecha. Se repite dentro de la ventana |
-| **A · Base** | Lo que **falta** en producción antes de la configuración: **12 migraciones**: A08.2 (fila 7), B04 y B05 (filas 12–13) y C04–C12 (filas 26–34), más una **corrección pequeña de PM07** (nueva, por la deriva de la foto). **PM09 (fila 35) solo después de reconciliar la base de producción** (cambio de alcance aparte) | Sí, en el orden de las marcas, **cada migración con su comprobación de huella** |
+| **A · Base** | Lo que **falta** en producción antes de la configuración: **12 migraciones**: A08.2 (fila 7), B04 y B05 (filas 12–13) y C04–C12 (filas 26–34), más la **corrección de PM07** (fila 46, nueva por la deriva de la foto: escrita y probada el 3/10 en la réplica y en QA con `ROLLBACK`, **sin aplicar en producción**), es decir, 13. **PM09 (fila 35) solo después de reconciliar la base de producción** (cambio de alcance aparte) | Sí, en el orden de las marcas, **cada migración con su comprobación de huella** |
 | **B · Catálogo con IVA** | P3 y P3b (filas 36–37). Cambia el importe que se cobra (D31) | **Fuera** hasta que la asesoría confirme D31, o hasta que decidas asumirlo tú por escrito |
-| **C · Configuración** | Piezas 1, 2, 3, 4, 5, 6d, D13 y A09 eventos (filas 38–45) | Sí, **después de A** (la pieza 6d se niega a aplicarse si faltan funciones de las piezas 1 y 5) |
+| **C · Configuración** | Piezas 1, 2, 3, 4, 5, 6d, D13 y A09 eventos (filas 38–45; la 46 es del paquete A) | Sí, **después de A** (la pieza 6d se niega a aplicarse si faltan funciones de las piezas 1 y 5) |
 | **D · Proveedor de pagos** | B06, B07, B09, B10 (filas 14–25) | **Fuera.** Primero a QA, con tu autorización, y probarlas allí |
 | **E · Aplicación** | Un solo despliegue de producción (D28): `fuente.js` y los otros tres archivos del candidato | **Después** de C, en la misma ventana |
 
@@ -166,9 +166,9 @@ Solo con las autorizaciones de §12 y en este orden. **Parar al primer fallo.**
 
 ---
 
-## Apéndice A · Las 45 migraciones candidatas, en orden
+## Apéndice A · Las 46 migraciones candidatas, en orden
 
-«Registro en QA» es la marca con la que la herramienta las registró en QA y «Producción» la marca con la que figura en el registro de producción (ambos leídos el 3/10/2026, solo lectura). Producción tiene 10 de las 45 y le faltan 35.
+«Registro en QA» es la marca con la que la herramienta las registró en QA y «Producción» la marca con la que figura en el registro de producción (ambos leídos el 3/10/2026, solo lectura). Producción tiene 10 de las 46 y le faltan 36.
 
 | # | Archivo | Nombre | Qué hace | Paquete | Registro en QA | Producción (3/10) |
 |---|---|---|---|---|---|---|
@@ -217,6 +217,7 @@ Solo con las autorizaciones de §12 y en este orden. **Parar al primer fallo.**
 | 43 | `20261002250000` | `abc_config_pieza6d_dia_operativo` | Pieza 6d: lectura del día operativo por local | Configuración | `20261002201209` | **falta** |
 | 44 | `20261003100000` | `abc_config_d13_reembolsos_aprobacion` | D13: devoluciones con aprobación. **Actualiza todos los reembolsos existentes** | Configuración | `20261003081109` | **falta** |
 | 45 | `20261003120000` | `abc_a09_eventos_descuento_cuenta` | A09: eventos de descuento de una cuenta por función del servidor | Configuración | `20261003103727` | **falta** |
+| 46 | `20261003130000` | `abc_pm07_correccion_numero_catalogo` | Corrección de PM07 (nueva, por la foto): arregla la expresión regular de `pm07_numero_catalogo` en producción. **Reemplaza una función** | A · corrección | no hace falta (QA ya la tiene correcta) | **falta** |
 
 Paquetes: F3/F4/F5 = «A · Base»; B06-B10 = «D · Proveedor de pagos»; P3 = «B · Catálogo con IVA»; Configuración = «C».
 

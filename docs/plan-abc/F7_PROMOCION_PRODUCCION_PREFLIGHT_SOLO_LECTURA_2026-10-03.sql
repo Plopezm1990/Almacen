@@ -202,7 +202,8 @@ select migracion, nombre,
 
 -- ============================================================================================================================
 -- P3 · Huellas md5 de las funciones que cada migración exige conocer EXACTAMENTE (si no coinciden, la migración se niega a aplicarse y no
---      cambia nada). La fórmula es la de la propia migración: pieza 1 y pieza 2 usan md5(prosrc); pieza 5 y D13 usan md5(prosrc sin \r).
+--      cambia nada). La corrección de PM07 acepta dos versiones: el borrador de producción (se corrige) y la correcta (repetición sin efecto): una de las
+--      dos filas dará COINCIDE y la otra DISTINTA; cualquier otra huella es una deriva nueva. La fórmula es la de la propia migración: pieza 1 y pieza 2 usan md5(prosrc); pieza 5 y D13 usan md5(prosrc sin \r).
 -- ============================================================================================================================
 with esperado(migracion, firma, md5_esperado, sin_cr) as (
   values
@@ -216,7 +217,9 @@ with esperado(migracion, firma, md5_esperado, sin_cr) as (
     ('d13 20261003100000', 'public.abc_confirmar_reembolso_efectivo(text,text,text,uuid,uuid,uuid,uuid,date)', '760a2afd8a0049bae6d7ed927eaffe95', true),
     ('d13 20261003100000', 'public.abc_cancelar_reembolso(text,text,text,uuid,text,uuid,date)', 'd7cb66acc9cc9514f4ecc572f10d7334', true),
     ('d13 20261003100000', 'private.abc_cap_catalogo()', '071f31a0df29ded3b2d7346b1f4344aa', true),
-    ('d13 20261003100000', 'private.abc_cap_techo_permite(text,text)', '210fcaa1f84cd6c953dd499ab51b10c0', true)
+    ('d13 20261003100000', 'private.abc_cap_techo_permite(text,text)', '210fcaa1f84cd6c953dd499ab51b10c0', true),
+    ('pm07fix 20261003130000 (borrador de producción, a corregir)', 'private.pm07_numero_catalogo(text,numeric)', '3dcbe27249f1fd2d37c40ea6398d0215', true),
+    ('pm07fix 20261003130000 (versión correcta)', 'private.pm07_numero_catalogo(text,numeric)', '7f36af3c791b2d94a2c76aed2ee4a095', true)
 )
 select e.migracion, e.firma,
        to_regprocedure(e.firma) is not null as existe,
