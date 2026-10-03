@@ -2,7 +2,7 @@
 
 Fecha: 2026-10-03
 Autorización: Pedro eligió «Arreglar el historial de descuentos del TPV» como siguiente pieza (3/10/2026). **Solo QA** (proyecto `qjqorixtkilwsndqayyx`). Producción no consultada ni tocada.
-Estado: `ARREGLADO_SERVIDOR_APLICADO_EN_QA_Y_VERIFICADO_CON_PRUEBAS_LOCALES_PENDIENTE_COMPROBAR_DE_NUEVO_EN_PANTALLA` (la primera comprobación con Cowork encontró el segundo fallo, ya arreglado)
+Estado: `ARREGLADO_SERVIDOR_APLICADO_EN_QA_Y_COMPROBADO_EN_PANTALLA_CON_COWORK` (la primera comprobación con Cowork encontró el segundo fallo; arreglado y comprobado de nuevo en una segunda ronda)
 Origen del hallazgo: `F6_COBRO_LECTURA_INTENTOS_RESULTADO_2026-10-03.md`, sección «Hallazgo relacionado».
 
 ## Qué fallaba
@@ -68,8 +68,33 @@ Las otras dos funciones del mismo panel, `aplicarDescuentoCuentaA09` (aplicar un
 
 **Hallazgo del escaneo, sin arreglar (otro módulo):** el mismo análisis encuentra **un único identificador más de la aplicación sin declarar: `money`**, usado dos veces en el registro de **movimientos manuales de caja (PM-08)** (``registrarAuditoria?.("MOVIMIENTO_CAJA", `… ${money(imp)} …`)``). Después de guardar el movimiento en el servidor, esa línea lanza «money is not defined»: en la rama de la nube cae en el `catch` y la pantalla dice «No se pudo confirmar si el servidor recibió el movimiento. Reintenta…» **aunque el movimiento ya se guardó** (el reintento es idempotente, pero el aviso es falso); en la rama local, el error se propaga. No lo he tocado (otra pantalla, no autorizada); queda anotado en el contrato de alcance como fallo conocido, y el contrato falla si aparece otro identificador nuevo sin declarar o si `money` se arregla y no se quita de la lista.
 
+## Comprobación en pantalla con Cowork (segunda ronda, 3/10/2026)
+
+Preview `deploy-preview-118--chic-entremet-9107cf.netlify.app`, ventana privada con recarga completa, usuario Propietario, Local A1, la misma cuenta cobrada de la prueba de devoluciones.
+
+| Qué se comprobó | Resultado |
+|---|---|
+| Parte A (la versión nueva está cargada: las dos ayudas llegan al TPV y la función nueva figura en el código) | verdadero / falso / verdadero, como se esperaba |
+| El panel «Descuento / cortesía» → «Abrir» termina de cargar (antes se quedaba en «Actualizando…») | OK: el botón vuelve a «Actualizar» |
+| Cartel rojo | ninguno; `errores: []` en la consola |
+| «Efectos de caja» | muestra `COMPLETADO · REEMBOLSADO · EFECTIVO · importe €3,85…` (el cobro y el reembolso de la prueba de devoluciones) |
+| Secciones de stock y fiscal | con datos |
+| Peticiones al servidor | todas 200, incluida `rpc/abc_listar_eventos_descuento_cuenta` |
+
+Comprobación independiente mía en QA (solo lectura) después de la prueba: sin eventos nuevos, 4 reembolsos y 1 pago como antes, 0 decisiones de permisos, 0 reembolsos pendientes; es decir, Cowork solo miró.
+
+### La función contra datos reales de QA (con `ROLLBACK`, suplantando al Propietario)
+
+QA conserva datos de descuentos del 26/9 en cuentas del Local A2 (`e0000000-0000-0000-0000-0000000000a2` y `…a3`): 4 descuentos aplicados, 3 autorizaciones y 4 eventos de descuento.
+
+| Consulta | Resultado |
+|---|---|
+| Cuenta `…a2`, local A2 | 2 eventos, del más reciente al más antiguo (`a09.qa.matrix.double.incap.20260926`, `a09.qa.discount.escalation.20260925`), con las seis claves |
+| Cuenta `…a3`, local A2 | 2 eventos |
+| Las mismas cuentas pidiendo desde el Local A1 | 0 eventos (no se mezclan locales) |
+
 ## Límites
 
-- **Nunca se ha visto el historial con descuentos reales**: QA no tiene ninguno aplicado. La lista de eventos con datos solo está comprobada con el contrato vivo del servidor y con la prueba de ejecución del cliente; en pantalla solo se puede ver que el panel abre sin romperse y sin cartel rojo.
+- **La lista de eventos de descuento con datos todavía no se ha visto en pantalla.** La cuenta que probó Cowork (Local A1) no tiene descuentos, así que en pantalla el panel abre y carga bien pero con la lista de eventos vacía. (Corrección mía: en versiones anteriores de este documento puse que «QA no tiene ningún descuento aplicado»; es falso. QA conserva datos de descuentos del 26/9 en las cuentas del Local A2, ver más abajo; solo no estaban en la cuenta que se probó.) La lista con datos está comprobada con el contrato vivo del servidor, con la función contra las cuentas reales de QA (más abajo) y con la prueba de ejecución del cliente.
 - La ruta de aplicar y resolver descuentos **no se ha probado en pantalla** (solo con las pruebas de ejecución).
 - Producción: no autorizada. Antes: registrar `a09-eventos-*` (y `cobro-lectura-*`) en la puerta de CI general, revisar si la migración `20260924004000` está allí (si lo está, el historial de descuentos se rompe igual) y aplicar la función nueva solo después.
