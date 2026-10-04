@@ -18,12 +18,27 @@ Antes de promocionar, hay que resolver y probar la concurrencia de dos dispositi
 
 ## Comprobación previa y puerta de producción
 
-`F7_P3_P3B_PREFLIGHT_SOLO_LECTURA_2026-10-04.sql` está preparado y sus nueve consultas se ejecutaron **solo en QA** para validar sintaxis. En producción requiere permiso de lectura separado: no se ha ejecutado allí en esta preparación. Devuelve nombres de migración, existencia de dependencias, recuentos, identificadores de contexto fiscal, huellas de dos funciones y metadatos de permisos/disparadores; no devuelve contenido de productos ni datos de personas.
+`F7_P3_P3B_PREFLIGHT_SOLO_LECTURA_2026-10-04.sql` contiene nueve consultas `SELECT`/`WITH`. Primero se validó su sintaxis en QA. Pedro autorizó por separado la opción 1 de lectura de producción y las nueve se ejecutaron allí el 4/10/2026 a las 19:44 UTC. No se ejecutó ningún SQL de escritura ni se desplegó la aplicación. La consulta de QA posterior solo repitió P5 para comparar huellas. El preflight no devuelve contenido de productos ni datos de personas.
+
+### Resultado de la lectura de producción (9/9)
+
+| Bloque | Resultado |
+| --- | --- |
+| P0 | Cero filas registradas por nombre para P3 y P3b. |
+| P1 | Existen las 13 dependencias exigidas (7 tablas y 6 funciones). |
+| P2 | No existen `precio_con_impuesto`, las dos funciones auxiliares P3 ni la RPC P3; están las tres columnas esperadas de `almacen_kv`. |
+| P3 | Un producto en el catálogo TPV y una fila `productos` con una lista JSON válida. Solo se leyeron recuentos. |
+| P4 | Un contexto fiscal activo para el único local y EUR. Se omiten aquí los identificadores productivos. |
+| P5 | `abc_calcular_linea_tpv`: `1a3ff32669ae46d5e65520afb4b8782b`; variante configurada: `e1e935e1ec1bee56be265326b8dfe565`. Ambas son `SECURITY DEFINER` con `search_path` fijado. QA, donde P3 ya está aplicado, devuelve respectivamente `35c8f1fb38850c92f38e600981437ab1` y `336123cdb9a826977cbe9ed32feacb39`. La diferencia es coherente con los estados anterior y posterior a P3, pero no demuestra por sí sola que los cuerpos coincidan con el candidato: eso queda pendiente para una promoción. |
+| P6 | `authenticated` tiene privilegios de lectura, inserción y actualización. La política RLS de `INSERT`/`UPDATE` incluye expresamente `productos` para cualquier perfil activo. Queda confirmada la carrera del `upsert` del navegador contra el espejo P3b. |
+| P7 | Dos disparadores habilitados: actualización de fecha y creación inicial de stock desde `productos`. No existe uno que proteja los campos de venta ante la sustitución de la lista. |
+
+La lectura cumple las condiciones de ausencia y dependencias, pero **no levanta el bloqueo de concurrencia**. El PR de preparación permanece como borrador y no debe fusionarse.
 
 Para abrir una ventana de producción harán falta, en este orden:
 
 1. Resolver la carrera de `productos`, verificarla en QA y dejar en verde la CI de un candidato exacto. La corrección del texto de «Día y cajas» se agrupa en ese único despliegue de aplicación.
-2. Con permiso específico, repetir la foto de solo lectura de producción y ejecutar el preflight P3/P3b. Deben faltar las dos migraciones y todos los objetos P3; deben existir las 13 dependencias y las tres columnas de `almacen_kv`. Contrastar las huellas de cálculo con el candidato y revisar la política que permite escribir la lista.
+2. La lectura específica de producción se completó el 4/10 (resultados arriba). Refrescarla si se abre otra ventana y contrastar las huellas del cuerpo exacto del candidato una vez resuelta la carrera. No asumir que la foto de hoy sigue vigente entonces.
 3. Pedro hace y comprueba una copia manual fuera del repositorio. Congelar commit, `sha256` de `fuente.js`, condiciones de parada y una hoja de autorización **nueva para este paquete**. La autorización del primer paquete no cubre P3/P3b.
 4. Solo tras esa autorización: aplicar P3 y verificar; aplicar P3b y verificar; hacer humo con `ROLLBACK` sin dejar filas; publicar una vez la aplicación, comprobar el archivo servido y pedir a Pedro la aceptación del recorrido acordado. Parar ante la primera diferencia.
 
