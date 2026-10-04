@@ -26,6 +26,9 @@ Origen: Pedro eligió «Cerrar contigo las decisiones del primer paquete» y res
 | 14 | Las 2 cuentas abiertas de producción (y sus 2 pedidos enviados) | **Se dejan como restos conocidos; no se escribe nada en producción** (Pedro, 3/10/2026). Sustituye a su primera respuesta, que partía de que el servidor tenía una función para cerrarlas (§3 bis) | La comprobación P8b las acepta por identificador (cuentas `528c0715-…` y `40431ef0-…`; pedidos `79762954-…` y `c9d51daf-…`) y vigila que no haya nada más. Se pueden limpiar después, en un paquete aparte con su propia autorización |
 | 15 | La comanda de cocina pendiente | **Se deja y P8b la acepta** (`22ca6555-…`) (Pedro, 3/10/2026) | Mientras no haya un proceso de cocina que recoja efectos, nadie la consume. Si algún día se pone en marcha, hay que descartarla antes (reclamarla y abandonarla) para que no salga una comanda de prueba |
 | 16 | Descuento por «Importe» (se resta antes de IVA) | **Aclarar el texto de la pantalla antes de promocionar** (Pedro, 4/10/2026), en lugar de dejarlo igual o de cambiar el diseño | Cambio solo de texto en el panel «Descuento / cortesía»: «Importe (antes de IVA)», «Importe (€, antes de IVA)» y la línea «El importe se resta antes de IVA: el total de la cuenta baja ese importe más su IVA.». **El candidato cambia:** nuevo `fuente.js`, `sha256` `88fcf88015b6c85eb75c98080480ffde3da9a80f67688ff1824c7f1dfc07fbe8`. El diseño de A09 no cambia |
+| 17 | Política de descuento del Encargado (D12, opción A, 0 %) del local productivo | **Entra en la autorización única del primer paquete** (Pedro, 4/10/2026) | Es un dato (no una migración) que se escribe tras aplicar las migraciones y se comprueba después. Sustituye al «paso aparte con su propio sí» |
+| 18 | Copia de seguridad de producción | **La comprueba Pedro en el panel de Supabase** antes de la ventana (4/10/2026) | **Pendiente:** Pedro anota si hay copia diaria o recuperación a un instante. Claude no puede verlo por SQL |
+| 19 | Mirar Netlify | **Sí, solo lectura** (Pedro, 4/10/2026). Hecho (§6) | Rama de producción y despliegue actual al que volver, anotados |
 
 ## 2. Cómo se autoriza (decisión 8)
 
@@ -36,7 +39,8 @@ Pedro quiere dar **una sola autorización** para el primer paquete entero en lug
 3. **Pedro presente y diciendo expresamente que sí** sobre ese candidato y esa foto (una frase suya, no una respuesta ambigua).
 4. Ejecución en el orden del documento, **comprobando la huella de cada migración tras aplicarla** (la foto detectó que una migración de producción perdió una barra invertida al aplicarse por otro camino).
 5. **Me detengo a la primera diferencia** con lo esperado (una huella distinta, un fallo de migración, un objeto que no debía estar) y no sigo sin que Pedro lo decida; la autorización única **no** cubre continuar tras un fallo.
-6. Quedan fuera de esa autorización: P3/P3b (paquete aparte), B06–B10, PM09, cualquier borrado o corrección de datos, y cualquier cambio que no esté en el candidato.
+6. **Incluida expresamente** (decisión 17): la política D12 (0 %) del local productivo, que es un dato y se escribe tras las migraciones.
+7. Quedan fuera de esa autorización: P3/P3b (paquete aparte), B06–B10, PM09, cualquier borrado o corrección de datos, y cualquier cambio que no esté en el candidato.
 
 ## 3. Las 2 cuentas abiertas y el envío pendiente (consulta de solo lectura en producción, 3/10/2026)
 
@@ -81,6 +85,16 @@ Consecuencia: la decisión 14 se tomó sobre un supuesto falso y **se reabre** (
 3. **Abrir una caja en producción y cancelar los pedidos con la función del servidor:** deja las cuentas `ABIERTA` igualmente y obliga a abrir y cerrar una caja real. No recomendada.
 
 **Decisión de Pedro (3/10/2026): opción 1, dejarlas como restos conocidos, y lo mismo para la comanda.** El bloque P8b de las comprobaciones previas (solo lectura) las vigila por identificador: el 3/10/2026 en producción da 0, 0, 0 («fuera de lo conocido») y 2, 2, 1 («restos conocidos»).
+
+## 3 ter. Netlify (solo lectura con la herramienta de Netlify, autorizada por Pedro el 4/10/2026; nada se publicó ni se cambió)
+
+| Qué | Dato |
+|---|---|
+| Proyecto | `chic-entremet-9107cf` (plan `nf_team_dev`). Las vistas previas piden inicio de sesión del equipo; **producción es pública** |
+| Rama de producción | **`release`**. Fusionar en `release` publica producción (se confirma lo que decía el PR 118) |
+| Despliegue de producción actual | `6abf43047ed8030008ffb5a9`, contexto `production`, estado `ready`, publicado el **2/10/2026 05:37 UTC**, commit `01f47bf5ce794f8d81363c66f7b40991534416f5` («Merge pull request #117 … fix(f4): wire payment actions into TPV»), rama `release`, 12 s de despliegue. Dirección de ese despliegue concreto: `https://6abf43047ed8030008ffb5a9--chic-entremet-9107cf.netlify.app` |
+| Para volver | Publicar de nuevo ese despliegue (`6abf43047ed8030008ffb5a9`). Es la misma base que el PR 119: **mientras `release` siga en `01f47bf`, producción sirve la aplicación anterior al candidato** |
+| Coste | **No comprobado:** la herramienta no da el consumo de créditos. Sigue valiendo lo que dice `A09_NETLIFY_QA_REVIEW_PROPOSAL_2026-09-24.md` (15 créditos por despliegue de producción, sin verificar) |
 
 ## 4. Lo que queda por hacer, por orden
 
