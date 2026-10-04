@@ -167,6 +167,11 @@ for linea in "${archivos[@]}"; do
       FALLOS_ACTIVOS+=("$f (exit=$code)")
     fi
     echo "$f -> exit=$code (${ms}ms) resultado=$resultado"
+    if [ "$resultado" = "FAIL" ]; then
+      echo "---- últimas 40 líneas de la salida de $f ----" >&2
+      printf '%s\n' "$out" | tail -n 40 >&2
+      echo "---- fin de la salida de $f ----" >&2
+    fi
   fi
   printf '%s\t%s\t%s\t%sms\t%s\t%s\n' "$f" "$clasificacion" "$code" "$ms" "$lastline" "$resultado" >> "$OUT"
 done

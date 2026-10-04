@@ -92,6 +92,79 @@
   }
 
   /* ----------------------------------------------------------
+     CLAVES QUE EL SERVIDOR RECHAZA POR PERMISOS
+     ------------------------------------------------------------
+     Un fallo de red o de tiempo se arregla reintentando, así que
+     la clave queda en la cola de pendientes. Un rechazo por
+     permisos (RLS, código 42501) no se arregla reintentando: el
+     servidor seguirá diciendo que no hasta que cambien sus reglas.
+     Si esa clave se dejara en la cola, el aviso "Subiendo N…" no
+     desaparecería nunca y cada carga repetiría la misma subida
+     rechazada.
+
+     Por eso, ante un rechazo por permisos la clave se anota aparte
+     (almacen__denegados): sigue guardándose y leyéndose en este
+     equipo, deja de reintentarse durante unas horas y el aviso lo
+     dice con claridad en lugar de aparentar que está subiendo.
+     Pasado el plazo se vuelve a intentar una vez, por si las
+     reglas del servidor han cambiado. En cuanto una subida
+     funciona, la marca se retira. Mientras la marca exista, la
+     clave se lee de este equipo y no de la nube, igual que las
+     pendientes: así una copia antigua de la nube no pisa lo que
+     aquí no se ha podido subir.
+
+     No depende de qué claves sean: si el servidor las acepta
+     (como hace producción hoy), nada de esto se activa.
+     ---------------------------------------------------------- */
+  var VIGENCIA_DENEGADO_MS = 6 * 60 * 60 * 1000;
+  function denegados() {
+    try {
+      var o = JSON.parse(localStorage.getItem("almacen__denegados") || "{}");
+      return o && typeof o === "object" && !Array.isArray(o) ? o : {};
+    } catch (e) { return {}; }
+  }
+  function tieneMarcaDenegado(key) {
+    return Object.prototype.hasOwnProperty.call(denegados(), key);
+  }
+  function denegadoVigente(key) {
+    var t = denegados()[key];
+    return typeof t === "number" && (Date.now() - t) < VIGENCIA_DENEGADO_MS;
+  }
+  function clavesDenegadasVigentes() {
+    return Object.keys(denegados()).filter(function (k) { return denegadoVigente(k); });
+  }
+  function quitarDenegado(key) {
+    var o = denegados();
+    if (!Object.prototype.hasOwnProperty.call(o, key)) return;
+    delete o[key];
+    try { localStorage.setItem("almacen__denegados", JSON.stringify(o)); } catch (e) {}
+    actualizarIndicador();
+  }
+  function esRechazoPorPermisos(e) {
+    if (!e) return false;
+    if (e.code === "42501") return true;
+    return /row-level security|permission denied/i.test(String(e.message || ""));
+  }
+  function marcarDenegado(key, error) {
+    var yaVigente = denegadoVigente(key);
+    var o = denegados();
+    o[key] = Date.now();
+    try { localStorage.setItem("almacen__denegados", JSON.stringify(o)); } catch (e) {}
+    quitarPendiente(key);
+    if (!yaVigente) {
+      try {
+        console.warn("[almacén] El servidor no permite guardar «" + key + "» en la nube; se conserva solo en este equipo.", error && error.message);
+      } catch (e) {}
+      try {
+        if (typeof window.dispatchEvent === "function" && typeof CustomEvent === "function") {
+          window.dispatchEvent(new CustomEvent("clave-solo-local", { detail: { key: key, mensaje: error && error.message } }));
+        }
+      } catch (e) {}
+    }
+  }
+  window.__clavesSoloLocal = clavesDenegadasVigentes;
+
+  /* ----------------------------------------------------------
      REGISTRO DE BORRADOS DE ESTE DISPOSITIVO
      ------------------------------------------------------------
      Antes, para saber qué borrar en la nube se comparaba la lista
@@ -149,7 +222,8 @@
       document.body.appendChild(el);
     }
     var sinSubir = pendientes().length;
-    if (window.__nubeActiva && sinSubir === 0) {
+    var soloLocal = clavesDenegadasVigentes().length;
+    if (window.__nubeActiva && sinSubir === 0 && soloLocal === 0) {
       el.style.display = "none";
       return;
     }
@@ -160,10 +234,17 @@
       el.textContent = sinSubir > 0
         ? "Guardado en este equipo · " + sinSubir + " sin subir"
         : "Guardado en este equipo";
-    } else {
+    } else if (sinSubir > 0) {
       el.style.background = "#B08228";
       el.style.color = "#fff";
-      el.textContent = "Subiendo " + sinSubir + "…";
+      el.textContent = "Subiendo " + sinSubir + "…" +
+        (soloLocal > 0 ? " · " + soloLocal + " solo en este equipo" : "");
+    } else {
+      el.style.background = "#4B5A54";
+      el.style.color = "#fff";
+      el.textContent = soloLocal === 1
+        ? "1 colección solo en este equipo (el servidor no permite guardarla)"
+        : soloLocal + " colecciones solo en este equipo (el servidor no permite guardarlas)";
     }
   }
   window.actualizarIndicador = actualizarIndicador;
@@ -188,6 +269,9 @@
     var lista = pendientes();
     for (var i = 0; i < lista.length; i++) {
       var key = lista[i];
+      // El servidor rechazó esta clave por permisos hace poco: reintentar solo
+      // repetiría la misma subida rechazada. Se retira de la cola.
+      if (denegadoVigente(key)) { quitarPendiente(key); continue; }
       try {
         var cacheKey = await claveCacheLocal(key);
         var valor = LOCAL.get(cacheKey);
@@ -209,7 +293,12 @@
           await encolarPorClave(key, function () { return guardarBloque(key, null, valor); });
         }
         quitarPendiente(key);
-      } catch (e) { /* se reintenta la próxima vez */ }
+        quitarDenegado(key);
+      } catch (e) {
+        // Rechazo por permisos: no se arregla reintentando (ver arriba).
+        // Cualquier otro fallo (red, tiempo) se reintenta la próxima vez.
+        if (esRechazoPorPermisos(e)) marcarDenegado(key, e);
+      }
     }
     actualizarIndicador();
   };
@@ -633,7 +722,7 @@
       if (esLedgerRpc && !esPagosFactura) {
         return { key: key, value: leerLocalOpcional(cacheKey), shared: false };
       }
-      if (window.__nubeActiva && window.__nubeCliente && pendientes().indexOf(key) === -1) {
+      if (window.__nubeActiva && window.__nubeCliente && pendientes().indexOf(key) === -1 && !tieneMarcaDenegado(key)) {
         try {
           var lista;
           if (esPagosFactura) {
@@ -708,31 +797,37 @@
       }
 
       if (window.__nubeActiva && window.__nubeCliente) {
-        try {
-          if (tablaEmpresa) {
-            await conTiempoLimite(
-              encolarPorClave(key, function () { return sincronizarColeccionEmpresa(tablaEmpresa, JSON.parse(value)); }),
-              ESPERA_NUBE_MS
-            );
-          } else if (tablaEmpresaLocal) {
-            await conTiempoLimite(
-              encolarPorClave(key, function () { return sincronizarColeccionEmpresaLocal(tablaEmpresaLocal, JSON.parse(value), key); }),
-              ESPERA_NUBE_MS
-            );
-          } else if (tablaEspecial) {
-            await conTiempoLimite(
-              encolarPorClave(key, function () { return sincronizarColeccionPorFila(tablaEspecial, JSON.parse(value), key); }),
-              ESPERA_NUBE_MS
-            );
-          } else {
-            await conTiempoLimite(
-              encolarPorClave(key, function () { return guardarBloque(key, anterior, value); }),
-              ESPERA_NUBE_MS
-            );
+        // Si el servidor rechazó esta clave por permisos hace poco no se insiste:
+        // queda guardada en este equipo y se reintenta pasado el plazo.
+        if (!denegadoVigente(key)) {
+          try {
+            if (tablaEmpresa) {
+              await conTiempoLimite(
+                encolarPorClave(key, function () { return sincronizarColeccionEmpresa(tablaEmpresa, JSON.parse(value)); }),
+                ESPERA_NUBE_MS
+              );
+            } else if (tablaEmpresaLocal) {
+              await conTiempoLimite(
+                encolarPorClave(key, function () { return sincronizarColeccionEmpresaLocal(tablaEmpresaLocal, JSON.parse(value), key); }),
+                ESPERA_NUBE_MS
+              );
+            } else if (tablaEspecial) {
+              await conTiempoLimite(
+                encolarPorClave(key, function () { return sincronizarColeccionPorFila(tablaEspecial, JSON.parse(value), key); }),
+                ESPERA_NUBE_MS
+              );
+            } else {
+              await conTiempoLimite(
+                encolarPorClave(key, function () { return guardarBloque(key, anterior, value); }),
+                ESPERA_NUBE_MS
+              );
+            }
+            quitarPendiente(key);
+            quitarDenegado(key);
+          } catch (e) {
+            if (esRechazoPorPermisos(e)) marcarDenegado(key, e);
+            else marcarPendiente(key);
           }
-          quitarPendiente(key);
-        } catch (e) {
-          marcarPendiente(key);
         }
       } else if (!window.__modoPruebasLocal) {
         marcarPendiente(key);
