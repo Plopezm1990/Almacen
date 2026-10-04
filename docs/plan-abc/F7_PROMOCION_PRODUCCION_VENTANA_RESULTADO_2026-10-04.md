@@ -1,7 +1,7 @@
 # F7 · Resultado de la ventana de promoción a producción (primer paquete)
 
 Fecha: 2026-10-04
-Estado: `PRIMER_PAQUETE_APLICADO_EN_PRODUCCION_PENDIENTE_PANTALLAS_Y_REGISTRO` (migraciones, D12 y aplicación nueva en producción; faltan la vista de pantallas por Cowork y dos filas del registro de migraciones)
+Estado: `PRIMER_PAQUETE_APLICADO_EN_PRODUCCION_PENDIENTE_PANTALLAS` (migraciones, D12 y aplicación nueva en producción; falta la vista de pantallas por Cowork)
 Autorización: la frase de la hoja (`F7_HOJA_AUTORIZACION_UNICA_PRIMER_PAQUETE_2026-10-04.md`, §5), escrita por Pedro el 4/10/2026 con el commit `ff5015c192a1a01bf09b2e53d31d6339dce48e46` y confirmada para las 10:59 (hora de Madrid). Ante cualquier otra diferencia, parar y esperar su decisión.
 
 ## 1. Resumen
@@ -66,7 +66,7 @@ Un único bloque que terminó con un error forzado (`HUMO_RESULTADO`), de modo q
 
 1. **La herramienta de migraciones rechaza las que contienen `drop`** (tiempo agotado y «cancelled» en C04, tres intentos sin efecto, comprobado después de cada uno). C04 y la pieza 2 las aplicó Pedro a mano, desde el editor SQL, en una consulta nueva. No se esquivó la protección de la herramienta.
 2. **El editor SQL (esta vez desde el móvil) añadió espacios de sangría** y las funciones quedaron con texto distinto (una pasó de 3.912 a 124.413 caracteres), aunque iguales tras quitar espacios (comprobado en las ocho de la pieza 2, comentarios incluidos). Pedro aprobó una migración correctora por cada una (`create or replace` con el texto exacto del archivo, sin la palabra `drop`, sin cambios de lógica, datos ni permisos). Quedan en el registro con el sufijo `_formato` o `_correctora_formato`.
-3. **Registro de migraciones:** C04 y la pieza 2 no tienen su fila original (se aplicaron fuera de la herramienta); solo tienen las filas de sus correctoras. QA tampoco tiene fila de la pieza 2. **No se ha insertado ninguna fila a mano; pendiente de decisión de Pedro.**
+3. **Registro de migraciones:** C04 y la pieza 2 no tienen su fila original (se aplicaron fuera de la herramienta); solo tienen las filas de sus correctoras. QA tampoco tiene fila de la pieza 2. **Decisión de Pedro (4/10/2026): dejarlo anotado, sin insertar ninguna fila a mano.**
 4. **Corrección a la hoja:** la hoja exigía «13 huellas COINCIDE» antes de empezar, imposible; el estado conocido era 6 `COINCIDE`, 5 `NO EXISTE` y 2 `DISTINTA`, y cada huella se comprobó justo antes de la migración que la necesita.
 
 ## 7. Postflight
@@ -78,7 +78,7 @@ Un único bloque que terminó con un error forzado (`HUMO_RESULTADO`), de modo q
 ## 8. Lo que queda
 
 1. **Pantallas de producción, solo mirar (Cowork, decisión 21).** Pendiente; el prompt lo recibe Pedro por separado.
-2. **Registro de migraciones:** decidir si se insertan las filas de C04 y de la pieza 2 (hoy no están) o se deja anotado.
+2. **Registro de migraciones:** cerrado; sin las filas originales de C04 y de la pieza 2, por decisión de Pedro (§6.3).
 3. Las 2 cuentas, 2 pedidos y la comanda de la prueba A10 del 28/9 siguen como restos conocidos; no se tocó nada.
 4. No se abrió caja ni se hizo ninguna venta, cobro o descuento.
 5. Siguientes paquetes, cada uno con su autorización: P3/P3b, B06–B10 (antes a QA), PM09.
