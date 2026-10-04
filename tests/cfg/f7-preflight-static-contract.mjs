@@ -10,14 +10,18 @@
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const REPO = resolve(new URL('../../', import.meta.url).pathname);
+const REPO = resolve(fileURLToPath(new URL('../../', import.meta.url)));
 const sqlRuta = process.env.F7_PREFLIGHT_SQL || join(REPO, 'docs/plan-abc/F7_PROMOCION_PRODUCCION_PREFLIGHT_SOLO_LECTURA_2026-10-03.sql');
 const docRuta = process.env.F7_DOC || join(REPO, 'docs/plan-abc/F7_PROMOCION_PRODUCCION_PREPARACION_2026-10-03.md');
 const sql = readFileSync(sqlRuta, 'utf8');
 const doc = readFileSync(docRuta, 'utf8');
 const PRIMERA = '20260924160739'; // A09: primera migración candidata
-const archivos = readdirSync(join(REPO, 'supabase/migrations')).filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA).sort();
+// La foto de promoción del 3/10 es un paquete cerrado; migraciones posteriores
+// tienen su propia preparación y no alteran retroactivamente esta preflight.
+const ULTIMA = '20261003130000';
+const archivos = readdirSync(join(REPO, 'supabase/migrations')).filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && f.slice(0, 14) <= ULTIMA).sort();
 const leer = (f) => readFileSync(join(REPO, 'supabase/migrations', f), 'utf8');
 const sinComentarios = (s) => s.replace(/--[^\n]*/g, '');
 const sinCadenas = (s) => s.replace(/'(?:[^']|'')*'/g, "''");

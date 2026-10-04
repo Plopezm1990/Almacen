@@ -41,6 +41,9 @@ function makeCloud(mode) {
     calls,
     client: {
       auth: { getSession: async () => ({ data: { session: { user: { id: "owner-test" } } } }) },
+      // Este contrato cubre el servidor anterior a P3c: la RPC nueva aún no
+      // existe y el navegador continúa por el camino heredado de upsert.
+      rpc: async () => ({ data: null, error: { code: "PGRST202" } }),
       from: builder,
     },
   };
