@@ -122,7 +122,7 @@ Solo con la autorización única del primer paquete (§8.1) y en este orden. **P
 5. **Humo transaccional con `ROLLBACK`** (modelo del humo A08 en producción, sin ventas reales): reutilizar los contratos vivos de las piezas con sus identidades ficticias, sustituyendo por usuarios existentes (la plantilla de A08 muestra cómo) y comprobando después que no queda ninguna fila.
 6. **Fusionar el PR de promoción en `release`** (la CI ya está en verde en el PR 119; se vuelve a comprobar en la cabeza congelada) → un único despliegue de producción. Comprobar que lo servido es el candidato (`sha256` de `fuente.js`).
 7. **Postflight:** P2 todo `todos`; P3 de nuevo (las huellas pasan a ser las de QA); permisos (P5) y advertencias de seguridad de Supabase; el registro con los nombres esperados.
-8. **Pantallas, solo lectura:** abrir la pantalla de configuración y el historial sin crear datos. Cualquier flujo con ventas, cobros o devoluciones reales **solo** con tu autorización expresa y una cuenta de prueba acordada.
+8. **Pantallas, solo mirar (lo hace Cowork con prompt estricto, decisión 21):** abrir la pantalla de configuración y el historial de descuentos con el Propietario, sin pulsar nada que cree o guarde. Nadie crea cuentas, ventas, cobros ni descuentos; la aplicación puede guardar por sí sola su sincronización habitual (local activo, contexto empresa/local, catálogo pendiente de ese equipo). Cualquier flujo con ventas, cobros o devoluciones reales **solo** con tu autorización expresa y una cuenta de prueba acordada.
 
 ## 10. Recuperación
 
@@ -133,7 +133,7 @@ Solo con la autorización única del primer paquete (§8.1) y en este orden. **P
 | Un disparador nuevo bloquea un flujo real (pieza 2, 3 o 5, C04–C12) | Medida de emergencia: desactivarlo (`alter table … disable trigger …`) **con tu autorización**, y corregir después |
 | Los datos creados al aplicar (PM07, PM10) | No se borran sin tu autorización; son idempotentes |
 | La marca de aprobación de D13 | No se revierte: es el valor que ya regía |
-| La aplicación nueva falla | En Netlify, **publicar de nuevo el despliegue anterior** (el anotado en el paso 3): inmediato y sin tocar la base. Con servidor nuevo y aplicación vieja el efecto es el de la tabla del §7 (degradado, no roto) |
+| La aplicación nueva falla | En Netlify, **publicar de nuevo el despliegue anterior** (el anotado en el paso 3): inmediato y sin tocar la base. **Autorizado de antemano en la hoja de la autorización única** (decisión 22): no espera decisión. Con servidor nuevo y aplicación vieja el efecto es el de la tabla del §7 (degradado, no roto) |
 | Algo que se escribió después de promocionar (**producción no tiene copia automática: solo existe la copia manual del paso 3 bis**) | **No hay vuelta atrás limpia** de los datos que los usuarios creen con el sistema nuevo. Por eso la ventana, el humo con `ROLLBACK` y no abrir caja hasta terminar |
 
 ## 11. Qué se comprueba después

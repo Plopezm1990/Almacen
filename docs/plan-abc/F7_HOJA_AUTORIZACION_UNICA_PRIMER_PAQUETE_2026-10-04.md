@@ -15,7 +15,8 @@ Origen: decisión 8 de `F7_PROMOCION_PRODUCCION_DECISIONES_2026-10-03.md` («una
 | 3 | **Un dato:** la política de descuento del Encargado (D12, opción A, 0 %) para el local productivo | Se escribe tras la última migración y se comprueba (decisión 17) |
 | 4 | **Humo transaccional con `ROLLBACK`** | Pruebas con identidades ficticias que no dejan ninguna fila; se comprueba que no queda nada |
 | 5 | **Fusionar el PR 119 en `release`** | Es el **único despliegue de producción** (D28). Se comprueba después que lo servido es el candidato (`sha256` de `fuente.js`) |
-| 6 | **Pantallas, solo lectura** | Abrir la pantalla de configuración y el historial de descuentos sin crear datos |
+| 6 | **Pantallas, solo mirar (lo hace Cowork)** | Abrir con el Propietario la pantalla de configuración y el historial de descuentos, sin pulsar nada que cree o guarde. **Nadie crea cuentas, ventas, cobros ni descuentos.** La aplicación puede guardar por sí sola su sincronización habitual (local activo, contexto empresa/local, cambios de catálogo pendientes en ese equipo): no se puede evitar al abrirla |
+| 7 | **Volver a publicar el despliegue anterior de Netlify, solo si la aplicación nueva falla tras publicarla** (decisión 22) | No toca la base de datos y deja la aplicación como está hoy. Es la **única** marcha atrás autorizada de antemano; cualquier otra diferencia es parar y esperar tu decisión |
 
 ## 2. Las 21 migraciones, en orden (todas faltan hoy en producción)
 
@@ -72,7 +73,7 @@ Origen: decisión 8 de `F7_PROMOCION_PRODUCCION_DECISIONES_2026-10-03.md` («una
 
 ## 5. La frase (la que Pedro diría en la ventana, con los huecos rellenados)
 
-> «Autorizo aplicar en producción el primer paquete tal como lo describe la hoja de autorización: las 21 migraciones, la política D12 y el despliegue del PR 119 en el commit `[COMMIT]` (`sha256` de `fuente.js` `88fcf880…`), hoy `[FECHA]` a las `[HORA]`. La foto previa no tiene diferencias, la copia manual está hecha y estoy presente. Si hay cualquier diferencia, para y espera mi decisión.»
+> «Autorizo aplicar en producción el primer paquete tal como lo describe la hoja de autorización: las 21 migraciones, la política D12 y el despliegue del PR 119 en el commit `[COMMIT]` (`sha256` de `fuente.js` `88fcf880…`), hoy `[FECHA]` a las `[HORA]`. La foto previa no tiene diferencias, la copia manual está hecha y estoy presente. Si la aplicación nueva falla tras publicarla, queda autorizado volver a publicar el despliegue anterior de Netlify (`6abf43047ed8030008ffb5a9`); ante cualquier otra diferencia, para y espera mi decisión.»
 
 Una respuesta ambigua («vale», «adelante» sin más) **no** cuenta: se necesita esa frase o una equivalente que nombre el commit y el alcance.
 
@@ -86,7 +87,7 @@ Una respuesta ambigua («vale», «adelante» sin más) **no** cuenta: se necesi
 - `release` ya no está en `01f47bf`, o la CI de la cabeza congelada no está en verde.
 - El `sha256` de `fuente.js` servido tras el despliegue no es el del candidato.
 
-Al parar: te cuento qué ha pasado y en qué estado queda producción, y **no hago nada más hasta que decidas**. Opciones habituales: una migración correctora hacia delante (nunca borrar), `create or replace` con la definición guardada en P4 para una función reemplazada, desactivar un disparador que bloquee un flujo real (solo con tu autorización) o, si la aplicación nueva falla, **publicar de nuevo el despliegue anterior de Netlify** (inmediato y sin tocar la base).
+Al parar: te cuento qué ha pasado y en qué estado queda producción, y **no hago nada más hasta que decidas**. Opciones habituales: una migración correctora hacia delante (nunca borrar), `create or replace` con la definición guardada en P4 para una función reemplazada, desactivar un disparador que bloquee un flujo real (solo con tu autorización) o, si la aplicación nueva falla tras publicarla, **publicar de nuevo el despliegue anterior de Netlify**: inmediato, sin tocar la base y **ya autorizado de antemano** (punto 7 de §1). Es la única de estas opciones que no espera tu decisión.
 
 ## 7. Lo que Pedro asume (en claro)
 
@@ -94,7 +95,7 @@ Al parar: te cuento qué ha pasado y en qué estado queda producción, y **no ha
 - **Lo que se escriba después de promocionar no tiene vuelta atrás limpia.** Por eso: ventana corta, humo con `ROLLBACK` y no abrir caja hasta terminar.
 - **Servidor y aplicación nunca se han probado en combinación en QA** sobre la base real de producción; la tabla del §7 del documento de preparación sale de leer el código y los informes. El orden «servidor primero, aplicación después» limita el riesgo.
 - **No hay prueba de carga ni de concurrencia real** de ninguna pieza.
-- **El coste del despliegue de producción de Netlify no está comprobado** (según un documento del repositorio, 15 créditos; sin verificar).
+- **El coste del despliegue de producción de Netlify no está comprobado** (según un documento del repositorio, 15 créditos; sin verificar). **Pedro lo asume** (decisión 23, 4/10/2026).
 - Quedan **2 cuentas, 2 pedidos y 1 comanda de prueba** abiertos en producción (restos conocidos) y no se tocan.
 - La pantalla antigua de producción **ya falla** en el cobro y en el historial de descuentos (porque m04d está aplicada): la aplicación nueva lo arregla.
 
@@ -103,7 +104,8 @@ Al parar: te cuento qué ha pasado y en qué estado queda producción, y **no ha
 | Pasos | Quién |
 |---|---|
 | Copia manual (`supabase db dump` ×3), avisar al personal, decir la frase | **Pedro** |
-| Foto, huellas, P4, migraciones una a una, D12, humo con `ROLLBACK`, fusionar, comprobaciones posteriores, informar de cada paso | **Claude** |
+| Abrir las pantallas de producción tras el despliegue, solo mirar (yo le doy el prompt a Cowork y reviso lo que cuenta) | **Cowork**, con Pedro presente |
+| Foto, huellas, P4, migraciones una a una, D12, humo con `ROLLBACK`, fusionar, comprobaciones posteriores, volver a publicar el despliegue anterior si la app nueva falla, informar de cada paso | **Claude** |
 | Parar y esperar tu decisión ante cualquier diferencia | **Claude** |
 
 ## 9. Registro (se rellena al congelar y durante la ventana)
