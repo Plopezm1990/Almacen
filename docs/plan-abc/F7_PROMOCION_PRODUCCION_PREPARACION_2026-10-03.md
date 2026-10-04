@@ -96,29 +96,30 @@ Lectura del código y de los informes de cada pieza (**no probado** en combinaci
 
 ## 8. Condiciones de entrada (todas, antes de aplicar nada)
 
-1. Autorizaciones de §12.
-2. **Foto de producción** (bloques P0–P9) repetida en la ventana, con hora y proyecto, y comparada con la del 3/10 (11:33 UTC); **cero** migraciones en «ALGUNOS (deriva)».
-3. **Paridad por huellas:** P3 del archivo SQL sobre producción. Cada una de las 11 huellas (piezas 1, 2, 5 y D13) debe dar `COINCIDE`; si alguna da `DISTINTA`, la migración se negaría a aplicarse (por diseño) y **no se fuerza**. Comprobado en la réplica local que da `COINCIDE` sobre el estado previo de cada migración.
-4. **Base PM09 reconciliada** en producción (la RPC base `revertir_venta_stock` y los wrappers que faltan), como cambio de alcance aparte y con su propio preflight.
+1. **La autorización única del primer paquete** (`F7_PROMOCION_PRODUCCION_DECISIONES_2026-10-03.md`, §2): candidato exacto congelado, foto repetida y Pedro presente diciendo expresamente que sí. Las decisiones de §12 ya están tomadas.
+2. **Foto de producción** (bloques P0–P9) repetida en la ventana, con hora y proyecto, y comparada con la del 3/10 (11:33 UTC); **cero** migraciones en «ALGUNOS (deriva)». Incluye el bloque **P8b**: las tres primeras filas («fuera de lo conocido») deben dar 0 y las tres últimas («restos conocidos») 2, 2 y 1.
+3. **Paridad por huellas:** P3 del archivo SQL sobre producción. Cada una de las **13 huellas** (piezas 1, 2, 5, D13 y la corrección de PM07; 12 funciones) debe dar `COINCIDE`; si alguna da `DISTINTA`, la migración se negaría a aplicarse (por diseño) y **no se fuerza**. Comprobado en la réplica local que da `COINCIDE` sobre el estado previo de cada migración.
+4. **Base PM09 reconciliada**: **solo es condición para aplicar PM09**, que queda **fuera del primer paquete** (decisión 6). Comprobado el 4/10/2026: ninguna migración posterior a PM09 (filas 36–46) usa objetos de PM09, así que el primer paquete no depende de ello.
 5. **Pieza 2:** comprobada el 3/10: lógica idéntica entre QA y el archivo (una diferencia solo de un comentario, §4). Falta, si lo quieres, registrarla en el registro de QA o reaplicar esa función con el comentario.
 6. **Pruebas registradas:** hecho el 3/10 en la rama (los 33 archivos del apéndice B en `tests/ci/manifiesto_clasificacion.json`, el flujo de CI para los contratos SQL). La puerta ya está en verde en GitHub; queda adaptar los contratos históricos F2/F4 de reembolsos a D13 (o decidir su destino).
 7. **Roles retirados:** el 3/10 nadie los tenía; repetir P7 en la ventana.
 8. **m04d:** **aplicada en producción** (foto del 3/10): los dos arreglos de pantalla (cobro y historial de descuentos) son necesarios; el de cobro necesita B05 en producción antes que la aplicación.
 9. **D12:** política de 0 % del local productivo preparada (o la opción B decidida).
-10. **Ventana:** bloque P8: **sin cajas abiertas, sin reembolsos ni envíos pendientes, sin pedidos aún sin servir ni cancelar ni pagos en curso**; fuera del servicio. El 3/10 había **2 cuentas abiertas y 1 efecto pendiente** (con 5 días sin actividad): se miraron con tu permiso y son restos de la prueba A10 del 28/9; **no existe una operación del servidor para cerrar cuentas** (solo la fusión), así que «sin cuentas abiertas» no es un criterio útil Pedro decidió dejarlas, con su comanda, como **restos conocidos** (sin escribir nada en producción); el bloque P8b las acepta por identificador (`F7_PROMOCION_PRODUCCION_DECISIONES_2026-10-03.md`, §3 bis).
+10. **Ventana:** bloque P8: **sin cajas abiertas, sin reembolsos ni envíos pendientes, sin pedidos aún sin servir ni cancelar ni pagos en curso**; fuera del servicio. El 3/10 había **2 cuentas abiertas y 1 efecto pendiente** (con 5 días sin actividad): se miraron con tu permiso y son restos de la prueba A10 del 28/9; **no existe una operación del servidor para cerrar cuentas** (solo la fusión), así que «sin cuentas abiertas» no es un criterio útil. Pedro decidió dejarlas, con su comanda, como **restos conocidos** (sin escribir nada en producción); el bloque P8b las acepta por identificador (`F7_PROMOCION_PRODUCCION_DECISIONES_2026-10-03.md`, §3 bis).
 11. **Netlify:** confirmar cuál es la rama de producción (el documento `A09_NETLIFY_QA_REVIEW_PROPOSAL_2026-09-24.md` no pudo comprobarlo; el PR 118 da a entender que fusionar en `release` publica producción), anotar el identificador del despliegue de producción actual (para volver) y el coste (según ese documento, en el plan basado en créditos cada despliegue de producción exitoso cuesta 15 créditos y los previews 0; no comprobado hoy).
 12. **Copia de seguridad:** guardar la salida del bloque P4 (definición de las **46 funciones** que las migraciones reemplazan) y comprobar si el proyecto de producción tiene copia diaria o recuperación a un instante (no consultado).
 
 ## 9. Ejecución, paso a paso
 
-Solo con las autorizaciones de §12 y en este orden. **Parar al primer fallo.**
+Solo con la autorización única del primer paquete (§8.1) y en este orden. **Parar a la primera diferencia con lo esperado**: la autorización no cubre seguir tras un fallo.
 
-1. **Congelar el candidato:** commit exacto del PR de promoción, `sha256` de `fuente.js`, resultado de `recuperar_candidato.py --check`.
-2. **Repetir la foto** (P0–P9) dentro de la ventana y comparar con la de antes: si algo cambió, parar.
+1. **Congelar el candidato:** commit exacto del PR de promoción (el PR 119), `sha256` de `fuente.js` (hoy `88fcf88015b6c85eb75c98080480ffde3da9a80f67688ff1824c7f1dfc07fbe8`), resultado de `recuperar_candidato.py --check` y CI en verde en esa cabeza. **Comprobar que `release` sigue en `01f47bf`**: si se ha movido, el árbol que se publique no sería el probado; habría que actualizar el PR, repetir la CI y volver a congelar.
+2. **Repetir la foto** (P0–P9, con P8b) dentro de la ventana y comparar con la de antes: si algo cambió, parar.
 3. **Guardar P4** (definiciones) y anotar el despliegue actual de Netlify.
 4. **Aplicar las migraciones una a una**, en el orden del apéndice A, con la herramienta de migraciones (cada una es una transacción: se aplica entera o nada). Tras cada una: ver su fila en el registro, repetir su fila de P2 (`todos`) y, si tiene huellas, P3.
+   - **4 bis. Política de descuento del Encargado (D12, opción A, 0 %) para el local productivo:** es un dato, no una migración. **Pendiente de confirmar por Pedro que entra en la autorización única**; si no, queda como paso con su propio sí.
 5. **Humo transaccional con `ROLLBACK`** (modelo del humo A08 en producción, sin ventas reales): reutilizar los contratos vivos de las piezas con sus identidades ficticias, sustituyendo por usuarios existentes (la plantilla de A08 muestra cómo) y comprobando después que no queda ninguna fila.
-6. **Fusionar el PR de promoción en `release`** (solo con CI en verde y la puerta de CI general arreglada) → un único despliegue de producción. Comprobar que lo servido es el candidato (`sha256` de `fuente.js`).
+6. **Fusionar el PR de promoción en `release`** (la CI ya está en verde en el PR 119; se vuelve a comprobar en la cabeza congelada) → un único despliegue de producción. Comprobar que lo servido es el candidato (`sha256` de `fuente.js`).
 7. **Postflight:** P2 todo `todos`; P3 de nuevo (las huellas pasan a ser las de QA); permisos (P5) y advertencias de seguridad de Supabase; el registro con los nombres esperados.
 8. **Pantallas, solo lectura:** abrir la pantalla de configuración y el historial sin crear datos. Cualquier flujo con ventas, cobros o devoluciones reales **solo** con tu autorización expresa y una cuenta de prueba acordada.
 
