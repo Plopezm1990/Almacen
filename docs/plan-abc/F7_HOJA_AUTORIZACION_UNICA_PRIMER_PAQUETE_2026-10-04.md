@@ -1,7 +1,7 @@
-# F7 · Hoja de la autorización única del primer paquete (BORRADOR para que la revise Pedro)
+# F7 · Hoja de la autorización única del primer paquete (revisada por Pedro; no autoriza nada)
 
 Fecha: 2026-10-04
-Estado: `BORRADOR_NO_AUTORIZA_NADA`
+Estado: `REVISADA_POR_PEDRO_NO_AUTORIZA_NADA` (Pedro la dio por cerrada el 4/10/2026, decisión 24; los huecos `[COMMIT]`, `[FECHA]` y `[HORA]` se rellenan al congelar el candidato y fijar la ventana)
 Origen: decisión 8 de `F7_PROMOCION_PRODUCCION_DECISIONES_2026-10-03.md` («una sola autorización para el primer paquete entero») y guion de la ventana (`F7_PROMOCION_PRODUCCION_PREPARACION_2026-10-03.md`, §8–§10).
 
 > **Esta hoja no autoriza nada por sí sola.** Leerla, corregirla o estar de acuerdo con ella no es la autorización. La autorización existe solo cuando Pedro, **en la ventana y con todo lo de §3 cumplido**, dice la frase de §5 con el commit, la fecha y la hora rellenados. Hasta entonces producción no se toca (D29).
