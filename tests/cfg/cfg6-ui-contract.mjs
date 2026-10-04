@@ -31,6 +31,10 @@ const compRec = region(recuperado, "fuente recuperado");
 const compBun = region(bundle, "bundle");
 assert.equal(compRec, compBun, "el componente es idéntico en el bundle y en el fuente recuperado");
 const comp = compRec;
+assert.ok(comp.includes("Si el cierre provisional tiene diferencia, indica un motivo. Si supera el umbral configurado, el Propietario debe aprobarla antes de finalizar el cierre."),
+  "Día y cajas explica el cierre con diferencia ya implementado");
+assert.doesNotMatch(comp, /De momento la pantalla de cierre no pide aún el motivo ni la aprobación/,
+  "Día y cajas no conserva el aviso desactualizado");
 
 // 1. Cableado en los dos archivos (menú, grupo, montaje, roles, reabrir).
 for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]]) {
