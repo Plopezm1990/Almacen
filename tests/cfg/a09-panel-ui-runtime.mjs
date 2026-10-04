@@ -144,6 +144,11 @@ function tarjetaDescuento() {
   return titulo ? titulo.parentElement.parentElement : null;
 }
 const botonDe = (tarjeta, t) => [...(tarjeta?.querySelectorAll('button') || [])].find((b) => b.textContent.trim() === t);
+// cambiar un <select> controlado por React: el valor se fija con el setter nativo y se avisa con un evento «change»
+async function elegir(sel, valor) {
+  Object.getOwnPropertyDescriptor(dom.window.HTMLSelectElement.prototype, 'value').set.call(sel, valor);
+  await act(async () => { sel.dispatchEvent(new dom.window.Event('change', { bubbles: true })); });
+}
 
 try {
   {
@@ -165,6 +170,19 @@ try {
     const c = env.llamadas.filter((x) => x.nombre === 'abc_listar_eventos_descuento_cuenta');
     ok('B8 los eventos se piden a la función del servidor, una vez y con los parámetros exactos', c.length === 1 && Object.keys(c[0].params).join() === 'p_empresa_id,p_local_id,p_cuenta_id' && c[0].params.p_cuenta_id === env.ctx.cuentaId && c[0].params.p_empresa_id === env.E && c[0].params.p_local_id === env.L, env.llamadas);
     ok('B9 el navegador no consulta ninguna tabla sin permiso', env.prohibidas.length === 0, env.prohibidas);
+    // el descuento por importe se resta de la base, antes de IVA (diseño A09): la pantalla lo dice (Pedro, 3/10/2026: «aclarar el texto»)
+    const sel = tarjeta.querySelector('select');
+    const AVISO_IVA = 'El importe se resta antes de IVA: el total de la cuenta baja ese importe más su IVA.';
+    ok('C1 con «Porcentaje» (valor inicial) no sale el aviso de IVA ni el rótulo «Importe (€, antes de IVA)»', !texto().includes(AVISO_IVA) && !texto().includes('Importe (€, antes de IVA)'), texto().slice(-700));
+    await elegir(sel, 'AMOUNT');
+    const tA = texto();
+    ok('C2 con «Importe» el campo dice «Importe (€, antes de IVA)» y sale el aviso de IVA', tA.includes('Importe (€, antes de IVA)') && tA.includes(AVISO_IVA), tA.slice(-700));
+    ok('C3 la opción del selector dice «Importe (antes de IVA)»', [...sel.options].some((o) => o.value === 'AMOUNT' && o.textContent === 'Importe (antes de IVA)'), [...sel.options].map((o) => o.textContent));
+    ok('C4 «Porcentaje» y «Cortesía» siguen con su texto', [...sel.options].some((o) => o.value === 'PERCENT' && o.textContent === 'Porcentaje') && [...sel.options].some((o) => o.value === 'COURTESY' && o.textContent === 'Cortesía'), [...sel.options].map((o) => o.textContent));
+    await elegir(sel, 'COURTESY');
+    ok('C5 con «Cortesía» no hay campo de valor ni aviso de IVA', !texto().includes(AVISO_IVA) && !texto().includes('Importe (€, antes de IVA)') && !tarjeta.querySelector('input[type="number"]'), texto().slice(-700));
+    await elegir(sel, 'PERCENT');
+    ok('C6 de vuelta a «Porcentaje» desaparece el aviso de IVA', !texto().includes(AVISO_IVA), texto().slice(-700));
     await clic(botonDe(tarjeta, 'Cerrar'));
     ok('B10 «Cerrar» devuelve la tarjeta a su estado inicial', !!botonDe(tarjetaDescuento(), 'Abrir'), texto().slice(-300));
   }

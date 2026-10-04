@@ -21193,13 +21193,14 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tipo" },
         /* @__PURE__ */ import_react4.default.createElement("select", { value: tipoDescuentoA09, onChange: (e2) => setTipoDescuentoA09(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[12px]", style: { border: "1px solid " + C2.line, background: C2.surface, color: C2.ink } },
           /* @__PURE__ */ import_react4.default.createElement("option", { value: "PERCENT" }, "Porcentaje"),
-          /* @__PURE__ */ import_react4.default.createElement("option", { value: "AMOUNT" }, "Importe"),
+          /* @__PURE__ */ import_react4.default.createElement("option", { value: "AMOUNT" }, "Importe (antes de IVA)"),
           /* @__PURE__ */ import_react4.default.createElement("option", { value: "COURTESY" }, "Cortesía")
         )
       ),
-      tipoDescuentoA09 !== "COURTESY" ? /* @__PURE__ */ import_react4.default.createElement(Field, { label: tipoDescuentoA09 === "PERCENT" ? "Porcentaje" : "Importe" },
+      tipoDescuentoA09 !== "COURTESY" ? /* @__PURE__ */ import_react4.default.createElement(Field, { label: tipoDescuentoA09 === "PERCENT" ? "Porcentaje" : "Importe (€, antes de IVA)" },
         /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", min: "0.00000001", max: tipoDescuentoA09 === "PERCENT" ? "100" : void 0, step: "0.00000001", value: valorDescuentoA09, onChange: (e2) => setValorDescuentoA09(e2.target.value) })
       ) : null,
+      tipoDescuentoA09 === "AMOUNT" ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "El importe se resta antes de IVA: el total de la cuenta baja ese importe más su IVA.") : null,
       /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo" },
         /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivoDescuentoA09, onChange: (e2) => setMotivoDescuentoA09(e2.target.value), maxLength: 500, placeholder: "Motivo obligatorio" })
       ),
