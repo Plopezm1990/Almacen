@@ -98,7 +98,7 @@ Lectura del código y de los informes de cada pieza (**no probado** en combinaci
 
 1. **La autorización única del primer paquete** (`F7_PROMOCION_PRODUCCION_DECISIONES_2026-10-03.md`, §2): candidato exacto congelado, foto repetida y Pedro presente diciendo expresamente que sí. Las decisiones de §12 ya están tomadas.
 2. **Foto de producción** (bloques P0–P9) repetida en la ventana, con hora y proyecto, y comparada con la del 3/10 (11:33 UTC); **cero** migraciones en «ALGUNOS (deriva)». Incluye el bloque **P8b**: las tres primeras filas («fuera de lo conocido») deben dar 0 y las tres últimas («restos conocidos») 2, 2 y 1.
-3. **Paridad por huellas:** P3 del archivo SQL sobre producción. Cada una de las **13 huellas** (piezas 1, 2, 5, D13 y la corrección de PM07; 12 funciones) debe dar `COINCIDE`; si alguna da `DISTINTA`, la migración se negaría a aplicarse (por diseño) y **no se fuerza**. Comprobado en la réplica local que da `COINCIDE` sobre el estado previo de cada migración.
+3. **Paridad por huellas:** P3 del archivo SQL sobre producción. Cada una de las **13 huellas** (piezas 1, 2, 5, D13 y la corrección de PM07; 12 funciones) debe estar en su estado esperado **justo antes de la migración que la exige**: antes de empezar (foto del 4/10) dan 6 `COINCIDE`, 5 `NO EXISTE` (las crean migraciones del paquete) y 2 `DISTINTA` por un motivo conocido (`abc_tiene_capacidad` hasta aplicar B04; la fila «versión correcta» de PM07); si una huella da `DISTINTA` cuando le toca, la migración se negaría a aplicarse (por diseño) y **no se fuerza**. Comprobado en la réplica local que da `COINCIDE` sobre el estado previo de cada migración.
 4. **Base PM09 reconciliada**: **solo es condición para aplicar PM09**, que queda **fuera del primer paquete** (decisión 6). Comprobado el 4/10/2026: ninguna migración posterior a PM09 (filas 36–46) usa objetos de PM09, así que el primer paquete no depende de ello.
 5. **Pieza 2:** comprobada el 3/10: lógica idéntica entre QA y el archivo (una diferencia solo de un comentario, §4). Falta, si lo quieres, registrarla en el registro de QA o reaplicar esa función con el comentario.
 6. **Pruebas registradas:** hecho el 3/10 en la rama (los 33 archivos del apéndice B en `tests/ci/manifiesto_clasificacion.json`, el flujo de CI para los contratos SQL). La puerta ya está en verde en GitHub; queda adaptar los contratos históricos F2/F4 de reembolsos a D13 (o decidir su destino).
@@ -111,10 +111,10 @@ Lectura del código y de los informes de cada pieza (**no probado** en combinaci
 
 ## 9. Ejecución, paso a paso
 
-Solo con la autorización única del primer paquete (§8.1) y en este orden. **Parar a la primera diferencia con lo esperado**: la autorización no cubre seguir tras un fallo.
+Solo con la autorización única del primer paquete (§8.1) y en este orden. **Parar a la primera diferencia con lo esperado**: la autorización no cubre seguir tras un fallo. **Los pasos 2, 3 y 3 bis son previos a la frase** (decisión 25): las lecturas se hacen con un permiso de solo lectura aparte, y la copia la hace Pedro; la frase llega cuando todo coincide.
 
 1. **Congelar el candidato:** commit exacto del PR de promoción (el PR 119), `sha256` de `fuente.js` (hoy `88fcf88015b6c85eb75c98080480ffde3da9a80f67688ff1824c7f1dfc07fbe8`), resultado de `recuperar_candidato.py --check` y CI en verde en esa cabeza. **Comprobar que `release` sigue en `01f47bf`**: si se ha movido, el árbol que se publique no sería el probado; habría que actualizar el PR, repetir la CI y volver a congelar.
-2. **Repetir la foto** (P0–P9, con P8b) dentro de la ventana y comparar con la de antes: si algo cambió, parar.
+2. **Repetir la foto** (P0–P9, con P8b) **antes de la frase y con un permiso de solo lectura aparte** (decisión 25) y comparar con la de antes: si algo cambió, parar.
 3. **Guardar P4** (definiciones) y anotar el despliegue actual de Netlify.
    - **3 bis. Copia manual de producción** (decisión 20): hecha por Pedro ahora, con los tres `supabase db dump`; Claude anota hora y tamaños. Si falta o algún archivo pesa 0 bytes, **parar**.
 4. **Aplicar las migraciones una a una**, en el orden del apéndice A, con la herramienta de migraciones (cada una es una transacción: se aplica entera o nada). Tras cada una: ver su fila en el registro, repetir su fila de P2 (`todos`) y, si tiene huellas, P3.

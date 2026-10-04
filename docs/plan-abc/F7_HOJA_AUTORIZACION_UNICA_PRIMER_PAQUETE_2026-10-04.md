@@ -10,7 +10,7 @@ Origen: decisión 8 de `F7_PROMOCION_PRODUCCION_DECISIONES_2026-10-03.md` («una
 
 | # | Qué | Detalle |
 |---|---|---|
-| 1 | **Lecturas de solo lectura de producción** | Foto repetida (bloques P0–P9 y P8b del archivo de comprobaciones previas), huellas P3, P4 (definiciones), y las comprobaciones posteriores. No escriben nada |
+| 1 | **Lecturas de solo lectura de producción** | Las **previas** (foto repetida P0–P9 y P8b, huellas P3 y definiciones P4) se hacen **antes de la frase, con un permiso de solo lectura aparte** (decisión 25). Dentro de esta autorización quedan las lecturas de **cada migración** y las **posteriores**. Ninguna escribe nada |
 | 2 | **21 migraciones**, una a una, en el orden de la tabla de §2, con la herramienta de migraciones (cada una es una transacción) | Tras cada una: su fila en el registro, sus objetos (P2) y, si tiene huella, P3 |
 | 3 | **Un dato:** la política de descuento del Encargado (D12, opción A, 0 %) para el local productivo | Se escribe tras la última migración y se comprueba (decisión 17) |
 | 4 | **Humo transaccional con `ROLLBACK`** | Pruebas con identidades ficticias que no dejan ninguna fila; se comprueba que no queda nada |
@@ -62,10 +62,10 @@ Origen: decisión 8 de `F7_PROMOCION_PRODUCCION_DECISIONES_2026-10-03.md` («una
 | ☐ | **Candidato congelado**: commit exacto del PR 119 y `sha256` de `fuente.js` | Hoy `88fcf88015b6c85eb75c98080480ffde3da9a80f67688ff1824c7f1dfc07fbe8`. Se anota el commit de la cabeza congelada: `[COMMIT]` |
 | ☐ | **CI en verde** en esa cabeza (22 de 22 + Netlify sin error) | Panel de comprobaciones del PR |
 | ☐ | **`release` sigue en `01f47bf`** | Si se movió, el árbol publicado no sería el probado: actualizar el PR, repetir la CI y volver a congelar |
-| ☐ | **Foto de producción repetida** sin diferencias con la del 3/10, con cero migraciones en «ALGUNOS (deriva)» | Bloques P0–P9 |
+| ☐ | **Foto de producción repetida** sin diferencias con la del 3/10, con cero migraciones en «ALGUNOS (deriva)» | Bloques P0–P9, con el permiso de solo lectura aparte (decisión 25) |
 | ☐ | **Bloque P8b**: 0, 0, 0 y 2, 2, 1 | Cualquier otro valor = hay algo en curso que no es un resto conocido |
-| ☐ | **Huellas P3**: las 13 en `COINCIDE` | Si alguna da `DISTINTA`, la migración se negaría a aplicarse y no se fuerza |
-| ☐ | **Definiciones guardadas (P4)** de las 46 funciones que se reemplazan | Salida guardada fuera del repositorio |
+| ☐ | **Huellas P3 en el estado esperado antes de empezar**: 6 `COINCIDE` (`abc_abrir_sesion_caja`, `abc_a10_tiene_capacidad`, las tres de D13 y el borrador de PM07), 5 `NO EXISTE` (las crean migraciones del propio paquete) y 2 `DISTINTA` por un motivo conocido (`abc_tiene_capacidad`, que deja B04, y la fila «versión correcta» de PM07) | Cualquier otra combinación es una deriva nueva: parar. Cada huella se vuelve a comprobar justo antes de la migración que la exige (por ejemplo `abc_tiene_capacidad` debe `COINCIDIR` tras B04 y antes de la pieza 5); si da `DISTINTA` entonces, la migración se niega a aplicarse y no se fuerza |
+| ☐ | **Definiciones guardadas (P4)** de las funciones que se reemplazan: **33** existen hoy en producción (las otras 13 las crean migraciones que faltan) | Salida guardada fuera del repositorio |
 | ☐ | **Copia manual hecha por Pedro** (`roles.sql`, `schema.sql`, `data.sql`) | Hora y tamaños anotados; ninguno de 0 bytes; guardada fuera del repositorio y en dos sitios |
 | ☐ | **Despliegue de Netlify al que volver** anotado | `6abf43047ed8030008ffb5a9` (commit `01f47bf`, 2/10/2026); se comprueba que sigue siendo el actual |
 | ☐ | **Sin servicio y sin cajas abiertas**; personal avisado | Bloque P8 |
@@ -116,4 +116,6 @@ Al parar: te cuento qué ha pasado y en qué estado queda producción, y **no ha
 | Fecha y hora de la ventana | `[FECHA / HORA]` |
 | Hora y tamaños de la copia manual | `[HORA]` · `roles.sql [bytes]` · `schema.sql [bytes]` · `data.sql [bytes]` |
 | Despliegue de Netlify anterior | `6abf43047ed8030008ffb5a9` |
+| Lecturas previas de producción (solo `select`), 4/10/2026 08:21–08:22 UTC | Idénticas a la foto del 3/10: 26 migraciones registradas desde `20260923…` hasta B02-B03 y ninguna posterior; P2 sin ninguna «ALGUNOS (deriva)»; P3 6 `COINCIDE` + 5 `NO EXISTE` + 2 `DISTINTA` conocidas; P8b 0, 0, 0 y 2, 2, 1; P8 sin pagos ni reembolsos; P6/P7 con los mismos recuentos; última actividad 28/9 21:28 UTC. P4 guardada fuera del repositorio (33 funciones) |
+| Ensayo de la copia manual (no es la copia de la ventana), 4/10/2026 10:11–10:13 hora local | `roles.sql` 370 bytes · `schema.sql` 1.047.547 bytes · `data.sql` 312.922 bytes; Windows, CLI 2.113.0, Docker Desktop, Session pooler (5432). No prueba que se pueda restaurar |
 | Resultado | `[RESULTADO]` |
