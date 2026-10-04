@@ -1,7 +1,7 @@
 # F7 · Resultado de la ventana de promoción a producción (primer paquete)
 
 Fecha: 2026-10-04
-Estado: `PRIMER_PAQUETE_APLICADO_EN_PRODUCCION_PENDIENTE_PANTALLAS` (migraciones, D12 y aplicación nueva en producción; falta la vista de pantallas por Cowork)
+Estado: `PRIMER_PAQUETE_APLICADO_EN_PRODUCCION_PANTALLAS_VISTAS` (migraciones, D12 y aplicación nueva en producción; pantallas vistas por Cowork, solo mirar, con las salvedades de §9)
 Autorización: la frase de la hoja (`F7_HOJA_AUTORIZACION_UNICA_PRIMER_PAQUETE_2026-10-04.md`, §5), escrita por Pedro el 4/10/2026 con el commit `ff5015c192a1a01bf09b2e53d31d6339dce48e46` y confirmada para las 10:59 (hora de Madrid). Ante cualquier otra diferencia, parar y esperar su decisión.
 
 ## 1. Resumen
@@ -13,7 +13,7 @@ Autorización: la frase de la hoja (`F7_HOJA_AUTORIZACION_UNICA_PRIMER_PAQUETE_2
 | D12 | **Escrita y verificada** (§3) |
 | Humo transaccional con `ROLLBACK` | **64 comprobaciones; ninguna fila residual** (§4) |
 | Aplicación nueva | **Publicada** el 4/10/2026 por la fusión del PR 119 (§5) |
-| Pantallas (Cowork, solo mirar) | **Parcial** (§9): carga, sesión de Propietario y pestaña «Día y cajas» vistas; el resto lo retomará Cowork |
+| Pantallas (Cowork, solo mirar) | **Hecho** (§9): configuración, red y consola vistas; sin cartel de error; solo el proyecto de producción; con salvedades (§9) |
 | Marcha atrás de Netlify | **No necesaria** (la aplicación nueva no falló al publicarse); el despliegue anterior sigue siendo `6abf43047ed8030008ffb5a9` |
 
 ## 2. Las 21 migraciones
@@ -77,18 +77,23 @@ Un único bloque que terminó con un error forzado (`HUMO_RESULTADO`), de modo q
 
 ## 8. Lo que queda
 
-1. **Pantallas de producción, solo mirar (Cowork, decisión 21).** Parcial (§9). Pedro decidió que Cowork lo retome más tarde con un texto de continuación.
+1. **Pantallas de producción, solo mirar (Cowork, decisión 21).** Hecho (§9). Quedan sin ver en pantalla el historial de descuentos y el porcentaje del Encargado (§9).
 2. **Registro de migraciones:** cerrado; sin las filas originales de C04 y de la pieza 2, por decisión de Pedro (§6.3).
 3. Las 2 cuentas, 2 pedidos y la comanda de la prueba A10 del 28/9 siguen como restos conocidos; no se tocó nada.
 4. No se abrió caja ni se hizo ninguna venta, cobro o descuento.
 5. Siguientes paquetes, cada uno con su autorización: P3/P3b, B06–B10 (antes a QA), PM09.
 6. Copia manual: no se ha comprobado que se pueda restaurar; producción sigue sin copias automáticas (plan gratuito).
 
-## 9. Pantallas de producción (Cowork, solo mirar), informe parcial del 4/10/2026
+## 9. Pantallas de producción (Cowork, solo mirar), 4/10/2026
 
-- **Hecho:** la app carga sin cartel de error; sesión de Propietario (selector «Todos los locales», «Chocoloyos S.L · Chocolatería San Gines»); Configuración tiene cuatro pestañas (Día y cajas, Modalidades, Equipos, Permisos). Pestaña «Día y cajas» transcrita: corte 00:00 (Europe/Madrid), 10 cajas «valor por defecto», umbral de diferencia 0 € «valor por defecto». **Coincide con la base** (regla del día creada; ninguna fila en `abc_config_ajustes`).
-- **Consola:** solo los errores conocidos: 404 y bloqueo de seguridad de `auth-ux-patch.js` y `seleccion-neutral-patch.js` (no están en el repositorio) y avisos de seguridad por script en línea. Nada nuevo.
-- **Interrumpido** por una caída temporal del servicio de Cowork que revisa las pulsaciones (ajena a la app); no se pulsó ningún botón prohibido ni se escribió nada.
-- **Pendiente:** pestañas Modalidades, Equipos y Permisos (Encargado a 0 %), historial de descuentos del TPV y lista de servidores de la pestaña Red (deben ser solo el proyecto de producción).
-- **Comprobado sin Cowork:** el `fuente.js` servido menciona solo el proyecto de producción (12 veces) y ninguna el de QA (lectura del código, no de la red).
-- **Aviso:** la pestaña «Día y cajas» dice que la pantalla de cierre aún no pide el motivo ni la aprobación de la diferencia de caja y que por eso un cierre con diferencia no se podría finalizar; el código servido ya llama a `abc_obtener_diferencia_caja`, `abc_registrar_diferencia_caja` y `abc_decidir_diferencia_caja`, así que el texto podría estar desactualizado. **No comprobado en pantalla**; sin caja abierta no hay efecto hoy. Probar un cierre con diferencia antes de usar caja real.
+Primer informe parcial (se interrumpió por una caída temporal del servicio de Cowork que revisa las pulsaciones, ajena a la app) y segundo informe, completo.
+
+- **Carga y sesión:** la app carga sin cartel de error; sesión de Propietario (selector «Todos los locales», «Chocoloyos S.L · Chocolatería San Gines»).
+- **Configuración (4 pestañas):** «Día y cajas» (corte 00:00 Europe/Madrid, 10 cajas «por defecto», umbral de diferencia 0 € «por defecto»), «Modalidades» (las 5, marcadas y «por defecto»), «Equipos» («Todavía no hay ningún equipo registrado en este local») y «Permisos». Todo coincide con la base: regla del día creada y ninguna fila en `abc_config_ajustes`, `abc_local_modalidades` ni `abc_local_equipos`.
+- **Permisos:** «Reabrir un cierre de caja» con el Encargado sin marcar y sin candado; Cajero/a y Camarero/a sin marcar y con candado. Coincide con el servidor (`abc_obtener_capacidades_rol` como Propietario, solo lectura: `efectivo=false`, `dar=true` para el Encargado; `dar=false` para los otros dos). El resto de permisos delicados siguen el patrón (techo Encargado). **Matiz:** el informe de Cowork agrupa las devoluciones; por D13, «solicitar devolución» tiene techo CAJERO, de modo que el servidor permite dársela al Cajero/a (`dar=true`) y la pantalla decide el candado con ese dato; «confirmar devolución» sigue con techo Encargado. No se comprobó esa fila en pantalla.
+- **Sin descuentos en Configuración:** no existe ninguna sección de descuentos ni de porcentaje por rol en Configuración (búsqueda en el texto de la página). El porcentaje del Encargado (D12) **no se vio en pantalla**; está verificado en la base (0 %, evento de auditoría).
+- **TPV:** se abre sin pedir abrir caja; hubo que elegir el local concreto en el selector (el TPV no funciona en «Todos los locales»; solo cambia la vista). El historial de ventas está a 0 («Todavía no hay ventas registradas en este local»). Cowork no vio ninguna cuenta; la base tiene **2 cuentas abiertas de la prueba A10** (resto conocido, local productivo, modalidad BARRA), que el TPV de ese navegador no mostró. No se abrió ni se creó nada. Por eso **el historial de descuentos con datos no se vio en pantalla**.
+- **Pantalla «Empresas y locales»:** durante la caída del servicio llegó por error a esa pantalla; no pulsó nada (el botón «Desactivar» estaba deshabilitado). **Comprobado en la base:** recuentos y huellas de 15 tablas, incluidas `locales` (4) y `empresas` (3), idénticos a los de antes (`abc_operaciones` 29, `abc_eventos` 31, `abc_descuento_politicas` 2…); no se escribió nada.
+- **Consola:** solo los errores conocidos (404 y bloqueo de seguridad de `auth-ux-patch.js` y `seleccion-neutral-patch.js`; avisos por script en línea). Nada nuevo.
+- **Red:** servidores contactados `chic-entremet-9107cf.netlify.app`, `fonts.googleapis.com`, `fonts.gstatic.com` y `flqercbgpgmmfaakrwkc.supabase.co` (225 peticiones, proyecto de producción). **Cero peticiones al proyecto de QA** (`qjqorixtkilwsndqayyx`). El `fuente.js` servido menciona solo el proyecto de producción (lectura del código).
+- **Aviso, sin comprobar en pantalla:** la pestaña «Día y cajas» dice que la pantalla de cierre aún no pide el motivo ni la aprobación de la diferencia de caja y que por eso un cierre con diferencia no se podría finalizar; el código servido ya llama a `abc_obtener_diferencia_caja`, `abc_registrar_diferencia_caja` y `abc_decidir_diferencia_caja`, así que el texto podría estar desactualizado. Sin caja abierta no hay efecto hoy. Probar un cierre con diferencia antes de usar caja real.
