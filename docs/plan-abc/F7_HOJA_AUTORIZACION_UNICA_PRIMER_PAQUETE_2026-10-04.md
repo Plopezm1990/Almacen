@@ -1,7 +1,7 @@
 # F7 · Hoja de la autorización única del primer paquete (revisada por Pedro; no autoriza nada)
 
 Fecha: 2026-10-04
-Estado: `REVISADA_POR_PEDRO_NO_AUTORIZA_NADA` (Pedro la dio por cerrada el 4/10/2026, decisión 24; los huecos `[COMMIT]`, `[FECHA]` y `[HORA]` se rellenan al congelar el candidato y fijar la ventana)
+Estado: `AUTORIZACION_EJECUTADA_EL_2026-10-04` (Pedro la dio por cerrada el 4/10/2026, decisión 24, y la autorizó el mismo día a las 10:59 con el commit `ff5015c192a1a01bf09b2e53d31d6339dce48e46`; resultado en `F7_PROMOCION_PRODUCCION_VENTANA_RESULTADO_2026-10-04.md`). El texto de abajo es el de antes de la ventana
 Origen: decisión 8 de `F7_PROMOCION_PRODUCCION_DECISIONES_2026-10-03.md` («una sola autorización para el primer paquete entero») y guion de la ventana (`F7_PROMOCION_PRODUCCION_PREPARACION_2026-10-03.md`, §8–§10).
 
 > **Esta hoja no autoriza nada por sí sola.** Leerla, corregirla o estar de acuerdo con ella no es la autorización. La autorización existe solo cuando Pedro, **en la ventana y con todo lo de §3 cumplido**, dice la frase de §5 con el commit, la fecha y la hora rellenados. Hasta entonces producción no se toca (D29).
@@ -112,10 +112,10 @@ Al parar: te cuento qué ha pasado y en qué estado queda producción, y **no ha
 
 | Dato | Valor |
 |---|---|
-| Commit congelado | `[COMMIT]` |
-| Fecha y hora de la ventana | `[FECHA / HORA]` |
-| Hora y tamaños de la copia manual | `[HORA]` · `roles.sql [bytes]` · `schema.sql [bytes]` · `data.sql [bytes]` |
+| Commit congelado | `ff5015c192a1a01bf09b2e53d31d6339dce48e46` (fusión en `release`: `bad47053b804513472087a95461661a2b12a3993`) |
+| Fecha y hora de la ventana | 4/10/2026, desde las 10:59 (hora de Madrid) |
+| Hora y tamaños de la copia manual | 10:34 · `roles.sql` 370 B · `schema.sql` 1.047.547 B · `data.sql` 278.836 B (carpeta `ventana-2026-10-04b`) |
 | Despliegue de Netlify anterior | `6abf43047ed8030008ffb5a9` |
 | Lecturas previas de producción (solo `select`), 4/10/2026 08:21–08:22 UTC | Idénticas a la foto del 3/10: 26 migraciones registradas desde `20260923…` hasta B02-B03 y ninguna posterior; P2 sin ninguna «ALGUNOS (deriva)»; P3 6 `COINCIDE` + 5 `NO EXISTE` + 2 `DISTINTA` conocidas; P8b 0, 0, 0 y 2, 2, 1; P8 sin pagos ni reembolsos; P6/P7 con los mismos recuentos; última actividad 28/9 21:28 UTC. P4 guardada fuera del repositorio (33 funciones) |
 | Ensayo de la copia manual (no es la copia de la ventana), 4/10/2026 10:11–10:13 hora local | `roles.sql` 370 bytes · `schema.sql` 1.047.547 bytes · `data.sql` 312.922 bytes; Windows, CLI 2.113.0, Docker Desktop, Session pooler (5432). No prueba que se pueda restaurar |
-| Resultado | `[RESULTADO]` |
+| Resultado | 21 migraciones aplicadas y verificadas (C04 y pieza 2 a mano por Pedro, con una correctora de formato cada una), D12 escrita, humo con `ROLLBACK` sin filas residuales, PR 119 fusionado y despliegue `6ac22344948ac900082766ab` con `fuente.js` `88fcf880…`. Cowork observó las pantallas de producción; quedaron sin ver el porcentaje del Encargado y el historial de descuentos con datos. Detalle y salvedades en `F7_PROMOCION_PRODUCCION_VENTANA_RESULTADO_2026-10-04.md` |

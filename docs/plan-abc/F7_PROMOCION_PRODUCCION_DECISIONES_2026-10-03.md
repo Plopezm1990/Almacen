@@ -1,10 +1,10 @@
 # F7 · Promoción a producción · decisiones de Pedro (3/10/2026)
 
 Fecha: 2026-10-03
-Estado: `DECISIONES_TOMADAS_PROMOCION_NO_AUTORIZADA_AUN`
+Estado: `PRIMER_PAQUETE_EJECUTADO_EL_2026-10-04` (decisión 28; resultado en `F7_PROMOCION_PRODUCCION_VENTANA_RESULTADO_2026-10-04.md`)
 Origen: Pedro eligió «Cerrar contigo las decisiones del primer paquete» y respondió las preguntas del apartado 12 de `F7_PROMOCION_PRODUCCION_PREPARACION_2026-10-03.md` en tres rondas (con la herramienta de preguntas, 3/10/2026).
 
-> **Nada de esto es todavía la autorización para tocar producción.** Son decisiones de alcance y de forma. Para aplicar migraciones o publicar hace falta que Pedro dé la autorización expresa, en su momento, sobre el candidato exacto y tras repetir la foto de solo lectura (ver «Cómo se autoriza» más abajo). La única consulta a producción que Pedro autorizó aquí fue la de las dos cuentas abiertas y el envío pendiente (§3), de solo lectura.
+> **Esta hoja de decisiones no autorizó por sí sola tocar producción.** La autorización expresa de Pedro llegó después, el 4/10/2026, sobre el candidato exacto y tras repetir la foto de solo lectura; quedó registrada en la hoja de autorización y en el resultado de la ventana. La única consulta a producción que Pedro autorizó al tomar estas decisiones fue la de las dos cuentas abiertas y el envío pendiente (§3), de solo lectura.
 
 ## 1. Decisiones
 
@@ -37,6 +37,7 @@ Origen: Pedro eligió «Cerrar contigo las decisiones del primer paquete» y res
 | 25 | Cuándo se repiten las lecturas previas de producción | **Antes de la frase, con un permiso de solo lectura aparte** (Pedro, 4/10/2026), en lugar de después de la frase | Así Pedro ve que la foto no ha cambiado antes de autorizar nada que escriba. El permiso cubre solo `select` (P0–P9, P8b, P3, P4); no cubre migraciones, D12 ni fusionar. Corrige el orden del guion (§9, pasos 2 y 3) |
 | 26 | Día y hora de la ventana | **Hoy, 4/10/2026, ahora** (Pedro, 4/10/2026): «producción no está en uso, solo he estado haciendo pruebas»; disponible tres horas seguidas | Sustituye a la franja «antes de abrir» (no hay servicio que proteger). Se siguen exigiendo: candidato congelado y en verde, copia manual real justo antes, y la frase con commit, fecha y hora |
 | 27 | Ensayo de la copia manual y lecturas previas del 4/10 | **Ensayo hecho** por Pedro (Windows, CLI 2.113.0, Docker Desktop, Session pooler en el puerto 5432): `roles.sql` 370 B, `schema.sql` 1.047.547 B, `data.sql` 312.922 B (10:11–10:13 hora local). **Lecturas previas hechas** (solo `select`, 08:21–08:22 UTC): idénticas a la foto del 3/10 | Detalle en la hoja (§9). El ensayo no prueba que la copia se pueda restaurar. **Hallazgo:** la hoja pedía las «13 huellas en `COINCIDE`» antes de empezar, cosa que no puede cumplirse (6 `COINCIDE`, 5 `NO EXISTE` y 2 `DISTINTA` por motivo conocido); corregido en la hoja y en el guion |
+| 28 | Ventana de promoción del primer paquete | **Ejecutada el 4/10/2026** con la autorización escrita de Pedro (10:59, commit `ff5015c`): 21 migraciones verificadas, D12 escrita (Encargado 0 %), humo con `ROLLBACK` sin filas residuales, PR 119 fusionado (`bad47053`) y despliegue `6ac22344948ac900082766ab` con `fuente.js` `88fcf880…` | Dos diferencias, ambas con aprobación de Pedro: la herramienta de migraciones rechaza las que contienen `drop` (C04 y pieza 2 las aplicó Pedro a mano) y el editor SQL añadió espacios (migraciones correctoras `_formato`). Registro de C04 y pieza 2: se deja anotado, sin filas a mano (Pedro, 4/10/2026). Pantallas vistas por Cowork con las salvedades y pendientes descritos en `F7_PROMOCION_PRODUCCION_VENTANA_RESULTADO_2026-10-04.md` |
 
 ## 2. Cómo se autoriza (decisión 8)
 
