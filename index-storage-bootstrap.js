@@ -657,9 +657,74 @@
     return { resultado: ahora, conflictos: [] }; // números, textos y preferencias del propio equipo
   }
 
+  // La referencia de productos se conserva hasta que el servidor confirma el
+  // guardado. Si hay varios set seguidos u ocurre un corte de red, el siguiente
+  // intento compara contra la última lista confirmada, no contra otro borrador
+  // local. Se guarda fuera de LOCAL para que no aparezca como colección de la app.
+  var BASE_PRODUCTOS_PENDIENTE = "almacen__productos_base_pendiente_p3c";
+  var VENTA_PRODUCTOS_PENDIENTE = "almacen__productos_venta_pendiente_p3c";
+  function leerVentaProductos() {
+    try {
+      var v = JSON.parse(localStorage.getItem(VENTA_PRODUCTOS_PENDIENTE) || "{}");
+      return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+    } catch (e) { return {}; }
+  }
+  function recordarVentaProductos(lista) {
+    if (!Array.isArray(lista) || !lista.length) return;
+    var mapa = leerVentaProductos();
+    lista.forEach(function (p) { if (p && p.id) mapa[String(p.id)] = p; });
+    localStorage.setItem(VENTA_PRODUCTOS_PENDIENTE, JSON.stringify(mapa));
+  }
+  function confirmarVentaProductos(enviados) {
+    var mapa = leerVentaProductos();
+    enviados.forEach(function (p) {
+      if (p && p.id && JSON.stringify(mapa[String(p.id)]) === JSON.stringify(p)) delete mapa[String(p.id)];
+    });
+    if (Object.keys(mapa).length) localStorage.setItem(VENTA_PRODUCTOS_PENDIENTE, JSON.stringify(mapa));
+    else localStorage.removeItem(VENTA_PRODUCTOS_PENDIENTE);
+  }
+  function recordarBaseProductos(anterior) {
+    if (localStorage.getItem(BASE_PRODUCTOS_PENDIENTE) === null) {
+      localStorage.setItem(BASE_PRODUCTOS_PENDIENTE, anterior === null ? "[]" : anterior);
+    }
+  }
+  function confirmarBaseProductos(valorConfirmado) {
+    var actual = null;
+    try { actual = LOCAL.get("productos"); } catch (e) {}
+    if (actual === valorConfirmado) localStorage.removeItem(BASE_PRODUCTOS_PENDIENTE);
+    else localStorage.setItem(BASE_PRODUCTOS_PENDIENTE, valorConfirmado);
+  }
+  function nuevaOperacionProductos() {
+    var id = "";
+    try { if (window.crypto && window.crypto.randomUUID) id = window.crypto.randomUUID(); } catch (e) {}
+    if (!id) id = Date.now().toString(36) + "." + Math.random().toString(36).slice(2);
+    return "p3c.lista." + id;
+  }
+
   async function guardarBloque(key, textoAnterior, textoNuevo) {
     var nuevo = JSON.parse(textoNuevo);
     var aSubir = nuevo;
+
+    if (key === "productos") {
+      var textoBase = localStorage.getItem(BASE_PRODUCTOS_PENDIENTE);
+      if (textoBase === null) textoBase = textoAnterior;
+      var base = textoBase === null ? [] : JSON.parse(textoBase);
+      var mapaVenta = leerVentaProductos();
+      var ventaPendiente = Object.keys(mapaVenta).sort().map(function (id) { return mapaVenta[id]; });
+      var rProductos = await window.__nubeCliente.rpc("abc_productos_guardar_lista", {
+        p_operation_id: nuevaOperacionProductos(), p_base: base, p_nuevo: nuevo,
+        p_venta: ventaPendiente
+      });
+      if (!rProductos.error) {
+        if (!rProductos.data || rProductos.data.ok !== true) throw new Error("Respuesta inesperada al guardar productos");
+        confirmarBaseProductos(textoNuevo);
+        confirmarVentaProductos(ventaPendiente);
+        return { catalogoYaSincronizado: rProductos.data.catalogo_ya_sincronizado === true };
+      }
+      // Antes de desplegar P3c, producción sigue por el camino heredado.
+      // Un rechazo real de la RPC no debe acabar en un upsert inseguro.
+      if (rProductos.error.code !== "PGRST202" && rProductos.error.code !== "42883") throw rProductos.error;
+    }
 
     if (!SIN_FUSION[key]) {
       var rLee = await window.__nubeCliente.from("almacen_kv")
@@ -682,6 +747,10 @@
 
     var rSube = await window.__nubeCliente.from("almacen_kv").upsert({ key: key, value: aSubir });
     if (rSube.error) throw rSube.error;
+    if (key === "productos") {
+      confirmarBaseProductos(textoNuevo);
+      localStorage.removeItem(VENTA_PRODUCTOS_PENDIENTE);
+    }
   }
 
   // --- Cola de subidas por clave ---
@@ -762,7 +831,7 @@
 
     // Guardar: primero en el dispositivo (instantáneo y sin fallo posible),
     // y después se intenta subir. Si no sube, queda en la cola de pendientes.
-    async set(key, value) {
+    async set(key, value, _shared, opcionesP3c) {
       var tablaEmpresa = TABLAS_EMPRESA[key];
       var tablaEmpresaLocal = TABLAS_EMPRESA_LOCAL[key];
       var tablaEspecial = TABLAS_POR_FILA[key];
@@ -773,6 +842,9 @@
       // quitado y para poder dejarlo como estaba si el guardado no cabe.
       var anterior = null;
       try { anterior = LOCAL.get(cacheKey); } catch (e) { anterior = null; }
+
+      if (key === "productos" && anterior !== value) recordarBaseProductos(anterior);
+      if (key === "productos" && opcionesP3c && opcionesP3c.venta) recordarVentaProductos(opcionesP3c.venta);
 
       // El almacenamiento del navegador tiene un tope (unos 5 MB en total).
       // Antes se daba por hecho que guardar en local "no puede fallar"; si
@@ -797,8 +869,11 @@
       }
 
       if (window.__nubeActiva && window.__nubeCliente) {
+        var resultadoProductos = null;
+        var catalogoBloqueado = false;
         // Si el servidor rechazó esta clave por permisos hace poco no se insiste:
         // queda guardada en este equipo y se reintenta pasado el plazo.
+        if (key === "productos" && denegadoVigente(key)) catalogoBloqueado = true;
         if (!denegadoVigente(key)) {
           try {
             if (tablaEmpresa) {
@@ -817,7 +892,7 @@
                 ESPERA_NUBE_MS
               );
             } else {
-              await conTiempoLimite(
+              resultadoProductos = await conTiempoLimite(
                 encolarPorClave(key, function () { return guardarBloque(key, anterior, value); }),
                 ESPERA_NUBE_MS
               );
@@ -825,6 +900,7 @@
             quitarPendiente(key);
             quitarDenegado(key);
           } catch (e) {
+            if (key === "productos") catalogoBloqueado = true;
             if (esRechazoPorPermisos(e)) marcarDenegado(key, e);
             else marcarPendiente(key);
           }
@@ -841,7 +917,11 @@
           "Suele significar que hay algo muy grande guardado, como una foto."
         );
       }
-      return { key: key, value: value, shared: false };
+      return {
+        key: key, value: value, shared: false,
+        catalogoYaSincronizado: !!(resultadoProductos && resultadoProductos.catalogoYaSincronizado),
+        catalogoBloqueado: !!catalogoBloqueado
+      };
     },
 
     async delete(key) {
