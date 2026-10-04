@@ -57,7 +57,7 @@ En el informe de la pieza A09 anoté que ese contrato «falla igual antes del ca
 **Comprobación (PostgreSQL 16 local).**
 - Reproducido a propósito: con un retraso de 40 ms en el arranque de la segunda conexión, la versión anterior falla con el mismo mensaje.
 - Con el arreglo, la misma prueba retrasada pasa; con un retraso de 40 ms en **todas** las consultas de la segunda conexión (los 9 sitios que usan `waitForLock`) pasa 5 de 5; sin retraso, 15 de 15.
-- `fuente.js` no cambia (`sha256` `5d8aef59…`); el manifiesto sigue en 241/224/11.
+- `fuente.js` no cambia (`sha256` `5d8aef59…` en ese momento; el 4/10/2026 cambia por una aclaración de texto del panel de descuentos, ver `F7_PROMOCION_PRODUCCION_DECISIONES_2026-10-03.md`, decisión 16); el manifiesto sigue en 241/224/11.
 
 **Tercer fallo y segunda carrera (commit `fdc7ec2`, job `a09_postgres17`, PostgreSQL 17.11).** Con el arreglo anterior ya puesto, el mismo contrato cayó en la misma prueba («discount first, stale A08 split») con otra señal: `error: cuenta_origen_version_conflict` como **rechazo sin manejar** y `Node.js v20.20.2`. Ese error es justo el que la prueba espera. Causa: la consulta en vuelo de la otra conexión (`staleSplit`) se creaba, la prueba esperaba el bloqueo, enviaba `commit` y solo después hacía `assert.rejects(staleSplit, …)`. Si la respuesta de error de la otra conexión llegaba al proceso Node **antes** que la respuesta del `commit`, la promesa rechazaba sin manejador y Node cerraba el proceso. Mismo hueco en otros tres sitios (`loser`, `stale`, `staleFiscalInsert`). Arreglo: una función `expectRejection` que marca la promesa como atendida (`.catch` vacío) y la devuelve; `assert.rejects` sigue viendo el rechazo original.
 
