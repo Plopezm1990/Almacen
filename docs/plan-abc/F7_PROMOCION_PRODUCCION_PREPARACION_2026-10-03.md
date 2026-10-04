@@ -107,7 +107,7 @@ Lectura del código y de los informes de cada pieza (**no probado** en combinaci
 9. **D12:** política de 0 % del local productivo preparada (o la opción B decidida).
 10. **Ventana:** bloque P8: **sin cajas abiertas, sin reembolsos ni envíos pendientes, sin pedidos aún sin servir ni cancelar ni pagos en curso**; fuera del servicio. El 3/10 había **2 cuentas abiertas y 1 efecto pendiente** (con 5 días sin actividad): se miraron con tu permiso y son restos de la prueba A10 del 28/9; **no existe una operación del servidor para cerrar cuentas** (solo la fusión), así que «sin cuentas abiertas» no es un criterio útil. Pedro decidió dejarlas, con su comanda, como **restos conocidos** (sin escribir nada en producción); el bloque P8b las acepta por identificador (`F7_PROMOCION_PRODUCCION_DECISIONES_2026-10-03.md`, §3 bis).
 11. **Netlify (mirado en solo lectura el 4/10/2026, `F7_PROMOCION_PRODUCCION_DECISIONES_2026-10-03.md` §3 ter):** la rama de producción es **`release`**; el despliegue de producción actual es **`6abf43047ed8030008ffb5a9`** (commit `01f47bf`, publicado el 2/10/2026 05:37 UTC), al que se vuelve publicándolo de nuevo. El coste por despliegue sigue sin comprobar (según `A09_NETLIFY_QA_REVIEW_PROPOSAL_2026-09-24.md`, 15 créditos por despliegue de producción).
-12. **Copia de seguridad:** guardar la salida del bloque P4 (definición de las **46 funciones** que las migraciones reemplazan). **La copia de seguridad del proyecto de producción la comprueba Pedro en el panel de Supabase antes de la ventana** (decisión 18): hay que anotar si hay copia diaria o recuperación a un instante. **Pendiente.** Sin saberlo, la vuelta atrás de los datos nuevos no está garantizada (ver §10).
+12. **Copia de seguridad:** guardar la salida del bloque P4 (definición de las **46 funciones** que las migraciones reemplazan). **La organización de producción está en el plan gratuito** (API de Supabase, 4/10/2026), y según la documentación de Supabase ese plan **no tiene copias diarias automáticas**: antes de la ventana hace falta una **copia manual** (CLI: `supabase db dump` de roles, esquema y datos, guardada fuera del repositorio, que es público) o pasar a un plan de pago con antelación (decisión de Pedro; gasto, D27). Pedro además lo confirma en el panel (Database → Backups) (decisión 18). **Pendiente.** Sin copia, la vuelta atrás de los datos nuevos no está garantizada (ver §10).
 
 ## 9. Ejecución, paso a paso
 
@@ -133,7 +133,7 @@ Solo con la autorización única del primer paquete (§8.1) y en este orden. **P
 | Los datos creados al aplicar (PM07, PM10) | No se borran sin tu autorización; son idempotentes |
 | La marca de aprobación de D13 | No se revierte: es el valor que ya regía |
 | La aplicación nueva falla | En Netlify, **publicar de nuevo el despliegue anterior** (el anotado en el paso 3): inmediato y sin tocar la base. Con servidor nuevo y aplicación vieja el efecto es el de la tabla del §7 (degradado, no roto) |
-| Algo que se escribió después de promocionar | **No hay vuelta atrás limpia** de los datos que los usuarios creen con el sistema nuevo. Por eso la ventana, el humo con `ROLLBACK` y no abrir caja hasta terminar |
+| Algo que se escribió después de promocionar (**y producción sin copia automática por estar en el plan gratuito**) | **No hay vuelta atrás limpia** de los datos que los usuarios creen con el sistema nuevo. Por eso la ventana, el humo con `ROLLBACK` y no abrir caja hasta terminar |
 
 ## 11. Qué se comprueba después
 
