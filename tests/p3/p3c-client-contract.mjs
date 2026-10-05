@@ -3,6 +3,8 @@ import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 
 const codigo = await readFile("index-storage-bootstrap.js", "utf8");
+const autoridad = await readFile("server-authority-storage-bridge.js", "utf8");
+const controlAcceso = await readFile("edge-auth-patch.js", "utf8");
 const puente = await readFile("ui-context-bridge.js", "utf8");
 const base = [{ id: "p1", empresaId: "QA-EMP-A", localId: "QA-A1", nombre: "Agua", precioVenta: 1, costo: 0.4 }];
 const textoBase = JSON.stringify(base);
@@ -38,10 +40,18 @@ function entorno(rpc) {
     window, localStorage, document, CustomEvent: class {},
     setTimeout() { return 0; }, clearTimeout() {}, console, Promise, JSON, Date, Math
   }, { filename: "index-storage-bootstrap.js" });
+  vm.runInNewContext(autoridad, {
+    window, localStorage, console, setInterval() { throw new Error("El puente debe instalarse de inmediato"); }
+  }, { filename: "server-authority-storage-bridge.js" });
   window.__nubeActiva = true;
   window.__nubeCliente = cliente;
   return { window, datos, subidasDirectas };
 }
+
+// La barrera de acceso se carga después del puente de catálogo en la página.
+// Debe transmitir las opciones P3c por todos los caminos permitidos.
+assert.match(controlAcceso, /window\.storage\.set = async function \(key, value, shared, opcionesP3c\)/);
+assert.equal([...controlAcceso.matchAll(/setOriginal\(key, value, shared, opcionesP3c\)/g)].length, 3);
 
 // El camino P3c envía referencia, lista y cambio humano en una única RPC.
 {

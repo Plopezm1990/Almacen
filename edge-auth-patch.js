@@ -473,14 +473,14 @@ function modoLocalNoReclamado() {
     return getOriginal(key, shared);
   };
 
-  window.storage.set = async function (key, value, shared) {
-    if (!CLAVES_CONTROLADAS[key]) return setOriginal(key, value, shared);
+  window.storage.set = async function (key, value, shared, opcionesP3c) {
+    if (!CLAVES_CONTROLADAS[key]) return setOriginal(key, value, shared, opcionesP3c);
 
     var contexto = null;
     try { contexto = await obtenerContexto(false); } catch (e) {}
     var rol = contexto && contexto.rol;
     if (!rol) {
-    if (modoLocalNoReclamado()) return setOriginal(key, value, shared);
+    if (modoLocalNoReclamado()) return setOriginal(key, value, shared, opcionesP3c);
     return { key: key, value: value, shared: false };
   }
 
@@ -495,7 +495,7 @@ function modoLocalNoReclamado() {
       }
     }
 
-    return setOriginal(key, value, shared);
+    return setOriginal(key, value, shared, opcionesP3c);
   };
 
   if (deleteOriginal) {
