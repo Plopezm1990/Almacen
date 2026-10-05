@@ -717,9 +717,36 @@
       });
       if (!rProductos.error) {
         if (!rProductos.data || rProductos.data.ok !== true) throw new Error("Respuesta inesperada al guardar productos");
-        confirmarBaseProductos(textoNuevo);
+        var listaConfirmada = rProductos.data.lista_confirmada;
+        if (!Array.isArray(listaConfirmada)) {
+          // Compatibilidad con instalaciones que aún tengan la primera RPC:
+          // una lectura posterior al COMMIT obtiene la lista final en nube.
+          var rConfirmada = await window.__nubeCliente.from("almacen_kv")
+            .select("value").eq("key", "productos").maybeSingle();
+          if (rConfirmada.error) throw rConfirmada.error;
+          listaConfirmada = rConfirmada.data && rConfirmada.data.value;
+        }
+        if (!Array.isArray(listaConfirmada)) throw new Error("Lista confirmada de productos no disponible");
+        var textoConfirmado = JSON.stringify(listaConfirmada);
+        var actualProductos = LOCAL.get("productos");
+        var productosConfirmados = actualProductos === textoNuevo;
+        if (productosConfirmados) {
+          LOCAL.set("productos", textoConfirmado);
+          confirmarBaseProductos(textoConfirmado);
+          try {
+            window.dispatchEvent(new CustomEvent("productos-servidor-confirmados", {
+              detail: { enviados: nuevo, confirmados: listaConfirmada }
+            }));
+          } catch (e) {}
+        }
+        // Si hay un borrador más reciente, conserva su base original. La
+        // siguiente subida compara contra ella y detecta conflictos reales.
         confirmarVentaProductos(ventaPendiente);
-        return { catalogoYaSincronizado: rProductos.data.catalogo_ya_sincronizado === true };
+        return {
+          catalogoYaSincronizado: rProductos.data.catalogo_ya_sincronizado === true,
+          productosConfirmados: productosConfirmados,
+          listaConfirmada: productosConfirmados ? listaConfirmada : null
+        };
       }
       // Antes de desplegar P3c, producción sigue por el camino heredado.
       // Un rechazo real de la RPC no debe acabar en un upsert inseguro.
@@ -920,7 +947,9 @@
       return {
         key: key, value: value, shared: false,
         catalogoYaSincronizado: !!(resultadoProductos && resultadoProductos.catalogoYaSincronizado),
-        catalogoBloqueado: !!catalogoBloqueado
+        catalogoBloqueado: !!catalogoBloqueado,
+        productosConfirmados: !!(resultadoProductos && resultadoProductos.productosConfirmados),
+        listaConfirmada: resultadoProductos && resultadoProductos.listaConfirmada
       };
     },
 

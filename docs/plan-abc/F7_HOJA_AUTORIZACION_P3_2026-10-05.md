@@ -36,6 +36,16 @@ normalización de datos, fusión ni despliegue en producción**.
   forma productiva, se ejecutó la normalización y pasó el contrato P3c completo
   dentro de `BEGIN`/`ROLLBACK`. Una lista simulada con dos empresas fue
   rechazada por la condición prevista. QA quedó en su estado inicial.
+- La revisión del PR detectó que una fusión correcta en la RPC dejaba la
+  pantalla y su referencia local con la versión enviada por el navegador.
+  `20261005100000_abc_p3c_lista_confirmada.sql` devuelve la lista fusionada.
+  El cliente la adopta solo si no existe una edición local más reciente; si
+  existe, conserva la base anterior para detectar conflictos. La RPC exige
+  pertenencia a la empresa de la fila antes de devolver la lista, incluso si
+  la llamada no cambia productos. La versión final se aplicó solo en QA el
+  5/10. El contrato P3c volvió a pasar con `ROLLBACK`:
+  30 productos, 30 filas TPV y permisos `authenticated` sí, `anon` no.
+  Producción no cambió.
 
 La consulta exacta de titularidad, sin identificadores ni contenido, está en
 `F7_P3C_TITULARIDAD_SOLO_LECTURA_2026-10-05.sql`. El preflight P0–P7
@@ -50,7 +60,7 @@ original está en `F7_P3_P3B_PREFLIGHT_SOLO_LECTURA_2026-10-04.sql`.
    repositorio; anota hora y tamaño, comprueba que los tres archivos no están
    vacíos y conserva otra copia. El plan gratuito no ofrece una restauración
    automática inmediata.
-3. Congelar la cabeza exacta del PR, `release`, la CI, hashes de los cuatro
+3. Congelar la cabeza exacta del PR, `release`, la CI, hashes de los cinco
    SQL y de `fuente.js`, y el despliegue de Netlify al que volver. No fusionar
    mientras el PR sea borrador.
 4. En una ventana sin operaciones de caja ni personal usando Productos,
@@ -62,11 +72,14 @@ original está en `F7_P3_P3B_PREFLIGHT_SOLO_LECTURA_2026-10-04.sql`.
    | 2 | `20261002170000_abc_p3b_espejo_lista_nube.sql` | espejo del precio aceptado a la lista |
    | 3 | `20261004201358_abc_p3c_concurrencia_productos.sql` | RPC transaccional y bloqueo de escrituras directas antiguas |
    | 4 | `20261005060000_abc_p3c_titularidad_productos.sql` | `empresa_id` de la fila: `NULL` → empresa única de sus artículos |
+   | 5 | `20261005100000_abc_p3c_lista_confirmada.sql` | RPC devuelve la lista fusionada para reconciliar la pantalla |
 
    Comprobar tras cada paso registro, objetos y huellas. Tras el cuarto,
    `value` debe conservar su huella inicial, `empresa_id` debe coincidir con
    la empresa de los dos artículos, y catálogo y stock deben conservar sus
    recuentos y huellas. La fecha `updated_at` de la fila sí puede cambiar.
+   Tras el quinto, verificar que la función devuelve `lista_confirmada` y
+   mantiene sus permisos; la lista y el catálogo deben conservar sus huellas.
 5. Ejecutar `F7_P3C_HUMO_ROLLBACK_PRODUCCION_2026-10-05.sql`: cambia
    temporalmente 0,01 € de un artículo del catálogo, confirma lista y TPV,
    hace `ROLLBACK` y devuelve huellas de lista, catálogo y stock. Comparar
@@ -96,7 +109,8 @@ original está en `F7_P3_P3B_PREFLIGHT_SOLO_LECTURA_2026-10-04.sql`.
 | P3b SHA-256 | `3f84a5cd7715c6ac6113f707e0ea8fa0eb7b479aeafdc6166bcee9d298cbcf42` |
 | P3c SHA-256 | `2a2c66872f9eb2b75ae124dd5c44261f8172f1ea2f1087da7be91fc9818d610f` |
 | Titularidad SHA-256 | `1a3fe1429f401656fa6aaae5314f88747cbd74f26874006c9203b677ff1f5a4c` |
-| `fuente.js` SHA-256 | `ed618ee61072f92497017bbaa1516f166c888293acee31ca8b064d7e1eaca89f` |
+| Lista confirmada SHA-256 | `a9156cb55143ddda38d83bdaf703e8417f90a7a87323f7f933cab562c5a3d19b` |
+| `fuente.js` SHA-256 | `8e2f6d2b5bdb6d7e101fd00e1c578c0296508a24cf4dc050cb4508aaf8e5652f` |
 | Netlify actual | `6ac22344948ac900082766ab` (verificar otra vez) |
 | Copia manual nueva | `[HORA_Y_TAMAÑOS]` |
 
@@ -118,7 +132,7 @@ original está en `F7_P3_P3B_PREFLIGHT_SOLO_LECTURA_2026-10-04.sql`.
 
 La hoja y la lectura de hoy no son autorización para ejecutarla. Al abrir la
 ventana, Pedro podrá aprobar el alcance exacto con una respuesta que identifique
-el commit congelado, las cuatro migraciones, la normalización de `empresa_id`,
+el commit congelado, las cinco migraciones, la normalización de `empresa_id`,
 el humo con `ROLLBACK`, la única publicación de producción y la política de
 parada. Si no se cumplen todas las condiciones previas, la opción recomendada
 es **posponer**.
