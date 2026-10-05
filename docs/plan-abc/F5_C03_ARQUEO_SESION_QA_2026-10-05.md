@@ -71,9 +71,11 @@ El arqueo histórico PM08/PM09 sigue separado: su pantalla envía
 `p_efectivo_base` y algunas entradas antiguas no tienen ledger servidor
 completo. C03 aquí cubre el **cierre por sesión ABC**, no declara resuelta esa
 deriva ni sustituye el paquete independiente PM09. Durante el ensayo adicional,
-la pantalla histórica «Arqueo de caja» mostró esperado 0 € mientras el cierre
-por sesión ABC mostró 1 €; la conciliación de ambas vistas queda pendiente
-del trabajo PM09.
+la pantalla histórica «Arqueo de caja» mostró primero 0 € porque conservaba
+datos anteriores al cobro. Tras recargar la aplicación, mostró 1 € y la entrada
+«Cobro ABC en efectivo», igual que el cierre por sesión. El hallazgo comprobado
+es una lectura desactualizada al entrar en esa pantalla; su corrección se
+prepara por separado en PM09.
 
 Antes de producción: integrar y revisar la rama, repetir las comprobaciones
 previas, conservar copia de seguridad y aplicar la migración antes de publicar
