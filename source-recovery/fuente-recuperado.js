@@ -3640,7 +3640,7 @@ function GestionAlmacen() {
         setTab("pagos");
       }
     }
-  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { key: localActivoId || "todos", movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { key: localActivoId || "todos", movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, recargarCaja: () => sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones }) }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
     Turnos,
     {
       empleados: empleadosDelLocalActivo,
@@ -18289,7 +18289,7 @@ function resumenMediosVentaCajaPM09(movs = [], fecha = "") {
   Object.keys(reversos).forEach((k) => reversos[k] = redondearDineroPM08(reversos[k] || 0));
   return { ventas, reversos, neto, ventasIncluidas, reversosIncluidos };
 }
-function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja }) {
+function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, recargarCaja }) {
   const h3 = import_react4.default.createElement;
   const [fecha, setFecha] = (0, import_react4.useState)(todayISO());
   const [contado, setContado] = (0, import_react4.useState)("");
@@ -18301,6 +18301,26 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
   const [motivoAnulacion, setMotivoAnulacion] = (0, import_react4.useState)("");
   const [mostrarAnulacion, setMostrarAnulacion] = (0, import_react4.useState)(false);
   const [anulando, setAnulando] = (0, import_react4.useState)(false);
+  const [estadoLectura, setEstadoLectura] = (0, import_react4.useState)(modoSincronizadoPM08() ? "cargando" : "lista");
+  (0, import_react4.useEffect)(() => {
+    if (!modoSincronizadoPM08()) return;
+    let activo = true;
+    recargarCaja().then((resultado) => {
+      if (activo) setEstadoLectura(resultado?.ok ? "lista" : "error");
+    }).catch(() => {
+      if (activo) setEstadoLectura("error");
+    });
+    return () => { activo = false; };
+  }, []);
+  async function actualizarLectura() {
+    setEstadoLectura("cargando");
+    try {
+      const resultado = await recargarCaja();
+      setEstadoLectura(resultado?.ok ? "lista" : "error");
+    } catch {
+      setEstadoLectura("error");
+    }
+  }
   const resumenVentasCaja = resumenMediosVentaCajaPM09(movimientos, fecha);
   const porMedioOtros = { Efectivo: 0, Tarjeta: 0, Transferencia: 0, Otro: 0 };
   encargos.forEach((e2) => {
@@ -18342,6 +18362,13 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
     setNotas(pendiente.notas || "");
     setBorradorRecuperado(true);
   }, [fecha]);
+  if (estadoLectura !== "lista") return h3("div", null,
+    h3(SectionTitle, null, "Arqueo de caja"),
+    h3(Card, null,
+      h3("div", { role: "status", className: "text-[12.5px] mb-2" }, estadoLectura === "cargando" ? "Actualizando los movimientos de caja del servidor…" : "No se pudieron actualizar los movimientos de caja. El arqueo queda bloqueado para evitar un importe desactualizado."),
+      estadoLectura === "error" && h3(Btn, { small: true, onClick: actualizarLectura }, "Reintentar lectura")
+    )
+  );
   async function submit() {
     if (enviando || yaArqueado) return;
     if (contado === "" || !Number.isFinite(contadoNumero) || contadoNumero < 0) {
@@ -18428,6 +18455,7 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
     "div",
     null,
     h3(SectionTitle, null, "Arqueo de caja"),
+    modoSincronizadoPM08() && h3(Btn, { small: true, variant: "ghost", onClick: actualizarLectura }, "Actualizar datos de caja"),
     h3(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, h3("div", { className: "text-[12.5px]" }, "El cierre es diario y pertenece a un solo local. El servidor calcula el efectivo esperado con la base declarada y el libro de caja; el contado admite 0 \u20AC y nunca se borra f\xEDsicamente.")),
     h3(
       Card,

@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import vm from 'node:vm';
 
 const source = fs.readFileSync('fuente.js','utf8');
 const migration = fs.readFileSync('supabase/migrations/20260905105500_pm09_conciliacion_caja.sql','utf8');
@@ -62,6 +63,61 @@ const efectivoOtros=0;
 const efectosCaja=-3; // reembolso efectivo -4 + entrada 2 - retirada 1
 const esperado=Math.round((r.ventas.Efectivo+efectivoOtros+r.reversos.Efectivo+efectosCaja+Number.EPSILON)*100)/100;
 check('MODELO_ESPERADO_2', Math.abs(esperado-2)<1e-9);
+
+// Ejecuta el componente real con hooks mínimos para comprobar la transición
+// observable: al abrir Caja no se ofrece guardar con un saldo anterior.
+const inicioArqueo=source.indexOf('function ArqueoCaja(');
+const finArqueo=source.indexOf('\nvar PLANTILLAS_TURNO',inicioArqueo);
+check('UI_ARQUEO_EXTRAIBLE', inicioArqueo>=0 && finArqueo>inicioArqueo);
+if (inicioArqueo>=0 && finArqueo>inicioArqueo) {
+  const codigoArqueo=source.slice(inicioArqueo,finArqueo);
+  function crearVista(recargarCaja, sincronizado=true) {
+    const estados=[];
+    const efectos=[];
+    let cursor=0;
+    let primerRender=true;
+    const react={
+      default:{createElement:(type,props,...children)=>({type,props:props||{},children})},
+      useState(inicial){
+        const indice=cursor++;
+        if (!(indice in estados)) estados[indice]=typeof inicial==='function'?inicial():inicial;
+        return [estados[indice],valor=>{estados[indice]=typeof valor==='function'?valor(estados[indice]):valor;}];
+      },
+      useEffect(efecto){if(primerRender) efectos.push(efecto);}
+    };
+    const contexto={
+      import_react4:react,
+      todayISO:()=> '2026-10-05',
+      modoSincronizadoPM08:()=>sincronizado,
+      resumenMediosVentaCajaPM09:()=>({ventas:{Efectivo:0},reversos:{Efectivo:0},neto:{Efectivo:0},ventasIncluidas:0,reversosIncluidos:0}),
+      redondearDineroPM08:valor=>Math.round(Number(valor)*100)/100,
+      fmt:valor=>Number(valor).toFixed(2),
+      C2:{inkSoft:'gray',accent:'green',bg:'white'},
+      SectionTitle:'SectionTitle',Card:'Card',Btn:'Btn',Field:'Field',Input:'Input',Empty:'Empty',
+      BloqueEntradasSalidas:'BloqueEntradasSalidas',Pill2:'Pill2',X2:'X2',CircleCheck:'CircleCheck',TriangleAlert:'TriangleAlert'
+    };
+    vm.runInNewContext(codigoArqueo+'\nthis.Componente=ArqueoCaja;',contexto);
+    const props={recargarCaja,movimientosCaja:[{fecha:'2026-10-05',efectoEfectivo:1}],arqueos:[],movimientos:[],encargos:[]};
+    return {
+      render(){cursor=0;const arbol=contexto.Componente(props);primerRender=false;return arbol;},
+      montar(){for(const efecto of efectos) efecto();}
+    };
+  }
+  function texto(nodo){return typeof nodo==='string'?nodo:nodo&&typeof nodo==='object'?(nodo.children||[]).map(texto).join(' '):'';}
+  const ok=crearVista(async()=>({ok:true}));
+  const cargando=ok.render();
+  check('UI_BLOQUEA_SALDO_CADUCADO',texto(cargando).includes('Actualizando los movimientos')&&!texto(cargando).includes('Guardar arqueo'));
+  ok.montar();
+  await new Promise(setImmediate);
+  const actualizado=texto(ok.render());
+  check('UI_MUESTRA_EFECTO_ABC_TRAS_LEER',actualizado.includes('ajustes/reembolsos caja €1.00')&&actualizado.includes('Guardar arqueo'));
+  const fallo=crearVista(async()=>{throw new Error('lectura fallida');});
+  fallo.render();
+  fallo.montar();
+  await new Promise(setImmediate);
+  const bloqueado=texto(fallo.render());
+  check('UI_FALLA_CERRADA_CON_REINTENTO',bloqueado.includes('Reintentar lectura')&&!bloqueado.includes('Guardar arqueo'));
+}
 
 if (process.exitCode) throw new Error('PM09_P10_CAJA_CONTRACT_FAIL');
 console.log('PM09_P10_CAJA_CONTRACT_OK=1');
