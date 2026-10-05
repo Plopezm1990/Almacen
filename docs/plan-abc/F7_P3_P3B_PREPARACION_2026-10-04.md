@@ -1,7 +1,7 @@
 # F7 · Preparación del paquete P3/P3b/P3c
 
 Fecha: 2026-10-04
-Estado: `P3C_APLICADO_Y_PANTALLA_VERIFICADA_EN_QA_NO_APTO_PARA_PRODUCCION`
+Estado: `P3C_QA_VERIFICADO_TITULARIDAD_PRODUCTIVA_DETECTADA_NO_APTO_PARA_PRODUCCION`
 
 ## Alcance y evidencia actual
 
@@ -24,7 +24,9 @@ Para la comprobación de pantalla se construyó el artefacto local de la rama y 
 
 El 5/10/2026, desde Productos en esa copia local corregida, se cambió «Agua 50 cl (QA)» de 1,00 € a 1,05 €. La lectura de QA confirmó `almacen_kv.productos.precioVenta = 1.05` y `catalogo_tpv_productos.precio_con_impuesto = 1.05000000`; la pantalla conservó 1,05 € tras recargar. Se restauró 1,00 € desde el mismo formulario y se volvió a comprobar: lista `1`, TPV `1.00000000`, pantalla 1,00 € después de otra recarga, 30 productos y 30 filas TPV. El indicador de cambios sin confirmar quedó en cero. No hubo despliegue de Netlify.
 
-P3c sigue en revisión. Antes de promocionarlo hay que confirmar en una ventana nueva la titularidad/contexto de la fila productiva `almacen_kv.productos` y repetir las lecturas de producción que puedan haber cambiado. La lectura autorizada de nueve consultas no incluyó la titularidad de esa fila y no autoriza más consultas productivas ni escrituras.
+El 5/10 Pedro autorizó continuar con la lectura de titularidad y la preparación de la autorización. La lectura de producción encontró **una fila `productos` con `empresa_id = NULL`** y dos artículos que sí declaran la misma empresa y un mismo local activo dentro del JSON; ambos IDs son distintos. El artículo del TPV coincide con uno de la lista. P3b busca la fila por `empresa_id`, de modo que P3c fallaría con `lista_nube=sin_fila` si se aplicase el paquete sin corregir esta diferencia. Se preparó la migración adicional `20261005060000_abc_p3c_titularidad_productos.sql`: valida la identidad y los locales bajo bloqueo de fila y rellena solo `empresa_id` cuando está vacío. En QA se reprodujo la forma productiva, se ejecutó esa normalización y pasó el contrato P3c completo en `BEGIN`/`ROLLBACK`; al terminar, QA conservaba su fila original, 30 artículos y 30 filas del TPV. La consulta reutilizable está en `F7_P3C_TITULARIDAD_SOLO_LECTURA_2026-10-05.sql`.
+
+P3c sigue en revisión. Las lecturas productivas del 5/10 no autorizan normalizar la fila, aplicar migraciones, fusionar el PR ni publicar. La hoja específica `F7_HOJA_AUTORIZACION_P3_2026-10-05.md` prepara esos pasos para una ventana posterior con copia manual nueva y autorización exacta.
 
 ## Comprobación previa y puerta de producción
 
@@ -47,9 +49,9 @@ La lectura cumple las condiciones de ausencia y dependencias, pero **no levanta 
 
 Para abrir una ventana de producción harán falta, en este orden:
 
-1. Revisar el resultado de P3c y de la prueba de pantalla completada en QA. La CI del commit `1faa5f6` pasó (225/225 contratos y 16/16 workflows); el cambio posterior que transmite las opciones P3c debe superar su propia CI antes de promocionarse. La corrección del texto de «Día y cajas» se agrupa en el futuro despliegue de aplicación.
-2. La lectura específica de producción se completó el 4/10 (resultados arriba). Refrescarla si se abre otra ventana y contrastar las huellas del cuerpo exacto del candidato una vez resuelta la carrera. No asumir que la foto de hoy sigue vigente entonces.
+1. Revisar el resultado de P3c y de la prueba de pantalla completada en QA. La CI del commit `1ca253e` pasó la puerta general (225/225 contratos); el workflow heredado P2-P06 falla por exigir que este PR cambie solo los nueve archivos de su candidato antiguo, y los otros 15 workflows pasaron. La corrección del texto de «Día y cajas» se agrupa en el futuro despliegue de aplicación.
+2. Las lecturas específicas de producción se completaron el 4 y el 5/10 (resultados arriba). Refrescarlas si se abre otra ventana y contrastar las huellas del cuerpo exacto del candidato. No asumir que la foto de hoy sigue vigente entonces.
 3. Pedro hace y comprueba una copia manual fuera del repositorio. Congelar commit, `sha256` de `fuente.js`, condiciones de parada y una hoja de autorización **nueva para este paquete**. La autorización del primer paquete no cubre P3/P3b.
-4. Solo tras esa autorización: aplicar P3 y verificar; aplicar P3b y verificar; aplicar P3c y verificar; hacer humo con `ROLLBACK` sin dejar filas; publicar una vez la aplicación, comprobar el archivo servido y pedir a Pedro la aceptación del recorrido acordado. Parar ante la primera diferencia.
+4. Solo tras esa autorización: aplicar P3 y verificar; aplicar P3b y verificar; aplicar P3c y verificar; normalizar la titularidad de la lista y comprobar que su JSON no cambió; hacer humo con `ROLLBACK` sin dejar filas; publicar una vez la aplicación, comprobar el archivo servido y pedir a Pedro la aceptación del recorrido acordado. Parar ante la primera diferencia.
 
 No se aplica SQL ni se despliega producción desde esta rama. P3/P3b siguen fuera de «verificado» hasta la aceptación de Pedro (D05).
