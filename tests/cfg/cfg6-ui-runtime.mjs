@@ -10,6 +10,7 @@
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const depsDir = process.env.CFG6_UI_DEPS;
 if (!depsDir) {
@@ -31,10 +32,10 @@ const React = require('react');
 const { createRoot } = require('react-dom/client');
 const act = React.act;
 
-const REPO = resolve(new URL('../../', import.meta.url).pathname);
+const REPO = resolve(fileURLToPath(new URL('../../', import.meta.url)));
 const origen = process.env.CFG6_FUENTE || join(REPO, 'source-recovery/fuente-recuperado.js');
-const textoOrigen = readFileSync(origen, 'utf8');
-const textoReal = readFileSync(join(REPO, 'source-recovery/fuente-recuperado.js'), 'utf8');
+const textoOrigen = readFileSync(origen, 'utf8').replace(/\r\n/g, '\n');
+const textoReal = readFileSync(join(REPO, 'source-recovery/fuente-recuperado.js'), 'utf8').replace(/\r\n/g, '\n');
 
 function extraerFuncion(texto, nombre) {
   const i = texto.indexOf('\nfunction ' + nombre + '(');
@@ -388,7 +389,7 @@ async function parte1() {
 // ================= Parte 2: el botón «Reabrir» de la pantalla de cierre (módulo completo de la app) =================
 async function parte2() {
   const ruta = process.env.CFG6_FUENTE || join(REPO, 'source-recovery/fuente-recuperado.js');
-  let texto = readFileSync(ruta, 'utf8');
+  let texto = readFileSync(ruta, 'utf8').replace(/\r\n/g, '\n');
   const lineas = texto.split('\n');
   const iniImports = lineas.findIndex((l) => l.startsWith('import React'));
   let finImports = iniImports;
@@ -436,8 +437,10 @@ async function parte2() {
     if (raiz) { await act(async () => { raiz.unmount(); }); }
     raiz = createRoot(nuevoContenedor());
     const listar = async () => ({ ok: true, estaciones: [], rutas: [] });
-    listar.iniciarCierreSesionCajaA10 = async () => ({ ok: true });
-    listar.confirmarCierreProvisionalA10 = async ({ efectivoContado }) => ({ ok: true, counted_amount: efectivoContado, expected_amount: efectivoContado, difference: 0, blockers: [] });
+    let sessionEstado = 'ABIERTA';
+    listar.iniciarCierreSesionCajaA10 = async () => { sessionEstado = 'EN_CIERRE'; return { ok: true }; };
+    listar.consultarCierreCajaA10 = async () => ({ ok: true, sessionEstado, arqueoPrevio: sessionEstado === 'EN_CIERRE' ? { fondo_inicial: 0, entradas_efectivo: 10, salidas_efectivo: 0, expected_amount: 10 } : null });
+    listar.confirmarCierreProvisionalA10 = async ({ efectivoContado }) => { sessionEstado = 'CIERRE_PROVISIONAL'; return { ok: true, counted_amount: efectivoContado, expected_amount: efectivoContado, difference: 0, blockers: [] }; };
     listar.finalizarCierreSesionCajaA10 = async () => ({ ok: true });
     listar.reabrirCierreProvisionalA10 = async ({ motivo }) => { reabrirLlamadas.push(motivo); return { ok: true }; };
     listar.abrirSesionCajaA10 = async () => ({ ok: true });

@@ -1,7 +1,8 @@
 // Servidor FALSO (un modelo en memoria) del cierre de caja, para probar la pantalla y las funciones del cliente sin conexión.
 // Reproduce, con las reglas de las migraciones, lo que el cliente ve del servidor:
 //   - tablas legibles por el cliente: terminales_tpv, caja_sesion_terminales, caja_sesiones, caja_cierres, cajas_fisicas
-//   - funciones: C04 (iniciar, confirmar provisional, finalizar, reabrir), pieza 2 (diferencia de caja) y pieza 5 (permisos)
+//   - funciones: C03 (vista previa), C04 (iniciar, confirmar provisional, finalizar, reabrir),
+//     pieza 2 (diferencia de caja) y pieza 5 (permisos)
 //   - pieza 6d: abc_obtener_dia_operativo_local
 //   - pieza 6e: apertura de cuenta del TPV (abc_abrir_cuenta con la guarda de modalidades de la pieza 3, pedido y líneas),
 //     abc_obtener_modalidades_local y el catálogo TPV
@@ -109,6 +110,15 @@ export function crearServidorFalso(opciones = {}) {
       return ok({ ok: true, linea_id: p.p_linea_id, linea_version: 1, pedido_version: pe.version, estado: 'BORRADOR', total: Math.round(p.p_cantidad * (prod ? prod.precio_unitario : 0) * 100) / 100, opciones: [] });
     }),
     abc_obtener_dia_operativo_local: () => (puedeOperarCaja() ? ok({ ok: true, operating_day: s.diaServidor }) : err('abc_caja_no_autorizado')),
+    abc_previsualizar_arqueo_caja: (p) => {
+      if (!puedeOperarCaja()) return err('abc_caja_no_autorizado');
+      const se = s.sesiones.find((x) => x.id === p.p_session_id);
+      if (!se || !['ABIERTA', 'EN_CIERRE', 'CIERRE_PROVISIONAL'].includes(se.estado)) return err('sesion_caja_no_disponible');
+      if (!s.vinculos.some((x) => x.session_id === se.id && x.terminal_id === p.p_terminal_id && x.hasta == null)) return err('terminal_no_vinculado_sesion');
+      return ok({ ok: true, session_id: se.id, estado: se.estado, currency_code: p.p_currency_code,
+        fondo_inicial: 0, entradas_efectivo: s.esperado, salidas_efectivo: 0,
+        expected_amount: s.esperado, movimientos: 1 });
+    },
     abc_obtener_capacidades_rol: () => ok({ ok: true, capacidades: [
       { capacidad: 'ABC_CAJA_OPERAR', roles: [] },
       { capacidad: 'ABC_CIERRE_REABRIR', roles: ['Propietario', 'Encargado', 'Cajero/a', 'Camarero/a'].map((rol) => ({ rol, efectivo: s.rolesReabrir.includes(rol) })) }
