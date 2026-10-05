@@ -74,7 +74,8 @@ original está en `F7_P3_P3B_PREFLIGHT_SOLO_LECTURA_2026-10-04.sql`.
    volver a su recuento previo. El guion pasó en QA sin alterar esas huellas.
    No crea ventas, cobros ni caja persistentes.
 6. Fusionar el PR #121 en `release` con `expected_head_sha` igual al commit
-   congelado y un título explícito del commit de fusión sin `[skip netlify]`.
+   congelado y título **y mensaje** explícitos del commit de fusión sin
+   `[skip netlify]`.
    Esto debe provocar **una sola publicación** de la rama `release` en
    Netlify. Comprobar el ID del despliegue, el hash servido de `fuente.js`
    y que el sitio apunta al proyecto productivo; si no se publica, parar.
