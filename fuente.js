@@ -110027,6 +110027,17 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     try {
       const contexto = await contextoCierreA10({ conDia: false });
       const base = { ok: true, sessionId: contexto.sessionId, sessionEstado: contexto.sessionEstado };
+      if (contexto.sessionEstado === "EN_CIERRE") {
+        const { data, error } = await contexto.supabase.rpc("abc_previsualizar_arqueo_caja", {
+          p_empresa_id: contexto.empresaId,
+          p_local_id: contexto.localId,
+          p_session_id: contexto.sessionId,
+          p_terminal_id: contexto.terminalId,
+          p_currency_code: "EUR"
+        });
+        if (error) return { ...base, arqueoError: errorRpcA02(error) };
+        return { ...base, arqueoPrevio: data || null };
+      }
       if (contexto.sessionEstado !== "CIERRE_PROVISIONAL") return base;
       const { data, error } = await contexto.supabase.rpc("abc_obtener_diferencia_caja", {
         p_empresa_id: contexto.empresaId,
@@ -122466,6 +122477,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
   const [fondoInicial, setFondoInicial] = (0, import_react4.useState)("0");
   const [efectivoContado, setEfectivoContado] = (0, import_react4.useState)("0");
   const [estadoCierre, setEstadoCierre] = (0, import_react4.useState)("ABIERTA");
+  const [arqueoPrevio, setArqueoPrevio] = (0, import_react4.useState)(null);
   const [motivoReapertura, setMotivoReapertura] = (0, import_react4.useState)("");
   const [puedeReabrirCierre, setPuedeReabrirCierre] = (0, import_react4.useState)(null);
   (0, import_react4.useEffect)(() => {
@@ -122505,10 +122517,13 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     const estado = String(r2.sessionEstado || "");
     if (estado === "EN_CIERRE" || estado === "CIERRE_PROVISIONAL") {
       setEstadoCierre(estado);
+      setArqueoPrevio(estado === "EN_CIERRE" && !r2.arqueoError ? r2.arqueoPrevio || null : null);
+      if (r2.arqueoError) setError("No se pudo calcular el arqueo en el servidor: " + r2.arqueoError);
       if (estado !== "CIERRE_PROVISIONAL") setCierreInfo(null);
       else if (!r2.diferenciaError) setCierreInfo(infoCierreA10(r2));
     } else if (estado === "ABIERTA") {
       setEstadoCierre("ABIERTA");
+      setArqueoPrevio(null);
       setCierreInfo(null);
     }
     return estado || null;
@@ -122565,6 +122580,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     setError("");
     setMensaje("");
     setEstadoCierre("ABIERTA");
+    setArqueoPrevio(null);
     setMotivoReapertura("");
     setBloqueosCierre([]);
     setCierreInfo(null);
@@ -122626,6 +122642,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     }
     setEstadoCierre("EN_CIERRE");
     setMensaje("Cierre iniciado. Revisa el efectivo contado y confirma el cierre provisional.");
+    await refrescarCierreInfo();
   }
 
   async function confirmarProvisional() {
@@ -122645,6 +122662,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
       return;
     }
     setEstadoCierre("CIERRE_PROVISIONAL");
+    setArqueoPrevio(null);
     setBloqueosCierre(Array.isArray(resultado.blockers) ? resultado.blockers : []);
     setMensaje(`Cierre provisional registrado: contado €${Number(resultado.counted_amount || contado).toFixed(2)}, esperado €${Number(resultado.expected_amount || 0).toFixed(2)}, diferencia €${Number(resultado.difference || 0).toFixed(2)}. ${Number(resultado.difference || 0) !== 0 ? "Hay una diferencia: registra su motivo antes de finalizar." : "Puedes finalizarlo o reabrirlo con motivo."}`);
     await refrescarCierreInfo();
@@ -122872,8 +122890,15 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
       estadoCierre === "ABIERTA" ? h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Inicia el cierre cuando dejes de operar. El servidor comprobará los pagos y efectos pendientes antes de permitir el cierre provisional.") : null,
       estadoCierre === "EN_CIERRE" ? h3("div", null,
         h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Introduce el efectivo contado para registrar el arqueo provisional. Todavía podrás reabrirlo con un motivo."),
+        arqueoPrevio ? h3("div", { className: "text-[11.5px] mb-3 p-2 rounded-lg", style: { background: C2.accentSoft } },
+          "Esperado por el servidor: €", Number(arqueoPrevio.expected_amount).toFixed(2),
+          " · Fondo €", Number(arqueoPrevio.fondo_inicial).toFixed(2),
+          " + Entradas €", Number(arqueoPrevio.entradas_efectivo).toFixed(2),
+          " − Salidas €", Number(arqueoPrevio.salidas_efectivo).toFixed(2),
+          ". Se recalculará al confirmar."
+        ) : h3("div", { className: "text-[11.5px] mb-3", role: "status" }, "Calculando el efectivo esperado en el servidor…"),
         h3(Field, { label: "Efectivo contado (€)" }, h3(Input, { type: "number", min: "0", step: "0.01", value: efectivoContado, onChange: (e2) => setEfectivoContado(e2.target.value) })),
-        h3(Btn, { small: true, onClick: confirmarProvisional, disabled: !!procesando || !String(efectivoContado).trim() }, procesando === "cierre-provisional" ? "Registrando…" : "Confirmar cierre provisional")
+        h3(Btn, { small: true, onClick: confirmarProvisional, disabled: !!procesando || !arqueoPrevio || !String(efectivoContado).trim() }, procesando === "cierre-provisional" ? "Registrando…" : "Confirmar cierre provisional")
       ) : null,
       estadoCierre === "ABIERTA" ? h3(Btn, { small: true, variant: "danger", onClick: iniciarCierre, disabled: !!procesando }, procesando === "iniciar-cierre" ? "Iniciando…" : "Iniciar cierre") : null,
       estadoCierre === "CIERRE_PROVISIONAL" ? h3("div", null,

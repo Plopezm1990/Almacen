@@ -127,7 +127,12 @@ try {
     ok('A4.1b consultar no pide el día operativo', env.llamadas('abc_obtener_dia_operativo_local').length === 0, s.llamadas.map((x) => x.nombre));
     await A.iniciarCierreSesionCajaA10();
     c = await A.consultarCierreCajaA10();
-    ok('A4.2 con el cierre iniciado: EN_CIERRE', c.ok && c.sessionEstado === 'EN_CIERRE', c);
+    ok('A4.2 con el cierre iniciado: EN_CIERRE y esperado obtenido del servidor', c.ok && c.sessionEstado === 'EN_CIERRE' && c.arqueoPrevio?.expected_amount === 10, c);
+    const previo = env.llamadas('abc_previsualizar_arqueo_caja')[0];
+    ok('A4.2b la consulta C03 queda limitada a la empresa, local, sesión y terminal activos',
+      previo?.params.p_empresa_id === env.E && previo.params.p_local_id === env.L &&
+      previo.params.p_session_id === s.ids.S && previo.params.p_terminal_id === s.ids.T &&
+      previo.params.p_currency_code === 'EUR' && Object.keys(previo.params).length === 5, previo);
     await A.confirmarCierreProvisionalA10({ efectivoContado: 8 });
     c = await A.consultarCierreCajaA10();
     ok('A4.3 en cierre provisional trae la diferencia (contado 8, esperado 10 → -2)', c.ok && c.sessionEstado === 'CIERRE_PROVISIONAL' && c.difference === -2 && c.expected_amount === 10 && c.counted_amount === 8 && c.umbral === 0, c);
@@ -254,6 +259,9 @@ try {
     ok('B1.1 con la caja abierta se ve «Iniciar cierre» y no «Abrir sesión de caja»', !!boton('Iniciar cierre') && !texto().includes('Abrir sesión de caja'), texto().slice(0, 400));
     await clic(boton('Iniciar cierre'));
     ok('B1.2 iniciar el cierre ya no da el aviso del pedido real', !texto().includes('Abre o recupera primero un pedido real') && texto().includes('EN_CIERRE') && !!contado(), texto().slice(0, 500));
+    ok('B1.2b C03 muestra el esperado que devolvió el servidor antes de confirmar',
+      texto().includes('Esperado por el servidor: €0.00') && !boton('Confirmar cierre provisional').disabled,
+      texto().slice(0, 700));
     await escribir(contado(), '0');
     await clic(boton('Confirmar cierre provisional'));
     ok('B1.3 el provisional se registra y no sale ningún aviso rojo', texto().includes('CIERRE_PROVISIONAL') && !document.querySelector('[role=alert]'), texto().slice(0, 600));
@@ -310,6 +318,9 @@ try {
     await env.A.iniciarCierreSesionCajaA10();
     await montar(env);
     ok('B4.1 con el cierre ya iniciado la pantalla muestra el efectivo contado (no «Iniciar cierre» ni «Abrir sesión»)', !!contado() && !boton('Iniciar cierre') && !texto().includes('Abrir sesión de caja') && texto().includes('EN_CIERRE'), texto().slice(0, 600));
+    ok('B4.1b recupera el arqueo calculado en el servidor tras recargar',
+      texto().includes('Esperado por el servidor: €0.00') && !boton('Confirmar cierre provisional').disabled,
+      texto().slice(0, 700));
     await escribir(contado(), '0');
     await clic(boton('Confirmar cierre provisional'));
     ok('B4.2 y se puede continuar hasta el provisional', texto().includes('CIERRE_PROVISIONAL'), texto().slice(0, 500));
@@ -364,7 +375,7 @@ try {
     ok('B8.3 finaliza', env.s.sesiones[0].estado === 'CERRADA_FINAL', env.s.sesiones[0]);
   }
   {
-    // B9: compatibilidad: una pantalla sin las funciones nuevas (versión antigua de la lógica) sigue funcionando
+    // B9: una lógica antigua sin lectura C03 no confirma a ciegas el cierre.
     const env = entorno({ esperado: 0, rol: 'Cajero/a' });
     const antigua = async () => ({ ok: true, estaciones: [], rutas: [] });
     antigua.iniciarCierreSesionCajaA10 = env.A.iniciarCierreSesionCajaA10;
@@ -373,7 +384,9 @@ try {
     antigua.reabrirCierreProvisionalA10 = env.A.reabrirCierreProvisionalA10;
     await montar(env, { listarEstacionesA10: antigua });
     await cerrarHastaProvisional(env, 0);
-    ok('B9.1 sin las funciones de diferencia la pantalla actúa como antes (sin errores)', texto().includes('CIERRE_PROVISIONAL') && !document.querySelector('[role=alert]') && !!boton('Finalizar cierre'), texto().slice(0, 600));
+    ok('B9.1 sin la lectura C03 el provisional queda bloqueado hasta calcular el esperado',
+      texto().includes('EN_CIERRE') && boton('Confirmar cierre provisional')?.disabled && env.s.sesiones[0].estado === 'EN_CIERRE',
+      texto().slice(0, 600));
   }
   {
     // B10: la diferencia cambia después de registrar el motivo: hay que registrarlo de nuevo
