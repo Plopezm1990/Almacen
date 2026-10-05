@@ -2356,6 +2356,18 @@ function GestionAlmacen() {
     if (ready && !skipSaveRef.current) saveKey("productos", productos);
   }, [productos, ready]);
   (0, import_react4.useEffect)(() => {
+    function onProductosServidor(ev) {
+      const d3 = ev && ev.detail ? ev.detail : {};
+      if (!Array.isArray(d3.enviados) || !Array.isArray(d3.confirmados)) return;
+      setProductos((prev) => {
+        if (JSON.stringify(prev) !== JSON.stringify(d3.enviados)) return prev;
+        return JSON.stringify(prev) === JSON.stringify(d3.confirmados) ? prev : d3.confirmados;
+      });
+    }
+    window.addEventListener("productos-servidor-confirmados", onProductosServidor);
+    return () => window.removeEventListener("productos-servidor-confirmados", onProductosServidor);
+  }, []);
+  (0, import_react4.useEffect)(() => {
     if (ready && !skipSaveRef.current) saveKey("pedidos", pedidos2);
   }, [pedidos2, ready]);
   (0, import_react4.useEffect)(() => {

@@ -198,6 +198,14 @@
   var otraVez = false;
   var intentos = 0;
 
+  window.addEventListener("productos-servidor-confirmados", function (ev) {
+    var d = ev && ev.detail ? ev.detail : {};
+    if (referencia && Array.isArray(d.enviados) && Array.isArray(d.confirmados)
+        && JSON.stringify(referencia) === JSON.stringify(d.enviados)) {
+      referencia = d.confirmados;
+    }
+  });
+
   function aviso(clave, mensaje, detalle) {
     if (avisados[clave]) return;
     avisados[clave] = true;
@@ -491,7 +499,8 @@
     }
     var resultado = await setAnterior(key, value, shared, opcionesP3c);
     if (nueva) {
-      referencia = nueva;
+      referencia = resultado && resultado.productosConfirmados && Array.isArray(resultado.listaConfirmada)
+        ? resultado.listaConfirmada : nueva;
       // P3c guarda lista y catálogo dentro de la misma transacción. Si falló
       // el guardado de la lista, tampoco se manda una RPC P3 separada que
       // pudiera cambiar el precio del TPV mientras la pantalla queda pendiente.

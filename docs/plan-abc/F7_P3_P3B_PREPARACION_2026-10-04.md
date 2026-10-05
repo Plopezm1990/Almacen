@@ -52,6 +52,17 @@ Para abrir una ventana de producción harán falta, en este orden:
 1. Revisar el resultado de P3c y de la prueba de pantalla completada en QA. La CI del commit `1ca253e` pasó la puerta general (225/225 contratos); el workflow heredado P2-P06 falla por exigir que este PR cambie solo los nueve archivos de su candidato antiguo, y los otros 15 workflows pasaron. La corrección del texto de «Día y cajas» se agrupa en el futuro despliegue de aplicación.
 2. Las lecturas específicas de producción se completaron el 4 y el 5/10 (resultados arriba). Refrescarlas si se abre otra ventana y contrastar las huellas del cuerpo exacto del candidato. No asumir que la foto de hoy sigue vigente entonces.
 3. Pedro hace y comprueba una copia manual fuera del repositorio. Congelar commit, `sha256` de `fuente.js`, condiciones de parada y una hoja de autorización **nueva para este paquete**. La autorización del primer paquete no cubre P3/P3b.
-4. Solo tras esa autorización: aplicar P3 y verificar; aplicar P3b y verificar; aplicar P3c y verificar; normalizar la titularidad de la lista y comprobar que su JSON no cambió; hacer humo con `ROLLBACK` sin dejar filas; publicar una vez la aplicación, comprobar el archivo servido y pedir a Pedro la aceptación del recorrido acordado. Parar ante la primera diferencia.
+4. Solo tras esa autorización: aplicar P3 y verificar; aplicar P3b y verificar; aplicar P3c y verificar; normalizar la titularidad de la lista y comprobar que su JSON no cambió; aplicar la migración que devuelve la lista fusionada y comprobar permisos; hacer humo con `ROLLBACK` sin dejar filas; publicar una vez la aplicación, comprobar el archivo servido y pedir a Pedro la aceptación del recorrido acordado. Parar ante la primera diferencia.
+
+La revisión del PR del 5/10 añadió `20261005100000_abc_p3c_lista_confirmada.sql`:
+la RPC devuelve la lista realmente fusionada para que el cliente actualice
+su caché y la pantalla, sin reemplazar otro borrador local pendiente. La
+migración se aplicó solo en QA; allí se actualizó la función durante la prueba
+para cerrar la lectura vacía de otra empresa y leer la fila final tras el espejo
+P3b. El contrato P3c pasó allí otra vez dentro de
+`BEGIN`/`ROLLBACK`, incluida la igualdad entre la respuesta y la fila
+confirmada y el rechazo de esa lectura ajena. Después: 30 artículos, 30 filas TPV; `authenticated` conserva
+`EXECUTE` y `anon` no. El contrato del cliente cubre dos dispositivos, una
+edición durante la subida y la ruta de lectura de la RPC anterior.
 
 No se aplica SQL ni se despliega producción desde esta rama. P3/P3b siguen fuera de «verificado» hasta la aceptación de Pedro (D05).

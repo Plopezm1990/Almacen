@@ -80,6 +80,11 @@ begin
      or (v_p->>'costo')::numeric<>v_costo_nuevo then
     raise exception 'P3C_TEST_FALLO: precio/coste se pisaron %',v_p;
   end if;
+  if jsonb_typeof(v_res->'lista_confirmada')<>'array'
+     or (select e from jsonb_array_elements(v_res->'lista_confirmada') e
+          where e->>'id'=k_id) is distinct from v_p then
+    raise exception 'P3C_TEST_FALLO: respuesta distinta de la lista fusionada';
+  end if;
 
   -- B edita el nombre con una copia que todavía tiene el precio antiguo.
   -- P3 debe recibir el producto fusionado, no el payload comercial obsoleto.
@@ -163,6 +168,22 @@ begin
     execute 'reset role';
     if v_msg <> 'abc_productos_no_autorizado' then
       raise exception 'P3C_TEST_FALLO: rechazo ajeno inesperado %',v_msg;
+    end if;
+  end;
+
+  -- Tampoco puede leer la lista completa enviando un guardado vacío.
+  begin
+    perform pg_temp.p3c_actor(k_other);
+    perform public.abc_productos_guardar_lista(
+      'p3c.qa.ajeno.vacio.0007','[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+    );
+    execute 'reset role';
+    raise exception 'P3C_TEST_FALLO: lectura ajena admitida';
+  exception when others then
+    get stacked diagnostics v_msg=message_text;
+    execute 'reset role';
+    if v_msg <> 'abc_productos_no_autorizado' then
+      raise exception 'P3C_TEST_FALLO: lectura ajena inesperada %',v_msg;
     end if;
   end;
 
