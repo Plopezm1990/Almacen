@@ -1,7 +1,7 @@
 # F5 C03 · Arqueo de sesión calculado en el servidor
 
 Fecha: 2026-10-05  
-Estado: `QA_APLICADO_CLIENTE_PREPARADO_PRODUCCION_PENDIENTE`
+Estado: `QA_VALIDADO_PRODUCCION_PENDIENTE`
 
 ## Alcance
 
@@ -41,6 +41,17 @@ saldo ni acepta un esperado enviado por el navegador.
 - El contrato C03, la paridad entre fuente recuperada y bundle y la prueba de
   pantalla simulada pasan localmente. Esta última cubre recuperación del
   arqueo tras recargar y bloqueo del provisional cuando falta la lectura.
+- En la vista previa del PR #122, con el perfil **Propietario QA** en el local
+  A1, la pantalla mostró antes de confirmar: fondo 0 €, entradas 3,85 €,
+  salidas 3,85 € y esperado 0 €. Al contar 1 €, el cierre provisional
+  volvió a calcular esperado 0 € y diferencia 1 €; impidió finalizar hasta
+  registrar un motivo y obtener la aprobación del Propietario. Tras ambas
+  acciones permitió finalizar y el servidor confirmó el cierre definitivo.
+  Se abrió una nueva sesión de QA con fondo 0 € para dejar el terminal
+  operativo. El motivo y la aprobación quedaron identificados expresamente
+  como prueba de QA en la auditoría.
+- El PR #122 pasó su puerta final de CI, incluido el contrato C03, los
+  contratos históricos y las pruebas Node/Postgres.
 
 ## Límites y promoción
 
@@ -51,6 +62,6 @@ deriva ni sustituye el paquete independiente PM09.
 
 Antes de producción: integrar y revisar la rama, repetir las comprobaciones
 previas, conservar copia de seguridad y aplicar la migración antes de publicar
-el cliente. Probar luego el cierre completo en QA por pantalla con un
-Propietario y una diferencia; esa aceptación aún no consta. No se ha
-modificado producción ni se ha fusionado o desplegado esta rama.
+el cliente. La aceptación del cierre completo en QA por pantalla ya consta
+arriba. No se ha modificado producción ni se ha fusionado o desplegado esta
+rama en producción.
