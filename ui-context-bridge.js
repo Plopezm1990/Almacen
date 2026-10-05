@@ -198,13 +198,15 @@
   var otraVez = false;
   var intentos = 0;
 
-  window.addEventListener("productos-servidor-confirmados", function (ev) {
-    var d = ev && ev.detail ? ev.detail : {};
-    if (referencia && Array.isArray(d.enviados) && Array.isArray(d.confirmados)
-        && JSON.stringify(referencia) === JSON.stringify(d.enviados)) {
-      referencia = d.confirmados;
-    }
-  });
+  if (typeof window.addEventListener === "function") {
+    window.addEventListener("productos-servidor-confirmados", function (ev) {
+      var d = ev && ev.detail ? ev.detail : {};
+      if (referencia && Array.isArray(d.enviados) && Array.isArray(d.confirmados)
+          && JSON.stringify(referencia) === JSON.stringify(d.enviados)) {
+        referencia = d.confirmados;
+      }
+    });
+  }
 
   function aviso(clave, mensaje, detalle) {
     if (avisados[clave]) return;
