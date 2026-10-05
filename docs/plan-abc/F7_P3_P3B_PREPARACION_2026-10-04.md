@@ -1,7 +1,7 @@
 # F7 · Preparación del paquete P3/P3b/P3c
 
 Fecha: 2026-10-04
-Estado: `P3C_EN_REVISION_NO_APTO_PARA_PRODUCCION`
+Estado: `P3C_APLICADO_EN_QA_PANTALLA_PENDIENTE_NO_APTO_PARA_PRODUCCION`
 
 ## Alcance y evidencia actual
 
@@ -16,9 +16,13 @@ El informe `F5_ANALISIS_CLAVES_PENDIENTES_QA_2026-10-02.md` registra una lectura
 
 La rama incorpora el candidato P3c `20261004201358_abc_p3c_concurrencia_productos.sql`. Su RPC bloquea la fila `almacen_kv.productos`, fusiona por producto y campo frente a la base confirmada del dispositivo, y llama a P3 dentro de la misma transacción para los cambios comerciales iniciados por una persona. Un disparador impide que una pestaña antigua con rol `authenticated` o `anon` reemplace directamente la lista. Los conflictos sobre el mismo campo se rechazan y quedan pendientes en el dispositivo. El navegador conserva la base y el cambio comercial hasta recibir confirmación; la RPC P3 antigua se omite cuando P3c confirma lista y catálogo juntos.
 
-En QA se ensayó la migración más `tests/p3/p3c-concurrencia-contract.sql` dentro de `BEGIN`/`ROLLBACK`: dos dispositivos con la misma base conservaron un precio y un coste distintos; una edición de nombre con precio antiguo mantuvo el precio nuevo en la lista y en el TPV; un precio en conflicto fue rechazado; un alta sobrevivió y llegó al TPV; un usuario de otra empresa y un `UPDATE` directo con política temporal permisiva fueron rechazados. Con P3c cargado de forma transitoria, el contrato P3b obtuvo 56/56 resultados esperados (50 positivos y seis rechazos previstos). `tests/p3/p3c-client-contract.mjs` prueba la cola, la base confirmada, el reintento tras corte de red, la ausencia de `upsert` en errores y el puente de pantalla. **No se aplicó P3c de forma persistente en QA**; la vista previa existente ejecuta el cliente antiguo y el disparador la bloquearía hasta publicar ambos lados de forma coordinada.
+En QA se ensayó la migración más `tests/p3/p3c-concurrencia-contract.sql` dentro de `BEGIN`/`ROLLBACK`: dos dispositivos con la misma base conservaron un precio y un coste distintos; una edición de nombre con precio antiguo mantuvo el precio nuevo en la lista y en el TPV; un precio en conflicto fue rechazado; un alta sobrevivió y llegó al TPV; un usuario de otra empresa y un `UPDATE` directo con política temporal permisiva fueron rechazados. Con P3c cargado de forma transitoria, el contrato P3b obtuvo 56/56 resultados esperados (50 positivos y seis rechazos previstos). `tests/p3/p3c-client-contract.mjs` prueba la cola, la base confirmada, el reintento tras corte de red, la ausencia de `upsert` en errores y el puente de pantalla.
 
-P3c sigue en revisión. Antes de promocionarlo hay que confirmar en una ventana nueva la titularidad/contexto de la fila productiva `almacen_kv.productos`, repetir las lecturas de producción que puedan haber cambiado, y hacer una prueba integrada del cliente actualizado contra QA con esquema P3c persistente y una vista previa nueva. La lectura autorizada de nueve consultas no incluyó la titularidad de esa fila y no autoriza más consultas productivas ni escrituras.
+Pedro autorizó después la prueba integrada en QA. El 4/10/2026 se aplicó P3c **solo en QA**, con registro de migración `20261004211239 abc_p3c_concurrencia_productos`; SHA-256 del archivo candidato `2a2c66872f9eb2b75ae124dd5c44261f8172f1ea2f1087da7be91fc9818d610f`. Antes y después: `almacen_kv.productos` conserva MD5 `837c71d67bfad41dbf12320bfede73b4` y el catálogo tiene 30 filas. La RPC existe, el disparador está activo, `authenticated` puede ejecutarla y `anon` no. Ya instalada la migración, el contrato P3c volvió a pasar con `ROLLBACK` y P3b obtuvo 56/56 resultados esperados con `ROLLBACK`. El asesor de seguridad señala la RPC `SECURITY DEFINER` ejecutable por `authenticated`: es deliberado por la serialización y está protegida por `auth.uid()` más permisos de empresa/local; [aviso del asesor](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable).
+
+Para la comprobación de pantalla se construyó el artefacto local de la rama y se modificó **solo la copia generada e ignorada por Git** para que `localhost` use el modo QA ya existente. La copia local arranca en el formulario de entrada y bloquea peticiones al Supabase productivo. Falta la sesión de un Propietario QA para completar una edición visible, recarga y comparación de lista/TPV. No hubo despliegue de Netlify.
+
+P3c sigue en revisión. Antes de promocionarlo hay que confirmar en una ventana nueva la titularidad/contexto de la fila productiva `almacen_kv.productos`, repetir las lecturas de producción que puedan haber cambiado, y terminar la prueba del cliente actualizado con sesión QA. La lectura autorizada de nueve consultas no incluyó la titularidad de esa fila y no autoriza más consultas productivas ni escrituras.
 
 ## Comprobación previa y puerta de producción
 
@@ -41,7 +45,7 @@ La lectura cumple las condiciones de ausencia y dependencias, pero **no levanta 
 
 Para abrir una ventana de producción harán falta, en este orden:
 
-1. Terminar la revisión de P3c, verificarlo de forma integrada en QA y dejar en verde la CI de un candidato exacto. La corrección del texto de «Día y cajas» se agrupa en ese único despliegue de aplicación.
+1. Terminar la revisión de P3c y la prueba de pantalla en QA. La CI del commit `1faa5f6` está en verde (225/225 contratos y 16/16 workflows). La corrección del texto de «Día y cajas» se agrupa en el futuro despliegue de aplicación.
 2. La lectura específica de producción se completó el 4/10 (resultados arriba). Refrescarla si se abre otra ventana y contrastar las huellas del cuerpo exacto del candidato una vez resuelta la carrera. No asumir que la foto de hoy sigue vigente entonces.
 3. Pedro hace y comprueba una copia manual fuera del repositorio. Congelar commit, `sha256` de `fuente.js`, condiciones de parada y una hoja de autorización **nueva para este paquete**. La autorización del primer paquete no cubre P3/P3b.
 4. Solo tras esa autorización: aplicar P3 y verificar; aplicar P3b y verificar; aplicar P3c y verificar; hacer humo con `ROLLBACK` sin dejar filas; publicar una vez la aplicación, comprobar el archivo servido y pedir a Pedro la aceptación del recorrido acordado. Parar ante la primera diferencia.
