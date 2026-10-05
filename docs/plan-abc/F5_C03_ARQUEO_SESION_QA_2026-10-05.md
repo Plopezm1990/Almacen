@@ -50,6 +50,18 @@ saldo ni acepta un esperado enviado por el navegador.
   Se abrió una nueva sesión de QA con fondo 0 € para dejar el terminal
   operativo. El motivo y la aprobación quedaron identificados expresamente
   como prueba de QA en la auditoría.
+- Ensayo adicional de punta a punta en la misma vista previa, con autorización
+  expresa del usuario: se creó en el TPV de A1 una cuenta de Barra
+  (`008d8ab3-2e8b-461e-be0f-c59586d9cb3a`) y un pedido
+  (`331a26a4-061f-4bf9-9deb-9eb50206d73b`) de una unidad de
+  «Agua 50 cl (QA)» por 1 €. El pedido pasó por ENVIADO, EN_PREPARACION,
+  PREPARADO y SERVIDO. F4 confirmó un cobro en efectivo de 1 €, con 0 €
+  pendiente y 0 € de cambio; la cuenta quedó PAGADO.
+- En la sesión de caja de A1, «Iniciar cierre» mostró el cálculo servidor
+  **fondo 0 € + entradas 1 € − salidas 0 € = esperado 1 €**. Se contó 1 €:
+  el cierre provisional registró esperado 1 € y diferencia 0 €. El cierre
+  definitivo se completó y se abrió otra sesión con fondo 0 €, verificada
+  en estado ABIERTA. No se usó tarjeta ni pasarela real.
 - El PR #122 pasó su puerta final de CI, incluido el contrato C03, los
   contratos históricos y las pruebas Node/Postgres.
 
@@ -58,7 +70,10 @@ saldo ni acepta un esperado enviado por el navegador.
 El arqueo histórico PM08/PM09 sigue separado: su pantalla envía
 `p_efectivo_base` y algunas entradas antiguas no tienen ledger servidor
 completo. C03 aquí cubre el **cierre por sesión ABC**, no declara resuelta esa
-deriva ni sustituye el paquete independiente PM09.
+deriva ni sustituye el paquete independiente PM09. Durante el ensayo adicional,
+la pantalla histórica «Arqueo de caja» mostró esperado 0 € mientras el cierre
+por sesión ABC mostró 1 €; la conciliación de ambas vistas queda pendiente
+del trabajo PM09.
 
 Antes de producción: integrar y revisar la rama, repetir las comprobaciones
 previas, conservar copia de seguridad y aplicar la migración antes de publicar
