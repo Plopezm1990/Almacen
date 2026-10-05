@@ -1,7 +1,7 @@
 # F7 · Preparación del paquete P3/P3b/P3c
 
 Fecha: 2026-10-04
-Estado: `P3C_APLICADO_EN_QA_PANTALLA_PENDIENTE_NO_APTO_PARA_PRODUCCION`
+Estado: `P3C_APLICADO_Y_PANTALLA_VERIFICADA_EN_QA_NO_APTO_PARA_PRODUCCION`
 
 ## Alcance y evidencia actual
 
@@ -20,9 +20,11 @@ En QA se ensayó la migración más `tests/p3/p3c-concurrencia-contract.sql` den
 
 Pedro autorizó después la prueba integrada en QA. El 4/10/2026 se aplicó P3c **solo en QA**, con registro de migración `20261004211239 abc_p3c_concurrencia_productos`; SHA-256 del archivo candidato `2a2c66872f9eb2b75ae124dd5c44261f8172f1ea2f1087da7be91fc9818d610f`. Antes y después: `almacen_kv.productos` conserva MD5 `837c71d67bfad41dbf12320bfede73b4` y el catálogo tiene 30 filas. La RPC existe, el disparador está activo, `authenticated` puede ejecutarla y `anon` no. Ya instalada la migración, el contrato P3c volvió a pasar con `ROLLBACK` y P3b obtuvo 56/56 resultados esperados con `ROLLBACK`. El asesor de seguridad señala la RPC `SECURITY DEFINER` ejecutable por `authenticated`: es deliberado por la serialización y está protegida por `auth.uid()` más permisos de empresa/local; [aviso del asesor](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable).
 
-Para la comprobación de pantalla se construyó el artefacto local de la rama y se modificó **solo la copia generada e ignorada por Git** para que `localhost` use el modo QA ya existente. La copia local arranca en el formulario de entrada y bloquea peticiones al Supabase productivo. Falta la sesión de un Propietario QA para completar una edición visible, recarga y comparación de lista/TPV. No hubo despliegue de Netlify.
+Para la comprobación de pantalla se construyó el artefacto local de la rama y se modificó **solo la copia generada e ignorada por Git** para que `localhost` use el modo QA ya existente. La copia local bloquea peticiones al Supabase productivo. Pedro inició sesión como Propietario QA. En el primer intento, el formulario mostró un cambio de precio que no llegó a la lista ni al TPV: `server-authority-storage-bridge.js` y `edge-auth-patch.js` descartaban el cuarto argumento con la intención comercial P3c. Se corrigieron ambas capas y se añadió una prueba de regresión de la transmisión de ese argumento.
 
-P3c sigue en revisión. Antes de promocionarlo hay que confirmar en una ventana nueva la titularidad/contexto de la fila productiva `almacen_kv.productos`, repetir las lecturas de producción que puedan haber cambiado, y terminar la prueba del cliente actualizado con sesión QA. La lectura autorizada de nueve consultas no incluyó la titularidad de esa fila y no autoriza más consultas productivas ni escrituras.
+El 5/10/2026, desde Productos en esa copia local corregida, se cambió «Agua 50 cl (QA)» de 1,00 € a 1,05 €. La lectura de QA confirmó `almacen_kv.productos.precioVenta = 1.05` y `catalogo_tpv_productos.precio_con_impuesto = 1.05000000`; la pantalla conservó 1,05 € tras recargar. Se restauró 1,00 € desde el mismo formulario y se volvió a comprobar: lista `1`, TPV `1.00000000`, pantalla 1,00 € después de otra recarga, 30 productos y 30 filas TPV. El indicador de cambios sin confirmar quedó en cero. No hubo despliegue de Netlify.
+
+P3c sigue en revisión. Antes de promocionarlo hay que confirmar en una ventana nueva la titularidad/contexto de la fila productiva `almacen_kv.productos` y repetir las lecturas de producción que puedan haber cambiado. La lectura autorizada de nueve consultas no incluyó la titularidad de esa fila y no autoriza más consultas productivas ni escrituras.
 
 ## Comprobación previa y puerta de producción
 
@@ -45,7 +47,7 @@ La lectura cumple las condiciones de ausencia y dependencias, pero **no levanta 
 
 Para abrir una ventana de producción harán falta, en este orden:
 
-1. Terminar la revisión de P3c y la prueba de pantalla en QA. La CI del commit `1faa5f6` está en verde (225/225 contratos y 16/16 workflows). La corrección del texto de «Día y cajas» se agrupa en el futuro despliegue de aplicación.
+1. Revisar el resultado de P3c y de la prueba de pantalla completada en QA. La CI del commit `1faa5f6` pasó (225/225 contratos y 16/16 workflows); el cambio posterior que transmite las opciones P3c debe superar su propia CI antes de promocionarse. La corrección del texto de «Día y cajas» se agrupa en el futuro despliegue de aplicación.
 2. La lectura específica de producción se completó el 4/10 (resultados arriba). Refrescarla si se abre otra ventana y contrastar las huellas del cuerpo exacto del candidato una vez resuelta la carrera. No asumir que la foto de hoy sigue vigente entonces.
 3. Pedro hace y comprueba una copia manual fuera del repositorio. Congelar commit, `sha256` de `fuente.js`, condiciones de parada y una hoja de autorización **nueva para este paquete**. La autorización del primer paquete no cubre P3/P3b.
 4. Solo tras esa autorización: aplicar P3 y verificar; aplicar P3b y verificar; aplicar P3c y verificar; hacer humo con `ROLLBACK` sin dejar filas; publicar una vez la aplicación, comprobar el archivo servido y pedir a Pedro la aceptación del recorrido acordado. Parar ante la primera diferencia.
