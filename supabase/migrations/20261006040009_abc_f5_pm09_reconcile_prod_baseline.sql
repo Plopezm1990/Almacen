@@ -2,7 +2,9 @@
 -- Nunca aplicar sin preflight actualizado, copia y autorización del paquete.
 -- No altera tablas ni reemplaza funciones existentes.
 
-begin;
+-- La CLI de Supabase envuelve el archivo y su registro de historia en una
+-- transacción. No añadir BEGIN/COMMIT aquí: cerrarían esa transacción antes
+-- de que la CLI escriba la entrada de historia.
 set local lock_timeout = '5s';
 set local statement_timeout = '30s';
 
@@ -242,4 +244,3 @@ begin
   end loop;
 end;
 $postflight$;
-commit;

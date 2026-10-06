@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
 const root = process.cwd();
@@ -9,6 +10,17 @@ const sourcePath = path.join(root, 'supabase/migrations/20260915152000_pm27_rest
 const embeddedPath = path.resolve(root, '../.pm12-tools/node_modules/embedded-postgres/dist/index.js');
 const { default: EmbeddedPostgres } = await import(pathToFileURL(embeddedPath).href);
 const dbDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pm09-baseline-'));
+const cliDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pm09-cli-'));
+const migrationsDir = path.join(cliDir, 'supabase/migrations');
+fs.mkdirSync(migrationsDir, { recursive: true });
+const cliPath = path.resolve(root, `../.pm12-tools/node_modules/supabase/bin/supabase${process.platform === 'win32' ? '.exe' : ''}`);
+function migrationUp() {
+  const run = spawnSync(cliPath, [
+    'migration', 'up', '--db-url', 'postgres://postgres:pm09-local-only@127.0.0.1:55449/postgres',
+    '--workdir', cliDir, '--yes',
+  ], { encoding: 'utf8', timeout: 60000 });
+  check(run.status === 0, `Supabase CLI migration up failed: ${run.stderr || run.stdout || run.error}`);
+}
 const pg = new EmbeddedPostgres({
   databaseDir: dbDir,
   user: 'postgres',
@@ -115,6 +127,14 @@ try {
   await client.query(`create function public.revertir_venta_stock_carrito(text,text,text)
     returns jsonb language sql security definer set search_path=''
     as $$ select '{}'::jsonb $$`);
+  const olderFile = path.join(migrationsDir, '20261001000000_pm09_rehearsal_older.sql');
+  fs.writeFileSync(olderFile, 'select 1;\n');
+  migrationUp();
+  fs.unlinkSync(olderFile);
+  await mustFail(() => Promise.resolve().then(migrationUp), 'Remote migration versions not found');
+  // Keep an inert local file for every recorded remote version. The CLI
+  // rejects a workdir that omits any version present in remote history.
+  fs.writeFileSync(olderFile, 'select 1;\n');
   const expected = [
     '93a6ffa723d09ff741fc3444a0bb5d17',
     '51caae254c58ac1fb940afaef1c21f0a',
@@ -131,7 +151,11 @@ try {
     check(migration.includes(expected[i]), `Missing frozen fingerprint for ${signatures[i]}`);
     migration = migration.replace(expected[i], body_md5);
   }
-  await client.query(migration);
+  fs.writeFileSync(path.join(migrationsDir, path.basename(migrationPath)), migration);
+  migrationUp();
+  const history = await one(`select count(*)::int as n from supabase_migrations.schema_migrations
+    where version='20261006040009' and name='abc_f5_pm09_reconcile_prod_baseline'`);
+  check(history.n === 1, 'Supabase CLI did not record the exact candidate migration version');
   for (const signature of [
     'public.revertir_venta_stock(text,text,text)',
     'public.registrar_venta_stock_pm09(text,text,text,text,numeric,date,jsonb)',
@@ -228,4 +252,5 @@ try {
 } finally {
   if (client) await client.end().catch(() => {});
   await pg.stop().catch(() => {});
+  fs.rmSync(cliDir, { recursive: true, force: true });
 }

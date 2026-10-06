@@ -1,7 +1,7 @@
 # F5 / PM09 · Candidato local de reconciliación
 
 Fecha: 2026-10-06
-Estado: `CANDIDATO_LOCAL_PROBADO_SIN_APLICACION_REMOTA`
+Estado: `PR_BORRADOR_CI_VERDE_SIN_APLICACION_REMOTA`
 
 ## Alcance
 
@@ -21,7 +21,8 @@ RPC de carrito. Los wrappers PM09 exigen fecha económica y la guardan en el
 movimiento. Las tres funciones usan `SECURITY DEFINER` con
 `search_path = ''` y ejecución limitada a `authenticated`.
 
-La migración es transaccional; sus condiciones previas requieren la ausencia
+La CLI aplica la migración y su registro de historia en una transacción;
+el archivo no incluye `BEGIN`/`COMMIT` propios. Sus condiciones previas requieren la ausencia
 de las tres RPC objetivo, las huellas de tres dependencias productivas, el
 esquema con claves externas de autor y 0 ventas/reversos de stock existentes.
 Si cambia cualquiera de esos hechos, aborta. Antes de una ventana real debe
@@ -34,8 +35,12 @@ ejecutarse además el preflight completo de solo lectura del plan PM09.
 `id` de movimiento como identidad y las dos claves externas a
 `auth.users`. Toma la función de venta individual de la migración PM27
 versionada. Para ejecutar el candidato contra este fixture, la prueba
-sustituye **solo en memoria** las tres huellas previas por las del fixture;
-el SQL versionado conserva las huellas observadas en producción.
+sustituye las tres huellas previas **solo en una copia temporal** por las del
+fixture; el SQL versionado conserva las huellas observadas en producción.
+Además ejecuta `supabase migration up` en un directorio aislado, comprueba
+que registre la versión `20261006040009` y que se niegue a avanzar si falta
+un archivo local de una versión ya registrada en la base. La CLI usada en el
+ensayo fue la 2.39.2.
 
 La prueba comprobó:
 
@@ -51,11 +56,16 @@ La prueba comprobó:
 
 El fixture no sustituye una réplica productiva: sus funciones auxiliares de
 autorización son simplificadas y no prueba el recorrido completo de la
-aplicación. Quedan pendientes una revisión de seguridad, los contratos de CI
-en un entorno independiente, la comprobación final de QA y una hoja de
-autorización específica antes de cualquier escritura productiva.
+aplicación. La revisión de seguridad y la hoja de preparación de la ventana
+constan en `F5_PM09_BASELINE_VENTANA_PREPARACION_2026-10-06.md`. Sigue
+pendiente el humo funcional final con un usuario real de QA y una autorización
+específica antes de cualquier escritura productiva.
 
 ## Estado remoto
 
-No se aplicó esta migración en QA ni en producción. No se publicó ni fusionó
-esta rama. El PR de arqueo #123 es independiente.
+El candidato se publicó en el [PR borrador #125](https://github.com/Plopezm1990/Almacen/pull/125),
+con base `release`. La puerta final de CI quedó en verde el 6/10/2026 tras
+acotar el contrato F7 a su foto histórica del 3/10. El plan y su preflight
+están en el [PR borrador #124](https://github.com/Plopezm1990/Almacen/pull/124),
+también con CI verde. No se aplicó esta migración en QA ni en producción y
+ninguno de los PR está fusionado. El PR de arqueo #123 es independiente.
