@@ -41,6 +41,12 @@ secuencia lineal.
    `function_mismatches=[]`, `table_mismatches=[]`, historia esperada,
    `sale_operations=0` y `sale_movements=0`. En QA existen las tres RPC por
    consulta de catálogo. Fueron solo lecturas; repetirlas en la ventana.
+5. **Humo autenticado de QA 6/10/2026:** desde una sesión real de Propietario
+   se llamó una única RPC de diagnóstico sin parámetros. El servidor comprobó
+   venta individual PM09, fecha económica, reverso y recuperación del saldo, y
+   terminó deliberadamente con `PM09_QA_SMOKE_PASS_ROLLBACK`. Una lectura
+   independiente confirmó cero operaciones y movimientos residuales. La RPC y
+   el control de interfaz usados para el ensayo fueron retirados después.
 
 ## Condiciones de entrada de la ventana
 
@@ -54,9 +60,9 @@ secuencia lineal.
 3. Repetir el SQL exacto de preflight del PR #124 en producción, solo lectura.
    Exigir `ok=true`, listas de diferencias vacías, historia esperada y cero
    `VENTA`/`REVERSO`. Verificar que las tres RPC objetivo siguen ausentes.
-4. Verificar en QA con sesión real el flujo PM09 que ya existe allí. El
-   candidato se ensayó en PostgreSQL desechable y no se debe aplicar en QA
-   porque las tres funciones ya existen.
+4. **Cumplida el 6/10/2026:** verificación en QA con sesión real y `ROLLBACK`,
+   sin filas residuales. El candidato no se aplicó en QA porque las tres
+   funciones ya existían.
 5. Preparar un directorio temporal **fuera del repositorio** para la CLI.
    Copiar allí solo el candidato exacto y un archivo inerte (`select 1;`)
    por cada versión ya registrada en producción. Obtener de nuevo la lista
