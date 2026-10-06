@@ -100,6 +100,12 @@ No se cambiaron datos, funciones, permisos ni configuración de QA o producción
 
 ## Puerta pendiente
 
-Falta implementar y probar el candidato técnico de los pasos 1–2. La
-reconciliación **no está aplicada** en QA ni en producción. Después queda la
-aceptación de Pedro y la promoción productiva por separado.
+Los pasos 1–2 se implementaron después en el
+[PR borrador #125](https://github.com/Plopezm1990/Almacen/pull/125), con
+prueba local y puerta final de CI en verde. La comprobación de solo lectura
+se repitió el 6/10/2026 a las 04:45 UTC: `ok=true`, sin diferencias, historia
+esperada y cero ventas/reversos. La reconciliación **no está aplicada** en QA
+ni en producción. Quedan el humo funcional con sesión real en QA, una copia
+manual productiva nueva y la autorización específica de Pedro para esa
+ventana. El ejecutor de migración se ensayó con la CLI y PostgreSQL
+desechable; véase la hoja de preparación del PR #125.
