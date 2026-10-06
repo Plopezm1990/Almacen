@@ -43,8 +43,10 @@ La prueba comprobó:
 - creación acotada, `search_path` y permisos de las tres RPC;
 - venta individual, fecha económica, replay y rechazo de replay divergente;
 - reverso, signo económico, fecha, stock restaurado y replay;
-- rechazo de segundo reverso, venta con devolución, otro local, fecha ausente
-  y `operation_id` ocupado por caja;
+- rechazo de segundo reverso, replay con otro motivo, venta con devolución,
+  otro local, venta de carrito, fecha ausente, usuario no autenticado y
+  `operation_id` ocupado por caja;
+- ninguna operación residual tras esos rechazos;
 - rechazo de una segunda aplicación de la migración.
 
 El fixture no sustituye una réplica productiva: sus funciones auxiliares de

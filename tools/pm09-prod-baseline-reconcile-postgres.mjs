@@ -171,6 +171,9 @@ try {
     'rev-1','sale-1','2026-10-07','prueba'
   )`), 'operation_id_conflict');
   await mustFail(() => client.query(`select public.revertir_venta_stock_pm09(
+    'rev-1','sale-1','2026-10-06','otro motivo'
+  )`), 'operation_id_conflict');
+  await mustFail(() => client.query(`select public.revertir_venta_stock_pm09(
     'rev-2','sale-1','2026-10-06','prueba'
   )`), 'venta_stock_ya_revertida');
   const balance = await one(`select almacen,piso from public.stock_ubicacion
@@ -200,6 +203,25 @@ try {
   await mustFail(() => client.query(`select public.revertir_venta_stock_pm09(
     'rev-foreign','foreign-sale','2026-10-06','prueba'
   )`), 'contexto_no_autorizado');
+  await client.query(`insert into public.stock_operaciones(
+    operation_id,tipo,empresa_id,local_id,producto_id,payload,actor_user_id
+  ) values ('cart-sale','VENTA','e1','l1','__CARRITO__','{}',auth.uid())`);
+  await mustFail(() => client.query(`select public.revertir_venta_stock_pm09(
+    'rev-cart','cart-sale','2026-10-06','prueba'
+  )`), 'reverso_carrito_requiere_rpc_carrito');
+  await mustFail(() => client.query(`select public.revertir_venta_stock_pm09(
+    'rev-no-date','sale-2',null,'prueba'
+  )`), 'fecha_requerida');
+  await client.query(`create or replace function auth.uid() returns uuid language sql stable
+    as $$ select null::uuid $$`);
+  await mustFail(() => client.query(`select public.revertir_venta_stock_pm09(
+    'rev-no-auth','sale-2','2026-10-06','prueba'
+  )`), 'reverso_no_autorizado');
+  await client.query(`create or replace function auth.uid() returns uuid language sql stable
+    as $$ select '11111111-1111-1111-1111-111111111111'::uuid $$`);
+  const failedReversalRows = await one(`select count(*)::int as n from public.stock_operaciones
+    where operation_id in ('rev-refunded','rev-foreign','rev-cart','rev-no-date','rev-no-auth')`);
+  check(failedReversalRows.n === 0, 'A rejected reversal persisted an operation');
   await mustFail(() => client.query(migration), 'PM09_BASELINE_PREFLIGHT_FALLO: alguna RPC objetivo ya existe');
   await client.query('rollback');
   console.log('PM09_PROD_BASELINE_POSTGRES=PASS');
