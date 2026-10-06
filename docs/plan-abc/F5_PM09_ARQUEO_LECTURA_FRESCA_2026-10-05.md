@@ -1,7 +1,7 @@
 # F5 / PM09 · Actualización del arqueo diario al abrir la pantalla
 
 Fecha: 2026-10-05  
-Estado: `CANDIDATO_LOCAL_PROBADO_QA_PENDIENTE`
+Estado: `QA_VISUAL_VALIDADO_PRODUCCION_PENDIENTE`
 
 ## Hallazgo reproducido en QA
 
@@ -29,10 +29,32 @@ ejecuta el componente con una lectura simulada: bloquea el arqueo mientras
 carga, muestra el efecto de 1 € tras la respuesta y mantiene el bloqueo con
 opción de reintento si la lectura falla.
 
-Pendiente: probar el nuevo preview por pantalla con una sesión QA autenticada y
-comprobar que al entrar en «Arqueo de caja» aparece el movimiento de 1 € sin
-recargar toda la aplicación. También queda pendiente la CI del PR de este
-candidato.
+## QA visual del PR #123 · 2026-10-06
+
+En `deploy-preview-123`, con sesión Propietario QA y Local A1 seleccionado,
+entrar en «Arqueo de caja» mostró primero «Actualizando los movimientos de
+caja del servidor…» sin importe ni acción de guardar. Al terminar, apareció
+«Actualizar datos de caja». Al elegir 2026-10-05 mediante el selector de fecha,
+la pantalla mostró esperado 1 €, ajuste de caja 1 € y la entrada «Cobro ABC en
+efectivo» de +1 €, sin recargar toda la aplicación. La actualización manual
+volvió a mostrar el estado de carga y, al completarse, conservó la fecha y el
+importe de 1 €.
+
+La consulta de lectura a `caja_operaciones` de QA confirmó la misma fila:
+fecha 2026-10-05, local `QA-A1`, tipo `ENTRADA`, importe y efecto en efectivo
+1 €. No se creó ni modificó ningún registro durante esta comprobación.
+
+La primera asignación automatizada del campo de fecha cambió el valor visible
+sin disparar el estado del formulario; la selección por teclado sí lo hizo.
+Por eso la evidencia funcional se basa en la selección real por teclado y en
+la actualización posterior, no en aquella primera asignación.
+
+La CI del commit `8e8c08c` confirmó `validar` y el deploy preview, pero varios
+jobs (incluido `gate-final`) quedaron cancelados porque GitHub no consiguió
+asignarles un runner alojado tras varios intentos. No se interpreta esa
+cancelación como una prueba superada. Queda pendiente completar esos jobs y
+conciliar por separado el baseline PM09 de producción con QA. Este PR permanece
+sin fusionar.
 
 Este cambio corrige la lectura caducada observada, no reconcilia por sí mismo
 el baseline PM09 de producción con QA ni une el circuito de stock PM09 con el
