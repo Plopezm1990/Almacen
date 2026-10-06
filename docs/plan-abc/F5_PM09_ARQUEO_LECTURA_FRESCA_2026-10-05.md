@@ -51,10 +51,10 @@ la actualización posterior, no en aquella primera asignación.
 
 La CI del commit `8e8c08c` confirmó `validar` y el deploy preview, pero varios
 jobs (incluido `gate-final`) quedaron cancelados porque GitHub no consiguió
-asignarles un runner alojado tras varios intentos. No se interpreta esa
-cancelación como una prueba superada. Queda pendiente completar esos jobs y
-conciliar por separado el baseline PM09 de producción con QA. Este PR permanece
-sin fusionar.
+asignarles un runner alojado tras varios intentos. La siguiente ejecución,
+tras el commit de evidencia `a1cb65d`, completó sus 25 checks sin fallos y el
+deploy preview quedó listo. Sigue pendiente conciliar por separado el baseline
+PM09 de producción con QA. Este PR permanece sin fusionar.
 
 Este cambio corrige la lectura caducada observada, no reconcilia por sí mismo
 el baseline PM09 de producción con QA ni une el circuito de stock PM09 con el
