@@ -4113,10 +4113,18 @@ function validarProveedorPM10(data) {
   return { ok: true, datos };
 }
 function crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria, empresaId, proveedoresRecientes = /* @__PURE__ */ new Map() }) {
+  function proveedorConEseNif(nif, idPropio) {
+    if (!nif) return null;
+    const n2 = normalizarNifProveedorAlb(nif);
+    if (!n2) return null;
+    return (proveedores || []).find((p22) => p22.id !== idPropio && p22.empresaId === empresaId && normalizarNifProveedorAlb(p22.nif || p22.cif) === n2) || null;
+  }
   function addProveedor(data) {
     if (!empresaId) return { ok: false, error: "Selecciona una empresa antes de crear el proveedor." };
     const validacion = validarProveedorPM10(data);
     if (!validacion.ok) return validacion;
+    const otroConNif = proveedorConEseNif(validacion.datos.nif, null);
+    if (otroConNif) return errorValidacionPM10("duplicado", "nif", `Ya tienes un proveedor con ese NIF/CIF: ${otroConNif.nombre}.`);
     const nuevo = { id: uid(), ...validacion.datos, empresaId };
     setProveedores((s22) => [...s22, nuevo]);
     return { ok: true, proveedor: nuevo };
@@ -4124,6 +4132,8 @@ function crearLogicaProveedores({ proveedores, setProveedores, registrarAuditori
   function updateProveedor(id, data) {
     const validacion = validarProveedorPM10(data);
     if (!validacion.ok) return validacion;
+    const otroConNif = proveedorConEseNif(validacion.datos.nif, id);
+    if (otroConNif) return errorValidacionPM10("duplicado", "nif", `Ya tienes un proveedor con ese NIF/CIF: ${otroConNif.nombre}.`);
     setProveedores((s22) => s22.map((p22) => p22.id === id && p22.empresaId === empresaId ? { ...p22, ...validacion.datos, empresaId: p22.empresaId, ...p22.pendienteRevision ? { pendienteRevision: false, revisadoEl: typeof todayISO === "function" ? todayISO() : "" } : {} } : p22));
     return { ok: true };
   }
@@ -4144,9 +4154,10 @@ function crearLogicaProveedores({ proveedores, setProveedores, registrarAuditori
     }
     const previo = resolverProveedorAlbaran({ proveedores: conocidos, empresaId, detectado: { nombre, nif } });
     if (previo.estado === "existente") return { ok: true, proveedor: previo.proveedor, reutilizado: true };
+    const nifLibre = nif && !conocidos.some((p22) => p22.empresaId === empresaId && normalizarNifProveedorAlb(p22.nif || p22.cif) === nif) ? nif : "";
     const res = addProveedor({
       nombre,
-      nif,
+      nif: nifLibre,
       contacto: "",
       telefono: "",
       condiciones: "",
