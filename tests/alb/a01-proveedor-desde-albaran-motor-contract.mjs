@@ -233,6 +233,24 @@ function entorno({ proveedores = [], empresaId = EMP, recientes = new Map() } = 
   console.log('A01_ALB_ALTA_AUTOMATICA=PASS');
 }
 
+// ---- el NIF es único por empresa (altas y ediciones) ----
+{
+  const e = entorno({ proveedores: [prov('u1', 'Uno', { nif: NIF_VALIDO }), prov('u2', 'Dos'), prov('u3', 'Otra empresa', { empresaId: 'OTRA', nif: NIF_VALIDO_2 })] });
+  let r = e.logica().addProveedor({ nombre: 'Tres', nif: NIF_VALIDO });
+  assert.equal(r.ok, false); assert.equal(r.campo, 'nif'); assert.match(r.error, /Ya tienes un proveedor con ese NIF\/CIF: Uno/);
+  r = e.logica().addProveedor({ nombre: 'Tres', nif: NIF_VALIDO_2 });
+  assert.equal(r.ok, true, 'el NIF de un proveedor de otra empresa no cuenta');
+  r = e.logica().updateProveedor('u2', { nombre: 'Dos', nif: NIF_VALIDO });
+  assert.equal(r.ok, false); assert.equal(r.campo, 'nif');
+  r = e.logica().updateProveedor('u1', { nombre: 'Uno bis', nif: NIF_VALIDO });
+  assert.equal(r.ok, true, 'editar un proveedor conservando su propio NIF es válido');
+  // dos fichas antiguas con el mismo NIF y la persona dice «No, es nuevo»: se crea sin NIF (el NIF ya es de otros)
+  const dup = entorno({ proveedores: [prov('d1', 'Quesos Uno', { nif: NIF_VALIDO }), prov('d2', 'Quesos Dos', { cif: NIF_VALIDO })] });
+  r = dup.logica().addProveedorDesdeAlbaran({ nombre: 'Quesos Tres', nif: NIF_VALIDO });
+  assert.equal(r.ok, true); assert.equal(r.reutilizado, false); assert.equal(r.proveedor.nif, '');
+  console.log('A01_ALB_NIF_UNICO_POR_EMPRESA=PASS');
+}
+
 // ---- asignar NIF y marcar revisado ----
 {
   const e = entorno({ proveedores: [prov('a', 'Sin NIF'), prov('b', 'Con NIF', { nif: NIF_VALIDO }), prov('c', 'Pendiente', { pendienteRevision: true, creadoPorIA: true }), prov('d', 'Otra empresa', { empresaId: 'OTRA' })] });

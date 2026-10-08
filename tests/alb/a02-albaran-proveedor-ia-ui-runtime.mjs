@@ -316,9 +316,12 @@ await escenario('S11', async () => {
   await poner(inputNif, 'B12345608');
   await clic(boton('Guardar cambios'), 'Guardar cambios (NIF malo)');
   ok('S11 un NIF con dígito de control incorrecto se rechaza', texto().includes('El NIF/CIF no es válido') && registro.vista[1].nif === undefined, texto().slice(-500));
-  await poner(Array.from(document.querySelectorAll('input')).find((i) => i.value === 'B12345608'), ' b-12345617 ');
+  await poner(Array.from(document.querySelectorAll('input')).find((i) => i.value === 'B12345608'), NIF_A);
+  await clic(boton('Guardar cambios'), 'Guardar cambios (NIF de otro proveedor)');
+  ok('S11 un NIF que ya es de otro proveedor se rechaza diciendo de cuál', texto().includes('Ya tienes un proveedor con ese NIF/CIF: Quesos la Abuela S.L.') && registro.vista[1].nif === undefined, texto().slice(-500));
+  await poner(Array.from(document.querySelectorAll('input')).find((i) => i.value === NIF_A), ' b-12345625 ');
   await clic(boton('Guardar cambios'), 'Guardar cambios (NIF bueno)');
-  ok('S11 un NIF válido se guarda normalizado', registro.vista[1].nif === 'B12345617', JSON.stringify(registro.vista[1]));
+  ok('S11 un NIF válido y libre se guarda normalizado', registro.vista[1].nif === 'B12345625', JSON.stringify(registro.vista[1]));
 });
 
 if (raiz) { await act(async () => { raiz.unmount(); }); }
