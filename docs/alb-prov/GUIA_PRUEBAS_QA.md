@@ -8,6 +8,8 @@ En QA la función de IA está neutralizada (responde 503). Para poder probar hay
 
 Es una escritura en QA (desplegar una función), por eso necesita el «sí» de Pedro. **Producción no se toca.** Se puede volver al estado actual en cualquier momento (§6).
 
+**Estado:** Pedro lo autorizó el 8/10/2026 (respuesta «Probar primero en QA») y el simulador quedó desplegado en QA como **versión 2** de `importar-albaran` (la 1 era el corta-fuegos 503). Comprobado con llamadas de 1, 2 y 3 fotos (200 y datos esperados). Producción: sin ningún cambio.
+
 ## 1. Cómo se elige el escenario
 
 La imagen da igual (vale cualquier foto o captura). Lo que cuenta es **cuántas fotos se suben a la vez** en «Foto con IA»:
