@@ -45,7 +45,11 @@ Fecha de preparación: 2026-10-08 · Estado: `PREPARADA_NO_AUTORIZADA` · Paquet
 | `sha256` de `fuente.js` esperado | `[SHA256]` |
 | Despliegue de Netlify al que volver | `[DEPLOY_ANTERIOR]` |
 
-Referencia (código en la rama de trabajo `claude/vigilant-hawking-uji8l4`, **no es el candidato final**, porque el candidato sale de `release`): el `fuente.js` de la rama de trabajo tiene `sha256` que cambiará con cualquier ajuste posterior; el candidato definitivo se calcula al crear el PR de promoción.
+Valores de referencia (8/10/2026), calculados sobre un candidato local construido a partir de `release` (`9ca58df`) con los dos commits de código del paquete, **todavía sin publicar como PR**:
+
+- `sha256` de `fuente.js` del candidato: `e39af0c42d135f471682e66a0dc46a86fc614d5919e6efc141c94b2e63eddaf1` (es idéntico al de la rama de trabajo y al de la vista previa de QA).
+- Comprobado en local: sintaxis, paridad con el espejo (`PARIDAD_CUERPO_EXACTA=1`), manifiesto de CI (244 archivos, 227 activos, pruebas negativas aceptadas) y los 204 contratos Node activos en verde.
+- Los hashes de commit definitivos salen al crear el PR de promoción; entonces se rellena la tabla de arriba.
 
 ## 5. La frase (la que Pedro diría, con los huecos rellenados)
 
