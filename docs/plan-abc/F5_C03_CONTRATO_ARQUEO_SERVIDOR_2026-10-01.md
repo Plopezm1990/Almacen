@@ -1,8 +1,8 @@
 # F5 C03 Contrato de arqueo calculado en servidor
 
-Fecha: 2026-10-01  
-Estado: `CONTRATO_C03_PREPARADO_NO_APLICADO`  
-Base: Plan ABC C03, PM08/PM09 y `origin/release` `7859508`
+Fecha: 2026-10-01
+Estado: `IMPLEMENTADO_EN_QA; UI_LOCAL_PREPARADA; DEPLOY_QA_PENDIENTE`
+Base: Plan ABC C03, PM08/PM09 y cierre de sesión C04
 
 Este contrato cierra el comportamiento de C03 para que el arqueo explique la
 diferencia entre efectivo contado y efectivo esperado sin confiar en una cifra
@@ -23,6 +23,12 @@ Después registra `efectivo_contado` y deriva:
 La cifra enviada por el cliente puede conservarse como dato declarado o
 referencia de la petición, pero no sustituye el cálculo autoritativo. Un
 reembolso o movimiento ya registrado no se vuelve a sumar en un replay.
+
+La interfaz ya no envía `efectivo_base` al registrar un arqueo sincronizado.
+Envía el efectivo contado, el desglose opcional por denominaciones y el
+contexto de sesión. `abc_registrar_arqueo_caja` obtiene la base y el esperado
+del libro de caja. `abc_previsualizar_arqueo_caja` muestra el mismo desglose en
+el cierre por sesión y C04 vuelve a calcularlo al confirmar.
 
 ## Identidad y estados
 
@@ -62,6 +68,12 @@ alterando el arqueo.
 
 ## Resultado de C03
 
-El contrato de arqueo calculado en servidor queda preparado para la aceptación
-F5. No aplica migraciones, no escribe QA/PROD, no hace merge y no ejecuta
-deploy de Netlify.
+Las migraciones de vista previa y registro autoritativo están aplicadas en QA.
+La prueba transaccional de 100 € de fondo, 50 € de entrada y 30 € de salida
+obtuvo 120 € esperados, admitió un conteo por denominaciones de 120 € y una
+diferencia de 0 €. También verificó replay, permisos, unicidad y anulación con
+motivo. La transacción terminó con `ROLLBACK` y no dejó datos de prueba.
+
+La interfaz está preparada localmente. Falta desplegarla en QA y recorrer el
+arqueo histórico por pantalla antes de considerar C03 aceptado por completo.
+Producción no se ha modificado.

@@ -26,7 +26,7 @@ for (const marker of [
   'CANCELACION_OPERATIVA',
   'REEMBOLSO',
   'snapshot_hash',
-  'No se aplican migraciones',
+  'ensayo conectado en QA',
 ]) assert.match(doc, new RegExp(marker.replace(/[.*+?^${}()|[\\]\\]/g, '\\\\$&'), 'i'), `documento: falta ${marker}`);
 
 assert.match(sql, /constraint abc_c08_version_hash check \(snapshot_hash ~ '\^\[0-9a-f\]\{64\}\$'/i);
@@ -35,4 +35,4 @@ assert.match(sql, /if v_tipo='RECTIFICACION' and p_documento_correccion_id is nu
 assert.match(sql, /v_clasificacion\.tipo_documental<>'FACTURA_RECTIFICATIVA'/i);
 assert.match(sql, /alter table public\.abc_c08_documento_versiones enable row level security/i);
 assert.match(sql, /alter table public\.abc_c08_correcciones_documentales enable row level security/i);
-console.log('ABC_F5_C08_RETENTION_CONTRACT=PASS_WITH_POSTGRES_PENDING');
+console.log('ABC_F5_C08_RETENTION_CONTRACT=PASS');

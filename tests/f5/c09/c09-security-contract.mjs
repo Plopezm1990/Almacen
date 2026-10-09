@@ -15,4 +15,4 @@ assert.match(body, /public\.abc_c08_documento_versiones/i);
 assert.match(sql, /revoke all on table public\.abc_c09_impresiones_documentales from public,anon,authenticated,service_role/i);
 assert.match(sql, /alter table public\.abc_c09_impresiones_documentales enable row level security/i);
 assert.match(sql, /grant execute on function public\.abc_registrar_impresion_documental[^;]+to authenticated/i);
-console.log('ABC_F5_C09_SECURITY_CONTRACT=PASS_WITH_ADVISORS_PENDING');
+console.log('ABC_F5_C09_SECURITY_CONTRACT=PASS');

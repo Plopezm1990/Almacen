@@ -23,11 +23,11 @@ for (const marker of [
   'emitido',
   'conservada',
   'PENDIENTE_ENTREGA',
-  'No se aplican migraciones remotas',
+  'ensayo conectado en QA',
 ]) assert.match(doc, new RegExp(marker.replace(/[.*+?^${}()|[\\]\\]/g, '\\\\$&'), 'i'), `documento: falta ${marker}`);
 
 assert.match(sql, /constraint abc_c11_conciliacion_resultado check \(resultado in \('CONCILIADO','PENDIENTE_ENTREGA','INCONSISTENTE'\)\)/i);
 assert.match(sql, /constraint abc_c11_conciliacion_hash check \(informe_hash ~ '\^\[0-9a-f\]\{64\}\$'/i);
 assert.match(sql, /before update or delete on public\.abc_c11_conciliaciones_documentales/i);
 assert.match(sql, /alter table public\.abc_c11_conciliaciones_documentales enable row level security/i);
-console.log('ABC_F5_C11_RECONCILIATION_CONTRACT=PASS_WITH_POSTGRES_PENDING');
+console.log('ABC_F5_C11_RECONCILIATION_CONTRACT=PASS_WITH_ECONOMIC_RECONCILIATION_PENDING');

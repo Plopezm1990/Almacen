@@ -37,4 +37,4 @@ for (const name of functions) {
 }
 assert.match(sql, /revoke all on function private\.abc_c04_(bloqueos_cierre|guard_final_session)/i);
 
-console.log('ABC_F5_C04_SECURITY_CONTRACT=PASS_WITH_ADVISORS_PENDING');
+console.log('ABC_F5_C04_SECURITY_CONTRACT=PASS');

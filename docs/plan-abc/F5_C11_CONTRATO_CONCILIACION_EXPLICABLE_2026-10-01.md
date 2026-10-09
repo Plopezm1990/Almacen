@@ -1,7 +1,7 @@
 # F5 C11 Contrato de conciliación explicable
 
 Fecha: 2026-10-01  
-Estado: `CANDIDATO_C11_VALIDADO_PG_NO_APLICADO`
+Estado: `CADENA_DOCUMENTAL_VERIFICADA_EN_QA; CONCILIACION_ECONOMICA_Y_UI_PENDIENTES`
 
 ## Alcance
 
@@ -30,10 +30,10 @@ marca `INCONSISTENTE`; la conciliación no corrige ni modifica el documento.
 
 ## Límites explícitos
 
-Esta conciliación no sustituye una conciliación bancaria, no certifica
+Esta conciliación documental no sustituye una conciliación económica o bancaria, no certifica
 cumplimiento fiscal, no firma facturas, no envía documentos y no modifica
-ventas, caja, stock ni documentos históricos. No se aplican migraciones remotas
-y no se ejecuta deploy de Netlify.
+ventas, caja, stock ni documentos históricos. No suma ni compara importes de
+venta, caja, pagos, devoluciones, comisiones o liquidaciones.
 
 ## Evidencia y pendiente
 
@@ -41,4 +41,15 @@ La prueba PostgreSQL 16 cubrió estado pendiente, estado conciliado, explicació
 huella, replay, inmutabilidad y comprobación de que C05 conserva un solo
 documento. El workflow pasó en 1 minuto y 7 segundos:
 https://github.com/Plopezm1990/Almacen/actions/runs/36917196726. Después queda
-C12, advisors, revisión de asesoría/proveedor y decisión de aplicación en QA.
+C12, la conciliación económica, revisión de asesoría/proveedor y la integración
+visible.
+
+El ensayo conectado en QA del 9/10/2026 verificó la transición de foto
+`PENDIENTE_ENTREGA` a una nueva foto `CONCILIADO`, huellas, replay,
+inmutabilidad y permisos. Terminó con `ROLLBACK` y cero residuos. Producción no
+se ha modificado.
+
+C11 permanece incompleto hasta relacionar y comparar importes de venta, caja,
+pagos, anticipos, devoluciones, comisiones y liquidaciones, además de añadir
+exportación, pantalla y aceptación. Evidencia consolidada:
+`F7_C11_QA_RESULTADO_2026-10-09.md`.

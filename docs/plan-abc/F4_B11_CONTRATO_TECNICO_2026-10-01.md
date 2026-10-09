@@ -33,6 +33,8 @@ El diseño de esa contingencia queda descrito, sin activarse, en
 ## Evidencia
 
 `tests/f4/b11/b11-offline-boundary-contract.mjs` comprueba la decisión, el
-borrador local visible y los límites ya probados por A06/PM07. El workflow
+borrador local visible y la ruta de venta que el TPV activo usa en
+`fuente.js`: exige conexión, no deriva al registro local y conserva el fallo
+cerrado. También comprueba que la ruta local heredada no permite déficit. El workflow
 `.github/workflows/abc-f4-b11-offline-contract.yml` ejecuta el contrato sin
 deploy ni escritura remota.

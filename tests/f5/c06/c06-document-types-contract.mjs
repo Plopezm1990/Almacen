@@ -25,11 +25,11 @@ for (const marker of [
   '`PEDIDO`',
   '`PRECUENTA`',
   '`JUSTIFICANTE_PAGO`',
-  'no se aplican migraciones remotas',
+  'ensayo conectado en QA',
   'C07',
 ]) assert.match(doc, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), `documento: falta ${marker}`);
 
 assert.match(sql, /tipo_documental in \('PEDIDO','PRECUENTA','JUSTIFICANTE_PAGO','FACTURA_SIMPLIFICADA','FACTURA_COMPLETA','FACTURA_RECTIFICATIVA'\)/i);
 assert.match(sql, /tipo_documental_no_coincide_con_serie/i);
 assert.doesNotMatch(sql, /grant execute on function public\.abc_clasificar_documento[^;]+to service_role/i);
-console.log('ABC_F5_C06_DOCUMENT_TYPES_CONTRACT=PASS_WITH_POSTGRES_PENDING');
+console.log('ABC_F5_C06_DOCUMENT_TYPES_CONTRACT=PASS');
