@@ -101640,6 +101640,16 @@ function mensajeErrorPM08(error, fallback = "No se ha podido confirmar la operac
     ["importe_precision_invalida", "El importe solo puede tener dos decimales."],
     ["medio_reembolso_invalido", "Elige un medio de reintegro coherente con el importe."],
     ["motivo_requerido", "Escribe el motivo de la operaci\xF3n."],
+    ["abc_movimiento_caja_no_autorizado", "Tu rol no tiene permiso para registrar movimientos manuales de caja."],
+    ["abc_reverso_caja_no_autorizado", "Solo Propietario o Encargado pueden revertir movimientos manuales de caja."],
+    ["movimiento_caja_dia_no_operativo", "Los movimientos manuales solo se pueden registrar en el d\xEDa operativo actual del servidor."],
+    ["categoria_movimiento_caja_invalida", "Elige una categor\xEDa v\xE1lida para la entrada o retirada."],
+    ["concepto_caja_requerido", "Escribe el concepto o justificante del movimiento."],
+    ["motivo_caja_requerido", "Escribe el motivo del movimiento de caja."],
+    ["motivo_reverso_caja_requerido", "Escribe el motivo del reverso."],
+    ["movimiento_caja_no_reversible_por_abc", "Solo se pueden revertir movimientos manuales creados por la v\xEDa ABC."],
+    ["sesion_caja_no_abierta", "Este terminal no tiene una sesi\xF3n de caja abierta."],
+    ["terminal_no_vinculado_sesion", "Este terminal no est\xE1 vinculado a la sesi\xF3n de caja."],
     ["caja_no_autorizada", "Tu rol no tiene permiso para operar la caja."],
     ["arqueo_no_autorizado", "Tu rol no tiene permiso para realizar arqueos."],
     ["devolucion_no_autorizada", "Tu rol no tiene permiso para registrar devoluciones."],
@@ -101653,6 +101663,7 @@ function mensajeErrorPM08(error, fallback = "No se ha podido confirmar la operac
 function normalizarMovimientoCajaPM08(fila) {
   if (!fila) return null;
   const creado = String(fila.created_at || fila.createdAt || "");
+  const payload = fila.payload && typeof fila.payload === "object" ? fila.payload : {};
   return {
     id: fila.operation_id || fila.operationId || fila.id,
     operationId: fila.operation_id || fila.operationId || fila.id,
@@ -101665,10 +101676,17 @@ function normalizarMovimientoCajaPM08(fila) {
     efectoEfectivo: Number(fila.efecto_efectivo ?? fila.efectoEfectivo) || 0,
     medioPago: fila.medio_pago || fila.medioPago || "EFECTIVO",
     concepto: fila.concepto || fila.motivo || "",
-    motivo: fila.concepto || fila.motivo || "",
+    motivo: payload.motivo || fila.motivo || "",
     origen: fila.origen_tipo || fila.origen || "MANUAL",
+    categoria: fila.categoria || payload.categoria || null,
     referenciaId: fila.origen_id || fila.referenciaId || null,
     refOperationId: fila.ref_operation_id || fila.refOperationId || null,
+    abcCommandId: fila.abc_command_id || fila.abcCommandId || null,
+    cajaId: fila.caja_id || fila.cajaId || null,
+    sessionId: fila.session_id || fila.sessionId || null,
+    terminalId: fila.terminal_id || fila.terminalId || null,
+    currencyCode: fila.currency_code || fila.currencyCode || "EUR",
+    operatingDay: fila.operating_day || fila.operatingDay || fila.fecha || null,
     actorUserId: fila.actor_user_id || fila.actorUserId || null,
     createdAt: creado || null,
     _pm08Servidor: !!(fila.operation_id || fila.actor_user_id)
@@ -101728,7 +101746,7 @@ async function sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluci
   if (!modoSincronizadoPM08() || !window.__nubeActiva || !window.__nubeCliente) return { ok: false, offline: true };
   const supabase = window.__nubeCliente;
   const [rCaja, rArqueos, rCliente, rProveedor] = await Promise.all([
-    supabase.from("caja_operaciones").select("operation_id,tipo,empresa_id,local_id,fecha,importe,efecto_efectivo,medio_pago,concepto,origen_tipo,origen_id,ref_operation_id,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3),
+    supabase.from("caja_operaciones").select("operation_id,tipo,empresa_id,local_id,fecha,importe,efecto_efectivo,medio_pago,concepto,origen_tipo,origen_id,ref_operation_id,payload,actor_user_id,abc_command_id,caja_id,session_id,terminal_id,currency_code,operating_day,categoria,created_at").order("created_at", { ascending: false }).limit(2e3),
     supabase.from("arqueos_caja").select("operation_id,empresa_id,local_id,fecha,alcance,efectivo_base,efectivo_esperado,efectivo_contado,diferencia,notas,estado,anulado_por_operation_id,anulado_motivo,actor_user_id,created_at").order("created_at", { ascending: false }).limit(1e3),
     supabase.from("devoluciones_venta").select("operation_id,venta_operation_id,empresa_id,local_id,producto_id,cantidad,reembolso,medio_reembolso,motivo,fecha,payload,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3),
     supabase.from("devoluciones_proveedor").select("operation_id,empresa_id,local_id,producto_id,cantidad,proveedor_id,proveedor_nombre,motivo,fecha,payload,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3)
@@ -105936,19 +105954,120 @@ function crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivo
   return { crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo };
 }
 function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arqueos, setArqueos, registrarAuditoria, localActivoId, empresaId }) {
-  function leerBorradorMovimientoCaja() {
-    return leerPendientePM08(clavePendientePM08("movimiento-caja", empresaId, localActivoId))?.payload || null;
+  const categoriasC02 = {
+    ENTRADA: ["REPOSICION_CAJA", "INGRESO_MANUAL"],
+    RETIRADA: ["RETIRADA_CAJA", "GASTO_CAJA"]
+  };
+  function categoriaPorDefectoC02(tipo) {
+    return tipo === "RETIRADA" ? "RETIRADA_CAJA" : "REPOSICION_CAJA";
   }
-  async function registrarMovimientoCaja(tipo, importe, concepto, fecha = todayISO()) {
+  function leerBorradorMovimientoCaja() {
+    const payload = leerPendientePM08(clavePendientePM08("movimiento-caja", empresaId, localActivoId))?.payload || null;
+    if (!payload) return null;
+    const tipo = String(payload.tipo || "ENTRADA").toUpperCase();
+    return {
+      ...payload,
+      categoria: payload.categoria || categoriaPorDefectoC02(tipo),
+      motivo: payload.motivo || payload.concepto || ""
+    };
+  }
+  async function contextoMovimientoCajaC02(supabase) {
+    const { data: authData, error: authError } = await supabase.auth.getSession();
+    if (authError) throw authError;
+    if (!authData?.session?.user?.id) throw new Error("sesion_usuario_requerida");
+    const storageKey = `la_suite_abc_terminal_id_v1:${empresaId}:${localActivoId}`;
+    let terminalId = null;
+    try {
+      terminalId = localStorage.getItem(storageKey) || null;
+    } catch {
+      throw new Error("persistencia_terminal_no_disponible");
+    }
+    let consultaTerminales = supabase
+      .from("terminales_tpv")
+      .select("id,nombre,device_key")
+      .eq("empresa_id", empresaId)
+      .eq("local_id", localActivoId)
+      .eq("activo", true);
+    if (terminalId) consultaTerminales = consultaTerminales.eq("id", terminalId);
+    const { data: terminales, error: terminalesError } = await consultaTerminales;
+    if (terminalesError) throw terminalesError;
+    if (terminalId && (!Array.isArray(terminales) || terminales.length !== 1)) throw new Error("terminal_configurado_no_disponible");
+    if (!terminalId) {
+      if (!Array.isArray(terminales) || terminales.length === 0) throw new Error("terminal_no_configurado");
+      if (terminales.length > 1) throw new Error("terminal_contexto_ambiguo");
+      terminalId = terminales[0].id;
+      try {
+        localStorage.setItem(storageKey, terminalId);
+        if (localStorage.getItem(storageKey) !== terminalId) throw new Error("persistencia_terminal_no_disponible");
+      } catch {
+        throw new Error("persistencia_terminal_no_disponible");
+      }
+    }
+    const { data: vinculos, error: vinculosError } = await supabase
+      .from("caja_sesion_terminales")
+      .select("session_id,terminal_id,desde")
+      .eq("empresa_id", empresaId)
+      .eq("local_id", localActivoId)
+      .eq("terminal_id", terminalId)
+      .is("hasta", null)
+      .order("desde", { ascending: false })
+      .limit(2);
+    if (vinculosError) throw vinculosError;
+    if (!Array.isArray(vinculos) || vinculos.length !== 1) throw new Error(vinculos?.length > 1 ? "terminal_sesion_ambigua" : "terminal_sin_sesion_abierta");
+    const sessionId = vinculos[0].session_id;
+    const { data: sesion, error: sesionError } = await supabase
+      .from("caja_sesiones")
+      .select("id,caja_id,estado")
+      .eq("empresa_id", empresaId)
+      .eq("local_id", localActivoId)
+      .eq("id", sessionId)
+      .eq("estado", "ABIERTA")
+      .maybeSingle();
+    if (sesionError) throw sesionError;
+    if (!sesion?.caja_id) throw new Error("sesion_caja_no_abierta");
+    const { data: dia, error: diaError } = await supabase.rpc("abc_obtener_dia_operativo_local", {
+      p_empresa_id: empresaId,
+      p_local_id: localActivoId
+    });
+    if (diaError) throw diaError;
+    const operatingDay = /^\d{4}-\d{2}-\d{2}$/.test(String(dia?.operating_day || "")) ? String(dia.operating_day) : null;
+    if (!operatingDay) throw new Error("operating_day_servidor_ausente");
+    return {
+      supabase,
+      terminalId,
+      sessionId,
+      cajaId: sesion.caja_id,
+      currencyCode: "EUR",
+      operatingDay
+    };
+  }
+  async function registrarMovimientoCaja(tipo, importe, concepto, fecha = todayISO(), detalle = {}) {
     if (!empresaId || !localActivoId) return { ok: false, error: "Selecciona un local concreto antes de registrar movimientos de caja." };
     const tipoCanonico = String(tipo || "").trim().toUpperCase() === "SALIDA" ? "RETIRADA" : String(tipo || "").trim().toUpperCase();
     if (!["ENTRADA", "RETIRADA"].includes(tipoCanonico)) return { ok: false, error: "Tipo de movimiento no v\xE1lido." };
     const imp = redondearDineroPM08(importe);
     if (!Number.isFinite(imp) || imp <= 0) return { ok: false, error: "El importe debe ser mayor que 0." };
     if ((arqueos || []).some((a22) => a22.localId === localActivoId && a22.fecha === fecha && a22.estado !== "ANULADO")) return { ok: false, error: "Ese d\xEDa tiene un arqueo activo. An\xFAlalo de forma trazable antes de registrar otro movimiento." };
-    const conceptoLimpio = String(concepto || "").trim() || (tipoCanonico === "ENTRADA" ? "Entrada manual" : "Retirada manual");
-    const payload = { empresaId, localId: localActivoId, fecha, tipo: tipoCanonico, importe: imp, concepto: conceptoLimpio };
+    const conceptoLimpio = String(concepto || "").trim();
+    const motivoLimpio = String(detalle?.motivo || "").trim();
+    const categoria = String(detalle?.categoria || categoriaPorDefectoC02(tipoCanonico)).trim().toUpperCase();
+    if (!conceptoLimpio) return { ok: false, error: "Escribe el concepto o justificante del movimiento." };
+    if (!motivoLimpio) return { ok: false, error: "Escribe el motivo del movimiento." };
+    if (!categoriasC02[tipoCanonico].includes(categoria)) return { ok: false, error: "La categor\xEDa no corresponde al tipo de movimiento." };
+    const payload = { empresaId, localId: localActivoId, fecha, tipo: tipoCanonico, categoria, importe: imp, concepto: conceptoLimpio, motivo: motivoLimpio };
     const clave = clavePendientePM08("movimiento-caja", empresaId, localActivoId);
+    const legado = leerPendientePM08(clave);
+    if (legado?.payload && (!legado.payload.categoria || !legado.payload.motivo)) {
+      const tipoLegado = String(legado.payload.tipo || "ENTRADA").toUpperCase();
+      guardarPendientePM08(clave, {
+        ...legado,
+        payload: {
+          ...legado.payload,
+          categoria: legado.payload.categoria || categoriaPorDefectoC02(tipoLegado),
+          motivo: legado.payload.motivo || legado.payload.concepto || ""
+        }
+      });
+    }
     const preparado = prepararPendientePM08(clave, "pm08-caja", payload);
     if (!preparado.ok) return preparado;
     if (operacionesPM08EnCurso[clave]) return operacionesPM08EnCurso[clave];
@@ -105956,16 +106075,22 @@ function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arque
       if (modoSincronizadoPM08()) {
         if (!window.__nubeActiva || !window.__nubeCliente) return { ok: false, pendiente: true, error: "Sin conexi\xF3n con la cuenta sincronizada. El movimiento NO se ha confirmado; el borrador queda listo para reintentar." };
         try {
+          const contexto = await contextoMovimientoCajaC02(window.__nubeCliente);
+          if (String(fecha) !== contexto.operatingDay) throw new Error("movimiento_caja_dia_no_operativo");
           const r2 = await Promise.race([
-            window.__nubeCliente.rpc("registrar_movimiento_caja", {
+            window.__nubeCliente.rpc("abc_registrar_movimiento_caja", {
               p_operation_id: preparado.pendiente.operationId,
               p_empresa_id: empresaId,
               p_local_id: localActivoId,
-              p_fecha: fecha,
-              p_tipo: tipoCanonico,
+              p_caja_id: contexto.cajaId,
+              p_session_id: contexto.sessionId,
+              p_terminal_id: contexto.terminalId,
+              p_currency_code: contexto.currencyCode,
+              p_categoria: categoria,
               p_importe: imp,
               p_concepto: conceptoLimpio,
-              p_datos: { origen: "L&A Suite PM-08" }
+              p_motivo: motivoLimpio,
+              p_operating_day: contexto.operatingDay
             }),
             new Promise((_22, reject) => setTimeout(() => reject(new Error("timeout_pm08")), Number(window.ESPERA_NUBE_MS) || 6e3))
           ]);
@@ -105974,13 +106099,41 @@ function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arque
             limpiarPendientePM08(clave);
             return { ok: false, error: mensajeErrorPM08(r2.error, "No se ha podido guardar el movimiento de caja.") };
           }
-          const movimiento2 = normalizarMovimientoCajaPM08(r2.data?.movimiento);
+          const movimiento2 = normalizarMovimientoCajaPM08({
+            operation_id: r2.data?.caja_operation_id,
+            empresa_id: empresaId,
+            local_id: localActivoId,
+            fecha: contexto.operatingDay,
+            tipo: r2.data?.tipo || tipoCanonico,
+            importe: r2.data?.importe ?? imp,
+            efecto_efectivo: r2.data?.efecto_efectivo,
+            medio_pago: "EFECTIVO",
+            concepto: conceptoLimpio,
+            payload: { motivo: motivoLimpio, categoria },
+            origen_tipo: "ABC_CAJA_MANUAL",
+            abc_command_id: preparado.pendiente.operationId,
+            caja_id: contexto.cajaId,
+            session_id: contexto.sessionId,
+            terminal_id: contexto.terminalId,
+            currency_code: contexto.currencyCode,
+            operating_day: contexto.operatingDay,
+            categoria
+          });
           if (!movimiento2) throw new Error("respuesta_caja_incompleta");
           setMovimientosCaja((prev) => [movimiento2, ...(prev || []).filter((m22) => m22.operationId !== movimiento2.operationId && m22.id !== movimiento2.id)]);
           limpiarPendientePM08(clave);
-          if (!r2.data?.replayed) registrarAuditoria?.("MOVIMIENTO_CAJA", `${tipoCanonico} de \u20AC${fmt(imp)} \xB7 ${conceptoLimpio}`);
-          return { ok: true, movimiento: movimiento2, replayed: !!r2.data?.replayed };
-        } catch {
+          try {
+            await sincronizarCajaPm08({ setArqueos, setMovimientosCaja });
+          } catch {
+          }
+          const replayed = !!r2.data?.replayed || !!preparado.recuperada;
+          if (!replayed) registrarAuditoria?.("MOVIMIENTO_CAJA", `${categoria} de \u20AC${fmt(imp)} \xB7 ${conceptoLimpio}`);
+          return { ok: true, movimiento: movimiento2, replayed };
+        } catch (e2) {
+          if (!esErrorTransitorioPM08(e2)) {
+            limpiarPendientePM08(clave);
+            return { ok: false, error: mensajeErrorPM08(e2, "No se ha podido guardar el movimiento de caja.") };
+          }
           return { ok: false, pendiente: true, error: "No se pudo confirmar si el servidor recibi\xF3 el movimiento. Reintenta: se utilizar\xE1 el mismo identificador y no se duplicar\xE1." };
         }
       }
@@ -105995,6 +106148,8 @@ function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arque
         efectoEfectivo: tipoCanonico === "ENTRADA" ? imp : -imp,
         medioPago: "EFECTIVO",
         concepto: conceptoLimpio,
+        motivo: motivoLimpio,
+        categoria,
         origen: "MANUAL",
         createdAt: (/* @__PURE__ */ new Date()).toISOString()
       });
@@ -106027,8 +106182,17 @@ function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arque
       if (modoSincronizadoPM08()) {
         if (!window.__nubeActiva || !window.__nubeCliente) return { ok: false, pendiente: true, error: "Sin conexi\xF3n. El reverso NO se ha confirmado." };
         try {
+          const contexto = await contextoMovimientoCajaC02(window.__nubeCliente);
           const r2 = await Promise.race([
-            window.__nubeCliente.rpc("revertir_movimiento_caja", { p_operation_id: preparado.pendiente.operationId, p_movimiento_operation_id: original.operationId || original.id, p_motivo: motivoLimpio, p_fecha: fechaReverso }),
+            window.__nubeCliente.rpc("abc_revertir_movimiento_caja", {
+              p_operation_id: preparado.pendiente.operationId,
+              p_empresa_id: empresaId,
+              p_local_id: localActivoId,
+              p_movimiento_operation_id: original.operationId || original.id,
+              p_terminal_id: contexto.terminalId,
+              p_motivo: motivoLimpio,
+              p_operating_day: contexto.operatingDay
+            }),
             new Promise((_22, reject) => setTimeout(() => reject(new Error("timeout_pm08")), Number(window.ESPERA_NUBE_MS) || 6e3))
           ]);
           if (r2.error) {
@@ -106036,12 +106200,43 @@ function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arque
             limpiarPendientePM08(clave);
             return { ok: false, error: mensajeErrorPM08(r2.error, "No se ha podido revertir el movimiento.") };
           }
-          const movimiento2 = normalizarMovimientoCajaPM08(r2.data?.movimiento);
-          setMovimientosCaja((prev) => [movimiento2, ...(prev || []).filter((m22) => m22.operationId !== movimiento2.operationId)]);
+          const movimiento2 = normalizarMovimientoCajaPM08({
+            operation_id: r2.data?.caja_operation_id,
+            empresa_id: empresaId,
+            local_id: localActivoId,
+            fecha: contexto.operatingDay,
+            tipo: r2.data?.tipo,
+            importe: r2.data?.importe ?? original.importe,
+            efecto_efectivo: r2.data?.efecto_efectivo,
+            medio_pago: "EFECTIVO",
+            concepto: `Correcci\xF3n: ${motivoLimpio}`,
+            payload: { motivo: motivoLimpio, movimiento_original_operation_id: original.operationId || original.id },
+            origen_tipo: "ABC_CAJA_REVERSO_MANUAL",
+            origen_id: original.operationId || original.id,
+            ref_operation_id: original.operationId || original.id,
+            abc_command_id: preparado.pendiente.operationId,
+            caja_id: original.cajaId,
+            session_id: r2.data?.session_id || original.sessionId,
+            terminal_id: contexto.terminalId,
+            currency_code: original.currencyCode || "EUR",
+            operating_day: contexto.operatingDay,
+            categoria: "CORRECCION_CAJA"
+          });
+          if (!movimiento2) throw new Error("respuesta_reverso_caja_incompleta");
+          setMovimientosCaja((prev) => [movimiento2, ...(prev || []).filter((m22) => m22.operationId !== movimiento2.operationId && m22.id !== movimiento2.id)]);
           limpiarPendientePM08(clave);
-          if (!r2.data?.replayed) registrarAuditoria?.("REVERSO_CAJA", `${motivoLimpio} \xB7 ${original.operationId || original.id}`);
-          return { ok: true, movimiento: movimiento2, replayed: !!r2.data?.replayed };
-        } catch {
+          try {
+            await sincronizarCajaPm08({ setArqueos, setMovimientosCaja });
+          } catch {
+          }
+          const replayed = !!r2.data?.replayed || !!preparado.recuperada;
+          if (!replayed) registrarAuditoria?.("REVERSO_CAJA", `${motivoLimpio} \xB7 ${original.operationId || original.id}`);
+          return { ok: true, movimiento: movimiento2, replayed };
+        } catch (e2) {
+          if (!esErrorTransitorioPM08(e2)) {
+            limpiarPendientePM08(clave);
+            return { ok: false, error: mensajeErrorPM08(e2, "No se ha podido revertir el movimiento.") };
+          }
           return { ok: false, pendiente: true, error: "No se pudo confirmar el reverso. Reintenta con el mismo borrador." };
         }
       }
@@ -106056,6 +106251,8 @@ function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arque
         efectoEfectivo: -(Number(original.efectoEfectivo) || (tipoOriginal === "ENTRADA" ? Number(original.importe) : -Number(original.importe))),
         medioPago: "EFECTIVO",
         concepto: `Reverso: ${motivoLimpio}`,
+        motivo: motivoLimpio,
+        categoria: "CORRECCION_CAJA",
         origen: "REVERSO_CAJA",
         referenciaId: original.operationId || original.id,
         refOperationId: original.operationId || original.id,
@@ -119148,8 +119345,10 @@ function BloqueEntradasSalidas({ fecha, movimientosCajaDelDia = [], registrarMov
   const h3 = import_react4.default.createElement;
   const [mostrarForm, setMostrarForm] = import_react4.default.useState(false);
   const [tipo, setTipo] = import_react4.default.useState("ENTRADA");
+  const [categoria, setCategoria] = import_react4.default.useState("REPOSICION_CAJA");
   const [importe, setImporte] = import_react4.default.useState("");
   const [motivo, setMotivo] = import_react4.default.useState("");
+  const [motivoOperacion, setMotivoOperacion] = import_react4.default.useState("");
   const [errorLocal, setErrorLocal] = import_react4.default.useState("");
   const [exitoLocal, setExitoLocal] = import_react4.default.useState("");
   const [enviando, setEnviando] = import_react4.default.useState(false);
@@ -119165,8 +119364,10 @@ function BloqueEntradasSalidas({ fecha, movimientosCajaDelDia = [], registrarMov
       return;
     }
     setTipo(pendiente.tipo || "ENTRADA");
+    setCategoria(pendiente.categoria || (pendiente.tipo === "RETIRADA" ? "RETIRADA_CAJA" : "REPOSICION_CAJA"));
     setImporte(String(pendiente.importe ?? ""));
     setMotivo(pendiente.concepto || "");
+    setMotivoOperacion(pendiente.motivo || pendiente.concepto || "");
     setMostrarForm(true);
     setBorradorRecuperado(true);
   }, [fecha]);
@@ -119176,7 +119377,7 @@ function BloqueEntradasSalidas({ fecha, movimientosCajaDelDia = [], registrarMov
     setExitoLocal("");
     setEnviando(true);
     try {
-      const r2 = await registrarMovimientoCaja(tipo, importe, motivo, fecha);
+      const r2 = await registrarMovimientoCaja(tipo, importe, motivo, fecha, { categoria, motivo: motivoOperacion });
       if (!r2?.ok) {
         setErrorLocal(r2?.error || "No se ha podido registrar el movimiento.");
         setBorradorRecuperado(!!r2?.pendiente);
@@ -119185,6 +119386,7 @@ function BloqueEntradasSalidas({ fecha, movimientosCajaDelDia = [], registrarMov
       setExitoLocal(`${tipo === "ENTRADA" ? "Entrada" : "Retirada"} confirmada${r2.replayed ? " sin duplicar" : ""}.`);
       setImporte("");
       setMotivo("");
+      setMotivoOperacion("");
       setMostrarForm(false);
       setBorradorRecuperado(false);
     } finally {
@@ -119213,7 +119415,7 @@ function BloqueEntradasSalidas({ fecha, movimientosCajaDelDia = [], registrarMov
   const listado = movimientosCajaDelDia.length === 0 ? h3("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Nada registrado este d\xEDa.") : h3("div", { className: "space-y-2" }, movimientosCajaDelDia.map((m22) => {
     const efecto = Number(m22.efectoEfectivo);
     const signo = efecto > 0 ? "+" : efecto < 0 ? "\u2212" : "";
-    const esManual = ["ENTRADA", "RETIRADA", "entrada", "salida"].includes(m22.tipo);
+    const esManual = m22.origen === "ABC_CAJA_MANUAL" && !!m22.abcCommandId && !!m22.sessionId || !m22._pm08Servidor && ["ENTRADA", "RETIRADA", "entrada", "salida"].includes(m22.tipo);
     const yaRevertido = referenciasRevertidas.has(m22.operationId || m22.id);
     return h3(
       "div",
@@ -119221,9 +119423,10 @@ function BloqueEntradasSalidas({ fecha, movimientosCajaDelDia = [], registrarMov
       h3(
         "div",
         { className: "flex items-center justify-between gap-2 text-[12px]" },
-        h3("span", null, h3(Pill2, { color: efecto > 0 ? C2.accent : efecto < 0 ? C2.red : C2.inkSoft }, m22.tipo), " ", m22.concepto || m22.motivo || "(sin concepto)"),
+        h3("span", null, h3(Pill2, { color: efecto > 0 ? C2.accent : efecto < 0 ? C2.red : C2.inkSoft }, m22.tipo), " ", m22.concepto || "(sin concepto)", m22.categoria ? ` · ${m22.categoria}` : ""),
         h3("span", { className: "mono font-medium", style: { color: efecto > 0 ? C2.accent : efecto < 0 ? C2.red : C2.inkSoft } }, signo, "\u20AC", fmt(Math.abs(Number(m22.importe) || 0)))
       ),
+      m22.motivo && h3("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Motivo: ", m22.motivo),
       esManual && !yaRevertido && reversandoId !== (m22.operationId || m22.id) && h3("div", { className: "mt-1" }, h3(Btn, { small: true, variant: "ghost", disabled: revirtiendo, onClick: () => {
         setReversandoId(m22.operationId || m22.id);
         setMotivoReverso("");
@@ -119267,15 +119470,17 @@ function BloqueEntradasSalidas({ fecha, movimientosCajaDelDia = [], registrarMov
       h3(
         "div",
         { className: "flex gap-2 mb-2" },
-        h3(Btn, { small: true, disabled: enviando, variant: tipo === "ENTRADA" ? "primary" : "ghost", onClick: () => setTipo("ENTRADA") }, "Entrada"),
-        h3(Btn, { small: true, disabled: enviando, variant: tipo === "RETIRADA" ? "primary" : "ghost", onClick: () => setTipo("RETIRADA") }, "Retirada")
+        h3(Btn, { small: true, disabled: enviando, variant: tipo === "ENTRADA" ? "primary" : "ghost", onClick: () => { setTipo("ENTRADA"); setCategoria("REPOSICION_CAJA"); } }, "Entrada"),
+        h3(Btn, { small: true, disabled: enviando, variant: tipo === "RETIRADA" ? "primary" : "ghost", onClick: () => { setTipo("RETIRADA"); setCategoria("RETIRADA_CAJA"); } }, "Retirada")
       ),
+      h3(Field, { label: "Categor\xEDa" }, h3("select", { value: categoria, disabled: enviando, onChange: (e2) => setCategoria(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, tipo === "ENTRADA" ? [h3("option", { key: "REPOSICION_CAJA", value: "REPOSICION_CAJA" }, "Reposici\xF3n de cambio"), h3("option", { key: "INGRESO_MANUAL", value: "INGRESO_MANUAL" }, "Otro ingreso manual")] : [h3("option", { key: "RETIRADA_CAJA", value: "RETIRADA_CAJA" }, "Retirada de efectivo"), h3("option", { key: "GASTO_CAJA", value: "GASTO_CAJA" }, "Gasto pagado desde caja")])),
       h3(Field, { label: "Importe (\u20AC)" }, h3(Input, { type: "number", min: "0.01", step: "0.01", value: importe, disabled: enviando, onChange: (e2) => setImporte(e2.target.value), autoFocus: true })),
-      h3(Field, { label: "Concepto" }, h3(Input, { value: motivo, disabled: enviando, onChange: (e2) => setMotivo(e2.target.value), placeholder: "Ej: cambio para la caja, compra de hielo\u2026" })),
+      h3(Field, { label: "Concepto o justificante" }, h3(Input, { value: motivo, disabled: enviando, onChange: (e2) => setMotivo(e2.target.value), placeholder: "Ej: ticket 184, cambio para la caja\u2026" })),
+      h3(Field, { label: "Motivo obligatorio" }, h3(Input, { value: motivoOperacion, disabled: enviando, onChange: (e2) => setMotivoOperacion(e2.target.value), placeholder: "Explica por qu\xE9 entra o sale el efectivo" })),
       h3(
         "div",
         { className: "flex gap-2" },
-        h3(Btn, { small: true, disabled: enviando || periodoCerrado, onClick: enviar }, enviando ? "Confirmando\u2026" : "Guardar"),
+        h3(Btn, { small: true, disabled: enviando || periodoCerrado || !motivo.trim() || !motivoOperacion.trim(), onClick: enviar }, enviando ? "Confirmando\u2026" : "Guardar"),
         h3(Btn, { small: true, variant: "ghost", disabled: enviando, onClick: () => {
           setMostrarForm(false);
           setErrorLocal("");

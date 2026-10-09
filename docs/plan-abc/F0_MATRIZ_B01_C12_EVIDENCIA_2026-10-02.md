@@ -54,7 +54,7 @@ conocido; no cambia la etiqueta. Etiquetas de evidencia:
 | B11 | Pagos sin conexión | `INCOMPLETO` | `[CI]` contrato; decisión: solo online + borradores | Corte de red real; contingencia sin activar |
 | B12 | Ensayo de pagos | `BLOQUEADO` | `[CI]` matriz y simulador | Sin sandbox del proveedor |
 | C01 | Cajas, terminales y sesiones | `INCOMPLETO` | `[QA]` apertura, relevo, terminales, conflictos y permisos; `[UI-LOCAL]` gestión completa | Despliegue/recorrido visual y apertura simultánea real |
-| C02 | Entradas y salidas trazables | `INCOMPLETO` ⚠ | `[MIGR]` funciones ABC | La pantalla usa las funciones heredadas, no las ABC |
+| C02 | Entradas y salidas trazables | `INCOMPLETO` | `[MIGR]` `[QA]` alta, retirada, replay, reverso y permisos; `[UI-LOCAL]` funciones ABC | Despliegue y recorrido visual en QA; reintento real; aceptación |
 | C03 | Arqueo calculado en servidor | `PENDIENTE` ⚠ | Contrato preparado, sin migración | Sin implementar; la pantalla manda el efectivo base |
 | C04 | Cierre provisional y definitivo | `INCOMPLETO` ⚠ | `[MIGR]` `[QA]` flujo y bloqueos `[UI]` | Cierra con diferencia sin tratamiento; T14 |
 | C05 | Series y numeración | `INCOMPLETO` | `[MIGR]` tablas y funciones; `[CI]` | Sin ensayo, sin emisor, sin pantalla |
@@ -228,16 +228,16 @@ Con A: **36 requisitos, 0 verificados, 28 incompletos, 3 pendientes, 5 bloqueado
 - **Aceptación:** toda variación física se explica y el replay no mueve dinero de
   nuevo; las correcciones conservan original y motivo.
 - **Evidencia:** `[MIGR]` M04B (`abc_registrar_movimiento_caja`,
-  `abc_revertir_movimiento_caja`). `[QA]` el cobro en efectivo y el reembolso
-  generan un solo movimiento y el replay no duplica. La pantalla **no** llama a las
-  funciones ABC: usa `registrar_movimiento_caja` y `revertir_movimiento_caja`
-  heredadas.
-- **⚠ Riesgo:** en el ensayo, la devolución heredada escribió su movimiento con
-  `session_id = NULL`; dentro de una sesión ABC el cierre calculó esperado 111
-  frente a 100 físico y no pudo explicar −11. No se comprobó si los demás
-  movimientos heredados hacen lo mismo.
-- **Falta:** una sola vía de movimientos por sesión; categoría, motivo y
-  justificante; pruebas de reverso y permisos.
+  `abc_revertir_movimiento_caja`). `[QA]` entrada y retirada del Cajero/a,
+  replay sin duplicados, reverso restringido al Propietario, rechazo del
+  Camarero/a, original conservado y reverso enlazado; prueba anulada con
+  `ROLLBACK` y cero residuos. `[UI-LOCAL]` la pantalla usa exclusivamente las
+  funciones ABC, resuelve sesión y terminal activos, exige categoría, concepto
+  o justificante y motivo, y conserva el identificador al reintentar. `[CI]`
+  contrato `abc-f5-c02-cash-movements`. Evidencia detallada:
+  `F7_C02_QA_RESULTADO_2026-10-09.md`.
+- **Falta:** desplegar la interfaz en QA, completar el recorrido visual, simular
+  una interrupción real desde el navegador y obtener aceptación.
 
 ### C03 — Arqueo calculado en servidor
 - **Aceptación:** el esperado no cambia por manipular el navegador; cada

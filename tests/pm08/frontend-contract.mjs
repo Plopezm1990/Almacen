@@ -72,8 +72,8 @@ const checks = {
   caja_anulacion_trazable_local: caja.includes('estado: "ANULADO"') && caja.includes('anuladoMotivo'),
   caja_efecto_cero_no_falseado: caja.includes('Number.isFinite(efecto) ? efecto : fallback'),
 
-  movimiento_alta_rpc: movimientosCaja.includes('.rpc("registrar_movimiento_caja"'),
-  movimiento_reverso_rpc: movimientosCaja.includes('.rpc("revertir_movimiento_caja"'),
+  movimiento_alta_rpc: movimientosCaja.includes('.rpc("abc_registrar_movimiento_caja"') && !movimientosCaja.includes('.rpc("registrar_movimiento_caja"'),
+  movimiento_reverso_rpc: movimientosCaja.includes('.rpc("abc_revertir_movimiento_caja"') && !movimientosCaja.includes('.rpc("revertir_movimiento_caja"'),
   movimiento_tipo_canonico: movimientosCaja.includes('["ENTRADA", "RETIRADA"]'),
   movimiento_importe_positivo: movimientosCaja.includes('imp <= 0'),
   // Nombre de variable agnóstico (a2 en origen, a22 tras un renombrado
