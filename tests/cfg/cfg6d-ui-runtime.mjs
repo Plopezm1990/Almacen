@@ -94,7 +94,7 @@ try {
     const env = await preparar(entorno({ esperado: 0, diaServidor: '2031-01-15' }));
     const { A, s } = env;
     ok('A0 las funciones del cierre (también las nuevas) cuelgan de listarEstacionesA10 desde que se crea la lógica, sin esperar a su primera llamada',
-      ['abrirSesionCajaA10', 'iniciarCierreSesionCajaA10', 'confirmarCierreProvisionalA10', 'finalizarCierreSesionCajaA10', 'reabrirCierreProvisionalA10', 'consultarCierreCajaA10', 'registrarDiferenciaCajaA10', 'decidirDiferenciaCajaA10'].every((n) => typeof A[n] === 'function'), Object.keys(A));
+      ['abrirSesionCajaA10', 'iniciarCierreSesionCajaA10', 'confirmarCierreProvisionalA10', 'ensayarCierreSesionCajaC12', 'finalizarCierreSesionCajaA10', 'reabrirCierreProvisionalA10', 'consultarCierreCajaA10', 'registrarDiferenciaCajaA10', 'decidirDiferenciaCajaA10'].every((n) => typeof A[n] === 'function'), Object.keys(A));
     const r1 = await A.iniciarCierreSesionCajaA10();
     ok('A1.1 iniciar el cierre funciona sin ninguna cuenta abierta en este navegador (antes: «Abre o recupera primero un pedido real»)', r1.ok === true && s.sesiones[0].estado === 'EN_CIERRE', r1);
     const inicio = env.llamadas('abc_iniciar_cierre_sesion_caja')[0];
@@ -106,9 +106,13 @@ try {
     ok('A2.1 con la sesión ya EN_CIERRE el siguiente paso funciona (antes: «Este terminal no tiene una sesión de caja abierta»)', r2.ok === true && s.sesiones[0].estado === 'CIERRE_PROVISIONAL', r2);
     const conf = env.llamadas('abc_confirmar_cierre_provisional')[0];
     ok('A2.2 el provisional lleva el contado, la moneda y el día del servidor', conf?.params.p_counted_amount === 0 && conf.params.p_currency_code === 'EUR' && conf.params.p_operating_day === '2031-01-15', conf);
+    const ensayo = await A.ensayarCierreSesionCajaC12();
+    ok('A2.2b C12 ensaya sin cerrar y devuelve APTO_CIERRE', ensayo.ok === true && ensayo.resultado === 'APTO_CIERRE' && s.sesiones[0].estado === 'CIERRE_PROVISIONAL', ensayo);
+    const llamadaEnsayo = env.llamadas('abc_ensayar_cierre_sesion_caja')[0];
+    ok('A2.2c C12 envía sesión, terminal y día con una operación recuperable', llamadaEnsayo?.params.p_session_id === s.ids.S && llamadaEnsayo.params.p_terminal_id === s.ids.T && llamadaEnsayo.params.p_operating_day === '2031-01-15' && OPERACION.test(llamadaEnsayo.params.p_operation_id) && llamadaEnsayo.params.p_operation_id.startsWith('f7.ui.cash.close.rehearsal.'), llamadaEnsayo);
     const r3 = await A.finalizarCierreSesionCajaA10();
     ok('A2.3 finalizar un cierre sin diferencia funciona', r3.ok === true && s.sesiones[0].estado === 'CERRADA_FINAL', r3);
-    ok('A2.4 los cuatro pasos usan el mismo día del servidor', ['abc_iniciar_cierre_sesion_caja', 'abc_confirmar_cierre_provisional', 'abc_finalizar_cierre_sesion_caja'].every((n) => env.llamadas(n)[0]?.params.p_operating_day === '2031-01-15'), s.llamadas.map((c) => c.nombre));
+    ok('A2.4 los pasos mutantes y el ensayo usan el mismo día del servidor', ['abc_iniciar_cierre_sesion_caja', 'abc_confirmar_cierre_provisional', 'abc_ensayar_cierre_sesion_caja', 'abc_finalizar_cierre_sesion_caja'].every((n) => env.llamadas(n)[0]?.params.p_operating_day === '2031-01-15'), s.llamadas.map((c) => c.nombre));
     ok('A2.5 la pantalla no escribe en tablas: solo lee las del cierre', env.srv.estado.lecturas.every((l) => ['terminales_tpv', 'caja_sesion_terminales', 'caja_sesiones', 'tpv_estaciones_preparacion', 'tpv_producto_estaciones'].includes(l.tabla)), [...new Set(s.lecturas.map((l) => l.tabla))]);
   }
   {
@@ -258,10 +262,21 @@ try {
     await escribir(contado(), '0');
     await clic(boton('Confirmar cierre provisional'));
     ok('B1.3 el provisional se registra y no sale ningún aviso rojo', texto().includes('CIERRE_PROVISIONAL') && !document.querySelector('[role=alert]'), texto().slice(0, 600));
+    ok('B1.3b se ofrece el ensayo C12 antes del cierre definitivo', !!boton('Ensayar cierre C12') && texto().includes('comprobar efectivo, pagos, efectos y documentos'), texto().slice(0, 800));
+    await clic(boton('Ensayar cierre C12'));
+    ok('B1.3c el ensayo apto se explica sin cerrar la sesión', document.querySelector('[data-c12-ensayo="APTO_CIERRE"]') && texto().includes('documentos conciliados 1') && env.s.sesiones[0].estado === 'CIERRE_PROVISIONAL', texto().slice(0, 900));
     ok('B1.4 sin diferencia no hay caja de diferencia y se puede finalizar', !document.querySelector('[data-diferencia-caja]') && boton('Finalizar cierre') && !boton('Finalizar cierre').disabled, texto().slice(0, 600));
-    ok('B1.5 el texto dice que se puede finalizar o reabrir (sin diferencia)', texto().includes('Puedes finalizarlo o reabrirlo con motivo.'), texto().slice(0, 600));
+    ok('B1.5 tras el ensayo apto se mantiene disponible el cierre definitivo', texto().includes('la sesión está preparada para el cierre definitivo') && boton('Finalizar cierre') && !boton('Finalizar cierre').disabled, texto().slice(0, 700));
     await clic(boton('Finalizar cierre'));
     ok('B1.6 finalizar cierra la sesión y pide abrir otra', env.s.sesiones[0].estado === 'CERRADA_FINAL' && texto().includes('Sesión cerrada definitivamente') && texto().includes('Abrir sesión de caja'), texto().slice(0, 700));
+  }
+  {
+    // B1b: el ensayo explica los documentos pendientes y no modifica el cierre
+    const env = entorno({ esperado: 0, rol: 'Cajero/a', ensayoDocumentosPendientes: 1 });
+    await montar(env);
+    await cerrarHastaProvisional(env, 0);
+    await clic(boton('Ensayar cierre C12'));
+    ok('B1b.1 C12 muestra PENDIENTE y la causa documental sin cerrar la sesión', document.querySelector('[data-c12-ensayo="PENDIENTE"]') && texto().includes('documentos de esta sesión pendientes de conciliación') && texto().includes('pendientes 1') && env.s.sesiones[0].estado === 'CIERRE_PROVISIONAL', texto().slice(0, 1000));
   }
   {
     // B2: diferencia, el Cajero/a registra el motivo y espera al Propietario; luego el Propietario aprueba

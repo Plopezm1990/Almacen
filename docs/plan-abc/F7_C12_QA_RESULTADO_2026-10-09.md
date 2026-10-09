@@ -2,7 +2,8 @@
 
 Fecha: 2026-10-09  
 Entorno de base de datos: QA (`qjqorixtkilwsndqayyx`)  
-Estado: `NUCLEO_C12_VERIFICADO_QA; UI_Y_RESILIENCIA_PENDIENTES`  
+Estado: `NUCLEO_C12_VERIFICADO_QA; UI_LOCAL_VERIFICADA; RESILIENCIA_Y_ACEPTACION_PENDIENTES`
+
 Producción: no tocada
 
 ## 1. Defecto encontrado y corregido
@@ -72,13 +73,34 @@ la RPC `SECURITY DEFINER` corresponden al patrón de tablas cerradas y
 autorización interna que ya usa este bloque; los demás avisos quedan fuera del
 alcance de C12.
 
-## 5. Límites confirmados
+## 5. Integración local de pantalla
+
+La pantalla de cierre provisional ya ofrece `Ensayar cierre C12`. La llamada
+usa `abc_ensayar_cierre_sesion_caja` con empresa, local, sesión, terminal, día
+operativo del servidor y un `operation_id` recuperable. El resultado muestra
+el estado, la explicación, el efectivo esperado/contado, la diferencia, los
+documentos conciliados/pendientes y los bloqueos legibles. El ensayo es
+informativo y no finaliza ni modifica la sesión.
+
+El contrato estático confirmó la paridad entre `fuente.js` y la fuente
+recuperada, además del nombre y los parámetros exactos de la RPC. El contrato
+de ejecución pasó 98 casos sobre la fuente recuperada, incluidos:
+
+- `APTO_CIERRE` sin cambiar `CIERRE_PROVISIONAL`;
+- `PENDIENTE` por documento de la sesión sin conciliar;
+- conservación del cierre definitivo disponible cuando el servidor informa
+  que el ensayo es apto.
+
+Esta integración está verificada localmente; todavía no se desplegó ni se
+recorrió visualmente en QA.
+
+## 6. Límites confirmados
 
 - La prueba cubre la recuperación idempotente mediante replay, pero no una
   caída real de red o proceso.
 - No se probaron hardware de impresión, emisión fiscal real ni una sesión
   nocturna operada desde la pantalla.
-- La RPC no está conectada a la interfaz.
+- Falta desplegar la interfaz consolidada y recorrerla visualmente en QA.
 
 Por estos límites, C12 permanece `INCOMPLETO`; su núcleo de servidor queda
-verificado en QA.
+verificado en QA y la interfaz queda verificada localmente.

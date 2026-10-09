@@ -1,7 +1,7 @@
 # F5 C12 Contrato de ensayo del cierre
 
 Fecha: 2026-10-01  
-Estado: `NUCLEO_C12_VERIFICADO_QA; UI_Y_RESILIENCIA_PENDIENTES`
+Estado: `NUCLEO_C12_VERIFICADO_QA; UI_LOCAL_VERIFICADA; RESILIENCIA_Y_ACEPTACION_PENDIENTES`
 
 ## Alcance
 
@@ -36,7 +36,7 @@ sin ejecutar el cierre real.
 
 El ensayo no confirma el conteo, no finaliza el cierre, no reabre la sesión,
 no modifica pagos ni efectos, no corrige documentos y no sustituye la revisión
-operativa, fiscal o bancaria. La RPC todavía no está conectada a una pantalla.
+operativa, fiscal o bancaria.
 
 ## Evidencia y pendiente
 
@@ -59,5 +59,11 @@ documento pendiente sin bloquear a la primera. También se comprobaron la
 inmutabilidad del vínculo, el rechazo de sesiones inexistentes y la
 compatibilidad con documentos administrativos sin sesión.
 
-Producción no se modificó. Siguen pendientes el recorrido de pantalla, la
-prueba con hardware y fallos externos, la sesión nocturna y la aceptación final.
+La interfaz local ya llama a C12 desde el cierre provisional y presenta estado,
+explicación, efectivo, documentos y bloqueos. El contrato estático confirmó la
+paridad de ambas fuentes y el contrato ejecutable pasó 98 casos, incluidos
+`APTO_CIERRE` y `PENDIENTE` documental sin cambiar el estado de la sesión.
+
+Producción no se modificó. Siguen pendientes desplegar y recorrer la pantalla
+en QA, la prueba con hardware y fallos externos, la sesión nocturna y la
+aceptación final.

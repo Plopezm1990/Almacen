@@ -63,13 +63,13 @@ for (const prohibido of ["leerContextoCuentaA02", "todayISO", "localStorage", "c
   assert.ok(!ctx.includes(prohibido), `contextoCierreA10 no debe usar ${prohibido}`);
 assert.match(ctx, /return \{ supabase, empresaId, localId: localActivoId, terminalId: terminal\.terminalId, sessionId, sessionEstado: sesion\.estado, operatingDay \};/);
 
-// 3. Los cuatro pasos del cierre usan ese contexto; el resto de A10 conserva el suyo.
-for (const f of ["iniciarCierreSesionCajaA10() {", "confirmarCierreProvisionalA10({ efectivoContado = 0 } = {}) {", "finalizarCierreSesionCajaA10() {", "reabrirCierreProvisionalA10({ motivo = \"\" } = {}) {"]) {
+// 3. Los pasos del cierre y el ensayo C12 usan ese contexto; el resto de A10 conserva el suyo.
+for (const f of ["iniciarCierreSesionCajaA10() {", "confirmarCierreProvisionalA10({ efectivoContado = 0 } = {}) {", "ensayarCierreSesionCajaC12() {", "finalizarCierreSesionCajaA10() {", "reabrirCierreProvisionalA10({ motivo = \"\" } = {}) {"]) {
   const i = R.cierre4.indexOf("async function " + f);
   assert.ok(i >= 0, "falta " + f);
   assert.ok(R.cierre4.slice(i, i + 160).includes("const contexto = await contextoCierreA10();"), f + " usa el contexto del cierre");
 }
-assert.ok(!R.cierre4.includes("contextoA10("), "los cuatro pasos ya no dependen de la última cuenta del navegador");
+assert.ok(!R.cierre4.includes("contextoA10("), "las operaciones del cierre ya no dependen de la última cuenta del navegador");
 for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]]) {
   assert.equal(t.split("contextoA10(true)").length - 1, 1, nombre + ": solo queda un uso de contextoA10(true) (otra operación de A10 que no es el cierre)");
   assert.equal(t.split("async function contextoA10(requiereDia = false) {").length - 1, 1, nombre + ": contextoA10 se conserva");
@@ -77,7 +77,7 @@ for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]
 }
 
 // 4. Llamadas al servidor con los nombres y parámetros exactos de las migraciones.
-const migs = ["supabase/migrations/20261002210000_abc_config_pieza2_diferencia_caja.sql", "supabase/migrations/20261002250000_abc_config_pieza6d_dia_operativo.sql", "supabase/migrations/20261005160403_abc_f5_c03_arqueo_sesion.sql"];
+const migs = ["supabase/migrations/20261002210000_abc_config_pieza2_diferencia_caja.sql", "supabase/migrations/20261002250000_abc_config_pieza6d_dia_operativo.sql", "supabase/migrations/20261005160403_abc_f5_c03_arqueo_sesion.sql", "supabase/migrations/20261001220000_abc_f5_c12_close_rehearsal.sql"];
 const firmas = new Map();
 for (const m of migs) {
   const t = lf(await read(m));
@@ -85,7 +85,7 @@ for (const m of migs) {
     firmas.set(x[1], x[2].split(",").map((p) => p.trim()).filter(Boolean).map((p) => p.split(/\s+/)[0]));
   }
 }
-for (const n of ["abc_registrar_diferencia_caja", "abc_decidir_diferencia_caja", "abc_obtener_diferencia_caja", "abc_obtener_dia_operativo_local", "abc_previsualizar_arqueo_caja"]) assert.ok(firmas.has(n), "no está en las migraciones: " + n);
+for (const n of ["abc_registrar_diferencia_caja", "abc_decidir_diferencia_caja", "abc_obtener_diferencia_caja", "abc_obtener_dia_operativo_local", "abc_previsualizar_arqueo_caja", "abc_ensayar_cierre_sesion_caja"]) assert.ok(firmas.has(n), "no está en las migraciones: " + n);
 const clavesDe = (texto, rpc) => {
   const m = texto.match(new RegExp(`"${rpc}", \\{([^}]*)\\}`));
   assert.ok(m, "no se encuentra la llamada a " + rpc);
@@ -93,11 +93,14 @@ const clavesDe = (texto, rpc) => {
 };
 for (const rpc of ["abc_registrar_diferencia_caja", "abc_decidir_diferencia_caja", "abc_obtener_diferencia_caja", "abc_obtener_dia_operativo_local", "abc_previsualizar_arqueo_caja"])
   assert.deepEqual(clavesDe(R.logica, rpc), firmas.get(rpc), `${rpc}: la llamada envía exactamente los parámetros de la función del servidor, en su orden`);
+assert.deepEqual(clavesDe(R.cierre4, "abc_ensayar_cierre_sesion_caja"), firmas.get("abc_ensayar_cierre_sesion_caja"), "C12 envía exactamente los parámetros de la función del servidor, en su orden");
 assert.equal((R.logica.match(/\.rpc\(/g) || []).length, 3, "tres lecturas directas (día, vista previa y diferencia); el resto va por rpcA02ConRecuperacion");
 for (const rpc of ["abc_registrar_diferencia_caja", "abc_decidir_diferencia_caja"])
   assert.match(R.logica, new RegExp(`rpcA02ConRecuperacion\\(contexto\\.supabase, "${rpc}", \\{`), `${rpc} se envía con idempotencia y recuperación`);
+assert.match(R.cierre4, /rpcA02ConRecuperacion\(contexto\.supabase, "abc_ensayar_cierre_sesion_caja", \{/, "C12 se envía con idempotencia y recuperación");
 assert.match(R.logica, /const operationId = `f6\.ui\.cash\.diff\.register\.\$\{uuidA02\(\)\}`;/);
 assert.match(R.logica, /const operationId = `f6\.ui\.cash\.diff\.decide\.\$\{uuidA02\(\)\}`;/);
+assert.match(R.cierre4, /const operationId = `f7\.ui\.cash\.close\.rehearsal\.\$\{uuidA02\(\)\}`;/);
 assert.match(R.logica, /if \(decisionLimpia !== "APROBAR" && decisionLimpia !== "RECHAZAR"\) throw new Error\("diferencia_caja_decision_invalida"\);/, "solo APROBAR o RECHAZAR");
 assert.equal((R.logica.match(/diferencia_caja_motivo_requerido/g) || []).length, 2, "el motivo es obligatorio en el registro y en la decisión");
 assert.match(R.logica, /p_decision: decisionLimpia,/);
@@ -124,9 +127,9 @@ assert.match(R.modulo, /registro: r2\?\.registro \|\| null,/);
 assert.match(R.modulo, /bloqueos: Array\.isArray\(r2\?\.bloqueos\) \? r2\.bloqueos : \[\]/);
 
 // 5. Las funciones cuelgan de listarEstacionesA10 al crear la lógica y al llamarla.
-for (const n of ["abrirSesionCajaA10", "cerrarSesionCajaA10", "iniciarCierreSesionCajaA10", "confirmarCierreProvisionalA10", "finalizarCierreSesionCajaA10", "reabrirCierreProvisionalA10", "consultarCierreCajaA10", "registrarDiferenciaCajaA10", "decidirDiferenciaCajaA10"])
+for (const n of ["abrirSesionCajaA10", "cerrarSesionCajaA10", "iniciarCierreSesionCajaA10", "confirmarCierreProvisionalA10", "ensayarCierreSesionCajaC12", "finalizarCierreSesionCajaA10", "reabrirCierreProvisionalA10", "consultarCierreCajaA10", "registrarDiferenciaCajaA10", "decidirDiferenciaCajaA10"])
   assert.ok(R.enlaces.includes(`  listarEstacionesA10.${n} = ${n};\n`), "al crear la lógica se enlaza " + n);
-for (const n of ["consultarCierreCajaA10", "registrarDiferenciaCajaA10", "decidirDiferenciaCajaA10"])
+for (const n of ["ensayarCierreSesionCajaC12", "consultarCierreCajaA10", "registrarDiferenciaCajaA10", "decidirDiferenciaCajaA10"])
   assert.equal(recuperado.split(`    listarEstacionesA10.${n} = ${n};\n`).length - 1, 1, "y al llamar a listarEstacionesA10 se enlaza " + n);
 
 // 6. Traducciones de los códigos nuevos (nunca códigos crudos para la persona).
@@ -146,15 +149,17 @@ assert.ok(R.traducciones.indexOf("abc_diferencia_caja_no_autorizada") < R.traduc
 
 // 7. La pantalla de cierre.
 const c = R.cocina;
+assert.match(c, /const ensayarCierreSesionCajaC12 = typeof listarEstacionesA10\?\.ensayarCierreSesionCajaC12 === "function" \? listarEstacionesA10\.ensayarCierreSesionCajaC12 : null;/);
 assert.match(c, /const consultarCierreCajaA10 = typeof listarEstacionesA10\?\.consultarCierreCajaA10 === "function" \? listarEstacionesA10\.consultarCierreCajaA10 : null;/);
 assert.match(c, /const registrarDiferenciaCajaA10 = typeof listarEstacionesA10\?\.registrarDiferenciaCajaA10 === "function" \? listarEstacionesA10\.registrarDiferenciaCajaA10 : null;/);
 assert.match(c, /const decidirDiferenciaCajaA10 = typeof listarEstacionesA10\?\.decidirDiferenciaCajaA10 === "function" \? listarEstacionesA10\.decidirDiferenciaCajaA10 : null;/);
 assert.match(c, /const bloqueosDiferencia = Array\.isArray\(cierreInfo\?\.bloqueos\) \? cierreInfo\.bloqueos : \[\];/);
+assert.match(c, /const \[ensayoCierre, setEnsayoCierre\] = \(0, import_react4\.useState\)\(null\);/);
 // recuperar el estado del servidor al entrar y al actualizar
 assert.match(c, /async function sincronizarCierre\(\) \{\s+if \(typeof consultarCierreCajaA10 !== "function"\) return null;/);
-assert.match(c, /if \(estado === "EN_CIERRE" \|\| estado === "CIERRE_PROVISIONAL"\) \{\s+setEstadoCierre\(estado\);\s+setArqueoPrevio\(estado === "EN_CIERRE" && !r2\.arqueoError \? r2\.arqueoPrevio \|\| null : null\);\s+if \(r2\.arqueoError\) setError\("No se pudo calcular el arqueo en el servidor: " \+ r2\.arqueoError\);\s+if \(estado !== "CIERRE_PROVISIONAL"\) setCierreInfo\(null\);\s+else if \(!r2\.diferenciaError\) setCierreInfo\(infoCierreA10\(r2\)\);/, "se recuperan el arqueo y el estado del servidor y, si falla la lectura de la diferencia, se conserva la que ya se sabía");
-assert.match(c, /async function refrescarCierreInfo\(\) \{\s+return sincronizarCierre\(\);\s+\}/, "tras cada acción se vuelve a leer TODO el estado del cierre (también el estado de la sesión)");
-assert.match(c, /\} else if \(estado === "ABIERTA"\) \{\s+setEstadoCierre\("ABIERTA"\);\s+setArqueoPrevio\(null\);\s+setCierreInfo\(null\);/);
+assert.match(c, /if \(estado === "EN_CIERRE" \|\| estado === "CIERRE_PROVISIONAL"\) \{\s+setEstadoCierre\(estado\);\s+setArqueoPrevio\(estado === "EN_CIERRE" && !r2\.arqueoError \? r2\.arqueoPrevio \|\| null : null\);\s+if \(r2\.arqueoError\) setError\("No se pudo calcular el arqueo en el servidor: " \+ r2\.arqueoError\);\s+if \(estado !== "CIERRE_PROVISIONAL"\) \{\s+setCierreInfo\(null\);\s+setEnsayoCierre\(null\);\s+\}\s+else if \(!r2\.diferenciaError\) setCierreInfo\(infoCierreA10\(r2\)\);/, "se recuperan el arqueo y el estado del servidor y, si falla la lectura de la diferencia, se conserva la que ya se sabía");
+assert.match(c, /async function refrescarCierreInfo\(\) \{\s+setEnsayoCierre\(null\);\s+return sincronizarCierre\(\);\s+\}/, "tras cada acción se invalida el ensayo y se vuelve a leer TODO el estado del cierre");
+assert.match(c, /\} else if \(estado === "ABIERTA"\) \{\s+setEstadoCierre\("ABIERTA"\);\s+setArqueoPrevio\(null\);\s+setCierreInfo\(null\);\s+setEnsayoCierre\(null\);/);
 const refresco = funcion(c, "  async function refrescarEstaciones() {", "refrescarEstaciones");
 assert.ok(refresco.indexOf("await sincronizarCierre()") < refresco.indexOf("await listarEstacionesA10()"), "primero se recupera el estado del cierre y después se listan las estaciones");
 assert.match(refresco, /if \(estadoServidor === "EN_CIERRE" \|\| estadoServidor === "CIERRE_PROVISIONAL"\) \{\s+setCargando\(false\);\s+setRequiereApertura\(false\);\s+setEstaciones\(\[\]\);\s+setRutas\(\[\]\);\s+return;\s+\}/, "con el cierre en marcha no se pide abrir sesión ni se listan estaciones");
@@ -173,7 +178,7 @@ assert.match(c, /\$\{Number\(resultado\.difference \|\| 0\) !== 0 \? "Hay una di
 assert.match(c, /setError\(resultado\?\.error \|\| "No se pudo finalizar el cierre\."\);\s+await refrescarCierreInfo\(\);/);
 // al cerrar o reabrir se limpia lo de la diferencia
 for (const marca of ['setMensaje("Sesión cerrada definitivamente por el servidor.', 'setMensaje("Cierre provisional reabierto.'])
-  assert.match(c, new RegExp(`setCierreInfo\\(null\\);\\s+setMotivoDiferencia\\(""\\);\\s+setMotivoDecision\\(""\\);\\s+${marca.replace(/[().]/g, "\\$&")}`), "se limpia la diferencia antes de: " + marca);
+  assert.match(c, new RegExp(`setCierreInfo\\(null\\);\\s+setEnsayoCierre\\(null\\);\\s+setMotivoDiferencia\\(""\\);\\s+setMotivoDecision\\(""\\);\\s+${marca.replace(/[().]/g, "\\$&")}`), "se limpian la diferencia y el ensayo antes de: " + marca);
 // la caja de diferencia
 const dif = funcion(c, "  function renderDiferencia() {", "renderDiferencia");
 assert.match(dif, /Number\(info\.difference\) === 0\) return null;/, "sin diferencia no se pinta nada");
@@ -187,10 +192,17 @@ assert.match(dif, /registro\.estado === "REGISTRADA" && info\.requiereAprobacion
 assert.match(dif, /onClick: \(\) => decidirDiferencia\("APROBAR"\), disabled: !!procesando \|\| !motivoDecision\.trim\(\)/);
 assert.match(dif, /onClick: \(\) => decidirDiferencia\("RECHAZAR"\), disabled: !!procesando \|\| !motivoDecision\.trim\(\)/);
 assert.match(dif, /onClick: registrarDiferencia, disabled: !!procesando \|\| !motivoDiferencia\.trim\(\)/);
-// el bloque provisional la pinta y «Finalizar» se bloquea
-assert.match(c, /reábrelo para corregir la sesión\."\),\s+renderDiferencia\(\),\s+bloqueosCierre\.length > 0/, "la diferencia va dentro del cierre provisional, antes de los bloqueos");
+// el bloque provisional pinta la diferencia y el ensayo C12; «Finalizar» conserva el bloqueo de diferencia.
+assert.match(c, /reábrelo para corregir la sesión\."\),\s+renderDiferencia\(\),\s+ensayarCierreSesionCajaC12 \? h3\("div", \{ className: "mb-3" \},[\s\S]*?renderEnsayoC12\(\)[\s\S]*?bloqueosCierre\.length > 0/, "la diferencia y C12 van dentro del cierre provisional, antes de los bloqueos");
 assert.match(c, /onClick: finalizarCierre, disabled: !!procesando \|\| bloqueosDiferencia\.length > 0 \}/, "«Finalizar cierre» no se ofrece con bloqueos de diferencia");
 assert.equal(c.split("renderDiferencia(),").length - 1, 1, "la caja de diferencia se pinta en un único sitio");
+const ensayoUi = funcion(c, "  function renderEnsayoC12() {", "renderEnsayoC12");
+for (const txt of ["data-c12-ensayo", "Ensayo C12: ", "Efectivo esperado €", "documentos conciliados ", "documentos de esta sesión pendientes de conciliación"])
+  assert.ok(ensayoUi.includes(txt), "el informe C12 muestra: " + txt);
+const ensayarUi = funcion(c, "  async function ensayarCierre() {", "ensayarCierre");
+assert.match(ensayarUi, /await ensayarCierreSesionCajaC12\(\);/);
+assert.match(ensayarUi, /setEnsayoCierre\(resultado\);/);
+assert.match(c, /onClick: ensayarCierre, disabled: !!procesando/);
 // textos de los bloqueos
 for (const k of ["DIFERENCIA_SIN_MOTIVO", "DIFERENCIA_PENDIENTE_APROBACION", "DIFERENCIA_RECHAZADA", "DIFERENCIA_CAMBIADA"]) assert.ok(R.modulo.includes(`${k}: "`), "texto para " + k);
 // 6f sigue en su sitio
@@ -198,9 +210,9 @@ assert.match(c, /puedeReabrirCierre === false \? null : h3\(Btn, \{ small: true,
 
 // 8. El contrato vivo y la prueba de ejecución existen y cubren los casos exigidos.
 const vivo = await read("tests/cfg/cfg6d-ui-runtime.mjs");
-for (const marca of ["A1.1 iniciar el cierre funciona sin ninguna cuenta abierta", "A2.1 con la sesión ya EN_CIERRE el siguiente paso funciona", "A3.1 una cuenta antigua guardada", "A4.3 en cierre provisional trae la diferencia",
+for (const marca of ["A1.1 iniciar el cierre funciona sin ninguna cuenta abierta", "A2.1 con la sesión ya EN_CIERRE el siguiente paso funciona", "A2.2b C12 ensaya sin cerrar", "A2.2c C12 envía sesión, terminal y día", "A3.1 una cuenta antigua guardada", "A4.3 en cierre provisional trae la diferencia",
   "A5.1 finalizar con la diferencia sin tratar se rechaza", "A5.4 registrar el motivo", "A5.8 un Cajero/a no puede aprobar", "A5.9 el Propietario aprueba", "A5.12 ahora sí se finaliza", "A6.1 rechazar deja el bloqueo",
-  "A7.1 una diferencia dentro del umbral", "A8.5 si el servidor no da el día", "B1.2 iniciar el cierre ya no da el aviso", "B2.1 aparece la diferencia", "B2.6 el Cajero/a ve", "B2.8 recargar la pantalla en cierre provisional",
+  "A7.1 una diferencia dentro del umbral", "A8.5 si el servidor no da el día", "B1.2 iniciar el cierre ya no da el aviso", "B1.3b se ofrece el ensayo C12", "B1.3c el ensayo apto se explica", "B1b.1 C12 muestra PENDIENTE", "B2.1 aparece la diferencia", "B2.6 el Cajero/a ve", "B2.8 recargar la pantalla en cierre provisional",
   "B2.9 el Propietario ve", "B2.11 se finaliza el cierre con diferencia", "B3.1 rechazada", "B3.3 reabrir devuelve la caja a ABIERTA", "B4.1 con el cierre ya iniciado", "B5.2 un error del servidor", "B6.2 al finalizar, el servidor la rechaza",
   "B7.1 el Cajero/a sin permiso de reabrir", "B8.2 tras el motivo se puede finalizar sin aprobación", "B9.1 sin la lectura C03 el provisional queda bloqueado", "B10.1 si la diferencia cambió desde el motivo", "B11.1 tras recargar, la diferencia aprobada", "B12.2 «Actualizar» recupera el cierre en marcha", "B12b.1 tras reabrir, el motivo escrito", "B13.1 si otro dispositivo ya la decidió", "B13b.1 decidir con datos viejos", "B13c.1 si el cierre ya no está en provisional", "B14.1 si falla la lectura de la diferencia"])
   assert.ok(vivo.includes(marca), "falta el caso de ejecución: " + marca);

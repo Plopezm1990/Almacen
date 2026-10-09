@@ -9434,6 +9434,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     listarEstacionesA10.cerrarSesionCajaA10 = cerrarSesionCajaA10;
     listarEstacionesA10.iniciarCierreSesionCajaA10 = iniciarCierreSesionCajaA10;
     listarEstacionesA10.confirmarCierreProvisionalA10 = confirmarCierreProvisionalA10;
+    listarEstacionesA10.ensayarCierreSesionCajaC12 = ensayarCierreSesionCajaC12;
     listarEstacionesA10.finalizarCierreSesionCajaA10 = finalizarCierreSesionCajaA10;
     listarEstacionesA10.reabrirCierreProvisionalA10 = reabrirCierreProvisionalA10;
     listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
@@ -9633,6 +9634,24 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         p_terminal_id: contexto.terminalId,
         p_currency_code: "EUR",
         p_counted_amount: contado,
+        p_operating_day: contexto.operatingDay
+      }, contexto.empresaId, contexto.localId, operationId);
+      return { ok: true, ...(resultado || {}) };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function ensayarCierreSesionCajaC12() {
+    try {
+      const contexto = await contextoCierreA10();
+      const operationId = `f7.ui.cash.close.rehearsal.${uuidA02()}`;
+      const resultado = await rpcA02ConRecuperacion(contexto.supabase, "abc_ensayar_cierre_sesion_caja", {
+        p_operation_id: operationId,
+        p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId,
+        p_session_id: contexto.sessionId,
+        p_terminal_id: contexto.terminalId,
         p_operating_day: contexto.operatingDay
       }, contexto.empresaId, contexto.localId, operationId);
       return { ok: true, ...(resultado || {}) };
@@ -10555,12 +10574,13 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   listarEstacionesA10.cerrarSesionCajaA10 = cerrarSesionCajaA10;
   listarEstacionesA10.iniciarCierreSesionCajaA10 = iniciarCierreSesionCajaA10;
   listarEstacionesA10.confirmarCierreProvisionalA10 = confirmarCierreProvisionalA10;
+  listarEstacionesA10.ensayarCierreSesionCajaC12 = ensayarCierreSesionCajaC12;
   listarEstacionesA10.finalizarCierreSesionCajaA10 = finalizarCierreSesionCajaA10;
   listarEstacionesA10.reabrirCierreProvisionalA10 = reabrirCierreProvisionalA10;
   listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
   listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
   listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, cambiarResponsableCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, cambiarResponsableCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -21939,6 +21959,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
   const cambiarResponsableCajaC01 = typeof listarEstacionesA10?.cambiarResponsableCajaC01 === "function" ? listarEstacionesA10.cambiarResponsableCajaC01 : null;
   const iniciarCierreSesionCajaA10 = typeof listarEstacionesA10?.iniciarCierreSesionCajaA10 === "function" ? listarEstacionesA10.iniciarCierreSesionCajaA10 : null;
   const confirmarCierreProvisionalA10 = typeof listarEstacionesA10?.confirmarCierreProvisionalA10 === "function" ? listarEstacionesA10.confirmarCierreProvisionalA10 : null;
+  const ensayarCierreSesionCajaC12 = typeof listarEstacionesA10?.ensayarCierreSesionCajaC12 === "function" ? listarEstacionesA10.ensayarCierreSesionCajaC12 : null;
   const finalizarCierreSesionCajaA10 = typeof listarEstacionesA10?.finalizarCierreSesionCajaA10 === "function" ? listarEstacionesA10.finalizarCierreSesionCajaA10 : null;
   const reabrirCierreProvisionalA10 = typeof listarEstacionesA10?.reabrirCierreProvisionalA10 === "function" ? listarEstacionesA10.reabrirCierreProvisionalA10 : null;
   const consultarCierreCajaA10 = typeof listarEstacionesA10?.consultarCierreCajaA10 === "function" ? listarEstacionesA10.consultarCierreCajaA10 : null;
@@ -21990,6 +22011,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
   }, [configEmpresa?.id, local?.id, rolPerfil]);
   const [bloqueosCierre, setBloqueosCierre] = (0, import_react4.useState)([]);
   const [cierreInfo, setCierreInfo] = (0, import_react4.useState)(null);
+  const [ensayoCierre, setEnsayoCierre] = (0, import_react4.useState)(null);
   const [motivoDiferencia, setMotivoDiferencia] = (0, import_react4.useState)("");
   const [motivoDecision, setMotivoDecision] = (0, import_react4.useState)("");
   const bloqueosDiferencia = Array.isArray(cierreInfo?.bloqueos) ? cierreInfo.bloqueos : [];
@@ -22009,17 +22031,22 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
       setEstadoCierre(estado);
       setArqueoPrevio(estado === "EN_CIERRE" && !r2.arqueoError ? r2.arqueoPrevio || null : null);
       if (r2.arqueoError) setError("No se pudo calcular el arqueo en el servidor: " + r2.arqueoError);
-      if (estado !== "CIERRE_PROVISIONAL") setCierreInfo(null);
+      if (estado !== "CIERRE_PROVISIONAL") {
+        setCierreInfo(null);
+        setEnsayoCierre(null);
+      }
       else if (!r2.diferenciaError) setCierreInfo(infoCierreA10(r2));
     } else if (estado === "ABIERTA") {
       setEstadoCierre("ABIERTA");
       setArqueoPrevio(null);
       setCierreInfo(null);
+      setEnsayoCierre(null);
     }
     return estado || null;
   }
 
   async function refrescarCierreInfo() {
+    setEnsayoCierre(null);
     return sincronizarCierre();
   }
 
@@ -22097,6 +22124,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     setMotivoReapertura("");
     setBloqueosCierre([]);
     setCierreInfo(null);
+    setEnsayoCierre(null);
     setMotivoDiferencia("");
     setMotivoDecision("");
     refrescarEstaciones();
@@ -22237,6 +22265,23 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     await refrescarCierreInfo();
   }
 
+  async function ensayarCierre() {
+    if (procesando || typeof ensayarCierreSesionCajaC12 !== "function") return;
+    setProcesando("ensayar-cierre");
+    setError("");
+    setMensaje("");
+    const resultado = await ensayarCierreSesionCajaC12();
+    setProcesando("");
+    if (!resultado?.ok) {
+      setEnsayoCierre(null);
+      setError(resultado?.error || "No se pudo ensayar el cierre.");
+      return;
+    }
+    setEnsayoCierre(resultado);
+    const estado = String(resultado.resultado || "");
+    setMensaje(estado === "APTO_CIERRE" ? "Ensayo completado: la sesión está preparada para el cierre definitivo." : "Ensayo completado: resuelve los bloqueos indicados antes de finalizar.");
+  }
+
   async function finalizarCierre() {
     if (procesando || typeof finalizarCierreSesionCajaA10 !== "function") return;
     setProcesando("finalizar-cierre");
@@ -22256,6 +22301,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     setRutas([]);
     setComandas([]);
     setCierreInfo(null);
+    setEnsayoCierre(null);
     setMotivoDiferencia("");
     setMotivoDecision("");
     setMensaje("Sesión cerrada definitivamente por el servidor. Para operar de nuevo, abre una nueva sesión.");
@@ -22281,6 +22327,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     setMotivoReapertura("");
     setBloqueosCierre([]);
     setCierreInfo(null);
+    setEnsayoCierre(null);
     setMotivoDiferencia("");
     setMotivoDecision("");
     setMensaje("Cierre provisional reabierto. La sesión vuelve a estar disponible para operar.");
@@ -22373,6 +22420,35 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     }
     setMensaje("Operación A10 confirmada por el servidor.");
     await refrescarComandas();
+  }
+
+  function renderEnsayoC12() {
+    if (!ensayoCierre) return h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Ejecuta el ensayo C12 para comprobar efectivo, pagos, efectos y documentos sin modificar el cierre.");
+    const informe = ensayoCierre.informe || {};
+    const caja = informe.caja || {};
+    const documentos = informe.documentos || {};
+    const bloqueos = Array.isArray(informe.bloqueos) ? informe.bloqueos : [];
+    const apto = ensayoCierre.resultado === "APTO_CIERRE";
+    const etiquetaBloqueo = {
+      CONTEO_FALTANTE: "Falta el conteo de efectivo.",
+      DIFERENCIA_EFECTIVO: "El efectivo contado no coincide con el esperado.",
+      PAGOS_PENDIENTES: "Hay pagos pendientes.",
+      EFECTOS_PENDIENTES: "Hay efectos pendientes.",
+      CONCILIACIONES_DOCUMENTALES_PENDIENTES: "Hay documentos de esta sesión pendientes de conciliación.",
+      SESION_NO_REVISABLE: "La sesión ya no está en un estado revisable."
+    };
+    return h3("div", { className: "mb-3 p-2 rounded-lg", style: { background: apto ? C2.accentSoft : C2.redSoft || "#FCE8E6" }, "data-c12-ensayo": String(ensayoCierre.resultado || "") },
+      h3("div", { className: "text-[12px] font-semibold mb-1", style: { color: apto ? C2.accent : C2.red } }, "Ensayo C12: ", String(ensayoCierre.resultado || "SIN_RESULTADO")),
+      h3("div", { className: "text-[11px] mb-1" }, String(informe.explicacion || "El servidor no devolvió una explicación.")),
+      h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } },
+        "Efectivo esperado €", Number(caja.expected_amount || 0).toFixed(2),
+        " · contado €", Number(caja.counted_amount || 0).toFixed(2),
+        " · diferencia €", Number(caja.difference || 0).toFixed(2),
+        " · documentos conciliados ", Number(documentos.documentos_conciliados || 0),
+        " · pendientes ", Number(documentos.documentos_pendientes || 0)
+      ),
+      bloqueos.length > 0 ? h3("ul", { className: "list-disc pl-4 text-[11px] mt-1" }, bloqueos.map((bloqueo) => h3("li", { key: String(bloqueo) }, etiquetaBloqueo[bloqueo] || String(bloqueo)))) : null
+    );
   }
 
   function renderDiferencia() {
@@ -22498,6 +22574,10 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
       estadoCierre === "CIERRE_PROVISIONAL" ? h3("div", null,
         h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "El cierre provisional está registrado. Finalízalo cuando no queden bloqueos o reábrelo para corregir la sesión."),
         renderDiferencia(),
+        ensayarCierreSesionCajaC12 ? h3("div", { className: "mb-3" },
+          h3(Btn, { small: true, variant: "ghost", onClick: ensayarCierre, disabled: !!procesando }, procesando === "ensayar-cierre" ? "Ensayando…" : ensayoCierre ? "Repetir ensayo C12" : "Ensayar cierre C12"),
+          renderEnsayoC12()
+        ) : null,
         bloqueosCierre.length > 0 ? h3("div", { className: "mb-3 p-2 rounded-lg", style: { background: C2.redSoft || "#FCE8E6", color: C2.red } },
           h3("div", { className: "text-[11.5px] font-semibold mb-1" }, "Bloqueos que impiden el cierre definitivo"),
           h3("ul", { className: "list-disc pl-4 text-[11px]" }, bloqueosCierre.map((bloqueo, indice) => h3("li", { key: String(bloqueo?.tipo || bloqueo?.codigo || indice) }, String(bloqueo?.detalle || bloqueo?.tipo || bloqueo?.codigo || "Pendiente operativo"))))
