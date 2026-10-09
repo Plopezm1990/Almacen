@@ -100,7 +100,7 @@ echo "# POSTGRES=$(psql -h 127.0.0.1 -U postgres -tAc 'select version();') FECHA
 printf 'ruta\tclasificacion\tcodigo_salida\tduracion_ms\tultima_marca\tresultado_final\n' >> "$OUT"
 
 # Lista de ejecución: todo lo que el manifiesto marca environment=postgres
-# (20 activos + 1 histórico), en el orden del propio manifiesto.
+# (21 activos + 1 histórico), en el orden del propio manifiesto.
 mapfile -t archivos < <(node -e "
 const fs = require('fs');
 const m = JSON.parse(fs.readFileSync('$MANIFEST', 'utf8'));
