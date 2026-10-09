@@ -129,3 +129,6 @@ Los datos de empresa (`empresas`, `configEmpresa`: razón social, CIF, direcció
 2. Cambio pequeño de aplicación (pasa por QA): que el aviso diga qué colecciones son.
 3. Ampliar la política de producción con esas dos claves (solo Propietario): migración en PROD, con copia previa de las políticas y autorización escrita de Pedro. No recomendada aislada: toca la política que P3 va a reordenar.
 
+## Decisión de Pedro (9/10/2026)
+Elige la opción 1: **dejarlo por ahora** y resolverlo dentro del paquete de permisos de `almacen_kv` (P3/P3b). No se cambia nada en producción ni en la aplicación.
+
