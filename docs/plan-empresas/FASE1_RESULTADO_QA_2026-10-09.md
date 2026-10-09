@@ -60,10 +60,21 @@ Decisión de Pedro (9/10/2026): **contraseña inicial que le da él**.
 - **Administrador registrado solo en QA:** `owner.a@qa.invalid` (cuenta ficticia «QA Propietario A», nota «pruebas de plataforma»). Efecto en QA: ahora solo un administrador puede crear empresas desde la pantalla antigua. En producción no hay ningún administrador registrado.
 - Prueba de punta a punta con la sesión real: `docs/plan-empresas/PRUEBA_COWORK_FASE1_QA.md` (la ejecuta Cowork; queda una empresa de prueba para ensayar el borrado de la Fase 2).
 
+## Prueba de punta a punta con la sesión real (Cowork, 9/10/2026)
+Cowork revisó el código línea por línea antes de ejecutarlo (sin claves ni tokens incrustados; solo la sesión de `owner.a@qa.invalid` y la clave pública del proyecto), inició sesión en la vista previa de QA (`deploy-preview-118--…`) y ejecutó los 19 pasos de `PRUEBA_COWORK_FASE1_QA.md`. **Los 19 dieron exactamente el resultado esperado**, sin diferencias:
+- 01 `es_admin: true` (1 empresa activa y 1 desactivada antes de la prueba); 02 alta de empresa y local; 03 contraseña débil → 400; 04 cuenta del dueño → 200; 05 mismo correo → 409; 06 empresa inexistente → 404; 07 el listado muestra la empresa con su dueño (1 usuario activo, 1 local activo).
+- 08 el dueño inicia sesión; 09 no es administrador; 10 y 11 no puede listar ni crear empresas (`42501 Administrador de plataforma requerido`); 12 la función de crear dueños le responde 403.
+- 13 lee la configuración de su local (modalidades por defecto: BARRA, MESA, TERRAZA, TAKEAWAY, OTRO); 14 no puede leer la de otra empresa (`abc_config_no_autorizado`).
+- 15 baja (1 local y 1 membresía desactivados); 16 tras la baja el dueño ya no lee su local; 17 reactivación (1 local y 1 membresía); 18 el dueño vuelve a leer su local; 19 listado final sin baja.
+- Red: todas las peticiones fueron solo al proyecto de QA (`qjqorixtkilwsndqayyx.supabase.co`) más la propia vista previa y fuentes; ninguna a producción. Sin avisos en pantalla; en consola solo los errores HTTP provocados a propósito (400, 409, 404, 403) y el ruido ya conocido (`seleccion-neutral-patch.js`, `auth-ux-patch.js`, avisos de CSP).
+
+**Restos en QA para ensayar el borrado de la Fase 2** (no se borran a mano): empresa `empresa-5ed41d21a3b3b7f8` («QA Cliente Prueba F1 mv0vwsww»), local `local-90c09d1e2f3f2243`, cuenta de acceso `duena.f1.mv0vwsww@qa.invalid` (usuario `7f3f3ed6-…`) y sus apuntes de auditoría de plataforma.
+
 ## Lo que falta de la Fase 1
-1. **Registrar la cuenta de Pedro como administradora** (en QA para probar; en producción con autorización escrita): `select private.plataforma_registrar_admin('<id de la cuenta>')`. Aún no hecho.
-2. **Alta de la cuenta del dueño de una empresa cliente** (Auth): función de servidor con clave de servicio, estilo `crear-cuenta-empleado`. Pendiente de la decisión: invitación por correo o contraseña inicial que da Pedro.
-3. Documento de autorización para producción (fase 5) con el archivo único y sus huellas.
+1. ~~Alta de la cuenta del dueño de una empresa cliente~~ HECHO en QA (fase 1b, probada de punta a punta).
+2. **Registrar la cuenta real de Pedro como administradora en producción**: `select private.plataforma_registrar_admin('<id de la cuenta>')`, con autorización escrita de Pedro (fase 5). Aún no hecho; en producción no hay ningún administrador.
+3. Documento de autorización para producción (fase 5) con el archivo único y sus huellas (migración + función de servidor).
+4. La pantalla que exija cambiar la contraseña inicial del dueño (`debe_cambiar_contrasena`) y el panel «Plataforma»: fase 3.
 
 ## Fase 2 (siguiente)
 Borrado definitivo: función de purga en orden correcto, modo excepcional para las tablas inmutables, exportación previa, acta de borrado y prueba de cobertura (que falle si se añade una tabla con `empresa_id` sin incluirla). Plazo de gracia pendiente de confirmar por Pedro (propuesta: 30 días). Los datos actuales de producción no hace falta exportarlos (decisión de Pedro: son pruebas).
