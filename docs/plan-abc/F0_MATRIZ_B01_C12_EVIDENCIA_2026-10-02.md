@@ -63,7 +63,7 @@ conocido; no cambia la etiqueta. Etiquetas de evidencia:
 | C08 | Conservar y corregir lo emitido | `INCOMPLETO` | `[MIGR]` `[QA]` conservación, replay, rectificación, cancelación, reembolso e inmutabilidad; `[CI]` | Política legal, descarga y pantalla |
 | C09 | Imprimir sin duplicar | `INCOMPLETO` | `[MIGR]` `[QA]` original, replay, copias, numeración, inmutabilidad y permisos; `[CI]` | Impresora real y pantalla |
 | C10 | Entrega y copias | `INCOMPLETO` | `[MIGR]` `[QA]` email, replay, papel, descarga registrada, inmutabilidad y permisos; `[CI]` | Sin ciclo confirmado/fallido, acceso, caducidad, envío ni pantalla |
-| C11 | Conciliación explicable | `INCOMPLETO` ⚠ | `[MIGR]`; `[QA]` el cierre no pudo explicar −11 | Dos circuitos mezclados; sin pantalla ni exportación |
+| C11 | Conciliación explicable | `INCOMPLETO` ⚠ | `[MIGR]` `[QA]` cadena documental pendiente/conciliada, huella, replay, inmutabilidad y permisos; `[CI]` | Sin conciliación económica, pantalla ni exportación |
 | C12 | Ensayo del cierre | `INCOMPLETO` | `[QA]` apertura→cierre; marcó la diferencia | Noche, restauración, concurrencia; sin pantalla |
 
 Totales B: 0 verificados, 7 incompletos, 1 pendiente, 4 bloqueados.
@@ -342,12 +342,16 @@ Con A: **36 requisitos, 0 verificados, 29 incompletos, 2 pendientes, 5 bloqueado
 ### C11 — Conciliación explicable
 - **Aceptación:** cada total lleva a sus movimientos y cada diferencia tiene causa
   o incidencia; el cierre coincide con lo esperado.
-- **Evidencia:** `[MIGR]` C11 (`abc_generar_conciliacion_documental`). `[CI]`
-  contratos. Sin pantalla ni exportación. `[QA]` el cierre no pudo explicar −11
-  porque se mezclaron los circuitos ABC y heredado.
-- **⚠ Falta:** una sola autoridad de movimientos (C02); ligar pagos, anticipos,
-  devoluciones, comisiones y liquidaciones (B06, B09); exportación para la
-  asesoría.
+- **Evidencia:** `[MIGR]` C11 (`abc_generar_conciliacion_documental`). `[QA]`
+  foto `PENDIENTE_ENTREGA`, nueva foto `CONCILIADO` tras entregar, explicación,
+  SHA-256, replay, inmutabilidad, un solo documento y permisos; `ROLLBACK` y
+  cero residuos. `[CI]` contratos. Evidencia:
+  `F7_C11_QA_RESULTADO_2026-10-09.md`.
+- **⚠ Falta:** la función actual solo concilia la cadena documental y sus
+  cantidades. Debe comparar importes y ligar venta, caja, pagos, anticipos,
+  devoluciones, comisiones y liquidaciones (B06, B09), además de exportación,
+  pantalla y aceptación. C02 ya unifica los movimientos manuales, pero no
+  resuelve por sí solo toda esta conciliación económica.
 
 ### C12 — Ensayo del cierre
 - **Aceptación:** el conjunto reconcilia, los casos negativos bloquean cuando
