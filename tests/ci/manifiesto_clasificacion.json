@@ -1279,6 +1279,11 @@
       "path": "tests/alb/a03-cableado-proveedor-desde-albaran-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
+    },
+    {
+      "path": "tests/plataforma/p02-crear-propietario-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
     }
   ]
 }
