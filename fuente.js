@@ -103512,7 +103512,7 @@ function GestionAlmacen() {
     productoPorId,
     registrarAuditoria
   });
-  const { addProveedor, updateProveedor, deleteProveedor, addProveedorDesdeAlbaran, asignarNifProveedor, marcarProveedorRevisado } = crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null, proveedoresRecientes: proveedoresRecientesRef.current });
+  const { addProveedor, updateProveedor, deleteProveedor, addProveedorDesdeAlbaran, asignarNifProveedor, marcarProveedorRevisado, completarProveedorConDatosAlb } = crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null, proveedoresRecientes: proveedoresRecientesRef.current });
   const { addGasto, deleteGasto } = crearLogicaGastos({ setGastosGenerales, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
@@ -104459,7 +104459,8 @@ function GestionAlmacen() {
       empresasPropias: [...empresas, configEmpresa].filter(Boolean),
       puedeAltaProveedorIA,
       addProveedorDesdeAlbaran,
-      asignarNifProveedor
+      asignarNifProveedor,
+      completarProveedorConDatos: completarProveedorConDatosAlb
     }
   ), tab === "pagos" && /* @__PURE__ */ import_react4.default.createElement(
     CuentasPorPagar,
@@ -104969,12 +104970,54 @@ function nombreProveedorParaAltaAlb(nombre) {
     return t3.toLowerCase().replace(/(^|[-'(/])([a-záéíóúñü])/g, (m, a22, b2) => a22 + b2.toUpperCase());
   }).join(" ");
 }
+function limpiarDatosContactoProveedorAlb(d2) {
+  const texto = (v3, max) => String(v3 ?? "").replace(/\s+/g, " ").trim().slice(0, max);
+  const direccion = texto(d2?.direccion, 200).length >= 5 ? texto(d2?.direccion, 200) : "";
+  const digitosTel = String(d2?.telefono ?? "").replace(/\D/g, "");
+  const telefono = digitosTel.length >= 9 && digitosTel.length <= 15 ? texto(d2?.telefono, 25).replace(/[^\d+()\s.-]/g, "").replace(/^[^\d+(]+/, "").replace(/[^\d)]+$/, "").trim() : "";
+  const emailLeido = texto(d2?.email, 120).toLowerCase();
+  const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLeido) ? emailLeido : "";
+  let web = texto(d2?.web, 120).toLowerCase().replace(/^https?:\/\//, "").replace(/\s+/g, "");
+  if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/.test(web)) web = "";
+  let condiciones = texto(d2?.condiciones, 100);
+  if (condiciones && !/[a-záéíóúñ]/.test(condiciones)) condiciones = condiciones.toLowerCase().replace(/^./, (c3) => c3.toUpperCase());
+  condiciones = condiciones.replace(/\bdias\b/gi, "días");
+  let diasPago = d2?.diasPago === null || d2?.diasPago === void 0 || d2?.diasPago === "" ? NaN : Number(d2.diasPago);
+  diasPago = Number.isInteger(diasPago) && diasPago >= 1 && diasPago <= 365 ? diasPago : "";
+  if (diasPago === "" && condiciones) {
+    const m = condiciones.match(/^(\d{1,3})\s*d[ií]as?\b/i);
+    if (m && Number(m[1]) >= 1 && Number(m[1]) <= 365) diasPago = Number(m[1]);
+  }
+  return { direccion, telefono, email, web, condiciones, diasPago };
+}
+var ETIQUETAS_CAMPOS_PROVEEDOR_ALB = {
+  nif: "NIF/CIF",
+  direccion: "dirección",
+  telefono: "teléfono",
+  email: "correo",
+  web: "web",
+  condiciones: "condiciones de pago",
+  diasPago: "días de pago"
+};
+function camposQueFaltanEnFichaAlb(proveedor, datos) {
+  const faltan = {};
+  if (!proveedor || !datos) return faltan;
+  const vacio = (v3) => v3 === void 0 || v3 === null || String(v3).trim() === "";
+  if (datos.nif && !normalizarNifProveedorAlb(proveedor.nif || proveedor.cif)) faltan.nif = datos.nif;
+  for (const campo of ["direccion", "telefono", "email", "web", "condiciones"]) {
+    if (datos[campo] && vacio(proveedor[campo])) faltan[campo] = datos[campo];
+  }
+  if (datos.diasPago !== "" && datos.diasPago !== void 0 && datos.diasPago !== null && vacio(proveedor.diasPago)) faltan.diasPago = datos.diasPago;
+  return faltan;
+}
 function resolverProveedorAlbaran({ proveedores = [], empresaId = null, empresasPropias = [], detectado = {} } = {}) {
   const nombre = String(detectado?.nombre ?? "").replace(/\s+/g, " ").trim();
   const nifLeido = normalizarNifProveedorAlb(detectado?.nif);
   const nifEstado = estadoNifProveedorAlb(nifLeido);
-  const nifUsable = nifEstado === "valido" ? nifLeido : "";
-  const datos = { nombre: nombreProveedorParaAltaAlb(nombre), nif: nifUsable, nifLeido, nifEstado };
+  const nifCliente = normalizarNifProveedorAlb(detectado?.clienteNif);
+  const nifEsDelCliente = !!nifLeido && !!nifCliente && nifLeido === nifCliente;
+  const nifUsable = nifEstado === "valido" && !nifEsDelCliente ? nifLeido : "";
+  const datos = { nombre: nombreProveedorParaAltaAlb(nombre), nif: nifUsable, nifLeido, nifEstado: nifEsDelCliente ? "del_cliente" : nifEstado, ...limpiarDatosContactoProveedorAlb(detectado) };
   const claveNombre = claveNombreProveedorAlb(nombre, { sinPalabrasVacias: true });
   const sinNombre = claveNombre.replace(/ /g, "").length < 2;
   const candidato = (p22, motivo, similitud = 1) => ({ id: p22.id, nombre: p22.nombre, nif: normalizarNifProveedorAlb(p22.nif || p22.cif), motivo, similitud });
@@ -105021,6 +105064,10 @@ function validarProveedorPM10(data) {
     return errorValidacionPM10("formato_invalido", "email", "El correo electrónico no es válido.");
   }
   datos.email = email;
+
+  for (const campoTexto of ["direccion", "web"]) {
+    if (entrada[campoTexto] !== undefined) datos[campoTexto] = String(entrada[campoTexto] ?? "").trim();
+  }
 
   if (entrada.nif !== undefined) {
     const nif = normalizarNifProveedorAlb(entrada.nif);
@@ -105083,12 +105130,17 @@ function crearLogicaProveedores({ proveedores, setProveedores, registrarAuditori
     const previo = resolverProveedorAlbaran({ proveedores: conocidos, empresaId, detectado: { nombre, nif } });
     if (previo.estado === "existente") return { ok: true, proveedor: previo.proveedor, reutilizado: true };
     const nifLibre = nif && !conocidos.some((p22) => p22.empresaId === empresaId && normalizarNifProveedorAlb(p22.nif || p22.cif) === nif) ? nif : "";
+    const contacto = limpiarDatosContactoProveedorAlb(datos);
     const res = addProveedor({
       nombre,
       nif: nifLibre,
       contacto: "",
-      telefono: "",
-      condiciones: "",
+      telefono: contacto.telefono,
+      email: contacto.email,
+      direccion: contacto.direccion,
+      web: contacto.web,
+      condiciones: contacto.condiciones,
+      diasPago: contacto.diasPago,
       diasReparto: [],
       creadoPorIA: true,
       pendienteRevision: true,
@@ -105116,7 +105168,20 @@ function crearLogicaProveedores({ proveedores, setProveedores, registrarAuditori
     setProveedores((s22) => s22.map((x3) => x3.id === id && x3.empresaId === empresaId && x3.pendienteRevision ? { ...x3, pendienteRevision: false, revisadoEl: typeof todayISO === "function" ? todayISO() : "" } : x3));
     return { ok: true };
   }
-  return { addProveedor, updateProveedor, deleteProveedor, addProveedorDesdeAlbaran, asignarNifProveedor, marcarProveedorRevisado };
+  function completarProveedorConDatosAlb(id, datos) {
+    const p22 = (proveedores || []).find((x3) => x3.id === id && x3.empresaId === empresaId);
+    if (!p22) return { ok: false, error: "No encuentro ese proveedor." };
+    const nifLeido = normalizarNifProveedorAlb(datos?.nif);
+    const nifValido = estadoNifProveedorAlb(nifLeido) === "valido" && !(proveedores || []).some((x3) => x3.id !== id && x3.empresaId === empresaId && normalizarNifProveedorAlb(x3.nif || x3.cif) === nifLeido);
+    const campos = camposQueFaltanEnFichaAlb(p22, { ...limpiarDatosContactoProveedorAlb(datos), nif: nifValido ? nifLeido : "" });
+    if (Object.keys(campos).length === 0) return { ok: true, aplicados: [] };
+    const validacion = validarProveedorPM10({ ...p22, ...campos });
+    if (!validacion.ok) return validacion;
+    setProveedores((s22) => s22.map((x3) => x3.id === id && x3.empresaId === empresaId ? { ...x3, ...campos } : x3));
+    registrarAuditoria("Completar ficha de proveedor con los datos de la foto del albarán", `${p22.nombre} · ${Object.keys(campos).map((k2) => ETIQUETAS_CAMPOS_PROVEEDOR_ALB[k2] || k2).join(", ")}`);
+    return { ok: true, aplicados: Object.keys(campos) };
+  }
+  return { addProveedor, updateProveedor, deleteProveedor, addProveedorDesdeAlbaran, asignarNifProveedor, marcarProveedorRevisado, completarProveedorConDatosAlb };
 }
 function validarEmpleadoPM10(data, { localActivoId = null, locales = [], empresaId = null } = {}) {
   const contexto = validarContextoEscrituraPM10({ localActivoId, locales, empresaId });
@@ -113616,7 +113681,7 @@ var DIAS_REPARTO = [
   { valor: 0, corta: "D", nombre: "Domingo" }
 ];
 function Proveedores({ proveedores, addProveedor, updateProveedor, deleteProveedor, marcarProveedorRevisado = null, pedidos: pedidos2 }) {
-  const blankProv = { nombre: "", nif: "", contacto: "", telefono: "", email: "", condiciones: "", leadTime: "", diasPago: "", diasReparto: [] };
+  const blankProv = { nombre: "", nif: "", direccion: "", web: "", contacto: "", telefono: "", email: "", condiciones: "", leadTime: "", diasPago: "", diasReparto: [] };
   const pendientesRevisionAlb = proveedores.filter((x3) => x3 && x3.pendienteRevision).length;
   const [showForm, setShowForm] = (0, import_react4.useState)(false);
   const [form, setForm] = (0, import_react4.useState)(blankProv);
@@ -113644,6 +113709,8 @@ function Proveedores({ proveedores, addProveedor, updateProveedor, deleteProveed
     setEditForm({
       nombre: pv.nombre || "",
       nif: pv.nif || pv.cif || "",
+      direccion: pv.direccion || "",
+      web: pv.web || "",
       contacto: pv.contacto || "",
       telefono: pv.telefono || "",
       email: pv.email || "",
@@ -113666,7 +113733,7 @@ function Proveedores({ proveedores, addProveedor, updateProveedor, deleteProveed
     }
     setEditFor(null);
   }
-  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setShowForm((s22) => !s22) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Nuevo proveedor") }, "Proveedores"), showForm && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre del proveedor" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.nombre, onChange: (e2) => setForm({ ...form, nombre: e2.target.value }), placeholder: "Distribuidora del Norte" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "NIF / CIF (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.nif, onChange: (e2) => setForm({ ...form, nif: e2.target.value }), placeholder: "B12345678" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Persona de contacto" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.contacto, onChange: (e2) => setForm({ ...form, contacto: e2.target.value }), placeholder: "Nombre" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tel\xE9fono (WhatsApp)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.telefono, onChange: (e2) => setForm({ ...form, telefono: e2.target.value }), placeholder: "+34 600 000 000" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Correo electr\xF3nico" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "email", value: form.email, onChange: (e2) => setForm({ ...form, email: e2.target.value }), placeholder: "pedidos@proveedor.com" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Condiciones de pago (texto libre)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.condiciones, onChange: (e2) => setForm({ ...form, condiciones: e2.target.value }), placeholder: "Transferencia 45 d\xEDas F/F" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "D\xEDas de pago (para calcular vencimientos)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.diasPago, onChange: (e2) => setForm({ ...form, diasPago: e2.target.value }), placeholder: "45" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tiempo de entrega (d\xEDas)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.leadTime, onChange: (e2) => setForm({ ...form, leadTime: e2.target.value }), placeholder: "5" }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "\xBFQu\xE9 d\xEDas reparte? (opcional)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5" }, DIAS_REPARTO.map((d2) => {
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setShowForm((s22) => !s22) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Nuevo proveedor") }, "Proveedores"), showForm && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre del proveedor" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.nombre, onChange: (e2) => setForm({ ...form, nombre: e2.target.value }), placeholder: "Distribuidora del Norte" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "NIF / CIF (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.nif, onChange: (e2) => setForm({ ...form, nif: e2.target.value }), placeholder: "B12345678" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Direcci\xF3n (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.direccion, onChange: (e2) => setForm({ ...form, direccion: e2.target.value }), placeholder: "C/ Mayor 1, 28001 Madrid" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Web (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.web, onChange: (e2) => setForm({ ...form, web: e2.target.value }), placeholder: "www.proveedor.com" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Persona de contacto" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.contacto, onChange: (e2) => setForm({ ...form, contacto: e2.target.value }), placeholder: "Nombre" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tel\xE9fono (WhatsApp)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.telefono, onChange: (e2) => setForm({ ...form, telefono: e2.target.value }), placeholder: "+34 600 000 000" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Correo electr\xF3nico" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "email", value: form.email, onChange: (e2) => setForm({ ...form, email: e2.target.value }), placeholder: "pedidos@proveedor.com" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Condiciones de pago (texto libre)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.condiciones, onChange: (e2) => setForm({ ...form, condiciones: e2.target.value }), placeholder: "Transferencia 45 d\xEDas F/F" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "D\xEDas de pago (para calcular vencimientos)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.diasPago, onChange: (e2) => setForm({ ...form, diasPago: e2.target.value }), placeholder: "45" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tiempo de entrega (d\xEDas)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.leadTime, onChange: (e2) => setForm({ ...form, leadTime: e2.target.value }), placeholder: "5" }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "\xBFQu\xE9 d\xEDas reparte? (opcional)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5" }, DIAS_REPARTO.map((d2) => {
     const activo = (form.diasReparto || []).includes(d2.valor);
     return /* @__PURE__ */ import_react4.default.createElement(
       "button",
@@ -113688,8 +113755,8 @@ function Proveedores({ proveedores, addProveedor, updateProveedor, deleteProveed
     setError("");
   } }, "Cancelar"))), pendientesRevisionAlb > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, pendientesRevisionAlb, " proveedor(es) se dieron de alta autom\xE1ticamente desde la foto de un albar\xE1n y est\xE1n pendientes de revisar. Completa sus datos (contacto, tel\xE9fono, condiciones) y pulsa \xABMarcar como revisado\xBB.")), proveedores.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has a\xF1adido proveedores." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-3" }, proveedores.map((pv) => {
     const nPedidos = pedidos2.filter((p22) => p22.proveedorId === pv.id).length;
-    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: pv.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold" }, pv.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mt-0.5", style: { color: C2.inkSoft } }, pv.contacto), pv.pendienteRevision && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-1" }, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.amber }, "Creado por IA \xB7 revisar"))), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setConfirmDeleteId(pv.id), "aria-label": "Eliminar proveedor", className: "flex items-center justify-center shrink-0", style: { width: 44, height: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 15, color: C2.inkSoft }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 text-[12px] space-y-1", style: { color: C2.inkSoft } }, (pv.nif || pv.cif) && /* @__PURE__ */ import_react4.default.createElement("div", null, "NIF/CIF: ", pv.nif || pv.cif), pv.email && /* @__PURE__ */ import_react4.default.createElement("div", null, "\u2709 ", pv.email), pv.telefono && /* @__PURE__ */ import_react4.default.createElement("div", null, "\u260E ", pv.telefono), pv.condiciones && /* @__PURE__ */ import_react4.default.createElement("div", null, "Condiciones: ", pv.condiciones), pv.leadTime && /* @__PURE__ */ import_react4.default.createElement("div", null, "Entrega estimada: ", pv.leadTime, " d\xEDas"), pv.diasReparto && pv.diasReparto.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", null, "Reparte: ", DIAS_REPARTO.filter((d2) => pv.diasReparto.includes(d2.valor)).map((d2) => d2.nombre).join(", ")), pv.diasPago && /* @__PURE__ */ import_react4.default.createElement("div", null, "Pago a ", pv.diasPago, " d\xEDas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, nPedidos, " pedido(s) registrados")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 flex gap-2 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(pv) }, "Editar"), pv.pendienteRevision && marcarProveedorRevisado && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => marcarProveedorRevisado(pv.id) }, "Marcar como revisado")));
-  })), editFor && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setEditFor(null), title: "Editar proveedor" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre del proveedor" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.nombre, onChange: (e2) => setEditForm({ ...editForm, nombre: e2.target.value }), autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "NIF / CIF (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.nif, onChange: (e2) => setEditForm({ ...editForm, nif: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Persona de contacto" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.contacto, onChange: (e2) => setEditForm({ ...editForm, contacto: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tel\xE9fono (WhatsApp)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.telefono, onChange: (e2) => setEditForm({ ...editForm, telefono: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Correo electr\xF3nico" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "email", value: editForm.email, onChange: (e2) => setEditForm({ ...editForm, email: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Condiciones de pago (texto libre)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.condiciones, onChange: (e2) => setEditForm({ ...editForm, condiciones: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "D\xEDas de pago (para vencimientos)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: editForm.diasPago, onChange: (e2) => setEditForm({ ...editForm, diasPago: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tiempo de entrega (d\xEDas)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: editForm.leadTime, onChange: (e2) => setEditForm({ ...editForm, leadTime: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "\xBFQu\xE9 d\xEDas reparte? (opcional)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5" }, DIAS_REPARTO.map((d2) => {
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: pv.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold" }, pv.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mt-0.5", style: { color: C2.inkSoft } }, pv.contacto), pv.pendienteRevision && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-1" }, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.amber }, "Creado por IA \xB7 revisar"))), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setConfirmDeleteId(pv.id), "aria-label": "Eliminar proveedor", className: "flex items-center justify-center shrink-0", style: { width: 44, height: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 15, color: C2.inkSoft }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 text-[12px] space-y-1", style: { color: C2.inkSoft } }, (pv.nif || pv.cif) && /* @__PURE__ */ import_react4.default.createElement("div", null, "NIF/CIF: ", pv.nif || pv.cif), pv.direccion && /* @__PURE__ */ import_react4.default.createElement("div", null, "\u{1F4CD} ", pv.direccion), pv.web && /* @__PURE__ */ import_react4.default.createElement("div", null, "\u{1F310} ", pv.web), pv.email && /* @__PURE__ */ import_react4.default.createElement("div", null, "\u2709 ", pv.email), pv.telefono && /* @__PURE__ */ import_react4.default.createElement("div", null, "\u260E ", pv.telefono), pv.condiciones && /* @__PURE__ */ import_react4.default.createElement("div", null, "Condiciones: ", pv.condiciones), pv.leadTime && /* @__PURE__ */ import_react4.default.createElement("div", null, "Entrega estimada: ", pv.leadTime, " d\xEDas"), pv.diasReparto && pv.diasReparto.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", null, "Reparte: ", DIAS_REPARTO.filter((d2) => pv.diasReparto.includes(d2.valor)).map((d2) => d2.nombre).join(", ")), pv.diasPago && /* @__PURE__ */ import_react4.default.createElement("div", null, "Pago a ", pv.diasPago, " d\xEDas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, nPedidos, " pedido(s) registrados")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 flex gap-2 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(pv) }, "Editar"), pv.pendienteRevision && marcarProveedorRevisado && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => marcarProveedorRevisado(pv.id) }, "Marcar como revisado")));
+  })), editFor && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setEditFor(null), title: "Editar proveedor" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre del proveedor" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.nombre, onChange: (e2) => setEditForm({ ...editForm, nombre: e2.target.value }), autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "NIF / CIF (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.nif, onChange: (e2) => setEditForm({ ...editForm, nif: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Direcci\xF3n (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.direccion, onChange: (e2) => setEditForm({ ...editForm, direccion: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Web (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.web, onChange: (e2) => setEditForm({ ...editForm, web: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Persona de contacto" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.contacto, onChange: (e2) => setEditForm({ ...editForm, contacto: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tel\xE9fono (WhatsApp)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.telefono, onChange: (e2) => setEditForm({ ...editForm, telefono: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Correo electr\xF3nico" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "email", value: editForm.email, onChange: (e2) => setEditForm({ ...editForm, email: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Condiciones de pago (texto libre)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.condiciones, onChange: (e2) => setEditForm({ ...editForm, condiciones: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "D\xEDas de pago (para vencimientos)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: editForm.diasPago, onChange: (e2) => setEditForm({ ...editForm, diasPago: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tiempo de entrega (d\xEDas)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: editForm.leadTime, onChange: (e2) => setEditForm({ ...editForm, leadTime: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "\xBFQu\xE9 d\xEDas reparte? (opcional)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5" }, DIAS_REPARTO.map((d2) => {
     const activo = (editForm.diasReparto || []).includes(d2.valor);
     return /* @__PURE__ */ import_react4.default.createElement(
       "button",
@@ -116335,7 +116402,8 @@ function Albaranes({
   empresasPropias = [],
   puedeAltaProveedorIA = false,
   addProveedorDesdeAlbaran = null,
-  asignarNifProveedor = null
+  asignarNifProveedor = null,
+  completarProveedorConDatos = null
 }) {
   const [modo, setModo] = (0, import_react4.useState)("lista");
   const [alb, setAlb] = (0, import_react4.useState)(null);
@@ -116563,7 +116631,22 @@ function Albaranes({
         setCargandoIA(false);
         return;
       }
-      const detectado = resolverProveedorAlbaran({ proveedores, empresaId, empresasPropias, detectado: { nombre: d2.proveedorNombre, nif: d2.proveedorCif } });
+      const detectado = resolverProveedorAlbaran({
+        proveedores,
+        empresaId,
+        empresasPropias,
+        detectado: {
+          nombre: d2.proveedorNombre,
+          nif: d2.proveedorCif,
+          direccion: d2.proveedorDireccion,
+          telefono: d2.proveedorTelefono,
+          email: d2.proveedorEmail,
+          web: d2.proveedorWeb,
+          condiciones: d2.condicionesPago,
+          diasPago: d2.diasPago,
+          clienteNif: d2.clienteCif
+        }
+      });
       const provElegido = proveedorIA || (detectado.estado === "existente" ? detectado.proveedor.id : "");
       const albIA = construirAlbaranIA(d2, provElegido, pedidoIALigado);
       let deteccion = null;
@@ -116890,7 +116973,8 @@ function Albaranes({
     const el = import_react4.default.createElement;
     const datos2 = det.datos || {};
     const nifTxt = datos2.nif ? ` · ${datos2.nif}` : "";
-    const avisoNif = datos2.nifLeido && datos2.nifEstado !== "valido" ? el("div", { className: "text-[11.5px] mt-1" }, `El NIF/CIF leído (${datos2.nifLeido}) ${datos2.nifEstado === "invalido" ? "no tiene un dígito de control válido" : "no tiene un formato reconocible"}: no se guardará. Compruébalo en la foto.`) : null;
+    const avisoNif = datos2.nifLeido && datos2.nifEstado !== "valido" ? el("div", { className: "text-[11.5px] mt-1" }, datos2.nifEstado === "del_cliente" ? `El NIF/CIF leído (${datos2.nifLeido}) es el del cliente (el destinatario del albarán), no el del proveedor: no se guardará.` : `El NIF/CIF leído (${datos2.nifLeido}) ${datos2.nifEstado === "invalido" ? "no tiene un dígito de control válido" : "no tiene un formato reconocible"}: no se guardará. Compruébalo en la foto.`) : null;
+    const resumenDatos = (campos) => Object.keys(campos).map((k2) => `${ETIQUETAS_CAMPOS_PROVEEDOR_ALB[k2] || k2}: ${campos[k2]}`).join(" · ");
     const ambar = { className: "mb-4", style: { background: C2.amberSoft, border: "none" } };
     const verde = { className: "mb-4", style: { background: C2.accentSoft, border: "none" } };
     if (det.estado === "existente" && det.proveedor && alb.proveedorId === det.proveedor.id) {
@@ -116898,16 +116982,25 @@ function Albaranes({
         Card,
         verde,
         el("div", { className: "text-[12.5px]" }, "✓ Proveedor reconocido: ", el("b", null, det.proveedor.nombre), det.motivo === "nif" ? " (por su NIF/CIF)." : " (por el nombre)."),
-        det.proponerNif && typeof asignarNifProveedor === "function" && el("div", { className: "mt-2" }, el(Btn, {
-          small: true,
-          variant: "ghost",
-          onClick: () => {
-            const r2 = asignarNifProveedor(det.proveedor.id, datos2.nif);
-            setDeteccionProv({ ...det, proponerNif: false, nifGuardado: !!(r2 && r2.ok), errorNif: r2 && r2.ok ? "" : r2 && r2.error ? r2.error : "No se pudo guardar el NIF/CIF." });
-          }
-        }, `Guardar su NIF/CIF (${datos2.nif}) en la ficha`)),
-        det.nifGuardado && el("div", { className: "text-[11.5px] mt-1" }, "NIF/CIF guardado en la ficha del proveedor."),
-        det.errorNif && el("div", { className: "text-[11.5px] mt-1", style: { color: C2.red } }, det.errorNif)
+        (() => {
+          const faltan = typeof completarProveedorConDatos === "function" ? camposQueFaltanEnFichaAlb(proveedorPorId(det.proveedor.id) || det.proveedor, datos2) : {};
+          if (Object.keys(faltan).length === 0) return null;
+          return el(
+            "div",
+            { className: "mt-2" },
+            el("div", { className: "text-[11.5px] mb-1" }, "La ficha de este proveedor no tiene estos datos y la foto los trae: ", resumenDatos(faltan)),
+            el(Btn, {
+              small: true,
+              variant: "ghost",
+              onClick: () => {
+                const r2 = completarProveedorConDatos(det.proveedor.id, datos2);
+                setDeteccionProv({ ...det, completado: r2 && r2.ok ? r2.aplicados || [] : null, errorCompletar: r2 && r2.ok ? "" : r2 && r2.error ? r2.error : "No se pudo completar la ficha." });
+              }
+            }, "Completar su ficha con los datos de la foto")
+          );
+        })(),
+        det.completado && det.completado.length > 0 && el("div", { className: "text-[11.5px] mt-1" }, "Ficha completada: ", det.completado.map((k2) => ETIQUETAS_CAMPOS_PROVEEDOR_ALB[k2] || k2).join(", "), "."),
+        det.errorCompletar && el("div", { className: "text-[11.5px] mt-1", style: { color: C2.red } }, det.errorCompletar)
       );
     }
     if (det.estado === "nuevo") {
@@ -116915,6 +117008,12 @@ function Albaranes({
         Card,
         ambar,
         el("div", { className: "text-[12.5px] font-semibold mb-1" }, "Proveedor nuevo detectado: ", el("b", null, datos2.nombre), nifTxt),
+        (() => {
+          const extra = {};
+          for (const k2 of ["direccion", "telefono", "email", "web", "condiciones"]) if (datos2[k2]) extra[k2] = datos2[k2];
+          if (datos2.diasPago !== "" && datos2.diasPago !== void 0) extra.diasPago = datos2.diasPago;
+          return Object.keys(extra).length ? el("div", { className: "text-[11.5px] mb-1" }, "Se guardará también: ", resumenDatos(extra)) : null;
+        })(),
         el("div", { className: "text-[12px]" }, puedeAltaProveedorIA ? "No lo tienes dado de alta. Se creará solo cuando guardes el borrador o des entrada, y quedará marcado como «pendiente de revisar». Si en realidad es un proveedor que ya tienes con otro nombre, elígelo en la lista «Proveedor» de abajo." : "No lo tienes dado de alta y tu usuario no puede crear proveedores. Elige uno en la lista «Proveedor» de abajo o pide a un encargado que lo dé de alta."),
         avisoNif
       );

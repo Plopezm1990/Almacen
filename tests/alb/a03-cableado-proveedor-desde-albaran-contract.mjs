@@ -23,13 +23,13 @@ for (const archivo of ['fuente.js', 'source-recovery/fuente-recuperado.js']) {
   unico('for (const p22 of proveedores) recientes.delete(p22.id);', 'la limpieza del solapado cuando el estado ya lo tiene');
   unico('const puedeAltaProveedorIA = rolNavegacionMovil === "Propietario" || rolNavegacionMovil === "Encargado";', 'el permiso de alta (Propietario o Encargado)');
   unico('proveedoresRecientes: proveedoresRecientesRef.current });', 'la lógica de proveedores recibe el solapado');
-  unico('const { addProveedor, updateProveedor, deleteProveedor, addProveedorDesdeAlbaran, asignarNifProveedor, marcarProveedorRevisado } = crearLogicaProveedores(', 'la desestructuración de la lógica de proveedores');
+  unico('const { addProveedor, updateProveedor, deleteProveedor, addProveedorDesdeAlbaran, asignarNifProveedor, marcarProveedorRevisado, completarProveedorConDatosAlb } = crearLogicaProveedores(', 'la desestructuración de la lógica de proveedores');
   unico('Proveedores, { proveedores, addProveedor, updateProveedor, deleteProveedor, marcarProveedorRevisado, pedidos: pedidos2 }', 'las propiedades de Proveedores');
 
   const montaje = src.indexOf('tab === "albaranes" && /* @__PURE__ */ import_react4.default.createElement(\n    Albaranes,');
   assert.ok(montaje > 0, `${archivo}: no se encuentra el montaje de Albaranes`);
   const bloque = src.slice(montaje, src.indexOf('tab === "pagos"', montaje));
-  for (const prop of ['empresaId: empresaDelLocalActivo?.id || null', 'empresasPropias: [...empresas, configEmpresa].filter(Boolean)', 'puedeAltaProveedorIA', 'addProveedorDesdeAlbaran', 'asignarNifProveedor', 'proveedorPorId']) {
+  for (const prop of ['empresaId: empresaDelLocalActivo?.id || null', 'empresasPropias: [...empresas, configEmpresa].filter(Boolean)', 'puedeAltaProveedorIA', 'addProveedorDesdeAlbaran', 'asignarNifProveedor', 'completarProveedorConDatos: completarProveedorConDatosAlb', 'proveedorPorId']) {
     assert.ok(bloque.includes(prop), `${archivo}: Albaranes debe recibir ${prop}`);
   }
 
@@ -37,9 +37,12 @@ for (const archivo of ['fuente.js', 'source-recovery/fuente-recuperado.js']) {
   unico('"https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/importar-albaran",\n        {\n          method: "POST",\n          headers: { "Content-Type": "application/json" },\n          body: JSON.stringify({ imagenes: fotosIA.map((f22) => ({ base64: f22.base64, mediaType: f22.mediaType })) })', 'la llamada a importar-albaran (dirección y cuerpo)');
 
   // el solapado lo borra deleteProveedor y lo rellena el alta; el resolver recibe las empresas propias
+  for (const campoIA of ['proveedorNombre', 'proveedorCif', 'proveedorDireccion', 'proveedorTelefono', 'proveedorEmail', 'proveedorWeb', 'condicionesPago', 'diasPago', 'clienteCif']) {
+    assert.ok(src.includes('d2.' + campoIA), `${archivo}: la lectura de la foto debe consumir el campo ${campoIA} de la función de IA`);
+  }
   unico('proveedoresRecientes.delete(id);', 'deleteProveedor limpia el solapado');
   unico('proveedoresRecientes.set(res.proveedor.id, res.proveedor);', 'el alta rellena el solapado');
-  unico('const detectado = resolverProveedorAlbaran({ proveedores, empresaId, empresasPropias, detectado: { nombre: d2.proveedorNombre, nif: d2.proveedorCif } });', 'la detección usa nombre y NIF leídos y las empresas propias');
+  unico('const detectado = resolverProveedorAlbaran({\n        proveedores,\n        empresaId,\n        empresasPropias,\n        detectado: {\n          nombre: d2.proveedorNombre,\n          nif: d2.proveedorCif,', 'la detección usa los datos leídos y las empresas propias');
 }
 
 // los dos archivos llevan el mismo motor, carácter por carácter

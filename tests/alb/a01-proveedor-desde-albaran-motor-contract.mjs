@@ -251,6 +251,77 @@ function entorno({ proveedores = [], empresaId = EMP, recientes = new Map() } = 
   console.log('A01_ALB_NIF_UNICO_POR_EMPRESA=PASS');
 }
 
+// ---- datos de contacto leídos de la foto (ALB-PROV-2) ----
+{
+  const limpiar = ctx.limpiarDatosContactoProveedorAlb;
+  // el albarán de Arboliva tal como lo leería la IA
+  let c = limpiar({ direccion: 'Polígono Pinares Llanos, C/ Electricistas, 7, 28670 Villaviciosa de Odón (Madrid)', telefono: ' 91 616 57 45 ', email: 'ARBOLIVA@arboliva.com', web: 'WWW.arboliva.es', condiciones: '60 DIAS', diasPago: null });
+  assert.equal(c.direccion, 'Polígono Pinares Llanos, C/ Electricistas, 7, 28670 Villaviciosa de Odón (Madrid)');
+  assert.equal(c.telefono, '91 616 57 45');
+  assert.equal(c.email, 'arboliva@arboliva.com');
+  assert.equal(c.web, 'www.arboliva.es');
+  assert.equal(c.condiciones, '60 días', 'una condición impresa en mayúsculas pasa a frase y recupera la tilde de días');
+  assert.equal(c.diasPago, 60, 'los días de pago se deducen de «60 DIAS» si la IA no los dio aparte');
+  // basura: se descarta en vez de guardarla
+  c = limpiar({ direccion: 'x', telefono: '12', email: 'no es un correo', web: 'sin punto', condiciones: '', diasPago: 0 });
+  assert.equal(Object.values(c).map(String).join('|'), '|||||', 'datos dudosos no se guardan');
+  c = limpiar({ web: 'https://Foo.com/tienda ', telefono: 'Tel. +34 600 000 000', condiciones: 'Transferencia 30 DIAS F/F', diasPago: '45' });
+  assert.equal(c.web, 'foo.com/tienda'); assert.equal(c.telefono, '+34 600 000 000'); assert.equal(c.condiciones, 'Transferencia 30 días F/F'); assert.equal(c.diasPago, 45, 'si la IA da los días, mandan');
+  c = limpiar({ diasPago: 400, condiciones: 'Contado' });
+  assert.equal(c.diasPago, '');
+  assert.equal(limpiar(undefined).email, ''); assert.equal(limpiar(null).diasPago, '');
+  // idempotente: pasar dos veces no cambia nada
+  const una = limpiar({ condiciones: '60 DIAS', email: 'A@B.COM', web: 'WWW.X.ES' });
+  assert.equal(JSON.stringify(limpiar(una)), JSON.stringify(una));
+
+  // qué le falta a una ficha: solo lo vacío, nunca se pisa lo escrito
+  const datos = { nif: 'A78540960', direccion: 'C/ Electricistas 7, Madrid', telefono: '91 616 57 45', email: 'arboliva@arboliva.com', web: 'www.arboliva.es', condiciones: '60 días', diasPago: 60 };
+  assert.equal(Object.keys(ctx.camposQueFaltanEnFichaAlb(prov('f1', 'Arboliva SA'), datos)).sort().join(','), 'condiciones,diasPago,direccion,email,nif,telefono,web');
+  assert.equal(Object.keys(ctx.camposQueFaltanEnFichaAlb(prov('f2', 'Arboliva SA', { telefono: '600', diasPago: 30, cif: NIF_VALIDO }), datos)).sort().join(','), 'condiciones,direccion,email,web', 'el teléfono, los días de pago y el NIF (aunque esté en el campo antiguo cif) no se pisan');
+  assert.equal(Object.keys(ctx.camposQueFaltanEnFichaAlb(prov('f3', 'Arboliva SA'), { nif: '', direccion: '', diasPago: '' })).length, 0);
+
+  // el resolver arrastra los datos leídos y descarta el NIF del cliente
+  const r = ctx.resolverProveedorAlbaran({ proveedores: [], empresaId: EMP, detectado: { nombre: 'ARBOLIVA SA', nif: 'A-78540960', email: 'ARBOLIVA@arboliva.com', condiciones: '60 DIAS', clienteNif: 'B87342077' } });
+  assert.equal(r.estado, 'nuevo'); assert.equal(r.datos.nif, 'A78540960'); assert.equal(r.datos.email, 'arboliva@arboliva.com'); assert.equal(r.datos.diasPago, 60);
+  const rc = ctx.resolverProveedorAlbaran({ proveedores: [], empresaId: EMP, detectado: { nombre: 'ARBOLIVA SA', nif: 'B87342077', clienteNif: 'b-87342077' } });
+  assert.equal(rc.estado, 'nuevo'); assert.equal(rc.datos.nif, '', 'el NIF del cliente no es el del proveedor'); assert.equal(rc.datos.nifEstado, 'del_cliente'); assert.equal(rc.datos.nifLeido, 'B87342077');
+
+  // alta con datos: el proveedor nuevo nace con toda su ficha
+  const e = entorno();
+  const alta = e.logica().addProveedorDesdeAlbaran({ nombre: 'Arboliva SA', nif: 'A78540960', ...limpiar({ direccion: 'C/ Electricistas 7, Madrid', telefono: '91 616 57 45', email: 'arboliva@arboliva.com', web: 'www.arboliva.es', condiciones: '60 DIAS' }) });
+  assert.equal(alta.ok, true);
+  assert.equal(alta.proveedor.nif, 'A78540960'); assert.equal(alta.proveedor.direccion, 'C/ Electricistas 7, Madrid'); assert.equal(alta.proveedor.telefono, '91 616 57 45');
+  assert.equal(alta.proveedor.email, 'arboliva@arboliva.com'); assert.equal(alta.proveedor.web, 'www.arboliva.es'); assert.equal(alta.proveedor.condiciones, '60 días'); assert.equal(alta.proveedor.diasPago, 60);
+  // un correo basura no impide el alta
+  const e2 = entorno();
+  const alta2 = e2.logica().addProveedorDesdeAlbaran({ nombre: 'Con correo basura', email: 'esto no es un correo', telefono: '1' });
+  assert.equal(alta2.ok, true); assert.equal(alta2.proveedor.email, ''); assert.equal(alta2.proveedor.telefono, '');
+
+  // completar la ficha de un proveedor que ya existe (el caso de Arboliva, dado de alta solo con el nombre)
+  const ec = entorno({ proveedores: [prov('a1', 'Arboliva SA', { pendienteRevision: true, creadoPorIA: true }), prov('a2', 'Otro', { nif: NIF_VALIDO, telefono: '600' })] });
+  let rr = ec.logica().completarProveedorConDatosAlb('a1', { nif: 'A78540960', direccion: 'C/ Electricistas 7, Madrid', telefono: '91 616 57 45', email: 'arboliva@arboliva.com', web: 'www.arboliva.es', condiciones: '60 DIAS' });
+  assert.equal(rr.ok, true); assert.equal([...rr.aplicados].sort().join(','), 'condiciones,diasPago,direccion,email,nif,telefono,web');
+  const f = ec.estado.proveedores.find((x) => x.id === 'a1');
+  assert.equal(f.nif, 'A78540960'); assert.equal(f.diasPago, 60); assert.equal(f.condiciones, '60 días'); assert.equal(f.pendienteRevision, true, 'completar datos no la da por revisada: eso lo decide la persona');
+  assert.equal(ec.registro.at(-1)[0], 'Completar ficha de proveedor con los datos de la foto del albarán');
+  // segunda vez: no hay nada que completar y no se pisa nada
+  rr = ec.logica().completarProveedorConDatosAlb('a1', { telefono: '999 999 999', email: 'otro@x.es' });
+  assert.equal(rr.ok, true); assert.equal(rr.aplicados.length, 0); assert.equal(ec.estado.proveedores.find((x) => x.id === 'a1').telefono, '91 616 57 45');
+  // el NIF que ya es de otro proveedor no se aplica, lo demás sí
+  const ed = entorno({ proveedores: [prov('b1', 'Sin datos'), prov('b2', 'Otro', { nif: NIF_VALIDO })] });
+  rr = ed.logica().completarProveedorConDatosAlb('b1', { nif: NIF_VALIDO, telefono: '91 616 57 45' });
+  assert.equal(rr.ok, true); assert.equal(JSON.stringify(rr.aplicados), '["telefono"]'); assert.equal(ed.estado.proveedores.find((x) => x.id === 'b1').nif, undefined);
+  // proveedor de otra empresa o inexistente
+  assert.equal(entorno({ proveedores: [prov('z', 'Z', { empresaId: 'OTRA' })] }).logica().completarProveedorConDatosAlb('z', { telefono: '91 616 57 45' }).ok, false);
+  assert.equal(entorno().logica().completarProveedorConDatosAlb('nada', {}).ok, false);
+
+  // validarProveedorPM10 recorta dirección y web
+  const v = ctx.validarProveedorPM10({ nombre: 'Con extras', direccion: '  C/ Mayor 1  ', web: ' www.x.es ' });
+  assert.equal(v.ok, true); assert.equal(v.datos.direccion, 'C/ Mayor 1'); assert.equal(v.datos.web, 'www.x.es');
+  assert.equal('direccion' in ctx.validarProveedorPM10({ nombre: 'Sin extras' }).datos, false, 'sin esos campos todo queda como antes');
+  console.log('A01_ALB_DATOS_DE_CONTACTO_DE_LA_FOTO=PASS');
+}
+
 // ---- asignar NIF y marcar revisado ----
 {
   const e = entorno({ proveedores: [prov('a', 'Sin NIF'), prov('b', 'Con NIF', { nif: NIF_VALIDO }), prov('c', 'Pendiente', { pendienteRevision: true, creadoPorIA: true }), prov('d', 'Otra empresa', { empresaId: 'OTRA' })] });
