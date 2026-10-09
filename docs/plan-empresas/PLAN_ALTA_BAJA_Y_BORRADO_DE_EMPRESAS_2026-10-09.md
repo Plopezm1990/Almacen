@@ -9,8 +9,8 @@ Estado: **SOLO PLAN. No se ha cambiado nada** (ni en producción, ni en QA, ni e
 | 0 · Decisiones | **Hechas**: empezar por QA; los datos actuales de producción son pruebas y no hace falta conservarlos; plazo de gracia de 30 días; el dueño de cada empresa recibirá una contraseña inicial que le da Pedro |
 | 1 · Administrador de plataforma, alta, baja y reactivación | **Hecha y probada de punta a punta en QA** (`FASE1_RESULTADO_QA_2026-10-09.md`) |
 | 2 · Borrado definitivo | **Hecha y probada en QA**, con datos reales y un borrado real de la empresa de prueba (`FASE2_RESULTADO_QA_2026-10-09.md`) |
-| 3 · Pantalla «Plataforma» y contraseña inicial del dueño | **Hecha; probada en local (jsdom, Chromium real, 52 variantes rotas) y con la pantalla por Cowork (18 pasos).** Un fallo encontrado (aviso falso de «no guardado») y corregido; **pendiente repetir con Cowork lo que cambió** y la prueba de Pedro (`FASE3_RESULTADO_QA_2026-10-09.md`, `PRUEBA_COWORK_FASE3_QA_REPETICION.md`) |
-| 4 · Aislamiento de datos por empresa (P3/P3b) | Pendiente; condición previa de la primera empresa cliente real |
+| 3 · Pantalla «Plataforma» y contraseña inicial del dueño | **Hecha; probada en local (jsdom, Chromium real, 52 variantes rotas) y con la pantalla por Cowork (18 pasos).** Un fallo propio corregido (recarga entre pantallas) y un hueco de aislamiento descubierto (copia local heredada entre cuentas → Fase 4); **pendiente la decisión de Pedro** sobre cuándo cerrarlo y repetir la prueba (`FASE3_RESULTADO_QA_2026-10-09.md`, `PRUEBA_COWORK_FASE3_QA_REPETICION.md`) |
+| 4 · Aislamiento de datos por empresa (P3/P3b) | Pendiente; condición previa de la primera empresa cliente real. **Primer paso encontrado en la prueba de la fase 3:** la copia local del navegador se hereda entre cuentas de distintas empresas (productos de la empresa A llegan a la vista de la B en el mismo navegador); hay que separar la copia local por cuenta |
 | 5 · Publicar en producción | Pendiente; autorización escrita de Pedro |
 | 6 · Producción a cero y primera empresa cliente | Pendiente; autorización escrita de Pedro |
 | 7 · Ensayo en producción con una empresa de prueba | Pendiente |

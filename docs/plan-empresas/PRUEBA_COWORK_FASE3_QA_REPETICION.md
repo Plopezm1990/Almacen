@@ -2,6 +2,7 @@
 
 Solo QA (`qjqorixtkilwsndqayyx`, vista previa `deploy-preview-118--chic-entremet-9107cf.netlify.app`). Cuentas ficticias `@qa.invalid`. **No tocar producción.**
 Motivo: la primera prueba (ver `FASE3_RESULTADO_QA_2026-10-09.md`) encontró un aviso falso «Un cambio no se ha podido guardar (locales)» tras elegir la contraseña inicial y al abrir «mi aplicación» desde el panel. Claude lo corrigió (ahora la página se recarga en esos cambios) y hay que comprobarlo con la pantalla.
+**Resultado de esta repetición (parcial, ver `FASE3_RESULTADO_QA_2026-10-09.md`):** Cowork se paró en el paso 3: el aviso rojo seguía saliendo y aparecieron dos «Local recuperado». La causa es que la copia local del navegador se hereda entre cuentas (hueco de la Fase 4). Para repetir este guion y evitar esa interferencia hay que **empezar cada cuenta con los datos del sitio borrados** (o con un navegador distinto), o esperar a que el primer paso de la Fase 4 esté hecho.
 Estado de QA: `owner.a@qa.invalid` es administradora y dueña de `QA-EMP-A`; el plazo de gracia de borrado está en **30 días**.
 
 ## Texto para pegar en Cowork
