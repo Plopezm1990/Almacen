@@ -43,8 +43,11 @@ La herramienta de la base de datos canceló las llamadas grandes y la que llevab
 - `tests/cfg/f7-preflight-static-contract.mjs`: la foto previa de F7 se acota a sus 46 migraciones (`PRIMERA`…`ULTIMA = 20261003130000`); las posteriores tienen su propio paquete.
 - CI: manifiesto 245 archivos / 228 contratos activos / 20 Postgres; `tests/ci/preparar_postgres_local.sh`, validador y flujo `puerta-ci-release.yml` actualizados.
 
-## Cifras
-Ver el apartado final de este documento (se rellena al cerrar la batería).
+## Cifras (9/10/2026, en local con Postgres 16, sobre el commit `a982c7b`)
+- Batería Node: **204 de 204** contratos activos en verde, 0 fallos de infraestructura, árbol limpio tras la ejecución.
+- Batería Postgres 16 (mismo arnés que la integración, con el cliente `pg` de los contratos F5 preparado como hace el flujo): **20 de 20** activos en verde (19 anteriores + el nuevo `tests/plataforma/db/p01-plataforma-empresas-contract.mjs`) y **1** histórico esperado en rojo, como antes.
+- Validador del manifiesto: 245 archivos, 228 contratos activos (204 Node + 20 Postgres + 1 PGlite + 3 pila completa).
+- Pruebas de ejecución de interfaz (9 de ellas) necesitan la carpeta de dependencias de interfaz (`CFG6_UI_DEPS`); sin ella salen con código 2 en un entorno limpio, igual que antes de este cambio.
 
 ## Lo que falta de la Fase 1
 1. **Registrar la cuenta de Pedro como administradora** (en QA para probar; en producción con autorización escrita): `select private.plataforma_registrar_admin('<id de la cuenta>')`. Aún no hecho.
