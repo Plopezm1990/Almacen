@@ -437,8 +437,18 @@ async function parte2() {
     if (raiz) { await act(async () => { raiz.unmount(); }); }
     raiz = createRoot(nuevoContenedor());
     const listar = async () => ({ ok: true, estaciones: [], rutas: [] });
-    listar.iniciarCierreSesionCajaA10 = async () => ({ ok: true });
-    listar.confirmarCierreProvisionalA10 = async ({ efectivoContado }) => ({ ok: true, counted_amount: efectivoContado, expected_amount: efectivoContado, difference: 0, blockers: [] });
+    let estadoCierreSimulado = 'ABIERTA';
+    listar.iniciarCierreSesionCajaA10 = async () => { estadoCierreSimulado = 'EN_CIERRE'; return { ok: true }; };
+    listar.confirmarCierreProvisionalA10 = async ({ efectivoContado }) => { estadoCierreSimulado = 'CIERRE_PROVISIONAL'; return { ok: true, counted_amount: efectivoContado, expected_amount: efectivoContado, difference: 0, blockers: [] }; };
+    listar.consultarCierreCajaA10 = async () => ({
+      ok: true,
+      sessionEstado: estadoCierreSimulado,
+      arqueoPrevio: estadoCierreSimulado === 'EN_CIERRE' ? { expected_amount: 10, fondo_inicial: 10, entradas_efectivo: 0, salidas_efectivo: 0 } : null,
+      counted_amount: 10,
+      expected_amount: 10,
+      difference: 0,
+      bloqueos: []
+    });
     listar.finalizarCierreSesionCajaA10 = async () => ({ ok: true });
     listar.reabrirCierreProvisionalA10 = async ({ motivo }) => { reabrirLlamadas.push(motivo); return { ok: true }; };
     listar.abrirSesionCajaA10 = async () => ({ ok: true });

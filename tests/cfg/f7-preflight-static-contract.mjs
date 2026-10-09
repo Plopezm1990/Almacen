@@ -9,9 +9,10 @@
 // F7_PREFLIGHT_SQL y F7_DOC (opcionales) permiten probar otras versiones (mutantes).
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const REPO = resolve(new URL('../../', import.meta.url).pathname);
+const REPO = fileURLToPath(new URL('../../', import.meta.url));
 const sqlRuta = process.env.F7_PREFLIGHT_SQL || join(REPO, 'docs/plan-abc/F7_PROMOCION_PRODUCCION_PREFLIGHT_SOLO_LECTURA_2026-10-03.sql');
 const docRuta = process.env.F7_DOC || join(REPO, 'docs/plan-abc/F7_PROMOCION_PRODUCCION_PREPARACION_2026-10-03.md');
 const sql = readFileSync(sqlRuta, 'utf8');
