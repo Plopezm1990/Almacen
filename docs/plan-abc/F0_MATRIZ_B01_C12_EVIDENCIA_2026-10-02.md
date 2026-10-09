@@ -62,7 +62,7 @@ conocido; no cambia la etiqueta. Etiquetas de evidencia:
 | C07 | SIF y modalidad fiscal | `BLOQUEADO` | `[MIGR]` puerta que rechaza sin asesoría | Asesoría, emisor y régimen |
 | C08 | Conservar y corregir lo emitido | `INCOMPLETO` | `[MIGR]` `[QA]` conservación, replay, rectificación, cancelación, reembolso e inmutabilidad; `[CI]` | Política legal, descarga y pantalla |
 | C09 | Imprimir sin duplicar | `INCOMPLETO` | `[MIGR]` `[QA]` original, replay, copias, numeración, inmutabilidad y permisos; `[CI]` | Impresora real y pantalla |
-| C10 | Entrega y copias | `INCOMPLETO` | `[MIGR]`; `[CI]` | Descarga cruzada, caducidad y envío no probados |
+| C10 | Entrega y copias | `INCOMPLETO` | `[MIGR]` `[QA]` email, replay, papel, descarga registrada, inmutabilidad y permisos; `[CI]` | Sin ciclo confirmado/fallido, acceso, caducidad, envío ni pantalla |
 | C11 | Conciliación explicable | `INCOMPLETO` ⚠ | `[MIGR]`; `[QA]` el cierre no pudo explicar −11 | Dos circuitos mezclados; sin pantalla ni exportación |
 | C12 | Ensayo del cierre | `INCOMPLETO` | `[QA]` apertura→cierre; marcó la diferencia | Noche, restauración, concurrencia; sin pantalla |
 
@@ -331,9 +331,13 @@ Con A: **36 requisitos, 0 verificados, 29 incompletos, 2 pendientes, 5 bloqueado
 ### C10 — Entrega y copias
 - **Aceptación:** solo accede quien corresponde; una entrega fallida se recupera;
   las copias mantienen el mismo contenido.
-- **Evidencia:** `[MIGR]` C10. `[CI]` contratos. Sin ensayo ni pantalla.
-- **Falta:** descarga cruzada, enlace caducado, reimpresión y envío de prueba
-  autorizado; política de datos personales mínimos.
+- **Evidencia:** `[MIGR]` C10. `[QA]` original por email, replay, papel ligado
+  a una impresión C09, rechazo de papel sin impresión, descarga registrada,
+  inmutabilidad, un solo documento y permisos; `ROLLBACK` y cero residuos.
+  `[CI]` contratos. Evidencia: `F7_C10_QA_RESULTADO_2026-10-09.md`.
+- **Falta:** implementar `CONFIRMADA/FALLIDA` y el reintento; autorización de
+  destinatario, descarga cruzada, enlace caducado, envío real, política de
+  datos personales mínimos, pantalla y aceptación.
 
 ### C11 — Conciliación explicable
 - **Aceptación:** cada total lleva a sus movimientos y cada diferencia tiene causa
