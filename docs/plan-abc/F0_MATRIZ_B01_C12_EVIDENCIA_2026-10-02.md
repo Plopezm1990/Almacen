@@ -61,7 +61,7 @@ conocido; no cambia la etiqueta. Etiquetas de evidencia:
 | C06 | Tipos de documento | `INCOMPLETO` | `[MIGR]` `[QA]` completa, simplificada, rectificativa, pedido, replay y permisos; `[CI]` | Reglas con asesoría y pantalla |
 | C07 | SIF y modalidad fiscal | `BLOQUEADO` | `[MIGR]` puerta que rechaza sin asesoría | Asesoría, emisor y régimen |
 | C08 | Conservar y corregir lo emitido | `INCOMPLETO` | `[MIGR]` `[QA]` conservación, replay, rectificación, cancelación, reembolso e inmutabilidad; `[CI]` | Política legal, descarga y pantalla |
-| C09 | Imprimir sin duplicar | `INCOMPLETO` | `[MIGR]`; `[CI]` | Impresora real; sin pantalla |
+| C09 | Imprimir sin duplicar | `INCOMPLETO` | `[MIGR]` `[QA]` original, replay, copias, numeración, inmutabilidad y permisos; `[CI]` | Impresora real y pantalla |
 | C10 | Entrega y copias | `INCOMPLETO` | `[MIGR]`; `[CI]` | Descarga cruzada, caducidad y envío no probados |
 | C11 | Conciliación explicable | `INCOMPLETO` ⚠ | `[MIGR]`; `[QA]` el cierre no pudo explicar −11 | Dos circuitos mezclados; sin pantalla ni exportación |
 | C12 | Ensayo del cierre | `INCOMPLETO` | `[QA]` apertura→cierre; marcó la diferencia | Noche, restauración, concurrencia; sin pantalla |
@@ -321,9 +321,12 @@ Con A: **36 requisitos, 0 verificados, 29 incompletos, 2 pendientes, 5 bloqueado
 ### C09 — Imprimir sin duplicar la venta
 - **Aceptación:** repetir la impresión da una copia del documento correcto y
   ninguna venta, pago o consumo adicional.
-- **Evidencia:** `[MIGR]` C09. `[CI]` contratos. Sin ensayo ni pantalla.
-- **Falta:** impresora real apagada tras un cobro confirmado (T17) y
-  recuperación de la copia; matriz de equipos V.
+- **Evidencia:** `[MIGR]` C09. `[QA]` original nº1, replay, segundo original
+  rechazado, copias PDF/digital nº2 y nº3, motivo obligatorio, inmutabilidad,
+  un solo documento C05 y permisos; `ROLLBACK` y cero residuos. `[CI]`
+  contratos. Evidencia detallada: `F7_C09_QA_RESULTADO_2026-10-09.md`.
+- **Falta:** impresora real apagada tras un cobro confirmado (T17),
+  recuperación de la copia, matriz de equipos V, pantalla y aceptación.
 
 ### C10 — Entrega y copias
 - **Aceptación:** solo accede quien corresponde; una entrega fallida se recupera;
