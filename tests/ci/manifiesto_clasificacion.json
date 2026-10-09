@@ -1,15 +1,15 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 247,
+  "total_inventory": 251,
   "expected_counts": {
-    "active_contract": 230,
+    "active_contract": 234,
     "historical_expected_fail": 1,
     "utility": 11,
     "diagnostic": 5
   },
   "expected_environment_counts": {
     "node": {
-      "active_contract": 205,
+      "active_contract": 209,
       "historical_expected_fail": 0,
       "utility": 10,
       "diagnostic": 5
@@ -1267,6 +1267,26 @@
     },
     {
       "path": "tests/plataforma/p02-crear-propietario-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/plataforma/p04-panel-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/plataforma/p05-panel-ui-runtime.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/plataforma/p06-arranque-plataforma-runtime.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/plataforma/p07-empresas-sin-alta-runtime.mjs",
       "classification": "active_contract",
       "environment": "node"
     }

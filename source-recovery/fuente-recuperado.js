@@ -15141,7 +15141,7 @@ function GestorEmpresas({ empresas, setEmpresas, locales = [], esPropietario = t
       "div",
       { className: "flex items-center justify-between mb-3" },
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold text-[14px]" }, "Empresas"),
-      /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setMostrarNueva(true) }, "+ A\xF1adir empresa")
+      typeof window !== "undefined" && window.__laPlataformaActiva === true ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "Las empresas las da de alta el administrador de la plataforma.") : /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setMostrarNueva(true) }, "+ A\xF1adir empresa")
     ),
     /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, activasPM29.map((e2) => /* @__PURE__ */ import_react4.default.createElement(
       "div",
