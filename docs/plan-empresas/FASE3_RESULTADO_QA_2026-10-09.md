@@ -1,6 +1,6 @@
 # Fase 3 — panel «Plataforma» y contraseña inicial del dueño: resultado en QA
 Fecha: 9/10/2026
-Estado: **CONSTRUIDA, PROBADA EN LOCAL Y PROBADA CON LA PANTALLA POR COWORK (18 pasos). La repetición encontró una causa más profunda del aviso «no se ha podido guardar»: la copia local del navegador se hereda entre cuentas (ver «Segunda prueba»). Es un hueco de aislamiento entre empresas que se resuelve en la Fase 4; pendiente decisión de Pedro.** **Producción no se ha tocado.**
+Estado: **CONSTRUIDA, PROBADA EN LOCAL Y PROBADA CON LA PANTALLA POR COWORK (18 pasos). La repetición descubrió que la copia local del navegador se hereda entre cuentas de distintas empresas; ya está arreglado en QA (ver «Arreglo de la copia local por cuenta»); pendiente repetir la prueba con Cowork.** **Producción no se ha tocado.**
 
 Autorización de Pedro (9/10/2026): «Sí, empezar la Fase 3», solo en la vista previa de QA.
 
@@ -59,7 +59,7 @@ Cowork repitió con la pantalla los pasos 1–3 y se paró en la primera diferen
 **Causa comprobada** (código y base de datos de QA, solo lectura):
 1. En la base de datos la empresa `QA F3 Cliente 3` tiene **un solo local** (`Local F3`). Los dos «Local recuperado» solo existen en el navegador.
 2. El programa los crea al arrancar (`fuente.js`, «Local recuperado», `recuperadoDeProductos`): por cada `localId` que aparece en los productos y no está entre los locales de la empresa, inventa un local.
-3. Los productos salen de la **copia local del navegador** (`almacen:productos`), que dejó la sesión de la administradora cuando abrió su aplicación (`QA-EMP-A`: 30 productos con los locales `QA-A1` y `QA-A2`; exactamente los dos «Local recuperado»).
+3. Los productos salen de la **copia local del navegador** (`almacen:productos`): en la vista previa de QA, `reset-pruebas-preview.js` siembra en cada navegador, una vez, productos de demostración de `QA-EMP-A` con los locales `QA-A1` y `QA-A2` (exactamente los dos «Local recuperado»), y además la sesión de la administradora deja ahí su propia copia al abrir su aplicación (la nube tiene 30 productos de `QA-EMP-A` con esos mismos locales). Cualquier otra cuenta que entra después en ese navegador los hereda.
 4. La nube no se los habría dado a la dueña nueva: la regla de acceso de `almacen_kv` solo deja leer filas de las empresas de las que eres miembro. Pero cuando la nube no devuelve nada, el programa **cae a la copia local** (`index-storage-bootstrap.js`, `storage.get`), y esa copia **no está separada por cuenta** para la mayoría de las colecciones (solo lo está un subconjunto: proveedores, clientes, albaranes…). Tampoco se borra al cerrar sesión.
 5. Con esos locales inventados, el programa intenta guardar la lista de locales y el servidor la rechaza (no pertenecen a su empresa): de ahí el aviso «(locales)».
 6. La barrera actual contra herencia (`edge-auth-patch.js`) protege a un **empleado** frente a lo que dejó un **Propietario** en el mismo navegador, pero no a un Propietario frente a otro Propietario de otra empresa. Con una sola empresa nunca hizo falta.
@@ -68,7 +68,23 @@ Cowork repitió con la pantalla los pasos 1–3 y se paró en la primera diferen
 
 **Qué no es:** no es un fallo del panel ni de la pantalla de contraseña; la corrección de la recarga sigue siendo útil contra la causa (1).
 
-**Arreglo propuesto (Fase 4, primer paso):** que cada cuenta tenga su propia copia local de todas las colecciones (ampliar el mecanismo que ya existe para proveedores, clientes, etc. a todas), de modo que otra cuenta en el mismo navegador no vea ni herede nada, sin borrar lo de la cuenta anterior. Hay que añadir pruebas de que la cuenta B no ve nada de la cuenta A en el mismo navegador.
+## Arreglo de la copia local por cuenta (primer paso de la Fase 4, hecho en QA)
+Pedro autorizó arreglarlo ya, solo en QA («Arreglarlo ahora en QA»).
+
+**Qué hace.** Al validar una sesión, la copia local viva (`almacen:*`, `almacen__*` y el contexto operativo seguro) pasa a ser **solo de esa cuenta**. Si era de otra, se **aparta entera** (no se borra) bajo `la_suite_copia_cuenta_v1:<cuenta>:<clave>` y la cuenta que entra empieza limpia (o recupera la suya, byte a byte, si ya había entrado antes). Si algo cambia, la página se recarga (el mismo mecanismo que ya usaba el cambio de generación) y la sincronización no se abre en esa pasada. La cola de subidas pendientes viaja con su cuenta: nunca se sube nada ajeno.
+
+**Dónde.** `owner-bootstrap-prelock.js` (función `__laOwnerBootstrapSepararCopiaLocal`) y la llamada desde `prepararSesionPostReset` en `edge-auth-patch.js`. Se hizo en el candado previo porque la barrera temprana de producción **devuelve «nada» al leer** claves del programa y **descarta lo que se escribe** hasta validar la sesión: con las funciones normales, mover claves habría perdido datos. El candado conserva las funciones originales del navegador.
+
+**Detalles que importan.**
+- Copias anteriores a la mejora (sin marca de dueño): se reconocen por la cuenta que sembró el contexto la última vez (`almacen__ui_context_seed`); si tampoco hay, se apartan como «sin dueño» y no se devuelven a nadie (nunca se borran).
+- Interrupciones: el apartado y la devolución se pueden cortar en cualquier punto y la siguiente pasada los termina sin perder nada; lo que ya está vivo manda.
+- Falta de espacio del navegador: se descarta la copia apartada **más antigua de otra cuenta** (es una caché de lo que está en la nube); nunca la viva ni lo ya apartado de las cuentas implicadas. Si ni así cabe, falla cerrado (no abre la sincronización y no pierde nada).
+- Un cambio de generación (reinstalación) descarta también las copias apartadas y todas las marcas `almacen__*`.
+- La vista previa de QA ya no hace heredar a otra empresa sus productos de demostración.
+
+**Pruebas.** `p08-copia-local-por-cuenta-runtime` (jsdom con los archivos reales y la barrera temprana real, 28 comprobaciones): cruce de cuentas, intacta al volver, cola de subidas, copias sin marca, demostración de QA, interrupciones, cambio de generación, espacio, entradas no válidas y que solo usa las primitivas originales. **18 variantes rotas, las 18 detectadas** (dos sobrevivieron a la primera versión de las pruebas y se cerraron con casos nuevos). Comprobado además en **Chromium real** con la barrera temprana de producción: B entra sin heredar nada, A vuelve con sus 4 claves.
+
+**Límites.** La separación es de este navegador: no hay nada que hacer en la nube. Si una cuenta entra en el navegador de otra persona y esa persona vuelve a entrar, su copia se le devuelve (por eso se aparta y no se borra). Las copias apartadas pueden ocupar espacio del navegador; con poco espacio se descartan las más antiguas.
 
 ## Límites conocidos
 - **Que el dueño cambie la contraseña inicial es una exigencia de pantalla, no del servidor.** Una persona con conocimientos técnicos podría saltarse la pantalla llamando a la API a mano; solo se perjudicaría a sí misma (Pedro seguiría conociendo su contraseña). Si se quiere blindar, hay que añadir una comprobación en el servidor (decisión para más adelante).
