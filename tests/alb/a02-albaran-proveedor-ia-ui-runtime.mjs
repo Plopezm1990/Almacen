@@ -179,7 +179,7 @@ await escenario('S2', async () => {
   await leerFoto();
   ok('S2 avisa de proveedor nuevo', texto().includes('Proveedor nuevo detectado') && texto().includes('Quesos la Abuela S.L.') && texto().includes(NIF_A), texto().slice(-700));
   ok('S2 todavía NO se ha creado nada', proveedoresVista().length === 0, JSON.stringify(proveedoresVista()));
-  ok('S2 el selector explica que se dará de alta', !!selectConOpcion('Proveedor nuevo: Quesos la Abuela S.L.'), '');
+  ok('S2 el selector dice en corto que es nuevo (el texto largo se cortaba en el móvil)', !!selectConOpcion('Nuevo: Quesos la Abuela S.L.') && !selectConOpcion('se dará de alta'), '');
   await clic(boton('Guardar como borrador'), 'Guardar como borrador');
   const prov = proveedoresVista()[0];
   ok('S2 se crea un proveedor', proveedoresVista().length === 1, JSON.stringify(proveedoresVista()));
