@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prepara un Postgres 16 local desechable y ejecuta los 21 contratos activos
+# Prepara un Postgres 16 local desechable y ejecuta los 22 contratos activos
 # de tests/{pm12,pm14,pm33}/db/*.mjs y tests/f3/a09 que necesitan Postgres real pero NO
 # Auth/PostgREST (esos 3 van en el workflow de CI, porque necesitan Docker,
 # no disponible en este entorno de trabajo), más
@@ -100,7 +100,7 @@ echo "# POSTGRES=$(psql -h 127.0.0.1 -U postgres -tAc 'select version();') FECHA
 printf 'ruta\tclasificacion\tcodigo_salida\tduracion_ms\tultima_marca\tresultado_final\n' >> "$OUT"
 
 # Lista de ejecución: todo lo que el manifiesto marca environment=postgres
-# (21 activos + 1 histórico), en el orden del propio manifiesto.
+# (22 activos + 1 histórico), en el orden del propio manifiesto.
 mapfile -t archivos < <(node -e "
 const fs = require('fs');
 const m = JSON.parse(fs.readFileSync('$MANIFEST', 'utf8'));
