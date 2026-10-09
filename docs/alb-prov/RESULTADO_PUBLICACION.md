@@ -35,7 +35,7 @@ Volver a publicar el despliegue anterior `6ac22344948ac900082766ab` (producción
 
 # ALB-PROV-2 — publicación de la aplicación (9/10/2026)
 
-Estado: **PUBLICADO EN PRODUCCIÓN** (la aplicación). La función de IA v17 **no** está desplegada todavía.
+Estado: **PUBLICADO EN PRODUCCIÓN** (la aplicación y, desde el apartado «Función de IA v17» de más abajo, también la función de IA).
 
 ## Autorización
 Pedro: «Vale, primero arregla el texto cortado y después ya publica, autorizo» y, después, «publica ya». La cabeza definitiva del PR 128 no existía cuando lo dijo (había que hacer antes el arreglo del texto); la diferencia entre lo que había visto (`b451c6c`) y lo publicado (`ea76060`) es **solo** ese arreglo (3 líneas: el texto del desplegable y su prueba), que es lo que pidió. Desviación consciente respecto a la frase literal de la hoja, anotada aquí como la vez anterior.
@@ -63,3 +63,39 @@ Volver a publicar el despliegue anterior `6ac891fd014636000880f339` (PR 127, `fu
 2. Tras desplegarla, Pedro vuelve a leer la foto de Arboliva: comprueba líneas y total, y pulsa «Completar su ficha con los datos de la foto».
 3. Llevar `docs/alb-prov/` a `release` con un PR aparte `[skip netlify]`.
 4. El aviso «1 colección solo en este equipo (el servidor no permite guardarla)» que sale en producción: es de otra colección (no del proveedor ni del albarán, comprobado contando filas); las claves que la aplicación guarda y la política antigua de `almacen_kv` de producción no admite son `configEmpresa`, `empresas` y `pagosFacturas` (esta última va por RPC). Investigar aparte.
+
+
+---
+
+# ALB-PROV-2 — despliegue de la función de IA v17 (9/10/2026)
+
+Estado: **DESPLEGADA EN PRODUCCIÓN Y VERIFICADA**.
+
+## Autorización
+Pedro, en respuesta a mi descripción del cambio (solo cambia la instrucción que recibe la IA: añade la lectura de CIF del proveedor al pie legal, dirección, teléfono, correo, web y condiciones de pago): «Autorizo desplegar la función de IA». No incluye la frase literal de la hoja de autorización; desviación consciente, anotada aquí como en las publicaciones anteriores. El alcance autorizado es exactamente el cambio descrito.
+
+## Lo que se hizo
+- Proyecto `flqercbgpgmmfaakrwkc` (producción), función `importar-albaran`: de la **versión 16** a la **versión 17**.
+- Fichero desplegado: `docs/alb-prov/edge/importar-albaran_v17.ts`, `sha256` `1ce6f983a419d2a73a0fc72b26a9226173487bc07895db79a457c17e1d301eea` (19 765 caracteres). Solo se diferencia de la v16 en un apartado nuevo del texto de instrucciones (antes de «## LÍNEAS») y en 8 campos nuevos del esquema de salida (tras `proveedorCif`).
+- Ajustes de la función sin cambios: `verify_jwt` falso (la función hace su propia autenticación con perfiles Propietario/Encargado), `import_map` con `importar-albaran/deno.json`.
+
+## Comprobaciones
+- Estado de la función: versión 17, `ACTIVE`, `ezbr_sha256` `a659f0c1f39fd75e70b237afc99718c6908b7eb5c000e119a158f22bbf2db320`.
+- Contenido vivo vuelto a descargar y comparado con el fichero del repositorio: **idéntico** (mismo `sha256`).
+- Sin sesión: `POST` → 401 «Debes iniciar sesión para importar albaranes.» (igual que antes); `GET` → 405.
+- No se llamó a la IA ni se subió ninguna foto en la comprobación (sin gasto).
+
+## Lo que NO se tocó
+Base de datos (ni datos ni estructura), políticas, secretos, la aplicación publicada (sigue en `6ac89db60533f200086e4136`, `fuente.js` `80dc0a9a…`) y QA (sigue con el simulador v3).
+
+## Compatibilidad
+La aplicación publicada ya acepta los campos nuevos y, si la IA no los trae, los ignora; la v16 también funciona con la aplicación actual. Por eso se puede volver atrás en cualquier orden.
+
+## Marcha atrás
+Volver a desplegar `docs/alb-prov/edge/importar-albaran_v16_respaldo.ts` (`sha256` `b649d268…`, copia literal de la v16 viva) con el mismo diseño de ficheros, `verify_jwt` falso e `import_map` `importar-albaran/deno.json`. No toca datos.
+
+## Pendiente
+1. **Prueba real de Pedro:** volver a leer la misma foto de Arboliva con «Foto con IA» en producción; comparar líneas y total con la primera lectura (v16); pulsar «Completar su ficha con los datos de la foto» (debería rellenar CIF A78540960, dirección, teléfono 91 616 57 45, correo arboliva@arboliva.com, web www.arboliva.es, condiciones «60 días» y 60 días de pago) y **no** dar entrada otra vez (volver atrás). Si las líneas o el total empeoran o los datos salen mal, se vuelve a la v16.
+2. Llevar `docs/alb-prov/` a `release` con un PR aparte `[skip netlify]`.
+3. Investigar aparte el aviso «1 colección solo en este equipo» (claves `configEmpresa`, `empresas`, `pagosFacturas`).
+4. Opcional: volver el simulador de QA al corta-fuegos 503 (`GUIA_PRUEBAS_QA.md` §6).
