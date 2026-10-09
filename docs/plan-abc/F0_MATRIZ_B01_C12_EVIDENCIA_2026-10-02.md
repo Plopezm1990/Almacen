@@ -56,7 +56,7 @@ conocido; no cambia la etiqueta. Etiquetas de evidencia:
 | C01 | Cajas, terminales y sesiones | `INCOMPLETO` | `[QA]` apertura, relevo, terminales, conflictos y permisos; `[UI-LOCAL]` gestión completa | Despliegue/recorrido visual y apertura simultánea real |
 | C02 | Entradas y salidas trazables | `INCOMPLETO` | `[MIGR]` `[QA]` alta, retirada, replay, reverso y permisos; `[UI-LOCAL]` funciones ABC | Despliegue y recorrido visual en QA; reintento real; aceptación |
 | C03 | Arqueo calculado en servidor | `INCOMPLETO` | `[MIGR]` `[QA]` cálculo, replay, permisos, unicidad y anulación; `[UI-LOCAL]` | Despliegue y recorrido visual del arqueo histórico; aceptación |
-| C04 | Cierre provisional y definitivo | `INCOMPLETO` ⚠ | `[MIGR]` `[QA]` flujo y bloqueos `[UI]` | Cierra con diferencia sin tratamiento; T14 |
+| C04 | Cierre provisional y definitivo | `INCOMPLETO` | `[MIGR]` `[QA]` flujo, replay, reapertura, guardas y diferencias; `[UI]` `[CI]` | Despliegue consolidado en QA y aceptación final |
 | C05 | Series y numeración | `INCOMPLETO` | `[MIGR]` tablas y funciones; `[CI]` | Sin ensayo, sin emisor, sin pantalla |
 | C06 | Tipos de documento | `INCOMPLETO` | `[MIGR]`; `[CI]` | Sin ensayo ni pantalla; clasificación con asesoría |
 | C07 | SIF y modalidad fiscal | `BLOQUEADO` | `[MIGR]` puerta que rechaza sin asesoría | Asesoría, emisor y régimen |
@@ -258,14 +258,16 @@ Con A: **36 requisitos, 0 verificados, 29 incompletos, 2 pendientes, 5 bloqueado
 ### C04 — Cierre provisional y definitivo
 - **Aceptación:** no entran movimientos en una sesión cerrada por una carrera; los
   pendientes son visibles; el relevo nocturno conserva su fecha operativa.
-- **Evidencia:** `[MIGR]` C04. `[QA]` iniciar→conteo provisional→ensayo→finalizar;
-  negativas: cierre directo desde `ABIERTA`, finalizar sin provisional y cierre
-  con un cobro pendiente (`PAGOS_PENDIENTES`) rechazados. `[UI]` iniciar,
-  confirmar provisional, reabrir y finalizar. `[CI]` contratos (el de PostgreSQL
-  falla por entorno).
-- **⚠ Falta:** el cierre acepta una diferencia sin tratamiento (ver C03); reabrir
-  una sesión `CERRADA_FINAL` responde `cierre_provisional_no_encontrado`, poco
-  explícito; cierre simultáneo con cobro (T14); devolución de un día cerrado (T19).
+- **Evidencia:** `[MIGR]` C04 y tratamiento de diferencias. `[QA]` iniciar,
+  previsualizar, confirmar, finalizar, replay de inicio/final, reabrir, impedir
+  cierre directo y bloquear una diferencia hasta registrar motivo y aprobarla;
+  ensayo con `ROLLBACK` y cero residuos. `[UI]` recorrido previo en QA de las
+  rutas sin diferencia, rechazada y aprobada. `[CI]` carrera real con dos
+  conexiones PostgreSQL y contratos de bloqueos `FOR UPDATE`. Evidencia:
+  `F7_C04_QA_RESULTADO_2026-10-09.md`.
+- **Falta:** desplegar la interfaz consolidada en QA, repetir el recorrido
+  visual con la vista previa C03 y obtener aceptación final. La devolución de
+  un día cerrado (T19) se mantiene en el bloque de devoluciones, no en C04.
 
 ### C05 — Series y numeración documental
 - **Aceptación:** dos emisores concurrentes no generan la misma identidad;
