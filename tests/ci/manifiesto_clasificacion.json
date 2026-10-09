@@ -21,7 +21,7 @@
       "diagnostic": 0
     },
     "postgres": {
-      "active_contract": 19,
+      "active_contract": 20,
       "historical_expected_fail": 1,
       "utility": 0,
       "diagnostic": 0
@@ -1062,6 +1062,11 @@
     },
     {
       "path": "tests/pm33/db/p05-identidad-antes-de-actividad-contract.mjs",
+      "classification": "active_contract",
+      "environment": "postgres"
+    },
+    {
+      "path": "tests/plataforma/db/p01-plataforma-empresas-contract.mjs",
       "classification": "active_contract",
       "environment": "postgres"
     },
