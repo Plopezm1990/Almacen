@@ -48,8 +48,13 @@ Pruebas de mutación: 19 mutaciones de la migración (quitar el cargo, quitar la
 
 ## 4. Estado en QA
 
-- Aplicado y verificado por huella (idénticas a las del Postgres local): `private.plataforma_kv_rol_puede`, `plataforma_kv_permitido`, `plataforma_kv_empresa_llamante`, `plataforma_f4_kv_empresa`, y las dos funciones de productos ya filtradas por empresa (`plataforma_f4_a_ayudas_privadas`, `plataforma_f4_d_funciones_filtran_por_empresa`).
-- **Pendiente** (la herramienta de base de datos cancela sola las instrucciones destructivas, aunque Pedro las autorice): cambio de clave primaria, disparador y reglas. Se aplica desde el editor SQL de Supabase con Cowork: `PRUEBA_COWORK_FASE4_APLICAR_EN_QA.md`.
+- **Aplicado y verificado** (2026-10-09):
+  - Funciones y ayudas (`plataforma_f4_a_ayudas_privadas`, `plataforma_f4_d_funciones_filtran_por_empresa`): aplicadas con la herramienta; las huellas coinciden con las del Postgres local.
+  - Estructura, disparador y reglas (la parte «destructiva»): la herramienta de base de datos la cancela sola aunque Pedro la autorice, así que la ejecutó Cowork desde el editor SQL de Supabase (`PRUEBA_COWORK_FASE4_APLICAR_EN_QA.md`; resultado «Success. No rows returned»). Queda fuera del historial de migraciones de QA (no se registra al ejecutarse desde el editor).
+  - Comprobado después, solo leyendo: clave primaria `(empresa_id, key)`, `empresa_id` obligatorio, cuatro reglas `plataforma_kv_*` con huellas **idénticas** a las del Postgres local, disparador `pm05_zz_plataforma_f4_kv_empresa_trg`, RLS activa, 7 filas antiguas conservadas con `__sin_empresa__` (13 de QA-EMP-A y 5 de QA-EMP-B intactas), y `anon` sin permiso de ejecución.
+  - Prueba real dentro de QA con cuentas reales (dueñas `duena.f3.4` y `duena.f3.5`) y deshecha al final (sin dejar datos): el `upsert` sin empresa crea una fila por empresa; cada una ve solo la suya; reescribir una no toca la otra; no se escribe en la empresa ajena (42501); la clave `empresas` sigue rechazada (42501); `UPDATE` por clave alcanza una sola fila; la cuenta con dos empresas (`owner.a`) falla cerrado (`almacen_kv_empresa_no_determinada`).
+- Pendiente: prueba con la pantalla (Cowork) con dos empresas nuevas, `PRUEBA_COWORK_FASE4_DOS_EMPRESAS.md`.
+- Para deshacer en QA: guion guardado fuera del repositorio (volver a `PRIMARY KEY (key)`, quitar etiqueta `__sin_empresa__`, recrear `pm05_almacen_*`).
 
 ## 5. Limitaciones declaradas
 
