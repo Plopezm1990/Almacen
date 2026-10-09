@@ -130,7 +130,7 @@ function servidorBase(extra = {}) {
   };
 }
 
-const ABRIR = (e, opts = {}) => e.P.mostrarPanel(e.supabase, SESION, { es_admin: true, plataforma_activa: true, mis_empresas: opts.mis_empresas ?? 0 }, { abrirAplicacion: opts.abrirAplicacion || (() => {}) });
+const ABRIR = (e, opts = {}) => e.P.mostrarPanel(e.supabase, SESION, { es_admin: true, plataforma_activa: true, mis_empresas: opts.mis_empresas ?? 0 }, { recargar: opts.recargar || (() => {}) });
 async function abrirPanel(e, opts) {
   ABRIR(e, opts);
   await esperar(() => e.qa('[data-empresa]').length === 4, 'el panel lista las 4 empresas');
@@ -140,7 +140,7 @@ async function abrirPanel(e, opts) {
 {
   const abierta = [];
   const e = entorno({ rpc: servidorBase() });
-  await abrirPanel(e, { mis_empresas: 1, abrirAplicacion: () => abierta.push(1) });
+  await abrirPanel(e, { mis_empresas: 1, recargar: () => abierta.push(1) });
   ok('1a. hay panel, la barra de carga desaparece y el programa queda oculto',
     e.q('#la-plataforma-root') && !e.q('#cargando') && e.d.documentElement.classList.contains('la-installation-needs-setup'));
   ok('1b. solo se pidió la lista (no se tocó nada más)', e.log.rpc.length === 1 && e.log.rpc[0].nombre === 'plataforma_listar_empresas' && e.log.rpc[0].token === SESION.access_token);
@@ -162,12 +162,15 @@ async function abrirPanel(e, opts) {
     /sin fecha de baja registrada/.test(e.texto(dd)) && JSON.stringify(nombresBotones(dd)) === JSON.stringify(['Reactivar', 'Registrar la baja']), JSON.stringify(nombresBotones(dd)));
   ok('1k. "Abrir mi aplicación" solo aparece si el administrador tiene empresa propia', !!e.boton('Abrir mi aplicación'));
   e.clic(e.boton('Abrir mi aplicación'));
-  ok('1l. al pulsarlo se recuerda el modo aplicación, se cierra el panel y se avisa al arranque', abierta.length === 1 && e.P.enModoAplicacion('admin-1') === true && !e.q('#la-plataforma-root'));
+  ok('1l. al pulsarlo se recuerda el modo aplicación (solo el id de usuario), se cierra el panel y se pide recargar la página', abierta.length === 1 && e.P.enModoAplicacion('admin-1') === true && e.w.sessionStorage.getItem('la_plataforma_modo_app') === 'admin-1' && !e.q('#la-plataforma-root'));
 
+  const salirRecargas = [];
   const salir = entorno({ rpc: servidorBase() });
-  await abrirPanel(salir);
+  salir.w.sessionStorage.setItem('la_plataforma_modo_app', 'admin-1');
+  await abrirPanel(salir, { recargar: () => salirRecargas.push(1) });
   salir.clic(salir.boton('Cerrar sesión'));
-  await esperar(() => salir.log.signOut === 1, 'cerrar sesión llama a Auth');
+  await esperar(() => salir.log.signOut === 1 && salirRecargas.length === 1, 'cerrar sesión llama a Auth y recarga');
+  ok('1q. «Cerrar sesión» cierra la sesión, olvida la elección y recarga la página', salir.log.signOut === 1 && salirRecargas.length === 1 && salir.w.sessionStorage.getItem('la_plataforma_modo_app') === null);
 
   const sin = entorno({ rpc: servidorBase() });
   await abrirPanel(sin, { mis_empresas: 0 });
@@ -455,10 +458,10 @@ async function abrirPanel(e, opts) {
 // ---- 9. Contraseña inicial del dueño ----
 {
   const sesion = { access_token: 't', user: { id: 'dueno-1', email: 'maria.lopez@cliente.com', user_metadata: { debe_cambiar_contrasena: true } } };
-  const continuaciones = [];
+  const recargas = [];
   const montarCambio = (opts = {}) => {
     const e = entorno({ sesion, ...opts });
-    e.P.mostrarCambioContrasena(e.supabase, sesion, { continuar: (s) => continuaciones.push(s) });
+    e.P.mostrarCambioContrasena(e.supabase, sesion, { recargar: () => recargas.push(1) });
     return e;
   };
 
@@ -473,10 +476,10 @@ async function abrirPanel(e, opts) {
   intentar('maria.lopez2026', 'maria.lopez2026');
   ok('9d. no puede contener el correo', e.log.updateUser.length === 0 && /correo/.test(e.texto(e.q('[data-error-de="nueva"]', dlg))));
   intentar('Clave-nueva-2026', 'Clave-nueva-2026');
-  await esperar(() => continuaciones.length === 1, 'continuar tras el cambio');
+  await esperar(() => recargas.length === 1, 'recarga tras el cambio');
   ok('9e. se envía la contraseña nueva y se quita la marca de "debe cambiarla"',
     e.log.updateUser.length === 1 && JSON.stringify(e.log.updateUser[0]) === JSON.stringify({ password: 'Clave-nueva-2026', data: { debe_cambiar_contrasena: false } }), JSON.stringify(e.log.updateUser));
-  ok('9f. la pantalla desaparece y la entrada continúa una sola vez', !e.q('#la-plataforma-cambio-root') && e.P.cambioAbierto('dueno-1') === false && continuaciones.length === 1);
+  ok('9f. la pantalla desaparece y se recarga la página una sola vez', !e.q('#la-plataforma-cambio-root') && e.P.cambioAbierto('dueno-1') === false && recargas.length === 1);
 
   for (const [codigo, texto, esperado] of [
     ['same_password', 'New password should be different from the old password.', /distinta de la inicial/],
@@ -490,11 +493,12 @@ async function abrirPanel(e, opts) {
     await esperar(() => f.q('.lap-banner.mal', d2) && f.q('.lap-banner.mal', d2).style.display === 'block', `error ${codigo}`);
     ok(`9g. ${codigo}: mensaje claro y la pantalla sigue abierta para reintentar`, esperado.test(f.texto(f.q('.lap-banner.mal', d2))) && !!f.q('#la-plataforma-cambio-root') && f.boton('Guardar contraseña y entrar', d2).disabled === false, f.texto(f.q('.lap-banner.mal', d2)));
   }
-  const antes = continuaciones.length;
+  const antes = recargas.length;
   const g = montarCambio({ updateUser: async () => ({ data: null, error: { code: 'same_password', message: 'x' } }) });
-  ok('9h. con error no se continúa con la entrada', continuaciones.length === antes);
+  ok('9h. con error no se recarga ni se continúa con la entrada', recargas.length === antes);
   g.clic(g.boton('Cerrar sesión'));
-  ok('9i. se puede cerrar sesión desde esa pantalla', g.log.signOut === 1);
+  await esperar(() => g.log.signOut === 1 && recargas.length === antes + 1, 'cerrar sesión desde la pantalla de contraseña');
+  ok('9i. se puede cerrar sesión desde esa pantalla (y se recarga la página)', g.log.signOut === 1 && recargas.length === antes + 1);
 
   // ¿Sigue debiendo cambiarla? Se confirma con el servidor para no molestar con un aviso antiguo.
   const h = entorno({ sesion, getUser: () => ({ data: { user: { user_metadata: { debe_cambiar_contrasena: false } } } }) });
@@ -532,8 +536,15 @@ async function abrirPanel(e, opts) {
   ok('10f. el atajo "← Plataforma" aparece', !!e.boton('← Plataforma'));
   e.P.montarAtajo('admin-1', () => vuelto++);
   ok('10g. no se duplica', e.qa('#la-plataforma-atajo').length === 1);
+  e.w.sessionStorage.setItem('la_plataforma_modo_app', 'admin-1');
   e.clic(e.boton('← Plataforma'));
-  ok('10h. al pulsarlo desaparece, olvida el modo aplicación y vuelve al panel', vuelto === 1 && !e.q('#la-plataforma-atajo') && e.P.enModoAplicacion('admin-1') === false);
+  ok('10h. al pulsarlo desaparece, olvida el modo aplicación (también tras recargar) y avisa para volver al panel', vuelto === 1 && !e.q('#la-plataforma-atajo') && e.P.enModoAplicacion('admin-1') === false && e.w.sessionStorage.getItem('la_plataforma_modo_app') === null);
+
+  const marca = entorno();
+  marca.w.sessionStorage.setItem('la_plataforma_modo_app', 'admin-1');
+  ok('10k. la elección guardada vale para su usuario y para ningún otro', marca.P.enModoAplicacion('admin-1') === true && marca.P.enModoAplicacion('otro') === false && marca.P.enModoAplicacion('') === false);
+  marca.P.olvidarModoAplicacion();
+  ok('10l. olvidarla la borra', marca.P.enModoAplicacion('admin-1') === false && marca.w.sessionStorage.getItem('la_plataforma_modo_app') === null);
 
   const sinSesion = entorno({ rpc: servidorBase(), sinSesion: true });
   ABRIR(sinSesion);
