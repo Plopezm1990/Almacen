@@ -39,10 +39,11 @@
     document.documentElement.classList.remove("la-installation-needs-setup");
   }
 
-  // Vuelve a validar con la sesión vigente (el token del panel puede haberse renovado desde que se abrió).
-  async function revalidarSesionActual(supabase) {
-    var actual = await supabase.auth.getSession();
-    await validarSesion(supabase, actual && actual.data ? actual.data.session : null);
+  // Plataforma (D01): al pasar del panel a la aplicación (y al revés) o tras elegir la contraseña inicial se recarga
+  // la página. El programa que queda cargado por detrás mientras se ve el panel tiene la barrera de sincronización
+  // cerrada y, pasados unos segundos, daría avisos falsos de «cambio no guardado»; recargado arranca limpio.
+  function recargarPagina() {
+    window.location.reload();
   }
 
   function iniciarComprobacion() {
@@ -238,6 +239,7 @@
 
     if (!sesion || !sesion.user || !sesion.user.id) {
       usuarioActual = null;
+      if (plat && typeof plat.olvidarModoAplicacion === "function") plat.olvidarModoAplicacion();
       liberarVistaSinSesion();
       return;
     }
@@ -262,9 +264,7 @@
         if (await plat.sigueDebiendoCambiar(supabase, sesion)) {
           if (miSecuencia !== secuencia) return;
           if (typeof window.__laOwnerBootstrapSetReady === "function") window.__laOwnerBootstrapSetReady(false);
-          plat.mostrarCambioContrasena(supabase, sesion, {
-            continuar: function () { revalidarSesionActual(supabase); }
-          });
+          plat.mostrarCambioContrasena(supabase, sesion, { recargar: recargarPagina });
           return;
         }
         if (miSecuencia !== secuencia) return;
@@ -274,9 +274,7 @@
         window.__laPlataformaActiva = estadoPlat.plataforma_activa === true;
         if (estadoPlat.es_admin === true && !plat.enModoAplicacion(sesion.user.id)) {
           if (typeof window.__laOwnerBootstrapSetReady === "function") window.__laOwnerBootstrapSetReady(false);
-          plat.mostrarPanel(supabase, sesion, estadoPlat, {
-            abrirAplicacion: function () { revalidarSesionActual(supabase); }
-          });
+          plat.mostrarPanel(supabase, sesion, estadoPlat, { recargar: recargarPagina });
           return;
         }
         adminEnAplicacion = estadoPlat.es_admin === true;
@@ -294,7 +292,7 @@
         if (window.__instalacionSyncPermitida !== true) throw new Error("Sincronización no validada");
         liberarVistaLista();
         if (adminEnAplicacion) {
-          plat.montarAtajo(sesion.user.id, function () { revalidarSesionActual(supabase); });
+          plat.montarAtajo(sesion.user.id, recargarPagina);
         }
         if (typeof window.subirPendientes === "function") await window.subirPendientes();
         return;

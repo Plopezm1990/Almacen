@@ -275,7 +275,7 @@
     ".lap-pie{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:16px}" +
     ".lap-caja{background:#fff;border:1px dashed #b7b0a0;border-radius:10px;padding:10px 12px;margin-top:10px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;word-break:break-all}" +
     ".lap-codigo{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:26px;letter-spacing:.12em;font-weight:700;text-align:center;background:#fff;border:1px solid #b7b0a0;border-radius:10px;padding:10px;margin-top:10px}" +
-    ".lap-atajo{position:fixed;left:10px;bottom:10px;z-index:10030;opacity:.85}" +
+    ".lap-atajo{position:fixed;left:10px;bottom:76px;z-index:45;opacity:.9}" +
     ".lap-cambio{position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(circle at 50% 20%,#153D27 0%,#0C2714 48%,#06170E 100%);overflow-y:auto;font-family:'IBM Plex Sans',system-ui,sans-serif}" +
     ".lap-cambio .lap-dialogo{margin:auto}";
 
@@ -293,6 +293,20 @@
   var ctx = null; // { supabase, userId, email, estado, opciones, empresas, cargando, errorLista, aviso, dialogo, nodo }
   var cambioAbierto = null; // userId con la pantalla de contraseña inicial abierta
   var modoApp = {}; // userId -> true cuando el administrador eligió abrir su propia aplicación
+  // La elección sobrevive a la recarga de la página con una sola marca en sessionStorage (solo el id de usuario,
+  // nunca contraseñas ni datos de empresas); se borra al volver al panel y al cerrar sesión.
+  var CLAVE_MODO_APP = "la_plataforma_modo_app";
+  function leerMarcaModoApp() {
+    try { return window.sessionStorage.getItem(CLAVE_MODO_APP) || ""; } catch (e) { return ""; }
+  }
+  function guardarModoApp(userId) {
+    modoApp[userId] = true;
+    try { window.sessionStorage.setItem(CLAVE_MODO_APP, String(userId)); } catch (e) {}
+  }
+  function borrarModoApp(userId) {
+    delete modoApp[userId];
+    try { window.sessionStorage.removeItem(CLAVE_MODO_APP); } catch (e) {}
+  }
 
   function quitarNodo(id) {
     var n = document.getElementById(id);
@@ -953,8 +967,12 @@
     (ctx.empresas || []).forEach(function (e) { contenido.appendChild(tarjetaEmpresa(e)); });
   }
 
-  async function cerrarSesion() {
+  // Tras cerrar sesión se recarga la página: así no queda en memoria nada de la sesión anterior
+  // (por ejemplo avisos de guardado de la aplicación que estaba cargada por detrás).
+  async function cerrarSesion(recargar, userId) {
     try { await ctx.supabase.auth.signOut(); } catch (e) {}
+    borrarModoApp(userId);
+    if (typeof recargar === "function") recargar();
   }
 
   function mostrarPanel(supabase, sesion, estado, opciones) {
@@ -968,15 +986,16 @@
 
     var email = sesion && sesion.user && sesion.user.email ? sesion.user.email : "";
     var botonesBarra = [];
-    if (estado && estado.mis_empresas > 0 && typeof o.abrirAplicacion === "function") {
+    if (estado && estado.mis_empresas > 0 && typeof o.recargar === "function") {
       botonesBarra.push(boton("Abrir mi aplicación", "sec peq", function () {
-        modoApp[sesion.user.id] = true;
-        // Se cierra el panel antes de revalidar: un panel abierto hace que el arranque ignore las renovaciones de sesión.
+        guardarModoApp(sesion.user.id);
         cerrarTodo();
-        o.abrirAplicacion();
+        // Se recarga la página: el programa que estaba cargado por detrás mientras se veía el panel tenía la barrera
+        // cerrada y habría dado avisos falsos de «cambio no guardado». Recargado, arranca limpio y con la barrera ya validada.
+        o.recargar();
       }));
     }
-    botonesBarra.push(boton("Cerrar sesión", "sec peq", function () { cerrarSesion(); }));
+    botonesBarra.push(boton("Cerrar sesión", "sec peq", function () { cerrarSesion(o.recargar, sesion.user.id); }));
 
     var nodo = h("div", { id: ROOT_PANEL_ID, class: "lap-root", role: "main" },
       h("div", { class: "lap-barra" },
@@ -999,15 +1018,21 @@
     quitarNodo(ATAJO_ID);
     asegurarEstilos();
     var b = h("button", { id: ATAJO_ID, type: "button", class: "lap-btn peq lap-atajo", title: "Volver al panel de la plataforma", onclick: function () {
-      delete modoApp[userId];
+      borrarModoApp(userId);
       quitarNodo(ATAJO_ID);
       if (typeof alVolver === "function") alVolver();
     } }, "← Plataforma");
     document.body.appendChild(b);
   }
 
+  // Sin sesión (por ejemplo, el administrador cerró sesión desde su propia aplicación) no queda elección guardada.
+  function olvidarModoAplicacion() {
+    modoApp = {};
+    try { window.sessionStorage.removeItem(CLAVE_MODO_APP); } catch (e) {}
+  }
+
   function enModoAplicacion(userId) {
-    return modoApp[userId] === true;
+    return modoApp[userId] === true || (!!userId && leerMarcaModoApp() === String(userId));
   }
 
   // ---------------------------------------------------------------------------
@@ -1043,7 +1068,7 @@
     var form = h("form", { novalidate: "novalidate" },
       h("p", { class: "lap-muted" }, "Tu cuenta se creó con una contraseña inicial que conoce quien te dio de alta. Elige ahora una contraseña que solo sepas tú."),
       c1.nodo, c2.nodo, error,
-      h("div", { class: "lap-pie" }, boton("Cerrar sesión", "sec", function () { supabase.auth.signOut(); }), btn));
+      h("div", { class: "lap-pie" }, boton("Cerrar sesión", "sec", function () { cerrarSesionCambio(); }), btn));
     var caja = h("div", { class: "lap-dialogo", role: "dialog", "aria-modal": "true", "aria-label": "Elige tu contraseña" },
       h("div", { style: "font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#7F5823;font-weight:700" }, "L&A Suite · primer acceso"),
       h("h2", { style: "margin-top:6px" }, "Elige tu contraseña"), form);
@@ -1052,6 +1077,11 @@
 
     var enCurso = false;
     enviarConIntro(form, guardar);
+
+    async function cerrarSesionCambio() {
+      try { await supabase.auth.signOut(); } catch (e) {}
+      if (typeof o.recargar === "function") o.recargar();
+    }
 
     async function guardar() {
       if (enCurso) return;
@@ -1068,13 +1098,12 @@
       try {
         var r = await supabase.auth.updateUser({ password: i1.value, data: { debe_cambiar_contrasena: false } });
         if (r && r.error) throw r.error;
-        // El cambio queda confirmado: se cierra la pantalla y se continúa con la entrada normal.
+        // El cambio queda confirmado: se cierra la pantalla y se recarga la página para entrar de forma normal
+        // (el programa cargado por detrás mientras se elegía la contraseña daría avisos falsos de «cambio no guardado»).
         cambioAbierto = null;
         quitarNodo(ROOT_CAMBIO_ID);
         i1.value = ""; i2.value = "";
-        var ses = await supabase.auth.getSession();
-        var nueva = ses && ses.data ? ses.data.session : null;
-        if (typeof o.continuar === "function") o.continuar(nueva || sesion);
+        if (typeof o.recargar === "function") o.recargar();
       } catch (e) {
         enCurso = false;
         btn.disabled = false;
@@ -1101,6 +1130,7 @@
     mostrarPanel: mostrarPanel,
     montarAtajo: montarAtajo,
     enModoAplicacion: enModoAplicacion,
+    olvidarModoAplicacion: olvidarModoAplicacion,
     panelAbierto: panelAbierto,
     cambioAbierto: cambioAbiertoPara,
     cerrarTodo: cerrarTodo,

@@ -23,7 +23,7 @@ if (!depsDir) {
   process.exit(2);
 }
 const require = createRequire(join(resolve(depsDir), 'package.json'));
-const { JSDOM } = require('jsdom');
+const { JSDOM, VirtualConsole } = require('jsdom');
 
 const REPO = resolve(new URL('../../', import.meta.url).pathname);
 const leer = (f) => readFileSync(resolve(REPO, f), 'utf8');
@@ -53,10 +53,15 @@ function usuario(extra = {}) {
 }
 
 // Monta una "página": candado previo + panel + flujo de instalación, con servidor simulado.
-async function arranque({ user = usuario(), estado, instalacion, rpcs = {}, cargarPanel = true, sinSesion = false, getUser } = {}) {
+async function arranque({ user = usuario(), estado, instalacion, rpcs = {}, cargarPanel = true, sinSesion = false, getUser, modoApp = null } = {}) {
+  // jsdom no navega: una recarga de página (window.location.reload) se anota como «navegación no implementada».
+  let recargas = 0;
+  const consola = new VirtualConsole();
+  consola.on('jsdomError', (e) => { if (/navigation/i.test(String(e && e.message))) recargas += 1; });
   const dom = new JSDOM('<!doctype html><html><head></head><body><div id="root"></div><div id="cargando">Cargando</div></body></html>',
-    { url: 'https://deploy-preview-118--chic-entremet-9107cf.netlify.app/', pretendToBeVisual: true, runScripts: 'outside-only' });
+    { url: 'https://deploy-preview-118--chic-entremet-9107cf.netlify.app/', pretendToBeVisual: true, runScripts: 'outside-only', virtualConsole: consola });
   const w = dom.window;
+  if (modoApp) w.sessionStorage.setItem('la_plataforma_modo_app', modoApp); // lo que dejó la página anterior antes de recargar
   const red = [];
   const llamadas = (n) => red.filter((r) => r.nombre === n);
   let sesion = { access_token: 'token-1', user };
@@ -109,6 +114,8 @@ async function arranque({ user = usuario(), estado, instalacion, rpcs = {}, carg
   const api = {
     w, d, red, llamadas, supabase, oyentes,
     subidas: () => subidas,
+    recargas: () => recargas,
+    marcaModoApp: () => w.sessionStorage.getItem('la_plataforma_modo_app'),
     sesion: () => sesion,
     q: (s) => d.querySelector(s),
     qa: (s, r) => [...(r || d).querySelectorAll(s)],
@@ -180,22 +187,50 @@ const ADMIN = usuario({ id: 'admin-1', email: 'pedro@plataforma.test' });
   const nueva = a.q('[name="nueva"]'), repite = a.q('[name="repite"]');
   a.escribir(nueva, 'Clave-nueva-2026'); a.escribir(repite, 'Clave-nueva-2026');
   a.clic(a.boton('Guardar contraseña y entrar'));
-  await esperar(() => a.w.__laOwnerBootstrapSyncState().bootstrapListo === true && a.subidas() === 1, 'entra tras cambiar la contraseña');
-  ok('5c. tras guardarla desaparece la pantalla y sigue el camino normal', !a.q('#la-plataforma-cambio-root') && a.llamadas('plataforma_estado').length === 1 && a.llamadas('obtener_estado_instalacion').length === 1);
+  await esperar(() => a.recargas() === 1, 'se recarga la página tras el cambio');
+  ok('5c. tras guardarla desaparece la pantalla y se recarga la página (el programa de detrás no da avisos falsos de «no guardado»)', !a.q('#la-plataforma-cambio-root') && a.recargas() === 1);
   ok('5d. la marca queda quitada en la cuenta', a.sesion().user.user_metadata.debe_cambiar_contrasena === false);
+  // La página recargada ya no tiene la marca: entra por el camino normal.
+  const b = await arranque({ user: a.sesion().user, estado: { es_admin: false, plataforma_activa: true } });
+  await esperar(() => b.w.__laOwnerBootstrapSyncState().bootstrapListo === true && b.subidas() === 1, 'entra tras recargar');
+  ok('5e. tras recargar entra directamente a su aplicación', !b.q('#la-plataforma-cambio-root') && b.llamadas('obtener_estado_instalacion').length === 1);
 }
 
-// ---- 6. Administrador con empresa propia: abrir su aplicación y volver al panel ----
+// ---- 6. Administrador con empresa propia: abrir su aplicación y volver al panel (con recarga de página en cada cambio) ----
 {
   const a = await arranque({ user: ADMIN, estado: { es_admin: true, plataforma_activa: true, mis_empresas: 1 } });
   await esperar(() => a.boton('Abrir mi aplicación'), 'botón de abrir la aplicación');
   a.clic(a.boton('Abrir mi aplicación'));
-  await esperar(() => a.w.__laOwnerBootstrapSyncState().bootstrapListo === true && a.q('#la-plataforma-atajo'), 'aplicación abierta con atajo');
-  ok('6a. se abre la aplicación y el panel desaparece', !a.q('#la-plataforma-root') && a.llamadas('obtener_estado_instalacion').length === 1);
-  ok('6b. queda el atajo para volver', !!a.q('#la-plataforma-atajo') && a.subidas() === 1);
-  a.clic(a.boton('← Plataforma'));
-  await esperar(() => a.q('#la-plataforma-root'), 'vuelta al panel');
-  ok('6c. el atajo devuelve al panel y cierra la sincronización', !a.q('#la-plataforma-atajo') && a.w.__laOwnerBootstrapSyncState().bootstrapListo === false && a.llamadas('obtener_estado_instalacion').length === 1);
+  ok('6a. «Abrir mi aplicación» recuerda la elección, cierra el panel y RECARGA la página', a.recargas() === 1 && a.marcaModoApp() === 'admin-1' && !a.q('#la-plataforma-root'));
+  ok('6b. no se abre la aplicación sobre la página vieja (el programa de detrás tenía la barrera cerrada)', a.llamadas('obtener_estado_instalacion').length === 0 && a.w.__laOwnerBootstrapSyncState().bootstrapListo === false);
+
+  // La página recargada: la elección sigue ahí (sessionStorage) y entra a su aplicación.
+  const b = await arranque({ user: ADMIN, estado: { es_admin: true, plataforma_activa: true, mis_empresas: 1 }, modoApp: 'admin-1' });
+  await esperar(() => b.w.__laOwnerBootstrapSyncState().bootstrapListo === true && b.q('#la-plataforma-atajo'), 'aplicación abierta con atajo');
+  ok('6c. recargada, abre su aplicación (no el panel) y deja el atajo', !b.q('#la-plataforma-root') && b.llamadas('obtener_estado_instalacion').length === 1 && b.subidas() === 1);
+  b.clic(b.boton('← Plataforma'));
+  ok('6d. el atajo borra la elección y recarga la página', b.recargas() === 1 && b.marcaModoApp() === null && !b.q('#la-plataforma-atajo'));
+
+  const c = await arranque({ user: ADMIN, estado: { es_admin: true, plataforma_activa: true, mis_empresas: 1 } });
+  await esperar(() => c.q('#la-plataforma-root'), 'panel tras volver');
+  ok('6e. sin elección guardada vuelve al panel y la sincronización sigue cerrada', c.w.__laOwnerBootstrapSyncState().bootstrapListo === false && c.llamadas('obtener_estado_instalacion').length === 0);
+
+  // La elección es de un usuario concreto y se olvida al quedarse sin sesión.
+  const d = await arranque({ user: ADMIN, estado: { es_admin: true, plataforma_activa: true, mis_empresas: 1 }, modoApp: 'otro-usuario' });
+  await esperar(() => d.q('#la-plataforma-root'), 'panel con marca de otro usuario');
+  ok('6f. la elección de otro usuario no se hereda', !!d.q('#la-plataforma-root') && d.llamadas('obtener_estado_instalacion').length === 0);
+  const e = await arranque({ user: ADMIN, estado: { es_admin: true, plataforma_activa: true, mis_empresas: 1 }, modoApp: 'admin-1' });
+  await esperar(() => e.q('#la-plataforma-atajo'), 'aplicación abierta');
+  e.oyentes.forEach((cb) => cb('SIGNED_OUT', null));
+  await esperar(() => e.marcaModoApp() === null, 'marca borrada al salir');
+  ok('6g. al cerrar sesión desde su aplicación se olvida la elección', e.marcaModoApp() === null && !e.q('#la-plataforma-atajo'));
+
+  // «Cerrar sesión» del panel: cierra la sesión, olvida la elección y recarga.
+  const f = await arranque({ user: ADMIN, estado: { es_admin: true, plataforma_activa: true, mis_empresas: 0 } });
+  await esperar(() => f.boton('Cerrar sesión'), 'botón de cerrar sesión');
+  f.clic(f.boton('Cerrar sesión'));
+  await esperar(() => f.recargas() === 1, 'recarga tras cerrar sesión');
+  ok('6h. «Cerrar sesión» del panel cierra la sesión y recarga la página (no queda nada de la sesión anterior)', f.sesion() === null && f.recargas() === 1);
 }
 
 // ---- 7. Renovación de sesión y cierre de sesión ----

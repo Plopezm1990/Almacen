@@ -198,9 +198,16 @@ const J = (x) => JSON.parse(JSON.stringify(x));
 
 // ---- 7. El panel no es un riesgo en sí mismo ----
 {
-  for (const prohibido of ['innerHTML', 'outerHTML', 'insertAdjacentHTML', 'document.write', 'eval(', 'new Function', 'localStorage', 'sessionStorage', 'service_role', 'SERVICE_ROLE']) {
+  for (const prohibido of ['innerHTML', 'outerHTML', 'insertAdjacentHTML', 'document.write', 'eval(', 'new Function', 'localStorage', 'service_role', 'SERVICE_ROLE']) {
     assert.ok(!panelSrc.includes(prohibido), `plataforma-panel.js no debe contener ${prohibido}`);
   }
+  // Lo único que se guarda en el navegador es la elección «abrir mi aplicación» (el id de usuario), en sessionStorage.
+  const usosSesion = [...panelSrc.matchAll(/sessionStorage\.(getItem|setItem|removeItem)\(((?:[^()]|\([^()]*\))*)\)/g)].map((m) => [m[1], m[2]]);
+  assert.ok(usosSesion.length >= 3);
+  for (const [metodo, args] of usosSesion) {
+    assert.match(args, /^CLAVE_MODO_APP(, String\(userId\))?$/, `sessionStorage.${metodo}(${args}): solo la marca del modo aplicación`);
+  }
+  assert.match(panelSrc, /var CLAVE_MODO_APP = "la_plataforma_modo_app";/);
   assert.doesNotMatch(panelSrc, /eyJ[A-Za-z0-9_-]{20,}/, 'ninguna clave dentro del archivo');
   assert.doesNotMatch(panelSrc, /sb_(publishable|secret)_/, 'ninguna clave dentro del archivo');
   // La contraseña del administrador se comprueba aparte, sin tocar la sesión abierta ni guardarla.
@@ -229,7 +236,16 @@ const J = (x) => JSON.parse(JSON.stringify(x));
   assert.match(cuerpo, /plat\.montarAtajo\(/);
   const quitar = flujo.slice(flujo.indexOf('function quitarSetup'), flujo.indexOf('function iniciarComprobacion'));
   assert.match(quitar, /__laPlataforma\.cerrarTodo\(\)/);
-  assert.ok(quitar.includes('revalidarSesionActual') === true, 'la revalidación con la sesión vigente existe');
+  // Cada cambio de pantalla recarga la página: el programa cargado por detrás tenía la barrera cerrada y daría avisos falsos.
+  assert.match(flujo, /function recargarPagina\(\) \{\s*window\.location\.reload\(\);\s*\}/);
+  assert.match(cuerpo, /plat\.mostrarCambioContrasena\(supabase, sesion, \{ recargar: recargarPagina \}\)/);
+  assert.match(cuerpo, /plat\.mostrarPanel\(supabase, sesion, estadoPlat, \{ recargar: recargarPagina \}\)/);
+  assert.match(cuerpo, /plat\.montarAtajo\(sesion\.user\.id, recargarPagina\)/);
+  assert.doesNotMatch(flujo, /revalidarSesionActual/, 'ya no se revalida sobre la página vieja');
+  assert.match(cuerpo, /plat\.olvidarModoAplicacion\(\)/, 'sin sesión se olvida la elección');
+  // El panel recarga al abrir la aplicación, al cerrar sesión y tras elegir la contraseña.
+  assert.equal([...panelSrc.matchAll(/o\.recargar\(\)/g)].length, 3, 'abrir aplicación, cerrar sesión desde la contraseña y contraseña elegida');
+  assert.match(panelSrc, /cerrarSesion\(o\.recargar, sesion\.user\.id\)/);
   console.log('P04_GANCHO_ARRANQUE=PASS');
 }
 
