@@ -109,6 +109,8 @@ Deno.serve(async (req: Request) => {
 
 # Segunda ronda — datos de contacto del proveedor leídos de la foto (ALB-PROV-2)
 
+**Estado:** Pedro autorizó (9/10/2026, «Sí, actualizar el simulador de QA») y el simulador quedó desplegado en QA como **versión 3** de `importar-albaran`; comprobado con llamadas de 1, 6 y 7 fotos. La vista previa del PR 118 (`83a4f98`) ya lleva la aplicación nueva.
+
 Nuevo simulador (versión 3 en QA): además del nombre y el NIF devuelve **dirección, teléfono, correo, web, condiciones de pago, días de pago** y los datos del **cliente** (para no confundirlos con el proveedor). Escenarios nuevos o cambiados:
 
 | Fotos | Devuelve | Debe pasar |
