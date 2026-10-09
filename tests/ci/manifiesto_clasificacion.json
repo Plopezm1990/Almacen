@@ -1289,6 +1289,26 @@
       "path": "tests/plataforma/p02-crear-propietario-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
+    },
+    {
+      "path": "tests/plataforma/p04-panel-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/plataforma/p05-panel-ui-runtime.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/plataforma/p06-arranque-plataforma-runtime.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/plataforma/p07-empresas-sin-alta-runtime.mjs",
+      "classification": "active_contract",
+      "environment": "node"
     }
   ]
 }

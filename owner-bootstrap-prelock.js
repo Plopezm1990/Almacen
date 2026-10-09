@@ -11,7 +11,23 @@
   var RPC_PERMITIDOS = {
     obtener_estado_instalacion: true,
     bootstrap_owner_instalacion: true,
-    obtener_contexto_instalacion_ui: true
+    obtener_contexto_instalacion_ui: true,
+    // Plataforma (D01): panel del administrador. Todas comprueban en el servidor que quien llama es
+    // administrador de la plataforma; plataforma_estado solo dice si lo es.
+    plataforma_estado: true,
+    plataforma_listar_empresas: true,
+    plataforma_crear_empresa: true,
+    plataforma_desactivar_empresa: true,
+    plataforma_reactivar_empresa: true,
+    plataforma_resumen_eliminacion: true,
+    plataforma_exportar_empresa: true,
+    plataforma_preparar_eliminacion: true,
+    plataforma_eliminar_empresa: true
+  };
+  // Única Edge Function que puede llamarse por el canal previo a la barrera: la que crea la cuenta del dueño
+  // de una empresa cliente (comprueba en el servidor que quien llama es administrador de la plataforma).
+  var FUNCIONES_PERMITIDAS = {
+    "plataforma-crear-propietario": true
   };
 
   // Interlock adicional sobre la barrera P1: aunque el código histórico pida
@@ -157,6 +173,34 @@
     if (!respuesta.ok) {
       var detalle = datos && (datos.message || datos.details || datos.hint);
       throw new Error(detalle || ("RPC bootstrap HTTP " + respuesta.status));
+    }
+    return datos;
+  };
+
+  window.__laOwnerBootstrapFunction = async function (nombre, token, cuerpo) {
+    if (!fetchNativo || !FUNCIONES_PERMITIDAS[nombre]) throw new Error("Función de servidor no permitida");
+    var base = String(window.NUBE_URL || "").replace(/\/+$/, "");
+    var apikey = String(window.NUBE_CLAVE || "");
+    if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(base)) throw new Error("Backend Supabase no válido");
+    if (!apikey || !token) throw new Error("Credenciales de sesión no disponibles");
+
+    var respuesta = await fetchNativo(base + "/functions/v1/" + nombre, {
+      method: "POST",
+      headers: {
+        "apikey": apikey,
+        "Authorization": "Bearer " + token,
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify(cuerpo || {})
+    });
+
+    var texto = await respuesta.text();
+    var datos = null;
+    try { datos = texto ? JSON.parse(texto) : null; } catch (e) {}
+    if (!respuesta.ok) {
+      var detalle = datos && (datos.error || datos.message || datos.msg);
+      throw new Error(detalle || ("Función de servidor HTTP " + respuesta.status));
     }
     return datos;
   };

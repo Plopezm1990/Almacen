@@ -254,10 +254,22 @@ begin
   end if;
   v_admin := private.es_admin_plataforma();
   if not v_admin then
-    return jsonb_build_object('es_admin', false);
+    -- Quien no es administrador solo averigua si la plataforma está activa (hay algún administrador
+    -- registrado): la pantalla de Empresas lo usa para no ofrecer «Añadir empresa» a un dueño cliente.
+    return jsonb_build_object(
+      'es_admin', false,
+      'plataforma_activa', exists (select 1 from private.plataforma_admins)
+    );
   end if;
   return jsonb_build_object(
     'es_admin', true,
+    'plataforma_activa', true,
+    'mis_empresas', (
+      select count(distinct m.empresa_id)
+        from public.membresias_usuario m
+        join public.empresas e on e.id = m.empresa_id and e.activo = true
+       where m.user_id = auth.uid() and m.activo = true
+    ),
     'empresas_activas', (select count(*) from public.empresas e where e.activo = true),
     'empresas_desactivadas', (select count(*) from public.empresas e where e.activo = false)
   );

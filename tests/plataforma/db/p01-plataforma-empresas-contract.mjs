@@ -148,7 +148,7 @@ try {
   // === Sin administradores registrados: todo como antes =======================
   {
     const r = await rpc(cDuenoB, 'plataforma_estado');
-    assert.deepEqual(r, { es_admin: false }, 'sin administradores nadie es administrador');
+    assert.deepEqual(r, { es_admin: false, plataforma_activa: false }, 'sin administradores nadie es administrador y la plataforma no está activa');
     await fallo(rpc(cDuenoB, 'plataforma_listar_empresas'), { code: '42501', mensaje: 'Administrador de plataforma requerido' }, 'listar sin ser admin');
 
     // Camino heredado: un Propietario crea una empresa desde la pantalla (guardar_contexto_instalacion_ui).
@@ -173,8 +173,19 @@ try {
     assert.equal(r.es_admin, true);
     assert.equal(r.empresas_activas, 2);
     assert.equal(r.empresas_desactivadas, 0);
-    assert.deepEqual(await rpc(cDuenoB, 'plataforma_estado'), { es_admin: false });
-    assert.deepEqual(await rpc(cCajero, 'plataforma_estado'), { es_admin: false });
+    assert.equal(r.plataforma_activa, true);
+    assert.equal(r.mis_empresas, 0, 'el administrador sin membresías no tiene empresas propias');
+    await admin.query("insert into public.membresias_usuario(id, user_id, empresa_id, todos_locales, rol) values (950, $1, 'E-LEGADO', true, 'Propietario')", [ADMIN]);
+    assert.equal((await rpc(cAdmin, 'plataforma_estado')).mis_empresas, 1, 'cuenta su membresía activa en una empresa activa');
+    await admin.query("update public.membresias_usuario set activo=false where id=950");
+    assert.equal((await rpc(cAdmin, 'plataforma_estado')).mis_empresas, 0, 'una membresía desactivada no cuenta');
+    await admin.query("update public.membresias_usuario set activo=true where id=950");
+    await admin.query("update public.empresas set activo=false where id='E-LEGADO'");
+    assert.equal((await rpc(cAdmin, 'plataforma_estado')).mis_empresas, 0, 'una empresa desactivada no cuenta');
+    await admin.query("update public.empresas set activo=true where id='E-LEGADO'");
+    await admin.query("delete from public.membresias_usuario where id=950");
+    assert.deepEqual(await rpc(cDuenoB, 'plataforma_estado'), { es_admin: false, plataforma_activa: true }, 'un dueño ve que la plataforma está activa y nada más');
+    assert.deepEqual(await rpc(cCajero, 'plataforma_estado'), { es_admin: false, plataforma_activa: true });
     await fallo(rpc(cAnon, 'plataforma_estado'), { code: '42501' }, 'anon no ejecuta plataforma_estado');
     await fallo(cAnon.query("select public.plataforma_listar_empresas()"), { code: '42501' }, 'anon no ejecuta listar');
     const sinSesion = await como('');
@@ -368,7 +379,7 @@ try {
   // === El perfil desactivado deja de ser administrador ========================
   {
     await admin.query("update public.perfiles set activo=false where user_id=$1", [ADMIN]);
-    assert.deepEqual(await rpc(cAdmin, 'plataforma_estado'), { es_admin: false });
+    assert.deepEqual(await rpc(cAdmin, 'plataforma_estado'), { es_admin: false, plataforma_activa: true });
     await fallo(rpc(cAdmin, 'plataforma_listar_empresas'), { code: '42501' }, 'admin con perfil desactivado');
     await admin.query("update public.perfiles set activo=true where user_id=$1", [ADMIN]);
     assert.equal((await rpc(cAdmin, 'plataforma_estado')).es_admin, true);
