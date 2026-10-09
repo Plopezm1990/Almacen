@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prepara un Postgres 16 local desechable y ejecuta los 19 contratos activos
+# Prepara un Postgres 16 local desechable y ejecuta los 20 contratos activos
 # de tests/{pm12,pm14,pm33}/db/*.mjs y tests/f3/a09 que necesitan Postgres real pero NO
 # Auth/PostgREST (esos 3 van en el workflow de CI, porque necesitan Docker,
 # no disponible en este entorno de trabajo), más
@@ -51,12 +51,12 @@ echo "POSTGRES_VERSION_VERIFICADA=$pg_major"
 # esto es un no-op idempotente tolerado.
 sudo -u postgres psql -h 127.0.0.1 -c "ALTER USER postgres PASSWORD 'postgres';" 2>/dev/null || \
   psql -h 127.0.0.1 -U postgres -c "ALTER USER postgres PASSWORD 'postgres';" 2>/dev/null || true
-for db in pm12_p08_test pm14_p02_test pm33_p05_test a09_discount_test; do
+for db in pm12_p08_test pm14_p02_test pm33_p05_test a09_discount_test plataforma_p01_test; do
   dropdb -h 127.0.0.1 -U postgres --if-exists "$db"
   createdb -h 127.0.0.1 -U postgres "$db"
 done
 
-for dir in tests/pm12/db tests/pm14/db tests/pm33/db; do
+for dir in tests/pm12/db tests/pm14/db tests/pm33/db tests/plataforma/db; do
   if [ -f "$dir/package-lock.json" ]; then
     npm ci --silent --prefix "$dir"
   else
@@ -88,6 +88,7 @@ psql -h 127.0.0.1 -U postgres -d pm33_p05_test -v ON_ERROR_STOP=1 -f "$migracion
 export PM12_TEST_DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:5432/pm12_p08_test'
 export PM14_TEST_DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:5432/pm14_p02_test'
 export PM33_TEST_DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:5432/pm33_p05_test'
+export PLATAFORMA_TEST_DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:5432/plataforma_p01_test'
 export A09_PG_PORT=5432
 export A09_PG_DATABASE='a09_discount_test'
 export A09_PG_CLIENT="$ROOT/tests/pm12/db/node_modules/pg"
@@ -99,7 +100,7 @@ echo "# POSTGRES=$(psql -h 127.0.0.1 -U postgres -tAc 'select version();') FECHA
 printf 'ruta\tclasificacion\tcodigo_salida\tduracion_ms\tultima_marca\tresultado_final\n' >> "$OUT"
 
 # Lista de ejecución: todo lo que el manifiesto marca environment=postgres
-# (19 activos + 1 histórico), en el orden del propio manifiesto.
+# (20 activos + 1 histórico), en el orden del propio manifiesto.
 mapfile -t archivos < <(node -e "
 const fs = require('fs');
 const m = JSON.parse(fs.readFileSync('$MANIFEST', 'utf8'));
