@@ -72,7 +72,7 @@ try {
       constraint perfiles_rol_check check (rol in ('Propietario','Encargado','Básico','Camarero/a','Cajero/a','Churrero/a'))
     );
     create table public.empresas (id text primary key, nombre text not null, activo boolean not null default true, created_at timestamptz not null default now(), datos jsonb not null default '{}'::jsonb);
-    create table public.locales (id text primary key, empresa_id text not null references public.empresas(id), nombre text not null, activo boolean not null default true, created_at timestamptz not null default now(), datos jsonb not null default '{}'::jsonb);
+    create table public.locales (id text primary key, empresa_id text not null references public.empresas(id), nombre text not null, activo boolean not null default true, created_at timestamptz not null default now(), datos jsonb not null default '{}'::jsonb, unique (empresa_id, id));
     create table public.membresias_usuario (
       id bigint primary key, user_id uuid not null references auth.users(id) on delete cascade,
       empresa_id text not null, local_id text, todos_locales boolean not null default false,
@@ -84,6 +84,12 @@ try {
     create function public.obtener_contexto_instalacion_ui() returns jsonb language sql stable as $$ select jsonb_build_object('ok', true) $$;
 
     -- Tablas de ejemplo (cada una reproduce un caso real del esquema)
+    -- Tablas internas (schema private): una con datos de empresa y clave ajena compuesta a locales, y otras globales declaradas
+    create table private.abc_operating_day_reglas (id uuid primary key default gen_random_uuid(), empresa_id text not null, local_id text not null, foreign key (empresa_id, local_id) references public.locales(empresa_id, id) on delete restrict);
+    create table private.la_instalacion_estado (singleton boolean primary key default true);
+    create table private.g1_operation_ids_global (operation_id text primary key);
+    create table public.empleados (id text primary key, empresa_id text not null, local_id text);
+    alter table public.perfiles add constraint pm11_perfiles_empleado_fk foreign key (empleado_id) references public.empleados(id) on update restrict on delete restrict;
     create table public.entidades_fiscales (id bigint generated always as identity primary key, empresa_id text not null references public.empresas(id) on delete restrict, nombre_legal text);
     create table public.proveedores_empresa (id text primary key, empresa_id text not null, nombre text);
     create table public.pedidos_tpv (id text primary key, empresa_id text not null, local_id text, creado_por uuid references auth.users(id) on delete restrict);
@@ -93,7 +99,7 @@ try {
     create table public.suscripciones_push (endpoint text primary key, user_id uuid references auth.users(id) on delete cascade, local_id text);
     create table public.fichajes_registro (id text primary key, fecha date, datos jsonb not null);
     create table public.movimientos_registro (id text primary key, datos jsonb not null);
-    create table public.almacen_kv (key text primary key, value jsonb, empresa_id text);
+    create table public.almacen_kv (key text primary key, value jsonb, empresa_id text, local_id text);
     create table public.abc_b06_politica_conceptos (concepto text primary key);
     create table public.operaciones_procesadas (operation_id text primary key);
     -- Inmutables: una en la lista cerrada de disparadores y otra desconocida
@@ -123,6 +129,7 @@ try {
   async function sembrarEmpresa(id, local, { cuentas = [], filas = true } = {}) {
     await admin.query('insert into public.empresas(id, nombre) values ($1, $2)', [id, `Empresa ${id}`]);
     await admin.query('insert into public.locales(id, empresa_id, nombre) values ($1, $2, $3)', [local, id, `Local ${local}`]);
+    await admin.query('insert into private.abc_operating_day_reglas(empresa_id, local_id) values ($1, $2)', [id, local]);
     await admin.query("insert into public.entidades_fiscales(empresa_id, nombre_legal) values ($1, 'Razón legal')", [id]);
     for (const [uid, rol] of cuentas) {
       await admin.query("insert into auth.users(id, email) values ($1, $2) on conflict do nothing", [uid, `u${uid.slice(-2)}@example.test`]);
@@ -135,6 +142,9 @@ try {
     await admin.query(`insert into public.pedidos_tpv values ('ped-${d}-1', $1, $2, $3::uuid)`, [id, local, cuentas[0] ? cuentas[0][0] : null]);
     await admin.query(`insert into public.pedido_lineas values ('lin-${d}-1', $1, 'ped-${d}-1'), ('lin-${d}-2', $1, 'ped-${d}-1')`, [id]);
     await admin.query(`insert into public.pedido_linea_opciones values ('opc-${d}-1', $1, 'lin-${d}-1')`, [id]);
+    await admin.query(`insert into public.empleados values ('emp-${d}-1', $1, $2)`, [id, local]);
+    if (cuentas[1]) await admin.query(`update public.perfiles set empleado_id = 'emp-${d}-1' where user_id = $1::uuid`, [cuentas[1][0]]);
+    await admin.query(`insert into public.almacen_kv values ('kv-${d}-etiquetada', '{}', $1, null)`, [id]);
     await admin.query(`insert into public.aa_padre values ('aap-${d}-1', $1)`, [id]);
     await admin.query(`insert into public.zz_hijo values ('zzh-${d}-1', $1, 'aap-${d}-1')`, [id]);
     await admin.query(`insert into public.categorias values ('cat-${d}-1', $1, null), ('cat-${d}-2', $1, 'cat-${d}-1'), ('cat-${d}-3', $1, 'cat-${d}-2')`, [id]);
@@ -153,17 +163,24 @@ try {
   await admin.query("select private.plataforma_registrar_admin($1, 'prueba')", [ADMIN]);
 
   // === Cobertura: ninguna tabla queda sin decidir ==========================================
-  assert.deepEqual((await admin.query('select private.plataforma_tablas_sin_alcance() as t')).rows[0].t, [], 'en el esquema de prueba todas las tablas están decididas');
+  assert.deepEqual((await admin.query('select private.plataforma_tablas_sin_alcance() as t')).rows[0].t, [], 'en el esquema de prueba todas las tablas están decididas (public y private)');
   await admin.query('create table public.tabla_nueva_sin_empresa (id text primary key)');
-  assert.deepEqual((await admin.query('select private.plataforma_tablas_sin_alcance() as t')).rows[0].t, ['tabla_nueva_sin_empresa'], 'una tabla nueva sin empresa_id aparece como sin decidir');
+  assert.deepEqual((await admin.query('select private.plataforma_tablas_sin_alcance() as t')).rows[0].t, ['public.tabla_nueva_sin_empresa'], 'una tabla nueva sin empresa_id aparece como sin decidir');
+  await admin.query('drop table public.tabla_nueva_sin_empresa');
+  await admin.query('create table private.tabla_interna_nueva (id text primary key)');
+  assert.deepEqual((await admin.query('select private.plataforma_tablas_sin_alcance() as t')).rows[0].t, ['private.tabla_interna_nueva'], 'una tabla interna nueva sin decidir también aparece');
+  await admin.query('drop table private.tabla_interna_nueva');
+  await admin.query('create table public.tabla_nueva_sin_empresa (id text primary key)');
   await admin.query('drop table public.tabla_nueva_sin_empresa');
   await admin.query('create table public.tabla_nueva_con_empresa (id text primary key, empresa_id text not null)');
   const plan = (await admin.query('select tabla, modo from private.plataforma_plan_purga() order by orden')).rows;
   assert.ok(plan.some((x) => x.tabla === 'tabla_nueva_con_empresa' && x.modo === 'empresa_id'), 'una tabla nueva con empresa_id entra sola en el plan de borrado');
   await admin.query('drop table public.tabla_nueva_con_empresa');
   const orden = Object.fromEntries((await admin.query('select tabla, orden from private.plataforma_plan_purga()')).rows.map((x) => [x.tabla, x.orden]));
+  assert.ok('abc_operating_day_reglas' in orden && orden.abc_operating_day_reglas < orden.locales, 'las tablas internas con datos de empresa entran en el plan y van antes que locales');
+  assert.ok(!('plataforma_auditoria' in orden) && !('plataforma_eliminaciones' in orden) && !('plataforma_bajas' in orden), 'las tablas propias de plataforma (actas, copias, auditoría) nunca se borran');
   assert.ok(orden.pedido_linea_opciones < orden.pedido_lineas && orden.pedido_lineas < orden.pedidos_tpv, 'hijas antes que padres');
-  assert.ok(!('almacen_kv' in orden) && !('empresas' in orden) && !('perfiles' in orden), 'almacen_kv, empresas y perfiles quedan fuera del plan');
+  assert.ok('almacen_kv' in orden && !('empresas' in orden) && !('perfiles' in orden), 'almacen_kv (filas etiquetadas) entra en el plan; empresas y perfiles quedan fuera');
   assert.equal(plan.find((x) => x.tabla === 'fichajes_registro').modo, 'datos_localid');
   assert.equal(plan.find((x) => x.tabla === 'suscripciones_push').modo, 'local_id');
 
@@ -213,7 +230,8 @@ try {
     assert.equal(ex.copia.datos.proveedores_empresa.length, 2);
     assert.equal(ex.copia.datos.fichajes_registro.length, 1, 'fichajes atribuidos por local');
     assert.equal(ex.copia.datos.suscripciones_push.length, 1);
-    assert.ok(!('almacen_kv' in ex.copia.datos), 'almacen_kv no se exporta (no es de la empresa)');
+    assert.equal(ex.copia.datos.almacen_kv.length, 1, 'las filas de almacen_kv etiquetadas con la empresa se exportan');
+    assert.ok(ex.copia.datos.almacen_kv.every((f) => f.empresa_id === 'E-DEL'), 'y solo esas');
     assert.ok(ex.copia.cuentas.some((c) => c.email && c.rol), 'la copia lleva las cuentas (correo y rol)');
     assert.equal(ex.copia.cuentas.length, 4);
     assert.equal(ex.filas_total, Object.values(ex.copia.filas_por_tabla).reduce((a, b) => a + b, 0));
@@ -239,8 +257,8 @@ try {
 
   // === Antes de borrar: foto de lo que NO se debe tocar =======================================
   const foto = async () => JSON.stringify({
-    legado: (await admin.query("select (select count(*) from public.proveedores_empresa where empresa_id='E-LEGADO') a, (select count(*) from public.pedidos_tpv where empresa_id='E-LEGADO') b, (select count(*) from public.pedido_lineas where empresa_id='E-LEGADO') c, (select count(*) from public.categorias where empresa_id='E-LEGADO') d, (select count(*) from public.abc_c09_impresiones_documentales where empresa_id='E-LEGADO') e, (select count(*) from public.suscripciones_push where local_id='L-LEGADO') f, (select count(*) from public.fichajes_registro where datos->>'localId'='L-LEGADO') g, (select count(*) from public.movimientos_registro where datos->>'localId'='L-LEGADO') h, (select count(*) from public.membresias_usuario where empresa_id='E-LEGADO') i, (select count(*) from public.locales where empresa_id='E-LEGADO') j, (select count(*) from public.entidades_fiscales where empresa_id='E-LEGADO') k")).rows[0],
-    kv: (await admin.query('select key, value, empresa_id from public.almacen_kv order by key')).rows,
+    legado: (await admin.query("select (select count(*) from public.proveedores_empresa where empresa_id='E-LEGADO') a, (select count(*) from public.pedidos_tpv where empresa_id='E-LEGADO') b, (select count(*) from public.pedido_lineas where empresa_id='E-LEGADO') c, (select count(*) from public.categorias where empresa_id='E-LEGADO') d, (select count(*) from public.abc_c09_impresiones_documentales where empresa_id='E-LEGADO') e, (select count(*) from public.suscripciones_push where local_id='L-LEGADO') f, (select count(*) from public.fichajes_registro where datos->>'localId'='L-LEGADO') g, (select count(*) from public.movimientos_registro where datos->>'localId'='L-LEGADO') h, (select count(*) from public.membresias_usuario where empresa_id='E-LEGADO') i, (select count(*) from public.locales where empresa_id='E-LEGADO') j, (select count(*) from public.entidades_fiscales where empresa_id='E-LEGADO') k, (select count(*) from private.abc_operating_day_reglas where empresa_id='E-LEGADO') l")).rows[0],
+    kv: (await admin.query("select key, value, empresa_id from public.almacen_kv where empresa_id is distinct from 'E-DEL' order by key")).rows,
     global: (await admin.query('select count(*)::int n from public.abc_b06_politica_conceptos')).rows[0],
     cuentasDe: (await admin.query("select id from auth.users where id in ($1,$2,$3) order by id", [SHARED, ADMIN, DUENO_B])).rows,
   });
@@ -249,7 +267,7 @@ try {
   // === El borrado =============================================================================
   let acta;
   {
-    const total = await n("select ((select count(*) from public.proveedores_empresa where empresa_id='E-DEL') + (select count(*) from public.pedidos_tpv where empresa_id='E-DEL') + (select count(*) from public.pedido_lineas where empresa_id='E-DEL') + (select count(*) from public.pedido_linea_opciones where empresa_id='E-DEL') + (select count(*) from public.categorias where empresa_id='E-DEL') + (select count(*) from public.abc_c09_impresiones_documentales where empresa_id='E-DEL') + (select count(*) from public.entidades_fiscales where empresa_id='E-DEL') + (select count(*) from public.locales where empresa_id='E-DEL') + (select count(*) from public.membresias_usuario where empresa_id='E-DEL') + (select count(*) from public.aa_padre where empresa_id='E-DEL') + (select count(*) from public.zz_hijo where empresa_id='E-DEL') + (select count(*) from public.suscripciones_push where local_id='L-DEL') + (select count(*) from public.fichajes_registro where datos->>'localId'='L-DEL') + (select count(*) from public.movimientos_registro where datos->>'localId'='L-DEL'))::int n");
+    const total = await n("select ((select count(*) from public.proveedores_empresa where empresa_id='E-DEL') + (select count(*) from public.pedidos_tpv where empresa_id='E-DEL') + (select count(*) from public.pedido_lineas where empresa_id='E-DEL') + (select count(*) from public.pedido_linea_opciones where empresa_id='E-DEL') + (select count(*) from public.categorias where empresa_id='E-DEL') + (select count(*) from public.abc_c09_impresiones_documentales where empresa_id='E-DEL') + (select count(*) from public.entidades_fiscales where empresa_id='E-DEL') + (select count(*) from public.locales where empresa_id='E-DEL') + (select count(*) from public.membresias_usuario where empresa_id='E-DEL') + (select count(*) from public.empleados where empresa_id='E-DEL') + (select count(*) from public.almacen_kv where empresa_id='E-DEL') + (select count(*) from private.abc_operating_day_reglas where empresa_id='E-DEL') + (select count(*) from public.aa_padre where empresa_id='E-DEL') + (select count(*) from public.zz_hijo where empresa_id='E-DEL') + (select count(*) from public.suscripciones_push where local_id='L-DEL') + (select count(*) from public.fichajes_registro where datos->>'localId'='L-DEL') + (select count(*) from public.movimientos_registro where datos->>'localId'='L-DEL'))::int n");
     const opOk = op('elim-ok');
     const r = await rpc(cAdmin, 'plataforma_eliminar_empresa', [opOk, 'E-DEL', '  Empresa E-DEL  ', codigo.toLowerCase(), null]);
     acta = r;
@@ -266,6 +284,9 @@ try {
     assert.equal(await n("select count(*)::int n from public.fichajes_registro where datos->>'localId'='L-DEL'"), 0);
     assert.equal(await n("select count(*)::int n from public.movimientos_registro where datos->>'localId'='L-DEL'"), 0);
     assert.equal(await n("select count(*)::int n from public.empresas where id='E-DEL'"), 0, 'la empresa ya no existe');
+    assert.equal(await n("select count(*)::int n from public.almacen_kv where empresa_id='E-DEL'"), 0, 'las filas etiquetadas de almacen_kv se borraron');
+    assert.equal(await n("select count(*)::int n from public.almacen_kv where empresa_id is null"), 1, 'las colecciones sin etiqueta no se tocan');
+    assert.equal(await n("select count(*)::int n from private.abc_operating_day_reglas where empresa_id='E-DEL'"), 0, 'la tabla interna con clave ajena compuesta a locales también se vació');
     assert.equal(await n("select count(*)::int n from public.aa_padre where empresa_id='E-DEL'") + await n("select count(*)::int n from public.zz_hijo where empresa_id='E-DEL'"), 0, 'el padre y el hijo (orden alfabético contrario) se borraron');
     assert.equal(await n("select count(*)::int n from private.plataforma_codigos where empresa_id='E-DEL' and usado_en is null"), 0, 'el código de un solo uso queda gastado (ninguno sin usar)');
     assert.equal(await n('select count(*)::int n from auth.users where id in ($1,$2)', [OWN1, STAFF1]), 0, 'cuentas exclusivas borradas');

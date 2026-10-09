@@ -22,11 +22,16 @@
 --   * Comprueba que no queda ninguna fila y deja un acta (private.plataforma_eliminaciones) sin
 --     contenido de negocio: empresa, fecha, quién, filas borradas por tabla, cuentas y huellas.
 --
--- Fuera del alcance (y declarado): almacen_kv (una fila por colección para todo el programa, sin
--- empresa), perfiles (se borran con su cuenta), empresas (se borra al final) y tablas técnicas o
--- globales sin dato de empresa (abc_b06_politica_conceptos, operaciones_procesadas, pm29_res,
--- prefiltro_limites). private.plataforma_tablas_sin_alcance() debe devolver vacío: si aparece una
--- tabla nueva sin empresa_id, hay que decidir qué hacer con ella.
+-- almacen_kv: se borran las filas ETIQUETADAS con la empresa (empresa_id). Las colecciones sin
+-- etiqueta (una fila por colección para todo el programa, p. ej. todo el almacén antiguo de
+-- producción) no son de ninguna empresa y no se tocan: se resolverán con el paquete P3 (colecciones por empresa).
+--
+-- Fuera del alcance (y declarado): perfiles (se borran con su cuenta), empresas (se borra al final),
+-- las tablas propias de plataforma (actas, copias, auditoría, bajas) y las técnicas o globales sin
+-- dato de empresa (abc_b06_politica_conceptos, operaciones_procesadas, pm29_res, prefiltro_limites,
+-- private.abc_b07_proveedores, g1_operation_ids_global, la_instalacion_estado).
+-- private.plataforma_tablas_sin_alcance() debe devolver vacío: si aparece una tabla nueva sin
+-- empresa_id, hay que decidir qué hacer con ella.
 --
 -- Este archivo NO se aplica automáticamente a producción desde esta rama.
 begin;
@@ -129,12 +134,17 @@ begin
   select coalesce(array_agg(c.oid), '{}'::oid[]) into v_pend
     from pg_class c
     join pg_namespace n on n.oid = c.relnamespace
-   where n.nspname = 'public'
-     and c.relkind = 'r'
-     and c.relname not in ('empresas', 'almacen_kv', 'perfiles')
+   where c.relkind = 'r'
      and (
-       exists (select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'empresa_id' and not a.attisdropped and a.attnum > 0)
-       or c.relname in ('suscripciones_push', 'fichajes_registro', 'movimientos_registro')
+       -- tablas de la aplicación
+       (n.nspname = 'public' and c.relname not in ('empresas', 'perfiles')
+         and (
+           exists (select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'empresa_id' and not a.attisdropped and a.attnum > 0)
+           or c.relname in ('suscripciones_push', 'fichajes_registro', 'movimientos_registro')
+         ))
+       -- tablas internas con datos de empresa (menos las propias de plataforma: actas, copias, bajas...)
+       or (n.nspname = 'private' and c.relname not like 'plataforma\_%'
+         and exists (select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'empresa_id' and not a.attisdropped and a.attnum > 0))
      );
 
   loop
@@ -193,7 +203,7 @@ as $$
   end;
 $$;
 
--- Tablas de public que ni se borran ni están declaradas como globales/técnicas.
+-- Tablas de public y private que ni se borran ni están declaradas como globales/técnicas ('esquema.tabla').
 create or replace function private.plataforma_tablas_sin_alcance()
 returns text[]
 language sql
@@ -201,15 +211,18 @@ stable
 security definer
 set search_path = pg_catalog, public, private
 as $$
-  select coalesce(array_agg(c.relname::text order by c.relname), '{}'::text[])
+  select coalesce(array_agg(n.nspname || '.' || c.relname order by n.nspname, c.relname), '{}'::text[])
     from pg_class c
     join pg_namespace n on n.oid = c.relnamespace
-   where n.nspname = 'public'
+   where n.nspname in ('public', 'private')
      and c.relkind = 'r'
-     and c.relname not in (select p.tabla from private.plataforma_plan_purga() p)
-     and c.relname not in (
-       'empresas', 'almacen_kv', 'perfiles',
-       'abc_b06_politica_conceptos', 'operaciones_procesadas', 'pm29_res', 'prefiltro_limites'
+     and (n.nspname, c.relname) not in (select p.esquema, p.tabla from private.plataforma_plan_purga() p)
+     and not (n.nspname = 'private' and c.relname like 'plataforma\_%')
+     and (n.nspname || '.' || c.relname) not in (
+       'public.empresas', 'public.perfiles',
+       'public.abc_b06_politica_conceptos', 'public.operaciones_procesadas', 'public.pm29_res', 'public.prefiltro_limites',
+       'private.abc_b07_proveedores', 'private.g1_operation_ids_global', 'private.la_instalacion_estado',
+       'private.pm27_prod_recovery_20260914'
      );
 $$;
 
@@ -689,13 +702,19 @@ begin
     v_triggers := v_triggers || (v_tg.tabla || '|' || v_tg.tgname);
   end loop;
 
+  -- Los perfiles de las cuentas que se van a borrar van PRIMERO: un perfil puede apuntar a su empleado
+  -- (clave ajena con RESTRICT) y bloquearía el borrado de la tabla de empleados.
+  if cardinality(v_cuentas) > 0 then
+    delete from public.perfiles where user_id = any(v_cuentas);
+  end if;
+
   for r in select * from private.plataforma_plan_purga() order by orden loop
     execute format('delete from %I.%I where %s', r.esquema, r.tabla, private.plataforma_condicion(r.modo, r.columna))
       using p_empresa_id, v_locales;
   end loop;
 
+  -- Las cuentas de acceso se borran DESPUÉS: muchas tablas guardan quién hizo cada cosa (RESTRICT) y ya no existen.
   if cardinality(v_cuentas) > 0 then
-    delete from public.perfiles where user_id = any(v_cuentas);
     delete from auth.users where id = any(v_cuentas);
   end if;
 
