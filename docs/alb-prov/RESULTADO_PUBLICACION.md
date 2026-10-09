@@ -29,3 +29,37 @@ Volver a publicar el despliegue anterior `6ac22344948ac900082766ab` (producción
 - Llevar `docs/alb-prov/` a `release` con un PR aparte `[skip netlify]` (la documentación vive hoy en la rama de trabajo).
 - Opcional: volver el simulador de QA al corta-fuegos 503 (`GUIA_PRUEBAS_QA.md` §6).
 - Fase 2: función de IA que distinga emisor/cliente con los datos propios; «Pegar texto» con la misma detección; fusionar proveedores duplicados.
+
+
+---
+
+# ALB-PROV-2 — publicación de la aplicación (9/10/2026)
+
+Estado: **PUBLICADO EN PRODUCCIÓN** (la aplicación). La función de IA v17 **no** está desplegada todavía.
+
+## Autorización
+Pedro: «Vale, primero arregla el texto cortado y después ya publica, autorizo» y, después, «publica ya». La cabeza definitiva del PR 128 no existía cuando lo dijo (había que hacer antes el arreglo del texto); la diferencia entre lo que había visto (`b451c6c`) y lo publicado (`ea76060`) es **solo** ese arreglo (3 líneas: el texto del desplegable y su prueba), que es lo que pidió. Desviación consciente respecto a la frase literal de la hoja, anotada aquí como la vez anterior.
+
+## Comprobaciones justo antes de fusionar
+- Cabeza del PR 128: `ea76060e4c66fff87357a30084a673c52523e1ef` (la fusión se hizo con `expectedHeadSha` igual a esa).
+- Base `release`: `ee3f57bba3534a52cd9fc89516b8cdc522f391f1` (el squash del PR 127), sin moverse; el PR era descendiente directo.
+- `sha256` de `fuente.js` en esa cabeza: `80dc0a9a23fb93a81b61bc14f7b4a6d498671b0a7bcdce9a9c130f272f8bdcbc` (igual al de la rama de trabajo).
+- CI: 25 comprobaciones terminadas bien (puerta final, Postgres, Netlify). En local, antes: sintaxis, paridad del espejo, validador del manifiesto, los 204 contratos Node (antes del arreglo de texto) y a01/a02/a03/pm05/pm20 tras él.
+- QA: Pedro vio en su móvil, en la vista previa de QA con el simulador v3, el proveedor nuevo con la ficha completa (nombre, NIF, dirección, web, correo, teléfono, condiciones y días de pago).
+
+## Lo que se hizo
+1. Fusión **squash** del PR 128 en `release`: commit `54c6ed9b2aaeb671207a16904372aad1840086be`.
+2. Netlify publicó en producción el despliegue **`6ac89db60533f200086e4136`** (estado `ready`).
+3. Comprobación del servido: `https://chic-entremet-9107cf.netlify.app/fuente.js` devuelve `sha256` **`80dc0a9a23fb93a81b61bc14f7b4a6d498671b0a7bcdce9a9c130f272f8bdcbc`** (antes de la fusión, el del PR 127: `e39af0c4…`); contiene «Completar su ficha con los datos de la foto» y ya no el texto largo del desplegable.
+
+## Lo que NO se tocó
+Base de datos, función de IA de producción (`importar-albaran` sigue en la **v16**), permisos, secretos. QA: el simulador sigue en la v3.
+
+## Marcha atrás
+Volver a publicar el despliegue anterior `6ac891fd014636000880f339` (PR 127, `fuente.js` `e39af0c4…`). No toca datos.
+
+## Pendiente
+1. **Desplegar la función de IA v17** (`docs/alb-prov/edge/importar-albaran_v17.ts`; solo cambia la instrucción) en producción, con autorización propia de Pedro y la huella del texto. Copia de la v16 para la marcha atrás: `…_v16_respaldo.ts`.
+2. Tras desplegarla, Pedro vuelve a leer la foto de Arboliva: comprueba líneas y total, y pulsa «Completar su ficha con los datos de la foto».
+3. Llevar `docs/alb-prov/` a `release` con un PR aparte `[skip netlify]`.
+4. El aviso «1 colección solo en este equipo (el servidor no permite guardarla)» que sale en producción: es de otra colección (no del proveedor ni del albarán, comprobado contando filas); las claves que la aplicación guarda y la política antigua de `almacen_kv` de producción no admite son `configEmpresa`, `empresas` y `pagosFacturas` (esta última va por RPC). Investigar aparte.

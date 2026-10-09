@@ -29,7 +29,7 @@ Entrar en la vista previa con el usuario Propietario de QA. Ir a **Albaranes**.
 **A. Proveedor nuevo, al dar entrada**
 1. Pulsar «Foto con IA». Comprobar que el proveedor dice **«Detectar por la foto (recomendado)»** y debajo un texto explicativo.
 2. Subir **1 foto** → «Leer con IA».
-3. Debe salir el editor con una tarjeta ámbar **«Proveedor nuevo detectado: Queseria Prueba Alb S.L. · B12345617»** y el selector de proveedor con la opción «Proveedor nuevo: … (se dará de alta al guardar)». **Todavía no debe existir** en la pantalla Proveedores (comprobarlo en otra pestaña si se quiere).
+3. Debe salir el editor con una tarjeta ámbar **«Proveedor nuevo detectado: Queseria Prueba Alb S.L. · B12345617»** y el selector de proveedor con la opción «Nuevo: …». **Todavía no debe existir** en la pantalla Proveedores (comprobarlo en otra pestaña si se quiere).
 4. Pulsar «Dar entrada al almacén». Debe volver a la lista con un aviso verde «Se ha dado de alta el proveedor «Queseria Prueba Alb S.L.»…». Pulsar «Entendido».
 5. Ir a **Proveedores**: debe haber un aviso «1 proveedor(es) se dieron de alta automáticamente…», el proveedor con la marca **«Creado por IA · revisar»** y su NIF/CIF `B12345617`. Pulsar «Marcar como revisado»: desaparecen marca y aviso.
 6. En **Albaranes**: el albarán aparece como «Dado de entrada» con ese proveedor (no «Sin proveedor»).
