@@ -86,6 +86,11 @@ const DATOS = (extra = {}) => ({
   totalAlbaran: 22, confianza: 'alta', avisos: [], ...extra
 });
 
+const DATOS_CONTACTO = {
+  proveedorNombre: 'QUESOS LA ABUELA S.L.', proveedorCif: 'b-12345617',
+  proveedorDireccion: 'C/ Electricistas 7, 28670 Villaviciosa de Odón (Madrid)', proveedorTelefono: '91 616 57 45', proveedorEmail: 'VENTAS@quesos.com', proveedorWeb: 'WWW.quesos.com',
+  condicionesPago: '60 DIAS', diasPago: null, clienteNombre: 'CHOCOLOYOS, S.L.', clienteCif: 'B87342077'
+};
 let raiz = null;
 let ctrl = null;
 // Arnés: se comporta como la aplicación respecto a proveedores y albaranes
@@ -127,7 +132,7 @@ async function montar({ proveedores = [], datosIA = DATOS(), puedeAlta = true, e
       duplicadosDe: () => ({ albaran: null, factura: null }), desviacionesDePrecio: () => [],
       prefill: null, limpiarPrefill() {}, pedidoParaFotoIA: null, limpiarPedidoParaFotoIA() {}, pedidos: [],
       empresaId: EMP, empresasPropias, puedeAltaProveedorIA: puedeAlta,
-      addProveedorDesdeAlbaran: logica.addProveedorDesdeAlbaran, asignarNifProveedor: logica.asignarNifProveedor
+      addProveedorDesdeAlbaran: logica.addProveedorDesdeAlbaran, asignarNifProveedor: logica.asignarNifProveedor, completarProveedorConDatos: logica.completarProveedorConDatosAlb
     });
   };
   raiz = createRoot(document.getElementById('raiz'));
@@ -174,7 +179,7 @@ await escenario('S2', async () => {
   await leerFoto();
   ok('S2 avisa de proveedor nuevo', texto().includes('Proveedor nuevo detectado') && texto().includes('Quesos la Abuela S.L.') && texto().includes(NIF_A), texto().slice(-700));
   ok('S2 todavía NO se ha creado nada', proveedoresVista().length === 0, JSON.stringify(proveedoresVista()));
-  ok('S2 el selector explica que se dará de alta', !!selectConOpcion('Proveedor nuevo: Quesos la Abuela S.L.'), '');
+  ok('S2 el selector dice en corto que es nuevo (el texto largo se cortaba en el móvil)', !!selectConOpcion('Nuevo: Quesos la Abuela S.L.') && !selectConOpcion('se dará de alta'), '');
   await clic(boton('Guardar como borrador'), 'Guardar como borrador');
   const prov = proveedoresVista()[0];
   ok('S2 se crea un proveedor', proveedoresVista().length === 1, JSON.stringify(proveedoresVista()));
@@ -277,13 +282,46 @@ await escenario('S9', async () => {
   ok('S9 manda lo elegido a mano', ctrl.guardados.at(-1)?.proveedorId === 'p2', JSON.stringify(ctrl.guardados.at(-1)));
 });
 
-// ===== S10: proveedor reconocido por nombre sin NIF en la ficha → ofrecer guardarlo =====
+// ===== S10: proveedor reconocido por nombre con la ficha vacía → ofrecer completarla con los datos de la foto =====
 await escenario('S10', async () => {
-  await montar({ proveedores: [{ id: 'p1', nombre: 'Quesos La Abuela' }] });
+  await montar({ proveedores: [{ id: 'p1', nombre: 'Quesos La Abuela' }], datosIA: DATOS(DATOS_CONTACTO) });
   await leerFoto();
-  ok('S10 reconocido por el nombre y se ofrece guardar el NIF', texto().includes('por el nombre') && !!boton(`Guardar su NIF/CIF (${NIF_A}) en la ficha`), texto().slice(-600));
-  await clic(boton('Guardar su NIF/CIF'), 'Guardar NIF');
-  ok('S10 el NIF queda en la ficha', proveedoresVista()[0].nif === NIF_A && texto().includes('NIF/CIF guardado en la ficha'), JSON.stringify(proveedoresVista()[0]));
+  ok('S10 reconocido por el nombre y se ofrece completar la ficha', texto().includes('por el nombre') && texto().includes('La ficha de este proveedor no tiene estos datos y la foto los trae') && !!boton('Completar su ficha con los datos de la foto'), texto().slice(-800));
+  ok('S10 la tarjeta enseña qué datos traería', texto().includes('NIF/CIF: ' + NIF_A) && texto().includes('dirección: C/ Electricistas 7, 28670 Villaviciosa de Odón') && texto().includes('teléfono: 91 616 57 45') && texto().includes('correo: ventas@quesos.com') && texto().includes('condiciones de pago: 60 días') && texto().includes('días de pago: 60'), texto().slice(-900));
+  ok('S10 todavía no ha tocado la ficha', proveedoresVista()[0].nif === undefined && proveedoresVista()[0].telefono === undefined, JSON.stringify(proveedoresVista()[0]));
+  await clic(boton('Completar su ficha con los datos de la foto'), 'Completar ficha');
+  const f = proveedoresVista()[0];
+  ok('S10 la ficha queda completa', f.nif === NIF_A && f.direccion.startsWith('C/ Electricistas 7') && f.telefono === '91 616 57 45' && f.email === 'ventas@quesos.com' && f.web === 'www.quesos.com' && f.condiciones === '60 días' && f.diasPago === 60, JSON.stringify(f));
+  ok('S10 lo dice y ya no ofrece lo mismo', texto().includes('Ficha completada:') && !boton('Completar su ficha con los datos de la foto'), texto().slice(-700));
+  ok('S10 queda auditado', ctrl.auditoria.some((a) => a[0] === 'Completar ficha de proveedor con los datos de la foto del albarán'), JSON.stringify(ctrl.auditoria));
+});
+
+// ===== S10b: lo que la ficha ya tiene NO se pisa =====
+await escenario('S10b', async () => {
+  await montar({ proveedores: [{ id: 'p1', nombre: 'Quesos La Abuela', nif: NIF_A, telefono: '600 000 000', email: 'otro@correo.es', direccion: 'Mi dirección', web: 'mi.web.es', condiciones: 'Contado', diasPago: 7 }], datosIA: DATOS(DATOS_CONTACTO) });
+  await leerFoto();
+  ok('S10b con la ficha ya completa no se ofrece nada', !boton('Completar su ficha con los datos de la foto') && texto().includes('Proveedor reconocido'), texto().slice(-600));
+  ok('S10b y la ficha queda intacta', proveedoresVista()[0].telefono === '600 000 000' && proveedoresVista()[0].diasPago === 7, JSON.stringify(proveedoresVista()[0]));
+});
+
+// ===== S13: proveedor NUEVO con todos los datos de la foto =====
+await escenario('S13', async () => {
+  await montar({ proveedores: [], datosIA: DATOS(DATOS_CONTACTO) });
+  await leerFoto();
+  ok('S13 antes de crear enseña lo que se guardará', texto().includes('Se guardará también:') && texto().includes('teléfono: 91 616 57 45') && texto().includes('web: www.quesos.com'), texto().slice(-900));
+  await clic(boton('Dar entrada al almacén'), 'Dar entrada');
+  const f = proveedoresVista()[0];
+  ok('S13 el proveedor nace con toda su ficha', proveedoresVista().length === 1 && f.nif === NIF_A && f.direccion.startsWith('C/ Electricistas 7') && f.telefono === '91 616 57 45' && f.email === 'ventas@quesos.com' && f.web === 'www.quesos.com' && f.condiciones === '60 días' && f.diasPago === 60 && f.pendienteRevision === true, JSON.stringify(f));
+  ok('S13 y la entrada se registra', ctrl.confirmados.length === 1 && ctrl.rechazados.length === 0, '');
+});
+
+// ===== S14: la IA devuelve como NIF del proveedor el del cliente (la propia empresa) =====
+await escenario('S14', async () => {
+  await montar({ proveedores: [], datosIA: DATOS({ proveedorCif: 'B87342077', clienteCif: 'B-87342077', clienteNombre: 'CHOCOLOYOS, S.L.' }) });
+  await leerFoto();
+  ok('S14 avisa de que ese NIF es el del cliente', texto().includes('es el del cliente') && texto().includes('no se guardará'), texto().slice(-700));
+  await clic(boton('Guardar como borrador'), 'Guardar como borrador');
+  ok('S14 el proveedor se crea SIN ese NIF', proveedoresVista().length === 1 && !proveedoresVista()[0].nif, JSON.stringify(proveedoresVista()[0]));
 });
 
 // ===== S11: pantalla Proveedores =====
@@ -293,7 +331,7 @@ await escenario('S11', async () => {
   const registro = [];
   const Arnes2 = () => {
     const [provs, setProvs] = React.useState([
-      { id: 'a', empresaId: EMP, nombre: 'Quesos la Abuela S.L.', nif: NIF_A, pendienteRevision: true, creadoPorIA: true },
+      { id: 'a', empresaId: EMP, nombre: 'Quesos la Abuela S.L.', nif: NIF_A, direccion: 'C/ Mayor 1, Madrid', web: 'www.abuela.es', pendienteRevision: true, creadoPorIA: true },
       { id: 'b', empresaId: EMP, nombre: 'Manual', cif: NIF_B }
     ]);
     registro.vista = provs;
@@ -309,7 +347,9 @@ await escenario('S11', async () => {
   await clic(boton('Marcar como revisado'), 'Marcar como revisado');
   ok('S11 «Marcar como revisado» quita la marca y el aviso', registro.vista[0].pendienteRevision === false && !texto().includes('Creado por IA') && !texto().includes('se dieron de alta automáticamente'), JSON.stringify(registro.vista[0]));
   // edición: NIF inválido rechazado, válido aceptado y normalizado
+  ok('S11 las tarjetas enseñan dirección y web cuando las hay', texto().includes('C/ Mayor 1, Madrid') && texto().includes('www.abuela.es'), texto().slice(0, 700));
   await clic(botones().filter((b) => b.textContent.trim() === 'Editar')[1], 'Editar');
+  ok('S11 la edición tiene los campos Dirección y Web', texto().includes('Dirección (opcional)') && texto().includes('Web (opcional)'), '');
   const inputNif = Array.from(document.querySelectorAll('input')).find((i) => i.value === NIF_B);
   ok('S11 la edición muestra el NIF/CIF actual (cif antiguo incluido)', !!inputNif, '');
   const poner = async (el, v) => { await act(async () => { const set = Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value').set; set.call(el, v); el.dispatchEvent(new dom.window.Event('input', { bubbles: true })); }); await esperar(20); };
