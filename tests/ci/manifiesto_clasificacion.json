@@ -1,15 +1,15 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 244,
+  "total_inventory": 247,
   "expected_counts": {
-    "active_contract": 227,
+    "active_contract": 230,
     "historical_expected_fail": 1,
     "utility": 11,
     "diagnostic": 5
   },
   "expected_environment_counts": {
     "node": {
-      "active_contract": 204,
+      "active_contract": 207,
       "historical_expected_fail": 0,
       "utility": 10,
       "diagnostic": 5
@@ -191,6 +191,16 @@
     },
     {
       "path": "tests/f4/b12/b12-payment-trial-matrix-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c01/c01-ui-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c02/c02-ui-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     },
@@ -1097,6 +1107,11 @@
     },
     {
       "path": "tests/cfg/alcance-static-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/c03-arqueo-ui-runtime.mjs",
       "classification": "active_contract",
       "environment": "node"
     },
