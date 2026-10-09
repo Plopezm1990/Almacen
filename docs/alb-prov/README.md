@@ -62,3 +62,28 @@ En **Proveedores**: campo nuevo «NIF / CIF (opcional)» (validado con el dígit
 2. «Pegar texto» con la misma detección.
 3. Herramienta de «fusionar proveedores duplicados».
 4. Mover proveedores a una tabla con NIF único por empresa en el servidor.
+
+
+---
+
+# Ampliación ALB-PROV-2 — la IA lee también los datos de contacto del proveedor
+
+Fecha: 2026-10-09 · Origen: la primera foto real de Pedro (albarán de Arboliva SA). La IA solo leyó el nombre; el albarán trae más: **CIF del proveedor en el pie legal** («CIF A-78540960», distinto del CIF del cliente que aparece junto a la caja de destino, `B87342077`), **dirección, teléfono, correo, web y condiciones de pago («60 DIAS»)**.
+
+## Por qué solo leía el nombre
+La función de IA de producción (v16) pedía solo `proveedorNombre` y `proveedorCif`, **sin explicar qué es cada uno**: con el único «CIF» bien visible (el del cliente) y el del proveedor escondido en el pie, devolvió el nombre y dejó el CIF vacío (acertó al no usar el del cliente).
+
+## Qué cambia
+1. **Función de IA `importar-albaran` v17** (`docs/alb-prov/edge/importar-albaran_v17.ts`; la v16 queda guardada como `…_v16_respaldo.ts` para la marcha atrás). Cambio **solo en la instrucción** (aditivo; el resto del código es idéntico, comprobado con `diff`): explica quién es el emisor y quién el cliente, dónde buscar el CIF (cabecera **y pie legal**), y pide además `proveedorDireccion`, `proveedorTelefono`, `proveedorEmail`, `proveedorWeb`, `condicionesPago`, `diasPago`, `clienteNombre`, `clienteCif`. La función ya devuelve todo lo que el modelo produce, así que no hace falta más código.
+2. **Aplicación** (`fuente.js` y espejo):
+   - Proveedor **nuevo**: nace con toda su ficha (NIF, dirección, teléfono, correo, web, condiciones y días de pago) y la tarjeta enseña «Se guardará también: …» antes de crearlo.
+   - Proveedor **que ya existe con la ficha incompleta** (como Arboliva, dado de alta solo con el nombre): botón **«Completar su ficha con los datos de la foto»**; solo rellena lo **vacío**, nunca pisa lo escrito, no deja repetir un NIF de otro proveedor, y queda en la auditoría.
+   - Si la IA devuelve como NIF del proveedor el del **cliente** (el destinatario), no se guarda y se avisa.
+   - Todo lo leído se limpia antes de guardarlo (correo con formato válido, teléfono con ≥ 9 cifras, web con dominio, «60 DIAS» → «60 días» y 60 días de pago); lo dudoso se descarta en vez de guardarlo mal.
+   - **Proveedores**: campos nuevos «Dirección (opcional)» y «Web (opcional)» (alta, edición y tarjeta). Sustituye al botón «Guardar su NIF/CIF» de la primera versión (ahora es parte de «Completar su ficha»).
+3. **Pruebas**: `a01` (limpieza, qué falta en la ficha, alta con datos, completar, NIF del cliente), `a02` (pantalla montada: ficha completa, no pisar, alta con todos los datos, NIF del cliente; 61 comprobaciones), `a03` (cableado).
+
+## Riesgo y marcha atrás
+- La función v17 **no se puede probar con la IA real fuera de producción** (en QA no hay IA). El cambio es solo de texto y aditivo, pero el efecto en la lectura de **líneas** solo se comprueba con fotos reales: tras desplegarla, Pedro vuelve a leer la misma foto y compara líneas y total.
+- Marcha atrás de la función: volver a desplegar `importar-albaran_v16_respaldo.ts` (idéntico a la v16 de producción, `sha256` del texto `b649d2686596b12efa2be792672537552321d6abe3bbc070f5553941e23371f9`). La aplicación nueva sigue funcionando con la v16 (esos campos simplemente no llegan): marcha atrás de la aplicación = volver al despliegue anterior de Netlify.
+- Orden recomendado: (1) QA de la aplicación con el simulador v3, (2) publicar la aplicación, (3) desplegar la función v17, (4) Pedro lee otra vez la foto de Arboliva y pulsa «Completar su ficha».

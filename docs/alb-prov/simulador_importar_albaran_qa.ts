@@ -6,12 +6,15 @@
 // Dónde NO debe ir nunca: producción (flqercbgpgmmfaakrwkc). Allí está la función real (versión 16, Claude Haiku 4.5).
 //
 // Cómo se elige el escenario: por el NÚMERO DE FOTOS que se suben en una misma lectura.
-//   1 foto  → proveedor «QUESERIA PRUEBA ALB S.L.» con NIF válido        (1.ª vez: nuevo; 2.ª vez: reconocido por NIF)
-//   2 fotos → «QUESERIA PRUEBA ALVA S.L.» sin NIF                         (parecido al anterior: pregunta)
-//   3 fotos → sin proveedor ni NIF                                        (hay que elegirlo a mano)
-//   4 fotos → «DISTRIBUCIONES PRUEBA DOS S.L.» con NIF mal escrito        (nuevo, y avisa de que el NIF no se guardará)
-//   5 fotos → «QUESERIA PRUEBA ALB S.L.» con OTRO NIF válido              (mismo nombre, otro NIF: pregunta)
-//   6 o más → igual que 1
+//   1 foto  → «QUESERIA PRUEBA ALB S.L.», NIF válido y TODOS los datos de contacto  (si el proveedor no existe: nuevo con la ficha completa;
+//                                                                                    si ya existe sin datos: «Completar su ficha con los datos de la foto»)
+//   2 fotos → «QUESERIA PRUEBA ALVA S.L.» sin NIF                                    (parecido al anterior: pregunta)
+//   3 fotos → sin proveedor ni NIF                                                   (hay que elegirlo a mano)
+//   4 fotos → «DISTRIBUCIONES PRUEBA DOS S.L.» con NIF mal escrito                   (nuevo, y avisa de que el NIF no se guardará)
+//   5 fotos → «QUESERIA PRUEBA ALB S.L.» con OTRO NIF válido                         (mismo nombre, otro NIF: pregunta)
+//   6 fotos → «BODEGAS PRUEBA TRES S.L.», NIF válido y todos los datos de contacto   (nuevo con la ficha completa)
+//   7 fotos → «DISTRIBUCIONES PRUEBA CUATRO S.L.» cuyo «NIF» es el del cliente       (nuevo, sin NIF: avisa de que es el del cliente)
+//   8 o más → igual que 1
 // Restablecer la neutralización: volver a desplegar el contenido anterior (503) — está en docs/alb-prov/GUIA_PRUEBAS_QA.md §6.
 
 const CORS = {
@@ -28,10 +31,14 @@ const LINEAS = [
   { codigo: "QP-002", descripcion: "QUESO TIERNO PRUEBA 500G", cantidad: 2, unidad: "ud", udsPorCaja: null, precioUnitario: 5, descuentoPct: 0, iva: 10, canon: 0, lote: null, caducidadTexto: null, caducidad: null, importeLinea: 10 },
 ];
 
-function albaran(proveedorNombre: string | null, proveedorCif: string | null, numeroAlbaran: string) {
+const CLIENTE = { clienteNombre: "CHOCOLOYOS, S.L.", clienteCif: "B87342077" };
+
+function albaran(proveedorNombre: string | null, proveedorCif: string | null, numeroAlbaran: string, contacto: Record<string, unknown> = {}) {
   return {
     proveedorNombre,
     proveedorCif,
+    ...contacto,
+    ...CLIENTE,
     numeroAlbaran,
     numeroFactura: null,
     fecha: new Date().toISOString().slice(0, 10),
@@ -48,13 +55,24 @@ function albaran(proveedorNombre: string | null, proveedorCif: string | null, nu
   };
 }
 
+const CONTACTO_ALB = {
+  proveedorDireccion: "Polígono Pinares Llanos, C/ Electricistas, 7, 28670 Villaviciosa de Odón (Madrid)",
+  proveedorTelefono: "91 616 57 45",
+  proveedorEmail: "PEDIDOS@queseriaprueba.com",
+  proveedorWeb: "WWW.queseriaprueba.es",
+  condicionesPago: "60 DIAS",
+  diasPago: null,
+};
+
 function escenario(fotos: number) {
   switch (fotos) {
     case 2: return albaran("QUESERIA PRUEBA ALVA S.L.", null, "SIM-0002");
     case 3: return albaran(null, null, "SIM-0003");
     case 4: return albaran("DISTRIBUCIONES PRUEBA DOS S.L.", "B12345618", "SIM-0004");
     case 5: return albaran("QUESERIA PRUEBA ALB S.L.", "A58818501", "SIM-0005");
-    default: return albaran("QUESERIA PRUEBA ALB S.L.", "B12345617", "SIM-0001");
+    case 6: return albaran("BODEGAS PRUEBA TRES S.L.", "B12345625", "SIM-0006", { ...CONTACTO_ALB, proveedorEmail: "info@bodegasprueba.com", proveedorWeb: "bodegasprueba.es", condicionesPago: "Transferencia 30 días", diasPago: 30 });
+    case 7: return albaran("DISTRIBUCIONES PRUEBA CUATRO S.L.", "B87342077", "SIM-0007");
+    default: return albaran("QUESERIA PRUEBA ALB S.L.", "B12345617", "SIM-0001", CONTACTO_ALB);
   }
 }
 

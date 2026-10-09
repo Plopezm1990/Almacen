@@ -103,3 +103,32 @@ Deno.serve(async (req: Request) => {
   return new Response(JSON.stringify({ ok: false, qa: true, simulated: true, function: 'importar-albaran', error: 'Función de IA neutralizada en L&A Suite QA' }), { status: 503, headers: { 'content-type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
 });
 ```
+
+
+---
+
+# Segunda ronda — datos de contacto del proveedor leídos de la foto (ALB-PROV-2)
+
+Nuevo simulador (versión 3 en QA): además del nombre y el NIF devuelve **dirección, teléfono, correo, web, condiciones de pago, días de pago** y los datos del **cliente** (para no confundirlos con el proveedor). Escenarios nuevos o cambiados:
+
+| Fotos | Devuelve | Debe pasar |
+|---|---|---|
+| 1 | «QUESERIA PRUEBA ALB S.L.», NIF `B12345617` y todos los datos de contacto | Como ese proveedor ya existe en QA sin datos de contacto: «✓ Proveedor reconocido … (por su NIF/CIF)» y un botón **«Completar su ficha con los datos de la foto»** que enseña qué datos traería |
+| 6 | «BODEGAS PRUEBA TRES S.L.», NIF `B12345625` y todos los datos | Proveedor nuevo; la tarjeta dice «Se guardará también: dirección…, teléfono…, correo…, web…, condiciones de pago…, días de pago: 30» |
+| 7 | «DISTRIBUCIONES PRUEBA CUATRO S.L.» cuyo «NIF» es el del cliente | «El NIF/CIF leído (B87342077) es el del cliente (el destinatario del albarán), no el del proveedor: no se guardará.»; se crea sin NIF |
+
+## Pasos (los 3 son de QA)
+**J.** «Foto con IA» → **1 foto** → Leer. Debe aparecer la frase «La ficha de este proveedor no tiene estos datos y la foto los trae:» con dirección, teléfono, correo, web, condiciones de pago y días de pago (el NIF ya lo tiene). Pulsar **«Completar su ficha con los datos de la foto»** → «Ficha completada: …». En **Proveedores**, la tarjeta de «Queseria Prueba Alb» muestra 📍 dirección, 🌐 web, ✉ correo, ☎ teléfono, «Condiciones: 60 días» y «Pago a 60 días». Volver a leer 1 foto: ya no ofrece completar nada y **no pisa** lo escrito.
+**K.** **6 fotos** → Leer → comprobar «Se guardará también: …» → «Guardar como borrador» → en Proveedores «Bodegas Prueba Tres S.L.» con NIF `B12345625`, dirección, teléfono, correo, web, «Condiciones: Transferencia 30 días» y «Pago a 30 días», con la marca «Creado por IA · revisar».
+**L.** **7 fotos** → Leer → aviso de que el NIF es el del cliente → «Guardar como borrador» → en Proveedores «Distribuciones Prueba Cuatro S.L.» **sin** línea de NIF/CIF.
+**M.** Proveedores → «Nuevo proveedor»: aparecen «Dirección (opcional)» y «Web (opcional)»; «Editar» también.
+
+## Prompt para Cowork (solo QA; si no puede subir archivos, que pare y lo diga)
+```
+Eres Cowork. Prueba SOLO la vista previa de QA https://deploy-preview-118--chic-entremet-9107cf.netlify.app (nunca producción) con el usuario Propietario. Si ves la dirección de producción o un aviso rojo de "PRODUCCIÓN", PARA y avísame. La IA de QA es un simulador: la imagen da igual; lo que cambia es CUÁNTAS fotos subes a la vez. Para en la primera diferencia.
+J) Albaranes > "Foto con IA" > 1 foto > "Leer con IA": debe decir "✓ Proveedor reconocido: Queseria Prueba Alb S.L. (por su NIF/CIF)" y "La ficha de este proveedor no tiene estos datos y la foto los trae:" con dirección, teléfono, correo, web, condiciones de pago y días de pago. Pulsa "Completar su ficha con los datos de la foto": debe decir "Ficha completada: …". NO des entrada: pulsa "Volver" (o "Cancelar"). En Proveedores comprueba que la tarjeta de "Queseria Prueba Alb S.L." muestra dirección, web, correo, teléfono, "Condiciones: 60 días" y "Pago a 60 días". Repite 1 foto > Leer: ya no debe ofrecer completar.
+K) 6 fotos > Leer: "Proveedor nuevo detectado: Bodegas Prueba Tres S.L. · B12345625" con "Se guardará también: dirección…, teléfono…, correo: info@bodegasprueba.com, web: bodegasprueba.es, condiciones de pago: Transferencia 30 días, días de pago: 30". Pulsa "Guardar como borrador". En Proveedores comprueba la tarjeta con todos esos datos y la marca "Creado por IA · revisar".
+L) 7 fotos > Leer: "Proveedor nuevo detectado: Distribuciones Prueba Cuatro S.L." con el aviso "El NIF/CIF leído (B87342077) es el del cliente … no se guardará". Pulsa "Guardar como borrador". En Proveedores comprueba que NO tiene línea de NIF/CIF.
+M) Proveedores > "Nuevo proveedor": comprueba los campos "Dirección (opcional)" y "Web (opcional)". Cancela. No pulses nada de Caja, Cobros ni Configuración.
+Devuélveme J–M con "OK" o "DIFERENCIA", captura y texto exacto.
+```
