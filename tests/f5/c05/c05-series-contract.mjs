@@ -22,10 +22,10 @@ for (const marker of [
 for (const marker of [
   'dos solicitudes concurrentes no pueden recibir el mismo numero',
   'Repetir una reserva con el mismo `operation_id`',
-  'No se aplican migraciones remotas',
+  'Ensayo transaccional en QA',
 ]) assert.match(doc, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), `documento: falta ${marker}`);
 
 assert.match(sql, /unique \(empresa_id,local_id,tipo_documento,codigo_serie,numero\)/i);
 assert.match(sql, /estado in \('RESERVADO','EMITIDO','PENDIENTE','ERROR','ANULADO'\)/i);
 assert.doesNotMatch(sql, /next_attempt_at/i);
-console.log('ABC_F5_C05_SERIES_CONTRACT=PASS_WITH_POSTGRES_PENDING');
+console.log('ABC_F5_C05_SERIES_CONTRACT=PASS');

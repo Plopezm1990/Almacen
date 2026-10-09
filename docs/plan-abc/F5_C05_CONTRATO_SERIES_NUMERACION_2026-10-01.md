@@ -1,7 +1,7 @@
 # F5 C05 Contrato de series y numeracion documental
 
 Fecha: 2026-10-01  
-Estado: `CANDIDATO_C05_VALIDADO_PG_NO_APLICADO`
+Estado: `IMPLEMENTADO_Y_VERIFICADO_EN_QA; EMISOR_Y_UI_PENDIENTES`
 Base: Plan ABC C05, F2 operaciones idempotentes y F5 C04
 
 ## Alcance de este subpunto
@@ -41,15 +41,16 @@ conservación y rectificación. Mientras esas decisiones no existan, los datos
 de este paquete son identidad y estado técnico, no evidencia de cumplimiento
 fiscal.
 
-## Evidencia prevista
+## Evidencia obtenida
 
 1. Contratos estáticos de preflight, concurrencia, idempotencia, ACL/RLS y
    no-renumeracion.
 2. Prueba PostgreSQL 16 ejecutada con dos conexiones: dos reservas concurrentes de la
    misma serie, recuperación por `operation_id`, transición pendiente a
    emitido y bloqueo de modificación de un documento emitido.
-3. No se aplican migraciones remotas, no se escribe QA/PROD y no se ejecuta
-   deploy de Netlify en este subpunto.
+3. Ensayo transaccional en QA con dos identidades consecutivas, replay,
+   conflicto de payload, estados pendiente/error, recuperación del emitido,
+   inmutabilidad y permisos. Terminó con `ROLLBACK` y cero residuos.
 
 ## Criterios de aceptación
 
@@ -60,5 +61,11 @@ fiscal.
 - un documento emitido conserva serie y numero;
 - proveedor, fiscalidad y asesoria quedan expresamente pendientes de C06/C07.
 
-La ejecución PostgreSQL 16 de C05 pasó en GitHub Actions (run 1, 34 s). La
-revisión de advisors y la aplicación en QA/PROD siguen separadas y pendientes.
+La ejecución PostgreSQL 16 de C05 con dos conexiones pasó en GitHub Actions
+(run 1, 34 s). El ensayo conectado en QA del 9/10/2026 también pasó. Las tablas
+no conceden acceso directo a `anon`, `authenticated` ni `service_role`; las RPC
+solo conceden ejecución a `authenticated` y validan capacidad internamente.
+
+Falta elegir el emisor fiscal, conectar este circuito a la pantalla y obtener
+aceptación. Producción no se ha modificado. Evidencia consolidada:
+`F7_C05_QA_RESULTADO_2026-10-09.md`.

@@ -57,7 +57,7 @@ conocido; no cambia la etiqueta. Etiquetas de evidencia:
 | C02 | Entradas y salidas trazables | `INCOMPLETO` | `[MIGR]` `[QA]` alta, retirada, replay, reverso y permisos; `[UI-LOCAL]` funciones ABC | Despliegue y recorrido visual en QA; reintento real; aceptación |
 | C03 | Arqueo calculado en servidor | `INCOMPLETO` | `[MIGR]` `[QA]` cálculo, replay, permisos, unicidad y anulación; `[UI-LOCAL]` | Despliegue y recorrido visual del arqueo histórico; aceptación |
 | C04 | Cierre provisional y definitivo | `INCOMPLETO` | `[MIGR]` `[QA]` flujo, replay, reapertura, guardas y diferencias; `[UI]` `[CI]` | Despliegue consolidado en QA y aceptación final |
-| C05 | Series y numeración | `INCOMPLETO` | `[MIGR]` tablas y funciones; `[CI]` | Sin ensayo, sin emisor, sin pantalla |
+| C05 | Series y numeración | `INCOMPLETO` | `[MIGR]` `[QA]` reserva, replay, estados, permisos e inmutabilidad; `[CI]` concurrencia | Sin emisor elegido ni pantalla |
 | C06 | Tipos de documento | `INCOMPLETO` | `[MIGR]`; `[CI]` | Sin ensayo ni pantalla; clasificación con asesoría |
 | C07 | SIF y modalidad fiscal | `BLOQUEADO` | `[MIGR]` puerta que rechaza sin asesoría | Asesoría, emisor y régimen |
 | C08 | Conservar y corregir lo emitido | `INCOMPLETO` | `[MIGR]`; `[CI]` | Sin ensayo ni pantalla |
@@ -273,11 +273,13 @@ Con A: **36 requisitos, 0 verificados, 29 incompletos, 2 pendientes, 5 bloqueado
 - **Aceptación:** dos emisores concurrentes no generan la misma identidad;
   reintentar la misma emisión recupera el documento.
 - **Evidencia:** `[MIGR]` C05 (`abc_reservar_numero_documental`,
-  `abc_resolver_emision_documental`). `[CI]` contratos de serie y seguridad; el
-  de PostgreSQL falla por entorno. El ensayo no ejercitó documentos. Sin pantalla.
-  Producción no tiene estas tablas.
-- **Falta:** emisor único elegido; ensayo de concurrencia e interrupción;
-  conexión con la pantalla.
+  `abc_resolver_emision_documental`). `[QA]` números 410/411, replay sin
+  duplicar, conflicto de payload, pendiente/error a emitido sin renumerar,
+  recuperación, inmutabilidad y rechazo del Camarero/a; `ROLLBACK` y cero
+  residuos. `[CI]` dos reservas concurrentes con dos conexiones PostgreSQL.
+  Evidencia detallada: `F7_C05_QA_RESULTADO_2026-10-09.md`.
+- **Falta:** elegir el emisor fiscal, conectar el circuito a la pantalla y
+  recorrer la interrupción desde la interfaz.
 - **Decisión de Pedro / asesoría:** emisor y series.
 
 ### C06 — Tipos de documento
