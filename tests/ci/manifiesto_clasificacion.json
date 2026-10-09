@@ -1309,6 +1309,11 @@
       "path": "tests/plataforma/p07-empresas-sin-alta-runtime.mjs",
       "classification": "active_contract",
       "environment": "node"
+    },
+    {
+      "path": "tests/plataforma/p08-copia-local-por-cuenta-runtime.mjs",
+      "classification": "active_contract",
+      "environment": "node"
     }
   ]
 }
