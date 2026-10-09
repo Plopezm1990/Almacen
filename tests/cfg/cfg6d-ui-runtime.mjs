@@ -365,7 +365,7 @@ try {
     ok('B8.3 finaliza', env.s.sesiones[0].estado === 'CERRADA_FINAL', env.s.sesiones[0]);
   }
   {
-    // B9: compatibilidad: una pantalla sin las funciones nuevas (versión antigua de la lógica) sigue funcionando
+    // B9: una lógica antigua sin lectura C03 no confirma a ciegas el cierre.
     const env = entorno({ esperado: 0, rol: 'Cajero/a' });
     const antigua = async () => ({ ok: true, estaciones: [], rutas: [] });
     antigua.iniciarCierreSesionCajaA10 = env.A.iniciarCierreSesionCajaA10;
@@ -374,7 +374,9 @@ try {
     antigua.reabrirCierreProvisionalA10 = env.A.reabrirCierreProvisionalA10;
     await montar(env, { listarEstacionesA10: antigua });
     await cerrarHastaProvisional(env, 0);
-    ok('B9.1 sin las funciones de diferencia la pantalla actúa como antes (sin errores)', texto().includes('CIERRE_PROVISIONAL') && !document.querySelector('[role=alert]') && !!boton('Finalizar cierre'), texto().slice(0, 600));
+    ok('B9.1 sin la lectura C03 el provisional queda bloqueado hasta calcular el esperado',
+      texto().includes('EN_CIERRE') && boton('Confirmar cierre provisional')?.disabled && env.s.sesiones[0].estado === 'EN_CIERRE',
+      texto().slice(0, 600));
   }
   {
     // B10: la diferencia cambia después de registrar el motivo: hay que registrarlo de nuevo

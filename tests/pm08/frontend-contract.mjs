@@ -65,7 +65,7 @@ const checks = {
   sync_tras_contexto: source.includes('await sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones });'),
 
   caja_arqueo_async: caja.includes('async function addArqueo(data)'),
-  caja_arqueo_rpc: caja.includes('.rpc("registrar_arqueo_caja"'),
+  caja_arqueo_rpc: caja.includes('.rpc("abc_registrar_arqueo_caja"') && !caja.includes('.rpc("registrar_arqueo_caja"'),
   caja_anulacion_rpc: caja.includes('.rpc("anular_arqueo_caja"'),
   caja_cero_valido: caja.includes('efectivoContado < 0') && !caja.includes('efectivoContado <= 0'),
   caja_sin_borrado_fisico: !caja.includes('setArqueos((s2) => s2.filter'),

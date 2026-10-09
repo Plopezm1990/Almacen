@@ -55,7 +55,7 @@ conocido; no cambia la etiqueta. Etiquetas de evidencia:
 | B12 | Ensayo de pagos | `BLOQUEADO` | `[CI]` matriz y simulador | Sin sandbox del proveedor |
 | C01 | Cajas, terminales y sesiones | `INCOMPLETO` | `[QA]` apertura, relevo, terminales, conflictos y permisos; `[UI-LOCAL]` gestión completa | Despliegue/recorrido visual y apertura simultánea real |
 | C02 | Entradas y salidas trazables | `INCOMPLETO` | `[MIGR]` `[QA]` alta, retirada, replay, reverso y permisos; `[UI-LOCAL]` funciones ABC | Despliegue y recorrido visual en QA; reintento real; aceptación |
-| C03 | Arqueo calculado en servidor | `PENDIENTE` ⚠ | Contrato preparado, sin migración | Sin implementar; la pantalla manda el efectivo base |
+| C03 | Arqueo calculado en servidor | `INCOMPLETO` | `[MIGR]` `[QA]` cálculo, replay, permisos, unicidad y anulación; `[UI-LOCAL]` | Despliegue y recorrido visual del arqueo histórico; aceptación |
 | C04 | Cierre provisional y definitivo | `INCOMPLETO` ⚠ | `[MIGR]` `[QA]` flujo y bloqueos `[UI]` | Cierra con diferencia sin tratamiento; T14 |
 | C05 | Series y numeración | `INCOMPLETO` | `[MIGR]` tablas y funciones; `[CI]` | Sin ensayo, sin emisor, sin pantalla |
 | C06 | Tipos de documento | `INCOMPLETO` | `[MIGR]`; `[CI]` | Sin ensayo ni pantalla; clasificación con asesoría |
@@ -67,8 +67,8 @@ conocido; no cambia la etiqueta. Etiquetas de evidencia:
 | C12 | Ensayo del cierre | `INCOMPLETO` | `[QA]` apertura→cierre; marcó la diferencia | Noche, restauración, concurrencia; sin pantalla |
 
 Totales B: 0 verificados, 7 incompletos, 1 pendiente, 4 bloqueados.
-Totales C: 0 verificados, 10 incompletos, 1 pendiente, 1 bloqueado.
-Con A: **36 requisitos, 0 verificados, 28 incompletos, 3 pendientes, 5 bloqueados.**
+Totales C: 0 verificados, 11 incompletos, 0 pendientes, 1 bloqueado.
+Con A: **36 requisitos, 0 verificados, 29 incompletos, 2 pendientes, 5 bloqueados.**
 
 ## Fichas B
 
@@ -242,14 +242,17 @@ Con A: **36 requisitos, 0 verificados, 28 incompletos, 3 pendientes, 5 bloqueado
 ### C03 — Arqueo calculado en servidor
 - **Aceptación:** el esperado no cambia por manipular el navegador; cada
   diferencia tiene responsable y tratamiento explícito.
-- **Evidencia:** `[CI]` contrato `CONTRATO_C03_PREPARADO_NO_APLICADO`; no hay
-  migración de C03. `[UI]` la pantalla llama a `registrar_arqueo_caja` heredada
-  con `p_efectivo_base` enviado por el cliente.
-- **⚠ Hallazgo `[QA]`:** `abc_finalizar_cierre_sesion_caja` cerró con −11 sin
-  motivo ni aprobación, aunque el ensayo C12 la marcó `DIFERENCIA_EFECTIVO`.
-- **Falta:** implementar el contrato (esperado = base + entradas − salidas
-  confirmadas, un arqueo activo por local y día), conteo por denominaciones, cero,
-  sobrante y faltante, y el tratamiento de la diferencia.
+- **Evidencia:** `[MIGR]` `abc_previsualizar_arqueo_caja` para el cierre C04 y
+  `abc_registrar_arqueo_caja` para el arqueo histórico. `[QA]` fondo 100,
+  entrada 50, salida 30, esperado 120, conteo 120 y diferencia cero; replay,
+  denominaciones, permisos, unicidad y anulación con original conservado;
+  prueba con `ROLLBACK` y cero residuos. `[UI-LOCAL]` el navegador deja de
+  enviar `p_efectivo_base`, resuelve sesión/terminal/día y permite contar por
+  denominaciones. `[CI]` contrato C03. Evidencia detallada:
+  `F7_C03_QA_RESULTADO_2026-10-09.md`.
+- **Falta:** desplegar la interfaz consolidada en QA, recorrer el arqueo
+  histórico con y sin denominaciones, comprobar el reintento visual y obtener
+  aceptación.
 - **Decisión de Pedro:** tolerancia y aprobación de diferencias de caja.
 
 ### C04 — Cierre provisional y definitivo

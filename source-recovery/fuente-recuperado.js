@@ -720,6 +720,11 @@ function mensajeErrorPM08(error, fallback = "No se ha podido confirmar la operac
     ["motivo_caja_requerido", "Escribe el motivo del movimiento de caja."],
     ["motivo_reverso_caja_requerido", "Escribe el motivo del reverso."],
     ["movimiento_caja_no_reversible_por_abc", "Solo se pueden revertir movimientos manuales creados por la v\xEDa ABC."],
+    ["abc_arqueo_caja_no_autorizado", "Tu rol no tiene permiso para registrar arqueos de caja."],
+    ["arqueo_caja_dia_no_operativo", "El arqueo solo se puede registrar en el d\xEDa operativo actual del servidor."],
+    ["denominaciones_caja_invalidas", "El desglose por denominaciones no es v\xE1lido."],
+    ["denominaciones_no_coinciden_contado", "El total de las denominaciones no coincide con el efectivo contado."],
+    ["efectivo_contado_invalido", "El efectivo contado debe ser cero o un importe positivo con dos decimales."],
     ["sesion_caja_no_abierta", "Este terminal no tiene una sesi\xF3n de caja abierta."],
     ["terminal_no_vinculado_sesion", "Este terminal no est\xE1 vinculado a la sesi\xF3n de caja."],
     ["caja_no_autorizada", "Tu rol no tiene permiso para operar la caja."],
@@ -784,6 +789,13 @@ function normalizarArqueoPM08(fila) {
     estado: fila.estado || "ACTIVO",
     anuladoPorOperationId: fila.anulado_por_operation_id || fila.anuladoPorOperationId || null,
     anuladoMotivo: fila.anulado_motivo || fila.anuladoMotivo || null,
+    abcCommandId: fila.abc_command_id || fila.abcCommandId || null,
+    cajaId: fila.caja_id || fila.cajaId || null,
+    sessionId: fila.session_id || fila.sessionId || null,
+    terminalId: fila.terminal_id || fila.terminalId || null,
+    currencyCode: fila.currency_code || fila.currencyCode || "EUR",
+    operatingDay: fila.operating_day || fila.operatingDay || fila.fecha || null,
+    denominaciones: fila.denominaciones && typeof fila.denominaciones === "object" ? fila.denominaciones : {},
     actorUserId: fila.actor_user_id || fila.actorUserId || null,
     createdAt: creado || null,
     _pm08Servidor: !!(fila.operation_id || fila.actor_user_id)
@@ -819,7 +831,7 @@ async function sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluci
   const supabase = window.__nubeCliente;
   const [rCaja, rArqueos, rCliente, rProveedor] = await Promise.all([
     supabase.from("caja_operaciones").select("operation_id,tipo,empresa_id,local_id,fecha,importe,efecto_efectivo,medio_pago,concepto,origen_tipo,origen_id,ref_operation_id,payload,actor_user_id,abc_command_id,caja_id,session_id,terminal_id,currency_code,operating_day,categoria,created_at").order("created_at", { ascending: false }).limit(2e3),
-    supabase.from("arqueos_caja").select("operation_id,empresa_id,local_id,fecha,alcance,efectivo_base,efectivo_esperado,efectivo_contado,diferencia,notas,estado,anulado_por_operation_id,anulado_motivo,actor_user_id,created_at").order("created_at", { ascending: false }).limit(1e3),
+    supabase.from("arqueos_caja").select("operation_id,empresa_id,local_id,fecha,alcance,efectivo_base,efectivo_esperado,efectivo_contado,diferencia,notas,estado,anulado_por_operation_id,anulado_motivo,actor_user_id,abc_command_id,caja_id,session_id,terminal_id,currency_code,operating_day,denominaciones,created_at").order("created_at", { ascending: false }).limit(1e3),
     supabase.from("devoluciones_venta").select("operation_id,venta_operation_id,empresa_id,local_id,producto_id,cantidad,reembolso,medio_reembolso,motivo,fecha,payload,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3),
     supabase.from("devoluciones_proveedor").select("operation_id,empresa_id,local_id,producto_id,cantidad,proveedor_id,proveedor_nombre,motivo,fecha,payload,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3)
   ]);
@@ -4854,12 +4866,53 @@ function crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosC
   function leerBorradorArqueo(fecha) {
     return leerPendientePM08(clavePendientePM08("arqueo", empresaId, localActivoId, fecha))?.payload || null;
   }
+  async function contextoArqueoCajaC03(supabase) {
+    const { data: authData, error: authError } = await supabase.auth.getSession();
+    if (authError) throw authError;
+    if (!authData?.session?.user?.id) throw new Error("sesion_usuario_requerida");
+    const storageKey = `la_suite_abc_terminal_id_v1:${empresaId}:${localActivoId}`;
+    let terminalId = null;
+    try {
+      terminalId = localStorage.getItem(storageKey) || null;
+    } catch {
+      throw new Error("persistencia_terminal_no_disponible");
+    }
+    let consultaTerminales = supabase.from("terminales_tpv").select("id,nombre,device_key").eq("empresa_id", empresaId).eq("local_id", localActivoId).eq("activo", true);
+    if (terminalId) consultaTerminales = consultaTerminales.eq("id", terminalId);
+    const { data: terminales, error: terminalesError } = await consultaTerminales;
+    if (terminalesError) throw terminalesError;
+    if (terminalId && (!Array.isArray(terminales) || terminales.length !== 1)) throw new Error("terminal_configurado_no_disponible");
+    if (!terminalId) {
+      if (!Array.isArray(terminales) || terminales.length === 0) throw new Error("terminal_no_configurado");
+      if (terminales.length > 1) throw new Error("terminal_contexto_ambiguo");
+      terminalId = terminales[0].id;
+      try {
+        localStorage.setItem(storageKey, terminalId);
+        if (localStorage.getItem(storageKey) !== terminalId) throw new Error("persistencia_terminal_no_disponible");
+      } catch {
+        throw new Error("persistencia_terminal_no_disponible");
+      }
+    }
+    const { data: vinculos, error: vinculosError } = await supabase.from("caja_sesion_terminales").select("session_id,terminal_id,desde").eq("empresa_id", empresaId).eq("local_id", localActivoId).eq("terminal_id", terminalId).is("hasta", null).order("desde", { ascending: false }).limit(2);
+    if (vinculosError) throw vinculosError;
+    if (!Array.isArray(vinculos) || vinculos.length !== 1) throw new Error(vinculos?.length > 1 ? "terminal_sesion_ambigua" : "terminal_sin_sesion_abierta");
+    const sessionId = vinculos[0].session_id;
+    const { data: sesion, error: sesionError } = await supabase.from("caja_sesiones").select("id,caja_id,estado").eq("empresa_id", empresaId).eq("local_id", localActivoId).eq("id", sessionId).eq("estado", "ABIERTA").maybeSingle();
+    if (sesionError) throw sesionError;
+    if (!sesion?.caja_id) throw new Error("sesion_caja_no_abierta");
+    const { data: dia, error: diaError } = await supabase.rpc("abc_obtener_dia_operativo_local", { p_empresa_id: empresaId, p_local_id: localActivoId });
+    if (diaError) throw diaError;
+    const operatingDay = /^\d{4}-\d{2}-\d{2}$/.test(String(dia?.operating_day || "")) ? String(dia.operating_day) : null;
+    if (!operatingDay) throw new Error("operating_day_servidor_ausente");
+    return { terminalId, sessionId, cajaId: sesion.caja_id, currencyCode: "EUR", operatingDay };
+  }
   async function addArqueo(data) {
     if (!empresaId || !localActivoId) return { ok: false, error: "Selecciona un local concreto antes de guardar el arqueo." };
     const fecha = data?.fecha || todayISO();
     const efectivoBase = redondearDineroPM08(data?.efectivoBase ?? data?.efectivoEsperado ?? 0);
     const ajustesVentaEfectivo = redondearDineroPM08(data?.ajustesVentaEfectivo ?? 0);
     const efectivoContado = redondearDineroPM08(data?.efectivoContado ?? data?.efectivoReal);
+    const denominaciones = data?.denominaciones && typeof data.denominaciones === "object" && !Array.isArray(data.denominaciones) ? data.denominaciones : {};
     if (!Number.isFinite(efectivoBase) || efectivoBase < 0) return { ok: false, error: "El efectivo base no es v\xE1lido." };
     if (!Number.isFinite(ajustesVentaEfectivo)) return { ok: false, error: "El ajuste de anulaciones de venta no es v\xE1lido." };
     if (!Number.isFinite(efectivoContado) || efectivoContado < 0) return { ok: false, error: "El efectivo contado debe ser cero o un importe positivo." };
@@ -4873,6 +4926,7 @@ function crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosC
       efectivoBase,
       ajustesVentaEfectivo,
       efectivoContado,
+      denominaciones,
       notas: String(data?.notas || "").trim(),
       snapshot: data?.snapshot || {}
     };
@@ -4886,16 +4940,21 @@ function crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosC
           return { ok: false, pendiente: true, error: "Sin conexi\xF3n con la cuenta sincronizada. El arqueo NO se ha confirmado; el borrador queda listo para reintentar." };
         }
         try {
+          const contexto = await contextoArqueoCajaC03(window.__nubeCliente);
+          if (String(fecha) !== contexto.operatingDay) throw new Error("arqueo_caja_dia_no_operativo");
           const r2 = await Promise.race([
-            window.__nubeCliente.rpc("registrar_arqueo_caja", {
+            window.__nubeCliente.rpc("abc_registrar_arqueo_caja", {
               p_operation_id: preparado.pendiente.operationId,
               p_empresa_id: empresaId,
               p_local_id: localActivoId,
-              p_fecha: fecha,
-              p_efectivo_base: efectivoBase,
+              p_caja_id: contexto.cajaId,
+              p_session_id: contexto.sessionId,
+              p_terminal_id: contexto.terminalId,
+              p_currency_code: contexto.currencyCode,
               p_efectivo_contado: efectivoContado,
+              p_denominaciones: denominaciones,
               p_notas: payload.notas,
-              p_snapshot: payload.snapshot
+              p_operating_day: contexto.operatingDay
             }),
             new Promise((_22, reject) => setTimeout(() => reject(new Error("timeout_pm08")), Number(window.ESPERA_NUBE_MS) || 6e3))
           ]);
@@ -4912,8 +4971,12 @@ function crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosC
             await sincronizarCajaPm08({ setArqueos, setMovimientosCaja });
           } catch {
           }
-          return { ok: true, arqueo: arqueo2, replayed: !!r2.data?.replayed };
+          return { ok: true, arqueo: arqueo2, replayed: !!r2.data?.replayed || !!preparado.recuperada };
         } catch (e2) {
+          if (!esErrorTransitorioPM08(e2)) {
+            limpiarPendientePM08(clave);
+            return { ok: false, error: mensajeErrorPM08(e2, "No se ha podido guardar el arqueo.") };
+          }
           return { ok: false, pendiente: true, error: "No se pudo confirmar si el servidor recibi\xF3 el arqueo. Conservamos el mismo identificador para reintentarlo sin duplicar." };
         }
       }
@@ -4934,6 +4997,7 @@ function crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosC
         efectivoContado,
         diferencia: redondearDineroPM08(efectivoContado - esperado),
         notas: payload.notas,
+        denominaciones,
         estado: "ACTIVO",
         createdAt: (/* @__PURE__ */ new Date()).toISOString()
       });
@@ -9296,6 +9360,17 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     try {
       const contexto = await contextoCierreA10({ conDia: false });
       const base = { ok: true, sessionId: contexto.sessionId, sessionEstado: contexto.sessionEstado };
+      if (contexto.sessionEstado === "EN_CIERRE") {
+        const { data, error } = await contexto.supabase.rpc("abc_previsualizar_arqueo_caja", {
+          p_empresa_id: contexto.empresaId,
+          p_local_id: contexto.localId,
+          p_session_id: contexto.sessionId,
+          p_terminal_id: contexto.terminalId,
+          p_currency_code: "EUR"
+        });
+        if (error) return { ...base, arqueoError: errorRpcA02(error) };
+        return { ...base, arqueoPrevio: data || null };
+      }
       if (contexto.sessionEstado !== "CIERRE_PROVISIONAL") return base;
       const { data, error } = await contexto.supabase.rpc("abc_obtener_diferencia_caja", {
         p_empresa_id: contexto.empresaId,
@@ -18611,9 +18686,12 @@ function resumenMediosVentaCajaPM09(movs = [], fecha = "") {
 }
 function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja }) {
   const h3 = import_react4.default.createElement;
+  const valoresDenominacion = [500, 200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01];
   const [fecha, setFecha] = (0, import_react4.useState)(todayISO());
   const [contado, setContado] = (0, import_react4.useState)("");
   const [notas, setNotas] = (0, import_react4.useState)("");
+  const [denominaciones, setDenominaciones] = (0, import_react4.useState)({});
+  const [mostrarDenominaciones, setMostrarDenominaciones] = (0, import_react4.useState)(false);
   const [error, setError] = (0, import_react4.useState)("");
   const [exito, setExito] = (0, import_react4.useState)("");
   const [enviando, setEnviando] = (0, import_react4.useState)(false);
@@ -18645,7 +18723,11 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
   const efectivoBase = redondearDineroPM08((resumenVentasCaja.ventas.Efectivo || 0) + efectivoOtros);
   const ajustesVentaEfectivo = redondearDineroPM08(resumenVentasCaja.reversos.Efectivo || 0);
   const efectivoEsperado = redondearDineroPM08(efectivoBase + ajustesVentaEfectivo + netoCaja);
-  const contadoNumero = contado === "" ? NaN : redondearDineroPM08(contado);
+  const denominacionesInvalidas = Object.values(denominaciones).some((cantidad) => cantidad !== "" && (!Number.isInteger(Number(cantidad)) || Number(cantidad) < 0));
+  const denominacionesLimpias = Object.fromEntries(Object.entries(denominaciones).filter(([_22, cantidad]) => Number(cantidad) > 0).map(([valor, cantidad]) => [valor, Number(cantidad)]));
+  const hayDesglose = Object.keys(denominacionesLimpias).length > 0;
+  const totalDenominaciones = redondearDineroPM08(Object.entries(denominacionesLimpias).reduce((total, [valor, cantidad]) => total + Number(valor) * Number(cantidad), 0));
+  const contadoNumero = hayDesglose ? totalDenominaciones : contado === "" ? NaN : redondearDineroPM08(contado);
   const diferencia = Number.isFinite(contadoNumero) ? redondearDineroPM08(contadoNumero - efectivoEsperado) : null;
   const yaArqueado = arqueos.find((a22) => a22.fecha === fecha && a22.estado !== "ANULADO");
   (0, import_react4.useEffect)(() => {
@@ -18659,11 +18741,17 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
       return;
     }
     setContado(String(pendiente.efectivoContado ?? ""));
+    setDenominaciones(pendiente.denominaciones || {});
+    setMostrarDenominaciones(Object.keys(pendiente.denominaciones || {}).length > 0);
     setNotas(pendiente.notas || "");
     setBorradorRecuperado(true);
   }, [fecha]);
   async function submit() {
     if (enviando || yaArqueado) return;
+    if (denominacionesInvalidas) {
+      setError("Las cantidades de billetes y monedas deben ser n\xFAmeros enteros iguales o mayores que cero.");
+      return;
+    }
     if (contado === "" || !Number.isFinite(contadoNumero) || contadoNumero < 0) {
       setError("Escribe un efectivo contado igual o mayor que cero.");
       return;
@@ -18676,6 +18764,7 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
         fecha,
         efectivoBase,
         efectivoContado: contadoNumero,
+        denominaciones: hayDesglose ? denominacionesLimpias : {},
         notas,
         ajustesVentaEfectivo,
         snapshot: {
@@ -18699,6 +18788,8 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
       }
       setExito(`Arqueo confirmado${r2.replayed ? " sin duplicar" : ""}: esperado \u20AC${fmt(r2.arqueo.efectivoEsperado)}, contado \u20AC${fmt(r2.arqueo.efectivoContado)}.`);
       setContado("");
+      setDenominaciones({});
+      setMostrarDenominaciones(false);
       setNotas("");
       setBorradorRecuperado(false);
     } finally {
@@ -18787,7 +18878,16 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
         import_react4.default.Fragment,
         null,
         borradorRecuperado && h3("div", { className: "text-[11.5px] mb-2 p-2 rounded-lg", style: { background: C2.amberSoft } }, "Borrador de arqueo recuperado. El reintento conserva el mismo identificador."),
-        h3(Field, { label: "Efectivo contado en caja (\u20AC)" }, h3(Input, { type: "number", min: "0", step: "0.01", value: contado, disabled: enviando, onChange: (e2) => setContado(e2.target.value), autoFocus: true })),
+        h3(Field, { label: "Efectivo contado en caja (\u20AC)" }, h3(Input, { type: "number", min: "0", step: "0.01", value: hayDesglose ? String(totalDenominaciones) : contado, disabled: enviando || hayDesglose, onChange: (e2) => setContado(e2.target.value), autoFocus: true })),
+        h3("div", { className: "mb-3" }, h3(Btn, { small: true, variant: "ghost", disabled: enviando, onClick: () => setMostrarDenominaciones((v) => !v) }, mostrarDenominaciones ? "Ocultar denominaciones" : "Contar por denominaciones")),
+        mostrarDenominaciones && h3("div", { className: "grid grid-cols-3 gap-2 mb-3 p-2 rounded-lg", style: { background: C2.bg } }, valoresDenominacion.map((valor) => {
+          const clave = String(valor);
+          return h3(Field, { key: clave, label: `\u20AC${clave}` }, h3(Input, { type: "number", min: "0", step: "1", value: denominaciones[clave] ?? "", disabled: enviando, onChange: (e2) => {
+            const siguiente = e2.target.value;
+            setDenominaciones((actual) => ({ ...actual, [clave]: siguiente }));
+          } }));
+        })),
+        mostrarDenominaciones && h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, hayDesglose ? `Total por denominaciones: \u20AC${fmt(totalDenominaciones)}` : "Introduce la cantidad de billetes y monedas; el total se calcular\xE1 autom\xE1ticamente."),
         diferencia !== null && h3("div", { className: "text-[12.5px] mb-2", style: { color: diferencia === 0 ? C2.accent : Math.abs(diferencia) < 1 ? C2.amber : C2.red } }, diferencia === 0 ? "Cuadra exacto." : diferencia > 0 ? `Sobran \u20AC${fmt(diferencia)}` : `Faltan \u20AC${fmt(Math.abs(diferencia))}`),
         h3(Field, { label: "Notas (opcional)" }, h3(Input, { value: notas, disabled: enviando, onChange: (e2) => setNotas(e2.target.value), placeholder: "Motivo del descuadre, si lo sabes" })),
         h3(Btn, { disabled: enviando, onClick: submit }, enviando ? "Confirmando\u2026" : "Guardar arqueo")
@@ -21867,6 +21967,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
   const [motivoDesvinculoC01, setMotivoDesvinculoC01] = (0, import_react4.useState)("");
   const [efectivoContado, setEfectivoContado] = (0, import_react4.useState)("0");
   const [estadoCierre, setEstadoCierre] = (0, import_react4.useState)("ABIERTA");
+  const [arqueoPrevio, setArqueoPrevio] = (0, import_react4.useState)(null);
   const [motivoReapertura, setMotivoReapertura] = (0, import_react4.useState)("");
   const [puedeReabrirCierre, setPuedeReabrirCierre] = (0, import_react4.useState)(null);
   (0, import_react4.useEffect)(() => {
@@ -21906,10 +22007,13 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     const estado = String(r2.sessionEstado || "");
     if (estado === "EN_CIERRE" || estado === "CIERRE_PROVISIONAL") {
       setEstadoCierre(estado);
+      setArqueoPrevio(estado === "EN_CIERRE" && !r2.arqueoError ? r2.arqueoPrevio || null : null);
+      if (r2.arqueoError) setError("No se pudo calcular el arqueo en el servidor: " + r2.arqueoError);
       if (estado !== "CIERRE_PROVISIONAL") setCierreInfo(null);
       else if (!r2.diferenciaError) setCierreInfo(infoCierreA10(r2));
     } else if (estado === "ABIERTA") {
       setEstadoCierre("ABIERTA");
+      setArqueoPrevio(null);
       setCierreInfo(null);
     }
     return estado || null;
@@ -21989,6 +22093,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     setTerminalCajaC01("");
     setMotivoDesvinculoC01("");
     setEstadoCierre("ABIERTA");
+    setArqueoPrevio(null);
     setMotivoReapertura("");
     setBloqueosCierre([]);
     setCierreInfo(null);
@@ -22031,6 +22136,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     }
     setRequiereApertura(false);
     setEstadoCierre("ABIERTA");
+    setArqueoPrevio(null);
     setBloqueosCierre([]);
     setMensaje(`Sesión de caja abierta en ${resultado.caja_nombre || "la caja principal"} con fondo inicial de €${Number(fondoInicial || 0).toFixed(2)}.`);
     await refrescarEstaciones();
@@ -22105,6 +22211,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     }
     setEstadoCierre("EN_CIERRE");
     setMensaje("Cierre iniciado. Revisa el efectivo contado y confirma el cierre provisional.");
+    await refrescarCierreInfo();
   }
 
   async function confirmarProvisional() {
@@ -22124,6 +22231,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
       return;
     }
     setEstadoCierre("CIERRE_PROVISIONAL");
+    setArqueoPrevio(null);
     setBloqueosCierre(Array.isArray(resultado.blockers) ? resultado.blockers : []);
     setMensaje(`Cierre provisional registrado: contado €${Number(resultado.counted_amount || contado).toFixed(2)}, esperado €${Number(resultado.expected_amount || 0).toFixed(2)}, diferencia €${Number(resultado.difference || 0).toFixed(2)}. ${Number(resultado.difference || 0) !== 0 ? "Hay una diferencia: registra su motivo antes de finalizar." : "Puedes finalizarlo o reabrirlo con motivo."}`);
     await refrescarCierreInfo();
@@ -22169,6 +22277,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
       return;
     }
     setEstadoCierre("ABIERTA");
+    setArqueoPrevio(null);
     setMotivoReapertura("");
     setBloqueosCierre([]);
     setCierreInfo(null);
@@ -22375,8 +22484,15 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
       estadoCierre === "ABIERTA" ? h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Inicia el cierre cuando dejes de operar. El servidor comprobará los pagos y efectos pendientes antes de permitir el cierre provisional.") : null,
       estadoCierre === "EN_CIERRE" ? h3("div", null,
         h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Introduce el efectivo contado para registrar el arqueo provisional. Todavía podrás reabrirlo con un motivo."),
+        arqueoPrevio ? h3("div", { className: "text-[11.5px] mb-3 p-2 rounded-lg", style: { background: C2.accentSoft } },
+          "Esperado por el servidor: €", Number(arqueoPrevio.expected_amount).toFixed(2),
+          " · Fondo €", Number(arqueoPrevio.fondo_inicial).toFixed(2),
+          " + Entradas €", Number(arqueoPrevio.entradas_efectivo).toFixed(2),
+          " − Salidas €", Number(arqueoPrevio.salidas_efectivo).toFixed(2),
+          ". Se recalculará al confirmar."
+        ) : h3("div", { className: "text-[11.5px] mb-3", role: "status" }, "Calculando el efectivo esperado en el servidor…"),
         h3(Field, { label: "Efectivo contado (€)" }, h3(Input, { type: "number", min: "0", step: "0.01", value: efectivoContado, onChange: (e2) => setEfectivoContado(e2.target.value) })),
-        h3(Btn, { small: true, onClick: confirmarProvisional, disabled: !!procesando || !String(efectivoContado).trim() }, procesando === "cierre-provisional" ? "Registrando…" : "Confirmar cierre provisional")
+        h3(Btn, { small: true, onClick: confirmarProvisional, disabled: !!procesando || !arqueoPrevio || !String(efectivoContado).trim() }, procesando === "cierre-provisional" ? "Registrando…" : "Confirmar cierre provisional")
       ) : null,
       estadoCierre === "ABIERTA" ? h3(Btn, { small: true, variant: "danger", onClick: iniciarCierre, disabled: !!procesando }, procesando === "iniciar-cierre" ? "Iniciando…" : "Iniciar cierre") : null,
       estadoCierre === "CIERRE_PROVISIONAL" ? h3("div", null,

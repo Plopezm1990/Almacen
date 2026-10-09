@@ -77,7 +77,7 @@ for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]
 }
 
 // 4. Llamadas al servidor con los nombres y parámetros exactos de las migraciones.
-const migs = ["supabase/migrations/20261002210000_abc_config_pieza2_diferencia_caja.sql", "supabase/migrations/20261002250000_abc_config_pieza6d_dia_operativo.sql"];
+const migs = ["supabase/migrations/20261002210000_abc_config_pieza2_diferencia_caja.sql", "supabase/migrations/20261002250000_abc_config_pieza6d_dia_operativo.sql", "supabase/migrations/20261005160403_abc_f5_c03_arqueo_sesion.sql"];
 const firmas = new Map();
 for (const m of migs) {
   const t = lf(await read(m));
@@ -85,15 +85,15 @@ for (const m of migs) {
     firmas.set(x[1], x[2].split(",").map((p) => p.trim()).filter(Boolean).map((p) => p.split(/\s+/)[0]));
   }
 }
-for (const n of ["abc_registrar_diferencia_caja", "abc_decidir_diferencia_caja", "abc_obtener_diferencia_caja", "abc_obtener_dia_operativo_local"]) assert.ok(firmas.has(n), "no está en las migraciones: " + n);
+for (const n of ["abc_registrar_diferencia_caja", "abc_decidir_diferencia_caja", "abc_obtener_diferencia_caja", "abc_obtener_dia_operativo_local", "abc_previsualizar_arqueo_caja"]) assert.ok(firmas.has(n), "no está en las migraciones: " + n);
 const clavesDe = (texto, rpc) => {
   const m = texto.match(new RegExp(`"${rpc}", \\{([^}]*)\\}`));
   assert.ok(m, "no se encuentra la llamada a " + rpc);
   return [...m[1].matchAll(/\b(p_[a-z_0-9]+):/g)].map((k) => k[1]);
 };
-for (const rpc of ["abc_registrar_diferencia_caja", "abc_decidir_diferencia_caja", "abc_obtener_diferencia_caja", "abc_obtener_dia_operativo_local"])
+for (const rpc of ["abc_registrar_diferencia_caja", "abc_decidir_diferencia_caja", "abc_obtener_diferencia_caja", "abc_obtener_dia_operativo_local", "abc_previsualizar_arqueo_caja"])
   assert.deepEqual(clavesDe(R.logica, rpc), firmas.get(rpc), `${rpc}: la llamada envía exactamente los parámetros de la función del servidor, en su orden`);
-assert.equal((R.logica.match(/\.rpc\(/g) || []).length, 2, "dos lecturas directas (día y diferencia); el resto va por rpcA02ConRecuperacion");
+assert.equal((R.logica.match(/\.rpc\(/g) || []).length, 3, "tres lecturas directas (día, vista previa y diferencia); el resto va por rpcA02ConRecuperacion");
 for (const rpc of ["abc_registrar_diferencia_caja", "abc_decidir_diferencia_caja"])
   assert.match(R.logica, new RegExp(`rpcA02ConRecuperacion\\(contexto\\.supabase, "${rpc}", \\{`), `${rpc} se envía con idempotencia y recuperación`);
 assert.match(R.logica, /const operationId = `f6\.ui\.cash\.diff\.register\.\$\{uuidA02\(\)\}`;/);
@@ -152,9 +152,9 @@ assert.match(c, /const decidirDiferenciaCajaA10 = typeof listarEstacionesA10\?\.
 assert.match(c, /const bloqueosDiferencia = Array\.isArray\(cierreInfo\?\.bloqueos\) \? cierreInfo\.bloqueos : \[\];/);
 // recuperar el estado del servidor al entrar y al actualizar
 assert.match(c, /async function sincronizarCierre\(\) \{\s+if \(typeof consultarCierreCajaA10 !== "function"\) return null;/);
-assert.match(c, /if \(estado === "EN_CIERRE" \|\| estado === "CIERRE_PROVISIONAL"\) \{\s+setEstadoCierre\(estado\);\s+if \(estado !== "CIERRE_PROVISIONAL"\) setCierreInfo\(null\);\s+else if \(!r2\.diferenciaError\) setCierreInfo\(infoCierreA10\(r2\)\);/, "se recupera el estado del servidor y, si falla la lectura de la diferencia, se conserva la que ya se sabía");
+assert.match(c, /if \(estado === "EN_CIERRE" \|\| estado === "CIERRE_PROVISIONAL"\) \{\s+setEstadoCierre\(estado\);\s+setArqueoPrevio\(estado === "EN_CIERRE" && !r2\.arqueoError \? r2\.arqueoPrevio \|\| null : null\);\s+if \(r2\.arqueoError\) setError\("No se pudo calcular el arqueo en el servidor: " \+ r2\.arqueoError\);\s+if \(estado !== "CIERRE_PROVISIONAL"\) setCierreInfo\(null\);\s+else if \(!r2\.diferenciaError\) setCierreInfo\(infoCierreA10\(r2\)\);/, "se recuperan el arqueo y el estado del servidor y, si falla la lectura de la diferencia, se conserva la que ya se sabía");
 assert.match(c, /async function refrescarCierreInfo\(\) \{\s+return sincronizarCierre\(\);\s+\}/, "tras cada acción se vuelve a leer TODO el estado del cierre (también el estado de la sesión)");
-assert.match(c, /\} else if \(estado === "ABIERTA"\) \{\s+setEstadoCierre\("ABIERTA"\);\s+setCierreInfo\(null\);/);
+assert.match(c, /\} else if \(estado === "ABIERTA"\) \{\s+setEstadoCierre\("ABIERTA"\);\s+setArqueoPrevio\(null\);\s+setCierreInfo\(null\);/);
 const refresco = funcion(c, "  async function refrescarEstaciones() {", "refrescarEstaciones");
 assert.ok(refresco.indexOf("await sincronizarCierre()") < refresco.indexOf("await listarEstacionesA10()"), "primero se recupera el estado del cierre y después se listan las estaciones");
 assert.match(refresco, /if \(estadoServidor === "EN_CIERRE" \|\| estadoServidor === "CIERRE_PROVISIONAL"\) \{\s+setCargando\(false\);\s+setRequiereApertura\(false\);\s+setEstaciones\(\[\]\);\s+setRutas\(\[\]\);\s+return;\s+\}/, "con el cierre en marcha no se pide abrir sesión ni se listan estaciones");
@@ -202,7 +202,7 @@ for (const marca of ["A1.1 iniciar el cierre funciona sin ninguna cuenta abierta
   "A5.1 finalizar con la diferencia sin tratar se rechaza", "A5.4 registrar el motivo", "A5.8 un Cajero/a no puede aprobar", "A5.9 el Propietario aprueba", "A5.12 ahora sí se finaliza", "A6.1 rechazar deja el bloqueo",
   "A7.1 una diferencia dentro del umbral", "A8.5 si el servidor no da el día", "B1.2 iniciar el cierre ya no da el aviso", "B2.1 aparece la diferencia", "B2.6 el Cajero/a ve", "B2.8 recargar la pantalla en cierre provisional",
   "B2.9 el Propietario ve", "B2.11 se finaliza el cierre con diferencia", "B3.1 rechazada", "B3.3 reabrir devuelve la caja a ABIERTA", "B4.1 con el cierre ya iniciado", "B5.2 un error del servidor", "B6.2 al finalizar, el servidor la rechaza",
-  "B7.1 el Cajero/a sin permiso de reabrir", "B8.2 tras el motivo se puede finalizar sin aprobación", "B9.1 sin las funciones de diferencia", "B10.1 si la diferencia cambió desde el motivo", "B11.1 tras recargar, la diferencia aprobada", "B12.2 «Actualizar» recupera el cierre en marcha", "B12b.1 tras reabrir, el motivo escrito", "B13.1 si otro dispositivo ya la decidió", "B13b.1 decidir con datos viejos", "B13c.1 si el cierre ya no está en provisional", "B14.1 si falla la lectura de la diferencia"])
+  "B7.1 el Cajero/a sin permiso de reabrir", "B8.2 tras el motivo se puede finalizar sin aprobación", "B9.1 sin la lectura C03 el provisional queda bloqueado", "B10.1 si la diferencia cambió desde el motivo", "B11.1 tras recargar, la diferencia aprobada", "B12.2 «Actualizar» recupera el cierre en marcha", "B12b.1 tras reabrir, el motivo escrito", "B13.1 si otro dispositivo ya la decidió", "B13b.1 decidir con datos viejos", "B13c.1 si el cierre ya no está en provisional", "B14.1 si falla la lectura de la diferencia"])
   assert.ok(vivo.includes(marca), "falta el caso de ejecución: " + marca);
 
 console.log("cfg6d-ui-contract: OK");

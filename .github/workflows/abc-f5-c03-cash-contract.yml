@@ -2,12 +2,16 @@ name: "ABC F5 C03 -- arqueo calculado en servidor"
 
 on:
   push:
-    branches: [codex/f5-c03-cash-reconciliation]
+    branches: [codex/f7-b06-b07-qa-20261008]
     paths:
       - "docs/plan-abc/F5_C03_CONTRATO_ARQUEO_SERVIDOR_2026-10-01.md"
       - "tests/f5/c03/**"
       - "supabase/migrations/20260904204500_pm08_caja_devolucion_indivisible.sql"
       - "supabase/migrations/20260905105500_pm09_conciliacion_caja.sql"
+      - "supabase/migrations/20261005160403_abc_f5_c03_arqueo_sesion.sql"
+      - "supabase/migrations/20261009060339_c03_arqueo_servidor.sql"
+      - "source-recovery/fuente-recuperado.js"
+      - "fuente.js"
       - ".github/workflows/abc-f5-c03-cash-contract.yml"
   pull_request:
     paths:
@@ -15,6 +19,10 @@ on:
       - "tests/f5/c03/**"
       - "supabase/migrations/20260904204500_pm08_caja_devolucion_indivisible.sql"
       - "supabase/migrations/20260905105500_pm09_conciliacion_caja.sql"
+      - "supabase/migrations/20261005160403_abc_f5_c03_arqueo_sesion.sql"
+      - "supabase/migrations/20261009060339_c03_arqueo_servidor.sql"
+      - "source-recovery/fuente-recuperado.js"
+      - "fuente.js"
       - ".github/workflows/abc-f5-c03-cash-contract.yml"
 
 jobs:
