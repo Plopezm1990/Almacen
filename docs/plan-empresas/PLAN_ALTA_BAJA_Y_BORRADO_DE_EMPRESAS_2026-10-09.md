@@ -9,7 +9,7 @@ Estado: **SOLO PLAN. No se ha cambiado nada** (ni en producción, ni en QA, ni e
 | 0 · Decisiones | **Hechas**: empezar por QA; los datos actuales de producción son pruebas y no hace falta conservarlos; plazo de gracia de 30 días; el dueño de cada empresa recibirá una contraseña inicial que le da Pedro |
 | 1 · Administrador de plataforma, alta, baja y reactivación | **Hecha y probada de punta a punta en QA** (`FASE1_RESULTADO_QA_2026-10-09.md`) |
 | 2 · Borrado definitivo | **Hecha y probada en QA**, con datos reales y un borrado real de la empresa de prueba (`FASE2_RESULTADO_QA_2026-10-09.md`) |
-| 3 · Pantalla «Plataforma» | Pendiente |
+| 3 · Pantalla «Plataforma» y contraseña inicial del dueño | **Hecha y probada en local** (jsdom, Chromium real y 42 variantes rotas); subida a la vista previa de QA; **pendiente la prueba con la pantalla** (`FASE3_RESULTADO_QA_2026-10-09.md`, `PRUEBA_COWORK_FASE3_QA.md`) |
 | 4 · Aislamiento de datos por empresa (P3/P3b) | Pendiente; condición previa de la primera empresa cliente real |
 | 5 · Publicar en producción | Pendiente; autorización escrita de Pedro |
 | 6 · Producción a cero y primera empresa cliente | Pendiente; autorización escrita de Pedro |
