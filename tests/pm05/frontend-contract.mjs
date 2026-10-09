@@ -17,7 +17,8 @@ ok(storageBootstrap.includes('Hay registros sin id/empresaId; se bloquea la sinc
 ok(storageBootstrap.includes('p_empresa_id: d.empresaId || null'), 'auditoría diferida no transmite empresa');
 ok(storageBootstrap.includes('p_local_id: d.localId || null'), 'auditoría diferida no transmite local');
 
-ok(source.includes('crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria, empresaId })'), 'lógica de proveedores sin empresa');
+// ALB-PROV: la lógica de proveedores admite además un solapado opcional de recién creados (proveedoresRecientes); empresaId sigue siendo parámetro obligatorio.
+ok(/crearLogicaProveedores\(\{ proveedores, setProveedores, registrarAuditoria, empresaId(, proveedoresRecientes = [^}]*)? \}\)/.test(source), 'lógica de proveedores sin empresa');
 // Estructural, no un literal exacto: el alta siempre fija empresaId al
 // final, sea cual sea la variable de datos que se difunda (...data en
 // origen; una capa de validación posterior puede interponer
