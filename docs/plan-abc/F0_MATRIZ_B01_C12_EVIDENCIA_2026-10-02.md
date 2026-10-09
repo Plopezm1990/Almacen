@@ -58,7 +58,7 @@ conocido; no cambia la etiqueta. Etiquetas de evidencia:
 | C03 | Arqueo calculado en servidor | `INCOMPLETO` | `[MIGR]` `[QA]` cálculo, replay, permisos, unicidad y anulación; `[UI-LOCAL]` | Despliegue y recorrido visual del arqueo histórico; aceptación |
 | C04 | Cierre provisional y definitivo | `INCOMPLETO` | `[MIGR]` `[QA]` flujo, replay, reapertura, guardas y diferencias; `[UI]` `[CI]` | Despliegue consolidado en QA y aceptación final |
 | C05 | Series y numeración | `INCOMPLETO` | `[MIGR]` `[QA]` reserva, replay, estados, permisos e inmutabilidad; `[CI]` concurrencia | Sin emisor elegido ni pantalla |
-| C06 | Tipos de documento | `INCOMPLETO` | `[MIGR]`; `[CI]` | Sin ensayo ni pantalla; clasificación con asesoría |
+| C06 | Tipos de documento | `INCOMPLETO` | `[MIGR]` `[QA]` completa, simplificada, rectificativa, pedido, replay y permisos; `[CI]` | Reglas con asesoría y pantalla |
 | C07 | SIF y modalidad fiscal | `BLOQUEADO` | `[MIGR]` puerta que rechaza sin asesoría | Asesoría, emisor y régimen |
 | C08 | Conservar y corregir lo emitido | `INCOMPLETO` | `[MIGR]`; `[CI]` | Sin ensayo ni pantalla |
 | C09 | Imprimir sin duplicar | `INCOMPLETO` | `[MIGR]`; `[CI]` | Impresora real; sin pantalla |
@@ -285,10 +285,14 @@ Con A: **36 requisitos, 0 verificados, 29 incompletos, 2 pendientes, 5 bloqueado
 ### C06 — Tipos de documento
 - **Aceptación:** la persona usuaria sabe qué documento entrega y el sistema pide
   solo los datos exigibles; cambiar de modalidad mantiene los vínculos.
-- **Evidencia:** `[MIGR]` C06 (`abc_clasificar_documento`). `[CI]` contratos. Sin
-  ensayo ni pantalla.
-- **Falta:** ejemplos con asesoría para simplificada, completa y rectificativa;
-  petición posterior de factura completa sin duplicar la venta.
+- **Evidencia:** `[MIGR]` C06 (`abc_clasificar_documento`). `[QA]` factura
+  completa con receptor obligatorio, simplificada, rectificativa enlazada,
+  pedido, replay, rechazo de reclasificación y de serie incompatible,
+  inmutabilidad y permisos; `ROLLBACK` y cero residuos. `[CI]` contratos.
+  Evidencia detallada: `F7_C06_QA_RESULTADO_2026-10-09.md`.
+- **Falta:** validar con asesoría los campos y supuestos de simplificada,
+  completa y rectificativa; petición posterior de factura completa sin
+  duplicar la venta; pantalla y aceptación.
 
 ### C07 — SIF y modalidad fiscal
 - **Aceptación:** el recorrido fiscal elegido tiene validación técnica y de
