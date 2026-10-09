@@ -17,7 +17,10 @@ const docRuta = process.env.F7_DOC || join(REPO, 'docs/plan-abc/F7_PROMOCION_PRO
 const sql = readFileSync(sqlRuta, 'utf8');
 const doc = readFileSync(docRuta, 'utf8');
 const PRIMERA = '20260924160739'; // A09: primera migración candidata
-const archivos = readdirSync(join(REPO, 'supabase/migrations')).filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA).sort();
+// Última migración del paquete F7 (promoción del 4/10/2026). Las migraciones posteriores (p. ej. la plataforma F1, 9/10/2026)
+// tienen su propio paquete de promoción y no pertenecen a esta foto previa, que quedó cerrada con las 21 anteriores.
+const ULTIMA = '20261003130000';
+const archivos = readdirSync(join(REPO, 'supabase/migrations')).filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && f.slice(0, 14) <= ULTIMA).sort();
 const leer = (f) => readFileSync(join(REPO, 'supabase/migrations', f), 'utf8');
 const sinComentarios = (s) => s.replace(/--[^\n]*/g, '');
 const sinCadenas = (s) => s.replace(/'(?:[^']|'')*'/g, "''");

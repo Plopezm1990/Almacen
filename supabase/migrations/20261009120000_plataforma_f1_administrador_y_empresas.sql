@@ -73,8 +73,13 @@ create table if not exists private.plataforma_bajas (
   motivo text,
   por_user uuid,
   membresias_desactivadas bigint[] not null default '{}',
-  locales_desactivados text[] not null default '{}'
+  locales_desactivados text[] not null default '{}',
+  reactivada_en timestamptz
 );
+
+-- Una baja reactivada no se borra: queda marcada (historial). La baja vigente es
+-- la que tiene reactivada_en nulo.
+alter table private.plataforma_bajas add column if not exists reactivada_en timestamptz;
 
 create table if not exists private.plataforma_auditoria (
   id bigint generated always as identity primary key,
@@ -295,7 +300,7 @@ begin
       order by e.created_at, e.id
     )
     from public.empresas e
-    left join private.plataforma_bajas b on b.empresa_id = e.id
+    left join private.plataforma_bajas b on b.empresa_id = e.id and b.reactivada_en is null
   ), '[]'::jsonb);
 end;
 $$;
@@ -489,14 +494,15 @@ begin
     update public.locales set activo = false where empresa_id = p_empresa_id and id = any(v_locs);
     update public.empresas set activo = false where id = p_empresa_id;
 
-    insert into private.plataforma_bajas(empresa_id, motivo, por_user, membresias_desactivadas, locales_desactivados)
-    values (p_empresa_id, v_motivo, auth.uid(), v_mems, v_locs)
+    insert into private.plataforma_bajas(empresa_id, motivo, por_user, membresias_desactivadas, locales_desactivados, reactivada_en)
+    values (p_empresa_id, v_motivo, auth.uid(), v_mems, v_locs, null)
     on conflict (empresa_id) do update
       set baja_en = now(),
           motivo = excluded.motivo,
           por_user = excluded.por_user,
           membresias_desactivadas = excluded.membresias_desactivadas,
-          locales_desactivados = excluded.locales_desactivados;
+          locales_desactivados = excluded.locales_desactivados,
+          reactivada_en = null;
 
     v_res := jsonb_build_object(
       'ok', true,
@@ -557,7 +563,7 @@ begin
   if v_empresa.activo is true then
     v_res := jsonb_build_object('ok', true, 'empresa_id', p_empresa_id, 'ya_estaba_activa', true);
   else
-    select * into v_baja from private.plataforma_bajas b where b.empresa_id = p_empresa_id;
+    select * into v_baja from private.plataforma_bajas b where b.empresa_id = p_empresa_id and b.reactivada_en is null;
     v_hay_baja := found;
 
     update public.empresas set activo = true where id = p_empresa_id;
@@ -584,7 +590,8 @@ begin
       get diagnostics v_locs = row_count;
     end if;
 
-    delete from private.plataforma_bajas where empresa_id = p_empresa_id;
+    update private.plataforma_bajas set reactivada_en = now()
+     where empresa_id = p_empresa_id and reactivada_en is null;
 
     v_res := jsonb_build_object(
       'ok', true,

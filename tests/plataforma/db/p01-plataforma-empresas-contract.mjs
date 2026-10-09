@@ -326,9 +326,23 @@ try {
     const locales = (await admin.query('select id, activo from public.locales where empresa_id=$1', [empresaA])).rows.map((x) => `${x.id}:${x.activo}`).sort();
     assert.deepEqual(locales, [`${localA}:true`, 'L-A-2:false', 'L-A-3:true'].sort(), 'el local que ya estaba inactivo antes de la baja sigue inactivo');
     assert.equal((await admin.query('select count(*)::int n from public.membresias_usuario where empresa_id=$1 and activo', [empresaA])).rows[0].n, 2);
-    assert.equal((await admin.query('select count(*)::int n from private.plataforma_bajas where empresa_id=$1', [empresaA])).rows[0].n, 0);
+    assert.equal((await admin.query('select count(*)::int n from private.plataforma_bajas where empresa_id=$1 and reactivada_en is null', [empresaA])).rows[0].n, 0, 'ya no hay baja vigente');
+    assert.equal((await admin.query('select count(*)::int n from private.plataforma_bajas where empresa_id=$1 and reactivada_en is not null', [empresaA])).rows[0].n, 1, 'la baja reactivada queda como historial, no se borra');
+    assert.equal((await rpc(cAdmin, 'plataforma_listar_empresas')).find((x) => x.id === empresaA).baja_en, null, 'una empresa reactivada no muestra baja');
     assert.equal((await rpc(cAdmin, 'plataforma_reactivar_empresa', ['op-react-cliente-a', empresaA])).idempotente, true);
     assert.equal((await rpc(cAdmin, 'plataforma_reactivar_empresa', ['op-react-cliente-a-bis', empresaA])).ya_estaba_activa, true);
+
+    // Un segundo ciclo baja/reactivación reutiliza la fila de baja: vuelve a ser vigente y luego a quedar como historial.
+    const d4 = await rpc(cAdmin, 'plataforma_desactivar_empresa', ['op-desact-cliente-a-ciclo2', empresaA, 'segundo ciclo']);
+    assert.equal(d4.membresias_desactivadas, 2);
+    assert.equal(d4.locales_desactivados, 2);
+    const vigente = (await admin.query('select motivo, reactivada_en from private.plataforma_bajas where empresa_id=$1', [empresaA])).rows;
+    assert.deepEqual(vigente, [{ motivo: 'segundo ciclo', reactivada_en: null }], 'la baja nueva es vigente y sustituye a la anterior');
+    assert.equal((await rpc(cAdmin, 'plataforma_listar_empresas')).find((x) => x.id === empresaA).baja_motivo, 'segundo ciclo');
+    const r3 = await rpc(cAdmin, 'plataforma_reactivar_empresa', ['op-react-cliente-a-ciclo2', empresaA]);
+    assert.equal(r3.locales_reactivados, 2);
+    assert.equal(r3.membresias_reactivadas, 2);
+    assert.deepEqual((await admin.query('select id, activo from public.locales where empresa_id=$1', [empresaA])).rows.map((x) => `${x.id}:${x.activo}`).sort(), [`${localA}:true`, 'L-A-2:false', 'L-A-3:true'].sort());
 
     // Baja hecha por otra vía (sin registro): se reactiva la empresa y su local más antiguo; las membresías no se tocan.
     await admin.query("update public.locales set activo=false where empresa_id=$1", [empresaA]);
@@ -346,8 +360,8 @@ try {
     const mapa = Object.fromEntries(filas.map((x) => [x.accion, x.n]));
     assert.equal(mapa.crear_empresa, 2);
     assert.equal(mapa.asignar_propietario, 2);
-    assert.equal(mapa.desactivar_empresa, 2);
-    assert.equal(mapa.reactivar_empresa, 3);
+    assert.equal(mapa.desactivar_empresa, 3);
+    assert.equal(mapa.reactivar_empresa, 4);
     assert.equal((await admin.query('select count(*)::int n from private.plataforma_auditoria where actor is null')).rows[0].n, 0);
   }
 
