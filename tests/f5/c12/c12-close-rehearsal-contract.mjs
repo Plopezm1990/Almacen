@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 const root = new URL('../../../', import.meta.url);
 const migration = await readFile(new URL('supabase/migrations/20261001220000_abc_f5_c12_close_rehearsal.sql', root), 'utf8');
 const revisionFix = await readFile(new URL('supabase/migrations/20261009111255_abc_f7_c12_reconciliation_revision.sql', root), 'utf8');
+const sessionScope = await readFile(new URL('supabase/migrations/20261009112332_abc_f7_c12_session_scope.sql', root), 'utf8');
 
 for (const marker of [
   'create table public.abc_c12_ensayos_cierre',
@@ -32,5 +33,10 @@ assert.match(revisionFix, /add column revision bigint generated always as identi
 assert.match(revisionFix, /order by r\.documento_id,r\.revision desc/);
 assert.match(revisionFix, /abc_c11_conciliacion_documento_revision_idx/);
 assert.doesNotMatch(revisionFix, /order by r\.documento_id,r\.created_at desc,r\.id desc'\s*\n\s*\);/);
+assert.match(sessionScope, /add column session_id uuid/);
+assert.match(sessionScope, /abc_c05_documento_session_fk/);
+assert.match(sessionScope, /old\.session_id is distinct from new\.session_id/);
+assert.match(sessionScope, /sesion_documental_no_encontrada/);
+assert.match(sessionScope, /where d\.session_id=p_session_id/);
 
 console.log('ABC_F5_C12_CLOSE_REHEARSAL_CONTRACT=PASS');

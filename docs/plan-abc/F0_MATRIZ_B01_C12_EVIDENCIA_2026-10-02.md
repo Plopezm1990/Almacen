@@ -64,7 +64,7 @@ conocido; no cambia la etiqueta. Etiquetas de evidencia:
 | C09 | Imprimir sin duplicar | `INCOMPLETO` | `[MIGR]` `[QA]` original, replay, copias, numeración, inmutabilidad y permisos; `[CI]` | Impresora real y pantalla |
 | C10 | Entrega y copias | `INCOMPLETO` | `[MIGR]` `[QA]` email, replay, papel, descarga registrada, inmutabilidad y permisos; `[CI]` | Sin ciclo confirmado/fallido, acceso, caducidad, envío ni pantalla |
 | C11 | Conciliación explicable | `INCOMPLETO` ⚠ | `[MIGR]` `[QA]` cadena documental pendiente/conciliada, huella, replay, inmutabilidad y permisos; `[CI]` | Sin conciliación económica, pantalla ni exportación |
-| C12 | Ensayo del cierre | `INCOMPLETO` | `[MIGR]` `[QA]` pendiente→apto, efectivo, C11, replay, inmutabilidad, permisos y cero residuos; corregido el orden concurrente C11 | Documentos aún por local, no por sesión; fallos externos, noche real y pantalla |
+| C12 | Ensayo del cierre | `INCOMPLETO` | `[MIGR]` `[QA]` pendiente→apto, efectivo, C11, aislamiento entre dos sesiones, replay, inmutabilidad, permisos y cero residuos | Fallos externos, emisión realmente concurrente, noche real y pantalla |
 
 Totales B: 0 verificados, 7 incompletos, 1 pendiente, 4 bloqueados.
 Totales C: 0 verificados, 11 incompletos, 0 pendientes, 1 bloqueado.
@@ -361,9 +361,10 @@ Con A: **36 requisitos, 0 verificados, 29 incompletos, 2 pendientes, 5 bloqueado
   El 9/10 se añadió un ensayo aislado pendiente→apto con conteo, cadena C11,
   replay, inmutabilidad, permisos y `ROLLBACK`. La revisión incremental corrige
   la selección no determinista de conciliaciones C11 creadas en la misma
-  transacción. `abc_ensayar_cierre_sesion_caja` no se llama desde la pantalla.
-- **Falta:** limitar las conciliaciones documentales a la sesión ensayada;
-  pago incierto en el cierre, emisión realmente concurrente, impresora caída,
+  transacción. Una segunda prueba con dos sesiones del mismo local confirmó el
+  aislamiento documental. `abc_ensayar_cierre_sesion_caja` no se llama desde
+  la pantalla.
+- **Falta:** pago incierto en el cierre, emisión realmente concurrente, impresora caída,
   rectificación, sesión nocturna, restauración (T23) y recorrido visual.
 
 ## Bloqueos que afectan a varias filas

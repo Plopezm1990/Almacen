@@ -22,6 +22,11 @@ La migración QA `20261009111255 · abc_f7_c12_reconciliation_revision`:
 La huella posterior confirmó la columna identity, los dos índices y la nueva
 definición de la función.
 
+La migración QA `20261009112332 · abc_f7_c12_session_scope` añadió un
+`session_id` opcional a los documentos C05, con clave foránea e índice. La
+reserva valida `metadata.session_id`, el vínculo queda inmutable y C12 filtra
+las fotos C11 por la sesión ensayada.
+
 ## 2. Ensayo transaccional
 
 Se creó un local aislado, una sesión, un documento emitido y conservado, y dos
@@ -44,7 +49,20 @@ El ensayo terminó mediante un subbloque transaccional deliberadamente
 revertido. La consulta posterior confirmó cero locales, terminales, cajas,
 sesiones, series, operaciones e informes residuales.
 
-## 3. Seguridad y revisión posterior
+## 3. Aislamiento entre sesiones
+
+Una segunda prueba creó dos cajas y dos sesiones activas en el mismo local:
+
+| Sesión | Documento | Resultado C12 |
+|---|---|---|
+| 1 | Entregado y `CONCILIADO` | `APTO_CIERRE`, 1 conciliado y 0 pendientes |
+| 2 | `PENDIENTE_ENTREGA` | `PENDIENTE`, 0 conciliados y 1 pendiente |
+
+La sesión 2 no bloqueó la sesión 1. También pasaron el rechazo de una sesión
+inexistente, la inmutabilidad de `session_id` y una reserva administrativa sin
+sesión para mantener compatibilidad. La prueba terminó con cero residuos.
+
+## 4. Seguridad y revisión posterior
 
 La secuencia de revisión solo concede privilegios a `postgres`. La tabla C11
 continúa sin acceso directo del cliente y C12 sigue validando autenticación y
@@ -54,10 +72,8 @@ la RPC `SECURITY DEFINER` corresponden al patrón de tablas cerradas y
 autorización interna que ya usa este bloque; los demás avisos quedan fuera del
 alcance de C12.
 
-## 4. Límites confirmados
+## 5. Límites confirmados
 
-- C12 toma las conciliaciones documentales del local completo; todavía no las
-  relaciona estrictamente con la sesión de caja ensayada.
 - La prueba cubre la recuperación idempotente mediante replay, pero no una
   caída real de red o proceso.
 - No se probaron hardware de impresión, emisión fiscal real ni una sesión

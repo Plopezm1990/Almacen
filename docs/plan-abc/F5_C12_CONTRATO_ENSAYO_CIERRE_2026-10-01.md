@@ -22,6 +22,9 @@ sin ejecutar el cierre real.
   `20261009111255_abc_f7_c12_reconciliation_revision.sql` añade una revisión
   incremental para que «último» tenga un orden total incluso dentro de una
   misma transacción.
+- `20261009112332_abc_f7_c12_session_scope.sql` permite ligar la reserva C05 a
+  una sesión de caja y hace que C12 solo cuente los documentos de la sesión
+  ensayada.
 - Devuelve `APTO_CIERRE`, `PENDIENTE` o `BLOQUEADO`, con bloqueos y explicación
   legible.
 - Guarda un informe JSON inmutable con huella SHA-256, un evento
@@ -50,6 +53,11 @@ cero residuos. Durante el ensayo se encontró y corrigió el desempate no
 determinista de dos conciliaciones C11 con el mismo `created_at`. Véase
 `F7_C12_QA_RESULTADO_2026-10-09.md`.
 
+Una segunda prueba aislada creó dos sesiones activas del mismo local. La sesión
+con documento entregado y conciliado quedó `APTO_CIERRE`; la otra conservó su
+documento pendiente sin bloquear a la primera. También se comprobaron la
+inmutabilidad del vínculo, el rechazo de sesiones inexistentes y la
+compatibilidad con documentos administrativos sin sesión.
+
 Producción no se modificó. Siguen pendientes el recorrido de pantalla, la
-prueba con hardware y fallos externos, la relación documental estricta con la
-sesión ensayada y la aceptación final.
+prueba con hardware y fallos externos, la sesión nocturna y la aceptación final.

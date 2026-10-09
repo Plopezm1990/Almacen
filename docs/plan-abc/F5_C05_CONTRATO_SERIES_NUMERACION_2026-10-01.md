@@ -22,6 +22,10 @@ actual del candidato es `INTERNA`; queda preparado el valor
   empresa/local/tipo/serie.
 - `abc_reservar_numero_documental` bloquea la serie, incrementa el contador y
   crea un documento `RESERVADO` con `operation_id` estable.
+- La reserva acepta `metadata.session_id`. Si se informa, la sesión debe
+  pertenecer a la misma empresa/local y queda como parte inmutable de la
+  identidad operativa del documento. Omitirla sigue permitido para documentos
+  administrativos ajenos a una sesión de caja.
 - `abc_resolver_emision_documental` transforma la reserva en `EMITIDO`,
   `PENDIENTE` o `ERROR`, conservando el resultado recibido y la misma
   identidad documental.
@@ -51,6 +55,9 @@ fiscal.
 3. Ensayo transaccional en QA con dos identidades consecutivas, replay,
    conflicto de payload, estados pendiente/error, recuperación del emitido,
    inmutabilidad y permisos. Terminó con `ROLLBACK` y cero residuos.
+4. El ensayo C12 del 9/10 vinculó documentos a dos sesiones simultáneas del
+   mismo local, rechazó una sesión inexistente y bloqueó el cambio posterior de
+   sesión.
 
 ## Criterios de aceptación
 
