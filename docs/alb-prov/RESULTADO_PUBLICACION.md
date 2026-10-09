@@ -103,3 +103,29 @@ Volver a desplegar `docs/alb-prov/edge/importar-albaran_v16_respaldo.ts` (`sha25
 ## Prueba real de Pedro con la v17 (9/10/2026)
 Pedro volvió a leer en producción, con «Foto con IA», la misma foto de Arboliva y respondió «Todo bien»: las líneas y el total salieron igual que en la primera lectura (v16) y «Completar su ficha con los datos de la foto» rellenó la ficha (CIF, dirección, teléfono, correo, web y condiciones de pago). No hizo falta marcha atrás: la v17 queda como versión viva. Pedro no copió datos de la ficha en el mensaje; solo confirmó el resultado.
 
+
+---
+
+# Investigación del aviso «1 colección solo en este equipo» (9/10/2026, solo lectura)
+
+Estado: **investigado; sin cambios en producción ni en el repositorio de la aplicación**. Solo consultas de lectura sobre las políticas y los nombres de las claves de `almacen_kv` (sin leer contenidos).
+
+## Qué es el aviso
+Es el indicador `#estado-guardado` de `index-storage-bootstrap.js` (diseño F5-P1, `docs/plan-abc/F5_P1_RECHAZOS_POR_PERMISOS_SOLO_LOCAL_2026-10-02.md`). Sale cuando el servidor rechaza por permisos (`42501`) el guardado de una colección: se marca como «denegada» en el navegador durante 6 horas, se sigue guardando y leyendo en el equipo y no se reintenta. **No lo causa el alta de proveedores ni el albarán** (proveedores y albaranes tienen tabla propia con RLS y se comprobó que se guardaron).
+
+## Qué se comprobó en producción (`flqercbgpgmmfaakrwkc`)
+- `almacen_kv` tiene la política antigua «acceso por rol y clave» (select/insert/update/delete) con listas de claves por rol. Claves aceptadas: todos los perfiles activos → `productos, disenoMenu, temaOscuro, modoEmpleado, usuarioActivoId, localActivoId`; Propietario/Encargado → `proveedores, pedidos, conteos, fichasCosto, albaranes, catalogoProv, registrosAppcc, puntosControl, arqueos, turnos, ordenesProduccion, locales, movimientosCaja, devoluciones, freidoras, registrosAceite, traspasos`; solo Propietario → `historialRespaldos, gastosGenerales, empleados, clientes, encargos, pinPropietario, facturasDirectas, nominas, movimientos, fichajes, auditoria, entrevistas`.
+- La aplicación guarda (con `saveKey`) además estas tres claves, que **no están en ninguna lista**: `empresas`, `configEmpresa` y `pagosFacturas`. `pagosFacturas` va por RPC y nunca se sube a `almacen_kv` (no se marca denegada). Quedan **`empresas` y `configEmpresa`**: el servidor las rechazará siempre, para cualquier rol.
+- Filas de `almacen_kv` en producción (solo nombres): `catalogoProv, conteos, disenoMenu, historialRespaldos, productos, temaOscuro, traspasos`. No existe fila de `empresas` ni de `configEmpresa` (nunca han llegado al servidor), de acuerdo con lo anterior.
+
+## Lo que NO se puede afirmar
+Cuál de las dos es la que sale en el móvil de Pedro: el recuento («1») es del navegador (`almacen__denegados`, ventana de 6 h) y desde aquí no se ve. `window.__clavesSoloLocal()` lo diría. Tampoco se explica por qué sale 1 y no 2 (hay que verlo en su navegador).
+
+## Efecto práctico
+Los datos de empresa (`empresas`, `configEmpresa`: razón social, CIF, dirección…) solo viven en el navegador donde se escribieron: no se sincronizan entre dispositivos y se perderían si se borran los datos del navegador. No afecta a proveedores, albaranes ni stock. Relación con ALB-PROV: la comprobación «este proveedor es mi propia empresa» usa esos datos locales; en un dispositivo que no los tenga no podría avisar.
+
+## Opciones (todas fuera de este paquete; ninguna hecha)
+1. **Recomendada:** dejarlo y resolverlo dentro del paquete de permisos de `almacen_kv` (P3/P3b del plan ABC), que ya estudia cómo llevar las políticas de empresa a producción sin romper la sincronización.
+2. Cambio pequeño de aplicación (pasa por QA): que el aviso diga qué colecciones son.
+3. Ampliar la política de producción con esas dos claves (solo Propietario): migración en PROD, con copia previa de las políticas y autorización escrita de Pedro. No recomendada aislada: toca la política que P3 va a reordenar.
+
