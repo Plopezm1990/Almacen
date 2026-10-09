@@ -60,7 +60,7 @@ conocido; no cambia la etiqueta. Etiquetas de evidencia:
 | C05 | Series y numeración | `INCOMPLETO` | `[MIGR]` `[QA]` reserva, replay, estados, permisos e inmutabilidad; `[CI]` concurrencia | Sin emisor elegido ni pantalla |
 | C06 | Tipos de documento | `INCOMPLETO` | `[MIGR]` `[QA]` completa, simplificada, rectificativa, pedido, replay y permisos; `[CI]` | Reglas con asesoría y pantalla |
 | C07 | SIF y modalidad fiscal | `BLOQUEADO` | `[MIGR]` puerta que rechaza sin asesoría | Asesoría, emisor y régimen |
-| C08 | Conservar y corregir lo emitido | `INCOMPLETO` | `[MIGR]`; `[CI]` | Sin ensayo ni pantalla |
+| C08 | Conservar y corregir lo emitido | `INCOMPLETO` | `[MIGR]` `[QA]` conservación, replay, rectificación, cancelación, reembolso e inmutabilidad; `[CI]` | Política legal, descarga y pantalla |
 | C09 | Imprimir sin duplicar | `INCOMPLETO` | `[MIGR]`; `[CI]` | Impresora real; sin pantalla |
 | C10 | Entrega y copias | `INCOMPLETO` | `[MIGR]`; `[CI]` | Descarga cruzada, caducidad y envío no probados |
 | C11 | Conciliación explicable | `INCOMPLETO` ⚠ | `[MIGR]`; `[QA]` el cierre no pudo explicar −11 | Dos circuitos mezclados; sin pantalla ni exportación |
@@ -309,9 +309,14 @@ Con A: **36 requisitos, 0 verificados, 29 incompletos, 2 pendientes, 5 bloqueado
 ### C08 — Conservar y corregir lo emitido
 - **Aceptación:** una factura emitida no se altera silenciosamente; la corrección
   tiene identidad propia y el saldo sigue explicable.
-- **Evidencia:** `[MIGR]` C08. `[CI]` contratos. Sin ensayo ni pantalla.
-- **Falta:** ensayo con cambio de precio posterior y rectificativa; descarga
-  autorizada; conservación y acceso con asesoría.
+- **Evidencia:** `[MIGR]` C08. `[QA]` instantánea con SHA-256, replay,
+  unicidad e inmutabilidad de versión, rectificación enlazada, cancelación,
+  reembolso, inmutabilidad de correcciones y permisos; `ROLLBACK` y cero
+  residuos. `[CI]` contratos. Evidencia detallada:
+  `F7_C08_QA_RESULTADO_2026-10-09.md`.
+- **Falta:** recorrido con cambio de precio desde la aplicación; descarga
+  autorizada; política de conservación y acceso con asesoría; pantalla y
+  aceptación.
 
 ### C09 — Imprimir sin duplicar la venta
 - **Aceptación:** repetir la impresión da una copia del documento correcto y
