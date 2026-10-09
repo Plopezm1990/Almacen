@@ -1,6 +1,6 @@
 # Fase 3 — panel «Plataforma» y contraseña inicial del dueño: resultado en QA
 Fecha: 9/10/2026
-Estado: **CONSTRUIDA, PROBADA EN LOCAL Y PROBADA CON LA PANTALLA POR COWORK (18 pasos); un fallo encontrado y corregido; pendiente repetir con Cowork lo que cambió (`PRUEBA_COWORK_FASE3_QA_REPETICION.md`) y la prueba de Pedro.** **Producción no se ha tocado.**
+Estado: **CONSTRUIDA, PROBADA EN LOCAL Y PROBADA CON LA PANTALLA POR COWORK (18 pasos). La repetición encontró una causa más profunda del aviso «no se ha podido guardar»: la copia local del navegador se hereda entre cuentas (ver «Segunda prueba»). Es un hueco de aislamiento entre empresas que se resuelve en la Fase 4; pendiente decisión de Pedro.** **Producción no se ha tocado.**
 
 Autorización de Pedro (9/10/2026): «Sí, empezar la Fase 3», solo en la vista previa de QA.
 
@@ -45,13 +45,30 @@ Cowork recorrió con la pantalla las partes A–E del guion (18 pasos) y todo fu
 **Hallazgos y qué se hizo**
 | Hallazgo | Causa | Qué se hizo |
 |---|---|---|
-| **Aviso rojo «Un cambio no se ha podido guardar (locales)»** y «Guardado: cambios sin confirmar: N» tras elegir la contraseña y al abrir «mi aplicación» desde el panel | **Fallo mío, también habría ocurrido en producción.** Mientras se ve el panel o la pantalla de contraseña, el programa sigue cargado por detrás con la barrera de sincronización cerrada. Su guardado de «locales» espera 10 s a que se abra la barrera, agota el tiempo y deja el aviso, aunque luego se abra | La página **se recarga** en cada cambio de pantalla (abrir mi aplicación, volver al panel, cerrar sesión, contraseña elegida). Arranca limpia con la barrera ya validada. La elección «abrir mi aplicación» sobrevive a la recarga con una marca en `sessionStorage` (solo el id de usuario). Pruebas nuevas que cuentan las recargas. **Pendiente comprobar con la pantalla** |
+| **Aviso rojo «Un cambio no se ha podido guardar (locales)»** y «Guardado: cambios sin confirmar: N» tras elegir la contraseña y al abrir «mi aplicación» desde el panel | Había **dos causas**. (1) La que vi primero, por lectura del código: mientras se ve el panel o la pantalla de contraseña el programa sigue cargado por detrás con la barrera cerrada y su guardado de «locales» agota los 10 s de espera. (2) La principal, descubierta en la repetición: **la copia local del navegador se hereda entre cuentas** (ver «Segunda prueba») | Para (1): la página **se recarga** en cada cambio de pantalla (abrir mi aplicación, volver al panel, cerrar sesión, contraseña elegida); la elección «abrir mi aplicación» sobrevive con una marca en `sessionStorage` (solo el id de usuario). Para (2): **sin arreglar todavía**; es el primer paso de la Fase 4 |
 | Al entrar la dueña, por un momento se vio «Local A1 · QA Empresa A» (datos de la administradora) hasta recargar | La vista previa de QA tiene desactivada la barrera que impide leer datos locales antes de validar (`esPreviewQA` en `reset-pruebas-preview.js`); en la misma pestaña quedaban los datos de la sesión anterior. En producción esa barrera está activa | Mejorado por la recarga (se recarga también al cerrar sesión desde el panel). Se vuelve a mirar en la repetición con ventana de incógnito y, sobre todo, en el ensayo de producción (Fase 7) |
 | Algunos botones no se dejaban pulsar con el ratón (error de «marco incrustado») | Casi seguro la barra que Netlify añade a las vistas previas; no existe en producción. Además el atajo «← Plataforma» estaba abajo a la izquierda, sobre la barra inferior del programa | El atajo sube por encima de la barra inferior y queda por debajo de las ventanas del programa. La repetición pide comprobarlo |
 | El nombre de una empresa quedó «QA F3 Cliente 2QA F3 Cliente 2» | El nombre se escribió dos veces en el campo (herramienta de Cowork); el formulario se abre vacío | Sin cambio. La repetición pide escribirlo una sola vez |
 | La copia no se pudo abrir en el equipo de Cowork | Se guarda en el equipo de quien la descarga | Sin cambio; el contenido se verificó con el detalle por tabla |
 
 Estado de QA tras la prueba: plazo de gracia restaurado a **30 días**; `QA F3 Cliente 1` borrada con su acta; queda `QA F3 Cliente 2…` desactivada con dos dueños de pruebas.
+
+## Segunda prueba con Cowork (repetición parcial, commit `c30f0f6`) y la causa real
+Cowork repitió con la pantalla los pasos 1–3 y se paró en la primera diferencia: tras elegir la contraseña (con la espera de 30 s y la página recargada) **el aviso rojo y «cambios sin confirmar: 1» seguían saliendo**, y en «Locales» aparecieron **dos «Local recuperado»** además de «Local F3». Todo lo demás fue correcto (nombre de empresa sin duplicar, «Elige tu contraseña», recarga automática, texto de «las empresas las da de alta el administrador…», sin «+ Añadir empresa», cierre de sesión).
+
+**Causa comprobada** (código y base de datos de QA, solo lectura):
+1. En la base de datos la empresa `QA F3 Cliente 3` tiene **un solo local** (`Local F3`). Los dos «Local recuperado» solo existen en el navegador.
+2. El programa los crea al arrancar (`fuente.js`, «Local recuperado», `recuperadoDeProductos`): por cada `localId` que aparece en los productos y no está entre los locales de la empresa, inventa un local.
+3. Los productos salen de la **copia local del navegador** (`almacen:productos`), que dejó la sesión de la administradora cuando abrió su aplicación (`QA-EMP-A`: 30 productos con los locales `QA-A1` y `QA-A2`; exactamente los dos «Local recuperado»).
+4. La nube no se los habría dado a la dueña nueva: la regla de acceso de `almacen_kv` solo deja leer filas de las empresas de las que eres miembro. Pero cuando la nube no devuelve nada, el programa **cae a la copia local** (`index-storage-bootstrap.js`, `storage.get`), y esa copia **no está separada por cuenta** para la mayoría de las colecciones (solo lo está un subconjunto: proveedores, clientes, albaranes…). Tampoco se borra al cerrar sesión.
+5. Con esos locales inventados, el programa intenta guardar la lista de locales y el servidor la rechaza (no pertenecen a su empresa): de ahí el aviso «(locales)».
+6. La barrera actual contra herencia (`edge-auth-patch.js`) protege a un **empleado** frente a lo que dejó un **Propietario** en el mismo navegador, pero no a un Propietario frente a otro Propietario de otra empresa. Con una sola empresa nunca hizo falta.
+
+**Alcance real:** ocurre cuando dos cuentas distintas usan el mismo navegador (como hace Cowork, o Pedro al probar con varias cuentas, o un equipo compartido). Los datos de la empresa A **llegan a la vista de la empresa B en el navegador** aunque la nube los proteja. En la vista previa de QA es más visible porque su barrera de lectura local está desactivada; en producción la barrera solo retrasa la lectura hasta validar, no la impide. **Es un hueco de aislamiento entre empresas y debe cerrarse antes de la primera empresa cliente real.**
+
+**Qué no es:** no es un fallo del panel ni de la pantalla de contraseña; la corrección de la recarga sigue siendo útil contra la causa (1).
+
+**Arreglo propuesto (Fase 4, primer paso):** que cada cuenta tenga su propia copia local de todas las colecciones (ampliar el mecanismo que ya existe para proveedores, clientes, etc. a todas), de modo que otra cuenta en el mismo navegador no vea ni herede nada, sin borrar lo de la cuenta anterior. Hay que añadir pruebas de que la cuenta B no ve nada de la cuenta A en el mismo navegador.
 
 ## Límites conocidos
 - **Que el dueño cambie la contraseña inicial es una exigencia de pantalla, no del servidor.** Una persona con conocimientos técnicos podría saltarse la pantalla llamando a la API a mano; solo se perjudicaría a sí misma (Pedro seguiría conociendo su contraseña). Si se quiere blindar, hay que añadir una comprobación en el servidor (decisión para más adelante).
