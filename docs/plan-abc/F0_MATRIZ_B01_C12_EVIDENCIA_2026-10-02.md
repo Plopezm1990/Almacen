@@ -53,7 +53,7 @@ conocido; no cambia la etiqueta. Etiquetas de evidencia:
 | B10 | Datos de tarjeta | `BLOQUEADO` | `[QA]` rechaza evidencia con PAN; `[REPO]` 3 migraciones | Documentación y alcance PCI del adquirente |
 | B11 | Pagos sin conexión | `INCOMPLETO` | `[CI]` contrato; decisión: solo online + borradores | Corte de red real; contingencia sin activar |
 | B12 | Ensayo de pagos | `BLOQUEADO` | `[CI]` matriz y simulador | Sin sandbox del proveedor |
-| C01 | Cajas, terminales y sesiones | `INCOMPLETO` | `[MIGR]` `[QA]` apertura con fondo; `[UI]` abrir | Relevo, vincular terminal y apertura concurrente |
+| C01 | Cajas, terminales y sesiones | `INCOMPLETO` | `[QA]` apertura, relevo, terminales, conflictos y permisos; `[UI-LOCAL]` gestión completa | Despliegue/recorrido visual y apertura simultánea real |
 | C02 | Entradas y salidas trazables | `INCOMPLETO` ⚠ | `[MIGR]` funciones ABC | La pantalla usa las funciones heredadas, no las ABC |
 | C03 | Arqueo calculado en servidor | `PENDIENTE` ⚠ | Contrato preparado, sin migración | Sin implementar; la pantalla manda el efectivo base |
 | C04 | Cierre provisional y definitivo | `INCOMPLETO` ⚠ | `[MIGR]` `[QA]` flujo y bloqueos `[UI]` | Cierra con diferencia sin tratamiento; T14 |
@@ -212,12 +212,16 @@ Con A: **36 requisitos, 0 verificados, 28 incompletos, 3 pendientes, 5 bloqueado
 ### C01 — Cajas, terminales y sesiones
 - **Aceptación:** cada cobro tiene sesión y responsable; un segundo inicio
   incompatible falla; el relevo conserva quién actuó en cada momento.
-- **Evidencia:** `[MIGR]` M04A. `[QA]` apertura con fondo 100 (+100 en el libro);
-  abrir cuenta en una sesión cerrada falla (`terminal_sesion_no_operativa`).
-  `[UI]` `abc_abrir_sesion_caja`. No llama a vincular terminal, cambiar
-  responsable ni cancelar apertura.
-- **Falta:** definir caja física, terminal y sesión; si varios dispositivos
-  comparten caja; relevo por pantalla; apertura concurrente y local ajeno.
+- **Evidencia:** `[MIGR]` M04A y
+  `20261009054351_c01_listar_responsables_caja`. `[QA]` dos aperturas aisladas,
+  fondo inicial, idempotencia, rechazo de caja/terminal duplicados, vínculo de
+  terminal y relevo con dos tramos de responsable; cero residuos tras
+  `ROLLBACK`. Propietario y Cajero pueden listar candidatos; Camarero queda
+  rechazado. `[UI-LOCAL]` abrir, consultar, relevar, vincular y desvincular con
+  motivo, sin DML directo. Evidencia detallada:
+  `F7_C01_QA_RESULTADO_2026-10-09.md`.
+- **Falta:** desplegar la interfaz en QA, completar el recorrido visual,
+  ejecutar una apertura verdaderamente simultánea y obtener aceptación.
 - **Decisión de Pedro:** cajas simultáneas y quién autoriza el relevo.
 
 ### C02 — Entradas y salidas trazables

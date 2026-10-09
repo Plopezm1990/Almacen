@@ -9155,6 +9155,10 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
 
   async function listarEstacionesA10() {
     listarEstacionesA10.abrirSesionCajaA10 = abrirSesionCajaA10;
+    listarEstacionesA10.consultarSesionCajaC01 = consultarSesionCajaC01;
+    listarEstacionesA10.vincularTerminalCajaC01 = vincularTerminalCajaC01;
+    listarEstacionesA10.desvincularTerminalCajaC01 = desvincularTerminalCajaC01;
+    listarEstacionesA10.cambiarResponsableCajaC01 = cambiarResponsableCajaC01;
     listarEstacionesA10.cerrarSesionCajaA10 = cerrarSesionCajaA10;
     listarEstacionesA10.iniciarCierreSesionCajaA10 = iniciarCierreSesionCajaA10;
     listarEstacionesA10.confirmarCierreProvisionalA10 = confirmarCierreProvisionalA10;
@@ -9213,6 +9217,113 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       });
       if (error) throw error;
       return { ok: true, ...(data || {}), caja_nombre: cajas[0].nombre };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function consultarSesionCajaC01() {
+    try {
+      const contexto = await contextoCierreA10();
+      const [sesion, vinculos, responsables, terminales, candidatos] = await Promise.all([
+        contexto.supabase.from("caja_sesiones").select("id,estado,version,caja_id").eq("empresa_id", contexto.empresaId).eq("local_id", contexto.localId).eq("id", contexto.sessionId).single(),
+        contexto.supabase.from("caja_sesion_terminales").select("terminal_id,desde,hasta").eq("empresa_id", contexto.empresaId).eq("local_id", contexto.localId).eq("session_id", contexto.sessionId).is("hasta", null).order("desde", { ascending: true }),
+        contexto.supabase.from("caja_sesion_responsables").select("user_id,desde,hasta,motivo").eq("empresa_id", contexto.empresaId).eq("local_id", contexto.localId).eq("session_id", contexto.sessionId).order("desde", { ascending: true }),
+        contexto.supabase.from("terminales_tpv").select("id,nombre,activo").eq("empresa_id", contexto.empresaId).eq("local_id", contexto.localId).eq("activo", true).order("nombre", { ascending: true }),
+        contexto.supabase.rpc("abc_listar_responsables_caja", {
+          p_empresa_id: contexto.empresaId,
+          p_local_id: contexto.localId,
+          p_terminal_id: contexto.terminalId,
+          p_session_id: contexto.sessionId,
+          p_operating_day: contexto.operatingDay
+        })
+      ]);
+      if (sesion.error) throw sesion.error;
+      if (vinculos.error) throw vinculos.error;
+      if (responsables.error) throw responsables.error;
+      if (terminales.error) throw terminales.error;
+      const listaTerminales = Array.isArray(terminales.data) ? terminales.data : [];
+      const nombresTerminales = new Map(listaTerminales.map((terminal) => [String(terminal.id), terminal.nombre || "Terminal"]));
+      const historialResponsables = Array.isArray(responsables.data) ? responsables.data : [];
+      return {
+        ok: true,
+        sesion: sesion.data || null,
+        terminalActualId: contexto.terminalId,
+        terminales: listaTerminales,
+        terminalesVinculados: (vinculos.data || []).map((vinculo) => ({ ...vinculo, nombre: nombresTerminales.get(String(vinculo.terminal_id)) || "Terminal" })),
+        responsables: candidatos.error || !Array.isArray(candidatos.data?.responsables) ? [] : candidatos.data.responsables,
+        responsableActivo: historialResponsables.find((responsable) => !responsable.hasta) || null,
+        historialResponsables,
+        responsablesError: candidatos.error ? errorRpcA02(candidatos.error) : ""
+      };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function vincularTerminalCajaC01(terminalId) {
+    try {
+      const id = String(terminalId || "").trim();
+      if (!id) throw new Error("terminal_caja_requerido");
+      const contexto = await contextoCierreA10();
+      const operationId = `c01.ui.cash.terminal.link.${uuidA02()}`;
+      const resultado = await rpcA02ConRecuperacion(contexto.supabase, "abc_vincular_terminal_caja", {
+        p_operation_id: operationId,
+        p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId,
+        p_session_id: contexto.sessionId,
+        p_terminal_id: id,
+        p_operating_day: contexto.operatingDay
+      }, contexto.empresaId, contexto.localId, operationId);
+      return { ok: true, ...(resultado || {}) };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function desvincularTerminalCajaC01(terminalId, motivo = "") {
+    try {
+      const id = String(terminalId || "").trim();
+      const motivoLimpio = String(motivo || "").trim();
+      if (!id) throw new Error("terminal_caja_requerido");
+      if (!motivoLimpio) throw new Error("motivo_desvinculo_requerido");
+      const contexto = await contextoCierreA10();
+      if (String(contexto.terminalId) === id) throw new Error("terminal_actual_no_desvinculable");
+      const operationId = `c01.ui.cash.terminal.unlink.${uuidA02()}`;
+      const resultado = await rpcA02ConRecuperacion(contexto.supabase, "abc_desvincular_terminal_caja", {
+        p_operation_id: operationId,
+        p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId,
+        p_session_id: contexto.sessionId,
+        p_terminal_id: id,
+        p_motivo: motivoLimpio,
+        p_operating_day: contexto.operatingDay
+      }, contexto.empresaId, contexto.localId, operationId);
+      return { ok: true, ...(resultado || {}) };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function cambiarResponsableCajaC01(responsableUserId, motivo = "") {
+    try {
+      const responsableId = String(responsableUserId || "").trim();
+      const motivoLimpio = String(motivo || "").trim();
+      if (!responsableId) throw new Error("responsable_caja_requerido");
+      if (!motivoLimpio) throw new Error("motivo_relevo_requerido");
+      const contexto = await contextoCierreA10();
+      const operationId = `c01.ui.cash.responsible.shift.${uuidA02()}`;
+      const resultado = await rpcA02ConRecuperacion(contexto.supabase, "abc_cambiar_responsable_caja", {
+        p_operation_id: operationId,
+        p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId,
+        p_session_id: contexto.sessionId,
+        p_nuevo_responsable_user_id: responsableId,
+        p_motivo: motivoLimpio,
+        p_terminal_id: contexto.terminalId,
+        p_operating_day: contexto.operatingDay
+      }, contexto.empresaId, contexto.localId, operationId);
+      return { ok: true, ...(resultado || {}) };
     } catch (error) {
       return respuestaErrorA06(error);
     }
@@ -10165,6 +10276,10 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   // y no solo la primera vez que se llama a listarEstacionesA10: esta lógica se recrea en cada pintado de la aplicación y, si no,
   // la pantalla recibiría un listarEstacionesA10 sin ellas hasta su primera llamada (pieza 6d).
   listarEstacionesA10.abrirSesionCajaA10 = abrirSesionCajaA10;
+  listarEstacionesA10.consultarSesionCajaC01 = consultarSesionCajaC01;
+  listarEstacionesA10.vincularTerminalCajaC01 = vincularTerminalCajaC01;
+  listarEstacionesA10.desvincularTerminalCajaC01 = desvincularTerminalCajaC01;
+  listarEstacionesA10.cambiarResponsableCajaC01 = cambiarResponsableCajaC01;
   listarEstacionesA10.cerrarSesionCajaA10 = cerrarSesionCajaA10;
   listarEstacionesA10.iniciarCierreSesionCajaA10 = iniciarCierreSesionCajaA10;
   listarEstacionesA10.confirmarCierreProvisionalA10 = confirmarCierreProvisionalA10;
@@ -10173,7 +10288,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
   listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
   listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, cambiarResponsableCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -21513,6 +21628,10 @@ function infoCierreA10(r2) {
 function CocinaA10({ productos = [], local = null, configEmpresa = null, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil = "" }) {
   const h3 = import_react4.default.createElement;
   const abrirSesionCajaA10 = typeof listarEstacionesA10?.abrirSesionCajaA10 === "function" ? listarEstacionesA10.abrirSesionCajaA10 : null;
+  const consultarSesionCajaC01 = typeof listarEstacionesA10?.consultarSesionCajaC01 === "function" ? listarEstacionesA10.consultarSesionCajaC01 : null;
+  const vincularTerminalCajaC01 = typeof listarEstacionesA10?.vincularTerminalCajaC01 === "function" ? listarEstacionesA10.vincularTerminalCajaC01 : null;
+  const desvincularTerminalCajaC01 = typeof listarEstacionesA10?.desvincularTerminalCajaC01 === "function" ? listarEstacionesA10.desvincularTerminalCajaC01 : null;
+  const cambiarResponsableCajaC01 = typeof listarEstacionesA10?.cambiarResponsableCajaC01 === "function" ? listarEstacionesA10.cambiarResponsableCajaC01 : null;
   const iniciarCierreSesionCajaA10 = typeof listarEstacionesA10?.iniciarCierreSesionCajaA10 === "function" ? listarEstacionesA10.iniciarCierreSesionCajaA10 : null;
   const confirmarCierreProvisionalA10 = typeof listarEstacionesA10?.confirmarCierreProvisionalA10 === "function" ? listarEstacionesA10.confirmarCierreProvisionalA10 : null;
   const finalizarCierreSesionCajaA10 = typeof listarEstacionesA10?.finalizarCierreSesionCajaA10 === "function" ? listarEstacionesA10.finalizarCierreSesionCajaA10 : null;
@@ -21536,6 +21655,11 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
   const [mensaje, setMensaje] = (0, import_react4.useState)("");
   const [requiereApertura, setRequiereApertura] = (0, import_react4.useState)(false);
   const [fondoInicial, setFondoInicial] = (0, import_react4.useState)("0");
+  const [sesionCajaC01, setSesionCajaC01] = (0, import_react4.useState)(null);
+  const [responsableCajaC01, setResponsableCajaC01] = (0, import_react4.useState)("");
+  const [motivoRelevoC01, setMotivoRelevoC01] = (0, import_react4.useState)("");
+  const [terminalCajaC01, setTerminalCajaC01] = (0, import_react4.useState)("");
+  const [motivoDesvinculoC01, setMotivoDesvinculoC01] = (0, import_react4.useState)("");
   const [efectivoContado, setEfectivoContado] = (0, import_react4.useState)("0");
   const [estadoCierre, setEstadoCierre] = (0, import_react4.useState)("ABIERTA");
   const [motivoReapertura, setMotivoReapertura] = (0, import_react4.useState)("");
@@ -21590,6 +21714,23 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     return sincronizarCierre();
   }
 
+  async function refrescarSesionCajaC01() {
+    if (typeof consultarSesionCajaC01 !== "function") return null;
+    const resultado = await consultarSesionCajaC01();
+    if (!resultado?.ok) {
+      setSesionCajaC01(null);
+      return null;
+    }
+    setSesionCajaC01(resultado);
+    const activo = String(resultado.responsableActivo?.user_id || "");
+    const siguienteResponsable = (resultado.responsables || []).find((responsable) => String(responsable.user_id) !== activo);
+    setResponsableCajaC01((actual) => (resultado.responsables || []).some((responsable) => String(responsable.user_id) === String(actual) && String(actual) !== activo) ? actual : String(siguienteResponsable?.user_id || ""));
+    const vinculados = new Set((resultado.terminalesVinculados || []).map((terminal) => String(terminal.terminal_id)));
+    const siguienteTerminal = (resultado.terminales || []).find((terminal) => !vinculados.has(String(terminal.id)));
+    setTerminalCajaC01((actual) => (resultado.terminales || []).some((terminal) => String(terminal.id) === String(actual) && !vinculados.has(String(actual))) ? actual : String(siguienteTerminal?.id || ""));
+    return resultado;
+  }
+
   async function refrescarEstaciones() {
     if (!local?.id || !configEmpresa?.id || typeof listarEstacionesA10 !== "function") return;
     setCargando(true);
@@ -21614,6 +21755,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     setEstaciones(nuevas);
     setRutas(Array.isArray(resultado.rutas) ? resultado.rutas : []);
     if (estacionId && !nuevas.some((estacion) => String(estacion.id) === String(estacionId))) setEstacionId("");
+    await refrescarSesionCajaC01();
   }
 
   async function refrescarComandas() {
@@ -21636,6 +21778,11 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     setEstacionId("");
     setError("");
     setMensaje("");
+    setSesionCajaC01(null);
+    setResponsableCajaC01("");
+    setMotivoRelevoC01("");
+    setTerminalCajaC01("");
+    setMotivoDesvinculoC01("");
     setEstadoCierre("ABIERTA");
     setMotivoReapertura("");
     setBloqueosCierre([]);
@@ -21683,6 +21830,61 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     setMensaje(`Sesión de caja abierta en ${resultado.caja_nombre || "la caja principal"} con fondo inicial de €${Number(fondoInicial || 0).toFixed(2)}.`);
     await refrescarEstaciones();
     await refrescarComandas();
+  }
+
+  async function relevarResponsableC01() {
+    if (procesando || typeof cambiarResponsableCajaC01 !== "function") return;
+    if (!responsableCajaC01 || !motivoRelevoC01.trim()) {
+      setError("Selecciona el nuevo responsable e indica el motivo del relevo.");
+      return;
+    }
+    setProcesando("relevo-c01");
+    setError("");
+    setMensaje("");
+    const resultado = await cambiarResponsableCajaC01(responsableCajaC01, motivoRelevoC01.trim());
+    setProcesando("");
+    if (!resultado?.ok) {
+      setError(resultado?.error || "No se pudo registrar el relevo de caja.");
+      return;
+    }
+    setMotivoRelevoC01("");
+    setMensaje("Relevo de caja registrado con su responsable y motivo.");
+    await refrescarSesionCajaC01();
+  }
+
+  async function vincularTerminalC01() {
+    if (procesando || typeof vincularTerminalCajaC01 !== "function" || !terminalCajaC01) return;
+    setProcesando("vincular-terminal-c01");
+    setError("");
+    setMensaje("");
+    const resultado = await vincularTerminalCajaC01(terminalCajaC01);
+    setProcesando("");
+    if (!resultado?.ok) {
+      setError(resultado?.error || "No se pudo vincular el terminal a la sesión.");
+      return;
+    }
+    setMensaje("Terminal vinculado a la sesión de caja.");
+    await refrescarSesionCajaC01();
+  }
+
+  async function desvincularTerminalC01(terminalId) {
+    if (procesando || typeof desvincularTerminalCajaC01 !== "function") return;
+    if (!motivoDesvinculoC01.trim()) {
+      setError("Indica el motivo para desvincular el terminal auxiliar.");
+      return;
+    }
+    setProcesando("desvincular-terminal-c01:" + terminalId);
+    setError("");
+    setMensaje("");
+    const resultado = await desvincularTerminalCajaC01(terminalId, motivoDesvinculoC01.trim());
+    setProcesando("");
+    if (!resultado?.ok) {
+      setError(resultado?.error || "No se pudo desvincular el terminal.");
+      return;
+    }
+    setMotivoDesvinculoC01("");
+    setMensaje("Terminal auxiliar desvinculado con motivo registrado.");
+    await refrescarSesionCajaC01();
   }
 
   async function iniciarCierre() {
@@ -21924,6 +22126,11 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     );
   }
 
+  const responsableActivoC01 = (sesionCajaC01?.responsables || []).find((responsable) => String(responsable.user_id) === String(sesionCajaC01?.responsableActivo?.user_id || "")) || null;
+  const terminalesVinculadosC01 = Array.isArray(sesionCajaC01?.terminalesVinculados) ? sesionCajaC01.terminalesVinculados : [];
+  const idsTerminalesVinculadosC01 = new Set(terminalesVinculadosC01.map((terminal) => String(terminal.terminal_id)));
+  const terminalesDisponiblesC01 = (sesionCajaC01?.terminales || []).filter((terminal) => !idsTerminalesVinculadosC01.has(String(terminal.id)));
+
   if (!local?.id || !configEmpresa?.id) {
     return h3(Card, { className: "p-5" }, h3("div", { className: "text-[16px] font-semibold mb-2" }, "Cocina y comandas A10"), h3("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "Selecciona un local concreto para consultar estaciones y comandas."));
   }
@@ -21938,6 +22145,25 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
       h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Este terminal necesita una sesión abierta para crear estaciones y recibir comandas. La apertura queda registrada por el servidor; no genera una venta."),
       h3(Field, { label: "Fondo inicial (€)" }, h3(Input, { type: "number", min: "0", step: "0.01", value: fondoInicial, onChange: (e2) => setFondoInicial(e2.target.value) })),
       h3(Btn, { small: true, onClick: abrirSesion, disabled: !!procesando || !String(fondoInicial).trim() }, procesando === "abrir-sesion" ? "Abriendo…" : "Abrir sesión")
+    ) : null,
+    !requiereApertura && estadoCierre === "ABIERTA" && sesionCajaC01 ? h3(Card, { className: "mb-4", "data-c01-sesion": "1" },
+      h3("div", { className: "text-[12.5px] font-semibold mb-1" }, "Sesión, responsable y terminales"),
+      h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Sesión ", String(sesionCajaC01.sesion?.id || "").slice(-8), " · ", String(sesionCajaC01.sesion?.estado || "ABIERTA"), " · Responsable: ", responsableActivoC01?.nombre || "Usuario activo"),
+      sesionCajaC01.responsablesError ? h3("div", { className: "text-[11px] mb-2", style: { color: C2.amber } }, "No se pudo cargar la lista de responsables: ", sesionCajaC01.responsablesError) : null,
+      (sesionCajaC01.responsables || []).length > 1 ? h3("div", { className: "mb-3" },
+        h3("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-2" },
+          h3(Field, { label: "Nuevo responsable" }, h3("select", { value: responsableCajaC01, onChange: (e2) => setResponsableCajaC01(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: "1px solid " + C2.line, background: C2.surface, color: C2.ink } }, h3("option", { value: "" }, "Selecciona…"), (sesionCajaC01.responsables || []).filter((responsable) => String(responsable.user_id) !== String(sesionCajaC01.responsableActivo?.user_id || "")).map((responsable) => h3("option", { key: responsable.user_id, value: responsable.user_id }, responsable.nombre || "Usuario", " · ", responsable.rol || "")))),
+          h3(Field, { label: "Motivo del relevo" }, h3(Input, { value: motivoRelevoC01, onChange: (e2) => setMotivoRelevoC01(e2.target.value), placeholder: "Cambio de turno…", maxLength: 500 }))
+        ),
+        h3(Btn, { small: true, onClick: relevarResponsableC01, disabled: !!procesando || !responsableCajaC01 || !motivoRelevoC01.trim() }, procesando === "relevo-c01" ? "Registrando…" : "Registrar relevo")
+      ) : null,
+      h3("div", { className: "text-[11.5px] font-semibold mb-1" }, "Terminales vinculados"),
+      h3("div", { className: "space-y-1 mb-3" }, terminalesVinculadosC01.map((terminal) => h3("div", { key: terminal.terminal_id, className: "flex items-center justify-between gap-2" }, h3("span", { className: "text-[11px]" }, terminal.nombre, String(terminal.terminal_id) === String(sesionCajaC01.terminalActualId) ? " · este terminal" : " · auxiliar"), String(terminal.terminal_id) === String(sesionCajaC01.terminalActualId) ? null : h3(Btn, { small: true, variant: "ghost", onClick: () => desvincularTerminalC01(terminal.terminal_id), disabled: !!procesando || !motivoDesvinculoC01.trim() }, procesando === "desvincular-terminal-c01:" + terminal.terminal_id ? "Desvinculando…" : "Desvincular")))),
+      terminalesVinculadosC01.some((terminal) => String(terminal.terminal_id) !== String(sesionCajaC01.terminalActualId)) ? h3(Field, { label: "Motivo para desvincular un terminal auxiliar" }, h3(Input, { value: motivoDesvinculoC01, onChange: (e2) => setMotivoDesvinculoC01(e2.target.value), placeholder: "Fin de apoyo…", maxLength: 500 })) : null,
+      terminalesDisponiblesC01.length > 0 ? h3("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-2 items-end" },
+        h3(Field, { label: "Añadir terminal a esta sesión" }, h3("select", { value: terminalCajaC01, onChange: (e2) => setTerminalCajaC01(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: "1px solid " + C2.line, background: C2.surface, color: C2.ink } }, terminalesDisponiblesC01.map((terminal) => h3("option", { key: terminal.id, value: terminal.id }, terminal.nombre || "Terminal")))),
+        h3(Btn, { small: true, onClick: vincularTerminalC01, disabled: !!procesando || !terminalCajaC01 }, procesando === "vincular-terminal-c01" ? "Vinculando…" : "Vincular terminal")
+      ) : h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "No hay otros terminales activos disponibles en este local.")
     ) : null,
     !requiereApertura && iniciarCierreSesionCajaA10 ? h3(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } },
       h3("div", { className: "text-[12.5px] font-semibold mb-1" }, "Cierre de sesión de caja · ", estadoCierre),
