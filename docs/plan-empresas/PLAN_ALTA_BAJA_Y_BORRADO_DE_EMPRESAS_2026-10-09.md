@@ -3,6 +3,18 @@
 Fecha: 9/10/2026
 Estado: **SOLO PLAN. No se ha cambiado nada** (ni en producción, ni en QA, ni en la aplicación). Todo lo que sigue sale de leer el código, las migraciones y, en producción, solo estructura y recuentos (sin leer el contenido de los datos).
 
+## Estado (actualizado el 9/10/2026)
+| Fase | Estado |
+|---|---|
+| 0 · Decisiones | **Hechas**: empezar por QA; los datos actuales de producción son pruebas y no hace falta conservarlos; plazo de gracia de 30 días; el dueño de cada empresa recibirá una contraseña inicial que le da Pedro |
+| 1 · Administrador de plataforma, alta, baja y reactivación | **Hecha y probada de punta a punta en QA** (`FASE1_RESULTADO_QA_2026-10-09.md`) |
+| 2 · Borrado definitivo | **Hecha y probada en QA**, con datos reales y un borrado real de la empresa de prueba (`FASE2_RESULTADO_QA_2026-10-09.md`) |
+| 3 · Pantalla «Plataforma» | Pendiente |
+| 4 · Aislamiento de datos por empresa (P3/P3b) | Pendiente; condición previa de la primera empresa cliente real |
+| 5 · Publicar en producción | Pendiente; autorización escrita de Pedro |
+| 6 · Producción a cero y primera empresa cliente | Pendiente; autorización escrita de Pedro |
+| 7 · Ensayo en producción con una empresa de prueba | Pendiente |
+
 ## 1. Lo que pide Pedro
 1. Producción **sin ninguna empresa ni local** (a cero).
 2. Que **él**, con su cuenta de propietario del programa, pueda **dar de alta** a las empresas que quieran usar el programa.
