@@ -95,7 +95,11 @@ La aplicación publicada ya acepta los campos nuevos y, si la IA no los trae, lo
 Volver a desplegar `docs/alb-prov/edge/importar-albaran_v16_respaldo.ts` (`sha256` `b649d268…`, copia literal de la v16 viva) con el mismo diseño de ficheros, `verify_jwt` falso e `import_map` `importar-albaran/deno.json`. No toca datos.
 
 ## Pendiente
-1. **Prueba real de Pedro:** volver a leer la misma foto de Arboliva con «Foto con IA» en producción; comparar líneas y total con la primera lectura (v16); pulsar «Completar su ficha con los datos de la foto» (debería rellenar CIF A78540960, dirección, teléfono 91 616 57 45, correo arboliva@arboliva.com, web www.arboliva.es, condiciones «60 días» y 60 días de pago) y **no** dar entrada otra vez (volver atrás). Si las líneas o el total empeoran o los datos salen mal, se vuelve a la v16.
+1. ~~**Prueba real de Pedro:**~~ HECHA, «Todo bien» (ver apartado siguiente). Texto original: volver a leer la misma foto de Arboliva con «Foto con IA» en producción; comparar líneas y total con la primera lectura (v16); pulsar «Completar su ficha con los datos de la foto» (debería rellenar CIF A78540960, dirección, teléfono 91 616 57 45, correo arboliva@arboliva.com, web www.arboliva.es, condiciones «60 días» y 60 días de pago) y **no** dar entrada otra vez (volver atrás). Si las líneas o el total empeoran o los datos salen mal, se vuelve a la v16.
 2. Llevar `docs/alb-prov/` a `release` con un PR aparte `[skip netlify]`.
 3. Investigar aparte el aviso «1 colección solo en este equipo» (claves `configEmpresa`, `empresas`, `pagosFacturas`).
 4. Opcional: volver el simulador de QA al corta-fuegos 503 (`GUIA_PRUEBAS_QA.md` §6).
+
+## Prueba real de Pedro con la v17 (9/10/2026)
+Pedro volvió a leer en producción, con «Foto con IA», la misma foto de Arboliva y respondió «Todo bien»: las líneas y el total salieron igual que en la primera lectura (v16) y «Completar su ficha con los datos de la foto» rellenó la ficha (CIF, dirección, teléfono, correo, web y condiciones de pago). No hizo falta marcha atrás: la v17 queda como versión viva. Pedro no copió datos de la ficha en el mensaje; solo confirmó el resultado.
+
