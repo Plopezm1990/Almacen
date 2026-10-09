@@ -49,6 +49,15 @@ La herramienta de la base de datos canceló las llamadas grandes y la que llevab
 - Validador del manifiesto: 245 archivos, 228 contratos activos (204 Node + 20 Postgres + 1 PGlite + 3 pila completa).
 - Pruebas de ejecución de interfaz (9 de ellas) necesitan la carpeta de dependencias de interfaz (`CFG6_UI_DEPS`); sin ella salen con código 2 en un entorno limpio, igual que antes de este cambio.
 
+## Fase 1b — cuenta del dueño de una empresa cliente (en el repositorio, sin desplegar)
+Decisión de Pedro (9/10/2026): **contraseña inicial que le da él**.
+- `supabase/functions/plataforma-crear-propietario/index.ts` (verify_jwt = true): comprueba la sesión, comprueba **en el servidor** que quien llama es administrador de la plataforma (`plataforma_estado`, con el JWT de quien llama), valida la petición (`supabase/functions/_shared/plataforma-propietario.js`), comprueba que la empresa existe y está activa, crea la cuenta en Auth (`email_confirm`, `user_metadata.debe_cambiar_contrasena = true`), llama a `plataforma_asignar_propietario` con el JWT del administrador (la base de datos vuelve a comprobar el permiso y es quien crea perfil y membresía) y, si algo falla, borra la cuenta (o la bloquea) para no dejar un acceso a medias.
+- Contraseña inicial: mínimo 10 caracteres, letras y números, sin contener el correo. La clave de servicio solo vive en el entorno del servidor.
+- **Límite conocido:** el indicador `debe_cambiar_contrasena` aún no lo exige ninguna pantalla; se implementa en la fase 3. Hasta entonces, el dueño debe cambiar la contraseña por el procedimiento normal.
+- Prueba: `tests/plataforma/p02-crear-propietario-contract.mjs` (contrato Node, registrado: 205 Node + 20 Postgres + 1 PGlite + 3 pila completa = 229 activos, 246 archivos). Validación pura probada caso a caso y orden de comprobaciones de la función (sesión → administrador → validación → empresa → crear → asignar → deshacer); 5 mutantes, los 5 detectados. Batería Node completa: 205 de 205.
+- `supabase/functions/edge-security-manifest.json` **no** se modifica: está atado al candidato P2 (`base_release e8de01f…`) y su contrato exige exactamente 3 funciones.
+- **No desplegada.** Desplegarla en QA y probarla de punta a punta necesita una cuenta administradora en QA y la autorización de Pedro.
+
 ## Lo que falta de la Fase 1
 1. **Registrar la cuenta de Pedro como administradora** (en QA para probar; en producción con autorización escrita): `select private.plataforma_registrar_admin('<id de la cuenta>')`. Aún no hecho.
 2. **Alta de la cuenta del dueño de una empresa cliente** (Auth): función de servidor con clave de servicio, estilo `crear-cuenta-empleado`. Pendiente de la decisión: invitación por correo o contraseña inicial que da Pedro.
