@@ -56,7 +56,9 @@ Decisión de Pedro (9/10/2026): **contraseña inicial que le da él**.
 - **Límite conocido:** el indicador `debe_cambiar_contrasena` aún no lo exige ninguna pantalla; se implementa en la fase 3. Hasta entonces, el dueño debe cambiar la contraseña por el procedimiento normal.
 - Prueba: `tests/plataforma/p02-crear-propietario-contract.mjs` (contrato Node, registrado: 205 Node + 20 Postgres + 1 PGlite + 3 pila completa = 229 activos, 246 archivos). Validación pura probada caso a caso y orden de comprobaciones de la función (sesión → administrador → validación → empresa → crear → asignar → deshacer); 5 mutantes, los 5 detectados. Batería Node completa: 205 de 205.
 - `supabase/functions/edge-security-manifest.json` **no** se modifica: está atado al candidato P2 (`base_release e8de01f…`) y su contrato exige exactamente 3 funciones.
-- **No desplegada.** Desplegarla en QA y probarla de punta a punta necesita una cuenta administradora en QA y la autorización de Pedro.
+- **Desplegada solo en QA** (Pedro lo autorizó el 9/10/2026): función `plataforma-crear-propietario` versión 1 (`verify_jwt` = true, `ezbr_sha256` `f2c36071…`); su contenido vivo coincide con los dos archivos del repositorio (`index.ts` `6d1eb5ea…` y `_shared/plataforma-propietario.js` `5fb98611…`). Pruebas sin sesión: sin cabecera de autorización → 401; origen ajeno → 403; origen de la vista previa → 200; GET → 401 de la pasarela.
+- **Administrador registrado solo en QA:** `owner.a@qa.invalid` (cuenta ficticia «QA Propietario A», nota «pruebas de plataforma»). Efecto en QA: ahora solo un administrador puede crear empresas desde la pantalla antigua. En producción no hay ningún administrador registrado.
+- Prueba de punta a punta con la sesión real: `docs/plan-empresas/PRUEBA_COWORK_FASE1_QA.md` (la ejecuta Cowork; queda una empresa de prueba para ensayar el borrado de la Fase 2).
 
 ## Lo que falta de la Fase 1
 1. **Registrar la cuenta de Pedro como administradora** (en QA para probar; en producción con autorización escrita): `select private.plataforma_registrar_admin('<id de la cuenta>')`. Aún no hecho.
