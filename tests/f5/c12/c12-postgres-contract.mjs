@@ -47,6 +47,7 @@ async function bootstrap(db) {
     '20261001200000_abc_f5_c10_document_delivery.sql',
     '20261001210000_abc_f5_c11_explainable_reconciliation.sql',
     '20261001220000_abc_f5_c12_close_rehearsal.sql',
+    '20261009111255_abc_f7_c12_reconciliation_revision.sql',
   ]) await db.query(await readFile(resolve(root, 'supabase/migrations', name), 'utf8'));
   await db.query(`
     insert into auth.users(id) values ('${owner}') on conflict (id) do nothing;

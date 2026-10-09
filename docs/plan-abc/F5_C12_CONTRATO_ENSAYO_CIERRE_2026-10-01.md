@@ -1,7 +1,7 @@
 # F5 C12 Contrato de ensayo del cierre
 
 Fecha: 2026-10-01  
-Estado: `CANDIDATO_C12_VALIDADO_PG_NO_APLICADO`
+Estado: `NUCLEO_C12_VERIFICADO_QA; UI_Y_RESILIENCIA_PENDIENTES`
 
 ## Alcance
 
@@ -18,7 +18,10 @@ sin ejecutar el cierre real.
 - Lee la sesión sin `FOR UPDATE` y no actualiza `caja_sesiones`,
   `caja_cierres`, `caja_conteos`, pagos, efectos ni documentos.
 - Integra los bloqueos operativos de C04, la diferencia de efectivo y el
-  último informe C11 por documento.
+  último informe C11 por documento. La migración correctiva
+  `20261009111255_abc_f7_c12_reconciliation_revision.sql` añade una revisión
+  incremental para que «último» tenga un orden total incluso dentro de una
+  misma transacción.
 - Devuelve `APTO_CIERRE`, `PENDIENTE` o `BLOQUEADO`, con bloqueos y explicación
   legible.
 - Guarda un informe JSON inmutable con huella SHA-256, un evento
@@ -30,8 +33,7 @@ sin ejecutar el cierre real.
 
 El ensayo no confirma el conteo, no finaliza el cierre, no reabre la sesión,
 no modifica pagos ni efectos, no corrige documentos y no sustituye la revisión
-operativa, fiscal o bancaria. No se aplican migraciones remotas y no se hace
-deploy de Netlify.
+operativa, fiscal o bancaria. La RPC todavía no está conectada a una pantalla.
 
 ## Evidencia y pendiente
 
@@ -41,6 +43,13 @@ inmutabilidad y comprobación de que las tablas de cierre no cambian. La
 ejecución validada fue:
 https://github.com/Plopezm1990/Almacen/actions/runs/36918524330.
 
-C03-C12 quedan implementados como candidatos técnicos sin aplicar en QA/PROD.
-Quedan aparte la revisión de asesoría/proveedor, las decisiones de
-configuración y la autorización explícita de una aplicación remota.
+El 9/10 se repitió el flujo completo en QA con `ROLLBACK`. La primera ejecución
+quedó `PENDIENTE` por conteo y entrega; después de entregar, reconciliar y
+contar quedó `APTO_CIERRE`. Se verificaron replay, inmutabilidad, permisos y
+cero residuos. Durante el ensayo se encontró y corrigió el desempate no
+determinista de dos conciliaciones C11 con el mismo `created_at`. Véase
+`F7_C12_QA_RESULTADO_2026-10-09.md`.
+
+Producción no se modificó. Siguen pendientes el recorrido de pantalla, la
+prueba con hardware y fallos externos, la relación documental estricta con la
+sesión ensayada y la aceptación final.
