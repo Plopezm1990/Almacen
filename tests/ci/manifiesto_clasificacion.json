@@ -21,7 +21,7 @@
       "diagnostic": 0
     },
     "postgres": {
-      "active_contract": 21,
+      "active_contract": 22,
       "historical_expected_fail": 1,
       "utility": 0,
       "diagnostic": 0
@@ -1072,6 +1072,11 @@
     },
     {
       "path": "tests/plataforma/db/p03-eliminar-empresa-contract.mjs",
+      "classification": "active_contract",
+      "environment": "postgres"
+    },
+    {
+      "path": "tests/plataforma/db/p09-colecciones-por-empresa-contract.mjs",
       "classification": "active_contract",
       "environment": "postgres"
     },
