@@ -275,7 +275,7 @@
     ".lap-pie{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:16px}" +
     ".lap-caja{background:#fff;border:1px dashed #b7b0a0;border-radius:10px;padding:10px 12px;margin-top:10px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;word-break:break-all}" +
     ".lap-codigo{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:26px;letter-spacing:.12em;font-weight:700;text-align:center;background:#fff;border:1px solid #b7b0a0;border-radius:10px;padding:10px;margin-top:10px}" +
-    ".lap-atajo{position:fixed;left:10px;bottom:76px;z-index:45;opacity:.9}" +
+    ".lap-btn.lap-atajo{position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:45;opacity:.88;writing-mode:vertical-rl;padding:8px 5px;border-radius:0 8px 8px 0;font-size:10px;line-height:1.2;letter-spacing:.03em}" +
     ".lap-cambio{position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(circle at 50% 20%,#153D27 0%,#0C2714 48%,#06170E 100%);overflow-y:auto;font-family:'IBM Plex Sans',system-ui,sans-serif}" +
     ".lap-cambio .lap-dialogo{margin:auto}";
 
