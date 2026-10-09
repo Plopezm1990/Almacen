@@ -7,7 +7,7 @@ name: "Puerta de CI general -- candidato a release (231/231 contratos activos)"
 # exacto evaluado, en 5 jobs:
 #   - node-y-postgres: ejecuta tests/ci/ejecutar_bateria_no_db.sh (208
 #     activos Node), ejecutar_pglite_local.sh (1 activo más su bootstrap)
-#     y preparar_postgres_local.sh (20 activos Postgres 16 + 1 histórico
+#     y preparar_postgres_local.sh (21 activos Postgres 16 + 1 histórico
 #     esperado en rojo), contra motores desechables.
 #   - a09-postgres17: repite el contrato A09 con dos conexiones reales
 #     sobre PostgreSQL 17; es una repetición por versión, no otro archivo.
@@ -174,7 +174,7 @@ jobs:
           echo "pglite_infra_fail=${infra:--1}" >> "$GITHUB_OUTPUT"
           exit $code
 
-      - name: 20 contratos activos Postgres 16 + 1 histórico esperado en rojo (P01)
+      - name: 21 contratos activos Postgres 16 + 1 histórico esperado en rojo (P01)
         id: postgres_run
         shell: bash
         run: |
@@ -449,8 +449,8 @@ jobs:
           [ "$NODE_ACTIVE_PASS" = "208" ] || { echo "NODE_ACTIVE_PASS != 208" >&2; fallo=1; }
           [ "$NODE_ACTIVE_FAIL" = "0" ] || { echo "NODE_ACTIVE_FAIL != 0" >&2; fallo=1; }
           [ "$INFRA_FAIL" = "0" ] || { echo "INFRA_FAIL != 0" >&2; fallo=1; }
-          [ "$POSTGRES_ACTIVE_TOTAL" = "20" ] || { echo "POSTGRES_ACTIVE_TOTAL != 20" >&2; fallo=1; }
-          [ "$POSTGRES_ACTIVE_PASS" = "20" ] || { echo "POSTGRES_ACTIVE_PASS != 20" >&2; fallo=1; }
+          [ "$POSTGRES_ACTIVE_TOTAL" = "21" ] || { echo "POSTGRES_ACTIVE_TOTAL != 21" >&2; fallo=1; }
+          [ "$POSTGRES_ACTIVE_PASS" = "21" ] || { echo "POSTGRES_ACTIVE_PASS != 21" >&2; fallo=1; }
           [ "$POSTGRES_ACTIVE_FAIL" = "0" ] || { echo "POSTGRES_ACTIVE_FAIL != 0" >&2; fallo=1; }
           [ "$HISTORICAL_EXPECTED_FAIL" = "1" ] || { echo "HISTORICAL_EXPECTED_FAIL != 1" >&2; fallo=1; }
           [ "$PGLITE_ACTIVE_TOTAL" = "1" ] || { echo "PGLITE_ACTIVE_TOTAL != 1" >&2; fallo=1; }
