@@ -1,14 +1,13 @@
 # F5 C04 Contrato de cierre provisional y definitivo
 
 Fecha: 2026-10-01  
-Estado: `CANDIDATO_C04_VALIDADO_PG_NO_APLICADO`
-Base: Plan ABC C04, F2 caja transaccional, C03 y `origin/release` `7859508`
+Estado: `IMPLEMENTADO_Y_VERIFICADO_EN_QA; UI_VALIDADA; DESPLIEGUE_CONSOLIDADO_PENDIENTE`
+Base: Plan ABC C04, F2 caja transaccional, C03 y capa de diferencias de caja
 
-La revisión de `release` confirmó que existía el cierre definitivo, pero faltaba
-el circuito provisional y la reapertura. Esta rama prepara una migración
-aditiva que cubre esas transiciones y deja el cierre definitivo protegido por
-una guarda de servidor. El candidato todavía no está aplicado en ningún
-entorno.
+La revisión inicial confirmó que existía el cierre definitivo, pero faltaba el
+circuito provisional y la reapertura. La migración aditiva que cubre esas
+transiciones está aplicada en QA. El cierre definitivo queda protegido por una
+guarda del servidor y por el tratamiento obligatorio de las diferencias.
 
 ## Estados requeridos
 
@@ -33,7 +32,7 @@ modificando el arqueo ni ocultando el pendiente.
   servidor y registra `CAJA_SESION_CERRADA`.
 - El cierre usa `operation_id` y recuperación idempotente.
 
-## Implementación candidata C04
+## Implementación C04
 
 - `abc_iniciar_cierre_sesion_caja` pasa `ABIERTA` a `EN_CIERRE` y crea el
   cierre `INICIADO`.
@@ -49,8 +48,8 @@ sesión `CERRADA_FINAL` queda fuera hasta aprobar una política específica.
 
 ## Pendiente para el cierre operativo de C04
 
-1. Obtener la revisión de seguridad/advisors desde una base conectada.
-2. Decidir y autorizar la aplicación en QA; esta rama no la aplica.
+1. Desplegar en QA la interfaz consolidada que incluye la vista previa C03.
+2. Repetir el recorrido visual con esa versión y obtener aceptación funcional.
 3. Mantener la autorización separada para cualquier aplicación en PROD.
 
 El adaptador/UI de TPV ya queda conectado en esta rama candidata: separa
@@ -61,13 +60,15 @@ bloqueos `FOR UPDATE`, la guarda de transición final y que cobros/reembolsos
 solo entren con sesión `ABIERTA`. El workflow PostgreSQL 16 ejecutó la carrera
 real con dos conexiones independientes y pasó.
 La revisión estática de seguridad confirma autenticación y capacidad por RPC,
-`search_path` cerrado y ausencia de ejecución para `anon`/`service_role`; el
-resultado de `supabase db advisors` queda pendiente de una base conectada.
+`search_path` cerrado y ausencia de ejecución para `anon`/`service_role`. La
+revisión conectada de permisos confirma ejecución para `authenticated`, sin
+ejecución para `anon` ni `service_role`; los avisos generales de advisors ya
+inventariados no añaden una incidencia específica de C04.
 Queda preparado además el workflow PostgreSQL 16 efímero
 `.github/workflows/abc-f5-c04-postgres.yml`, que ejecuta el contrato funcional
 real con dos conexiones independientes.
 
-## Criterios de aceptación pendientes
+## Criterios de aceptación verificados
 
 - cierre provisional visible y conciliable;
 - cierre definitivo rechazado mientras haya bloqueos;
@@ -77,8 +78,10 @@ real con dos conexiones independientes.
 
 ## Resultado de C04
 
-C04 queda validado en PostgreSQL 16 desechable, incluida la carrera concurrente,
-el bloqueo por pendientes, la finalización, la reapertura y la guarda contra
-cierre directo. Sigue sin aplicarse en QA/PROD; tampoco se hace merge ni se
-ejecuta deploy de Netlify. Solo queda la revisión `db advisors` con una base
-conectada y la decisión separada de promoción.
+C04 queda validado en PostgreSQL 16 desechable y en QA. La verificación cubre
+la carrera concurrente, el bloqueo por pendientes, la diferencia sin tratar,
+la aprobación, la finalización, la reapertura, la guarda contra cierre directo
+y los reintentos idempotentes. El ensayo QA del 9/10/2026 terminó con
+`ROLLBACK` y cero residuos. Producción no se ha modificado.
+
+La evidencia consolidada está en `F7_C04_QA_RESULTADO_2026-10-09.md`.

@@ -1,15 +1,15 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 241,
+  "total_inventory": 247,
   "expected_counts": {
-    "active_contract": 224,
+    "active_contract": 230,
     "historical_expected_fail": 1,
     "utility": 11,
     "diagnostic": 5
   },
   "expected_environment_counts": {
     "node": {
-      "active_contract": 201,
+      "active_contract": 207,
       "historical_expected_fail": 0,
       "utility": 10,
       "diagnostic": 5
@@ -191,6 +191,16 @@
     },
     {
       "path": "tests/f4/b12/b12-payment-trial-matrix-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c01/c01-ui-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c02/c02-ui-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     },
@@ -1101,6 +1111,11 @@
       "environment": "node"
     },
     {
+      "path": "tests/cfg/c03-arqueo-ui-runtime.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
       "path": "tests/cfg/cfg1-static-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
@@ -1237,6 +1252,21 @@
     },
     {
       "path": "tests/p3/p3b-espejo-static-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/alb/a01-proveedor-desde-albaran-motor-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/alb/a02-albaran-proveedor-ia-ui-runtime.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/alb/a03-cableado-proveedor-desde-albaran-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     }

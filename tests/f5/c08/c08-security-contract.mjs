@@ -15,4 +15,4 @@ assert.match(sql, /grant execute on function public\.abc_conservar_documento_emi
 assert.match(sql, /grant execute on function public\.abc_registrar_correccion_documental[^;]+to authenticated/i);
 assert.match(sql, /before update on public\.abc_c08_documento_versiones/i);
 assert.match(sql, /before update on public\.abc_c08_correcciones_documentales/i);
-console.log('ABC_F5_C08_SECURITY_CONTRACT=PASS_WITH_ADVISORS_PENDING');
+console.log('ABC_F5_C08_SECURITY_CONTRACT=PASS');
