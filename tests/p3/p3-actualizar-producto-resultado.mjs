@@ -9,7 +9,7 @@ const root = new URL("../../", import.meta.url);
 const ARCHIVOS = ["fuente.js", "source-recovery/fuente-recuperado.js"];
 
 function cargar(archivo) {
-  const src = readFileSync(new URL(archivo, root), "utf8");
+  const src = readFileSync(new URL(archivo, root), "utf8").replace(/\r\n/g, "\n");
   const ini = src.indexOf("function errorValidacionPM10");
   const fin = src.indexOf("function fechaValidaPedidoPM10", ini);
   assert.ok(ini >= 0 && fin > ini, archivo + ": bloque de productos presente");

@@ -102084,7 +102084,7 @@ function ConfigDia({ empresaId, localId }) {
       h("div", { className: "text-[12px] mb-2", style: { color: C2.inkSoft } }, "Importe (€) a partir del cual una diferencia en el cierre necesita que la apruebe el Propietario, además del motivo. Con 0 € cualquier diferencia lo necesita. Ahora: " + (datos?.caja_diferencia_umbral ? datos.caja_diferencia_umbral.valor : 0) + " € (" + origen(datos?.caja_diferencia_umbral) + ")."),
       h(Field, { label: "Umbral (€)" }, h(Input, { type: "number", min: "0", max: "10000", step: "0.01", value: umbral, onChange: (e2) => setUmbral(e2.target.value), disabled: ocupado })),
       h(Btn, { small: true, onClick: guardarUmbral, disabled: ocupado }, guardando === "umbral" ? "Guardando…" : "Guardar umbral"),
-      h("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "De momento la pantalla de cierre no pide aún el motivo ni la aprobación: hasta entonces un cierre con diferencia no se puede finalizar.")
+      h("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Si el cierre provisional tiene diferencia, indica un motivo. Si supera el umbral configurado, el Propietario debe aprobarla antes de finalizar el cierre.")
     ),
     cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando…") : null
   );
@@ -103313,6 +103313,18 @@ function GestionAlmacen() {
   (0, import_react4.useEffect)(() => {
     if (ready && !skipSaveRef.current) saveKey("productos", productos);
   }, [productos, ready]);
+  (0, import_react4.useEffect)(() => {
+    function onProductosServidor(ev) {
+      const d3 = ev && ev.detail ? ev.detail : {};
+      if (!Array.isArray(d3.enviados) || !Array.isArray(d3.confirmados)) return;
+      setProductos((prev) => {
+        if (JSON.stringify(prev) !== JSON.stringify(d3.enviados)) return prev;
+        return JSON.stringify(prev) === JSON.stringify(d3.confirmados) ? prev : d3.confirmados;
+      });
+    }
+    window.addEventListener("productos-servidor-confirmados", onProductosServidor);
+    return () => window.removeEventListener("productos-servidor-confirmados", onProductosServidor);
+  }, []);
   (0, import_react4.useEffect)(() => {
     if (ready && !skipSaveRef.current) saveKey("pedidos", pedidos2);
   }, [pedidos2, ready]);

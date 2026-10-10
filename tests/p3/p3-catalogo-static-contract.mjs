@@ -120,4 +120,17 @@ assert.match(live, /rollback/i, "el contrato vivo documenta que se ejecuta con R
 assert.match(bridge, /abc_catalogo_guardar_productos/);
 assert.match(bridge, /window\.__laCatalogoTpvBridgeV1/);
 
+// La comprobación específica de promoción debe poder ejecutarse sin escribir ni
+// devolver el contenido de la lista heredada de productos.
+const preflight = await read("docs/plan-abc/F7_P3_P3B_PREFLIGHT_SOLO_LECTURA_2026-10-04.sql");
+const consultas = preflight.replace(/--[^\n]*/g, "").replace(/'(?:[^']|'')*'/g, "''");
+const sentencias = consultas.split(";").map((s) => s.trim()).filter(Boolean);
+assert.equal(sentencias.length, 9, "se esperan nueve consultas de solo lectura");
+for (const sentencia of sentencias) assert.match(sentencia, /^(select|with)\b/i);
+assert.doesNotMatch(consultas, /\b(insert|update|delete|create|alter|drop|grant|revoke|truncate|copy|call|execute|do|set|lock|begin|commit|rollback)\b/i);
+assert.doesNotMatch(consultas, /\bselect\s+(?:\w+\.)?value\b/i, "no se devuelve la lista de productos");
+for (const bloque of ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7"]) {
+  assert.ok(preflight.includes(`-- ${bloque} ·`), `falta el bloque ${bloque}`);
+}
+
 console.log("p3-catalogo-static-contract: OK");

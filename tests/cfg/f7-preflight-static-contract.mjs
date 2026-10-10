@@ -18,7 +18,15 @@ const docRuta = process.env.F7_DOC || join(REPO, 'docs/plan-abc/F7_PROMOCION_PRO
 const sql = readFileSync(sqlRuta, 'utf8');
 const doc = readFileSync(docRuta, 'utf8');
 const PRIMERA = '20260924160739'; // A09: primera migración candidata
-const archivos = readdirSync(join(REPO, 'supabase/migrations')).filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA).sort();
+// P3c se promueve en una ventana separada y no forma parte de la foto F7.
+const EXCLUIDAS = new Set([
+  '20261004201358_abc_p3c_concurrencia_productos.sql',
+  '20261005060000_abc_p3c_titularidad_productos.sql',
+  '20261005100000_abc_p3c_lista_confirmada.sql',
+]);
+const archivos = readdirSync(join(REPO, 'supabase/migrations'))
+  .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))
+  .sort();
 const leer = (f) => readFileSync(join(REPO, 'supabase/migrations', f), 'utf8');
 const sinComentarios = (s) => s.replace(/--[^\n]*/g, '');
 const sinCadenas = (s) => s.replace(/'(?:[^']|'')*'/g, "''");
