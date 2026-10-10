@@ -53,22 +53,22 @@ conocido; no cambia la etiqueta. Etiquetas de evidencia:
 | B10 | Datos de tarjeta | `BLOQUEADO` | `[QA]` rechaza evidencia con PAN; `[REPO]` 3 migraciones | Documentación y alcance PCI del adquirente |
 | B11 | Pagos sin conexión | `INCOMPLETO` | `[CI]` contrato; decisión: solo online + borradores | Corte de red real; contingencia sin activar |
 | B12 | Ensayo de pagos | `BLOQUEADO` | `[CI]` matriz y simulador | Sin sandbox del proveedor |
-| C01 | Cajas, terminales y sesiones | `INCOMPLETO` | `[MIGR]` `[QA]` apertura con fondo; `[UI]` abrir | Relevo, vincular terminal y apertura concurrente |
-| C02 | Entradas y salidas trazables | `INCOMPLETO` ⚠ | `[MIGR]` funciones ABC | La pantalla usa las funciones heredadas, no las ABC |
-| C03 | Arqueo calculado en servidor | `PENDIENTE` ⚠ | Contrato preparado, sin migración | Sin implementar; la pantalla manda el efectivo base |
-| C04 | Cierre provisional y definitivo | `INCOMPLETO` ⚠ | `[MIGR]` `[QA]` flujo y bloqueos `[UI]` | Cierra con diferencia sin tratamiento; T14 |
-| C05 | Series y numeración | `INCOMPLETO` | `[MIGR]` tablas y funciones; `[CI]` | Sin ensayo, sin emisor, sin pantalla |
-| C06 | Tipos de documento | `INCOMPLETO` | `[MIGR]`; `[CI]` | Sin ensayo ni pantalla; clasificación con asesoría |
+| C01 | Cajas, terminales y sesiones | `INCOMPLETO` | `[QA]` apertura, relevo, terminales, conflictos y permisos; `[UI-LOCAL]` gestión completa | Despliegue/recorrido visual y apertura simultánea real |
+| C02 | Entradas y salidas trazables | `INCOMPLETO` | `[MIGR]` `[QA]` alta, retirada, replay, reverso y permisos; `[UI-LOCAL]` funciones ABC | Despliegue y recorrido visual en QA; reintento real; aceptación |
+| C03 | Arqueo calculado en servidor | `INCOMPLETO` | `[MIGR]` `[QA]` cálculo, replay, permisos, unicidad y anulación; `[UI-LOCAL]` | Despliegue y recorrido visual del arqueo histórico; aceptación |
+| C04 | Cierre provisional y definitivo | `INCOMPLETO` | `[MIGR]` `[QA]` flujo, replay, reapertura, guardas y diferencias; `[UI]` `[CI]` | Despliegue consolidado en QA y aceptación final |
+| C05 | Series y numeración | `INCOMPLETO` | `[MIGR]` `[QA]` reserva, replay, estados, permisos e inmutabilidad; `[CI]` concurrencia | Sin emisor elegido ni pantalla |
+| C06 | Tipos de documento | `INCOMPLETO` | `[MIGR]` `[QA]` completa, simplificada, rectificativa, pedido, replay y permisos; `[CI]` | Reglas con asesoría y pantalla |
 | C07 | SIF y modalidad fiscal | `BLOQUEADO` | `[MIGR]` puerta que rechaza sin asesoría | Asesoría, emisor y régimen |
-| C08 | Conservar y corregir lo emitido | `INCOMPLETO` | `[MIGR]`; `[CI]` | Sin ensayo ni pantalla |
-| C09 | Imprimir sin duplicar | `INCOMPLETO` | `[MIGR]`; `[CI]` | Impresora real; sin pantalla |
-| C10 | Entrega y copias | `INCOMPLETO` | `[MIGR]`; `[CI]` | Descarga cruzada, caducidad y envío no probados |
-| C11 | Conciliación explicable | `INCOMPLETO` ⚠ | `[MIGR]`; `[QA]` el cierre no pudo explicar −11 | Dos circuitos mezclados; sin pantalla ni exportación |
-| C12 | Ensayo del cierre | `INCOMPLETO` | `[QA]` apertura→cierre; marcó la diferencia | Noche, restauración, concurrencia; sin pantalla |
+| C08 | Conservar y corregir lo emitido | `INCOMPLETO` | `[MIGR]` `[QA]` conservación, replay, rectificación, cancelación, reembolso e inmutabilidad; `[CI]` | Política legal, descarga y pantalla |
+| C09 | Imprimir sin duplicar | `INCOMPLETO` | `[MIGR]` `[QA]` original, replay, copias, numeración, inmutabilidad y permisos; `[CI]` | Impresora real y pantalla |
+| C10 | Entrega y copias | `INCOMPLETO` | `[MIGR]` `[QA]` email, replay, papel, descarga registrada, inmutabilidad y permisos; `[CI]` | Sin ciclo confirmado/fallido, acceso, caducidad, envío ni pantalla |
+| C11 | Conciliación explicable | `INCOMPLETO` ⚠ | `[MIGR]` `[QA]` cadena documental pendiente/conciliada, huella, replay, inmutabilidad y permisos; `[CI]` | Sin conciliación económica, pantalla ni exportación |
+| C12 | Ensayo del cierre | `INCOMPLETO` | `[MIGR]` `[QA]` pendiente→apto, efectivo, C11, aislamiento entre dos sesiones, replay, inmutabilidad, permisos y cero residuos; `[UI-LOCAL]` ensayo explicable | Despliegue y recorrido visual en QA, fallos externos, emisión realmente concurrente y noche real |
 
 Totales B: 0 verificados, 7 incompletos, 1 pendiente, 4 bloqueados.
-Totales C: 0 verificados, 10 incompletos, 1 pendiente, 1 bloqueado.
-Con A: **36 requisitos, 0 verificados, 28 incompletos, 3 pendientes, 5 bloqueados.**
+Totales C: 0 verificados, 11 incompletos, 0 pendientes, 1 bloqueado.
+Con A: **36 requisitos, 0 verificados, 29 incompletos, 2 pendientes, 5 bloqueados.**
 
 ## Fichas B
 
@@ -212,72 +212,87 @@ Con A: **36 requisitos, 0 verificados, 28 incompletos, 3 pendientes, 5 bloqueado
 ### C01 — Cajas, terminales y sesiones
 - **Aceptación:** cada cobro tiene sesión y responsable; un segundo inicio
   incompatible falla; el relevo conserva quién actuó en cada momento.
-- **Evidencia:** `[MIGR]` M04A. `[QA]` apertura con fondo 100 (+100 en el libro);
-  abrir cuenta en una sesión cerrada falla (`terminal_sesion_no_operativa`).
-  `[UI]` `abc_abrir_sesion_caja`. No llama a vincular terminal, cambiar
-  responsable ni cancelar apertura.
-- **Falta:** definir caja física, terminal y sesión; si varios dispositivos
-  comparten caja; relevo por pantalla; apertura concurrente y local ajeno.
+- **Evidencia:** `[MIGR]` M04A y
+  `20261009054351_c01_listar_responsables_caja`. `[QA]` dos aperturas aisladas,
+  fondo inicial, idempotencia, rechazo de caja/terminal duplicados, vínculo de
+  terminal y relevo con dos tramos de responsable; cero residuos tras
+  `ROLLBACK`. Propietario y Cajero pueden listar candidatos; Camarero queda
+  rechazado. `[UI-LOCAL]` abrir, consultar, relevar, vincular y desvincular con
+  motivo, sin DML directo. Evidencia detallada:
+  `F7_C01_QA_RESULTADO_2026-10-09.md`.
+- **Falta:** desplegar la interfaz en QA, completar el recorrido visual,
+  ejecutar una apertura verdaderamente simultánea y obtener aceptación.
 - **Decisión de Pedro:** cajas simultáneas y quién autoriza el relevo.
 
 ### C02 — Entradas y salidas trazables
 - **Aceptación:** toda variación física se explica y el replay no mueve dinero de
   nuevo; las correcciones conservan original y motivo.
 - **Evidencia:** `[MIGR]` M04B (`abc_registrar_movimiento_caja`,
-  `abc_revertir_movimiento_caja`). `[QA]` el cobro en efectivo y el reembolso
-  generan un solo movimiento y el replay no duplica. La pantalla **no** llama a las
-  funciones ABC: usa `registrar_movimiento_caja` y `revertir_movimiento_caja`
-  heredadas.
-- **⚠ Riesgo:** en el ensayo, la devolución heredada escribió su movimiento con
-  `session_id = NULL`; dentro de una sesión ABC el cierre calculó esperado 111
-  frente a 100 físico y no pudo explicar −11. No se comprobó si los demás
-  movimientos heredados hacen lo mismo.
-- **Falta:** una sola vía de movimientos por sesión; categoría, motivo y
-  justificante; pruebas de reverso y permisos.
+  `abc_revertir_movimiento_caja`). `[QA]` entrada y retirada del Cajero/a,
+  replay sin duplicados, reverso restringido al Propietario, rechazo del
+  Camarero/a, original conservado y reverso enlazado; prueba anulada con
+  `ROLLBACK` y cero residuos. `[UI-LOCAL]` la pantalla usa exclusivamente las
+  funciones ABC, resuelve sesión y terminal activos, exige categoría, concepto
+  o justificante y motivo, y conserva el identificador al reintentar. `[CI]`
+  contrato `abc-f5-c02-cash-movements`. Evidencia detallada:
+  `F7_C02_QA_RESULTADO_2026-10-09.md`.
+- **Falta:** desplegar la interfaz en QA, completar el recorrido visual, simular
+  una interrupción real desde el navegador y obtener aceptación.
 
 ### C03 — Arqueo calculado en servidor
 - **Aceptación:** el esperado no cambia por manipular el navegador; cada
   diferencia tiene responsable y tratamiento explícito.
-- **Evidencia:** `[CI]` contrato `CONTRATO_C03_PREPARADO_NO_APLICADO`; no hay
-  migración de C03. `[UI]` la pantalla llama a `registrar_arqueo_caja` heredada
-  con `p_efectivo_base` enviado por el cliente.
-- **⚠ Hallazgo `[QA]`:** `abc_finalizar_cierre_sesion_caja` cerró con −11 sin
-  motivo ni aprobación, aunque el ensayo C12 la marcó `DIFERENCIA_EFECTIVO`.
-- **Falta:** implementar el contrato (esperado = base + entradas − salidas
-  confirmadas, un arqueo activo por local y día), conteo por denominaciones, cero,
-  sobrante y faltante, y el tratamiento de la diferencia.
+- **Evidencia:** `[MIGR]` `abc_previsualizar_arqueo_caja` para el cierre C04 y
+  `abc_registrar_arqueo_caja` para el arqueo histórico. `[QA]` fondo 100,
+  entrada 50, salida 30, esperado 120, conteo 120 y diferencia cero; replay,
+  denominaciones, permisos, unicidad y anulación con original conservado;
+  prueba con `ROLLBACK` y cero residuos. `[UI-LOCAL]` el navegador deja de
+  enviar `p_efectivo_base`, resuelve sesión/terminal/día y permite contar por
+  denominaciones. `[CI]` contrato C03. Evidencia detallada:
+  `F7_C03_QA_RESULTADO_2026-10-09.md`.
+- **Falta:** desplegar la interfaz consolidada en QA, recorrer el arqueo
+  histórico con y sin denominaciones, comprobar el reintento visual y obtener
+  aceptación.
 - **Decisión de Pedro:** tolerancia y aprobación de diferencias de caja.
 
 ### C04 — Cierre provisional y definitivo
 - **Aceptación:** no entran movimientos en una sesión cerrada por una carrera; los
   pendientes son visibles; el relevo nocturno conserva su fecha operativa.
-- **Evidencia:** `[MIGR]` C04. `[QA]` iniciar→conteo provisional→ensayo→finalizar;
-  negativas: cierre directo desde `ABIERTA`, finalizar sin provisional y cierre
-  con un cobro pendiente (`PAGOS_PENDIENTES`) rechazados. `[UI]` iniciar,
-  confirmar provisional, reabrir y finalizar. `[CI]` contratos (el de PostgreSQL
-  falla por entorno).
-- **⚠ Falta:** el cierre acepta una diferencia sin tratamiento (ver C03); reabrir
-  una sesión `CERRADA_FINAL` responde `cierre_provisional_no_encontrado`, poco
-  explícito; cierre simultáneo con cobro (T14); devolución de un día cerrado (T19).
+- **Evidencia:** `[MIGR]` C04 y tratamiento de diferencias. `[QA]` iniciar,
+  previsualizar, confirmar, finalizar, replay de inicio/final, reabrir, impedir
+  cierre directo y bloquear una diferencia hasta registrar motivo y aprobarla;
+  ensayo con `ROLLBACK` y cero residuos. `[UI]` recorrido previo en QA de las
+  rutas sin diferencia, rechazada y aprobada. `[CI]` carrera real con dos
+  conexiones PostgreSQL y contratos de bloqueos `FOR UPDATE`. Evidencia:
+  `F7_C04_QA_RESULTADO_2026-10-09.md`.
+- **Falta:** desplegar la interfaz consolidada en QA, repetir el recorrido
+  visual con la vista previa C03 y obtener aceptación final. La devolución de
+  un día cerrado (T19) se mantiene en el bloque de devoluciones, no en C04.
 
 ### C05 — Series y numeración documental
 - **Aceptación:** dos emisores concurrentes no generan la misma identidad;
   reintentar la misma emisión recupera el documento.
 - **Evidencia:** `[MIGR]` C05 (`abc_reservar_numero_documental`,
-  `abc_resolver_emision_documental`). `[CI]` contratos de serie y seguridad; el
-  de PostgreSQL falla por entorno. El ensayo no ejercitó documentos. Sin pantalla.
-  Producción no tiene estas tablas.
-- **Falta:** emisor único elegido; ensayo de concurrencia e interrupción;
-  conexión con la pantalla.
+  `abc_resolver_emision_documental`). `[QA]` números 410/411, replay sin
+  duplicar, conflicto de payload, pendiente/error a emitido sin renumerar,
+  recuperación, inmutabilidad y rechazo del Camarero/a; `ROLLBACK` y cero
+  residuos. `[CI]` dos reservas concurrentes con dos conexiones PostgreSQL.
+  Evidencia detallada: `F7_C05_QA_RESULTADO_2026-10-09.md`.
+- **Falta:** elegir el emisor fiscal, conectar el circuito a la pantalla y
+  recorrer la interrupción desde la interfaz.
 - **Decisión de Pedro / asesoría:** emisor y series.
 
 ### C06 — Tipos de documento
 - **Aceptación:** la persona usuaria sabe qué documento entrega y el sistema pide
   solo los datos exigibles; cambiar de modalidad mantiene los vínculos.
-- **Evidencia:** `[MIGR]` C06 (`abc_clasificar_documento`). `[CI]` contratos. Sin
-  ensayo ni pantalla.
-- **Falta:** ejemplos con asesoría para simplificada, completa y rectificativa;
-  petición posterior de factura completa sin duplicar la venta.
+- **Evidencia:** `[MIGR]` C06 (`abc_clasificar_documento`). `[QA]` factura
+  completa con receptor obligatorio, simplificada, rectificativa enlazada,
+  pedido, replay, rechazo de reclasificación y de serie incompatible,
+  inmutabilidad y permisos; `ROLLBACK` y cero residuos. `[CI]` contratos.
+  Evidencia detallada: `F7_C06_QA_RESULTADO_2026-10-09.md`.
+- **Falta:** validar con asesoría los campos y supuestos de simplificada,
+  completa y rectificativa; petición posterior de factura completa sin
+  duplicar la venta; pantalla y aceptación.
 
 ### C07 — SIF y modalidad fiscal
 - **Aceptación:** el recorrido fiscal elegido tiene validación técnica y de
@@ -294,43 +309,66 @@ Con A: **36 requisitos, 0 verificados, 28 incompletos, 3 pendientes, 5 bloqueado
 ### C08 — Conservar y corregir lo emitido
 - **Aceptación:** una factura emitida no se altera silenciosamente; la corrección
   tiene identidad propia y el saldo sigue explicable.
-- **Evidencia:** `[MIGR]` C08. `[CI]` contratos. Sin ensayo ni pantalla.
-- **Falta:** ensayo con cambio de precio posterior y rectificativa; descarga
-  autorizada; conservación y acceso con asesoría.
+- **Evidencia:** `[MIGR]` C08. `[QA]` instantánea con SHA-256, replay,
+  unicidad e inmutabilidad de versión, rectificación enlazada, cancelación,
+  reembolso, inmutabilidad de correcciones y permisos; `ROLLBACK` y cero
+  residuos. `[CI]` contratos. Evidencia detallada:
+  `F7_C08_QA_RESULTADO_2026-10-09.md`.
+- **Falta:** recorrido con cambio de precio desde la aplicación; descarga
+  autorizada; política de conservación y acceso con asesoría; pantalla y
+  aceptación.
 
 ### C09 — Imprimir sin duplicar la venta
 - **Aceptación:** repetir la impresión da una copia del documento correcto y
   ninguna venta, pago o consumo adicional.
-- **Evidencia:** `[MIGR]` C09. `[CI]` contratos. Sin ensayo ni pantalla.
-- **Falta:** impresora real apagada tras un cobro confirmado (T17) y
-  recuperación de la copia; matriz de equipos V.
+- **Evidencia:** `[MIGR]` C09. `[QA]` original nº1, replay, segundo original
+  rechazado, copias PDF/digital nº2 y nº3, motivo obligatorio, inmutabilidad,
+  un solo documento C05 y permisos; `ROLLBACK` y cero residuos. `[CI]`
+  contratos. Evidencia detallada: `F7_C09_QA_RESULTADO_2026-10-09.md`.
+- **Falta:** impresora real apagada tras un cobro confirmado (T17),
+  recuperación de la copia, matriz de equipos V, pantalla y aceptación.
 
 ### C10 — Entrega y copias
 - **Aceptación:** solo accede quien corresponde; una entrega fallida se recupera;
   las copias mantienen el mismo contenido.
-- **Evidencia:** `[MIGR]` C10. `[CI]` contratos. Sin ensayo ni pantalla.
-- **Falta:** descarga cruzada, enlace caducado, reimpresión y envío de prueba
-  autorizado; política de datos personales mínimos.
+- **Evidencia:** `[MIGR]` C10. `[QA]` original por email, replay, papel ligado
+  a una impresión C09, rechazo de papel sin impresión, descarga registrada,
+  inmutabilidad, un solo documento y permisos; `ROLLBACK` y cero residuos.
+  `[CI]` contratos. Evidencia: `F7_C10_QA_RESULTADO_2026-10-09.md`.
+- **Falta:** implementar `CONFIRMADA/FALLIDA` y el reintento; autorización de
+  destinatario, descarga cruzada, enlace caducado, envío real, política de
+  datos personales mínimos, pantalla y aceptación.
 
 ### C11 — Conciliación explicable
 - **Aceptación:** cada total lleva a sus movimientos y cada diferencia tiene causa
   o incidencia; el cierre coincide con lo esperado.
-- **Evidencia:** `[MIGR]` C11 (`abc_generar_conciliacion_documental`). `[CI]`
-  contratos. Sin pantalla ni exportación. `[QA]` el cierre no pudo explicar −11
-  porque se mezclaron los circuitos ABC y heredado.
-- **⚠ Falta:** una sola autoridad de movimientos (C02); ligar pagos, anticipos,
-  devoluciones, comisiones y liquidaciones (B06, B09); exportación para la
-  asesoría.
+- **Evidencia:** `[MIGR]` C11 (`abc_generar_conciliacion_documental`). `[QA]`
+  foto `PENDIENTE_ENTREGA`, nueva foto `CONCILIADO` tras entregar, explicación,
+  SHA-256, replay, inmutabilidad, un solo documento y permisos; `ROLLBACK` y
+  cero residuos. `[CI]` contratos. Evidencia:
+  `F7_C11_QA_RESULTADO_2026-10-09.md`.
+- **⚠ Falta:** la función actual solo concilia la cadena documental y sus
+  cantidades. Debe comparar importes y ligar venta, caja, pagos, anticipos,
+  devoluciones, comisiones y liquidaciones (B06, B09), además de exportación,
+  pantalla y aceptación. C02 ya unifica los movimientos manuales, pero no
+  resuelve por sí solo toda esta conciliación económica.
 
 ### C12 — Ensayo del cierre
 - **Aceptación:** el conjunto reconcilia, los casos negativos bloquean cuando
   deben y la recuperación conserva los hechos externos confirmados.
 - **Evidencia:** `[QA]` apertura, venta, cobro en efectivo y con tarjeta simulada,
   reembolso, incidencia, cierre y ensayo C12, con negativas (arriba, B y C04).
-  `abc_ensayar_cierre_sesion_caja` no se llama desde la pantalla.
-- **Falta:** pago incierto en el cierre, emisión concurrente, impresora caída,
-  rectificación, sesión nocturna, restauración (T23); acta con versión y
-  limitaciones.
+  El 9/10 se añadió un ensayo aislado pendiente→apto con conteo, cadena C11,
+  replay, inmutabilidad, permisos y `ROLLBACK`. La revisión incremental corrige
+  la selección no determinista de conciliaciones C11 creadas en la misma
+  transacción. Una segunda prueba con dos sesiones del mismo local confirmó el
+  aislamiento documental. `[UI-LOCAL]` La pantalla de cierre provisional llama
+  `abc_ensayar_cierre_sesion_caja`, muestra efectivo, documentos, explicación y
+  bloqueos, y conserva la sesión sin cambios; el contrato ejecutable pasó 98
+  casos sobre la fuente recuperada.
+- **Falta:** pago incierto en el cierre, emisión realmente concurrente, impresora caída,
+  rectificación, sesión nocturna, restauración (T23), despliegue y recorrido
+  visual en QA.
 
 ## Bloqueos que afectan a varias filas
 

@@ -1,7 +1,7 @@
 # F5 C06 Contrato de tipos documentales
 
 Fecha: 2026-10-01  
-Estado: `CANDIDATO_C06_VALIDADO_PG_NO_APLICADO`
+Estado: `IMPLEMENTADO_Y_VERIFICADO_EN_QA; REGLAS_FISCALES_Y_UI_PENDIENTES`
 
 ## Alcance
 
@@ -47,11 +47,18 @@ sin mezclar pedido, precuenta, justificante y factura.
 La prueba PostgreSQL 16 cubre clasificación completa, simplificada y
 rectificativa, replay de la misma operación, rechazo de datos incompletos y
 protección contra reclasificación directa. El run 1 del workflow C06 pasó en
-28 segundos. No se aplican migraciones remotas,
-no se escribe QA/PROD y no se ejecuta deploy de Netlify.
+28 segundos.
+
+El ensayo conectado en QA del 9/10/2026 cubrió además un pedido, la coherencia
+entre tipo y serie, inmutabilidad y rechazo del Camarero/a. Terminó con
+`ROLLBACK` y cero residuos. La tabla no concede acceso directo al cliente; la
+RPC concede ejecución a `authenticated` y valida la capacidad internamente.
 
 ## Pendiente para cerrar C06
 
 1. Revisar con asesoría los campos y modalidades de cada tipo.
-2. Obtener advisors desde una base conectada.
-3. Esperar C07 para la decisión fiscal y de proveedor.
+2. Esperar C07 para la decisión fiscal y de proveedor.
+3. Conectar la clasificación a la pantalla y obtener aceptación funcional.
+
+Producción no se ha modificado. Evidencia consolidada:
+`F7_C06_QA_RESULTADO_2026-10-09.md`.

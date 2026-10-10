@@ -177,7 +177,9 @@ with objetos(migracion, nombre, tipo, esquema, objeto) as (
     ('20261002240000','abc_config_pieza5_permisos','funcion','private','abc_cfg5_guard_rol_retirado'),
     ('20261002250000','abc_config_pieza6d_dia_operativo','funcion','public','abc_obtener_dia_operativo_local'),
     ('20261003100000','abc_config_d13_reembolsos_aprobacion','funcion','public','abc_aprobar_reembolso'),
-    ('20261003120000','abc_a09_eventos_descuento_cuenta','funcion','public','abc_listar_eventos_descuento_cuenta')
+    ('20261003120000','abc_a09_eventos_descuento_cuenta','funcion','public','abc_listar_eventos_descuento_cuenta'),
+    ('20261005160403','abc_f5_c03_arqueo_sesion','funcion','public','abc_previsualizar_arqueo_caja'),
+    ('20261009054351','c01_listar_responsables_caja','funcion','public','abc_listar_responsables_caja')
 ),
 estado as (
   select o.migracion, o.nombre, o.tipo, o.esquema, o.objeto,
@@ -235,7 +237,7 @@ select e.migracion, e.firma,
  order by e.migracion, e.firma;
 
 -- ============================================================================================================================
--- P4 · Copia de seguridad de las 46 funciones que las migraciones candidatas REEMPLAZAN (create or replace). Es la base de la recuperación:
+-- P4 · Copia de seguridad de las 48 funciones que las migraciones candidatas REEMPLAZAN (create or replace). Es la base de la recuperación:
 --      guardar la salida completa (definición incluida) ANTES de aplicar nada. Solo lectura de catálogo.
 -- ============================================================================================================================
 select n.nspname as esquema, p.proname as funcion, pg_get_function_identity_arguments(p.oid) as argumentos,
@@ -248,6 +250,7 @@ select n.nspname as esquema, p.proname as funcion, pg_get_function_identity_argu
     'private.abc_b06_validar_anticipo_movimiento',
     'private.abc_c04_bloqueos_cierre',
     'private.abc_c04_guard_final_session',
+    'private.abc_c05_guard_documento',
     'private.abc_calcular_linea_tpv',
     'private.abc_calcular_linea_tpv_configurada',
     'private.abc_cap_catalogo',
@@ -276,6 +279,7 @@ select n.nspname as esquema, p.proname as funcion, pg_get_function_identity_argu
     'public.abc_mover_cantidad_linea_cuenta',
     'public.abc_obtener_ajustes',
     'public.abc_reabrir_cierre_provisional',
+    'public.abc_registrar_arqueo_caja',
     'public.abc_recuperar_cuenta',
     'public.abc_registrar_movimiento_anticipo',
     'public.abc_reimprimir_comanda',

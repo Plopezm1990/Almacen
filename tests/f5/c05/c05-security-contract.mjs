@@ -13,4 +13,4 @@ assert.match(sql, /revoke all on table public\.abc_c05_series_documentales,publi
 assert.match(sql, /alter table public\.abc_c05_series_documentales enable row level security/i);
 assert.match(sql, /grant execute on function public\.abc_reservar_numero_documental[^;]+to authenticated/i);
 assert.match(sql, /grant execute on function public\.abc_resolver_emision_documental[^;]+to authenticated/i);
-console.log('ABC_F5_C05_SECURITY_CONTRACT=PASS_WITH_ADVISORS_PENDING');
+console.log('ABC_F5_C05_SECURITY_CONTRACT=PASS');

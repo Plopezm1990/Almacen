@@ -13,12 +13,12 @@ for (const term of [
   'Lo que ya existe',
   'Pendiente para el cierre operativo de C04',
   'reapertura',
-  'Criterios de aceptación pendientes',
+  'Criterios de aceptación verificados',
 ]) {
   assert.match(doc, new RegExp(term.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&'), 'i'), `C04 falta ${term}`);
 }
-assert.match(doc, /CANDIDATO_C04_(IMPLEMENTADO_NO_APLICADO|VALIDADO_PG_NO_APLICADO)/);
-assert.match(doc, /no se\s+escriben QA\/PROD|sin aplicarse en QA\/PROD/i);
+assert.match(doc, /IMPLEMENTADO_Y_VERIFICADO_EN_QA/);
+assert.match(doc, /Producción no se ha modificado/i);
 
 for (const state of ['PREPARANDO_APERTURA', 'ABIERTA', 'EN_CIERRE', 'CIERRE_PROVISIONAL', 'CERRADA_FINAL']) {
   assert.match(sessions, new RegExp(state));
@@ -29,4 +29,4 @@ for (const term of ['abc_cerrar_sesion_caja', 'sesion_caja_no_abierta', 'expecte
 assert.doesNotMatch(close, /abc_reabrir_sesion_caja/i);
 assert.doesNotMatch(close, /CIERRE_PROVISIONAL/);
 
-console.log('ABC_F5_C04_CLOSE_CONTRACT=PASS_WITH_PENDING_PROVISIONAL');
+console.log('ABC_F5_C04_CLOSE_CONTRACT=PASS');

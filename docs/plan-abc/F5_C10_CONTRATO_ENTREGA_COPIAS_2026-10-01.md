@@ -1,7 +1,7 @@
 # F5 C10 Contrato de entrega y copias
 
 Fecha: 2026-10-01  
-Estado: `CANDIDATO_C10_VALIDADO_PG_NO_APLICADO`
+Estado: `NUCLEO_VERIFICADO_EN_QA; CICLO_PROVEEDOR_ACCESO_Y_UI_PENDIENTES`
 
 ## Alcance
 
@@ -27,10 +27,12 @@ y versión. Las copias no generan otro número, otra venta ni otro documento.
 
 ## Límites explícitos
 
-Este candidato no envía correos, no conecta una impresora, no confirma la
+Esta implementación no envía correos, no conecta una impresora, no confirma la
 recepción del destinatario, no firma documentos, no acredita entrega legal y
-no sustituye la revisión de asesoría. No se aplican migraciones remotas y no se
-ejecuta deploy de Netlify.
+no sustituye la revisión de asesoría. Los estados `CONFIRMADA` y `FALLIDA`
+existen en el esquema, pero todavía no hay una RPC que registre esas
+transiciones. Tampoco hay token de descarga, autorización del destinatario ni
+caducidad de enlace.
 
 ## Evidencia y pendiente
 
@@ -39,4 +41,13 @@ papel vinculada a C09, rechazo de papel sin impresión, rechazo de impresión de
 otro documento, inmutabilidad y comprobación de que C05 conserva un solo
 documento. El run corregido pasó en 37 segundos:
 https://github.com/Plopezm1990/Almacen/actions/runs/36915965158. Después queda
-C11, advisors, revisión de asesoría/proveedor y decisión de aplicación en QA.
+C11, revisión de asesoría/proveedor y la integración visible.
+
+El ensayo conectado en QA del 9/10/2026 cubrió entrega original por email,
+replay, copia en papel vinculada, descarga registrada, inmutabilidad y permisos.
+Terminó con `ROLLBACK` y cero residuos. Producción no se ha modificado.
+
+Para cerrar C10 faltan el ciclo real `REGISTRADA → CONFIRMADA/FALLIDA`, el
+reintento de una entrega fallida, autorización y caducidad de descargas, envío
+real, pantalla y aceptación. Evidencia consolidada:
+`F7_C10_QA_RESULTADO_2026-10-09.md`.
