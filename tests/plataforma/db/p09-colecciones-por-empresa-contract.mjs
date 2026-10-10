@@ -13,7 +13,8 @@
 //   * la empresa de una fila no se cambia desde la API y, si es ambigua, falla cerrado;
 //   * las funciones del servidor que escribían `where key='productos'` solo tocan la fila de su empresa;
 //   * las filas sin empresa se conservan (etiquetadas con la empresa ficticia) y nadie las ve;
-//   * la migración es idempotente, atómica y se niega si encuentra algo que no conoce.
+//   * la migración es idempotente, atómica y se niega si encuentra algo que no conoce;
+//   * (F4d) una empresa dada de baja no cuenta para decidir en qué empresa guarda una cuenta.
 import pg from 'pg';
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
@@ -25,6 +26,7 @@ assert.equal(url.pathname, '/plataforma_p01_test', 'Solo se admite la base desec
 const F4 = process.env.PLATAFORMA_MIGRACION_F4 || 'supabase/migrations/20261009140000_plataforma_f4_colecciones_por_empresa.sql';
 const F4B = process.env.PLATAFORMA_MIGRACION_F4B || 'supabase/migrations/20261009150000_plataforma_f4b_lista_productos_inicial.sql';
 const F4C = process.env.PLATAFORMA_MIGRACION_F4C || 'supabase/migrations/20261009160000_plataforma_f4c_lista_sin_contexto_fiscal.sql';
+const F4D = process.env.PLATAFORMA_MIGRACION_F4D || 'supabase/migrations/20261009170000_plataforma_f4d_empresas_vigentes.sql';
 const P3B = 'supabase/migrations/20261002170000_abc_p3b_espejo_lista_nube.sql';
 const FIXTURE_LISTA = 'tests/plataforma/db/fixtures-f4/abc_productos_guardar_lista_qa.sql';
 const sql = (p) => fs.readFileSync(p, 'utf8');
@@ -85,7 +87,7 @@ async function montarEsquema(forma, { listaExtra = null, politicaExtra = false }
     create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('plataforma.actor', true), '')::uuid $$;
     create table public.perfiles (user_id uuid primary key, rol text not null default 'Básico', empleado_id text, activo boolean not null default true);
     create table public.empleados (id text primary key, empresa_id text, local_id text, estado text);
-    create table public.empresas (id text primary key, nombre text);
+    create table public.empresas (id text primary key, nombre text, activo boolean not null default true);
     create table public.membresias_usuario (
       id bigint primary key, user_id uuid not null, empresa_id text not null, local_id text, todos_locales boolean not null default false,
       rol text not null, activo boolean not null default true
@@ -293,6 +295,9 @@ try {
       assert.equal(p3c.split(f).length - 1, 1, `P3c contiene exactamente una vez el fragmento que F4c sustituye: ${f.slice(0, 40)}`);
       assert.ok(f4cTxt.includes(f), `F4c busca: ${f.slice(0, 40)}`);
     }
+    const f4dTxt = sql(F4D).replace(/--.*$/gm, '');
+    assert.ok(!/\bdelete\s+from\b|\bdrop\b|\btruncate\b|\balter\s+table\b|\binsert\s+into\b|\bupdate\s+public\./i.test(f4dTxt), 'F4d no borra, no elimina, no altera tablas y no escribe datos');
+    assert.equal((f4dTxt.match(/create or replace function/gi) || []).length, 3, 'F4d redefine exactamente tres funciones');
     const f4bTxt = sql(F4B);
     assert.ok(!/\bdelete\s+from\b|\bdrop\s+(table|trigger|policy|function)\b|\btruncate\b/i.test(f4bTxt.replace(/--.*$/gm, '')), 'F4b no borra ni elimina nada');
     assert.ok(/on conflict \(empresa_id, key\) do nothing/.test(f4bTxt), 'F4b nunca pisa una fila existente');
@@ -575,6 +580,86 @@ try {
     await fallo(cAOwn.query("select public.abc_catalogo_guardar_productos('op-m-3', 'E-B', 'L-B1', 'EUR', $1::jsonb)", [JSON.stringify([{ id: 'P1', precioVenta: 99 }])]), { mensaje: 'abc_catalogo_no_autorizado' }, 'A no escribe el catálogo de B');
   }
 
+  // === 6b. F4d: una empresa dada de baja no cuenta para elegir la empresa de una cuenta ==============================
+  {
+    const OWNBAJA = U('a6'), SOLOBAJA = U('a7');
+    await admin.query(`
+      insert into auth.users(id) values ('${OWNBAJA}'),('${SOLOBAJA}');
+      insert into public.perfiles(user_id, rol) values ('${OWNBAJA}','Propietario'),('${SOLOBAJA}','Propietario');`);
+    // La baja de la plataforma desactiva también las membresías; el estado heredado (empresa inactiva con
+    // membresía activa) es el que dejó a una cuenta de QA y a otra de producción en situación ambigua.
+    await admin.query("insert into public.empresas(id, nombre, activo) values ('E-BAJA','Empresa dada de baja', false)"); // F4b le da su lista vacía
+    await admin.query(`insert into public.membresias_usuario(id, user_id, empresa_id, local_id, todos_locales, rol) values
+      (21,'${OWNBAJA}','E-A',null,true,'Propietario'),
+      (22,'${OWNBAJA}','E-BAJA',null,true,'Propietario'),
+      (23,'${SOLOBAJA}','E-BAJA',null,true,'Propietario')`);
+    const cOB = await como(OWNBAJA), cSB = await como(SOLOBAJA);
+    const listaDe = (c, op) => c.query('select public.abc_productos_guardar_lista($1, $2::jsonb, $3::jsonb, $4::jsonb) r', [op, JSON.stringify(PRODUCTOS_A), JSON.stringify(PRODUCTOS_A), '[]']);
+
+    // Control: sin F4d la cuenta con una empresa viva y otra dada de baja queda ambigua.
+    assert.deepEqual((await leer(cOB, 'productos')).map((f) => f.empresa_id), ['E-A', 'E-BAJA'], 'antes de F4d ve la lista de la empresa dada de baja');
+    await fallo(upsertKv(cOB, 'pedidos', []), { code: '42501', mensaje: 'almacen_kv_empresa_no_determinada' }, 'antes de F4d: la empresa de baja hace ambigua la escritura');
+    await fallo(listaDe(cOB, 'op-ob-0001-abcdefgh'), { code: '42501', mensaje: 'almacen_kv_empresa_ambigua' }, 'antes de F4d: la empresa de baja hace ambigua la RPC');
+
+    const huellaDatos = async () => JSON.stringify((await admin.query('select empresa_id, key, value from public.almacen_kv order by empresa_id, key')).rows);
+    const datosAntes = await huellaDatos();
+    const D4 = sql(F4D);
+    await admin.query(D4);
+    assert.equal(await huellaDatos(), datosAntes, 'F4d no toca ningún dato');
+    assert.equal(await pkDe(), 'PRIMARY KEY (empresa_id, key)');
+    assert.deepEqual(await politicas(), ['plataforma_kv_delete', 'plataforma_kv_insert', 'plataforma_kv_select', 'plataforma_kv_update'], 'F4d no cambia las políticas');
+
+    if (process.env.P09_HUELLAS === '1') {
+      const hs = await admin.query(`
+        select p.oid::regprocedure::text fn, md5(pg_get_functiondef(p.oid)) h, length(pg_get_functiondef(p.oid)) n
+          from pg_proc p where p.proname in ('plataforma_kv_permitido','plataforma_kv_empresa_llamante','plataforma_f4_kv_empresa') order by 1`);
+      for (const r of hs.rows) console.log('HUELLA_F4D', r.fn, r.h, r.n);
+    }
+
+    // Después: solo cuenta la empresa viva.
+    assert.deepEqual((await leer(cOB, 'productos')).map((f) => f.empresa_id), ['E-A'], 'la empresa de baja deja de ser visible');
+    await upsertKv(cOB, 'pedidos', [{ id: 'ob1' }]);
+    assert.deepEqual((await admin.query("select empresa_id from public.almacen_kv where key='pedidos' and value->0->>'id'='ob1'")).rows.map((r) => r.empresa_id), ['E-A'], 'escribe en su única empresa viva');
+    const listaA = (await admin.query("select value from public.almacen_kv where key='productos' and empresa_id='E-A'")).rows[0].value;
+    const rOB = (await cOB.query('select public.abc_productos_guardar_lista($1, $2::jsonb, $3::jsonb, $4::jsonb) r', ['op-ob-0002-abcdefgh', JSON.stringify(listaA), JSON.stringify(listaA.map((x) => ({ ...x, stock: 77 }))), '[]'])).rows[0].r;
+    assert.equal(rOB.ok, true, 'la RPC de la lista ya encuentra su empresa');
+    assert.equal((await admin.query("select value->0->>'stock' s from public.almacen_kv where key='productos' and empresa_id='E-A'")).rows[0].s, '77');
+    assert.equal((await admin.query("select jsonb_array_length(value) n from public.almacen_kv where key='productos' and empresa_id='E-BAJA'")).rows[0].n, 0, 'la lista de la empresa de baja sigue vacía e intacta');
+    // No puede escribir ni borrar en la empresa dada de baja aunque lo pida expresamente.
+    await fallo(cOB.query("insert into public.almacen_kv(empresa_id, key, value) values ('E-BAJA','locales','[]')"), { code: '42501' }, 'escribir en la empresa de baja');
+    await fallo(upsertKv(cOB, 'locales', { empresaId: 'E-BAJA', id: 'L-BAJA' }), { code: '42501' }, 'escribir en la empresa de baja por el JSON');
+    assert.equal((await cOB.query("delete from public.almacen_kv where empresa_id='E-BAJA'")).rowCount, 0, 'no borra nada de la empresa de baja');
+    // Una cuenta cuya única membresía está en la empresa de baja: no ve, no escribe, no inventa empresa.
+    assert.equal((await cSB.query("select count(*)::int n from public.almacen_kv")).rows[0].n, 0, 'sin ninguna empresa viva no ve nada');
+    await fallo(upsertKv(cSB, 'pedidos', []), { code: '42501', mensaje: 'almacen_kv_empresa_no_determinada' }, 'sin ninguna empresa viva no escribe');
+    // Dos empresas VIVAS siguen siendo ambiguas (una cuenta = una empresa): falla cerrado.
+    await fallo(upsertKv(cMulti, 'pedidos', []), { code: '42501', mensaje: 'almacen_kv_empresa_no_determinada' }, 'dos empresas vivas: sigue fallando cerrado');
+    await fallo(listaDe(cMulti, 'op-m-0002-abcdefgh'), { code: '42501', mensaje: 'almacen_kv_empresa_ambigua' }, 'dos empresas vivas: la RPC sigue negándose');
+    // Quien no tiene nada que ver, igual que antes; los demás roles de A, igual que antes.
+    assert.equal((await leer(cNadie, 'productos')).length, 0);
+    await upsertKv(cAEnc, 'pedidos', [{ id: 'enc-f4d' }]);
+    await fallo(upsertKv(cACaj, 'nominas', [{ id: 'x' }]), { code: '42501' }, 'la tabla de roles sigue igual');
+    // Reactivar la empresa devuelve su visibilidad sin haber tocado sus datos (y vuelve la ambigüedad).
+    await admin.query("update public.empresas set activo = true where id = 'E-BAJA'");
+    assert.deepEqual((await leer(cOB, 'productos')).map((f) => f.empresa_id), ['E-A', 'E-BAJA'], 'reactivada: vuelve a ser visible');
+    await fallo(upsertKv(cOB, 'pedidos', []), { code: '42501', mensaje: 'almacen_kv_empresa_no_determinada' }, 'reactivada: dos empresas vivas');
+    await admin.query("update public.empresas set activo = false where id = 'E-BAJA'");
+    // Idempotente y con los permisos de F4.
+    const defs = async () => JSON.stringify([
+      await defFuncion('private.plataforma_kv_permitido(text,text,text,text)'),
+      await defFuncion('private.plataforma_kv_empresa_llamante(text)'),
+      await defFuncion('private.plataforma_f4_kv_empresa()'),
+    ]);
+    const defsAntes = await defs();
+    const datosMedio = await huellaDatos();
+    await admin.query(D4);
+    assert.equal(await defs(), defsAntes, 're-aplicar F4d no cambia las funciones');
+    assert.equal(await huellaDatos(), datosMedio, 're-aplicar F4d no cambia los datos');
+    await fallo(cOB.query("select private.plataforma_kv_empresa_llamante('productos')"), { code: '42501' }, 'F4d: authenticated sigue sin ejecutar empresa_llamante');
+    await fallo(cOB.query('select private.plataforma_f4_kv_empresa()'), { code: '42501' }, 'F4d: authenticated sigue sin ejecutar el disparador');
+    await fallo(cAnon.query("select private.plataforma_kv_permitido('E-A', null, 'productos', 'leer')"), { code: '42501' }, 'F4d: anon sigue sin ejecutar plataforma_kv_permitido');
+  }
+
   // === 7. La migración se niega si encuentra algo que no conoce y no deja nada a medias =====================================
   {
     // 7.1 Política ajena en la tabla.
@@ -606,6 +691,18 @@ try {
     await fallo(admin.query(sql(F4C)), { mensaje: 'PLATAFORMA_F4C_PARCHE_NO_APLICABLE:abc_productos_guardar_lista' }, 'F4c con texto de la RPC inesperado');
     await admin.query('rollback');
     assert.equal(await defFuncion('public.abc_productos_guardar_lista(text,jsonb,jsonb,jsonb)'), defRaro, 'F4c abortada: la función queda como estaba');
+
+    // 7.2c F4d se niega si falta F4 o si empresas no tiene la columna activo, y no deja nada a medias.
+    await montarEsquema('qa');
+    await datosBase('qa');
+    await fallo(admin.query(sql(F4D)), { mensaje: 'PLATAFORMA_F4D_PREVIO:falta_F4' }, 'F4d sin F4');
+    await admin.query('rollback');
+    await admin.query(migracion);
+    const defPermAntes = await defFuncion('private.plataforma_kv_permitido(text,text,text,text)');
+    await admin.query('alter table public.empresas drop column activo');
+    await fallo(admin.query(sql(F4D)), { mensaje: 'PLATAFORMA_F4D_PREVIO:empresas_sin_columna_activo' }, 'F4d sin empresas.activo');
+    await admin.query('rollback');
+    assert.equal(await defFuncion('private.plataforma_kv_permitido(text,text,text,text)'), defPermAntes, 'F4d abortada: la función queda como estaba');
 
     // 7.3 Una empresa llamada como la ficticia.
     await montarEsquema('qa');
@@ -650,6 +747,22 @@ try {
     await fallo(cMulti.query(`insert into public.almacen_kv(key, value) values ('pedidos', '[]')`), { code: '42501', mensaje: 'almacen_kv_empresa_no_determinada' }, 'sin empresa y con dos empresas');
     // Los datos de antes siguen ilegibles para cualquier cuenta.
     assert.equal((await cA.query("select count(*)::int n from public.almacen_kv where empresa_id='__sin_empresa__'")).rows[0].n, 0);
+
+    // F4d con la situación real de producción: tres empresas, una sola activa, y una cuenta con membresía
+    // activa en las tres (las otras dos están dadas de baja).
+    const PROD1 = U('a8');
+    await admin.query(`
+      insert into auth.users(id) values ('${PROD1}');
+      insert into public.perfiles(user_id, rol) values ('${PROD1}','Propietario');
+      update public.empresas set activo = false where id in ('E-B','E-NEW');
+      insert into public.membresias_usuario(id, user_id, empresa_id, local_id, todos_locales, rol) values
+        (31,'${PROD1}','E-A',null,true,'Propietario'),(32,'${PROD1}','E-B',null,true,'Propietario'),(33,'${PROD1}','E-NEW',null,true,'Propietario')`);
+    const cP1 = await como(PROD1);
+    await fallo(upsertKv(cP1, 'pedidos', []), { code: '42501', mensaje: 'almacen_kv_empresa_no_determinada' }, 'prod sin F4d: tres membresías activas');
+    await admin.query(sql(F4D));
+    await upsertKv(cP1, 'pedidos', [{ id: 'p1' }]);
+    assert.deepEqual((await admin.query("select empresa_id from public.almacen_kv where key='pedidos' and value->0->>'id'='p1'")).rows.map((r) => r.empresa_id), ['E-A'], 'prod con F4d: guarda en la única empresa activa');
+    assert.deepEqual((await leer(cP1, 'productos')).map((f) => f.empresa_id), ['E-A'], 'prod con F4d: solo ve la lista de su empresa activa');
   }
 
   console.log('PLATAFORMA_P09_COLECCIONES_POR_EMPRESA=PASS');
