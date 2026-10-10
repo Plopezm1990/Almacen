@@ -94,6 +94,14 @@ Resultado esperado de la ronda 4: sin banner rojo; «colecciones solo en este eq
   2. `POST rpc/abc_productos_guardar_lista` → 400 `abc_productos_cambio_contexto_no_admitido:QA-CAT-A1-AGUA` (regla propia de P3c, no es un error de permisos, por eso no activa ningún marcador). Los 30 productos de `QA Empresa A` son datos antiguos de pruebas de QA: llevan `localId` pero **no `empresaId`** dentro del dato, y P3c no admite que un guardado les añada `empresaId`/`localId`. Afecta solo a esa lista antigua (las empresas nuevas guardan con `empresaId` desde el primer producto) y no es de F4; queda anotado como asunto abierto de P3c.
   (Otros errores de Postgres de esa franja —`column "q" does not exist`, `pedido_lineas … foreign key`, etc.— son de consultas manuales a QA ajenas a la aplicación.)
 
+## Resultado de la ronda 4b, pasos 2–3 (2026-10-10): cerrada sin diferencias de F4
+
+- **«Productos» de `QA Empresa A`: 15 productos**, ninguno de las empresas F4 (`Café F4-1`, `Café F4-3`, `Harina F4-3`, `Azúcar F4-3`), sin cartel rojo. Los 15 son correctos: la lista en la nube tiene 30 (15 de `QA-A1` y 15 de `QA-A2`) y la pantalla muestra los del local activo (`Local A1`). El «unos 30» del guion era un error de redacción de Claude, no una diferencia del programa.
+- «← Plataforma» (panel con 6 empresas activas y 2 desactivadas) y «Cerrar sesión» sin problemas.
+- **Aviso ámbar «Almacén congelado por conteo en curso…»:** no es de F4. Sale de la colección `conteos` de `QA-EMP-A`: 460 conteos antiguos de pruebas de QA (`_pm12Servidor`) con `estado: "COMPLETADO"` y sin el campo booleano `completado`; el programa decide «hay un conteo abierto» con `!c.completado` (`fuente.js`, `conteoAbierto`), así que los lee como abiertos. Es un desajuste de formato de datos de prueba antiguos, anterior a esta ronda.
+- Registros de QA: tras F4d, el programa de `owner.a` ya sube colecciones comunes a `QA-EMP-A` (por ejemplo `conteos` a las 13:54:47 UTC) donde antes recibía `almacen_kv_empresa_no_determinada`.
+- **Conclusión:** F4, F4b, F4c y F4d verificadas en QA con la pantalla y con Postgres real. Lo que sigue abierto no es de `almacen_kv`: F4e (perfiles, movimientos y avisos push en producción), el aviso «1 colección» de `movimientos` en QA, el rechazo de P3c sobre productos antiguos sin `empresaId`, y el formato de `conteos` de QA.
+
 ## Resultado esperado
 | Paso | Esperado |
 |---|---|
