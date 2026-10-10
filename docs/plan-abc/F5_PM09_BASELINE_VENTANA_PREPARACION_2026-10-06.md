@@ -53,6 +53,11 @@ secuencia lineal.
    y el ensayo PostgreSQL desechable con
    `PM09_PROD_BASELINE_POSTGRES=PASS`. El SHA-256 del SQL candidato continúa
    siendo `d59bf0ca0670dd22987b801558c1fa909ccbd025c9e9fbb32f94fa835c7c6af0`.
+7. **Preflight productivo 10/10/2026, 09:14 CEST:** se ejecutó de nuevo el
+   SQL exacto de solo lectura del PR #124. Resultado: `ok=true`,
+   `function_mismatches=[]`, `table_mismatches=[]`,
+   `migration_history_ok=true`, `sale_operations=0` y `sale_movements=0`.
+   No se escribió ni se aplicó ninguna migración.
 
 ## Condiciones de entrada de la ventana
 
@@ -63,9 +68,11 @@ secuencia lineal.
    repositorio público y en dos ubicaciones. Anotar hora y tamaños no nulos;
    comprobar también que puede acceder a los tres archivos. La copia del
    4/10 fue de otra ventana y no sustituye esta condición.
-3. Repetir el SQL exacto de preflight del PR #124 en producción, solo lectura.
-   Exigir `ok=true`, listas de diferencias vacías, historia esperada y cero
-   `VENTA`/`REVERSO`. Verificar que las tres RPC objetivo siguen ausentes.
+3. **Cumplida el 10/10/2026 a las 09:14 CEST:** se repitió el SQL exacto de
+   preflight del PR #124 en producción. Dio `ok=true`, listas de diferencias
+   vacías, historia esperada y cero `VENTA`/`REVERSO`; las tres RPC objetivo
+   siguen ausentes. Si la ventana de escritura no se realiza inmediatamente
+   después de la copia manual, repetir esta lectura antes de aplicar.
 4. **Cumplida el 6/10/2026:** verificación en QA con sesión real y `ROLLBACK`,
    sin filas residuales. El candidato no se aplicó en QA porque las tres
    funciones ya existían.
