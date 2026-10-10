@@ -76,7 +76,7 @@ Pruebas de mutación: 19 mutaciones de la migración (quitar el cargo, quitar la
 
 ## 4d. Fuera de `almacen_kv`: lo que aún no separa empresas en producción (hallazgo 2026-10-10, solo lectura de estructura y reglas)
 
-Repaso de las 90 tablas de `public` de producción. Todas llevan `empresa_id` y reglas que lo miran, **salvo estas** (las demás sin reglas están cerradas a la API):
+Repaso de las 95 tablas de `public` de producción. Todas llevan `empresa_id` y reglas que lo miran, **salvo estas** (las demás sin reglas están cerradas a la API):
 
 | Tabla (producción) | Qué dejan hacer hoy las reglas | Riesgo con 2 empresas clientes |
 |---|---|---|
