@@ -43,6 +43,32 @@ Qué se comprueba: con P3c + F4 + F4b, la lista de productos de cada empresa se 
 >
 > Al terminar dime: (1) qué pasos fueron como se describe; (2) los distintos, con el texto exacto; (3) cada aviso rojo, «cambios sin confirmar» distinto de 0 o «colecciones solo en este equipo», con el número y el paso; (4) la contraseña inicial de `duena.f4.3`; (5) cualquier OTRO aviso o mensaje que salga al guardar productos (por ejemplo del catálogo del TPV o del contexto fiscal), con el texto exacto y el paso.
 
+## Resultado de la ronda 3b (2026-10-10): pasos 0–4 bien, paso 5 con diferencia → arreglo F4d
+
+- **Pasos 0–4 sin ninguna diferencia** (caché y service workers borrados, 0 reintentos de carga): `duena.f4.1` ve `Café F4-1` y `Café F4-3`; `duena.f4.2` crea `Harina F4-3` sin avisos y con «cambios sin confirmar» 0; cada empresa recupera solo lo suyo desde la nube; la empresa nueva `QA F4 Cliente 3` (dueña `duena.f4.3`) crea `Azúcar F4-3` y lo recupera con el almacenamiento borrado.
+- **Paso 5 (`owner.a` → «Abrir mi aplicación» → QA Empresa A):** banner rojo «No se han podido cargar tus datos guardados (productos — revisa el acceso)…», aviso «4 colecciones solo en este equipo» y «Arranque: datos que no se pudieron cargar» = 1.
+- **Causa (leída en los registros de QA, 13:18:52–55 UTC):** `owner.a` tiene membresía activa en `QA-EMP-A` **y** en `QA-EMP-B`, y `QA-EMP-B` es una empresa **dada de baja** (la baja de la plataforma desactiva también las membresías, pero esta empresa de prueba es anterior y las conservó activas). Desde F4b ambas tienen fila `productos`, así que el servidor veía dos empresas para la misma cuenta y falló cerrado: `almacen_kv_empresa_no_determinada` (×2, en las subidas de colecciones) y `almacen_kv_empresa_ambigua` (en `abc_productos_guardar_lista`, 403). No es un fallo de la prueba ni del cliente. (El cuarto error, `movimientos_registro … row-level security`, es anterior a F4: esa tabla solo tiene regla de lectura en QA y ya salía el 9 y el 10 de octubre desde las 07:02; queda aparte.)
+- **Dato de producción (solo conteos, 2026-10-10):** 3 empresas, 1 activa; 3 membresías activas; **una cuenta** tiene membresía activa en las tres (dos en empresas dadas de baja) y **ninguna** cuenta tiene dos empresas *activas*. Sin arreglo, F4 habría dejado a esa cuenta sin poder guardar en producción.
+
+## Arreglo F4d (2026-10-10): una empresa dada de baja no cuenta
+
+- Migración `20261009170000_plataforma_f4d_empresas_vigentes.sql`: `create or replace` de tres funciones de F4 (`plataforma_kv_permitido`, `plataforma_kv_empresa_llamante`, `plataforma_f4_kv_empresa`) para que solo cuenten las empresas con `activo = true`. No cambia datos, tablas, claves ni reglas. Una empresa dada de baja queda invisible y no escribible para sus antiguos miembros (sus datos no se tocan; al reactivarla vuelve a verse). Una cuenta con **dos empresas activas** sigue fallando cerrado.
+- Probado en Postgres real (`p09`): antes de F4d la cuenta con una empresa viva y otra de baja ve las dos listas y falla (escritura y RPC); después ve solo la viva, escribe y guarda su lista; no puede escribir ni borrar en la empresa de baja (ni por `empresa_id` ni por el JSON); la cuenta cuya única membresía está en la empresa de baja no ve ni escribe nada; reactivar la empresa devuelve su visibilidad; dos empresas vivas siguen fallando cerrado; la tabla de roles y los permisos no cambian; es idempotente; se niega sin F4 o sin `empresas.activo`; y reproduce la situación de producción (tres empresas, una activa) en la forma «prod». 10 mutaciones: 7 detectadas y 3 equivalentes (repiten permisos que `create or replace` ya conserva).
+- Aplicado en QA (huellas idénticas a las del Postgres local; `authenticated` sin permiso sobre las ayudas privadas salvo `plataforma_kv_permitido`). Comprobado con la cuenta real `owner.a` dentro de QA y deshecho al final: ve solo la lista de `QA-EMP-A`, su guardado cae en `QA-EMP-A` y la RPC de la lista responde `ok`.
+
+## Texto para pegar en Cowork (ronda 4: repetir el paso 5)
+
+> Eres Cowork. Haz SOLO estas comprobaciones en la vista previa de QA `https://deploy-preview-118--chic-entremet-9107cf.netlify.app` (nunca en producción). Cuentas ficticias. Usa la pantalla como una persona, sin consola ni código. Para en la primera diferencia y cuéntamela con el texto exacto. «Borrar los datos del sitio» = borrar cookies, almacenamiento local y de sesión, bases IndexedDB, caché y service workers del sitio, y recargar con Ctrl+Shift+R; dime cuándo lo haces.
+>
+> 0. Borra los datos del sitio (con caché y service workers) ahora. Esto quita el marcador de «colecciones denegadas» que dejó la ronda anterior.
+> 1. Entra como `owner.a@qa.invalid` (la contraseña de siempre), pulsa «Abrir mi aplicación» de `QA Empresa A` y espera 30 segundos sin tocar nada. Dime si sale banner rojo, el aviso «N colecciones solo en este equipo» (con el número) o «Arranque: datos que no se pudieron cargar» (con el número).
+> 2. Abre «Productos»: debe verse el catálogo de `QA Empresa A` (unos 30 productos) y NINGUNO de los productos de las empresas F4 (`Café F4-1`, `Café F4-3`, `Harina F4-3`, `Azúcar F4-3`). Dime cuántos productos ves.
+> 3. Pulsa «← Plataforma» y cierra sesión.
+>
+> Al terminar dime: (1) qué pasos fueron como se describe; (2) los distintos, con el texto exacto; (3) cada aviso rojo o «colecciones solo en este equipo», con el número y el paso.
+
+Resultado esperado de la ronda 4: sin banner rojo; «colecciones solo en este equipo» en 0 o 1 (solo `empresas`/`configEmpresa`, que no se sincronizan por diseño); catálogo de `QA Empresa A` sin productos de F4. Después, Claude comprueba en los registros de QA que no hay 403 de `almacen_kv` ni `abc_productos_guardar_lista` en esa ventana.
+
 ## Resultado esperado
 | Paso | Esperado |
 |---|---|
