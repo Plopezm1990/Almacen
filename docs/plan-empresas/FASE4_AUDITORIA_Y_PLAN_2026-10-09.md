@@ -98,6 +98,41 @@ QA **no** refleja esto: allí `perfiles` y `suscripciones_push` solo dejan lo pr
 3. `suscripciones_push`: quitar la rama «user_id nulo y Propietario» (la función de envío ignora esas filas, así que nadie las usa).
 Pruebas: Postgres real con la forma de QA y la de producción (como p09), dos empresas, mutaciones; después aplicación en QA y prueba con la pantalla (dos empresas leyendo movimientos y perfiles). Producción solo con autorización escrita, junto con F4–F4d.
 
+## 4e. Hecho en QA (pendiente de aplicar): perfiles, movimientos y avisos push por empresa
+
+Migración `20261009180000_plataforma_f4e_perfiles_movimientos_push_por_empresa.sql`, según el diseño del
+apartado anterior, con un cambio frente a lo propuesto: las dos funciones antiguas de producción
+(`completar_local_movimiento`, `estampar_propiedad_suscripcion_push`) se sustituyen por la misma función
+con el filtro de empresa añadido mediante **sustitución de texto comprobada contra su huella exacta de
+producción** (igual que hace F4 con las de P3c): si la función existe pero su texto no es exactamente el
+de producción, la migración se niega; si no existe (QA), no se toca nada. `movimientos_registro` recibe
+`empresa_id`/`local_id` (QA ya los tenía) con relleno de las filas existentes a partir de
+`datos.empresaId`/`datos.localId`/el local; las no atribuibles se conservan ocultas.
+
+**Probado en Postgres real (`p10`)**, con la forma de producción y la de QA, antes y después, incluyendo:
+un Propietario solo gestiona cuentas con membresía activa en una empresa donde también es Propietario
+(perfil y membresía deben coincidir); una empresa dada de baja no amplía lo que se gestiona ni lo que se
+ve; los movimientos se atribuyen por el dato, por el local o por la única empresa de la cuenta, y fallan
+cerrado con dos empresas activas; borrar sigue siendo solo del Propietario y solo de su empresa; la
+empresa y el local de un movimiento no se pueden cambiar desde la API; los avisos push dejan de verse
+sin dueño y el disparador que infiere el local ya no se rompe con dos empresas que compartan clave en
+`almacen_kv` (antes daba el error real de Postgres «more than one row returned by a subquery», código
+21000); la migración es idempotente, atómica y se niega si encuentra una regla, una versión de las
+funciones antiguas o un estado previo (falta F4 o F4d) que no conoce, sin dejar nada a medias.
+
+**29 mutaciones: 27 detectadas, 2 equivalentes** (comprobado, no supuesto): quitar la condición de
+`WITH CHECK` de la regla de actualización de `perfiles`, o la condición de propiedad de la regla de
+borrado de `suscripciones_push`, no abre ningún hueco porque Postgres comprueba la fila resultante de un
+`UPDATE` (y la fila candidata de un `DELETE`) también contra la regla de `SELECT` de la tabla, aunque la
+consulta no lleve `RETURNING`; aquí la regla de `SELECT` exige lo mismo que la condición quitada, así que
+el hueco nunca llega a abrirse. Comprobado con una tabla de prueba aislada antes de aceptarlo como
+mutación equivalente.
+
+**Aún no aplicada ni en QA ni en producción:** afecta a `movimientos_registro` (estructura) y a reglas de
+tres tablas; antes de aplicarla en QA hace falta la autorización de Pedro para ese paso (igual que F4/F4d:
+la parte de estructura y reglas la ejecutará Cowork en el editor SQL porque la herramienta cancela los
+`ALTER TABLE`/`CREATE POLICY`/`UPDATE` sola). **Orden en producción: F4, F4b, F4c, F4d, F4e.**
+
 ## 5. Limitaciones declaradas
 
 - **Una cuenta = una empresa activa** para las colecciones comunes. Con membresías activas en varias empresas **activas** (las dadas de baja no cuentan desde F4d), las escrituras sin empresa se rechazan y las lecturas por clave devolverían varias filas.

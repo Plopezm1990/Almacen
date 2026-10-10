@@ -1,13 +1,13 @@
-name: "Puerta de CI general -- candidato a release (237/237 contratos activos)"
+name: "Puerta de CI general -- candidato a release (238/238 contratos activos)"
 
 # Punto 3: generaliza la puerta validada en el Punto 2
 # (cierre-proyecto-a/punto2/) a infraestructura reutilizable del
 # repositorio, basada en el manifiesto versionado
-# (tests/ci/manifiesto_clasificacion.json, 254 archivos) sobre el SHA
+# (tests/ci/manifiesto_clasificacion.json, 255 archivos) sobre el SHA
 # exacto evaluado, en 5 jobs:
 #   - node-y-postgres: ejecuta tests/ci/ejecutar_bateria_no_db.sh (211
 #     activos Node), ejecutar_pglite_local.sh (1 activo más su bootstrap)
-#     y preparar_postgres_local.sh (22 activos Postgres 16 + 1 histórico
+#     y preparar_postgres_local.sh (23 activos Postgres 16 + 1 histórico
 #     esperado en rojo), contra motores desechables.
 #   - a09-postgres17: repite el contrato A09 con dos conexiones reales
 #     sobre PostgreSQL 17; es una repetición por versión, no otro archivo.
@@ -23,7 +23,7 @@ name: "Puerta de CI general -- candidato a release (237/237 contratos activos)"
 #     calculado a partir del resultado real (`outcome`) de cada paso,
 #     nunca fijo.
 #   - gate-final: exige que los cuatro jobs de prueba hayan terminado con
-#     éxito, SUMA los outputs reales únicos (211+22+1+3=237) y solo entonces
+#     éxito, SUMA los outputs reales únicos (211+23+1+3=238) y solo entonces
 #     imprime el resumen -- no hay ningún `echo` de un número que no se
 #     haya demostrado primero. Revalida además el manifiesto contra el
 #     árbol real (inventario, clasificación, histórico PM33 P01 separado
@@ -174,7 +174,7 @@ jobs:
           echo "pglite_infra_fail=${infra:--1}" >> "$GITHUB_OUTPUT"
           exit $code
 
-      - name: 22 contratos activos Postgres 16 + 1 histórico esperado en rojo (P01)
+      - name: 23 contratos activos Postgres 16 + 1 histórico esperado en rojo (P01)
         id: postgres_run
         shell: bash
         run: |
@@ -449,8 +449,8 @@ jobs:
           [ "$NODE_ACTIVE_PASS" = "211" ] || { echo "NODE_ACTIVE_PASS != 211" >&2; fallo=1; }
           [ "$NODE_ACTIVE_FAIL" = "0" ] || { echo "NODE_ACTIVE_FAIL != 0" >&2; fallo=1; }
           [ "$INFRA_FAIL" = "0" ] || { echo "INFRA_FAIL != 0" >&2; fallo=1; }
-          [ "$POSTGRES_ACTIVE_TOTAL" = "22" ] || { echo "POSTGRES_ACTIVE_TOTAL != 22" >&2; fallo=1; }
-          [ "$POSTGRES_ACTIVE_PASS" = "22" ] || { echo "POSTGRES_ACTIVE_PASS != 22" >&2; fallo=1; }
+          [ "$POSTGRES_ACTIVE_TOTAL" = "23" ] || { echo "POSTGRES_ACTIVE_TOTAL != 23" >&2; fallo=1; }
+          [ "$POSTGRES_ACTIVE_PASS" = "23" ] || { echo "POSTGRES_ACTIVE_PASS != 23" >&2; fallo=1; }
           [ "$POSTGRES_ACTIVE_FAIL" = "0" ] || { echo "POSTGRES_ACTIVE_FAIL != 0" >&2; fallo=1; }
           [ "$HISTORICAL_EXPECTED_FAIL" = "1" ] || { echo "HISTORICAL_EXPECTED_FAIL != 1" >&2; fallo=1; }
           [ "$PGLITE_ACTIVE_TOTAL" = "1" ] || { echo "PGLITE_ACTIVE_TOTAL != 1" >&2; fallo=1; }
@@ -478,15 +478,15 @@ jobs:
             echo "historical_expected_fail=$HISTORICAL_EXPECTED_FAIL"
           } >> "$GITHUB_OUTPUT"
 
-          echo "CALCULO_TOTAL_ACTIVOS=$total_activos (211 Node + 22 Postgres 16 + 1 PGlite + 3 full-stack)"
+          echo "CALCULO_TOTAL_ACTIVOS=$total_activos (211 Node + 23 Postgres 16 + 1 PGlite + 3 full-stack)"
           echo "CALCULO_ACTIVE_PASS=$active_pass"
           echo "CALCULO_ACTIVE_FAIL=$active_fail"
 
-          if [ "$total_activos" -ne 237 ]; then
+          if [ "$total_activos" -ne 238 ]; then
             echo "TOTAL_ACTIVOS_CALCULADO_DISTINTO_DE_230: $total_activos" >&2
             exit 1
           fi
-          if [ "$active_pass" -ne 237 ] || [ "$active_fail" -ne 0 ]; then
+          if [ "$active_pass" -ne 238 ] || [ "$active_fail" -ne 0 ]; then
             echo "ACTIVE_PASS/ACTIVE_FAIL_CALCULADOS_NO_CUADRAN: pass=$active_pass fail=$active_fail" >&2
             exit 1
           fi
