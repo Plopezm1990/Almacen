@@ -41,7 +41,10 @@ begin
   if v_oid is null then
     return;
   end if;
-  v_def := pg_get_functiondef(v_oid);
+  -- PostgreSQL devuelve las definiciones con LF aunque el archivo se haya
+  -- editado en Windows. Normalizamos ambos lados para que la huella no dependa
+  -- del editor ni del sistema operativo.
+  v_def := replace(pg_get_functiondef(v_oid), chr(13), '');
   if position('v_sin_fiscal' in v_def) > 0 then
     return; -- ya aplicada
   end if;
@@ -76,6 +79,8 @@ begin
 
   v_nuevo := v_def;
   for i in 1 .. array_length(v_de, 1) loop
+    v_de[i] := replace(v_de[i], chr(13), '');
+    v_a[i] := replace(v_a[i], chr(13), '');
     v_n := (length(v_nuevo) - length(replace(v_nuevo, v_de[i], ''))) / length(v_de[i]);
     if v_n <> 1 then
       raise exception 'PLATAFORMA_F4C_PARCHE_NO_APLICABLE:abc_productos_guardar_lista:%:%', i, v_n;
