@@ -128,10 +128,19 @@ consulta no lleve `RETURNING`; aquí la regla de `SELECT` exige lo mismo que la 
 el hueco nunca llega a abrirse. Comprobado con una tabla de prueba aislada antes de aceptarlo como
 mutación equivalente.
 
-**Aún no aplicada ni en QA ni en producción:** afecta a `movimientos_registro` (estructura) y a reglas de
-tres tablas; antes de aplicarla en QA hace falta la autorización de Pedro para ese paso (igual que F4/F4d:
-la parte de estructura y reglas la ejecutará Cowork en el editor SQL porque la herramienta cancela los
-`ALTER TABLE`/`CREATE POLICY`/`UPDATE` sola). **Orden en producción: F4, F4b, F4c, F4d, F4e.**
+**Aplicada y verificada en QA (2026-10-10, con autorización de Pedro):** las funciones, el relleno de
+`empresa_id`/`local_id` de `movimientos_registro`, el disparador nuevo y las 9 reglas de las tres tablas
+se aplicaron con la herramienta. Solo 4 `DROP POLICY` de las reglas ya sustituidas (`qa_perfil_propio_select`,
+`qa_perfil_propio_update`, `movimientos_registro_select`, `qa_push_propio`) quedaron fuera de su alcance
+(igual que en F4/F4d) y las ejecutó Pedro en el editor SQL; mientras tanto convivieron con las nuevas sin
+abrir ningún hueco (la regla nueva de lectura ya era un superconjunto de la antigua en `perfiles` y
+`movimientos_registro`; en `suscripciones_push` la antigua solo añadía la rama «propio sin exigir perfil
+activo», que ya existía antes de F4e). **Comprobado después (solo lectura):** exactamente 2+3+4 reglas, las
+4 funciones privadas con huella idéntica a la copia local, el disparador nuevo presente, ninguna de las dos
+funciones antiguas de producción existe en QA (no se tocan), y una prueba real con `owner.a` (deshecha con
+una excepción, sin dejar nada): ve solo los perfiles y movimientos de `QA-EMP-A` (su única empresa activa),
+inserta un movimiento que se etiqueta solo con esa empresa, y puede actualizar su propio perfil. **Orden en
+producción: F4, F4b, F4c, F4d, F4e** (pendiente de autorización escrita para ese paso).
 
 ## 5. Limitaciones declaradas
 
