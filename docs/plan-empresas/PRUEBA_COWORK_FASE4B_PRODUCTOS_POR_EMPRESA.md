@@ -35,7 +35,7 @@ Qué se comprueba: con P3c + F4 + F4b, la lista de productos de cada empresa se 
 > 4. Entra como `owner.a@qa.invalid` (panel «Plataforma») y crea la empresa `QA F4 Cliente 3`, local `Local F4-3`, dueño `Dueña F4-3`, correo `duena.f4.3@qa.invalid`, con la contraseña inicial propuesta (apúntala). Cierra la sesión del panel. Borra los datos del sitio. Entra como `duena.f4.3@qa.invalid` con esa contraseña, elige `ClaveNueva2026F4` (espera 30 s antes), y crea el producto `Azúcar F4-3` (costo 2, stock mínimo 1, sin precio de venta). Espera 30 segundos, anota avisos y «cambios sin confirmar». Cierra sesión, borra los datos del sitio, vuelve a entrar como `duena.f4.3`: debe verse `Azúcar F4-3`.
 > 5. Entra como `owner.a@qa.invalid`, «Abrir mi aplicación» (espera 30 s) y mira «Productos»: debe verse el catálogo de `QA Empresa A` y NINGUNO de los productos de las empresas F4. Pulsa «← Plataforma» y cierra sesión.
 >
-> Al terminar dime: (1) qué pasos fueron como se describe; (2) los distintos, con el texto exacto; (3) cada aviso rojo, «cambios sin confirmar» distinto de 0 o «colecciones solo en este equipo», con el número y el paso; (4) la contraseña inicial de `duena.f4.3`.
+> Al terminar dime: (1) qué pasos fueron como se describe; (2) los distintos, con el texto exacto; (3) cada aviso rojo, «cambios sin confirmar» distinto de 0 o «colecciones solo en este equipo», con el número y el paso; (4) la contraseña inicial de `duena.f4.3`; (5) cualquier OTRO aviso o mensaje que salga al guardar productos (por ejemplo del catálogo del TPV o del contexto fiscal), con el texto exacto y el paso.
 
 ## Resultado esperado
 | Paso | Esperado |
