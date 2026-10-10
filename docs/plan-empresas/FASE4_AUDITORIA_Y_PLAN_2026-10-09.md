@@ -59,6 +59,13 @@ Pruebas de mutación: 19 mutaciones de la migración (quitar el cargo, quitar la
 - Observación de Cowork: no hubo ventanas de incógnito reales; simuló «otro equipo» borrando todos los datos del sitio entre ventanas, lo que equivale para comprobar que lo guardado viene del servidor.
 - Para deshacer en QA: guion guardado fuera del repositorio (volver a `PRIMARY KEY (key)`, quitar etiqueta `__sin_empresa__`, recrear `pm05_almacen_*`).
 
+## 4b. Lista de productos de cada empresa nueva (F4b, 2026-10-10)
+
+- **Hallazgo (leyendo el cliente de P3c):** la RPC `abc_productos_guardar_lista` exige que la fila `productos` de la empresa ya exista (si no, `abc_productos_lista_nube_ausente`, que el cliente no trata como permiso denegado sino como fallo a reintentar: «cambios sin confirmar» y aviso rojo), y `abc_productos_solo_rpc` impide crearla desde la API. Una empresa dada de alta por la plataforma no tenía esa fila, así que su lista de productos nunca llegaba a la nube.
+- **Arreglo (`20261009150000_plataforma_f4b_lista_productos_inicial.sql`):** disparador `AFTER INSERT` en `public.empresas` que crea `(empresa, 'productos', [])` con los permisos del propietario de la función (la protección «productos solo por RPC» sigue intacta para la API) y relleno de las empresas existentes sin fila. Solo usa `create or replace` y `on conflict do nothing`: no borra ni pisa nada, y la herramienta de base de datos lo aceptó sin pedir confirmación.
+- **Probado:** `p09` (Postgres real) ampliado: relleno, alta nueva, no pisa una lista previa, idempotente, la API no ejecuta el disparador y la empresa nueva guarda su lista con la RPC; 6 mutaciones, todas detectadas. Aplicado en QA: todas las empresas tienen su lista (QA-EMP-A conserva sus 30 productos).
+- **Abierto (no es de F4):** un producto con **precio de venta** exige que el local tenga contexto fiscal (entidad fiscal y moneda); el alta de empresa de la plataforma no lo crea, así que guardar un producto con precio en una empresa nueva fallará hasta que se configure (capa de configuración ABC). Productos sin precio de venta (ingredientes) sí se guardan.
+
 ## 5. Limitaciones declaradas
 
 - **Una cuenta = una empresa** para las colecciones comunes. Con membresías activas en varias empresas, las escrituras sin empresa se rechazan y las lecturas por clave devolverían varias filas.

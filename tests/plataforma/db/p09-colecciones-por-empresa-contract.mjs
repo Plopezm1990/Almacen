@@ -23,6 +23,7 @@ assert.ok(['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname), 'Solo se a
 assert.equal(url.pathname, '/plataforma_p01_test', 'Solo se admite la base desechable plataforma_p01_test');
 
 const F4 = process.env.PLATAFORMA_MIGRACION_F4 || 'supabase/migrations/20261009140000_plataforma_f4_colecciones_por_empresa.sql';
+const F4B = process.env.PLATAFORMA_MIGRACION_F4B || 'supabase/migrations/20261009150000_plataforma_f4b_lista_productos_inicial.sql';
 const P3B = 'supabase/migrations/20261002170000_abc_p3b_espejo_lista_nube.sql';
 const FIXTURE_LISTA = 'tests/plataforma/db/fixtures-f4/abc_productos_guardar_lista_qa.sql';
 const sql = (p) => fs.readFileSync(p, 'utf8');
@@ -279,6 +280,9 @@ try {
     }
     assert.ok(!/\bdelete\s+from\b/i.test(migracion.replace(/--.*$/gm, '')), 'F4 no borra datos');
     assert.ok(!/\bdrop\s+table\b|\btruncate\b/i.test(migracion), 'F4 no elimina tablas ni las vacía');
+    const f4bTxt = sql(F4B);
+    assert.ok(!/\bdelete\s+from\b|\bdrop\s+(table|trigger|policy|function)\b|\btruncate\b/i.test(f4bTxt.replace(/--.*$/gm, '')), 'F4b no borra ni elimina nada');
+    assert.ok(/on conflict \(empresa_id, key\) do nothing/.test(f4bTxt), 'F4b nunca pisa una fila existente');
   }
 
   // === 1. Forma «qa» =========================================================================================
@@ -485,6 +489,37 @@ try {
     await fallo(lista(await como(N_OWN), PRODUCTOS_A, PRODUCTOS_A, 'op-n-0001-abcdefgh'), { mensaje: 'abc_productos_lista_nube_ausente' }, 'empresa sin lista');
     // Sin sesión.
     await fallo(lista(cNadie, PRODUCTOS_A, PRODUCTOS_A, 'op-x-0001-abcdefgh'), { mensaje: 'abc_productos_lista_nube_ausente' }, 'cuenta sin empresa');
+    // --- F4b: cada empresa nace con su lista de productos vacía --------------------------------------
+    {
+      const antesA = JSON.stringify((await admin.query("select value from public.almacen_kv where key='productos' and empresa_id='E-A'")).rows);
+      const antesB = JSON.stringify((await admin.query("select value from public.almacen_kv where key='productos' and empresa_id='E-B'")).rows);
+      // Una empresa que ya tiene su fila antes de que exista la fila de empresa no se pisa.
+      await admin.query("insert into public.almacen_kv(empresa_id, key, value) values ('E-PREVIA','productos','[{\"id\":\"X1\"}]')");
+      await admin.query(sql(F4B));
+      assert.equal(JSON.stringify((await admin.query("select value from public.almacen_kv where key='productos' and empresa_id='E-A'")).rows), antesA, 'F4b no toca la lista de A');
+      assert.equal(JSON.stringify((await admin.query("select value from public.almacen_kv where key='productos' and empresa_id='E-B'")).rows), antesB, 'F4b no toca la lista de B');
+      assert.equal((await admin.query("select value from public.almacen_kv where key='productos' and empresa_id='E-NEW'")).rows[0].value.length, 0, 'relleno: la empresa existente sin lista recibe una lista vacía');
+      await admin.query("insert into public.empresas(id, nombre) values ('E-FRESCA','Fresca')");
+      assert.deepEqual((await admin.query("select value from public.almacen_kv where key='productos' and empresa_id='E-FRESCA'")).rows.map((r) => r.value), [[]], 'una empresa nueva nace con su lista vacía');
+      await admin.query("insert into public.almacen_kv(empresa_id, key, value) values ('E-PREVIA2','productos','[{\"id\":\"X2\"}]')");
+      await admin.query("insert into public.empresas(id, nombre) values ('E-PREVIA2','Con lista previa')");
+      assert.equal((await admin.query("select value->0->>'id' i from public.almacen_kv where key='productos' and empresa_id='E-PREVIA2'")).rows[0].i, 'X2', 'el alta de empresa no pisa una lista que ya existía');
+      await admin.query("update public.empresas set nombre='Fresca 2' where id='E-FRESCA'");
+      assert.equal(await n("select count(*)::int n from public.almacen_kv where key='productos' and empresa_id='E-FRESCA'"), 1, 'actualizar la empresa no duplica nada');
+      // Idempotente.
+      const foto = JSON.stringify((await admin.query('select empresa_id, key, value from public.almacen_kv order by empresa_id, key')).rows);
+      await admin.query(sql(F4B));
+      assert.equal(JSON.stringify((await admin.query('select empresa_id, key, value from public.almacen_kv order by empresa_id, key')).rows), foto, 're-aplicar F4b no cambia nada');
+      await fallo((await como(N_OWN)).query('select private.plataforma_f4b_lista_productos_inicial()'), { code: '42501' }, 'la API no ejecuta el disparador de F4b');
+      // Ahora la empresa nueva guarda su lista de productos con la RPC (antes: lista ausente).
+      const cN = await como(N_OWN);
+      const prodN = [{ id: 'N1', empresaId: 'E-NEW', localId: 'L-N1', nombre: 'Café en grano', stock: 3 }];
+      const rN = (await lista(cN, [], prodN, 'op-n-0002-abcdefgh')).rows[0].r;
+      assert.equal(rN.ok, true);
+      assert.equal(rN.lista_confirmada[0].nombre, 'Café en grano', 'la empresa nueva ya guarda su lista de productos');
+      assert.equal((await admin.query("select value->0->>'id' i from public.almacen_kv where key='productos' and empresa_id='E-NEW'")).rows[0].i, 'N1');
+      assert.equal((await admin.query("select value->0->>'stock' s from public.almacen_kv where key='productos' and empresa_id='E-A'")).rows[0].s, '6', 'y la lista de A sigue como estaba');
+    }
     // El espejo P3b (abc_catalogo_guardar_productos): solo la fila de la empresa indicada.
     await cAOwn.query("select public.abc_catalogo_guardar_productos('op-m-1', 'E-A', 'L-A1', 'EUR', $1::jsonb)", [JSON.stringify([{ id: 'P1', precioVenta: 2 }])]);
     assert.equal((await admin.query("select value->0->>'precioVenta' s from public.almacen_kv where key='productos' and empresa_id='E-A'")).rows[0].s, '2');
@@ -534,9 +569,12 @@ try {
     await admin.query(migracion);
     assert.equal(await pkDe(), 'PRIMARY KEY (empresa_id, key)');
     assert.deepEqual(await politicas(), ['plataforma_kv_delete', 'plataforma_kv_insert', 'plataforma_kv_select', 'plataforma_kv_update'], 'las políticas «acceso por rol y clave» se sustituyen');
+    await admin.query(sql(F4B));
+    assert.equal(await n("select count(*)::int n from public.almacen_kv where key='productos' and empresa_id in ('E-A','E-B','E-NEW')"), 3, 'F4b también rellena en la forma de producción');
     assert.equal(await n("select count(*)::int n from public.almacen_kv where empresa_id='__sin_empresa__'"), 7, 'las siete colecciones de antes se conservan, etiquetadas');
     const cNew = await como(N_OWN), cA = await como(A_OWN), cB = await como(B_OWN);
-    assert.equal((await leer(cNew, 'productos')).length, 0, 'la empresa nueva no hereda las colecciones de antes');
+    const vistaNueva = await leer(cNew, 'productos');
+    assert.deepEqual(vistaNueva.map((f) => [f.empresa_id, f.value.length]), [['E-NEW', 0]], 'la empresa nueva solo ve su lista vacía: no hereda las colecciones de antes');
     // Sin funciones ABC en este entorno: la migración no las crea.
     assert.equal(await n("select count(*)::int n from pg_proc where proname in ('abc_productos_guardar_lista','abc_catalogo_guardar_productos')"), 0);
     // Y sin el disparador de «productos solo por RPC» la empresa nueva sí escribe su lista.
