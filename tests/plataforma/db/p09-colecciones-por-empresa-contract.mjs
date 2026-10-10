@@ -265,6 +265,18 @@ try {
     const frag = "update public.almacen_kv set value=v_kv_nuevo, updated_at=now() where key='productos';";
     assert.equal(p3b.split(frag).length - 1, 1, 'la migración P3b contiene exactamente una vez la sentencia que F4 corrige');
     assert.ok(migracion.includes(frag), 'F4 busca exactamente esa sentencia');
+    // La RPC de P3c (fuente en la migración de «lista confirmada») contiene, exactamente una vez, los
+    // cuatro fragmentos que F4 sustituye: F4 encaja con la versión que se publicará.
+    const p3c = sql('supabase/migrations/20261005100000_abc_p3c_lista_confirmada.sql');
+    for (const f of [
+      'select k.value,k.empresa_id into v_actual,v_lista_empresa',
+      "from public.almacen_kv k where k.key='productos' for update;",
+      "update public.almacen_kv set value=v_fusion,updated_at=now() where key='productos';",
+      "select k.value into v_fusion from public.almacen_kv k where k.key='productos';",
+    ]) {
+      assert.equal(p3c.split(f).length - 1, 1, `P3c contiene exactamente una vez: ${f}`);
+      assert.ok(migracion.includes(f), `F4 busca: ${f}`);
+    }
     assert.ok(!/\bdelete\s+from\b/i.test(migracion.replace(/--.*$/gm, '')), 'F4 no borra datos');
     assert.ok(!/\bdrop\s+table\b|\btruncate\b/i.test(migracion), 'F4 no elimina tablas ni las vacía');
   }
