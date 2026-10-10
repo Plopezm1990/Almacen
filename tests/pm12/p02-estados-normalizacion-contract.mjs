@@ -9,7 +9,7 @@ vm.runInContext(source, context);
 const api = context.globalThis.__pm12ConteoEstados;
 assert.ok(api, 'API PM12 disponible');
 
-const { ESTADOS, normalizarCantidad, resumenCobertura, estadoDerivado, validarCierre } = api;
+const { ESTADOS, normalizarCantidad, resumenCobertura, estadoDerivado, esConteoAbierto, validarCierre } = api;
 assert.deepEqual(Object.values(ESTADOS), ['BORRADOR', 'EN_CURSO', 'PARCIAL', 'COMPLETADO', 'CANCELADO']);
 
 for (const valor of ['', '   ', null, undefined]) {
@@ -48,6 +48,13 @@ assert.equal(estadoDerivado({ items }), ESTADOS.EN_CURSO);
 assert.equal(estadoDerivado({ completado: true, items }), ESTADOS.COMPLETADO);
 assert.equal(estadoDerivado({ cancelado: true, items }), ESTADOS.CANCELADO);
 assert.equal(estadoDerivado({ estado: 'PARCIAL', items }), ESTADOS.PARCIAL);
+assert.equal(esConteoAbierto({ estado: 'BORRADOR', completado: false, items }), true);
+assert.equal(esConteoAbierto({ estado: 'EN_CURSO', completado: false, items }), true);
+for (const estado of ['COMPLETADO', 'PARCIAL', 'CANCELADO']) {
+  assert.equal(esConteoAbierto({ estado, completado: false, items }), false, `${estado} no congela el almacén aunque falte el flag histórico`);
+}
+assert.equal(esConteoAbierto({ completado: true, items }), false);
+assert.equal(esConteoAbierto({ cancelado: true, estado: 'EN_CURSO', items }), false);
 
 assert.equal(validarCierre({ items: [] }).error, 'sin_productos');
 assert.equal(validarCierre({ items: [{ productoId: 'A', conteo: '' }] }).error, 'conteo_vacio');

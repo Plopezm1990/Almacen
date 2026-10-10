@@ -1,0 +1,39 @@
+name: PM12 legacy count unfreeze
+
+on:
+  pull_request:
+    branches: [release]
+    paths:
+      - '.github/workflows/pm12-legacy-count-unfreeze.yml'
+      - 'fuente.js'
+      - 'pm12-conteo-estados-v1.js'
+      - 'source-recovery/fuente-recuperado.js'
+      - 'tests/pm12/p02-estados-normalizacion-contract.mjs'
+      - 'tests/pm12/p04-cierre-honesto-ux-contract.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - name: Syntax and recovery parity
+        run: |
+          node --check fuente.js
+          node --check pm12-conteo-estados-v1.js
+          node --check source-recovery/fuente-recuperado.js
+          python3 source-recovery/recuperar_candidato.py --check
+      - name: Inventory state regression
+        run: |
+          node tests/pm12/p02-estados-normalizacion-contract.mjs
+          node tests/pm12/p04-cierre-honesto-ux-contract.mjs
+
+  gate-final:
+    needs: [verify]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require verification success
+        run: test '${{ needs.verify.result }}' = 'success'
