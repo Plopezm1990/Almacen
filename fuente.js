@@ -101545,6 +101545,7 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, localActivoI
         detallePago: d2.detallePago || null,
         reembolso: d2.reembolso !== void 0 && d2.reembolso !== null ? Number(d2.reembolso) || 0 : null,
         medioReembolso: d2.medioReembolso || null,
+        datos: d2,
         fecha: d2.fechaOperacion || (creado ? creado.slice(0, 10) : todayISO()),
         hora: creado ? creado.slice(11, 16) : (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5),
         afectaStockTotal: delta !== 0,
@@ -106763,6 +106764,9 @@ function crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovi
         } catch {
           return { ok: false, pendiente: true, error: "No se pudo confirmar si el servidor recibi\xF3 la devoluci\xF3n. No repitas con otros datos: usa el mismo borrador para evitar duplicar stock o reembolso." };
         }
+      }
+      if (lineaVenta.datos?.origen === "ABC_PEDIDO_LINEA") {
+        return { ok: false, error: "Esta línea ABC necesita validación online para comprobar si el producto es recuperable o merma." };
       }
       const r2 = aplicarMovimientoStock({
         productoId,
