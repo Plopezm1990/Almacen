@@ -2,7 +2,7 @@
 
 Fecha: 2026-10-06
 Estado: `PLAN_Y_PREFLIGHT_SOLO_LECTURA_PREPARADOS`
-Rama base: `release` (`9ca58df`)
+Rama base: `release` (`339ed81`)
 
 ## Decisión y alcance
 
@@ -98,14 +98,22 @@ cambió **solo en memoria** una huella esperada: devolvió `ok=false` y señaló
 `registrar_venta_stock`. El archivo versionado conserva la huella correcta.
 No se cambiaron datos, funciones, permisos ni configuración de QA o producción.
 
+El 10/10/2026 se integró `release` `339ed81` sin conflictos. El preflight
+continúa siendo de solo lectura y su SHA-256 es
+`96efd09383febeb90622438a1c8bc15c25243b5544062f6c089b01d9196ccd17`.
+La repetición contra producción queda reservada para la ventana y requiere
+autorización separada.
+
 ## Puerta pendiente
 
 Los pasos 1–2 se implementaron después en el
 [PR borrador #125](https://github.com/Plopezm1990/Almacen/pull/125), con
-prueba local y puerta final de CI en verde. La comprobación de solo lectura
+prueba local y 17 comprobaciones remotas terminadas sobre `122b10a`; los cinco
+trabajos de la puerta general quedaron en verde. La comprobación de solo lectura
 se repitió el 6/10/2026 a las 04:45 UTC: `ok=true`, sin diferencias, historia
 esperada y cero ventas/reversos. La reconciliación **no está aplicada** en QA
-ni en producción. Quedan el humo funcional con sesión real en QA, una copia
-manual productiva nueva y la autorización específica de Pedro para esa
-ventana. El ejecutor de migración se ensayó con la CLI y PostgreSQL
-desechable; véase la hoja de preparación del PR #125.
+ni en producción. El humo funcional con sesión real en QA terminó con
+`ROLLBACK` y sin residuos el 6/10/2026. Quedan una copia manual productiva
+nueva, repetir este preflight y la autorización específica de Pedro para esa
+ventana. El ejecutor de migración se ensayó con la CLI y PostgreSQL desechable;
+véase la hoja de preparación del PR #125.
