@@ -101,8 +101,12 @@ No se cambiaron datos, funciones, permisos ni configuración de QA o producción
 El 10/10/2026 se integró `release` `339ed81` sin conflictos. El preflight
 continúa siendo de solo lectura y su SHA-256 es
 `96efd09383febeb90622438a1c8bc15c25243b5544062f6c089b01d9196ccd17`.
-La repetición contra producción queda reservada para la ventana y requiere
-autorización separada.
+La repetición contra producción se autorizó por separado y se ejecutó el
+10/10/2026 a las 09:14 CEST. Devolvió `ok=true`,
+`function_mismatches=[]`, `table_mismatches=[]`,
+`migration_history_ok=true`, `sale_operations=0` y `sale_movements=0`.
+Fue una única consulta de solo lectura; no modificó datos, funciones,
+permisos ni configuración.
 
 ## Puerta pendiente
 
@@ -113,7 +117,8 @@ trabajos de la puerta general quedaron en verde. La comprobación de solo lectur
 se repitió el 6/10/2026 a las 04:45 UTC: `ok=true`, sin diferencias, historia
 esperada y cero ventas/reversos. La reconciliación **no está aplicada** en QA
 ni en producción. El humo funcional con sesión real en QA terminó con
-`ROLLBACK` y sin residuos el 6/10/2026. Quedan una copia manual productiva
-nueva, repetir este preflight y la autorización específica de Pedro para esa
-ventana. El ejecutor de migración se ensayó con la CLI y PostgreSQL desechable;
-véase la hoja de preparación del PR #125.
+`ROLLBACK` y sin residuos el 6/10/2026. La repetición productiva del preflight
+quedó conforme el 10/10/2026 a las 09:14 CEST. Quedan una copia manual
+productiva nueva del mismo día y la autorización específica de Pedro para la
+escritura de esa ventana. El ejecutor de migración se ensayó con la CLI y
+PostgreSQL desechable; véase la hoja de preparación del PR #125.
