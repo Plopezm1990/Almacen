@@ -86,6 +86,14 @@ Resultado esperado de la ronda 4: sin banner rojo; «colecciones solo en este eq
 >
 > Al terminar dime: (1) qué pasos fueron como se describe; (2) los distintos, con el texto exacto; (3) cada aviso rojo o «colecciones solo en este equipo», con el número y el paso.
 
+## Resultado de la ronda 4b, pasos 0–1 (2026-10-10, dirección nueva): F4d funciona; queda un aviso que no es de F4
+
+- **Paso 0:** la dirección nueva mostró el inicio de sesión (almacenamiento vacío). **Paso 1** (`owner.a` → «Abrir mi aplicación» de `QA Empresa A`, 30 s): **sin banner rojo** y «Arranque: datos que no se pudieron cargar» = **0** (antes: banner y 1). Quedó el aviso «1 colección solo en este equipo (el servidor no permite guardarla)» (antes: 4). Cowork se detuvo ahí por la regla de «parar en la primera diferencia»; ese 1 estaba dentro de lo esperado (0 o 1) y se le pide continuar con los pasos 2 y 3.
+- **Registros de QA de la ventana 13:53–15:30 UTC (solo lectura):** ningún `almacen_kv_empresa_ambigua` ni `almacen_kv_empresa_no_determinada` y **ningún 403 sobre `almacen_kv`**. Solo dos respuestas de error de la aplicación:
+  1. `POST movimientos_registro` → 403 «new row violates row-level security policy for table "movimientos_registro"». El cliente marca como «solo en este equipo» toda clave rechazada por permisos; esta es, casi con seguridad, la «1 colección» (`movimientos`). Es una diferencia **de QA**: allí `movimientos_registro` solo tiene regla de lectura (`movimientos_registro_select`, con `empresa_id`); la de producción es otra (ver FASE4 §4d). Ya salía el 9 de octubre a las 17:32, antes de F4.
+  2. `POST rpc/abc_productos_guardar_lista` → 400 `abc_productos_cambio_contexto_no_admitido:QA-CAT-A1-AGUA` (regla propia de P3c, no es un error de permisos, por eso no activa ningún marcador). Los 30 productos de `QA Empresa A` son datos antiguos de pruebas de QA: llevan `localId` pero **no `empresaId`** dentro del dato, y P3c no admite que un guardado les añada `empresaId`/`localId`. Afecta solo a esa lista antigua (las empresas nuevas guardan con `empresaId` desde el primer producto) y no es de F4; queda anotado como asunto abierto de P3c.
+  (Otros errores de Postgres de esa franja —`column "q" does not exist`, `pedido_lineas … foreign key`, etc.— son de consultas manuales a QA ajenas a la aplicación.)
+
 ## Resultado esperado
 | Paso | Esperado |
 |---|---|
