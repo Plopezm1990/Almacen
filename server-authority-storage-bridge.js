@@ -155,12 +155,12 @@
       return respuestaStorage(key, value, shared);
     };
 
-    storage.set = async function (key, value, shared) {
+    storage.set = async function (key, value, shared, opcionesP3c) {
       var normalized = keyOf(key);
-      if (!TARGETS[normalized]) return originalSet(key, value, shared);
+      if (!TARGETS[normalized]) return originalSet(key, value, shared, opcionesP3c);
 
       var autoridad = await resolverAutoridad();
-      if (!autoridad.active) return originalSet(key, value, shared);
+      if (!autoridad.active) return originalSet(key, value, shared, opcionesP3c);
 
       return respuestaEscrituraAutoritativa(key, value, shared);
     };

@@ -6,11 +6,12 @@ import { readFile } from "node:fs/promises";
 // No sustituye a p3b-espejo-contract.sql (que se ejecuta contra una base real con ROLLBACK).
 // MIGRACION_P3B (variable de entorno) permite probar variantes rotas en las comprobaciones de mutantes.
 const root = new URL("../../", import.meta.url);
-const read = (p) => readFile(new URL(p, root), "utf8");
+const normalizarSaltos = (texto) => texto.replace(/\r\n?/g, "\n");
+const read = async (p) => normalizarSaltos(await readFile(new URL(p, root), "utf8"));
 
 const p3 = await read("supabase/migrations/20261002150000_abc_p3_catalogo_autoritativo.sql");
 const mig = process.env.MIGRACION_P3B
-  ? await readFile(process.env.MIGRACION_P3B, "utf8")
+  ? normalizarSaltos(await readFile(process.env.MIGRACION_P3B, "utf8"))
   : await read("supabase/migrations/20261002170000_abc_p3b_espejo_lista_nube.sql");
 const live = await read("tests/p3/p3b-espejo-contract.sql");
 

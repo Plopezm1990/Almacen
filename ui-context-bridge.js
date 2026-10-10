@@ -72,7 +72,7 @@
     return getAnterior(key, shared);
   };
 
-  window.storage.set = async function (key, value, shared) {
+  window.storage.set = async function (key, value, shared, opcionesP3c) {
     if (key === "pinPropietario") {
       if (!(await esperarBarrera())) throw new Error("Instalación no validada");
       // El propio texto de la UI define este PIN como código local del
@@ -122,7 +122,7 @@
       return respuesta(key, leerLocal(key));
     }
 
-    return setAnterior(key, value, shared);
+    return setAnterior(key, value, shared, opcionesP3c);
   };
 
   if (deleteAnterior) {
@@ -197,6 +197,16 @@
   var enCurso = false;
   var otraVez = false;
   var intentos = 0;
+
+  if (typeof window.addEventListener === "function") {
+    window.addEventListener("productos-servidor-confirmados", function (ev) {
+      var d = ev && ev.detail ? ev.detail : {};
+      if (referencia && Array.isArray(d.enviados) && Array.isArray(d.confirmados)
+          && JSON.stringify(referencia) === JSON.stringify(d.enviados)) {
+        referencia = d.confirmados;
+      }
+    });
+  }
 
   function aviso(clave, mensaje, detalle) {
     if (avisados[clave]) return;
@@ -476,14 +486,32 @@
     return r;
   };
 
-  window.storage.set = async function (key, value, shared) {
+  window.storage.set = async function (key, value, shared, opcionesP3c) {
     if (key !== CLAVE) return setAnterior(key, value, shared);
     var previa = referencia;
     var ahora = Date.now();
-    var resultado = await setAnterior(key, value, shared);
     var nueva = typeof value === "string" ? parsearLista(value) : null;
+    var opcionesP3c = {};
+    if (previa && nueva && ahora - ultimaInteraccion <= VENTANA_INTERACCION_MS && window.__nubeActiva) {
+      try {
+        var cambiosParaP3c = calcularCambios(previa, nueva);
+        if (cambiosParaP3c.length <= MAX_CAMBIOS_AUTOMATICOS) opcionesP3c.venta = cambiosParaP3c;
+        else opcionesP3c.masivo = true;
+      } catch (e) { /* el puente heredado conserva su aviso más abajo */ }
+    }
+    var resultado = await setAnterior(key, value, shared, opcionesP3c);
     if (nueva) {
-      referencia = nueva;
+      referencia = resultado && resultado.productosConfirmados && Array.isArray(resultado.listaConfirmada)
+        ? resultado.listaConfirmada : nueva;
+      // P3c guarda lista y catálogo dentro de la misma transacción. Si falló
+      // el guardado de la lista, tampoco se manda una RPC P3 separada que
+      // pudiera cambiar el precio del TPV mientras la pantalla queda pendiente.
+      if (resultado && ((resultado.catalogoYaSincronizado && !opcionesP3c.masivo) || resultado.catalogoBloqueado)) {
+        if (resultado.catalogoBloqueado) {
+          emitir("catalogo-tpv-error", { motivo: "lista_pendiente" });
+        }
+        return resultado;
+      }
       var porPersona = ahora - ultimaInteraccion <= VENTANA_INTERACCION_MS;
       if (previa && porPersona && !noDisponible && window.__nubeActiva) {
         try {
