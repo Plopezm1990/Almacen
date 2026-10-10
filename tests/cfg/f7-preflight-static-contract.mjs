@@ -19,11 +19,13 @@ const sql = readFileSync(sqlRuta, 'utf8');
 const doc = readFileSync(docRuta, 'utf8');
 const PRIMERA = '20260924160739'; // A09: primera migración candidata
 const EXCLUIDAS = new Set([
-  // Los paquetes PM09 y P3c se promueven en ventanas separadas y no forman parte de la foto F7.
+  // Los paquetes PM09, P3c y D09-D11 se promueven en ventanas separadas y no forman parte de la foto F7.
   '20261006040009_abc_f5_pm09_reconcile_prod_baseline.sql',
   '20261004201358_abc_p3c_concurrencia_productos.sql',
   '20261005060000_abc_p3c_titularidad_productos.sql',
   '20261005100000_abc_p3c_lista_confirmada.sql',
+  '20261010150000_abc_d09_d11_stock_order_integration.sql',
+  '20261010153000_abc_d10_legacy_refund_guard.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))
