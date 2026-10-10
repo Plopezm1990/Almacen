@@ -634,6 +634,17 @@ function redondearDineroPM08(valor) {
   const n2 = Number(valor);
   return Number.isFinite(n2) ? Math.round((n2 + Number.EPSILON) * 100) / 100 : NaN;
 }
+function validarReembolsoDevolucionPM08({ reembolso, medioReembolso, maximo = null } = {}) {
+  const importe = redondearDineroPM08(reembolso === "" || reembolso == null ? 0 : reembolso);
+  const medio = String(medioReembolso || (importe > 0 ? "EFECTIVO" : "SIN_REEMBOLSO")).trim().toUpperCase();
+  if (!Number.isFinite(importe)) return { ok: false, error: "Escribe un importe válido." };
+  if (importe < 0) return { ok: false, error: "El reembolso no puede ser negativo." };
+  if (importe === 0 && medio !== "SIN_REEMBOLSO") return { ok: false, error: "Para un reembolso económico, el importe debe ser mayor que cero." };
+  if (importe > 0 && medio === "SIN_REEMBOLSO") return { ok: false, error: "Elige un medio de reintegro." };
+  if (importe > 0 && !["EFECTIVO", "TARJETA", "TRANSFERENCIA", "OTRO"].includes(medio)) return { ok: false, error: "Elige un medio de reintegro." };
+  if (maximo !== null && Number.isFinite(Number(maximo)) && importe > Number(maximo) + 1e-6) return { ok: false, error: "El reembolso supera el importe permitido por la cantidad devuelta." };
+  return { ok: true, importe, medio };
+}
 function modoSincronizadoPM08() {
   return typeof window !== "undefined" && !!window.NUBE_URL && !window.__modoPruebasLocal;
 }
@@ -5753,8 +5764,10 @@ function crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovi
   }
   async function registrarDevolucionCliente({ productoId, cantidad, motivo, reembolso, medioReembolso, ventaId, fecha }) {
     const cant = Number(cantidad);
-    const reembolsoNum = redondearDineroPM08(reembolso === "" || reembolso == null ? 0 : reembolso);
-    const medio = String(medioReembolso || (reembolsoNum > 0 ? "EFECTIVO" : "SIN_REEMBOLSO")).trim().toUpperCase();
+    const validacionReembolso = validarReembolsoDevolucionPM08({ reembolso, medioReembolso });
+    if (!validacionReembolso.ok) return validacionReembolso;
+    const reembolsoNum = validacionReembolso.importe;
+    const medio = validacionReembolso.medio;
     const motivoLimpio = String(motivo || "").trim();
     if (!empresaId || !localActivoId) return { ok: false, error: "Selecciona un local concreto antes de registrar la devoluci\xF3n." };
     if (!ventaId) return { ok: false, error: "Elige la venta original." };
@@ -5777,7 +5790,8 @@ function crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovi
     if (cantidadDevuelta + cant > cantidadOriginal + 1e-6) return { ok: false, error: "La cantidad supera lo que queda pendiente de devolver en la venta." };
     const brutoUnitario = Math.abs(Number(lineaVenta.ingresoUnitario) || 0) * (1 + (Number(lineaVenta.ivaVentaAplicado) || 0) / 100);
     if (reembolsoNum > 0 && !(brutoUnitario > 0)) return { ok: false, error: "La venta no conserva un importe verificable para autorizar el reembolso." };
-    if (reembolsado + reembolsoNum > redondearDineroPM08((cantidadDevuelta + cant) * brutoUnitario) + 1e-6) return { ok: false, error: "El reembolso supera el importe permitido por la cantidad devuelta." };
+    const limiteReembolso = validarReembolsoDevolucionPM08({ reembolso: reembolsoNum, medioReembolso: medio, maximo: redondearDineroPM08((cantidadDevuelta + cant) * brutoUnitario) - reembolsado });
+    if (!limiteReembolso.ok) return limiteReembolso;
     const clave = clavePendientePM08("devolucion-cliente", empresaId, localActivoId);
     const fechaReal = fecha || leerPendientePM08(clave)?.payload?.fecha || todayISO();
     const payload = {
@@ -18953,7 +18967,7 @@ function Devoluciones({ productos = [], proveedores = [], devoluciones = [], mov
     setMotivo(pendiente.motivo || "");
     setProductoId(pendiente.productoId || "");
     if (vista === "cliente") {
-      setReembolso(Number(pendiente.reembolso) > 0 ? String(pendiente.reembolso) : "");
+      setReembolso(Number(pendiente.reembolso) > 0 ? String(pendiente.reembolso) : "0");
       setMedioReembolso(pendiente.medioReembolso || "SIN_REEMBOLSO");
       setVentaClave(encodeURIComponent(JSON.stringify([pendiente.ventaId, pendiente.productoId])));
     } else {
@@ -19004,6 +19018,9 @@ function Devoluciones({ productos = [], proveedores = [], devoluciones = [], mov
       const linea = lineasVenta.find((l22) => l22.clave === clave);
       setVentaClave(clave);
       setProductoId(linea?.productoId || "");
+      setCantidad(linea ? String(Math.min(1, linea.pendiente)) : "");
+      setReembolso(linea ? "0" : "");
+      setMedioReembolso("SIN_REEMBOLSO");
     },
     className: "w-full rounded-lg px-3 py-2 text-[13px]",
     style: estiloSelector
