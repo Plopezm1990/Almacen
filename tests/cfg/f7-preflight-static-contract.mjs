@@ -26,6 +26,13 @@ const EXCLUIDAS = new Set([
   '20261005100000_abc_p3c_lista_confirmada.sql',
   '20261010150000_abc_d09_d11_stock_order_integration.sql',
   '20261010153000_abc_d10_legacy_refund_guard.sql',
+  '20261009120000_plataforma_f1_administrador_y_empresas.sql',
+  '20261009130000_plataforma_f2_eliminar_empresa.sql',
+  '20261009140000_plataforma_f4_colecciones_por_empresa.sql',
+  '20261009150000_plataforma_f4b_lista_productos_inicial.sql',
+  '20261009160000_plataforma_f4c_lista_sin_contexto_fiscal.sql',
+  '20261009170000_plataforma_f4d_empresas_vigentes.sql',
+  '20261009180000_plataforma_f4e_perfiles_movimientos_push_por_empresa.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))
