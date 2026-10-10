@@ -1,7 +1,7 @@
 # F5 C08 Contrato de conservación y corrección documental
 
 Fecha: 2026-10-01  
-Estado: `CANDIDATO_C08_VALIDADO_PG_NO_APLICADO`
+Estado: `IMPLEMENTADO_Y_VERIFICADO_EN_QA; POLITICA_LEGAL_Y_UI_PENDIENTES`
 
 ## Alcance
 
@@ -42,6 +42,13 @@ respuesta fiscal conserva el resultado del modo configurado por C07, incluido
 La prueba PostgreSQL 16 cubrió conservación, huella, replay, inmutabilidad,
 rectificación vinculada, cancelación operativa y reembolso. El workflow pasó en
 32 segundos: https://github.com/Plopezm1990/Almacen/actions/runs/36914004105.
-Quedan pendientes advisors, revisión de asesoría/proveedor y decisión de
-aplicación en QA. No se aplican migraciones remotas ni se ejecuta deploy de
-Netlify.
+
+El ensayo conectado en QA del 9/10/2026 cubrió las mismas rutas, la unicidad de
+versión y el rechazo del Camarero/a. Terminó con `ROLLBACK` y cero residuos. Las
+tablas no conceden acceso directo al cliente y las RPC solo se conceden a
+`authenticated`, con validación interna de capacidad.
+
+Quedan pendientes la revisión de asesoría/proveedor, la política de
+conservación y acceso, la descarga autorizada, la pantalla y la aceptación.
+Producción no se ha modificado. Evidencia consolidada:
+`F7_C08_QA_RESULTADO_2026-10-09.md`.

@@ -37,4 +37,4 @@ for (const body of [iniciar, provisional, finalizar, reabrir]) {
   assert.match(body, /abc_operacion_fallar/);
 }
 
-console.log('ABC_F5_C04_CONCURRENCY_CONTRACT=PASS_WITH_POSTGRES_PENDING');
+console.log('ABC_F5_C04_CONCURRENCY_CONTRACT=PASS');

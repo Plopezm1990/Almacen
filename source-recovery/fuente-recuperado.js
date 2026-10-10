@@ -712,6 +712,21 @@ function mensajeErrorPM08(error, fallback = "No se ha podido confirmar la operac
     ["importe_precision_invalida", "El importe solo puede tener dos decimales."],
     ["medio_reembolso_invalido", "Elige un medio de reintegro coherente con el importe."],
     ["motivo_requerido", "Escribe el motivo de la operaci\xF3n."],
+    ["abc_movimiento_caja_no_autorizado", "Tu rol no tiene permiso para registrar movimientos manuales de caja."],
+    ["abc_reverso_caja_no_autorizado", "Solo Propietario o Encargado pueden revertir movimientos manuales de caja."],
+    ["movimiento_caja_dia_no_operativo", "Los movimientos manuales solo se pueden registrar en el d\xEDa operativo actual del servidor."],
+    ["categoria_movimiento_caja_invalida", "Elige una categor\xEDa v\xE1lida para la entrada o retirada."],
+    ["concepto_caja_requerido", "Escribe el concepto o justificante del movimiento."],
+    ["motivo_caja_requerido", "Escribe el motivo del movimiento de caja."],
+    ["motivo_reverso_caja_requerido", "Escribe el motivo del reverso."],
+    ["movimiento_caja_no_reversible_por_abc", "Solo se pueden revertir movimientos manuales creados por la v\xEDa ABC."],
+    ["abc_arqueo_caja_no_autorizado", "Tu rol no tiene permiso para registrar arqueos de caja."],
+    ["arqueo_caja_dia_no_operativo", "El arqueo solo se puede registrar en el d\xEDa operativo actual del servidor."],
+    ["denominaciones_caja_invalidas", "El desglose por denominaciones no es v\xE1lido."],
+    ["denominaciones_no_coinciden_contado", "El total de las denominaciones no coincide con el efectivo contado."],
+    ["efectivo_contado_invalido", "El efectivo contado debe ser cero o un importe positivo con dos decimales."],
+    ["sesion_caja_no_abierta", "Este terminal no tiene una sesi\xF3n de caja abierta."],
+    ["terminal_no_vinculado_sesion", "Este terminal no est\xE1 vinculado a la sesi\xF3n de caja."],
     ["caja_no_autorizada", "Tu rol no tiene permiso para operar la caja."],
     ["arqueo_no_autorizado", "Tu rol no tiene permiso para realizar arqueos."],
     ["devolucion_no_autorizada", "Tu rol no tiene permiso para registrar devoluciones."],
@@ -725,6 +740,7 @@ function mensajeErrorPM08(error, fallback = "No se ha podido confirmar la operac
 function normalizarMovimientoCajaPM08(fila) {
   if (!fila) return null;
   const creado = String(fila.created_at || fila.createdAt || "");
+  const payload = fila.payload && typeof fila.payload === "object" ? fila.payload : {};
   return {
     id: fila.operation_id || fila.operationId || fila.id,
     operationId: fila.operation_id || fila.operationId || fila.id,
@@ -737,10 +753,17 @@ function normalizarMovimientoCajaPM08(fila) {
     efectoEfectivo: Number(fila.efecto_efectivo ?? fila.efectoEfectivo) || 0,
     medioPago: fila.medio_pago || fila.medioPago || "EFECTIVO",
     concepto: fila.concepto || fila.motivo || "",
-    motivo: fila.concepto || fila.motivo || "",
+    motivo: payload.motivo || fila.motivo || "",
     origen: fila.origen_tipo || fila.origen || "MANUAL",
+    categoria: fila.categoria || payload.categoria || null,
     referenciaId: fila.origen_id || fila.referenciaId || null,
     refOperationId: fila.ref_operation_id || fila.refOperationId || null,
+    abcCommandId: fila.abc_command_id || fila.abcCommandId || null,
+    cajaId: fila.caja_id || fila.cajaId || null,
+    sessionId: fila.session_id || fila.sessionId || null,
+    terminalId: fila.terminal_id || fila.terminalId || null,
+    currencyCode: fila.currency_code || fila.currencyCode || "EUR",
+    operatingDay: fila.operating_day || fila.operatingDay || fila.fecha || null,
     actorUserId: fila.actor_user_id || fila.actorUserId || null,
     createdAt: creado || null,
     _pm08Servidor: !!(fila.operation_id || fila.actor_user_id)
@@ -766,6 +789,13 @@ function normalizarArqueoPM08(fila) {
     estado: fila.estado || "ACTIVO",
     anuladoPorOperationId: fila.anulado_por_operation_id || fila.anuladoPorOperationId || null,
     anuladoMotivo: fila.anulado_motivo || fila.anuladoMotivo || null,
+    abcCommandId: fila.abc_command_id || fila.abcCommandId || null,
+    cajaId: fila.caja_id || fila.cajaId || null,
+    sessionId: fila.session_id || fila.sessionId || null,
+    terminalId: fila.terminal_id || fila.terminalId || null,
+    currencyCode: fila.currency_code || fila.currencyCode || "EUR",
+    operatingDay: fila.operating_day || fila.operatingDay || fila.fecha || null,
+    denominaciones: fila.denominaciones && typeof fila.denominaciones === "object" ? fila.denominaciones : {},
     actorUserId: fila.actor_user_id || fila.actorUserId || null,
     createdAt: creado || null,
     _pm08Servidor: !!(fila.operation_id || fila.actor_user_id)
@@ -800,8 +830,8 @@ async function sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluci
   if (!modoSincronizadoPM08() || !window.__nubeActiva || !window.__nubeCliente) return { ok: false, offline: true };
   const supabase = window.__nubeCliente;
   const [rCaja, rArqueos, rCliente, rProveedor] = await Promise.all([
-    supabase.from("caja_operaciones").select("operation_id,tipo,empresa_id,local_id,fecha,importe,efecto_efectivo,medio_pago,concepto,origen_tipo,origen_id,ref_operation_id,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3),
-    supabase.from("arqueos_caja").select("operation_id,empresa_id,local_id,fecha,alcance,efectivo_base,efectivo_esperado,efectivo_contado,diferencia,notas,estado,anulado_por_operation_id,anulado_motivo,actor_user_id,created_at").order("created_at", { ascending: false }).limit(1e3),
+    supabase.from("caja_operaciones").select("operation_id,tipo,empresa_id,local_id,fecha,importe,efecto_efectivo,medio_pago,concepto,origen_tipo,origen_id,ref_operation_id,payload,actor_user_id,abc_command_id,caja_id,session_id,terminal_id,currency_code,operating_day,categoria,created_at").order("created_at", { ascending: false }).limit(2e3),
+    supabase.from("arqueos_caja").select("operation_id,empresa_id,local_id,fecha,alcance,efectivo_base,efectivo_esperado,efectivo_contado,diferencia,notas,estado,anulado_por_operation_id,anulado_motivo,actor_user_id,abc_command_id,caja_id,session_id,terminal_id,currency_code,operating_day,denominaciones,created_at").order("created_at", { ascending: false }).limit(1e3),
     supabase.from("devoluciones_venta").select("operation_id,venta_operation_id,empresa_id,local_id,producto_id,cantidad,reembolso,medio_reembolso,motivo,fecha,payload,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3),
     supabase.from("devoluciones_proveedor").select("operation_id,empresa_id,local_id,producto_id,cantidad,proveedor_id,proveedor_nombre,motivo,fecha,payload,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3)
   ]);
@@ -2503,7 +2533,14 @@ function GestionAlmacen() {
   const empleadoActivoResuelto = (0, import_react4.useMemo)(() => usuarioActivoId ? empleados.find((e2) => e2.id === usuarioActivoId) || null : null, [usuarioActivoId, empleados]);
   const nombreActivoEmpleado = miPerfil && miPerfil.nombre ? miPerfil.nombre : empleadoActivoResuelto ? empleadoActivoResuelto.nombre : "";
   const productoPorId = (id) => productos.find((p22) => p22.id === id);
-  const proveedorPorId = (id) => proveedores.find((p22) => p22.id === id);
+  const proveedoresRecientesRef = (0, import_react4.useRef)(/* @__PURE__ */ new Map());
+  const proveedorPorId = (id) => proveedores.find((p22) => p22.id === id) || proveedoresRecientesRef.current.get(id);
+  (0, import_react4.useEffect)(() => {
+    const recientes = proveedoresRecientesRef.current;
+    if (recientes.size === 0) return;
+    for (const p22 of proveedores) recientes.delete(p22.id);
+  }, [proveedores]);
+  const puedeAltaProveedorIA = rolNavegacionMovil === "Propietario" || rolNavegacionMovil === "Encargado";
   const [prefillAlbaran, setPrefillAlbaran] = (0, import_react4.useState)(null);
   const [facturaDirectaResaltada, setFacturaDirectaResaltada] = (0, import_react4.useState)(null);
   const [pedidoParaFotoIA, setPedidoParaFotoIA] = (0, import_react4.useState)(null);
@@ -2589,7 +2626,7 @@ function GestionAlmacen() {
     productoPorId,
     registrarAuditoria
   });
-  const { addProveedor, updateProveedor, deleteProveedor } = crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
+  const { addProveedor, updateProveedor, deleteProveedor, addProveedorDesdeAlbaran, asignarNifProveedor, marcarProveedorRevisado, completarProveedorConDatosAlb } = crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null, proveedoresRecientes: proveedoresRecientesRef.current });
   const { addGasto, deleteGasto } = crearLogicaGastos({ setGastosGenerales, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
@@ -3399,7 +3436,7 @@ function GestionAlmacen() {
       stockBajo,
       descuadresStock: diagnosticoStock.filter((d2) => !d2.coincide)
     }
-  ), tab === "proveedores" && /* @__PURE__ */ import_react4.default.createElement(Proveedores, { proveedores, addProveedor, updateProveedor, deleteProveedor, pedidos: pedidos2 }), tab === "productos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "proveedores" && /* @__PURE__ */ import_react4.default.createElement(Proveedores, { proveedores, addProveedor, updateProveedor, deleteProveedor, marcarProveedorRevisado, pedidos: pedidos2 }), tab === "productos" && /* @__PURE__ */ import_react4.default.createElement(
     Productos,
     {
       productos: productosDelLocalActivo,
@@ -3531,7 +3568,13 @@ function GestionAlmacen() {
       limpiarPrefill: () => setPrefillAlbaran(null),
       pedidoParaFotoIA,
       limpiarPedidoParaFotoIA: () => setPedidoParaFotoIA(null),
-      pedidos: pedidosDelLocalActivo
+      pedidos: pedidosDelLocalActivo,
+      empresaId: empresaDelLocalActivo?.id || null,
+      empresasPropias: [...empresas, configEmpresa].filter(Boolean),
+      puedeAltaProveedorIA,
+      addProveedorDesdeAlbaran,
+      asignarNifProveedor,
+      completarProveedorConDatos: completarProveedorConDatosAlb
     }
   ), tab === "pagos" && /* @__PURE__ */ import_react4.default.createElement(
     CuentasPorPagar,
@@ -3903,6 +3946,227 @@ function GestionAlmacen() {
     return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setPendingRestore(null), title: "Restaurar respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-1", style: { color: C2.ink } }, pendingRestore.exportadoEl ? `Respaldo del ${new Date(pendingRestore.exportadoEl).toLocaleString("es-ES")}` : "Respaldo sin fecha registrada"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Formato ", pendingRestore.backupVersion || pendingRestore.version || "antiguo"), perdidas.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "\u26A0 Este respaldo tiene menos datos que lo que hay ahora"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2" }, "Al restaurarlo desaparecer\xEDa lo creado despu\xE9s. Se guardar\xE1 un punto de recuperaci\xF3n antes, por si te arrepientes."), perdidas.map((c22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: c22.clave, className: "text-[11.5px] mono" }, c22.nombre, ": ", c22.actual, " \u2192 ", c22.respaldo, " (", c22.diferencia, ")"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "Qu\xE9 contiene, comparado con ahora"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3 space-y-0.5", style: { color: C2.inkSoft } }, comparacion.map((c22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: c22.clave, className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", null, c22.nombre), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: c22.diferencia < 0 ? C2.red : C2.inkSoft } }, c22.actual, " \u2192 ", c22.respaldo)))), seConservan.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.bg, border: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]" }, "Este respaldo es anterior y no incluye: ", /* @__PURE__ */ import_react4.default.createElement("b", null, seConservan.join(", ")), ". Esos datos", /* @__PURE__ */ import_react4.default.createElement("b", null, " se conservan tal como est\xE1n ahora"), " \u2014 no se borran.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-4", style: { color: C2.red } }, "Restaurar sustituye lo que tengas cargado ahora por el contenido de este respaldo."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: confirmarRestauracion }, "Restaurar respaldo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setPendingRestore(null) }, "Cancelar")));
   })());
 }
+// ---- Alta automática de proveedores desde la foto del albarán ----
+// Motor puro: decide si el proveedor leído por la IA ya existe, se parece a uno
+// existente (hay que preguntar) o es nuevo (se dará de alta al guardar). No toca
+// el estado de la aplicación: eso lo hace crearLogicaProveedores.
+var FORMAS_SOCIETARIAS_ALB = [
+  ["SOCIEDAD", "LIMITADA", "UNIPERSONAL"],
+  ["SOCIEDAD", "LIMITADA", "LABORAL"],
+  ["SOCIEDAD", "LIMITADA"],
+  ["SOCIEDAD", "ANONIMA", "UNIPERSONAL"],
+  ["SOCIEDAD", "ANONIMA"],
+  ["SOCIEDAD", "COOPERATIVA"],
+  ["SOCIEDAD", "CIVIL"],
+  ["COMUNIDAD", "DE", "BIENES"],
+  ["S", "L", "U"],
+  ["S", "L", "L"],
+  ["S", "A", "U"],
+  ["S", "COOP"],
+  ["S", "L"],
+  ["S", "A"],
+  ["S", "C"],
+  ["C", "B"],
+  ["SLU"],
+  ["SLL"],
+  ["SAU"],
+  ["SCP"],
+  ["SCOOP"],
+  ["SL"],
+  ["SA"],
+  ["SC"],
+  ["CB"],
+  ["COOP"]
+];
+var PALABRAS_VACIAS_NOMBRE_ALB = ["DE", "DEL", "LA", "LAS", "LOS", "EL", "Y", "E", "AL"];
+var PALABRAS_GENERICAS_NOMBRE_ALB = [
+  "DISTRIBUCIONES",
+  "DISTRIBUIDORA",
+  "ALIMENTACION",
+  "HOSTELERIA",
+  "SUMINISTROS",
+  "COMERCIAL",
+  "MAYORISTA",
+  "IMPORTACION",
+  "EXPORTACION",
+  "FRUTAS",
+  "VERDURAS",
+  "BEBIDAS",
+  "CARNICAS",
+  "PESCADOS",
+  "PRODUCTOS",
+  "SERVICIOS",
+  "ALIMENTOS",
+  "ALMACENES"
+];
+function tokensNombreProveedorAlb(nombre) {
+  const base = String(nombre ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().replace(/&/g, " Y ").replace(/[^A-Z0-9]+/g, " ").trim();
+  return base ? base.split(/\s+/) : [];
+}
+function quitarFormaSocietariaAlb(tokens) {
+  let t3 = tokens.slice();
+  let cambiado = true;
+  while (cambiado && t3.length > 1) {
+    cambiado = false;
+    for (const forma of FORMAS_SOCIETARIAS_ALB) {
+      if (t3.length > forma.length && forma.every((x3, i33) => t3[t3.length - forma.length + i33] === x3)) {
+        t3 = t3.slice(0, t3.length - forma.length);
+        cambiado = true;
+        break;
+      }
+    }
+  }
+  if (FORMAS_SOCIETARIAS_ALB.some((forma) => forma.length === t3.length && forma.every((x3, i33) => t3[i33] === x3))) return [];
+  return t3;
+}
+function claveNombreProveedorAlb(nombre, { sinPalabrasVacias = false } = {}) {
+  let t3 = quitarFormaSocietariaAlb(tokensNombreProveedorAlb(nombre));
+  if (sinPalabrasVacias) {
+    const utiles = t3.filter((x3) => !PALABRAS_VACIAS_NOMBRE_ALB.includes(x3));
+    if (utiles.length) t3 = utiles;
+  }
+  return t3.join(" ");
+}
+function similitudNombresProveedorAlb(a22, b2) {
+  const x3 = String(a22 ?? "").replace(/ /g, "");
+  const y2 = String(b2 ?? "").replace(/ /g, "");
+  if (!x3 || !y2) return 0;
+  if (x3 === y2) return 1;
+  if (x3.length < 2 || y2.length < 2) return 0;
+  const bigramas = (s22) => {
+    const m = new Map();
+    for (let i33 = 0; i33 < s22.length - 1; i33++) {
+      const g2 = s22.slice(i33, i33 + 2);
+      m.set(g2, (m.get(g2) || 0) + 1);
+    }
+    return m;
+  };
+  const bx = bigramas(x3);
+  const by = bigramas(y2);
+  let comunes = 0;
+  for (const [g2, n2] of bx) comunes += Math.min(n2, by.get(g2) || 0);
+  return 2 * comunes / (x3.length - 1 + (y2.length - 1));
+}
+function compararNombresProveedorAlb(a22, b2) {
+  const ka = claveNombreProveedorAlb(a22, { sinPalabrasVacias: true });
+  const kb = claveNombreProveedorAlb(b2, { sinPalabrasVacias: true });
+  if (!ka || !kb) return { nivel: "ninguno", similitud: 0 };
+  if (ka.replace(/ /g, "") === kb.replace(/ /g, "")) return { nivel: "igual", similitud: 1 };
+  const ta = ka.split(" ");
+  const tb = kb.split(" ");
+  const [corto, largo] = ta.length <= tb.length ? [ta, tb] : [tb, ta];
+  const contenido = corto.every((x3) => largo.includes(x3)) && (corto.length >= 2 || corto[0].length >= 5 && !PALABRAS_GENERICAS_NOMBRE_ALB.includes(corto[0]));
+  const similitud = similitudNombresProveedorAlb(ka, kb);
+  if (contenido || similitud >= 0.8) return { nivel: "parecido", similitud: Math.max(similitud, contenido ? 0.85 : 0) };
+  return { nivel: "ninguno", similitud };
+}
+function normalizarNifProveedorAlb(valor) {
+  let v3 = String(valor ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (/^(CIF|NIF|VAT)[A-Z0-9]{9}$/.test(v3)) v3 = v3.slice(3);
+  if (/^ES[A-Z0-9]{9}$/.test(v3)) v3 = v3.slice(2);
+  return v3;
+}
+function estadoNifProveedorAlb(valor) {
+  const n2 = normalizarNifProveedorAlb(valor);
+  if (!n2) return "ausente";
+  if (!tipoIdentificadorFiscalPM18(n2)) return "formato_desconocido";
+  return validarIdentificadorFiscalEspanaPM18(n2) ? "valido" : "invalido";
+}
+function nombreProveedorParaAltaAlb(nombre) {
+  const limpio = String(nombre ?? "").replace(/\s+/g, " ").trim();
+  if (!limpio || /[a-záéíóúñü]/.test(limpio)) return limpio;
+  const FORMA_LEGAL = /^(S\.?L\.?U?|S\.?A\.?U?|S\.?L\.?L|S\.?C\.?P?|C\.?B|S\.?COOP)\.?,?$/;
+  const MINUSCULAS = ["DE", "DEL", "LA", "LAS", "LOS", "EL", "Y", "E", "AL"];
+  return limpio.split(" ").map((t3, i33) => {
+    if (FORMA_LEGAL.test(t3)) return t3;
+    if (i33 > 0 && MINUSCULAS.includes(t3)) return t3.toLowerCase();
+    if (/\d/.test(t3) || t3.replace(/[^A-ZÁÉÍÓÚÑÜ]/g, "").length <= 2) return t3;
+    return t3.toLowerCase().replace(/(^|[-'(/])([a-záéíóúñü])/g, (m, a22, b2) => a22 + b2.toUpperCase());
+  }).join(" ");
+}
+function limpiarDatosContactoProveedorAlb(d2) {
+  const texto = (v3, max) => String(v3 ?? "").replace(/\s+/g, " ").trim().slice(0, max);
+  const direccion = texto(d2?.direccion, 200).length >= 5 ? texto(d2?.direccion, 200) : "";
+  const digitosTel = String(d2?.telefono ?? "").replace(/\D/g, "");
+  const telefono = digitosTel.length >= 9 && digitosTel.length <= 15 ? texto(d2?.telefono, 25).replace(/[^\d+()\s.-]/g, "").replace(/^[^\d+(]+/, "").replace(/[^\d)]+$/, "").trim() : "";
+  const emailLeido = texto(d2?.email, 120).toLowerCase();
+  const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLeido) ? emailLeido : "";
+  let web = texto(d2?.web, 120).toLowerCase().replace(/^https?:\/\//, "").replace(/\s+/g, "");
+  if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/.test(web)) web = "";
+  let condiciones = texto(d2?.condiciones, 100);
+  if (condiciones && !/[a-záéíóúñ]/.test(condiciones)) condiciones = condiciones.toLowerCase().replace(/^./, (c3) => c3.toUpperCase());
+  condiciones = condiciones.replace(/\bdias\b/gi, "días");
+  let diasPago = d2?.diasPago === null || d2?.diasPago === void 0 || d2?.diasPago === "" ? NaN : Number(d2.diasPago);
+  diasPago = Number.isInteger(diasPago) && diasPago >= 1 && diasPago <= 365 ? diasPago : "";
+  if (diasPago === "" && condiciones) {
+    const m = condiciones.match(/^(\d{1,3})\s*d[ií]as?\b/i);
+    if (m && Number(m[1]) >= 1 && Number(m[1]) <= 365) diasPago = Number(m[1]);
+  }
+  return { direccion, telefono, email, web, condiciones, diasPago };
+}
+var ETIQUETAS_CAMPOS_PROVEEDOR_ALB = {
+  nif: "NIF/CIF",
+  direccion: "dirección",
+  telefono: "teléfono",
+  email: "correo",
+  web: "web",
+  condiciones: "condiciones de pago",
+  diasPago: "días de pago"
+};
+function camposQueFaltanEnFichaAlb(proveedor, datos) {
+  const faltan = {};
+  if (!proveedor || !datos) return faltan;
+  const vacio = (v3) => v3 === void 0 || v3 === null || String(v3).trim() === "";
+  if (datos.nif && !normalizarNifProveedorAlb(proveedor.nif || proveedor.cif)) faltan.nif = datos.nif;
+  for (const campo of ["direccion", "telefono", "email", "web", "condiciones"]) {
+    if (datos[campo] && vacio(proveedor[campo])) faltan[campo] = datos[campo];
+  }
+  if (datos.diasPago !== "" && datos.diasPago !== void 0 && datos.diasPago !== null && vacio(proveedor.diasPago)) faltan.diasPago = datos.diasPago;
+  return faltan;
+}
+function resolverProveedorAlbaran({ proveedores = [], empresaId = null, empresasPropias = [], detectado = {} } = {}) {
+  const nombre = String(detectado?.nombre ?? "").replace(/\s+/g, " ").trim();
+  const nifLeido = normalizarNifProveedorAlb(detectado?.nif);
+  const nifEstado = estadoNifProveedorAlb(nifLeido);
+  const nifCliente = normalizarNifProveedorAlb(detectado?.clienteNif);
+  const nifEsDelCliente = !!nifLeido && !!nifCliente && nifLeido === nifCliente;
+  const nifUsable = nifEstado === "valido" && !nifEsDelCliente ? nifLeido : "";
+  const datos = { nombre: nombreProveedorParaAltaAlb(nombre), nif: nifUsable, nifLeido, nifEstado: nifEsDelCliente ? "del_cliente" : nifEstado, ...limpiarDatosContactoProveedorAlb(detectado) };
+  const claveNombre = claveNombreProveedorAlb(nombre, { sinPalabrasVacias: true });
+  const sinNombre = claveNombre.replace(/ /g, "").length < 2;
+  const candidato = (p22, motivo, similitud = 1) => ({ id: p22.id, nombre: p22.nombre, nif: normalizarNifProveedorAlb(p22.nif || p22.cif), motivo, similitud });
+  for (const e2 of empresasPropias || []) {
+    if (!e2) continue;
+    const nifPropio = normalizarNifProveedorAlb(e2.nif);
+    if (nifUsable && nifPropio && nifPropio === nifUsable) return { estado: "es_propio", datos, candidatos: [] };
+    if (!sinNombre) {
+      for (const nombrePropio of [e2.razonSocial, e2.marca, e2.nombre]) {
+        if (nombrePropio && compararNombresProveedorAlb(nombre, nombrePropio).nivel === "igual") return { estado: "es_propio", datos, candidatos: [] };
+      }
+    }
+  }
+  const pool = (proveedores || []).filter((p22) => p22 && (!empresaId || p22.empresaId === empresaId));
+  const nifDe = (p22) => normalizarNifProveedorAlb(p22.nif || p22.cif);
+  if (nifUsable) {
+    const porNif = pool.filter((p22) => nifDe(p22) === nifUsable);
+    if (porNif.length === 1) return { estado: "existente", motivo: "nif", proveedor: porNif[0], datos, candidatos: [], proponerNif: false };
+    if (porNif.length > 1) return { estado: "parecido", motivo: "nif_repetido", datos, candidatos: porNif.map((p22) => candidato(p22, "nif")) };
+  }
+  if (sinNombre) return { estado: "sin_datos", datos, candidatos: [] };
+  const puntuados = pool.map((p22) => ({ p: p22, ...compararNombresProveedorAlb(nombre, p22.nombre) })).filter((x3) => x3.nivel !== "ninguno").sort((a22, b2) => b2.similitud - a22.similitud);
+  const iguales = puntuados.filter((x3) => x3.nivel === "igual");
+  if (iguales.length === 1) {
+    const p22 = iguales[0].p;
+    const nifP = nifDe(p22);
+    if (nifUsable && nifP && estadoNifProveedorAlb(nifP) === "valido" && nifP !== nifUsable) {
+      return { estado: "parecido", motivo: "nif_distinto", datos, candidatos: [candidato(p22, "nif_distinto")] };
+    }
+    return { estado: "existente", motivo: "nombre", proveedor: p22, datos, candidatos: [], proponerNif: !!nifUsable && !nifP };
+  }
+  if (iguales.length > 1) return { estado: "parecido", motivo: "nombre_repetido", datos, candidatos: iguales.slice(0, 3).map((x3) => candidato(x3.p, "nombre", x3.similitud)) };
+  if (puntuados.length) return { estado: "parecido", motivo: "nombre_parecido", datos, candidatos: puntuados.slice(0, 3).map((x3) => candidato(x3.p, "nombre_parecido", x3.similitud)) };
+  return { estado: "nuevo", datos, candidatos: [] };
+}
 function validarProveedorPM10(data) {
   const entrada = data && typeof data === "object" ? data : {};
   const nombre = String(entrada.nombre ?? "").trim();
@@ -3915,6 +4179,18 @@ function validarProveedorPM10(data) {
   }
   datos.email = email;
 
+  for (const campoTexto of ["direccion", "web"]) {
+    if (entrada[campoTexto] !== undefined) datos[campoTexto] = String(entrada[campoTexto] ?? "").trim();
+  }
+
+  if (entrada.nif !== undefined) {
+    const nif = normalizarNifProveedorAlb(entrada.nif);
+    if (nif && estadoNifProveedorAlb(nif) === "invalido") {
+      return errorValidacionPM10("formato_invalido", "nif", "El NIF/CIF no es válido. Revisa la letra o el dígito de control.");
+    }
+    datos.nif = nif;
+  }
+
   const leadTime = numeroPM10(entrada.leadTime, "leadTime", { minimo: 0, opcional: true });
   if (!leadTime.ok) return leadTime;
   datos.leadTime = leadTime.vacio ? "" : leadTime.valor;
@@ -3925,11 +4201,19 @@ function validarProveedorPM10(data) {
 
   return { ok: true, datos };
 }
-function crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria, empresaId }) {
+function crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria, empresaId, proveedoresRecientes = /* @__PURE__ */ new Map() }) {
+  function proveedorConEseNif(nif, idPropio) {
+    if (!nif) return null;
+    const n2 = normalizarNifProveedorAlb(nif);
+    if (!n2) return null;
+    return (proveedores || []).find((p22) => p22.id !== idPropio && p22.empresaId === empresaId && normalizarNifProveedorAlb(p22.nif || p22.cif) === n2) || null;
+  }
   function addProveedor(data) {
     if (!empresaId) return { ok: false, error: "Selecciona una empresa antes de crear el proveedor." };
     const validacion = validarProveedorPM10(data);
     if (!validacion.ok) return validacion;
+    const otroConNif = proveedorConEseNif(validacion.datos.nif, null);
+    if (otroConNif) return errorValidacionPM10("duplicado", "nif", `Ya tienes un proveedor con ese NIF/CIF: ${otroConNif.nombre}.`);
     const nuevo = { id: uid(), ...validacion.datos, empresaId };
     setProveedores((s22) => [...s22, nuevo]);
     return { ok: true, proveedor: nuevo };
@@ -3937,15 +4221,81 @@ function crearLogicaProveedores({ proveedores, setProveedores, registrarAuditori
   function updateProveedor(id, data) {
     const validacion = validarProveedorPM10(data);
     if (!validacion.ok) return validacion;
-    setProveedores((s22) => s22.map((p22) => p22.id === id && p22.empresaId === empresaId ? { ...p22, ...validacion.datos, empresaId: p22.empresaId } : p22));
+    const otroConNif = proveedorConEseNif(validacion.datos.nif, id);
+    if (otroConNif) return errorValidacionPM10("duplicado", "nif", `Ya tienes un proveedor con ese NIF/CIF: ${otroConNif.nombre}.`);
+    setProveedores((s22) => s22.map((p22) => p22.id === id && p22.empresaId === empresaId ? { ...p22, ...validacion.datos, empresaId: p22.empresaId, ...p22.pendienteRevision ? { pendienteRevision: false, revisadoEl: typeof todayISO === "function" ? todayISO() : "" } : {} } : p22));
     return { ok: true };
   }
   function deleteProveedor(id) {
     const p22 = proveedores.find((x3) => x3.id === id);
     registrarAuditoria("Eliminar proveedor", p22 ? p22.nombre : id);
+    proveedoresRecientes.delete(id);
     setProveedores((s22) => s22.filter((p222) => p222.id !== id));
   }
-  return { addProveedor, updateProveedor, deleteProveedor };
+  function addProveedorDesdeAlbaran(datos) {
+    if (!empresaId) return { ok: false, error: "Selecciona una empresa antes de dar de alta el proveedor." };
+    const nombre = nombreProveedorParaAltaAlb(datos?.nombre);
+    if (!nombre) return { ok: false, error: "No hay nombre de proveedor que dar de alta." };
+    const nif = estadoNifProveedorAlb(datos?.nif) === "valido" ? normalizarNifProveedorAlb(datos?.nif) : "";
+    const conocidos = [...proveedores || []];
+    for (const r2 of proveedoresRecientes.values()) {
+      if (!conocidos.some((p22) => p22.id === r2.id)) conocidos.push(r2);
+    }
+    const previo = resolverProveedorAlbaran({ proveedores: conocidos, empresaId, detectado: { nombre, nif } });
+    if (previo.estado === "existente") return { ok: true, proveedor: previo.proveedor, reutilizado: true };
+    const nifLibre = nif && !conocidos.some((p22) => p22.empresaId === empresaId && normalizarNifProveedorAlb(p22.nif || p22.cif) === nif) ? nif : "";
+    const contacto = limpiarDatosContactoProveedorAlb(datos);
+    const res = addProveedor({
+      nombre,
+      nif: nifLibre,
+      contacto: "",
+      telefono: contacto.telefono,
+      email: contacto.email,
+      direccion: contacto.direccion,
+      web: contacto.web,
+      condiciones: contacto.condiciones,
+      diasPago: contacto.diasPago,
+      diasReparto: [],
+      creadoPorIA: true,
+      pendienteRevision: true,
+      altaEl: typeof todayISO === "function" ? todayISO() : ""
+    });
+    if (!res.ok) return res;
+    proveedoresRecientes.set(res.proveedor.id, res.proveedor);
+    registrarAuditoria("Alta automática de proveedor (foto del albarán)", nif ? `${nombre} · ${nif}` : nombre);
+    return { ok: true, proveedor: res.proveedor, reutilizado: false };
+  }
+  function asignarNifProveedor(id, nif) {
+    const n2 = normalizarNifProveedorAlb(nif);
+    if (estadoNifProveedorAlb(n2) !== "valido") return { ok: false, error: "El NIF/CIF no es válido." };
+    const p22 = (proveedores || []).find((x3) => x3.id === id && x3.empresaId === empresaId);
+    if (!p22) return { ok: false, error: "No encuentro ese proveedor." };
+    if (normalizarNifProveedorAlb(p22.nif || p22.cif)) return { ok: false, error: "Este proveedor ya tiene NIF/CIF." };
+    if ((proveedores || []).some((x3) => x3.id !== id && normalizarNifProveedorAlb(x3.nif || x3.cif) === n2)) {
+      return { ok: false, error: "Ese NIF/CIF ya pertenece a otro proveedor." };
+    }
+    setProveedores((s22) => s22.map((x3) => x3.id === id && x3.empresaId === empresaId ? { ...x3, nif: n2 } : x3));
+    registrarAuditoria("Asignar NIF/CIF a proveedor desde albarán", `${p22.nombre} · ${n2}`);
+    return { ok: true };
+  }
+  function marcarProveedorRevisado(id) {
+    setProveedores((s22) => s22.map((x3) => x3.id === id && x3.empresaId === empresaId && x3.pendienteRevision ? { ...x3, pendienteRevision: false, revisadoEl: typeof todayISO === "function" ? todayISO() : "" } : x3));
+    return { ok: true };
+  }
+  function completarProveedorConDatosAlb(id, datos) {
+    const p22 = (proveedores || []).find((x3) => x3.id === id && x3.empresaId === empresaId);
+    if (!p22) return { ok: false, error: "No encuentro ese proveedor." };
+    const nifLeido = normalizarNifProveedorAlb(datos?.nif);
+    const nifValido = estadoNifProveedorAlb(nifLeido) === "valido" && !(proveedores || []).some((x3) => x3.id !== id && x3.empresaId === empresaId && normalizarNifProveedorAlb(x3.nif || x3.cif) === nifLeido);
+    const campos = camposQueFaltanEnFichaAlb(p22, { ...limpiarDatosContactoProveedorAlb(datos), nif: nifValido ? nifLeido : "" });
+    if (Object.keys(campos).length === 0) return { ok: true, aplicados: [] };
+    const validacion = validarProveedorPM10({ ...p22, ...campos });
+    if (!validacion.ok) return validacion;
+    setProveedores((s22) => s22.map((x3) => x3.id === id && x3.empresaId === empresaId ? { ...x3, ...campos } : x3));
+    registrarAuditoria("Completar ficha de proveedor con los datos de la foto del albarán", `${p22.nombre} · ${Object.keys(campos).map((k2) => ETIQUETAS_CAMPOS_PROVEEDOR_ALB[k2] || k2).join(", ")}`);
+    return { ok: true, aplicados: Object.keys(campos) };
+  }
+  return { addProveedor, updateProveedor, deleteProveedor, addProveedorDesdeAlbaran, asignarNifProveedor, marcarProveedorRevisado, completarProveedorConDatosAlb };
 }
 function validarEmpleadoPM10(data, { localActivoId = null, locales = [], empresaId = null } = {}) {
   const contexto = validarContextoEscrituraPM10({ localActivoId, locales, empresaId });
@@ -4848,12 +5198,53 @@ function crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosC
   function leerBorradorArqueo(fecha) {
     return leerPendientePM08(clavePendientePM08("arqueo", empresaId, localActivoId, fecha))?.payload || null;
   }
+  async function contextoArqueoCajaC03(supabase) {
+    const { data: authData, error: authError } = await supabase.auth.getSession();
+    if (authError) throw authError;
+    if (!authData?.session?.user?.id) throw new Error("sesion_usuario_requerida");
+    const storageKey = `la_suite_abc_terminal_id_v1:${empresaId}:${localActivoId}`;
+    let terminalId = null;
+    try {
+      terminalId = localStorage.getItem(storageKey) || null;
+    } catch {
+      throw new Error("persistencia_terminal_no_disponible");
+    }
+    let consultaTerminales = supabase.from("terminales_tpv").select("id,nombre,device_key").eq("empresa_id", empresaId).eq("local_id", localActivoId).eq("activo", true);
+    if (terminalId) consultaTerminales = consultaTerminales.eq("id", terminalId);
+    const { data: terminales, error: terminalesError } = await consultaTerminales;
+    if (terminalesError) throw terminalesError;
+    if (terminalId && (!Array.isArray(terminales) || terminales.length !== 1)) throw new Error("terminal_configurado_no_disponible");
+    if (!terminalId) {
+      if (!Array.isArray(terminales) || terminales.length === 0) throw new Error("terminal_no_configurado");
+      if (terminales.length > 1) throw new Error("terminal_contexto_ambiguo");
+      terminalId = terminales[0].id;
+      try {
+        localStorage.setItem(storageKey, terminalId);
+        if (localStorage.getItem(storageKey) !== terminalId) throw new Error("persistencia_terminal_no_disponible");
+      } catch {
+        throw new Error("persistencia_terminal_no_disponible");
+      }
+    }
+    const { data: vinculos, error: vinculosError } = await supabase.from("caja_sesion_terminales").select("session_id,terminal_id,desde").eq("empresa_id", empresaId).eq("local_id", localActivoId).eq("terminal_id", terminalId).is("hasta", null).order("desde", { ascending: false }).limit(2);
+    if (vinculosError) throw vinculosError;
+    if (!Array.isArray(vinculos) || vinculos.length !== 1) throw new Error(vinculos?.length > 1 ? "terminal_sesion_ambigua" : "terminal_sin_sesion_abierta");
+    const sessionId = vinculos[0].session_id;
+    const { data: sesion, error: sesionError } = await supabase.from("caja_sesiones").select("id,caja_id,estado").eq("empresa_id", empresaId).eq("local_id", localActivoId).eq("id", sessionId).eq("estado", "ABIERTA").maybeSingle();
+    if (sesionError) throw sesionError;
+    if (!sesion?.caja_id) throw new Error("sesion_caja_no_abierta");
+    const { data: dia, error: diaError } = await supabase.rpc("abc_obtener_dia_operativo_local", { p_empresa_id: empresaId, p_local_id: localActivoId });
+    if (diaError) throw diaError;
+    const operatingDay = /^\d{4}-\d{2}-\d{2}$/.test(String(dia?.operating_day || "")) ? String(dia.operating_day) : null;
+    if (!operatingDay) throw new Error("operating_day_servidor_ausente");
+    return { terminalId, sessionId, cajaId: sesion.caja_id, currencyCode: "EUR", operatingDay };
+  }
   async function addArqueo(data) {
     if (!empresaId || !localActivoId) return { ok: false, error: "Selecciona un local concreto antes de guardar el arqueo." };
     const fecha = data?.fecha || todayISO();
     const efectivoBase = redondearDineroPM08(data?.efectivoBase ?? data?.efectivoEsperado ?? 0);
     const ajustesVentaEfectivo = redondearDineroPM08(data?.ajustesVentaEfectivo ?? 0);
     const efectivoContado = redondearDineroPM08(data?.efectivoContado ?? data?.efectivoReal);
+    const denominaciones = data?.denominaciones && typeof data.denominaciones === "object" && !Array.isArray(data.denominaciones) ? data.denominaciones : {};
     if (!Number.isFinite(efectivoBase) || efectivoBase < 0) return { ok: false, error: "El efectivo base no es v\xE1lido." };
     if (!Number.isFinite(ajustesVentaEfectivo)) return { ok: false, error: "El ajuste de anulaciones de venta no es v\xE1lido." };
     if (!Number.isFinite(efectivoContado) || efectivoContado < 0) return { ok: false, error: "El efectivo contado debe ser cero o un importe positivo." };
@@ -4867,6 +5258,7 @@ function crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosC
       efectivoBase,
       ajustesVentaEfectivo,
       efectivoContado,
+      denominaciones,
       notas: String(data?.notas || "").trim(),
       snapshot: data?.snapshot || {}
     };
@@ -4880,16 +5272,21 @@ function crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosC
           return { ok: false, pendiente: true, error: "Sin conexi\xF3n con la cuenta sincronizada. El arqueo NO se ha confirmado; el borrador queda listo para reintentar." };
         }
         try {
+          const contexto = await contextoArqueoCajaC03(window.__nubeCliente);
+          if (String(fecha) !== contexto.operatingDay) throw new Error("arqueo_caja_dia_no_operativo");
           const r2 = await Promise.race([
-            window.__nubeCliente.rpc("registrar_arqueo_caja", {
+            window.__nubeCliente.rpc("abc_registrar_arqueo_caja", {
               p_operation_id: preparado.pendiente.operationId,
               p_empresa_id: empresaId,
               p_local_id: localActivoId,
-              p_fecha: fecha,
-              p_efectivo_base: efectivoBase,
+              p_caja_id: contexto.cajaId,
+              p_session_id: contexto.sessionId,
+              p_terminal_id: contexto.terminalId,
+              p_currency_code: contexto.currencyCode,
               p_efectivo_contado: efectivoContado,
+              p_denominaciones: denominaciones,
               p_notas: payload.notas,
-              p_snapshot: payload.snapshot
+              p_operating_day: contexto.operatingDay
             }),
             new Promise((_22, reject) => setTimeout(() => reject(new Error("timeout_pm08")), Number(window.ESPERA_NUBE_MS) || 6e3))
           ]);
@@ -4906,8 +5303,12 @@ function crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosC
             await sincronizarCajaPm08({ setArqueos, setMovimientosCaja });
           } catch {
           }
-          return { ok: true, arqueo: arqueo2, replayed: !!r2.data?.replayed };
+          return { ok: true, arqueo: arqueo2, replayed: !!r2.data?.replayed || !!preparado.recuperada };
         } catch (e2) {
+          if (!esErrorTransitorioPM08(e2)) {
+            limpiarPendientePM08(clave);
+            return { ok: false, error: mensajeErrorPM08(e2, "No se ha podido guardar el arqueo.") };
+          }
           return { ok: false, pendiente: true, error: "No se pudo confirmar si el servidor recibi\xF3 el arqueo. Conservamos el mismo identificador para reintentarlo sin duplicar." };
         }
       }
@@ -4928,6 +5329,7 @@ function crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosC
         efectivoContado,
         diferencia: redondearDineroPM08(efectivoContado - esperado),
         notas: payload.notas,
+        denominaciones,
         estado: "ACTIVO",
         createdAt: (/* @__PURE__ */ new Date()).toISOString()
       });
@@ -5020,19 +5422,120 @@ function crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivo
   return { crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo };
 }
 function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arqueos, setArqueos, registrarAuditoria, localActivoId, empresaId }) {
-  function leerBorradorMovimientoCaja() {
-    return leerPendientePM08(clavePendientePM08("movimiento-caja", empresaId, localActivoId))?.payload || null;
+  const categoriasC02 = {
+    ENTRADA: ["REPOSICION_CAJA", "INGRESO_MANUAL"],
+    RETIRADA: ["RETIRADA_CAJA", "GASTO_CAJA"]
+  };
+  function categoriaPorDefectoC02(tipo) {
+    return tipo === "RETIRADA" ? "RETIRADA_CAJA" : "REPOSICION_CAJA";
   }
-  async function registrarMovimientoCaja(tipo, importe, concepto, fecha = todayISO()) {
+  function leerBorradorMovimientoCaja() {
+    const payload = leerPendientePM08(clavePendientePM08("movimiento-caja", empresaId, localActivoId))?.payload || null;
+    if (!payload) return null;
+    const tipo = String(payload.tipo || "ENTRADA").toUpperCase();
+    return {
+      ...payload,
+      categoria: payload.categoria || categoriaPorDefectoC02(tipo),
+      motivo: payload.motivo || payload.concepto || ""
+    };
+  }
+  async function contextoMovimientoCajaC02(supabase) {
+    const { data: authData, error: authError } = await supabase.auth.getSession();
+    if (authError) throw authError;
+    if (!authData?.session?.user?.id) throw new Error("sesion_usuario_requerida");
+    const storageKey = `la_suite_abc_terminal_id_v1:${empresaId}:${localActivoId}`;
+    let terminalId = null;
+    try {
+      terminalId = localStorage.getItem(storageKey) || null;
+    } catch {
+      throw new Error("persistencia_terminal_no_disponible");
+    }
+    let consultaTerminales = supabase
+      .from("terminales_tpv")
+      .select("id,nombre,device_key")
+      .eq("empresa_id", empresaId)
+      .eq("local_id", localActivoId)
+      .eq("activo", true);
+    if (terminalId) consultaTerminales = consultaTerminales.eq("id", terminalId);
+    const { data: terminales, error: terminalesError } = await consultaTerminales;
+    if (terminalesError) throw terminalesError;
+    if (terminalId && (!Array.isArray(terminales) || terminales.length !== 1)) throw new Error("terminal_configurado_no_disponible");
+    if (!terminalId) {
+      if (!Array.isArray(terminales) || terminales.length === 0) throw new Error("terminal_no_configurado");
+      if (terminales.length > 1) throw new Error("terminal_contexto_ambiguo");
+      terminalId = terminales[0].id;
+      try {
+        localStorage.setItem(storageKey, terminalId);
+        if (localStorage.getItem(storageKey) !== terminalId) throw new Error("persistencia_terminal_no_disponible");
+      } catch {
+        throw new Error("persistencia_terminal_no_disponible");
+      }
+    }
+    const { data: vinculos, error: vinculosError } = await supabase
+      .from("caja_sesion_terminales")
+      .select("session_id,terminal_id,desde")
+      .eq("empresa_id", empresaId)
+      .eq("local_id", localActivoId)
+      .eq("terminal_id", terminalId)
+      .is("hasta", null)
+      .order("desde", { ascending: false })
+      .limit(2);
+    if (vinculosError) throw vinculosError;
+    if (!Array.isArray(vinculos) || vinculos.length !== 1) throw new Error(vinculos?.length > 1 ? "terminal_sesion_ambigua" : "terminal_sin_sesion_abierta");
+    const sessionId = vinculos[0].session_id;
+    const { data: sesion, error: sesionError } = await supabase
+      .from("caja_sesiones")
+      .select("id,caja_id,estado")
+      .eq("empresa_id", empresaId)
+      .eq("local_id", localActivoId)
+      .eq("id", sessionId)
+      .eq("estado", "ABIERTA")
+      .maybeSingle();
+    if (sesionError) throw sesionError;
+    if (!sesion?.caja_id) throw new Error("sesion_caja_no_abierta");
+    const { data: dia, error: diaError } = await supabase.rpc("abc_obtener_dia_operativo_local", {
+      p_empresa_id: empresaId,
+      p_local_id: localActivoId
+    });
+    if (diaError) throw diaError;
+    const operatingDay = /^\d{4}-\d{2}-\d{2}$/.test(String(dia?.operating_day || "")) ? String(dia.operating_day) : null;
+    if (!operatingDay) throw new Error("operating_day_servidor_ausente");
+    return {
+      supabase,
+      terminalId,
+      sessionId,
+      cajaId: sesion.caja_id,
+      currencyCode: "EUR",
+      operatingDay
+    };
+  }
+  async function registrarMovimientoCaja(tipo, importe, concepto, fecha = todayISO(), detalle = {}) {
     if (!empresaId || !localActivoId) return { ok: false, error: "Selecciona un local concreto antes de registrar movimientos de caja." };
     const tipoCanonico = String(tipo || "").trim().toUpperCase() === "SALIDA" ? "RETIRADA" : String(tipo || "").trim().toUpperCase();
     if (!["ENTRADA", "RETIRADA"].includes(tipoCanonico)) return { ok: false, error: "Tipo de movimiento no v\xE1lido." };
     const imp = redondearDineroPM08(importe);
     if (!Number.isFinite(imp) || imp <= 0) return { ok: false, error: "El importe debe ser mayor que 0." };
     if ((arqueos || []).some((a22) => a22.localId === localActivoId && a22.fecha === fecha && a22.estado !== "ANULADO")) return { ok: false, error: "Ese d\xEDa tiene un arqueo activo. An\xFAlalo de forma trazable antes de registrar otro movimiento." };
-    const conceptoLimpio = String(concepto || "").trim() || (tipoCanonico === "ENTRADA" ? "Entrada manual" : "Retirada manual");
-    const payload = { empresaId, localId: localActivoId, fecha, tipo: tipoCanonico, importe: imp, concepto: conceptoLimpio };
+    const conceptoLimpio = String(concepto || "").trim();
+    const motivoLimpio = String(detalle?.motivo || "").trim();
+    const categoria = String(detalle?.categoria || categoriaPorDefectoC02(tipoCanonico)).trim().toUpperCase();
+    if (!conceptoLimpio) return { ok: false, error: "Escribe el concepto o justificante del movimiento." };
+    if (!motivoLimpio) return { ok: false, error: "Escribe el motivo del movimiento." };
+    if (!categoriasC02[tipoCanonico].includes(categoria)) return { ok: false, error: "La categor\xEDa no corresponde al tipo de movimiento." };
+    const payload = { empresaId, localId: localActivoId, fecha, tipo: tipoCanonico, categoria, importe: imp, concepto: conceptoLimpio, motivo: motivoLimpio };
     const clave = clavePendientePM08("movimiento-caja", empresaId, localActivoId);
+    const legado = leerPendientePM08(clave);
+    if (legado?.payload && (!legado.payload.categoria || !legado.payload.motivo)) {
+      const tipoLegado = String(legado.payload.tipo || "ENTRADA").toUpperCase();
+      guardarPendientePM08(clave, {
+        ...legado,
+        payload: {
+          ...legado.payload,
+          categoria: legado.payload.categoria || categoriaPorDefectoC02(tipoLegado),
+          motivo: legado.payload.motivo || legado.payload.concepto || ""
+        }
+      });
+    }
     const preparado = prepararPendientePM08(clave, "pm08-caja", payload);
     if (!preparado.ok) return preparado;
     if (operacionesPM08EnCurso[clave]) return operacionesPM08EnCurso[clave];
@@ -5040,16 +5543,22 @@ function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arque
       if (modoSincronizadoPM08()) {
         if (!window.__nubeActiva || !window.__nubeCliente) return { ok: false, pendiente: true, error: "Sin conexi\xF3n con la cuenta sincronizada. El movimiento NO se ha confirmado; el borrador queda listo para reintentar." };
         try {
+          const contexto = await contextoMovimientoCajaC02(window.__nubeCliente);
+          if (String(fecha) !== contexto.operatingDay) throw new Error("movimiento_caja_dia_no_operativo");
           const r2 = await Promise.race([
-            window.__nubeCliente.rpc("registrar_movimiento_caja", {
+            window.__nubeCliente.rpc("abc_registrar_movimiento_caja", {
               p_operation_id: preparado.pendiente.operationId,
               p_empresa_id: empresaId,
               p_local_id: localActivoId,
-              p_fecha: fecha,
-              p_tipo: tipoCanonico,
+              p_caja_id: contexto.cajaId,
+              p_session_id: contexto.sessionId,
+              p_terminal_id: contexto.terminalId,
+              p_currency_code: contexto.currencyCode,
+              p_categoria: categoria,
               p_importe: imp,
               p_concepto: conceptoLimpio,
-              p_datos: { origen: "L&A Suite PM-08" }
+              p_motivo: motivoLimpio,
+              p_operating_day: contexto.operatingDay
             }),
             new Promise((_22, reject) => setTimeout(() => reject(new Error("timeout_pm08")), Number(window.ESPERA_NUBE_MS) || 6e3))
           ]);
@@ -5058,13 +5567,41 @@ function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arque
             limpiarPendientePM08(clave);
             return { ok: false, error: mensajeErrorPM08(r2.error, "No se ha podido guardar el movimiento de caja.") };
           }
-          const movimiento2 = normalizarMovimientoCajaPM08(r2.data?.movimiento);
+          const movimiento2 = normalizarMovimientoCajaPM08({
+            operation_id: r2.data?.caja_operation_id,
+            empresa_id: empresaId,
+            local_id: localActivoId,
+            fecha: contexto.operatingDay,
+            tipo: r2.data?.tipo || tipoCanonico,
+            importe: r2.data?.importe ?? imp,
+            efecto_efectivo: r2.data?.efecto_efectivo,
+            medio_pago: "EFECTIVO",
+            concepto: conceptoLimpio,
+            payload: { motivo: motivoLimpio, categoria },
+            origen_tipo: "ABC_CAJA_MANUAL",
+            abc_command_id: preparado.pendiente.operationId,
+            caja_id: contexto.cajaId,
+            session_id: contexto.sessionId,
+            terminal_id: contexto.terminalId,
+            currency_code: contexto.currencyCode,
+            operating_day: contexto.operatingDay,
+            categoria
+          });
           if (!movimiento2) throw new Error("respuesta_caja_incompleta");
           setMovimientosCaja((prev) => [movimiento2, ...(prev || []).filter((m22) => m22.operationId !== movimiento2.operationId && m22.id !== movimiento2.id)]);
           limpiarPendientePM08(clave);
-          if (!r2.data?.replayed) registrarAuditoria?.("MOVIMIENTO_CAJA", `${tipoCanonico} de \u20AC${fmt(imp)} \xB7 ${conceptoLimpio}`);
-          return { ok: true, movimiento: movimiento2, replayed: !!r2.data?.replayed };
-        } catch {
+          try {
+            await sincronizarCajaPm08({ setArqueos, setMovimientosCaja });
+          } catch {
+          }
+          const replayed = !!r2.data?.replayed || !!preparado.recuperada;
+          if (!replayed) registrarAuditoria?.("MOVIMIENTO_CAJA", `${categoria} de \u20AC${fmt(imp)} \xB7 ${conceptoLimpio}`);
+          return { ok: true, movimiento: movimiento2, replayed };
+        } catch (e2) {
+          if (!esErrorTransitorioPM08(e2)) {
+            limpiarPendientePM08(clave);
+            return { ok: false, error: mensajeErrorPM08(e2, "No se ha podido guardar el movimiento de caja.") };
+          }
           return { ok: false, pendiente: true, error: "No se pudo confirmar si el servidor recibi\xF3 el movimiento. Reintenta: se utilizar\xE1 el mismo identificador y no se duplicar\xE1." };
         }
       }
@@ -5079,6 +5616,8 @@ function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arque
         efectoEfectivo: tipoCanonico === "ENTRADA" ? imp : -imp,
         medioPago: "EFECTIVO",
         concepto: conceptoLimpio,
+        motivo: motivoLimpio,
+        categoria,
         origen: "MANUAL",
         createdAt: (/* @__PURE__ */ new Date()).toISOString()
       });
@@ -5111,8 +5650,17 @@ function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arque
       if (modoSincronizadoPM08()) {
         if (!window.__nubeActiva || !window.__nubeCliente) return { ok: false, pendiente: true, error: "Sin conexi\xF3n. El reverso NO se ha confirmado." };
         try {
+          const contexto = await contextoMovimientoCajaC02(window.__nubeCliente);
           const r2 = await Promise.race([
-            window.__nubeCliente.rpc("revertir_movimiento_caja", { p_operation_id: preparado.pendiente.operationId, p_movimiento_operation_id: original.operationId || original.id, p_motivo: motivoLimpio, p_fecha: fechaReverso }),
+            window.__nubeCliente.rpc("abc_revertir_movimiento_caja", {
+              p_operation_id: preparado.pendiente.operationId,
+              p_empresa_id: empresaId,
+              p_local_id: localActivoId,
+              p_movimiento_operation_id: original.operationId || original.id,
+              p_terminal_id: contexto.terminalId,
+              p_motivo: motivoLimpio,
+              p_operating_day: contexto.operatingDay
+            }),
             new Promise((_22, reject) => setTimeout(() => reject(new Error("timeout_pm08")), Number(window.ESPERA_NUBE_MS) || 6e3))
           ]);
           if (r2.error) {
@@ -5120,12 +5668,43 @@ function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arque
             limpiarPendientePM08(clave);
             return { ok: false, error: mensajeErrorPM08(r2.error, "No se ha podido revertir el movimiento.") };
           }
-          const movimiento2 = normalizarMovimientoCajaPM08(r2.data?.movimiento);
-          setMovimientosCaja((prev) => [movimiento2, ...(prev || []).filter((m22) => m22.operationId !== movimiento2.operationId)]);
+          const movimiento2 = normalizarMovimientoCajaPM08({
+            operation_id: r2.data?.caja_operation_id,
+            empresa_id: empresaId,
+            local_id: localActivoId,
+            fecha: contexto.operatingDay,
+            tipo: r2.data?.tipo,
+            importe: r2.data?.importe ?? original.importe,
+            efecto_efectivo: r2.data?.efecto_efectivo,
+            medio_pago: "EFECTIVO",
+            concepto: `Correcci\xF3n: ${motivoLimpio}`,
+            payload: { motivo: motivoLimpio, movimiento_original_operation_id: original.operationId || original.id },
+            origen_tipo: "ABC_CAJA_REVERSO_MANUAL",
+            origen_id: original.operationId || original.id,
+            ref_operation_id: original.operationId || original.id,
+            abc_command_id: preparado.pendiente.operationId,
+            caja_id: original.cajaId,
+            session_id: r2.data?.session_id || original.sessionId,
+            terminal_id: contexto.terminalId,
+            currency_code: original.currencyCode || "EUR",
+            operating_day: contexto.operatingDay,
+            categoria: "CORRECCION_CAJA"
+          });
+          if (!movimiento2) throw new Error("respuesta_reverso_caja_incompleta");
+          setMovimientosCaja((prev) => [movimiento2, ...(prev || []).filter((m22) => m22.operationId !== movimiento2.operationId && m22.id !== movimiento2.id)]);
           limpiarPendientePM08(clave);
-          if (!r2.data?.replayed) registrarAuditoria?.("REVERSO_CAJA", `${motivoLimpio} \xB7 ${original.operationId || original.id}`);
-          return { ok: true, movimiento: movimiento2, replayed: !!r2.data?.replayed };
-        } catch {
+          try {
+            await sincronizarCajaPm08({ setArqueos, setMovimientosCaja });
+          } catch {
+          }
+          const replayed = !!r2.data?.replayed || !!preparado.recuperada;
+          if (!replayed) registrarAuditoria?.("REVERSO_CAJA", `${motivoLimpio} \xB7 ${original.operationId || original.id}`);
+          return { ok: true, movimiento: movimiento2, replayed };
+        } catch (e2) {
+          if (!esErrorTransitorioPM08(e2)) {
+            limpiarPendientePM08(clave);
+            return { ok: false, error: mensajeErrorPM08(e2, "No se ha podido revertir el movimiento.") };
+          }
           return { ok: false, pendiente: true, error: "No se pudo confirmar el reverso. Reintenta con el mismo borrador." };
         }
       }
@@ -5140,6 +5719,8 @@ function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arque
         efectoEfectivo: -(Number(original.efectoEfectivo) || (tipoOriginal === "ENTRADA" ? Number(original.importe) : -Number(original.importe))),
         medioPago: "EFECTIVO",
         concepto: `Reverso: ${motivoLimpio}`,
+        motivo: motivoLimpio,
+        categoria: "CORRECCION_CAJA",
         origen: "REVERSO_CAJA",
         referenciaId: original.operationId || original.id,
         refOperationId: original.operationId || original.id,
@@ -9111,6 +9692,17 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     try {
       const contexto = await contextoCierreA10({ conDia: false });
       const base = { ok: true, sessionId: contexto.sessionId, sessionEstado: contexto.sessionEstado };
+      if (contexto.sessionEstado === "EN_CIERRE") {
+        const { data, error } = await contexto.supabase.rpc("abc_previsualizar_arqueo_caja", {
+          p_empresa_id: contexto.empresaId,
+          p_local_id: contexto.localId,
+          p_session_id: contexto.sessionId,
+          p_terminal_id: contexto.terminalId,
+          p_currency_code: "EUR"
+        });
+        if (error) return { ...base, arqueoError: errorRpcA02(error) };
+        return { ...base, arqueoPrevio: data || null };
+      }
       if (contexto.sessionEstado !== "CIERRE_PROVISIONAL") return base;
       const { data, error } = await contexto.supabase.rpc("abc_obtener_diferencia_caja", {
         p_empresa_id: contexto.empresaId,
@@ -9167,9 +9759,14 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
 
   async function listarEstacionesA10() {
     listarEstacionesA10.abrirSesionCajaA10 = abrirSesionCajaA10;
+    listarEstacionesA10.consultarSesionCajaC01 = consultarSesionCajaC01;
+    listarEstacionesA10.vincularTerminalCajaC01 = vincularTerminalCajaC01;
+    listarEstacionesA10.desvincularTerminalCajaC01 = desvincularTerminalCajaC01;
+    listarEstacionesA10.cambiarResponsableCajaC01 = cambiarResponsableCajaC01;
     listarEstacionesA10.cerrarSesionCajaA10 = cerrarSesionCajaA10;
     listarEstacionesA10.iniciarCierreSesionCajaA10 = iniciarCierreSesionCajaA10;
     listarEstacionesA10.confirmarCierreProvisionalA10 = confirmarCierreProvisionalA10;
+    listarEstacionesA10.ensayarCierreSesionCajaC12 = ensayarCierreSesionCajaC12;
     listarEstacionesA10.finalizarCierreSesionCajaA10 = finalizarCierreSesionCajaA10;
     listarEstacionesA10.reabrirCierreProvisionalA10 = reabrirCierreProvisionalA10;
     listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
@@ -9230,6 +9827,113 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     }
   }
 
+  async function consultarSesionCajaC01() {
+    try {
+      const contexto = await contextoCierreA10();
+      const [sesion, vinculos, responsables, terminales, candidatos] = await Promise.all([
+        contexto.supabase.from("caja_sesiones").select("id,estado,version,caja_id").eq("empresa_id", contexto.empresaId).eq("local_id", contexto.localId).eq("id", contexto.sessionId).single(),
+        contexto.supabase.from("caja_sesion_terminales").select("terminal_id,desde,hasta").eq("empresa_id", contexto.empresaId).eq("local_id", contexto.localId).eq("session_id", contexto.sessionId).is("hasta", null).order("desde", { ascending: true }),
+        contexto.supabase.from("caja_sesion_responsables").select("user_id,desde,hasta,motivo").eq("empresa_id", contexto.empresaId).eq("local_id", contexto.localId).eq("session_id", contexto.sessionId).order("desde", { ascending: true }),
+        contexto.supabase.from("terminales_tpv").select("id,nombre,activo").eq("empresa_id", contexto.empresaId).eq("local_id", contexto.localId).eq("activo", true).order("nombre", { ascending: true }),
+        contexto.supabase.rpc("abc_listar_responsables_caja", {
+          p_empresa_id: contexto.empresaId,
+          p_local_id: contexto.localId,
+          p_terminal_id: contexto.terminalId,
+          p_session_id: contexto.sessionId,
+          p_operating_day: contexto.operatingDay
+        })
+      ]);
+      if (sesion.error) throw sesion.error;
+      if (vinculos.error) throw vinculos.error;
+      if (responsables.error) throw responsables.error;
+      if (terminales.error) throw terminales.error;
+      const listaTerminales = Array.isArray(terminales.data) ? terminales.data : [];
+      const nombresTerminales = new Map(listaTerminales.map((terminal) => [String(terminal.id), terminal.nombre || "Terminal"]));
+      const historialResponsables = Array.isArray(responsables.data) ? responsables.data : [];
+      return {
+        ok: true,
+        sesion: sesion.data || null,
+        terminalActualId: contexto.terminalId,
+        terminales: listaTerminales,
+        terminalesVinculados: (vinculos.data || []).map((vinculo) => ({ ...vinculo, nombre: nombresTerminales.get(String(vinculo.terminal_id)) || "Terminal" })),
+        responsables: candidatos.error || !Array.isArray(candidatos.data?.responsables) ? [] : candidatos.data.responsables,
+        responsableActivo: historialResponsables.find((responsable) => !responsable.hasta) || null,
+        historialResponsables,
+        responsablesError: candidatos.error ? errorRpcA02(candidatos.error) : ""
+      };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function vincularTerminalCajaC01(terminalId) {
+    try {
+      const id = String(terminalId || "").trim();
+      if (!id) throw new Error("terminal_caja_requerido");
+      const contexto = await contextoCierreA10();
+      const operationId = `c01.ui.cash.terminal.link.${uuidA02()}`;
+      const resultado = await rpcA02ConRecuperacion(contexto.supabase, "abc_vincular_terminal_caja", {
+        p_operation_id: operationId,
+        p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId,
+        p_session_id: contexto.sessionId,
+        p_terminal_id: id,
+        p_operating_day: contexto.operatingDay
+      }, contexto.empresaId, contexto.localId, operationId);
+      return { ok: true, ...(resultado || {}) };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function desvincularTerminalCajaC01(terminalId, motivo = "") {
+    try {
+      const id = String(terminalId || "").trim();
+      const motivoLimpio = String(motivo || "").trim();
+      if (!id) throw new Error("terminal_caja_requerido");
+      if (!motivoLimpio) throw new Error("motivo_desvinculo_requerido");
+      const contexto = await contextoCierreA10();
+      if (String(contexto.terminalId) === id) throw new Error("terminal_actual_no_desvinculable");
+      const operationId = `c01.ui.cash.terminal.unlink.${uuidA02()}`;
+      const resultado = await rpcA02ConRecuperacion(contexto.supabase, "abc_desvincular_terminal_caja", {
+        p_operation_id: operationId,
+        p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId,
+        p_session_id: contexto.sessionId,
+        p_terminal_id: id,
+        p_motivo: motivoLimpio,
+        p_operating_day: contexto.operatingDay
+      }, contexto.empresaId, contexto.localId, operationId);
+      return { ok: true, ...(resultado || {}) };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function cambiarResponsableCajaC01(responsableUserId, motivo = "") {
+    try {
+      const responsableId = String(responsableUserId || "").trim();
+      const motivoLimpio = String(motivo || "").trim();
+      if (!responsableId) throw new Error("responsable_caja_requerido");
+      if (!motivoLimpio) throw new Error("motivo_relevo_requerido");
+      const contexto = await contextoCierreA10();
+      const operationId = `c01.ui.cash.responsible.shift.${uuidA02()}`;
+      const resultado = await rpcA02ConRecuperacion(contexto.supabase, "abc_cambiar_responsable_caja", {
+        p_operation_id: operationId,
+        p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId,
+        p_session_id: contexto.sessionId,
+        p_nuevo_responsable_user_id: responsableId,
+        p_motivo: motivoLimpio,
+        p_terminal_id: contexto.terminalId,
+        p_operating_day: contexto.operatingDay
+      }, contexto.empresaId, contexto.localId, operationId);
+      return { ok: true, ...(resultado || {}) };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
   async function iniciarCierreSesionCajaA10() {
     try {
       const contexto = await contextoCierreA10();
@@ -9262,6 +9966,24 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         p_terminal_id: contexto.terminalId,
         p_currency_code: "EUR",
         p_counted_amount: contado,
+        p_operating_day: contexto.operatingDay
+      }, contexto.empresaId, contexto.localId, operationId);
+      return { ok: true, ...(resultado || {}) };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function ensayarCierreSesionCajaC12() {
+    try {
+      const contexto = await contextoCierreA10();
+      const operationId = `f7.ui.cash.close.rehearsal.${uuidA02()}`;
+      const resultado = await rpcA02ConRecuperacion(contexto.supabase, "abc_ensayar_cierre_sesion_caja", {
+        p_operation_id: operationId,
+        p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId,
+        p_session_id: contexto.sessionId,
+        p_terminal_id: contexto.terminalId,
         p_operating_day: contexto.operatingDay
       }, contexto.empresaId, contexto.localId, operationId);
       return { ok: true, ...(resultado || {}) };
@@ -10177,15 +10899,20 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   // y no solo la primera vez que se llama a listarEstacionesA10: esta lógica se recrea en cada pintado de la aplicación y, si no,
   // la pantalla recibiría un listarEstacionesA10 sin ellas hasta su primera llamada (pieza 6d).
   listarEstacionesA10.abrirSesionCajaA10 = abrirSesionCajaA10;
+  listarEstacionesA10.consultarSesionCajaC01 = consultarSesionCajaC01;
+  listarEstacionesA10.vincularTerminalCajaC01 = vincularTerminalCajaC01;
+  listarEstacionesA10.desvincularTerminalCajaC01 = desvincularTerminalCajaC01;
+  listarEstacionesA10.cambiarResponsableCajaC01 = cambiarResponsableCajaC01;
   listarEstacionesA10.cerrarSesionCajaA10 = cerrarSesionCajaA10;
   listarEstacionesA10.iniciarCierreSesionCajaA10 = iniciarCierreSesionCajaA10;
   listarEstacionesA10.confirmarCierreProvisionalA10 = confirmarCierreProvisionalA10;
+  listarEstacionesA10.ensayarCierreSesionCajaC12 = ensayarCierreSesionCajaC12;
   listarEstacionesA10.finalizarCierreSesionCajaA10 = finalizarCierreSesionCajaA10;
   listarEstacionesA10.reabrirCierreProvisionalA10 = reabrirCierreProvisionalA10;
   listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
   listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
   listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, cambiarResponsableCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -12444,8 +13171,9 @@ var DIAS_REPARTO = [
   { valor: 6, corta: "S", nombre: "S\xE1bado" },
   { valor: 0, corta: "D", nombre: "Domingo" }
 ];
-function Proveedores({ proveedores, addProveedor, updateProveedor, deleteProveedor, pedidos: pedidos2 }) {
-  const blankProv = { nombre: "", contacto: "", telefono: "", email: "", condiciones: "", leadTime: "", diasPago: "", diasReparto: [] };
+function Proveedores({ proveedores, addProveedor, updateProveedor, deleteProveedor, marcarProveedorRevisado = null, pedidos: pedidos2 }) {
+  const blankProv = { nombre: "", nif: "", direccion: "", web: "", contacto: "", telefono: "", email: "", condiciones: "", leadTime: "", diasPago: "", diasReparto: [] };
+  const pendientesRevisionAlb = proveedores.filter((x3) => x3 && x3.pendienteRevision).length;
   const [showForm, setShowForm] = (0, import_react4.useState)(false);
   const [form, setForm] = (0, import_react4.useState)(blankProv);
   const [error, setError] = (0, import_react4.useState)("");
@@ -12471,6 +13199,9 @@ function Proveedores({ proveedores, addProveedor, updateProveedor, deleteProveed
     setEditFor(pv.id);
     setEditForm({
       nombre: pv.nombre || "",
+      nif: pv.nif || pv.cif || "",
+      direccion: pv.direccion || "",
+      web: pv.web || "",
       contacto: pv.contacto || "",
       telefono: pv.telefono || "",
       email: pv.email || "",
@@ -12493,7 +13224,7 @@ function Proveedores({ proveedores, addProveedor, updateProveedor, deleteProveed
     }
     setEditFor(null);
   }
-  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setShowForm((s22) => !s22) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Nuevo proveedor") }, "Proveedores"), showForm && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre del proveedor" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.nombre, onChange: (e2) => setForm({ ...form, nombre: e2.target.value }), placeholder: "Distribuidora del Norte" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Persona de contacto" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.contacto, onChange: (e2) => setForm({ ...form, contacto: e2.target.value }), placeholder: "Nombre" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tel\xE9fono (WhatsApp)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.telefono, onChange: (e2) => setForm({ ...form, telefono: e2.target.value }), placeholder: "+34 600 000 000" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Correo electr\xF3nico" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "email", value: form.email, onChange: (e2) => setForm({ ...form, email: e2.target.value }), placeholder: "pedidos@proveedor.com" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Condiciones de pago (texto libre)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.condiciones, onChange: (e2) => setForm({ ...form, condiciones: e2.target.value }), placeholder: "Transferencia 45 d\xEDas F/F" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "D\xEDas de pago (para calcular vencimientos)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.diasPago, onChange: (e2) => setForm({ ...form, diasPago: e2.target.value }), placeholder: "45" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tiempo de entrega (d\xEDas)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.leadTime, onChange: (e2) => setForm({ ...form, leadTime: e2.target.value }), placeholder: "5" }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "\xBFQu\xE9 d\xEDas reparte? (opcional)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5" }, DIAS_REPARTO.map((d2) => {
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setShowForm((s22) => !s22) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Nuevo proveedor") }, "Proveedores"), showForm && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre del proveedor" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.nombre, onChange: (e2) => setForm({ ...form, nombre: e2.target.value }), placeholder: "Distribuidora del Norte" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "NIF / CIF (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.nif, onChange: (e2) => setForm({ ...form, nif: e2.target.value }), placeholder: "B12345678" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Direcci\xF3n (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.direccion, onChange: (e2) => setForm({ ...form, direccion: e2.target.value }), placeholder: "C/ Mayor 1, 28001 Madrid" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Web (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.web, onChange: (e2) => setForm({ ...form, web: e2.target.value }), placeholder: "www.proveedor.com" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Persona de contacto" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.contacto, onChange: (e2) => setForm({ ...form, contacto: e2.target.value }), placeholder: "Nombre" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tel\xE9fono (WhatsApp)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.telefono, onChange: (e2) => setForm({ ...form, telefono: e2.target.value }), placeholder: "+34 600 000 000" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Correo electr\xF3nico" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "email", value: form.email, onChange: (e2) => setForm({ ...form, email: e2.target.value }), placeholder: "pedidos@proveedor.com" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Condiciones de pago (texto libre)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.condiciones, onChange: (e2) => setForm({ ...form, condiciones: e2.target.value }), placeholder: "Transferencia 45 d\xEDas F/F" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "D\xEDas de pago (para calcular vencimientos)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.diasPago, onChange: (e2) => setForm({ ...form, diasPago: e2.target.value }), placeholder: "45" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tiempo de entrega (d\xEDas)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.leadTime, onChange: (e2) => setForm({ ...form, leadTime: e2.target.value }), placeholder: "5" }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "\xBFQu\xE9 d\xEDas reparte? (opcional)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5" }, DIAS_REPARTO.map((d2) => {
     const activo = (form.diasReparto || []).includes(d2.valor);
     return /* @__PURE__ */ import_react4.default.createElement(
       "button",
@@ -12513,10 +13244,10 @@ function Proveedores({ proveedores, addProveedor, updateProveedor, deleteProveed
   })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, "Si no marcas ninguno, se asume que puede repartir cualquier d\xEDa.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.inkSoft } }, '"D\xEDas de pago" es el plazo real hasta que toca pagar la factura (lo que ves como "45 d\xEDas F/F" o "TR 30 d\xEDas" en el papel). Es distinto del tiempo de entrega, que es cu\xE1nto tarda en llegarte el pedido.'), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", role: "alert", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-1" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submit }, "Guardar proveedor"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
     setShowForm(false);
     setError("");
-  } }, "Cancelar"))), proveedores.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has a\xF1adido proveedores." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-3" }, proveedores.map((pv) => {
+  } }, "Cancelar"))), pendientesRevisionAlb > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, pendientesRevisionAlb, " proveedor(es) se dieron de alta autom\xE1ticamente desde la foto de un albar\xE1n y est\xE1n pendientes de revisar. Completa sus datos (contacto, tel\xE9fono, condiciones) y pulsa \xABMarcar como revisado\xBB.")), proveedores.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has a\xF1adido proveedores." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-3" }, proveedores.map((pv) => {
     const nPedidos = pedidos2.filter((p22) => p22.proveedorId === pv.id).length;
-    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: pv.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold" }, pv.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mt-0.5", style: { color: C2.inkSoft } }, pv.contacto)), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setConfirmDeleteId(pv.id), "aria-label": "Eliminar proveedor", className: "flex items-center justify-center shrink-0", style: { width: 44, height: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 15, color: C2.inkSoft }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 text-[12px] space-y-1", style: { color: C2.inkSoft } }, pv.email && /* @__PURE__ */ import_react4.default.createElement("div", null, "\u2709 ", pv.email), pv.telefono && /* @__PURE__ */ import_react4.default.createElement("div", null, "\u260E ", pv.telefono), pv.condiciones && /* @__PURE__ */ import_react4.default.createElement("div", null, "Condiciones: ", pv.condiciones), pv.leadTime && /* @__PURE__ */ import_react4.default.createElement("div", null, "Entrega estimada: ", pv.leadTime, " d\xEDas"), pv.diasReparto && pv.diasReparto.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", null, "Reparte: ", DIAS_REPARTO.filter((d2) => pv.diasReparto.includes(d2.valor)).map((d2) => d2.nombre).join(", ")), pv.diasPago && /* @__PURE__ */ import_react4.default.createElement("div", null, "Pago a ", pv.diasPago, " d\xEDas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, nPedidos, " pedido(s) registrados")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(pv) }, "Editar")));
-  })), editFor && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setEditFor(null), title: "Editar proveedor" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre del proveedor" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.nombre, onChange: (e2) => setEditForm({ ...editForm, nombre: e2.target.value }), autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Persona de contacto" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.contacto, onChange: (e2) => setEditForm({ ...editForm, contacto: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tel\xE9fono (WhatsApp)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.telefono, onChange: (e2) => setEditForm({ ...editForm, telefono: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Correo electr\xF3nico" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "email", value: editForm.email, onChange: (e2) => setEditForm({ ...editForm, email: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Condiciones de pago (texto libre)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.condiciones, onChange: (e2) => setEditForm({ ...editForm, condiciones: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "D\xEDas de pago (para vencimientos)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: editForm.diasPago, onChange: (e2) => setEditForm({ ...editForm, diasPago: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tiempo de entrega (d\xEDas)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: editForm.leadTime, onChange: (e2) => setEditForm({ ...editForm, leadTime: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "\xBFQu\xE9 d\xEDas reparte? (opcional)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5" }, DIAS_REPARTO.map((d2) => {
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: pv.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold" }, pv.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mt-0.5", style: { color: C2.inkSoft } }, pv.contacto), pv.pendienteRevision && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-1" }, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.amber }, "Creado por IA \xB7 revisar"))), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setConfirmDeleteId(pv.id), "aria-label": "Eliminar proveedor", className: "flex items-center justify-center shrink-0", style: { width: 44, height: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 15, color: C2.inkSoft }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 text-[12px] space-y-1", style: { color: C2.inkSoft } }, (pv.nif || pv.cif) && /* @__PURE__ */ import_react4.default.createElement("div", null, "NIF/CIF: ", pv.nif || pv.cif), pv.direccion && /* @__PURE__ */ import_react4.default.createElement("div", null, "\u{1F4CD} ", pv.direccion), pv.web && /* @__PURE__ */ import_react4.default.createElement("div", null, "\u{1F310} ", pv.web), pv.email && /* @__PURE__ */ import_react4.default.createElement("div", null, "\u2709 ", pv.email), pv.telefono && /* @__PURE__ */ import_react4.default.createElement("div", null, "\u260E ", pv.telefono), pv.condiciones && /* @__PURE__ */ import_react4.default.createElement("div", null, "Condiciones: ", pv.condiciones), pv.leadTime && /* @__PURE__ */ import_react4.default.createElement("div", null, "Entrega estimada: ", pv.leadTime, " d\xEDas"), pv.diasReparto && pv.diasReparto.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", null, "Reparte: ", DIAS_REPARTO.filter((d2) => pv.diasReparto.includes(d2.valor)).map((d2) => d2.nombre).join(", ")), pv.diasPago && /* @__PURE__ */ import_react4.default.createElement("div", null, "Pago a ", pv.diasPago, " d\xEDas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, nPedidos, " pedido(s) registrados")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 flex gap-2 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(pv) }, "Editar"), pv.pendienteRevision && marcarProveedorRevisado && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => marcarProveedorRevisado(pv.id) }, "Marcar como revisado")));
+  })), editFor && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setEditFor(null), title: "Editar proveedor" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre del proveedor" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.nombre, onChange: (e2) => setEditForm({ ...editForm, nombre: e2.target.value }), autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "NIF / CIF (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.nif, onChange: (e2) => setEditForm({ ...editForm, nif: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Direcci\xF3n (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.direccion, onChange: (e2) => setEditForm({ ...editForm, direccion: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Web (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.web, onChange: (e2) => setEditForm({ ...editForm, web: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Persona de contacto" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.contacto, onChange: (e2) => setEditForm({ ...editForm, contacto: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tel\xE9fono (WhatsApp)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.telefono, onChange: (e2) => setEditForm({ ...editForm, telefono: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Correo electr\xF3nico" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "email", value: editForm.email, onChange: (e2) => setEditForm({ ...editForm, email: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Condiciones de pago (texto libre)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.condiciones, onChange: (e2) => setEditForm({ ...editForm, condiciones: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "D\xEDas de pago (para vencimientos)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: editForm.diasPago, onChange: (e2) => setEditForm({ ...editForm, diasPago: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tiempo de entrega (d\xEDas)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: editForm.leadTime, onChange: (e2) => setEditForm({ ...editForm, leadTime: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "\xBFQu\xE9 d\xEDas reparte? (opcional)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5" }, DIAS_REPARTO.map((d2) => {
     const activo = (editForm.diasReparto || []).includes(d2.valor);
     return /* @__PURE__ */ import_react4.default.createElement(
       "button",
@@ -15157,7 +15888,13 @@ function Albaranes({
   limpiarPrefill,
   pedidoParaFotoIA,
   limpiarPedidoParaFotoIA,
-  pedidos: pedidos2 = []
+  pedidos: pedidos2 = [],
+  empresaId = null,
+  empresasPropias = [],
+  puedeAltaProveedorIA = false,
+  addProveedorDesdeAlbaran = null,
+  asignarNifProveedor = null,
+  completarProveedorConDatos = null
 }) {
   const [modo, setModo] = (0, import_react4.useState)("lista");
   const [alb, setAlb] = (0, import_react4.useState)(null);
@@ -15178,6 +15915,9 @@ function Albaranes({
   const [confianzaIA, setConfianzaIA] = (0, import_react4.useState)(null);
   const [avisosIA, setAvisosIA] = (0, import_react4.useState)([]);
   const [fotoRevisionIA, setFotoRevisionIA] = (0, import_react4.useState)("");
+  const [deteccionProv, setDeteccionProv] = (0, import_react4.useState)(null);
+  const [avisoAltaProveedor, setAvisoAltaProveedor] = (0, import_react4.useState)("");
+  const lecturaIARef = import_react4.default.useRef(null);
   const duplicados = (0, import_react4.useMemo)(
     () => alb && duplicadosDe ? duplicadosDe(alb) : { albaran: null, factura: null },
     [alb, duplicadosDe]
@@ -15277,34 +16017,91 @@ function Albaranes({
   function quitarFotoIA(idx) {
     setFotosIA((s22) => s22.filter((_22, i33) => i33 !== idx));
   }
+  function construirAlbaranIA(d2, provId, pedidoLigado) {
+    function udsPorCajaFiable(l22) {
+      const leido = Number(l22.udsPorCaja) || 0;
+      const cajas = Number(l22.cantidad) || 0;
+      if (leido <= 0) return null;
+      const porNombre = String(l22.descripcion || "").match(/\bC(\d{1,3})\b/);
+      if (porNombre) {
+        const n2 = Number(porNombre[1]);
+        if (n2 > 0 && n2 <= 200) return n2;
+      }
+      if (cajas > 1 && leido % cajas === 0) {
+        const porCaja = leido / cajas;
+        if (porCaja >= 1) return porCaja;
+      }
+      return leido;
+    }
+    const lineas = d2.lineas.map((l22) => {
+      const base = lineaVacia();
+      const aprendido = provId ? buscarEnCatalogo(provId, l22.codigo, l22.descripcion) : null;
+      const uds = udsPorCajaFiable(l22);
+      const productoId = aprendido && aprendido.productoId ? aprendido.productoId : "";
+      const itemPedido = pedidoLigado && productoId ? pedidoLigado.items.find((it2) => it2.productoId === productoId) : null;
+      return {
+        ...base,
+        codigoProveedor: l22.codigo || "",
+        descripcion: l22.descripcion || "",
+        cantidad: l22.cantidad != null ? l22.cantidad : "",
+        precioBruto: l22.precioUnitario != null ? l22.precioUnitario : "",
+        dtoPct: l22.descuentoPct || "",
+        iva: l22.iva != null ? l22.iva : 10,
+        importe: l22.importeLinea != null ? l22.importeLinea : "",
+        // Datos que la IA sí extrae del albarán y antes se perdían al
+        // construir la línea: el canon (Punto Verde) sumaba mal el total,
+        // y las uds. por caja obligaban a teclearlas a mano cada vez.
+        udsPorCaja: uds != null ? uds : base.udsPorCaja || 1,
+        canon: l22.canon != null && Number(l22.canon) > 0 ? Number(l22.canon) : "",
+        lote: l22.lote || "",
+        caducidad: l22.caducidad || "",
+        unidad: l22.unidad || base.unidad,
+        // Lo aprendido del catálogo va después: si ya enlazaste este código
+        // antes, tus datos mandan sobre lo que lea la IA hoy.
+        ...aprendido || {},
+        productoId,
+        cantidadPedida: itemPedido ? Math.max(0, (Number(itemPedido.cantidad) || 0) - (Number(itemPedido.cantidadRecibida) || 0)) : void 0
+      };
+    });
+    return {
+      id: uid(),
+      proveedorId: provId,
+      numero: d2.numeroAlbaran || "",
+      fecha: d2.fecha || todayISO(),
+      totalPapel: d2.totalAlbaran != null ? d2.totalAlbaran : "",
+      cargos: "",
+      cargosConcepto: "",
+      cargosIva: 21,
+      esFactura: false,
+      numeroFactura: "",
+      fechaFactura: d2.fecha || todayISO(),
+      pagada: false,
+      fechaPago: "",
+      // Si venía de un pedido, el albarán queda enlazado a él: al confirmar,
+      // el pedido se marcará recibido (o parcial) solo, igual que si se
+      // hubiera rellenado a mano desde Recepción.
+      pedidoId: pedidoLigado ? pedidoLigado.id : void 0,
+      lineas,
+      estado: "borrador"
+    };
+  }
+  function elegirProveedorDetectado(provId) {
+    const lectura = lecturaIARef.current;
+    const sinTocar = !!(lectura && alb && lectura.albId === alb.id && lectura.albInicial === alb);
+    const albNuevo = sinTocar ? { ...construirAlbaranIA(lectura.d2, provId, lectura.pedidoLigado), id: alb.id } : { ...alb, proveedorId: provId };
+    if (sinTocar) lectura.albInicial = albNuevo;
+    setAlb(albNuevo);
+    setDeteccionProv((d3) => d3 && d3.albId === albNuevo.id ? { ...d3, estado: "elegido", proveedorId: provId } : d3);
+  }
   async function importarConIA() {
     if (fotosIA.length === 0) {
       setErrorIA("Sube al menos una foto del albar\xE1n.");
-      return;
-    }
-    if (!proveedorIA) {
-      setErrorIA("Elige a qu\xE9 proveedor pertenece.");
       return;
     }
     setCargandoIA(true);
     setErrorIA("");
     setAvisosIA([]);
     try {
-      let udsPorCajaFiable = function(l22) {
-        const leido = Number(l22.udsPorCaja) || 0;
-        const cajas = Number(l22.cantidad) || 0;
-        if (leido <= 0) return null;
-        const porNombre = String(l22.descripcion || "").match(/\bC(\d{1,3})\b/);
-        if (porNombre) {
-          const n2 = Number(porNombre[1]);
-          if (n2 > 0 && n2 <= 200) return n2;
-        }
-        if (cajas > 1 && leido % cajas === 0) {
-          const porCaja = leido / cajas;
-          if (porCaja >= 1) return porCaja;
-        }
-        return leido;
-      };
       const resp = await fetch(
         "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/importar-albaran",
         {
@@ -15325,57 +16122,33 @@ function Albaranes({
         setCargandoIA(false);
         return;
       }
-      const lineas = d2.lineas.map((l22) => {
-        const base = lineaVacia();
-        const aprendido = buscarEnCatalogo(proveedorIA, l22.codigo, l22.descripcion);
-        const uds = udsPorCajaFiable(l22);
-        const productoId = aprendido && aprendido.productoId ? aprendido.productoId : "";
-        const itemPedido = pedidoIALigado && productoId ? pedidoIALigado.items.find((it2) => it2.productoId === productoId) : null;
-        return {
-          ...base,
-          codigoProveedor: l22.codigo || "",
-          descripcion: l22.descripcion || "",
-          cantidad: l22.cantidad != null ? l22.cantidad : "",
-          precioBruto: l22.precioUnitario != null ? l22.precioUnitario : "",
-          dtoPct: l22.descuentoPct || "",
-          iva: l22.iva != null ? l22.iva : 10,
-          importe: l22.importeLinea != null ? l22.importeLinea : "",
-          // Datos que la IA sí extrae del albarán y antes se perdían al
-          // construir la línea: el canon (Punto Verde) sumaba mal el total,
-          // y las uds. por caja obligaban a teclearlas a mano cada vez.
-          udsPorCaja: uds != null ? uds : base.udsPorCaja || 1,
-          canon: l22.canon != null && Number(l22.canon) > 0 ? Number(l22.canon) : "",
-          lote: l22.lote || "",
-          caducidad: l22.caducidad || "",
-          unidad: l22.unidad || base.unidad,
-          // Lo aprendido del catálogo va después: si ya enlazaste este código
-          // antes, tus datos mandan sobre lo que lea la IA hoy.
-          ...aprendido || {},
-          productoId,
-          cantidadPedida: itemPedido ? Math.max(0, (Number(itemPedido.cantidad) || 0) - (Number(itemPedido.cantidadRecibida) || 0)) : void 0
-        };
+      const detectado = resolverProveedorAlbaran({
+        proveedores,
+        empresaId,
+        empresasPropias,
+        detectado: {
+          nombre: d2.proveedorNombre,
+          nif: d2.proveedorCif,
+          direccion: d2.proveedorDireccion,
+          telefono: d2.proveedorTelefono,
+          email: d2.proveedorEmail,
+          web: d2.proveedorWeb,
+          condiciones: d2.condicionesPago,
+          diasPago: d2.diasPago,
+          clienteNif: d2.clienteCif
+        }
       });
-      setAlb({
-        id: uid(),
-        proveedorId: proveedorIA,
-        numero: d2.numeroAlbaran || "",
-        fecha: d2.fecha || todayISO(),
-        totalPapel: d2.totalAlbaran != null ? d2.totalAlbaran : "",
-        cargos: "",
-        cargosConcepto: "",
-        cargosIva: 21,
-        esFactura: false,
-        numeroFactura: "",
-        fechaFactura: d2.fecha || todayISO(),
-        pagada: false,
-        fechaPago: "",
-        // Si venía de un pedido, el albarán queda enlazado a él: al confirmar,
-        // el pedido se marcará recibido (o parcial) solo, igual que si se
-        // hubiera rellenado a mano desde Recepción.
-        pedidoId: pedidoIALigado ? pedidoIALigado.id : void 0,
-        lineas,
-        estado: "borrador"
-      });
+      const provElegido = proveedorIA || (detectado.estado === "existente" ? detectado.proveedor.id : "");
+      const albIA = construirAlbaranIA(d2, provElegido, pedidoIALigado);
+      let deteccion = null;
+      if (!proveedorIA) {
+        deteccion = detectado;
+      } else if (detectado.estado === "existente" && detectado.proveedor.id !== proveedorIA) {
+        deteccion = { ...detectado, estado: "distinto_del_elegido", elegidoNombre: proveedorPorId(proveedorIA)?.nombre || "" };
+      }
+      lecturaIARef.current = { albId: albIA.id, d2, pedidoLigado: pedidoIALigado, albInicial: albIA };
+      setDeteccionProv(deteccion ? { ...deteccion, albId: albIA.id } : null);
+      setAlb(albIA);
       setFotoRevisionIA(fotosIA[0].previsualizacion);
       setConfianzaIA(d2.confianza || "media");
       setAvisosIA(d2.avisos || []);
@@ -15484,23 +16257,44 @@ function Albaranes({
   const totalPapel = Number(alb?.totalPapel) || 0;
   const descuadre = totalPapel > 0 ? totalCalculado - totalPapel : 0;
   const cuadra = totalPapel > 0 && Math.abs(descuadre) < 0.02;
+  function asegurarProveedor(albActual, { crear = true } = {}) {
+    if (albActual.proveedorId) return { ok: true, alb: albActual, creado: null };
+    const det = deteccionProv && deteccionProv.albId === albActual.id ? deteccionProv : null;
+    if (!det) return { ok: false, error: "Selecciona el proveedor." };
+    if (det.estado === "parecido") {
+      return { ok: false, error: "Confirma si el proveedor de la foto es uno de los que ya tienes o es nuevo (mira el aviso de arriba)." };
+    }
+    if (det.estado !== "nuevo") return { ok: false, error: "Selecciona el proveedor." };
+    if (!puedeAltaProveedorIA || typeof addProveedorDesdeAlbaran !== "function") {
+      return { ok: false, error: "Este proveedor aún no está dado de alta y tu usuario no puede crearlo. Elige uno de la lista o pide a un encargado que lo dé de alta." };
+    }
+    if (!crear) return { ok: true, alb: albActual, creado: null };
+    const res = addProveedorDesdeAlbaran(det.datos);
+    if (!res || !res.ok) return { ok: false, error: res && res.error ? res.error : "No se pudo dar de alta el proveedor." };
+    const conProveedor = { ...albActual, proveedorId: res.proveedor.id };
+    setDeteccionProv({ ...det, estado: "creado", proveedorId: res.proveedor.id, proveedor: res.proveedor, reutilizado: !!res.reutilizado });
+    setAlb(conProveedor);
+    return { ok: true, alb: conProveedor, creado: res.reutilizado ? null : res.proveedor };
+  }
   function guardarBorrador() {
-    if (!alb.proveedorId) {
-      setError("Selecciona el proveedor.");
+    const asegurado = asegurarProveedor(alb);
+    if (!asegurado.ok) {
+      setError(asegurado.error);
       return;
     }
     setError("");
     const limpio = {
-      ...alb,
-      lineas: alb.lineas.map((ln2) => ({ ...ln2, importe: ln2.importe !== "" ? Number(ln2.importe) : Number(importeCalculado(ln2).toFixed(4)) }))
+      ...asegurado.alb,
+      lineas: asegurado.alb.lineas.map((ln2) => ({ ...ln2, importe: ln2.importe !== "" ? Number(ln2.importe) : Number(importeCalculado(ln2).toFixed(4)) }))
     };
     guardarAlbaran(limpio);
     setAlb(limpio);
   }
   function darEntrada() {
     if (procesandoEntrada) return;
-    if (!alb.proveedorId) {
-      setError("Selecciona el proveedor.");
+    const previoProveedor = asegurarProveedor(alb, { crear: false });
+    if (!previoProveedor.ok) {
+      setError(previoProveedor.error);
       return;
     }
     const pobladas = alb.lineas.filter((ln2) => !!String(ln2.productoId || ln2.descripcion || ln2.codigoProveedor || ln2.cantidad || "").trim());
@@ -15513,8 +16307,13 @@ function Albaranes({
     setError("");
     setProcesandoEntrada(true);
     try {
+      const asegurado = asegurarProveedor(alb);
+      if (!asegurado.ok) {
+        setError(asegurado.error);
+        return;
+      }
       const limpio = {
-        ...alb,
+        ...asegurado.alb,
         lineas: candidatas.map((ln2) => ({ ...ln2, importe: ln2.importe !== "" ? Number(ln2.importe) : Number(importeCalculado(ln2).toFixed(4)) }))
       };
       const resultado = confirmarAlbaran(limpio);
@@ -15523,6 +16322,9 @@ function Albaranes({
         return;
       }
       setAvisos(resultado && resultado.length ? resultado : []);
+      if (asegurado.creado) {
+        setAvisoAltaProveedor(`Se ha dado de alta el proveedor «${asegurado.creado.nombre}» a partir del albarán. Está en Proveedores marcado como «pendiente de revisar»: completa sus datos cuando puedas.`);
+      }
       setModo("lista");
       setAlb(null);
       setFotoRevisionIA("");
@@ -15542,7 +16344,7 @@ function Albaranes({
       setErrorIA("");
       setAvisosIA([]);
       setPedidoIALigado(null);
-      setProveedorIA(proveedores[0] ? proveedores[0].id : "");
+      setProveedorIA("");
     } }, /* @__PURE__ */ import_react4.default.createElement(Camera, { size: 15 }), " Foto con IA"), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: nuevoAlbaran }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Nuevo albar\xE1n")) }, "Entrada de albaranes"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3 flex items-center gap-3 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Filtrar por mes" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "month", value: filtroMes, onChange: (e2) => setFiltroMes(e2.target.value) })), filtroMes && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setFiltroMes(""), className: "mt-1" }, "Ver todos")), mostrarPegar && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setMostrarPegar(false), title: "Pegar el texto del albar\xE1n", ancho: "max-w-2xl" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Abre el PDF del proveedor, selecciona la tabla de productos, c\xF3piala y p\xE9gala aqu\xED. El programa rellenar\xE1 las l\xEDneas solo. Si ya enlazaste antes alg\xFAn c\xF3digo de este proveedor, lo reconocer\xE1 autom\xE1ticamente."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Proveedor" }, /* @__PURE__ */ import_react4.default.createElement(
       "select",
       {
@@ -15576,8 +16378,9 @@ function Albaranes({
         className: "w-full rounded-lg px-3 py-2 text-[13px]",
         style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink }
       },
+      /* @__PURE__ */ import_react4.default.createElement("option", { key: "__detectar__", value: "" }, "Detectar por la foto (recomendado)"),
       proveedores.map((pv) => /* @__PURE__ */ import_react4.default.createElement("option", { key: pv.id, value: pv.id }, pv.nombre))
-    )), /* @__PURE__ */ import_react4.default.createElement(
+    ), !proveedorIA && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, "La IA lee el proveedor de la foto: si ya lo tienes, lo selecciona; si no, te propondr\xE1 darlo de alta. Puedes elegirlo t\xFA a mano si prefieres.")), /* @__PURE__ */ import_react4.default.createElement(
       "label",
       {
         className: "flex flex-col items-center justify-center gap-2 rounded-lg py-6 mb-3 cursor-pointer",
@@ -15611,7 +16414,7 @@ function Albaranes({
     )))), errorIA && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", role: "alert", style: { color: C2.red } }, errorIA), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Si la foto sale borrosa o no se lee bien, la IA lo deja en blanco en vez de inventar \u2014 luego lo rellenas t\xFA en la revisi\xF3n."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: importarConIA, disabled: cargandoIA }, cargandoIA ? "Leyendo el albar\xE1n\u2026" : "Leer con IA"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
       setMostrarIA(false);
       setPedidoIALigado(null);
-    }, disabled: cargandoIA }, "Cancelar"))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Teclea el albar\xE1n tal y como viene en el papel. La primera vez que introduzcas un c\xF3digo, el programa aprende su descripci\xF3n, unidad y unidades por caja: a partir de ah\xED solo tendr\xE1s que escribir el c\xF3digo y la cantidad. Al dar entrada se crean o actualizan los productos, sube el stock y se recalculan los costes.")), avisos && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: avisos.length ? C2.amberSoft : C2.accentSoft, border: "none" } }, avisos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Entrada registrada. Ning\xFAn precio ha variado m\xE1s de un 3%.") : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2" }, "Atenci\xF3n: el precio de esta entrega se aleja del coste promedio que ten\xEDas"), avisos.map((a22, i33) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i33, className: "text-[12px] flex items-center justify-between py-0.5" }, /* @__PURE__ */ import_react4.default.createElement("span", null, a22.nombre), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: a22.variacion > 0 ? C2.red : C2.accent } }, "\u20AC", fmt(a22.anterior), " \u2192 \u20AC", fmt(a22.nuevo), " (", a22.variacion > 0 ? "+" : "", fmt(a22.variacion), "%)"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "El coste final del producto ya no es exactamente \u20AC", avisos[0] ? fmt(avisos[0].nuevo) : "", ": se ha promediado con el stock que ya ten\xEDas, para no revalorizar de golpe lo que compraste m\xE1s barato o m\xE1s caro antes.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAvisos(null) }, "Entendido"))), albaranes.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has registrado ning\xFAn albar\xE1n." }) : (() => {
+    }, disabled: cargandoIA }, "Cancelar"))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Teclea el albar\xE1n tal y como viene en el papel. La primera vez que introduzcas un c\xF3digo, el programa aprende su descripci\xF3n, unidad y unidades por caja: a partir de ah\xED solo tendr\xE1s que escribir el c\xF3digo y la cantidad. Al dar entrada se crean o actualizan los productos, sube el stock y se recalculan los costes.")), avisoAltaProveedor && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2" }, avisoAltaProveedor), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAvisoAltaProveedor("") }, "Entendido")), avisos && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: avisos.length ? C2.amberSoft : C2.accentSoft, border: "none" } }, avisos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Entrada registrada. Ning\xFAn precio ha variado m\xE1s de un 3%.") : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2" }, "Atenci\xF3n: el precio de esta entrega se aleja del coste promedio que ten\xEDas"), avisos.map((a22, i33) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i33, className: "text-[12px] flex items-center justify-between py-0.5" }, /* @__PURE__ */ import_react4.default.createElement("span", null, a22.nombre), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: a22.variacion > 0 ? C2.red : C2.accent } }, "\u20AC", fmt(a22.anterior), " \u2192 \u20AC", fmt(a22.nuevo), " (", a22.variacion > 0 ? "+" : "", fmt(a22.variacion), "%)"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "El coste final del producto ya no es exactamente \u20AC", avisos[0] ? fmt(avisos[0].nuevo) : "", ": se ha promediado con el stock que ya ten\xEDas, para no revalorizar de golpe lo que compraste m\xE1s barato o m\xE1s caro antes.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAvisos(null) }, "Entendido"))), albaranes.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has registrado ning\xFAn albar\xE1n." }) : (() => {
       const albaranesFiltrados = filtroMes ? albaranes.filter((a22) => (a22.fecha || "").startsWith(filtroMes)) : albaranes;
       if (albaranesFiltrados.length === 0) {
         return /* @__PURE__ */ import_react4.default.createElement(Empty, { text: `No hay albaranes en ese mes.` });
@@ -15649,6 +16452,90 @@ function Albaranes({
     })());
   }
   const bloqueado = alb.estado === "confirmado";
+  const deteccionActual = deteccionProv && deteccionProv.albId === alb.id ? deteccionProv : null;
+  function cambiarProveedorEditor(provId) {
+    const pendiente = deteccionActual && ["nuevo", "parecido", "sin_datos", "es_propio"].includes(deteccionActual.estado);
+    if (pendiente && provId) elegirProveedorDetectado(provId);
+    else setAlb({ ...alb, proveedorId: provId });
+  }
+  function tarjetaDeteccionProveedor() {
+    const det = deteccionActual;
+    if (!det || bloqueado) return null;
+    const el = import_react4.default.createElement;
+    const datos2 = det.datos || {};
+    const nifTxt = datos2.nif ? ` · ${datos2.nif}` : "";
+    const avisoNif = datos2.nifLeido && datos2.nifEstado !== "valido" ? el("div", { className: "text-[11.5px] mt-1" }, datos2.nifEstado === "del_cliente" ? `El NIF/CIF leído (${datos2.nifLeido}) es el del cliente (el destinatario del albarán), no el del proveedor: no se guardará.` : `El NIF/CIF leído (${datos2.nifLeido}) ${datos2.nifEstado === "invalido" ? "no tiene un dígito de control válido" : "no tiene un formato reconocible"}: no se guardará. Compruébalo en la foto.`) : null;
+    const resumenDatos = (campos) => Object.keys(campos).map((k2) => `${ETIQUETAS_CAMPOS_PROVEEDOR_ALB[k2] || k2}: ${campos[k2]}`).join(" · ");
+    const ambar = { className: "mb-4", style: { background: C2.amberSoft, border: "none" } };
+    const verde = { className: "mb-4", style: { background: C2.accentSoft, border: "none" } };
+    if (det.estado === "existente" && det.proveedor && alb.proveedorId === det.proveedor.id) {
+      return el(
+        Card,
+        verde,
+        el("div", { className: "text-[12.5px]" }, "✓ Proveedor reconocido: ", el("b", null, det.proveedor.nombre), det.motivo === "nif" ? " (por su NIF/CIF)." : " (por el nombre)."),
+        (() => {
+          const faltan = typeof completarProveedorConDatos === "function" ? camposQueFaltanEnFichaAlb(proveedorPorId(det.proveedor.id) || det.proveedor, datos2) : {};
+          if (Object.keys(faltan).length === 0) return null;
+          return el(
+            "div",
+            { className: "mt-2" },
+            el("div", { className: "text-[11.5px] mb-1" }, "La ficha de este proveedor no tiene estos datos y la foto los trae: ", resumenDatos(faltan)),
+            el(Btn, {
+              small: true,
+              variant: "ghost",
+              onClick: () => {
+                const r2 = completarProveedorConDatos(det.proveedor.id, datos2);
+                setDeteccionProv({ ...det, completado: r2 && r2.ok ? r2.aplicados || [] : null, errorCompletar: r2 && r2.ok ? "" : r2 && r2.error ? r2.error : "No se pudo completar la ficha." });
+              }
+            }, "Completar su ficha con los datos de la foto")
+          );
+        })(),
+        det.completado && det.completado.length > 0 && el("div", { className: "text-[11.5px] mt-1" }, "Ficha completada: ", det.completado.map((k2) => ETIQUETAS_CAMPOS_PROVEEDOR_ALB[k2] || k2).join(", "), "."),
+        det.errorCompletar && el("div", { className: "text-[11.5px] mt-1", style: { color: C2.red } }, det.errorCompletar)
+      );
+    }
+    if (det.estado === "nuevo") {
+      return el(
+        Card,
+        ambar,
+        el("div", { className: "text-[12.5px] font-semibold mb-1" }, "Proveedor nuevo detectado: ", el("b", null, datos2.nombre), nifTxt),
+        (() => {
+          const extra = {};
+          for (const k2 of ["direccion", "telefono", "email", "web", "condiciones"]) if (datos2[k2]) extra[k2] = datos2[k2];
+          if (datos2.diasPago !== "" && datos2.diasPago !== void 0) extra.diasPago = datos2.diasPago;
+          return Object.keys(extra).length ? el("div", { className: "text-[11.5px] mb-1" }, "Se guardará también: ", resumenDatos(extra)) : null;
+        })(),
+        el("div", { className: "text-[12px]" }, puedeAltaProveedorIA ? "No lo tienes dado de alta. Se creará solo cuando guardes el borrador o des entrada, y quedará marcado como «pendiente de revisar». Si en realidad es un proveedor que ya tienes con otro nombre, elígelo en la lista «Proveedor» de abajo." : "No lo tienes dado de alta y tu usuario no puede crear proveedores. Elige uno en la lista «Proveedor» de abajo o pide a un encargado que lo dé de alta."),
+        avisoNif
+      );
+    }
+    if (det.estado === "parecido") {
+      const motivoTxt = det.motivo === "nif_distinto" ? "Tiene el mismo nombre pero otro NIF/CIF." : det.motivo === "nif_repetido" ? "Ese NIF/CIF lo tienen varios de tus proveedores." : "Se parece a un proveedor que ya tienes.";
+      return el(
+        Card,
+        ambar,
+        el("div", { className: "text-[12.5px] font-semibold mb-1" }, "El proveedor de la foto es ", el("b", null, datos2.nombre), nifTxt, ". ", motivoTxt),
+        el("div", { className: "text-[12px]" }, "Dime cuál es para no duplicarlo:"),
+        el(
+          "div",
+          { className: "flex flex-wrap gap-2 mt-2" },
+          (det.candidatos || []).map((c22) => el(Btn, { key: c22.id, small: true, variant: "ghost", onClick: () => elegirProveedorDetectado(c22.id) }, `Sí, es ${c22.nombre}${c22.nif ? ` (${c22.nif})` : ""}`)),
+          el(Btn, { small: true, variant: "ghost", onClick: () => setDeteccionProv({ ...det, estado: "nuevo" }) }, "No, es un proveedor nuevo")
+        ),
+        avisoNif
+      );
+    }
+    if (det.estado === "sin_datos" || det.estado === "es_propio") {
+      return el(Card, ambar, el("div", { className: "text-[12.5px]" }, det.estado === "es_propio" ? "⚠ La IA ha leído como proveedor el nombre o el NIF de tu propia empresa (el cliente del albarán), no el del proveedor. Elige el proveedor en la lista de abajo." : "⚠ No he podido identificar al proveedor en la foto. Elígelo en la lista de abajo."));
+    }
+    if (det.estado === "creado" && det.proveedorId === alb.proveedorId) {
+      return el(Card, verde, el("div", { className: "text-[12.5px]" }, det.reutilizado ? "✓ Proveedor " : "✓ Proveedor dado de alta automáticamente: ", el("b", null, det.proveedor ? det.proveedor.nombre : ""), det.reutilizado ? " (ya lo tenías)." : ". Está en Proveedores marcado como «pendiente de revisar»: completa sus datos cuando puedas."));
+    }
+    if (det.estado === "distinto_del_elegido" && det.proveedor && alb.proveedorId !== det.proveedor.id) {
+      return el(Card, ambar, el("div", { className: "text-[12.5px]" }, "⚠ La foto parece de ", el("b", null, det.proveedor.nombre), ", pero has elegido ", el("b", null, det.elegidoNombre || "otro proveedor"), ". Compruébalo antes de dar entrada."));
+    }
+    return null;
+  }
   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
     setModo("lista");
     setAlb(null);
@@ -15656,16 +16543,16 @@ function Albaranes({
   } }, "Volver") }, bloqueado ? "Albar\xE1n registrado" : "Nuevo albar\xE1n"), bloqueado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.bg, border: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2" }, "Este albar\xE1n ya se dio de entrada, por eso est\xE1 en solo lectura. Si necesitas corregir algo, anula la entrada: se devolver\xE1 el stock y podr\xE1s editarlo."), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
     anularAlbaran(alb);
     setAlb({ ...alb, estado: "borrador" });
-  } }, "Anular entrada y editar")), alb.pedidoId && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Este albar\xE1n est\xE1 enlazado a un pedido. Las l\xEDneas vienen con lo que pediste: corrige las cantidades para reflejar ", /* @__PURE__ */ import_react4.default.createElement("b", null, "lo que ha llegado de verdad"), ". Al dar entrada, el pedido se marcar\xE1 como recibido o parcial seg\xFAn corresponda.")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-4 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Proveedor" }, /* @__PURE__ */ import_react4.default.createElement(
+  } }, "Anular entrada y editar")), alb.pedidoId && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Este albar\xE1n est\xE1 enlazado a un pedido. Las l\xEDneas vienen con lo que pediste: corrige las cantidades para reflejar ", /* @__PURE__ */ import_react4.default.createElement("b", null, "lo que ha llegado de verdad"), ". Al dar entrada, el pedido se marcar\xE1 como recibido o parcial seg\xFAn corresponda.")), tarjetaDeteccionProveedor(), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-4 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Proveedor" }, /* @__PURE__ */ import_react4.default.createElement(
     "select",
     {
       value: alb.proveedorId,
-      onChange: (e2) => setAlb({ ...alb, proveedorId: e2.target.value }),
+      onChange: (e2) => cambiarProveedorEditor(e2.target.value),
       disabled: bloqueado,
       className: "w-full rounded-lg px-3 py-2 text-[13px]",
       style: { border: `1px solid ${C2.line}`, background: C2.surface }
     },
-    /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Selecciona\u2026"),
+    /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, deteccionActual && deteccionActual.estado === "nuevo" && deteccionActual.datos ? `Nuevo: ${deteccionActual.datos.nombre}` : "Selecciona\u2026"),
     proveedores.map((p22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: p22.id, value: p22.id }, p22.nombre))
   )), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "N\xBA de albar\xE1n" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: alb.numero, onChange: (e2) => setAlb({ ...alb, numero: e2.target.value }), disabled: bloqueado, placeholder: "ALENDUO26027571" }), duplicados.albaran && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-1", style: { color: C2.amber } }, "\u26A0 Ya hay un albar\xE1n con ese n\xFAmero de este proveedor (del ", duplicados.albaran.fecha, "). Si no es una correcci\xF3n, puede que lo est\xE9s registrando dos veces.")), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Fecha" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: alb.fecha, onChange: (e2) => setAlb({ ...alb, fecha: e2.target.value }), disabled: bloqueado })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Total del papel (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: alb.totalPapel, onChange: (e2) => setAlb({ ...alb, totalPapel: e2.target.value }), disabled: bloqueado, placeholder: "116,41" }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-2 pt-2", style: { borderTop: `1px solid ${C2.line}`, color: C2.inkSoft } }, "Cargos aparte de la mercanc\xEDa (opcional)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Concepto" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: alb.cargosConcepto || "", onChange: (e2) => setAlb({ ...alb, cargosConcepto: e2.target.value }), disabled: bloqueado, placeholder: "Portes, Punto Verde, envases\u2026" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Importe (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: alb.cargos || "", onChange: (e2) => setAlb({ ...alb, cargos: e2.target.value }), disabled: bloqueado, placeholder: "0,47" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "IVA del cargo (%)" }, /* @__PURE__ */ import_react4.default.createElement(
     "select",
@@ -18117,8 +19004,10 @@ function BloqueEntradasSalidas({ fecha, movimientosCajaDelDia = [], registrarMov
   const h3 = import_react4.default.createElement;
   const [mostrarForm, setMostrarForm] = import_react4.default.useState(false);
   const [tipo, setTipo] = import_react4.default.useState("ENTRADA");
+  const [categoria, setCategoria] = import_react4.default.useState("REPOSICION_CAJA");
   const [importe, setImporte] = import_react4.default.useState("");
   const [motivo, setMotivo] = import_react4.default.useState("");
+  const [motivoOperacion, setMotivoOperacion] = import_react4.default.useState("");
   const [errorLocal, setErrorLocal] = import_react4.default.useState("");
   const [exitoLocal, setExitoLocal] = import_react4.default.useState("");
   const [enviando, setEnviando] = import_react4.default.useState(false);
@@ -18134,8 +19023,10 @@ function BloqueEntradasSalidas({ fecha, movimientosCajaDelDia = [], registrarMov
       return;
     }
     setTipo(pendiente.tipo || "ENTRADA");
+    setCategoria(pendiente.categoria || (pendiente.tipo === "RETIRADA" ? "RETIRADA_CAJA" : "REPOSICION_CAJA"));
     setImporte(String(pendiente.importe ?? ""));
     setMotivo(pendiente.concepto || "");
+    setMotivoOperacion(pendiente.motivo || pendiente.concepto || "");
     setMostrarForm(true);
     setBorradorRecuperado(true);
   }, [fecha]);
@@ -18145,7 +19036,7 @@ function BloqueEntradasSalidas({ fecha, movimientosCajaDelDia = [], registrarMov
     setExitoLocal("");
     setEnviando(true);
     try {
-      const r2 = await registrarMovimientoCaja(tipo, importe, motivo, fecha);
+      const r2 = await registrarMovimientoCaja(tipo, importe, motivo, fecha, { categoria, motivo: motivoOperacion });
       if (!r2?.ok) {
         setErrorLocal(r2?.error || "No se ha podido registrar el movimiento.");
         setBorradorRecuperado(!!r2?.pendiente);
@@ -18154,6 +19045,7 @@ function BloqueEntradasSalidas({ fecha, movimientosCajaDelDia = [], registrarMov
       setExitoLocal(`${tipo === "ENTRADA" ? "Entrada" : "Retirada"} confirmada${r2.replayed ? " sin duplicar" : ""}.`);
       setImporte("");
       setMotivo("");
+      setMotivoOperacion("");
       setMostrarForm(false);
       setBorradorRecuperado(false);
     } finally {
@@ -18182,7 +19074,7 @@ function BloqueEntradasSalidas({ fecha, movimientosCajaDelDia = [], registrarMov
   const listado = movimientosCajaDelDia.length === 0 ? h3("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Nada registrado este d\xEDa.") : h3("div", { className: "space-y-2" }, movimientosCajaDelDia.map((m22) => {
     const efecto = Number(m22.efectoEfectivo);
     const signo = efecto > 0 ? "+" : efecto < 0 ? "\u2212" : "";
-    const esManual = ["ENTRADA", "RETIRADA", "entrada", "salida"].includes(m22.tipo);
+    const esManual = m22.origen === "ABC_CAJA_MANUAL" && !!m22.abcCommandId && !!m22.sessionId || !m22._pm08Servidor && ["ENTRADA", "RETIRADA", "entrada", "salida"].includes(m22.tipo);
     const yaRevertido = referenciasRevertidas.has(m22.operationId || m22.id);
     return h3(
       "div",
@@ -18190,9 +19082,10 @@ function BloqueEntradasSalidas({ fecha, movimientosCajaDelDia = [], registrarMov
       h3(
         "div",
         { className: "flex items-center justify-between gap-2 text-[12px]" },
-        h3("span", null, h3(Pill2, { color: efecto > 0 ? C2.accent : efecto < 0 ? C2.red : C2.inkSoft }, m22.tipo), " ", m22.concepto || m22.motivo || "(sin concepto)"),
+        h3("span", null, h3(Pill2, { color: efecto > 0 ? C2.accent : efecto < 0 ? C2.red : C2.inkSoft }, m22.tipo), " ", m22.concepto || "(sin concepto)", m22.categoria ? ` · ${m22.categoria}` : ""),
         h3("span", { className: "mono font-medium", style: { color: efecto > 0 ? C2.accent : efecto < 0 ? C2.red : C2.inkSoft } }, signo, "\u20AC", fmt(Math.abs(Number(m22.importe) || 0)))
       ),
+      m22.motivo && h3("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Motivo: ", m22.motivo),
       esManual && !yaRevertido && reversandoId !== (m22.operationId || m22.id) && h3("div", { className: "mt-1" }, h3(Btn, { small: true, variant: "ghost", disabled: revirtiendo, onClick: () => {
         setReversandoId(m22.operationId || m22.id);
         setMotivoReverso("");
@@ -18236,15 +19129,17 @@ function BloqueEntradasSalidas({ fecha, movimientosCajaDelDia = [], registrarMov
       h3(
         "div",
         { className: "flex gap-2 mb-2" },
-        h3(Btn, { small: true, disabled: enviando, variant: tipo === "ENTRADA" ? "primary" : "ghost", onClick: () => setTipo("ENTRADA") }, "Entrada"),
-        h3(Btn, { small: true, disabled: enviando, variant: tipo === "RETIRADA" ? "primary" : "ghost", onClick: () => setTipo("RETIRADA") }, "Retirada")
+        h3(Btn, { small: true, disabled: enviando, variant: tipo === "ENTRADA" ? "primary" : "ghost", onClick: () => { setTipo("ENTRADA"); setCategoria("REPOSICION_CAJA"); } }, "Entrada"),
+        h3(Btn, { small: true, disabled: enviando, variant: tipo === "RETIRADA" ? "primary" : "ghost", onClick: () => { setTipo("RETIRADA"); setCategoria("RETIRADA_CAJA"); } }, "Retirada")
       ),
+      h3(Field, { label: "Categor\xEDa" }, h3("select", { value: categoria, disabled: enviando, onChange: (e2) => setCategoria(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, tipo === "ENTRADA" ? [h3("option", { key: "REPOSICION_CAJA", value: "REPOSICION_CAJA" }, "Reposici\xF3n de cambio"), h3("option", { key: "INGRESO_MANUAL", value: "INGRESO_MANUAL" }, "Otro ingreso manual")] : [h3("option", { key: "RETIRADA_CAJA", value: "RETIRADA_CAJA" }, "Retirada de efectivo"), h3("option", { key: "GASTO_CAJA", value: "GASTO_CAJA" }, "Gasto pagado desde caja")])),
       h3(Field, { label: "Importe (\u20AC)" }, h3(Input, { type: "number", min: "0.01", step: "0.01", value: importe, disabled: enviando, onChange: (e2) => setImporte(e2.target.value), autoFocus: true })),
-      h3(Field, { label: "Concepto" }, h3(Input, { value: motivo, disabled: enviando, onChange: (e2) => setMotivo(e2.target.value), placeholder: "Ej: cambio para la caja, compra de hielo\u2026" })),
+      h3(Field, { label: "Concepto o justificante" }, h3(Input, { value: motivo, disabled: enviando, onChange: (e2) => setMotivo(e2.target.value), placeholder: "Ej: ticket 184, cambio para la caja\u2026" })),
+      h3(Field, { label: "Motivo obligatorio" }, h3(Input, { value: motivoOperacion, disabled: enviando, onChange: (e2) => setMotivoOperacion(e2.target.value), placeholder: "Explica por qu\xE9 entra o sale el efectivo" })),
       h3(
         "div",
         { className: "flex gap-2" },
-        h3(Btn, { small: true, disabled: enviando || periodoCerrado, onClick: enviar }, enviando ? "Confirmando\u2026" : "Guardar"),
+        h3(Btn, { small: true, disabled: enviando || periodoCerrado || !motivo.trim() || !motivoOperacion.trim(), onClick: enviar }, enviando ? "Confirmando\u2026" : "Guardar"),
         h3(Btn, { small: true, variant: "ghost", disabled: enviando, onClick: () => {
           setMostrarForm(false);
           setErrorLocal("");
@@ -18303,9 +19198,12 @@ function resumenMediosVentaCajaPM09(movs = [], fecha = "") {
 }
 function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja }) {
   const h3 = import_react4.default.createElement;
+  const valoresDenominacion = [500, 200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01];
   const [fecha, setFecha] = (0, import_react4.useState)(todayISO());
   const [contado, setContado] = (0, import_react4.useState)("");
   const [notas, setNotas] = (0, import_react4.useState)("");
+  const [denominaciones, setDenominaciones] = (0, import_react4.useState)({});
+  const [mostrarDenominaciones, setMostrarDenominaciones] = (0, import_react4.useState)(false);
   const [error, setError] = (0, import_react4.useState)("");
   const [exito, setExito] = (0, import_react4.useState)("");
   const [enviando, setEnviando] = (0, import_react4.useState)(false);
@@ -18337,7 +19235,11 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
   const efectivoBase = redondearDineroPM08((resumenVentasCaja.ventas.Efectivo || 0) + efectivoOtros);
   const ajustesVentaEfectivo = redondearDineroPM08(resumenVentasCaja.reversos.Efectivo || 0);
   const efectivoEsperado = redondearDineroPM08(efectivoBase + ajustesVentaEfectivo + netoCaja);
-  const contadoNumero = contado === "" ? NaN : redondearDineroPM08(contado);
+  const denominacionesInvalidas = Object.values(denominaciones).some((cantidad) => cantidad !== "" && (!Number.isInteger(Number(cantidad)) || Number(cantidad) < 0));
+  const denominacionesLimpias = Object.fromEntries(Object.entries(denominaciones).filter(([_22, cantidad]) => Number(cantidad) > 0).map(([valor, cantidad]) => [valor, Number(cantidad)]));
+  const hayDesglose = Object.keys(denominacionesLimpias).length > 0;
+  const totalDenominaciones = redondearDineroPM08(Object.entries(denominacionesLimpias).reduce((total, [valor, cantidad]) => total + Number(valor) * Number(cantidad), 0));
+  const contadoNumero = hayDesglose ? totalDenominaciones : contado === "" ? NaN : redondearDineroPM08(contado);
   const diferencia = Number.isFinite(contadoNumero) ? redondearDineroPM08(contadoNumero - efectivoEsperado) : null;
   const yaArqueado = arqueos.find((a22) => a22.fecha === fecha && a22.estado !== "ANULADO");
   (0, import_react4.useEffect)(() => {
@@ -18351,11 +19253,17 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
       return;
     }
     setContado(String(pendiente.efectivoContado ?? ""));
+    setDenominaciones(pendiente.denominaciones || {});
+    setMostrarDenominaciones(Object.keys(pendiente.denominaciones || {}).length > 0);
     setNotas(pendiente.notas || "");
     setBorradorRecuperado(true);
   }, [fecha]);
   async function submit() {
     if (enviando || yaArqueado) return;
+    if (denominacionesInvalidas) {
+      setError("Las cantidades de billetes y monedas deben ser n\xFAmeros enteros iguales o mayores que cero.");
+      return;
+    }
     if (contado === "" || !Number.isFinite(contadoNumero) || contadoNumero < 0) {
       setError("Escribe un efectivo contado igual o mayor que cero.");
       return;
@@ -18368,6 +19276,7 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
         fecha,
         efectivoBase,
         efectivoContado: contadoNumero,
+        denominaciones: hayDesglose ? denominacionesLimpias : {},
         notas,
         ajustesVentaEfectivo,
         snapshot: {
@@ -18391,6 +19300,8 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
       }
       setExito(`Arqueo confirmado${r2.replayed ? " sin duplicar" : ""}: esperado \u20AC${fmt(r2.arqueo.efectivoEsperado)}, contado \u20AC${fmt(r2.arqueo.efectivoContado)}.`);
       setContado("");
+      setDenominaciones({});
+      setMostrarDenominaciones(false);
       setNotas("");
       setBorradorRecuperado(false);
     } finally {
@@ -18479,7 +19390,16 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
         import_react4.default.Fragment,
         null,
         borradorRecuperado && h3("div", { className: "text-[11.5px] mb-2 p-2 rounded-lg", style: { background: C2.amberSoft } }, "Borrador de arqueo recuperado. El reintento conserva el mismo identificador."),
-        h3(Field, { label: "Efectivo contado en caja (\u20AC)" }, h3(Input, { type: "number", min: "0", step: "0.01", value: contado, disabled: enviando, onChange: (e2) => setContado(e2.target.value), autoFocus: true })),
+        h3(Field, { label: "Efectivo contado en caja (\u20AC)" }, h3(Input, { type: "number", min: "0", step: "0.01", value: hayDesglose ? String(totalDenominaciones) : contado, disabled: enviando || hayDesglose, onChange: (e2) => setContado(e2.target.value), autoFocus: true })),
+        h3("div", { className: "mb-3" }, h3(Btn, { small: true, variant: "ghost", disabled: enviando, onClick: () => setMostrarDenominaciones((v) => !v) }, mostrarDenominaciones ? "Ocultar denominaciones" : "Contar por denominaciones")),
+        mostrarDenominaciones && h3("div", { className: "grid grid-cols-3 gap-2 mb-3 p-2 rounded-lg", style: { background: C2.bg } }, valoresDenominacion.map((valor) => {
+          const clave = String(valor);
+          return h3(Field, { key: clave, label: `\u20AC${clave}` }, h3(Input, { type: "number", min: "0", step: "1", value: denominaciones[clave] ?? "", disabled: enviando, onChange: (e2) => {
+            const siguiente = e2.target.value;
+            setDenominaciones((actual) => ({ ...actual, [clave]: siguiente }));
+          } }));
+        })),
+        mostrarDenominaciones && h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, hayDesglose ? `Total por denominaciones: \u20AC${fmt(totalDenominaciones)}` : "Introduce la cantidad de billetes y monedas; el total se calcular\xE1 autom\xE1ticamente."),
         diferencia !== null && h3("div", { className: "text-[12.5px] mb-2", style: { color: diferencia === 0 ? C2.accent : Math.abs(diferencia) < 1 ? C2.amber : C2.red } }, diferencia === 0 ? "Cuadra exacto." : diferencia > 0 ? `Sobran \u20AC${fmt(diferencia)}` : `Faltan \u20AC${fmt(Math.abs(diferencia))}`),
         h3(Field, { label: "Notas (opcional)" }, h3(Input, { value: notas, disabled: enviando, onChange: (e2) => setNotas(e2.target.value), placeholder: "Motivo del descuadre, si lo sabes" })),
         h3(Btn, { disabled: enviando, onClick: submit }, enviando ? "Confirmando\u2026" : "Guardar arqueo")
@@ -21525,8 +22445,13 @@ function infoCierreA10(r2) {
 function CocinaA10({ productos = [], local = null, configEmpresa = null, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil = "" }) {
   const h3 = import_react4.default.createElement;
   const abrirSesionCajaA10 = typeof listarEstacionesA10?.abrirSesionCajaA10 === "function" ? listarEstacionesA10.abrirSesionCajaA10 : null;
+  const consultarSesionCajaC01 = typeof listarEstacionesA10?.consultarSesionCajaC01 === "function" ? listarEstacionesA10.consultarSesionCajaC01 : null;
+  const vincularTerminalCajaC01 = typeof listarEstacionesA10?.vincularTerminalCajaC01 === "function" ? listarEstacionesA10.vincularTerminalCajaC01 : null;
+  const desvincularTerminalCajaC01 = typeof listarEstacionesA10?.desvincularTerminalCajaC01 === "function" ? listarEstacionesA10.desvincularTerminalCajaC01 : null;
+  const cambiarResponsableCajaC01 = typeof listarEstacionesA10?.cambiarResponsableCajaC01 === "function" ? listarEstacionesA10.cambiarResponsableCajaC01 : null;
   const iniciarCierreSesionCajaA10 = typeof listarEstacionesA10?.iniciarCierreSesionCajaA10 === "function" ? listarEstacionesA10.iniciarCierreSesionCajaA10 : null;
   const confirmarCierreProvisionalA10 = typeof listarEstacionesA10?.confirmarCierreProvisionalA10 === "function" ? listarEstacionesA10.confirmarCierreProvisionalA10 : null;
+  const ensayarCierreSesionCajaC12 = typeof listarEstacionesA10?.ensayarCierreSesionCajaC12 === "function" ? listarEstacionesA10.ensayarCierreSesionCajaC12 : null;
   const finalizarCierreSesionCajaA10 = typeof listarEstacionesA10?.finalizarCierreSesionCajaA10 === "function" ? listarEstacionesA10.finalizarCierreSesionCajaA10 : null;
   const reabrirCierreProvisionalA10 = typeof listarEstacionesA10?.reabrirCierreProvisionalA10 === "function" ? listarEstacionesA10.reabrirCierreProvisionalA10 : null;
   const consultarCierreCajaA10 = typeof listarEstacionesA10?.consultarCierreCajaA10 === "function" ? listarEstacionesA10.consultarCierreCajaA10 : null;
@@ -21548,8 +22473,14 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
   const [mensaje, setMensaje] = (0, import_react4.useState)("");
   const [requiereApertura, setRequiereApertura] = (0, import_react4.useState)(false);
   const [fondoInicial, setFondoInicial] = (0, import_react4.useState)("0");
+  const [sesionCajaC01, setSesionCajaC01] = (0, import_react4.useState)(null);
+  const [responsableCajaC01, setResponsableCajaC01] = (0, import_react4.useState)("");
+  const [motivoRelevoC01, setMotivoRelevoC01] = (0, import_react4.useState)("");
+  const [terminalCajaC01, setTerminalCajaC01] = (0, import_react4.useState)("");
+  const [motivoDesvinculoC01, setMotivoDesvinculoC01] = (0, import_react4.useState)("");
   const [efectivoContado, setEfectivoContado] = (0, import_react4.useState)("0");
   const [estadoCierre, setEstadoCierre] = (0, import_react4.useState)("ABIERTA");
+  const [arqueoPrevio, setArqueoPrevio] = (0, import_react4.useState)(null);
   const [motivoReapertura, setMotivoReapertura] = (0, import_react4.useState)("");
   const [puedeReabrirCierre, setPuedeReabrirCierre] = (0, import_react4.useState)(null);
   (0, import_react4.useEffect)(() => {
@@ -21572,6 +22503,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
   }, [configEmpresa?.id, local?.id, rolPerfil]);
   const [bloqueosCierre, setBloqueosCierre] = (0, import_react4.useState)([]);
   const [cierreInfo, setCierreInfo] = (0, import_react4.useState)(null);
+  const [ensayoCierre, setEnsayoCierre] = (0, import_react4.useState)(null);
   const [motivoDiferencia, setMotivoDiferencia] = (0, import_react4.useState)("");
   const [motivoDecision, setMotivoDecision] = (0, import_react4.useState)("");
   const bloqueosDiferencia = Array.isArray(cierreInfo?.bloqueos) ? cierreInfo.bloqueos : [];
@@ -21589,17 +22521,42 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     const estado = String(r2.sessionEstado || "");
     if (estado === "EN_CIERRE" || estado === "CIERRE_PROVISIONAL") {
       setEstadoCierre(estado);
-      if (estado !== "CIERRE_PROVISIONAL") setCierreInfo(null);
+      setArqueoPrevio(estado === "EN_CIERRE" && !r2.arqueoError ? r2.arqueoPrevio || null : null);
+      if (r2.arqueoError) setError("No se pudo calcular el arqueo en el servidor: " + r2.arqueoError);
+      if (estado !== "CIERRE_PROVISIONAL") {
+        setCierreInfo(null);
+        setEnsayoCierre(null);
+      }
       else if (!r2.diferenciaError) setCierreInfo(infoCierreA10(r2));
     } else if (estado === "ABIERTA") {
       setEstadoCierre("ABIERTA");
+      setArqueoPrevio(null);
       setCierreInfo(null);
+      setEnsayoCierre(null);
     }
     return estado || null;
   }
 
   async function refrescarCierreInfo() {
+    setEnsayoCierre(null);
     return sincronizarCierre();
+  }
+
+  async function refrescarSesionCajaC01() {
+    if (typeof consultarSesionCajaC01 !== "function") return null;
+    const resultado = await consultarSesionCajaC01();
+    if (!resultado?.ok) {
+      setSesionCajaC01(null);
+      return null;
+    }
+    setSesionCajaC01(resultado);
+    const activo = String(resultado.responsableActivo?.user_id || "");
+    const siguienteResponsable = (resultado.responsables || []).find((responsable) => String(responsable.user_id) !== activo);
+    setResponsableCajaC01((actual) => (resultado.responsables || []).some((responsable) => String(responsable.user_id) === String(actual) && String(actual) !== activo) ? actual : String(siguienteResponsable?.user_id || ""));
+    const vinculados = new Set((resultado.terminalesVinculados || []).map((terminal) => String(terminal.terminal_id)));
+    const siguienteTerminal = (resultado.terminales || []).find((terminal) => !vinculados.has(String(terminal.id)));
+    setTerminalCajaC01((actual) => (resultado.terminales || []).some((terminal) => String(terminal.id) === String(actual) && !vinculados.has(String(actual))) ? actual : String(siguienteTerminal?.id || ""));
+    return resultado;
   }
 
   async function refrescarEstaciones() {
@@ -21626,6 +22583,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     setEstaciones(nuevas);
     setRutas(Array.isArray(resultado.rutas) ? resultado.rutas : []);
     if (estacionId && !nuevas.some((estacion) => String(estacion.id) === String(estacionId))) setEstacionId("");
+    await refrescarSesionCajaC01();
   }
 
   async function refrescarComandas() {
@@ -21648,10 +22606,17 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     setEstacionId("");
     setError("");
     setMensaje("");
+    setSesionCajaC01(null);
+    setResponsableCajaC01("");
+    setMotivoRelevoC01("");
+    setTerminalCajaC01("");
+    setMotivoDesvinculoC01("");
     setEstadoCierre("ABIERTA");
+    setArqueoPrevio(null);
     setMotivoReapertura("");
     setBloqueosCierre([]);
     setCierreInfo(null);
+    setEnsayoCierre(null);
     setMotivoDiferencia("");
     setMotivoDecision("");
     refrescarEstaciones();
@@ -21691,10 +22656,66 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     }
     setRequiereApertura(false);
     setEstadoCierre("ABIERTA");
+    setArqueoPrevio(null);
     setBloqueosCierre([]);
     setMensaje(`Sesión de caja abierta en ${resultado.caja_nombre || "la caja principal"} con fondo inicial de €${Number(fondoInicial || 0).toFixed(2)}.`);
     await refrescarEstaciones();
     await refrescarComandas();
+  }
+
+  async function relevarResponsableC01() {
+    if (procesando || typeof cambiarResponsableCajaC01 !== "function") return;
+    if (!responsableCajaC01 || !motivoRelevoC01.trim()) {
+      setError("Selecciona el nuevo responsable e indica el motivo del relevo.");
+      return;
+    }
+    setProcesando("relevo-c01");
+    setError("");
+    setMensaje("");
+    const resultado = await cambiarResponsableCajaC01(responsableCajaC01, motivoRelevoC01.trim());
+    setProcesando("");
+    if (!resultado?.ok) {
+      setError(resultado?.error || "No se pudo registrar el relevo de caja.");
+      return;
+    }
+    setMotivoRelevoC01("");
+    setMensaje("Relevo de caja registrado con su responsable y motivo.");
+    await refrescarSesionCajaC01();
+  }
+
+  async function vincularTerminalC01() {
+    if (procesando || typeof vincularTerminalCajaC01 !== "function" || !terminalCajaC01) return;
+    setProcesando("vincular-terminal-c01");
+    setError("");
+    setMensaje("");
+    const resultado = await vincularTerminalCajaC01(terminalCajaC01);
+    setProcesando("");
+    if (!resultado?.ok) {
+      setError(resultado?.error || "No se pudo vincular el terminal a la sesión.");
+      return;
+    }
+    setMensaje("Terminal vinculado a la sesión de caja.");
+    await refrescarSesionCajaC01();
+  }
+
+  async function desvincularTerminalC01(terminalId) {
+    if (procesando || typeof desvincularTerminalCajaC01 !== "function") return;
+    if (!motivoDesvinculoC01.trim()) {
+      setError("Indica el motivo para desvincular el terminal auxiliar.");
+      return;
+    }
+    setProcesando("desvincular-terminal-c01:" + terminalId);
+    setError("");
+    setMensaje("");
+    const resultado = await desvincularTerminalCajaC01(terminalId, motivoDesvinculoC01.trim());
+    setProcesando("");
+    if (!resultado?.ok) {
+      setError(resultado?.error || "No se pudo desvincular el terminal.");
+      return;
+    }
+    setMotivoDesvinculoC01("");
+    setMensaje("Terminal auxiliar desvinculado con motivo registrado.");
+    await refrescarSesionCajaC01();
   }
 
   async function iniciarCierre() {
@@ -21710,6 +22731,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     }
     setEstadoCierre("EN_CIERRE");
     setMensaje("Cierre iniciado. Revisa el efectivo contado y confirma el cierre provisional.");
+    await refrescarCierreInfo();
   }
 
   async function confirmarProvisional() {
@@ -21729,9 +22751,27 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
       return;
     }
     setEstadoCierre("CIERRE_PROVISIONAL");
+    setArqueoPrevio(null);
     setBloqueosCierre(Array.isArray(resultado.blockers) ? resultado.blockers : []);
     setMensaje(`Cierre provisional registrado: contado €${Number(resultado.counted_amount || contado).toFixed(2)}, esperado €${Number(resultado.expected_amount || 0).toFixed(2)}, diferencia €${Number(resultado.difference || 0).toFixed(2)}. ${Number(resultado.difference || 0) !== 0 ? "Hay una diferencia: registra su motivo antes de finalizar." : "Puedes finalizarlo o reabrirlo con motivo."}`);
     await refrescarCierreInfo();
+  }
+
+  async function ensayarCierre() {
+    if (procesando || typeof ensayarCierreSesionCajaC12 !== "function") return;
+    setProcesando("ensayar-cierre");
+    setError("");
+    setMensaje("");
+    const resultado = await ensayarCierreSesionCajaC12();
+    setProcesando("");
+    if (!resultado?.ok) {
+      setEnsayoCierre(null);
+      setError(resultado?.error || "No se pudo ensayar el cierre.");
+      return;
+    }
+    setEnsayoCierre(resultado);
+    const estado = String(resultado.resultado || "");
+    setMensaje(estado === "APTO_CIERRE" ? "Ensayo completado: la sesión está preparada para el cierre definitivo." : "Ensayo completado: resuelve los bloqueos indicados antes de finalizar.");
   }
 
   async function finalizarCierre() {
@@ -21753,6 +22793,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     setRutas([]);
     setComandas([]);
     setCierreInfo(null);
+    setEnsayoCierre(null);
     setMotivoDiferencia("");
     setMotivoDecision("");
     setMensaje("Sesión cerrada definitivamente por el servidor. Para operar de nuevo, abre una nueva sesión.");
@@ -21774,9 +22815,11 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
       return;
     }
     setEstadoCierre("ABIERTA");
+    setArqueoPrevio(null);
     setMotivoReapertura("");
     setBloqueosCierre([]);
     setCierreInfo(null);
+    setEnsayoCierre(null);
     setMotivoDiferencia("");
     setMotivoDecision("");
     setMensaje("Cierre provisional reabierto. La sesión vuelve a estar disponible para operar.");
@@ -21871,6 +22914,35 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     await refrescarComandas();
   }
 
+  function renderEnsayoC12() {
+    if (!ensayoCierre) return h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Ejecuta el ensayo C12 para comprobar efectivo, pagos, efectos y documentos sin modificar el cierre.");
+    const informe = ensayoCierre.informe || {};
+    const caja = informe.caja || {};
+    const documentos = informe.documentos || {};
+    const bloqueos = Array.isArray(informe.bloqueos) ? informe.bloqueos : [];
+    const apto = ensayoCierre.resultado === "APTO_CIERRE";
+    const etiquetaBloqueo = {
+      CONTEO_FALTANTE: "Falta el conteo de efectivo.",
+      DIFERENCIA_EFECTIVO: "El efectivo contado no coincide con el esperado.",
+      PAGOS_PENDIENTES: "Hay pagos pendientes.",
+      EFECTOS_PENDIENTES: "Hay efectos pendientes.",
+      CONCILIACIONES_DOCUMENTALES_PENDIENTES: "Hay documentos de esta sesión pendientes de conciliación.",
+      SESION_NO_REVISABLE: "La sesión ya no está en un estado revisable."
+    };
+    return h3("div", { className: "mb-3 p-2 rounded-lg", style: { background: apto ? C2.accentSoft : C2.redSoft || "#FCE8E6" }, "data-c12-ensayo": String(ensayoCierre.resultado || "") },
+      h3("div", { className: "text-[12px] font-semibold mb-1", style: { color: apto ? C2.accent : C2.red } }, "Ensayo C12: ", String(ensayoCierre.resultado || "SIN_RESULTADO")),
+      h3("div", { className: "text-[11px] mb-1" }, String(informe.explicacion || "El servidor no devolvió una explicación.")),
+      h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } },
+        "Efectivo esperado €", Number(caja.expected_amount || 0).toFixed(2),
+        " · contado €", Number(caja.counted_amount || 0).toFixed(2),
+        " · diferencia €", Number(caja.difference || 0).toFixed(2),
+        " · documentos conciliados ", Number(documentos.documentos_conciliados || 0),
+        " · pendientes ", Number(documentos.documentos_pendientes || 0)
+      ),
+      bloqueos.length > 0 ? h3("ul", { className: "list-disc pl-4 text-[11px] mt-1" }, bloqueos.map((bloqueo) => h3("li", { key: String(bloqueo) }, etiquetaBloqueo[bloqueo] || String(bloqueo)))) : null
+    );
+  }
+
   function renderDiferencia() {
     const info = cierreInfo;
     if (!info || info.difference === null || info.difference === void 0 || Number(info.difference) === 0) return null;
@@ -21936,6 +23008,11 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     );
   }
 
+  const responsableActivoC01 = (sesionCajaC01?.responsables || []).find((responsable) => String(responsable.user_id) === String(sesionCajaC01?.responsableActivo?.user_id || "")) || null;
+  const terminalesVinculadosC01 = Array.isArray(sesionCajaC01?.terminalesVinculados) ? sesionCajaC01.terminalesVinculados : [];
+  const idsTerminalesVinculadosC01 = new Set(terminalesVinculadosC01.map((terminal) => String(terminal.terminal_id)));
+  const terminalesDisponiblesC01 = (sesionCajaC01?.terminales || []).filter((terminal) => !idsTerminalesVinculadosC01.has(String(terminal.id)));
+
   if (!local?.id || !configEmpresa?.id) {
     return h3(Card, { className: "p-5" }, h3("div", { className: "text-[16px] font-semibold mb-2" }, "Cocina y comandas A10"), h3("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "Selecciona un local concreto para consultar estaciones y comandas."));
   }
@@ -21951,18 +23028,48 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
       h3(Field, { label: "Fondo inicial (€)" }, h3(Input, { type: "number", min: "0", step: "0.01", value: fondoInicial, onChange: (e2) => setFondoInicial(e2.target.value) })),
       h3(Btn, { small: true, onClick: abrirSesion, disabled: !!procesando || !String(fondoInicial).trim() }, procesando === "abrir-sesion" ? "Abriendo…" : "Abrir sesión")
     ) : null,
+    !requiereApertura && estadoCierre === "ABIERTA" && sesionCajaC01 ? h3(Card, { className: "mb-4", "data-c01-sesion": "1" },
+      h3("div", { className: "text-[12.5px] font-semibold mb-1" }, "Sesión, responsable y terminales"),
+      h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Sesión ", String(sesionCajaC01.sesion?.id || "").slice(-8), " · ", String(sesionCajaC01.sesion?.estado || "ABIERTA"), " · Responsable: ", responsableActivoC01?.nombre || "Usuario activo"),
+      sesionCajaC01.responsablesError ? h3("div", { className: "text-[11px] mb-2", style: { color: C2.amber } }, "No se pudo cargar la lista de responsables: ", sesionCajaC01.responsablesError) : null,
+      (sesionCajaC01.responsables || []).length > 1 ? h3("div", { className: "mb-3" },
+        h3("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-2" },
+          h3(Field, { label: "Nuevo responsable" }, h3("select", { value: responsableCajaC01, onChange: (e2) => setResponsableCajaC01(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: "1px solid " + C2.line, background: C2.surface, color: C2.ink } }, h3("option", { value: "" }, "Selecciona…"), (sesionCajaC01.responsables || []).filter((responsable) => String(responsable.user_id) !== String(sesionCajaC01.responsableActivo?.user_id || "")).map((responsable) => h3("option", { key: responsable.user_id, value: responsable.user_id }, responsable.nombre || "Usuario", " · ", responsable.rol || "")))),
+          h3(Field, { label: "Motivo del relevo" }, h3(Input, { value: motivoRelevoC01, onChange: (e2) => setMotivoRelevoC01(e2.target.value), placeholder: "Cambio de turno…", maxLength: 500 }))
+        ),
+        h3(Btn, { small: true, onClick: relevarResponsableC01, disabled: !!procesando || !responsableCajaC01 || !motivoRelevoC01.trim() }, procesando === "relevo-c01" ? "Registrando…" : "Registrar relevo")
+      ) : null,
+      h3("div", { className: "text-[11.5px] font-semibold mb-1" }, "Terminales vinculados"),
+      h3("div", { className: "space-y-1 mb-3" }, terminalesVinculadosC01.map((terminal) => h3("div", { key: terminal.terminal_id, className: "flex items-center justify-between gap-2" }, h3("span", { className: "text-[11px]" }, terminal.nombre, String(terminal.terminal_id) === String(sesionCajaC01.terminalActualId) ? " · este terminal" : " · auxiliar"), String(terminal.terminal_id) === String(sesionCajaC01.terminalActualId) ? null : h3(Btn, { small: true, variant: "ghost", onClick: () => desvincularTerminalC01(terminal.terminal_id), disabled: !!procesando || !motivoDesvinculoC01.trim() }, procesando === "desvincular-terminal-c01:" + terminal.terminal_id ? "Desvinculando…" : "Desvincular")))),
+      terminalesVinculadosC01.some((terminal) => String(terminal.terminal_id) !== String(sesionCajaC01.terminalActualId)) ? h3(Field, { label: "Motivo para desvincular un terminal auxiliar" }, h3(Input, { value: motivoDesvinculoC01, onChange: (e2) => setMotivoDesvinculoC01(e2.target.value), placeholder: "Fin de apoyo…", maxLength: 500 })) : null,
+      terminalesDisponiblesC01.length > 0 ? h3("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-2 items-end" },
+        h3(Field, { label: "Añadir terminal a esta sesión" }, h3("select", { value: terminalCajaC01, onChange: (e2) => setTerminalCajaC01(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: "1px solid " + C2.line, background: C2.surface, color: C2.ink } }, terminalesDisponiblesC01.map((terminal) => h3("option", { key: terminal.id, value: terminal.id }, terminal.nombre || "Terminal")))),
+        h3(Btn, { small: true, onClick: vincularTerminalC01, disabled: !!procesando || !terminalCajaC01 }, procesando === "vincular-terminal-c01" ? "Vinculando…" : "Vincular terminal")
+      ) : h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "No hay otros terminales activos disponibles en este local.")
+    ) : null,
     !requiereApertura && iniciarCierreSesionCajaA10 ? h3(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } },
       h3("div", { className: "text-[12.5px] font-semibold mb-1" }, "Cierre de sesión de caja · ", estadoCierre),
       estadoCierre === "ABIERTA" ? h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Inicia el cierre cuando dejes de operar. El servidor comprobará los pagos y efectos pendientes antes de permitir el cierre provisional.") : null,
       estadoCierre === "EN_CIERRE" ? h3("div", null,
         h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Introduce el efectivo contado para registrar el arqueo provisional. Todavía podrás reabrirlo con un motivo."),
+        arqueoPrevio ? h3("div", { className: "text-[11.5px] mb-3 p-2 rounded-lg", style: { background: C2.accentSoft } },
+          "Esperado por el servidor: €", Number(arqueoPrevio.expected_amount).toFixed(2),
+          " · Fondo €", Number(arqueoPrevio.fondo_inicial).toFixed(2),
+          " + Entradas €", Number(arqueoPrevio.entradas_efectivo).toFixed(2),
+          " − Salidas €", Number(arqueoPrevio.salidas_efectivo).toFixed(2),
+          ". Se recalculará al confirmar."
+        ) : h3("div", { className: "text-[11.5px] mb-3", role: "status" }, "Calculando el efectivo esperado en el servidor…"),
         h3(Field, { label: "Efectivo contado (€)" }, h3(Input, { type: "number", min: "0", step: "0.01", value: efectivoContado, onChange: (e2) => setEfectivoContado(e2.target.value) })),
-        h3(Btn, { small: true, onClick: confirmarProvisional, disabled: !!procesando || !String(efectivoContado).trim() }, procesando === "cierre-provisional" ? "Registrando…" : "Confirmar cierre provisional")
+        h3(Btn, { small: true, onClick: confirmarProvisional, disabled: !!procesando || !arqueoPrevio || !String(efectivoContado).trim() }, procesando === "cierre-provisional" ? "Registrando…" : "Confirmar cierre provisional")
       ) : null,
       estadoCierre === "ABIERTA" ? h3(Btn, { small: true, variant: "danger", onClick: iniciarCierre, disabled: !!procesando }, procesando === "iniciar-cierre" ? "Iniciando…" : "Iniciar cierre") : null,
       estadoCierre === "CIERRE_PROVISIONAL" ? h3("div", null,
         h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "El cierre provisional está registrado. Finalízalo cuando no queden bloqueos o reábrelo para corregir la sesión."),
         renderDiferencia(),
+        ensayarCierreSesionCajaC12 ? h3("div", { className: "mb-3" },
+          h3(Btn, { small: true, variant: "ghost", onClick: ensayarCierre, disabled: !!procesando }, procesando === "ensayar-cierre" ? "Ensayando…" : ensayoCierre ? "Repetir ensayo C12" : "Ensayar cierre C12"),
+          renderEnsayoC12()
+        ) : null,
         bloqueosCierre.length > 0 ? h3("div", { className: "mb-3 p-2 rounded-lg", style: { background: C2.redSoft || "#FCE8E6", color: C2.red } },
           h3("div", { className: "text-[11.5px] font-semibold mb-1" }, "Bloqueos que impiden el cierre definitivo"),
           h3("ul", { className: "list-disc pl-4 text-[11px]" }, bloqueosCierre.map((bloqueo, indice) => h3("li", { key: String(bloqueo?.tipo || bloqueo?.codigo || indice) }, String(bloqueo?.detalle || bloqueo?.tipo || bloqueo?.codigo || "Pendiente operativo"))))

@@ -13,7 +13,9 @@ const local = 'loc-f1';
 const owner = '00000000-0000-0000-0000-000000000021';
 const terminal = '20000000-0000-0000-0000-000000000012';
 const caja = '30000000-0000-0000-0000-000000000097';
+const otherCaja = '30000000-0000-0000-0000-000000000098';
 const session = '40000000-0000-0000-0000-000000000007';
+const otherSession = '40000000-0000-0000-0000-000000000008';
 const serie = '50000000-0000-0000-0000-000000000012';
 const day = '2026-10-01';
 
@@ -47,6 +49,8 @@ async function bootstrap(db) {
     '20261001200000_abc_f5_c10_document_delivery.sql',
     '20261001210000_abc_f5_c11_explainable_reconciliation.sql',
     '20261001220000_abc_f5_c12_close_rehearsal.sql',
+    '20261009111255_abc_f7_c12_reconciliation_revision.sql',
+    '20261009112332_abc_f7_c12_session_scope.sql',
   ]) await db.query(await readFile(resolve(root, 'supabase/migrations', name), 'utf8'));
   await db.query(`
     insert into auth.users(id) values ('${owner}') on conflict (id) do nothing;
@@ -58,8 +62,12 @@ async function bootstrap(db) {
       values ('${terminal}','${empresa}','${local}','Terminal C12',true);
     insert into public.cajas_fisicas(id,empresa_id,local_id,nombre,activo)
       values ('${caja}','${empresa}','${local}','Caja C12',true);
+    insert into public.cajas_fisicas(id,empresa_id,local_id,nombre,activo)
+      values ('${otherCaja}','${empresa}','${local}','Otra caja C12',true);
     insert into public.caja_sesiones(id,empresa_id,local_id,caja_id,estado,version,abierta_at,abierta_por)
       values ('${session}','${empresa}','${local}','${caja}','ABIERTA',1,now(),'${owner}');
+    insert into public.caja_sesiones(id,empresa_id,local_id,caja_id,estado,version,abierta_at,abierta_por)
+      values ('${otherSession}','${empresa}','${local}','${otherCaja}','ABIERTA',1,now(),'${owner}');
     insert into public.caja_sesion_terminales(empresa_id,local_id,session_id,terminal_id,desde)
       values ('${empresa}','${local}','${session}','${terminal}',now());
     insert into public.caja_sesion_responsables(empresa_id,local_id,session_id,user_id,desde,asignado_por,motivo)
@@ -99,7 +107,7 @@ try {
   await context(first);
   await context(second);
 
-  const reserved = await call(first, 'abc_reservar_numero_documental', ['c12.pg.reserve.0001', empresa, local, 'FACTURA', 'F', 'venta-c12-1', {}]);
+  const reserved = await call(first, 'abc_reservar_numero_documental', ['c12.pg.reserve.0001', empresa, local, 'FACTURA', 'F', 'venta-c12-1', { session_id: session }]);
   await call(first, 'abc_resolver_emision_documental', ['c12.pg.emit.0001', empresa, local, { type: 'uuid', value: reserved.documento_id }, 'EMITIDO', { resultado: 'simulado' }]);
   await call(first, 'abc_clasificar_documento', ['c12.pg.classify.0001', empresa, local, { type: 'uuid', value: reserved.documento_id }, 'FACTURA_COMPLETA', null, { nombre: 'Cliente C12', identificador_fiscal: 'X0000000X' }]);
   const version = await call(first, 'abc_conservar_documento_emitido', [
@@ -112,6 +120,27 @@ try {
     'c12.pg.reconcile.0001', empresa, local, { type: 'uuid', value: reserved.documento_id }, { type: 'uuid', value: version.version_id },
   ]);
   assert.equal(pending.resultado, 'PENDIENTE_ENTREGA');
+
+  const otherReserved = await call(first, 'abc_reservar_numero_documental', [
+    'c12.pg.other.reserve.0001', empresa, local, 'FACTURA', 'F', 'venta-c12-otra-sesion', { session_id: otherSession },
+  ]);
+  await call(first, 'abc_resolver_emision_documental', [
+    'c12.pg.other.emit.0001', empresa, local, { type: 'uuid', value: otherReserved.documento_id }, 'EMITIDO', { resultado: 'simulado' },
+  ]);
+  await call(first, 'abc_clasificar_documento', [
+    'c12.pg.other.classify.0001', empresa, local, { type: 'uuid', value: otherReserved.documento_id },
+    'FACTURA_COMPLETA', null, { nombre: 'Otra sesión', identificador_fiscal: 'X0000001X' },
+  ]);
+  const otherVersion = await call(first, 'abc_conservar_documento_emitido', [
+    'c12.pg.other.retain.0001', empresa, local, { type: 'uuid', value: otherReserved.documento_id },
+    { lines: [{ sku: 'SKU-OTHER', quantity: 1, total: '5.00' }], total: '5.00' },
+    { name: 'Simulador' }, { name: 'Otra sesión', identificador_fiscal: 'X0000001X' }, { mode: 'SIMULADOR' },
+  ]);
+  const otherPending = await call(first, 'abc_generar_conciliacion_documental', [
+    'c12.pg.other.reconcile.0001', empresa, local, { type: 'uuid', value: otherReserved.documento_id },
+    { type: 'uuid', value: otherVersion.version_id },
+  ]);
+  assert.equal(otherPending.resultado, 'PENDIENTE_ENTREGA');
 
   const firstRehearsal = await call(first, 'abc_ensayar_cierre_sesion_caja', [
     'c12.pg.rehearse.0001', empresa, local, { type: 'uuid', value: session }, { type: 'uuid', value: terminal }, { type: 'date', value: day },
@@ -156,6 +185,7 @@ try {
   assert.deepEqual(finalRehearsal.informe.bloqueos, []);
   assert.equal(finalRehearsal.informe.sin_cambios, true);
   assert.equal(finalRehearsal.informe.documentos.documentos_conciliados, 1);
+  assert.equal(finalRehearsal.informe.documentos.documentos_pendientes, 0, 'otra sesión no bloquea C12');
   assert.equal(finalRehearsal.informe.caja.counted_amount, 0);
   assert.equal(finalRehearsal.informe.caja.difference, 0);
 
