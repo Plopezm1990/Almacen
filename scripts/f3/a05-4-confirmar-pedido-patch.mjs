@@ -102,6 +102,13 @@ const confirmarA05 = String.raw`
 
 source = replaceOnce(
   source,
+  "  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06,",
+  "  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, confirmarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06,",
+  "A05.4 export confirmation adapter"
+);
+
+source = replaceOnce(
+  source,
   "  async function enviarPedidoA05() {\n",
   confirmarA05 + "  async function enviarPedidoA05() {\n",
   "A05.4 confirmation adapter"
