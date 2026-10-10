@@ -88,7 +88,15 @@ Repaso de las 95 tablas de `public` de producción. Todas llevan `empresa_id` y 
 
 QA **no** refleja esto: allí `perfiles` y `suscripciones_push` solo dejan lo propio (`qa_*`) y `movimientos_registro` tiene `empresa_id` y solo lectura, así que QA oculta el problema y rompe la subida de `movimientos` desde el cliente (el «1 colección solo en este equipo» de la ronda 4b). Probar el arreglo exige alinear antes las reglas de QA con la forma de producción o probar en Postgres real con las dos formas, como en F4.
 
-**Siguiente paquete (F4e, por diseñar):** reglas por empresa para `perfiles`, `movimientos_registro` y `suscripciones_push` en la forma de producción, sin romper la pantalla de empleados del Propietario (que lista perfiles de su propia empresa) ni la subida de movimientos del cliente actual. No se aplica nada en QA ni en producción sin presentar antes el diseño. Condición previa de la primera empresa cliente real, igual que F4.
+**Funciones del servidor (producción, solo lectura de código):** ninguna función pública es ejecutable por `anon`. Todas las ejecutables por cuentas autenticadas mencionan la empresa o la membresía en su código y usan la sesión (`auth.uid()`), salvo ocho envoltorios que solo llaman a otra función que sí lo hace (`abc_*_linea_*` → `private.abc_mutar_linea_configurada` / `private.abc_transicionar_linea_operativa`, `revertir_venta_stock*_pm09` → `revertir_venta_stock*`) y dos de contexto de instalación. Es una búsqueda de palabras, no una prueba formal; los flujos de caja, pedidos y stock ya se probaron por empresa en QA (paquetes ABC).
+
+**Edge Functions:** `crear-cuenta-empleado` y `enviar-notificacion` usan la llave de servicio y filtran por empresa con las membresías, así que no dependen de las reglas amplias de `perfiles` ni de `suscripciones_push`.
+
+**Diseño propuesto de F4e (para aprobar antes de implementar):**
+1. `perfiles`: leer lo propio (igual) y, si se es Propietario activo, leer/actualizar solo perfiles con membresía activa en una empresa activa donde esa persona también sea Propietario (ayuda privada con `security definer`). El cliente solo lee su propio perfil, así que no cambia nada visible.
+2. `movimientos_registro`: añadir `empresa_id` y `local_id` (la misma forma que ya tiene QA), disparador que los rellena desde `datos.empresaId` / `datos.localId` o, si no vienen, desde la única empresa activa de la cuenta (como F4), y reglas por empresa y cargo: leer Propietario y Encargado del local, insertar los cargos que hoy pueden, borrar solo Propietario. Las filas antiguas sin empresa se conservan etiquetadas con la empresa ficticia (invisibles) hasta decidir su destino en la Fase 6. En QA se añade la regla de escritura que falta (arregla el «1 colección solo en este equipo» de `movimientos`).
+3. `suscripciones_push`: quitar la rama «user_id nulo y Propietario» (la función de envío ignora esas filas, así que nadie las usa).
+Pruebas: Postgres real con la forma de QA y la de producción (como p09), dos empresas, mutaciones; después aplicación en QA y prueba con la pantalla (dos empresas leyendo movimientos y perfiles). Producción solo con autorización escrita, junto con F4–F4d.
 
 ## 5. Limitaciones declaradas
 
