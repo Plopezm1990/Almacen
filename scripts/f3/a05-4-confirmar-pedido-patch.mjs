@@ -181,7 +181,7 @@ source = source.slice(0, modalStart) + modalNuevo + source.slice(modalEnd);
 
 source = replaceOnce(
   source,
-  "import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05,",
+  "import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, confirmarPedidoA05, leerPedidoOperativoA05, accionPedidoA05,",
   "import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, confirmarPedidoA05, leerPedidoOperativoA05, accionPedidoA05,",
   "A05.4 prop wiring"
 );

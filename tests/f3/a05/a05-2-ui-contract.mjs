@@ -9,6 +9,10 @@ const adapterEnd = recovered.indexOf("\n  async function venderCarrito(lineas", 
 assert.ok(adapterStart >= 0 && adapterEnd > adapterStart, "A05.2: adaptador no localizable");
 const adapter = recovered.slice(adapterStart, adapterEnd);
 
+assert.ok(recovered.includes("async function confirmarPedidoA05()"), "A05.4: adaptador de confirmación ausente");
+assert.ok(recovered.includes("venderCarritoA02, enviarPedidoA05, confirmarPedidoA05, leerPedidoOperativoA05"), "A05.4: confirmación no exportada desde crearLogicaVenta");
+assert.ok(recovered.includes("const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, confirmarPedidoA05, leerPedidoOperativoA05"), "A05.4: confirmación no conectada al controlador del TPV");
+
 for (const rpc of [
   "abc_confirmar_linea_pedido",
   "abc_confirmar_linea_pedido_configurada",
