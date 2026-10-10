@@ -20,6 +20,7 @@
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const depsDir = process.env.CFG6E_UI_DEPS || process.env.CFG6_UI_DEPS;
 if (!depsDir) {
@@ -29,7 +30,7 @@ if (!depsDir) {
 const require = createRequire(join(resolve(depsDir), 'package.json'));
 const { JSDOM, VirtualConsole } = require('jsdom');
 
-const REPO = resolve(new URL('../../', import.meta.url).pathname);
+const REPO = fileURLToPath(new URL('../../', import.meta.url));
 const leer = (f) => readFileSync(resolve(REPO, f), 'utf8');
 const PRELOCK = leer(process.env.PLATAFORMA_PRELOCK || 'owner-bootstrap-prelock.js');
 const BARRERA = leer('reset-pruebas-preview.js');
