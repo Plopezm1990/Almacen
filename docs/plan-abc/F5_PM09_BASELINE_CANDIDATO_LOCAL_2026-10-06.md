@@ -1,7 +1,7 @@
 # F5 / PM09 · Candidato local de reconciliación
 
 Fecha: 2026-10-06
-Estado: `PR_BORRADOR_CI_VERDE_SIN_APLICACION_REMOTA`
+Estado: `PR_BORRADOR_SIN_APLICACION_REMOTA`
 
 ## Alcance
 
@@ -57,15 +57,18 @@ La prueba comprobó:
 El fixture no sustituye una réplica productiva: sus funciones auxiliares de
 autorización son simplificadas y no prueba el recorrido completo de la
 aplicación. La revisión de seguridad y la hoja de preparación de la ventana
-constan en `F5_PM09_BASELINE_VENTANA_PREPARACION_2026-10-06.md`. Sigue
-pendiente el humo funcional final con un usuario real de QA y una autorización
-específica antes de cualquier escritura productiva.
+constan en `F5_PM09_BASELINE_VENTANA_PREPARACION_2026-10-06.md`. El humo
+autenticado de QA terminó con `ROLLBACK` y sin residuos el 6/10/2026. Sigue
+pendiente una autorización específica antes de cualquier escritura productiva.
 
 ## Estado remoto
 
 El candidato se publicó en el [PR borrador #125](https://github.com/Plopezm1990/Almacen/pull/125),
-con base `release`. La puerta final de CI quedó en verde el 6/10/2026 tras
-acotar el contrato F7 a su foto histórica del 3/10. El plan y su preflight
+con base `release`. El 10/10/2026 se integró la base `release` `339ed81` y se
+ajustó el contrato F7 para excluir únicamente esta migración PM09 separada,
+manteniendo las 51 migraciones del paquete F7. Pasaron localmente el contrato
+F7, el validador del manifiesto CI (247 archivos, 230 contratos activos),
+`PM09_PROD_BASELINE_POSTGRES=PASS` y `git diff --check`. El plan y su preflight
 están en el [PR borrador #124](https://github.com/Plopezm1990/Almacen/pull/124),
-también con CI verde. No se aplicó esta migración en QA ni en producción y
-ninguno de los PR está fusionado. El PR de arqueo #123 es independiente.
+también en borrador. No se aplicó esta migración en QA ni en producción y
+ninguno de los PR está fusionado.

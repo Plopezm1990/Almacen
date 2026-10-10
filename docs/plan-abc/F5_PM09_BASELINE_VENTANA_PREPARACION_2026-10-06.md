@@ -47,6 +47,12 @@ secuencia lineal.
    terminó deliberadamente con `PM09_QA_SMOKE_PASS_ROLLBACK`. Una lectura
    independiente confirmó cero operaciones y movimientos residuales. La RPC y
    el control de interfaz usados para el ensayo fueron retirados después.
+6. **Revalidación local 10/10/2026:** el candidato se actualizó sobre
+   `release` `339ed81`. Pasaron el contrato F7 con sus 51 migraciones, el
+   manifiesto CI con 247 archivos y 230 contratos activos, `git diff --check`
+   y el ensayo PostgreSQL desechable con
+   `PM09_PROD_BASELINE_POSTGRES=PASS`. El SHA-256 del SQL candidato continúa
+   siendo `d59bf0ca0670dd22987b801558c1fa909ccbd025c9e9fbb32f94fa835c7c6af0`.
 
 ## Condiciones de entrada de la ventana
 
