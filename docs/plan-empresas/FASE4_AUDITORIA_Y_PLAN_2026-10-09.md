@@ -22,6 +22,7 @@ Consecuencias con varias empresas:
    - `abc_productos_guardar_lista` (P3c, **sin fuente en el repositorio**: existe solo en QA): leía, bloqueaba y escribía la fila `productos` de «cualquier» empresa.
 4. El resto de lecturas del servidor (`obtener_contexto_operativo`, `pm08_local_operable`) ya filtran por `empresa_id`.
 5. El cliente tiene 25 colecciones por `almacen_kv`; `proveedores`, `clientes`, `albaranes`, `facturasDirectas`, `gastosGenerales`, `movimientos`, `fichajes`, `auditoria` y los libros de caja ya van por tablas con empresa o por RPC.
+   **Corrección (2026-10-10, ver §4d):** para `movimientos` y `fichajes` esto solo es cierto en QA; en producción `movimientos_registro` y `fichajes_registro` no llevan `empresa_id` y las reglas de `movimientos_registro` no miran la empresa.
 
 ## 2. Diseño (migración `20261009140000_plataforma_f4_colecciones_por_empresa.sql`)
 
@@ -72,6 +73,22 @@ Pruebas de mutación: 19 mutaciones de la migración (quitar el cargo, quitar la
 - **Producción tiene la misma forma** (solo conteos): 3 empresas, 1 activa, una cuenta con membresía activa en las tres y ninguna con dos empresas activas. Sin arreglo, esa cuenta no habría podido guardar tras F4.
 - **Arreglo (`20261009170000_plataforma_f4d_empresas_vigentes.sql`):** solo cuentan las empresas con `activo = true` al decidir la empresa de una cuenta y al dar acceso a una fila (tres funciones, `create or replace`; sin cambios de datos, tablas ni reglas). **Orden en producción: F4, F4b, F4c, F4d.**
 - Probado (`p09`, Postgres real, incluida la forma «prod» con tres empresas y una activa; 10 mutaciones: 7 detectadas, 3 equivalentes) y aplicado en QA con huellas idénticas. Comprobado en QA con `owner.a` real, deshecho al final. Falta repetir el paso 5 con la pantalla (`PRUEBA_COWORK_FASE4B…`, ronda 4).
+
+## 4d. Fuera de `almacen_kv`: lo que aún no separa empresas en producción (hallazgo 2026-10-10, solo lectura de estructura y reglas)
+
+Repaso de las 90 tablas de `public` de producción. Todas llevan `empresa_id` y reglas que lo miran, **salvo estas** (las demás sin reglas están cerradas a la API):
+
+| Tabla (producción) | Qué dejan hacer hoy las reglas | Riesgo con 2 empresas clientes |
+|---|---|---|
+| `movimientos_registro` (sin `empresa_id`; columnas `id, fecha, datos, creado_en`) | leer e insertar: cualquier perfil activo; borrar: cualquier Propietario | **Alto**: una empresa lee los movimientos de la otra y un Propietario puede borrarlos |
+| `perfiles` | leer: el propio **o cualquier Propietario activo**; actualizar: cualquier Propietario activo (`private.es_propietario_activo()` no mira la empresa) | **Alto**: el Propietario de una empresa puede leer y cambiar rol/activo de los perfiles de otra |
+| `suscripciones_push` (sin `empresa_id`; tiene `local_id`) | las propias; y las de `user_id` nulo, para cualquier Propietario | Medio-bajo: avisos push sin dueño visibles/borrables por cualquier Propietario |
+| `fichajes_registro` (sin `empresa_id`) | lectura filtrada por empleado/`pm11_puede_ver_personal(e.empresa_id, …)`; sin reglas de escritura | Bajo: la lectura ya pasa por la empresa del empleado |
+| `empresas`, `operaciones_procesadas`, `prefiltro_limites` | sin reglas: cerradas a la API | Ninguno |
+
+QA **no** refleja esto: allí `perfiles` y `suscripciones_push` solo dejan lo propio (`qa_*`) y `movimientos_registro` tiene `empresa_id` y solo lectura, así que QA oculta el problema y rompe la subida de `movimientos` desde el cliente (el «1 colección solo en este equipo» de la ronda 4b). Probar el arreglo exige alinear antes las reglas de QA con la forma de producción o probar en Postgres real con las dos formas, como en F4.
+
+**Siguiente paquete (F4e, por diseñar):** reglas por empresa para `perfiles`, `movimientos_registro` y `suscripciones_push` en la forma de producción, sin romper la pantalla de empleados del Propietario (que lista perfiles de su propia empresa) ni la subida de movimientos del cliente actual. No se aplica nada en QA ni en producción sin presentar antes el diseño. Condición previa de la primera empresa cliente real, igual que F4.
 
 ## 5. Limitaciones declaradas
 
