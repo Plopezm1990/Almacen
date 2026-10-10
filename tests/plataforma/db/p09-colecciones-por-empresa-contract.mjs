@@ -24,6 +24,7 @@ assert.equal(url.pathname, '/plataforma_p01_test', 'Solo se admite la base desec
 
 const F4 = process.env.PLATAFORMA_MIGRACION_F4 || 'supabase/migrations/20261009140000_plataforma_f4_colecciones_por_empresa.sql';
 const F4B = process.env.PLATAFORMA_MIGRACION_F4B || 'supabase/migrations/20261009150000_plataforma_f4b_lista_productos_inicial.sql';
+const F4C = process.env.PLATAFORMA_MIGRACION_F4C || 'supabase/migrations/20261009160000_plataforma_f4c_lista_sin_contexto_fiscal.sql';
 const P3B = 'supabase/migrations/20261002170000_abc_p3b_espejo_lista_nube.sql';
 const FIXTURE_LISTA = 'tests/plataforma/db/fixtures-f4/abc_productos_guardar_lista_qa.sql';
 const sql = (p) => fs.readFileSync(p, 'utf8');
@@ -177,6 +178,8 @@ async function montarEsquema(forma, { listaExtra = null, politicaExtra = false }
         if auth.uid() is null or not private.abc_catalogo_puede_gestionar(p_empresa_id,p_local_id) then
           raise exception 'abc_catalogo_no_autorizado';
         end if;
+        if p_local_id='L-AMB' then raise exception 'catalogo_contexto_fiscal_ambiguo'; end if;
+        if p_empresa_id='E-NEW' then raise exception 'catalogo_contexto_fiscal_ausente'; end if;
         v_lista:='sin_fila';
         select k.value into v_kv
           from public.almacen_kv k
@@ -280,6 +283,16 @@ try {
     }
     assert.ok(!/\bdelete\s+from\b/i.test(migracion.replace(/--.*$/gm, '')), 'F4 no borra datos');
     assert.ok(!/\bdrop\s+table\b|\btruncate\b/i.test(migracion), 'F4 no elimina tablas ni las vacía');
+    const f4cTxt = sql(F4C);
+    assert.ok(!/\bdelete\s+from\b|\bdrop\s+(table|trigger|policy|function)\b|\btruncate\b/i.test(f4cTxt.replace(/--.*$/gm, '')), 'F4c no borra ni elimina nada');
+    for (const f of [
+      'v_rpc jsonb;',
+      "      v_rpc:=public.abc_catalogo_guardar_productos(\n        p_operation_id||'.'||v_grupo_n,v_grupo.empresa_id,\n        v_grupo.local_id,'EUR',v_grupo.productos\n      );",
+      "'catalogo_ya_sincronizado',true,",
+    ]) {
+      assert.equal(p3c.split(f).length - 1, 1, `P3c contiene exactamente una vez el fragmento que F4c sustituye: ${f.slice(0, 40)}`);
+      assert.ok(f4cTxt.includes(f), `F4c busca: ${f.slice(0, 40)}`);
+    }
     const f4bTxt = sql(F4B);
     assert.ok(!/\bdelete\s+from\b|\bdrop\s+(table|trigger|policy|function)\b|\btruncate\b/i.test(f4bTxt.replace(/--.*$/gm, '')), 'F4b no borra ni elimina nada');
     assert.ok(/on conflict \(empresa_id, key\) do nothing/.test(f4bTxt), 'F4b nunca pisa una fila existente');
@@ -519,6 +532,37 @@ try {
       assert.equal(rN.lista_confirmada[0].nombre, 'Café en grano', 'la empresa nueva ya guarda su lista de productos');
       assert.equal((await admin.query("select value->0->>'id' i from public.almacen_kv where key='productos' and empresa_id='E-NEW'")).rows[0].i, 'N1');
       assert.equal((await admin.query("select value->0->>'stock' s from public.almacen_kv where key='productos' and empresa_id='E-A'")).rows[0].s, '6', 'y la lista de A sigue como estaba');
+      // --- F4c: sin contexto fiscal la lista se guarda igualmente ---------------------------------------
+      const prodVenta = { id: 'N2', empresaId: 'E-NEW', localId: 'L-N1', nombre: 'Leche', unidad: 'ud', fraccionable: false, precioVenta: 2, ivaVenta: 10, activo: true, tipo: 'simple' };
+      const conVenta = (c, base, nuevo, venta, op) => c.query('select public.abc_productos_guardar_lista($1, $2::jsonb, $3::jsonb, $4::jsonb) r', [op, JSON.stringify(base), JSON.stringify(nuevo), JSON.stringify(venta)]);
+      const nLista = async (emp) => (await admin.query("select jsonb_array_length(value) n from public.almacen_kv where key='productos' and empresa_id=$1", [emp])).rows[0].n;
+      const baseN = rN.lista_confirmada;
+      await fallo(conVenta(cN, baseN, [...baseN, prodVenta], [prodVenta], 'op-n-0003-abcdefgh'), { mensaje: 'catalogo_contexto_fiscal_ausente' }, 'sin F4c la falta de contexto fiscal aborta también la lista');
+      assert.equal(await nLista('E-NEW'), 1, 'y la lista de la empresa no cambia');
+      await admin.query(sql(F4C));
+      const rV = (await conVenta(cN, baseN, [...baseN, prodVenta], [prodVenta], 'op-n-0004-abcdefgh')).rows[0].r;
+      assert.equal(rV.ok, true);
+      assert.equal(rV.catalogo_ya_sincronizado, false, 'avisa de que el catálogo no se sincronizó');
+      assert.equal(rV.catalogo_pendiente_contexto_fiscal, true);
+      assert.equal(rV.lista_confirmada.length, 2);
+      assert.equal(await nLista('E-NEW'), 2, 'con F4c la lista se guarda aunque falte el contexto fiscal');
+      // Cualquier otro error del catálogo sigue abortando la transacción entera.
+      const prodAmb = { ...prodVenta, id: 'N3', localId: 'L-AMB' };
+      await fallo(conVenta(cN, rV.lista_confirmada, [...rV.lista_confirmada, prodAmb], [prodAmb], 'op-n-0005-abcdefgh'), { mensaje: 'catalogo_contexto_fiscal_ambiguo' }, 'el contexto fiscal ambiguo sigue siendo un error');
+      assert.equal(await nLista('E-NEW'), 2, 'y no deja nada a medias');
+      // Una empresa con catálogo operativo no nota nada: sigue sincronizado.
+      {
+        const listaA = (await admin.query("select value from public.almacen_kv where key='productos' and empresa_id='E-A'")).rows[0].value;
+        const nuevoA = listaA.map((x) => ({ ...x, nombre: 'Pan A2' }));
+        const rA2 = (await conVenta(cAOwn, listaA, nuevoA, [nuevoA[0]], 'op-a-0009-abcdefgh')).rows[0].r;
+        assert.equal(rA2.catalogo_ya_sincronizado, true, 'con contexto fiscal el catálogo sigue sincronizándose');
+        assert.equal(rA2.catalogo_pendiente_contexto_fiscal, false);
+        assert.equal(rA2.lista_confirmada[0].nombre, 'Pan A2');
+      }
+      // Idempotente.
+      const defC = await defFuncion('public.abc_productos_guardar_lista(text,jsonb,jsonb,jsonb)');
+      await admin.query(sql(F4C));
+      assert.equal(await defFuncion('public.abc_productos_guardar_lista(text,jsonb,jsonb,jsonb)'), defC, 're-aplicar F4c no cambia la función');
     }
     // El espejo P3b (abc_catalogo_guardar_productos): solo la fila de la empresa indicada.
     await cAOwn.query("select public.abc_catalogo_guardar_productos('op-m-1', 'E-A', 'L-A1', 'EUR', $1::jsonb)", [JSON.stringify([{ id: 'P1', precioVenta: 2 }])]);
@@ -552,6 +596,17 @@ try {
     assert.equal(await n('select count(*)::int n from public.almacen_kv where empresa_id is null'), 3);
     assert.deepEqual(await politicas(), ['pm05_almacen_delete', 'pm05_almacen_insert', 'pm05_almacen_select', 'pm05_almacen_update']);
 
+    // 7.2b F4c se niega si la función de P3c tiene un texto que no conoce y no deja nada a medias.
+    await montarEsquema('qa');
+    await datosBase('qa');
+    await admin.query(migracion);
+    await admin.query(sql(F4B));
+    await admin.query(raro);
+    const defRaro = await defFuncion('public.abc_productos_guardar_lista(text,jsonb,jsonb,jsonb)');
+    await fallo(admin.query(sql(F4C)), { mensaje: 'PLATAFORMA_F4C_PARCHE_NO_APLICABLE:abc_productos_guardar_lista' }, 'F4c con texto de la RPC inesperado');
+    await admin.query('rollback');
+    assert.equal(await defFuncion('public.abc_productos_guardar_lista(text,jsonb,jsonb,jsonb)'), defRaro, 'F4c abortada: la función queda como estaba');
+
     // 7.3 Una empresa llamada como la ficticia.
     await montarEsquema('qa');
     await datosBase('qa');
@@ -571,6 +626,7 @@ try {
     assert.deepEqual(await politicas(), ['plataforma_kv_delete', 'plataforma_kv_insert', 'plataforma_kv_select', 'plataforma_kv_update'], 'las políticas «acceso por rol y clave» se sustituyen');
     await admin.query(sql(F4B));
     assert.equal(await n("select count(*)::int n from public.almacen_kv where key='productos' and empresa_id in ('E-A','E-B','E-NEW')"), 3, 'F4b también rellena en la forma de producción');
+    await admin.query(sql(F4C)); // sin la función de P3c no hace nada
     assert.equal(await n("select count(*)::int n from public.almacen_kv where empresa_id='__sin_empresa__'"), 7, 'las siete colecciones de antes se conservan, etiquetadas');
     const cNew = await como(N_OWN), cA = await como(A_OWN), cB = await como(B_OWN);
     const vistaNueva = await leer(cNew, 'productos');
