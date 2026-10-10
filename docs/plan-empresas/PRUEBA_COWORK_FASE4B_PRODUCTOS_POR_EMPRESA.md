@@ -69,6 +69,23 @@ Qué se comprueba: con P3c + F4 + F4b, la lista de productos de cada empresa se 
 
 Resultado esperado de la ronda 4: sin banner rojo; «colecciones solo en este equipo» en 0 o 1 (solo `empresas`/`configEmpresa`, que no se sincronizan por diseño); catálogo de `QA Empresa A` sin productos de F4. Después, Claude comprueba en los registros de QA que no hay 403 de `almacen_kv` ni `abc_productos_guardar_lista` en esa ventana.
 
+## Resultado de la ronda 4, intento 1 (2026-10-10): el borrado de datos no borró nada → no prueba nada
+
+- Cowork ejecutó «borrar los datos del sitio» y su propio guion contó **0 cookies, 0 bases IndexedDB, 0 cachés y 0 service workers**: no limpió el almacenamiento real de la app. Tras recargar, la sesión de `owner.a` seguía abierta y salieron **exactamente** el banner rojo, «4 colecciones solo en este equipo» y «Arranque: datos que no se pudieron cargar: 1» de la ronda anterior. Cowork se detuvo en el paso 0 y no llegó a «Productos».
+- **Los registros de QA lo confirman:** entre las 13:30 y las 14:30 UTC no hubo **ninguna** petición a `almacen_kv` ni a `abc_productos_guardar_lista` ni ningún error 4xx. La pantalla mostró solo el estado guardado en ese navegador (marcador de «colecciones denegadas», válido 6 horas desde las 13:18). F4d no llegó a ejercitarse.
+- **Cambio de método:** en vez de depender de borrar datos, se usa una **dirección nueva del mismo QA**, cuyo almacenamiento está vacío por definición: la dirección permanente del despliegue del commit `08121db`, `https://6aca40b93a0a2c0008a1fd88--chic-entremet-9107cf.netlify.app`. El programa la reconoce como vista previa de QA (`reset-pruebas-preview.js`, patrón de 24 caracteres hexadecimales) y bloquea cualquier salida a producción. En la dirección antigua (`deploy-preview-118…`) no se debe volver a probar hasta las 19:30 UTC, porque conserva el marcador.
+
+## Texto para pegar en Cowork (ronda 4b: dirección nueva, sin borrar nada)
+
+> Eres Cowork. Haz SOLO estas comprobaciones en la vista previa de QA `https://6aca40b93a0a2c0008a1fd88--chic-entremet-9107cf.netlify.app` (es una dirección nueva del mismo QA; nunca uses producción ni la dirección `deploy-preview-118…` en esta prueba). Cuentas ficticias. Usa la pantalla como una persona, sin consola ni código. Para en la primera diferencia y cuéntamela con el texto exacto.
+>
+> 0. Abre esa dirección en una pestaña nueva. Debe mostrar la pantalla de inicio de sesión (almacenamiento vacío). Si NO sale la pantalla de inicio de sesión, para y dímelo.
+> 1. Entra como `owner.a@qa.invalid` (la contraseña de siempre), pulsa «Abrir mi aplicación» de `QA Empresa A` y espera 30 segundos sin tocar nada. Dime si sale banner rojo, el aviso «N colecciones solo en este equipo» (con el número) o «Arranque: datos que no se pudieron cargar» (con el número).
+> 2. Abre «Productos»: debe verse el catálogo de `QA Empresa A` (unos 30 productos) y NINGUNO de los productos de las empresas F4 (`Café F4-1`, `Café F4-3`, `Harina F4-3`, `Azúcar F4-3`). Dime cuántos productos ves.
+> 3. Pulsa «← Plataforma» y cierra sesión.
+>
+> Al terminar dime: (1) qué pasos fueron como se describe; (2) los distintos, con el texto exacto; (3) cada aviso rojo o «colecciones solo en este equipo», con el número y el paso.
+
 ## Resultado esperado
 | Paso | Esperado |
 |---|---|
