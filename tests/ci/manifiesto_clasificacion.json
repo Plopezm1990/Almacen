@@ -1,15 +1,15 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 249,
+  "total_inventory": 259,
   "expected_counts": {
-    "active_contract": 232,
+    "active_contract": 242,
     "historical_expected_fail": 1,
     "utility": 11,
     "diagnostic": 5
   },
   "expected_environment_counts": {
     "node": {
-      "active_contract": 209,
+      "active_contract": 215,
       "historical_expected_fail": 0,
       "utility": 10,
       "diagnostic": 5
@@ -21,7 +21,7 @@
       "diagnostic": 0
     },
     "postgres": {
-      "active_contract": 19,
+      "active_contract": 23,
       "historical_expected_fail": 1,
       "utility": 0,
       "diagnostic": 0
@@ -1071,6 +1071,26 @@
       "environment": "postgres"
     },
     {
+      "path": "tests/plataforma/db/p01-plataforma-empresas-contract.mjs",
+      "classification": "active_contract",
+      "environment": "postgres"
+    },
+    {
+      "path": "tests/plataforma/db/p03-eliminar-empresa-contract.mjs",
+      "classification": "active_contract",
+      "environment": "postgres"
+    },
+    {
+      "path": "tests/plataforma/db/p09-colecciones-por-empresa-contract.mjs",
+      "classification": "active_contract",
+      "environment": "postgres"
+    },
+    {
+      "path": "tests/plataforma/db/p10-perfiles-movimientos-push-por-empresa-contract.mjs",
+      "classification": "active_contract",
+      "environment": "postgres"
+    },
+    {
       "path": "tests/pm33/p03-frontend-multilocal-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
@@ -1277,6 +1297,36 @@
     },
     {
       "path": "tests/alb/a03-cableado-proveedor-desde-albaran-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/plataforma/p02-crear-propietario-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/plataforma/p04-panel-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/plataforma/p05-panel-ui-runtime.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/plataforma/p06-arranque-plataforma-runtime.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/plataforma/p07-empresas-sin-alta-runtime.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/plataforma/p08-copia-local-por-cuenta-runtime.mjs",
       "classification": "active_contract",
       "environment": "node"
     }

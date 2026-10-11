@@ -86,7 +86,13 @@
           clave.indexOf("almacen:") === 0 ||
           clave.indexOf("almacen__pendientes") === 0 ||
           clave.indexOf("almacen__borrados:") === 0 ||
-          clave === CLAVE_CONTEXTO_SEGURO
+          // Con una generación nueva no debe sobrevivir nada de la copia anterior (marcas de rechazo, semilla del contexto...).
+          clave.indexOf("almacen__") === 0 ||
+          clave === CLAVE_CONTEXTO_SEGURO ||
+          // Las copias apartadas de otras cuentas pertenecen a la instalación anterior: tampoco pueden volver.
+          clave.indexOf("la_suite_copia_cuenta_v1:") === 0 ||
+          clave === "la_suite_copia_cuenta_dueno_v1" ||
+          clave === "la_suite_copia_cuenta_indice_v1"
         ) {
           claves.push(clave);
         }
@@ -136,11 +142,24 @@
       guardarGeneracionLocal(valor);
     }
 
+    // Copia local por cuenta (D01): la copia viva del navegador pasa a ser solo de esta cuenta. Si era de otra, se
+    // aparta entera (no se borra) y se devuelve la de esta cuenta si la tenía. Si algo cambió, quien llama recarga
+    // la página (igual que con un cambio de generación) para que el programa arranque con la copia correcta, y la
+    // barrera de sincronización no se abre en esta pasada.
+    var copiaCambiada = false;
+    if (typeof window.__laOwnerBootstrapSepararCopiaLocal === "function") {
+      copiaCambiada = window.__laOwnerBootstrapSepararCopiaLocal(sesion.user.id).cambio === true;
+    }
+
     // Este punto solo decide si la copia local pertenece a la instalación
     // vigente. La autorización de la cuenta continúa en el guard existente.
     // No recreamos perfiles ni promovemos cuentas en esta fase.
-    window.__instalacionSyncPermitida = true;
-    return { estado: "generacion_validada", generacionCambiada: generacionCambiada };
+    if (!copiaCambiada) window.__instalacionSyncPermitida = true;
+    return {
+      estado: "generacion_validada",
+      generacionCambiada: generacionCambiada || copiaCambiada,
+      copiaLocalCambiada: copiaCambiada
+    };
   }
 
   window.__prepararSesionPostReset = prepararSesionPostReset;
