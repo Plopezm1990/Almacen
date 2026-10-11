@@ -29,6 +29,7 @@ for (const [nombre, source] of sources) {
   assert.match(source, /filter\(\(c22\) => c22\.completado/);
   assert.match(source, /replayed: !!remoto\.replayed/);
   assert.match(source, /conteosAbiertos/, `${nombre}: debe exponer los conteos locales heredados que siguen abiertos`);
+  assert.match(source, /c22\.cerradoEn \|\| c22\.cierre && c22\.cierre\.cerradoEn \|\| c22\.fecha/, `${nombre}: el dashboard debe usar la fecha real de cierre`);
   console.log(`PM12_P14_${nombre.toUpperCase().replaceAll(" ", "_")}_CLOSE_RELOAD=PASS`);
 }
 

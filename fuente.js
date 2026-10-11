@@ -104236,7 +104236,11 @@ function GestionAlmacen() {
     return ambitos.map((amb) => {
       const delAmbito = (conteosBase || []).filter((c22) => c22.completado && (c22.ambito || "total") === amb.id);
       if (delAmbito.length === 0) return { ...amb, ultimaFecha: null, diasDesde: null, atrasado: true };
-      const ultima = delAmbito.reduce((max, c22) => c22.fecha > max ? c22.fecha : max, delAmbito[0].fecha);
+      const fechaEfectiva = (c22) => String(c22.cerradoEn || c22.cierre && c22.cierre.cerradoEn || c22.fecha || "").slice(0, 10);
+      const ultima = delAmbito.reduce((max, c22) => {
+        const fecha = fechaEfectiva(c22);
+        return fecha > max ? fecha : max;
+      }, fechaEfectiva(delAmbito[0]));
       const diasDesde = Math.round((hoy - new Date(ultima)) / 864e5);
       return { ...amb, ultimaFecha: ultima, diasDesde, atrasado: diasDesde > amb.limiteDias };
     });
