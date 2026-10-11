@@ -33,6 +33,8 @@ const EXCLUIDAS = new Set([
   '20261009160000_plataforma_f4c_lista_sin_contexto_fiscal.sql',
   '20261009170000_plataforma_f4d_empresas_vigentes.sql',
   '20261009180000_plataforma_f4e_perfiles_movimientos_push_por_empresa.sql',
+  // El permiso de lookup de F5 se aplicó en una ventana separada de la foto F7.
+  '20261010191547_plataforma_f5_permiso_lookup_empresa.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))
