@@ -168,7 +168,7 @@ Solo con la autorización única del primer paquete (§8.1) y en este orden. **P
 
 ---
 
-## Apéndice A · Las 51 migraciones candidatas, en orden
+## Apéndice A · Las 52 migraciones candidatas, en orden
 
 «Registro en QA» es la marca con la que la herramienta las registró en QA y «Producción» la marca con la que figura en el registro de producción (ambos leídos el 3/10/2026, solo lectura). Las filas 47–51 se añadieron después de esa foto y quedan pendientes de una nueva lectura de ambos registros.
 
@@ -225,6 +225,7 @@ Solo con la autorización única del primer paquete (§8.1) y en este orden. **P
 | 49 | `20261009060339` | `c03_arqueo_servidor` | Registro autoritativo del arqueo de caja (C03) | F5 | pendiente de verificar | posterior a la foto |
 | 50 | `20261009111255` | `abc_f7_c12_reconciliation_revision` | Orden total por revisión para la conciliación documental de C12 | F7 | pendiente de verificar | posterior a la foto |
 | 51 | `20261009112332` | `abc_f7_c12_session_scope` | Vincula documentos C05 con la sesión y limita el ensayo C12 a ella | F7 | pendiente de verificar | posterior a la foto |
+| 52 | `20261011170000` | `pm10_bootstrap_scope_fix` | PM10: bootstrap de contexto fiscal simulado y catálogo TPV con alcance por empresas/locales activos | F3 | pendiente de verificar | posterior a la foto |
 
 Paquetes: F3/F4/F5 = «A · Base»; B06-B10 = «D · Proveedor de pagos»; P3 = «B · Catálogo con IVA»; Configuración = «C».
 
