@@ -101512,7 +101512,25 @@ async function cargarCierresLocalesPm12() {
   });
   return [...unicos.values()];
 }
-async function sincronizarConteosPm12({ setConteos, localActivoId }) {
+async function listarCierresServidorPm12({ empresaId, localActivoId }) {
+  if (!empresaId || !localActivoId || typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return [];
+  const cliente = await window.getSupabaseClient();
+  const { data, error } = await cliente.rpc("pm12_listar_cierres", { p_empresa_id: empresaId, p_local_id: localActivoId });
+  if (error) throw error;
+  if (Array.isArray(data)) return data.filter((c) => c && c.id);
+  if (Array.isArray(data?.cierres)) return data.cierres.filter((c) => c && c.id);
+  return [];
+}
+async function cerrarConteoServidorPm12({ empresaId, localActivoId, conteo }) {
+  if (!empresaId || !localActivoId || !conteo?.id || typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") {
+    return { ok: false, codigo: "conexion_atomica_requerida", error: "Conecta para guardar el cierre del conteo en QA." };
+  }
+  const cliente = await window.getSupabaseClient();
+  const { data, error } = await cliente.rpc("pm12_cerrar_conteo", { p_empresa_id: empresaId, p_local_id: localActivoId, p_conteo: conteo });
+  if (error) return { ok: false, codigo: String(error.code || "cierre_servidor_fallido"), error: error.message || "No se pudo guardar el cierre del conteo." };
+  return data && typeof data === "object" ? data : { ok: true, replayed: false, conteo };
+}
+async function sincronizarConteosPm12({ setConteos, localActivoId, empresaId }) {
   const cliente = await window.getSupabaseClient();
   let consulta = cliente.from("stock_operaciones").select("empresa_id,local_id,payload").eq("tipo", "INVENTARIO_PM12");
   if (localActivoId) consulta = consulta.eq("local_id", localActivoId);
@@ -101520,16 +101538,23 @@ async function sincronizarConteosPm12({ setConteos, localActivoId }) {
   if (r.error) throw r.error;
   const documentos = (r.data || []).map((op) => op.payload && op.payload.resultado && op.payload.resultado.conteo).filter(Boolean);
   const cierresLocales = await cargarCierresLocalesPm12();
+  const cierresServidor = await listarCierresServidorPm12({ empresaId, localActivoId });
+  const cierres = [...cierresLocales, ...cierresServidor];
   setConteos((cs) => {
     const nuevos = [...cs];
     const fusionar = typeof window !== "undefined" && window.__pm12ConteoEstados && typeof window.__pm12ConteoEstados.fusionarConteoServidor === "function" ? window.__pm12ConteoEstados.fusionarConteoServidor : (local, servidor) => ({ ...local, ...servidor, _pm12Servidor: true });
     for (const documento of documentos) {
       const i = nuevos.findIndex((c) => c.id === documento.id && c.empresaId === documento.empresaId && c.localId === documento.localId);
-      const cierreLocal = cierresLocales.find((c) => coincideCierreLocalPm12(c, documento));
+      const cierreLocal = cierres.find((c) => coincideCierreLocalPm12(c, documento));
       const baseLocal = cierreLocal ? { ...documento, ...cierreLocal, _pm12CierreLocalPendiente: true } : (i >= 0 ? nuevos[i] : null);
       if (i >= 0) nuevos[i] = fusionar(baseLocal || nuevos[i], documento);
       else if (baseLocal) nuevos.push(fusionar(baseLocal, documento));
       else if (!nuevos.some((c) => c.id === documento.id)) nuevos.push({ ...documento, _pm12Servidor: true });
+    }
+    for (const cierreServidor of cierresServidor) {
+      const i = nuevos.findIndex((c) => coincideCierreLocalPm12(cierreServidor, c));
+      if (i >= 0) nuevos[i] = { ...nuevos[i], ...cierreServidor, completado: true, _pm12CierreServidor: true };
+      else if (!nuevos.some((c) => coincideCierreLocalPm12(cierreServidor, c))) nuevos.push({ ...cierreServidor, completado: true, _pm12CierreServidor: true });
     }
     return nuevos;
   });
@@ -103156,7 +103181,7 @@ function GestionAlmacen() {
       try {
         await sincronizarContextoPm07({ setEmpresas, setLocales, setLocalActivoId, setProductos });
         await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
-        await sincronizarConteosPm12({ setConteos, localActivoId });
+        await sincronizarConteosPm12({ setConteos, localActivoId, empresaId: (locales.find((l22) => l22.id === localActivoId)?.empresaId) || empresas[0]?.id || configEmpresa?.id || null });
         await sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones });
       } catch (e2) {
         if (activo) console.error("PM-08: no se pudo sincronizar contexto, stock o caja autoritativos", e2);
@@ -103165,7 +103190,7 @@ function GestionAlmacen() {
     return () => {
       activo = false;
     };
-  }, [ready, localActivoId]);
+  }, [ready, localActivoId, empresas.length, locales.length]);
   const empresaDelLocalActivo = (0, import_react4.useMemo)(() => {
     const principal = empresas[0] || null;
     const localActual = locales.find((l22) => l22.id === localActivoId) || null;
@@ -108166,7 +108191,7 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
     if (!r.ok) return r;
     try {
       await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
-      await sincronizarConteosPm12({ setConteos, localActivoId });
+       await sincronizarConteosPm12({ setConteos, localActivoId, empresaId: empresaActivaId });
     } catch {
       return { ok: false, codigo: "resultado_confirmado_actualizacion_pendiente", error: "La operación está confirmada en el servidor; falta actualizar esta pantalla. Reintenta para recuperar el resultado.", resultadoExistente: true, ajustados: 0, traspasados: [] };
     }
@@ -108297,7 +108322,7 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
       (s22) => s22.map((c22) => c22.id === conteoId ? { ...c22, responsables: { ...c22.responsables || {}, [campo]: valor } } : c22)
     );
   }
-  function finalizarConteo(conteoId, opciones = {}) {
+  async function finalizarConteo(conteoId, opciones = {}) {
     const conteo = conteos.find((c22) => c22.id === conteoId);
     if (!conteoEsDelLocalActivo(conteo)) return { ok: false, codigo: "fuera_de_contexto", error: "Conteo no disponible en el local activo." };
     const contextoActor = typeof obtenerContextoActor === "function" ? obtenerContextoActor() || {} : {};
@@ -108319,10 +108344,13 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
     const motivoParcial = cierre.estado === estadosApi.ESTADOS.PARCIAL ? String(opciones.motivoParcial || "").trim() : null;
     const registroCierre = { actorId: responsableEmpleado.id, actorNombre: responsableEmpleado.nombre, responsableId: responsableEmpleado.id, responsableNombre: responsableEmpleado.nombre, cerradoEn, motivoParcial, cobertura: cierre.cobertura };
     const cierrePersistente = { ...conteo, completado: true, estado: cierre.estado, cerradoEn, motivoParcial, coberturaCierre: cierre.cobertura, cierre: registroCierre, responsables: { ...conteo.responsables || {}, contadoPor: responsableEmpleado.nombre, contadoPorId: responsableEmpleado.id } };
-    guardarCierreLocalPm12(cierrePersistente);
-    setConteos((s22) => s22.map((c22) => c22.id === conteoId ? { ...cierrePersistente } : c22));
+    const remoto = await cerrarConteoServidorPm12({ empresaId: empresaActivaId, localActivoId: localDeConteo(conteo) || localActivoId, conteo: cierrePersistente });
+    if (!remoto.ok) return { ...remoto, cobertura: cierre.cobertura };
+    const cierreConfirmado = remoto.conteo && typeof remoto.conteo === "object" ? remoto.conteo : cierrePersistente;
+    guardarCierreLocalPm12(cierreConfirmado);
+    setConteos((s22) => s22.map((c22) => c22.id === conteoId ? { ...cierreConfirmado, completado: true } : c22));
     registrarAuditoria("Finalizar conteo", `${cierre.estado} · ${cierre.cobertura.contados}/${cierre.cobertura.total} producto(s) · responsable: ${cierre.responsable}`);
-    return { ok: true, estado: cierre.estado, cobertura: cierre.cobertura };
+    return { ok: true, replayed: !!remoto.replayed, estado: cierreConfirmado.estado || cierre.estado, cobertura: cierre.cobertura, conteo: cierreConfirmado };
   }
   function eliminarConteo(conteoId, opciones = {}) {
     const conteo = conteos.find((c) => c.id === conteoId);
@@ -115585,7 +115613,7 @@ function InventarioCiego({ productos, proveedores, conteos, iniciarConteo, actua
   const esPisoVenta = activo?.ambito === "piso_venta";
   const esAlmacen = activo?.ambito === "almacen";
   const coberturaActivo = activo && typeof window !== "undefined" && window.__pm12ConteoEstados ? window.__pm12ConteoEstados.resumenCobertura(activo.items) : { total: 0, contados: 0, pendientes: 0, invalidos: 0, porcentaje: 0 };
-  function solicitarFinalizacion() {
+  async function solicitarFinalizacion() {
     if (!activo) return;
     if (procesandoCierre) return;
     setProcesandoCierre(true);
@@ -115596,7 +115624,7 @@ function InventarioCiego({ productos, proveedores, conteos, iniciarConteo, actua
       return;
     }
     try {
-      const resultado = finalizarConteo(activo.id, { responsableId: responsableSeleccionadoId });
+      const resultado = await finalizarConteo(activo.id, { responsableId: responsableSeleccionadoId });
       if (resultado.ok) return;
       if (resultado.codigo === "cobertura_incompleta") { setConfirmarCierreParcial(true); return; }
       setErrorCierre(resultado.error);
@@ -115604,7 +115632,7 @@ function InventarioCiego({ productos, proveedores, conteos, iniciarConteo, actua
       setProcesandoCierre(false);
     }
   }
-  function confirmarFinalizacionParcial() {
+  async function confirmarFinalizacionParcial() {
     if (!activo) return;
     if (procesandoCierre) return;
     setProcesandoCierre(true);
@@ -115615,7 +115643,7 @@ function InventarioCiego({ productos, proveedores, conteos, iniciarConteo, actua
       return;
     }
     try {
-      const resultado = finalizarConteo(activo.id, { confirmarParcial: true, motivoParcial: motivoCierreParcial, responsableId: responsableSeleccionadoId });
+      const resultado = await finalizarConteo(activo.id, { confirmarParcial: true, motivoParcial: motivoCierreParcial, responsableId: responsableSeleccionadoId });
       if (!resultado.ok) { setErrorCierre(resultado.error); return; }
       setConfirmarCierreParcial(false);
       setMotivoCierreParcial("");

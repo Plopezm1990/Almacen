@@ -28,8 +28,8 @@ for (const [nombre, codigo] of [["runtime", runtime], ["fuente recuperada", recu
   assert.match(codigo, /if \(conteo\.completado === true\)/, `${nombre}: un legado con estado terminal pero flag abierto debe pasar por el cierre autorizado`);
   assert.match(codigo, /PM12_CIERRES_LOCAL_KEY/, `${nombre}: el cierre debe tener una marca local persistente`);
   assert.match(codigo, /function coincideCierreLocalPm12\(cierre, conteo\)/, `${nombre}: la reconciliación debe reconocer documentos legacy con identidad incompleta`);
-  assert.match(codigo, /const cierreLocal = cierresLocales\.find\(\(c\) => coincideCierreLocalPm12\(c, documento\)\)/, `${nombre}: la sincronización debe aplicar cierres por UUID de conteo`);
-  assert.match(codigo, /guardarCierreLocalPm12\(cierrePersistente\)/, `${nombre}: finalizar debe persistir el cierre antes de actualizar la vista`);
+  assert.match(codigo, /const cierreLocal = cierres\.find\(\(c\) => coincideCierreLocalPm12\(c, documento\)\)/, `${nombre}: la sincronización debe aplicar cierres por UUID de conteo`);
+  assert.match(codigo, /guardarCierreLocalPm12\(cierreConfirmado\)/, `${nombre}: finalizar debe persistir el cierre confirmado antes de actualizar la vista`);
   assert.match(codigo, /cargarCierresLocalesPm12\(\)/, `${nombre}: la sincronización debe recuperar cierres locales`);
   assert.match(codigo, /_pm12CierreLocalPendiente/, `${nombre}: la reconciliación debe identificar el cierre local pendiente de servidor`);
   assert.match(codigo, /const almacenCongelado = !!conteoAbierto/, `${nombre}: el bloqueo debe depender solo de conteos realmente abiertos`);
