@@ -115514,8 +115514,11 @@ function InventarioCiego({ productos, proveedores, conteos, iniciarConteo, actua
   const [activoId, setActivoId] = (0, import_react4.useState)(null);
   const conteoAbierto = (0, import_react4.useMemo)(() => conteos.find((c22) => !c22.completado && c22.cancelado !== true) || null, [conteos]);
   (0, import_react4.useEffect)(() => {
-    if (activoId && conteos.some((c22) => c22.id === activoId)) return;
-    if (conteoAbierto) setActivoId(conteoAbierto.id);
+    const seleccionado = activoId ? conteos.find((c22) => c22.id === activoId) : null;
+    const seleccionadoAbierto = !!seleccionado && seleccionado.completado !== true && seleccionado.cancelado !== true;
+    if (seleccionadoAbierto) return;
+    const siguienteId = conteoAbierto ? conteoAbierto.id : null;
+    if (activoId !== siguienteId) setActivoId(siguienteId);
   }, [activoId, conteos, conteoAbierto]);
   const activo = conteos.find((c22) => c22.id === activoId);
   const empleadosValidos = (0, import_react4.useMemo)(() => (empleados || []).filter((e2) => e2 && e2.id && e2.nombre && e2.activo !== false), [empleados]);

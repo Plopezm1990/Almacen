@@ -32,9 +32,13 @@ for (const [nombre, codigo] of [["runtime", runtime], ["fuente recuperada", recu
   assert.match(codigo, /_pm12CierreLocalPendiente/, `${nombre}: la reconciliación debe identificar el cierre local pendiente de servidor`);
   assert.match(codigo, /const almacenCongelado = !!conteoAbierto/, `${nombre}: el bloqueo debe depender solo de conteos realmente abiertos`);
   assert.match(codigo, /filter\(\(c22\) => c22\.completado/, `${nombre}: el dashboard debe contar solo cierres completados`);
+  assert.match(codigo, /const seleccionado = activoId \? conteos\.find/, `${nombre}: la vista debe reevaluar el conteo seleccionado tras un cierre`);
+  assert.match(codigo, /const seleccionadoAbierto = !!seleccionado && seleccionado\.completado !== true && seleccionado\.cancelado !== true/, `${nombre}: un conteo cerrado no puede mantener oculto otro conteo abierto`);
+  assert.match(codigo, /const siguienteId = conteoAbierto \? conteoAbierto\.id : null/, `${nombre}: la vista debe enfocar el conteo abierto real o quedar sin activo`);
 }
 
 console.log("PM12_P13_CIERRE_RELOAD=PASS");
 console.log("PM12_P13_ALMACEN_DESBLOQUEADO=PASS");
 console.log("PM12_P13_DASHBOARD=PASS");
 console.log("PM12_P13_IDEMPOTENCIA=PASS");
+console.log("PM12_P13_ACTIVE_SELECTION=PASS");
