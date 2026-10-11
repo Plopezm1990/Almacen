@@ -25,6 +25,10 @@ assert.equal(cerradoRemoto.completado, true, "un cierre confirmado en servidor p
 for (const [nombre, codigo] of [["runtime", runtime], ["fuente recuperada", recuperada]]) {
   assert.match(codigo, /fusionarConteoServidor/, `${nombre}: debe conservar cierres locales frente a documentos remotos abiertos`);
   assert.match(codigo, /replayed: true/, `${nombre}: el doble envío debe ser idempotente`);
+  assert.match(codigo, /PM12_CIERRES_LOCAL_KEY/, `${nombre}: el cierre debe tener una marca local persistente`);
+  assert.match(codigo, /guardarCierreLocalPm12\(cierrePersistente\)/, `${nombre}: finalizar debe persistir el cierre antes de actualizar la vista`);
+  assert.match(codigo, /cargarCierresLocalesPm12\(\)/, `${nombre}: la sincronización debe recuperar cierres locales`);
+  assert.match(codigo, /_pm12CierreLocalPendiente/, `${nombre}: la reconciliación debe identificar el cierre local pendiente de servidor`);
   assert.match(codigo, /const almacenCongelado = !!conteoAbierto/, `${nombre}: el bloqueo debe depender solo de conteos realmente abiertos`);
   assert.match(codigo, /filter\(\(c22\) => c22\.completado/, `${nombre}: el dashboard debe contar solo cierres completados`);
 }

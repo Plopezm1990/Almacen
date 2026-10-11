@@ -551,6 +551,33 @@ async function saveKey(key, value) {
     }
   }
 }
+const PM12_CIERRES_LOCAL_KEY = "pm12.cierres.local.v1";
+function cierresLocalesPm12Sync() {
+  try {
+    const raw = localStorage.getItem(PM12_CIERRES_LOCAL_KEY);
+    const valor = raw ? JSON.parse(raw) : [];
+    return Array.isArray(valor) ? valor : [];
+  } catch {
+    return [];
+  }
+}
+function guardarCierreLocalPm12(cierre) {
+  if (!cierre || !cierre.id) return;
+  const actuales = cierresLocalesPm12Sync().filter((c) => c.id !== cierre.id || c.empresaId !== cierre.empresaId || c.localId !== cierre.localId);
+  const siguientes = [...actuales, cierre].slice(-100);
+  try { localStorage.setItem(PM12_CIERRES_LOCAL_KEY, JSON.stringify(siguientes)); } catch {}
+  saveKey(PM12_CIERRES_LOCAL_KEY, siguientes).catch(() => {});
+}
+async function cargarCierresLocalesPm12() {
+  const sincronizados = await loadKey(PM12_CIERRES_LOCAL_KEY, []);
+  const locales = cierresLocalesPm12Sync();
+  const combinados = [...(Array.isArray(sincronizados) ? sincronizados : []), ...locales];
+  const unicos = new Map();
+  combinados.forEach((c) => {
+    if (c && c.id) unicos.set(`${c.empresaId || ""}:${c.localId || ""}:${c.id}`, c);
+  });
+  return [...unicos.values()];
+}
 async function sincronizarConteosPm12({ setConteos, localActivoId }) {
   const cliente = await window.getSupabaseClient();
   let consulta = cliente.from("stock_operaciones").select("empresa_id,local_id,payload").eq("tipo", "INVENTARIO_PM12");
@@ -558,12 +585,16 @@ async function sincronizarConteosPm12({ setConteos, localActivoId }) {
   const r = await consulta;
   if (r.error) throw r.error;
   const documentos = (r.data || []).map((op) => op.payload && op.payload.resultado && op.payload.resultado.conteo).filter(Boolean);
+  const cierresLocales = await cargarCierresLocalesPm12();
   setConteos((cs) => {
     const nuevos = [...cs];
     const fusionar = typeof window !== "undefined" && window.__pm12ConteoEstados && typeof window.__pm12ConteoEstados.fusionarConteoServidor === "function" ? window.__pm12ConteoEstados.fusionarConteoServidor : (local, servidor) => ({ ...local, ...servidor, _pm12Servidor: true });
     for (const documento of documentos) {
       const i = nuevos.findIndex((c) => c.id === documento.id && c.empresaId === documento.empresaId && c.localId === documento.localId);
-      if (i >= 0) nuevos[i] = fusionar(nuevos[i], documento);
+      const cierreLocal = cierresLocales.find((c) => c.id === documento.id && c.empresaId === documento.empresaId && c.localId === documento.localId);
+      const baseLocal = cierreLocal ? { ...documento, ...cierreLocal, _pm12CierreLocalPendiente: true } : (i >= 0 ? nuevos[i] : null);
+      if (i >= 0) nuevos[i] = fusionar(baseLocal || nuevos[i], documento);
+      else if (baseLocal) nuevos.push(fusionar(baseLocal, documento));
       else if (!nuevos.some((c) => c.id === documento.id)) nuevos.push({ ...documento, _pm12Servidor: true });
     }
     return nuevos;
@@ -2345,7 +2376,13 @@ function GestionAlmacen() {
       setProveedores(p22);
       setPedidos(pe2);
       setMovimientos(mo);
+      const cierresLocales = await cargarCierresLocalesPm12();
+      const fusionarCierreLocal = (conteo) => {
+        const cierreLocal = cierresLocales.find((c) => c.id === conteo.id && c.empresaId === conteo.empresaId && c.localId === conteo.localId);
+        return cierreLocal ? { ...conteo, ...cierreLocal, _pm12CierreLocalPendiente: true } : conteo;
+      };
       const coMigrado = (co || []).map((c22) => {
+        c22 = fusionarCierreLocal(c22);
         if (c22.ajustesAplicados) return c22;
         const ajustes = (mo || []).filter((m) => m.documentoOrigenId === c22.id && m.origen === "aplicarAjustes");
         const completo = ajustes.length > 0 && ajustes.every((m) => m.pm12PlanCantidad === ajustes.length && m.operationId === ajustes[0].operationId && m.pm12Resultado);
@@ -7347,7 +7384,9 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
     const cerradoEn = (/* @__PURE__ */ new Date()).toISOString();
     const motivoParcial = cierre.estado === estadosApi.ESTADOS.PARCIAL ? String(opciones.motivoParcial || "").trim() : null;
     const registroCierre = { actorId: responsableEmpleado.id, actorNombre: responsableEmpleado.nombre, responsableId: responsableEmpleado.id, responsableNombre: responsableEmpleado.nombre, cerradoEn, motivoParcial, cobertura: cierre.cobertura };
-    setConteos((s22) => s22.map((c22) => c22.id === conteoId ? { ...c22, completado: true, estado: cierre.estado, cerradoEn, motivoParcial, coberturaCierre: cierre.cobertura, cierre: registroCierre } : c22));
+    const cierrePersistente = { ...conteo, completado: true, estado: cierre.estado, cerradoEn, motivoParcial, coberturaCierre: cierre.cobertura, cierre: registroCierre, responsables: { ...conteo.responsables || {}, contadoPor: responsableEmpleado.nombre, contadoPorId: responsableEmpleado.id } };
+    guardarCierreLocalPm12(cierrePersistente);
+    setConteos((s22) => s22.map((c22) => c22.id === conteoId ? { ...cierrePersistente } : c22));
     registrarAuditoria("Finalizar conteo", `${cierre.estado} · ${cierre.cobertura.contados}/${cierre.cobertura.total} producto(s) · responsable: ${cierre.responsable}`);
     return { ok: true, estado: cierre.estado, cobertura: cierre.cobertura };
   }
