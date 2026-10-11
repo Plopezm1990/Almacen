@@ -103799,8 +103799,7 @@ function GestionAlmacen() {
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
-  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, confirmarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarSalaConfiguracionA07, crearZonaConfiguracionA07, crearMesaConfiguracionA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, resolverPagoSimuladoQAF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
-  const { abrirSesionCajaA10 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
+  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, confirmarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarSalaConfiguracionA07, crearZonaConfiguracionA07, crearMesaConfiguracionA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, abrirSesionCajaA10, consultarSesionCajaC01, iniciarCierreSesionCajaA10, confirmarCierreProvisionalA10, finalizarCierreSesionCajaA10, consultarCierreCajaA10, iniciarCobroCuentaF4, reintentarCobroF4, resolverPagoSimuladoQAF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
   const { traspasarStock, traspasarEntreLocales } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales });
@@ -104870,7 +104869,7 @@ function GestionAlmacen() {
         setTab("pagos");
       }
     }
-  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { key: localActivoId || "todos", movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { key: localActivoId || "todos", movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, rolPerfil: miPerfil?.rol || "", registrarAuditoria, abrirSesionCajaA10, consultarSesionCajaC01, iniciarCierreSesionCajaA10, confirmarCierreProvisionalA10, finalizarCierreSesionCajaA10, consultarCierreCajaA10 }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
     Turnos,
     {
       empleados: empleadosDelLocalActivo,
@@ -120612,6 +120611,188 @@ function BloqueEntradasSalidas({ fecha, movimientosCajaDelDia = [], registrarMov
     listado
   );
 }
+function PanelSesionCajaA10({ rolPerfil = "", registrarAuditoria, abrirSesionCajaA10, consultarSesionCajaC01, iniciarCierreSesionCajaA10, confirmarCierreProvisionalA10, finalizarCierreSesionCajaA10, consultarCierreCajaA10 }) {
+  const h3 = import_react4.default.createElement;
+  const [estado, setEstado] = (0, import_react4.useState)("CARGANDO");
+  const [sesionId, setSesionId] = (0, import_react4.useState)("");
+  const [cierreId, setCierreId] = (0, import_react4.useState)("");
+  const [fondoInicial, setFondoInicial] = (0, import_react4.useState)("0");
+  const [efectivoContado, setEfectivoContado] = (0, import_react4.useState)("");
+  const [arqueoPrevio, setArqueoPrevio] = (0, import_react4.useState)(null);
+  const [resultadoCierre, setResultadoCierre] = (0, import_react4.useState)(null);
+  const [error, setError] = (0, import_react4.useState)("");
+  const [mensaje, setMensaje] = (0, import_react4.useState)("");
+  const [procesando, setProcesando] = (0, import_react4.useState)(false);
+  const esPropietario = rolPerfil === "Propietario";
+  const mensajeSinSesion = (valor) => /no tiene una sesión de caja abierta|terminal_sin_sesion_abierta|terminal no tiene una sesión/i.test(String(valor || ""));
+  async function cargarSesion() {
+    if (typeof consultarSesionCajaC01 !== "function") {
+      setEstado("NO_DISPONIBLE");
+      return;
+    }
+    setError("");
+    const resultado = await consultarSesionCajaC01();
+    if (resultado?.ok && resultado.sesion?.id) {
+      setSesionId(String(resultado.sesion.id));
+      setEstado(String(resultado.sesion.estado || "ABIERTA"));
+      return;
+    }
+    if (mensajeSinSesion(resultado?.error)) {
+      setSesionId("");
+      setEstado("SIN_SESION");
+      return;
+    }
+    setEstado("ERROR");
+    setError(resultado?.error || "No se pudo consultar la sesión de caja.");
+  }
+  (0, import_react4.useEffect)(() => {
+    let activo = true;
+    Promise.resolve(cargarSesion()).catch((e2) => {
+      if (activo) {
+        setEstado("ERROR");
+        setError(e2?.message || "No se pudo consultar la sesión de caja.");
+      }
+    });
+    return () => {
+      activo = false;
+    };
+  }, []);
+  async function abrirSesion() {
+    const fondo = Number(fondoInicial);
+    if (!esPropietario) {
+      setError("Solo el Propietario puede abrir la sesión de caja desde esta pantalla.");
+      return;
+    }
+    if (!Number.isFinite(fondo) || fondo < 0) {
+      setError("El fondo inicial debe ser cero o un importe positivo.");
+      return;
+    }
+    if (procesando || typeof abrirSesionCajaA10 !== "function") return;
+    setProcesando(true);
+    setError("");
+    setMensaje("");
+    try {
+      const resultado = await abrirSesionCajaA10({ fondoInicial: fondo });
+      if (!resultado?.ok) {
+        setError(resultado?.error || "No se pudo abrir la sesión de caja.");
+        await cargarSesion();
+        return;
+      }
+      const id = String(resultado.session_id || "");
+      setSesionId(id);
+      setEstado("ABIERTA");
+      setMensaje(`Sesión abierta con fondo inicial de €${fondo.toFixed(2)}.`);
+      if (id) registrarAuditoria?.("CAJA_SESION_ABIERTA", `Sesión ${id} · fondo inicial €${fondo.toFixed(2)}`);
+      await cargarSesion();
+    } finally {
+      setProcesando(false);
+    }
+  }
+  async function iniciarCierre() {
+    if (procesando || typeof iniciarCierreSesionCajaA10 !== "function") return;
+    setProcesando(true);
+    setError("");
+    setMensaje("");
+    try {
+      const resultado = await iniciarCierreSesionCajaA10();
+      if (!resultado?.ok) {
+        setError(resultado?.error || "No se pudo iniciar el cierre.");
+        return;
+      }
+      setEstado("EN_CIERRE");
+      setCierreId(String(resultado.cierre_id || ""));
+      if (typeof consultarCierreCajaA10 === "function") {
+        const previo = await consultarCierreCajaA10();
+        if (previo?.ok) setArqueoPrevio(previo.arqueoPrevio || null);
+      }
+      setMensaje("Cierre iniciado. El efectivo esperado se calcula en el servidor.");
+    } finally {
+      setProcesando(false);
+    }
+  }
+  async function confirmarArqueo() {
+    const contado = Number(efectivoContado);
+    if (!Number.isFinite(contado) || contado < 0) {
+      setError("Escribe un efectivo contado igual o mayor que cero.");
+      return;
+    }
+    if (procesando || typeof confirmarCierreProvisionalA10 !== "function") return;
+    setProcesando(true);
+    setError("");
+    setMensaje("");
+    try {
+      const resultado = await confirmarCierreProvisionalA10({ efectivoContado: contado });
+      if (!resultado?.ok) {
+        setError(resultado?.error || "No se pudo guardar el arqueo.");
+        return;
+      }
+      setEstado("CIERRE_PROVISIONAL");
+      setResultadoCierre(resultado);
+      setCierreId(String(resultado.cierre_id || cierreId || ""));
+      setMensaje(`Arqueo guardado: esperado €${Number(resultado.expected_amount || 0).toFixed(2)}, contado €${Number(resultado.counted_amount ?? contado).toFixed(2)}, diferencia €${Number(resultado.difference || 0).toFixed(2)}.`);
+    } finally {
+      setProcesando(false);
+    }
+  }
+  async function finalizarCierre() {
+    if (procesando || typeof finalizarCierreSesionCajaA10 !== "function") return;
+    const diferencia = Number(resultadoCierre?.difference || 0);
+    if (Math.abs(diferencia) > 0.001) {
+      setError("El cierre solo se puede finalizar desde esta pantalla cuando la diferencia es 0,00 €. Registra el motivo y autorización en Cocina A10.");
+      return;
+    }
+    setProcesando(true);
+    setError("");
+    setMensaje("");
+    try {
+      const resultado = await finalizarCierreSesionCajaA10();
+      if (!resultado?.ok) {
+        setError(resultado?.error || "No se pudo finalizar el cierre.");
+        return;
+      }
+      setEstado("CERRADA_FINAL");
+      setResultadoCierre((actual) => ({ ...(actual || {}), ...resultado }));
+      setCierreId(String(resultado.cierre_id || cierreId || ""));
+      setMensaje("Sesión cerrada correctamente. El cierre y la auditoría quedan registrados en el servidor.");
+      registrarAuditoria?.("CAJA_SESION_CERRADA", `Sesión ${sesionId} · cierre ${String(resultado.cierre_id || cierreId || "")}`);
+    } finally {
+      setProcesando(false);
+    }
+  }
+  const esperado = Number(resultadoCierre?.expected_amount ?? arqueoPrevio?.expected_amount ?? 0);
+  const contado = Number(resultadoCierre?.counted_amount ?? efectivoContado ?? 0);
+  const diferencia = Number(resultadoCierre?.difference ?? contado - esperado);
+  return h3(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" }, "data-caja-sesion-a10": "1" },
+    h3("div", { className: "text-[12.5px] font-semibold mb-1" }, "Sesión de caja y arqueo operativo"),
+    h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "La apertura, el movimiento y el cierre se autorizan por RPC y quedan auditados. Solo se habilita esta operación para el Propietario."),
+    estado === "CARGANDO" ? h3("div", { className: "text-[11.5px]" }, "Consultando sesión de caja…") : null,
+    estado === "NO_DISPONIBLE" ? h3("div", { className: "text-[11.5px]" }, "La apertura de sesión no está disponible en esta versión.") : null,
+    estado === "SIN_SESION" ? h3("div", null,
+      h3("div", { className: "text-[11.5px] mb-2" }, "No hay una sesión de caja abierta para este local."),
+      esPropietario ? h3("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-2 items-end" },
+        h3(Field, { label: "Base de apertura (€)" }, h3(Input, { type: "number", min: "0", step: "0.01", value: fondoInicial, disabled: procesando, onChange: (e2) => setFondoInicial(e2.target.value) })),
+        h3(Btn, { small: true, onClick: abrirSesion, disabled: procesando }, procesando ? "Abriendo…" : "Abrir sesión")
+      ) : h3("div", { className: "text-[11.5px]" }, "Solo el Propietario puede abrir la sesión de caja."),
+    ) : null,
+    ["ABIERTA", "EN_CIERRE", "CIERRE_PROVISIONAL", "CERRADA_FINAL"].includes(estado) ? h3("div", null,
+      h3("div", { className: "text-[11.5px] mb-2" }, "Sesión ", h3("span", { className: "mono" }, sesionId || "sin identificador"), " · ", estado),
+      estado === "ABIERTA" ? h3(Btn, { small: true, variant: "danger", onClick: iniciarCierre, disabled: procesando }, procesando ? "Iniciando…" : "Iniciar cierre") : null,
+      estado === "EN_CIERRE" ? h3("div", null,
+        h3("div", { className: "text-[11.5px] mb-2" }, "Efectivo esperado por el servidor: €", esperado.toFixed(2)),
+        h3(Field, { label: "Efectivo contado (€)" }, h3(Input, { type: "number", min: "0", step: "0.01", value: efectivoContado, disabled: procesando, onChange: (e2) => setEfectivoContado(e2.target.value) })),
+        h3(Btn, { small: true, onClick: confirmarArqueo, disabled: procesando || !String(efectivoContado).trim() }, procesando ? "Guardando…" : "Guardar arqueo")
+      ) : null,
+      estado === "CIERRE_PROVISIONAL" ? h3("div", null,
+        h3("div", { className: "text-[11.5px] mb-2", style: { color: diferencia === 0 ? C2.accent : C2.red } }, diferencia === 0 ? "Cuadra · diferencia €0,00" : `Diferencia €${diferencia.toFixed(2)}`),
+        h3("div", { className: "text-[11px] mb-2", style: { color: C2.inkSoft } }, "Esperado €", esperado.toFixed(2), " · contado €", contado.toFixed(2), " · cierre ", h3("span", { className: "mono" }, cierreId || "sin identificador")),
+        h3(Btn, { small: true, variant: "danger", onClick: finalizarCierre, disabled: procesando || Math.abs(diferencia) > 0.001 }, procesando ? "Finalizando…" : "Finalizar cierre")
+      ) : null,
+      estado === "CERRADA_FINAL" ? h3("div", { className: "text-[11.5px]" }, "Sesión cerrada correctamente · Cuadra · diferencia €0,00 · cierre ", h3("span", { className: "mono" }, cierreId || "sin identificador")) : null
+    ) : null,
+    error ? h3("div", { role: "alert", className: "text-[11.5px] mt-2", style: { color: C2.red } }, error) : null,
+    mensaje ? h3("div", { className: "text-[11.5px] mt-2", style: { color: C2.accent } }, mensaje) : null
+  );
+}
 // PM-09 / Punto 10: una única lectura de medios de pago para Caja.
 // Las ventas brutas suman por su medio; los REVERSO trazables restan en la
 // fecha de la corrección. DEVOLUCION_CLIENTE no entra aquí porque su reembolso
@@ -120657,7 +120838,7 @@ function resumenMediosVentaCajaPM09(movs = [], fecha = "") {
   Object.keys(reversos).forEach((k) => reversos[k] = redondearDineroPM08(reversos[k] || 0));
   return { ventas, reversos, neto, ventasIncluidas, reversosIncluidos };
 }
-function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja }) {
+function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, rolPerfil = "", registrarAuditoria, abrirSesionCajaA10, consultarSesionCajaC01, iniciarCierreSesionCajaA10, confirmarCierreProvisionalA10, finalizarCierreSesionCajaA10, consultarCierreCajaA10 }) {
   const h3 = import_react4.default.createElement;
   const valoresDenominacion = [500, 200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01];
   const [fecha, setFecha] = (0, import_react4.useState)(todayISO());
@@ -120811,6 +120992,7 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
   return h3(
     "div",
     null,
+    h3(PanelSesionCajaA10, { rolPerfil, registrarAuditoria, abrirSesionCajaA10, consultarSesionCajaC01, iniciarCierreSesionCajaA10, confirmarCierreProvisionalA10, finalizarCierreSesionCajaA10, consultarCierreCajaA10 }),
     h3(SectionTitle, null, "Arqueo de caja"),
     h3(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, h3("div", { className: "text-[12.5px]" }, "El cierre es diario y pertenece a un solo local. El servidor calcula el efectivo esperado con la base declarada y el libro de caja; el contado admite 0 \u20AC y nunca se borra f\xEDsicamente.")),
     h3(
