@@ -612,6 +612,7 @@ async function sincronizarConteosPm12({ setConteos, localActivoId, empresaId }) 
   const cierresLocales = await cargarCierresLocalesPm12();
   const cierresServidor = await listarCierresServidorPm12({ empresaId, localActivoId });
   const cierres = [...cierresLocales, ...cierresServidor];
+  const cierresServidorPorId = new Map(cierresServidor.map((c) => [String(c.id), c]));
   setConteos((cs) => {
     const nuevos = [...cs];
     const fusionar = typeof window !== "undefined" && window.__pm12ConteoEstados && typeof window.__pm12ConteoEstados.fusionarConteoServidor === "function" ? window.__pm12ConteoEstados.fusionarConteoServidor : (local, servidor) => ({ ...local, ...servidor, _pm12Servidor: true });
@@ -628,7 +629,12 @@ async function sincronizarConteosPm12({ setConteos, localActivoId, empresaId }) 
       if (i >= 0) nuevos[i] = { ...nuevos[i], ...cierreServidor, completado: true, _pm12CierreServidor: true };
       else if (!nuevos.some((c) => coincideCierreLocalPm12(cierreServidor, c))) nuevos.push({ ...cierreServidor, completado: true, _pm12CierreServidor: true });
     }
-    return nuevos;
+    return nuevos.map((conteo) => {
+      const cierre = cierresServidorPorId.get(String(conteo.id));
+      return cierre && coincideCierreLocalPm12(cierre, conteo)
+        ? { ...conteo, ...cierre, completado: true, _pm12CierreServidor: true }
+        : conteo;
+    });
   });
 }
 async function sincronizarStockPm07({ setProductos, setMovimientos, localActivoId = null }) {
@@ -14618,7 +14624,8 @@ function BloqueAplicarAjustes({ activo, procesandoCierre, onAplicar, onCerrarSin
 }
 function InventarioCiego({ productos, proveedores, conteos, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion, productoPorId, crearProductoEnConteo, clasificacionABC, almacenCongelado, puedeAplicarAjustes = false, puedeFinalizarConteo = false, empresa = null, empleados = [], empleadoAutenticadoId = "" }) {
   const [activoId, setActivoId] = (0, import_react4.useState)(null);
-  const conteoAbierto = (0, import_react4.useMemo)(() => conteos.find((c22) => !c22.completado && c22.cancelado !== true) || null, [conteos]);
+  const conteosAbiertos = (0, import_react4.useMemo)(() => conteos.filter((c22) => !c22.completado && c22.cancelado !== true), [conteos]);
+  const conteoAbierto = conteosAbiertos[0] || null;
   (0, import_react4.useEffect)(() => {
     const seleccionado = activoId ? conteos.find((c22) => c22.id === activoId) : null;
     const seleccionadoAbierto = !!seleccionado && seleccionado.completado !== true && seleccionado.cancelado !== true;

@@ -23,10 +23,12 @@ for (const [nombre, source] of sources) {
   assert.match(source, /async function finalizarConteo/);
   assert.match(source, /await cerrarConteoServidorPm12/);
   assert.match(source, /_pm12CierreServidor/);
+  assert.match(source, /cierresServidorPorId/, `${nombre}: debe reaplicar cierres por UUID tras fusionar documentos abiertos`);
   assert.match(source, /await finalizarConteo\(activo\.id/);
   assert.match(source, /const almacenCongelado = !!conteoAbierto/);
   assert.match(source, /filter\(\(c22\) => c22\.completado/);
   assert.match(source, /replayed: !!remoto\.replayed/);
+  assert.match(source, /conteosAbiertos/, `${nombre}: debe exponer los conteos locales heredados que siguen abiertos`);
   console.log(`PM12_P14_${nombre.toUpperCase().replaceAll(" ", "_")}_CLOSE_RELOAD=PASS`);
 }
 
