@@ -552,6 +552,12 @@ async function saveKey(key, value) {
   }
 }
 const PM12_CIERRES_LOCAL_KEY = "pm12.cierres.local.v1";
+function coincideCierreLocalPm12(cierre, conteo) {
+  if (!cierre || !conteo || cierre.id !== conteo.id) return false;
+  const empresaCompatible = !cierre.empresaId || !conteo.empresaId || cierre.empresaId === conteo.empresaId;
+  const localCompatible = !cierre.localId || !conteo.localId || cierre.localId === conteo.localId;
+  return empresaCompatible && localCompatible;
+}
 function cierresLocalesPm12Sync() {
   try {
     const raw = localStorage.getItem(PM12_CIERRES_LOCAL_KEY);
@@ -563,7 +569,7 @@ function cierresLocalesPm12Sync() {
 }
 function guardarCierreLocalPm12(cierre) {
   if (!cierre || !cierre.id) return;
-  const actuales = cierresLocalesPm12Sync().filter((c) => c.id !== cierre.id || c.empresaId !== cierre.empresaId || c.localId !== cierre.localId);
+  const actuales = cierresLocalesPm12Sync().filter((c) => c.id !== cierre.id);
   const siguientes = [...actuales, cierre].slice(-100);
   try { localStorage.setItem(PM12_CIERRES_LOCAL_KEY, JSON.stringify(siguientes)); } catch {}
   saveKey(PM12_CIERRES_LOCAL_KEY, siguientes).catch(() => {});
@@ -591,7 +597,7 @@ async function sincronizarConteosPm12({ setConteos, localActivoId }) {
     const fusionar = typeof window !== "undefined" && window.__pm12ConteoEstados && typeof window.__pm12ConteoEstados.fusionarConteoServidor === "function" ? window.__pm12ConteoEstados.fusionarConteoServidor : (local, servidor) => ({ ...local, ...servidor, _pm12Servidor: true });
     for (const documento of documentos) {
       const i = nuevos.findIndex((c) => c.id === documento.id && c.empresaId === documento.empresaId && c.localId === documento.localId);
-      const cierreLocal = cierresLocales.find((c) => c.id === documento.id && c.empresaId === documento.empresaId && c.localId === documento.localId);
+      const cierreLocal = cierresLocales.find((c) => coincideCierreLocalPm12(c, documento));
       const baseLocal = cierreLocal ? { ...documento, ...cierreLocal, _pm12CierreLocalPendiente: true } : (i >= 0 ? nuevos[i] : null);
       if (i >= 0) nuevos[i] = fusionar(baseLocal || nuevos[i], documento);
       else if (baseLocal) nuevos.push(fusionar(baseLocal, documento));
@@ -2378,7 +2384,7 @@ function GestionAlmacen() {
       setMovimientos(mo);
       const cierresLocales = await cargarCierresLocalesPm12();
       const fusionarCierreLocal = (conteo) => {
-        const cierreLocal = cierresLocales.find((c) => c.id === conteo.id && c.empresaId === conteo.empresaId && c.localId === conteo.localId);
+        const cierreLocal = cierresLocales.find((c) => coincideCierreLocalPm12(c, conteo));
         return cierreLocal ? { ...conteo, ...cierreLocal, _pm12CierreLocalPendiente: true } : conteo;
       };
       const coMigrado = (co || []).map((c22) => {
