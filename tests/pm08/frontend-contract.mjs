@@ -91,7 +91,7 @@ const checks = {
   devolucion_cantidad_positiva: devoluciones.includes('cant <= 0'),
   devolucion_reembolso_no_negativo: devoluciones.includes('reembolsoNum < 0'),
   devolucion_limite_cantidad: devoluciones.includes('cantidadDevuelta + cant > cantidadOriginal'),
-  devolucion_limite_reembolso: devoluciones.includes('reembolsado + reembolsoNum >'),
+  devolucion_limite_reembolso: devoluciones.includes('validarReembolsoDevolucionPM08') && source.includes('maximo !== null'),
   devolucion_proveedor_sin_deficit: devoluciones.includes('tipo: "DEVOLUCION_PROVEEDOR"') && devoluciones.includes('permitirDeficit: false'),
   devolucion_contexto_local: devoluciones.includes('producto no pertenece al local activo') || devoluciones.includes('El producto no pertenece al local activo'),
 
