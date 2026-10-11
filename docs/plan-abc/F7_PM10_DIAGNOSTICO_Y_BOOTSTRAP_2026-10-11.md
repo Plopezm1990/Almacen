@@ -8,8 +8,9 @@ Fecha: 2026-10-11
 PM10 es un diagnóstico técnico de datos legados y validaciones de altas. Es de
 solo lectura y no pertenece a la operación diaria de empresas y locales.
 
-La tarjeta **Datos legados · PM10** se mueve a **Errores del sistema →
-Diagnósticos técnicos**. El usuario propietario conserva el acceso a la revisión,
+La tarjeta **Diagnóstico de datos históricos** se mueve a **Errores del sistema →
+Diagnósticos técnicos**. El código PM10 se conserva solo como identificador
+interno en la documentación y en las migraciones. El usuario propietario conserva el acceso a la revisión,
 pero la pantalla operativa deja de mezclar configuración con mantenimiento
 técnico.
 

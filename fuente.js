@@ -116070,7 +116070,7 @@ function DiagnosticoDatosLegadosPM10({ diagnostico }) {
   return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
     /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-3" },
       /* @__PURE__ */ import_react4.default.createElement("div", null,
-        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, "Datos legados · PM10"),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, "Diagnóstico de datos históricos"),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, d2.totalIncidencias === 0 ? `Sin incidencias detectadas en ${d2.totalRegistros} registro(s) cargados.` : `${d2.totalIncidencias} incidencia(s): ${d2.errores} inválida(s), ${d2.ambiguas} ambigua(s), ${d2.avisos} aviso(s).`)
       ),
       /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAbierto(!abierto) }, abierto ? "Ocultar" : "Revisar")

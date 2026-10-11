@@ -74,6 +74,7 @@ assert.doesNotMatch(diagTxt,/setProductos|setPedidos|setEmpleados|setEncargos|wi
 
 // Integración visible: el usuario puede revisar, pero no hay botón de corrección automática.
 const uiTxt=slice('function DiagnosticoDatosLegadosPM10','function DiagnosticoSincronizacion');
+assert.match(uiTxt,/Diagnóstico de datos históricos/);
 assert.match(uiTxt,/Solo lectura/);
 assert.match(uiTxt,/no borra, migra, reasigna ni corrige automáticamente/);
 assert.doesNotMatch(uiTxt,/Corregir automáticamente|Migrar ahora|Reasignar/);
