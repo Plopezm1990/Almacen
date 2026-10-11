@@ -101537,8 +101537,8 @@ async function sincronizarConteosPm12({ setConteos, localActivoId, empresaId }) 
   const r = await consulta;
   if (r.error) throw r.error;
   const documentos = (r.data || []).map((op) => op.payload && op.payload.resultado && op.payload.resultado.conteo).filter(Boolean);
-  const cierresLocales = await cargarCierresLocalesPm12();
-  const cierresServidor = await listarCierresServidorPm12({ empresaId, localActivoId });
+  const cierresLocales = typeof cargarCierresLocalesPm12 === "function" ? await cargarCierresLocalesPm12() : [];
+  const cierresServidor = typeof listarCierresServidorPm12 === "function" ? await listarCierresServidorPm12({ empresaId, localActivoId }) : [];
   const cierres = [...cierresLocales, ...cierresServidor];
   const cierresServidorPorId = new Map(cierresServidor.map((c) => [String(c.id), c]));
   setConteos((cs) => {
