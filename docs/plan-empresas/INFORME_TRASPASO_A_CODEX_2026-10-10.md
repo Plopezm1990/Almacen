@@ -2,12 +2,24 @@
 
 Fecha: 2026-10-10 (tarde, hora de Madrid)
 Redactado por: Claude (Anthropic), a petición de Pedro, para que Codex (ChatGPT) continúe este plan.
-Estado del proyecto: **Fases 0–4 (con F4b, F4c, F4d, F4e) hechas y verificadas en QA. Nada de esto está en producción.** Fase 5 (publicar) necesita autorización escrita de Pedro.
+Estado del documento: **informe histórico de traspaso, actualizado el 11/10/2026 con el resultado de Fases 5–7** (véase la actualización de cierre más abajo).
 Rama donde vive este trabajo: `claude/vigilant-hawking-uji8l4` (PR [#118](https://github.com/Plopezm1990/Almacen/pull/118), borrador, **«NO FUSIONAR»**: es el vehículo de la vista previa de QA, no se fusiona a `release`). **Esta rama diverge mucho de `release` ahora mismo — leer §6 antes de nada.**
 
 > **Cómo leerlo.** §0 resumen de una página. §1 reglas que no se pueden romper. §2 el sistema y los entornos. §3 todo lo hecho, fase por fase. §4 y §5 estado exacto de producción y QA (verificado hoy). §6 **aviso importante**: mientras se hacía este trabajo, `release`/producción avanzaron por otra vía (plan ABC) y hay que conciliar antes de publicar. §7 **todo lo que falta**, por bloques. §8 procedimientos reutilizables (incluida una corrección importante sobre cómo se comporta realmente la herramienta de migraciones con sentencias destructivas). §9 riesgos y trampas. §10 decisiones de Pedro. §11 índice de documentos. §12 glosario. §13 primeros pasos para Codex.
 >
 > **Honestidad sobre las fuentes.** Todo lo marcado «(verificado 10/10)» lo comprobé yo hoy, con consultas de solo lectura (recuentos, huellas md5, identificadores; nunca contenido de producción). Donde no hay evidencia escribo «no consta». No he inventado ninguna cifra.
+
+### Actualización de cierre — 11/10/2026
+
+Esta actualización sustituye los estados pendientes de las secciones 0, 6, 7 y 10 cuando se refieren a la publicación y al ensayo en producción:
+
+- **Conciliación con `release`: hecha.** El PR [#134](https://github.com/Plopezm1990/Almacen/pull/134), basado en el `release` que contenía P3/P3b/P3c y los avances posteriores, se fusionó con el commit `01b72e4264c1c7cd5286c269c5e6c0b65b90091d`. El PR [#118](https://github.com/Plopezm1990/Almacen/pull/118) sigue abierto en borrador y **no debe fusionarse**.
+- **Fase 5: hecha.** Las migraciones y la aplicación multiempresa se publicaron en producción; se desplegó la función de creación del propietario y se registró `pedroroger1990@gmail.com` como administrador de Plataforma.
+- **Fase 6: operativa.** Producción tiene una empresa cliente real activa, `CHOCOLATERIA SAN GINES`. La comprobación de solo lectura del 11/10 encontró 3 empresas en total, 1 activa y 2 desactivadas, 0 filas de `almacen_kv` sin empresa y 0 movimientos sin empresa.
+- **Fase 7: ensayo completado salvo el borrado por plazo de gracia.** Se probaron dos empresas ficticias con primer acceso, cambio de contraseña, local, control sanitario, producto, aislamiento A/B, persistencia, vuelta a A, contexto de navegador nuevo y desactivación/reactivación. A y B están ahora desactivadas y sus datos se conservan.
+- **Pendiente único de operación:** el borrado definitivo de A y B está bloqueado hasta el 10/11/2026 por el plazo de gracia de 30 días. La evidencia detallada está en `d01-evidencia-produccion-20261010/F7-DOS-EMPRESAS.md`.
+- **Trazabilidad del permiso de F5:** el permiso remoto `20261010191547_plataforma_f5_permiso_lookup_empresa` queda registrado también en `supabase/migrations/20261010191547_plataforma_f5_permiso_lookup_empresa.sql`; la comprobación estática F7 lo excluye porque se promovió en una ventana separada.
+- **Decisiones de producto que no bloquean el funcionamiento:** configuración fiscal inicial, sincronización de `empresas`/`configEmpresa` entre dispositivos, exigencia del cambio de contraseña en servidor y retirada de tres funciones heredadas de stock.
 
 ---
 
@@ -227,6 +239,8 @@ Este plan se construyó **solo en QA**, sin tocar `release` salvo con documentac
 
 ## 7. Lo que falta (todo, por bloques)
 
+> **Nota de actualización (11/10/2026):** esta tabla conserva el inventario original de pendientes. La conciliación, publicación y ensayo de producción que figuraban como P ya están resueltos según la actualización de cierre al principio del documento. El único pendiente operativo de Fases 5–7 es el borrado de las dos empresas ficticias cuando termine su plazo de gracia el 10/11/2026; las decisiones de producto y la trazabilidad de la migración de permisos quedan como mantenimiento posterior.
+
 Leyenda: **H** hecho · **P** pendiente · **B** bloqueado por una decisión de Pedro · **N** no consta.
 
 ### 7.A Reconciliar con `release` (nuevo, prioritario)
@@ -373,7 +387,7 @@ Igual que el plan ABC (§8.6 de su informe: URL, lista de botones prohibidos/per
 - «Sí, prepararlo y probarlo» (F4e): aprobado construir y probar sin tocar QA hasta pedir permiso aparte.
 - «Vale, aplícalo en QA» (F4e): aprobado aplicar en QA.
 - Catálogo del TPV sin contexto fiscal: **«que la lista se guarde aunque falte lo fiscal»** (decisión que dio lugar a F4c).
-- Fase 5 (producción) y Fase 6 (producción a cero + primer cliente): **pendientes de autorización escrita**, igual que exige el modelo del plan ABC.
+- Fase 5 y Fase 6: autorización escrita recibida y ejecución completada el 10/10/2026; la evidencia y el estado posterior se recogen en la actualización de cierre del 11/10/2026.
 
 ---
 
