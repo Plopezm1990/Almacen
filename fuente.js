@@ -103799,7 +103799,7 @@ function GestionAlmacen() {
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
-  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, confirmarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarSalaConfiguracionA07, crearZonaConfiguracionA07, crearMesaConfiguracionA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, abrirSesionCajaA10, consultarSesionCajaC01, iniciarCierreSesionCajaA10, confirmarCierreProvisionalA10, finalizarCierreSesionCajaA10, consultarCierreCajaA10, iniciarCobroCuentaF4, reintentarCobroF4, resolverPagoSimuladoQAF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
+  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, confirmarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarSalaConfiguracionA07, crearZonaConfiguracionA07, crearMesaConfiguracionA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, abrirSesionCajaA10, consultarSesionCajaC01, iniciarCierreSesionCajaA10, confirmarCierreProvisionalA10, finalizarCierreSesionCajaA10, consultarCierreCajaA10, listarPendientesCierreQA, compensarEfectoCierreQA, cancelarPagoCierreQA, iniciarCobroCuentaF4, reintentarCobroF4, resolverPagoSimuladoQAF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
   const { traspasarStock, traspasarEntreLocales } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales });
@@ -104869,7 +104869,7 @@ function GestionAlmacen() {
         setTab("pagos");
       }
     }
-  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { key: localActivoId || "todos", movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, rolPerfil: miPerfil?.rol || "", registrarAuditoria, abrirSesionCajaA10, consultarSesionCajaC01, iniciarCierreSesionCajaA10, confirmarCierreProvisionalA10, finalizarCierreSesionCajaA10, consultarCierreCajaA10 }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { key: localActivoId || "todos", movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, rolPerfil: miPerfil?.rol || "", registrarAuditoria, abrirSesionCajaA10, consultarSesionCajaC01, iniciarCierreSesionCajaA10, confirmarCierreProvisionalA10, finalizarCierreSesionCajaA10, consultarCierreCajaA10, listarPendientesCierreQA, compensarEfectoCierreQA, cancelarPagoCierreQA }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
     Turnos,
     {
       empleados: empleadosDelLocalActivo,
@@ -111028,6 +111028,64 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     }
   }
 
+  async function listarPendientesCierreQA() {
+    try {
+      const contexto = await contextoCierreA10({ conDia: false });
+      if (contexto.empresaId !== "QA-EMP-A" || contexto.localId !== "QA-A1") return { ok: false, error: "La conciliación de pendientes solo está disponible en QA." };
+      const { data, error } = await contexto.supabase.rpc("abc_qa_listar_pendientes_cierre", {
+        p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId,
+        p_session_id: contexto.sessionId
+      });
+      if (error) throw error;
+      return { ok: true, ...(data || {}) };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function compensarEfectoCierreQA({ efectoId = null, motivo = "" } = {}) {
+    try {
+      const contexto = await contextoCierreA10({ conDia: false });
+      if (contexto.empresaId !== "QA-EMP-A" || contexto.localId !== "QA-A1") return { ok: false, error: "La conciliación de pendientes solo está disponible en QA." };
+      const motivoLimpio = String(motivo || "").trim();
+      if (!efectoId) throw new Error("abc_qa_reconcile_efecto_no_encontrado");
+      if (!motivoLimpio) throw new Error("abc_qa_reconcile_motivo_requerido");
+      const { data, error } = await contexto.supabase.rpc("abc_qa_compensar_efecto_cierre", {
+        p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId,
+        p_session_id: contexto.sessionId,
+        p_efecto_id: efectoId,
+        p_motivo: motivoLimpio
+      });
+      if (error) throw error;
+      return { ok: true, ...(data || {}) };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function cancelarPagoCierreQA({ intentoId = null, motivo = "" } = {}) {
+    try {
+      const contexto = await contextoCierreA10({ conDia: false });
+      if (contexto.empresaId !== "QA-EMP-A" || contexto.localId !== "QA-A1") return { ok: false, error: "La cancelación simulada solo está disponible en QA." };
+      const motivoLimpio = String(motivo || "").trim();
+      if (!intentoId) throw new Error("abc_qa_reconcile_intento_no_encontrado");
+      if (!motivoLimpio) throw new Error("abc_qa_reconcile_motivo_requerido");
+      const { data, error } = await contexto.supabase.rpc("abc_qa_cancelar_pago_cierre", {
+        p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId,
+        p_session_id: contexto.sessionId,
+        p_intento_id: intentoId,
+        p_motivo: motivoLimpio
+      });
+      if (error) throw error;
+      return { ok: true, ...(data || {}) };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
   async function registrarDiferenciaCajaA10({ motivo = "" } = {}) {
     try {
       const contexto = await contextoCierreA10({ conDia: false });
@@ -111082,6 +111140,9 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     listarEstacionesA10.finalizarCierreSesionCajaA10 = finalizarCierreSesionCajaA10;
     listarEstacionesA10.reabrirCierreProvisionalA10 = reabrirCierreProvisionalA10;
     listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
+    listarEstacionesA10.listarPendientesCierreQA = listarPendientesCierreQA;
+    listarEstacionesA10.compensarEfectoCierreQA = compensarEfectoCierreQA;
+    listarEstacionesA10.cancelarPagoCierreQA = cancelarPagoCierreQA;
     listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
     listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
     try {
@@ -112328,7 +112389,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
   listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
   listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, confirmarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarSalaConfiguracionA07, crearZonaConfiguracionA07, crearMesaConfiguracionA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, iniciarCierreSesionCajaA10, confirmarCierreProvisionalA10, finalizarCierreSesionCajaA10, consultarCierreCajaA10, vincularTerminalCajaC01, desvincularTerminalCajaC01, cambiarResponsableCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, resolverPagoSimuladoQAF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, confirmarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarSalaConfiguracionA07, crearZonaConfiguracionA07, crearMesaConfiguracionA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, iniciarCierreSesionCajaA10, confirmarCierreProvisionalA10, finalizarCierreSesionCajaA10, consultarCierreCajaA10, listarPendientesCierreQA, compensarEfectoCierreQA, cancelarPagoCierreQA, vincularTerminalCajaC01, desvincularTerminalCajaC01, cambiarResponsableCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, resolverPagoSimuladoQAF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -120611,7 +120672,7 @@ function BloqueEntradasSalidas({ fecha, movimientosCajaDelDia = [], registrarMov
     listado
   );
 }
-function PanelSesionCajaA10({ rolPerfil = "", registrarAuditoria, abrirSesionCajaA10, consultarSesionCajaC01, iniciarCierreSesionCajaA10, confirmarCierreProvisionalA10, finalizarCierreSesionCajaA10, consultarCierreCajaA10 }) {
+function PanelSesionCajaA10({ rolPerfil = "", registrarAuditoria, abrirSesionCajaA10, consultarSesionCajaC01, iniciarCierreSesionCajaA10, confirmarCierreProvisionalA10, finalizarCierreSesionCajaA10, consultarCierreCajaA10, listarPendientesCierreQA, compensarEfectoCierreQA, cancelarPagoCierreQA }) {
   const h3 = import_react4.default.createElement;
   const [estado, setEstado] = (0, import_react4.useState)("CARGANDO");
   const [sesionId, setSesionId] = (0, import_react4.useState)("");
@@ -120620,11 +120681,20 @@ function PanelSesionCajaA10({ rolPerfil = "", registrarAuditoria, abrirSesionCaj
   const [efectivoContado, setEfectivoContado] = (0, import_react4.useState)("");
   const [arqueoPrevio, setArqueoPrevio] = (0, import_react4.useState)(null);
   const [resultadoCierre, setResultadoCierre] = (0, import_react4.useState)(null);
+  const [pendientesQA, setPendientesQA] = (0, import_react4.useState)(null);
+  const [motivosQA, setMotivosQA] = (0, import_react4.useState)({});
+  const [procesandoQA, setProcesandoQA] = (0, import_react4.useState)("");
   const [error, setError] = (0, import_react4.useState)("");
   const [mensaje, setMensaje] = (0, import_react4.useState)("");
   const [procesando, setProcesando] = (0, import_react4.useState)(false);
   const esPropietario = rolPerfil === "Propietario";
   const mensajeSinSesion = (valor) => /no tiene una sesión de caja abierta|terminal_sin_sesion_abierta|terminal no tiene una sesión/i.test(String(valor || ""));
+  async function cargarPendientesQA() {
+    if (!esPropietario || typeof listarPendientesCierreQA !== "function") return;
+    const resultado = await listarPendientesCierreQA();
+    if (resultado?.ok) setPendientesQA(resultado);
+    else setError(resultado?.error || "No se pudieron consultar los pendientes QA del cierre.");
+  }
   async function cargarSesion() {
     if (typeof consultarSesionCajaC01 !== "function") {
       setEstado("NO_DISPONIBLE");
@@ -120635,6 +120705,7 @@ function PanelSesionCajaA10({ rolPerfil = "", registrarAuditoria, abrirSesionCaj
     if (resultado?.ok && resultado.sesion?.id) {
       setSesionId(String(resultado.sesion.id));
       setEstado(String(resultado.sesion.estado || "ABIERTA"));
+      if (String(resultado.sesion.estado || "") === "CIERRE_PROVISIONAL") await cargarPendientesQA();
       return;
     }
     if (mensajeSinSesion(resultado?.error)) {
@@ -120734,6 +120805,72 @@ function PanelSesionCajaA10({ rolPerfil = "", registrarAuditoria, abrirSesionCaj
       setProcesando(false);
     }
   }
+  async function compensarPendienteQA(efecto) {
+    const id = String(efecto?.id || "");
+    const motivo = String(motivosQA[id] || "").trim();
+    if (!id || !motivo || procesandoQA || typeof compensarEfectoCierreQA !== "function") return;
+    setProcesandoQA("efecto:" + id);
+    setError("");
+    try {
+      const resultado = await compensarEfectoCierreQA({ efectoId: id, motivo });
+      if (!resultado?.ok) {
+        setError(resultado?.error || "No se pudo compensar el efecto QA.");
+        return;
+      }
+      setMensaje("Efecto QA resuelto con trazabilidad de auditoría.");
+      await cargarPendientesQA();
+    } finally {
+      setProcesandoQA("");
+    }
+  }
+  async function cancelarPendienteQA(pago) {
+    const id = String(pago?.intento_id || "");
+    const motivo = String(motivosQA[id] || "").trim();
+    if (!id || !motivo || procesandoQA || typeof cancelarPagoCierreQA !== "function") return;
+    setProcesandoQA("pago:" + id);
+    setError("");
+    try {
+      const resultado = await cancelarPagoCierreQA({ intentoId: id, motivo });
+      if (!resultado?.ok) {
+        setError(resultado?.error || "No se pudo cancelar el pago simulado QA.");
+        return;
+      }
+      setMensaje("Pago simulado QA cancelado sin confirmar ningún importe.");
+      await cargarPendientesQA();
+    } finally {
+      setProcesandoQA("");
+    }
+  }
+  function renderPendientesQA() {
+    if (!esPropietario || estado !== "CIERRE_PROVISIONAL" || typeof listarPendientesCierreQA !== "function") return null;
+    const efectos = Array.isArray(pendientesQA?.effects) ? pendientesQA.effects : [];
+    const pagos = Array.isArray(pendientesQA?.payments) ? pendientesQA.payments : [];
+    return h3(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" }, "data-qa-cierre-reconcile": "1" },
+      h3("div", { className: "text-[12px] font-semibold mb-1" }, "Pendientes QA del cierre"),
+      h3("div", { className: "text-[11px] mb-2", style: { color: C2.inkSoft } }, "Solo se muestran datos identificados como QA pendientes. Cada resolución exige motivo y queda auditada; no se borran registros."),
+      efectos.length === 0 && pagos.length === 0 ? h3("div", { className: "text-[11px]" }, "No hay pendientes QA identificados para esta sesión.") : null,
+      efectos.map((efecto) => {
+        const id = String(efecto.id || "");
+        const motivo = String(motivosQA[id] || "");
+        return h3("div", { key: "efecto-" + id, className: "p-2 mb-2 rounded-lg", style: { border: "1px solid " + C2.line } },
+          h3("div", { className: "text-[11px] font-semibold" }, "Efecto ", String(efecto.tipo || ""), " · ", String(efecto.estado || "")),
+          h3("div", { className: "text-[10px] mb-1", style: { color: C2.inkSoft } }, String(efecto.id || ""), " · ", String(efecto.dedupe_key || "")),
+          h3(Field, { label: "Motivo de compensación" }, h3(Input, { value: motivo, maxLength: 500, placeholder: "Pendiente de prueba QA…", onChange: (e2) => setMotivosQA((actual) => ({ ...actual, [id]: e2.target.value })), disabled: !!procesandoQA })),
+          h3(Btn, { small: true, onClick: () => compensarPendienteQA(efecto), disabled: !!procesandoQA || !motivo.trim() }, procesandoQA === "efecto:" + id ? "Resolviendo…" : "Registrar compensación QA")
+        );
+      }),
+      pagos.map((pago) => {
+        const id = String(pago.intento_id || "");
+        const motivo = String(motivosQA[id] || "");
+        return h3("div", { key: "pago-" + id, className: "p-2 mb-2 rounded-lg", style: { border: "1px solid " + C2.line } },
+          h3("div", { className: "text-[11px] font-semibold" }, "Pago simulado ", String(pago.estado || ""), " · intento ", id),
+          h3("div", { className: "text-[10px] mb-1", style: { color: C2.inkSoft } }, "Importe objetivo €", Number(pago.importe_objetivo || 0).toFixed(2), " · ", String(pago.pago_id || "")),
+          h3(Field, { label: "Motivo de cancelación" }, h3(Input, { value: motivo, maxLength: 500, placeholder: "Pago QA pendiente antiguo…", onChange: (e2) => setMotivosQA((actual) => ({ ...actual, [id]: e2.target.value })), disabled: !!procesandoQA })),
+          h3(Btn, { small: true, onClick: () => cancelarPendienteQA(pago), disabled: !!procesandoQA || !motivo.trim() }, procesandoQA === "pago:" + id ? "Cancelando…" : "Cancelar pago simulado QA")
+        );
+      })
+    );
+  }
   async function finalizarCierre() {
     if (procesando || typeof finalizarCierreSesionCajaA10 !== "function") return;
     const diferencia = Number(resultadoCierre?.difference || 0);
@@ -120785,7 +120922,8 @@ function PanelSesionCajaA10({ rolPerfil = "", registrarAuditoria, abrirSesionCaj
       estado === "CIERRE_PROVISIONAL" ? h3("div", null,
         h3("div", { className: "text-[11.5px] mb-2", style: { color: diferencia === 0 ? C2.accent : C2.red } }, diferencia === 0 ? "Cuadra · diferencia €0,00" : `Diferencia €${diferencia.toFixed(2)}`),
         h3("div", { className: "text-[11px] mb-2", style: { color: C2.inkSoft } }, "Esperado €", esperado.toFixed(2), " · contado €", contado.toFixed(2), " · cierre ", h3("span", { className: "mono" }, cierreId || "sin identificador")),
-        h3(Btn, { small: true, variant: "danger", onClick: finalizarCierre, disabled: procesando || Math.abs(diferencia) > 0.001 }, procesando ? "Finalizando…" : "Finalizar cierre")
+        h3(Btn, { small: true, variant: "danger", onClick: finalizarCierre, disabled: procesando || Math.abs(diferencia) > 0.001 }, procesando ? "Finalizando…" : "Finalizar cierre"),
+        renderPendientesQA()
       ) : null,
       estado === "CERRADA_FINAL" ? h3("div", { className: "text-[11.5px]" }, "Sesión cerrada correctamente · Cuadra · diferencia €0,00 · cierre ", h3("span", { className: "mono" }, cierreId || "sin identificador")) : null
     ) : null,
@@ -120838,7 +120976,7 @@ function resumenMediosVentaCajaPM09(movs = [], fecha = "") {
   Object.keys(reversos).forEach((k) => reversos[k] = redondearDineroPM08(reversos[k] || 0));
   return { ventas, reversos, neto, ventasIncluidas, reversosIncluidos };
 }
-function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, rolPerfil = "", registrarAuditoria, abrirSesionCajaA10, consultarSesionCajaC01, iniciarCierreSesionCajaA10, confirmarCierreProvisionalA10, finalizarCierreSesionCajaA10, consultarCierreCajaA10 }) {
+function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, rolPerfil = "", registrarAuditoria, abrirSesionCajaA10, consultarSesionCajaC01, iniciarCierreSesionCajaA10, confirmarCierreProvisionalA10, finalizarCierreSesionCajaA10, consultarCierreCajaA10, listarPendientesCierreQA, compensarEfectoCierreQA, cancelarPagoCierreQA }) {
   const h3 = import_react4.default.createElement;
   const valoresDenominacion = [500, 200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01];
   const [fecha, setFecha] = (0, import_react4.useState)(todayISO());
@@ -120992,7 +121130,7 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
   return h3(
     "div",
     null,
-    h3(PanelSesionCajaA10, { rolPerfil, registrarAuditoria, abrirSesionCajaA10, consultarSesionCajaC01, iniciarCierreSesionCajaA10, confirmarCierreProvisionalA10, finalizarCierreSesionCajaA10, consultarCierreCajaA10 }),
+    h3(PanelSesionCajaA10, { rolPerfil, registrarAuditoria, abrirSesionCajaA10, consultarSesionCajaC01, iniciarCierreSesionCajaA10, confirmarCierreProvisionalA10, finalizarCierreSesionCajaA10, consultarCierreCajaA10, listarPendientesCierreQA, compensarEfectoCierreQA, cancelarPagoCierreQA }),
     h3(SectionTitle, null, "Arqueo de caja"),
     h3(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, h3("div", { className: "text-[12.5px]" }, "El cierre es diario y pertenece a un solo local. El servidor calcula el efectivo esperado con la base declarada y el libro de caja; el contado admite 0 \u20AC y nunca se borra f\xEDsicamente.")),
     h3(
