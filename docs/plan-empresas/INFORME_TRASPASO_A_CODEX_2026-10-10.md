@@ -20,6 +20,7 @@ Esta actualización sustituye los estados pendientes de las secciones 0, 6, 7 y 
 - **Pendiente único de operación:** el borrado definitivo de A y B está bloqueado hasta el 10/11/2026 por el plazo de gracia de 30 días. La evidencia detallada está en `d01-evidencia-produccion-20261010/F7-DOS-EMPRESAS.md`.
 - **Trazabilidad del permiso de F5:** el permiso remoto `20261010191547_plataforma_f5_permiso_lookup_empresa` queda registrado también en `supabase/migrations/20261010191547_plataforma_f5_permiso_lookup_empresa.sql`; la comprobación estática F7 lo excluye porque se promovió en una ventana separada.
 - **Decisiones de producto que no bloquean el funcionamiento:** configuración fiscal inicial, sincronización de `empresas`/`configEmpresa` entre dispositivos, exigencia del cambio de contraseña en servidor y retirada de tres funciones heredadas de stock.
+- El detalle de esas decisiones y del calendario de cierre está en `docs/plan-empresas/D01_DECISIONES_Y_CIERRE_2026-10-11.md`.
 
 ---
 
