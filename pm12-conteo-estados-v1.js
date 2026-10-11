@@ -80,6 +80,18 @@
     return cobertura.contados === 0 ? ESTADOS.BORRADOR : ESTADOS.EN_CURSO;
   }
 
+  function fusionarConteoServidor(local, servidor) {
+    if (!servidor) return local || null;
+    if (!local) return Object.assign({}, servidor, { _pm12Servidor: true });
+    var estadosCerrados = [ESTADOS.PARCIAL, ESTADOS.COMPLETADO, ESTADOS.CANCELADO];
+    var localCerrado = local.completado === true || !!local.cerradoEn || !!local.cierre || estadosCerrados.indexOf(local.estado) >= 0;
+    var servidorAbierto = servidor.completado !== true && !servidor.cancelado && !servidor.cerradoEn && !servidor.cierre && estadosCerrados.indexOf(servidor.estado) < 0;
+    if (localCerrado && servidorAbierto) {
+      return Object.assign({}, local, { _pm12Servidor: true, _pm12CierreLocalPendiente: true });
+    }
+    return Object.assign({}, local, servidor, { _pm12Servidor: true });
+  }
+
   function validarCierre(conteo, opciones) {
     conteo = conteo || {};
     opciones = opciones || {};
@@ -201,6 +213,7 @@
     normalizarCantidad: normalizarCantidad,
     resumenCobertura: resumenCobertura,
     estadoDerivado: estadoDerivado,
+    fusionarConteoServidor: fusionarConteoServidor,
     validarCierre: validarCierre,
     esBorradorCompletamenteVacio: esBorradorCompletamenteVacio,
     prepararCancelacion: prepararCancelacion,
