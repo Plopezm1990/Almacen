@@ -40,4 +40,15 @@ La existencia histórica de la PR #121 no constituye una autorización de produc
 
 ## Siguiente paso
 
-Ejecutar únicamente la preflight de producción en modo lectura. Si coincide con este paquete, preparar el checklist final de ventana; si no coincide, detenerse y revisar las diferencias antes de escribir nada.
+La preflight de producción se ejecutó en modo lectura el 2026-10-11. El resultado obliga a detener la ventana:
+
+- Las cinco migraciones ya están registradas en producción: `20261002150000`, `20261002170000`, `20261004201358`, `20261005060000` y `20261005100000`.
+- Los objetos y RPC de P3 existen y las tres columnas esperadas de `almacen_kv` están presentes.
+- El catálogo TPV productivo devuelve `0` filas; hay `3` filas de lista `productos`, todas con formato array válido.
+- La lectura de titularidad devuelve `3` filas, `2` productos, sin empresas o locales inexistentes, pero `2` productos pertenecen a locales inactivos.
+- La cobertura catálogo/lista es `0/0/0` porque el catálogo TPV está vacío.
+- No hay contextos fiscales activos para continuar con una validación operativa de precios.
+- Las huellas actuales, sin exponer contenido, son: lista `a36f03a1511b8c7ba91e7523ec61bad0`, stock `464f69874de832e1a0f89adcd593cc7e` con `2` filas, catálogo vacío y operaciones `0`.
+- Las políticas permiten a `authenticated` leer y escribir `almacen_kv`, pero el trigger `abc_productos_solo_rpc` sigue instalado; no se hizo ninguna prueba de escritura.
+
+**Resultado de preflight: BLOQUEADA para una nueva aplicación.** No se aplicaron migraciones, no se ejecutó SQL de escritura, no se modificaron productos ni se tocó producción más allá de estas consultas `SELECT`. El siguiente trabajo debe ser una revisión funcional de los locales inactivos, del catálogo TPV vacío y de los contextos fiscales antes de cualquier decisión de negocio.
