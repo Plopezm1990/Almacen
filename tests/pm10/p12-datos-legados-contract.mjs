@@ -78,8 +78,11 @@ assert.match(uiTxt,/Solo lectura/);
 assert.match(uiTxt,/no borra, migra, reasigna ni corrige automáticamente/);
 assert.doesNotMatch(uiTxt,/Corregir automáticamente|Migrar ahora|Reasignar/);
 const localesTxt=slice('function Locales({','function Respaldos(');
-assert.match(localesTxt,/diagnosticoLegadosPM10/);
-assert.match(localesTxt,/DiagnosticoDatosLegadosPM10/);
-assert.match(src,/diagnosticoLegadosPM10: diagnosticarDatosLegadosPM10\(\{ productos, pedidos: pedidos2, empleados, encargos, proveedores, clientes, locales, empresas \}\)/);
+assert.doesNotMatch(localesTxt,/DiagnosticoDatosLegadosPM10/);
+const erroresSistemaTxt=slice('function ErroresSistema','function diagnosticarDatosLegadosPM10');
+assert.match(erroresSistemaTxt,/diagnosticoLegadosPM10/);
+assert.match(erroresSistemaTxt,/DiagnosticoDatosLegadosPM10/);
+assert.match(src,/const diagnosticoLegadosPM10 = diagnosticarDatosLegadosPM10\(\{ productos, pedidos: pedidos2, empleados, encargos, proveedores, clientes, locales, empresas \}\)/);
+assert.match(src,/ErroresSistema, \{ diagnosticoLegadosPM10 \}/);
 
 console.log('PM10 P12 datos legados y ambiguos: contrato OK');
