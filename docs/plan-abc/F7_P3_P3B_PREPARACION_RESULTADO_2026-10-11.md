@@ -51,4 +51,11 @@ La preflight de producción se ejecutó en modo lectura el 2026-10-11. El result
 - Las huellas actuales, sin exponer contenido, son: lista `a36f03a1511b8c7ba91e7523ec61bad0`, stock `464f69874de832e1a0f89adcd593cc7e` con `2` filas, catálogo vacío y operaciones `0`.
 - Las políticas permiten a `authenticated` leer y escribir `almacen_kv`, pero el trigger `abc_productos_solo_rpc` sigue instalado; no se hizo ninguna prueba de escritura.
 
+La revisión funcional identificó además los contextos concretos:
+
+- `CHOCOLOYOS S.L` (`local-6d0e54564e774506`) es el único local activo.
+- `Local F7 A` (`local-d0b4eaa0bfab9e8b`) y `Local F7 B` (`local-32f9c10ccbe06d7c`) están inactivos y conservan una entrada de producto cada uno en la lista heredada.
+- Las tablas `entidades_fiscales`, `entidad_fiscal_locales` y `entidad_fiscal_local_monedas` no tienen filas operativas en producción.
+- `catalogo_tpv_productos` está completamente vacío: cero filas, empresas y locales.
+
 **Resultado de preflight: BLOQUEADA para una nueva aplicación.** No se aplicaron migraciones, no se ejecutó SQL de escritura, no se modificaron productos ni se tocó producción más allá de estas consultas `SELECT`. El siguiente trabajo debe ser una revisión funcional de los locales inactivos, del catálogo TPV vacío y de los contextos fiscales antes de cualquier decisión de negocio.
