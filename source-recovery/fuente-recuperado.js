@@ -7368,7 +7368,7 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
     if (!conteoEsDelLocalActivo(conteo)) return { ok: false, codigo: "fuera_de_contexto", error: "Conteo no disponible en el local activo." };
     const contextoActor = typeof obtenerContextoActor === "function" ? obtenerContextoActor() || {} : {};
     if (String(contextoActor.rol || "").trim() !== "Propietario") return { ok: false, codigo: "cierre_no_autorizado", error: "Solo Propietario puede finalizar un conteo." };
-    if (conteo.completado === true || ["PARCIAL", "COMPLETADO"].includes(conteo.estado)) {
+    if (conteo.completado === true) {
       const estadosApiExistente = typeof window !== "undefined" ? window.__pm12ConteoEstados : null;
       const coberturaExistente = conteo.coberturaCierre || (estadosApiExistente && typeof estadosApiExistente.resumenCobertura === "function" ? estadosApiExistente.resumenCobertura(conteo.items) : null);
       return { ok: true, replayed: true, estado: conteo.estado || "COMPLETADO", cobertura: coberturaExistente };
