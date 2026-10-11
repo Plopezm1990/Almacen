@@ -59,3 +59,16 @@ La revisión funcional identificó además los contextos concretos:
 - `catalogo_tpv_productos` está completamente vacío: cero filas, empresas y locales.
 
 **Resultado de preflight: BLOQUEADA para una nueva aplicación.** No se aplicaron migraciones, no se ejecutó SQL de escritura, no se modificaron productos ni se tocó producción más allá de estas consultas `SELECT`. El siguiente trabajo debe ser una revisión funcional de los locales inactivos, del catálogo TPV vacío y de los contextos fiscales antes de cualquier decisión de negocio.
+
+## Decisión de negocio registrada
+
+Se elige la **opción 2**: mantener inactivos los locales heredados y preparar únicamente el local activo `CHOCOLOYOS S.L` (`local-6d0e54564e774506`).
+
+Orden autorizado para la siguiente fase:
+
+1. Configurar la entidad fiscal y la moneda del local activo mediante la interfaz autorizada.
+2. Crear el catálogo TPV productivo desde la interfaz, con precios e impuestos revisados.
+3. Repetir la preflight de solo lectura y comprobar las huellas.
+4. Ejecutar una venta controlada antes de habilitar el uso comercial.
+
+Esta decisión no autoriza escrituras directas, reactivación de locales heredados ni una nueva aplicación de migraciones.
