@@ -101910,6 +101910,17 @@ var CONFIG_ERRORES = {
   equipo_id_en_uso: "Ese equipo pertenece a otro local.",
   equipo_nombre_duplicado: "Ya hay un equipo con ese nombre en este local.",
   equipo_tipo_inmutable: "El tipo de un equipo no se puede cambiar; desactívalo y crea otro.",
+  sala_necesita_conexion: "La configuración de sala necesita conexión con el servidor.",
+  operating_day_servidor_ausente: "No se pudo obtener el día operativo del servidor.",
+  zona_datos_invalidos: "Indica código, nombre, tipo, orden y motivo de la zona.",
+  zona_configurar_no_autorizada: "Solo el Propietario puede configurar zonas en este local.",
+  zona_parametros_requeridos: "Faltan parámetros operativos para crear la zona.",
+  zona_tipo_invalido: "El tipo de zona no es válido.",
+  zona_codigo_nombre_requeridos: "Indica código y nombre de la zona.",
+  mesa_datos_invalidos: "Indica zona, código, nombre, capacidad, orden y motivo de la mesa.",
+  mesa_configurar_no_autorizada: "Solo el Propietario puede configurar mesas en este local.",
+  mesa_parametros_requeridos: "Faltan parámetros operativos para crear la mesa.",
+  zona_no_activa: "La zona elegida no está activa.",
   capacidad_ambito_invalido: "Ámbito no válido.",
   capacidad_rol_invalido: "Ese rol no se puede configurar.",
   capacidad_invalida: "Permiso no válido.",
@@ -102338,6 +102349,147 @@ function ConfigEquipos({ empresaId, localId }) {
     cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando…") : null
   );
 }
+function ConfigSala({ empresaId, localId, localNombre = "", listarSala, crearZona, crearMesa }) {
+  const h = import_react4.default.createElement;
+  const [datos, setDatos] = (0, import_react4.useState)(null);
+  const [cargando, setCargando] = (0, import_react4.useState)(false);
+  const [guardando, setGuardando] = (0, import_react4.useState)(false);
+  const [error, setError] = (0, import_react4.useState)("");
+  const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
+  const [motivo, setMotivo] = (0, import_react4.useState)("");
+  const [formZona, setFormZona] = (0, import_react4.useState)(null);
+  const [formMesa, setFormMesa] = (0, import_react4.useState)(null);
+  const cargar = async () => {
+    setCargando(true);
+    setError("");
+    try {
+      const resultado = await listarSala(empresaId, localId);
+      if (!resultado?.ok) throw new Error(resultado?.error || "mapa_sala_respuesta_invalida");
+      setDatos(resultado);
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setCargando(false);
+    }
+  };
+  (0, import_react4.useEffect)(() => {
+    setDatos(null);
+    setFormZona(null);
+    setFormMesa(null);
+    setConfirmacion("");
+    setMotivo("");
+    if (empresaId && localId) cargar();
+  }, [empresaId, localId]);
+  const ocupado = cargando || guardando;
+  const zonas = Array.isArray(datos?.zonas) ? datos.zonas : [];
+  const nuevaZona = () => {
+    setFormMesa(null);
+    setFormZona({ codigo: "", nombre: "", tipo: "SALA", orden: String(zonas.length) });
+    setError("");
+    setConfirmacion("");
+  };
+  const nuevaMesa = () => {
+    setFormZona(null);
+    setFormMesa({ zonaId: zonas[0]?.zona_id || "", codigo: "", nombre: "", capacidad: "4", orden: "0" });
+    setError("");
+    setConfirmacion("");
+  };
+  const guardarZona = async () => {
+    if (!formZona || ocupado) return;
+    setError("");
+    setConfirmacion("");
+    if (!motivo.trim()) {
+      setError("Escribe el motivo del cambio.");
+      return;
+    }
+    setGuardando(true);
+    try {
+      const resultado = await crearZona({ empresaId, localId, ...formZona, motivo });
+      if (!resultado?.ok) throw new Error(resultado?.error || "zona_configuracion_fallida");
+      setConfirmacion(`Zona ${formZona.nombre.trim()} creada y auditada.`);
+      setFormZona(null);
+      setMotivo("");
+      await cargar();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const guardarMesa = async () => {
+    if (!formMesa || ocupado) return;
+    setError("");
+    setConfirmacion("");
+    if (!motivo.trim()) {
+      setError("Escribe el motivo del cambio.");
+      return;
+    }
+    setGuardando(true);
+    try {
+      const resultado = await crearMesa({ empresaId, localId, ...formMesa, motivo });
+      if (!resultado?.ok) throw new Error(resultado?.error || "mesa_configuracion_fallida");
+      setConfirmacion(`Mesa ${formMesa.nombre.trim()} creada y auditada.`);
+      setFormMesa(null);
+      setMotivo("");
+      await cargar();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  return h(
+    "div",
+    null,
+    h(ConfigAviso, { error, confirmacion }),
+    h(ConfigMotivo, { valor: motivo, onCambio: setMotivo, deshabilitado: ocupado }),
+    h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-1" }, "Zonas y mesas de sala"),
+      h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, `Configuración autorizada para ${localNombre || "este local"}. Cada alta usa la RPC A07 y queda registrada en la auditoría del servidor.`),
+      h("div", { className: "flex gap-2 flex-wrap mb-3" },
+        h(Btn, { small: true, onClick: nuevaZona, disabled: ocupado }, "Añadir zona"),
+        h(Btn, { small: true, variant: "ghost", onClick: nuevaMesa, disabled: ocupado || zonas.length === 0 }, "Añadir mesa"),
+        h(Btn, { small: true, variant: "ghost", onClick: cargar, disabled: ocupado }, "Actualizar")
+      ),
+      cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando mapa de sala…") : null,
+      !cargando && zonas.length === 0 ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Todavía no hay zonas configuradas.") : null,
+      zonas.map((zona) => h(
+        "div",
+        { key: zona.zona_id, className: "mb-2 pb-2", style: { borderBottom: `1px solid ${C2.divider}` } },
+        h("div", { className: "font-semibold text-[13px]" }, `${zona.codigo} · ${zona.nombre}`),
+        h("div", { className: "text-[11.5px] mb-1", style: { color: C2.inkSoft } }, `${zona.tipo} · zona ${zona.zona_id}`),
+        (zona.mesas || []).length === 0 ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Sin mesas activas.") : (zona.mesas || []).map((mesa) => h("div", { key: mesa.mesa_id, className: "text-[12px] pl-2" }, `${mesa.codigo} · ${mesa.nombre} · capacidad ${mesa.capacidad} · ${mesa.estado_efectivo || "LIBRE"}`))
+      ))
+    ),
+    formZona ? h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-2" }, "Nueva zona"),
+      h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-2" },
+        h(Field, { label: "Código" }, h(Input, { value: formZona.codigo, onChange: (e2) => setFormZona({ ...formZona, codigo: e2.target.value }), maxLength: 40, disabled: ocupado })),
+        h(Field, { label: "Nombre" }, h(Input, { value: formZona.nombre, onChange: (e2) => setFormZona({ ...formZona, nombre: e2.target.value }), maxLength: 120, disabled: ocupado })),
+        h(Field, { label: "Tipo" }, h("select", { value: formZona.tipo, onChange: (e2) => setFormZona({ ...formZona, tipo: e2.target.value }), disabled: ocupado, className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 } }, ["SALA", "TERRAZA", "BARRA", "EXTERIOR", "OTRO"].map((tipo) => h("option", { key: tipo, value: tipo }, tipo)))),
+        h(Field, { label: "Orden" }, h(Input, { type: "number", min: 0, value: formZona.orden, onChange: (e2) => setFormZona({ ...formZona, orden: e2.target.value }), disabled: ocupado }))
+      ),
+      h("div", { className: "flex gap-2 mt-2" }, h(Btn, { small: true, onClick: guardarZona, disabled: ocupado }, guardando ? "Guardando…" : "Guardar zona"), h(Btn, { small: true, variant: "ghost", onClick: () => setFormZona(null), disabled: ocupado }, "Cancelar"))
+    ) : null,
+    formMesa ? h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-2" }, "Nueva mesa"),
+      h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-2" },
+        h(Field, { label: "Zona" }, h("select", { value: formMesa.zonaId, onChange: (e2) => setFormMesa({ ...formMesa, zonaId: e2.target.value }), disabled: ocupado, className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 } }, zonas.map((zona) => h("option", { key: zona.zona_id, value: zona.zona_id }, `${zona.codigo} · ${zona.nombre}`)))),
+        h(Field, { label: "Código" }, h(Input, { value: formMesa.codigo, onChange: (e2) => setFormMesa({ ...formMesa, codigo: e2.target.value }), maxLength: 40, disabled: ocupado })),
+        h(Field, { label: "Nombre" }, h(Input, { value: formMesa.nombre, onChange: (e2) => setFormMesa({ ...formMesa, nombre: e2.target.value }), maxLength: 120, disabled: ocupado })),
+        h(Field, { label: "Capacidad" }, h(Input, { type: "number", min: 1, max: 999, value: formMesa.capacidad, onChange: (e2) => setFormMesa({ ...formMesa, capacidad: e2.target.value }), disabled: ocupado })),
+        h(Field, { label: "Orden" }, h(Input, { type: "number", min: 0, value: formMesa.orden, onChange: (e2) => setFormMesa({ ...formMesa, orden: e2.target.value }), disabled: ocupado }))
+      ),
+      h("div", { className: "flex gap-2 mt-2" }, h(Btn, { small: true, onClick: guardarMesa, disabled: ocupado }, guardando ? "Guardando…" : "Guardar mesa"), h(Btn, { small: true, variant: "ghost", onClick: () => setFormMesa(null), disabled: ocupado }, "Cancelar"))
+    ) : null
+  );
+}
 function ConfigPermisos({ empresaId, localId, localNombre = "" }) {
   const h = import_react4.default.createElement;
   const [datos, setDatos] = (0, import_react4.useState)(null);
@@ -102538,11 +102690,11 @@ function ConfigPermisos({ empresaId, localId, localNombre = "" }) {
     cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando…") : null
   );
 }
-function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", esPropietario = false }) {
+function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", esPropietario = false, listarSala, crearZona, crearMesa }) {
   const h = import_react4.default.createElement;
   const empresaId = empresa?.id || "";
   const [seccion, setSeccion] = (0, import_react4.useState)("dia");
-  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["permisos", "Permisos"]];
+  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["sala", "Zonas y mesas"], ["equipos", "Equipos"], ["permisos", "Permisos"]];
   let contenido = null;
   if (!esPropietario) contenido = h(Card, { className: "mb-4" }, "Solo un usuario con rol Propietario puede ver y cambiar la configuración.");
   else if (!empresaId || !localId) contenido = h(Card, { className: "mb-4" }, "Selecciona un local concreto para configurarlo.");
@@ -102552,6 +102704,7 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
     h("div", { className: "flex gap-2 flex-wrap mb-4" }, secciones.map(([id, texto]) => h(Btn, { key: id, small: true, variant: seccion === id ? "primary" : "ghost", onClick: () => setSeccion(id) }, texto))),
     seccion === "dia" ? h(ConfigDia, { empresaId, localId }) : null,
     seccion === "modalidades" ? h(ConfigModalidades, { empresaId, localId }) : null,
+    seccion === "sala" ? h(ConfigSala, { empresaId, localId, localNombre, listarSala, crearZona, crearMesa }) : null,
     seccion === "equipos" ? h(ConfigEquipos, { empresaId, localId }) : null,
     seccion === "permisos" ? h(ConfigPermisos, { empresaId, localId, localNombre }) : null
   );
@@ -104674,7 +104827,7 @@ function GestionAlmacen() {
       establecerPin,
       activarModoEmpleado
     }
-  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, diagnosticoLegadosPM10: diagnosticarDatosLegadosPM10({ productos, pedidos: pedidos2, empleados, encargos, proveedores, clientes, locales, empresas }), marcarFormularioAbiertoPM15 }), tab === "descuentos" && /* @__PURE__ */ import_react4.default.createElement(PoliticasDescuentos, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }), tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }));
+  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, null), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, diagnosticoLegadosPM10: diagnosticarDatosLegadosPM10({ productos, pedidos: pedidos2, empleados, encargos, proveedores, clientes, locales, empresas }), marcarFormularioAbiertoPM15 }), tab === "descuentos" && /* @__PURE__ */ import_react4.default.createElement(PoliticasDescuentos, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }), tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29, listarSala: listarSalaConfiguracionA07, crearZona: crearZonaConfiguracionA07, crearMesa: crearMesaConfiguracionA07 }));
   const itemsMeta = [
     { id: "dashboard", label: "Panel general", icon: ChartColumn },
     { id: "direccion", label: "Panel de direcci\xF3n", icon: TrendingUp },
@@ -111227,6 +111380,110 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       };
     } catch (error) {
       return respuestaErrorA06(error);
+    }
+  }
+
+  async function contextoConfiguracionSalaA07(empresaId, localId) {
+    if (!empresaId || !localId) throw new Error("contexto_no_autorizado");
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) throw new Error("sala_necesita_conexion");
+    const supabase = await window.getSupabaseClient();
+    const terminal = await contextoTerminalA02(supabase, empresaId, localId);
+    const { data: dia, error: diaError } = await supabase.rpc("abc_obtener_dia_operativo_local", {
+      p_empresa_id: empresaId,
+      p_local_id: localId
+    });
+    if (diaError) throw diaError;
+    const operatingDay = String(dia?.operating_day || "");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(operatingDay)) throw new Error("operating_day_servidor_ausente");
+    return { supabase, terminal, operatingDay };
+  }
+
+  async function listarSalaConfiguracionA07(empresaId, localId) {
+    try {
+      const contexto = await contextoConfiguracionSalaA07(empresaId, localId);
+      const { data, error } = await contexto.supabase.rpc("abc_listar_mapa_sala", {
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_terminal_id: contexto.terminal.terminalId,
+        p_session_id: contexto.terminal.sessionId,
+        p_operating_day: contexto.operatingDay
+      });
+      if (error) throw error;
+      if (!data?.ok || !Array.isArray(data.zonas)) throw new Error("mapa_sala_respuesta_invalida");
+      return { ok: true, zonas: data.zonas, operatingDay: data.operating_day || contexto.operatingDay };
+    } catch (error) {
+      return { ok: false, error: errorRpcA02(error) };
+    }
+  }
+
+  async function crearZonaConfiguracionA07({ empresaId, localId, codigo, nombre, tipo, orden, motivo }) {
+    try {
+      const codigoLimpio = String(codigo || "").trim().toUpperCase();
+      const nombreLimpio = String(nombre || "").trim();
+      const tipoLimpio = String(tipo || "").trim().toUpperCase();
+      const ordenNumero = Number(orden);
+      const motivoLimpio = String(motivo || "").trim();
+      if (!codigoLimpio || !nombreLimpio || !tipoLimpio || !Number.isSafeInteger(ordenNumero) || ordenNumero < 0 || !motivoLimpio) {
+        throw new Error("zona_datos_invalidos");
+      }
+      const contexto = await contextoConfiguracionSalaA07(empresaId, localId);
+      const zonaId = configUuid();
+      const operationId = `a07.ui.zone.create.${zonaId}`;
+      const resultado = await rpcA02ConRecuperacion(contexto.supabase, "abc_crear_zona", {
+        p_operation_id: operationId,
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_zona_id: zonaId,
+        p_codigo: codigoLimpio,
+        p_nombre: nombreLimpio,
+        p_tipo: tipoLimpio,
+        p_orden: ordenNumero,
+        p_terminal_id: contexto.terminal.terminalId,
+        p_session_id: contexto.terminal.sessionId,
+        p_operating_day: contexto.operatingDay
+      }, empresaId, localId, operationId);
+      if (!resultado?.ok) return { ok: false, error: errorRpcA02(resultado?.error || "zona_configuracion_fallida") };
+      registrarAuditoria("Configurar zona", `${codigoLimpio} · ${nombreLimpio} · motivo: ${motivoLimpio}`);
+      return { ok: true, zona: resultado, operationId };
+    } catch (error) {
+      return { ok: false, error: errorRpcA02(error) };
+    }
+  }
+
+  async function crearMesaConfiguracionA07({ empresaId, localId, zonaId, codigo, nombre, capacidad, orden, motivo }) {
+    try {
+      const zonaLimpia = String(zonaId || "").trim();
+      const codigoLimpio = String(codigo || "").trim().toUpperCase();
+      const nombreLimpio = String(nombre || "").trim();
+      const capacidadNumero = Number(capacidad);
+      const ordenNumero = Number(orden);
+      const motivoLimpio = String(motivo || "").trim();
+      if (!zonaLimpia || !codigoLimpio || !nombreLimpio || !Number.isSafeInteger(capacidadNumero) || capacidadNumero < 1 || capacidadNumero > 999 || !Number.isSafeInteger(ordenNumero) || ordenNumero < 0 || !motivoLimpio) {
+        throw new Error("mesa_datos_invalidos");
+      }
+      const contexto = await contextoConfiguracionSalaA07(empresaId, localId);
+      const mesaId = configUuid();
+      const operationId = `a07.ui.table.create.${mesaId}`;
+      const resultado = await rpcA02ConRecuperacion(contexto.supabase, "abc_crear_mesa", {
+        p_operation_id: operationId,
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_mesa_id: mesaId,
+        p_zona_id: zonaLimpia,
+        p_codigo: codigoLimpio,
+        p_nombre: nombreLimpio,
+        p_capacidad: capacidadNumero,
+        p_orden: ordenNumero,
+        p_terminal_id: contexto.terminal.terminalId,
+        p_session_id: contexto.terminal.sessionId,
+        p_operating_day: contexto.operatingDay
+      }, empresaId, localId, operationId);
+      if (!resultado?.ok) return { ok: false, error: errorRpcA02(resultado?.error || "mesa_configuracion_fallida") };
+      registrarAuditoria("Configurar mesa", `${codigoLimpio} · ${nombreLimpio} · motivo: ${motivoLimpio}`);
+      return { ok: true, mesa: resultado, operationId };
+    } catch (error) {
+      return { ok: false, error: errorRpcA02(error) };
     }
   }
 
