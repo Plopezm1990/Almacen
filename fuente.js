@@ -104603,7 +104603,8 @@ function GestionAlmacen() {
       crearProductoEnConteo,
       clasificacionABC: clasificacionABCDelLocalActivo,
       almacenCongelado,
-      puedeAplicarAjustes: puedeAplicarAjustesInventario
+      puedeAplicarAjustes: puedeAplicarAjustesInventario,
+      puedeFinalizarConteo: miPerfil?.rol === "Propietario"
     }
   ), tab === "reportes" && /* @__PURE__ */ import_react4.default.createElement(
     Reportes,
@@ -108253,6 +108254,8 @@ function crearLogicaConteos({ productos, setProductos, conteos, setConteos, movi
   function finalizarConteo(conteoId, opciones = {}) {
     const conteo = conteos.find((c22) => c22.id === conteoId);
     if (!conteoEsDelLocalActivo(conteo)) return { ok: false, codigo: "fuera_de_contexto", error: "Conteo no disponible en el local activo." };
+    const contextoActor = typeof obtenerContextoActor === "function" ? obtenerContextoActor() || {} : {};
+    if (String(contextoActor.rol || "").trim() !== "Propietario") return { ok: false, codigo: "cierre_no_autorizado", error: "Solo Propietario puede finalizar un conteo." };
     const estadosApi = typeof window !== "undefined" ? window.__pm12ConteoEstados : null;
     if (!estadosApi) return { ok: false, codigo: "motor_no_disponible", error: "No se pudo validar el cierre. Recarga la página e inténtalo de nuevo." };
     const cierre = estadosApi.validarCierre(conteo, { responsable: conteo.responsables && conteo.responsables.contadoPor, confirmarParcial: opciones.confirmarParcial === true, motivoParcial: opciones.motivoParcial });
@@ -115457,8 +115460,13 @@ function BloqueAplicarAjustes({ activo, procesandoCierre, onAplicar, onCerrarSin
   }
   return /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 flex gap-2 flex-wrap no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { disabled: procesandoCierre, onClick: onAplicar }, procesandoCierre ? "Aplicando…" : "Aplicar ajustes al stock"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: onCerrarSinAjustar, disabled: procesandoCierre }, "Cerrar sin ajustar"));
 }
-function InventarioCiego({ productos, proveedores, conteos, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion, productoPorId, crearProductoEnConteo, clasificacionABC, almacenCongelado, puedeAplicarAjustes = false, empresa = null }) {
+function InventarioCiego({ productos, proveedores, conteos, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion, productoPorId, crearProductoEnConteo, clasificacionABC, almacenCongelado, puedeAplicarAjustes = false, puedeFinalizarConteo = false, empresa = null }) {
   const [activoId, setActivoId] = (0, import_react4.useState)(null);
+  const conteoAbierto = (0, import_react4.useMemo)(() => conteos.find((c22) => !c22.completado && c22.cancelado !== true) || null, [conteos]);
+  (0, import_react4.useEffect)(() => {
+    if (activoId && conteos.some((c22) => c22.id === activoId)) return;
+    if (conteoAbierto) setActivoId(conteoAbierto.id);
+  }, [activoId, conteos, conteoAbierto]);
   const activo = conteos.find((c22) => c22.id === activoId);
   const [showNuevo, setShowNuevo] = (0, import_react4.useState)(false);
   const [resumenCierre, setResumenCierre] = (0, import_react4.useState)(null);
@@ -115509,6 +115517,10 @@ function InventarioCiego({ productos, proveedores, conteos, iniciarConteo, actua
   function solicitarFinalizacion() {
     if (!activo) return;
     setErrorCierre("");
+    if (!puedeFinalizarConteo) {
+      setErrorCierre("Solo Propietario puede finalizar un conteo.");
+      return;
+    }
     const responsable = String((activo.responsables || {}).contadoPor || "").trim();
     const resultado = finalizarConteo(activo.id, { actorId: responsable, actorNombre: responsable });
     if (resultado.ok) return;
@@ -115518,6 +115530,10 @@ function InventarioCiego({ productos, proveedores, conteos, iniciarConteo, actua
   function confirmarFinalizacionParcial() {
     if (!activo) return;
     setErrorCierre("");
+    if (!puedeFinalizarConteo) {
+      setErrorCierre("Solo Propietario puede finalizar un conteo.");
+      return;
+    }
     const responsable = String((activo.responsables || {}).contadoPor || "").trim();
     const resultado = finalizarConteo(activo.id, { confirmarParcial: true, motivoParcial: motivoCierreParcial, actorId: responsable, actorNombre: responsable });
     if (!resultado.ok) { setErrorCierre(resultado.error); return; }
