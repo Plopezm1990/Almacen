@@ -83,10 +83,10 @@ for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]
 for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]]) {
   const unico = (s, texto) => assert.equal(t.split(s).length - 1, 1, `${nombre}: ${texto}`);
   unico("moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };\n}\nfunction crearLogicaTraspasos(", "crearLogicaVenta entrega las ayudas del TPV y el ensayo C12 (al final de su lista)");
-  unico("  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta,", "la aplicación recibe las dos ayudas de la lógica (al principio de su lista: el final lo exige el contrato A08.1)");
+  unico("  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta,", "la aplicación recibe las ayudas de la lógica (el inicio de la lista se conserva)");
   unico("listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({", "y el final de esa lista no cambia");
-  unico("configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) :", "la aplicación se las pasa al TPV");
-  unico("local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {", "el TPV las declara entre sus propiedades");
+  unico("configEmpresa: empresaDelLocalActivo, rolPerfil: miPerfil?.rol || \"\", listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) :", "la aplicación pasa las ayudas al TPV");
+  unico("local = null, configEmpresa, rolPerfil = \"\", listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {", "el TPV declara las ayudas entre sus propiedades");
 }
 // la pantalla dibuja esos errores tal cual (por eso tienen que ser texto)
 assert.match(recuperado, /"⚠ ", errorAuditoriaDescuentosA09\) : null/, "la pantalla dibuja el error del historial directamente");

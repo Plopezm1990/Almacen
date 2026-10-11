@@ -55,10 +55,10 @@ for (const k of Object.keys(R)) assert.equal(R[k], B[k], `el bloque «${k}» es 
 // 2. Cableado en los dos archivos.
 for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]]) {
   const cuenta = (s) => t.split(s).length - 1;
-  assert.equal(cuenta("local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {"), 1, nombre + ": el TPV recibe la lectura de modalidades (al final de sus propiedades, sin tocar el orden de las anteriores)");
-  assert.equal(cuenta("function VentaRapida({ productos, venderCarrito, enviarPedidoA05,"), 1, nombre + ": el TPV conserva el inicio de su firma (lo exigen los contratos A05.2 y A06.1)");
-  assert.equal(cuenta("configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 })"), 1, nombre + ": la aplicación se la pasa (al final)");
-  assert.equal(cuenta("venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05"), 1, nombre + ": el montaje conserva su inicio (lo exige el contrato P07)");
+  assert.equal(cuenta("local = null, configEmpresa, rolPerfil = \"\", listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {"), 1, nombre + ": el TPV recibe la lectura de modalidades (al final de sus propiedades)");
+  assert.equal(cuenta("function VentaRapida({ productos, venderCarrito, enviarPedidoA05, confirmarPedidoA05,"), 1, nombre + ": el TPV recibe la confirmación explícita A05");
+  assert.equal(cuenta("configEmpresa: empresaDelLocalActivo, rolPerfil: miPerfil?.rol || \"\", listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 })"), 1, nombre + ": la aplicación se la pasa (al final)");
+  assert.equal(cuenta("venderCarrito: venderCarritoA02, enviarPedidoA05, confirmarPedidoA05, leerPedidoOperativoA05"), 1, nombre + ": el montaje conserva el flujo A05 explícito");
   assert.equal(cuenta("  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta,"), 1, nombre + ": la aplicación la obtiene de la lógica (la primera de la lista: el final lo exige el contrato A08.1)");
   assert.equal(cuenta("listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta("), 1, nombre + ": la lista que obtiene la aplicación conserva su final (lo exige el contrato A08.1)");
   assert.equal(cuenta("moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };"), 1, nombre + ": la lógica ofrece las ayudas del TPV y el ensayo C12 (al final de la lista)");
@@ -142,7 +142,7 @@ assert.match(t, /MODALIDADES_ETIQUETA_A02\[m2\] \|\| m2\)\)\)/, "cada botón lle
 const g = R.guardar;
 assert.match(g, /\{ modalidad: modalidadActualA02 \|\| void 0 \}\s+\);/, "«Guardar pedido» envía la modalidad elegida");
 assert.match(g, /if \(resultado\?\.modalidadNoHabilitada\) await cargarModalidadesA02\(\);\s+if \(await gestionarConflictoA06/, "si la modalidad ya no vale, se recarga la lista antes de explicarlo");
-assert.match(g, /modalidad: resultado\.modalidad \|\| null\s+\}\);/, "la confirmación guarda la modalidad");
+assert.match(g, /modalidad: resultado\.modalidad \|\| null/, "la confirmación guarda la modalidad");
 for (const [nombre, tx] of [["fuente recuperado", recuperado], ["bundle", bundle]]) {
   assert.equal(tx.split('"Cuenta ", confirmacion.cuentaId || "", " · Pedido ", confirmacion.pedidoId || "", confirmacion.modalidad ? " · Modalidad: " + (MODALIDADES_ETIQUETA_A02[confirmacion.modalidad] || confirmacion.modalidad) : ""').length - 1, 1, nombre + ": la confirmación dice la modalidad");
   const i = tx.indexOf("lineasCarrito.length > 0 && renderSelectorModalidadA02(), lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro");

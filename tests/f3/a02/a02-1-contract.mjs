@@ -154,6 +154,7 @@ const endA05 = recovered.indexOf("async function enviarPedidoA05()", start);
 const end = endA05 > start ? endA05 : recovered.indexOf("async function venderCarrito(lineas", start);
 assert.ok(start >= 0 && end > start, "A02.1: no se pudo aislar el adaptador");
 const adapter = recovered.slice(start, end);
+const ventaPrimaria = recovered.slice(start, recovered.indexOf("  async function confirmarPedidoA05()", start));
 
 const forbiddenPrimaryA02 = [
   "registrar_venta_stock_carrito_pm09",
@@ -218,9 +219,9 @@ assert.ok(adapter.includes("if (linea.resultado)"), "A02.1 P07: las líneas ya c
 assert.ok(adapter.includes("if (!pending.cuentaResultado)"), "A02.1 P07: la cuenta completada puede repetirse");
 assert.ok(adapter.includes("if (!pending.pedidoResultado)"), "A02.1 P07: el pedido completado puede repetirse");
 
-const finalPersist = adapter.lastIndexOf("guardarContextoCuentaA02(empresaId, localActivoId");
+const finalPersist = adapter.indexOf("const agregado = guardarContextoCuentaA02(empresaId, localActivoId");
 const pendingRemove = adapter.indexOf("localStorage.removeItem(pendingKey)", finalPersist);
-assert.ok(finalPersist >= 0 && pendingRemove > finalPersist, "A02.1 P07: se borra el estado pendiente antes de persistir y releer el resultado final");
+assert.ok(finalPersist >= 0 && pendingRemove > finalPersist, "A02.1 P07: se persiste el resultado final y después se elimina el pendiente");
 
 assert.ok(m01.includes("operation_id text primary key"), "A02.1 P07: operation_id no es único en abc_operaciones");
 assert.ok(m03a.includes("pg_catalog.pg_advisory_xact_lock"), "A02.1 P07: falta exclusión concurrente por operation_id");
@@ -465,7 +466,7 @@ for (const required of [
   assert.ok(contextoFinal.includes(required), `A02.1 P11: contexto final incompleto: ${required}`);
 }
 
-assert.ok(!adapter.includes("leerContextoCuentaA02("), "A02.1 P11: una venta nueva no debe reutilizar automáticamente el último pedido completado");
+assert.ok(!ventaPrimaria.includes("leerContextoCuentaA02("), "A02.1 P11: una venta nueva no debe reutilizar automáticamente el último pedido completado");
 
 assert.ok(recovered.includes('throw new Error("persistencia_idempotencia_no_disponible")'), "A02.1 P11: fallo de lectura del pendiente no se bloquea");
 assert.ok(recovered.includes('throw new Error("persistencia_idempotencia_corrupta")'), "A02.1 P11: JSON pendiente corrupto puede crear IDs nuevos");
@@ -525,7 +526,7 @@ assert.ok(!guardarPedidoHandler.includes("setShowCobro(true)"), "A02.1 P13: Guar
 const rpcPrimariosA02 = [...adapter.matchAll(/rpcA02ConRecuperacion\(supabase, "([^"]+)"/g)].map((m) => m[1]);
 assert.deepEqual(
   rpcPrimariosA02,
-  ["abc_abrir_cuenta", "abc_crear_pedido", "abc_agregar_linea_pedido", "abc_agregar_linea_pedido_configurada"],
+  ["abc_abrir_cuenta", "abc_crear_pedido", "abc_agregar_linea_pedido", "abc_agregar_linea_pedido_configurada", "abc_confirmar_linea_pedido_configurada", "abc_confirmar_linea_pedido"],
   "A02.1/A04.2 P14: el adaptador contiene RPCs adicionales, ausentes o fuera de orden"
 );
 
