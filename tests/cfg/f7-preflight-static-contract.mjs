@@ -35,6 +35,10 @@ const EXCLUIDAS = new Set([
   '20261009180000_plataforma_f4e_perfiles_movimientos_push_por_empresa.sql',
   // El permiso de lookup de F5 se aplicó en una ventana separada de la foto F7.
   '20261010191547_plataforma_f5_permiso_lookup_empresa.sql',
+  // PM12 P14 es una ventana posterior de QA y se promocionará con su propio preflight.
+  '20261011130000_pm12_p14_cierre_conteo_servidor.sql',
+  '20261011140000_abc_f4_b02b_qa_simulated_resolver.sql',
+  '20261011153000_abc_f5_c04_qa_reconcile.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))

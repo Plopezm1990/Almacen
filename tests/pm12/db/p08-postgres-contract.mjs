@@ -111,6 +111,7 @@ try {
         let r;
         if(name==='pm12_confirmar_ajuste_stock')r=await apply(a,[args.p_operation_id,args.p_empresa_id,args.p_local_id,args.p_intencion,args.p_plan,args.p_bases]);
         else if(name==='pm12_cancelar_conteo_stock')r=(await a.query('select public.pm12_cancelar_conteo_stock($1,$2,$3::jsonb,$4::jsonb) r',[args.p_empresa_id,args.p_local_id,JSON.stringify(args.p_conteo),JSON.stringify(args.p_cancelacion)])).rows[0].r;
+        else if(name==='pm12_listar_cierres')r=[];
         else throw Error('unexpected RPC');
         if(loseResponse){loseResponse=false;throw Error('response_lost_after_commit');}return {data:r,error:null};
       }catch(error){return {data:null,error};}

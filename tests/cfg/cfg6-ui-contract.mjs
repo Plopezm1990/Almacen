@@ -41,7 +41,7 @@ for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]
   const cuenta = (s) => t.split(s).length - 1;
   assert.equal(cuenta('{ id: "configuracion", label: "Configuraci\\xF3n", icon: Cog },'), 1, nombre + ": entrada de menú «Configuración»");
   assert.equal(cuenta('pick(["auditoria", "respaldos", "notificaciones", "locales", "configuracion", "errores_sistema"])'), 1, nombre + ": en el grupo Sistema");
-  assert.equal(cuenta('tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 })'), 1, nombre + ": montaje de la pestaña, con el perfil Propietario");
+  assert.equal(cuenta('tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29, listarSala: listarSalaConfiguracionA07, crearZona: crearZonaConfiguracionA07, crearMesa: crearMesaConfiguracionA07 })'), 1, nombre + ": montaje de la pestaña, con el perfil Propietario y las ayudas de sala");
   assert.equal(cuenta('tab === "configuracion"'), 1, nombre + ": una única pestaña «configuracion»");
   assert.equal(cuenta("function ConfiguracionLocal("), 1, nombre + ": una única pantalla");
   assert.ok(t.indexOf("function ConfiguracionLocal(") < t.indexOf("function PoliticasDescuentos("), nombre + ": el componente va junto a la pantalla modelo");
@@ -122,10 +122,11 @@ assert.equal(new Set(clavesErrores).size, clavesErrores.length, "sin mensajes re
 const lanzados = new Set();
 for (const f of esperadas) for (const m of cuerpoFuncion(f).matchAll(/raise exception '([a-z_0-9]+)'/g)) lanzados.add(m[1]);
 for (const c of ["abc_no_autenticado", "contexto_no_autorizado", "operation_id_conflict", "command_type_requerido"]) lanzados.add(c);
-for (const c of lanzados) assert.ok(clavesErrores.includes(c), "falta el mensaje del error " + c);
+const erroresCliente = new Set(["sala_necesita_conexion", "operating_day_servidor_ausente"]);
+for (const c of lanzados) if (!erroresCliente.has(c)) assert.ok(clavesErrores.includes(c), "falta el mensaje del error " + c);
 let todasLasMig = "";
 for (const n of await readdir(new URL("supabase/migrations/", root))) if (n.endsWith(".sql")) todasLasMig += lf(await read("supabase/migrations/" + n)) + "\n";
-for (const c of clavesErrores) assert.ok(todasLasMig.includes(`'${c}'`), "el mensaje " + c + " corresponde a un error real del servidor");
+for (const c of clavesErrores) if (!erroresCliente.has(c)) assert.ok(todasLasMig.includes(`'${c}'`), "el mensaje " + c + " corresponde a un error real del servidor");
 assert.match(erroresDelComp, /abc_config_no_autorizado: "Solo el Propietario puede cambiar esta configuración en este local\."/);
 assert.match(comp, /function configMensajeError\(e2\) \{[\s\S]*?Object\.keys\(CONFIG_ERRORES\)\.find\(\(c3\) => texto\.includes\(c3\)\)[\s\S]*?return "No se pudo completar la operación\."/);
 
@@ -151,7 +152,7 @@ const ficha = comp.slice(comp.indexOf("function ConfiguracionLocal("));
 assert.match(ficha, /if \(!esPropietario\) contenido = h\(Card, \{ className: "mb-4" \}, "Solo un usuario con rol Propietario puede ver y cambiar la configuración\."\);\s+else if \(!empresaId \|\| !localId\) contenido = h\(Card, \{ className: "mb-4" \}, "Selecciona un local concreto para configurarlo\."\);\s+else contenido = h\(/,
   "sin perfil Propietario o sin local concreto no se monta ninguna sección (y por tanto no se llama al servidor)");
 assert.ok(ficha.indexOf("ConfigDia, {") > ficha.indexOf("else contenido = h("), "las secciones solo se montan en la rama con permiso");
-assert.match(ficha, /const secciones = \[\["dia", "Día y cajas"\], \["modalidades", "Modalidades"\], \["equipos", "Equipos"\], \["permisos", "Permisos"\]\];/);
+assert.match(ficha, /const secciones = \[\["dia", "Día y cajas"\], \["modalidades", "Modalidades"\], \["sala", "Zonas y mesas"\], \["equipos", "Equipos"\], \["permisos", "Permisos"\]\];/);
 assert.equal((comp.match(/Escribe el motivo del cambio\./g) || []).length >= 4, true, "cada sección exige el motivo");
 assert.match(comp, /B\u00E1sico, Est\u00E1ndar y Churrero\/a ya no se pueden asignar a nadie nuevo y no tienen ning\u00FAn permiso\./, "la pantalla explica la retirada de roles");
 assert.doesNotMatch(comp, /bloqueada/, "Barra ya no está bloqueada: el TPV elige otra modalidad habilitada (pieza 6e)");
