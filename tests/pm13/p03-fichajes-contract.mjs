@@ -122,8 +122,8 @@ const baseEntrada = { empleadoId: 'a1', fecha: '2026-09-06', tipo: 'entrada', ho
   const p2 = logica.fichar('a1', 'entrada');
   assert.equal(typeof p1?.then, 'function');
   const [r1, r2] = await Promise.all([p1, p2]);
-  assert.equal(r1, true);
-  assert.equal(r2, true);
+  assert.equal(r1.ok, true);
+  assert.equal(r2.ok, true);
   assert.equal(rpcCount, 1, 'doble clic comparte una RPC');
   assert.equal(rpcName, 'pm13_fichar');
   assert.equal(rpcArgs.p_empleado_id, 'a1');
@@ -133,14 +133,71 @@ const baseEntrada = { empleadoId: 'a1', fecha: '2026-09-06', tipo: 'entrada', ho
   assert.equal(remoto.estado.length, 1, 'caché muta solo tras confirmación remota');
 }
 
-// Fallo remoto: no hay efecto local parcial.
+// PM28 correctivo-fichaje: fallo remoto explícito (ok:false) es cierto y conserva el motivo.
+// Antes del fix, `fichar()` colapsaba este caso a un `false` desnudo y descartaba
+// `remoto.error`/`data.codigo` por completo (fuente.js, rama `.then((remoto) => remoto.ok && ... : false)`),
+// dejando a la interfaz sin ningún mensaje que mostrar. Esta prueba reproduce ese caso y
+// exige que el motivo del rechazo sobreviva hasta el resultado de `fichar()`.
 {
   const remoto = entorno([], 'local-a', {
     window: {
       getSupabaseClient: async () => ({ rpc: async () => ({ data: { ok: false, codigo: 'FICHAJE_YA_ABIERTO' }, error: null }) })
     }
   });
-  assert.equal(await remoto.nueva().fichar('a1', 'entrada'), false);
+  const resultado = await remoto.nueva().fichar('a1', 'entrada');
+  assert.equal(resultado.ok, false);
+  assert.equal(resultado.incierto, false, 'un rechazo explícito del servidor no es un estado incierto');
+  assert.equal(resultado.error, 'FICHAJE_YA_ABIERTO', 'el motivo del rechazo no se descarta');
+  assert.equal(remoto.estado.length, 0, 'no hay efecto local parcial');
+}
+
+// Fallo remoto: error de transporte (rpc devuelve error) tampoco se descarta.
+{
+  const remoto = entorno([], 'local-a', {
+    window: {
+      getSupabaseClient: async () => ({ rpc: async () => ({ data: null, error: { message: 'network down' } }) })
+    }
+  });
+  const resultado = await remoto.nueva().fichar('a1', 'entrada');
+  assert.equal(resultado.ok, false);
+  assert.equal(resultado.incierto, false);
+  assert.equal(resultado.error, 'network down');
+  assert.equal(remoto.estado.length, 0);
+}
+
+// Confirmación remota sin fichaje aplicable (dato incompleto): no se sabe si el servidor
+// lo registró, así que el resultado es "incierto", no un fallo cierto, y no hay
+// efecto local parcial ni reintento automático.
+{
+  const remoto = entorno([], 'local-a', {
+    window: {
+      getSupabaseClient: async () => ({ rpc: async () => ({ data: { ok: true, fichaje: { empleadoId: 'a1' } }, error: null }) })
+    }
+  });
+  const resultado = await remoto.nueva().fichar('a1', 'entrada');
+  assert.equal(resultado.ok, false);
+  assert.equal(resultado.incierto, true, 'confirmación remota sin id aplicable es incierta, no un fallo cierto');
+  assert.equal(remoto.estado.length, 0);
+}
+
+// Rechazo de la promesa (excepción al aplicar la confirmación): también se convierte
+// en un resultado "incierto" en vez de dejar la promesa de fichar() rechazada sin manejar.
+{
+  const fichajeQueLanza = {};
+  Object.defineProperty(fichajeQueLanza, 'id', {
+    get() {
+      throw new Error('lectura de id falló');
+    }
+  });
+  const remoto = entorno([], 'local-a', {
+    window: {
+      getSupabaseClient: async () => ({ rpc: async () => ({ data: { ok: true, fichaje: fichajeQueLanza }, error: null }) })
+    }
+  });
+  const resultado = await remoto.nueva().fichar('a1', 'entrada');
+  assert.equal(resultado.ok, false);
+  assert.equal(resultado.incierto, true);
+  assert.match(resultado.error, /lectura de id falló/);
   assert.equal(remoto.estado.length, 0);
 }
 
@@ -157,6 +214,14 @@ const rejectPos = ui.indexOf('if (!guardado)', guardPos);
 const closePos = ui.indexOf('setShowManual(false)', guardPos);
 assert.ok(guardPos >= 0 && rejectPos > guardPos && closePos > rejectPos, 'modal solo cierra tras guardado confirmado');
 assert.match(ui, /fichajesVigentesPM13\.filter\(\(f22\) => f22\.fecha >= desde/);
+
+// PM28 correctivo-fichaje: los botones de Entrada/Salida ya no llaman a fichar()
+// directamente en el onClick descartando el resultado — pasan por un manejador que
+// espera la promesa y expone procesando/confirmado/error/incierto.
+assert.doesNotMatch(ui, /onClick: \(\) => fichar\(empleado\.id, "entrada"\)/, 'el botón ya no ignora el resultado de fichar()');
+assert.match(ui, /async function alFicharPM13\(empleadoId, tipo\)/, 'existe un manejador que gestiona la promesa');
+assert.match(ui, /estadoFichar\[empleadoId\]\?\.procesando/, 'se bloquean pulsaciones duplicadas mientras hay una operación pendiente');
+assert.match(ui, /role: "status"/, 'hay un anuncio accesible del resultado');
 
 const openPos = src.indexOf('const fichajesAbiertos =');
 assert.ok(openPos >= 0, 'cálculo global de fichajes abiertos presente');

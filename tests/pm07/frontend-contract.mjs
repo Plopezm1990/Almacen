@@ -41,25 +41,33 @@ const checks = {
   contexto_cloud_hidrata_locales: contexto.includes('setLocales(localesNube.filter'),
   contexto_cloud_hidrata_local_activo: contexto.includes('setLocalActivoId(localActivoNube)'),
   contexto_cloud_se_ejecuta_tras_ready: s.includes('await sincronizarContextoPm07({ setEmpresas, setLocales, setLocalActivoId, setProductos });'),
-  venta_rpc_pm07: venta.includes('supabase.rpc("registrar_venta_stock_carrito"'),
+  // RPC con prefijo estable: el sufijo de versión (_pm07 en origen, _pm09
+  // desde una ronda posterior que las renombró) puede volver a cambiar;
+  // lo que importa es que sigue siendo la RPC atómica de venta/reverso de
+  // carrito, no una llamada distinta.
+  venta_rpc_pm07: /supabase\.rpc\("registrar_venta_stock_carrito(_\w+)?"/.test(venta),
   venta_solo_un_fallback_offline: (venta.match(/return venderLocal\(lineas, medioPago, detallePago\);/g) || []).length === 1,
   venta_fallo_cloud_no_muta_local: venta.includes('No se ha descontado stock localmente.'),
   venta_sin_rpc_antigua: !venta.includes('descontar_stock_carrito'),
-  reverso_rpc_pm07: anular.includes('supabase.rpc("revertir_venta_stock_carrito"'),
+  reverso_rpc_pm07: /supabase\.rpc\("revertir_venta_stock_carrito(_\w+)?"/.test(anular),
   reverso_sin_rpc_antigua: !anular.includes('anular_venta_tpv'),
   traslado_interno_rpc_pm07: interno.includes('supabase.rpc("trasladar_stock_interno"'),
   traslado_interlocal_rpc_pm07: interlocal.includes('supabase.rpc("trasladar_stock_entre_locales"'),
   traslado_interlocal_sin_mutacion_local_en_error_cloud: interlocal.includes('No se modific') && interlocal.includes('ning') && interlocal.includes('local'),
   venta_offline_sin_deficit: s.includes('documentoOrigenId: documentoOrigenId || ventaId,\n        afectaStockTotal: true,\n        afectaStockPisoVenta: true,\n        permitirDeficit: false,'),
-  alertas_sin_precedencia_ambigua: !s.includes('tipo !== "elaborado" && p2._pm07Servidor ?'),
-  alertas_pm07_parentesis: (s.match(/tipo !== "elaborado" && \(p2\._pm07Servidor \?/g) || []).length >= 2,
-  tpv_precheck_autoritativo: s.includes('l2.producto._pm07Servidor ? Number(l2.producto.stock) || 0 : Number(l2.producto.stockPisoVenta) || 0'),
-  tpv_vendibles_autoritativo: s.includes('p2._pm07Servidor ? Number(p2.stock) || 0 : Number(p2.stockPisoVenta) || 0'),
+  // El nombre de la variable de iteración (p2 en origen, p22 tras un
+  // renombrado del empaquetador) no es lo relevante; lo relevante es que
+  // NINGUNA variable de ese patrón aparezca con precedencia ambigua sin
+  // paréntesis (`?` inmediatamente tras _pm07Servidor sin `(` delante).
+  alertas_sin_precedencia_ambigua: !/tipo !== "elaborado" && \w+\._pm07Servidor \?/.test(s),
+  alertas_pm07_parentesis: (s.match(/tipo !== "elaborado" && \(\w+\._pm07Servidor \?/g) || []).length >= 2,
+  tpv_precheck_autoritativo: /(\w+)\.producto\._pm07Servidor \? Number\(\1\.producto\.stock\) \|\| 0 : Number\(\1\.producto\.stockPisoVenta\) \|\| 0/.test(s),
+  tpv_vendibles_autoritativo: /(\w+)\._pm07Servidor \? Number\(\1\.stock\) \|\| 0 : Number\(\1\.stockPisoVenta\) \|\| 0/.test(s),
   submit_traspaso_async: s.includes('async function submit() {\n    const res = await traspasarStock('),
   submit_interlocal_async: s.includes('async function submitEntreLocales() {\n    const res = await traspasarEntreLocales('),
   envio_piso_async: s.includes('async function enviarAPisoDeVenta(orden)') && s.includes('await traspasarStock(productoId'),
-  reconciliacion_cloud_autoritativa: s.includes('const teoricoReal = p2._pm07Servidor ? teoricoCache : teoricoHistorico'),
-  reconciliacion_cloud_no_muta_local: s.includes('if (p2._pm07Servidor) return { ok: true, sinCambios: true, autoritativoServidor: true }'),
+  reconciliacion_cloud_autoritativa: /const teoricoReal = \w+\._pm07Servidor \? teoricoCache : teoricoHistorico/.test(s),
+  reconciliacion_cloud_no_muta_local: /if \(\w+\._pm07Servidor\) return \{ ok: true, sinCambios: true, autoritativoServidor: true \}/.test(s),
 };
 
 for (const [k, ok] of Object.entries(checks)) {

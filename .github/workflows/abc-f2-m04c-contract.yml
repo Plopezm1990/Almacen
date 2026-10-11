@@ -1,0 +1,199 @@
+name: "ABC F2 M04C -- outbox persistente"
+
+on:
+  push:
+    branches: [abc-f2-m04c-outbox]
+  pull_request:
+    branches: [release]
+    paths:
+      - "supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql"
+      - "supabase/migrations/20260923210100_abc_f2_m01b_acl_hardening.sql"
+      - "supabase/migrations/20260923220000_abc_f2_m02a_core_comercial_fiscal.sql"
+      - "supabase/migrations/20260923230000_abc_f2_m02b_pagos_reservas_reembolsos.sql"
+      - "supabase/migrations/20260923233000_abc_f2_m03a_autoridad_transaccional.sql"
+      - "supabase/migrations/20260923234500_abc_f2_m03b_checkout_cobro.sql"
+      - "supabase/migrations/20260923235900_abc_f2_m03c_reembolsos_transaccionales.sql"
+      - "supabase/migrations/20260924001000_abc_f2_m04a_caja_sesiones.sql"
+      - "supabase/migrations/20260924002000_abc_f2_m04b_movimientos_caja.sql"
+      - "supabase/migrations/20260924003000_abc_f2_m04c_outbox_persistente.sql"
+      - "tests/f2/m04c/**"
+      - ".github/workflows/abc-f2-m04c-contract.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  m04c-postgres-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Guardar orden y alcance F2-M04C
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql
+            supabase/migrations/20260923210100_abc_f2_m01b_acl_hardening.sql
+            supabase/migrations/20260923220000_abc_f2_m02a_core_comercial_fiscal.sql
+            supabase/migrations/20260923230000_abc_f2_m02b_pagos_reservas_reembolsos.sql
+            supabase/migrations/20260923233000_abc_f2_m03a_autoridad_transaccional.sql
+            supabase/migrations/20260923234500_abc_f2_m03b_checkout_cobro.sql
+            supabase/migrations/20260923235900_abc_f2_m03c_reembolsos_transaccionales.sql
+            supabase/migrations/20260924001000_abc_f2_m04a_caja_sesiones.sql
+            supabase/migrations/20260924002000_abc_f2_m04b_movimientos_caja.sql
+            supabase/migrations/20260924003000_abc_f2_m04c_outbox_persistente.sql
+          )
+
+          previous=""
+          for file in "${files[@]}"; do
+            test -f "$file"
+            current="$(basename "$file")"
+            if [[ -n "$previous" && ! "$previous" < "$current" ]]; then
+              echo "M04C_ORDER_GUARD: orden invalido $previous -> $current" >&2
+              exit 1
+            fi
+            previous="$current"
+          done
+
+          m04c="${files[9]}"
+          if grep -Eiq '(^|[[:space:]])drop[[:space:]]+(table|column|constraint)|alter[[:space:]]+table.*rename|alter[[:space:]]+table.*alter[[:space:]]+column.*type' "$m04c"; then
+            echo "M04C_DESTRUCTIVA: DDL destructivo detectado" >&2
+            exit 1
+          fi
+
+          if grep -Eiq 'grant[[:space:]]+(insert|update|delete|truncate).*authenticated' "$m04c"; then
+            echo "M04C_SECURITY: mutacion directa concedida a authenticated" >&2
+            exit 1
+          fi
+
+          grep -q "for update skip locked" "$m04c"
+          grep -q "PROVIDER_COBRO" "$m04c"
+          grep -q "PROVIDER_REEMBOLSO" "$m04c"
+          grep -q "movimiento_abc_requiere_reverso_abc" supabase/migrations/20260924002000_abc_f2_m04b_movimientos_caja.sql
+
+          echo "M04C_SCOPE_GUARD=PASS"
+
+      - name: Preparar fixture
+        run: psql -v ON_ERROR_STOP=1 -f tests/f2/m04c/fixture-m04c.sql
+      - name: Aplicar M01
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql
+      - name: Aplicar M01b
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923210100_abc_f2_m01b_acl_hardening.sql
+      - name: Aplicar M02A
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923220000_abc_f2_m02a_core_comercial_fiscal.sql
+      - name: Aplicar M02B
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923230000_abc_f2_m02b_pagos_reservas_reembolsos.sql
+      - name: Aplicar M03A
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923233000_abc_f2_m03a_autoridad_transaccional.sql
+      - name: Aplicar M03B
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923234500_abc_f2_m03b_checkout_cobro.sql
+      - name: Aplicar M03C
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923235900_abc_f2_m03c_reembolsos_transaccionales.sql
+      - name: Aplicar M04A
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260924001000_abc_f2_m04a_caja_sesiones.sql
+      - name: Aplicar M04B
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260924002000_abc_f2_m04b_movimientos_caja.sql
+      - name: Aplicar M04C
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260924003000_abc_f2_m04c_outbox_persistente.sql
+      - name: Ejecutar contrato M04C
+        run: psql -v ON_ERROR_STOP=1 -f tests/f2/m04c/m04c-contract.sql
+
+      - name: Concurrencia -- SKIP LOCKED y recuperación de lease
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          psql -v ON_ERROR_STOP=1 <<'SQL' &
+          begin;
+          set role service_role;
+          select count(*) as claimed_a
+            from public.abc_reclamar_efectos('worker-conc-a',1,60);
+          select pg_sleep(4);
+          commit;
+          SQL
+          holder=$!
+
+          sleep 1
+
+          claimed_b_during="$(
+            psql -Atq -v ON_ERROR_STOP=1 <<'SQL'
+          set role service_role;
+          select count(*) from public.abc_reclamar_efectos('worker-conc-b',1,60);
+          SQL
+          )"
+          if [[ "$claimed_b_during" != "0" ]]; then
+            wait "$holder" || true
+            echo "M04C_CONCURRENCY_FAIL: segundo worker reclamo fila bloqueada: $claimed_b_during" >&2
+            exit 1
+          fi
+
+          wait "$holder"
+
+          claimed_b_active="$(
+            psql -Atq -v ON_ERROR_STOP=1 <<'SQL'
+          set role service_role;
+          select count(*) from public.abc_reclamar_efectos('worker-conc-b',1,60);
+          SQL
+          )"
+          if [[ "$claimed_b_active" != "0" ]]; then
+            echo "M04C_CONCURRENCY_FAIL: segundo worker robo lease activo: $claimed_b_active" >&2
+            exit 1
+          fi
+
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          update public.efectos_pendientes
+             set lease_until=now()-interval '1 second'
+           where dedupe_key='pago-intento:60000000-0000-0000-0000-000000000202'
+             and estado='EN_PROCESO';
+          SQL
+
+          claimed_b_expired="$(
+            psql -Atq -v ON_ERROR_STOP=1 <<'SQL'
+          set role service_role;
+          select count(*) from public.abc_reclamar_efectos('worker-conc-b',1,60);
+          SQL
+          )"
+          if [[ "$claimed_b_expired" != "1" ]]; then
+            echo "M04C_CONCURRENCY_FAIL: lease expirado no fue recuperado: $claimed_b_expired" >&2
+            exit 1
+          fi
+
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare
+            v_attempt integer;
+            v_worker text;
+          begin
+            select attempt_count,worker_ref into v_attempt,v_worker
+              from public.efectos_pendientes
+             where dedupe_key='pago-intento:60000000-0000-0000-0000-000000000202';
+            if v_attempt<>2 or v_worker<>'worker-conc-b' then
+              raise exception 'M04C_CONCURRENCY_FAIL: attempt=% worker=%',v_attempt,v_worker;
+            end if;
+          end $$;
+          SQL
+
+          echo "ABC_F2_M04C_CONCURRENCY=PASS"

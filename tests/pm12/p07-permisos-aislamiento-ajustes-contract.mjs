@@ -48,7 +48,7 @@ const fuentes = [
 ];
 
 for (const [nombre, codigo] of fuentes) {
-  assert.match(codigo, /crearLogicaConteos\(\{ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId, empresaActivaId, obtenerContextoActor \}\)/, `${nombre}: contexto inyectado en lógica`);
+  assert.match(codigo, /crearLogicaConteos\(\{ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId, empresaActivaId, obtenerContextoActor(?:, empleados = \[\])? \}\)/, `${nombre}: contexto inyectado en lógica`);
   assert.match(codigo, /empresaActivaId && conteo\.empresaId && conteo\.empresaId !== empresaActivaId/, `${nombre}: aislamiento empresa`);
   assert.match(codigo, /empresaId: empresaActivaId \|\| null/, `${nombre}: identidad empresa en nuevos conteos`);
   assert.match(codigo, /function autorizarMutacionAjustes\(conteo\)/, `${nombre}: guarda interna`);

@@ -1,0 +1,103 @@
+name: "ABC F3 A03 -- server authority"
+
+on:
+  push:
+    branches: [abc-f3-a03-server-authority]
+  pull_request:
+    branches: [release]
+    paths:
+      - "supabase/migrations/20260924010000_abc_f3_a03_server_authority.sql"
+      - "tests/f3/a03/**"
+      - ".github/workflows/abc-f3-a03-contract.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  a03-postgres-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Guardar alcance A03
+        shell: bash
+        run: |
+          set -euo pipefail
+          migration="supabase/migrations/20260924010000_abc_f3_a03_server_authority.sql"
+          test -f "$migration"
+          grep -q "create table public.catalogo_tpv_productos" "$migration"
+          grep -q "create function public.abc_abrir_cuenta" "$migration"
+          grep -q "create function public.abc_crear_pedido" "$migration"
+          grep -q "create function public.abc_agregar_linea_pedido" "$migration"
+          grep -q "create function public.abc_actualizar_linea_pedido" "$migration"
+          grep -q "create function public.abc_confirmar_linea_pedido" "$migration"
+          grep -q "SERVER_AUTHORITY_A03" "$migration"
+
+          if grep -Eiq 'grant[[:space:]]+(insert|update|delete).*catalogo_tpv_productos.*authenticated' "$migration"; then
+            echo "A03_SECURITY: DML directo concedido a authenticated" >&2
+            exit 1
+          fi
+
+          sig="$(grep -A16 'create function public.abc_agregar_linea_pedido' "$migration" | head -n 17)"
+          if echo "$sig" | grep -Eiq 'precio|impuesto|iva|descuento|total|base'; then
+            echo "A03_SECURITY: firma de alta de línea contiene campos económicos" >&2
+            exit 1
+          fi
+
+          echo "A03_SCOPE_GUARD=PASS"
+
+      - name: Preparar fixture F2
+        run: psql -v ON_ERROR_STOP=1 -f tests/f3/a03/fixture-a03.sql
+      - name: Aplicar M01
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql
+      - name: Aplicar M01b
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923210100_abc_f2_m01b_acl_hardening.sql
+      - name: Aplicar M02A
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923220000_abc_f2_m02a_core_comercial_fiscal.sql
+      - name: Aplicar M02B
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923230000_abc_f2_m02b_pagos_reservas_reembolsos.sql
+      - name: Aplicar M03A
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923233000_abc_f2_m03a_autoridad_transaccional.sql
+      - name: Aplicar M03B
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923234500_abc_f2_m03b_checkout_cobro.sql
+      - name: Aplicar M03C
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923235900_abc_f2_m03c_reembolsos_transaccionales.sql
+      - name: Aplicar M04A
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260924001000_abc_f2_m04a_caja_sesiones.sql
+      - name: Aplicar M04B
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260924002000_abc_f2_m04b_movimientos_caja.sql
+      - name: Aplicar M04C
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260924003000_abc_f2_m04c_outbox_persistente.sql
+      - name: Aplicar M04D
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260924004000_abc_f2_m04d_acl_parity.sql
+
+      - name: Aplicar A03
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260924010000_abc_f3_a03_server_authority.sql
+
+      - name: Regresión ACL F2 tras A03
+        run: psql -v ON_ERROR_STOP=1 -f tests/f2/m04d/m04d-contract.sql
+
+      - name: Ejecutar contrato A03
+        run: psql -v ON_ERROR_STOP=1 -f tests/f3/a03/a03-contract.sql

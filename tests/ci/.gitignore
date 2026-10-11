@@ -1,0 +1,3 @@
+# Evidencia bruta generada en cada ejecución de la puerta de CI -- nunca
+# se versiona, se sube como artifact de CI cuando corre en GitHub Actions.
+evidencia/

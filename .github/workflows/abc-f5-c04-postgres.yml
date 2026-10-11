@@ -1,0 +1,68 @@
+name: "ABC F5 C04 -- PostgreSQL efímero"
+
+on:
+  push:
+    branches: [codex/f5-c03-cash-reconciliation]
+    paths:
+      - "supabase/migrations/20260923*.sql"
+      - "supabase/migrations/20260924*.sql"
+      - "supabase/migrations/20260928223000_pm10_cierre_sesion_caja.sql"
+      - "supabase/migrations/20261001140000_abc_f5_c04_close_reopen.sql"
+      - "tests/f3/a08/fixture-a08.sql"
+      - "tests/f3/a07/fixture-a07.sql"
+      - "tests/f3/a06/fixture-a06.sql"
+      - "tests/f3/a05/fixture-a05.sql"
+      - "tests/f3/a04/fixture-a04.sql"
+      - "tests/f3/a03/fixture-a03.sql"
+      - "tests/f2/**/fixture-*.sql"
+      - "tests/f5/c04/c04-postgres-contract.mjs"
+      - ".github/workflows/abc-f5-c04-postgres.yml"
+  pull_request:
+    branches: [release]
+    paths:
+      - "supabase/migrations/20260923*.sql"
+      - "supabase/migrations/20260924*.sql"
+      - "supabase/migrations/20260928223000_pm10_cierre_sesion_caja.sql"
+      - "supabase/migrations/20261001140000_abc_f5_c04_close_reopen.sql"
+      - "tests/f3/a08/fixture-a08.sql"
+      - "tests/f3/a07/fixture-a07.sql"
+      - "tests/f3/a06/fixture-a06.sql"
+      - "tests/f3/a05/fixture-a05.sql"
+      - "tests/f3/a04/fixture-a04.sql"
+      - "tests/f3/a03/fixture-a03.sql"
+      - "tests/f2/**/fixture-*.sql"
+      - "tests/f5/c04/c04-postgres-contract.mjs"
+      - ".github/workflows/abc-f5-c04-postgres.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  c04-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      ABC_F5_C04_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Instalar cliente PostgreSQL fijado
+        run: npm install --prefix "$RUNNER_TEMP/c04-pg-client" --no-save --no-audit --no-fund pg@8.16.3
+      - name: Ejecutar contrato C04 en PostgreSQL 16
+        env:
+          C04_PG_CLIENT: ${{ runner.temp }}/c04-pg-client/node_modules/pg
+        run: node tests/f5/c04/c04-postgres-contract.mjs

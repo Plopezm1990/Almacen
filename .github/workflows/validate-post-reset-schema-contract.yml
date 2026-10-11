@@ -1,0 +1,56 @@
+name: Validate post-reset schema contract
+
+on:
+  push:
+    branches:
+      - claude/hotfix-post-reset-schema-drift
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 2
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '20'
+
+      - name: Validate schema contract repair
+        run: node tests/post-reset-schema-contract.mjs
+
+      - name: Execute migration on ephemeral PostgreSQL
+        run: psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/post-reset-schema-contract.sql
+
+      - name: Regress post-reset anti-resurrection barrier
+        run: node tests/hotfix-barrera-reset-local.mjs
+
+      - name: Regress P1 clean first-run storage semantics
+        run: node tests/p1-empty-kv-first-run.mjs
+
+      - name: Record exact candidate
+        run: |
+          echo "candidate=${GITHUB_SHA}"
+          git status --short
+          git diff --check HEAD^ HEAD

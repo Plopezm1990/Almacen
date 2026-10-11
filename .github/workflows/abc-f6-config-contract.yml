@@ -1,0 +1,42 @@
+name: ABC F6 Configuración -- contratos SQL en PostgreSQL 16 efímero
+
+# Capa de configuración (piezas 1 a 6d, D13, A09 eventos y la corrección de PM07): construye desde cero la cadena de migraciones en un
+# PostgreSQL 16 desechable y ejecuta los contratos SQL de tests/cfg (cfg1, cfg2, cfg3, cfg4, cfg5, cfg6d, d13, a09-eventos), la prueba de
+# actualización de D13 y el contrato de la corrección de PM07, cada uno con su número exacto de comprobaciones.
+#
+# No despliega en Netlify, no usa secretos y no toca ningún proyecto de Supabase: el único servicio es el contenedor de PostgreSQL de este job.
+# Las pruebas de Node de la capa (estáticas y de ejecución) van en la «Puerta de CI general» (están registradas en el manifiesto).
+# Disparo: manual y en los PR dirigidos a `release`. Deliberadamente NO hay disparador por push a `release`/`main`.
+on:
+  pull_request:
+    branches: [release]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  cfg-sql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - name: Contratos SQL de la capa de configuración (cadena construida desde cero)
+        shell: bash
+        run: bash tests/cfg/ci/ejecutar_contratos_sql.sh
