@@ -101503,7 +101503,7 @@ function guardarCierreLocalPm12(cierre) {
   saveKey(PM12_CIERRES_LOCAL_KEY, siguientes).catch(() => {});
 }
 async function cargarCierresLocalesPm12() {
-  const sincronizados = await loadKey(PM12_CIERRES_LOCAL_KEY, []);
+  const sincronizados = typeof loadKey === "function" ? await loadKey(PM12_CIERRES_LOCAL_KEY, []) : [];
   const locales = cierresLocalesPm12Sync();
   const combinados = [...(Array.isArray(sincronizados) ? sincronizados : []), ...locales];
   const unicos = new Map();
