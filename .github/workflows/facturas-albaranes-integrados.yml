@@ -1,0 +1,40 @@
+name: Facturas y albaranes integrados
+
+on:
+  pull_request:
+    branches: [release]
+    paths:
+      - fuente.js
+      - source-recovery/fuente-recuperado.js
+      - scripts/facturas-albaranes-integrados-contract.mjs
+      - scripts/facturas-multipagina-contract.mjs
+      - supabase/functions/importar-factura/**
+      - .github/workflows/facturas-albaranes-integrados.yml
+  push:
+    branches: [release]
+    paths:
+      - fuente.js
+      - source-recovery/fuente-recuperado.js
+      - scripts/facturas-albaranes-integrados-contract.mjs
+      - scripts/facturas-multipagina-contract.mjs
+      - supabase/functions/importar-factura/**
+      - .github/workflows/facturas-albaranes-integrados.yml
+
+permissions:
+  contents: read
+
+jobs:
+  contrato:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: 24
+      - name: Validar fuentes y contratos
+        run: |
+          node --check fuente.js
+          node --check source-recovery/fuente-recuperado.js
+          node scripts/facturas-multipagina-contract.mjs
+          node scripts/facturas-albaranes-integrados-contract.mjs
+          python3 source-recovery/recuperar_candidato.py --check
