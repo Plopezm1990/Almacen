@@ -128,7 +128,7 @@ function redondear(v: unknown) {
 }
 
 function sanearExtraido(raw: Record<string, unknown>) {
-  const avisos = Array.isArray(raw.avisos) ? raw.avisos.filter((x) => typeof x === "string" && x.trim()).map((x) => x.trim()) : [];
+  const avisos = Array.isArray(raw.avisos) ? raw.avisos.filter((x): x is string => typeof x === "string" && !!x.trim()).map((x) => x.trim()) : [];
   const vistos = new Set<string>();
   let hayBloqueo = false;
 
@@ -136,7 +136,7 @@ function sanearExtraido(raw: Record<string, unknown>) {
     const alb = entrada && typeof entrada === "object" ? entrada as Record<string, unknown> : {};
     const numeroAlbaran = texto(alb.numeroAlbaran);
     const clave = normalizarDocumento(numeroAlbaran);
-    const avisosAlbaran = Array.isArray(alb.avisos) ? alb.avisos.filter((x) => typeof x === "string" && x.trim()).map((x) => x.trim()) : [];
+    const avisosAlbaran = Array.isArray(alb.avisos) ? alb.avisos.filter((x): x is string => typeof x === "string" && !!x.trim()).map((x) => x.trim()) : [];
     if (!clave) {
       avisosAlbaran.push("Falta el número del albarán.");
       hayBloqueo = true;
