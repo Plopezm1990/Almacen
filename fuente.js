@@ -113730,7 +113730,7 @@ function archivoABase64(file) {
 async function convertirPDFFacturaAImagenes(file) {
   const original = await archivoABase64(file);
   const pdfjs = await import("./pdfjs-p3-invoice.mjs");
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL("./pdfjs-p3-invoice.worker.mjs", import.meta.url).href;
+  pdfjs.GlobalWorkerOptions.workerSrc = "./pdfjs-p3-invoice.worker.mjs";
   const bytes = Uint8Array.from(atob(original.base64), (c22) => c22.charCodeAt(0));
   const pdf = await pdfjs.getDocument({ data: bytes, useWorkerFetch: false, isEvalSupported: false }).promise;
   if (pdf.numPages > 12) throw new Error("El PDF tiene más de 12 páginas. Divide la factura antes de subirla.");
