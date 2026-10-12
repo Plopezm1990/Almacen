@@ -35,6 +35,7 @@ for (const runtime of runtimes) {
   assert.match(source, /codigoProveedor: ln2\?\.codigoProveedor \|\| ln2\?\.codigo/, `${runtime}: las referencias del proveedor no llegan a recepción`);
   assert.match(source, /productosCreadosRecepcion\.has\(claveProductoRecepcion\)/, `${runtime}: una factura con varios albaranes puede duplicar productos nuevos`);
   assert.match(source, /registrarProductoSnapshot\(nuevo\)/, `${runtime}: el motor de stock no comparte las altas del lote`);
+  assert.match(source, /const duplicadaMercancia = \(albaranes \|\| \[\]\)\.find/, `${runtime}: no evita duplicar facturas antiguas de mercancía`);
   execFileSync(process.execPath, ['--check', runtime], { cwd: repo, stdio: 'pipe' });
 
   const api = cargarContrato(source, runtime);

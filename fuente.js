@@ -113362,6 +113362,8 @@ function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, re
     const claveCandidata = claveFacturaProveedorAgrupada(candidata);
     const duplicada = (facturasDirectas || []).find((f22) => f22.id !== facturaId && f22.estado !== "ANULADA" && claveFacturaProveedorAgrupada(f22) === claveCandidata);
     if (duplicada) return { ok: false, error: "Ya existe una factura con esa serie, número, proveedor y ejercicio. No se moverá stock." };
+    const duplicadaMercancia = (albaranes || []).find((a22) => a22?.esFactura === true && a22.estado === "confirmado" && a22.empresaId === empresaId && a22.localId === localActivoId && a22.proveedorId === candidata.proveedorId && normalizarNumeroDocumentoFactura(a22.numeroFactura) === normalizarNumeroDocumentoFactura(candidata.numeroFactura) && String(a22.fechaFactura || a22.fecha || "").slice(0, 4) === String(candidata.fecha || "").slice(0, 4));
+    if (duplicadaMercancia) return { ok: false, error: "Esa factura ya existe en una recepción de mercancía. No se creará otra deuda ni se moverá stock." };
     const clasificados = clasificarAlbaranesFacturaAgrupada({ albaranesImportados: candidata.albaranesImportados || [], albaranes, empresaId, localId: localActivoId, proveedorId: candidata.proveedorId, facturaId });
     const validacion = validarFacturaAgrupada({ factura: candidata, albaranesClasificados: clasificados });
     if (candidata.origen === "IA" && candidata.revisionHumanaConfirmada !== true) return { ok: false, error: "Revisa los datos leídos por IA antes de confirmar." };
