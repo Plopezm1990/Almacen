@@ -6520,8 +6520,7 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
     if (!localActivoId) return true;
     return prod.localId === localActivoId;
   }
-  const { aplicarMovimientoStock, registrarProductoSnapshot, obtenerProductoActual } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
-  const productosCreadosRecepcion = /* @__PURE__ */ new Map();
+  const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
   function ajustarProductoPorOtro({ productoOrigenId, productoDestinoId, cantidadOrigen, cantidadDestino, motivo }) {
     const contextoAjuste = validarContextoEscrituraPM10({ localActivoId, locales });
     if (!contextoAjuste.ok) return contextoAjuste;
@@ -11342,7 +11341,8 @@ function crearLogicaAlbaranes({
   pagosFacturas,
   setPagosFacturas
 }) {
-  const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+  const { aplicarMovimientoStock, registrarProductoSnapshot, obtenerProductoActual } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+  const productosCreadosRecepcion = /* @__PURE__ */ new Map();
   function localDeAlbaran(doc) {
     if (!doc) return null;
     if (doc.localId) return doc.localId;
