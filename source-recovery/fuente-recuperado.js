@@ -2714,7 +2714,7 @@ function GestionAlmacen() {
     setPagosFacturas
   });
   const { crearPedido, actualizarPedido, eliminarPedido, recibirPedido, cerrarPedido } = crearLogicaPedidos({ pedidos: pedidos2, setPedidos, productos, proveedores, setProductos, setMovimientos, almacenCongelado, procesarRecepcion, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
-  const { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta } = crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, proveedores, pagosFacturas, setPagosFacturas, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
+  const { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta, confirmarFacturaConAlbaranes } = crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, proveedores, proveedorPorId, pagosFacturas, setPagosFacturas, albaranes, setAlbaranes, guardarAlbaran, confirmarAlbaran, almacenCongelado, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
   const { addNomina, updateNomina, deleteNomina } = crearLogicaNominas({ nominas, setNominas, registrarAuditoria, empleados, localActivoId });
   const { crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista } = crearLogicaEntrevistas({ entrevistas, setEntrevistas, registrarAuditoria });
   const { crearPrefiltro, listarPrefiltros, eliminarPrefiltro } = crearLogicaPrefiltros({
@@ -3683,8 +3683,16 @@ function GestionAlmacen() {
     {
       albaranes: albaranesDelLocalActivo,
       facturasDirectas: facturasDirectasDelLocalActivo,
+      pagosFacturas,
       proveedores,
       addFacturaDirecta,
+      confirmarFacturaConAlbaranes,
+      addProveedorDesdeAlbaran,
+      puedeAltaProveedorIA,
+      empresaId: empresaDelLocalActivo?.id || null,
+      localId: localActivoId || null,
+      empresasPropias: [...empresas, configEmpresa].filter(Boolean),
+      almacenCongelado,
       proveedorPorId,
       irAAlbaran: (albId) => {
         const a22 = albaranesDelLocalActivo.find((x3) => x3.id === albId);
@@ -5020,10 +5028,88 @@ function calcularTotalesFacturaAlbaran(a22) {
   return { base: redondearDineroPM06(base), iva: redondearDineroPM06(iva), total: redondearDineroPM06(base + iva), porTipo };
 }
 function calcularTotalesFacturaDirecta(f22) {
+  const tipos = Array.isArray(f22?.tiposIva) ? f22.tiposIva.filter((x3) => Number(x3?.base) > 0) : [];
+  if (tipos.length) {
+    const porTipo = {};
+    let base2 = 0;
+    let iva2 = 0;
+    for (const fila of tipos) {
+      const tipo2 = Number(fila.tipo ?? fila.ivaPct) || 0;
+      const baseFila = redondearDineroPM06(fila.base);
+      const cuotaFila = fila.cuota == null || fila.cuota === "" ? redondearDineroPM06(baseFila * tipo2 / 100) : redondearDineroPM06(fila.cuota);
+      base2 += baseFila;
+      iva2 += cuotaFila;
+      if (!porTipo[tipo2]) porTipo[tipo2] = { base: 0, cuota: 0 };
+      porTipo[tipo2].base = redondearDineroPM06(porTipo[tipo2].base + baseFila);
+      porTipo[tipo2].cuota = redondearDineroPM06(porTipo[tipo2].cuota + cuotaFila);
+    }
+    base2 = redondearDineroPM06(base2);
+    iva2 = redondearDineroPM06(iva2);
+    return { base: base2, iva: iva2, total: redondearDineroPM06(base2 + iva2), porTipo };
+  }
   const base = redondearDineroPM06(f22?.importeBase);
   const tipo = Number(f22?.ivaPct) || 0;
   const iva = redondearDineroPM06(base * (tipo / 100));
   return { base, iva, total: redondearDineroPM06(base + iva), porTipo: { [tipo]: { base, cuota: iva } } };
+}
+function normalizarNumeroDocumentoFactura(numero) {
+  return String(numero || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+function claveFacturaProveedorAgrupada(f22) {
+  return [f22?.empresaId || "", f22?.localId || "", f22?.proveedorId || "", normalizarNumeroDocumentoFactura(f22?.serie), normalizarNumeroDocumentoFactura(f22?.numeroFactura), String(f22?.fecha || "").slice(0, 4)].join(":");
+}
+function clasificarAlbaranesFacturaAgrupada({ albaranesImportados = [], albaranes = [], empresaId, localId, proveedorId, facturaId = null }) {
+  const vistos = /* @__PURE__ */ new Set();
+  return (Array.isArray(albaranesImportados) ? albaranesImportados : []).map((entrada, indice) => {
+    const numero = String(entrada?.numeroAlbaran || entrada?.numero || "").trim();
+    const numeroNormalizado = normalizarNumeroDocumentoFactura(numero);
+    const duplicadoEnDocumento = !!numeroNormalizado && vistos.has(numeroNormalizado);
+    if (numeroNormalizado) vistos.add(numeroNormalizado);
+    const existentes = (albaranes || []).filter((a22) => a22 && a22.empresaId === empresaId && a22.localId === localId && a22.proveedorId === proveedorId && normalizarNumeroDocumentoFactura(a22.numero) === numeroNormalizado);
+    const existente = existentes[0] || null;
+    let estado = "CREAR_Y_RECEPCIONAR";
+    let bloqueante = "";
+    if (!numeroNormalizado) {
+      estado = "REQUIERE_REVISION";
+      bloqueante = "Falta el número del albarán.";
+    } else if (duplicadoEnDocumento || existentes.length > 1) {
+      estado = "DUPLICADO";
+      bloqueante = "El albarán aparece repetido y necesita revisión.";
+    } else if (existente?.facturaDirectaId && existente.facturaDirectaId !== facturaId) {
+      estado = "YA_FACTURADO";
+      bloqueante = "El albarán ya está vinculado a otra factura.";
+    } else if (existente?.estado === "confirmado") {
+      estado = "VINCULAR_RECIBIDO";
+    } else if (existente) {
+      estado = "COMPLETAR_Y_RECEPCIONAR";
+    } else if (!Array.isArray(entrada?.lineas) || entrada.lineas.length === 0) {
+      estado = "SOLO_MENCIONADO";
+      bloqueante = "El albarán está mencionado, pero faltan sus líneas o sus páginas.";
+    } else if (entrada.lineas.some((linea) => !String(linea?.descripcion || "").trim() || !(Number(linea?.cantidad) > 0))) {
+      estado = "REQUIERE_REVISION";
+      bloqueante = "Hay líneas sin descripción o con cantidad cero.";
+    }
+    return { ...entrada, indice, numeroAlbaran: numero, numeroNormalizado, existenteId: existente?.id || null, estadoConciliacion: estado, bloqueante };
+  });
+}
+function validarFacturaAgrupada({ factura, albaranesClasificados = [], tolerancia = 0.12 }) {
+  const errores = [];
+  const avisos = [];
+  const totales = calcularTotalesFacturaDirecta(factura || {});
+  if (!factura?.proveedorId) errores.push("Selecciona o confirma el proveedor.");
+  if (!String(factura?.numeroFactura || "").trim()) errores.push("Escribe el número de factura.");
+  if (!fechaFacturaValidaPM11(String(factura?.fecha || ""))) errores.push("Indica una fecha de factura válida.");
+  if (!(totales.base > 0) || !(totales.total > 0)) errores.push("El importe de la factura debe ser mayor que cero.");
+  const totalDocumento = Number(factura?.totalFacturaDocumento);
+  if (!(Number.isFinite(totalDocumento) && totalDocumento > 0)) errores.push("Escribe el total impreso de la factura.");
+  else if (Math.abs(totalDocumento - totales.total) > tolerancia) errores.push(`El total impreso (${totalDocumento.toFixed(2)} €) no coincide con base más IVA (${totales.total.toFixed(2)} €).`);
+  for (const alb of albaranesClasificados) if (alb.bloqueante) errores.push(`${alb.numeroAlbaran || `Albarán ${alb.indice + 1}`}: ${alb.bloqueante}`);
+  const totalAlbaranes = redondearDineroPM06(albaranesClasificados.reduce((acc, alb) => acc + (Number(alb.totalAlbaran ?? alb.total) || 0), 0));
+  if (totalAlbaranes > 0 && Math.abs(totalAlbaranes - totales.total) > tolerancia) {
+    errores.push(`La suma de los albaranes (${totalAlbaranes.toFixed(2)} €) no coincide con la factura (${totales.total.toFixed(2)} €).`);
+  }
+  if (!albaranesClasificados.length) avisos.push("Factura sin albaranes de mercancía: se registrará como gasto o servicio.");
+  return { ok: errores.length === 0, errores, avisos, totales, totalAlbaranes };
 }
 function normalizarPagoPM06(p22) {
   if (!p22) return null;
@@ -6288,7 +6374,10 @@ body: JSON.stringify({ titulo: "Stock bajo", cuerpo: `${aviso.producto.nombre} b
     const existentes = [...porId.values()].filter((m) => m.operationId === operationId);
     return existentes.length ? { ok: true, replayed: true, yaExistia: true, movimientos: existentes } : null;
   }
-  return { aplicarMovimientoStock, aplicarLoteMovimientosStock, recuperarOperacionStock, calcularStockTeorico };
+  function registrarProductoSnapshot(producto) {
+    if (producto?.id) snapshotLocal.set(producto.id, producto);
+  }
+  return { aplicarMovimientoStock, aplicarLoteMovimientosStock, recuperarOperacionStock, calcularStockTeorico, registrarProductoSnapshot, obtenerProductoActual: productoActual };
 }
 function crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId }) {
   const { aplicarMovimientoStock, calcularStockTeorico } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
@@ -11252,7 +11341,8 @@ function crearLogicaAlbaranes({
   pagosFacturas,
   setPagosFacturas
 }) {
-  const { aplicarMovimientoStock } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+  const { aplicarMovimientoStock, registrarProductoSnapshot, obtenerProductoActual } = crearMotorStock({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria });
+  const productosCreadosRecepcion = /* @__PURE__ */ new Map();
   function localDeAlbaran(doc) {
     if (!doc) return null;
     if (doc.localId) return doc.localId;
@@ -11474,6 +11564,8 @@ function crearLogicaAlbaranes({
       let prod = null;
       if (ln2.productoId) prod = productos.find((p22) => p22.id === ln2.productoId);
       if (!prod && cat && cat.productoId) prod = productos.find((p22) => p22.id === cat.productoId);
+      const claveProductoRecepcion = `${proveedorId || ""}::${ln2.codigoProveedor ? `COD::${String(ln2.codigoProveedor).trim().toUpperCase()}` : `DESC::${normalizarDescripcion(ln2.descripcion)}`}`;
+      if (!prod && productosCreadosRecepcion.has(claveProductoRecepcion)) prod = obtenerProductoActual(productosCreadosRecepcion.get(claveProductoRecepcion));
       if (prod && localActivoId && (!prod.localId || prod.localId !== localActivoId)) prod = null;
       const motivoDoc = `${documentoTipo === "albaran" ? "Albar\xE1n" : "Pedido"} ${documentoNumero || "s/n"}`;
       if (prod) {
@@ -11527,37 +11619,35 @@ function crearLogicaAlbaranes({
           udsPorCaja: uds,
           precioVenta: 0,
           ivaVenta: 10,
-          stock: unidadesTotales,
+          stock: 0,
           stockMinimo: 0,
           ubicacion: "",
           proveedorId,
           contenido: ln2.contenido || "",
           unidadContenido: ln2.unidadContenido || ""
         };
-        if (!nuevoYaCreadoPM10) setProductos((s22) => s22.some((p22) => p22.id === nuevoId) ? s22 : [...s22, nuevo]);
-        setMovimientos((s22) => s22.some((m22) => m22.id === `${claveEfectoRecepcionPM11}:linea:${idxRecepcionPM10}:auto`) ? s22 : [
-          {
-            id: `${claveEfectoRecepcionPM11}:linea:${idxRecepcionPM10}:auto`,
-            operationId: operationIdRecepcionPM10,
-            productoId: nuevoId,
-            localId: nuevo.localId || localActivoId || null,
-            cantidad: unidadesTotales,
-            tipo: "COMPRA",
-            motivo: `${motivoDoc} \xB7 alta autom\xE1tica`,
-            fecha: fecha || todayISO(),
-            origen: "procesarRecepcion",
-            documentoOrigenId: documentoId,
-            stockAnterior: 0,
-            stockPosterior: unidadesTotales,
-            afectaStockTotal: true,
-            afectaStockPisoVenta: false,
-            revierteMovimientoId: null
-          },
-          ...s22
-        ]);
+        if (!nuevoYaCreadoPM10) {
+          setProductos((s22) => s22.some((p22) => p22.id === nuevoId) ? s22 : [...s22, nuevo]);
+          registrarProductoSnapshot(nuevo);
+        }
+        productosCreadosRecepcion.set(claveProductoRecepcion, nuevoId);
+        const resultadoAltaPM10 = aplicarMovimientoStock({
+          productoId: nuevoId,
+          cantidad: unidadesTotales,
+          tipo: "COMPRA",
+          operationId: operationIdRecepcionPM10,
+          movimientoId: `${claveEfectoRecepcionPM11}:linea:${idxRecepcionPM10}:auto`,
+          origen: "procesarRecepcion",
+          documentoOrigenId: documentoId,
+          afectaStockTotal: true,
+          permitirDeficit: true,
+          motivo: `${motivoDoc} · alta automática`
+        });
+        if (!resultadoAltaPM10.ok) return;
         lineasResueltas.push({ ...ln2, productoId: nuevoId, unidadesEntradas: unidadesTotales });
       }
     });
+    if (lineasResueltas.length !== lineas.length) return errorValidacionPM10("conflicto_movimiento_stock", "lineas", "No se pudieron aplicar todas las líneas de la recepción.");
     setCatalogoProv((prev) => {
       const copia = { ...prev };
       lineasResueltas.forEach((ln2) => {
@@ -12291,26 +12381,29 @@ function crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegist
   }
   return { addFreidora, updateFreidora, deleteFreidora, registrarCambio, registrarRelleno, eliminarRegistroAceite, consumoPorCiclo };
 }
-function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, proveedores, pagosFacturas, setPagosFacturas, localActivoId, empresaId }) {
+function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, registrarAuditoria, proveedores, proveedorPorId, pagosFacturas, setPagosFacturas, albaranes = [], setAlbaranes, guardarAlbaran, confirmarAlbaran, almacenCongelado = false, localActivoId, empresaId }) {
   function facturaDirectaEsDelContexto(f22) {
     return !!f22 && !!empresaId && !!localActivoId && f22.empresaId === empresaId && f22.localId === localActivoId;
   }
   function proveedorCompatible(proveedorId) {
     if (!proveedorId) return { ok: true, proveedor: null };
-    const p22 = (proveedores || []).find((x3) => x3.id === proveedorId);
+    const p22 = typeof proveedorPorId === "function" ? proveedorPorId(proveedorId) : (proveedores || []).find((x3) => x3.id === proveedorId);
     return { ok: !!p22 && p22.empresaId === empresaId, proveedor: p22 || null };
   }
   function addFacturaDirecta(data) {
     if (!empresaId || !localActivoId) return { ok: false, error: "Selecciona un local concreto antes de crear la factura." };
+    const esBorrador = data?.estado === "BORRADOR";
     const comp = proveedorCompatible(data?.proveedorId);
     if (!comp.ok) return { ok: false, error: "El proveedor no pertenece a la empresa de la factura." };
-    const numeroNormalizado = String(data?.numeroFactura || "").trim().toLowerCase();
-    if (numeroNormalizado && (facturasDirectas || []).some((f22) => f22.estado !== "ANULADA" && f22.empresaId === empresaId && f22.localId === localActivoId && f22.proveedorId === (data?.proveedorId || "") && String(f22.numeroFactura || "").trim().toLowerCase() === numeroNormalizado)) {
+    if (!esBorrador && !data?.proveedorId) return { ok: false, error: "Selecciona el proveedor de la factura." };
+    const candidataClave = claveFacturaProveedorAgrupada({ ...data, empresaId, localId: localActivoId });
+    const tieneIdentidadCompleta = !!data?.proveedorId && !!normalizarNumeroDocumentoFactura(data?.numeroFactura) && /^\d{4}/.test(String(data?.fecha || ""));
+    if (tieneIdentidadCompleta && (facturasDirectas || []).some((f22) => f22.id !== data?.id && f22.estado !== "ANULADA" && claveFacturaProveedorAgrupada(f22) === candidataClave)) {
       return { ok: false, error: "Ya existe una factura con ese número para este proveedor y local." };
     }
     const totales = calcularTotalesFacturaDirecta(data || {});
-    if (!(totales.base > 0) || !(totales.total > 0)) return { ok: false, error: "El importe de la factura debe ser mayor que cero." };
-    const id = uid();
+    if (!esBorrador && (!(totales.base > 0) || !(totales.total > 0))) return { ok: false, error: "El importe de la factura debe ser mayor que cero." };
+    const id = data?.id || uid();
     const nuevo = {
       id,
       ...data,
@@ -12321,13 +12414,71 @@ function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, re
       ivaPct: Number(data?.ivaPct) || 0,
       importeIva: totales.iva,
       importeTotal: totales.total,
-      estado: data?.estado === "BORRADOR" ? "BORRADOR" : "ACTIVA",
+      tiposIva: Array.isArray(data?.tiposIva) ? data.tiposIva.map((fila) => ({ tipo: Number(fila.tipo ?? fila.ivaPct) || 0, base: redondearDineroPM06(fila.base), cuota: fila.cuota == null || fila.cuota === "" ? redondearDineroPM06((Number(fila.base) || 0) * (Number(fila.tipo ?? fila.ivaPct) || 0) / 100) : redondearDineroPM06(fila.cuota) })) : [],
+      albaranesVinculados: Array.isArray(data?.albaranesVinculados) ? data.albaranesVinculados : [],
+      operationId: data?.operationId || `factura-proveedor:${empresaId}:${localActivoId}:${id}`,
+      estado: esBorrador ? "BORRADOR" : "ACTIVA",
       revisionHumanaConfirmada: data?.revisionHumanaConfirmada === true,
       creadaEn: (/* @__PURE__ */ new Date()).toISOString()
     };
-    setFacturasDirectas((s22) => [nuevo, ...s22]);
+    setFacturasDirectas((s22) => s22.some((f22) => f22.id === id) ? s22.map((f22) => f22.id === id ? nuevo : f22) : [nuevo, ...s22]);
     registrarAuditoria("Crear factura directa", `${nuevo.concepto || nuevo.numeroFactura || id} \xB7 \u20AC${nuevo.importeTotal.toFixed(2)} \xB7 ${empresaId}/${localActivoId}`);
     return { ok: true, factura: nuevo };
+  }
+  function confirmarFacturaConAlbaranes(data) {
+    const facturaId = data?.id || uid();
+    const operationId = data?.operationId || `factura-proveedor:${empresaId}:${localActivoId}:${facturaId}`;
+    const yaConfirmada = (facturasDirectas || []).find((f22) => f22.operationId === operationId && f22.estado === "ACTIVA");
+    if (yaConfirmada) return { ok: true, replayed: true, factura: yaConfirmada, albaranesVinculados: yaConfirmada.albaranesVinculados || [] };
+    const candidata = { ...data, id: facturaId, operationId, empresaId, localId: localActivoId, estado: "ACTIVA" };
+    const claveCandidata = claveFacturaProveedorAgrupada(candidata);
+    const duplicada = (facturasDirectas || []).find((f22) => f22.id !== facturaId && f22.estado !== "ANULADA" && claveFacturaProveedorAgrupada(f22) === claveCandidata);
+    if (duplicada) return { ok: false, error: "Ya existe una factura con esa serie, número, proveedor y ejercicio. No se moverá stock." };
+    const duplicadaMercancia = (albaranes || []).find((a22) => a22?.esFactura === true && a22.estado === "confirmado" && a22.empresaId === empresaId && a22.localId === localActivoId && a22.proveedorId === candidata.proveedorId && normalizarNumeroDocumentoFactura(a22.numeroFactura) === normalizarNumeroDocumentoFactura(candidata.numeroFactura) && String(a22.fechaFactura || a22.fecha || "").slice(0, 4) === String(candidata.fecha || "").slice(0, 4));
+    if (duplicadaMercancia) return { ok: false, error: "Esa factura ya existe en una recepción de mercancía. No se creará otra deuda ni se moverá stock." };
+    const clasificados = clasificarAlbaranesFacturaAgrupada({ albaranesImportados: candidata.albaranesImportados || [], albaranes, empresaId, localId: localActivoId, proveedorId: candidata.proveedorId, facturaId });
+    const validacion = validarFacturaAgrupada({ factura: candidata, albaranesClasificados: clasificados });
+    if (candidata.origen === "IA" && candidata.revisionHumanaConfirmada !== true) return { ok: false, error: "Revisa los datos leídos por IA antes de confirmar." };
+    if (!validacion.ok) return { ok: false, error: validacion.errores.join(" "), validacion, albaranesClasificados: clasificados };
+    const pendientes = clasificados.filter((a22) => ["CREAR_Y_RECEPCIONAR", "COMPLETAR_Y_RECEPCIONAR"].includes(a22.estadoConciliacion));
+    if (pendientes.length && almacenCongelado) return { ok: false, error: "El almacén está congelado por un conteo abierto. Puedes guardar el borrador, pero no recepcionar los albaranes todavía." };
+    if (pendientes.length && (typeof guardarAlbaran !== "function" || typeof confirmarAlbaran !== "function")) return { ok: false, error: "La recepción de albaranes no está disponible en este dispositivo." };
+    const vinculos = [];
+    for (const item of clasificados) {
+      if (item.estadoConciliacion === "VINCULAR_RECIBIDO") {
+        vinculos.push({ albaranId: item.existenteId, numero: item.numeroAlbaran, accion: "VINCULADO", recepcionAplicada: false });
+        continue;
+      }
+      const albaranId = item.existenteId || `factura-albaran:${facturaId}:${item.indice}:${item.numeroNormalizado}`;
+      const documento = {
+        ...item,
+        id: albaranId,
+        numero: item.numeroAlbaran,
+        fecha: item.fecha || candidata.fecha,
+        proveedorId: candidata.proveedorId,
+        empresaId,
+        localId: localActivoId,
+        estado: "borrador",
+        esFactura: false,
+        facturaDirectaId: facturaId,
+        numeroFacturaVinculada: candidata.numeroFactura,
+        origenFacturaAgrupada: true,
+        lineas: (item.lineas || []).map((ln2) => ({ ...ln2, ivaPct: Number(ln2.ivaPct ?? ln2.iva) || 0, importe: Number(ln2.importe ?? ln2.importeLinea) || 0, precioBruto: Number(ln2.precioBruto ?? ln2.precioUnitario) || 0 }))
+      };
+      const guardado = guardarAlbaran(documento);
+      if (guardado === false) return { ok: false, error: `No se pudo preparar el albarán ${item.numeroAlbaran}.`, parcial: vinculos };
+      const recibido = confirmarAlbaran(documento);
+      if (!recibido || recibido.ok === false) return { ok: false, error: recibido?.error || `No se pudo recepcionar el albarán ${item.numeroAlbaran}.`, parcial: vinculos };
+      vinculos.push({ albaranId, numero: item.numeroAlbaran, accion: item.existenteId ? "COMPLETADO_Y_RECEPCIONADO" : "CREADO_Y_RECEPCIONADO", recepcionAplicada: true });
+    }
+    if (typeof setAlbaranes === "function" && vinculos.length) {
+      const ids = new Set(vinculos.map((v22) => v22.albaranId));
+      setAlbaranes((lista) => (lista || []).map((a22) => ids.has(a22.id) ? { ...a22, facturaDirectaId: facturaId, numeroFacturaVinculada: candidata.numeroFactura, esFactura: false } : a22));
+    }
+    const alta = addFacturaDirecta({ ...candidata, albaranesVinculados: vinculos, albaranesImportados: [], revisionHumanaConfirmada: true });
+    if (!alta.ok) return alta;
+    registrarAuditoria("Confirmar factura con albaranes", `${candidata.numeroFactura} · ${vinculos.length} albarán(es) · ${pendientes.length} recepción(es) · ${empresaId}/${localActivoId}`);
+    return { ok: true, replayed: false, factura: alta.factura, albaranesVinculados: vinculos, validacion };
   }
   function updateFacturaDirecta(id, data) {
     const actual = facturasDirectas.find((f22) => f22.id === id);
@@ -12367,7 +12518,7 @@ function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, re
     if (r2.ok && !r2.replayed) registrarAuditoria(pagada ? "Registrar pago factura directa" : "Revertir pago factura directa", `${f22.concepto || f22.numeroFactura || id} \xB7 \u20AC${redondearDineroPM06(r2.pago?.importe || importe || 0).toFixed(2)} \xB7 ${f22.empresaId}/${f22.localId}`);
     return r2;
   }
-  return { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta };
+  return { addFacturaDirecta, updateFacturaDirecta, deleteFacturaDirecta, marcarPagadaFacturaDirecta, confirmarFacturaConAlbaranes };
 }
 function crearLogicaNominas({ nominas, setNominas, registrarAuditoria, empleados, localActivoId }) {
   const empleadoNominaLocal = (id) => empleados.find((e2) => e2.id === id && (!localActivoId || e2.localId === localActivoId));
@@ -18168,7 +18319,178 @@ function rangoTrimestre(anio, trimestre) {
   const hasta = aISO(new Date(anio, mesIni + 3, 0));
   return { desde, hasta };
 }
-function Facturas({ albaranes, facturasDirectas, pagosFacturas = [], proveedorPorId, proveedores = [], addFacturaDirecta, irAAlbaran, irAFacturaDirecta }) {
+function crearFormularioFacturaAgrupada(proveedores = []) {
+  return { id: uid(), proveedorId: proveedores[0]?.id || "", proveedorPropuesto: null, concepto: "", numeroFactura: "", serie: "", fecha: todayISO(), vencimiento: "", formaPago: "TRANSFERENCIA", importeBase: "", ivaPct: 21, tiposIva: [{ tipo: 21, base: "", cuota: "" }], totalFacturaDocumento: "", categoria: "", observaciones: "", documentoNombre: "", documentoTipo: "", documentoTamaño: 0, documentoDataUrl: "", documentos: [], origen: "MANUAL", lineas: [], albaranesImportados: [], revisionHumanaConfirmada: false };
+}
+function etiquetaConciliacionFactura(estado) {
+  return ({ VINCULAR_RECIBIDO: "Ya recibido · se vinculará sin mover stock", COMPLETAR_Y_RECEPCIONAR: "Borrador existente · se completará y recepcionará", CREAR_Y_RECEPCIONAR: "Nuevo · se creará y recepcionará", SOLO_MENCIONADO: "Faltan las páginas o líneas", DUPLICADO: "Posible duplicado", YA_FACTURADO: "Ya vinculado a otra factura", REQUIERE_REVISION: "Necesita revisión" })[estado] || estado || "Pendiente";
+}
+function Facturas({ albaranes = [], facturasDirectas = [], pagosFacturas = [], proveedorPorId, proveedores = [], addFacturaDirecta, confirmarFacturaConAlbaranes, addProveedorDesdeAlbaran, puedeAltaProveedorIA = false, empresaId = null, localId = null, empresasPropias = [], almacenCongelado = false, irAAlbaran, irAFacturaDirecta }) {
+  const h = import_react4.default.createElement;
+  const [mes, setMes] = (0, import_react4.useState)(aISO(/* @__PURE__ */ new Date()).slice(0, 7));
+  const [mostrarAlta, setMostrarAlta] = (0, import_react4.useState)(false);
+  const [form, setForm] = (0, import_react4.useState)(() => crearFormularioFacturaAgrupada(proveedores));
+  const [error, setError] = (0, import_react4.useState)("");
+  const [mensaje, setMensaje] = (0, import_react4.useState)("");
+  const [leyendoIA, setLeyendoIA] = (0, import_react4.useState)(false);
+  const [archivosIA, setArchivosIA] = (0, import_react4.useState)([]);
+  const [procesandoPDF, setProcesandoPDF] = (0, import_react4.useState)(false);
+  const [requiereRevision, setRequiereRevision] = (0, import_react4.useState)(false);
+  const [deteccionProveedor, setDeteccionProveedor] = (0, import_react4.useState)(null);
+  function resetForm() {
+    setForm(crearFormularioFacturaAgrupada(proveedores)); setArchivosIA([]); setProcesandoPDF(false); setRequiereRevision(false); setDeteccionProveedor(null); setError(""); setMensaje("");
+  }
+  async function seleccionarArchivos(e2) {
+    const files = Array.from(e2.target.files || []); e2.target.value = "";
+    if (!files.length) return;
+    setError(""); setMensaje("");
+    if (files.some((file) => !file.type.startsWith("image/") && file.type !== "application/pdf")) return setError("Solo se admiten imágenes JPG/PNG/WEBP y documentos PDF.");
+    if (files.length > 12) return setError("Puedes añadir como máximo 12 archivos por factura.");
+    setProcesandoPDF(true);
+    try {
+      const documentos = []; const paginasIA = []; let tamanoTotal = 0;
+      for (const file of files) {
+        const leido = await archivoABase64(file); const conservar = tamanoTotal + file.size <= 3600000 && file.size <= 1800000; tamanoTotal += file.size;
+        documentos.push({ nombre: file.name, tipo: file.type || "application/octet-stream", tamaño: file.size, dataUrl: conservar ? leido.previsualizacion : "" });
+        if (file.type.startsWith("image/")) paginasIA.push({ ...leido, nombre: file.name });
+        else paginasIA.push(...await convertirPDFFacturaAImagenes(file));
+      }
+      setForm((f22) => ({ ...f22, documentos, documentoNombre: documentos.map((d22) => d22.nombre).join(", "), documentoTipo: documentos.length === 1 ? documentos[0].tipo : "application/mixed", documentoTamaño: tamanoTotal, documentoDataUrl: documentos[0]?.dataUrl || "" }));
+      setArchivosIA(paginasIA); setMensaje(`${documentos.length} archivo(s) · ${paginasIA.length} página(s) preparadas.`);
+    } catch (e3) { setArchivosIA([]); setError(e3?.message || "No se ha podido preparar la factura."); }
+    setProcesandoPDF(false);
+  }
+  function mapearLineaFactura(ln2) {
+    return { ...ln2, codigo: ln2?.codigo || "", codigoProveedor: ln2?.codigoProveedor || ln2?.codigo || "", descripcion: ln2?.descripcion || "", cantidad: Number(ln2?.cantidad) || 0, unidad: ln2?.unidad || "ud", tipoUnidad: ln2?.tipoUnidad || "unidad", udsPorCaja: Number(ln2?.udsPorCaja) || 1, precioBruto: Number(ln2?.precioBruto ?? ln2?.precioUnitario) || 0, descuento: Number(ln2?.descuento ?? ln2?.descuentoPct) || 0, dtoPct: Number(ln2?.dtoPct ?? ln2?.descuentoPct) || 0, ivaPct: Number(ln2?.ivaPct ?? ln2?.iva) || 0, canon: Number(ln2?.canon) || 0, importe: Number(ln2?.importe ?? ln2?.importeLinea) || 0 };
+  }
+  async function leerConIA() {
+    if (!archivosIA.length) return setError("Añade al menos una imagen o un PDF con páginas legibles.");
+    setLeyendoIA(true); setError(""); setMensaje("");
+    try {
+      const supabase = await window.getSupabaseClient();
+      const invocacion = await supabase.functions.invoke("importar-factura", { body: { imagenes: archivosIA.map((f22) => ({ base64: f22.base64, mediaType: f22.mediaType })) } });
+      if (invocacion.error) throw invocacion.error;
+      const respuesta = invocacion.data || {};
+      if (!respuesta.ok) throw new Error(respuesta.error || "No se ha podido leer la factura.");
+      const d2 = respuesta.datos || {};
+      const deteccion = resolverProveedorAlbaran({ proveedores, empresaId, empresasPropias, detectado: { nombre: d2.proveedorNombre, nif: d2.proveedorCif, direccion: d2.proveedorDireccion, telefono: d2.proveedorTelefono, email: d2.proveedorEmail, web: d2.proveedorWeb, condiciones: d2.condicionesPago, diasPago: d2.diasPago, clienteNif: d2.clienteCif } });
+      setDeteccionProveedor(deteccion);
+      const proveedorId = deteccion.estado === "existente" ? deteccion.proveedor.id : "";
+      const albaranesImportados = (Array.isArray(d2.albaranes) ? d2.albaranes : d2.numeroAlbaran ? [{ numeroAlbaran: d2.numeroAlbaran, fecha: d2.fechaAlbaran || d2.fecha, lineas: d2.lineas || [], totalAlbaran: d2.totalAlbaran }] : []).map((alb) => ({ ...alb, lineas: (alb.lineas || []).map(mapearLineaFactura) }));
+      let tiposIva = Array.isArray(d2.tiposIva) ? d2.tiposIva.map((x3) => ({ tipo: Number(x3.tipo ?? x3.ivaPct) || 0, base: Number(x3.base) || 0, cuota: Number(x3.cuota) || 0 })) : [];
+      if (!tiposIva.length) {
+        const base = Number(d2.baseImponible ?? d2.base) || 0; const cuota = Number(d2.ivaTotal ?? d2.importeIva) || 0; const tipo = Number(d2.ivaPct ?? d2.tipoIva) || (base > 0 ? Math.round(cuota / base * 1e4) / 100 : 21);
+        if (base > 0) tiposIva = [{ tipo, base, cuota }];
+      }
+      const totales = calcularTotalesFacturaDirecta({ tiposIva });
+      setForm((f22) => ({ ...f22, proveedorId, proveedorPropuesto: deteccion.datos || null, concepto: d2.proveedorNombre ? `Factura ${d2.proveedorNombre}` : f22.concepto, numeroFactura: d2.numeroFactura || f22.numeroFactura, serie: d2.serie || f22.serie, fecha: d2.fechaFactura || d2.fecha || f22.fecha, vencimiento: d2.vencimiento || f22.vencimiento, formaPago: d2.formaPago || f22.formaPago, importeBase: totales.base ? totales.base.toFixed(2) : f22.importeBase, ivaPct: tiposIva.length === 1 ? tiposIva[0].tipo : 0, tiposIva, totalFacturaDocumento: d2.totalFactura ?? f22.totalFacturaDocumento, albaranesImportados, origen: "IA", observaciones: [f22.observaciones, ...(d2.avisos || [])].filter(Boolean).join(" "), revisionHumanaConfirmada: false }));
+      setRequiereRevision(true); setMensaje(`Lectura completada: ${albaranesImportados.length} albarán(es) detectado(s). Revisa todo antes de confirmar.`);
+    } catch (e3) { setError(e3?.message || "No se ha podido conectar con la lectura IA."); }
+    setLeyendoIA(false);
+  }
+  function actualizarTipoIva(indice, campo, valor) {
+    setForm((f22) => ({ ...f22, tiposIva: f22.tiposIva.map((x3, i33) => i33 === indice ? { ...x3, [campo]: valor } : x3) }));
+  }
+  function actualizarAlbaran(indice, cambios) {
+    setForm((f22) => ({ ...f22, albaranesImportados: f22.albaranesImportados.map((x3, i33) => i33 === indice ? { ...x3, ...cambios } : x3) }));
+  }
+  function actualizarLinea(indiceAlb, indiceLinea, cambios) {
+    setForm((f22) => ({ ...f22, albaranesImportados: f22.albaranesImportados.map((alb, i33) => i33 !== indiceAlb ? alb : { ...alb, lineas: (alb.lineas || []).map((ln2, j2) => j2 === indiceLinea ? { ...ln2, ...cambios } : ln2) }) }));
+  }
+  async function proveedorParaConfirmar() {
+    if (form.proveedorId) return { ok: true, proveedorId: form.proveedorId };
+    if (deteccionProveedor?.estado === "parecido") return { ok: false, error: "Hay proveedores parecidos. Selecciona el correcto antes de continuar." };
+    if (!form.proveedorPropuesto?.nombre) return { ok: false, error: "Selecciona el proveedor o vuelve a leer la factura." };
+    if (!puedeAltaProveedorIA || typeof addProveedorDesdeAlbaran !== "function") return { ok: false, error: "Tu usuario no tiene permiso para dar de alta este proveedor." };
+    const alta = addProveedorDesdeAlbaran(form.proveedorPropuesto);
+    if (!alta?.ok) return { ok: false, error: alta?.error || "No se ha podido crear el proveedor." };
+    return { ok: true, proveedorId: alta.proveedor.id };
+  }
+  async function guardarFactura(estado) {
+    setError(""); setMensaje("");
+    let proveedorId = form.proveedorId;
+    if (estado === "ACTIVA") {
+      const proveedorPrevalidacion = proveedorId || (form.proveedorPropuesto?.nombre ? "__proveedor_nuevo_revisado__" : "");
+      const facturaPrevalidacion = { ...form, proveedorId: proveedorPrevalidacion };
+      const albaranesPrevalidacion = clasificarAlbaranesFacturaAgrupada({ albaranesImportados: form.albaranesImportados, albaranes, empresaId, localId, proveedorId: proveedorPrevalidacion, facturaId: form.id });
+      const previa = validarFacturaAgrupada({ factura: facturaPrevalidacion, albaranesClasificados: albaranesPrevalidacion });
+      if (form.origen === "IA" && form.revisionHumanaConfirmada !== true) return setError("Revisa los datos leídos por IA y marca la confirmación antes de continuar.");
+      if (!previa.ok) return setError(previa.errores.join(" "));
+      const proveedor = await proveedorParaConfirmar(); if (!proveedor.ok) return setError(proveedor.error); proveedorId = proveedor.proveedorId;
+    }
+    const candidata = { ...form, proveedorId, concepto: form.concepto.trim() || `Factura ${form.numeroFactura.trim()}`, estado, revisionHumanaConfirmada: estado === "ACTIVA" ? form.revisionHumanaConfirmada : false };
+    if (estado === "BORRADOR") {
+      const r2 = addFacturaDirecta(candidata); if (!r2?.ok) return setError(r2?.error || "No se ha podido guardar el borrador.");
+      resetForm(); setMostrarAlta(false); setMensaje("Borrador guardado. No ha movido stock ni creado deuda activa."); return;
+    }
+    const r2 = confirmarFacturaConAlbaranes(candidata);
+    if (!r2?.ok) return setError(r2?.error || "No se ha podido confirmar la factura y sus albaranes.");
+    const resumen = `Factura confirmada: ${r2.albaranesVinculados.filter((x3) => !x3.recepcionAplicada).length} albarán(es) vinculados y ${r2.albaranesVinculados.filter((x3) => x3.recepcionAplicada).length} recepcionado(s).`;
+    resetForm(); setMostrarAlta(false); setMensaje(resumen);
+  }
+  function abrirBorrador(factura) {
+    const base = crearFormularioFacturaAgrupada(proveedores);
+    setForm({ ...base, ...factura, tiposIva: Array.isArray(factura.tiposIva) && factura.tiposIva.length ? factura.tiposIva : base.tiposIva, albaranesImportados: Array.isArray(factura.albaranesImportados) ? factura.albaranesImportados : [] });
+    setRequiereRevision(factura.origen === "IA");
+    if (factura.proveedorPropuesto?.nombre) setDeteccionProveedor({ estado: "nuevo", datos: factura.proveedorPropuesto });
+    else setDeteccionProveedor(null);
+    setError(""); setMensaje(""); setMostrarAlta(true);
+  }
+  const clasificados = (0, import_react4.useMemo)(() => clasificarAlbaranesFacturaAgrupada({ albaranesImportados: form.albaranesImportados, albaranes, empresaId, localId, proveedorId: form.proveedorId, facturaId: form.id }), [form.albaranesImportados, form.proveedorId, form.id, albaranes, empresaId, localId]);
+  const validacion = validarFacturaAgrupada({ factura: form, albaranesClasificados: clasificados });
+  const todas = (0, import_react4.useMemo)(() => {
+    const mercancia = albaranes.filter((a22) => albaranEsFacturaOperativaPM11(a22)).map((a22) => { const t22 = calcularTotalesFacturaAlbaran(a22); return { id: `alb-${a22.id}`, idReal: a22.id, tipoOrigen: "albaran", fecha: a22.fechaFactura || a22.fecha, proveedorNombre: a22.proveedorSnapshot?.nombre || proveedorPorId(a22.proveedorId)?.nombre || "Sin proveedor", numero: a22.numeroFactura || a22.numero || "s/n", base: t22.base, iva: t22.iva, total: t22.total }; });
+    const directas = facturasDirectas.filter((f22) => f22.estado === "ACTIVA").map((f22) => ({ id: `fd-${f22.id}`, idReal: f22.id, tipoOrigen: "directa", fecha: f22.fecha, proveedorNombre: f22.proveedorSnapshot?.nombre || proveedorPorId(f22.proveedorId)?.nombre || f22.concepto || "Sin proveedor", numero: f22.numeroFactura || f22.concepto || "s/n", base: Number(f22.importeBase) || 0, iva: Number(f22.importeIva) || 0, total: Number(f22.importeTotal) || 0, albaranesVinculados: f22.albaranesVinculados || [] }));
+    return [...mercancia, ...directas];
+  }, [albaranes, facturasDirectas, proveedorPorId]);
+  const delMes = todas.filter((f22) => String(f22.fecha || "").startsWith(mes)).sort((a22, b2) => String(b2.fecha || "").localeCompare(String(a22.fecha || "")));
+  const borradores = facturasDirectas.filter((f22) => f22.estado === "BORRADOR");
+  const totalMes = delMes.reduce((acc, f22) => ({ base: acc.base + f22.base, iva: acc.iva + f22.iva, total: acc.total + f22.total }), { base: 0, iva: 0, total: 0 });
+  const formulario = mostrarAlta ? h(Card, { className: "mb-4" },
+    h("div", { className: "flex items-center justify-between mb-2" }, h("div", { className: "text-[14px] font-semibold" }, "Dar entrada a factura y albaranes"), h(Btn, { variant: "ghost", small: true, onClick: () => setMostrarAlta(false) }, "Cerrar")),
+    h("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "La factura crea una sola deuda. Los albaranes ya recibidos solo se vinculan; los pendientes se recepcionan una vez al confirmar."),
+    h(Field, { label: "Factura completa y albaranes (PDF o imágenes)" }, h(Input, { type: "file", accept: "application/pdf,image/jpeg,image/png,image/webp", multiple: true, onChange: seleccionarArchivos })),
+    form.documentoNombre && h("div", { className: "text-[11px] mb-2", style: { color: C2.inkSoft } }, `Adjuntos: ${form.documentoNombre} · ${Math.round(form.documentoTamaño / 1024)} KB`),
+    h("div", { className: "flex flex-wrap gap-2 mb-3" }, h(Btn, { variant: "ghost", onClick: leerConIA, disabled: leyendoIA || procesandoPDF || !archivosIA.length }, leyendoIA ? "Leyendo factura y albaranes…" : procesandoPDF ? "Preparando PDF…" : "Leer todo con IA")),
+    deteccionProveedor && h(Card, { className: "mb-3", style: { background: deteccionProveedor.estado === "nuevo" ? C2.accentSoft : deteccionProveedor.estado === "existente" ? C2.accentSoft : C2.amberSoft, border: "none" } }, h("div", { className: "text-[12px] font-semibold" }, deteccionProveedor.estado === "nuevo" ? `Proveedor nuevo: ${deteccionProveedor.datos?.nombre || "—"}` : deteccionProveedor.estado === "existente" ? `Proveedor reconocido: ${deteccionProveedor.proveedor?.nombre || "—"}` : "Revisa qué proveedor corresponde"), deteccionProveedor.estado === "nuevo" && h("div", { className: "text-[11px] mt-1" }, "Se dará de alta solamente cuando confirmes la factura.")),
+    h("div", { className: "grid grid-cols-2 gap-x-3" },
+      h(Field, { label: "Proveedor" }, h("select", { value: form.proveedorId, onChange: (e2) => setForm({ ...form, proveedorId: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, h("option", { value: "" }, deteccionProveedor?.estado === "nuevo" ? "Se creará al confirmar" : "Selecciona proveedor"), proveedores.map((p22) => h("option", { key: p22.id, value: p22.id }, p22.nombre)))),
+      h(Field, { label: "Número de factura" }, h(Input, { value: form.numeroFactura, onChange: (e2) => setForm({ ...form, numeroFactura: e2.target.value }) })),
+      h(Field, { label: "Serie" }, h(Input, { value: form.serie, onChange: (e2) => setForm({ ...form, serie: e2.target.value }) })),
+      h(Field, { label: "Fecha de factura" }, h(Input, { type: "date", value: form.fecha, onChange: (e2) => setForm({ ...form, fecha: e2.target.value }) })),
+      h(Field, { label: "Vencimiento" }, h(Input, { type: "date", value: form.vencimiento, onChange: (e2) => setForm({ ...form, vencimiento: e2.target.value }) })),
+      h(Field, { label: "Forma de pago" }, h("select", { value: form.formaPago, onChange: (e2) => setForm({ ...form, formaPago: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, ["TRANSFERENCIA", "DOMICILIACION", "TARJETA", "EFECTIVO", "OTRA"].map((v22) => h("option", { key: v22, value: v22 }, v22))))),
+    h("div", { className: "text-[12px] font-semibold mt-2 mb-2" }, "Desglose de IVA"),
+    form.tiposIva.map((fila, i33) => h("div", { key: i33, className: "grid grid-cols-3 gap-2 mb-2" }, h(Input, { type: "number", step: "0.01", value: fila.base, placeholder: "Base €", onChange: (e2) => actualizarTipoIva(i33, "base", e2.target.value) }), h(Input, { type: "number", step: "0.01", value: fila.tipo, placeholder: "IVA %", onChange: (e2) => actualizarTipoIva(i33, "tipo", e2.target.value) }), h(Input, { type: "number", step: "0.01", value: fila.cuota, placeholder: "Cuota €", onChange: (e2) => actualizarTipoIva(i33, "cuota", e2.target.value) }))),
+    h("div", { className: "flex gap-2 mb-3" }, h(Btn, { small: true, variant: "ghost", onClick: () => setForm({ ...form, tiposIva: [...form.tiposIva, { tipo: 10, base: "", cuota: "" }] }) }, "+ Añadir tipo de IVA"), form.tiposIva.length > 1 && h(Btn, { small: true, variant: "ghost", onClick: () => setForm({ ...form, tiposIva: form.tiposIva.slice(0, -1) }) }, "Quitar último")),
+    h(Field, { label: "Total impreso de la factura (€)" }, h(Input, { type: "number", step: "0.01", value: form.totalFacturaDocumento, onChange: (e2) => setForm({ ...form, totalFacturaDocumento: e2.target.value }) })),
+    h(Card, { className: "mb-3", style: { background: C2.surfaceSoft, border: "none" } }, h("div", { className: "text-[12px]" }, `Base €${fmt(validacion.totales.base)} · IVA €${fmt(validacion.totales.iva)} · Total €${fmt(validacion.totales.total)}`)),
+    h("div", { className: "flex items-center justify-between gap-2 mb-2" }, h("div", { className: "text-[13px] font-semibold" }, `Albaranes (${clasificados.length})`), h(Btn, { small: true, variant: "ghost", onClick: () => setForm((f22) => ({ ...f22, albaranesImportados: [...f22.albaranesImportados, { numeroAlbaran: "", fecha: f22.fecha || todayISO(), totalAlbaran: "", lineas: [{ codigo: "", codigoProveedor: "", descripcion: "", cantidad: 1, unidad: "ud", tipoUnidad: "unidad", udsPorCaja: 1, precioBruto: "", dtoPct: 0, ivaPct: 10, importe: "" }] }] })) }, "+ Añadir albarán manual")),
+    !clasificados.length && h("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Sin albaranes: se tratará como factura de gasto o servicio."),
+    clasificados.map((alb, i33) => h(Card, { key: `${alb.numeroNormalizado}-${i33}`, className: "mb-3", style: { background: alb.bloqueante ? C2.amberSoft : C2.surfaceSoft, border: "none" } },
+      h("div", { className: "grid grid-cols-2 gap-2" }, h(Field, { label: "Número de albarán" }, h(Input, { value: alb.numeroAlbaran, onChange: (e2) => actualizarAlbaran(i33, { numeroAlbaran: e2.target.value }) })), h(Field, { label: "Fecha de entrega" }, h(Input, { type: "date", value: alb.fecha || "", onChange: (e2) => actualizarAlbaran(i33, { fecha: e2.target.value }) })), h(Field, { label: "Total del albarán (€)" }, h(Input, { type: "number", step: "0.01", value: alb.totalAlbaran ?? "", onChange: (e2) => actualizarAlbaran(i33, { totalAlbaran: e2.target.value }) }))),
+      h("div", { className: "text-[11px] mb-2", style: { color: alb.bloqueante ? C2.red : C2.accent } }, etiquetaConciliacionFactura(alb.estadoConciliacion)),
+      (alb.lineas || []).map((ln2, j2) => h("div", { key: j2, className: "mb-2 p-2 rounded-lg", style: { border: `1px solid ${C2.line}` } }, h(Input, { value: ln2.descripcion, placeholder: "Producto", onChange: (e2) => actualizarLinea(i33, j2, { descripcion: e2.target.value }) }), h("div", { className: "grid grid-cols-4 gap-1 mt-1" }, h(Input, { type: "number", step: "0.001", value: ln2.cantidad, placeholder: "Cantidad", onChange: (e2) => actualizarLinea(i33, j2, { cantidad: e2.target.value }) }), h(Input, { value: ln2.unidad, placeholder: "Unidad", onChange: (e2) => actualizarLinea(i33, j2, { unidad: e2.target.value }) }), h(Input, { type: "number", step: "0.0001", value: ln2.precioBruto, placeholder: "Precio", onChange: (e2) => actualizarLinea(i33, j2, { precioBruto: e2.target.value }) }), h(Input, { type: "number", step: "0.01", value: ln2.ivaPct, placeholder: "IVA %", onChange: (e2) => actualizarLinea(i33, j2, { ivaPct: e2.target.value }) })), h(Btn, { small: true, variant: "ghost", onClick: () => actualizarAlbaran(i33, { lineas: (alb.lineas || []).filter((_linea, indiceLinea) => indiceLinea !== j2) }) }, "Quitar línea"))),
+      h(Btn, { small: true, variant: "ghost", onClick: () => actualizarAlbaran(i33, { lineas: [...alb.lineas || [], { codigo: "", codigoProveedor: "", descripcion: "", cantidad: 1, unidad: "ud", tipoUnidad: "unidad", udsPorCaja: 1, precioBruto: "", dtoPct: 0, ivaPct: 10, importe: "" }] }) }, "+ Añadir línea"),
+      h(Btn, { small: true, variant: "ghost", onClick: () => setForm((f22) => ({ ...f22, albaranesImportados: f22.albaranesImportados.filter((_x, k2) => k2 !== i33) })) }, "Quitar albarán")
+    )),
+    requiereRevision && h("label", { className: "flex items-start gap-2 text-[12px] mb-3" }, h("input", { type: "checkbox", checked: form.revisionHumanaConfirmada === true, onChange: (e2) => setForm({ ...form, revisionHumanaConfirmada: e2.target.checked }) }), "He revisado proveedor, factura, IVA, albaranes, productos y movimientos de stock."),
+    h(Field, { label: "Categoría" }, h(CampoCategoria, { value: form.categoria, onChange: (v22) => setForm({ ...form, categoria: v22 }), opciones: CATEGORIAS_GASTO })),
+    h(Field, { label: "Observaciones" }, h("textarea", { value: form.observaciones, onChange: (e2) => setForm({ ...form, observaciones: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", rows: 3, style: { border: `1px solid ${C2.line}`, background: C2.surface } })),
+    almacenCongelado && clasificados.some((x3) => ["CREAR_Y_RECEPCIONAR", "COMPLETAR_Y_RECEPCIONAR"].includes(x3.estadoConciliacion)) && h("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, "El almacén está congelado. Guarda el borrador y finaliza el conteo antes de recepcionar."),
+    error && h("div", { className: "text-[12px] mb-2", role: "alert", style: { color: C2.red } }, error), mensaje && h("div", { className: "text-[12px] mb-2", style: { color: C2.accent } }, mensaje),
+    h("div", { className: "flex flex-wrap gap-2" }, h(Btn, { onClick: () => guardarFactura("BORRADOR") }, "Guardar borrador"), h(Btn, { onClick: () => guardarFactura("ACTIVA"), disabled: almacenCongelado && clasificados.some((x3) => ["CREAR_Y_RECEPCIONAR", "COMPLETAR_Y_RECEPCIONAR"].includes(x3.estadoConciliacion)) }, clasificados.length ? "Confirmar factura y recepcionar" : "Confirmar factura"))
+  ) : null;
+  return h("div", null,
+    h(SectionTitle, { action: h(Btn, { onClick: () => { resetForm(); setMostrarAlta(true); } }, h(Plus, { size: 15 }), " Nueva factura") }, "Facturas"), formulario,
+    !mostrarAlta && mensaje && h("div", { className: "text-[12px] mb-3", style: { color: C2.accent } }, mensaje),
+    borradores.length > 0 && h(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, h("div", { className: "text-[13px] font-semibold mb-2" }, `Borradores pendientes (${borradores.length})`), borradores.map((f22) => h("div", { key: f22.id, className: "flex items-center justify-between gap-2 py-2", style: { borderTop: `1px solid ${C2.line}` } }, h("div", { className: "text-[11.5px]" }, h("div", { className: "font-semibold" }, f22.numeroFactura || f22.concepto || "Factura sin número"), h("div", { style: { color: C2.inkSoft } }, `${f22.fecha || "sin fecha"} · ${f22.albaranesImportados?.length || 0} albarán(es)`)), h(Btn, { small: true, variant: "ghost", onClick: () => abrirBorrador(f22) }, "Revisar")))),
+    h(Card, { className: "mb-3" }, h(Field, { label: "Mes" }, h(Input, { type: "month", value: mes, onChange: (e2) => setMes(e2.target.value) }))),
+    h(Card, { className: "mb-4", style: { background: C2.chrome, color: "#fff" } }, h("div", { className: "text-[11px] tracking-wide uppercase", style: { color: "#9CB6A9" } }, "Total del mes"), h("div", { className: "grid grid-cols-3 gap-3 mt-3" }, [["Base", totalMes.base], ["IVA", totalMes.iva], ["Total", totalMes.total]].map(([label, valor]) => h("div", { key: label }, h("div", { className: "text-[11px]", style: { color: "#9CB6A9" } }, label), h("div", { className: "mono text-[18px] font-semibold" }, `€${fmt(valor)}`)))), h("div", { className: "text-[11px] mt-3", style: { color: "#9CB6A9" } }, `${delMes.length} factura(s) confirmada(s)`)),
+    delMes.length === 0 ? h(Empty, { text: "No hay facturas confirmadas en este mes." }) : delMes.map((f22) => h(Card, { key: f22.id, className: "mb-2" }, h("div", { className: "flex items-start justify-between gap-2" }, h("div", null, h("div", { className: "text-[13px] font-semibold" }, f22.proveedorNombre), h("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, `${f22.numero} · ${f22.fecha || "sin fecha"}${f22.albaranesVinculados?.length ? ` · ${f22.albaranesVinculados.length} albarán(es)` : ""}`)), h("div", { className: "mono font-semibold" }, `€${fmt(f22.total)}`)), h("div", { className: "mt-2" }, h(Btn, { small: true, variant: "ghost", onClick: () => f22.tipoOrigen === "albaran" ? irAAlbaran?.(f22.idReal) : irAFacturaDirecta?.(f22.idReal) }, "Ver detalle"))))
+  );
+}
+function FacturasLegacy({ albaranes, facturasDirectas, pagosFacturas = [], proveedorPorId, proveedores = [], addFacturaDirecta, irAAlbaran, irAFacturaDirecta }) {
   const [mes, setMes] = (0, import_react4.useState)(aISO(/* @__PURE__ */ new Date()).slice(0, 7));
   const [mostrarAlta, setMostrarAlta] = (0, import_react4.useState)(false);
   const [form, setForm] = (0, import_react4.useState)({ proveedorId: proveedores[0]?.id || "", concepto: "", numeroFactura: "", serie: "", fecha: todayISO(), vencimiento: "", formaPago: "TRANSFERENCIA", importeBase: "", ivaPct: 21, categoria: "", observaciones: "", documentoNombre: "", documentoTipo: "", documentoTamaño: 0, documentoDataUrl: "", origen: "MANUAL", lineas: [], revisionHumanaConfirmada: false });
