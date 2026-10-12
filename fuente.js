@@ -104177,7 +104177,7 @@ function GestionAlmacen() {
         pagada: saldo.pagada
       };
     });
-    const deDirectas = facturasDirectas.filter((f22) => f22.estado !== "ANULADA").map((f22) => {
+    const deDirectas = facturasDirectas.filter((f22) => f22.estado === "ACTIVA").map((f22) => {
       const prov = f22.proveedorSnapshot || proveedorPorId(f22.proveedorId);
       const diasPago = prov && prov.diasPago != null ? Number(prov.diasPago) || null : null;
       const saldo = calcularSaldoFacturaPM06(pagosFacturas, f22.id, "directa", f22.importeTotal, f22.empresaId, f22.localId, f22.pagada);
@@ -104611,6 +104611,8 @@ function GestionAlmacen() {
     {
       albaranes: albaranesDelLocalActivo,
       facturasDirectas: facturasDirectasDelLocalActivo,
+      proveedores,
+      addFacturaDirecta,
       proveedorPorId,
       irAAlbaran: (albId) => {
         const a22 = albaranesDelLocalActivo.find((x3) => x3.id === albId);
@@ -113230,6 +113232,10 @@ function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, re
     if (!empresaId || !localActivoId) return { ok: false, error: "Selecciona un local concreto antes de crear la factura." };
     const comp = proveedorCompatible(data?.proveedorId);
     if (!comp.ok) return { ok: false, error: "El proveedor no pertenece a la empresa de la factura." };
+    const numeroNormalizado = String(data?.numeroFactura || "").trim().toLowerCase();
+    if (numeroNormalizado && (facturasDirectas || []).some((f22) => f22.estado !== "ANULADA" && f22.empresaId === empresaId && f22.localId === localActivoId && f22.proveedorId === (data?.proveedorId || "") && String(f22.numeroFactura || "").trim().toLowerCase() === numeroNormalizado)) {
+      return { ok: false, error: "Ya existe una factura con ese número para este proveedor y local." };
+    }
     const totales = calcularTotalesFacturaDirecta(data || {});
     if (!(totales.base > 0) || !(totales.total > 0)) return { ok: false, error: "El importe de la factura debe ser mayor que cero." };
     const id = uid();
@@ -113243,7 +113249,8 @@ function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, re
       ivaPct: Number(data?.ivaPct) || 0,
       importeIva: totales.iva,
       importeTotal: totales.total,
-      estado: "ACTIVA",
+      estado: data?.estado === "BORRADOR" ? "BORRADOR" : "ACTIVA",
+      revisionHumanaConfirmada: data?.revisionHumanaConfirmada === true,
       creadaEn: (/* @__PURE__ */ new Date()).toISOString()
     };
     setFacturasDirectas((s22) => [nuevo, ...s22]);
@@ -119063,8 +119070,72 @@ function rangoTrimestre(anio, trimestre) {
   const hasta = aISO(new Date(anio, mesIni + 3, 0));
   return { desde, hasta };
 }
-function Facturas({ albaranes, facturasDirectas, pagosFacturas = [], proveedorPorId, irAAlbaran, irAFacturaDirecta }) {
+function Facturas({ albaranes, facturasDirectas, pagosFacturas = [], proveedorPorId, proveedores = [], addFacturaDirecta, irAAlbaran, irAFacturaDirecta }) {
   const [mes, setMes] = (0, import_react4.useState)(aISO(/* @__PURE__ */ new Date()).slice(0, 7));
+  const [mostrarAlta, setMostrarAlta] = (0, import_react4.useState)(false);
+  const [form, setForm] = (0, import_react4.useState)({ proveedorId: proveedores[0]?.id || "", concepto: "", numeroFactura: "", serie: "", fecha: todayISO(), vencimiento: "", formaPago: "TRANSFERENCIA", importeBase: "", ivaPct: 21, categoria: "", observaciones: "", documentoNombre: "", documentoTipo: "", documentoTamaño: 0, documentoDataUrl: "", origen: "MANUAL", lineas: [], revisionHumanaConfirmada: false });
+  const [error, setError] = (0, import_react4.useState)("");
+  const [mensaje, setMensaje] = (0, import_react4.useState)("");
+  const [leyendoIA, setLeyendoIA] = (0, import_react4.useState)(false);
+  const [archivoIA, setArchivoIA] = (0, import_react4.useState)(null);
+  const [requiereRevision, setRequiereRevision] = (0, import_react4.useState)(false);
+  function resetForm() {
+    setForm({ proveedorId: proveedores[0]?.id || "", concepto: "", numeroFactura: "", serie: "", fecha: todayISO(), vencimiento: "", formaPago: "TRANSFERENCIA", importeBase: "", ivaPct: 21, categoria: "", observaciones: "", documentoNombre: "", documentoTipo: "", documentoTamaño: 0, documentoDataUrl: "", origen: "MANUAL", lineas: [], revisionHumanaConfirmada: false });
+    setArchivoIA(null); setRequiereRevision(false); setError(""); setMensaje("");
+  }
+  async function seleccionarArchivo(e2) {
+    const file = e2.target.files?.[0];
+    if (!file) return;
+    setError("");
+    try {
+      const leido = await archivoABase64(file);
+      const conservar = file.size <= 1800000;
+      setForm((f22) => ({ ...f22, documentoNombre: file.name, documentoTipo: file.type || "application/octet-stream", documentoTamaño: file.size, documentoDataUrl: conservar ? leido.previsualizacion : "" }));
+      setArchivoIA(file.type.startsWith("image/") ? leido : null);
+      if (!conservar) setMensaje("Archivo adjunto identificado. Por seguridad, los archivos grandes quedan para revisión y no se guardan dentro de la factura.");
+    } catch {
+      setError("No se ha podido leer el archivo. Prueba con otro PDF o imagen.");
+    }
+  }
+  function proveedorDetectado(nombre, nif) {
+    const n2 = String(nombre || "").toLowerCase();
+    const c2 = String(nif || "").replace(/\s/g, "").toLowerCase();
+    return proveedores.find((p22) => n2 && String(p22.nombre || "").toLowerCase().includes(n2.slice(0, 10)) || c2 && String(p22.nif || p22.cif || "").replace(/\s/g, "").toLowerCase() === c2)?.id || "";
+  }
+  async function leerConIA() {
+    if (!archivoIA) { setError("Para leer con IA usa una foto o imagen de la factura. El PDF puede quedar adjunto y revisarse manualmente."); return; }
+    setLeyendoIA(true); setError(""); setMensaje("");
+    try {
+      const resp = await fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/importar-albaran", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imagenes: [{ base64: archivoIA.base64, mediaType: archivoIA.mediaType }] }) });
+      const r2 = await resp.json();
+      if (!r2.ok) throw new Error(r2.error || "No se ha podido leer la factura.");
+      const d2 = r2.datos || {};
+      const lineas = Array.isArray(d2.lineas) ? d2.lineas : [];
+      const baseDerivada = lineas.reduce((a22, l22) => a22 + (Number(l22.importeLinea) || 0), 0);
+      const totalLeido = Number(d2.totalFactura ?? d2.totalAlbaran ?? d2.importeTotal) || 0;
+      const base = Number(d2.baseImponible ?? d2.base) || baseDerivada || (totalLeido ? totalLeido / 1.21 : 0);
+      const ivaImporte = Number(d2.ivaTotal ?? d2.importeIva) || Math.max(0, totalLeido - base);
+      const ivaPct = Number(d2.ivaPct ?? d2.tipoIva) || (base > 0 && ivaImporte > 0 ? Math.round(ivaImporte / base * 10000) / 100 : 21);
+      const proveedorId = proveedorDetectado(d2.proveedorNombre, d2.proveedorCif);
+      setForm((f22) => ({ ...f22, proveedorId: proveedorId || f22.proveedorId, concepto: d2.proveedorNombre ? `Factura ${d2.proveedorNombre}` : f22.concepto, numeroFactura: d2.numeroFactura || d2.numeroAlbaran || f22.numeroFactura, fecha: d2.fecha || f22.fecha, importeBase: base ? base.toFixed(2) : f22.importeBase, ivaPct, lineas, origen: "IA", observaciones: [f22.observaciones, ...(d2.avisos || [])].filter(Boolean).join(" ") }));
+      setRequiereRevision(true); setMensaje("Lectura IA completada. Revisa todos los campos y confirma manualmente antes de registrar la factura.");
+    } catch (e3) {
+      setError(e3?.message || "No se ha podido conectar con la lectura IA.");
+    }
+    setLeyendoIA(false);
+  }
+  function guardarFactura(estado) {
+    setError("");
+    if (!form.proveedorId) { setError("Selecciona el proveedor."); return; }
+    if (!form.numeroFactura.trim()) { setError("Escribe el número de factura."); return; }
+    if (!form.fecha) { setError("Indica la fecha de la factura."); return; }
+    if (!(Number(form.importeBase) > 0)) { setError("El importe sin IVA debe ser mayor que cero."); return; }
+    if (estado === "ACTIVA" && requiereRevision && !form.revisionHumanaConfirmada) { setError("Revisa los datos leídos por IA y marca la casilla de confirmación."); return; }
+    const r2 = addFacturaDirecta({ ...form, concepto: form.concepto.trim() || `Factura ${form.numeroFactura.trim()}`, estado, revisionHumanaConfirmada: estado === "ACTIVA", origen: form.origen || "MANUAL" });
+    if (!r2 || r2.ok === false) { setError(r2?.error || "No se ha podido guardar la factura."); return; }
+    setMensaje(estado === "BORRADOR" ? "Borrador guardado. No afecta al stock ni registra una recepción." : "Factura registrada. La recepción de mercancía se hace aparte desde Albaranes.");
+    setMostrarAlta(false); resetForm();
+  }
   const todas = (0, import_react4.useMemo)(() => {
     const deMercancia = albaranes.filter((a22) => albaranEsFacturaOperativaPM11(a22)).map((a22) => {
       const totales = calcularTotalesFacturaAlbaran(a22);
@@ -119121,7 +119192,8 @@ function Facturas({ albaranes, facturasDirectas, pagosFacturas = [], proveedorPo
     });
     return Object.values(mapa).sort((a22, b2) => b2.total - a22.total);
   }, [delMes]);
-  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Facturas"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Mes" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "month", value: mes, onChange: (e2) => setMes(e2.target.value) }))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.chrome, color: "#fff" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] tracking-wide uppercase", style: { color: "#9CB6A9" } }, "Total del mes"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-3 gap-2 mt-2" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: "#9CB6A9" } }, "Base"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono text-[16px] font-semibold" }, "\u20AC", fmt(totalMes.base))), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: "#9CB6A9" } }, "IVA"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono text-[16px] font-semibold" }, "\u20AC", fmt(totalMes.iva))), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: "#9CB6A9" } }, "Total"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono text-[18px] font-bold" }, "\u20AC", fmt(totalMes.total)))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: "#9CB6A9" } }, delMes.length, " factura(s) este mes")), delMes.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay facturas en este mes." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-3" }, porProveedor.map((grupo) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: grupo.proveedor }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold text-[13.5px]" }, grupo.proveedor), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono text-[13px] font-semibold" }, "\u20AC", fmt(grupo.total))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, grupo.facturas.map((f22) => {
+  const formularioFactura = mostrarAlta ? import_react4.default.createElement(Card, { className: "mb-4" }, import_react4.default.createElement("div", { className: "flex items-center justify-between mb-2" }, import_react4.default.createElement("div", { className: "text-[14px] font-semibold" }, "Dar entrada a factura"), import_react4.default.createElement(Btn, { variant: "ghost", small: true, onClick: () => setMostrarAlta(false) }, "Cerrar")), import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "La factura queda registrada para control y pago. No crea una recepción, no cambia stock y no sustituye al albarán."), import_react4.default.createElement(Field, { label: "PDF o imagen de la factura" }, import_react4.default.createElement(Input, { type: "file", accept: "application/pdf,image/*", onChange: seleccionarArchivo })), form.documentoNombre && import_react4.default.createElement("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Adjunto: ", form.documentoNombre, " · ", Math.round(form.documentoTamaño / 1024), " KB"), import_react4.default.createElement("div", { className: "flex flex-wrap gap-2 mb-3" }, import_react4.default.createElement(Btn, { variant: "ghost", onClick: leerConIA, disabled: leyendoIA }, leyendoIA ? "Leyendo…" : "Leer factura con IA (imagen)")), requiereRevision && import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, import_react4.default.createElement("div", { className: "text-[12px] font-semibold" }, "Revisión humana obligatoria"), import_react4.default.createElement("div", { className: "text-[11px] mt-1" }, "La IA solo propone datos. Comprueba proveedor, número, fecha, base, IVA y total antes de confirmar."), import_react4.default.createElement("label", { className: "flex items-center gap-2 text-[12px] mt-2" }, import_react4.default.createElement("input", { type: "checkbox", checked: form.revisionHumanaConfirmada === true, onChange: (e2) => setForm({ ...form, revisionHumanaConfirmada: e2.target.checked }) }), "He revisado los datos de la factura")), import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, import_react4.default.createElement(Field, { label: "Proveedor" }, import_react4.default.createElement("select", { value: form.proveedorId, onChange: (e2) => setForm({ ...form, proveedorId: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, import_react4.default.createElement("option", { value: "" }, "Selecciona proveedor"), proveedores.map((p22) => import_react4.default.createElement("option", { key: p22.id, value: p22.id }, p22.nombre)))), import_react4.default.createElement(Field, { label: "Número de factura" }, import_react4.default.createElement(Input, { value: form.numeroFactura, onChange: (e2) => setForm({ ...form, numeroFactura: e2.target.value }) })), import_react4.default.createElement(Field, { label: "Serie (opcional)" }, import_react4.default.createElement(Input, { value: form.serie, onChange: (e2) => setForm({ ...form, serie: e2.target.value }) })), import_react4.default.createElement(Field, { label: "Fecha" }, import_react4.default.createElement(Input, { type: "date", value: form.fecha, onChange: (e2) => setForm({ ...form, fecha: e2.target.value }) })), import_react4.default.createElement(Field, { label: "Vencimiento (opcional)" }, import_react4.default.createElement(Input, { type: "date", value: form.vencimiento, onChange: (e2) => setForm({ ...form, vencimiento: e2.target.value }) })), import_react4.default.createElement(Field, { label: "Forma de pago" }, import_react4.default.createElement("select", { value: form.formaPago, onChange: (e2) => setForm({ ...form, formaPago: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, ["TRANSFERENCIA", "DOMICILIACION", "TARJETA", "EFECTIVO", "OTRA"].map((v22) => import_react4.default.createElement("option", { key: v22, value: v22 }, v22)))), import_react4.default.createElement(Field, { label: "Importe sin IVA (€)" }, import_react4.default.createElement(Input, { type: "number", step: "0.01", value: form.importeBase, onChange: (e2) => setForm({ ...form, importeBase: e2.target.value }) })), import_react4.default.createElement(Field, { label: "IVA %" }, import_react4.default.createElement("select", { value: form.ivaPct, onChange: (e2) => setForm({ ...form, ivaPct: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, TIPOS_IVA.map((v22) => import_react4.default.createElement("option", { key: v22, value: v22 }, v22, "%")))), import_react4.default.createElement(Field, { label: "Categoría" }, import_react4.default.createElement(CampoCategoria, { value: form.categoria, onChange: (v22) => setForm({ ...form, categoria: v22 }), opciones: CATEGORIAS_GASTO }))), form.concepto && import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Concepto: ", form.concepto), Number(form.importeBase) > 0 && import_react4.default.createElement("div", { className: "text-[12px] mb-2" }, "Total calculado: ", import_react4.default.createElement("b", { className: "mono" }, "€", fmt(Number(form.importeBase) * (1 + Number(form.ivaPct) / 100))), form.origen === "IA" && " · datos propuestos por IA"), import_react4.default.createElement(Field, { label: "Observaciones" }, import_react4.default.createElement("textarea", { value: form.observaciones, onChange: (e2) => setForm({ ...form, observaciones: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", rows: 3, style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } })), error && import_react4.default.createElement("div", { className: "text-[12px] mb-2", role: "alert", style: { color: C2.red } }, error), mensaje && import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.accent } }, mensaje), import_react4.default.createElement("div", { className: "flex flex-wrap gap-2" }, import_react4.default.createElement(Btn, { onClick: () => guardarFactura("BORRADOR") }, "Guardar borrador"), import_react4.default.createElement(Btn, { onClick: () => guardarFactura("ACTIVA") }, "Confirmar y registrar"))) : null;
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: import_react4.default.createElement(Btn, { onClick: () => { resetForm(); setMostrarAlta(true); } }, import_react4.default.createElement(Plus, { size: 15 }), " Nueva factura") }, "Facturas"), formularioFactura, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Mes" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "month", value: mes, onChange: (e2) => setMes(e2.target.value) }))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.chrome, color: "#fff" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] tracking-wide uppercase", style: { color: "#9CB6A9" } }, "Total del mes"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-3 gap-2 mt-2" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: "#9CB6A9" } }, "Base"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono text-[16px] font-semibold" }, "\u20AC", fmt(totalMes.base))), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: "#9CB6A9" } }, "IVA"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono text-[16px] font-semibold" }, "\u20AC", fmt(totalMes.iva))), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: "#9CB6A9" } }, "Total"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono text-[18px] font-bold" }, "\u20AC", fmt(totalMes.total)))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: "#9CB6A9" } }, delMes.length, " factura(s) este mes")), delMes.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay facturas en este mes." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-3" }, porProveedor.map((grupo) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: grupo.proveedor }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold text-[13.5px]" }, grupo.proveedor), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono text-[13px] font-semibold" }, "\u20AC", fmt(grupo.total))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, grupo.facturas.map((f22) => {
     const irAOrigen = f22.tipoOrigen === "albaran" ? irAAlbaran : irAFacturaDirecta;
     return /* @__PURE__ */ import_react4.default.createElement(
       irAOrigen ? "button" : "div",
@@ -119263,7 +119335,7 @@ function LibroIva({ movimientos, productos, albaranes, proveedorPorId, facturasD
         porTipo[tipo].cuota += v22.cuota;
       });
     });
-    facturasDirectas.filter((f22) => f22.estado !== "ANULADA" && f22.fecha >= desde && f22.fecha <= hasta).forEach((f22) => {
+    facturasDirectas.filter((f22) => f22.estado === "ACTIVA" && f22.fecha >= desde && f22.fecha <= hasta).forEach((f22) => {
       const t22 = calcularTotalesFacturaDirecta(f22);
       Object.entries(t22.porTipo).forEach(([tipo, v22]) => {
         if (!porTipo[tipo]) porTipo[tipo] = { base: 0, cuota: 0 };
