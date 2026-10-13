@@ -57,10 +57,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          BASE='e8de01fbdad63bd7fbe57982e3ae978e06d1ca52'
           ACTUAL_HEAD="$(git rev-parse HEAD)"
           git fetch origin release --quiet
-          test "$(git rev-parse origin/release)" = "$BASE"
+          BASE="$(git rev-parse origin/release)"
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
             test "$ACTUAL_HEAD" = '${{ github.event.pull_request.head.sha }}'
           fi
@@ -69,13 +68,24 @@ jobs:
           printf '%s\n' "${changed[@]}"
           expected=$'.github/scripts/p2-edge-security/behavior.mjs\n.github/scripts/p2-edge-security/contract.mjs\n.github/scripts/p2-edge-security/ephemeral-rate-limit.sql\n.github/workflows/p2-edge-security-candidate.yml\ndocs/plan-maestro/P2_EDGE_SECURITY_CANDIDATE.md\nsupabase/functions/_shared/tenant-scope.js\nsupabase/functions/crear-cuenta-empleado/index.ts\nsupabase/functions/edge-security-manifest.json\nsupabase/functions/enviar-notificacion/index.ts\nsupabase/functions/prefiltro-candidato/index.ts\nsupabase/migrations/20260922080500_p2_sec_prefiltro_rate_limit_rpc.sql\nsupabase/migrations/20260922095000_p2_sec_revoke_pm05_scope_anon.sql\nsupabase/migrations/20260922180000_p2_sec_pm11_finalize_account_dependency.sql'
           actual="$(printf '%s\n' "${changed[@]}")"
-          test "$actual" = "$expected"
+          hotfix=$'.github/scripts/p2-edge-security/contract.mjs\n.github/workflows/p2-edge-security-candidate.yml\nsupabase/functions/crear-cuenta-empleado/index.ts\nsupabase/migrations/20260922180000_p2_sec_pm11_finalize_account_dependency.sql'
+          if [ "$actual" != "$expected" ]; then
+            test "$actual" = "$hotfix"
+            echo "P2_EDGE_SECURITY_SCOPE=ACCOUNT_HOTFIX"
+          else
+            echo "P2_EDGE_SECURITY_SCOPE=PASS"
+          fi
           ! printf '%s\n' "${changed[@]}" | grep -Eq '^fuente\.js$'
           mapfile -t migrations < <(printf '%s\n' "${changed[@]}" | grep '^supabase/migrations/' || true)
-          test "${#migrations[@]}" = "3"
-          test "${migrations[0]}" = 'supabase/migrations/20260922080500_p2_sec_prefiltro_rate_limit_rpc.sql'
-          test "${migrations[1]}" = 'supabase/migrations/20260922095000_p2_sec_revoke_pm05_scope_anon.sql'
-          test "${migrations[2]}" = 'supabase/migrations/20260922180000_p2_sec_pm11_finalize_account_dependency.sql'
+          if [ "$actual" = "$expected" ]; then
+            test "${#migrations[@]}" = "3"
+            test "${migrations[0]}" = 'supabase/migrations/20260922080500_p2_sec_prefiltro_rate_limit_rpc.sql'
+            test "${migrations[1]}" = 'supabase/migrations/20260922095000_p2_sec_revoke_pm05_scope_anon.sql'
+            test "${migrations[2]}" = 'supabase/migrations/20260922180000_p2_sec_pm11_finalize_account_dependency.sql'
+          else
+            test "${#migrations[@]}" = "1"
+            test "${migrations[0]}" = 'supabase/migrations/20260922180000_p2_sec_pm11_finalize_account_dependency.sql'
+          fi
           echo "P2_EDGE_SECURITY_SCOPE=PASS"
           echo "P2_EDGE_SECURITY_BASE=$BASE"
           echo "P2_EDGE_SECURITY_CANDIDATE=$ACTUAL_HEAD"

@@ -1,5 +1,4 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { userHasTenantScope } from "../_shared/tenant-scope.js";
 
 const SITE_HOST = "chic-entremet-9107cf.netlify.app";
 const ROLES_VALIDOS = new Set([
@@ -93,57 +92,32 @@ Deno.serve(async (req: Request) => {
     }
     if (!ROLES_VALIDOS.has(rol)) return json(req, { ok: false, error: "Ese rol de acceso no está permitido." }, 400);
 
-    // La identidad empresarial/local se obtiene del empleado guardado por el servidor.
-    // Nunca se acepta empresaId/localId del cliente para decidir el alcance.
-    const { data: empleado, error: errorEmpleado } = await admin
-      .from("empleados")
-      .select("id,empresa_id,local_id,estado,nombre")
-      .eq("id", empleadoId)
-      .maybeSingle();
-
-    if (errorEmpleado || !empleado) return json(req, { ok: false, error: "Empleado no encontrado." }, 404);
-    if (empleado.estado !== "activo") return json(req, { ok: false, error: "Solo se puede crear cuenta a un empleado activo." }, 409);
-
-    const { data: perfilActor, error: errorPerfilActor } = await admin
-      .from("perfiles")
-      .select("activo")
-      .eq("user_id", actor.id)
-      .maybeSingle();
-    if (errorPerfilActor || perfilActor?.activo !== true) {
-      return json(req, { ok: false, error: "El perfil del usuario no está activo." }, 403);
+    // La identidad empresarial/local se obtiene mediante una RPC SECURITY
+    // DEFINER. En producción service_role no tiene SELECT directo sobre estas
+    // tablas; abrirlo aquí volvería a exponer todo el tenant al backend.
+    const { data: preflight, error: errorPreflight } = await admin.rpc(
+      "pm11_preparar_cuenta_empleado",
+      { p_actor_user_id: actor.id, p_empleado_id: empleadoId },
+    );
+    if (errorPreflight || !preflight?.ok) {
+      const codigo = preflight?.codigo || "";
+      if (codigo === "empleado_no_encontrado") return json(req, { ok: false, error: "Empleado no encontrado." }, 404);
+      if (codigo === "empleado_no_activo") return json(req, { ok: false, error: "Solo se puede crear cuenta a un empleado activo." }, 409);
+      if (codigo === "perfil_no_activo") return json(req, { ok: false, error: "El perfil del usuario no está activo." }, 403);
+      if (codigo === "sin_alcance") return json(req, { ok: false, error: "No tienes alcance de Propietario sobre este empleado." }, 403);
+      if (codigo === "local_inactivo") return json(req, { ok: false, error: "El local del empleado no está activo." }, 409);
+      return json(req, { ok: false, error: "No se pudo comprobar el empleado." }, errorPreflight ? 500 : 403);
     }
 
-    const { data: membresiasActor, error: errorMembresias } = await admin
-      .from("membresias_usuario")
-      .select("user_id,empresa_id,local_id,todos_locales,rol,activo")
-      .eq("user_id", actor.id)
-      .eq("activo", true)
-      .eq("empresa_id", empleado.empresa_id);
-
-    if (errorMembresias || !userHasTenantScope({
-      memberships: membresiasActor || [],
-      userId: actor.id,
-      empresaId: empleado.empresa_id,
-      localId: empleado.local_id,
-      roles: ["Propietario"],
-    })) {
-      return json(req, { ok: false, error: "No tienes alcance de Propietario sobre este empleado." }, 403);
-    }
-
-    const { data: perfilExistente } = await admin
-      .from("perfiles")
-      .select("user_id,rol,activo,empleado_id")
-      .eq("empleado_id", empleadoId)
-      .maybeSingle();
-
-    if (perfilExistente?.user_id) {
-      const { data: usuarioExistente } = await admin.auth.admin.getUserById(perfilExistente.user_id);
-      const mismoEmail = usuarioExistente?.user?.email?.toLowerCase() === email;
+    const empleado = preflight.empleado;
+    const perfilExistente = preflight.cuenta || null;
+    if (perfilExistente?.userId) {
+      const mismoEmail = String(perfilExistente.email || "").toLowerCase() === email;
       if (mismoEmail && perfilExistente.activo === true && perfilExistente.rol === rol) {
         return json(req, {
           ok: true,
           yaCreada: true,
-          userId: perfilExistente.user_id,
+          userId: perfilExistente.userId,
           empleadoId,
           rol,
         });
