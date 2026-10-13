@@ -9,6 +9,7 @@ const manifest = JSON.parse(fs.readFileSync('supabase/functions/edge-security-ma
 const rateMigration = fs.readFileSync('supabase/migrations/20260922080500_p2_sec_prefiltro_rate_limit_rpc.sql', 'utf8');
 const f01Migration = fs.readFileSync('supabase/migrations/20260922095000_p2_sec_revoke_pm05_scope_anon.sql', 'utf8');
 const finalizeAccountMigration = fs.readFileSync('supabase/migrations/20260922180000_p2_sec_pm11_finalize_account_dependency.sql', 'utf8');
+const prepareAccountMigration = finalizeAccountMigration;
 
 assert.equal(manifest.base_release, 'e8de01fbdad63bd7fbe57982e3ae978e06d1ca52');
 assert.deepEqual(
@@ -27,11 +28,11 @@ for (const [name, source] of Object.entries({ createAccount, notify, prefiltro }
 
 assert.match(createAccount, /SUPABASE_SERVICE_ROLE_KEY/);
 assert.match(createAccount, /caller\.auth\.getUser\(\)/);
-assert.match(createAccount, /\.from\("empleados"\)[\s\S]{0,300}\.select\("id,empresa_id,local_id,estado,nombre"\)/);
-assert.match(createAccount, /\.from\("membresias_usuario"\)/);
-assert.match(createAccount, /roles:\s*\["Propietario"\]/);
-assert.match(createAccount, /empresaId:\s*empleado\.empresa_id/);
-assert.match(createAccount, /localId:\s*empleado\.local_id/);
+assert.match(createAccount, /\.rpc\(\s*"pm11_preparar_cuenta_empleado"/);
+assert.doesNotMatch(createAccount, /admin\.from\("empleados"\)/);
+assert.doesNotMatch(createAccount, /admin\.from\("membresias_usuario"\)/);
+assert.match(createAccount, /p_empresa_id:\s*empleado\.empresa_id/);
+assert.match(createAccount, /p_local_id:\s*empleado\.local_id/);
 assert.match(createAccount, /pm11_finalizar_creacion_cuenta_empleado/);
 assert.doesNotMatch(createAccount, /const\s*\{[^}]*empresaId[^}]*\}\s*=\s*await req\.json/s);
 
@@ -97,5 +98,13 @@ assert.match(finalizeAccountMigration, /revoke all on function public\.pm11_fina
 assert.match(finalizeAccountMigration, /grant execute on function public\.pm11_finalizar_creacion_cuenta_empleado\(uuid,uuid,text,text,text,text,text\)[\s\S]{0,80}to service_role;/i);
 assert.match(finalizeAccountMigration, /354cd3754c4e09f56d0645a7599baf88/);
 assert.doesNotMatch(finalizeAccountMigration, /grant execute[\s\S]{0,180}(?:anon|authenticated)/i);
+
+assert.match(prepareAccountMigration, /create or replace function public\.pm11_preparar_cuenta_empleado\(\s*p_actor_user_id uuid,\s*p_empleado_id text\s*\)/i);
+assert.match(prepareAccountMigration, /security definer/i);
+assert.match(prepareAccountMigration, /private\.pm11_local_activo\(v_empleado\.empresa_id,v_empleado\.local_id\)/);
+assert.match(prepareAccountMigration, /from public\.membresias_usuario m/);
+assert.match(prepareAccountMigration, /from auth\.users u/);
+assert.match(prepareAccountMigration, /grant execute on function public\.pm11_preparar_cuenta_empleado\(uuid,text\) to service_role/i);
+assert.doesNotMatch(prepareAccountMigration, /grant execute[\s\S]{0,180}(?:anon|authenticated)/i);
 
 console.log('P2_EDGE_SECURITY_CONTRACT_OK=1');
