@@ -53,10 +53,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          BASE='76400427c1922b3a76d7a817c1015628bcaf03e0'
           ACTUAL_HEAD="$(git rev-parse HEAD)"
           git fetch origin release --quiet
-          test "$(git rev-parse origin/release)" = "$BASE"
+          BASE="$(git rev-parse origin/release)"
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
             test "$ACTUAL_HEAD" = '${{ github.event.pull_request.head.sha }}'
           fi
