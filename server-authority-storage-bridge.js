@@ -36,16 +36,40 @@
   }
 
   function capabilityOk(data) {
-    return !!data
-      && data.personal === "pm11"
-      && data.fichajes === "pm13"
-      && data.legacyPersistence === false;
+    var value = data;
+    // PostgREST returns a jsonb scalar as an object, but older clients and
+    // some proxy layers have returned the same value as a one-row array or a
+    // JSON string.  Treat those representations identically; otherwise the
+    // bridge silently falls back to almacen_kv even though PM11 is available.
+    if (Array.isArray(value)) value = value[0];
+    if (typeof value === "string") {
+      try { value = JSON.parse(value); } catch (_error) { value = null; }
+    }
+    if (value && value.result && typeof value.result === "object") value = value.result;
+    return !!value
+      && value.personal === "pm11"
+      && value.fichajes === "pm13"
+      && value.legacyPersistence === false;
+  }
+
+  async function esperarCliente() {
+    // On a cold reload fuente.js creates the Supabase client asynchronously.
+    // Do not make the first employees read irreversible by sending it to the
+    // legacy store before that client exists.
+    for (var intento = 0; intento < 80; intento++) {
+      try {
+        var cliente = await getClient();
+        if (cliente) return cliente;
+      } catch (_error) {}
+      await new Promise(function (resolver) { setTimeout(resolver, 25); });
+    }
+    throw new Error("P2_P06_SUPABASE_NO_LISTO");
   }
 
   async function resolverAutoridad() {
     var client;
     try {
-      client = await getClient();
+      client = await esperarCliente();
     } catch (_error) {
       return { active: false, client: null };
     }
@@ -55,10 +79,14 @@
     }
 
     var response;
-    try {
-      response = await client.rpc("p2_server_authority_capabilities");
-    } catch (_error2) {
-      return { active: false, client: client };
+    for (var intento = 0; intento < 3; intento++) {
+      try {
+        response = await client.rpc("p2_server_authority_capabilities");
+        if (response && !response.error && capabilityOk(response.data)) break;
+      } catch (_error2) {
+        response = null;
+      }
+      if (intento < 2) await new Promise(function (resolver) { setTimeout(resolver, 100); });
     }
 
     if (!response || response.error || !capabilityOk(response.data)) {
