@@ -38,7 +38,13 @@ const ui = fuente.slice(uiInicio, uiFin);
 assert.match(ui, /estadoCuenta === "cargando"/);
 assert.match(ui, /estadoCuenta === "error"/);
 assert.match(ui, /estadoCuenta === "incoherente"/);
+assert.match(ui, /e2\.pin &&[\s\S]{0,260}"PIN configurado"/);
+assert.match(ui, /estadoCuenta === "activa"[\s\S]{0,260}"cuenta: ", e2\.rolCuenta/);
+assert.match(ui, /estadoCuenta === "suspendida"[\s\S]{0,220}"cuenta suspendida"/);
+assert.match(ui, /estadoCuenta === "error"[\s\S]{0,220}"cuenta no disponible"/);
+assert.match(ui, /estadoCuenta === "incoherente"[\s\S]{0,220}"vínculo incoherente"/);
 assert.match(ui, /crearCuentaEmpleado && estadoCuenta === "sin_cuenta" && !e2\.tieneCuenta/);
+assert.equal((ui.match(/crearCuentaEmpleado &&/g) || []).length, 1, 'la acción de alta solo debe existir en la condición de sin_cuenta');
 
 const inicioRec = recuperada.indexOf('const empleadosIdentidadKeyPM11 =');
 const finRec = recuperada.indexOf('const localesEmpresaActiva =', inicioRec);
