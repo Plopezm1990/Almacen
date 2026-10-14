@@ -2006,6 +2006,11 @@ function GestionAlmacen() {
   const [empresas, setEmpresas] = (0, import_react4.useState)([]);
   const [localActivoId, setLocalActivoId] = (0, import_react4.useState)(null);
   const [localInformeId, setLocalInformeId] = (0, import_react4.useState)("");
+  const localActivoIdRefPm07 = (0, import_react4.useRef)(localActivoId);
+  const contextoPm07InicializadoRef = (0, import_react4.useRef)(false);
+  (0, import_react4.useEffect)(() => {
+    localActivoIdRefPm07.current = localActivoId;
+  }, [localActivoId]);
   (0, import_react4.useEffect)(() => {
     if (typeof window === "undefined") return;
     // PM33 P03: el contexto operativo (obtener_contexto_operativo) se pide
@@ -2022,13 +2027,26 @@ function GestionAlmacen() {
   (0, import_react4.useEffect)(() => {
     if (!ready || typeof window === "undefined" || !window.__nubeActiva) return;
     let activo = true;
+    const sincronizarContextoCompleto = !contextoPm07InicializadoRef.current;
+    contextoPm07InicializadoRef.current = true;
+    const localActivoInicial = localActivoId;
     (async () => {
       try {
-        await sincronizarContextoPm07({ setEmpresas, setLocales, setLocalActivoId, setProductos });
+        if (sincronizarContextoCompleto) {
+          await sincronizarContextoPm07({
+            setEmpresas,
+            setLocales,
+            setLocalActivoId: (id) => {
+              if (activo && localActivoIdRefPm07.current === localActivoInicial) setLocalActivoId(id);
+            },
+            setProductos
+          });
+        }
         await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
         await sincronizarConteosPm12({ setConteos, localActivoId });
         await sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones });
       } catch (e2) {
+        if (sincronizarContextoCompleto) contextoPm07InicializadoRef.current = false;
         if (activo) console.error("PM-08: no se pudo sincronizar contexto, stock o caja autoritativos", e2);
       }
     })();
