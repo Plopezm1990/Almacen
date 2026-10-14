@@ -15,6 +15,21 @@ assert.match(bloque, /const sincronizarContextoCompleto = !contextoPm07Inicializ
 assert.match(bloque, /if \(sincronizarContextoCompleto\) \{/);
 assert.match(bloque, /setLocalActivoId: \(id\) => \{/);
 assert.match(bloque, /localActivoIdRefPm07\.current === localActivoInicial/);
+assert.match(bloque, /!localActivoInicial && localActivoIdRefPm07\.current === localActivoInicial/);
+assert.match(bloque, /ui-context-bridge/);
+assert.match(bloque, /valor global de almacen_kv es legado/);
+
+// Regresión PM12: una preferencia local válida (A2) debe sobrevivir a la
+// hidratación inicial, mientras que un arranque sin preferencia aún puede
+// adoptar el valor remoto por defecto.
+const permiteHidratacionRemota = (localInicial, localActual) =>
+  !localInicial && localActual === localInicial;
+assert.equal(permiteHidratacionRemota('QA-A2', 'QA-A2'), false,
+  'A2 guardado en el dispositivo no debe ser sustituido por A1 remoto');
+assert.equal(permiteHidratacionRemota(null, null), true,
+  'sin preferencia local se permite hidratar el valor remoto');
+assert.equal(permiteHidratacionRemota(null, 'QA-A2'), false,
+  'una elección hecha durante la petición inicial tampoco debe perderse');
 assert.doesNotMatch(bloque, /sincronizarContextoPm07\(\{ setEmpresas, setLocales, setLocalActivoId, setProductos \}\)/);
 assert.match(bloque, /if \(sincronizarContextoCompleto\) contextoPm07InicializadoRef\.current = false/);
 

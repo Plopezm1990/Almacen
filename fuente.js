@@ -102977,7 +102977,10 @@ function GestionAlmacen() {
             setEmpresas,
             setLocales,
             setLocalActivoId: (id) => {
-              if (activo && localActivoIdRefPm07.current === localActivoInicial) setLocalActivoId(id);
+              // `localActivoId` ya viene de la preferencia de este dispositivo
+              // (ui-context-bridge). El valor global de almacen_kv es legado y
+              // no puede sustituir una elección válida hecha antes de recargar.
+              if (activo && !localActivoInicial && localActivoIdRefPm07.current === localActivoInicial) setLocalActivoId(id);
             },
             setProductos
           });
