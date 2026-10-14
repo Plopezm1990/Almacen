@@ -1962,35 +1962,6 @@ function GestionAlmacen() {
       activo = false;
     };
   }, [ready]);
-  (0, import_react4.useEffect)(() => {
-    if (!ready || !miPerfil || miPerfil.rol !== "Propietario" || typeof window === "undefined" || !window.__nubeActiva) return;
-    let activo = true;
-    (async () => {
-      try {
-        const supabase = await window.getSupabaseClient();
-        const { data: cuentas, error } = await supabase.from("perfiles").select("empleado_id, rol, activo").not("empleado_id", "is", null);
-        if (error || !activo || !Array.isArray(cuentas)) return;
-        const porEmpleado = new Map();
-        cuentas.forEach((cuenta) => {
-          const empleadoId = String(cuenta?.empleado_id || "").trim();
-          if (empleadoId && !porEmpleado.has(empleadoId)) porEmpleado.set(empleadoId, cuenta);
-        });
-        setEmpleados((actuales) => actuales.map((empleado) => {
-          const cuenta = porEmpleado.get(empleado.id);
-          return {
-            ...empleado,
-            tieneCuenta: !!cuenta,
-            cuentaActiva: cuenta ? cuenta.activo !== false : false,
-            rolCuenta: cuenta?.rol || ""
-          };
-        }));
-      } catch (e2) {
-      }
-    })();
-    return () => {
-      activo = false;
-    };
-  }, [ready, miPerfil]);
   const [pinPropietario, setPinPropietario] = (0, import_react4.useState)("");
   const [auditoria, setAuditoria] = (0, import_react4.useState)([]);
   const [usuarioActivoId, setUsuarioActivoId] = (0, import_react4.useState)(null);
@@ -2074,6 +2045,57 @@ function GestionAlmacen() {
     }
     return empresas.length === 1 ? principal || configEmpresa || null : null;
   }, [empresas, locales, localActivoId, configEmpresa]);
+  const empleadosIdentidadKeyPM11 = empleados.map((empleado) => `${empleado?.id || ""}:${empleado?.empresaId || ""}:${empleado?.localId || ""}`).sort().join("|");
+  (0, import_react4.useEffect)(() => {
+    if (!ready || !miPerfil || miPerfil.rol !== "Propietario" || typeof window === "undefined" || !window.__nubeActiva || !localActivoId) return;
+    let activo = true;
+    const controlador = typeof AbortController === "function" ? new AbortController() : null;
+    const localContexto = String(localActivoId);
+    const localActual = locales.find((l22) => l22 && String(l22.id) === localContexto) || null;
+    const empresaContexto = localActual?.empresaId ? String(localActual.empresaId) : empresas.length === 1 ? String(empresas[0]?.id || "") : "";
+    const idsEmpleadosContexto = empleados.filter((empleado) => {
+      const empleadoLocal = String(empleado?.localId || "");
+      const empleadoEmpresa = String(empleado?.empresaId || "");
+      return empleadoLocal === localContexto && (!empresaContexto || !empleadoEmpresa || empleadoEmpresa === empresaContexto);
+    }).map((empleado) => String(empleado.id || "").trim()).filter(Boolean);
+    if (!idsEmpleadosContexto.length) return;
+    (async () => {
+      try {
+        const supabase = await window.getSupabaseClient();
+        const { data: sesion } = await supabase.auth.getSession();
+        const userId = sesion?.session?.user?.id;
+        if (!userId) return;
+        let consulta = supabase.from("perfiles").select("empleado_id, rol, activo").in("empleado_id", idsEmpleadosContexto);
+        if (controlador && typeof consulta.abortSignal === "function") consulta = consulta.abortSignal(controlador.signal);
+        const { data: cuentas, error } = await consulta;
+        if (error || !activo || controlador?.signal.aborted || !Array.isArray(cuentas)) return;
+        const porEmpleado = new Map();
+        cuentas.forEach((cuenta) => {
+          const empleadoId = String(cuenta?.empleado_id || "").trim();
+          if (empleadoId && !porEmpleado.has(empleadoId)) porEmpleado.set(empleadoId, cuenta);
+        });
+        setEmpleados((actuales) => actuales.map((empleado) => {
+          const empleadoLocal = String(empleado?.localId || "");
+          const empleadoEmpresa = String(empleado?.empresaId || "");
+          const enContexto = empleadoLocal === localContexto && (!empresaContexto || !empleadoEmpresa || empleadoEmpresa === empresaContexto);
+          if (!enContexto) return empleado;
+          const cuenta = porEmpleado.get(empleado.id);
+          return {
+            ...empleado,
+            tieneCuenta: !!cuenta,
+            cuentaActiva: cuenta ? cuenta.activo !== false : false,
+            rolCuenta: cuenta?.rol || ""
+          };
+        }));
+      } catch (e2) {
+        if (controlador?.signal.aborted) return;
+      }
+    })();
+    return () => {
+      activo = false;
+      if (controlador) controlador.abort();
+    };
+  }, [ready, miPerfil, localActivoId, empresas, locales, empleadosIdentidadKeyPM11]);
   const localesEmpresaActiva = (0, import_react4.useMemo)(() => {
     const empresaId = empresaDelLocalActivo?.id || null;
     if (!empresaId) return [];
@@ -4438,7 +4460,8 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
       const { data: sesion } = await supabase.auth.getSession();
       const token = sesion?.session?.access_token;
       if (!token) return { ok: false, error: "No hay sesi\xF3n activa \u2014 vuelve a iniciar sesi\xF3n." };
-      const resp = await fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/crear-cuenta-empleado", {
+      const endpointCuentaEmpleado = typeof window !== "undefined" && window.__modoPruebasQA === true && typeof window.__qaNubeUrl === "string" && /^https:\/\/qjqorixtkilwsndqayyx\.supabase\.co$/i.test(window.__qaNubeUrl.replace(/\/+$/, "")) ? `${window.__qaNubeUrl.replace(/\/+$/, "")}/functions/v1/qa-crear-empleado` : "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/crear-cuenta-empleado";
+      const resp = await fetch(endpointCuentaEmpleado, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ empleadoId, nombre, email, password, rol })
