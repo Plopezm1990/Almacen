@@ -551,13 +551,19 @@ async function saveKey(key, value) {
     }
   }
 }
-async function sincronizarConteosPm12({ setConteos, localActivoId }) {
+function claveContextoPm07({ empresaId = null, localId = null, periodo = null } = {}) {
+  return `empresa:${empresaId || "todas"}|local:${localId || "todos"}|periodo:${periodo || "todos"}`;
+}
+async function sincronizarConteosPm12({ setConteos, empresaId = null, localActivoId = null, esContextoVigente = () => true }) {
   const cliente = await window.getSupabaseClient();
   let consulta = cliente.from("stock_operaciones").select("empresa_id,local_id,payload").eq("tipo", "INVENTARIO_PM12");
+  if (empresaId) consulta = consulta.eq("empresa_id", empresaId);
   if (localActivoId) consulta = consulta.eq("local_id", localActivoId);
   const r = await consulta;
   if (r.error) throw r.error;
+  if (!esContextoVigente()) return { ok: false, obsoleto: true };
   const documentos = (r.data || []).map((op) => op.payload && op.payload.resultado && op.payload.resultado.conteo).filter(Boolean);
+  if (!esContextoVigente()) return { ok: false, obsoleto: true };
   setConteos((cs) => {
     const nuevos = [...cs];
     for (const documento of documentos) {
@@ -568,14 +574,23 @@ async function sincronizarConteosPm12({ setConteos, localActivoId }) {
     return nuevos;
   });
 }
-async function sincronizarStockPm07({ setProductos, setMovimientos, localActivoId = null }) {
+async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = null, localActivoId = null, esContextoVigente = () => true }) {
   if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return { ok: false, offline: true };
   const supabase = await window.getSupabaseClient();
   let qStock = supabase.from("stock_estado").select("empresa_id,local_id,producto_id,almacen,piso,total,minimo,bajo_minimo,fraccionable,precision_cantidad,local_operable");
   let qMov = supabase.from("movimientos_stock").select("id,operation_id,tipo,empresa_id,local_id,producto_id,delta_almacen,delta_piso,delta_total,cantidad,movimiento_original_id,datos,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3);
+  if (empresaId) {
+    qStock = qStock.eq("empresa_id", empresaId);
+    qMov = qMov.eq("empresa_id", empresaId);
+  }
+  if (localActivoId) {
+    qStock = qStock.eq("local_id", localActivoId);
+    qMov = qMov.eq("local_id", localActivoId);
+  }
   const [rStock, rMov] = await Promise.all([qStock, qMov]);
   if (rStock.error) throw rStock.error;
   if (rMov.error) throw rMov.error;
+  if (!esContextoVigente()) return { ok: false, obsoleto: true };
   const stocks = Array.isArray(rStock.data) ? rStock.data : [];
   const movs = Array.isArray(rMov.data) ? rMov.data : [];
   if (typeof setProductos === "function") {
@@ -827,17 +842,24 @@ function normalizarDevolucionPM08(fila, tipo) {
     _pm08Servidor: !!(fila.operation_id || fila.actor_user_id)
   };
 }
-async function sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones }) {
+async function sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones, empresaId = null, localActivoId = null, esContextoVigente = () => true }) {
   if (!modoSincronizadoPM08() || !window.__nubeActiva || !window.__nubeCliente) return { ok: false, offline: true };
   const supabase = window.__nubeCliente;
+  const acotarContexto = (consulta) => {
+    let acotada = consulta;
+    if (empresaId) acotada = acotada.eq("empresa_id", empresaId);
+    if (localActivoId) acotada = acotada.eq("local_id", localActivoId);
+    return acotada;
+  };
   const [rCaja, rArqueos, rCliente, rProveedor] = await Promise.all([
-    supabase.from("caja_operaciones").select("operation_id,tipo,empresa_id,local_id,fecha,importe,efecto_efectivo,medio_pago,concepto,origen_tipo,origen_id,ref_operation_id,payload,actor_user_id,abc_command_id,caja_id,session_id,terminal_id,currency_code,operating_day,categoria,created_at").order("created_at", { ascending: false }).limit(2e3),
-    supabase.from("arqueos_caja").select("operation_id,empresa_id,local_id,fecha,alcance,efectivo_base,efectivo_esperado,efectivo_contado,diferencia,notas,estado,anulado_por_operation_id,anulado_motivo,actor_user_id,abc_command_id,caja_id,session_id,terminal_id,currency_code,operating_day,denominaciones,created_at").order("created_at", { ascending: false }).limit(1e3),
-    supabase.from("devoluciones_venta").select("operation_id,venta_operation_id,empresa_id,local_id,producto_id,cantidad,reembolso,medio_reembolso,motivo,fecha,payload,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3),
-    supabase.from("devoluciones_proveedor").select("operation_id,empresa_id,local_id,producto_id,cantidad,proveedor_id,proveedor_nombre,motivo,fecha,payload,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3)
+    acotarContexto(supabase.from("caja_operaciones").select("operation_id,tipo,empresa_id,local_id,fecha,importe,efecto_efectivo,medio_pago,concepto,origen_tipo,origen_id,ref_operation_id,payload,actor_user_id,abc_command_id,caja_id,session_id,terminal_id,currency_code,operating_day,categoria,created_at").order("created_at", { ascending: false }).limit(2e3)),
+    acotarContexto(supabase.from("arqueos_caja").select("operation_id,empresa_id,local_id,fecha,alcance,efectivo_base,efectivo_esperado,efectivo_contado,diferencia,notas,estado,anulado_por_operation_id,anulado_motivo,actor_user_id,abc_command_id,caja_id,session_id,terminal_id,currency_code,operating_day,denominaciones,created_at").order("created_at", { ascending: false }).limit(1e3)),
+    acotarContexto(supabase.from("devoluciones_venta").select("operation_id,venta_operation_id,empresa_id,local_id,producto_id,cantidad,reembolso,medio_reembolso,motivo,fecha,payload,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3)),
+    acotarContexto(supabase.from("devoluciones_proveedor").select("operation_id,empresa_id,local_id,producto_id,cantidad,proveedor_id,proveedor_nombre,motivo,fecha,payload,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3))
   ]);
   const fallo = [rCaja, rArqueos, rCliente, rProveedor].find((r2) => r2.error);
   if (fallo) throw fallo.error;
+  if (!esContextoVigente()) return { ok: false, obsoleto: true };
   const caja = (rCaja.data || []).map(normalizarMovimientoCajaPM08).filter(Boolean);
   const arqueos = (rArqueos.data || []).map(normalizarArqueoPM08).filter(Boolean);
   const clientes = (rCliente.data || []).map((fila) => normalizarDevolucionPM08(fila, "cliente")).filter(Boolean);
@@ -848,7 +870,7 @@ async function sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluci
   return { ok: true, movimientosCaja: caja.length, arqueos: arqueos.length, devoluciones: clientes.length + proveedores.length };
 }
 async function sincronizarContextoPm07(args) {
-  const { setEmpresas, setLocales, setLocalActivoId, setProductos } = args || {};
+  const { setEmpresas, setLocales, setLocalActivoId, setProductos, esContextoVigente = () => true } = args || {};
   if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return { ok: false, offline: true };
   const supabase = await window.getSupabaseClient();
   const r2 = await supabase.from("almacen_kv").select("key,value").in("key", ["empresas", "locales", "localActivoId", "productos"]);
@@ -858,10 +880,11 @@ async function sincronizarContextoPm07(args) {
   const localesNube = porClave.get("locales");
   const localActivoNube = porClave.get("localActivoId");
   const productosNube = porClave.get("productos");
-  if (Array.isArray(empresasNube) && empresasNube.length && typeof setEmpresas === "function") setEmpresas(empresasNube.filter((e2) => e2 && e2.id));
-  if (Array.isArray(localesNube) && localesNube.length && typeof setLocales === "function") setLocales(localesNube.filter((l3) => l3 && l3.id));
-  if (typeof localActivoNube === "string" && localActivoNube && typeof setLocalActivoId === "function") setLocalActivoId(localActivoNube);
-  if (Array.isArray(productosNube) && productosNube.length && typeof setProductos === "function") setProductos(productosNube.filter((p3) => p3 && p3.id));
+  if (!esContextoVigente()) return { ok: false, obsoleto: true };
+  if (Array.isArray(empresasNube) && empresasNube.length && typeof setEmpresas === "function" && esContextoVigente()) setEmpresas(empresasNube.filter((e2) => e2 && e2.id));
+  if (Array.isArray(localesNube) && localesNube.length && typeof setLocales === "function" && esContextoVigente()) setLocales(localesNube.filter((l3) => l3 && l3.id));
+  if (typeof localActivoNube === "string" && localActivoNube && typeof setLocalActivoId === "function" && esContextoVigente()) setLocalActivoId(localActivoNube);
+  if (Array.isArray(productosNube) && productosNube.length && typeof setProductos === "function" && esContextoVigente()) setProductos(productosNube.filter((p3) => p3 && p3.id));
   return { ok: true, empresas: Array.isArray(empresasNube) ? empresasNube.length : 0, locales: Array.isArray(localesNube) ? localesNube.length : 0, productos: Array.isArray(productosNube) ? productosNube.length : 0 };
 }
 function SelectorLocalInformes({ locales = [], valor = "", onChange, empresas = [], empresaActivaId = "", onCambiarEmpresa }) {
@@ -2009,6 +2032,8 @@ function GestionAlmacen() {
   const [localInformeId, setLocalInformeId] = (0, import_react4.useState)("");
   const localActivoIdRefPm07 = (0, import_react4.useRef)(localActivoId);
   const contextoPm07InicializadoRef = (0, import_react4.useRef)(false);
+  const contextoPm07SolicitudRef = (0, import_react4.useRef)(0);
+  const contextoPm07ClaveRef = (0, import_react4.useRef)("");
   (0, import_react4.useEffect)(() => {
     localActivoIdRefPm07.current = localActivoId;
   }, [localActivoId]);
@@ -2028,6 +2053,14 @@ function GestionAlmacen() {
   (0, import_react4.useEffect)(() => {
     if (!ready || typeof window === "undefined" || !window.__nubeActiva) return;
     let activo = true;
+    const localContexto = localActivoId ? String(localActivoId) : "";
+    const localActual = locales.find((l22) => l22 && String(l22.id) === localContexto) || null;
+    const empresaContexto = localActual?.empresaId ? String(localActual.empresaId) : empresas.length === 1 ? String(empresas[0]?.id || "") : "";
+    const claveContexto = claveContextoPm07({ empresaId: empresaContexto, localId: localContexto });
+    const solicitud = contextoPm07SolicitudRef.current + 1;
+    contextoPm07SolicitudRef.current = solicitud;
+    contextoPm07ClaveRef.current = claveContexto;
+    const esContextoVigente = () => activo && contextoPm07SolicitudRef.current === solicitud && contextoPm07ClaveRef.current === claveContexto && localActivoIdRefPm07.current === localActivoId;
     const sincronizarContextoCompleto = !contextoPm07InicializadoRef.current;
     contextoPm07InicializadoRef.current = true;
     const localActivoInicial = localActivoId;
@@ -2041,14 +2074,18 @@ function GestionAlmacen() {
               // `localActivoId` ya viene de la preferencia de este dispositivo
               // (ui-context-bridge). El valor global de almacen_kv es legado y
               // no puede sustituir una elección válida hecha antes de recargar.
-              if (activo && !localActivoInicial && localActivoIdRefPm07.current === localActivoInicial) setLocalActivoId(id);
+              if (esContextoVigente() && !localActivoInicial && localActivoIdRefPm07.current === localActivoInicial) setLocalActivoId(id);
             },
-            setProductos
+            setProductos,
+            esContextoVigente
           });
         }
-        await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
-        await sincronizarConteosPm12({ setConteos, localActivoId });
-        await sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones });
+        if (!esContextoVigente()) return;
+        await sincronizarStockPm07({ setProductos, setMovimientos, empresaId: empresaContexto, localActivoId, esContextoVigente });
+        if (!esContextoVigente()) return;
+        await sincronizarConteosPm12({ setConteos, empresaId: empresaContexto, localActivoId, esContextoVigente });
+        if (!esContextoVigente()) return;
+        await sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones, empresaId: empresaContexto, localActivoId, esContextoVigente });
       } catch (e2) {
         if (sincronizarContextoCompleto) contextoPm07InicializadoRef.current = false;
         if (activo) console.error("PM-08: no se pudo sincronizar contexto, stock o caja autoritativos", e2);
@@ -2057,7 +2094,7 @@ function GestionAlmacen() {
     return () => {
       activo = false;
     };
-  }, [ready, localActivoId]);
+  }, [ready, localActivoId, empresas.map((e2) => `${e2?.id || ""}:${e2?.activo !== false}`).sort().join("|"), locales.map((l22) => `${l22?.id || ""}:${l22?.empresaId || ""}:${l22?.activo !== false}`).sort().join("|")]);
   const empresaDelLocalActivo = (0, import_react4.useMemo)(() => {
     const principal = empresas[0] || null;
     const localActual = locales.find((l22) => l22.id === localActivoId) || null;
