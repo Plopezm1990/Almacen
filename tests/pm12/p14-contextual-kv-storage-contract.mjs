@@ -13,6 +13,7 @@ assert.match(storage, /\.eq\("empresa_id", contexto\.empresaId\)/, 'la lectura K
 assert.match(storage, /upsert\(\{\s*empresa_id: contexto\.empresaId,\s*key: key,\s*value: aSubir,\s*local_id: null\s*\}\)/s, 'la escritura KV incluye empresa_id y local_id');
 assert.doesNotMatch(storage, /upsert\(\{ key: key, value: aSubir \}\)/, 'no queda upsert KV global');
 assert.match(storage, /\.delete\(\)\.eq\("empresa_id", contextoBorrado\.empresaId\)\.eq\("key", key\)/, 'el borrado KV queda acotado por empresa');
+assert.match(fuente, /key === "localActivoId" && window\.__nubeActiva && typeof window\.__empresaActivaIdParaContexto === "string"/, 'el cambio de local no se pierde mientras se renueva el contexto');
 
 for (const [nombre, codigo] of [['fuente.js', fuente], ['fuente-recuperado.js', recovery]]) {
   assert.match(codigo, /window\.__empresaActivaIdParaContexto = empresaDelLocalActivo\?\.id \? String\(empresaDelLocalActivo\.id\) : null;/, `${nombre}: publica empresa activa`);

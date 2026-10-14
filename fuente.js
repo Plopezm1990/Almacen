@@ -43970,6 +43970,13 @@ var init_index_es = __esm({
     }
     var rol = contexto && contexto.rol;
     if (!rol) {
+      // Cambiar de local invalida y vuelve a resolver el contexto operativo de
+      // forma asíncrona. La preferencia de local, sin embargo, debe poder
+      // persistirse durante esa ventana: solo se permite aquí con nube activa
+      // y empresa ya resuelta; las demás claves siguen sin escribirse.
+      if (key === "localActivoId" && window.__nubeActiva && typeof window.__empresaActivaIdParaContexto === "string" && window.__empresaActivaIdParaContexto.trim()) {
+        return setOriginal(key, value, shared);
+      }
       if (modoLocalNoReclamado()) return setOriginal(key, value, shared);
       return { key, value, shared: false };
     }
