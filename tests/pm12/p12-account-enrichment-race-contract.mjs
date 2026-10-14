@@ -11,7 +11,11 @@ const bloque = fuente.slice(inicio, fin);
 
 assert.match(bloque, /const controlador = typeof AbortController === "function"/);
 assert.match(bloque, /consulta\.abortSignal\(controlador\.signal\)/);
-assert.match(bloque, /\.in\("empleado_id", idsEmpleadosContexto\)/);
+assert.match(bloque, /supabase\.rpc\("pm11_estado_cuentas_empleados"/);
+assert.match(bloque, /p_empresa_id: empresaContexto/);
+assert.match(bloque, /p_local_id: localContexto/);
+assert.match(bloque, /p_empleado_ids: idsEmpleadosContexto/);
+assert.doesNotMatch(bloque, /\.in\("empleado_id", idsEmpleadosContexto\)/);
 assert.match(bloque, /if \(error \|\| !activo \|\| controlador\?\.signal\.aborted/);
 assert.match(bloque, /const enContexto = empleadoLocal === localContexto/);
 assert.match(bloque, /if \(!enContexto\) return empleado;/);
@@ -20,9 +24,12 @@ assert.match(bloque, /\[ready, miPerfil, localActivoId, empresas, locales, emple
 assert.match(bloque, /setEstadoCuentasPM11/);
 assert.match(bloque, /\[id, "cargando"\]/);
 assert.match(bloque, /\[id, "error"\]/);
-assert.match(bloque, /const duplicados = new Set\(\)/);
-assert.match(bloque, /duplicados\.has\(id\) \? "incoherente"/);
-assert.match(bloque, /: porEmpleado\.has\(id\) \? porEmpleado\.get\(id\)\?\.activo === false \? "suspendida" : "activa" : "sin_cuenta"/);
+assert.match(bloque, /const incoherentes = new Set\(\)/);
+assert.match(bloque, /incoherentes\.has\(id\) \? "incoherente"/);
+assert.match(bloque, /respuesta\?\.ok === true && Array\.isArray\(respuesta\.cuentas\)/);
+assert.match(bloque, /const estados = Object\.fromEntries/);
+assert.match(bloque, /\["activa", "suspendida", "sin_cuenta", "incoherente"\]\.includes\(estado\)/);
+assert.match(bloque, /cuentaActiva: estado === "activa"/);
 
 const uiInicio = fuente.indexOf('function Personal({');
 const uiFin = fuente.indexOf('function Turnos({', uiInicio);
@@ -36,6 +43,10 @@ assert.match(ui, /crearCuentaEmpleado && estadoCuenta === "sin_cuenta" && !e2\.t
 const inicioRec = recuperada.indexOf('const empleadosIdentidadKeyPM11 =');
 const finRec = recuperada.indexOf('const localesEmpresaActiva =', inicioRec);
 assert.ok(inicioRec > 0 && finRec > inicioRec, 'la fuente recuperada no conserva el bloque');
-assert.equal(recuperada.slice(inicioRec, finRec), bloque, 'la fuente recuperada debe mantener paridad exacta');
+assert.equal(
+  recuperada.slice(inicioRec, finRec).replaceAll('\r\n', '\n'),
+  bloque.replaceAll('\r\n', '\n'),
+  'la fuente recuperada debe mantener paridad exacta'
+);
 
 console.log('P12_ACCOUNT_ENRICHMENT_RACE=PASS');

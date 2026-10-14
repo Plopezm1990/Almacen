@@ -107,7 +107,7 @@ Lectura del código y de los informes de cada pieza (**no probado** en combinaci
 9. **D12:** política de 0 % del local productivo preparada (o la opción B decidida).
 10. **Ventana:** bloque P8: **sin cajas abiertas, sin reembolsos ni envíos pendientes, sin pedidos aún sin servir ni cancelar ni pagos en curso**; fuera del servicio. El 3/10 había **2 cuentas abiertas y 1 efecto pendiente** (con 5 días sin actividad): se miraron con tu permiso y son restos de la prueba A10 del 28/9; **no existe una operación del servidor para cerrar cuentas** (solo la fusión), así que «sin cuentas abiertas» no es un criterio útil. Pedro decidió dejarlas, con su comanda, como **restos conocidos** (sin escribir nada en producción); el bloque P8b las acepta por identificador (`F7_PROMOCION_PRODUCCION_DECISIONES_2026-10-03.md`, §3 bis).
 11. **Netlify (mirado en solo lectura el 4/10/2026, `F7_PROMOCION_PRODUCCION_DECISIONES_2026-10-03.md` §3 ter):** la rama de producción es **`release`**; el despliegue de producción actual es **`6abf43047ed8030008ffb5a9`** (commit `01f47bf`, publicado el 2/10/2026 05:37 UTC), al que se vuelve publicándolo de nuevo. El coste por despliegue sigue sin comprobar (según `A09_NETLIFY_QA_REVIEW_PROPOSAL_2026-09-24.md`, 15 créditos por despliegue de producción).
-12. **Copia de seguridad:** guardar la salida del bloque P4 (definición de las **48 funciones** que las migraciones reemplazan). **La organización de producción está en el plan gratuito** (API de Supabase, 4/10/2026) y, según la documentación de Supabase, ese plan **no tiene copias diarias automáticas**. **Decisión 20 (Pedro, 4/10/2026): copia manual con la CLI de Supabase el mismo día de la ventana, antes de empezar** (`supabase db dump` de roles, esquema y datos, con la cadena «Session pooler» del botón Connect; hace falta Docker Desktop). La hace Pedro; los archivos se guardan fuera del repositorio (público) y en dos sitios; se anotan hora y tamaños (ninguno de 0 bytes). **Sin esa copia no se empieza.** **Confirmado el 4/10/2026 con Cowork en el panel de Supabase (solo lectura):** «Free Plan does not include project backups», Point in Time es un complemento de pago y no hay ninguna copia con fecha (decisión 18).
+12. **Copia de seguridad:** guardar la salida del bloque P4 (definición de las **49 funciones** que las migraciones reemplazan). **La organización de producción está en el plan gratuito** (API de Supabase, 4/10/2026) y, según la documentación de Supabase, ese plan **no tiene copias diarias automáticas**. **Decisión 20 (Pedro, 4/10/2026): copia manual con la CLI de Supabase el mismo día de la ventana, antes de empezar** (`supabase db dump` de roles, esquema y datos, con la cadena «Session pooler» del botón Connect; hace falta Docker Desktop). La hace Pedro; los archivos se guardan fuera del repositorio (público) y en dos sitios; se anotan hora y tamaños (ninguno de 0 bytes). **Sin esa copia no se empieza.** **Confirmado el 4/10/2026 con Cowork en el panel de Supabase (solo lectura):** «Free Plan does not include project backups», Point in Time es un complemento de pago y no hay ninguna copia con fecha (decisión 18).
 
 ## 9. Ejecución, paso a paso
 
@@ -168,7 +168,7 @@ Solo con la autorización única del primer paquete (§8.1) y en este orden. **P
 
 ---
 
-## Apéndice A · Las 52 migraciones candidatas, en orden
+## Apéndice A · Las 53 migraciones candidatas, en orden
 
 «Registro en QA» es la marca con la que la herramienta las registró en QA y «Producción» la marca con la que figura en el registro de producción (ambos leídos el 3/10/2026, solo lectura). Las filas 47–51 se añadieron después de esa foto y quedan pendientes de una nueva lectura de ambos registros.
 
@@ -226,6 +226,7 @@ Solo con la autorización única del primer paquete (§8.1) y en este orden. **P
 | 50 | `20261009111255` | `abc_f7_c12_reconciliation_revision` | Orden total por revisión para la conciliación documental de C12 | F7 | pendiente de verificar | posterior a la foto |
 | 51 | `20261009112332` | `abc_f7_c12_session_scope` | Vincula documentos C05 con la sesión y limita el ensayo C12 a ella | F7 | pendiente de verificar | posterior a la foto |
 | 52 | `20261011170000` | `pm10_bootstrap_scope_fix` | PM10: bootstrap de contexto fiscal simulado y catálogo TPV con alcance por empresas/locales activos | F3 | pendiente de verificar | posterior a la foto |
+| 53 | `20261014123000` | `p2_sec_pm11_read_account_state` | PM11: lectura autoritativa y tipada del estado de cuentas de empleados, limitada por empresa/local y membresía | P2-SEC | pendiente de verificar | posterior a la foto |
 
 Paquetes: F3/F4/F5 = «A · Base»; B06-B10 = «D · Proveedor de pagos»; P3 = «B · Catálogo con IVA»; Configuración = «C».
 
