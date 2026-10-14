@@ -43975,6 +43975,11 @@ var init_index_es = __esm({
       // persistirse durante esa ventana: solo se permite aquí con nube activa
       // y empresa ya resuelta; las demás claves siguen sin escribirse.
       if (key === "localActivoId" && window.__nubeActiva && typeof window.__empresaActivaIdParaContexto === "string" && window.__empresaActivaIdParaContexto.trim()) {
+        try {
+          contexto = await obtenerContexto(true);
+        } catch (e3) {
+          contexto = null;
+        }
         return setOriginal(key, value, shared);
       }
       if (modoLocalNoReclamado()) return setOriginal(key, value, shared);
