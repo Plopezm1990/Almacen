@@ -17,7 +17,7 @@ const [html, storageBootstrap, patch, resetPatch, prelock, bootstrapFlow, migrat
 // instala después del adaptador Auth/P1 y antes del bundle funcional.
 const prelockPos = html.indexOf('<script src="./owner-bootstrap-prelock.js"></script>');
 const resetPos = html.indexOf('<script src="./reset-pruebas-preview.js"></script>');
-const storagePos = html.indexOf('<script src="./index-storage-bootstrap.js"></script>');
+const storagePos = html.search(/<script src="\.\/index-storage-bootstrap\.js(?:\?[^\"]*)?"><\/script>/);
 const edgePos = html.indexOf('<script src="./edge-auth-patch.js"></script>');
 const bootstrapFlowPos = html.indexOf('<script src="./owner-bootstrap-post-reset.js"></script>');
 const fuentePos = html.indexOf('<script type="module" src="./fuente.js"></script>');

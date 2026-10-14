@@ -113,7 +113,7 @@ const checks = {
   ui_reverso_no_eliminar: uiMovimientos.includes('Revertir con motivo') && !uiMovimientos.includes('aria-label": "Eliminar movimiento'),
   ui_arqueo_anular_no_borrar: uiArqueo.includes('Anular cierre con motivo') && !uiArqueo.includes('Borrar y repetir'),
 
-  storage_bootstrap_wired: index.includes('<script src="./index-storage-bootstrap.js"></script>'),
+  storage_bootstrap_wired: /<script src="\.\/index-storage-bootstrap\.js(?:\?[^\"]*)?"><\/script>/.test(index),
   storage_ledgers_rpc: storageBootstrap.includes('var LEDGERS_RPC = {') && storageBootstrap.includes('arqueos: true') && storageBootstrap.includes('movimientosCaja: true') && storageBootstrap.includes('devoluciones: true'),
   storage_cache_por_usuario_pm08: storageBootstrap.includes('arqueos: true, movimientosCaja: true, devoluciones: true'),
   storage_get_no_lee_bloque_global: storageBootstrap.includes('if (esLedgerRpc && !esPagosFactura)'),

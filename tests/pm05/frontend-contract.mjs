@@ -7,7 +7,7 @@ const backend = JSON.parse(fs.readFileSync('tests/pm05/backend-results.json','ut
 
 function ok(cond, msg){ if(!cond) throw new Error(msg); }
 
-ok(index.includes('<script src="./index-storage-bootstrap.js"></script>'), 'index no carga el bootstrap de almacenamiento externo');
+ok(/<script src="\.\/index-storage-bootstrap\.js(?:\?[^\"]*)?"><\/script>/.test(index), 'index no carga el bootstrap de almacenamiento externo');
 ok(storageBootstrap.includes('proveedores: "proveedores_empresa"'), 'proveedores no usa tabla empresarial');
 ok(storageBootstrap.includes('clientes: "clientes_empresa"'), 'clientes no usa tabla empresarial');
 ok(storageBootstrap.includes('CLAVES_CACHE_POR_USUARIO'), 'cache sensible no está separada por identidad');
