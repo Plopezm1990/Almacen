@@ -543,7 +543,12 @@ async function loadKey(key, fallback, retries = 2) {
 }
 async function saveKey(key, value) {
   try {
-    await window.storage.set(key, JSON.stringify(value), false);
+    const resultado = await window.storage.set(key, JSON.stringify(value), false);
+    if (resultado?.pendienteSincronizacion && typeof window !== "undefined" && window.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent("fallo-guardado", { detail: { key, pendiente: true, mensaje: "Guardado en este equipo; pendiente de confirmación del servidor." } }));
+    } else if (resultado?.confirmadoServidor && typeof window !== "undefined" && window.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent("guardado-confirmado", { detail: { key } }));
+    }
   } catch (e2) {
     console.error("Error guardando", key, e2);
     if (typeof window !== "undefined" && window.dispatchEvent) {
@@ -1922,7 +1927,16 @@ function GestionAlmacen() {
       ].slice(0, 20));
     }
     window.addEventListener("fallo-guardado", onFalloGuardado);
-    return () => window.removeEventListener("fallo-guardado", onFalloGuardado);
+    function onGuardadoConfirmado(e2) {
+      const key = e2.detail && e2.detail.key;
+      if (!key) return;
+      setFallosGuardado((s22) => s22.filter((f22) => f22.key !== key));
+    }
+    window.addEventListener("guardado-confirmado", onGuardadoConfirmado);
+    return () => {
+      window.removeEventListener("fallo-guardado", onFalloGuardado);
+      window.removeEventListener("guardado-confirmado", onGuardadoConfirmado);
+    };
   }, []);
   const [fallosCarga, setFallosCarga] = (0, import_react4.useState)([]);
   (0, import_react4.useEffect)(() => {

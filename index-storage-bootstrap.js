@@ -77,17 +77,54 @@
     try { return JSON.parse(localStorage.getItem("almacen__pendientes") || "[]"); }
     catch (e) { return []; }
   }
-  function marcarPendiente(key) {
+  function pendientesContexto() {
+    try {
+      var lista = JSON.parse(localStorage.getItem("almacen__pendientes_contexto") || "[]");
+      return Array.isArray(lista) ? lista : [];
+    } catch (e) { return []; }
+  }
+  function contextoPendienteActual() {
+    var contexto = typeof contextoKvActual === "function" ? contextoKvActual() : {};
+    return { empresaId: contexto.empresaId || null, localId: contexto.localId || null };
+  }
+  function pendienteEsDelContexto(key) {
+    var entradas = pendientesContexto().filter(function (entrada) { return entrada && entrada.key === key; });
+    // Las colas antiguas no tenían contexto; se conservan reintentables para
+    // no perder una escritura histórica, pero toda escritura nueva queda
+    // etiquetada y no puede cruzar empresa/local.
+    if (!entradas.length) return true;
+    var actual = contextoPendienteActual();
+    return entradas.some(function (guardado) { return guardado.empresaId === actual.empresaId && guardado.localId === actual.localId; });
+  }
+  function entradaPendienteActual(key) {
+    var actual = contextoPendienteActual();
+    return pendientesContexto().find(function (entrada) {
+      return entrada && entrada.key === key && entrada.empresaId === actual.empresaId && entrada.localId === actual.localId;
+    }) || null;
+  }
+  function marcarPendiente(key, valor, cacheKey) {
     var lista = pendientes();
     if (lista.indexOf(key) === -1) {
       lista.push(key);
       localStorage.setItem("almacen__pendientes", JSON.stringify(lista));
     }
+    var contexto = contextoPendienteActual();
+    var entradas = pendientesContexto().filter(function (entrada) {
+      return !(entrada && entrada.key === key && entrada.empresaId === contexto.empresaId && entrada.localId === contexto.localId);
+    });
+    entradas.push({ key: key, empresaId: contexto.empresaId, localId: contexto.localId, cacheKey: cacheKey || key, valor: valor });
+    try { localStorage.setItem("almacen__pendientes_contexto", JSON.stringify(entradas)); } catch (e) {}
     actualizarIndicador();
   }
   function quitarPendiente(key) {
-    var lista = pendientes().filter(function (k) { return k !== key; });
+    var contexto = contextoPendienteActual();
+    var entradas = pendientesContexto().filter(function (entrada) {
+      return !(entrada && entrada.key === key && entrada.empresaId === contexto.empresaId && entrada.localId === contexto.localId);
+    });
+    var conservaOtra = entradas.some(function (entrada) { return entrada && entrada.key === key; });
+    var lista = pendientes().filter(function (k) { return k !== key || conservaOtra; });
     localStorage.setItem("almacen__pendientes", JSON.stringify(lista));
+    try { localStorage.setItem("almacen__pendientes_contexto", JSON.stringify(entradas)); } catch (e) {}
     actualizarIndicador();
   }
 
@@ -269,12 +306,14 @@
     var lista = pendientes();
     for (var i = 0; i < lista.length; i++) {
       var key = lista[i];
+      if (!pendienteEsDelContexto(key)) continue;
+      var entrada = entradaPendienteActual(key);
       // El servidor rechazó esta clave por permisos hace poco: reintentar solo
       // repetiría la misma subida rechazada. Se retira de la cola.
       if (denegadoVigente(key)) { quitarPendiente(key); continue; }
       try {
-        var cacheKey = await claveCacheLocal(key);
-        var valor = LOCAL.get(cacheKey);
+        var cacheKey = entrada && entrada.cacheKey ? entrada.cacheKey : await claveCacheLocal(key);
+        var valor = entrada && entrada.valor !== void 0 ? entrada.valor : LOCAL.get(cacheKey);
         var tablaEmpresa = TABLAS_EMPRESA[key];
         var tablaEmpresaLocal = TABLAS_EMPRESA_LOCAL[key];
         var tablaEspecial = TABLAS_POR_FILA[key];
@@ -936,6 +975,8 @@
       var tablaEspecial = TABLAS_POR_FILA[key];
       var esLedgerRpc = !!LEDGERS_RPC[key];
       var cacheKey = await claveCacheLocal(key);
+      var confirmadoServidor = false;
+      var pendienteSincronizacion = false;
 
       // Qué había guardado antes en este equipo. Sirve para saber qué se ha
       // quitado y para poder dejarlo como estaba si el guardado no cabe.
@@ -964,7 +1005,7 @@
       if (esLedgerRpc) {
         quitarPendiente(key);
         if (falloLocal) throw falloLocal;
-        return { key: key, value: value, shared: false };
+        return { key: key, value: value, shared: false, confirmadoServidor: false, pendienteSincronizacion: false };
       }
 
       if (window.__nubeActiva && window.__nubeCliente) {
@@ -997,14 +1038,16 @@
             }
             quitarPendiente(key);
             quitarDenegado(key);
+            confirmadoServidor = true;
           } catch (e) {
             if (key === "productos") catalogoBloqueado = true;
             if (esRechazoPorPermisos(e)) marcarDenegado(key, e);
-            else marcarPendiente(key);
+            else { marcarPendiente(key, value, cacheKey); pendienteSincronizacion = true; }
           }
         }
       } else if (!window.__modoPruebasLocal) {
-        marcarPendiente(key);
+        marcarPendiente(key, value, cacheKey);
+        pendienteSincronizacion = true;
       }
 
       // Si no cupo en el equipo, se avisa AHORA — pero después de haber
@@ -1017,6 +1060,8 @@
       }
       return {
         key: key, value: value, shared: false,
+        confirmadoServidor: confirmadoServidor,
+        pendienteSincronizacion: pendienteSincronizacion || pendientes().indexOf(key) !== -1,
         catalogoYaSincronizado: !!(resultadoProductos && resultadoProductos.catalogoYaSincronizado),
         catalogoBloqueado: !!catalogoBloqueado,
         productosConfirmados: !!(resultadoProductos && resultadoProductos.productosConfirmados),
