@@ -102923,6 +102923,7 @@ function GestionAlmacen() {
   const [catalogoProv, setCatalogoProv] = (0, import_react4.useState)({});
   const [gastosGenerales, setGastosGenerales] = (0, import_react4.useState)([]);
   const [empleados, setEmpleados] = (0, import_react4.useState)([]);
+  const [estadoCuentasPM11, setEstadoCuentasPM11] = (0, import_react4.useState)({});
   const [fichajes, setFichajes] = (0, import_react4.useState)([]);
   const [registrosAppcc, setRegistrosAppcc] = (0, import_react4.useState)([]);
   const [freidoras, setFreidoras] = (0, import_react4.useState)([]);
@@ -103025,28 +103026,45 @@ function GestionAlmacen() {
       const empleadoEmpresa = String(empleado?.empresaId || "");
       return empleadoLocal === localContexto && (!empresaContexto || !empleadoEmpresa || empleadoEmpresa === empresaContexto);
     }).map((empleado) => String(empleado.id || "").trim()).filter(Boolean);
-    if (!idsEmpleadosContexto.length) return;
+    if (!idsEmpleadosContexto.length) {
+      setEstadoCuentasPM11({});
+      return;
+    }
+    setEstadoCuentasPM11(Object.fromEntries(idsEmpleadosContexto.map((id) => [id, "cargando"])));
     (async () => {
       try {
         const supabase = await window.getSupabaseClient();
         const { data: sesion } = await supabase.auth.getSession();
         const userId = sesion?.session?.user?.id;
-        if (!userId) return;
+        if (!userId) {
+          if (activo) setEstadoCuentasPM11(Object.fromEntries(idsEmpleadosContexto.map((id) => [id, "error"])));
+          return;
+        }
         let consulta = supabase.from("perfiles").select("empleado_id, rol, activo").in("empleado_id", idsEmpleadosContexto);
         if (controlador && typeof consulta.abortSignal === "function") consulta = consulta.abortSignal(controlador.signal);
         const { data: cuentas, error } = await consulta;
-        if (error || !activo || controlador?.signal.aborted || !Array.isArray(cuentas)) return;
+        if (error || !activo || controlador?.signal.aborted || !Array.isArray(cuentas)) {
+          if (error && activo && !controlador?.signal.aborted || !Array.isArray(cuentas) && activo && !controlador?.signal.aborted) {
+            setEstadoCuentasPM11(Object.fromEntries(idsEmpleadosContexto.map((id) => [id, "error"])));
+          }
+          return;
+        }
         const porEmpleado = new Map();
+        const duplicados = new Set();
         cuentas.forEach((cuenta) => {
           const empleadoId = String(cuenta?.empleado_id || "").trim();
-          if (empleadoId && !porEmpleado.has(empleadoId)) porEmpleado.set(empleadoId, cuenta);
+          if (!empleadoId || !idsEmpleadosContexto.includes(empleadoId)) return;
+          if (porEmpleado.has(empleadoId)) duplicados.add(empleadoId);
+          else porEmpleado.set(empleadoId, cuenta);
         });
+        setEstadoCuentasPM11(Object.fromEntries(idsEmpleadosContexto.map((id) => [id, duplicados.has(id) ? "incoherente" : porEmpleado.has(id) ? porEmpleado.get(id)?.activo === false ? "suspendida" : "activa" : "sin_cuenta"])));
         setEmpleados((actuales) => actuales.map((empleado) => {
           const empleadoLocal = String(empleado?.localId || "");
           const empleadoEmpresa = String(empleado?.empresaId || "");
           const enContexto = empleadoLocal === localContexto && (!empresaContexto || !empleadoEmpresa || empleadoEmpresa === empresaContexto);
           if (!enContexto) return empleado;
           const cuenta = porEmpleado.get(empleado.id);
+          if (duplicados.has(String(empleado.id || "").trim())) return { ...empleado, tieneCuenta: false, cuentaActiva: false, rolCuenta: "" };
           return {
             ...empleado,
             tieneCuenta: !!cuenta,
@@ -103056,6 +103074,7 @@ function GestionAlmacen() {
         }));
       } catch (e2) {
         if (controlador?.signal.aborted) return;
+        if (activo) setEstadoCuentasPM11(Object.fromEntries(idsEmpleadosContexto.map((id) => [id, "error"])));
       }
     })();
     return () => {
@@ -104635,6 +104654,7 @@ function GestionAlmacen() {
       listarPrefiltros,
       eliminarPrefiltro,
       crearCuentaEmpleado,
+      estadoCuentasPM11,
       contextoActivoPM15,
       marcarFormularioAbiertoPM15
     }
@@ -118330,7 +118350,7 @@ function etiquetaContextoPM15(local, empresa) {
   if (nombreLocal && nombreEmpresa) return `${nombreLocal} \xB7 ${nombreEmpresa}`;
   return nombreLocal || nombreEmpresa || "";
 }
-function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, documentosPersonalCaducan, fichajes = [], nominas = [], entrevistas = [], crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista, crearPrefiltro, listarPrefiltros, eliminarPrefiltro, crearCuentaEmpleado, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {}, empresa = null }) {
+function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, documentosPersonalCaducan, fichajes = [], nominas = [], entrevistas = [], crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista, crearPrefiltro, listarPrefiltros, eliminarPrefiltro, crearCuentaEmpleado, estadoCuentasPM11 = {}, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {}, empresa = null }) {
   const [vista, setVista] = (0, import_react4.useState)("empleados");
   const submitBloqueadoPersonalPM10 = import_react4.default.useRef(false);
   const altaOperacionPersonalPM13 = import_react4.default.useRef(null);
@@ -118625,10 +118645,11 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reac
     const resumenVacaciones = resumenVacacionesPM13(e2, anioActual);
     const usados = resumenVacaciones.reservados;
     const total = resumenVacaciones.total;
-    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold flex items-center gap-1.5" }, e2.nombre, e2.activo === false && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "baja"), e2.pin && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "PIN configurado"), e2.pin && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, e2.rol && ROLES_EMPLEADO[e2.rol] ? e2.rol : "Est\xE1ndar"), e2.tieneCuenta && e2.cuentaActiva === false && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.red }, "cuenta suspendida"), e2.tieneCuenta && e2.cuentaActiva !== false && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "cuenta: ", e2.rolCuenta)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mt-0.5", style: { color: C2.inkSoft } }, e2.puesto, " \xB7 ", e2.tipoContrato)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => exportarDatosEmpleado(e2), title: "Exportar sus datos" }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 15, color: C2.inkSoft })), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setConfirmDeleteId(e2.id), "aria-label": "Eliminar empleado", className: "flex items-center justify-center shrink-0", style: { width: 44, height: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 15, color: C2.inkSoft })))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 text-[12px] space-y-1", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement("div", null, "Alta: ", e2.fechaAlta, e2.fechaFinContrato && ` \xB7 Fin de contrato: ${e2.fechaFinContrato}`), e2.activo === false && /* @__PURE__ */ import_react4.default.createElement("div", null, "Baja: ", e2.fechaBaja || "sin fecha (registro legado)", e2.motivoBaja && ` \xB7 ${e2.motivoBaja}`), e2.salarioBrutoMensual > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, "Bruto: \u20AC", fmt(e2.salarioBrutoMensual), "/mes (", e2.pagas, " pagas)"), /* @__PURE__ */ import_react4.default.createElement("div", null, "Vacaciones ", anioActual, ": ", resumenVacaciones.disfrutados, " disfrutados · ", resumenVacaciones.enCurso, " hoy · ", resumenVacaciones.programados, " programados · saldo ", resumenVacaciones.saldo, " / ", total, resumenVacaciones.exceso > 0 ? ` · exceso ${resumenVacaciones.exceso}` : ""), (e2.documentos || []).length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", null, e2.documentos.map((d2) => d2.nombre).filter(Boolean).join(" \xB7 "))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 flex gap-2 flex-wrap" }, e2.activo !== false && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(e2) }, "Editar"), e2.activo === false && reactivarEmpleado && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: async () => {
+    const estadoCuenta = estadoCuentasPM11[e2.id] || (e2.tieneCuenta ? e2.cuentaActiva === false ? "suspendida" : "activa" : "sin_cuenta");
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold flex items-center gap-1.5" }, e2.nombre, e2.activo === false && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "baja"), e2.pin && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "PIN configurado"), e2.pin && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, e2.rol && ROLES_EMPLEADO[e2.rol] ? e2.rol : "Est\xE1ndar"), estadoCuenta === "suspendida" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.red }, "cuenta suspendida"), estadoCuenta === "activa" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "cuenta: ", e2.rolCuenta), estadoCuenta === "cargando" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "comprobando cuenta"), estadoCuenta === "error" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.red }, "cuenta no disponible"), estadoCuenta === "incoherente" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.amber }, "vínculo incoherente")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mt-0.5", style: { color: C2.inkSoft } }, e2.puesto, " \xB7 ", e2.tipoContrato)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => exportarDatosEmpleado(e2), title: "Exportar sus datos" }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 15, color: C2.inkSoft })), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setConfirmDeleteId(e2.id), "aria-label": "Eliminar empleado", className: "flex items-center justify-center shrink-0", style: { width: 44, height: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 15, color: C2.inkSoft })))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 text-[12px] space-y-1", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement("div", null, "Alta: ", e2.fechaAlta, e2.fechaFinContrato && ` \xB7 Fin de contrato: ${e2.fechaFinContrato}`), e2.activo === false && /* @__PURE__ */ import_react4.default.createElement("div", null, "Baja: ", e2.fechaBaja || "sin fecha (registro legado)", e2.motivoBaja && ` \xB7 ${e2.motivoBaja}`), e2.salarioBrutoMensual > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, "Bruto: \u20AC", fmt(e2.salarioBrutoMensual), "/mes (", e2.pagas, " pagas)"), /* @__PURE__ */ import_react4.default.createElement("div", null, "Vacaciones ", anioActual, ": ", resumenVacaciones.disfrutados, " disfrutados · ", resumenVacaciones.enCurso, " hoy · ", resumenVacaciones.programados, " programados · saldo ", resumenVacaciones.saldo, " / ", total, resumenVacaciones.exceso > 0 ? ` · exceso ${resumenVacaciones.exceso}` : ""), (e2.documentos || []).length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", null, e2.documentos.map((d2) => d2.nombre).filter(Boolean).join(" \xB7 "))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 flex gap-2 flex-wrap" }, e2.activo !== false && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(e2) }, "Editar"), e2.activo === false && reactivarEmpleado && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: async () => {
     const r2 = await reactivarEmpleado(e2.id);
     if (!r2 || r2.ok === false) setError(r2?.error || "No se pudo reactivar al empleado.");
-  } }, "Reactivar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAusenciaFor(e2.id) }, "Registrar ausencia"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setEpiFor(e2.id) }, "Entregar EPI"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setDetalleId(detalleId === e2.id ? null : e2.id) }, detalleId === e2.id ? "Ocultar historial" : "Ver historial"), crearCuentaEmpleado && !e2.tieneCuenta && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
+  } }, "Reactivar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAusenciaFor(e2.id) }, "Registrar ausencia"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setEpiFor(e2.id) }, "Entregar EPI"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setDetalleId(detalleId === e2.id ? null : e2.id) }, detalleId === e2.id ? "Ocultar historial" : "Ver historial"), crearCuentaEmpleado && estadoCuenta === "sin_cuenta" && !e2.tieneCuenta && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
       setCuentaFor(e2.id);
       setCuentaForm({ nombre: e2.nombre || "", email: "", password: "", rol: "Camarero/a" });
     } }, "Crear cuenta de acceso")), detalleId === e2.id && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 pt-3", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, "Ausencias"), (e2.ausencias || []).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin ausencias registradas." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1 mb-3" }, [...e2.ausencias || []].reverse().map((a22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: a22.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, a22.tipo, ": ", a22.fechaInicio, " \u2192 ", a22.fechaFin, " (", a22.dias, " d)", String(a22.estado || "ACTIVA").toUpperCase() === "ANULADA" || a22.anuladaAt ? " · ANULADA" : ""), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: async () => { const r2 = await eliminarAusencia(e2.id, a22.id); if (!r2 || r2.ok === false) setError(r2?.error || "No se pudo anular la ausencia."); }, "aria-label": "Anular ausencia", title: "Anular ausencia" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft }))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1 pt-2", style: { color: C2.inkSoft, borderTop: `1px solid ${C2.line}` } }, "EPIs entregados"), (e2.epis || []).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin EPIs registrados." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1" }, [...e2.epis || []].reverse().map((epi) => /* @__PURE__ */ import_react4.default.createElement("div", { key: epi.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, epi.nombre, " \xB7 ", epi.fecha, " ", epi.firmado ? "\xB7 firmado" : "\xB7 sin firmar"), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => eliminarEpi(e2.id, epi.id), "aria-label": "Eliminar EPI" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))));
