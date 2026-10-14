@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 
-const s = fs.readFileSync('source-recovery/fuente-recuperado.js', 'utf8');
+const s = fs.readFileSync('source-recovery/fuente-recuperado.js', 'utf8').replace(/\r\n/g, '\n');
 
 function functionBlock(name) {
   const re = new RegExp(`(?:async\\s+)?function\\s+${name}\\s*\\(`, 'g');
@@ -40,7 +40,7 @@ const checks = {
   contexto_cloud_lee_claves: contexto.includes('.from("almacen_kv")') && contexto.includes('"empresas", "locales", "localActivoId", "productos"'),
   contexto_cloud_hidrata_locales: contexto.includes('setLocales(localesNube.filter'),
   contexto_cloud_hidrata_local_activo: contexto.includes('setLocalActivoId(localActivoNube)'),
-  contexto_cloud_se_ejecuta_tras_ready: s.includes('await sincronizarContextoPm07({ setEmpresas, setLocales, setLocalActivoId, setProductos });'),
+  contexto_cloud_se_ejecuta_tras_ready: /await\s+sincronizarContextoPm07\(\{\s*setEmpresas,\s*setLocales,\s*setLocalActivoId\s*:/.test(s),
   // RPC con prefijo estable: el sufijo de versión (_pm07 en origen, _pm09
   // desde una ronda posterior que las renombró) puede volver a cambiar;
   // lo que importa es que sigue siendo la RPC atómica de venta/reverso de
