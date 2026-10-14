@@ -2,9 +2,9 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
 const root = new URL('../../', import.meta.url);
-const storage = fs.readFileSync(new URL('index-storage-bootstrap.js', root), 'utf8');
-const fuente = fs.readFileSync(new URL('fuente.js', root), 'utf8');
-const recovery = fs.readFileSync(new URL('source-recovery/fuente-recuperado.js', root), 'utf8');
+const storage = fs.readFileSync(new URL('index-storage-bootstrap.js', root), 'utf8').replace(/\r\n/g, '\n');
+const fuente = fs.readFileSync(new URL('fuente.js', root), 'utf8').replace(/\r\n/g, '\n');
+const recovery = fs.readFileSync(new URL('source-recovery/fuente-recuperado.js', root), 'utf8').replace(/\r\n/g, '\n');
 
 assert.match(storage, /function contextoKvActual\(\)/, 'el bootstrap resuelve el contexto KV');
 assert.match(storage, /__empresaActivaIdParaContexto/, 'el bootstrap usa la empresa activa');

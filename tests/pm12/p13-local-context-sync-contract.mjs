@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const fuente = fs.readFileSync(new URL('../../fuente.js', import.meta.url), 'utf8');
-const recuperada = fs.readFileSync(new URL('../../source-recovery/fuente-recuperado.js', import.meta.url), 'utf8');
+const fuente = fs.readFileSync(new URL('../../fuente.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+const recuperada = fs.readFileSync(new URL('../../source-recovery/fuente-recuperado.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 
 const inicio = fuente.indexOf('const localActivoIdRefPm07 =');
 const fin = fuente.indexOf('const empresaDelLocalActivo =', inicio);
