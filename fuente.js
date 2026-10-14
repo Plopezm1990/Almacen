@@ -101425,21 +101425,55 @@ var ultimoDiaMes = (fecha) => {
   const d2 = new Date(fecha);
   return aISO(new Date(d2.getFullYear(), d2.getMonth() + 1, 0));
 };
+const MINUTOS_DIA_PM13 = 24 * 60;
+function parseFechaHoraFichajePM13(fecha, hora) {
+  const fechaTexto = String(fecha || "").trim();
+  const horaTexto = String(hora || "").trim();
+  const fechaMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fechaTexto);
+  const horaMatch = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(horaTexto);
+  if (!fechaMatch || !horaMatch) return null;
+  const ano = Number(fechaMatch[1]);
+  const mes = Number(fechaMatch[2]);
+  const dia = Number(fechaMatch[3]);
+  const minutosHora = Number(horaMatch[1]) * 60 + Number(horaMatch[2]);
+  const fechaUTC = Date.UTC(ano, mes - 1, dia);
+  const fechaComprobada = new Date(fechaUTC);
+  if (fechaComprobada.getUTCFullYear() !== ano || fechaComprobada.getUTCMonth() !== mes - 1 || fechaComprobada.getUTCDate() !== dia) return null;
+  return { fecha: fechaTexto, hora: horaTexto, minutos: fechaUTC / 6e4 + minutosHora };
+}
+function intervaloFichajePM13(entrada, salida) {
+  const inicio = parseFechaHoraFichajePM13(entrada?.fecha, entrada?.hora);
+  const finOriginal = parseFechaHoraFichajePM13(salida?.fecha, salida?.hora);
+  if (!inicio || !finOriginal) return null;
+  let fin = finOriginal.minutos;
+  const cruzaMedianoche = fin <= inicio.minutos;
+  if (cruzaMedianoche) fin += MINUTOS_DIA_PM13;
+  const minutos = fin - inicio.minutos;
+  if (minutos <= 0 || minutos > MINUTOS_DIA_PM13) return null;
+  return { inicio: inicio.minutos, fin, minutos, cruzaMedianoche };
+}
 function horasDeEmpleadoEnMes(fichajes, empleadoId, mes) {
-  const delMes = fichajes.filter((f22) => f22.empleadoId === empleadoId && (f22.fecha || "").slice(0, 7) === mes).sort((a22, b2) => (a22.timestamp || "").localeCompare(b2.timestamp || ""));
-  let total = 0;
-  let entrada = null;
-  delMes.forEach((f22) => {
-    if (f22.tipo === "entrada") entrada = f22;
-    else if (f22.tipo === "salida" && entrada) {
-      const ini = /* @__PURE__ */ new Date(`${entrada.fecha}T${entrada.hora}:00`);
-      const fin = /* @__PURE__ */ new Date(`${f22.fecha}T${f22.hora}:00`);
-      const horas = (fin - ini) / 36e5;
-      if (horas > 0 && horas < 24) total += horas;
-      entrada = null;
-    }
+  // PM13 2.6: el periodo pertenece al mes de la entrada. Fecha y hora son
+  // valores de pared almacenados por el servidor; no se reinterpretan con la
+  // zona horaria del navegador ni se cambian históricos silenciosamente.
+  const ordenados = fichajes.filter((f22) => f22.empleadoId === empleadoId && parseFechaHoraFichajePM13(f22.fecha, f22.hora)).sort((a22, b2) => {
+    const aInfo = parseFechaHoraFichajePM13(a22.fecha, a22.hora);
+    const bInfo = parseFechaHoraFichajePM13(b2.fecha, b2.hora);
+    return aInfo.minutos - bInfo.minutos || String(a22.id || "").localeCompare(String(b2.id || ""));
   });
-  return total;
+  let totalMinutos = 0;
+  let entrada = null;
+  ordenados.forEach((f22) => {
+    if (f22.tipo === "entrada" && !entrada) {
+      entrada = f22;
+      return;
+    }
+    if (f22.tipo !== "salida" || !entrada) return;
+    const intervalo = intervaloFichajePM13(entrada, f22);
+    if (intervalo && String(entrada.fecha || "").slice(0, 7) === mes) totalMinutos += intervalo.minutos;
+    entrada = null;
+  });
+  return totalMinutos / 60;
 }
 function costePorHoraEquipoEnMes(nominas, fichajes, mes) {
   const nominasDelMes = nominas.filter((n2) => n2.mes === mes);
