@@ -104191,6 +104191,23 @@ function GestionAlmacen() {
   const fichajesDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? fichajes : fichajes.filter((f22) => f22.localId === localActivoId), [fichajes, localActivoId]);
   const turnosDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? turnos : turnos.filter((t22) => t22.localId === localActivoId), [turnos, localActivoId]);
   const nominasDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? nominas : nominas.filter((n2) => n2.localId === localActivoId), [nominas, localActivoId]);
+  const estadoCargaDatosPM12 = (0, import_react4.useMemo)(() => {
+    const fallo = (key) => fallosCarga.some((f22) => f22.key === key);
+    const pendiente = (key) => fallosGuardado.some((f22) => f22.key === key);
+    const estado = (key, datos) => {
+      if (!ready) return "cargando";
+      if (fallo(key)) return "error";
+      return Array.isArray(datos) && datos.length > 0 ? "cargado_con_datos" : "vacio_confirmado";
+    };
+    return {
+      empleados: estado("empleados", empleadosDelLocalActivo),
+      fichajes: estado("fichajes", fichajesDelLocalActivo),
+      turnos: estado("turnos", turnosDelLocalActivo),
+      pendienteEmpleados: pendiente("empleados"),
+      pendienteFichajes: pendiente("fichajes"),
+      pendienteTurnos: pendiente("turnos")
+    };
+  }, [ready, fallosCarga, fallosGuardado, empleadosDelLocalActivo, fichajesDelLocalActivo, turnosDelLocalActivo]);
   const documentosPersonalProntoDelLocalActivo = (0, import_react4.useMemo)(() => documentosPersonalPronto.filter((d2) => idsEmpleadosDelLocalActivo.has(d2.empleadoId)), [documentosPersonalPronto, idsEmpleadosDelLocalActivo]);
   const encargosPendientes = (0, import_react4.useMemo)(() => {
     const hoy = /* @__PURE__ */ new Date();
@@ -104471,6 +104488,7 @@ function GestionAlmacen() {
       alertasAppcc,
       fallosGuardado,
       fallosCarga,
+      estadoCargaDatosPM12,
       diagnosticoStock: diagnosticoStockInforme,
       registrarSalida
     }
@@ -104666,6 +104684,8 @@ function GestionAlmacen() {
       eliminarPrefiltro,
       crearCuentaEmpleado,
       estadoCuentasPM11,
+      estadoCargaDatos: estadoCargaDatosPM12.empleados,
+      pendienteSincronizacion: estadoCargaDatosPM12.pendienteEmpleados,
       contextoActivoPM15,
       marcarFormularioAbiertoPM15
     }
@@ -104678,7 +104698,9 @@ function GestionAlmacen() {
       addFichajeManual,
       updateFichaje,
       eliminarFichaje,
-      fichajesAbiertos: fichajesAbiertosDelLocalActivo
+      fichajesAbiertos: fichajesAbiertosDelLocalActivo,
+      estadoCargaDatos: estadoCargaDatosPM12.fichajes,
+      pendienteSincronizacion: estadoCargaDatosPM12.pendienteFichajes
     }
   ), tab === "nominas" && /* @__PURE__ */ import_react4.default.createElement(
     CostePersonal,
@@ -104764,7 +104786,9 @@ function GestionAlmacen() {
       addTurno,
       updateTurno,
       deleteTurno,
-      copiarSemana
+      copiarSemana,
+      estadoCargaDatos: estadoCargaDatosPM12.turnos,
+      pendienteSincronizacion: estadoCargaDatosPM12.pendienteTurnos
     }
   ), tab === "mapa" && /* @__PURE__ */ import_react4.default.createElement(MapaAlmacen, { productos: productosDelLocalActivo, proveedorPorId, stockBajo: stockBajoDelLocalActivo }), tab === "traspasos" && /* @__PURE__ */ import_react4.default.createElement(Traspasos, { productos: productosDelLocalActivo, productosEmpresa: productos.filter((p22) => localesEmpresaActiva.some((l22) => l22.id === p22.localId)), locales: localesEmpresaActiva, localActivoId, traspasos: traspasosDelLocalActivo, traspasarStock, traspasarEntreLocales, pisoVentaBajo: pisoVentaBajoDelLocalActivo, fichasCosto: fichasCostoDelLocalActivo }), tab === "appcc" && /* @__PURE__ */ import_react4.default.createElement(
     Appcc,
@@ -114078,6 +114102,17 @@ function CampoCategoria({ value, onChange, opciones = CATEGORIAS_PRODUCTO }) {
 function Empty({ text: text2 }) {
   return /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-center py-10 text-[13px]", role: "status", style: { color: C2.inkSoft } }, text2);
 }
+function EstadoCargaDatosPM12({ estado = "cargado_con_datos", etiqueta = "Datos", pendiente = false }) {
+  const estados = {
+    cargando: { texto: `Cargando ${etiqueta.toLowerCase()}…`, color: C2.inkSoft, fondo: C2.surfaceSoft },
+    cargado_con_datos: { texto: `${etiqueta} cargados.`, color: C2.accent, fondo: C2.accentSoft },
+    vacio_confirmado: { texto: `No hay ${etiqueta.toLowerCase()} en el contexto activo (respuesta confirmada).`, color: C2.inkSoft, fondo: C2.surfaceSoft },
+    error: { texto: `No se pudieron cargar ${etiqueta.toLowerCase()}. No se muestra un vacío como si fuera válido.`, color: C2.red, fondo: C2.redSoft },
+    pendiente_sincronizar: { texto: `Hay cambios de ${etiqueta.toLowerCase()} pendientes de sincronizar.`, color: C2.amber, fondo: C2.amberSoft }
+  };
+  const info = pendiente && estado !== "error" && estado !== "cargando" ? estados.pendiente_sincronizar : estados[estado] || estados.error;
+  return /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "mb-3 rounded-lg px-3 py-2 text-[11.5px]", style: { background: info.fondo, color: info.color } }, info.texto);
+}
 function Pill2({ children, color }) {
   return /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px] font-semibold px-2 py-0.5 rounded-full", style: { background: color + "22", color } }, children);
 }
@@ -114113,7 +114148,7 @@ function InicioEmpleado({ nombre, rol, contextoLocal, empleadoIdResuelto, turnoH
   }
   return /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-5" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2 mb-1" }, /* @__PURE__ */ import_react4.default.createElement(UserRound, { size: 18, color: C2.ink }), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold" }, "Hola, ", nombre || "—")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-1", style: { color: C2.inkSoft } }, rol), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-4 truncate", style: { color: C2.inkSoft } }, contextoLocal || "—"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5 text-[11.5px] mb-1", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement(CalendarClock, { size: 13 }), "Turno de hoy"), !turnoHoy ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px]", style: { color: C2.inkSoft } }, "Sin turno asignado hoy") : esLibre ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, "Hoy libre") : /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[14px] font-semibold" }, turnoHoy.tipo, turnoHoy.horaInicio ? /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, " \xB7 ", turnoHoy.horaInicio, "–", turnoHoy.horaFin) : null)), permitido("fichaje") && (empleadoIdResuelto ? /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5 text-[11.5px] mb-1", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement(Clock, { size: 13 }), "Fichaje"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[14px] font-semibold mb-3" }, estadoFichaje, abierto && ultimaEntrada ? ` \xB7 entr\xF3 a las ${ultimaEntrada.hora}` : ""), /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", disabled: procesandoFichaje, onClick: () => alFicharPersonalPM13(), className: "w-full inline-flex items-center justify-center gap-2 rounded-lg font-semibold", style: { minHeight: 48, fontSize: 16, background: C2.accentFill, color: C2.onAccent, opacity: procesandoFichaje ? 0.7 : 1 } }, abierto ? /* @__PURE__ */ import_react4.default.createElement(LogOut, { size: 18 }) : /* @__PURE__ */ import_react4.default.createElement(LogIn, { size: 18 }), procesandoFichaje ? "Fichando…" : abierto ? "Fichar salida" : "Fichar entrada"), /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "text-[11.5px] mt-2", style: { color: resultadoFichaje?.tipo === "error" ? C2.red : resultadoFichaje?.tipo === "incierto" ? C2.amber : C2.inkSoft } }, resultadoFichaje?.mensaje || "")) : /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: C2.inkSoft } }, "No se ha podido identificar tu registro de fichaje en este dispositivo. Usa Registro horario para fichar tu entrada o salida."), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setTab("fichaje") }, "Ir a Registro horario"))));
 }
-function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendientes, margenPromedio, movimientos, productos, caducanPronto = [], proveedorPorId, vencenPronto = [], totalPendientePago = 0, documentosPersonalPronto = [], fichajesAbiertos = [], encargosUrgentes = [], pisoVentaBajo = [], sugerenciasPedido = [], setTab, recordatorioConteo = [], alertasAppcc = { pendientes: [], desviaciones: [] }, fallosGuardado = [], fallosCarga = [], diagnosticoStock = [], registrarSalida, itemsPermitidos = null, empresa = null }) {
+function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendientes, margenPromedio, movimientos, productos, caducanPronto = [], proveedorPorId, vencenPronto = [], totalPendientePago = 0, documentosPersonalPronto = [], fichajesAbiertos = [], encargosUrgentes = [], pisoVentaBajo = [], sugerenciasPedido = [], setTab, recordatorioConteo = [], alertasAppcc = { pendientes: [], desviaciones: [] }, fallosGuardado = [], fallosCarga = [], diagnosticoStock = [], registrarSalida, itemsPermitidos = null, empresa = null, estadoCargaDatosPM12 = null }) {
   const entradas30 = movimientos.filter((m22) => esEntrada(m22)).reduce((a22, m22) => a22 + Math.abs(cantidadConSigno(m22)), 0);
   const salidas30 = movimientos.filter((m22) => esSalida(m22)).reduce((a22, m22) => a22 + Math.abs(cantidadConSigno(m22)), 0);
   const [abierta, setAbierta] = (0, import_react4.useState)(null);
@@ -114264,6 +114299,16 @@ function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendi
         derecha: new Date(f22.fecha).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
         derechaColor: C2.red
       }))
+    },
+    estadoCargaDatosPM12 && {
+      id: "estado_datos_personal",
+      titulo: "Estado de Personal",
+      valor: estadoCargaDatosPM12.empleados === "cargando" ? "…" : estadoCargaDatosPM12.empleados === "error" ? "Error" : estadoCargaDatosPM12.empleados === "vacio_confirmado" ? "Vacío confirmado" : "Cargado",
+      color: estadoCargaDatosPM12.empleados === "error" ? C2.red : estadoCargaDatosPM12.empleados === "vacio_confirmado" ? C2.inkSoft : C2.accent,
+      nota: estadoCargaDatosPM12.pendienteEmpleados ? "pendiente de sincronizar" : "estado del contexto activo",
+      tab: "personal",
+      tabNombre: "Personal",
+      items: []
     },
     {
       id: "appcc_desviaciones",
@@ -118362,7 +118407,7 @@ function etiquetaContextoPM15(local, empresa) {
   if (nombreLocal && nombreEmpresa) return `${nombreLocal} \xB7 ${nombreEmpresa}`;
   return nombreLocal || nombreEmpresa || "";
 }
-function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, documentosPersonalCaducan, fichajes = [], nominas = [], entrevistas = [], crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista, crearPrefiltro, listarPrefiltros, eliminarPrefiltro, crearCuentaEmpleado, estadoCuentasPM11 = {}, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {}, empresa = null }) {
+function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, documentosPersonalCaducan, fichajes = [], nominas = [], entrevistas = [], crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista, crearPrefiltro, listarPrefiltros, eliminarPrefiltro, crearCuentaEmpleado, estadoCuentasPM11 = {}, estadoCargaDatos = "cargado_con_datos", pendienteSincronizacion = false, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {}, empresa = null }) {
   const [vista, setVista] = (0, import_react4.useState)("empleados");
   const submitBloqueadoPersonalPM10 = import_react4.default.useRef(false);
   const altaOperacionPersonalPM13 = import_react4.default.useRef(null);
@@ -118583,7 +118628,7 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reac
   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: vista === "empleados" ? /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
     if (showForm) resetForm();
     setShowForm((s22) => !s22);
-  } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Nuevo empleado") : null }, "Personal"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(
+  } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Nuevo empleado") : null }, "Personal"), /* @__PURE__ */ import_react4.default.createElement(EstadoCargaDatosPM12, { estado: estadoCargaDatos, etiqueta: "Empleados", pendiente: pendienteSincronizacion }), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(
     "button",
     {
       onClick: () => setVista("empleados"),
@@ -118653,7 +118698,7 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reac
   )), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", role: "alert", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submit }, editingId ? "Guardar cambios" : "Guardar empleado"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
     setShowForm(false);
     resetForm();
-  } }, "Cancelar"))), empleados.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has a\xF1adido a nadie." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-3" }, empleados.map((e2) => {
+  } }, "Cancelar"))), estadoCargaDatos === "vacio_confirmado" && empleados.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has a\xF1adido a nadie." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-3" }, empleados.map((e2) => {
     const resumenVacaciones = resumenVacacionesPM13(e2, anioActual);
     const usados = resumenVacaciones.reservados;
     const total = resumenVacaciones.total;
@@ -118716,7 +118761,7 @@ function inicioSemana(fecha) {
   l22.setDate(d2.getDate() + diff);
   return aISO(l22);
 }
-function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, updateFichaje, eliminarFichaje, fichajesAbiertos }) {
+function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, updateFichaje, eliminarFichaje, fichajesAbiertos, estadoCargaDatos = "cargado_con_datos", pendienteSincronizacion = false }) {
   const activos = empleados.filter((e2) => e2.activo !== false);
   const fichajesVigentesPM13 = (0, import_react4.useMemo)(() => fichajes.filter((f22) => f22?.anulado !== true && String(f22?.anulado || "").toLowerCase() !== "true"), [fichajes]);
   const [desde, setDesde] = (0, import_react4.useState)(inicioSemana(/* @__PURE__ */ new Date()));
@@ -120933,7 +120978,7 @@ function horasTurno(t22) {
   const [h22, m22] = t22.horaFin.split(":").map(Number);
   return Math.max(0, (h22 * 60 + m22 - (h1 * 60 + m1)) / 60);
 }
-function Turnos({ empleados, turnos, addTurno, updateTurno, deleteTurno, copiarSemana }) {
+function Turnos({ empleados, turnos, addTurno, updateTurno, deleteTurno, copiarSemana, estadoCargaDatos = "cargado_con_datos", pendienteSincronizacion = false }) {
   const activos = empleados.filter((e2) => e2.activo !== false);
   const [inicio, setInicio] = (0, import_react4.useState)(inicioSemana(/* @__PURE__ */ new Date()));
   const dias = fechasSemana(inicio);
