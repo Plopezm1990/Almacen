@@ -2063,6 +2063,12 @@ function GestionAlmacen() {
     }
     return empresas.length === 1 ? principal || configEmpresa || null : null;
   }, [empresas, locales, localActivoId, configEmpresa]);
+  (0, import_react4.useEffect)(() => {
+    if (typeof window === "undefined") return;
+    // almacen_kv está segregado por empresa; el bootstrap de almacenamiento
+    // usa este identificador para no leer ni escribir una fila global.
+    window.__empresaActivaIdParaContexto = empresaDelLocalActivo?.id ? String(empresaDelLocalActivo.id) : null;
+  }, [empresaDelLocalActivo]);
   const empleadosIdentidadKeyPM11 = empleados.map((empleado) => `${empleado?.id || ""}:${empleado?.empresaId || ""}:${empleado?.localId || ""}`).sort().join("|");
   (0, import_react4.useEffect)(() => {
     if (!ready || !miPerfil || miPerfil.rol !== "Propietario" || typeof window === "undefined" || !window.__nubeActiva || !localActivoId) return;

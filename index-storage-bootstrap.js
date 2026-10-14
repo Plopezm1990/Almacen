@@ -701,6 +701,28 @@
     return "p3c.lista." + id;
   }
 
+  // Las filas de almacen_kv están segregadas por empresa. El contexto lo
+  // publica fuente.js cuando ya se ha resuelto el local activo; nunca se
+  // inventa una empresa ni se escribe una fila global sin empresa_id.
+  function contextoKvActual() {
+    var empresaId = typeof window.__empresaActivaIdParaContexto === "string"
+      ? window.__empresaActivaIdParaContexto.trim()
+      : "";
+    var localId = typeof window.__localActivoIdParaContexto === "string"
+      ? window.__localActivoIdParaContexto.trim()
+      : "";
+    return { empresaId: empresaId || null, localId: localId || null };
+  }
+
+  function consultaKvPorClave(key, columnas) {
+    var consulta = window.__nubeCliente.from("almacen_kv")
+      .select(columnas)
+      .eq("key", key);
+    var contexto = contextoKvActual();
+    if (contexto.empresaId) consulta = consulta.eq("empresa_id", contexto.empresaId);
+    return consulta;
+  }
+
   async function guardarBloque(key, textoAnterior, textoNuevo) {
     var nuevo = JSON.parse(textoNuevo);
     var aSubir = nuevo;
@@ -754,8 +776,7 @@
     }
 
     if (!SIN_FUSION[key]) {
-      var rLee = await window.__nubeCliente.from("almacen_kv")
-        .select("value").eq("key", key).maybeSingle();
+      var rLee = await consultaKvPorClave(key, "value").maybeSingle();
       if (rLee.error) throw rLee.error;
       var enNube = rLee.data ? rLee.data.value : null;
       var antes = null;
@@ -772,7 +793,14 @@
       }
     }
 
-    var rSube = await window.__nubeCliente.from("almacen_kv").upsert({ key: key, value: aSubir });
+    var contexto = contextoKvActual();
+    if (!contexto.empresaId) throw new Error("No hay empresa activa para guardar " + key + " en la nube");
+    var rSube = await window.__nubeCliente.from("almacen_kv").upsert({
+      empresa_id: contexto.empresaId,
+      key: key,
+      value: aSubir,
+      local_id: null
+    });
     if (rSube.error) throw rSube.error;
     if (key === "productos") {
       confirmarBaseProductos(textoNuevo);
@@ -831,7 +859,7 @@
             lista = await conTiempoLimite(leerColeccionPorFila(tablaEspecial, key), ESPERA_NUBE_MS);
           } else {
             var r = await conTiempoLimite(
-              window.__nubeCliente.from("almacen_kv").select("value").eq("key", key).maybeSingle(),
+              consultaKvPorClave(key, "value").maybeSingle(),
               ESPERA_NUBE_MS
             );
             if (r.error) throw r.error;
@@ -972,7 +1000,14 @@
           } else if (tablaEspecial) {
             await conTiempoLimite(window.__nubeCliente.from(tablaEspecial).delete().neq("id", ""), ESPERA_NUBE_MS);
           } else {
-            await conTiempoLimite(window.__nubeCliente.from("almacen_kv").delete().eq("key", key), ESPERA_NUBE_MS);
+            var contextoBorrado = contextoKvActual();
+            if (contextoBorrado.empresaId) {
+              await conTiempoLimite(
+                window.__nubeCliente.from("almacen_kv")
+                  .delete().eq("empresa_id", contextoBorrado.empresaId).eq("key", key),
+                ESPERA_NUBE_MS
+              );
+            }
           }
         } catch (e) { /* el borrado local ya está hecho */ }
       }
