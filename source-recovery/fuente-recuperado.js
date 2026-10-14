@@ -2100,36 +2100,47 @@ function GestionAlmacen() {
           if (activo) setEstadoCuentasPM11(Object.fromEntries(idsEmpleadosContexto.map((id) => [id, "error"])));
           return;
         }
-        let consulta = supabase.from("perfiles").select("empleado_id, rol, activo").in("empleado_id", idsEmpleadosContexto);
+        let consulta = supabase.rpc("pm11_estado_cuentas_empleados", {
+          p_empresa_id: empresaContexto,
+          p_local_id: localContexto,
+          p_empleado_ids: idsEmpleadosContexto
+        });
         if (controlador && typeof consulta.abortSignal === "function") consulta = consulta.abortSignal(controlador.signal);
-        const { data: cuentas, error } = await consulta;
-        if (error || !activo || controlador?.signal.aborted || !Array.isArray(cuentas)) {
-          if (error && activo && !controlador?.signal.aborted || !Array.isArray(cuentas) && activo && !controlador?.signal.aborted) {
+        const { data: respuesta, error } = await consulta;
+        const cuentas = respuesta?.ok === true && Array.isArray(respuesta.cuentas) ? respuesta.cuentas : null;
+        if (error || !activo || controlador?.signal.aborted || !cuentas) {
+          if (error || !cuentas) {
             setEstadoCuentasPM11(Object.fromEntries(idsEmpleadosContexto.map((id) => [id, "error"])));
           }
           return;
         }
         const porEmpleado = new Map();
-        const duplicados = new Set();
+        const incoherentes = new Set();
         cuentas.forEach((cuenta) => {
           const empleadoId = String(cuenta?.empleado_id || "").trim();
           if (!empleadoId || !idsEmpleadosContexto.includes(empleadoId)) return;
-          if (porEmpleado.has(empleadoId)) duplicados.add(empleadoId);
+          if (porEmpleado.has(empleadoId)) incoherentes.add(empleadoId);
           else porEmpleado.set(empleadoId, cuenta);
         });
-        setEstadoCuentasPM11(Object.fromEntries(idsEmpleadosContexto.map((id) => [id, duplicados.has(id) ? "incoherente" : porEmpleado.has(id) ? porEmpleado.get(id)?.activo === false ? "suspendida" : "activa" : "sin_cuenta"])));
+        const estados = Object.fromEntries(idsEmpleadosContexto.map((id) => {
+          const cuenta = porEmpleado.get(id);
+          const estado = cuenta?.estado;
+          return [id, incoherentes.has(id) ? "incoherente" : ["activa", "suspendida", "sin_cuenta", "incoherente"].includes(estado) ? estado : "error"];
+        }));
+        setEstadoCuentasPM11(estados);
         setEmpleados((actuales) => actuales.map((empleado) => {
           const empleadoLocal = String(empleado?.localId || "");
           const empleadoEmpresa = String(empleado?.empresaId || "");
           const enContexto = empleadoLocal === localContexto && (!empresaContexto || !empleadoEmpresa || empleadoEmpresa === empresaContexto);
           if (!enContexto) return empleado;
           const cuenta = porEmpleado.get(empleado.id);
-          if (duplicados.has(String(empleado.id || "").trim())) return { ...empleado, tieneCuenta: false, cuentaActiva: false, rolCuenta: "" };
+          const estado = estados[String(empleado.id || "").trim()];
+          if (estado === "incoherente" || estado === "error") return { ...empleado, tieneCuenta: false, cuentaActiva: false, rolCuenta: "" };
           return {
             ...empleado,
-            tieneCuenta: !!cuenta,
-            cuentaActiva: cuenta ? cuenta.activo !== false : false,
-            rolCuenta: cuenta?.rol || ""
+            tieneCuenta: estado === "activa" || estado === "suspendida",
+            cuentaActiva: estado === "activa",
+            rolCuenta: estado === "activa" || estado === "suspendida" ? cuenta?.rol || "" : ""
           };
         }));
       } catch (e2) {
@@ -2726,7 +2737,7 @@ function GestionAlmacen() {
   });
   const { addProveedor, updateProveedor, deleteProveedor, addProveedorDesdeAlbaran, asignarNifProveedor, marcarProveedorRevisado, completarProveedorConDatosAlb } = crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null, proveedoresRecientes: proveedoresRecientesRef.current });
   const { addGasto, deleteGasto } = crearLogicaGastos({ setGastosGenerales, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
-  const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
+  const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, setEstadoCuentasPM11, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
   const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
@@ -4443,7 +4454,7 @@ function validarEmpleadoPM10(data, { localActivoId = null, locales = [], empresa
   }
   return { ok: true, datos };
 }
-function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId, locales = [], empresaId = null }) {
+function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, setEstadoCuentasPM11 = () => {}, localActivoId, locales = [], empresaId = null }) {
   const empleadoEsDelLocalActivoPersonal = (e2) => !!e2 && (!localActivoId || e2.localId === localActivoId);
   const fechaHoyPersonalPM13 = () => typeof todayISO === "function" ? todayISO() : "";
   const bajasRegistradasPersonalPM13 = new Set(empleados.filter((e2) => e2 && e2.activo === false).map((e2) => e2.id));
@@ -4515,7 +4526,8 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
       });
       const r2 = await resp.json();
       if (!r2.ok) return r2;
-      setEmpleados((s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, tieneCuenta: true, rolCuenta: rol, emailCuenta: email } : e2));
+      setEmpleados((s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, tieneCuenta: true, cuentaActiva: true, rolCuenta: rol, emailCuenta: email } : e2));
+      setEstadoCuentasPM11((actuales) => ({ ...actuales, [empleadoId]: "activa" }));
       registrarAuditoria("Crear cuenta de empleado", `${nombre} \xB7 ${rol} \xB7 ${email}`);
       return { ok: true };
     } catch (e2) {
