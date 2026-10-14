@@ -41,6 +41,23 @@ assert.match(efecto, /empresaId: empresaContexto, localActivoId, esContextoVigen
 assert.match(efecto, /empresas\.map\(\(e2\) =>/);
 assert.match(efecto, /locales\.map\(\(l22\) =>/);
 
+// 2.7: dos dispositivos pueden compartir jornada, pero dos identidades no
+// pueden compartir la resolución en vuelo ni el respaldo de otro usuario.
+assert.match(fuente, /contextoUsuarioEnVuelo === usuarioIdSolicitado/);
+assert.match(fuente, /contextoUsuarioId === userId && contextoLocalIdUsado === localIdSolicitado \? contextoCache : null/);
+assert.match(fuente, /function invalidarPorCambioDeSesion\(nuevoUsuarioId\)/);
+assert.match(fuente, /limpiarContextoLocalGuardado\(\);/);
+assert.match(fuente, /guardado\.userId !== userId/);
+assert.match(fuente, /guardado\.localIdSolicitado \|\| null\) !== \(localIdSolicitado \|\| null\)/);
+
+const contextoSeguro = (cache, cacheUser, cacheLocal, user, local) =>
+  cacheUser === user && cacheLocal === local ? cache : null;
+assert.deepEqual(contextoSeguro({ rol: 'Propietario', local: 'A1' }, 'user-a', 'A1', 'user-a', 'A1'), { rol: 'Propietario', local: 'A1' });
+assert.equal(contextoSeguro({ rol: 'Propietario', local: 'A1' }, 'user-a', 'A1', 'user-b', 'A1'), null,
+  'un segundo usuario no debe recibir el contexto del primero');
+assert.equal(contextoSeguro({ rol: 'Propietario', local: 'A1' }, 'user-a', 'A1', 'user-a', 'A2'), null,
+  'un segundo local no debe recibir el contexto del primero');
+
 const inicioRec = recuperada.indexOf('const contextoPm07SolicitudRef =');
 const finRec = recuperada.indexOf('const empresaDelLocalActivo =', inicioRec);
 assert.ok(inicioRec > 0 && finRec > inicioRec, 'la fuente recuperada no conserva el efecto');
