@@ -290,7 +290,9 @@
         } else {
           // Sin referencia de "lo que había antes" no se puede saber qué quitó
           // este equipo, así que no se borra nada: solo se añade y se corrige.
-          await encolarPorClave(key, function () { return guardarBloque(key, null, valor); });
+          await encolarKv(key, function () {
+            return conTiempoLimite(encolarPorClave(key, function () { return guardarBloque(key, null, valor); }), ESPERA_NUBE_MS);
+          });
         }
         quitarPendiente(key);
         quitarDenegado(key);
@@ -829,6 +831,48 @@
     return actual;
   }
 
+  // Las escrituras de almacen_kv comparten una misma tabla y sus políticas
+  // RLS/triggers. Durante el arranque había un saveKey por cada estado de
+  // React, todos a la vez; esa ráfaga dejaba el upsert de localActivoId
+  // esperando hasta que conTiempoLimite lo cancelaba. Se mantiene la cola
+  // por clave para fusionar cambios consecutivos, pero las claves KV se
+  // sirven además por una cola global: localActivoId tiene prioridad y cada
+  // tarea lleva su propio límite para que un fallo no bloquee las siguientes.
+  var colaSubidaKv = [];
+  var subiendoKv = false;
+  var drenajeKvProgramado = false;
+  function drenarColaKv() {
+    if (subiendoKv) return;
+    subiendoKv = true;
+    (async function () {
+      while (colaSubidaKv.length) {
+        var item = colaSubidaKv.shift();
+        try {
+          item.resolve(await item.tarea());
+        } catch (e) {
+          item.reject(e);
+        }
+      }
+      subiendoKv = false;
+    })();
+  }
+  function programarDrenajeKv() {
+    if (drenajeKvProgramado) return;
+    drenajeKvProgramado = true;
+    setTimeout(function () {
+      drenajeKvProgramado = false;
+      drenarColaKv();
+    }, 0);
+  }
+  function encolarKv(key, tarea) {
+    return new Promise(function (resolve, reject) {
+      var item = { key: key, tarea: tarea, resolve: resolve, reject: reject };
+      if (key === "localActivoId") colaSubidaKv.unshift(item);
+      else colaSubidaKv.push(item);
+      programarDrenajeKv();
+    });
+  }
+
   window.storage = {
     // Leer: si hay nube, se prefiere (trae lo que hayan hecho en otro
     // dispositivo) y se deja copia local. Si no, se lee de local.
@@ -947,10 +991,9 @@
                 ESPERA_NUBE_MS
               );
             } else {
-              resultadoProductos = await conTiempoLimite(
-                encolarPorClave(key, function () { return guardarBloque(key, anterior, value); }),
-                ESPERA_NUBE_MS
-              );
+              resultadoProductos = await encolarKv(key, function () {
+                return conTiempoLimite(encolarPorClave(key, function () { return guardarBloque(key, anterior, value); }), ESPERA_NUBE_MS);
+              });
             }
             quitarPendiente(key);
             quitarDenegado(key);
