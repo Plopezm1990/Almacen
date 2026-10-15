@@ -226,6 +226,28 @@
     }
     throw new Error("No hay espacio en el navegador para separar la copia local");
   }
+  // El historial de respaldos es una copia local grande y ya tiene el estado
+  // completo del programa. Si el navegador no puede contener origen y destino
+  // a la vez, moverlo (quitar origen y escribir destino) conserva exactamente
+  // los mismos bytes sin relajar el fallo cerrado para el resto de claves.
+  // Si el destino tampoco cabe, se restaura el origen antes de propagar el
+  // error. Las demás colecciones siguen requiriendo duplicación atómica.
+  function moverRespaldoConEspacio(origen, destino, valor, protegidos) {
+    try {
+      escribirConEspacio(destino, valor, protegidos);
+      return;
+    } catch (e) {
+      if (origen !== "almacen:historialRespaldos") throw e;
+      quitarNativo(origen);
+      try {
+        escribirConEspacio(destino, valor, protegidos);
+      } catch (e2) {
+        try { quitarNativo(destino); } catch (e3) {}
+        try { escribirNativo(origen, valor); } catch (e4) {}
+        throw e2;
+      }
+    }
+  }
 
   window.__laOwnerBootstrapSepararCopiaLocal = function (userId) {
     if (!storageGetNativo || !storageSetNativo || !storageRemoveNativo || !window.localStorage) {
@@ -245,7 +267,7 @@
       var protegidos = [dueno, userId];
       vivas.forEach(function (k) {
         var valor = leerNativo(k);
-        if (valor !== null) escribirConEspacio(PREFIJO_COPIA_CUENTA + dueno + ":" + k, valor, protegidos);
+        if (valor !== null) moverRespaldoConEspacio(k, PREFIJO_COPIA_CUENTA + dueno + ":" + k, valor, protegidos);
         quitarNativo(k);
         movidas++;
       });
