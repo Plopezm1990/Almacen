@@ -168,7 +168,7 @@ Solo con la autorización única del primer paquete (§8.1) y en este orden. **P
 
 ---
 
-## Apéndice A · Las 53 migraciones candidatas, en orden
+## Apéndice A · Las 54 migraciones candidatas, en orden
 
 «Registro en QA» es la marca con la que la herramienta las registró en QA y «Producción» la marca con la que figura en el registro de producción (ambos leídos el 3/10/2026, solo lectura). Las filas 47–51 se añadieron después de esa foto y quedan pendientes de una nueva lectura de ambos registros.
 
@@ -227,6 +227,7 @@ Solo con la autorización única del primer paquete (§8.1) y en este orden. **P
 | 51 | `20261009112332` | `abc_f7_c12_session_scope` | Vincula documentos C05 con la sesión y limita el ensayo C12 a ella | F7 | pendiente de verificar | posterior a la foto |
 | 52 | `20261011170000` | `pm10_bootstrap_scope_fix` | PM10: bootstrap de contexto fiscal simulado y catálogo TPV con alcance por empresas/locales activos | F3 | pendiente de verificar | posterior a la foto |
 | 53 | `20261014123000` | `p2_sec_pm11_read_account_state` | PM11: lectura autoritativa y tipada del estado de cuentas de empleados, limitada por empresa/local y membresía | P2-SEC | pendiente de verificar | posterior a la foto |
+| 54 | `20261015060000` | `p2_sec_pm11_fix_no_account_state` | PM11: corrige la serialización del estado `sin_cuenta` sin leer un perfil no asignado | P2-SEC | pendiente de verificar | posterior a la foto |
 
 Paquetes: F3/F4/F5 = «A · Base»; B06-B10 = «D · Proveedor de pagos»; P3 = «B · Catálogo con IVA»; Configuración = «C».
 
