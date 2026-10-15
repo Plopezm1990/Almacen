@@ -370,6 +370,27 @@ async function main() {
     assert.equal(rpcCalls.length, llamadasAntes, 'sin sesión no se llama a la RPC de nuevo');
   }
 
+  // 10) Arranque real: varias claves protegidas pueden pedir contexto antes
+  // de que termine la identificación inicial de la sesión. Todas deben
+  // esperar esa única promesa y compartir una sola RPC; si no, la ráfaga
+  // paralela satura PostgREST y el arranque acaba mostrando usuarioActivoId
+  // como fallo de carga aunque la respuesta del servidor sea válida.
+  {
+    rpcCalls = [];
+    rpcImpl = async () => ({ data: { rol: 'Camarero/a', localId: 'loc-A', empresaId: 'emp-A', empleado: { id: 'ea-1' }, empleadosFichaje: [{ id: 'ea-1' }], proveedores: [], fichasProduccion: [], cobrosEncargos: [] }, error: null });
+    const sb = nuevoSandbox();
+    sb.window.__localActivoIdParaContexto = 'loc-A';
+    const lecturas = await Promise.all([
+      sb.window.storage.get('empleados'),
+      sb.window.storage.get('empleados'),
+      sb.window.storage.get('empleados')
+    ]);
+    assert.equal(rpcCalls.length, 1, 'las lecturas concurrentes del arranque comparten la RPC tras identificar la sesión');
+    for (const lectura of lecturas) {
+      assert.deepEqual(JSON.parse(lectura.value).map((e) => e.id), ['ea-1'], 'ninguna lectura de arranque cae vacía por la carrera de sesión');
+    }
+  }
+
   console.log('PM33_P03_FRONTEND_MULTILOCAL_OK=1');
 }
 

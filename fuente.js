@@ -43575,6 +43575,11 @@ var init_index_es = __esm({
   // void 0 = todavía no se conoce (antes de que resuelva la suscripción
   // de abajo); null = sin sesión.
   var sesionUsuarioConocido = void 0;
+  // Todas las lecturas protegidas del arranque deben esperar a que se haya
+  // identificado la sesión una sola vez. Si compiten antes de que esta
+  // promesa termine, cada una puede reclamar una RPC distinta (porque la
+  // clave de vuelo aún sería `void 0`) y saturar PostgREST.
+  var sesionInicialLista = null;
   var CONTEXTO_TTL_MS = 3e4;
   var CACHE_LOCAL = "chocoloyos_contexto_operativo_seguro_v1";
   var CLAVES_COMUNES = [
@@ -43770,7 +43775,7 @@ var init_index_es = __esm({
     contextoLocalIdUsado = null;
     limpiarContextoLocalGuardado();
   }
-  (async function seguirCambiosDeSesion() {
+  sesionInicialLista = (async function seguirCambiosDeSesion() {
     try {
       var supabase = await clienteSupabase();
       var sesionInicial = await sesionActual(supabase);
@@ -43782,6 +43787,7 @@ var init_index_es = __esm({
         }
       });
     } catch (e2) {
+      sesionUsuarioConocido = null;
     }
   })();
   async function resolverContexto(forzar, localIdSolicitado, miGeneracion) {
@@ -43860,7 +43866,15 @@ var init_index_es = __esm({
       }
     }
   }
-  function obtenerContexto(forzar) {
+  async function obtenerContexto(forzar) {
+    // No reclames una petición en vuelo con usuario `void 0`: durante el
+    // arranque varias claves se leen en paralelo y, si la suscripción de
+    // sesión aún no ha terminado, cada lectura podría abrir su propia RPC.
+    // Esperar esta única inicialización mantiene una sola clave (usuario,
+    // local) y evita la ráfaga que provoca los timeouts de PostgREST.
+    if (sesionInicialLista) {
+      try { await sesionInicialLista; } catch (e2) {}
+    }
     // El reclamo de "petición compartida en curso" ocurre aquí, de forma
     // TOTALMENTE SÍNCRONA (sin ningún await antes de fijar
     // contextoPromesaEnVuelo): dos llamadas disparadas una detrás de otra
