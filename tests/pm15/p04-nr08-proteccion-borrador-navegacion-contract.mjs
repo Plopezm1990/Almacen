@@ -62,10 +62,12 @@ const src = fs.readFileSync('fuente.js', 'utf8');
     assert.ok(ini >= 0, `${nombre} no encontrado`);
     const finFirma = src.indexOf(') {', ini);
     assert.match(src.slice(ini, finFirma), /marcarFormularioAbiertoPM15 = \(\) => \{\}/, `${nombre} debe declarar la prop marcarFormularioAbiertoPM15`);
-    const finEfecto = src.indexOf('}, [' + estado + ']);', ini);
-    assert.ok(finEfecto > ini && finEfecto - ini < 900, `${nombre} debe reportar su propio estado (${estado}), no uno inventado`);
-    const cuerpoEfecto = src.slice(ini, finEfecto);
-    assert.match(cuerpoEfecto, new RegExp('marcarFormularioAbiertoPM15\\(' + estado + '\\)'), `${nombre} debe pasar ${estado} literal, no una constante fija`);
+    const siguienteComponente = src.indexOf('\nfunction ', ini + marcador.length);
+    const bloqueComponente = src.slice(ini, siguienteComponente > ini ? siguienteComponente : src.length);
+    const patronEfecto = new RegExp(
+      'useEffect\\(\\(\\) => \\{\\s*marcarFormularioAbiertoPM15\\(' + estado + '\\);\\s*\\}, \\[' + estado + '\\]\\);'
+    );
+    assert.match(bloqueComponente, patronEfecto, `${nombre} debe reportar su propio estado (${estado}), no uno inventado`);
   }
   console.log('P04_NR08_CUATRO_COMPONENTES_REPORTAN_SU_PROPIO_BORRADOR=PASS');
 }
