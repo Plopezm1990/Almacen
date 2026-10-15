@@ -28,20 +28,28 @@ function entorno(rpc, leerRemoto = () => base) {
   };
   const subidasDirectas = [];
   const eventos = [];
-  const window = { dispatchEvent(ev) { eventos.push(ev); }, crypto: { randomUUID: () => "id-de-prueba" } };
+  const window = {
+    dispatchEvent(ev) { eventos.push(ev); },
+    crypto: { randomUUID: () => "id-de-prueba" },
+    __empresaActivaIdParaContexto: "empresa-test",
+    __localActivoIdParaContexto: "local-test"
+  };
   const cliente = {
     rpc,
     from(tabla) {
       assert.equal(tabla, "almacen_kv");
-      return {
-        select() { return { eq() { return { maybeSingle: async () => ({ data: { value: leerRemoto() }, error: null }) }; } }; },
+      const consulta = {
+        select() { return consulta; },
+        eq() { return consulta; },
+        maybeSingle: async () => ({ data: { value: leerRemoto() }, error: null }),
         upsert: async fila => { subidasDirectas.push(fila); return { error: null }; }
       };
+      return consulta;
     }
   };
   vm.runInNewContext(codigo, {
     window, localStorage, document, CustomEvent: class { constructor(type, init) { this.type = type; this.detail = init.detail; } },
-    setTimeout() { return 0; }, clearTimeout() {}, console, Promise, JSON, Date, Math
+    setTimeout(fn, ms) { if (ms === 0) Promise.resolve().then(fn); return 0; }, clearTimeout() {}, console, Promise, JSON, Date, Math
   }, { filename: "index-storage-bootstrap.js" });
   vm.runInNewContext(autoridad, {
     window, localStorage, console, setInterval() { throw new Error("El puente debe instalarse de inmediato"); }
@@ -306,7 +314,7 @@ for (const codigoUi of [bundle, recuperado]) {
   const CustomEvent = class { constructor(type, init) { this.type = type; this.detail = init.detail; } };
   vm.runInNewContext(puente, {
     window, localStorage, console, Date, JSON, Math, CustomEvent,
-    setTimeout() { return 0; }, clearTimeout() {}
+    setTimeout(fn, ms) { if (ms === 0) Promise.resolve().then(fn); return 0; }, clearTimeout() {}
   }, { filename: "ui-context-bridge.js" });
   await window.storage.get("productos");
   eventos.get("click")();

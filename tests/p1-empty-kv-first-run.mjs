@@ -9,7 +9,7 @@ const [html, storageScript, fuente] = await Promise.all([
 ]);
 
 assert.ok(
-  html.includes('<script src="./index-storage-bootstrap.js"></script>'),
+  /<script src="\.\/index-storage-bootstrap\.js(?:\?[^\"]*)?"><\/script>/.test(html),
   "index.html no carga el adaptador de almacenamiento externo"
 );
 

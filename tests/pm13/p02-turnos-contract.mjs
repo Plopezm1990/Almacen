@@ -128,7 +128,7 @@ const turnoBase = {
   assert.equal(e.estado.length, 2);
 }
 
-const uiStart = src.indexOf('function Turnos({ empleados, turnos, addTurno, updateTurno, deleteTurno, copiarSemana }) {');
+const uiStart = src.indexOf('function Turnos({ empleados, turnos, addTurno, updateTurno, deleteTurno, copiarSemana,');
 const uiEnd = src.indexOf('\nfunction MapaAlmacen(', uiStart);
 assert.ok(uiStart >= 0 && uiEnd > uiStart, 'No se localizó UI Turnos');
 const ui = src.slice(uiStart, uiEnd);

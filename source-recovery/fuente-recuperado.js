@@ -485,21 +485,55 @@ var ultimoDiaMes = (fecha) => {
   const d2 = new Date(fecha);
   return aISO(new Date(d2.getFullYear(), d2.getMonth() + 1, 0));
 };
+const MINUTOS_DIA_PM13 = 24 * 60;
+function parseFechaHoraFichajePM13(fecha, hora) {
+  const fechaTexto = String(fecha || "").trim();
+  const horaTexto = String(hora || "").trim();
+  const fechaMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fechaTexto);
+  const horaMatch = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(horaTexto);
+  if (!fechaMatch || !horaMatch) return null;
+  const ano = Number(fechaMatch[1]);
+  const mes = Number(fechaMatch[2]);
+  const dia = Number(fechaMatch[3]);
+  const minutosHora = Number(horaMatch[1]) * 60 + Number(horaMatch[2]);
+  const fechaUTC = Date.UTC(ano, mes - 1, dia);
+  const fechaComprobada = new Date(fechaUTC);
+  if (fechaComprobada.getUTCFullYear() !== ano || fechaComprobada.getUTCMonth() !== mes - 1 || fechaComprobada.getUTCDate() !== dia) return null;
+  return { fecha: fechaTexto, hora: horaTexto, minutos: fechaUTC / 6e4 + minutosHora };
+}
+function intervaloFichajePM13(entrada, salida) {
+  const inicio = parseFechaHoraFichajePM13(entrada?.fecha, entrada?.hora);
+  const finOriginal = parseFechaHoraFichajePM13(salida?.fecha, salida?.hora);
+  if (!inicio || !finOriginal) return null;
+  let fin = finOriginal.minutos;
+  const cruzaMedianoche = fin <= inicio.minutos;
+  if (cruzaMedianoche) fin += MINUTOS_DIA_PM13;
+  const minutos = fin - inicio.minutos;
+  if (minutos <= 0 || minutos > MINUTOS_DIA_PM13) return null;
+  return { inicio: inicio.minutos, fin, minutos, cruzaMedianoche };
+}
 function horasDeEmpleadoEnMes(fichajes, empleadoId, mes) {
-  const delMes = fichajes.filter((f22) => f22.empleadoId === empleadoId && (f22.fecha || "").slice(0, 7) === mes).sort((a22, b2) => (a22.timestamp || "").localeCompare(b2.timestamp || ""));
-  let total = 0;
-  let entrada = null;
-  delMes.forEach((f22) => {
-    if (f22.tipo === "entrada") entrada = f22;
-    else if (f22.tipo === "salida" && entrada) {
-      const ini = /* @__PURE__ */ new Date(`${entrada.fecha}T${entrada.hora}:00`);
-      const fin = /* @__PURE__ */ new Date(`${f22.fecha}T${f22.hora}:00`);
-      const horas = (fin - ini) / 36e5;
-      if (horas > 0 && horas < 24) total += horas;
-      entrada = null;
-    }
+  // PM13 2.6: el periodo pertenece al mes de la entrada. Fecha y hora son
+  // valores de pared almacenados por el servidor; no se reinterpretan con la
+  // zona horaria del navegador ni se cambian históricos silenciosamente.
+  const ordenados = fichajes.filter((f22) => f22.empleadoId === empleadoId && parseFechaHoraFichajePM13(f22.fecha, f22.hora)).sort((a22, b2) => {
+    const aInfo = parseFechaHoraFichajePM13(a22.fecha, a22.hora);
+    const bInfo = parseFechaHoraFichajePM13(b2.fecha, b2.hora);
+    return aInfo.minutos - bInfo.minutos || String(a22.id || "").localeCompare(String(b2.id || ""));
   });
-  return total;
+  let totalMinutos = 0;
+  let entrada = null;
+  ordenados.forEach((f22) => {
+    if (f22.tipo === "entrada" && !entrada) {
+      entrada = f22;
+      return;
+    }
+    if (f22.tipo !== "salida" || !entrada) return;
+    const intervalo = intervaloFichajePM13(entrada, f22);
+    if (intervalo && String(entrada.fecha || "").slice(0, 7) === mes) totalMinutos += intervalo.minutos;
+    entrada = null;
+  });
+  return totalMinutos / 60;
 }
 function costePorHoraEquipoEnMes(nominas, fichajes, mes) {
   const nominasDelMes = nominas.filter((n2) => n2.mes === mes);
@@ -543,7 +577,12 @@ async function loadKey(key, fallback, retries = 2) {
 }
 async function saveKey(key, value) {
   try {
-    await window.storage.set(key, JSON.stringify(value), false);
+    const resultado = await window.storage.set(key, JSON.stringify(value), false);
+    if (resultado?.pendienteSincronizacion && typeof window !== "undefined" && window.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent("fallo-guardado", { detail: { key, pendiente: true, mensaje: "Guardado en este equipo; pendiente de confirmación del servidor." } }));
+    } else if (resultado?.confirmadoServidor && typeof window !== "undefined" && window.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent("guardado-confirmado", { detail: { key } }));
+    }
   } catch (e2) {
     console.error("Error guardando", key, e2);
     if (typeof window !== "undefined" && window.dispatchEvent) {
@@ -551,13 +590,19 @@ async function saveKey(key, value) {
     }
   }
 }
-async function sincronizarConteosPm12({ setConteos, localActivoId }) {
+function claveContextoPm07({ empresaId = null, localId = null, periodo = null } = {}) {
+  return `empresa:${empresaId || "todas"}|local:${localId || "todos"}|periodo:${periodo || "todos"}`;
+}
+async function sincronizarConteosPm12({ setConteos, empresaId = null, localActivoId = null, esContextoVigente = () => true }) {
   const cliente = await window.getSupabaseClient();
   let consulta = cliente.from("stock_operaciones").select("empresa_id,local_id,payload").eq("tipo", "INVENTARIO_PM12");
+  if (empresaId) consulta = consulta.eq("empresa_id", empresaId);
   if (localActivoId) consulta = consulta.eq("local_id", localActivoId);
   const r = await consulta;
   if (r.error) throw r.error;
+  if (!esContextoVigente()) return { ok: false, obsoleto: true };
   const documentos = (r.data || []).map((op) => op.payload && op.payload.resultado && op.payload.resultado.conteo).filter(Boolean);
+  if (!esContextoVigente()) return { ok: false, obsoleto: true };
   setConteos((cs) => {
     const nuevos = [...cs];
     for (const documento of documentos) {
@@ -568,14 +613,23 @@ async function sincronizarConteosPm12({ setConteos, localActivoId }) {
     return nuevos;
   });
 }
-async function sincronizarStockPm07({ setProductos, setMovimientos, localActivoId = null }) {
+async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = null, localActivoId = null, esContextoVigente = () => true }) {
   if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return { ok: false, offline: true };
   const supabase = await window.getSupabaseClient();
   let qStock = supabase.from("stock_estado").select("empresa_id,local_id,producto_id,almacen,piso,total,minimo,bajo_minimo,fraccionable,precision_cantidad,local_operable");
   let qMov = supabase.from("movimientos_stock").select("id,operation_id,tipo,empresa_id,local_id,producto_id,delta_almacen,delta_piso,delta_total,cantidad,movimiento_original_id,datos,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3);
+  if (empresaId) {
+    qStock = qStock.eq("empresa_id", empresaId);
+    qMov = qMov.eq("empresa_id", empresaId);
+  }
+  if (localActivoId) {
+    qStock = qStock.eq("local_id", localActivoId);
+    qMov = qMov.eq("local_id", localActivoId);
+  }
   const [rStock, rMov] = await Promise.all([qStock, qMov]);
   if (rStock.error) throw rStock.error;
   if (rMov.error) throw rMov.error;
+  if (!esContextoVigente()) return { ok: false, obsoleto: true };
   const stocks = Array.isArray(rStock.data) ? rStock.data : [];
   const movs = Array.isArray(rMov.data) ? rMov.data : [];
   if (typeof setProductos === "function") {
@@ -827,17 +881,24 @@ function normalizarDevolucionPM08(fila, tipo) {
     _pm08Servidor: !!(fila.operation_id || fila.actor_user_id)
   };
 }
-async function sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones }) {
+async function sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones, empresaId = null, localActivoId = null, esContextoVigente = () => true }) {
   if (!modoSincronizadoPM08() || !window.__nubeActiva || !window.__nubeCliente) return { ok: false, offline: true };
   const supabase = window.__nubeCliente;
+  const acotarContexto = (consulta) => {
+    let acotada = consulta;
+    if (empresaId) acotada = acotada.eq("empresa_id", empresaId);
+    if (localActivoId) acotada = acotada.eq("local_id", localActivoId);
+    return acotada;
+  };
   const [rCaja, rArqueos, rCliente, rProveedor] = await Promise.all([
-    supabase.from("caja_operaciones").select("operation_id,tipo,empresa_id,local_id,fecha,importe,efecto_efectivo,medio_pago,concepto,origen_tipo,origen_id,ref_operation_id,payload,actor_user_id,abc_command_id,caja_id,session_id,terminal_id,currency_code,operating_day,categoria,created_at").order("created_at", { ascending: false }).limit(2e3),
-    supabase.from("arqueos_caja").select("operation_id,empresa_id,local_id,fecha,alcance,efectivo_base,efectivo_esperado,efectivo_contado,diferencia,notas,estado,anulado_por_operation_id,anulado_motivo,actor_user_id,abc_command_id,caja_id,session_id,terminal_id,currency_code,operating_day,denominaciones,created_at").order("created_at", { ascending: false }).limit(1e3),
-    supabase.from("devoluciones_venta").select("operation_id,venta_operation_id,empresa_id,local_id,producto_id,cantidad,reembolso,medio_reembolso,motivo,fecha,payload,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3),
-    supabase.from("devoluciones_proveedor").select("operation_id,empresa_id,local_id,producto_id,cantidad,proveedor_id,proveedor_nombre,motivo,fecha,payload,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3)
+    acotarContexto(supabase.from("caja_operaciones").select("operation_id,tipo,empresa_id,local_id,fecha,importe,efecto_efectivo,medio_pago,concepto,origen_tipo,origen_id,ref_operation_id,payload,actor_user_id,abc_command_id,caja_id,session_id,terminal_id,currency_code,operating_day,categoria,created_at").order("created_at", { ascending: false }).limit(2e3)),
+    acotarContexto(supabase.from("arqueos_caja").select("operation_id,empresa_id,local_id,fecha,alcance,efectivo_base,efectivo_esperado,efectivo_contado,diferencia,notas,estado,anulado_por_operation_id,anulado_motivo,actor_user_id,abc_command_id,caja_id,session_id,terminal_id,currency_code,operating_day,denominaciones,created_at").order("created_at", { ascending: false }).limit(1e3)),
+    acotarContexto(supabase.from("devoluciones_venta").select("operation_id,venta_operation_id,empresa_id,local_id,producto_id,cantidad,reembolso,medio_reembolso,motivo,fecha,payload,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3)),
+    acotarContexto(supabase.from("devoluciones_proveedor").select("operation_id,empresa_id,local_id,producto_id,cantidad,proveedor_id,proveedor_nombre,motivo,fecha,payload,actor_user_id,created_at").order("created_at", { ascending: false }).limit(2e3))
   ]);
   const fallo = [rCaja, rArqueos, rCliente, rProveedor].find((r2) => r2.error);
   if (fallo) throw fallo.error;
+  if (!esContextoVigente()) return { ok: false, obsoleto: true };
   const caja = (rCaja.data || []).map(normalizarMovimientoCajaPM08).filter(Boolean);
   const arqueos = (rArqueos.data || []).map(normalizarArqueoPM08).filter(Boolean);
   const clientes = (rCliente.data || []).map((fila) => normalizarDevolucionPM08(fila, "cliente")).filter(Boolean);
@@ -848,7 +909,7 @@ async function sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluci
   return { ok: true, movimientosCaja: caja.length, arqueos: arqueos.length, devoluciones: clientes.length + proveedores.length };
 }
 async function sincronizarContextoPm07(args) {
-  const { setEmpresas, setLocales, setLocalActivoId, setProductos } = args || {};
+  const { setEmpresas, setLocales, setLocalActivoId, setProductos, esContextoVigente = () => true } = args || {};
   if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return { ok: false, offline: true };
   const supabase = await window.getSupabaseClient();
   const r2 = await supabase.from("almacen_kv").select("key,value").in("key", ["empresas", "locales", "localActivoId", "productos"]);
@@ -858,10 +919,11 @@ async function sincronizarContextoPm07(args) {
   const localesNube = porClave.get("locales");
   const localActivoNube = porClave.get("localActivoId");
   const productosNube = porClave.get("productos");
-  if (Array.isArray(empresasNube) && empresasNube.length && typeof setEmpresas === "function") setEmpresas(empresasNube.filter((e2) => e2 && e2.id));
-  if (Array.isArray(localesNube) && localesNube.length && typeof setLocales === "function") setLocales(localesNube.filter((l3) => l3 && l3.id));
-  if (typeof localActivoNube === "string" && localActivoNube && typeof setLocalActivoId === "function") setLocalActivoId(localActivoNube);
-  if (Array.isArray(productosNube) && productosNube.length && typeof setProductos === "function") setProductos(productosNube.filter((p3) => p3 && p3.id));
+  if (!esContextoVigente()) return { ok: false, obsoleto: true };
+  if (Array.isArray(empresasNube) && empresasNube.length && typeof setEmpresas === "function" && esContextoVigente()) setEmpresas(empresasNube.filter((e2) => e2 && e2.id));
+  if (Array.isArray(localesNube) && localesNube.length && typeof setLocales === "function" && esContextoVigente()) setLocales(localesNube.filter((l3) => l3 && l3.id));
+  if (typeof localActivoNube === "string" && localActivoNube && typeof setLocalActivoId === "function" && esContextoVigente()) setLocalActivoId(localActivoNube);
+  if (Array.isArray(productosNube) && productosNube.length && typeof setProductos === "function" && esContextoVigente()) setProductos(productosNube.filter((p3) => p3 && p3.id));
   return { ok: true, empresas: Array.isArray(empresasNube) ? empresasNube.length : 0, locales: Array.isArray(localesNube) ? localesNube.length : 0, productos: Array.isArray(productosNube) ? productosNube.length : 0 };
 }
 function SelectorLocalInformes({ locales = [], valor = "", onChange, empresas = [], empresaActivaId = "", onCambiarEmpresa }) {
@@ -1899,7 +1961,16 @@ function GestionAlmacen() {
       ].slice(0, 20));
     }
     window.addEventListener("fallo-guardado", onFalloGuardado);
-    return () => window.removeEventListener("fallo-guardado", onFalloGuardado);
+    function onGuardadoConfirmado(e2) {
+      const key = e2.detail && e2.detail.key;
+      if (!key) return;
+      setFallosGuardado((s22) => s22.filter((f22) => f22.key !== key));
+    }
+    window.addEventListener("guardado-confirmado", onGuardadoConfirmado);
+    return () => {
+      window.removeEventListener("fallo-guardado", onFalloGuardado);
+      window.removeEventListener("guardado-confirmado", onGuardadoConfirmado);
+    };
   }, []);
   const [fallosCarga, setFallosCarga] = (0, import_react4.useState)([]);
   (0, import_react4.useEffect)(() => {
@@ -1983,6 +2054,7 @@ function GestionAlmacen() {
   const [catalogoProv, setCatalogoProv] = (0, import_react4.useState)({});
   const [gastosGenerales, setGastosGenerales] = (0, import_react4.useState)([]);
   const [empleados, setEmpleados] = (0, import_react4.useState)([]);
+  const [estadoCuentasPM11, setEstadoCuentasPM11] = (0, import_react4.useState)({});
   const [fichajes, setFichajes] = (0, import_react4.useState)([]);
   const [registrosAppcc, setRegistrosAppcc] = (0, import_react4.useState)([]);
   const [freidoras, setFreidoras] = (0, import_react4.useState)([]);
@@ -2006,6 +2078,13 @@ function GestionAlmacen() {
   const [empresas, setEmpresas] = (0, import_react4.useState)([]);
   const [localActivoId, setLocalActivoId] = (0, import_react4.useState)(null);
   const [localInformeId, setLocalInformeId] = (0, import_react4.useState)("");
+  const localActivoIdRefPm07 = (0, import_react4.useRef)(localActivoId);
+  const contextoPm07InicializadoRef = (0, import_react4.useRef)(false);
+  const contextoPm07SolicitudRef = (0, import_react4.useRef)(0);
+  const contextoPm07ClaveRef = (0, import_react4.useRef)("");
+  (0, import_react4.useEffect)(() => {
+    localActivoIdRefPm07.current = localActivoId;
+  }, [localActivoId]);
   (0, import_react4.useEffect)(() => {
     if (typeof window === "undefined") return;
     // PM33 P03: el contexto operativo (obtener_contexto_operativo) se pide
@@ -2022,20 +2101,48 @@ function GestionAlmacen() {
   (0, import_react4.useEffect)(() => {
     if (!ready || typeof window === "undefined" || !window.__nubeActiva) return;
     let activo = true;
+    const localContexto = localActivoId ? String(localActivoId) : "";
+    const localActual = locales.find((l22) => l22 && String(l22.id) === localContexto) || null;
+    const empresaContexto = localActual?.empresaId ? String(localActual.empresaId) : empresas.length === 1 ? String(empresas[0]?.id || "") : "";
+    const claveContexto = claveContextoPm07({ empresaId: empresaContexto, localId: localContexto });
+    const solicitud = contextoPm07SolicitudRef.current + 1;
+    contextoPm07SolicitudRef.current = solicitud;
+    contextoPm07ClaveRef.current = claveContexto;
+    const esContextoVigente = () => activo && contextoPm07SolicitudRef.current === solicitud && contextoPm07ClaveRef.current === claveContexto && localActivoIdRefPm07.current === localActivoId;
+    const sincronizarContextoCompleto = !contextoPm07InicializadoRef.current;
+    contextoPm07InicializadoRef.current = true;
+    const localActivoInicial = localActivoId;
     (async () => {
       try {
-        await sincronizarContextoPm07({ setEmpresas, setLocales, setLocalActivoId, setProductos });
-        await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
-        await sincronizarConteosPm12({ setConteos, localActivoId });
-        await sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones });
+        if (sincronizarContextoCompleto) {
+          await sincronizarContextoPm07({
+            setEmpresas,
+            setLocales,
+            setLocalActivoId: (id) => {
+              // `localActivoId` ya viene de la preferencia de este dispositivo
+              // (ui-context-bridge). El valor global de almacen_kv es legado y
+              // no puede sustituir una elección válida hecha antes de recargar.
+              if (esContextoVigente() && !localActivoInicial && localActivoIdRefPm07.current === localActivoInicial) setLocalActivoId(id);
+            },
+            setProductos,
+            esContextoVigente
+          });
+        }
+        if (!esContextoVigente()) return;
+        await sincronizarStockPm07({ setProductos, setMovimientos, empresaId: empresaContexto, localActivoId, esContextoVigente });
+        if (!esContextoVigente()) return;
+        await sincronizarConteosPm12({ setConteos, empresaId: empresaContexto, localActivoId, esContextoVigente });
+        if (!esContextoVigente()) return;
+        await sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones, empresaId: empresaContexto, localActivoId, esContextoVigente });
       } catch (e2) {
+        if (sincronizarContextoCompleto) contextoPm07InicializadoRef.current = false;
         if (activo) console.error("PM-08: no se pudo sincronizar contexto, stock o caja autoritativos", e2);
       }
     })();
     return () => {
       activo = false;
     };
-  }, [ready, localActivoId]);
+  }, [ready, localActivoId, empresas.map((e2) => `${e2?.id || ""}:${e2?.activo !== false}`).sort().join("|"), locales.map((l22) => `${l22?.id || ""}:${l22?.empresaId || ""}:${l22?.activo !== false}`).sort().join("|")]);
   const empresaDelLocalActivo = (0, import_react4.useMemo)(() => {
     const principal = empresas[0] || null;
     const localActual = locales.find((l22) => l22.id === localActivoId) || null;
@@ -2045,6 +2152,92 @@ function GestionAlmacen() {
     }
     return empresas.length === 1 ? principal || configEmpresa || null : null;
   }, [empresas, locales, localActivoId, configEmpresa]);
+  (0, import_react4.useEffect)(() => {
+    if (typeof window === "undefined") return;
+    // almacen_kv está segregado por empresa; el bootstrap de almacenamiento
+    // usa este identificador para no leer ni escribir una fila global.
+    window.__empresaActivaIdParaContexto = empresaDelLocalActivo?.id ? String(empresaDelLocalActivo.id) : null;
+  }, [empresaDelLocalActivo]);
+  const empleadosIdentidadKeyPM11 = empleados.map((empleado) => `${empleado?.id || ""}:${empleado?.empresaId || ""}:${empleado?.localId || ""}`).sort().join("|");
+  (0, import_react4.useEffect)(() => {
+    if (!ready || !miPerfil || miPerfil.rol !== "Propietario" || typeof window === "undefined" || !window.__nubeActiva || !localActivoId) return;
+    let activo = true;
+    const controlador = typeof AbortController === "function" ? new AbortController() : null;
+    const localContexto = String(localActivoId);
+    const localActual = locales.find((l22) => l22 && String(l22.id) === localContexto) || null;
+    const empresaContexto = localActual?.empresaId ? String(localActual.empresaId) : empresas.length === 1 ? String(empresas[0]?.id || "") : "";
+    const idsEmpleadosContexto = empleados.filter((empleado) => {
+      const empleadoLocal = String(empleado?.localId || "");
+      const empleadoEmpresa = String(empleado?.empresaId || "");
+      return empleadoLocal === localContexto && (!empresaContexto || !empleadoEmpresa || empleadoEmpresa === empresaContexto);
+    }).map((empleado) => String(empleado.id || "").trim()).filter(Boolean);
+    if (!idsEmpleadosContexto.length) {
+      setEstadoCuentasPM11({});
+      return;
+    }
+    setEstadoCuentasPM11(Object.fromEntries(idsEmpleadosContexto.map((id) => [id, "cargando"])));
+    (async () => {
+      try {
+        const supabase = await window.getSupabaseClient();
+        const { data: sesion } = await supabase.auth.getSession();
+        const userId = sesion?.session?.user?.id;
+        if (!userId) {
+          if (activo) setEstadoCuentasPM11(Object.fromEntries(idsEmpleadosContexto.map((id) => [id, "error"])));
+          return;
+        }
+        let consulta = supabase.rpc("pm11_estado_cuentas_empleados", {
+          p_empresa_id: empresaContexto,
+          p_local_id: localContexto,
+          p_empleado_ids: idsEmpleadosContexto
+        });
+        if (controlador && typeof consulta.abortSignal === "function") consulta = consulta.abortSignal(controlador.signal);
+        const { data: respuesta, error } = await consulta;
+        const cuentas = respuesta?.ok === true && Array.isArray(respuesta.cuentas) ? respuesta.cuentas : null;
+        if (error || !activo || controlador?.signal.aborted || !cuentas) {
+          if (error || !cuentas) {
+            setEstadoCuentasPM11(Object.fromEntries(idsEmpleadosContexto.map((id) => [id, "error"])));
+          }
+          return;
+        }
+        const porEmpleado = new Map();
+        const incoherentes = new Set();
+        cuentas.forEach((cuenta) => {
+          const empleadoId = String(cuenta?.empleado_id || "").trim();
+          if (!empleadoId || !idsEmpleadosContexto.includes(empleadoId)) return;
+          if (porEmpleado.has(empleadoId)) incoherentes.add(empleadoId);
+          else porEmpleado.set(empleadoId, cuenta);
+        });
+        const estados = Object.fromEntries(idsEmpleadosContexto.map((id) => {
+          const cuenta = porEmpleado.get(id);
+          const estado = cuenta?.estado;
+          return [id, incoherentes.has(id) ? "incoherente" : ["activa", "suspendida", "sin_cuenta", "incoherente"].includes(estado) ? estado : "error"];
+        }));
+        setEstadoCuentasPM11(estados);
+        setEmpleados((actuales) => actuales.map((empleado) => {
+          const empleadoLocal = String(empleado?.localId || "");
+          const empleadoEmpresa = String(empleado?.empresaId || "");
+          const enContexto = empleadoLocal === localContexto && (!empresaContexto || !empleadoEmpresa || empleadoEmpresa === empresaContexto);
+          if (!enContexto) return empleado;
+          const cuenta = porEmpleado.get(empleado.id);
+          const estado = estados[String(empleado.id || "").trim()];
+          if (estado === "incoherente" || estado === "error") return { ...empleado, tieneCuenta: false, cuentaActiva: false, rolCuenta: "" };
+          return {
+            ...empleado,
+            tieneCuenta: estado === "activa" || estado === "suspendida",
+            cuentaActiva: estado === "activa",
+            rolCuenta: estado === "activa" || estado === "suspendida" ? cuenta?.rol || "" : ""
+          };
+        }));
+      } catch (e2) {
+        if (controlador?.signal.aborted) return;
+        if (activo) setEstadoCuentasPM11(Object.fromEntries(idsEmpleadosContexto.map((id) => [id, "error"])));
+      }
+    })();
+    return () => {
+      activo = false;
+      if (controlador) controlador.abort();
+    };
+  }, [ready, miPerfil, localActivoId, empresas, locales, empleadosIdentidadKeyPM11]);
   const localesEmpresaActiva = (0, import_react4.useMemo)(() => {
     const empresaId = empresaDelLocalActivo?.id || null;
     if (!empresaId) return [];
@@ -2629,7 +2822,7 @@ function GestionAlmacen() {
   });
   const { addProveedor, updateProveedor, deleteProveedor, addProveedorDesdeAlbaran, asignarNifProveedor, marcarProveedorRevisado, completarProveedorConDatosAlb } = crearLogicaProveedores({ proveedores, setProveedores, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null, proveedoresRecientes: proveedoresRecientesRef.current });
   const { addGasto, deleteGasto } = crearLogicaGastos({ setGastosGenerales, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
-  const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
+  const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, setEstadoCuentasPM11, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
   const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
@@ -3143,6 +3336,23 @@ function GestionAlmacen() {
   const fichajesDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? fichajes : fichajes.filter((f22) => f22.localId === localActivoId), [fichajes, localActivoId]);
   const turnosDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? turnos : turnos.filter((t22) => t22.localId === localActivoId), [turnos, localActivoId]);
   const nominasDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? nominas : nominas.filter((n2) => n2.localId === localActivoId), [nominas, localActivoId]);
+  const estadoCargaDatosPM12 = (0, import_react4.useMemo)(() => {
+    const fallo = (key) => fallosCarga.some((f22) => f22.key === key);
+    const pendiente = (key) => fallosGuardado.some((f22) => f22.key === key);
+    const estado = (key, datos) => {
+      if (!ready) return "cargando";
+      if (fallo(key)) return "error";
+      return Array.isArray(datos) && datos.length > 0 ? "cargado_con_datos" : "vacio_confirmado";
+    };
+    return {
+      empleados: estado("empleados", empleadosDelLocalActivo),
+      fichajes: estado("fichajes", fichajesDelLocalActivo),
+      turnos: estado("turnos", turnosDelLocalActivo),
+      pendienteEmpleados: pendiente("empleados"),
+      pendienteFichajes: pendiente("fichajes"),
+      pendienteTurnos: pendiente("turnos")
+    };
+  }, [ready, fallosCarga, fallosGuardado, empleadosDelLocalActivo, fichajesDelLocalActivo, turnosDelLocalActivo]);
   const documentosPersonalProntoDelLocalActivo = (0, import_react4.useMemo)(() => documentosPersonalPronto.filter((d2) => idsEmpleadosDelLocalActivo.has(d2.empleadoId)), [documentosPersonalPronto, idsEmpleadosDelLocalActivo]);
   const encargosPendientes = (0, import_react4.useMemo)(() => {
     const hoy = /* @__PURE__ */ new Date();
@@ -3423,6 +3633,7 @@ function GestionAlmacen() {
       alertasAppcc,
       fallosGuardado,
       fallosCarga,
+      estadoCargaDatosPM12,
       diagnosticoStock: diagnosticoStockInforme,
       registrarSalida
     }
@@ -3617,6 +3828,9 @@ function GestionAlmacen() {
       listarPrefiltros,
       eliminarPrefiltro,
       crearCuentaEmpleado,
+      estadoCuentasPM11,
+      estadoCargaDatos: estadoCargaDatosPM12.empleados,
+      pendienteSincronizacion: estadoCargaDatosPM12.pendienteEmpleados,
       contextoActivoPM15,
       marcarFormularioAbiertoPM15
     }
@@ -3629,7 +3843,9 @@ function GestionAlmacen() {
       addFichajeManual,
       updateFichaje,
       eliminarFichaje,
-      fichajesAbiertos: fichajesAbiertosDelLocalActivo
+      fichajesAbiertos: fichajesAbiertosDelLocalActivo,
+      estadoCargaDatos: estadoCargaDatosPM12.fichajes,
+      pendienteSincronizacion: estadoCargaDatosPM12.pendienteFichajes
     }
   ), tab === "nominas" && /* @__PURE__ */ import_react4.default.createElement(
     CostePersonal,
@@ -3715,7 +3931,9 @@ function GestionAlmacen() {
       addTurno,
       updateTurno,
       deleteTurno,
-      copiarSemana
+      copiarSemana,
+      estadoCargaDatos: estadoCargaDatosPM12.turnos,
+      pendienteSincronizacion: estadoCargaDatosPM12.pendienteTurnos
     }
   ), tab === "mapa" && /* @__PURE__ */ import_react4.default.createElement(MapaAlmacen, { productos: productosDelLocalActivo, proveedorPorId, stockBajo: stockBajoDelLocalActivo }), tab === "traspasos" && /* @__PURE__ */ import_react4.default.createElement(Traspasos, { productos: productosDelLocalActivo, productosEmpresa: productos.filter((p22) => localesEmpresaActiva.some((l22) => l22.id === p22.localId)), locales: localesEmpresaActiva, localActivoId, traspasos: traspasosDelLocalActivo, traspasarStock, traspasarEntreLocales, pisoVentaBajo: pisoVentaBajoDelLocalActivo, fichasCosto: fichasCostoDelLocalActivo }), tab === "appcc" && /* @__PURE__ */ import_react4.default.createElement(
     Appcc,
@@ -4345,7 +4563,7 @@ function validarEmpleadoPM10(data, { localActivoId = null, locales = [], empresa
   }
   return { ok: true, datos };
 }
-function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, localActivoId, locales = [], empresaId = null }) {
+function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, setEstadoCuentasPM11 = () => {}, localActivoId, locales = [], empresaId = null }) {
   const empleadoEsDelLocalActivoPersonal = (e2) => !!e2 && (!localActivoId || e2.localId === localActivoId);
   const fechaHoyPersonalPM13 = () => typeof todayISO === "function" ? todayISO() : "";
   const bajasRegistradasPersonalPM13 = new Set(empleados.filter((e2) => e2 && e2.activo === false).map((e2) => e2.id));
@@ -4409,14 +4627,16 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
       const { data: sesion } = await supabase.auth.getSession();
       const token = sesion?.session?.access_token;
       if (!token) return { ok: false, error: "No hay sesi\xF3n activa \u2014 vuelve a iniciar sesi\xF3n." };
-      const resp = await fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/crear-cuenta-empleado", {
+      const endpointCuentaEmpleado = typeof window !== "undefined" && window.__modoPruebasQA === true && typeof window.__qaNubeUrl === "string" && /^https:\/\/qjqorixtkilwsndqayyx\.supabase\.co$/i.test(window.__qaNubeUrl.replace(/\/+$/, "")) ? `${window.__qaNubeUrl.replace(/\/+$/, "")}/functions/v1/qa-crear-empleado` : "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/crear-cuenta-empleado";
+      const resp = await fetch(endpointCuentaEmpleado, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ empleadoId, nombre, email, password, rol })
       });
       const r2 = await resp.json();
       if (!r2.ok) return r2;
-      setEmpleados((s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, tieneCuenta: true, rolCuenta: rol, emailCuenta: email } : e2));
+      setEmpleados((s22) => s22.map((e2) => e2.id === empleadoId ? { ...e2, tieneCuenta: true, cuentaActiva: true, rolCuenta: rol, emailCuenta: email } : e2));
+      setEstadoCuentasPM11((actuales) => ({ ...actuales, [empleadoId]: "activa" }));
       registrarAuditoria("Crear cuenta de empleado", `${nombre} \xB7 ${rol} \xB7 ${email}`);
       return { ok: true };
     } catch (e2) {
@@ -13027,6 +13247,17 @@ function CampoCategoria({ value, onChange, opciones = CATEGORIAS_PRODUCTO }) {
 function Empty({ text: text2 }) {
   return /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-center py-10 text-[13px]", role: "status", style: { color: C2.inkSoft } }, text2);
 }
+function EstadoCargaDatosPM12({ estado = "cargado_con_datos", etiqueta = "Datos", pendiente = false }) {
+  const estados = {
+    cargando: { texto: `Cargando ${etiqueta.toLowerCase()}…`, color: C2.inkSoft, fondo: C2.surfaceSoft },
+    cargado_con_datos: { texto: `${etiqueta} cargados.`, color: C2.accent, fondo: C2.accentSoft },
+    vacio_confirmado: { texto: `No hay ${etiqueta.toLowerCase()} en el contexto activo (respuesta confirmada).`, color: C2.inkSoft, fondo: C2.surfaceSoft },
+    error: { texto: `No se pudieron cargar ${etiqueta.toLowerCase()}. No se muestra un vacío como si fuera válido.`, color: C2.red, fondo: C2.redSoft },
+    pendiente_sincronizar: { texto: `Hay cambios de ${etiqueta.toLowerCase()} pendientes de sincronizar.`, color: C2.amber, fondo: C2.amberSoft }
+  };
+  const info = pendiente && estado !== "error" && estado !== "cargando" ? estados.pendiente_sincronizar : estados[estado] || estados.error;
+  return /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "mb-3 rounded-lg px-3 py-2 text-[11.5px]", style: { background: info.fondo, color: info.color } }, info.texto);
+}
 function Pill2({ children, color }) {
   return /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px] font-semibold px-2 py-0.5 rounded-full", style: { background: color + "22", color } }, children);
 }
@@ -13062,7 +13293,7 @@ function InicioEmpleado({ nombre, rol, contextoLocal, empleadoIdResuelto, turnoH
   }
   return /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-5" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2 mb-1" }, /* @__PURE__ */ import_react4.default.createElement(UserRound, { size: 18, color: C2.ink }), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold" }, "Hola, ", nombre || "—")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-1", style: { color: C2.inkSoft } }, rol), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-4 truncate", style: { color: C2.inkSoft } }, contextoLocal || "—"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5 text-[11.5px] mb-1", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement(CalendarClock, { size: 13 }), "Turno de hoy"), !turnoHoy ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px]", style: { color: C2.inkSoft } }, "Sin turno asignado hoy") : esLibre ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, "Hoy libre") : /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[14px] font-semibold" }, turnoHoy.tipo, turnoHoy.horaInicio ? /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, " \xB7 ", turnoHoy.horaInicio, "–", turnoHoy.horaFin) : null)), permitido("fichaje") && (empleadoIdResuelto ? /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5 text-[11.5px] mb-1", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement(Clock, { size: 13 }), "Fichaje"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[14px] font-semibold mb-3" }, estadoFichaje, abierto && ultimaEntrada ? ` \xB7 entr\xF3 a las ${ultimaEntrada.hora}` : ""), /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", disabled: procesandoFichaje, onClick: () => alFicharPersonalPM13(), className: "w-full inline-flex items-center justify-center gap-2 rounded-lg font-semibold", style: { minHeight: 48, fontSize: 16, background: C2.accentFill, color: C2.onAccent, opacity: procesandoFichaje ? 0.7 : 1 } }, abierto ? /* @__PURE__ */ import_react4.default.createElement(LogOut, { size: 18 }) : /* @__PURE__ */ import_react4.default.createElement(LogIn, { size: 18 }), procesandoFichaje ? "Fichando…" : abierto ? "Fichar salida" : "Fichar entrada"), /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "text-[11.5px] mt-2", style: { color: resultadoFichaje?.tipo === "error" ? C2.red : resultadoFichaje?.tipo === "incierto" ? C2.amber : C2.inkSoft } }, resultadoFichaje?.mensaje || "")) : /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: C2.inkSoft } }, "No se ha podido identificar tu registro de fichaje en este dispositivo. Usa Registro horario para fichar tu entrada o salida."), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setTab("fichaje") }, "Ir a Registro horario"))));
 }
-function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendientes, margenPromedio, movimientos, productos, caducanPronto = [], proveedorPorId, vencenPronto = [], totalPendientePago = 0, documentosPersonalPronto = [], fichajesAbiertos = [], encargosUrgentes = [], pisoVentaBajo = [], sugerenciasPedido = [], setTab, recordatorioConteo = [], alertasAppcc = { pendientes: [], desviaciones: [] }, fallosGuardado = [], fallosCarga = [], diagnosticoStock = [], registrarSalida, itemsPermitidos = null, empresa = null }) {
+function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendientes, margenPromedio, movimientos, productos, caducanPronto = [], proveedorPorId, vencenPronto = [], totalPendientePago = 0, documentosPersonalPronto = [], fichajesAbiertos = [], encargosUrgentes = [], pisoVentaBajo = [], sugerenciasPedido = [], setTab, recordatorioConteo = [], alertasAppcc = { pendientes: [], desviaciones: [] }, fallosGuardado = [], fallosCarga = [], diagnosticoStock = [], registrarSalida, itemsPermitidos = null, empresa = null, estadoCargaDatosPM12 = null }) {
   const entradas30 = movimientos.filter((m22) => esEntrada(m22)).reduce((a22, m22) => a22 + Math.abs(cantidadConSigno(m22)), 0);
   const salidas30 = movimientos.filter((m22) => esSalida(m22)).reduce((a22, m22) => a22 + Math.abs(cantidadConSigno(m22)), 0);
   const [abierta, setAbierta] = (0, import_react4.useState)(null);
@@ -13213,6 +13444,16 @@ function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendi
         derecha: new Date(f22.fecha).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
         derechaColor: C2.red
       }))
+    },
+    estadoCargaDatosPM12 && {
+      id: "estado_datos_personal",
+      titulo: "Estado de Personal",
+      valor: estadoCargaDatosPM12.empleados === "cargando" ? "…" : estadoCargaDatosPM12.empleados === "error" ? "Error" : estadoCargaDatosPM12.empleados === "vacio_confirmado" ? "Vacío confirmado" : "Cargado",
+      color: estadoCargaDatosPM12.empleados === "error" ? C2.red : estadoCargaDatosPM12.empleados === "vacio_confirmado" ? C2.inkSoft : C2.accent,
+      nota: estadoCargaDatosPM12.pendienteEmpleados ? "pendiente de sincronizar" : "estado del contexto activo",
+      tab: "personal",
+      tabNombre: "Personal",
+      items: []
     },
     {
       id: "appcc_desviaciones",
@@ -17311,7 +17552,7 @@ function etiquetaContextoPM15(local, empresa) {
   if (nombreLocal && nombreEmpresa) return `${nombreLocal} \xB7 ${nombreEmpresa}`;
   return nombreLocal || nombreEmpresa || "";
 }
-function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, documentosPersonalCaducan, fichajes = [], nominas = [], entrevistas = [], crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista, crearPrefiltro, listarPrefiltros, eliminarPrefiltro, crearCuentaEmpleado, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {}, empresa = null }) {
+function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, documentosPersonalCaducan, fichajes = [], nominas = [], entrevistas = [], crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista, crearPrefiltro, listarPrefiltros, eliminarPrefiltro, crearCuentaEmpleado, estadoCuentasPM11 = {}, estadoCargaDatos = "cargado_con_datos", pendienteSincronizacion = false, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {}, empresa = null }) {
   const [vista, setVista] = (0, import_react4.useState)("empleados");
   const submitBloqueadoPersonalPM10 = import_react4.default.useRef(false);
   const altaOperacionPersonalPM13 = import_react4.default.useRef(null);
@@ -17532,7 +17773,7 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reac
   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: vista === "empleados" ? /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
     if (showForm) resetForm();
     setShowForm((s22) => !s22);
-  } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Nuevo empleado") : null }, "Personal"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(
+  } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Nuevo empleado") : null }, "Personal"), /* @__PURE__ */ import_react4.default.createElement(EstadoCargaDatosPM12, { estado: estadoCargaDatos, etiqueta: "Empleados", pendiente: pendienteSincronizacion }), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(
     "button",
     {
       onClick: () => setVista("empleados"),
@@ -17602,14 +17843,15 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reac
   )), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", role: "alert", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submit }, editingId ? "Guardar cambios" : "Guardar empleado"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
     setShowForm(false);
     resetForm();
-  } }, "Cancelar"))), empleados.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has a\xF1adido a nadie." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-3" }, empleados.map((e2) => {
+  } }, "Cancelar"))), estadoCargaDatos === "vacio_confirmado" && empleados.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no has a\xF1adido a nadie." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-3" }, empleados.map((e2) => {
     const resumenVacaciones = resumenVacacionesPM13(e2, anioActual);
     const usados = resumenVacaciones.reservados;
     const total = resumenVacaciones.total;
-    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold flex items-center gap-1.5" }, e2.nombre, e2.activo === false && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "baja"), e2.pin && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "con acceso"), e2.pin && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, e2.rol && ROLES_EMPLEADO[e2.rol] ? e2.rol : "Est\xE1ndar"), e2.tieneCuenta && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "cuenta: ", e2.rolCuenta)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mt-0.5", style: { color: C2.inkSoft } }, e2.puesto, " \xB7 ", e2.tipoContrato)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => exportarDatosEmpleado(e2), title: "Exportar sus datos" }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 15, color: C2.inkSoft })), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setConfirmDeleteId(e2.id), "aria-label": "Eliminar empleado", className: "flex items-center justify-center shrink-0", style: { width: 44, height: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 15, color: C2.inkSoft })))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 text-[12px] space-y-1", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement("div", null, "Alta: ", e2.fechaAlta, e2.fechaFinContrato && ` \xB7 Fin de contrato: ${e2.fechaFinContrato}`), e2.activo === false && /* @__PURE__ */ import_react4.default.createElement("div", null, "Baja: ", e2.fechaBaja || "sin fecha (registro legado)", e2.motivoBaja && ` \xB7 ${e2.motivoBaja}`), e2.salarioBrutoMensual > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, "Bruto: \u20AC", fmt(e2.salarioBrutoMensual), "/mes (", e2.pagas, " pagas)"), /* @__PURE__ */ import_react4.default.createElement("div", null, "Vacaciones ", anioActual, ": ", resumenVacaciones.disfrutados, " disfrutados · ", resumenVacaciones.enCurso, " hoy · ", resumenVacaciones.programados, " programados · saldo ", resumenVacaciones.saldo, " / ", total, resumenVacaciones.exceso > 0 ? ` · exceso ${resumenVacaciones.exceso}` : ""), (e2.documentos || []).length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", null, e2.documentos.map((d2) => d2.nombre).filter(Boolean).join(" \xB7 "))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 flex gap-2 flex-wrap" }, e2.activo !== false && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(e2) }, "Editar"), e2.activo === false && reactivarEmpleado && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: async () => {
+    const estadoCuenta = estadoCuentasPM11[e2.id] || (e2.tieneCuenta ? e2.cuentaActiva === false ? "suspendida" : "activa" : "sin_cuenta");
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold flex items-center gap-1.5" }, e2.nombre, e2.activo === false && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "baja"), e2.pin && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "PIN configurado"), e2.pin && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, e2.rol && ROLES_EMPLEADO[e2.rol] ? e2.rol : "Est\xE1ndar"), estadoCuenta === "suspendida" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.red }, "cuenta suspendida"), estadoCuenta === "activa" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "cuenta: ", e2.rolCuenta), estadoCuenta === "cargando" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "comprobando cuenta"), estadoCuenta === "error" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.red }, "cuenta no disponible"), estadoCuenta === "incoherente" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.amber }, "vínculo incoherente")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mt-0.5", style: { color: C2.inkSoft } }, e2.puesto, " \xB7 ", e2.tipoContrato)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => exportarDatosEmpleado(e2), title: "Exportar sus datos" }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 15, color: C2.inkSoft })), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setConfirmDeleteId(e2.id), "aria-label": "Eliminar empleado", className: "flex items-center justify-center shrink-0", style: { width: 44, height: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 15, color: C2.inkSoft })))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 text-[12px] space-y-1", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement("div", null, "Alta: ", e2.fechaAlta, e2.fechaFinContrato && ` \xB7 Fin de contrato: ${e2.fechaFinContrato}`), e2.activo === false && /* @__PURE__ */ import_react4.default.createElement("div", null, "Baja: ", e2.fechaBaja || "sin fecha (registro legado)", e2.motivoBaja && ` \xB7 ${e2.motivoBaja}`), e2.salarioBrutoMensual > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, "Bruto: \u20AC", fmt(e2.salarioBrutoMensual), "/mes (", e2.pagas, " pagas)"), /* @__PURE__ */ import_react4.default.createElement("div", null, "Vacaciones ", anioActual, ": ", resumenVacaciones.disfrutados, " disfrutados · ", resumenVacaciones.enCurso, " hoy · ", resumenVacaciones.programados, " programados · saldo ", resumenVacaciones.saldo, " / ", total, resumenVacaciones.exceso > 0 ? ` · exceso ${resumenVacaciones.exceso}` : ""), (e2.documentos || []).length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", null, e2.documentos.map((d2) => d2.nombre).filter(Boolean).join(" \xB7 "))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 flex gap-2 flex-wrap" }, e2.activo !== false && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(e2) }, "Editar"), e2.activo === false && reactivarEmpleado && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: async () => {
     const r2 = await reactivarEmpleado(e2.id);
     if (!r2 || r2.ok === false) setError(r2?.error || "No se pudo reactivar al empleado.");
-  } }, "Reactivar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAusenciaFor(e2.id) }, "Registrar ausencia"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setEpiFor(e2.id) }, "Entregar EPI"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setDetalleId(detalleId === e2.id ? null : e2.id) }, detalleId === e2.id ? "Ocultar historial" : "Ver historial"), crearCuentaEmpleado && !e2.tieneCuenta && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
+  } }, "Reactivar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAusenciaFor(e2.id) }, "Registrar ausencia"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setEpiFor(e2.id) }, "Entregar EPI"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setDetalleId(detalleId === e2.id ? null : e2.id) }, detalleId === e2.id ? "Ocultar historial" : "Ver historial"), crearCuentaEmpleado && estadoCuenta === "sin_cuenta" && !e2.tieneCuenta && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
       setCuentaFor(e2.id);
       setCuentaForm({ nombre: e2.nombre || "", email: "", password: "", rol: "Camarero/a" });
     } }, "Crear cuenta de acceso")), detalleId === e2.id && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 pt-3", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, "Ausencias"), (e2.ausencias || []).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin ausencias registradas." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1 mb-3" }, [...e2.ausencias || []].reverse().map((a22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: a22.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, a22.tipo, ": ", a22.fechaInicio, " \u2192 ", a22.fechaFin, " (", a22.dias, " d)", String(a22.estado || "ACTIVA").toUpperCase() === "ANULADA" || a22.anuladaAt ? " · ANULADA" : ""), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: async () => { const r2 = await eliminarAusencia(e2.id, a22.id); if (!r2 || r2.ok === false) setError(r2?.error || "No se pudo anular la ausencia."); }, "aria-label": "Anular ausencia", title: "Anular ausencia" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft }))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1 pt-2", style: { color: C2.inkSoft, borderTop: `1px solid ${C2.line}` } }, "EPIs entregados"), (e2.epis || []).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin EPIs registrados." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1" }, [...e2.epis || []].reverse().map((epi) => /* @__PURE__ */ import_react4.default.createElement("div", { key: epi.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, epi.nombre, " \xB7 ", epi.fecha, " ", epi.firmado ? "\xB7 firmado" : "\xB7 sin firmar"), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => eliminarEpi(e2.id, epi.id), "aria-label": "Eliminar EPI" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))));
@@ -17664,7 +17906,7 @@ function inicioSemana(fecha) {
   l22.setDate(d2.getDate() + diff);
   return aISO(l22);
 }
-function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, updateFichaje, eliminarFichaje, fichajesAbiertos }) {
+function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, updateFichaje, eliminarFichaje, fichajesAbiertos, estadoCargaDatos = "cargado_con_datos", pendienteSincronizacion = false }) {
   const activos = empleados.filter((e2) => e2.activo !== false);
   const fichajesVigentesPM13 = (0, import_react4.useMemo)(() => fichajes.filter((f22) => f22?.anulado !== true && String(f22?.anulado || "").toLowerCase() !== "true"), [fichajes]);
   const [desde, setDesde] = (0, import_react4.useState)(inicioSemana(/* @__PURE__ */ new Date()));
@@ -19881,7 +20123,7 @@ function horasTurno(t22) {
   const [h22, m22] = t22.horaFin.split(":").map(Number);
   return Math.max(0, (h22 * 60 + m22 - (h1 * 60 + m1)) / 60);
 }
-function Turnos({ empleados, turnos, addTurno, updateTurno, deleteTurno, copiarSemana }) {
+function Turnos({ empleados, turnos, addTurno, updateTurno, deleteTurno, copiarSemana, estadoCargaDatos = "cargado_con_datos", pendienteSincronizacion = false }) {
   const activos = empleados.filter((e2) => e2.activo !== false);
   const [inicio, setInicio] = (0, import_react4.useState)(inicioSemana(/* @__PURE__ */ new Date()));
   const dias = fechasSemana(inicio);

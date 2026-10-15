@@ -178,4 +178,32 @@ const logic = src.slice(logicIni, logicFin);
 assert.match(logic, /function addEmpleado\(data(?:, controlPM13 = \{\})?\)[\s\S]{0,500}validarEmpleadoPM10/);
 assert.match(logic, /function updateEmpleado\(id, data\)[\s\S]{0,800}validarEmpleadoPM10/);
 
+// PM11 account-state regression: account reads must come from the typed,
+// server-authoritative contract, never from an unscoped profiles query.
+const accountStateMigration = fs.readFileSync(
+  'supabase/migrations/20261014123000_p2_sec_pm11_read_account_state.sql',
+  'utf8'
+);
+assert.match(src, /supabase\.rpc\("pm11_estado_cuentas_empleados"/);
+assert.doesNotMatch(src, /supabase\.from\("perfiles"\)\.select\("empleado_id, rol, activo"\)/);
+assert.match(src, /respuesta\?\.ok === true && Array\.isArray\(respuesta\.cuentas\)/);
+assert.match(src, /\["activa", "suspendida", "sin_cuenta", "incoherente"\]\.includes\(estado\)/);
+assert.match(src, /cuentaActiva: estado === "activa"/);
+assert.match(src, /setEstadoCuentasPM11\(\(actuales\) => \(\{ \.\.\.actuales, \[empleadoId\]: "activa" \}\)\)/);
+for (const patron of [
+  /create or replace function public\.pm11_estado_cuentas_empleados\(\s*p_empresa_id text,\s*p_local_id text,\s*p_empleado_ids text\[\]\s*\)/s,
+  /security definer/i,
+  /set search_path='pg_catalog','public','auth','pg_temp'/i,
+  /auth\.uid\(\)/,
+  /m\.rol='Propietario'/,
+  /m\.todos_locales=false and m\.rol=v_perfil\.rol/,
+  /'sin_cuenta'/,
+  /'suspendida'/,
+  /'incoherente'/,
+  /auth\.users/,
+  /revoke all on function public\.pm11_estado_cuentas_empleados\(text,text,text\[\]\)/i,
+  /grant execute on function public\.pm11_estado_cuentas_empleados\(text,text,text\[\]\) to authenticated/i
+]) assert.match(accountStateMigration, patron, `falta garantía del contrato de cuentas: ${patron}`);
+assert.doesNotMatch(accountStateMigration, /\b(?:insert|update|delete)\s+public\./i, 'la lectura de cuentas no puede mutar datos');
+
 console.log('PM10 P07 LA-017 Personal: contrato OK');

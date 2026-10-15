@@ -69,7 +69,7 @@ function setup({ initial = {}, modo = "acepta" } = {}) {
     },
     CustomEvent: TestCustomEvent,
     console: { log() {}, error() {}, warn(...a) { warns.push(a.join(" ")); } },
-    setTimeout() { return 1; },   // el límite de espera nunca vence en el test
+    setTimeout(fn, ms) { if (ms === 0) Promise.resolve().then(fn); return 1; },   // drena la cola KV; los límites largos no vencen en el test
     clearTimeout() {},
     Promise, JSON, Error, Date: RelojDate,
   };
@@ -81,6 +81,8 @@ function setup({ initial = {}, modo = "acepta" } = {}) {
   context.__modoPruebasLocal = false;
   context.__nubeActiva = true;
   context.__nubeCliente = cloud.client;
+  context.__empresaActivaIdParaContexto = "empresa-test";
+  context.__localActivoIdParaContexto = "local-test";
   context.__instalacionSyncPermitida = true;
   const pendientes = () => JSON.parse(localStorage.getItem("almacen__pendientes") || "[]");
   const denegados = () => JSON.parse(localStorage.getItem("almacen__denegados") || "{}");

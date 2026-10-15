@@ -202,7 +202,7 @@ const baseEntrada = { empleadoId: 'a1', fecha: '2026-09-06', tipo: 'entrada', ho
 }
 
 // Barreras estáticas de UI y cálculo global.
-const uiStart = src.indexOf('function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, updateFichaje, eliminarFichaje, fichajesAbiertos }) {');
+const uiStart = src.indexOf('function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, updateFichaje, eliminarFichaje, fichajesAbiertos,');
 assert.ok(uiStart >= 0, 'RegistroHorario presente');
 const uiNext = src.indexOf('\nfunction ', uiStart + 30);
 const ui = src.slice(uiStart, uiNext > uiStart ? uiNext : uiStart + 160000);

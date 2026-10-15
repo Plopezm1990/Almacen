@@ -77,17 +77,54 @@
     try { return JSON.parse(localStorage.getItem("almacen__pendientes") || "[]"); }
     catch (e) { return []; }
   }
-  function marcarPendiente(key) {
+  function pendientesContexto() {
+    try {
+      var lista = JSON.parse(localStorage.getItem("almacen__pendientes_contexto") || "[]");
+      return Array.isArray(lista) ? lista : [];
+    } catch (e) { return []; }
+  }
+  function contextoPendienteActual() {
+    var contexto = typeof contextoKvActual === "function" ? contextoKvActual() : {};
+    return { empresaId: contexto.empresaId || null, localId: contexto.localId || null };
+  }
+  function pendienteEsDelContexto(key) {
+    var entradas = pendientesContexto().filter(function (entrada) { return entrada && entrada.key === key; });
+    // Las colas antiguas no tenían contexto; se conservan reintentables para
+    // no perder una escritura histórica, pero toda escritura nueva queda
+    // etiquetada y no puede cruzar empresa/local.
+    if (!entradas.length) return true;
+    var actual = contextoPendienteActual();
+    return entradas.some(function (guardado) { return guardado.empresaId === actual.empresaId && guardado.localId === actual.localId; });
+  }
+  function entradaPendienteActual(key) {
+    var actual = contextoPendienteActual();
+    return pendientesContexto().find(function (entrada) {
+      return entrada && entrada.key === key && entrada.empresaId === actual.empresaId && entrada.localId === actual.localId;
+    }) || null;
+  }
+  function marcarPendiente(key, valor, cacheKey) {
     var lista = pendientes();
     if (lista.indexOf(key) === -1) {
       lista.push(key);
       localStorage.setItem("almacen__pendientes", JSON.stringify(lista));
     }
+    var contexto = contextoPendienteActual();
+    var entradas = pendientesContexto().filter(function (entrada) {
+      return !(entrada && entrada.key === key && entrada.empresaId === contexto.empresaId && entrada.localId === contexto.localId);
+    });
+    entradas.push({ key: key, empresaId: contexto.empresaId, localId: contexto.localId, cacheKey: cacheKey || key, valor: valor });
+    try { localStorage.setItem("almacen__pendientes_contexto", JSON.stringify(entradas)); } catch (e) {}
     actualizarIndicador();
   }
   function quitarPendiente(key) {
-    var lista = pendientes().filter(function (k) { return k !== key; });
+    var contexto = contextoPendienteActual();
+    var entradas = pendientesContexto().filter(function (entrada) {
+      return !(entrada && entrada.key === key && entrada.empresaId === contexto.empresaId && entrada.localId === contexto.localId);
+    });
+    var conservaOtra = entradas.some(function (entrada) { return entrada && entrada.key === key; });
+    var lista = pendientes().filter(function (k) { return k !== key || conservaOtra; });
     localStorage.setItem("almacen__pendientes", JSON.stringify(lista));
+    try { localStorage.setItem("almacen__pendientes_contexto", JSON.stringify(entradas)); } catch (e) {}
     actualizarIndicador();
   }
 
@@ -269,12 +306,14 @@
     var lista = pendientes();
     for (var i = 0; i < lista.length; i++) {
       var key = lista[i];
+      if (!pendienteEsDelContexto(key)) continue;
+      var entrada = entradaPendienteActual(key);
       // El servidor rechazó esta clave por permisos hace poco: reintentar solo
       // repetiría la misma subida rechazada. Se retira de la cola.
       if (denegadoVigente(key)) { quitarPendiente(key); continue; }
       try {
-        var cacheKey = await claveCacheLocal(key);
-        var valor = LOCAL.get(cacheKey);
+        var cacheKey = entrada && entrada.cacheKey ? entrada.cacheKey : await claveCacheLocal(key);
+        var valor = entrada && entrada.valor !== void 0 ? entrada.valor : LOCAL.get(cacheKey);
         var tablaEmpresa = TABLAS_EMPRESA[key];
         var tablaEmpresaLocal = TABLAS_EMPRESA_LOCAL[key];
         var tablaEspecial = TABLAS_POR_FILA[key];
@@ -290,7 +329,9 @@
         } else {
           // Sin referencia de "lo que había antes" no se puede saber qué quitó
           // este equipo, así que no se borra nada: solo se añade y se corrige.
-          await encolarPorClave(key, function () { return guardarBloque(key, null, valor); });
+          await encolarKv(key, function () {
+            return conTiempoLimite(encolarPorClave(key, function () { return guardarBloque(key, null, valor); }), ESPERA_NUBE_MS);
+          });
         }
         quitarPendiente(key);
         quitarDenegado(key);
@@ -701,6 +742,28 @@
     return "p3c.lista." + id;
   }
 
+  // Las filas de almacen_kv están segregadas por empresa. El contexto lo
+  // publica fuente.js cuando ya se ha resuelto el local activo; nunca se
+  // inventa una empresa ni se escribe una fila global sin empresa_id.
+  function contextoKvActual() {
+    var empresaId = typeof window.__empresaActivaIdParaContexto === "string"
+      ? window.__empresaActivaIdParaContexto.trim()
+      : "";
+    var localId = typeof window.__localActivoIdParaContexto === "string"
+      ? window.__localActivoIdParaContexto.trim()
+      : "";
+    return { empresaId: empresaId || null, localId: localId || null };
+  }
+
+  function consultaKvPorClave(key, columnas) {
+    var consulta = window.__nubeCliente.from("almacen_kv")
+      .select(columnas)
+      .eq("key", key);
+    var contexto = contextoKvActual();
+    if (contexto.empresaId) consulta = consulta.eq("empresa_id", contexto.empresaId);
+    return consulta;
+  }
+
   async function guardarBloque(key, textoAnterior, textoNuevo) {
     var nuevo = JSON.parse(textoNuevo);
     var aSubir = nuevo;
@@ -754,8 +817,7 @@
     }
 
     if (!SIN_FUSION[key]) {
-      var rLee = await window.__nubeCliente.from("almacen_kv")
-        .select("value").eq("key", key).maybeSingle();
+      var rLee = await consultaKvPorClave(key, "value").maybeSingle();
       if (rLee.error) throw rLee.error;
       var enNube = rLee.data ? rLee.data.value : null;
       var antes = null;
@@ -772,7 +834,14 @@
       }
     }
 
-    var rSube = await window.__nubeCliente.from("almacen_kv").upsert({ key: key, value: aSubir });
+    var contexto = contextoKvActual();
+    if (!contexto.empresaId) throw new Error("No hay empresa activa para guardar " + key + " en la nube");
+    var rSube = await window.__nubeCliente.from("almacen_kv").upsert({
+      empresa_id: contexto.empresaId,
+      key: key,
+      value: aSubir,
+      local_id: null
+    });
     if (rSube.error) throw rSube.error;
     if (key === "productos") {
       confirmarBaseProductos(textoNuevo);
@@ -799,6 +868,48 @@
     var actual = anterior.then(tarea, tarea); // se ejecuta pase lo que pase con la anterior
     colaSubidaPorClave[key] = actual.catch(function () {}); // un fallo no debe atascar la cola futura
     return actual;
+  }
+
+  // Las escrituras de almacen_kv comparten una misma tabla y sus políticas
+  // RLS/triggers. Durante el arranque había un saveKey por cada estado de
+  // React, todos a la vez; esa ráfaga dejaba el upsert de localActivoId
+  // esperando hasta que conTiempoLimite lo cancelaba. Se mantiene la cola
+  // por clave para fusionar cambios consecutivos, pero las claves KV se
+  // sirven además por una cola global: localActivoId tiene prioridad y cada
+  // tarea lleva su propio límite para que un fallo no bloquee las siguientes.
+  var colaSubidaKv = [];
+  var subiendoKv = false;
+  var drenajeKvProgramado = false;
+  function drenarColaKv() {
+    if (subiendoKv) return;
+    subiendoKv = true;
+    (async function () {
+      while (colaSubidaKv.length) {
+        var item = colaSubidaKv.shift();
+        try {
+          item.resolve(await item.tarea());
+        } catch (e) {
+          item.reject(e);
+        }
+      }
+      subiendoKv = false;
+    })();
+  }
+  function programarDrenajeKv() {
+    if (drenajeKvProgramado) return;
+    drenajeKvProgramado = true;
+    setTimeout(function () {
+      drenajeKvProgramado = false;
+      drenarColaKv();
+    }, 0);
+  }
+  function encolarKv(key, tarea) {
+    return new Promise(function (resolve, reject) {
+      var item = { key: key, tarea: tarea, resolve: resolve, reject: reject };
+      if (key === "localActivoId") colaSubidaKv.unshift(item);
+      else colaSubidaKv.push(item);
+      programarDrenajeKv();
+    });
   }
 
   window.storage = {
@@ -831,7 +942,7 @@
             lista = await conTiempoLimite(leerColeccionPorFila(tablaEspecial, key), ESPERA_NUBE_MS);
           } else {
             var r = await conTiempoLimite(
-              window.__nubeCliente.from("almacen_kv").select("value").eq("key", key).maybeSingle(),
+              consultaKvPorClave(key, "value").maybeSingle(),
               ESPERA_NUBE_MS
             );
             if (r.error) throw r.error;
@@ -864,6 +975,8 @@
       var tablaEspecial = TABLAS_POR_FILA[key];
       var esLedgerRpc = !!LEDGERS_RPC[key];
       var cacheKey = await claveCacheLocal(key);
+      var confirmadoServidor = false;
+      var pendienteSincronizacion = false;
 
       // Qué había guardado antes en este equipo. Sirve para saber qué se ha
       // quitado y para poder dejarlo como estaba si el guardado no cabe.
@@ -892,7 +1005,7 @@
       if (esLedgerRpc) {
         quitarPendiente(key);
         if (falloLocal) throw falloLocal;
-        return { key: key, value: value, shared: false };
+        return { key: key, value: value, shared: false, confirmadoServidor: false, pendienteSincronizacion: false };
       }
 
       if (window.__nubeActiva && window.__nubeCliente) {
@@ -919,21 +1032,22 @@
                 ESPERA_NUBE_MS
               );
             } else {
-              resultadoProductos = await conTiempoLimite(
-                encolarPorClave(key, function () { return guardarBloque(key, anterior, value); }),
-                ESPERA_NUBE_MS
-              );
+              resultadoProductos = await encolarKv(key, function () {
+                return conTiempoLimite(encolarPorClave(key, function () { return guardarBloque(key, anterior, value); }), ESPERA_NUBE_MS);
+              });
             }
             quitarPendiente(key);
             quitarDenegado(key);
+            confirmadoServidor = true;
           } catch (e) {
             if (key === "productos") catalogoBloqueado = true;
             if (esRechazoPorPermisos(e)) marcarDenegado(key, e);
-            else marcarPendiente(key);
+            else { marcarPendiente(key, value, cacheKey); pendienteSincronizacion = true; }
           }
         }
       } else if (!window.__modoPruebasLocal) {
-        marcarPendiente(key);
+        marcarPendiente(key, value, cacheKey);
+        pendienteSincronizacion = true;
       }
 
       // Si no cupo en el equipo, se avisa AHORA — pero después de haber
@@ -946,6 +1060,8 @@
       }
       return {
         key: key, value: value, shared: false,
+        confirmadoServidor: confirmadoServidor,
+        pendienteSincronizacion: pendienteSincronizacion || pendientes().indexOf(key) !== -1,
         catalogoYaSincronizado: !!(resultadoProductos && resultadoProductos.catalogoYaSincronizado),
         catalogoBloqueado: !!catalogoBloqueado,
         productosConfirmados: !!(resultadoProductos && resultadoProductos.productosConfirmados),
@@ -972,7 +1088,14 @@
           } else if (tablaEspecial) {
             await conTiempoLimite(window.__nubeCliente.from(tablaEspecial).delete().neq("id", ""), ESPERA_NUBE_MS);
           } else {
-            await conTiempoLimite(window.__nubeCliente.from("almacen_kv").delete().eq("key", key), ESPERA_NUBE_MS);
+            var contextoBorrado = contextoKvActual();
+            if (contextoBorrado.empresaId) {
+              await conTiempoLimite(
+                window.__nubeCliente.from("almacen_kv")
+                  .delete().eq("empresa_id", contextoBorrado.empresaId).eq("key", key),
+                ESPERA_NUBE_MS
+              );
+            }
           }
         } catch (e) { /* el borrado local ya está hecho */ }
       }
