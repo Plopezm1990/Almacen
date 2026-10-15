@@ -35,6 +35,8 @@ const EXCLUIDAS = new Set([
   '20261009180000_plataforma_f4e_perfiles_movimientos_push_por_empresa.sql',
   // El permiso de lookup de F5 se aplicó en una ventana separada de la foto F7.
   '20261010191547_plataforma_f5_permiso_lookup_empresa.sql',
+  // Este ajuste de permisos se aplicó únicamente en QA; no forma parte de la foto F7 de promoción.
+  '20261015041000_qa_revoke_authenticated_empresas_locales_20261015.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))
