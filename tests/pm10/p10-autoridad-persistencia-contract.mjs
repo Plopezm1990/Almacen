@@ -9,6 +9,9 @@ assert.ok(saveIni >= 0 && saveFin > saveIni, 'saveKey presente');
 const save = src.slice(saveIni, saveFin);
 assert.match(save, /window\.storage\.set\(key, JSON\.stringify\(value\), false\)/);
 assert.doesNotMatch(save, /Number\([^)]*\)\s*\|\|/);
+assert.match(save, /key === "devoluciones"[\s\S]*window\.__nubeActiva[\s\S]*window\.__nubeCliente/);
+assert.match(save, /cacheLocalOmitida: true/);
+assert.match(save, /return;[\s\S]*try \{/);
 
 const wrapIni = src.indexOf('window.storage.set = async function(key, value, shared) {');
 assert.ok(wrapIni >= 0, 'wrapper window.storage.set presente');

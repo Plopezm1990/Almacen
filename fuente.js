@@ -101530,6 +101530,16 @@ async function loadKey(key, fallback, retries = 2) {
   return fallback;
 }
 async function saveKey(key, value) {
+  // PM08 ledger: cuando la cuenta está sincronizada, devoluciones ya se ha
+  // confirmado por RPC y se vuelve a hidratar desde Supabase. No duplicamos
+  // toda la colección en localStorage (límite aproximado de 5 MB), pero sí
+  // mantenemos el guardado local en modo offline para no perder el borrador.
+  if (key === "devoluciones" && typeof window !== "undefined" && window.__nubeActiva && window.__nubeCliente) {
+    if (typeof window.dispatchEvent === "function") {
+      window.dispatchEvent(new CustomEvent("guardado-confirmado", { detail: { key, cacheLocalOmitida: true } }));
+    }
+    return;
+  }
   try {
     const resultado = await window.storage.set(key, JSON.stringify(value), false);
     if (resultado?.pendienteSincronizacion && typeof window !== "undefined" && window.dispatchEvent) {
