@@ -2538,7 +2538,18 @@ function GestionAlmacen() {
       setRegistrosAceite(registrosAceiteFinales);
       if (JSON.stringify(localesFinales) !== JSON.stringify(Array.isArray(loc) ? loc : [])) await saveKey("locales", localesFinales);
       if (localActivoFinal !== (lai || null)) await saveKey("localActivoId", localActivoFinal);
-      if (JSON.stringify(productosFinales) !== JSON.stringify(pr || [])) await saveKey("productos", productosFinales);
+      if (JSON.stringify(productosFinales) !== JSON.stringify(pr || [])) {
+        // El primer guardado puede ocurrir en el mismo render que publica el
+        // contexto de empresa/local. Fijarlo aquí evita enviar una lista
+        // normalizada con el contexto anterior (o vacío) y dejarla pendiente.
+        if (typeof window !== "undefined") {
+          const localInicial = localActivoFinal || null;
+          const localInicialObj = localesFinales.find((l22) => l22 && l22.id === localInicial) || null;
+          window.__localActivoIdParaContexto = localInicial;
+          window.__empresaActivaIdParaContexto = localInicialObj?.empresaId || empresaLegacyUnicaId || null;
+        }
+        await saveKey("productos", productosFinales);
+      }
       if (JSON.stringify(movimientosFinales) !== JSON.stringify(mo || [])) await saveKey("movimientos", movimientosFinales);
       if (JSON.stringify(albaranesFinales) !== JSON.stringify(alLimpios || [])) await saveKey("albaranes", albaranesFinales);
       if (JSON.stringify(pedidosFinales) !== JSON.stringify(pe2 || [])) await saveKey("pedidos", pedidosFinales);
@@ -2587,8 +2598,16 @@ function GestionAlmacen() {
     if (ready && !skipSaveRef.current) saveKey("proveedores", proveedores);
   }, [proveedores, ready]);
   (0, import_react4.useEffect)(() => {
-    if (ready && !skipSaveRef.current) saveKey("productos", productos);
-  }, [productos, ready]);
+    if (!ready || skipSaveRef.current) return;
+    // El guardado reactivo debe usar siempre el mismo contexto que acaba de
+    // producir el estado. Las dependencias de empresa/local fuerzan un
+    // reintento cuando el contexto se hidrata después de los productos.
+    if (typeof window !== "undefined") {
+      window.__localActivoIdParaContexto = typeof localActivoId === "string" && localActivoId ? localActivoId : null;
+      window.__empresaActivaIdParaContexto = empresaDelLocalActivo?.id ? String(empresaDelLocalActivo.id) : null;
+    }
+    saveKey("productos", productos);
+  }, [productos, ready, localActivoId, empresaDelLocalActivo?.id]);
   (0, import_react4.useEffect)(() => {
     function onProductosServidor(ev) {
       const d3 = ev && ev.detail ? ev.detail : {};
