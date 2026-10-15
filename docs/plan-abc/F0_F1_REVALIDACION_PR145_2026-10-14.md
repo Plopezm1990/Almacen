@@ -128,3 +128,26 @@ proveedor, piloto/aceptación y la puerta CI. El siguiente trabajo seguro es un
 subpunto separado para CI/B02–B03 y después QA visual; no se requiere despliegue
 ni SQL para cerrar esta preparación.
 
+## Actualización 2026-10-15 — diagnóstico y corrección del gate
+
+El job de B02–B03 del head anterior no falló en el contrato de cobros: pasaron
+la preparación PostgreSQL, `ABC_F4_B02_B03=PASS`, el build de Source Recovery y
+la paridad. Falló exclusivamente al validar el manifiesto porque PR 145 había
+añadido estos cuatro contratos PM12 sin registrarlos:
+
+- `p03-explicit-load-states-contract.mjs`
+- `p04-context-invalidation-race-contract.mjs`
+- `p05-save-confirmation-pending-context-contract.mjs`
+- `p12-account-enrichment-runtime.mjs`
+
+Se corrigieron únicamente el inventario y sus conteos coherentes:
+
+- 268 archivos de inventario.
+- 251 contratos activos.
+- 224 contratos activos Node.
+
+`validar-manifiesto-ci.mjs` y sus tres pruebas negativas pasan localmente. La
+batería completa `ejecutar_bateria_no_db.sh` no se pudo ejecutar en Windows por
+ausencia de Bash; no se sustituye esa prueba por una afirmación local. Queda
+pendiente la confirmación de GitHub Actions en Linux.
+
