@@ -54,3 +54,17 @@ El PR de integración dejó constancia de RLS desactivado en dos tablas privadas
 3. Conservar las copias y la evidencia de F7 ya verificadas.
 4. El 09/11 hacer solo una comprobación de lectura del estado y de la fecha de borrado.
 5. El 10/11 ejecutar el borrado con confirmación explícita y registrar el resultado.
+
+## Actualización 16/10/2026 — decisiones de Pedro
+
+Comprobación previa de solo lectura (GitHub y Supabase PROD, sin tocar nada): `release` sigue en `34ea736`; la Fase 5 (F1, F2, F4–F4e, F5) y la Fase 6 parcial siguen aplicadas en producción como las dejó Codex; las empresas de prueba A y B (`empresa-706e41e7d2a65dfc`, `empresa-93ec2338908c9302`) siguen desactivadas desde el 11/10, con sus 2 cuentas y 4 filas de datos intactas, a la espera del 10/11/2026 (el borrado **no se ha ejecutado**, falta la fecha).
+
+Pedro ha respondido a las 5 decisiones de este documento:
+
+1. **Configuración fiscal durante el alta** → **mantener el alta mínima**. Sin cambios de código.
+2. **Sincronización entre dispositivos** → **aceptar la limitación**. Sin cambios de código.
+3. **Contraseña inicial obligatoria en servidor** → **blindarla también en el servidor**. Queda pendiente de diseño e implementación (comprobación server-side que rechace operaciones hasta completar el cambio); no ejecutado todavía.
+4. **Funciones heredadas de stock** (`descontar_stock`, `descontar_stock_carrito`, `anular_venta_tpv`) → **marcarlas como heredadas y medir uso antes de tocar nada**. Comprobación de hoy (solo lectura, PROD): no aparecen en `fuente.js` de `release`, ninguna otra función del servidor las llama, y 0 apariciones en los logs de las últimas 24 h (ventana máxima consultable de una vez; no es un historial completo). No se retiran por ahora.
+5. **Avisos del asesor de Supabase** → revisados hoy en PROD y el hallazgo no coincide literalmente con lo descrito arriba («RLS desactivado en dos tablas privadas»): el asesor de seguridad muestra hoy 31 tablas de `private.*` con RLS **activado** pero sin políticas propias (bloqueo por defecto; patrón esperado de tablas solo accesibles por funciones con privilegios elevados, entre ellas `plataforma_admins`, `plataforma_ajustes`, `plataforma_auditoria`, `plataforma_bajas`), y un aviso aparte y real: la protección de Supabase Auth contra contraseñas filtradas (HaveIBeenPwned) está desactivada. Pedro ha aprobado activarla, pero es un ajuste del panel de Supabase (Authentication → Password Security), no una tabla ni una migración: ninguna herramienta de este agente puede cambiarlo. **Pendiente de que Pedro lo active desde el panel**, o indique otra vía. No se ha identificado ninguna de las dos tablas privadas que cita el texto original de 2026-10-11; si Pedro conserva esa referencia por otro medio, conviene contrastarla.
+
+Nada de lo anterior modifica producción. El borrado de F7 sigue programado y sin tocar hasta el 10/11/2026.
