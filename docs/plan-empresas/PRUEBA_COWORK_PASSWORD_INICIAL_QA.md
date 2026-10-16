@@ -92,20 +92,22 @@ No repite aquí los contratos completos de regresión de ABC/F4/F4e (quedan como
 | 03 | http 200, `ok: true`, `userId` |
 | 04 | inicio de sesión correcto |
 | 05 | `ok: true`, **`pendiente: true`** |
-| 06 | error (bloqueado: `abc_config_no_autorizado` o similar) |
+| 06 | **ok, sin error** (ver nota debajo de la tabla — esta función no pasa por el blindaje) |
 | 07 | `data: "[]"` (ninguna fila visible) |
 | 08 | error (bloqueado: viola la política de seguridad de fila, código `42501`) |
 | 09 | error (bloqueado: código `42501`) |
 | 10 | `ok: true`, sin error — el cambio de contraseña real se aceptó |
 | 11 | `ok: true`, **`pendiente: false`** |
-| 12 | datos de modalidades por defecto (ya no bloqueado) |
+| 12 | datos de modalidades por defecto (igual que en el paso 06: esta función nunca estuvo bloqueada) |
 | 13 | una fila con `key: "productos"` |
 | 14 | `ok: true` (inserción aceptada, fila devuelta) |
 | 15 | `ok: true` (inserción aceptada, fila devuelta) |
 | 16 | inicio de sesión correcto con la contraseña nueva |
 | 17 | recuentos del administrador sin cambios inesperados |
 
-**Diferencia clave a vigilar:** si el paso 05 ya diera `pendiente: false` (sin haber cambiado todavía la contraseña), o si los pasos 06-09 NO fallaran, el bloqueo no estaría funcionando para cuentas nuevas — es la señal de alarma más importante de esta prueba. Si el paso 11 sigue dando `pendiente: true` después de un cambio de contraseña aceptado en el paso 10, el disparador no estaría detectando el cambio real.
+**Diferencia clave a vigilar:** si el paso 05 ya diera `pendiente: false` (sin haber cambiado todavía la contraseña), o si los pasos 07-09 NO fallaran, el bloqueo no estaría funcionando para cuentas nuevas — es la señal de alarma más importante de esta prueba. Si el paso 11 sigue dando `pendiente: true` después de un cambio de contraseña aceptado en el paso 10, el disparador no estaría detectando el cambio real.
+
+**Nota sobre los pasos 06 y 12 (`abc_obtener_modalidades_local`):** esta función NO pasa por `private.abc_tiene_capacidad` — comprobado en `supabase/migrations/20261002220000_abc_config_pieza3_modalidades.sql`, es de solo lectura y solo exige pertenecer al local (`private.la_tiene_local`), un control anterior a este blindaje y fuera de su alcance. Por eso da el mismo resultado («ok») antes y después de cambiar la contraseña: nunca estuvo bloqueada, ni debía estarlo con el diseño actual. No demuestra nada sobre si `abc_tiene_capacidad` bloquea o no — para eso haría falta otra función que sí la use (por ejemplo `abc_abrir_cuenta`, que exige una jornada operativa abierta y por eso no se incluyó en esta prueba). La protección real de `abc_tiene_capacidad` para cuentas nuevas sigue sin tener aquí una prueba en vivo con disparador real; sí está probada contra el texto exacto de la función en el contrato local `tests/plataforma/db/p12-password-inicial-filtros-reales-contract.mjs` (con prueba de mutación) y en vivo en QA con la marca simulada sobre `Propietario QA` (hoja de autorización, §6.2).
 
 ## Qué queda en QA después
 - Una empresa «QA Cliente Prueba Password …» con su local y la cuenta del dueño `duena.password.….@qa.invalid`, con su contraseña ya cambiada a la «nueva» de la prueba (no a la inicial). Fictícia, no comparte nada con `owner.a@qa.invalid` ni con `Propietario QA`.
