@@ -188,6 +188,10 @@ const accountStateFixMigration = fs.readFileSync(
   'supabase/migrations/20261015060000_p2_sec_pm11_fix_no_account_state.sql',
   'utf8'
 );
+const accountStateIsolationMigration = fs.readFileSync(
+  'supabase/migrations/20261016121308_pm11_read_account_state_no_cross_tenant_existence.sql',
+  'utf8'
+);
 assert.match(src, /supabase\.rpc\("pm11_estado_cuentas_empleados"/);
 assert.doesNotMatch(src, /supabase\.from\("perfiles"\)\.select\("empleado_id, rol, activo"\)/);
 assert.match(src, /respuesta\?\.ok === true && Array\.isArray\(respuesta\.cuentas\)/);
@@ -226,5 +230,16 @@ assert.doesNotMatch(
   'la serialización final no puede leer el registro de perfil sin asignar'
 );
 assert.doesNotMatch(accountStateFixMigration, /\b(?:insert|update|delete)\s+public\./i, 'la corrección de cuentas no puede mutar datos');
+
+// La RPC pública no debe permitir enumerar empleados ajenos comparando el
+// motivo de un identificador inexistente con el de uno fuera de contexto.
+assert.match(
+  accountStateIsolationMigration,
+  /if not found then\s+v_motivo := 'empleado_no_disponible';\s+elsif v_empleado\.empresa_id is distinct from btrim\(p_empresa_id\)[\s\S]*?then\s+v_motivo := 'empleado_no_disponible';/,
+  'ausencia y fuera de alcance deben producir la misma respuesta pública'
+);
+assert.doesNotMatch(accountStateIsolationMigration, /'empleado_(?:fuera_contexto|no_encontrado)'/);
+assert.match(accountStateIsolationMigration, /revoke all on function public\.pm11_estado_cuentas_empleados\(text,text,text\[\]\)/i);
+assert.doesNotMatch(accountStateIsolationMigration, /\b(?:insert|update|delete)\s+public\./i);
 
 console.log('PM10 P07 LA-017 Personal: contrato OK');
