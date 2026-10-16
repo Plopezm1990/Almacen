@@ -2230,7 +2230,10 @@ function GestionAlmacen() {
           if (!enContexto) return empleado;
           const cuenta = porEmpleado.get(empleado.id);
           const estado = estados[String(empleado.id || "").trim()];
-          if (estado === "incoherente" || estado === "error") return { ...empleado, tieneCuenta: false, cuentaActiva: false, rolCuenta: "" };
+          // Un error de lectura no demuestra que la cuenta falte: conserva el
+          // último estado confirmado y deja el error visible en el mapa de estados.
+          if (estado === "error") return empleado;
+          if (estado === "incoherente") return { ...empleado, tieneCuenta: false, cuentaActiva: false, rolCuenta: "" };
           return {
             ...empleado,
             tieneCuenta: estado === "activa" || estado === "suspendida",

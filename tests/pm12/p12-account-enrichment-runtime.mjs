@@ -94,13 +94,15 @@ const empleadoBase = { id: 'e1', empresaId: 'E1', localId: 'L1', nombre: 'Emplea
 
 // Un fallo de red no se convierte en «sin cuenta» y queda observable como error.
 {
-  const state = { cuentas: {}, empleados: [{ ...empleadoBase }] };
+  const state = { cuentas: {}, empleados: [{ ...empleadoBase, tieneCuenta: true, cuentaActiva: true, rolCuenta: 'Camarero/a' }] };
   const r = await iniciar({ localActivoId: 'L1', empleados: state.empleados, state });
   assert.equal(state.cuentas.e1, 'cargando');
   r.requests[0].resolve({ data: null, error: { message: 'network down' } });
   await tick();
   assert.equal(state.cuentas.e1, 'error');
-  assert.equal(state.empleados[0].tieneCuenta, false);
+  assert.equal(state.empleados[0].tieneCuenta, true);
+  assert.equal(state.empleados[0].cuentaActiva, true);
+  assert.equal(state.empleados[0].rolCuenta, 'Camarero/a');
 }
 
 // Una cuenta suspendida conserva el vínculo, pero no queda como activa.

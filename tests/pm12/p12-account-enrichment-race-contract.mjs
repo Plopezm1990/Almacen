@@ -29,6 +29,8 @@ assert.match(bloque, /incoherentes\.has\(id\) \? "incoherente"/);
 assert.match(bloque, /respuesta\?\.ok === true && Array\.isArray\(respuesta\.cuentas\)/);
 assert.match(bloque, /const estados = Object\.fromEntries/);
 assert.match(bloque, /\["activa", "suspendida", "sin_cuenta", "incoherente"\]\.includes\(estado\)/);
+assert.match(bloque, /if \(estado === "error"\) return empleado;/);
+assert.match(bloque, /if \(estado === "incoherente"\) return \{ \.\.\.empleado, tieneCuenta: false, cuentaActiva: false, rolCuenta: "" \};/);
 assert.match(bloque, /cuentaActiva: estado === "activa"/);
 
 const uiInicio = fuente.indexOf('function Personal({');
