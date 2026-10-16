@@ -170,7 +170,7 @@ const J = (x) => JSON.parse(JSON.stringify(x));
   assert.deepEqual(permitidos, [
     'bootstrap_owner_instalacion', 'obtener_contexto_instalacion_ui', 'obtener_estado_instalacion',
     'plataforma_crear_empresa', 'plataforma_desactivar_empresa', 'plataforma_eliminar_empresa', 'plataforma_estado',
-    'plataforma_exportar_empresa', 'plataforma_listar_empresas', 'plataforma_preparar_eliminacion',
+    'plataforma_exportar_empresa', 'plataforma_listar_empresas', 'plataforma_mi_estado_password', 'plataforma_preparar_eliminacion',
     'plataforma_reactivar_empresa', 'plataforma_resumen_eliminacion'
   ]);
   assert.ok(!permitidos.includes('plataforma_asignar_propietario'), 'asignar dueño solo lo llama la función de servidor, nunca el navegador');

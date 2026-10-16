@@ -37,6 +37,11 @@ const EXCLUIDAS = new Set([
   '20261010191547_plataforma_f5_permiso_lookup_empresa.sql',
   // Este ajuste de permisos se aplicó únicamente en QA; no forma parte de la foto F7 de promoción.
   '20261015041000_qa_revoke_authenticated_empresas_locales_20261015.sql',
+  // D01 decisión 3 (blindaje de la contraseña inicial, 16/10/2026): ventana de promoción separada,
+  // igual que el resto de migraciones plataforma_f*; no forma parte de la foto F7.
+  '20261016120000_plataforma_password_inicial_pendiente.sql',
+  '20261016130000_plataforma_password_inicial_bloqueo_filtros.sql',
+  '20261016140000_plataforma_password_inicial_bloqueo_push.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))

@@ -1,8 +1,8 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 269,
+  "total_inventory": 272,
   "expected_counts": {
-    "active_contract": 252,
+    "active_contract": 255,
     "historical_expected_fail": 1,
     "utility": 11,
     "diagnostic": 5
@@ -21,7 +21,7 @@
       "diagnostic": 0
     },
     "postgres": {
-      "active_contract": 23,
+      "active_contract": 26,
       "historical_expected_fail": 1,
       "utility": 0,
       "diagnostic": 0
@@ -1132,6 +1132,21 @@
     },
     {
       "path": "tests/plataforma/db/p10-perfiles-movimientos-push-por-empresa-contract.mjs",
+      "classification": "active_contract",
+      "environment": "postgres"
+    },
+    {
+      "path": "tests/plataforma/db/p11-password-inicial-pendiente-contract.mjs",
+      "classification": "active_contract",
+      "environment": "postgres"
+    },
+    {
+      "path": "tests/plataforma/db/p12-password-inicial-filtros-reales-contract.mjs",
+      "classification": "active_contract",
+      "environment": "postgres"
+    },
+    {
+      "path": "tests/plataforma/db/p13-password-inicial-push-contract.mjs",
       "classification": "active_contract",
       "environment": "postgres"
     },
