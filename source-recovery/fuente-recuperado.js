@@ -512,6 +512,39 @@ function intervaloFichajePM13(entrada, salida) {
   if (minutos <= 0 || minutos > MINUTOS_DIA_PM13) return null;
   return { inicio: inicio.minutos, fin, minutos, cruzaMedianoche };
 }
+function resumenFichajesPM13(fichajes = []) {
+  const porEmpleado = new Map();
+  (Array.isArray(fichajes) ? fichajes : []).forEach((f22) => {
+    if (!f22 || !f22.empleadoId || f22.anulado === true || String(f22.anulado || "").toLowerCase() === "true") return;
+    if (!parseFechaHoraFichajePM13(f22.fecha, f22.hora) || (f22.tipo !== "entrada" && f22.tipo !== "salida")) return;
+    const lista = porEmpleado.get(f22.empleadoId) || [];
+    lista.push(f22);
+    porEmpleado.set(f22.empleadoId, lista);
+  });
+  const pares = [];
+  const abiertos = [];
+  porEmpleado.forEach((lista, empleadoId) => {
+    lista.sort((a22, b2) => {
+      const aInfo = parseFechaHoraFichajePM13(a22.fecha, a22.hora);
+      const bInfo = parseFechaHoraFichajePM13(b2.fecha, b2.hora);
+      return aInfo.minutos - bInfo.minutos || String(a22.id || "").localeCompare(String(b2.id || ""));
+    });
+    let entrada = null;
+    lista.forEach((f22) => {
+      if (f22.tipo === "entrada") {
+        if (!entrada) entrada = f22;
+        return;
+      }
+      if (!entrada) return;
+      const intervalo = intervaloFichajePM13(entrada, f22);
+      if (!intervalo) return;
+      pares.push({ empleadoId, entrada, salida: f22, fecha: entrada.fecha, fechaFin: f22.fecha, minutos: intervalo.minutos });
+      entrada = null;
+    });
+    if (entrada) abiertos.push({ empleadoId, entrada, fecha: entrada.fecha });
+  });
+  return { pares, abiertos };
+}
 function horasDeEmpleadoEnMes(fichajes, empleadoId, mes) {
   // PM13 2.6: el periodo pertenece al mes de la entrada. Fecha y hora son
   // valores de pared almacenados por el servidor; no se reinterpretan con la
@@ -3445,25 +3478,10 @@ function GestionAlmacen() {
   const appccPendientesHoy = alertasAppcc.pendientes;
   const fichajesAbiertos = (0, import_react4.useMemo)(() => {
     const hoy = todayISO();
-    const porEmpleadoFecha = {};
-    fichajes.filter((f22) => f22?.anulado !== true && String(f22?.anulado || "").toLowerCase() !== "true").forEach((f22) => {
-      const key = `${f22.empleadoId}-${f22.fecha}`;
-      if (!porEmpleadoFecha[key]) porEmpleadoFecha[key] = [];
-      porEmpleadoFecha[key].push(f22);
+    return resumenFichajesPM13(fichajes).abiertos.filter((f22) => f22.fecha !== hoy).map((f22) => {
+      const emp = empleados.find((e2) => e2.id === f22.empleadoId);
+      return { empleadoId: f22.empleadoId, fecha: f22.fecha, nombre: emp ? emp.nombre : "\u2014" };
     });
-    const abiertos = [];
-    Object.entries(porEmpleadoFecha).forEach(([key, lista]) => {
-      const fecha = lista[0].fecha;
-      if (fecha === hoy) return;
-      const entradas = lista.filter((f22) => f22.tipo === "entrada").length;
-      const salidas = lista.filter((f22) => f22.tipo === "salida").length;
-      if (entradas > salidas) {
-        const empleadoId = lista[0].empleadoId;
-        const emp = empleados.find((e2) => e2.id === empleadoId);
-        abiertos.push({ empleadoId, fecha, nombre: emp ? emp.nombre : "\u2014" });
-      }
-    });
-    return abiertos;
   }, [fichajes, empleados]);
   const fichajesAbiertosDelLocalActivo = (0, import_react4.useMemo)(() => fichajesAbiertos.filter((f22) => idsEmpleadosDelLocalActivo.has(f22.empleadoId)), [fichajesAbiertos, idsEmpleadosDelLocalActivo]);
   const facturasPorPagar = (0, import_react4.useMemo)(() => {
@@ -17990,30 +18008,22 @@ function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, update
   const estadoHoy = activos.map((e2) => {
     const deHoy = fichajesVigentesPM13.filter((f22) => f22.empleadoId === e2.id && f22.fecha === todayISO()).sort((a22, b2) => (a22.hora || "").localeCompare(b2.hora || ""));
     const entradas = deHoy.filter((f22) => f22.tipo === "entrada");
-    const salidas = deHoy.filter((f22) => f22.tipo === "salida");
-    const abierto = entradas.length > salidas.length;
-    return { empleado: e2, ultimaEntrada: entradas[entradas.length - 1], abierto, totalFichajesHoy: deHoy.length };
+    const entradaAbierta = resumenFichajesPM13(fichajesVigentesPM13).abiertos.find((f22) => f22.empleadoId === e2.id);
+    const abierto = !!entradaAbierta;
+    return { empleado: e2, ultimaEntrada: entradaAbierta?.entrada || entradas[entradas.length - 1], abierto, totalFichajesHoy: deHoy.length };
   });
   const filasHistorial = (0, import_react4.useMemo)(() => {
-    const grupos = {};
-    fichajesVigentesPM13.filter((f22) => f22.fecha >= desde && f22.fecha <= hasta).forEach((f22) => {
-      const key = `${f22.empleadoId}-${f22.fecha}`;
-      if (!grupos[key]) grupos[key] = { empleadoId: f22.empleadoId, fecha: f22.fecha, entradas: [], salidas: [] };
-      if (f22.tipo === "entrada") grupos[key].entradas.push(f22);
-      else grupos[key].salidas.push(f22);
+    const resumen = resumenFichajesPM13(fichajesVigentesPM13);
+    const seSolapaConPeriodo = (entrada, salida = entrada) => entrada.fecha <= hasta && salida.fecha >= desde;
+    const filasCerradas = resumen.pares.filter((p22) => seSolapaConPeriodo(p22.entrada, p22.salida)).map((p22) => {
+      const emp = empleados.find((e2) => e2.id === p22.empleadoId);
+      return { ...p22, fecha: p22.fechaFin && p22.fechaFin !== p22.fecha ? `${p22.fecha} → ${p22.fechaFin}` : p22.fecha, nombre: emp ? emp.nombre : "\u2014", horas: p22.minutos / 60 };
     });
-    return Object.values(grupos).map((g2) => {
-      const emp = empleados.find((e2) => e2.id === g2.empleadoId);
-      const entrada = g2.entradas.sort((a22, b2) => a22.hora.localeCompare(b2.hora))[0];
-      const salida = g2.salidas.sort((a22, b2) => a22.hora.localeCompare(b2.hora)).slice(-1)[0];
-      let horas = null;
-      if (entrada && salida) {
-        const [h1, m1] = entrada.hora.split(":").map(Number);
-        const [h22, m22] = salida.hora.split(":").map(Number);
-        horas = (h22 * 60 + m22 - (h1 * 60 + m1)) / 60;
-      }
-      return { ...g2, nombre: emp ? emp.nombre : "\u2014", entrada, salida, horas };
+    const filasAbiertas = resumen.abiertos.filter((f22) => f22.fecha >= desde && f22.fecha <= hasta).map((f22) => {
+      const emp = empleados.find((e2) => e2.id === f22.empleadoId);
+      return { empleadoId: f22.empleadoId, fecha: f22.fecha, fechaFin: null, nombre: emp ? emp.nombre : "\u2014", entrada: f22.entrada, salida: null, horas: null, abierto: true };
     });
+    return [...filasCerradas, ...filasAbiertas];
   }, [fichajesVigentesPM13, desde, hasta, empleados]);
   function textoRegistro() {
     const lineas = filasHistorial.sort((a22, b2) => a22.fecha.localeCompare(b2.fecha) || a22.nombre.localeCompare(b2.nombre)).map((f22) => `${f22.fecha} \xB7 ${f22.nombre} \xB7 Entrada ${f22.entrada ? f22.entrada.hora : "\u2014"} \xB7 Salida ${f22.salida ? f22.salida.hora : "sin fichar"} \xB7 ${f22.horas !== null ? f22.horas.toFixed(2) + " h" : ""}`);
