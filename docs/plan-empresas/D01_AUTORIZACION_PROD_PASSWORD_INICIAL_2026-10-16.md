@@ -1,7 +1,14 @@
 # D01 — hoja de autorización para aplicar en PRODUCCIÓN el blindaje de la contraseña inicial
 
 Fecha: 16/10/2026. Entorno: Supabase PRODUCCIÓN `flqercbgpgmmfaakrwkc`.
-Estado: **pendiente de autorización.** No se ha aplicado ni tocado nada en producción todavía.
+Estado: **aplicado y verificado en PRODUCCIÓN.** Autorización de Pedro: «Autorizo aplicar en PRODUCCIÓN las tres migraciones del blindaje de la contraseña inicial (D01), commit 2d3875f.»
+
+## 0. Verificación tras aplicar (solo lectura)
+
+Las tres se aplicaron en orden, cada una con su comprobación de huella antes y después, todas con éxito. Comprobado después:
+- `private.plataforma_password_pendiente`: **0 filas** — ninguna cuenta quedó bloqueada retroactivamente.
+- Huella de `abc_tiene_capacidad` cambió respecto a la de antes (confirma la sustitución real) y `plataforma_asignar_propietario` ya contiene la llamada a `plataforma_marcar_password_pendiente`.
+- Recuentos de negocio sin cambios: 3 empresas (1 activa), 1 membresía de Propietario activa, 1 administrador, 0 filas de `suscripciones_push` — idénticos a la foto del punto 3, de antes de aplicar.
 
 ## 1. Qué se aplicaría, en este orden exacto
 
