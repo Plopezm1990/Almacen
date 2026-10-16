@@ -22,11 +22,11 @@ Ninguna de estas necesita cambio.
 
 Todas estas **se pueden llamar con una sesión autenticada corriente** (comprobado con `has_function_privilege('authenticated', …, 'execute') = true`) y tienen su **propio** control de acceso (rol, pertenencia a la empresa/local…) — no están abiertas a cualquiera — pero ese control **no mira si la cuenta todavía tiene pendiente el cambio de la contraseña inicial**. Es decir: un dueño nuevo, antes de cambiar su contraseña, no puede tocar el TPV ni las colecciones de la Plataforma (eso ya está blindado), pero **si conociera estas funciones** podría seguir usándolas con normalidad.
 
-**Prioridad alta — mueven dinero o stock de verdad:**
+**Prioridad alta — mueven dinero o stock de verdad: BLINDADAS el 16/10/2026** (migración `20261016150000_plataforma_password_inicial_bloqueo_almacen_alta.sql`, vía las siete funciones de permiso compartidas `pm06_puede_gestionar_finanzas`/`pm07_puede_vender`/`pm07_puede_gestionar_stock`/`pm08_puede_operar_caja`/`pm08_puede_corregir_caja`):
 `registrar_venta_stock`, `registrar_venta_stock_carrito`, `registrar_venta_stock_pm09`, `registrar_venta_stock_carrito_pm09`, `revertir_venta_stock`, `revertir_venta_stock_carrito`, `revertir_venta_stock_pm09`, `revertir_venta_stock_carrito_pm09`, `registrar_movimiento_caja`, `revertir_movimiento_caja`, `registrar_arqueo_caja`, `anular_arqueo_caja`, `registrar_pago_factura`, `revertir_pago_factura`, `registrar_pago_encargo`, `revertir_pago_encargo`, `registrar_encargo`, `registrar_devolucion_venta`, `registrar_devolucion_venta_pm09`, `registrar_devolucion_proveedor`, `trasladar_stock_entre_locales`, `trasladar_stock_interno`.
 
-**Prioridad alta — cambian la configuración de permisos/capacidades, no solo datos:**
-`abc_configurar_capacidad_rol` (qué puede hacer cada rol), `abc_configurar_modalidad_local`, `abc_configurar_dia_operativo`, `abc_configurar_equipo_local`, `abc_configurar_ajuste`, `abc_configurar_descuento_politica`, `abc_configurar_modalidad_fiscal` (esta última sí pasa el filtro — revisar si por descuido o a propósito).
+**Prioridad alta — cambian la configuración de permisos/capacidades, no solo datos: BLINDADAS el 16/10/2026** (misma migración, vía `abc_config_puede_configurar`/`abc_config_puede_configurar_empresa` y, para `abc_configurar_descuento_politica`, su propia condición):
+`abc_configurar_capacidad_rol` (qué puede hacer cada rol), `abc_configurar_modalidad_local`, `abc_configurar_dia_operativo`, `abc_configurar_equipo_local`, `abc_configurar_ajuste`, `abc_configurar_descuento_politica`. `abc_configurar_modalidad_fiscal` no necesitó cambio: ya pasaba el filtro desde antes de hoy, a propósito — su cuerpo llama a `private.abc_tiene_capacidad`, blindada desde el subpunto 3, comprobado leyendo su texto real durante esta auditoría.
 
 **Media — aprobación de descuentos (dinero, pero con un paso de aprobación de por medio):**
 `abc_aplicar_descuento_cuenta`, `abc_aprobar_descuento_cuenta`.
