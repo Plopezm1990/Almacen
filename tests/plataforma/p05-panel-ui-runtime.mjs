@@ -501,15 +501,42 @@ async function abrirPanel(e, opts) {
   await esperar(() => g.log.signOut === 1 && recargas.length === antes + 1, 'cerrar sesión desde la pantalla de contraseña');
   ok('9i. se puede cerrar sesión desde esa pantalla (y se recarga la página)', g.log.signOut === 1 && recargas.length === antes + 1);
 
-  // ¿Sigue debiendo cambiarla? Se confirma con el servidor para no molestar con un aviso antiguo.
-  const h = entorno({ sesion, getUser: () => ({ data: { user: { user_metadata: { debe_cambiar_contrasena: false } } } }) });
-  ok('9j. si el servidor dice que ya la cambió, no se vuelve a pedir', (await h.P.sigueDebiendoCambiar(h.supabase, sesion)) === false && h.log.getUser === 1);
-  const i = entorno({ sesion, getUser: () => ({ data: { user: { user_metadata: { debe_cambiar_contrasena: true } } } }) });
-  ok('9k. si el servidor confirma que sigue pendiente, se pide', (await i.P.sigueDebiendoCambiar(i.supabase, sesion)) === true);
-  const j = entorno({ sesion, getUser: () => { throw new Error('sin red'); } });
-  ok('9l. si no se puede preguntar al servidor, se exige por precaución', (await j.P.sigueDebiendoCambiar(j.supabase, sesion)) === true);
-  const k = entorno({});
-  ok('9m. sin marca en la sesión no se pregunta nada al servidor', (await k.P.sigueDebiendoCambiar(k.supabase, SESION)) === false && k.log.getUser === 0);
+  // ¿Sigue debiendo cambiarla? D01 decisión 3: la fuente autoritativa es plataforma_mi_estado_password
+  // (nunca user_metadata, que el cliente puede falsificar) y se pregunta siempre, con o sin marca local.
+  const rpcPassword = (resp) => async (nombre) => {
+    if (nombre === 'plataforma_mi_estado_password') return resp();
+    throw new Error('rpc no previsto');
+  };
+  const FALTA_FN = new Error('Could not find the function public.plataforma_mi_estado_password without parameters in the schema cache');
+
+  const h = entorno({ sesion, rpc: rpcPassword(() => ({ ok: true, pendiente: false })) });
+  ok('9j. si el servidor (función autoritativa) dice que ya no está pendiente, no se vuelve a pedir',
+    (await h.P.sigueDebiendoCambiar(h.supabase, sesion)) === false && h.log.getUser === 0 && h.llamadas('plataforma_mi_estado_password').length === 1);
+
+  const i = entorno({ sesion, rpc: rpcPassword(() => ({ ok: true, pendiente: true })) });
+  ok('9k. si el servidor confirma que sigue pendiente, se pide',
+    (await i.P.sigueDebiendoCambiar(i.supabase, sesion)) === true && i.log.getUser === 0);
+
+  const l = entorno({ sesion, rpc: rpcPassword(() => ({ ok: true, pendiente: false })) });
+  ok('9l. se pregunta al servidor aunque la sesión local no traiga la marca (ya no se fía de ella)',
+    (await l.P.sigueDebiendoCambiar(l.supabase, SESION)) === false && l.llamadas('plataforma_mi_estado_password').length === 1);
+
+  // Sin la función todavía en el servidor (antes de aplicar en producción): cae al criterio anterior, user_metadata.
+  const j = entorno({ sesion, rpc: async () => { throw FALTA_FN; }, getUser: () => ({ data: { user: { user_metadata: { debe_cambiar_contrasena: false } } } }) });
+  ok('9m. sin la función en el servidor, cae al criterio anterior (el cliente ya la había cambiado)',
+    (await j.P.sigueDebiendoCambiar(j.supabase, sesion)) === false && j.log.getUser === 1);
+
+  const k = entorno({ sesion, rpc: async () => { throw FALTA_FN; }, getUser: () => { throw new Error('sin red'); } });
+  ok('9n. sin la función en el servidor y sin poder confirmar por el criterio anterior, se exige por precaución',
+    (await k.P.sigueDebiendoCambiar(k.supabase, sesion)) === true);
+
+  const m = entorno({ rpc: async () => { throw FALTA_FN; } });
+  ok('9o. sin la función en el servidor y sin marca local, no se pregunta nada más (como antes)',
+    (await m.P.sigueDebiendoCambiar(m.supabase, SESION)) === false && m.log.getUser === 0);
+
+  const n = entorno({ sesion, rpc: async () => { throw new Error('HTTP 500'); } });
+  ok('9p. un error real del servidor (no "función inexistente") exige por precaución, sin caer al criterio anterior',
+    (await n.P.sigueDebiendoCambiar(n.supabase, sesion)) === true && n.log.getUser === 0);
 }
 
 // ---- 10. Consulta del estado y atajo ----
