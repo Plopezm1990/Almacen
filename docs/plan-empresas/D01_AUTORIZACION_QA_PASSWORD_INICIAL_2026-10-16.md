@@ -68,10 +68,10 @@ Las tres se aplicaron **en orden**, cada una con su comprobación de huella ante
 
 ## 7. Lo que queda (fuera del alcance de esta autorización)
 
-1. Prueba con Cowork en QA: dar de alta un dueño **nuevo** de verdad con la pantalla «Plataforma» (ejercita el disparador real de cambio de contraseña, no simulado), confirmar el bloqueo y el desbloqueo por pantalla, y repetir los contratos de regresión existentes de ABC/F4/F4e.
-2. Cambiar la pantalla para que consulte `plataforma_mi_estado_password` en vez de `user_metadata`.
+1. ~~Prueba con Cowork en QA: dar de alta un dueño **nuevo** de verdad...~~ **Hecho el 16/10/2026.** Dos rondas con Cowork sobre un dueño nuevo real: (a) por consola, el disparador real de `encrypted_password` y los tres filtros (ABC/kv/mov) y push, todos correctos (una sonda mal elegida —`abc_obtener_modalidades_local`, que no pasa por `abc_tiene_capacidad`— corregida en el documento); (b) por pantalla, con el cambio del punto 2 ya desplegado en la vista previa: aparece «Elige tu contraseña» para la cuenta nueva, desaparece tras el cambio real, y una cuenta ya resuelta de la ronda anterior no la vuelve a pedir. Sin repetir aquí los contratos de regresión completos de ABC/F4/F4e (quedan como auditoría aparte, punto 4).
+2. ~~Cambiar la pantalla para que consulte `plataforma_mi_estado_password` en vez de `user_metadata`.~~ **Hecho el 16/10/2026** (commit `e7bcef5`), con respaldo automático al criterio anterior si el servidor no tiene la función todavía (antes de aplicar en PROD). Verificado con pruebas automatizadas (p04/p05/p06, con prueba de mutación) y en vivo en QA (punto 1).
 3. Aplicar en PROD — autorización escrita aparte.
-4. Auditar las funciones que no pasan por estos filtros comunes.
+4. Auditar las funciones que no pasan por estos filtros comunes (incluye, como mínimo, repetir contra QA los contratos de regresión de ABC/F4/F4e).
 
 ## 8. Procedimiento de reversión si hiciera falta
 
