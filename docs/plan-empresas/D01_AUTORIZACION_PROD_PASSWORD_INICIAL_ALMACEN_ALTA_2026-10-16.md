@@ -1,7 +1,15 @@
 # D01 — hoja de autorización para aplicar en PRODUCCIÓN el blindaje del almacén clásico (prioridad alta)
 
 Fecha: 16/10/2026. Entorno: Supabase PRODUCCIÓN `flqercbgpgmmfaakrwkc`.
-Estado: **pendiente de autorización.**
+Estado: **aplicado y verificado en PRODUCCIÓN.** Autorización de Pedro: «Autorizo» (en respuesta directa a la propuesta de este documento, con una sola acción pendiente: aplicar esta migración, commit `575a37a`).
+
+## 0. Verificación tras aplicar (solo lectura)
+
+La migración se aplicó sin incidencias (preflight y postflight en verde). Comprobado después:
+- Las ocho huellas cambiaron exactamente a los valores anunciados en el punto 3 (`7e60ce28...`, `bd7cd310...`, `02990754...`, `98093459...`, `f77ca13a...`, `40814e9c...`, `79374d16...`, `fff788e3...`).
+- `pm07_puede_gestionar_stock` conserva el `search_path` vacío que ya tenía en PRODUCCIÓN (no se adoptó el de QA) — comprobado leyendo `proconfig` después de aplicar.
+- Recuentos de negocio sin cambios: 3 empresas (1 activa), 1 membresía Propietario activa — idénticos a la foto del punto 4. **0 filas** en `plataforma_password_pendiente`: nadie quedó bloqueado retroactivamente.
+- **No se repitió** en PRODUCCIÓN la prueba de marcar/desmarcar una cuenta como pendiente (sí hecha en QA): la única membresía de Propietario activa en PRODUCCIÓN es una cuenta real, no una cuenta de pruebas descartable, y no se toca para no interferir con su uso real. El comportamiento del guardia (bloquea con la marca puesta, no afecta a quien no la tiene) ya quedó probado en QA el mismo día sobre una cuenta de pruebas real, con el mismo texto lógico que esta migración aplica aquí.
 
 ## 1. Qué se aplicaría
 
