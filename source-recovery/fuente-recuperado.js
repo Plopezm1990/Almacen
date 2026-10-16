@@ -2170,12 +2170,18 @@ function GestionAlmacen() {
   }, [empresaDelLocalActivo]);
   const empleadosIdentidadKeyPM11 = empleados.map((empleado) => `${empleado?.id || ""}:${empleado?.empresaId || ""}:${empleado?.localId || ""}`).sort().join("|");
   (0, import_react4.useEffect)(() => {
-    if (!ready || !miPerfil || miPerfil.rol !== "Propietario" || typeof window === "undefined" || !window.__nubeActiva || !localActivoId) return;
-    let activo = true;
-    const controlador = typeof AbortController === "function" ? new AbortController() : null;
-    const localContexto = String(localActivoId);
+    if (typeof window === "undefined") return;
+    const localContexto = localActivoId ? String(localActivoId) : "";
     const localActual = locales.find((l22) => l22 && String(l22.id) === localContexto) || null;
     const empresaContexto = localActual?.empresaId ? String(localActual.empresaId) : empresas.length === 1 ? String(empresas[0]?.id || "") : "";
+    const claveContextoPM11 = `${empresaContexto}::${localContexto}`;
+    // La clave global invalida respuestas que sobrevivan a un cambio de
+    // contexto incluso antes de que React ejecute el cleanup del efecto.
+    window.__pm11CuentaContexto = claveContextoPM11;
+    if (!ready || !miPerfil || miPerfil.rol !== "Propietario" || !window.__nubeActiva || !localActivoId) return;
+    let activo = true;
+    const controlador = typeof AbortController === "function" ? new AbortController() : null;
+    const esContextoVigentePM11 = () => activo && window.__pm11CuentaContexto === claveContextoPM11;
     const idsEmpleadosContexto = empleados.filter((empleado) => {
       const empleadoLocal = String(empleado?.localId || "");
       const empleadoEmpresa = String(empleado?.empresaId || "");
@@ -2192,7 +2198,7 @@ function GestionAlmacen() {
         const { data: sesion } = await supabase.auth.getSession();
         const userId = sesion?.session?.user?.id;
         if (!userId) {
-          if (activo) setEstadoCuentasPM11(Object.fromEntries(idsEmpleadosContexto.map((id) => [id, "error"])));
+          if (esContextoVigentePM11()) setEstadoCuentasPM11(Object.fromEntries(idsEmpleadosContexto.map((id) => [id, "error"])));
           return;
         }
         let consulta = supabase.rpc("pm11_estado_cuentas_empleados", {
@@ -2203,9 +2209,9 @@ function GestionAlmacen() {
         if (controlador && typeof consulta.abortSignal === "function") consulta = consulta.abortSignal(controlador.signal);
         const { data: respuesta, error } = await consulta;
         const cuentas = respuesta?.ok === true && Array.isArray(respuesta.cuentas) ? respuesta.cuentas : null;
-        if (error || !activo || controlador?.signal.aborted || !cuentas) {
+        if (error || !esContextoVigentePM11() || controlador?.signal.aborted || !cuentas) {
           if (error || !cuentas) {
-            setEstadoCuentasPM11(Object.fromEntries(idsEmpleadosContexto.map((id) => [id, "error"])));
+            if (esContextoVigentePM11()) setEstadoCuentasPM11(Object.fromEntries(idsEmpleadosContexto.map((id) => [id, "error"])));
           }
           return;
         }
@@ -2222,8 +2228,10 @@ function GestionAlmacen() {
           const estado = cuenta?.estado;
           return [id, incoherentes.has(id) ? "incoherente" : ["activa", "suspendida", "sin_cuenta", "incoherente"].includes(estado) ? estado : "error"];
         }));
+        if (!esContextoVigentePM11()) return;
         setEstadoCuentasPM11(estados);
         setEmpleados((actuales) => actuales.map((empleado) => {
+          if (!esContextoVigentePM11()) return actuales;
           const empleadoLocal = String(empleado?.localId || "");
           const empleadoEmpresa = String(empleado?.empresaId || "");
           const enContexto = empleadoLocal === localContexto && (!empresaContexto || !empleadoEmpresa || empleadoEmpresa === empresaContexto);
@@ -2243,7 +2251,7 @@ function GestionAlmacen() {
         }));
       } catch (e2) {
         if (controlador?.signal.aborted) return;
-        if (activo) setEstadoCuentasPM11(Object.fromEntries(idsEmpleadosContexto.map((id) => [id, "error"])));
+        if (esContextoVigentePM11()) setEstadoCuentasPM11(Object.fromEntries(idsEmpleadosContexto.map((id) => [id, "error"])));
       }
     })();
     return () => {

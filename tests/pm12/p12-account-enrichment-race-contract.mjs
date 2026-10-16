@@ -10,13 +10,16 @@ assert.ok(inicio > 0 && fin > inicio, 'no se encontró el efecto de enriquecimie
 const bloque = fuente.slice(inicio, fin);
 
 assert.match(bloque, /const controlador = typeof AbortController === "function"/);
+assert.match(bloque, /const claveContextoPM11 = `\$\{empresaContexto\}:\:\$\{localContexto\}`/);
+assert.match(bloque, /window\.__pm11CuentaContexto = claveContextoPM11/);
+assert.match(bloque, /const esContextoVigentePM11 = \(\) => activo && window\.__pm11CuentaContexto === claveContextoPM11/);
 assert.match(bloque, /consulta\.abortSignal\(controlador\.signal\)/);
 assert.match(bloque, /supabase\.rpc\("pm11_estado_cuentas_empleados"/);
 assert.match(bloque, /p_empresa_id: empresaContexto/);
 assert.match(bloque, /p_local_id: localContexto/);
 assert.match(bloque, /p_empleado_ids: idsEmpleadosContexto/);
 assert.doesNotMatch(bloque, /\.in\("empleado_id", idsEmpleadosContexto\)/);
-assert.match(bloque, /if \(error \|\| !activo \|\| controlador\?\.signal\.aborted/);
+assert.match(bloque, /if \(error \|\| !esContextoVigentePM11\(\) \|\| controlador\?\.signal\.aborted/);
 assert.match(bloque, /const enContexto = empleadoLocal === localContexto/);
 assert.match(bloque, /if \(!enContexto\) return empleado;/);
 assert.match(bloque, /if \(controlador\) controlador\.abort\(\);/);
@@ -31,6 +34,8 @@ assert.match(bloque, /const estados = Object\.fromEntries/);
 assert.match(bloque, /\["activa", "suspendida", "sin_cuenta", "incoherente"\]\.includes\(estado\)/);
 assert.match(bloque, /if \(estado === "error"\) return empleado;/);
 assert.match(bloque, /if \(estado === "incoherente"\) return \{ \.\.\.empleado, tieneCuenta: false, cuentaActiva: false, rolCuenta: "" \};/);
+assert.match(bloque, /if \(!esContextoVigentePM11\(\)\) return;/);
+assert.match(bloque, /if \(!esContextoVigentePM11\(\)\) return actuales;/);
 assert.match(bloque, /cuentaActiva: estado === "activa"/);
 
 const uiInicio = fuente.indexOf('function Personal({');
