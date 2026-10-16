@@ -2,7 +2,20 @@
 
 Fecha: 16/10/2026
 Entorno: Supabase QA `qjqorixtkilwsndqayyx`. Producción no se toca en este paso.
-Estado: **pendiente de autorización.**
+Estado: **aplicado y verificado en QA.** Autorización de Pedro: «Autorizo» (en respuesta directa a la propuesta de este documento, con una sola acción pendiente: aplicar esta migración, commit `720a11c`).
+
+## 0. Verificación tras aplicar (solo lectura salvo lo indicado)
+
+La migración se aplicó sin incidencias (preflight y postflight en verde, sin necesidad de quitar ningún `DROP`). Comprobado después:
+- Las ocho huellas cambiaron a los valores nuevos esperados (`0ec2944f...`, `0730ebd4...`, `f77ca13a...`, `98093459...`, `f77ca13a...`, `40814e9c...`, `79374d16...`, `fff788e3...`).
+- Recuentos de negocio sin cambios: 10 empresas, 12 membresías Propietario activas — idénticos a la foto del punto 3.
+- **Prueba de comportamiento real** sobre la cuenta de prueba `owner.a@qa.invalid` (Propietario, `QA-EMP-A`/todos los locales), sin tocar su contraseña real:
+  - Antes de marcarla: los siete filtros conceden (`true`).
+  - Se marcó con `insert into private.plataforma_password_pendiente`. Con la marca puesta: los siete deniegan (`false`) y `plataforma_mi_estado_password()` devuelve `pendiente: true`.
+  - Una cuenta distinta sin marca (`pm07.smoke@qa.invalid`) no se vio afectada: sigue concediendo.
+  - Se quitó la marca (`delete`, con tu aprobación explícita tras un primer intento cancelado por la herramienta) y los filtros volvieron a conceder, `pendiente: false`.
+  - Comprobación final: **0 filas** en `plataforma_password_pendiente` en toda la base — la cuenta de prueba quedó exactamente como estaba antes de la prueba.
+- `abc_configurar_descuento_politica` solo se comprobó por huella (cambió, como se esperaba) y por texto (contiene la llamada al guardia) — no por comportamiento, tal como decía este mismo documento y el archivo de la migración.
 
 ## 1. Qué se aplicaría
 
