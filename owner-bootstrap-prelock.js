@@ -15,6 +15,9 @@
     // Plataforma (D01): panel del administrador. Todas comprueban en el servidor que quien llama es
     // administrador de la plataforma; plataforma_estado solo dice si lo es.
     plataforma_estado: true,
+    // Blindaje de la contraseña inicial (D01, decisión 3): cualquier cuenta autenticada, no solo el
+    // administrador. Siempre responde sobre quien llama (auth.uid()), nunca sobre una cuenta ajena.
+    plataforma_mi_estado_password: true,
     plataforma_listar_empresas: true,
     plataforma_crear_empresa: true,
     plataforma_desactivar_empresa: true,

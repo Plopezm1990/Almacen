@@ -1038,8 +1038,21 @@
   // ---------------------------------------------------------------------------
   // Pantalla «Elige tu contraseña»
   // ---------------------------------------------------------------------------
-  // Si el navegador tiene la sesión guardada con un aviso antiguo, se confirma con el servidor antes de molestar.
+  // D01 decisión 3: la fuente autoritativa es el servidor (plataforma_mi_estado_password), nunca
+  // user_metadata, que el propio cliente puede falsificar sin saber la contraseña. Se pregunta siempre,
+  // no solo cuando la sesión local trae la marca puesta.
+  // Si el servidor todavía no tiene esta función (antes de aplicarla en producción), se cae al criterio
+  // anterior (user_metadata) para no romper el arranque de nadie mientras tanto.
   async function sigueDebiendoCambiar(supabase, sesion) {
+    var token = sesion && sesion.access_token ? sesion.access_token : "";
+    if (token) {
+      try {
+        var estado = await window.__laOwnerBootstrapRpc("plataforma_mi_estado_password", token, {});
+        return !!(estado && estado.pendiente === true);
+      } catch (e) {
+        if (!esFuncionInexistente(e)) return true; // precaución: no se pudo confirmar con el servidor
+      }
+    }
     if (!debeCambiarContrasena(sesion)) return false;
     try {
       var r = await supabase.auth.getUser();

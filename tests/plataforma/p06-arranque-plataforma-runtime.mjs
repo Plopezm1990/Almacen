@@ -88,6 +88,12 @@ async function arranque({ user = usuario(), estado, instalacion, rpcs = {}, carg
     if (nombre === 'obtener_estado_instalacion') return respuesta(200, instalacion || { state: 'ready', generation: 'gen-1' });
     if (nombre === 'obtener_contexto_instalacion_ui') return respuesta(200, CONTEXTO_UI);
     if (nombre === 'plataforma_listar_empresas') return respuesta(200, []);
+    // Por defecto, el servidor simulado responde con el mismo criterio que trae la cuenta de prueba
+    // (user_metadata), para que las pruebas que no tocan esto directamente sigan funcionando igual
+    // aunque ahora pasen por la función autoritativa de verdad; cada prueba puede pisarlo con `rpcs`.
+    if (nombre === 'plataforma_mi_estado_password') {
+      return respuesta(200, { ok: true, pendiente: !!(user && user.user_metadata && user.user_metadata.debe_cambiar_contrasena === true) });
+    }
     return respuesta(404, { message: `no previsto en la prueba: ${nombre}` });
   };
   w.eval(PRELOCK); // el candado captura el fetch de arriba como «fetch nativo»
@@ -195,6 +201,31 @@ const ADMIN = usuario({ id: 'admin-1', email: 'pedro@plataforma.test' });
   const b = await arranque({ user: a.sesion().user, estado: { es_admin: false, plataforma_activa: true } });
   await esperar(() => b.w.__laOwnerBootstrapSyncState().bootstrapListo === true && b.subidas() === 1, 'entra tras recargar');
   ok('5e. tras recargar entra directamente a su aplicación', !b.q('#la-plataforma-cambio-root') && b.llamadas('obtener_estado_instalacion').length === 1);
+}
+
+// ---- 5b. D01 decisión 3: la fuente autoritativa es plataforma_mi_estado_password, con respaldo si falta en el servidor ----
+{
+  // El servidor manda aunque la sesión local no traiga la marca (ya no se fía de user_metadata).
+  const sinMarca = usuario({ id: 'dueno-3', email: 'nueva@cliente.com', user_metadata: {} });
+  const a = await arranque({ user: sinMarca, estado: { es_admin: false, plataforma_activa: true }, rpcs: { plataforma_mi_estado_password: async () => ({ ok: true, pendiente: true }) } });
+  await esperar(() => a.q('#la-plataforma-cambio-root'), 'pantalla de contraseña por el servidor, sin marca local');
+  ok('5f. el servidor exige el cambio aunque la sesión local no traiga la marca', !!a.q('#la-plataforma-cambio-root'));
+
+  // Y al revés: con la marca local puesta pero el servidor diciendo que ya no hace falta, no se pide.
+  const marcado = usuario({ id: 'dueno-4', email: 'vieja@cliente.com', user_metadata: { debe_cambiar_contrasena: true } });
+  const b = await arranque({ user: marcado, estado: { es_admin: false, plataforma_activa: true }, rpcs: { plataforma_mi_estado_password: async () => ({ ok: true, pendiente: false }) } });
+  await esperar(() => b.w.__laOwnerBootstrapSyncState().bootstrapListo === true, 'entra sin pantalla porque el servidor ya no lo exige');
+  ok('5g. el servidor deja pasar aunque la sesión local traiga una marca antigua', !b.q('#la-plataforma-cambio-root'));
+
+  // Respaldo: si el servidor todavía no tiene la función (antes de aplicarla en producción), se cae al criterio anterior.
+  const FALTA_MI_ESTADO = Object.assign(new Error('Could not find the function public.plataforma_mi_estado_password without parameters in the schema cache'), { status: 404 });
+  const c = await arranque({ user: marcado, estado: { es_admin: false, plataforma_activa: true }, rpcs: { plataforma_mi_estado_password: async () => { throw FALTA_MI_ESTADO; } } });
+  await esperar(() => c.q('#la-plataforma-cambio-root'), 'respaldo: pantalla de contraseña por la marca local');
+  ok('5h. sin la función en el servidor, sigue pidiendo el cambio con el criterio anterior (nada se rompe antes de aplicarla en producción)', !!c.q('#la-plataforma-cambio-root'));
+
+  const d = await arranque({ user: sinMarca, estado: { es_admin: false, plataforma_activa: true }, rpcs: { plataforma_mi_estado_password: async () => { throw FALTA_MI_ESTADO; } } });
+  await esperar(() => d.w.__laOwnerBootstrapSyncState().bootstrapListo === true, 'entra como siempre, sin la función y sin marca');
+  ok('5i. sin la función en el servidor y sin marca local, entra como siempre', !d.q('#la-plataforma-cambio-root'));
 }
 
 // ---- 6. Administrador con empresa propia: abrir su aplicación y volver al panel (con recarga de página en cada cambio) ----
