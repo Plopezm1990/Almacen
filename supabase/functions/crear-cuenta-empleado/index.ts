@@ -116,10 +116,11 @@ Deno.serve(async (req: Request) => {
     );
     if (errorPreflight || !preflight?.ok) {
       const codigo = preflight?.codigo || "";
-      if (codigo === "empleado_no_encontrado") return json(req, { ok: false, error: "Empleado no encontrado." }, 404);
+      if (["empleado_no_disponible", "empleado_no_encontrado", "sin_alcance"].includes(codigo)) {
+        return json(req, { ok: false, error: "Empleado no disponible en tu ámbito." }, 404);
+      }
       if (codigo === "empleado_no_activo") return json(req, { ok: false, error: "Solo se puede crear cuenta a un empleado activo." }, 409);
       if (codigo === "perfil_no_activo") return json(req, { ok: false, error: "El perfil del usuario no está activo." }, 403);
-      if (codigo === "sin_alcance") return json(req, { ok: false, error: "No tienes alcance de Propietario sobre este empleado." }, 403);
       if (codigo === "local_inactivo") return json(req, { ok: false, error: "El local del empleado no está activo." }, 409);
       return json(req, { ok: false, error: "No se pudo comprobar el empleado." }, errorPreflight ? 500 : 403);
     }

@@ -13,6 +13,7 @@ function installFunction(relativePath, options = {}) {
   const admin = {
     rpc: async (name) => {
       if (name === 'pm11_preparar_cuenta_empleado') {
+        if (options.preflightCode) return { data: { ok: false, codigo: options.preflightCode }, error: null };
         return { data: { ok: true, empleado: { empresa_id: 'QA-EMP-A', local_id: 'QA-A1' }, cuenta: existing }, error: null };
       }
       assert.equal(name, 'pm11_finalizar_creacion_cuenta_empleado');
@@ -80,6 +81,17 @@ async function invoke(handler) {
 
 for (const path of ['supabase/functions/crear-cuenta-empleado/index.ts', 'supabase/functions/qa-crear-empleado/index.ts']) {
   {
+    const replies = [];
+    for (const preflightCode of ['empleado_no_disponible', 'empleado_no_encontrado', 'sin_alcance']) {
+      const { handler, calls } = installFunction(path, { preflightCode });
+      const result = await invoke(handler);
+      replies.push({ status: result.status, error: result.body.error });
+      assert.equal(calls.create, 0, 'un empleado ajeno o ausente nunca crea Auth');
+    }
+    assert.deepEqual(replies[0], replies[1]);
+    assert.deepEqual(replies[0], replies[2], 'la respuesta no debe revelar si existe un empleado ajeno');
+  }
+  {
     const { handler, calls } = installFunction(path);
     const result = await invoke(handler);
     assert.equal(result.status, 200);
@@ -133,5 +145,9 @@ for (const path of ['supabase/functions/crear-cuenta-empleado/index.ts', 'supaba
     assert.equal(calls.errors.length, 1);
   }
 }
+
+const prepareMigration = fs.readFileSync(new URL('supabase/migrations/20261016122410_pm11_prepare_account_no_cross_tenant_existence.sql', ROOT), 'utf8');
+assert.equal((prepareMigration.match(/'codigo','empleado_no_disponible'/g) || []).length, 2);
+assert.match(prepareMigration, /grant execute on function public\.pm11_preparar_cuenta_empleado\(uuid,text\) to service_role/i);
 
 console.log('P11_CREATE_ACCOUNT_BEHAVIOR=PASS');
