@@ -42,7 +42,7 @@ for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]
   const cuenta = (s) => t.split(s).length - 1;
   assert.equal(cuenta('{ id: "configuracion", label: "Configuraci\\xF3n", icon: Cog },'), 1, nombre + ": entrada de menú «Configuración»");
   assert.equal(cuenta('pick(["auditoria", "respaldos", "notificaciones", "locales", "configuracion", "errores_sistema"])'), 1, nombre + ": en el grupo Sistema");
-  assert.equal(cuenta('tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 })'), 1, nombre + ": montaje de la pestaña, con el perfil Propietario");
+  assert.equal(cuenta('tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29, empleados })'), 1, nombre + ": montaje de la pestaña, con el perfil Propietario");
   assert.equal(cuenta('tab === "configuracion"'), 1, nombre + ": una única pestaña «configuracion»");
   assert.equal(cuenta("function ConfiguracionLocal("), 1, nombre + ": una única pantalla");
   assert.ok(t.indexOf("function ConfiguracionLocal(") < t.indexOf("function PoliticasDescuentos("), nombre + ": el componente va junto a la pantalla modelo");
