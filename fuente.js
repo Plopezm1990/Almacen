@@ -43551,7 +43551,7 @@ var init_index_es = __esm({
 })();
 (function() {
   "use strict";
-  if (window.__contextoRolSeguroInstalado || !window.storage) return;
+  if (!window.storage) return;
   window.__contextoRolSeguroInstalado = true;
   var getOriginal = window.storage.get.bind(window.storage);
   var setOriginal = window.storage.set.bind(window.storage);
@@ -43565,6 +43565,8 @@ var init_index_es = __esm({
   var contextoUsuarioEnVuelo = null;
   var contextoGeneracionEnVuelo = null;
   var contextoPromesaEnVuelo = null;
+  var permisosConsultaCache = Object.create(null);
+  var permisosConsultaEnVuelo = Object.create(null);
   // Se conoce de forma SÍNCRONA (sin await) el usuario de la sesión
   // vigente -- imprescindible porque el reclamo de "petición compartida
   // en curso" en obtenerContexto() ocurre antes de cualquier await, y sin
@@ -43581,6 +43583,7 @@ var init_index_es = __esm({
   // clave de vuelo aún sería `void 0`) y saturar PostgREST.
   var sesionInicialLista = null;
   var CONTEXTO_TTL_MS = 3e4;
+  var PERMISOS_CONSULTA_TTL_MS = 5e3;
   var CACHE_LOCAL = "chocoloyos_contexto_operativo_seguro_v1";
   var CLAVES_COMUNES = [
     "productos",
@@ -43773,6 +43776,8 @@ var init_index_es = __esm({
     contextoUsuarioId = null;
     contextoFecha = 0;
     contextoLocalIdUsado = null;
+    permisosConsultaCache = Object.create(null);
+    permisosConsultaEnVuelo = Object.create(null);
     limpiarContextoLocalGuardado();
   }
   sesionInicialLista = (async function seguirCambiosDeSesion() {
@@ -43929,6 +43934,46 @@ var init_index_es = __esm({
     var lista = contexto && Array.isArray(contexto.empleadosFichaje) ? contexto.empleadosFichaje : [];
     return lista.length === 1 ? lista[0] : null;
   }
+  function clavePermisoConsultaPM13(contexto, clave) {
+    return [
+      contexto && contexto.empresaId || "",
+      contexto && contexto.localId || "",
+      contexto && contexto.empleado && contexto.empleado.id || "",
+      clave
+    ].join("|");
+  }
+  async function permisoConsultaPM13(contexto, clave) {
+    if (!contexto || contexto.rol === "Propietario") return true;
+    if (!window.__nubeActiva || !contexto.empresaId || !contexto.localId) return false;
+    var cacheKey = clavePermisoConsultaPM13(contexto, clave);
+    var ahora = Date.now();
+    var cacheado = permisosConsultaCache[cacheKey];
+    if (cacheado && ahora - cacheado.fecha < PERMISOS_CONSULTA_TTL_MS) return cacheado.permitido;
+    if (permisosConsultaEnVuelo[cacheKey]) return permisosConsultaEnVuelo[cacheKey];
+    var promesa = (async function() {
+      try {
+        var supabase = await clienteSupabase();
+        var respuesta = await supabase.rpc("pm13_resolver_cargo_permiso", {
+          p_empresa_id: contexto.empresaId,
+          p_local_id: contexto.localId,
+          p_clave: clave,
+          p_accion: "CONSULTAR",
+          p_alcance: "LOCAL",
+          p_empleado_id: contexto.empleado && contexto.empleado.id || null
+        });
+        var permitido = !!(respuesta && !respuesta.error && respuesta.data && respuesta.data.ok === true && respuesta.data.permitido === true);
+        permisosConsultaCache[cacheKey] = { permitido: permitido, fecha: Date.now() };
+        return permitido;
+      } catch (e2) {
+        permisosConsultaCache[cacheKey] = { permitido: false, fecha: Date.now() };
+        return false;
+      } finally {
+        delete permisosConsultaEnVuelo[cacheKey];
+      }
+    })();
+    permisosConsultaEnVuelo[cacheKey] = promesa;
+    return promesa;
+  }
   async function fichajesDelPropioEmpleado(key, contexto, shared) {
     var empleado = empleadoDelContexto(contexto);
     if (!empleado || !empleado.id) return respuestaStorage(key, []);
@@ -43978,6 +44023,7 @@ var init_index_es = __esm({
       return coleccionDelLocal(key, contexto, shared);
     }
     if (key === "empleados") {
+      if (!(await permisoConsultaPM13(contexto, "PM13_PERSONAL_CONSULTAR"))) return respuestaStorage(key, []);
       return respuestaStorage(key, Array.isArray(contexto.empleadosFichaje) ? contexto.empleadosFichaje : []);
     }
     if (key === "proveedores" && (rol === "Cajero/a" || rol === "Churrero/a")) {
@@ -43990,8 +44036,10 @@ var init_index_es = __esm({
       return respuestaStorage(key, encargosSoloCaja(contexto.cobrosEncargos));
     }
     if (key === "fichajes" && rol !== "Encargado") {
+      if (!(await permisoConsultaPM13(contexto, "PM13_FICHAJE_CONSULTAR"))) return respuestaStorage(key, []);
       return fichajesDelPropioEmpleado(key, contexto, shared);
     }
+    if (key === "fichajes" && rol === "Encargado" && !(await permisoConsultaPM13(contexto, "PM13_FICHAJE_CONSULTAR"))) return respuestaStorage(key, []);
     if (!puedeLeer(rol, key)) return respuestaVacia(key);
     return getOriginal(key, shared);
   };
@@ -103421,6 +103469,7 @@ function GestionAlmacen() {
     formularioAbiertoPM15Ref.current = !!abierto;
   }
   function cambiarTabPM15(nuevaTab) {
+    if (!puedeConsultarPantallaPM13(nuevaTab)) return;
     const confirmar = () => typeof window !== "undefined" && typeof window.confirm === "function" ? window.confirm("Tienes un formulario abierto sin guardar. Si cambias de pantalla se perder\xE1. \xBFQuieres continuar sin guardar?") : true;
     if (!decidirCambioTabPM15(formularioAbiertoPM15Ref.current, confirmar)) return;
     formularioAbiertoPM15Ref.current = false;
@@ -103430,6 +103479,7 @@ function GestionAlmacen() {
   const [temaOscuro, setTemaOscuro] = (0, import_react4.useState)(false);
   const [modoEmpleado, setModoEmpleado] = (0, import_react4.useState)(false);
   const [miPerfil, setMiPerfil] = (0, import_react4.useState)(null);
+  const [permisosConsultaPM13, setPermisosConsultaPM13] = (0, import_react4.useState)({ personal: null, fichaje: null, ausencias: null });
   (0, import_react4.useEffect)(() => {
     if (!ready || typeof window === "undefined" || !window.__nubeActiva) return;
     let activo = true;
@@ -103450,6 +103500,55 @@ function GestionAlmacen() {
       activo = false;
     };
   }, [ready]);
+  function puedeConsultarPantallaPM13(id) {
+    if (typeof window === "undefined" || !window.__nubeActiva || miPerfil?.rol === "Propietario") return true;
+    if (id === "personal") return permisosConsultaPM13.personal === true;
+    if (id === "fichaje") return permisosConsultaPM13.fichaje === true;
+    return true;
+  }
+  (0, import_react4.useEffect)(() => {
+    let activo = true;
+    if (!ready || typeof window === "undefined" || !window.__nubeActiva || !miPerfil) {
+      setPermisosConsultaPM13({ personal: null, fichaje: null, ausencias: null });
+      return () => { activo = false; };
+    }
+    if (miPerfil.rol === "Propietario") {
+      setPermisosConsultaPM13({ personal: true, fichaje: true, ausencias: true });
+      return () => { activo = false; };
+    }
+    const empresaId = empresaDelLocalActivo?.id || "";
+    const localId = localActivoId || "";
+    if (!empresaId || !localId) {
+      setPermisosConsultaPM13({ personal: false, fichaje: false, ausencias: false });
+      return () => { activo = false; };
+    }
+    (async () => {
+      try {
+        const supabase = await window.getSupabaseClient();
+        const claves = [
+          ["personal", "PM13_PERSONAL_CONSULTAR"],
+          ["fichaje", "PM13_FICHAJE_CONSULTAR"],
+          ["ausencias", "PM13_AUSENCIA_CONSULTAR"]
+        ];
+        const respuestas = await Promise.all(claves.map(([, clave]) => supabase.rpc("pm13_resolver_cargo_permiso", {
+          p_empresa_id: empresaId,
+          p_local_id: localId,
+          p_clave: clave,
+          p_accion: "CONSULTAR",
+          p_alcance: "LOCAL"
+        })));
+        if (!activo) return;
+        const permitido = (respuesta) => !!(respuesta && !respuesta.error && respuesta.data && respuesta.data.ok === true && respuesta.data.permitido === true);
+        setPermisosConsultaPM13(Object.fromEntries(claves.map(([nombre], indice) => [nombre, permitido(respuestas[indice])])))
+      } catch (e2) {
+        if (activo) setPermisosConsultaPM13({ personal: false, fichaje: false, ausencias: false });
+      }
+    })();
+    return () => { activo = false; };
+  }, [ready, miPerfil?.rol, empresaDelLocalActivo?.id, localActivoId]);
+  (0, import_react4.useEffect)(() => {
+    if (tab !== "dashboard" && !puedeConsultarPantallaPM13(tab)) setTab("dashboard");
+  }, [tab, permisosConsultaPM13.personal, permisosConsultaPM13.fichaje, miPerfil?.rol]);
   const [pinPropietario, setPinPropietario] = (0, import_react4.useState)("");
   const [auditoria, setAuditoria] = (0, import_react4.useState)([]);
   const [usuarioActivoId, setUsuarioActivoId] = (0, import_react4.useState)(null);
@@ -104776,6 +104875,7 @@ function GestionAlmacen() {
   }, [empleados]);
   const documentosPersonalPronto = (0, import_react4.useMemo)(() => documentosPersonalCaducan.filter((d2) => d2.dias <= 30), [documentosPersonalCaducan]);
   const empleadosDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? empleados : empleados.filter((e2) => e2.localId === localActivoId), [empleados, localActivoId]);
+  const empleadosVisiblesDelLocalActivo = (0, import_react4.useMemo)(() => empleadosDelLocalActivo.map((empleado) => permisosConsultaPM13.ausencias === true ? empleado : { ...empleado, ausencias: [] }), [empleadosDelLocalActivo, permisosConsultaPM13.ausencias]);
   const idsEmpleadosDelLocalActivo = (0, import_react4.useMemo)(() => new Set(empleadosDelLocalActivo.map((e2) => e2.id)), [empleadosDelLocalActivo]);
   const fichajesDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? fichajes : fichajes.filter((f22) => f22.localId === localActivoId), [fichajes, localActivoId]);
   const turnosDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? turnos : turnos.filter((t22) => t22.localId === localActivoId), [turnos, localActivoId]);
@@ -105235,7 +105335,7 @@ function GestionAlmacen() {
     Personal,
     {
       empresa: empresaDelLocalActivo,
-      empleados: empleadosDelLocalActivo,
+      empleados: empleadosVisiblesDelLocalActivo,
       addEmpleado,
       updateEmpleado,
       deleteEmpleado,
@@ -105496,7 +105596,7 @@ function GestionAlmacen() {
   ].map((item) => ({ ...item, capacidadConsulta: CAPACIDADES_CONSULTA_PANTALLA[item.id] }));
   const porId = (id) => itemsMeta.find((x3) => x3.id === id);
   const pick = (ids) => {
-    const filtrados = modoEmpleado ? ids.filter((id) => itemsPermitidosEmpleado.includes(id)) : ids;
+    const filtrados = ids.filter((id) => (!modoEmpleado || itemsPermitidosEmpleado.includes(id)) && puedeConsultarPantallaPM13(id));
     return filtrados.map(porId).filter(Boolean);
   };
   const GRUPOS = [

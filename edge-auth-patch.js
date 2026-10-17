@@ -227,7 +227,11 @@
   var contextoCache = null;
   var contextoUsuarioId = null;
   var contextoFecha = 0;
+  var contextoLocalIdUsado = null;
+  var permisosConsultaCache = Object.create(null);
+  var permisosConsultaEnVuelo = Object.create(null);
   var CONTEXTO_TTL_MS = 30000;
+  var PERMISOS_CONSULTA_TTL_MS = 5000;
   var CACHE_LOCAL = "chocoloyos_contexto_operativo_seguro_v1";
 
   var CLAVES_COMUNES = [
@@ -306,6 +310,48 @@
     throw new Error("Cliente Supabase no disponible");
   }
 
+  function clavePermisoConsultaPM13(contexto, clave) {
+    return [
+      contexto && contexto.empresaId || "",
+      contexto && contexto.localId || "",
+      contexto && contexto.empleado && contexto.empleado.id || "",
+      clave
+    ].join("|");
+  }
+
+  async function permisoConsultaPM13(contexto, clave) {
+    if (!contexto || contexto.rol === "Propietario") return true;
+    if (!window.__nubeActiva || !contexto.empresaId || !contexto.localId) return false;
+    var cacheKey = clavePermisoConsultaPM13(contexto, clave);
+    var ahora = Date.now();
+    var cacheado = permisosConsultaCache[cacheKey];
+    if (cacheado && ahora - cacheado.fecha < PERMISOS_CONSULTA_TTL_MS) return cacheado.permitido;
+    if (permisosConsultaEnVuelo[cacheKey]) return permisosConsultaEnVuelo[cacheKey];
+    var promesa = (async function () {
+      try {
+        var supabase = await clienteSupabase();
+        var respuesta = await supabase.rpc("pm13_resolver_cargo_permiso", {
+          p_empresa_id: contexto.empresaId,
+          p_local_id: contexto.localId,
+          p_clave: clave,
+          p_accion: "CONSULTAR",
+          p_alcance: "LOCAL",
+          p_empleado_id: contexto.empleado && contexto.empleado.id || null
+        });
+        var permitido = !!(respuesta && !respuesta.error && respuesta.data && respuesta.data.ok === true && respuesta.data.permitido === true);
+        permisosConsultaCache[cacheKey] = { permitido: permitido, fecha: Date.now() };
+        return permitido;
+      } catch (e) {
+        permisosConsultaCache[cacheKey] = { permitido: false, fecha: Date.now() };
+        return false;
+      } finally {
+        delete permisosConsultaEnVuelo[cacheKey];
+      }
+    })();
+    permisosConsultaEnVuelo[cacheKey] = promesa;
+    return promesa;
+  }
+
   function guardarContextoLocal(userId, contexto) {
     if (!userId || !contexto || !contexto.rol) return;
     try {
@@ -317,11 +363,12 @@
     } catch (e) {}
   }
 
-  function leerContextoLocal(userId) {
+  function leerContextoLocal(userId, localIdSolicitado) {
     if (!userId) return null;
     try {
       var guardado = JSON.parse(localStorage.getItem(CACHE_LOCAL) || "null");
       if (!guardado || guardado.userId !== userId || !guardado.contexto || !guardado.contexto.rol) return null;
+      if (localIdSolicitado && String(guardado.contexto.localId || "") !== String(localIdSolicitado)) return null;
       return guardado.contexto;
     } catch (e) {
       return null;
@@ -363,9 +410,12 @@ function modoLocalNoReclamado() {
     var userId = sesion && sesion.user ? sesion.user.id : null;
     if (!userId) return null;
 
+    var localIdSolicitado = typeof window.__localActivoIdParaContexto === "string" && window.__localActivoIdParaContexto
+      ? window.__localActivoIdParaContexto : null;
     var ahora = Date.now();
     if (
       !forzar && contextoCache && contextoUsuarioId === userId &&
+      contextoLocalIdUsado === localIdSolicitado &&
       ahora - contextoFecha < CONTEXTO_TTL_MS
     ) {
       return contextoCache;
@@ -373,11 +423,14 @@ function modoLocalNoReclamado() {
 
     if (window.__nubeActiva) {
       try {
-        var respuesta = await supabase.rpc("obtener_contexto_operativo");
+        var respuesta = localIdSolicitado
+          ? await supabase.rpc("obtener_contexto_operativo", { p_local_id: localIdSolicitado })
+          : await supabase.rpc("obtener_contexto_operativo");
         if (!respuesta.error && respuesta.data && respuesta.data.rol) {
           contextoCache = respuesta.data;
           contextoUsuarioId = userId;
           contextoFecha = ahora;
+          contextoLocalIdUsado = localIdSolicitado;
           guardarContextoLocal(userId, contextoCache);
           return contextoCache;
         }
@@ -387,11 +440,12 @@ function modoLocalNoReclamado() {
     // Sin red o ante un fallo transitorio se usa únicamente el contexto
     // REDUCIDO que ya fue verificado para esta misma cuenta. Nunca se recupera
     // aquí un blob empresarial completo.
-    var local = leerContextoLocal(userId);
+    var local = leerContextoLocal(userId, localIdSolicitado);
     if (local) {
       contextoCache = local;
       contextoUsuarioId = userId;
       contextoFecha = ahora;
+      contextoLocalIdUsado = local.localId || null;
       return local;
     }
     return null;
@@ -476,6 +530,7 @@ function modoLocalNoReclamado() {
       return coleccionDelLocal(key, contexto, shared);
     }
     if (key === "empleados") {
+      if (!(await permisoConsultaPM13(contexto, "PM13_PERSONAL_CONSULTAR"))) return respuestaStorage(key, []);
       return respuestaStorage(key, Array.isArray(contexto.empleadosFichaje) ? contexto.empleadosFichaje : []);
     }
     if (key === "proveedores" && (rol === "Cajero/a" || rol === "Churrero/a")) {
@@ -488,9 +543,13 @@ function modoLocalNoReclamado() {
       return respuestaStorage(key, encargosSoloCaja(contexto.cobrosEncargos));
     }
     if (key === "fichajes" && rol !== "Encargado") {
+      if (!(await permisoConsultaPM13(contexto, "PM13_FICHAJE_CONSULTAR"))) return respuestaStorage(key, []);
       return fichajesDelPropioEmpleado(key, contexto, shared);
     }
 
+    if (key === "fichajes" && rol === "Encargado" && !(await permisoConsultaPM13(contexto, "PM13_FICHAJE_CONSULTAR"))) {
+      return respuestaStorage(key, []);
+    }
     if (!puedeLeer(rol, key)) return respuestaVacia(key);
     return getOriginal(key, shared);
   };
@@ -537,6 +596,9 @@ function modoLocalNoReclamado() {
     contextoCache = null;
     contextoUsuarioId = null;
     contextoFecha = 0;
+    contextoLocalIdUsado = null;
+    permisosConsultaCache = Object.create(null);
+    permisosConsultaEnVuelo = Object.create(null);
     return obtenerContexto(true);
   };
 })();
