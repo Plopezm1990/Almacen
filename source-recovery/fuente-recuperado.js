@@ -2503,7 +2503,11 @@ function GestionAlmacen() {
     (async () => {
       try {
         const supabase = await window.getSupabaseClient();
-        const claves = [["personal", "PM13_PERSONAL_CONSULTAR"], ["fichaje", "PM13_FICHAJE_CONSULTAR"], ["ausencias", "PM13_AUSENCIA_CONSULTAR"]];
+        const claves = [
+          ["personal", "PM13_PERSONAL_CONSULTAR"],
+          ["fichaje", "PM13_FICHAJE_CONSULTAR"],
+          ["ausencias", "PM13_AUSENCIA_CONSULTAR"]
+        ];
         const respuestas = await Promise.all(claves.map(([, clave]) => supabase.rpc("pm13_resolver_cargo_permiso", {
           p_empresa_id: empresaId,
           p_local_id: localId,
