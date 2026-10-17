@@ -1701,11 +1701,67 @@ function ConfigPermisos({ empresaId, localId, localNombre = "" }) {
     cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando…") : null
   );
 }
-function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", esPropietario = false }) {
+function ConfigCargos({ empleados = [], localId = "", localNombre = "", esPropietario = false }) {
+  const h = import_react4.default.createElement;
+  const roles = ["Propietario", ...NOMBRES_ROLES];
+  const descripciones = {
+    Propietario: "Acceso total protegido de la empresa; no es un cargo editable.",
+    Encargado: "Operación amplia del local y coordinación del equipo.",
+    "Cajero/a": "Cobros y operaciones de caja según los permisos configurados.",
+    "Camarero/a": "Venta y operación de sala según los permisos configurados.",
+    "Churrero/a": "Rol histórico conservado solo para cuentas existentes.",
+    Básico: "Rol histórico conservado solo para cuentas existentes.",
+    Estándar: "Rol histórico conservado solo para cuentas existentes."
+  };
+  const perteneceAlLocal = (empleado) => {
+    if (!localId || !empleado) return false;
+    if (empleado.localId === localId || empleado.local_id === localId) return true;
+    if (Array.isArray(empleado.localIds) && empleado.localIds.includes(localId)) return true;
+    return false;
+  };
+  const empleadosDelLocal = empleados.filter((empleado) => empleado && empleado.activo !== false && perteneceAlLocal(empleado));
+  return h(
+    "div",
+    null,
+    h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-1" }, "Cargos y permisos"),
+      h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Aquí se preparan los cargos de la empresa y las personas asignadas en este local" + (localNombre ? " (" + localNombre + ")" : "") + ". Los cargos personalizados aún no se crean desde esta vista; se mantienen separados de los roles técnicos y de los permisos protegidos."),
+      !esPropietario ? h("div", { className: "text-[12px] mt-2", style: { color: C2.red } }, "Solo el Propietario podrá administrar cargos cuando se active esa función.") : null
+    ),
+    h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-2" }, "Roles y cargos actuales"),
+      h("div", { className: "space-y-2" }, roles.map((rol) => {
+        const asignados = empleadosDelLocal.filter((empleado) => empleado.rol === rol).map((empleado) => empleado.nombre || empleado.nombreCompleto || "Sin nombre");
+        const retirado = ROLES_RETIRADOS.includes(rol);
+        return h(
+          "div",
+          { key: rol, className: "rounded-lg p-3", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+          h("div", { className: "flex flex-wrap items-center justify-between gap-2" },
+            h("div", { className: "font-medium" }, rol),
+            h("span", { className: "text-[11px]", style: { color: retirado ? C2.amber : C2.inkSoft } }, retirado ? "Retirado · solo existentes" : "Rol del sistema")
+          ),
+          h("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, descripciones[rol] || "Permisos definidos por el sistema."),
+          h("div", { className: "text-[11.5px] mt-2" }, asignados.length ? "Asignados: " + asignados.join(", ") : "Sin personas asignadas en este local")
+        );
+      }))
+    ),
+    h(
+      Card,
+      { className: "mb-3", style: { background: C2.accentSoft, border: "none" } },
+      h("div", { className: "font-semibold mb-1" }, "Cargos personalizados"),
+      h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Todavía no hay cargos personalizados registrados. La creación, duplicación, edición, asignación y desactivación se habilitarán en los siguientes subpuntos con validación de empresa, local, permisos y auditoría.")
+    )
+  );
+}
+function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", esPropietario = false, empleados = [] }) {
   const h = import_react4.default.createElement;
   const empresaId = empresa?.id || "";
   const [seccion, setSeccion] = (0, import_react4.useState)("dia");
-  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["permisos", "Permisos"]];
+  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"]];
   let contenido = null;
   if (!esPropietario) contenido = h(Card, { className: "mb-4" }, "Solo un usuario con rol Propietario puede ver y cambiar la configuración.");
   else if (!empresaId || !localId) contenido = h(Card, { className: "mb-4" }, "Selecciona un local concreto para configurarlo.");
@@ -1716,6 +1772,7 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
     seccion === "dia" ? h(ConfigDia, { empresaId, localId }) : null,
     seccion === "modalidades" ? h(ConfigModalidades, { empresaId, localId }) : null,
     seccion === "equipos" ? h(ConfigEquipos, { empresaId, localId }) : null,
+    seccion === "cargos" ? h(ConfigCargos, { empleados, localId, localNombre, esPropietario }) : null,
     seccion === "permisos" ? h(ConfigPermisos, { empresaId, localId, localNombre }) : null
   );
   return h(
@@ -4015,7 +4072,7 @@ function GestionAlmacen() {
       establecerPin,
       activarModoEmpleado
     }
-  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, { diagnosticoLegadosPM10 }), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, marcarFormularioAbiertoPM15 }), tab === "descuentos" && /* @__PURE__ */ import_react4.default.createElement(PoliticasDescuentos, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }), tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }));
+  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, { diagnosticoLegadosPM10 }), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, marcarFormularioAbiertoPM15 }), tab === "descuentos" && /* @__PURE__ */ import_react4.default.createElement(PoliticasDescuentos, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }), tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29, empleados }));
   const itemsMeta = [
     { id: "dashboard", label: "Panel general", icon: ChartColumn },
     { id: "direccion", label: "Panel de direcci\xF3n", icon: TrendingUp },
