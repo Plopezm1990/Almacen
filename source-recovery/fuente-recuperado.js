@@ -1086,7 +1086,9 @@ var CONFIG_ERRORES = {
   cargo_descripcion_demasiado_larga: "La descripción puede tener hasta 500 caracteres.",
   cargo_nombre_ya_existe: "Ya existe un cargo con ese nombre en la empresa.",
   cargo_id_requerido: "Falta el identificador del cargo.",
-  cargo_no_encontrado: "No se encontró el cargo solicitado."
+  cargo_no_encontrado: "No se encontró el cargo solicitado.",
+  cargo_empresa_no_autorizada: "Necesitas acceso de propietario a todos los locales de la empresa.",
+  cargo_tiene_asignaciones: "No se puede desactivar: primero reasigna todas las personas de ese cargo."
 };
 function configUuid() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
@@ -1821,6 +1823,20 @@ function ConfigCargos({ empleados = [], localId = "", localNombre = "", esPropie
       setGuardando(false);
     }
   };
+  const cambiarEstadoCargo = async (cargo) => {
+    setError("");
+    setConfirmacion("");
+    setGuardando(true);
+    try {
+      await configRpc(cargo.activo ? "abc_desactivar_cargo" : "abc_reactivar_cargo", { p_operation_id: configOperacion(cargo.activo ? "cargo-desactivar" : "cargo-reactivar"), p_empresa_id: empresa?.id || "", p_local_id: localId, p_cargo_id: cargo.id });
+      setConfirmacion(cargo.activo ? "Cargo desactivado." : "Cargo reactivado.");
+      await cargarCargos();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
   const ocupado = cargando || guardando;
   return h(
     "div",
@@ -1887,7 +1903,8 @@ function ConfigCargos({ empleados = [], localId = "", localNombre = "", esPropie
         ),
         h("div", { className: "flex gap-2 flex-wrap mt-2" },
           h(Btn, { small: true, variant: "ghost", onClick: () => setFormulario({ id: cargo.id, nombre: cargo.nombre, descripcion: cargo.descripcion || "" }), disabled: ocupado }, "Editar"),
-          h(Btn, { small: true, variant: "ghost", onClick: () => duplicarCargo(cargo), disabled: ocupado }, "Duplicar")
+          h(Btn, { small: true, variant: "ghost", onClick: () => duplicarCargo(cargo), disabled: ocupado }, "Duplicar"),
+          h(Btn, { small: true, variant: "ghost", onClick: () => cambiarEstadoCargo(cargo), disabled: ocupado || (cargo.activo && Number(cargo.asignados_count || 0) > 0) }, cargo.activo ? "Desactivar" : "Reactivar")
         )
       )))
     )
