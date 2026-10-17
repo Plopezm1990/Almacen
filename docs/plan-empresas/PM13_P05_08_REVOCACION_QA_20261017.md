@@ -27,6 +27,8 @@ Después de recargar el Deploy Preview 150, la interfaz mostró:
 
 Una segunda recarga mediante el botón produjo el mismo resultado. La sesión disponible en el navegador es de Propietario en `Local F3 · QA F3 Cliente 3`, por lo que tampoco es válida para demostrar visualmente la revocación sobre un empleado no propietario.
 
+La misma pantalla se reprodujo en una pestaña nueva del preview, descartando que el fallo dependa únicamente del almacenamiento de la pestaña original. El check remoto de GitHub para `netlify/chic-entremet-9107cf/deploy-preview` aparece como `success`, pero eso solo acredita el deploy; no acredita que el runtime React renderice correctamente.
+
 No se introdujeron credenciales, no se copiaron tokens y no se modificaron datos mediante la interfaz.
 
 ## Estado
