@@ -1078,7 +1078,15 @@ var CONFIG_ERRORES = {
   capacidad_invalida: "Permiso no válido.",
   capacidad_fuera_de_techo: "Por seguridad, ese permiso no se puede dar a ese rol.",
   capacidad_motivo_requerido: "Escribe el motivo del cambio.",
-  capacidad_local_no_disponible: "El local no está disponible."
+  capacidad_local_no_disponible: "El local no está disponible.",
+  cargo_no_autorizado: "Solo el Propietario puede administrar cargos de su empresa.",
+  cargo_local_no_disponible: "El local no está disponible.",
+  cargo_nombre_requerido: "Escribe un nombre para el cargo.",
+  cargo_nombre_demasiado_largo: "El nombre del cargo puede tener hasta 80 caracteres.",
+  cargo_descripcion_demasiado_larga: "La descripción puede tener hasta 500 caracteres.",
+  cargo_nombre_ya_existe: "Ya existe un cargo con ese nombre en la empresa.",
+  cargo_id_requerido: "Falta el identificador del cargo.",
+  cargo_no_encontrado: "No se encontró el cargo solicitado."
 };
 function configUuid() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
@@ -1720,6 +1728,68 @@ function ConfigCargos({ empleados = [], localId = "", localNombre = "", esPropie
     return false;
   };
   const empleadosDelLocal = empleados.filter((empleado) => empleado && empleado.activo !== false && perteneceAlLocal(empleado));
+  const [cargos, setCargos] = (0, import_react4.useState)([]);
+  const [formulario, setFormulario] = (0, import_react4.useState)(null);
+  const [cargando, setCargando] = (0, import_react4.useState)(false);
+  const [guardando, setGuardando] = (0, import_react4.useState)(false);
+  const [error, setError] = (0, import_react4.useState)("");
+  const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
+  const cargarCargos = async () => {
+    if (!esPropietario || !localId) return;
+    setCargando(true);
+    setError("");
+    try {
+      const resultado = await configRpc("abc_listar_cargos", { p_empresa_id: empresa?.id || "", p_local_id: localId });
+      setCargos(Array.isArray(resultado?.cargos) ? resultado.cargos : []);
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setCargando(false);
+    }
+  };
+  (0, import_react4.useEffect)(() => {
+    setFormulario(null);
+    setConfirmacion("");
+    cargarCargos();
+  }, [empresa?.id, localId, esPropietario]);
+  const guardarCargo = async () => {
+    if (!formulario) return;
+    setError("");
+    setConfirmacion("");
+    setGuardando(true);
+    try {
+      const parametros = {
+        p_operation_id: configOperacion(formulario.id ? "cargo-editar" : "cargo-crear"),
+        p_empresa_id: empresa?.id || "",
+        p_local_id: localId,
+        p_nombre: formulario.nombre,
+        p_descripcion: formulario.descripcion
+      };
+      await configRpc(formulario.id ? "abc_editar_cargo" : "abc_crear_cargo", formulario.id ? { ...parametros, p_cargo_id: formulario.id } : parametros);
+      setFormulario(null);
+      setConfirmacion(formulario.id ? "Cargo actualizado." : "Cargo creado.");
+      await cargarCargos();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const duplicarCargo = async (cargo) => {
+    setError("");
+    setConfirmacion("");
+    setGuardando(true);
+    try {
+      await configRpc("abc_duplicar_cargo", { p_operation_id: configOperacion("cargo-duplicar"), p_empresa_id: empresa?.id || "", p_local_id: localId, p_cargo_id: cargo.id });
+      setConfirmacion("Cargo duplicado. Revisa su nombre y permisos antes de asignarlo.");
+      await cargarCargos();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const ocupado = cargando || guardando;
   return h(
     "div",
     null,
@@ -1749,11 +1819,40 @@ function ConfigCargos({ empleados = [], localId = "", localNombre = "", esPropie
         );
       }))
     ),
+    h(ConfigAviso, { error, confirmacion }),
     h(
       Card,
       { className: "mb-3", style: { background: C2.accentSoft, border: "none" } },
-      h("div", { className: "font-semibold mb-1" }, "Cargos personalizados"),
-      h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Todavía no hay cargos personalizados registrados. La creación, duplicación, edición, asignación y desactivación se habilitarán en los siguientes subpuntos con validación de empresa, local, permisos y auditoría.")
+      h("div", { className: "flex flex-wrap items-center justify-between gap-2 mb-1" },
+        h("div", { className: "font-semibold" }, "Cargos personalizados"),
+        h(Btn, { small: true, onClick: () => setFormulario({ id: "", nombre: "", descripcion: "" }), disabled: ocupado }, "Nuevo cargo")
+      ),
+      h("div", { className: "text-[12px] mb-2", style: { color: C2.inkSoft } }, "Cada cargo tiene un ID propio. Al duplicarlo se crea otro cargo independiente y debes revisar sus permisos antes de asignarlo."),
+      formulario ? h(
+        "div",
+        { className: "rounded-lg p-3 mb-3", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+        h(Field, { label: "Nombre del cargo" }, h(Input, { value: formulario.nombre, maxLength: 80, disabled: ocupado, onChange: (e2) => setFormulario({ ...formulario, nombre: e2.target.value }) })),
+        h(Field, { label: "Descripción (opcional)" }, h("textarea", { value: formulario.descripcion, maxLength: 500, disabled: ocupado, onChange: (e2) => setFormulario({ ...formulario, descripcion: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", rows: 3, style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } })),
+        h("div", { className: "flex gap-2 flex-wrap" },
+          h(Btn, { small: true, onClick: guardarCargo, disabled: ocupado || !formulario.nombre.trim() }, guardando ? "Guardando…" : formulario.id ? "Guardar cambios" : "Crear cargo"),
+          h(Btn, { small: true, variant: "ghost", onClick: () => setFormulario(null), disabled: ocupado }, "Cancelar")
+        )
+      ) : null,
+      cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando cargos…") : cargos.length === 0 && !cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Todavía no hay cargos personalizados registrados.") : null,
+      h("div", { className: "space-y-2" }, cargos.map((cargo) => h(
+        "div",
+        { key: cargo.id, className: "rounded-lg p-3", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+        h("div", { className: "flex flex-wrap items-center justify-between gap-2" },
+          h("div", { className: "font-medium" }, cargo.nombre),
+          h("span", { className: "text-[11px]", style: { color: cargo.activo ? C2.inkSoft : C2.amber } }, cargo.activo ? "Activo" : "Inactivo")
+        ),
+        cargo.descripcion ? h("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, cargo.descripcion) : null,
+        h("div", { className: "text-[11.5px] mt-2" }, cargo.asignados_count ? `${cargo.asignados_count} persona(s) asignada(s)` : "Sin personas asignadas"),
+        h("div", { className: "flex gap-2 flex-wrap mt-2" },
+          h(Btn, { small: true, variant: "ghost", onClick: () => setFormulario({ id: cargo.id, nombre: cargo.nombre, descripcion: cargo.descripcion || "" }), disabled: ocupado }, "Editar"),
+          h(Btn, { small: true, variant: "ghost", onClick: () => duplicarCargo(cargo), disabled: ocupado }, "Duplicar")
+        )
+      )))
     )
   );
 }
