@@ -19,5 +19,7 @@ assert.match(ui, /abc_listar_cargos/);
 assert.match(ui, /abc_crear_cargo/);
 assert.match(ui, /abc_editar_cargo/);
 assert.match(ui, /abc_duplicar_cargo/);
+assert.match(ui, /abc_asignar_cargo/);
+assert.match(ui, /abc_desasignar_cargo/);
 
 console.log("PM13 P09 Cargos CRUD: contrato servidor y UI OK");

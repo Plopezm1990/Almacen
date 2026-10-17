@@ -102253,6 +102253,7 @@ function ConfigModalidades({ empresaId, localId }) {
   const [guardando, setGuardando] = (0, import_react4.useState)(false);
   const [error, setError] = (0, import_react4.useState)("");
   const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
+  const [empleadoPorCargo, setEmpleadoPorCargo] = (0, import_react4.useState)({});
   const [motivo, setMotivo] = (0, import_react4.useState)("");
   const [elegidas, setElegidas] = (0, import_react4.useState)({});
   const cargar = async (conservarError = false) => {
@@ -102763,6 +102764,37 @@ function ConfigCargos({ empleados = [], localId = "", localNombre = "", esPropie
       setGuardando(false);
     }
   };
+  const asignarCargo = async (cargo) => {
+    const empleadoId = empleadoPorCargo[cargo.id] || "";
+    if (!empleadoId) return;
+    setError("");
+    setConfirmacion("");
+    setGuardando(true);
+    try {
+      await configRpc("abc_asignar_cargo", { p_operation_id: configOperacion("cargo-asignar"), p_empresa_id: empresa?.id || "", p_local_id: localId, p_empleado_id: empleadoId, p_cargo_id: cargo.id });
+      setEmpleadoPorCargo((actual) => ({ ...actual, [cargo.id]: "" }));
+      setConfirmacion("Cargo asignado al empleado.");
+      await cargarCargos();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const desasignarCargo = async (persona) => {
+    setError("");
+    setConfirmacion("");
+    setGuardando(true);
+    try {
+      await configRpc("abc_desasignar_cargo", { p_operation_id: configOperacion("cargo-desasignar"), p_empresa_id: empresa?.id || "", p_local_id: localId, p_empleado_id: persona.id });
+      setConfirmacion("Cargo retirado del empleado.");
+      await cargarCargos();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
   const ocupado = cargando || guardando;
   return h(
     "div",
@@ -102822,6 +102854,11 @@ function ConfigCargos({ empleados = [], localId = "", localNombre = "", esPropie
         ),
         cargo.descripcion ? h("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, cargo.descripcion) : null,
         h("div", { className: "text-[11.5px] mt-2" }, cargo.asignados_count ? `${cargo.asignados_count} persona(s) asignada(s)` : "Sin personas asignadas"),
+        cargo.personas_asignadas?.length ? h("div", { className: "space-y-1 mt-2" }, cargo.personas_asignadas.map((persona) => h("div", { key: persona.id, className: "flex items-center justify-between gap-2 text-[11.5px]" }, h("span", null, persona.nombre || "Sin nombre"), h(Btn, { small: true, variant: "ghost", onClick: () => desasignarCargo(persona), disabled: ocupado }, "Quitar")))) : null,
+        h("div", { className: "flex flex-wrap items-end gap-2 mt-2" },
+          h(Field, { label: "Asignar a este local" }, h("select", { value: empleadoPorCargo[cargo.id] || "", disabled: ocupado || !cargo.activo || empleadosDelLocal.length === 0, onChange: (e2) => setEmpleadoPorCargo((actual) => ({ ...actual, [cargo.id]: e2.target.value })), className: "rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 40 } }, h("option", { value: "" }, empleadosDelLocal.length ? "Selecciona una persona" : "No hay empleados activos"), empleadosDelLocal.map((empleado) => h("option", { key: empleado.id, value: empleado.id }, empleado.nombre || empleado.nombreCompleto || "Sin nombre")))),
+          h(Btn, { small: true, onClick: () => asignarCargo(cargo), disabled: ocupado || !empleadoPorCargo[cargo.id] || !cargo.activo }, "Asignar")
+        ),
         h("div", { className: "flex gap-2 flex-wrap mt-2" },
           h(Btn, { small: true, variant: "ghost", onClick: () => setFormulario({ id: cargo.id, nombre: cargo.nombre, descripcion: cargo.descripcion || "" }), disabled: ocupado }, "Editar"),
           h(Btn, { small: true, variant: "ghost", onClick: () => duplicarCargo(cargo), disabled: ocupado }, "Duplicar")
