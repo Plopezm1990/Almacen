@@ -101906,22 +101906,19 @@ async function sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluci
   return { ok: true, movimientosCaja: caja.length, arqueos: arqueos.length, devoluciones: clientes.length + proveedores.length };
 }
 async function sincronizarContextoPm07(args) {
-  const { setEmpresas, setLocales, setLocalActivoId, setProductos, esContextoVigente = () => true } = args || {};
+  const { setProductos, esContextoVigente = () => true } = args || {};
   if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return { ok: false, offline: true };
   const supabase = await window.getSupabaseClient();
-  const r2 = await supabase.from("almacen_kv").select("key,value").in("key", ["empresas", "locales", "localActivoId", "productos"]);
+  // Empresas, locales y localActivoId ya vienen del contexto seguro sembrado
+  // por ui-context-bridge. El bloque global de almacen_kv es legado y no debe
+  // ampliar el contexto filtrado de una cuenta de empleado.
+  const r2 = await supabase.from("almacen_kv").select("key,value").in("key", ["productos"]);
   if (r2.error) throw r2.error;
   const porClave = new Map((r2.data || []).map((fila) => [fila.key, fila.value]));
-  const empresasNube = porClave.get("empresas");
-  const localesNube = porClave.get("locales");
-  const localActivoNube = porClave.get("localActivoId");
   const productosNube = porClave.get("productos");
   if (!esContextoVigente()) return { ok: false, obsoleto: true };
-  if (Array.isArray(empresasNube) && empresasNube.length && typeof setEmpresas === "function" && esContextoVigente()) setEmpresas(empresasNube.filter((e2) => e2 && e2.id));
-  if (Array.isArray(localesNube) && localesNube.length && typeof setLocales === "function" && esContextoVigente()) setLocales(localesNube.filter((l3) => l3 && l3.id));
-  if (typeof localActivoNube === "string" && localActivoNube && typeof setLocalActivoId === "function" && esContextoVigente()) setLocalActivoId(localActivoNube);
   if (Array.isArray(productosNube) && productosNube.length && typeof setProductos === "function" && esContextoVigente()) setProductos(productosNube.filter((p3) => p3 && p3.id));
-  return { ok: true, empresas: Array.isArray(empresasNube) ? empresasNube.length : 0, locales: Array.isArray(localesNube) ? localesNube.length : 0, productos: Array.isArray(productosNube) ? productosNube.length : 0 };
+  return { ok: true, productos: Array.isArray(productosNube) ? productosNube.length : 0 };
 }
 function SelectorLocalInformes({ locales = [], valor = "", onChange, empresas = [], empresaActivaId = "", onCambiarEmpresa }) {
   const activos = locales.filter((l22) => l22 && l22.activo !== false && !l22.fusionadoEn);
@@ -103108,19 +103105,10 @@ function GestionAlmacen() {
     const esContextoVigente = () => activo && contextoPm07SolicitudRef.current === solicitud && contextoPm07ClaveRef.current === claveContexto && localActivoIdRefPm07.current === localActivoId;
     const sincronizarContextoCompleto = !contextoPm07InicializadoRef.current;
     contextoPm07InicializadoRef.current = true;
-    const localActivoInicial = localActivoId;
     (async () => {
       try {
         if (sincronizarContextoCompleto) {
           await sincronizarContextoPm07({
-            setEmpresas,
-            setLocales,
-            setLocalActivoId: (id) => {
-              // `localActivoId` ya viene de la preferencia de este dispositivo
-              // (ui-context-bridge). El valor global de almacen_kv es legado y
-              // no puede sustituir una elección válida hecha antes de recargar.
-              if (esContextoVigente() && !localActivoInicial && localActivoIdRefPm07.current === localActivoInicial) setLocalActivoId(id);
-            },
             setProductos,
             esContextoVigente
           });

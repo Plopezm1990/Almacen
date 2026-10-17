@@ -68,6 +68,7 @@ const rpcResult = {
   empresas: [{ id: 'e1', razonSocial: 'Empresa 1', marca: 'Empresa 1', activo: true }],
   locales: [{ id: 'l1', empresaId: 'e1', nombre: 'Local 1', activo: true }]
 };
+let rpcResultActual = rpcResult;
 
 const context = {
   console,
@@ -82,7 +83,7 @@ const context = {
     async getSupabaseClient() {
       return {
         auth: { async getSession() { return { data: { session: { user: { id: 'u1' } } } }; } },
-        async rpc(name, args) { rpcCalls.push({ name, args }); return { data: rpcResult, error: null }; }
+        async rpc(name, args) { rpcCalls.push({ name, args }); return { data: rpcResultActual, error: null }; }
       };
     },
     __laOwnerBootstrapSeedUiContext(data) {
@@ -117,9 +118,39 @@ assert.equal(rpcCalls.at(-1).name, 'guardar_contexto_instalacion_ui');
 assert.equal(rpcCalls.at(-1).args.p_clave, 'empresas');
 
 await context.window.storage.set('localActivoId', 'null', false);
-assert.equal(rpcCalls.at(-1).args.p_clave, 'localActivoId');
-assert.equal(rpcCalls.at(-1).args.p_valor, null);
+assert.equal(rpcCalls.at(-1).name, 'obtener_contexto_instalacion_ui');
+assert.equal(rpcCalls.at(-1).args, undefined);
 assert.equal(local.get('almacen:localActivoId'), 'null');
+
+// Una cuenta limitada a un local valida la preferencia con la RPC de lectura.
+// No necesita permiso de Propietario ni puede adoptar A1 o la vista global.
+rpcResultActual = {
+  ...rpcResult,
+  local_id: 'l2',
+  permite_todos_locales: false,
+  locales: [{ id: 'l2', empresaId: 'e1', nombre: 'Local 2', activo: true }]
+};
+const escriturasEstructuralesAntes = rpcCalls.filter((x) => x.name === 'guardar_contexto_instalacion_ui').length;
+await assert.rejects(
+  context.window.storage.set('localActivoId', JSON.stringify('l1'), false),
+  /Local no autorizado/,
+  'una cuenta de empleado no debe seleccionar un local fuera de su membresía'
+);
+assert.equal(local.get('almacen:localActivoId'), 'null', 'un local rechazado no debe persistirse');
+
+await context.window.storage.set('localActivoId', JSON.stringify('l2'), false);
+assert.equal(rpcCalls.at(-1).name, 'obtener_contexto_instalacion_ui');
+assert.equal(local.get('almacen:localActivoId'), JSON.stringify('l2'));
+await assert.rejects(
+  context.window.storage.set('localActivoId', 'null', false),
+  /Local no autorizado/,
+  'una cuenta ligada a un local no debe activar la vista consolidada'
+);
+assert.equal(
+  rpcCalls.filter((x) => x.name === 'guardar_contexto_instalacion_ui').length,
+  escriturasEstructuralesAntes,
+  'guardar localActivoId nunca debe invocar la RPC estructural reservada al Propietario'
+);
 
 await context.window.storage.get('productos', false);
 assert.equal(delegadosGet, 1, 'las demás claves deben conservar el wrapper anterior');
