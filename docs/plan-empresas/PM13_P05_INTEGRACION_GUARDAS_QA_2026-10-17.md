@@ -34,4 +34,6 @@ La integración usa `private.pm13_p05_accion_autorizada` como puente de compatib
 
 - No se ejecutó todavía una acción de negocio real desde la interfaz ni una prueba visual con una cuenta no propietaria.
 - No se configuraron datos persistentes de cargos, pantallas o permisos en QA.
-- La migración y este informe están preparados para commit/push en la rama del PR; `main`, `release`, PR 38 y producción permanecen intactos.
+- La migración quedó registrada en QA como `20261017095626 / pm13_p05_integrate_action_guards`.
+- La migración, el contrato y este informe están en la rama autorizada del PR; la referencia remota ya contenía la implementación base y se añadirá este cierre mediante avance normal.
+- `main`, `release`, PR 38 y producción permanecen intactos.
