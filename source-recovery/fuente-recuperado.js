@@ -2486,46 +2486,6 @@ function GestionAlmacen() {
     return true;
   }
   (0, import_react4.useEffect)(() => {
-    let activo = true;
-    if (!ready || typeof window === "undefined" || !window.__nubeActiva || !miPerfil) {
-      setPermisosConsultaPM13({ personal: null, fichaje: null, ausencias: null });
-      return () => { activo = false; };
-    }
-    if (miPerfil.rol === "Propietario") {
-      setPermisosConsultaPM13({ personal: true, fichaje: true, ausencias: true });
-      return () => { activo = false; };
-    }
-    const empresaId = empresaDelLocalActivo?.id || "";
-    const localId = localActivoId || "";
-    if (!empresaId || !localId) {
-      setPermisosConsultaPM13({ personal: false, fichaje: false, ausencias: false });
-      return () => { activo = false; };
-    }
-    (async () => {
-      try {
-        const supabase = await window.getSupabaseClient();
-        const claves = [
-          ["personal", "PM13_PERSONAL_CONSULTAR"],
-          ["fichaje", "PM13_FICHAJE_CONSULTAR"],
-          ["ausencias", "PM13_AUSENCIA_CONSULTAR"]
-        ];
-        const respuestas = await Promise.all(claves.map(([, clave]) => supabase.rpc("pm13_resolver_cargo_permiso", {
-          p_empresa_id: empresaId,
-          p_local_id: localId,
-          p_clave: clave,
-          p_accion: "CONSULTAR",
-          p_alcance: "LOCAL"
-        })));
-        if (!activo) return;
-        const permitido = (respuesta) => !!(respuesta && !respuesta.error && respuesta.data && respuesta.data.ok === true && respuesta.data.permitido === true);
-        setPermisosConsultaPM13(Object.fromEntries(claves.map(([nombre], indice) => [nombre, permitido(respuestas[indice])])))
-      } catch (e2) {
-        if (activo) setPermisosConsultaPM13({ personal: false, fichaje: false, ausencias: false });
-      }
-    })();
-    return () => { activo = false; };
-  }, [ready, miPerfil?.rol, empresaDelLocalActivo?.id, localActivoId]);
-  (0, import_react4.useEffect)(() => {
     if (tab !== "dashboard" && !puedeConsultarPantallaPM13(tab)) setTab("dashboard");
   }, [tab, permisosConsultaPM13.personal, permisosConsultaPM13.fichaje, miPerfil?.rol]);
   const [pinPropietario, setPinPropietario] = (0, import_react4.useState)("");
@@ -2639,6 +2599,46 @@ function GestionAlmacen() {
     }
     return empresas.length === 1 ? principal || configEmpresa || null : null;
   }, [empresas, locales, localActivoId, configEmpresa]);
+  (0, import_react4.useEffect)(() => {
+    let activo = true;
+    if (!ready || typeof window === "undefined" || !window.__nubeActiva || !miPerfil) {
+      setPermisosConsultaPM13({ personal: null, fichaje: null, ausencias: null });
+      return () => { activo = false; };
+    }
+    if (miPerfil.rol === "Propietario") {
+      setPermisosConsultaPM13({ personal: true, fichaje: true, ausencias: true });
+      return () => { activo = false; };
+    }
+    const empresaId = empresaDelLocalActivo?.id || "";
+    const localId = localActivoId || "";
+    if (!empresaId || !localId) {
+      setPermisosConsultaPM13({ personal: false, fichaje: false, ausencias: false });
+      return () => { activo = false; };
+    }
+    (async () => {
+      try {
+        const supabase = await window.getSupabaseClient();
+        const claves = [
+          ["personal", "PM13_PERSONAL_CONSULTAR"],
+          ["fichaje", "PM13_FICHAJE_CONSULTAR"],
+          ["ausencias", "PM13_AUSENCIA_CONSULTAR"]
+        ];
+        const respuestas = await Promise.all(claves.map(([, clave]) => supabase.rpc("pm13_resolver_cargo_permiso", {
+          p_empresa_id: empresaId,
+          p_local_id: localId,
+          p_clave: clave,
+          p_accion: "CONSULTAR",
+          p_alcance: "LOCAL"
+        })));
+        if (!activo) return;
+        const permitido = (respuesta) => !!(respuesta && !respuesta.error && respuesta.data && respuesta.data.ok === true && respuesta.data.permitido === true);
+        setPermisosConsultaPM13(Object.fromEntries(claves.map(([nombre], indice) => [nombre, permitido(respuestas[indice])])))
+      } catch (e2) {
+        if (activo) setPermisosConsultaPM13({ personal: false, fichaje: false, ausencias: false });
+      }
+    })();
+    return () => { activo = false; };
+  }, [ready, miPerfil?.rol, empresaDelLocalActivo?.id, localActivoId]);
   (0, import_react4.useEffect)(() => {
     if (typeof window === "undefined") return;
     // almacen_kv está segregado por empresa; el bootstrap de almacenamiento
