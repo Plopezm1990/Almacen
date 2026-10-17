@@ -1113,9 +1113,7 @@ var CONFIG_ERRORES = {
   cargo_no_encontrado: "No se encontró el cargo solicitado.",
   cargo_no_disponible: "El cargo no está activo o ya no está disponible.",
   cargo_operation_id_requerido: "No se pudo identificar la operación. Recarga e inténtalo de nuevo.",
-  cargo_pantallas_no_autorizadas: "Solo el Propietario puede cambiar las pantallas de un cargo.",
   cargo_empresa_no_autorizada: "Necesitas acceso de propietario a todos los locales de la empresa.",
-  cargo_tiene_asignaciones: "No se puede desactivar: primero reasigna todas las personas de ese cargo.",
   cargo_nombre_reservado: "Ese nombre está reservado para un rol protegido del sistema.",
   cargo_propietario_no_asignable: "Una cuenta propietaria no puede recibir un cargo personalizado."
 };
