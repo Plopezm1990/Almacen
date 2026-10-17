@@ -183,6 +183,17 @@ var NOMBRES_ROLES = Object.keys(ROLES_EMPLEADO);
 // Pieza 5 (F6): estos tres roles ya no se pueden asignar a nadie nuevo; siguen existiendo para quien ya los tiene.
 var ROLES_RETIRADOS = ["B\xE1sico", "Est\xE1ndar", "Churrero/a"];
 var NOMBRES_ROLES_ALTA = NOMBRES_ROLES.filter((r2) => !ROLES_RETIRADOS.includes(r2));
+var PM13_PANTALLAS_EDITOR = Object.freeze([
+  ["Inicio", "dashboard", "Panel general"], ["Inicio", "direccion", "Panel de dirección"], ["Inicio", "buscar", "Buscar"],
+  ["Compras", "proveedores", "Proveedores"], ["Compras", "pedidos", "Pedidos"], ["Compras", "recepcion", "Recepción"], ["Compras", "albaranes", "Albaranes"], ["Compras", "facturas", "Facturas"],
+  ["Almacén", "resumen_almacen", "Resumen de almacén"], ["Almacén", "productos", "Productos"], ["Almacén", "historial_producto", "Historial de producto"], ["Almacén", "conteo", "Inventario ciego"], ["Almacén", "saldo", "Saldo de almacén"], ["Almacén", "mapa", "Mapa de almacén"], ["Almacén", "traspasos", "Traspasos"], ["Almacén", "diagnostico", "Reconciliación de stock"], ["Almacén", "etiquetas", "Etiquetas y catálogo"],
+  ["Ventas", "venta", "TPV"], ["Ventas", "cocina", "Cocina A10"], ["Ventas", "encargos", "Encargos"], ["Ventas", "clientes", "Clientes"], ["Ventas", "devoluciones", "Devoluciones"], ["Ventas", "descuentos", "Descuentos y cortesías"],
+  ["Costes y producción", "fichas", "Fichas de costo"], ["Costes y producción", "produccion", "Producción"], ["Costes y producción", "mermas", "Mermas"],
+  ["Finanzas y análisis", "pagos", "Cuentas por pagar"], ["Finanzas y análisis", "resultados", "Resultados"], ["Finanzas y análisis", "reportes", "Reportes y rotación"], ["Finanzas y análisis", "libroiva", "Libro de IVA"], ["Finanzas y análisis", "caja", "Arqueo de caja"], ["Finanzas y análisis", "tesoreria", "Tesorería"], ["Finanzas y análisis", "estacionalidad", "Estacionalidad"],
+  ["Personal", "personal", "Personal"], ["Personal", "fichaje", "Registro horario"], ["Personal", "turnos", "Cuadrante de turnos"], ["Personal", "nominas", "Coste de personal"],
+  ["Calidad", "appcc", "Control sanitario"], ["Calidad", "aceite", "Aceite de freidoras"],
+  ["Sistema", "auditoria", "Auditoría"], ["Sistema", "respaldos", "Respaldos"], ["Sistema", "notificaciones", "Notificaciones"], ["Sistema", "locales", "Locales"], ["Sistema", "configuracion", "Configuración"], ["Sistema", "errores_sistema", "Errores del sistema"]
+].map(([grupo, id, label]) => Object.freeze({ grupo, id, label, descripcion: `Consulta de ${label}`, moduloActivo: true })));
 var TAB_PRIORITIES_MOVIL = {
   "Propietario": ["dashboard", "resultados", "caja"],
   "Encargado": ["dashboard", "venta", "cocina", "fichaje"],
@@ -1714,7 +1725,7 @@ function ConfigPermisos({ empresaId, localId, localNombre = "" }) {
     cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando…") : null
   );
 }
-function ConfigCargos({ empleados = [], localId = "", localNombre = "", esPropietario = false }) {
+function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombre = "", esPropietario = false }) {
   const h = import_react4.default.createElement;
   const roles = ["Propietario", ...NOMBRES_ROLES];
   const descripciones = {
@@ -1737,6 +1748,9 @@ function ConfigCargos({ empleados = [], localId = "", localNombre = "", esPropie
   const [formulario, setFormulario] = (0, import_react4.useState)(null);
   const [cargando, setCargando] = (0, import_react4.useState)(false);
   const [guardando, setGuardando] = (0, import_react4.useState)(false);
+  const [empleadoPorCargo, setEmpleadoPorCargo] = (0, import_react4.useState)({});
+  const [editorCargoId, setEditorCargoId] = (0, import_react4.useState)("");
+  const [seleccionPantallas, setSeleccionPantallas] = (0, import_react4.useState)({});
   const [error, setError] = (0, import_react4.useState)("");
   const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
   const cargarCargos = async () => {
@@ -1754,6 +1768,8 @@ function ConfigCargos({ empleados = [], localId = "", localNombre = "", esPropie
   };
   (0, import_react4.useEffect)(() => {
     setFormulario(null);
+    setEditorCargoId("");
+    setSeleccionPantallas({});
     setConfirmacion("");
     cargarCargos();
   }, [empresa?.id, localId, esPropietario]);
@@ -1839,6 +1855,24 @@ function ConfigCargos({ empleados = [], localId = "", localNombre = "", esPropie
       setGuardando(false);
     }
   };
+  const abrirEditorPantallas = (cargo) => {
+    const actuales = Array.isArray(cargo?.pantallas_consulta) ? cargo.pantallas_consulta : Array.isArray(cargo?.pantallasConsulta) ? cargo.pantallasConsulta : [];
+    setEditorCargoId(cargo?.id || "");
+    setSeleccionPantallas(Object.fromEntries(PM13_PANTALLAS_EDITOR.map((pantalla) => [pantalla.id, actuales.includes(pantalla.id)])));
+    setError("");
+    setConfirmacion("");
+  };
+  const cerrarEditorPantallas = () => {
+    setEditorCargoId("");
+    setSeleccionPantallas({});
+  };
+  const marcarPantallasActivas = (valor) => {
+    setSeleccionPantallas(Object.fromEntries(PM13_PANTALLAS_EDITOR.map((pantalla) => [pantalla.id, pantalla.moduloActivo ? valor : false])));
+  };
+  const gruposPantallas = PM13_PANTALLAS_EDITOR.reduce((grupos, pantalla) => {
+    (grupos[pantalla.grupo] ||= []).push(pantalla);
+    return grupos;
+  }, {});
   const ocupado = cargando || guardando;
   return h(
     "div",
@@ -1903,8 +1937,40 @@ function ConfigCargos({ empleados = [], localId = "", localNombre = "", esPropie
           h(Field, { label: "Asignar a este local" }, h("select", { value: empleadoPorCargo[cargo.id] || "", disabled: ocupado || !cargo.activo || empleadosDelLocal.length === 0, onChange: (e2) => setEmpleadoPorCargo((actual) => ({ ...actual, [cargo.id]: e2.target.value })), className: "rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 40 } }, h("option", { value: "" }, empleadosDelLocal.length ? "Selecciona una persona" : "No hay empleados activos"), empleadosDelLocal.map((empleado) => h("option", { key: empleado.id, value: empleado.id }, empleado.nombre || empleado.nombreCompleto || "Sin nombre")))),
           h(Btn, { small: true, onClick: () => asignarCargo(cargo), disabled: ocupado || !empleadoPorCargo[cargo.id] || !cargo.activo }, "Asignar")
         ),
+        editorCargoId === cargo.id ? h(
+          "div",
+          { className: "rounded-lg p-3 mt-3", style: { border: `1px solid ${C2.line}`, background: C2.bg } },
+          h("div", { className: "font-medium mb-1" }, "Pantallas que puede consultar este cargo"),
+          h("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Selecciona solo pantallas. Consultar una pantalla no concede crear, editar, exportar, anular ni configurar; esas acciones se definirán en el punto 5."),
+          h("div", { className: "text-[11.5px] mb-2 p-2 rounded-lg", style: { background: C2.amberSoft, color: C2.ink } }, "Este editor es un borrador local del diseño del cargo. Todavía no guarda la selección en el servidor; la persistencia autorizada corresponde al subpunto 4.4."),
+          h("div", { className: "flex gap-2 flex-wrap mb-3" },
+            h(Btn, { small: true, variant: "ghost", onClick: () => marcarPantallasActivas(true), disabled: ocupado }, "Marcar todas activas"),
+            h(Btn, { small: true, variant: "ghost", onClick: () => marcarPantallasActivas(false), disabled: ocupado }, "Desmarcar todas"),
+            h(Btn, { small: true, variant: "ghost", onClick: cerrarEditorPantallas, disabled: ocupado }, "Cerrar editor")
+          ),
+          Object.entries(gruposPantallas).map(([grupo, pantallas]) => h(
+            "div",
+            { key: grupo, className: "mb-3" },
+            h("div", { className: "text-[12px] font-semibold mb-1" }, grupo),
+            h("div", { className: "space-y-1" }, pantallas.map((pantalla) => {
+              const moduloActivo = pantalla.moduloActivo !== false;
+              const seleccionada = seleccionPantallas[pantalla.id] === true;
+              return h(
+                "label",
+                { key: pantalla.id, className: "flex items-start gap-2 rounded-lg p-2", style: { border: `1px solid ${C2.line}`, background: C2.surface, opacity: moduloActivo ? 1 : 0.65 } },
+                h("input", { type: "checkbox", checked: seleccionada, disabled: !moduloActivo || ocupado, onChange: () => setSeleccionPantallas((actual) => ({ ...actual, [pantalla.id]: !actual[pantalla.id] })), className: "mt-1" }),
+                h("span", { className: "min-w-0 flex-1" },
+                  h("span", { className: "block text-[12px] font-medium" }, pantalla.label),
+                  h("span", { className: "block text-[11px]", style: { color: C2.inkSoft } }, pantalla.descripcion),
+                  h("span", { className: "block text-[10.5px] mt-0.5", style: { color: moduloActivo ? seleccionada ? C2.accent : C2.inkSoft : C2.amber } }, moduloActivo ? seleccionada ? "Permitida para este cargo" : "Denegada por este cargo" : "Módulo no contratado o inactivo · no se puede habilitar aquí")
+                )
+              );
+            }))
+          ))
+        ) : null,
         h("div", { className: "flex gap-2 flex-wrap mt-2" },
           h(Btn, { small: true, variant: "ghost", onClick: () => setFormulario({ id: cargo.id, nombre: cargo.nombre, descripcion: cargo.descripcion || "" }), disabled: ocupado }, "Editar"),
+          h(Btn, { small: true, variant: "ghost", onClick: () => editorCargoId === cargo.id ? cerrarEditorPantallas() : abrirEditorPantallas(cargo), disabled: ocupado }, editorCargoId === cargo.id ? "Cerrar pantallas" : "Editar pantallas"),
           h(Btn, { small: true, variant: "ghost", onClick: () => duplicarCargo(cargo), disabled: ocupado }, "Duplicar"),
           h(Btn, { small: true, variant: "ghost", onClick: () => cambiarEstadoCargo(cargo), disabled: ocupado || (cargo.activo && Number(cargo.asignados_count || 0) > 0) }, cargo.activo ? "Desactivar" : "Reactivar")
         )
@@ -1927,7 +1993,7 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
     seccion === "dia" ? h(ConfigDia, { empresaId, localId }) : null,
     seccion === "modalidades" ? h(ConfigModalidades, { empresaId, localId }) : null,
     seccion === "equipos" ? h(ConfigEquipos, { empresaId, localId }) : null,
-    seccion === "cargos" ? h(ConfigCargos, { empleados, localId, localNombre, esPropietario }) : null,
+    seccion === "cargos" ? h(ConfigCargos, { empresa, empleados, localId, localNombre, esPropietario }) : null,
     seccion === "permisos" ? h(ConfigPermisos, { empresaId, localId, localNombre }) : null
   );
   return h(
