@@ -16,6 +16,12 @@ for (const [nombre, src] of [["fuente.js", fuente], ["fuente-recuperado.js", rec
   assert.match(src, /pendienteEmpleados: pendiente\("empleados"\)/);
   assert.match(src, /estadoCargaDatos: estadoCargaDatosPM12\.empleados/);
   assert.match(src, /estadoCargaDatos === "vacio_confirmado"/);
+  assert.match(src, /function RegistroHorario\([\s\S]*estadoCargaEmpleados/);
+  assert.match(src, /function Turnos\([\s\S]*estadoCargaEmpleados/);
+  assert.match(src, /etiqueta: "Fichajes"/);
+  assert.match(src, /etiqueta: "Turnos"/);
+  assert.match(src, /puedeMostrarFichajes/);
+  assert.match(src, /includes\(estadoCargaDatos\).*includes\(estadoCargaEmpleados\)/);
 }
 
 assert.match(fuente, /id: "estado_datos_personal"/);
