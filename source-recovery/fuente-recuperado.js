@@ -1946,7 +1946,7 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
     setGuardando(true);
     try {
       for (const permiso of cambios) {
-        await configRpc("pm13_configurar_cargo_permiso", {
+        await configRpc("pm13_configurar_cargo_permiso_v2", {
           p_operation_id: configOperacion("cargo-permiso"),
           p_empresa_id: empresa?.id || "",
           p_local_id: localId,
@@ -1955,7 +1955,8 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
           p_accion: permiso.accion,
           p_alcance: permiso.alcance_maximo === "EMPRESA" ? "EMPRESA" : "LOCAL",
           p_permitido: permiso.valor === "permitido",
-          p_motivo: motivoPermiso.trim()
+          p_motivo: motivoPermiso.trim(),
+          p_version_esperada: Number.isSafeInteger(Number(permiso.version)) ? Number(permiso.version) : 0
         });
       }
       setEditorPermisos(null);
