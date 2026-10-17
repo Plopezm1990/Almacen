@@ -18,7 +18,7 @@
 select current_database() as base, current_setting('server_version') as version_postgres, now() as hora_servidor;
 
 -- ============================================================================================================================
--- P1 · Qué migraciones están registradas (comparar con la lista de 45 del documento; los NOMBRES, no las marcas de tiempo: la herramienta
+-- P1 · Qué migraciones están registradas (comparar con la lista de 63 del documento; los NOMBRES, no las marcas de tiempo: la herramienta
 --      asigna su propia marca al aplicar, y en QA algunas se registraron con el nombre largo del archivo y otras con el corto)
 -- ============================================================================================================================
 select version, name
@@ -179,7 +179,12 @@ with objetos(migracion, nombre, tipo, esquema, objeto) as (
     ('20261003100000','abc_config_d13_reembolsos_aprobacion','funcion','public','abc_aprobar_reembolso'),
     ('20261003120000','abc_a09_eventos_descuento_cuenta','funcion','public','abc_listar_eventos_descuento_cuenta'),
     ('20261005160403','abc_f5_c03_arqueo_sesion','funcion','public','abc_previsualizar_arqueo_caja'),
-    ('20261009054351','c01_listar_responsables_caja','funcion','public','abc_listar_responsables_caja')
+    ('20261009054351','c01_listar_responsables_caja','funcion','public','abc_listar_responsables_caja'),
+    ('20261017120000','pm13_p08_cargos_catalogo','tabla','public','abc_cargos'),
+    ('20261017130000','pm13_p08_cargo_asignaciones','tabla','public','abc_cargo_asignaciones'),
+    ('20261017160000','pm13_p04_cargo_pantallas','tabla','public','abc_cargo_pantallas'),
+    ('20261017193000','pm13_p05_cargo_action_resolver','tabla','private','pm13_p05_acciones_catalogo'),
+    ('20261017193000','pm13_p05_cargo_action_resolver','tabla','public','abc_cargo_permisos')
 ),
 estado as (
   select o.migracion, o.nombre, o.tipo, o.esquema, o.objeto,
@@ -237,7 +242,7 @@ select e.migracion, e.firma,
  order by e.migracion, e.firma;
 
 -- ============================================================================================================================
--- P4 · Copia de seguridad de las 49 funciones que las migraciones candidatas REEMPLAZAN (create or replace). Es la base de la recuperación:
+-- P4 · Copia de seguridad de las 74 funciones que las migraciones candidatas REEMPLAZAN (create or replace). Es la base de la recuperación:
 --      guardar la salida completa (definición incluida) ANTES de aplicar nada. Solo lectura de catálogo.
 -- ============================================================================================================================
 select n.nspname as esquema, p.proname as funcion, pg_get_function_identity_arguments(p.oid) as argumentos,
@@ -289,11 +294,36 @@ select n.nspname as esquema, p.proname as funcion, pg_get_function_identity_argu
     'public.abc_solicitar_reembolso',
     'public.abc_unir_cuentas',
     'public.pm11_estado_cuentas_empleados',
+    'public.pm11_preparar_cuenta_empleado',
     'public.registrar_devolucion_venta_pm09',
     'public.registrar_venta_stock_carrito_pm09',
     'public.registrar_venta_stock_pm09',
     'public.revertir_venta_stock_carrito_pm09',
-    'public.revertir_venta_stock_pm09'
+    'public.revertir_venta_stock_pm09',
+    'private.pm13_cargo_auditar',
+    'private.pm13_cargo_autorizado',
+    'private.pm13_cargo_guard_nombre',
+    'private.pm13_cargo_guard_propietario',
+    'private.pm13_cargo_normalizar_nombre',
+    'private.pm13_cargo_validar_contexto',
+    'private.pm13_p04_capacidad_consulta_valida',
+    'private.pm13_p04_catalogo_consulta',
+    'private.pm13_p05_accion_autorizada',
+    'private.pm13_p05_alcance_cubre',
+    'private.pm13_p05_rol_alcanza',
+    'public.abc_asignar_cargo',
+    'public.abc_crear_cargo',
+    'public.abc_desactivar_cargo',
+    'public.abc_desasignar_cargo',
+    'public.abc_duplicar_cargo',
+    'public.abc_editar_cargo',
+    'public.abc_guardar_cargo_pantallas',
+    'public.abc_listar_cargo_pantallas',
+    'public.abc_listar_cargos',
+    'public.abc_reactivar_cargo',
+    'public.pm13_configurar_cargo_permiso',
+    'public.pm13_listar_cargo_permisos',
+    'public.pm13_resolver_cargo_permiso'
 ])
  order by n.nspname, p.proname, 3;
 

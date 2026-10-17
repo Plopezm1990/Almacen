@@ -6,6 +6,7 @@ const index = fs.readFileSync('index.html', 'utf8');
 const prelock = fs.readFileSync('owner-bootstrap-prelock.js', 'utf8');
 const flow = fs.readFileSync('owner-bootstrap-post-reset.js', 'utf8');
 const bridge = fs.readFileSync('ui-context-bridge.js', 'utf8');
+const edge = fs.readFileSync('edge-auth-patch.js', 'utf8');
 const migration = fs.readFileSync('supabase/migrations/20260915043000_ui_context_bridge.sql', 'utf8');
 
 const posEdge = index.indexOf('./edge-auth-patch.js');
@@ -30,6 +31,27 @@ assert.ok(posContextRpc >= 0 && posSetReady > posContextRpc,
 assert.match(bridge, /key === "pinPropietario"/);
 assert.match(bridge, /guardar_contexto_instalacion_ui/);
 assert.match(bridge, /CLAVES_CONTEXTO/);
+assert.match(edge, /if \(key === "productos"\) \{\s*return coleccionDelLocal\(key, contexto, shared\)/);
+
+// La copia local puede contener productos de A1 y A2. Una cuenta ligada a A2
+// recibe solo A2; un elemento legado sin local no amplía su contexto.
+const filtroInicio = edge.indexOf('function filtrarListaAlLocal');
+const filtroFin = edge.indexOf('async function coleccionDelLocal', filtroInicio);
+assert.ok(filtroInicio > 0 && filtroFin > filtroInicio, 'falta el filtro de colección por local autorizado');
+const filtroCtx = { Array, String };
+vm.createContext(filtroCtx);
+vm.runInContext(edge.slice(filtroInicio, filtroFin), filtroCtx);
+const productosFiltrados = filtroCtx.filtrarListaAlLocal([
+  { id: 'a1', localId: 'l1' },
+  { id: 'a2', localId: 'l2' },
+  { id: 'sql', local_id: 'l2' },
+  { id: 'legacy' }
+], { localId: 'l2' });
+assert.equal(JSON.stringify(productosFiltrados), JSON.stringify([
+  { id: 'a2', localId: 'l2' },
+  { id: 'sql', local_id: 'l2' }
+]));
+assert.equal(JSON.stringify(filtroCtx.filtrarListaAlLocal([{ id: 'a1', localId: 'l1' }], {})), '[]');
 assert.doesNotMatch(
   migration,
   /\b(?:from|into|update|join|delete\s+from)\s+(?:public\.)?almacen_kv\b/i,
@@ -68,6 +90,7 @@ const rpcResult = {
   empresas: [{ id: 'e1', razonSocial: 'Empresa 1', marca: 'Empresa 1', activo: true }],
   locales: [{ id: 'l1', empresaId: 'e1', nombre: 'Local 1', activo: true }]
 };
+let rpcResultActual = rpcResult;
 
 const context = {
   console,
@@ -82,7 +105,7 @@ const context = {
     async getSupabaseClient() {
       return {
         auth: { async getSession() { return { data: { session: { user: { id: 'u1' } } } }; } },
-        async rpc(name, args) { rpcCalls.push({ name, args }); return { data: rpcResult, error: null }; }
+        async rpc(name, args) { rpcCalls.push({ name, args }); return { data: rpcResultActual, error: null }; }
       };
     },
     __laOwnerBootstrapSeedUiContext(data) {
@@ -117,9 +140,39 @@ assert.equal(rpcCalls.at(-1).name, 'guardar_contexto_instalacion_ui');
 assert.equal(rpcCalls.at(-1).args.p_clave, 'empresas');
 
 await context.window.storage.set('localActivoId', 'null', false);
-assert.equal(rpcCalls.at(-1).args.p_clave, 'localActivoId');
-assert.equal(rpcCalls.at(-1).args.p_valor, null);
+assert.equal(rpcCalls.at(-1).name, 'obtener_contexto_instalacion_ui');
+assert.equal(rpcCalls.at(-1).args, undefined);
 assert.equal(local.get('almacen:localActivoId'), 'null');
+
+// Una cuenta limitada a un local valida la preferencia con la RPC de lectura.
+// No necesita permiso de Propietario ni puede adoptar A1 o la vista global.
+rpcResultActual = {
+  ...rpcResult,
+  local_id: 'l2',
+  permite_todos_locales: false,
+  locales: [{ id: 'l2', empresaId: 'e1', nombre: 'Local 2', activo: true }]
+};
+const escriturasEstructuralesAntes = rpcCalls.filter((x) => x.name === 'guardar_contexto_instalacion_ui').length;
+await assert.rejects(
+  context.window.storage.set('localActivoId', JSON.stringify('l1'), false),
+  /Local no autorizado/,
+  'una cuenta de empleado no debe seleccionar un local fuera de su membresía'
+);
+assert.equal(local.get('almacen:localActivoId'), 'null', 'un local rechazado no debe persistirse');
+
+await context.window.storage.set('localActivoId', JSON.stringify('l2'), false);
+assert.equal(rpcCalls.at(-1).name, 'obtener_contexto_instalacion_ui');
+assert.equal(local.get('almacen:localActivoId'), JSON.stringify('l2'));
+await assert.rejects(
+  context.window.storage.set('localActivoId', 'null', false),
+  /Local no autorizado/,
+  'una cuenta ligada a un local no debe activar la vista consolidada'
+);
+assert.equal(
+  rpcCalls.filter((x) => x.name === 'guardar_contexto_instalacion_ui').length,
+  escriturasEstructuralesAntes,
+  'guardar localActivoId nunca debe invocar la RPC estructural reservada al Propietario'
+);
 
 await context.window.storage.get('productos', false);
 assert.equal(delegadosGet, 1, 'las demás claves deben conservar el wrapper anterior');

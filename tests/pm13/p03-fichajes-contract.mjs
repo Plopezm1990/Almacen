@@ -213,7 +213,8 @@ const guardPos = ui.indexOf('const guardado = await Promise.resolve(addFichajeMa
 const rejectPos = ui.indexOf('if (!guardado)', guardPos);
 const closePos = ui.indexOf('setShowManual(false)', guardPos);
 assert.ok(guardPos >= 0 && rejectPos > guardPos && closePos > rejectPos, 'modal solo cierra tras guardado confirmado');
-assert.match(ui, /fichajesVigentesPM13\.filter\(\(f22\) => f22\.fecha >= desde/);
+assert.match(ui, /const resumen = resumenFichajesPM13\(fichajesVigentesPM13\)/, 'el historial usa el emparejamiento temporal');
+assert.match(ui, /fechaFin/, 'el historial conserva la fecha de salida nocturna');
 
 // PM28 correctivo-fichaje: los botones de Entrada/Salida ya no llaman a fichar()
 // directamente en el onClick descartando el resultado — pasan por un manejador que
@@ -226,7 +227,7 @@ assert.match(ui, /role: "status"/, 'hay un anuncio accesible del resultado');
 const openPos = src.indexOf('const fichajesAbiertos =');
 assert.ok(openPos >= 0, 'cálculo global de fichajes abiertos presente');
 const openSlice = src.slice(openPos, openPos + 2200);
-assert.match(openSlice, /fichajes\.filter\(\(f22\) => f22\?\.anulado !== true/);
+assert.match(openSlice, /resumenFichajesPM13\(fichajes\)\.abiertos/);
 
 const logicText = src.slice(start, end);
 assert.doesNotMatch(logicText, /setFichajes\(\(s22\) => s22\.filter\(\(f22\) => f22\.id !== id/);

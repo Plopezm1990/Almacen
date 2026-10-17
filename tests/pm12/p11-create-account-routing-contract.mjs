@@ -5,6 +5,7 @@ const fuente = fs.readFileSync(new URL('../../fuente.js', import.meta.url), 'utf
 const recuperada = fs.readFileSync(new URL('../../source-recovery/fuente-recuperado.js', import.meta.url), 'utf8');
 const reset = fs.readFileSync(new URL('../../reset-pruebas-preview.js', import.meta.url), 'utf8');
 const edge = fs.readFileSync(new URL('../../supabase/functions/crear-cuenta-empleado/index.ts', import.meta.url), 'utf8');
+const qaEdge = fs.readFileSync(new URL('../../supabase/functions/qa-crear-empleado/index.ts', import.meta.url), 'utf8');
 const finalize = fs.readFileSync(new URL('../../supabase/migrations/20260922180000_p2_sec_pm11_finalize_account_dependency.sql', import.meta.url), 'utf8');
 
 const resolver = 'const endpointCuentaEmpleado =';
@@ -30,6 +31,16 @@ assert.match(
   /"crear-cuenta-empleado":\s*"qa-crear-empleado"/,
   'la barrera de preview debe conservar el stub seguro'
 );
+
+// El endpoint QA no puede seguir siendo el stub 503: el smoke de cuentas
+// necesita un flujo autenticado real dentro del proyecto aislado y un
+// preflight CORS que permita Authorization + Content-Type.
+assert.match(qaEdge, /Access-Control-Allow-Headers[\s\S]*authorization[\s\S]*content-type/);
+assert.match(qaEdge, /req\.method === "OPTIONS"/);
+assert.match(qaEdge, /pm11_preparar_cuenta_empleado/);
+assert.match(qaEdge, /pm11_finalizar_creacion_cuenta_empleado/);
+assert.doesNotMatch(qaEdge, /status:\s*503/);
+assert.match(qaEdge, /user_metadata:\s*\{\s*nombre,\s*qa:\s*true\s*\}/);
 
 // Alta idempotente y compensación: una repetición no debe crear otra identidad,
 // y una finalización fallida no debe dejar un acceso Auth utilizable a medias.

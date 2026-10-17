@@ -30,7 +30,7 @@ function deferred() {
   return { promise, resolve, reject, signal: null };
 }
 
-function instalar({ localActivoId, empleados, locales = [{ id: localActivoId, empresaId: 'E1', activo: true }], empresas = [{ id: 'E1' }], state, requests }) {
+function instalar({ localActivoId, empleados, locales = [{ id: localActivoId, empresaId: 'E1', activo: true }], empresas = [{ id: 'E1' }], state, requests, window: ventana }) {
   let efectoRegistrado;
   const supabase = {
     auth: { getSession: async () => ({ data: { session: { user: { id: 'owner-1' } } } }) },
@@ -48,7 +48,7 @@ function instalar({ localActivoId, empleados, locales = [{ id: localActivoId, em
     empleadosIdentidadKeyPM11: empleados.map((empleado) => `${empleado?.id || ""}:${empleado?.empresaId || ""}:${empleado?.localId || ""}`).sort().join("|"),
     locales,
     empresas,
-    window: { __nubeActiva: true, getSupabaseClient: async () => supabase },
+    window: ventana || { __nubeActiva: true, getSupabaseClient: async () => supabase },
     AbortController,
     import_react4: { useEffect(fn) { efectoRegistrado = fn; } },
     setEstadoCuentasPM11(actualizar) {
@@ -61,7 +61,7 @@ function instalar({ localActivoId, empleados, locales = [{ id: localActivoId, em
   };
   vm.runInNewContext(`(function () { ${efecto} })()`, contexto);
   assert.equal(typeof efectoRegistrado, 'function', 'el efecto PM11 debe registrarse');
-  return { ejecutar: () => efectoRegistrado() };
+  return { ejecutar: () => efectoRegistrado(), window: contexto.window };
 }
 
 async function iniciar(config) {
@@ -70,10 +70,22 @@ async function iniciar(config) {
   const instalado = instalar({ ...config, state, requests });
   const cleanup = instalado.ejecutar();
   await tick();
-  return { state, requests, cleanup };
+  return { state, requests, cleanup, window: instalado.window };
 }
 
 const empleadoBase = { id: 'e1', empresaId: 'E1', localId: 'L1', nombre: 'Empleado QA', tieneCuenta: false, cuentaActiva: false };
+
+// Aunque el cleanup aún no haya corrido, una clave de contexto nueva invalida
+// la respuesta antigua y evita escribir estados del local anterior.
+{
+  const state = { cuentas: {}, empleados: [{ ...empleadoBase }] };
+  const r = await iniciar({ localActivoId: 'L1', empleados: state.empleados, state });
+  r.window.__pm11CuentaContexto = 'E1::L2';
+  r.requests[0].resolve({ data: { ok: true, cuentas: [{ empleado_id: 'e1', estado: 'activa', rol: 'Camarero/a' }] }, error: null });
+  await tick();
+  assert.equal(state.cuentas.e1, 'cargando');
+  assert.equal(state.empleados[0].cuentaActiva, false);
+}
 
 // Arranque antes de tener empleados: no consulta un conjunto vacío; al llegar
 // los empleados, vuelve a ejecutar el efecto y reconstruye la cuenta.
@@ -94,13 +106,15 @@ const empleadoBase = { id: 'e1', empresaId: 'E1', localId: 'L1', nombre: 'Emplea
 
 // Un fallo de red no se convierte en «sin cuenta» y queda observable como error.
 {
-  const state = { cuentas: {}, empleados: [{ ...empleadoBase }] };
+  const state = { cuentas: {}, empleados: [{ ...empleadoBase, tieneCuenta: true, cuentaActiva: true, rolCuenta: 'Camarero/a' }] };
   const r = await iniciar({ localActivoId: 'L1', empleados: state.empleados, state });
   assert.equal(state.cuentas.e1, 'cargando');
   r.requests[0].resolve({ data: null, error: { message: 'network down' } });
   await tick();
   assert.equal(state.cuentas.e1, 'error');
-  assert.equal(state.empleados[0].tieneCuenta, false);
+  assert.equal(state.empleados[0].tieneCuenta, true);
+  assert.equal(state.empleados[0].cuentaActiva, true);
+  assert.equal(state.empleados[0].rolCuenta, 'Camarero/a');
 }
 
 // Una cuenta suspendida conserva el vínculo, pero no queda como activa.

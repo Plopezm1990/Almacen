@@ -9,12 +9,20 @@ on:
       - 'docs/plan-maestro/P2_EDGE_SECURITY_CANDIDATE.md'
       - 'supabase/functions/_shared/tenant-scope.js'
       - 'supabase/functions/crear-cuenta-empleado/index.ts'
+      - 'supabase/functions/qa-crear-empleado/index.ts'
       - 'supabase/functions/enviar-notificacion/index.ts'
       - 'supabase/functions/prefiltro-candidato/index.ts'
       - 'supabase/functions/edge-security-manifest.json'
       - 'supabase/migrations/20260922080500_p2_sec_prefiltro_rate_limit_rpc.sql'
       - 'supabase/migrations/20260922095000_p2_sec_revoke_pm05_scope_anon.sql'
       - 'supabase/migrations/20260922180000_p2_sec_pm11_finalize_account_dependency.sql'
+      - 'supabase/migrations/20261016121308_pm11_read_account_state_no_cross_tenant_existence.sql'
+      - 'supabase/migrations/20261016122410_pm11_prepare_account_no_cross_tenant_existence.sql'
+      - 'tests/pm10/p07-personal-contract.mjs'
+      - 'tests/pm12/p11-create-account-behavior.mjs'
+      - 'tests/pm12/p11-create-account-routing-contract.mjs'
+      - 'tests/pm12/p12-account-enrichment-race-contract.mjs'
+      - 'tests/pm12/p12-account-enrichment-runtime.mjs'
   workflow_dispatch: {}
 
 permissions:
@@ -66,25 +74,63 @@ jobs:
           git merge-base --is-ancestor "$BASE" "$ACTUAL_HEAD"
           mapfile -t changed < <(git diff --name-only "$BASE"...HEAD | LC_ALL=C sort)
           printf '%s\n' "${changed[@]}"
+          # Esta puerta certifica su propio perímetro. Otros archivos del PR
+          # siguen bajo la puerta general, pero no alteran el candidato P2-SEC.
+          security_changed=()
+          for path in "${changed[@]}"; do
+            case "$path" in
+              .github/scripts/p2-edge-security/*|\
+              .github/workflows/p2-edge-security-candidate.yml|\
+              docs/plan-maestro/P2_EDGE_SECURITY_CANDIDATE.md|\
+              supabase/functions/_shared/tenant-scope.js|\
+              supabase/functions/crear-cuenta-empleado/index.ts|\
+              supabase/functions/qa-crear-empleado/index.ts|\
+              supabase/functions/edge-security-manifest.json|\
+              supabase/functions/enviar-notificacion/index.ts|\
+              supabase/functions/prefiltro-candidato/index.ts|\
+              supabase/migrations/20260922080500_p2_sec_prefiltro_rate_limit_rpc.sql|\
+              supabase/migrations/20260922095000_p2_sec_revoke_pm05_scope_anon.sql|\
+              supabase/migrations/20260922180000_p2_sec_pm11_finalize_account_dependency.sql|\
+              supabase/migrations/20261016121308_pm11_read_account_state_no_cross_tenant_existence.sql|\
+              supabase/migrations/20261016122410_pm11_prepare_account_no_cross_tenant_existence.sql|\
+              tests/pm10/p07-personal-contract.mjs|\
+              tests/pm12/p11-create-account-behavior.mjs|\
+              tests/pm12/p11-create-account-routing-contract.mjs|\
+              tests/pm12/p12-account-enrichment-race-contract.mjs|\
+              tests/pm12/p12-account-enrichment-runtime.mjs)
+                security_changed+=("$path")
+                ;;
+            esac
+          done
           expected=$'.github/scripts/p2-edge-security/behavior.mjs\n.github/scripts/p2-edge-security/contract.mjs\n.github/scripts/p2-edge-security/ephemeral-rate-limit.sql\n.github/workflows/p2-edge-security-candidate.yml\ndocs/plan-maestro/P2_EDGE_SECURITY_CANDIDATE.md\nsupabase/functions/_shared/tenant-scope.js\nsupabase/functions/crear-cuenta-empleado/index.ts\nsupabase/functions/edge-security-manifest.json\nsupabase/functions/enviar-notificacion/index.ts\nsupabase/functions/prefiltro-candidato/index.ts\nsupabase/migrations/20260922080500_p2_sec_prefiltro_rate_limit_rpc.sql\nsupabase/migrations/20260922095000_p2_sec_revoke_pm05_scope_anon.sql\nsupabase/migrations/20260922180000_p2_sec_pm11_finalize_account_dependency.sql'
-          actual="$(printf '%s\n' "${changed[@]}")"
+          actual="$(printf '%s\n' "${security_changed[@]}")"
           hotfix=$'.github/scripts/p2-edge-security/contract.mjs\n.github/workflows/p2-edge-security-candidate.yml\nsupabase/functions/crear-cuenta-empleado/index.ts\nsupabase/migrations/20260922180000_p2_sec_pm11_finalize_account_dependency.sql'
-          if [ "$actual" != "$expected" ]; then
-            test "$actual" = "$hotfix"
-            echo "P2_EDGE_SECURITY_SCOPE=ACCOUNT_HOTFIX"
+          account_point1=$'.github/workflows/p2-edge-security-candidate.yml\nsupabase/functions/crear-cuenta-empleado/index.ts\nsupabase/functions/qa-crear-empleado/index.ts\nsupabase/migrations/20261016121308_pm11_read_account_state_no_cross_tenant_existence.sql\nsupabase/migrations/20261016122410_pm11_prepare_account_no_cross_tenant_existence.sql\ntests/pm10/p07-personal-contract.mjs\ntests/pm12/p11-create-account-behavior.mjs\ntests/pm12/p11-create-account-routing-contract.mjs\ntests/pm12/p12-account-enrichment-race-contract.mjs\ntests/pm12/p12-account-enrichment-runtime.mjs'
+          if [ "$actual" = "$expected" ]; then
+            scope='CANDIDATE'
+          elif [ "$actual" = "$hotfix" ]; then
+            scope='ACCOUNT_HOTFIX'
+          elif [ "$actual" = "$account_point1" ]; then
+            scope='ACCOUNT_POINT1'
           else
-            echo "P2_EDGE_SECURITY_SCOPE=PASS"
+            echo 'Perímetro P2-SEC no reconocido:' >&2
+            printf '%s\n' "${security_changed[@]}" >&2
+            exit 1
           fi
-          ! printf '%s\n' "${changed[@]}" | grep -Eq '^fuente\.js$'
-          mapfile -t migrations < <(printf '%s\n' "${changed[@]}" | grep '^supabase/migrations/' || true)
+          echo "P2_EDGE_SECURITY_SCOPE=$scope"
+          mapfile -t migrations < <(printf '%s\n' "${security_changed[@]}" | grep '^supabase/migrations/' || true)
           if [ "$actual" = "$expected" ]; then
             test "${#migrations[@]}" = "3"
             test "${migrations[0]}" = 'supabase/migrations/20260922080500_p2_sec_prefiltro_rate_limit_rpc.sql'
             test "${migrations[1]}" = 'supabase/migrations/20260922095000_p2_sec_revoke_pm05_scope_anon.sql'
             test "${migrations[2]}" = 'supabase/migrations/20260922180000_p2_sec_pm11_finalize_account_dependency.sql'
-          else
+          elif [ "$actual" = "$hotfix" ]; then
             test "${#migrations[@]}" = "1"
             test "${migrations[0]}" = 'supabase/migrations/20260922180000_p2_sec_pm11_finalize_account_dependency.sql'
+          else
+            test "${#migrations[@]}" = "2"
+            test "${migrations[0]}" = 'supabase/migrations/20261016121308_pm11_read_account_state_no_cross_tenant_existence.sql'
+            test "${migrations[1]}" = 'supabase/migrations/20261016122410_pm11_prepare_account_no_cross_tenant_existence.sql'
           fi
           echo "P2_EDGE_SECURITY_SCOPE=PASS"
           echo "P2_EDGE_SECURITY_BASE=$BASE"
@@ -97,6 +143,11 @@ jobs:
           node --check supabase/functions/_shared/tenant-scope.js
           node .github/scripts/p2-edge-security/contract.mjs
           node .github/scripts/p2-edge-security/behavior.mjs
+          node tests/pm10/p07-personal-contract.mjs
+          node tests/pm12/p11-create-account-behavior.mjs
+          node tests/pm12/p11-create-account-routing-contract.mjs
+          node tests/pm12/p12-account-enrichment-race-contract.mjs
+          node tests/pm12/p12-account-enrichment-runtime.mjs
 
       - name: PostgreSQL 16 efímero — rate limit
         shell: bash
@@ -217,7 +268,7 @@ jobs:
             local_id text,
             actor_user_id uuid
           );
-          create table auth.users(id uuid primary key);
+          create table auth.users(id uuid primary key, email text);
 
           create or replace function private.pm11_local_activo(p_empresa_id text,p_local_id text)
           returns boolean
@@ -243,6 +294,7 @@ jobs:
           SQL
 
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260922180000_p2_sec_pm11_finalize_account_dependency.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261016122410_pm11_prepare_account_no_cross_tenant_existence.sql
 
           psql -v ON_ERROR_STOP=1 <<'SQL'
           select public.p2_sec_assert(
@@ -258,6 +310,20 @@ jobs:
             and not has_function_privilege('anon','public.pm11_finalizar_creacion_cuenta_empleado(uuid,uuid,text,text,text,text,text)','EXECUTE')
             and not has_function_privilege('public','public.pm11_finalizar_creacion_cuenta_empleado(uuid,uuid,text,text,text,text,text)','EXECUTE'),
             'finalizer execute opened outside service_role'
+          );
+          select public.p2_sec_assert(
+            has_function_privilege('service_role','public.pm11_preparar_cuenta_empleado(uuid,text)','EXECUTE')
+            and not has_function_privilege('authenticated','public.pm11_preparar_cuenta_empleado(uuid,text)','EXECUTE')
+            and not has_function_privilege('anon','public.pm11_preparar_cuenta_empleado(uuid,text)','EXECUTE')
+            and not has_function_privilege('public','public.pm11_preparar_cuenta_empleado(uuid,text)','EXECUTE'),
+            'prepare-account execute escaped service_role'
+          );
+          select public.p2_sec_assert(
+            public.pm11_preparar_cuenta_empleado(
+              '11111111-1111-1111-1111-111111111111'::uuid,
+              'foreign-or-unknown'
+            )->>'codigo'='empleado_no_disponible',
+            'prepare-account must not reveal unknown or foreign employee existence'
           );
 
           set role service_role;
@@ -332,6 +398,7 @@ jobs:
           ! grep -RIE 'sb_secret_|eyJ[A-Za-z0-9_-]{30,}|https://[a-z]{20}\.supabase\.co' \
             supabase/functions/_shared \
             supabase/functions/crear-cuenta-empleado \
+            supabase/functions/qa-crear-empleado \
             supabase/functions/enviar-notificacion \
             supabase/functions/prefiltro-candidato
           echo "P2_EDGE_SECURITY_NO_LITERAL_SECRETS=PASS"
