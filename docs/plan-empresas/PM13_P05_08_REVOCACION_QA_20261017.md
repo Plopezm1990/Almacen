@@ -29,6 +29,8 @@ Una segunda recarga mediante el botón produjo el mismo resultado. La sesión di
 
 La misma pantalla se reprodujo en una pestaña nueva del preview, descartando que el fallo dependa únicamente del almacenamiento de la pestaña original. El check remoto de GitHub para `netlify/chic-entremet-9107cf/deploy-preview` aparece como `success`, pero eso solo acredita el deploy; no acredita que el runtime React renderice correctamente.
 
+La comprobación del permalink inmutable del deploy `6ad3ab5aa39997a176cdf475` sí cargó la pantalla de inicio de sesión correctamente. El alias `deploy-preview-150` continuó mostrando el error. Esto acota el bloqueo a la propagación/alias o al estado de sesión asociado al preview, no al build del artefacto. La instrumentación temporal usada para descartar un error de renderizado se retiró después; los checks de sintaxis y paridad volvieron a PASS.
+
 No se introdujeron credenciales, no se copiaron tokens y no se modificaron datos mediante la interfaz.
 
 ## Estado
