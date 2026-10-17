@@ -2848,6 +2848,11 @@ function GestionAlmacen() {
       const registrosAceiteFinales = (rac || []).map((r2) => r2.localId ? r2 : { ...r2, localId: localPorFreidoraMigracion.get(r2.freidoraId) || localPorProductoMigracion.get(r2.productoAceiteId) || localActivoFinal || null });
       setLocales(localesFinales);
       setLocalActivoId(localActivoFinal);
+      // La vista de informes usa su propio selector. Al arrancar debe
+      // hidratarse con el mismo local activo que acaba de validarse; de lo
+      // contrario el estado operativo queda en el local elegido pero la
+      // pantalla vuelve a mostrar «Todos los locales» tras una recarga.
+      setLocalInformeId(localActivoFinal || "");
       setProductos(productosFinales);
       setMovimientos(movimientosFinales);
       setAlbaranes(albaranesFinales);
