@@ -434,6 +434,25 @@ function modoLocalNoReclamado() {
     }
   }
 
+  function filtrarListaAlLocal(lista, contexto) {
+    var localId = contexto && contexto.localId ? String(contexto.localId) : "";
+    if (!Array.isArray(lista) || !localId) return [];
+    return lista.filter(function (item) {
+      var itemLocalId = item && (item.localId || item.local_id);
+      return itemLocalId && String(itemLocalId) === localId;
+    });
+  }
+
+  async function coleccionDelLocal(key, contexto, shared) {
+    try {
+      var original = await getOriginal(key, shared);
+      if (!original || !original.value) return original || respuestaVacia(key);
+      return respuestaStorage(key, filtrarListaAlLocal(JSON.parse(original.value), contexto));
+    } catch (e) {
+      return respuestaStorage(key, []);
+    }
+  }
+
   window.storage.get = async function (key, shared) {
     if (!CLAVES_CONTROLADAS[key]) return getOriginal(key, shared);
 
@@ -453,6 +472,9 @@ function modoLocalNoReclamado() {
 
     // Sustituciones de mínimo privilegio: el empleado recibe únicamente la
     // parte necesaria para ejecutar su tarea.
+    if (key === "productos") {
+      return coleccionDelLocal(key, contexto, shared);
+    }
     if (key === "empleados") {
       return respuestaStorage(key, Array.isArray(contexto.empleadosFichaje) ? contexto.empleadosFichaje : []);
     }

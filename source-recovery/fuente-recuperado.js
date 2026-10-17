@@ -2149,8 +2149,9 @@ function GestionAlmacen() {
     contextoPm07SolicitudRef.current = solicitud;
     contextoPm07ClaveRef.current = claveContexto;
     const esContextoVigente = () => activo && contextoPm07SolicitudRef.current === solicitud && contextoPm07ClaveRef.current === claveContexto && localActivoIdRefPm07.current === localActivoId;
-    const sincronizarContextoCompleto = !contextoPm07InicializadoRef.current;
-    contextoPm07InicializadoRef.current = true;
+    const perfilContextoListo = !!miPerfil?.rol;
+    const sincronizarContextoCompleto = perfilContextoListo && miPerfil.rol === "Propietario" && !contextoPm07InicializadoRef.current;
+    if (perfilContextoListo) contextoPm07InicializadoRef.current = true;
     (async () => {
       try {
         if (sincronizarContextoCompleto) {
@@ -2173,7 +2174,7 @@ function GestionAlmacen() {
     return () => {
       activo = false;
     };
-  }, [ready, localActivoId, empresas.map((e2) => `${e2?.id || ""}:${e2?.activo !== false}`).sort().join("|"), locales.map((l22) => `${l22?.id || ""}:${l22?.empresaId || ""}:${l22?.activo !== false}`).sort().join("|")]);
+  }, [ready, miPerfil?.rol, localActivoId, empresas.map((e2) => `${e2?.id || ""}:${e2?.activo !== false}`).sort().join("|"), locales.map((l22) => `${l22?.id || ""}:${l22?.empresaId || ""}:${l22?.activo !== false}`).sort().join("|")]);
   const empresaDelLocalActivo = (0, import_react4.useMemo)(() => {
     const principal = empresas[0] || null;
     const localActual = locales.find((l22) => l22.id === localActivoId) || null;

@@ -20,13 +20,16 @@ const bloque = fuente.slice(inicio, fin);
 
 assert.match(bloque, /const localActivoIdRefPm07 = .*useRef\)\(localActivoId\)/);
 assert.match(bloque, /const contextoPm07InicializadoRef = .*useRef\)\(false\)/);
-assert.match(bloque, /const sincronizarContextoCompleto = !contextoPm07InicializadoRef\.current/);
+assert.match(bloque, /const perfilContextoListo = !!miPerfil\?\.rol/);
+assert.match(bloque, /const sincronizarContextoCompleto = perfilContextoListo && miPerfil\.rol === "Propietario" && !contextoPm07InicializadoRef\.current/);
+assert.match(bloque, /if \(perfilContextoListo\) contextoPm07InicializadoRef\.current = true/);
 assert.match(bloque, /if \(sincronizarContextoCompleto\) \{/);
 assert.match(bloque, /sincronizarContextoPm07\(\{\s*setProductos,\s*esContextoVigente\s*\}\)/);
 assert.doesNotMatch(bloque, /sincronizarContextoPm07\(\{[\s\S]*?setEmpresas/);
 assert.doesNotMatch(bloque, /sincronizarContextoPm07\(\{[\s\S]*?setLocales/);
 assert.doesNotMatch(bloque, /sincronizarContextoPm07\(\{[\s\S]*?setLocalActivoId/);
 assert.match(bloque, /if \(sincronizarContextoCompleto\) contextoPm07InicializadoRef\.current = false/);
+assert.match(bloque, /\[ready, miPerfil\?\.rol, localActivoId,/);
 
 const inicioRec = recuperada.indexOf('const localActivoIdRefPm07 =');
 const finRec = recuperada.indexOf('const empresaDelLocalActivo =', inicioRec);

@@ -43944,6 +43944,23 @@ var init_index_es = __esm({
       return respuestaStorage(key, []);
     }
   }
+  function filtrarListaAlLocal(lista, contexto) {
+    var localId = contexto && contexto.localId ? String(contexto.localId) : "";
+    if (!Array.isArray(lista) || !localId) return [];
+    return lista.filter(function(item) {
+      var itemLocalId = item && (item.localId || item.local_id);
+      return itemLocalId && String(itemLocalId) === localId;
+    });
+  }
+  async function coleccionDelLocal(key, contexto, shared) {
+    try {
+      var original = await getOriginal(key, shared);
+      if (!original || !original.value) return original || respuestaVacia(key);
+      return respuestaStorage(key, filtrarListaAlLocal(JSON.parse(original.value), contexto));
+    } catch (e2) {
+      return respuestaStorage(key, []);
+    }
+  }
   window.storage.get = async function(key, shared) {
     if (!CLAVES_CONTROLADAS[key]) return getOriginal(key, shared);
     var contexto = null;
@@ -43957,6 +43974,9 @@ var init_index_es = __esm({
       return respuestaVacia(key);
     }
     if (rol === "Propietario") return getOriginal(key, shared);
+    if (key === "productos") {
+      return coleccionDelLocal(key, contexto, shared);
+    }
     if (key === "empleados") {
       return respuestaStorage(key, Array.isArray(contexto.empleadosFichaje) ? contexto.empleadosFichaje : []);
     }
@@ -103103,8 +103123,9 @@ function GestionAlmacen() {
     contextoPm07SolicitudRef.current = solicitud;
     contextoPm07ClaveRef.current = claveContexto;
     const esContextoVigente = () => activo && contextoPm07SolicitudRef.current === solicitud && contextoPm07ClaveRef.current === claveContexto && localActivoIdRefPm07.current === localActivoId;
-    const sincronizarContextoCompleto = !contextoPm07InicializadoRef.current;
-    contextoPm07InicializadoRef.current = true;
+    const perfilContextoListo = !!miPerfil?.rol;
+    const sincronizarContextoCompleto = perfilContextoListo && miPerfil.rol === "Propietario" && !contextoPm07InicializadoRef.current;
+    if (perfilContextoListo) contextoPm07InicializadoRef.current = true;
     (async () => {
       try {
         if (sincronizarContextoCompleto) {
@@ -103127,7 +103148,7 @@ function GestionAlmacen() {
     return () => {
       activo = false;
     };
-  }, [ready, localActivoId, empresas.map((e2) => `${e2?.id || ""}:${e2?.activo !== false}`).sort().join("|"), locales.map((l22) => `${l22?.id || ""}:${l22?.empresaId || ""}:${l22?.activo !== false}`).sort().join("|")]);
+  }, [ready, miPerfil?.rol, localActivoId, empresas.map((e2) => `${e2?.id || ""}:${e2?.activo !== false}`).sort().join("|"), locales.map((l22) => `${l22?.id || ""}:${l22?.empresaId || ""}:${l22?.activo !== false}`).sort().join("|")]);
   const empresaDelLocalActivo = (0, import_react4.useMemo)(() => {
     const principal = empresas[0] || null;
     const localActual = locales.find((l22) => l22.id === localActivoId) || null;

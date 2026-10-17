@@ -6,6 +6,7 @@ const index = fs.readFileSync('index.html', 'utf8');
 const prelock = fs.readFileSync('owner-bootstrap-prelock.js', 'utf8');
 const flow = fs.readFileSync('owner-bootstrap-post-reset.js', 'utf8');
 const bridge = fs.readFileSync('ui-context-bridge.js', 'utf8');
+const edge = fs.readFileSync('edge-auth-patch.js', 'utf8');
 const migration = fs.readFileSync('supabase/migrations/20260915043000_ui_context_bridge.sql', 'utf8');
 
 const posEdge = index.indexOf('./edge-auth-patch.js');
@@ -30,6 +31,27 @@ assert.ok(posContextRpc >= 0 && posSetReady > posContextRpc,
 assert.match(bridge, /key === "pinPropietario"/);
 assert.match(bridge, /guardar_contexto_instalacion_ui/);
 assert.match(bridge, /CLAVES_CONTEXTO/);
+assert.match(edge, /if \(key === "productos"\) \{\s*return coleccionDelLocal\(key, contexto, shared\)/);
+
+// La copia local puede contener productos de A1 y A2. Una cuenta ligada a A2
+// recibe solo A2; un elemento legado sin local no amplía su contexto.
+const filtroInicio = edge.indexOf('function filtrarListaAlLocal');
+const filtroFin = edge.indexOf('async function coleccionDelLocal', filtroInicio);
+assert.ok(filtroInicio > 0 && filtroFin > filtroInicio, 'falta el filtro de colección por local autorizado');
+const filtroCtx = { Array, String };
+vm.createContext(filtroCtx);
+vm.runInContext(edge.slice(filtroInicio, filtroFin), filtroCtx);
+const productosFiltrados = filtroCtx.filtrarListaAlLocal([
+  { id: 'a1', localId: 'l1' },
+  { id: 'a2', localId: 'l2' },
+  { id: 'sql', local_id: 'l2' },
+  { id: 'legacy' }
+], { localId: 'l2' });
+assert.equal(JSON.stringify(productosFiltrados), JSON.stringify([
+  { id: 'a2', localId: 'l2' },
+  { id: 'sql', local_id: 'l2' }
+]));
+assert.equal(JSON.stringify(filtroCtx.filtrarListaAlLocal([{ id: 'a1', localId: 'l1' }], {})), '[]');
 assert.doesNotMatch(
   migration,
   /\b(?:from|into|update|join|delete\s+from)\s+(?:public\.)?almacen_kv\b/i,
