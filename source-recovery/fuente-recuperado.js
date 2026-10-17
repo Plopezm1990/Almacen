@@ -4228,6 +4228,54 @@ function GestionAlmacen() {
       activarModoEmpleado
     }
   ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, { diagnosticoLegadosPM10 }), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, marcarFormularioAbiertoPM15 }), tab === "descuentos" && /* @__PURE__ */ import_react4.default.createElement(PoliticasDescuentos, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }), tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29, empleados }));
+  // PM13-P04.2: claves estables de capacidad de consulta, separadas del texto visible y de la navegacion.
+  const CAPACIDADES_CONSULTA_PANTALLA = Object.freeze({
+    dashboard: "ABC_PANTALLA_DASHBOARD_CONSULTAR",
+    direccion: "ABC_PANTALLA_DIRECCION_CONSULTAR",
+    proveedores: "ABC_PANTALLA_PROVEEDORES_CONSULTAR",
+    resumen_almacen: "ABC_PANTALLA_RESUMEN_ALMACEN_CONSULTAR",
+    productos: "ABC_PANTALLA_PRODUCTOS_CONSULTAR",
+    buscar: "ABC_PANTALLA_BUSCAR_CONSULTAR",
+    historial_producto: "ABC_PANTALLA_HISTORIAL_PRODUCTO_CONSULTAR",
+    pedidos: "ABC_PANTALLA_PEDIDOS_CONSULTAR",
+    recepcion: "ABC_PANTALLA_RECEPCION_CONSULTAR",
+    albaranes: "ABC_PANTALLA_ALBARANES_CONSULTAR",
+    facturas: "ABC_PANTALLA_FACTURAS_CONSULTAR",
+    pagos: "ABC_PANTALLA_PAGOS_CONSULTAR",
+    conteo: "ABC_PANTALLA_CONTEO_CONSULTAR",
+    saldo: "ABC_PANTALLA_SALDO_CONSULTAR",
+    mapa: "ABC_PANTALLA_MAPA_CONSULTAR",
+    traspasos: "ABC_PANTALLA_TRASPASOS_CONSULTAR",
+    fichas: "ABC_PANTALLA_FICHAS_CONSULTAR",
+    produccion: "ABC_PANTALLA_PRODUCCION_CONSULTAR",
+    mermas: "ABC_PANTALLA_MERMAS_CONSULTAR",
+    etiquetas: "ABC_PANTALLA_ETIQUETAS_CONSULTAR",
+    reportes: "ABC_PANTALLA_REPORTES_CONSULTAR",
+    resultados: "ABC_PANTALLA_RESULTADOS_CONSULTAR",
+    personal: "ABC_PANTALLA_PERSONAL_CONSULTAR",
+    fichaje: "ABC_PANTALLA_FICHAJE_CONSULTAR",
+    nominas: "ABC_PANTALLA_NOMINAS_CONSULTAR",
+    turnos: "ABC_PANTALLA_TURNOS_CONSULTAR",
+    appcc: "ABC_PANTALLA_APPCC_CONSULTAR",
+    aceite: "ABC_PANTALLA_ACEITE_CONSULTAR",
+    venta: "ABC_PANTALLA_VENTA_CONSULTAR",
+    cocina: "ABC_PANTALLA_COCINA_CONSULTAR",
+    encargos: "ABC_PANTALLA_ENCARGOS_CONSULTAR",
+    clientes: "ABC_PANTALLA_CLIENTES_CONSULTAR",
+    libroiva: "ABC_PANTALLA_LIBROIVA_CONSULTAR",
+    caja: "ABC_PANTALLA_CAJA_CONSULTAR",
+    devoluciones: "ABC_PANTALLA_DEVOLUCIONES_CONSULTAR",
+    tesoreria: "ABC_PANTALLA_TESORERIA_CONSULTAR",
+    estacionalidad: "ABC_PANTALLA_ESTACIONALIDAD_CONSULTAR",
+    auditoria: "ABC_PANTALLA_AUDITORIA_CONSULTAR",
+    diagnostico: "ABC_PANTALLA_DIAGNOSTICO_CONSULTAR",
+    respaldos: "ABC_PANTALLA_RESPALDOS_CONSULTAR",
+    notificaciones: "ABC_PANTALLA_NOTIFICACIONES_CONSULTAR",
+    descuentos: "ABC_PANTALLA_DESCUENTOS_CONSULTAR",
+    locales: "ABC_PANTALLA_LOCALES_CONSULTAR",
+    configuracion: "ABC_PANTALLA_CONFIGURACION_CONSULTAR",
+    errores_sistema: "ABC_PANTALLA_ERRORES_SISTEMA_CONSULTAR"
+  });
   const itemsMeta = [
     { id: "dashboard", label: "Panel general", icon: ChartColumn },
     { id: "direccion", label: "Panel de direcci\xF3n", icon: TrendingUp },
@@ -4274,7 +4322,7 @@ function GestionAlmacen() {
     { id: "locales", label: "Locales", icon: Map2 },
     { id: "configuracion", label: "Configuraci\xF3n", icon: Cog },
     { id: "errores_sistema", label: "Errores del sistema", icon: TriangleAlert }
-  ];
+  ].map((item) => ({ ...item, capacidadConsulta: CAPACIDADES_CONSULTA_PANTALLA[item.id] }));
   const porId = (id) => itemsMeta.find((x3) => x3.id === id);
   const pick = (ids) => {
     const filtrados = modoEmpleado ? ids.filter((id) => itemsPermitidosEmpleado.includes(id)) : ids;
