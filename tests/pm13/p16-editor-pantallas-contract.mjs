@@ -12,9 +12,9 @@ for (const [file, text] of [["fuente.js", source], ["source-recovery/fuente-recu
   const catalogStart = text.indexOf("var PM13_PANTALLAS_EDITOR = Object.freeze([");
   const catalogEnd = text.indexOf("var TAB_PRIORITIES_MOVIL", catalogStart);
   const catalogBlock = text.slice(catalogStart, catalogEnd);
-  assert.equal((catalogBlock.match(/\["[^"]+", "[a-z0-9_]+", "[^"]+"\]/g) || []).length, 45, `${file}: el editor debe cubrir 45 pantallas`);
+  assert.equal((catalogBlock.match(/\["[^"]+", "[a-z0-9_]+", "[^"]+", "ABC_PANTALLA_[A-Z0-9_]+_CONSULTAR"\]/g) || []).length, 45, `${file}: el editor debe cubrir 45 pantallas`);
   assert.match(text, /var PM13_PANTALLAS_EDITOR = Object\.freeze\(\[/, `${file}: falta el catálogo del editor`);
-  assert.match(text, /\.map\(\(\[grupo, id, label\]\) => Object\.freeze\(\{ grupo, id, label, descripcion: `Consulta de \$\{label\}`, moduloActivo: true \}\)\)/, `${file}: catálogo no normalizado`);
+  assert.match(text, /\.map\(\(\[grupo, id, label, capacidadConsulta\]\) => Object\.freeze\(\{ grupo, id, label, capacidadConsulta, descripcion: `Consulta de \$\{label\}`, moduloActivo: true \}\)\)/, `${file}: catálogo no normalizado`);
   assert.match(text, /function ConfigCargos\(\{ empresa = null/, `${file}: ConfigCargos no recibe la empresa`);
   assert.match(text, /Editar pantallas/, `${file}: falta abrir el editor`);
   assert.match(text, /Permitida para este cargo/, `${file}: falta estado permitido`);

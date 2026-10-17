@@ -184,16 +184,16 @@ var NOMBRES_ROLES = Object.keys(ROLES_EMPLEADO);
 var ROLES_RETIRADOS = ["B\xE1sico", "Est\xE1ndar", "Churrero/a"];
 var NOMBRES_ROLES_ALTA = NOMBRES_ROLES.filter((r2) => !ROLES_RETIRADOS.includes(r2));
 var PM13_PANTALLAS_EDITOR = Object.freeze([
-  ["Inicio", "dashboard", "Panel general"], ["Inicio", "direccion", "Panel de dirección"], ["Inicio", "buscar", "Buscar"],
-  ["Compras", "proveedores", "Proveedores"], ["Compras", "pedidos", "Pedidos"], ["Compras", "recepcion", "Recepción"], ["Compras", "albaranes", "Albaranes"], ["Compras", "facturas", "Facturas"],
-  ["Almacén", "resumen_almacen", "Resumen de almacén"], ["Almacén", "productos", "Productos"], ["Almacén", "historial_producto", "Historial de producto"], ["Almacén", "conteo", "Inventario ciego"], ["Almacén", "saldo", "Saldo de almacén"], ["Almacén", "mapa", "Mapa de almacén"], ["Almacén", "traspasos", "Traspasos"], ["Almacén", "diagnostico", "Reconciliación de stock"], ["Almacén", "etiquetas", "Etiquetas y catálogo"],
-  ["Ventas", "venta", "TPV"], ["Ventas", "cocina", "Cocina A10"], ["Ventas", "encargos", "Encargos"], ["Ventas", "clientes", "Clientes"], ["Ventas", "devoluciones", "Devoluciones"], ["Ventas", "descuentos", "Descuentos y cortesías"],
-  ["Costes y producción", "fichas", "Fichas de costo"], ["Costes y producción", "produccion", "Producción"], ["Costes y producción", "mermas", "Mermas"],
-  ["Finanzas y análisis", "pagos", "Cuentas por pagar"], ["Finanzas y análisis", "resultados", "Resultados"], ["Finanzas y análisis", "reportes", "Reportes y rotación"], ["Finanzas y análisis", "libroiva", "Libro de IVA"], ["Finanzas y análisis", "caja", "Arqueo de caja"], ["Finanzas y análisis", "tesoreria", "Tesorería"], ["Finanzas y análisis", "estacionalidad", "Estacionalidad"],
-  ["Personal", "personal", "Personal"], ["Personal", "fichaje", "Registro horario"], ["Personal", "turnos", "Cuadrante de turnos"], ["Personal", "nominas", "Coste de personal"],
-  ["Calidad", "appcc", "Control sanitario"], ["Calidad", "aceite", "Aceite de freidoras"],
-  ["Sistema", "auditoria", "Auditoría"], ["Sistema", "respaldos", "Respaldos"], ["Sistema", "notificaciones", "Notificaciones"], ["Sistema", "locales", "Locales"], ["Sistema", "configuracion", "Configuración"], ["Sistema", "errores_sistema", "Errores del sistema"]
-].map(([grupo, id, label]) => Object.freeze({ grupo, id, label, descripcion: `Consulta de ${label}`, moduloActivo: true })));
+  ["Inicio", "dashboard", "Panel general", "ABC_PANTALLA_DASHBOARD_CONSULTAR"], ["Inicio", "direccion", "Panel de dirección", "ABC_PANTALLA_DIRECCION_CONSULTAR"], ["Inicio", "buscar", "Buscar", "ABC_PANTALLA_BUSCAR_CONSULTAR"],
+  ["Compras", "proveedores", "Proveedores", "ABC_PANTALLA_PROVEEDORES_CONSULTAR"], ["Compras", "pedidos", "Pedidos", "ABC_PANTALLA_PEDIDOS_CONSULTAR"], ["Compras", "recepcion", "Recepción", "ABC_PANTALLA_RECEPCION_CONSULTAR"], ["Compras", "albaranes", "Albaranes", "ABC_PANTALLA_ALBARANES_CONSULTAR"], ["Compras", "facturas", "Facturas", "ABC_PANTALLA_FACTURAS_CONSULTAR"],
+  ["Almacén", "resumen_almacen", "Resumen de almacén", "ABC_PANTALLA_RESUMEN_ALMACEN_CONSULTAR"], ["Almacén", "productos", "Productos", "ABC_PANTALLA_PRODUCTOS_CONSULTAR"], ["Almacén", "historial_producto", "Historial de producto", "ABC_PANTALLA_HISTORIAL_PRODUCTO_CONSULTAR"], ["Almacén", "conteo", "Inventario ciego", "ABC_PANTALLA_CONTEO_CONSULTAR"], ["Almacén", "saldo", "Saldo de almacén", "ABC_PANTALLA_SALDO_CONSULTAR"], ["Almacén", "mapa", "Mapa de almacén", "ABC_PANTALLA_MAPA_CONSULTAR"], ["Almacén", "traspasos", "Traspasos", "ABC_PANTALLA_TRASPASOS_CONSULTAR"], ["Almacén", "diagnostico", "Reconciliación de stock", "ABC_PANTALLA_DIAGNOSTICO_CONSULTAR"], ["Almacén", "etiquetas", "Etiquetas y catálogo", "ABC_PANTALLA_ETIQUETAS_CONSULTAR"],
+  ["Ventas", "venta", "TPV", "ABC_PANTALLA_VENTA_CONSULTAR"], ["Ventas", "cocina", "Cocina A10", "ABC_PANTALLA_COCINA_CONSULTAR"], ["Ventas", "encargos", "Encargos", "ABC_PANTALLA_ENCARGOS_CONSULTAR"], ["Ventas", "clientes", "Clientes", "ABC_PANTALLA_CLIENTES_CONSULTAR"], ["Ventas", "devoluciones", "Devoluciones", "ABC_PANTALLA_DEVOLUCIONES_CONSULTAR"], ["Ventas", "descuentos", "Descuentos y cortesías", "ABC_PANTALLA_DESCUENTOS_CONSULTAR"],
+  ["Costes y producción", "fichas", "Fichas de costo", "ABC_PANTALLA_FICHAS_CONSULTAR"], ["Costes y producción", "produccion", "Producción", "ABC_PANTALLA_PRODUCCION_CONSULTAR"], ["Costes y producción", "mermas", "Mermas", "ABC_PANTALLA_MERMAS_CONSULTAR"],
+  ["Finanzas y análisis", "pagos", "Cuentas por pagar", "ABC_PANTALLA_PAGOS_CONSULTAR"], ["Finanzas y análisis", "resultados", "Resultados", "ABC_PANTALLA_RESULTADOS_CONSULTAR"], ["Finanzas y análisis", "reportes", "Reportes y rotación", "ABC_PANTALLA_REPORTES_CONSULTAR"], ["Finanzas y análisis", "libroiva", "Libro de IVA", "ABC_PANTALLA_LIBROIVA_CONSULTAR"], ["Finanzas y análisis", "caja", "Arqueo de caja", "ABC_PANTALLA_CAJA_CONSULTAR"], ["Finanzas y análisis", "tesoreria", "Tesorería", "ABC_PANTALLA_TESORERIA_CONSULTAR"], ["Finanzas y análisis", "estacionalidad", "Estacionalidad", "ABC_PANTALLA_ESTACIONALIDAD_CONSULTAR"],
+  ["Personal", "personal", "Personal", "ABC_PANTALLA_PERSONAL_CONSULTAR"], ["Personal", "fichaje", "Registro horario", "ABC_PANTALLA_FICHAJE_CONSULTAR"], ["Personal", "turnos", "Cuadrante de turnos", "ABC_PANTALLA_TURNOS_CONSULTAR"], ["Personal", "nominas", "Coste de personal", "ABC_PANTALLA_NOMINAS_CONSULTAR"],
+  ["Calidad", "appcc", "Control sanitario", "ABC_PANTALLA_APPCC_CONSULTAR"], ["Calidad", "aceite", "Aceite de freidoras", "ABC_PANTALLA_ACEITE_CONSULTAR"],
+  ["Sistema", "auditoria", "Auditoría", "ABC_PANTALLA_AUDITORIA_CONSULTAR"], ["Sistema", "respaldos", "Respaldos", "ABC_PANTALLA_RESPALDOS_CONSULTAR"], ["Sistema", "notificaciones", "Notificaciones", "ABC_PANTALLA_NOTIFICACIONES_CONSULTAR"], ["Sistema", "locales", "Locales", "ABC_PANTALLA_LOCALES_CONSULTAR"], ["Sistema", "configuracion", "Configuración", "ABC_PANTALLA_CONFIGURACION_CONSULTAR"], ["Sistema", "errores_sistema", "Errores del sistema", "ABC_PANTALLA_ERRORES_SISTEMA_CONSULTAR"]
+].map(([grupo, id, label, capacidadConsulta]) => Object.freeze({ grupo, id, label, capacidadConsulta, descripcion: `Consulta de ${label}`, moduloActivo: true })));
 var TAB_PRIORITIES_MOVIL = {
   "Propietario": ["dashboard", "resultados", "caja"],
   "Encargado": ["dashboard", "venta", "cocina", "fichaje"],
@@ -1098,6 +1098,9 @@ var CONFIG_ERRORES = {
   cargo_nombre_ya_existe: "Ya existe un cargo con ese nombre en la empresa.",
   cargo_id_requerido: "Falta el identificador del cargo.",
   cargo_no_encontrado: "No se encontró el cargo solicitado.",
+  cargo_no_disponible: "El cargo no está activo o ya no está disponible.",
+  cargo_operation_id_requerido: "No se pudo identificar la operación. Recarga e inténtalo de nuevo.",
+  cargo_pantallas_no_autorizadas: "Solo el Propietario puede cambiar las pantallas de un cargo.",
   cargo_empresa_no_autorizada: "Necesitas acceso de propietario a todos los locales de la empresa.",
   cargo_tiene_asignaciones: "No se puede desactivar: primero reasigna todas las personas de ese cargo.",
   cargo_nombre_reservado: "Ese nombre está reservado para un rol protegido del sistema.",
@@ -1858,13 +1861,29 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
   const abrirEditorPantallas = (cargo) => {
     const actuales = Array.isArray(cargo?.pantallas_consulta) ? cargo.pantallas_consulta : Array.isArray(cargo?.pantallasConsulta) ? cargo.pantallasConsulta : [];
     setEditorCargoId(cargo?.id || "");
-    setSeleccionPantallas(Object.fromEntries(PM13_PANTALLAS_EDITOR.map((pantalla) => [pantalla.id, actuales.includes(pantalla.id)])));
+    setSeleccionPantallas(Object.fromEntries(PM13_PANTALLAS_EDITOR.map((pantalla) => [pantalla.id, actuales.includes(pantalla.capacidadConsulta)])));
     setError("");
     setConfirmacion("");
   };
   const cerrarEditorPantallas = () => {
     setEditorCargoId("");
     setSeleccionPantallas({});
+  };
+  const guardarPantallas = async (cargo) => {
+    setError("");
+    setConfirmacion("");
+    setGuardando(true);
+    try {
+      const capacidades = PM13_PANTALLAS_EDITOR.filter((pantalla) => pantalla.moduloActivo && seleccionPantallas[pantalla.id] === true).map((pantalla) => pantalla.capacidadConsulta);
+      await configRpc("abc_guardar_cargo_pantallas", { p_operation_id: configOperacion("cargo-pantallas"), p_empresa_id: empresa?.id || "", p_local_id: localId, p_cargo_id: cargo.id, p_capacidades: capacidades });
+      setConfirmacion("Pantallas guardadas para este cargo.");
+      cerrarEditorPantallas();
+      await cargarCargos();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
   };
   const marcarPantallasActivas = (valor) => {
     setSeleccionPantallas(Object.fromEntries(PM13_PANTALLAS_EDITOR.map((pantalla) => [pantalla.id, pantalla.moduloActivo ? valor : false])));
@@ -1946,6 +1965,7 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
           h("div", { className: "flex gap-2 flex-wrap mb-3" },
             h(Btn, { small: true, variant: "ghost", onClick: () => marcarPantallasActivas(true), disabled: ocupado }, "Marcar todas activas"),
             h(Btn, { small: true, variant: "ghost", onClick: () => marcarPantallasActivas(false), disabled: ocupado }, "Desmarcar todas"),
+            h(Btn, { small: true, onClick: () => guardarPantallas(cargo), disabled: ocupado || !cargo.activo }, guardando ? "Guardando…" : "Guardar selección"),
             h(Btn, { small: true, variant: "ghost", onClick: cerrarEditorPantallas, disabled: ocupado }, "Cerrar editor")
           ),
           Object.entries(gruposPantallas).map(([grupo, pantallas]) => h(
