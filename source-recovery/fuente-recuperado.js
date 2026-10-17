@@ -1088,7 +1088,9 @@ var CONFIG_ERRORES = {
   cargo_id_requerido: "Falta el identificador del cargo.",
   cargo_no_encontrado: "No se encontró el cargo solicitado.",
   cargo_empresa_no_autorizada: "Necesitas acceso de propietario a todos los locales de la empresa.",
-  cargo_tiene_asignaciones: "No se puede desactivar: primero reasigna todas las personas de ese cargo."
+  cargo_tiene_asignaciones: "No se puede desactivar: primero reasigna todas las personas de ese cargo.",
+  cargo_nombre_reservado: "Ese nombre está reservado para un rol protegido del sistema.",
+  cargo_propietario_no_asignable: "Una cuenta propietaria no puede recibir un cargo personalizado."
 };
 function configUuid() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
