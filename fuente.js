@@ -101168,6 +101168,19 @@ var PM13_PANTALLAS_EDITOR = Object.freeze([
   ["Calidad", "appcc", "Control sanitario", "ABC_PANTALLA_APPCC_CONSULTAR"], ["Calidad", "aceite", "Aceite de freidoras", "ABC_PANTALLA_ACEITE_CONSULTAR"],
   ["Sistema", "auditoria", "Auditoría", "ABC_PANTALLA_AUDITORIA_CONSULTAR"], ["Sistema", "respaldos", "Respaldos", "ABC_PANTALLA_RESPALDOS_CONSULTAR"], ["Sistema", "notificaciones", "Notificaciones", "ABC_PANTALLA_NOTIFICACIONES_CONSULTAR"], ["Sistema", "locales", "Locales", "ABC_PANTALLA_LOCALES_CONSULTAR"], ["Sistema", "configuracion", "Configuración", "ABC_PANTALLA_CONFIGURACION_CONSULTAR"], ["Sistema", "errores_sistema", "Errores del sistema", "ABC_PANTALLA_ERRORES_SISTEMA_CONSULTAR"]
 ].map(([grupo, id, label, capacidadConsulta]) => Object.freeze({ grupo, id, label, capacidadConsulta, descripcion: `Consulta de ${label}`, moduloActivo: true })));
+var PM13_CARGO_PERMISOS_LABELS = Object.freeze({
+  PM13_AUSENCIA_ANULAR: "Anular ausencias",
+  PM13_AUSENCIA_CONSULTAR: "Consultar ausencias",
+  PM13_AUSENCIA_REGISTRAR: "Registrar ausencias",
+  PM13_FICHAJE_ANULAR: "Anular fichajes",
+  PM13_FICHAJE_CONSULTAR: "Consultar fichajes",
+  PM13_FICHAJE_CORREGIR: "Corregir fichajes",
+  PM13_FICHAJE_MANUAL: "Registrar fichajes manuales",
+  PM13_PERSONAL_ANULAR: "Anular empleados",
+  PM13_PERSONAL_CONSULTAR: "Consultar personal",
+  PM13_PERSONAL_CREAR: "Crear empleados",
+  PM13_PERSONAL_EDITAR: "Editar empleados"
+});
 var TAB_PRIORITIES_MOVIL = {
   "Propietario": ["dashboard", "resultados", "caja"],
   "Encargado": ["dashboard", "venta", "cocina", "fichaje"],
@@ -102728,6 +102741,8 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
   const [empleadoPorCargo, setEmpleadoPorCargo] = (0, import_react4.useState)({});
   const [editorCargoId, setEditorCargoId] = (0, import_react4.useState)("");
   const [seleccionPantallas, setSeleccionPantallas] = (0, import_react4.useState)({});
+  const [editorPermisos, setEditorPermisos] = (0, import_react4.useState)(null);
+  const [motivoPermiso, setMotivoPermiso] = (0, import_react4.useState)("");
   const [error, setError] = (0, import_react4.useState)("");
   const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
   const cargarCargos = async () => {
@@ -102747,6 +102762,8 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
     setFormulario(null);
     setEditorCargoId("");
     setSeleccionPantallas({});
+    setEditorPermisos(null);
+    setMotivoPermiso("");
     setConfirmacion("");
     cargarCargos();
   }, [empresa?.id, localId, esPropietario]);
@@ -102862,6 +102879,70 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
   const marcarPantallasActivas = (valor) => {
     setSeleccionPantallas(Object.fromEntries(PM13_PANTALLAS_EDITOR.map((pantalla) => [pantalla.id, pantalla.moduloActivo ? valor : false])));
   };
+  const clavePermisoEditor = (permiso) => `${permiso.clave}::${permiso.accion}`;
+  const abrirEditorPermisos = async (cargo) => {
+    if (editorPermisos?.cargoId === cargo.id) {
+      setEditorPermisos(null);
+      setMotivoPermiso("");
+      return;
+    }
+    setError("");
+    setConfirmacion("");
+    setGuardando(true);
+    try {
+      const resultado = await configRpc("pm13_listar_cargo_permisos", { p_empresa_id: empresa?.id || "", p_local_id: localId, p_cargo_id: cargo.id });
+      const permisos = Array.isArray(resultado?.permisos) ? resultado.permisos.map((permiso) => ({
+        ...permiso,
+        valor: permiso.activo ? permiso.permitido ? "permitido" : "denegado" : "sin_configurar"
+      })) : [];
+      setEditorPermisos({ cargoId: cargo.id, permisos, originales: Object.fromEntries(permisos.map((permiso) => [clavePermisoEditor(permiso), permiso.valor])) });
+      setMotivoPermiso("");
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const cambiarPermisoEditor = (permiso, valor) => {
+    setEditorPermisos((actual) => actual ? { ...actual, permisos: actual.permisos.map((item) => clavePermisoEditor(item) === clavePermisoEditor(permiso) ? { ...item, valor } : item) } : actual);
+  };
+  const guardarPermisos = async (cargo) => {
+    if (!editorPermisos || editorPermisos.cargoId !== cargo.id) return;
+    const cambios = editorPermisos.permisos.filter((permiso) => permiso.valor !== editorPermisos.originales[clavePermisoEditor(permiso)] && permiso.valor !== "sin_configurar");
+    if (!cambios.length) {
+      setError("Selecciona al menos un permiso permitido o denegado.");
+      return;
+    }
+    if (!motivoPermiso.trim()) {
+      setError("Indica el motivo del cambio para dejarlo en la auditoría.");
+      return;
+    }
+    setError("");
+    setConfirmacion("");
+    setGuardando(true);
+    try {
+      for (const permiso of cambios) {
+        await configRpc("pm13_configurar_cargo_permiso", {
+          p_operation_id: configOperacion("cargo-permiso"),
+          p_empresa_id: empresa?.id || "",
+          p_local_id: localId,
+          p_cargo_id: cargo.id,
+          p_clave: permiso.clave,
+          p_accion: permiso.accion,
+          p_alcance: permiso.alcance_maximo === "EMPRESA" ? "EMPRESA" : "LOCAL",
+          p_permitido: permiso.valor === "permitido",
+          p_motivo: motivoPermiso.trim()
+        });
+      }
+      setEditorPermisos(null);
+      setMotivoPermiso("");
+      setConfirmacion("Permisos del cargo guardados y auditados.");
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
   const gruposPantallas = PM13_PANTALLAS_EDITOR.reduce((grupos, pantalla) => {
     (grupos[pantalla.grupo] ||= []).push(pantalla);
     return grupos;
@@ -102930,6 +103011,30 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
           h(Field, { label: "Asignar a este local" }, h("select", { value: empleadoPorCargo[cargo.id] || "", disabled: ocupado || !cargo.activo || empleadosDelLocal.length === 0, onChange: (e2) => setEmpleadoPorCargo((actual) => ({ ...actual, [cargo.id]: e2.target.value })), className: "rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 40 } }, h("option", { value: "" }, empleadosDelLocal.length ? "Selecciona una persona" : "No hay empleados activos"), empleadosDelLocal.map((empleado) => h("option", { key: empleado.id, value: empleado.id }, empleado.nombre || empleado.nombreCompleto || "Sin nombre")))),
           h(Btn, { small: true, onClick: () => asignarCargo(cargo), disabled: ocupado || !empleadoPorCargo[cargo.id] || !cargo.activo }, "Asignar")
         ),
+        editorPermisos?.cargoId === cargo.id ? h(
+          "div",
+          { className: "rounded-lg p-3 mt-3", style: { border: `1px solid ${C2.line}`, background: C2.bg } },
+          h("div", { className: "font-medium mb-1" }, "Permisos protegidos del cargo"),
+          h("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Solo se guardan las reglas que cambies. Las reglas requieren un motivo y quedan registradas en la auditoría."),
+          h(ConfigMotivo, { valor: motivoPermiso, onCambio: setMotivoPermiso, deshabilitado: ocupado }),
+          h("div", { className: "space-y-2 mb-3" }, editorPermisos.permisos.map((permiso) => h(
+            "div",
+            { key: clavePermisoEditor(permiso), className: "flex flex-wrap items-center justify-between gap-2 rounded-lg p-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+            h("div", { className: "min-w-0" },
+              h("div", { className: "text-[12px] font-medium" }, PM13_CARGO_PERMISOS_LABELS[permiso.clave] || permiso.clave),
+              h("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, `${permiso.clave} · ${permiso.accion} · alcance máximo ${permiso.alcance_maximo}`)
+            ),
+            h("select", { value: permiso.valor, disabled: ocupado, onChange: (e2) => cambiarPermisoEditor(permiso, e2.target.value), className: "rounded-lg px-2 py-1 text-[12px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } },
+              h("option", { value: "sin_configurar", disabled: permiso.activo }, "Sin configurar"),
+              h("option", { value: "permitido" }, "Permitido"),
+              h("option", { value: "denegado" }, "Denegado")
+            )
+          ))),
+          h("div", { className: "flex gap-2 flex-wrap" },
+            h(Btn, { small: true, onClick: () => guardarPermisos(cargo), disabled: ocupado }, guardando ? "Guardando…" : "Guardar permisos"),
+            h(Btn, { small: true, variant: "ghost", onClick: () => { setEditorPermisos(null); setMotivoPermiso(""); }, disabled: ocupado }, "Cerrar permisos")
+          )
+        ) : null,
         editorCargoId === cargo.id ? h(
           "div",
           { className: "rounded-lg p-3 mt-3", style: { border: `1px solid ${C2.line}`, background: C2.bg } },
@@ -102965,6 +103070,7 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
         h("div", { className: "flex gap-2 flex-wrap mt-2" },
           h(Btn, { small: true, variant: "ghost", onClick: () => setFormulario({ id: cargo.id, nombre: cargo.nombre, descripcion: cargo.descripcion || "" }), disabled: ocupado }, "Editar"),
           h(Btn, { small: true, variant: "ghost", onClick: () => editorCargoId === cargo.id ? cerrarEditorPantallas() : abrirEditorPantallas(cargo), disabled: ocupado }, editorCargoId === cargo.id ? "Cerrar pantallas" : "Editar pantallas"),
+          h(Btn, { small: true, variant: "ghost", onClick: () => abrirEditorPermisos(cargo), disabled: ocupado }, editorPermisos?.cargoId === cargo.id ? "Cerrar permisos" : "Editar permisos"),
           h(Btn, { small: true, variant: "ghost", onClick: () => duplicarCargo(cargo), disabled: ocupado }, "Duplicar"),
           h(Btn, { small: true, variant: "ghost", onClick: () => cambiarEstadoCargo(cargo), disabled: ocupado || (cargo.activo && Number(cargo.asignados_count || 0) > 0) }, cargo.activo ? "Desactivar" : "Reactivar")
         )
