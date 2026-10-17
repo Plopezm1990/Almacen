@@ -103069,7 +103069,8 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
             { key: clavePermisoEditor(permiso), className: "flex flex-wrap items-center justify-between gap-2 rounded-lg p-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
             h("div", { className: "min-w-0" },
               h("div", { className: "text-[12px] font-medium" }, PM13_CARGO_PERMISOS_LABELS[permiso.clave] || permiso.clave),
-              h("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, `${permiso.clave} · ${permiso.accion} · alcance máximo ${permiso.alcance_maximo}`)
+              h("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, `${permiso.clave} · ${permiso.accion} · alcance máximo ${permiso.alcance_maximo}`),
+              h("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, `Origen: ${permiso.activo ? "cargo personalizado" : "denegado por defecto"} · alcance efectivo: ${permiso.alcance || "sin configurar"} · motivo: ${permiso.motivo || "denegado por defecto"}`)
             ),
             h("select", { value: permiso.valor, disabled: ocupado, onChange: (e2) => cambiarPermisoEditor(permiso, e2.target.value), className: "rounded-lg px-2 py-1 text-[12px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } },
               h("option", { value: "sin_configurar", disabled: permiso.activo }, "Sin configurar"),

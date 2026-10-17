@@ -11,6 +11,7 @@ for (const file of ["fuente.js", "source-recovery/fuente-recuperado.js"]) {
   assert.match(source, /value: "permitido"/, `${file}: falta la opción permitida`);
   assert.match(source, /value: "denegado"/, `${file}: falta la opción denegada`);
   assert.match(source, /Solo se guardan las reglas que cambies/, `${file}: el editor debe evitar escrituras masivas`);
+  assert.match(source, /Origen: .*cargo personalizado.*alcance efectivo.*motivo:/, `${file}: falta explicar origen, alcance efectivo y motivo`);
 }
 
 console.log("PM13 P20 Editor de permisos de cargos: contrato de UI y RPC OK");
