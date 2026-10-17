@@ -25318,13 +25318,12 @@ if (typeof window !== "undefined") {
 var ErrorBoundaryGlobal = class extends import_react4.default.Component {
   constructor(props) {
     super(props);
-    this.state = { error: null, componentStack: "" };
+    this.state = { error: null };
   }
   static getDerivedStateFromError(error) {
     return { error };
   }
   componentDidCatch(error, info) {
-    this.setState({ componentStack: info && info.componentStack || "" });
     registrarErrorSistema(error && error.message, "renderizado", error && error.stack || info && info.componentStack);
   }
   render() {
@@ -25337,7 +25336,6 @@ var ErrorBoundaryGlobal = class extends import_react4.default.Component {
           { style: { background: "#fff", padding: 28, borderRadius: 14, maxWidth: 380, border: "1px solid #E2DBC7", textAlign: "center" } },
           /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontSize: 16, fontWeight: 700, marginBottom: 8, color: "#17241C" } }, "Algo ha fallado"),
           /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontSize: 13, color: "#6B7A6E", marginBottom: 18 } }, "Se ha registrado el error autom\xE1ticamente. Recarga la p\xE1gina para continuar."),
-          typeof window !== "undefined" && /^deploy-preview-\\d+--/i.test(window.location.hostname) && /* @__PURE__ */ import_react4.default.createElement("div", { "data-qa-error-message": "true", style: { marginBottom: 18, padding: 8, borderRadius: 8, background: "#fff3f0", color: "#8d2e1f", fontSize: 11, textAlign: "left", wordBreak: "break-word" } }, `${String(this.state.error && (this.state.error.stack || this.state.error.message || this.state.error.name) || "error de renderizado").slice(0, 240)}${String(this.state.componentStack || "").slice(0, 360)}`),
           /* @__PURE__ */ import_react4.default.createElement(
             "button",
             {
