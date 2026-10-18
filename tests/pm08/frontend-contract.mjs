@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 
 const source = fs.readFileSync('source-recovery/fuente-recuperado.js', 'utf8');
+const bundle = fs.readFileSync('fuente.js', 'utf8');
 const index = fs.readFileSync('index.html', 'utf8');
 const storageBootstrap = fs.readFileSync('index-storage-bootstrap.js', 'utf8');
 
@@ -119,6 +120,13 @@ const checks = {
   storage_get_no_lee_bloque_global: storageBootstrap.includes('if (esLedgerRpc && !esPagosFactura)'),
   storage_set_no_upsert_bloque_global: storageBootstrap.includes('if (esLedgerRpc) {') && storageBootstrap.includes('Los ledgers remotos solo se escriben mediante RPC transaccional'),
   storage_pendientes_no_resube_ledger: storageBootstrap.includes('if (LEDGERS_RPC[key])'),
+
+  // PM08 regresión: una normalización inicial de productos no puede salir
+  // antes de publicar empresa/local, y el guardado reactivo debe reintentarse
+  // cuando ese contexto se hidrata después de la lista.
+  productos_bootstrap_publica_contexto: source.includes('window.__localActivoIdParaContexto = localInicial;') && source.includes('window.__empresaActivaIdParaContexto = localInicialObj?.empresaId || empresaLegacyUnicaId || null;') && source.includes('await saveKey("productos", productosFinales);'),
+  productos_reactivo_depende_contexto: source.includes('window.__empresaActivaIdParaContexto = empresaDelLocalActivo?.id ? String(empresaDelLocalActivo.id) : null;') && source.includes('}, [productos, ready, localActivoId, empresaDelLocalActivo?.id]);'),
+  productos_bundle_mantiene_guard: bundle.includes('window.__localActivoIdParaContexto = localInicial;') && bundle.includes('}, [productos, ready, localActivoId, empresaDelLocalActivo?.id]);'),
 };
 
 for (const [name, passed] of Object.entries(checks)) {

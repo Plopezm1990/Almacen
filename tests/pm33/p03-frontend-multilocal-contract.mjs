@@ -101,6 +101,9 @@ function crearWindow() {
       },
       rpc: async (nombre, args) => {
         rpcCalls.push({ nombre, args: args || null });
+        if (nombre === 'pm13_resolver_cargo_permiso') {
+          return { data: { ok: true, permitido: true }, error: null };
+        }
         return rpcImpl(nombre, args);
       },
     }),
@@ -129,6 +132,8 @@ function nuevoSandbox() {
 }
 
 async function main() {
+  const llamadasContexto = () => rpcCalls.filter(({ nombre }) => nombre === 'obtener_contexto_operativo');
+
   // 1) Con local activo fijado, la RPC se llama CON p_local_id.
   {
     rpcCalls = [];
@@ -226,7 +231,7 @@ async function main() {
     assert.equal(resultadoA, null, 'el éxito TARDÍO de A se descarta -- B ya invalidó su generación, no reescribe la caché que B limpió');
 
     const llamadasAntes = rpcCalls.length;
-    rpcImpl = async () => ({ data: { rol: 'Camarero/a', localId: 'loc-A', empleado: { id: 'ea-1' }, empleadosFichaje: [{ id: 'ea-1' }], proveedores: [], fichasProduccion: [], cobrosEncargos: [] }, error: null });
+    rpcImpl = async () => ({ data: { rol: 'Camarero/a', empresaId: 'emp-A', localId: 'loc-A', empleado: { id: 'ea-1' }, empleadosFichaje: [{ id: 'ea-1' }], proveedores: [], fichasProduccion: [], cobrosEncargos: [] }, error: null });
     const trasElRechazo = await sb.window.storage.get('empleados');
     assert.ok(rpcCalls.length > llamadasAntes, 'la siguiente lectura dispara una RPC nueva, no reutiliza la respuesta obsoleta de A sin llamar al servidor');
     assert.ok(JSON.parse(trasElRechazo.value).length === 1, 'y esa RPC nueva sí devuelve el dato correcto');
@@ -264,9 +269,9 @@ async function main() {
 
     // La caché sigue siendo la de B, sin contaminar: una lectura normal
     // (con TTL, sin forzar) debe devolver B sin disparar una RPC nueva.
-    const llamadasAntesControl = rpcCalls.length;
+    const llamadasAntesControl = llamadasContexto().length;
     await sb.window.storage.get('empleados');
-    assert.equal(rpcCalls.length, llamadasAntesControl, 'no hizo falta una RPC nueva: la caché de B seguía intacta, sin rastro de A');
+    assert.equal(llamadasContexto().length, llamadasAntesControl, 'no hizo falta una RPC de contexto nueva: la caché de B seguía intacta, sin rastro de A');
   }
 
   // 7) (P05) Concurrencia normal, mismo usuario/local, SIN caché previa,
@@ -276,7 +281,7 @@ async function main() {
     rpcCalls = [];
     const sb = nuevoSandbox();
     sb.window.__localActivoIdParaContexto = 'loc-A';
-    rpcImpl = async () => ({ data: { rol: 'Camarero/a', localId: 'loc-A', empleado: { id: 'ea-1' }, empleadosFichaje: [{ id: 'ea-1' }], proveedores: [], fichasProduccion: [], cobrosEncargos: [] }, error: null });
+    rpcImpl = async () => ({ data: { rol: 'Camarero/a', empresaId: 'emp-A', localId: 'loc-A', empleado: { id: 'ea-1' }, empleadosFichaje: [{ id: 'ea-1' }], proveedores: [], fichasProduccion: [], cobrosEncargos: [] }, error: null });
 
     // Dos lecturas concurrentes normales (sin forzar), disparadas sin
     // esperar una a la otra -- el patrón real de dos componentes leyendo
@@ -315,7 +320,7 @@ async function main() {
 
     const promesaA = sb.window.storage.get('empleados'); // A: lectura normal, queda pendiente
     await new Promise((r) => setTimeout(r, 0)); // deja que A llegue de verdad a la RPC (y quede bloqueada en pendienteA) antes de cambiar de sesión
-    assert.equal(rpcCalls.length, 1, 'A ya disparó su llamada RPC antes del cambio de sesión');
+    assert.equal(llamadasContexto().length, 1, 'A ya disparó su llamada RPC antes del cambio de sesión');
 
     cambiarSesion('user-2'); // cambia la sesión a B, MISMO local activo
     const promesaB = sb.window.storage.get('empleados'); // B: lectura normal mientras A sigue pendiente
@@ -323,7 +328,7 @@ async function main() {
     resolverA({ data: { rol: 'Cajero/a', localId: 'loc-A', empresaId: 'emp-A', empleado: null, empleadosFichaje: [{ id: 'emp-A-1' }], proveedores: [], fichasProduccion: [], cobrosEncargos: [] }, error: null });
     const [resultadoA, resultadoB] = await Promise.all([promesaA, promesaB]);
 
-    assert.equal(rpcCalls.length, 2, 'B disparó su PROPIA llamada RPC -- nunca reutilizó la petición en curso de A');
+    assert.equal(llamadasContexto().length, 2, 'B disparó su PROPIA llamada RPC -- nunca reutilizó la petición en curso de A');
     const idsB = resultadoB.value ? JSON.parse(resultadoB.value).map((e) => e.id) : [];
     assert.deepEqual(idsB, ['emp-B-1'], 'B recibe su propio resultado, nunca el de A');
     const idsA = resultadoA.value ? JSON.parse(resultadoA.value).map((e) => e.id) : [];
@@ -354,7 +359,7 @@ async function main() {
 
     const promesaAntesDeCerrar = sb.window.storage.get('empleados'); // pendiente
     await new Promise((r) => setTimeout(r, 0));
-    assert.equal(rpcCalls.length, 1, 'la lectura ya disparó su RPC antes de cerrar sesión');
+    assert.equal(llamadasContexto().length, 1, 'la lectura ya disparó su RPC antes de cerrar sesión');
 
     cambiarSesion(null); // logout
     resolverPendiente({ data: { rol: 'Cajero/a', localId: 'loc-A', empresaId: 'emp-A', empleado: null, empleadosFichaje: [{ id: 'no-debe-verse' }], proveedores: [], fichasProduccion: [], cobrosEncargos: [] }, error: null });
@@ -385,7 +390,7 @@ async function main() {
       sb.window.storage.get('empleados'),
       sb.window.storage.get('empleados')
     ]);
-    assert.equal(rpcCalls.length, 1, 'las lecturas concurrentes del arranque comparten la RPC tras identificar la sesión');
+    assert.equal(llamadasContexto().length, 1, 'las lecturas concurrentes del arranque comparten la RPC tras identificar la sesión');
     for (const lectura of lecturas) {
       assert.deepEqual(JSON.parse(lectura.value).map((e) => e.id), ['ea-1'], 'ninguna lectura de arranque cae vacía por la carrera de sesión');
     }

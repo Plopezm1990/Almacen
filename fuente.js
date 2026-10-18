@@ -43551,7 +43551,7 @@ var init_index_es = __esm({
 })();
 (function() {
   "use strict";
-  if (window.__contextoRolSeguroInstalado || !window.storage) return;
+  if (!window.storage) return;
   window.__contextoRolSeguroInstalado = true;
   var getOriginal = window.storage.get.bind(window.storage);
   var setOriginal = window.storage.set.bind(window.storage);
@@ -43565,6 +43565,8 @@ var init_index_es = __esm({
   var contextoUsuarioEnVuelo = null;
   var contextoGeneracionEnVuelo = null;
   var contextoPromesaEnVuelo = null;
+  var permisosConsultaCache = Object.create(null);
+  var permisosConsultaEnVuelo = Object.create(null);
   // Se conoce de forma SÍNCRONA (sin await) el usuario de la sesión
   // vigente -- imprescindible porque el reclamo de "petición compartida
   // en curso" en obtenerContexto() ocurre antes de cualquier await, y sin
@@ -43581,6 +43583,7 @@ var init_index_es = __esm({
   // clave de vuelo aún sería `void 0`) y saturar PostgREST.
   var sesionInicialLista = null;
   var CONTEXTO_TTL_MS = 3e4;
+  var PERMISOS_CONSULTA_TTL_MS = 5e3;
   var CACHE_LOCAL = "chocoloyos_contexto_operativo_seguro_v1";
   var CLAVES_COMUNES = [
     "productos",
@@ -43773,6 +43776,8 @@ var init_index_es = __esm({
     contextoUsuarioId = null;
     contextoFecha = 0;
     contextoLocalIdUsado = null;
+    permisosConsultaCache = Object.create(null);
+    permisosConsultaEnVuelo = Object.create(null);
     limpiarContextoLocalGuardado();
   }
   sesionInicialLista = (async function seguirCambiosDeSesion() {
@@ -43929,6 +43934,46 @@ var init_index_es = __esm({
     var lista = contexto && Array.isArray(contexto.empleadosFichaje) ? contexto.empleadosFichaje : [];
     return lista.length === 1 ? lista[0] : null;
   }
+  function clavePermisoConsultaPM13(contexto, clave) {
+    return [
+      contexto && contexto.empresaId || "",
+      contexto && contexto.localId || "",
+      contexto && contexto.empleado && contexto.empleado.id || "",
+      clave
+    ].join("|");
+  }
+  async function permisoConsultaPM13(contexto, clave) {
+    if (!contexto || contexto.rol === "Propietario") return true;
+    if (!window.__nubeActiva || !contexto.empresaId || !contexto.localId) return false;
+    var cacheKey = clavePermisoConsultaPM13(contexto, clave);
+    var ahora = Date.now();
+    var cacheado = permisosConsultaCache[cacheKey];
+    if (cacheado && ahora - cacheado.fecha < PERMISOS_CONSULTA_TTL_MS) return cacheado.permitido;
+    if (permisosConsultaEnVuelo[cacheKey]) return permisosConsultaEnVuelo[cacheKey];
+    var promesa = (async function() {
+      try {
+        var supabase = await clienteSupabase();
+        var respuesta = await supabase.rpc("pm13_resolver_cargo_permiso", {
+          p_empresa_id: contexto.empresaId,
+          p_local_id: contexto.localId,
+          p_clave: clave,
+          p_accion: "CONSULTAR",
+          p_alcance: "LOCAL",
+          p_empleado_id: contexto.empleado && contexto.empleado.id || null
+        });
+        var permitido = !!(respuesta && !respuesta.error && respuesta.data && respuesta.data.ok === true && respuesta.data.permitido === true);
+        permisosConsultaCache[cacheKey] = { permitido: permitido, fecha: Date.now() };
+        return permitido;
+      } catch (e2) {
+        permisosConsultaCache[cacheKey] = { permitido: false, fecha: Date.now() };
+        return false;
+      } finally {
+        delete permisosConsultaEnVuelo[cacheKey];
+      }
+    })();
+    permisosConsultaEnVuelo[cacheKey] = promesa;
+    return promesa;
+  }
   async function fichajesDelPropioEmpleado(key, contexto, shared) {
     var empleado = empleadoDelContexto(contexto);
     if (!empleado || !empleado.id) return respuestaStorage(key, []);
@@ -43940,6 +43985,23 @@ var init_index_es = __esm({
       return respuestaStorage(key, lista.filter(function(f3) {
         return f3 && f3.empleadoId === empleado.id;
       }));
+    } catch (e2) {
+      return respuestaStorage(key, []);
+    }
+  }
+  function filtrarListaAlLocal(lista, contexto) {
+    var localId = contexto && contexto.localId ? String(contexto.localId) : "";
+    if (!Array.isArray(lista) || !localId) return [];
+    return lista.filter(function(item) {
+      var itemLocalId = item && (item.localId || item.local_id);
+      return itemLocalId && String(itemLocalId) === localId;
+    });
+  }
+  async function coleccionDelLocal(key, contexto, shared) {
+    try {
+      var original = await getOriginal(key, shared);
+      if (!original || !original.value) return original || respuestaVacia(key);
+      return respuestaStorage(key, filtrarListaAlLocal(JSON.parse(original.value), contexto));
     } catch (e2) {
       return respuestaStorage(key, []);
     }
@@ -43957,7 +44019,11 @@ var init_index_es = __esm({
       return respuestaVacia(key);
     }
     if (rol === "Propietario") return getOriginal(key, shared);
+    if (key === "productos") {
+      return coleccionDelLocal(key, contexto, shared);
+    }
     if (key === "empleados") {
+      if (!(await permisoConsultaPM13(contexto, "PM13_PERSONAL_CONSULTAR"))) return respuestaStorage(key, []);
       return respuestaStorage(key, Array.isArray(contexto.empleadosFichaje) ? contexto.empleadosFichaje : []);
     }
     if (key === "proveedores" && (rol === "Cajero/a" || rol === "Churrero/a")) {
@@ -43970,8 +44036,10 @@ var init_index_es = __esm({
       return respuestaStorage(key, encargosSoloCaja(contexto.cobrosEncargos));
     }
     if (key === "fichajes" && rol !== "Encargado") {
+      if (!(await permisoConsultaPM13(contexto, "PM13_FICHAJE_CONSULTAR"))) return respuestaStorage(key, []);
       return fichajesDelPropioEmpleado(key, contexto, shared);
     }
+    if (key === "fichajes" && rol === "Encargado" && !(await permisoConsultaPM13(contexto, "PM13_FICHAJE_CONSULTAR"))) return respuestaStorage(key, []);
     if (!puedeLeer(rol, key)) return respuestaVacia(key);
     return getOriginal(key, shared);
   };
@@ -101137,6 +101205,30 @@ var NOMBRES_ROLES = Object.keys(ROLES_EMPLEADO);
 // Pieza 5 (F6): estos tres roles ya no se pueden asignar a nadie nuevo; siguen existiendo para quien ya los tiene.
 var ROLES_RETIRADOS = ["B\xE1sico", "Est\xE1ndar", "Churrero/a"];
 var NOMBRES_ROLES_ALTA = NOMBRES_ROLES.filter((r2) => !ROLES_RETIRADOS.includes(r2));
+var PM13_PANTALLAS_EDITOR = Object.freeze([
+  ["Inicio", "dashboard", "Panel general", "ABC_PANTALLA_DASHBOARD_CONSULTAR"], ["Inicio", "direccion", "Panel de dirección", "ABC_PANTALLA_DIRECCION_CONSULTAR"], ["Inicio", "buscar", "Buscar", "ABC_PANTALLA_BUSCAR_CONSULTAR"],
+  ["Compras", "proveedores", "Proveedores", "ABC_PANTALLA_PROVEEDORES_CONSULTAR"], ["Compras", "pedidos", "Pedidos", "ABC_PANTALLA_PEDIDOS_CONSULTAR"], ["Compras", "recepcion", "Recepción", "ABC_PANTALLA_RECEPCION_CONSULTAR"], ["Compras", "albaranes", "Albaranes", "ABC_PANTALLA_ALBARANES_CONSULTAR"], ["Compras", "facturas", "Facturas", "ABC_PANTALLA_FACTURAS_CONSULTAR"],
+  ["Almacén", "resumen_almacen", "Resumen de almacén", "ABC_PANTALLA_RESUMEN_ALMACEN_CONSULTAR"], ["Almacén", "productos", "Productos", "ABC_PANTALLA_PRODUCTOS_CONSULTAR"], ["Almacén", "historial_producto", "Historial de producto", "ABC_PANTALLA_HISTORIAL_PRODUCTO_CONSULTAR"], ["Almacén", "conteo", "Inventario ciego", "ABC_PANTALLA_CONTEO_CONSULTAR"], ["Almacén", "saldo", "Saldo de almacén", "ABC_PANTALLA_SALDO_CONSULTAR"], ["Almacén", "mapa", "Mapa de almacén", "ABC_PANTALLA_MAPA_CONSULTAR"], ["Almacén", "traspasos", "Traspasos", "ABC_PANTALLA_TRASPASOS_CONSULTAR"], ["Almacén", "diagnostico", "Reconciliación de stock", "ABC_PANTALLA_DIAGNOSTICO_CONSULTAR"], ["Almacén", "etiquetas", "Etiquetas y catálogo", "ABC_PANTALLA_ETIQUETAS_CONSULTAR"],
+  ["Ventas", "venta", "TPV", "ABC_PANTALLA_VENTA_CONSULTAR"], ["Ventas", "cocina", "Cocina A10", "ABC_PANTALLA_COCINA_CONSULTAR"], ["Ventas", "encargos", "Encargos", "ABC_PANTALLA_ENCARGOS_CONSULTAR"], ["Ventas", "clientes", "Clientes", "ABC_PANTALLA_CLIENTES_CONSULTAR"], ["Ventas", "devoluciones", "Devoluciones", "ABC_PANTALLA_DEVOLUCIONES_CONSULTAR"], ["Ventas", "descuentos", "Descuentos y cortesías", "ABC_PANTALLA_DESCUENTOS_CONSULTAR"],
+  ["Costes y producción", "fichas", "Fichas de costo", "ABC_PANTALLA_FICHAS_CONSULTAR"], ["Costes y producción", "produccion", "Producción", "ABC_PANTALLA_PRODUCCION_CONSULTAR"], ["Costes y producción", "mermas", "Mermas", "ABC_PANTALLA_MERMAS_CONSULTAR"],
+  ["Finanzas y análisis", "pagos", "Cuentas por pagar", "ABC_PANTALLA_PAGOS_CONSULTAR"], ["Finanzas y análisis", "resultados", "Resultados", "ABC_PANTALLA_RESULTADOS_CONSULTAR"], ["Finanzas y análisis", "reportes", "Reportes y rotación", "ABC_PANTALLA_REPORTES_CONSULTAR"], ["Finanzas y análisis", "libroiva", "Libro de IVA", "ABC_PANTALLA_LIBROIVA_CONSULTAR"], ["Finanzas y análisis", "caja", "Arqueo de caja", "ABC_PANTALLA_CAJA_CONSULTAR"], ["Finanzas y análisis", "tesoreria", "Tesorería", "ABC_PANTALLA_TESORERIA_CONSULTAR"], ["Finanzas y análisis", "estacionalidad", "Estacionalidad", "ABC_PANTALLA_ESTACIONALIDAD_CONSULTAR"],
+  ["Personal", "personal", "Personal", "ABC_PANTALLA_PERSONAL_CONSULTAR"], ["Personal", "fichaje", "Registro horario", "ABC_PANTALLA_FICHAJE_CONSULTAR"], ["Personal", "turnos", "Cuadrante de turnos", "ABC_PANTALLA_TURNOS_CONSULTAR"], ["Personal", "nominas", "Coste de personal", "ABC_PANTALLA_NOMINAS_CONSULTAR"],
+  ["Calidad", "appcc", "Control sanitario", "ABC_PANTALLA_APPCC_CONSULTAR"], ["Calidad", "aceite", "Aceite de freidoras", "ABC_PANTALLA_ACEITE_CONSULTAR"],
+  ["Sistema", "auditoria", "Auditoría", "ABC_PANTALLA_AUDITORIA_CONSULTAR"], ["Sistema", "respaldos", "Respaldos", "ABC_PANTALLA_RESPALDOS_CONSULTAR"], ["Sistema", "notificaciones", "Notificaciones", "ABC_PANTALLA_NOTIFICACIONES_CONSULTAR"], ["Sistema", "locales", "Locales", "ABC_PANTALLA_LOCALES_CONSULTAR"], ["Sistema", "configuracion", "Configuración", "ABC_PANTALLA_CONFIGURACION_CONSULTAR"], ["Sistema", "errores_sistema", "Errores del sistema", "ABC_PANTALLA_ERRORES_SISTEMA_CONSULTAR"]
+].map(([grupo, id, label, capacidadConsulta]) => Object.freeze({ grupo, id, label, capacidadConsulta, descripcion: `Consulta de ${label}`, moduloActivo: true })));
+var PM13_CARGO_PERMISOS_LABELS = Object.freeze({
+  PM13_AUSENCIA_ANULAR: "Anular ausencias",
+  PM13_AUSENCIA_CONSULTAR: "Consultar ausencias",
+  PM13_AUSENCIA_REGISTRAR: "Registrar ausencias",
+  PM13_FICHAJE_ANULAR: "Anular fichajes",
+  PM13_FICHAJE_CONSULTAR: "Consultar fichajes",
+  PM13_FICHAJE_CORREGIR: "Corregir fichajes",
+  PM13_FICHAJE_MANUAL: "Registrar fichajes manuales",
+  PM13_PERSONAL_ANULAR: "Anular empleados",
+  PM13_PERSONAL_CONSULTAR: "Consultar personal",
+  PM13_PERSONAL_CREAR: "Crear empleados",
+  PM13_PERSONAL_EDITAR: "Editar empleados"
+});
 var TAB_PRIORITIES_MOVIL = {
   "Propietario": ["dashboard", "resultados", "caja"],
   "Encargado": ["dashboard", "venta", "cocina", "fichaje"],
@@ -101465,6 +101557,39 @@ function intervaloFichajePM13(entrada, salida) {
   const minutos = fin - inicio.minutos;
   if (minutos <= 0 || minutos > MINUTOS_DIA_PM13) return null;
   return { inicio: inicio.minutos, fin, minutos, cruzaMedianoche };
+}
+function resumenFichajesPM13(fichajes = []) {
+  const porEmpleado = new Map();
+  (Array.isArray(fichajes) ? fichajes : []).forEach((f22) => {
+    if (!f22 || !f22.empleadoId || f22.anulado === true || String(f22.anulado || "").toLowerCase() === "true") return;
+    if (!parseFechaHoraFichajePM13(f22.fecha, f22.hora) || (f22.tipo !== "entrada" && f22.tipo !== "salida")) return;
+    const lista = porEmpleado.get(f22.empleadoId) || [];
+    lista.push(f22);
+    porEmpleado.set(f22.empleadoId, lista);
+  });
+  const pares = [];
+  const abiertos = [];
+  porEmpleado.forEach((lista, empleadoId) => {
+    lista.sort((a22, b2) => {
+      const aInfo = parseFechaHoraFichajePM13(a22.fecha, a22.hora);
+      const bInfo = parseFechaHoraFichajePM13(b2.fecha, b2.hora);
+      return aInfo.minutos - bInfo.minutos || String(a22.id || "").localeCompare(String(b2.id || ""));
+    });
+    let entrada = null;
+    lista.forEach((f22) => {
+      if (f22.tipo === "entrada") {
+        if (!entrada) entrada = f22;
+        return;
+      }
+      if (!entrada) return;
+      const intervalo = intervaloFichajePM13(entrada, f22);
+      if (!intervalo) return;
+      pares.push({ empleadoId, entrada, salida: f22, fecha: entrada.fecha, fechaFin: f22.fecha, minutos: intervalo.minutos });
+      entrada = null;
+    });
+    if (entrada) abiertos.push({ empleadoId, entrada, fecha: entrada.fecha });
+  });
+  return { pares, abiertos };
 }
 function horasDeEmpleadoEnMes(fichajes, empleadoId, mes) {
   // PM13 2.6: el periodo pertenece al mes de la entrada. Fecha y hora son
@@ -101873,22 +101998,19 @@ async function sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluci
   return { ok: true, movimientosCaja: caja.length, arqueos: arqueos.length, devoluciones: clientes.length + proveedores.length };
 }
 async function sincronizarContextoPm07(args) {
-  const { setEmpresas, setLocales, setLocalActivoId, setProductos, esContextoVigente = () => true } = args || {};
+  const { setProductos, esContextoVigente = () => true } = args || {};
   if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return { ok: false, offline: true };
   const supabase = await window.getSupabaseClient();
-  const r2 = await supabase.from("almacen_kv").select("key,value").in("key", ["empresas", "locales", "localActivoId", "productos"]);
+  // Empresas, locales y localActivoId ya vienen del contexto seguro sembrado
+  // por ui-context-bridge. El bloque global de almacen_kv es legado y no debe
+  // ampliar el contexto filtrado de una cuenta de empleado.
+  const r2 = await supabase.from("almacen_kv").select("key,value").in("key", ["productos"]);
   if (r2.error) throw r2.error;
   const porClave = new Map((r2.data || []).map((fila) => [fila.key, fila.value]));
-  const empresasNube = porClave.get("empresas");
-  const localesNube = porClave.get("locales");
-  const localActivoNube = porClave.get("localActivoId");
   const productosNube = porClave.get("productos");
   if (!esContextoVigente()) return { ok: false, obsoleto: true };
-  if (Array.isArray(empresasNube) && empresasNube.length && typeof setEmpresas === "function" && esContextoVigente()) setEmpresas(empresasNube.filter((e2) => e2 && e2.id));
-  if (Array.isArray(localesNube) && localesNube.length && typeof setLocales === "function" && esContextoVigente()) setLocales(localesNube.filter((l3) => l3 && l3.id));
-  if (typeof localActivoNube === "string" && localActivoNube && typeof setLocalActivoId === "function" && esContextoVigente()) setLocalActivoId(localActivoNube);
   if (Array.isArray(productosNube) && productosNube.length && typeof setProductos === "function" && esContextoVigente()) setProductos(productosNube.filter((p3) => p3 && p3.id));
-  return { ok: true, empresas: Array.isArray(empresasNube) ? empresasNube.length : 0, locales: Array.isArray(localesNube) ? localesNube.length : 0, productos: Array.isArray(productosNube) ? productosNube.length : 0 };
+  return { ok: true, productos: Array.isArray(productosNube) ? productosNube.length : 0 };
 }
 function SelectorLocalInformes({ locales = [], valor = "", onChange, empresas = [], empresaActivaId = "", onCambiarEmpresa }) {
   const activos = locales.filter((l22) => l22 && l22.activo !== false && !l22.fusionadoEn);
@@ -102002,7 +102124,20 @@ var CONFIG_ERRORES = {
   capacidad_invalida: "Permiso no válido.",
   capacidad_fuera_de_techo: "Por seguridad, ese permiso no se puede dar a ese rol.",
   capacidad_motivo_requerido: "Escribe el motivo del cambio.",
-  capacidad_local_no_disponible: "El local no está disponible."
+  capacidad_local_no_disponible: "El local no está disponible.",
+  cargo_no_autorizado: "Solo el Propietario puede administrar cargos de su empresa.",
+  cargo_local_no_disponible: "El local no está disponible.",
+  cargo_nombre_requerido: "Escribe un nombre para el cargo.",
+  cargo_nombre_demasiado_largo: "El nombre del cargo puede tener hasta 80 caracteres.",
+  cargo_descripcion_demasiado_larga: "La descripción puede tener hasta 500 caracteres.",
+  cargo_nombre_ya_existe: "Ya existe un cargo con ese nombre en la empresa.",
+  cargo_id_requerido: "Falta el identificador del cargo.",
+  cargo_no_encontrado: "No se encontró el cargo solicitado.",
+  cargo_no_disponible: "El cargo no está activo o ya no está disponible.",
+  cargo_operation_id_requerido: "No se pudo identificar la operación. Recarga e inténtalo de nuevo.",
+  cargo_empresa_no_autorizada: "Necesitas acceso de propietario a todos los locales de la empresa.",
+  cargo_nombre_reservado: "Ese nombre está reservado para un rol protegido del sistema.",
+  cargo_propietario_no_asignable: "Una cuenta propietaria no puede recibir un cargo personalizado."
 };
 function configUuid() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
@@ -102195,6 +102330,7 @@ function ConfigModalidades({ empresaId, localId }) {
   const [guardando, setGuardando] = (0, import_react4.useState)(false);
   const [error, setError] = (0, import_react4.useState)("");
   const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
+  const [empleadoPorCargo, setEmpleadoPorCargo] = (0, import_react4.useState)({});
   const [motivo, setMotivo] = (0, import_react4.useState)("");
   const [elegidas, setElegidas] = (0, import_react4.useState)({});
   const cargar = async (conservarError = false) => {
@@ -102625,11 +102761,376 @@ function ConfigPermisos({ empresaId, localId, localNombre = "" }) {
     cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando…") : null
   );
 }
-function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", esPropietario = false }) {
+function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombre = "", esPropietario = false }) {
+  const h = import_react4.default.createElement;
+  const roles = ["Propietario", ...NOMBRES_ROLES];
+  const descripciones = {
+    Propietario: "Acceso total protegido de la empresa; no es un cargo editable.",
+    Encargado: "Operación amplia del local y coordinación del equipo.",
+    "Cajero/a": "Cobros y operaciones de caja según los permisos configurados.",
+    "Camarero/a": "Venta y operación de sala según los permisos configurados.",
+    "Churrero/a": "Rol histórico conservado solo para cuentas existentes.",
+    Básico: "Rol histórico conservado solo para cuentas existentes.",
+    Estándar: "Rol histórico conservado solo para cuentas existentes."
+  };
+  const perteneceAlLocal = (empleado) => {
+    if (!localId || !empleado) return false;
+    if (empleado.localId === localId || empleado.local_id === localId) return true;
+    if (Array.isArray(empleado.localIds) && empleado.localIds.includes(localId)) return true;
+    return false;
+  };
+  const empleadosDelLocal = empleados.filter((empleado) => empleado && empleado.activo !== false && perteneceAlLocal(empleado));
+  const [cargos, setCargos] = (0, import_react4.useState)([]);
+  const [formulario, setFormulario] = (0, import_react4.useState)(null);
+  const [cargando, setCargando] = (0, import_react4.useState)(false);
+  const [guardando, setGuardando] = (0, import_react4.useState)(false);
+  const [empleadoPorCargo, setEmpleadoPorCargo] = (0, import_react4.useState)({});
+  const [editorCargoId, setEditorCargoId] = (0, import_react4.useState)("");
+  const [seleccionPantallas, setSeleccionPantallas] = (0, import_react4.useState)({});
+  const [editorPermisos, setEditorPermisos] = (0, import_react4.useState)(null);
+  const [motivoPermiso, setMotivoPermiso] = (0, import_react4.useState)("");
+  const [error, setError] = (0, import_react4.useState)("");
+  const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
+  const cargarCargos = async () => {
+    if (!esPropietario || !localId) return;
+    setCargando(true);
+    setError("");
+    try {
+      const resultado = await configRpc("abc_listar_cargos", { p_empresa_id: empresa?.id || "", p_local_id: localId });
+      setCargos(Array.isArray(resultado?.cargos) ? resultado.cargos : []);
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setCargando(false);
+    }
+  };
+  (0, import_react4.useEffect)(() => {
+    setFormulario(null);
+    setEditorCargoId("");
+    setSeleccionPantallas({});
+    setEditorPermisos(null);
+    setMotivoPermiso("");
+    setConfirmacion("");
+    cargarCargos();
+  }, [empresa?.id, localId, esPropietario]);
+  const guardarCargo = async () => {
+    if (!formulario) return;
+    setError("");
+    setConfirmacion("");
+    setGuardando(true);
+    try {
+      const parametros = {
+        p_operation_id: configOperacion(formulario.id ? "cargo-editar" : "cargo-crear"),
+        p_empresa_id: empresa?.id || "",
+        p_local_id: localId,
+        p_nombre: formulario.nombre,
+        p_descripcion: formulario.descripcion
+      };
+      await configRpc(formulario.id ? "abc_editar_cargo" : "abc_crear_cargo", formulario.id ? { ...parametros, p_cargo_id: formulario.id } : parametros);
+      setFormulario(null);
+      setConfirmacion(formulario.id ? "Cargo actualizado." : "Cargo creado.");
+      await cargarCargos();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const duplicarCargo = async (cargo) => {
+    setError("");
+    setConfirmacion("");
+    setGuardando(true);
+    try {
+      await configRpc("abc_duplicar_cargo", { p_operation_id: configOperacion("cargo-duplicar"), p_empresa_id: empresa?.id || "", p_local_id: localId, p_cargo_id: cargo.id });
+      setConfirmacion("Cargo duplicado. Revisa su nombre y permisos antes de asignarlo.");
+      await cargarCargos();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const asignarCargo = async (cargo) => {
+    const empleadoId = empleadoPorCargo[cargo.id] || "";
+    if (!empleadoId) return;
+    setError("");
+    setConfirmacion("");
+    setGuardando(true);
+    try {
+      await configRpc("abc_asignar_cargo", { p_operation_id: configOperacion("cargo-asignar"), p_empresa_id: empresa?.id || "", p_local_id: localId, p_empleado_id: empleadoId, p_cargo_id: cargo.id });
+      setEmpleadoPorCargo((actual) => ({ ...actual, [cargo.id]: "" }));
+      setConfirmacion("Cargo asignado al empleado.");
+      await cargarCargos();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const desasignarCargo = async (persona) => {
+    setError("");
+    setConfirmacion("");
+    setGuardando(true);
+    try {
+      await configRpc("abc_desasignar_cargo", { p_operation_id: configOperacion("cargo-desasignar"), p_empresa_id: empresa?.id || "", p_local_id: localId, p_empleado_id: persona.id });
+      setConfirmacion("Cargo retirado del empleado.");
+      await cargarCargos();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const cambiarEstadoCargo = async (cargo) => {
+    setError("");
+    setConfirmacion("");
+    setGuardando(true);
+    try {
+      await configRpc(cargo.activo ? "abc_desactivar_cargo" : "abc_reactivar_cargo", { p_operation_id: configOperacion(cargo.activo ? "cargo-desactivar" : "cargo-reactivar"), p_empresa_id: empresa?.id || "", p_local_id: localId, p_cargo_id: cargo.id });
+      setConfirmacion(cargo.activo ? "Cargo desactivado." : "Cargo reactivado.");
+      await cargarCargos();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const abrirEditorPantallas = (cargo) => {
+    const actuales = Array.isArray(cargo?.pantallas_consulta) ? cargo.pantallas_consulta : Array.isArray(cargo?.pantallasConsulta) ? cargo.pantallasConsulta : [];
+    setEditorCargoId(cargo?.id || "");
+    setSeleccionPantallas(Object.fromEntries(PM13_PANTALLAS_EDITOR.map((pantalla) => [pantalla.id, actuales.includes(pantalla.capacidadConsulta)])));
+    setError("");
+    setConfirmacion("");
+  };
+  const cerrarEditorPantallas = () => {
+    setEditorCargoId("");
+    setSeleccionPantallas({});
+  };
+  const guardarPantallas = async (cargo) => {
+    setError("");
+    setConfirmacion("");
+    setGuardando(true);
+    try {
+      const capacidades = PM13_PANTALLAS_EDITOR.filter((pantalla) => pantalla.moduloActivo && seleccionPantallas[pantalla.id] === true).map((pantalla) => pantalla.capacidadConsulta);
+      await configRpc("abc_guardar_cargo_pantallas", { p_operation_id: configOperacion("cargo-pantallas"), p_empresa_id: empresa?.id || "", p_local_id: localId, p_cargo_id: cargo.id, p_capacidades: capacidades });
+      setConfirmacion("Pantallas guardadas para este cargo.");
+      cerrarEditorPantallas();
+      await cargarCargos();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const marcarPantallasActivas = (valor) => {
+    setSeleccionPantallas(Object.fromEntries(PM13_PANTALLAS_EDITOR.map((pantalla) => [pantalla.id, pantalla.moduloActivo ? valor : false])));
+  };
+  const clavePermisoEditor = (permiso) => `${permiso.clave}::${permiso.accion}`;
+  const abrirEditorPermisos = async (cargo) => {
+    if (editorPermisos?.cargoId === cargo.id) {
+      setEditorPermisos(null);
+      setMotivoPermiso("");
+      return;
+    }
+    setError("");
+    setConfirmacion("");
+    setGuardando(true);
+    try {
+      const resultado = await configRpc("pm13_listar_cargo_permisos", { p_empresa_id: empresa?.id || "", p_local_id: localId, p_cargo_id: cargo.id });
+      const permisos = Array.isArray(resultado?.permisos) ? resultado.permisos.map((permiso) => ({
+        ...permiso,
+        valor: permiso.activo ? permiso.permitido ? "permitido" : "denegado" : "sin_configurar"
+      })) : [];
+      setEditorPermisos({ cargoId: cargo.id, permisos, originales: Object.fromEntries(permisos.map((permiso) => [clavePermisoEditor(permiso), permiso.valor])) });
+      setMotivoPermiso("");
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const cambiarPermisoEditor = (permiso, valor) => {
+    setEditorPermisos((actual) => actual ? { ...actual, permisos: actual.permisos.map((item) => clavePermisoEditor(item) === clavePermisoEditor(permiso) ? { ...item, valor } : item) } : actual);
+  };
+  const guardarPermisos = async (cargo) => {
+    if (!editorPermisos || editorPermisos.cargoId !== cargo.id) return;
+    const cambios = editorPermisos.permisos.filter((permiso) => permiso.valor !== editorPermisos.originales[clavePermisoEditor(permiso)] && permiso.valor !== "sin_configurar");
+    if (!cambios.length) {
+      setError("Selecciona al menos un permiso permitido o denegado.");
+      return;
+    }
+    if (!motivoPermiso.trim()) {
+      setError("Indica el motivo del cambio para dejarlo en la auditoría.");
+      return;
+    }
+    setError("");
+    setConfirmacion("");
+    setGuardando(true);
+    try {
+      for (const permiso of cambios) {
+        await configRpc("pm13_configurar_cargo_permiso_v2", {
+          p_operation_id: configOperacion("cargo-permiso"),
+          p_empresa_id: empresa?.id || "",
+          p_local_id: localId,
+          p_cargo_id: cargo.id,
+          p_clave: permiso.clave,
+          p_accion: permiso.accion,
+          p_alcance: permiso.alcance_maximo === "EMPRESA" ? "EMPRESA" : "LOCAL",
+          p_permitido: permiso.valor === "permitido",
+          p_motivo: motivoPermiso.trim(),
+          p_version_esperada: Number.isSafeInteger(Number(permiso.version)) ? Number(permiso.version) : 0
+        });
+      }
+      setEditorPermisos(null);
+      setMotivoPermiso("");
+      setConfirmacion("Permisos del cargo guardados y auditados.");
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const gruposPantallas = PM13_PANTALLAS_EDITOR.reduce((grupos, pantalla) => {
+    (grupos[pantalla.grupo] ||= []).push(pantalla);
+    return grupos;
+  }, {});
+  const ocupado = cargando || guardando;
+  return h(
+    "div",
+    null,
+    h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-1" }, "Cargos y permisos"),
+      h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Aquí se preparan los cargos de la empresa y las personas asignadas en este local" + (localNombre ? " (" + localNombre + ")" : "") + ". Los cargos personalizados aún no se crean desde esta vista; se mantienen separados de los roles técnicos y de los permisos protegidos."),
+      !esPropietario ? h("div", { className: "text-[12px] mt-2", style: { color: C2.red } }, "Solo el Propietario podrá administrar cargos cuando se active esa función.") : null
+    ),
+    h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-2" }, "Roles y cargos actuales"),
+      h("div", { className: "space-y-2" }, roles.map((rol) => {
+        const asignados = empleadosDelLocal.filter((empleado) => empleado.rol === rol).map((empleado) => empleado.nombre || empleado.nombreCompleto || "Sin nombre");
+        const retirado = ROLES_RETIRADOS.includes(rol);
+        return h(
+          "div",
+          { key: rol, className: "rounded-lg p-3", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+          h("div", { className: "flex flex-wrap items-center justify-between gap-2" },
+            h("div", { className: "font-medium" }, rol),
+            h("span", { className: "text-[11px]", style: { color: retirado ? C2.amber : C2.inkSoft } }, retirado ? "Retirado · solo existentes" : "Rol del sistema")
+          ),
+          h("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, descripciones[rol] || "Permisos definidos por el sistema."),
+          h("div", { className: "text-[11.5px] mt-2" }, asignados.length ? "Asignados: " + asignados.join(", ") : "Sin personas asignadas en este local")
+        );
+      }))
+    ),
+    h(ConfigAviso, { error, confirmacion }),
+    h(
+      Card,
+      { className: "mb-3", style: { background: C2.accentSoft, border: "none" } },
+      h("div", { className: "flex flex-wrap items-center justify-between gap-2 mb-1" },
+        h("div", { className: "font-semibold" }, "Cargos personalizados"),
+        h(Btn, { small: true, onClick: () => setFormulario({ id: "", nombre: "", descripcion: "" }), disabled: ocupado }, "Nuevo cargo")
+      ),
+      h("div", { className: "text-[12px] mb-2", style: { color: C2.inkSoft } }, "Cada cargo tiene un ID propio. Al duplicarlo se crea otro cargo independiente y debes revisar sus permisos antes de asignarlo."),
+      formulario ? h(
+        "div",
+        { className: "rounded-lg p-3 mb-3", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+        h(Field, { label: "Nombre del cargo" }, h(Input, { value: formulario.nombre, maxLength: 80, disabled: ocupado, onChange: (e2) => setFormulario({ ...formulario, nombre: e2.target.value }) })),
+        h(Field, { label: "Descripción (opcional)" }, h("textarea", { value: formulario.descripcion, maxLength: 500, disabled: ocupado, onChange: (e2) => setFormulario({ ...formulario, descripcion: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", rows: 3, style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } })),
+        h("div", { className: "flex gap-2 flex-wrap" },
+          h(Btn, { small: true, onClick: guardarCargo, disabled: ocupado || !formulario.nombre.trim() }, guardando ? "Guardando…" : formulario.id ? "Guardar cambios" : "Crear cargo"),
+          h(Btn, { small: true, variant: "ghost", onClick: () => setFormulario(null), disabled: ocupado }, "Cancelar")
+        )
+      ) : null,
+      cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando cargos…") : cargos.length === 0 && !cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Todavía no hay cargos personalizados registrados.") : null,
+      h("div", { className: "space-y-2" }, cargos.map((cargo) => h(
+        "div",
+        { key: cargo.id, className: "rounded-lg p-3", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+        h("div", { className: "flex flex-wrap items-center justify-between gap-2" },
+          h("div", { className: "font-medium" }, cargo.nombre),
+          h("span", { className: "text-[11px]", style: { color: cargo.activo ? C2.inkSoft : C2.amber } }, cargo.activo ? "Activo" : "Inactivo")
+        ),
+        cargo.descripcion ? h("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, cargo.descripcion) : null,
+        h("div", { className: "text-[11.5px] mt-2" }, cargo.asignados_count ? `${cargo.asignados_count} persona(s) asignada(s)` : "Sin personas asignadas"),
+        cargo.personas_asignadas?.length ? h("div", { className: "space-y-1 mt-2" }, cargo.personas_asignadas.map((persona) => h("div", { key: persona.id, className: "flex items-center justify-between gap-2 text-[11.5px]" }, h("span", null, persona.nombre || "Sin nombre"), h(Btn, { small: true, variant: "ghost", onClick: () => desasignarCargo(persona), disabled: ocupado }, "Quitar")))) : null,
+        h("div", { className: "flex flex-wrap items-end gap-2 mt-2" },
+          h(Field, { label: "Asignar a este local" }, h("select", { value: empleadoPorCargo[cargo.id] || "", disabled: ocupado || !cargo.activo || empleadosDelLocal.length === 0, onChange: (e2) => setEmpleadoPorCargo((actual) => ({ ...actual, [cargo.id]: e2.target.value })), className: "rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 40 } }, h("option", { value: "" }, empleadosDelLocal.length ? "Selecciona una persona" : "No hay empleados activos"), empleadosDelLocal.map((empleado) => h("option", { key: empleado.id, value: empleado.id }, empleado.nombre || empleado.nombreCompleto || "Sin nombre")))),
+          h(Btn, { small: true, onClick: () => asignarCargo(cargo), disabled: ocupado || !empleadoPorCargo[cargo.id] || !cargo.activo }, "Asignar")
+        ),
+        editorPermisos?.cargoId === cargo.id ? h(
+          "div",
+          { className: "rounded-lg p-3 mt-3", style: { border: `1px solid ${C2.line}`, background: C2.bg } },
+          h("div", { className: "font-medium mb-1" }, "Permisos protegidos del cargo"),
+          h("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Solo se guardan las reglas que cambies. Las reglas requieren un motivo y quedan registradas en la auditoría."),
+          h(ConfigMotivo, { valor: motivoPermiso, onCambio: setMotivoPermiso, deshabilitado: ocupado }),
+          h("div", { className: "space-y-2 mb-3" }, editorPermisos.permisos.map((permiso) => h(
+            "div",
+            { key: clavePermisoEditor(permiso), className: "flex flex-wrap items-center justify-between gap-2 rounded-lg p-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+            h("div", { className: "min-w-0" },
+              h("div", { className: "text-[12px] font-medium" }, PM13_CARGO_PERMISOS_LABELS[permiso.clave] || permiso.clave),
+              h("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, `${permiso.clave} · ${permiso.accion} · alcance máximo ${permiso.alcance_maximo}`),
+              h("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, `Origen: ${permiso.activo ? "cargo personalizado" : "denegado por defecto"} · alcance efectivo: ${permiso.alcance || "sin configurar"} · motivo: ${permiso.motivo || "denegado por defecto"}`)
+            ),
+            h("select", { value: permiso.valor, disabled: ocupado, onChange: (e2) => cambiarPermisoEditor(permiso, e2.target.value), className: "rounded-lg px-2 py-1 text-[12px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } },
+              h("option", { value: "sin_configurar", disabled: permiso.activo }, "Sin configurar"),
+              h("option", { value: "permitido" }, "Permitido"),
+              h("option", { value: "denegado" }, "Denegado")
+            )
+          ))),
+          h("div", { className: "flex gap-2 flex-wrap" },
+            h(Btn, { small: true, onClick: () => guardarPermisos(cargo), disabled: ocupado }, guardando ? "Guardando…" : "Guardar permisos"),
+            h(Btn, { small: true, variant: "ghost", onClick: () => { setEditorPermisos(null); setMotivoPermiso(""); }, disabled: ocupado }, "Cerrar permisos")
+          )
+        ) : null,
+        editorCargoId === cargo.id ? h(
+          "div",
+          { className: "rounded-lg p-3 mt-3", style: { border: `1px solid ${C2.line}`, background: C2.bg } },
+          h("div", { className: "font-medium mb-1" }, "Pantallas que puede consultar este cargo"),
+          h("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Selecciona solo pantallas. Consultar una pantalla no concede crear, editar, exportar, anular ni configurar; esas acciones se definirán en el punto 5."),
+          h("div", { className: "text-[11.5px] mb-2 p-2 rounded-lg", style: { background: C2.amberSoft, color: C2.ink } }, "Este editor es un borrador local del diseño del cargo. Todavía no guarda la selección en el servidor; la persistencia autorizada corresponde al subpunto 4.4."),
+          h("div", { className: "flex gap-2 flex-wrap mb-3" },
+            h(Btn, { small: true, variant: "ghost", onClick: () => marcarPantallasActivas(true), disabled: ocupado }, "Marcar todas activas"),
+            h(Btn, { small: true, variant: "ghost", onClick: () => marcarPantallasActivas(false), disabled: ocupado }, "Desmarcar todas"),
+            h(Btn, { small: true, onClick: () => guardarPantallas(cargo), disabled: ocupado || !cargo.activo }, guardando ? "Guardando…" : "Guardar selección"),
+            h(Btn, { small: true, variant: "ghost", onClick: cerrarEditorPantallas, disabled: ocupado }, "Cerrar editor")
+          ),
+          Object.entries(gruposPantallas).map(([grupo, pantallas]) => h(
+            "div",
+            { key: grupo, className: "mb-3" },
+            h("div", { className: "text-[12px] font-semibold mb-1" }, grupo),
+            h("div", { className: "space-y-1" }, pantallas.map((pantalla) => {
+              const moduloActivo = pantalla.moduloActivo !== false;
+              const seleccionada = seleccionPantallas[pantalla.id] === true;
+              return h(
+                "label",
+                { key: pantalla.id, className: "flex items-start gap-2 rounded-lg p-2", style: { border: `1px solid ${C2.line}`, background: C2.surface, opacity: moduloActivo ? 1 : 0.65 } },
+                h("input", { type: "checkbox", checked: seleccionada, disabled: !moduloActivo || ocupado, onChange: () => setSeleccionPantallas((actual) => ({ ...actual, [pantalla.id]: !actual[pantalla.id] })), className: "mt-1" }),
+                h("span", { className: "min-w-0 flex-1" },
+                  h("span", { className: "block text-[12px] font-medium" }, pantalla.label),
+                  h("span", { className: "block text-[11px]", style: { color: C2.inkSoft } }, pantalla.descripcion),
+                  h("span", { className: "block text-[10.5px] mt-0.5", style: { color: moduloActivo ? seleccionada ? C2.accent : C2.inkSoft : C2.amber } }, moduloActivo ? seleccionada ? "Permitida para este cargo" : "Denegada por este cargo" : "Módulo no contratado o inactivo · no se puede habilitar aquí")
+                )
+              );
+            }))
+          ))
+        ) : null,
+        h("div", { className: "flex gap-2 flex-wrap mt-2" },
+          h(Btn, { small: true, variant: "ghost", onClick: () => setFormulario({ id: cargo.id, nombre: cargo.nombre, descripcion: cargo.descripcion || "" }), disabled: ocupado }, "Editar"),
+          h(Btn, { small: true, variant: "ghost", onClick: () => editorCargoId === cargo.id ? cerrarEditorPantallas() : abrirEditorPantallas(cargo), disabled: ocupado }, editorCargoId === cargo.id ? "Cerrar pantallas" : "Editar pantallas"),
+          h(Btn, { small: true, variant: "ghost", onClick: () => abrirEditorPermisos(cargo), disabled: ocupado }, editorPermisos?.cargoId === cargo.id ? "Cerrar permisos" : "Editar permisos"),
+          h(Btn, { small: true, variant: "ghost", onClick: () => duplicarCargo(cargo), disabled: ocupado }, "Duplicar"),
+          h(Btn, { small: true, variant: "ghost", onClick: () => cambiarEstadoCargo(cargo), disabled: ocupado || (cargo.activo && Number(cargo.asignados_count || 0) > 0) }, cargo.activo ? "Desactivar" : "Reactivar")
+        )
+      )))
+    )
+  );
+}
+function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", esPropietario = false, empleados = [] }) {
   const h = import_react4.default.createElement;
   const empresaId = empresa?.id || "";
   const [seccion, setSeccion] = (0, import_react4.useState)("dia");
-  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["permisos", "Permisos"]];
+  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"]];
   let contenido = null;
   if (!esPropietario) contenido = h(Card, { className: "mb-4" }, "Solo un usuario con rol Propietario puede ver y cambiar la configuración.");
   else if (!empresaId || !localId) contenido = h(Card, { className: "mb-4" }, "Selecciona un local concreto para configurarlo.");
@@ -102640,6 +103141,7 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
     seccion === "dia" ? h(ConfigDia, { empresaId, localId }) : null,
     seccion === "modalidades" ? h(ConfigModalidades, { empresaId, localId }) : null,
     seccion === "equipos" ? h(ConfigEquipos, { empresaId, localId }) : null,
+    seccion === "cargos" ? h(ConfigCargos, { empresa, empleados, localId, localNombre, esPropietario }) : null,
     seccion === "permisos" ? h(ConfigPermisos, { empresaId, localId, localNombre }) : null
   );
   return h(
@@ -102968,6 +103470,7 @@ function GestionAlmacen() {
     formularioAbiertoPM15Ref.current = !!abierto;
   }
   function cambiarTabPM15(nuevaTab) {
+    if (!puedeConsultarPantallaPM13(nuevaTab)) return;
     const confirmar = () => typeof window !== "undefined" && typeof window.confirm === "function" ? window.confirm("Tienes un formulario abierto sin guardar. Si cambias de pantalla se perder\xE1. \xBFQuieres continuar sin guardar?") : true;
     if (!decidirCambioTabPM15(formularioAbiertoPM15Ref.current, confirmar)) return;
     formularioAbiertoPM15Ref.current = false;
@@ -102977,6 +103480,7 @@ function GestionAlmacen() {
   const [temaOscuro, setTemaOscuro] = (0, import_react4.useState)(false);
   const [modoEmpleado, setModoEmpleado] = (0, import_react4.useState)(false);
   const [miPerfil, setMiPerfil] = (0, import_react4.useState)(null);
+  const [permisosConsultaPM13, setPermisosConsultaPM13] = (0, import_react4.useState)({ personal: null, fichaje: null, ausencias: null });
   (0, import_react4.useEffect)(() => {
     if (!ready || typeof window === "undefined" || !window.__nubeActiva) return;
     let activo = true;
@@ -102997,6 +103501,15 @@ function GestionAlmacen() {
       activo = false;
     };
   }, [ready]);
+  function puedeConsultarPantallaPM13(id) {
+    if (typeof window === "undefined" || !window.__nubeActiva || miPerfil?.rol === "Propietario") return true;
+    if (id === "personal") return permisosConsultaPM13.personal === true;
+    if (id === "fichaje") return permisosConsultaPM13.fichaje === true;
+    return true;
+  }
+  (0, import_react4.useEffect)(() => {
+    if (tab !== "dashboard" && !puedeConsultarPantallaPM13(tab)) setTab("dashboard");
+  }, [tab, permisosConsultaPM13.personal, permisosConsultaPM13.fichaje, miPerfil?.rol]);
   const [pinPropietario, setPinPropietario] = (0, import_react4.useState)("");
   const [auditoria, setAuditoria] = (0, import_react4.useState)([]);
   const [usuarioActivoId, setUsuarioActivoId] = (0, import_react4.useState)(null);
@@ -103073,21 +103586,13 @@ function GestionAlmacen() {
     contextoPm07SolicitudRef.current = solicitud;
     contextoPm07ClaveRef.current = claveContexto;
     const esContextoVigente = () => activo && contextoPm07SolicitudRef.current === solicitud && contextoPm07ClaveRef.current === claveContexto && localActivoIdRefPm07.current === localActivoId;
-    const sincronizarContextoCompleto = !contextoPm07InicializadoRef.current;
-    contextoPm07InicializadoRef.current = true;
-    const localActivoInicial = localActivoId;
+    const perfilContextoListo = !!miPerfil?.rol;
+    const sincronizarContextoCompleto = perfilContextoListo && miPerfil.rol === "Propietario" && !contextoPm07InicializadoRef.current;
+    if (perfilContextoListo) contextoPm07InicializadoRef.current = true;
     (async () => {
       try {
         if (sincronizarContextoCompleto) {
           await sincronizarContextoPm07({
-            setEmpresas,
-            setLocales,
-            setLocalActivoId: (id) => {
-              // `localActivoId` ya viene de la preferencia de este dispositivo
-              // (ui-context-bridge). El valor global de almacen_kv es legado y
-              // no puede sustituir una elección válida hecha antes de recargar.
-              if (esContextoVigente() && !localActivoInicial && localActivoIdRefPm07.current === localActivoInicial) setLocalActivoId(id);
-            },
             setProductos,
             esContextoVigente
           });
@@ -103106,7 +103611,7 @@ function GestionAlmacen() {
     return () => {
       activo = false;
     };
-  }, [ready, localActivoId, empresas.map((e2) => `${e2?.id || ""}:${e2?.activo !== false}`).sort().join("|"), locales.map((l22) => `${l22?.id || ""}:${l22?.empresaId || ""}:${l22?.activo !== false}`).sort().join("|")]);
+  }, [ready, miPerfil?.rol, localActivoId, empresas.map((e2) => `${e2?.id || ""}:${e2?.activo !== false}`).sort().join("|"), locales.map((l22) => `${l22?.id || ""}:${l22?.empresaId || ""}:${l22?.activo !== false}`).sort().join("|")]);
   const empresaDelLocalActivo = (0, import_react4.useMemo)(() => {
     const principal = empresas[0] || null;
     const localActual = locales.find((l22) => l22.id === localActivoId) || null;
@@ -103117,6 +103622,46 @@ function GestionAlmacen() {
     return empresas.length === 1 ? principal || configEmpresa || null : null;
   }, [empresas, locales, localActivoId, configEmpresa]);
   (0, import_react4.useEffect)(() => {
+    let activo = true;
+    if (!ready || typeof window === "undefined" || !window.__nubeActiva || !miPerfil) {
+      setPermisosConsultaPM13({ personal: null, fichaje: null, ausencias: null });
+      return () => { activo = false; };
+    }
+    if (miPerfil.rol === "Propietario") {
+      setPermisosConsultaPM13({ personal: true, fichaje: true, ausencias: true });
+      return () => { activo = false; };
+    }
+    const empresaId = empresaDelLocalActivo?.id || "";
+    const localId = localActivoId || "";
+    if (!empresaId || !localId) {
+      setPermisosConsultaPM13({ personal: false, fichaje: false, ausencias: false });
+      return () => { activo = false; };
+    }
+    (async () => {
+      try {
+        const supabase = await window.getSupabaseClient();
+        const claves = [
+          ["personal", "PM13_PERSONAL_CONSULTAR"],
+          ["fichaje", "PM13_FICHAJE_CONSULTAR"],
+          ["ausencias", "PM13_AUSENCIA_CONSULTAR"]
+        ];
+        const respuestas = await Promise.all(claves.map(([, clave]) => supabase.rpc("pm13_resolver_cargo_permiso", {
+          p_empresa_id: empresaId,
+          p_local_id: localId,
+          p_clave: clave,
+          p_accion: "CONSULTAR",
+          p_alcance: "LOCAL"
+        })));
+        if (!activo) return;
+        const permitido = (respuesta) => !!(respuesta && !respuesta.error && respuesta.data && respuesta.data.ok === true && respuesta.data.permitido === true);
+        setPermisosConsultaPM13(Object.fromEntries(claves.map(([nombre], indice) => [nombre, permitido(respuestas[indice])])))
+      } catch (e2) {
+        if (activo) setPermisosConsultaPM13({ personal: false, fichaje: false, ausencias: false });
+      }
+    })();
+    return () => { activo = false; };
+  }, [ready, miPerfil?.rol, empresaDelLocalActivo?.id, localActivoId]);
+  (0, import_react4.useEffect)(() => {
     if (typeof window === "undefined") return;
     // almacen_kv está segregado por empresa; el bootstrap de almacenamiento
     // usa este identificador para no leer ni escribir una fila global.
@@ -103124,12 +103669,18 @@ function GestionAlmacen() {
   }, [empresaDelLocalActivo]);
   const empleadosIdentidadKeyPM11 = empleados.map((empleado) => `${empleado?.id || ""}:${empleado?.empresaId || ""}:${empleado?.localId || ""}`).sort().join("|");
   (0, import_react4.useEffect)(() => {
-    if (!ready || !miPerfil || miPerfil.rol !== "Propietario" || typeof window === "undefined" || !window.__nubeActiva || !localActivoId) return;
-    let activo = true;
-    const controlador = typeof AbortController === "function" ? new AbortController() : null;
-    const localContexto = String(localActivoId);
+    if (typeof window === "undefined") return;
+    const localContexto = localActivoId ? String(localActivoId) : "";
     const localActual = locales.find((l22) => l22 && String(l22.id) === localContexto) || null;
     const empresaContexto = localActual?.empresaId ? String(localActual.empresaId) : empresas.length === 1 ? String(empresas[0]?.id || "") : "";
+    const claveContextoPM11 = `${empresaContexto}::${localContexto}`;
+    // La clave global invalida respuestas que sobrevivan a un cambio de
+    // contexto incluso antes de que React ejecute el cleanup del efecto.
+    window.__pm11CuentaContexto = claveContextoPM11;
+    if (!ready || !miPerfil || miPerfil.rol !== "Propietario" || !window.__nubeActiva || !localActivoId) return;
+    let activo = true;
+    const controlador = typeof AbortController === "function" ? new AbortController() : null;
+    const esContextoVigentePM11 = () => activo && window.__pm11CuentaContexto === claveContextoPM11;
     const idsEmpleadosContexto = empleados.filter((empleado) => {
       const empleadoLocal = String(empleado?.localId || "");
       const empleadoEmpresa = String(empleado?.empresaId || "");
@@ -103146,7 +103697,7 @@ function GestionAlmacen() {
         const { data: sesion } = await supabase.auth.getSession();
         const userId = sesion?.session?.user?.id;
         if (!userId) {
-          if (activo) setEstadoCuentasPM11(Object.fromEntries(idsEmpleadosContexto.map((id) => [id, "error"])));
+          if (esContextoVigentePM11()) setEstadoCuentasPM11(Object.fromEntries(idsEmpleadosContexto.map((id) => [id, "error"])));
           return;
         }
         let consulta = supabase.rpc("pm11_estado_cuentas_empleados", {
@@ -103157,9 +103708,9 @@ function GestionAlmacen() {
         if (controlador && typeof consulta.abortSignal === "function") consulta = consulta.abortSignal(controlador.signal);
         const { data: respuesta, error } = await consulta;
         const cuentas = respuesta?.ok === true && Array.isArray(respuesta.cuentas) ? respuesta.cuentas : null;
-        if (error || !activo || controlador?.signal.aborted || !cuentas) {
+        if (error || !esContextoVigentePM11() || controlador?.signal.aborted || !cuentas) {
           if (error || !cuentas) {
-            setEstadoCuentasPM11(Object.fromEntries(idsEmpleadosContexto.map((id) => [id, "error"])));
+            if (esContextoVigentePM11()) setEstadoCuentasPM11(Object.fromEntries(idsEmpleadosContexto.map((id) => [id, "error"])));
           }
           return;
         }
@@ -103176,15 +103727,20 @@ function GestionAlmacen() {
           const estado = cuenta?.estado;
           return [id, incoherentes.has(id) ? "incoherente" : ["activa", "suspendida", "sin_cuenta", "incoherente"].includes(estado) ? estado : "error"];
         }));
+        if (!esContextoVigentePM11()) return;
         setEstadoCuentasPM11(estados);
         setEmpleados((actuales) => actuales.map((empleado) => {
+          if (!esContextoVigentePM11()) return actuales;
           const empleadoLocal = String(empleado?.localId || "");
           const empleadoEmpresa = String(empleado?.empresaId || "");
           const enContexto = empleadoLocal === localContexto && (!empresaContexto || !empleadoEmpresa || empleadoEmpresa === empresaContexto);
           if (!enContexto) return empleado;
           const cuenta = porEmpleado.get(empleado.id);
           const estado = estados[String(empleado.id || "").trim()];
-          if (estado === "incoherente" || estado === "error") return { ...empleado, tieneCuenta: false, cuentaActiva: false, rolCuenta: "" };
+          // Un error de lectura no demuestra que la cuenta falte: conserva el
+          // último estado confirmado y deja el error visible en el mapa de estados.
+          if (estado === "error") return empleado;
+          if (estado === "incoherente") return { ...empleado, tieneCuenta: false, cuentaActiva: false, rolCuenta: "" };
           return {
             ...empleado,
             tieneCuenta: estado === "activa" || estado === "suspendida",
@@ -103194,7 +103750,7 @@ function GestionAlmacen() {
         }));
       } catch (e2) {
         if (controlador?.signal.aborted) return;
-        if (activo) setEstadoCuentasPM11(Object.fromEntries(idsEmpleadosContexto.map((id) => [id, "error"])));
+        if (esContextoVigentePM11()) setEstadoCuentasPM11(Object.fromEntries(idsEmpleadosContexto.map((id) => [id, "error"])));
       }
     })();
     return () => {
@@ -103471,6 +104027,11 @@ function GestionAlmacen() {
       const registrosAceiteFinales = (rac || []).map((r2) => r2.localId ? r2 : { ...r2, localId: localPorFreidoraMigracion.get(r2.freidoraId) || localPorProductoMigracion.get(r2.productoAceiteId) || localActivoFinal || null });
       setLocales(localesFinales);
       setLocalActivoId(localActivoFinal);
+      // La vista de informes usa su propio selector. Al arrancar debe
+      // hidratarse con el mismo local activo que acaba de validarse; de lo
+      // contrario el estado operativo queda en el local elegido pero la
+      // pantalla vuelve a mostrar «Todos los locales» tras una recarga.
+      setLocalInformeId(localActivoFinal || "");
       setProductos(productosFinales);
       setMovimientos(movimientosFinales);
       setAlbaranes(albaranesFinales);
@@ -103492,7 +104053,18 @@ function GestionAlmacen() {
       setRegistrosAceite(registrosAceiteFinales);
       if (JSON.stringify(localesFinales) !== JSON.stringify(Array.isArray(loc) ? loc : [])) await saveKey("locales", localesFinales);
       if (localActivoFinal !== (lai || null)) await saveKey("localActivoId", localActivoFinal);
-      if (JSON.stringify(productosFinales) !== JSON.stringify(pr || [])) await saveKey("productos", productosFinales);
+      if (JSON.stringify(productosFinales) !== JSON.stringify(pr || [])) {
+        // El primer guardado puede ocurrir en el mismo render que publica el
+        // contexto de empresa/local. Fijarlo aquí evita enviar una lista
+        // normalizada con el contexto anterior (o vacío) y dejarla pendiente.
+        if (typeof window !== "undefined") {
+          const localInicial = localActivoFinal || null;
+          const localInicialObj = localesFinales.find((l22) => l22 && l22.id === localInicial) || null;
+          window.__localActivoIdParaContexto = localInicial;
+          window.__empresaActivaIdParaContexto = localInicialObj?.empresaId || empresaLegacyUnicaId || null;
+        }
+        await saveKey("productos", productosFinales);
+      }
       if (JSON.stringify(movimientosFinales) !== JSON.stringify(mo || [])) await saveKey("movimientos", movimientosFinales);
       if (JSON.stringify(albaranesFinales) !== JSON.stringify(alLimpios || [])) await saveKey("albaranes", albaranesFinales);
       if (JSON.stringify(pedidosFinales) !== JSON.stringify(pe2 || [])) await saveKey("pedidos", pedidosFinales);
@@ -103541,8 +104113,16 @@ function GestionAlmacen() {
     if (ready && !skipSaveRef.current) saveKey("proveedores", proveedores);
   }, [proveedores, ready]);
   (0, import_react4.useEffect)(() => {
-    if (ready && !skipSaveRef.current) saveKey("productos", productos);
-  }, [productos, ready]);
+    if (!ready || skipSaveRef.current) return;
+    // El guardado reactivo debe usar siempre el mismo contexto que acaba de
+    // producir el estado. Las dependencias de empresa/local fuerzan un
+    // reintento cuando el contexto se hidrata después de los productos.
+    if (typeof window !== "undefined") {
+      window.__localActivoIdParaContexto = typeof localActivoId === "string" && localActivoId ? localActivoId : null;
+      window.__empresaActivaIdParaContexto = empresaDelLocalActivo?.id ? String(empresaDelLocalActivo.id) : null;
+    }
+    saveKey("productos", productos);
+  }, [productos, ready, localActivoId, empresaDelLocalActivo?.id]);
   (0, import_react4.useEffect)(() => {
     function onProductosServidor(ev) {
       const d3 = ev && ev.detail ? ev.detail : {};
@@ -104296,6 +104876,7 @@ function GestionAlmacen() {
   }, [empleados]);
   const documentosPersonalPronto = (0, import_react4.useMemo)(() => documentosPersonalCaducan.filter((d2) => d2.dias <= 30), [documentosPersonalCaducan]);
   const empleadosDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? empleados : empleados.filter((e2) => e2.localId === localActivoId), [empleados, localActivoId]);
+  const empleadosVisiblesDelLocalActivo = (0, import_react4.useMemo)(() => empleadosDelLocalActivo.map((empleado) => permisosConsultaPM13.ausencias === true ? empleado : { ...empleado, ausencias: [] }), [empleadosDelLocalActivo, permisosConsultaPM13.ausencias]);
   const idsEmpleadosDelLocalActivo = (0, import_react4.useMemo)(() => new Set(empleadosDelLocalActivo.map((e2) => e2.id)), [empleadosDelLocalActivo]);
   const fichajesDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? fichajes : fichajes.filter((f22) => f22.localId === localActivoId), [fichajes, localActivoId]);
   const turnosDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? turnos : turnos.filter((t22) => t22.localId === localActivoId), [turnos, localActivoId]);
@@ -104369,25 +104950,10 @@ function GestionAlmacen() {
   const appccPendientesHoy = alertasAppcc.pendientes;
   const fichajesAbiertos = (0, import_react4.useMemo)(() => {
     const hoy = todayISO();
-    const porEmpleadoFecha = {};
-    fichajes.filter((f22) => f22?.anulado !== true && String(f22?.anulado || "").toLowerCase() !== "true").forEach((f22) => {
-      const key = `${f22.empleadoId}-${f22.fecha}`;
-      if (!porEmpleadoFecha[key]) porEmpleadoFecha[key] = [];
-      porEmpleadoFecha[key].push(f22);
+    return resumenFichajesPM13(fichajes).abiertos.filter((f22) => f22.fecha !== hoy).map((f22) => {
+      const emp = empleados.find((e2) => e2.id === f22.empleadoId);
+      return { empleadoId: f22.empleadoId, fecha: f22.fecha, nombre: emp ? emp.nombre : "\u2014" };
     });
-    const abiertos = [];
-    Object.entries(porEmpleadoFecha).forEach(([key, lista]) => {
-      const fecha = lista[0].fecha;
-      if (fecha === hoy) return;
-      const entradas = lista.filter((f22) => f22.tipo === "entrada").length;
-      const salidas = lista.filter((f22) => f22.tipo === "salida").length;
-      if (entradas > salidas) {
-        const empleadoId = lista[0].empleadoId;
-        const emp = empleados.find((e2) => e2.id === empleadoId);
-        abiertos.push({ empleadoId, fecha, nombre: emp ? emp.nombre : "\u2014" });
-      }
-    });
-    return abiertos;
   }, [fichajes, empleados]);
   const fichajesAbiertosDelLocalActivo = (0, import_react4.useMemo)(() => fichajesAbiertos.filter((f22) => idsEmpleadosDelLocalActivo.has(f22.empleadoId)), [fichajesAbiertos, idsEmpleadosDelLocalActivo]);
   const facturasPorPagar = (0, import_react4.useMemo)(() => {
@@ -104770,7 +105336,7 @@ function GestionAlmacen() {
     Personal,
     {
       empresa: empresaDelLocalActivo,
-      empleados: empleadosDelLocalActivo,
+      empleados: empleadosVisiblesDelLocalActivo,
       addEmpleado,
       updateEmpleado,
       deleteEmpleado,
@@ -104796,7 +105362,8 @@ function GestionAlmacen() {
       estadoCargaDatos: estadoCargaDatosPM12.empleados,
       pendienteSincronizacion: estadoCargaDatosPM12.pendienteEmpleados,
       contextoActivoPM15,
-      marcarFormularioAbiertoPM15
+      marcarFormularioAbiertoPM15,
+      localId: localActivoId
     }
   ), tab === "fichaje" && /* @__PURE__ */ import_react4.default.createElement(
     RegistroHorario,
@@ -104809,7 +105376,9 @@ function GestionAlmacen() {
       eliminarFichaje,
       fichajesAbiertos: fichajesAbiertosDelLocalActivo,
       estadoCargaDatos: estadoCargaDatosPM12.fichajes,
-      pendienteSincronizacion: estadoCargaDatosPM12.pendienteFichajes
+      pendienteSincronizacion: estadoCargaDatosPM12.pendienteFichajes,
+      estadoCargaEmpleados: estadoCargaDatosPM12.empleados,
+      pendienteEmpleados: estadoCargaDatosPM12.pendienteEmpleados
     }
   ), tab === "nominas" && /* @__PURE__ */ import_react4.default.createElement(
     CostePersonal,
@@ -104897,7 +105466,9 @@ function GestionAlmacen() {
       deleteTurno,
       copiarSemana,
       estadoCargaDatos: estadoCargaDatosPM12.turnos,
-      pendienteSincronizacion: estadoCargaDatosPM12.pendienteTurnos
+      pendienteSincronizacion: estadoCargaDatosPM12.pendienteTurnos,
+      estadoCargaEmpleados: estadoCargaDatosPM12.empleados,
+      pendienteEmpleados: estadoCargaDatosPM12.pendienteEmpleados
     }
   ), tab === "mapa" && /* @__PURE__ */ import_react4.default.createElement(MapaAlmacen, { productos: productosDelLocalActivo, proveedorPorId, stockBajo: stockBajoDelLocalActivo }), tab === "traspasos" && /* @__PURE__ */ import_react4.default.createElement(Traspasos, { productos: productosDelLocalActivo, productosEmpresa: productos.filter((p22) => localesEmpresaActiva.some((l22) => l22.id === p22.localId)), locales: localesEmpresaActiva, localActivoId, traspasos: traspasosDelLocalActivo, traspasarStock, traspasarEntreLocales, pisoVentaBajo: pisoVentaBajoDelLocalActivo, fichasCosto: fichasCostoDelLocalActivo }), tab === "appcc" && /* @__PURE__ */ import_react4.default.createElement(
     Appcc,
@@ -104928,7 +105499,55 @@ function GestionAlmacen() {
       establecerPin,
       activarModoEmpleado
     }
-  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, { diagnosticoLegadosPM10 }), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, marcarFormularioAbiertoPM15 }), tab === "descuentos" && /* @__PURE__ */ import_react4.default.createElement(PoliticasDescuentos, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }), tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }));
+  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, { diagnosticoLegadosPM10 }), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, marcarFormularioAbiertoPM15 }), tab === "descuentos" && /* @__PURE__ */ import_react4.default.createElement(PoliticasDescuentos, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }), tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29, empleados }));
+  // PM13-P04.2: claves estables de capacidad de consulta, separadas del texto visible y de la navegacion.
+  const CAPACIDADES_CONSULTA_PANTALLA = Object.freeze({
+    dashboard: "ABC_PANTALLA_DASHBOARD_CONSULTAR",
+    direccion: "ABC_PANTALLA_DIRECCION_CONSULTAR",
+    proveedores: "ABC_PANTALLA_PROVEEDORES_CONSULTAR",
+    resumen_almacen: "ABC_PANTALLA_RESUMEN_ALMACEN_CONSULTAR",
+    productos: "ABC_PANTALLA_PRODUCTOS_CONSULTAR",
+    buscar: "ABC_PANTALLA_BUSCAR_CONSULTAR",
+    historial_producto: "ABC_PANTALLA_HISTORIAL_PRODUCTO_CONSULTAR",
+    pedidos: "ABC_PANTALLA_PEDIDOS_CONSULTAR",
+    recepcion: "ABC_PANTALLA_RECEPCION_CONSULTAR",
+    albaranes: "ABC_PANTALLA_ALBARANES_CONSULTAR",
+    facturas: "ABC_PANTALLA_FACTURAS_CONSULTAR",
+    pagos: "ABC_PANTALLA_PAGOS_CONSULTAR",
+    conteo: "ABC_PANTALLA_CONTEO_CONSULTAR",
+    saldo: "ABC_PANTALLA_SALDO_CONSULTAR",
+    mapa: "ABC_PANTALLA_MAPA_CONSULTAR",
+    traspasos: "ABC_PANTALLA_TRASPASOS_CONSULTAR",
+    fichas: "ABC_PANTALLA_FICHAS_CONSULTAR",
+    produccion: "ABC_PANTALLA_PRODUCCION_CONSULTAR",
+    mermas: "ABC_PANTALLA_MERMAS_CONSULTAR",
+    etiquetas: "ABC_PANTALLA_ETIQUETAS_CONSULTAR",
+    reportes: "ABC_PANTALLA_REPORTES_CONSULTAR",
+    resultados: "ABC_PANTALLA_RESULTADOS_CONSULTAR",
+    personal: "ABC_PANTALLA_PERSONAL_CONSULTAR",
+    fichaje: "ABC_PANTALLA_FICHAJE_CONSULTAR",
+    nominas: "ABC_PANTALLA_NOMINAS_CONSULTAR",
+    turnos: "ABC_PANTALLA_TURNOS_CONSULTAR",
+    appcc: "ABC_PANTALLA_APPCC_CONSULTAR",
+    aceite: "ABC_PANTALLA_ACEITE_CONSULTAR",
+    venta: "ABC_PANTALLA_VENTA_CONSULTAR",
+    cocina: "ABC_PANTALLA_COCINA_CONSULTAR",
+    encargos: "ABC_PANTALLA_ENCARGOS_CONSULTAR",
+    clientes: "ABC_PANTALLA_CLIENTES_CONSULTAR",
+    libroiva: "ABC_PANTALLA_LIBROIVA_CONSULTAR",
+    caja: "ABC_PANTALLA_CAJA_CONSULTAR",
+    devoluciones: "ABC_PANTALLA_DEVOLUCIONES_CONSULTAR",
+    tesoreria: "ABC_PANTALLA_TESORERIA_CONSULTAR",
+    estacionalidad: "ABC_PANTALLA_ESTACIONALIDAD_CONSULTAR",
+    auditoria: "ABC_PANTALLA_AUDITORIA_CONSULTAR",
+    diagnostico: "ABC_PANTALLA_DIAGNOSTICO_CONSULTAR",
+    respaldos: "ABC_PANTALLA_RESPALDOS_CONSULTAR",
+    notificaciones: "ABC_PANTALLA_NOTIFICACIONES_CONSULTAR",
+    descuentos: "ABC_PANTALLA_DESCUENTOS_CONSULTAR",
+    locales: "ABC_PANTALLA_LOCALES_CONSULTAR",
+    configuracion: "ABC_PANTALLA_CONFIGURACION_CONSULTAR",
+    errores_sistema: "ABC_PANTALLA_ERRORES_SISTEMA_CONSULTAR"
+  });
   const itemsMeta = [
     { id: "dashboard", label: "Panel general", icon: ChartColumn },
     { id: "direccion", label: "Panel de direcci\xF3n", icon: TrendingUp },
@@ -104975,10 +105594,10 @@ function GestionAlmacen() {
     { id: "locales", label: "Locales", icon: Map2 },
     { id: "configuracion", label: "Configuraci\xF3n", icon: Cog },
     { id: "errores_sistema", label: "Errores del sistema", icon: TriangleAlert }
-  ];
+  ].map((item) => ({ ...item, capacidadConsulta: CAPACIDADES_CONSULTA_PANTALLA[item.id] }));
   const porId = (id) => itemsMeta.find((x3) => x3.id === id);
   const pick = (ids) => {
-    const filtrados = modoEmpleado ? ids.filter((id) => itemsPermitidosEmpleado.includes(id)) : ids;
+    const filtrados = ids.filter((id) => (!modoEmpleado || itemsPermitidosEmpleado.includes(id)) && puedeConsultarPantallaPM13(id));
     return filtrados.map(porId).filter(Boolean);
   };
   const GRUPOS = [
@@ -105760,6 +106379,7 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
     const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
     const validacion = validarAusenciaPM13(empleadoLocal, ausencia);
     if (!validacion.ok) return validacion;
+    if (!motorPersonalRemotoDisponiblePM13()) return errorValidacionPM10("contexto_no_autorizado", "ausencia", "No se puede registrar una ausencia sin validar el permiso en el servidor.");
     const igualesHistoricas = (empleadoLocal.ausencias || []).filter((a22) => a22.tipo === validacion.datos.tipo && a22.fechaInicio === validacion.datos.fechaInicio && a22.fechaFin === validacion.datos.fechaFin).length;
     const operationId = String(controlPM13.operationId || `pm13-aus:${empleadoId}:${validacion.datos.tipo}:${validacion.datos.fechaInicio}:${validacion.datos.fechaFin}:${igualesHistoricas}`);
     const ausenciaId = String(controlPM13.ausenciaId || `ausencia:${operationId}`);
@@ -105798,6 +106418,7 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
     const objetivo = (empleadoLocal.ausencias || []).find((a22) => a22.id === ausenciaId);
     if (!objetivo) return errorValidacionPM10("ausencia_no_encontrada", "ausenciaId", "No se encontró la ausencia.");
     if (!ausenciaActivaPM13(objetivo)) return { ok: true, replay: true, ausencia: objetivo };
+    if (!motorPersonalRemotoDisponiblePM13()) return errorValidacionPM10("contexto_no_autorizado", "ausencia", "No se puede anular una ausencia sin validar el permiso en el servidor.");
     const operationId = String(controlPM13.operationId || `pm13-anular-aus:${empleadoId}:${ausenciaId}`);
     const motivo = String(controlPM13.motivo || "Anulada desde Personal").trim() || "Anulada desde Personal";
     const aplicarLocal = (confirmada = {}) => {
@@ -118516,8 +119137,50 @@ function etiquetaContextoPM15(local, empresa) {
   if (nombreLocal && nombreEmpresa) return `${nombreLocal} \xB7 ${nombreEmpresa}`;
   return nombreLocal || nombreEmpresa || "";
 }
-function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, documentosPersonalCaducan, fichajes = [], nominas = [], entrevistas = [], crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista, crearPrefiltro, listarPrefiltros, eliminarPrefiltro, crearCuentaEmpleado, estadoCuentasPM11 = {}, estadoCargaDatos = "cargado_con_datos", pendienteSincronizacion = false, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {}, empresa = null }) {
+function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, documentosPersonalCaducan, fichajes = [], nominas = [], entrevistas = [], crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista, crearPrefiltro, listarPrefiltros, eliminarPrefiltro, crearCuentaEmpleado, estadoCuentasPM11 = {}, estadoCargaDatos = "cargado_con_datos", pendienteSincronizacion = false, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {}, empresa = null, localId = "" }) {
   const [vista, setVista] = (0, import_react4.useState)("empleados");
+  const [permisosAusenciasPM13, setPermisosAusenciasPM13] = (0, import_react4.useState)(null);
+  import_react4.default.useEffect(() => {
+    let cancelado = false;
+    const resolver = async () => {
+      const empresaId = empresa?.id || "";
+      if (!empresaId || !localId || typeof window === "undefined" || typeof window.getSupabaseClient !== "function") {
+        if (!cancelado) setPermisosAusenciasPM13({ registrar: false, anular: false });
+        return;
+      }
+      try {
+        const supabase = await window.getSupabaseClient();
+        if (!supabase || typeof supabase.rpc !== "function") throw new Error("resolver_no_disponible");
+        const registrar = await supabase.rpc("pm13_resolver_cargo_permiso", {
+          p_empresa_id: empresaId,
+          p_local_id: localId,
+          p_clave: "PM13_AUSENCIA_REGISTRAR",
+          p_accion: "CREAR",
+          p_alcance: "LOCAL",
+          p_empleado_id: null
+        });
+        const anular = await supabase.rpc("pm13_resolver_cargo_permiso", {
+          p_empresa_id: empresaId,
+          p_local_id: localId,
+          p_clave: "PM13_AUSENCIA_ANULAR",
+          p_accion: "ANULAR_ELIMINAR",
+          p_alcance: "LOCAL",
+          p_empleado_id: null
+        });
+        if (!cancelado) setPermisosAusenciasPM13({
+          registrar: !registrar.error && registrar.data?.permitido === true,
+          anular: !anular.error && anular.data?.permitido === true
+        });
+      } catch (_error) {
+        if (!cancelado) setPermisosAusenciasPM13({ registrar: false, anular: false });
+      }
+    };
+    setPermisosAusenciasPM13(null);
+    resolver();
+    return () => { cancelado = true; };
+  }, [empresa?.id, localId]);
+  const puedeRegistrarAusenciaPM13 = permisosAusenciasPM13?.registrar === true;
+  const puedeAnularAusenciaPM13 = permisosAusenciasPM13?.anular === true;
   const submitBloqueadoPersonalPM10 = import_react4.default.useRef(false);
   const altaOperacionPersonalPM13 = import_react4.default.useRef(null);
   const [showForm, setShowForm] = (0, import_react4.useState)(false);
@@ -118528,7 +119191,13 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reac
   const [error, setError] = (0, import_react4.useState)("");
   const [editingId, setEditingId] = (0, import_react4.useState)(null);
   const [confirmDeleteId, setConfirmDeleteId] = (0, import_react4.useState)(null);
-  const [ausenciaFor, setAusenciaFor] = (0, import_react4.useState)(null);
+  const [ausenciaFor, setAusenciaForState] = (0, import_react4.useState)(null);
+  const setAusenciaFor = (valor) => {
+    if (valor === null || puedeRegistrarAusenciaPM13) setAusenciaForState(valor);
+  };
+  import_react4.default.useEffect(() => {
+    if (!puedeRegistrarAusenciaPM13 && ausenciaFor) setAusenciaForState(null);
+  }, [puedeRegistrarAusenciaPM13, ausenciaFor]);
   const [ausenciaForm, setAusenciaForm] = (0, import_react4.useState)({ tipo: "Vacaciones", fechaInicio: todayISO(), fechaFin: todayISO() });
   const [epiFor, setEpiFor] = (0, import_react4.useState)(null);
   const [epiForm, setEpiForm] = (0, import_react4.useState)({ nombre: "", firmado: false });
@@ -118815,10 +119484,10 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reac
     return /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold flex items-center gap-1.5" }, e2.nombre, e2.activo === false && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "baja"), e2.pin && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "PIN configurado"), e2.pin && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, e2.rol && ROLES_EMPLEADO[e2.rol] ? e2.rol : "Est\xE1ndar"), estadoCuenta === "suspendida" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.red }, "cuenta suspendida"), estadoCuenta === "activa" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "cuenta: ", e2.rolCuenta), estadoCuenta === "cargando" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "comprobando cuenta"), estadoCuenta === "error" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.red }, "cuenta no disponible"), estadoCuenta === "incoherente" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.amber }, "vínculo incoherente")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mt-0.5", style: { color: C2.inkSoft } }, e2.puesto, " \xB7 ", e2.tipoContrato)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => exportarDatosEmpleado(e2), title: "Exportar sus datos" }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 15, color: C2.inkSoft })), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setConfirmDeleteId(e2.id), "aria-label": "Eliminar empleado", className: "flex items-center justify-center shrink-0", style: { width: 44, height: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 15, color: C2.inkSoft })))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 text-[12px] space-y-1", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement("div", null, "Alta: ", e2.fechaAlta, e2.fechaFinContrato && ` \xB7 Fin de contrato: ${e2.fechaFinContrato}`), e2.activo === false && /* @__PURE__ */ import_react4.default.createElement("div", null, "Baja: ", e2.fechaBaja || "sin fecha (registro legado)", e2.motivoBaja && ` \xB7 ${e2.motivoBaja}`), e2.salarioBrutoMensual > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, "Bruto: \u20AC", fmt(e2.salarioBrutoMensual), "/mes (", e2.pagas, " pagas)"), /* @__PURE__ */ import_react4.default.createElement("div", null, "Vacaciones ", anioActual, ": ", resumenVacaciones.disfrutados, " disfrutados · ", resumenVacaciones.enCurso, " hoy · ", resumenVacaciones.programados, " programados · saldo ", resumenVacaciones.saldo, " / ", total, resumenVacaciones.exceso > 0 ? ` · exceso ${resumenVacaciones.exceso}` : ""), (e2.documentos || []).length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", null, e2.documentos.map((d2) => d2.nombre).filter(Boolean).join(" \xB7 "))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 flex gap-2 flex-wrap" }, e2.activo !== false && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(e2) }, "Editar"), e2.activo === false && reactivarEmpleado && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: async () => {
     const r2 = await reactivarEmpleado(e2.id);
     if (!r2 || r2.ok === false) setError(r2?.error || "No se pudo reactivar al empleado.");
-  } }, "Reactivar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAusenciaFor(e2.id) }, "Registrar ausencia"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setEpiFor(e2.id) }, "Entregar EPI"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setDetalleId(detalleId === e2.id ? null : e2.id) }, detalleId === e2.id ? "Ocultar historial" : "Ver historial"), crearCuentaEmpleado && estadoCuenta === "sin_cuenta" && !e2.tieneCuenta && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
+  } }, "Reactivar"), puedeRegistrarAusenciaPM13 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAusenciaFor(e2.id) }, "Registrar ausencia"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setEpiFor(e2.id) }, "Entregar EPI"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setDetalleId(detalleId === e2.id ? null : e2.id) }, detalleId === e2.id ? "Ocultar historial" : "Ver historial"), crearCuentaEmpleado && estadoCuenta === "sin_cuenta" && !e2.tieneCuenta && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
       setCuentaFor(e2.id);
       setCuentaForm({ nombre: e2.nombre || "", email: "", password: "", rol: "Camarero/a" });
-    } }, "Crear cuenta de acceso")), detalleId === e2.id && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 pt-3", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, "Ausencias"), (e2.ausencias || []).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin ausencias registradas." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1 mb-3" }, [...e2.ausencias || []].reverse().map((a22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: a22.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, a22.tipo, ": ", a22.fechaInicio, " \u2192 ", a22.fechaFin, " (", a22.dias, " d)", String(a22.estado || "ACTIVA").toUpperCase() === "ANULADA" || a22.anuladaAt ? " · ANULADA" : ""), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: async () => { const r2 = await eliminarAusencia(e2.id, a22.id); if (!r2 || r2.ok === false) setError(r2?.error || "No se pudo anular la ausencia."); }, "aria-label": "Anular ausencia", title: "Anular ausencia" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft }))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1 pt-2", style: { color: C2.inkSoft, borderTop: `1px solid ${C2.line}` } }, "EPIs entregados"), (e2.epis || []).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin EPIs registrados." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1" }, [...e2.epis || []].reverse().map((epi) => /* @__PURE__ */ import_react4.default.createElement("div", { key: epi.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, epi.nombre, " \xB7 ", epi.fecha, " ", epi.firmado ? "\xB7 firmado" : "\xB7 sin firmar"), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => eliminarEpi(e2.id, epi.id), "aria-label": "Eliminar EPI" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))));
+    } }, "Crear cuenta de acceso")), detalleId === e2.id && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 pt-3", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, "Ausencias"), (e2.ausencias || []).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin ausencias registradas." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1 mb-3" }, [...e2.ausencias || []].reverse().map((a22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: a22.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, a22.tipo, ": ", a22.fechaInicio, " \u2192 ", a22.fechaFin, " (", a22.dias, " d)", String(a22.estado || "ACTIVA").toUpperCase() === "ANULADA" || a22.anuladaAt ? " · ANULADA" : ""), puedeAnularAusenciaPM13 && /* @__PURE__ */ import_react4.default.createElement("button", { onClick: async () => { const r2 = await eliminarAusencia(e2.id, a22.id); if (!r2 || r2.ok === false) setError(r2?.error || "No se pudo anular la ausencia."); }, "aria-label": "Anular ausencia", title: "Anular ausencia" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft }))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1 pt-2", style: { color: C2.inkSoft, borderTop: `1px solid ${C2.line}` } }, "EPIs entregados"), (e2.epis || []).length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin EPIs registrados." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1" }, [...e2.epis || []].reverse().map((epi) => /* @__PURE__ */ import_react4.default.createElement("div", { key: epi.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, epi.nombre, " \xB7 ", epi.fecha, " ", epi.firmado ? "\xB7 firmado" : "\xB7 sin firmar"), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => eliminarEpi(e2.id, epi.id), "aria-label": "Eliminar EPI" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))));
   })), ausenciaFor && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setAusenciaFor(null), title: "Registrar ausencia" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tipo" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: ausenciaForm.tipo, onChange: (e2) => setAusenciaForm({ ...ausenciaForm, tipo: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "Vacaciones" }, "Vacaciones"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "Baja m\xE9dica" }, "Baja m\xE9dica"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "Otro" }, "Otro permiso"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Desde" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: ausenciaForm.fechaInicio, onChange: (e2) => setAusenciaForm({ ...ausenciaForm, fechaInicio: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hasta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: ausenciaForm.fechaFin, onChange: (e2) => setAusenciaForm({ ...ausenciaForm, fechaFin: e2.target.value }) }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, diasAusencia(ausenciaForm.fechaInicio, ausenciaForm.fechaFin), " d\xEDa(s) naturales, contando ambos extremos."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitAusencia }, "Guardar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setAusenciaFor(null) }, "Cancelar"))), epiFor && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setEpiFor(null), title: "Entregar EPI" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "Deja constancia de qu\xE9 equipo de protecci\xF3n le has dado. Es parte de la obligaci\xF3n de PRL."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Equipo entregado" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: epiForm.nombre, onChange: (e2) => setEpiForm({ ...epiForm, nombre: e2.target.value }), placeholder: "Guantes t\xE9rmicos, calzado antideslizante\u2026" })), /* @__PURE__ */ import_react4.default.createElement("label", { className: "flex items-center gap-2 mb-3 text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("input", { type: "checkbox", checked: epiForm.firmado, onChange: (e2) => setEpiForm({ ...epiForm, firmado: e2.target.checked }) }), "El empleado ha firmado el recib\xED"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
     if (epiForm.nombre.trim()) {
       registrarEpi(epiFor, epiForm);
@@ -118870,8 +119539,9 @@ function inicioSemana(fecha) {
   l22.setDate(d2.getDate() + diff);
   return aISO(l22);
 }
-function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, updateFichaje, eliminarFichaje, fichajesAbiertos, estadoCargaDatos = "cargado_con_datos", pendienteSincronizacion = false }) {
+function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, updateFichaje, eliminarFichaje, fichajesAbiertos, estadoCargaDatos = "cargado_con_datos", pendienteSincronizacion = false, estadoCargaEmpleados = "cargado_con_datos", pendienteEmpleados = false }) {
   const activos = empleados.filter((e2) => e2.activo !== false);
+  const puedeMostrarFichajes = !["cargando", "error"].includes(estadoCargaDatos) && !["cargando", "error"].includes(estadoCargaEmpleados);
   const fichajesVigentesPM13 = (0, import_react4.useMemo)(() => fichajes.filter((f22) => f22?.anulado !== true && String(f22?.anulado || "").toLowerCase() !== "true"), [fichajes]);
   const [desde, setDesde] = (0, import_react4.useState)(inicioSemana(/* @__PURE__ */ new Date()));
   const [hasta, setHasta] = (0, import_react4.useState)(todayISO());
@@ -118914,30 +119584,22 @@ function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, update
   const estadoHoy = activos.map((e2) => {
     const deHoy = fichajesVigentesPM13.filter((f22) => f22.empleadoId === e2.id && f22.fecha === todayISO()).sort((a22, b2) => (a22.hora || "").localeCompare(b2.hora || ""));
     const entradas = deHoy.filter((f22) => f22.tipo === "entrada");
-    const salidas = deHoy.filter((f22) => f22.tipo === "salida");
-    const abierto = entradas.length > salidas.length;
-    return { empleado: e2, ultimaEntrada: entradas[entradas.length - 1], abierto, totalFichajesHoy: deHoy.length };
+    const entradaAbierta = resumenFichajesPM13(fichajesVigentesPM13).abiertos.find((f22) => f22.empleadoId === e2.id);
+    const abierto = !!entradaAbierta;
+    return { empleado: e2, ultimaEntrada: entradaAbierta?.entrada || entradas[entradas.length - 1], abierto, totalFichajesHoy: deHoy.length };
   });
   const filasHistorial = (0, import_react4.useMemo)(() => {
-    const grupos = {};
-    fichajesVigentesPM13.filter((f22) => f22.fecha >= desde && f22.fecha <= hasta).forEach((f22) => {
-      const key = `${f22.empleadoId}-${f22.fecha}`;
-      if (!grupos[key]) grupos[key] = { empleadoId: f22.empleadoId, fecha: f22.fecha, entradas: [], salidas: [] };
-      if (f22.tipo === "entrada") grupos[key].entradas.push(f22);
-      else grupos[key].salidas.push(f22);
+    const resumen = resumenFichajesPM13(fichajesVigentesPM13);
+    const seSolapaConPeriodo = (entrada, salida = entrada) => entrada.fecha <= hasta && salida.fecha >= desde;
+    const filasCerradas = resumen.pares.filter((p22) => seSolapaConPeriodo(p22.entrada, p22.salida)).map((p22) => {
+      const emp = empleados.find((e2) => e2.id === p22.empleadoId);
+      return { ...p22, fecha: p22.fechaFin && p22.fechaFin !== p22.fecha ? `${p22.fecha} → ${p22.fechaFin}` : p22.fecha, nombre: emp ? emp.nombre : "\u2014", horas: p22.minutos / 60 };
     });
-    return Object.values(grupos).map((g2) => {
-      const emp = empleados.find((e2) => e2.id === g2.empleadoId);
-      const entrada = g2.entradas.sort((a22, b2) => a22.hora.localeCompare(b2.hora))[0];
-      const salida = g2.salidas.sort((a22, b2) => a22.hora.localeCompare(b2.hora)).slice(-1)[0];
-      let horas = null;
-      if (entrada && salida) {
-        const [h1, m1] = entrada.hora.split(":").map(Number);
-        const [h22, m22] = salida.hora.split(":").map(Number);
-        horas = (h22 * 60 + m22 - (h1 * 60 + m1)) / 60;
-      }
-      return { ...g2, nombre: emp ? emp.nombre : "\u2014", entrada, salida, horas };
+    const filasAbiertas = resumen.abiertos.filter((f22) => f22.fecha >= desde && f22.fecha <= hasta).map((f22) => {
+      const emp = empleados.find((e2) => e2.id === f22.empleadoId);
+      return { empleadoId: f22.empleadoId, fecha: f22.fecha, fechaFin: null, nombre: emp ? emp.nombre : "\u2014", entrada: f22.entrada, salida: null, horas: null, abierto: true };
     });
+    return [...filasCerradas, ...filasAbiertas];
   }, [fichajesVigentesPM13, desde, hasta, empleados]);
   function textoRegistro() {
     const lineas = filasHistorial.sort((a22, b2) => a22.fecha.localeCompare(b2.fecha) || a22.nombre.localeCompare(b2.nombre)).map((f22) => `${f22.fecha} \xB7 ${f22.nombre} \xB7 Entrada ${f22.entrada ? f22.entrada.hora : "\u2014"} \xB7 Salida ${f22.salida ? f22.salida.hora : "sin fichar"} \xB7 ${f22.horas !== null ? f22.horas.toFixed(2) + " h" : ""}`);
@@ -118975,7 +119637,7 @@ Generado el ${(/* @__PURE__ */ new Date()).toLocaleString("es-ES")}`;
     }
     setShowManual(false);
   }
-  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Registro horario"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Desde 2019, todas las empresas en Espa\xF1a est\xE1n obligadas a llevar un registro diario de la jornada de cada persona trabajadora, sea cual sea su tama\xF1o. Este registro se debe conservar 4 a\xF1os y estar disponible para la Inspecci\xF3n de Trabajo si lo pide.")), fichajesAbiertos.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "Fichajes sin cerrar"), fichajesAbiertos.map((f22, i33) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i33, className: "flex items-center justify-between gap-2 text-[12px] py-0.5" }, /* @__PURE__ */ import_react4.default.createElement("span", null, f22.nombre, " \u2014 entr\xF3 el ", f22.fecha, " y no consta salida"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => { setManual({ empleadoId: f22.empleadoId, fecha: f22.fecha, tipo: "salida", hora: "" }); setShowManual(true); } }, "Corregir")))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Hoy"), activos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "A\xF1ade empleados activos en Personal para poder ficharles." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-3 mb-4" }, estadoHoy.map(({ empleado, ultimaEntrada, abierto }) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: empleado.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium text-[13.5px]" }, empleado.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, abierto ? `Entr\xF3 a las ${ultimaEntrada.hora}` : ultimaEntrada ? "Jornada cerrada" : "Sin fichar hoy")), /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: abierto ? C2.accent : C2.inkSoft }, abierto ? "Trabajando" : "Fuera")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, disabled: abierto || !!estadoFichar[empleado.id]?.procesando, onClick: () => alFicharPM13(empleado.id, "entrada") }, /* @__PURE__ */ import_react4.default.createElement(LogIn, { size: 13 }), estadoFichar[empleado.id]?.procesando ? " Fichando…" : " Entrada"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", disabled: !abierto || !!estadoFichar[empleado.id]?.procesando, onClick: () => alFicharPM13(empleado.id, "salida") }, /* @__PURE__ */ import_react4.default.createElement(LogOut, { size: 13 }), estadoFichar[empleado.id]?.procesando ? " Fichando…" : " Salida")), /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "text-[11px] mt-1", style: { color: estadoFichar[empleado.id]?.resultado?.tipo === "error" ? C2.red : estadoFichar[empleado.id]?.resultado?.tipo === "incierto" ? C2.amber : C2.inkSoft } }, estadoFichar[empleado.id]?.resultado?.mensaje || "")))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium", style: { color: C2.inkSoft } }, "Historial"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setShowManual(true) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 13 }), " Correcci\xF3n manual"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setShowExportar(true) }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 13 }), " Exportar"))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-wrap gap-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irEstaSemana }, "Esta semana"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irSemanaAnterior }, "Semana anterior")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Desde" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: desde, onChange: (e2) => setDesde(e2.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hasta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: hasta, onChange: (e2) => setHasta(e2.target.value) })))), filasHistorial.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin fichajes en este periodo." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, filasHistorial.sort((a22, b2) => b2.fecha.localeCompare(a22.fecha) || a22.nombre.localeCompare(b2.nombre)).map((f22, i33) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: i33 }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium" }, f22.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, f22.fecha)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, f22.entrada ? f22.entrada.hora : "\u2014", " \u2192 ", f22.salida ? f22.salida.hora : "sin salida"), f22.horas !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mono", style: { color: C2.accent } }, f22.horas.toFixed(2), " h")))))), showManual && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowManual(false), title: "Correcci\xF3n manual de fichaje" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Empleado" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: manual.empleadoId, onChange: (e2) => setManual({ ...manual, empleadoId: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, activos.map((e2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: e2.id, value: e2.id }, e2.nombre)))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-3 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Fecha" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: manual.fecha, onChange: (e2) => setManual({ ...manual, fecha: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tipo" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: manual.tipo, onChange: (e2) => setManual({ ...manual, tipo: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "entrada" }, "Entrada"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "salida" }, "Salida"))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hora" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "time", value: manual.hora, onChange: (e2) => setManual({ ...manual, hora: e2.target.value }) }))), manualError && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, manualError), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitManual }, "Guardar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowManual(false) }, "Cancelar"))), showExportar && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowExportar(false), title: "Exportar registro horario" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2" }, "Copia este texto y gu\xE1rdalo (o p\xE9galo en un documento). Es tu justificante del registro horario del periodo seleccionado, por si te lo pide la Inspecci\xF3n de Trabajo."), /* @__PURE__ */ import_react4.default.createElement(
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Registro horario"), /* @__PURE__ */ import_react4.default.createElement(EstadoCargaDatosPM12, { estado: estadoCargaEmpleados, etiqueta: "Empleados", pendiente: pendienteEmpleados }), /* @__PURE__ */ import_react4.default.createElement(EstadoCargaDatosPM12, { estado: estadoCargaDatos, etiqueta: "Fichajes", pendiente: pendienteSincronizacion }), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Desde 2019, todas las empresas en Espa\xF1a est\xE1n obligadas a llevar un registro diario de la jornada de cada persona trabajadora, sea cual sea su tama\xF1o. Este registro se debe conservar 4 a\xF1os y estar disponible para la Inspecci\xF3n de Trabajo si lo pide.")), fichajesAbiertos.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "Fichajes sin cerrar"), fichajesAbiertos.map((f22, i33) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i33, className: "flex items-center justify-between gap-2 text-[12px] py-0.5" }, /* @__PURE__ */ import_react4.default.createElement("span", null, f22.nombre, " \u2014 entr\xF3 el ", f22.fecha, " y no consta salida"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => { setManual({ empleadoId: f22.empleadoId, fecha: f22.fecha, tipo: "salida", hora: "" }); setShowManual(true); } }, "Corregir")))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Hoy"), estadoCargaEmpleados === "cargando" || estadoCargaEmpleados === "error" ? null : activos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "A\xF1ade empleados activos en Personal para poder ficharles." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-3 mb-4" }, estadoHoy.map(({ empleado, ultimaEntrada, abierto }) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: empleado.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium text-[13.5px]" }, empleado.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, abierto ? `Entr\xF3 a las ${ultimaEntrada.hora}` : ultimaEntrada ? "Jornada cerrada" : "Sin fichar hoy")), /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: abierto ? C2.accent : C2.inkSoft }, abierto ? "Trabajando" : "Fuera")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, disabled: abierto || !!estadoFichar[empleado.id]?.procesando, onClick: () => alFicharPM13(empleado.id, "entrada") }, /* @__PURE__ */ import_react4.default.createElement(LogIn, { size: 13 }), estadoFichar[empleado.id]?.procesando ? " Fichando…" : " Entrada"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", disabled: !abierto || !!estadoFichar[empleado.id]?.procesando, onClick: () => alFicharPM13(empleado.id, "salida") }, /* @__PURE__ */ import_react4.default.createElement(LogOut, { size: 13 }), estadoFichar[empleado.id]?.procesando ? " Fichando…" : " Salida")), /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "text-[11px] mt-1", style: { color: estadoFichar[empleado.id]?.resultado?.tipo === "error" ? C2.red : estadoFichar[empleado.id]?.resultado?.tipo === "incierto" ? C2.amber : C2.inkSoft } }, estadoFichar[empleado.id]?.resultado?.mensaje || "")))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium", style: { color: C2.inkSoft } }, "Historial"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setShowManual(true) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 13 }), " Correcci\xF3n manual"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setShowExportar(true) }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 13 }), " Exportar"))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-wrap gap-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irEstaSemana }, "Esta semana"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irSemanaAnterior }, "Semana anterior")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Desde" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: desde, onChange: (e2) => setDesde(e2.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hasta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: hasta, onChange: (e2) => setHasta(e2.target.value) })))), !puedeMostrarFichajes ? null : filasHistorial.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin fichajes en este periodo." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, filasHistorial.sort((a22, b2) => b2.fecha.localeCompare(a22.fecha) || a22.nombre.localeCompare(b2.nombre)).map((f22, i33) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: i33 }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium" }, f22.nombre), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, f22.fecha)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono" }, f22.entrada ? f22.entrada.hora : "\u2014", " \u2192 ", f22.salida ? f22.salida.hora : "sin salida"), f22.horas !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mono", style: { color: C2.accent } }, f22.horas.toFixed(2), " h")))))), showManual && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowManual(false), title: "Correcci\xF3n manual de fichaje" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Empleado" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: manual.empleadoId, onChange: (e2) => setManual({ ...manual, empleadoId: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, activos.map((e2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: e2.id, value: e2.id }, e2.nombre)))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-3 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Fecha" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: manual.fecha, onChange: (e2) => setManual({ ...manual, fecha: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tipo" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: manual.tipo, onChange: (e2) => setManual({ ...manual, tipo: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "entrada" }, "Entrada"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "salida" }, "Salida"))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hora" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "time", value: manual.hora, onChange: (e2) => setManual({ ...manual, hora: e2.target.value }) }))), manualError && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, manualError), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitManual }, "Guardar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowManual(false) }, "Cancelar"))), showExportar && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowExportar(false), title: "Exportar registro horario" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2" }, "Copia este texto y gu\xE1rdalo (o p\xE9galo en un documento). Es tu justificante del registro horario del periodo seleccionado, por si te lo pide la Inspecci\xF3n de Trabajo."), /* @__PURE__ */ import_react4.default.createElement(
     "textarea",
     {
       readOnly: true,
@@ -121087,7 +121749,7 @@ function horasTurno(t22) {
   const [h22, m22] = t22.horaFin.split(":").map(Number);
   return Math.max(0, (h22 * 60 + m22 - (h1 * 60 + m1)) / 60);
 }
-function Turnos({ empleados, turnos, addTurno, updateTurno, deleteTurno, copiarSemana, estadoCargaDatos = "cargado_con_datos", pendienteSincronizacion = false }) {
+function Turnos({ empleados, turnos, addTurno, updateTurno, deleteTurno, copiarSemana, estadoCargaDatos = "cargado_con_datos", pendienteSincronizacion = false, estadoCargaEmpleados = "cargado_con_datos", pendienteEmpleados = false }) {
   const activos = empleados.filter((e2) => e2.activo !== false);
   const [inicio, setInicio] = (0, import_react4.useState)(inicioSemana(/* @__PURE__ */ new Date()));
   const dias = fechasSemana(inicio);
@@ -121158,6 +121820,9 @@ function Turnos({ empleados, turnos, addTurno, updateTurno, deleteTurno, copiarS
     });
     return mapa;
   }, [turnos, dias, activos]);
+  if (["cargando", "error"].includes(estadoCargaDatos) || ["cargando", "error"].includes(estadoCargaEmpleados)) {
+    return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Cuadrante de turnos"), /* @__PURE__ */ import_react4.default.createElement(EstadoCargaDatosPM12, { estado: estadoCargaEmpleados, etiqueta: "Empleados", pendiente: pendienteEmpleados }), /* @__PURE__ */ import_react4.default.createElement(EstadoCargaDatosPM12, { estado: estadoCargaDatos, etiqueta: "Turnos", pendiente: pendienteSincronizacion }));
+  }
   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(
     SectionTitle,
     {

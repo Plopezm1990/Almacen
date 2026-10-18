@@ -41,6 +41,19 @@ function clean(v: unknown, max: number) {
   return typeof v === "string" ? v.trim().slice(0, max) : "";
 }
 
+async function neutralizarCuentaNueva(admin: ReturnType<typeof createClient>, nuevoUserId: string) {
+  try {
+    const { error } = await admin.auth.admin.deleteUser(nuevoUserId);
+    if (!error) return "eliminada";
+  } catch { /* intentar el bloqueo aunque falle la eliminación */ }
+  try {
+    const { data, error } = await admin.auth.admin.updateUserById(nuevoUserId, { ban_duration: "876000h" });
+    if (!error && data?.user?.banned_until && Date.parse(data.user.banned_until) > Date.now()) return "bloqueada";
+  } catch { /* no presentar un bloqueo que no se haya confirmado */ }
+  console.error("PM11_COMPENSACION_NO_CONFIRMADA", { nuevoUserId });
+  return "no_confirmada";
+}
+
 Deno.serve(async (req: Request) => {
   const origen = req.headers.get("Origin") || "";
 
@@ -69,6 +82,8 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  let nuevoUserId = "";
+  let altaConfirmada = false;
   try {
     const { data: datosUsuario, error: errorUsuario } = await caller.auth.getUser();
     const actor = datosUsuario?.user;
@@ -101,10 +116,11 @@ Deno.serve(async (req: Request) => {
     );
     if (errorPreflight || !preflight?.ok) {
       const codigo = preflight?.codigo || "";
-      if (codigo === "empleado_no_encontrado") return json(req, { ok: false, error: "Empleado no encontrado." }, 404);
+      if (["empleado_no_disponible", "empleado_no_encontrado", "sin_alcance"].includes(codigo)) {
+        return json(req, { ok: false, error: "Empleado no disponible en tu ámbito." }, 404);
+      }
       if (codigo === "empleado_no_activo") return json(req, { ok: false, error: "Solo se puede crear cuenta a un empleado activo." }, 409);
       if (codigo === "perfil_no_activo") return json(req, { ok: false, error: "El perfil del usuario no está activo." }, 403);
-      if (codigo === "sin_alcance") return json(req, { ok: false, error: "No tienes alcance de Propietario sobre este empleado." }, 403);
       if (codigo === "local_inactivo") return json(req, { ok: false, error: "El local del empleado no está activo." }, 409);
       return json(req, { ok: false, error: "No se pudo comprobar el empleado." }, errorPreflight ? 500 : 403);
     }
@@ -136,7 +152,7 @@ Deno.serve(async (req: Request) => {
       return json(req, { ok: false, error: duplicado ? "Ya existe una cuenta con ese correo." : "No se pudo crear la cuenta." }, 409);
     }
 
-    const nuevoUserId = nuevoUsuario.user.id;
+    nuevoUserId = nuevoUsuario.user.id;
     const { data: finalizado, error: errorFinalizar } = await admin.rpc(
       "pm11_finalizar_creacion_cuenta_empleado",
       {
@@ -151,14 +167,13 @@ Deno.serve(async (req: Request) => {
     );
 
     if (errorFinalizar || !finalizado?.ok) {
-      const { error: errorBorrar } = await admin.auth.admin.deleteUser(nuevoUserId);
-      if (errorBorrar) {
-        await admin.auth.admin.updateUserById(nuevoUserId, { ban_duration: "876000h" }).catch(() => undefined);
-        return json(req, { ok: false, error: "Falló la configuración y la cuenta se ha intentado bloquear." }, 500);
-      }
+      const compensacion = await neutralizarCuentaNueva(admin, nuevoUserId);
+      if (compensacion === "no_confirmada") return json(req, { ok: false, error: "No se pudo confirmar el bloqueo de la cuenta; requiere revisión de seguridad." }, 500);
+      if (compensacion === "bloqueada") return json(req, { ok: false, error: "No se completó la cuenta; quedó bloqueada para revisión." }, 500);
       return json(req, { ok: false, error: "No se pudo completar la cuenta; no se dejó un acceso parcial." }, 409);
     }
 
+    altaConfirmada = true;
     return json(req, {
       ok: true,
       yaCreada: finalizado.yaCreada === true,
@@ -167,6 +182,10 @@ Deno.serve(async (req: Request) => {
       rol,
     });
   } catch {
+    if (nuevoUserId && !altaConfirmada) {
+      const compensacion = await neutralizarCuentaNueva(admin, nuevoUserId);
+      if (compensacion === "no_confirmada") return json(req, { ok: false, error: "No se pudo confirmar el bloqueo de la cuenta; requiere revisión de seguridad." }, 500);
+    }
     return json(req, { ok: false, error: "Error inesperado creando la cuenta." }, 500);
   }
 });

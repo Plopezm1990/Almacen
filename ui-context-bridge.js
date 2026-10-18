@@ -87,6 +87,28 @@
       try { parsed = JSON.parse(value); }
       catch (e) { throw new Error("Contexto empresa/local inválido"); }
 
+      if (key === "localActivoId") {
+        // localActivoId es una preferencia de este dispositivo, no una
+        // modificación estructural de empresas/locales. Se valida contra el
+        // contexto que el servidor filtra para la sesión actual y se guarda
+        // solo en localStorage. Así una cuenta de empleado no necesita la RPC
+        // de escritura reservada al Propietario ni puede elegir otro local.
+        var contexto = await actual.supabase.rpc("obtener_contexto_instalacion_ui");
+        if (contexto.error) throw contexto.error;
+        if (!contexto.data || contexto.data.state !== "ready" || contexto.data.generation !== generacionLocal()) {
+          throw new Error("El servidor no confirmó el contexto empresa/local");
+        }
+        var localesPermitidos = Array.isArray(contexto.data.locales) ? contexto.data.locales : [];
+        var permiteTodos = contexto.data.permite_todos_locales === true;
+        var localPermitido = typeof parsed === "string" && parsed.length > 0 && localesPermitidos.some(function (local) {
+          return local && local.activo !== false && !local.fusionadoEn && String(local.id) === parsed;
+        });
+        if (parsed === null ? !permiteTodos : !localPermitido) {
+          throw new Error("Local no autorizado para esta cuenta");
+        }
+        return guardarLocal(key, value);
+      }
+
       var r = await actual.supabase.rpc("guardar_contexto_instalacion_ui", {
         p_clave: key,
         p_valor: parsed
@@ -94,12 +116,6 @@
       if (r.error) throw r.error;
       if (!r.data || r.data.state !== "ready" || r.data.generation !== generacionLocal()) {
         throw new Error("El servidor no confirmó el contexto empresa/local");
-      }
-
-      if (key === "localActivoId") {
-        // La RPC valida que el local elegido pertenece al Propietario. La
-        // selección concreta es preferencia de este dispositivo.
-        return guardarLocal(key, value);
       }
 
       if (typeof window.__laOwnerBootstrapSeedUiContext !== "function") {
