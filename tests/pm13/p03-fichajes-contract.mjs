@@ -262,6 +262,17 @@ assert.match(logicText, /pm13_anular_fichaje/);
   assert.equal(diaOp('', '03:00', 360), '');
   console.log('DIA_OPERATIVO_CONFIGURABLE=1');
 }
+// PM13 2.5: offline, un reintento en el mismo tick (misma instancia, sin el coalescing
+// del camino remoto) no duplica, porque el prepend deduplica por el id determinista.
+{
+  const e = entorno();
+  const l = e.nueva();
+  assert.equal(l.addFichajeManual(baseEntrada), true);
+  l.addFichajeManual(baseEntrada);
+  assert.equal(e.estado.length, 1, 'offline: reintento en el mismo tick no duplica');
+  assert.equal(e.estado.filter((f) => f.id === e.estado[0].id).length, 1, 'id determinista único, sin duplicado');
+  console.log('OFFLINE_REINTENTO_SIN_DUPLICAR=1');
+}
 console.log('PM13_P03_FICHAJES_FRONTEND=PASS');
 console.log('ACTIVOS_SCOPE_SECUENCIA=1');
 console.log('REPLAY_DOBLE_CLIC=1');

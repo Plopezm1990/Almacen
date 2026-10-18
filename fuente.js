@@ -106746,7 +106746,7 @@ function crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId })
     const candidatoLocal = { id: `fichaje-${operationId}`, empleadoId, tipo, fecha, hora, timestamp: ahora.toISOString(), localId: emp.localId || localActivoId, operationId, manual: false, anulado: false };
     if (!motorFichajeRemotoDisponiblePM13()) {
       if (!secuenciaFichajeValidaPM13(candidatoLocal)) return false;
-      setFichajes((s22) => [candidatoLocal, ...s22]);
+      setFichajes((s22) => [candidatoLocal, ...s22.filter((f22) => f22.id !== candidatoLocal.id)]);
       return true;
     }
     return ejecutarUnaVezFichajePM13(`auto:${empleadoId}:${tipo}`, () => ejecutarRpcFichajePM13("pm13_fichar", {
@@ -106774,7 +106774,7 @@ function crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId })
     const candidatoLocal = { id: `fichaje-${operationId}`, empleadoId: emp.id, tipo, fecha, hora, timestamp: `${fecha}T${hora}:00`, localId: emp.localId || localActivoId, operationId, manual: true, motivoManual: String(data?.motivoManual || data?.motivo || "Corrección manual registrada").trim(), anulado: false };
     if (!motorFichajeRemotoDisponiblePM13()) {
       if (!secuenciaFichajeValidaPM13(candidatoLocal)) return false;
-      setFichajes((s22) => [candidatoLocal, ...s22]);
+      setFichajes((s22) => [candidatoLocal, ...s22.filter((f22) => f22.id !== candidatoLocal.id)]);
       return true;
     }
     return ejecutarUnaVezFichajePM13(`manual:${operationId}`, () => ejecutarRpcFichajePM13("pm13_fichaje_manual", {
