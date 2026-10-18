@@ -201,6 +201,24 @@ const baseEntrada = { empleadoId: 'a1', fecha: '2026-09-06', tipo: 'entrada', ho
   assert.equal(remoto.estado.length, 0);
 }
 
+// PM13 2.7/2.8: idempotencia multi-dispositivo. Aplicar dos veces el mismo fichaje
+// confirmado por el servidor (dos dispositivos, o un reintento tras el coalescing) no
+// debe duplicarlo: aplicarConfirmadoFichajePM13 deduplica por id.
+{
+  const fichajeServidor = { id: 'remote-dup', empleadoId: 'a1', localId: 'local-a', fecha: '2026-09-07', hora: '12:00', tipo: 'entrada', anulado: false };
+  const remoto = entorno([], 'local-a', {
+    window: {
+      getSupabaseClient: async () => ({ rpc: async () => ({ data: { ok: true, fichaje: fichajeServidor }, error: null }) })
+    }
+  });
+  const r1 = await remoto.nueva().fichar('a1', 'entrada');
+  const r2 = await remoto.nueva().fichar('a1', 'entrada');
+  assert.equal(r1.ok, true);
+  assert.equal(r2.ok, true);
+  assert.equal(remoto.estado.length, 1, 'el mismo fichaje confirmado aplicado dos veces no se duplica');
+  assert.equal(remoto.estado.filter((f) => f.id === 'remote-dup').length, 1);
+}
+
 // Barreras estáticas de UI y cálculo global.
 const uiStart = src.indexOf('function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, updateFichaje, eliminarFichaje, fichajesAbiertos,');
 assert.ok(uiStart >= 0, 'RegistroHorario presente');
@@ -241,4 +259,5 @@ console.log('ACTIVOS_SCOPE_SECUENCIA=1');
 console.log('REPLAY_DOBLE_CLIC=1');
 console.log('CORRECCION_TRAZABLE=1');
 console.log('ANULACION_SIN_BORRADO=1');
+console.log('IDEMPOTENCIA_MULTIDISPOSITIVO=1');
 console.log('UI_FAIL_CLOSED=1');
