@@ -47,6 +47,10 @@ const EXCLUIDAS = new Set([
   '20261016120000_plataforma_password_inicial_pendiente.sql',
   '20261016130000_plataforma_password_inicial_bloqueo_filtros.sql',
   '20261016140000_plataforma_password_inicial_bloqueo_push.sql',
+  // PM13 P06 (excepciones individuales de permiso) se valida en QA en este subcaso;
+  // se promueve a PROD en una ventana separada (punto 9) y no forma parte de la foto F7.
+  '20261018120000_pm13_p06_excepciones_permiso.sql',
+  '20261018130000_pm13_p06_excepciones_listar.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))

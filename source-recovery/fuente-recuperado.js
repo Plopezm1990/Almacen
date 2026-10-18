@@ -1767,6 +1767,8 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
   const [seleccionPantallas, setSeleccionPantallas] = (0, import_react4.useState)({});
   const [editorPermisos, setEditorPermisos] = (0, import_react4.useState)(null);
   const [motivoPermiso, setMotivoPermiso] = (0, import_react4.useState)("");
+  const [editorExcepciones, setEditorExcepciones] = (0, import_react4.useState)(null);
+  const [motivoExcepcion, setMotivoExcepcion] = (0, import_react4.useState)("");
   const [error, setError] = (0, import_react4.useState)("");
   const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
   const cargarCargos = async () => {
@@ -1788,6 +1790,8 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
     setSeleccionPantallas({});
     setEditorPermisos(null);
     setMotivoPermiso("");
+    setEditorExcepciones(null);
+    setMotivoExcepcion("");
     setConfirmacion("");
     cargarCargos();
   }, [empresa?.id, localId, esPropietario]);
@@ -1968,6 +1972,83 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
       setGuardando(false);
     }
   };
+  const claveExcepcion = (item) => `${item.clave}::${item.accion}::${item.alcance}`;
+  const alcanceExcepcion = (permiso) => permiso.alcance_maximo === "EMPRESA" ? "EMPRESA" : "LOCAL";
+  const construirExcepciones = async (cargo, persona) => {
+    const cat = await configRpc("pm13_listar_cargo_permisos", { p_empresa_id: empresa?.id || "", p_local_id: localId, p_cargo_id: cargo.id });
+    const base = Array.isArray(cat?.permisos) ? cat.permisos : [];
+    const exc = await configRpc("pm13_listar_excepciones_empleado", { p_empresa_id: empresa?.id || "", p_local_id: localId, p_empleado_id: persona.id });
+    const mapaExc = {};
+    (Array.isArray(exc?.excepciones) ? exc.excepciones : []).forEach((e2) => {
+      mapaExc[`${e2.clave}::${e2.accion}::${e2.alcance}`] = e2;
+    });
+    const items = base.map((permiso) => {
+      const alcance = alcanceExcepcion(permiso);
+      const ex = mapaExc[`${permiso.clave}::${permiso.accion}::${alcance}`];
+      const efecto = ex ? ex.permitido ? "permitir" : "denegar" : "heredar";
+      const cargoBase = permiso.activo ? permiso.permitido ? "permitido por el cargo" : "denegado por el cargo" : "denegado por defecto";
+      return { clave: permiso.clave, accion: permiso.accion, alcance, etiqueta: PM13_CARGO_PERMISOS_LABELS[permiso.clave] || permiso.clave, efecto, cargoBase };
+    });
+    setEditorExcepciones({ empleadoId: persona.id, nombre: persona.nombre || "este empleado", items, originales: Object.fromEntries(items.map((i2) => [claveExcepcion(i2), i2.efecto])) });
+  };
+  const abrirEditorExcepciones = async (cargo, persona) => {
+    if (editorExcepciones?.empleadoId === persona.id) {
+      setEditorExcepciones(null);
+      setMotivoExcepcion("");
+      return;
+    }
+    setError("");
+    setConfirmacion("");
+    setGuardando(true);
+    try {
+      await construirExcepciones(cargo, persona);
+      setMotivoExcepcion("");
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const cambiarExcepcion = (item, efecto) => {
+    setEditorExcepciones((actual) => actual ? { ...actual, items: actual.items.map((i2) => claveExcepcion(i2) === claveExcepcion(item) ? { ...i2, efecto } : i2) } : actual);
+  };
+  const guardarExcepciones = async (cargo, persona) => {
+    if (!editorExcepciones || editorExcepciones.empleadoId !== persona.id) return;
+    const cambios = editorExcepciones.items.filter((i2) => i2.efecto !== editorExcepciones.originales[claveExcepcion(i2)]);
+    if (!cambios.length) {
+      setError("No has cambiado ninguna excepción.");
+      return;
+    }
+    if (!motivoExcepcion.trim()) {
+      setError("Indica el motivo del cambio para dejarlo en la auditoría.");
+      return;
+    }
+    setError("");
+    setConfirmacion("");
+    setGuardando(true);
+    try {
+      for (const item of cambios) {
+        const r2 = await configRpc("pm13_configurar_excepcion_permiso", {
+          p_empresa_id: empresa?.id || "",
+          p_local_id: localId,
+          p_empleado_id: persona.id,
+          p_clave: item.clave,
+          p_accion: item.accion,
+          p_alcance: item.alcance,
+          p_efecto: item.efecto,
+          p_motivo: motivoExcepcion.trim()
+        });
+        if (r2 && r2.ok === false) throw new Error(r2.codigo || "excepcion_no_guardada");
+      }
+      setConfirmacion("Excepciones guardadas y auditadas.");
+      setMotivoExcepcion("");
+      await construirExcepciones(cargo, persona);
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
   const gruposPantallas = PM13_PANTALLAS_EDITOR.reduce((grupos, pantalla) => {
     (grupos[pantalla.grupo] ||= []).push(pantalla);
     return grupos;
@@ -2031,7 +2112,42 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
         ),
         cargo.descripcion ? h("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, cargo.descripcion) : null,
         h("div", { className: "text-[11.5px] mt-2" }, cargo.asignados_count ? `${cargo.asignados_count} persona(s) asignada(s)` : "Sin personas asignadas"),
-        cargo.personas_asignadas?.length ? h("div", { className: "space-y-1 mt-2" }, cargo.personas_asignadas.map((persona) => h("div", { key: persona.id, className: "flex items-center justify-between gap-2 text-[11.5px]" }, h("span", null, persona.nombre || "Sin nombre"), h(Btn, { small: true, variant: "ghost", onClick: () => desasignarCargo(persona), disabled: ocupado }, "Quitar")))) : null,
+        cargo.personas_asignadas?.length ? h("div", { className: "space-y-1 mt-2" }, cargo.personas_asignadas.map((persona) => h(
+          "div",
+          { key: persona.id },
+          h("div", { className: "flex items-center justify-between gap-2 text-[11.5px]" },
+            h("span", null, persona.nombre || "Sin nombre"),
+            h("div", { className: "flex gap-2" },
+              h(Btn, { small: true, variant: "ghost", onClick: () => abrirEditorExcepciones(cargo, persona), disabled: ocupado }, editorExcepciones?.empleadoId === persona.id ? "Cerrar excepciones" : "Excepciones"),
+              h(Btn, { small: true, variant: "ghost", onClick: () => desasignarCargo(persona), disabled: ocupado }, "Quitar")
+            )
+          ),
+          editorExcepciones?.empleadoId === persona.id ? h(
+            "div",
+            { className: "rounded-lg p-3 mt-2", style: { border: `1px solid ${C2.line}`, background: C2.bg } },
+            h("div", { className: "font-medium mb-1" }, "Excepciones de permiso de " + (persona.nombre || "este empleado")),
+            h("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Ajusta un permiso concreto solo para esta persona. 'Heredar' usa el cargo; 'Permitir'/'Denegar' mandan sobre el cargo, pero nunca saltan las barreras de seguridad ni la dependencia de consulta."),
+            h(ConfigMotivo, { valor: motivoExcepcion, onCambio: setMotivoExcepcion, deshabilitado: ocupado }),
+            h("div", { className: "space-y-2 my-2" }, editorExcepciones.items.map((item) => h(
+              "div",
+              { key: claveExcepcion(item), className: "flex flex-wrap items-center justify-between gap-2 rounded-lg p-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+              h("div", { className: "min-w-0" },
+                h("div", { className: "text-[12px] font-medium" }, item.etiqueta),
+                h("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, `${item.clave} · ${item.accion} · ${item.alcance}`),
+                h("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, item.efecto === "heredar" ? `Origen: cargo (${item.cargoBase})` : item.efecto === "permitir" ? "Origen: excepción · permitir" : "Origen: excepción · denegar")
+              ),
+              h("select", { value: item.efecto, disabled: ocupado, onChange: (e2) => cambiarExcepcion(item, e2.target.value), className: "rounded-lg px-2 py-1 text-[12px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } },
+                h("option", { value: "heredar" }, "Heredar del cargo"),
+                h("option", { value: "permitir" }, "Permitir"),
+                h("option", { value: "denegar" }, "Denegar")
+              )
+            ))),
+            h("div", { className: "flex gap-2 flex-wrap" },
+              h(Btn, { small: true, onClick: () => guardarExcepciones(cargo, persona), disabled: ocupado }, guardando ? "Guardando…" : "Guardar excepciones"),
+              h(Btn, { small: true, variant: "ghost", onClick: () => { setEditorExcepciones(null); setMotivoExcepcion(""); }, disabled: ocupado }, "Cerrar")
+            )
+          ) : null
+        ))) : null,
         h("div", { className: "flex flex-wrap items-end gap-2 mt-2" },
           h(Field, { label: "Asignar a este local" }, h("select", { value: empleadoPorCargo[cargo.id] || "", disabled: ocupado || !cargo.activo || empleadosDelLocal.length === 0, onChange: (e2) => setEmpleadoPorCargo((actual) => ({ ...actual, [cargo.id]: e2.target.value })), className: "rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 40 } }, h("option", { value: "" }, empleadosDelLocal.length ? "Selecciona una persona" : "No hay empleados activos"), empleadosDelLocal.map((empleado) => h("option", { key: empleado.id, value: empleado.id }, empleado.nombre || empleado.nombreCompleto || "Sin nombre")))),
           h(Btn, { small: true, onClick: () => asignarCargo(cargo), disabled: ocupado || !empleadoPorCargo[cargo.id] || !cargo.activo }, "Asignar")
