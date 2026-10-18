@@ -121863,7 +121863,11 @@ function horasTurno(t22) {
   if (!t22.horaInicio || !t22.horaFin) return 0;
   const [h1, m1] = t22.horaInicio.split(":").map(Number);
   const [h22, m22] = t22.horaFin.split(":").map(Number);
-  return Math.max(0, (h22 * 60 + m22 - (h1 * 60 + m1)) / 60);
+  // PM13 2.6: un turno nocturno cuyo fin es <= inicio cruza medianoche; su fin
+  // pertenece al día siguiente, pero el turno se imputa al día de inicio.
+  let minutos = h22 * 60 + m22 - (h1 * 60 + m1);
+  if (minutos < 0) minutos += 24 * 60;
+  return minutos / 60;
 }
 function Turnos({ empleados, turnos, addTurno, updateTurno, deleteTurno, copiarSemana, estadoCargaDatos = "cargado_con_datos", pendienteSincronizacion = false, estadoCargaEmpleados = "cargado_con_datos", pendienteEmpleados = false }) {
   const activos = empleados.filter((e2) => e2.activo !== false);
