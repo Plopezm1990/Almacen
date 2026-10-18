@@ -103683,20 +103683,21 @@ function GestionAlmacen() {
   }, [ready, miPerfil?.rol, empresaDelLocalActivo?.id, localActivoId]);
   (0, import_react4.useEffect)(() => {
     // PM13 2.6: carga el corte del día operativo de la empresa activa para imputar
-    // fichajes/turnos al día correcto. Solo Propietario (los ajustes son suyos);
-    // por defecto 0 (00:00 = día natural), así que si no hay regla no cambia nada.
+    // fichajes/turnos al día correcto. Lo lee cualquier miembro activo del local
+    // (RPC de solo lectura pm13_corte_dia_operativo); por defecto 0 (00:00 = día
+    // natural), así que si no hay regla propia no cambia nada.
     let activo = true;
     const empresaId = empresaDelLocalActivo?.id || "";
     const localId = localActivoId || "";
-    if (!ready || !miPerfil || miPerfil.rol !== "Propietario" || typeof window === "undefined" || !window.__nubeActiva || !empresaId || !localId) {
+    if (!ready || !miPerfil || typeof window === "undefined" || !window.__nubeActiva || !empresaId || !localId) {
       setCorteDiaMinPM13(0);
       return () => { activo = false; };
     }
     (async () => {
       try {
-        const ajustes = await configRpc("abc_obtener_ajustes", { p_empresa_id: empresaId, p_local_id: localId });
+        const corte = await configRpc("pm13_corte_dia_operativo", { p_empresa_id: empresaId, p_local_id: localId });
         if (!activo) return;
-        const corteTexto = String(ajustes?.dia_operativo?.cutoff_time || "00:00:00").slice(0, 5);
+        const corteTexto = corte && corte.ok === true ? String(corte.cutoff_time || "00:00:00").slice(0, 5) : "00:00";
         const [hC, mC] = corteTexto.split(":").map(Number);
         setCorteDiaMinPM13(Number.isFinite(hC) && Number.isFinite(mC) ? Math.max(0, Math.min(720, hC * 60 + mC)) : 0);
       } catch (e2) {
