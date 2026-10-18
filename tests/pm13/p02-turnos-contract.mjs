@@ -128,6 +128,24 @@ const turnoBase = {
   assert.equal(e.estado.length, 2);
 }
 
+// PM13 2.6: horasTurno debe contar los turnos nocturnos que cruzan medianoche
+// (fin <= inicio), imputados al día de inicio. Antes devolvía 0 por Math.max.
+{
+  const htStart = src.indexOf('function horasTurno(t22) {');
+  const htEnd = src.indexOf('\nfunction Turnos(', htStart);
+  assert.ok(htStart >= 0 && htEnd > htStart, 'No se localizó horasTurno');
+  const htSandbox = {};
+  htSandbox.globalThis = htSandbox;
+  vm.createContext(htSandbox);
+  vm.runInContext(src.slice(htStart, htEnd) + '\nglobalThis.__horasTurno = horasTurno;', htSandbox);
+  const horasTurno = htSandbox.__horasTurno;
+  assert.equal(horasTurno({ horaInicio: '08:00', horaFin: '14:00' }), 6, 'turno diurno');
+  assert.equal(horasTurno({ horaInicio: '', horaFin: '' }), 0, 'turno libre sin horas');
+  assert.equal(horasTurno({ horaInicio: '08:00', horaFin: '08:00' }), 0, 'turno de duración nula');
+  assert.equal(horasTurno({ horaInicio: '22:00', horaFin: '06:00' }), 8, 'turno nocturno cruza medianoche');
+  assert.equal(horasTurno({ horaInicio: '23:30', horaFin: '00:30' }), 1, 'turno nocturno corto');
+}
+
 const uiStart = src.indexOf('function Turnos({ empleados, turnos, addTurno, updateTurno, deleteTurno, copiarSemana,');
 const uiEnd = src.indexOf('\nfunction MapaAlmacen(', uiStart);
 assert.ok(uiStart >= 0 && uiEnd > uiStart, 'No se localizó UI Turnos');
@@ -141,6 +159,7 @@ console.log('PM13_P02_TURNOS_SEGUROS=PASS');
 console.log('ACTIVOS_Y_SCOPE=1');
 console.log('FECHAS_HORAS_VALIDAS=1');
 console.log('NOCHES_Y_SOLAPAMIENTOS=1');
+console.log('HORAS_TURNO_NOCTURNO=1');
 console.log('EDICION_FAIL_CLOSED=1');
 console.log('COPIA_SEMANA_IDEMPOTENTE=1');
 console.log('UI_NO_CIERRA_EN_ERROR=1');
