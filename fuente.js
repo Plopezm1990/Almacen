@@ -101547,6 +101547,25 @@ function parseFechaHoraFichajePM13(fecha, hora) {
   if (fechaComprobada.getUTCFullYear() !== ano || fechaComprobada.getUTCMonth() !== mes - 1 || fechaComprobada.getUTCDate() !== dia) return null;
   return { fecha: fechaTexto, hora: horaTexto, minutos: fechaUTC / 6e4 + minutosHora };
 }
+function diaOperativoPM13(fecha, hora, corteMin = 0) {
+  // PM13 2.6 (día operativo configurable por empresa): devuelve el día operativo
+  // (YYYY-MM-DD) al que pertenece una marca de pared, según la hora de corte de la
+  // empresa (minutos desde 00:00, 0..720). Una marca anterior al corte pertenece al
+  // día operativo anterior (criterio hostelería). Corte 0 (00:00) = día natural, sin
+  // cambio. Opera sobre la hora de pared almacenada; no reinterpreta zona horaria.
+  const fechaTexto = String(fecha || "").trim();
+  const mFecha = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fechaTexto);
+  const mHora = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(String(hora || "").trim());
+  if (!mFecha || !mHora) return fechaTexto;
+  const corte = Number.isFinite(corteMin) ? Math.max(0, Math.min(720, Math.trunc(corteMin))) : 0;
+  const minutosDelDia = Number(mHora[1]) * 60 + Number(mHora[2]);
+  if (corte <= 0 || minutosDelDia >= corte) return fechaTexto;
+  const previo = new Date(Date.UTC(Number(mFecha[1]), Number(mFecha[2]) - 1, Number(mFecha[3]) - 1));
+  const y = previo.getUTCFullYear();
+  const mo = String(previo.getUTCMonth() + 1).padStart(2, "0");
+  const da = String(previo.getUTCDate()).padStart(2, "0");
+  return `${y}-${mo}-${da}`;
+}
 function intervaloFichajePM13(entrada, salida) {
   const inicio = parseFechaHoraFichajePM13(entrada?.fecha, entrada?.hora);
   const finOriginal = parseFechaHoraFichajePM13(salida?.fecha, salida?.hora);
@@ -103597,6 +103616,7 @@ function GestionAlmacen() {
   const [modoEmpleado, setModoEmpleado] = (0, import_react4.useState)(false);
   const [miPerfil, setMiPerfil] = (0, import_react4.useState)(null);
   const [permisosConsultaPM13, setPermisosConsultaPM13] = (0, import_react4.useState)({ personal: null, fichaje: null, ausencias: null });
+  const [corteDiaMinPM13, setCorteDiaMinPM13] = (0, import_react4.useState)(0);
   (0, import_react4.useEffect)(() => {
     if (!ready || typeof window === "undefined" || !window.__nubeActiva) return;
     let activo = true;
@@ -103773,6 +103793,31 @@ function GestionAlmacen() {
         setPermisosConsultaPM13(Object.fromEntries(claves.map(([nombre], indice) => [nombre, permitido(respuestas[indice])])))
       } catch (e2) {
         if (activo) setPermisosConsultaPM13({ personal: false, fichaje: false, ausencias: false });
+      }
+    })();
+    return () => { activo = false; };
+  }, [ready, miPerfil?.rol, empresaDelLocalActivo?.id, localActivoId]);
+  (0, import_react4.useEffect)(() => {
+    // PM13 2.6: carga el corte del día operativo de la empresa activa para imputar
+    // fichajes/turnos al día correcto. Lo lee cualquier miembro activo del local
+    // (RPC de solo lectura pm13_corte_dia_operativo); por defecto 0 (00:00 = día
+    // natural), así que si no hay regla propia no cambia nada.
+    let activo = true;
+    const empresaId = empresaDelLocalActivo?.id || "";
+    const localId = localActivoId || "";
+    if (!ready || !miPerfil || typeof window === "undefined" || !window.__nubeActiva || !empresaId || !localId) {
+      setCorteDiaMinPM13(0);
+      return () => { activo = false; };
+    }
+    (async () => {
+      try {
+        const corte = await configRpc("pm13_corte_dia_operativo", { p_empresa_id: empresaId, p_local_id: localId });
+        if (!activo) return;
+        const corteTexto = corte && corte.ok === true ? String(corte.cutoff_time || "00:00:00").slice(0, 5) : "00:00";
+        const [hC, mC] = corteTexto.split(":").map(Number);
+        setCorteDiaMinPM13(Number.isFinite(hC) && Number.isFinite(mC) ? Math.max(0, Math.min(720, hC * 60 + mC)) : 0);
+      } catch (e2) {
+        if (activo) setCorteDiaMinPM13(0);
       }
     })();
     return () => { activo = false; };
@@ -105502,7 +105547,8 @@ function GestionAlmacen() {
       estadoCargaDatos: estadoCargaDatosPM12.fichajes,
       pendienteSincronizacion: estadoCargaDatosPM12.pendienteFichajes,
       estadoCargaEmpleados: estadoCargaDatosPM12.empleados,
-      pendienteEmpleados: estadoCargaDatosPM12.pendienteEmpleados
+      pendienteEmpleados: estadoCargaDatosPM12.pendienteEmpleados,
+      corteDiaMin: corteDiaMinPM13
     }
   ), tab === "nominas" && /* @__PURE__ */ import_react4.default.createElement(
     CostePersonal,
@@ -119663,7 +119709,7 @@ function inicioSemana(fecha) {
   l22.setDate(d2.getDate() + diff);
   return aISO(l22);
 }
-function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, updateFichaje, eliminarFichaje, fichajesAbiertos, estadoCargaDatos = "cargado_con_datos", pendienteSincronizacion = false, estadoCargaEmpleados = "cargado_con_datos", pendienteEmpleados = false }) {
+function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, updateFichaje, eliminarFichaje, fichajesAbiertos, estadoCargaDatos = "cargado_con_datos", pendienteSincronizacion = false, estadoCargaEmpleados = "cargado_con_datos", pendienteEmpleados = false, corteDiaMin = 0 }) {
   const activos = empleados.filter((e2) => e2.activo !== false);
   const puedeMostrarFichajes = !["cargando", "error"].includes(estadoCargaDatos) && !["cargando", "error"].includes(estadoCargaEmpleados);
   const fichajesVigentesPM13 = (0, import_react4.useMemo)(() => fichajes.filter((f22) => f22?.anulado !== true && String(f22?.anulado || "").toLowerCase() !== "true"), [fichajes]);
@@ -119715,16 +119761,18 @@ function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, update
   const filasHistorial = (0, import_react4.useMemo)(() => {
     const resumen = resumenFichajesPM13(fichajesVigentesPM13);
     const seSolapaConPeriodo = (entrada, salida = entrada) => entrada.fecha <= hasta && salida.fecha >= desde;
-    const filasCerradas = resumen.pares.filter((p22) => seSolapaConPeriodo(p22.entrada, p22.salida)).map((p22) => {
+    const filasCerradas = resumen.pares.filter((p22) => seSolapaConPeriodo(p22.entrada, p22.salida)).map((par0) => {
+      const p22 = { ...par0, fecha: diaOperativoPM13(par0.entrada?.fecha, par0.entrada?.hora, corteDiaMin), fechaFin: par0.salida ? par0.salida.fecha : par0.fechaFin };
       const emp = empleados.find((e2) => e2.id === p22.empleadoId);
       return { ...p22, fecha: p22.fechaFin && p22.fechaFin !== p22.fecha ? `${p22.fecha} → ${p22.fechaFin}` : p22.fecha, nombre: emp ? emp.nombre : "\u2014", horas: p22.minutos / 60 };
     });
-    const filasAbiertas = resumen.abiertos.filter((f22) => f22.fecha >= desde && f22.fecha <= hasta).map((f22) => {
+    const filasAbiertas = resumen.abiertos.filter((f22) => f22.fecha >= desde && f22.fecha <= hasta).map((abierto0) => {
+      const f22 = { ...abierto0, fecha: diaOperativoPM13(abierto0.entrada?.fecha, abierto0.entrada?.hora, corteDiaMin) };
       const emp = empleados.find((e2) => e2.id === f22.empleadoId);
       return { empleadoId: f22.empleadoId, fecha: f22.fecha, fechaFin: null, nombre: emp ? emp.nombre : "\u2014", entrada: f22.entrada, salida: null, horas: null, abierto: true };
     });
     return [...filasCerradas, ...filasAbiertas];
-  }, [fichajesVigentesPM13, desde, hasta, empleados]);
+  }, [fichajesVigentesPM13, desde, hasta, empleados, corteDiaMin]);
   function textoRegistro() {
     const lineas = filasHistorial.sort((a22, b2) => a22.fecha.localeCompare(b2.fecha) || a22.nombre.localeCompare(b2.nombre)).map((f22) => `${f22.fecha} \xB7 ${f22.nombre} \xB7 Entrada ${f22.entrada ? f22.entrada.hora : "\u2014"} \xB7 Salida ${f22.salida ? f22.salida.hora : "sin fichar"} \xB7 ${f22.horas !== null ? f22.horas.toFixed(2) + " h" : ""}`);
     return `REGISTRO HORARIO

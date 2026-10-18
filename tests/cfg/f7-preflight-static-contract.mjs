@@ -47,6 +47,10 @@ const EXCLUIDAS = new Set([
   '20261016120000_plataforma_password_inicial_pendiente.sql',
   '20261016130000_plataforma_password_inicial_bloqueo_filtros.sql',
   '20261016140000_plataforma_password_inicial_bloqueo_push.sql',
+  // PM13 P06 (excepciones de permiso) y el día operativo configurable se validan en QA
+  // en este subcaso; se promueven a PROD en una ventana separada (punto 9) y no forman
+  // parte de la foto F7 de promoción.
+  '20261018140000_pm13_corte_dia_operativo_lectura.sql',
   // PM13 P06 (excepciones individuales de permiso) se valida en QA en este subcaso;
   // se promueve a PROD en una ventana separada (punto 9) y no forma parte de la foto F7.
   '20261018120000_pm13_p06_excepciones_permiso.sql',
