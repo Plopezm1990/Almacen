@@ -236,6 +236,32 @@ assert.match(logicText, /pm13_fichaje_manual/);
 assert.match(logicText, /pm13_corregir_fichaje/);
 assert.match(logicText, /pm13_anular_fichaje/);
 
+// PM13 2.6: día operativo configurable por empresa (helper puro).
+{
+  const dStart = src.indexOf('function diaOperativoPM13(');
+  const dEnd = src.indexOf('\nfunction intervaloFichajePM13(', dStart);
+  assert.ok(dStart >= 0 && dEnd > dStart, 'No se localizó diaOperativoPM13');
+  const dCode = src.slice(dStart, dEnd) + '\nglobalThis.__diaOp = diaOperativoPM13;';
+  const sb = { Date, String, Number, Math, console };
+  sb.globalThis = sb;
+  vm.createContext(sb);
+  vm.runInContext(dCode, sb);
+  const diaOp = sb.__diaOp;
+  // Corte 00:00 (0) = día natural (identidad): no cambia el comportamiento previo.
+  assert.equal(diaOp('2026-09-07', '02:30', 0), '2026-09-07');
+  assert.equal(diaOp('2026-09-07', '23:59', 0), '2026-09-07');
+  assert.equal(diaOp('2026-09-07', '02:30'), '2026-09-07', 'sin corte = identidad');
+  // Corte 06:00 (360): una marca anterior al corte cuenta al día operativo anterior.
+  assert.equal(diaOp('2026-09-07', '05:59', 360), '2026-09-06');
+  assert.equal(diaOp('2026-09-07', '06:00', 360), '2026-09-07', 'justo en el corte cuenta al día actual');
+  assert.equal(diaOp('2026-09-07', '22:00', 360), '2026-09-07');
+  assert.equal(diaOp('2026-09-01', '03:00', 360), '2026-08-31', 'cruza fin de mes');
+  assert.equal(diaOp('2026-01-01', '01:00', 360), '2025-12-31', 'cruza fin de año');
+  // Entradas inválidas: devuelve la fecha tal cual, sin romper.
+  assert.equal(diaOp('2026-09-07', '25:00', 360), '2026-09-07');
+  assert.equal(diaOp('', '03:00', 360), '');
+  console.log('DIA_OPERATIVO_CONFIGURABLE=1');
+}
 console.log('PM13_P03_FICHAJES_FRONTEND=PASS');
 console.log('ACTIVOS_SCOPE_SECUENCIA=1');
 console.log('REPLAY_DOBLE_CLIC=1');
