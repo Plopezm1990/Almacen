@@ -105000,9 +105000,17 @@ function GestionAlmacen() {
   const estadoCargaDatosPM12 = (0, import_react4.useMemo)(() => {
     const fallo = (key) => fallosCarga.some((f22) => f22.key === key);
     const pendiente = (key) => fallosGuardado.some((f22) => f22.key === key);
+    const permisoDeClave = { empleados: "personal", fichajes: "fichaje" };
     const estado = (key, datos) => {
       if (!ready) return "cargando";
       if (fallo(key)) return "error";
+      // Hueco 1 (PM13): no declarar "vacio_confirmado" mientras la validacion del
+      // permiso de consulta del contexto actual sigue en curso (null). Para un no
+      // Propietario la lectura puede devolver [] solo porque el permiso aun no
+      // resolvio para este contexto; mostrar "cargando" evita el falso "sin datos"
+      // al cambiar de empresa/local, antes de una respuesta valida.
+      const permiso = permisoDeClave[key];
+      if (permiso && permisosConsultaPM13[permiso] === null && !(Array.isArray(datos) && datos.length > 0)) return "cargando";
       return Array.isArray(datos) && datos.length > 0 ? "cargado_con_datos" : "vacio_confirmado";
     };
     return {
@@ -105013,7 +105021,7 @@ function GestionAlmacen() {
       pendienteFichajes: pendiente("fichajes"),
       pendienteTurnos: pendiente("turnos")
     };
-  }, [ready, fallosCarga, fallosGuardado, empleadosDelLocalActivo, fichajesDelLocalActivo, turnosDelLocalActivo]);
+  }, [ready, fallosCarga, fallosGuardado, empleadosDelLocalActivo, fichajesDelLocalActivo, turnosDelLocalActivo, permisosConsultaPM13]);
   const documentosPersonalProntoDelLocalActivo = (0, import_react4.useMemo)(() => documentosPersonalPronto.filter((d2) => idsEmpleadosDelLocalActivo.has(d2.empleadoId)), [documentosPersonalPronto, idsEmpleadosDelLocalActivo]);
   const encargosPendientes = (0, import_react4.useMemo)(() => {
     const hoy = /* @__PURE__ */ new Date();
