@@ -278,6 +278,8 @@ assert.match(logicText, /pm13_anular_fichaje/);
   // Entradas inválidas: devuelve la fecha tal cual, sin romper.
   assert.equal(diaOp('2026-09-07', '25:00', 360), '2026-09-07');
   assert.equal(diaOp('', '03:00', 360), '');
+  const historialSlice = src.slice(src.indexOf('const filasHistorial ='), src.indexOf('function textoRegistro()', src.indexOf('const filasHistorial =')));
+  assert.match(historialSlice, /fechaFin:\s*par0\.salida\s*\?\s*diaOperativoPM13\(par0\.salida\?\.fecha,\s*par0\.salida\?\.hora,\s*corteDiaMin\)/, 'la salida también se asigna al día operativo');
   console.log('DIA_OPERATIVO_CONFIGURABLE=1');
 }
 // PM13 2.5: offline, un reintento en el mismo tick (misma instancia, sin el coalescing

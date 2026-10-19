@@ -18753,7 +18753,7 @@ function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, update
     const resumen = resumenFichajesPM13(fichajesVigentesPM13);
     const seSolapaConPeriodo = (entrada, salida = entrada) => entrada.fecha <= hasta && salida.fecha >= desde;
     const filasCerradas = resumen.pares.filter((p22) => seSolapaConPeriodo(p22.entrada, p22.salida)).map((par0) => {
-      const p22 = { ...par0, fecha: diaOperativoPM13(par0.entrada?.fecha, par0.entrada?.hora, corteDiaMin), fechaFin: par0.salida ? par0.salida.fecha : par0.fechaFin };
+      const p22 = { ...par0, fecha: diaOperativoPM13(par0.entrada?.fecha, par0.entrada?.hora, corteDiaMin), fechaFin: par0.salida ? diaOperativoPM13(par0.salida?.fecha, par0.salida?.hora, corteDiaMin) : par0.fechaFin };
       const emp = empleados.find((e2) => e2.id === p22.empleadoId);
       return { ...p22, fecha: p22.fechaFin && p22.fechaFin !== p22.fecha ? `${p22.fecha} → ${p22.fechaFin}` : p22.fecha, nombre: emp ? emp.nombre : "\u2014", horas: p22.minutos / 60 };
     });
