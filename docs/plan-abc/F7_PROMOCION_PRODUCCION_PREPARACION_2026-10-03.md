@@ -9,10 +9,10 @@ Decisiones que cita: D12, D26, D28, D29, D31 (`F1_HOJA_DECISIONES_PEDRO_2026-10-
 
 ## 1. Resumen para Pedro
 
-Promocionar no es subir «la capa de configuración» sola. Esa capa (piezas 1 a 6, devoluciones, arreglos de cobro y descuentos) está construida **encima de otras migraciones anteriores**: hay **63 migraciones candidatas** desde la A09 (24/9). La foto de producción del 3/10 encontró 10 aplicadas; las diez migraciones añadidas después de esa foto también requieren comprobación previa. Lo que pesa, por orden:
+Promocionar no es subir «la capa de configuración» sola. Esa capa (piezas 1 a 6, devoluciones, arreglos de cobro y descuentos) está construida **encima de otras migraciones anteriores**: hay **68 migraciones candidatas** desde la A09 (24/9). La foto de producción del 3/10 encontró 10 aplicadas; las migraciones añadidas después de esa foto también requieren comprobación previa. Lo que pesa, por orden:
 
 1. **Ya sé en qué estado está producción** (foto del 3/10, solo lectura): tiene todo hasta B02-B03 (29/9) y nada posterior, ninguna migración a medias, y su registro coincide con sus objetos. **Una deriva pequeña:** las dos funciones de PM07 de producción son un borrador anterior (a una expresión regular le falta una barra invertida): hay que corregirlas con una migración aparte. Lleva sin actividad desde el 28/9.
-2. **12 de las 63 migraciones candidatas nunca se han aplicado en QA** (B06, B07, B09 y B10: proveedor de pagos, anticipos, liquidaciones, tarjeta). Solo se han probado en una base desechable de CI. Mi propuesta: **dejarlas fuera** del primer paquete.
+2. **12 de las 68 migraciones candidatas nunca se han aplicado en QA** (B06, B07, B09 y B10: proveedor de pagos, anticipos, liquidaciones, tarjeta). Solo se han probado en una base desechable de CI. Mi propuesta: **dejarlas fuera** del primer paquete.
 3. **Datos:** el volumen en producción es muy pequeño (0 pagos, 0 reembolsos, 30 eventos, 1 producto en el catálogo). PM07 y PM10 ya hicieron sus bootstraps y D13 no tiene reembolsos que marcar. Lo que sí pesa es que P3 pasa a leer el precio de carta **con IVA incluido** (D31, **sin confirmar con la asesoría**, que aún no tienes): cambia lo que se cobra. Mi propuesta: P3 y P3b **no** entran hasta que lo confirmes.
 4. **La pieza 5 retira tres roles** (Churrero/a, Básico, Estándar): **nadie los tiene en producción** (las 3 membresías son Propietario activo), así que no quita permisos a nadie; sí impide dar de alta a alguien con ellos.
 5. **PM09 está bloqueada** por la deriva de producción (faltan dos funciones y la RPC base de reverso). Es otro trabajo, previo, y no está hecho.
@@ -107,7 +107,7 @@ Lectura del código y de los informes de cada pieza (**no probado** en combinaci
 9. **D12:** política de 0 % del local productivo preparada (o la opción B decidida).
 10. **Ventana:** bloque P8: **sin cajas abiertas, sin reembolsos ni envíos pendientes, sin pedidos aún sin servir ni cancelar ni pagos en curso**; fuera del servicio. El 3/10 había **2 cuentas abiertas y 1 efecto pendiente** (con 5 días sin actividad): se miraron con tu permiso y son restos de la prueba A10 del 28/9; **no existe una operación del servidor para cerrar cuentas** (solo la fusión), así que «sin cuentas abiertas» no es un criterio útil. Pedro decidió dejarlas, con su comanda, como **restos conocidos** (sin escribir nada en producción); el bloque P8b las acepta por identificador (`F7_PROMOCION_PRODUCCION_DECISIONES_2026-10-03.md`, §3 bis).
 11. **Netlify (mirado en solo lectura el 4/10/2026, `F7_PROMOCION_PRODUCCION_DECISIONES_2026-10-03.md` §3 ter):** la rama de producción es **`release`**; el despliegue de producción actual es **`6abf43047ed8030008ffb5a9`** (commit `01f47bf`, publicado el 2/10/2026 05:37 UTC), al que se vuelve publicándolo de nuevo. El coste por despliegue sigue sin comprobar (según `A09_NETLIFY_QA_REVIEW_PROPOSAL_2026-09-24.md`, 15 créditos por despliegue de producción).
-12. **Copia de seguridad:** guardar la salida del bloque P4 (definición de las **74 funciones** que las migraciones reemplazan). **La organización de producción está en el plan gratuito** (API de Supabase, 4/10/2026) y, según la documentación de Supabase, ese plan **no tiene copias diarias automáticas**. **Decisión 20 (Pedro, 4/10/2026): copia manual con la CLI de Supabase el mismo día de la ventana, antes de empezar** (`supabase db dump` de roles, esquema y datos, con la cadena «Session pooler» del botón Connect; hace falta Docker Desktop). La hace Pedro; los archivos se guardan fuera del repositorio (público) y en dos sitios; se anotan hora y tamaños (ninguno de 0 bytes). **Sin esa copia no se empieza.** **Confirmado el 4/10/2026 con Cowork en el panel de Supabase (solo lectura):** «Free Plan does not include project backups», Point in Time es un complemento de pago y no hay ninguna copia con fecha (decisión 18).
+12. **Copia de seguridad:** guardar la salida del bloque P4 (definición de las **79 funciones** que las migraciones reemplazan). **La organización de producción está en el plan gratuito** (API de Supabase, 4/10/2026) y, según la documentación de Supabase, ese plan **no tiene copias diarias automáticas**. **Decisión 20 (Pedro, 4/10/2026): copia manual con la CLI de Supabase el mismo día de la ventana, antes de empezar** (`supabase db dump` de roles, esquema y datos, con la cadena «Session pooler» del botón Connect; hace falta Docker Desktop). La hace Pedro; los archivos se guardan fuera del repositorio (público) y en dos sitios; se anotan hora y tamaños (ninguno de 0 bytes). **Sin esa copia no se empieza.** **Confirmado el 4/10/2026 con Cowork en el panel de Supabase (solo lectura):** «Free Plan does not include project backups», Point in Time es un complemento de pago y no hay ninguna copia con fecha (decisión 18).
 
 ## 9. Ejecución, paso a paso
 
@@ -168,9 +168,9 @@ Solo con la autorización única del primer paquete (§8.1) y en este orden. **P
 
 ---
 
-## Apéndice A · Las 63 migraciones candidatas, en orden
+## Apéndice A · Las 68 migraciones candidatas, en orden
 
-«Registro en QA» es la marca con la que la herramienta las registró en QA y «Producción» la marca con la que figura en el registro de producción (ambos leídos el 3/10/2026, solo lectura). Las filas 47–63 se añadieron después de esa foto y quedan pendientes de una nueva lectura de ambos registros.
+«Registro en QA» es la marca con la que la herramienta las registró en QA y «Producción» la marca con la que figura en el registro de producción (ambos leídos el 3/10/2026, solo lectura). Las filas 47–68 se añadieron después de esa foto y quedan pendientes de una nueva lectura de ambos registros.
 
 | # | Archivo | Nombre | Qué hace | Paquete | Registro en QA | Producción (3/10) |
 |---|---|---|---|---|---|---|
@@ -238,6 +238,11 @@ Solo con la autorización única del primer paquete (§8.1) y en este orden. **P
 | 61 | `20261017160000` | `pm13_p04_cargo_pantallas` | PM13: pantallas y capacidades de consulta por cargo | Punto 5.8 | pendiente de verificar | pendiente de verificar |
 | 62 | `20261017193000` | `pm13_p05_cargo_action_resolver` | PM13: resolución y configuración de permisos de acciones por cargo | Punto 5.8 | pendiente de verificar | pendiente de verificar |
 | 63 | `20261017200000` | `pm13_p05_integrate_action_guards` | PM13: integración de guardas de acciones por cargo | Punto 5.8 | pendiente de verificar | pendiente de verificar |
+| 64 | `20261018120000` | `pm13_p06_excepciones_permiso` | PM13 P06: excepciones individuales y resolver con precedencia | P2 | registrada en PROD | registrada en PROD |
+| 65 | `20261018130000` | `pm13_p06_excepciones_listar` | PM13 P06: listado de excepciones para Propietario | P2 | registrada en PROD | registrada en PROD |
+| 66 | `20261018140000` | `pm13_corte_dia_operativo_lectura` | PM13 P06: lectura del corte de día operativo | P2 | registrada en PROD | registrada en PROD |
+| 67 | `20261019220000` | `pm13_p04_restaurar_rpc_ausencias` | PM13 P04: restauración correctora de las RPC de ausencias | Corrector PM13 | aplicada | aplicada |
+| 68 | `20261019223000` | `pm13_p05_guardas_rpc_ausencias_corrector` | PM13 P05: guardas correctoras para las RPC de ausencias | Corrector PM13 | aplicada | aplicada |
 
 Paquetes: F3/F4/F5 = «A · Base»; B06-B10 = «D · Proveedor de pagos»; P3 = «B · Catálogo con IVA»; Configuración = «C»; PM13 = «Punto 5.8».
 
