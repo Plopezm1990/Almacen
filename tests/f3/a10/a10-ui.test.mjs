@@ -12,7 +12,7 @@ test('A10 UI expone Cocina, estaciones y comandas en ambas fuentes', async () =>
   for (const source of [runtime, recovery]) {
     assert.match(source, /function CocinaA10\(/);
     assert.match(source, /tab === "cocina"/);
-    assert.match(source, /id: "cocina", label: "Cocina A10"/);
+    assert.match(source, /id: "cocina", label: "Cocina"/);
     assert.match(source, /listarEstacionesA10/);
     assert.match(source, /abrirSesionCajaA10/);
     assert.match(source, /abc_abrir_sesion_caja/);
@@ -60,7 +60,7 @@ test('el contrato y la implementación A10 siguen alineados', async () => {
     readFile(new URL('./a10-contract.sql', import.meta.url), 'utf8'),
   ]);
   for (const source of [runtime, recovery]) {
-    assert.match(source, /Cocina y comandas A10/);
+    assert.match(source, /Cocina y comandas/);
     assert.match(source, /No mueve stock, no cobra ni emite fiscalidad/);
     assert.match(source, /MERMA_CONFIRMADA/);
   }
