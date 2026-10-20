@@ -71,8 +71,9 @@ for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]
 }
 
 // 2. El componente solo habla con el servidor por las funciones previstas, con sus nombres y parámetros exactos.
-const migraciones = (await readdir(new URL("supabase/migrations/", root))).filter((n) => /^2026100219|^2026100221|^2026100222|^2026100223|^2026100224/.test(n) && n.includes("_abc_config_pieza")).sort();
-assert.equal(migraciones.length, 5, "las migraciones de las piezas 1 a 5");
+// La pantalla de permisos también consulta y configura la matriz de pantallas de PM13 P05.
+const migraciones = (await readdir(new URL("supabase/migrations/", root))).filter((n) => (/^2026100219|^2026100221|^2026100222|^2026100223|^2026100224/.test(n) && n.includes("_abc_config_pieza")) || n === "20261020140000_pm13_p05_roles_fijos_pantallas.sql").sort();
+assert.equal(migraciones.length, 6, "las migraciones de las piezas 1 a 5 y PM13 P05");
 const textoMig = {};
 for (const m of migraciones) textoMig[m] = lf(await read("supabase/migrations/" + m));
 const firmas = new Map();
@@ -85,8 +86,9 @@ for (const m of migraciones) {
 const llamadas = [...compCfg6.matchAll(/configRpc\("([a-z_0-9]+)",\s*\{([^}]*)\}/g)].map((m) => ({ nombre: m[1], claves: [...m[2].matchAll(/\b(p_[a-z_0-9]+):/g)].map((k) => k[1]) }));
 assert.ok(llamadas.length >= 11, "se localizan las llamadas al servidor");
 const esperadas = ["abc_obtener_ajustes", "abc_configurar_ajuste", "abc_configurar_dia_operativo", "abc_obtener_modalidades_local", "abc_configurar_modalidad_local",
-  "abc_listar_equipos_local", "abc_configurar_equipo_local", "abc_obtener_capacidades_rol", "abc_configurar_capacidad_rol", "abc_listar_roles_retirados"];
-assert.deepEqual([...new Set(llamadas.map((l) => l.nombre))].sort(), esperadas.slice().sort(), "la pantalla usa exactamente estas 10 funciones (y nada más)");
+  "abc_listar_equipos_local", "abc_configurar_equipo_local", "abc_obtener_capacidades_rol", "abc_configurar_capacidad_rol", "abc_listar_roles_retirados",
+  "abc_obtener_pantallas_rol", "abc_configurar_pantalla_rol"];
+assert.deepEqual([...new Set(llamadas.map((l) => l.nombre))].sort(), esperadas.slice().sort(), "la pantalla usa exactamente estas 12 funciones (y nada más)");
 for (const l of llamadas) {
   const firma = firmas.get(l.nombre);
   assert.ok(firma, "existe la función " + l.nombre + " en las migraciones");
@@ -97,7 +99,7 @@ for (const l of llamadas) {
     assert.ok(l.claves.includes("p_motivo") && l.claves.includes("p_operation_id"), `${l.nombre}: todo cambio lleva motivo y operation_id`);
   }
 }
-assert.equal(llamadas.filter((l) => l.nombre.startsWith("abc_configurar_")).length, 6, "seis llamadas que cambian algo (cajas y umbral comparten función)");
+assert.equal(llamadas.filter((l) => l.nombre.startsWith("abc_configurar_")).length, 7, "siete llamadas que cambian algo (cajas y umbral comparten función)");
 assert.ok(!/\.supabase|supabase\.rpc\(/.test(comp.replace(/const \{ data, error \} = await supabase\.rpc\(nombre, parametros\);/, "")), "el componente solo llama al servidor a través de configRpc");
 const tablas = [...comp.matchAll(/\.from\("([a-z_]+)"\)/g)].map((m) => m[1]);
 assert.deepEqual(tablas, ["terminales_tpv"], "la única lectura directa de una tabla es la de los terminales del local (como hace el resto de la aplicación)");

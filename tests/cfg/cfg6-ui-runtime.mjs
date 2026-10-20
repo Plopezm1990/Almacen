@@ -48,18 +48,23 @@ function extraerVar(texto, nombre) {
   const j = texto.indexOf('\n};\n', i);
   return texto.slice(i + 1, j + 4);
 }
+function extraerArray(texto, nombre) {
+  const i = texto.indexOf('\nvar ' + nombre + ' = ');
+  const j = texto.indexOf('\n];\n', i);
+  return texto.slice(i + 1, j + 3);
+}
 
 // ================= Parte 1: la pantalla «Configuración» =================
 async function parte1() {
-  const ayudas = ['Card', 'SectionTitle', 'Btn', 'Input', 'Field'].map((n) => extraerFuncion(textoReal, n)).join('\n') + '\n' + extraerVar(textoReal, 'C2');
+  const ayudas = ['Card', 'SectionTitle', 'Btn', 'Input', 'Field'].map((n) => extraerFuncion(textoReal, n)).join('\n') + '\n' + extraerVar(textoReal, 'C2') + '\n' + extraerArray(textoReal, 'CONFIG_PANTALLAS_ROL');
   const i0 = textoOrigen.indexOf('// ==== CONFIGURACION_LOCAL (pieza 6) ====');
   const i1 = textoOrigen.indexOf('// ==== FIN CONFIGURACION_LOCAL ====');
   if (i0 < 0 || i1 < 0) throw new Error('faltan las marcas del componente');
   const componente = textoOrigen.slice(i0, i1);
 
   const import_react4 = Object.assign({ default: React }, React);
-  const fabrica = new Function('import_react4', 'window', ayudas + '\n' + componente + '\nreturn { ConfiguracionLocal, CONFIG_ERRORES, CONFIG_CAPACIDADES, CONFIG_MODALIDADES, CONFIG_TIPOS_EQUIPO, configMensajeError };');
-  const { ConfiguracionLocal, CONFIG_ERRORES, CONFIG_CAPACIDADES, configMensajeError } = fabrica(import_react4, dom.window);
+  const fabrica = new Function('import_react4', 'window', ayudas + '\n' + componente + '\nreturn { ConfiguracionLocal, CONFIG_ERRORES, CONFIG_CAPACIDADES, CONFIG_MODALIDADES, CONFIG_TIPOS_EQUIPO, CONFIG_PANTALLAS_ROL, configMensajeError };');
+  const { ConfiguracionLocal, CONFIG_ERRORES, CONFIG_CAPACIDADES, CONFIG_PANTALLAS_ROL, configMensajeError } = fabrica(import_react4, dom.window);
 
   // ---------- servidor falso ----------
   let llamadas = [];

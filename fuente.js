@@ -101229,6 +101229,17 @@ var PM13_CARGO_PERMISOS_LABELS = Object.freeze({
   PM13_PERSONAL_CREAR: "Crear empleados",
   PM13_PERSONAL_EDITAR: "Editar empleados"
 });
+var CONFIG_PANTALLAS_ROL = [
+  ["ABC_PANTALLA_DASHBOARD_CONSULTAR", "Panel general"], ["ABC_PANTALLA_DIRECCION_CONSULTAR", "Panel de dirección"], ["ABC_PANTALLA_BUSCAR_CONSULTAR", "Buscar"],
+  ["ABC_PANTALLA_PROVEEDORES_CONSULTAR", "Proveedores"], ["ABC_PANTALLA_PEDIDOS_CONSULTAR", "Pedidos"], ["ABC_PANTALLA_RECEPCION_CONSULTAR", "Recepción"], ["ABC_PANTALLA_ALBARANES_CONSULTAR", "Albaranes"], ["ABC_PANTALLA_FACTURAS_CONSULTAR", "Facturas"],
+  ["ABC_PANTALLA_RESUMEN_ALMACEN_CONSULTAR", "Resumen de almacén"], ["ABC_PANTALLA_PRODUCTOS_CONSULTAR", "Productos"], ["ABC_PANTALLA_HISTORIAL_PRODUCTO_CONSULTAR", "Historial de producto"], ["ABC_PANTALLA_CONTEO_CONSULTAR", "Inventario ciego"], ["ABC_PANTALLA_SALDO_CONSULTAR", "Saldo de almacén"], ["ABC_PANTALLA_MAPA_CONSULTAR", "Mapa de almacén"], ["ABC_PANTALLA_TRASPASOS_CONSULTAR", "Traspasos"], ["ABC_PANTALLA_DIAGNOSTICO_CONSULTAR", "Reconciliación de stock"], ["ABC_PANTALLA_ETIQUETAS_CONSULTAR", "Etiquetas y catálogo"],
+  ["ABC_PANTALLA_VENTA_CONSULTAR", "TPV"], ["ABC_PANTALLA_COCINA_CONSULTAR", "Cocina A10"], ["ABC_PANTALLA_ENCARGOS_CONSULTAR", "Encargos"], ["ABC_PANTALLA_CLIENTES_CONSULTAR", "Clientes"], ["ABC_PANTALLA_DEVOLUCIONES_CONSULTAR", "Devoluciones"], ["ABC_PANTALLA_DESCUENTOS_CONSULTAR", "Descuentos y cortesías"],
+  ["ABC_PANTALLA_FICHAS_CONSULTAR", "Fichas de costo"], ["ABC_PANTALLA_PRODUCCION_CONSULTAR", "Producción"], ["ABC_PANTALLA_MERMAS_CONSULTAR", "Mermas"],
+  ["ABC_PANTALLA_PAGOS_CONSULTAR", "Cuentas por pagar"], ["ABC_PANTALLA_RESULTADOS_CONSULTAR", "Resultados"], ["ABC_PANTALLA_REPORTES_CONSULTAR", "Reportes y rotación"], ["ABC_PANTALLA_LIBROIVA_CONSULTAR", "Libro de IVA"], ["ABC_PANTALLA_CAJA_CONSULTAR", "Arqueo de caja"], ["ABC_PANTALLA_TESORERIA_CONSULTAR", "Tesorería"], ["ABC_PANTALLA_ESTACIONALIDAD_CONSULTAR", "Estacionalidad"],
+  ["ABC_PANTALLA_PERSONAL_CONSULTAR", "Personal"], ["ABC_PANTALLA_FICHAJE_CONSULTAR", "Registro horario"], ["ABC_PANTALLA_TURNOS_CONSULTAR", "Cuadrante de turnos"], ["ABC_PANTALLA_NOMINAS_CONSULTAR", "Coste de personal"],
+  ["ABC_PANTALLA_APPCC_CONSULTAR", "Control sanitario"], ["ABC_PANTALLA_ACEITE_CONSULTAR", "Aceite de freidoras"],
+  ["ABC_PANTALLA_AUDITORIA_CONSULTAR", "Auditoría"], ["ABC_PANTALLA_RESPALDOS_CONSULTAR", "Respaldos"], ["ABC_PANTALLA_NOTIFICACIONES_CONSULTAR", "Notificaciones"], ["ABC_PANTALLA_LOCALES_CONSULTAR", "Locales"], ["ABC_PANTALLA_CONFIGURACION_CONSULTAR", "Configuración"], ["ABC_PANTALLA_ERRORES_SISTEMA_CONSULTAR", "Errores del sistema"]
+];
 var TAB_PRIORITIES_MOVIL = {
   "Propietario": ["dashboard", "resultados", "caja"],
   "Encargado": ["dashboard", "venta", "cocina", "fichaje"],
@@ -102592,13 +102603,20 @@ function ConfigPermisos({ empresaId, localId, localNombre = "" }) {
   const [pendientes, setPendientes] = (0, import_react4.useState)({});
   const [retirados, setRetirados] = (0, import_react4.useState)(null);
   const [cargandoRetirados, setCargandoRetirados] = (0, import_react4.useState)(false);
+  const [pantallasRol, setPantallasRol] = (0, import_react4.useState)(null);
+  const [pendientesPantallas, setPendientesPantallas] = (0, import_react4.useState)({});
+  const [motivoPantallas, setMotivoPantallas] = (0, import_react4.useState)("");
+  const [ambitoPantallas, setAmbitoPantallas] = (0, import_react4.useState)("LOCAL");
   const cargar = async (conservarError = false) => {
     setCargando(true);
     if (!conservarError) setError("");
     try {
       const d2 = await configRpc("abc_obtener_capacidades_rol", { p_empresa_id: empresaId, p_local_id: localId });
       setDatos(d2 || null);
+      const p2 = await configRpc("abc_obtener_pantallas_rol", { p_empresa_id: empresaId, p_local_id: localId });
+      setPantallasRol(p2 || null);
       setPendientes({});
+      setPendientesPantallas({});
     } catch (e2) {
       setError(configMensajeError(e2));
     } finally {
@@ -102609,6 +102627,8 @@ function ConfigPermisos({ empresaId, localId, localNombre = "" }) {
     setConfirmacion("");
     setRetirados(null);
     setAmbito("LOCAL");
+    setAmbitoPantallas("LOCAL");
+    setMotivoPantallas("");
     cargar();
   }, [empresaId, localId]);
   const infoCelda = (cap, rol) => {
@@ -102639,6 +102659,64 @@ function ConfigPermisos({ empresaId, localId, localNombre = "" }) {
     delete siguiente[rol + "|" + cap];
     return siguiente;
   });
+  const infoPantalla = (cap, rol) => {
+    const fila = (pantallasRol?.pantallas || []).find((p3) => p3.capacidad === cap);
+    return fila ? (fila.roles || []).find((r2) => r2.rol === rol) || null : null;
+  };
+  const valorPantalla = (cap, rol, info) => {
+    const p3 = pendientesPantallas[rol + "|" + cap];
+    if (p3 && p3.permitido !== null) return p3.permitido;
+    return info?.efectivo === true;
+  };
+  const alternarPantalla = (cap, rol, info) => {
+    const clave = rol + "|" + cap;
+    const actual = valorPantalla(cap, rol, info);
+    setPendientesPantallas((anterior) => {
+      const siguiente = { ...anterior };
+      const nuevo = !actual;
+      if (nuevo === (info?.efectivo === true) && !(clave in anterior && anterior[clave].permitido === null)) delete siguiente[clave];
+      else siguiente[clave] = { rol, capacidad: cap, permitido: nuevo };
+      return siguiente;
+    });
+  };
+  const heredarPantalla = (cap, rol) => setPendientesPantallas((anterior) => ({ ...anterior, [rol + "|" + cap]: { rol, capacidad: cap, permitido: null } }));
+  const guardarPantallasRol = async () => {
+    setError("");
+    setConfirmacion("");
+    const listaPantallas = Object.values(pendientesPantallas);
+    if (!listaPantallas.length) {
+      setError("No has cambiado ninguna pantalla.");
+      return;
+    }
+    if (!motivoPantallas.trim()) {
+      setError("Escribe el motivo del cambio de pantallas.");
+      return;
+    }
+    setGuardando(true);
+    let hechos = 0;
+    try {
+      for (const p3 of listaPantallas) {
+        await configRpc("abc_configurar_pantalla_rol", {
+          p_operation_id: configOperacion("pantalla-rol"),
+          p_empresa_id: empresaId,
+          p_local_id: localId,
+          p_ambito: ambitoPantallas,
+          p_rol: p3.rol,
+          p_capacidad: p3.capacidad,
+          p_permitido: p3.permitido,
+          p_motivo: motivoPantallas.trim()
+        });
+        hechos += 1;
+      }
+      setConfirmacion(hechos + (hechos === 1 ? " pantalla guardada" : " pantallas guardadas") + " en el servidor.");
+      setMotivoPantallas("");
+    } catch (e2) {
+      setError((hechos > 0 ? hechos + " cambios de pantalla ya guardados; el siguiente falló: " : "") + configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+      await cargar(true);
+    }
+  };
   const lista = Object.values(pendientes);
   const guardar = async () => {
     setError("");
@@ -102687,7 +102765,26 @@ function ConfigPermisos({ empresaId, localId, localNombre = "" }) {
     }
   };
   const ocupado = cargando || guardando;
+  const celdaPantalla = (cap, rol) => {
+    const info = infoPantalla(cap, rol);
+    if (!info) return h("td", { key: rol, className: "px-2 py-1 text-center" }, "—");
+    const pendiente = pendientesPantallas[rol + "|" + cap];
+    const marcado = valorPantalla(cap, rol, info);
+    const hayDecision = (ambitoPantallas === "EMPRESA" ? info.decision_empresa : info.decision_local) !== null && (ambitoPantallas === "EMPRESA" ? info.decision_empresa : info.decision_local) !== void 0;
+    return h(
+      "td",
+      { key: rol, className: "px-2 py-1 text-center", style: pendiente ? { background: C2.amberSoft } : void 0 },
+      pendiente && pendiente.permitido === null ? h("div", { className: "text-[11px]" }, "volverá a lo normal ", h("button", { type: "button", className: "underline", onClick: () => setPendientesPantallas((anterior) => { const siguiente = { ...anterior }; delete siguiente[rol + "|" + cap]; return siguiente; }) }, "deshacer")) : h(
+        "div",
+        null,
+        h("input", { type: "checkbox", "aria-label": cap + " " + rol, checked: marcado, disabled: ocupado || rol === "Propietario", onChange: () => alternarPantalla(cap, rol, info) }),
+        !pendiente && info.origen !== "plantilla" ? h("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, info.origen === "local" ? "decidido aquí" : "decidido en la empresa") : null,
+        !pendiente && hayDecision ? h("button", { type: "button", className: "text-[10px] underline", onClick: () => heredarPantalla(cap, rol), disabled: ocupado }, "volver a lo normal") : null
+      )
+    );
+  };
   const puedeEmpresa = datos?.puede_configurar_empresa === true;
+  const puedeEmpresaPantallas = pantallasRol?.puede_configurar_empresa === true;
   const celda = (cap, rol) => {
     const info = infoCelda(cap, rol);
     if (!info) return h("td", { key: rol, className: "px-2 py-1 text-center" }, "—");
@@ -102765,6 +102862,23 @@ function ConfigPermisos({ empresaId, localId, localNombre = "" }) {
         ))
       )
     ) : null,
+    pantallasRol ? h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-1" }, "Pantallas del modo empleado"),
+      h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Ahora también puedes dar o quitar pantallas a Encargado, Cajero/a y Camarero/a. Propietario siempre conserva todas. El cambio queda auditado y se aplica al local o a toda la empresa."),
+      h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-2 mb-3" },
+        h(Field, { label: "Dónde se aplican los cambios" }, h(
+          "select",
+          { value: ambitoPantallas, onChange: (e2) => { setAmbitoPantallas(e2.target.value); setPendientesPantallas({}); }, disabled: ocupado, className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 } },
+          h("option", { value: "LOCAL" }, "Solo este local" + (localNombre ? " (" + localNombre + ")" : "")),
+          h("option", { value: "EMPRESA", disabled: !puedeEmpresaPantallas }, "Toda la empresa" + (puedeEmpresaPantallas ? "" : " (hace falta ser Propietario de todos los locales)"))
+        )),
+        h(ConfigMotivo, { valor: motivoPantallas, onCambio: setMotivoPantallas, deshabilitado: ocupado })
+      ),
+      h("div", { className: "flex gap-2 flex-wrap items-center mb-1" }, h(Btn, { small: true, onClick: guardarPantallasRol, disabled: ocupado || Object.keys(pendientesPantallas).length === 0 }, guardando ? "Guardando…" : "Guardar " + Object.keys(pendientesPantallas).length + (Object.keys(pendientesPantallas).length === 1 ? " cambio" : " cambios")), h(Btn, { small: true, variant: "ghost", onClick: () => setPendientesPantallas({}), disabled: ocupado || Object.keys(pendientesPantallas).length === 0 }, "Descartar cambios")),
+      h("div", { className: "overflow-x-auto" }, h("table", { className: "w-full text-[12px]", style: { borderCollapse: "collapse" } }, h("thead", null, h("tr", { style: { borderBottom: `1px solid ${C2.line}` } }, h("th", { className: "text-left px-2 py-1" }, "Pantalla"), h("th", { className: "px-2 py-1" }, "Propietario"), CONFIG_ROLES_MATRIZ.map((r2) => h("th", { key: r2, className: "px-2 py-1" }, r2)))), h("tbody", null, CONFIG_PANTALLAS_ROL.map(([cap, etiqueta]) => h("tr", { key: cap, style: { borderBottom: `1px solid ${C2.divider}` } }, h("td", { className: "px-2 py-1" }, etiqueta), h("td", { className: "px-2 py-1 text-center" }, "✓"), CONFIG_ROLES_MATRIZ.map((r2) => celdaPantalla(cap, r2)))))))
+    ) : null,
     h(
       Card,
       { className: "mb-3" },
@@ -102780,7 +102894,7 @@ function ConfigPermisos({ empresaId, localId, localNombre = "" }) {
     cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando…") : null
   );
 }
-function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombre = "", esPropietario = false }) {
+function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombre = "", esPropietario = false, onIrPermisos = () => {} }) {
   const h = import_react4.default.createElement;
   const roles = ["Propietario", ...NOMBRES_ROLES];
   const descripciones = {
@@ -103120,7 +103234,8 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
             h("span", { className: "text-[11px]", style: { color: retirado ? C2.amber : C2.inkSoft } }, retirado ? "Retirado · solo existentes" : "Rol del sistema")
           ),
           h("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, descripciones[rol] || "Permisos definidos por el sistema."),
-          h("div", { className: "text-[11.5px] mt-2" }, asignados.length ? "Asignados: " + asignados.join(", ") : "Sin personas asignadas en este local")
+          h("div", { className: "text-[11.5px] mt-2" }, asignados.length ? "Asignados: " + asignados.join(", ") : "Sin personas asignadas en este local"),
+          !retirado && rol !== "Propietario" ? h("div", { className: "flex gap-2 flex-wrap mt-2" }, h(Btn, { small: true, variant: "ghost", onClick: onIrPermisos }, "Editar permisos y pantallas")) : null
         );
       }))
     ),
@@ -103276,7 +103391,7 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
     seccion === "dia" ? h(ConfigDia, { empresaId, localId }) : null,
     seccion === "modalidades" ? h(ConfigModalidades, { empresaId, localId }) : null,
     seccion === "equipos" ? h(ConfigEquipos, { empresaId, localId }) : null,
-    seccion === "cargos" ? h(ConfigCargos, { empresa, empleados, localId, localNombre, esPropietario }) : null,
+    seccion === "cargos" ? h(ConfigCargos, { empresa, empleados, localId, localNombre, esPropietario, onIrPermisos: () => setSeccion("permisos") }) : null,
     seccion === "permisos" ? h(ConfigPermisos, { empresaId, localId, localNombre }) : null
   );
   return h(
@@ -103616,6 +103731,7 @@ function GestionAlmacen() {
   const [modoEmpleado, setModoEmpleado] = (0, import_react4.useState)(false);
   const [miPerfil, setMiPerfil] = (0, import_react4.useState)(null);
   const [permisosConsultaPM13, setPermisosConsultaPM13] = (0, import_react4.useState)({ personal: null, fichaje: null, ausencias: null });
+  const [pantallasRolEmpleado, setPantallasRolEmpleado] = (0, import_react4.useState)(null);
   const [corteDiaMinPM13, setCorteDiaMinPM13] = (0, import_react4.useState)(0);
   (0, import_react4.useEffect)(() => {
     if (!ready || typeof window === "undefined" || !window.__nubeActiva) return;
@@ -103793,6 +103909,28 @@ function GestionAlmacen() {
         setPermisosConsultaPM13(Object.fromEntries(claves.map(([nombre], indice) => [nombre, permitido(respuestas[indice])])))
       } catch (e2) {
         if (activo) setPermisosConsultaPM13({ personal: false, fichaje: false, ausencias: false });
+      }
+    })();
+    return () => { activo = false; };
+  }, [ready, miPerfil?.rol, empresaDelLocalActivo?.id, localActivoId]);
+  (0, import_react4.useEffect)(() => {
+    let activo = true;
+    if (!ready || typeof window === "undefined" || !window.__nubeActiva || !miPerfil || miPerfil.rol === "Propietario") {
+      setPantallasRolEmpleado(null);
+      return () => { activo = false; };
+    }
+    const empresaId = empresaDelLocalActivo?.id || "";
+    const localId = localActivoId || "";
+    if (!empresaId || !localId) {
+      setPantallasRolEmpleado(null);
+      return () => { activo = false; };
+    }
+    (async () => {
+      try {
+        const resultado = await configRpc("abc_obtener_pantallas_rol", { p_empresa_id: empresaId, p_local_id: localId });
+        if (activo) setPantallasRolEmpleado(resultado || null);
+      } catch (e2) {
+        if (activo) setPantallasRolEmpleado(null);
       }
     })();
     return () => { activo = false; };
@@ -104412,13 +104550,16 @@ function GestionAlmacen() {
     if (ready && !skipSaveRef.current) saveKey("nominas", nominas);
   }, [nominas, ready]);
   const itemsPermitidosEmpleado = (0, import_react4.useMemo)(() => {
-    if (miPerfil && miPerfil.rol && ROLES_EMPLEADO[miPerfil.rol]) {
-      return ROLES_EMPLEADO[miPerfil.rol];
-    }
     const activo = usuarioActivoId ? empleados.find((e2) => e2.id === usuarioActivoId) : null;
-    const rol = activo?.rol && ROLES_EMPLEADO[activo.rol] ? activo.rol : "Est\xE1ndar";
-    return ROLES_EMPLEADO[rol];
-  }, [usuarioActivoId, empleados, miPerfil]);
+    const rol = miPerfil?.rol && ROLES_EMPLEADO[miPerfil.rol] ? miPerfil.rol : activo?.rol && ROLES_EMPLEADO[activo.rol] ? activo.rol : "Est\xE1ndar";
+    const base = [...(ROLES_EMPLEADO[rol] || ROLES_EMPLEADO["Est\xE1ndar"] || [])];
+    const filas = Array.isArray(pantallasRolEmpleado?.pantallas) ? pantallasRolEmpleado.pantallas : [];
+    const porRol = filas.map((fila) => ({ fila, info: (fila.roles || []).find((item) => item.rol === rol) })).filter((item) => item.info && typeof item.fila.id === "string");
+    if (!porRol.length) return base;
+    const permitidas = new Set(base);
+    porRol.forEach(({ fila, info }) => { if (info.efectivo === true) permitidas.add(fila.id); else permitidas.delete(fila.id); });
+    return Array.from(permitidas);
+  }, [usuarioActivoId, empleados, miPerfil, pantallasRolEmpleado]);
   (0, import_react4.useEffect)(() => {
     if (modoEmpleado && !itemsPermitidosEmpleado.includes(tab)) setTab("dashboard");
   }, [modoEmpleado, itemsPermitidosEmpleado]);
