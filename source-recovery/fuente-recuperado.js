@@ -13916,11 +13916,14 @@ function SidebarGrupos({ grupos, tab, setTab, temaOscuro, setTemaOscuro, modoEmp
     "button",
     {
       onClick: irADevolucionProveedor,
-      className: "flex items-center gap-1.5 pl-6 pr-3 py-1.5 rounded-lg text-left w-full",
-      style: { color: "#9CB6A9", fontStyle: "italic" }
+      className: "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left w-full",
+      style: {
+        background: tab === "devoluciones" ? "rgba(255,255,255,0.12)" : "transparent",
+        color: tab === "devoluciones" ? "#fff" : "#B9C7C0"
+      }
     },
-    /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11.5px]" }, "Devoluciones a proveedor"),
-    /* @__PURE__ */ import_react4.default.createElement(ChevronRight, { size: 12 })
+    /* @__PURE__ */ import_react4.default.createElement(ArrowLeftRight, { size: 17 }),
+    /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[13px] font-medium whitespace-nowrap" }, "Devoluciones a proveedor")
   ))));
 }
 function BarraSuperiorMovil({ temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil, contextoActivoPM15 = "" }) {
@@ -13974,11 +13977,11 @@ function NavInferior({ tab, setTab, grupos, pestanasFijas, mostrarEnlaceDevoluci
         irADevolucionProveedor();
         setAbierto(false);
       },
-      className: "w-full flex items-center justify-between gap-2.5 px-3 py-2.5 rounded-lg text-left mb-1",
-      style: { background: C2.bg, color: C2.inkSoft, fontStyle: "italic" }
+      className: "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left mb-1",
+      style: { background: tab === "devoluciones" ? C2.accentSoft : C2.bg, color: C2.ink }
     },
-    /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12.5px]" }, "Devoluciones a proveedor"),
-    /* @__PURE__ */ import_react4.default.createElement(ChevronRight, { size: 13 })
+    /* @__PURE__ */ import_react4.default.createElement(ArrowLeftRight, { size: 17, color: tab === "devoluciones" ? C2.accent : C2.inkSoft }),
+    /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[13px] font-medium" }, "Devoluciones a proveedor")
   )))));
 }
 function Card({ children, className = "", style = {} }) {
