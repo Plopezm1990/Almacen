@@ -92,6 +92,20 @@ function setup({ initial = {}, modo = "acepta" } = {}) {
 
 const claveEvento = (events) => events.filter((e) => e.type === "clave-solo-local").map((e) => e.detail.key).sort();
 
+// Las preferencias de sesión del dispositivo no son datos de negocio: nunca
+// deben entrar en KV, pendientes o el aviso de sincronización.
+{
+  const t = setup({ modo: "jwt" });
+  await t.context.storage.set("modoEmpleado", "true");
+  await t.context.storage.set("usuarioActivoId", "empleado-qa");
+  assert.equal(t.cloud.calls.upsert.length, 0, "las preferencias del dispositivo no se suben");
+  assert.deepEqual(t.pendientes(), [], "no se crea cola para preferencias del dispositivo");
+  assert.deepEqual(t.denegados(), {}, "no se marca rechazo remoto para preferencias del dispositivo");
+  assert.equal(t.indicador().style.display, "none", "no aparece aviso por preferencias del dispositivo");
+  assert.equal(t.localStorage.getItem("almacen:modoEmpleado"), "true");
+  assert.equal(t.localStorage.getItem("almacen:usuarioActivoId"), "empleado-qa");
+}
+
 // 1) El servidor ACEPTA (caso de producción hoy): nada cambia.
 {
   const t = setup({ modo: "acepta" });

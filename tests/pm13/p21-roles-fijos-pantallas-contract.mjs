@@ -5,6 +5,10 @@ const sql = fs.readFileSync(
   "supabase/migrations/20261020140000_pm13_p05_roles_fijos_pantallas.sql",
   "utf8",
 );
+const corrector = fs.readFileSync(
+  "supabase/migrations/20261020170000_pm13_p05_roles_fijos_pantallas_rpc_operacion.sql",
+  "utf8",
+);
 
 assert.match(sql, /create table if not exists public\.abc_pantallas_rol/);
 assert.match(sql, /constraint abc_pantallas_rol_rol_ck check \(rol in \('Encargado','Cajero\/a','Camarero\/a'\)\)/);
@@ -17,6 +21,11 @@ assert.match(sql, /private\.abc_config_puede_configurar_empresa/);
 assert.match(sql, /private\.abc_config_puede_configurar\(p_empresa_id,p_local_id\)/);
 assert.match(sql, /'PANTALLA_ROL_CONFIGURADA'/);
 assert.equal(new Set(sql.match(/ABC_PANTALLA_[A-Z0-9_]+_CONSULTAR/g) || []).size, 45);
+assert.match(corrector, /create or replace function public\.abc_configurar_pantalla_rol\(/);
+assert.match(corrector, /private\.abc_operacion_iniciar\(/);
+assert.match(corrector, /'ABC_CONFIGURAR_PANTALLA_ROL'/);
+assert.match(corrector, /private\.abc_operacion_completar\(p_operation_id,v_result\)/);
+assert.match(corrector, /insert into public\.abc_eventos/);
 
 for (const file of ["fuente.js", "source-recovery/fuente-recuperado.js"]) {
   const source = fs.readFileSync(file, "utf8");
