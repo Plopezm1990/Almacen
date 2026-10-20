@@ -101209,7 +101209,7 @@ var PM13_PANTALLAS_EDITOR = Object.freeze([
   ["Inicio", "dashboard", "Panel general", "ABC_PANTALLA_DASHBOARD_CONSULTAR"], ["Inicio", "direccion", "Panel de dirección", "ABC_PANTALLA_DIRECCION_CONSULTAR"], ["Inicio", "buscar", "Buscar", "ABC_PANTALLA_BUSCAR_CONSULTAR"],
   ["Compras", "proveedores", "Proveedores", "ABC_PANTALLA_PROVEEDORES_CONSULTAR"], ["Compras", "pedidos", "Pedidos", "ABC_PANTALLA_PEDIDOS_CONSULTAR"], ["Compras", "recepcion", "Recepción", "ABC_PANTALLA_RECEPCION_CONSULTAR"], ["Compras", "albaranes", "Albaranes", "ABC_PANTALLA_ALBARANES_CONSULTAR"], ["Compras", "facturas", "Facturas", "ABC_PANTALLA_FACTURAS_CONSULTAR"],
   ["Almacén", "resumen_almacen", "Resumen de almacén", "ABC_PANTALLA_RESUMEN_ALMACEN_CONSULTAR"], ["Almacén", "productos", "Productos", "ABC_PANTALLA_PRODUCTOS_CONSULTAR"], ["Almacén", "historial_producto", "Historial de producto", "ABC_PANTALLA_HISTORIAL_PRODUCTO_CONSULTAR"], ["Almacén", "conteo", "Inventario ciego", "ABC_PANTALLA_CONTEO_CONSULTAR"], ["Almacén", "saldo", "Saldo de almacén", "ABC_PANTALLA_SALDO_CONSULTAR"], ["Almacén", "mapa", "Mapa de almacén", "ABC_PANTALLA_MAPA_CONSULTAR"], ["Almacén", "traspasos", "Traspasos", "ABC_PANTALLA_TRASPASOS_CONSULTAR"], ["Almacén", "diagnostico", "Reconciliación de stock", "ABC_PANTALLA_DIAGNOSTICO_CONSULTAR"], ["Almacén", "etiquetas", "Etiquetas y catálogo", "ABC_PANTALLA_ETIQUETAS_CONSULTAR"],
-  ["Ventas", "venta", "TPV", "ABC_PANTALLA_VENTA_CONSULTAR"], ["Ventas", "cocina", "Cocina A10", "ABC_PANTALLA_COCINA_CONSULTAR"], ["Ventas", "encargos", "Encargos", "ABC_PANTALLA_ENCARGOS_CONSULTAR"], ["Ventas", "clientes", "Clientes", "ABC_PANTALLA_CLIENTES_CONSULTAR"], ["Ventas", "devoluciones", "Devoluciones", "ABC_PANTALLA_DEVOLUCIONES_CONSULTAR"], ["Ventas", "descuentos", "Descuentos y cortesías", "ABC_PANTALLA_DESCUENTOS_CONSULTAR"],
+  ["Ventas", "venta", "TPV", "ABC_PANTALLA_VENTA_CONSULTAR"], ["Ventas", "cocina", "Cocina", "ABC_PANTALLA_COCINA_CONSULTAR"], ["Ventas", "encargos", "Encargos", "ABC_PANTALLA_ENCARGOS_CONSULTAR"], ["Ventas", "clientes", "Clientes", "ABC_PANTALLA_CLIENTES_CONSULTAR"], ["Ventas", "devoluciones", "Devoluciones", "ABC_PANTALLA_DEVOLUCIONES_CONSULTAR"], ["Ventas", "descuentos", "Descuentos y cortesías", "ABC_PANTALLA_DESCUENTOS_CONSULTAR"],
   ["Costes y producción", "fichas", "Fichas de costo", "ABC_PANTALLA_FICHAS_CONSULTAR"], ["Costes y producción", "produccion", "Producción", "ABC_PANTALLA_PRODUCCION_CONSULTAR"], ["Costes y producción", "mermas", "Mermas", "ABC_PANTALLA_MERMAS_CONSULTAR"],
   ["Finanzas y análisis", "pagos", "Cuentas por pagar", "ABC_PANTALLA_PAGOS_CONSULTAR"], ["Finanzas y análisis", "resultados", "Resultados", "ABC_PANTALLA_RESULTADOS_CONSULTAR"], ["Finanzas y análisis", "reportes", "Reportes y rotación", "ABC_PANTALLA_REPORTES_CONSULTAR"], ["Finanzas y análisis", "libroiva", "Libro de IVA", "ABC_PANTALLA_LIBROIVA_CONSULTAR"], ["Finanzas y análisis", "caja", "Arqueo de caja", "ABC_PANTALLA_CAJA_CONSULTAR"], ["Finanzas y análisis", "tesoreria", "Tesorería", "ABC_PANTALLA_TESORERIA_CONSULTAR"], ["Finanzas y análisis", "estacionalidad", "Estacionalidad", "ABC_PANTALLA_ESTACIONALIDAD_CONSULTAR"],
   ["Personal", "personal", "Personal", "ABC_PANTALLA_PERSONAL_CONSULTAR"], ["Personal", "fichaje", "Registro horario", "ABC_PANTALLA_FICHAJE_CONSULTAR"], ["Personal", "turnos", "Cuadrante de turnos", "ABC_PANTALLA_TURNOS_CONSULTAR"], ["Personal", "nominas", "Coste de personal", "ABC_PANTALLA_NOMINAS_CONSULTAR"],
@@ -101233,7 +101233,7 @@ var CONFIG_PANTALLAS_ROL = [
   ["ABC_PANTALLA_DASHBOARD_CONSULTAR", "Panel general"], ["ABC_PANTALLA_DIRECCION_CONSULTAR", "Panel de dirección"], ["ABC_PANTALLA_BUSCAR_CONSULTAR", "Buscar"],
   ["ABC_PANTALLA_PROVEEDORES_CONSULTAR", "Proveedores"], ["ABC_PANTALLA_PEDIDOS_CONSULTAR", "Pedidos"], ["ABC_PANTALLA_RECEPCION_CONSULTAR", "Recepción"], ["ABC_PANTALLA_ALBARANES_CONSULTAR", "Albaranes"], ["ABC_PANTALLA_FACTURAS_CONSULTAR", "Facturas"],
   ["ABC_PANTALLA_RESUMEN_ALMACEN_CONSULTAR", "Resumen de almacén"], ["ABC_PANTALLA_PRODUCTOS_CONSULTAR", "Productos"], ["ABC_PANTALLA_HISTORIAL_PRODUCTO_CONSULTAR", "Historial de producto"], ["ABC_PANTALLA_CONTEO_CONSULTAR", "Inventario ciego"], ["ABC_PANTALLA_SALDO_CONSULTAR", "Saldo de almacén"], ["ABC_PANTALLA_MAPA_CONSULTAR", "Mapa de almacén"], ["ABC_PANTALLA_TRASPASOS_CONSULTAR", "Traspasos"], ["ABC_PANTALLA_DIAGNOSTICO_CONSULTAR", "Reconciliación de stock"], ["ABC_PANTALLA_ETIQUETAS_CONSULTAR", "Etiquetas y catálogo"],
-  ["ABC_PANTALLA_VENTA_CONSULTAR", "TPV"], ["ABC_PANTALLA_COCINA_CONSULTAR", "Cocina A10"], ["ABC_PANTALLA_ENCARGOS_CONSULTAR", "Encargos"], ["ABC_PANTALLA_CLIENTES_CONSULTAR", "Clientes"], ["ABC_PANTALLA_DEVOLUCIONES_CONSULTAR", "Devoluciones"], ["ABC_PANTALLA_DESCUENTOS_CONSULTAR", "Descuentos y cortesías"],
+  ["ABC_PANTALLA_VENTA_CONSULTAR", "TPV"], ["ABC_PANTALLA_COCINA_CONSULTAR", "Cocina"], ["ABC_PANTALLA_ENCARGOS_CONSULTAR", "Encargos"], ["ABC_PANTALLA_CLIENTES_CONSULTAR", "Clientes"], ["ABC_PANTALLA_DEVOLUCIONES_CONSULTAR", "Devoluciones"], ["ABC_PANTALLA_DESCUENTOS_CONSULTAR", "Descuentos y cortesías"],
   ["ABC_PANTALLA_FICHAS_CONSULTAR", "Fichas de costo"], ["ABC_PANTALLA_PRODUCCION_CONSULTAR", "Producción"], ["ABC_PANTALLA_MERMAS_CONSULTAR", "Mermas"],
   ["ABC_PANTALLA_PAGOS_CONSULTAR", "Cuentas por pagar"], ["ABC_PANTALLA_RESULTADOS_CONSULTAR", "Resultados"], ["ABC_PANTALLA_REPORTES_CONSULTAR", "Reportes y rotación"], ["ABC_PANTALLA_LIBROIVA_CONSULTAR", "Libro de IVA"], ["ABC_PANTALLA_CAJA_CONSULTAR", "Arqueo de caja"], ["ABC_PANTALLA_TESORERIA_CONSULTAR", "Tesorería"], ["ABC_PANTALLA_ESTACIONALIDAD_CONSULTAR", "Estacionalidad"],
   ["ABC_PANTALLA_PERSONAL_CONSULTAR", "Personal"], ["ABC_PANTALLA_FICHAJE_CONSULTAR", "Registro horario"], ["ABC_PANTALLA_TURNOS_CONSULTAR", "Cuadrante de turnos"], ["ABC_PANTALLA_NOMINAS_CONSULTAR", "Coste de personal"],
@@ -105889,7 +105889,7 @@ function GestionAlmacen() {
     { id: "appcc", label: "Control sanitario", icon: ShieldCheck, badge: appccPendientesHoy.length, badgeColor: C2.amberFill, badgeTextColor: C2.onAmber },
     { id: "aceite", label: "Aceite de freidoras", icon: Droplet },
     { id: "venta", label: "TPV", icon: ShoppingBag },
-    { id: "cocina", label: "Cocina A10", icon: Factory },
+    { id: "cocina", label: "Cocina", icon: Factory },
     { id: "encargos", label: "Encargos", icon: CalendarDays, badge: encargosUrgentesDelLocalActivo.length, badgeColor: C2.redFill, badgeTextColor: C2.onRed },
     { id: "clientes", label: "Clientes", icon: UserRound },
     { id: "libroiva", label: "Libro de IVA", icon: Receipt },
@@ -110773,7 +110773,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("motivo_cancelacion_requerido")) return "Es obligatorio indicar un motivo para cancelar.";
     if (msg.includes("transicion_linea_invalida")) return "La línea cambió de estado y esa acción ya no es válida.";
     if (msg.includes("linea_no_cancelable")) return "La línea ya no se puede cancelar.";
-    if (msg.includes("a10_requiere_conexion")) return "A10 necesita conexión con el servidor; no se ha registrado ningún cambio local.";
+    if (msg.includes("a10_requiere_conexion")) return "Cocina necesita conexión con el servidor; no se ha registrado ningún cambio local.";
     if (msg.includes("local_requerido") || msg.includes("empresa_requerida")) return "Selecciona un local operativo antes de abrir Cocina.";
     if (msg.includes("operating_day_context_required")) return "Abre o recupera primero un pedido real para resolver el día operativo del servidor.";
     if (msg.includes("comanda_ver_no_autorizado")) return "Tu perfil no tiene permiso para ver las comandas de este local.";
@@ -125289,7 +125289,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     }
     setCodigo("");
     setNombre("");
-    setMensaje("Estación creada por el contrato A10.");
+    setMensaje("Estación creada correctamente.");
     await refrescarEstaciones();
   }
 
@@ -125545,7 +125545,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
       setError(resultado?.error || "No se pudo asignar la ruta.");
       return;
     }
-    setMensaje("Ruta de producto actualizada por el contrato A10.");
+    setMensaje("Ruta de producto actualizada correctamente.");
     await refrescarEstaciones();
   }
 
@@ -125557,10 +125557,10 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     const resultado = await accion();
     setProcesando("");
     if (!resultado?.ok) {
-      setError(resultado?.error || "La operación A10 no se pudo completar.");
+      setError(resultado?.error || "La operación de cocina no se pudo completar.");
       return;
     }
-    setMensaje("Operación A10 confirmada por el servidor.");
+    setMensaje("Operación de cocina confirmada por el servidor.");
     await refrescarComandas();
   }
 
@@ -125664,12 +125664,12 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
   const terminalesDisponiblesC01 = (sesionCajaC01?.terminales || []).filter((terminal) => !idsTerminalesVinculadosC01.has(String(terminal.id)));
 
   if (!local?.id || !configEmpresa?.id) {
-    return h3(Card, { className: "p-5" }, h3("div", { className: "text-[16px] font-semibold mb-2" }, "Cocina y comandas A10"), h3("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "Selecciona un local concreto para consultar estaciones y comandas."));
+    return h3(Card, { className: "p-5" }, h3("div", { className: "text-[16px] font-semibold mb-2" }, "Cocina y comandas"), h3("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "Selecciona un local concreto para consultar estaciones y comandas."));
   }
 
   return h3("div", null,
-    h3("div", { className: "flex items-center justify-between mb-3" }, h3("h2", { className: "text-[16px] font-semibold" }, "Cocina y comandas A10"), h3(Btn, { small: true, variant: "ghost", onClick: () => { refrescarEstaciones(); refrescarComandas(); }, disabled: !!procesando || cargando }, cargando ? "Actualizando…" : "Actualizar")),
-    h3(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, h3("div", { className: "text-[12px]" }, "A10 enruta comandas por estación mediante RPC y outbox. ", h3("b", null, "No mueve stock, no cobra ni emite fiscalidad."))),
+    h3("div", { className: "flex items-center justify-between mb-3" }, h3("h2", { className: "text-[16px] font-semibold" }, "Cocina y comandas"), h3(Btn, { small: true, variant: "ghost", onClick: () => { refrescarEstaciones(); refrescarComandas(); }, disabled: !!procesando || cargando }, cargando ? "Actualizando…" : "Actualizar")),
+    h3(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, h3("div", { className: "text-[12px]" }, "La cocina enruta comandas por estación mediante el servidor. ", h3("b", null, "No mueve stock, no cobra ni emite fiscalidad."))),
     error ? h3("div", { role: "alert", className: "text-[12px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", error) : null,
     mensaje ? h3("div", { className: "text-[12px] mb-3 p-2 rounded-lg", style: { background: C2.accentSoft } }, mensaje) : null,
     requiereApertura ? h3(Card, { className: "mb-4", style: { background: C2.redSoft || "#FCE8E6", border: "none" } },
