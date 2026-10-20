@@ -1675,9 +1675,14 @@ function ConfigPermisos({ empresaId, localId, localNombre = "" }) {
     try {
       for (const p3 of listaPantallas) {
         await configRpc("abc_configurar_pantalla_rol", {
-          p_operation_id: configOperacion("pantalla-rol"), p_empresa_id: empresaId, p_local_id: localId,
-          p_ambito: ambitoPantallas, p_rol: p3.rol, p_capacidad: p3.capacidad,
-          p_permitido: p3.permitido, p_motivo: motivoPantallas.trim()
+          p_operation_id: configOperacion("pantalla-rol"),
+          p_empresa_id: empresaId,
+          p_local_id: localId,
+          p_ambito: ambitoPantallas,
+          p_rol: p3.rol,
+          p_capacidad: p3.capacidad,
+          p_permitido: p3.permitido,
+          p_motivo: motivoPantallas.trim()
         });
         hechos += 1;
       }
@@ -1738,6 +1743,24 @@ function ConfigPermisos({ empresaId, localId, localNombre = "" }) {
     }
   };
   const ocupado = cargando || guardando;
+  const celdaPantalla = (cap, rol) => {
+    const info = infoPantalla(cap, rol);
+    if (!info) return h("td", { key: rol, className: "px-2 py-1 text-center" }, "—");
+    const pendiente = pendientesPantallas[rol + "|" + cap];
+    const marcado = valorPantalla(cap, rol, info);
+    const hayDecision = (ambitoPantallas === "EMPRESA" ? info.decision_empresa : info.decision_local) !== null && (ambitoPantallas === "EMPRESA" ? info.decision_empresa : info.decision_local) !== void 0;
+    return h(
+      "td",
+      { key: rol, className: "px-2 py-1 text-center", style: pendiente ? { background: C2.amberSoft } : void 0 },
+      pendiente && pendiente.permitido === null ? h("div", { className: "text-[11px]" }, "volverá a lo normal ", h("button", { type: "button", className: "underline", onClick: () => setPendientesPantallas((anterior) => { const siguiente = { ...anterior }; delete siguiente[rol + "|" + cap]; return siguiente; }) }, "deshacer")) : h(
+        "div",
+        null,
+        h("input", { type: "checkbox", "aria-label": cap + " " + rol, checked: marcado, disabled: ocupado || rol === "Propietario", onChange: () => alternarPantalla(cap, rol, info) }),
+        !pendiente && info.origen !== "plantilla" ? h("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, info.origen === "local" ? "decidido aquí" : "decidido en la empresa") : null,
+        !pendiente && hayDecision ? h("button", { type: "button", className: "text-[10px] underline", onClick: () => heredarPantalla(cap, rol), disabled: ocupado }, "volver a lo normal") : null
+      )
+    );
+  };
   const puedeEmpresa = datos?.puede_configurar_empresa === true;
   const puedeEmpresaPantallas = pantallasRol?.puede_configurar_empresa === true;
   const celda = (cap, rol) => {
@@ -1759,15 +1782,6 @@ function ConfigPermisos({ empresaId, localId, localNombre = "" }) {
         !pendiente && hayDecision ? h("button", { type: "button", className: "text-[10px] underline", onClick: () => heredar(cap, rol), disabled: ocupado }, "volver a lo normal") : null
       )
     );
-  };
-  const celdaPantalla = (cap, rol) => {
-    const fila = (pantallasRol?.pantallas || []).find((p3) => p3.capacidad === cap);
-    const info = fila ? (fila.roles || []).find((r2) => r2.rol === rol) || null : null;
-    if (!info) return h("td", { key: rol, className: "px-2 py-1 text-center" }, "—");
-    const pendiente = pendientesPantallas[rol + "|" + cap];
-    const marcado = valorPantalla(cap, rol, info);
-    const hayDecision = (ambitoPantallas === "EMPRESA" ? info.decision_empresa : info.decision_local) !== null && (ambitoPantallas === "EMPRESA" ? info.decision_empresa : info.decision_local) !== void 0;
-    return h("td", { key: rol, className: "px-2 py-1 text-center", style: pendiente ? { background: C2.amberSoft } : void 0 }, pendiente && pendiente.permitido === null ? h("div", { className: "text-[11px]" }, "volverá a lo normal ", h("button", { type: "button", className: "underline", onClick: () => setPendientesPantallas((anterior) => { const siguiente = { ...anterior }; delete siguiente[rol + "|" + cap]; return siguiente; }) }, "deshacer")) : h("div", null, h("input", { type: "checkbox", "aria-label": cap + " " + rol, checked: marcado, disabled: ocupado || rol === "Propietario", onChange: () => alternarPantalla(cap, rol, info) }), !pendiente && info.origen !== "plantilla" ? h("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, info.origen === "local" ? "decidido aquí" : "decidido en la empresa") : null, !pendiente && hayDecision ? h("button", { type: "button", className: "text-[10px] underline", onClick: () => heredarPantalla(cap, rol), disabled: ocupado }, "volver a lo normal") : null));
   };
   return h(
     "div",
@@ -1826,7 +1840,23 @@ function ConfigPermisos({ empresaId, localId, localNombre = "" }) {
         ))
       )
     ) : null,
-    pantallasRol ? h(Card, { className: "mb-3" }, h("div", { className: "font-semibold mb-1" }, "Pantallas del modo empleado"), h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Ahora también puedes dar o quitar pantallas a Encargado, Cajero/a y Camarero/a. Propietario siempre conserva todas. El cambio queda auditado y se aplica al local o a toda la empresa."), h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-2 mb-3" }, h(Field, { label: "Dónde se aplican los cambios" }, h("select", { value: ambitoPantallas, onChange: (e2) => { setAmbitoPantallas(e2.target.value); setPendientesPantallas({}); }, disabled: ocupado, className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 } }, h("option", { value: "LOCAL" }, "Solo este local" + (localNombre ? " (" + localNombre + ")" : "")), h("option", { value: "EMPRESA", disabled: !puedeEmpresaPantallas }, "Toda la empresa" + (puedeEmpresaPantallas ? "" : " (hace falta ser Propietario de todos los locales)")))), h(ConfigMotivo, { valor: motivoPantallas, onCambio: setMotivoPantallas, deshabilitado: ocupado })), h("div", { className: "flex gap-2 flex-wrap items-center mb-1" }, h(Btn, { small: true, onClick: guardarPantallasRol, disabled: ocupado || Object.keys(pendientesPantallas).length === 0 }, guardando ? "Guardando…" : "Guardar " + Object.keys(pendientesPantallas).length + (Object.keys(pendientesPantallas).length === 1 ? " cambio" : " cambios")), h(Btn, { small: true, variant: "ghost", onClick: () => setPendientesPantallas({}), disabled: ocupado || Object.keys(pendientesPantallas).length === 0 }, "Descartar cambios")), h("div", { className: "overflow-x-auto" }, h("table", { className: "w-full text-[12px]", style: { borderCollapse: "collapse" } }, h("thead", null, h("tr", { style: { borderBottom: `1px solid ${C2.line}` } }, h("th", { className: "text-left px-2 py-1" }, "Pantalla"), h("th", { className: "px-2 py-1" }, "Propietario"), CONFIG_ROLES_MATRIZ.map((r2) => h("th", { key: r2, className: "px-2 py-1" }, r2)))), h("tbody", null, CONFIG_PANTALLAS_ROL.map(([cap, etiqueta]) => h("tr", { key: cap, style: { borderBottom: `1px solid ${C2.divider}` } }, h("td", { className: "px-2 py-1" }, etiqueta), h("td", { className: "px-2 py-1 text-center" }, "✓"), CONFIG_ROLES_MATRIZ.map((r2) => celdaPantalla(cap, r2)))))))) : null,
+    pantallasRol ? h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-1" }, "Pantallas del modo empleado"),
+      h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Ahora también puedes dar o quitar pantallas a Encargado, Cajero/a y Camarero/a. Propietario siempre conserva todas. El cambio queda auditado y se aplica al local o a toda la empresa."),
+      h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-2 mb-3" },
+        h(Field, { label: "Dónde se aplican los cambios" }, h(
+          "select",
+          { value: ambitoPantallas, onChange: (e2) => { setAmbitoPantallas(e2.target.value); setPendientesPantallas({}); }, disabled: ocupado, className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 } },
+          h("option", { value: "LOCAL" }, "Solo este local" + (localNombre ? " (" + localNombre + ")" : "")),
+          h("option", { value: "EMPRESA", disabled: !puedeEmpresaPantallas }, "Toda la empresa" + (puedeEmpresaPantallas ? "" : " (hace falta ser Propietario de todos los locales)"))
+        )),
+        h(ConfigMotivo, { valor: motivoPantallas, onCambio: setMotivoPantallas, deshabilitado: ocupado })
+      ),
+      h("div", { className: "flex gap-2 flex-wrap items-center mb-1" }, h(Btn, { small: true, onClick: guardarPantallasRol, disabled: ocupado || Object.keys(pendientesPantallas).length === 0 }, guardando ? "Guardando…" : "Guardar " + Object.keys(pendientesPantallas).length + (Object.keys(pendientesPantallas).length === 1 ? " cambio" : " cambios")), h(Btn, { small: true, variant: "ghost", onClick: () => setPendientesPantallas({}), disabled: ocupado || Object.keys(pendientesPantallas).length === 0 }, "Descartar cambios")),
+      h("div", { className: "overflow-x-auto" }, h("table", { className: "w-full text-[12px]", style: { borderCollapse: "collapse" } }, h("thead", null, h("tr", { style: { borderBottom: `1px solid ${C2.line}` } }, h("th", { className: "text-left px-2 py-1" }, "Pantalla"), h("th", { className: "px-2 py-1" }, "Propietario"), CONFIG_ROLES_MATRIZ.map((r2) => h("th", { key: r2, className: "px-2 py-1" }, r2)))), h("tbody", null, CONFIG_PANTALLAS_ROL.map(([cap, etiqueta]) => h("tr", { key: cap, style: { borderBottom: `1px solid ${C2.divider}` } }, h("td", { className: "px-2 py-1" }, etiqueta), h("td", { className: "px-2 py-1 text-center" }, "✓"), CONFIG_ROLES_MATRIZ.map((r2) => celdaPantalla(cap, r2)))))))
+    ) : null,
     h(
       Card,
       { className: "mb-3" },
