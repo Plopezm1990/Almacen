@@ -49,6 +49,8 @@ const EXCLUIDAS = new Set([
   '20261016140000_plataforma_password_inicial_bloqueo_push.sql',
   // Reconstrucción de la ventana D01 P5; se verifica y promueve por separado.
   '20261020120000_plataforma_password_inicial_bloqueo_almacen_alta_reconstruida.sql',
+  // PM13 P05 de pantallas de roles fijos: se valida y aplica en QA por separado antes de decidir su promoción.
+  '20261020140000_pm13_p05_roles_fijos_pantallas.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))
