@@ -243,7 +243,7 @@ select e.migracion, e.firma,
  order by e.migracion, e.firma;
 
 -- ============================================================================================================================
--- P4 · Copia de seguridad de las 74 funciones que las migraciones candidatas REEMPLAZAN (create or replace). Es la base de la recuperación:
+-- P4 · Copia de seguridad de las 80 funciones que las migraciones candidatas REEMPLAZAN (create or replace). Es la base de la recuperación:
 --      guardar la salida completa (definición incluida) ANTES de aplicar nada. Solo lectura de catálogo.
 -- ============================================================================================================================
 select n.nspname as esquema, p.proname as funcion, pg_get_function_identity_arguments(p.oid) as argumentos,
@@ -275,6 +275,7 @@ select n.nspname as esquema, p.proname as funcion, pg_get_function_identity_argu
     'public.abc_b07_obtener_configuracion',
     'public.abc_catalogo_guardar_productos',
     'public.abc_configurar_ajuste',
+    'public.abc_configurar_pantalla_rol',
     'public.abc_confirmar_efectivo',
     'public.abc_confirmar_entrega_comanda',
     'public.abc_confirmar_reembolso_efectivo',
