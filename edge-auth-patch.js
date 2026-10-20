@@ -643,28 +643,5 @@ function modoLocalNoReclamado() {
   setTimeout(comprobarPerfilActivo, 1000);
 })();
 
-// Capa visual temporal para que Prefiltros y Entrevistas no muestren
-// puntuaciones ni recomendaciones automáticas mientras se adapta el bundle
-// principal. No guarda ni modifica datos.
-(function () {
-  "use strict";
-  if (document.querySelector('script[data-seleccion-neutral="1"]')) return;
-  var script = document.createElement("script");
-  script.src = "./seleccion-neutral-patch.js?v=2";
-  script.defer = true;
-  script.setAttribute("data-seleccion-neutral", "1");
-  (document.head || document.documentElement).appendChild(script);
-})();
-
-// UX de autenticación: recuperación de contraseña y cierre de sesión visible
-// para Propietario. Se carga como un parche separado para mantener esta capa
-// de seguridad pequeña y reversible.
-(function () {
-  "use strict";
-  if (document.querySelector('script[data-auth-ux="1"]')) return;
-  var script = document.createElement("script");
-  script.src = "./auth-ux-patch.js?v=1";
-  script.defer = true;
-  script.setAttribute("data-auth-ux", "1");
-  (document.head || document.documentElement).appendChild(script);
-})();
+// PM17 P04: la neutralización de selección y la UX de autenticación ya viven
+// en fuente.js. No se inyectan parches externos desde este runtime.
