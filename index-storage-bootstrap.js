@@ -306,6 +306,11 @@
     var lista = pendientes();
     for (var i = 0; i < lista.length; i++) {
       var key = lista[i];
+      if (esClaveSoloDispositivo(key)) {
+        quitarPendiente(key);
+        quitarDenegado(key);
+        continue;
+      }
       if (!pendienteEsDelContexto(key)) continue;
       var entrada = entradaPendienteActual(key);
       // El servidor rechazó esta clave por permisos hace poco: reintentar solo
@@ -389,6 +394,16 @@
     albaranes: true, facturasDirectas: true, gastosGenerales: true, pagosFacturas: true,
     arqueos: true, movimientosCaja: true, devoluciones: true
   };
+  // Preferencias de interfaz del dispositivo. No contienen datos de negocio
+  // ni deben viajar a Supabase: sincronizarlas provoca avisos al cambiar de
+  // usuario en una sesión abierta, aunque el cambio local se haya guardado.
+  var CLAVES_SOLO_DISPOSITIVO = {
+    modoEmpleado: true,
+    usuarioActivoId: true
+  };
+  function esClaveSoloDispositivo(key) {
+    return !!CLAVES_SOLO_DISPOSITIVO[key];
+  }
 
   async function claveCacheLocal(key) {
     if (!CLAVES_CACHE_POR_USUARIO[key] || !window.__nubeCliente) return key;
@@ -999,6 +1014,16 @@
       }
 
       if (tablaEspecial && !falloLocal) anotarBorradosLocales(key, anterior, value);
+
+      // Estas preferencias solo viven en este navegador. Se limpian también
+      // de colas antiguas para que una versión previa no vuelva a intentar
+      // subirlas ni muestre un aviso de sincronización pendiente.
+      if (esClaveSoloDispositivo(key)) {
+        quitarPendiente(key);
+        quitarDenegado(key);
+        if (falloLocal) throw falloLocal;
+        return { key: key, value: value, shared: false, confirmadoServidor: false, pendienteSincronizacion: false };
+      }
 
       // Los ledgers remotos solo se escriben mediante RPC transaccional. El set
       // reactivo conserva la copia local; nunca hace upsert directo ni fallback.
