@@ -2893,7 +2893,7 @@ function GestionAlmacen() {
   }, [ready, miPerfil?.rol, empresaDelLocalActivo?.id, localActivoId]);
   (0, import_react4.useEffect)(() => {
     let activo = true;
-    if (!ready || typeof window === "undefined" || !window.__nubeActiva || !miPerfil || miPerfil.rol === "Propietario") {
+    if (!ready || typeof window === "undefined" || !window.__nubeActiva || !miPerfil) {
       setPantallasRolEmpleado(null);
       return () => { activo = false; };
     }
