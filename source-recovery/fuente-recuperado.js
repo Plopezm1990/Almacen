@@ -5005,7 +5005,7 @@ function GestionAlmacen() {
           .app-main-content input, .app-main-content select, .app-main-content textarea { min-width: 0; max-width: 100%; }
           .app-main-content .flex.items-center.justify-between { flex-wrap: wrap; }
         }
-        @media (max-width: 900px) {
+        @media (max-width: 640px) {
           .tpv-layout { grid-template-columns: minmax(0, 1fr); }
           .tpv-ticket-zone { position: static; }
         }
@@ -9545,7 +9545,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     return importe;
   }
   function uuidPersistidoA02(valor) {
-    return typeof valor === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(valor);
+    return typeof valor === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(valor);
   }
   function validarContextoCuentaA02(contexto, empresaId, localId) {
     if (!contexto || contexto.schemaVersion !== 1) throw new Error("contexto_cuenta_persistido_invalido");
@@ -23002,7 +23002,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }
 
   const vendibles = (0, import_react4.useMemo)(
-    () => productos.filter((p22) => p22.activo !== false && (p22.tipo === "elaborado" || Number(p22.precioVenta) > 0) && (p22._pm07Servidor ? Number(p22.stock) || 0 : Number(p22.stockPisoVenta) || 0) > 0),
+    () => productos.filter((p22) => p22.activo !== false && (p22.tipo === "elaborado" || Number(p22.precioVenta) > 0)),
     [productos]
   );
   const categorias = (0, import_react4.useMemo)(() => {
@@ -23037,15 +23037,16 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const firma = (configuracionA04.selecciones || []).map((s22) => `${s22.grupo_id}:${s22.opcion_id}:${s22.cantidad}:${s22.expected_group_version}:${s22.expected_product_group_version}:${s22.expected_option_version}`).sort().join("|");
     return `${productoId}::a04::${configuracionA04.expectedProductVersion}::${firma}`;
   }
-  function agregarLineaCarritoA04(producto, configuracionA04 = null) {
+  function agregarLineaCarritoA04(producto, configuracionA04 = null, cantidad = 1) {
+    const cantidadSolicitada = Math.max(1, Number(cantidad) || 1);
     const claveCarrito = claveCarritoA04(producto.id, configuracionA04);
     setCarrito((s22) => {
       const existe = s22.find((l22) => (l22.claveCarrito || l22.productoId) === claveCarrito);
-      if (existe) return s22.map((l22) => (l22.claveCarrito || l22.productoId) === claveCarrito ? { ...l22, cantidad: (Number(l22.cantidad) || 0) + 1 } : l22);
-      return [...s22, { claveCarrito, productoId: producto.id, cantidad: 1, configuracionA04 }];
+      if (existe) return s22.map((l22) => (l22.claveCarrito || l22.productoId) === claveCarrito ? { ...l22, cantidad: (Number(l22.cantidad) || 0) + cantidadSolicitada } : l22);
+      return [...s22, { claveCarrito, productoId: producto.id, cantidad: cantidadSolicitada, configuracionA04 }];
     });
   }
-  async function agregar(producto) {
+  async function agregar(producto, cantidadSolicitada = 1) {
     if (cargandoA04) return;
     setErrorVenta("");
     setErrorA04("");
@@ -23085,7 +23086,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         .order("orden", { ascending: true });
       if (enlacesError) throw enlacesError;
       if (!Array.isArray(enlaces) || enlaces.length === 0) {
-        agregarLineaCarritoA04(producto, null);
+        agregarLineaCarritoA04(producto, null, cantidadSolicitada);
         return;
       }
       const idsGrupos = [...new Set(enlaces.map((x3) => x3.grupo_id).filter(Boolean))];
@@ -23144,6 +23145,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       setSeleccionesA04(inicial);
       setConfigurandoA04({
         producto,
+        cantidadRapida: Math.max(1, Number(cantidadSolicitada) || 1),
         catalogo: {
           currencyCode: catalogo.currency_code,
           precioUnitario: Number(catalogo.precio_unitario) || 0,
@@ -23219,13 +23221,13 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       precioUnitarioPreview,
       currencyCode: configurandoA04.catalogo.currencyCode
     };
-    agregarLineaCarritoA04(configurandoA04.producto, configuracionA04);
+    agregarLineaCarritoA04(configurandoA04.producto, configuracionA04, configurandoA04.cantidadRapida || 1);
     setConfigurandoA04(null);
     setSeleccionesA04({});
     setErrorA04("");
   }
   async function agregarCantidadRapidaA04(producto, cantidad) {
-    for (let i2 = 0; i2 < cantidad; i2 += 1) await agregar(producto);
+    await agregar(producto, cantidad);
   }
   function cambiarCantidad(claveCarrito, delta) {
     setCarrito(
@@ -23260,6 +23262,23 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     return { ...l22, cantidadNum: cant, producto: p22, precioUnitario: precioConIva, subtotal: precioConIva * cant };
   }).filter(Boolean);
   const total = lineasCarrito.reduce((a22, l22) => a22 + l22.subtotal, 0);
+  (0, import_react4.useEffect)(() => {
+    function manejarAtajoTPV(e2) {
+      if (!["F2", "F4", "F9"].includes(e2.key)) return;
+      e2.preventDefault();
+      if (e2.key === "F2") {
+        inputEscaneoRef.current?.focus();
+        return;
+      }
+      if (e2.key === "F4") {
+        if (carrito.length > 0) vaciarCarrito();
+        return;
+      }
+      if (lineasCarrito.length > 0 && !enviandoVenta && !cargandoA04 && !configurandoA04) confirmarCobro();
+    }
+    window.addEventListener("keydown", manejarAtajoTPV);
+    return () => window.removeEventListener("keydown", manejarAtajoTPV);
+  }, [carrito.length, lineasCarrito.length, enviandoVenta, cargandoA04, configurandoA04]);
   const cantidadesProductoA04 = lineasCarrito.reduce((mapa, l22) => {
     mapa.set(l22.productoId, (mapa.get(l22.productoId) || 0) + l22.cantidadNum);
     return mapa;
@@ -24064,7 +24083,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   ))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4" }, visibles.map((p22) => {
     const precioConIva = precioNeto(p22) * (1 + ivaDe(p22) / 100);
     const cantidadEnCarrito = carrito.filter((l22) => l22.productoId === p22.id).reduce((acc, l22) => acc + (Number(l22.cantidad) || 0), 0);
-    const sinStock = (Number(p22.stockPisoVenta) || 0) <= 0;
+    const stockDisponible = p22._pm07Servidor ? Number(p22.stock) || 0 : Number(p22.stockPisoVenta) || 0;
+    const sinStock = stockDisponible <= 0;
     const fotoProducto = p22.foto || p22.imagen || p22.fotoUrl || "";
     const masVendido = p22.masVendido === true || p22.destacadoTPV === true || p22.destacado === true;
     return /* @__PURE__ */ import_react4.default.createElement(
@@ -24073,15 +24093,15 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         key: p22.id,
         role: "button",
         tabIndex: 0,
-        onClick: () => agregar(p22),
-        onKeyDown: (e2) => { if (e2.key === "Enter" || e2.key === " ") { e2.preventDefault(); agregar(p22); } },
+        onClick: () => { if (!sinStock) agregar(p22); },
+        onKeyDown: (e2) => { if ((e2.key === "Enter" || e2.key === " ") && !sinStock) { e2.preventDefault(); agregar(p22); } },
         className: "rounded-xl p-3 text-left relative",
-        style: { background: C2.surface, border: `1px solid ${cantidadEnCarrito > 0 ? C2.accent : C2.line}`, minHeight: 104, opacity: cargandoA04 ? 0.7 : 1 }
+        style: { background: C2.surface, border: `1px solid ${cantidadEnCarrito > 0 ? C2.accent : C2.line}`, minHeight: 104, opacity: sinStock ? 0.6 : cargandoA04 ? 0.7 : 1 }
       },
       fotoProducto ? /* @__PURE__ */ import_react4.default.createElement("img", { src: fotoProducto, alt: "", className: "tpv-product-photo" }) : null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium leading-tight mb-1" }, p22.nombre), masVendido ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] font-semibold mb-1", style: { color: C2.amber } }, "Más vendido") : null,
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[14px] font-bold mono", style: { color: C2.accent } }, "\u20AC", fmt(precioConIva)),
       sinStock && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mt-0.5", style: { color: C2.red } }, "sin stock"),
-      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1 mt-2" }, [2, 3].map((cantidad) => /* @__PURE__ */ import_react4.default.createElement("button", { key: "quick-" + p22.id + "-" + cantidad, type: "button", className: "tpv-quick-quantity", onClick: (e2) => { e2.stopPropagation(); agregarCantidadRapidaA04(p22, cantidad); } }, "+" + cantidad))),      cantidadEnCarrito > 0 && /* @__PURE__ */ import_react4.default.createElement(
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1 mt-2" }, [2, 3].map((cantidad) => /* @__PURE__ */ import_react4.default.createElement("button", { key: "quick-" + p22.id + "-" + cantidad, type: "button", className: "tpv-quick-quantity", disabled: sinStock, onClick: (e2) => { e2.stopPropagation(); if (!sinStock) agregarCantidadRapidaA04(p22, cantidad); } }, "+" + cantidad))),      cantidadEnCarrito > 0 && /* @__PURE__ */ import_react4.default.createElement(
         "span",
         {
           className: "absolute -top-2 -right-2 rounded-full text-[11px] font-bold flex items-center justify-center",
