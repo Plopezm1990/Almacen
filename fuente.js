@@ -105934,8 +105934,14 @@ function GestionAlmacen() {
       className: "text-[12.5px] px-3 py-2 flex items-center justify-between gap-2",
       style: { background: C2.red, color: "#fff", position: "sticky", top: 0, zIndex: 40 }
     },
-    /* @__PURE__ */ import_react4.default.createElement("span", null, "\u26A0 Un cambio no se ha podido guardar (", fallosGuardado[0].key, "). Comprueba tu conexi\xF3n \u2014 si sigue as\xED, haz una copia desde Respaldos antes de seguir trabajando."),
-    /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setFallosGuardado([]), style: { color: "#fff", fontWeight: 600 } }, "\u2715")
+    /* @__PURE__ */ import_react4.default.createElement("span", null, "\u26A0 Un cambio no se ha podido guardar (", fallosGuardado[0].key, "). Comprueba tu conexi\xF3n o reintenta ahora; mientras tanto queda guardado en este equipo."),
+    /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 items-center" },
+      /* @__PURE__ */ import_react4.default.createElement("button", { onClick: async () => {
+        const key = fallosGuardado[0] && fallosGuardado[0].key;
+        if (typeof window.reintentarSincronizacion === "function") await window.reintentarSincronizacion(key);
+      }, style: { color: "#fff", fontWeight: 600 } }, "Reintentar"),
+      /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setFallosGuardado([]), style: { color: "#fff", fontWeight: 600 } }, "\u2715")
+    )
   ), fallosCarga.length > 0 && /* @__PURE__ */ import_react4.default.createElement(
     "div",
     {
@@ -120956,6 +120962,13 @@ function resumenIvaVentasPM09(movimientos = [], desde = "", hasta = "") {
   });
   return { porTipo, detalle, pendientes };
 }
+function albaranIncluidoEnFacturaDirectaPM11(albaran, facturasDirectas = []) {
+  if (!albaran) return false;
+  const facturasActivas = (facturasDirectas || []).filter((factura) => factura.estado === "ACTIVA");
+  if (facturasActivas.some((factura) => String(factura.id) === String(albaran.facturaDirectaId))) return true;
+  const idsAlbaranesFacturados = new Set(facturasActivas.flatMap((factura) => (factura.albaranesVinculados || []).map((vinculo) => String(vinculo?.albaranId || vinculo?.id || vinculo?.existenteId || "")).filter(Boolean)));
+  return idsAlbaranesFacturados.has(String(albaran.id));
+}
 function LibroIva({ movimientos, productos, albaranes, proveedorPorId, facturasDirectas = [] }) {
   const hoy = /* @__PURE__ */ new Date();
   const [anio, setAnio] = (0, import_react4.useState)(hoy.getFullYear());
@@ -120965,7 +120978,7 @@ function LibroIva({ movimientos, productos, albaranes, proveedorPorId, facturasD
   const repercutido = resumenIvaVentas.porTipo;
   const soportado = (0, import_react4.useMemo)(() => {
     const porTipo = {};
-    albaranes.filter((a22) => a22.estado === "confirmado" && (a22.fechaFactura || a22.fecha) >= desde && (a22.fechaFactura || a22.fecha) <= hasta).forEach((a22) => {
+    albaranes.filter((a22) => a22.estado === "confirmado" && !albaranIncluidoEnFacturaDirectaPM11(a22, facturasDirectas) && (a22.fechaFactura || a22.fecha) >= desde && (a22.fechaFactura || a22.fecha) <= hasta).forEach((a22) => {
       const t22 = calcularTotalesFacturaAlbaran(a22);
       Object.entries(t22.porTipo).forEach(([tipo, v22]) => {
         if (!porTipo[tipo]) porTipo[tipo] = { base: 0, cuota: 0 };
@@ -121006,7 +121019,7 @@ function LibroIva({ movimientos, productos, albaranes, proveedorPorId, facturasD
       { Concepto: resultado >= 0 ? "A ingresar" : "A compensar", Valor: Number(Math.abs(resultado).toFixed(2)) }
     ]);
     utils2.book_append_sheet(wb, wsResumen, "Resumen");
-    const detalleCompras = albaranes.filter((a22) => a22.estado === "confirmado" && (a22.fechaFactura || a22.fecha) >= desde && (a22.fechaFactura || a22.fecha) <= hasta).map((a22) => {
+    const detalleCompras = albaranes.filter((a22) => a22.estado === "confirmado" && !albaranIncluidoEnFacturaDirectaPM11(a22, facturasDirectas) && (a22.fechaFactura || a22.fecha) >= desde && (a22.fechaFactura || a22.fecha) <= hasta).map((a22) => {
       const prov = proveedorPorId(a22.proveedorId);
       const base = (a22.lineas || []).reduce((x3, ln2) => x3 + (Number(ln2.importe) || 0), 0) + (Number(a22.cargos) || 0);
       const iva = (a22.lineas || []).reduce((x3, ln2) => x3 + (Number(ln2.importe) || 0) * ((Number(ln2.ivaPct) || 0) / 100), 0) + (Number(a22.cargos) || 0) * ((Number(a22.cargosIva) || 0) / 100);
