@@ -80,6 +80,11 @@
     return cobertura.contados === 0 ? ESTADOS.BORRADOR : ESTADOS.EN_CURSO;
   }
 
+  function esConteoAbierto(conteo, reglasPorProducto) {
+    var estado = estadoDerivado(conteo, reglasPorProducto);
+    return estado === ESTADOS.BORRADOR || estado === ESTADOS.EN_CURSO;
+  }
+
   function validarCierre(conteo, opciones) {
     conteo = conteo || {};
     opciones = opciones || {};
@@ -201,6 +206,7 @@
     normalizarCantidad: normalizarCantidad,
     resumenCobertura: resumenCobertura,
     estadoDerivado: estadoDerivado,
+    esConteoAbierto: esConteoAbierto,
     validarCierre: validarCierre,
     esBorradorCompletamenteVacio: esBorradorCompletamenteVacio,
     prepararCancelacion: prepararCancelacion,

@@ -30,6 +30,8 @@ for (const [nombre, codigo] of [["runtime", runtime], ["fuente recuperada", recu
   assert.match(codigo, /title: "Cerrar conteo parcial"/);
   assert.match(codigo, /" productos contados"/);
   assert.match(codigo, /El valor 0 cuenta como cantidad válida\./);
+  assert.match(codigo, /conteosDelLocalActivo\.find\(\(c22\) => window\.__pm12ConteoEstados\?\.esConteoAbierto\(c22\)/, `${nombre}: el bloqueo debe usar el estado derivado`);
+  assert.match(codigo, /activo && \(window\.__pm12ConteoEstados\?\.esConteoAbierto\(activo\)/, `${nombre}: un histórico cerrado no debe poder volver a finalizarse`);
   assert.doesNotMatch(codigo, /onClick: \(\) => finalizarConteo\(activo\.id\)/, `${nombre}: no debe quedar el cierre directo antiguo`);
 }
 const motorPos = html.indexOf('<script src="./pm12-conteo-estados-v1.js"></script>');
