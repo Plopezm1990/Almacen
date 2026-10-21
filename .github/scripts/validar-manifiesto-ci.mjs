@@ -174,7 +174,7 @@ function selfTest(manifest, realPaths) {
   spoofed.push({ ...duplicate, environment: 'unknown_environment' });
   const spoofedActive = spoofed.filter((entry) => entry.classification === 'active_contract').length;
   if (spoofed.length !== INVENTORY || spoofedActive !== COUNTS.active_contract) {
-    throw new Error('El caso combinado no conserva 293 entradas y 276 contratos activos.');
+    throw new Error('El caso combinado no conserva 294 entradas y 277 contratos activos.');
   }
   const spoofedCodes = new Set(validate({ ...manifest, entries: spoofed }, realPaths).issues.map((issue) => issue.code));
   if (!['invalid_environment', 'duplicate_path', 'missing_path'].every((code) => spoofedCodes.has(code))) {
