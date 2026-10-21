@@ -123326,6 +123326,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [seleccionesA04, setSeleccionesA04] = (0, import_react4.useState)({});
   const [errorA04, setErrorA04] = (0, import_react4.useState)("");
   const [cargandoA04, setCargandoA04] = (0, import_react4.useState)(false);
+  const [cantidadRapidaPendienteA04, setCantidadRapidaPendienteA04] = (0, import_react4.useState)(1);
 
   (0, import_react4.useEffect)(() => {
     const empresaId = configEmpresa?.id || null;
@@ -124060,16 +124061,18 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     return `${productoId}::a04::${configuracionA04.expectedProductVersion}::${firma}`;
   }
   function agregarLineaCarritoA04(producto, configuracionA04 = null, cantidad = 1) {
-    const cantidadSolicitada = Math.max(1, Number(cantidad) || 1);
+    const cantidadNormalizada = Math.max(1, Number(cantidad) || 1);
     const claveCarrito = claveCarritoA04(producto.id, configuracionA04);
     setCarrito((s22) => {
       const existe = s22.find((l22) => (l22.claveCarrito || l22.productoId) === claveCarrito);
-      if (existe) return s22.map((l22) => (l22.claveCarrito || l22.productoId) === claveCarrito ? { ...l22, cantidad: (Number(l22.cantidad) || 0) + cantidadSolicitada } : l22);
-      return [...s22, { claveCarrito, productoId: producto.id, cantidad: cantidadSolicitada, configuracionA04 }];
+      if (existe) return s22.map((l22) => (l22.claveCarrito || l22.productoId) === claveCarrito ? { ...l22, cantidad: (Number(l22.cantidad) || 0) + cantidadNormalizada } : l22);
+      return [...s22, { claveCarrito, productoId: producto.id, cantidad: cantidadNormalizada, configuracionA04 }];
     });
   }
   async function agregar(producto, cantidadSolicitada = 1) {
     if (cargandoA04) return;
+    const cantidadNormalizada = Math.max(1, Number(cantidadSolicitada) || 1);
+    setCantidadRapidaPendienteA04(cantidadNormalizada);
     setErrorVenta("");
     setErrorA04("");
     const empresaId = configEmpresa?.id || producto?.empresaId || null;
@@ -124108,7 +124111,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         .order("orden", { ascending: true });
       if (enlacesError) throw enlacesError;
       if (!Array.isArray(enlaces) || enlaces.length === 0) {
-        agregarLineaCarritoA04(producto, null, cantidadSolicitada);
+        agregarLineaCarritoA04(producto, null, cantidadNormalizada);
+        setCantidadRapidaPendienteA04(1);
         return;
       }
       const idsGrupos = [...new Set(enlaces.map((x3) => x3.grupo_id).filter(Boolean))];
@@ -124243,7 +124247,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       precioUnitarioPreview,
       currencyCode: configurandoA04.catalogo.currencyCode
     };
-    agregarLineaCarritoA04(configurandoA04.producto, configuracionA04, configurandoA04.cantidadRapida || 1);
+    agregarLineaCarritoA04(configurandoA04.producto, configuracionA04, cantidadRapidaPendienteA04);
+    setCantidadRapidaPendienteA04(1);
     setConfigurandoA04(null);
     setSeleccionesA04({});
     setErrorA04("");
@@ -124327,6 +124332,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       Modal,
       { onClose: () => {
         setConfigurandoA04(null);
+        setCantidadRapidaPendienteA04(1);
         setSeleccionesA04({});
         setErrorA04("");
       }, title: `Configurar ${configurandoA04.producto.nombre}` },
@@ -124369,6 +124375,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         h4(Btn, { onClick: confirmarConfiguracionA04 }, "Añadir al carrito"),
         h4(Btn, { variant: "ghost", onClick: () => {
           setConfigurandoA04(null);
+          setCantidadRapidaPendienteA04(1);
           setSeleccionesA04({});
           setErrorA04("");
         } }, "Cancelar")
@@ -125117,13 +125124,14 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         tabIndex: 0,
         onClick: () => { if (!sinStock) agregar(p22); },
         onKeyDown: (e2) => { if ((e2.key === "Enter" || e2.key === " ") && !sinStock) { e2.preventDefault(); agregar(p22); } },
+        disabled: sinStock || cargandoA04,
         className: "rounded-xl p-3 text-left relative",
-        style: { background: C2.surface, border: `1px solid ${cantidadEnCarrito > 0 ? C2.accent : C2.line}`, minHeight: 104, opacity: sinStock ? 0.6 : cargandoA04 ? 0.7 : 1 }
+        style: { background: C2.surface, border: `1px solid ${cantidadEnCarrito > 0 ? C2.accent : C2.line}`, minHeight: 104, opacity: sinStock || cargandoA04 ? 0.55 : 1 }
       },
       fotoProducto ? /* @__PURE__ */ import_react4.default.createElement("img", { src: fotoProducto, alt: "", className: "tpv-product-photo" }) : null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium leading-tight mb-1" }, p22.nombre), masVendido ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] font-semibold mb-1", style: { color: C2.amber } }, "Más vendido") : null,
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[14px] font-bold mono", style: { color: C2.accent } }, "\u20AC", fmt(precioConIva)),
       sinStock && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mt-0.5", style: { color: C2.red } }, "sin stock"),
-      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1 mt-2" }, [2, 3].map((cantidad) => /* @__PURE__ */ import_react4.default.createElement("button", { key: "quick-" + p22.id + "-" + cantidad, type: "button", className: "tpv-quick-quantity", disabled: sinStock, onClick: (e2) => { e2.stopPropagation(); if (!sinStock) agregarCantidadRapidaA04(p22, cantidad); } }, "+" + cantidad))),      cantidadEnCarrito > 0 && /* @__PURE__ */ import_react4.default.createElement(
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1 mt-2" }, [2, 3].map((cantidad) => /* @__PURE__ */ import_react4.default.createElement("button", { key: "quick-" + p22.id + "-" + cantidad, type: "button", className: "tpv-quick-quantity", onClick: (e2) => { e2.stopPropagation(); if (!sinStock) agregarCantidadRapidaA04(p22, cantidad); }, disabled: sinStock || cargandoA04 }, "+" + cantidad))),      cantidadEnCarrito > 0 && /* @__PURE__ */ import_react4.default.createElement(
         "span",
         {
           className: "absolute -top-2 -right-2 rounded-full text-[11px] font-bold flex items-center justify-center",
