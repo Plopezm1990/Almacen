@@ -195,6 +195,11 @@
       try {
         if (typeof window.dispatchEvent === "function" && typeof CustomEvent === "function") {
           window.dispatchEvent(new CustomEvent("clave-solo-local", { detail: { key: key, mensaje: error && error.message } }));
+          window.dispatchEvent(new CustomEvent("fallo-guardado", { detail: {
+            key: key,
+            soloLocal: true,
+            mensaje: "Guardado en este equipo; el servidor no permite confirmar este cambio. Puedes reintentarlo ahora."
+          } }));
         }
       } catch (e) {}
     }
@@ -346,6 +351,26 @@
         if (esRechazoPorPermisos(e)) marcarDenegado(key, e);
       }
     }
+    actualizarIndicador();
+  };
+
+  // Permite recuperar un navegador que quedó marcado como solo local sin
+  // esperar seis horas: vuelve a encolar el valor local y usa el mismo camino
+  // de sincronización que un guardado normal.
+  window.reintentarSincronizacion = async function (key) {
+    var claves = key ? [key] : clavesDenegadasVigentes();
+    for (var i = 0; i < claves.length; i++) {
+      var clave = claves[i];
+      quitarDenegado(clave);
+      try {
+        var cacheKey = await claveCacheLocal(clave);
+        var valor = LOCAL.get(cacheKey);
+        marcarPendiente(clave, valor, cacheKey);
+      } catch (e) {
+        console.warn("[almacén] No se pudo preparar el reintento de «" + clave + "».", e && e.message);
+      }
+    }
+    await window.subirPendientes();
     actualizarIndicador();
   };
 
@@ -561,6 +586,38 @@
     return todas;
   }
 
+  // Las filas que llegan de los servicios de stock llevan marcas de control
+  // locales. No forman parte del contenido del movimiento y no deben hacer
+  // que una fila ya confirmada parezca nueva en cada guardado.
+  var CAMPOS_SINCRONIZACION_SOLO_LOCAL = {
+    _pm07Servidor: true,
+    _pm07BajoMinimo: true,
+    _pm07LocalOperable: true,
+    _pm08Servidor: true,
+    _pm12Servidor: true,
+  };
+  function contenidoSinMarcasLocales(valor) {
+    if (Array.isArray(valor)) return valor.map(contenidoSinMarcasLocales);
+    if (!valor || typeof valor !== "object") return valor;
+    var salida = {};
+    Object.keys(valor).sort().forEach(function (clave) {
+      if (CAMPOS_SINCRONIZACION_SOLO_LOCAL[clave]) return;
+      salida[clave] = contenidoSinMarcasLocales(valor[clave]);
+    });
+    return salida;
+  }
+  function contenidoFilaIgual(a, b) {
+    return JSON.stringify(contenidoSinMarcasLocales(a)) === JSON.stringify(contenidoSinMarcasLocales(b));
+  }
+  function datosFilaParaServidor(valor, claveColeccion) {
+    if (!valor || typeof valor !== "object") return valor;
+    // Estos movimientos ya viven en movimientos_stock y solo se hidratan en
+    // la colección local como referencia autoritativa. No se duplican en la
+    // tabla histórica heredada movimientos_registro.
+    if (claveColeccion === "movimientos" && valor._pm07Servidor) return null;
+    return contenidoSinMarcasLocales(valor);
+  }
+
   // Sube a la nube lo que ha cambiado en este equipo, y borra únicamente lo
   // que este equipo ha quitado a propósito (una venta anulada, un albarán
   // anulado). Lo que no conoce, no lo toca: puede venir del otro dispositivo.
@@ -572,12 +629,14 @@
     var filasParaGuardar = [];
     listaLocal.forEach(function (x) {
       if (!x || !x.id) return;
+      var datosServidor = datosFilaParaServidor(x, claveColeccion);
+      if (datosServidor === null) return;
       var enNube = remotoPorId[x.id];
-      if (!enNube || JSON.stringify(enNube) !== JSON.stringify(x)) {
+      if (!enNube || !contenidoFilaIgual(enNube, datosServidor)) {
         filasParaGuardar.push({
           id: x.id,
-          fecha: x.fecha || new Date().toISOString().slice(0, 10),
-          datos: x,
+          fecha: datosServidor.fecha || new Date().toISOString().slice(0, 10),
+          datos: datosServidor,
         });
       }
     });
@@ -589,24 +648,39 @@
       return Object.prototype.hasOwnProperty.call(remotoPorId, id);
     });
 
+    var primerError = null;
     if (filasParaGuardar.length > 0) {
       if (tabla === "auditoria_registro") {
         // auditoria_registro no admite escritura directa a propósito — cada
         // fila nueva tiene que pasar por la RPC controlada, una por una,
         // para que ninguna entrada pueda fabricarse sin pasar por ahí.
         for (var i = 0; i < filasParaGuardar.length; i++) {
-          var d = filasParaGuardar[i].datos;
-          var rRpc = await window.__nubeCliente.rpc("registrar_auditoria", {
-            p_id: d.id, p_usuario: d.usuario, p_accion: d.accion, p_detalle: d.detalle,
-            p_fecha: d.fecha, p_hora: d.hora, p_empresa_id: d.empresaId || null, p_local_id: d.localId || null,
-          });
-          if (rRpc.error) throw rRpc.error;
+          try {
+            var d = filasParaGuardar[i].datos;
+            var rRpc = await window.__nubeCliente.rpc("registrar_auditoria", {
+              p_id: d.id, p_usuario: d.usuario, p_accion: d.accion, p_detalle: d.detalle,
+              p_fecha: d.fecha, p_hora: d.hora, p_empresa_id: d.empresaId || null, p_local_id: d.localId || null,
+            });
+            if (rRpc.error) throw rRpc.error;
+          } catch (e) {
+            if (!primerError) primerError = e;
+          }
         }
       } else {
-        var rUp = await window.__nubeCliente.from(tabla).upsert(filasParaGuardar);
-        if (rUp.error) throw rUp.error;
+        // Una fila fallida no puede impedir que las demás lleguen. En el
+        // siguiente intento, las ya confirmadas desaparecerán de la lista
+        // gracias a la comparación canónica anterior.
+        for (var j = 0; j < filasParaGuardar.length; j++) {
+          try {
+            var rUp = await window.__nubeCliente.from(tabla).upsert([filasParaGuardar[j]]);
+            if (rUp.error) throw rUp.error;
+          } catch (e2) {
+            if (!primerError) primerError = e2;
+          }
+        }
       }
     }
+    if (primerError) throw primerError;
     if (idsParaBorrar.length > 0) {
       var rDel = await window.__nubeCliente.from(tabla).delete().in("id", idsParaBorrar);
       if (rDel.error) throw rDel.error;
