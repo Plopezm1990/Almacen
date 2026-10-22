@@ -1,7 +1,7 @@
 # Hoja QA-1 · preparación de la Etapa 2
 
 Fecha: 2026-10-22  
-Estado: EN_IMPLEMENTACION_QA; QA_ONLY; VALIDACION_MANUAL_AUD006_COMPLETADA_PARCIALMENTE
+Estado: QA_ONLY; AUD006_CERRADO_FLUJO_NORMAL; AUD004_BLOQUEADO_FIXTURE; QA1_EN_CURSO
 
 ## 1. Puerta de entrada y límites
 
@@ -18,7 +18,7 @@ Estado: EN_IMPLEMENTACION_QA; QA_ONLY; VALIDACION_MANUAL_AUD006_COMPLETADA_PARCI
   validar AUD-006, mediante el flujo normal de la aplicación. No se han creado
   ventas reales, cobros ni movimientos de stock.
 - El candidato de código QA se publicó en la rama
-  codex/stage1-aud009-aud003, commit cca22bc, y Netlify confirmó el deploy
+  codex/stage1-aud009-aud003, commit 167869c, y Netlify confirmó el deploy
   como successful para el preview 172 (deploy 6ada5835fc56cd902c5f8bbb).
 - La consulta al esquema y a las rutinas fue de solo lectura. No se leyeron
   contraseñas, tokens ni valores de autenticación.
@@ -78,7 +78,7 @@ como dependencia separada.
 
 ### AUD-004 · producto legado sin empresa
 
-Estado de preparación: PENDIENTE_DE_REPRODUCCION_QA.
+Estado de preparación: PENDIENTE_DE_FIXTURE_CONTROLADO_QA; SOLO_LECTURA_COMPLETADA.
 
 Hallazgos actuales:
 
@@ -90,6 +90,23 @@ Hallazgos actuales:
   empresa o local y muestra un aviso de contexto incompleto.
 - No se ha demostrado todavía cómo debe tratarse un producto histórico que
   exista sin empresa en el fixture QA real.
+
+Preflight QA de solo lectura realizado el 2026-10-22:
+
+- `catalogo_tpv_productos` contiene 32 filas y todas tienen `empresa_id` y
+  `local_id` no nulos; se distribuyen entre QA Empresa A / Local A1 y Local A2.
+- La colección `productos` de `almacen_kv` contiene 32 elementos y no presenta
+  ningún elemento sin `empresaId` o `localId`, ni un nombre identificable como
+  fixture legacy/AUD-004.
+- `abc_catalogo_guardar_productos` omite explícitamente entradas sin contexto
+  de empresa o local, y `abc_productos_guardar_lista` exige el contexto de la
+  empresa llamante y un local perteneciente a ella.
+- No existe por tanto una fila legacy reproducible en el dataset QA actual.
+  No se hizo INSERT, UPDATE ni migración directa para fabricarla.
+
+Resultado AUD-004 del preflight: BLOQUEADO por falta de fixture controlado.
+La reproducción y cualquier corrección deben comenzar con un fixture QA
+revisado, una regla de autoridad y un rollback antes de editar datos o servidor.
 
 Cambio propuesto y pendiente de validación QA:
 
@@ -139,7 +156,7 @@ específica de QA-1.
 
 ### AUD-006 · Encargos
 
-Estado de preparación: CORRECCION_LOCAL_APLICADA; PENDIENTE_VALIDACION_QA.
+Estado de preparación: CIERRE_QA_PASS_FLUJO_NORMAL; EDGE_CASES_BLOQUEADOS.
 
 Hallazgos actuales en el código:
 
@@ -202,12 +219,13 @@ Comprobación manual en QA del 2026-10-22, preview 172:
   tanto, los casos de ausencia de cliente y fecha ausente quedan BLOQUEADOS
   para una prueba de datos preexistentes: el formulario normal no permite
   fabricarlos y no se hizo una inserción directa.
-- Resultado AUD-006: PASS para filtro de estados, ordenación, historial y
-  ausencia de acción Entregar en estados no pendientes; FAIL PARCIAL para la
-  representación del cliente y del texto de días en tarjetas pendientes;
-  BLOQUEADO para validar filas históricas con cliente/fecha ausentes.
+- Resultado inicial AUD-006: PASS para filtro de estados, ordenación, historial
+  y ausencia de acción Entregar en estados no pendientes; se observó un FAIL
+  PARCIAL de representación del cliente y del texto de días en tarjetas
+  pendientes; BLOQUEADO para validar filas históricas con cliente/fecha
+  ausentes.
 
-Corrección aplicada después de la prueba, pendiente de nuevo preview QA:
+Corrección aplicada después de la prueba y verificada en el preview QA 172:
 
 - La lista del local activo ahora recibe el mismo enriquecimiento que la lista
   general: calcula `dias`, calcula `total` e hidrata `cliente` desde el
@@ -215,6 +233,24 @@ Corrección aplicada después de la prueba, pendiente de nuevo preview QA:
 - Se conserva el predicado común de estados y la ordenación por fecha/hora.
 - El cambio se ha aplicado en `fuente.js` y en
   `source-recovery/fuente-recuperado.js`; no modifica Supabase.
+
+Cierre formal de AUD-006 en QA (2026-10-22):
+
+- PASS en el flujo normal: la vista general y la del local muestran solo
+  pendientes, ordenan por fecha/hora, hidratan cliente y días correctamente,
+  y reservan cancelados/devueltos para el historial.
+- PASS de regresión técnica: `node --check` en ambas fuentes, contrato
+  `tests/pm14/p09-aud006-pendientes-contract.mjs`, paridad de
+  `source-recovery` y build Netlify completados correctamente.
+- PASS de recomprobación visual en preview 172: 2 pendientes visibles con
+  `QA Cliente SOLO A`, `En 3 días` y `En 6 días`; 1 entregado y 2 elementos
+  en historial.
+- BLOQUEADO fuera del flujo normal: no se pudieron validar filas
+  preexistentes sin cliente o fecha porque el formulario las rechaza y no se
+  autorizó una escritura directa para fabricar datos corruptos.
+
+AUD-006 queda cerrado como PASS para el flujo normal de QA. Los casos de datos
+ausentes quedan registrados como limitación de fixture y no impiden este cierre.
 
 ### Contraseña inicial · bloque intermedio
 
@@ -262,10 +298,12 @@ Estado actual de la autorización:
 - Autorización para migraciones, grants, RLS o funciones QA: PENDIENTE.
 - Autorización para PROD: NO_CONCEDIDA.
 
-La siguiente acción segura es cerrar el resultado de AUD-006 como PASS parcial
-y preparar por separado los fixtures o datos controlados que permitan probar
-cliente/fecha ausentes. AUD-004 y AUD-010 siguen pendientes y no se deben
-modificar por inferencia a partir de esta prueba.
+La siguiente acción segura es preparar, con autorización específica, un fixture
+controlado de AUD-004 en QA que represente un producto legacy sin contexto,
+incluya regla de autoridad y rollback, y permita reproducir la incidencia sin
+alterar PROD. Hasta entonces AUD-004 permanece bloqueado; AUD-010 sigue
+pendiente de auditoría de Edge Function y grants. AUD-006 ya está cerrado para
+su flujo normal.
 
 ## 7. Registro de comprobaciones realizadas
 
@@ -285,6 +323,9 @@ modificar por inferencia a partir de esta prueba.
   AUD-006, comprobación de paridad de source-recovery y build de publicación
   Netlify: PASS. El nuevo candidato QA ya carga en el preview 172 y la
   comprobación visual posterior confirma el cliente y los días correctamente.
+- Preflight AUD-004: consulta de columnas, recuentos, claves QA y definiciones
+  de las RPC de catálogo; solo lectura, sin fixture legacy presente y sin
+  escrituras directas, 2026-10-22.
 
 Recomprobación visual posterior en QA, preview 172:
 
