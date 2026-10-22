@@ -2,7 +2,7 @@
 
 Fecha: 2026-10-22  
 Entorno: Supabase QA `qjqorixtkilwsndqayyx` · preview 172  
-Estado: AUDITADO_QA; FUNCION_V2_ACTIVA; BLOQUEADO_POR_PERMISO_DEL_NAVEGADOR_IAB; SIN_CAMBIOS_APLICADOS
+Estado: AUDITADO_QA; FUNCION_V2_ACTIVA; SUSCRIPCION_QA_PASS; BLOQUEADO_POR_CONFIGURACION_VAPID_QA; SIN_CAMBIOS_APLICADOS
 
 ## Alcance autorizado
 
@@ -73,6 +73,29 @@ navegador mediante herramientas externas y no se tocó PROD. Para cerrar
 AUD-010 falta repetir exactamente este flujo en un navegador que permita
 resolver el permiso de notificaciones para el preview QA; después se podrá
 enviar una única notificación controlada y verificar `destinatarios=1`.
+
+## Corrección del alta y reintento en preview 172
+
+Se corrigió el cliente para obtener `supabase.auth.getUser()` y enviar
+`user_id` junto con la suscripción. La corrección quedó en `fuente.js` y en
+`source-recovery/fuente-recuperado.js`, con contrato PM17 actualizado. Commit:
+`cafcdac fix(qa): associate push subscriptions with auth user`.
+
+Tras el despliegue del preview 172, el flujo normal mostró `Activadas en este
+dispositivo`. La lectura autenticada de QA confirmó una suscripción propia y
+la comprobación agregada confirmó dos suscripciones totales, ambas con usuario,
+una asociada a `QA-A1`.
+
+Se intentó una única notificación controlada:
+`Stock bajo` · `QA-AUD010-CONTROLADO-20261022` · `QA-EMP-A` · `QA-A1`.
+La Edge Function respondió HTTP 500 con `Notificaciones push no configuradas.`
+El envío no llegó a la fase de destinatarios porque QA no tiene configuradas
+`VAPID_PUBLIC_KEY` y/o `VAPID_PRIVATE_KEY`. No se envió ninguna notificación.
+
+Conclusión actual: el alta de suscripción y el RLS quedan corregidos y
+verificados; AUD-010 sigue abierto hasta configurar las claves VAPID únicamente
+en QA y repetir el envío controlado. No se deben relajar políticas ni insertar
+suscripciones manualmente.
 
 ## Verificación local
 

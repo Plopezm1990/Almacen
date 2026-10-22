@@ -145,7 +145,7 @@ de la regla de autoridad y de un rollback revisado.
 
 ### AUD-010 · notificaciones y membresías
 
-Estado de preparación: AUDITADO_QA; FUNCION_V2_ACTIVA; BLOQUEADO_POR_PERMISO_DEL_NAVEGADOR_IAB; SIN_CAMBIOS_APLICADOS.
+Estado de preparación: AUDITADO_QA; FUNCION_V2_ACTIVA; SUSCRIPCION_QA_PASS; BLOQUEADO_POR_CONFIGURACION_VAPID_QA; SIN_CAMBIOS_APLICADOS.
 
 Hallazgos actuales:
 
@@ -170,6 +170,13 @@ pulsó `Activar en este dispositivo` en la sesión QA autenticada. El botón que
 en `Un momento…`; no apareció el permiso del navegador integrado. La lectura
 posterior confirmó `Notification.permission=default`, Service Worker registrado,
 Push disponible y suscripción inexistente. No se envió el aviso controlado.
+
+Corrección posterior: el cliente ahora obtiene el usuario autenticado y guarda
+`user_id` al hacer el `upsert` de `suscripciones_push`. En el preview 172 la
+interfaz mostró `Activadas en este dispositivo` y la lectura autenticada
+confirmó una suscripción propia. El único aviso controlado intentado después
+respondió HTTP 500 porque QA no tiene configuradas las claves VAPID requeridas
+por `enviar-notificacion`; no se produjo envío.
 
 Resultado de auditoría y siguiente prueba, sin cambios aplicados:
 
@@ -333,9 +340,9 @@ Estado actual de la autorización:
   PENDIENTE DE UNA CORRECCIÓN CONCRETA.
 - Autorización para PROD: NO_CONCEDIDA.
 
-La siguiente acción segura de AUD-010 es repetir esa activación en un navegador
-que permita resolver el permiso de notificaciones y después repetir un aviso
-controlado. AUD-006 ya está
+La siguiente acción segura de AUD-010 es configurar las claves VAPID solo en QA
+mediante el mecanismo de secretos del proyecto y repetir un aviso controlado.
+AUD-006 ya está
 cerrado para su flujo normal. AUD-004 queda cerrado en el control QA ejecutado,
 con borrado físico expresamente fuera del contrato por diseño.
 
